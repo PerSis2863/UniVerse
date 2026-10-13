@@ -1,7 +1,8 @@
 'use client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
-import { Users, MessageSquare, Search, Plus, MoreHorizontal, X, ChevronRight, Upload, Video, Mic, Trash2 } from 'lucide-react';
+import { Users, MessageSquare, Search, Plus, MoreHorizontal, X, ChevronRight, Upload, Video, Mic, Trash2, Wand2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { useState,  useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,6 +12,8 @@ import useSWR from 'swr';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { authedJson } from '@/lib/authed-fetch';
 import { GroupChat } from '@/components/groups/GroupChat';
+// Project autopilot (Stage 5 · D6) loads when opened.
+const GroupAutopilot = dynamic(() => import('@/components/groups/GroupAutopilot').then((m) => m.GroupAutopilot), { ssr: false });
 import { GroupDetailBody } from '@/components/groups/GroupDetailBody';
 import { useInitialSearch } from '@/hooks/useInitialSearch';
 import { useLiveInterval } from '@/lib/realtime-client';
@@ -67,10 +70,10 @@ function ActivityRow({ item, onOpen, delay = 0 }: { item: ActivityItem; onOpen: 
 }
 
 const typeColors: Record<string, string> = {
-  Study: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  Project: 'bg-fuchsia-500/10 text-fuchsia-500 border-fuchsia-500/20',
-  Impact: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  Research: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  Study: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20',
+  Project: 'bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300 border-fuchsia-500/20',
+  Impact: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
+  Research: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20',
 };
 
 const gradientColors: Record<string, string> = {
@@ -146,6 +149,7 @@ export default function GroupsPage() {
   
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [showAutopilot, setShowAutopilot] = useState(false);
   const activityPoll = useLiveInterval(60_000, 0); // pushed live when posts change (src/server/groups-live.ts)
   const { data: activityData } = useSWR<ActivityItem[]>('/api/groups/activity?limit=30', authedJson, { refreshInterval: activityPoll });
   const activity = Array.isArray(activityData) ? activityData : [];
@@ -376,7 +380,7 @@ export default function GroupsPage() {
                 </div>
               </div>
               <div className="p-5 space-y-5">
-                <div className="flex gap-2 w-full">
+                <div className="flex flex-wrap gap-2 w-full">
                   {!selectedGroup.isJoined ? (
                     <button 
                       className="flex-1 btn-primary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap"
@@ -410,6 +414,9 @@ export default function GroupsPage() {
                       </button>
                       <button className="btn-secondary py-2 px-3 text-sm flex items-center justify-center" onClick={() => openMeeting(selectedGroup, 'audio')} aria-label="Voice call with the group" title="Voice call">
                         <Mic className="w-4 h-4" />
+                      </button>
+                      <button className="basis-full btn-secondary py-2 px-3 text-sm flex items-center justify-center" onClick={() => setShowAutopilot(true)}>
+                        <Wand2 className="w-4 h-4 mr-1" /> Project autopilot
                       </button>
                     </>
                   )}
@@ -639,6 +646,9 @@ export default function GroupsPage() {
         {/* Group Chat */}
         {showChat && selectedGroup && (
           <GroupChat group={selectedGroup} onClose={() => setShowChat(false)} />
+        )}
+        {showAutopilot && selectedGroup && (
+          <GroupAutopilot key="autopilot" group={selectedGroup} onClose={() => setShowAutopilot(false)} />
         )}
 
       </AnimatePresence>

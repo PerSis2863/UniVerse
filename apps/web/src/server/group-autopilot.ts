@@ -1,17 +1,21 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { BadRequestException, ForbiddenException, NotFoundException } from './http';
-import { groupAccess } from './spaces';
+import { BadRequestException, ConflictException, HttpException, NotFoundException } from './http';
+import { groupAccess, groupPeople } from './spaces';
 import { geminiJson } from './gemini';
-import { spaceContributions } from './contributions';
+import { spendAi } from './ai-budget';
+import { featureOff } from './moderation';
+import { notify, notifyMany } from './email';
+import { publish } from './realtime';
+import { scheduleCall } from './scheduled-calls';
 
-// Stage 5 · D6: Group Project Autopilot
-// Intelligent project manager for student group assignments:
-// 1. Splits assignment brief into actionable milestones & tasks.
-// 2. Matches task requirements against member skills and Learning DNA mastery.
-// 3. Resolves timetable conflicts (TimetableSlot & ScheduledCalls) to find mutual meeting slots.
-// 4. Schedules team calls and creates TaskBoard items.
-// 5. Automatically generates weekly fair-contribution progress reports for teachers.
+// Stage 5 · D6: Group project autopilot. For a group assignment it:
+// 1. splits the brief into tasks (one AI request when AI is on, otherwise rules),
+// 2. suggests an owner for each task from members' skills, keeping the work even,
+// 3. finds a weekly meeting time from everyone's class timetable,
+// 4. puts the tasks on the group's Tasks board and schedules the call (scheduled-calls.ts),
+// 5. writes a weekly progress report with fair-contribution numbers, and lets members nudge late tasks.
+// Everything is for members of the group only (groupAccess). Nothing is emailed.
 
 export interface AutopilotTaskDraft {
   title: string;
@@ -29,7 +33,7 @@ export interface MeetingSlotCandidate {
   dayOfWeek: number; // 0=Mon ... 6=Sun
   dayName: string;
   startTime: string; // "14:00"
-  endTime: string;   // "15:00"
+  endTime: string; // "15:00"
   availableMemberIds: string[];
   totalMembers: number;
   conflicts: { userId: string; userName: string; reason: string }[];
@@ -43,35 +47,29 @@ export interface MemberContributionStat {
   tasksAssigned: number;
   tasksCompleted: number;
   tasksOverdue: number;
-  docEdits: number;
-  codeEdits: number;
-  peerRatingAvg: number | null;
+  hoursDone: number;
   contributionSharePercent: number;
   status: 'BALANCED' | 'OVERLOADED' | 'UNDER_CONTRIBUTING';
 }
 
-export interface FairContributionReportData {
-  planId: string;
-  groupId: string;
-  weekNumber: number;
-  summary: string;
-  health: 'ON_TRACK' | 'AT_RISK' | 'OFF_TRACK';
-  fairContributionScore: number;
+export interface ContributionSummary {
   totalTasks: number;
   completedTasks: number;
   overdueTasks: number;
   members: MemberContributionStat[];
-  nudgesRecommended: {
-    taskId: string;
-    taskTitle: string;
-    userId: string;
-    userName: string;
-    reason: string;
-  }[];
-  generatedAt: string;
+  /** 1 = everyone did an even share of the finished work, 0 = one person did all of it; null until a task per person is done. */
+  fairContributionScore: number | null;
+  health: 'ON_TRACK' | 'AT_RISK' | 'OFF_TRACK';
+  nudgesRecommended: { taskId: string; taskTitle: string; userId: string; userName: string; reason: string }[];
 }
 
+type Member = { id: string; name: string; skills: { name: string; level: string }[] };
+type Draft = Omit<AutopilotTaskDraft, 'suggestedAssigneeId' | 'suggestedAssigneeName' | 'suggestedAssigneeReason'>;
+
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
+const MAX_TASKS = 8;
+const DAY = 86_400_000;
 
 const STANDARD_SLOTS = [
   { startTime: '10:00', endTime: '11:00' },
@@ -81,691 +79,437 @@ const STANDARD_SLOTS = [
   { startTime: '16:30', endTime: '17:30' },
 ];
 
-/**
- * Intelligent brief splitting into structured tasks and balanced skill matching.
- */
-export function splitBriefAndMatchSkills(
-  brief: string,
-  members: { id: string; name: string; skills: { name: string; level: string }[] }[],
-  targetDays = 21,
-): AutopilotTaskDraft[] {
-  if (!members.length) return [];
+// ─── Splitting the brief and matching skills (pure) ──────────────────────────────────────────────
 
-  const rawTasks = heuristicTaskBreakdown(brief, targetDays);
-  return assignTasksBySkills(rawTasks, members);
+/** Rules-based split of a brief into tasks, each with a suggested owner. */
+export function splitBriefAndMatchSkills(brief: string, members: Member[], targetDays = 21): AutopilotTaskDraft[] {
+  if (!members.length) return [];
+  return assignTasksBySkills(heuristicTaskBreakdown(brief, targetDays), members);
 }
 
-function heuristicTaskBreakdown(brief: string, targetDays: number): Omit<AutopilotTaskDraft, 'suggestedAssigneeId' | 'suggestedAssigneeName' | 'suggestedAssigneeReason'>[] {
+function heuristicTaskBreakdown(brief: string, targetDays: number): Draft[] {
   const lines = brief
     .split('\n')
     .map((l) => l.trim())
     .filter((l) => l.length > 5 && (l.startsWith('-') || l.startsWith('*') || /^\d+[.)]/.test(l)));
+  const totalDays = Math.max(7, targetDays);
 
+  // A brief written as a list: one task per line.
   if (lines.length >= 3) {
-    const totalDays = Math.max(7, targetDays);
-    return lines.slice(0, 7).map((line, idx) => {
-      const cleanTitle = line.replace(/^[-*\d.)\s]+/, '').trim();
-      const priority: AutopilotTaskDraft['priority'] = idx === 0 || idx === lines.length - 1 ? 'HIGH' : 'MEDIUM';
-      const requiredSkills = inferSkillsFromText(cleanTitle);
-      const dueDays = Math.round(((idx + 1) / lines.length) * totalDays);
+    const used = lines.slice(0, MAX_TASKS);
+    return used.map((line, idx) => {
+      const title = line.replace(/^[-*\d.)\s]+/, '').trim();
       return {
-        title: cleanTitle.slice(0, 80),
-        notes: `Deliverable requirement based on brief: "${cleanTitle}".`,
-        priority,
+        title: title.slice(0, 80),
+        notes: `From the brief: "${title.slice(0, 300)}"`,
+        priority: idx === 0 || idx === used.length - 1 ? 'HIGH' : 'MEDIUM',
         estimateHours: 4 + (idx % 3) * 3,
-        requiredSkills,
-        dueDaysFromStart: dueDays,
+        requiredSkills: inferSkillsFromText(title),
+        dueDaysFromStart: Math.max(1, Math.round(((idx + 1) / used.length) * totalDays)),
       };
     });
   }
 
-  // Default structured academic project lifecycle
-  const totalDays = Math.max(7, targetDays);
+  // Otherwise the usual shape of a project.
   return [
-    {
-      title: 'Phase 1: Problem Definition & Research',
-      notes: 'Literature review, problem statement, scope boundaries, and academic references.',
-      priority: 'HIGH',
-      estimateHours: 6,
-      requiredSkills: ['Research', 'Technical Writing', 'Analysis'],
-      dueDaysFromStart: Math.round(totalDays * 0.25),
-    },
-    {
-      title: 'Phase 2: Architecture & System Design',
-      notes: 'System architecture diagram, data schema, API specifications, and UX wireframes.',
-      priority: 'HIGH',
-      estimateHours: 8,
-      requiredSkills: ['System Design', 'Architecture', 'UI/UX'],
-      dueDaysFromStart: Math.round(totalDays * 0.45),
-    },
-    {
-      title: 'Phase 3: Core Implementation & Prototype',
-      notes: 'Primary feature build, functional components, backend logic, and prototype wiring.',
-      priority: 'URGENT',
-      estimateHours: 12,
-      requiredSkills: ['Programming', 'Software Engineering', 'Implementation'],
-      dueDaysFromStart: Math.round(totalDays * 0.75),
-    },
-    {
-      title: 'Phase 4: Testing, QA & Benchmarking',
-      notes: 'Integration testing, edge case handling, performance verification, and test coverage.',
-      priority: 'MEDIUM',
-      estimateHours: 6,
-      requiredSkills: ['Testing', 'Quality Assurance', 'Debugging'],
-      dueDaysFromStart: Math.round(totalDays * 0.88),
-    },
-    {
-      title: 'Phase 5: Final Report & Presentation Deck',
-      notes: 'Executive summary report, visual slides, demo walk-through video, and submission package.',
-      priority: 'HIGH',
-      estimateHours: 6,
-      requiredSkills: ['Presentation', 'Technical Writing', 'Communication'],
-      dueDaysFromStart: totalDays,
-    },
+    { title: 'Phase 1: Problem Definition & Research', notes: 'Problem statement, scope, background reading and references.', priority: 'HIGH', estimateHours: 6, requiredSkills: ['Research', 'Technical Writing', 'Analysis'], dueDaysFromStart: Math.round(totalDays * 0.25) },
+    { title: 'Phase 2: Architecture & System Design', notes: 'How it fits together: diagrams, data, interfaces and sketches of the screens.', priority: 'HIGH', estimateHours: 8, requiredSkills: ['System Design', 'Architecture', 'UI/UX'], dueDaysFromStart: Math.round(totalDays * 0.45) },
+    { title: 'Phase 3: Core Implementation & Prototype', notes: 'Build the main parts and a working prototype.', priority: 'URGENT', estimateHours: 12, requiredSkills: ['Programming', 'Software Engineering', 'Implementation'], dueDaysFromStart: Math.round(totalDays * 0.75) },
+    { title: 'Phase 4: Testing, QA & Benchmarking', notes: 'Test it, fix the problems found and check it works as promised.', priority: 'MEDIUM', estimateHours: 6, requiredSkills: ['Testing', 'Quality Assurance', 'Debugging'], dueDaysFromStart: Math.round(totalDays * 0.88) },
+    { title: 'Phase 5: Final Report & Presentation Deck', notes: 'The report, the slides, a short demo and everything to hand in.', priority: 'HIGH', estimateHours: 6, requiredSkills: ['Presentation', 'Technical Writing', 'Communication'], dueDaysFromStart: totalDays },
   ];
 }
 
 function inferSkillsFromText(text: string): string[] {
   const t = text.toLowerCase();
   const skills: string[] = [];
-  if (t.includes('code') || t.includes('implement') || t.includes('program') || t.includes('api') || t.includes('backend') || t.includes('frontend')) {
-    skills.push('Programming', 'Software Engineering');
-  }
-  if (t.includes('design') || t.includes('ui') || t.includes('ux') || t.includes('wireframe') || t.includes('architecture')) {
-    skills.push('System Design', 'UI/UX');
-  }
-  if (t.includes('test') || t.includes('qa') || t.includes('bug') || t.includes('verify')) {
-    skills.push('Testing', 'Quality Assurance');
-  }
-  if (t.includes('write') || t.includes('report') || t.includes('document') || t.includes('research') || t.includes('paper')) {
-    skills.push('Technical Writing', 'Research');
-  }
-  if (t.includes('present') || t.includes('slide') || t.includes('pitch') || t.includes('demo')) {
-    skills.push('Presentation', 'Communication');
-  }
+  if (/code|implement|program|api|backend|frontend/.test(t)) skills.push('Programming', 'Software Engineering');
+  if (/design|\bui\b|\bux\b|wireframe|architecture/.test(t)) skills.push('System Design', 'UI/UX');
+  if (/test|\bqa\b|bug|verify/.test(t)) skills.push('Testing', 'Quality Assurance');
+  if (/write|report|document|research|paper|literature/.test(t)) skills.push('Technical Writing', 'Research');
+  if (/present|slide|pitch|demo/.test(t)) skills.push('Presentation', 'Communication');
   return skills.length ? skills : ['General Analysis', 'Technical Writing'];
 }
 
-function assignTasksBySkills(
-  tasks: Omit<AutopilotTaskDraft, 'suggestedAssigneeId' | 'suggestedAssigneeName' | 'suggestedAssigneeReason'>[],
-  members: { id: string; name: string; skills: { name: string; level: string }[] }[],
-): AutopilotTaskDraft[] {
-  const assignedCounts = new Map<string, number>();
-  for (const m of members) assignedCounts.set(m.id, 0);
-
+/** Gives each task to the member whose skills fit best, with a penalty per task already given. */
+function assignTasksBySkills(tasks: Draft[], members: Member[]): AutopilotTaskDraft[] {
+  const counts = new Map(members.map((m) => [m.id, 0]));
   return tasks.map((task) => {
-    let bestMember = members[0];
-    let bestScore = -999;
-    let bestReason = 'Even workload distribution';
-
+    let best = members[0];
+    let bestScore = -Infinity;
+    let bestReason = 'Keeps the work even';
     for (const m of members) {
       let score = 0;
-      const matchedSkillNames: string[] = [];
-
+      const matched: string[] = [];
       for (const req of task.requiredSkills) {
-        const found = m.skills.find((s) => s.name.toLowerCase().includes(req.toLowerCase()) || req.toLowerCase().includes(s.name.toLowerCase()));
+        const r = req.toLowerCase();
+        const found = m.skills.find((s) => s.name.toLowerCase().includes(r) || r.includes(s.name.toLowerCase()));
         if (found) {
-          matchedSkillNames.push(found.name);
-          score += 4;
-          if (found.level === 'ADVANCED') score += 3;
-          else if (found.level === 'INTERMEDIATE') score += 1.5;
+          matched.push(found.name);
+          score += 4 + (found.level === 'ADVANCED' ? 3 : found.level === 'INTERMEDIATE' ? 1.5 : 0);
         }
       }
-
-      // Workload balancing penalty: each task already assigned deducts 3 points
-      const count = assignedCounts.get(m.id) ?? 0;
+      const count = counts.get(m.id) ?? 0;
       score -= count * 3;
-
       if (score > bestScore) {
         bestScore = score;
-        bestMember = m;
-        bestReason = matchedSkillNames.length
-          ? `Matched on skills: ${matchedSkillNames.join(', ')} (balance: ${count} assigned)`
-          : `Balanced team workload (${count} tasks assigned)`;
+        best = m;
+        bestReason = matched.length ? `Good at ${[...new Set(matched)].join(', ')}` : 'Keeps the work even';
       }
     }
-
-    assignedCounts.set(bestMember.id, (assignedCounts.get(bestMember.id) ?? 0) + 1);
-
-    return {
-      ...task,
-      suggestedAssigneeId: bestMember.id,
-      suggestedAssigneeName: bestMember.name,
-      suggestedAssigneeReason: bestReason,
-    };
+    counts.set(best.id, (counts.get(best.id) ?? 0) + 1);
+    return { ...task, suggestedAssigneeId: best.id, suggestedAssigneeName: best.name, suggestedAssigneeReason: bestReason };
   });
 }
 
-/**
- * Finds mutual free slots for a group across member timetables and existing calls.
- */
-export async function findCommonMeetingSlots(memberIds: string[], durationMin = 60): Promise<MeetingSlotCandidate[]> {
+/** Cleans the AI's tasks: known priorities, sensible hours and days, short text, at most MAX_TASKS. */
+function cleanAiTasks(raw: unknown, targetDays: number): Draft[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, MAX_TASKS).flatMap((t): Draft[] => {
+    const o = (t ?? {}) as Record<string, unknown>;
+    const title = typeof o.title === 'string' ? o.title.trim().slice(0, 80) : '';
+    if (!title) return [];
+    const priority = PRIORITIES.find((p) => p === o.priority) ?? 'MEDIUM';
+    const skills = Array.isArray(o.requiredSkills) ? o.requiredSkills.filter((s): s is string => typeof s === 'string').map((s) => s.trim().slice(0, 30)).filter(Boolean).slice(0, 4) : [];
+    return [{
+      title,
+      notes: typeof o.notes === 'string' ? o.notes.trim().slice(0, 500) : '',
+      priority,
+      estimateHours: Math.min(40, Math.max(1, Math.round(Number(o.estimateHours) || 4))),
+      requiredSkills: skills.length ? skills : inferSkillsFromText(title),
+      dueDaysFromStart: Math.min(targetDays, Math.max(1, Math.round(Number(o.dueDaysFromStart) || targetDays))),
+    }];
+  });
+}
+
+// ─── Meeting times ───────────────────────────────────────────────────────────────────────────────
+
+/** Weekday meeting times ranked by how many members are free (from their classes' timetable). */
+export async function findCommonMeetingSlots(memberIds: string[]): Promise<MeetingSlotCandidate[]> {
   if (!memberIds.length) return [];
-
-  // 1. Get enrollments for all members
-  const enrollments = await prisma.enrollment.findMany({
-    where: { studentId: { in: memberIds }, status: 'ENROLLED' },
-    select: { studentId: true, courseId: true, course: { select: { code: true, name: true } } },
-    take: 500,
-  });
-
-  const memberNamesMap = new Map<string, string>();
-  const users = await prisma.user.findMany({
-    where: { id: { in: memberIds } },
-    select: { id: true, name: true },
-  });
-  for (const u of users) memberNamesMap.set(u.id, u.name);
-
+  const ids = memberIds.slice(0, 50);
+  const [enrollments, users] = await Promise.all([
+    prisma.enrollment.findMany({ where: { studentId: { in: ids } }, select: { studentId: true, courseId: true }, take: 500 }),
+    prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }),
+  ]);
+  const names = new Map(users.map((u) => [u.id, u.name]));
   const courseIds = [...new Set(enrollments.map((e) => e.courseId))];
-
-  // 2. Get timetable slots for these courses
-  const timetableSlots = courseIds.length
-    ? await prisma.timetableSlot.findMany({
-        where: { courseId: { in: courseIds } },
+  const timetable = courseIds.length
+    ? (await Promise.all(Array.from({ length: Math.ceil(courseIds.length / 90) }, (_, i) => prisma.timetableSlot.findMany({
+        where: { courseId: { in: courseIds.slice(i * 90, i * 90 + 90) } },
         select: { courseId: true, dayOfWeek: true, startTime: true, endTime: true, course: { select: { code: true } } },
         take: 500,
-      })
+      })))).flat()
     : [];
 
-  // Map member -> array of busy slot blocks
-  const memberBusySlots = new Map<string, { dayOfWeek: number; startMin: number; endMin: number; reason: string }[]>();
-  for (const id of memberIds) memberBusySlots.set(id, []);
-
-  for (const enr of enrollments) {
-    const slots = timetableSlots.filter((t) => t.courseId === enr.courseId);
-    for (const s of slots) {
-      const [sh, sm] = s.startTime.split(':').map(Number);
-      const [eh, em] = s.endTime.split(':').map(Number);
-      memberBusySlots.get(enr.studentId)?.push({
-        dayOfWeek: s.dayOfWeek,
-        startMin: (sh || 0) * 60 + (sm || 0),
-        endMin: (eh || 0) * 60 + (em || 0),
-        reason: `${s.course.code} lecture`,
-      });
-    }
+  const minutes = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+  const busy = new Map<string, { day: number; start: number; end: number; reason: string }[]>(ids.map((id) => [id, []]));
+  for (const e of enrollments) {
+    for (const s of timetable) if (s.courseId === e.courseId) busy.get(e.studentId)?.push({ day: s.dayOfWeek, start: minutes(s.startTime), end: minutes(s.endTime), reason: `${s.course.code} class` });
   }
 
-  // 3. Test Mon(0) through Fri(4) standard meeting times
   const results: MeetingSlotCandidate[] = [];
-
   for (let day = 0; day <= 4; day++) {
     for (const slot of STANDARD_SLOTS) {
-      const [sh, sm] = slot.startTime.split(':').map(Number);
-      const [eh, em] = slot.endTime.split(':').map(Number);
-      const startMin = sh * 60 + sm;
-      const endMin = eh * 60 + em;
-
+      const start = minutes(slot.startTime), end = minutes(slot.endTime);
       const available: string[] = [];
-      const conflicts: { userId: string; userName: string; reason: string }[] = [];
-
-      for (const mId of memberIds) {
-        const busy = memberBusySlots.get(mId) ?? [];
-        const clash = busy.find((b) => b.dayOfWeek === day && Math.max(startMin, b.startMin) < Math.min(endMin, b.endMin));
-
-        if (clash) {
-          conflicts.push({
-            userId: mId,
-            userName: memberNamesMap.get(mId) ?? 'Member',
-            reason: clash.reason,
-          });
-        } else {
-          available.push(mId);
-        }
+      const conflicts: MeetingSlotCandidate['conflicts'] = [];
+      for (const id of ids) {
+        const clash = busy.get(id)?.find((b) => b.day === day && Math.max(start, b.start) < Math.min(end, b.end));
+        if (clash) conflicts.push({ userId: id, userName: names.get(id) ?? 'Member', reason: clash.reason });
+        else available.push(id);
       }
-
-      const fraction = memberIds.length > 0 ? available.length / memberIds.length : 1;
-      let score = Math.round(fraction * 100);
-      // Favour standard afternoon collaboration slots
-      if (startMin >= 14 * 60 && startMin <= 16 * 60) score = Math.min(100, score + 5);
-
-      results.push({
-        dayOfWeek: day,
-        dayName: DAY_NAMES[day] ?? 'Weekday',
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        availableMemberIds: available,
-        totalMembers: memberIds.length,
-        conflicts,
-        score,
-      });
+      const score = Math.round((available.length / ids.length) * 100);
+      results.push({ dayOfWeek: day, dayName: DAY_NAMES[day], startTime: slot.startTime, endTime: slot.endTime, availableMemberIds: available, totalMembers: ids.length, conflicts, score });
     }
   }
-
-  // Sort best score first
-  return results.sort((a, b) => b.score - a.score);
+  // Most people free first; among equals, afternoons (they suit group work), then earlier in the week.
+  const afternoon = (s: MeetingSlotCandidate) => (s.startTime >= '14:00' && s.startTime <= '16:00' ? 1 : 0);
+  return results.sort((a, b) => b.score - a.score || afternoon(b) - afternoon(a) || a.dayOfWeek - b.dayOfWeek);
 }
 
-/**
- * Creates or updates an autopilot plan for a group.
- */
-export async function createOrUpdateAutopilotPlan(
-  groupId: string,
-  user: SessionUser,
-  input: {
-    title: string;
-    brief: string;
-    courseId?: string;
-    assignmentId?: string;
-    targetDueDate?: string;
-    meetingCadence?: string;
-  },
-) {
-  const g = await groupAccess(groupId, user);
-  if (!g) throw new NotFoundException('Group not found.');
+// ─── Fair contribution (pure) ────────────────────────────────────────────────────────────────────
 
-  const title = input.title?.trim() || 'Group Project';
-  const brief = input.brief?.trim();
-  if (!brief || brief.length < 10) {
-    throw new BadRequestException('Please provide an assignment or project brief of at least 10 characters.');
-  }
+/** Progress and fairness from the board's tasks: who has what, what's done, what's late. */
+export function contributionSummary(
+  tasks: { id: string; title: string; assigneeId: string | null; doneAt: Date | null; dueAt: Date | null; estimate: number | null }[],
+  people: { id: string; name: string; avatar: string | null }[],
+  now: number,
+): ContributionSummary {
+  const late = (t: (typeof tasks)[number]) => !t.doneAt && !!t.dueAt && t.dueAt.getTime() < now;
+  const hours = (t: (typeof tasks)[number]) => (t.estimate && t.estimate > 0 ? t.estimate : 1);
+  const n = Math.max(1, people.length);
+  const even = 1 / n;
+  const completedTasks = tasks.filter((t) => t.doneAt).length;
+  const totalHours = tasks.filter((t) => t.doneAt && t.assigneeId).reduce((s, t) => s + hours(t), 0);
 
-  // Gather group members & their skills
-  const memberships = await prisma.groupMembership.findMany({
-    where: { groupId },
-    select: {
-      userId: true,
-      user: {
-        select: {
-          id: true,
-          name: true,
-          skills: { select: { name: true, level: true } },
-        },
-      },
-    },
-    take: 50,
+  const members = people.map((p): MemberContributionStat => {
+    const mine = tasks.filter((t) => t.assigneeId === p.id);
+    const done = mine.filter((t) => t.doneAt);
+    const hoursDone = done.reduce((s, t) => s + hours(t), 0);
+    const share = totalHours ? hoursDone / totalHours : 0;
+    const overdue = mine.filter(late).length;
+    // Only judge shares once there's enough finished work to compare (one task per person).
+    const enough = completedTasks >= n;
+    const status: MemberContributionStat['status'] = overdue >= 2 || (enough && n > 1 && share < even / 2)
+      ? 'UNDER_CONTRIBUTING'
+      : enough && n > 2 && share > even * 2 ? 'OVERLOADED' : 'BALANCED';
+    return { userId: p.id, name: p.name, avatar: p.avatar, tasksAssigned: mine.length, tasksCompleted: done.length, tasksOverdue: overdue, hoursDone, contributionSharePercent: Math.round(share * 100), status };
   });
 
-  const memberProfiles = memberships.map((m) => ({
-    id: m.user.id,
-    name: m.user.name,
-    skills: m.user.skills.map((s) => ({ name: s.name, level: String(s.level) })),
-  }));
-
-  const targetDays = input.targetDueDate
-    ? Math.max(3, Math.round((new Date(input.targetDueDate).getTime() - Date.now()) / (24 * 3600 * 1000)))
-    : 21;
-
-  // Attempt Gemini JSON breakdown if configured, else heuristic
-  let tasks: AutopilotTaskDraft[] | null = null;
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (apiKey) {
-    const system = 'You are an autonomous engineering and academic project manager. Split the assignment brief into 4-6 balanced, actionable milestones.';
-    const prompt = `Project Title: ${title}\nBrief: ${brief}\nTeam Members: ${JSON.stringify(memberProfiles.map((m) => ({ id: m.id, name: m.name, skills: m.skills })))}`;
-    const schema = {
-      type: 'object',
-      properties: {
-        tasks: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              title: { type: 'string' },
-              notes: { type: 'string' },
-              priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] },
-              estimateHours: { type: 'number' },
-              requiredSkills: { type: 'array', items: { type: 'string' } },
-              dueDaysFromStart: { type: 'number' },
-            },
-            required: ['title', 'notes', 'priority', 'estimateHours', 'requiredSkills', 'dueDaysFromStart'],
-          },
-        },
-      },
-      required: ['tasks'],
-    };
-
-    const aiRes = await geminiJson<{ tasks: Omit<AutopilotTaskDraft, 'suggestedAssigneeId' | 'suggestedAssigneeName' | 'suggestedAssigneeReason'>[] }>(
-      system,
-      prompt,
-      schema,
-      1200,
-      false,
-    ).catch(() => null);
-
-    if (aiRes?.tasks?.length) {
-      tasks = assignTasksBySkills(aiRes.tasks, memberProfiles);
+  // Fairness needs enough finished work to compare: at least one task per person.
+  let fairContributionScore: number | null = null;
+  if (totalHours > 0 && completedTasks >= n) {
+    if (n === 1) fairContributionScore = 1;
+    else {
+      const deviation = members.reduce((s, m) => s + Math.abs(m.hoursDone / totalHours - even), 0);
+      fairContributionScore = Math.round((1 - deviation / (2 * (1 - even))) * 100) / 100;
     }
   }
 
-  if (!tasks || !tasks.length) {
-    tasks = splitBriefAndMatchSkills(brief, memberProfiles, targetDays);
-  }
+  const overdueTasks = tasks.filter(late).length;
+  const behind = members.some((m) => m.status === 'UNDER_CONTRIBUTING');
+  const health: ContributionSummary['health'] = overdueTasks >= Math.max(2, Math.ceil(tasks.length * 0.4))
+    ? 'OFF_TRACK'
+    : overdueTasks >= 1 || behind ? 'AT_RISK' : 'ON_TRACK';
+  const named = new Map(people.map((p) => [p.id, p.name]));
+  const nudgesRecommended = tasks.filter((t) => late(t) && t.assigneeId && named.has(t.assigneeId)).map((t) => ({
+    taskId: t.id, taskTitle: t.title, userId: t.assigneeId!, userName: named.get(t.assigneeId!)!, reason: 'Past its due date and not done yet.',
+  }));
+  return { totalTasks: tasks.length, completedTasks, overdueTasks, members, fairContributionScore, health, nudgesRecommended };
+}
 
-  // Find common meeting slot
-  const slots = await findCommonMeetingSlots(memberProfiles.map((m) => m.id));
-  const bestSlot = slots[0] ?? null;
+// ─── Plans ───────────────────────────────────────────────────────────────────────────────────────
 
-  // Find or link active plan
-  const existing = await prisma.groupAutopilotPlan.findFirst({
-    where: { groupId, status: { in: ['ACTIVE', 'DRAFT'] } },
-    orderBy: { createdAt: 'desc' },
-  });
+const parse = <T,>(json: string | null | undefined, fallback: T): T => { try { return json ? (JSON.parse(json) as T) : fallback; } catch { return fallback; } };
 
-  const data = {
-    groupId,
-    courseId: input.courseId || null,
-    assignmentId: input.assignmentId || null,
-    title,
-    brief,
-    targetDueDate: input.targetDueDate ? new Date(input.targetDueDate) : null,
-    meetingCadence: input.meetingCadence || 'WEEKLY',
-    meetingSlot: bestSlot ? JSON.stringify({ dayOfWeek: bestSlot.dayOfWeek, dayName: bestSlot.dayName, startTime: bestSlot.startTime, endTime: bestSlot.endTime }) : null,
-    breakdownJson: JSON.stringify(tasks),
-    status: 'ACTIVE',
-    createdById: user.id,
-  };
+async function member(groupId: string, user: SessionUser) {
+  const g = await groupAccess(groupId, user);
+  if (!g) throw new NotFoundException('Group not found.');
+  return g;
+}
 
-  let plan;
-  if (existing) {
-    plan = await prisma.groupAutopilotPlan.update({ where: { id: existing.id }, data });
-  } else {
-    plan = await prisma.groupAutopilotPlan.create({ data });
-  }
+async function memberIds(groupId: string) {
+  return (await prisma.groupMembership.findMany({ where: { groupId }, select: { userId: true }, take: 50 })).map((m) => m.userId);
+}
 
+/** The group's latest plan (a draft or the one on the board) and the best meeting times. */
+export async function planView(groupId: string, user: SessionUser) {
+  await member(groupId, user);
+  const [plan, ids] = await Promise.all([
+    prisma.groupAutopilotPlan.findFirst({
+      where: { groupId, status: { in: ['DRAFT', 'ACTIVE'] } },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, title: true, brief: true, status: true, targetDueDate: true, meetingSlot: true, breakdownJson: true, createdAt: true, updatedAt: true,
+        board: { select: { id: true, title: true } },
+        scheduledCall: { select: { id: true, title: true, startAt: true, durationMin: true } },
+      },
+    }),
+    memberIds(groupId),
+  ]);
+  const slots = await findCommonMeetingSlots(ids);
   return {
-    plan: {
-      ...plan,
-      breakdown: tasks,
-      meetingSlot: bestSlot,
-    },
+    plan: plan ? { ...plan, breakdownJson: undefined, breakdown: parse<AutopilotTaskDraft[]>(plan.breakdownJson, []), meetingSlot: parse<MeetingSlotCandidate | null>(plan.meetingSlot, null) } : null,
     candidateMeetingSlots: slots.slice(0, 5),
   };
 }
 
-/**
- * Instantiates the planned tasks on the group's TaskBoard and schedules the initial sync meeting.
- */
-export async function applyPlanToWorkspace(planId: string, user: SessionUser, autoScheduleCall = true) {
-  const plan = await prisma.groupAutopilotPlan.findUnique({
-    where: { id: planId },
-    include: { group: true },
+/** Makes (or remakes) the group's draft plan from a brief. */
+export async function makePlan(groupId: string, user: SessionUser, input: { title?: unknown; brief?: unknown; targetDueDate?: unknown }) {
+  await member(groupId, user);
+  const title = (typeof input.title === 'string' ? input.title.trim().slice(0, 120) : '') || 'Group project';
+  const brief = typeof input.brief === 'string' ? input.brief.trim().slice(0, 4000) : '';
+  if (brief.length < 10) throw new BadRequestException('Paste the assignment brief (at least a sentence) so Autopilot can split it into tasks.');
+  const due = typeof input.targetDueDate === 'string' && input.targetDueDate ? new Date(input.targetDueDate) : null;
+  if (due && (Number.isNaN(due.getTime()) || due.getTime() < Date.now() - DAY)) throw new BadRequestException('Pick a due date that hasn’t passed.');
+  const targetDays = due ? Math.min(180, Math.max(3, Math.round((due.getTime() - Date.now()) / DAY))) : 21;
+
+  const memberships = await prisma.groupMembership.findMany({
+    where: { groupId },
+    select: { user: { select: { id: true, name: true, skills: { select: { name: true, level: true }, take: 30 } } } },
+    take: 50,
   });
-  if (!plan) throw new NotFoundException('Autopilot plan not found.');
+  const members: Member[] = memberships.map((m) => ({ id: m.user.id, name: m.user.name, skills: m.user.skills.map((s) => ({ name: s.name, level: String(s.level) })) }));
 
-  const access = await groupAccess(plan.groupId, user);
-  if (!access) throw new ForbiddenException('You do not have access to manage this group.');
-
-  // Find or create task board
-  let board = plan.boardId
-    ? await prisma.taskBoard.findUnique({ where: { id: plan.boardId } })
-    : await prisma.taskBoard.findFirst({ where: { groupId: plan.groupId } });
-
-  if (!board) {
-    board = await prisma.taskBoard.create({
-      data: {
-        title: `${plan.title} · Tasks`,
-        ownerId: user.id,
-        groupId: plan.groupId,
-        courseId: plan.courseId,
-      },
-    });
-
-    await prisma.taskList.createMany({
-      data: [
-        { boardId: board.id, title: 'To Do', position: 1 },
-        { boardId: board.id, title: 'In Progress', position: 2 },
-        { boardId: board.id, title: 'Review', position: 3 },
-        { boardId: board.id, title: 'Done', position: 4 },
-      ],
-    });
-  }
-
-  const todoList = await prisma.taskList.findFirst({
-    where: { boardId: board.id },
-    orderBy: { position: 'asc' },
-  });
-
-  if (!todoList) throw new BadRequestException('Board lists could not be found.');
-
-  const tasks: AutopilotTaskDraft[] = JSON.parse(plan.breakdownJson || '[]');
-  const now = Date.now();
-
-  // Create tasks
-  const createdTasks = [];
-  for (let i = 0; i < tasks.length; i++) {
-    const t = tasks[i]!;
-    const dueAt = new Date(now + t.dueDaysFromStart * 24 * 3600 * 1000);
-    const created = await prisma.task.create({
-      data: {
-        boardId: board.id,
-        listId: todoList.id,
-        title: t.title,
-        notes: `${t.notes}\n\nSkill Match: ${t.suggestedAssigneeReason}`,
-        priority: t.priority,
-        estimate: t.estimateHours,
-        assigneeId: t.suggestedAssigneeId,
-        dueAt,
-        position: i + 1,
-        createdById: user.id,
-      },
-    });
-    createdTasks.push(created);
-  }
-
-  // Schedule initial team meeting if requested
-  let scheduledCall = null;
-  if (autoScheduleCall && plan.meetingSlot) {
-    const slot = JSON.parse(plan.meetingSlot);
-    const targetDate = getNextOccurrenceOfDay(slot.dayOfWeek, slot.startTime);
-
-    scheduledCall = await prisma.scheduledCall.create({
-      data: {
-        title: `${plan.title} · Weekly Sync`,
-        kind: 'video',
-        startAt: targetDate,
-        durationMin: 45,
-        groupId: plan.groupId,
-        courseId: plan.courseId,
-        createdById: user.id,
-        template: 'group_project',
-      },
-    });
-  }
-
-  // Update plan
-  const updatedPlan = await prisma.groupAutopilotPlan.update({
-    where: { id: plan.id },
-    data: {
-      boardId: board.id,
-      scheduledCallId: scheduledCall?.id ?? plan.scheduledCallId,
-      status: 'ACTIVE',
-    },
-  });
-
-  return {
-    success: true,
-    planId: updatedPlan.id,
-    boardId: board.id,
-    tasksCreatedCount: createdTasks.length,
-    scheduledCall,
-  };
-}
-
-function getNextOccurrenceOfDay(dayOfWeek: number, timeStr: string): Date {
-  const [h, m] = timeStr.split(':').map(Number);
-  const now = new Date();
-  const currentDay = (now.getUTCDay() + 6) % 7; // convert Sun=0 to Mon=0...Sun=6
-  let daysUntil = (dayOfWeek - currentDay + 7) % 7;
-  if (daysUntil === 0) daysUntil = 7; // next week
-
-  const result = new Date(now.getTime() + daysUntil * 24 * 3600 * 1000);
-  result.setUTCHours(h || 14, m || 0, 0, 0);
-  return result;
-}
-
-/**
- * Generates weekly fair-contribution progress report for teachers and group members.
- */
-export async function generateWeeklyProgressReport(
-  planId: string,
-  user: SessionUser,
-): Promise<FairContributionReportData> {
-  const plan = await prisma.groupAutopilotPlan.findUnique({
-    where: { id: planId },
-    include: {
-      group: {
-        include: {
-          members: {
-            include: { user: { select: { id: true, name: true, avatar: true } } },
+  // One AI request when AI is on and the person has some left today; otherwise the rules.
+  // The AI sees the brief and the team's skills, never names.
+  let tasks: AutopilotTaskDraft[] = [];
+  let aiUsed = false;
+  if (process.env.GEMINI_API_KEY && !(await featureOff('ai')) && (await spendAi(user)).ok) {
+    const skills = [...new Set(members.flatMap((m) => m.skills.map((s) => s.name)))].slice(0, 40);
+    const ai = await geminiJson<{ tasks: unknown }>(
+      'You plan student group projects. Split the brief into 4 to 6 balanced, concrete tasks a student team can each own. Keep titles short. Spread due days across the time available.',
+      `Project: ${title}\nDays available: ${targetDays}\nTeam size: ${members.length}\nSkills in the team: ${skills.join(', ') || 'not listed'}\n<brief>\n${brief.replace(/<\/?brief>/gi, '')}\n</brief>`,
+      {
+        type: 'object',
+        properties: {
+          tasks: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                title: { type: 'string' }, notes: { type: 'string' }, priority: { type: 'string', enum: [...PRIORITIES] },
+                estimateHours: { type: 'number' }, requiredSkills: { type: 'array', items: { type: 'string' } }, dueDaysFromStart: { type: 'number' },
+              },
+              required: ['title', 'notes', 'priority', 'estimateHours', 'requiredSkills', 'dueDaysFromStart'],
+            },
           },
         },
+        required: ['tasks'],
       },
-    },
-  });
-  if (!plan) throw new NotFoundException('Autopilot plan not found.');
-
-  const access = await groupAccess(plan.groupId, user);
-  if (!access) throw new ForbiddenException('Access denied to this group.');
-
-  const boardId = plan.boardId;
-  const tasks = boardId
-    ? await prisma.task.findMany({
-        where: { boardId },
-        select: { id: true, title: true, assigneeId: true, doneAt: true, dueAt: true },
-      })
-    : [];
-
-  // Get fair contribution data from Stage 4.3 module
-  const contribData = await spaceContributions('group', plan.groupId, user, 7).catch(() => null);
-
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((t) => t.doneAt != null).length;
-  const now = Date.now();
-  const overdueTasks = tasks.filter((t) => !t.doneAt && t.dueAt && t.dueAt.getTime() < now).length;
-
-  const members: MemberContributionStat[] = [];
-  const nudgesRecommended: FairContributionReportData['nudgesRecommended'] = [];
-
-  const rawPeople = contribData?.people ?? plan.group.members.map((m) => m.user);
-  const totalEditsAll = (contribData?.rows ?? []).reduce((acc: number, r: { totalEdits?: number }) => acc + (r.totalEdits ?? 0), 0) || 1;
-
-  for (const p of rawPeople) {
-    const userTasks = tasks.filter((t) => t.assigneeId === p.id);
-    const userDone = userTasks.filter((t) => t.doneAt != null).length;
-    const userOverdue = userTasks.filter((t) => !t.doneAt && t.dueAt && t.dueAt.getTime() < now);
-
-    const userContribRow = (contribData?.rows ?? []).find((r: { userId: string }) => r.userId === p.id);
-    const docEdits = userContribRow?.docEdits ?? 0;
-    const codeEdits = userContribRow?.codeEdits ?? 0;
-    const userTotalEdits = docEdits + codeEdits;
-    const sharePercent = Math.round((userTotalEdits / totalEditsAll) * 100);
-
-    let status: MemberContributionStat['status'] = 'BALANCED';
-    if (userOverdue.length >= 2 || (sharePercent < 10 && userDone === 0 && totalTasks > 3)) {
-      status = 'UNDER_CONTRIBUTING';
-    } else if (sharePercent > 50 && userDone > 3 && rawPeople.length > 2) {
-      status = 'OVERLOADED';
-    }
-
-    members.push({
-      userId: p.id,
-      name: p.name,
-      avatar: p.avatar,
-      tasksAssigned: userTasks.length,
-      tasksCompleted: userDone,
-      tasksOverdue: userOverdue.length,
-      docEdits,
-      codeEdits,
-      peerRatingAvg: userContribRow?.peerRatingAvg ?? null,
-      contributionSharePercent: sharePercent,
-      status,
-    });
-
-    // Recommend nudges for overdue tasks
-    for (const ot of userOverdue) {
-      nudgesRecommended.push({
-        taskId: ot.id,
-        taskTitle: ot.title,
-        userId: p.id,
-        userName: p.name,
-        reason: 'Task is past due date with no recorded completion.',
-      });
-    }
+      1200,
+    ).catch(() => null);
+    const drafts = cleanAiTasks(ai?.tasks, targetDays);
+    if (drafts.length >= 2 && members.length) { tasks = assignTasksBySkills(drafts, members); aiUsed = true; }
   }
+  if (!tasks.length) tasks = splitBriefAndMatchSkills(brief, members, targetDays);
 
-  // Calculate health & fair contribution score
-  const hasUnderContributing = members.some((m) => m.status === 'UNDER_CONTRIBUTING');
-  const hasOverloaded = members.some((m) => m.status === 'OVERLOADED');
-
-  let health: FairContributionReportData['health'] = 'ON_TRACK';
-  if (overdueTasks >= 2 || hasUnderContributing) health = 'AT_RISK';
-  if (overdueTasks >= 4 || (hasUnderContributing && hasOverloaded)) health = 'OFF_TRACK';
-
-  const fairScore = hasUnderContributing ? 0.72 : hasOverloaded ? 0.84 : 0.98;
-
-  // Previous report count for week number
-  const previousReportCount = await prisma.groupAutopilotReport.count({ where: { planId } });
-  const weekNumber = previousReportCount + 1;
-
-  const summary = `${plan.title} (Week ${weekNumber}): ${completedTasks}/${totalTasks} tasks completed. Team health is ${health.replace('_', ' ')}. ${
-    hasUnderContributing ? 'Workload imbalance detected: some members are behind on deliverables.' : 'Contributions are progressing evenly across team members.'
-  }`;
-
-  const report = await prisma.groupAutopilotReport.create({
-    data: {
-      planId,
-      groupId: plan.groupId,
-      weekNumber,
-      summary,
-      health,
-      fairContributionScore: fairScore,
-      metricsJson: JSON.stringify({ members, totalTasks, completedTasks, overdueTasks }),
-      nudgesJson: JSON.stringify(nudgesRecommended),
-    },
-  });
-
-  return {
-    planId,
-    groupId: plan.groupId,
-    weekNumber,
-    summary,
-    health,
-    fairContributionScore: fairScore,
-    totalTasks,
-    completedTasks,
-    overdueTasks,
-    members,
-    nudgesRecommended,
-    generatedAt: report.createdAt.toISOString(),
+  const slots = await findCommonMeetingSlots(members.map((m) => m.id));
+  const best = slots[0] ?? null;
+  const data = {
+    title, brief, targetDueDate: due,
+    meetingSlot: best ? JSON.stringify({ dayOfWeek: best.dayOfWeek, dayName: best.dayName, startTime: best.startTime, endTime: best.endTime }) : null,
+    breakdownJson: JSON.stringify(tasks),
   };
+  // One draft at a time: remaking replaces it. A plan already on the board stays until a new one is applied.
+  const draft = await prisma.groupAutopilotPlan.findFirst({ where: { groupId, status: 'DRAFT' }, select: { id: true } });
+  const plan = draft
+    ? await prisma.groupAutopilotPlan.update({ where: { id: draft.id }, data, select: { id: true } })
+    : await prisma.groupAutopilotPlan.create({ data: { ...data, groupId, status: 'DRAFT', createdById: user.id }, select: { id: true } });
+  publish(await groupPeople(groupId), { type: 'refresh', keys: [`/api/groups/${groupId}/autopilot/plan`] });
+  return { planId: plan.id, aiUsed, tasks: tasks.length };
 }
 
 /**
- * Sends a nudge notification to an assignee for a pending or overdue task.
+ * Puts a draft plan's tasks on the group's Tasks board, and schedules the weekly call when the
+ * browser sends the chosen time (`startAt`, worked out in the person's own time zone).
  */
-export async function sendAutopilotNudge(
-  planId: string,
-  taskId: string,
-  user: SessionUser,
-) {
-  const plan = await prisma.groupAutopilotPlan.findUnique({
-    where: { id: planId },
-    include: { group: true },
-  });
-  if (!plan) throw new NotFoundException('Autopilot plan not found.');
+export async function applyPlan(groupId: string, user: SessionUser, input: { planId?: unknown; startAt?: unknown; slot?: unknown }) {
+  const g = await member(groupId, user);
+  const planId = typeof input.planId === 'string' ? input.planId : '';
+  const plan = await prisma.groupAutopilotPlan.findFirst({ where: { id: planId, groupId }, select: { id: true, title: true, status: true, breakdownJson: true } });
+  if (!plan) throw new NotFoundException('That plan isn’t there any more. Make a new one.');
+  if (plan.status !== 'DRAFT') throw new ConflictException('This plan is already on the board.');
 
-  const access = await groupAccess(plan.groupId, user);
-  if (!access) throw new ForbiddenException('Access denied to this group.');
+  const ids = new Set(await memberIds(groupId));
+  const tasks = parse<AutopilotTaskDraft[]>(plan.breakdownJson, []).slice(0, MAX_TASKS);
+  if (!tasks.length) throw new BadRequestException('This plan has no tasks. Make it again.');
 
-  const task = await prisma.task.findUnique({
-    where: { id: taskId },
-    include: { board: true },
-  });
-  if (!task || !task.assigneeId) throw new NotFoundException('Task or assignee not found.');
+  // The group's board, or a new one with the usual lists.
+  let board = await prisma.taskBoard.findFirst({ where: { groupId }, orderBy: { createdAt: 'asc' }, select: { id: true } });
+  if (!board) {
+    board = await prisma.taskBoard.create({ data: { title: `${g.group.name} · Tasks`.slice(0, 80), ownerId: user.id, groupId }, select: { id: true } });
+    await prisma.taskList.createMany({ data: ['To do', 'Doing', 'Done'].map((t, i) => ({ boardId: board!.id, title: t, position: i + 1 })) });
+  }
+  const list = await prisma.taskList.findFirst({ where: { boardId: board.id }, orderBy: { position: 'asc' }, select: { id: true } });
+  if (!list) throw new BadRequestException('The group’s board has no lists. Add one on the board first.');
+  if ((await prisma.task.count({ where: { boardId: board.id } })) + tasks.length > 500) throw new BadRequestException('The group’s board is full (500 cards).');
+  const last = await prisma.task.findFirst({ where: { listId: list.id }, orderBy: { position: 'desc' }, select: { position: true } });
 
-  await prisma.notification.create({
-    data: {
-      userId: task.assigneeId,
-      title: `Team Nudge: ${task.title}`,
-      body: `Your group "${plan.group.name}" is tracking progress on "${task.title}". Please update your status or post a blocker.`,
-      type: 'task',
-      link: `/tasks/${task.boardId}?task=${task.id}`,
-    },
-  });
+  const now = Date.now();
+  const rows = tasks.map((t, i) => ({
+    boardId: board!.id,
+    listId: list.id,
+    title: t.title.slice(0, 200),
+    notes: [t.notes, t.suggestedAssigneeReason && t.suggestedAssigneeName ? `Suggested for ${t.suggestedAssigneeName}: ${t.suggestedAssigneeReason}.` : ''].filter(Boolean).join('\n\n').slice(0, 2000),
+    priority: PRIORITIES.includes(t.priority) ? t.priority : 'MEDIUM',
+    estimate: Math.min(40, Math.max(1, Number(t.estimateHours) || 1)),
+    assigneeId: t.suggestedAssigneeId && ids.has(t.suggestedAssigneeId) ? t.suggestedAssigneeId : null,
+    dueAt: new Date(now + Math.max(1, Number(t.dueDaysFromStart) || 7) * DAY),
+    position: (last?.position ?? 0) + i + 1,
+    createdById: user.id,
+  }));
+  // 10 values a card: 8 cards per insert stays under D1's 100 bound values.
+  for (let i = 0; i < rows.length; i += 8) await prisma.task.createMany({ data: rows.slice(i, i + 8) });
 
-  return {
-    success: true,
-    notifiedUserId: task.assigneeId,
-    taskTitle: task.title,
+  // The weekly call, at the time the person picked (scheduleCall checks the time and tells the group).
+  let callId: string | null = null;
+  if (typeof input.startAt === 'string' && input.startAt) {
+    const startAt = new Date(input.startAt);
+    if (Number.isNaN(startAt.getTime()) || startAt.getTime() > now + 15 * DAY) throw new BadRequestException('Pick a meeting time in the next two weeks.');
+    const call = await scheduleCall(user, { room: 'group', roomId: groupId, startAt: startAt.toISOString(), durationMin: 45, kind: 'video', title: `${plan.title} · team meeting` });
+    callId = (call as { id?: string }).id ?? null;
+  }
+  const slot = input.slot && typeof input.slot === 'object' ? input.slot as Record<string, unknown> : null;
+  const chosen = slot && typeof slot.dayOfWeek === 'number' && typeof slot.startTime === 'string'
+    ? JSON.stringify({ dayOfWeek: slot.dayOfWeek, dayName: DAY_NAMES[slot.dayOfWeek] ?? '', startTime: String(slot.startTime).slice(0, 5), endTime: String(slot.endTime ?? '').slice(0, 5) })
+    : undefined;
+
+  // This plan is now the group's plan; an earlier one is archived.
+  await prisma.groupAutopilotPlan.updateMany({ where: { groupId, status: 'ACTIVE' }, data: { status: 'ARCHIVED' } });
+  await prisma.groupAutopilotPlan.update({ where: { id: plan.id }, data: { status: 'ACTIVE', boardId: board.id, ...(callId ? { scheduledCallId: callId } : {}), ...(chosen ? { meetingSlot: chosen } : {}) } });
+  await prisma.taskBoard.update({ where: { id: board.id }, data: { updatedAt: new Date() } }).catch(() => {});
+
+  const people = [...ids];
+  publish(people, { type: 'refresh', keys: [`/api/tasks/${board.id}`, '/api/tasks', `/api/groups/${groupId}/autopilot/plan`] });
+  const owners = [...new Set(rows.map((r) => r.assigneeId).filter((x): x is string => !!x && x !== user.id))];
+  if (owners.length) await notifyMany(owners, { type: 'reminder', title: `${user.name} planned “${plan.title}”`, body: 'You have tasks on the group’s board. Open it to see what’s yours and when it’s due.', link: `/tasks/${board.id}`, email: false });
+  return { ok: true, boardId: board.id, tasksCreated: rows.length, callScheduled: !!callId };
+}
+
+// ─── Weekly report and nudges ────────────────────────────────────────────────────────────────────
+
+async function activePlan(groupId: string) {
+  const plan = await prisma.groupAutopilotPlan.findFirst({ where: { groupId, status: 'ACTIVE' }, orderBy: { updatedAt: 'desc' }, select: { id: true, title: true, boardId: true, createdAt: true } });
+  if (!plan?.boardId) throw new NotFoundException('Put a plan on the board first.');
+  return plan as typeof plan & { boardId: string };
+}
+
+/** This week's report for the group's plan (made again if asked again in the same week). */
+export async function progressReport(groupId: string, user: SessionUser) {
+  await member(groupId, user);
+  const plan = await activePlan(groupId);
+  const [tasks, people] = await Promise.all([
+    prisma.task.findMany({ where: { boardId: plan.boardId }, select: { id: true, title: true, assigneeId: true, doneAt: true, dueAt: true, estimate: true }, take: 500 }),
+    prisma.groupMembership.findMany({ where: { groupId }, select: { user: { select: { id: true, name: true, avatar: true } } }, take: 50 }).then((r) => r.map((m) => m.user)),
+  ]);
+  const now = Date.now();
+  const s = contributionSummary(tasks, people, now);
+  const weekNumber = Math.floor((now - plan.createdAt.getTime()) / (7 * DAY)) + 1;
+  const words = { ON_TRACK: 'on track', AT_RISK: 'at risk', OFF_TRACK: 'off track' }[s.health];
+  const summary = `Week ${weekNumber}: ${s.completedTasks} of ${s.totalTasks} tasks done${s.overdueTasks ? `, ${s.overdueTasks} late` : ''}. The project is ${words}.${
+    s.fairContributionScore == null ? ' Fairness shows once each member could have finished a task.' : s.members.some((m) => m.status === 'UNDER_CONTRIBUTING') ? ' Some members need a hand to catch up.' : ' The work is shared fairly.'}`;
+  const data = {
+    summary, health: s.health, fairContributionScore: s.fairContributionScore ?? 1,
+    metricsJson: JSON.stringify({ members: s.members, totalTasks: s.totalTasks, completedTasks: s.completedTasks, overdueTasks: s.overdueTasks, fair: s.fairContributionScore }),
+    nudgesJson: JSON.stringify(s.nudgesRecommended),
   };
+  const existing = await prisma.groupAutopilotReport.findFirst({ where: { planId: plan.id, weekNumber }, select: { id: true } });
+  const saved = existing
+    ? await prisma.groupAutopilotReport.update({ where: { id: existing.id }, data, select: { id: true, createdAt: true } })
+    : await prisma.groupAutopilotReport.create({ data: { ...data, planId: plan.id, groupId, weekNumber }, select: { id: true, createdAt: true } });
+  publish(await groupPeople(groupId), { type: 'refresh', keys: [`/api/groups/${groupId}/autopilot/reports`] });
+  return { id: saved.id, planId: plan.id, weekNumber, summary, ...s, generatedAt: saved.createdAt.toISOString() };
+}
+
+/** The group's reports, newest first. */
+export async function listReports(groupId: string, user: SessionUser) {
+  await member(groupId, user);
+  const reports = await prisma.groupAutopilotReport.findMany({ where: { groupId }, orderBy: { createdAt: 'desc' }, take: 12 });
+  return reports.map(({ metricsJson, nudgesJson, ...r }) => ({ ...r, metrics: parse<Record<string, unknown>>(metricsJson, {}), nudges: parse<unknown[]>(nudgesJson, []) }));
+}
+
+/** Reminds a teammate about their unfinished task on the plan's board (once a day per task). */
+export async function nudge(groupId: string, user: SessionUser, taskIdRaw: unknown) {
+  const g = await member(groupId, user);
+  const plan = await activePlan(groupId);
+  const taskId = typeof taskIdRaw === 'string' ? taskIdRaw : '';
+  const task = await prisma.task.findFirst({ where: { id: taskId, boardId: plan.boardId }, select: { id: true, title: true, assigneeId: true, doneAt: true } });
+  if (!task) throw new NotFoundException('That task isn’t on the group’s board.');
+  if (task.doneAt) throw new BadRequestException('That task is already done.');
+  if (!task.assigneeId) throw new BadRequestException('Nobody has that task yet.');
+  if (task.assigneeId === user.id) throw new BadRequestException('That’s your own task.');
+  const link = `/tasks/${plan.boardId}?task=${task.id}`;
+  if (await prisma.notification.findFirst({ where: { userId: task.assigneeId, link, type: 'nudge', createdAt: { gt: new Date(Date.now() - DAY) } }, select: { id: true } })) {
+    throw new HttpException('They were reminded about this task in the last day.', 429);
+  }
+  await notify(task.assigneeId, {
+    type: 'nudge',
+    title: `${user.name} is checking on “${task.title}”`,
+    body: `Your group “${g.group.name}” is waiting on this task. Update it on the board, or say what’s blocking you.`,
+    link,
+    email: false,
+  });
+  return { ok: true };
 }

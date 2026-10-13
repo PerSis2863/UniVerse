@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   splitBriefAndMatchSkills,
   findCommonMeetingSlots,
+  contributionSummary,
 } from './group-autopilot';
 
 // Mock Prisma
@@ -169,6 +170,38 @@ describe('Group Project Autopilot (Stage 5 · D6)', () => {
     it('returns empty array when memberIds is empty', async () => {
       const candidates = await findCommonMeetingSlots([]);
       expect(candidates).toEqual([]);
+    });
+  });
+
+  describe('contributionSummary', () => {
+    const now = Date.parse('2026-10-13T12:00:00Z');
+    const day = 86_400_000;
+    const people = [{ id: 'a', name: 'Asha', avatar: null }, { id: 'b', name: 'Ben', avatar: null }, { id: 'c', name: 'Chen', avatar: null }];
+    const task = (id: string, assigneeId: string | null, opts: { done?: boolean; dueIn?: number; estimate?: number } = {}) => ({
+      id, title: `Task ${id}`, assigneeId, doneAt: opts.done ? new Date(now - day) : null, dueAt: opts.dueIn == null ? null : new Date(now + opts.dueIn * day), estimate: opts.estimate ?? 2,
+    });
+
+    it('marks nobody behind and has no fairness score before any work is done', () => {
+      const s = contributionSummary([task('1', 'a', { dueIn: 5 }), task('2', 'b', { dueIn: 5 }), task('3', 'c', { dueIn: 5 })], people, now);
+      expect(s.fairContributionScore).toBeNull();
+      expect(s.members.every((m) => m.status === 'BALANCED')).toBe(true);
+      expect(s.health).toBe('ON_TRACK');
+    });
+
+    it('scores an even split as fair (1) and one person doing everything as 0', () => {
+      const even = contributionSummary([task('1', 'a', { done: true }), task('2', 'b', { done: true }), task('3', 'c', { done: true })], people, now);
+      expect(even.fairContributionScore).toBe(1);
+      const solo = contributionSummary([task('1', 'a', { done: true }), task('2', 'a', { done: true }), task('3', 'a', { done: true })], people, now);
+      expect(solo.fairContributionScore).toBe(0);
+      expect(solo.members.find((m) => m.userId === 'a')?.status).toBe('OVERLOADED');
+      expect(solo.members.find((m) => m.userId === 'b')?.status).toBe('UNDER_CONTRIBUTING');
+    });
+
+    it('counts late tasks, recommends nudges and flags the project at risk', () => {
+      const s = contributionSummary([task('1', 'a', { dueIn: -2 }), task('2', 'b', { done: true }), task('3', 'c', { dueIn: 3 }), task('4', null, { dueIn: -1 })], people, now);
+      expect(s.overdueTasks).toBe(2);
+      expect(s.nudgesRecommended.map((n) => n.taskId)).toEqual(['1']); // the unassigned late task has nobody to nudge
+      expect(s.health).toBe('OFF_TRACK'); // 2 late out of 4
     });
   });
 });

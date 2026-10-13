@@ -1696,6 +1696,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/groups$/, ({ db: d }) => ok(d.groups.map((g) => groupOut(d, g)))],
   [/^\/groups\/my$/, ({ db: d }) => ok(d.groups.filter((g) => g.joined).map((g) => ({ id: `m-${g.id}`, groupId: g.id, userId: d.me.id, role: 'MEMBER', group: groupOut(d, g) })))],
   [/^\/api\/groups\/activity$/, ({ db: d }) => ok(d.groups.filter((g) => g.joined).flatMap((g) => (d.groupPosts[g.id] ?? []).map((p) => ({ ...p, author: { id: p.author.id, name: p.author.name }, group: { id: g.id, name: g.name, category: g.category } }))).sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)))],
+  // Project autopilot (Stage 5 · D6): a plan and reports kept in memory for the visit.
+  [/^\/api\/groups\/([^/]+)\/autopilot\/plan$/, ({ db: d, m }) => ok({ plan: autopilot(d).plans[m[1]] ?? null, candidateMeetingSlots: sampleSlots(d) })],
+  [/^\/api\/groups\/([^/]+)\/autopilot\/meeting-slots$/, ({ db: d }) => ok({ slots: sampleSlots(d) })],
+  [/^\/api\/groups\/([^/]+)\/autopilot\/reports$/, ({ db: d, m }) => ok({ reports: autopilot(d).reports[m[1]] ?? [] })],
   [/^\/api\/groups\/([^/]+)\/posts$/, ({ db: d, m }) => ok({ posts: [...(d.groupPosts[m[1]] ?? [])].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt)), isMember: !!d.groups.find((g) => g.id === m[1])?.joined, myId: d.me.id })],
   [/^\/api\/groups\/([^/]+)$/, ({ db: d, m }) => {
     const g = d.groups.find((x) => x.id === m[1]); if (!g) return fail('Group not found.', 404);
@@ -2332,6 +2336,38 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/skills$/, ({ db: d, body }) => { const s = { id: sid('sk'), userId: d.me.id, name: body.name, category: body.category ?? null, level: body.level ?? 'BEGINNER', endorsements: 0, createdAt: new Date().toISOString() }; d.skills.push(s); return ok(s, 201); }],
   ['DELETE', /^\/skills\/([^/]+)$/, ({ db: d, m }) => { d.skills.splice(d.skills.findIndex((s) => s.id === m[1]) >>> 0, 1); return ok({ ok: true }); }],
   ['POST', /^\/tickets$/, ({ db: d, body }) => { const t = { id: sid('t'), subject: body.subject, description: body.description, category: body.category, status: 'OPEN', priority: 'MEDIUM', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.tickets.unshift(t); return ok(t, 201); }],
+  ['POST', /^\/api\/groups\/([^/]+)\/autopilot\/plan$/, ({ db: d, m, body }) => {
+    notice();
+    const [a, b] = [d.me, d.people.zoya];
+    const task = (title: string, who: { id: string; name: string }, why: string, skills: string[], days: number, priority = 'MEDIUM') => ({ title, notes: '', priority, estimateHours: 4, requiredSkills: skills, suggestedAssigneeId: who.id, suggestedAssigneeName: who.name, suggestedAssigneeReason: why, dueDaysFromStart: days });
+    autopilot(d).plans[m[1]] = {
+      id: sid('ap'), title: String(body?.title || 'Group project'), brief: String(body?.brief ?? ''), status: 'DRAFT', meetingSlot: null, board: null, scheduledCall: null,
+      breakdown: [
+        task('Research and problem statement', b, 'Good at Research', ['Research', 'Technical Writing'], 5, 'HIGH'),
+        task('Design the screens', a, 'Good at UI/UX', ['UI/UX'], 9),
+        task('Build the prototype', b, 'Keeps the work even', ['Programming'], 15, 'URGENT'),
+        task('Report and slides', a, 'Good at Presentation', ['Presentation'], 21, 'HIGH'),
+      ],
+    };
+    return ok({ planId: autopilot(d).plans[m[1]].id, aiUsed: false, tasks: 4 });
+  }],
+  ['POST', /^\/api\/groups\/([^/]+)\/autopilot\/apply$/, ({ db: d, m, body }) => {
+    notice();
+    const plan = autopilot(d).plans[m[1]];
+    if (plan) Object.assign(plan, { status: 'ACTIVE', board: { id: 'sample-board', title: 'Group tasks' }, scheduledCall: body?.startAt ? { id: sid('call'), title: `${plan.title} · team meeting`, startAt: String(body.startAt), durationMin: 45 } : null });
+    return ok({ ok: true, tasksCreated: 4, callScheduled: !!body?.startAt });
+  }],
+  ['POST', /^\/api\/groups\/([^/]+)\/autopilot\/reports$/, ({ db: d, m }) => {
+    notice();
+    const members = [
+      { userId: d.me.id, name: d.me.name, tasksAssigned: 2, tasksCompleted: 1, tasksOverdue: 0, contributionSharePercent: 50, status: 'BALANCED' },
+      { userId: d.people.zoya.id, name: d.people.zoya.name, tasksAssigned: 2, tasksCompleted: 1, tasksOverdue: 1, contributionSharePercent: 50, status: 'BALANCED' },
+    ];
+    const report = { id: sid('rep'), weekNumber: 1, summary: 'Week 1: 2 of 4 tasks done, 1 late. The project is at risk.', health: 'AT_RISK', createdAt: new Date().toISOString(), metrics: { members, totalTasks: 4, completedTasks: 2, overdueTasks: 1, fair: 1 }, nudges: [{ taskId: 'sample-task', taskTitle: 'Build the prototype', userId: d.people.zoya.id, userName: d.people.zoya.name }] };
+    autopilot(d).reports[m[1]] = [report];
+    return ok({ report });
+  }],
+  ['POST', /^\/api\/groups\/([^/]+)\/autopilot\/nudge$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/groups\/([^/]+)\/posts$/, ({ db: d, m, body }) => { const p = { id: sid('gp'), body: body.body ?? '', imageUrl: body.imageUrl ?? null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), author: { id: d.me.id, name: d.me.name, avatar: null } }; (d.groupPosts[m[1]] ??= []).push(p); return ok(p, 201); }],
   ['POST', /^\/groups\/([^/]+)\/join$/, ({ db: d, m }) => { const g = d.groups.find((x) => x.id === m[1]); if (g && !g.joined) { g.joined = true; g.members.push(d.meCard); } return ok({ ok: true }); }],
   ['DELETE', /^\/groups\/([^/]+)\/leave$/, ({ db: d, m }) => { const g = d.groups.find((x) => x.id === m[1]); if (g) { g.joined = false; g.members = g.members.filter((u: any) => u.id !== d.me.id); } return ok({ ok: true }); }],
@@ -2372,6 +2408,14 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
 const PASSTHROUGH = [/^\/auth\//, /^\/users\/me$/, /^\/api\/ai$/, /^\/api\/summarize$/, /^\/api\/invite/];
 
 let lastNotice = 0;
+type SampleAutopilot = { plans: Record<string, Record<string, unknown> & { id: string; title: string }>; reports: Record<string, unknown[]> };
+const autopilot = (d: SampleDb) => ((d as SampleDb & { autopilot?: SampleAutopilot }).autopilot ??= { plans: {}, reports: {} });
+const sampleSlots = (d: SampleDb) => [
+  { dayOfWeek: 1, dayName: 'Tuesday', startTime: '14:00', endTime: '15:00', availableMemberIds: [d.me.id, d.people.zoya.id], totalMembers: 2, conflicts: [], score: 100 },
+  { dayOfWeek: 3, dayName: 'Thursday', startTime: '15:30', endTime: '16:30', availableMemberIds: [d.me.id, d.people.zoya.id], totalMembers: 2, conflicts: [], score: 100 },
+  { dayOfWeek: 0, dayName: 'Monday', startTime: '10:00', endTime: '11:00', availableMemberIds: [d.me.id], totalMembers: 2, conflicts: [{ userId: d.people.zoya.id, userName: d.people.zoya.name, reason: 'CS201 class' }], score: 50 },
+];
+
 function notice() {
   if (Date.now() - lastNotice < 8000) return;
   lastNotice = Date.now();

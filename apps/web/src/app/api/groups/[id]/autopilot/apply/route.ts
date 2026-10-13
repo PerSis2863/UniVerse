@@ -1,22 +1,19 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/server-auth';
-import { applyPlanToWorkspace } from '@/server/group-autopilot';
+import type { Body } from '@/server/body';
+import { HttpException } from '@/server/http';
+import { applyPlan } from '@/server/group-autopilot';
 
-type Ctx = { params: Promise<{ id: string }> };
-
-export async function POST(req: Request, { params }: Ctx) {
+// POST { planId, startAt?, slot? }: put the draft plan's tasks on the group's board and, with a
+// start time, schedule the weekly call (Stage 5 · D6).
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
-  await params;
-
+  const b = ((await req.json().catch(() => null)) ?? {}) as Body;
   try {
-    const body = await req.json().catch(() => ({}));
-    if (!body.planId) return NextResponse.json({ error: 'Plan ID required.' }, { status: 400 });
-
-    const result = await applyPlanToWorkspace(body.planId, user, body.autoScheduleCall !== false);
-    return NextResponse.json(result);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to apply autopilot plan';
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json(await applyPlan((await params).id, user, { planId: b.planId, startAt: b.startAt, slot: b.slot }));
+  } catch (e) {
+    if (e instanceof HttpException) return NextResponse.json({ error: e.message }, { status: e.getStatus() });
+    throw e;
   }
 }
