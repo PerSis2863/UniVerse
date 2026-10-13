@@ -299,3 +299,48 @@ The plan's order (section 2) is the guide. Suggested next steps:
   the axios-style client.
 - **Report cards:** `src/lib/report-card.ts` (maths and printable page), `src/server/report-cards.ts`.
 - **Gradebook maths:** `src/lib/gradebook.ts`.
+
+---
+
+## 🚧 IN PROGRESS: D6 · Group Project Autopilot (handoff 2026-10-13)
+
+**Branch:** `claude/stage-5-saas` (repo `/Users/adityabhatt2863/UniVerse`). D6 work is **uncommitted**. Production `main` is live and healthy (deploy `ffe45424`).
+
+### Already done (uncommitted)
+- `apps/web/prisma/schema.prisma`: models `GroupAutopilotPlan`, `GroupAutopilotReport` + relations (Group, User, Course, Assignment, TaskBoard, ScheduledCall). `owner-schema.json` regenerated.
+- `apps/web/prisma/migrations/0119_group_project_autopilot.sql`: applied **locally only**.
+- `apps/web/src/server/group-autopilot.ts`: `splitBriefAndMatchSkills`, `findCommonMeetingSlots`, `createOrUpdateAutopilotPlan` (Gemini, with a heuristic fallback), `applyPlanToWorkspace` (TaskBoard cards + ScheduledCall), `generateWeeklyProgressReport`, `sendAutopilotNudge`.
+- `apps/web/src/server/group-autopilot.test.ts`: 7 passing tests.
+- API routes under `apps/web/src/app/api/groups/[id]/autopilot/`:
+  - `plan`: GET returns `{plan, candidateMeetingSlots}`. POST takes `{title, brief, courseId?, assignmentId?, targetDueDate?, meetingCadence?}`.
+  - `apply`: POST takes `{planId, autoScheduleCall?}`.
+  - `meeting-slots`: GET returns `{slots}`.
+  - `reports`: GET returns `{reports}`. POST takes `{planId?}` and returns `{report}`.
+  - `nudge`: POST takes `{taskId, planId?}`.
+
+### Remaining TODO
+1. Create `apps/web/src/components/groups/GroupAutopilot.tsx` as a `'use client'` component. Use `useSWR` + `authedJson`/`authedFetch` from `@/lib/authed-fetch` and the style of `GroupChat.tsx` (a modal overlay with `onClose`). It needs:
+   - a brief input and a "Generate plan" button;
+   - a task list showing assignees and skill badges;
+   - a meeting-slot picker and an Apply button that schedules the call;
+   - a contribution balance view (BALANCED/OVERLOADED/UNDER_CONTRIBUTING) with a Nudge button;
+   - a weekly report view.
+   **Do NOT import server files into client components.** It breaks the OpenNext bundle (`node:crypto`).
+2. Mount it in `apps/web/src/app/(dashboard)/student/groups/page.tsx`:
+   - add a `showAutopilot` state;
+   - add an "Autopilot" button next to Chat/Files/Meet (around line 400, in the joined-group button row);
+   - render it next to `<GroupChat>` (around line 640).
+3. Add sample-mode handlers in `apps/web/src/lib/sample/router.ts`:
+   - GET handlers go near line 1700. They must come BEFORE the generic `/^\/api\/groups\/([^/]+)$/`.
+   - POST handlers go near line 2335.
+   - Cover `/api/groups/:id/autopilot/(plan|meeting-slots|reports)` and POST `plan|apply|reports|nudge`.
+4. Validate in `apps/web` with `pnpm run typecheck && pnpm run lint && pnpm run test`. Zero errors required.
+5. Update this file and `STAGE-5-PLAN.md` (mark D6 done). Commit as `Stage 5 · D6: Group Project Autopilot`.
+6. Deploy:
+   - run `npx wrangler d1 migrations apply universe-db --remote` (applies 0119);
+   - push `claude/stage-5-saas`;
+   - merge into `main` and push. Cloudflare auto-builds.
+
+### Constraints
+- Cloudflare Workers Free has a 10ms CPU limit. Keep read endpoints light and add in-memory caching where they are expensive.
+- One commit per feature. The next migration number is `0120`.

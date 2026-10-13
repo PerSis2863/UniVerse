@@ -180,6 +180,7 @@ model User {
   groupMemberships       GroupMembership[]
   groupPosts             GroupPost[]
   createdGroups          Group[]                 @relation("GroupCreator")
+  autopilotPlansCreated  GroupAutopilotPlan[]    @relation("AutopilotCreator")
   studentConsents        StudentConsent[]
   medicalRecord          MedicalRecord?
   safetyAlerts           SafetyAlert[]           @relation("SafetyReporter")
@@ -494,6 +495,7 @@ model Course {
   codeRooms             CodeRoom[]
 
   scheduledCalls ScheduledCall[]
+  autopilotPlans GroupAutopilotPlan[]
   campuses       CourseCampus[] // partner campuses it's shared with (upgrade 9)
   modules        CourseModule[] // ordered units of items (Stage 5 · B2)
   gradeCategories  GradeCategory[] // gradebook categories (Stage 5 · B3.4)
@@ -1502,6 +1504,7 @@ model Group {
   posts   GroupPost[]
 
   scheduledCalls ScheduledCall[]
+  autopilotPlans GroupAutopilotPlan[]
 
   @@index([createdById])
   @@map("groups")
@@ -2864,6 +2867,7 @@ model Assignment {
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
   submissions  AssignmentSubmission[]
+  autopilotPlans GroupAutopilotPlan[]
 
   @@index([courseId])
   @@index([createdById])
@@ -3006,6 +3010,7 @@ model ScheduledCall {
   remindedAt      DateTime?
   /// Stage 5 · B8.2: the meeting template (class, office, parent, interview, viva).
   template        String?
+  autopilotPlans  GroupAutopilotPlan[]
   createdAt       DateTime      @default(now())
 
   @@index([startAt])
@@ -4221,6 +4226,7 @@ model TaskBoard {
   lists     TaskList[]
   tasks     Task[]
   automations TaskAutomation[]
+  autopilotPlans GroupAutopilotPlan[]
 
   @@index([ownerId])
   @@index([courseId])
@@ -5065,4 +5071,62 @@ model PeerTutoringSession {
   @@index([status])
   @@index([callRoomId])
   @@map("peer_tutoring_sessions")
+}
+
+// ─── STAGE 5 · D6: GROUP PROJECT AUTOPILOT ───────────────────────────────────
+
+model GroupAutopilotPlan {
+  id              String                 @id @default(cuid())
+  groupId         String
+  group           Group                  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  courseId        String?
+  course          Course?                @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  assignmentId    String?
+  assignment      Assignment?            @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  boardId         String?
+  board           TaskBoard?             @relation(fields: [boardId], references: [id], onDelete: SetNull)
+  title           String
+  brief           String
+  status          String                 @default("ACTIVE") // DRAFT, ACTIVE, COMPLETED, PAUSED
+  targetDueDate   DateTime?
+  meetingCadence  String                 @default("WEEKLY") // WEEKLY, BIWEEKLY, AD_HOC
+  meetingSlot     String?                // JSON: { dayOfWeek, startTime, endTime }
+  scheduledCallId String?
+  scheduledCall   ScheduledCall?         @relation(fields: [scheduledCallId], references: [id], onDelete: SetNull)
+  /// Structured milestones & tasks generated from brief
+  breakdownJson   String                 @default("[]")
+  createdById     String
+  createdBy       User                   @relation("AutopilotCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  reports         GroupAutopilotReport[]
+
+  @@index([groupId])
+  @@index([courseId])
+  @@index([assignmentId])
+  @@index([status])
+  @@index([createdById])
+  @@map("group_autopilot_plans")
+}
+
+model GroupAutopilotReport {
+  id                    String             @id @default(cuid())
+  planId                String
+  plan                  GroupAutopilotPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  groupId               String
+  weekNumber            Int                @default(1)
+  summary               String
+  health                String             @default("ON_TRACK") // ON_TRACK, AT_RISK, OFF_TRACK
+  fairContributionScore Float              @default(1.0)
+  /// JSON: breakdown of member stats, tasks done/late, edits, peer ratings
+  metricsJson           String             @default("{}")
+  /// JSON array of nudges sent
+  nudgesJson            String             @default("[]")
+  createdAt             DateTime           @default(now())
+
+  @@index([planId])
+  @@index([groupId])
+  @@index([health])
+  @@index([createdAt])
+  @@map("group_autopilot_reports")
 }
