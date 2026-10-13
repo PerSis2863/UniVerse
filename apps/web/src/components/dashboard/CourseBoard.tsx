@@ -12,8 +12,7 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  BadgeCheck, Layers, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, X, type LucideIcon,
-} from 'lucide-react';
+  BadgeCheck, Layers, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, type LucideIcon, } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { uploadChatFile } from '@/components/chat/chat-client';
@@ -34,6 +33,7 @@ import { TranslatableAnnouncement } from '@/components/shared/Translatable';
 // Class recordings and study packs (their own tab) and quiz management (after "Manage") load when
 // opened, so the board itself shows sooner.
 // Modules (Stage 5 · B2): its own tab, loaded when opened.
+const CourseGroupProjects = dynamic(() => import('@/components/groups/CourseGroupProjects').then((m) => m.CourseGroupProjects), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const CourseModules = dynamic(() => import('@/components/dashboard/CourseModules').then((m) => m.CourseModules), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const ClassSessions = dynamic(() => import('@/components/dashboard/ClassSessions').then((m) => m.ClassSessions), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const QuizManager = dynamic(() => import('@/components/quizzes/QuizManager').then((m) => m.QuizManager), { ssr: false });
@@ -71,6 +71,8 @@ const TABS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'quizzes', label: 'Quizzes', icon: CheckCircle2 },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
   { id: 'whiteboard', label: 'Whiteboard', icon: PenTool },
+  // Teachers only (Stage 5 · D6): student group projects linked to the course.
+  { id: 'projects', label: 'Group projects', icon: Wand2 },
 ];
 
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -181,7 +183,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
 
         {/* Tabs */}
         <div className="flex overflow-x-auto scrollbar-none border-b border-zinc-200/70 dark:border-white/[0.06] px-4 sm:px-8">
-          {TABS.map((t) => (
+          {TABS.filter((t) => t.id !== 'projects' || canManage).map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)} aria-current={tab === t.id ? 'page' : undefined}
               className={cn('relative flex items-center gap-1.5 px-3 py-3.5 text-xs font-semibold whitespace-nowrap transition-colors',
                 tab === t.id ? 'text-indigo-600 dark:text-indigo-300' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white')}>
@@ -206,6 +208,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
                 {tab === 'grades' && (canManage ? <Roster board={board} /> : <MyGrades board={board} />)}
                 {tab === 'quizzes' && (canManage ? <TeacherQuizzes board={board} refresh={mutate} /> : <MyQuizzes board={board} />)}
                 {tab === 'calendar' && <Events board={board} canManage={canManage} refresh={mutate} />}
+                {tab === 'projects' && canManage && course && <CourseGroupProjects courseId={course.id} />}
                 {tab === 'whiteboard' && (
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">

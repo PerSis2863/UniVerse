@@ -317,6 +317,11 @@ Progress table (row D6).
   - sample-mode handlers in `src/lib/sample/router.ts`.
 - **Rules kept:** members only on every endpoint; AI through `spendAi`/`featureOff`, with no names sent;
   in-app notices only; meeting time in the viewer's own time zone; tasks inserted 8 per query.
-- **Left for later:** a teacher view of reports for groups in their course, and automatic weekly
-  reports from the daily job.
+- **Teacher view (added later the same day):**
+  - The plan form has an optional "For which course?" field. That course's teacher sees the project
+    on **Course board → Group projects** (a teacher-only tab).
+  - Files: `components/groups/CourseGroupProjects.tsx` and `/api/courses/[id]/group-projects`.
+- **Automatic weekly reports:** the daily job's `weeklyAutopilotReports` makes each plan's report at
+  the end of its week. It tells the group in the app, and tells the teacher when a linked project is
+  at risk or off track.
 

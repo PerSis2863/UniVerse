@@ -1,9 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
+import prisma from '@/lib/db';
+import { notify, notifyMany } from './email';
 import {
   splitBriefAndMatchSkills,
   findCommonMeetingSlots,
   contributionSummary,
+  weeklyReportDue,
+  weeklyAutopilotReports,
 } from './group-autopilot';
+
+vi.mock('./realtime', () => ({ publish: vi.fn() }));
 
 // Mock Prisma
 vi.mock('@/lib/db', () => ({
@@ -31,13 +37,19 @@ vi.mock('@/lib/db', () => ({
     groupAutopilotPlan: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
     groupAutopilotReport: {
       count: vi.fn().mockResolvedValue(0),
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
     },
+    task: { findMany: vi.fn() },
+    groupMembership: { findMany: vi.fn() },
   },
 }));
 
@@ -202,6 +214,38 @@ describe('Group Project Autopilot (Stage 5 · D6)', () => {
       expect(s.overdueTasks).toBe(2);
       expect(s.nudgesRecommended.map((n) => n.taskId)).toEqual(['1']); // the unassigned late task has nobody to nudge
       expect(s.health).toBe('OFF_TRACK'); // 2 late out of 4
+    });
+  });
+
+  describe('weeklyReportDue', () => {
+    const start = new Date('2026-10-01T09:00:00Z');
+    const at = (days: number) => start.getTime() + days * 86_400_000;
+    it('is due on the last two days of each plan week only', () => {
+      expect([0, 1, 4].map((d) => weeklyReportDue(start, at(d)))).toEqual([false, false, false]);
+      expect([5, 6].map((d) => weeklyReportDue(start, at(d)))).toEqual([true, true]);
+      expect([7, 11, 12, 13, 14].map((d) => weeklyReportDue(start, at(d)))).toEqual([false, false, true, true, false]);
+    });
+  });
+
+  describe('weeklyAutopilotReports', () => {
+    it('reports only plans at the end of a week without one, and tells the teacher when a linked project slips', async () => {
+      const now = Date.parse('2026-10-13T06:00:00Z');
+      const daysAgo = (d: number) => new Date(now - d * 86_400_000);
+      const plan = (id: string, age: number, courseId: string | null = null) => ({ id, title: `Plan ${id}`, groupId: `g-${id}`, boardId: `b-${id}`, createdAt: daysAgo(age), courseId, group: { name: `Group ${id}` }, course: courseId ? { teacherId: 'teacher-1' } : null });
+      vi.mocked(prisma.groupAutopilotPlan.findMany).mockResolvedValueOnce([plan('a', 5, 'course-1'), plan('b', 2), plan('c', 6)] as never);
+      vi.mocked(prisma.groupAutopilotReport.findMany).mockResolvedValueOnce([{ planId: 'c' }] as never); // c already has this week's
+      vi.mocked(prisma.task.findMany).mockResolvedValueOnce([
+        { id: 't1', title: 'Survey', assigneeId: 'u1', doneAt: null, dueAt: daysAgo(1), estimate: 2 },
+        { id: 't2', title: 'Build', assigneeId: 'u2', doneAt: null, dueAt: new Date(now + 86_400_000), estimate: 4 },
+      ] as never);
+      vi.mocked(prisma.groupMembership.findMany).mockResolvedValueOnce([{ user: { id: 'u1', name: 'Asha', avatar: null } }, { user: { id: 'u2', name: 'Ben', avatar: null } }] as never);
+      vi.mocked(prisma.groupAutopilotReport.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.groupAutopilotReport.create).mockResolvedValueOnce({ id: 'r1', createdAt: new Date(now) } as never);
+
+      expect(await weeklyAutopilotReports({ now })).toEqual({ made: 1 });
+      expect(vi.mocked(prisma.groupAutopilotReport.create).mock.calls[0]?.[0]).toMatchObject({ data: { planId: 'a', weekNumber: 1, health: 'AT_RISK' } });
+      expect(vi.mocked(notifyMany)).toHaveBeenCalledWith(['u1', 'u2'], expect.objectContaining({ email: false, title: 'Week 1 report: Plan a' }));
+      expect(vi.mocked(notify)).toHaveBeenCalledWith('teacher-1', expect.objectContaining({ email: false, link: '/teacher/blackboard?course=course-1&tab=projects' }));
     });
   });
 });

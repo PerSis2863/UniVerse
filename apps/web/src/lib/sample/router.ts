@@ -1697,6 +1697,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/groups\/my$/, ({ db: d }) => ok(d.groups.filter((g) => g.joined).map((g) => ({ id: `m-${g.id}`, groupId: g.id, userId: d.me.id, role: 'MEMBER', group: groupOut(d, g) })))],
   [/^\/api\/groups\/activity$/, ({ db: d }) => ok(d.groups.filter((g) => g.joined).flatMap((g) => (d.groupPosts[g.id] ?? []).map((p) => ({ ...p, author: { id: p.author.id, name: p.author.name }, group: { id: g.id, name: g.name, category: g.category } }))).sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)))],
   // Project autopilot (Stage 5 · D6): a plan and reports kept in memory for the visit.
+  [/^\/api\/courses\/([^/]+)\/group-projects$/, () => ok({ projects: [] })],
   [/^\/api\/groups\/([^/]+)\/autopilot\/plan$/, ({ db: d, m }) => ok({ plan: autopilot(d).plans[m[1]] ?? null, candidateMeetingSlots: sampleSlots(d) })],
   [/^\/api\/groups\/([^/]+)\/autopilot\/meeting-slots$/, ({ db: d }) => ok({ slots: sampleSlots(d) })],
   [/^\/api\/groups\/([^/]+)\/autopilot\/reports$/, ({ db: d, m }) => ok({ reports: autopilot(d).reports[m[1]] ?? [] })],
@@ -2341,7 +2342,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
     const [a, b] = [d.me, d.people.zoya];
     const task = (title: string, who: { id: string; name: string }, why: string, skills: string[], days: number, priority = 'MEDIUM') => ({ title, notes: '', priority, estimateHours: 4, requiredSkills: skills, suggestedAssigneeId: who.id, suggestedAssigneeName: who.name, suggestedAssigneeReason: why, dueDaysFromStart: days });
     autopilot(d).plans[m[1]] = {
-      id: sid('ap'), title: String(body?.title || 'Group project'), brief: String(body?.brief ?? ''), status: 'DRAFT', meetingSlot: null, board: null, scheduledCall: null,
+      id: sid('ap'), title: String(body?.title || 'Group project'), brief: String(body?.brief ?? ''), status: 'DRAFT', course: null, meetingSlot: null, board: null, scheduledCall: null,
       breakdown: [
         task('Research and problem statement', b, 'Good at Research', ['Research', 'Technical Writing'], 5, 'HIGH'),
         task('Design the screens', a, 'Good at UI/UX', ['UI/UX'], 9),
@@ -2367,6 +2368,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
     autopilot(d).reports[m[1]] = [report];
     return ok({ report });
   }],
+  ['POST', /^\/api\/courses\/([^/]+)\/group-projects$/, () => { notice(); return ok({ report: null }); }],
   ['POST', /^\/api\/groups\/([^/]+)\/autopilot\/nudge$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/groups\/([^/]+)\/posts$/, ({ db: d, m, body }) => { const p = { id: sid('gp'), body: body.body ?? '', imageUrl: body.imageUrl ?? null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), author: { id: d.me.id, name: d.me.name, avatar: null } }; (d.groupPosts[m[1]] ??= []).push(p); return ok(p, 201); }],
   ['POST', /^\/groups\/([^/]+)\/join$/, ({ db: d, m }) => { const g = d.groups.find((x) => x.id === m[1]); if (g && !g.joined) { g.joined = true; g.members.push(d.meCard); } return ok({ ok: true }); }],

@@ -10,6 +10,7 @@ import { Field } from '@/components/ui/Field';
 import { Segmented } from '@/components/ui/Segmented';
 import { LoadError } from '@/components/ui/LoadError';
 import { authedJson } from '@/lib/authed-fetch';
+import { fetcher } from '@/lib/fetcher';
 import { errorMessage } from '@/lib/api';
 import { fadeUp, list, spring } from '@/lib/motion';
 import { useAuthStore } from '@/store/auth';
@@ -21,7 +22,7 @@ import { cn } from '@/lib/utils';
 
 type Task = { title: string; notes: string; priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'; estimateHours: number; requiredSkills: string[]; suggestedAssigneeId: string | null; suggestedAssigneeName: string | null; suggestedAssigneeReason: string; dueDaysFromStart: number };
 type Slot = { dayOfWeek: number; dayName: string; startTime: string; endTime: string; availableMemberIds: string[]; totalMembers: number; conflicts: { userId: string; userName: string; reason: string }[]; score: number };
-type Plan = { id: string; title: string; brief: string; status: 'DRAFT' | 'ACTIVE'; breakdown: Task[]; meetingSlot: Slot | null; board: { id: string; title: string } | null; scheduledCall: { id: string; title: string; startAt: string; durationMin: number } | null };
+type Plan = { id: string; title: string; brief: string; status: 'DRAFT' | 'ACTIVE'; course: { id: string; code: string; name: string } | null; breakdown: Task[]; meetingSlot: Slot | null; board: { id: string; title: string } | null; scheduledCall: { id: string; title: string; startAt: string; durationMin: number } | null };
 type Member = { userId: string; name: string; tasksAssigned: number; tasksCompleted: number; tasksOverdue: number; contributionSharePercent: number; status: 'BALANCED' | 'OVERLOADED' | 'UNDER_CONTRIBUTING' };
 type Nudge = { taskId: string; taskTitle: string; userId: string; userName: string };
 type Report = { id: string; weekNumber: number; summary: string; health: 'ON_TRACK' | 'AT_RISK' | 'OFF_TRACK'; createdAt: string; metrics: { members?: Member[]; totalTasks?: number; completedTasks?: number; overdueTasks?: number; fair?: number | null }; nudges: Nudge[] };
@@ -97,13 +98,16 @@ function PlanTab({ groupId, onApplied }: { groupId: string; onApplied: () => voi
 }
 
 function BriefForm({ groupId, start, onMade, onCancel }: { groupId: string; start: Plan | null; onMade: () => void; onCancel?: () => void }) {
-  const [f, setF] = useState({ title: start?.title ?? '', brief: start?.brief ?? '', due: '' });
+  const [f, setF] = useState({ title: start?.title ?? '', brief: start?.brief ?? '', due: '', courseId: start?.course?.id ?? '' });
   const [busy, setBusy] = useState(false);
+  // My courses (students: enrolments holding the course; teachers: the courses), to link the project to one.
+  const { data: mine } = useSWR<({ id?: string; code?: string; name?: string; course?: { id: string; code: string; name: string } | null })[]>('/courses/my', fetcher);
+  const courses = (Array.isArray(mine) ? mine : []).map((x) => x.course ?? (x.id ? { id: x.id, code: x.code ?? '', name: x.name ?? '' } : null)).filter((c): c is { id: string; code: string; name: string } => !!c);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     try {
-      const r = await authedJson<{ aiUsed: boolean; tasks: number }>(`/api/groups/${groupId}/autopilot/plan`, { method: 'POST', body: JSON.stringify({ title: f.title, brief: f.brief, targetDueDate: f.due || undefined }) });
+      const r = await authedJson<{ aiUsed: boolean; tasks: number }>(`/api/groups/${groupId}/autopilot/plan`, { method: 'POST', body: JSON.stringify({ title: f.title, brief: f.brief, targetDueDate: f.due || undefined, courseId: f.courseId || undefined }) });
       toast.success(`${r.tasks} tasks planned`, { description: r.aiUsed ? 'Split by AI from your brief.' : 'Split from the lines of your brief.' });
       onMade();
     } catch (err) { toast.error(errorMessage(err, 'Couldn’t make a plan right now.')); }
@@ -118,7 +122,17 @@ function BriefForm({ groupId, start, onMade, onCancel }: { groupId: string; star
       <Field label="Assignment brief" hint="A list (one deliverable per line) gives the most exact tasks." count={f.brief.length} max={4000}>
         {(p) => <textarea {...p} className="input min-h-[9rem]" maxLength={4000} placeholder={'- Research existing solutions\n- Design the screens\n- Build the prototype\n- Test with 5 users\n- Write the report and slides'} value={f.brief} onChange={(e) => setF({ ...f, brief: e.target.value })} />}
       </Field>
-      <Field label="Due date (optional)">{(p) => <input {...p} type="date" className="input" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} />}</Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Due date (optional)">{(p) => <input {...p} type="date" className="input" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} />}</Field>
+        <Field label="For which course? (optional)" hint={f.courseId ? 'Its teacher will see this project’s weekly reports.' : 'Leave empty to keep the reports within the group.'}>
+          {(p) => (
+            <select {...p} className="input" value={f.courseId} onChange={(e) => setF({ ...f, courseId: e.target.value })}>
+              <option value="">No course</option>
+              {courses.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
+            </select>
+          )}
+        </Field>
+      </div>
       <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={busy || f.brief.trim().length < 10} className="btn-primary">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} {busy ? 'Planning…' : 'Make a plan'}</button>
         {onCancel && <button type="button" onClick={onCancel} className="btn-ghost">Cancel</button>}
@@ -214,6 +228,7 @@ function ActivePlan({ plan, onNew }: { plan: Plan; onNew: () => void }) {
       <div className="rounded-2xl bg-emerald-500/5 border border-emerald-500/20 p-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">On the board</p>
         <h4 className="text-lg font-bold text-zinc-900 dark:text-white">{plan.title}</h4>
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">{plan.course ? `For ${plan.course.code}: its teacher sees the weekly reports.` : 'Reports stay within the group.'} A report is made by itself at the end of each week.</p>
         {plan.scheduledCall && (
           <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
             Team meeting: {new Date(plan.scheduledCall.startAt).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}

@@ -8,14 +8,17 @@ import { featureOff } from './moderation';
 import { notify, notifyMany } from './email';
 import { publish } from './realtime';
 import { scheduleCall } from './scheduled-calls';
+import { courseAccess } from '@/lib/course-access';
 
 // Stage 5 · D6: Group project autopilot. For a group assignment it:
 // 1. splits the brief into tasks (one AI request when AI is on, otherwise rules),
 // 2. suggests an owner for each task from members' skills, keeping the work even,
 // 3. finds a weekly meeting time from everyone's class timetable,
 // 4. puts the tasks on the group's Tasks board and schedules the call (scheduled-calls.ts),
-// 5. writes a weekly progress report with fair-contribution numbers, and lets members nudge late tasks.
-// Everything is for members of the group only (groupAccess). Nothing is emailed.
+// 5. writes a weekly progress report with fair-contribution numbers (by itself once a week, from the
+//    daily job), and lets members nudge late tasks.
+// Everything is for members of the group only (groupAccess). A plan the group links to one of its
+// courses is also visible to that course's teacher (Course board → Group projects). Nothing is emailed.
 
 export interface AutopilotTaskDraft {
   title: string;
@@ -302,6 +305,7 @@ export async function planView(groupId: string, user: SessionUser) {
       orderBy: { createdAt: 'desc' },
       select: {
         id: true, title: true, brief: true, status: true, targetDueDate: true, meetingSlot: true, breakdownJson: true, createdAt: true, updatedAt: true,
+        course: { select: { id: true, code: true, name: true } },
         board: { select: { id: true, title: true } },
         scheduledCall: { select: { id: true, title: true, startAt: true, durationMin: true } },
       },
@@ -316,8 +320,11 @@ export async function planView(groupId: string, user: SessionUser) {
 }
 
 /** Makes (or remakes) the group's draft plan from a brief. */
-export async function makePlan(groupId: string, user: SessionUser, input: { title?: unknown; brief?: unknown; targetDueDate?: unknown }) {
+export async function makePlan(groupId: string, user: SessionUser, input: { title?: unknown; brief?: unknown; targetDueDate?: unknown; courseId?: unknown }) {
   await member(groupId, user);
+  // The course this project is for (one the person takes or teaches): its teacher sees the reports.
+  const courseId = typeof input.courseId === 'string' && input.courseId ? input.courseId : null;
+  if (courseId && !(await courseAccess(courseId, user))) throw new BadRequestException('Pick one of your own courses.');
   const title = (typeof input.title === 'string' ? input.title.trim().slice(0, 120) : '') || 'Group project';
   const brief = typeof input.brief === 'string' ? input.brief.trim().slice(0, 4000) : '';
   if (brief.length < 10) throw new BadRequestException('Paste the assignment brief (at least a sentence) so Autopilot can split it into tasks.');
@@ -368,7 +375,7 @@ export async function makePlan(groupId: string, user: SessionUser, input: { titl
   const slots = await findCommonMeetingSlots(members.map((m) => m.id));
   const best = slots[0] ?? null;
   const data = {
-    title, brief, targetDueDate: due,
+    title, brief, targetDueDate: due, courseId,
     meetingSlot: best ? JSON.stringify({ dayOfWeek: best.dayOfWeek, dayName: best.dayName, startTime: best.startTime, endTime: best.endTime }) : null,
     breakdownJson: JSON.stringify(tasks),
   };
@@ -456,17 +463,20 @@ async function activePlan(groupId: string) {
   return plan as typeof plan & { boardId: string };
 }
 
-/** This week's report for the group's plan (made again if asked again in the same week). */
-export async function progressReport(groupId: string, user: SessionUser) {
-  await member(groupId, user);
-  const plan = await activePlan(groupId);
+type ReportPlan = { id: string; title: string; groupId: string; boardId: string; createdAt: Date };
+
+/** Whether a plan is in the last two days of one of its weeks (when its weekly report is made). */
+export const weeklyReportDue = (createdAt: Date, now: number) => Math.floor((now - createdAt.getTime()) / DAY) % 7 >= 5;
+const weekOf = (plan: { createdAt: Date }, now: number) => Math.floor((now - plan.createdAt.getTime()) / (7 * DAY)) + 1;
+
+/** Works out and saves this week's report for a plan (updating it if this week already has one). */
+async function buildReport(plan: ReportPlan, now = Date.now()) {
   const [tasks, people] = await Promise.all([
     prisma.task.findMany({ where: { boardId: plan.boardId }, select: { id: true, title: true, assigneeId: true, doneAt: true, dueAt: true, estimate: true }, take: 500 }),
-    prisma.groupMembership.findMany({ where: { groupId }, select: { user: { select: { id: true, name: true, avatar: true } } }, take: 50 }).then((r) => r.map((m) => m.user)),
+    prisma.groupMembership.findMany({ where: { groupId: plan.groupId }, select: { user: { select: { id: true, name: true, avatar: true } } }, take: 50 }).then((r) => r.map((m) => m.user)),
   ]);
-  const now = Date.now();
   const s = contributionSummary(tasks, people, now);
-  const weekNumber = Math.floor((now - plan.createdAt.getTime()) / (7 * DAY)) + 1;
+  const weekNumber = weekOf(plan, now);
   const words = { ON_TRACK: 'on track', AT_RISK: 'at risk', OFF_TRACK: 'off track' }[s.health];
   const summary = `Week ${weekNumber}: ${s.completedTasks} of ${s.totalTasks} tasks done${s.overdueTasks ? `, ${s.overdueTasks} late` : ''}. The project is ${words}.${
     s.fairContributionScore == null ? ' Fairness shows once each member could have finished a task.' : s.members.some((m) => m.status === 'UNDER_CONTRIBUTING') ? ' Some members need a hand to catch up.' : ' The work is shared fairly.'}`;
@@ -478,9 +488,90 @@ export async function progressReport(groupId: string, user: SessionUser) {
   const existing = await prisma.groupAutopilotReport.findFirst({ where: { planId: plan.id, weekNumber }, select: { id: true } });
   const saved = existing
     ? await prisma.groupAutopilotReport.update({ where: { id: existing.id }, data, select: { id: true, createdAt: true } })
-    : await prisma.groupAutopilotReport.create({ data: { ...data, planId: plan.id, groupId, weekNumber }, select: { id: true, createdAt: true } });
-  publish(await groupPeople(groupId), { type: 'refresh', keys: [`/api/groups/${groupId}/autopilot/reports`] });
-  return { id: saved.id, planId: plan.id, weekNumber, summary, ...s, generatedAt: saved.createdAt.toISOString() };
+    : await prisma.groupAutopilotReport.create({ data: { ...data, planId: plan.id, groupId: plan.groupId, weekNumber }, select: { id: true, createdAt: true } });
+  publish(people.map((p) => p.id), { type: 'refresh', keys: [`/api/groups/${plan.groupId}/autopilot/reports`] });
+  return { report: { id: saved.id, planId: plan.id, weekNumber, summary, ...s, generatedAt: saved.createdAt.toISOString() }, people: people.map((p) => p.id) };
+}
+
+/** This week's report for the group's plan (made again if asked again in the same week). */
+export async function progressReport(groupId: string, user: SessionUser) {
+  await member(groupId, user);
+  const plan = await activePlan(groupId);
+  return (await buildReport({ ...plan, groupId })).report;
+}
+
+// ─── The teacher's view (Course board → Group projects) ──────────────────────────────────────────
+
+async function teacherOf(courseId: string, user: SessionUser) {
+  const access = await courseAccess(courseId, user);
+  if (!access?.canManage) throw new NotFoundException('Course not found.');
+}
+
+/** The group projects linked to a course, each with its latest report. */
+export async function courseProjects(courseId: string, user: SessionUser) {
+  await teacherOf(courseId, user);
+  const plans = await prisma.groupAutopilotPlan.findMany({
+    where: { courseId, status: 'ACTIVE' },
+    orderBy: { updatedAt: 'desc' },
+    take: 60,
+    select: {
+      id: true, title: true, targetDueDate: true, createdAt: true, boardId: true,
+      group: { select: { id: true, name: true, _count: { select: { members: true } } } },
+      reports: { orderBy: { createdAt: 'desc' }, take: 1 },
+    },
+  });
+  return plans.map(({ reports, ...p }) => {
+    const r = reports[0];
+    return { ...p, report: r ? { id: r.id, weekNumber: r.weekNumber, summary: r.summary, health: r.health, createdAt: r.createdAt, metrics: parse<Record<string, unknown>>(r.metricsJson, {}) } : null };
+  });
+}
+
+/** The teacher asks for an up-to-date report for one of the course's group projects. */
+export async function refreshCourseProject(courseId: string, user: SessionUser, planIdRaw: unknown) {
+  await teacherOf(courseId, user);
+  const planId = typeof planIdRaw === 'string' ? planIdRaw : '';
+  const plan = await prisma.groupAutopilotPlan.findFirst({ where: { id: planId, courseId, status: 'ACTIVE' }, select: { id: true, title: true, groupId: true, boardId: true, createdAt: true } });
+  if (!plan?.boardId) throw new NotFoundException('That project isn’t linked to this course any more.');
+  return (await buildReport(plan as ReportPlan)).report;
+}
+
+// ─── Weekly reports by themselves (daily job) ────────────────────────────────────────────────────
+
+/**
+ * For plans on a board, makes the week's report near the end of each plan week (its last two days,
+ * so a missed run still catches it), tells the group in the app, and tells the course's teacher when
+ * a linked project is at risk or off track. At most `limit` reports a run.
+ */
+export async function weeklyAutopilotReports({ limit = 25, now = Date.now() } = {}) {
+  const plans = (await prisma.groupAutopilotPlan.findMany({
+    where: { status: 'ACTIVE', boardId: { not: null } },
+    orderBy: { updatedAt: 'asc' },
+    take: 300,
+    select: { id: true, title: true, groupId: true, boardId: true, createdAt: true, courseId: true, group: { select: { name: true } }, course: { select: { teacherId: true } } },
+  })).filter((p) => weeklyReportDue(p.createdAt, now));
+  if (!plans.length) return { made: 0 };
+  const done = new Set((await Promise.all(Array.from({ length: Math.ceil(plans.length / 45) }, (_, i) => {
+    const part = plans.slice(i * 45, i * 45 + 45);
+    // 2 values a plan: under D1's 100 bound values.
+    return prisma.groupAutopilotReport.findMany({ where: { OR: part.map((p) => ({ planId: p.id, weekNumber: weekOf(p, now) })) }, select: { planId: true } });
+  }))).flat().map((r) => r.planId));
+  const due = plans.filter((p) => !done.has(p.id)).slice(0, limit);
+
+  let made = 0;
+  for (const p of due) {
+    try {
+      const { report: r, people } = await buildReport(p as ReportPlan, now);
+      made++;
+      const words = { ON_TRACK: 'on track', AT_RISK: 'at risk', OFF_TRACK: 'off track' }[r.health];
+      await notifyMany(people, { type: 'info', title: `Week ${r.weekNumber} report: ${p.title}`, body: `${r.completedTasks} of ${r.totalTasks} tasks done${r.overdueTasks ? `, ${r.overdueTasks} late` : ''}. The project is ${words}. Open the group’s Project autopilot to see more.`, link: '/student/groups', email: false });
+      if (p.courseId && p.course?.teacherId && r.health !== 'ON_TRACK') {
+        await notify(p.course.teacherId, { type: 'info', title: `${p.group.name}: “${p.title}” is ${words}`, body: r.summary, link: `/teacher/blackboard?course=${p.courseId}&tab=projects`, email: false });
+      }
+    } catch (e) {
+      console.error('autopilot weekly report failed:', p.id, e);
+    }
+  }
+  return { made };
 }
 
 /** The group's reports, newest first. */
