@@ -189,6 +189,11 @@ model User {
   wellbeingSettings      WellbeingSettings?      // wellbeing radar (Stage 5 · D13), opt-in
   wellbeingCheckins      WellbeingCheckin[]
   wellbeingAlerts        WellbeingAlert[]
+  leagueChallenges       LeagueChallenge[]       // Impact League challenges I created (Stage 5 · D14)
+  leagueRoles            LeaguePerson[]
+  leagueMentoring        LeagueTeam[]            @relation("LeagueMentor")
+  leagueMemberships      LeagueMember[]
+  leagueScores           LeagueScore[]
   classroomQuestions     ClassroomQuestion[]
   studentConsents        StudentConsent[]
   medicalRecord          MedicalRecord?
@@ -1518,6 +1523,7 @@ model Group {
 
   scheduledCalls ScheduledCall[]
   autopilotPlans GroupAutopilotPlan[]
+  leagueTeams    LeagueTeam[] // an Impact League team's workspace (Stage 5 · D14)
 
   @@index([createdById])
   @@map("groups")
@@ -5346,3 +5352,122 @@ model WellbeingAlert {
   @@map("wellbeing_alerts")
 }
 
+/// Impact League (Stage 5 · D14; src/server/impact-league.ts): a seasonal challenge between
+/// universities around a UN goal (sdg 1–17). DRAFT → OPEN (teams form) → JUDGING → DONE. Milestones,
+/// rubric and prizes are JSON (src/lib/impact-league.ts); a prize is { id, title, sponsor, description, teamId }.
+model LeagueChallenge {
+  id             String         @id @default(cuid())
+  slug           String         @unique
+  title          String
+  sdg            Int?
+  summary        String         @default("")
+  brief          String         @default("")
+  status         String         @default("DRAFT")
+  teamMin        Int            @default(2)
+  teamMax        Int            @default(5)
+  /// Teams must include people from at least two universities to submit
+  mixCampuses    Boolean        @default(false)
+  /// Has a public showcase page (/league/<slug>)
+  isPublic       Boolean        @default(true)
+  /// Hours shown on each finisher's credential
+  creditHours    Int            @default(20)
+  signupClosesAt DateTime?
+  demoDayAt      DateTime?
+  milestones     String         @default("[]")
+  rubric         String         @default("[]")
+  prizes         String         @default("[]")
+  createdById    String?
+  createdBy      User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  finishedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @default(now()) @updatedAt
+  people         LeaguePerson[]
+  teams          LeagueTeam[]
+  members        LeagueMember[]
+
+  @@index([status])
+  @@map("league_challenges")
+}
+
+/// Someone with a part in a challenge: ORGANIZER, MENTOR, JUDGE or SPONSOR.
+model LeaguePerson {
+  id          String          @id @default(cuid())
+  challengeId String
+  challenge   LeagueChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String
+  createdAt   DateTime        @default(now())
+
+  @@unique([challengeId, userId, role])
+  @@index([userId])
+  @@map("league_people")
+}
+
+/// A team: FORMING → SUBMITTED (its project is in), or WITHDRAWN. Its private group and task board
+/// (with the challenge's milestones) are its workspace. `showcase` is the team's choice to appear on
+/// the public page; `hidden` is the organizers'.
+model LeagueTeam {
+  id           String          @id @default(cuid())
+  challengeId  String
+  challenge    LeagueChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  name         String
+  lookingFor   String          @default("")
+  groupId      String?
+  group        Group?          @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  boardId      String?
+  mentorId     String?
+  mentor       User?           @relation("LeagueMentor", fields: [mentorId], references: [id], onDelete: SetNull)
+  projectTitle String          @default("")
+  pitch        String          @default("")
+  link         String          @default("")
+  showcase     Boolean         @default(true)
+  hidden       Boolean         @default(false)
+  status       String          @default("FORMING")
+  submittedAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @default(now()) @updatedAt
+  members      LeagueMember[]
+  scores       LeagueScore[]
+
+  @@unique([challengeId, name])
+  @@index([mentorId])
+  @@map("league_teams")
+}
+
+/// One person in one team (one team per challenge); certificateId once their credential is issued.
+model LeagueMember {
+  id            String          @id @default(cuid())
+  challengeId   String
+  challenge     LeagueChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  teamId        String
+  team          LeagueTeam      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  captain       Boolean         @default(false)
+  certificateId String?
+  joinedAt      DateTime        @default(now())
+
+  @@unique([challengeId, userId])
+  @@index([teamId])
+  @@index([userId])
+  @@map("league_members")
+}
+
+/// A judge's scores for a team on the challenge's rubric (JSON [{ id, score }]) and a comment.
+model LeagueScore {
+  id        String     @id @default(cuid())
+  teamId    String
+  team      LeagueTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  judgeId   String
+  judge     User       @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  scores    String     @default("[]")
+  total     Int        @default(0)
+  comment   String     @default("")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @default(now()) @updatedAt
+
+  @@unique([teamId, judgeId])
+  @@index([judgeId])
+  @@map("league_scores")
+}

@@ -422,3 +422,22 @@ Progress table (row D6).
   If nobody has the permission, requests go to the school admins.
 - **Code:** `src/lib/wellbeing.ts`, `src/server/wellbeing.ts`, `/student/wellbeing`, `/admin/wellbeing`.
 
+## D14 · Impact League: done (13 Oct 2026)
+
+- **Migration `0126`** (`league_challenges`, `league_people`, `league_teams`, `league_members`,
+  `league_scores`). Next migration: **`0127`**.
+- **Where:** a tab **Impact League** (`/impact-league`) next to Impact rooms, for students (Opportunities),
+  admins (Impact reports) and teachers (NGO mentorship). Public page: `/league/<slug>`.
+- **How it runs:** a teacher or admin starts a draft → adds mentors, judges and sponsors by email →
+  **Open for teams** → students form teams (each gets a private group and a milestones board) and hand in
+  a project → **Start judging** → judges score on the rubric → organizers give the prizes → **Finish and
+  share results** → **Issue credentials** (every finisher gets a signed credential).
+- **Safety and privacy:** a team with a student under 18 stays within one university; other students see
+  first names and universities only; the public page never shows names; teams choose whether to appear,
+  and organizers can hide a team.
+- **Demo day** is the call `lg_<challenge>` (organizers host and turn on webinar mode; anyone signed in
+  can watch from 15 minutes before).
+- **Try on the live site:** issuing credentials with the real signing key (locally a throwaway test key
+  was used), and demo day in a real call.
+- **Code:** `src/lib/impact-league.ts`, `src/server/impact-league.ts`, `src/components/league/`,
+  `src/app/(dashboard)/impact-league/`, `src/app/league/[slug]/`.
