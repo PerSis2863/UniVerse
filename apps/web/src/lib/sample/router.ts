@@ -1696,6 +1696,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/groups$/, ({ db: d }) => ok(d.groups.map((g) => groupOut(d, g)))],
   [/^\/groups\/my$/, ({ db: d }) => ok(d.groups.filter((g) => g.joined).map((g) => ({ id: `m-${g.id}`, groupId: g.id, userId: d.me.id, role: 'MEMBER', group: groupOut(d, g) })))],
   [/^\/api\/groups\/activity$/, ({ db: d }) => ok(d.groups.filter((g) => g.joined).flatMap((g) => (d.groupPosts[g.id] ?? []).map((p) => ({ ...p, author: { id: p.author.id, name: p.author.name }, group: { id: g.id, name: g.name, category: g.category } }))).sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)))],
+  // Honest AI receipts (Stage 5 · D12): no AI help recorded in the sample.
+  [/^\/api\/assignments\/([^/]+)\/ai-receipt$/, () => ok({ policy: 'FREE', since: new Date().toISOString(), uses: [] })],
+  [/^\/api\/me\/ai-uses$/, () => ok({ keepDays: 180, uses: [] })],
   // Oral practice and oral checks (Stage 5 · D11): none in the sample (the examiner needs AI).
   [/^\/api\/orals$/, () => ok({ checks: [], practice: [] })],
   [/^\/api\/orals\/([^/]+)$/, () => ok({ error: 'Not found.' }, 404)],

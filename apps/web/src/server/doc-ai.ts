@@ -1,7 +1,8 @@
 import type { SessionUser } from '@/lib/server-auth';
-import { isDocAiAction, type DocAiAction } from '@/lib/doc-ai';
+import { DOC_AI_ACTIONS, isDocAiAction, type DocAiAction } from '@/lib/doc-ai';
 import { isLanguage, languageName } from '@/lib/languages';
 import { cachedAi, saveAi, spendAi } from './ai-budget';
+import { logAiUse } from './ai-receipts';
 import { geminiText } from './gemini';
 import { BadRequestException, ForbiddenException, HttpException } from './http';
 import { featureOff } from './moderation';
@@ -32,6 +33,8 @@ export async function docAi(docId: string, user: SessionUser, b: Record<string, 
   const lang = action === 'translate' ? (isLanguage(b.lang) ? b.lang : null) : null;
   if (action === 'translate' && !lang) throw new BadRequestException('Choose a language.');
   if (!process.env.GEMINI_API_KEY || (await featureOff('ai'))) throw new HttpException('AI isn’t available right now.', 503);
+  // On the person's own record of AI help (Stage 5 · D12).
+  await logAiUse(user.id, { kind: 'writing', detail: `${DOC_AI_ACTIONS.find((x) => x.id === action)?.label ?? action} in “${title}”` });
 
   const key = ['doc-ai', action, lang ?? '', text];
   const saved = action === 'continue' ? null : await cachedAi<{ text: string }>(key);

@@ -185,6 +185,7 @@ model User {
   classroomCheckins      ClassroomCheckin[]
   oralChecks             OralCheck[]             // oral checks I set (Stage 5 · D11)
   oralSessions           OralSession[]           // orals I did: practice and checks
+  aiUses                 AiUse[]                 // AI help I used (Stage 5 · D12)
   classroomQuestions     ClassroomQuestion[]
   studentConsents        StudentConsent[]
   medicalRecord          MedicalRecord?
@@ -2873,6 +2874,8 @@ model Assignment {
   weight       Float                  @default(1)
   dueDate      DateTime?
   status       String                 @default("OPEN") // OPEN, CLOSED
+  /// AI use (Stage 5 · D12): FREE, RECEIPT (allowed with an AI receipt), NONE (not allowed)
+  aiPolicy     String                 @default("FREE")
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
   submissions  AssignmentSubmission[]
@@ -2907,6 +2910,8 @@ model AssignmentSubmission {
   styleSignals       Json?
   /// Offline-first (upgrade 4): when the student handed it in on their device with no connection
   offlineAt          DateTime?
+  /// The student's AI receipt or "no AI" declaration (Stage 5 · D12), JSON (src/lib/ai-receipt.ts)
+  aiReceipt          String?
   submittedAt        DateTime   @default(now())
   returnedAt         DateTime?
   updatedAt          DateTime   @updatedAt
@@ -5274,3 +5279,20 @@ model OralSession {
   @@index([userId, createdAt])
   @@map("oral_sessions")
 }
+
+/// One time someone used AI help in UniVerse (Stage 5 · D12, honest AI receipts): what kind (tutor,
+/// assistant, writing…), a short excerpt of what they asked, the course if any. Kept 180 days; only
+/// they see it, unless they attach it to an assignment as a receipt.
+model AiUse {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  detail    String   @default("")
+  courseId  String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("ai_uses")
+}
+

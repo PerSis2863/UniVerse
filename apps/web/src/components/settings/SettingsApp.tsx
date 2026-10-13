@@ -22,6 +22,9 @@ import { useAuthStore } from '@/store/auth';
 import { appReduceMotion, captionsByDefault, hapticsOn, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCaptionsByDefault, setHaptics, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, textSize, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import useSWR from 'swr';
+import { authedJson } from '@/lib/authed-fetch';
+import { aiUseLabel } from '@/lib/ai-receipt';
 import dynamic from 'next/dynamic';
 import { RecordingPrivacy } from './RecordingPrivacy';
 
@@ -405,7 +408,30 @@ function AiFeatures() {
       <Row icon={Sparkles} title="Floating AI assistant" desc="The assistant button in the corner of every page, for quick questions and help.">
         <Switch checked={isChatbotEnabled} label="Floating AI assistant" onChange={(v) => { setChatbotEnabled(v); toast.success(v ? 'Assistant on' : 'Assistant off'); }} />
       </Row>
+      <MyAiUses />
     </Card>
+  );
+}
+
+// Your own record of AI help (Stage 5 · D12, honest AI receipts): only you see it, unless you attach
+// it to an assignment as a receipt.
+function MyAiUses() {
+  const { data } = useSWR<{ keepDays: number; uses: { id: string; kind: string; detail: string; course: string | null; createdAt: string }[] }>('/api/me/ai-uses', authedJson);
+  return (
+    <details className="rounded-2xl bg-[var(--fill)] p-4">
+      <summary className="cursor-pointer text-sm font-medium text-zinc-900 dark:text-white">Your AI activity{data ? ` (${data.uses.length})` : ''}</summary>
+      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">The AI help you used in UniVerse, kept {data?.keepDays ?? 180} days. Only you see it, unless you attach it to an assignment as an AI receipt. Reading help (translation, simpler words, listening) isn’t recorded.</p>
+      {data && (data.uses.length ? (
+        <ol className="mt-3 space-y-1.5 text-sm max-h-80 overflow-y-auto" tabIndex={0} aria-label="Your AI activity">
+          {data.uses.map((u) => (
+            <li key={u.id} className="flex gap-3">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums shrink-0 w-28">{new Date(u.createdAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+              <span className="min-w-0"><span className="font-medium text-zinc-900 dark:text-white">{aiUseLabel(u.kind)}</span>{u.course ? <span className="text-zinc-500 dark:text-zinc-400"> · {u.course}</span> : null}{u.detail && <span className="text-zinc-600 dark:text-zinc-400">: {u.detail}</span>}</span>
+            </li>
+          ))}
+        </ol>
+      ) : <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">Nothing yet.</p>)}
+    </details>
   );
 }
 

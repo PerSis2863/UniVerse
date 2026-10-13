@@ -3,6 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 import { getSessionUser } from '@/lib/server-auth';
 import { isStorageHostUrl } from '@/lib/file-urls';
 import { cachedAi, saveAi, spendAi } from '@/server/ai-budget';
+import { logAiUse } from '@/server/ai-receipts';
 import { textChain } from '@/server/ai-models';
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -45,6 +46,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This file type cannot be summarized yet (PDF, images or text only).' }, { status: 415 });
     }
 
+    // On the person's own record of AI help (Stage 5 · D12), saved summaries too.
+    await logAiUse(user.id, { kind: 'summary', detail: decodeURIComponent(url.pathname.split('/').pop() ?? 'a file') });
     // A file's summary is the same for everyone: made once, then handed out again.
     const saved = await cachedAi<string>(['summarize', url.href], 30);
     if (saved) return NextResponse.json({ summary: saved });

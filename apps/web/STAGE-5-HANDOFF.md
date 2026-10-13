@@ -395,3 +395,17 @@ Progress table (row D6).
   Before, any signed-in student could read any quiz by its id, and any teacher could see any quiz's
   answers. `GET /api/core/quizzes` now lists only your own courses' quizzes (admins: all).
 - Tests: `src/server/services/quizzes.service.test.ts`.
+
+## D12 · Honest AI receipts: done (13 Oct 2026)
+
+- **Migration `0124`** (`ai_uses`, `assignments.aiPolicy`, `assignment_submissions.aiReceipt`). Next
+  migration: **`0125`**.
+- **Teachers** choose per assignment: AI *free to use*, *allowed with a receipt*, or *not allowed*.
+- **Students** hand in with their **AI receipt**: the AI help they used in UniVerse since the
+  assignment was set (the tutor, assistant, writing helper…), made by the server from their own
+  record, plus a note in their own words. If AI isn't allowed they say so, or attach and explain.
+- The record is private (Settings → AI features → Your AI activity) and kept 180 days. Reading help
+  (translation, simpler words, listening) isn't recorded.
+- **New AI features:** call `logAiUse(user.id, { kind, detail, courseId })` (`src/server/ai-receipts.ts`)
+  where the help is given, and add the kind to `AI_USE_KINDS` in `src/lib/ai-receipt.ts`.
+

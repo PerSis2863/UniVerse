@@ -9,6 +9,7 @@ import {
 } from '@/lib/oral';
 import type { Body } from './body';
 import { spendAi } from './ai-budget';
+import { logAiUse } from './ai-receipts';
 import { notify, notifyMany } from './email';
 import { geminiJson } from './gemini';
 import { BadRequestException, ConflictException, HttpException, NotFoundException } from './http';
@@ -155,6 +156,7 @@ export async function startOral(user: SessionUser, b: Body) {
     const spend = await spendAi(user);
     if (!spend.ok) throw new HttpException(spend.message, 429);
     setup = { kind: b.kind, topic, lang, minutes, course, rubric: defaultRubric(b.kind), title: `${ORAL_KINDS[b.kind].label} practice` };
+    await logAiUse(user.id, { kind: 'oral', detail: `${ORAL_KINDS[b.kind].label}: ${topic || 'open topic'}`, courseId: typeof b.courseId === 'string' && b.courseId ? b.courseId : null });
   }
   try {
     // A minute more than the exam, so the examiner can finish its sentence.

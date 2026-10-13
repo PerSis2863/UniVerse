@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { spendAi } from '@/server/ai-budget';
+import { logAiUse } from '@/server/ai-receipts';
 import { tutorAccess } from '@/server/tutor';
 import { liveToken } from '@/server/live-token';
 
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
 
   const spend = await spendAi(user);
   if (!spend.ok) return NextResponse.json({ error: spend.message, code: 'ai-limit' }, { status: 429 });
+  await logAiUse(user.id, { kind: 'voice', detail: 'Spoken session', courseId: typeof b.courseId === 'string' && b.courseId ? b.courseId : null });
 
   const first = (user.name || '').split(' ')[0];
   const systemInstruction = `You are UniVerse's friendly spoken study tutor, talking with ${first || 'a student'}.${context}

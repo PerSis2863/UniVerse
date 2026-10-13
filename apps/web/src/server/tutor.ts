@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { logAiUse } from './ai-receipts';
 import { geminiFileText, geminiJson } from './gemini';
 import { cachedAi, saveAi, sameQuestion, spendAi } from './ai-budget';
 import { readAppFile } from '@/lib/storage';
@@ -153,6 +154,8 @@ type TutorAnswer = { answer: string | null; grounded?: boolean; citations: { n: 
 export async function askTutor(a: Access, question: string, history: { role: 'user' | 'tutor'; text: string }[], who: Parameters<typeof spendAi>[0]): Promise<TutorAnswer> {
   const sources = await readySources(a.courseId);
   if (!sources.length) return { answer: null, reason: 'no-sources', citations: [] };
+  // On the student's own record of AI help (Stage 5 · D12), saved answers too.
+  await logAiUse(who?.id, { kind: 'tutor', detail: question, courseId: a.courseId });
   const key = history.length ? null : ['tutor-ask', a.courseId, sources.map((s) => `${s.id}:${s.text.length}`).sort().join(','), sameQuestion(question)];
   const saved = key && (await cachedAi<TutorAnswer>(key));
   if (saved?.answer) return { ...saved, saved: true };

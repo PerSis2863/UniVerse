@@ -16,6 +16,8 @@ import { recordStudy } from './streaks';
 import { offlineTime } from './offline';
 import { closestPeers, signalsFor, type Signals } from './similarity';
 import { planLimits } from '@/lib/plan-limits';
+import { isAiPolicy, parseReceipt } from '@/lib/ai-receipt';
+import { receiptForSubmission } from './ai-receipts';
 
 // Written assignments graded against a rubric. The AI only drafts: a teacher reviews every
 // score and comment, and nothing reaches the student until the teacher returns the grade, which
@@ -92,6 +94,11 @@ function assignmentFields(body: Record<string, unknown>, partial: boolean) {
     if (body.status !== 'OPEN' && body.status !== 'CLOSED') throw new BadRequestException('Unknown status.');
     data.status = body.status;
   }
+  // Whether students may use AI (Stage 5 · D12): FREE, RECEIPT (with an AI receipt) or NONE.
+  if (body.aiPolicy !== undefined) {
+    if (!isAiPolicy(body.aiPolicy)) throw new BadRequestException('Choose whether AI may be used.');
+    data.aiPolicy = body.aiPolicy;
+  }
   return data;
 }
 
@@ -162,11 +169,11 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
   if (!canManage) {
     const mine = await prisma.assignmentSubmission.findUnique({
       where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-      select: { id: true, text: true, status: true, submittedAt: true, returnedAt: true, score: true, feedback: true, criteriaScores: true, feedbackMediaUrl: true, feedbackMediaKind: true, feedbackTranscript: true },
+      select: { id: true, text: true, status: true, submittedAt: true, returnedAt: true, score: true, feedback: true, criteriaScores: true, feedbackMediaUrl: true, feedbackMediaKind: true, feedbackTranscript: true, aiReceipt: true },
     });
     // Until it's returned, a student sees their answer only (never the AI's draft).
     const returned = mine?.status === 'RETURNED';
-    return { ...base, mine: mine ? { ...mine, status: returned ? 'RETURNED' : 'SUBMITTED', score: returned ? mine.score : null, feedback: returned ? mine.feedback : null, criteriaScores: returned ? mine.criteriaScores : null, feedbackMediaUrl: returned ? mine.feedbackMediaUrl : null, feedbackMediaKind: returned ? mine.feedbackMediaKind : null, feedbackTranscript: returned ? mine.feedbackTranscript : null } : null };
+    return { ...base, mine: mine ? { ...mine, aiReceipt: parseReceipt(mine.aiReceipt), status: returned ? 'RETURNED' : 'SUBMITTED', score: returned ? mine.score : null, feedback: returned ? mine.feedback : null, criteriaScores: returned ? mine.criteriaScores : null, feedbackMediaUrl: returned ? mine.feedbackMediaUrl : null, feedbackMediaKind: returned ? mine.feedbackMediaKind : null, feedbackTranscript: returned ? mine.feedbackTranscript : null } : null };
   }
   const [submissions, enrolled] = await Promise.all([
     prisma.assignmentSubmission.findMany({
@@ -187,7 +194,7 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
     enrolled,
     submissions: submissions.map(({ signals, ...x }) => {
       const peer = peers.get(x.id);
-      return { ...x, similarity: { peer: peer ? { name: nameOf.get(peer.id) ?? 'A classmate', percent: Math.round(peer.share * 100) } : null, material: (signals as unknown as Signals | null)?.material ?? null } };
+      return { ...x, aiReceipt: parseReceipt(x.aiReceipt), similarity: { peer: peer ? { name: nameOf.get(peer.id) ?? 'A classmate', percent: Math.round(peer.share * 100) } : null, material: (signals as unknown as Signals | null)?.material ?? null } };
     }),
   };
 }
@@ -245,6 +252,8 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
   if (text.length > MAX_TEXT) throw new BadRequestException(`Answers can be up to ${MAX_TEXT.toLocaleString()} characters.`);
   const existing = await prisma.assignmentSubmission.findUnique({ where: { assignmentId_studentId: { assignmentId, studentId: user.id } }, select: { status: true } });
   if (existing?.status === 'RETURNED') throw new BadRequestException('This has already been graded, so it can’t be changed.');
+  // The AI receipt or "no AI" declaration (Stage 5 · D12), made from the student's own record.
+  const aiReceipt = await receiptForSubmission(user.id, assignment, body.aiReceipt, !!offlineAt);
   // Similarity signals for the teacher (src/server/similarity.ts), against the course's materials.
   // At most about 30 KB of material text per answer: comparing costs CPU time, and Workers Free
   // allows 10 ms per request (signalsFor also reads only the answer's first 12,000 characters).
@@ -262,8 +271,8 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
   // A new version replaces the old one and any AI draft of it.
   const saved = await prisma.assignmentSubmission.upsert({
     where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-    create: { assignmentId, studentId: user.id, text, signals, styleSignals, offlineAt },
-    update: { text, signals, styleSignals, offlineAt, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date() },
+    create: { assignmentId, studentId: user.id, text, signals, styleSignals, offlineAt, aiReceipt },
+    update: { text, signals, styleSignals, offlineAt, aiReceipt, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date() },
     select: { id: true, submittedAt: true },
   });
   if (existing) await prisma.$executeRawUnsafe('UPDATE assignment_submissions SET aiDraft = NULL WHERE id = ?', saved.id); // Prisma won't write a plain null to JSON
