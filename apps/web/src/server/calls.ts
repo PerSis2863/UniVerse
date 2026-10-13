@@ -9,6 +9,7 @@ import { featureOff } from './moderation';
 import { planLimits } from '@/lib/plan-limits';
 import { publishChat } from './realtime';
 import { impactCallAccess } from './impact-rooms';
+import { leagueCallAccess } from './impact-league';
 import { meetingCallAccess } from './parent-meetings';
 import { isCallIssue } from '@/lib/call-quality';
 import { scheduledTemplate } from './scheduled-calls';
@@ -30,6 +31,8 @@ import { scheduledTemplate } from './scheduled-calls';
 //                  voice gets louder as you walk closer (src/components/hall/HallView.tsx).
 //   o_<teacher id> a teacher's office hours (4.7): their students queue in the waiting room while
 //                  they're open (src/server/office-hours.ts); "Next student" lets the next one in.
+//   lg_<challenge> an Impact League demo day (Stage 5 · D14): its organizers host (webinar mode for
+//                  a big audience); anyone signed in may watch while it's on (src/server/impact-league.ts).
 // STUN finds a direct route on most networks; strict ones (some campus and office Wi-Fi) need a
 // TURN relay, used when TURN_KEY_ID and TURN_KEY_API_TOKEN (Cloudflare Realtime TURN) are set.
 // Bigger calls: with CALLS_APP_ID and CALLS_APP_SECRET (Cloudflare Realtime SFU, 1,000 GB a month
@@ -150,6 +153,10 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
     // A parent–teacher meeting by video (Stage 5 · B16.3): the teacher (host) and the parent who booked it.
     const a = await meetingCallAccess(callId.slice(3), user);
     return { kind: wantKind === 'audio' ? 'audio' : 'video', type: 'group', title: a.title, conversationId: null, chatId: null, oneToOne: false, startedBy: null, ended: false, host: a.host };
+  }
+  if (callId.startsWith('lg_')) {
+    const a = await leagueCallAccess(callId.slice(3), user);
+    return { kind: 'video', type: 'group', title: a.title, conversationId: null, chatId: null, oneToOne: false, startedBy: null, ended: false, host: a.host };
   }
   if (callId.startsWith('i_')) {
     // An impact room's call (Stage 4 · 4.12): staff run it, the room's followers join.

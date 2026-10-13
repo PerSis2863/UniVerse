@@ -3,19 +3,21 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { AlertTriangle, CheckCircle2, Library, Plus, Trash2, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Library, Loader2, Plus, Trash2, Wand2, X } from 'lucide-react';
 import type { ItemResult } from '@/lib/item-analysis';
 import { Switch } from '@/components/ui/Switch';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { ReadingLevelControl, fetchLevels, useReadingLevel } from '@/components/shared/ReadingLevel';
+import { errorMessage } from '@/lib/api';
 
 type Question = { id: string; question: string; options: string[]; correctAnswer: string; points: number };
 type Integrity = { left: number; pasted: number; fullscreenExits: number; overtimeSeconds: number; noStart: boolean };
 type Submission = { id: string; score: number | null; maxScore: number | null; submittedAt: string; integrity?: Integrity | null; student: { name: string } };
 type Quiz = {
-  id: string; courseId?: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean;
+  id: string; courseId?: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean;
   course: { name: string; code: string }; questions: Question[]; submissions: Submission[];
   analysis?: { students: number; items: ItemResult[]; consistency: number | null; toFix: number };
 };
@@ -107,6 +109,11 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
                   <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Exam mode</p><p className="text-xs text-zinc-500">The time limit counts from when each student starts, on the server. You see how often they left the quiz, pasted or left full screen. No webcam, nothing recorded.</p></div>
                   <Switch checked={!!quiz.examMode} disabled={busy} onChange={(v) => void patch({ examMode: v }, v ? 'Exam mode on' : 'Exam mode off')} label="Exam mode" />
                 </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Reading help</p><p className="text-xs text-zinc-500 dark:text-zinc-400">Students can see the questions in simpler words or in their language, and listen to them; the answers stay as written. Turn it off when reading the words is what you’re testing.</p></div>
+                  <Switch checked={quiz.plainWords !== false} disabled={busy} onChange={(v) => void patch({ plainWords: v }, v ? 'Reading help on' : 'Reading help off')} label="Reading help" />
+                </div>
+                {quiz.plainWords !== false && quiz.questions.length > 0 && <PrepareLevels ids={quiz.questions.map((q) => q.id)} />}
               </div>
             </section>
 
@@ -117,7 +124,10 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
               {quiz.questions.map((q, i) => (
                 <div key={q.id} className="p-4 rounded-2xl bg-white/60 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">
                   <div className="flex items-start gap-3">
-                    <p className="flex-1 text-sm font-semibold text-zinc-900 dark:text-white">{i + 1}. {q.question} <span className="text-xs font-normal text-zinc-500">· {q.points} pt{q.points === 1 ? '' : 's'}</span></p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-zinc-900 dark:text-white">{i + 1}. {q.question} <span className="text-xs font-normal text-zinc-500">· {q.points} pt{q.points === 1 ? '' : 's'}</span></p>
+                      {quiz.plainWords !== false && <QuestionLevels id={q.id} text={q.question} />}
+                    </div>
                     {quiz.courseId && <button onClick={() => void saveToBank(q.id)} aria-label="Save to the question bank" title="Save to the question bank" className="p-1.5 rounded-lg text-zinc-400 hover:text-indigo-500"><Library className="w-4 h-4" /></button>}
                     <button onClick={() => removeQuestion(q.id)} aria-label="Delete question" className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
                   </div>
@@ -220,4 +230,41 @@ function IntegrityNote({ i }: { i: Integrity }) {
     i.noStart ? 'no start time (taken offline?)' : '',
   ].filter(Boolean);
   return <span className={cn('block text-[11px]', notes.length ? 'text-amber-700 dark:text-amber-300' : 'text-zinc-500')}>{notes.length ? notes.join(' · ') : 'Exam mode: nothing to note'}</span>;
+}
+
+/** A question in simpler words, for the teacher to check (and correct: Edit), as students would see it (Stage 5 · D9). */
+function QuestionLevels({ id, text }: { id: string; text: string }) {
+  const r = useReadingLevel('quiz-question', id, '', { auto: false });
+  return (
+    <>
+      {r.leveled && <p className="mt-1.5 text-sm rounded-xl bg-indigo-500/[0.06] dark:bg-indigo-400/[0.08] px-3 py-2 text-zinc-800 dark:text-zinc-200">{r.leveled.text}</p>}
+      <ReadingLevelControl r={r} speakText={r.leveled?.text ?? text} />
+    </>
+  );
+}
+
+/** Makes both simpler versions of every question now, so students don't wait (and don't use their AI allowance). */
+function PrepareLevels({ ids }: { ids: string[] }) {
+  const [busy, setBusy] = useState<{ done: number; total: number } | null>(null);
+  const run = async () => {
+    const total = ids.length * 2;
+    setBusy({ done: 0, total });
+    try {
+      let done = 0;
+      for (const level of ['g8', 'g5'] as const) {
+        for (let i = 0; i < ids.length; i += 6) {
+          await fetchLevels(ids.slice(i, i + 6).map((id) => ({ kind: 'quiz-question' as const, id })), level);
+          done += Math.min(6, ids.length - i);
+          setBusy({ done, total });
+        }
+      }
+      toast.success('Simpler versions are ready', { description: 'Check them under each question; Edit changes what students see.' });
+    } catch (e) { toast.error(errorMessage(e, 'Couldn’t prepare the simpler versions.')); }
+    finally { setBusy(null); }
+  };
+  return (
+    <button type="button" onClick={() => void run()} disabled={!!busy} className="btn-secondary btn-sm">
+      {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Preparing {busy.done} of {busy.total}</> : <><Wand2 className="w-4 h-4" /> Prepare simpler versions</>}
+    </button>
+  );
 }

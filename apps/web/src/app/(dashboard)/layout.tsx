@@ -12,6 +12,7 @@ import { NavDataPreload } from '@/components/NavDataPreload';
 import { ActivityTracker } from '@/components/ActivityTracker';
 import { DataConfig } from '@/components/DataConfig';
 import { LowDataSync } from '@/components/settings/LowDataToggle';
+import { SelectionHelp } from '@/components/shared/SelectionHelp';
 import { claimSessionReport, reportSession } from '@/lib/sign-in-history';
 import { adoptEarlyBootstrap, startBootstrap } from '@/lib/bootstrap';
 import { authedJson } from '@/lib/authed-fetch';
@@ -168,6 +169,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <LowDataSync />
         <NavDataPreload />
         <ActivityTracker />
+        <SelectionHelp />
         {children}
       </DashboardShell>
     </DataConfig>

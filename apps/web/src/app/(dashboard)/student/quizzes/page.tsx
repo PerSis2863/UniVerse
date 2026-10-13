@@ -14,10 +14,14 @@ import { QuizReview } from '@/components/quizzes/QuizReview';
 import { enqueue, isOfflineError, newClientId } from '@/lib/outbox';
 import { getPack, type PackQuiz } from '@/lib/offline-packs';
 import { TabPill } from '@/components/ui/Glide';
+import { Translatable } from '@/components/shared/Translatable';
+import type { LevelChoice } from '@/components/shared/ReadingLevel';
+import { readingLevel } from '@/lib/display-prefs';
 
 interface QuizSummary { id: string; title: string; status: string; completed: boolean; score?: number | null; dueDate?: string | null; timeLimit?: number | null; courseId: string; course: { name: string }; _count?: { questions: number } }
 /** A quiz being taken: its questions (from the server, or the copy saved for offline use). */
-type FullQuiz = PackQuiz & { course?: { name: string } | null; examMode?: boolean };
+type FullQuiz = PackQuiz & { course?: { name: string } | null; examMode?: boolean; plainWords?: boolean };
+const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 export default function QuizzesPage() {
   const { data: quizzes = [], isLoading } = useSWR<QuizSummary[]>('/quizzes/student/my-quizzes', fetcher);
@@ -41,6 +45,8 @@ export default function QuizzesPage() {
   const [endsAt, setEndsAt] = useState(0); // when the time limit runs out (ms)
 
   const seen = useRef({ left: 0, pasted: 0, fullscreenExits: 0 });
+  /** Reading level for the questions (the same for all of them; starts at the one in Settings). */
+  const [quizLevel, setQuizLevel] = useState<LevelChoice>(readingLevel);
 
   const startQuiz = async (quizSummary: QuizSummary) => {
     setLoadingQuizId(quizSummary.id);
@@ -328,14 +334,25 @@ export default function QuizzesPage() {
                     </p>
                   )}
                   {/* Progress */}
-                  <div className="flex items-center justify-between text-xs text-zinc-500 mb-2">
+                  <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-2">
                     <span>Question {currentQ + 1} of {activeQuiz.questions.length}</span>
                     <span>{Object.keys(answers).length} answered</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700 mb-6 overflow-hidden">
                     <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${((currentQ + 1) / activeQuiz.questions.length) * 100}%` }} />
                   </div>
-                  <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-5">{activeQuiz.questions[currentQ].question}</h3>
+                  {activeQuiz.plainWords !== false ? (
+                    // Reading help (Stage 5 · D9), unless the teacher turned it off: the question in
+                    // simpler words or the student's language, and read aloud with its answers.
+                    <div className="mb-5">
+                      <Translatable
+                        key={activeQuiz.questions[currentQ].id} kind="quiz-question" id={activeQuiz.questions[currentQ].id} text={activeQuiz.questions[currentQ].question}
+                        levels={{ level: quizLevel, onLevel: setQuizLevel, also: activeQuiz.questions.slice(currentQ + 1, currentQ + 6).map((x) => x.id) }}
+                        speakExtra={activeQuiz.questions[currentQ].options.map((o, i) => `${LETTERS[i] ?? ''}. ${o}`).join('. ')}
+                        render={(t, lang) => <h3 lang={lang} className="text-lg font-bold text-zinc-900 dark:text-white">{t}</h3>}
+                      />
+                    </div>
+                  ) : <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-5">{activeQuiz.questions[currentQ].question}</h3>}
                   <div className="space-y-3 mb-6">
                     {activeQuiz.questions[currentQ].options.map((opt: string, i: number) => (
                       <button
@@ -347,7 +364,7 @@ export default function QuizzesPage() {
                             : 'border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-indigo-500/40 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                         }`}
                       >{selected === i && <TabPill id="shboard-student-quizzes-page-0" variant="soft" />}
-                        <span className="font-bold mr-2">{['A', 'B', 'C', 'D', 'E', 'F'][i] || '*'}.</span> {opt}
+                        <span className="font-bold mr-2">{LETTERS[i] || '*'}.</span> {opt}
                       </button>
                     ))}
                   </div>

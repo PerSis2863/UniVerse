@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/server-auth';
 import { spendAi } from '@/server/ai-budget';
+import { logAiUse } from '@/server/ai-receipts';
 import { withTextModels } from '@/server/ai-models';
 
 // The models come from the owner's chain (owner console → Server → AI models): when one is busy
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
 
   const spend = await spendAi(user);
   if (!spend.ok) return NextResponse.json({ error: spend.message, code: 'ai-limit' }, { status: 429 });
+  await logAiUse(user.id, { kind: 'assistant', detail: message }); // the person's own record (Stage 5 · D12)
 
   const history = Array.isArray(payload.history) ? payload.history.slice(-MAX_HISTORY) : [];
   const contents = [

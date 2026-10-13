@@ -9,20 +9,14 @@ import { SectionTabs, STUDENT_BOARD_TABS, STUDENT_TUTOR_MODES } from '@/componen
 import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
+import { openMic, startLiveVoice } from '@/lib/live-voice';
 
-// Spoken conversation with the AI tutor (Gemini Live). The server hands out a single-use token
-// with the tutor's instructions locked in (/api/tutor/voice); the browser then streams the
-// microphone straight to Gemini and plays the spoken replies, with live captions.
+// Spoken conversation with the AI tutor (Gemini Live; src/lib/live-voice.ts). The server hands out a
+// single-use token with the tutor's instructions locked in (/api/tutor/voice); the browser then
+// streams the microphone straight to Gemini and plays the spoken replies, with live captions.
 
 type Phase = 'idle' | 'starting' | 'live' | 'ending';
 interface Line { who: 'you' | 'tutor'; text: string }
-
-const toBase64 = (buf: ArrayBuffer) => {
-  const bytes = new Uint8Array(buf);
-  let s = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s);
-};
 
 export default function VoiceTutorPage() {
   const { data: courses } = useSWR<{ id: string; code: string; name: string }[]>('/courses/my', fetcher);
@@ -55,82 +49,30 @@ export default function VoiceTutorPage() {
     setLines([]);
     let mic: MediaStream | null = null;
     try {
-      mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } });
+      mic = await openMic();
       const t = await authedJson<{ token: string; model: string; minutes: number }>('/api/tutor/voice', { method: 'POST', body: JSON.stringify({ courseId: courseId || undefined }) });
-      const { GoogleGenAI, Modality } = await import('@google/genai');
-      const ai = new GoogleGenAI({ apiKey: t.token, httpOptions: { apiVersion: 'v1alpha' } });
-
-      const input = new AudioContext({ sampleRate: 16000 });
-      const output = new AudioContext({ sampleRate: 24000 });
-      await input.audioWorklet.addModule('/voice-worklet.js');
-      const source = input.createMediaStreamSource(mic);
-      const capture = new AudioWorkletNode(input, 'pcm-capture');
-      source.connect(capture);
-      let playAt = 0;
-      const playing = new Set<AudioBufferSourceNode>();
-      let isMuted = false;
-      let closed = false;
-
-      const session = await ai.live.connect({
-        model: t.model,
-        config: { responseModalities: [Modality.AUDIO] },
-        callbacks: {
-          onmessage: (m) => {
-            const sc = m.serverContent;
-            if (!sc) return;
-            if (sc.interrupted) { for (const s of playing) try { s.stop(); } catch { /* done */ } playing.clear(); playAt = 0; setSpeaking(false); }
-            if (sc.inputTranscription?.text) add('you', sc.inputTranscription.text);
-            if (sc.outputTranscription?.text) add('tutor', sc.outputTranscription.text);
-            for (const part of sc.modelTurn?.parts ?? []) {
-              const data = part.inlineData?.data;
-              if (!data) continue;
-              const bin = atob(data);
-              const pcm = new Int16Array(bin.length / 2);
-              for (let i = 0; i < pcm.length; i++) pcm[i] = (bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8)) << 16 >> 16;
-              const buf = output.createBuffer(1, pcm.length, 24000);
-              const ch = buf.getChannelData(0);
-              for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 0x8000;
-              const node = output.createBufferSource();
-              node.buffer = buf;
-              node.connect(output.destination);
-              playAt = Math.max(playAt, output.currentTime);
-              node.start(playAt);
-              playAt += buf.duration;
-              playing.add(node);
-              setSpeaking(true);
-              node.onended = () => { playing.delete(node); if (!playing.size) setSpeaking(false); };
-            }
-          },
-          onerror: () => toast.error('The voice connection had a problem.'),
-          onclose: () => { if (!closed) stop(); },
-        },
-      });
-
-      capture.port.onmessage = (e: MessageEvent<ArrayBuffer>) => {
-        if (isMuted || closed) return;
-        session.sendRealtimeInput({ audio: { data: toBase64(e.data), mimeType: 'audio/pcm;rate=16000' } });
-      };
-
       const startedAt = Date.now();
+      let ended = false;
+      const handle = await startLiveVoice({
+        mic, token: t.token, model: t.model,
+        onText: (who, text) => add(who === 'ai' ? 'tutor' : 'you', text),
+        onSpeaking: setSpeaking,
+        onError: () => toast.error('The voice connection had a problem.'),
+        onClosed: () => stop(),
+      });
       const stop = () => {
-        if (closed) return;
-        closed = true;
+        if (ended) return;
+        ended = true;
         // Keep a record of the session (the conversation as text, never the audio) for the owner console.
         const durationSec = Math.round((Date.now() - startedAt) / 1000);
         if (durationSec >= 3) void authedJson('/api/tutor/voice/sessions', { method: 'POST', keepalive: true, body: JSON.stringify({ courseId: courseId || null, durationSec, lines: linesRef.current }) }).catch(() => {});
         setPhase('ending');
-        try { session.close(); } catch { /* closed */ }
-        capture.port.onmessage = null;
-        source.disconnect();
-        mic?.getTracks().forEach((tr) => tr.stop());
-        void input.close().catch(() => {});
-        void output.close().catch(() => {});
+        void handle.stop();
         live.current = null;
-        setSpeaking(false);
         setSecondsLeft(null);
         setPhase('idle');
       };
-      live.current = { stop, setMuted: (m) => { isMuted = m; } };
+      live.current = { stop, setMuted: handle.setMuted };
       setMuted(false);
       setSecondsLeft(t.minutes * 60);
       setPhase('live');

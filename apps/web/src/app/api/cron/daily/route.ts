@@ -9,6 +9,7 @@ import { sendWeeklyDigests } from '@/server/guardians';
 import { purgeLostFound } from '@/server/campus-life';
 import { pruneCallRecordings } from '@/server/call-recordings';
 import { weeklyAutopilotReports } from '@/server/group-autopilot';
+import { wellbeingNudges } from '@/server/wellbeing';
 
 // Daily job, run by the Worker's cron trigger (cloudflare/worker.ts → wrangler.jsonc "triggers").
 // It isn't reachable from outside: the scheduled handler calls it in-process with a random
@@ -30,13 +31,15 @@ export async function POST(req: Request) {
   const earlyWarning = await assessCourses().catch((e) => (console.error('early warning failed:', e), null));
   // Group project autopilot (Stage 5 · D6): each plan's weekly report near the end of its week.
   const autopilot = await weeklyAutopilotReports().catch((e) => (console.error('autopilot reports failed:', e), null));
+  // Wellbeing radar (Stage 5 · D13): private nudges for students who turned it on.
+  const wellbeing = await wellbeingNudges().catch((e) => (console.error('wellbeing nudges failed:', e), null));
   // Error monitoring: AI diagnoses the day's new problems, then the owner gets a digest.
   const diagnosed = await diagnoseErrors({ limit: 8 }).catch((e) => (console.error('diagnoseErrors failed:', e), 0));
   // The problems email follows the owner's schedule (daily / weekly / monthly / off), covering the time since the last one.
   const ctl = await prisma.serverControl.findUnique({ where: { id: 'main' }, select: { switches: true } }).catch(() => null);
   const errorsEmail = emailDue(parseEmailSchedule(ctl?.switches).errors);
   const reported = errorsEmail.due ? await emailErrorDigest(new Date(Date.now() - errorsEmail.days * DAY)).catch((e) => (console.error('emailErrorDigest failed:', e), 0)) : 0;
-  return NextResponse.json({ reminders, guardianDigests, deleted, earlyWarning, autopilot, errors: { diagnosed, reported } });
+  return NextResponse.json({ reminders, guardianDigests, deleted, earlyWarning, autopilot, wellbeing, errors: { diagnosed, reported } });
 }
 
 const DAY = 24 * 60 * 60_000;

@@ -12,7 +12,7 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  BadgeCheck, Layers, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, type LucideIcon, } from 'lucide-react';
+  BadgeCheck, Layers, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { uploadChatFile } from '@/components/chat/chat-client';
@@ -36,6 +36,7 @@ import { TranslatableAnnouncement } from '@/components/shared/Translatable';
 // A material as text in your language (Stage 5 · D8), loaded when opened.
 const MaterialReader = dynamic(() => import('@/components/dashboard/MaterialReader').then((m) => m.MaterialReader), { ssr: false });
 const CourseGroupProjects = dynamic(() => import('@/components/groups/CourseGroupProjects').then((m) => m.CourseGroupProjects), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
+const CourseOralChecks = dynamic(() => import('@/components/oral/CourseOralChecks').then((m) => m.CourseOralChecks), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const CourseModules = dynamic(() => import('@/components/dashboard/CourseModules').then((m) => m.CourseModules), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const ClassSessions = dynamic(() => import('@/components/dashboard/ClassSessions').then((m) => m.ClassSessions), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const QuizManager = dynamic(() => import('@/components/quizzes/QuizManager').then((m) => m.QuizManager), { ssr: false });
@@ -73,6 +74,8 @@ const TABS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'quizzes', label: 'Quizzes', icon: CheckCircle2 },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
   { id: 'whiteboard', label: 'Whiteboard', icon: PenTool },
+  // Oral checks with the AI examiner (Stage 5 · D11): the teacher sets and confirms; students see the open ones.
+  { id: 'orals', label: 'Oral checks', icon: Mic },
   // Teachers only (Stage 5 · D6): student group projects linked to the course.
   { id: 'projects', label: 'Group projects', icon: Wand2 },
 ];
@@ -211,6 +214,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
                 {tab === 'quizzes' && (canManage ? <TeacherQuizzes board={board} refresh={mutate} /> : <MyQuizzes board={board} />)}
                 {tab === 'calendar' && <Events board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'projects' && canManage && course && <CourseGroupProjects courseId={course.id} />}
+                {tab === 'orals' && course && <CourseOralChecks courseId={course.id} />}
                 {tab === 'whiteboard' && (
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -396,7 +400,7 @@ function Announcements({ board, canManage, refresh }: SectionProps) {
         <div className="space-y-3">
           {board.announcements.map((a) => (
             <div key={a.id} className={`panel p-5`}>
-              <TranslatableAnnouncement id={a.id} title={a.title} body={a.body} titleAs="h4" titleClassName="font-bold text-zinc-900 dark:text-white" bodyClassName="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mt-2 whitespace-pre-line"
+              <TranslatableAnnouncement levels id={a.id} title={a.title} body={a.body} titleAs="h4" titleClassName="font-bold text-zinc-900 dark:text-white" bodyClassName="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mt-2 whitespace-pre-line"
                 aside={<div className="flex items-center gap-1 shrink-0"><span className="text-xs text-zinc-400">{when(a.createdAt)}</span>{canManage && <RemoveBtn onClick={() => remove('announcement', a.id, a.title)} />}</div>} />
               <p className="text-xs text-zinc-400 mt-3">Posted by <span className="text-indigo-500 font-medium">{a.author.name}</span></p>
             </div>
@@ -453,7 +457,7 @@ function Materials({ board, canManage, refresh }: SectionProps) {
                   <p className="text-xs text-zinc-500">{external ? 'Link' : m.type}{m.size ? ` · ${m.size}` : ''} · {day(m.createdAt)}</p>
                 </a>
                 {!external && m.type !== 'VIDEO' && m.type !== 'IMAGE' && (
-                  <button type="button" onClick={() => setReading({ id: m.id, title: m.title })} aria-label={`Read ${m.title} in your language`} title="Read in your language" className="p-2 rounded-lg text-zinc-500 hover:text-indigo-500 hover:bg-indigo-500/10"><Languages className="w-4 h-4" /></button>
+                  <button type="button" onClick={() => setReading({ id: m.id, title: m.title })} aria-label={`Read ${m.title}`} title="Read in your language or in simpler words, or listen" className="p-2 rounded-lg text-zinc-500 hover:text-indigo-500 hover:bg-indigo-500/10"><Languages className="w-4 h-4" /></button>
                 )}
                 <a href={absolute(m.fileUrl)} target="_blank" rel="noopener noreferrer" download={!external || undefined} aria-label={external ? 'Open link' : 'Download'} className="p-2 rounded-lg text-zinc-400 hover:text-indigo-500 hover:bg-indigo-500/10">
                   {external ? <ExternalLink className="w-4 h-4" /> : <Download className="w-4 h-4" />}

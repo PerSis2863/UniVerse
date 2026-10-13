@@ -1,5 +1,6 @@
 import type { SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
+import { logAiUse } from './ai-receipts';
 import { boardAccess, canEdit } from './boards';
 import { geminiJson, geminiJsonImage } from './gemini';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
@@ -73,6 +74,7 @@ export async function boardAi(boardId: string, user: SessionUser, b: Record<stri
   if (action === 'diagram' && (!image || image.length > 3_000_000 || !/^[A-Za-z0-9+/=]+$/.test(image.slice(0, 2000)))) throw new BadRequestException('Draw or select a sketch first.');
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message || 'You’ve used today’s AI allowance.', 429);
+  await logAiUse(user.id, { kind: 'whiteboard', detail: { themes: 'Group notes into themes', mindmap: 'Mind map', summary: 'Summary of the board', diagram: 'Sketch to diagram' }[action] });
 
   if (action === 'themes') {
     if (texts.length < 3) throw new BadRequestException('Add at least 3 sticky notes first.');

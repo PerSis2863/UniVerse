@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { spendAi } from '@/server/ai-budget';
+import { logAiUse } from '@/server/ai-receipts';
 import { makeFlashcards, tutorAccess } from '@/server/tutor';
 
 // POST { topic? } → makes flashcards from the course and adds them to my deck.
@@ -15,6 +16,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ courseI
   const spend = await spendAi(user);
   if (!spend.ok) return NextResponse.json({ error: spend.message, code: 'ai-limit' }, { status: 429 });
   const b = await req.json().catch(() => ({}));
+  await logAiUse(user.id, { kind: 'study', detail: `Flashcards${typeof b.topic === 'string' && b.topic.trim() ? `: ${b.topic}` : ''}`, courseId: a.courseId }); // the student's own record (Stage 5 · D12)
   const r = await makeFlashcards(a, typeof b.topic === 'string' ? b.topic : '');
   if (r.reason === 'no-sources') return NextResponse.json({ error: 'This course has no materials the tutor can read yet.', code: 'no-sources' }, { status: 409 });
   if (!r.cards?.length) return NextResponse.json({ error: 'Couldn’t make flashcards right now. Please try again.' }, { status: 503 });

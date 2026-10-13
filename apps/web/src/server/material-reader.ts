@@ -7,7 +7,8 @@ import { prepareSources } from './tutor';
 
 // Course materials as text to read and translate (Stage 5 · D8, language-free classroom). The text
 // is the one the AI tutor reads (course_sources, made from the file once); it's shown in sections,
-// each translated on request through /api/translate (kind "material-part").
+// each translated on request through /api/translate (kind "material-part"), or rewritten for a
+// reading level through /api/reading-level (D9).
 
 async function material(courseId: string, materialId: string, user: SessionUser) {
   const access = await courseAccess(courseId, user);
@@ -21,8 +22,9 @@ async function material(courseId: string, materialId: string, user: SessionUser)
 export async function readMaterial(courseId: string, materialId: string, user: SessionUser) {
   const { access, m } = await material(courseId, materialId, user);
   const src = await prisma.courseSource.findUnique({ where: { materialId }, select: { id: true, status: true, error: true, text: true } });
-  if (src?.status === 'READY' && src.text) return { title: m.title, status: 'READY' as const, sourceId: src.id, sections: materialSections(src.text), canPrepare: false };
-  return { title: m.title, status: (src?.status ?? 'NONE') as string, error: src?.error ?? null, sourceId: null, sections: [], canPrepare: access.canManage };
+  // canManage: the teacher can also prepare the simpler versions for everyone (D9, reading levels).
+  if (src?.status === 'READY' && src.text) return { title: m.title, status: 'READY' as const, sourceId: src.id, sections: materialSections(src.text), canPrepare: false, canManage: access.canManage };
+  return { title: m.title, status: (src?.status ?? 'NONE') as string, error: src?.error ?? null, sourceId: null, sections: [], canPrepare: access.canManage, canManage: access.canManage };
 }
 
 /** The course's teacher turns the file into text now (one AI request), then it can be read. */

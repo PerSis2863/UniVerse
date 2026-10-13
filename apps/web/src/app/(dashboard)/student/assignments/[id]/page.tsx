@@ -9,6 +9,8 @@ import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
 import { enqueue, getDraft, isOfflineError, newClientId, saveDraft } from '@/lib/outbox';
 import { Translatable } from '@/components/shared/Translatable';
+import { AiPolicyNote, AiReceiptChoice, AiReceiptView, startChoice, type ReceiptChoice } from '@/components/assignments/AiReceipt';
+import { isAiPolicy, type AiReceipt } from '@/lib/ai-receipt';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Detail {
@@ -19,6 +21,7 @@ interface Detail {
   maxScore: number;
   dueDate: string | null;
   status: 'OPEN' | 'CLOSED';
+  aiPolicy?: string;
   course: { code: string; name: string };
   mine: {
     id: string;
@@ -30,6 +33,7 @@ interface Detail {
     feedback: string | null;
     criteriaScores: { id: string; score: number; comment: string }[] | null;
     feedbackMediaUrl?: string | null; feedbackMediaKind?: string | null; feedbackTranscript?: string | null;
+    aiReceipt?: AiReceipt | null;
   } | null;
 }
 
@@ -40,6 +44,8 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
   const { data, error, isLoading, mutate } = useSWR<Detail>(`/api/assignments/${id}`, authedJson);
   const [text, setText] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  // The AI receipt or "no AI" declaration handed in with the answer (Stage 5 · D12).
+  const [receipt, setReceipt] = useState<ReceiptChoice | null>(null);
   // Drafts are kept on this device as you type (upgrade 4), so nothing is lost offline.
   const draftKey = `assignment:${id}`;
   const draftLoaded = useRef(false);
@@ -58,19 +64,23 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
   const returned = data?.mine?.status === 'RETURNED';
   const canSubmit = !!data && data.status === 'OPEN' && !returned;
   const words = answer.trim() ? answer.trim().split(/\s+/).length : 0;
+  const policy = data?.aiPolicy && isAiPolicy(data.aiPolicy) ? data.aiPolicy : 'FREE';
+  const choice = receipt ?? startChoice(policy);
+  const choiceOk = policy !== 'NONE' || choice.attach || choice.declaredNone;
 
   const submit = async () => {
     setSending(true);
     try {
-      const r = await authedJson<{ late: boolean }>(`/api/assignments/${id}/submission`, { method: 'PUT', body: JSON.stringify({ text: answer }) });
+      const r = await authedJson<{ late: boolean }>(`/api/assignments/${id}/submission`, { method: 'PUT', body: JSON.stringify({ text: answer, aiReceipt: choice }) });
       toast.success(r.late ? 'Handed in (after the due date).' : 'Handed in. You can change it until it’s graded.');
       setText(null);
+      setReceipt(null);
       void saveDraft(draftKey, '').catch(() => {});
       mutate();
     } catch (err) {
       if (!isOfflineError(err)) { toast.error((err as Error).message); return; }
       // No connection: hand it in from this device's outbox when it's back.
-      await enqueue({ id: newClientId(), kind: 'assignment', method: 'PUT', url: `/api/assignments/${encodeURIComponent(id)}/submission`, ref: id, label: `Assignment: ${data?.title ?? 'answer'}`, body: { text: answer, offlineAt: new Date().toISOString() } }).catch(() => null);
+      await enqueue({ id: newClientId(), kind: 'assignment', method: 'PUT', url: `/api/assignments/${encodeURIComponent(id)}/submission`, ref: id, label: `Assignment: ${data?.title ?? 'answer'}`, body: { text: answer, aiReceipt: choice, offlineAt: new Date().toISOString() } }).catch(() => null);
       void saveDraft(draftKey, '').catch(() => {});
       toast.success('You’re offline: it’s saved on this device and handed in when you’re back online.');
     } finally {
@@ -92,7 +102,8 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
             <>
               <section className={`panel p-5 space-y-4`}>
                 {data.dueDate && <p className="text-sm text-zinc-500">Due {new Date(data.dueDate).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}{data.status === 'CLOSED' ? ' · closed' : ''}</p>}
-                <Translatable kind="assignment" id={data.id} text={data.instructions} className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />
+                {policy !== 'FREE' && <AiPolicyNote policy={policy} />}
+                <Translatable kind="assignment" id={data.id} text={data.instructions} levels className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">How it’s graded ({data.maxScore} points)</h3>
                   <ul className="space-y-1.5">
@@ -115,7 +126,7 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
               {returned && data.mine && (
                 <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 space-y-2" aria-label="Your grade">
                   <p className="flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="w-5 h-5" /> Graded: {data.mine.score}/{data.maxScore}</p>
-                  {data.mine.feedback && <Translatable kind="feedback" id={data.mine.id} text={data.mine.feedback} className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />}
+                  {data.mine.feedback && <Translatable kind="feedback" id={data.mine.id} text={data.mine.feedback} levels className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />}
                   {data.mine.feedbackMediaUrl && (
                     <div className="space-y-1.5">
                       <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">{data.mine.feedbackMediaKind === 'VIDEO' ? 'Video' : 'Voice'} feedback from your teacher</p>
@@ -144,9 +155,10 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
                       placeholder="Write your answer here…"
                       className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-3 text-sm leading-relaxed text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"
                     />
+                    <AiReceiptChoice assignmentId={data.id} policy={policy} value={choice} onChange={setReceipt} />
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">{words} words · {answer.length.toLocaleString()}/{MAX.toLocaleString()} characters</span>
-                      <button type="button" className="btn-primary" onClick={submit} disabled={sending || answer.trim().length < 20 || (text === null && !!data.mine)} aria-busy={sending || undefined}>
+                      <button type="button" className="btn-primary" onClick={submit} disabled={sending || answer.trim().length < 20 || (text === null && receipt === null && !!data.mine) || !choiceOk} aria-busy={sending || undefined}>
                         {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} {data.mine ? 'Hand in new version' : 'Hand in'}
                       </button>
                     </div>
@@ -157,6 +169,12 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
                   <p className="text-sm text-zinc-500">This assignment is closed. Ask your teacher if you still need to hand it in.</p>
                 )}
               </section>
+              {data.mine && (data.mine.aiReceipt || policy !== 'FREE') && (
+                <details className="panel px-5 py-3">
+                  <summary className="cursor-pointer text-sm font-semibold text-zinc-900 dark:text-white">The AI receipt you handed in</summary>
+                  <div className="mt-2"><AiReceiptView receipt={data.mine.aiReceipt ?? null} policy={policy} who="You" /></div>
+                </details>
+              )}
             </>
           )}
         </div>

@@ -2,6 +2,7 @@ import prisma from '@/lib/db';
 import { getSystemUser, membership, visibleTo } from '@/lib/chat';
 import { route } from '@/server/assignments';
 import { spendAi } from '@/server/ai-budget';
+import { logAiUse } from '@/server/ai-receipts';
 import { geminiJson, geminiText } from '@/server/gemini';
 import { BadRequestException, HttpException, NotFoundException } from '@/server/http';
 import { featureOff } from '@/server/moderation';
@@ -66,6 +67,7 @@ export const POST = (req: Request, { params }: { params: Promise<{ id: string }>
       if (await featureOff('chat')) throw new HttpException('Sending messages is turned off on UniVerse for now.', 503);
       const spend = await spendAi(user);
       if (!spend.ok) throw new HttpException(spend.message, 429);
+      await logAiUse(user.id, { kind: 'chat', detail: question }); // the person's own record (Stage 5 · D12)
       const lines = await recent(id, user.id, { take: 20 });
       const answer = await geminiText(
         'You are UniVerse AI, a helpful study assistant inside a university chat. Answer the question clearly and briefly (under 150 words), using the recent chat for context when relevant. If it is about facts you are unsure of, say so. Use the question\'s language.',

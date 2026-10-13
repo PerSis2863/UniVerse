@@ -52,7 +52,7 @@ export default function StudentInformation() {
               <div className={`${card} divide-y divide-zinc-200 dark:divide-zinc-800`}>
                 {latest.map((a) => (
                   <article key={a.id} className="p-5">
-                    <TranslatableAnnouncement id={a.id} title={a.title} body={a.body} titleAs="h4" titleClassName="font-semibold text-zinc-900 dark:text-white" bodyClassName="text-sm text-zinc-600 dark:text-zinc-300 mt-1 whitespace-pre-line line-clamp-4" />
+                    <TranslatableAnnouncement levels id={a.id} title={a.title} body={a.body} titleAs="h4" titleClassName="font-semibold text-zinc-900 dark:text-white" bodyClassName="text-sm text-zinc-600 dark:text-zinc-300 mt-1 whitespace-pre-line line-clamp-4" />
                     <p className="text-xs text-zinc-500 mt-2">
                       {new Date(a.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}
                       {a.author?.name ? ` · ${a.author.name}` : ''}

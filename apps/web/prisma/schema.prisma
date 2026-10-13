@@ -183,6 +183,17 @@ model User {
   autopilotPlansCreated  GroupAutopilotPlan[]    @relation("AutopilotCreator")
   classroomSessions      ClassroomSession[]      // in-person sessions I ran (Stage 5 · D7)
   classroomCheckins      ClassroomCheckin[]
+  oralChecks             OralCheck[]             // oral checks I set (Stage 5 · D11)
+  oralSessions           OralSession[]           // orals I did: practice and checks
+  aiUses                 AiUse[]                 // AI help I used (Stage 5 · D12)
+  wellbeingSettings      WellbeingSettings?      // wellbeing radar (Stage 5 · D13), opt-in
+  wellbeingCheckins      WellbeingCheckin[]
+  wellbeingAlerts        WellbeingAlert[]
+  leagueChallenges       LeagueChallenge[]       // Impact League challenges I created (Stage 5 · D14)
+  leagueRoles            LeaguePerson[]
+  leagueMentoring        LeagueTeam[]            @relation("LeagueMentor")
+  leagueMemberships      LeagueMember[]
+  leagueScores           LeagueScore[]
   classroomQuestions     ClassroomQuestion[]
   studentConsents        StudentConsent[]
   medicalRecord          MedicalRecord?
@@ -500,6 +511,7 @@ model Course {
   scheduledCalls ScheduledCall[]
   autopilotPlans GroupAutopilotPlan[]
   classroomSessions ClassroomSession[] // in-person sessions (Stage 5 · D7)
+  oralChecks        OralCheck[] // oral checks (Stage 5 · D11)
   campuses       CourseCampus[] // partner campuses it's shared with (upgrade 9)
   modules        CourseModule[] // ordered units of items (Stage 5 · B2)
   gradeCategories  GradeCategory[] // gradebook categories (Stage 5 · B3.4)
@@ -588,6 +600,8 @@ model Quiz {
   shuffle     Boolean    @default(false)
   /// Exam mode (B4.4): server-timed from the start, integrity notes for the teacher
   examMode    Boolean    @default(false)
+  /// Reading help (D9): students may see questions in simpler words or their language, and listen
+  plainWords  Boolean    @default(true)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -1509,6 +1523,7 @@ model Group {
 
   scheduledCalls ScheduledCall[]
   autopilotPlans GroupAutopilotPlan[]
+  leagueTeams    LeagueTeam[] // an Impact League team's workspace (Stage 5 · D14)
 
   @@index([createdById])
   @@map("groups")
@@ -2868,6 +2883,8 @@ model Assignment {
   weight       Float                  @default(1)
   dueDate      DateTime?
   status       String                 @default("OPEN") // OPEN, CLOSED
+  /// AI use (Stage 5 · D12): FREE, RECEIPT (allowed with an AI receipt), NONE (not allowed)
+  aiPolicy     String                 @default("FREE")
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
   submissions  AssignmentSubmission[]
@@ -2902,6 +2919,8 @@ model AssignmentSubmission {
   styleSignals       Json?
   /// Offline-first (upgrade 4): when the student handed it in on their device with no connection
   offlineAt          DateTime?
+  /// The student's AI receipt or "no AI" declaration (Stage 5 · D12), JSON (src/lib/ai-receipt.ts)
+  aiReceipt          String?
   submittedAt        DateTime   @default(now())
   returnedAt         DateTime?
   updatedAt          DateTime   @updatedAt
@@ -3766,6 +3785,26 @@ model TextTranslation {
 
   @@unique([kind, refId, lang])
   @@map("text_translations")
+}
+
+/// A text rewritten for a reading level (Stage 5 · D9, reading-level adapter): "g8" or "g5", in the
+/// text's own language (lang "") or another, with key terms explained (terms: [{ term, meaning }]).
+model LeveledText {
+  id        String   @id @default(cuid())
+  kind      String
+  refId     String
+  level     String
+  lang      String   @default("")
+  text      String
+  terms     String   @default("[]")
+  srcHash   String
+  /// A teacher corrected this version (D9 second part); null: as the AI wrote it.
+  editedById String?
+  editedAt   DateTime?
+  createdAt DateTime @default(now())
+
+  @@unique([kind, refId, level, lang])
+  @@map("leveled_texts")
 }
 
 /// Someone's close friends (Stage 5 · B7.9): who sees their "close friends" status updates.
@@ -5191,3 +5230,244 @@ model ClassroomQuestion {
   @@map("classroom_questions")
 }
 
+/// A teacher's oral check (Stage 5 · D11): students do it once with the AI examiner (by voice); the
+/// AI suggests rubric scores and the teacher confirms them. kind: VIVA | DEBATE | LANGUAGE | INTERVIEW.
+model OralCheck {
+  id        String        @id @default(cuid())
+  courseId  String
+  course    Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacherId String
+  teacher   User          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  title     String
+  kind      String        @default("VIVA")
+  topic     String
+  /// What the examiner should cover, one per line
+  questions String        @default("")
+  /// For a language oral: the language spoken
+  lang      String        @default("")
+  /// JSON [{ id, name, desc, max }]
+  rubric    String
+  minutes   Int           @default(8)
+  dueAt     DateTime?
+  /// OPEN | CLOSED
+  status    String        @default("OPEN")
+  createdAt DateTime      @default(now())
+  sessions  OralSession[]
+
+  @@index([courseId])
+  @@map("oral_checks")
+}
+
+/// One oral a student did (Stage 5 · D11): practice (status PRACTICE) or their attempt at an oral
+/// check (SUBMITTED, then CONFIRMED by the teacher). Transcript JSON [{ who: you|ai, text }]; scores
+/// JSON [{ id, score, reason, quote }]; aiSummary JSON { summary, strengths, nextSteps }.
+model OralSession {
+  id             String     @id @default(cuid())
+  userId         String
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId       String?
+  checkId        String?
+  check          OralCheck? @relation(fields: [checkId], references: [id], onDelete: Cascade)
+  kind           String
+  topic          String
+  lang           String     @default("")
+  rubric         String
+  transcript     String     @default("[]")
+  durationSec    Int        @default(0)
+  audioUrl       String?
+  aiScores       String?
+  aiSummary      String?
+  status         String     @default("PRACTICE")
+  finalScores    String?
+  teacherComment String?
+  confirmedById  String?
+  confirmedAt    DateTime?
+  createdAt      DateTime   @default(now())
+
+  @@unique([checkId, userId])
+  @@index([userId, createdAt])
+  @@map("oral_sessions")
+}
+
+/// One time someone used AI help in UniVerse (Stage 5 · D12, honest AI receipts): what kind (tutor,
+/// assistant, writing…), a short excerpt of what they asked, the course if any. Kept 180 days; only
+/// they see it, unless they attach it to an assignment as a receipt.
+model AiUse {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  detail    String   @default("")
+  courseId  String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("ai_uses")
+}
+
+/// Wellbeing radar (Stage 5 · D13): whether a student uses it, and (separately, explicitly) lets a
+/// counsellor know when their check-ins show a really hard stretch. Teachers never see any of it.
+model WellbeingSettings {
+  userId       String    @id
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  optedIn      Boolean   @default(false)
+  counsellorOk Boolean   @default(false)
+  timeZone     String    @default("UTC")
+  lastNudgeAt  DateTime?
+  updatedAt    DateTime  @default(now()) @updatedAt
+
+  @@map("wellbeing_settings")
+}
+
+/// A student's own daily check-in: mood 1–5, tags (JSON list), a private note only they see.
+model WellbeingCheckin {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day       String // YYYY-MM-DD in their time zone
+  mood      Int
+  tags      String   @default("[]")
+  note      String   @default("")
+  createdAt DateTime @default(now())
+
+  @@unique([userId, day])
+  @@map("wellbeing_checkins")
+}
+
+/// A request that reaches the school's counsellors: ASKED (the student asked) or PATTERN (a hard
+/// stretch, only with the student's consent). OPEN → SEEN → CLOSED.
+model WellbeingAlert {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason      String
+  message     String    @default("")
+  status      String    @default("OPEN")
+  handledById String?
+  handledAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@map("wellbeing_alerts")
+}
+
+/// Impact League (Stage 5 · D14; src/server/impact-league.ts): a seasonal challenge between
+/// universities around a UN goal (sdg 1–17). DRAFT → OPEN (teams form) → JUDGING → DONE. Milestones,
+/// rubric and prizes are JSON (src/lib/impact-league.ts); a prize is { id, title, sponsor, description, teamId }.
+model LeagueChallenge {
+  id             String         @id @default(cuid())
+  slug           String         @unique
+  title          String
+  sdg            Int?
+  summary        String         @default("")
+  brief          String         @default("")
+  status         String         @default("DRAFT")
+  teamMin        Int            @default(2)
+  teamMax        Int            @default(5)
+  /// Teams must include people from at least two universities to submit
+  mixCampuses    Boolean        @default(false)
+  /// Has a public showcase page (/league/<slug>)
+  isPublic       Boolean        @default(true)
+  /// Hours shown on each finisher's credential
+  creditHours    Int            @default(20)
+  signupClosesAt DateTime?
+  demoDayAt      DateTime?
+  milestones     String         @default("[]")
+  rubric         String         @default("[]")
+  prizes         String         @default("[]")
+  createdById    String?
+  createdBy      User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  finishedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @default(now()) @updatedAt
+  people         LeaguePerson[]
+  teams          LeagueTeam[]
+  members        LeagueMember[]
+
+  @@index([status])
+  @@map("league_challenges")
+}
+
+/// Someone with a part in a challenge: ORGANIZER, MENTOR, JUDGE or SPONSOR.
+model LeaguePerson {
+  id          String          @id @default(cuid())
+  challengeId String
+  challenge   LeagueChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String
+  createdAt   DateTime        @default(now())
+
+  @@unique([challengeId, userId, role])
+  @@index([userId])
+  @@map("league_people")
+}
+
+/// A team: FORMING → SUBMITTED (its project is in), or WITHDRAWN. Its private group and task board
+/// (with the challenge's milestones) are its workspace. `showcase` is the team's choice to appear on
+/// the public page; `hidden` is the organizers'.
+model LeagueTeam {
+  id           String          @id @default(cuid())
+  challengeId  String
+  challenge    LeagueChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  name         String
+  lookingFor   String          @default("")
+  groupId      String?
+  group        Group?          @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  boardId      String?
+  mentorId     String?
+  mentor       User?           @relation("LeagueMentor", fields: [mentorId], references: [id], onDelete: SetNull)
+  projectTitle String          @default("")
+  pitch        String          @default("")
+  link         String          @default("")
+  showcase     Boolean         @default(true)
+  hidden       Boolean         @default(false)
+  status       String          @default("FORMING")
+  submittedAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @default(now()) @updatedAt
+  members      LeagueMember[]
+  scores       LeagueScore[]
+
+  @@unique([challengeId, name])
+  @@index([mentorId])
+  @@map("league_teams")
+}
+
+/// One person in one team (one team per challenge); certificateId once their credential is issued.
+model LeagueMember {
+  id            String          @id @default(cuid())
+  challengeId   String
+  challenge     LeagueChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  teamId        String
+  team          LeagueTeam      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  captain       Boolean         @default(false)
+  certificateId String?
+  joinedAt      DateTime        @default(now())
+
+  @@unique([challengeId, userId])
+  @@index([teamId])
+  @@index([userId])
+  @@map("league_members")
+}
+
+/// A judge's scores for a team on the challenge's rubric (JSON [{ id, score }]) and a comment.
+model LeagueScore {
+  id        String     @id @default(cuid())
+  teamId    String
+  team      LeagueTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  judgeId   String
+  judge     User       @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  scores    String     @default("[]")
+  total     Int        @default(0)
+  comment   String     @default("")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @default(now()) @updatedAt
+
+  @@unique([teamId, judgeId])
+  @@index([judgeId])
+  @@map("league_scores")
+}

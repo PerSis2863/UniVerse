@@ -352,3 +352,106 @@ Progress table (row D6).
   read it yet.
 - **Long texts** are translated in sections and joined back together, so nothing is cut off.
 
+## D9 · Reading-level adapter: done (13 Oct 2026)
+
+- **Migration `0121`** (`leveled_texts`). The deploy applies it. Next migration: **`0122`**.
+- **What it does:** course materials (in the **Read** view) and assignment instructions can be shown
+  **As written**, at **Grade 8** or at **Grade 5**: rewritten by AI in simpler words, with the key words
+  explained. It works together with translation (simpler words in the reader's language).
+- **Listen** reads the text aloud with the phone's or computer's own voices, so it is free.
+- **Teachers** have **Prepare simpler versions** in the Read view: both levels are made once for the
+  whole class, so students don't wait.
+- **Settings → Appearance → Reading level** sets the level texts open at (saved on that device).
+- **Code:** `src/server/reading-level.ts` (API `POST /api/reading-level`), `src/lib/reading-level.ts`,
+  `src/lib/use-speech.ts`, `components/shared/ReadingLevel.tsx`, `components/dashboard/MaterialReader.tsx`.
+- **Second part (migration `0122`; next migration: `0123`):**
+  - Also **feedback**, **announcements** (only when asked) and **quiz questions** (no key words, so they
+    can't give answers away). Each quiz has a **Reading help** switch (on by default) for the teacher.
+  - **Teachers correct a simpler version** with **Edit** wherever it shows; students then see
+    "checked by your teacher". **Use the AI's version** undoes it.
+  - **Any page:** Settings → Appearance → **Help with selected text**: select text to listen to it or
+    read it in simpler words.
+- **Not done:** quiz answer options stay as written.
+
+## D11 · AI viva and oral-exam coach: done, first part (13 Oct 2026)
+
+- **Migration `0123`** (`oral_checks`, `oral_sessions`). Next migration: **`0124`**.
+- **Students:** AI tutor → **Oral practice**. Choose a viva, debate, language oral or interview, talk
+  with the AI examiner (it asks follow-ups), then get scores for clarity, depth and evidence, with
+  quotes from what they said, what went well and what to try next.
+- **Teachers:** Course board → **Oral checks**. Set a short oral with a rubric; each student does it
+  once; the recording, the transcript and the AI's suggested scores come back; the teacher confirms or
+  changes them, and only then does the student see the score. **Let them try again** if it broke off.
+- **Code:** `src/lib/oral.ts`, `src/server/oral.ts`, `src/server/live-token.ts`, `src/lib/live-voice.ts`,
+  `components/oral/*`, `/student/oral-practice`.
+- **Try on the live site:** the voice part needs the AI key, so it couldn't run here.
+- **Not done:** confirmed scores into the gradebook; recording the examiner's voice too.
+
+
+## Fix: quiz access (13 Oct 2026)
+
+- `GET /api/core/quizzes/:id` now gives the whole quiz (with answers) only to the course's teacher and
+  admins; other people must be enrolled in the course, never see drafts, and never get answers.
+  Before, any signed-in student could read any quiz by its id, and any teacher could see any quiz's
+  answers. `GET /api/core/quizzes` now lists only your own courses' quizzes (admins: all).
+- Tests: `src/server/services/quizzes.service.test.ts`.
+
+## D12 · Honest AI receipts: done (13 Oct 2026)
+
+- **Migration `0124`** (`ai_uses`, `assignments.aiPolicy`, `assignment_submissions.aiReceipt`). Next
+  migration: **`0125`**.
+- **Teachers** choose per assignment: AI *free to use*, *allowed with a receipt*, or *not allowed*.
+- **Students** hand in with their **AI receipt**: the AI help they used in UniVerse since the
+  assignment was set (the tutor, assistant, writing helper…), made by the server from their own
+  record, plus a note in their own words. If AI isn't allowed they say so, or attach and explain.
+- The record is private (Settings → AI features → Your AI activity) and kept 180 days. Reading help
+  (translation, simpler words, listening) isn't recorded.
+- **New AI features:** call `logAiUse(user.id, { kind, detail, courseId })` (`src/server/ai-receipts.ts`)
+  where the help is given, and add the kind to `AI_USE_KINDS` in `src/lib/ai-receipt.ts`.
+
+## D13 · Wellbeing radar: done (13 Oct 2026)
+
+- **Migration `0125`** (`wellbeing_settings`, `wellbeing_checkins`, `wellbeing_alerts`). Next migration:
+  **`0126`**.
+- **Students** (Help & support → Wellbeing) turn it on after reading how it works, check in daily, and
+  get private nudges from simple rules (no AI): late nights, "I'm lost" in class, missed deadlines, a
+  heavy few days, hard days. Teachers never see any of it.
+- **Counsellors:** give a staff member a custom role with **"Receive students' wellbeing requests"**
+  (Admin → Roles). They get Office → Wellbeing requests. Requests arrive only when a student taps
+  "Talk to someone", or, if the student agreed, after a really hard stretch (never their notes).
+  If nobody has the permission, requests go to the school admins.
+- **Code:** `src/lib/wellbeing.ts`, `src/server/wellbeing.ts`, `/student/wellbeing`, `/admin/wellbeing`.
+
+## D14 · Impact League: done (13 Oct 2026)
+
+- **Migration `0126`** (`league_challenges`, `league_people`, `league_teams`, `league_members`,
+  `league_scores`). Next migration: **`0127`**.
+- **Where:** a tab **Impact League** (`/impact-league`) next to Impact rooms, for students (Opportunities),
+  admins (Impact reports) and teachers (NGO mentorship). Public page: `/league/<slug>`.
+- **How it runs:** a teacher or admin starts a draft → adds mentors, judges and sponsors by email →
+  **Open for teams** → students form teams (each gets a private group and a milestones board) and hand in
+  a project → **Start judging** → judges score on the rubric → organizers give the prizes → **Finish and
+  share results** → **Issue credentials** (every finisher gets a signed credential).
+- **Safety and privacy:** a team with a student under 18 stays within one university; other students see
+  first names and universities only; the public page never shows names; teams choose whether to appear,
+  and organizers can hide a team.
+- **Demo day** is the call `lg_<challenge>` (organizers host and turn on webinar mode; anyone signed in
+  can watch from 15 minutes before).
+- **Try on the live site:** issuing credentials with the real signing key (locally a throwaway test key
+  was used), and demo day in a real call.
+- **Code:** `src/lib/impact-league.ts`, `src/server/impact-league.ts`, `src/components/league/`,
+  `src/app/(dashboard)/impact-league/`, `src/app/league/[slug]/`.
+
+## Live errors from Cloudflare Observability (checked 13 Oct 2026)
+
+- **"scheduled-call check failed: at D1DatabaseSessionAlwaysPrimary._sendOrThrow…"** (about once an
+  hour): the 15-minute cron's one cheap query sometimes fails for a moment on D1, and the check then
+  said "nothing due", so a call starting in the next ~10 minutes could lose its reminder. **Fixed:**
+  the check (now `cloudflare/due-check.ts`, 3 tests) tries twice more (1 s, 2 s apart) and, if it
+  still fails, runs the reminders job anyway; the log line now shows D1's own message on one line.
+- **"Worker exceeded CPU time limit"** on `GET /api/core/users/me` (a burst around 16:42–16:57 UTC):
+  the known Workers Free cold start (see "Cloudflare errors" above). That route is already on the
+  light path; it fails when another request on the same fresh instance goes over the limit and
+  Cloudflare stops the instance. The logs showed the app's one retry failing too, so **reads now get
+  a second retry 2–3 s later** (`fetchWithRetry`, 3 tests). The real fix is still **Workers Paid**
+  ($5/month, the owner's decision).

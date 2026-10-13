@@ -53,6 +53,8 @@ export default function AccessibilityPage() {
           'Dyslexia-friendly font (OpenDyslexic).',
           'Underline links, so links don’t rely on colour.',
           'Captions on in calls by default.',
+          'Reading level: course materials, assignment instructions, feedback and quiz questions open in simpler words (Grade 8 or Grade 5), with key words explained; announcements can be shown the same way. They can also be read aloud by your device. Teachers can check and correct the simpler versions.',
+          'Help with selected text: select any text in the app to hear it, or to read it in simpler words.',
         ]} />
       </Section>
 
@@ -63,6 +65,7 @@ export default function AccessibilityPage() {
           'Some older pages and charts don’t yet have full text alternatives.',
           'Files that users upload (documents, images, videos) may not be accessible; we can’t control their content.',
           'Live captions in calls are generated automatically and can contain mistakes.',
+          'Simpler versions of texts are written by AI and can contain mistakes; the original is always one tap away.',
         ]} />
       </Section>
 

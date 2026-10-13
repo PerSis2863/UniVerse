@@ -13,6 +13,7 @@ export const PERMISSIONS = {
   'staff.manage': { area: 'Staff', label: 'Approve leave, plan cover for absent teachers and see who’s in' },
   'library.manage': { area: 'Library', label: 'Run the library: books, copies, lending, returns, holds and fines' },
   'registers.manage': { area: 'Registers', label: 'Keep the equipment, school bus and hostel registers' },
+  'wellbeing.counsel': { area: 'Wellbeing', label: 'Receive students’ wellbeing requests (only ones they chose to send) and follow them up' },
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;

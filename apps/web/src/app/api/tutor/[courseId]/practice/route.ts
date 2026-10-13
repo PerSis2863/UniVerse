@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/server-auth';
 import { spendAi } from '@/server/ai-budget';
+import { logAiUse } from '@/server/ai-receipts';
 import { practiceQuestions, tutorAccess } from '@/server/tutor';
 import { recordStudy } from '@/server/streaks';
 
@@ -14,6 +15,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ courseI
   const spend = await spendAi(user);
   if (!spend.ok) return NextResponse.json({ error: spend.message, code: 'ai-limit' }, { status: 429 });
   const b = await req.json().catch(() => ({}));
+  await logAiUse(user.id, { kind: 'study', detail: `Practice questions${typeof b.topic === 'string' && b.topic.trim() ? `: ${b.topic}` : ''}`, courseId: a.courseId }); // the student's own record (Stage 5 · D12)
   const r = await practiceQuestions(a, typeof b.topic === 'string' ? b.topic : '', Math.min(10, Math.max(3, Number(b.count) || 5)));
   if (r.reason === 'no-sources') return NextResponse.json({ error: 'This course has no materials the tutor can read yet.', code: 'no-sources' }, { status: 409 });
   if (!r.questions) return NextResponse.json({ error: 'Couldn’t make questions right now. Please try again.' }, { status: 503 });

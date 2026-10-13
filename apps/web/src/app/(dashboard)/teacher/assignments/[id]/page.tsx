@@ -13,6 +13,8 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 import { Translatable } from '@/components/shared/Translatable';
+import { AiReceiptView } from '@/components/assignments/AiReceipt';
+import { AI_POLICIES, type AiPolicy, type AiReceipt } from '@/lib/ai-receipt';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Score { id: string; score: number; comment: string }
@@ -32,6 +34,7 @@ interface Submission {
   similarity?: { peer: { name: string; percent: number } | null; material: { title: string; percent: number } | null };
   feedbackMediaUrl: string | null; feedbackMediaKind: string | null; feedbackTranscript: string | null;
   styleSignals: { baseline: number; differs: { label: string; now: number; usual: number }[] } | null;
+  aiReceipt?: AiReceipt | null;
 }
 interface Detail {
   id: string;
@@ -41,6 +44,7 @@ interface Detail {
   maxScore: number;
   dueDate: string | null;
   status: 'OPEN' | 'CLOSED';
+  aiPolicy?: string;
   course: { code: string; name: string };
   enrolled: number;
   submissions: Submission[];
@@ -87,6 +91,11 @@ export default function TeacherAssignmentPage({ params }: { params: Promise<{ id
     return () => window.removeEventListener('keydown', onKey);
   });
 
+  // Whether students may use AI here (Stage 5 · D12).
+  const setPolicy = async (aiPolicy: AiPolicy) => {
+    try { await authedJson(`/api/assignments/${id}`, { method: 'PATCH', body: JSON.stringify({ aiPolicy }) }); toast.success(`AI use: ${AI_POLICIES[aiPolicy].label}`); mutate(); }
+    catch (err) { toast.error((err as Error).message); }
+  };
   const toggleOpen = async () => {
     if (!data) return;
     try {
@@ -150,6 +159,21 @@ export default function TeacherAssignmentPage({ params }: { params: Promise<{ id
             {data && <button type="button" className="btn-secondary" onClick={toggleOpen}>{data.status === 'OPEN' ? <><Lock className="w-4 h-4" /> Close</> : <><Unlock className="w-4 h-4" /> Reopen</>}</button>}
             <button type="button" className="btn-ghost text-rose-500" onClick={remove} aria-label="Delete assignment"><Trash2 className="w-4 h-4" /></button>
           </div>
+
+          {data && (
+            <details className="panel px-4 py-3">
+              <summary className="cursor-pointer text-sm font-semibold text-zinc-900 dark:text-white py-1">Instructions <span className="font-normal text-zinc-500 dark:text-zinc-400">· what students read (also in simpler words: check or edit them here)</span></summary>
+              <div className="mt-2 pb-1 space-y-3">
+                <Translatable kind="assignment" id={data.id} text={data.instructions} levels={{ auto: false }} className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />
+                <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">AI use
+                  <select className="input w-auto py-1.5" value={data.aiPolicy ?? 'FREE'} onChange={(e) => void setPolicy(e.target.value as AiPolicy)}>
+                    {(Object.keys(AI_POLICIES) as AiPolicy[]).map((p) => <option key={p} value={p}>{AI_POLICIES[p].label}</option>)}
+                  </select>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400 basis-full">{AI_POLICIES[(data.aiPolicy ?? 'FREE') as AiPolicy]?.hint} Answers handed in before a change keep what they had.</span>
+                </label>
+              </div>
+            </details>
+          )}
 
           {isLoading || !data ? (
             <div className="h-64 rounded-2xl skeleton" />
@@ -259,6 +283,13 @@ function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Su
         {/* Read it in your language; the grade is always for the original (Stage 5 · D8). */}
         <Translatable kind="submission" id={sub.id} text={sub.text} className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words max-h-96 overflow-y-auto" />
       </div>
+
+      {(sub.aiReceipt || (detail.aiPolicy && detail.aiPolicy !== 'FREE')) && (
+        <div className="panel p-5 space-y-2">
+          <h3 className="font-semibold text-zinc-900 dark:text-white">AI receipt</h3>
+          <AiReceiptView receipt={sub.aiReceipt ?? null} policy={detail.aiPolicy} who={sub.student.name.split(' ')[0]} />
+        </div>
+      )}
 
       {(sub.similarity?.peer || sub.similarity?.material) && (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300" role="note">

@@ -20,6 +20,7 @@ export type SectionTab = { href: string; label: string; also?: string[]; /** Sho
 
 export const SUPPORT_TABS: SectionTab[] = [
   { href: '/student/support', label: 'Help & support' },
+  { href: '/student/wellbeing', label: 'Wellbeing' },
   { href: '/student/beesafe', label: 'BeeSafe reporting' },
 ];
 
@@ -27,6 +28,7 @@ export const OPPORTUNITY_TABS: SectionTab[] = [
   { href: '/student/impact/ngo-marketplace', label: 'NGO projects' },
   { href: '/student/impact/shifts', label: 'Volunteer shifts' },
   { href: '/impact-rooms', label: 'Impact rooms' },
+  { href: '/impact-league', label: 'Impact League' },
   { href: '/student/impact/startups', label: 'Startups' },
   { href: '/student/impact/companies', label: 'Companies' },
 ];
@@ -42,6 +44,7 @@ export const STUDENT_BOARD_TABS: SectionTab[] = [
 export const STUDENT_TUTOR_MODES: SectionTab[] = [
   { href: '/student/tutor', label: 'Type' },
   { href: '/student/voice-tutor', label: 'Talk' },
+  { href: '/student/oral-practice', label: 'Oral practice' },
   { href: '/student/tutoring', label: 'Peer time-bank' },
   { href: '/student/semester', label: 'My semester' },
 ];
@@ -120,6 +123,7 @@ export const SAFETY_TABS: SectionTab[] = [
   { href: '/admin/safety', label: 'BeeSafe reports' },
   { href: '/admin/safety/chats', label: 'Chat safety' },
   { href: '/admin/safety/policy', label: 'Policy' },
+  { href: '/admin/wellbeing', label: 'Wellbeing requests', need: 'wellbeing.counsel' },
 ];
 
 /** Admin → Users: the people, staff (B15.8), admissions (B15.1), roles (B15.6) and bulk import/export (B15.7). */
@@ -176,15 +180,18 @@ export const IMPACT_REPORT_TABS: SectionTab[] = [
   { href: '/admin/impact-reports/shifts', label: 'Volunteer shifts' },
   { href: '/admin/impact-reports/volunteering', label: 'Yearly volunteering' },
   { href: '/impact-rooms', label: 'Impact rooms' },
+  { href: '/impact-league', label: 'Impact League' },
 ];
 
-// NGO work (teacher): mentoring NGO projects, and their impact rooms (Stage 4 · 4.12)
+// NGO work (teacher): mentoring NGO projects, their impact rooms (Stage 4 · 4.12) and the Impact
+// League's challenges between universities (Stage 5 · D14)
 export const TEACHER_IMPACT_TABS: SectionTab[] = [
   { href: '/teacher/collaborations/projects', label: 'NGO mentorship' },
   { href: '/impact-rooms', label: 'Impact rooms' },
+  { href: '/impact-league', label: 'Impact League' },
 ];
 
-/** Impact rooms sit in a different menu for each role. */
+/** Impact rooms and the Impact League sit in a different menu for each role. */
 export const impactTabs = (role: string | undefined) => (role === 'ADMIN' ? IMPACT_REPORT_TABS : role === 'TEACHER' ? TEACHER_IMPACT_TABS : OPPORTUNITY_TABS);
 
 // Campus Monitoring (admin): rooms, clubs, and the campus super-app's events and lost & found (upgrade 7)

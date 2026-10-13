@@ -120,6 +120,8 @@ export async function pruneAi(): Promise<void> {
   const cutoff = new Date(Date.now() - 30 * 86_400_000);
   await prisma.aiCache.deleteMany({ where: { createdAt: { lt: cutoff } } }).catch(() => {});
   await prisma.aiUsage.deleteMany({ where: { day: { lt: cutoff.toISOString().slice(0, 10) } } }).catch(() => {});
+  // People's own record of AI help they used (Stage 5 · D12) is kept 180 days.
+  await prisma.aiUse.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 180 * 86_400_000) } } }).catch(() => {});
 }
 
 /** Thrown by `requireAi` when the person or the site has no AI left today; `message` is for people. */

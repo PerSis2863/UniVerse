@@ -13,10 +13,10 @@ import { isLanguage, translateTexts, type Translation } from './translate';
 // "Translate" on texts that aren't chat messages (Stage 5 · B7.5): announcements, group posts, and
 // comments on tasks, docs and whiteboards; and the classroom (Stage 5 · D8, language-free classroom):
 // assignment instructions, students' answers, teachers' feedback and course materials, a section
-// at a time ("material-part", id "<courseSourceId>.<n>"). Grading always uses the original. Only texts the reader may read are translated; each is
+// at a time ("material-part", id "<courseSourceId>.<n>"), and quiz questions (D9). Grading always uses the original. Only texts the reader may read are translated; each is
 // translated once per language and shared by everyone (an edited text is translated again).
 
-export const KINDS = ['announcement', 'group-post', 'task-comment', 'doc-comment', 'board-comment', 'assignment', 'submission', 'feedback', 'material-part'] as const;
+export const KINDS = ['announcement', 'group-post', 'task-comment', 'doc-comment', 'board-comment', 'assignment', 'submission', 'feedback', 'material-part', 'quiz-question'] as const;
 export type TextKind = (typeof KINDS)[number];
 const MAX_ITEMS = 30;
 const MAX_CHARS = 2000;
@@ -26,8 +26,8 @@ const MAX_PARTS = 12;
 const PER_CALL = 5000;
 
 
-/** The texts of these items that this person may read, by "kind:id". */
-async function readable(user: SessionUser, items: { kind: TextKind; id: string }[]) {
+/** The texts of these items that this person may read, by "kind:id" (also used by reading levels, D9). */
+export async function readable(user: SessionUser, items: { kind: TextKind; id: string }[]) {
   const ids = (k: TextKind) => [...new Set(items.filter((i) => i.kind === k).map((i) => i.id))];
   const out = new Map<string, string>();
   const [ann, posts, tasks, docs, boards] = await Promise.all([
@@ -51,17 +51,23 @@ async function readable(user: SessionUser, items: { kind: TextKind; id: string }
   for (const c of await allowed(boards, (x) => x.boardId, async (id) => !!(await boardAccess(id, user.id)))) out.set(`board-comment:${c.id}`, c.body);
 
   // The classroom (D8). Instructions and materials: anyone in the course. An answer or its feedback:
-  // the student who wrote it, or the course's teacher.
+  // the student who wrote it, or the course's teacher. Quiz questions (D9): the course's teacher, or
+  // its students once the quiz is published, unless the teacher turned reading help off for it.
   const subIds = [...new Set([...ids('submission'), ...ids('feedback')])];
   const sourceIds = [...new Set(ids('material-part').map((r) => r.slice(0, r.lastIndexOf('.'))))];
-  const [assignments, subs, sources] = await Promise.all([
+  const [assignments, subs, sources, questions] = await Promise.all([
     ids('assignment').length ? prisma.assignment.findMany({ where: { id: { in: ids('assignment') } }, select: { id: true, instructions: true, courseId: true } }) : Promise.resolve([]),
     subIds.length ? prisma.assignmentSubmission.findMany({ where: { id: { in: subIds } }, select: { id: true, text: true, feedback: true, studentId: true, assignment: { select: { courseId: true } } } }) : Promise.resolve([]),
     sourceIds.length ? prisma.courseSource.findMany({ where: { id: { in: sourceIds.slice(0, 5) }, status: 'READY' }, select: { id: true, courseId: true, text: true } }) : Promise.resolve([]),
+    ids('quiz-question').length ? prisma.quizQuestion.findMany({ where: { id: { in: ids('quiz-question') } }, select: { id: true, question: true, quiz: { select: { courseId: true, status: true, plainWords: true } } } }) : Promise.resolve([]),
   ]);
   const courses = new Map<string, Awaited<ReturnType<typeof courseAccess>>>();
-  for (const id of [...new Set([...assignments.map((a) => a.courseId), ...subs.map((x) => x.assignment.courseId), ...sources.map((x) => x.courseId)])].slice(0, 5)) courses.set(id, await courseAccess(id, user));
+  for (const id of [...new Set([...assignments.map((a) => a.courseId), ...subs.map((x) => x.assignment.courseId), ...sources.map((x) => x.courseId), ...questions.map((q) => q.quiz.courseId)])].slice(0, 5)) courses.set(id, await courseAccess(id, user));
   for (const a of assignments) if (courses.get(a.courseId)) out.set(`assignment:${a.id}`, a.instructions);
+  for (const q of questions) {
+    const c = courses.get(q.quiz.courseId);
+    if (c && (c.canManage || (q.quiz.status !== 'DRAFT' && q.quiz.plainWords))) out.set(`quiz-question:${q.id}`, q.question);
+  }
   for (const x of subs) {
     if (x.studentId !== user.id && !courses.get(x.assignment.courseId)?.canManage) continue;
     if (ids('submission').includes(x.id)) out.set(`submission:${x.id}`, x.text);

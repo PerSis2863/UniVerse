@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { CalendarClock, ChevronRight, ClipboardList, Loader2, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
+import { AI_POLICIES, type AiPolicy } from '@/lib/ai-receipt';
 import { fetcher } from '@/lib/fetcher';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 
@@ -92,6 +93,7 @@ function NewAssignment({ onClose, onCreated }: { onClose: () => void; onCreated:
   const [instructions, setInstructions] = useState('');
   const [due, setDue] = useState('');
   const [rubric, setRubric] = useState<Criterion[]>(START);
+  const [aiPolicy, setAiPolicy] = useState<AiPolicy>('FREE');
   const [saving, setSaving] = useState(false);
   const total = rubric.reduce((t, r) => t + (Number(r.points) || 0), 0);
 
@@ -107,6 +109,7 @@ function NewAssignment({ onClose, onCreated }: { onClose: () => void; onCreated:
         body: JSON.stringify({
           courseId, title, instructions,
           dueDate: due ? new Date(due).toISOString() : null,
+          aiPolicy,
           rubric: rubric.map((r) => ({ criterion: r.criterion, description: r.description, points: Number(r.points) })),
         }),
       });
@@ -141,6 +144,13 @@ function NewAssignment({ onClose, onCreated }: { onClose: () => void; onCreated:
       </label>
       <label className="block space-y-1 text-sm"><span className="text-zinc-600 dark:text-zinc-400">Instructions for students</span>
         <textarea required rows={4} maxLength={8000} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="What should they write, how long, what to include…" className="input" />
+      </label>
+
+      <label className="block space-y-1 text-sm"><span className="text-zinc-600 dark:text-zinc-400">AI use</span>
+        <select value={aiPolicy} onChange={(e) => setAiPolicy(e.target.value as AiPolicy)} className="input">
+          {(Object.keys(AI_POLICIES) as AiPolicy[]).map((p) => <option key={p} value={p}>{AI_POLICIES[p].label}</option>)}
+        </select>
+        <span className="block text-xs text-zinc-500 dark:text-zinc-400">{AI_POLICIES[aiPolicy].hint}</span>
       </label>
 
       <div className="space-y-2">

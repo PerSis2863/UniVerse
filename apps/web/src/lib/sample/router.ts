@@ -1696,8 +1696,19 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/groups$/, ({ db: d }) => ok(d.groups.map((g) => groupOut(d, g)))],
   [/^\/groups\/my$/, ({ db: d }) => ok(d.groups.filter((g) => g.joined).map((g) => ({ id: `m-${g.id}`, groupId: g.id, userId: d.me.id, role: 'MEMBER', group: groupOut(d, g) })))],
   [/^\/api\/groups\/activity$/, ({ db: d }) => ok(d.groups.filter((g) => g.joined).flatMap((g) => (d.groupPosts[g.id] ?? []).map((p) => ({ ...p, author: { id: p.author.id, name: p.author.name }, group: { id: g.id, name: g.name, category: g.category } }))).sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)))],
+  // Wellbeing radar (Stage 5 · D13): off in the sample.
+  [/^\/api\/wellbeing$/, () => ok({ optedIn: false, counsellorOk: false, today: new Date().toISOString().slice(0, 10), checkins: [], nudges: [], requests: [], requestsGoTo: 'counsellors' })],
+  [/^\/api\/wellbeing\/requests$/, () => ok({ requests: [] })],
+  // Honest AI receipts (Stage 5 · D12): no AI help recorded in the sample.
+  [/^\/api\/assignments\/([^/]+)\/ai-receipt$/, () => ok({ policy: 'FREE', since: new Date().toISOString(), uses: [] })],
+  [/^\/api\/me\/ai-uses$/, () => ok({ keepDays: 180, uses: [] })],
+  // Oral practice and oral checks (Stage 5 · D11): none in the sample (the examiner needs AI).
+  [/^\/api\/orals$/, () => ok({ checks: [], practice: [] })],
+  [/^\/api\/orals\/([^/]+)$/, () => ok({ error: 'Not found.' }, 404)],
+  [/^\/api\/courses\/([^/]+)\/oral-checks$/, () => ok({ checks: [], canManage: false })],
+  [/^\/api\/oral-checks\/([^/]+)$/, () => ok({ error: 'Oral check not found.' }, 404)],
   // Course materials as text (Stage 5 · D8): no files are read in the sample.
-  [/^\/api\/courses\/([^/]+)\/materials\/([^/]+)\/read$/, () => ok({ title: 'Sample material', status: 'NONE', error: null, sourceId: null, sections: [], canPrepare: false })],
+  [/^\/api\/courses\/([^/]+)\/materials\/([^/]+)\/read$/, () => ok({ title: 'Sample material', status: 'NONE', error: null, sourceId: null, sections: [], canPrepare: false, canManage: false })],
   // In-person class (Stage 5 · D7): one sample class in memory for the visit.
   [/^\/api\/classroom$/, ({ db: d }) => ok({ session: classroom(d).on ? { id: 'sample-class' } : null })],
   [/^\/api\/classroom\/current$/, () => ok({ session: null })],
@@ -1884,6 +1895,44 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       { studentId: 's4', name: 'Omar Haddad', status: 'no-parent', answer: null },
     ],
   })],
+  // Impact League (Stage 5 · D14): one open challenge with two teams; the sample student isn't in a team yet.
+  [/^\/api\/impact-league$/, () => ok({ canCreate: false, challenges: [
+    { id: 'sample-lg1', slug: 'clean-water-ideas', title: 'Clean water ideas', sdg: 6, sdgName: 'Clean water and sanitation', summary: 'Find a way to bring safe drinking water to a community near you.', status: 'OPEN', teamMin: 2, teamMax: 5, mixCampuses: false, isPublic: true, signupClosesAt: at(9, 23, 59), demoDayAt: at(24, 17), teams: 2, people: 5, signupOpen: true, demoOpen: false, myTeam: null, myRoles: [] },
+  ] })],
+  [/^\/api\/impact-league\/([^/]+)$/, ({ db: d }) => {
+    const [a, b, c2] = d.classmates;
+    const member = (u: { id: string; name: string }, campus: string, captain = false) => ({ id: u.id, name: u.name.split(' ')[0], avatar: null, campus, captain });
+    const rubric = [
+      { id: 'impact', name: 'Impact', desc: 'How much good it could do for the people affected.', max: 10 },
+      { id: 'evidence', name: 'Evidence', desc: 'They talked to people affected and tested their idea.', max: 10 },
+      { id: 'feasibility', name: 'Feasibility', desc: 'It could really be built and kept running.', max: 10 },
+    ];
+    return ok({
+      challenge: {
+        id: 'sample-lg1', slug: 'clean-water-ideas', title: 'Clean water ideas', sdg: 6, sdgName: 'Clean water and sanitation', summary: 'Find a way to bring safe drinking water to a community near you.',
+        brief: 'Pick a community near one of our universities, talk to the people who live there, and build something small and real: a filter, a map of safe taps, a repair rota.',
+        status: 'OPEN', teamMin: 2, teamMax: 5, mixCampuses: false, isPublic: true, creditHours: 20, signupClosesAt: at(9, 23, 59), demoDayAt: at(24, 17), finishedAt: null, updatedAt: at(-1),
+        milestones: [
+          { id: 'm1', title: 'Meet your team and pick the problem', notes: '', dueAt: at(5) },
+          { id: 'm2', title: 'Talk to people affected', notes: '', dueAt: at(12) },
+          { id: 'm3', title: 'Build a first version', notes: '', dueAt: at(19) },
+          { id: 'm4', title: 'Get your pitch ready for demo day', notes: '', dueAt: at(23) },
+        ],
+        rubric,
+        prizes: [{ id: 'p1', title: 'Best community impact', sponsor: 'BlueWell Foundation', description: 'A summer pilot with the foundation’s field team.', teamId: null, teamName: null }],
+        publicUrl: '/league/clean-water-ideas',
+      },
+      me: { roles: [], organizer: false, judge: false, mentor: false, minor: false, teamId: null, captain: false, submitProblem: null, canJoin: true },
+      people: [{ role: 'ORGANIZER', id: 'sample-t', name: 'Dr. Jane Smith', avatar: null, campus: 'Sample University' }, { role: 'MENTOR', id: 'sample-m', name: 'Ravi Menon', avatar: null, campus: null }],
+      teams: [
+        { id: 'sample-team1', name: 'Drop by Drop', lookingFor: 'Someone who likes building things with sensors.', status: 'FORMING', submittedAt: null, mine: false, mentoring: false, mentor: { id: 'sample-m', name: 'Ravi Menon' }, seats: 3, campuses: 2, members: [member(a, 'Sample University', true), member(b, 'Riverside College')], progress: { done: 1, total: 4 }, project: null },
+        { id: 'sample-team2', name: 'Tap Map', lookingFor: '', status: 'SUBMITTED', submittedAt: at(-1), mine: false, mentoring: false, mentor: null, seats: 2, campuses: 1, members: [member(c2, 'Sample University', true), member(d.classmates[3], 'Sample University'), member(d.classmates[4], 'Sample University')], progress: { done: 4, total: 4 }, project: { title: 'A map of every safe tap in Riverside', pitch: 'We walked every street near campus and tested the water at 60 taps. Our map shows which are safe and who to call when one breaks.', link: '' } },
+      ],
+      demo: { at: at(24, 17), open: false, callId: 'lg_sample-lg1' },
+      ranking: [],
+      feedback: null,
+    });
+  }],
   // Impact rooms (Stage 4 · 4.12): one room, followed, with a planned impact call.
   [/^\/api\/impact-rooms$/, () => ok({ staff: false, rooms: [
     { id: 'sample-p1', name: 'Green City Drive', description: 'Planting trees and caring for them through their first summer.', location: 'Riverside Park', sdgNumber: 13, isPublic: true, ngo: { name: 'Earth Collective', logoUrl: null, isVerified: true }, followers: 18, following: 'VOLUNTEER', hours: 180, volunteers: 31, shifts: 9, nextCall: { startsAt: at(6, 17), title: 'Monthly impact call', open: false }, lastActivity: at(-1) },
@@ -1922,6 +1971,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
+  // Reading levels (Stage 5 · D9): no AI in the sample, so no simpler versions (the original stays).
+  ['POST', /^\/api\/reading-level$/, () => ok({ levels: {}, editable: [] })],
+  ['POST', /^\/api\/reading-level\/text$/, () => ok({ error: 'Simpler versions aren’t available in the sample.' }, 503)],
   ["PATCH", /^\/api\/admin\/settings$/, ({ body }) => ok({ ok: true, organization: body })],
   ["PATCH", /^\/api\/admin\/sso$/, ({ body }) => ok({ ok: true, ...body })],
   ['PUT', /^\/api\/courses\/([^/]+)\/skills$/, ({ body }) => { notice(); return ok({ skills: Array.isArray(body?.skills) ? body.skills.slice(0, 6) : [] }); }],

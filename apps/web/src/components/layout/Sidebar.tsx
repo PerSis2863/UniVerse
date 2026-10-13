@@ -40,6 +40,8 @@ function withOffice(nav: NavItem[], user: { role?: string; permissions?: string[
     userCan(user, 'library.manage') && { href: '/admin/library', label: 'Library desk' },
     userCan(user, 'registers.manage') && { href: '/admin/registers', label: 'Registers' },
     userCan(user, 'admissions.review') && { href: '/admin/admissions', label: 'Admissions' },
+    // Counsellors (Stage 5 · D13) are staff given this permission; admins reach it from Safety.
+    user.role !== 'ADMIN' && userCan(user, 'wellbeing.counsel') && { href: '/admin/wellbeing', label: 'Wellbeing requests' },
     (userCan(user, 'import.run') || userCan(user, 'export.run')) && { href: '/admin/import', label: 'Import & export' },
   ].filter((x): x is { href: string; label: string } => !!x);
   if (!subItems.length) return nav;
@@ -75,15 +77,18 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/student/life/events', label: 'Campus events', keywords: 'rsvp check in qr ticket event' },
     { href: '/student/life/lost-found', label: 'Lost & found', keywords: 'lost found missing item' },
     { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor donate time pledge impact call project updates' },
+    { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition team hackathon universities demo day prize' },
   ],
   TEACHER: [
     { href: '/teacher/tutor', label: 'AI tutor', keywords: 'ai course sources flashcards' },
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
     { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor impact call report project updates' },
+    { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize' },
   ],
   ADMIN: [
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
     { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor impact call report project updates' },
+    { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize credentials' },
   ],
 };
 
@@ -119,7 +124,7 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'nav.global_impact', icon: Globe2,
       subItems: [
         { href: '/student/impact/ai-match', label: 'AI project match' },
-        { href: '/student/impact/ngo-marketplace', label: 'Opportunities', also: ['/student/impact/startups', '/student/impact/companies', '/student/impact/shifts', '/impact-rooms'] },
+        { href: '/student/impact/ngo-marketplace', label: 'Opportunities', also: ['/student/impact/startups', '/student/impact/companies', '/student/impact/shifts', '/impact-rooms', '/impact-league'] },
         { href: '/student/impact/edu-society', label: 'nav.edu_society' },
         { href: '/student/credentials', label: 'Credentials & passport', also: ['/student/passport'] },
         { href: '/student/impact/leaderboard', label: 'Leaderboard' },
@@ -136,7 +141,7 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'nav.global_collab', icon: Globe2,
       subItems: [
         { href: '/teacher/collaborations', label: 'nav.inter_uni_research', also: ['/teacher/network'] },
-        { href: '/teacher/collaborations/projects', label: 'nav.ngo_mentorship', also: ['/impact-rooms'] },
+        { href: '/teacher/collaborations/projects', label: 'nav.ngo_mentorship', also: ['/impact-rooms', '/impact-league'] },
         { href: '/teacher/mentorship', label: 'nav.volunteer_mentor' },
       ]
     },
@@ -173,7 +178,7 @@ export const navByRole: Record<string, NavItem[]> = {
       subItems: [
         { href: '/admin/partnerships', label: 'nav.partner_institutions', also: ['/admin/network'] },
         { href: '/admin/partners', label: 'nav.sponsor_portal' },
-        { href: '/admin/impact-reports', label: 'Impact reports', also: ['/admin/impact-reports/shifts', '/admin/impact-reports/volunteering', '/impact-rooms'] },
+        { href: '/admin/impact-reports', label: 'Impact reports', also: ['/admin/impact-reports/shifts', '/admin/impact-reports/volunteering', '/impact-rooms', '/impact-league'] },
         { href: '/admin/certifications', label: 'Certifications' },
         { href: '/admin/credentials', label: 'Credential Verification' },
       ]
