@@ -213,12 +213,7 @@ export default function GroupsPage() {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i, 6) * 0.03 }}
-                  onClick={() => setSelectedGroup(group)}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Open ${group.name}`}
-                  onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setSelectedGroup(group); } }}
-                  className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/5 transition-all cursor-pointer group"
+                  className="relative bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/5 focus-within:border-indigo-500/60 active:scale-[0.985] transition-all cursor-pointer group"
                 >
                   {/* Header */}
                   <div className="flex items-start justify-between mb-4">
@@ -227,7 +222,12 @@ export default function GroupsPage() {
                         {group.initials}
                       </div>
                       <div>
-                        <h3 className="font-bold text-zinc-900 dark:text-white text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{group.name}</h3>
+                        {/* The group's name opens it; its click area covers the whole card (after:inset-0),
+                            so the card has one control and the Options button sits above it. The press
+                            shrink is on the card: shrinking the button would pull its area back mid-tap. */}
+                        <h3 className="font-bold text-zinc-900 dark:text-white text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          <button type="button" onClick={() => setSelectedGroup(group)} className="text-left active:scale-none after:absolute after:inset-0 after:rounded-2xl after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-indigo-500/60">{group.name}</button>
+                        </h3>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${typeColors[group.type]}`}>{group.type}</span>
                       </div>
                     </div>
@@ -237,7 +237,7 @@ export default function GroupsPage() {
                           {group.unread}
                         </span>
                       )}
-                      <div className="relative">
+                      <div className="relative z-10">
                         <button className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100" aria-label={`Options for ${group.name}`} onClick={e => { e.stopPropagation(); setActiveMenuId(activeMenuId === group.id ? null : group.id); }}>
                           <MoreHorizontal className="w-4 h-4" />
                         </button>
@@ -256,7 +256,7 @@ export default function GroupsPage() {
                               } catch {
                                 toast.error('Could not leave the group. Please try again.');
                               }
-                            }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                            }} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
                                <Trash2 className="w-4 h-4" /> Leave group
                             </button>
                             )}
@@ -365,7 +365,7 @@ export default function GroupsPage() {
                         } catch {
                           toast.error('Could not leave the group. Please try again.');
                         }
-                      }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                      }} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
                          <Trash2 className="w-4 h-4" /> Leave group
                       </button>
                     </div>

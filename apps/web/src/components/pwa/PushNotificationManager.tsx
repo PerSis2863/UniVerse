@@ -124,11 +124,12 @@ export function PushNotificationManager() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">now</span>
+                {/* A 24 px square to tap (the WCAG minimum) around the same 20 px circle, so the row doesn't move. */}
                 <button aria-label="Dismiss"
                   onClick={handleDismiss}
-                  className="w-5 h-5 flex items-center justify-center rounded-full bg-zinc-200/50 dark:bg-zinc-700/50 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                  className="-m-0.5 w-6 h-6 flex items-center justify-center rounded-md text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
                 >
-                  <X className="w-3 h-3" />
+                  <span className="w-5 h-5 flex items-center justify-center rounded-full bg-zinc-200/50 dark:bg-zinc-700/50"><X className="w-3 h-3" /></span>
                 </button>
               </div>
             </div>
