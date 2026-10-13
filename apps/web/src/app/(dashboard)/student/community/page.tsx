@@ -107,7 +107,7 @@ export default function StudentCommunity() {
                   </div>
 
                   {/* Content */}
-                  <TranslatableAnnouncement id={post.id} title={post.title} body={post.body ?? post.content ?? ''} titleClassName="text-lg font-medium text-zinc-900 dark:text-white mb-2" bodyClassName="text-zinc-600 dark:text-zinc-300 text-sm leading-relaxed whitespace-pre-line" controlClassName="mb-4" />
+                  <TranslatableAnnouncement levels id={post.id} title={post.title} body={post.body ?? post.content ?? ''} titleClassName="text-lg font-medium text-zinc-900 dark:text-white mb-2" bodyClassName="text-zinc-600 dark:text-zinc-300 text-sm leading-relaxed whitespace-pre-line" controlClassName="mb-4" />
 
                   {/* Actions */}
                   <div className="flex items-center gap-6 pt-4 border-t border-zinc-200 dark:border-zinc-800/50">

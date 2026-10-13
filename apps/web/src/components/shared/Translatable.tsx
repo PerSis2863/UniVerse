@@ -7,14 +7,14 @@ import { authedJson } from '@/lib/authed-fetch';
 import { isLanguage, languageName } from '@/lib/languages';
 import { useLanguageStore } from '@/store/language';
 import { cn } from '@/lib/utils';
-import { GlossedText, ReadingLevelControl, useReadingLevel } from './ReadingLevel';
+import { GlossedText, ReadingLevelControl, isLevelKind, useReadingLevel, type LevelOptions } from './ReadingLevel';
 
 // "Translate" on texts that aren't chat messages (Stage 5 · B7.5; src/server/text-translate.ts):
 // announcements, group posts, and comments on tasks, docs and whiteboards; assignment instructions,
 // answers and feedback, and course materials (D8). Into the app's language;
 // translated once per text and language for everyone, and kept on this page once fetched.
 
-export type TextKind = 'announcement' | 'group-post' | 'task-comment' | 'doc-comment' | 'board-comment' | 'assignment' | 'submission' | 'feedback' | 'material-part';
+export type TextKind = 'announcement' | 'group-post' | 'task-comment' | 'doc-comment' | 'board-comment' | 'assignment' | 'submission' | 'feedback' | 'material-part' | 'quiz-question';
 interface Result { text: string; from: string; same: boolean }
 const cache = new Map<string, Result>();
 /** Whether a text has words to translate (not only emoji, numbers, links or punctuation), as the server decides. */
@@ -60,39 +60,47 @@ export function TranslateControl({ t, className }: { t: ReturnType<typeof useTex
 
 /**
  * A text (or its translation) with the control under it. `render` draws the text when it needs more
- * than a paragraph. `levels`: assignment instructions can also be read at a simpler level and aloud (D9).
+ * than a paragraph. `levels`: it can also be read at a simpler level and aloud (D9: assignment
+ * instructions, feedback, quiz questions); `speakExtra` is read aloud after it (a question's answers).
  */
-export function Translatable({ kind, id, text, className, controlClassName, render, hide, levels }: {
-  kind: TextKind; id: string; text: string; className?: string; controlClassName?: string; render?: (text: string) => React.ReactNode; hide?: boolean; levels?: boolean;
+export function Translatable({ kind, id, text, className, controlClassName, render, hide, levels, speakExtra }: {
+  kind: TextKind; id: string; text: string; className?: string; controlClassName?: string; render?: (text: string, lang?: string) => React.ReactNode; hide?: boolean;
+  levels?: boolean | LevelOptions; speakExtra?: string;
 }) {
   const t = useTextTranslation(kind, id);
-  const lv = useReadingLevel(levels && (kind === 'assignment' || kind === 'material-part') ? kind : null, id, t.showing ? t.to : '');
-  const shown = lv.leveled?.text ?? t.showing ?? text;
   const lang = t.showing ? t.to : undefined;
+  const lv = useReadingLevel(levels && isLevelKind(kind) ? kind : null, id, lang ?? '', typeof levels === 'object' ? levels : {});
+  const shown = lv.leveled?.text ?? t.showing ?? text;
   const words = !hide && hasWords(text);
   return (
     <>
-      {render ? render(shown) : lv.leveled ? <GlossedText text={lv.leveled.text} terms={lv.leveled.terms} lang={lang} className={className} /> : <p className={className} lang={lang}>{shown}</p>}
+      {render ? render(shown, lang) : lv.leveled ? <GlossedText text={lv.leveled.text} terms={lv.leveled.terms} lang={lang} className={className} /> : <p className={className} lang={lang}>{shown}</p>}
       {words && <TranslateControl t={t} className={controlClassName} />}
-      {words && levels && <ReadingLevelControl r={lv} speakText={shown} lang={lang} className={controlClassName} />}
+      {words && levels && <ReadingLevelControl r={lv} speakText={speakExtra ? `${shown}\n\n${speakExtra}` : shown} lang={lang} className={controlClassName} />}
     </>
   );
 }
 
-/** An announcement's title and body, translated together. */
-export function TranslatableAnnouncement({ id, title, body, titleAs: Title = 'h3', titleClassName, bodyClassName, controlClassName, aside }: {
+/** An announcement's title and body, translated together; with `levels`, its body can be read in simpler words and aloud (D9). */
+export function TranslatableAnnouncement({ id, title, body, titleAs: Title = 'h3', titleClassName, bodyClassName, controlClassName, aside, levels }: {
   id: string; title: string; body: string; titleAs?: 'h2' | 'h3' | 'h4'; titleClassName?: string; bodyClassName?: string; controlClassName?: string;
   /** Next to the title (e.g. the date and a delete button). */ aside?: React.ReactNode;
+  levels?: boolean;
 }) {
   const t = useTextTranslation('announcement', id);
   // The server translates "title\n\nbody" as one text.
   const at = t.showing ? t.showing.indexOf('\n\n') : -1;
   const [ttl, bdy] = t.showing ? (at >= 0 ? [t.showing.slice(0, at), t.showing.slice(at + 2)] : [title, t.showing]) : [title, body];
+  const lang = t.showing ? t.to : undefined;
+  // Only when asked: a page of announcements isn't rewritten by itself.
+  const lv = useReadingLevel(levels ? 'announcement' : null, id, lang ?? '', { auto: false });
+  const words = hasWords(`${title} ${body}`);
   return (
     <>
-      {aside ? <div className="flex items-start justify-between gap-3"><Title className={titleClassName} lang={t.showing ? t.to : undefined}>{ttl}</Title>{aside}</div> : <Title className={titleClassName} lang={t.showing ? t.to : undefined}>{ttl}</Title>}
-      <p className={bodyClassName} lang={t.showing ? t.to : undefined}>{bdy}</p>
-      {hasWords(`${title} ${body}`) && <TranslateControl t={t} className={controlClassName} />}
+      {aside ? <div className="flex items-start justify-between gap-3"><Title className={titleClassName} lang={lang}>{ttl}</Title>{aside}</div> : <Title className={titleClassName} lang={lang}>{ttl}</Title>}
+      {lv.leveled ? <GlossedText text={lv.leveled.text} terms={lv.leveled.terms} lang={lang} className={bodyClassName} /> : <p className={bodyClassName} lang={lang}>{bdy}</p>}
+      {words && <TranslateControl t={t} className={controlClassName} />}
+      {words && levels && <ReadingLevelControl r={lv} speakText={`${ttl}. ${lv.leveled?.text ?? bdy}`} lang={lang} className={controlClassName} />}
     </>
   );
 }

@@ -48,6 +48,10 @@ export const setCaptionsByDefault = (on: boolean) => set('uv-captions', on ? '1'
 export type ReadingLevelPref = 'original' | 'g8' | 'g5';
 export const readingLevel = (): ReadingLevelPref => { const v = get('uv-reading-level'); return v === 'g8' || v === 'g5' ? v : 'original'; };
 export const setReadingLevel = (v: ReadingLevelPref) => set('uv-reading-level', v === 'original' ? null : v);
+/** Help with selected text: select any text in the app to hear it or read it in simpler words. */
+export const SELECT_HELP_EVENT = 'uv-select-help';
+export const selectHelp = () => get('uv-select-help') === '1';
+export function setSelectHelp(on: boolean) { set('uv-select-help', on ? '1' : null); window.dispatchEvent(new Event(SELECT_HELP_EVENT)); }
 export const SPEECH_RATES = [0.8, 1, 1.25] as const;
 export const speechRate = (): number => { const v = Number(get('uv-speech-rate')); return (SPEECH_RATES as readonly number[]).includes(v) ? v : 1; };
 export const setSpeechRate = (v: number) => set('uv-speech-rate', v === 1 ? null : String(v));

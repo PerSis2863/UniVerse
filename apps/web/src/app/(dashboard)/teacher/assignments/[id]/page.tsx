@@ -151,6 +151,15 @@ export default function TeacherAssignmentPage({ params }: { params: Promise<{ id
             <button type="button" className="btn-ghost text-rose-500" onClick={remove} aria-label="Delete assignment"><Trash2 className="w-4 h-4" /></button>
           </div>
 
+          {data && (
+            <details className="panel px-4 py-3">
+              <summary className="cursor-pointer text-sm font-semibold text-zinc-900 dark:text-white py-1">Instructions <span className="font-normal text-zinc-500 dark:text-zinc-400">· what students read (also in simpler words: check or edit them here)</span></summary>
+              <div className="mt-2 pb-1">
+                <Translatable kind="assignment" id={data.id} text={data.instructions} levels={{ auto: false }} className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />
+              </div>
+            </details>
+          )}
+
           {isLoading || !data ? (
             <div className="h-64 rounded-2xl skeleton" />
           ) : subs.length === 0 ? (

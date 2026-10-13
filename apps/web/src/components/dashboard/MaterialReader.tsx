@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BookOpen, Languages, Loader2, Square, Volume2, Wand2, X } from 'lucide-react';
-import { GlossedText, LEVEL_CHOICES, choiceLabel, fetchLevels, type LevelChoice } from '@/components/shared/ReadingLevel';
+import { BookOpen, Languages, Loader2, Pencil, Square, Volume2, Wand2, X } from 'lucide-react';
+import { GlossedText, LEVEL_CHOICES, LevelEditor, LevelSource, choiceLabel, fetchLevels, type LevelChoice } from '@/components/shared/ReadingLevel';
 import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
 import { SPEECH_RATES, readingLevel, setSpeechRate, speechRate } from '@/lib/display-prefs';
@@ -40,6 +40,8 @@ export function MaterialReader({ courseId, materialId, title, onClose }: { cours
   const [working, setWorking] = useState<null | ({ what: 'translate' | 'level' } & Progress)>(null);
   const [prep, setPrep] = useState<Progress | null>(null);
   const [preparing, setPreparing] = useState(false);
+  /** The section whose simpler version the teacher is correcting. */
+  const [editing, setEditing] = useState<number | null>(null);
   const [rate, setRate] = useState(speechRate);
   const speech = useSpeech();
   /** Each new choice starts a new run; older loops stop (and all of them when the reader closes). */
@@ -60,7 +62,7 @@ export function MaterialReader({ courseId, materialId, title, onClose }: { cours
       const part = todo.slice(i, i + BATCH).filter((n) => !mine.has(n));
       for (const n of part) mine.add(n);
       let r: Record<string, Leveled>;
-      try { r = part.length ? await fetchLevels(part.map((n) => ({ kind: 'material-part' as const, id: `${d.sourceId}.${n}` })), l, lang) : {}; }
+      try { r = part.length ? (await fetchLevels(part.map((n) => ({ kind: 'material-part' as const, id: `${d.sourceId}.${n}` })), l, lang)).levels : {}; }
       catch (e) { for (const n of part) mine.delete(n); throw e; }
       const got: Record<number, Leveled> = {};
       for (const n of part) { const x = r[`material-part:${d.sourceId}.${n}`]; if (x) got[n] = x; else mine.delete(n); }
@@ -134,6 +136,17 @@ export function MaterialReader({ courseId, materialId, title, onClose }: { cours
     finally { setPrep(null); }
   };
 
+  // The teacher saved their version of a section (or went back to the AI's: it's made again).
+  const afterEdit = (i: number, v: Leveled | null) => {
+    setEditing(null);
+    if (!data || level === 'original') return;
+    const k = `${level}|${lang}`;
+    if (v) { setLeveled((x) => ({ ...x, [k]: { ...x[k], [i]: v } })); return; }
+    have.current[k]?.delete(i);
+    setLeveled((x) => { const rest = { ...x[k] }; delete rest[i]; return { ...x, [k]: rest }; });
+    void showLevel(data, level, lang);
+  };
+
   const prepare = async () => {
     setPreparing(true);
     try { await mutate(await authedJson<Read>(key, { method: 'POST' }), { revalidate: false }); }
@@ -148,10 +161,10 @@ export function MaterialReader({ courseId, materialId, title, onClose }: { cours
   /** The text shown for section i, and its language when known. */
   const shown = (i: number, text: string) => {
     const L = lv?.[i];
-    if (L) return { text: L.text, terms: L.terms, lang: lang || undefined };
+    if (L) return { text: L.text, terms: L.terms, lang: lang || undefined, leveled: L };
     const t = translated[i];
-    if (mode === 'translated' && level === 'original' && t && !t.same) return { text: t.text, terms: null, lang: to };
-    return { text, terms: null, lang: undefined };
+    if (mode === 'translated' && level === 'original' && t && !t.same) return { text: t.text, terms: null, lang: to, leveled: null };
+    return { text, terms: null, lang: undefined, leveled: null };
   };
 
   // Keeps the part being read aloud in view.
@@ -242,7 +255,15 @@ export function MaterialReader({ courseId, materialId, title, onClose }: { cours
                   const cls = cn('text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-line transition-opacity', waiting && 'opacity-50');
                   return (
                     <div key={i} id={`reader-part-${i}`} className={cn('rounded-xl -mx-2 px-2 py-1 transition-colors', speech.at === i && 'bg-amber-500/10 ring-1 ring-amber-500/40')}>
-                      {s.terms ? <GlossedText text={s.text} terms={s.terms} lang={s.lang} className={cls} /> : <p lang={s.lang} className={cls}>{s.text}</p>}
+                      {editing === i && s.leveled && level !== 'original' && data.sourceId ? (
+                        <LevelEditor kind="material-part" id={`${data.sourceId}.${i}`} level={level} lang={lang} value={s.leveled} onCancel={() => setEditing(null)} onDone={(v) => afterEdit(i, v)} />
+                      ) : s.terms ? <GlossedText text={s.text} terms={s.terms} lang={s.lang} className={cls} /> : <p lang={s.lang} className={cls}>{s.text}</p>}
+                      {s.leveled && editing !== i && (s.leveled.edited || data.canManage) && (
+                        <p className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+                          <LevelSource leveled={s.leveled} level={level} />
+                          {data.canManage && <button type="button" onClick={() => setEditing(i)} className="btn-ghost btn-sm min-h-6 py-0.5"><Pencil className="w-3 h-3" /> Edit<span className="sr-only"> part {i + 1}</span></button>}
+                        </p>
+                      )}
                     </div>
                   );
                 })}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanTerms, glossSegments, isLevel, parseTerms, speechChunks } from './reading-level';
+import { cleanTerms, glossSegments, isLevel, linesToTerms, parseTerms, speechChunks, termsToLines } from './reading-level';
 
 describe('reading levels', () => {
   it('knows its levels', () => {
@@ -44,5 +44,14 @@ describe('reading levels', () => {
     expect(speechChunks('   ')).toEqual([]);
     const noStops = Array.from({ length: 60 }, (_, i) => `word${i}`).join(' ');
     expect(speechChunks(noStops, 50).join(' ')).toBe(noStops);
+  });
+});
+
+describe('editing key terms as lines', () => {
+  it('turns lines into terms and back, skipping lines without a meaning', () => {
+    const terms = linesToTerms('loop: steps done again\n  variable – a named box \nno meaning here\n: empty term\nquantum:   a short time slot  ');
+    expect(terms).toEqual([{ term: 'loop', meaning: 'steps done again' }, { term: 'variable', meaning: 'a named box' }, { term: 'quantum', meaning: 'a short time slot' }]);
+    expect(linesToTerms(termsToLines(terms))).toEqual(terms);
+    expect(linesToTerms('')).toEqual([]);
   });
 });

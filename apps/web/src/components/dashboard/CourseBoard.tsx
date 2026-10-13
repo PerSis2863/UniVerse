@@ -396,7 +396,7 @@ function Announcements({ board, canManage, refresh }: SectionProps) {
         <div className="space-y-3">
           {board.announcements.map((a) => (
             <div key={a.id} className={`panel p-5`}>
-              <TranslatableAnnouncement id={a.id} title={a.title} body={a.body} titleAs="h4" titleClassName="font-bold text-zinc-900 dark:text-white" bodyClassName="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mt-2 whitespace-pre-line"
+              <TranslatableAnnouncement levels id={a.id} title={a.title} body={a.body} titleAs="h4" titleClassName="font-bold text-zinc-900 dark:text-white" bodyClassName="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mt-2 whitespace-pre-line"
                 aside={<div className="flex items-center gap-1 shrink-0"><span className="text-xs text-zinc-400">{when(a.createdAt)}</span>{canManage && <RemoveBtn onClick={() => remove('announcement', a.id, a.title)} />}</div>} />
               <p className="text-xs text-zinc-400 mt-3">Posted by <span className="text-indigo-500 font-medium">{a.author.name}</span></p>
             </div>

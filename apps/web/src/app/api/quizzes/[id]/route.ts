@@ -6,7 +6,8 @@ import { analyseQuiz } from '@/lib/item-analysis';
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// GET: quiz with questions (incl. answers) for its teacher. PATCH: status / due date / time limit.
+// GET: quiz with questions (incl. answers) for its teacher. PATCH: status / due date / time limit /
+// shuffle / exam mode / reading help.
 export async function GET(req: Request, { params }: Ctx) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
@@ -37,9 +38,11 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!quiz) return NextResponse.json({ error: 'Quiz not found.' }, { status: 404 });
 
   const b = await req.json().catch(() => ({}));
-  const data: { status?: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate?: Date | null; timeLimit?: number | null; shuffle?: boolean; examMode?: boolean } = {};
+  const data: { status?: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate?: Date | null; timeLimit?: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean } = {};
   if (typeof b.shuffle === 'boolean') data.shuffle = b.shuffle;
   if (typeof b.examMode === 'boolean') data.examMode = b.examMode;
+  // Reading help (Stage 5 · D9): simpler words, translation and listening for the questions.
+  if (typeof b.plainWords === 'boolean') data.plainWords = b.plainWords;
   if (['DRAFT', 'PUBLISHED', 'CLOSED'].includes(b.status)) {
     if (b.status === 'PUBLISHED' && (await prisma.quizQuestion.count({ where: { quizId: id } })) === 0) {
       return NextResponse.json({ error: 'Add at least one question before publishing.' }, { status: 400 });

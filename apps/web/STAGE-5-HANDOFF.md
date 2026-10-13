@@ -352,7 +352,7 @@ Progress table (row D6).
   read it yet.
 - **Long texts** are translated in sections and joined back together, so nothing is cut off.
 
-## D9 · Reading-level adapter: done, first part (13 Oct 2026)
+## D9 · Reading-level adapter: done (13 Oct 2026)
 
 - **Migration `0121`** (`leveled_texts`). The deploy applies it. Next migration: **`0122`**.
 - **What it does:** course materials (in the **Read** view) and assignment instructions can be shown
@@ -364,4 +364,11 @@ Progress table (row D6).
 - **Settings → Appearance → Reading level** sets the level texts open at (saved on that device).
 - **Code:** `src/server/reading-level.ts` (API `POST /api/reading-level`), `src/lib/reading-level.ts`,
   `src/lib/use-speech.ts`, `components/shared/ReadingLevel.tsx`, `components/dashboard/MaterialReader.tsx`.
-- **Not done:** levels for announcements, quizzes and other pages; a teacher editing a rewrite.
+- **Second part (migration `0122`; next migration: `0123`):**
+  - Also **feedback**, **announcements** (only when asked) and **quiz questions** (no key words, so they
+    can't give answers away). Each quiz has a **Reading help** switch (on by default) for the teacher.
+  - **Teachers correct a simpler version** with **Edit** wherever it shows; students then see
+    "checked by your teacher". **Use the AI's version** undoes it.
+  - **Any page:** Settings → Appearance → **Help with selected text**: select text to listen to it or
+    read it in simpler words.
+- **Not done:** quiz answer options stay as written.

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Accessibility, Bell, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, Loader2, LogOut, Moon, Palette, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, X, Bold, Contrast, Type, Underline, Captions, type LucideIcon } from 'lucide-react';
+import { Accessibility, Bell, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, Loader2, LogOut, Moon, Palette, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, X, Bold, Contrast, Type, Underline, Captions, type LucideIcon, TextSelect } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { Switch } from '@/components/ui/Switch';
@@ -19,7 +19,7 @@ import { LANGUAGES, type Language } from '@/lib/i18n';
 import { useLanguageStore } from '@/store/language';
 import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
-import { appReduceMotion, captionsByDefault, hapticsOn, readingAid, readingLevel, setAppReduceMotion, setCaptionsByDefault, setHaptics, setReadingAid, setReadingLevel, setTextSize, textSize, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
+import { appReduceMotion, captionsByDefault, hapticsOn, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCaptionsByDefault, setHaptics, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, textSize, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
@@ -322,6 +322,7 @@ function Appearance() {
   const [aids, setAids] = useState<Record<ReadingAid, boolean>>(() => ({ bold: readingAid('bold'), contrast: readingAid('contrast'), dyslexic: readingAid('dyslexic'), underline: readingAid('underline') }));
   const [cc, setCc] = useState(captionsByDefault);
   const [level, setLevel] = useState<ReadingLevelPref>(() => (typeof window === 'undefined' ? 'original' : readingLevel()));
+  const [selHelp, setSelHelp] = useState(() => typeof window !== 'undefined' && selectHelp());
   const pickTheme = (v: Theme, e: React.MouseEvent) => { setTheme(v); applyTheme(v, { from: { x: e.clientX, y: e.clientY } }); };
   return (
     <Card title="Appearance" subtitle="How UniVerse looks and feels on this device">
@@ -333,8 +334,11 @@ function Appearance() {
       </div>
       <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reading level</p>
         <Choice id="level" value={level} onPick={(v) => { setLevel(v); setReadingLevel(v); }} options={[['original', 'As written'], ['g8', 'Grade 8'], ['g5', 'Grade 5']]} />
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">Course materials and assignment instructions open rewritten by AI in simpler words, with key words explained. The original is one tap away.</p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">Course materials, assignment instructions, feedback and quiz questions open rewritten by AI in simpler words, with key words explained. The original is one tap away.</p>
       </div>
+      <Row icon={TextSelect} title="Help with selected text" desc="Select any text in UniVerse to listen to it, or to read it in simpler words.">
+        <Switch checked={selHelp} label="Help with selected text" onChange={(on) => { setSelHelp(on); setSelectHelp(on); }} />
+      </Row>
       <Row icon={Accessibility} title="Reduce motion" desc="Pages and buttons change without moving or sliding (your device’s own setting is followed too).">
         <Switch checked={reduce} label="Reduce motion" onChange={(on) => { setReduce(on); setAppReduceMotion(on); }} />
       </Row>

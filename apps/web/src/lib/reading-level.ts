@@ -11,7 +11,8 @@ export type Level = keyof typeof LEVELS;
 export const isLevel = (x: unknown): x is Level => typeof x === 'string' && Object.hasOwn(LEVELS, x);
 
 export interface Term { term: string; meaning: string }
-export interface Leveled { text: string; terms: Term[] }
+/** A rewrite; `edited`: a teacher corrected it (D9 second part). */
+export interface Leveled { text: string; terms: Term[]; edited?: boolean }
 
 const MAX_TERMS = 8;
 
@@ -92,4 +93,15 @@ export function speechChunks(text: string, max = 220): string[] {
   }
   push();
   return out.filter(Boolean);
+}
+
+/** Key terms as lines a teacher can edit ("term: meaning", one per line), and back. */
+export const termsToLines = (terms: Term[]) => terms.map((t) => `${t.term}: ${t.meaning}`).join('\n');
+export function linesToTerms(lines: string): Term[] {
+  return lines.split('\n').flatMap((line) => {
+    const at = line.search(/[:：–—-]\s/);
+    if (at <= 0) return [];
+    const term = line.slice(0, at).trim(), meaning = line.slice(at + 1).replace(/^[\s:：–—-]+/, '').trim();
+    return term && meaning ? [{ term, meaning }] : [];
+  });
 }

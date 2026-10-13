@@ -588,6 +588,8 @@ model Quiz {
   shuffle     Boolean    @default(false)
   /// Exam mode (B4.4): server-timed from the start, integrity notes for the teacher
   examMode    Boolean    @default(false)
+  /// Reading help (D9): students may see questions in simpler words or their language, and listen
+  plainWords  Boolean    @default(true)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -3779,6 +3781,9 @@ model LeveledText {
   text      String
   terms     String   @default("[]")
   srcHash   String
+  /// A teacher corrected this version (D9 second part); null: as the AI wrote it.
+  editedById String?
+  editedAt   DateTime?
   createdAt DateTime @default(now())
 
   @@unique([kind, refId, level, lang])

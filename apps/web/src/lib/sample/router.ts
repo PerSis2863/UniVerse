@@ -1922,6 +1922,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
+  // Reading levels (Stage 5 · D9): no AI in the sample, so no simpler versions (the original stays).
+  ['POST', /^\/api\/reading-level$/, () => ok({ levels: {}, editable: [] })],
+  ['POST', /^\/api\/reading-level\/text$/, () => ok({ error: 'Simpler versions aren’t available in the sample.' }, 503)],
   ["PATCH", /^\/api\/admin\/settings$/, ({ body }) => ok({ ok: true, organization: body })],
   ["PATCH", /^\/api\/admin\/sso$/, ({ body }) => ok({ ok: true, ...body })],
   ['PUT', /^\/api\/courses\/([^/]+)\/skills$/, ({ body }) => { notice(); return ok({ skills: Array.isArray(body?.skills) ? body.skills.slice(0, 6) : [] }); }],

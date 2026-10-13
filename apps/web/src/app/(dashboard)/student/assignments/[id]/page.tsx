@@ -115,7 +115,7 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
               {returned && data.mine && (
                 <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 space-y-2" aria-label="Your grade">
                   <p className="flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="w-5 h-5" /> Graded: {data.mine.score}/{data.maxScore}</p>
-                  {data.mine.feedback && <Translatable kind="feedback" id={data.mine.id} text={data.mine.feedback} className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />}
+                  {data.mine.feedback && <Translatable kind="feedback" id={data.mine.id} text={data.mine.feedback} levels className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />}
                   {data.mine.feedbackMediaUrl && (
                     <div className="space-y-1.5">
                       <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">{data.mine.feedbackMediaKind === 'VIDEO' ? 'Video' : 'Voice'} feedback from your teacher</p>
