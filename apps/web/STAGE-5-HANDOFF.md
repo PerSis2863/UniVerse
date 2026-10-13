@@ -387,3 +387,11 @@ Progress table (row D6).
 - **Try on the live site:** the voice part needs the AI key, so it couldn't run here.
 - **Not done:** confirmed scores into the gradebook; recording the examiner's voice too.
 
+
+## Fix: quiz access (13 Oct 2026)
+
+- `GET /api/core/quizzes/:id` now gives the whole quiz (with answers) only to the course's teacher and
+  admins; other people must be enrolled in the course, never see drafts, and never get answers.
+  Before, any signed-in student could read any quiz by its id, and any teacher could see any quiz's
+  answers. `GET /api/core/quizzes` now lists only your own courses' quizzes (admins: all).
+- Tests: `src/server/services/quizzes.service.test.ts`.

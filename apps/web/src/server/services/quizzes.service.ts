@@ -28,7 +28,7 @@ export class QuizzesService {
     return prisma.quiz.create({ data: { ...createQuizDto, status: 'DRAFT' } });
   }
 
-  findAll(user?: { role: string }) {
+  findAll(user?: { id?: string; role: string }) {
     // Admins oversee every quiz: who teaches the course, how many questions and submissions it has.
     if (user?.role === 'ADMIN') {
       return prisma.quiz.findMany({
@@ -40,9 +40,17 @@ export class QuizzesService {
         take: 1000,
       });
     }
+    // Everyone else only sees quizzes of their own courses: the ones they teach, or (not drafts) the
+    // ones they're enrolled in.
+    if (!user?.id) return Promise.resolve([]);
+    const where: Prisma.QuizWhereInput = user.role === 'TEACHER'
+      ? { course: { teacherId: user.id } }
+      : { status: { not: 'DRAFT' }, course: { enrollments: { some: { studentId: user.id } } } };
     return prisma.quiz.findMany({
+      where,
       include: { course: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
+      take: 500,
     });
   }
 
@@ -60,19 +68,22 @@ export class QuizzesService {
   async findOne(id: string, user?: { id?: string; role: string }) {
     const quiz = await prisma.quiz.findUnique({
       where: { id },
-      include: { questions: { orderBy: { order: 'asc' } } },
+      include: { questions: { orderBy: { order: 'asc' } }, course: { select: { teacherId: true } } },
     });
-    if (!quiz) throw new NotFoundException('Quiz not found');
-    // Students must never receive the answer key; grading happens server-side in submitQuiz.
-    if (user?.role !== 'TEACHER' && user?.role !== 'ADMIN') {
-      const questions = quiz.questions.map(({ correctAnswer: _hidden, ...q }) => q);
-      // Shuffled per student (B4.3): their own order, the same again on reload. Grading compares
-      // the answer text, so the order doesn't matter to it.
-      if (!quiz.shuffle || !user?.id) return { ...quiz, questions };
-      const me = user.id;
-      return { ...quiz, questions: shuffled(questions, `${me}:${quiz.id}`).map((q) => ({ ...q, options: Array.isArray(q.options) ? shuffled(q.options as string[], `${me}:${q.id}`) : q.options })) };
-    }
-    return quiz;
+    if (!quiz || !user?.id) throw new NotFoundException('Quiz not found');
+    const { course, ...rest } = quiz;
+    // The course's teacher and admins get the whole quiz, answers included.
+    if (user.role === 'ADMIN' || course.teacherId === user.id) return rest;
+    // Anyone else must be enrolled in the course, and drafts stay hidden. Students never receive the
+    // answer key; grading happens server-side in submitQuiz.
+    const enrolled = quiz.status !== 'DRAFT' && (await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId: user.id, courseId: quiz.courseId } }, select: { id: true } }));
+    if (!enrolled) throw new NotFoundException('Quiz not found');
+    const questions = rest.questions.map(({ correctAnswer: _hidden, ...q }) => q);
+    // Shuffled per student (B4.3): their own order, the same again on reload. Grading compares
+    // the answer text, so the order doesn't matter to it.
+    if (!quiz.shuffle) return { ...rest, questions };
+    const me = user.id;
+    return { ...rest, questions: shuffled(questions, `${me}:${quiz.id}`).map((q) => ({ ...q, options: Array.isArray(q.options) ? shuffled(q.options as string[], `${me}:${q.id}`) : q.options })) };
   }
 
   /** Exam mode (B4.4): starts the student's clock on the server (once) and says when it ends. */
