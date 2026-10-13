@@ -441,3 +441,17 @@ Progress table (row D6).
   was used), and demo day in a real call.
 - **Code:** `src/lib/impact-league.ts`, `src/server/impact-league.ts`, `src/components/league/`,
   `src/app/(dashboard)/impact-league/`, `src/app/league/[slug]/`.
+
+## Live errors from Cloudflare Observability (checked 13 Oct 2026)
+
+- **"scheduled-call check failed: at D1DatabaseSessionAlwaysPrimary._sendOrThrow…"** (about once an
+  hour): the 15-minute cron's one cheap query sometimes fails for a moment on D1, and the check then
+  said "nothing due", so a call starting in the next ~10 minutes could lose its reminder. **Fixed:**
+  the check (now `cloudflare/due-check.ts`, 3 tests) tries twice more (1 s, 2 s apart) and, if it
+  still fails, runs the reminders job anyway; the log line now shows D1's own message on one line.
+- **"Worker exceeded CPU time limit"** on `GET /api/core/users/me` (a burst around 16:42–16:57 UTC):
+  the known Workers Free cold start (see "Cloudflare errors" above). That route is already on the
+  light path; it fails when another request on the same fresh instance goes over the limit and
+  Cloudflare stops the instance. The logs showed the app's one retry failing too, so **reads now get
+  a second retry 2–3 s later** (`fetchWithRetry`, 3 tests). The real fix is still **Workers Paid**
+  ($5/month, the owner's decision).
