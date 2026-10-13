@@ -1,7 +1,8 @@
 'use client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
-import { Users, MessageSquare, Search, Plus, MoreHorizontal, X, ChevronRight, Upload, Video, Mic, Trash2 } from 'lucide-react';
+import { Users, MessageSquare, Search, Plus, MoreHorizontal, X, ChevronRight, Upload, Video, Mic, Trash2, Wand2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { useState,  useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,6 +12,8 @@ import useSWR from 'swr';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { authedJson } from '@/lib/authed-fetch';
 import { GroupChat } from '@/components/groups/GroupChat';
+// Project autopilot (Stage 5 · D6) loads when opened.
+const GroupAutopilot = dynamic(() => import('@/components/groups/GroupAutopilot').then((m) => m.GroupAutopilot), { ssr: false });
 import { GroupDetailBody } from '@/components/groups/GroupDetailBody';
 import { useInitialSearch } from '@/hooks/useInitialSearch';
 import { useLiveInterval } from '@/lib/realtime-client';
@@ -67,10 +70,10 @@ function ActivityRow({ item, onOpen, delay = 0 }: { item: ActivityItem; onOpen: 
 }
 
 const typeColors: Record<string, string> = {
-  Study: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  Project: 'bg-fuchsia-500/10 text-fuchsia-500 border-fuchsia-500/20',
-  Impact: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  Research: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  Study: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20',
+  Project: 'bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300 border-fuchsia-500/20',
+  Impact: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
+  Research: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20',
 };
 
 const gradientColors: Record<string, string> = {
@@ -146,6 +149,7 @@ export default function GroupsPage() {
   
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [showAutopilot, setShowAutopilot] = useState(false);
   const activityPoll = useLiveInterval(60_000, 0); // pushed live when posts change (src/server/groups-live.ts)
   const { data: activityData } = useSWR<ActivityItem[]>('/api/groups/activity?limit=30', authedJson, { refreshInterval: activityPoll });
   const activity = Array.isArray(activityData) ? activityData : [];
@@ -209,12 +213,7 @@ export default function GroupsPage() {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i, 6) * 0.03 }}
-                  onClick={() => setSelectedGroup(group)}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Open ${group.name}`}
-                  onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setSelectedGroup(group); } }}
-                  className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/5 transition-all cursor-pointer group"
+                  className="relative bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/5 focus-within:border-indigo-500/60 active:scale-[0.985] transition-all cursor-pointer group"
                 >
                   {/* Header */}
                   <div className="flex items-start justify-between mb-4">
@@ -223,7 +222,12 @@ export default function GroupsPage() {
                         {group.initials}
                       </div>
                       <div>
-                        <h3 className="font-bold text-zinc-900 dark:text-white text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{group.name}</h3>
+                        {/* The group's name opens it; its click area covers the whole card (after:inset-0),
+                            so the card has one control and the Options button sits above it. The press
+                            shrink is on the card: shrinking the button would pull its area back mid-tap. */}
+                        <h3 className="font-bold text-zinc-900 dark:text-white text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          <button type="button" onClick={() => setSelectedGroup(group)} className="text-left active:scale-none after:absolute after:inset-0 after:rounded-2xl after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-indigo-500/60">{group.name}</button>
+                        </h3>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${typeColors[group.type]}`}>{group.type}</span>
                       </div>
                     </div>
@@ -233,7 +237,7 @@ export default function GroupsPage() {
                           {group.unread}
                         </span>
                       )}
-                      <div className="relative">
+                      <div className="relative z-10">
                         <button className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100" aria-label={`Options for ${group.name}`} onClick={e => { e.stopPropagation(); setActiveMenuId(activeMenuId === group.id ? null : group.id); }}>
                           <MoreHorizontal className="w-4 h-4" />
                         </button>
@@ -252,7 +256,7 @@ export default function GroupsPage() {
                               } catch {
                                 toast.error('Could not leave the group. Please try again.');
                               }
-                            }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                            }} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
                                <Trash2 className="w-4 h-4" /> Leave group
                             </button>
                             )}
@@ -361,7 +365,7 @@ export default function GroupsPage() {
                         } catch {
                           toast.error('Could not leave the group. Please try again.');
                         }
-                      }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                      }} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
                          <Trash2 className="w-4 h-4" /> Leave group
                       </button>
                     </div>
@@ -376,7 +380,7 @@ export default function GroupsPage() {
                 </div>
               </div>
               <div className="p-5 space-y-5">
-                <div className="flex gap-2 w-full">
+                <div className="flex flex-wrap gap-2 w-full">
                   {!selectedGroup.isJoined ? (
                     <button 
                       className="flex-1 btn-primary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap"
@@ -410,6 +414,9 @@ export default function GroupsPage() {
                       </button>
                       <button className="btn-secondary py-2 px-3 text-sm flex items-center justify-center" onClick={() => openMeeting(selectedGroup, 'audio')} aria-label="Voice call with the group" title="Voice call">
                         <Mic className="w-4 h-4" />
+                      </button>
+                      <button className="basis-full btn-secondary py-2 px-3 text-sm flex items-center justify-center" onClick={() => setShowAutopilot(true)}>
+                        <Wand2 className="w-4 h-4 mr-1" /> Project autopilot
                       </button>
                     </>
                   )}
@@ -639,6 +646,9 @@ export default function GroupsPage() {
         {/* Group Chat */}
         {showChat && selectedGroup && (
           <GroupChat group={selectedGroup} onClose={() => setShowChat(false)} />
+        )}
+        {showAutopilot && selectedGroup && (
+          <GroupAutopilot key="autopilot" group={selectedGroup} onClose={() => setShowAutopilot(false)} />
         )}
 
       </AnimatePresence>

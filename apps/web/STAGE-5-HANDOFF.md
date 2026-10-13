@@ -299,3 +299,56 @@ The plan's order (section 2) is the guide. Suggested next steps:
   the axios-style client.
 - **Report cards:** `src/lib/report-card.ts` (maths and printable page), `src/server/report-cards.ts`.
 - **Gradebook maths:** `src/lib/gradebook.ts`.
+
+---
+
+## D6 · Group project autopilot: done (13 Oct 2026)
+
+Finished from the other agent's work-in-progress (branch `wip/d6-autopilot`). Details are in the plan's
+Progress table (row D6).
+- **Migration `0119`** (`group_autopilot_plans`, `group_autopilot_reports`). It is **not** applied to the
+  live database by hand: merging to `main` deploys, and the deploy applies it first.
+- **Next migration: `0120`.**
+- **Code:**
+  - `src/server/group-autopilot.ts` (logic, 10 tests in `group-autopilot.test.ts`);
+  - `src/app/api/groups/[id]/autopilot/{plan,apply,meeting-slots,reports,nudge}`;
+  - `src/components/groups/GroupAutopilot.tsx` (the screen, opened with **Project autopilot** in a
+    group's panel);
+  - sample-mode handlers in `src/lib/sample/router.ts`.
+- **Rules kept:** members only on every endpoint; AI through `spendAi`/`featureOff`, with no names sent;
+  in-app notices only; meeting time in the viewer's own time zone; tasks inserted 8 per query.
+- **Teacher view (added later the same day):**
+  - The plan form has an optional "For which course?" field. That course's teacher sees the project
+    on **Course board → Group projects** (a teacher-only tab).
+  - Files: `components/groups/CourseGroupProjects.tsx` and `/api/courses/[id]/group-projects`.
+- **Automatic weekly reports:** the daily job's `weeklyAutopilotReports` makes each plan's report at
+  the end of its week. It tells the group in the app, and tells the teacher when a linked project is
+  at risk or off track.
+
+## D7 · Phone clicker for in-person classes: done, first part (13 Oct 2026)
+
+- **Migration `0120`.** Next migration: **`0121`**.
+- **Code:**
+  - `src/server/classroom.ts` (4 tests);
+  - `/api/classroom/*`;
+  - `components/live/ClassroomPanel.tsx` (teacher, on the Live class page);
+  - `components/live/StudentClassroom.tsx` (student, on the Live class page).
+- **How it works:**
+  1. The teacher starts the class and projects a code that changes every 30 seconds.
+  2. Students scan or type it, which marks them present (or late) in Attendance.
+  3. During class they can say "I'm lost" (the teacher sees a meter) and send nameless questions.
+  4. The teacher's laptop can take notes, which become the study pack when the class ends.
+- **Not done:** AI answers to in-room questions (Whisper TA), and linking an in-person session to a
+  running class call.
+
+## D8 · Language-free classroom: done, first part (13 Oct 2026)
+
+- **No migration.** It reuses `text_translations` and `src/server/text-translate.ts`, which gained four
+  new kinds: assignment, submission, feedback and material-part.
+- **Assignments:** instructions, answers (for the teacher) and feedback (for the student) have
+  **Translate · Show original**. Grading always uses the original.
+- **Materials:** a **Read** button opens a file as text, in sections, with a switch between the
+  original and the reader's language. The teacher can make a file readable if the AI tutor hasn't
+  read it yet.
+- **Long texts** are translated in sections and joined back together, so nothing is cut off.
+

@@ -12,6 +12,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
+import { Translatable } from '@/components/shared/Translatable';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Score { id: string; score: number; comment: string }
@@ -255,7 +256,8 @@ function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Su
           <h3 className="font-semibold text-zinc-900 dark:text-white">{sub.student.name}</h3>
           <span className="text-xs text-zinc-500">{sub.text.trim().split(/\s+/).length} words · {sub.offlineAt ? <>written offline, handed in on the device {new Date(sub.offlineAt).toLocaleString()} · arrived {new Date(sub.submittedAt).toLocaleString()}</> : <>handed in {new Date(sub.submittedAt).toLocaleString()}</>}</span>
         </div>
-        <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words max-h-96 overflow-y-auto">{sub.text}</p>
+        {/* Read it in your language; the grade is always for the original (Stage 5 · D8). */}
+        <Translatable kind="submission" id={sub.id} text={sub.text} className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words max-h-96 overflow-y-auto" />
       </div>
 
       {(sub.similarity?.peer || sub.similarity?.material) && (

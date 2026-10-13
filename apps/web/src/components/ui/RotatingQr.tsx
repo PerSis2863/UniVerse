@@ -11,8 +11,9 @@ import { spring } from '@/lib/motion';
  * Full-screen check-in QR code that changes every 30 seconds (campus events, volunteer shifts).
  * `endpoint` returns { code, expiresIn }; the QR opens `path?checkin=<code>` on the student's phone.
  * It reloads just before each window ends, so a photo of it stops working almost straight away.
+ * `showCode`: also print the code in big letters, for phones without a camera (in-person classes).
  */
-export function RotatingQr({ endpoint, path, title, onClose }: { endpoint: string; path: string; title: string; onClose: () => void }) {
+export function RotatingQr({ endpoint, path, title, onClose, showCode }: { endpoint: string; path: string; title: string; onClose: () => void; showCode?: boolean }) {
   const [code, setCode] = useState<{ code: string; expiresIn: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -33,6 +34,12 @@ export function RotatingQr({ endpoint, path, title, onClose }: { endpoint: strin
       <div className="mt-6 rounded-3xl bg-white p-4 shadow-xl">
         {code ? <motion.div key={code.code} initial={{ opacity: 0.4 }} animate={{ opacity: 1 }} transition={spring.snappy}><QrCode value={url} size={320} title="Check-in QR code" /></motion.div> : <div className="w-80 h-80 skeleton rounded-2xl" />}
       </div>
+      {showCode && code && (
+        <p className="mt-5 text-zinc-600 dark:text-zinc-300">
+          No camera? Open <b>{window.location.host}{path}</b> and type
+          <span className="block mt-1 font-mono text-5xl font-black tracking-[0.25em] text-zinc-900 dark:text-white" aria-live="polite">{code.code.slice(0, 3)}-{code.code.slice(3)}</span>
+        </p>
+      )}
       <p className="mt-4 text-sm text-zinc-500">{error ?? 'The code changes every 30 seconds, so photos of it stop working.'}</p>
     </motion.div>
   );
