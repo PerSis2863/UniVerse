@@ -8,6 +8,7 @@ import { ArrowLeft, CheckCircle2, Loader2, Send } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
 import { enqueue, getDraft, isOfflineError, newClientId, saveDraft } from '@/lib/outbox';
+import { Translatable } from '@/components/shared/Translatable';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Detail {
@@ -20,6 +21,7 @@ interface Detail {
   status: 'OPEN' | 'CLOSED';
   course: { code: string; name: string };
   mine: {
+    id: string;
     text: string;
     status: 'SUBMITTED' | 'RETURNED';
     submittedAt: string;
@@ -90,7 +92,7 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
             <>
               <section className={`panel p-5 space-y-4`}>
                 {data.dueDate && <p className="text-sm text-zinc-500">Due {new Date(data.dueDate).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}{data.status === 'CLOSED' ? ' · closed' : ''}</p>}
-                <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">{data.instructions}</p>
+                <Translatable kind="assignment" id={data.id} text={data.instructions} className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">How it’s graded ({data.maxScore} points)</h3>
                   <ul className="space-y-1.5">
@@ -113,7 +115,7 @@ export default function StudentAssignmentPage({ params }: { params: Promise<{ id
               {returned && data.mine && (
                 <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 space-y-2" aria-label="Your grade">
                   <p className="flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="w-5 h-5" /> Graded: {data.mine.score}/{data.maxScore}</p>
-                  {data.mine.feedback && <p className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">{data.mine.feedback}</p>}
+                  {data.mine.feedback && <Translatable kind="feedback" id={data.mine.id} text={data.mine.feedback} className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />}
                   {data.mine.feedbackMediaUrl && (
                     <div className="space-y-1.5">
                       <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">{data.mine.feedbackMediaKind === 'VIDEO' ? 'Video' : 'Voice'} feedback from your teacher</p>

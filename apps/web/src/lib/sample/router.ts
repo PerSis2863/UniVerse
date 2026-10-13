@@ -1696,6 +1696,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/groups$/, ({ db: d }) => ok(d.groups.map((g) => groupOut(d, g)))],
   [/^\/groups\/my$/, ({ db: d }) => ok(d.groups.filter((g) => g.joined).map((g) => ({ id: `m-${g.id}`, groupId: g.id, userId: d.me.id, role: 'MEMBER', group: groupOut(d, g) })))],
   [/^\/api\/groups\/activity$/, ({ db: d }) => ok(d.groups.filter((g) => g.joined).flatMap((g) => (d.groupPosts[g.id] ?? []).map((p) => ({ ...p, author: { id: p.author.id, name: p.author.name }, group: { id: g.id, name: g.name, category: g.category } }))).sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)))],
+  // Course materials as text (Stage 5 · D8): no files are read in the sample.
+  [/^\/api\/courses\/([^/]+)\/materials\/([^/]+)\/read$/, () => ok({ title: 'Sample material', status: 'NONE', error: null, sourceId: null, sections: [], canPrepare: false })],
   // In-person class (Stage 5 · D7): one sample class in memory for the visit.
   [/^\/api\/classroom$/, ({ db: d }) => ok({ session: classroom(d).on ? { id: 'sample-class' } : null })],
   [/^\/api\/classroom\/current$/, () => ok({ session: null })],

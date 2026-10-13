@@ -45,13 +45,14 @@ const readableMaterial = (m: { fileUrl: string; title: string }) => READABLE.tes
 
 /**
  * Reads course materials that haven't been turned into text yet (up to `limit` per call, since
- * each one is an AI request). PDFs are read by Gemini; text files directly.
+ * each one is an AI request). PDFs are read by Gemini; text files directly. `only`: just that
+ * material (the reader view, Stage 5 · D8).
  */
-export async function prepareSources(courseId: string, limit = 3) {
+export async function prepareSources(courseId: string, limit = 3, only?: string) {
   const done = await prisma.courseSource.findMany({ where: { courseId, materialId: { not: null } }, select: { materialId: true } });
   const have = new Set(done.map((d) => d.materialId));
   const todo = (await prisma.material.findMany({ where: { courseId }, select: { id: true, title: true, fileUrl: true } }))
-    .filter((m) => !have.has(m.id) && readableMaterial(m))
+    .filter((m) => !have.has(m.id) && readableMaterial(m) && (!only || m.id === only))
     .slice(0, limit);
   let ready = 0;
   for (const m of todo) {

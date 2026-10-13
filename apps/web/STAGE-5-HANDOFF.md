@@ -341,3 +341,14 @@ Progress table (row D6).
 - **Not done:** AI answers to in-room questions (Whisper TA), and linking an in-person session to a
   running class call.
 
+## D8 · Language-free classroom: done, first part (13 Oct 2026)
+
+- **No migration.** It reuses `text_translations` and `src/server/text-translate.ts`, which gained four
+  new kinds: assignment, submission, feedback and material-part.
+- **Assignments:** instructions, answers (for the teacher) and feedback (for the student) have
+  **Translate · Show original**. Grading always uses the original.
+- **Materials:** a **Read** button opens a file as text, in sections, with a switch between the
+  original and the reader's language. The teacher can make a file readable if the AI tutor hasn't
+  read it yet.
+- **Long texts** are translated in sections and joined back together, so nothing is cut off.
+

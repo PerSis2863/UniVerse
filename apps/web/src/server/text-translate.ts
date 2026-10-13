@@ -1,6 +1,8 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { textHash } from '@/lib/text-hash';
+import { courseAccess } from '@/lib/course-access';
+import { materialSections } from '@/lib/material-sections';
 import { AiLimitError, requireAi } from './ai-budget';
 import { boardAccess } from './boards';
 import { canReadDoc } from './docs';
@@ -9,13 +11,19 @@ import { canReadTaskBoard } from './tasks';
 import { isLanguage, translateTexts, type Translation } from './translate';
 
 // "Translate" on texts that aren't chat messages (Stage 5 · B7.5): announcements, group posts, and
-// comments on tasks, docs and whiteboards. Only texts the reader may read are translated; each is
+// comments on tasks, docs and whiteboards; and the classroom (Stage 5 · D8, language-free classroom):
+// assignment instructions, students' answers, teachers' feedback and course materials, a section
+// at a time ("material-part", id "<courseSourceId>.<n>"). Grading always uses the original. Only texts the reader may read are translated; each is
 // translated once per language and shared by everyone (an edited text is translated again).
 
-export const KINDS = ['announcement', 'group-post', 'task-comment', 'doc-comment', 'board-comment'] as const;
+export const KINDS = ['announcement', 'group-post', 'task-comment', 'doc-comment', 'board-comment', 'assignment', 'submission', 'feedback', 'material-part'] as const;
 export type TextKind = (typeof KINDS)[number];
 const MAX_ITEMS = 30;
 const MAX_CHARS = 2000;
+/** Longer texts (answers, instructions) are translated in sections; at most this many, about 22,000 characters. */
+const MAX_PARTS = 12;
+/** Characters per AI call, so the translation fits in one answer. */
+const PER_CALL = 5000;
 
 
 /** The texts of these items that this person may read, by "kind:id". */
@@ -41,6 +49,33 @@ async function readable(user: SessionUser, items: { kind: TextKind; id: string }
   for (const c of await allowed(tasks, (x) => x.task.boardId, (id) => canReadTaskBoard(id, user))) out.set(`task-comment:${c.id}`, c.body);
   for (const c of await allowed(docs, (x) => x.docId, (id) => canReadDoc(id, user))) out.set(`doc-comment:${c.id}`, c.body);
   for (const c of await allowed(boards, (x) => x.boardId, async (id) => !!(await boardAccess(id, user.id)))) out.set(`board-comment:${c.id}`, c.body);
+
+  // The classroom (D8). Instructions and materials: anyone in the course. An answer or its feedback:
+  // the student who wrote it, or the course's teacher.
+  const subIds = [...new Set([...ids('submission'), ...ids('feedback')])];
+  const sourceIds = [...new Set(ids('material-part').map((r) => r.slice(0, r.lastIndexOf('.'))))];
+  const [assignments, subs, sources] = await Promise.all([
+    ids('assignment').length ? prisma.assignment.findMany({ where: { id: { in: ids('assignment') } }, select: { id: true, instructions: true, courseId: true } }) : Promise.resolve([]),
+    subIds.length ? prisma.assignmentSubmission.findMany({ where: { id: { in: subIds } }, select: { id: true, text: true, feedback: true, studentId: true, assignment: { select: { courseId: true } } } }) : Promise.resolve([]),
+    sourceIds.length ? prisma.courseSource.findMany({ where: { id: { in: sourceIds.slice(0, 5) }, status: 'READY' }, select: { id: true, courseId: true, text: true } }) : Promise.resolve([]),
+  ]);
+  const courses = new Map<string, Awaited<ReturnType<typeof courseAccess>>>();
+  for (const id of [...new Set([...assignments.map((a) => a.courseId), ...subs.map((x) => x.assignment.courseId), ...sources.map((x) => x.courseId)])].slice(0, 5)) courses.set(id, await courseAccess(id, user));
+  for (const a of assignments) if (courses.get(a.courseId)) out.set(`assignment:${a.id}`, a.instructions);
+  for (const x of subs) {
+    if (x.studentId !== user.id && !courses.get(x.assignment.courseId)?.canManage) continue;
+    if (ids('submission').includes(x.id)) out.set(`submission:${x.id}`, x.text);
+    if (ids('feedback').includes(x.id) && x.feedback) out.set(`feedback:${x.id}`, x.feedback);
+  }
+  for (const src of sources) {
+    if (!courses.get(src.courseId)) continue;
+    const parts = materialSections(src.text);
+    for (const r of ids('material-part')) {
+      const at = r.lastIndexOf('.');
+      const n = Number(r.slice(at + 1));
+      if (r.slice(0, at) === src.id && Number.isInteger(n) && parts[n]) out.set(`material-part:${r}`, parts[n]);
+    }
+  }
   return out;
 }
 
@@ -67,7 +102,34 @@ export async function translateItems(user: SessionUser, b: Record<string, unknow
       if (e instanceof AiLimitError) { if (Object.keys(result).length) return { translations: result }; throw new HttpException(e.message, 429); }
       throw e;
     }
-    const { out, failed } = await translateTexts(todo.map((k) => ({ id: k, text: texts.get(k)!.slice(0, MAX_CHARS) })), to);
+    // Long texts go in sections ("key#n") and are joined again, so nothing is cut off.
+    const parts = todo.flatMap((k) => {
+      const t = texts.get(k)!;
+      return t.length <= MAX_CHARS ? [{ id: k, text: t }] : materialSections(t).slice(0, MAX_PARTS).map((p, i) => ({ id: `${k}#${i}`, text: p }));
+    });
+    const calls: (typeof parts)[] = [];
+    for (const p of parts) {
+      const last = calls[calls.length - 1];
+      if (last && last.length < 20 && last.reduce((n, x) => n + x.text.length, 0) + p.text.length <= PER_CALL) last.push(p);
+      else calls.push([p]);
+    }
+    const got = new Map<string, { lang: string; text: string }>();
+    let failed = false;
+    for (const c of calls) {
+      const r = await translateTexts(c, to);
+      for (const [k, v] of r.out) got.set(k, v);
+      if (r.failed) { failed = true; break; }
+    }
+    const out = new Map<string, { lang: string; text: string }>();
+    for (const k of todo) {
+      if (got.has(k)) { out.set(k, got.get(k)!); continue; }
+      const mine = parts.filter((p) => p.id.startsWith(`${k}#`)).map((p) => got.get(p.id));
+      if (!mine.length || mine.some((m) => !m)) continue; // a section failed: no translation rather than half of one
+      const lang = mine.find((m) => m!.lang !== to)?.lang ?? to;
+      // A section already in the target language comes back empty: keep its original.
+      const text = mine.every((m) => !m!.text) ? '' : mine.map((m, i) => m!.text || parts.find((p) => p.id === `${k}#${i}`)!.text).join('\n\n');
+      out.set(k, { lang: text ? lang : to, text });
+    }
     const fresh: { kind: string; refId: string; lang: string; sourceLang: string; text: string; srcHash: string }[] = [];
     for (const k of todo) {
       const r = out.get(k);
