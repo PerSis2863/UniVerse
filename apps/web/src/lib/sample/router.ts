@@ -1696,6 +1696,15 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/groups$/, ({ db: d }) => ok(d.groups.map((g) => groupOut(d, g)))],
   [/^\/groups\/my$/, ({ db: d }) => ok(d.groups.filter((g) => g.joined).map((g) => ({ id: `m-${g.id}`, groupId: g.id, userId: d.me.id, role: 'MEMBER', group: groupOut(d, g) })))],
   [/^\/api\/groups\/activity$/, ({ db: d }) => ok(d.groups.filter((g) => g.joined).flatMap((g) => (d.groupPosts[g.id] ?? []).map((p) => ({ ...p, author: { id: p.author.id, name: p.author.name }, group: { id: g.id, name: g.name, category: g.category } }))).sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)))],
+  // In-person class (Stage 5 · D7): one sample class in memory for the visit.
+  [/^\/api\/classroom$/, ({ db: d }) => ok({ session: classroom(d).on ? { id: 'sample-class' } : null })],
+  [/^\/api\/classroom\/current$/, () => ok({ session: null })],
+  [/^\/api\/classroom\/([^/]+)\/code$/, () => ok({ code: 'ABC234', expiresIn: 30 })],
+  [/^\/api\/classroom\/([^/]+)$/, ({ db: d }) => ok({
+    id: 'sample-class', course: { id: d.courses[0]?.id ?? 'sample', code: d.courses[0]?.code ?? 'CS101', name: d.courses[0]?.name ?? 'Sample course' }, startedAt: classroom(d).startedAt, open: true, classSessionId: null, enrolled: 24,
+    mood: { lost: 3, ok: 12, total: 18 }, notes: 0, pulse: [],
+    questions: [{ id: 'q1', text: 'Why does the loop stop at n - 1?', answeredAt: null, createdAt: classroom(d).startedAt }, { id: 'q2', text: 'Will this be in the quiz?', answeredAt: classroom(d).startedAt, createdAt: classroom(d).startedAt }],
+  })],
   // Project autopilot (Stage 5 · D6): a plan and reports kept in memory for the visit.
   [/^\/api\/courses\/([^/]+)\/group-projects$/, () => ok({ projects: [] })],
   [/^\/api\/groups\/([^/]+)\/autopilot\/plan$/, ({ db: d, m }) => ok({ plan: autopilot(d).plans[m[1]] ?? null, candidateMeetingSlots: sampleSlots(d) })],
@@ -2337,6 +2346,9 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/skills$/, ({ db: d, body }) => { const s = { id: sid('sk'), userId: d.me.id, name: body.name, category: body.category ?? null, level: body.level ?? 'BEGINNER', endorsements: 0, createdAt: new Date().toISOString() }; d.skills.push(s); return ok(s, 201); }],
   ['DELETE', /^\/skills\/([^/]+)$/, ({ db: d, m }) => { d.skills.splice(d.skills.findIndex((s) => s.id === m[1]) >>> 0, 1); return ok({ ok: true }); }],
   ['POST', /^\/tickets$/, ({ db: d, body }) => { const t = { id: sid('t'), subject: body.subject, description: body.description, category: body.category, status: 'OPEN', priority: 'MEDIUM', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.tickets.unshift(t); return ok(t, 201); }],
+  ['POST', /^\/api\/classroom$/, ({ db: d }) => { notice(); Object.assign(classroom(d), { on: true, startedAt: new Date().toISOString() }); return ok({ id: 'sample-class' }); }],
+  ['POST', /^\/api\/classroom\/join$/, () => { notice(); return ok({ sessionId: 'sample-class', course: { code: 'CS101', name: 'Sample course' }, attendance: 'PRESENT' }); }],
+  ['POST', /^\/api\/classroom\/([^/]+)$/, ({ db: d, body }) => { notice(); if (body?.action === 'end') { classroom(d).on = false; return ok({ ok: true, message: 'Session ended.', classSessionId: null }); } return ok({ ok: true, notes: 0 }); }],
   ['POST', /^\/api\/groups\/([^/]+)\/autopilot\/plan$/, ({ db: d, m, body }) => {
     notice();
     const [a, b] = [d.me, d.people.zoya];
@@ -2410,6 +2422,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
 const PASSTHROUGH = [/^\/auth\//, /^\/users\/me$/, /^\/api\/ai$/, /^\/api\/summarize$/, /^\/api\/invite/];
 
 let lastNotice = 0;
+const classroom = (d: SampleDb) => ((d as SampleDb & { classroom?: { on: boolean; startedAt: string } }).classroom ??= { on: false, startedAt: new Date().toISOString() });
 type SampleAutopilot = { plans: Record<string, Record<string, unknown> & { id: string; title: string }>; reports: Record<string, unknown[]> };
 const autopilot = (d: SampleDb) => ((d as SampleDb & { autopilot?: SampleAutopilot }).autopilot ??= { plans: {}, reports: {} });
 const sampleSlots = (d: SampleDb) => [

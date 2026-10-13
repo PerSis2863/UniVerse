@@ -12,6 +12,10 @@ import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { PollResults } from '@/components/live/PollResults';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
+import dynamic from 'next/dynamic';
+
+// In-person class (Stage 5 · D7): join with the code on the screen.
+const StudentClassroom = dynamic(() => import('@/components/live/StudentClassroom').then((m) => m.StudentClassroom), { ssr: false });
 
 interface Poll { id: string; question: string; options: string[]; status: 'OPEN' | 'CLOSED'; course: { code: string; name: string }; myVote: number | null; results: number[] | null; total: number | null }
 
@@ -45,6 +49,7 @@ export default function StudentLivePage() {
       <SectionTabs tabs={STUDENT_COURSE_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-2xl mx-auto space-y-4 stagger">
+          <StudentClassroom />
           {error ? (
             <p className="text-sm text-rose-500">{(error as Error).message}</p>
           ) : isLoading ? (

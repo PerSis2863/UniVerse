@@ -11,6 +11,10 @@ import { useLiveInterval } from '@/lib/realtime-client';
 import { fetcher } from '@/lib/fetcher';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { PollResults } from '@/components/live/PollResults';
+import dynamic from 'next/dynamic';
+
+// In-person class (Stage 5 · D7): loads with the page's course picked.
+const ClassroomPanel = dynamic(() => import('@/components/live/ClassroomPanel').then((m) => m.ClassroomPanel), { ssr: false, loading: () => <div className="h-28 rounded-2xl skeleton" /> });
 
 interface Poll { id: string; question: string; options: string[]; status: 'OPEN' | 'CLOSED'; showResults: boolean; createdAt: string; results: number[]; total: number }
 
@@ -29,7 +33,7 @@ export default function TeacherLivePage() {
 
   return (
     <>
-      <Topbar title="Live class" subtitle="Ask a quick question; students answer on their phones and you see results as they come in" />
+      <Topbar title="Live class" subtitle="In-person classes, quick polls and questions: students answer on their phones" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6 stagger">
           <div className="flex flex-wrap items-end gap-3">
@@ -42,6 +46,8 @@ export default function TeacherLivePage() {
             </label>
             <Link href="/boards" className="btn-secondary"><PenTool className="w-4 h-4" /> Open a whiteboard</Link>
           </div>
+
+          {active && <ClassroomPanel key={active} courseId={active} />}
 
           {active && <NewPoll courseId={active} onCreated={() => mutate()} />}
 

@@ -181,6 +181,9 @@ model User {
   groupPosts             GroupPost[]
   createdGroups          Group[]                 @relation("GroupCreator")
   autopilotPlansCreated  GroupAutopilotPlan[]    @relation("AutopilotCreator")
+  classroomSessions      ClassroomSession[]      // in-person sessions I ran (Stage 5 · D7)
+  classroomCheckins      ClassroomCheckin[]
+  classroomQuestions     ClassroomQuestion[]
   studentConsents        StudentConsent[]
   medicalRecord          MedicalRecord?
   safetyAlerts           SafetyAlert[]           @relation("SafetyReporter")
@@ -496,6 +499,7 @@ model Course {
 
   scheduledCalls ScheduledCall[]
   autopilotPlans GroupAutopilotPlan[]
+  classroomSessions ClassroomSession[] // in-person sessions (Stage 5 · D7)
   campuses       CourseCampus[] // partner campuses it's shared with (upgrade 9)
   modules        CourseModule[] // ordered units of items (Stage 5 · B2)
   gradeCategories  GradeCategory[] // gradebook categories (Stage 5 · B3.4)
@@ -5130,3 +5134,60 @@ model GroupAutopilotReport {
   @@index([createdAt])
   @@map("group_autopilot_reports")
 }
+
+// ─── STAGE 5 · D7: PHONE CLICKER FOR IN-PERSON CLASSES ──────────────────────────────────────────
+
+/// An in-person class: the projector shows a code that changes every 30 s (made from `secret`);
+/// students join on their phones (attendance), say when they're lost, ask questions, and the
+/// teacher's laptop can take notes (transcript) that become a study pack when the class ends.
+model ClassroomSession {
+  id             String              @id @default(cuid())
+  courseId       String
+  course         Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacherId      String
+  teacher        User                @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  secret         String
+  startedAt      DateTime            @default(now())
+  endedAt        DateTime?
+  transcript     String              @default("[]") // JSON [{ t, who, text }]
+  pulse          String              @default("[]") // JSON [{ t, lost, got, total }]
+  classSessionId String? // the study pack made when it ended
+  checkins       ClassroomCheckin[]
+  questions      ClassroomQuestion[]
+
+  @@index([courseId, endedAt])
+  @@map("classroom_sessions")
+}
+
+/// A student who joined an in-person class, and how they're doing (LOST or OK, when they said so).
+model ClassroomCheckin {
+  id        String           @id @default(cuid())
+  sessionId String
+  session   ClassroomSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  mood      String?
+  moodAt    DateTime?
+  joinedAt  DateTime         @default(now())
+
+  @@unique([sessionId, studentId])
+  @@index([studentId])
+  @@map("classroom_checkins")
+}
+
+/// A question a student sent during an in-person class (shown to the teacher without a name).
+model ClassroomQuestion {
+  id         String           @id @default(cuid())
+  sessionId  String
+  session    ClassroomSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  text       String
+  answeredAt DateTime?
+  createdAt  DateTime         @default(now())
+
+  @@index([sessionId])
+  @@index([studentId])
+  @@map("classroom_questions")
+}
+

@@ -325,3 +325,19 @@ Progress table (row D6).
   the end of its week. It tells the group in the app, and tells the teacher when a linked project is
   at risk or off track.
 
+## D7 · Phone clicker for in-person classes: done, first part (13 Oct 2026)
+
+- **Migration `0120`.** Next migration: **`0121`**.
+- **Code:**
+  - `src/server/classroom.ts` (4 tests);
+  - `/api/classroom/*`;
+  - `components/live/ClassroomPanel.tsx` (teacher, on the Live class page);
+  - `components/live/StudentClassroom.tsx` (student, on the Live class page).
+- **How it works:**
+  1. The teacher starts the class and projects a code that changes every 30 seconds.
+  2. Students scan or type it, which marks them present (or late) in Attendance.
+  3. During class they can say "I'm lost" (the teacher sees a meter) and send nameless questions.
+  4. The teacher's laptop can take notes, which become the study pack when the class ends.
+- **Not done:** AI answers to in-room questions (Whisper TA), and linking an in-person session to a
+  running class call.
+
