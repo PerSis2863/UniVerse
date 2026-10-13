@@ -20,6 +20,7 @@ export type SectionTab = { href: string; label: string; also?: string[]; /** Sho
 
 export const SUPPORT_TABS: SectionTab[] = [
   { href: '/student/support', label: 'Help & support' },
+  { href: '/student/wellbeing', label: 'Wellbeing' },
   { href: '/student/beesafe', label: 'BeeSafe reporting' },
 ];
 
@@ -121,6 +122,7 @@ export const SAFETY_TABS: SectionTab[] = [
   { href: '/admin/safety', label: 'BeeSafe reports' },
   { href: '/admin/safety/chats', label: 'Chat safety' },
   { href: '/admin/safety/policy', label: 'Policy' },
+  { href: '/admin/wellbeing', label: 'Wellbeing requests', need: 'wellbeing.counsel' },
 ];
 
 /** Admin → Users: the people, staff (B15.8), admissions (B15.1), roles (B15.6) and bulk import/export (B15.7). */

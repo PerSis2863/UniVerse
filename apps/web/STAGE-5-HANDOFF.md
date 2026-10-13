@@ -409,3 +409,16 @@ Progress table (row D6).
 - **New AI features:** call `logAiUse(user.id, { kind, detail, courseId })` (`src/server/ai-receipts.ts`)
   where the help is given, and add the kind to `AI_USE_KINDS` in `src/lib/ai-receipt.ts`.
 
+## D13 · Wellbeing radar: done (13 Oct 2026)
+
+- **Migration `0125`** (`wellbeing_settings`, `wellbeing_checkins`, `wellbeing_alerts`). Next migration:
+  **`0126`**.
+- **Students** (Help & support → Wellbeing) turn it on after reading how it works, check in daily, and
+  get private nudges from simple rules (no AI): late nights, "I'm lost" in class, missed deadlines, a
+  heavy few days, hard days. Teachers never see any of it.
+- **Counsellors:** give a staff member a custom role with **"Receive students' wellbeing requests"**
+  (Admin → Roles). They get Office → Wellbeing requests. Requests arrive only when a student taps
+  "Talk to someone", or, if the student agreed, after a really hard stretch (never their notes).
+  If nobody has the permission, requests go to the school admins.
+- **Code:** `src/lib/wellbeing.ts`, `src/server/wellbeing.ts`, `/student/wellbeing`, `/admin/wellbeing`.
+

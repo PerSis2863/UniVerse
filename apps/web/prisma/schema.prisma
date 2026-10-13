@@ -186,6 +186,9 @@ model User {
   oralChecks             OralCheck[]             // oral checks I set (Stage 5 · D11)
   oralSessions           OralSession[]           // orals I did: practice and checks
   aiUses                 AiUse[]                 // AI help I used (Stage 5 · D12)
+  wellbeingSettings      WellbeingSettings?      // wellbeing radar (Stage 5 · D13), opt-in
+  wellbeingCheckins      WellbeingCheckin[]
+  wellbeingAlerts        WellbeingAlert[]
   classroomQuestions     ClassroomQuestion[]
   studentConsents        StudentConsent[]
   medicalRecord          MedicalRecord?
@@ -5294,5 +5297,52 @@ model AiUse {
 
   @@index([userId, createdAt])
   @@map("ai_uses")
+}
+
+/// Wellbeing radar (Stage 5 · D13): whether a student uses it, and (separately, explicitly) lets a
+/// counsellor know when their check-ins show a really hard stretch. Teachers never see any of it.
+model WellbeingSettings {
+  userId       String    @id
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  optedIn      Boolean   @default(false)
+  counsellorOk Boolean   @default(false)
+  timeZone     String    @default("UTC")
+  lastNudgeAt  DateTime?
+  updatedAt    DateTime  @default(now()) @updatedAt
+
+  @@map("wellbeing_settings")
+}
+
+/// A student's own daily check-in: mood 1–5, tags (JSON list), a private note only they see.
+model WellbeingCheckin {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day       String // YYYY-MM-DD in their time zone
+  mood      Int
+  tags      String   @default("[]")
+  note      String   @default("")
+  createdAt DateTime @default(now())
+
+  @@unique([userId, day])
+  @@map("wellbeing_checkins")
+}
+
+/// A request that reaches the school's counsellors: ASKED (the student asked) or PATTERN (a hard
+/// stretch, only with the student's consent). OPEN → SEEN → CLOSED.
+model WellbeingAlert {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason      String
+  message     String    @default("")
+  status      String    @default("OPEN")
+  handledById String?
+  handledAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@map("wellbeing_alerts")
 }
 

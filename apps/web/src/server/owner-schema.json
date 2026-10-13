@@ -1009,6 +1009,42 @@
      "relationFields": []
     },
     {
+     "name": "wellbeingSettings",
+     "type": "WellbeingSettings",
+     "kind": "object",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
+     "name": "wellbeingCheckins",
+     "type": "WellbeingCheckin",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
+     "name": "wellbeingAlerts",
+     "type": "WellbeingAlert",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
      "name": "classroomQuestions",
      "type": "ClassroomQuestion",
      "kind": "object",
@@ -36758,6 +36794,300 @@
     {
      "name": "courseId",
      "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "WellbeingSettings",
+   "delegate": "wellbeingSettings",
+   "table": "wellbeing_settings",
+   "fields": [
+    {
+     "name": "userId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "user",
+     "type": "User",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "userId"
+     ]
+    },
+    {
+     "name": "optedIn",
+     "type": "Boolean",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "counsellorOk",
+     "type": "Boolean",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "timeZone",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "lastNudgeAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "updatedAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": true
+    }
+   ]
+  },
+  {
+   "name": "WellbeingCheckin",
+   "delegate": "wellbeingCheckin",
+   "table": "wellbeing_checkins",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "userId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "user",
+     "type": "User",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "userId"
+     ]
+    },
+    {
+     "name": "day",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "mood",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "tags",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "note",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "WellbeingAlert",
+   "delegate": "wellbeingAlert",
+   "table": "wellbeing_alerts",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "userId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "user",
+     "type": "User",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "userId"
+     ]
+    },
+    {
+     "name": "reason",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "message",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "status",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "handledById",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "handledAt",
+     "type": "DateTime",
      "kind": "scalar",
      "list": false,
      "optional": true,

@@ -40,6 +40,8 @@ function withOffice(nav: NavItem[], user: { role?: string; permissions?: string[
     userCan(user, 'library.manage') && { href: '/admin/library', label: 'Library desk' },
     userCan(user, 'registers.manage') && { href: '/admin/registers', label: 'Registers' },
     userCan(user, 'admissions.review') && { href: '/admin/admissions', label: 'Admissions' },
+    // Counsellors (Stage 5 · D13) are staff given this permission; admins reach it from Safety.
+    user.role !== 'ADMIN' && userCan(user, 'wellbeing.counsel') && { href: '/admin/wellbeing', label: 'Wellbeing requests' },
     (userCan(user, 'import.run') || userCan(user, 'export.run')) && { href: '/admin/import', label: 'Import & export' },
   ].filter((x): x is { href: string; label: string } => !!x);
   if (!subItems.length) return nav;
