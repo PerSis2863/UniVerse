@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import prisma from '@/lib/db';
+import { clockMinutes } from '@/lib/campus-map';
 import { deleteFile, isAppFileUrl } from '@/lib/storage';
 import type { SessionUser } from '@/lib/server-auth';
 import { createCommunity, addMembers, joinCommunity } from './communities';
@@ -21,15 +22,7 @@ async function tell(userId: string, title: string, body: string, link: string, t
 
 // ── Rooms: free now / free at ────────────────────────────────────────────────────────────────
 
-/** "10:00 AM", "2:30 pm" or "14:00" → minutes after midnight (null if unreadable). */
-export function clockMinutes(s: string): number | null {
-  const m = /^\s*(\d{1,2}):(\d{2})\s*([ap]\.?m\.?)?\s*$/i.exec(s);
-  if (!m) return null;
-  let h = Number(m[1]);
-  const min = Number(m[2]);
-  if (m[3]) { const pm = /^p/i.test(m[3]); if (h === 12) h = pm ? 12 : 0; else if (pm) h += 12; }
-  return h < 24 && min < 60 ? h * 60 + min : null;
-}
+export { clockMinutes };
 const hhmm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 
 export interface RoomStatus { free: boolean; freeAt: string | null; busyUntil: string | null; nextBusy: string | null }

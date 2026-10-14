@@ -897,8 +897,12 @@ model CampusItem {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   rsvps       EventRsvp[]
+  /// Stage 5 · D15: the building on the campus map it happens in.
+  buildingId  String?
+  building    CampusBuilding? @relation(fields: [buildingId], references: [id], onDelete: SetNull)
 
   @@index([kind])
+  @@index([buildingId])
   @@map("campus_items")
 }
 
@@ -1252,8 +1256,37 @@ model Room {
 
   reservations   RoomReservation[]
   timetableSlots TimetableSlot[]
+  /// Stage 5 · D15: where the room is on the campus map (building and floor; 0 is the ground floor).
+  buildingId     String?
+  building       CampusBuilding?   @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  floor          Int?
 
+  @@index([buildingId])
   @@map("rooms")
+}
+
+/// Stage 5 · D15, the classroom twin: a building drawn on the campus map, in map units
+/// (src/lib/campus-map.ts MAP_W × MAP_H). Rooms and campus events can be placed in it.
+model CampusBuilding {
+  id        String         @id @default(cuid())
+  /// The university it's at (campus network, upgrade 9); null: the school's own campus.
+  campusId  String?
+  campus    Campus?        @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  name      String
+  code      String?
+  x         Int            @default(0)
+  y         Int            @default(0)
+  w         Int            @default(180)
+  h         Int            @default(120)
+  floors    Int            @default(1)
+  color     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  rooms     Room[]
+  items     CampusItem[]
+
+  @@index([campusId])
+  @@map("campus_buildings")
 }
 
 model RoomReservation {
@@ -4237,6 +4270,7 @@ model Campus {
   users            User[]
   courses          CourseCampus[]
   exchangeStudents StudentProfile[] @relation("ExchangeCampus")
+  buildings        CampusBuilding[]
 
   @@map("campuses")
 }

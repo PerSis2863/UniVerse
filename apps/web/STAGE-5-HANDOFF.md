@@ -442,6 +442,22 @@ Progress table (row D6).
 - **Code:** `src/lib/impact-league.ts`, `src/server/impact-league.ts`, `src/components/league/`,
   `src/app/(dashboard)/impact-league/`, `src/app/league/[slug]/`.
 
+## D15 · Classroom twin (live campus map): done (14 Oct 2026)
+
+- **Migration `0127`** (`campus_buildings`; `rooms.buildingId`, `rooms.floor`; `campus_items.buildingId`).
+  Next migration: **`0128`**.
+- **Where:** `/campus-map`, a tab of Student life (students), Campus services (teachers, next to Room
+  booking) and Campus monitoring (admins).
+- **First step on the live site:** an admin opens Campus monitoring → Campus map → **Edit map**, adds the
+  buildings, drags them into place and puts each room in its building and floor. Until then the page
+  still shows free rooms, what's on now and the next class.
+- **Where "live" comes from:** the class timetable and room bookings (today, on the device's clock),
+  in-person class check-ins (phone clicker), scheduled online class calls and campus events. There are
+  no sensors: a room with nothing booked shows as free.
+- **Privacy:** others' bookings show only as "Booked"; online classes are listed only for the people in them.
+- **Code:** `src/lib/campus-map.ts`, `src/server/campus-map.ts`, `src/components/campus/`,
+  `src/app/(dashboard)/campus-map/`, `src/app/api/campus/map/`.
+
 ## Live errors from Cloudflare Observability (checked 13 Oct 2026)
 
 - **"scheduled-call check failed … D1_ERROR: too many terms in compound SELECT"**: the 15-minute

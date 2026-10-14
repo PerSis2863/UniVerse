@@ -170,6 +170,7 @@ export const LIFE_TABS: SectionTab[] = [
   { href: '/student/life/events', label: 'Events' },
   { href: '/student/life/lost-found', label: 'Lost & found' },
   { href: '/student/life/rooms', label: 'Room booking' },
+  { href: '/campus-map', label: 'Campus map' },
   { href: '/student/life/medical', label: 'Medical & disability' },
   { href: '/student/life/everyday', label: 'Everyday life' },
 ];
@@ -191,12 +192,23 @@ export const TEACHER_IMPACT_TABS: SectionTab[] = [
   { href: '/impact-league', label: 'Impact League' },
 ];
 
+// Campus services (teacher): booking a room and the live campus map (Stage 5 · D15)
+export const CAMPUS_SERVICE_TABS: SectionTab[] = [
+  { href: '/teacher/services/rooms', label: 'Room booking' },
+  { href: '/campus-map', label: 'Campus map' },
+];
+
+/** The campus map sits in Student life (students), Campus services (teachers) and Campus monitoring (admins). */
+export const campusMapTabs = (role: string | undefined) => (role === 'ADMIN' ? MONITORING_TABS : role === 'TEACHER' ? CAMPUS_SERVICE_TABS : LIFE_TABS);
+
 /** Impact rooms and the Impact League sit in a different menu for each role. */
 export const impactTabs = (role: string | undefined) => (role === 'ADMIN' ? IMPACT_REPORT_TABS : role === 'TEACHER' ? TEACHER_IMPACT_TABS : OPPORTUNITY_TABS);
 
-// Campus Monitoring (admin): rooms, clubs, and the campus super-app's events and lost & found (upgrade 7)
+// Campus Monitoring (admin): rooms, the live campus map (Stage 5 · D15), clubs, and the campus
+// super-app's events and lost & found (upgrade 7)
 export const MONITORING_TABS: SectionTab[] = [
   { href: '/admin/monitoring/rooms', label: 'Room bookings' },
+  { href: '/campus-map', label: 'Campus map' },
   { href: '/admin/monitoring/associations', label: 'Clubs' },
   { href: '/admin/monitoring/events', label: 'Events' },
   { href: '/admin/monitoring/lost-found', label: 'Lost & found' },

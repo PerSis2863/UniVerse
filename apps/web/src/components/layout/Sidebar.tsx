@@ -72,6 +72,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
     { href: '/student/passport', label: 'Skills passport', keywords: 'cv profile share employers' },
     { href: '/student/life/rooms', label: 'Room booking', keywords: 'reserve study room' },
+    { href: '/campus-map', label: 'Campus map', keywords: 'map buildings where is my class room free study room now live events campus twin' },
     { href: '/student/life/medical', label: 'Medical & disability', keywords: 'health doctor accessibility' },
     { href: '/student/life/everyday', label: 'Everyday life', keywords: 'dining menu food transport campus' },
     { href: '/student/life/events', label: 'Campus events', keywords: 'rsvp check in qr ticket event' },
@@ -88,6 +89,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize' },
     { href: '/studio?tool=convert', label: 'Convert files', keywords: 'word to pdf docx pdf to jpg png excel csv convert change format' },
     { href: '/studio?tool=compress', label: 'Compress files', keywords: 'compress reduce shrink smaller file size pdf photo image video zip' },
+    { href: '/campus-map', label: 'Campus map', keywords: 'map buildings where is my class room free study room now live events campus twin' },
   ],
   ADMIN: [
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
@@ -95,6 +97,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize credentials' },
     { href: '/studio?tool=convert', label: 'Convert files', keywords: 'word to pdf docx pdf to jpg png excel csv convert change format' },
     { href: '/studio?tool=compress', label: 'Compress files', keywords: 'compress reduce shrink smaller file size pdf photo image video zip' },
+    { href: '/campus-map', label: 'Campus map', keywords: 'map buildings where is my class room free study room now live events campus twin usage heatmap' },
   ],
 };
 
@@ -136,7 +139,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/impact/leaderboard', label: 'Leaderboard' },
       ]
     },
-    { href: '/student/life/associations', label: 'nav.student_life', icon: Coffee, also: ['/student/life/rooms', '/student/life/medical', '/student/life/everyday', '/student/life/events', '/student/life/lost-found'] },
+    { href: '/student/life/associations', label: 'nav.student_life', icon: Coffee, also: ['/student/life/rooms', '/student/life/medical', '/student/life/everyday', '/student/life/events', '/student/life/lost-found', '/campus-map'] },
     { href: '/student/community', label: 'nav.community', icon: Users },
     { href: '/student/support', label: 'Support & BeeSafe', icon: AlertTriangle, also: ['/student/beesafe'] },
     { href: '/student/settings?section=language', label: 'nav.settings', icon: Settings },
@@ -170,7 +173,7 @@ export const navByRole: Record<string, NavItem[]> = {
     {
       label: 'nav.campus_services', icon: Map,
       subItems: [
-        { href: '/teacher/services/rooms', label: 'nav.room_reservation' },
+        { href: '/teacher/services/rooms', label: 'nav.room_reservation', also: ['/campus-map'] },
       ]
     },
     { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain, also: ['/library'] },
@@ -227,7 +230,7 @@ export const navByRole: Record<string, NavItem[]> = {
     {
       label: 'nav.campus_monitoring', icon: Shield,
       subItems: [
-        { href: '/admin/monitoring/rooms', label: 'nav.room_bookings' },
+        { href: '/admin/monitoring/rooms', label: 'nav.room_bookings', also: ['/campus-map'] },
         { href: '/admin/monitoring/associations', label: 'nav.associations', also: ['/admin/monitoring/events', '/admin/monitoring/lost-found'] },
       ]
     },

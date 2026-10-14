@@ -1,6 +1,7 @@
 'use client';
 
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, CAMPUS_SERVICE_TABS } from '@/components/layout/SectionTabs';
 import { Map, CheckCircle2, Clock, X, Calendar, Users, Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -63,6 +64,7 @@ export default function TeacherRoomReservationPage() {
   return (
     <>
       <Topbar title="Room Reservation" subtitle="Book lecture halls and seminar rooms for classes, exams, or special sessions" />
+      <SectionTabs tabs={CAMPUS_SERVICE_TABS} />
 
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-8">
