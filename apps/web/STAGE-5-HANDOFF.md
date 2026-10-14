@@ -526,6 +526,23 @@ Progress table (row D6).
   fixed in `DEPLOY-CLOUDFLARE.md` and Admin → Server settings). Without it the calendar card says links
   aren't available.
 
+## D18 · Skills-to-jobs bridge: done (14 Oct 2026)
+
+- **No migration, no AI.** Next migration is still **`0129`**.
+- **Where:** Internships has two tabs now, **Openings** and **Skills match** (`/student/internships/match`).
+  Each open internship and NGO project shows how many of its skills the student's checked work covers
+  ("You match 4 of 5 skills; finish ‘SQL basics’ in CS201 to match all."), and links each missing skill
+  to a module of one of their classes, a class they could join (My choices) or a peer tutor.
+- **Only checked skills count:** the passport's evidence (graded work at 60%+, passed quizzes, verified
+  volunteering and credentials). Skills a student typed on their own don't, so the match means something.
+- **Openings need their skills listed** (Internship `skills`, NGO project `skillsRequired`); those with none
+  don't appear. Worth telling admins and NGO partners when they post.
+- **Code:** `src/lib/skills-bridge.ts` (matching, sentences, order; tested), `src/server/skills-bridge.ts`,
+  `src/app/api/internships/skills-match/`, `src/app/(dashboard)/student/internships/match/`.
+- **Also fixed:** the notification bell's spoken name now says what its badge shows ("9+").
+- The full-site page crawl (re-checking the page fixes above) was stopped part-way: on `next dev` it takes
+  over an hour and ran the dev server out of memory. The fixed pages had each been checked on their own.
+
 ## D16 · Parent co-pilot: done (14 Oct 2026)
 
 - **Migration `0128`** (`parent_copilot`, `parent_summaries`, `parent_questions`). Next migration: **`0129`**.

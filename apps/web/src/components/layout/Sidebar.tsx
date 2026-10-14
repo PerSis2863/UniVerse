@@ -71,6 +71,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/student/voice-tutor', label: 'Voice tutor', keywords: 'talk speak ai tutor voice' },
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
     { href: '/student/passport', label: 'Skills passport', keywords: 'cv profile share employers' },
+    { href: '/student/internships/match', label: 'Skills match', keywords: 'jobs internships ngo projects match my skills gap what to learn career' },
     { href: '/student/life/rooms', label: 'Room booking', keywords: 'reserve study room' },
     { href: '/campus-map', label: 'Campus map', keywords: 'map buildings where is my class room free study room now live events campus twin' },
     { href: '/student/life/medical', label: 'Medical & disability', keywords: 'health doctor accessibility' },

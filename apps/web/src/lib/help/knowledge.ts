@@ -195,8 +195,8 @@ export const HELP: HelpEntry[] = [
     a: 'You earn impact points (XP) for verified actions such as completing projects and proof-of-work. Your level rises as you earn more; see how you compare on the Impact Leaderboard.',
     links: [{ label: 'Leaderboard', href: '/student/impact/leaderboard' }], roles: ['STUDENT'] },
   { id: 'internships', q: ['How do I find an internship?', 'apply for internships', 'jobs'], tags: 'career job placement work',
-    a: 'Open Internships to browse and apply, and build your career profile under Career.',
-    links: [{ label: 'Internships', href: '/student/internships' }, { label: 'Career', href: '/student/career' }], roles: ['STUDENT'] },
+    a: 'Open Internships to browse and apply, and build your career profile under Career. The Skills match tab ranks open internships and NGO projects by the skills your checked work shows, and links each missing skill to a class module or a peer tutor.',
+    links: [{ label: 'Internships', href: '/student/internships' }, { label: 'Skills match', href: '/student/internships/match' }, { label: 'Career', href: '/student/career' }], roles: ['STUDENT'] },
 
   // ── Campus life ──
   { id: 'emergency', q: ['Emergency', 'I need help now', 'report an incident', 'BeeSafe', 'I feel unsafe'], tags: 'danger safety harassment urgent police ambulance',

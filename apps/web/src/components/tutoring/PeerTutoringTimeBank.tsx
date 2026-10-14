@@ -21,6 +21,7 @@ import {
   History,
 } from 'lucide-react';
 import { authedFetch } from '@/lib/authed-fetch';
+import { useInitialSearch } from '@/hooks/useInitialSearch';
 
 interface TimeBankAccount {
   id: string;
@@ -108,6 +109,7 @@ export function PeerTutoringTimeBank() {
   const [masteredSubjects, setMasteredSubjects] = useState<PeerTutorSubject[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  useInitialSearch(setSearchQuery); // ?q= from Skills match (Stage 5 · D18) or the ⌘K palette
   const [d1Only, setD1Only] = useState(false);
 
   // Booking Modal State
