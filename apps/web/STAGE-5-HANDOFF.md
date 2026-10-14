@@ -444,11 +444,14 @@ Progress table (row D6).
 
 ## Live errors from Cloudflare Observability (checked 13 Oct 2026)
 
-- **"scheduled-call check failed: at D1DatabaseSessionAlwaysPrimary._sendOrThrow…"** (about once an
-  hour): the 15-minute cron's one cheap query sometimes fails for a moment on D1, and the check then
-  said "nothing due", so a call starting in the next ~10 minutes could lose its reminder. **Fixed:**
-  the check (now `cloudflare/due-check.ts`, 3 tests) tries twice more (1 s, 2 s apart) and, if it
-  still fails, runs the reminders job anyway; the log line now shows D1's own message on one line.
+- **"scheduled-call check failed … D1_ERROR: too many terms in compound SELECT"**: the 15-minute
+  cron's check joined 7 queries with UNION ALL, but **D1 allows at most 5 parts in a compound SELECT**
+  (local SQLite allows 500, so tests never showed it). On the live site it failed on every run, so
+  the reminders job (call and parent-meeting reminders, `/remind`, scheduled chat messages, morning
+  brief pushes, study-plan follow-ups, due-soon automations) never started from this cron. **Fixed
+  (14 Oct):** 7 small queries sent in one `DB.batch` (`cloudflare/due-check.ts`, 4 tests; each query
+  checked against the real schema). A real passing D1 error is still tried twice more and then the
+  job runs anyway. Never write a compound SELECT with more than 5 parts for D1.
 - **"Worker exceeded CPU time limit"** on `GET /api/core/users/me` (a burst around 16:42–16:57 UTC):
   the known Workers Free cold start (see "Cloudflare errors" above). That route is already on the
   light path; it fails when another request on the same fresh instance goes over the limit and

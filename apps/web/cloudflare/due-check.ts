@@ -4,12 +4,38 @@ import { dbDate } from './fast-db';
 // when something is due.
 
 /** The part of D1 used here (a plain shape, so the unit test can pass a stand-in). */
-interface Db { prepare(sql: string): { bind(...values: unknown[]): { first(): Promise<unknown> } } }
+interface Db<S> { prepare(sql: string): { bind(...values: unknown[]): S }; batch(statements: S[]): Promise<{ results?: unknown[] }[]> }
+
+/**
+ * One small query per kind of reminder, sent together in one batch. (They used to be one query
+ * joined with UNION ALL, but D1 allows at most 5 parts in a compound SELECT, so on the live site that
+ * query always failed with "too many terms in compound SELECT", while local SQLite allows 500.)
+ */
+export function dueChecks(now: number): [string, unknown[]][] {
+  const soon = [dbDate(now - 5 * 60_000), dbDate(now + 16 * 60_000)];
+  return [
+    // A scheduled call starting soon, or a booked parent meeting.
+    ['SELECT 1 FROM scheduled_calls WHERE "remindedAt" IS NULL AND "startAt" > ? AND "startAt" <= ? LIMIT 1', soon],
+    ['SELECT 1 FROM parent_meetings WHERE "guardianId" IS NOT NULL AND "remindedAt" IS NULL AND "startAt" > ? AND "startAt" <= ? LIMIT 1', soon],
+    // A "/remind" reminder that's due, and a study plan's 7-day follow-up.
+    ['SELECT 1 FROM chat_reminders WHERE "sentAt" IS NULL AND "doneAt" IS NULL AND "dueAt" <= ? LIMIT 1', [dbDate(now + 5 * 60_000)]],
+    ['SELECT 1 FROM support_plans WHERE "status" = \'ACTIVE\' AND "followUpNotifiedAt" IS NULL AND "followUpAt" <= ? LIMIT 1', [dbDate(now + 5 * 60_000)]],
+    // A chat message scheduled for now, and someone's morning brief (Stage 4 · 4.9).
+    ['SELECT 1 FROM scheduled_messages WHERE "sendAt" <= ? LIMIT 1', [dbDate(now + 2 * 60_000)]],
+    ['SELECT 1 FROM daily_briefs WHERE "push" = 1 AND "nextAt" <= ? LIMIT 1', [dbDate(now + 2 * 60_000)]],
+    // A card due within a day on a board with a due-soon automation (Stage 5 · B9.10).
+    ['SELECT 1 FROM task_automations a JOIN tasks t ON t."boardId" = a."boardId" WHERE a."trigger" = \'due-soon\' AND a."enabled" = 1 AND t."doneAt" IS NULL AND t."dueRemindedAt" IS NULL AND t."dueAt" > ? AND t."dueAt" <= ? LIMIT 1', [dbDate(now), dbDate(now + 86_400_000)]],
+  ];
+}
+
+async function anythingDue<S>(db: Db<S>, now: number): Promise<boolean> {
+  const results = await db.batch(dueChecks(now).map(([sql, values]) => db.prepare(sql).bind(...values)));
+  return results.some((r) => (r.results?.length ?? 0) > 0);
+}
 
 /** Is a scheduled call or a booked parent meeting starting within about 15 minutes, a chat reminder due, a study plan's
- *  7-day follow-up due, a chat message scheduled for now, someone's morning brief (Stage 4 · 4.9), or a card due
- *  within a day on a board with a due-soon automation (Stage 5 · B9.10), not yet sent? */
-export async function callsDue(env: { DB?: Db }, wait = (ms: number) => new Promise((r) => setTimeout(r, ms))): Promise<boolean> {
+ *  7-day follow-up due, a chat message scheduled for now, someone's morning brief, or a card due soon, not yet sent? */
+export async function callsDue<S>(env: { DB?: Db<S> }, wait = (ms: number) => new Promise((r) => setTimeout(r, ms))): Promise<boolean> {
   if (!env.DB) return false;
   // D1 now and then fails a query for a moment (lost connection, busy or restarting database). The
   // next check, 15 minutes later, no longer covers a call starting before then, so a failed check
@@ -28,21 +54,4 @@ export async function callsDue(env: { DB?: Db }, wait = (ms: number) => new Prom
       return true;
     }
   }
-}
-
-async function anythingDue(db: Db, now: number): Promise<boolean> {
-  // A scheduled call starting soon, or a "/remind" reminder that's due.
-  const row = await db.prepare(
-    `SELECT 1 FROM scheduled_calls WHERE "remindedAt" IS NULL AND "startAt" > ?1 AND "startAt" <= ?2
-     UNION ALL SELECT 1 FROM parent_meetings WHERE "guardianId" IS NOT NULL AND "remindedAt" IS NULL AND "startAt" > ?1 AND "startAt" <= ?2
-     UNION ALL SELECT 1 FROM chat_reminders WHERE "sentAt" IS NULL AND "doneAt" IS NULL AND "dueAt" <= ?3
-     UNION ALL SELECT 1 FROM support_plans WHERE "status" = 'ACTIVE' AND "followUpNotifiedAt" IS NULL AND "followUpAt" <= ?3
-     UNION ALL SELECT 1 FROM scheduled_messages WHERE "sendAt" <= ?4
-     UNION ALL SELECT 1 FROM daily_briefs WHERE "push" = 1 AND "nextAt" <= ?4
-     UNION ALL SELECT 1 FROM task_automations a JOIN tasks t ON t."boardId" = a."boardId"
-       WHERE a."trigger" = 'due-soon' AND a."enabled" = 1 AND t."doneAt" IS NULL AND t."dueRemindedAt" IS NULL AND t."dueAt" > ?5 AND t."dueAt" <= ?6 LIMIT 1`,
-  )
-    .bind(dbDate(now - 5 * 60_000), dbDate(now + 16 * 60_000), dbDate(now + 5 * 60_000), dbDate(now + 2 * 60_000), dbDate(now), dbDate(now + 86_400_000))
-    .first();
-  return !!row;
 }
