@@ -1822,6 +1822,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/internships\/my-applications$/, ({ db: d }) => ok(d.myApplications)],
   [/^\/api\/internships\/placements$/, ({ db: d }) => ok(d.placements)],
   [/^\/api\/internships\/skills-match$/, () => ok(SAMPLE_SKILLS_MATCH)],
+  [/^\/api\/receipts\/([^/]+)$/, ({ m }) => ok({ id: m[1], amount: 499, currency: 'INR', description: 'Course fee: Data Structures', createdAt: '2026-10-10T09:30:00.000Z', user: { name: 'Alex Johnson', email: 'student@example.com' } })],
   [/^\/partners$/, ({ db: d }) => ok(d.partners)],
   [/^\/skills\/my$/, ({ db: d }) => ok(d.skills)],
   [/^\/tickets$/, ({ db: d }) => ok(d.tickets)],

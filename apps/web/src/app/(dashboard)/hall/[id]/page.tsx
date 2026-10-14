@@ -1,10 +1,17 @@
-'use client';
+import { Suspense } from 'react';
+import View from './View';
 
-import { use } from 'react';
-import { HallView } from '@/components/hall/HallView';
+// Built once ahead of time, as /hall/open: the Worker answers every /hall/[id] with this page
+// (cloudflare/page-routes.gen.ts), and View reads the values from the address, so opening one never
+// starts the whole Next.js server on a fresh Worker (Workers Free's 10 ms CPU; "Error 1101").
+export function generateStaticParams() {
+  return [{ id: 'open' }];
+}
 
-// A class's or study group's Study Hall (Stage 4 · 4.2): /hall/hc_<course> or /hall/hg_<group>.
-export default function HallPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  return <HallView hallId={id} />;
+export default function Page() {
+  return (
+    <Suspense>
+      <View />
+    </Suspense>
+  );
 }

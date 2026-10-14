@@ -720,8 +720,20 @@ export default function BoardCanvas({
     return () => onControls(null);
   }, [api, onControls, myView, applyView, send]);
 
+  // Excalidraw's menu button has no accessible name on phones (only an icon): name it for screen readers.
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const label = () => el.querySelectorAll('.main-menu-trigger:not([aria-label])').forEach((b) => b.setAttribute('aria-label', 'Board menu'));
+    label();
+    const watch = new MutationObserver(label);
+    watch.observe(el, { childList: true, subtree: true });
+    return () => watch.disconnect();
+  }, []);
+
   return (
-    <div className="h-full w-full">
+    <div ref={box} className="h-full w-full">
       <Excalidraw
         excalidrawAPI={setApi}
         onChange={onChange}

@@ -12,6 +12,7 @@ import * as Y from 'yjs';
 import nextApp from '../.open-next/worker.js';
 import { fastApi } from './fast-api';
 import { apiDirect } from './api-direct';
+import { isBuiltPage, pageFor } from './page-match';
 import { fanOut, readRelay } from '../src/lib/fanout';
 import { callsDue } from './due-check';
 import { dbDate } from './fast-db';
@@ -119,9 +120,6 @@ async function edgeCachedPage(request: Request, url: URL, env: Env, ctx: Executi
   return revalidatePages(request, res);
 }
 
-/** /call/<id>, served the page built for /call/open (see fetch below). */
-const CALL_PAGE = /^\/call\/(?!open$)[^/]+$/;
-
 const DAILY_CRON = '0 8 * * *'; // wrangler.jsonc "triggers"; the */15 one is the spending guard
 const DIGEST_CRON = '30 7 * * *'; // the owner's morning summary email (src/server/owner-digest.ts)
 
@@ -172,11 +170,20 @@ export default {
     // No www → main address redirect: phones that installed the app from www.universeimpact.com
     // were sent outside their app (and its saved files) on every launch.
     if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/_next/')) return revalidatePages(request, await nextApp.fetch(request, env, ctx));
-    // A call (/call/<id>): every call gets the same page, built ahead of time as /call/open, which
-    // reads the id from the address (src/app/call/[id]). Rendering it per call started the whole
-    // Next.js server on a fresh Worker (~1 s of CPU; Workers Free allows 10 ms), and "Meet" showed
-    // Cloudflare's error 1101 page. The built page comes from the cache without starting Next.js.
-    const page = request.method === 'GET' && CALL_PAGE.test(url.pathname) ? new Request(`${url.origin}/call/open${url.search}`, request) : request;
+    // A page with parameters (/call/<id>, /docs/<id>, …): every address gets the same page, built
+    // ahead of time (/call/open), which reads the values from the address (./page-match.ts).
+    // Rendering it per address started the whole Next.js server on a fresh Worker (~1 s of CPU;
+    // Workers Free allows 10 ms), and "Meet" showed Cloudflare's error 1101 page. The built page
+    // comes from the cache without starting Next.js.
+    const known = request.method === 'GET' ? pageFor(url.pathname, url.search) : null;
+    if (known && 'redirect' in known) return Response.redirect(`${url.origin}${known.redirect}`, 302);
+    // Link prefetches to such a page, or from one, get nothing. Next.js's router knows the page as
+    // /docs/open while the address says /docs/<id>, so it filed the prefetched data under one and
+    // looked under the other, and asked again: 300 times in 5 s. A click loads the page as usual.
+    if (request.headers.get('next-router-prefetch') === '1' && (known || isBuiltPage(request.headers.get('next-url')))) {
+      return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store', Vary: 'RSC, Next-Router-Prefetch, Next-Router-Segment-Prefetch, Next-Url' } });
+    }
+    const page = known && 'rewrite' in known ? new Request(`${url.origin}${known.rewrite}${url.search}`, request) : request;
     const pageUrl = page === request ? url : new URL(page.url);
     return withNotice(await edgeCachedPage(page, pageUrl, env, ctx, () => nextApp.fetch(page, env, ctx)), pageNotice());
   },
