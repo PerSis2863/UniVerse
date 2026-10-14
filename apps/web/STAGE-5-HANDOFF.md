@@ -3,6 +3,17 @@
 Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
 done, where the code is and what's left for each item. Keep that table up to date as you go.
 
+## Latest (14 Oct 2026): read this first
+
+- **`main` has everything up to PR #58** (Meet "Error 1101" fix, D17 moving QR codes, D18 skills match,
+  page-error fixes). No open PR. **Next migration: `0129`.**
+- **What's left is written up in `STAGE-5-PLAN.md`, section 4 "Remaining work queue"**: 23 entries
+  (Q1–Q23) in the order to do them, each with what exists to build on, the steps, the traps, how to
+  know it's done, and its size. About 20–25 sessions in all. **Start with Q1** (pages that can still
+  show "Error 1101" on a fresh Worker).
+- What only the owner can do (accounts, keys, the Workers Paid decision) and what they should try is
+  at the end of that section.
+
 ## Where things stand (10 Oct 2026)
 
 - Blocks 1–4, D1 and D10 are **merged into `main`** (PR #47, PR #50) and **live**; the production
@@ -192,6 +203,9 @@ teacher; approve a leave and set cover; add a book, lend and return it; add equi
 label, lend it; add a bus route and a hostel room and put a student in each).
 
 ## What to do next, in order
+
+> **Out of date: use `STAGE-5-PLAN.md` section 4 ("Remaining work queue", 14 Oct 2026).** The list
+> below is the order from early October, kept for history.
 
 The plan's order (section 2) is the guide. Suggested next steps:
 

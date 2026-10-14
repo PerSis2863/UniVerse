@@ -17,6 +17,9 @@ projects, a campus super-app and admin analytics. Stage 5 is about three things:
 Read **all** of section 0 before writing code. Sections A–E are the work, in IDs (A1, B3.2, …) so
 progress can be tracked in the Progress section at the end.
 
+> **Continuing the work? Go to section 4, "Remaining work queue" (written 14 Oct 2026):** what's
+> left, in order, with what exists to build on, the steps, the traps and how to know it's done.
+
 ---
 
 ## 0. Start here
@@ -44,7 +47,7 @@ progress can be tracked in the Progress section at the end.
 | **AI is limited.** | `spendAi(user)` before every AI request, `featureOff('ai')`, cache with `cachedAi/saveAi`. Prefer the lite model for simple jobs. Images: `geminiJsonImage`. |
 | **Sample stubs.** | Every new GET a page uses needs a stub in `src/lib/sample/router.ts`. |
 | **Fast path.** | If you change a response served by `cloudflare/fast-api.ts` / `fast-chat.ts` / `fast-lists.ts`, change it there too, then run `node scripts/light-path-parity.mjs` (it compares both, field by field). API routes run without Next.js (`cloudflare/api-direct.ts`): after adding or removing one, run `node scripts/gen-api-routes.mjs`. |
-| **Migrations.** | Hand-written SQL `prisma/migrations/NNNN_name.sql`, **next number 0075**. Additive only. Then `npx prisma generate`, `node scripts/gen-owner-schema.mjs`, `npx wrangler d1 migrations apply DB --local`. The deploy applies them to production. |
+| **Migrations.** | Hand-written SQL `prisma/migrations/NNNN_name.sql`, **next number: see the Progress section (0129 on 14 Oct 2026)**. Additive only. Then `npx prisma generate`, `node scripts/gen-owner-schema.mjs`, `npx wrangler d1 migrations apply DB --local`. The deploy applies them to production. |
 | **Call room changes.** | Run `node scripts/test-call-room.mjs` (127 checks) after changing `CallRoom`; add checks for new behaviour. |
 | **Costs need the owner's yes.** | Anything that needs a paid service or an account (Apple/Google developer, Razorpay, SMS, Cloudflare Stream, Workers Paid) is marked **[owner]**: build it behind a switch, off until the owner sets it up. |
 
@@ -764,6 +767,8 @@ control what is used.
 
 ## 2. Order and size (suggested)
 
+> This was the order when Stage 5 started. **For what's left, follow section 4.**
+
 | Order | Block | Size | Why |
 |---|---|---|---|
 | 1 | A1 lint debt, A2 design system, A3 motion/loading pass | 3–4 rounds | The owner's top priority; makes every later feature consistent |
@@ -792,6 +797,410 @@ A "round" ≈ one long agent session. Mark each item in Progress as it lands.
    changed, unit tests for new pure logic.
 6. Free-plan limits respected (queries, subrequests, AI budget, no email).
 7. Progress row added below with what was checked and what needs a real device/key.
+
+---
+
+## 4. Remaining work queue (written 14 Oct 2026; start here)
+
+**State on 14 Oct 2026:** `main` has everything up to PR #58 (Meet fix, D17 moving QR codes, D18
+skills match). No open PR. **Next migration: `0129`.** Phase D (all 18 items) is built; Phase C is
+built except C1 (needs the owner's accounts); Phase A has A1–A3, A5, A6 done; Phase B has B7, B8, B9,
+B15, B16 done, B2–B4 partly. Roughly **60–65 % of Stage 5 is done; about 20–25 work sessions remain**
+(a session = one long round, usually one or two big items). The queue below is in the order to do it.
+Each entry says what the user gets, what already exists to build on (paths from `apps/web`), the
+steps, the traps, how to know it's done and how to test it. Sizes are in sessions.
+
+**How to work the queue**
+- Take the next entry that isn't marked done. Read its "Exists" files first: most areas already
+  have a working basic version from Stages 3–5; upgrade it, don't rebuild it.
+- Section 0.2's rules and section 3's definition of done apply to every entry. One commit per entry
+  (or per numbered step for big ones), a Progress row per entry (add it to the table at the end,
+  "Not done:" for anything left), and mark the entry here: change its heading to `… ✅ (PR #n)`.
+- An entry marked **[owner]** needs something only the owner can provide (an account, a key, money,
+  a decision): build it behind a switch, off by default, and list what's needed in STAGE-5-HANDOFF.md.
+- Tell the owner in plain words what was built, what was tested, and what they should try.
+
+---
+
+### Q1. Pages that still start Next.js on a fresh Worker (the "Meet" error) — 1 session
+**Why:** on Workers Free (10 ms CPU) a page rendered per request starts the whole Next.js server on a
+fresh Worker (~1 s CPU, 2.2 s locally) and Cloudflare answers "Error 1101 · Worker threw exception".
+The owner hit this on Groups → Meet (fixed in PR #58 for `/call/<id>`). Workers Paid would fix all of
+them at once, but the owner said not now.
+
+**The fix that worked for `/call/<id>`** (copy it): `src/app/call/[id]/page.tsx` became a server
+component with `generateStaticParams() { return [{ id: 'open' }] }` that renders a client component
+(`CallOpener.tsx`) inside `<Suspense>`; the client component reads the id from `usePathname()`
+(not `params`) and the query from `useSearchParams()`. `cloudflare/worker.ts` (`CALL_PAGE`) answers
+every `GET /call/<id>` (pages and RSC navigations) with `new Request(origin + '/call/open' + search,
+request)` through `edgeCachedPage`, so OpenNext's cache interception serves the built page without
+starting Next.js. Next.js keeps the browser's address (its router uses `location` as the canonical
+URL), so `usePathname()` returns the real id.
+
+**The 27 pages still rendered per request** (from the build's route list, `ƒ` without `/api/`):
+- **Client pages that only need the id in the browser (24, use the same fix):** `/boards/[id]`,
+  `/code/[id]`, `/docs/[id]`, `/tasks/[id]`, `/spaces/[kind]/[id]`, `/spaces/[kind]/[id]/files`,
+  `/hall/[id]`, `/guest/[id]`, `/student/assignments/[id]`, `/teacher/assignments/[id]`,
+  `/student/profile/[id]`, `/impact-league/[id]`, `/impact-rooms/[id]`, `/impact/[id]`,
+  `/league/[slug]`, `/passport/[slug]`, `/reports/[slug]`, `/verify/[id]`,
+  `/verify/scholarship/[token]`, `/apply/[slug]`, `/apply/status/[token]`, `/guardian/[token]`,
+  `/guardian/updates/[token]`, `/fee-receipt/[id]`. All are `'use client'` and read params with
+  `use(params)`; their layouts (`guardian/[token]`, `impact/[id]`, `league/[slug]`) only have static
+  `metadata`.
+- **Redirect-only pages (2, answer in the Worker, no page at all):** `/join/[inviteCode]` →
+  `302 /join?code=<code>`; `/student/courses/[id]` → `302 /student/blackboard?course=<id>`.
+- **Server-rendered with the database (1):** `/receipt/[id]` (`getReceipt` in a server component).
+  Move the data to an API route (`GET /api/receipts/[id]`, with a sample stub) and make the page a
+  client page like the others, or leave it (rarely opened right after a deploy).
+
+**Steps**
+1. Write one helper in `cloudflare/worker.ts`: a table of `{ pattern, built }` (e.g.
+   `[/^\/docs\/(?!open$)[^/]+$/, '/docs/open']`, `[/^\/spaces\/[^/]+\/[^/]+$/, '/spaces/open/open']`)
+   replacing `CALL_PAGE`, applied to `GET` before `edgeCachedPage`. Placeholder ids must never be real
+   ids (`open` isn't: ids are cuids or prefixed like `g_`).
+2. For each page: move the client code into `<Name>Client.tsx`, read ids from `usePathname()` (split
+   on `/`, `decodeURIComponent`), keep everything else; `page.tsx` exports `generateStaticParams`
+   with the placeholder and renders the client inside `<Suspense>` (needed for `useSearchParams`).
+   Pages that skip work when the id is the placeholder must not fetch `/api/.../open`.
+3. Add the two redirects to the Worker (before the page path), keeping the query string.
+4. `pnpm typecheck`, eslint, `npx vitest run`, then a production build
+   (`npx opennextjs-cloudflare build`; afterwards `git checkout public/sw.js`), `npx
+   opennextjs-cloudflare populateCache local`, and `NODE_ENV=production npx wrangler dev --port 8787
+   --var DEMO_LOGIN_ENABLED:true --var DEMO_ACCOUNT_EMAILS:<accounts>`.
+
+**Traps:** a page whose client code calls `useParams()` deeper down (search the page's components);
+pages with two params (spaces); `notFound()` in a page (must become a client-side "not found" state);
+anything that renders differently on the server for the placeholder (hydration error #418: render
+nothing id-specific until mounted).
+
+**Done when:** on a freshly started `wrangler dev`, each of the 27 addresses answers in < 0.3 s and a
+server-rendered page requested right after still takes ~2 s (proof Next.js wasn't started); each page
+still works when opened directly and from in-app links (Playwright at 390 and 1280 px, no page
+errors, axe clean). **How it was measured for `/call`:** stop `wrangler dev` (kill its `workerd`
+processes), start it again, wait for "Ready on", then `curl -s -o /dev/null -w '%{time_total}'
+http://localhost:8787/<page>` followed by the same for `/guest/x` (a page still rendered per
+request): ~0.05–0.2 s then ~2 s means the first page didn't start Next.js. Repeat per page. Then a
+Playwright run that opens each page from its in-app link and directly (`scripts/browser-session.mjs`
+has `signedIn`).
+
+---
+
+### Q2. A8 Security hardening — 1 session
+**Exists:** `src/server/two-step.ts` (emailed sign-in codes for admins: costs emails),
+`src/lib/chat-lock.ts` (WebAuthn already used to lock chats), `src/server/auth.ts`, sign-in history
+(`src/lib/sign-in-history.ts`, `src/components/security/RecentSignIns.tsx`, Settings → Privacy &
+Security in `src/components/settings/AccountSecurity.tsx` with "sign out everywhere"),
+`security-headers.ts`, the Worker's limiters (`IP_RATE_LIMITER`, `API_RATE_LIMITER`,
+`COSTLY_RATE_LIMITER` and the `COSTLY` pattern in `cloudflare/worker.ts`), file links (`src/lib/r2.ts`,
+`src/lib/file-urls.ts`, `src/server/share-tokens.ts`).
+**Build:**
+1. **Passkeys** (fingerprint / face / phone PIN): register in Settings → Privacy & Security; sign in
+   with a passkey on the sign-in page; required as the second step for admins instead of the emailed
+   code (keep the code as a fallback for admins without a passkey). Store credentials in a new table
+   (migration `0129_passkeys`: user, credential id, public key, counter, name, created, last used).
+   Verify assertions on the server with WebCrypto (P-256 / Ed25519), no library if possible.
+2. **Signed-in devices list** with "sign out this device" per row (today only "everywhere"): sessions
+   come from sign-in history; revoke by bumping a per-session token version.
+3. **Rate limits per route family:** sign-in and sign-up, uploads, AI (each a key prefix on
+   `API_RATE_LIMITER`, or new limiter bindings in `wrangler.jsonc`: free).
+4. **CSP report-only endpoint** (`/api/csp-report`, stores the last 200 in a small table or the errors
+   table) and add `report-to` to `security-headers.ts`.
+5. **Private files behind expiring links** for grades, report cards, recordings and documents: R2
+   presigned GET (10 min) or a signed `/api/files/...` token; public files unchanged.
+6. A monthly dependency check written up for the owner (`pnpm audit --prod`), no CI change.
+**Done when:** an admin can sign in with a passkey and no email is sent; a device can be signed out
+alone; 11 sign-in attempts a minute from one address get 429; a private file link stops working
+after 10 minutes. **[owner]** nothing (all free).
+
+### Q3. A9 Reliability and observability — 1 session
+**Exists:** owner console (`src/app/(dashboard)/console/`: `health.tsx` is an AI-ranked security and
+error check from `src/server/owner-health.ts`; `errors.tsx` with AI diagnosis from
+`src/lib/error-monitor.ts` / `src/server/errors.ts`; `server.tsx` with feature switches from
+`src/lib/feature-switches.ts` and the usage guard `cloudflare/usage-guard.ts`), `CallStat` (call
+quality per person), `src/server/ai-budget.ts`, `src/app/(dashboard)/error.tsx`.
+**Build:**
+1. Console → **Health numbers** tab: error rate per route and per page (from the errors table), the
+   slowest API routes (sample 5 % of requests in the Worker: route + ms into a small table, kept 7 days),
+   AI spend per feature (ai-budget already records the feature), push success rate, call quality
+   (worst loss / relay share from `CallStat`), first-load JS size per build (written by the build).
+2. **Error boundaries** (`error.tsx`) for each top-level section that has none, with "Try again" and
+   "Report this" (sends to the errors table).
+3. **Per-school feature switches:** the owner turns a feature off for one organisation
+   (`src/server/tenant.ts` orgs; extend the switches to `feature@orgId`), checked where the global
+   switch is checked.
+**Done when:** the owner can see which route failed most yesterday and turn a feature off for one
+school. Keep each console query inside D1's per-request limits (one batch).
+
+### Q4. A4 Performance budget (finish) — 0.5 session
+**Exists:** most of A4 (see its Progress row); `src/lib/shrink-image.ts` resizes before upload.
+**Build:** 3 sizes per uploaded picture (`-sm` 320, `-md` 960, `-lg` 1920) made in the browser
+before upload, `srcset` on the image components that show uploads (avatars, chat photos, posts,
+materials); a pass over `src/server/services/*` for loops of queries (N+1) on the busiest GETs;
+`Cache-Control` on public answers that are the same for everyone.
+**Done when:** a chat with 30 photos downloads the small versions on a phone; LCP p75 < 2.5 s and
+INP p75 < 200 ms for the top pages in owner console → Analytics → Speed for real people (Web Vitals are
+already collected: `src/lib/web-vitals.ts`, `/api/vitals`, table `web_vitals`).
+
+---
+
+### Q5. B2 Courses (the rest) — 2 sessions
+**Exists:** modules (B2.1: `src/server/course-modules.ts`, `src/lib/course-modules.ts`,
+`src/components/dashboard/CourseModules.tsx`, inside `CourseBoard.tsx`), announcements
+(`src/server/modules/announcements.ts`, `services/announcements.service.ts`), course analytics
+(`src/server/course-analytics.ts`), pack import/copy logic in the content marketplace
+(`src/server/marketplace.ts`, C7), course calendar data in `services/calendar.service.ts`, ICS in
+`src/server/ical.ts`, electives and waitlist-like requests (`services/electives.service.ts`).
+**Build (one commit each):**
+1. **Copy a course to a new term** (structure, modules, materials, quizzes, rubrics; never
+   submissions or grades). Reuse the marketplace import code.
+2. **Rich lesson pages:** a module PAGE item edited with the docs editor (Tiptap, no live room) with
+   video chapters, maths (KaTeX is installed: `src/components/docs/DocEmbed.tsx`), callouts, quiz and
+   flashcard blocks.
+3. **Discussion board per course:** threads, replies, upvotes, "answered", teacher-endorsed answer;
+   an AI suggested answer from the course materials as a draft for the teacher (`spendAi`). New tables
+   (`course_threads`, `course_posts`, `course_votes`). A tab on the course board.
+4. **Announcements:** schedule for later (the 15-minute cron's due check, `cloudflare/due-check.ts`:
+   at most 5 parts per compound SELECT), pin, "seen by 28 of 32" (a read table), translate on read
+   (exists for chat: `src/server/text-translate.ts`).
+5. **Course calendar** tab with every due date, class and event, plus its ICS link.
+6. **Enrolment:** waitlist with a cap, sections (groups inside a course), co-teachers and teaching
+   assistants with permissions (a `course_staff` table; `src/lib/course-access.ts` `canManage` must
+   include them).
+7. **AI syllabus draft:** title + level + weeks → modules and outcomes the teacher edits (one AI
+   request; outcomes map to `Course.skills`).
+8. **Import from IMS Common Cartridge (.imscc) and Google Classroom export**, export as Common
+   Cartridge (zip in the browser; fflate is installed). Google Classroom API import is **[owner]**
+   (app registration); the exported zip works without it.
+**Done when:** a teacher copies last term's course in one step, runs a discussion board, schedules an
+announcement and adds a co-teacher who can grade.
+
+### Q6. B3 Assignments and grading (the rest) — 2 sessions
+**Exists:** grading view speed-ups (B3.1 partly), gradebook categories and final grades
+(B3.4 first part, `src/lib/gradebook.ts`), AI-drafted grading, feedback studio
+(`src/server/feedback-studio.ts`), similarity (`src/server/similarity.ts`), AI receipts (D12,
+`src/server/ai-receipts.ts`), offline assignments (`src/components/offline/OfflineWork.tsx`), code
+tests (code rooms), LTI 1.3 launches (`src/server/lti.ts`), `src/server/assignments.ts`,
+`src/app/(dashboard)/teacher/assignments/[id]`.
+**Build:**
+1. **Policies:** late penalty (% per day, grace period), resubmissions (max N), extensions per
+   student, accommodations (extra time) set once per student and applied to assignments and quizzes.
+2. **Assignment types:** group assignment (one submission per group, shared or individual marks),
+   peer review (anonymous, rubric-based, assigned automatically), file upload, link, code with tests.
+3. **Inline annotation** of PDFs and images in the grading view (pdf.js is in `public/pdfjs`;
+   highlights and comments stored per submission), rubric keys 1–5.
+4. **Gradebook:** letter / GPA scales per school, drop lowest, hide grades until posted ("post
+   grades"), grade history (who changed what), CSV export, LTI Advantage grade passback (AGS) to the
+   LMS.
+5. **Student side:** status chips (Not started / Draft / Submitted / Late / Graded), a signed
+   submission receipt, "What does this rubric mean?" (AI explainer), regrade request flow.
+6. **Writing replay** for typed answers: chunks of text over time (not keystrokes) shown to the
+   teacher as a timeline.
+**Done when:** a late submission loses the set % automatically, a group hands in once, a teacher
+annotates a PDF, a student asks for a regrade and the teacher answers it.
+
+### Q7. B4 Quizzes (the rest) — 1.5 sessions
+**Exists:** question bank (B4.1 first part: `src/lib/question-bank.ts`,
+`src/components/quizzes/QuestionBank.tsx`), shuffle and exam mode (B4.3–4.4 first part,
+`src/lib/seeded-shuffle.ts`), item analysis (`src/lib/item-analysis.ts`),
+`services/quizzes.service.ts`, `QuizManager.tsx`, offline quizzes, live polls (`src/server/live.ts`),
+the phone clicker's join by code (`src/server/classroom.ts`), mastery (`src/server/learning-dna.ts`),
+second chances (`src/server/second-chance.ts`).
+**Build:**
+1. **Question types:** true/false, multiple answers, short answer (AI-assisted marking the teacher
+   confirms), fill in the blanks, matching, ordering, numeric with tolerance, maths (LaTeX input),
+   code (tests), tap on an image, spoken answer. `QuizQuestion` gains `type` and `meta` JSON
+   (migration); every place that marks answers (`submitQuiz`, item analysis, offline quiz, D17 codes)
+   must handle each type.
+2. **Pools and variants:** draw N questions from a tagged pool per student; numbers that vary per
+   student.
+3. **Exam mode extras:** one question at a time without going back; a hard stop that refuses answers
+   after time.
+4. **Adaptive practice:** next question by mastery (D1), unlimited attempts, hints, explanations.
+5. **Live quiz game** (like Kahoot): the teacher's screen shows a code (reuse the classroom code),
+   phones answer, leaderboard and streaks, results saved as practice. Live updates through the
+   realtime room, not polling.
+6. QTI / GIFT import into the question bank.
+**Done when:** a quiz mixes 5 question types, each marked right (unit tests per type); a class plays
+a live game on phones.
+
+---
+
+### Q8. B1 Home pages — 1 session
+**Exists:** student home (`src/app/(dashboard)/student/page.tsx`, data from `/api/student/overview`
+**which is also on the light path** in `cloudflare/fast-api.ts`: change both and run
+`node scripts/light-path-parity.mjs`), teacher and admin homes (`/api/core/dashboard/teacher|admin`,
+also light path), daily brief (`src/server/daily-brief.ts`, `DailyBrief.tsx`), streaks
+(`src/server/streaks.ts`, `src/lib/study-days.ts`), early warning.
+**Build:** "Edit home" (reorder, hide, add widgets; saved per user, `users.homeLayout` JSON via a
+migration); an **Up next** card (class in 10 min → Join; quiz due → Start; teacher: 12 to grade →
+Grade) that changes as time passes (`src/lib/use-now.ts`); daily goal and weekly ring; teacher
+"needs attention" (late work, early-warning flags, unanswered questions) and a quick-create button;
+admin live numbers (attendance today, fees collected, open safety flags, active users); a "+" button
+in the phone tab bar (new message, task, doc, event, ask AI, scan QR).
+**Done when:** a student hides two widgets and the home remembers; Up next changes when a class
+starts.
+
+### Q9. B17 Notifications — 0.5 session
+**Exists:** the bell list in `src/components/layout/Topbar.tsx`, `src/server/modules/notifications.ts`,
+push (`services/push.service.ts`, the service worker `src/worker/index.ts` with Answer/Decline
+actions for calls), quiet hours (`src/server/quiet-hours.ts`), email switch.
+**Build:** a full notification centre page (a tab of the inbox or settings, never a new menu item)
+grouped by source with filters (Mentions, Grades, Calls, Tasks), swipe to mark read / snooze, "Mark
+all read", endless list; per-type settings (in-app / push) and per-course mute; an optional daily
+digest instead of many pushes (the daily cron); push actions (Reply, Mark done, Join).
+**Done when:** a student mutes one course's pushes and gets one digest a day instead.
+
+### Q10. B18 Search everywhere — 1 session
+**Exists:** `/api/search` (courses, groups, NGO projects, internships, knowledge hub),
+`src/components/ui/CommandPalette.tsx`, searchable pages in `Sidebar.tsx`, message FTS (migration
+0074), semester memory FTS (0063).
+**Build:** one `search_fts` index (kind, ref, scope, title, body) filled when docs, tasks, boards,
+courses, materials, people and events change (write in the same request; no cron), access filtered
+by scope like semester search; the palette gets actions ("New assignment", "Start call with…"),
+recent items and grouped results; on phones a search tab.
+**Done when:** typing a word from a doc's body finds the doc, only for people who can open it.
+**Trap:** D1 FTS5 works; keep each write to one or two statements.
+
+### Q11. B5 Attendance — 0.5 session
+**Exists:** `src/server/modules/attendance.ts`, `services/attendance.service.ts`, rotating QR,
+in-person class check-ins mark present (`src/server/classroom.ts`), `CallStat.seconds` per person per
+call, early warning uses attendance, guardian view.
+**Build:** attendance from class calls (present when in the call ≥ X % of it; teacher confirms); an
+optional location check (admin policy, the browser's location compared with the campus's, never
+stored); excuse requests with a document → teacher/admin approve; per-student trend and chronic
+absence alerts (in-app to guardians, never email); bulk and keyboard marking; a seating chart.
+
+### Q12. B6 Calendar and timetable — 1 session
+**Exists:** `src/server/modules/calendar.ts`, `services/calendar.service.ts`,
+`src/components/calendar/TimeGrid.tsx`, smart week planner (`src/server/smart-planner.ts`,
+`study-planner.ts`, `src/components/planner/SmartWeek.tsx`), timetable
+(`services/timetable.service.ts`, admin timetable page), ICS feed (`src/server/ical.ts`, needs
+`SESSION_SECRET`), rooms (D15 campus map).
+**Build:** drag-and-drop calendar (day / week / month / agenda, colour per course, office hours and
+personal blocks); a **timetable generator** for admins (teachers, rooms, hours per subject → a
+proposed week, worked out **in the browser**, conflicts highlighted, saved when accepted); an **exam
+timetable generator** (no student with two exams at once, room sizes). Two-way Google / Outlook sync
+is **[owner]** (Google Cloud project, Microsoft app): build behind a switch.
+
+### Q13. B10 AI tutor and study tools — 1 session
+**Exists:** course tutor with citations (`src/server/tutor.ts`, `src/components/tutor/TutorStudio.tsx`),
+flashcards (`/api/tutor/cards`), voice tutor (`src/lib/live-voice.ts`), oral coach (D11,
+`src/server/oral.ts`), semester memory (`src/server/semester.ts`), second chances (D10), images to
+AI (`geminiJsonImage` in `src/server/gemini.ts`), KaTeX installed.
+**Build:** photo of a homework problem → hints first, the answer only when asked; KaTeX and chemistry
+rendering in every AI answer; tutor modes (explain simply / hints only / the teacher's rule per
+course); FSRS scheduling for flashcards with a daily review push; practice tests from the semester
+memory linked to the class moment; teacher view of common (anonymous) questions per course and a
+switch to turn the tutor off before an exam. Every AI call: `spendAi`, `featureOff('ai')`, cache.
+
+### Q14. B11 Skills passport and credentials — 0.5–1 session
+**Exists:** passport (`src/server/passport.ts`, `src/components/passport/`, public page
+`/passport/[slug]`), Open Badges 3.0, W3C-shaped credential documents for impact certificates
+(`src/server/services/credential-signer.ts`), verify pages (`/verify/[id]`), skill evidence,
+`CredentialShare.tsx`.
+**Build:** W3C Verifiable Credentials 2.0 for skills (signed, wallet download); "Add to LinkedIn"
+(LinkedIn's add-certification URL, no API); a public portfolio (projects, evidence, hours, badges,
+theme; `/p/<handle>` or extend `/passport/[slug]`); a CV builder from the passport (templates, AI
+summary with `spendAi`, PDF in the browser); an employer verification page (enter a code, see the
+credential, no account).
+
+### Q15. B13 Careers — 1 session
+**Exists:** `src/server/modules/career.ts`, internships (`services/internships.service.ts`, D18 skills
+match `src/server/skills-bridge.ts`), mentorship (`services/mentorship.service.ts`), office hours
+(`src/server/office-hours.ts`), the oral coach and voice tutor (D11) to reuse for interviews.
+**Build:** AI mock interview (role questions, feedback on answers, STAR structure, filler words:
+reuse `oral.ts`); an application tracker (applied → interview → offer, reminders, documents);
+alumni network and mentor booking (office-hours slots); job alerts in-app/push when a new opening
+matches (D18 leftover).
+
+### Q16. B12 Global impact — 1 session
+**Exists:** impact projects and hours (`services/impact.service.ts`, `src/server/volunteering.ts`),
+`src/components/impact/ImpactMap.tsx`, impact rooms, Impact League, sponsor reports, scholarship
+exchange, payments (C6, `src/server/payments/`, Stripe; Razorpay **[owner]**).
+**Build:** filter the map by SDG; automatic certificates at 10 / 50 / 100 verified hours; money
+donations to NGO projects (Stripe Checkout; UPI via Razorpay **[owner]**) with receipts and an 80G
+field for Indian NGOs; a simple carbon tracker for clubs (activity → kg CO₂e with standard factors).
+
+### Q17. B14 Student life (the rest) — 1 session
+**Exists:** events with RSVP, waitlist and QR check-in (`src/server/campus-life.ts`, `/student/life/events`),
+associations / clubs (`services/associations.service.ts`), rooms, lost & found, medical, everyday
+life (dining menu), campus map (D15), wellbeing (D13).
+**Build:** paid tickets (C6 payments; Razorpay **[owner]**) and signed QR tickets; club elections
+(anonymous, verifiable tally) and budgets; a campus marketplace (buy / sell / swap, verified students,
+chat with the seller, report); cafeteria pre-orders; carpool and a housing board. Live bus positions
+are **[owner]** (a GPS device or a driver phone app).
+
+### Q18. B19 Onboarding, profile and settings — 0.5 session
+**Exists:** `AccountSetupCard.tsx`, `src/components/layout/WelcomeTour.tsx`,
+`src/components/settings/SettingsApp.tsx`, profile pages, download my data, delete account.
+**Build:** guided tours that point at the real buttons (per role, skippable, progress saved); profile
+cover photo, pronouns (optional), links, availability, avatar cropper; a search box in settings and a
+link to each setting.
+
+### Q19. B20 Owner console — 0.5–1 session
+**Exists:** `src/app/(dashboard)/console/` (server, health, errors, insights, calls, chats, database,
+AI models, email schedule, people), `src/server/modules/owner*.ts`, schools (`src/server/tenant.ts`,
+C2), Stripe billing.
+**Build:** a school list with plan, seats, usage and health; a read-only "view as" for support
+(logged in the audit log); revenue, churn and retention charts from Stripe; gradual rollout (a
+feature for N % of schools, on top of Q3's per-school switches); a moderation queue across schools
+(safety flags roll up).
+
+### Q20. B7.3 Chat bots and slash-command apps — 0.5 session
+**Exists:** `/poll`, `/remind` (`src/server/chat-reminders.ts`), `/ask-ai` in the composer
+(`src/components/chat/Composer.tsx`, `ChatWindow.tsx`), webhooks and API keys (C4:
+`src/server/webhooks.ts`, `src/server/public-api.ts`), communities.
+**Build:** an "apps" registry per school (name, commands, permissions, a webhook URL); a slash
+command calls the app's webhook (signed like C4's) and posts its answer in the chat; install /
+uninstall in Admin → Integrations.
+
+### Q21. A7 Languages and right to left — 1.5 sessions
+**Exists:** `src/lib/i18n.ts` (English, French, Spanish, Hindi; many newer screens are English only),
+`src/lib/languages.ts`, AI translation with a cache (`src/server/text-translate.ts`).
+**Build:** move the strings of every screen to `t()` keys (biggest part: do it area by area, one
+commit each); add Arabic and Urdu (right to left: `dir="rtl"` on `<html>` from the language,
+logical CSS `ms-`/`me-`/`ps-`/`pe-` instead of `ml`/`mr`, mirrored arrows), Bengali, Tamil, Telugu,
+Marathi, Portuguese, Indonesian, Swahili (draft with the AI translator once per string set, cached,
+marked "machine-translated" for review in the owner console); dates, numbers and money through
+`Intl` (₹1,00,000 for `hi` / `en-IN`).
+**Done when:** the whole student app reads correctly in Arabic, right to left, at 390 px.
+
+### Q22. Leftovers inside finished items — 1–2 sessions (pick up when nearby)
+Each Progress row lists its "Not done:"; the ones worth doing:
+- **D1 mastery map:** tutor questions and flashcards as signals; concept tags on the question bank screen.
+- **D2 Whisper TA:** a teacher switch to turn it off for one class.
+- **D7 phone clicker:** AI answers for in-room questions; link an in-person session to a running class call.
+- **D8 language-free classroom:** the browser's built-in Translator API before AI; scanned PDFs.
+- **D11 oral coach:** confirmed scores into the gradebook.
+- **D12 AI receipts:** on quizzes and oral checks; a class summary for the teacher.
+- **D18 skills match:** tell a student when a new opening matches.
+- **B9:** a real .docx writer, PDF → Word, MP3 / MP4 export (ffmpeg.wasm), form fields in the PDF editor.
+- **B15 school admin:** see each row (late fees, leave balances, offer letters as PDF, label printing…).
+- **B16:** parent photos/files in parent–teacher chats, meeting reminders.
+
+### Q23. Phase E small items — alongside everything
+The list in Phase E (undo toasts, copy-link everywhere, keyboard shortcut sheet, bulk actions, CSV
+export on tables, relative times, haptics, long-press menus…). Do ~10 per session next to a big
+item, one commit per batch, and list them in a Progress row.
+
+### Waiting for the owner (don't start without their yes)
+| Item | What's needed |
+|---|---|
+| C1 phone apps (App Store / Play Store) | Apple and Google developer accounts (then 1–2 sessions: Capacitor shell, native push, deep links) |
+| B8.5 live streaming to YouTube | The owner said keep it free for now (Cloudflare Stream Live is paid) |
+| Workers Paid ($5/month) | The owner's decision; fixes Q1 for every page at once and lifts the 10 ms CPU limit |
+| UPI / Razorpay (fees, donations, tickets) | Razorpay account and keys |
+| GIF search in chat | Tenor or Giphy key |
+| Google / Outlook calendar sync, Google Classroom import | Google Cloud project, Microsoft app registration |
+| Exact Word / PowerPoint → PDF | A paid conversion service |
+| C / C++ in code rooms, GitHub import | A large WebAssembly compiler (size), the owner's GitHub app |
+
+### For the owner to try (tell them when relevant)
+School-admin tools with the real admin account on a preview (fees, import and undo, admissions,
+roles, staff leave and cover, library, registers); the parent co-pilot, Whisper TA and oral coach
+with the real AI; moving QR codes with real phones and a projector; drawing the campus map
+(Campus monitoring → Campus map → Edit map); check `SESSION_SECRET` and
+`CREDENTIAL_SIGNING_PRIVATE_KEY` are set on the live site.
 
 ---
 
