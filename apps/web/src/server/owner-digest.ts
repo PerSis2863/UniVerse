@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { watchedUsage } from './plan-usage';
 import { emailDue, parseEmailSchedule } from '@/lib/feature-switches';
 import { ownerEmails } from './auth';
 import { APP_URL, escapeHtml, sendEmail } from './email';
@@ -33,8 +34,8 @@ export async function emailOwnerDigest(now = Date.now()): Promise<string> {
     ['deletions', `(SELECT COUNT(*) FROM account_deletion_requests WHERE status = 'PENDING')`],
     ['applications', `(SELECT COUNT(*) FROM role_applications WHERE status = 'PENDING')`],
   ]);
-  const guard = await prisma.usageGuard.findUnique({ where: { id: 'main' }, select: { meters: true } }).catch(() => null);
-  const meters: { label: string; used: number | null; limit: number }[] = guard?.meters ? JSON.parse(guard.meters) : [];
+  const guard = await prisma.usageGuard.findUnique({ where: { id: 'main' }, select: { meters: true, daily: true } }).catch(() => null);
+  const { meters, today } = watchedUsage(guard);
   const top = meters.filter((m) => m.used != null && m.limit > 0).sort((a, b) => (b.used ?? 0) / b.limit - (a.used ?? 0) / a.limit)[0];
   const n = (k: string) => Number(c[k] ?? 0);
   const rows: [string, string][] = [
@@ -44,7 +45,7 @@ export async function emailOwnerDigest(now = Date.now()): Promise<string> {
     ['Pages opened', String(n('views'))],
     ['Money received', `$${n('paid').toFixed(2)}${n('failed') ? ` · ${n('failed')} failed` : ''}`],
     ['Problems', `${n('newErrors')} new · ${n('openErrors')} open`],
-    ...(top ? [['Highest Cloudflare use', `${top.label}: ${Math.round(((top.used ?? 0) / top.limit) * 100)}% of the month`] as [string, string]] : []),
+    ...(top ? [['Highest Cloudflare use', `${top.label}: ${Math.round(((top.used ?? 0) / top.limit) * 100)}% ${today && !top.key.startsWith('files') ? "of today's free allowance" : 'of the month'}`] as [string, string]] : []),
   ];
   const todo = [
     ctl && ctl.mode !== 'LIVE' && `The site is ${ctl.mode === 'MAINTENANCE' ? 'in maintenance' : 'read-only'}.`,

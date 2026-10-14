@@ -267,7 +267,7 @@ export default function ownerModule(router: Router) {
       countries: top(countries, (r: { country: string | null }) => r.country),
       devices: top(devices, (r: { device: string | null }) => r.device),
       // The spending guard (cloudflare/usage-guard.ts): this billing month's Cloudflare usage.
-      usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [] },
+      usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [], paid: process.env.WORKERS_PAID?.trim().toLowerCase() === 'true', daily: guard.daily ? JSON.parse(guard.daily) : null },
     };
     cachedOverview = { at: Date.now(), data: result };
     return result;
@@ -294,7 +294,7 @@ export default function ownerModule(router: Router) {
     ]);
     return withOwnerPass(ctl.bypass, {
       control: publicControl(ctl),
-      usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [] },
+      usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [], paid: process.env.WORKERS_PAID?.trim().toLowerCase() === 'true', daily: guard.daily ? JSON.parse(guard.daily) : null },
       health: { people, activeToday, signInsToday, messagesToday, openErrors, newErrors, pendingDeletions, suspended },
       settings: serverSettings(),
       ai: await aiUsageToday().catch(() => null),

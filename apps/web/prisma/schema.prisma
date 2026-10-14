@@ -2885,6 +2885,10 @@ model UsageGuard {
   error     String? // why the last check couldn't read the usage
   checkedAt DateTime?
   pausedAt  DateTime?
+  /// Workers Free: today's usage of the daily allowances, JSON { day, meters } (migration 0129)
+  daily        String?
+  /// The last daily warning sent to the owner, "<YYYY-MM-DD>:<warn|high>"
+  dailyAlerted String?
 
   @@map("usage_guard")
 }

@@ -5,6 +5,7 @@ import { forgetUser, isOwnerEmail } from '../auth';
 import { PLANS } from '@/lib/plans';
 import { parseSwitches, parseWatchWords } from '@/lib/feature-switches';
 import { selectColumns } from '../table-stats';
+import { watchedUsage } from '../plan-usage';
 import { oneOf } from '../body';
 
 // Owner console extras that read across the app:
@@ -44,14 +45,14 @@ export default function ownerInsightsModule(router: Router) {
     ]);
     const [ctl, guard] = await Promise.all([
       prisma.serverControl.findUnique({ where: { id: 'main' }, select: { mode: true, banner: true, switches: true, watchWords: true } }),
-      prisma.usageGuard.findUnique({ where: { id: 'main' }, select: { paused: true, meters: true } }).catch(() => null),
+      prisma.usageGuard.findUnique({ where: { id: 'main' }, select: { paused: true, meters: true, daily: true } }).catch(() => null),
     ]);
     // Watch-word messages in the last day (whole words are checked when they are sent; this is a count).
     const words = parseWatchWords(ctl?.watchWords);
     const flagged = words.length
       ? await prisma.message.count({ where: { createdAt: { gt: new Date(now - DAY) }, type: { not: 'SYSTEM' }, OR: words.slice(0, 5).map((w) => ({ body: { contains: w } })) } }).catch(() => 0)
       : 0;
-    const meters: { key: string; label?: string; used: number | null; limit: number }[] = guard?.meters ? JSON.parse(guard.meters) : [];
+    const { meters } = watchedUsage(guard); // today's free allowances on Workers Free (src/server/plan-usage.ts)
     const high = meters.filter((m) => m.used != null && m.limit > 0 && m.used / m.limit >= 0.7).map((m) => ({ key: m.key, label: m.label ?? m.key, percent: Math.round(((m.used ?? 0) / m.limit) * 100) }));
     const off = parseSwitches(ctl?.switches).filter((x) => x !== 'digest'); // the owner's own email isn't a feature people miss
     // What to look at, most urgent first. `tab` is the console tab, `href` a page elsewhere.

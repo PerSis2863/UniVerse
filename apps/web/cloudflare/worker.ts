@@ -182,22 +182,24 @@ export default {
   },
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
-    let job = controller.cron === DIGEST_CRON ? 'digest' : 'daily';
-    if (controller.cron !== DAILY_CRON && controller.cron !== DIGEST_CRON) {
-      console.log(`spending guard: ${await checkUsage(env)}`);
-      // Scheduled-call reminders: one cheap query; the app only starts when a call is due.
-      if (!(await callsDue(env))) return;
-      job = 'reminders';
-    }
-    // Run the job's route (where the database code lives), directly (./api-direct.ts) so a fresh
+    // Run a job's route (where the database code lives), directly (./api-direct.ts) so a fresh
     // instance doesn't start Next.js for it, else through Next.js. The random token only exists in this
     // isolate, so the route can't be triggered from outside.
     const token = crypto.randomUUID();
     (globalThis as { __universeCronToken?: string }).__universeCronToken = token;
-    const jobRequest = () => new Request(`https://universeimpact.com/api/cron/${job}`, { method: 'POST', headers: { 'x-cron-token': token } });
-    const res: Response = (await apiDirect(jobRequest(), new URL(`https://universeimpact.com/api/cron/${job}`), env, ctx)) ?? (await nextApp.fetch(jobRequest(), env, ctx));
-    console.log(`cron ${controller.cron}: ${res.status} ${await res.text()}`);
-    if (!res.ok) throw new Error(`Cron job ${job} failed with ${res.status}`);
+    const runJob = async (job: string, body?: unknown) => {
+      const jobRequest = () => new Request(`https://universeimpact.com/api/cron/${job}`, { method: 'POST', headers: { 'x-cron-token': token, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+      const res: Response = (await apiDirect(jobRequest(), new URL(`https://universeimpact.com/api/cron/${job}`), env, ctx)) ?? (await nextApp.fetch(jobRequest(), env, ctx));
+      console.log(`cron ${controller.cron} ${job}: ${res.status} ${await res.text()}`);
+      if (!res.ok) throw new Error(`Cron job ${job} failed with ${res.status}`);
+    };
+    if (controller.cron === DAILY_CRON || controller.cron === DIGEST_CRON) return runJob(controller.cron === DIGEST_CRON ? 'digest' : 'daily');
+    const guard = await checkUsage(env);
+    console.log(`spending guard: ${guard.summary}`);
+    // Workers Free's daily allowances: the owner hears at 70% and 90% (in the app and by push).
+    if (guard.alert) await runJob('usage-alert', guard.alert).catch((e) => console.error('usage alert failed:', e));
+    // Scheduled-call reminders: one cheap query; the app only starts when a call is due.
+    if (await callsDue(env)) await runJob('reminders');
   },
 };
 

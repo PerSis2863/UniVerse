@@ -131,6 +131,15 @@ that fan out or compare text stay inside that (src/lib/plan-limits.ts). After up
 Paid ($5/month), add the variable `WORKERS_PAID=true` to raise those limits (live-poll pushes 40 → 500,
 similarity checks read more text and compare bigger classes). Nothing else needs to change.
 
+**Daily allowances on Workers Free** (reset 00:00 UTC, 5:30 AM in India): 100,000 app requests, 100,000
+live-update / whiteboard / call requests and 13,000 GB-s of their running time, 5 million database rows
+read and 100,000 written. Past any of them Cloudflare stops serving UniVerse until the next day. With
+`CF_ACCOUNT_ID` and `CF_USAGE_TOKEN` set, the spending guard (every 15 minutes) reads today's usage and
+tells the owner at 70% and again at 90% (a notification in the app and a push, no email); the owner
+console's Server tab shows today's figures. On Workers Free only files (R2) can make the guard pause
+the app, since nothing else is charged. **Set `WORKERS_PAID=true` when you upgrade**: the guard then
+watches the $5 plan's monthly allowances instead.
+
 ## Calls
 
 Voice and video calls in chats are UniVerse's own (src/server/calls.ts): audio and video go straight between
