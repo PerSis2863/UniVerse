@@ -442,6 +442,17 @@ Progress table (row D6).
 - **Code:** `src/lib/impact-league.ts`, `src/server/impact-league.ts`, `src/components/league/`,
   `src/app/(dashboard)/impact-league/`, `src/app/league/[slug]/`.
 
+## Cold start on Workers Free (measured 14 Oct 2026)
+
+- The first request on a fresh Worker loads the whole Next.js server bundle (~30 MB:
+  11.5 MB route files, 9.4 MB shared chunks, 6 MB inlined manifests) and costs ~2–3 s CPU locally
+  (`wrangler dev --inspector-port 9229` + a CPU profile). Startup itself is ~60 ms. Making the inlined
+  manifests lazy saved only ~0.15 s, so it wasn't kept.
+- Requests answered by `cloudflare/fast-api.ts` never load Next.js. **`GET /api/boards`** was added
+  there (checked field by field against the Next.js route for 5 accounts, incl. a 7-member board).
+- The real fix is still **Workers Paid** ($5/month, 30 s CPU). Until then, moving the busiest page
+  lists onto the light path is the way to cut "Couldn't load" errors.
+
 ## D16 · Parent co-pilot: done (14 Oct 2026)
 
 - **Migration `0128`** (`parent_copilot`, `parent_summaries`, `parent_questions`). Next migration: **`0129`**.

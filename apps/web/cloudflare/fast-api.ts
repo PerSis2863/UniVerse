@@ -338,6 +338,59 @@ async function bootstrap(me: Caller, request: Request, db: D1Database, env: Env,
   return json({ results, ...(ticket ? { ticket } : {}) }, 200, { 'Cache-Control': 'no-store' });
 }
 
+/**
+ * GET /api/boards (src/app/api/boards/route.ts): my whiteboards and the ones shared with me, newest
+ * change first (up to 300), each with its owner, up to 6 members and how many there are.
+ */
+async function boards(me: Caller, db: D1Database) {
+  const { results } = await db
+    .prepare(
+      `SELECT b.id, b.title, b.thumbnail, b.linkAccess, b.createdAt, b.updatedAt, b.ownerId, o.name AS ownerName, o.avatar AS ownerAvatar,
+         (SELECT COUNT(*) FROM board_members c WHERE c.boardId = b.id) AS memberCount
+       FROM boards b JOIN users o ON o.id = b.ownerId
+       WHERE b.ownerId = ?1 OR EXISTS (SELECT 1 FROM board_members m WHERE m.boardId = b.id AND m.userId = ?1)
+       ORDER BY b.updatedAt DESC LIMIT 300`,
+    )
+    .bind(me.id)
+    .all<Record<string, string | number | null>>();
+  const ids = results.map((r) => r.id as string);
+  // Members, 90 boards a query (D1 takes up to 100 values per query); the first 6 of each, as Prisma loads them.
+  const members = new Map<string, { userId: string; role: string; user: { id: string; name: string; avatar: string | null } }[]>();
+  for (let i = 0; i < ids.length; i += 90) {
+    const part = ids.slice(i, i + 90);
+    const { results: rows } = await db
+      .prepare(`SELECT m.boardId, m.userId, m.role, u.name, u.avatar FROM board_members m JOIN users u ON u.id = m.userId WHERE m.boardId IN (${part.map(() => '?').join(',')}) ORDER BY m.id`)
+      .bind(...part)
+      .all<Record<string, string | null>>();
+    for (const m of rows) {
+      const list = members.get(m.boardId as string) ?? [];
+      if (list.length < 6) list.push({ userId: m.userId as string, role: m.role as string, user: { id: m.userId as string, name: m.name as string, avatar: m.avatar } });
+      members.set(m.boardId as string, list);
+    }
+  }
+  return json(
+    results.map((b) => {
+      const people = members.get(b.id as string) ?? [];
+      const mine = b.ownerId === me.id;
+      return {
+        id: b.id,
+        title: b.title,
+        thumbnail: b.thumbnail,
+        linkAccess: b.linkAccess,
+        createdAt: isoDate(b.createdAt as string),
+        updatedAt: isoDate(b.updatedAt as string),
+        owner: { id: b.ownerId, name: b.ownerName, avatar: b.ownerAvatar },
+        mine,
+        myRole: mine ? 'OWNER' : people.find((m) => m.userId === me.id)?.role ?? 'VIEWER',
+        people: people.map((m) => m.user),
+        memberCount: Number(b.memberCount),
+      };
+    }),
+    200,
+    { 'Cache-Control': 'no-store' },
+  );
+}
+
 async function answer(request: Request, path: string, db: D1Database, env: Env, ctx: ExecutionContext, next: (r: Request) => Promise<Response>): Promise<Response | null> {
   const file_ = FILE.exec(path);
   if (file_) return file(request, file_[1], db, ctx);
@@ -349,6 +402,8 @@ async function answer(request: Request, path: string, db: D1Database, env: Env, 
   if (path === '/api/chat/conversations') return conversations(me, db, ctx);
   if (path === '/api/core/users/me') return usersMe(me, db);
   if (path === '/api/bootstrap') return bootstrap(me, request, db, env, ctx, next);
+  // Parent accounts reach only the parent app: the Next.js route refuses them (src/server/auth.ts).
+  if (path === '/api/boards') return me.role === 'GUARDIAN' ? null : boards(me, db);
   const threadOf = THREAD.exec(path);
   if (threadOf) return thread(me, decodeURIComponent(threadOf[1]), new URL(request.url), db, ctx);
   if (path === '/api/core/activity/ui') {
@@ -370,7 +425,7 @@ export async function fastApi(request: Request, url: URL, env: Env, ctx: Executi
   const path = url.pathname;
   const get = request.method === 'GET';
   const post = request.method === 'POST';
-  const fastGet = path === '/api/chat/incoming' || path === '/api/me' || path === '/api/notifications' || path === '/api/chat/conversations' || path === '/api/core/users/me' || THREAD.test(path) || FILE.test(path);
+  const fastGet = path === '/api/chat/incoming' || path === '/api/me' || path === '/api/notifications' || path === '/api/chat/conversations' || path === '/api/core/users/me' || path === '/api/boards' || THREAD.test(path) || FILE.test(path);
   if (!(get && fastGet) && !(post && (path === '/api/core/activity/ui' || path === '/api/bootstrap' || TYPING.test(path)))) return null;
   try {
     const res = await answer(request, path, db, env, ctx, next);
