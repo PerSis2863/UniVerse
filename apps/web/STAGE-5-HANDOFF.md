@@ -469,3 +469,12 @@ Progress table (row D6).
 - **Collaborate → Tools** (was Studio, same address `/studio`): six cards; `?tool=convert|compress|photo|audio`.
 - mediabunny brings DOM types for WebCodecs; `src/lib/call-recorder.ts` needed one type annotation.
 
+### Photo editor: simple mode (14 Oct 2026, owner request)
+
+- The photo editor opens in **simple mode**: one row of jobs under the photo (Crop, Turn, Adjust, Looks,
+  Text, Draw, Background, Add photo); each opens only its own controls and a Done button. **All tools**
+  in the top bar switches to the full editor (unchanged); the choice is kept in localStorage
+  (`studio-photo-mode`). Code: `src/components/studio/PhotoSimple.tsx`, wired in `PhotoEditor.tsx`.
+- Simple mode draws on one "Drawing" layer (`drawId`), so its eraser never touches the photo.
+- `commitRun(key, doc)` in `PhotoEditor.tsx` makes changes to one thing in a row one undo step.
+

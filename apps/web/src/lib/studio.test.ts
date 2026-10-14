@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NO_ADJUST, exportName, filterString, fitScale, hits, rectFrom, sharpen, toLayer } from './studio';
+import { FILTERS, NO_ADJUST, exportName, filterString, fitScale, hits, isLook, ratioDrag, ratioRect, rectFrom, sharpen, toLayer } from './studio';
 
 describe('adjustments as a canvas filter', () => {
   it('is none when nothing is set', () => {
@@ -54,5 +54,23 @@ describe('export names and sharpening', () => {
     const out = sharpen(data, w, h, 0.5);
     expect(out[(1 * w + 1) * 4]).toBe(250); // 150*3 - 0.5*400
     expect(out[0]).toBe(100);
+  });
+
+  it('crops to a chosen shape in the simple editor', () => {
+    expect(ratioRect(4000, 3000, 1)).toEqual({ x: 500, y: 0, w: 3000, h: 3000 });
+    expect(ratioRect(4000, 3000, 16 / 9)).toEqual({ x: 0, y: 375, w: 4000, h: 2250 });
+    expect(ratioRect(1000, 800, null)).toEqual({ x: 0, y: 0, w: 1000, h: 800 });
+    // Dragging keeps the shape, from the corner where the drag began, and stays inside the picture.
+    expect(ratioDrag(100, 100, 500, 300, 1, 1000, 1000)).toEqual({ x: 100, y: 100, w: 200, h: 200 });
+    expect(ratioDrag(500, 500, 100, 450, 2, 1000, 1000)).toEqual({ x: 400, y: 450, w: 100, h: 50 });
+    expect(ratioDrag(900, 100, 1200, 900, 1, 1000, 1000)).toEqual({ x: 900, y: 100, w: 100, h: 100 });
+    expect(ratioDrag(10, 10, 60, 90, null, 1000, 1000)).toEqual({ x: 10, y: 10, w: 50, h: 80 });
+  });
+
+  it('knows which look a picture has', () => {
+    const vivid = FILTERS.find((f) => f.id === 'vivid')!;
+    expect(isLook({ ...NO_ADJUST, ...vivid.adjust }, vivid.adjust)).toBe(true);
+    expect(isLook({ ...NO_ADJUST, ...vivid.adjust, brightness: 5 }, vivid.adjust)).toBe(false);
+    expect(isLook(NO_ADJUST, {})).toBe(true);
   });
 });
