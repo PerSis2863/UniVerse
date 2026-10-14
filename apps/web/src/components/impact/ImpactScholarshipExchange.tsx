@@ -10,6 +10,7 @@ import {
   Hash,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { authedFetch } from '@/lib/authed-fetch';
 
 interface SponsorPool {
   id: string;
@@ -87,9 +88,9 @@ export function ImpactScholarshipExchange() {
     setLoading(true);
     try {
       const [poolsRes, claimsRes, ledgerRes] = await Promise.all([
-        fetch('/api/scholarships/pools'),
-        fetch('/api/scholarships/claims'),
-        fetch('/api/scholarships/credits/ledger'),
+        authedFetch('/api/scholarships/pools'),
+        authedFetch('/api/scholarships/claims'),
+        authedFetch('/api/scholarships/credits/ledger'),
       ]);
 
       if (poolsRes.ok) {
@@ -115,7 +116,7 @@ export function ImpactScholarshipExchange() {
     if (!claimingPool) return;
     setSubmitting(true);
     try {
-      const res = await fetch('/api/scholarships/claims', {
+      const res = await authedFetch('/api/scholarships/claims', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

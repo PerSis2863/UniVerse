@@ -509,9 +509,71 @@ Progress table (row D6).
   test-sending a webhook; OneRoster preview, sync and history (a second sync reuses the mapping); both pages
   at 390 px light and dark with axe. **`src/server/schema-columns.test.ts`** applies every migration to an
   in-memory database and checks each model against its table, so this can't happen again unnoticed.
-- **Still open (seen on Next.js too, not caused by the direct path):** 401s on
-  /student/administrative/scholarships, /student/reels, /student/tutoring and /teacher/reels; 404s on
-  /student/administrative/consents and /trust; /api/calendar-link 503 without its secret.
+- **Fixed (14 Oct): pages that never worked.** Scholarships (student), peer tutoring and Revision Reels
+  (student and teacher) used a bare `fetch` with no sign-in token, so every call answered 401: they use
+  `authedFetch` now. Settings → Consents and the public Trust page passed full `/api/...` addresses to the
+  core client (`/api/core/api/...`, 404), and **the DPDP grievance form posted to a route that never
+  existed**: they use `authedJson` on the real routes. Revision Reels with no class chosen asked for a course
+  called "sample": it now lists the latest from my classes (`GET /api/micro-lessons`, sample stub added).
+  **Security:** micro-lessons ignored `courseAccess`'s answer (it returns null, it doesn't throw), so any
+  signed-in person could read any class's micro-lessons and make them again; now only the class's teacher,
+  its students and admins see them, and only the teacher or an admin remakes a pack. Recording a reel view
+  looked the lesson up by the wrong id (always 404). Career: companies without a logo showed a
+  ui-avatars.com image (a third-party request with the company's name); they show initials now. A student
+  opening /parent goes to their own home instead of "Couldn't load". **`src/lib/core-api-calls.test.ts`**
+  checks every core-client call in the app against `src/server/app.ts`'s routes.
+- **Fixed (14 Oct, owner report): "Meet" showed Cloudflare's "Error 1101 · Worker threw exception".**
+  `/call/<id>` was one of the pages rendered per request, so on a fresh Worker opening a call started the
+  whole Next.js server (~1 s of CPU against Workers Free's 10 ms) and Cloudflare stopped it. The call page
+  is now built ahead of time once, as `/call/open` (`generateStaticParams`), reads the call id from the
+  address (`src/app/call/[id]/CallOpener.tsx`), and the Worker answers every `/call/<id>` (pages and
+  in-app navigation) with that built page from the cache (`CALL_PAGE` in `cloudflare/worker.ts`).
+  Measured on the built Worker: a fresh `/call/…` 0.05–0.17 s (a server-rendered page right after it still
+  takes ~2.2 s, so Next.js wasn't started); Groups → Meet and a direct `/call/…?kind=audio` link open the
+  call at 390 and 1280 px. **The other ~27 pages rendered per request** (a doc, a board, a course, a guest
+  link, a hall…) can still hit this on a fresh Worker until the owner moves to Workers Paid; the same trick
+  works for any page that only needs its id in the browser.
+- **Calendar links and parent links need `SESSION_SECRET`** (not only LMS sign-in, as the setup notes said;
+  fixed in `DEPLOY-CLOUDFLARE.md` and Admin → Server settings). Without it the calendar card says links
+  aren't available.
+
+## D18 · Skills-to-jobs bridge: done (14 Oct 2026)
+
+- **No migration, no AI.** Next migration is still **`0129`**.
+- **Where:** Internships has two tabs now, **Openings** and **Skills match** (`/student/internships/match`).
+  Each open internship and NGO project shows how many of its skills the student's checked work covers
+  ("You match 4 of 5 skills; finish ‘SQL basics’ in CS201 to match all."), and links each missing skill
+  to a module of one of their classes, a class they could join (My choices) or a peer tutor.
+- **Only checked skills count:** the passport's evidence (graded work at 60%+, passed quizzes, verified
+  volunteering and credentials). Skills a student typed on their own don't, so the match means something.
+- **Openings need their skills listed** (Internship `skills`, NGO project `skillsRequired`); those with none
+  don't appear. Worth telling admins and NGO partners when they post.
+- **Code:** `src/lib/skills-bridge.ts` (matching, sentences, order; tested), `src/server/skills-bridge.ts`,
+  `src/app/api/internships/skills-match/`, `src/app/(dashboard)/student/internships/match/`.
+- **Also fixed:** the notification bell's spoken name now says what its badge shows ("9+").
+- The full-site page crawl (re-checking the page fixes above) was stopped part-way: on `next dev` it takes
+  over an hour and ran the dev server out of memory. The fixed pages had each been checked on their own.
+
+## D17 · Offline classroom relay: done as moving QR codes (14 Oct 2026, owner's choice)
+
+- **No migration.** New library **jsQR** (reads QR codes on phones without a built-in reader).
+- **Why not phone-to-phone:** WebRTC over a classroom hotspot isn't reliable (handshakes need QR swaps per
+  student with no internet, many networks block devices from talking to each other). The owner picked
+  **moving QR codes** for short items.
+- **Teacher:** Live class → **Send to phones with no internet**: a note, an announcement or a quiz without
+  pictures → **Show as codes** (full screen; speed, code size, pause). Prepared items stay ready on that
+  computer, so they can be shown in a room with no connection.
+- **Students:** Offline courses → **Scan from the teacher’s screen**. The phone needs no internet. Each item
+  is **signed** with the platform key (`CREDENTIAL_SIGNING_PRIVATE_KEY`, the same as credentials and badges),
+  so the phone shows "Checked: sent by <teacher>". A quiz is taken with the existing offline quiz and sent
+  when the phone is next online.
+- **Before class, once:** students open Offline courses while online (that saves the scanner and the
+  school's key on the phone).
+- **Not tried yet:** real phones, a real projector, iPhones. Worth a try in one classroom.
+- **Also fixed:** the "You're offline" bar was hard to read (white on orange); the phone header's Home link
+  name.
+- **Code:** `src/lib/qr-relay.ts`, `src/lib/qr.ts`, `src/server/qr-relay.ts`, `src/app/api/classroom/relay/`,
+  `src/components/live/QrRelayPanel.tsx`, `src/components/offline/QrRelayScan.tsx`, `QrRelayCamera.tsx`.
 
 ## D16 · Parent co-pilot: done (14 Oct 2026)
 

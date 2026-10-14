@@ -6,6 +6,7 @@ import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { CheckCircle2, HelpCircle, Loader2, School, Send, ThumbsUp } from 'lucide-react';
 import { Field } from '@/components/ui/Field';
+import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
 import { fadeUp } from '@/lib/motion';
@@ -65,6 +66,8 @@ export function StudentClassroom() {
           </Field>
           <button type="submit" disabled={joining || code.length !== 6} className="btn-primary">{joining ? <Loader2 className="w-4 h-4 animate-spin" /> : <School className="w-4 h-4" />} Join</button>
         </div>
+        {/* Stage 5 · D17: moving codes carry a note or quiz to phones with no internet */}
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">Teacher showing moving codes? <Link href="/student/offline?scan=1" className="font-medium text-indigo-700 dark:text-indigo-300 hover:underline">Scan them here</Link>, no internet needed.</p>
       </motion.form>
     );
   }

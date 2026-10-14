@@ -354,6 +354,29 @@ const SAMPLE_IMPACT_LEDGER = {
   ],
 };
 
+// Stage 5 · D18: skills match on the Internships page.
+const SAMPLE_SKILLS_MATCH = {
+  skills: [
+    { key: 'python', label: 'Python', level: 'Advanced', count: 3 },
+    { key: 'sql', label: 'SQL', level: 'Proficient', count: 2 },
+    { key: 'teamwork', label: 'Teamwork', level: null, count: 1 },
+  ],
+  opportunities: [
+    {
+      kind: 'INTERNSHIP', id: 'int_sample_1', title: 'Data analyst intern', org: 'Nova Labs', location: 'Remote', deadline: '2026-11-30T00:00:00.000Z', applied: false,
+      match: { matched: [{ skill: 'Python', level: 'Advanced', evidence: 3 }, { skill: 'SQL', level: 'Proficient', evidence: 2 }, { skill: 'Teamwork', level: null, evidence: 1 }], missing: ['Data visualisation'], percent: 75 },
+      gaps: [{ skill: 'Data visualisation', module: { courseId: 'c_cs101', courseCode: 'CS101', courseName: 'Introduction to Computer Science', moduleTitle: 'Data visualisation', enrolled: true }, tutors: [{ userId: 'u_tutor', name: 'Asha Rao' }] }],
+      summary: 'You match 3 of 4 skills; finish ‘Data visualisation’ in CS101 to match all.',
+    },
+    {
+      kind: 'PROJECT', id: 'ngo_sample_1', title: 'Clean water survey app', org: 'Blue Earth', location: 'Hybrid', deadline: null, applied: false,
+      match: { matched: [{ skill: 'Python', level: 'Advanced', evidence: 3 }], missing: ['Field research', 'Mapping'], percent: 33 },
+      gaps: [{ skill: 'Field research', module: null, tutors: [] }, { skill: 'Mapping', module: null, tutors: [] }],
+      summary: 'You match 1 of 3 skills; 2 to learn.',
+    },
+  ],
+};
+
 const SAMPLE_MICRO_LESSON = {
   id: 'lml_sample_1',
   sessionId: 'sess_sample_1',
@@ -1753,6 +1776,11 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // In-person class (Stage 5 · D7): one sample class in memory for the visit.
   [/^\/api\/classroom$/, ({ db: d }) => ok({ session: classroom(d).on ? { id: 'sample-class' } : null })],
   [/^\/api\/classroom\/current$/, () => ok({ session: null })],
+  // Stage 5 · D17: what a teacher can send to phones as moving QR codes.
+  [/^\/api\/classroom\/relay$/, () => ok({
+    announcements: [{ id: 'ann_sample_1', title: 'Lab moved to Room 204', createdAt: '2026-10-13T08:00:00.000Z', problem: null }],
+    quizzes: [{ id: 'quiz_sample_1', title: 'Week 5 check', questions: 6, problem: null }, { id: 'quiz_sample_2', title: 'Diagrams quiz', questions: 4, problem: 'Has pictures' }],
+  })],
   [/^\/api\/classroom\/([^/]+)\/code$/, () => ok({ code: 'ABC234', expiresIn: 30 })],
   [/^\/api\/classroom\/([^/]+)$/, ({ db: d }) => ok({
     id: 'sample-class', course: { id: d.courses[0]?.id ?? 'sample', code: d.courses[0]?.code ?? 'CS101', name: d.courses[0]?.name ?? 'Sample course' }, startedAt: classroom(d).startedAt, open: true, classSessionId: null, enrolled: 24,
@@ -1793,6 +1821,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/internships$/, ({ db: d }) => ok(d.internships)],
   [/^\/internships\/my-applications$/, ({ db: d }) => ok(d.myApplications)],
   [/^\/api\/internships\/placements$/, ({ db: d }) => ok(d.placements)],
+  [/^\/api\/internships\/skills-match$/, () => ok(SAMPLE_SKILLS_MATCH)],
   [/^\/partners$/, ({ db: d }) => ok(d.partners)],
   [/^\/skills\/my$/, ({ db: d }) => ok(d.skills)],
   [/^\/tickets$/, ({ db: d }) => ok(d.tickets)],
@@ -1865,6 +1894,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/class-sessions\/([^/]+)\/replay$/, () => ok({ results: [] })],
   // Lecture to Everything: Micro-Lessons & Revision Reels (Stage 5 · D3)
   [/^\/api\/courses\/([^/]+)\/micro-lessons$/, () => ok([SAMPLE_MICRO_LESSON])],
+  [/^\/api\/micro-lessons$/, () => ok([SAMPLE_MICRO_LESSON])],
   [/^\/api\/class-sessions\/([^/]+)\/micro-lesson$/, () => ok(SAMPLE_MICRO_LESSON)],
   // Impact-to-Scholarship Exchange (Stage 5 · D4)
   [/^\/api\/scholarships\/pools$/, () => ok(SAMPLE_IMPACT_POOLS)],

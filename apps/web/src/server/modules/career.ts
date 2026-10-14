@@ -18,7 +18,8 @@ export default function careerModule(router: Router) {
       location: i.location || 'Remote',
       type: i.type?.replace('_', ' ') || 'Internship',
       deadline: i.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      logo: i.company?.logoUrl || `https://ui-avatars.com/api/?name=${i.company?.name || 'C'}`,
+      // No logo: the page shows the company's initials (no third-party image service).
+      logo: i.company?.logoUrl || null,
     }));
   });
 

@@ -135,7 +135,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
               <span className="nav-brand-text">Back</span>
             </button>
           ) : (
-            <Link href={home} className="flex items-center gap-2 min-w-0 pressable" aria-label="Home">
+            <Link href={home} className="flex items-center gap-2 min-w-0 pressable" aria-label="UniVerse home">
               <UniverseLogo size="sm" showText={false} animated={false} withGlow={false} />
               <span className="nav-brand-text font-bold text-[17px] tracking-tight text-zinc-900 dark:text-white">UniVerse</span>
             </Link>
@@ -147,7 +147,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
             <button type="button" onClick={openSearch} aria-label="Search" className="pressable w-11 h-11 flex items-center justify-center rounded-full text-tint-text">
               <Search className="w-[21px] h-[21px]" strokeWidth={2.1} />
             </button>
-            <button type="button" onClick={openNotifications} aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'} className="pressable relative w-11 h-11 flex items-center justify-center rounded-full text-tint-text">
+            <button type="button" onClick={openNotifications} aria-label={unread ? `Notifications, ${unread > 9 ? '9+' : unread} unread` : 'Notifications'} className="pressable relative w-11 h-11 flex items-center justify-center rounded-full text-tint-text">
               <Bell className="w-[21px] h-[21px]" strokeWidth={2.1} />
               {unread > 0 && <span aria-hidden className="absolute top-[9px] right-[8px] min-w-[16px] h-4 px-1 rounded-full badge-count text-white text-[10px] font-bold leading-4 text-center">{unread > 9 ? '9+' : unread}</span>}
             </button>

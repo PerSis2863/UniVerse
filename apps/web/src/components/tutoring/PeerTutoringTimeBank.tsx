@@ -20,6 +20,8 @@ import {
   X,
   History,
 } from 'lucide-react';
+import { authedFetch } from '@/lib/authed-fetch';
+import { useInitialSearch } from '@/hooks/useInitialSearch';
 
 interface TimeBankAccount {
   id: string;
@@ -107,6 +109,7 @@ export function PeerTutoringTimeBank() {
   const [masteredSubjects, setMasteredSubjects] = useState<PeerTutorSubject[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  useInitialSearch(setSearchQuery); // ?q= from Skills match (Stage 5 · D18) or the ⌘K palette
   const [d1Only, setD1Only] = useState(false);
 
   // Booking Modal State
@@ -142,10 +145,10 @@ export function PeerTutoringTimeBank() {
   const loadData = useCallback(async () => {
     try {
       const [ledgerRes, tutorsRes, sessionsRes, masteredRes] = await Promise.all([
-        fetch('/api/tutoring/time-bank').then((r) => r.json()),
-        fetch(`/api/tutoring/tutors?search=${encodeURIComponent(searchQuery)}&onlyD1Verified=${d1Only}`).then((r) => r.json()),
-        fetch('/api/tutoring/sessions').then((r) => r.json()),
-        fetch('/api/tutoring/tutors/mastered-subjects').then((r) => r.json()),
+        authedFetch('/api/tutoring/time-bank').then((r) => r.json()),
+        authedFetch(`/api/tutoring/tutors?search=${encodeURIComponent(searchQuery)}&onlyD1Verified=${d1Only}`).then((r) => r.json()),
+        authedFetch('/api/tutoring/sessions').then((r) => r.json()),
+        authedFetch('/api/tutoring/tutors/mastered-subjects').then((r) => r.json()),
       ]);
 
       if (ledgerRes?.account) {
@@ -173,10 +176,10 @@ export function PeerTutoringTimeBank() {
     const fetchInitial = async () => {
       try {
         const [ledgerRes, tutorsRes, sessionsRes, masteredRes] = await Promise.all([
-          fetch('/api/tutoring/time-bank').then((r) => r.json()),
-          fetch(`/api/tutoring/tutors?search=${encodeURIComponent(searchQuery)}&onlyD1Verified=${d1Only}`).then((r) => r.json()),
-          fetch('/api/tutoring/sessions').then((r) => r.json()),
-          fetch('/api/tutoring/tutors/mastered-subjects').then((r) => r.json()),
+          authedFetch('/api/tutoring/time-bank').then((r) => r.json()),
+          authedFetch(`/api/tutoring/tutors?search=${encodeURIComponent(searchQuery)}&onlyD1Verified=${d1Only}`).then((r) => r.json()),
+          authedFetch('/api/tutoring/sessions').then((r) => r.json()),
+          authedFetch('/api/tutoring/tutors/mastered-subjects').then((r) => r.json()),
         ]);
 
         if (!active) return;
@@ -216,7 +219,7 @@ export function PeerTutoringTimeBank() {
     setBookingLoading(true);
     try {
       const scheduledDateTime = bookingDate ? `${bookingDate}T${bookingTime}:00Z` : new Date(Date.now() + 3600000 * 24).toISOString();
-      const res = await fetch('/api/tutoring/sessions', {
+      const res = await authedFetch('/api/tutoring/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -250,7 +253,7 @@ export function PeerTutoringTimeBank() {
     if (!ratingSession) return;
     setReviewLoading(true);
     try {
-      const res = await fetch(`/api/tutoring/sessions/${ratingSession.id}/complete`, {
+      const res = await authedFetch(`/api/tutoring/sessions/${ratingSession.id}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -282,7 +285,7 @@ export function PeerTutoringTimeBank() {
   const handleCancelSession = async (sessionId: string) => {
     if (!confirm('Cancel this 20-min session and refund your 1 Time Credit?')) return;
     try {
-      const res = await fetch(`/api/tutoring/sessions/${sessionId}`, { method: 'DELETE' });
+      const res = await authedFetch(`/api/tutoring/sessions/${sessionId}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Session cancelled. 1 Credit refunded to your balance.');
         loadData();
@@ -298,7 +301,7 @@ export function PeerTutoringTimeBank() {
   const handleSaveTutorProfile = async () => {
     setSavingProfile(true);
     try {
-      const res = await fetch('/api/tutoring/tutors', {
+      const res = await authedFetch('/api/tutoring/tutors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -325,7 +328,7 @@ export function PeerTutoringTimeBank() {
 
   const handleAddSlot = async () => {
     try {
-      const res = await fetch('/api/tutoring/slots', {
+      const res = await authedFetch('/api/tutoring/slots', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

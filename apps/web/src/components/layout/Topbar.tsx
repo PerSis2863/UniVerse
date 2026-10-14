@@ -142,7 +142,8 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
           <button
             type="button"
             onClick={() => setShowNotifications(true)}
-            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+            // The count as the badge shows it, so the name contains what's on screen (WCAG 2.5.3)
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount > 99 ? '99+' : unreadCount} unread` : 'Notifications'}
             className={cn('btn-ghost btn-icon relative rounded-full', showNotifications && 'bg-[var(--fill)]')}
           >
             <Bell className="w-[19px] h-[19px]" strokeWidth={2.1} />

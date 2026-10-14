@@ -2,6 +2,7 @@
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, INTERNSHIP_TABS } from '@/components/layout/SectionTabs';
 import { Briefcase, Building, MapPin, DollarSign, Search, Filter, Bookmark, ExternalLink, X, FileText, Check, Edit2, Trash2 } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
@@ -95,8 +96,9 @@ export default function StudentInternships() {
   return (
     <>
       <Topbar title="Internships" subtitle="Find and apply for internship opportunities" />
-      
-      <div className="flex-1 p-8 overflow-y-auto">
+      <SectionTabs tabs={INTERNSHIP_TABS} />
+
+      <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-6">
           
           <div className="flex flex-col sm:flex-row gap-4">

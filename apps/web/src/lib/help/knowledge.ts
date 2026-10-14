@@ -87,6 +87,9 @@ export const HELP: HelpEntry[] = [
   { id: 'offline-work', q: ['Can I do a quiz offline?', 'write an assignment with no internet', 'send messages offline', 'what happens to my work offline'], tags: 'offline no internet connection quiz assignment draft chat message outbox waiting to send sync',
     a: 'Save a course in Courses → Offline (Save offline on its Blackboard, or ↻ to update it). Its open quizzes and assignments come with it: take a quiz or write an answer with no connection and it waits on your device (“waiting to send”), then goes automatically when you’re back online, once. Assignment drafts are saved on your device as you type. Recent chats can be read offline, and messages you send offline go when the connection returns. A quiz finished after its due date waits for your teacher to accept it.',
     links: [{ label: 'Offline courses', href: '/student/offline' }], roles: ['STUDENT'] },
+  { id: 'qr-relay', q: ['Send a note to phones with no internet', 'moving QR codes', 'scan from the teacher’s screen', 'class has no wifi'], tags: 'offline no internet qr codes scan teacher screen projector note announcement quiz phones',
+    a: 'Teachers: on Live class, “Send to phones with no internet” shows a note, an announcement or a quiz without pictures as moving codes on your screen (prepare it while online; it stays ready on that computer). Students: open Offline courses → Scan from the teacher’s screen and hold the phone at the codes until it says it’s saved. No internet is needed; quiz answers are sent when the phone is next online. Open Offline courses once while online before class so the scanner is on your phone.',
+    links: [{ label: 'Live class', href: '/teacher/live' }, { label: 'Offline courses', href: '/student/offline' }], roles: ['STUDENT', 'TEACHER'] },
   { id: 'offline-quizzes-teacher', q: ['A quiz was taken offline', 'accept a late offline quiz', 'submitted offline'], tags: 'offline quiz late accept remove assignment written offline',
     a: 'Students can take saved quizzes and write assignments with no connection; their work is sent when they’re back online, with the time they finished on their device. A quiz finished after its due date (or after you closed it) shows at the top of Quizzes: Accept counts it, Remove deletes it and tells the student in the app. Assignments written offline show “offline” in the list and when they were handed in on the device.',
     links: [{ label: 'Quizzes', href: '/teacher/quizzes' }], roles: ['TEACHER', 'ADMIN'] },
@@ -195,8 +198,8 @@ export const HELP: HelpEntry[] = [
     a: 'You earn impact points (XP) for verified actions such as completing projects and proof-of-work. Your level rises as you earn more; see how you compare on the Impact Leaderboard.',
     links: [{ label: 'Leaderboard', href: '/student/impact/leaderboard' }], roles: ['STUDENT'] },
   { id: 'internships', q: ['How do I find an internship?', 'apply for internships', 'jobs'], tags: 'career job placement work',
-    a: 'Open Internships to browse and apply, and build your career profile under Career.',
-    links: [{ label: 'Internships', href: '/student/internships' }, { label: 'Career', href: '/student/career' }], roles: ['STUDENT'] },
+    a: 'Open Internships to browse and apply, and build your career profile under Career. The Skills match tab ranks open internships and NGO projects by the skills your checked work shows, and links each missing skill to a class module or a peer tutor.',
+    links: [{ label: 'Internships', href: '/student/internships' }, { label: 'Skills match', href: '/student/internships/match' }, { label: 'Career', href: '/student/career' }], roles: ['STUDENT'] },
 
   // ── Campus life ──
   { id: 'emergency', q: ['Emergency', 'I need help now', 'report an incident', 'BeeSafe', 'I feel unsafe'], tags: 'danger safety harassment urgent police ambulance',

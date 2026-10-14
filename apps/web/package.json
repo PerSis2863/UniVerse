@@ -60,6 +60,7 @@
     "framer-motion": "^13.4.0",
     "html2canvas-pro": "2.4.5",
     "jose": "^6.2.12",
+    "jsqr": "1.4.0",
     "katex": "0.18.9",
     "lucide-react": "^1.47.0",
     "mammoth": "1.12.3",

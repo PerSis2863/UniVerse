@@ -60,9 +60,11 @@ Postgres database have been removed.
      `node -e "console.log(require('crypto').generateKeyPairSync('ed25519').privateKey.export({type:'pkcs8',format:'pem'}))"`
      The same key signs Open Badges (skills passport) and verified impact reports. Keep it: badges and
      reports signed with it stop verifying if it changes.
-   - `SESSION_SECRET`: a random string of 32+ characters, needed for sign-in from an LMS (LTI 1.3). Generate
+   - `SESSION_SECRET`: a random string of 32+ characters, needed for calendar subscription links ("Add to your
+     calendar"), the links students give a parent, and sign-in from an LMS (LTI 1.3). Generate
      one with `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`. Changing it signs
-     out everyone who came in from their LMS (they just open UniVerse from the course again).
+     out everyone who came in from their LMS (they just open UniVerse from the course again) and stops existing
+     calendar and parent links working (people copy them again).
    - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL` for push notifications (optional)
    - `CHAIN_ANCHOR_ENABLED`, `CHAIN_ANCHOR_PRIVATE_KEY`, … to anchor credentials on Polygon (optional, see `src/server/services/chain-anchor.service.ts`)
    - `DEMO_LOGIN_ENABLED=true` only if the demo accounts should be able to sign in without a password
@@ -292,7 +294,7 @@ chats) send the owner an in-app alert when one is written in a chat. A person ca
 | Feature | Needs |
 | --- | --- |
 | Chat translation, AI tutor (answers, practice questions, flashcards, reading course PDFs), AI diagnosis of errors | `GEMINI_API_KEY`. Without it these show “isn’t set up yet” and everything else works. |
-| Open Badges downloads, verified impact reports | `CREDENTIAL_SIGNING_PRIVATE_KEY` (same key as verified credentials) |
+| Open Badges downloads, verified impact reports, signed moving QR codes (Live class → Send to phones) | `CREDENTIAL_SIGNING_PRIVATE_KEY` (same key as verified credentials). Without it the codes still work, but phones can’t check who sent them. |
 | Moodle / Canvas / other LMS (LTI 1.3) | `SESSION_SECRET`, then Admin → LMS integration (LTI): give the LMS the URLs shown there and register the LMS. Set the tool to open in a new window: UniVerse refuses to be framed by other sites. Only resource-link launches (single sign-on + course linking + enrolment) are supported for now; grade passback and deep linking aren’t. |
 | Early warning | Nothing: runs in the daily job (08:00 UTC) and on “Check now”. |
 | Low-data mode | Nothing: a per-device setting (Settings, Ctrl+K, or offered on slow connections). |
