@@ -522,6 +522,17 @@ Progress table (row D6).
   ui-avatars.com image (a third-party request with the company's name); they show initials now. A student
   opening /parent goes to their own home instead of "Couldn't load". **`src/lib/core-api-calls.test.ts`**
   checks every core-client call in the app against `src/server/app.ts`'s routes.
+- **Fixed (14 Oct, owner report): "Meet" showed Cloudflare's "Error 1101 · Worker threw exception".**
+  `/call/<id>` was one of the pages rendered per request, so on a fresh Worker opening a call started the
+  whole Next.js server (~1 s of CPU against Workers Free's 10 ms) and Cloudflare stopped it. The call page
+  is now built ahead of time once, as `/call/open` (`generateStaticParams`), reads the call id from the
+  address (`src/app/call/[id]/CallOpener.tsx`), and the Worker answers every `/call/<id>` (pages and
+  in-app navigation) with that built page from the cache (`CALL_PAGE` in `cloudflare/worker.ts`).
+  Measured on the built Worker: a fresh `/call/…` 0.05–0.17 s (a server-rendered page right after it still
+  takes ~2.2 s, so Next.js wasn't started); Groups → Meet and a direct `/call/…?kind=audio` link open the
+  call at 390 and 1280 px. **The other ~27 pages rendered per request** (a doc, a board, a course, a guest
+  link, a hall…) can still hit this on a fresh Worker until the owner moves to Workers Paid; the same trick
+  works for any page that only needs its id in the browser.
 - **Calendar links and parent links need `SESSION_SECRET`** (not only LMS sign-in, as the setup notes said;
   fixed in `DEPLOY-CLOUDFLARE.md` and Admin → Server settings). Without it the calendar card says links
   aren't available.
