@@ -543,6 +543,30 @@ Progress table (row D6).
 - The full-site page crawl (re-checking the page fixes above) was stopped part-way: on `next dev` it takes
   over an hour and ran the dev server out of memory. The fixed pages had each been checked on their own.
 
+## D17 · Offline classroom relay: researched, not built (14 Oct 2026)
+
+The plan says to research first and ship only if reliable. **Phone-to-phone through the browser isn't
+reliable enough:**
+- WebRTC (browser-to-browser) needs each pair of phones to swap connection details first. With no
+  internet that means scanning QR codes back and forth for every student.
+- Many Wi-Fi networks, and some phone hotspots, stop devices on them from talking to each other.
+- Browsers hide local addresses behind `.local` names that some networks don't resolve.
+- Web Bluetooth can't make a phone send to another phone, and a browser can't serve files.
+- None of it can be tried here: it needs real phones on a real hotspot.
+
+**Recommended instead** (builds on the offline course packs from Upgrade 4, `src/lib/offline-packs.ts`):
+1. **Share a course pack as one file.** On the Offline page, Share sends a saved course as a file with the
+   phone's own Quick Share / Nearby Share / AirDrop / Bluetooth (no internet needed). The other phone
+   opens it in UniVerse: Android's installed app through Web Share Target, any phone through a file
+   picker. The pack carries the school's signature so it can't be faked. About one round.
+2. **Moving QR codes for small things** (an announcement, a short reading, a quiz without pictures): the
+   teacher's screen loops a QR sequence and phones read it with the camera, a few KB a second. iPhones
+   need a small QR-reading library (Safari has no built-in reader).
+3. Only if the owner still wants it: the WebRTC relay as an experiment behind a switch, tried on the
+   school's own phones and hotspot.
+
+**Waiting for the owner:** build 1 (and maybe 2), or leave D17 for later.
+
 ## D16 · Parent co-pilot: done (14 Oct 2026)
 
 - **Migration `0128`** (`parent_copilot`, `parent_summaries`, `parent_questions`). Next migration: **`0129`**.
