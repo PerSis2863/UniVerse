@@ -4715,19 +4715,19 @@ model PrivacyGrievance {
 // Stage 5 · C3: OneRoster 1.2 SIS Integration & Sync History
 model OneRosterSync {
   id               String        @id @default(cuid())
-  organizationId   String?
+  organizationId   String? @map("organization_id")
   organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  syncType         String        @default("CSV_BATCH") // "CSV_BATCH" | "REST_PULL"
+  syncType         String        @default("CSV_BATCH") @map("sync_type") // "CSV_BATCH" | "REST_PULL"
   status           String        @default("PENDING")   // "PENDING" | "SUCCESS" | "FAILED" | "PARTIAL"
   summary          String        @default("")
-  coursesCount     Int           @default(0)
-  classesCount     Int           @default(0)
-  usersCount       Int           @default(0)
-  enrollmentsCount Int           @default(0)
+  coursesCount     Int           @default(0) @map("courses_count")
+  classesCount     Int           @default(0) @map("classes_count")
+  usersCount       Int           @default(0) @map("users_count")
+  enrollmentsCount Int           @default(0) @map("enrollments_count")
   errors           String?
-  actorId          String?
+  actorId          String? @map("actor_id")
   actor            User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
-  createdAt        DateTime      @default(now())
+  createdAt        DateTime      @default(now()) @map("created_at")
 
   @@index([organizationId])
   @@index([createdAt])
@@ -4736,13 +4736,13 @@ model OneRosterSync {
 
 model OneRosterMapping {
   id             String        @id @default(cuid())
-  organizationId String?
+  organizationId String? @map("organization_id")
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  entityType     String        // "ORG" | "ACADEMIC_SESSION" | "COURSE" | "CLASS" | "USER"
-  sourcedId      String
-  targetId       String
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @default(now()) @updatedAt
+  entityType     String @map("entity_type") // "ORG" | "ACADEMIC_SESSION" | "COURSE" | "CLASS" | "USER"
+  sourcedId      String @map("sourced_id")
+  targetId       String @map("target_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at")
 
   @@unique([organizationId, entityType, sourcedId])
   @@index([targetId])
@@ -4752,17 +4752,17 @@ model OneRosterMapping {
 // Stage 5 · C4: Public API, Scoped Keys, and HMAC Webhooks
 model ApiKey {
   id             String        @id @default(cuid())
-  organizationId String?
+  organizationId String? @map("organization_id")
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name           String
-  keyHash        String        @unique
-  keyPrefix      String
+  keyHash        String        @unique @map("key_hash")
+  keyPrefix      String @map("key_prefix")
   scopes         String        @default("[]")
-  rateLimit      Int           @default(300)
-  expiresAt      DateTime?
-  lastUsedAt     DateTime?
-  createdAt      DateTime      @default(now())
-  revokedAt      DateTime?
+  rateLimit      Int           @default(300) @map("rate_limit")
+  expiresAt      DateTime? @map("expires_at")
+  lastUsedAt     DateTime? @map("last_used_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  revokedAt      DateTime? @map("revoked_at")
 
   @@index([organizationId])
   @@index([keyHash])
@@ -4771,15 +4771,15 @@ model ApiKey {
 
 model WebhookEndpoint {
   id             String             @id @default(cuid())
-  organizationId String?
+  organizationId String? @map("organization_id")
   organization   Organization?      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   url            String
   secret         String
   events         String             @default("[]")
-  isActive       Boolean            @default(true)
+  isActive       Boolean            @default(true) @map("is_active")
   description    String?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @default(now()) @updatedAt
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @default(now()) @updatedAt @map("updated_at")
   deliveries     WebhookDelivery[]
 
   @@index([organizationId])
@@ -4788,16 +4788,16 @@ model WebhookEndpoint {
 
 model WebhookDelivery {
   id                String          @id @default(cuid())
-  webhookEndpointId String
+  webhookEndpointId String @map("webhook_endpoint_id")
   webhookEndpoint   WebhookEndpoint @relation(fields: [webhookEndpointId], references: [id], onDelete: Cascade)
   event             String
   payload           String
-  statusCode        Int?
+  statusCode        Int? @map("status_code")
   status            String          @default("PENDING")
   attempt           Int             @default(1)
   error             String?
-  deliveredAt       DateTime?
-  createdAt         DateTime        @default(now())
+  deliveredAt       DateTime? @map("delivered_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
 
   @@index([webhookEndpointId])
   @@index([createdAt])

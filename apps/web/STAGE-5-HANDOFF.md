@@ -500,14 +500,18 @@ Progress table (row D6).
   pages rendered per request (a doc, a board, a course…) still start Next.js on a fresh Worker.
 - The real fix is still **Workers Paid** ($5/month, 30 s CPU); with the above, a fresh Worker only
   starts Next.js for those 28 pages.
-- **Found while crawling (existing, not fixed yet):** migration `0112_public_api_and_webhooks.sql` made
-  `api_keys`, `webhook_endpoints`, `webhook_deliveries` and `oneroster_syncs` with snake_case columns
-  (`key_prefix`, `organization_id`, `webhook_endpoint_id`…), but the Prisma models use camelCase with no
-  `@map`, so Admin → Integrations → Developer (API keys, webhooks) and OneRoster history answer 500
-  ("no such column: api_keys.keyPrefix"). Fix with `@map` on those fields (or a migration renaming the
-  columns), after checking what production's tables look like. Also seen on every path, Next.js too:
-  401s on /student/administrative/scholarships, /student/reels, /student/tutoring and /teacher/reels;
-  404s on /student/administrative/consents and /trust; /api/calendar-link 503 without its secret.
+- **Fixed (14 Oct): Admin → Integrations → Developer and OneRoster answered 500.** Migrations `0111`/`0112`
+  made `oneroster_syncs`, `oneroster_mappings`, `api_keys`, `webhook_endpoints` and `webhook_deliveries` with
+  snake_case columns (`key_prefix`, `organization_id`…) while the models used camelCase without `@map`
+  ("no such column: api_keys.keyPrefix"), so API keys, webhooks and OneRoster sync never worked on the live
+  site. The 30 fields now have `@map` to the real columns (no database change, no migration). Checked:
+  creating a key, the public API with it (scope refused, last use recorded), revoking; creating, pausing and
+  test-sending a webhook; OneRoster preview, sync and history (a second sync reuses the mapping); both pages
+  at 390 px light and dark with axe. **`src/server/schema-columns.test.ts`** applies every migration to an
+  in-memory database and checks each model against its table, so this can't happen again unnoticed.
+- **Still open (seen on Next.js too, not caused by the direct path):** 401s on
+  /student/administrative/scholarships, /student/reels, /student/tutoring and /teacher/reels; 404s on
+  /student/administrative/consents and /trust; /api/calendar-link 503 without its secret.
 
 ## D16 · Parent co-pilot: done (14 Oct 2026)
 
