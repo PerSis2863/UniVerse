@@ -20,7 +20,7 @@ describe('scheduled-call check', () => {
 
   it('asks D1 only what it accepts: no compound SELECT, one value per placeholder', () => {
     const checks = dueChecks(Date.parse('2026-10-14T08:00:00Z'));
-    expect(checks).toHaveLength(7);
+    expect(checks).toHaveLength(8);
     for (const [sql, values] of checks) {
       expect(sql).not.toMatch(/UNION/i);
       expect(sql).toMatch(/LIMIT 1$/);
@@ -33,7 +33,7 @@ describe('scheduled-call check', () => {
     expect(await callsDue({ DB: yes.db }, noWait)).toBe(true);
     expect(await callsDue({ DB: no.db }, noWait)).toBe(false);
     expect(yes.batch).toHaveBeenCalledTimes(1);
-    expect(yes.batch.mock.calls[0][0]).toHaveLength(7);
+    expect(yes.batch.mock.calls[0][0]).toHaveLength(8);
     expect(await callsDue({}, noWait)).toBe(false);
   });
 

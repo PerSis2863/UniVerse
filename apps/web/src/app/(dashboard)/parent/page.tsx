@@ -18,6 +18,7 @@ import { ChildView, type ChildData } from '@/components/guardian/ChildView';
 import { ParentMessages } from '@/components/guardian/ParentMessages';
 import { FORMS_KEY, ParentForms, type ParentFormsData } from '@/components/guardian/ParentForms';
 import { ParentMeetings } from '@/components/guardian/ParentMeetings';
+import { ParentCopilot } from '@/components/guardian/ParentCopilot';
 import { FamilyFees } from '@/components/fees/FamilyFees';
 import { MyRegisters } from '@/components/registers/MyRegisters';
 import { authedJson } from '@/lib/authed-fetch';
@@ -150,6 +151,7 @@ export default function ParentPage() {
                     <><h1 className="sr-only">Messages with {child.firstName}’s teachers</h1><ParentMessages studentId={child.studentId} chatId={chatId} onChat={openChat} /></>
                   ) : (
                     <>
+                      <ParentCopilot studentId={child.studentId} />
                       <ChildView data={child} eyebrow={child.relation ? `You’re linked as ${child.relation.toLowerCase()}` : 'Linked to your account'} note="Up to date as of now. Grades, attendance and deadlines come straight from the school." />
                       <FamilyFees url={`/api/parent/fees?studentId=${encodeURIComponent(child.studentId)}`} who={child.firstName} />
                       <MyRegisters url={`/api/parent/registers?studentId=${encodeURIComponent(child.studentId)}`} title={`${child.firstName}’s bus, room and equipment`} className="mt-4" />

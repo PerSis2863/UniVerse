@@ -1497,6 +1497,15 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/campus\/events\/[^/]+\/attendees$/, ({ db: d }) => ok({ item: { id: 'sample', title: 'Event', capacity: null }, people: d.classmates.slice(0, 4).map((u, i) => ({ id: `sample-r${i}`, status: 'GOING', checkedInAt: i < 2 ? at(0, 18, i * 5) : null, createdAt: at(-2), user: { id: u.id, name: u.name, email: u.email ?? `${u.id}@example.edu` } })) })],
   [/^\/api\/campus\/events\/[^/]+\/code$/, () => ok({ code: 'e1.sample.0.sample-sample-sample-sa', expiresIn: 30 })],
   [/^\/api\/campus\/rooms$/, () => ok({})],
+  // The parent co-pilot (Stage 5 · D16): a child's week, its summary and a question answered from the records.
+  [/^\/api\/parent\/week$/, () => ok({
+    child: 'Aarav', week: at(0).slice(0, 10), prefs: { lang: 'en', weekly: true, weekday: 6, hour: 18 },
+    facts: { child: 'Aarav', from: at(-7).slice(0, 10), to: at(0).slice(0, 10), grades: [{ course: 'Operating Systems', title: 'Scheduling quiz', percent: 86 }], attendance: { present: 9, late: 0, absent: 1, excused: 0 }, absences: [{ course: 'Data Structures', date: at(-2).slice(0, 10) }], due: [{ course: 'Design Studio', title: 'Poster draft', kind: 'assignment', at: at(3) }], late: [], average: 82, averageBefore: 80, achievements: [], reportCards: [] },
+    line: '1 new grade · 1 absence · 1 thing due', quiet: false,
+    summary: { text: 'Aarav had a good week: 86% on the Operating Systems scheduling quiz, and the overall average went up from 80% to 82%. Aarav was at 9 of 10 classes, missing one Data Structures class on Tuesday. Next up is the Design Studio poster draft, due on Friday. A quick chat about the missed class could help Aarav catch up.', ai: true, at: at(0, 8) },
+    questions: [{ id: 'sample-pq1', question: 'How is Aarav doing in Data Structures?', answer: 'Aarav’s Data Structures grade is 78%, with attendance at 90%. The last two marks were 74% and 82%, so it’s improving.', used: ['Grades', 'Attendance', 'Data Structures'], at: at(-1, 19) }],
+    asksLeft: 9,
+  })],
   // The live campus map (Stage 5 · D15): five buildings, the sample rooms with today's classes from the timetable.
   [/^\/api\/campus\/map$/, ({ db: d, q }) => {
     const dow = Number(q.get('dow')) || 0, min = Number(q.get('min')) || 600;

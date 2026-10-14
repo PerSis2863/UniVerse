@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { format, formatDistanceToNowStrict, isToday } from 'date-fns';
-import { Clock, Languages, Loader2, MessageCircle, Send, ShieldCheck } from 'lucide-react';
+import { Clock, Languages, Loader2, MessageCircle, Mic, Send, ShieldCheck } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Sheet } from '@/components/ui/Sheet';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
@@ -19,13 +19,15 @@ import { cn } from '@/lib/utils';
 
 // Parent–teacher messages in the parent app (Stage 5 · B16.2; src/server/parent-messages.ts):
 // the child's teachers, each with our chat. Messages can be read in the parent's language; outside
-// a teacher's hours for parents, the message waits for them (shown before sending).
+// a teacher's hours for parents, the message waits for them (shown before sending). A teacher's voice
+// note plays here, and is written out and translated into the parent's language (Stage 5 · D16).
 
 interface Teacher {
   id: string; name: string; avatar: string | null; courses: string[]; conversationId: string | null;
   last: { body: string; at: string; mine: boolean } | null; unread: number; hours: { text: string; now: boolean };
 }
-interface Msg { id: string; mine: boolean; system: boolean; body: string; translated: string | null; at: string; edited: boolean; pending?: boolean; failed?: boolean }
+interface Voice { url: string; transcript: string | null; translated: string | null; lang: string | null; ready: boolean }
+interface Msg { id: string; mine: boolean; system: boolean; body: string; translated: string | null; voice?: Voice | null; at: string; edited: boolean; pending?: boolean; failed?: boolean }
 interface Chat { id: string; teacher: { name: string; avatar: string | null } | null; child: string; hours: { text: string; now: boolean }; lang: string | null; seenAt: string | null; messages: Msg[] }
 
 const card = 'rounded-3xl tone-panel border border-zinc-200 dark:border-white/10';
@@ -181,7 +183,7 @@ function ChatSheet({ teacher, studentId, child, chatId, onStarted, onClose }: {
               ) : (
                 <motion.div key={m.id} layout initial={{ opacity: 0, y: 8, scale: 0.98 }} animate={{ opacity: m.pending ? 0.6 : 1, y: 0, scale: 1 }} transition={spring.bouncy} className={cn('flex', m.mine ? 'justify-end' : 'justify-start')}>
                   <div className={cn('max-w-[80%] rounded-2xl px-3.5 py-2 text-sm', m.mine ? 'bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white rounded-br-md' : 'bg-zinc-100 dark:bg-white/[0.07] text-zinc-900 dark:text-white rounded-bl-md')}>
-                    <p className="whitespace-pre-wrap break-words">{m.translated && !original.has(m.id) ? m.translated : m.body}</p>
+                    {m.voice && chatId ? <VoiceNote chatId={chatId} id={m.id} voice={m.voice} /> : <p className="whitespace-pre-wrap break-words">{m.translated && !original.has(m.id) ? m.translated : m.body}</p>}
                     <p className={cn('mt-0.5 text-[10px] flex items-center gap-1.5', m.mine ? 'text-white/70 justify-end' : 'text-zinc-500')}>
                       {m.pending ? <><Loader2 className="w-3 h-3 animate-spin" />Sending</> : m.failed ? 'Not sent' : when(m.at)}{m.edited && ' · edited'}
                       {m.translated && (
@@ -200,5 +202,47 @@ function ChatSheet({ teacher, studentId, child, chatId, onStarted, onClose }: {
         </div>
       </div>
     </Sheet>
+  );
+}
+
+/** A teacher's voice note: play it, and read it (in my language, with the words as said a tap away). */
+function VoiceNote({ chatId, id, voice }: { chatId: string; id: string; voice: Voice }) {
+  const [words, setWords] = useState<{ transcript: string | null; translated: string | null }>({ transcript: voice.transcript, translated: voice.translated });
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [asSaid, setAsSaid] = useState(false);
+  const tried = useRef(false);
+  const write = async () => {
+    setBusy(true);
+    setProblem(null);
+    try {
+      const r = await authedJson<{ transcript: string; translated: string | null }>(`/api/parent/chats/${chatId}`, { method: 'POST', body: JSON.stringify({ voice: id }) });
+      setWords({ transcript: r.transcript, translated: r.translated });
+    } catch (e) { setProblem(errorMessage(e, 'Couldn’t write it out right now.')); }
+    finally { setBusy(false); }
+  };
+  // Written out (and translated) by itself the first time it's shown.
+  useEffect(() => {
+    if (voice.ready || tried.current) return;
+    const t = setTimeout(() => { tried.current = true; void write(); }, 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per voice note
+  }, [voice.ready]);
+  const shown = words.translated && !asSaid ? words.translated : words.transcript;
+  return (
+    <div className="space-y-1.5 min-w-[13rem]">
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300"><Mic className="w-3.5 h-3.5" aria-hidden />Voice note</p>
+      <audio controls preload="none" src={voice.url} className="w-full max-w-[16rem] h-10" aria-label="Play the voice note" />
+      {shown ? (
+        <>
+          <p className="whitespace-pre-wrap break-words" lang={words.translated && !asSaid ? voice.lang ?? undefined : undefined}>{shown}</p>
+          {words.translated && <button type="button" onClick={() => setAsSaid(!asSaid)} className="text-[11px] underline underline-offset-2 text-zinc-600 dark:text-zinc-400">{asSaid ? 'Show translation' : 'Show the words as said'}</button>}
+        </>
+      ) : busy ? (
+        <p className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400"><Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />Writing it out{voice.lang ? ` in ${LANGUAGES[voice.lang]?.native ?? 'your language'}` : ''}…</p>
+      ) : problem ? (
+        <p className="text-xs text-amber-800 dark:text-amber-300">{problem} <button type="button" onClick={() => void write()} className="underline underline-offset-2 font-semibold">Try again</button></p>
+      ) : null}
+    </div>
   );
 }

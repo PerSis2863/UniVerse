@@ -442,6 +442,21 @@ Progress table (row D6).
 - **Code:** `src/lib/impact-league.ts`, `src/server/impact-league.ts`, `src/components/league/`,
   `src/app/(dashboard)/impact-league/`, `src/app/league/[slug]/`.
 
+## D16 · Parent co-pilot: done (14 Oct 2026)
+
+- **Migration `0128`** (`parent_copilot`, `parent_summaries`, `parent_questions`). Next migration: **`0129`**.
+- **Where:** the parent app's Schoolwork tab starts with **“<child>’s week”**: the summary in the parent's
+  language (Listen reads it with the phone's own voice), **Ask about <child>**, and the weekly
+  notification's day and time. Teachers' voice notes in Messages are written out and translated.
+- **Only records, never messages:** summaries and answers use grades, attendance, work due and late,
+  achievements and report cards. The AI is told to say when the records don't cover a question.
+- **Costs:** one AI request per child per week for the summary (Update at most daily), one per new
+  question (10 a day), one per voice note; all from the parent's daily AI allowance. Weekly
+  notifications are in the app and by push, never email.
+- **Try on the live site:** AI summary, answers and voice-note transcription (no AI key locally).
+- **Code:** `src/lib/parent-copilot.ts`, `src/server/parent-copilot.ts`, `src/server/parent-messages.ts`,
+  `src/components/guardian/ParentCopilot.tsx`, `src/app/api/parent/week/`.
+
 ## D15 · Classroom twin (live campus map): done (14 Oct 2026)
 
 - **Migration `0127`** (`campus_buildings`; `rooms.buildingId`, `rooms.floor`; `campus_items.buildingId`).
