@@ -454,8 +454,23 @@ Progress table (row D6).
   Each was checked field by field against its Next.js route for 5 accounts (student, teacher, admin,
   a teacher with nothing, a parent), with shared docs, 3-level sub-pages, class and group docs, pending
   sign-ups and a 7-member board (`next dev` on :3100 vs the built Worker in `wrangler dev` on :8787).
-  Not moved: `/api/student/overview` (it also updates the study streak).
-- Any change to one of those Next.js routes must be made in its light-path copy too.
+- Then (third commit): **`GET /api/student/overview`** (the student home, also inside `/api/bootstrap`)
+  and the **"app opened" sign-in record** (`session: true` in `/api/bootstrap`, one SQL statement that
+  keeps the 30-minute rule). Opening the app as a student, teacher or admin no longer touches Next.js at
+  all; parents still do for `/api/parent/children`.
+- **Copies that had drifted** (found by comparing every light-path answer again, fixed): `/api/me` lacked
+  `noRecording` (B7.6 call recording), `/api/core/users/me` lacked teachers' staff-role `permissions`
+  (B15.6, so those areas could stay hidden) and the student exchange fields (Upgrade 9), and the chat list
+  and chat thread lacked `private` (B7.6 private chats). Lists cut at a limit now sort like Prisma (it
+  adds `ORDER BY id` when there's a limit and no order), and "latest 5" lists use Prisma's query shape so
+  rows with equal times come in the same order. Parent accounts are refused on chat calls exactly as the
+  Next.js routes refuse them.
+- **Cloudflare's location info never reached the Next.js routes** (`request.cf` is dropped on the way in).
+  So study-streak days were UTC days instead of the student's own, and sign-in history never had a city.
+  `src/server/request-cf.ts` now reads it from the Worker's context; both paths use the student's time
+  zone and record the city. A student far from UTC may see one odd day in the streak week once.
+- **Any change to one of those Next.js routes must be made in its light-path copy too**, then run
+  `node scripts/light-path-parity.mjs` (instructions at its top) with tricky data in the local database.
 - The real fix is still **Workers Paid** ($5/month, 30 s CPU). Until then, moving the busiest page
   lists onto the light path is the way to cut "Couldn't load" errors.
 

@@ -1,18 +1,23 @@
-// Light-path answers for the lists the Collaborate pages open with (see fast-api.ts): plain SQL, the
+// Light-path answers for the lists and overviews pages open with (see fast-api.ts): plain SQL, the
 // same JSON as the Next.js routes they stand in for (named on each), so a fresh Worker answers them
 // without loading Next.js (on the free plan that first load is cut off, and the page says "Couldn't load").
-import { isoDate, json, type Caller } from './fast-db';
+import { dayBefore, dayIn, lastWeek, timeZoneOf } from '../src/lib/study-days';
+import { levelInfo } from '../src/lib/impact-level';
+import { dbDate, isoDate, json, type Caller } from './fast-db';
 
 type Row = Record<string, string | number | null>;
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
+// Where these lists stop at a limit, Prisma sorts them by id first (it does when there's a limit and
+// no order), so the same 100 come back in the same order.
+
 /** My classes (as in src/server/spaces.ts and src/server/docs.ts): enrolled, taught, or for docs, every class for admins. */
 async function myCourses(me: Caller, db: D1Database, adminSeesAll: boolean) {
   const sql = me.role === 'STUDENT'
-    ? 'SELECT c.id, c.code, c.name FROM enrollments e JOIN courses c ON c.id = e.courseId WHERE e.studentId = ?1 LIMIT 100'
+    ? 'SELECT c.id, c.code, c.name FROM enrollments e JOIN courses c ON c.id = e.courseId WHERE e.studentId = ?1 ORDER BY e.id LIMIT 100'
     : me.role === 'ADMIN' && adminSeesAll
-      ? 'SELECT id, code, name FROM courses LIMIT 100'
-      : 'SELECT id, code, name FROM courses WHERE teacherId = ?1 LIMIT 100';
+      ? 'SELECT id, code, name FROM courses ORDER BY id LIMIT 100'
+      : 'SELECT id, code, name FROM courses WHERE teacherId = ?1 ORDER BY id LIMIT 100';
   const stmt = db.prepare(sql);
   const { results } = await (sql.includes('?1') ? stmt.bind(me.id) : stmt).all<{ id: string; code: string; name: string }>();
   return results.map((c) => ({ id: c.id, code: c.code, name: c.name }));
@@ -20,7 +25,7 @@ async function myCourses(me: Caller, db: D1Database, adminSeesAll: boolean) {
 
 async function myGroups(me: Caller, db: D1Database) {
   const { results } = await db
-    .prepare('SELECT g.id, g.name FROM group_memberships m JOIN groups g ON g.id = m.groupId WHERE m.userId = ?1 LIMIT 100')
+    .prepare('SELECT g.id, g.name FROM group_memberships m JOIN groups g ON g.id = m.groupId WHERE m.userId = ?1 ORDER BY m.id LIMIT 100')
     .bind(me.id)
     .all<{ id: string; name: string }>();
   return results.map((g) => ({ id: g.id, name: g.name }));
@@ -63,7 +68,7 @@ export async function docsList(me: Caller, db: D1Database) {
     for (let i = 0; i < Math.min(frontier.length, 180); i += 90) {
       const part = frontier.slice(i, i + 90);
       const { results: kids } = await db
-        .prepare(`SELECT ${DOC_COLUMNS} FROM docs WHERE parentId IN (${part.map(() => '?').join(',')}) LIMIT 100`)
+        .prepare(`SELECT ${DOC_COLUMNS} FROM docs WHERE parentId IN (${part.map(() => '?').join(',')}) ORDER BY id LIMIT 100`)
         .bind(...part)
         .all<Row>();
       for (const r of kids) {
@@ -98,10 +103,10 @@ export async function adminDashboard(db: D1Database) {
       (SELECT COUNT(*) FROM courses) AS courses, (SELECT SUM(amount) FROM payments WHERE status = 'COMPLETED') AS revenue`),
     db.prepare('SELECT department, COUNT(userId) AS n FROM student_profiles GROUP BY department'),
     db.prepare('SELECT department, COUNT(userId) AS n FROM teacher_profiles GROUP BY department'),
-    db.prepare('SELECT u.name, p.type, p.amount, p.status FROM payments p JOIN users u ON u.id = p.userId ORDER BY p.createdAt DESC LIMIT 5'),
-    db.prepare(`SELECT u.id, u.name, u.role, u.createdAt, s.department AS sDept, t.department AS tDept FROM users u
-      LEFT JOIN student_profiles s ON s.userId = u.id LEFT JOIN teacher_profiles t ON t.userId = u.id
-      WHERE u.status = 'PENDING' ORDER BY u.createdAt DESC LIMIT 5`),
+    // The latest 5 (names looked up per row, so rows with the same time come in Prisma's order).
+    db.prepare('SELECT type, amount, status, (SELECT name FROM users WHERE users.id = payments.userId) AS name FROM payments ORDER BY createdAt DESC LIMIT 5'),
+    db.prepare(`SELECT id, name, role, createdAt, (SELECT department FROM student_profiles WHERE student_profiles.userId = users.id) AS sDept,
+      (SELECT department FROM teacher_profiles WHERE teacher_profiles.userId = users.id) AS tDept FROM users WHERE status = ? ORDER BY createdAt DESC LIMIT 5`).bind('PENDING'),
   ]);
   const c = (counts.results[0] ?? {}) as Row;
   const totalStudents = Number(c.students ?? 0), totalTeachers = Number(c.teachers ?? 0);
@@ -136,14 +141,16 @@ const letter = (p: number) => (p >= 90 ? 'A' : p >= 80 ? 'B' : p >= 70 ? 'C' : p
 /** GET /api/core/dashboard/teacher (src/server/services/dashboard.service.ts getTeacherDashboard): a teacher's overview. */
 export async function teacherDashboard(me: Caller, db: D1Database) {
   const mine = 'IN (SELECT id FROM courses WHERE teacherId = ?1)';
+  // Graded work in my classes, newest first, as Prisma asks for it (so equal times come in the same order).
+  const gradedIn = `FROM grades LEFT JOIN courses AS j0 ON (j0.id) = (grades.courseId) WHERE ((j0.teacherId = ?1 AND (j0.id IS NOT NULL)) AND grades.status = ?2) ORDER BY grades.gradedAt DESC`;
   const [counts, graded, courses, recent] = await db.batch([
     db.prepare(`SELECT (SELECT COUNT(*) FROM courses WHERE teacherId = ?1) AS courses,
       (SELECT COUNT(DISTINCT studentId) FROM enrollments WHERE courseId ${mine}) AS students,
       (SELECT COUNT(*) FROM grades WHERE status = 'PENDING' AND courseId ${mine}) AS pending`).bind(me.id),
-    db.prepare(`SELECT studentId, courseId, score, maxScore, gradedAt FROM grades WHERE status = 'GRADED' AND courseId ${mine} ORDER BY gradedAt DESC`).bind(me.id),
+    db.prepare(`SELECT grades.studentId, grades.courseId, grades.score, grades.maxScore, grades.gradedAt ${gradedIn}`).bind(me.id, 'GRADED'),
     db.prepare('SELECT id, name, code, color FROM courses WHERE teacherId = ?1 ORDER BY createdAt DESC LIMIT 5').bind(me.id),
-    db.prepare(`SELECT g.score, g.maxScore, u.name AS student, c.name AS course FROM grades g JOIN users u ON u.id = g.studentId JOIN courses c ON c.id = g.courseId
-      WHERE g.status = 'GRADED' AND g.courseId ${mine} ORDER BY g.gradedAt DESC LIMIT 5`).bind(me.id),
+    db.prepare(`SELECT grades.score, grades.maxScore, (SELECT name FROM users WHERE users.id = grades.studentId) AS student,
+      (SELECT name FROM courses WHERE courses.id = grades.courseId) AS course ${gradedIn} LIMIT 5`).bind(me.id, 'GRADED'),
   ]);
   const c = (counts.results[0] ?? {}) as Row;
   const grades = (graded.results as Row[]).map((g) => ({ studentId: g.studentId as string, courseId: g.courseId as string, score: Number(g.score), maxScore: Number(g.maxScore), gradedAt: g.gradedAt as string | null }));
@@ -184,5 +191,122 @@ export async function teacherDashboard(me: Caller, db: D1Database) {
       const score = Math.round(percent({ score: Number(g.score), maxScore: Number(g.maxScore) }));
       return { name: g.student, course: g.course, score, status: score >= 85 ? 'excellent' : score >= 70 ? 'good' : 'needs-help' };
     }),
+  }, 200, NO_STORE);
+}
+
+const pct = (score: number, max: number) => (max > 0 ? (score / max) * 100 : 0);
+
+/**
+ * GET /api/student/overview (src/app/api/student/overview/route.ts): everything the student dashboard
+ * shows. The queries are the ones Prisma sends for that route, so rows with equal times come in the
+ * same order.
+ */
+export async function studentOverview(me: Caller, db: D1Database, url: URL, request: Request) {
+  // Day of week in the student's timezone (0 = Monday, as stored on timetable slots).
+  const dowParam = Number(url.searchParams.get('dow'));
+  const dow = Number.isInteger(dowParam) && dowParam >= 0 && dowParam <= 6 ? dowParam : (new Date().getDay() + 6) % 7;
+  const today = dayIn(timeZoneOf(request));
+  const days = lastWeek(today);
+  const [userRes, enrollRes, attRes, gradeRes, impactRes, studyRes] = await db.batch([
+    db.prepare('SELECT name, impactXP, streakCurrent, streakBest, streakLastDay FROM users WHERE id = ?').bind(me.id),
+    db.prepare('SELECT id, courseId FROM enrollments WHERE studentId = ?').bind(me.id),
+    db.prepare('SELECT COUNT(*) AS n, courseId, status FROM attendance WHERE studentId = ? GROUP BY courseId, status').bind(me.id),
+    db.prepare(`SELECT id, courseId, assignmentName, score, maxScore, weight, gradedAt, (SELECT code FROM courses WHERE courses.id = grades.courseId) AS courseCode
+      FROM grades WHERE (studentId = ? AND status = ?) ORDER BY gradedAt DESC`).bind(me.id, 'GRADED'),
+    db.prepare('SELECT SUM(points) AS points FROM impact_points WHERE userId = ?').bind(me.id),
+    db.prepare('SELECT day FROM study_days WHERE (userId = ? AND day >= ?)').bind(me.id, days[0]),
+  ]);
+  const u = (userRes.results[0] ?? null) as Row | null;
+  const courseIds = (enrollRes.results as Row[]).map((e) => e.courseId as string);
+  if (courseIds.length > 90) return null; // more than D1 takes in one query: the Next.js route answers
+  const marks = courseIds.map(() => '?').join(',');
+  const [courseRes, slotRes, quizRes] = courseIds.length
+    ? await db.batch([
+        db.prepare(`SELECT id, code, name, color, emoji FROM courses WHERE id IN (${marks})`).bind(...courseIds),
+        db.prepare(`SELECT id, startTime, endTime, type, roomId, courseId, (SELECT name FROM rooms WHERE rooms.id = timetable_slots.roomId) AS roomName
+          FROM timetable_slots WHERE (courseId IN (${marks}) AND dayOfWeek = ?) ORDER BY startTime ASC`).bind(...courseIds, dow),
+        db.prepare(`SELECT id, title, dueDate, courseId FROM quizzes WHERE (courseId IN (${marks}) AND status = ? AND dueDate >= ?
+          AND NOT EXISTS (SELECT t0.quizId FROM quiz_submissions AS t0 WHERE (t0.studentId = ? AND (quizzes.id) = (t0.quizId) AND t0.quizId IS NOT NULL)))
+          ORDER BY dueDate ASC LIMIT 6`).bind(...courseIds, 'PUBLISHED', dbDate(Date.now()), me.id),
+      ])
+    : [{ results: [] }, { results: [] }, { results: [] }];
+  const byId = new Map((courseRes.results as Row[]).map((c) => [c.id as string, c]));
+  const enrolled = courseIds.flatMap((id) => {
+    const c = byId.get(id);
+    return c ? [{ id: c.id as string, code: c.code, name: c.name, color: c.color, emoji: c.emoji }] : [];
+  });
+
+  // Attendance: present or late counts as attended; excused days are left out.
+  const att = new Map<string, { attended: number; total: number }>();
+  for (const row of attRes.results as Row[]) {
+    if (row.status === 'EXCUSED') continue;
+    const a = att.get(row.courseId as string) ?? { attended: 0, total: 0 };
+    a.total += Number(row.n);
+    if (row.status === 'PRESENT' || row.status === 'LATE') a.attended += Number(row.n);
+    att.set(row.courseId as string, a);
+  }
+  const attTotals = [...att.values()].reduce((t, a) => ({ attended: t.attended + a.attended, total: t.total + a.total }), { attended: 0, total: 0 });
+
+  // Weighted average grade, overall and per course.
+  const grades = gradeRes.results as Row[];
+  const gradeAgg = new Map<string, { w: number; sum: number }>();
+  for (const g of grades) {
+    const a = gradeAgg.get(g.courseId as string) ?? { w: 0, sum: 0 };
+    a.w += Number(g.weight);
+    a.sum += pct(Number(g.score), Number(g.maxScore)) * Number(g.weight);
+    gradeAgg.set(g.courseId as string, a);
+  }
+  const gTotals = [...gradeAgg.values()].reduce((t, a) => ({ w: t.w + a.w, sum: t.sum + a.sum }), { w: 0, sum: 0 });
+
+  const courses = enrolled.map((course) => {
+    const a = att.get(course.id);
+    const g = gradeAgg.get(course.id);
+    return {
+      ...course,
+      attendance: a && a.total ? Math.round((a.attended / a.total) * 100) : null,
+      averageGrade: g && g.w ? Math.round(g.sum / g.w) : null,
+    };
+  });
+  const quizzes = (quizRes.results as Row[]).map((q) => {
+    const c = byId.get(q.courseId as string);
+    return { id: q.id, title: q.title, dueDate: isoDate(q.dueDate as string | null), course: { code: c?.code, name: c?.name } };
+  });
+  const points = (impactRes.results[0] as Row | undefined)?.points;
+  const impactSum = points === null || points === undefined ? null : Number(points);
+  const xp = Number(u?.impactXP ?? 0) || impactSum || 0;
+
+  // The streak as the student sees it (src/server/streaks.ts streakSummary).
+  const studied = new Set((studyRes.results as Row[]).map((r) => r.day as string));
+  const alive = u?.streakLastDay === today || u?.streakLastDay === dayBefore(today);
+
+  return json({
+    name: u?.name ?? me.name,
+    stats: {
+      courses: courses.length,
+      attendance: attTotals.total ? Math.round((attTotals.attended / attTotals.total) * 100) : null,
+      averageGrade: gTotals.w ? Math.round(gTotals.sum / gTotals.w) : null,
+      upcoming: quizzes.length,
+      impactPoints: impactSum ?? 0,
+    },
+    level: levelInfo(xp),
+    streak: {
+      current: alive ? Number(u?.streakCurrent ?? 0) : 0,
+      best: Number(u?.streakBest ?? 0),
+      today: studied.has(today),
+      week: days.map((day) => ({ day, studied: studied.has(day) })),
+    },
+    courses,
+    schedule: (slotRes.results as Row[]).map((s) => {
+      const c = byId.get(s.courseId as string);
+      return { id: s.id, start: s.startTime, end: s.endTime, type: s.type, room: s.roomName ?? null, course: { code: c?.code, name: c?.name, color: c?.color } };
+    }),
+    upcoming: quizzes,
+    recentGrades: grades.slice(0, 5).map((g) => ({
+      id: g.id,
+      name: g.assignmentName,
+      course: g.courseCode,
+      percent: Math.round(pct(Number(g.score), Number(g.maxScore))),
+      gradedAt: isoDate(g.gradedAt as string | null),
+    })),
   }, 200, NO_STORE);
 }
