@@ -285,7 +285,7 @@ chats) send the owner an in-app alert when one is written in a chat. A person ca
 
 ## Notes
 
-- The Worker is about 3.4 MB gzipped (minified). Cloudflare's documented script limit is 3 MB on the free plan and 10 MB on paid; deployments have been succeeding, but if one fails with a size error, that's the cause.
+- The Worker is about 8.0 MB gzipped (October 2026: the Next.js server ~7 MB, the API routes run without Next.js ~0.9 MB, see `cloudflare/api-direct.ts`). Cloudflare's documented script limit is 3 MB on the free plan and 10 MB on paid; deployments have been succeeding, but if one fails with a size error, that's the cause.
 
 ## Features that need a key or setup
 

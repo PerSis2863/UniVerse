@@ -471,8 +471,43 @@ Progress table (row D6).
   zone and record the city. A student far from UTC may see one odd day in the streak week once.
 - **Any change to one of those Next.js routes must be made in its light-path copy too**, then run
   `node scripts/light-path-parity.mjs` (instructions at its top) with tricky data in the local database.
-- The real fix is still **Workers Paid** ($5/month, 30 s CPU). Until then, moving the busiest page
-  lists onto the light path is the way to cut "Couldn't load" errors.
+- **Every API route now runs without Next.js (`cloudflare/api-direct.ts`, 14 Oct).** Measured: on a
+  fresh Worker the first request that needs Next.js parses its whole 32 MB bundle (one giant function
+  once bundled; 2.4 s of the 3.8 s CPU in a local profile). An API route only needs its own code (all
+  434 together are 3.6 MB), so the Worker runs `src/app/api/**/route.ts` handlers itself, inside
+  OpenNext's request context: same routes and match order (`cloudflare/api-routes.gen.ts`, written by
+  `scripts/gen-api-routes.mjs` with Next.js's own sorting and patterns), same param decoding, same
+  `next.config.ts` headers plus Next's `Vary`, same `NEXT_PUBLIC_` values (captured during the build
+  into `cloudflare/next-public.gen.ts`). Order per API request: light path (SQL) → direct → Next.js
+  (for methods a route doesn't export, HEAD/OPTIONS, trailing "/", undecodable params, unknown routes).
+  The scheduled jobs (`/api/cron/*`) and the app-open bundle's fallback use it too.
+  - Cold API call locally: 0.36–0.5 s instead of 2.5–3.6 s; 3 cold calls under the profiler 0.56 s CPU
+    instead of 3.8 s. A parent opening the app: 0.46 s, Next.js never loaded.
+  - Checked: 169 parameter-free GET routes × 5 accounts and 57 routes with real ids, field by field
+    against `next dev` (1,085 same; every difference was a "now" timestamp, a side effect of the first
+    call, or the dev server's throwaway signing key), headers against the built Next.js, writes (create,
+    rename, delete a doc; upload and download; demo admin refused; 405 for PUT), the page crawler as
+    student/teacher/admin on the built Worker (same results as on Next.js), home pages at 390 px light
+    and dark with axe, the light-path comparison.
+  - **New or removed API route:** run `node scripts/gen-api-routes.mjs` (the build does it anyway;
+    `src/lib/api-routes.test.ts` fails when the table is stale and checks the matcher against Next.js's
+    for every route). Testing locally: start `wrangler dev` with `NODE_ENV=production`, as deployed.
+  - Upload size is now ~8.0 MB gzipped (was 7.1). Cloudflare documents 3 MB (free) and 10 MB (paid);
+    deploys have been succeeding above 3 MB.
+- **Pages:** the 171 pages built ahead of time, and in-app navigation to them, are served from the
+  cache without Next.js (OpenNext cache interception, filled by `opennextjs-cloudflare deploy`;
+  locally run `npx opennextjs-cloudflare populateCache local` first or every page looks slow). The 28
+  pages rendered per request (a doc, a board, a course…) still start Next.js on a fresh Worker.
+- The real fix is still **Workers Paid** ($5/month, 30 s CPU); with the above, a fresh Worker only
+  starts Next.js for those 28 pages.
+- **Found while crawling (existing, not fixed yet):** migration `0112_public_api_and_webhooks.sql` made
+  `api_keys`, `webhook_endpoints`, `webhook_deliveries` and `oneroster_syncs` with snake_case columns
+  (`key_prefix`, `organization_id`, `webhook_endpoint_id`…), but the Prisma models use camelCase with no
+  `@map`, so Admin → Integrations → Developer (API keys, webhooks) and OneRoster history answer 500
+  ("no such column: api_keys.keyPrefix"). Fix with `@map` on those fields (or a migration renaming the
+  columns), after checking what production's tables look like. Also seen on every path, Next.js too:
+  401s on /student/administrative/scholarships, /student/reels, /student/tutoring and /teacher/reels;
+  404s on /student/administrative/consents and /trust; /api/calendar-link 503 without its secret.
 
 ## D16 · Parent co-pilot: done (14 Oct 2026)
 
