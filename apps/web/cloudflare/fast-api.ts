@@ -165,7 +165,10 @@ async function typing(me: Caller, conversationId: string, db: D1Database, env: E
   if (hubs) {
     const body = JSON.stringify({ type: 'typing', conversationId, name: (me.name || 'Someone').split(' ')[0] });
     const others = results.filter((p) => p.userId !== me.id);
-    ctx.waitUntil(Promise.all(others.map((p) => hubs.get(hubs.idFromName(p.userId)).fetch('https://realtime/publish', { method: 'POST', body }).catch(() => {}))));
+    // Not in big groups: one live request per member every few seconds while anyone types
+    // (planLimits().livePushes, src/server/realtime.ts publishTyping).
+    const cap = String((env as { WORKERS_PAID?: unknown }).WORKERS_PAID ?? '').trim().toLowerCase() === 'true' ? 500 : 40;
+    if (others.length <= cap) ctx.waitUntil(Promise.all(others.map((p) => hubs.get(hubs.idFromName(p.userId)).fetch('https://realtime/publish', { method: 'POST', body }).catch(() => {}))));
   }
   return json({ ok: true });
 }

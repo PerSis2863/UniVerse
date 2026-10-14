@@ -1,7 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { isOnline } from '@/lib/chat';
-import { planLimits } from '@/lib/plan-limits';
 import { later, notify, notifyMany } from './email';
 import { quietFor } from './focus';
 import { firstUrl, linkPreview } from './link-preview';
@@ -196,7 +195,7 @@ export async function publishGroupChannel(conversationId: string) {
   const active = await prisma.conversationParticipant.findMany({
     where: { conversationId, user: { lastSeenAt: { gt: new Date(Date.now() - 15 * 60_000) } } },
     select: { userId: true },
-    take: planLimits().livePushes,
+    take: 1000, // relayed past Workers Free's 50 subrequests (src/lib/fanout.ts)
   });
   await deliver(active.map((a) => a.userId), { type: 'chat', conversationId });
 }

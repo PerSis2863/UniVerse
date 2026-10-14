@@ -12,6 +12,7 @@ import * as Y from 'yjs';
 import nextApp from '../.open-next/worker.js';
 import { fastApi } from './fast-api';
 import { apiDirect } from './api-direct';
+import { fanOut, readRelay } from '../src/lib/fanout';
 import { callsDue } from './due-check';
 import { dbDate } from './fast-db';
 import { checkUsage, pageNotice, serverGate, withNotice } from './usage-guard';
@@ -236,6 +237,25 @@ export class RealtimeHub extends DurableObject<Env> {
       }
       // How many tabs got it: > 0 means the user has UniVerse open right now.
       return Response.json({ sockets });
+    }
+
+    // A slice of a big list (src/lib/fanout.ts): tell this user's tabs, then pass it on to the rest
+    // of the slice with this request's own subrequest allowance.
+    if (url.pathname === '/relay' && request.method === 'POST') {
+      const relay = readRelay(await request.json().catch(() => null));
+      if (!relay) return new Response('Bad request', { status: 400 });
+      let here = false;
+      for (const ws of this.ctx.getWebSockets()) {
+        try {
+          ws.send(relay.message);
+          here = true;
+        } catch {
+          /* closing */
+        }
+      }
+      const ns = this.env.REALTIME;
+      const online = await fanOut(relay.ids, relay.message, (id) => ns.get(ns.idFromName(id)));
+      return Response.json({ here, online: [...online] });
     }
 
     if (url.pathname === '/realtime') {
