@@ -160,12 +160,12 @@ export default function AdminDashboard() {
                   <div className="flex gap-2">
                     <button 
                       onClick={() => handleApprove(u.id, u.name)}
-                      className="px-3 py-1.5 rounded-lg bg-green-900/30 text-green-400 border border-green-700/30 text-xs font-semibold hover:bg-green-900/50 transition-colors">
+                      className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-700 dark:text-green-300 border border-green-600/30 text-xs font-semibold hover:bg-green-500/20 transition-colors">
                       {t('admin.approve')}
                     </button>
                     <button 
                       onClick={() => handleReject(u.id, u.name)}
-                      className="px-3 py-1.5 rounded-lg bg-rose-900/30 text-rose-400 border border-rose-700/30 text-xs font-semibold hover:bg-rose-900/50 transition-colors">
+                      className="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-600/30 text-xs font-semibold hover:bg-rose-500/20 transition-colors">
                       {t('admin.reject')}
                     </button>
                   </div>

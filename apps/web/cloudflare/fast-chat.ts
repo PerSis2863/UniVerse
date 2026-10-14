@@ -85,7 +85,7 @@ export async function thread(me: Caller, conversationId: string, url: URL, db: D
          ORDER BY m.createdAt DESC LIMIT ${PAGE + 1}`,
       )
       .bind(conversationId, now, me.id, ...(before ? [before] : [])),
-    db.prepare('SELECT id, isGroup, name, avatarUrl, disappearingSec FROM conversations WHERE id = ?').bind(conversationId),
+    db.prepare('SELECT id, isGroup, private, name, avatarUrl, disappearingSec FROM conversations WHERE id = ?').bind(conversationId),
     db
       .prepare(
         `SELECT p.userId, p.role AS groupRole, p.lastReadAt, p.typingUntil, u.name, u.avatar, u.role, u.lastSeenAt, u.presence, u.statusText, u.statusEmoji, u.statusUntil
@@ -194,6 +194,7 @@ export async function thread(me: Caller, conversationId: string, url: URL, db: D
       conversation: {
         id: convo.id,
         isGroup,
+        private: bool(convo.private),
         isOfficial: !isGroup && others.some((p) => p.userId === systemUserId),
         title: isGroup ? convo.name || 'Group chat' : others[0]?.name || 'Unknown user',
         avatarUrl: isGroup ? convo.avatarUrl : others[0]?.avatar ?? null,
@@ -201,7 +202,6 @@ export async function thread(me: Caller, conversationId: string, url: URL, db: D
         disappearingSec: convo.disappearingSec,
         pinned: !!mine.pinnedAt,
         muted: !!mine.mutedUntil && at(mine.mutedUntil) > nowMs,
-        mutedUntil: mine.mutedUntil && at(mine.mutedUntil) > nowMs ? new Date(at(mine.mutedUntil)).toISOString() : null,
         archived: !!mine.archivedAt,
         translateTo: null,
         draft: mine.draft ?? null,
@@ -260,7 +260,7 @@ export async function conversations(me: Caller, db: D1Database, ctx: ExecutionCo
            AND EXISTS (SELECT 1 FROM conversation_participants b WHERE b.conversationId = c.id AND b.userId = ?2) LIMIT 1`,
       )
       .bind(me.id, system),
-    db.prepare(`SELECT id, isGroup, name, avatarUrl, updatedAt FROM conversations WHERE id IN (${mineIds}) ORDER BY updatedAt DESC`).bind(me.id),
+    db.prepare(`SELECT id, isGroup, private, name, avatarUrl, updatedAt FROM conversations WHERE id IN (${mineIds}) ORDER BY updatedAt DESC`).bind(me.id),
     db
       .prepare(
         `SELECT p.conversationId, p.userId, p.typingUntil, p.pinnedAt, p.mutedUntil, p.archivedAt, p.markedUnread, u.name, u.avatar, u.lastSeenAt, u.presence, u.statusText, u.statusEmoji, u.statusUntil,
@@ -316,6 +316,7 @@ export async function conversations(me: Caller, db: D1Database, ctx: ExecutionCo
       return {
         id: c.id,
         isGroup,
+        private: bool(c.private),
         isOfficial: !isGroup && others.some((p) => p.userId === system),
         title: isGroup ? c.name || 'Group chat' : other?.name || 'Unknown user',
         avatarUrl: isGroup ? c.avatarUrl : other?.avatar ?? null,

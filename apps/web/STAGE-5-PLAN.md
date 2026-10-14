@@ -43,7 +43,7 @@ progress can be tracked in the Progress section at the end.
 | **Workers Free limits per request.** | 10 ms CPU, 50 subrequests, 50 D1 queries, **100 bound parameters per D1 query** (chunk IN lists by 90). Batch queries. |
 | **AI is limited.** | `spendAi(user)` before every AI request, `featureOff('ai')`, cache with `cachedAi/saveAi`. Prefer the lite model for simple jobs. Images: `geminiJsonImage`. |
 | **Sample stubs.** | Every new GET a page uses needs a stub in `src/lib/sample/router.ts`. |
-| **Fast path.** | If you change a response served by `cloudflare/fast-api.ts` / `fast-chat.ts`, change it there too. |
+| **Fast path.** | If you change a response served by `cloudflare/fast-api.ts` / `fast-chat.ts` / `fast-lists.ts`, change it there too, then run `node scripts/light-path-parity.mjs` (it compares both, field by field). API routes run without Next.js (`cloudflare/api-direct.ts`): after adding or removing one, run `node scripts/gen-api-routes.mjs`. |
 | **Migrations.** | Hand-written SQL `prisma/migrations/NNNN_name.sql`, **next number 0075**. Additive only. Then `npx prisma generate`, `node scripts/gen-owner-schema.mjs`, `npx wrangler d1 migrations apply DB --local`. The deploy applies them to production. |
 | **Call room changes.** | Run `node scripts/test-call-room.mjs` (127 checks) after changing `CallRoom`; add checks for new behaviour. |
 | **Costs need the owner's yes.** | Anything that needs a paid service or an account (Apple/Google developer, Razorpay, SMS, Cloudflare Stream, Workers Paid) is marked **[owner]**: build it behind a switch, off until the owner sets it up. |

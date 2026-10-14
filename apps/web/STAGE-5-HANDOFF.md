@@ -442,6 +442,77 @@ Progress table (row D6).
 - **Code:** `src/lib/impact-league.ts`, `src/server/impact-league.ts`, `src/components/league/`,
   `src/app/(dashboard)/impact-league/`, `src/app/league/[slug]/`.
 
+## Cold start on Workers Free (measured 14 Oct 2026)
+
+- The first request on a fresh Worker loads the whole Next.js server bundle (~30 MB:
+  11.5 MB route files, 9.4 MB shared chunks, 6 MB inlined manifests) and costs ~2–3 s CPU locally
+  (`wrangler dev --inspector-port 9229` + a CPU profile). Startup itself is ~60 ms. Making the inlined
+  manifests lazy saved only ~0.15 s, so it wasn't kept.
+- Requests answered by `cloudflare/fast-api.ts` never load Next.js. Added there (in
+  `cloudflare/fast-lists.ts` from the second one): **`GET /api/boards`**, **`/api/docs`**, **`/api/spaces`**,
+  **`/api/core/dashboard/admin`** and **`/api/core/dashboard/teacher`** (also inside `/api/bootstrap`).
+  Each was checked field by field against its Next.js route for 5 accounts (student, teacher, admin,
+  a teacher with nothing, a parent), with shared docs, 3-level sub-pages, class and group docs, pending
+  sign-ups and a 7-member board (`next dev` on :3100 vs the built Worker in `wrangler dev` on :8787).
+- Then (third commit): **`GET /api/student/overview`** (the student home, also inside `/api/bootstrap`)
+  and the **"app opened" sign-in record** (`session: true` in `/api/bootstrap`, one SQL statement that
+  keeps the 30-minute rule). Opening the app as a student, teacher or admin no longer touches Next.js at
+  all; parents still do for `/api/parent/children`.
+- **Copies that had drifted** (found by comparing every light-path answer again, fixed): `/api/me` lacked
+  `noRecording` (B7.6 call recording), `/api/core/users/me` lacked teachers' staff-role `permissions`
+  (B15.6, so those areas could stay hidden) and the student exchange fields (Upgrade 9), and the chat list
+  and chat thread lacked `private` (B7.6 private chats). Lists cut at a limit now sort like Prisma (it
+  adds `ORDER BY id` when there's a limit and no order), and "latest 5" lists use Prisma's query shape so
+  rows with equal times come in the same order. Parent accounts are refused on chat calls exactly as the
+  Next.js routes refuse them.
+- **Cloudflare's location info never reached the Next.js routes** (`request.cf` is dropped on the way in).
+  So study-streak days were UTC days instead of the student's own, and sign-in history never had a city.
+  `src/server/request-cf.ts` now reads it from the Worker's context; both paths use the student's time
+  zone and record the city. A student far from UTC may see one odd day in the streak week once.
+- **Any change to one of those Next.js routes must be made in its light-path copy too**, then run
+  `node scripts/light-path-parity.mjs` (instructions at its top) with tricky data in the local database.
+- **Every API route now runs without Next.js (`cloudflare/api-direct.ts`, 14 Oct).** Measured: on a
+  fresh Worker the first request that needs Next.js parses its whole 32 MB bundle (one giant function
+  once bundled; 2.4 s of the 3.8 s CPU in a local profile). An API route only needs its own code (all
+  434 together are 3.6 MB), so the Worker runs `src/app/api/**/route.ts` handlers itself, inside
+  OpenNext's request context: same routes and match order (`cloudflare/api-routes.gen.ts`, written by
+  `scripts/gen-api-routes.mjs` with Next.js's own sorting and patterns), same param decoding, same
+  `next.config.ts` headers plus Next's `Vary`, same `NEXT_PUBLIC_` values (captured during the build
+  into `cloudflare/next-public.gen.ts`). Order per API request: light path (SQL) → direct → Next.js
+  (for methods a route doesn't export, HEAD/OPTIONS, trailing "/", undecodable params, unknown routes).
+  The scheduled jobs (`/api/cron/*`) and the app-open bundle's fallback use it too.
+  - Cold API call locally: 0.36–0.5 s instead of 2.5–3.6 s; 3 cold calls under the profiler 0.56 s CPU
+    instead of 3.8 s. A parent opening the app: 0.46 s, Next.js never loaded.
+  - Checked: 169 parameter-free GET routes × 5 accounts and 57 routes with real ids, field by field
+    against `next dev` (1,085 same; every difference was a "now" timestamp, a side effect of the first
+    call, or the dev server's throwaway signing key), headers against the built Next.js, writes (create,
+    rename, delete a doc; upload and download; demo admin refused; 405 for PUT), the page crawler as
+    student/teacher/admin on the built Worker (same results as on Next.js), home pages at 390 px light
+    and dark with axe, the light-path comparison.
+  - **New or removed API route:** run `node scripts/gen-api-routes.mjs` (the build does it anyway;
+    `src/lib/api-routes.test.ts` fails when the table is stale and checks the matcher against Next.js's
+    for every route). Testing locally: start `wrangler dev` with `NODE_ENV=production`, as deployed.
+  - Upload size is now ~8.0 MB gzipped (was 7.1). Cloudflare documents 3 MB (free) and 10 MB (paid);
+    deploys have been succeeding above 3 MB.
+- **Pages:** the 171 pages built ahead of time, and in-app navigation to them, are served from the
+  cache without Next.js (OpenNext cache interception, filled by `opennextjs-cloudflare deploy`;
+  locally run `npx opennextjs-cloudflare populateCache local` first or every page looks slow). The 28
+  pages rendered per request (a doc, a board, a course…) still start Next.js on a fresh Worker.
+- The real fix is still **Workers Paid** ($5/month, 30 s CPU); with the above, a fresh Worker only
+  starts Next.js for those 28 pages.
+- **Fixed (14 Oct): Admin → Integrations → Developer and OneRoster answered 500.** Migrations `0111`/`0112`
+  made `oneroster_syncs`, `oneroster_mappings`, `api_keys`, `webhook_endpoints` and `webhook_deliveries` with
+  snake_case columns (`key_prefix`, `organization_id`…) while the models used camelCase without `@map`
+  ("no such column: api_keys.keyPrefix"), so API keys, webhooks and OneRoster sync never worked on the live
+  site. The 30 fields now have `@map` to the real columns (no database change, no migration). Checked:
+  creating a key, the public API with it (scope refused, last use recorded), revoking; creating, pausing and
+  test-sending a webhook; OneRoster preview, sync and history (a second sync reuses the mapping); both pages
+  at 390 px light and dark with axe. **`src/server/schema-columns.test.ts`** applies every migration to an
+  in-memory database and checks each model against its table, so this can't happen again unnoticed.
+- **Still open (seen on Next.js too, not caused by the direct path):** 401s on
+  /student/administrative/scholarships, /student/reels, /student/tutoring and /teacher/reels; 404s on
+  /student/administrative/consents and /trust; /api/calendar-link 503 without its secret.
+
 ## D16 · Parent co-pilot: done (14 Oct 2026)
 
 - **Migration `0128`** (`parent_copilot`, `parent_summaries`, `parent_questions`). Next migration: **`0129`**.

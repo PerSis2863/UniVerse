@@ -14,8 +14,11 @@ import { isSessionToken, verifySessionToken } from '../src/server/session-token'
 import { hasPass, needsTwoStep } from '../src/server/two-step';
 import { securityHeaders } from '../security-headers';
 import { fileCsp } from '../src/lib/file-csp';
+import { describeDevice } from '../src/lib/device-name';
+import { expand } from '../src/lib/permissions';
 import { bool, dbDate, isoDate, json, parseJson, type Caller } from './fast-db';
 import { conversations, notifications, presence, thread } from './fast-chat';
+import { adminDashboard, docsList, spacesList, studentOverview, teacherDashboard } from './fast-lists';
 
 interface Env {
   DB?: D1Database;
@@ -188,7 +191,7 @@ async function activity(me: Caller, request: Request, db: D1Database) {
 async function account(me: Caller, db: D1Database) {
   const row = await db
     .prepare(
-      `SELECT u.name, u.email, u.phone, u.role, u.status, u.emergencyContacts, u.emailNotifications, u.createdAt,
+      `SELECT u.name, u.email, u.phone, u.role, u.status, u.emergencyContacts, u.emailNotifications, u.noRecording, u.createdAt,
          (SELECT department FROM student_profiles WHERE userId = u.id) AS studentDepartment,
          (SELECT department FROM teacher_profiles WHERE userId = u.id) AS teacherDepartment
        FROM users u WHERE u.id = ?`,
@@ -207,6 +210,7 @@ async function account(me: Caller, db: D1Database) {
       department: row.studentDepartment ?? row.teacherDepartment ?? null,
       emergencyContacts: Array.isArray(contacts) ? contacts : [],
       emailNotifications: !!row.emailNotifications,
+      noRecording: !!row.noRecording,
       memberSince: isoDate(row.createdAt as string),
     },
     200,
@@ -264,15 +268,22 @@ async function file(request: Request, key: string, db: D1Database, ctx: Executio
 }
 
 const OWNER_EMAILS = () => ownerEmailList(process.env.SUPER_ADMIN_EMAILS);
+const listOf = (v: unknown): string[] => { const x = parseJson(v); return Array.isArray(x) ? x : []; };
 
-/** GET /api/core/users/me (src/server/modules/users.ts): the caller's account. The owner goes to the Next.js route. */
+/**
+ * GET /api/core/users/me (src/server/modules/users.ts): the caller's account, and for teachers the
+ * extra permissions from their staff roles (src/server/permissions.ts permissionsOf). The owner goes
+ * to the Next.js route.
+ */
 async function usersMe(me: Caller, db: D1Database): Promise<Response | null> {
   if (OWNER_EMAILS().includes(me.email.trim().toLowerCase())) return null;
-  const [userRes, studentRes, teacherRes, appRes] = await db.batch<Record<string, string | number | null>>([
+  const [userRes, studentRes, teacherRes, appRes, rolesRes] = await db.batch<Record<string, string | number | null>>([
     db.prepare('SELECT id, name, email, role, status, avatar, phone, googleId, emailNotifications, termsVersion, termsAcceptedAt, onboardedAt, tourDoneAt, createdAt, updatedAt FROM users WHERE id = ?').bind(me.id),
-    db.prepare('SELECT id, userId, studentId, department, year, gpa, createdAt, updatedAt FROM student_profiles WHERE userId = ?').bind(me.id),
+    db.prepare('SELECT id, userId, studentId, department, year, gpa, createdAt, updatedAt, exchangeCampusId, exchangeFrom, exchangeUntil FROM student_profiles WHERE userId = ?').bind(me.id),
     db.prepare('SELECT id, userId, employeeId, department, designation, createdAt, updatedAt FROM teacher_profiles WHERE userId = ?').bind(me.id),
     db.prepare('SELECT id, status, source, requestedRole, adminNote, submittedAt, reviewedAt FROM role_applications WHERE userId = ? ORDER BY createdAt DESC LIMIT 1').bind(me.id),
+    // In the order Prisma loads them (by member id), so the list comes out the same.
+    db.prepare('SELECT (SELECT permissions FROM staff_roles WHERE staff_roles.id = staff_role_members.roleId) AS permissions FROM staff_role_members WHERE userId = ? ORDER BY id LIMIT 20').bind(me.id),
   ]);
   const u = userRes.results[0];
   if (!u) return json({ statusCode: 404, message: 'User not found', error: 'Not Found' }, 404);
@@ -281,26 +292,51 @@ async function usersMe(me: Caller, db: D1Database): Promise<Response | null> {
   return json({
     ...dates(u, ['termsAcceptedAt', 'onboardedAt', 'tourDoneAt', 'createdAt', 'updatedAt']),
     emailNotifications: bool(u.emailNotifications),
-    studentProfile: dates(studentRes.results[0], ['createdAt', 'updatedAt']),
+    studentProfile: dates(studentRes.results[0], ['createdAt', 'updatedAt', 'exchangeFrom', 'exchangeUntil']),
     teacherProfile: dates(teacherRes.results[0], ['createdAt', 'updatedAt']),
     application: dates(appRes.results[0], ['submittedAt', 'reviewedAt']),
+    ...(me.role === 'TEACHER' ? { permissions: [...expand(rolesRes.results.flatMap((r) => listOf(r.permissions)))] } : {}),
   });
 }
 
 /**
+ * The "app opened" entry in the sign-in history (src/server/logins.ts recordLogin with kind SESSION,
+ * as POST /api/core/auth/session records it): at most one every 30 minutes per person and network,
+ * checked and written in one statement.
+ */
+async function recordAppOpen(me: Caller, request: Request, db: D1Database) {
+  const ip = request.headers.get('cf-connecting-ip');
+  const cf = (request as Request & { cf?: { city?: string; country?: string } }).cf;
+  const ua = request.headers.get('user-agent');
+  const now = Date.now();
+  await db
+    .prepare(
+      `INSERT INTO login_events (id, userId, kind, method, ip, country, city, userAgent, device, createdAt)
+       SELECT ?1, ?2, 'SESSION', ?3, ?4, ?5, ?6, ?7, ?8, ?9
+       WHERE NOT EXISTS (SELECT 1 FROM login_events WHERE userId = ?2 AND ip IS ?4 AND createdAt > ?10)`,
+    )
+    .bind(crypto.randomUUID(), me.id, me.demo ? 'demo' : null, ip, request.headers.get('cf-ipcountry') ?? cf?.country ?? null, cf?.city ?? null, ua?.slice(0, 300) ?? null, describeDevice(ua), dbDate(now), dbDate(now - 30 * 60_000))
+    .run();
+}
+
+/**
  * POST /api/bootstrap (src/app/api/bootstrap/route.ts): what the app asks for when it opens, in one
- * request. The parts above are answered here; the rest (a dashboard's data, the sign-in history
- * entry) by the Next.js route in the same request, so far less of it runs there.
+ * request. The parts above are answered here; anything else (the parent app's children, or a part
+ * that falls back) by the Next.js route in the same request.
  */
 async function bootstrap(me: Caller, request: Request, db: D1Database, env: Env, ctx: ExecutionContext, next: (r: Request) => Promise<Response>) {
   const b = (await request.clone().json().catch(() => ({}))) as { keys?: unknown; ticket?: unknown; session?: unknown };
   const keys = Array.isArray(b.keys) ? [...new Set(b.keys.filter((k): k is string => typeof k === 'string'))].slice(0, 8) : [];
   const origin = new URL(request.url).origin;
-  const own: Record<string, (r: Request) => Promise<Response | null>> = {
+  const own: Record<string, (u: URL) => Promise<Response | null>> = {
     '/api/me': () => account(me, db),
     '/api/notifications': () => notifications(me, db),
-    '/api/chat/incoming': () => incoming(me, db),
     '/api/core/users/me': () => usersMe(me, db),
+    // For anyone else the Next.js route answers (and refuses).
+    '/api/chat/incoming': async () => (me.role === 'GUARDIAN' ? null : incoming(me, db)),
+    '/api/core/dashboard/admin': async () => (me.role === 'ADMIN' ? adminDashboard(db) : null),
+    '/api/core/dashboard/teacher': async () => (me.role === 'TEACHER' ? teacherDashboard(me, db) : null),
+    '/api/student/overview': async (u) => (me.role === 'GUARDIAN' ? null : studentOverview(me, db, u, request)),
   };
   const read = async (res: Response) => ({ status: res.status, body: await res.json().catch(() => null) });
   const results: Record<string, { status: number; body: unknown }> = {};
@@ -309,7 +345,7 @@ async function bootstrap(me: Caller, request: Request, db: D1Database, env: Env,
     let u: URL;
     try { u = new URL(key, request.url); } catch { return; }
     const handler = u.origin === origin ? own[u.pathname] : undefined;
-    const res = handler ? await handler(request).catch(() => null) : null;
+    const res = handler ? await handler(u).catch(() => null) : null;
     if (res) results[key] = await read(res);
     else rest.push(key);
   });
@@ -325,17 +361,74 @@ async function bootstrap(me: Caller, request: Request, db: D1Database, env: Env,
     const seen = presence(me.id, db, Date.now());
     if (seen) ctx.waitUntil(seen.run().catch(() => {}));
   }
+  // Recorded here; only if that fails does the Next.js route record it.
+  let session = b.session === true;
+  if (session) tasks.push(recordAppOpen(me, request, db).then(() => { session = false; }, () => {}));
   await Promise.all(tasks);
-  if (rest.length || b.session === true) {
+  if (rest.length || session) {
     const headers = new Headers(request.headers);
     headers.delete('content-length');
     headers.set('content-type', 'application/json');
     // Built from the original request so its location (request.cf) still reaches the sign-in history.
-    const res = await next(new Request(request, { method: 'POST', headers, body: JSON.stringify({ keys: rest, session: b.session === true }) }));
+    const res = await next(new Request(request, { method: 'POST', headers, body: JSON.stringify({ keys: rest, session }) }));
     const more = res.ok ? ((await res.json().catch(() => null)) as { results?: typeof results } | null) : null;
     Object.assign(results, more?.results ?? {});
   }
   return json({ results, ...(ticket ? { ticket } : {}) }, 200, { 'Cache-Control': 'no-store' });
+}
+
+/**
+ * GET /api/boards (src/app/api/boards/route.ts): my whiteboards and the ones shared with me, newest
+ * change first (up to 300), each with its owner, up to 6 members and how many there are.
+ */
+async function boards(me: Caller, db: D1Database) {
+  const { results } = await db
+    .prepare(
+      `SELECT b.id, b.title, b.thumbnail, b.linkAccess, b.createdAt, b.updatedAt, b.ownerId,
+         (SELECT name FROM users o WHERE o.id = b.ownerId) AS ownerName, (SELECT avatar FROM users o WHERE o.id = b.ownerId) AS ownerAvatar,
+         (SELECT COUNT(*) FROM board_members c WHERE c.boardId = b.id) AS memberCount
+       FROM boards b
+       WHERE b.ownerId = ?1 OR EXISTS (SELECT 1 FROM board_members m WHERE m.boardId = b.id AND m.userId = ?1)
+       ORDER BY b.updatedAt DESC LIMIT 300`,
+    )
+    .bind(me.id)
+    .all<Record<string, string | number | null>>();
+  const ids = results.map((r) => r.id as string);
+  // Members, 90 boards a query (D1 takes up to 100 values per query); the first 6 of each, as Prisma loads them.
+  const members = new Map<string, { userId: string; role: string; user: { id: string; name: string; avatar: string | null } }[]>();
+  for (let i = 0; i < ids.length; i += 90) {
+    const part = ids.slice(i, i + 90);
+    const { results: rows } = await db
+      .prepare(`SELECT m.boardId, m.userId, m.role, u.name, u.avatar FROM board_members m JOIN users u ON u.id = m.userId WHERE m.boardId IN (${part.map(() => '?').join(',')}) ORDER BY m.id`)
+      .bind(...part)
+      .all<Record<string, string | null>>();
+    for (const m of rows) {
+      const list = members.get(m.boardId as string) ?? [];
+      if (list.length < 6) list.push({ userId: m.userId as string, role: m.role as string, user: { id: m.userId as string, name: m.name as string, avatar: m.avatar } });
+      members.set(m.boardId as string, list);
+    }
+  }
+  return json(
+    results.map((b) => {
+      const people = members.get(b.id as string) ?? [];
+      const mine = b.ownerId === me.id;
+      return {
+        id: b.id,
+        title: b.title,
+        thumbnail: b.thumbnail,
+        linkAccess: b.linkAccess,
+        createdAt: isoDate(b.createdAt as string),
+        updatedAt: isoDate(b.updatedAt as string),
+        owner: { id: b.ownerId, name: b.ownerName, avatar: b.ownerAvatar },
+        mine,
+        myRole: mine ? 'OWNER' : people.find((m) => m.userId === me.id)?.role ?? 'VIEWER',
+        people: people.map((m) => m.user),
+        memberCount: Number(b.memberCount),
+      };
+    }),
+    200,
+    { 'Cache-Control': 'no-store' },
+  );
 }
 
 async function answer(request: Request, path: string, db: D1Database, env: Env, ctx: ExecutionContext, next: (r: Request) => Promise<Response>): Promise<Response | null> {
@@ -343,12 +436,21 @@ async function answer(request: Request, path: string, db: D1Database, env: Env, 
   if (file_) return file(request, file_[1], db, ctx);
   const me = await callerOf(request, db);
   if (!me) return null;
+  // Parent accounts reach only the parent app and their own account: the Next.js route refuses the
+  // rest (src/server/auth.ts guardianBlocked), chat included.
+  if (me.role === 'GUARDIAN' && (path.startsWith('/api/chat/') || path === '/api/boards' || path === '/api/docs' || path === '/api/spaces' || path === '/api/student/overview')) return null;
   if (path === '/api/chat/incoming') return incoming(me, db);
   if (path === '/api/me') return account(me, db);
   if (path === '/api/notifications') return notifications(me, db);
   if (path === '/api/chat/conversations') return conversations(me, db, ctx);
   if (path === '/api/core/users/me') return usersMe(me, db);
   if (path === '/api/bootstrap') return bootstrap(me, request, db, env, ctx, next);
+  if (path === '/api/boards') return boards(me, db);
+  if (path === '/api/docs') return docsList(me, db);
+  if (path === '/api/spaces') return spacesList(me, db);
+  if (path === '/api/core/dashboard/admin') return me.role === 'ADMIN' ? adminDashboard(db) : null;
+  if (path === '/api/core/dashboard/teacher') return me.role === 'TEACHER' ? teacherDashboard(me, db) : null;
+  if (path === '/api/student/overview') return studentOverview(me, db, new URL(request.url), request);
   const threadOf = THREAD.exec(path);
   if (threadOf) return thread(me, decodeURIComponent(threadOf[1]), new URL(request.url), db, ctx);
   if (path === '/api/core/activity/ui') {
@@ -370,7 +472,7 @@ export async function fastApi(request: Request, url: URL, env: Env, ctx: Executi
   const path = url.pathname;
   const get = request.method === 'GET';
   const post = request.method === 'POST';
-  const fastGet = path === '/api/chat/incoming' || path === '/api/me' || path === '/api/notifications' || path === '/api/chat/conversations' || path === '/api/core/users/me' || THREAD.test(path) || FILE.test(path);
+  const fastGet = path === '/api/chat/incoming' || path === '/api/me' || path === '/api/notifications' || path === '/api/chat/conversations' || path === '/api/core/users/me' || path === '/api/boards' || path === '/api/docs' || path === '/api/spaces' || path === '/api/core/dashboard/admin' || path === '/api/core/dashboard/teacher' || path === '/api/student/overview' || THREAD.test(path) || FILE.test(path);
   if (!(get && fastGet) && !(post && (path === '/api/core/activity/ui' || path === '/api/bootstrap' || TYPING.test(path)))) return null;
   try {
     const res = await answer(request, path, db, env, ctx, next);

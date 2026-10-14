@@ -1,19 +1,12 @@
 import prisma from '@/lib/db';
+import { describeDevice } from '@/lib/device-name';
+import { requestCf } from './request-cf';
 
 // Sign-in history: each person can see when and from where their account was used
 // (Settings → Privacy), so they notice sign-ins that weren't them.
 
 export type LoginKind = 'SIGN_IN' | 'SIGN_UP' | 'SESSION';
 const METHODS = new Set(['google', 'password', 'phone', 'apple', 'demo']);
-
-/** "Chrome on Android", "Safari on iPhone", ... from a User-Agent header. */
-export function describeDevice(ua: string | null): string | null {
-  if (!ua) return null;
-  const browser = /Edg\//.test(ua) ? 'Edge' : /OPR\/|Opera/.test(ua) ? 'Opera' : /SamsungBrowser/.test(ua) ? 'Samsung Internet' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : null;
-  const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS X|Macintosh/.test(ua) ? 'Mac' : /CrOS/.test(ua) ? 'Chromebook' : /Linux/.test(ua) ? 'Linux' : null;
-  if (!browser && !os) return 'Unknown device';
-  return [browser, os].filter(Boolean).join(' on ');
-}
 
 /**
  * Records a sign-in. App opens ("SESSION") are recorded at most every 30 minutes per person and
@@ -28,7 +21,7 @@ export async function recordLogin(userId: string, req: Request, kind: LoginKind,
     });
     if (recent) return;
   }
-  const cf = (req as Request & { cf?: { city?: string; country?: string } }).cf;
+  const cf = requestCf(req);
   const ua = req.headers.get('user-agent');
   await prisma.loginEvent.create({
     data: {
