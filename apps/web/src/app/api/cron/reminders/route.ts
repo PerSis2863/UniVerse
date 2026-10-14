@@ -5,8 +5,9 @@ import { sendDueScheduled } from '@/server/scheduled-messages';
 import { sendMorningBriefs } from '@/server/daily-brief';
 import { remindParentMeetings } from '@/server/parent-meetings';
 import { remindDueTasks } from '@/server/tasks';
+import { sendWeeklySummaries } from '@/server/parent-copilot';
 
-// Reminders for scheduled calls, parent meetings, scheduled chat messages and morning briefs, run by the 15-minute cron
+// Reminders for scheduled calls, parent meetings, scheduled chat messages, morning briefs and parents' weekly summaries, run by the 15-minute cron
 // (cloudflare/worker.ts) only when something is actually due, so most runs never start the app. Not reachable from outside: only the
 // scheduled handler knows the token.
 
@@ -31,5 +32,7 @@ export async function POST(req: Request) {
   const meetings = await remindParentMeetings().catch((e) => (console.error('parent meeting reminders failed:', e), null));
   // Task board automations: cards due within a day (Stage 5 · B9.10)
   const dueTasks = await remindDueTasks().catch((e) => (console.error('due task automations failed:', e), null));
-  return NextResponse.json({ ...calls, reminders, followUps, scheduled, briefs, meetings, dueTasks });
+  // Parents' weekly summaries (Stage 5 · D16)
+  const parentWeeks = await sendWeeklySummaries().catch((e) => (console.error('parent weekly summaries failed:', e), null));
+  return NextResponse.json({ ...calls, reminders, followUps, scheduled, briefs, meetings, dueTasks, parentWeeks });
 }

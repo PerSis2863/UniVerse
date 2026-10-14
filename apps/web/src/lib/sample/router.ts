@@ -1497,6 +1497,47 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/campus\/events\/[^/]+\/attendees$/, ({ db: d }) => ok({ item: { id: 'sample', title: 'Event', capacity: null }, people: d.classmates.slice(0, 4).map((u, i) => ({ id: `sample-r${i}`, status: 'GOING', checkedInAt: i < 2 ? at(0, 18, i * 5) : null, createdAt: at(-2), user: { id: u.id, name: u.name, email: u.email ?? `${u.id}@example.edu` } })) })],
   [/^\/api\/campus\/events\/[^/]+\/code$/, () => ok({ code: 'e1.sample.0.sample-sample-sample-sa', expiresIn: 30 })],
   [/^\/api\/campus\/rooms$/, () => ok({})],
+  // The parent co-pilot (Stage 5 · D16): a child's week, its summary and a question answered from the records.
+  [/^\/api\/parent\/week$/, () => ok({
+    child: 'Aarav', week: at(0).slice(0, 10), prefs: { lang: 'en', weekly: true, weekday: 6, hour: 18 },
+    facts: { child: 'Aarav', from: at(-7).slice(0, 10), to: at(0).slice(0, 10), grades: [{ course: 'Operating Systems', title: 'Scheduling quiz', percent: 86 }], attendance: { present: 9, late: 0, absent: 1, excused: 0 }, absences: [{ course: 'Data Structures', date: at(-2).slice(0, 10) }], due: [{ course: 'Design Studio', title: 'Poster draft', kind: 'assignment', at: at(3) }], late: [], average: 82, averageBefore: 80, achievements: [], reportCards: [] },
+    line: '1 new grade · 1 absence · 1 thing due', quiet: false,
+    summary: { text: 'Aarav had a good week: 86% on the Operating Systems scheduling quiz, and the overall average went up from 80% to 82%. Aarav was at 9 of 10 classes, missing one Data Structures class on Tuesday. Next up is the Design Studio poster draft, due on Friday. A quick chat about the missed class could help Aarav catch up.', ai: true, at: at(0, 8) },
+    questions: [{ id: 'sample-pq1', question: 'How is Aarav doing in Data Structures?', answer: 'Aarav’s Data Structures grade is 78%, with attendance at 90%. The last two marks were 74% and 82%, so it’s improving.', used: ['Grades', 'Attendance', 'Data Structures'], at: at(-1, 19) }],
+    asksLeft: 9,
+  })],
+  // The live campus map (Stage 5 · D15): five buildings, the sample rooms with today's classes from the timetable.
+  [/^\/api\/campus\/map$/, ({ db: d, q }) => {
+    const dow = Number(q.get('dow')) || 0, min = Number(q.get('min')) || 600;
+    const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+    const place: Record<string, [string, number]> = { 'sample-r-a': ['sample-b-cs', 4], 'sample-r-b': ['sample-b-main', 0], 'sample-r-c': ['sample-b-arts', 1], 'sample-r-lab': ['sample-b-sci', 2] };
+    const rooms = [
+      ...Object.values(d.rooms).map((r: any, i: number) => ({ id: r.id, name: r.name, type: ['CLASSROOM', 'LECTURE_HALL', 'STUDIO', 'LAB'][i], capacity: [40, 120, 30, 24][i], buildingId: place[r.id]?.[0] ?? null, floor: place[r.id]?.[1] ?? null })),
+      { id: 'sample-r-s1', name: 'Group study room 1', type: 'Study room', capacity: 6, buildingId: 'sample-b-lib', floor: 1 },
+      { id: 'sample-r-s2', name: 'Quiet pod 3', type: 'Study room', capacity: 2, buildingId: 'sample-b-lib', floor: 2 },
+    ].map((r) => ({ ...r, busy: d.slots.filter((s: any) => s.roomId === r.id && s.dayOfWeek === dow).map((s: any) => ({ from: toMin(s.startTime), to: toMin(s.endTime), kind: 'class', label: `${s.course.code} · ${s.course.name}` })).concat(r.id === 'sample-r-s1' ? [{ from: min - 30, to: min + 30, kind: 'booking', label: 'Booked' }] : []) }));
+    const mine = d.slots.filter((s: any) => s.dayOfWeek >= dow).sort((a: any, b: any) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)).find((s: any) => s.dayOfWeek > dow || toMin(s.endTime) > min) ?? d.slots[0];
+    const off = mine ? (mine.dayOfWeek - dow + 7) % 7 : 0;
+    return ok({
+      campus: { id: null, name: 'Our campus' }, campuses: [{ id: null, name: 'Our campus' }],
+      buildings: [
+        { id: 'sample-b-cs', name: 'Computer Science Block', code: 'CS', x: 60, y: 60, w: 240, h: 150, floors: 5, color: '#6366f1' },
+        { id: 'sample-b-main', name: 'Main Hall', code: 'MH', x: 380, y: 60, w: 260, h: 140, floors: 2, color: '#0ea5e9' },
+        { id: 'sample-b-lib', name: 'Library', code: 'LIB', x: 720, y: 60, w: 220, h: 200, floors: 3, color: '#10b981' },
+        { id: 'sample-b-arts', name: 'Arts Centre', code: 'ART', x: 80, y: 340, w: 220, h: 160, floors: 2, color: '#ec4899' },
+        { id: 'sample-b-sci', name: 'Science Labs', code: 'SCI', x: 420, y: 320, w: 280, h: 180, floors: 3, color: '#f59e0b' },
+      ],
+      rooms,
+      live: [{ courseId: d.courses[0]?.id ?? 'sample-c', code: d.courses[0]?.code ?? 'CS204', name: d.courses[0]?.name ?? 'Operating Systems', checkedIn: 27, startedAt: at(0, 9), roomId: 'sample-r-a' }],
+      online: [],
+      events: d.campusItems.filter((c: any) => c.kind === 'EVENT').slice(0, 1).map((c: any) => ({ id: c.id, title: c.title, location: c.location ?? 'Main Hall', startAt: at(0, 18), buildingId: 'sample-b-main', now: false })),
+      next: mine ? { courseId: mine.courseId, code: mine.course.code, name: mine.course.name, type: mine.type, start: mine.startTime, end: mine.endTime, day: off === 0 ? 'Today' : off === 1 ? 'Tomorrow' : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][mine.dayOfWeek], dayOffset: off, now: off === 0 && toMin(mine.startTime) <= min, roomId: mine.roomId, roomName: mine.room.name, buildingId: place[mine.roomId]?.[0] ?? null, floor: place[mine.roomId]?.[1] ?? null } : null,
+      canEdit: false,
+    });
+  }],
+  [/^\/api\/campus\/map\/usage$/, () => ok({ weeks: 4, from: at(-28).slice(0, 10), to: at(0).slice(0, 10), rooms: 6, bookings: 18,
+    grid: Array.from({ length: 7 }, (_, dw) => Array.from({ length: 14 }, (_, h) => (dw > 4 ? 0 : Math.round(Math.max(0, Math.sin(((h - 1) / 12) * Math.PI)) * (0.5 + 0.1 * (dw % 3)) * 100) / 100))),
+    use: [{ id: 'sample-r-b', name: 'Lecture Hall 2', hours: 64, share: 0.32 }, { id: 'sample-r-a', name: 'Room 402 · CS Block', hours: 48, share: 0.24 }, { id: 'sample-r-lab', name: 'Lab 3', hours: 40, share: 0.2 }, { id: 'sample-r-s1', name: 'Group study room 1', hours: 22, share: 0.11 }, { id: 'sample-r-c', name: 'Design Studio', hours: 14, share: 0.07 }, { id: 'sample-r-s2', name: 'Quiet pod 3', hours: 3, share: 0.02 }] })],
   [/^\/api\/campus\/lost-found$/, ({ db: d, q }) => ok([
     { id: 'sample-lf1', kind: 'FOUND', title: 'Blue water bottle', description: 'Left in Lecture Hall 2 after the 10am class.', photoUrl: null, location: 'Lecture Hall 2 → now at the front desk', status: 'OPEN', createdAt: at(-1, 11), expiresAt: at(29), reporter: { id: d.classmates[0]?.id ?? 'sample-u1', name: d.classmates[0]?.name ?? 'Rohan', avatar: null } },
     { id: 'sample-lf2', kind: 'LOST', title: 'Calculator (Casio fx-991)', description: 'Name sticker on the back.', photoUrl: null, location: 'Library, 2nd floor', status: 'OPEN', createdAt: at(-3, 15), expiresAt: at(27), reporter: { id: d.classmates[1]?.id ?? 'sample-u2', name: d.classmates[1]?.name ?? 'Ishita', avatar: null } },

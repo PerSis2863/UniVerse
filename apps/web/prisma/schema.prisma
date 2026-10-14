@@ -219,6 +219,11 @@ model User {
   reportCards             ReportCard[] // report cards (Stage 5 · B15.3)
   guardianOf              GuardianLink[]   @relation("GuardianOf") // as a guardian: their children (Stage 5 · B16.1)
   guardedBy               GuardianLink[]   @relation("GuardedBy") // as a student: linked guardian accounts
+  parentCopilot           ParentCopilot?   @relation("ParentCopilot") // as a parent: language and weekly summary (Stage 5 · D16)
+  parentSummaries         ParentSummary[]  @relation("SummaryFor")
+  summariesAbout          ParentSummary[]  @relation("SummaryAbout")
+  parentQuestions         ParentQuestion[] @relation("QuestionBy")
+  questionsAbout          ParentQuestion[] @relation("QuestionAbout")
   guardianInvites         GuardianInvite[] // as a student: link codes made for a guardian
   supportPlans            SupportPlan[]
   planBlocks              PlanBlock[]
@@ -897,8 +902,12 @@ model CampusItem {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   rsvps       EventRsvp[]
+  /// Stage 5 · D15: the building on the campus map it happens in.
+  buildingId  String?
+  building    CampusBuilding? @relation(fields: [buildingId], references: [id], onDelete: SetNull)
 
   @@index([kind])
+  @@index([buildingId])
   @@map("campus_items")
 }
 
@@ -1252,8 +1261,37 @@ model Room {
 
   reservations   RoomReservation[]
   timetableSlots TimetableSlot[]
+  /// Stage 5 · D15: where the room is on the campus map (building and floor; 0 is the ground floor).
+  buildingId     String?
+  building       CampusBuilding?   @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  floor          Int?
 
+  @@index([buildingId])
   @@map("rooms")
+}
+
+/// Stage 5 · D15, the classroom twin: a building drawn on the campus map, in map units
+/// (src/lib/campus-map.ts MAP_W × MAP_H). Rooms and campus events can be placed in it.
+model CampusBuilding {
+  id        String         @id @default(cuid())
+  /// The university it's at (campus network, upgrade 9); null: the school's own campus.
+  campusId  String?
+  campus    Campus?        @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  name      String
+  code      String?
+  x         Int            @default(0)
+  y         Int            @default(0)
+  w         Int            @default(180)
+  h         Int            @default(120)
+  floors    Int            @default(1)
+  color     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  rooms     Room[]
+  items     CampusItem[]
+
+  @@index([campusId])
+  @@map("campus_buildings")
 }
 
 model RoomReservation {
@@ -2311,6 +2349,63 @@ model GuardianLink {
   @@unique([guardianId, studentId])
   @@index([studentId])
   @@map("guardian_links")
+}
+
+/// Stage 5 · D16, the parent co-pilot: a parent's language (summaries, answers and teachers' voice
+/// notes come in it) and when their weekly summary is due (weekday 0 = Monday, hour in their time zone).
+model ParentCopilot {
+  guardianId String    @id
+  guardian   User      @relation("ParentCopilot", fields: [guardianId], references: [id], onDelete: Cascade)
+  lang       String    @default("en")
+  weekly     Boolean   @default(true)
+  weekday    Int       @default(6)
+  hour       Int       @default(18)
+  timeZone   String    @default("UTC")
+  nextAt     DateTime?
+  sentAt     DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([weekly, nextAt])
+  @@map("parent_copilot")
+}
+
+/// A child's week for a parent, in their language: made once per week (the Monday's date) and language.
+/// `ai` false: written from a template (AI wasn't available).
+model ParentSummary {
+  id         String   @id @default(cuid())
+  guardianId String
+  guardian   User     @relation("SummaryFor", fields: [guardianId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    User     @relation("SummaryAbout", fields: [studentId], references: [id], onDelete: Cascade)
+  week       String
+  lang       String
+  text       String
+  ai         Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@unique([guardianId, studentId, week, lang])
+  @@index([studentId])
+  @@map("parent_summaries")
+}
+
+/// A parent's question about their child, answered from the school's records (never messages).
+model ParentQuestion {
+  id         String   @id @default(cuid())
+  guardianId String
+  guardian   User     @relation("QuestionBy", fields: [guardianId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    User     @relation("QuestionAbout", fields: [studentId], references: [id], onDelete: Cascade)
+  question   String
+  answer     String
+  lang       String
+  /// JSON string[]: the records the answer drew on ("Maths grades", "Attendance").
+  used       String   @default("[]")
+  createdAt  DateTime @default(now())
+
+  @@index([guardianId, studentId, createdAt])
+  @@index([studentId])
+  @@map("parent_questions")
 }
 
 /// A one-time code a student gives a parent to link their account (7 days; one at a time).
@@ -4237,6 +4332,7 @@ model Campus {
   users            User[]
   courses          CourseCampus[]
   exchangeStudents StudentProfile[] @relation("ExchangeCampus")
+  buildings        CampusBuilding[]
 
   @@map("campuses")
 }

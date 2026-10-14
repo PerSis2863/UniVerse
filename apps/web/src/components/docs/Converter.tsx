@@ -21,6 +21,7 @@ export function Converter({ onClose }: { onClose: () => void }) {
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<{ key: string; outputs: Output[] }[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [progress, setProgress] = useState('');
   const [over, setOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const add = (list: FileList | File[] | null) => {
@@ -29,13 +30,6 @@ export function Converter({ onClose }: { onClose: () => void }) {
   };
   const deliver = async (outs: Output[], key: string) => {
     for (const o of outs) {
-      if (o.print) {
-        const frame = document.createElement('iframe');
-        frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-        frame.srcdoc = o.print.html;
-        frame.onload = () => { frame.contentWindow?.focus(); frame.contentWindow?.print(); setTimeout(() => frame.remove(), 60_000); };
-        document.body.appendChild(frame);
-      }
       if (o.doc) {
         // A new doc, filled with this the first time it opens (src/app/(dashboard)/docs/[id]/page.tsx).
         const d = await authedJson<{ id: string }>('/api/docs', { method: 'POST', body: JSON.stringify({ title: o.doc.title.slice(0, 120) }) });
@@ -48,12 +42,13 @@ export function Converter({ onClose }: { onClose: () => void }) {
   };
   const run = async (key: string, fn: () => Promise<Output[]>) => {
     setBusy(key);
+    setProgress('');
     try {
       await deliver(await fn(), key);
     } catch (e) { toast.error((e as Error).message || 'Couldn’t convert it.'); }
-    finally { setBusy(null); }
+    finally { setBusy(null); setProgress(''); }
   };
-  const one = (f: File, t: Target) => run(`${f.name}:${t.id}`, async () => (await import('./convert-engine')).convert(f, t));
+  const one = (f: File, t: Target) => run(`${f.name}:${t.id}`, async () => (await import('./convert-engine')).convert(f, t, setProgress));
   const all = (t: Target) => run(`all:${t.id}`, async () => [await (await import('./convert-engine')).combine(files, t)]);
   const download = (o: Output) => {
     if (!o.blob) return;
@@ -102,7 +97,7 @@ export function Converter({ onClose }: { onClose: () => void }) {
                     <ArrowRight className="w-3.5 h-3.5 text-zinc-400" aria-hidden />
                     {targets.map((t) => (
                       <button key={t.id} type="button" onClick={() => void one(f, t)} disabled={!!busy} title={t.hint} className="inline-flex items-center gap-1 rounded-full border border-zinc-200 dark:border-white/10 px-2.5 py-1 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:border-indigo-400/60 disabled:opacity-50">
-                        {busy === `${f.name}:${t.id}` && <Loader2 className="w-3 h-3 animate-spin" aria-hidden />}{t.label}
+                        {busy === `${f.name}:${t.id}` && <Loader2 className="w-3 h-3 animate-spin" aria-hidden />}{t.label}{busy === `${f.name}:${t.id}` && progress && <span className="font-normal text-zinc-600 dark:text-zinc-400">· {progress}</span>}
                       </button>
                     ))}
                   </div>

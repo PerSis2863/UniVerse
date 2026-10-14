@@ -1,13 +1,18 @@
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { HHMM, validZone } from '@/lib/local-time';
+import { isAppFileUrl, readAppFile } from '@/lib/storage';
 import { isLanguage } from '@/lib/languages';
 import type { SessionUser } from '@/lib/server-auth';
 import { afterSend } from './chat-notify';
 import { getSystemUser } from '@/lib/chat';
+import { spendAi } from './ai-budget';
+import { geminiAudioText } from './gemini';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
-import { chatMuted } from './moderation';
+import { chatMuted, featureOff } from './moderation';
+import { publishChat } from './realtime';
 import { schoolPolicy } from './safety';
-import { storedTranslations, translateMessages } from './translate';
+import { storedTranslations, translateMessages, translateTexts } from './translate';
 import { DEFAULT_HOURS, hoursOf, hoursText, inHours, parseDays } from './parent-hours';
 
 // Parent–teacher messages (Stage 5 · B16.2). A parent–teacher chat is an ordinary one-to-one chat
@@ -21,6 +26,8 @@ import { DEFAULT_HOURS, hoursOf, hoursText, inHours, parseDays } from './parent-
 //     a push to the teacher (src/server/chat-notify.ts), and the parent sees when to expect a reply;
 //   - quiet hours, the safety check and moderation apply as in any chat;
 //   - a parent can send at most PER_HOUR messages an hour.
+// Teachers' voice notes (Stage 5 · D16) play in the parent app and are written out and translated
+// into the parent's language when they're shown (one AI request each, kept on the message).
 
 const MAX_BODY = 2000;
 const PER_HOUR = 30;
@@ -129,12 +136,22 @@ async function parentChat(user: SessionUser, conversationId: string) {
   return { c, me, teacher };
 }
 
+type VoiceMeta = { transcript?: string; transcripts?: Record<string, string>; viewOnce?: boolean };
+
+/** The language a parent hears teachers' voice notes in: the chat's, else their co-pilot language (D16) when not English. */
+async function voiceLang(guardianId: string, chatLang: string | null) {
+  if (chatLang && isLanguage(chatLang)) return chatLang;
+  const p = await prisma.parentCopilot.findUnique({ where: { guardianId }, select: { lang: true } });
+  return p && p.lang !== 'en' && isLanguage(p.lang) ? p.lang : null;
+}
+
 /** GET /api/parent/chats/:id: the messages (newest 100), in my language when I chose one. Marks them read. */
 export async function openParentChat(user: SessionUser, conversationId: string) {
   const { c, me, teacher } = await parentChat(user, conversationId);
-  const [rows, child] = await Promise.all([
-    prisma.message.findMany({ where: { conversationId, deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, body: true, type: true, senderId: true, createdAt: true, editedAt: true, attachmentName: true } }),
+  const [rows, child, vLang] = await Promise.all([
+    prisma.message.findMany({ where: { conversationId, deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, body: true, type: true, senderId: true, createdAt: true, editedAt: true, attachmentName: true, attachmentUrl: true, metadata: true } }),
     prisma.user.findUnique({ where: { id: c.aboutStudentId! }, select: { name: true } }),
+    voiceLang(user.id, me.translateTo),
   ]);
   const messages = rows.reverse();
   const lang = me.translateTo && isLanguage(me.translateTo) ? me.translateTo : null;
@@ -151,12 +168,22 @@ export async function openParentChat(user: SessionUser, conversationId: string) 
     lang,
     // When the teacher last read the chat: my messages before it are "Seen".
     seenAt: teacher?.lastReadAt ?? null,
-    messages: messages.map((m) => ({
-      id: m.id, mine: m.type !== 'SYSTEM' && m.senderId === user.id, system: m.type === 'SYSTEM',
-      body: m.type === 'TEXT' || m.type === 'SYSTEM' ? m.body : m.attachmentName ? `📎 ${m.attachmentName}` : m.body,
-      translated: tr[m.id] && !tr[m.id].same ? tr[m.id].text : null,
-      at: m.createdAt, edited: !!m.editedAt,
-    })),
+    messages: messages.map((m) => {
+      const meta = (m.metadata ?? {}) as VoiceMeta;
+      // A teacher's voice note: its sound, and its words (as said, and in my language) once written out.
+      const voice = m.type === 'AUDIO' && m.senderId !== user.id && isAppFileUrl(m.attachmentUrl) && !meta.viewOnce ? {
+        url: m.attachmentUrl, transcript: meta.transcript ?? null, lang: vLang,
+        translated: vLang ? meta.transcripts?.[vLang] || null : null,
+        ready: !!meta.transcript && (!vLang || meta.transcripts?.[vLang] !== undefined),
+      } : null;
+      return {
+        id: m.id, mine: m.type !== 'SYSTEM' && m.senderId === user.id, system: m.type === 'SYSTEM',
+        body: voice ? 'Voice note' : m.type === 'TEXT' || m.type === 'SYSTEM' ? m.body : m.attachmentName ? `📎 ${m.attachmentName}` : m.body,
+        translated: tr[m.id] && !tr[m.id].same ? tr[m.id].text : null,
+        voice,
+        at: m.createdAt, edited: !!m.editedAt,
+      };
+    }),
   };
 }
 
@@ -192,8 +219,50 @@ export async function startParentChat(user: SessionUser, b: Record<string, unkno
   return { conversationId, message };
 }
 
-/** POST /api/parent/chats/:id { body } sends; { lang } sets the language I read in (null: as written). */
+/**
+ * A teacher's voice note written out, and translated into my language (Stage 5 · D16): one AI
+ * request (from my allowance), kept on the message so it's never asked again. The teacher sees the
+ * words too, as with any transcribed voice message.
+ */
+async function voiceNote(user: SessionUser, conversationId: string, chatLang: string | null, messageId: unknown) {
+  const msg = typeof messageId === 'string' ? await prisma.message.findFirst({
+    where: { id: messageId, conversationId, deletedAt: null, type: 'AUDIO', senderId: { not: user.id } },
+    select: { id: true, attachmentUrl: true, attachmentMime: true, metadata: true },
+  }) : null;
+  if (!msg?.attachmentUrl) throw new NotFoundException('That voice note isn’t here any more.');
+  const meta = (msg.metadata ?? {}) as VoiceMeta;
+  if (meta.viewOnce) throw new BadRequestException('View-once voice notes aren’t written out.');
+  const lang = await voiceLang(user.id, chatLang);
+  let transcript = meta.transcript ?? null;
+  let translated: string | null | undefined = lang ? meta.transcripts?.[lang] : undefined;
+  if (transcript && (!lang || translated !== undefined)) return { transcript, translated: translated || null, lang };
+  if (!process.env.GEMINI_API_KEY || (await featureOff('ai'))) throw new HttpException('Voice notes can’t be written out right now. You can still listen.', 503);
+  const spend = await spendAi(user);
+  if (!spend.ok) throw new HttpException(spend.message, 429);
+  if (!transcript) {
+    const file = await readAppFile(msg.attachmentUrl);
+    if (!file) throw new HttpException('This voice note couldn’t be read.', 422);
+    transcript = (await geminiAudioText(file.bytes, (msg.attachmentMime || file.mime || 'audio/webm').split(';')[0]))?.slice(0, 4000) ?? null;
+    if (!transcript) throw new HttpException('Couldn’t write it out right now. Try again in a moment.', 503);
+  }
+  if (lang && translated === undefined) {
+    const { out } = await translateTexts([{ id: msg.id, text: transcript }], lang);
+    // '' when it's already in my language.
+    const t = out.get(msg.id);
+    if (t) translated = t.text;
+  }
+  const transcripts = { ...(meta.transcripts ?? {}), ...(lang && translated !== undefined ? { [lang]: translated ?? '' } : {}) };
+  await prisma.message.update({ where: { id: msg.id }, data: { metadata: { ...meta, transcript, transcripts } as Prisma.InputJsonValue } });
+  publishChat(conversationId);
+  return { transcript, translated: translated || null, lang };
+}
+
+/** POST /api/parent/chats/:id { body } sends; { lang } sets the language I read in (null: as written); { voice: messageId } writes out a voice note. */
 export async function postParentChat(user: SessionUser, conversationId: string, b: Record<string, unknown>) {
+  if ('voice' in b) {
+    const { me } = await parentChat(user, conversationId);
+    return voiceNote(user, conversationId, me.translateTo, b.voice);
+  }
   await requireOn();
   const { me } = await parentChat(user, conversationId);
   if ('lang' in b) {

@@ -9,16 +9,19 @@ import {
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
-import { FILTERS, MAX_SIDE, NO_ADJUST, SLIDERS, exportName, fitScale, rectFrom, sharpen, hits, type Adjust, type Rect } from '@/lib/studio';
+import { FILTERS, MAX_SIDE, NO_ADJUST, SLIDERS, exportName, fitScale, ratioDrag, ratioRect, rectFrom, sharpen, hits, type Adjust, type Rect } from '@/lib/studio';
 import {
   BLENDS, FONTS, FONT_NAMES, blankCanvas, canvasFromFile, cloneCanvas, cutLayer, deserialize, drawDoc, exportBlob, keepLocal, layerMatrix, measureText, newId, rasterLayer,
   removeBackground, serialize, type Doc, type Layer, type ShapeProps, type TextProps,
 } from './studio-canvas';
+import { SimpleBar, SimplePanel, type SimpleApi, type Task } from './PhotoSimple';
 
 // The Studio photo editor (Stage 5 · B9.15), like a small Photoshop: layers (pictures, painting,
 // text and shapes) with opacity and blend modes; move, brush, eraser, text, shapes, crop and select;
 // adjustments and one-tap filters per layer, sharpen and background removal; undo and redo; export
 // as PNG, JPG or WebP, and project files to keep editing. All of it runs in the browser.
+// It opens in simple mode (PhotoSimple.tsx: crop, turn, adjust, looks, text, draw, background);
+// "All tools" switches to the full editor, and the choice is remembered on this device.
 
 type Tool = 'move' | 'brush' | 'eraser' | 'text' | 'shape' | 'crop' | 'select';
 type Panel = 'layers' | 'adjust' | 'tool';
@@ -32,6 +35,7 @@ const TOOLS: { id: Tool; label: string; icon: typeof Brush; keys: string }[] = [
   { id: 'crop', label: 'Crop', icon: Crop, keys: 'C' },
 ];
 const HISTORY = 20;
+const MODE_KEY = 'studio-photo-mode';
 const swatches = ['#000000', '#ffffff', '#ef4444', '#f59e0b', '#22c55e', '#0ea5e9', '#6366f1', '#a855f7', '#ec4899'];
 
 export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () => void }) {
@@ -46,6 +50,11 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
   const [drag, setDrag] = useState<Rect | null>(null); // the crop or selection rectangle being drawn or kept
   const [busy, setBusy] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [simple, setSimple] = useState(() => { try { return localStorage.getItem(MODE_KEY) !== 'all'; } catch { return true; } });
+  const [task, setTask] = useState<Task | null>(null);
+  const [ratio, setRatio] = useState<number | null>(null); // the simple crop's shape
+  const [drawId, setDrawId] = useState<string | null>(null); // the simple mode's drawing layer: its eraser only takes away drawing
+  const [thumb, setThumb] = useState<string | null>(null); // a small copy of the photo for the looks
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const areaRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -53,10 +62,17 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
   const before = useRef<Doc | null>(null); // the picture as it was when a drag began (one undo step per drag)
   const stroke = useRef<{ layer: string; last: { x: number; y: number } } | null>(null);
   const start = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const cropMove = useRef(false); // dragging the crop frame rather than drawing a new one
+  const run = useRef<{ key: string; doc: Doc } | null>(null);
   const docRef = useRef(doc);
   useEffect(() => { docRef.current = doc; });
 
   const active = doc.layers.find((l) => l.id === activeId) ?? null;
+  // The picture the simple jobs work on: the chosen picture, or the first one (never the drawing).
+  const isPhoto = (l: Layer) => l.kind === 'raster' && l.visible && l.id !== drawId;
+  const photo = active && isPhoto(active) ? active : doc.layers.find(isPhoto) ?? null;
+  // In simple mode a picture filling the whole canvas stays put, so a tap on the photo never shifts it.
+  const fixed = (l: Layer, d: Doc) => simple && l.kind === 'raster' && l.rotation === 0 && l.x <= 0 && l.y <= 0 && l.x + l.w >= d.w && l.y + l.h >= d.h;
 
   // ── History ──
   const commit = useCallback((next: Doc, from?: Doc) => {
@@ -84,6 +100,13 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
   const patchLayer = (id: string, patch: Partial<Layer>, live = false) => {
     const next = { ...docRef.current, layers: docRef.current.layers.map((l) => (l.id === id ? { ...l, ...patch } : l)) };
     if (live) setDoc(next); else commit(next);
+  };
+  // Changes to one thing in a row (dragging a size slider or a colour picker) make one undo step.
+  const commitRun = (key: string, next: Doc) => {
+    const r = run.current;
+    if (r && r.key === key && r.doc === docRef.current) setDoc(next); else commit(next);
+    run.current = { key, doc: next };
+    docRef.current = next;
   };
 
   // ── Drawing the picture ──
@@ -136,13 +159,13 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
       if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
       if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
       if (mod) return;
-      const t = TOOLS.find((x) => x.keys.toLowerCase() === e.key.toLowerCase());
+      const t = simple ? null : TOOLS.find((x) => x.keys.toLowerCase() === e.key.toLowerCase());
       if (t) { setTool(t.id); setDrag(null); }
       if (e.key === 'Escape') setDrag(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [undo, redo]);
+  }, [undo, redo, simple]);
 
   // ── Pointer on the canvas ──
   const point = (e: React.PointerEvent) => {
@@ -173,21 +196,32 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
     const d = docRef.current;
     before.current = d;
     if (tool === 'move') {
-      // Pick the top layer under the pointer (or keep the chosen one when clicking inside it).
-      const top = active && hits(p, active) ? active : [...d.layers].reverse().find((l) => l.visible && hits(p, l)) ?? null;
-      if (top) { setActiveId(top.id); start.current = { x: p.x, y: p.y, ox: top.x, oy: top.y }; }
+      // Pick the top layer under the pointer (or keep the chosen one when clicking inside it),
+      // preferring ones that can move over a photo that stays put.
+      const movable = (l: Layer) => l.visible && hits(p, l) && !fixed(l, d);
+      const top = active && movable(active) ? active : [...d.layers].reverse().find(movable) ?? [...d.layers].reverse().find((l) => l.visible && hits(p, l)) ?? null;
+      if (top) {
+        setActiveId(top.id);
+        if (!fixed(top, d)) start.current = { x: p.x, y: p.y, ox: top.x, oy: top.y };
+        if (simple && !task && top.kind === 'text') setTask('text');
+      }
       return;
     }
     if (tool === 'brush' || tool === 'eraser') {
       let target = active;
-      if (tool === 'eraser' && (!target || target.kind !== 'raster')) { toast('Choose a picture or painting layer to erase.'); return; }
+      if (simple) {
+        // Simple mode draws on one drawing layer over the photo.
+        target = d.layers.find((l) => l.id === drawId) ?? null;
+        if (!target && tool === 'eraser') { toast('Nothing drawn yet.'); return; }
+      } else if (tool === 'eraser' && (!target || target.kind !== 'raster')) { toast('Choose a picture or painting layer to erase.'); return; }
       // Painting goes on the chosen picture layer, or a new paint layer over everything.
       if (!target || target.kind !== 'raster') {
-        target = rasterLayer('Paint', blankCanvas(d.w, d.h), { x: 0, y: 0, w: d.w, h: d.h });
+        target = rasterLayer(simple ? 'Drawing' : 'Paint', blankCanvas(d.w, d.h), { x: 0, y: 0, w: d.w, h: d.h });
         const next = { ...d, layers: [...d.layers, target] };
         setDoc(next);
         docRef.current = next;
         setActiveId(target.id);
+        if (simple) setDrawId(target.id);
       }
       // A copy of its pixels, so undo keeps the old ones.
       const copy = { ...target, canvas: cloneCanvas(target.canvas!) };
@@ -200,15 +234,16 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
     }
     if (tool === 'text') {
       const t: TextProps = { value: 'Your text', size: Math.round(Math.max(24, d.w / 18)), color: brush.color, font: FONTS[0], bold: true, italic: false, align: 'left', outline: null };
-      const m = measureText(t);
-      const l: Layer = { id: newId(), name: 'Text', kind: 'text', visible: true, opacity: 1, blend: 'source-over', adjust: { ...NO_ADJUST }, text: t, x: Math.round(p.x), y: Math.round(p.y - m.h / 2), w: m.w, h: m.h, rotation: 0, flipX: false, flipY: false };
+      const l = textLayer(t, p.x, p.y - measureText(t).h / 2);
       commit({ ...d, layers: [...d.layers, l] });
       setActiveId(l.id);
       setTool('move');
       setPanel('tool');
       return;
     }
-    // Shapes, crop and select drag out a rectangle.
+    // Shapes, crop and select drag out a rectangle; dragging inside a crop frame moves it.
+    cropMove.current = tool === 'crop' && !!drag && (drag.w < d.w || drag.h < d.h) && p.x >= drag.x && p.x <= drag.x + drag.w && p.y >= drag.y && p.y <= drag.y + drag.h;
+    if (cropMove.current && drag) { start.current = { x: p.x, y: p.y, ox: drag.x, oy: drag.y }; return; }
     start.current = { x: p.x, y: p.y, ox: 0, oy: 0 };
     setDrag({ x: p.x, y: p.y, w: 0, h: 0 });
   };
@@ -225,6 +260,15 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
       paintTo(l, stroke.current.last, p, tool === 'eraser');
       stroke.current.last = p;
       setDoc({ ...docRef.current });
+      return;
+    }
+    if (start.current && cropMove.current && drag) {
+      const s = start.current;
+      setDrag({ ...drag, x: Math.round(Math.min(Math.max(0, s.ox + p.x - s.x), doc.w - drag.w)), y: Math.round(Math.min(Math.max(0, s.oy + p.y - s.y), doc.h - drag.h)) });
+      return;
+    }
+    if (start.current && tool === 'crop' && simple && ratio) {
+      setDrag(ratioDrag(start.current.x, start.current.y, p.x, p.y, ratio, doc.w, doc.h));
       return;
     }
     if (start.current && (tool === 'shape' || tool === 'crop' || tool === 'select')) {
@@ -250,6 +294,7 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
       return;
     }
     start.current = null;
+    cropMove.current = false;
     if (tool === 'shape' && drag) {
       const isLine = shape.type === 'line' || shape.type === 'arrow';
       const w = Math.max(isLine ? 40 : 8, drag.w), h = isLine ? Math.max(shape.width * 6 + 20, 24) : Math.max(8, drag.h);
@@ -289,8 +334,9 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
     else { ctx.fillStyle = brush.color; ctx.fillRect(drag.x, drag.y, drag.w, drag.h); }
     commit({ ...d, layers: d.layers.map((l) => (l.id === copy.id ? copy : l)) });
   };
-  const layerOp = async (op: 'up' | 'down' | 'duplicate' | 'delete' | 'sharpen' | 'cutout' | 'fit' | 'flipX' | 'flipY' | 'center') => {
+  const layerOp = async (op: 'up' | 'down' | 'duplicate' | 'delete' | 'sharpen' | 'cutout' | 'fit' | 'flipX' | 'flipY' | 'center', on: Layer | null = active) => {
     const d = docRef.current;
+    const active = on; // the chosen layer, or the photo the simple jobs work on
     if (!active) return;
     const i = d.layers.findIndex((l) => l.id === active.id);
     const layers = [...d.layers];
@@ -349,7 +395,8 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
     if (!active?.text) return;
     const t = { ...active.text, ...patch };
     const m = measureText(t);
-    patchLayer(active.id, { text: t, w: m.w, h: m.h });
+    const d = docRef.current;
+    commitRun(`text ${active.id} ${Object.keys(patch).join()}`, { ...d, layers: d.layers.map((l) => (l.id === active.id ? { ...l, text: t, w: m.w, h: m.h } : l)) });
   };
   const saveProject = () => {
     const blob = new Blob([serialize(docRef.current)], { type: 'application/json' });
@@ -370,20 +417,129 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
     if (projectRef.current) projectRef.current.value = '';
   };
 
+  // ── Simple mode ──
+  const switchMode = (on: boolean) => {
+    setSimple(on);
+    setTask(null);
+    setTool('move');
+    setDrag(null);
+    setPanel('layers');
+    try { localStorage.setItem(MODE_KEY, on ? 'simple' : 'all'); } catch { /* storage blocked: the choice just isn't remembered */ }
+  };
+  const openTask = (t: Task) => {
+    const d = docRef.current;
+    setTask(t);
+    setTool(t === 'crop' ? 'crop' : t === 'draw' ? 'brush' : 'move');
+    setDrag(t === 'crop' && ratio ? ratioRect(d.w, d.h, ratio) : null);
+    if ((t === 'adjust' || t === 'looks' || t === 'background') && photo) setActiveId(photo.id);
+    if (t === 'looks') setThumb(photo?.canvas ? smallCopy(photo.canvas) : null);
+  };
+  const done = () => {
+    // Done keeps the chosen part, as in a phone's photo editor.
+    if (task === 'crop' && drag && drag.w >= 4 && drag.h >= 4 && (drag.w < doc.w || drag.h < doc.h)) applyCrop();
+    setTask(null);
+    setTool('move');
+    setDrag(null);
+  };
+  // A shaped crop's size: a percentage of the biggest frame of that shape.
+  const biggest = ratio ? ratioRect(doc.w, doc.h, ratio) : null;
+  const cropSize = biggest ? (drag ? Math.min(100, Math.round((drag.w / biggest.w) * 100)) : 100) : null;
+  const setCropSize = (pct: number) => {
+    if (!biggest) return;
+    const w = Math.max(4, Math.round((biggest.w * pct) / 100)), h = Math.max(4, Math.round((biggest.h * pct) / 100));
+    const cx = drag ? drag.x + drag.w / 2 : doc.w / 2, cy = drag ? drag.y + drag.h / 2 : doc.h / 2;
+    setDrag({ w, h, x: Math.round(Math.min(Math.max(0, cx - w / 2), doc.w - w)), y: Math.round(Math.min(Math.max(0, cy - h / 2), doc.h - h)) });
+  };
+  const addText = () => {
+    const d = docRef.current;
+    const t: TextProps = { value: 'Your text', size: Math.round(Math.max(24, Math.min(d.w, d.h) / 9)), color: '#ffffff', font: FONTS[0], bold: true, italic: false, align: 'center', outline: '#000000' };
+    const m = measureText(t);
+    // Each new text a line lower than the last, so they don't land on top of each other.
+    const n = d.layers.filter((l) => l.kind === 'text').length % 3;
+    const l = textLayer(t, (d.w - m.w) / 2, Math.min(d.h - m.h, (d.h - m.h) / 2 + n * m.h * 1.2));
+    commit({ ...d, layers: [...d.layers, l] });
+    setActiveId(l.id);
+  };
+  const api: SimpleApi = {
+    doc, photo, active, done,
+    ratio, setRatio: (r) => { setRatio(r); setDrag(r ? ratioRect(doc.w, doc.h, r) : null); }, drag, applyCrop, cropSize, setCropSize,
+    turn: docOp,
+    setAdjust: (patch, live = false) => { if (photo) patchLayer(photo.id, { adjust: { ...photo.adjust, ...patch } }, live); },
+    slideStart: () => { if (!before.current) before.current = docRef.current; },
+    slideEnd: () => { const from = before.current; before.current = null; if (from && from !== docRef.current) commit(docRef.current, from); },
+    sharpen: () => void layerOp('sharpen', photo), thumb,
+    addText, setText, removeActive: () => void layerOp('delete'),
+    brush, setBrush, eraser: tool === 'eraser', setEraser: (on) => setTool(on ? 'eraser' : 'brush'),
+    cutout: () => void layerOp('cutout', photo), busy, setBackground: (c) => commitRun('background', { ...docRef.current, background: c }),
+    addPhoto: () => fileRef.current?.click(),
+  };
+
   // The rectangle of the chosen layer and of a drag, in screen terms (percentages of the picture).
   const pct = (v: number, of: number) => `${(v / of) * 100}%`;
-  const box = active && tool === 'move' ? active : null;
+  const box = active && tool === 'move' && !fixed(active, doc) ? active : null;
+  // The picture's height: the screen less the bars around it (less the open job's panel in simple mode).
+  const room = simple ? (task ? '60dvh - 15rem' : '100dvh - 20rem') : '100dvh - 15rem';
+
+  const close = (
+    <button type="button" onClick={async () => { if (await confirmDialog({ title: 'Close the editor?', message: 'Your picture is kept on this device: carry on from the Tools page. Save it to keep a copy.', confirmLabel: 'Close' })) onClose(); }} aria-label="Close the editor" className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
+  );
+  const history = (
+    <>
+      <button type="button" onClick={undo} disabled={!past.length} aria-label="Undo" title="Undo (⌘Z)" className="p-2 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30"><Undo2 className="w-4 h-4" /></button>
+      <button type="button" onClick={redo} disabled={!future.length} aria-label="Redo" title="Redo (⇧⌘Z)" className="p-2 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30"><Redo2 className="w-4 h-4" /></button>
+    </>
+  );
+  const fileInput = <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" aria-label="Add a picture" onChange={(e) => { for (const f of [...(e.target.files ?? [])].slice(0, 5)) void addPicture(f, f.name); if (fileRef.current) fileRef.current.value = ''; }} />;
+  const exportSheet = exporting && <ExportSheet doc={doc} title={simple ? 'Save your picture' : 'Export'} onName={(name) => setDoc({ ...docRef.current, name })} onClose={() => setExporting(false)} />;
+  const picture = (
+    <div ref={areaRef} className={cn('flex-1 min-w-0 grid place-items-center p-3 sm:p-6 overflow-auto', simple ? 'min-h-[30dvh]' : 'order-1 md:order-2 min-h-[45vh]')}
+      onDragOver={(e) => { if ([...e.dataTransfer.items].some((i) => i.kind === 'file')) e.preventDefault(); }}
+      onDrop={(e) => { e.preventDefault(); for (const f of [...e.dataTransfer.files].filter((x) => x.type.startsWith('image/')).slice(0, 5)) void addPicture(f, f.name); }}>
+      <div className="relative shadow-2xl" style={{ aspectRatio: `${doc.w} / ${doc.h}`, width: `min(100%, calc((${room}) * ${doc.w / doc.h}))`, maxWidth: doc.w }}>
+        <div className="absolute inset-0 studio-checker" aria-hidden />
+        <canvas ref={canvasRef} width={doc.w} height={doc.h} role="img" aria-label={`${doc.name}: ${doc.layers.length} layer${doc.layers.length === 1 ? '' : 's'}`}
+          className={cn('relative block w-full h-full touch-none', tool === 'move' ? 'cursor-move' : tool === 'text' ? 'cursor-text' : 'cursor-crosshair')}
+          onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />
+        {box && (
+          <div className="absolute pointer-events-none border-2 border-indigo-500" style={{ left: pct(box.x, doc.w), top: pct(box.y, doc.h), width: pct(box.w, doc.w), height: pct(box.h, doc.h), transform: `rotate(${box.rotation}deg)` }} aria-hidden />
+        )}
+        {drag && (
+          <div className={cn('absolute pointer-events-none', tool === 'crop' ? 'border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]' : 'border-2 border-dashed border-indigo-400 bg-indigo-400/10')} style={{ left: pct(drag.x, doc.w), top: pct(drag.y, doc.h), width: pct(drag.w, doc.w), height: pct(drag.h, doc.h) }} aria-hidden />
+        )}
+      </div>
+      {!doc.layers.length && <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400 text-center">{simple ? 'Add a photo, or start with text or drawing.' : 'Add a picture, paste one, drop one here, or start drawing.'}</p>}
+    </div>
+  );
+
+  if (simple) {
+    return (
+      <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#0b0f1e]">
+        <div className="flex items-center gap-1 px-2 sm:px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121830]">
+          {close}
+          <p className="min-w-0 truncate text-sm font-semibold text-zinc-900 dark:text-white px-1">{doc.name}</p>
+          <div className="flex items-center gap-0.5 ml-auto shrink-0">
+            {history}
+            <button type="button" onClick={() => switchMode(false)} title="Layers, shapes, selections and more" className="btn-ghost btn-sm ml-1"><Layers className="w-4 h-4" />All tools</button>
+            <button type="button" onClick={() => setExporting(true)} className="btn-primary btn-sm ml-1"><Download className="w-3.5 h-3.5" />Save</button>
+          </div>
+        </div>
+        {fileInput}
+        {picture}
+        {task ? <SimplePanel task={task} api={api} /> : <SimpleBar onTask={openTask} onAddPhoto={api.addPhoto} busy={busy === 'open'} />}
+        {exportSheet}
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#0b0f1e]">
       {/* Top bar */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121830] overflow-x-auto">
-        <button type="button" onClick={async () => { if (await confirmDialog({ title: 'Close the editor?', message: 'Your picture is kept on this device: carry on from the Studio page. Export it to keep a copy.', confirmLabel: 'Close' })) onClose(); }} aria-label="Close the editor" className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
+        {close}
         <input value={doc.name} onChange={(e) => setDoc({ ...doc, name: e.target.value.slice(0, 60) })} aria-label="Picture name" className="min-w-0 w-36 sm:w-48 bg-transparent text-sm font-semibold text-zinc-900 dark:text-white px-2 py-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/10 focus:bg-zinc-100 dark:focus:bg-white/10 outline-none" />
         <span className="text-[11px] text-zinc-500 tabular-nums shrink-0 hidden sm:inline">{doc.w} × {doc.h}</span>
         <div className="flex items-center gap-0.5 ml-auto shrink-0">
-          <button type="button" onClick={undo} disabled={!past.length} aria-label="Undo" title="Undo (⌘Z)" className="p-2 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30"><Undo2 className="w-4 h-4" /></button>
-          <button type="button" onClick={redo} disabled={!future.length} aria-label="Redo" title="Redo (⇧⌘Z)" className="p-2 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-30"><Redo2 className="w-4 h-4" /></button>
+          {history}
           <span className="w-px h-5 bg-zinc-200 dark:bg-white/10 mx-1" aria-hidden />
           <button type="button" onClick={() => docOp('rotateL')} aria-label="Turn the picture left" title="Turn left" className="p-2 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><RotateCcw className="w-4 h-4" /></button>
           <button type="button" onClick={() => docOp('rotateR')} aria-label="Turn the picture right" title="Turn right" className="p-2 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><RotateCw className="w-4 h-4" /></button>
@@ -392,9 +548,11 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
           <input ref={projectRef} type="file" accept=".json,application/json" className="hidden" onChange={(e) => void openProject(e.target.files?.[0])} />
           <button type="button" onClick={() => projectRef.current?.click()} aria-label="Open a project" title="Open a project" className="p-2 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><FolderOpen className="w-4 h-4" /></button>
           <button type="button" onClick={saveProject} aria-label="Save the project" title="Save the project (to edit later)" className="p-2 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><Save className="w-4 h-4" /></button>
+          <button type="button" onClick={() => switchMode(true)} title="The simple editor" className="btn-ghost btn-sm ml-1">Simple</button>
           <button type="button" onClick={() => setExporting(true)} className="btn-primary btn-sm ml-1"><Download className="w-3.5 h-3.5" />Export</button>
         </div>
       </div>
+      {fileInput}
 
       <div className="flex-1 min-h-0 flex flex-col md:flex-row">
         {/* Tools */}
@@ -405,30 +563,12 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
               <t.icon className="w-5 h-5" />
             </button>
           ))}
-          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { for (const f of [...(e.target.files ?? [])].slice(0, 5)) void addPicture(f, f.name); if (fileRef.current) fileRef.current.value = ''; }} />
           <button type="button" onClick={() => fileRef.current?.click()} aria-label="Add a picture" title="Add a picture (or paste one)" className="w-11 h-11 shrink-0 rounded-xl grid place-items-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 md:mt-2">
             {busy === 'open' ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImagePlus className="w-5 h-5" />}
           </button>
         </div>
 
-        {/* The picture */}
-        <div ref={areaRef} className="order-1 md:order-2 flex-1 min-h-[45vh] min-w-0 grid place-items-center p-3 sm:p-6 overflow-auto"
-          onDragOver={(e) => { if ([...e.dataTransfer.items].some((i) => i.kind === 'file')) e.preventDefault(); }}
-          onDrop={(e) => { e.preventDefault(); for (const f of [...e.dataTransfer.files].filter((x) => x.type.startsWith('image/')).slice(0, 5)) void addPicture(f, f.name); }}>
-          <div className="relative shadow-2xl" style={{ aspectRatio: `${doc.w} / ${doc.h}`, width: `min(100%, calc((100dvh - 15rem) * ${doc.w / doc.h}))`, maxWidth: doc.w }}>
-            <div className="absolute inset-0 studio-checker" aria-hidden />
-            <canvas ref={canvasRef} width={doc.w} height={doc.h} role="img" aria-label={`${doc.name}: ${doc.layers.length} layer${doc.layers.length === 1 ? '' : 's'}`}
-              className={cn('relative block w-full h-full touch-none', tool === 'move' ? 'cursor-move' : tool === 'text' ? 'cursor-text' : 'cursor-crosshair')}
-              onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />
-            {box && (
-              <div className="absolute pointer-events-none border-2 border-indigo-500" style={{ left: pct(box.x, doc.w), top: pct(box.y, doc.h), width: pct(box.w, doc.w), height: pct(box.h, doc.h), transform: `rotate(${box.rotation}deg)` }} aria-hidden />
-            )}
-            {drag && (
-              <div className={cn('absolute pointer-events-none', tool === 'crop' ? 'border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]' : 'border-2 border-dashed border-indigo-400 bg-indigo-400/10')} style={{ left: pct(drag.x, doc.w), top: pct(drag.y, doc.h), width: pct(drag.w, doc.w), height: pct(drag.h, doc.h) }} aria-hidden />
-            )}
-          </div>
-          {!doc.layers.length && <p className="mt-3 text-sm text-zinc-500 text-center">Add a picture, paste one, drop one here, or start drawing.</p>}
-        </div>
+        {picture}
 
         {/* Panels */}
         <aside className="order-3 md:w-80 shrink-0 flex flex-col max-h-[45vh] md:max-h-none bg-white dark:bg-[#121830] border-t md:border-t-0 md:border-l border-zinc-200 dark:border-white/10">
@@ -524,7 +664,7 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
           </div>
         </aside>
       </div>
-      {exporting && <ExportSheet doc={doc} onClose={() => setExporting(false)} />}
+      {exportSheet}
     </div>
   );
 }
@@ -630,7 +770,7 @@ function ToolOptions({ tool, brush, setBrush, shape, setShape, active, setText, 
   return <p className="text-sm text-zinc-500">{tool === 'text' ? 'Click on the picture to add text.' : 'Drag a layer to move it. Choose a text layer to edit its words.'}</p>;
 }
 
-function ExportSheet({ doc, onClose }: { doc: Doc; onClose: () => void }) {
+function ExportSheet({ doc, title, onName, onClose }: { doc: Doc; title: string; onName: (name: string) => void; onClose: () => void }) {
   const [type, setType] = useState<'png' | 'jpeg' | 'webp'>('png');
   const [quality, setQuality] = useState(90);
   const [scale, setScale] = useState(1);
@@ -658,7 +798,10 @@ function ExportSheet({ doc, onClose }: { doc: Doc; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div role="dialog" aria-modal="true" aria-labelledby="export-title" className="sheet-in w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-5 space-y-4">
-        <div className="flex items-center justify-between"><h2 id="export-title" className="font-bold text-zinc-900 dark:text-white">Export</h2><button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button></div>
+        <div className="flex items-center justify-between"><h2 id="export-title" className="font-bold text-zinc-900 dark:text-white">{title}</h2><button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button></div>
+        <label className="block text-xs text-zinc-600 dark:text-zinc-400">Name
+          <input value={doc.name} onChange={(e) => onName(e.target.value.slice(0, 60))} className="input text-sm mt-1" />
+        </label>
         <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="Format">
           {([['png', 'PNG'], ['jpeg', 'JPG'], ['webp', 'WebP']] as const).map(([v, label]) => <button key={v} type="button" role="radio" aria-checked={type === v} onClick={() => setType(v)} className={cn('py-2 rounded-xl text-sm font-semibold', type === v ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-white/10 text-zinc-700 dark:text-zinc-200')}>{label}</button>)}
         </div>
@@ -676,4 +819,20 @@ function ExportSheet({ doc, onClose }: { doc: Doc; onClose: () => void }) {
       </div>
     </div>
   );
+}
+
+/** A text layer with its top-left corner at (x, y). */
+function textLayer(t: TextProps, x: number, y: number): Layer {
+  const m = measureText(t);
+  return { id: newId(), name: 'Text', kind: 'text', visible: true, opacity: 1, blend: 'source-over', adjust: { ...NO_ADJUST }, text: t, x: Math.round(x), y: Math.round(y), w: m.w, h: m.h, rotation: 0, flipX: false, flipY: false };
+}
+
+/** A small copy of a picture (about 200 px across) for the looks' previews. */
+function smallCopy(src: HTMLCanvasElement) {
+  const s = Math.min(1, 200 / Math.max(src.width, src.height));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(src.width * s));
+  c.height = Math.max(1, Math.round(src.height * s));
+  c.getContext('2d')!.drawImage(src, 0, 0, c.width, c.height);
+  return c.toDataURL('image/png');
 }

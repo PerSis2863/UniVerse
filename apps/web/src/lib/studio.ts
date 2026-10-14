@@ -92,6 +92,47 @@ export function hits(p: { x: number; y: number }, l: Placed) {
   return q.x >= 0 && q.y >= 0 && q.x <= l.w && q.y <= l.h;
 }
 
+/** The simple editor's crop shapes (null: any shape). */
+export const CROP_RATIOS: { id: string; label: string; ratio: number | null }[] = [
+  { id: 'free', label: 'Free', ratio: null },
+  { id: 'square', label: 'Square', ratio: 1 },
+  { id: '4:3', label: '4:3', ratio: 4 / 3 },
+  { id: '3:4', label: '3:4', ratio: 3 / 4 },
+  { id: '16:9', label: '16:9', ratio: 16 / 9 },
+  { id: '9:16', label: '9:16', ratio: 9 / 16 },
+];
+
+/** The biggest rectangle of this shape (width ÷ height) in the middle of a w×h picture. */
+export function ratioRect(w: number, h: number, ratio: number | null): Rect {
+  if (!ratio) return { x: 0, y: 0, w: Math.round(w), h: Math.round(h) };
+  const cw = Math.min(w, h * ratio), ch = cw / ratio;
+  return { x: Math.round((w - cw) / 2), y: Math.round((h - ch) / 2), w: Math.round(cw), h: Math.round(ch) };
+}
+
+/** A crop dragged from (x0, y0) towards (x1, y1), kept to a shape (when one is chosen) and inside the picture. */
+export function ratioDrag(x0: number, y0: number, x1: number, y1: number, ratio: number | null, maxW: number, maxH: number): Rect {
+  if (!ratio) return rectFrom(x0, y0, x1, y1, maxW, maxH);
+  const sx = x1 >= x0 ? 1 : -1, sy = y1 >= y0 ? 1 : -1;
+  // As far as the pointer went, but no further than the picture's edge in either direction.
+  const roomX = sx > 0 ? maxW - x0 : x0, roomY = sy > 0 ? maxH - y0 : y0;
+  let w = Math.min(Math.abs(x1 - x0), roomX), h = Math.min(Math.abs(y1 - y0), roomY);
+  if (w / Math.max(h, 1e-9) > ratio) w = h * ratio; else h = w / ratio;
+  if (w > roomX) { w = roomX; h = w / ratio; }
+  if (h > roomY) { h = roomY; w = h * ratio; }
+  return rectFrom(x0, y0, x0 + sx * w, y0 + sy * h, maxW, maxH);
+}
+
+/** The four sliders of the simple editor, in plain words. */
+export const SIMPLE_SLIDERS: { key: keyof Adjust; label: string; min: number; max: number }[] = [
+  { key: 'brightness', label: 'Light', min: -100, max: 100 },
+  { key: 'contrast', label: 'Contrast', min: -100, max: 100 },
+  { key: 'saturation', label: 'Colour', min: -100, max: 100 },
+  { key: 'warmth', label: 'Warmth', min: -100, max: 100 },
+];
+
+/** Whether a picture's adjustments are exactly one of the looks. */
+export const isLook = (a: Adjust, look: Partial<Adjust>) => (Object.keys(NO_ADJUST) as (keyof Adjust)[]).every((k) => a[k] === (look[k] ?? 0));
+
 /** Ready-made canvas sizes. */
 export const SIZES: { id: string; name: string; w: number; h: number }[] = [
   { id: 'square', name: 'Square post', w: 1080, h: 1080 },

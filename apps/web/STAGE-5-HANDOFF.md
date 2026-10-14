@@ -442,16 +442,70 @@ Progress table (row D6).
 - **Code:** `src/lib/impact-league.ts`, `src/server/impact-league.ts`, `src/components/league/`,
   `src/app/(dashboard)/impact-league/`, `src/app/league/[slug]/`.
 
+## D16 · Parent co-pilot: done (14 Oct 2026)
+
+- **Migration `0128`** (`parent_copilot`, `parent_summaries`, `parent_questions`). Next migration: **`0129`**.
+- **Where:** the parent app's Schoolwork tab starts with **“<child>’s week”**: the summary in the parent's
+  language (Listen reads it with the phone's own voice), **Ask about <child>**, and the weekly
+  notification's day and time. Teachers' voice notes in Messages are written out and translated.
+- **Only records, never messages:** summaries and answers use grades, attendance, work due and late,
+  achievements and report cards. The AI is told to say when the records don't cover a question.
+- **Costs:** one AI request per child per week for the summary (Update at most daily), one per new
+  question (10 a day), one per voice note; all from the parent's daily AI allowance. Weekly
+  notifications are in the app and by push, never email.
+- **Try on the live site:** AI summary, answers and voice-note transcription (no AI key locally).
+- **Code:** `src/lib/parent-copilot.ts`, `src/server/parent-copilot.ts`, `src/server/parent-messages.ts`,
+  `src/components/guardian/ParentCopilot.tsx`, `src/app/api/parent/week/`.
+
+## D15 · Classroom twin (live campus map): done (14 Oct 2026)
+
+- **Migration `0127`** (`campus_buildings`; `rooms.buildingId`, `rooms.floor`; `campus_items.buildingId`).
+  Next migration: **`0128`**.
+- **Where:** `/campus-map`, a tab of Student life (students), Campus services (teachers, next to Room
+  booking) and Campus monitoring (admins).
+- **First step on the live site:** an admin opens Campus monitoring → Campus map → **Edit map**, adds the
+  buildings, drags them into place and puts each room in its building and floor. Until then the page
+  still shows free rooms, what's on now and the next class.
+- **Where "live" comes from:** the class timetable and room bookings (today, on the device's clock),
+  in-person class check-ins (phone clicker), scheduled online class calls and campus events. There are
+  no sensors: a room with nothing booked shows as free.
+- **Privacy:** others' bookings show only as "Booked"; online classes are listed only for the people in them.
+- **Code:** `src/lib/campus-map.ts`, `src/server/campus-map.ts`, `src/components/campus/`,
+  `src/app/(dashboard)/campus-map/`, `src/app/api/campus/map/`.
+
 ## Live errors from Cloudflare Observability (checked 13 Oct 2026)
 
-- **"scheduled-call check failed: at D1DatabaseSessionAlwaysPrimary._sendOrThrow…"** (about once an
-  hour): the 15-minute cron's one cheap query sometimes fails for a moment on D1, and the check then
-  said "nothing due", so a call starting in the next ~10 minutes could lose its reminder. **Fixed:**
-  the check (now `cloudflare/due-check.ts`, 3 tests) tries twice more (1 s, 2 s apart) and, if it
-  still fails, runs the reminders job anyway; the log line now shows D1's own message on one line.
+- **"scheduled-call check failed … D1_ERROR: too many terms in compound SELECT"**: the 15-minute
+  cron's check joined 7 queries with UNION ALL, but **D1 allows at most 5 parts in a compound SELECT**
+  (local SQLite allows 500, so tests never showed it). On the live site it failed on every run, so
+  the reminders job (call and parent-meeting reminders, `/remind`, scheduled chat messages, morning
+  brief pushes, study-plan follow-ups, due-soon automations) never started from this cron. **Fixed
+  (14 Oct):** 7 small queries sent in one `DB.batch` (`cloudflare/due-check.ts`, 4 tests; each query
+  checked against the real schema). A real passing D1 error is still tried twice more and then the
+  job runs anyway. Never write a compound SELECT with more than 5 parts for D1.
 - **"Worker exceeded CPU time limit"** on `GET /api/core/users/me` (a burst around 16:42–16:57 UTC):
   the known Workers Free cold start (see "Cloudflare errors" above). That route is already on the
   light path; it fails when another request on the same fresh instance goes over the limit and
   Cloudflare stops the instance. The logs showed the app's one retry failing too, so **reads now get
   a second retry 2–3 s later** (`fetchWithRetry`, 3 tests). The real fix is still **Workers Paid**
   ($5/month, the owner's decision).
+
+## Converter fix, Compress files and the Tools page (14 Oct 2026, owner request)
+
+- **Word → PDF now downloads a real PDF** laid out like the document (it used to open the print dialog
+  with a simplified copy). Code: `src/components/docs/doc-to-pdf.ts` (docx-preview → page splitting →
+  html2canvas-pro → pdf-lib with an invisible text layer).
+- **Compress files**: pictures, PDFs, Word/Excel/PowerPoint, video and sound, anything else as ZIP;
+  Light / Medium / Strong. Code: `src/lib/compress.ts`, `src/components/docs/compress-engine.ts`.
+- **Collaborate → Tools** (was Studio, same address `/studio`): six cards; `?tool=convert|compress|photo|audio`.
+- mediabunny brings DOM types for WebCodecs; `src/lib/call-recorder.ts` needed one type annotation.
+
+### Photo editor: simple mode (14 Oct 2026, owner request)
+
+- The photo editor opens in **simple mode**: one row of jobs under the photo (Crop, Turn, Adjust, Looks,
+  Text, Draw, Background, Add photo); each opens only its own controls and a Done button. **All tools**
+  in the top bar switches to the full editor (unchanged); the choice is kept in localStorage
+  (`studio-photo-mode`). Code: `src/components/studio/PhotoSimple.tsx`, wired in `PhotoEditor.tsx`.
+- Simple mode draws on one "Drawing" layer (`drawId`), so its eraser never touches the photo.
+- `commitRun(key, doc)` in `PhotoEditor.tsx` makes changes to one thing in a row one undo step.
+
