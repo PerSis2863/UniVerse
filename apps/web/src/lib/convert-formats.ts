@@ -25,7 +25,7 @@ export function kindOf(name: string, mime = ''): Kind {
 }
 
 const T = (id: string, label: string, ext: string, hint?: string): Target => ({ id, label, ext, hint });
-const DOCISH = [T('html', 'Web page', 'html'), T('txt', 'Plain text', 'txt'), T('md', 'Markdown', 'md'), T('doc', 'Word (.doc)', 'doc', 'Opens in Word, Pages and Google Docs'), T('pdf', 'PDF', 'pdf', 'Through the print dialog: choose Save as PDF'), T('uvdoc', 'A UniVerse doc', '', 'Opens in Docs, to edit together')];
+const DOCISH = [T('html', 'Web page', 'html'), T('txt', 'Plain text', 'txt'), T('md', 'Markdown', 'md'), T('doc', 'Word (.doc)', 'doc', 'Opens in Word, Pages and Google Docs'), T('pdf', 'PDF', 'pdf', 'A PDF file laid out like the document'), T('uvdoc', 'A UniVerse doc', '', 'Opens in Docs, to edit together')];
 
 /** What a file of this kind can become. */
 export function targetsFor(kind: Kind): Target[] {

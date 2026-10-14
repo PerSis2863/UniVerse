@@ -32,7 +32,7 @@ export class CallRecorder {
     const type = pickType(video);
     if (!type) throw new Error('This browser can’t record calls.');
     this.type = type;
-    const tracks = [...this.mix.stream.getAudioTracks()];
+    const tracks: MediaStreamTrack[] = [...this.mix.stream.getAudioTracks()];
     if (video) {
       this.canvas = document.createElement('canvas');
       this.canvas.width = W;

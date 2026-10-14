@@ -78,17 +78,23 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/student/life/lost-found', label: 'Lost & found', keywords: 'lost found missing item' },
     { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor donate time pledge impact call project updates' },
     { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition team hackathon universities demo day prize' },
+    { href: '/studio?tool=convert', label: 'Convert files', keywords: 'word to pdf docx pdf to jpg png excel csv convert change format' },
+    { href: '/studio?tool=compress', label: 'Compress files', keywords: 'compress reduce shrink smaller file size pdf photo image video zip' },
   ],
   TEACHER: [
     { href: '/teacher/tutor', label: 'AI tutor', keywords: 'ai course sources flashcards' },
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
     { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor impact call report project updates' },
     { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize' },
+    { href: '/studio?tool=convert', label: 'Convert files', keywords: 'word to pdf docx pdf to jpg png excel csv convert change format' },
+    { href: '/studio?tool=compress', label: 'Compress files', keywords: 'compress reduce shrink smaller file size pdf photo image video zip' },
   ],
   ADMIN: [
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
     { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor impact call report project updates' },
     { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize credentials' },
+    { href: '/studio?tool=convert', label: 'Convert files', keywords: 'word to pdf docx pdf to jpg png excel csv convert change format' },
+    { href: '/studio?tool=compress', label: 'Compress files', keywords: 'compress reduce shrink smaller file size pdf photo image video zip' },
   ],
 };
 

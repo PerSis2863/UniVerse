@@ -458,3 +458,14 @@ Progress table (row D6).
   Cloudflare stops the instance. The logs showed the app's one retry failing too, so **reads now get
   a second retry 2–3 s later** (`fetchWithRetry`, 3 tests). The real fix is still **Workers Paid**
   ($5/month, the owner's decision).
+
+## Converter fix, Compress files and the Tools page (14 Oct 2026, owner request)
+
+- **Word → PDF now downloads a real PDF** laid out like the document (it used to open the print dialog
+  with a simplified copy). Code: `src/components/docs/doc-to-pdf.ts` (docx-preview → page splitting →
+  html2canvas-pro → pdf-lib with an invisible text layer).
+- **Compress files**: pictures, PDFs, Word/Excel/PowerPoint, video and sound, anything else as ZIP;
+  Light / Medium / Strong. Code: `src/lib/compress.ts`, `src/components/docs/compress-engine.ts`.
+- **Collaborate → Tools** (was Studio, same address `/studio`): six cards; `?tool=convert|compress|photo|audio`.
+- mediabunny brings DOM types for WebCodecs; `src/lib/call-recorder.ts` needed one type annotation.
+

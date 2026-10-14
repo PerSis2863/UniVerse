@@ -10,7 +10,9 @@ import type { SheetData } from 'write-excel-file/browser';
 // mammoth, Excel with read-excel-file / write-excel-file, ZIP with fflate, sound with the browser's
 // own decoder and a WAV writer. Each library loads only when it's needed.
 
-export interface Output { name: string; blob?: Blob; /** a document to open in Docs (HTML) */ doc?: { title: string; html: string }; /** HTML to print to PDF */ print?: { title: string; html: string } }
+export interface Output { name: string; blob?: Blob; /** a document to open in Docs (HTML) */ doc?: { title: string; html: string } }
+/** Tells the page how a longer conversion is going ("Page 3 of 12"). */
+export type Progress = (message: string) => void;
 
 export const MAX_FILE = 100 * 1024 * 1024;
 const MAX_PAGES = 40;
@@ -171,7 +173,7 @@ async function rows(file: File): Promise<unknown[][]> {
   return r;
 }
 
-export async function convert(file: File, t: Target): Promise<Output[]> {
+export async function convert(file: File, t: Target, onProgress?: Progress): Promise<Output[]> {
   if (file.size > MAX_FILE) throw new Error('Files up to 100 MB can be converted in the browser.');
   const title = file.name.replace(/\.[^.]+$/, '');
   switch (t.id) {
@@ -212,12 +214,18 @@ export async function convert(file: File, t: Target): Promise<Output[]> {
       return [{ name: outName(file.name, 'zip'), blob: await zip(pics) }];
     }
     case 'html': case 'txt': case 'md': case 'doc': case 'pdf': case 'uvdoc': {
+      if (t.id === 'pdf') {
+        // A real PDF, laid out like the document (src/components/docs/doc-to-pdf.ts).
+        const { documentToPdf } = await import('./doc-to-pdf');
+        const html = kindOf(file.name, file.type) === 'word' ? null : await docHtml(file);
+        const blob = await documentToPdf(file, html, title, (done, total) => onProgress?.(done < total ? `Page ${done + 1} of ${total}` : 'Saving'));
+        return [{ name: outName(file.name, 'pdf'), blob }];
+      }
       const html = await docHtml(file);
       if (t.id === 'html') return [{ name: outName(file.name, 'html'), blob: new Blob([page(title, html)], { type: 'text/html;charset=utf-8' }) }];
       if (t.id === 'txt') return [{ name: outName(file.name, 'txt'), blob: new Blob([htmlText(html)], { type: 'text/plain;charset=utf-8' }) }];
       if (t.id === 'md') return [{ name: outName(file.name, 'md'), blob: new Blob([htmlToMarkdown(html)], { type: 'text/markdown;charset=utf-8' }) }];
       if (t.id === 'doc') return [{ name: outName(file.name, 'doc'), blob: new Blob([word(title, html)], { type: 'application/msword' }) }];
-      if (t.id === 'pdf') return [{ name: outName(file.name, 'pdf'), print: { title, html: page(title, html) } }];
       return [{ name: title, doc: { title, html } }];
     }
     case 'csv': case 'json': case 'xlsx': case 'html-table': {
