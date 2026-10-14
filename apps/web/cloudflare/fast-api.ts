@@ -16,6 +16,7 @@ import { securityHeaders } from '../security-headers';
 import { fileCsp } from '../src/lib/file-csp';
 import { bool, dbDate, isoDate, json, parseJson, type Caller } from './fast-db';
 import { conversations, notifications, presence, thread } from './fast-chat';
+import { adminDashboard, docsList, spacesList, teacherDashboard } from './fast-lists';
 
 interface Env {
   DB?: D1Database;
@@ -301,6 +302,9 @@ async function bootstrap(me: Caller, request: Request, db: D1Database, env: Env,
     '/api/notifications': () => notifications(me, db),
     '/api/chat/incoming': () => incoming(me, db),
     '/api/core/users/me': () => usersMe(me, db),
+    // Admins only; for anyone else the Next.js route answers (and refuses).
+    '/api/core/dashboard/admin': async () => (me.role === 'ADMIN' ? adminDashboard(db) : null),
+    '/api/core/dashboard/teacher': async () => (me.role === 'TEACHER' ? teacherDashboard(me, db) : null),
   };
   const read = async (res: Response) => ({ status: res.status, body: await res.json().catch(() => null) });
   const results: Record<string, { status: number; body: unknown }> = {};
@@ -404,6 +408,10 @@ async function answer(request: Request, path: string, db: D1Database, env: Env, 
   if (path === '/api/bootstrap') return bootstrap(me, request, db, env, ctx, next);
   // Parent accounts reach only the parent app: the Next.js route refuses them (src/server/auth.ts).
   if (path === '/api/boards') return me.role === 'GUARDIAN' ? null : boards(me, db);
+  if (path === '/api/docs') return me.role === 'GUARDIAN' ? null : docsList(me, db);
+  if (path === '/api/spaces') return me.role === 'GUARDIAN' ? null : spacesList(me, db);
+  if (path === '/api/core/dashboard/admin') return me.role === 'ADMIN' ? adminDashboard(db) : null;
+  if (path === '/api/core/dashboard/teacher') return me.role === 'TEACHER' ? teacherDashboard(me, db) : null;
   const threadOf = THREAD.exec(path);
   if (threadOf) return thread(me, decodeURIComponent(threadOf[1]), new URL(request.url), db, ctx);
   if (path === '/api/core/activity/ui') {
@@ -425,7 +433,7 @@ export async function fastApi(request: Request, url: URL, env: Env, ctx: Executi
   const path = url.pathname;
   const get = request.method === 'GET';
   const post = request.method === 'POST';
-  const fastGet = path === '/api/chat/incoming' || path === '/api/me' || path === '/api/notifications' || path === '/api/chat/conversations' || path === '/api/core/users/me' || path === '/api/boards' || THREAD.test(path) || FILE.test(path);
+  const fastGet = path === '/api/chat/incoming' || path === '/api/me' || path === '/api/notifications' || path === '/api/chat/conversations' || path === '/api/core/users/me' || path === '/api/boards' || path === '/api/docs' || path === '/api/spaces' || path === '/api/core/dashboard/admin' || path === '/api/core/dashboard/teacher' || THREAD.test(path) || FILE.test(path);
   if (!(get && fastGet) && !(post && (path === '/api/core/activity/ui' || path === '/api/bootstrap' || TYPING.test(path)))) return null;
   try {
     const res = await answer(request, path, db, env, ctx, next);

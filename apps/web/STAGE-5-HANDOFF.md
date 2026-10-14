@@ -448,8 +448,14 @@ Progress table (row D6).
   11.5 MB route files, 9.4 MB shared chunks, 6 MB inlined manifests) and costs ~2–3 s CPU locally
   (`wrangler dev --inspector-port 9229` + a CPU profile). Startup itself is ~60 ms. Making the inlined
   manifests lazy saved only ~0.15 s, so it wasn't kept.
-- Requests answered by `cloudflare/fast-api.ts` never load Next.js. **`GET /api/boards`** was added
-  there (checked field by field against the Next.js route for 5 accounts, incl. a 7-member board).
+- Requests answered by `cloudflare/fast-api.ts` never load Next.js. Added there (in
+  `cloudflare/fast-lists.ts` from the second one): **`GET /api/boards`**, **`/api/docs`**, **`/api/spaces`**,
+  **`/api/core/dashboard/admin`** and **`/api/core/dashboard/teacher`** (also inside `/api/bootstrap`).
+  Each was checked field by field against its Next.js route for 5 accounts (student, teacher, admin,
+  a teacher with nothing, a parent), with shared docs, 3-level sub-pages, class and group docs, pending
+  sign-ups and a 7-member board (`next dev` on :3100 vs the built Worker in `wrangler dev` on :8787).
+  Not moved: `/api/student/overview` (it also updates the study streak).
+- Any change to one of those Next.js routes must be made in its light-path copy too.
 - The real fix is still **Workers Paid** ($5/month, 30 s CPU). Until then, moving the busiest page
   lists onto the light path is the way to cut "Couldn't load" errors.
 
