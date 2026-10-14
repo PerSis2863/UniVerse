@@ -135,7 +135,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
               <span className="nav-brand-text">Back</span>
             </button>
           ) : (
-            <Link href={home} className="flex items-center gap-2 min-w-0 pressable" aria-label="Home">
+            <Link href={home} className="flex items-center gap-2 min-w-0 pressable" aria-label="UniVerse home">
               <UniverseLogo size="sm" showText={false} animated={false} withGlow={false} />
               <span className="nav-brand-text font-bold text-[17px] tracking-tight text-zinc-900 dark:text-white">UniVerse</span>
             </Link>

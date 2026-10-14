@@ -543,29 +543,26 @@ Progress table (row D6).
 - The full-site page crawl (re-checking the page fixes above) was stopped part-way: on `next dev` it takes
   over an hour and ran the dev server out of memory. The fixed pages had each been checked on their own.
 
-## D17 · Offline classroom relay: researched, not built (14 Oct 2026)
+## D17 · Offline classroom relay: done as moving QR codes (14 Oct 2026, owner's choice)
 
-The plan says to research first and ship only if reliable. **Phone-to-phone through the browser isn't
-reliable enough:**
-- WebRTC (browser-to-browser) needs each pair of phones to swap connection details first. With no
-  internet that means scanning QR codes back and forth for every student.
-- Many Wi-Fi networks, and some phone hotspots, stop devices on them from talking to each other.
-- Browsers hide local addresses behind `.local` names that some networks don't resolve.
-- Web Bluetooth can't make a phone send to another phone, and a browser can't serve files.
-- None of it can be tried here: it needs real phones on a real hotspot.
-
-**Recommended instead** (builds on the offline course packs from Upgrade 4, `src/lib/offline-packs.ts`):
-1. **Share a course pack as one file.** On the Offline page, Share sends a saved course as a file with the
-   phone's own Quick Share / Nearby Share / AirDrop / Bluetooth (no internet needed). The other phone
-   opens it in UniVerse: Android's installed app through Web Share Target, any phone through a file
-   picker. The pack carries the school's signature so it can't be faked. About one round.
-2. **Moving QR codes for small things** (an announcement, a short reading, a quiz without pictures): the
-   teacher's screen loops a QR sequence and phones read it with the camera, a few KB a second. iPhones
-   need a small QR-reading library (Safari has no built-in reader).
-3. Only if the owner still wants it: the WebRTC relay as an experiment behind a switch, tried on the
-   school's own phones and hotspot.
-
-**Waiting for the owner:** build 1 (and maybe 2), or leave D17 for later.
+- **No migration.** New library **jsQR** (reads QR codes on phones without a built-in reader).
+- **Why not phone-to-phone:** WebRTC over a classroom hotspot isn't reliable (handshakes need QR swaps per
+  student with no internet, many networks block devices from talking to each other). The owner picked
+  **moving QR codes** for short items.
+- **Teacher:** Live class → **Send to phones with no internet**: a note, an announcement or a quiz without
+  pictures → **Show as codes** (full screen; speed, code size, pause). Prepared items stay ready on that
+  computer, so they can be shown in a room with no connection.
+- **Students:** Offline courses → **Scan from the teacher’s screen**. The phone needs no internet. Each item
+  is **signed** with the platform key (`CREDENTIAL_SIGNING_PRIVATE_KEY`, the same as credentials and badges),
+  so the phone shows "Checked: sent by <teacher>". A quiz is taken with the existing offline quiz and sent
+  when the phone is next online.
+- **Before class, once:** students open Offline courses while online (that saves the scanner and the
+  school's key on the phone).
+- **Not tried yet:** real phones, a real projector, iPhones. Worth a try in one classroom.
+- **Also fixed:** the "You're offline" bar was hard to read (white on orange); the phone header's Home link
+  name.
+- **Code:** `src/lib/qr-relay.ts`, `src/lib/qr.ts`, `src/server/qr-relay.ts`, `src/app/api/classroom/relay/`,
+  `src/components/live/QrRelayPanel.tsx`, `src/components/offline/QrRelayScan.tsx`, `QrRelayCamera.tsx`.
 
 ## D16 · Parent co-pilot: done (14 Oct 2026)
 

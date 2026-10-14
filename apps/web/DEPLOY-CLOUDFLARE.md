@@ -294,7 +294,7 @@ chats) send the owner an in-app alert when one is written in a chat. A person ca
 | Feature | Needs |
 | --- | --- |
 | Chat translation, AI tutor (answers, practice questions, flashcards, reading course PDFs), AI diagnosis of errors | `GEMINI_API_KEY`. Without it these show “isn’t set up yet” and everything else works. |
-| Open Badges downloads, verified impact reports | `CREDENTIAL_SIGNING_PRIVATE_KEY` (same key as verified credentials) |
+| Open Badges downloads, verified impact reports, signed moving QR codes (Live class → Send to phones) | `CREDENTIAL_SIGNING_PRIVATE_KEY` (same key as verified credentials). Without it the codes still work, but phones can’t check who sent them. |
 | Moodle / Canvas / other LMS (LTI 1.3) | `SESSION_SECRET`, then Admin → LMS integration (LTI): give the LMS the URLs shown there and register the LMS. Set the tool to open in a new window: UniVerse refuses to be framed by other sites. Only resource-link launches (single sign-on + course linking + enrolment) are supported for now; grade passback and deep linking aren’t. |
 | Early warning | Nothing: runs in the daily job (08:00 UTC) and on “Check now”. |
 | Low-data mode | Nothing: a per-device setting (Settings, Ctrl+K, or offered on slow connections). |

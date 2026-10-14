@@ -25,7 +25,7 @@ const SETTINGS: { name: string; what: string; needed?: boolean }[] = [
   { name: 'R2_ACCESS_KEY_ID', what: 'File storage (large chat files)' },
   { name: 'R2_SECRET_ACCESS_KEY', what: 'File storage (large chat files)' },
   { name: 'NEXT_PUBLIC_FILES_URL', what: 'File storage address (https://files.universeimpact.com)' },
-  { name: 'CREDENTIAL_SIGNING_PRIVATE_KEY', what: 'Signed credentials and badges' },
+  { name: 'CREDENTIAL_SIGNING_PRIVATE_KEY', what: 'Signed credentials and badges, and moving QR codes phones can check' },
   { name: 'SESSION_SECRET', what: 'Calendar links, parent links and sign-in from an LMS' },
   { name: 'VAPID_PUBLIC_KEY', what: 'Push notifications' },
   { name: 'VAPID_PRIVATE_KEY', what: 'Push notifications' },

@@ -156,6 +156,17 @@ export class CredentialSigner {
     return { payload, hash, hashMatches, signatureValid, knownKey };
   }
 
+  /** An Ed25519 signature over `text` (base64url) and the key's id; null when no key is configured. */
+  static signText(text: string): { signature: string; keyId: string } | null {
+    try {
+      const { privateKey, keyId } = this.load();
+      return { signature: cryptoSign(null, Buffer.from(text, 'utf8'), privateKey).toString('base64url'), keyId };
+    } catch (e) {
+      this.logger.warn(`Not signed: ${(e as Error).message}`);
+      return null;
+    }
+  }
+
   /** A compact JWS (EdDSA) over `payload` with the platform key, for Open Badges 3.0 (VC-JWT). */
   static signJwt(payload: Record<string, unknown>, kid: string) {
     const { privateKey, publicKey } = this.load();

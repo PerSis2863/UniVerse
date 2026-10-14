@@ -1776,6 +1776,11 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // In-person class (Stage 5 · D7): one sample class in memory for the visit.
   [/^\/api\/classroom$/, ({ db: d }) => ok({ session: classroom(d).on ? { id: 'sample-class' } : null })],
   [/^\/api\/classroom\/current$/, () => ok({ session: null })],
+  // Stage 5 · D17: what a teacher can send to phones as moving QR codes.
+  [/^\/api\/classroom\/relay$/, () => ok({
+    announcements: [{ id: 'ann_sample_1', title: 'Lab moved to Room 204', createdAt: '2026-10-13T08:00:00.000Z', problem: null }],
+    quizzes: [{ id: 'quiz_sample_1', title: 'Week 5 check', questions: 6, problem: null }, { id: 'quiz_sample_2', title: 'Diagrams quiz', questions: 4, problem: 'Has pictures' }],
+  })],
   [/^\/api\/classroom\/([^/]+)\/code$/, () => ok({ code: 'ABC234', expiresIn: 30 })],
   [/^\/api\/classroom\/([^/]+)$/, ({ db: d }) => ok({
     id: 'sample-class', course: { id: d.courses[0]?.id ?? 'sample', code: d.courses[0]?.code ?? 'CS101', name: d.courses[0]?.name ?? 'Sample course' }, startedAt: classroom(d).startedAt, open: true, classSessionId: null, enrolled: 24,

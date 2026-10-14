@@ -55,9 +55,10 @@ export function OfflineBar() {
       role="status"
       aria-live="polite"
       className={`fixed top-0 left-0 right-0 z-[140] flex items-center justify-center gap-2 px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] text-xs font-semibold transition-all duration-500 ${
+        // Dark text: white on these bright colours was hard to read (2.2:1; 4.5:1 is the minimum)
         isOnline
-          ? 'bg-emerald-500 text-white'
-          : 'bg-orange-500 text-white'
+          ? 'bg-emerald-500 text-zinc-950'
+          : 'bg-orange-500 text-zinc-950'
       }`}
     >
       {isOnline ? (

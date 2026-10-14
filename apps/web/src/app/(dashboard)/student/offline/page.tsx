@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { Bell, BookOpen, BrainCircuit, Calendar, CloudOff, Download, FileText, Layers, Loader2, PenLine, RefreshCw, Trash2, WifiOff } from 'lucide-react';
 import { OfflineAssignment, OfflineQuiz, OutboxList } from '@/components/offline/OfflineWork';
+import { QrRelayInbox } from '@/components/offline/QrRelayScan';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, STUDENT_COURSE_TABS } from '@/components/layout/SectionTabs';
 import { confirmDialog } from '@/components/ui/Dialogs';
@@ -48,8 +49,9 @@ export default function OfflinePage() {
       <SectionTabs tabs={STUDENT_COURSE_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-5">
-          {!online && <p className="rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm p-3 flex items-center gap-2"><WifiOff className="w-4 h-4" /> You&apos;re offline. Saved courses still open, and quizzes and assignments you finish are sent when you&apos;re back.</p>}
+          {!online && <p className="rounded-xl bg-amber-500/10 text-amber-800 dark:text-amber-300 text-sm p-3 flex items-center gap-2"><WifiOff className="w-4 h-4" /> You&apos;re offline. Saved courses still open, and quizzes and assignments you finish are sent when you&apos;re back.</p>}
           <OutboxList />
+          {!open && <QrRelayInbox />}
           {!supported ? (
             <p className={`panel p-6 text-sm text-zinc-500`}>This browser can&apos;t save courses for offline use.</p>
           ) : packs === null ? (

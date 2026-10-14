@@ -15,6 +15,9 @@ import dynamic from 'next/dynamic';
 
 // In-person class (Stage 5 · D7): loads with the page's course picked.
 const ClassroomPanel = dynamic(() => import('@/components/live/ClassroomPanel').then((m) => m.ClassroomPanel), { ssr: false, loading: () => <div className="h-28 rounded-2xl skeleton" /> });
+// Send to phones with no internet (Stage 5 · D17): moving QR codes. Shown without a course too, for
+// items prepared earlier on this computer.
+const QrRelayPanel = dynamic(() => import('@/components/live/QrRelayPanel').then((m) => m.QrRelayPanel), { ssr: false, loading: () => <div className="h-28 rounded-2xl skeleton" /> });
 
 interface Poll { id: string; question: string; options: string[]; status: 'OPEN' | 'CLOSED'; showResults: boolean; createdAt: string; results: number[]; total: number }
 
@@ -48,6 +51,8 @@ export default function TeacherLivePage() {
           </div>
 
           {active && <ClassroomPanel key={active} courseId={active} />}
+
+          <QrRelayPanel key={`relay-${active}`} courseId={active} courseCode={courses?.find((c) => c.id === active)?.code ?? ''} />
 
           {active && <NewPoll courseId={active} onCreated={() => mutate()} />}
 

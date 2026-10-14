@@ -1,13 +1,17 @@
 // A small QR code encoder (ISO/IEC 18004), so we don't ship a dependency for a few links.
-// Byte mode, error correction level M (survives ~15% damage, enough for print and phone
-// screens), versions 1-10: up to 213 bytes, plenty for a verification URL.
+// Error correction level M (survives ~15% damage, enough for print and phone screens), versions
+// 1-15: up to 412 bytes. Byte mode for anything; alphanumeric mode (about a third more per code)
+// when the text only has capitals, digits and ` $%*+-./:`, as the moving codes of D17 do.
 
-const MAX_VERSION = 10;
-// Per version 1..10 at level M: error-correction codewords per block, and number of blocks.
-const ECC_PER_BLOCK = [10, 16, 26, 18, 24, 16, 18, 22, 22, 26];
-const NUM_BLOCKS = [1, 1, 1, 2, 2, 4, 4, 4, 5, 5];
+const MAX_VERSION = 15;
+// Per version 1..15 at level M: error-correction codewords per block, and number of blocks.
+const ECC_PER_BLOCK = [10, 16, 26, 18, 24, 16, 18, 22, 22, 26, 30, 22, 22, 24, 24];
+const NUM_BLOCKS = [1, 1, 1, 2, 2, 4, 4, 4, 5, 5, 5, 8, 9, 9, 10];
 // Centre coordinates of the alignment patterns per version (version 1 has none).
-const ALIGN_POS: number[][] = [[], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34], [6, 22, 38], [6, 24, 42], [6, 26, 46], [6, 28, 50]];
+const ALIGN_POS: number[][] = [
+  [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34], [6, 22, 38], [6, 24, 42], [6, 26, 46], [6, 28, 50],
+  [6, 30, 54], [6, 32, 58], [6, 34, 62], [6, 26, 46, 66], [6, 26, 48, 70],
+];
 const EC_LEVEL_M_BITS = 0; // format-info bits for level M are 00
 
 /** Data + error-correction modules a version holds (everything that isn't a function pattern). */
@@ -267,22 +271,40 @@ class Matrix {
   }
 }
 
+/** The characters of alphanumeric mode, in their code order. */
+export const QR_ALNUM = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+const isAlnum = (text: string) => [...text].every((c) => QR_ALNUM.includes(c));
+
 /** Encodes text as a QR matrix (true = dark), without the quiet zone. Throws if it's too long. */
 export function encodeQr(text: string, forceMask?: number): boolean[][] {
-  const bytes = utf8(text);
+  const alnum = text.length > 0 && isAlnum(text);
+  const bytes = alnum ? [] : utf8(text);
+  // Mode indicator, character-count length (it grows at version 10) and data length, in bits.
+  const countBits = (ver: number) => (alnum ? (ver <= 9 ? 9 : 11) : ver <= 9 ? 8 : 16);
+  const dataBits = alnum ? 11 * Math.floor(text.length / 2) + 6 * (text.length % 2) : bytes.length * 8;
   let ver = 1;
   for (; ver <= MAX_VERSION; ver++) {
-    const countBits = ver <= 9 ? 8 : 16;
-    if (4 + countBits + bytes.length * 8 <= dataCodewords(ver) * 8) break;
+    if (4 + countBits(ver) + dataBits <= dataCodewords(ver) * 8) break;
   }
   if (ver > MAX_VERSION) throw new Error('Text is too long for a QR code');
 
-  // Bit stream: mode (0100 = byte), character count, data, terminator, padding
+  // Bit stream: mode (0100 = byte, 0010 = alphanumeric), character count, data, terminator, padding
   const bits: number[] = [];
   const put = (value: number, len: number) => { for (let i = len - 1; i >= 0; i--) bits.push((value >>> i) & 1); };
-  put(0b0100, 4);
-  put(bytes.length, ver <= 9 ? 8 : 16);
-  for (const b of bytes) put(b, 8);
+  if (alnum) {
+    put(0b0010, 4);
+    put(text.length, countBits(ver));
+    // Two characters in 11 bits (45 × first + second), a last odd one in 6
+    for (let i = 0; i < text.length; i += 2) {
+      const a = QR_ALNUM.indexOf(text[i]);
+      if (i + 1 < text.length) put(a * 45 + QR_ALNUM.indexOf(text[i + 1]), 11);
+      else put(a, 6);
+    }
+  } else {
+    put(0b0100, 4);
+    put(bytes.length, countBits(ver));
+    for (const b of bytes) put(b, 8);
+  }
   const capacity = dataCodewords(ver) * 8;
   put(0, Math.min(4, capacity - bits.length));
   put(0, (8 - (bits.length % 8)) % 8);
