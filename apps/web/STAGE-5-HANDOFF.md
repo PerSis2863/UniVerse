@@ -509,9 +509,22 @@ Progress table (row D6).
   test-sending a webhook; OneRoster preview, sync and history (a second sync reuses the mapping); both pages
   at 390 px light and dark with axe. **`src/server/schema-columns.test.ts`** applies every migration to an
   in-memory database and checks each model against its table, so this can't happen again unnoticed.
-- **Still open (seen on Next.js too, not caused by the direct path):** 401s on
-  /student/administrative/scholarships, /student/reels, /student/tutoring and /teacher/reels; 404s on
-  /student/administrative/consents and /trust; /api/calendar-link 503 without its secret.
+- **Fixed (14 Oct): pages that never worked.** Scholarships (student), peer tutoring and Revision Reels
+  (student and teacher) used a bare `fetch` with no sign-in token, so every call answered 401: they use
+  `authedFetch` now. Settings → Consents and the public Trust page passed full `/api/...` addresses to the
+  core client (`/api/core/api/...`, 404), and **the DPDP grievance form posted to a route that never
+  existed**: they use `authedJson` on the real routes. Revision Reels with no class chosen asked for a course
+  called "sample": it now lists the latest from my classes (`GET /api/micro-lessons`, sample stub added).
+  **Security:** micro-lessons ignored `courseAccess`'s answer (it returns null, it doesn't throw), so any
+  signed-in person could read any class's micro-lessons and make them again; now only the class's teacher,
+  its students and admins see them, and only the teacher or an admin remakes a pack. Recording a reel view
+  looked the lesson up by the wrong id (always 404). Career: companies without a logo showed a
+  ui-avatars.com image (a third-party request with the company's name); they show initials now. A student
+  opening /parent goes to their own home instead of "Couldn't load". **`src/lib/core-api-calls.test.ts`**
+  checks every core-client call in the app against `src/server/app.ts`'s routes.
+- **Calendar links and parent links need `SESSION_SECRET`** (not only LMS sign-in, as the setup notes said;
+  fixed in `DEPLOY-CLOUDFLARE.md` and Admin → Server settings). Without it the calendar card says links
+  aren't available.
 
 ## D16 · Parent co-pilot: done (14 Oct 2026)
 

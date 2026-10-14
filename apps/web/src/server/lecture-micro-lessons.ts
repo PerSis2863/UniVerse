@@ -1,7 +1,7 @@
 import prisma from '@/lib/db';
 import { courseAccess } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
-import { NotFoundException } from './http';
+import { ForbiddenException, NotFoundException } from './http';
 import { recordXApiStatement } from './analytics-warehouse';
 
 // Stage 5 · D3: Lecture to Everything (Micro-Lessons / Audio Recaps & Revision Reels)
@@ -287,8 +287,10 @@ export async function generateLectureMicroLesson(
     throw new NotFoundException('Class session not found');
   }
 
-  // Check user course access
-  await courseAccess(session.courseId, user);
+  // Only the class's teacher, its students and admins; only the teacher (or an admin) makes it again.
+  const access = await courseAccess(session.courseId, user);
+  if (!access) throw new NotFoundException('Class session not found');
+  if (forceRegenerate && !access.canManage) throw new ForbiddenException('Only the class teacher can make this pack again.');
 
   // If exists and not force-regenerate, return existing
   const existing = await prisma.lectureMicroLesson.findUnique({
@@ -408,7 +410,7 @@ export async function getLectureMicroLesson(
     throw new NotFoundException('Class session not found');
   }
 
-  await courseAccess(session.courseId, user);
+  if (!(await courseAccess(session.courseId, user))) throw new NotFoundException('Class session not found');
 
   const existing = await prisma.lectureMicroLesson.findUnique({
     where: { sessionId },
@@ -427,7 +429,7 @@ export async function listCourseMicroLessons(
   courseId: string,
   user: SessionUser
 ): Promise<LectureMicroLessonData[]> {
-  await courseAccess(courseId, user);
+  if (!(await courseAccess(courseId, user))) throw new NotFoundException('Course not found');
 
   const course = await prisma.course.findUnique({
     where: { id: courseId },
@@ -447,19 +449,34 @@ export async function listCourseMicroLessons(
   return lessons.map((l) => formatMicroLessonResponse(l, course.code, course.name));
 }
 
-/** Records interaction with a micro-lesson or specific reel. */
+/**
+ * The latest micro-lessons from the classes I teach or take (admins: every class), newest first: the
+ * Revision Reels page when no class is chosen. Same people as courseAccess (teacher, enrolled students, admins).
+ */
+export async function listMyMicroLessons(user: SessionUser): Promise<LectureMicroLessonData[]> {
+  const lessons = await prisma.lectureMicroLesson.findMany({
+    where: user.role === 'ADMIN' ? {} : { course: { OR: [{ teacherId: user.id }, { enrollments: { some: { studentId: user.id } } }] } },
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+    include: { course: { select: { code: true, name: true } } },
+  });
+  return lessons.map((l) => formatMicroLessonResponse(l, l.course.code, l.course.name));
+}
+
+/** Records a view of a class session's micro-lesson (or one of its reels), by people in that class. */
 export async function trackMicroLessonInteraction(
-  lessonId: string,
+  sessionId: string,
   reelId: string | null,
   user: SessionUser
 ): Promise<{ success: boolean; viewCount: number }> {
   const lesson = await prisma.lectureMicroLesson.findUnique({
-    where: { id: lessonId },
+    where: { sessionId },
   });
 
-  if (!lesson) {
+  if (!lesson || !(await courseAccess(lesson.courseId, user))) {
     throw new NotFoundException('Micro lesson not found');
   }
+  const lessonId = lesson.id;
 
   const updated = await prisma.lectureMicroLesson.update({
     where: { id: lessonId },

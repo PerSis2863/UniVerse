@@ -1865,6 +1865,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/class-sessions\/([^/]+)\/replay$/, () => ok({ results: [] })],
   // Lecture to Everything: Micro-Lessons & Revision Reels (Stage 5 · D3)
   [/^\/api\/courses\/([^/]+)\/micro-lessons$/, () => ok([SAMPLE_MICRO_LESSON])],
+  [/^\/api\/micro-lessons$/, () => ok([SAMPLE_MICRO_LESSON])],
   [/^\/api\/class-sessions\/([^/]+)\/micro-lesson$/, () => ok(SAMPLE_MICRO_LESSON)],
   // Impact-to-Scholarship Exchange (Stage 5 · D4)
   [/^\/api\/scholarships\/pools$/, () => ok(SAMPLE_IMPACT_POOLS)],

@@ -21,6 +21,7 @@ import { m as motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
+import { authedJson } from '@/lib/authed-fetch';
 
 const CONSENT_DETAILS = {
   MARKETING: {
@@ -98,8 +99,8 @@ export function ConsentsPanel({ embedded = false }: { embedded?: boolean }) {
     onError: () => toast.error('Failed to load consents'),
   });
 
-  const { data: grievances, mutate: mutateGrievances } = useSWR<GrievanceItem[]>('/api/compliance/grievance', fetcher);
-  const { data: ferpaLogs } = useSWR<FerpaLogItem[]>('/api/compliance/ferpa/logs', fetcher);
+  const { data: grievances, mutate: mutateGrievances } = useSWR<GrievanceItem[]>('/api/compliance/grievance', authedJson);
+  const { data: ferpaLogs } = useSWR<FerpaLogItem[]>('/api/compliance/ferpa/logs', authedJson);
 
   const consents: Record<ConsentKey, boolean> = {
     MARKETING: false,
@@ -154,11 +155,14 @@ export function ConsentsPanel({ embedded = false }: { embedded?: boolean }) {
 
     setSubmittingGrievance(true);
     try {
-      await api.post('/compliance/grievance', {
-        requestType,
-        details,
-        nomineeName: requestType === 'NOMINATION' ? nomineeName : null,
-        nomineeEmail: requestType === 'NOMINATION' ? nomineeEmail : null,
+      await authedJson('/api/compliance/grievance', {
+        method: 'POST',
+        body: JSON.stringify({
+          requestType,
+          details,
+          nomineeName: requestType === 'NOMINATION' ? nomineeName : null,
+          nomineeEmail: requestType === 'NOMINATION' ? nomineeEmail : null,
+        }),
       });
       toast.success('Your compliance request has been registered with the DPO office');
       setShowGrievanceModal(false);

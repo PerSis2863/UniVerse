@@ -60,9 +60,11 @@ Postgres database have been removed.
      `node -e "console.log(require('crypto').generateKeyPairSync('ed25519').privateKey.export({type:'pkcs8',format:'pem'}))"`
      The same key signs Open Badges (skills passport) and verified impact reports. Keep it: badges and
      reports signed with it stop verifying if it changes.
-   - `SESSION_SECRET`: a random string of 32+ characters, needed for sign-in from an LMS (LTI 1.3). Generate
+   - `SESSION_SECRET`: a random string of 32+ characters, needed for calendar subscription links ("Add to your
+     calendar"), the links students give a parent, and sign-in from an LMS (LTI 1.3). Generate
      one with `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`. Changing it signs
-     out everyone who came in from their LMS (they just open UniVerse from the course again).
+     out everyone who came in from their LMS (they just open UniVerse from the course again) and stops existing
+     calendar and parent links working (people copy them again).
    - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_EMAIL` for push notifications (optional)
    - `CHAIN_ANCHOR_ENABLED`, `CHAIN_ANCHOR_PRIVATE_KEY`, … to anchor credentials on Polygon (optional, see `src/server/services/chain-anchor.service.ts`)
    - `DEMO_LOGIN_ENABLED=true` only if the demo accounts should be able to sign in without a password

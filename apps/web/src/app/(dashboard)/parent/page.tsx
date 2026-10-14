@@ -25,6 +25,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { api, errorMessage } from '@/lib/api';
 import { fadeUp } from '@/lib/motion';
 import { useAuthStore } from '@/store/auth';
+import { homeFor } from '@/lib/role-home';
 import { cn } from '@/lib/utils';
 
 // The parent app (Stage 5 · B16.1): a parent or guardian account sees each linked child's
@@ -39,7 +40,12 @@ type Tab = 'school' | 'messages' | 'meetings' | 'forms';
 const RELATIONS = ['Mother', 'Father', 'Parent', 'Guardian', 'Grandparent', 'Other'];
 
 export default function ParentPage() {
-  const { data, error, isLoading, mutate } = useSWR<{ children: Child[] }>(KEY, authedJson);
+  // Only parent accounts have this page: anyone else (a student following an old link) goes to their own home.
+  const me = useAuthStore((s) => s.user);
+  const notParent = !!me?.role && me.role !== 'GUARDIAN';
+  const go = useRouter();
+  useEffect(() => { if (notParent) go.replace(homeFor(me)); }, [notParent, me, go]);
+  const { data, error, isLoading, mutate } = useSWR<{ children: Child[] }>(notParent ? null : KEY, authedJson);
   const { data: notes } = useSWR<Note[]>('/api/notifications', authedJson);
   const [selected, setSelected] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);

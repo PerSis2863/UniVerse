@@ -19,6 +19,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import type { LectureMicroLessonData, RevisionReel, MindMapNode } from '@/server/lecture-micro-lessons';
+import { authedFetch } from '@/lib/authed-fetch';
 
 interface LectureRevisionReelsProps {
   initialLesson?: LectureMicroLessonData;
@@ -69,11 +70,15 @@ export function LectureRevisionReels({
         } else if (courseId) {
           endpoint = `/api/courses/${courseId}/micro-lessons`;
         } else {
-          endpoint = '/api/courses/sample/micro-lessons';
+          endpoint = '/api/micro-lessons'; // the latest from all my classes
         }
 
-        const res = await fetch(endpoint);
-        if (res.ok && !cancelled) {
+        const res = await authedFetch(endpoint);
+        if (cancelled) {
+          void res.body?.cancel(); // let go of the connection
+          return;
+        }
+        if (res.ok) {
           const data = (await res.json()) as LectureMicroLessonData | LectureMicroLessonData[];
           if (Array.isArray(data)) {
             setLesson(data[0] || null);
@@ -100,7 +105,7 @@ export function LectureRevisionReels({
   const trackView = useCallback(async (reelId: string | null) => {
     if (!lesson) return;
     try {
-      await fetch(`/api/class-sessions/${lesson.sessionId}/micro-lesson/interact`, {
+      await authedFetch(`/api/class-sessions/${lesson.sessionId}/micro-lesson/interact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reelId }),

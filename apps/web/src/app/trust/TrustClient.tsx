@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { fetcher } from '@/lib/fetcher';
+import { authedJson } from '@/lib/authed-fetch';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import Link from '@/components/ui/Link';
@@ -57,7 +57,7 @@ export function TrustClient() {
 
   const { data: statusData, isLoading, mutate } = useSWR<TrustStatusResponse>(
     '/api/trust/status',
-    fetcher,
+    authedJson,
     { refreshInterval: 60000, revalidateOnFocus: false },
   );
 

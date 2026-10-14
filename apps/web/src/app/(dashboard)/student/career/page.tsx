@@ -8,10 +8,21 @@ import { LoadError } from '@/components/ui/LoadError';
 import { fetcher } from '@/lib/fetcher';
 import { Briefcase, Calendar, MapPin, Building, ChevronRight } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
-import Image from 'next/image';
+import { avatarGradient } from '@/components/ui/Avatar';
 
-interface Opportunity { id: string; title: string; company: string; logo: string; type: string; location: string; deadline: string }
+interface Opportunity { id: string; title: string; company: string; logo: string | null; type: string; location: string; deadline: string }
 interface CareerEvent { id: string; title: string; date: string; location?: string | null }
+
+/** The company's logo, or its initials when it has none (or it doesn't load). */
+function CompanyLogo({ name, src }: { name: string; src: string | null }) {
+  const [failed, setFailed] = useState(false);
+  if (src && !failed) {
+    // eslint-disable-next-line @next/next/no-img-element -- any company's own address; images aren't optimised on Workers
+    return <img src={src} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} className="w-full h-full object-contain" />;
+  }
+  const letters = name.split(/\s+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+  return <span aria-hidden className={`w-full h-full flex items-center justify-center bg-gradient-to-br text-white font-bold text-sm ${avatarGradient(name)}`}>{letters}</span>;
+}
 
 export default function CareerPage() {
   const opps = useSWR<Opportunity[]>('/career/opportunities', fetcher);
@@ -63,7 +74,7 @@ export default function CareerPage() {
                       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start">
                         <div className="flex gap-4">
                           <div className="w-12 h-12 relative rounded-xl bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
-                            <Image src={job.logo} alt={job.company} fill className="object-contain" />
+                            <CompanyLogo name={job.company} src={job.logo} />
                           </div>
                           <div>
                             <h3 className="font-semibold text-lg text-zinc-900 dark:text-white group-hover:text-indigo-400 transition-colors">

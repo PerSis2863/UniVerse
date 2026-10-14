@@ -26,7 +26,7 @@ const SETTINGS: { name: string; what: string; needed?: boolean }[] = [
   { name: 'R2_SECRET_ACCESS_KEY', what: 'File storage (large chat files)' },
   { name: 'NEXT_PUBLIC_FILES_URL', what: 'File storage address (https://files.universeimpact.com)' },
   { name: 'CREDENTIAL_SIGNING_PRIVATE_KEY', what: 'Signed credentials and badges' },
-  { name: 'SESSION_SECRET', what: 'Sign-in from an LMS' },
+  { name: 'SESSION_SECRET', what: 'Calendar links, parent links and sign-in from an LMS' },
   { name: 'VAPID_PUBLIC_KEY', what: 'Push notifications' },
   { name: 'VAPID_PRIVATE_KEY', what: 'Push notifications' },
   { name: 'VAPID_EMAIL', what: 'Push notifications contact' },
