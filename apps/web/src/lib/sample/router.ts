@@ -1602,6 +1602,29 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/courses\/([^/]+)\/question-bank$/, () => ok({ questions: [], difficulties: ['EASY', 'MEDIUM', 'HARD'] })],
   // Gradebook categories (Stage 5 · B3.4): none in the sample, so finals are plain averages.
   [/^\/api\/courses\/([^/]+)\/grade-categories$/, () => ok({ categories: [], assessments: [] })],
+  // Discussion board (Stage 5 · B2): one answered question to look at.
+  [/^\/api\/courses\/([^/]+)\/discussion$/, ({ db: d, m }) => {
+    const c = course(d, m[1]);
+    if (!c) return fail('Course not found.', 404);
+    const canManage = d.teacherView && c.teacher.id === d.me.id;
+    const at = new Date(Date.now() - 3 * 3600_000).toISOString();
+    return ok({ course: { id: c.id, code: c.code, name: c.name }, canManage, threads: [
+      { id: 'sample-thread', kind: 'QUESTION', title: 'When do we use a while loop instead of a for loop?', excerpt: 'I get the syntax but not when to pick which one.', pinned: false, locked: false, answered: true, endorsed: true, votes: 4, replies: 2, voted: false, author: { id: null, name: 'Anonymous classmate', avatar: null, staff: false, mine: false, anonymous: true }, createdAt: at, lastActivityAt: at },
+    ] });
+  }],
+  [/^\/api\/courses\/([^/]+)\/discussion\/([^/]+)$/, ({ db: d, m }) => {
+    const c = course(d, m[1]);
+    if (!c) return fail('Course not found.', 404);
+    const canManage = d.teacherView && c.teacher.id === d.me.id;
+    const at = new Date(Date.now() - 3 * 3600_000).toISOString();
+    const teacher = { id: c.teacher.id, name: c.teacher.name, avatar: null, staff: true, mine: false, anonymous: false };
+    return ok({ course: { id: c.id, code: c.code, name: c.name }, canManage,
+      thread: { id: m[2], kind: 'QUESTION', title: 'When do we use a while loop instead of a for loop?', body: 'I get the syntax but not when to pick which one.', pinned: false, locked: false, answered: true, votes: 4, voted: false, editedAt: null, createdAt: at, author: { id: null, name: 'Anonymous classmate', avatar: null, staff: false, mine: false, anonymous: true }, canEdit: false, canDelete: false, canAccept: false, canReply: true },
+      replies: [
+        { id: 'sample-reply-1', body: 'Use a for loop when you know how many times to repeat (each item in a list). Use a while loop when you repeat until something happens, like until the user types "quit".', votes: 6, voted: false, endorsed: true, accepted: true, editedAt: null, createdAt: at, author: teacher, canEdit: false, canDelete: false },
+        { id: 'sample-reply-2', body: 'This helped me: a for loop counts, a while loop waits.', votes: 2, voted: false, endorsed: false, accepted: false, editedAt: null, createdAt: at, author: { id: 'sample-student', name: 'Priya Sharma', avatar: null, staff: false, mine: false, anonymous: false }, canEdit: false, canDelete: false },
+      ] });
+  }],
   // Course modules (Stage 5 · B2): three units made from the course's sample materials and quiz.
   [/^\/api\/courses\/([^/]+)\/modules$/, ({ db: d, m }) => {
     const c = course(d, m[1]);
@@ -2330,6 +2353,8 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/student\/guardian-accounts$/, () => { notice(); return ok({ links: [], code: null }); }],
   ['POST', /^\/api\/admin\/report-cards$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/question-bank$/, () => { notice(); return ok({ questions: [], imported: 0, added: 0 }); }],
+  // The discussion board: an example thread to look at; posting only shows that it isn't saved.
+  ['POST', /^\/api\/courses\/([^/]+)\/discussion(\/[^/]+(\/suggest)?)?$/, () => { notice(); return ok({ ok: true }); }],
   // Copy to a new term: sample mode only shows that it can't be saved.
   ['POST', /^\/api\/courses\/([^/]+)\/copy$/, () => { notice(); return ok({ error: 'Sample mode: copying a course isn’t saved.' }, 400); }],
   ['POST', /^\/api\/courses\/([^/]+)\/copy\/step$/, () => ok({ copied: 0, after: null })],

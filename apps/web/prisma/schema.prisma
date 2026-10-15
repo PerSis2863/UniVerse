@@ -187,6 +187,9 @@ model User {
   classroomCheckins      ClassroomCheckin[]
   oralChecks             OralCheck[]             // oral checks I set (Stage 5 · D11)
   oralSessions           OralSession[]           // orals I did: practice and checks
+  courseThreads          CourseThread[]          // course discussion threads I started (Stage 5 · B2)
+  coursePosts            CoursePost[]            // my replies in course discussions
+  courseVotes            CourseVote[]
   aiUses                 AiUse[]                 // AI help I used (Stage 5 · D12)
   wellbeingSettings      WellbeingSettings?      // wellbeing radar (Stage 5 · D13), opt-in
   wellbeingCheckins      WellbeingCheckin[]
@@ -520,6 +523,7 @@ model Course {
   autopilotPlans GroupAutopilotPlan[]
   classroomSessions ClassroomSession[] // in-person sessions (Stage 5 · D7)
   oralChecks        OralCheck[] // oral checks (Stage 5 · D11)
+  threads           CourseThread[] // the discussion board (Stage 5 · B2)
   campuses       CourseCampus[] // partner campuses it's shared with (upgrade 9)
   modules        CourseModule[] // ordered units of items (Stage 5 · B2)
   gradeCategories  GradeCategory[] // gradebook categories (Stage 5 · B3.4)
@@ -5638,4 +5642,62 @@ model HealthCount {
 
   @@id([day, key])
   @@map("health_counts")
+}
+
+/// A course discussion thread (Stage 5 · B2): a question (it can be answered) or a discussion.
+/// `anonymous`: its author's name is hidden from other students (never from the teacher).
+model CourseThread {
+  id             String       @id @default(cuid())
+  courseId       String
+  course         Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  authorId       String
+  author         User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  kind           String       @default("QUESTION") // QUESTION, DISCUSSION
+  title          String
+  body           String
+  anonymous      Boolean      @default(false)
+  pinned         Boolean      @default(false)
+  locked         Boolean      @default(false)
+  answerId       String? // the reply accepted as the answer
+  votes          Int          @default(0)
+  replies        Int          @default(0)
+  editedAt       DateTime?
+  lastActivityAt DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  posts          CoursePost[]
+
+  @@index([courseId, lastActivityAt])
+  @@index([authorId])
+  @@map("course_threads")
+}
+
+/// A reply in a course discussion; the teacher can endorse it.
+model CoursePost {
+  id        String       @id @default(cuid())
+  threadId  String
+  thread    CourseThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  anonymous Boolean      @default(false)
+  endorsed  Boolean      @default(false)
+  votes     Int          @default(0)
+  editedAt  DateTime?
+  createdAt DateTime     @default(now())
+
+  @@index([threadId, createdAt])
+  @@index([authorId])
+  @@map("course_posts")
+}
+
+/// One upvote per person per thread or reply (targetId is either's id).
+model CourseVote {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetId  String
+  createdAt DateTime @default(now())
+
+  @@id([userId, targetId])
+  @@index([targetId])
+  @@map("course_votes")
 }

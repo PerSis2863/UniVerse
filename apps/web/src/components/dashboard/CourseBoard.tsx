@@ -12,7 +12,7 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  BadgeCheck, Copy, Layers, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
+  BadgeCheck, Copy, Layers, Loader2, MessagesSquare, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { uploadChatFile } from '@/components/chat/chat-client';
@@ -48,6 +48,8 @@ const CourseGroupProjects = dynamic(() => import('@/components/groups/CourseGrou
 const CourseOralChecks = dynamic(() => import('@/components/oral/CourseOralChecks').then((m) => m.CourseOralChecks), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const CourseModules = dynamic(() => import('@/components/dashboard/CourseModules').then((m) => m.CourseModules), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const ClassSessions = dynamic(() => import('@/components/dashboard/ClassSessions').then((m) => m.ClassSessions), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
+// The discussion board (Stage 5 · B2), its own tab, loaded when opened.
+const CourseDiscussion = dynamic(() => import('@/components/dashboard/CourseDiscussion').then((m) => m.CourseDiscussion), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 // Copy to a new term (Stage 5 · B2), loaded when opened.
 const CourseCopy = dynamic(() => import('@/components/dashboard/CourseCopy').then((m) => m.CourseCopy), { ssr: false });
 const QuizManager = dynamic(() => import('@/components/quizzes/QuizManager').then((m) => m.QuizManager), { ssr: false });
@@ -78,6 +80,8 @@ interface Board {
 const TABS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'board', label: 'Announcements', icon: Bell },
   { id: 'modules', label: 'Modules', icon: Layers },
+  // The course's discussion board (Stage 5 · B2).
+  { id: 'discussion', label: 'Discussion', icon: MessagesSquare },
   { id: 'sessions', label: 'Class sessions', icon: NotebookPen },
   { id: 'materials', label: 'Materials', icon: FileText },
   { id: 'readings', label: 'Reading list', icon: BookOpen },
@@ -113,6 +117,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
   const [tab, setTab] = useState(() => (TABS.some((t) => t.id === link.get('tab')) ? link.get('tab')! : 'board'));
   const [sessionId, setSessionId] = useState<string | null>(() => link.get('session'));
   const [copying, setCopying] = useState(false);
+  const [threadId, setThreadId] = useState<string | null>(() => link.get('thread'));
   // The picked course, or the first one when it isn't among yours (once your courses have loaded).
   const courseId = !courses.length || courses.some((c) => c.id === pickedId) ? pickedId : courses[0].id;
 
@@ -167,7 +172,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
         {/* Course switcher */}
         <div className="glass-bar border-b border-zinc-200/70 dark:border-white/[0.06] px-4 sm:px-8 py-3 flex gap-2 overflow-x-auto scrollbar-none">
           {courses.map((c) => (
-            <button key={c.id} onClick={() => setCourseId(c.id)}
+            <button key={c.id} onClick={() => { setCourseId(c.id); setThreadId(null); }}
               className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-sm whitespace-nowrap border transition-all',
                 courseId === c.id ? 'text-white border-transparent shadow-lg' : 'bg-white/60 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-indigo-400/40')}
               style={courseId === c.id ? { background: courseShade(c.color, c.code) } : undefined}>
@@ -224,6 +229,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
                 {tab === 'board' && <LatestPack board={board} onOpen={(id) => { setSessionId(id); setTab('sessions'); }} />}
                 {tab === 'board' && <Announcements board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'modules' && course && <CourseModules courseId={course.id} />}
+                {tab === 'discussion' && course && <CourseDiscussion courseId={course.id} openId={threadId} onOpen={setThreadId} />}
                 {tab === 'sessions' && <ClassSessions sessions={board.sessions ?? []} canManage={canManage} materials={board.materials} openId={sessionId} refresh={() => void mutate()} />}
                 {tab === 'materials' && <Materials board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'readings' && <Readings board={board} canManage={canManage} refresh={mutate} />}
