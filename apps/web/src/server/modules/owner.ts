@@ -20,6 +20,7 @@ import { healthCheck } from '../owner-health';
 import { callHealth } from '../calls';
 import { CloudflareAdminError, emailCode, rollback } from '../cloudflare-admin';
 import { oneOf } from '../body';
+import { latestCspReports } from '../csp-reports';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -151,6 +152,9 @@ export default function ownerModule(router: Router) {
   r.get('calls', () => callHealth());
 
   // ── Overview & live activity ──
+
+  // ── What browsers blocked under the Content-Security-Policy (src/server/csp-reports.ts) ──
+  r.get('csp-reports', () => latestCspReports());
 
   // ── Error monitoring (src/server/errors.ts) ──
   r.get('errors', async ({ query }) => {

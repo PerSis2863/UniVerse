@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Mail, Lock, Loader2, Eye, EyeOff, Building2, ArrowRight } from 'lucide-react';
+import { Sparkles, Mail, Lock, Loader2, Eye, EyeOff, Building2, ArrowRight, Fingerprint } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { useAuthStore } from '@/store/auth';
 import { auth, warmUpPopupSignIn } from '@/lib/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, OAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { api } from '@/lib/api';
-import { reportSession } from '@/lib/sign-in-history';
+import { claimSessionReport, reportSession } from '@/lib/sign-in-history';
+import { passkeyError, signInWithPasskey, usePasskeysSupported } from '@/lib/passkey-client';
 import { EmailVerifyPanel } from '@/components/auth/EmailVerifyPanel';
 import { TwoStepPanel } from '@/components/auth/TwoStepPanel';
 import dynamic from 'next/dynamic';
@@ -34,10 +35,12 @@ export default function LoginPage() {
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null); // password account whose email isn't confirmed yet
   // Admin or owner account that still has to type the emailed sign-in code: how it signed in.
-  const [twoStep, setTwoStep] = useState<{ token: string; method?: 'google' | 'password' | 'phone' | 'apple' | 'microsoft' | 'sso' } | null>(null);
+  const [twoStep, setTwoStep] = useState<{ token: string; method?: 'google' | 'password' | 'phone' | 'apple' | 'microsoft' | 'sso' | 'passkey' } | null>(null);
 
   // Ready the Google/Apple window now, so a tap opens it straight away (not blocked).
   useEffect(() => { warmUpPopupSignIn(); }, []);
+  // Passkeys need the browser's support (known after hydration: the page is built ahead of time).
+  const canPasskey = usePasskeysSupported() === true;
 
   // Sent here by the app (?step=code) when an admin's session still needs the emailed code.
   useEffect(() => {
@@ -48,7 +51,7 @@ export default function LoginPage() {
     });
   }, []);
 
-  const handleLoginSuccess = async (token: string, method?: 'google' | 'password' | 'phone' | 'apple' | 'microsoft' | 'sso') => {
+  const handleLoginSuccess = async (token: string, method?: 'google' | 'password' | 'phone' | 'apple' | 'microsoft' | 'sso' | 'passkey') => {
     try {
       localStorage.setItem('accessToken', token);
       setTokens(token);
@@ -79,7 +82,9 @@ export default function LoginPage() {
         avatar: user.avatar,
         owner: user.owner === true,
       });
-      reportSession('SIGN_IN', token.startsWith('mock-token-') ? 'demo' : method);
+      // A passkey sign-in is recorded by the server when it checks the passkey.
+      if (method === 'passkey') claimSessionReport();
+      else reportSession('SIGN_IN', token.startsWith('mock-token-') ? 'demo' : method);
       // First time here (signed in with Google / Apple / phone but never registered): finish
       // registration — choose Individual / Staff / Organization and a name — before anything else.
       if (!user.onboardedAt && !user.owner) {
@@ -91,6 +96,21 @@ export default function LoginPage() {
     } catch (err) {
       console.error('Failed to sync user data', err);
       setError('Login successful, but failed to retrieve user data. Please contact support.');
+    }
+  };
+
+  // Passkey (Stage 5 · A8): the device's fingerprint, face or PIN; the server answers with a
+  // UniVerse session token for a week (src/server/passkeys.ts). No password, no emailed code.
+  const handlePasskeyLogin = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const token = await signInWithPasskey();
+      await handleLoginSuccess(token, 'passkey');
+    } catch (err) {
+      setError(passkeyError(err));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -348,8 +368,8 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {/* School SSO and Phone Actions */}
-              <div className="grid grid-cols-2 gap-2.5 mb-6">
+              {/* School SSO, Phone and Passkey */}
+              <div className={`grid ${canPasskey ? 'grid-cols-3' : 'grid-cols-2'} gap-2.5 mb-6`}>
                 <button
                   type="button"
                   onClick={() => setShowSsoInput(!showSsoInput)}
@@ -372,6 +392,17 @@ export default function LoginPage() {
                   </svg>
                   Use Phone
                 </button>
+                {canPasskey && (
+                  <button
+                    type="button"
+                    onClick={() => void handlePasskeyLogin()}
+                    disabled={isLoading}
+                    className="flex items-center justify-center gap-1.5 border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 rounded-xl py-2 px-3 text-xs font-semibold transition-colors disabled:opacity-50"
+                  >
+                    <Fingerprint className="w-3.5 h-3.5" />
+                    Passkey
+                  </button>
+                )}
               </div>
 
               {/* School SSO Email Input Drawer */}

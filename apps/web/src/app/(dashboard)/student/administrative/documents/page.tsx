@@ -8,6 +8,7 @@ import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { openPrivateFile } from '@/lib/private-file';
 
 type Doc = {
   id: string;
@@ -86,24 +87,8 @@ export default function DocumentsPage() {
     setActiveModal('view');
   };
 
-  const handleDownload = async (doc: Doc) => {
-    toast.success(`Downloading ${doc.title}...`);
-    try {
-      const response = await fetch(doc.fileUrl);
-      if (!response.ok) throw new Error('Download failed');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = doc.title;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch {
-      toast.error('Failed to download document');
-    }
-  };
+  // Your documents are private: they open through a link that works for 10 minutes (src/lib/private-file.ts).
+  const handleDownload = (doc: Doc) => openPrivateFile(doc.fileUrl, (message) => toast.error(message));
 
   if (isLoading) {
     return (

@@ -11,7 +11,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 interface SignIn { id: string; kind: 'SIGN_IN' | 'SIGN_UP' | 'SESSION'; method: string | null; ip: string | null; country: string | null; city: string | null; device: string | null; createdAt: string }
 
 const KIND = { SIGN_IN: 'Signed in', SIGN_UP: 'Created the account', SESSION: 'Opened UniVerse' } as const;
-const METHOD: Record<string, string> = { google: 'with Google', password: 'with email and password', phone: 'with phone number', apple: 'with Apple', demo: '(demo account)' };
+const METHOD: Record<string, string> = { google: 'with Google', password: 'with email and password', phone: 'with phone number', apple: 'with Apple', microsoft: 'with Microsoft', sso: 'with school sign-in', passkey: 'with a passkey', demo: '(demo account)' };
 const regionName = (code: string | null) => {
   if (!code || code === 'XX' || code === 'T1') return null;
   try {

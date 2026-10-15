@@ -10,7 +10,7 @@ const PROVIDER: Record<string, string> = { 'google.com': 'Google', 'apple.com': 
 
 /** Settings → Privacy & Security: how you sign in, email verification, password change, sign out. */
 export function AccountSecurity() {
-  // Demo and LMS sessions have no Firebase account (null); otherwise loaded below (undefined = loading).
+  // Demo, LMS and passkey sessions have no Firebase sign-in here (null); otherwise loaded below (undefined = loading).
   const [info, setInfo] = useState<Info | undefined>(() => {
     try { const t = localStorage.getItem('accessToken') ?? ''; return t.startsWith('mock-token-') || t.startsWith('ut1.') ? null : undefined; } catch { return undefined; }
   });
@@ -97,7 +97,7 @@ export function AccountSecurity() {
             <button onClick={() => setPw({ current: '', next: '' })} className="px-4 py-2 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm font-semibold text-zinc-700 dark:text-zinc-200 inline-flex items-center gap-2"><KeyRound className="w-4 h-4" /> Change password</button>
           ))}
         </>
-      ) : <p className="text-sm text-zinc-500">This session is managed by your organization (LMS or demo), so there’s no password to manage here.</p>}
+      ) : <p className="text-sm text-zinc-600 dark:text-zinc-400">You signed in with a passkey, your school’s LMS or a demo account, so there’s no password to manage here.</p>}
       <button onClick={signOut} className="text-sm font-semibold text-zinc-500 hover:text-rose-500 inline-flex items-center gap-1.5"><LogOut className="w-4 h-4" /> Sign out on this device</button>
     </div>
   );

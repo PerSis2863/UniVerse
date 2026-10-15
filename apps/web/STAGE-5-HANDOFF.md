@@ -8,11 +8,12 @@ done, where the code is and what's left for each item. Keep that table up to dat
 - **`main` has everything up to PR #58** (Meet "Error 1101" fix, D17 moving QR codes, D18 skills match,
   page-error fixes). **Branch `claude/great-hamilton-8g8xdm` adds (not merged; merge only when the
   owner says "merge"):** live updates for groups of any size on Workers Free (FREE.1), the daily
-  free-plan warning (FREE.2, migration **0129**) and **Q1** (pages with an id never start Next.js;
-  Progress rows at the end of the plan). **Next migration: `0130`.**
+  free-plan warning (FREE.2, migration **0129**), **Q1** (pages with an id never start Next.js) and
+  **Q2** (security: passkeys, devices, sign-in rate limit, CSP reports, private file links; migration
+  **0130**). Progress rows at the end of the plan. **Next migration: `0131`.**
 - **What's left is written up in `STAGE-5-PLAN.md`, section 4 "Remaining work queue"**: 23 entries
   (Q1–Q23) in the order to do them, each with what exists to build on, the steps, the traps, how to
-  know it's done, and its size. Q1 is done; **continue with Q2** (security: passkeys and the rest).
+  know it's done, and its size. Q1 and Q2 are done; **continue with Q3** (reliability and observability).
 - **A new page with an id in its address** (`/things/[id]`): copy a converted one (`page.tsx` with
   `generateStaticParams` → `'open'`, the client code in `View.tsx` using `usePathParams`), then run
   `node scripts/gen-api-routes.mjs`. A page rendered per request brings "Error 1101" back on Workers Free.

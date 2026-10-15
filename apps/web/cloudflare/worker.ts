@@ -32,11 +32,17 @@ interface Env {
   API_RATE_LIMITER?: RateLimit; // per signed-in user (or per IP when signed out)
   IP_RATE_LIMITER?: RateLimit; // per IP, generous: stops floods from one address
   COSTLY_RATE_LIMITER?: RateLimit; // per user, for AI, email and uploads
+  AUTH_RATE_LIMITER?: RateLimit; // sign-in steps: per address (demo sign-in) or per account (codes)
   [key: string]: unknown;
 }
 
 // Endpoints that cost money or send email per call.
 const COSTLY = /^\/api\/(ai|summarize|premium\/ai-report|support|upload|core\/files\/upload|core\/safety\/report|student\/guardians|chat\/translate-draft|chat\/conversations\/[^/]+\/translate|tutor\/(?!cards)[^/]+\/(ask|practice|flashcards|sources)|assignments\/submissions\/[^/]+\/draft|impact-rooms\/calls\/[^/]+\/report|boards\/[^/]+\/ai)(\/|$)/;
+
+// Sign-in steps someone could try over and over: the demo sign-in (per address) and the emailed
+// code / passkey second step and sign-up (per signed-in account). Passkey sign-in isn't here: it
+// can't be guessed, and a school's whole Wi-Fi shares one address.
+const AUTH_STEP = /^\/api\/core\/auth\/(login|register|two-step\/(send|verify|passkey))$/;
 
 const tooMany = () =>
   Response.json({ error: 'Too many requests. Please wait a minute and try again.' }, { status: 429, headers: { 'Retry-After': '60' } });
@@ -57,6 +63,7 @@ async function rateLimited(request: Request, url: URL, env: Env): Promise<boolea
   if (env.IP_RATE_LIMITER) checks.push(env.IP_RATE_LIMITER.limit({ key: ip }));
   if (env.API_RATE_LIMITER) checks.push(env.API_RATE_LIMITER.limit({ key: who }));
   if (env.COSTLY_RATE_LIMITER && request.method !== 'GET' && COSTLY.test(url.pathname)) checks.push(env.COSTLY_RATE_LIMITER.limit({ key: who }));
+  if (env.AUTH_RATE_LIMITER && request.method === 'POST' && AUTH_STEP.test(url.pathname)) checks.push(env.AUTH_RATE_LIMITER.limit({ key: url.pathname.endsWith('/login') ? `ip:${ip}` : who }));
   return (await Promise.all(checks)).some((r) => !r.success);
 }
 

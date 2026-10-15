@@ -128,6 +128,8 @@ model User {
   streakLastDay      String? // YYYY-MM-DD in the student's time zone
   chatMutedUntil     DateTime? // owner console: can't send chat messages until then
   signedOutAt        DateTime? // "sign out everywhere": sign-ins that started before this are refused
+  /// Stage 5 · A8: sign-ins signed out one by one (Settings → devices), JSON: [sign-in time in seconds, …] (src/server/auth.ts).
+  revokedSessions    String?
   emergencyContacts  Json? // [{ name, relation, phone, email }] (max 5)
   // Campus network (upgrade 9): the campus this person belongs to (set from their email domain) and
   // whether people at partner campuses may find them in search.
@@ -200,6 +202,7 @@ model User {
   safetyAlerts           SafetyAlert[]           @relation("SafetyReporter")
 
   loginEvents LoginEvent[]
+  passkeys    Passkey[]
   uiEvents    UiEvent[]
 
   // Whiteboards
@@ -1122,11 +1125,50 @@ model LoginEvent {
   city      String?
   userAgent String?
   device    String? // "Chrome on Android", ...
+  /// The sign-in this event belongs to (its time in seconds: Firebase auth_time or a UniVerse token's iat), for the devices list.
+  sessionAt Int?
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
   @@map("login_events")
+}
+
+/// Stage 5 · A8: a passkey (fingerprint, face or device PIN) for signing in (src/server/passkeys.ts).
+model Passkey {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The browser's id for the passkey (base64url).
+  credentialId    String    @unique
+  /// The public key (SPKI, base64url) and its COSE algorithm (-7 ES256, -8 EdDSA, -257 RS256).
+  publicKey       String
+  alg             Int
+  signCount       Int       @default(0)
+  /// The newest challenge time (ms) this passkey answered: each answer works once.
+  lastChallengeAt Float     @default(0)
+  name            String
+  createdAt       DateTime  @default(now())
+  lastUsedAt      DateTime?
+
+  @@index([userId])
+  @@map("passkeys")
+}
+
+/// Stage 5 · A8: what browsers blocked under the Content-Security-Policy, one row per kind (counted).
+model CspReport {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  directive String
+  blocked   String
+  page      String
+  sample    String?
+  count     Int      @default(1)
+  firstAt   DateTime @default(now())
+  lastAt    DateTime @default(now())
+
+  @@index([lastAt])
+  @@map("csp_reports")
 }
 
 /// Who did what: role and status changes, grades, credential decisions, deletions, ...

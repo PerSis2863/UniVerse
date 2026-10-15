@@ -20,6 +20,8 @@ import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
 import { isUploadedFileUrl } from '@/lib/file-urls';
+import { isRecordingUrl, openPrivateFile } from '@/lib/private-file';
+
 import { safeHref } from '@/lib/safe-href';
 import { courseShade } from '@/lib/course-color';
 import { SaveOfflineButton } from '@/components/offline/SaveOfflineButton';
@@ -29,6 +31,13 @@ import { SUBJECTS } from '@/lib/options/academic';
 import { QuizReview } from '@/components/quizzes/QuizReview';
 import { downloadIcs } from '@/lib/ics';
 import { TranslatableAnnouncement } from '@/components/shared/Translatable';
+
+/** Class recordings open through a 10-minute private link (src/lib/private-file.ts). */
+function openRecording(e: React.MouseEvent, url: string) {
+  if (!isRecordingUrl(url)) return;
+  e.preventDefault();
+  void openPrivateFile(url, (message) => toast.error(message));
+}
 
 // Class recordings and study packs (their own tab) and quiz management (after "Manage") load when
 // opened, so the board itself shows sooner.
@@ -452,14 +461,14 @@ function Materials({ board, canManage, refresh }: SectionProps) {
             return (
               <div key={m.id} className={`panel p-4 flex items-center gap-3 hover:border-indigo-500/40 transition-colors`}>
                 <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-indigo-500" /></div>
-                <a href={absolute(m.fileUrl)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 group">
+                <a href={absolute(m.fileUrl)} onClick={(e) => openRecording(e, m.fileUrl)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 group">
                   <p className="font-medium text-sm text-zinc-900 dark:text-white truncate group-hover:text-indigo-500">{m.title}</p>
                   <p className="text-xs text-zinc-500">{external ? 'Link' : m.type}{m.size ? ` · ${m.size}` : ''} · {day(m.createdAt)}</p>
                 </a>
                 {!external && m.type !== 'VIDEO' && m.type !== 'IMAGE' && (
                   <button type="button" onClick={() => setReading({ id: m.id, title: m.title })} aria-label={`Read ${m.title}`} title="Read in your language or in simpler words, or listen" className="p-2 rounded-lg text-zinc-500 hover:text-indigo-500 hover:bg-indigo-500/10"><Languages className="w-4 h-4" /></button>
                 )}
-                <a href={absolute(m.fileUrl)} target="_blank" rel="noopener noreferrer" download={!external || undefined} aria-label={external ? 'Open link' : 'Download'} className="p-2 rounded-lg text-zinc-400 hover:text-indigo-500 hover:bg-indigo-500/10">
+                <a href={absolute(m.fileUrl)} onClick={(e) => openRecording(e, m.fileUrl)} target="_blank" rel="noopener noreferrer" download={!external || undefined} aria-label={external ? 'Open link' : 'Download'} className="p-2 rounded-lg text-zinc-400 hover:text-indigo-500 hover:bg-indigo-500/10">
                   {external ? <ExternalLink className="w-4 h-4" /> : <Download className="w-4 h-4" />}
                 </a>
                 {canManage && <RemoveBtn onClick={() => remove('material', m.id, m.title)} />}

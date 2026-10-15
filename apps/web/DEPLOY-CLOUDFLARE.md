@@ -189,8 +189,30 @@ student Settings → Parent or guardian is hidden while it's off.
 ## Security
 
 - **Rate limits** (`ratelimits` in `wrangler.jsonc`, enforced in `cloudflare/worker.ts` before a request
-  reaches the app): 300 API calls a minute per signed-in user, 1,500 a minute per IP address, and
-  20 a minute per user for AI, uploads and support emails. Stripe's webhook is exempt.
+  reaches the app): 300 API calls a minute per signed-in user, 6,000 a minute per IP address, 20 a
+  minute per user for AI, uploads and support emails, and 10 a minute for sign-in steps (the demo
+  sign-in per address; the emailed code, the passkey second step and sign-up per account; passkey
+  sign-in itself can't be guessed and a school's Wi-Fi shares one address, so it isn't limited
+  separately). Stripe's webhook is exempt.
+- **Passkeys** (Settings → Privacy & Security; "Passkey" on the sign-in page): sign in with the
+  device's fingerprint, face or PIN, and for admins the second step without an email. Needs
+  `SESSION_SECRET` (a passkey sign-in is a UniVerse session for 7 days). Settings also lists the
+  **signed-in devices**, each with "Sign out" (within a minute everywhere).
+- **Private files.** Call recordings and students' documents open through links that work for 10
+  minutes (`POST /api/files/link`, `src/server/private-files.ts`), after checking the person may see
+  them. To make recordings' permanent addresses stop working as well, add one free rule (optional;
+  documents keep their long random addresses, which are shared with chat files):
+  Cloudflare dashboard → the files domain's zone → Security → WAF → Custom rules → Create:
+  *URI Path starts with `/recordings/`* (Hostname equals your files domain) → **Block**. The app
+  never needs that address once the rule is on.
+- **Browser reports.** The Content-Security-Policy sends what it blocks to `/api/csp-report`; the
+  owner console's Errors tab lists them ("Blocked by the browser's safety rules").
+- **Dependency check, once a month:** from the repository root, `pnpm audit --prod`. Most findings are
+  in build tools (webpack, sass, sharp in the local simulator) and don't reach the live app; anything
+  in a library the app runs in the browser or the Worker (PDF.js, mammoth, KaTeX…) gets a closer look.
+  October 2026: PDF.js (GHSA-hq66-cqwq-w95j) needs PDF.js's viewer with scripting, which the app
+  doesn't use (pages are drawn with `getDocument`, eval and XFA off: `src/lib/pdf.ts`); upgrade to
+  6.2.108+ when convenient. The rest were build-time only or low.
 - **Demo login** (`DEMO_LOGIN_ENABLED`): leave it off for a real school. When it's on, the demo admin
   is read-only. Admin → Settings → Security shows whether it's on.
 - **Staff accounts need approval.** Picking "teacher" or "NGO representative" when signing up (or applying

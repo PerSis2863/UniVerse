@@ -51,6 +51,13 @@
       "name": "COSTLY_RATE_LIMITER",
       "namespace_id": "1003",
       "simple": { "limit": 20, "period": 60 }
+    },
+    {
+      // Sign-in steps (cloudflare/worker.ts AUTH_STEP): 10 a minute per address for the demo
+      // sign-in, per account for the emailed code, the passkey second step and sign-up.
+      "name": "AUTH_RATE_LIMITER",
+      "namespace_id": "1004",
+      "simple": { "limit": 10, "period": 60 }
     }
   ],
   "durable_objects": {
