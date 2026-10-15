@@ -18,6 +18,7 @@ import { closestPeers, signalsFor, type Signals } from './similarity';
 import { planLimits } from '@/lib/plan-limits';
 import { isAiPolicy, parseReceipt } from '@/lib/ai-receipt';
 import { receiptForSubmission } from './ai-receipts';
+import { cleanPolicy, dueFor, lateness, mayHandIn, withPenalty, NO_ACCOMMODATION, type Accommodation } from '@/lib/assignment-policy';
 
 // Written assignments graded against a rubric. The AI only drafts: a teacher reviews every
 // score and comment, and nothing reaches the student until the teacher returns the grade, which
@@ -99,7 +100,18 @@ function assignmentFields(body: Record<string, unknown>, partial: boolean) {
     if (!isAiPolicy(body.aiPolicy)) throw new BadRequestException('Choose whether AI may be used.');
     data.aiPolicy = body.aiPolicy;
   }
+  // Late penalty and hand-in limit (Stage 5 · B3.1).
+  Object.assign(data, cleanPolicy(body));
   return data;
+}
+
+/** A student's own rules for an assignment: their extension and accommodation, if any. */
+export async function studentRules(assignmentId: string, studentId: string) {
+  const [extension, acc] = await Promise.all([
+    prisma.assignmentExtension.findUnique({ where: { assignmentId_studentId: { assignmentId, studentId } }, select: { dueDate: true, extraAttempts: true } }),
+    prisma.studentAccommodation.findUnique({ where: { studentId }, select: { extraDays: true, extraTimePct: true } }),
+  ]);
+  return { extension, accommodation: (acc ?? NO_ACCOMMODATION) as Accommodation };
 }
 
 /** The assignment, if the user may see it: its course's teaching team, admins, or enrolled students. */
@@ -142,7 +154,8 @@ export async function listAssignments(user: SessionUser, courseId: string | null
         submissions: { where: { studentId: user.id }, select: { status: true, score: true, submittedAt: true, returnedAt: true } },
       },
     });
-    return rows.map(({ submissions, ...a }) => ({ ...a, mine: submissions[0] ? { ...submissions[0], score: submissions[0].status === 'RETURNED' ? submissions[0].score : null } : null }));
+    // REOPENED: graded, and the teacher let them hand in again (the last grade shows until then).
+    return rows.map(({ submissions, ...a }) => ({ ...a, mine: submissions[0] ? { ...submissions[0], score: submissions[0].status === 'RETURNED' || submissions[0].status === 'REOPENED' ? submissions[0].score : null } : null }));
   }
   if (user.role !== 'TEACHER' && user.role !== 'ADMIN') throw new ForbiddenException('Assignments are for courses you teach or take.');
   const rows = await prisma.assignment.findMany({
@@ -160,8 +173,10 @@ export async function listAssignments(user: SessionUser, courseId: string | null
   const groups = (await Promise.all(chunks.map((part) =>
     prisma.assignmentSubmission.groupBy({ by: ['assignmentId', 'status'], where: { assignmentId: { in: part } }, _count: { _all: true } }),
   ))).flat();
+  // Reopened ones wait for the student, not the teacher: they count as returned.
+  const graded = (status: string) => status === 'RETURNED' || status === 'REOPENED';
   const count = (id: string, returned?: boolean) =>
-    groups.filter((g) => g.assignmentId === id && (returned === undefined || (g.status === 'RETURNED') === returned)).reduce((t, g) => t + g._count._all, 0);
+    groups.filter((g) => g.assignmentId === id && (returned === undefined || graded(g.status) === returned)).reduce((t, g) => t + g._count._all, 0);
   return rows.map((a) => ({ ...a, counts: { submitted: count(a.id), toGrade: count(a.id, false), returned: count(a.id, true) } }));
 }
 
@@ -170,21 +185,39 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
   // canManage: change the assignment; canGrade: see and grade the answers (teaching assistants too).
   const base = { ...assignment, rubric: rubricOf(assignment), course: { id: course.id, code: course.code, name: course.name, color: course.color }, canManage, canGrade };
   if (!canGrade) {
-    const mine = await prisma.assignmentSubmission.findUnique({
-      where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-      select: { id: true, text: true, status: true, submittedAt: true, returnedAt: true, score: true, feedback: true, criteriaScores: true, feedbackMediaUrl: true, feedbackMediaKind: true, feedbackTranscript: true, aiReceipt: true },
-    });
-    // Until it's returned, a student sees their answer only (never the AI's draft).
-    const returned = mine?.status === 'RETURNED';
-    return { ...base, mine: mine ? { ...mine, aiReceipt: parseReceipt(mine.aiReceipt), status: returned ? 'RETURNED' : 'SUBMITTED', score: returned ? mine.score : null, feedback: returned ? mine.feedback : null, criteriaScores: returned ? mine.criteriaScores : null, feedbackMediaUrl: returned ? mine.feedbackMediaUrl : null, feedbackMediaKind: returned ? mine.feedbackMediaKind : null, feedbackTranscript: returned ? mine.feedbackTranscript : null } : null };
+    const [mine, rules] = await Promise.all([
+      prisma.assignmentSubmission.findUnique({
+        where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
+        select: { id: true, text: true, status: true, submittedAt: true, returnedAt: true, score: true, rawScore: true, feedback: true, criteriaScores: true, feedbackMediaUrl: true, feedbackMediaKind: true, feedbackTranscript: true, aiReceipt: true, attempts: true, lateDays: true, latePenalty: true, lateWaived: true },
+      }),
+      studentRules(assignmentId, user.id),
+    ]);
+    // Until it's returned, a student sees their answer only (never the AI's draft). REOPENED: the
+    // teacher let them hand in again after grading (the last grade stays until the next one).
+    const returned = mine?.status === 'RETURNED' || mine?.status === 'REOPENED';
+    const due = dueFor(assignment.dueDate, rules.extension?.dueDate ?? null, rules.accommodation);
+    const attempts = mine?.attempts ?? 0;
+    const canHandIn = !mine || mine.status === 'REOPENED' || (mine.status !== 'RETURNED' && mayHandIn(attempts, assignment.maxAttempts, rules.extension?.extraAttempts ?? 0));
+    return {
+      ...base,
+      // The student's own due date (an extension, or extra days) and whether they may hand in (again).
+      myDue: due, extended: !!rules.extension || (rules.accommodation.extraDays > 0 && !!assignment.dueDate),
+      canHandIn, attemptsAllowed: assignment.maxAttempts === null ? null : assignment.maxAttempts + (rules.extension?.extraAttempts ?? 0),
+      mine: mine ? {
+        ...mine, aiReceipt: parseReceipt(mine.aiReceipt), status: mine.status === 'REOPENED' ? 'REOPENED' : returned ? 'RETURNED' : 'SUBMITTED',
+        score: returned ? mine.score : null, rawScore: returned ? mine.rawScore : null, feedback: returned ? mine.feedback : null, criteriaScores: returned ? mine.criteriaScores : null,
+        feedbackMediaUrl: returned ? mine.feedbackMediaUrl : null, feedbackMediaKind: returned ? mine.feedbackMediaKind : null, feedbackTranscript: returned ? mine.feedbackTranscript : null,
+      } : null,
+    };
   }
-  const [submissions, enrolled] = await Promise.all([
+  const [submissions, enrolled, extensions] = await Promise.all([
     prisma.assignmentSubmission.findMany({
       where: { assignmentId },
       orderBy: { submittedAt: 'asc' },
       include: { student: { select: { id: true, name: true, email: true, avatar: true } } },
     }),
-    prisma.enrollment.count({ where: { courseId: course.id } }),
+    prisma.enrollment.findMany({ where: { courseId: course.id }, orderBy: { student: { name: 'asc' } }, take: 1000, select: { student: { select: { id: true, name: true, accommodation: { select: { extraDays: true, extraTimePct: true } } } } } }),
+    prisma.assignmentExtension.findMany({ where: { assignmentId }, take: 1000, select: { studentId: true, dueDate: true, extraAttempts: true, note: true } }),
   ]);
   // Similarity signals (teacher only): the classmate with the most shared phrasing, and the
   // course material the answer borrows most from.
@@ -194,7 +227,10 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
   const nameOf = new Map(submissions.map((x) => [x.id, x.student.name]));
   return {
     ...base,
-    enrolled,
+    enrolled: enrolled.length,
+    // For extensions: the class, with each student's accommodation (extra days, extra time).
+    students: enrolled.map((e) => ({ id: e.student.id, name: e.student.name, extraDays: e.student.accommodation?.extraDays ?? 0, extraTimePct: e.student.accommodation?.extraTimePct ?? 0 })),
+    extensions,
     submissions: submissions.map(({ signals, ...x }) => {
       const peer = peers.get(x.id);
       return { ...x, aiReceipt: parseReceipt(x.aiReceipt), similarity: { peer: peer ? { name: nameOf.get(peer.id) ?? 'A classmate', percent: Math.round(peer.share * 100) } : null, material: (signals as unknown as Signals | null)?.material ?? null } };
@@ -249,12 +285,22 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
   // teacher closed the assignment after the student handed it in on their device.
   const offlineAt = offlineTime(body.offlineAt);
   const closedAfter = !!offlineAt && offlineAt < assignment.updatedAt;
-  if (assignment.status !== 'OPEN' && !closedAfter) throw new BadRequestException('This assignment is closed. Ask your teacher if you still need to hand it in.');
+  const rules = await studentRules(assignmentId, user.id);
+  // An extension still running keeps a closed assignment open for that student.
+  const extended = !!rules.extension && rules.extension.dueDate > new Date();
+  if (assignment.status !== 'OPEN' && !closedAfter && !extended) throw new BadRequestException('This assignment is closed. Ask your teacher if you still need to hand it in.');
   const text = typeof body.text === 'string' ? body.text.replace(/\r\n/g, '\n').trim() : '';
   if (text.length < 20) throw new BadRequestException('Your answer is too short to submit.');
   if (text.length > MAX_TEXT) throw new BadRequestException(`Answers can be up to ${MAX_TEXT.toLocaleString()} characters.`);
-  const existing = await prisma.assignmentSubmission.findUnique({ where: { assignmentId_studentId: { assignmentId, studentId: user.id } }, select: { status: true } });
+  const existing = await prisma.assignmentSubmission.findUnique({ where: { assignmentId_studentId: { assignmentId, studentId: user.id } }, select: { status: true, attempts: true } });
   if (existing?.status === 'RETURNED') throw new BadRequestException('This has already been graded, so it can’t be changed.');
+  // How many times they may hand in before it's graded (unless the teacher reopened it).
+  if (existing && existing.status !== 'REOPENED' && !mayHandIn(existing.attempts, assignment.maxAttempts, rules.extension?.extraAttempts ?? 0)) {
+    throw new BadRequestException(`You’ve handed this in ${existing.attempts} time${existing.attempts === 1 ? '' : 's'}, the most allowed. Ask your teacher if you need to change it.`);
+  }
+  // Late: against the student's own due date; the % comes off when it's graded.
+  const late = lateness(offlineAt ?? new Date(), dueFor(assignment.dueDate, rules.extension?.dueDate ?? null, rules.accommodation), assignment);
+  const attempts = (existing?.attempts ?? 0) + 1;
   // The AI receipt or "no AI" declaration (Stage 5 · D12), made from the student's own record.
   const aiReceipt = await receiptForSubmission(user.id, assignment, body.aiReceipt, !!offlineAt);
   // Similarity signals for the teacher (src/server/similarity.ts), against the course's materials.
@@ -274,13 +320,13 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
   // A new version replaces the old one and any AI draft of it.
   const saved = await prisma.assignmentSubmission.upsert({
     where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-    create: { assignmentId, studentId: user.id, text, signals, styleSignals, offlineAt, aiReceipt },
-    update: { text, signals, styleSignals, offlineAt, aiReceipt, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date() },
+    create: { assignmentId, studentId: user.id, text, signals, styleSignals, offlineAt, aiReceipt, lateDays: late.days, latePenalty: late.penalty },
+    update: { text, signals, styleSignals, offlineAt, aiReceipt, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date(), attempts, lateDays: late.days, latePenalty: late.penalty, lateWaived: false },
     select: { id: true, submittedAt: true },
   });
   if (existing) await prisma.$executeRawUnsafe('UPDATE assignment_submissions SET aiDraft = NULL WHERE id = ?', saved.id); // Prisma won't write a plain null to JSON
   recordStudy(user.id, req);
-  return { ...saved, late: !!assignment.dueDate && (offlineAt ?? saved.submittedAt) > assignment.dueDate };
+  return { ...saved, late: late.late, lateDays: late.days, latePenalty: late.penalty, attempts };
 }
 
 // ─── AI draft ───────────────────────────────────────────────────────────────────────────────────
@@ -361,7 +407,11 @@ export async function returnGrade(submissionId: string, user: SessionUser, body:
     if (!c || !Number.isFinite(score) || score < 0 || score > r.points) throw new BadRequestException(`Give “${r.criterion}” a score between 0 and ${r.points}.`);
     return { id: r.id, score, comment: str(c.comment, 800) };
   });
-  const score = criteria.reduce((t, c) => t + c.score, 0);
+  const rawScore = criteria.reduce((t, c) => t + c.score, 0);
+  // The late penalty set when it was handed in, unless the teacher waives it (Stage 5 · B3.1).
+  const lateWaived = body.waiveLate === undefined ? sub.lateWaived : body.waiveLate === true;
+  const penalty = lateWaived ? 0 : sub.latePenalty;
+  const score = withPenalty(rawScore, penalty);
   const feedback = str(body.feedback, 2000) || null;
   // One grade row per submission: returning again (a correction) updates it.
   const gradeData = { assignmentName: assignment.title.slice(0, 200), score, maxScore: assignment.maxScore, weight: assignment.weight, feedback, status: 'GRADED' as const, gradedAt: new Date() };
@@ -371,7 +421,7 @@ export async function returnGrade(submissionId: string, user: SessionUser, body:
     : await prisma.grade.create({ data: { ...gradeData, studentId: sub.studentId, courseId: course.id } });
   await prisma.assignmentSubmission.update({
     where: { id: sub.id },
-    data: { criteriaScores: criteria as unknown as Prisma.InputJsonValue, score, feedback, gradeId: grade.id, status: 'RETURNED', returnedAt: new Date() },
+    data: { criteriaScores: criteria as unknown as Prisma.InputJsonValue, score, rawScore, lateWaived, feedback, gradeId: grade.id, status: 'RETURNED', returnedAt: new Date() },
   });
   // Proof of learning (upgrade 2): 60%+ becomes evidence for the course's skills.
   await safely(evidenceFromGrade({ studentId: sub.studentId, submissionId: sub.id, assignmentTitle: assignment.title, score, maxScore: assignment.maxScore, course, teacher: { id: user.id, name: user.name } }));
@@ -380,9 +430,51 @@ export async function returnGrade(submissionId: string, user: SessionUser, body:
   later(() => notify(sub.studentId, {
     type: 'grade',
     title: `${existing ? 'Updated grade' : 'Graded'}: ${assignment.title}`,
-    body: `${course.code} · ${score}/${assignment.maxScore}`,
+    body: `${course.code} · ${score}/${assignment.maxScore}${penalty ? ` (${rawScore} less ${penalty}% for handing it in late)` : ''}`,
     link: `/student/assignments/${assignment.id}`,
     email: false, // in-app only (keeps email within the plan's allowance)
   }));
-  return { ok: true, score, gradeId: grade.id };
+  return { ok: true, score, rawScore, penalty, gradeId: grade.id };
+}
+
+// ─── Extensions and another try (Stage 5 · B3.1) ────────────────────────────────────────────────
+
+/**
+ * POST /api/assignments/:id/extensions { studentId, dueDate | null, extraAttempts?, note? } — gives one
+ * student their own due date (and extra hand-ins), or removes it (dueDate null). The teaching team.
+ */
+export async function setExtension(assignmentId: string, user: SessionUser, body: Record<string, unknown>, req: Request) {
+  const { assignment, course, canGrade } = await access(assignmentId, user);
+  if (!canGrade) throw new ForbiddenException('Only the course’s teaching team can give extensions.');
+  const studentId = str(body.studentId, 64);
+  const student = studentId ? await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId, courseId: course.id } }, select: { student: { select: { name: true } } } }) : null;
+  if (!student) throw new NotFoundException('They aren’t in this course.');
+  if (body.dueDate === null || body.dueDate === '') {
+    await prisma.assignmentExtension.deleteMany({ where: { assignmentId, studentId } });
+    audit(user, { action: 'assignment.extension', summary: `Removed ${student.student.name}’s extension for “${assignment.title}” (${course.code})`, targetType: 'assignment', targetId: assignmentId }, req);
+    return { ok: true };
+  }
+  const dueDate = new Date(String(body.dueDate));
+  if (isNaN(+dueDate)) throw new BadRequestException('That date isn’t valid.');
+  if (dueDate < new Date(Date.now() - 86_400_000)) throw new BadRequestException('Pick a date that hasn’t passed.');
+  const extraAttempts = Math.min(10, Math.max(0, Math.round(Number(body.extraAttempts) || 0)));
+  const note = str(body.note, 300) || null;
+  const saved = await prisma.assignmentExtension.upsert({
+    where: { assignmentId_studentId: { assignmentId, studentId } },
+    create: { assignmentId, studentId, dueDate, extraAttempts, note, createdById: user.id },
+    update: { dueDate, extraAttempts, note, createdById: user.id },
+    select: { studentId: true, dueDate: true, extraAttempts: true, note: true },
+  });
+  audit(user, { action: 'assignment.extension', summary: `Gave ${student.student.name} until ${dueDate.toUTCString().slice(0, 22)} for “${assignment.title}” (${course.code})`, targetType: 'assignment', targetId: assignmentId }, req);
+  later(() => notify(studentId, { type: 'info', title: `More time: ${assignment.title}`, body: `${course.code} · now due ${dueDate.toUTCString().slice(0, 22)}`, link: `/student/assignments/${assignmentId}`, email: false }));
+  return saved;
+}
+
+/** POST /api/assignments/submissions/:id/reopen — lets a student hand in again after it was graded. */
+export async function reopenSubmission(submissionId: string, user: SessionUser) {
+  const { sub, assignment, course } = await submissionForTeacher(submissionId, user);
+  if (sub.status !== 'RETURNED') throw new BadRequestException('Only a graded answer can be reopened.');
+  await prisma.assignmentSubmission.update({ where: { id: sub.id }, data: { status: 'REOPENED' } });
+  later(() => notify(sub.studentId, { type: 'info', title: `You can hand in again: ${assignment.title}`, body: `${course.code} · your last grade stays until the next one`, link: `/student/assignments/${assignment.id}`, email: false }));
+  return { ok: true };
 }

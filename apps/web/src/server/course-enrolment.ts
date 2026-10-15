@@ -81,7 +81,7 @@ export async function enrolmentView(courseId: string, user: SessionUser) {
   const student = { select: { id: true, name: true, email: true, avatar: true } } as const;
   const [course, enrolled, requests, sections] = await Promise.all([
     prisma.course.findUnique({ where: { id: courseId }, select: { capacity: true } }),
-    prisma.enrollment.findMany({ where: { courseId }, orderBy: { enrolledAt: 'asc' }, take: 1000, select: { sectionId: true, enrolledAt: true, student } }),
+    prisma.enrollment.findMany({ where: { courseId }, orderBy: { enrolledAt: 'asc' }, take: 1000, select: { sectionId: true, enrolledAt: true, student: { select: { ...student.select, accommodation: { select: { extraDays: true, extraTimePct: true, note: true } } } } } }),
     prisma.electiveRequest.findMany({ where: { courseId, status: { in: ['PENDING', 'REVIEWING', 'WAITLISTED'] } }, orderBy: { createdAt: 'asc' }, take: 300, select: { id: true, status: true, note: true, createdAt: true, student } }),
     prisma.courseSection.findMany({ where: { courseId }, orderBy: [{ position: 'asc' }, { name: 'asc' }], select: { id: true, name: true } }),
   ]);
@@ -89,7 +89,8 @@ export async function enrolmentView(courseId: string, user: SessionUser) {
   return {
     canManage: a.canManage,
     capacity: course?.capacity ?? null,
-    students: enrolled.map((e) => ({ ...e.student, sectionId: e.sectionId, enrolledAt: e.enrolledAt })),
+    // Extra days and extra time (Stage 5 · B3.1, src/server/accommodations.ts), for the teaching team.
+    students: enrolled.map(({ student: { accommodation, ...s }, ...e }) => ({ ...s, sectionId: e.sectionId, enrolledAt: e.enrolledAt, accommodation: accommodation ?? null })),
     requests: requests.filter((r) => r.status !== 'WAITLISTED').map((r) => ({ id: r.id, note: r.note, createdAt: r.createdAt, student: r.student })),
     waitlist: requests.filter((r) => r.status === 'WAITLISTED').map((r, i) => ({ id: r.id, position: i + 1, createdAt: r.createdAt, student: r.student })),
     sections: sections.map((s) => ({ ...s, students: count(s.id) })),

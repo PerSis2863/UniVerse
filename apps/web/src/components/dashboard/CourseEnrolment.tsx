@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { Check, Loader2, Plus, Trash2, UserMinus, Users, X } from 'lucide-react';
+import { Check, Clock, Loader2, Plus, Trash2, UserMinus, Users, X } from 'lucide-react';
+import { Sheet } from '@/components/ui/Sheet';
 import { Avatar } from '@/components/ui/Avatar';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
@@ -14,10 +15,13 @@ import { errorMessage } from '@/lib/api';
 // sections. Changes are for the teacher and co-teachers; assistants see it.
 
 interface Person { id: string; name: string; email: string; avatar: string | null }
+/** Extra days on assignments and extra time on timed quizzes, used in every course (Stage 5 · B3.1). */
+interface Accommodation { extraDays: number; extraTimePct: number; note: string | null }
+const extraText = (a: Accommodation) => [a.extraDays ? `+${a.extraDays} day${a.extraDays === 1 ? '' : 's'}` : '', a.extraTimePct ? `+${a.extraTimePct}% time` : ''].filter(Boolean).join(' · ');
 interface View {
   canManage: boolean;
   capacity: number | null;
-  students: (Person & { sectionId: string | null })[];
+  students: (Person & { sectionId: string | null; accommodation?: Accommodation | null })[];
   requests: { id: string; note: string | null; createdAt: string; student: Person }[];
   waitlist: { id: string; position: number; createdAt: string; student: Person }[];
   sections: { id: string; name: string; students: number }[];
@@ -29,6 +33,7 @@ export function CourseEnrolment({ courseId, onChanged }: { courseId: string; onC
   const [busy, setBusy] = useState<string | null>(null);
   const [cap, setCap] = useState<string | null>(null);
   const [section, setSection] = useState('');
+  const [extra, setExtra] = useState<{ id: string; name: string; a: Accommodation } | null>(null);
 
   const act = async (body: Record<string, unknown>, label: string, ok?: string) => {
     setBusy(label);
@@ -135,7 +140,8 @@ export function CourseEnrolment({ courseId, onChanged }: { courseId: string; onC
             {data.students.map((p) => (
               <li key={p.id} className="py-2 flex items-center gap-3 flex-wrap">
                 <Avatar name={p.name} src={p.avatar} size={28} />
-                <span className="min-w-0 flex-1 text-sm text-zinc-900 dark:text-white truncate">{p.name}</span>
+                <span className="min-w-0 flex-1 text-sm text-zinc-900 dark:text-white truncate">{p.name}{p.accommodation && extraText(p.accommodation) ? <span className="ml-2 text-xs font-medium text-indigo-700 dark:text-indigo-300">{extraText(p.accommodation)}</span> : null}</span>
+                {canManage && <button type="button" aria-label={`Extra time for ${p.name}`} title="Extra time" onClick={() => setExtra({ id: p.id, name: p.name, a: p.accommodation ?? { extraDays: 0, extraTimePct: 0, note: null } })} className="p-1.5 rounded-lg text-zinc-500 hover:text-indigo-600 hover:bg-indigo-500/10"><Clock className="w-4 h-4" /></button>}
                 {data.sections.length > 0 && (
                   <>
                     <label htmlFor={`sec-${p.id}`} className="sr-only">Section for {p.name}</label>
@@ -151,6 +157,45 @@ export function CourseEnrolment({ courseId, onChanged }: { courseId: string; onC
           </ul>
         </details>
       )}
+      {extra && <ExtraTime courseId={courseId} student={extra} onClose={() => setExtra(null)} onSaved={() => { setExtra(null); void mutate(); }} />}
     </section>
+  );
+}
+
+/** A student's extra days and extra time: set once, used in every course. */
+function ExtraTime({ courseId, student, onClose, onSaved }: { courseId: string; student: { id: string; name: string; a: Accommodation }; onClose: () => void; onSaved: () => void }) {
+  const [days, setDays] = useState(String(student.a.extraDays));
+  const [pct, setPct] = useState(String(student.a.extraTimePct));
+  const [note, setNote] = useState(student.a.note ?? '');
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    try {
+      await authedJson(`/api/courses/${courseId}/accommodations`, { method: 'POST', body: JSON.stringify({ studentId: student.id, extraDays: Number(days) || 0, extraTimePct: Number(pct) || 0, note }) });
+      toast.success(Number(days) || Number(pct) ? `Extra time saved for ${student.name}` : `${student.name} has no extra time now`);
+      onSaved();
+    } catch (e) {
+      toast.error(errorMessage(e, 'That didn’t save. Try again.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Sheet title={`Extra time for ${student.name}`} onClose={onClose}
+      footer={<button type="button" onClick={() => void save()} disabled={busy} className="btn-primary w-full justify-center">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save</button>}>
+      <div className="space-y-4">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">For a student who needs it (for example a learning support plan). It’s used in every course they take, and their other teachers see it too. Students see their own due dates, not this note.</p>
+        <label className="block text-sm"><span className="font-medium text-zinc-900 dark:text-white">Extra days on assignment due dates</span>
+          <input type="number" min={0} max={30} value={days} onChange={(e) => setDays(e.target.value)} className="input mt-1 w-28" />
+        </label>
+        <label className="block text-sm"><span className="font-medium text-zinc-900 dark:text-white">Extra time on timed quizzes (%)</span>
+          <input type="number" min={0} max={200} step={5} value={pct} onChange={(e) => setPct(e.target.value)} className="input mt-1 w-28" />
+          <span className="block text-xs text-zinc-600 dark:text-zinc-400 mt-1">25 gives a 40-minute quiz 50 minutes.</span>
+        </label>
+        <label className="block text-sm"><span className="font-medium text-zinc-900 dark:text-white">Note for staff (optional)</span>
+          <input maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} className="input mt-1" placeholder="e.g. From the support plan, 2026" />
+        </label>
+      </div>
+    </Sheet>
   );
 }

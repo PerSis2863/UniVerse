@@ -17,6 +17,8 @@ import { TabPill } from '@/components/ui/Glide';
 import { Translatable } from '@/components/shared/Translatable';
 import { AiReceiptView } from '@/components/assignments/AiReceipt';
 import { AI_POLICIES, type AiPolicy, type AiReceipt } from '@/lib/ai-receipt';
+import { Extensions, RulesEditor, rulesSentence, type ClassStudent, type Extension } from '@/components/assignments/AssignmentRules';
+import { withPenalty } from '@/lib/assignment-policy';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Score { id: string; score: number; comment: string }
@@ -24,8 +26,10 @@ interface Draft { criteria: Score[]; summary: string; strengths: string[]; impro
 interface Submission {
   id: string;
   text: string;
-  status: 'SUBMITTED' | 'DRAFTED' | 'RETURNED';
+  /** REOPENED: graded, and the student may hand in again (Stage 5 · B3.1). */
+  status: 'SUBMITTED' | 'DRAFTED' | 'RETURNED' | 'REOPENED';
   aiDraft: Draft | null;
+  attempts?: number; lateDays?: number; latePenalty?: number; lateWaived?: boolean; rawScore?: number | null;
   criteriaScores: Score[] | null;
   score: number | null;
   feedback: string | null;
@@ -49,8 +53,11 @@ interface Detail {
   dueDate: string | null;
   status: 'OPEN' | 'CLOSED';
   aiPolicy?: string;
+  latePenalty: number | null; lateGraceMinutes: number; latePenaltyMax: number; maxAttempts: number | null;
   course: { code: string; name: string };
   enrolled: number;
+  students?: ClassStudent[];
+  extensions?: Extension[];
   submissions: Submission[];
 }
 
@@ -58,7 +65,10 @@ const STATUS: Record<Submission['status'], { label: string; style: string }> = {
   SUBMITTED: { label: 'To grade', style: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
   DRAFTED: { label: 'AI draft ready', style: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300' },
   RETURNED: { label: 'Returned', style: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  REOPENED: { label: 'Reopened', style: 'bg-sky-500/10 text-sky-700 dark:text-sky-300' },
 };
+/** Graded (a reopened one waits for the student, not the teacher). */
+const graded = (s: Submission) => s.status === 'RETURNED' || s.status === 'REOPENED';
 
 function TeacherAssignmentPage({ id }: { id: string }) {
   const router = useRouter();
@@ -67,9 +77,9 @@ function TeacherAssignmentPage({ id }: { id: string }) {
   const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
 
   const subs = useMemo(() => data?.submissions ?? [], [data]);
-  const current = subs.find((s) => s.id === selected) ?? subs.find((s) => s.status !== 'RETURNED') ?? subs[0];
+  const current = subs.find((s) => s.id === selected) ?? subs.find((s) => !graded(s)) ?? subs[0];
   const waiting = subs.filter((s) => s.status === 'SUBMITTED');
-  const returned = subs.filter((s) => s.status === 'RETURNED').length;
+  const returned = subs.filter(graded).length;
 
   // Grading at speed: J / K move to the next / previous student (not while typing), and returning a
   // grade moves on to the next answer still to grade.
@@ -80,7 +90,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
   };
   const nextToGrade = () => {
     const i = subs.findIndex((s) => s.id === current?.id);
-    const after = [...subs.slice(i + 1), ...subs.slice(0, i)].find((s) => s.status !== 'RETURNED');
+    const after = [...subs.slice(i + 1), ...subs.slice(0, i)].find((s) => !graded(s));
     if (after) setSelected(after.id);
   };
   useEffect(() => {
@@ -180,6 +190,19 @@ function TeacherAssignmentPage({ id }: { id: string }) {
             </details>
           )}
 
+          {data && (
+            <details className="panel px-4 py-3">
+              <summary className="cursor-pointer text-sm font-semibold text-zinc-900 dark:text-white py-1">Rules and extensions <span className="font-normal text-zinc-600 dark:text-zinc-400">· {[...rulesSentence(data).map((x) => x.replace(/^You can/, 'Students can')), data.extensions?.length ? `${data.extensions.length} extension${data.extensions.length === 1 ? '' : 's'}.` : ''].filter(Boolean).join(' ') || 'no late penalty, any number of hand-ins'}</span></summary>
+              <div className="mt-3 pb-1 space-y-5">
+                <RulesEditor key={`${data.latePenalty}:${data.lateGraceMinutes}:${data.latePenaltyMax}:${data.maxAttempts}`} assignmentId={data.id} rules={data} canManage={data.canManage !== false} onSaved={() => void mutate()} />
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Extensions</h3>
+                  <Extensions assignmentId={data.id} dueDate={data.dueDate} students={data.students ?? []} extensions={data.extensions ?? []} onChanged={() => void mutate()} />
+                </div>
+              </div>
+            </details>
+          )}
+
           {isLoading || !data ? (
             <div className="h-64 rounded-2xl skeleton" />
           ) : subs.length === 0 ? (
@@ -206,10 +229,10 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                   >{current?.id === s.id && <TabPill id="-teacher-assignments-id-page-0" variant="soft" />}
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{s.student.name}</span>
-                      <span className="block text-[11px] text-zinc-500">{new Date(s.submittedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}{data.dueDate && new Date(s.offlineAt ?? s.submittedAt) > new Date(data.dueDate) ? ' · late' : ''}{s.offlineAt ? ' · offline' : ''}</span>
+                      <span className="block text-[11px] text-zinc-500">{new Date(s.submittedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}{s.lateDays ? ` · ${s.lateDays} day${s.lateDays === 1 ? '' : 's'} late${s.latePenalty && !s.lateWaived ? ` (−${s.latePenalty}%)` : ''}` : ''}{s.attempts && s.attempts > 1 ? ` · hand-in ${s.attempts}` : ''}{s.offlineAt ? ' · offline' : ''}</span>
                     </span>
                     {(s.similarity?.peer || s.similarity?.material) && <Copy className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="Similarity to check" />}
-                    <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0', STATUS[s.status].style)}>{s.status === 'RETURNED' ? `${s.score}/${data.maxScore}` : STATUS[s.status].label}</span>
+                    <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0', (STATUS[s.status] ?? STATUS.SUBMITTED).style)}>{s.status === 'RETURNED' ? `${s.score}/${data.maxScore}` : (STATUS[s.status] ?? STATUS.SUBMITTED).label}</span>
                   </button>
                 ))}
               </nav>
@@ -235,7 +258,15 @@ function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Su
   const [feedback, setFeedback] = useState(() => sub.feedback ?? (sub.aiDraft ? draftFeedback(sub.aiDraft) : ''));
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [waive, setWaive] = useState(!!sub.lateWaived);
   const total = detail.rubric.reduce((t, r) => t + (Number(scores[r.id]?.score) || 0), 0);
+  // The late penalty set when it was handed in (Stage 5 · B3.1), unless waived.
+  const penalty = sub.latePenalty && !waive ? sub.latePenalty : 0;
+  const reopen = async () => {
+    if (!(await confirmDialog({ title: `Let ${sub.student.name} hand in again?`, message: 'Their grade stays until you grade the new version. They’re told in the app.', confirmLabel: 'Let them' }))) return;
+    try { await authedJson(`/api/assignments/submissions/${sub.id}/reopen`, { method: 'POST' }); toast.success(`${sub.student.name} can hand in again`); onChange(); }
+    catch (err) { toast.error((err as Error).message); }
+  };
   // Per-criterion AI suggestions the teacher can accept one by one (or all at once).
   const aiFor = (id: string) => sub.aiDraft?.criteria.find((c) => c.id === id) ?? null;
   const applyAi = (id: string) => {
@@ -266,11 +297,11 @@ function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Su
     try {
       await authedJson(`/api/assignments/submissions/${sub.id}/return`, {
         method: 'POST',
-        body: JSON.stringify({ criteria: detail.rubric.map((r) => ({ id: r.id, score: Number(scores[r.id].score), comment: scores[r.id].comment })), feedback }),
+        body: JSON.stringify({ criteria: detail.rubric.map((r) => ({ id: r.id, score: Number(scores[r.id].score), comment: scores[r.id].comment })), feedback, ...(sub.latePenalty ? { waiveLate: waive } : {}) }),
       });
-      toast.success(`${sub.status === 'RETURNED' ? 'Grade updated' : 'Grade returned'} to ${sub.student.name}`);
+      toast.success(`${graded(sub) ? 'Grade updated' : 'Grade returned'} to ${sub.student.name}`);
       onChange();
-      if (sub.status !== 'RETURNED') onReturned();
+      if (!graded(sub)) onReturned();
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -324,14 +355,20 @@ function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Su
 
       <div className={`panel p-5 space-y-4`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-semibold text-zinc-900 dark:text-white">Grade · {total}/{detail.maxScore}</h3>
-          {sub.status !== 'RETURNED' && (
+          <h3 className="font-semibold text-zinc-900 dark:text-white">Grade · {total}/{detail.maxScore}{penalty ? <span className="font-normal text-rose-700 dark:text-rose-300"> → {withPenalty(total, penalty)} after −{penalty}% late</span> : null}</h3>
+          {!graded(sub) && (
             <button type="button" className="btn-secondary" onClick={draft} disabled={drafting} aria-busy={drafting || undefined}>
               {drafting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} {sub.aiDraft ? 'Redo AI draft' : 'Draft with AI'}
             </button>
           )}
         </div>
-        {sub.aiDraft && sub.status !== 'RETURNED' && (
+        {sub.lateDays ? (
+          <label className="flex items-start gap-2 text-sm text-zinc-800 dark:text-zinc-200 rounded-xl bg-rose-500/[0.06] border border-rose-500/20 px-3 py-2">
+            {sub.latePenalty ? <input type="checkbox" className="mt-1" checked={waive} onChange={(e) => setWaive(e.target.checked)} /> : null}
+            <span>Handed in {sub.lateDays} day{sub.lateDays === 1 ? '' : 's'} late{sub.latePenalty ? <>: <b>−{sub.latePenalty}%</b>. Tick to waive it (an agreed reason, a problem on our side).</> : ' (no penalty set).'}</span>
+          </label>
+        ) : null}
+        {sub.aiDraft && !graded(sub) && (
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-xs text-indigo-600 dark:text-indigo-300 flex-1 min-w-[12rem]">Filled in from the AI draft. Change anything that isn’t right; the student only sees what you return.</p>
             {aiChanged > 0 && <button type="button" onClick={acceptAllAi} className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20">Use all AI scores</button>}
@@ -380,9 +417,14 @@ function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Su
         </label>
 
         <div className="flex items-center justify-between gap-3">
-          {sub.status === 'RETURNED' ? <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Returned {sub.returnedAt ? new Date(sub.returnedAt).toLocaleDateString() : ''}</span> : <span />}
+          {sub.status === 'RETURNED' ? (
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Returned {sub.returnedAt ? new Date(sub.returnedAt).toLocaleDateString() : ''}</span>
+              <button type="button" onClick={() => void reopen()} className="btn-ghost btn-sm">Let them hand in again</button>
+            </span>
+          ) : sub.status === 'REOPENED' ? <span className="text-xs text-sky-700 dark:text-sky-300">Reopened: waiting for their new version</span> : <span />}
           <button type="button" className="btn-primary" onClick={send} disabled={sending} aria-busy={sending || undefined}>
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} {sub.status === 'RETURNED' ? 'Update grade' : 'Return grade'}
+            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} {graded(sub) ? 'Update grade' : 'Return grade'}
           </button>
         </div>
       </div>

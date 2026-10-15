@@ -13,6 +13,7 @@ import { enqueue, getDraft, isOfflineError, newClientId, saveDraft } from '@/lib
 import { Translatable } from '@/components/shared/Translatable';
 import { AiPolicyNote, AiReceiptChoice, AiReceiptView, startChoice, type ReceiptChoice } from '@/components/assignments/AiReceipt';
 import { isAiPolicy, type AiReceipt } from '@/lib/ai-receipt';
+import { rulesSentence } from '@/components/assignments/AssignmentRules';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Detail {
@@ -24,11 +25,16 @@ interface Detail {
   dueDate: string | null;
   status: 'OPEN' | 'CLOSED';
   aiPolicy?: string;
+  latePenalty: number | null; lateGraceMinutes: number; latePenaltyMax: number; maxAttempts: number | null;
+  /** The student's own due date (an extension or extra days), and whether they may hand in (again). */
+  myDue?: string | null; extended?: boolean; canHandIn?: boolean; attemptsAllowed?: number | null;
   course: { code: string; name: string };
   mine: {
     id: string;
     text: string;
-    status: 'SUBMITTED' | 'RETURNED';
+    /** REOPENED: graded, and the teacher let them hand in again. */
+    status: 'SUBMITTED' | 'RETURNED' | 'REOPENED';
+    attempts?: number; lateDays?: number; latePenalty?: number; lateWaived?: boolean; rawScore?: number | null;
     submittedAt: string;
     returnedAt: string | null;
     score: number | null;
@@ -62,8 +68,13 @@ function StudentAssignmentPage({ id }: { id: string }) {
   }, [draftKey, text]);
 
   const answer = text ?? data?.mine?.text ?? '';
-  const returned = data?.mine?.status === 'RETURNED';
-  const canSubmit = !!data && data.status === 'OPEN' && !returned;
+  const returned = data?.mine?.status === 'RETURNED' || data?.mine?.status === 'REOPENED';
+  const reopened = data?.mine?.status === 'REOPENED';
+  // Open (or still open for them: an extension), not graded, and hand-ins left (or reopened).
+  const due = data ? (data.myDue ?? data.dueDate) : null;
+  const openForMe = !!data && (data.status === 'OPEN' || (!!data.extended && !!due && new Date(due) > new Date()));
+  const canSubmit = !!data && openForMe && (data.canHandIn ?? !returned);
+  const left = data?.attemptsAllowed != null ? Math.max(0, data.attemptsAllowed - (data.mine?.attempts ?? 0)) : null;
   const words = answer.trim() ? answer.trim().split(/\s+/).length : 0;
   const policy = data?.aiPolicy && isAiPolicy(data.aiPolicy) ? data.aiPolicy : 'FREE';
   const choice = receipt ?? startChoice(policy);
@@ -72,8 +83,8 @@ function StudentAssignmentPage({ id }: { id: string }) {
   const submit = async () => {
     setSending(true);
     try {
-      const r = await authedJson<{ late: boolean }>(`/api/assignments/${id}/submission`, { method: 'PUT', body: JSON.stringify({ text: answer, aiReceipt: choice }) });
-      toast.success(r.late ? 'Handed in (after the due date).' : 'Handed in. You can change it until it’s graded.');
+      const r = await authedJson<{ late: boolean; latePenalty?: number }>(`/api/assignments/${id}/submission`, { method: 'PUT', body: JSON.stringify({ text: answer, aiReceipt: choice }) });
+      toast.success(r.late ? `Handed in after the due date${r.latePenalty ? `: ${r.latePenalty}% comes off the grade` : ''}.` : 'Handed in. You can change it until it’s graded.');
       setText(null);
       setReceipt(null);
       void saveDraft(draftKey, '').catch(() => {});
@@ -102,7 +113,8 @@ function StudentAssignmentPage({ id }: { id: string }) {
           ) : (
             <>
               <section className={`panel p-5 space-y-4`}>
-                {data.dueDate && <p className="text-sm text-zinc-500">Due {new Date(data.dueDate).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}{data.status === 'CLOSED' ? ' · closed' : ''}</p>}
+                {due && <p className="text-sm text-zinc-600 dark:text-zinc-400">Due {new Date(due).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}{data.extended ? ' (your own date)' : ''}{data.status === 'CLOSED' && !openForMe ? ' · closed' : ''}</p>}
+                {rulesSentence(data).length > 0 && <p className="text-sm text-zinc-600 dark:text-zinc-400">{rulesSentence(data).join(' ')}{left !== null && data.mine && !returned ? ` ${left} left.` : ''}</p>}
                 {policy !== 'FREE' && <AiPolicyNote policy={policy} />}
                 <Translatable kind="assignment" id={data.id} text={data.instructions} levels className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />
                 <div>
@@ -127,6 +139,8 @@ function StudentAssignmentPage({ id }: { id: string }) {
               {returned && data.mine && (
                 <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 space-y-2" aria-label="Your grade">
                   <p className="flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="w-5 h-5" /> Graded: {data.mine.score}/{data.maxScore}</p>
+                  {data.mine.lateDays ? <p className="text-sm text-zinc-700 dark:text-zinc-300">{data.mine.lateWaived || !data.mine.latePenalty ? `Handed in ${data.mine.lateDays} day${data.mine.lateDays === 1 ? '' : 's'} late${data.mine.latePenalty ? ': your teacher waived the penalty.' : '.'}` : `${data.mine.rawScore ?? ''}/${data.maxScore} less ${data.mine.latePenalty}% for handing it in ${data.mine.lateDays} day${data.mine.lateDays === 1 ? '' : 's'} late.`}</p> : null}
+                  {reopened && <p className="text-sm font-medium text-sky-800 dark:text-sky-200">Your teacher has let you hand in again. This grade stays until they grade the new version.</p>}
                   {data.mine.feedback && <Translatable kind="feedback" id={data.mine.id} text={data.mine.feedback} levels className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />}
                   {data.mine.feedbackMediaUrl && (
                     <div className="space-y-1.5">
@@ -143,7 +157,7 @@ function StudentAssignmentPage({ id }: { id: string }) {
               <section className={`panel p-5 space-y-3`}>
                 <div className="flex items-center justify-between">
                   <label htmlFor="answer" className="font-semibold text-zinc-900 dark:text-white">Your answer</label>
-                  {data.mine && !returned && <span className="text-xs text-indigo-600 dark:text-indigo-300">Handed in {new Date(data.mine.submittedAt).toLocaleString()}</span>}
+                  {data.mine && !returned && <span className="text-xs text-indigo-600 dark:text-indigo-300">Handed in {new Date(data.mine.submittedAt).toLocaleString()}{data.mine.lateDays ? ` · ${data.mine.lateDays} day${data.mine.lateDays === 1 ? '' : 's'} late` : ''}</span>}
                 </div>
                 {canSubmit ? (
                   <>
@@ -165,7 +179,10 @@ function StudentAssignmentPage({ id }: { id: string }) {
                     </div>
                   </>
                 ) : data.mine ? (
-                  <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words">{data.mine.text}</p>
+                  <>
+                    <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words">{data.mine.text}</p>
+                    {!returned && data.canHandIn === false && <p className="text-xs text-zinc-600 dark:text-zinc-400">You’ve handed it in as many times as allowed. Ask your teacher if you need to change it.</p>}
+                  </>
                 ) : (
                   <p className="text-sm text-zinc-500">This assignment is closed. Ask your teacher if you still need to hand it in.</p>
                 )}

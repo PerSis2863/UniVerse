@@ -288,6 +288,8 @@ model User {
   studyDays             StudyDay[]
   assignmentsCreated    Assignment[]           @relation("AssignmentAuthor")
   assignmentSubmissions AssignmentSubmission[]
+  assignmentExtensions  AssignmentExtension[]  @relation("AssignmentExtensions")
+  accommodation         StudentAccommodation?  @relation("Accommodation")
   guardianContacts      GuardianContact[]
   impactUpdates         ImpactUpdate[]
   boardComments         BoardComment[]
@@ -3075,9 +3077,16 @@ model Assignment {
   status       String                 @default("OPEN") // OPEN, CLOSED
   /// AI use (Stage 5 · D12): FREE, RECEIPT (allowed with an AI receipt), NONE (not allowed)
   aiPolicy     String                 @default("FREE")
+  /// Late penalty (Stage 5 · B3.1, src/lib/assignment-policy.ts): % lost per started day after the
+  /// grace minutes, up to latePenaltyMax %; null: none. maxAttempts: hand-ins before grading (null: any).
+  latePenalty      Float?
+  lateGraceMinutes Int     @default(0)
+  latePenaltyMax   Float   @default(100)
+  maxAttempts      Int?
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
   submissions  AssignmentSubmission[]
+  extensions   AssignmentExtension[]
   autopilotPlans GroupAutopilotPlan[]
 
   @@index([courseId])
@@ -3111,6 +3120,13 @@ model AssignmentSubmission {
   offlineAt          DateTime?
   /// The student's AI receipt or "no AI" declaration (Stage 5 · D12), JSON (src/lib/ai-receipt.ts)
   aiReceipt          String?
+  /// Rules (Stage 5 · B3.1): which hand-in this is, how late it was and the % that comes off when it's
+  /// graded (unless waived); rawScore: the rubric total before that.
+  attempts           Int        @default(1)
+  lateDays           Int        @default(0)
+  latePenalty        Float      @default(0)
+  lateWaived         Boolean    @default(false)
+  rawScore           Float?
   submittedAt        DateTime   @default(now())
   returnedAt         DateTime?
   updatedAt          DateTime   @updatedAt
@@ -3118,6 +3134,39 @@ model AssignmentSubmission {
   @@unique([assignmentId, studentId])
   @@index([studentId])
   @@map("assignment_submissions")
+}
+
+/// An extension for one student (Stage 5 · B3.1): their own due date and extra hand-ins.
+model AssignmentExtension {
+  id            String     @id @default(cuid())
+  assignmentId  String
+  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       User       @relation("AssignmentExtensions", fields: [studentId], references: [id], onDelete: Cascade)
+  dueDate       DateTime
+  extraAttempts Int        @default(0)
+  note          String?
+  createdById   String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([assignmentId, studentId])
+  @@index([studentId])
+  @@map("assignment_extensions")
+}
+
+/// Accommodations, set once per student and used in every course (Stage 5 · B3.1): extra days on
+/// assignment due dates, extra time (%) on timed quizzes. The note is for staff only.
+model StudentAccommodation {
+  studentId    String   @id
+  student      User     @relation("Accommodation", fields: [studentId], references: [id], onDelete: Cascade)
+  extraDays    Int      @default(0)
+  extraTimePct Int      @default(0)
+  note         String?
+  updatedById  String?
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  @@map("student_accommodations")
 }
 
 /// A parent or guardian a student keeps informed (src/server/guardians.ts).

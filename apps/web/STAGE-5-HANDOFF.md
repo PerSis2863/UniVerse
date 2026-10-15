@@ -28,7 +28,11 @@ done, where the code is and what's left for each item. Keep that table up to dat
   teaching assistants (Q5.6, **0134**), course calendar (Q5.5), AI syllabus draft (Q5.7), class-size
   limit, waitlist and sections (rest of Q5.6, **0135**), rich lesson pages (Q5.2), Common Cartridge import and export (Q5.8). Each has a
   Progress row. **Q5 is done**, apart from Google Classroom import (needs a sample export or the
-  Classroom API: owner). **Next migration: `0136`.**
+  Classroom API: owner).
+- **Q6 (assignments and grading), 15 Oct:** Q6.1 rules (late penalty, hand-in limit, extensions, extra
+  time; migration **0136**). A student's due date is always `dueFor(...)` and a submission's late %
+  is set when handed in (`src/lib/assignment-policy.ts`); graded answers can be REOPENED, so check
+  "graded" as RETURNED or REOPENED. **Next migration: `0137`.**
   - **Lesson pages:** a page's body is plain text or the editor's JSON (`{"type":"doc"…`); always save it
     through `cleanPageBody` (`src/lib/lesson-page.ts`), and never send rich bodies in lists (`pageTexts`).
   - **Privacy fix in Q5.4:** the announcements list gave everyone every course's announcements.
