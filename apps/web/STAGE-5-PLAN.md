@@ -976,7 +976,7 @@ already collected: `src/lib/web-vitals.ts`, `/api/vitals`, table `web_vitals`).
 **Done when:** a teacher copies last term's course in one step, runs a discussion board, schedules an
 announcement and adds a co-teacher who can grade.
 
-### Q6. B3 Assignments and grading (the rest) — 2 sessions
+### Q6. B3 Assignments and grading (the rest) — 2 sessions (in progress: 6.1, 6.2a files and links, 6.2b groups done; 6.2c peer review started)
 **Exists:** grading view speed-ups (B3.1 partly), gradebook categories and final grades
 (B3.4 first part, `src/lib/gradebook.ts`), AI-drafted grading, feedback studio
 (`src/server/feedback-studio.ts`), similarity (`src/server/similarity.ts`), AI receipts (D12,
