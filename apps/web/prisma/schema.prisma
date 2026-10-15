@@ -3083,6 +3083,8 @@ model Assignment {
   lateGraceMinutes Int     @default(0)
   latePenaltyMax   Float   @default(100)
   maxAttempts      Int?
+  /// What students hand in (Stage 5 · B3.2): TEXT (a written answer), FILE or LINK (with an optional note)
+  submitKind       String  @default("TEXT")
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
   submissions  AssignmentSubmission[]
@@ -3127,6 +3129,11 @@ model AssignmentSubmission {
   latePenalty        Float      @default(0)
   lateWaived         Boolean    @default(false)
   rawScore           Float?
+  /// A file uploaded here, or a link (Stage 5 · B3.2); "text" is then the student's note
+  fileUrl            String?
+  fileName           String?
+  fileSize           Int?
+  linkUrl            String?
   submittedAt        DateTime   @default(now())
   returnedAt         DateTime?
   updatedAt          DateTime   @updatedAt

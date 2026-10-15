@@ -18,6 +18,8 @@ import { closestPeers, signalsFor, type Signals } from './similarity';
 import { planLimits } from '@/lib/plan-limits';
 import { isAiPolicy, parseReceipt } from '@/lib/ai-receipt';
 import { receiptForSubmission } from './ai-receipts';
+import { isAppFileUrl } from '@/lib/storage';
+import { SUBMIT_KINDS, isSubmitKind } from '@/lib/submit-kinds';
 import { cleanPolicy, dueFor, lateness, mayHandIn, withPenalty, NO_ACCOMMODATION, type Accommodation } from '@/lib/assignment-policy';
 
 // Written assignments graded against a rubric. The AI only drafts: a teacher reviews every
@@ -102,6 +104,11 @@ function assignmentFields(body: Record<string, unknown>, partial: boolean) {
   }
   // Late penalty and hand-in limit (Stage 5 · B3.1).
   Object.assign(data, cleanPolicy(body));
+  // What students hand in (Stage 5 · B3.2).
+  if (body.submitKind !== undefined) {
+    if (!isSubmitKind(body.submitKind)) throw new BadRequestException(`Students hand in one of: ${SUBMIT_KINDS.join(', ')}.`);
+    data.submitKind = body.submitKind;
+  }
   return data;
 }
 
@@ -188,7 +195,7 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
     const [mine, rules] = await Promise.all([
       prisma.assignmentSubmission.findUnique({
         where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-        select: { id: true, text: true, status: true, submittedAt: true, returnedAt: true, score: true, rawScore: true, feedback: true, criteriaScores: true, feedbackMediaUrl: true, feedbackMediaKind: true, feedbackTranscript: true, aiReceipt: true, attempts: true, lateDays: true, latePenalty: true, lateWaived: true },
+        select: { id: true, text: true, fileUrl: true, fileName: true, fileSize: true, linkUrl: true, status: true, submittedAt: true, returnedAt: true, score: true, rawScore: true, feedback: true, criteriaScores: true, feedbackMediaUrl: true, feedbackMediaKind: true, feedbackTranscript: true, aiReceipt: true, attempts: true, lateDays: true, latePenalty: true, lateWaived: true },
       }),
       studentRules(assignmentId, user.id),
     ]);
@@ -290,8 +297,25 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
   const extended = !!rules.extension && rules.extension.dueDate > new Date();
   if (assignment.status !== 'OPEN' && !closedAfter && !extended) throw new BadRequestException('This assignment is closed. Ask your teacher if you still need to hand it in.');
   const text = typeof body.text === 'string' ? body.text.replace(/\r\n/g, '\n').trim() : '';
-  if (text.length < 20) throw new BadRequestException('Your answer is too short to submit.');
+  // A written answer, or a file or link with an optional note (Stage 5 · B3.2).
+  const kind = isSubmitKind(assignment.submitKind) ? assignment.submitKind : 'TEXT';
+  const handIn = { fileUrl: null as string | null, fileName: null as string | null, fileSize: null as number | null, linkUrl: null as string | null };
+  if (kind === 'TEXT' && text.length < 20) throw new BadRequestException('Your answer is too short to submit.');
   if (text.length > MAX_TEXT) throw new BadRequestException(`Answers can be up to ${MAX_TEXT.toLocaleString()} characters.`);
+  if (kind === 'FILE') {
+    if (!isAppFileUrl(body.fileUrl)) throw new BadRequestException('Attach your file.');
+    handIn.fileUrl = body.fileUrl;
+    handIn.fileName = str(body.fileName, 200) || 'file';
+    const size = Math.round(Number(body.fileSize));
+    handIn.fileSize = Number.isFinite(size) && size > 0 ? size : null;
+  }
+  if (kind === 'LINK') {
+    const url = str(body.linkUrl, 1000);
+    let ok = false;
+    try { ok = ['http:', 'https:'].includes(new URL(url).protocol); } catch { /* not a link */ }
+    if (!ok) throw new BadRequestException('Paste the full link (https://…).');
+    handIn.linkUrl = url;
+  }
   const existing = await prisma.assignmentSubmission.findUnique({ where: { assignmentId_studentId: { assignmentId, studentId: user.id } }, select: { status: true, attempts: true } });
   if (existing?.status === 'RETURNED') throw new BadRequestException('This has already been graded, so it can’t be changed.');
   // How many times they may hand in before it's graded (unless the teacher reopened it).
@@ -320,8 +344,8 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
   // A new version replaces the old one and any AI draft of it.
   const saved = await prisma.assignmentSubmission.upsert({
     where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-    create: { assignmentId, studentId: user.id, text, signals, styleSignals, offlineAt, aiReceipt, lateDays: late.days, latePenalty: late.penalty },
-    update: { text, signals, styleSignals, offlineAt, aiReceipt, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date(), attempts, lateDays: late.days, latePenalty: late.penalty, lateWaived: false },
+    create: { assignmentId, studentId: user.id, text, ...handIn, signals, styleSignals, offlineAt, aiReceipt, lateDays: late.days, latePenalty: late.penalty },
+    update: { text, ...handIn, signals, styleSignals, offlineAt, aiReceipt, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date(), attempts, lateDays: late.days, latePenalty: late.penalty, lateWaived: false },
     select: { id: true, submittedAt: true },
   });
   if (existing) await prisma.$executeRawUnsafe('UPDATE assignment_submissions SET aiDraft = NULL WHERE id = ?', saved.id); // Prisma won't write a plain null to JSON
@@ -373,6 +397,8 @@ export function cleanDraft(raw: Partial<AiDraft> | null | undefined, rubric: Rub
 export async function draftWithAi(submissionId: string, user: SessionUser) {
   const { sub, assignment } = await submissionForTeacher(submissionId, user);
   if (sub.status === 'RETURNED') throw new BadRequestException('This grade has already been returned.');
+  // The AI reads written answers; a file or link with only a short note is the teacher's to grade.
+  if (assignment.submitKind !== 'TEXT' && sub.text.length < 200) throw new BadRequestException('The AI drafts grades from written answers. Grade this file or link yourself.');
   if (!process.env.GEMINI_API_KEY) throw new HttpException('AI grading isn’t set up yet (GEMINI_API_KEY).', 503);
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);

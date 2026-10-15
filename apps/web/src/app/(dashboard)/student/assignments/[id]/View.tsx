@@ -14,6 +14,7 @@ import { Translatable } from '@/components/shared/Translatable';
 import { AiPolicyNote, AiReceiptChoice, AiReceiptView, startChoice, type ReceiptChoice } from '@/components/assignments/AiReceipt';
 import { isAiPolicy, type AiReceipt } from '@/lib/ai-receipt';
 import { rulesSentence } from '@/components/assignments/AssignmentRules';
+import { HandInFields, HandedInView, type HandedIn } from '@/components/assignments/HandIn';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Detail {
@@ -26,6 +27,8 @@ interface Detail {
   status: 'OPEN' | 'CLOSED';
   aiPolicy?: string;
   latePenalty: number | null; lateGraceMinutes: number; latePenaltyMax: number; maxAttempts: number | null;
+  /** What to hand in (Stage 5 · B3.2): a written answer, a file or a link. */
+  submitKind?: 'TEXT' | 'FILE' | 'LINK';
   /** The student's own due date (an extension or extra days), and whether they may hand in (again). */
   myDue?: string | null; extended?: boolean; canHandIn?: boolean; attemptsAllowed?: number | null;
   course: { code: string; name: string };
@@ -35,6 +38,7 @@ interface Detail {
     /** REOPENED: graded, and the teacher let them hand in again. */
     status: 'SUBMITTED' | 'RETURNED' | 'REOPENED';
     attempts?: number; lateDays?: number; latePenalty?: number; lateWaived?: boolean; rawScore?: number | null;
+    fileUrl?: string | null; fileName?: string | null; fileSize?: number | null; linkUrl?: string | null;
     submittedAt: string;
     returnedAt: string | null;
     score: number | null;
@@ -51,6 +55,8 @@ function StudentAssignmentPage({ id }: { id: string }) {
   const { data, error, isLoading, mutate } = useSWR<Detail>(`/api/assignments/${id}`, authedJson);
   const [text, setText] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  // A file or link (Stage 5 · B3.2), until handed in.
+  const [picked, setPicked] = useState<HandedIn | null>(null);
   // The AI receipt or "no AI" declaration handed in with the answer (Stage 5 · D12).
   const [receipt, setReceipt] = useState<ReceiptChoice | null>(null);
   // Drafts are kept on this device as you type (upgrade 4), so nothing is lost offline.
@@ -68,6 +74,10 @@ function StudentAssignmentPage({ id }: { id: string }) {
   }, [draftKey, text]);
 
   const answer = text ?? data?.mine?.text ?? '';
+  const kind = data?.submitKind ?? 'TEXT';
+  const handIn: HandedIn = picked ?? (data?.mine ? { fileUrl: data.mine.fileUrl, fileName: data.mine.fileName, fileSize: data.mine.fileSize, linkUrl: data.mine.linkUrl } : {});
+  const handInReady = kind === 'TEXT' ? answer.trim().length >= 20 : kind === 'FILE' ? !!handIn.fileUrl : /^https?:\/\/\S+\.\S+/i.test(handIn.linkUrl?.trim() ?? '');
+  const changed = text !== null || receipt !== null || picked !== null;
   const returned = data?.mine?.status === 'RETURNED' || data?.mine?.status === 'REOPENED';
   const reopened = data?.mine?.status === 'REOPENED';
   // Open (or still open for them: an extension), not graded, and hand-ins left (or reopened).
@@ -83,16 +93,17 @@ function StudentAssignmentPage({ id }: { id: string }) {
   const submit = async () => {
     setSending(true);
     try {
-      const r = await authedJson<{ late: boolean; latePenalty?: number }>(`/api/assignments/${id}/submission`, { method: 'PUT', body: JSON.stringify({ text: answer, aiReceipt: choice }) });
+      const r = await authedJson<{ late: boolean; latePenalty?: number }>(`/api/assignments/${id}/submission`, { method: 'PUT', body: JSON.stringify({ text: answer, aiReceipt: choice, ...handIn }) });
       toast.success(r.late ? `Handed in after the due date${r.latePenalty ? `: ${r.latePenalty}% comes off the grade` : ''}.` : 'Handed in. You can change it until it’s graded.');
       setText(null);
       setReceipt(null);
+      setPicked(null);
       void saveDraft(draftKey, '').catch(() => {});
       mutate();
     } catch (err) {
       if (!isOfflineError(err)) { toast.error((err as Error).message); return; }
       // No connection: hand it in from this device's outbox when it's back.
-      await enqueue({ id: newClientId(), kind: 'assignment', method: 'PUT', url: `/api/assignments/${encodeURIComponent(id)}/submission`, ref: id, label: `Assignment: ${data?.title ?? 'answer'}`, body: { text: answer, aiReceipt: choice, offlineAt: new Date().toISOString() } }).catch(() => null);
+      await enqueue({ id: newClientId(), kind: 'assignment', method: 'PUT', url: `/api/assignments/${encodeURIComponent(id)}/submission`, ref: id, label: `Assignment: ${data?.title ?? 'answer'}`, body: { text: answer, aiReceipt: choice, ...handIn, offlineAt: new Date().toISOString() } }).catch(() => null);
       void saveDraft(draftKey, '').catch(() => {});
       toast.success('You’re offline: it’s saved on this device and handed in when you’re back online.');
     } finally {
@@ -156,31 +167,34 @@ function StudentAssignmentPage({ id }: { id: string }) {
 
               <section className={`panel p-5 space-y-3`}>
                 <div className="flex items-center justify-between">
-                  <label htmlFor="answer" className="font-semibold text-zinc-900 dark:text-white">Your answer</label>
+                  {kind === 'TEXT' ? <label htmlFor="answer" className="font-semibold text-zinc-900 dark:text-white">Your answer</label> : <h3 className="font-semibold text-zinc-900 dark:text-white">What you hand in</h3>}
                   {data.mine && !returned && <span className="text-xs text-indigo-600 dark:text-indigo-300">Handed in {new Date(data.mine.submittedAt).toLocaleString()}{data.mine.lateDays ? ` · ${data.mine.lateDays} day${data.mine.lateDays === 1 ? '' : 's'} late` : ''}</span>}
                 </div>
                 {canSubmit ? (
                   <>
+                    {kind !== 'TEXT' && <HandInFields kind={kind} value={handIn} onChange={setPicked} disabled={sending} />}
+                    {kind !== 'TEXT' && <label htmlFor="answer" className="block text-sm font-semibold text-zinc-900 dark:text-white">A note for your teacher (optional)</label>}
                     <textarea
                       id="answer"
-                      rows={14}
+                      rows={kind === 'TEXT' ? 14 : 3}
                       maxLength={MAX}
                       value={answer}
                       onChange={(e) => setText(e.target.value)}
-                      placeholder="Write your answer here…"
+                      placeholder={kind === 'TEXT' ? 'Write your answer here…' : 'Anything your teacher should know about it'}
                       className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-3 text-sm leading-relaxed text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"
                     />
                     <AiReceiptChoice assignmentId={data.id} policy={policy} value={choice} onChange={setReceipt} />
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">{words} words · {answer.length.toLocaleString()}/{MAX.toLocaleString()} characters</span>
-                      <button type="button" className="btn-primary" onClick={submit} disabled={sending || answer.trim().length < 20 || (text === null && receipt === null && !!data.mine) || !choiceOk} aria-busy={sending || undefined}>
+                      <button type="button" className="btn-primary" onClick={submit} disabled={sending || !handInReady || (!changed && !!data.mine) || !choiceOk} aria-busy={sending || undefined}>
                         {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} {data.mine ? 'Hand in new version' : 'Hand in'}
                       </button>
                     </div>
                   </>
                 ) : data.mine ? (
                   <>
-                    <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words">{data.mine.text}</p>
+                    <HandedInView h={data.mine} />
+                    {data.mine.text && <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words">{data.mine.text}</p>}
                     {!returned && data.canHandIn === false && <p className="text-xs text-zinc-600 dark:text-zinc-400">You’ve handed it in as many times as allowed. Ask your teacher if you need to change it.</p>}
                   </>
                 ) : (

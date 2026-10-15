@@ -19,6 +19,8 @@ import { AiReceiptView } from '@/components/assignments/AiReceipt';
 import { AI_POLICIES, type AiPolicy, type AiReceipt } from '@/lib/ai-receipt';
 import { Extensions, RulesEditor, rulesSentence, type ClassStudent, type Extension } from '@/components/assignments/AssignmentRules';
 import { withPenalty } from '@/lib/assignment-policy';
+import { HandedInView } from '@/components/assignments/HandIn';
+import { SUBMIT_KINDS, SUBMIT_LABEL, type SubmitKind } from '@/lib/submit-kinds';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Score { id: string; score: number; comment: string }
@@ -30,6 +32,7 @@ interface Submission {
   status: 'SUBMITTED' | 'DRAFTED' | 'RETURNED' | 'REOPENED';
   aiDraft: Draft | null;
   attempts?: number; lateDays?: number; latePenalty?: number; lateWaived?: boolean; rawScore?: number | null;
+  fileUrl?: string | null; fileName?: string | null; fileSize?: number | null; linkUrl?: string | null;
   criteriaScores: Score[] | null;
   score: number | null;
   feedback: string | null;
@@ -54,6 +57,7 @@ interface Detail {
   status: 'OPEN' | 'CLOSED';
   aiPolicy?: string;
   latePenalty: number | null; lateGraceMinutes: number; latePenaltyMax: number; maxAttempts: number | null;
+  submitKind?: SubmitKind;
   course: { code: string; name: string };
   enrolled: number;
   students?: ClassStudent[];
@@ -78,7 +82,9 @@ function TeacherAssignmentPage({ id }: { id: string }) {
 
   const subs = useMemo(() => data?.submissions ?? [], [data]);
   const current = subs.find((s) => s.id === selected) ?? subs.find((s) => !graded(s)) ?? subs[0];
-  const waiting = subs.filter((s) => s.status === 'SUBMITTED');
+  // The AI drafts written answers (a file or link with a long note too).
+  const draftable = (s: Submission) => (data?.submitKind ?? 'TEXT') === 'TEXT' || s.text.length >= 200;
+  const waiting = subs.filter((s) => s.status === 'SUBMITTED' && draftable(s));
   const returned = subs.filter(graded).length;
 
   // Grading at speed: J / K move to the next / previous student (not while typing), and returning a
@@ -105,6 +111,10 @@ function TeacherAssignmentPage({ id }: { id: string }) {
   });
 
   // Whether students may use AI here (Stage 5 · D12).
+  const setKind = async (submitKind: SubmitKind) => {
+    try { await authedJson(`/api/assignments/${id}`, { method: 'PATCH', body: JSON.stringify({ submitKind }) }); toast.success(`Students hand in: ${SUBMIT_LABEL[submitKind].label.toLowerCase()}`); mutate(); }
+    catch (err) { toast.error((err as Error).message); }
+  };
   const setPolicy = async (aiPolicy: AiPolicy) => {
     try { await authedJson(`/api/assignments/${id}`, { method: 'PATCH', body: JSON.stringify({ aiPolicy }) }); toast.success(`AI use: ${AI_POLICIES[aiPolicy].label}`); mutate(); }
     catch (err) { toast.error((err as Error).message); }
@@ -180,6 +190,12 @@ function TeacherAssignmentPage({ id }: { id: string }) {
               <summary className="cursor-pointer text-sm font-semibold text-zinc-900 dark:text-white py-1">Instructions <span className="font-normal text-zinc-500 dark:text-zinc-400">· what students read (also in simpler words: check or edit them here)</span></summary>
               <div className="mt-2 pb-1 space-y-3">
                 <Translatable kind="assignment" id={data.id} text={data.instructions} levels={{ auto: false }} className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />
+                <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">Students hand in
+                  <select className="input w-auto py-1.5" value={data.submitKind ?? 'TEXT'} disabled={data.canManage === false} onChange={(e) => void setKind(e.target.value as SubmitKind)}>
+                    {SUBMIT_KINDS.map((k) => <option key={k} value={k}>{SUBMIT_LABEL[k].label}</option>)}
+                  </select>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400 basis-full">{SUBMIT_LABEL[data.submitKind ?? 'TEXT'].hint}</span>
+                </label>
                 <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">AI use
                   <select className="input w-auto py-1.5" value={data.aiPolicy ?? 'FREE'} disabled={data.canManage === false} onChange={(e) => void setPolicy(e.target.value as AiPolicy)}>
                     {(Object.keys(AI_POLICIES) as AiPolicy[]).map((p) => <option key={p} value={p}>{AI_POLICIES[p].label}</option>)}
@@ -314,8 +330,10 @@ function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Su
       <div className={`panel p-5`}>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h3 className="font-semibold text-zinc-900 dark:text-white">{sub.student.name}</h3>
-          <span className="text-xs text-zinc-500">{sub.text.trim().split(/\s+/).length} words · {sub.offlineAt ? <>written offline, handed in on the device {new Date(sub.offlineAt).toLocaleString()} · arrived {new Date(sub.submittedAt).toLocaleString()}</> : <>handed in {new Date(sub.submittedAt).toLocaleString()}</>}</span>
+          <span className="text-xs text-zinc-500">{sub.text.trim() ? `${sub.text.trim().split(/\s+/).length} words · ` : ''}{sub.offlineAt ? <>written offline, handed in on the device {new Date(sub.offlineAt).toLocaleString()} · arrived {new Date(sub.submittedAt).toLocaleString()}</> : <>handed in {new Date(sub.submittedAt).toLocaleString()}</>}</span>
         </div>
+        {(sub.fileUrl || sub.linkUrl) && <div className="mb-3"><HandedInView h={sub} /></div>}
+        {(sub.fileUrl || sub.linkUrl) && sub.text && <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-1">Their note</p>}
         {/* Read it in your language; the grade is always for the original (Stage 5 · D8). */}
         <Translatable kind="submission" id={sub.id} text={sub.text} className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words max-h-96 overflow-y-auto" />
       </div>
@@ -356,7 +374,7 @@ function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Su
       <div className={`panel p-5 space-y-4`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-semibold text-zinc-900 dark:text-white">Grade · {total}/{detail.maxScore}{penalty ? <span className="font-normal text-rose-700 dark:text-rose-300"> → {withPenalty(total, penalty)} after −{penalty}% late</span> : null}</h3>
-          {!graded(sub) && (
+          {!graded(sub) && ((detail.submitKind ?? 'TEXT') === 'TEXT' || sub.text.length >= 200) && (
             <button type="button" className="btn-secondary" onClick={draft} disabled={drafting} aria-busy={drafting || undefined}>
               {drafting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} {sub.aiDraft ? 'Redo AI draft' : 'Draft with AI'}
             </button>
