@@ -1602,6 +1602,13 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/courses\/([^/]+)\/question-bank$/, () => ok({ questions: [], difficulties: ['EASY', 'MEDIUM', 'HARD'] })],
   // Gradebook categories (Stage 5 · B3.4): none in the sample, so finals are plain averages.
   [/^\/api\/courses\/([^/]+)\/grade-categories$/, () => ok({ categories: [], assessments: [] })],
+  // Course calendar (Stage 5 · B2): the sample course's events.
+  [/^\/api\/courses\/([^/]+)\/calendar$/, ({ db: d, m }) => {
+    const c = course(d, m[1]);
+    if (!c) return fail('Course not found.', 404);
+    const events = ((d.board[c.id]?.events ?? []) as { id: string; title: string; startAt: string; endAt: string; type: string }[]);
+    return ok({ course: { id: c.id, code: c.code, name: c.name }, canManage: false, weekly: [], items: events.map((e) => ({ id: e.id, kind: 'event', title: e.title, at: e.startAt, endAt: e.endAt, note: e.type === 'EXAM' ? 'Exam' : 'Event', href: null })) });
+  }],
   // Teaching team (Stage 5 · B2): just the teacher in the sample.
   [/^\/api\/courses\/([^/]+)\/staff$/, ({ db: d, m }) => {
     const c = course(d, m[1]);

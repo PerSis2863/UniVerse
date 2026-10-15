@@ -29,8 +29,8 @@ import type { ClassSession } from '@/components/dashboard/ClassSessions';
 import { Combobox } from '@/components/ui/Combobox';
 import { SUBJECTS } from '@/lib/options/academic';
 import { QuizReview } from '@/components/quizzes/QuizReview';
-import { downloadIcs } from '@/lib/ics';
 import { TranslatableAnnouncement } from '@/components/shared/Translatable';
+import { CourseCalendar, courseCalendarKey } from '@/components/dashboard/CourseCalendar';
 
 /** Class recordings open through a 10-minute private link (src/lib/private-file.ts). */
 function openRecording(e: React.MouseEvent, url: string) {
@@ -246,7 +246,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
                 {tab === 'readings' && <Readings board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'grades' && (canGrade ? <Roster board={board} /> : <MyGrades board={board} />)}
                 {tab === 'quizzes' && (canGrade ? <TeacherQuizzes board={board} refresh={mutate} readOnly={!canManage} /> : <MyQuizzes board={board} />)}
-                {tab === 'calendar' && <Events board={board} canManage={canManage} refresh={mutate} />}
+                {tab === 'calendar' && <Events board={board} canManage={canManage} refresh={mutate} side={role} />}
                 {tab === 'projects' && canManage && course && <CourseGroupProjects courseId={course.id} />}
                 {tab === 'orals' && course && <CourseOralChecks courseId={course.id} />}
                 {tab === 'whiteboard' && (
@@ -345,7 +345,8 @@ type SectionProps = { board: Board; canManage: boolean; refresh: KeyedMutator<Bo
 const LIST_OF = { announcement: 'announcements', material: 'materials', reading: 'readings', event: 'events' } as const;
 
 /** Removes an item at once and offers Undo for a few seconds; the server delete happens only if it isn't undone. */
-function useRemove(courseId: string, refresh: KeyedMutator<Board>) {
+/** `also`: anything else showing the item to bring up to date (e.g. the course calendar). */
+function useRemove(courseId: string, refresh: KeyedMutator<Board>, also?: () => void) {
   return (kind: keyof typeof LIST_OF, itemId: string, label: string) => {
     const list = LIST_OF[kind];
     let settled = false;
@@ -360,10 +361,11 @@ function useRemove(courseId: string, refresh: KeyedMutator<Board>) {
         toast.error((e as Error).message || 'Could not remove it');
         refresh();
       }
+      also?.();
     };
     toast(`Removed “${label}”`, {
       duration: 5000,
-      action: { label: 'Undo', onClick: () => { settled = true; refresh(); } },
+      action: { label: 'Undo', onClick: () => { settled = true; refresh(); also?.(); } },
       onAutoClose: commit,
       onDismiss: commit,
     });
@@ -702,57 +704,27 @@ function TeacherQuizzes({ board, refresh, readOnly }: { board: Board; refresh: (
 
 const EVENT_TYPES: Record<string, string> = { MEETING: 'Session', EXAM: 'Exam', DEADLINE: 'Deadline' };
 
-function icsFor(board: Board) {
-  const stamp = (d: string) => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  const esc = (s: string) => s.replace(/[\\;,]/g, (m) => `\\${m}`).replace(/\n/g, '\\n');
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//UniVerse//Course Calendar//EN', 'CALSCALE:GREGORIAN'];
-  for (const e of board.events) {
-    lines.push('BEGIN:VEVENT', `UID:${e.id}@universe`, `DTSTAMP:${stamp(new Date().toISOString())}`, `DTSTART:${stamp(e.startAt)}`, `DTEND:${stamp(e.endAt)}`,
-      `SUMMARY:${esc(`${board.course.code}: ${e.title}`)}`, ...(e.description ? [`DESCRIPTION:${esc(e.description)}`] : []), 'END:VEVENT');
-  }
-  lines.push('END:VCALENDAR');
-  return lines.join('\r\n');
-}
-
-function Events({ board, canManage, refresh }: SectionProps) {
+function Events({ board, canManage, refresh, side }: SectionProps & { side: 'student' | 'teacher' }) {
   const [form, setForm] = useState<{ title: string; startAt: string; durationMinutes: number; type: string; description: string } | null>(null);
-  const { post, busy } = usePost(board.course.id, refresh);
-  const remove = useRemove(board.course.id, refresh);
+  const calKey = courseCalendarKey(board.course.id);
+  const { post, busy } = usePost(board.course.id, () => { void refresh(); void refreshKey(calKey); });
+  const remove = useRemove(board.course.id, refresh, () => void refreshKey(calKey));
   return (
     <>
-      <SectionHead icon={Calendar} title="Upcoming" count={board.events.length} action={
-        <div className="flex gap-2">
-          {board.events.length > 0 && <button onClick={() => downloadIcs(icsFor(board), `${board.course.code}-calendar.ics`)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/10 text-zinc-700 dark:text-zinc-200 text-xs font-bold"><Download className="w-3.5 h-3.5" /> Add to my calendar</button>}
-          {canManage && !form && <AddButton label="Add event" onClick={() => setForm({ title: '', startAt: '', durationMinutes: 60, type: 'MEETING', description: '' })} />}
-        </div>
-      } />
+      <SectionHead icon={Calendar} title="Course calendar" action={canManage && !form && <AddButton label="Add event" onClick={() => setForm({ title: '', startAt: '', durationMinutes: 60, type: 'MEETING', description: '' })} />} />
       {form && (
         <FormShell title="Schedule a session, exam or deadline" onClose={() => setForm(null)}>
-          <input className="input" placeholder="Title, e.g. Midterm exam" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <input className="input" placeholder="Title, e.g. Midterm exam" aria-label="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <div className="grid sm:grid-cols-3 gap-3">
             <input aria-label="Date and time" className="input" type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />
             <select aria-label="Duration minutes" className="input" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })}>{[30, 60, 90, 120, 180].map((m) => <option key={m} value={m}>{m} min</option>)}</select>
             <select aria-label="Type" className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{Object.entries(EVENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
           </div>
-          <input className="input" placeholder="Room or notes (optional)" maxLength={1000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <input className="input" placeholder="Room or notes (optional)" aria-label="Room or notes" maxLength={1000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <button disabled={busy || !form.title.trim() || !form.startAt} onClick={async () => (await post({ kind: 'event', ...form, startAt: new Date(form.startAt).toISOString() }, 'Added to the course calendar')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add event</button>
         </FormShell>
       )}
-      {board.events.length === 0 && !form ? <Empty text={canManage ? 'Nothing scheduled. Add exams, deadlines or extra sessions so students can plan ahead.' : 'Nothing scheduled yet. Exams, deadlines and sessions for this course will appear here.'} /> : (
-        <div className="grid sm:grid-cols-2 gap-3">
-          {board.events.map((e) => (
-            <div key={e.id} className={`panel p-4 flex items-start gap-3`}>
-              <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white', e.type === 'EXAM' ? 'bg-rose-500' : e.type === 'DEADLINE' ? 'bg-amber-500' : 'bg-indigo-500')}><Calendar className="w-5 h-5" /></div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm text-zinc-900 dark:text-white">{e.title}</p>
-                <p className="text-xs text-zinc-500">{when(e.startAt)} · {EVENT_TYPES[e.type] ?? 'Event'}</p>
-                {e.description && <p className="text-xs text-zinc-500 mt-1">{e.description}</p>}
-              </div>
-              {canManage && <RemoveBtn onClick={() => remove('event', e.id, e.title)} />}
-            </div>
-          ))}
-        </div>
-      )}
+      <CourseCalendar courseId={board.course.id} side={side} onRemoveEvent={canManage ? (id, title) => remove('event', id, title) : undefined} />
     </>
   );
 }
