@@ -227,7 +227,7 @@ export async function POST(req: Request, { params }: Ctx) {
       if (!validPayload(b.e2e)) return NextResponse.json({ error: 'Private messages must be encrypted on your device. Update the app and try again.' }, { status: 400 });
       Object.assign(data, { type: 'TEXT', body: PRIVATE_BODY, metadata: { e2e: b.e2e } });
     } else {
-      if (await featureOff('calls')) return NextResponse.json({ error: 'Voice and video calls: turned off on UniVerse for now. Please try again later.' }, { status: 503 });
+      if (await featureOff('calls', user.organizationId)) return NextResponse.json({ error: 'Voice and video calls: turned off for now. Please try again later.' }, { status: 503 });
       const kind = b.kind === 'video' ? 'video' : 'audio';
       Object.assign(data, { type: 'CALL', body: kind === 'video' ? 'Video call' : 'Voice call', metadata: { kind, inApp: true } });
     }
@@ -246,7 +246,7 @@ export async function POST(req: Request, { params }: Ctx) {
     data.body = text;
 
     if (type === 'CALL') {
-      if (await featureOff('calls')) return NextResponse.json({ error: 'Voice and video calls: turned off on UniVerse for now. Please try again later.' }, { status: 503 });
+      if (await featureOff('calls', user.organizationId)) return NextResponse.json({ error: 'Voice and video calls: turned off for now. Please try again later.' }, { status: 503 });
       const kind = b.kind === 'video' ? 'video' : 'audio';
       data.body = kind === 'video' ? 'Video call' : 'Voice call';
       // UniVerse's own call (/call/<this message's id>, src/server/calls.ts). Older calls have a Jitsi url.

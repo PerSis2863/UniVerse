@@ -70,6 +70,19 @@ function report(kind: string, message: string, stack?: string) {
   if (!timer) timer = setTimeout(flush, 1500);
 }
 
+/**
+ * "Report this" on an error screen: sends the problem with what the person says they were doing,
+ * even if it was already reported automatically (src/app/error.tsx). Kept apart from the automatic
+ * report (its own "Reported:" entry in the owner console's Errors).
+ */
+export function reportProblem(error: unknown, note: string): void {
+  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  const stack = error instanceof Error ? error.stack ?? '' : '';
+  // The note goes after the stack: the server groups reports by the first stack frame.
+  queue.push({ kind: 'manual', message: `Reported: ${message}`.slice(0, 500), stack: `${stack.slice(0, 3000)}\n\nWhat the person was doing: ${note.trim().slice(0, 500) || '(not said)'}`, path: location.pathname });
+  if (!timer) timer = setTimeout(flush, 300);
+}
+
 export function captureError(
   error: unknown,
   type: CapturedError['type'] = 'manual',

@@ -1,6 +1,8 @@
 // First-load JavaScript per page, from a finished `pnpm build` (Stage 5 · A4).
 //
 //   pnpm build && node scripts/bundle-report.mjs [--top 25] [--json out.json]
+//   node scripts/bundle-report.mjs --summary public/build-size.json --quiet   (run by the build: a short
+//     summary the owner console's Health numbers show; never fails the build)
 //
 // Reads each prerendered page (.next/server/app/**/*.html), takes the scripts it loads before it
 // can run (<script src="/_next/static/...">) and adds up their gzipped sizes. Pages with an id in
@@ -17,6 +19,9 @@ const APP = join(NEXT, 'server/app');
 const arg = (n) => (process.argv.includes(n) ? process.argv[process.argv.indexOf(n) + 1] : null);
 const TOP = Number(arg('--top') ?? 25);
 const jsonOut = arg('--json');
+const summaryOut = arg('--summary');
+const quiet = process.argv.includes('--quiet');
+const log = (...a) => { if (!quiet) console.log(...a); };
 if (!existsSync(APP)) {
   console.error('No .next/server/app: run `pnpm build` first.');
   process.exit(2);
@@ -56,19 +61,20 @@ const pages = html.map((file) => {
 // What every page loads (the app shell).
 const shared = pages.length ? pages.map((p) => new Set(p.files)).reduce((a, b) => new Set([...a].filter((f) => b.has(f)))) : new Set();
 const sharedTotal = [...shared].reduce((s, f) => s + gz(f), 0);
-console.log(`Shared by every page: ${kb(sharedTotal)} (${shared.size} files)\n`);
-console.log('Heaviest pages (first-load JS, gzipped; own = beyond the shared shell):');
+log(`Shared by every page: ${kb(sharedTotal)} (${shared.size} files)\n`);
+log('Heaviest pages (first-load JS, gzipped; own = beyond the shared shell):');
 for (const p of pages.slice(0, TOP)) {
   const own = p.files.filter((f) => !shared.has(f)).reduce((s, f) => s + gz(f), 0);
-  console.log(`  ${p.total > p.target ? 'OVER' : 'ok  '} ${kb(p.total).padStart(9)}  (own ${kb(own).padStart(8)})  ${p.path}${p.public ? '  [public]' : ''}`);
+  log(`  ${p.total > p.target ? 'OVER' : 'ok  '} ${kb(p.total).padStart(9)}  (own ${kb(own).padStart(8)})  ${p.path}${p.public ? '  [public]' : ''}`);
 }
 
 const use = new Map();
 for (const p of pages) for (const f of p.files) if (!shared.has(f)) use.set(f, (use.get(f) ?? 0) + 1);
-console.log('\nHeaviest chunks (not in the shared shell):');
-for (const [f, n] of [...use].sort((a, b) => gz(b[0]) - gz(a[0])).slice(0, 20)) console.log(`  ${kb(gz(f)).padStart(9)}  ${String(n).padStart(3)} pages  ${f.replace('/_next/static/chunks/', '')}`);
+log('\nHeaviest chunks (not in the shared shell):');
+for (const [f, n] of [...use].sort((a, b) => gz(b[0]) - gz(a[0])).slice(0, 20)) log(`  ${kb(gz(f)).padStart(9)}  ${String(n).padStart(3)} pages  ${f.replace('/_next/static/chunks/', '')}`);
 
 const over = pages.filter((p) => p.total > p.target);
-console.log(`\n${pages.length - over.length}/${pages.length} pages within target (dashboards < 200 KB, public < 120 KB)`);
+log(`\n${pages.length - over.length}/${pages.length} pages within target (dashboards < 200 KB, public < 120 KB)`);
 if (jsonOut) writeFileSync(jsonOut, JSON.stringify({ shared: sharedTotal, pages: pages.map((p) => ({ path: p.path, total: p.total, target: p.target, files: p.files })) }, null, 1));
-process.exitCode = over.length ? 1 : 0;
+if (summaryOut) writeFileSync(summaryOut, JSON.stringify({ at: new Date().toISOString(), shared: sharedTotal, heaviest: pages.slice(0, 5).map((p) => ({ path: p.path, total: p.total })), over: over.length, pages: pages.length }));
+process.exitCode = over.length && !summaryOut ? 1 : 0;

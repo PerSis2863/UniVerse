@@ -73,8 +73,8 @@ function sessionIssuedAt(token: string): number | undefined {
   }
 }
 
-const USER_COLUMNS = 'SELECT id, name, email, role, status, signedOutAt, revokedSessions FROM users WHERE';
-type UserRow = { id: string; name: string; email: string; role: string; status: string; signedOutAt: string | null; revokedSessions: string | null };
+const USER_COLUMNS = 'SELECT id, name, email, role, status, signedOutAt, revokedSessions, organizationId FROM users WHERE';
+type UserRow = { id: string; name: string; email: string; role: string; status: string; signedOutAt: string | null; revokedSessions: string | null; organizationId: string | null };
 
 /** The signed-in caller, or null when the Next.js route should decide (see the top of the file). */
 async function callerOf(request: Request, db: D1Database): Promise<Caller | null> {
@@ -116,7 +116,7 @@ async function callerOf(request: Request, db: D1Database): Promise<Caller | null
   // This device signed out on its own (Settings → devices; src/server/auth.ts): the Next.js route explains.
   const revoked: unknown = row.revokedSessions ? parseJson(row.revokedSessions) : null;
   if (authTime !== undefined && Array.isArray(revoked) && revoked.includes(authTime)) return null;
-  const caller = { id: row.id, name: row.name, email: row.email, role: row.role, demo, session: authTime };
+  const caller = { id: row.id, name: row.name, email: row.email, role: row.role, demo, session: authTime, org: row.organizationId };
   if (callers.size >= 1000) callers.delete(callers.keys().next().value as string);
   callers.set(token, { caller, until: Math.min(Date.now() + 60_000, exp ? exp * 1000 : Infinity) });
   return gate(caller);
@@ -472,6 +472,12 @@ const TYPING = /^\/api\/chat\/conversations\/([^/]+)\/typing$/;
 const FILE = /^\/api\/files\/([A-Za-z0-9_-]{16,})(?:\/[^/]*)?$/;
 
 /** The answer for one of the calls above, or null to let the Next.js app answer. */
+/** The signed-in person's school (organisation), for per-school feature switches; null if none or not signed in. */
+export async function callerOrg(request: Request, env: Env): Promise<string | null> {
+  if (!env.DB) return null;
+  return (await callerOf(request, env.DB).catch(() => null))?.org ?? null;
+}
+
 export async function fastApi(request: Request, url: URL, env: Env, ctx: ExecutionContext, next: (r: Request) => Promise<Response>): Promise<Response | null> {
   const db = env.DB;
   if (!db) return null;

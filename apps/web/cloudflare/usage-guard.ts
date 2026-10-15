@@ -19,7 +19,7 @@
 //   CF_BILLING_DAY    optional: the day of the month the Paid plan renews (1-31). Without it the
 //                     guard counts the last 31 days, which never undercounts but may pause early.
 //   CF_GUARD_OFF      optional: any value turns pausing off (the checks and emails still run).
-import { blockedFeature, parseSwitches } from '../src/lib/feature-switches';
+import { blockedFeature, orgCandidates, parseOrgSwitches, parseSwitches, type FeatureSwitch } from '../src/lib/feature-switches';
 import { bool, dbDate } from './fast-db';
 import { ownerEmailList } from '../src/lib/owner-emails';
 
@@ -332,8 +332,8 @@ export async function checkUsage(env: GuardEnv, now = new Date()): Promise<{ sum
 // uv_owner cookie that matches the switch's pass.
 
 type Mode = 'LIVE' | 'READ_ONLY' | 'MAINTENANCE';
-type State = { paused: boolean; resumeAt: string | null; mode: Mode; message: string | null; until: string | null; banner: string | null; bypass: string | null; off: string[]; at: number };
-let state: State = { paused: false, resumeAt: null, mode: 'LIVE', message: null, until: null, banner: null, bypass: null, off: [], at: 0 };
+type State = { paused: boolean; resumeAt: string | null; mode: Mode; message: string | null; until: string | null; banner: string | null; bypass: string | null; off: string[]; orgs: Record<string, string[]>; at: number };
+let state: State = { paused: false, resumeAt: null, mode: 'LIVE', message: null, until: null, banner: null, bypass: null, off: [], orgs: {}, at: 0 };
 let loading = false;
 
 const toMs = (v: string | null) => (v ? Date.parse(/[zZ]|[+-]\d\d:\d\d$/.test(v) ? v : `${v.replace(' ', 'T')}Z`) : NaN);
@@ -353,7 +353,7 @@ function refresh(env: GuardEnv, ctx: ExecutionContext) {
           ...state,
           ...(g !== undefined && { paused: bool(g?.paused), resumeAt: g?.resumeAt ?? null }),
           ...(c !== undefined && { mode: c?.mode ?? 'LIVE', message: c?.message ?? null, until: c?.until ?? null, banner: c?.banner ?? null, bypass: c?.bypass ?? null }),
-          ...(f !== undefined && { off: parseSwitches(f?.switches) }),
+          ...(f !== undefined && { off: parseSwitches(f?.switches), orgs: parseOrgSwitches(f?.switches) }),
           at: Date.now(),
         };
       })
@@ -441,6 +441,20 @@ export function serverGate(request: Request, url: URL, env: GuardEnv, ctx: Execu
     return Response.json({ error: message, message, statusCode: 503 }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
   return null;
+}
+
+/**
+ * Features switched off for one school that cover this change (owner console → Server): empty for
+ * almost every request, so only those need to know the person's school (cloudflare/worker.ts).
+ */
+export const schoolSwitchCandidates = (method: string, path: string): FeatureSwitch[] => orgCandidates(state.orgs, method, path);
+
+/** The answer for a change to `feature` when it's off for the person's school `org`, or null. */
+export function schoolGate(candidates: FeatureSwitch[], org: string | null): Response | null {
+  const feature = org ? candidates.find((f) => state.orgs[org]?.includes(f.id)) : undefined;
+  if (!feature) return null;
+  const message = `${feature.label}: turned off for your school for now. Please try again later.`;
+  return Response.json({ error: message, message, statusCode: 503 }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
 }
 
 /** The notice shown at the top of every page: the owner's, or read-only mode's own. */

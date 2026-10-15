@@ -8,7 +8,7 @@ import { Activity, AlertCircle, Ban, BarChart3, Bug, CheckCircle2, ClipboardList
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
+import { FEATURE_SWITCHES, parseOrgSwitches, parseSwitches } from '@/lib/feature-switches';
 import { card, errorMessage, fetcher, field, refreshConsole, toastWithUndo } from './shared';
 import { ConsoleSkeleton } from './shared';
 import { EmailScheduleCard } from './email-schedule';
@@ -42,6 +42,7 @@ interface ServerData {
   ai?: AiToday | null;
   online?: { count: number; people: { id: string; name: string; role: string; avatar: string | null; lastSeenAt: string | null }[] };
   adoption?: Record<string, number>;
+  orgs?: { id: string; name: string }[];
   history: { id: string; summary: string; createdAt: string; undoneAt: string | null }[];
 }
 
@@ -141,6 +142,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
           <div className="space-y-6">
             <NoticeCard key={`n-${data.control.updatedAt}`} banner={data.control.banner} onSaved={() => void mutate()} />
             <FeatureCard key={`f-${data.control.updatedAt}`} switches={data.control.switches} onSaved={() => void mutate()} />
+            {!!data.orgs?.length && <SchoolSwitchesCard key={`s-${data.control.updatedAt}`} switches={data.control.switches} orgs={data.orgs} onSaved={() => void mutate()} />}
           </div>
         </div>
       )}
@@ -730,6 +732,66 @@ function FeatureCard({ switches, onSaved }: { switches: string | null; onSaved: 
                   <span className="flex items-center gap-1.5 font-semibold text-sm text-zinc-900 dark:text-white">{f.label} {busy === f.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{!on && <span className="text-[10px] font-bold uppercase text-rose-500">off</span>}</span>
                   <span className="block text-xs text-zinc-500 mt-0.5">{f.hint}</span>
                 </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * A feature off for one school only (src/lib/feature-switches.ts "org:" entries): its people see
+ * "turned off for your school"; everyone else keeps it. Sign-ups can't be (a new person has no school).
+ */
+function SchoolSwitchesCard({ switches, orgs, onSaved }: { switches: string | null; orgs: { id: string; name: string }[]; onSaved: () => void }) {
+  const [byOrg, setByOrg] = useState(() => parseOrgSwitches(switches));
+  const [org, setOrg] = useState(() => Object.keys(parseOrgSwitches(switches))[0] ?? orgs[0]?.id ?? '');
+  const [busy, setBusy] = useState<string | null>(null);
+  const name = (id: string) => orgs.find((o) => o.id === id)?.name ?? 'A school no longer listed';
+  const offHere = byOrg[org] ?? [];
+  const flip = async (id: string, label: string) => {
+    const off = !offHere.includes(id);
+    setBusy(id);
+    try {
+      const { data: res } = await api.post('/owner/server', { orgSwitch: { org, feature: id, off } });
+      setByOrg(parseOrgSwitches(res.control.switches));
+      toastWithUndo(`${label}: ${off ? 'off' : 'on'} for ${name(org)}`, res.changeId);
+      onSaved();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+  const anyOff = Object.entries(byOrg).filter(([, ids]) => ids.length);
+  return (
+    <div className={cn(card, 'p-6')}>
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><ToggleRight className="w-4 h-4 text-indigo-500" /> For one school</h2>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 mb-3">Turn a feature off for one school only, for example while it sorts out a problem. Its people see “turned off for your school”; every other school keeps it.</p>
+      {anyOff.length > 0 && (
+        <p className="text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+          Off now: {anyOff.map(([id, ids]) => `${name(id)} (${ids.map((f) => FEATURE_SWITCHES.find((x) => x.id === f)?.label ?? f).join(', ')})`).join(' · ')}
+        </p>
+      )}
+      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+        School
+        <select value={org} onChange={(e) => setOrg(e.target.value)} className={cn(field, 'mt-1 block w-full sm:w-80')}>
+          {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}{byOrg[o.id]?.length ? ` · ${byOrg[o.id].length} off` : ''}</option>)}
+        </select>
+      </label>
+      <ul className="grid sm:grid-cols-2 gap-2">
+        {FEATURE_SWITCHES.filter((f) => f.id !== 'signups').map((f) => {
+          const on = !offHere.includes(f.id);
+          return (
+            <li key={f.id}>
+              <button role="switch" aria-checked={on} onClick={() => void flip(f.id, f.label)} disabled={busy !== null || !org}
+                className={cn('w-full text-left rounded-xl border p-3 flex items-center gap-3 min-h-11 transition-colors', on ? 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40' : 'border-rose-500/40 bg-rose-500/[0.06]')}>
+                <span className={cn('w-9 h-5 rounded-full p-0.5 shrink-0 transition-colors', on ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-600')}>
+                  <span className={cn('block w-4 h-4 rounded-full bg-white shadow transition-transform', on && 'translate-x-4')} />
+                </span>
+                <span className="flex items-center gap-1.5 font-semibold text-sm text-zinc-900 dark:text-white">{f.label} {busy === f.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{!on && <span className="text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400">off</span>}</span>
               </button>
             </li>
           );

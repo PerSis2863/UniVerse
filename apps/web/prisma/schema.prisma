@@ -5613,3 +5613,29 @@ model LeagueScore {
   @@index([judgeId])
   @@map("league_scores")
 }
+
+/// Stage 5 · A9: a sample of API requests (1 in 20 with weight 20, every 5xx with weight 1) and how
+/// long they took, for the owner console's Health numbers; kept 7 days (cloudflare/worker.ts).
+model ApiTiming {
+  id     Int    @id @default(autoincrement())
+  route  String
+  method String
+  status Int
+  ms     Int
+  weight Int
+  /// Seconds since 1970.
+  at     Int
+
+  @@index([at])
+  @@map("api_timings")
+}
+
+/// Stage 5 · A9: small daily counters for the Health numbers ("push.ok", "push.failed", "push.expired").
+model HealthCount {
+  day String
+  key String
+  n   Int    @default(0)
+
+  @@id([day, key])
+  @@map("health_counts")
+}

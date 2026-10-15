@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { featureOff } from './moderation';
 
 // Keeps Gemini use inside its free allowance: each person may make a set number of AI requests a
 // day (students fewer than teachers and admins), the whole site has a daily ceiling, and answers
@@ -34,7 +35,7 @@ export function parseLimits(raw: string | null | undefined): AiLimits {
 
 export const forgetAiLimits = () => { limitsCache = null; };
 
-type Who = { id: string; role: string; owner?: boolean } | null;
+type Who = { id: string; role: string; owner?: boolean; organizationId?: string | null } | null;
 
 /** ok: allowed (and counted); left: requests this person has left today (null: no limit); message: why not. */
 export type AiSpend = { ok: boolean; left: number | null; message: string };
@@ -48,6 +49,8 @@ const BUSY = 'AI has reached its limit for today across UniVerse. It will be bac
  */
 export async function spendAi(who: Who): Promise<AiSpend> {
   if (who?.owner) return { ok: true, left: null, message: '' };
+  // AI switched off for this person's school (owner console → Server → Feature switches).
+  if (who?.organizationId && (await featureOff('ai', who.organizationId))) return { ok: false, left: 0, message: 'AI features are turned off for your school for now.' };
   const day = today();
   const limits = await aiLimits();
   const perPerson = who ? (who.role === 'STUDENT' ? limits.student : limits.staff) : Infinity;

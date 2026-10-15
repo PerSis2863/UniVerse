@@ -1,5 +1,6 @@
 import { buildPushPayload } from '@block65/webcrypto-web-push';
 import prisma from '@/lib/db';
+import { count } from '../health-counts';
 import { planLimits } from '@/lib/plan-limits';
 import { quietNow } from '../quiet-hours';
 
@@ -75,6 +76,7 @@ export class PushService {
     if (expired.length) await prisma.pushSubscription.deleteMany({ where: { endpoint: { in: expired } } });
     const failed = results.filter((r) => r.status === 'rejected').length;
     if (failed > expired.length) console.warn(`${failed}/${subscriptions.length} push notifications failed`);
+    await count({ 'push.ok': subscriptions.length - failed, 'push.failed': failed - expired.length, 'push.expired': expired.length });
     return subscriptions.length - failed;
   }
 
@@ -100,7 +102,9 @@ export class PushService {
       }),
     );
     if (expired.length) await prisma.pushSubscription.deleteMany({ where: { endpoint: { in: expired } } });
-    return results.filter((r) => r.status === 'fulfilled').length;
+    const ok = results.filter((r) => r.status === 'fulfilled').length;
+    await count({ 'push.ok': ok, 'push.failed': results.length - ok - expired.length, 'push.expired': expired.length });
+    return ok;
   }
 
   async sendToAll(payload: { title: string; body: string; icon?: string; url?: string }) {

@@ -6,7 +6,7 @@ import { forgetUser, isOwnerEmail } from '../auth';
 import { dbSchema as schema } from '../db-schema';
 import { decideDeletion, eraseAccount } from '../account-deletion';
 import { publishChat } from '../realtime';
-import { emailScheduleEntries, FEATURE_SWITCHES, OWNER_EMAILS, parseEmailSchedule, parseSwitches } from '@/lib/feature-switches';
+import { composeSwitches, emailScheduleEntries, FEATURE_SWITCHES, OWNER_EMAILS, parseEmailSchedule, parseOrgSwitches, parseSwitches } from '@/lib/feature-switches';
 import { forgetRules } from '../moderation';
 import { countTables, selectColumns } from '../table-stats';
 import { serverSettings } from '../server-settings';
@@ -21,6 +21,7 @@ import { callHealth } from '../calls';
 import { CloudflareAdminError, emailCode, rollback } from '../cloudflare-admin';
 import { oneOf } from '../body';
 import { latestCspReports } from '../csp-reports';
+import { healthNumbers } from '../health-numbers';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -152,6 +153,9 @@ export default function ownerModule(router: Router) {
   r.get('calls', () => callHealth());
 
   // ── Overview & live activity ──
+
+  // ── Health numbers: failing and slow routes, problem pages, AI, push, calls (src/server/health-numbers.ts) ──
+  r.get('health-numbers', () => healthNumbers());
 
   // ── What browsers blocked under the Content-Security-Policy (src/server/csp-reports.ts) ──
   r.get('csp-reports', () => latestCspReports());
@@ -304,6 +308,8 @@ export default function ownerModule(router: Router) {
       ai: await aiUsageToday().catch(() => null),
       email: process.env.RESEND_API_KEY ? await emailUsage().catch(() => null) : null,
       ...(await liveExtras()),
+      // Schools, for switching a feature off for one of them.
+      orgs: await prisma.organization.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 300 }).catch(() => []),
       history,
     });
   });
@@ -336,8 +342,8 @@ export default function ownerModule(router: Router) {
       if (!Array.isArray(body.switches)) throw new BadRequestException('switches must be a list');
       const off = parseSwitches(JSON.stringify(body.switches));
       const was = parseSwitches(ctl.switches);
-      const keep = emailScheduleEntries(parseEmailSchedule(ctl.switches)); // the email schedule lives in the same list
-      data.switches = off.length || keep.length ? JSON.stringify([...off, ...keep]) : null;
+      // The email schedule and the per-school switches live in the same list.
+      data.switches = composeSwitches(off, emailScheduleEntries(parseEmailSchedule(ctl.switches)), parseOrgSwitches(ctl.switches));
       const name = (id: string) => FEATURE_SWITCHES.find((f) => f.id === id)?.label ?? id;
       const turnedOff = off.filter((x) => !was.includes(x)).map(name);
       const turnedOn = was.filter((x) => !off.includes(x)).map(name);
@@ -353,11 +359,27 @@ export default function ownerModule(router: Router) {
         if (!e.options.includes(v[e.id])) throw new BadRequestException(`${e.label}: choose ${e.options.join(', ')}`);
         next[e.id] = v[e.id];
       }
-      const off = parseSwitches(data.switches ?? ctl.switches);
-      const entries = emailScheduleEntries(next);
-      data.switches = off.length || entries.length ? JSON.stringify([...off, ...entries]) : null;
+      const list = data.switches ?? ctl.switches;
+      data.switches = composeSwitches(parseSwitches(list), emailScheduleEntries(next), parseOrgSwitches(list));
       const changed = OWNER_EMAILS.filter((e) => next[e.id] !== before[e.id]).map((e) => `${e.label} email: ${next[e.id]}`);
       if (changed.length) switched = [switched, changed.join(' · ')].filter(Boolean).join(' · ');
+    }
+    // A feature on or off for one school: { org, feature, off } (src/lib/feature-switches.ts).
+    if (body?.orgSwitch !== undefined) {
+      const v = (body.orgSwitch ?? {}) as { org?: unknown; feature?: unknown; off?: unknown };
+      const feature = FEATURE_SWITCHES.find((f) => f.id === v.feature);
+      const org = typeof v.org === 'string' ? await prisma.organization.findUnique({ where: { id: v.org }, select: { id: true, name: true } }) : null;
+      if (!feature || !org) throw new BadRequestException('Pick a school and a feature');
+      if (feature.id === 'signups') throw new BadRequestException('Sign-ups can only be turned off for everyone (a new person has no school yet).');
+      const list = data.switches ?? ctl.switches;
+      const orgs = parseOrgSwitches(list);
+      const now = new Set(orgs[org.id] ?? []);
+      if (v.off === true) now.add(feature.id);
+      else now.delete(feature.id);
+      if (now.size) orgs[org.id] = [...now];
+      else delete orgs[org.id];
+      data.switches = composeSwitches(parseSwitches(list), emailScheduleEntries(parseEmailSchedule(list)), orgs);
+      switched = [switched, `${feature.label} ${v.off === true ? 'turned off' : 'turned back on'} for ${org.name}`].filter(Boolean).join(' · ');
     }
     // Daily AI limits (src/server/ai-budget.ts).
     let aiChange = '';
