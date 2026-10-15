@@ -25,9 +25,9 @@ done, where the code is and what's left for each item. Keep that table up to dat
   out (every route without an id, and every route with one), and only the public ones answer.
 - **Q5 (courses), 15 Oct:** done on the branch: copy to a new term (Q5.1), discussion board (Q5.3,
   migration **0132**), scheduled / pinned / "seen by" announcements (Q5.4, **0133**), co-teachers and
-  teaching assistants (Q5.6, **0134**), course calendar (Q5.5), AI syllabus draft (Q5.7). Each has a
-  Progress row. **Left in Q5:** rich lesson pages (Q5.2), waitlist with a cap and sections (rest of
-  Q5.6), Common Cartridge import/export (Q5.8). **Next migration: `0135`.**
+  teaching assistants (Q5.6, **0134**), course calendar (Q5.5), AI syllabus draft (Q5.7), class-size
+  limit, waitlist and sections (rest of Q5.6, **0135**). Each has a Progress row. **Left in Q5:** rich
+  lesson pages (Q5.2), Common Cartridge import/export (Q5.8). **Next migration: `0136`.**
   - **Privacy fix in Q5.4:** the announcements list gave everyone every course's announcements.
   - **Teaching team:** `courseAccess` returns `canManage` (teacher, co-teacher, admin) and `canGrade`
     (+ assistants). New course features: use `canManage` to change things and `canGrade` for grading
@@ -35,8 +35,8 @@ done, where the code is and what's left for each item. Keep that table up to dat
   - **Testing locally:** two local teacher accounts (`tara@teacher.com`, `tom@teacher.com`) were added to
     the local database for this; put them in `DEMO_ACCOUNT_EMAILS` to use their mock tokens. The 15-minute
     cron can be fired with `wrangler dev --test-scheduled` and `curl '/__scheduled?cron=*/15+*+*+*+*'`.
-  - **Not tried in a browser yet:** the Calendar tab (Q5.5) and the syllabus sheet (Q5.7); the other Q5
-    screens were (Progress row "Q5 (browser)").
+  - **Browser tests:** every Q5 screen so far was tried on the built Worker (390 and 1280 px, light and
+    dark, axe clean). The AI parts (syllabus draft, suggested discussion answer) need the live site.
 - **What's left is written up in `STAGE-5-PLAN.md`, section 4 "Remaining work queue"**: 23 entries
   (Q1–Q23) in the order to do them, each with what exists to build on, the steps, the traps, how to
   know it's done, and its size. Q1 and Q2 are done; **finish Q3's test, then continue with Q4**.

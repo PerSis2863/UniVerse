@@ -194,7 +194,7 @@ export function CourseModules({ courseId }: { courseId: string }) {
 function ItemOpen({ item, onOpen, className, children }: { item: ItemV; onOpen: (i: ItemV) => void; className?: string; children: React.ReactNode }) {
   if (item.kind === 'PAGE') return <button type="button" onClick={() => onOpen(item)} className={className}>{children}</button>;
   const href = safeHref(item.href);
-  if (!href) return <span className={cn(className, 'opacity-60')}>{children}</span>;
+  if (!href) return <span className={className}>{children}</span>;
   if (item.kind === 'FILE' || item.kind === 'LINK' || item.kind === 'VIDEO') {
     return <a href={href} target="_blank" rel="noopener noreferrer" onClick={() => onOpen(item)} className={className}>{children}</a>;
   }
@@ -207,12 +207,14 @@ function ItemRow({ item, locked, canManage, students, first, last, onOpen, onTog
 }) {
   const K = KIND[item.kind];
   const auto = item.kind === 'QUIZ' || item.kind === 'ASSIGNMENT';
+  // Locked, gone from the course or done: a quieter title (still readable, so no opacity).
+  const quiet = locked || item.missing || (item.done && !canManage);
   const label = (
     <span className="flex items-center gap-3 min-w-0">
       <K.icon className="w-4 h-4 text-zinc-500 shrink-0" aria-hidden />
       <span className="min-w-0">
-        <span className={cn('block text-sm font-medium truncate', item.done && !canManage ? 'text-zinc-500' : 'text-zinc-900 dark:text-white')}>{item.title}</span>
-        <span className="block text-xs text-zinc-500 truncate">{K.label}{item.meta ? ` · ${item.meta}` : ''}{item.missing ? ' · no longer in the course' : ''}</span>
+        <span className={cn('block text-sm font-medium truncate', quiet ? 'text-zinc-600 dark:text-zinc-400' : 'text-zinc-900 dark:text-white')}>{item.title}</span>
+        <span className="block text-xs text-zinc-600 dark:text-zinc-400 truncate">{K.label}{item.meta ? ` · ${item.meta}` : ''}{item.missing ? ' · no longer in the course' : ''}</span>
       </span>
     </span>
   );
@@ -228,7 +230,7 @@ function ItemRow({ item, locked, canManage, students, first, last, onOpen, onTog
           </button>
         )
       )}
-      {locked ? <span className="flex-1 min-w-0 opacity-70">{label}</span> : <ItemOpen item={item} onOpen={onOpen} className="flex-1 min-w-0 text-left rounded-lg -mx-1 px-1 py-1 hover:bg-zinc-100/70 dark:hover:bg-white/[0.04]">{label}</ItemOpen>}
+      {locked ? <span className="flex-1 min-w-0">{label}</span> : <ItemOpen item={item} onOpen={onOpen} className="flex-1 min-w-0 text-left rounded-lg -mx-1 px-1 py-1 hover:bg-zinc-100/70 dark:hover:bg-white/[0.04]">{label}</ItemOpen>}
       {canManage && (
         <>
           <span className="text-xs tabular-nums text-zinc-500 shrink-0" title="Students who finished it">{item.doneCount ?? 0}/{students} done</span>
