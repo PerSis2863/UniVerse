@@ -13,7 +13,7 @@ export interface DocxImage { data: Uint8Array; width: number; height: number }
 
 const embedOf = (n: PMNode): EmbedAttrs => {
   const v = (k: string) => (typeof n.attrs?.[k] === 'string' ? (n.attrs[k] as string) : '');
-  return { kind: v('kind') as EmbedAttrs['kind'], src: v('src'), title: v('title'), lang: v('lang'), code: v('code'), tex: v('tex') };
+  return { kind: v('kind') as EmbedAttrs['kind'], src: v('src'), title: v('title'), lang: v('lang'), code: v('code'), tex: v('tex'), chapters: v('chapters') };
 };
 
 const kids = (n: PMNode) => n.content ?? [];

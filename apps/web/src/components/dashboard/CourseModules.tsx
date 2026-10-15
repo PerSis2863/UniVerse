@@ -22,15 +22,18 @@ import { safeHref } from '@/lib/safe-href';
 import { cn } from '@/lib/utils';
 import { ITEM_KINDS, REF_KINDS, type ItemKind } from '@/lib/course-modules';
 
-// The AI syllabus draft (Stage 5 · B2), loaded when opened.
+// The AI syllabus draft and rich lesson pages (Stage 5 · B2), loaded when opened.
 const SyllabusDraft = dynamic(() => import('@/components/dashboard/SyllabusDraft').then((x) => x.SyllabusDraft), { ssr: false });
+const LessonReader = dynamic(() => import('@/components/lessons/LessonPage').then((x) => x.LessonReader), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
+const LessonEditor = dynamic(() => import('@/components/lessons/LessonPage').then((x) => x.LessonEditor), { ssr: false });
 
 // The course board's Modules tab (Stage 5 · B2; server: src/server/course-modules.ts).
 // Students: what to do next, a ✓ per item, progress per module, and why a module is locked.
 // Teachers: build modules from the course's materials, quizzes, assignments and live classes plus
 // pages, links and videos; reorder; see how many students finished each item.
 
-interface ItemV { id: string; kind: ItemKind; refId: string | null; title: string; body: string | null; url: string | null; href: string | null; meta: string | null; missing: boolean; done: boolean; doneCount?: number }
+/** rich: a page written in the page editor; its body is loaded when it's opened. */
+interface ItemV { id: string; kind: ItemKind; refId: string | null; title: string; body: string | null; rich?: boolean; url: string | null; href: string | null; meta: string | null; missing: boolean; done: boolean; doneCount?: number }
 interface ModuleV {
   id: string; title: string; summary: string | null; published: boolean; releaseAt: string | null;
   requireQuizId: string | null; requireScore: number | null; requireQuizTitle: string | null;
@@ -59,13 +62,15 @@ export function CourseModules({ courseId }: { courseId: string }) {
   const [drafting, setDrafting] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
   const [page, setPage] = useState<ItemV | null>(null);
+  const [editPage, setEditPage] = useState<ItemV | null>(null);
 
-  const send = async (body: object, done?: string) => {
+  /** The server's answer (the new item for add-item), or false when it didn't work. */
+  const send = async (body: object, done?: string): Promise<Record<string, unknown> | false> => {
     try {
-      await authedJson(key, { method: 'POST', body: JSON.stringify(body) });
+      const out = await authedJson<Record<string, unknown> | null>(key, { method: 'POST', body: JSON.stringify(body) });
       await mutate();
       if (done) toast.success(done);
-      return true;
+      return out ?? {};
     } catch (e) {
       toast.error(errorMessage(e, 'Couldn’t save that. Please try again.'));
       return false;
@@ -161,7 +166,7 @@ export function CourseModules({ courseId }: { courseId: string }) {
                 <ul className="border-t border-zinc-200/70 dark:border-white/[0.06] divide-y divide-zinc-200/70 dark:divide-white/[0.06]">
                   {m.items.map((it, ii) => (
                     <ItemRow key={it.id} item={it} locked={m.locked} canManage={canManage} students={data.students} first={ii === 0} last={ii === m.items.length - 1}
-                      onOpen={opened} onToggle={(d) => setDone(it, d)}
+                      onOpen={opened} onToggle={(d) => setDone(it, d)} onEdit={() => setEditPage(it)}
                       onMove={(dir) => void send({ action: 'move-item', itemId: it.id, dir })}
                       onDelete={() => void send({ action: 'delete-item', itemId: it.id }, 'Removed from the module')} />
                   ))}
@@ -180,12 +185,22 @@ export function CourseModules({ courseId }: { courseId: string }) {
       {editing && data.choices && <ModuleForm module={editing === 'new' ? null : editing} quizzes={data.choices.QUIZ} onClose={() => setEditing(null)}
         onSave={async (f) => { if (await send(editing === 'new' ? { action: 'create-module', ...f } : { action: 'update-module', moduleId: editing.id, ...f }, editing === 'new' ? 'Module added' : 'Saved')) setEditing(null); }} />}
       {adding && data.choices && <ItemForm choices={data.choices} onClose={() => setAdding(null)}
-        onSave={async (f) => { if (await send({ action: 'add-item', moduleId: adding, ...f }, 'Added')) setAdding(null); }} />}
+        onSave={async (f) => {
+          const out = await send({ action: 'add-item', moduleId: adding, ...f }, 'Added');
+          if (!out) return;
+          setAdding(null);
+          // A new page without text yet: straight into the page editor.
+          if (f.kind === 'PAGE' && !f.body && typeof out.id === 'string') setEditPage({ id: out.id, kind: 'PAGE', refId: null, title: f.title ?? '', body: null, rich: false, url: null, href: null, meta: null, missing: false, done: false });
+        }} />}
       {page && (
-        <Sheet title={page.title} onClose={() => setPage(null)}>
-          <div className="text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">{page.body}</div>
+        <Sheet title={page.title} wide={page.rich} onClose={() => setPage(null)}
+          footer={canManage ? <button type="button" onClick={() => { setEditPage(page); setPage(null); }} className="btn-secondary w-full justify-center"><Pencil className="w-4 h-4" /> Edit page</button> : undefined}>
+          {page.rich ? <LessonReader courseId={courseId} itemId={page.id} />
+            : page.body ? <div className="text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">{page.body}</div>
+            : <p className="text-sm text-zinc-600 dark:text-zinc-400">Nothing on this page yet.</p>}
         </Sheet>
       )}
+      {editPage && <LessonEditor courseId={courseId} item={editPage} onClose={() => setEditPage(null)} onSaved={() => void mutate()} />}
     </div>
   );
 }
@@ -201,9 +216,9 @@ function ItemOpen({ item, onOpen, className, children }: { item: ItemV; onOpen: 
   return <Link href={href} onClick={() => onOpen(item)} className={className}>{children}</Link>;
 }
 
-function ItemRow({ item, locked, canManage, students, first, last, onOpen, onToggle, onMove, onDelete }: {
+function ItemRow({ item, locked, canManage, students, first, last, onOpen, onToggle, onEdit, onMove, onDelete }: {
   item: ItemV; locked: boolean; canManage: boolean; students: number; first: boolean; last: boolean;
-  onOpen: (i: ItemV) => void; onToggle: (done: boolean) => void; onMove: (dir: -1 | 1) => void; onDelete: () => void;
+  onOpen: (i: ItemV) => void; onToggle: (done: boolean) => void; onEdit: () => void; onMove: (dir: -1 | 1) => void; onDelete: () => void;
 }) {
   const K = KIND[item.kind];
   const auto = item.kind === 'QUIZ' || item.kind === 'ASSIGNMENT';
@@ -234,6 +249,7 @@ function ItemRow({ item, locked, canManage, students, first, last, onOpen, onTog
       {canManage && (
         <>
           <span className="text-xs tabular-nums text-zinc-500 shrink-0" title="Students who finished it">{item.doneCount ?? 0}/{students} done</span>
+          {item.kind === 'PAGE' && <button type="button" aria-label={`Edit the page “${item.title}”`} onClick={onEdit} className="btn-ghost btn-icon"><Pencil className="w-4 h-4" /></button>}
           <button type="button" aria-label="Move item up" disabled={first} onClick={() => onMove(-1)} className="btn-ghost btn-icon disabled:opacity-30"><ArrowUp className="w-4 h-4" /></button>
           <button type="button" aria-label="Move item down" disabled={last} onClick={() => onMove(1)} className="btn-ghost btn-icon disabled:opacity-30"><ArrowDown className="w-4 h-4" /></button>
           <button type="button" aria-label={`Remove “${item.title}”`} onClick={onDelete} className="btn-ghost btn-icon text-rose-600 dark:text-rose-400"><Trash2 className="w-4 h-4" /></button>
@@ -294,7 +310,7 @@ function ItemForm({ choices, onClose, onSave }: { choices: NonNullable<View['cho
   const [busy, setBusy] = useState(false);
   const isRef = REF_KINDS.includes(kind);
   const options = isRef ? choices[kind as 'FILE' | 'QUIZ' | 'ASSIGNMENT' | 'LIVE'] : [];
-  const ready = isRef ? !!refId : kind === 'PAGE' ? !!title.trim() && !!body.trim() : /^https?:\/\/\S+/i.test(url.trim());
+  const ready = isRef ? !!refId : kind === 'PAGE' ? !!title.trim() : /^https?:\/\/\S+/i.test(url.trim());
   const save = async () => {
     setBusy(true);
     await onSave(isRef ? { kind, refId } : kind === 'PAGE' ? { kind, title: title.trim(), body: body.trim() } : { kind, url: url.trim(), title: title.trim() || undefined });
@@ -330,7 +346,7 @@ function ItemForm({ choices, onClose, onSave }: { choices: NonNullable<View['cho
         ) : kind === 'PAGE' ? (
           <>
             <Field label="Title">{(p) => <input {...p} className="input" value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Before you start" />}</Field>
-            <Field label="Text" count={body.length} max={10_000}>{(p) => <textarea {...p} className="input min-h-[160px]" value={body} maxLength={10_000} onChange={(e) => setBody(e.target.value)} />}</Field>
+            <Field label="Quick text (optional)" hint="Leave it empty to write the page in the page editor next: headings, pictures, videos with chapters, maths, callouts, quick checks and flashcards." count={body.length} max={10_000}>{(p) => <textarea {...p} className="input min-h-[120px]" value={body} maxLength={10_000} onChange={(e) => setBody(e.target.value)} />}</Field>
           </>
         ) : (
           <>

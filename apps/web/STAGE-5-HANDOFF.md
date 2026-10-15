@@ -26,8 +26,10 @@ done, where the code is and what's left for each item. Keep that table up to dat
 - **Q5 (courses), 15 Oct:** done on the branch: copy to a new term (Q5.1), discussion board (Q5.3,
   migration **0132**), scheduled / pinned / "seen by" announcements (Q5.4, **0133**), co-teachers and
   teaching assistants (Q5.6, **0134**), course calendar (Q5.5), AI syllabus draft (Q5.7), class-size
-  limit, waitlist and sections (rest of Q5.6, **0135**). Each has a Progress row. **Left in Q5:** rich
-  lesson pages (Q5.2), Common Cartridge import/export (Q5.8). **Next migration: `0136`.**
+  limit, waitlist and sections (rest of Q5.6, **0135**), rich lesson pages (Q5.2). Each has a Progress
+  row. **Left in Q5:** Common Cartridge import/export (Q5.8). **Next migration: `0136`.**
+  - **Lesson pages:** a page's body is plain text or the editor's JSON (`{"type":"doc"…`); always save it
+    through `cleanPageBody` (`src/lib/lesson-page.ts`), and never send rich bodies in lists (`pageTexts`).
   - **Privacy fix in Q5.4:** the announcements list gave everyone every course's announcements.
   - **Teaching team:** `courseAccess` returns `canManage` (teacher, co-teacher, admin) and `canGrade`
     (+ assistants). New course features: use `canManage` to change things and `canGrade` for grading

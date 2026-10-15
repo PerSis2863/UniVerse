@@ -1,6 +1,7 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { ITEM_KINDS, REF_KINDS, lockFor, nextItem, percent, type ItemKind } from '@/lib/course-modules';
+import { LessonPageError, cleanPageBody } from '@/lib/lesson-page';
 import { oneOf, str, text, type Body } from './body';
 import { publish } from './realtime';
 
@@ -20,26 +21,31 @@ export class ModuleError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
 
+/** Pages' text, without the rich pages' (up to 300 kB each: loaded when opened, pageView): rich says which. */
+export const pageTexts = (ids: string[]) => inChunks(ids, (part) => prisma.$queryRawUnsafe<{ id: string; body: string | null; rich: number | null }[]>(
+  `SELECT id, CASE WHEN substr(body, 1, 13) = '{"type":"doc"' THEN NULL ELSE body END AS body, substr(body, 1, 13) = '{"type":"doc"' AS rich FROM module_items WHERE id IN (${part.map(() => '?').join(', ')})`, ...part));
+
 /** Everything the Modules tab shows, shaped for the viewer. */
 export async function modulesView(courseId: string, user: SessionUser, access: Access) {
   const { canManage } = access;
   const modules = await prisma.courseModule.findMany({
     where: { courseId, ...(canManage ? {} : { published: true }) },
     orderBy: { position: 'asc' },
-    include: { items: { orderBy: { position: 'asc' } } },
+    include: { items: { orderBy: { position: 'asc' }, select: { id: true, kind: true, refId: true, title: true, url: true, position: true } } },
   });
   const items = modules.flatMap((m) => m.items);
   const refs = (kind: ItemKind) => items.filter((i) => i.kind === kind && i.refId).map((i) => i.refId!);
   const quizIds = [...refs('QUIZ'), ...modules.map((m) => m.requireQuizId).filter((x): x is string => !!x)];
 
-  const [materials, quizzes, assignments, events] = await Promise.all([
+  const [pages, materials, quizzes, assignments, events] = await Promise.all([
+    pageTexts(items.filter((i) => i.kind === 'PAGE').map((i) => i.id)),
     inChunks(refs('FILE'), (part) => prisma.material.findMany({ where: { courseId, id: { in: part } }, select: { id: true, title: true, type: true, fileUrl: true } })),
     inChunks(quizIds, (part) => prisma.quiz.findMany({ where: { courseId, id: { in: part } }, select: { id: true, title: true, status: true, dueDate: true } })),
     inChunks(refs('ASSIGNMENT'), (part) => prisma.assignment.findMany({ where: { courseId, id: { in: part } }, select: { id: true, title: true, dueDate: true } })),
     inChunks(refs('LIVE'), (part) => prisma.calendarEvent.findMany({ where: { courseId, id: { in: part } }, select: { id: true, title: true, startAt: true } })),
   ]);
   const byId = <T extends { id: string }>(xs: T[]) => new Map(xs.map((x) => [x.id, x]));
-  const [mat, quiz, asg, ev] = [byId(materials), byId(quizzes), byId(assignments), byId(events)];
+  const [page, mat, quiz, asg, ev] = [byId(pages), byId(materials), byId(quizzes), byId(assignments), byId(events)];
 
   // Done: a student's own; a teacher's view counts students.
   const done = new Set<string>();
@@ -83,9 +89,12 @@ export async function modulesView(courseId: string, user: SessionUser, access: A
         case 'LINK': case 'VIDEO': href = i.url; break;
       }
       const hidden = lock.locked;
+      // A rich page (the page editor's) is loaded when opened (pageView), so the list stays small.
+      const p = page.get(i.id);
+      const rich = !!p?.rich;
       return {
         id: i.id, kind: i.kind as ItemKind, refId: i.refId, title: i.title, position: i.position,
-        body: hidden ? null : i.body, url: hidden ? null : i.url, href: hidden ? null : href, meta, missing,
+        body: hidden || rich ? null : p?.body ?? null, rich, url: hidden ? null : i.url, href: hidden ? null : href, meta, missing,
         done: done.has(key), doneCount: canManage ? counts.get(key) ?? 0 : undefined,
       };
     });
@@ -108,6 +117,34 @@ export async function modulesView(courseId: string, user: SessionUser, access: A
   ]).then(([m, q, a, e]) => ({ FILE: m, QUIZ: q, ASSIGNMENT: a, LIVE: e })) : null;
 
   return { canManage, students, modules: shaped, next: next ? { moduleId: next.module.id, itemId: next.item.id } : null, choices };
+}
+
+/** GET /api/courses/:id/modules/:itemId — one page (rich pages aren't in the list), if the viewer may open it. */
+export async function pageView(courseId: string, user: SessionUser, access: Access, itemId: string) {
+  const item = await prisma.moduleItem.findFirst({
+    where: { id: itemId, kind: 'PAGE', module: { courseId, ...(access.canManage ? {} : { published: true }) } },
+    select: { id: true, title: true, body: true, module: { select: { published: true, releaseAt: true, requireQuizId: true, requireScore: true } } },
+  });
+  if (!item) throw new ModuleError('That page isn’t there any more.', 404);
+  if (!access.canManage) {
+    const m = item.module;
+    let best: number | null = null;
+    if (m.requireQuizId) {
+      const subs = await prisma.quizSubmission.findMany({ where: { studentId: user.id, quizId: m.requireQuizId }, select: { score: true, maxScore: true }, take: 50 });
+      for (const q of subs) { const pc = percent(q.score, q.maxScore); if (pc != null) best = Math.max(best ?? 0, pc); }
+    }
+    const lock = lockFor({ ...m, requireQuizTitle: null }, new Date(), best);
+    if (lock.locked) throw new ModuleError(`This module is locked. ${lock.reason}.`, 403);
+  }
+  return { id: item.id, title: item.title, body: item.body };
+}
+
+/** A page's text from the teacher: a rich page checked, plain text trimmed. */
+function pageBody(raw: unknown) {
+  try { return cleanPageBody(raw); } catch (e) {
+    if (e instanceof LessonPageError) throw new ModuleError(e.message);
+    throw e;
+  }
 }
 
 /** The refId belongs to this course for that kind; returns its title. */
@@ -135,10 +172,10 @@ function moduleFields(b: Body) {
   };
 }
 
-/** Tells the course's students (and teacher) to reload their Modules tab. */
-async function refresh(courseId: string, teacherId: string) {
+/** Tells the course's students (and teacher) to reload their Modules tab (and a page that changed). */
+async function refresh(courseId: string, teacherId: string, extra: string[] = []) {
   const enrolled = await prisma.enrollment.findMany({ where: { courseId }, select: { studentId: true }, take: 1000 });
-  publish([teacherId, ...enrolled.map((e) => e.studentId)], { type: 'refresh', keys: [`/api/courses/${courseId}/modules`] });
+  publish([teacherId, ...enrolled.map((e) => e.studentId)], { type: 'refresh', keys: [`/api/courses/${courseId}/modules`, ...extra] });
 }
 
 const ACTIONS = ['create-module', 'update-module', 'delete-module', 'move-module', 'add-item', 'update-item', 'delete-item', 'move-item', 'done'] as const;
@@ -169,6 +206,7 @@ export async function changeModules(courseId: string, user: SessionUser, access:
     return i;
   };
   let result: unknown = { ok: true };
+  const changed: string[] = [];
 
   switch (action) {
     case 'create-module': {
@@ -215,9 +253,10 @@ export async function changeModules(courseId: string, user: SessionUser, access:
         data.refId = refId;
         title ||= found;
       } else if (kind === 'PAGE') {
-        const body = text(b.body).trim().slice(0, 10_000);
-        if (!title || !body) throw new ModuleError('A page needs a title and some text.');
-        data.body = body;
+        // The text can come later, in the page editor.
+        if (!title) throw new ModuleError('Give the page a title.');
+        const body = pageBody(b.body);
+        if (body) data.body = body;
       } else {
         const url = text(b.url).trim().slice(0, 1000);
         if (!isHttp(url)) throw new ModuleError('Paste a full link (https://…).');
@@ -233,7 +272,7 @@ export async function changeModules(courseId: string, user: SessionUser, access:
       const title = b.title === undefined ? i.title : text(b.title).trim().slice(0, 200);
       if (!title) throw new ModuleError('An item needs a title.');
       const data: { title: string; body?: string; url?: string } = { title };
-      if (i.kind === 'PAGE' && b.body !== undefined) { data.body = text(b.body).trim().slice(0, 10_000); if (!data.body) throw new ModuleError('A page needs some text.'); }
+      if (i.kind === 'PAGE' && b.body !== undefined) { data.body = pageBody(b.body); changed.push(`/api/courses/${courseId}/modules/${i.id}`); }
       if ((i.kind === 'LINK' || i.kind === 'VIDEO') && b.url !== undefined) { data.url = text(b.url).trim(); if (!isHttp(data.url)) throw new ModuleError('Paste a full link (https://…).'); }
       result = await prisma.moduleItem.update({ where: { id: i.id }, data });
       break;
@@ -255,6 +294,6 @@ export async function changeModules(courseId: string, user: SessionUser, access:
     }
   }
   const course = await prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true } });
-  await refresh(courseId, course?.teacherId ?? user.id);
+  await refresh(courseId, course?.teacherId ?? user.id, changed);
   return result;
 }

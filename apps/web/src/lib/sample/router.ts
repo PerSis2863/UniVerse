@@ -1645,6 +1645,19 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       ] });
   }],
   // Course modules (Stage 5 · B2): three units made from the course's sample materials and quiz.
+  // A rich lesson page (Stage 5 · B2): a callout, a video with chapters, a quick check and flashcards.
+  [/^\/api\/courses\/([^/]+)\/modules\/([^/]+)$/, ({ m }) => {
+    if (m[2] !== 'sm-i8') return fail('That page isn’t there any more.', 404);
+    const p = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+    return ok({ id: 'sm-i8', title: 'How to study each week', body: JSON.stringify({ type: 'doc', content: [
+      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Three steps a week' }] },
+      p('Watch the short lecture, try the practice question, then go over the key words.'),
+      { type: 'callout', attrs: { tone: 'tip' }, content: [p('Little and often works best: twenty minutes a day beats three hours on Sunday.')] },
+      { type: 'embed', attrs: { kind: 'youtube', src: 'dQw4w9WgXcQ', title: 'This week’s lecture', chapters: '0:00 Welcome\n0:43 What we cover\n1:55 How to practise' } },
+      { type: 'quickCheck', attrs: { question: 'Which way of studying helps you remember more?', options: ['Reading the notes again', 'Testing yourself without looking', 'Highlighting'], answer: 1, explain: 'Pulling an answer out of memory makes it stick (it’s called retrieval practice).' } },
+      { type: 'flashcards', attrs: { title: 'Key words', cards: [{ front: 'Retrieval practice', back: 'Testing yourself to remember something' }, { front: 'Spacing', back: 'Studying a little at a time, over days' }, { front: 'Interleaving', back: 'Mixing different kinds of problems' }] } },
+    ] }) });
+  }],
   [/^\/api\/courses\/([^/]+)\/modules$/, ({ db: d, m }) => {
     const c = course(d, m[1]);
     if (!c) return fail('Course not found.', 404);
@@ -1657,6 +1670,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     const mods = [
       { id: 'sm-1', title: 'Getting started', summary: 'How the course works and what you need.', items: [
         item('sm-i1', 'PAGE', 'Welcome and course plan', { body: `Welcome to ${c.name}!\n\nEach week has a module: read the slides, try the practice, then take the short quiz.` }),
+        item('sm-i8', 'PAGE', 'How to study each week', { rich: true }),
         ...(mats[0] ? [item('sm-i2', 'FILE', mats[0].title, { refId: mats[0].id, href: mats[0].fileUrl, meta: mats[0].type })] : []),
       ] },
       { id: 'sm-2', title: 'Week 2', summary: null, items: [

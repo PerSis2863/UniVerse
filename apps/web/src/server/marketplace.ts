@@ -1,6 +1,7 @@
 import prisma from '@/lib/db';
 import { BadRequestException, NotFoundException, ForbiddenException } from './http';
 import { teaches } from '@/lib/course-access';
+import { LessonPageError, cleanPageBody } from '@/lib/lesson-page';
 
 // Stage 5 · C7: Content Marketplace
 // Allows teachers and faculty to publish curriculum packs and courses (free or paid)
@@ -390,13 +391,21 @@ export async function importPackIntoCourse(params: {
     if (mod.items && mod.items.length > 0) {
       let itemPos = 0;
       for (const item of mod.items) {
+        // A pack is whatever its publisher sent: only pages, links and videos (nothing else carries
+        // over without the course's own quizzes and files), web links, and pages checked like a teacher's.
+        const kind = item.kind || 'PAGE';
+        if (!['PAGE', 'LINK', 'VIDEO'].includes(kind) || typeof item.title !== 'string' || !item.title.trim()) continue;
+        const url = kind === 'PAGE' ? null : typeof item.url === 'string' && /^https?:\/\//i.test(item.url) ? item.url.slice(0, 1000) : null;
+        if (kind !== 'PAGE' && !url) continue;
+        let body: string | null = null;
+        if (kind === 'PAGE') { try { body = cleanPageBody(item.body) || null; } catch (e) { if (!(e instanceof LessonPageError)) throw e; } }
         await prisma.moduleItem.create({
           data: {
             moduleId: createdMod.id,
-            title: item.title,
-            kind: item.kind || 'PAGE',
-            body: item.body || null,
-            url: item.url || null,
+            title: item.title.trim().slice(0, 200),
+            kind,
+            body,
+            url,
             position: itemPos++,
           },
         });
