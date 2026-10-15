@@ -2368,12 +2368,15 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/courses\/([^/]+)\/board$/, ({ db: d, m, body }) => {
     const b = d.board[m[1]]; if (!b) return fail('Course not found.', 404);
     const id = sid('b');
-    if (body.kind === 'announcement') b.announcements.unshift({ id, title: body.title, body: body.body, createdAt: new Date().toISOString(), author: { name: d.me.name } });
+    if (body.kind === 'pin') { const a = b.announcements.find((x: any) => x.id === body.id); if (a) a.pinnedAt = body.on === false ? null : new Date().toISOString(); return ok({ ok: true }); }
+    if (body.kind === 'announcement') b.announcements.unshift({ id, title: body.title, body: body.body, createdAt: new Date().toISOString(), publishAt: body.publishAt || null, sentAt: body.publishAt ? null : new Date().toISOString(), pinnedAt: null, author: { name: d.me.name }, _count: { reads: 0 } });
     else if (body.kind === 'material') b.materials.unshift({ id, title: body.title, type: 'OTHER', fileUrl: body.url, size: body.size || null, createdAt: new Date().toISOString() });
     else if (body.kind === 'reading') b.readings.unshift({ id, title: body.title, description: body.description || null, url: body.url || null, category: body.category || null });
     else if (body.kind === 'event') { const s = new Date(body.startAt); b.events.push({ id, title: body.title, description: body.description || null, startAt: s.toISOString(), endAt: new Date(+s + (Number(body.durationMinutes) || 60) * 60_000).toISOString(), type: body.type || 'MEETING' }); }
     return ok({ id }, 201);
   }],
+  // "Seen" marks for announcements: nothing to record in the sample.
+  ['POST', /^\/api\/courses\/([^/]+)\/announcements\/seen$/, () => ok({ seen: 0 })],
   ['DELETE', /^\/api\/courses\/([^/]+)\/board$/, ({ db: d, m, q }) => {
     const b = d.board[m[1]]; const list = ({ announcement: 'announcements', material: 'materials', reading: 'readings', event: 'events' } as any)[q.get('kind') ?? ''];
     if (b && list) b[list] = b[list].filter((x: any) => x.id !== q.get('itemId'));

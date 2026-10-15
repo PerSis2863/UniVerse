@@ -13,17 +13,17 @@ export default function announcementsModule(router: Router) {
     if (dto.courseId) await assertManagesCourse(dto.courseId, user);
     return announcements.create(dto, user.id);
   });
-  r.get('', () => announcements.findAll());
-  r.get<{ id: string }>(':id', ({ params }) => announcements.findOne(params.id));
+  r.get('', ({ user }) => announcements.findAll(user));
+  r.get<{ id: string }>(':id', ({ params, user }) => announcements.findOne(params.id, user));
   // Teachers can only change their own announcements.
   r.patch<{ id: string }>(':id', { roles: ['ADMIN', 'TEACHER'] }, async ({ params, body, user }) => {
     const dto = validate<UpdateAnnouncementDto>(UpdateAnnouncementDto, body);
-    assertOwnerOrAdmin((await announcements.findOne(params.id)).authorId, user, 'an announcement');
+    assertOwnerOrAdmin((await announcements.findOne(params.id, user)).authorId, user, 'an announcement');
     if (dto.courseId) await assertManagesCourse(dto.courseId, user);
     return announcements.update(params.id, dto);
   });
   r.delete<{ id: string }>(':id', { roles: ['ADMIN', 'TEACHER'] }, async ({ params, user }) => {
-    assertOwnerOrAdmin((await announcements.findOne(params.id)).authorId, user, 'an announcement');
+    assertOwnerOrAdmin((await announcements.findOne(params.id, user)).authorId, user, 'an announcement');
     return announcements.remove(params.id);
   });
 }

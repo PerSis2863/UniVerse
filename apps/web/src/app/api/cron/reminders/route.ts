@@ -6,6 +6,7 @@ import { sendMorningBriefs } from '@/server/daily-brief';
 import { remindParentMeetings } from '@/server/parent-meetings';
 import { remindDueTasks } from '@/server/tasks';
 import { sendWeeklySummaries } from '@/server/parent-copilot';
+import { sendDueAnnouncements } from '@/server/course-announcements';
 
 // Reminders for scheduled calls, parent meetings, scheduled chat messages, morning briefs and parents' weekly summaries, run by the 15-minute cron
 // (cloudflare/worker.ts) only when something is actually due, so most runs never start the app. Not reachable from outside: only the
@@ -34,5 +35,7 @@ export async function POST(req: Request) {
   const dueTasks = await remindDueTasks().catch((e) => (console.error('due task automations failed:', e), null));
   // Parents' weekly summaries (Stage 5 · D16)
   const parentWeeks = await sendWeeklySummaries().catch((e) => (console.error('parent weekly summaries failed:', e), null));
-  return NextResponse.json({ ...calls, reminders, followUps, scheduled, briefs, meetings, dueTasks, parentWeeks });
+  // Course announcements scheduled for now (Stage 5 · B2)
+  const announcements = await sendDueAnnouncements().catch((e) => (console.error('scheduled announcements failed:', e), null));
+  return NextResponse.json({ ...calls, reminders, followUps, scheduled, briefs, meetings, dueTasks, parentWeeks, announcements });
 }

@@ -27,6 +27,8 @@ export function dueChecks(now: number): [string, unknown[]][] {
     ['SELECT 1 FROM task_automations a JOIN tasks t ON t."boardId" = a."boardId" WHERE a."trigger" = \'due-soon\' AND a."enabled" = 1 AND t."doneAt" IS NULL AND t."dueRemindedAt" IS NULL AND t."dueAt" > ? AND t."dueAt" <= ? LIMIT 1', [dbDate(now), dbDate(now + 86_400_000)]],
     // A parent's weekly summary (Stage 5 · D16).
     ['SELECT 1 FROM parent_copilot WHERE "weekly" = 1 AND "nextAt" <= ? LIMIT 1', [dbDate(now + 2 * 60_000)]],
+    // A course announcement scheduled for now (Stage 5 · B2).
+    ['SELECT 1 FROM announcements WHERE "sentAt" IS NULL AND "publishAt" IS NOT NULL AND "publishAt" <= ? LIMIT 1', [dbDate(now + 2 * 60_000)]],
   ];
 }
 
@@ -37,7 +39,7 @@ async function anythingDue<S>(db: Db<S>, now: number): Promise<boolean> {
 
 /** Is a scheduled call or a booked parent meeting starting within about 15 minutes, a chat reminder due, a study plan's
  *  7-day follow-up due, a chat message scheduled for now, someone's morning brief, a card due soon, or a parent's
- *  weekly summary, not yet sent? */
+ *  weekly summary or a scheduled course announcement, not yet sent? */
 export async function callsDue<S>(env: { DB?: Db<S> }, wait = (ms: number) => new Promise((r) => setTimeout(r, ms))): Promise<boolean> {
   if (!env.DB) return false;
   // D1 now and then fails a query for a moment (lost connection, busy or restarting database). The

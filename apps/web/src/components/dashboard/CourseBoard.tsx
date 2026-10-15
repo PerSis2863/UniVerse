@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from '@/components/ui/Link';
@@ -12,7 +12,7 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  BadgeCheck, Copy, Layers, Loader2, MessagesSquare, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
+  BadgeCheck, Clock, Copy, Eye, Layers, Loader2, MessagesSquare, Pin, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { uploadChatFile } from '@/components/chat/chat-client';
@@ -63,7 +63,7 @@ interface Course { id: string; name: string; code: string; color: string | null;
 interface Board {
   course: Course & { _count: { enrollments: number }; skills?: string | null };
   canManage: boolean;
-  announcements: { id: string; title: string; body: string; createdAt: string; author: { name: string } }[];
+  announcements: { id: string; title: string; body: string; createdAt: string; publishAt?: string | null; sentAt?: string | null; pinnedAt?: string | null; author: { name: string }; _count?: { reads: number } }[];
   materials: { id: string; title: string; type: 'PDF' | 'DOCX' | 'VIDEO' | 'IMAGE' | 'OTHER'; fileUrl: string; size: string | null; createdAt: string }[];
   readings: { id: string; title: string; description: string | null; url: string | null; category: string | null }[];
   events: { id: string; title: string; description: string | null; startAt: string; endAt: string; type: string }[];
@@ -406,28 +406,72 @@ function RemoveBtn({ onClick }: { onClick: () => void }) {
 // ─── Announcements ─────────────────────────────────────────────────────────
 
 function Announcements({ board, canManage, refresh }: SectionProps) {
-  const [form, setForm] = useState<{ title: string; body: string } | null>(null);
+  const [form, setForm] = useState<{ title: string; body: string; later: boolean; at: string } | null>(null);
   const { post, busy } = usePost(board.course.id, refresh);
   const remove = useRemove(board.course.id, refresh);
+  const courseId = board.course.id;
+  // "Seen by 28 of 32": a student opening the board marks the announcements on it as seen.
+  const shown = canManage ? '' : board.announcements.map((a) => a.id).join(',');
+  useEffect(() => {
+    if (!shown) return;
+    void authedJson(`/api/courses/${courseId}/announcements/seen`, { method: 'POST', body: JSON.stringify({ ids: shown.split(',') }) }).catch(() => {});
+  }, [courseId, shown]);
+  const students = board.course._count.enrollments;
+  const send = async () => {
+    if (!form) return;
+    const publishAt = form.later && form.at ? new Date(form.at).toISOString() : undefined;
+    if (form.later && !publishAt) return void toast.error('Choose when to send it.');
+    if (await post({ kind: 'announcement', title: form.title, body: form.body, publishAt }, publishAt ? `Scheduled for ${when(publishAt)}` : 'Announcement posted')) setForm(null);
+  };
   return (
     <>
-      <SectionHead icon={Bell} title="Announcements" count={board.announcements.length} action={canManage && !form && <AddButton label="Post" onClick={() => setForm({ title: '', body: '' })} />} />
+      <SectionHead icon={Bell} title="Announcements" count={board.announcements.length} action={canManage && !form && <AddButton label="Post" onClick={() => setForm({ title: '', body: '', later: false, at: '' })} />} />
       {form && (
         <FormShell title="New announcement — enrolled students get a notification" onClose={() => setForm(null)}>
-          <input className="input" placeholder="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <textarea className={`input min-h-[100px]`} placeholder="What do students need to know?" maxLength={5000} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
-          <button disabled={busy || !form.title.trim() || !form.body.trim()} onClick={async () => (await post({ kind: 'announcement', ...form }, 'Announcement posted')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Post announcement</button>
+          <input className="input" placeholder="Title" aria-label="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <textarea className={`input min-h-[100px]`} placeholder="What do students need to know?" aria-label="Announcement" maxLength={5000} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+          <fieldset className="space-y-2">
+            <legend className="sr-only">When to send</legend>
+            <div className="flex gap-4 flex-wrap text-sm text-zinc-800 dark:text-zinc-200">
+              <label className="flex items-center gap-2"><input type="radio" name="ann-when" checked={!form.later} onChange={() => setForm({ ...form, later: false })} /> Send now</label>
+              <label className="flex items-center gap-2"><input type="radio" name="ann-when" checked={form.later} onChange={() => setForm({ ...form, later: true })} /> Send later</label>
+            </div>
+            {form.later && (
+              <label className="block text-sm text-zinc-700 dark:text-zinc-300">
+                <span className="label">Date and time (your time zone)</span>
+                <input type="datetime-local" className="input" value={form.at} onChange={(e) => setForm({ ...form, at: e.target.value })} />
+              </label>
+            )}
+          </fieldset>
+          <button disabled={busy || !form.title.trim() || !form.body.trim()} onClick={() => void send()} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} {form.later ? 'Schedule announcement' : 'Post announcement'}</button>
         </FormShell>
       )}
       {board.announcements.length === 0 && !form ? <Empty text={canManage ? 'No announcements yet. Post a welcome message to get your class started.' : 'No announcements yet. Your instructor’s updates will appear here.'} /> : (
         <div className="space-y-3">
-          {board.announcements.map((a) => (
-            <div key={a.id} className={`panel p-5`}>
-              <TranslatableAnnouncement levels id={a.id} title={a.title} body={a.body} titleAs="h4" titleClassName="font-bold text-zinc-900 dark:text-white" bodyClassName="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mt-2 whitespace-pre-line"
-                aside={<div className="flex items-center gap-1 shrink-0"><span className="text-xs text-zinc-400">{when(a.createdAt)}</span>{canManage && <RemoveBtn onClick={() => remove('announcement', a.id, a.title)} />}</div>} />
-              <p className="text-xs text-zinc-400 mt-3">Posted by <span className="text-indigo-500 font-medium">{a.author.name}</span></p>
-            </div>
-          ))}
+          {board.announcements.map((a) => {
+            const waiting = !!a.publishAt && !a.sentAt;
+            return (
+              <div key={a.id} className={cn('panel p-5', a.pinnedAt && 'ring-1 ring-amber-400/50')}>
+                {(a.pinnedAt || waiting) && (
+                  <div className="flex gap-2 flex-wrap mb-2">
+                    {a.pinnedAt && <span className="text-[11px] font-semibold inline-flex items-center gap-1 text-amber-700 dark:text-amber-400"><Pin className="w-3 h-3" /> Pinned</span>}
+                    {waiting && <span className="text-[11px] font-semibold inline-flex items-center gap-1 text-sky-700 dark:text-sky-300"><Clock className="w-3 h-3" /> Scheduled for {when(a.publishAt!)}: students can’t see it yet</span>}
+                  </div>
+                )}
+                <TranslatableAnnouncement levels id={a.id} title={a.title} body={a.body} titleAs="h4" titleClassName="font-bold text-zinc-900 dark:text-white" bodyClassName="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mt-2 whitespace-pre-line"
+                  aside={<div className="flex items-center gap-1 shrink-0"><span className="text-xs text-zinc-500 dark:text-zinc-400">{when(a.publishAt ?? a.createdAt)}</span>{canManage && (
+                    <>
+                      <button type="button" onClick={() => void post({ kind: 'pin', id: a.id, on: !a.pinnedAt }, a.pinnedAt ? 'Unpinned' : 'Pinned to the top')} aria-label={a.pinnedAt ? 'Unpin' : 'Pin to the top'} aria-pressed={!!a.pinnedAt} className={cn('p-1.5 rounded-lg shrink-0', a.pinnedAt ? 'text-amber-600' : 'text-zinc-500 hover:text-amber-600 hover:bg-amber-500/10')}><Pin className="w-4 h-4" /></button>
+                      <RemoveBtn onClick={() => remove('announcement', a.id, a.title)} />
+                    </>
+                  )}</div>} />
+                <div className="flex items-center justify-between gap-2 flex-wrap mt-3">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Posted by <span className="text-indigo-600 dark:text-indigo-400 font-medium">{a.author.name}</span></p>
+                  {canManage && !waiting && a._count && <p className="text-xs text-zinc-600 dark:text-zinc-400 inline-flex items-center gap-1"><Eye className="w-3.5 h-3.5" /> Seen by {a._count.reads} of {students}</p>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </>

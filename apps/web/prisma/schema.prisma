@@ -190,6 +190,7 @@ model User {
   courseThreads          CourseThread[]          // course discussion threads I started (Stage 5 · B2)
   coursePosts            CoursePost[]            // my replies in course discussions
   courseVotes            CourseVote[]
+  announcementReads      AnnouncementRead[]
   aiUses                 AiUse[]                 // AI help I used (Stage 5 · D12)
   wellbeingSettings      WellbeingSettings?      // wellbeing radar (Stage 5 · D13), opt-in
   wellbeingCheckins      WellbeingCheckin[]
@@ -728,10 +729,30 @@ model Announcement {
   author    User               @relation(fields: [authorId], references: [id])
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
+  /// Stage 5 · B2: shown to students (and their notice sent) from then; null: at once.
+  publishAt DateTime?
+  /// When the notice went out (a scheduled one: null until then).
+  sentAt    DateTime?
+  pinnedAt  DateTime?
+  reads     AnnouncementRead[]
 
   @@index([courseId])
   @@index([authorId])
+  @@index([publishAt, sentAt])
   @@map("announcements")
+}
+
+/// A student opened the course board while this announcement was there ("seen by 28 of 32").
+model AnnouncementRead {
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt         DateTime     @default(now())
+
+  @@id([announcementId, userId])
+  @@index([userId])
+  @@map("announcement_reads")
 }
 
 model Conversation {
