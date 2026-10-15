@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Activity, Ban, BarChart3, Bell, Bug, Server, Crown, Database, Download, HardDrive, History, LayoutDashboard, Loader2, LogIn, Megaphone, MessageSquare, MessagesSquare, MousePointerClick, PhoneCall, ShieldCheck, Trash2, Undo2, Users, Wallet, X } from 'lucide-react';
+import { Activity, Ban, BarChart3, Bell, Bug, Server, Crown, Database, Download, Gauge, HardDrive, History, LayoutDashboard, Loader2, LogIn, Megaphone, MessageSquare, MessagesSquare, MousePointerClick, PhoneCall, ShieldCheck, Trash2, Undo2, Users, Wallet, X } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -19,6 +19,7 @@ import { type PlanUsage, PlanUsageCard, ServerPanel } from './server';
 import { AnnouncePanel, ChatsPanel, ComposeDialog } from './chats';
 import { DatabasePanel } from './database';
 import { HealthPanel } from './health';
+import { HealthNumbersPanel } from './health-numbers';
 import { CallsPanel } from './calls';
 import { AnalyticsPanel, AttentionCard, ConsoleSearch, type Go, MoneyPanel, useAttention } from './insights';
 import { useActivePoll } from '@/lib/realtime-client';
@@ -28,10 +29,11 @@ import { LoadError } from '@/components/ui/LoadError';
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
 
-type Tab = 'overview' | 'health' | 'calls' | 'analytics' | 'server' | 'activity' | 'chats' | 'announce' | 'people' | 'database' | 'data' | 'money' | 'changes' | 'errors' | 'deletions';
+type Tab = 'overview' | 'health' | 'numbers' | 'calls' | 'analytics' | 'server' | 'activity' | 'chats' | 'announce' | 'people' | 'database' | 'data' | 'money' | 'changes' | 'errors' | 'deletions';
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'health', label: 'Health check', icon: ShieldCheck },
+  { id: 'numbers', label: 'Health numbers', icon: Gauge },
   { id: 'calls', label: 'Calls', icon: PhoneCall },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'server', label: 'Server', icon: Server },
@@ -139,6 +141,8 @@ export default function OwnerConsole() {
           <Overview onPerson={openPerson} onTab={(t, status) => show(t, { status })} />
         ) : tab === 'health' ? (
           <HealthPanel />
+        ) : tab === 'numbers' ? (
+          <HealthNumbersPanel />
         ) : tab === 'calls' ? (
           <CallsPanel onPerson={openPerson} />
         ) : tab === 'analytics' ? (

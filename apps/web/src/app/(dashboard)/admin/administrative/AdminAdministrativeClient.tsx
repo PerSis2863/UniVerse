@@ -5,6 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import useSWR from 'swr';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { openPrivateFile } from '@/lib/private-file';
 import Link from '@/components/ui/Link';
 import { api } from '@/lib/api';
 import { getAuthToken } from '@/lib/auth-token';
@@ -351,7 +352,7 @@ export default function AdminAdministrativeClient() {
                         <PersonCell person={doc.user} extra={studentFacts(doc.user)} />
                         <div className="flex gap-2 md:justify-end">
                           {doc.fileUrl && (
-                            <a href={safeHref(doc.fileUrl)} target="_blank" rel="noopener noreferrer" aria-label="Open file" className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg"><ExternalLink className="w-4 h-4" /></a>
+                            <a href={safeHref(doc.fileUrl)} onClick={(e) => { e.preventDefault(); void openPrivateFile(doc.fileUrl!, (message) => toast.error(message)); }} target="_blank" rel="noopener noreferrer" aria-label="Open file" className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg"><ExternalLink className="w-4 h-4" /></a>
                           )}
                           {mine && (
                             <>

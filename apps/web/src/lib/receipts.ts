@@ -1,6 +1,6 @@
 import prisma from '@/lib/db';
 
-/** Receipt lookup for the server-rendered /receipt/[id] page (not exposed as a server action). */
+/** A payment with its payer, for GET /api/receipts/[id] (the /receipt/[id] page). */
 export async function getReceipt(id: string) {
   return prisma.payment.findUnique({
     where: { id },

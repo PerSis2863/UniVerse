@@ -16,15 +16,20 @@ function pdfjs() {
   return lib;
 }
 
+// PDFs come from other people (chats, uploads): nothing in one may run code here. Pages are drawn
+// with getDocument only (no viewer, so no PDF scripting; GHSA-hq66-cqwq-w95j needs the viewer's
+// enableScripting), fonts without eval, and no XFA forms.
+const SAFE = { isEvalSupported: false, enableXfa: false } as const;
+
 export async function openPdf(url: string): Promise<PDFDocumentProxy> {
   const m = await pdfjs();
-  return m.getDocument({ url, disableAutoFetch: true, disableStream: true, rangeChunkSize: 65_536, withCredentials: false }).promise;
+  return m.getDocument({ url, disableAutoFetch: true, disableStream: true, rangeChunkSize: 65_536, withCredentials: false, ...SAFE }).promise;
 }
 
 /** A PDF from a file on this device (the file converter, Stage 5 · B9.14). */
 export async function openPdfData(data: ArrayBuffer): Promise<PDFDocumentProxy> {
   const m = await pdfjs();
-  return m.getDocument({ data: new Uint8Array(data) }).promise;
+  return m.getDocument({ data: new Uint8Array(data), ...SAFE }).promise;
 }
 
 /** Draws a page into a canvas `width` CSS pixels wide (sharp on high-density screens). */

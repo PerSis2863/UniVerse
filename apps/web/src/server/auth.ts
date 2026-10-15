@@ -148,11 +148,29 @@ export async function resolveUser(token: string | null): Promise<User> {
       throw new UnauthorizedException({ message: 'You were signed out on all devices. Please sign in again.', code: 'SIGNED_OUT', error: 'Unauthorized' });
     }
   }
+  // One device signed out (Settings → Privacy & Security → devices): that sign-in is refused.
+  if (user.revokedSessions) {
+    const started = signInTime(token);
+    if (started !== null && revokedSessionsOf(user.revokedSessions).includes(started)) {
+      throw new UnauthorizedException({ message: 'This device was signed out. Please sign in again.', code: 'SIGNED_OUT', error: 'Unauthorized' });
+    }
+  }
   return user;
 }
 
+/** The sign-ins signed out one by one (users.revokedSessions, JSON list of seconds). */
+export function revokedSessionsOf(json: string | null | undefined): number[] {
+  if (!json) return [];
+  try {
+    const v = JSON.parse(json) as unknown;
+    return Array.isArray(v) ? v.filter((x): x is number => typeof x === 'number') : [];
+  } catch {
+    return [];
+  }
+}
+
 /** When the sign-in behind a token happened (seconds): Firebase auth_time, or a session token's iat. */
-function signInTime(token: string): number | null {
+export function signInTime(token: string): number | null {
   if (token.startsWith('mock-token-')) return null;
   try {
     const body = token.startsWith('ut1.') ? token.slice(4).split('.')[0] : token.split('.')[1];

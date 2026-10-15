@@ -3,6 +3,25 @@
 Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
 done, where the code is and what's left for each item. Keep that table up to date as you go.
 
+## Latest (14 Oct 2026): read this first
+
+- **`main` has everything up to PR #58** (Meet "Error 1101" fix, D17 moving QR codes, D18 skills match,
+  page-error fixes). **Branch `claude/great-hamilton-8g8xdm` adds (not merged; merge only when the
+  owner says "merge"):** live updates for groups of any size on Workers Free (FREE.1), the daily
+  free-plan warning (FREE.2, migration **0129**), **Q1** (pages with an id never start Next.js) and
+  **Q2** (security: passkeys, devices, sign-in rate limit, CSP reports, private file links; migration
+  **0130**) and **Q3** (health numbers, error screens, per-school switches; migration **0131**; built
+  and unit-tested, its browser test is the first thing to do: see the "Q3" Progress row). Progress
+  rows at the end of the plan. **Next migration: `0132`.**
+- **What's left is written up in `STAGE-5-PLAN.md`, section 4 "Remaining work queue"**: 23 entries
+  (Q1–Q23) in the order to do them, each with what exists to build on, the steps, the traps, how to
+  know it's done, and its size. Q1 and Q2 are done; **finish Q3's test, then continue with Q4**.
+- **A new page with an id in its address** (`/things/[id]`): copy a converted one (`page.tsx` with
+  `generateStaticParams` → `'open'`, the client code in `View.tsx` using `usePathParams`), then run
+  `node scripts/gen-api-routes.mjs`. A page rendered per request brings "Error 1101" back on Workers Free.
+- What only the owner can do (accounts, keys, the Workers Paid decision) and what they should try is
+  at the end of that section.
+
 ## Where things stand (10 Oct 2026)
 
 - Blocks 1–4, D1 and D10 are **merged into `main`** (PR #47, PR #50) and **live**; the production
@@ -192,6 +211,9 @@ teacher; approve a leave and set cover; add a book, lend and return it; add equi
 label, lend it; add a bus route and a hostel room and put a student in each).
 
 ## What to do next, in order
+
+> **Out of date: use `STAGE-5-PLAN.md` section 4 ("Remaining work queue", 14 Oct 2026).** The list
+> below is the order from early October, kept for history.
 
 The plan's order (section 2) is the guide. Suggested next steps:
 

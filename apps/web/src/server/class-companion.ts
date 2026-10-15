@@ -1,6 +1,5 @@
 import prisma from '@/lib/db';
 import { courseAccess } from '@/lib/course-access';
-import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
 import { cachedAi, saveAi, spendAi } from './ai-budget';
 import { isLanguage } from '@/lib/languages';
@@ -205,7 +204,7 @@ async function tellClass(course: { id: string; code: string }, sessionId: string
   const body = 'Summary, notes, key moments and flashcards from today’s class.';
   const link = `/student/blackboard?course=${course.id}&tab=sessions&session=${sessionId}`;
   await prisma.notification.createMany({ data: ids.map((userId) => ({ userId, title, body, type: 'announcement', link })) });
-  publish(ids.slice(0, planLimits().livePushes), { type: 'notification' });
+  publish(ids, { type: 'notification' });
   await pushService.sendToMany(ids, { title, body, url: link, tag: `pack-${sessionId}` }).catch(() => 0);
 }
 

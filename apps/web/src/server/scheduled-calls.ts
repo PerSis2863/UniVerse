@@ -147,8 +147,8 @@ export async function scheduleCall(user: SessionUser, body: Record<string, unkno
     await prisma.notification.createMany({
       data: members.map((userId) => ({ userId, title: `${user.name} scheduled a call`, body: `${title} · ${room.name}`, type: 'call', link: '/calls' })),
     });
-    publish(members.slice(0, planLimits().livePushes), { type: 'refresh', keys: ['/api/calls/scheduled'] });
-    publish(members.slice(0, planLimits().livePushes), { type: 'notification' });
+    publish(members, { type: 'refresh', keys: ['/api/calls/scheduled'] });
+    publish(members, { type: 'notification' });
   }
   return shape(created, user);
 }

@@ -41,6 +41,8 @@ const GuardianShareCard = dynamic(() => import('@/components/settings/GuardianSh
 const GuardianAccountsCard = dynamic(() => import('@/components/settings/GuardianAccountsCard').then((m) => m.GuardianAccountsCard), { ssr: false, loading: sectionLoading });
 const GuardianContactsCard = dynamic(() => import('@/components/settings/GuardianContactsCard').then((m) => m.GuardianContactsCard), { ssr: false, loading: sectionLoading });
 const RecentSignIns = dynamic(() => import('@/components/security/RecentSignIns').then((m) => m.RecentSignIns), { ssr: false, loading: sectionLoading });
+const Passkeys = dynamic(() => import('@/components/security/SignInSecurity').then((m) => m.Passkeys), { ssr: false, loading: sectionLoading });
+const SignedInDevices = dynamic(() => import('@/components/security/SignInSecurity').then((m) => m.SignedInDevices), { ssr: false, loading: sectionLoading });
 
 // Settings for every portal, like the Settings app on a phone: a searchable list of sections; on
 // phones a section slides in over the list (Back, or swipe from the left edge, slides it away), on
@@ -201,6 +203,8 @@ function SectionBody({ id, role, title }: { id: string; role: Role; title: strin
           <NetworkVisibility />
           <RecordingPrivacy />
           <AccountSecurity />
+          <Passkeys />
+          <SignedInDevices />
           <RecentSignIns />
         </Card>
       );

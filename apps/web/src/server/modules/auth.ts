@@ -2,13 +2,15 @@ import type { Router } from '../router';
 import prisma from '@/lib/db';
 import { BadRequestException, HttpException, UnauthorizedException } from '../http';
 import { TERMS_VERSION } from '@/lib/terms-version';
-import { extractBearer, forgetUser, isDemoAccount, isDemoLoginEnabled, isOwner, verifyFirebaseIdToken } from '../auth';
+import { extractBearer, forgetUser, isDemoAccount, isDemoLoginEnabled, isOwner, revokedSessionsOf, signInTime, verifyFirebaseIdToken } from '../auth';
 import { REQUESTABLE_ROLES, approveInvited, currentApplication, startSignupApplication } from './applications';
 import { audit } from '../audit';
 import { recordLogin } from '../logins';
 import { sendEmail } from '../email';
 import { authTimeOf, codeFor, codeMatches, hasPass, needsTwoStep, passFor, twoStepEnabled } from '../two-step';
 import { oneOf, str } from '../body';
+import { passkeyOptions, passkeysEnabled, registerPasskey, usePasskey } from '../passkeys';
+import { issueSessionToken } from '../session-token';
 
 const codeFails = new Map<string, { n: number; until: number }>();
 const maskEmail = (e: string) => e.replace(/^(.{2})[^@]*(@.*)$/, '$1•••$2');
@@ -21,6 +23,11 @@ const userSelect = {
 
 const getMe = (id: string) => prisma.user.findUnique({ where: { id }, select: userSelect });
 
+/** How long a passkey sign-in lasts on a device (then the passkey again). */
+const PASSKEY_SESSION_SEC = 7 * 86_400;
+/** Sign-ins older than this aren't listed as devices (Firebase sign-ins last until signed out). */
+const DEVICE_DAYS = 90;
+
 export default function auth(router: Router) {
   const r = router.controller('auth');
 
@@ -28,9 +35,10 @@ export default function auth(router: Router) {
 
   // Two-step sign-in for admins and the owner (src/server/two-step.ts): email a code, then trade
   // the code for the pass the app sends with every request. Five wrong codes lock it for 15 min.
-  r.get('two-step', ({ user, req }) => {
+  r.get('two-step', async ({ user, req }) => {
     const token = extractBearer(req.headers.get('authorization'));
-    return { required: needsTwoStep(user.role, token), passed: hasPass(req, user.id, token) };
+    // passkeys: how many this account has (the second step can use one instead of the email).
+    return { required: needsTwoStep(user.role, token), passed: hasPass(req, user.id, token), passkeys: passkeysEnabled() ? await prisma.passkey.count({ where: { userId: user.id } }) : 0 };
   });
   r.post('two-step/send', async ({ user, req }) => {
     const at = authTimeOf(extractBearer(req.headers.get('authorization')));
@@ -54,6 +62,77 @@ export default function auth(router: Router) {
     }
     codeFails.delete(user.id);
     return { pass: passFor(user.id, at) };
+  });
+
+  // Passkeys (src/server/passkeys.ts): the list, adding and removing (Settings → Privacy & Security),
+  // signing in with one (public: no account yet in the browser), and an admin's second step.
+  r.get('passkeys', async ({ user }) => ({
+    enabled: passkeysEnabled(),
+    items: await prisma.passkey.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, select: { id: true, name: true, createdAt: true, lastUsedAt: true } }),
+  }));
+  r.post('passkeys/options', ({ user, req }) => passkeyOptions(req, 'register', user));
+  r.post('passkeys', async ({ user, req, body }) => {
+    const key = await registerPasskey(req, user, body);
+    audit(user, { action: 'security.passkey_added', summary: `${user.name} added a passkey (${key.name})`, targetType: 'user', targetId: user.id }, req);
+    return key;
+  });
+  r.delete('passkeys/:id', async ({ user, params, req }) => {
+    const gone = await prisma.passkey.deleteMany({ where: { id: params.id, userId: user.id } });
+    if (!gone.count) throw new BadRequestException('That passkey is already removed.');
+    audit(user, { action: 'security.passkey_removed', summary: `${user.name} removed a passkey`, targetType: 'user', targetId: user.id }, req);
+    return { ok: true };
+  });
+  r.post('passkeys/sign-in/options', { public: true }, ({ req }) => passkeyOptions(req, 'signin'));
+  r.post('passkeys/sign-in', { public: true }, async ({ req, body }) => {
+    const userId = await usePasskey(req, 'signin', body);
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, status: true } });
+    if (!user || user.status === 'SUSPENDED') throw new UnauthorizedException('This account can’t sign in.');
+    // A UniVerse session token (signed with SESSION_SECRET) for a week; its iat is this sign-in's moment.
+    const accessToken = issueSessionToken(user.id, 'passkey', PASSKEY_SESSION_SEC);
+    await recordLogin(user.id, req, 'SIGN_IN', 'passkey', signInTime(accessToken) ?? undefined).catch(() => {});
+    return { accessToken };
+  });
+  // Under two-step/: reachable before the second step is done (src/server/router.ts).
+  r.post('two-step/passkey/options', ({ user, req }) => passkeyOptions(req, 'two-step', user));
+  r.post('two-step/passkey', async ({ user, req, body }) => {
+    const at = authTimeOf(extractBearer(req.headers.get('authorization')));
+    if (at === null) throw new BadRequestException('Two-step sign-in is not needed for this account.');
+    await usePasskey(req, 'two-step', body, user.id);
+    return { pass: passFor(user.id, at) };
+  });
+
+  // Signed-in devices (from the sign-in history): each sign-in once, newest first, without the ones
+  // already signed out. "Sign out this device" refuses that sign-in from now on (resolveUser).
+  r.get('devices', async ({ user, req }) => {
+    const token = extractBearer(req.headers.get('authorization'));
+    const current = token ? signInTime(token) : null;
+    const [rows, me] = await Promise.all([
+      prisma.loginEvent.findMany({ where: { userId: user.id, sessionAt: { not: null } }, orderBy: { createdAt: 'desc' }, take: 200, select: { sessionAt: true, kind: true, method: true, device: true, city: true, country: true, createdAt: true } }),
+      prisma.user.findUnique({ where: { id: user.id }, select: { revokedSessions: true, signedOutAt: true } }),
+    ]);
+    const revoked = new Set(revokedSessionsOf(me?.revokedSessions));
+    const everywhere = me?.signedOutAt ? me.signedOutAt.getTime() / 1000 : 0;
+    const seen = new Map<number, { sessionAt: number; device: string | null; method: string | null; place: string | null; signedInAt: string; lastSeenAt: string; current: boolean }>();
+    for (const e of rows) {
+      const at = e.sessionAt!;
+      if (revoked.has(at) || at < everywhere || at * 1000 < Date.now() - DEVICE_DAYS * 86_400_000) continue;
+      const place = [e.city, e.country].filter(Boolean).join(', ') || null;
+      const s = seen.get(at);
+      if (!s) seen.set(at, { sessionAt: at, device: e.device, method: e.method, place, signedInAt: new Date(at * 1000).toISOString(), lastSeenAt: e.createdAt.toISOString(), current: at === current });
+      else if (!s.method && e.method) s.method = e.method;
+    }
+    return [...seen.values()].slice(0, 20);
+  });
+  r.post('devices/sign-out', async ({ user, req, body }) => {
+    const at = Number(body.sessionAt);
+    if (!Number.isInteger(at) || at <= 0) throw new BadRequestException('Which device?');
+    const token = extractBearer(req.headers.get('authorization'));
+    if (token && signInTime(token) === at) throw new BadRequestException('This is the device you’re using: sign out from the menu instead.');
+    const me = await prisma.user.findUnique({ where: { id: user.id }, select: { revokedSessions: true } });
+    const list = [...new Set([...revokedSessionsOf(me?.revokedSessions), at])].slice(-50);
+    await prisma.user.update({ where: { id: user.id }, data: { revokedSessions: JSON.stringify(list) } });
+    forgetUser(user.id);
+    return { ok: true };
   });
 
   // "Sign out everywhere" for your own account: every device has to sign in again.

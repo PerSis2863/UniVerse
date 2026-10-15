@@ -16,15 +16,16 @@ const KEY = ['/api/live*'];
 const optionsOf = (p: { options: Prisma.JsonValue }) => (Array.isArray(p.options) ? (p.options as string[]) : []);
 
 /** The course's teacher and its students. `online`: only students active in the last 15 minutes
- *  (the ones with UniVerse open), at most 40: each live push is a request to that person's hub, and
- *  Workers Free allows 50 per request. Everyone else's page re-checks on its own. */
-async function members(courseId: string, online = true) {
+ *  (the ones with UniVerse open), at most `max` (pushes are relayed hub to hub, src/lib/fanout.ts;
+ *  votes pass a small max, since every vote would otherwise refresh every student). Everyone else's
+ *  page re-checks on its own. */
+async function members(courseId: string, online = true, max = 1000) {
   const [course, students] = await Promise.all([
     prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true, code: true } }),
     prisma.enrollment.findMany({
       where: { courseId, ...(online ? { student: { lastSeenAt: { gt: new Date(Date.now() - 15 * 60_000) } } } : {}) },
       select: { studentId: true },
-      take: online ? planLimits().livePushes : 1000,
+      take: online ? max : 1000,
     }),
   ]);
   return { teacherId: course?.teacherId ?? null, code: course?.code ?? '', students: students.map((s) => s.studentId) };
@@ -116,7 +117,7 @@ export async function vote(user: SessionUser, pollId: string, body: Record<strin
   if (!Number.isInteger(option) || option < 0 || option >= optionsOf(poll).length) throw new BadRequestException('Choose one of the answers.');
   await prisma.livePollVote.upsert({ where: { pollId_userId: { pollId, userId: user.id } }, create: { pollId, userId: user.id, option }, update: { option } });
   // The teacher's screen updates now; classmates only when they can see results.
-  const m = await members(poll.courseId);
+  const m = await members(poll.courseId, true, planLimits().livePushes);
   publish(poll.showResults ? [...(m.teacherId ? [m.teacherId] : []), ...m.students] : m.teacherId ? [m.teacherId] : [], { type: 'refresh', keys: KEY });
   return { ok: true, option };
 }

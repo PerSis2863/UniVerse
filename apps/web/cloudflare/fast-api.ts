@@ -73,8 +73,8 @@ function sessionIssuedAt(token: string): number | undefined {
   }
 }
 
-const USER_COLUMNS = 'SELECT id, name, email, role, status, signedOutAt FROM users WHERE';
-type UserRow = { id: string; name: string; email: string; role: string; status: string; signedOutAt: string | null };
+const USER_COLUMNS = 'SELECT id, name, email, role, status, signedOutAt, revokedSessions, organizationId FROM users WHERE';
+type UserRow = { id: string; name: string; email: string; role: string; status: string; signedOutAt: string | null; revokedSessions: string | null; organizationId: string | null };
 
 /** The signed-in caller, or null when the Next.js route should decide (see the top of the file). */
 async function callerOf(request: Request, db: D1Database): Promise<Caller | null> {
@@ -113,7 +113,10 @@ async function callerOf(request: Request, db: D1Database): Promise<Caller | null
   if (!row || row.status === 'SUSPENDED') return null;
   // Signed out everywhere after this sign-in: the Next.js route explains.
   if (row.signedOutAt && authTime !== undefined && authTime * 1000 < Date.parse(isoDate(String(row.signedOutAt)) ?? '')) return null;
-  const caller = { id: row.id, name: row.name, email: row.email, role: row.role, demo };
+  // This device signed out on its own (Settings → devices; src/server/auth.ts): the Next.js route explains.
+  const revoked: unknown = row.revokedSessions ? parseJson(row.revokedSessions) : null;
+  if (authTime !== undefined && Array.isArray(revoked) && revoked.includes(authTime)) return null;
+  const caller = { id: row.id, name: row.name, email: row.email, role: row.role, demo, session: authTime, org: row.organizationId };
   if (callers.size >= 1000) callers.delete(callers.keys().next().value as string);
   callers.set(token, { caller, until: Math.min(Date.now() + 60_000, exp ? exp * 1000 : Infinity) });
   return gate(caller);
@@ -165,7 +168,10 @@ async function typing(me: Caller, conversationId: string, db: D1Database, env: E
   if (hubs) {
     const body = JSON.stringify({ type: 'typing', conversationId, name: (me.name || 'Someone').split(' ')[0] });
     const others = results.filter((p) => p.userId !== me.id);
-    ctx.waitUntil(Promise.all(others.map((p) => hubs.get(hubs.idFromName(p.userId)).fetch('https://realtime/publish', { method: 'POST', body }).catch(() => {}))));
+    // Not in big groups: one live request per member every few seconds while anyone types
+    // (planLimits().livePushes, src/server/realtime.ts publishTyping).
+    const cap = String((env as { WORKERS_PAID?: unknown }).WORKERS_PAID ?? '').trim().toLowerCase() === 'true' ? 500 : 40;
+    if (others.length <= cap) ctx.waitUntil(Promise.all(others.map((p) => hubs.get(hubs.idFromName(p.userId)).fetch('https://realtime/publish', { method: 'POST', body }).catch(() => {}))));
   }
   return json({ ok: true });
 }
@@ -311,11 +317,11 @@ async function recordAppOpen(me: Caller, request: Request, db: D1Database) {
   const now = Date.now();
   await db
     .prepare(
-      `INSERT INTO login_events (id, userId, kind, method, ip, country, city, userAgent, device, createdAt)
-       SELECT ?1, ?2, 'SESSION', ?3, ?4, ?5, ?6, ?7, ?8, ?9
+      `INSERT INTO login_events (id, userId, kind, method, ip, country, city, userAgent, device, createdAt, sessionAt)
+       SELECT ?1, ?2, 'SESSION', ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?11
        WHERE NOT EXISTS (SELECT 1 FROM login_events WHERE userId = ?2 AND ip IS ?4 AND createdAt > ?10)`,
     )
-    .bind(crypto.randomUUID(), me.id, me.demo ? 'demo' : null, ip, request.headers.get('cf-ipcountry') ?? cf?.country ?? null, cf?.city ?? null, ua?.slice(0, 300) ?? null, describeDevice(ua), dbDate(now), dbDate(now - 30 * 60_000))
+    .bind(crypto.randomUUID(), me.id, me.demo ? 'demo' : null, ip, request.headers.get('cf-ipcountry') ?? cf?.country ?? null, cf?.city ?? null, ua?.slice(0, 300) ?? null, describeDevice(ua), dbDate(now), dbDate(now - 30 * 60_000), me.session ?? null)
     .run();
 }
 
@@ -466,6 +472,12 @@ const TYPING = /^\/api\/chat\/conversations\/([^/]+)\/typing$/;
 const FILE = /^\/api\/files\/([A-Za-z0-9_-]{16,})(?:\/[^/]*)?$/;
 
 /** The answer for one of the calls above, or null to let the Next.js app answer. */
+/** The signed-in person's school (organisation), for per-school feature switches; null if none or not signed in. */
+export async function callerOrg(request: Request, env: Env): Promise<string | null> {
+  if (!env.DB) return null;
+  return (await callerOf(request, env.DB).catch(() => null))?.org ?? null;
+}
+
 export async function fastApi(request: Request, url: URL, env: Env, ctx: ExecutionContext, next: (r: Request) => Promise<Response>): Promise<Response | null> {
   const db = env.DB;
   if (!db) return null;

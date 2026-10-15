@@ -331,7 +331,34 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
           })}
         </div>
       )}
+      <CspReports />
     </div>
+  );
+}
+
+interface CspReport { id: string; directive: string; blocked: string; page: string; sample: string | null; count: number; firstAt: string; lastAt: string }
+
+/**
+ * What browsers refused to load or run under the site's Content-Security-Policy (security-headers.ts),
+ * one line per kind. Usually an extension or a third-party script; a sudden new one on a UniVerse
+ * page can mean injected code, or a feature that needs its address added to the policy.
+ */
+function CspReports() {
+  const { data } = useSWR<CspReport[]>('/owner/csp-reports', fetcher);
+  if (!data?.length) return null;
+  return (
+    <details className={cn(card, 'p-4')}>
+      <summary className="cursor-pointer text-sm font-semibold text-zinc-900 dark:text-white">Blocked by the browser’s safety rules ({data.length})</summary>
+      <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">What the site’s Content-Security-Policy stopped. Browser extensions cause most of these; a new one on a UniVerse page can mean injected code, or a feature whose address needs adding to the policy.</p>
+      <ul className="mt-3 divide-y divide-zinc-100 dark:divide-white/[0.05]">
+        {data.map((r) => (
+          <li key={r.id} className="py-2 text-sm">
+            <p className="text-zinc-900 dark:text-white break-all"><b>{r.directive}</b> blocked {r.blocked}</p>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">on {r.page} · {r.count}× · last {formatDistanceToNow(new Date(r.lastAt), { addSuffix: true })}{r.sample ? ` · “${r.sample}”` : ''}</p>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 

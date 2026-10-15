@@ -23,7 +23,7 @@ export async function startHuddle(conversationId: string, user: SessionUser) {
   // Not in the official UniVerse chat.
   if (!convo || convo.participants.some((p) => p.userId === system.id)) throw new BadRequestException('Huddles aren’t available in this chat.');
   if (convo.communityId) throw new BadRequestException('Community channels have voice channels for this.');
-  if (await featureOff('calls')) throw new HttpException('Calls are turned off on UniVerse for now. Please try again later.', 503);
+  if (await featureOff('calls', user.organizationId)) throw new HttpException('Calls are turned off for now. Please try again later.', 503);
   const callId = `r_${conversationId}`;
   const peers = await roomPeers(callId, user);
   if (peers.count > 0 || (await chatMuted(user.id))) return { callId, started: false };

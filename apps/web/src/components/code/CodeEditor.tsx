@@ -83,6 +83,7 @@ export function CodeEditor({ roomId, lang, me, dark, onStatus, onPeers, onReady,
           editSlot.current.of(EditorState.readOnly.of(true)),
           yCollab(text, awareness, { undoManager }),
           EditorView.theme({ '&': { height: '100%', fontSize: '14px' }, '.cm-scroller': { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' } }),
+          EditorView.contentAttributes.of({ 'aria-label': 'Code' }),
         ],
       }),
     });

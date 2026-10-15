@@ -6,6 +6,11 @@
 // small "taking a break" answer (no database, no rendering) until the next billing month. The
 // state lives in the usage_guard table, so the owner console can show it.
 //
+// On Workers Free (no WORKERS_PAID=true) nothing is charged except files (R2), so only those can
+// pause the app. Free has daily allowances instead (reset 00:00 UTC): past them Cloudflare stops
+// serving UniVerse until the next day. The guard reads today's usage too and warns the owner at 70%
+// and 90% of any of them, in the app and by push (no email), so they can move to the $5 plan in time.
+//
 // Secrets (Worker → Settings → Variables and Secrets, type Secret):
 //   CF_ACCOUNT_ID     the account id (Workers & Pages overview, right-hand side)
 //   CF_USAGE_TOKEN    an API token with only Read permissions: Account Analytics (this guard), plus
@@ -14,7 +19,7 @@
 //   CF_BILLING_DAY    optional: the day of the month the Paid plan renews (1-31). Without it the
 //                     guard counts the last 31 days, which never undercounts but may pause early.
 //   CF_GUARD_OFF      optional: any value turns pausing off (the checks and emails still run).
-import { blockedFeature, parseSwitches } from '../src/lib/feature-switches';
+import { blockedFeature, orgCandidates, parseOrgSwitches, parseSwitches, type FeatureSwitch } from '../src/lib/feature-switches';
 import { bool, dbDate } from './fast-db';
 import { ownerEmailList } from '../src/lib/owner-emails';
 
@@ -45,6 +50,20 @@ const METERS = [
 ] as const;
 
 type MeterKey = (typeof METERS)[number]['key'];
+
+/** Workers Free's daily allowances (reset 00:00 UTC). Past any of them Cloudflare stops serving until the next day. */
+const DAILY_METERS: readonly { key: MeterKey; label: string; limit: number }[] = [
+  { key: 'requests', label: 'App requests', limit: 100_000 },
+  { key: 'liveRequests', label: 'Live updates, whiteboards and calls', limit: 100_000 },
+  { key: 'liveGbSeconds', label: 'Live updates running time (GB-s)', limit: 13_000 },
+  { key: 'dbRowsRead', label: 'Database rows read', limit: 5_000_000 },
+  { key: 'dbRowsWritten', label: 'Database rows written', limit: 100_000 },
+];
+const DAILY_WARN = 0.7;
+const DAILY_HIGH = 0.9;
+
+/** Whether the account is on Workers Paid (the WORKERS_PAID variable, as in src/lib/plan-limits.ts). */
+export const paidPlan = (env: GuardEnv) => String(env.WORKERS_PAID ?? '').trim().toLowerCase() === 'true';
 export type Meter = { key: MeterKey; label: string; used: number | null; limit: number; bytes?: boolean };
 
 // R2 operations that are free; everything else that isn't class B is counted as class A.
@@ -173,12 +192,12 @@ const READERS: { keys: MeterKey[]; read: (env: GuardEnv, v: Record<string, unkno
 ];
 
 /** Reads this billing month's usage of everything the $5 includes. `null` = couldn't be read. */
-export async function readUsage(env: GuardEnv, now: Date, start: Date): Promise<{ meters: Meter[]; errors: string[] }> {
+export async function readUsage(env: GuardEnv, now: Date, start: Date, only?: ReadonlySet<MeterKey>): Promise<{ meters: Meter[]; errors: string[] }> {
   const v = { a: env.CF_ACCOUNT_ID, from: start.toISOString(), to: now.toISOString(), fromDay: day(start), toDay: day(now) };
   const used: Partial<Record<MeterKey, number>> = {};
   const errors: string[] = [];
   await Promise.all(
-    READERS.map((r) =>
+    READERS.filter((r) => !only || r.keys.some((k) => only.has(k))).map((r) =>
       r.read(env, v).then(
         (got) => Object.assign(used, got),
         (e: Error) => errors.push(`${r.keys.join(', ')}: ${e.message}`),
@@ -188,6 +207,38 @@ export async function readUsage(env: GuardEnv, now: Date, start: Date): Promise<
   // Every request writes one invocation log, plus a line for each console.log; live updates log too.
   if (used.requests !== undefined) used.logs = 2 * (used.requests + (used.liveRequests ?? 0));
   return { meters: METERS.map((m) => ({ ...m, used: used[m.key] ?? null })), errors };
+}
+
+/** Today's usage (since 00:00 UTC) of Workers Free's daily allowances. */
+export async function readDailyUsage(env: GuardEnv, now: Date): Promise<{ meters: Meter[]; errors: string[] }> {
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const { meters, errors } = await readUsage(env, now, start, new Set(DAILY_METERS.map((m) => m.key)));
+  const used = new Map(meters.map((m) => [m.key, m.used]));
+  return { meters: DAILY_METERS.map((m) => ({ ...m, used: used.get(m.key) ?? null })), errors };
+}
+
+/**
+ * The daily warning due now, if any: "warn" at 70% of an allowance, "high" at 90%, each once a day
+ * (`last` is the last one sent, "<YYYY-MM-DD>:<level>").
+ */
+export function dailyAlert(meters: Meter[], today: string, last: string | null): { level: 'warn' | 'high'; top: Meter; key: string } | null {
+  const read = meters.filter((m) => m.used !== null);
+  if (!read.length) return null;
+  const top = read.reduce((a, b) => (share(b) > share(a) ? b : a));
+  const level = share(top) >= DAILY_HIGH ? 'high' : share(top) >= DAILY_WARN ? 'warn' : null;
+  if (!level) return null;
+  const was = last?.startsWith(`${today}:`) ? last.slice(today.length + 1) : null;
+  if (was === 'high' || (was === 'warn' && level === 'warn')) return null;
+  return { level, top, key: `${today}:${level}` };
+}
+
+/** The owner's message for a daily warning (in-app notification and push). */
+export function dailyAlertText(a: { level: 'warn' | 'high'; top: Meter }, meters: Meter[]): { title: string; body: string } {
+  const pct = percent(a.top);
+  const others = meters.filter((m) => m !== a.top && m.used !== null && share(m) >= 0.5).map((m) => `${m.label} ${percent(m)}`);
+  const title = a.level === 'high' ? `UniVerse is close to today's free Cloudflare limit (${pct})` : `UniVerse has used ${pct} of today's free Cloudflare allowance`;
+  const body = `${a.top.label}: ${pct} of the free plan's daily allowance. At 100% Cloudflare stops UniVerse until 00:00 UTC (5:30 AM in India). Moving to Workers Paid ($5 a month) lifts this straight away.${others.length ? ` Also: ${others.join(', ')}.` : ''}`;
+  return { title, body };
 }
 
 const share = (m: Meter) => (m.used === null ? 0 : m.used / m.limit);
@@ -205,11 +256,15 @@ async function emailOwner(env: GuardEnv, subject: string, text: string) {
   if (!res?.ok) console.error('Spending guard email failed:', res?.status);
 }
 
-/** The scheduled check (every 15 minutes). */
-export async function checkUsage(env: GuardEnv, now = new Date()): Promise<string> {
+/** The scheduled check (every 15 minutes). `alert`: a daily warning the app should send the owner now. */
+export async function checkUsage(env: GuardEnv, now = new Date()): Promise<{ summary: string; alert: { title: string; body: string } | null }> {
   const db = env.DB;
-  if (!db) return 'no database';
-  const prev = await db.prepare('SELECT paused, alerted FROM usage_guard WHERE id = ?').bind('main').first<{ paused: unknown; alerted: string | null }>();
+  if (!db) return { summary: 'no database', alert: null };
+  const prev = await db
+    .prepare('SELECT paused, alerted, dailyAlerted FROM usage_guard WHERE id = ?')
+    .bind('main')
+    .first<{ paused: unknown; alerted: string | null; dailyAlerted?: string | null }>()
+    .catch(() => db.prepare('SELECT paused, alerted FROM usage_guard WHERE id = ?').bind('main').first<{ paused: unknown; alerted: string | null; dailyAlerted?: string | null }>()); // before migration 0129
   const save = (fields: Record<string, unknown>) => {
     const cols = Object.keys(fields);
     return db
@@ -219,16 +274,23 @@ export async function checkUsage(env: GuardEnv, now = new Date()): Promise<strin
   };
   if (!env.CF_ACCOUNT_ID || !env.CF_USAGE_TOKEN) {
     await save({ checkedAt: dbDate(now.getTime()), error: 'Not set up: add the CF_ACCOUNT_ID and CF_USAGE_TOKEN secrets.' });
-    return 'not set up';
+    return { summary: 'not set up', alert: null };
   }
 
   const window = billingWindow(now, env.CF_BILLING_DAY);
-  const { meters, errors } = await readUsage(env, now, window.start);
-  const top = meters.reduce((a, b) => (share(b) > share(a) ? b : a));
-  const readable = meters.some((m) => m.used !== null);
+  const paid = paidPlan(env);
+  const [{ meters, errors }, today] = await Promise.all([readUsage(env, now, window.start), paid ? null : readDailyUsage(env, now)]);
+  // On Workers Free only files (R2) are ever charged, so only they can pause the app: the monthly
+  // figures for the rest describe the $5 plan, which a free account can pass without paying anything.
+  const billable = paid ? meters : meters.filter((m) => m.key.startsWith('files'));
+  const top = billable.reduce((a, b) => (share(b) > share(a) ? b : a));
+  const readable = billable.some((m) => m.used !== null);
   // Only real readings change the pause: if Cloudflare couldn't be read, keep things as they are.
   const paused = readable ? share(top) >= PAUSE_AT : bool(prev?.paused);
-  const reason = paused ? `${top.label} reached ${percent(top)} of what the $5 plan includes.` : null;
+  const reason = paused ? `${top.label} reached ${percent(top)} of what ${paid ? 'the $5 plan' : "Cloudflare's free file storage"} includes.` : null;
+  const todayKey = day(now);
+  const daily = today && dailyAlert(today.meters, todayKey, prev?.dailyAlerted ?? null);
+  if (today) errors.push(...today.errors.map((e) => `today: ${e}`));
   // Each email goes once per billing month: a warning, then (if it comes to that) the pause.
   const level = paused ? 'pause' : share(top) >= WARN_AT ? 'warn' : null;
   const was = prev?.alerted ?? '';
@@ -243,16 +305,23 @@ export async function checkUsage(env: GuardEnv, now = new Date()): Promise<strin
     checkedAt: dbDate(now.getTime()),
     ...(paused && !bool(prev?.paused) ? { pausedAt: dbDate(now.getTime()) } : {}),
     ...(send ? { alerted: send } : {}),
+    ...(today ? { daily: JSON.stringify({ day: todayKey, meters: today.meters }) } : {}),
+    ...(daily ? { dailyAlerted: daily.key } : {}),
   });
 
-  const list = meters.filter((m) => m.used !== null && share(m) >= 0.5).map((m) => `- ${m.label}: ${percent(m)}`).join('\n');
+  const list = billable.filter((m) => m.used !== null && share(m) >= 0.5).map((m) => `- ${m.label}: ${percent(m)}`).join('\n');
   if (send && level === 'pause') {
     const reopen = window.next ? `It opens again by itself on ${day(window.next)}, when the next billing month starts.` : 'It opens again by itself once the last 31 days drop back under the limit. (Add the CF_BILLING_DAY secret so it reopens exactly on your renewal day.)';
-    await emailOwner(env, 'UniVerse is paused to keep your Cloudflare bill at $5', `${reason}\n\nTo stay within the $5 plan, the app now shows a "taking a short break" page. ${reopen}\n\nTo open it again now and accept extra charges, add a secret named CF_GUARD_OFF (any value) to universe-web in Cloudflare.\n\nUsage this billing month:\n${list}`);
+    const keep = paid ? 'keep your Cloudflare bill at $5' : 'avoid file storage charges';
+    await emailOwner(env, `UniVerse is paused to ${keep}`, `${reason}\n\nTo ${keep}, the app now shows a "taking a short break" page. ${reopen}\n\nTo open it again now and accept extra charges, add a secret named CF_GUARD_OFF (any value) to universe-web in Cloudflare.\n\nUsage this billing month:\n${list}`);
   } else if (send) {
-    await emailOwner(env, 'UniVerse has used 70% of the $5 Cloudflare plan', `${top.label} is at ${percent(top)} of what the $5 plan includes this billing month. If anything reaches 90%, UniVerse pauses itself until the next billing month so nothing extra is charged.\n\nUsage this billing month:\n${list}`);
+    await emailOwner(env, paid ? 'UniVerse has used 70% of the $5 Cloudflare plan' : "UniVerse has used 70% of Cloudflare's free file storage", `${top.label} is at ${percent(top)} of what ${paid ? 'the $5 plan' : "Cloudflare's free file storage (R2)"} includes this billing month. If anything reaches 90%, UniVerse pauses itself until the next billing month so nothing extra is charged.\n\nUsage this billing month:\n${list}`);
   }
-  return `${paused ? 'paused' : 'running'}; highest ${top.key} ${percent(top)}${errors.length ? `; unreadable: ${errors.length}` : ''}`;
+  const todayTop = today?.meters.filter((m) => m.used !== null).reduce<Meter | null>((a, b) => (!a || share(b) > share(a) ? b : a), null);
+  return {
+    summary: `${paused ? 'paused' : 'running'}; highest ${top.key} ${percent(top)}${todayTop ? `; today ${todayTop.key} ${percent(todayTop)}` : ''}${errors.length ? `; unreadable: ${errors.length}` : ''}`,
+    alert: daily && today ? dailyAlertText(daily, today.meters) : null,
+  };
 }
 
 // ─── The gate: what the app's requests see ─────────────────────────────────────────────────────
@@ -263,8 +332,8 @@ export async function checkUsage(env: GuardEnv, now = new Date()): Promise<strin
 // uv_owner cookie that matches the switch's pass.
 
 type Mode = 'LIVE' | 'READ_ONLY' | 'MAINTENANCE';
-type State = { paused: boolean; resumeAt: string | null; mode: Mode; message: string | null; until: string | null; banner: string | null; bypass: string | null; off: string[]; at: number };
-let state: State = { paused: false, resumeAt: null, mode: 'LIVE', message: null, until: null, banner: null, bypass: null, off: [], at: 0 };
+type State = { paused: boolean; resumeAt: string | null; mode: Mode; message: string | null; until: string | null; banner: string | null; bypass: string | null; off: string[]; orgs: Record<string, string[]>; at: number };
+let state: State = { paused: false, resumeAt: null, mode: 'LIVE', message: null, until: null, banner: null, bypass: null, off: [], orgs: {}, at: 0 };
 let loading = false;
 
 const toMs = (v: string | null) => (v ? Date.parse(/[zZ]|[+-]\d\d:\d\d$/.test(v) ? v : `${v.replace(' ', 'T')}Z`) : NaN);
@@ -284,7 +353,7 @@ function refresh(env: GuardEnv, ctx: ExecutionContext) {
           ...state,
           ...(g !== undefined && { paused: bool(g?.paused), resumeAt: g?.resumeAt ?? null }),
           ...(c !== undefined && { mode: c?.mode ?? 'LIVE', message: c?.message ?? null, until: c?.until ?? null, banner: c?.banner ?? null, bypass: c?.bypass ?? null }),
-          ...(f !== undefined && { off: parseSwitches(f?.switches) }),
+          ...(f !== undefined && { off: parseSwitches(f?.switches), orgs: parseOrgSwitches(f?.switches) }),
           at: Date.now(),
         };
       })
@@ -372,6 +441,20 @@ export function serverGate(request: Request, url: URL, env: GuardEnv, ctx: Execu
     return Response.json({ error: message, message, statusCode: 503 }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
   return null;
+}
+
+/**
+ * Features switched off for one school that cover this change (owner console → Server): empty for
+ * almost every request, so only those need to know the person's school (cloudflare/worker.ts).
+ */
+export const schoolSwitchCandidates = (method: string, path: string): FeatureSwitch[] => orgCandidates(state.orgs, method, path);
+
+/** The answer for a change to `feature` when it's off for the person's school `org`, or null. */
+export function schoolGate(candidates: FeatureSwitch[], org: string | null): Response | null {
+  const feature = org ? candidates.find((f) => state.orgs[org]?.includes(f.id)) : undefined;
+  if (!feature) return null;
+  const message = `${feature.label}: turned off for your school for now. Please try again later.`;
+  return Response.json({ error: message, message, statusCode: 503 }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
 }
 
 /** The notice shown at the top of every page: the owner's, or read-only mode's own. */

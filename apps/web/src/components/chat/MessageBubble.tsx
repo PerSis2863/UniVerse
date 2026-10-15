@@ -1,5 +1,6 @@
 'use client';
 
+import { usePrivateFileUrl } from '@/lib/private-file';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useNow } from '@/lib/use-now';
 import { Avatar } from '@/components/ui/Avatar';
@@ -33,7 +34,10 @@ import { PrivateText } from './PrivateText';
  */
 export function VoicePlayer({ src, mine, durationSec, title = 'Voice message', waveform }: { src: string; mine: boolean; durationSec?: number; title?: string; waveform?: number[] }) {
   const v = useVoice();
-  const current = v.src === src;
+  // A call recording plays from a 10-minute private link (src/lib/private-file.ts); other audio as it is.
+  const live = usePrivateFileUrl(src);
+  const play = live ?? src;
+  const current = v.src === play;
   const playing = current && v.playing;
   const dur = current && v.dur ? v.dur : durationSec ?? 0;
   const pos = current ? v.pos : 0;
@@ -44,18 +48,19 @@ export function VoicePlayer({ src, mine, durationSec, title = 'Voice message', w
   const seekAt = (e: React.PointerEvent<HTMLDivElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
     const t = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * (dur || 0);
-    if (!current) voice.toggle(src, title, durationSec);
-    voice.seek(src, t);
+    if (!live) return;
+    if (!current) voice.toggle(play, title, durationSec);
+    voice.seek(play, t);
   };
   const done = dur ? pos / dur : 0;
   return (
     <div className="flex items-center gap-2.5 px-3 pt-2.5 w-64 max-w-full">
-      <button onClick={() => voice.toggle(src, title, durationSec)} aria-label={playing ? 'Pause' : 'Play'} className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', mine ? 'bg-white text-indigo-600' : 'bg-indigo-600 text-white')}>
+      <button onClick={() => voice.toggle(play, title, durationSec)} disabled={!live} aria-label={playing ? 'Pause' : 'Play'} className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', mine ? 'bg-white text-indigo-600' : 'bg-indigo-600 text-white')}>
         {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
       </button>
       <div className="flex-1 min-w-0">
         <div role="slider" aria-label="Seek" aria-valuemin={0} aria-valuemax={Math.round(dur)} aria-valuenow={Math.round(pos)} tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); voice.seek(src, Math.max(0, pos + (e.key === 'ArrowRight' ? 5 : -5))); } }}
+          onKeyDown={(e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); voice.seek(play, Math.max(0, pos + (e.key === 'ArrowRight' ? 5 : -5))); } }}
           onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); seekAt(e); }}
           onPointerMove={(e) => { if (e.buttons) seekAt(e); }}
           className="h-7 flex items-center gap-[2px] cursor-pointer touch-none">
@@ -590,7 +595,10 @@ function ChatPhoto({ url, name, size, mine, onOpen }: { url: string; name?: stri
 /** A video in a chat: nothing is downloaded until play in low-data mode. */
 export function ChatVideo({ url }: { url: string }) {
   const lowData = useLowData((s) => s.enabled);
-  return <video src={url} controls preload={lowData ? 'none' : 'metadata'} className="rounded-xl max-h-80 m-1" />;
+  // A call recording plays from a 10-minute private link (src/lib/private-file.ts).
+  const src = usePrivateFileUrl(url);
+  if (!src) return <div className="skeleton rounded-xl w-64 max-w-full aspect-video m-1" role="status" aria-label="Loading video" />;
+  return <video src={src} controls preload={lowData ? 'none' : 'metadata'} className="rounded-xl max-h-80 m-1" />;
 }
 
 /** A view-once photo, video or voice message: opened once, full screen, then gone for you. */

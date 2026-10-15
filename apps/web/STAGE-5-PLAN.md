@@ -17,6 +17,9 @@ projects, a campus super-app and admin analytics. Stage 5 is about three things:
 Read **all** of section 0 before writing code. Sections A–E are the work, in IDs (A1, B3.2, …) so
 progress can be tracked in the Progress section at the end.
 
+> **Continuing the work? Go to section 4, "Remaining work queue" (written 14 Oct 2026):** what's
+> left, in order, with what exists to build on, the steps, the traps and how to know it's done.
+
 ---
 
 ## 0. Start here
@@ -44,7 +47,7 @@ progress can be tracked in the Progress section at the end.
 | **AI is limited.** | `spendAi(user)` before every AI request, `featureOff('ai')`, cache with `cachedAi/saveAi`. Prefer the lite model for simple jobs. Images: `geminiJsonImage`. |
 | **Sample stubs.** | Every new GET a page uses needs a stub in `src/lib/sample/router.ts`. |
 | **Fast path.** | If you change a response served by `cloudflare/fast-api.ts` / `fast-chat.ts` / `fast-lists.ts`, change it there too, then run `node scripts/light-path-parity.mjs` (it compares both, field by field). API routes run without Next.js (`cloudflare/api-direct.ts`): after adding or removing one, run `node scripts/gen-api-routes.mjs`. |
-| **Migrations.** | Hand-written SQL `prisma/migrations/NNNN_name.sql`, **next number 0075**. Additive only. Then `npx prisma generate`, `node scripts/gen-owner-schema.mjs`, `npx wrangler d1 migrations apply DB --local`. The deploy applies them to production. |
+| **Migrations.** | Hand-written SQL `prisma/migrations/NNNN_name.sql`, **next number: see the Progress section (0132 on 15 Oct 2026)**. Additive only. Then `npx prisma generate`, `node scripts/gen-owner-schema.mjs`, `npx wrangler d1 migrations apply DB --local`. The deploy applies them to production. |
 | **Call room changes.** | Run `node scripts/test-call-room.mjs` (127 checks) after changing `CallRoom`; add checks for new behaviour. |
 | **Costs need the owner's yes.** | Anything that needs a paid service or an account (Apple/Google developer, Razorpay, SMS, Cloudflare Stream, Workers Paid) is marked **[owner]**: build it behind a switch, off until the owner sets it up. |
 
@@ -764,6 +767,8 @@ control what is used.
 
 ## 2. Order and size (suggested)
 
+> This was the order when Stage 5 started. **For what's left, follow section 4.**
+
 | Order | Block | Size | Why |
 |---|---|---|---|
 | 1 | A1 lint debt, A2 design system, A3 motion/loading pass | 3–4 rounds | The owner's top priority; makes every later feature consistent |
@@ -795,12 +800,418 @@ A "round" ≈ one long agent session. Mark each item in Progress as it lands.
 
 ---
 
+## 4. Remaining work queue (written 14 Oct 2026; start here)
+
+**State on 14 Oct 2026:** `main` has everything up to PR #58 (Meet fix, D17 moving QR codes, D18
+skills match). Branch `claude/great-hamilton-8g8xdm` adds, not merged yet (the owner says "merge"):
+live updates for big groups (relay fan-out), the daily free-plan warning (migration **0129**) and
+**Q1**, **Q2** (migration **0130**), **Q3** (migration **0131**, needs its browser test). **Next migration: `0132`.** Phase D (all 18 items) is built; Phase C is
+built except C1 (needs the owner's accounts); Phase A has A1–A3, A5, A6 done; Phase B has B7, B8, B9,
+B15, B16 done, B2–B4 partly. Roughly **60–65 % of Stage 5 is done; about 20–25 work sessions remain**
+(a session = one long round, usually one or two big items). The queue below is in the order to do it.
+Each entry says what the user gets, what already exists to build on (paths from `apps/web`), the
+steps, the traps, how to know it's done and how to test it. Sizes are in sessions.
+
+**How to work the queue**
+- Take the next entry that isn't marked done. Read its "Exists" files first: most areas already
+  have a working basic version from Stages 3–5; upgrade it, don't rebuild it.
+- Section 0.2's rules and section 3's definition of done apply to every entry. One commit per entry
+  (or per numbered step for big ones), a Progress row per entry (add it to the table at the end,
+  "Not done:" for anything left), and mark the entry here: change its heading to `… ✅ (PR #n)`.
+- An entry marked **[owner]** needs something only the owner can provide (an account, a key, money,
+  a decision): build it behind a switch, off by default, and list what's needed in STAGE-5-HANDOFF.md.
+- Tell the owner in plain words what was built, what was tested, and what they should try.
+
+---
+
+### Q1. Pages that still start Next.js on a fresh Worker (the "Meet" error) — 1 session ✅ (branch `claude/great-hamilton-8g8xdm`, not merged yet; see the Progress row "Q1")
+**Why:** on Workers Free (10 ms CPU) a page rendered per request starts the whole Next.js server on a
+fresh Worker (~1 s CPU, 2.2 s locally) and Cloudflare answers "Error 1101 · Worker threw exception".
+The owner hit this on Groups → Meet (fixed in PR #58 for `/call/<id>`). Workers Paid would fix all of
+them at once, but the owner said not now.
+
+**The fix that worked for `/call/<id>`** (copy it): `src/app/call/[id]/page.tsx` became a server
+component with `generateStaticParams() { return [{ id: 'open' }] }` that renders a client component
+(`CallOpener.tsx`) inside `<Suspense>`; the client component reads the id from `usePathname()`
+(not `params`) and the query from `useSearchParams()`. `cloudflare/worker.ts` (`CALL_PAGE`) answers
+every `GET /call/<id>` (pages and RSC navigations) with `new Request(origin + '/call/open' + search,
+request)` through `edgeCachedPage`, so OpenNext's cache interception serves the built page without
+starting Next.js. Next.js keeps the browser's address (its router uses `location` as the canonical
+URL), so `usePathname()` returns the real id.
+
+**The 27 pages still rendered per request** (from the build's route list, `ƒ` without `/api/`):
+- **Client pages that only need the id in the browser (24, use the same fix):** `/boards/[id]`,
+  `/code/[id]`, `/docs/[id]`, `/tasks/[id]`, `/spaces/[kind]/[id]`, `/spaces/[kind]/[id]/files`,
+  `/hall/[id]`, `/guest/[id]`, `/student/assignments/[id]`, `/teacher/assignments/[id]`,
+  `/student/profile/[id]`, `/impact-league/[id]`, `/impact-rooms/[id]`, `/impact/[id]`,
+  `/league/[slug]`, `/passport/[slug]`, `/reports/[slug]`, `/verify/[id]`,
+  `/verify/scholarship/[token]`, `/apply/[slug]`, `/apply/status/[token]`, `/guardian/[token]`,
+  `/guardian/updates/[token]`, `/fee-receipt/[id]`. All are `'use client'` and read params with
+  `use(params)`; their layouts (`guardian/[token]`, `impact/[id]`, `league/[slug]`) only have static
+  `metadata`.
+- **Redirect-only pages (2, answer in the Worker, no page at all):** `/join/[inviteCode]` →
+  `302 /join?code=<code>`; `/student/courses/[id]` → `302 /student/blackboard?course=<id>`.
+- **Server-rendered with the database (1):** `/receipt/[id]` (`getReceipt` in a server component).
+  Move the data to an API route (`GET /api/receipts/[id]`, with a sample stub) and make the page a
+  client page like the others, or leave it (rarely opened right after a deploy).
+
+**Steps**
+1. Write one helper in `cloudflare/worker.ts`: a table of `{ pattern, built }` (e.g.
+   `[/^\/docs\/(?!open$)[^/]+$/, '/docs/open']`, `[/^\/spaces\/[^/]+\/[^/]+$/, '/spaces/open/open']`)
+   replacing `CALL_PAGE`, applied to `GET` before `edgeCachedPage`. Placeholder ids must never be real
+   ids (`open` isn't: ids are cuids or prefixed like `g_`).
+2. For each page: move the client code into `<Name>Client.tsx`, read ids from `usePathname()` (split
+   on `/`, `decodeURIComponent`), keep everything else; `page.tsx` exports `generateStaticParams`
+   with the placeholder and renders the client inside `<Suspense>` (needed for `useSearchParams`).
+   Pages that skip work when the id is the placeholder must not fetch `/api/.../open`.
+3. Add the two redirects to the Worker (before the page path), keeping the query string.
+4. `pnpm typecheck`, eslint, `npx vitest run`, then a production build
+   (`npx opennextjs-cloudflare build`; afterwards `git checkout public/sw.js`), `npx
+   opennextjs-cloudflare populateCache local`, and `NODE_ENV=production npx wrangler dev --port 8787
+   --var DEMO_LOGIN_ENABLED:true --var DEMO_ACCOUNT_EMAILS:<accounts>`.
+
+**Traps:** a page whose client code calls `useParams()` deeper down (search the page's components);
+pages with two params (spaces); `notFound()` in a page (must become a client-side "not found" state);
+anything that renders differently on the server for the placeholder (hydration error #418: render
+nothing id-specific until mounted).
+
+**Done when:** on a freshly started `wrangler dev`, each of the 27 addresses answers in < 0.3 s and a
+server-rendered page requested right after still takes ~2 s (proof Next.js wasn't started); each page
+still works when opened directly and from in-app links (Playwright at 390 and 1280 px, no page
+errors, axe clean). **How it was measured for `/call`:** stop `wrangler dev` (kill its `workerd`
+processes), start it again, wait for "Ready on", then `curl -s -o /dev/null -w '%{time_total}'
+http://localhost:8787/<page>` followed by the same for `/guest/x` (a page still rendered per
+request): ~0.05–0.2 s then ~2 s means the first page didn't start Next.js. Repeat per page. Then a
+Playwright run that opens each page from its in-app link and directly (`scripts/browser-session.mjs`
+has `signedIn`).
+
+---
+
+### Q2. A8 Security hardening — 1 session ✅ (branch `claude/great-hamilton-8g8xdm`, not merged yet; Progress row "Q2")
+**Exists:** `src/server/two-step.ts` (emailed sign-in codes for admins: costs emails),
+`src/lib/chat-lock.ts` (WebAuthn already used to lock chats), `src/server/auth.ts`, sign-in history
+(`src/lib/sign-in-history.ts`, `src/components/security/RecentSignIns.tsx`, Settings → Privacy &
+Security in `src/components/settings/AccountSecurity.tsx` with "sign out everywhere"),
+`security-headers.ts`, the Worker's limiters (`IP_RATE_LIMITER`, `API_RATE_LIMITER`,
+`COSTLY_RATE_LIMITER` and the `COSTLY` pattern in `cloudflare/worker.ts`), file links (`src/lib/r2.ts`,
+`src/lib/file-urls.ts`, `src/server/share-tokens.ts`).
+**Build:**
+1. **Passkeys** (fingerprint / face / phone PIN): register in Settings → Privacy & Security; sign in
+   with a passkey on the sign-in page; required as the second step for admins instead of the emailed
+   code (keep the code as a fallback for admins without a passkey). Store credentials in a new table
+   (migration `0130_passkeys`: user, credential id, public key, counter, name, created, last used).
+   Verify assertions on the server with WebCrypto (P-256 / Ed25519), no library if possible.
+2. **Signed-in devices list** with "sign out this device" per row (today only "everywhere"): sessions
+   come from sign-in history; revoke by bumping a per-session token version.
+3. **Rate limits per route family:** sign-in and sign-up, uploads, AI (each a key prefix on
+   `API_RATE_LIMITER`, or new limiter bindings in `wrangler.jsonc`: free).
+4. **CSP report-only endpoint** (`/api/csp-report`, stores the last 200 in a small table or the errors
+   table) and add `report-to` to `security-headers.ts`.
+5. **Private files behind expiring links** for grades, report cards, recordings and documents: R2
+   presigned GET (10 min) or a signed `/api/files/...` token; public files unchanged.
+6. A monthly dependency check written up for the owner (`pnpm audit --prod`), no CI change.
+**Done when:** an admin can sign in with a passkey and no email is sent; a device can be signed out
+alone; 11 sign-in attempts a minute from one address get 429; a private file link stops working
+after 10 minutes. **[owner]** nothing (all free).
+
+### Q3. A9 Reliability and observability — 1 session 🟡 (built and unit-tested on the branch; browser / built-Worker test still to do: see Progress row "Q3")
+**Exists:** owner console (`src/app/(dashboard)/console/`: `health.tsx` is an AI-ranked security and
+error check from `src/server/owner-health.ts`; `errors.tsx` with AI diagnosis from
+`src/lib/error-monitor.ts` / `src/server/errors.ts`; `server.tsx` with feature switches from
+`src/lib/feature-switches.ts` and the usage guard `cloudflare/usage-guard.ts`), `CallStat` (call
+quality per person), `src/server/ai-budget.ts`, `src/app/(dashboard)/error.tsx`.
+**Build:**
+1. Console → **Health numbers** tab: error rate per route and per page (from the errors table), the
+   slowest API routes (sample 5 % of requests in the Worker: route + ms into a small table, kept 7 days),
+   AI spend per feature (ai-budget already records the feature), push success rate, call quality
+   (worst loss / relay share from `CallStat`), first-load JS size per build (written by the build).
+2. **Error boundaries** (`error.tsx`) for each top-level section that has none, with "Try again" and
+   "Report this" (sends to the errors table).
+3. **Per-school feature switches:** the owner turns a feature off for one organisation
+   (`src/server/tenant.ts` orgs; extend the switches to `feature@orgId`), checked where the global
+   switch is checked.
+**Done when:** the owner can see which route failed most yesterday and turn a feature off for one
+school. Keep each console query inside D1's per-request limits (one batch).
+
+### Q4. A4 Performance budget (finish) — 0.5 session
+**Exists:** most of A4 (see its Progress row); `src/lib/shrink-image.ts` resizes before upload.
+**Build:** 3 sizes per uploaded picture (`-sm` 320, `-md` 960, `-lg` 1920) made in the browser
+before upload, `srcset` on the image components that show uploads (avatars, chat photos, posts,
+materials); a pass over `src/server/services/*` for loops of queries (N+1) on the busiest GETs;
+`Cache-Control` on public answers that are the same for everyone.
+**Done when:** a chat with 30 photos downloads the small versions on a phone; LCP p75 < 2.5 s and
+INP p75 < 200 ms for the top pages in owner console → Analytics → Speed for real people (Web Vitals are
+already collected: `src/lib/web-vitals.ts`, `/api/vitals`, table `web_vitals`).
+
+---
+
+### Q5. B2 Courses (the rest) — 2 sessions
+**Exists:** modules (B2.1: `src/server/course-modules.ts`, `src/lib/course-modules.ts`,
+`src/components/dashboard/CourseModules.tsx`, inside `CourseBoard.tsx`), announcements
+(`src/server/modules/announcements.ts`, `services/announcements.service.ts`), course analytics
+(`src/server/course-analytics.ts`), pack import/copy logic in the content marketplace
+(`src/server/marketplace.ts`, C7), course calendar data in `services/calendar.service.ts`, ICS in
+`src/server/ical.ts`, electives and waitlist-like requests (`services/electives.service.ts`).
+**Build (one commit each):**
+1. **Copy a course to a new term** (structure, modules, materials, quizzes, rubrics; never
+   submissions or grades). Reuse the marketplace import code.
+2. **Rich lesson pages:** a module PAGE item edited with the docs editor (Tiptap, no live room) with
+   video chapters, maths (KaTeX is installed: `src/components/docs/DocEmbed.tsx`), callouts, quiz and
+   flashcard blocks.
+3. **Discussion board per course:** threads, replies, upvotes, "answered", teacher-endorsed answer;
+   an AI suggested answer from the course materials as a draft for the teacher (`spendAi`). New tables
+   (`course_threads`, `course_posts`, `course_votes`). A tab on the course board.
+4. **Announcements:** schedule for later (the 15-minute cron's due check, `cloudflare/due-check.ts`:
+   at most 5 parts per compound SELECT), pin, "seen by 28 of 32" (a read table), translate on read
+   (exists for chat: `src/server/text-translate.ts`).
+5. **Course calendar** tab with every due date, class and event, plus its ICS link.
+6. **Enrolment:** waitlist with a cap, sections (groups inside a course), co-teachers and teaching
+   assistants with permissions (a `course_staff` table; `src/lib/course-access.ts` `canManage` must
+   include them).
+7. **AI syllabus draft:** title + level + weeks → modules and outcomes the teacher edits (one AI
+   request; outcomes map to `Course.skills`).
+8. **Import from IMS Common Cartridge (.imscc) and Google Classroom export**, export as Common
+   Cartridge (zip in the browser; fflate is installed). Google Classroom API import is **[owner]**
+   (app registration); the exported zip works without it.
+**Done when:** a teacher copies last term's course in one step, runs a discussion board, schedules an
+announcement and adds a co-teacher who can grade.
+
+### Q6. B3 Assignments and grading (the rest) — 2 sessions
+**Exists:** grading view speed-ups (B3.1 partly), gradebook categories and final grades
+(B3.4 first part, `src/lib/gradebook.ts`), AI-drafted grading, feedback studio
+(`src/server/feedback-studio.ts`), similarity (`src/server/similarity.ts`), AI receipts (D12,
+`src/server/ai-receipts.ts`), offline assignments (`src/components/offline/OfflineWork.tsx`), code
+tests (code rooms), LTI 1.3 launches (`src/server/lti.ts`), `src/server/assignments.ts`,
+`src/app/(dashboard)/teacher/assignments/[id]`.
+**Build:**
+1. **Policies:** late penalty (% per day, grace period), resubmissions (max N), extensions per
+   student, accommodations (extra time) set once per student and applied to assignments and quizzes.
+2. **Assignment types:** group assignment (one submission per group, shared or individual marks),
+   peer review (anonymous, rubric-based, assigned automatically), file upload, link, code with tests.
+3. **Inline annotation** of PDFs and images in the grading view (pdf.js is in `public/pdfjs`;
+   highlights and comments stored per submission), rubric keys 1–5.
+4. **Gradebook:** letter / GPA scales per school, drop lowest, hide grades until posted ("post
+   grades"), grade history (who changed what), CSV export, LTI Advantage grade passback (AGS) to the
+   LMS.
+5. **Student side:** status chips (Not started / Draft / Submitted / Late / Graded), a signed
+   submission receipt, "What does this rubric mean?" (AI explainer), regrade request flow.
+6. **Writing replay** for typed answers: chunks of text over time (not keystrokes) shown to the
+   teacher as a timeline.
+**Done when:** a late submission loses the set % automatically, a group hands in once, a teacher
+annotates a PDF, a student asks for a regrade and the teacher answers it.
+
+### Q7. B4 Quizzes (the rest) — 1.5 sessions
+**Exists:** question bank (B4.1 first part: `src/lib/question-bank.ts`,
+`src/components/quizzes/QuestionBank.tsx`), shuffle and exam mode (B4.3–4.4 first part,
+`src/lib/seeded-shuffle.ts`), item analysis (`src/lib/item-analysis.ts`),
+`services/quizzes.service.ts`, `QuizManager.tsx`, offline quizzes, live polls (`src/server/live.ts`),
+the phone clicker's join by code (`src/server/classroom.ts`), mastery (`src/server/learning-dna.ts`),
+second chances (`src/server/second-chance.ts`).
+**Build:**
+1. **Question types:** true/false, multiple answers, short answer (AI-assisted marking the teacher
+   confirms), fill in the blanks, matching, ordering, numeric with tolerance, maths (LaTeX input),
+   code (tests), tap on an image, spoken answer. `QuizQuestion` gains `type` and `meta` JSON
+   (migration); every place that marks answers (`submitQuiz`, item analysis, offline quiz, D17 codes)
+   must handle each type.
+2. **Pools and variants:** draw N questions from a tagged pool per student; numbers that vary per
+   student.
+3. **Exam mode extras:** one question at a time without going back; a hard stop that refuses answers
+   after time.
+4. **Adaptive practice:** next question by mastery (D1), unlimited attempts, hints, explanations.
+5. **Live quiz game** (like Kahoot): the teacher's screen shows a code (reuse the classroom code),
+   phones answer, leaderboard and streaks, results saved as practice. Live updates through the
+   realtime room, not polling.
+6. QTI / GIFT import into the question bank.
+**Done when:** a quiz mixes 5 question types, each marked right (unit tests per type); a class plays
+a live game on phones.
+
+---
+
+### Q8. B1 Home pages — 1 session
+**Exists:** student home (`src/app/(dashboard)/student/page.tsx`, data from `/api/student/overview`
+**which is also on the light path** in `cloudflare/fast-api.ts`: change both and run
+`node scripts/light-path-parity.mjs`), teacher and admin homes (`/api/core/dashboard/teacher|admin`,
+also light path), daily brief (`src/server/daily-brief.ts`, `DailyBrief.tsx`), streaks
+(`src/server/streaks.ts`, `src/lib/study-days.ts`), early warning.
+**Build:** "Edit home" (reorder, hide, add widgets; saved per user, `users.homeLayout` JSON via a
+migration); an **Up next** card (class in 10 min → Join; quiz due → Start; teacher: 12 to grade →
+Grade) that changes as time passes (`src/lib/use-now.ts`); daily goal and weekly ring; teacher
+"needs attention" (late work, early-warning flags, unanswered questions) and a quick-create button;
+admin live numbers (attendance today, fees collected, open safety flags, active users); a "+" button
+in the phone tab bar (new message, task, doc, event, ask AI, scan QR).
+**Done when:** a student hides two widgets and the home remembers; Up next changes when a class
+starts.
+
+### Q9. B17 Notifications — 0.5 session
+**Exists:** the bell list in `src/components/layout/Topbar.tsx`, `src/server/modules/notifications.ts`,
+push (`services/push.service.ts`, the service worker `src/worker/index.ts` with Answer/Decline
+actions for calls), quiet hours (`src/server/quiet-hours.ts`), email switch.
+**Build:** a full notification centre page (a tab of the inbox or settings, never a new menu item)
+grouped by source with filters (Mentions, Grades, Calls, Tasks), swipe to mark read / snooze, "Mark
+all read", endless list; per-type settings (in-app / push) and per-course mute; an optional daily
+digest instead of many pushes (the daily cron); push actions (Reply, Mark done, Join).
+**Done when:** a student mutes one course's pushes and gets one digest a day instead.
+
+### Q10. B18 Search everywhere — 1 session
+**Exists:** `/api/search` (courses, groups, NGO projects, internships, knowledge hub),
+`src/components/ui/CommandPalette.tsx`, searchable pages in `Sidebar.tsx`, message FTS (migration
+0074), semester memory FTS (0063).
+**Build:** one `search_fts` index (kind, ref, scope, title, body) filled when docs, tasks, boards,
+courses, materials, people and events change (write in the same request; no cron), access filtered
+by scope like semester search; the palette gets actions ("New assignment", "Start call with…"),
+recent items and grouped results; on phones a search tab.
+**Done when:** typing a word from a doc's body finds the doc, only for people who can open it.
+**Trap:** D1 FTS5 works; keep each write to one or two statements.
+
+### Q11. B5 Attendance — 0.5 session
+**Exists:** `src/server/modules/attendance.ts`, `services/attendance.service.ts`, rotating QR,
+in-person class check-ins mark present (`src/server/classroom.ts`), `CallStat.seconds` per person per
+call, early warning uses attendance, guardian view.
+**Build:** attendance from class calls (present when in the call ≥ X % of it; teacher confirms); an
+optional location check (admin policy, the browser's location compared with the campus's, never
+stored); excuse requests with a document → teacher/admin approve; per-student trend and chronic
+absence alerts (in-app to guardians, never email); bulk and keyboard marking; a seating chart.
+
+### Q12. B6 Calendar and timetable — 1 session
+**Exists:** `src/server/modules/calendar.ts`, `services/calendar.service.ts`,
+`src/components/calendar/TimeGrid.tsx`, smart week planner (`src/server/smart-planner.ts`,
+`study-planner.ts`, `src/components/planner/SmartWeek.tsx`), timetable
+(`services/timetable.service.ts`, admin timetable page), ICS feed (`src/server/ical.ts`, needs
+`SESSION_SECRET`), rooms (D15 campus map).
+**Build:** drag-and-drop calendar (day / week / month / agenda, colour per course, office hours and
+personal blocks); a **timetable generator** for admins (teachers, rooms, hours per subject → a
+proposed week, worked out **in the browser**, conflicts highlighted, saved when accepted); an **exam
+timetable generator** (no student with two exams at once, room sizes). Two-way Google / Outlook sync
+is **[owner]** (Google Cloud project, Microsoft app): build behind a switch.
+
+### Q13. B10 AI tutor and study tools — 1 session
+**Exists:** course tutor with citations (`src/server/tutor.ts`, `src/components/tutor/TutorStudio.tsx`),
+flashcards (`/api/tutor/cards`), voice tutor (`src/lib/live-voice.ts`), oral coach (D11,
+`src/server/oral.ts`), semester memory (`src/server/semester.ts`), second chances (D10), images to
+AI (`geminiJsonImage` in `src/server/gemini.ts`), KaTeX installed.
+**Build:** photo of a homework problem → hints first, the answer only when asked; KaTeX and chemistry
+rendering in every AI answer; tutor modes (explain simply / hints only / the teacher's rule per
+course); FSRS scheduling for flashcards with a daily review push; practice tests from the semester
+memory linked to the class moment; teacher view of common (anonymous) questions per course and a
+switch to turn the tutor off before an exam. Every AI call: `spendAi`, `featureOff('ai')`, cache.
+
+### Q14. B11 Skills passport and credentials — 0.5–1 session
+**Exists:** passport (`src/server/passport.ts`, `src/components/passport/`, public page
+`/passport/[slug]`), Open Badges 3.0, W3C-shaped credential documents for impact certificates
+(`src/server/services/credential-signer.ts`), verify pages (`/verify/[id]`), skill evidence,
+`CredentialShare.tsx`.
+**Build:** W3C Verifiable Credentials 2.0 for skills (signed, wallet download); "Add to LinkedIn"
+(LinkedIn's add-certification URL, no API); a public portfolio (projects, evidence, hours, badges,
+theme; `/p/<handle>` or extend `/passport/[slug]`); a CV builder from the passport (templates, AI
+summary with `spendAi`, PDF in the browser); an employer verification page (enter a code, see the
+credential, no account).
+
+### Q15. B13 Careers — 1 session
+**Exists:** `src/server/modules/career.ts`, internships (`services/internships.service.ts`, D18 skills
+match `src/server/skills-bridge.ts`), mentorship (`services/mentorship.service.ts`), office hours
+(`src/server/office-hours.ts`), the oral coach and voice tutor (D11) to reuse for interviews.
+**Build:** AI mock interview (role questions, feedback on answers, STAR structure, filler words:
+reuse `oral.ts`); an application tracker (applied → interview → offer, reminders, documents);
+alumni network and mentor booking (office-hours slots); job alerts in-app/push when a new opening
+matches (D18 leftover).
+
+### Q16. B12 Global impact — 1 session
+**Exists:** impact projects and hours (`services/impact.service.ts`, `src/server/volunteering.ts`),
+`src/components/impact/ImpactMap.tsx`, impact rooms, Impact League, sponsor reports, scholarship
+exchange, payments (C6, `src/server/payments/`, Stripe; Razorpay **[owner]**).
+**Build:** filter the map by SDG; automatic certificates at 10 / 50 / 100 verified hours; money
+donations to NGO projects (Stripe Checkout; UPI via Razorpay **[owner]**) with receipts and an 80G
+field for Indian NGOs; a simple carbon tracker for clubs (activity → kg CO₂e with standard factors).
+
+### Q17. B14 Student life (the rest) — 1 session
+**Exists:** events with RSVP, waitlist and QR check-in (`src/server/campus-life.ts`, `/student/life/events`),
+associations / clubs (`services/associations.service.ts`), rooms, lost & found, medical, everyday
+life (dining menu), campus map (D15), wellbeing (D13).
+**Build:** paid tickets (C6 payments; Razorpay **[owner]**) and signed QR tickets; club elections
+(anonymous, verifiable tally) and budgets; a campus marketplace (buy / sell / swap, verified students,
+chat with the seller, report); cafeteria pre-orders; carpool and a housing board. Live bus positions
+are **[owner]** (a GPS device or a driver phone app).
+
+### Q18. B19 Onboarding, profile and settings — 0.5 session
+**Exists:** `AccountSetupCard.tsx`, `src/components/layout/WelcomeTour.tsx`,
+`src/components/settings/SettingsApp.tsx`, profile pages, download my data, delete account.
+**Build:** guided tours that point at the real buttons (per role, skippable, progress saved); profile
+cover photo, pronouns (optional), links, availability, avatar cropper; a search box in settings and a
+link to each setting.
+
+### Q19. B20 Owner console — 0.5–1 session
+**Exists:** `src/app/(dashboard)/console/` (server, health, errors, insights, calls, chats, database,
+AI models, email schedule, people), `src/server/modules/owner*.ts`, schools (`src/server/tenant.ts`,
+C2), Stripe billing.
+**Build:** a school list with plan, seats, usage and health; a read-only "view as" for support
+(logged in the audit log); revenue, churn and retention charts from Stripe; gradual rollout (a
+feature for N % of schools, on top of Q3's per-school switches); a moderation queue across schools
+(safety flags roll up).
+
+### Q20. B7.3 Chat bots and slash-command apps — 0.5 session
+**Exists:** `/poll`, `/remind` (`src/server/chat-reminders.ts`), `/ask-ai` in the composer
+(`src/components/chat/Composer.tsx`, `ChatWindow.tsx`), webhooks and API keys (C4:
+`src/server/webhooks.ts`, `src/server/public-api.ts`), communities.
+**Build:** an "apps" registry per school (name, commands, permissions, a webhook URL); a slash
+command calls the app's webhook (signed like C4's) and posts its answer in the chat; install /
+uninstall in Admin → Integrations.
+
+### Q21. A7 Languages and right to left — 1.5 sessions
+**Exists:** `src/lib/i18n.ts` (English, French, Spanish, Hindi; many newer screens are English only),
+`src/lib/languages.ts`, AI translation with a cache (`src/server/text-translate.ts`).
+**Build:** move the strings of every screen to `t()` keys (biggest part: do it area by area, one
+commit each); add Arabic and Urdu (right to left: `dir="rtl"` on `<html>` from the language,
+logical CSS `ms-`/`me-`/`ps-`/`pe-` instead of `ml`/`mr`, mirrored arrows), Bengali, Tamil, Telugu,
+Marathi, Portuguese, Indonesian, Swahili (draft with the AI translator once per string set, cached,
+marked "machine-translated" for review in the owner console); dates, numbers and money through
+`Intl` (₹1,00,000 for `hi` / `en-IN`).
+**Done when:** the whole student app reads correctly in Arabic, right to left, at 390 px.
+
+### Q22. Leftovers inside finished items — 1–2 sessions (pick up when nearby)
+Each Progress row lists its "Not done:"; the ones worth doing:
+- **D1 mastery map:** tutor questions and flashcards as signals; concept tags on the question bank screen.
+- **D2 Whisper TA:** a teacher switch to turn it off for one class.
+- **D7 phone clicker:** AI answers for in-room questions; link an in-person session to a running class call.
+- **D8 language-free classroom:** the browser's built-in Translator API before AI; scanned PDFs.
+- **D11 oral coach:** confirmed scores into the gradebook.
+- **D12 AI receipts:** on quizzes and oral checks; a class summary for the teacher.
+- **D18 skills match:** tell a student when a new opening matches.
+- **B9:** a real .docx writer, PDF → Word, MP3 / MP4 export (ffmpeg.wasm), form fields in the PDF editor.
+- **B15 school admin:** see each row (late fees, leave balances, offer letters as PDF, label printing…).
+- **B16:** parent photos/files in parent–teacher chats, meeting reminders.
+
+### Q23. Phase E small items — alongside everything
+The list in Phase E (undo toasts, copy-link everywhere, keyboard shortcut sheet, bulk actions, CSV
+export on tables, relative times, haptics, long-press menus…). Do ~10 per session next to a big
+item, one commit per batch, and list them in a Progress row.
+
+### Waiting for the owner (don't start without their yes)
+| Item | What's needed |
+|---|---|
+| C1 phone apps (App Store / Play Store) | Apple and Google developer accounts (then 1–2 sessions: Capacitor shell, native push, deep links) |
+| B8.5 live streaming to YouTube | The owner said keep it free for now (Cloudflare Stream Live is paid) |
+| Workers Paid ($5/month) | The owner's decision; fixes Q1 for every page at once and lifts the 10 ms CPU limit |
+| UPI / Razorpay (fees, donations, tickets) | Razorpay account and keys |
+| GIF search in chat | Tenor or Giphy key |
+| Google / Outlook calendar sync, Google Classroom import | Google Cloud project, Microsoft app registration |
+| Exact Word / PowerPoint → PDF | A paid conversion service |
+| C / C++ in code rooms, GitHub import | A large WebAssembly compiler (size), the owner's GitHub app |
+
+### For the owner to try (tell them when relevant)
+School-admin tools with the real admin account on a preview (fees, import and undo, admissions,
+roles, staff leave and cover, library, registers); the parent co-pilot, Whisper TA and oral coach
+with the real AI; moving QR codes with real phones and a projector; drawing the campus map
+(Campus monitoring → Campus map → Edit map); check `SESSION_SECRET` and
+`CREDENTIAL_SIGNING_PRIVATE_KEY` are set on the live site.
+
+---
+
 ## Progress (keep this up to date, so either agent can take over)
 
 > **Taking over?** Read `STAGE-5-HANDOFF.md` first: where things stand, what's next, the owner's rules and how to test.
 
 **Branch:** `claude/great-hamilton-8g8xdm` (from `main`). One commit per item; push at
-checkpoints; merge only when the owner says "merge". **Next migration: `0129`.**
+checkpoints; merge only when the owner says "merge". **Next migration: `0132`.**
 
 | ID | Item | State | Where / notes |
 |---|---|---|---|
@@ -894,3 +1305,8 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0129`.**
 | D16 | Parent co-pilot in their language | **Done** | **Migration 0128** (`parent_copilot`: a parent's language, weekly notification on / off, weekday, hour, time zone, next time; `parent_summaries`: one per parent, child, week (its Monday) and language, `ai` false for the template; `parent_questions`: question, answer, language, the records used). No new library. **`src/lib/parent-copilot.ts`** (6 tests): the week's counts line, a quiet week, a plain-English summary from the facts alone (the fallback), the week's Monday, the next weekly time in the parent's time zone, cleaning questions and the sources an answer may name. **`src/server/parent-copilot.ts`**: `weekFacts` (last 7 days from the records: grades with percent, attendance counts and absences, work due the next 7 days, work past its deadline not handed in, the average now and a week before, achievements, new report cards; never messages); `GET /api/parent/week` (settings made on first open with the device's language and time zone); `POST` **summary** (written by AI in the parent's language from the facts only, ~1 minute, kept for the week; Update at most once a day; a quiet week or no AI: the English template with a note, not kept so AI can try later), **ask** ("How is Riya doing in maths?": answered in their language from courses, grades, attendance, this week, work due and late and the latest report card comment; says when the records don't cover it and suggests Messages; ignores instructions in the question; the same question again that day costs nothing; 10 a day; sources limited to known records and course names), **prefs** (language; weekly notification on / off, day, hour). Weekly: the 15-minute cron (a new due check) sends a bell notification and a push naming the children ("John’s week"), never email, then sets next week's time (one statement). **Teacher voice notes** in parent–teacher chats (`src/server/parent-messages.ts`): play in the parent app and are written out and translated into the chat's language or the co-pilot language (one AI request from the parent's allowance, kept on the message; view-once notes excluded). Parent app: **John’s week** card at the top of Schoolwork (counts line, language picker, the summary, **Listen** with the device's own voice, Update), **Ask about John** with recent answers (sources, Listen), the weekly notification switch with day and time; voice notes in Messages with the translation, "Show the words as said", and Try again. Sample-mode stub; help answer. **Tested locally (no AI key here):** API script (36 checks: settings from the device, facts from the records, the Monday, Sunday 18:00 in India = 12:30 UTC, students and unlinked children refused, the template with a note and not kept, short / no-AI / repeated / 11th question, a kept summary, Update within a day, language and day saved and kept, bad values ignored, weekly off, the cron notification and next week's time and not twice, voice notes: new / written out / view-once / repeated / no AI / unknown / students, the chat's language first); Playwright (21 checks: the card, French, the template note, Listen, Hindi summary, questions, the weekly switch, voice notes in French and as said, a new note's Try again); axe clean at 390 px light and dark. **Try on the live site:** the AI summary, answers and voice-note transcription with the real AI. |
 | D17 | Offline classroom relay (experimental) | **Done (moving QR codes; the owner's choice)** | No migration. Research first: phone-to-phone WebRTC over a classroom hotspot isn't reliable enough (QR handshakes per student with no internet, client isolation on many networks, `.local` addresses, no Web Bluetooth sending), so the owner chose **moving QR codes** for short items. New library **jsQR 1.4.0** (Apache-2.0; reads codes on phones without a built-in reader; only in the scanner's own chunk). **`src/lib/qr.ts`**: versions up to 15 (was 10) and QR's compact **alphanumeric mode** when the text allows (byte mode otherwise, so links are unchanged). **`src/lib/qr-relay.ts`** (6 tests, including encoder → jsQR read-back at all three sizes): an item (`NOTE` / `ANNOUNCEMENT` / `QUIZ` with questions and options only) as `[format][flags][key id][Ed25519 signature][deflated JSON]`, Base45 (RFC 9285), cut into frames `UV1:<loop id>:<n>/<total>:<data>` of 180 / 330 / 570 characters (QR versions 7 / 11 / 15); `FrameCollector` takes frames in any order, ignores other codes and a stray frame of another loop, switches when the teacher shows something else; `checkRelay` checks the signature with WebCrypto (`ok` / `bad` / `unsigned` / `unchecked`). **`src/server/qr-relay.ts`**: `GET /api/classroom/relay?courseId=` (the course's announcements and quizzes, each with why it can't be sent: pictures, exam mode, draft, closed, too long, over 40 questions) and `POST` (a note typed now, an announcement or a quiz; built from the database, signed with the platform key `CREDENTIAL_SIGNING_PRIVATE_KEY` via new `CredentialSigner.signText`; unsigned when there's no key); the course's teacher or an admin only. Sample stub. **Teacher:** Live class → **Send to phones with no internet** (`components/live/QrRelayPanel.tsx`): Note / Announcement / Quiz → **Show as codes**: full screen, the loop at Slow / Normal / Fast (2 / 4 / 6 codes a second), Small / Medium / Large codes, Pause and Next code, "Signed"; prepared items stay **ready on this computer** (up to 8, browser storage) and show with no connection. **Students:** Offline courses → **From the teacher’s screen** → **Scan from the teacher’s screen** (`components/offline/QrRelayScan.tsx`, camera in `QrRelayCamera.tsx`: the phone's BarcodeDetector where there is one, else jsQR): progress per code, then the item is checked against the school's key (kept from `/api/passport/jwks` while online; an item that fails is never saved, one that couldn't be checked yet is checked next time online) and kept on the phone (Cache Storage, 30 items): notes and announcements to read, quizzes to take offline with the existing offline quiz (answers go to the outbox and are marked on the server when online). Opening Offline courses online fetches the scanner ahead so it works offline. Live class (student) links to it (`?scan=1`); search and help entries. **Also fixed:** the offline bar's white text on orange/green (2.2:1) is dark now; the Offline page's own offline note is darker; the phone header's "Home" link is named "UniVerse home" (it shows "UniVerse"). **Tested locally:** API script (24 checks: who may list and prepare, every refusal reason, note / announcement / quiz prepared and signed, no answers in a quiz, the signature against the public key, the whole trip for each kind, a changed item fails, the quiz's answers marked on the server); Playwright end to end (24 checks: the teacher shows a note and a quiz, the codes are read off the screen into a fake camera video; a 390 px student phone **offline** reads them in under 2 s, "Checked: sent by Dr. Jane Smith", keeps it, takes the quiz offline, and back online it's sent and marked 3 of 3; a 5,500-character note in 7 small codes read in 2.5 s); axe clean light and dark (teacher page and code screen, student page, scanner, note, quiz). **Not tried:** real phones and a real projector (the owner's school); iPhone (Safari) reading; the BarcodeDetector path (Chrome on Linux has none). |
 | D18 | Skills-to-jobs bridge | **Done** | No migration, no AI. **`src/lib/skills-bridge.ts`** (5 tests): the same skill under different names, whole words only ("SQL" = "SQL basics", "Data analysis" = "Data analysis with Python"; "Java" is not "JavaScript", "R" is not "React"), an opening's skills against the student's (deduplicated, at most 12, the strongest evidence and how much; each name looked up once however many openings ask for it, to stay inside Workers Free's CPU limit), where to learn a gap (a class I'm in first), the sentence ("You match 4 of 5 skills; finish ‘SQL basics’ in CS201 to match all." / "take DS200" for a class I'm not in / "learn Excel with Asha, a peer tutor," / "2 to learn"), best match first then the soonest deadline. **`src/server/skills-bridge.ts`**: `GET /api/internships/skills-match` (students only; a teacher gets a 403 with the reason): my verified skills from the passport's evidence (hidden items count: they're only hidden from the public passport), open internships and NGO projects (active, deadline not passed, at least one skill listed; 60 of each, the top 30 kept) with whether I applied, and for each missing skill: a **module of one of my classes** named for it (published and released) or the class itself when it builds the skill, else a **class I could join** that builds it (published, my campus or shared with it, like My choices), and up to two **peer tutors** (D5) who offer it or show it on their own passport (never hidden evidence; my school's or no school's; never myself). Sample stub. **Internships** now has tabs: **Openings** and **Skills match** (`/student/internships/match`): my checked skills, All / Internships / NGO projects, a card per opening (match %, the sentence, "You have" with levels, "To learn" with links to the module (`/student/blackboard?course=…&tab=modules`), to My choices ("Join D18FR"), or to the tutor (peer tutoring opens searched for them, `?q=`), "View and apply" opens Internships or NGO projects searched for it, or Applied). In search and the help assistant. Also fixed while testing: the notification bell's name now says what the badge shows ("9+", "99+"; axe: label in name). **Tested locally:** API script (23 checks: signed out, teacher refused, hidden evidence counts for me, strongest level, no skills / past deadline / closed left out, 100% first, applied, 3 of 4 via "Python programming", module in my class, unpublished module ignored, class I could join, tutor by subject and by passport, hidden tutor evidence not used, a tutor never suggested to themselves, sorted, sentences); Playwright at 390 px (17 checks: tabs, skills, card, module / class / tutor links, Applied, no sideways scroll, filter, View and apply fills the Internships search, the tutor link fills the tutoring search); axe clean light and dark. **Not done:** jobs from outside the school (only internships and NGO projects posted here), skills named on a student's CV, telling a student when a new opening matches. |
+| FREE.1 | Live updates reach everyone in big groups (Workers Free) | **Done** | No migration. Telling a person's live hub is one subrequest and Workers Free allows 50 per request, so a message in a 100-member group reached only about the first 50 live. **`src/lib/fanout.ts`** (5 tests, simulating the 50 rule for 100 and 5,000 people): a sender tells at most 40 hubs itself; for more it hands each hub a slice ("relay": that hub tells its own tabs, then the rest of its slice, with its own allowance), so any number of people is reached in a few hops, still one hub request per person. `RealtimeHub` answers `/relay` (`cloudflare/worker.ts`); `deliver()` in `src/server/realtime.ts` uses it. The 40-person caps on class, group, module, call and companion updates are gone; typing indicators are skipped above the plan's live-push size (40 free, 500 paid). **Tested locally (built Worker):** 101 people with UniVerse open (one live connection each, test accounts), a message in their 101-member group reached 101 / 101 in 0.28 s, nobody twice. |
+| FREE.2 | Warning before the free plan's daily allowances run out | **Done** | **Migration 0129** (`usage_guard.daily`, `dailyAlerted`). Workers Free has daily allowances (100,000 requests, 100,000 live-hub requests, 13,000 GB-s, 5 M rows read, 100,000 rows written; reset 00:00 UTC = 5:30 AM India) and nothing warned before them. The spending guard (`cloudflare/usage-guard.ts`, every 15 min) now reads today's use too and warns the owners in the app and by push (no email) at 70 % and 90 %, once each a day (`/api/cron/usage-alert`). Also fixed: on the free plan the guard could pause the app from the $5 plan's monthly figures; now only files (R2) can pause it there. Console → Server shows "Cloudflare free plan · today"; the owner's morning summary and insights use the same figures (`src/server/plan-usage.ts`). 4 tests (`src/server/usage-guard.test.ts`). Needs `CF_ACCOUNT_ID` / `CF_USAGE_TOKEN` (DEPLOY-CLOUDFLARE.md); `WORKERS_PAID=true` after upgrading. |
+| Q1 | Pages with an id no longer start Next.js (no more "Error 1101" on them) | **Done** | No migration. The 24 client pages (+ `/receipt/[id]`, now a client page reading the new `GET /api/receipts/[id]`, public by id, completed payments only, sample stub) are built once with every parameter "open" (`generateStaticParams` in each `page.tsx`; the old code is `View.tsx`, which reads the values from the address with **`usePathParams`** (`src/hooks/usePathParams.ts`, `src/lib/path-params.ts`; nothing id-specific renders before hydration, so no #418) and shows `AddressLoading` meanwhile). **`scripts/gen-api-routes.mjs`** now also writes **`cloudflare/page-routes.gen.ts`** (every page in Next.js's match order, with the built page for each; `--check` and `src/lib/page-routes.test.ts` keep it current: run it after adding a page). **`cloudflare/page-match.ts`** picks the page like Next.js and the Worker answers `/docs/<id>` with `/docs/open` (from the cache, Next.js not started); `/join/<code>` and `/student/courses/<id>` are 302s from the Worker, keeping the query. **Trap found and fixed:** Next.js's router knows such a page as `/docs/open` while the address says `/docs/<id>`; a link's prefetch to or from one filed the data under one name and looked under the other, and asked again (300 requests in 5 s on the assignments list, which tripped the tab's request brake). The Worker answers those prefetches with 204 (to a built page, or with `Next-Url` naming one); a click loads the page as usual. Also: the whiteboard's menu button and the code editor have accessible names; contrast on the scholarship check page; the receipt page closes its 404 answer. **Tested locally (built Worker, fresh start each time):** all 28 addresses answer in 0.03–0.10 s, and a page that needs Next.js right after still takes 1.8–3.2 s; Playwright at 390 px (light and dark, axe) and 1280 px: every page opens directly with its own data, no page errors; boards list → board and assignments list → assignment → back, in-app; two profiles in a row show their own data; 10 s on each page: no request loops (0–1 requests). **Note for new pages with an id:** copy one of these (page.tsx + View.tsx), then run `node scripts/gen-api-routes.mjs`. |
+| Q2 | A8 Security hardening | **Done** | **Migration 0130** (`passkeys`: credential id, public key (SPKI) and algorithm, signature counter, newest challenge answered, name, last used; `users.revokedSessions`; `login_events.sessionAt`; `csp_reports`). No new library. **Passkeys:** `src/lib/webauthn.ts` checks a passkey answer with WebCrypto (ES256 / EdDSA / RS256; challenge, site, user verified, counter; 5 tests with a pretend authenticator), `src/server/passkeys.ts` hands out challenges (stateless, signed with `SESSION_SECRET`, 5 minutes, one purpose and person; each passkey remembers the newest challenge it answered, so an answer works once) and keeps them; routes in `src/server/modules/auth.ts` (`passkeys` list / add / remove, public `passkeys/sign-in` + options, `two-step/passkey` + options); browser side `src/lib/passkey-client.ts` (uses `getPublicKey()`, so no CBOR). **Settings → Privacy & security:** Passkeys (add on this device, remove) and **Signed-in devices** (`src/components/security/SignInSecurity.tsx`: each sign-in from the history with place, method, last seen, "This device", **Sign out** → that sign-in is refused, also on the light path, within a minute). **Sign-in page:** "Passkey" (a UniVerse session for 7 days; no password, no code). **Admins:** the second step offers the passkey first and sends no email unless asked ("Email me a code instead"). **Rate limit:** `AUTH_RATE_LIMITER` 10 a minute for sign-in steps (demo sign-in per address; code, passkey step, sign-up per account); uploads and AI were already limited (COSTLY). **CSP reports:** `report-uri` / `report-to` → `POST /api/csp-report` (both report formats, no query strings, one row per kind, counted, newest 200), owner console → Errors → "Blocked by the browser's safety rules". **Private files:** `POST /api/files/link` gives a 10-minute R2 link after checking access (class recordings: the class; call recordings: the call; documents: owner and admins); chat players, course materials, the documents pages use it (`src/lib/private-file.ts`); owner's optional WAF rule in DEPLOY-CLOUDFLARE.md stops the old addresses of recordings. **Dependency check:** `pnpm audit --prod` written up in DEPLOY-CLOUDFLARE.md (Security); PDF.js advisory doesn't apply (no viewer scripting) and eval / XFA are now off. **Tested locally (built Worker, throwaway settings, a pretend Google key server and authenticator):** 32 API checks (code then passkey added; next sign-in's second step by passkey with no email; replays and wrong signatures refused; passkey sign-in as admin without a second step; devices listed, one signed out and refused while the other works; 11th sign-in attempt in a minute → 429; CSP report stored once without the query; recording link for the class, 403 for others, 401 signed out; passkey removed → no sign-in) and Playwright at 390 px with Chromium's virtual authenticator (add a passkey, axe light and dark on Settings and the sign-in page, sign out, sign in with "Passkey", "This device" in the list). 9 unit tests. **Not done:** the admin second-step screen with a passkey was tested through the API only (a real Firebase sign-in is needed for the page); recordings' old addresses keep working until the owner adds the WAF rule; documents' addresses are shared with chat files, so they can't be blocked by a rule. |
+| Q3 | A9 Reliability and observability | **Built, unit-tested; not yet tested in a browser or on the built Worker** | **Migration 0131** (`api_timings`: route with ids as `:id` (`src/lib/route-label.ts`), method, status, ms, weight, time; `health_counts`: day, key, n). **Health numbers** (owner console tab "Health numbers", `console/health-numbers.tsx`, `GET /api/core/owner/health-numbers` → `src/server/health-numbers.ts`, all sums in SQL): failed most yesterday, slowest routes (avg, slowest, share over 1 s), pages with problems (errors table), AI per day and per feature (`ai_uses`), push delivered / failed / expired (`src/server/health-counts.ts`, counted in `push.service.ts`), call quality (`call_stats`), app size (the build now runs `scripts/bundle-report.mjs --summary public/build-size.json`, git-ignored). The Worker samples 1 API request in 20 (weight 20) and every 5xx (weight 1) in `cloudflare/worker.ts` `sampleTiming`; the daily cron deletes timings older than 7 days and counters older than 60. **Error screens:** `error.tsx` in 20 dashboard sections (re-export `src/app/error.tsx`), which now has **Report this** (a note → `reportProblem` in `src/lib/error-monitor.ts`, a separate "Reported:" entry in Errors). **Per-school switches:** stored in `server_control.switches` as `org:<orgId>=<feature>` (`src/lib/feature-switches.ts` parse / compose, owner route keeps all three kinds), console → Server → "For one school"; enforced in the Worker for path features (`schoolGate` in `cloudflare/usage-guard.ts`, school from `callerOrg` in `fast-api.ts`, only for changes a school switch covers), and in the app for calls (`featureOff('calls', org)`) and AI (`spendAi`). Tests: route labels, school switches (3), all 720 unit tests, both type checks. **To do (next agent):** production build, `wrangler d1 migrations apply --local`, then on `wrangler dev`: open the console as owner (Health numbers tab renders with data after some API traffic; Server → For one school: turn Chat off for a school and check a member of it gets 503 on sending while others don't), break a page to see a section error screen + Report this (axe light/dark at 390 px). |

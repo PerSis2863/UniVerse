@@ -1,4 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { fanOut } from '@/lib/fanout';
+import { planLimits } from '@/lib/plan-limits';
 
 // Live updates: each signed-in user has a RealtimeHub Durable Object (cloudflare/worker.ts) holding
 // their open app/website tabs over WebSockets. publish() tells those tabs that something changed
@@ -37,25 +39,10 @@ function hub(userId: string) {
  */
 export async function deliver(userIds: Iterable<string>, event: RealtimeEvent): Promise<Set<string> | null> {
   const ids = [...new Set(userIds)];
-  const body = JSON.stringify(event);
-  let available = true;
-  const online = new Set<string>();
-  await Promise.all(
-    ids.map(async (id) => {
-      const stub = hub(id);
-      if (!stub) {
-        available = false;
-        return;
-      }
-      try {
-        const res = await stub.fetch('https://realtime/publish', { method: 'POST', body });
-        if (res.ok && ((await res.json()) as { sockets?: number }).sockets) online.add(id);
-      } catch (e) {
-        console.error('realtime publish failed:', e);
-      }
-    }),
-  );
-  return available ? online : null;
+  if (!ids.length) return new Set();
+  if (!hub(ids[0])) return null;
+  // Big lists are relayed hub to hub (src/lib/fanout.ts), so every member is reached on Workers Free.
+  return fanOut(ids, JSON.stringify(event), (id) => hub(id)!);
 }
 
 /** Sends an event to every open tab of these users, after the response. Never throws. */
@@ -102,6 +89,9 @@ export function publishTyping(conversationId: string, userId: string, name: stri
   const work = (async () => {
     const { default: prisma } = await import('@/lib/db');
     const members = await prisma.conversationParticipant.findMany({ where: { conversationId, userId: { not: userId } }, select: { userId: true } });
+    // In big groups "someone is typing" isn't shown: it would cost one live request per member
+    // every few seconds while anyone types (cloudflare/fast-api.ts typing does the same).
+    if (members.length > planLimits().livePushes) return;
     publish(members.map((m) => m.userId), { type: 'typing', conversationId, name });
   })().catch((e) => console.error('realtime publishTyping failed:', e));
   try {

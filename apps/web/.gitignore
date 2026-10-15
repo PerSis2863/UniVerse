@@ -57,3 +57,5 @@ next-env.d.ts
 
 # next-pwa builds src/worker into this on every build (sw.js loads it)
 /public/worker-*.js
+# Written by the build (scripts/bundle-report.mjs --summary) for the owner console
+/public/build-size.json

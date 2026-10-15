@@ -83,6 +83,47 @@ export function parseSwitches(raw: string | null | undefined): string[] {
   }
 }
 
+// ─── Per school: a feature off for one organisation only ───────────────────────────────────────
+// Stored in the same list as "org:<organisation id>=<feature id>" (no database change). The Worker
+// checks the paths for the signed-in person's school (cloudflare/worker.ts orgGate); calls and AI
+// are checked in the app too (featureOff with the school, src/server/moderation.ts).
+
+const ORG_ENTRY = /^org:([A-Za-z0-9_-]{1,64})=(\w+)$/;
+
+/** Features switched off per school: { orgId: [featureId, …] }. */
+export function parseOrgSwitches(raw: string | null | undefined): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  let list: unknown = [];
+  try { list = raw ? JSON.parse(raw) : []; } catch { return out; }
+  if (!Array.isArray(list)) return out;
+  for (const item of list) {
+    const m = typeof item === 'string' ? ORG_ENTRY.exec(item) : null;
+    if (!m || !IDS.has(m[2])) continue;
+    const ids = (out[m[1]] ??= []);
+    if (!ids.includes(m[2])) ids.push(m[2]);
+  }
+  return out;
+}
+
+/** The per-school switches as list entries. */
+export function orgSwitchEntries(orgs: Record<string, string[]>): string[] {
+  return Object.entries(orgs).flatMap(([org, ids]) => (ORG_ENTRY.test(`org:${org}=x`) ? ids.filter((id) => IDS.has(id)).map((id) => `org:${org}=${id}`) : []));
+}
+
+/** The whole stored list from its three parts (null when empty). */
+export function composeSwitches(off: string[], emails: string[], orgs: Record<string, string[]>): string | null {
+  const list = [...off, ...emails, ...orgSwitchEntries(orgs)];
+  return list.length ? JSON.stringify(list) : null;
+}
+
+/** Features that are off for some school and cover this request's path (cheap: no school yet). */
+export function orgCandidates(orgs: Record<string, string[]>, method: string, path: string): FeatureSwitch[] {
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return [];
+  const ids = new Set(Object.values(orgs).flat());
+  if (!ids.size) return [];
+  return FEATURE_SWITCHES.filter((f) => ids.has(f.id) && f.paths?.test(path) && !f.allow?.includes(method));
+}
+
 /** The switched-off feature this request belongs to, if any. */
 export function blockedFeature(off: string[], method: string, path: string): FeatureSwitch | null {
   if (!off.length || method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return null;

@@ -8,7 +8,7 @@ import { Activity, AlertCircle, Ban, BarChart3, Bug, CheckCircle2, ClipboardList
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { FEATURE_SWITCHES, parseSwitches } from '@/lib/feature-switches';
+import { FEATURE_SWITCHES, parseOrgSwitches, parseSwitches } from '@/lib/feature-switches';
 import { card, errorMessage, fetcher, field, refreshConsole, toastWithUndo } from './shared';
 import { ConsoleSkeleton } from './shared';
 import { EmailScheduleCard } from './email-schedule';
@@ -20,9 +20,14 @@ import { TabPill, TabPanel } from '@/components/ui/Glide';
 // notice on every page, and see the Cloudflare plan usage and the app's health at a glance. The
 // Worker applies the switch (cloudflare/usage-guard.ts) within a minute; the owner always gets in.
 
+type UsageMeter = { key: string; label: string; used: number | null; limit: number; bytes?: boolean };
 export interface PlanUsage {
   paused: boolean; reason: string | null; resumeAt: string | null; checkedAt: string | null; error: string | null;
-  meters: { key: string; label: string; used: number | null; limit: number; bytes?: boolean }[];
+  meters: UsageMeter[];
+  /** Workers Paid (WORKERS_PAID=true); otherwise the free plan's daily allowances apply. */
+  paid?: boolean;
+  /** Free plan: today's usage of the daily allowances (reset 00:00 UTC). */
+  daily?: { day: string; meters: UsageMeter[] } | null;
 }
 type Mode = 'LIVE' | 'READ_ONLY' | 'MAINTENANCE';
 interface AiLimits { student: number; staff: number; site: number }
@@ -37,6 +42,7 @@ interface ServerData {
   ai?: AiToday | null;
   online?: { count: number; people: { id: string; name: string; role: string; avatar: string | null; lastSeenAt: string | null }[] };
   adoption?: Record<string, number>;
+  orgs?: { id: string; name: string }[];
   history: { id: string; summary: string; createdAt: string; undoneAt: string | null }[];
 }
 
@@ -136,6 +142,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
           <div className="space-y-6">
             <NoticeCard key={`n-${data.control.updatedAt}`} banner={data.control.banner} onSaved={() => void mutate()} />
             <FeatureCard key={`f-${data.control.updatedAt}`} switches={data.control.switches} onSaved={() => void mutate()} />
+            {!!data.orgs?.length && <SchoolSwitchesCard key={`s-${data.control.updatedAt}`} switches={data.control.switches} orgs={data.orgs} onSaved={() => void mutate()} />}
           </div>
         </div>
       )}
@@ -734,46 +741,123 @@ function FeatureCard({ switches, onSaved }: { switches: string | null; onSaved: 
   );
 }
 
+/**
+ * A feature off for one school only (src/lib/feature-switches.ts "org:" entries): its people see
+ * "turned off for your school"; everyone else keeps it. Sign-ups can't be (a new person has no school).
+ */
+function SchoolSwitchesCard({ switches, orgs, onSaved }: { switches: string | null; orgs: { id: string; name: string }[]; onSaved: () => void }) {
+  const [byOrg, setByOrg] = useState(() => parseOrgSwitches(switches));
+  const [org, setOrg] = useState(() => Object.keys(parseOrgSwitches(switches))[0] ?? orgs[0]?.id ?? '');
+  const [busy, setBusy] = useState<string | null>(null);
+  const name = (id: string) => orgs.find((o) => o.id === id)?.name ?? 'A school no longer listed';
+  const offHere = byOrg[org] ?? [];
+  const flip = async (id: string, label: string) => {
+    const off = !offHere.includes(id);
+    setBusy(id);
+    try {
+      const { data: res } = await api.post('/owner/server', { orgSwitch: { org, feature: id, off } });
+      setByOrg(parseOrgSwitches(res.control.switches));
+      toastWithUndo(`${label}: ${off ? 'off' : 'on'} for ${name(org)}`, res.changeId);
+      onSaved();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+  const anyOff = Object.entries(byOrg).filter(([, ids]) => ids.length);
+  return (
+    <div className={cn(card, 'p-6')}>
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><ToggleRight className="w-4 h-4 text-indigo-500" /> For one school</h2>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 mb-3">Turn a feature off for one school only, for example while it sorts out a problem. Its people see “turned off for your school”; every other school keeps it.</p>
+      {anyOff.length > 0 && (
+        <p className="text-sm text-zinc-700 dark:text-zinc-300 mb-3">
+          Off now: {anyOff.map(([id, ids]) => `${name(id)} (${ids.map((f) => FEATURE_SWITCHES.find((x) => x.id === f)?.label ?? f).join(', ')})`).join(' · ')}
+        </p>
+      )}
+      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+        School
+        <select value={org} onChange={(e) => setOrg(e.target.value)} className={cn(field, 'mt-1 block w-full sm:w-80')}>
+          {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}{byOrg[o.id]?.length ? ` · ${byOrg[o.id].length} off` : ''}</option>)}
+        </select>
+      </label>
+      <ul className="grid sm:grid-cols-2 gap-2">
+        {FEATURE_SWITCHES.filter((f) => f.id !== 'signups').map((f) => {
+          const on = !offHere.includes(f.id);
+          return (
+            <li key={f.id}>
+              <button role="switch" aria-checked={on} onClick={() => void flip(f.id, f.label)} disabled={busy !== null || !org}
+                className={cn('w-full text-left rounded-xl border p-3 flex items-center gap-3 min-h-11 transition-colors', on ? 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40' : 'border-rose-500/40 bg-rose-500/[0.06]')}>
+                <span className={cn('w-9 h-5 rounded-full p-0.5 shrink-0 transition-colors', on ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-600')}>
+                  <span className={cn('block w-4 h-4 rounded-full bg-white shadow transition-transform', on && 'translate-x-4')} />
+                </span>
+                <span className="flex items-center gap-1.5 font-semibold text-sm text-zinc-900 dark:text-white">{f.label} {busy === f.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{!on && <span className="text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400">off</span>}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 const amount = (n: number, bytes?: boolean) =>
   bytes ? `${(n / 1024 ** 3).toFixed(n < 1024 ** 3 ? 2 : 1)} GB` : new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
 
-/** The spending guard: how much of what the $5 Cloudflare plan includes has been used this month. */
-export function PlanUsageCard({ usage }: { usage: PlanUsage | null }) {
-  const meters = usage?.meters ?? [];
-  const read = meters.filter((m) => m.used !== null).sort((a, b) => b.used! / b.limit - a.used! / a.limit);
+/** One allowance: used, out of how much, coloured at 70% and 90%. */
+function MeterTile({ m }: { m: UsageMeter }) {
+  const pct = Math.min(100, (m.used! / m.limit) * 100);
   return (
-    <div className={cn(card, 'p-5', usage?.paused && 'border-rose-500/50')}>
+    <li className="rounded-xl border border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-white/[0.025] px-3.5 py-3">
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-xs text-zinc-600 dark:text-zinc-300 leading-snug">{m.label}</span>
+        <span className={cn('shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full', pct >= 90 ? 'bg-rose-500/12 text-rose-600 dark:text-rose-400' : pct >= 70 ? 'bg-amber-500/12 text-amber-700 dark:text-amber-400' : 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-400')}>{pct < 1 ? '<1' : Math.round(pct)}%</span>
+      </div>
+      <p className="mt-1 text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">{amount(m.used!, m.bytes)} <span className="text-xs font-normal text-zinc-500">of {amount(m.limit, m.bytes)}</span></p>
+      <div className="mt-2 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" aria-hidden>
+        <div className={cn('h-full rounded-full', pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400')} style={{ width: `${Math.max(pct, 1.5)}%` }} />
+      </div>
+    </li>
+  );
+}
+
+const byShare = (meters: UsageMeter[]) => meters.filter((m) => m.used !== null).sort((a, b) => b.used! / b.limit - a.used! / a.limit);
+
+/**
+ * The spending guard: on Workers Paid, how much of what the $5 plan includes has been used this
+ * billing month; on Workers Free, today's use of the free daily allowances (and files this month).
+ */
+export function PlanUsageCard({ usage }: { usage: PlanUsage | null }) {
+  const free = usage ? usage.paid === false : false;
+  const monthly = byShare(free ? (usage?.meters ?? []).filter((m) => m.key.startsWith('files')) : (usage?.meters ?? []));
+  const today = byShare(usage?.daily?.meters ?? []);
+  const todayTop = today[0] ? today[0].used! / today[0].limit : 0;
+  return (
+    <div className={cn(card, 'p-5', (usage?.paused || todayTop >= 0.9) && 'border-rose-500/50')}>
       <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Cloudflare plan · this billing month</h2>
-        {usage?.checkedAt && <span className="text-xs text-zinc-400">checked {formatDistanceToNow(new Date(usage.checkedAt), { addSuffix: true })}</span>}
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{free ? 'Cloudflare free plan · today' : 'Cloudflare plan · this billing month'}</h2>
+        {usage?.checkedAt && <span className="text-xs text-zinc-500">checked {formatDistanceToNow(new Date(usage.checkedAt), { addSuffix: true })}</span>}
       </div>
       {!usage ? (
         <p className="text-sm text-zinc-500">The spending guard hasn&apos;t run yet. It checks every 15 minutes once the CF_ACCOUNT_ID and CF_USAGE_TOKEN secrets are set.</p>
       ) : (
         <>
-          <p className={cn('text-sm mb-3', usage.paused ? 'text-rose-500 font-semibold' : 'text-zinc-500')}>
+          <p className={cn('text-sm mb-3', usage.paused || todayTop >= 0.9 ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-zinc-600 dark:text-zinc-400')}>
             {usage.paused
               ? `Paused: ${usage.reason ?? 'an allowance ran low.'}${usage.resumeAt ? ` Opens again on ${format(new Date(usage.resumeAt), 'd MMM')}.` : ''}`
-              : 'Running. The app pauses itself at 90% of any allowance, so the plan stays at $5. You get an email at 70%.'}
+              : free
+                ? `On the free plan these reset every day at 00:00 UTC (5:30 AM in India). If one reaches 100%, Cloudflare stops UniVerse until then. You get a notification and a push at 70% and 90%; Workers Paid ($5 a month) lifts them.`
+                : 'Running. The app pauses itself at 90% of any allowance, so the plan stays at $5. You get an email at 70%.'}
           </p>
-          {read.length > 0 && (
-            <ul className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">{read.map((m) => {
-              const pct = Math.min(100, (m.used! / m.limit) * 100);
-              return (
-                <li key={m.key} className="rounded-xl border border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-white/[0.025] px-3.5 py-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-xs text-zinc-600 dark:text-zinc-300 leading-snug">{m.label}</span>
-                    <span className={cn('shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-full', pct >= 90 ? 'bg-rose-500/12 text-rose-500' : pct >= 70 ? 'bg-amber-500/12 text-amber-500' : 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400')}>{pct < 1 ? '<1' : Math.round(pct)}%</span>
-                  </div>
-                  <p className="mt-1 text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">{amount(m.used!, m.bytes)} <span className="text-xs font-normal text-zinc-400">of {amount(m.limit, m.bytes)}</span></p>
-                  <div className="mt-2 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
-                    <div className={cn('h-full rounded-full', pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400')} style={{ width: `${Math.max(pct, 1.5)}%` }} />
-                  </div>
-                </li>
-              );
-            })}</ul>
+          {free && today.length > 0 && <ul className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">{today.map((m) => <MeterTile key={m.key} m={m} />)}</ul>}
+          {free && !today.length && <p className="text-sm text-zinc-500">Today&apos;s figures appear after the next check.</p>}
+          {monthly.length > 0 && (
+            <>
+              {free && <h3 className="mt-5 mb-2 text-sm font-semibold text-zinc-900 dark:text-white">Files this billing month <span className="font-normal text-zinc-500">(charged past the free allowance; the app pauses itself at 90%)</span></h3>}
+              <ul className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">{monthly.map((m) => <MeterTile key={m.key} m={m} />)}</ul>
+            </>
           )}
-          {usage.error && <p className="mt-3 text-xs text-amber-600 dark:text-amber-400 whitespace-pre-wrap">Couldn&apos;t read some of it: {usage.error}</p>}
+          {usage.error && <p className="mt-3 text-xs text-amber-700 dark:text-amber-400 whitespace-pre-wrap">Couldn&apos;t read some of it: {usage.error}</p>}
         </>
       )}
     </div>

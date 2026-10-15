@@ -66,3 +66,26 @@ export async function r2PresignPut(key: string, contentType: string, size: numbe
   const signed = await signer.sign();
   return { uploadUrl: signed.url.toString(), publicUrl: `${c.publicUrl}/${encodeKey(key)}` };
 }
+
+/** The storage key of one of our public R2 file addresses, or null for any other address. */
+export function r2KeyOf(url: string): string | null {
+  const c = config();
+  if (!c || !url.startsWith(`${c.publicUrl}/`)) return null;
+  const path = url.slice(c.publicUrl.length + 1).split(/[?#]/)[0];
+  try {
+    const key = path.split('/').map(decodeURIComponent).join('/');
+    return key && !key.split('/').includes('..') ? key : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A link that reads the file at `key` for `expiresSeconds` (R2's own signed address, not the public domain). */
+export async function r2PresignGet(key: string, expiresSeconds = 600): Promise<string> {
+  const c = config();
+  if (!c) throw new Error('R2 storage is not configured');
+  const url = new URL(`${c.endpoint}/${encodeKey(key)}`);
+  url.searchParams.set('X-Amz-Expires', String(expiresSeconds));
+  const signer = new AwsV4Signer({ url: url.toString(), method: 'GET', accessKeyId: c.accessKeyId, secretAccessKey: c.secretAccessKey, service: 's3', region: 'auto', signQuery: true });
+  return (await signer.sign()).url.toString();
+}

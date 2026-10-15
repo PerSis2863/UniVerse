@@ -1,6 +1,5 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { planLimits } from '@/lib/plan-limits';
 import { ITEM_KINDS, REF_KINDS, lockFor, nextItem, percent, type ItemKind } from '@/lib/course-modules';
 import { oneOf, str, text, type Body } from './body';
 import { publish } from './realtime';
@@ -138,7 +137,7 @@ function moduleFields(b: Body) {
 
 /** Tells the course's students (and teacher) to reload their Modules tab. */
 async function refresh(courseId: string, teacherId: string) {
-  const enrolled = await prisma.enrollment.findMany({ where: { courseId }, select: { studentId: true }, take: planLimits().livePushes });
+  const enrolled = await prisma.enrollment.findMany({ where: { courseId }, select: { studentId: true }, take: 1000 });
   publish([teacherId, ...enrolled.map((e) => e.studentId)], { type: 'refresh', keys: [`/api/courses/${courseId}/modules`] });
 }
 
