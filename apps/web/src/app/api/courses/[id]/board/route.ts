@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { courseAccess } from '@/lib/course-access';
 import { isAppFileUrl } from '@/lib/storage';
+import { materialTypeOf as fileTypeOf } from '@/lib/file-urls';
 import { sessionsForBoard } from '@/server/class-companion';
 import { HttpException } from '@/server/http';
 import { pinAnnouncement, postAnnouncement, visibleNow } from '@/server/course-announcements';
@@ -11,15 +12,6 @@ type Ctx = { params: Promise<{ id: string }> };
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const isHttpUrl = (v: string) => { try { return ['http:', 'https:'].includes(new URL(v).protocol); } catch { return false; } };
-
-function fileTypeOf(name: string, url: string): 'PDF' | 'DOCX' | 'VIDEO' | 'IMAGE' | 'OTHER' {
-  const s = `${name} ${url}`.toLowerCase();
-  if (/\.pdf\b/.test(s)) return 'PDF';
-  if (/\.(docx?|pptx?|xlsx?|txt|csv)\b/.test(s)) return 'DOCX';
-  if (/\.(mp4|mov|webm)\b|youtube\.com|youtu\.be|vimeo\.com/.test(s)) return 'VIDEO';
-  if (/\.(png|jpe?g|gif|webp)\b/.test(s)) return 'IMAGE';
-  return 'OTHER';
-}
 
 // GET: everything on a course's Blackboard, shaped for the viewer (teacher sees the gradebook and quizzes; students see their own results).
 export async function GET(req: Request, { params }: Ctx) {

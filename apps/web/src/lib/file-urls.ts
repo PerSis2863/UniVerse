@@ -23,3 +23,13 @@ export function isUploadedFileUrl(url: string): boolean {
     return false;
   }
 }
+
+/** A course material's type from its file name and address (the course board's Materials). */
+export function materialTypeOf(name: string, url: string): 'PDF' | 'DOCX' | 'VIDEO' | 'IMAGE' | 'OTHER' {
+  const s = `${name} ${url}`.toLowerCase();
+  if (/\.pdf\b/.test(s)) return 'PDF';
+  if (/\.(docx?|pptx?|xlsx?|txt|csv)\b/.test(s)) return 'DOCX';
+  if (/\.(mp4|mov|webm)\b|youtube\.com|youtu\.be|vimeo\.com/.test(s)) return 'VIDEO';
+  if (/\.(png|jpe?g|gif|webp)\b/.test(s)) return 'IMAGE';
+  return 'OTHER';
+}

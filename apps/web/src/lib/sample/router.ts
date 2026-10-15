@@ -1645,6 +1645,15 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       ] });
   }],
   // Course modules (Stage 5 · B2): three units made from the course's sample materials and quiz.
+  // Common Cartridge export (Stage 5 · B2): the sample course's modules, so the download works.
+  [/^\/api\/courses\/([^/]+)\/cartridge$/, ({ db: d, m }) => {
+    const c = course(d, m[1]);
+    if (!c) return fail('Course not found.', 404);
+    return ok({ course: { code: c.code, name: c.name, description: null }, modules: [
+      { title: 'Getting started', summary: null, items: [{ id: 'sm-i1', kind: 'PAGE', title: 'Welcome and course plan', body: `Welcome to ${c.name}!\n\nEach week has a module: read the slides, try the practice, then take the short quiz.`, rich: false }] },
+      { title: 'Week 2', summary: null, items: [{ id: 'sm-i5', kind: 'VIDEO', title: 'Lecture recording', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }] },
+    ] });
+  }],
   // A rich lesson page (Stage 5 · B2): a callout, a video with chapters, a quick check and flashcards.
   [/^\/api\/courses\/([^/]+)\/modules\/([^/]+)$/, ({ m }) => {
     if (m[2] !== 'sm-i8') return fail('That page isn’t there any more.', 404);
@@ -2393,6 +2402,8 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/courses\/([^/]+)\/syllabus$/, () => { notice(); return ok({ modules: 0, items: 0, skills: false }); }],
   // The discussion board: an example thread to look at; posting only shows that it isn't saved.
   ['POST', /^\/api\/courses\/([^/]+)\/discussion(\/[^/]+(\/suggest)?)?$/, () => { notice(); return ok({ ok: true }); }],
+  // Common Cartridge import: sample mode only shows that it isn't saved.
+  ['POST', /^\/api\/courses\/([^/]+)\/import$/, () => { notice(); return ok({ error: 'Sample mode: importing isn’t saved.' }, 400); }],
   // Copy to a new term: sample mode only shows that it can't be saved.
   ['POST', /^\/api\/courses\/([^/]+)\/copy$/, () => { notice(); return ok({ error: 'Sample mode: copying a course isn’t saved.' }, 400); }],
   ['POST', /^\/api\/courses\/([^/]+)\/copy\/step$/, () => ok({ copied: 0, after: null })],

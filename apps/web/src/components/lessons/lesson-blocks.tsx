@@ -144,7 +144,7 @@ function CheckForm({ a, update }: { a: Check; update: (x: Partial<Check>) => voi
         <ul className="mt-1 space-y-1.5">
           {d.options.map((o, i) => (
             <li key={i} className="flex items-center gap-2">
-              <input type="radio" name={name} checked={d.answer === i} onChange={() => { const v = { ...d, answer: i }; setD(v); save(v); }} aria-label={`Answer ${i + 1} is the right one`} className="w-4 h-4 accent-emerald-600 shrink-0" />
+              <input type="radio" name={name} checked={d.answer === i} onChange={() => { const v = { ...d, answer: i }; setD(v); save(v); }} aria-label={`Answer ${i + 1} is the right one`} className="w-6 h-6 accent-emerald-600 shrink-0" />
               <input value={o} maxLength={200} onChange={(e) => set({ options: d.options.map((x, j) => (j === i ? e.target.value : x)) })} aria-label={`Answer ${i + 1}`} className="input py-1.5 text-sm" />
               {d.options.length > 2 && (
                 <button type="button" aria-label={`Remove answer ${i + 1}`} onClick={() => { const options = d.options.filter((_, j) => j !== i); const v = { ...d, options, answer: d.answer === i ? 0 : d.answer > i ? d.answer - 1 : d.answer }; setD(v); save(v); }} className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-600 hover:bg-rose-500/10 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>

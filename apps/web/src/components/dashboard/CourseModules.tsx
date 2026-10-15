@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowUp, Check, CheckCircle2, ChevronRight, ClipboardList, EyeOff, FileText, Layers, Link2, Loader2, Lock, Paperclip, Pencil, PlayCircle, Plus, Sparkles, Trash2, Video, type LucideIcon } from 'lucide-react';
+import { ArrowDown, ArrowDownUp, ArrowUp, Check, CheckCircle2, ChevronRight, ClipboardList, EyeOff, FileText, Layers, Link2, Loader2, Lock, Paperclip, Pencil, PlayCircle, Plus, Sparkles, Trash2, Video, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Sheet } from '@/components/ui/Sheet';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -26,6 +26,8 @@ import { ITEM_KINDS, REF_KINDS, type ItemKind } from '@/lib/course-modules';
 const SyllabusDraft = dynamic(() => import('@/components/dashboard/SyllabusDraft').then((x) => x.SyllabusDraft), { ssr: false });
 const LessonReader = dynamic(() => import('@/components/lessons/LessonPage').then((x) => x.LessonReader), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const LessonEditor = dynamic(() => import('@/components/lessons/LessonPage').then((x) => x.LessonEditor), { ssr: false });
+// Common Cartridge import and export (Stage 5 · B2), loaded when opened.
+const CourseCartridge = dynamic(() => import('@/components/dashboard/CourseCartridge').then((x) => x.CourseCartridge), { ssr: false });
 
 // The course board's Modules tab (Stage 5 · B2; server: src/server/course-modules.ts).
 // Students: what to do next, a ✓ per item, progress per module, and why a module is locked.
@@ -60,6 +62,7 @@ export function CourseModules({ courseId }: { courseId: string }) {
   const { data, error, isLoading, mutate } = useSWR<View>(key, authedJson);
   const [editing, setEditing] = useState<ModuleV | 'new' | null>(null);
   const [drafting, setDrafting] = useState(false);
+  const [cartridge, setCartridge] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
   const [page, setPage] = useState<ItemV | null>(null);
   const [editPage, setEditPage] = useState<ItemV | null>(null);
@@ -102,11 +105,13 @@ export function CourseModules({ courseId }: { courseId: string }) {
   return (
     <div className="space-y-4">
       {drafting && <SyllabusDraft courseId={courseId} onClose={() => setDrafting(false)} onAdded={() => { setDrafting(false); void mutate(); }} />}
+      {cartridge && <CourseCartridge courseId={courseId} onClose={() => setCartridge(false)} onImported={() => void mutate()} />}
       {canManage ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-zinc-500 max-w-xl">Put the course in order: units of pages, files, links, videos, quizzes, assignments and live classes. Students see a ✓ per item and what to do next.</p>
           <div className="flex gap-2 flex-wrap">
             <button type="button" onClick={() => setDrafting(true)} className="btn-secondary btn-sm inline-flex items-center gap-1.5"><Sparkles className="w-4 h-4" /> Draft a syllabus with AI</button>
+            <button type="button" onClick={() => setCartridge(true)} className="btn-secondary btn-sm inline-flex items-center gap-1.5"><ArrowDownUp className="w-4 h-4" /> Import or export</button>
             <button type="button" onClick={() => setEditing('new')} className="btn-primary btn-sm inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> New module</button>
           </div>
         </div>
