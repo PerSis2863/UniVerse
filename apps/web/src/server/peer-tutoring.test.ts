@@ -16,10 +16,13 @@ import {
   INITIAL_TIME_CREDIT_GRANT,
 } from './peer-tutoring';
 import type { SessionUser } from '@/lib/server-auth';
+import { conceptMasteryOf } from './learning-dna';
 
 vi.mock('@/lib/db', () => ({
   default: {
+    $queryRawUnsafe: vi.fn(),
     peerTimeBankAccount: {
+      findMany: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -63,6 +66,8 @@ vi.mock('@/lib/db', () => ({
     },
   },
 }));
+
+vi.mock('./learning-dna', () => ({ conceptMasteryOf: vi.fn() }));
 
 vi.mock('./analytics-warehouse', () => ({
   recordXApiStatement: vi.fn().mockResolvedValue({ id: 'xapi_1' }),
@@ -159,32 +164,27 @@ describe('Peer Tutoring Time-Bank (Stage 5 · D5)', () => {
   });
 
   describe('D1 Learning DNA Mastery Matching', () => {
-    it('detects mastered concepts from quiz scores and course concepts', async () => {
+    it('offers only the concepts the Learning DNA shows as mastered', async () => {
       vi.mocked(prisma.enrollment.findMany).mockResolvedValue([
-        {
-          course: {
-            id: 'course_cs101',
-            name: 'Computer Science 101',
-            code: 'CS101',
-            skills: '["Algorithms"]',
-            concepts: [
-              { id: 'c1', name: 'Binary Trees', description: null, parentId: null },
-            ],
-          },
-        },
+        { course: { id: 'course_cs101', name: 'Computer Science 101', code: 'CS101' } },
       ] as never);
-
-      vi.mocked(prisma.quizSubmission.findMany).mockResolvedValue([
-        { score: 95, maxScore: 100 },
-      ] as never);
+      const m = (level: number, confidence: number, n: number) => ({ level, confidence, n, trend: 0, last: null });
+      vi.mocked(conceptMasteryOf).mockResolvedValue([
+        { id: 'c1', name: 'Binary Trees', mastery: m(0.92, 0.8, 6) },
+        { id: 'c2', name: 'Graphs', mastery: m(0.6, 0.7, 4) },
+        { id: 'c3', name: 'Heaps', mastery: m(0.5, 0, 0) },
+      ]);
 
       const mastered = await detectStudentMasteredSubjects('student_1');
 
-      expect(mastered).toHaveLength(1);
-      expect(mastered[0]?.courseCode).toBe('CS101');
-      expect(mastered[0]?.conceptName).toBe('Binary Trees');
-      expect(mastered[0]?.verifiedByD1).toBe(true);
-      expect(mastered[0]?.band).toBe('mastered');
+      // Only classes with concepts are looked at, the newest first, a few at most.
+      expect(vi.mocked(prisma.enrollment.findMany).mock.calls[0][0]).toMatchObject({ where: { studentId: 'student_1', course: { concepts: { some: {} } } }, take: 4 });
+      expect(mastered).toEqual([{ courseId: 'course_cs101', courseName: 'Computer Science 101', courseCode: 'CS101', conceptName: 'Binary Trees', masteryLevel: 0.92, band: 'mastered', verifiedByD1: true }]);
+    });
+
+    it('verifies nothing for a student without evidence', async () => {
+      vi.mocked(prisma.enrollment.findMany).mockResolvedValue([] as never);
+      expect(await detectStudentMasteredSubjects('student_1')).toEqual([]);
     });
   });
 
@@ -230,14 +230,30 @@ describe('Peer Tutoring Time-Bank (Stage 5 · D5)', () => {
         balanceCredits: 3,
       } as never);
 
+      vi.mocked(prisma.enrollment.findMany).mockResolvedValue([{ course: { id: 'cs101', name: 'CS101 Intro', code: 'CS101' } }] as never);
+      vi.mocked(conceptMasteryOf).mockResolvedValue([{ id: 'c1', name: 'Loops', mastery: { level: 0.9, confidence: 0.7, n: 5, trend: 0, last: null } }]);
+
       const profile = await upsertTutorProfile('tutor_1', {
         headline: 'CS & Math Tutor',
         bio: 'Senior student offering exam prep',
-        subjects: [{ courseName: 'CS101', verifiedByD1: true }],
-      });
+        organizationId: 'someone-elses-school',
+        subjects: [
+          { courseId: 'cs101', courseName: 'CS101', conceptName: 'Loops', verifiedByD1: true },
+          { courseId: 'cs101', courseName: 'CS101', conceptName: 'Recursion', verifiedByD1: true }, // not mastered
+          { courseName: 'Chess', verifiedByD1: false, masteryLevel: 1 },
+          { courseName: '' },
+        ],
+      }, 'org_mine');
 
       expect(profile.headline).toBe('CS & Math Tutor');
-      expect(profile.subjects).toHaveLength(1);
+      // "Verified" only where the mastery check agrees; the rest are kept as the tutor's own word.
+      expect(profile.subjects).toEqual([
+        { courseId: 'cs101', courseName: 'CS101 Intro', courseCode: 'CS101', conceptName: 'Loops', masteryLevel: 0.9, band: 'mastered', verifiedByD1: true },
+        { courseId: 'cs101', courseName: 'CS101', courseCode: undefined, conceptName: 'Recursion' },
+        { courseId: undefined, courseName: 'Chess', courseCode: undefined, conceptName: undefined },
+      ]);
+      // The school is the person's own, never the request's.
+      expect(vi.mocked(prisma.peerTutorProfile.upsert).mock.calls[0][0].create.organizationId).toBe('org_mine');
     });
 
     it('lists tutors and filters by D1 verification', async () => {
@@ -254,19 +270,26 @@ describe('Peer Tutoring Time-Bank (Stage 5 · D5)', () => {
         },
       ] as never);
       vi.mocked(prisma.peerTutorProfile.count).mockResolvedValue(1);
-      vi.mocked(prisma.peerTimeBankAccount.findUnique).mockResolvedValue({
+      vi.mocked(prisma.peerTimeBankAccount.findMany).mockResolvedValue([{
+        userId: 'tutor_1',
         averageRating: 4.9,
         ratingsCount: 8,
         sessionsCompletedAsTutor: 8,
         totalMinutesTutored: 160,
-      } as never);
-      vi.mocked(prisma.peerTutorSlot.findFirst).mockResolvedValue(null);
+      }] as never);
+      vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([{ id: 's1', tutorId: 'tutor_1', dayOfWeek: null, startTime: '14:00', endTime: '14:20', date: '2026-10-20', isBooked: 0, createdAt: '2026-10-01T00:00:00.000+00:00' }] as never);
 
-      const res = await listPeerTutors({ onlyD1Verified: true });
+      const res = await listPeerTutors({ onlyD1Verified: true, page: Number('x') });
 
       expect(res.tutors).toHaveLength(1);
       expect(res.tutors[0]?.stats.averageRating).toBe(4.9);
       expect(res.tutors[0]?.subjects[0]?.verifiedByD1).toBe(true);
+      expect(res.tutors[0]?.nextAvailableSlot).toMatchObject({ date: '2026-10-20', startTime: '14:00', isBooked: false });
+      // Two queries for everyone's stats and slots, not two per tutor; and no email addresses.
+      expect(prisma.peerTimeBankAccount.findMany).toHaveBeenCalledTimes(1);
+      expect(prisma.$queryRawUnsafe).toHaveBeenCalledTimes(1);
+      expect(res.tutors[0]).not.toHaveProperty('email');
+      expect(res.pagination.page).toBe(1);
     });
 
     it('adds availability slots in bulk and allows deleting unbooked slots', async () => {

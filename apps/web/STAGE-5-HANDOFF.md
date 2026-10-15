@@ -15,6 +15,14 @@ done, where the code is and what's left for each item. Keep that table up to dat
   rows at the end of the plan. **Next migration: `0132`.**
 - **15 Oct 2026:** PR #60 is merged into `main`. Q3's test on the built Worker is done (Progress row
   "Q3"); work continues on branch `claude/funny-galileo-y4mz9r` from **Q4**.
+- **Q4 done (15 Oct):** photos upload in three sizes and phones load the small ones (Progress row
+  "Q4"; no migration). **Security fix, live until this deploys:** `GET /api/oneroster/v1p2/*` answered
+  anyone, so anybody could page through every account's name, email and role. They now need a
+  school API key (Admin → Integrations → Developer) with `courses.read` or `students.read`, and give
+  only that key's school. If a school's SIS was reading them, it needs a key. Also: peer tutoring's
+  "verified by Learning DNA" was given to every class without checking; it now uses real mastery.
+  A new API route that serves people's data must check who is asking: the whole API was swept signed
+  out (every route without an id, and every route with one), and only the public ones answer.
 - **What's left is written up in `STAGE-5-PLAN.md`, section 4 "Remaining work queue"**: 23 entries
   (Q1–Q23) in the order to do them, each with what exists to build on, the steps, the traps, how to
   know it's done, and its size. Q1 and Q2 are done; **finish Q3's test, then continue with Q4**.

@@ -83,12 +83,16 @@ export async function listFiles(kind: string, id: string, user: SessionUser, fol
   const starred = new Set(stars.map((x) => x.fileId));
   if (folderId && !folder) throw new NotFoundException('This folder isn’t there any more.');
   // The path from the top, for the breadcrumb.
-  const path: { id: string; name: string }[] = [];
-  let up = folder;
-  for (let i = 0; up && i < 8; i++) {
-    path.unshift({ id: up.id, name: up.name });
-    up = up.parentId ? await prisma.spaceFolder.findUnique({ where: { id: up.parentId }, select: { id: true, name: true, parentId: true } }) : null;
-  }
+  // Up to 8 folders, this one and those above it, in one query (not one per level).
+  const path = folder
+    ? await prisma.$queryRawUnsafe<{ id: string; name: string }[]>(
+        `WITH RECURSIVE "up"("id", "name", "parentId", "depth") AS (
+           SELECT "id", "name", "parentId", 1 FROM "space_folders" WHERE "id" = ?
+           UNION ALL SELECT f."id", f."name", f."parentId", u."depth" + 1 FROM "space_folders" f JOIN "up" u ON f."id" = u."parentId" WHERE u."depth" < 8
+         ) SELECT "id", "name" FROM "up" ORDER BY "depth" DESC`,
+        folder.id,
+      )
+    : [];
   const names = new Map((await prisma.user.findMany({ where: { id: { in: [...new Set(files.map((f) => f.createdById))] } }, select: { id: true, name: true } })).map((u) => [u.id, u.name]));
   return {
     path, canManage: s.canManage, usage: used, quota: quotaOf(s.kind),

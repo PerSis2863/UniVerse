@@ -165,13 +165,16 @@ export async function getDoc(docId: string, user: SessionUser) {
   ]);
   const name = new Map(people.map((p) => [p.id, p.name]));
   // Where it sits (the pages above), the pages under it, and the pages that link here.
-  const path: { id: string; title: string }[] = [];
-  for (let up = doc.parentId, i = 0; up && i < 6; i++) {
-    const p = await prisma.doc.findUnique({ where: { id: up }, select: { id: true, title: true, parentId: true } });
-    if (!p) break;
-    path.unshift({ id: p.id, title: p.title });
-    up = p.parentId;
-  }
+  // Up to 6 pages above, top first, in one query (not one per level).
+  const path = doc.parentId
+    ? await prisma.$queryRawUnsafe<{ id: string; title: string }[]>(
+        `WITH RECURSIVE "up"("id", "title", "parentId", "depth") AS (
+           SELECT "id", "title", "parentId", 1 FROM "docs" WHERE "id" = ?
+           UNION ALL SELECT d."id", d."title", d."parentId", u."depth" + 1 FROM "docs" d JOIN "up" u ON d."id" = u."parentId" WHERE u."depth" < 6
+         ) SELECT "id", "title" FROM "up" ORDER BY "depth" DESC`,
+        doc.parentId,
+      )
+    : [];
   const [children, links] = await Promise.all([
     prisma.doc.findMany({ where: { parentId: doc.id }, orderBy: { createdAt: 'asc' }, take: 100, select: { id: true, title: true } }),
     prisma.docLink.findMany({ where: { toId: doc.id }, take: 50, select: { from: { select: { id: true, title: true, ownerId: true, courseId: true, groupId: true, members: { where: { userId: user.id }, select: { userId: true } } } } } }),
