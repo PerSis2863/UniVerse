@@ -13,6 +13,8 @@ done, where the code is and what's left for each item. Keep that table up to dat
   **0130**) and **Q3** (health numbers, error screens, per-school switches; migration **0131**; built
   and unit-tested, its browser test is the first thing to do: see the "Q3" Progress row). Progress
   rows at the end of the plan. **Next migration: `0132`.**
+- **15 Oct 2026:** PR #60 is merged into `main`. Q3's test on the built Worker is done (Progress row
+  "Q3"); work continues on branch `claude/funny-galileo-y4mz9r` from **Q4**.
 - **What's left is written up in `STAGE-5-PLAN.md`, section 4 "Remaining work queue"**: 23 entries
   (Q1–Q23) in the order to do them, each with what exists to build on, the steps, the traps, how to
   know it's done, and its size. Q1 and Q2 are done; **finish Q3's test, then continue with Q4**.

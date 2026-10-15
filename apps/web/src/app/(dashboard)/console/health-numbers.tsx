@@ -19,6 +19,8 @@ const pct = (x: number | null | undefined) => (x === null || x === undefined ? '
 const ms = (x: number | null | undefined) => (x === null || x === undefined ? '–' : x >= 1000 ? `${(x / 1000).toFixed(1)} s` : `${x} ms`);
 const kb = (b: number) => `${Math.round(b / 102.4) / 10} KB`;
 const routeName = (r: Pick<Route, 'method' | 'route'>) => `${r.method} ${r.route.replace(/^\/api/, '')}`;
+// A UTC day ("2026-10-15") as its weekday: noon local time, so it's the same day in every time zone.
+const weekday = (day: string) => format(new Date(`${day}T12:00:00`), 'EEE');
 
 function Section({ icon: Icon, title, hint, children }: { icon: typeof Gauge; title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -81,11 +83,11 @@ export function HealthNumbersPanel() {
         </Section>
 
         <Section icon={Bot} title="AI use" hint="Requests per day for the whole site, and what people used AI help for (from their AI receipts).">
-          <div className="flex items-end gap-1.5 h-20" role="img" aria-label={`AI requests per day: ${data.ai.perDay.map((d) => `${format(new Date(d.day), 'EEE')} ${d.calls}`).join(', ')}`}>
+          <div className="flex items-end gap-1.5 h-20" role="img" aria-label={`AI requests per day: ${data.ai.perDay.map((d) => `${weekday(d.day)} ${d.calls}`).join(', ')}`}>
             {data.ai.perDay.map((d) => (
               <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
                 <div className="w-full rounded-t bg-indigo-500/80" style={{ height: `${Math.max(3, (d.calls / aiPeak) * 64)}px` }} />
-                <span className="text-[10px] text-zinc-600 dark:text-zinc-400">{format(new Date(d.day), 'EEE')}</span>
+                <span className="text-[10px] text-zinc-600 dark:text-zinc-400">{weekday(d.day)}</span>
               </div>
             ))}
           </div>

@@ -51,7 +51,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
           </form>
         )}
         {reporting === 'sent' && <p role="status" className="mt-4 text-sm text-emerald-700 dark:text-emerald-400 inline-flex items-center gap-1.5"><Check className="w-4 h-4" /> Thanks: the UniVerse team will look at it.</p>}
-        {error.digest && <p className="mt-4 text-[11px] text-zinc-400">Reference: {error.digest}</p>}
+        {error.digest && <p className="mt-4 text-[11px] text-zinc-500 dark:text-zinc-400">Reference: {error.digest}</p>}
       </div>
     </div>
   );
