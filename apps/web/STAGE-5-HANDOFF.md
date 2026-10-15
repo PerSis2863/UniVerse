@@ -32,7 +32,8 @@ done, where the code is and what's left for each item. Keep that table up to dat
 - **Q6 (assignments and grading), 15 Oct:** Q6.1 rules (late penalty, hand-in limit, extensions, extra
   time; migration **0136**). A student's due date is always `dueFor(...)` and a submission's late %
   is set when handed in (`src/lib/assignment-policy.ts`); graded answers can be REOPENED, so check
-  "graded" as RETURNED or REOPENED. Q6.2a: files and links as hand-ins (**0137**). **Next migration: `0138`.**
+  "graded" as RETURNED or REOPENED. Q6.2a: files and links as hand-ins (**0137**); Q6.2b: group assignments (**0138**: a group's hand-in is
+  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0139`.**
   - **Lesson pages:** a page's body is plain text or the editor's JSON (`{"type":"doc"…`); always save it
     through `cleanPageBody` (`src/lib/lesson-page.ts`), and never send rich bodies in lists (`pageTexts`).
   - **Privacy fix in Q5.4:** the announcements list gave everyone every course's announcements.

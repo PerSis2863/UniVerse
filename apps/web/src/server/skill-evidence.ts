@@ -134,3 +134,34 @@ export async function evidenceGroups(userId: string, includeHidden: boolean): Pr
   }
   return [...groups.values()].sort((a, b) => b.count - a.count || (RANK[b.best ?? ''] ?? 0) - (RANK[a.best ?? ''] ?? 0) || a.label.localeCompare(b.label)).slice(0, 30);
 }
+
+/**
+ * After a group's hand-in is graded (Stage 5 · B3.2): evidence for every member who passed, and none
+ * for those below the bar, in two statements however big the group (D1 allows 50 queries a request).
+ */
+export async function evidenceFromGroupGrade(a: {
+  members: { studentId: string; score: number }[]; submissionId: string; assignmentTitle: string; maxScore: number;
+  course: { name: string; code: string; skills: string | null }; teacher: { id: string; name: string };
+}) {
+  const ratioOf = (score: number) => (a.maxScore > 0 ? score / a.maxScore : 0);
+  const failed = a.members.filter((m) => ratioOf(m.score) < PASS_RATIO).map((m) => m.studentId);
+  if (failed.length) {
+    await prisma.$executeRawUnsafe(`DELETE FROM skill_evidence WHERE kind = 'ASSIGNMENT' AND sourceId = ? AND userId IN (SELECT value FROM json_each(?))`, a.submissionId, JSON.stringify(failed));
+  }
+  const parsed = parseSkills(a.course.skills);
+  const skills = [...new Map((parsed.length ? parsed : [a.course.name]).map((s) => [skillKey(s), label(s)])).entries()].filter(([k]) => k).slice(0, 6);
+  const rows = a.members.filter((m) => ratioOf(m.score) >= PASS_RATIO).flatMap((m) => skills.map(([skill, shown]) => ({
+    id: `c${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`, userId: m.studentId, skill, label: shown,
+    detail: `${Math.round(ratioOf(m.score) * 100)}% · ${a.course.code}`, level: levelFor(ratioOf(m.score)),
+  })));
+  if (!rows.length) return;
+  const now = new Date().toISOString().replace('Z', '+00:00'); // as Prisma writes dates
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO skill_evidence (id, userId, skill, label, kind, sourceId, title, detail, level, verifiedById, verifiedByName, occurredAt, hidden, createdAt)
+     SELECT json_extract(value, '$.id'), json_extract(value, '$.userId'), json_extract(value, '$.skill'), json_extract(value, '$.label'), 'ASSIGNMENT', ?, ?,
+            json_extract(value, '$.detail'), json_extract(value, '$.level'), ?, ?, ?, 0, ? FROM json_each(?) WHERE true
+     ON CONFLICT(userId, kind, sourceId, skill) DO UPDATE SET label = excluded.label, title = excluded.title, detail = excluded.detail, level = excluded.level,
+       verifiedById = excluded.verifiedById, verifiedByName = excluded.verifiedByName, occurredAt = excluded.occurredAt`,
+    a.submissionId, a.assignmentTitle.slice(0, 200), a.teacher.id, a.teacher.name.slice(0, 120), now, now, JSON.stringify(rows),
+  );
+}

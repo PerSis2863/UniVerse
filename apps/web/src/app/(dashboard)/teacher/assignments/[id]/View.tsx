@@ -20,6 +20,8 @@ import { AI_POLICIES, type AiPolicy, type AiReceipt } from '@/lib/ai-receipt';
 import { Extensions, RulesEditor, rulesSentence, type ClassStudent, type Extension } from '@/components/assignments/AssignmentRules';
 import { withPenalty } from '@/lib/assignment-policy';
 import { HandedInView } from '@/components/assignments/HandIn';
+import { GroupModePicker, GroupsEditor, type Group } from '@/components/assignments/AssignmentGroups';
+import type { GroupMode } from '@/lib/group-maker';
 import { SUBMIT_KINDS, SUBMIT_LABEL, type SubmitKind } from '@/lib/submit-kinds';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
@@ -33,6 +35,8 @@ interface Submission {
   aiDraft: Draft | null;
   attempts?: number; lateDays?: number; latePenalty?: number; lateWaived?: boolean; rawScore?: number | null;
   fileUrl?: string | null; fileName?: string | null; fileSize?: number | null; linkUrl?: string | null;
+  /** A group's hand-in (Stage 5 · B3.2), and each member's grade { studentId: { gradeId, score } } (JSON). */
+  groupId?: string | null; memberGrades?: string | null;
   criteriaScores: Score[] | null;
   score: number | null;
   feedback: string | null;
@@ -58,6 +62,8 @@ interface Detail {
   aiPolicy?: string;
   latePenalty: number | null; lateGraceMinutes: number; latePenaltyMax: number; maxAttempts: number | null;
   submitKind?: SubmitKind;
+  groupMode?: GroupMode | null;
+  groups?: Group[];
   course: { code: string; name: string };
   enrolled: number;
   students?: ClassStudent[];
@@ -81,6 +87,9 @@ function TeacherAssignmentPage({ id }: { id: string }) {
   const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
 
   const subs = useMemo(() => data?.submissions ?? [], [data]);
+  // Group work: a hand-in shows its group's name.
+  const groupOf = useMemo(() => new Map((data?.groups ?? []).map((g) => [g.id, g])), [data]);
+  const who = (s: Submission) => (s.groupId && groupOf.get(s.groupId)?.name) || s.student.name;
   const current = subs.find((s) => s.id === selected) ?? subs.find((s) => !graded(s)) ?? subs[0];
   // The AI drafts written answers (a file or link with a long note too).
   const draftable = (s: Submission) => (data?.submitKind ?? 'TEXT') === 'TEXT' || s.text.length >= 200;
@@ -190,6 +199,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
               <summary className="cursor-pointer text-sm font-semibold text-zinc-900 dark:text-white py-1">Instructions <span className="font-normal text-zinc-500 dark:text-zinc-400">· what students read (also in simpler words: check or edit them here)</span></summary>
               <div className="mt-2 pb-1 space-y-3">
                 <Translatable kind="assignment" id={data.id} text={data.instructions} levels={{ auto: false }} className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />
+                <GroupModePicker assignmentId={data.id} mode={data.groupMode ?? null} disabled={data.canManage === false} onChanged={() => void mutate()} />
                 <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">Students hand in
                   <select className="input w-auto py-1.5" value={data.submitKind ?? 'TEXT'} disabled={data.canManage === false} onChange={(e) => void setKind(e.target.value as SubmitKind)}>
                     {SUBMIT_KINDS.map((k) => <option key={k} value={k}>{SUBMIT_LABEL[k].label}</option>)}
@@ -203,6 +213,13 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                   <span className="text-xs text-zinc-500 dark:text-zinc-400 basis-full">{AI_POLICIES[(data.aiPolicy ?? 'FREE') as AiPolicy]?.hint} Answers handed in before a change keep what they had.</span>
                 </label>
               </div>
+            </details>
+          )}
+
+          {data?.groupMode && (
+            <details className="panel px-4 py-3" open={!(data.groups?.length)}>
+              <summary className="cursor-pointer text-sm font-semibold text-zinc-900 dark:text-white py-1">Groups <span className="font-normal text-zinc-600 dark:text-zinc-400">· {data.groups?.length ? `${data.groups.length} group${data.groups.length === 1 ? '' : 's'}` : 'none yet'}</span></summary>
+              <div className="mt-3 pb-1"><GroupsEditor assignmentId={data.id} groups={data.groups ?? []} students={data.students ?? []} canManage={data.canManage !== false} onChanged={() => void mutate()} /></div>
             </details>
           )}
 
@@ -244,7 +261,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                     className={cn('relative isolate w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2 transition-colors', current?.id === s.id ? '' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.04]')}
                   >{current?.id === s.id && <TabPill id="-teacher-assignments-id-page-0" variant="soft" />}
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{s.student.name}</span>
+                      <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{who(s)}</span>
                       <span className="block text-[11px] text-zinc-500">{new Date(s.submittedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}{s.lateDays ? ` · ${s.lateDays} day${s.lateDays === 1 ? '' : 's'} late${s.latePenalty && !s.lateWaived ? ` (−${s.latePenalty}%)` : ''}` : ''}{s.attempts && s.attempts > 1 ? ` · hand-in ${s.attempts}` : ''}{s.offlineAt ? ' · offline' : ''}</span>
                     </span>
                     {(s.similarity?.peer || s.similarity?.material) && <Copy className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="Similarity to check" />}
@@ -253,7 +270,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                 ))}
               </nav>
               </div>
-              {current && <Grader key={`${current.id}:${current.status}:${current.aiDraft ? 1 : 0}`} detail={data} sub={current} onChange={() => mutate()} onReturned={nextToGrade} />}
+              {current && <Grader key={`${current.id}:${current.status}:${current.aiDraft ? 1 : 0}`} detail={data} sub={current} group={current.groupId ? groupOf.get(current.groupId) ?? null : null} onChange={() => mutate()} onReturned={nextToGrade} />}
             </div>
           )}
         </div>
@@ -262,7 +279,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
   );
 }
 
-function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Submission; onChange: () => void; onReturned: () => void }) {
+function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; sub: Submission; group: Group | null; onChange: () => void; onReturned: () => void }) {
   // Start from the returned grade, else the AI draft, else blank.
   const start = sub.criteriaScores ?? sub.aiDraft?.criteria ?? [];
   const [scores, setScores] = useState<Record<string, { score: string; comment: string }>>(() =>
@@ -275,6 +292,11 @@ function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Su
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
   const [waive, setWaive] = useState(!!sub.lateWaived);
+  // A grade for each member (groups, "a grade each"): empty means the group's grade.
+  const [own, setOwn] = useState<Record<string, string>>(() => {
+    try { const m = JSON.parse(sub.memberGrades ?? '{}') as Record<string, { score: number }>; return Object.fromEntries(Object.entries(m).filter(([, v]) => v.score !== sub.score).map(([k, v]) => [k, String(v.score)])); } catch { return {}; }
+  });
+  const each = detail.groupMode === 'INDIVIDUAL' && !!group;
   const total = detail.rubric.reduce((t, r) => t + (Number(scores[r.id]?.score) || 0), 0);
   // The late penalty set when it was handed in (Stage 5 · B3.1), unless waived.
   const penalty = sub.latePenalty && !waive ? sub.latePenalty : 0;
@@ -313,9 +335,13 @@ function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Su
     try {
       await authedJson(`/api/assignments/submissions/${sub.id}/return`, {
         method: 'POST',
-        body: JSON.stringify({ criteria: detail.rubric.map((r) => ({ id: r.id, score: Number(scores[r.id].score), comment: scores[r.id].comment })), feedback, ...(sub.latePenalty ? { waiveLate: waive } : {}) }),
+        body: JSON.stringify({
+          criteria: detail.rubric.map((r) => ({ id: r.id, score: Number(scores[r.id].score), comment: scores[r.id].comment })), feedback,
+          ...(sub.latePenalty ? { waiveLate: waive } : {}),
+          ...(each ? { members: Object.entries(own).filter(([, v]) => v.trim() !== '').map(([studentId, v]) => ({ studentId, score: Number(v) })) } : {}),
+        }),
       });
-      toast.success(`${graded(sub) ? 'Grade updated' : 'Grade returned'} to ${sub.student.name}`);
+      toast.success(`${graded(sub) ? 'Grade updated' : 'Grade returned'} to ${group ? group.name : sub.student.name}`);
       onChange();
       if (!graded(sub)) onReturned();
     } catch (err) {
@@ -326,10 +352,10 @@ function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Su
   };
 
   return (
-    <section className="space-y-4 stagger" aria-label={`Answer by ${sub.student.name}`}>
+    <section className="space-y-4 stagger" aria-label={`Answer by ${group ? group.name : sub.student.name}`}>
       <div className={`panel p-5`}>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <h3 className="font-semibold text-zinc-900 dark:text-white">{sub.student.name}</h3>
+          <h3 className="font-semibold text-zinc-900 dark:text-white">{group ? <>{group.name} <span className="font-normal text-sm text-zinc-600 dark:text-zinc-400">· {group.members.map((m) => m.name).join(', ')} · handed in by {sub.student.name}</span></> : sub.student.name}</h3>
           <span className="text-xs text-zinc-500">{sub.text.trim() ? `${sub.text.trim().split(/\s+/).length} words · ` : ''}{sub.offlineAt ? <>written offline, handed in on the device {new Date(sub.offlineAt).toLocaleString()} · arrived {new Date(sub.submittedAt).toLocaleString()}</> : <>handed in {new Date(sub.submittedAt).toLocaleString()}</>}</span>
         </div>
         {(sub.fileUrl || sub.linkUrl) && <div className="mb-3"><HandedInView h={sub} /></div>}
@@ -426,6 +452,20 @@ function Grader({ detail, sub, onChange, onReturned }: { detail: Detail; sub: Su
             </div>
           </div>
         ))}
+
+        {group && (each ? (
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-zinc-900 dark:text-white">A grade for each member <span className="font-normal text-zinc-600 dark:text-zinc-400">(empty: the group’s {withPenalty(total, penalty)})</span></legend>
+            <ul className="grid sm:grid-cols-2 gap-2">
+              {group.members.map((m) => (
+                <li key={m.id} className="flex items-center gap-2">
+                  <label htmlFor={`own-${m.id}`} className="flex-1 min-w-0 text-sm text-zinc-800 dark:text-zinc-200 truncate">{m.name}</label>
+                  <input id={`own-${m.id}`} type="number" min={0} max={detail.maxScore} step={0.5} value={own[m.id] ?? ''} placeholder={String(withPenalty(total, penalty))} onChange={(e) => setOwn((o) => ({ ...o, [m.id]: e.target.value }))} className="input w-24 py-1.5" />
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        ) : <p className="text-xs text-zinc-600 dark:text-zinc-400">Everyone in {group.name} gets this grade.</p>)}
 
         <FeedbackRecorder submissionId={sub.id} media={{ url: sub.feedbackMediaUrl, kind: sub.feedbackMediaKind, transcript: sub.feedbackTranscript }} onChange={onChange} />
 

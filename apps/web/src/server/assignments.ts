@@ -1,4 +1,4 @@
-import { evidenceFromGrade, safely } from './skill-evidence';
+import { evidenceFromGrade, evidenceFromGroupGrade, safely } from './skill-evidence';
 import { indexLater, indexWork } from './semester';
 import { styleSignalsFor } from './feedback-studio';
 import { randomBytes } from 'node:crypto';
@@ -20,6 +20,8 @@ import { isAiPolicy, parseReceipt } from '@/lib/ai-receipt';
 import { receiptForSubmission } from './ai-receipts';
 import { isAppFileUrl } from '@/lib/storage';
 import { SUBMIT_KINDS, isSubmitKind } from '@/lib/submit-kinds';
+import { groupsOf, myGroup } from './assignment-groups';
+import { isGroupMode } from '@/lib/group-maker';
 import { cleanPolicy, dueFor, lateness, mayHandIn, withPenalty, NO_ACCOMMODATION, type Accommodation } from '@/lib/assignment-policy';
 
 // Written assignments graded against a rubric. The AI only drafts: a teacher reviews every
@@ -104,12 +106,29 @@ function assignmentFields(body: Record<string, unknown>, partial: boolean) {
   }
   // Late penalty and hand-in limit (Stage 5 · B3.1).
   Object.assign(data, cleanPolicy(body));
+  // Group work (Stage 5 · B3.2) is chosen when it's made; later through its groups (they check hand-ins).
+  if (!partial && body.groupMode !== undefined && body.groupMode !== null && body.groupMode !== 'NONE') {
+    if (!isGroupMode(body.groupMode)) throw new BadRequestException('Choose who hands in.');
+    data.groupMode = body.groupMode;
+  }
   // What students hand in (Stage 5 · B3.2).
   if (body.submitKind !== undefined) {
     if (!isSubmitKind(body.submitKind)) throw new BadRequestException(`Students hand in one of: ${SUBMIT_KINDS.join(', ')}.`);
     data.submitKind = body.submitKind;
   }
   return data;
+}
+
+/** A group member's own score, from a group hand-in's member grades (null: not graded per member). */
+export function memberScore(memberGrades: string | null, studentId: string): number | null {
+  if (!memberGrades) return null;
+  try { const v = (JSON.parse(memberGrades) as Record<string, { score?: unknown }>)[studentId]?.score; return typeof v === 'number' ? v : null; } catch { return null; }
+}
+
+/** The hand-in a student works on: their group's (group assignments), or their own. */
+async function handInOf(assignmentId: string, studentId: string, groupId: string | null) {
+  const group = groupId ? await prisma.assignmentSubmission.findFirst({ where: { assignmentId, groupId }, select: { id: true } }) : null;
+  return group?.id ?? (await prisma.assignmentSubmission.findUnique({ where: { assignmentId_studentId: { assignmentId, studentId } }, select: { id: true } }))?.id ?? null;
 }
 
 /** A student's own rules for an assignment: their extension and accommodation, if any. */
@@ -158,11 +177,17 @@ export async function listAssignments(user: SessionUser, courseId: string | null
       take: 200,
       select: {
         id: true, title: true, dueDate: true, status: true, maxScore: true, createdAt: true, course: COURSE,
-        submissions: { where: { studentId: user.id }, select: { status: true, score: true, submittedAt: true, returnedAt: true } },
+        // Their own hand-in, or their group's (Stage 5 · B3.2).
+        submissions: { where: { OR: [{ studentId: user.id }, { group: { members: { some: { studentId: user.id } } } }] }, take: 1, select: { status: true, score: true, memberGrades: true, submittedAt: true, returnedAt: true } },
       },
     });
     // REOPENED: graded, and the teacher let them hand in again (the last grade shows until then).
-    return rows.map(({ submissions, ...a }) => ({ ...a, mine: submissions[0] ? { ...submissions[0], score: submissions[0].status === 'RETURNED' || submissions[0].status === 'REOPENED' ? submissions[0].score : null } : null }));
+    return rows.map(({ submissions: [sub], ...a }) => {
+      if (!sub) return { ...a, mine: null };
+      const shown = sub.status === 'RETURNED' || sub.status === 'REOPENED';
+      const { memberGrades, ...rest } = sub;
+      return { ...a, mine: { ...rest, score: shown ? memberScore(memberGrades, user.id) ?? sub.score : null } };
+    });
   }
   if (user.role !== 'TEACHER' && user.role !== 'ADMIN') throw new ForbiddenException('Assignments are for courses you teach or take.');
   const rows = await prisma.assignment.findMany({
@@ -192,10 +217,12 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
   // canManage: change the assignment; canGrade: see and grade the answers (teaching assistants too).
   const base = { ...assignment, rubric: rubricOf(assignment), course: { id: course.id, code: course.code, name: course.name, color: course.color }, canManage, canGrade };
   if (!canGrade) {
+    const group = assignment.groupMode ? await myGroup(assignmentId, user.id) : null;
+    const subId = await handInOf(assignmentId, user.id, group?.id ?? null);
     const [mine, rules] = await Promise.all([
       prisma.assignmentSubmission.findUnique({
-        where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-        select: { id: true, text: true, fileUrl: true, fileName: true, fileSize: true, linkUrl: true, status: true, submittedAt: true, returnedAt: true, score: true, rawScore: true, feedback: true, criteriaScores: true, feedbackMediaUrl: true, feedbackMediaKind: true, feedbackTranscript: true, aiReceipt: true, attempts: true, lateDays: true, latePenalty: true, lateWaived: true },
+        where: { id: subId ?? '' },
+        select: { id: true, memberGrades: true, text: true, fileUrl: true, fileName: true, fileSize: true, linkUrl: true, status: true, submittedAt: true, returnedAt: true, score: true, rawScore: true, feedback: true, criteriaScores: true, feedbackMediaUrl: true, feedbackMediaKind: true, feedbackTranscript: true, aiReceipt: true, attempts: true, lateDays: true, latePenalty: true, lateWaived: true },
       }),
       studentRules(assignmentId, user.id),
     ]);
@@ -205,19 +232,22 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
     const due = dueFor(assignment.dueDate, rules.extension?.dueDate ?? null, rules.accommodation);
     const attempts = mine?.attempts ?? 0;
     const canHandIn = !mine || mine.status === 'REOPENED' || (mine.status !== 'RETURNED' && mayHandIn(attempts, assignment.maxAttempts, rules.extension?.extraAttempts ?? 0));
+    const { memberGrades, ...own } = mine ?? { memberGrades: null };
     return {
       ...base,
+      // Group work (Stage 5 · B3.2): their group, and who handed in.
+      group,
       // The student's own due date (an extension, or extra days) and whether they may hand in (again).
       myDue: due, extended: !!rules.extension || (rules.accommodation.extraDays > 0 && !!assignment.dueDate),
       canHandIn, attemptsAllowed: assignment.maxAttempts === null ? null : assignment.maxAttempts + (rules.extension?.extraAttempts ?? 0),
       mine: mine ? {
-        ...mine, aiReceipt: parseReceipt(mine.aiReceipt), status: mine.status === 'REOPENED' ? 'REOPENED' : returned ? 'RETURNED' : 'SUBMITTED',
-        score: returned ? mine.score : null, rawScore: returned ? mine.rawScore : null, feedback: returned ? mine.feedback : null, criteriaScores: returned ? mine.criteriaScores : null,
+        ...own, aiReceipt: parseReceipt(mine.aiReceipt), status: mine.status === 'REOPENED' ? 'REOPENED' : returned ? 'RETURNED' : 'SUBMITTED',
+        score: returned ? memberScore(memberGrades, user.id) ?? mine.score : null, rawScore: returned ? mine.rawScore : null, feedback: returned ? mine.feedback : null, criteriaScores: returned ? mine.criteriaScores : null,
         feedbackMediaUrl: returned ? mine.feedbackMediaUrl : null, feedbackMediaKind: returned ? mine.feedbackMediaKind : null, feedbackTranscript: returned ? mine.feedbackTranscript : null,
       } : null,
     };
   }
-  const [submissions, enrolled, extensions] = await Promise.all([
+  const [submissions, enrolled, extensions, groups] = await Promise.all([
     prisma.assignmentSubmission.findMany({
       where: { assignmentId },
       orderBy: { submittedAt: 'asc' },
@@ -225,6 +255,7 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
     }),
     prisma.enrollment.findMany({ where: { courseId: course.id }, orderBy: { student: { name: 'asc' } }, take: 1000, select: { student: { select: { id: true, name: true, accommodation: { select: { extraDays: true, extraTimePct: true } } } } } }),
     prisma.assignmentExtension.findMany({ where: { assignmentId }, take: 1000, select: { studentId: true, dueDate: true, extraAttempts: true, note: true } }),
+    assignment.groupMode ? groupsOf(assignmentId) : Promise.resolve([]),
   ]);
   // Similarity signals (teacher only): the classmate with the most shared phrasing, and the
   // course material the answer borrows most from.
@@ -238,6 +269,7 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
     // For extensions: the class, with each student's accommodation (extra days, extra time).
     students: enrolled.map((e) => ({ id: e.student.id, name: e.student.name, extraDays: e.student.accommodation?.extraDays ?? 0, extraTimePct: e.student.accommodation?.extraTimePct ?? 0 })),
     extensions,
+    groups,
     submissions: submissions.map(({ signals, ...x }) => {
       const peer = peers.get(x.id);
       return { ...x, aiReceipt: parseReceipt(x.aiReceipt), similarity: { peer: peer ? { name: nameOf.get(peer.id) ?? 'A classmate', percent: Math.round(peer.share * 100) } : null, material: (signals as unknown as Signals | null)?.material ?? null } };
@@ -316,7 +348,15 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
     if (!ok) throw new BadRequestException('Paste the full link (https://…).');
     handIn.linkUrl = url;
   }
-  const existing = await prisma.assignmentSubmission.findUnique({ where: { assignmentId_studentId: { assignmentId, studentId: user.id } }, select: { status: true, attempts: true } });
+  // Group work (Stage 5 · B3.2): one hand-in per group, whoever in it hands in.
+  let groupId: string | null = null;
+  if (assignment.groupMode) {
+    const g = await prisma.assignmentGroupMember.findUnique({ where: { assignmentId_studentId: { assignmentId, studentId: user.id } }, select: { groupId: true } });
+    if (!g) throw new BadRequestException('You’re not in a group for this yet. Ask your teacher to put you in one.');
+    groupId = g.groupId;
+  }
+  const existingId = await handInOf(assignmentId, user.id, groupId);
+  const existing = existingId ? await prisma.assignmentSubmission.findUnique({ where: { id: existingId }, select: { id: true, status: true, attempts: true } }) : null;
   if (existing?.status === 'RETURNED') throw new BadRequestException('This has already been graded, so it can’t be changed.');
   // How many times they may hand in before it's graded (unless the teacher reopened it).
   if (existing && existing.status !== 'REOPENED' && !mayHandIn(existing.attempts, assignment.maxAttempts, rules.extension?.extraAttempts ?? 0)) {
@@ -342,12 +382,16 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
   const style = await styleSignalsFor(user.id, assignmentId, text);
   const styleSignals = (style ?? undefined) as unknown as Prisma.InputJsonValue | undefined;
   // A new version replaces the old one and any AI draft of it.
-  const saved = await prisma.assignmentSubmission.upsert({
-    where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
-    create: { assignmentId, studentId: user.id, text, ...handIn, signals, styleSignals, offlineAt, aiReceipt, lateDays: late.days, latePenalty: late.penalty },
-    update: { text, ...handIn, signals, styleSignals, offlineAt, aiReceipt, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date(), attempts, lateDays: late.days, latePenalty: late.penalty, lateWaived: false },
-    select: { id: true, submittedAt: true },
-  });
+  const saved = existing
+    ? await prisma.assignmentSubmission.update({
+      where: { id: existing.id },
+      data: { text, ...handIn, signals, styleSignals, offlineAt, aiReceipt, groupId, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date(), attempts, lateDays: late.days, latePenalty: late.penalty, lateWaived: false },
+      select: { id: true, submittedAt: true },
+    })
+    : await prisma.assignmentSubmission.create({
+      data: { assignmentId, studentId: user.id, groupId, text, ...handIn, signals, styleSignals, offlineAt, aiReceipt, lateDays: late.days, latePenalty: late.penalty },
+      select: { id: true, submittedAt: true },
+    });
   if (existing) await prisma.$executeRawUnsafe('UPDATE assignment_submissions SET aiDraft = NULL WHERE id = ?', saved.id); // Prisma won't write a plain null to JSON
   recordStudy(user.id, req);
   return { ...saved, late: late.late, lateDays: late.days, latePenalty: late.penalty, attempts };
@@ -439,27 +483,51 @@ export async function returnGrade(submissionId: string, user: SessionUser, body:
   const penalty = lateWaived ? 0 : sub.latePenalty;
   const score = withPenalty(rawScore, penalty);
   const feedback = str(body.feedback, 2000) || null;
-  // One grade row per submission: returning again (a correction) updates it.
-  const gradeData = { assignmentName: assignment.title.slice(0, 200), score, maxScore: assignment.maxScore, weight: assignment.weight, feedback, status: 'GRADED' as const, gradedAt: new Date() };
-  const existing = sub.gradeId ? await prisma.grade.findUnique({ where: { id: sub.gradeId }, select: { id: true } }) : null;
-  const grade = existing
-    ? await prisma.grade.update({ where: { id: existing.id }, data: gradeData })
-    : await prisma.grade.create({ data: { ...gradeData, studentId: sub.studentId, courseId: course.id } });
+  // One grade row per student: returning again (a correction) updates it. A group's hand-in gives
+  // each member a row (Stage 5 · B3.2): the same score (SHARED), or their own (INDIVIDUAL: body.members).
+  const members = sub.groupId && assignment.groupMode
+    ? (await prisma.assignmentGroupMember.findMany({ where: { groupId: sub.groupId }, take: 20, select: { studentId: true } })).map((m) => m.studentId)
+    : [];
+  const ids = members.length ? [...new Set([sub.studentId, ...members])] : [sub.studentId];
+  const own = new Map<string, number>();
+  if (assignment.groupMode === 'INDIVIDUAL' && Array.isArray(body.members)) {
+    for (const m of body.members as Record<string, unknown>[]) {
+      const v = Math.round(Number(m?.score) * 100) / 100;
+      if (typeof m?.studentId !== 'string' || !ids.includes(m.studentId)) continue;
+      if (!Number.isFinite(v) || v < 0 || v > assignment.maxScore) throw new BadRequestException(`Give each member a score between 0 and ${assignment.maxScore}.`);
+      own.set(m.studentId, v);
+    }
+  }
+  let before: Record<string, { gradeId?: string; score?: number }> = {};
+  try { before = sub.memberGrades ? JSON.parse(sub.memberGrades) : {}; } catch { /* rebuilt below */ }
+  const after: Record<string, { gradeId: string; score: number }> = {};
+  let updated = false;
+  for (const studentId of ids) {
+    const mark = own.get(studentId) ?? score;
+    const gradeData = { assignmentName: assignment.title.slice(0, 200), score: mark, maxScore: assignment.maxScore, weight: assignment.weight, feedback, status: 'GRADED' as const, gradedAt: new Date() };
+    // One query a member: update their row if it's still there, else make one.
+    const was = studentId === sub.studentId ? sub.gradeId : before[studentId]?.gradeId;
+    const kept = was ? (await prisma.grade.updateMany({ where: { id: was }, data: gradeData })).count > 0 : false;
+    if (kept) updated = true;
+    const gradeId = kept ? was! : (await prisma.grade.create({ data: { ...gradeData, studentId, courseId: course.id }, select: { id: true } })).id;
+    after[studentId] = { gradeId, score: mark };
+  }
+  const grade = { id: after[sub.studentId].gradeId };
   await prisma.assignmentSubmission.update({
     where: { id: sub.id },
-    data: { criteriaScores: criteria as unknown as Prisma.InputJsonValue, score, rawScore, lateWaived, feedback, gradeId: grade.id, status: 'RETURNED', returnedAt: new Date() },
+    data: { criteriaScores: criteria as unknown as Prisma.InputJsonValue, score, rawScore, lateWaived, feedback, gradeId: grade.id, memberGrades: members.length ? JSON.stringify(after) : null, status: 'RETURNED', returnedAt: new Date() },
   });
   // Proof of learning (upgrade 2): 60%+ becomes evidence for the course's skills.
-  await safely(evidenceFromGrade({ studentId: sub.studentId, submissionId: sub.id, assignmentTitle: assignment.title, score, maxScore: assignment.maxScore, course, teacher: { id: user.id, name: user.name } }));
+  const teacher = { id: user.id, name: user.name };
+  if (members.length) await safely(evidenceFromGroupGrade({ members: ids.map((studentId) => ({ studentId, score: after[studentId].score })), submissionId: sub.id, assignmentTitle: assignment.title, maxScore: assignment.maxScore, course, teacher }));
+  else await safely(evidenceFromGrade({ studentId: sub.studentId, submissionId: sub.id, assignmentTitle: assignment.title, score, maxScore: assignment.maxScore, course, teacher }));
   indexLater(() => indexWork(sub.id)); // the student's "Ask your semester" (Stage 4 · 4.5)
-  audit(user, { action: existing ? 'grade.updated' : 'grade.posted', summary: `${existing ? 'Updated' : 'Returned'} “${assignment.title}” grade ${score}/${assignment.maxScore} in ${course.code}`, targetType: 'grade', targetId: grade.id, metadata: { assignmentId: assignment.id, submissionId: sub.id, studentId: sub.studentId } }, req);
-  later(() => notify(sub.studentId, {
-    type: 'grade',
-    title: `${existing ? 'Updated grade' : 'Graded'}: ${assignment.title}`,
-    body: `${course.code} · ${score}/${assignment.maxScore}${penalty ? ` (${rawScore} less ${penalty}% for handing it in late)` : ''}`,
-    link: `/student/assignments/${assignment.id}`,
-    email: false, // in-app only (keeps email within the plan's allowance)
-  }));
+  audit(user, { action: updated ? 'grade.updated' : 'grade.posted', summary: `${updated ? 'Updated' : 'Returned'} “${assignment.title}” grade ${score}/${assignment.maxScore} in ${course.code}${members.length ? ` for a group of ${ids.length}` : ''}`, targetType: 'grade', targetId: grade.id, metadata: { assignmentId: assignment.id, submissionId: sub.id, studentId: sub.studentId } }, req);
+  // In-app only (keeps email within the plan's allowance); a group is told together.
+  const told = { type: 'grade' as const, title: `${updated ? 'Updated grade' : 'Graded'}: ${assignment.title}`, link: `/student/assignments/${assignment.id}`, email: false };
+  later(() => (members.length
+    ? notifyMany(ids, { ...told, body: `${course.code} · your group’s work is graded` })
+    : notify(sub.studentId, { ...told, body: `${course.code} · ${score}/${assignment.maxScore}${penalty ? ` (${rawScore} less ${penalty}% for handing it in late)` : ''}` })));
   return { ok: true, score, rawScore, penalty, gradeId: grade.id };
 }
 

@@ -2403,7 +2403,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   // The discussion board: an example thread to look at; posting only shows that it isn't saved.
   ['POST', /^\/api\/courses\/([^/]+)\/discussion(\/[^/]+(\/suggest)?)?$/, () => { notice(); return ok({ ok: true }); }],
   // Assignment rules (Stage 5 · B3.1): extensions, another try and extra time aren't saved.
-  ['POST', /^\/api\/assignments\/([^/]+)\/extensions$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/api\/assignments\/([^/]+)\/(extensions|groups)$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/assignments\/submissions\/([^/]+)\/reopen$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/accommodations$/, () => { notice(); return ok({ ok: true }); }],
   // Common Cartridge import: sample mode only shows that it isn't saved.

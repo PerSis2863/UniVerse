@@ -29,6 +29,9 @@ interface Detail {
   latePenalty: number | null; lateGraceMinutes: number; latePenaltyMax: number; maxAttempts: number | null;
   /** What to hand in (Stage 5 · B3.2): a written answer, a file or a link. */
   submitKind?: 'TEXT' | 'FILE' | 'LINK';
+  /** Group work (Stage 5 · B3.2): the student's group (null: not in one yet). */
+  groupMode?: 'SHARED' | 'INDIVIDUAL' | null;
+  group?: { id: string; name: string; members: { id: string; name: string }[] } | null;
   /** The student's own due date (an extension or extra days), and whether they may hand in (again). */
   myDue?: string | null; extended?: boolean; canHandIn?: boolean; attemptsAllowed?: number | null;
   course: { code: string; name: string };
@@ -83,7 +86,8 @@ function StudentAssignmentPage({ id }: { id: string }) {
   // Open (or still open for them: an extension), not graded, and hand-ins left (or reopened).
   const due = data ? (data.myDue ?? data.dueDate) : null;
   const openForMe = !!data && (data.status === 'OPEN' || (!!data.extended && !!due && new Date(due) > new Date()));
-  const canSubmit = !!data && openForMe && (data.canHandIn ?? !returned);
+  const noGroup = !!data?.groupMode && !data.group;
+  const canSubmit = !!data && openForMe && !noGroup && (data.canHandIn ?? !returned);
   const left = data?.attemptsAllowed != null ? Math.max(0, data.attemptsAllowed - (data.mine?.attempts ?? 0)) : null;
   const words = answer.trim() ? answer.trim().split(/\s+/).length : 0;
   const policy = data?.aiPolicy && isAiPolicy(data.aiPolicy) ? data.aiPolicy : 'FREE';
@@ -126,6 +130,11 @@ function StudentAssignmentPage({ id }: { id: string }) {
               <section className={`panel p-5 space-y-4`}>
                 {due && <p className="text-sm text-zinc-600 dark:text-zinc-400">Due {new Date(due).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}{data.extended ? ' (your own date)' : ''}{data.status === 'CLOSED' && !openForMe ? ' · closed' : ''}</p>}
                 {rulesSentence(data).length > 0 && <p className="text-sm text-zinc-600 dark:text-zinc-400">{rulesSentence(data).join(' ')}{left !== null && data.mine && !returned ? ` ${left} left.` : ''}</p>}
+                {data.groupMode && (
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300">{data.group
+                    ? <>Group work: <span className="font-semibold">{data.group.name}</span> ({data.group.members.map((m) => m.name).join(', ')}). One of you hands in for everyone{data.groupMode === 'SHARED' ? ', and you all get the same grade' : ''}.</>
+                    : 'Group work: you’re not in a group yet. Your teacher will put you in one.'}</p>
+                )}
                 {policy !== 'FREE' && <AiPolicyNote policy={policy} />}
                 <Translatable kind="assignment" id={data.id} text={data.instructions} levels className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />
                 <div>
@@ -198,7 +207,7 @@ function StudentAssignmentPage({ id }: { id: string }) {
                     {!returned && data.canHandIn === false && <p className="text-xs text-zinc-600 dark:text-zinc-400">You’ve handed it in as many times as allowed. Ask your teacher if you need to change it.</p>}
                   </>
                 ) : (
-                  <p className="text-sm text-zinc-500">This assignment is closed. Ask your teacher if you still need to hand it in.</p>
+                  <p className="text-sm text-zinc-500">{noGroup ? 'You can hand in once you’re in a group.' : 'This assignment is closed. Ask your teacher if you still need to hand it in.'}</p>
                 )}
               </section>
               {data.mine && (data.mine.aiReceipt || policy !== 'FREE') && (

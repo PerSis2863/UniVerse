@@ -289,6 +289,7 @@ model User {
   assignmentsCreated    Assignment[]           @relation("AssignmentAuthor")
   assignmentSubmissions AssignmentSubmission[]
   assignmentExtensions  AssignmentExtension[]  @relation("AssignmentExtensions")
+  assignmentGroups      AssignmentGroupMember[] @relation("AssignmentGroups")
   accommodation         StudentAccommodation?  @relation("Accommodation")
   guardianContacts      GuardianContact[]
   impactUpdates         ImpactUpdate[]
@@ -3085,6 +3086,9 @@ model Assignment {
   maxAttempts      Int?
   /// What students hand in (Stage 5 · B3.2): TEXT (a written answer), FILE or LINK (with an optional note)
   submitKind       String  @default("TEXT")
+  /// Group work (Stage 5 · B3.2): null (each student), SHARED (one grade per group) or INDIVIDUAL (a grade each)
+  groupMode        String?
+  groups           AssignmentGroup[]
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
   submissions  AssignmentSubmission[]
@@ -3134,13 +3138,48 @@ model AssignmentSubmission {
   fileName           String?
   fileSize           Int?
   linkUrl            String?
+  /// A group's hand-in (Stage 5 · B3.2; studentId: who handed it in first), and each member's grade
+  /// row: JSON { studentId: { gradeId, score } }
+  groupId            String?
+  group              AssignmentGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  memberGrades       String?
   submittedAt        DateTime   @default(now())
   returnedAt         DateTime?
   updatedAt          DateTime   @updatedAt
 
   @@unique([assignmentId, studentId])
+  @@index([groupId])
   @@index([studentId])
   @@map("assignment_submissions")
+}
+
+/// A group for a group assignment (Stage 5 · B3.2).
+model AssignmentGroup {
+  id           String                  @id @default(cuid())
+  assignmentId String
+  assignment   Assignment              @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  name         String
+  createdAt    DateTime                @default(now())
+  members      AssignmentGroupMember[]
+  submissions  AssignmentSubmission[]
+
+  @@unique([assignmentId, name])
+  @@map("assignment_groups")
+}
+
+/// A student in a group (one group per assignment).
+model AssignmentGroupMember {
+  id           String          @id @default(cuid())
+  assignmentId String
+  groupId      String
+  group        AssignmentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User            @relation("AssignmentGroups", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@index([groupId])
+  @@index([studentId])
+  @@map("assignment_group_members")
 }
 
 /// An extension for one student (Stage 5 · B3.1): their own due date and extra hand-ins.
