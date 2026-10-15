@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { plansForFlags } from '@/server/support-plans';
+import { taughtBy } from '@/lib/course-access';
 
 // Early-warning flags: teachers see their own courses, admins every course.
 // GET ?view=open (default: open + contacted) | handled | all  &courseId=  &q=
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
   const q = (url.searchParams.get('q') ?? '').trim().slice(0, 80);
   const search = q ? { OR: [{ student: { name: { contains: q } } }, { student: { email: { contains: q } } }, { course: { code: { contains: q } } }, { course: { name: { contains: q } } }] } : {};
 
-  const scope = user.role === 'ADMIN' ? {} : { course: { teacherId: user.id } };
+  const scope = user.role === 'ADMIN' ? {} : { course: taughtBy(user.id, ['CO_TEACHER']) };
   const status = view === 'handled' ? { in: ['RESOLVED', 'DISMISSED'] } : view === 'all' ? undefined : { in: ['OPEN', 'CONTACTED'] };
   const [flags, counts, courses] = await Promise.all([
     prisma.studentRiskFlag.findMany({
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
       },
     }),
     prisma.studentRiskFlag.groupBy({ by: ['status', 'level'], where: { ...scope, ...(courseId ? { courseId } : {}) }, _count: { _all: true } }),
-    prisma.course.findMany({ where: user.role === 'ADMIN' ? { status: 'PUBLISHED' } : { teacherId: user.id }, select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 200 }),
+    prisma.course.findMany({ where: user.role === 'ADMIN' ? { status: 'PUBLISHED' } : taughtBy(user.id, ['CO_TEACHER']), select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 200 }),
   ]);
   const count = (f: (c: (typeof counts)[number]) => boolean) => counts.filter(f).reduce((n, c) => n + c._count._all, 0);
   // Each flag's latest study plan and its follow-up (upgrade 3: early help)

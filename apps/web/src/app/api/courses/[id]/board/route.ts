@@ -3,22 +3,15 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { courseAccess } from '@/lib/course-access';
 import { isAppFileUrl } from '@/lib/storage';
-import { publish } from '@/server/realtime';
+import { materialTypeOf as fileTypeOf } from '@/lib/file-urls';
 import { sessionsForBoard } from '@/server/class-companion';
+import { HttpException } from '@/server/http';
+import { pinAnnouncement, postAnnouncement, visibleNow } from '@/server/course-announcements';
 
 type Ctx = { params: Promise<{ id: string }> };
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const isHttpUrl = (v: string) => { try { return ['http:', 'https:'].includes(new URL(v).protocol); } catch { return false; } };
-
-function fileTypeOf(name: string, url: string): 'PDF' | 'DOCX' | 'VIDEO' | 'IMAGE' | 'OTHER' {
-  const s = `${name} ${url}`.toLowerCase();
-  if (/\.pdf\b/.test(s)) return 'PDF';
-  if (/\.(docx?|pptx?|xlsx?|txt|csv)\b/.test(s)) return 'DOCX';
-  if (/\.(mp4|mov|webm)\b|youtube\.com|youtu\.be|vimeo\.com/.test(s)) return 'VIDEO';
-  if (/\.(png|jpe?g|gif|webp)\b/.test(s)) return 'IMAGE';
-  return 'OTHER';
-}
 
 // GET: everything on a course's Blackboard, shaped for the viewer (teacher sees the gradebook and quizzes; students see their own results).
 export async function GET(req: Request, { params }: Ctx) {
@@ -27,10 +20,14 @@ export async function GET(req: Request, { params }: Ctx) {
   const { id } = await params;
   const access = await courseAccess(id, user);
   if (!access) return bad('Course not found.', 404);
-  const { course, canManage } = access;
+  const { course, canManage, canGrade, staffRole } = access;
 
   const [announcements, materials, readings, events, sessions] = await Promise.all([
-    prisma.announcement.findMany({ where: { courseId: id }, orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, title: true, body: true, createdAt: true, author: { select: { name: true } } } }),
+    // Pinned first; students see scheduled ones only from their time; the teacher sees who has seen each.
+    prisma.announcement.findMany({
+      where: { courseId: id, ...(canGrade ? {} : visibleNow()) }, orderBy: [{ pinnedAt: 'desc' }, { createdAt: 'desc' }], take: 50,
+      select: { id: true, title: true, body: true, createdAt: true, publishAt: true, sentAt: true, pinnedAt: true, author: { select: { name: true } }, ...(canGrade ? { _count: { select: { reads: true } } } : {}) },
+    }),
     prisma.material.findMany({ where: { courseId: id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, type: true, fileUrl: true, size: true, createdAt: true } }),
     prisma.knowledgeHubResource.findMany({ where: { courseId: id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, description: true, url: true, category: true, createdAt: true } }),
     prisma.calendarEvent.findMany({ where: { courseId: id, endAt: { gte: new Date(Date.now() - 86_400_000) } }, orderBy: { startAt: 'asc' }, take: 50, select: { id: true, title: true, description: true, startAt: true, endAt: true, type: true } }),
@@ -38,7 +35,8 @@ export async function GET(req: Request, { params }: Ctx) {
     sessionsForBoard(id, canManage),
   ]);
 
-  if (canManage) {
+  // The teaching team (assistants too) sees the roster and the class's quizzes.
+  if (canGrade) {
     const [quizzes, grades, enrollments] = await Promise.all([
       prisma.quiz.findMany({ where: { courseId: id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, status: true, dueDate: true, _count: { select: { questions: true, submissions: true } } } }),
       prisma.grade.findMany({ where: { courseId: id }, select: { studentId: true, score: true, maxScore: true } }),
@@ -55,7 +53,8 @@ export async function GET(req: Request, { params }: Ctx) {
       const s = byStudent.get(student.id);
       return { ...student, graded: s?.n ?? 0, average: s ? Math.round(s.sum / s.n) : null };
     });
-    return NextResponse.json({ course, canManage, announcements, materials, readings, events, sessions, quizzes, roster }, { headers: { 'Cache-Control': 'no-store' } });
+    const owns = user.role === 'ADMIN' || course.teacherId === user.id;
+    return NextResponse.json({ course, canManage, canGrade, owns, staffRole, announcements, materials, readings, events, sessions, quizzes, roster }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   const [grades, quizResults] = await Promise.all([
@@ -75,6 +74,14 @@ export async function POST(req: Request, { params }: Ctx) {
   if (!access.canManage) return bad('Only the course teacher can post here.', 403);
 
   const b = await req.json().catch(() => ({}));
+  if (b.kind === 'pin') {
+    try {
+      return NextResponse.json(await pinAnnouncement(id, b.id, b.on !== false));
+    } catch (e) {
+      if (e instanceof HttpException) return bad(e.message, e.getStatus());
+      throw e;
+    }
+  }
   const title = str(b.title, 200);
   if (!title) return bad('Please add a title.');
 
@@ -82,16 +89,13 @@ export async function POST(req: Request, { params }: Ctx) {
     case 'announcement': {
       const body = str(b.body, 5000);
       if (!body) return bad('Please write the announcement.');
-      const item = await prisma.announcement.create({ data: { title, body, courseId: id, authorId: user.id, target: 'COURSE' } });
-      // Let enrolled students know.
-      const students = await prisma.enrollment.findMany({ where: { courseId: id }, select: { studentId: true } });
-      if (students.length) {
-        await prisma.notification.createMany({
-          data: students.map((s) => ({ userId: s.studentId, title: `${access.course.code}: ${title}`, body: body.slice(0, 200), type: 'announcement', link: '/student/blackboard' })),
-        });
-        publish(students.map((s) => s.studentId), { type: 'notification' });
+      // Now (enrolled students get an in-app notice) or at publishAt (the 15-minute cron sends it).
+      try {
+        return NextResponse.json(await postAnnouncement(access.course, user, title, body, b.publishAt), { status: 201 });
+      } catch (e) {
+        if (e instanceof HttpException) return bad(e.message, e.getStatus());
+        throw e;
       }
-      return NextResponse.json(item, { status: 201 });
     }
     case 'material': {
       const fileUrl = str(b.url, 1000);

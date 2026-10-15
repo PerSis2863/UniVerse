@@ -1,6 +1,8 @@
 import { NotFoundException } from '../http';
 import type { CreateAnnouncementDto, UpdateAnnouncementDto } from '../dto';
 import prisma from '@/lib/db';
+import type { SessionUser } from '@/lib/server-auth';
+import { announcementWhere } from '../course-announcements';
 
 export class AnnouncementsService {
   create(createAnnouncementDto: CreateAnnouncementDto, authorId: string) {
@@ -12,18 +14,20 @@ export class AnnouncementsService {
     });
   }
 
-  // Every signed-in user can read these: authors' email addresses stay out (the UI never shows them).
-  findAll() {
+  // School-wide ones and those of the person's own courses (src/server/course-announcements.ts):
+  // authors' email addresses stay out (the UI never shows them).
+  async findAll(user: SessionUser) {
     return prisma.announcement.findMany({
+      where: await announcementWhere(user),
       include: { author: { select: { name: true, avatar: true } }, course: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
   }
 
-  async findOne(id: string) {
-    const announcement = await prisma.announcement.findUnique({
-      where: { id },
+  async findOne(id: string, user: SessionUser) {
+    const announcement = await prisma.announcement.findFirst({
+      where: { id, ...(await announcementWhere(user)) },
       include: { author: { select: { name: true, avatar: true } } },
     });
     if (!announcement) throw new NotFoundException('Announcement not found');

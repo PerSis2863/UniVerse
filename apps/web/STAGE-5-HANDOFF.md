@@ -13,6 +13,50 @@ done, where the code is and what's left for each item. Keep that table up to dat
   **0130**) and **Q3** (health numbers, error screens, per-school switches; migration **0131**; built
   and unit-tested, its browser test is the first thing to do: see the "Q3" Progress row). Progress
   rows at the end of the plan. **Next migration: `0132`.**
+- **15 Oct 2026:** PR #60 is merged into `main`. Q3's test on the built Worker is done (Progress row
+  "Q3"); work continues on branch `claude/funny-galileo-y4mz9r` from **Q4**.
+- **Q4 done (15 Oct):** photos upload in three sizes and phones load the small ones (Progress row
+  "Q4"; no migration). **Security fix, live until this deploys:** `GET /api/oneroster/v1p2/*` answered
+  anyone, so anybody could page through every account's name, email and role. They now need a
+  school API key (Admin → Integrations → Developer) with `courses.read` or `students.read`, and give
+  only that key's school. If a school's SIS was reading them, it needs a key. Also: peer tutoring's
+  "verified by Learning DNA" was given to every class without checking; it now uses real mastery.
+  A new API route that serves people's data must check who is asking: the whole API was swept signed
+  out (every route without an id, and every route with one), and only the public ones answer.
+- **Q5 (courses), 15 Oct:** done on the branch: copy to a new term (Q5.1), discussion board (Q5.3,
+  migration **0132**), scheduled / pinned / "seen by" announcements (Q5.4, **0133**), co-teachers and
+  teaching assistants (Q5.6, **0134**), course calendar (Q5.5), AI syllabus draft (Q5.7), class-size
+  limit, waitlist and sections (rest of Q5.6, **0135**), rich lesson pages (Q5.2), Common Cartridge import and export (Q5.8). Each has a
+  Progress row. **Q5 is done**, apart from Google Classroom import (needs a sample export or the
+  Classroom API: owner).
+- **Q6 (assignments and grading), 15 Oct:** Q6.1 rules (late penalty, hand-in limit, extensions, extra
+  time; migration **0136**). A student's due date is always `dueFor(...)` and a submission's late %
+  is set when handed in (`src/lib/assignment-policy.ts`); graded answers can be REOPENED, so check
+  "graded" as RETURNED or REOPENED. Q6.2a: files and links as hand-ins (**0137**); Q6.2b: group assignments (**0138**: a group's hand-in is
+  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0139`.**
+  - **Stopped here (owner asked to merge, 15 Oct):** Q6.2c peer review is started: only the pairing
+    rules are in (`src/lib/peer-review.ts`, tested). Still to build: migration 0139, server, routes and
+    screens; then the rest of Q6 (code with tests, PDF annotation, gradebook, student side, writing
+    replay). The Q6.2a/Q6.2b screens weren't tried in a browser yet (their API was).
+  - **Stopped here (owner asked to merge, 15 Oct):** Q6.2c peer review is started: only the pairing
+    rules are in (`src/lib/peer-review.ts`, tested: everyone reviews and is reviewed k times, never
+    their own). Still to build: migration 0139 (`assignments.peerReviews`, `peerDueDate`; table
+    `peer_reviews`), `src/server/peer-review.ts` (students' anonymous reviews, the teacher's "hand out
+    reviews", reviews in grading), routes, sample stubs and screens. Then the rest of Q6: code with
+    tests (6.2), PDF annotation (6.3), gradebook (6.4), the student side (6.5), writing replay (6.6).
+  - **Not yet tried in a browser:** the Q6.2a (file / link) and Q6.2b (groups) screens; their API was
+    tried on the Worker. The test script was written; run it with the next build.
+  - **Lesson pages:** a page's body is plain text or the editor's JSON (`{"type":"doc"…`); always save it
+    through `cleanPageBody` (`src/lib/lesson-page.ts`), and never send rich bodies in lists (`pageTexts`).
+  - **Privacy fix in Q5.4:** the announcements list gave everyone every course's announcements.
+  - **Teaching team:** `courseAccess` returns `canManage` (teacher, co-teacher, admin) and `canGrade`
+    (+ assistants). New course features: use `canManage` to change things and `canGrade` for grading
+    and the roster; "my courses" lists use `taughtBy(userId)`; copying and the team use `ownsCourse`.
+  - **Testing locally:** two local teacher accounts (`tara@teacher.com`, `tom@teacher.com`) were added to
+    the local database for this; put them in `DEMO_ACCOUNT_EMAILS` to use their mock tokens. The 15-minute
+    cron can be fired with `wrangler dev --test-scheduled` and `curl '/__scheduled?cron=*/15+*+*+*+*'`.
+  - **Browser tests:** every Q5 screen so far was tried on the built Worker (390 and 1280 px, light and
+    dark, axe clean). The AI parts (syllabus draft, suggested discussion answer) need the live site.
 - **What's left is written up in `STAGE-5-PLAN.md`, section 4 "Remaining work queue"**: 23 entries
   (Q1–Q23) in the order to do them, each with what exists to build on, the steps, the traps, how to
   know it's done, and its size. Q1 and Q2 are done; **finish Q3's test, then continue with Q4**.

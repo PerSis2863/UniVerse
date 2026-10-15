@@ -1,5 +1,5 @@
 import prisma from '@/lib/db';
-import { courseAccess } from '@/lib/course-access';
+import { courseAccess, taughtBy } from '@/lib/course-access';
 import { getSystemUser } from '@/lib/chat';
 import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
@@ -82,7 +82,7 @@ export async function upcomingCalls(user: SessionUser) {
     where: {
       startAt: { gte: new Date(Date.now() - 4 * 3600_000), lte: new Date(Date.now() + MAX_AHEAD_MS) },
       OR: [
-        { course: { teacherId: user.id } },
+        { course: taughtBy(user.id) },
         { course: { enrollments: { some: { studentId: user.id } } } },
         { group: { members: { some: { userId: user.id } } } },
         { conversation: { participants: { some: { userId: user.id } } } },
@@ -100,7 +100,7 @@ export async function upcomingCalls(user: SessionUser) {
 export async function schedulableRooms(user: SessionUser) {
   const system = await getSystemUser();
   const [classes, groups, chats] = await Promise.all([
-    prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : { teacherId: user.id }, select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 50 }),
+    prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : taughtBy(user.id), select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 50 }),
     prisma.group.findMany({ where: { members: { some: { userId: user.id } } }, select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 50 }),
     prisma.conversation.findMany({
       where: { participants: { some: { userId: user.id } }, NOT: { participants: { some: { userId: system.id } } } },

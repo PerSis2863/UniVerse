@@ -2,6 +2,7 @@
 
 import { authedFetch } from '@/lib/authed-fetch';
 import { shrinkImage } from '@/lib/shrink-image';
+import { makePhotoSizes } from '@/lib/photo-sizes';
 import type { E2EPayload } from '@/lib/e2e';
 
 export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'AUDIO' | 'VIDEO' | 'CALL' | 'POLL' | 'LOCATION' | 'CONTACT' | 'SYSTEM' | 'DELETED';
@@ -150,6 +151,9 @@ const SERVER_MAX = 4 * 1024 * 1024;
  * database). Larger files upload straight to R2 with a signed URL, which needs R2 to be configured.
  */
 export async function uploadChatFile(original: File, onProgress?: (pct: number) => void) {
+  // Photos go up in three sizes, so phones download only the one they need (src/lib/image-sizes.ts).
+  const sized = await uploadPhotoSizes(original, onProgress);
+  if (sized) return sized;
   const file = await shrinkImage(original); // big photos become a few hundred KB (src/lib/shrink-image.ts)
   if (file.size > MAX_UPLOAD_BYTES) throw new Error('Files must be 25 MB or smaller.');
   const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-100) || 'file';
@@ -192,6 +196,23 @@ export async function uploadChatFile(original: File, onProgress?: (pct: number) 
     throw new Error('Upload failed. Please check your connection and try again.');
   });
   return grant.url as string;
+}
+
+/** A photo uploaded in its sizes (POST /api/upload/sized), or null to upload it as one file instead. */
+async function uploadPhotoSizes(original: File, onProgress?: (pct: number) => void): Promise<string | null> {
+  const made = await makePhotoSizes(original);
+  if (!made || made.sizes.reduce((n, s) => n + s.blob.size, 0) > SERVER_MAX) return null;
+  const name = `${original.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-90) || 'photo'}.${made.ext}`;
+  const form = new FormData();
+  for (const s of made.sizes) form.append(`w${s.width}`, s.blob, name);
+  onProgress?.(10);
+  const res = await authedFetch(`/api/upload/sized?filename=${encodeURIComponent(name)}`, { method: 'POST', body: form });
+  const json = await res.json().catch(() => ({}));
+  // A server from before sizes (during an update): send it the usual way.
+  if (res.status === 404 || res.status === 405) return null;
+  if (!res.ok || !json.url) throw new Error(json.error || 'Upload failed. Please try again.');
+  onProgress?.(100);
+  return json.url as string;
 }
 
 export function messageTypeFor(mime: string): MessageType {

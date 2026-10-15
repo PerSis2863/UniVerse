@@ -20,6 +20,7 @@ interface Row {
 
 
 function state(a: Row) {
+  if (a.mine?.status === 'REOPENED') return { label: 'Hand in again', style: 'bg-sky-500/10 text-sky-700 dark:text-sky-300' };
   if (a.mine?.status === 'RETURNED') return { label: `${a.mine.score}/${a.maxScore}`, style: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' };
   if (a.mine) return { label: 'Handed in', style: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300' };
   if (a.status === 'CLOSED') return { label: 'Closed', style: 'bg-zinc-500/10 text-zinc-500' };

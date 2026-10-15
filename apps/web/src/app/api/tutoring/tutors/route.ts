@@ -1,5 +1,6 @@
 import { route } from '@/server/assignments';
-import { listPeerTutors, upsertTutorProfile, type UpsertTutorProfileInput } from '@/server/peer-tutoring';
+import type { Body } from '@/server/body';
+import { listPeerTutors, upsertTutorProfile } from '@/server/peer-tutoring';
 
 export const GET = (req: Request) =>
   route(req, async () => {
@@ -23,6 +24,6 @@ export const GET = (req: Request) =>
 
 export const POST = (req: Request) =>
   route(req, async (user) => {
-    const body = (await req.json()) as UpsertTutorProfileInput;
-    return upsertTutorProfile(user.id, body);
+    const body = (await req.json().catch(() => ({}))) as Body;
+    return upsertTutorProfile(user.id, body && typeof body === 'object' ? body : {}, user.organizationId ?? null);
   });

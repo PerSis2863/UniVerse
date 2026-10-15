@@ -38,7 +38,8 @@ export default function StudentChoices() {
       code: e.course?.code || '',
       title: e.course?.name || '',
       credits: e.course?.credits ?? 0,
-      status: e.status === 'PENDING' ? 'Waitlisted' : e.status === 'APPROVED' ? 'Selected' : (e.status || 'Selected'),
+      // Stage 5 · B2: the teacher accepts requests; a full class puts accepted ones on its waitlist.
+      status: e.status === 'ACCEPTED' ? 'Selected' : e.status === 'WAITLISTED' ? 'Waitlisted' : e.status === 'REJECTED' ? 'Declined' : e.status === 'WITHDRAWN' ? 'Withdrawn' : 'Requested',
       requestId: e.id,
     })),
     ...availableCourses.map(c => ({
@@ -50,7 +51,7 @@ export default function StudentChoices() {
     }))
   ].filter(e => e.status !== 'Withdrawn');
 
-  const selectedCredits = displayElectives.filter(e => e.status === 'Selected' || e.status === 'Waitlisted').reduce((acc, curr) => acc + (curr.credits || 0), 0);
+  const selectedCredits = displayElectives.filter(e => e.status === 'Selected' || e.status === 'Waitlisted' || e.status === 'Requested').reduce((acc, curr) => acc + (curr.credits || 0), 0);
 
   const handleSelectElective = async (courseId: string) => {
     try {
@@ -164,8 +165,16 @@ export default function StudentChoices() {
                             <CheckCircle2 className="w-4 h-4" /> Selected
                           </div>
                         ) : course.status === 'Waitlisted' ? (
-                          <div className="text-amber-600 dark:text-amber-400 text-sm font-medium px-3 py-1 bg-amber-500/10 rounded-full">
-                            Waitlisted (Pending)
+                          <div className="text-amber-700 dark:text-amber-400 text-sm font-medium px-3 py-1 bg-amber-500/10 rounded-full">
+                            On the waitlist
+                          </div>
+                        ) : course.status === 'Requested' ? (
+                          <div className="text-sky-700 dark:text-sky-300 text-sm font-medium px-3 py-1 bg-sky-500/10 rounded-full">
+                            Waiting for the teacher
+                          </div>
+                        ) : course.status === 'Declined' ? (
+                          <div className="text-zinc-700 dark:text-zinc-300 text-sm font-medium px-3 py-1 bg-zinc-500/10 rounded-full">
+                            Not accepted
                           </div>
                         ) : (
                           <button onClick={() => handleSelectElective(course.id)} className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">

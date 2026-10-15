@@ -6,7 +6,8 @@ import { isUploadedFileUrl } from '@/lib/file-urls';
 // (YouTube, files uploaded here, and this app's own boards).
 
 export type EmbedKind = 'youtube' | 'video' | 'pdf' | 'board' | 'tasks' | 'code' | 'math';
-export interface EmbedAttrs { kind: EmbedKind; src: string; title: string; lang: string; code: string; tex: string }
+/** chapters: a video's chapters, one per line ("0:00 Introduction", src/lib/lesson-page.ts parseChapters). */
+export interface EmbedAttrs { kind: EmbedKind; src: string; title: string; lang: string; code: string; tex: string; chapters: string }
 
 export const EMBED_LABEL: Record<EmbedKind, string> = { youtube: 'Video', video: 'Video', pdf: 'PDF', board: 'Whiteboard', tasks: 'Task board', code: 'Code', math: 'Maths' };
 const ID = /^[a-z0-9]{20,32}$/i;

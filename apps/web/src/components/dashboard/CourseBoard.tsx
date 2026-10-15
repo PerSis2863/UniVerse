@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from '@/components/ui/Link';
-import useSWR, { type KeyedMutator } from 'swr';
+import useSWR, { mutate as refreshKey, type KeyedMutator } from 'swr';
 import { haptic } from '@/lib/haptics';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { spring } from '@/lib/motion';
@@ -12,7 +12,7 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  BadgeCheck, Layers, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
+  BadgeCheck, Clock, Copy, Eye, Layers, Loader2, MessagesSquare, Pin, UserPlus, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { uploadChatFile } from '@/components/chat/chat-client';
@@ -29,8 +29,8 @@ import type { ClassSession } from '@/components/dashboard/ClassSessions';
 import { Combobox } from '@/components/ui/Combobox';
 import { SUBJECTS } from '@/lib/options/academic';
 import { QuizReview } from '@/components/quizzes/QuizReview';
-import { downloadIcs } from '@/lib/ics';
 import { TranslatableAnnouncement } from '@/components/shared/Translatable';
+import { CourseCalendar, courseCalendarKey } from '@/components/dashboard/CourseCalendar';
 
 /** Class recordings open through a 10-minute private link (src/lib/private-file.ts). */
 function openRecording(e: React.MouseEvent, url: string) {
@@ -48,6 +48,14 @@ const CourseGroupProjects = dynamic(() => import('@/components/groups/CourseGrou
 const CourseOralChecks = dynamic(() => import('@/components/oral/CourseOralChecks').then((m) => m.CourseOralChecks), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const CourseModules = dynamic(() => import('@/components/dashboard/CourseModules').then((m) => m.CourseModules), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const ClassSessions = dynamic(() => import('@/components/dashboard/ClassSessions').then((m) => m.ClassSessions), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
+// The discussion board (Stage 5 · B2), its own tab, loaded when opened.
+const CourseDiscussion = dynamic(() => import('@/components/dashboard/CourseDiscussion').then((m) => m.CourseDiscussion), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
+// The class list: size limit, requests, waitlist, sections (Stage 5 · B2), loaded with the Grades tab.
+const CourseEnrolment = dynamic(() => import('@/components/dashboard/CourseEnrolment').then((m) => m.CourseEnrolment), { ssr: false, loading: () => <div className="h-24 rounded-2xl skeleton mb-6" /> });
+// The teaching team (Stage 5 · B2), loaded when opened.
+const CourseTeam = dynamic(() => import('@/components/dashboard/CourseTeam').then((m) => m.CourseTeam), { ssr: false });
+// Copy to a new term (Stage 5 · B2), loaded when opened.
+const CourseCopy = dynamic(() => import('@/components/dashboard/CourseCopy').then((m) => m.CourseCopy), { ssr: false });
 const QuizManager = dynamic(() => import('@/components/quizzes/QuizManager').then((m) => m.QuizManager), { ssr: false });
 const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhiteboard').then((m) => m.CollaborationWhiteboard), {
   ssr: false,
@@ -59,7 +67,12 @@ interface Course { id: string; name: string; code: string; color: string | null;
 interface Board {
   course: Course & { _count: { enrollments: number }; skills?: string | null };
   canManage: boolean;
-  announcements: { id: string; title: string; body: string; createdAt: string; author: { name: string } }[];
+  /** The teaching team (teaching assistants too): roster and grading (Stage 5 · B2). */
+  canGrade?: boolean;
+  /** The course's own teacher or an admin: copying it and changing its team. */
+  owns?: boolean;
+  staffRole?: 'CO_TEACHER' | 'TA' | null;
+  announcements: { id: string; title: string; body: string; createdAt: string; publishAt?: string | null; sentAt?: string | null; pinnedAt?: string | null; author: { name: string }; _count?: { reads: number } }[];
   materials: { id: string; title: string; type: 'PDF' | 'DOCX' | 'VIDEO' | 'IMAGE' | 'OTHER'; fileUrl: string; size: string | null; createdAt: string }[];
   readings: { id: string; title: string; description: string | null; url: string | null; category: string | null }[];
   events: { id: string; title: string; description: string | null; startAt: string; endAt: string; type: string }[];
@@ -76,6 +89,8 @@ interface Board {
 const TABS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'board', label: 'Announcements', icon: Bell },
   { id: 'modules', label: 'Modules', icon: Layers },
+  // The course's discussion board (Stage 5 · B2).
+  { id: 'discussion', label: 'Discussion', icon: MessagesSquare },
   { id: 'sessions', label: 'Class sessions', icon: NotebookPen },
   { id: 'materials', label: 'Materials', icon: FileText },
   { id: 'readings', label: 'Reading list', icon: BookOpen },
@@ -110,6 +125,9 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
   const [pickedId, setCourseId] = useState<string | null>(() => link.get('course'));
   const [tab, setTab] = useState(() => (TABS.some((t) => t.id === link.get('tab')) ? link.get('tab')! : 'board'));
   const [sessionId, setSessionId] = useState<string | null>(() => link.get('session'));
+  const [copying, setCopying] = useState(false);
+  const [team, setTeam] = useState(false);
+  const [threadId, setThreadId] = useState<string | null>(() => link.get('thread'));
   // The picked course, or the first one when it isn't among yours (once your courses have loaded).
   const courseId = !courses.length || courses.some((c) => c.id === pickedId) ? pickedId : courses[0].id;
 
@@ -143,6 +161,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
 
   const course = board?.course ?? courses.find((c) => c.id === courseId);
   const canManage = !!board?.canManage;
+  const canGrade = canManage || !!board?.canGrade;
 
   const messageInstructor = async () => {
     const teacherId = course?.teacher?.id;
@@ -156,11 +175,16 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
   return (
     <>
       <Topbar title={title} subtitle={subtitle} />{tabs}
+      {team && course && <CourseTeam courseId={course.id} onClose={() => setTeam(false)} />}
+      {copying && course && (
+        <CourseCopy course={course} onClose={() => setCopying(false)}
+          onDone={(id) => { setCopying(false); void refreshKey('/courses/my').then(() => { setCourseId(id); setTab('board'); }); }} />
+      )}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Course switcher */}
         <div className="glass-bar border-b border-zinc-200/70 dark:border-white/[0.06] px-4 sm:px-8 py-3 flex gap-2 overflow-x-auto scrollbar-none">
           {courses.map((c) => (
-            <button key={c.id} onClick={() => setCourseId(c.id)}
+            <button key={c.id} onClick={() => { setCourseId(c.id); setThreadId(null); }}
               className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-sm whitespace-nowrap border transition-all',
                 courseId === c.id ? 'text-white border-transparent shadow-lg' : 'bg-white/60 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-indigo-400/40')}
               style={courseId === c.id ? { background: courseShade(c.color, c.code) } : undefined}>
@@ -188,6 +212,8 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
               </>
             ) : (
               <>
+                {canGrade && course && <button type="button" onClick={() => setTeam(true)} className="btn-secondary text-xs py-2 flex items-center gap-1.5"><UserPlus className="w-3.5 h-3.5" /> Teaching team</button>}
+                {board?.owns && course && <button type="button" onClick={() => setCopying(true)} className="btn-secondary text-xs py-2 flex items-center gap-1.5"><Copy className="w-3.5 h-3.5" /> Copy to a new term</button>}
                 <Link href="/teacher/grades" className="btn-secondary text-xs py-2 flex items-center gap-1.5"><Star className="w-3.5 h-3.5" /> Gradebook</Link>
                 <Link href="/teacher/quizzes" className="btn-primary text-xs py-2 flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> Quizzes</Link>
               </>
@@ -216,12 +242,13 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
                 {tab === 'board' && <LatestPack board={board} onOpen={(id) => { setSessionId(id); setTab('sessions'); }} />}
                 {tab === 'board' && <Announcements board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'modules' && course && <CourseModules courseId={course.id} />}
+                {tab === 'discussion' && course && <CourseDiscussion courseId={course.id} openId={threadId} onOpen={setThreadId} />}
                 {tab === 'sessions' && <ClassSessions sessions={board.sessions ?? []} canManage={canManage} materials={board.materials} openId={sessionId} refresh={() => void mutate()} />}
                 {tab === 'materials' && <Materials board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'readings' && <Readings board={board} canManage={canManage} refresh={mutate} />}
-                {tab === 'grades' && (canManage ? <Roster board={board} /> : <MyGrades board={board} />)}
-                {tab === 'quizzes' && (canManage ? <TeacherQuizzes board={board} refresh={mutate} /> : <MyQuizzes board={board} />)}
-                {tab === 'calendar' && <Events board={board} canManage={canManage} refresh={mutate} />}
+                {tab === 'grades' && (canGrade ? <><CourseEnrolment courseId={board.course.id} onChanged={() => void mutate()} /><Roster board={board} /></> : <MyGrades board={board} />)}
+                {tab === 'quizzes' && (canGrade ? <TeacherQuizzes board={board} refresh={mutate} readOnly={!canManage} /> : <MyQuizzes board={board} />)}
+                {tab === 'calendar' && <Events board={board} canManage={canManage} refresh={mutate} side={role} />}
                 {tab === 'projects' && canManage && course && <CourseGroupProjects courseId={course.id} />}
                 {tab === 'orals' && course && <CourseOralChecks courseId={course.id} />}
                 {tab === 'whiteboard' && (
@@ -320,7 +347,8 @@ type SectionProps = { board: Board; canManage: boolean; refresh: KeyedMutator<Bo
 const LIST_OF = { announcement: 'announcements', material: 'materials', reading: 'readings', event: 'events' } as const;
 
 /** Removes an item at once and offers Undo for a few seconds; the server delete happens only if it isn't undone. */
-function useRemove(courseId: string, refresh: KeyedMutator<Board>) {
+/** `also`: anything else showing the item to bring up to date (e.g. the course calendar). */
+function useRemove(courseId: string, refresh: KeyedMutator<Board>, also?: () => void) {
   return (kind: keyof typeof LIST_OF, itemId: string, label: string) => {
     const list = LIST_OF[kind];
     let settled = false;
@@ -335,10 +363,11 @@ function useRemove(courseId: string, refresh: KeyedMutator<Board>) {
         toast.error((e as Error).message || 'Could not remove it');
         refresh();
       }
+      also?.();
     };
     toast(`Removed “${label}”`, {
       duration: 5000,
-      action: { label: 'Undo', onClick: () => { settled = true; refresh(); } },
+      action: { label: 'Undo', onClick: () => { settled = true; refresh(); also?.(); } },
       onAutoClose: commit,
       onDismiss: commit,
     });
@@ -392,28 +421,72 @@ function RemoveBtn({ onClick }: { onClick: () => void }) {
 // ─── Announcements ─────────────────────────────────────────────────────────
 
 function Announcements({ board, canManage, refresh }: SectionProps) {
-  const [form, setForm] = useState<{ title: string; body: string } | null>(null);
+  const [form, setForm] = useState<{ title: string; body: string; later: boolean; at: string } | null>(null);
   const { post, busy } = usePost(board.course.id, refresh);
   const remove = useRemove(board.course.id, refresh);
+  const courseId = board.course.id;
+  // "Seen by 28 of 32": a student opening the board marks the announcements on it as seen.
+  const shown = canManage ? '' : board.announcements.map((a) => a.id).join(',');
+  useEffect(() => {
+    if (!shown) return;
+    void authedJson(`/api/courses/${courseId}/announcements/seen`, { method: 'POST', body: JSON.stringify({ ids: shown.split(',') }) }).catch(() => {});
+  }, [courseId, shown]);
+  const students = board.course._count.enrollments;
+  const send = async () => {
+    if (!form) return;
+    const publishAt = form.later && form.at ? new Date(form.at).toISOString() : undefined;
+    if (form.later && !publishAt) return void toast.error('Choose when to send it.');
+    if (await post({ kind: 'announcement', title: form.title, body: form.body, publishAt }, publishAt ? `Scheduled for ${when(publishAt)}` : 'Announcement posted')) setForm(null);
+  };
   return (
     <>
-      <SectionHead icon={Bell} title="Announcements" count={board.announcements.length} action={canManage && !form && <AddButton label="Post" onClick={() => setForm({ title: '', body: '' })} />} />
+      <SectionHead icon={Bell} title="Announcements" count={board.announcements.length} action={canManage && !form && <AddButton label="Post" onClick={() => setForm({ title: '', body: '', later: false, at: '' })} />} />
       {form && (
         <FormShell title="New announcement — enrolled students get a notification" onClose={() => setForm(null)}>
-          <input className="input" placeholder="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <textarea className={`input min-h-[100px]`} placeholder="What do students need to know?" maxLength={5000} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
-          <button disabled={busy || !form.title.trim() || !form.body.trim()} onClick={async () => (await post({ kind: 'announcement', ...form }, 'Announcement posted')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Post announcement</button>
+          <input className="input" placeholder="Title" aria-label="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <textarea className={`input min-h-[100px]`} placeholder="What do students need to know?" aria-label="Announcement" maxLength={5000} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+          <fieldset className="space-y-2">
+            <legend className="sr-only">When to send</legend>
+            <div className="flex gap-4 flex-wrap text-sm text-zinc-800 dark:text-zinc-200">
+              <label className="flex items-center gap-2"><input type="radio" name="ann-when" checked={!form.later} onChange={() => setForm({ ...form, later: false })} /> Send now</label>
+              <label className="flex items-center gap-2"><input type="radio" name="ann-when" checked={form.later} onChange={() => setForm({ ...form, later: true })} /> Send later</label>
+            </div>
+            {form.later && (
+              <label className="block text-sm text-zinc-700 dark:text-zinc-300">
+                <span className="label">Date and time (your time zone)</span>
+                <input type="datetime-local" className="input" value={form.at} onChange={(e) => setForm({ ...form, at: e.target.value })} />
+              </label>
+            )}
+          </fieldset>
+          <button disabled={busy || !form.title.trim() || !form.body.trim()} onClick={() => void send()} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} {form.later ? 'Schedule announcement' : 'Post announcement'}</button>
         </FormShell>
       )}
       {board.announcements.length === 0 && !form ? <Empty text={canManage ? 'No announcements yet. Post a welcome message to get your class started.' : 'No announcements yet. Your instructor’s updates will appear here.'} /> : (
         <div className="space-y-3">
-          {board.announcements.map((a) => (
-            <div key={a.id} className={`panel p-5`}>
-              <TranslatableAnnouncement levels id={a.id} title={a.title} body={a.body} titleAs="h4" titleClassName="font-bold text-zinc-900 dark:text-white" bodyClassName="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mt-2 whitespace-pre-line"
-                aside={<div className="flex items-center gap-1 shrink-0"><span className="text-xs text-zinc-400">{when(a.createdAt)}</span>{canManage && <RemoveBtn onClick={() => remove('announcement', a.id, a.title)} />}</div>} />
-              <p className="text-xs text-zinc-400 mt-3">Posted by <span className="text-indigo-500 font-medium">{a.author.name}</span></p>
-            </div>
-          ))}
+          {board.announcements.map((a) => {
+            const waiting = !!a.publishAt && !a.sentAt;
+            return (
+              <div key={a.id} className={cn('panel p-5', a.pinnedAt && 'ring-1 ring-amber-400/50')}>
+                {(a.pinnedAt || waiting) && (
+                  <div className="flex gap-2 flex-wrap mb-2">
+                    {a.pinnedAt && <span className="text-[11px] font-semibold inline-flex items-center gap-1 text-amber-700 dark:text-amber-400"><Pin className="w-3 h-3" /> Pinned</span>}
+                    {waiting && <span className="text-[11px] font-semibold inline-flex items-center gap-1 text-sky-700 dark:text-sky-300"><Clock className="w-3 h-3" /> Scheduled for {when(a.publishAt!)}: students can’t see it yet</span>}
+                  </div>
+                )}
+                <TranslatableAnnouncement levels id={a.id} title={a.title} body={a.body} titleAs="h4" titleClassName="font-bold text-zinc-900 dark:text-white" bodyClassName="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mt-2 whitespace-pre-line"
+                  aside={<div className="flex items-center gap-1 shrink-0"><span className="text-xs text-zinc-500 dark:text-zinc-400">{when(a.publishAt ?? a.createdAt)}</span>{canManage && (
+                    <>
+                      <button type="button" onClick={() => void post({ kind: 'pin', id: a.id, on: !a.pinnedAt }, a.pinnedAt ? 'Unpinned' : 'Pinned to the top')} aria-label={a.pinnedAt ? 'Unpin' : 'Pin to the top'} aria-pressed={!!a.pinnedAt} className={cn('p-1.5 rounded-lg shrink-0', a.pinnedAt ? 'text-amber-600' : 'text-zinc-500 hover:text-amber-600 hover:bg-amber-500/10')}><Pin className="w-4 h-4" /></button>
+                      <RemoveBtn onClick={() => remove('announcement', a.id, a.title)} />
+                    </>
+                  )}</div>} />
+                <div className="flex items-center justify-between gap-2 flex-wrap mt-3">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Posted by <span className="text-indigo-600 dark:text-indigo-400 font-medium">{a.author.name}</span></p>
+                  {canManage && !waiting && a._count && <p className="text-xs text-zinc-600 dark:text-zinc-400 inline-flex items-center gap-1"><Eye className="w-3.5 h-3.5" /> Seen by {a._count.reads} of {students}</p>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </>
@@ -605,12 +678,12 @@ function MyQuizzes({ board }: { board: Board }) {
   );
 }
 
-function TeacherQuizzes({ board, refresh }: { board: Board; refresh: () => void }) {
+function TeacherQuizzes({ board, refresh, readOnly }: { board: Board; refresh: () => void; readOnly?: boolean }) {
   const quizzes = board.quizzes ?? [];
   const [managing, setManaging] = useState<string | null>(null);
   return (
     <>
-      <SectionHead icon={CheckCircle2} title="Quizzes" count={quizzes.length} action={<Link href="/teacher/quizzes" className="text-xs font-semibold text-indigo-500 hover:underline">Create a quiz →</Link>} />
+      <SectionHead icon={CheckCircle2} title="Quizzes" count={quizzes.length} action={!readOnly && <Link href="/teacher/quizzes" className="text-xs font-semibold text-indigo-500 hover:underline">Create a quiz →</Link>} />
       {quizzes.length === 0 ? <Empty text="No quizzes for this course yet. Create one on the Quizzes page, add questions, then publish it." /> : (
         <div className="space-y-2">
           {quizzes.map((q) => (
@@ -619,7 +692,7 @@ function TeacherQuizzes({ board, refresh }: { board: Board; refresh: () => void 
                 <p className="font-medium text-sm text-zinc-900 dark:text-white truncate">{q.title}</p>
                 <p className="text-xs text-zinc-500">{q.status === 'PUBLISHED' ? 'Published' : q.status === 'CLOSED' ? 'Closed' : 'Draft'} · {q._count.questions} questions · {q._count.submissions} submissions{q.dueDate ? ` · due ${day(q.dueDate)}` : ''}</p>
               </div>
-              <button onClick={() => setManaging(q.id)} className="btn-secondary text-xs py-1.5 px-3">Manage</button>
+              {!readOnly && <button onClick={() => setManaging(q.id)} className="btn-secondary text-xs py-1.5 px-3">Manage</button>}
             </div>
           ))}
         </div>
@@ -633,57 +706,27 @@ function TeacherQuizzes({ board, refresh }: { board: Board; refresh: () => void 
 
 const EVENT_TYPES: Record<string, string> = { MEETING: 'Session', EXAM: 'Exam', DEADLINE: 'Deadline' };
 
-function icsFor(board: Board) {
-  const stamp = (d: string) => new Date(d).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  const esc = (s: string) => s.replace(/[\\;,]/g, (m) => `\\${m}`).replace(/\n/g, '\\n');
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//UniVerse//Course Calendar//EN', 'CALSCALE:GREGORIAN'];
-  for (const e of board.events) {
-    lines.push('BEGIN:VEVENT', `UID:${e.id}@universe`, `DTSTAMP:${stamp(new Date().toISOString())}`, `DTSTART:${stamp(e.startAt)}`, `DTEND:${stamp(e.endAt)}`,
-      `SUMMARY:${esc(`${board.course.code}: ${e.title}`)}`, ...(e.description ? [`DESCRIPTION:${esc(e.description)}`] : []), 'END:VEVENT');
-  }
-  lines.push('END:VCALENDAR');
-  return lines.join('\r\n');
-}
-
-function Events({ board, canManage, refresh }: SectionProps) {
+function Events({ board, canManage, refresh, side }: SectionProps & { side: 'student' | 'teacher' }) {
   const [form, setForm] = useState<{ title: string; startAt: string; durationMinutes: number; type: string; description: string } | null>(null);
-  const { post, busy } = usePost(board.course.id, refresh);
-  const remove = useRemove(board.course.id, refresh);
+  const calKey = courseCalendarKey(board.course.id);
+  const { post, busy } = usePost(board.course.id, () => { void refresh(); void refreshKey(calKey); });
+  const remove = useRemove(board.course.id, refresh, () => void refreshKey(calKey));
   return (
     <>
-      <SectionHead icon={Calendar} title="Upcoming" count={board.events.length} action={
-        <div className="flex gap-2">
-          {board.events.length > 0 && <button onClick={() => downloadIcs(icsFor(board), `${board.course.code}-calendar.ics`)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/10 text-zinc-700 dark:text-zinc-200 text-xs font-bold"><Download className="w-3.5 h-3.5" /> Add to my calendar</button>}
-          {canManage && !form && <AddButton label="Add event" onClick={() => setForm({ title: '', startAt: '', durationMinutes: 60, type: 'MEETING', description: '' })} />}
-        </div>
-      } />
+      <SectionHead icon={Calendar} title="Course calendar" action={canManage && !form && <AddButton label="Add event" onClick={() => setForm({ title: '', startAt: '', durationMinutes: 60, type: 'MEETING', description: '' })} />} />
       {form && (
         <FormShell title="Schedule a session, exam or deadline" onClose={() => setForm(null)}>
-          <input className="input" placeholder="Title, e.g. Midterm exam" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <input className="input" placeholder="Title, e.g. Midterm exam" aria-label="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <div className="grid sm:grid-cols-3 gap-3">
             <input aria-label="Date and time" className="input" type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />
             <select aria-label="Duration minutes" className="input" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })}>{[30, 60, 90, 120, 180].map((m) => <option key={m} value={m}>{m} min</option>)}</select>
             <select aria-label="Type" className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{Object.entries(EVENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
           </div>
-          <input className="input" placeholder="Room or notes (optional)" maxLength={1000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <input className="input" placeholder="Room or notes (optional)" aria-label="Room or notes" maxLength={1000} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <button disabled={busy || !form.title.trim() || !form.startAt} onClick={async () => (await post({ kind: 'event', ...form, startAt: new Date(form.startAt).toISOString() }, 'Added to the course calendar')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add event</button>
         </FormShell>
       )}
-      {board.events.length === 0 && !form ? <Empty text={canManage ? 'Nothing scheduled. Add exams, deadlines or extra sessions so students can plan ahead.' : 'Nothing scheduled yet. Exams, deadlines and sessions for this course will appear here.'} /> : (
-        <div className="grid sm:grid-cols-2 gap-3">
-          {board.events.map((e) => (
-            <div key={e.id} className={`panel p-4 flex items-start gap-3`}>
-              <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white', e.type === 'EXAM' ? 'bg-rose-500' : e.type === 'DEADLINE' ? 'bg-amber-500' : 'bg-indigo-500')}><Calendar className="w-5 h-5" /></div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm text-zinc-900 dark:text-white">{e.title}</p>
-                <p className="text-xs text-zinc-500">{when(e.startAt)} · {EVENT_TYPES[e.type] ?? 'Event'}</p>
-                {e.description && <p className="text-xs text-zinc-500 mt-1">{e.description}</p>}
-              </div>
-              {canManage && <RemoveBtn onClick={() => remove('event', e.id, e.title)} />}
-            </div>
-          ))}
-        </div>
-      )}
+      <CourseCalendar courseId={board.course.id} side={side} onRemoveEvent={canManage ? (id, title) => remove('event', id, title) : undefined} />
     </>
   );
 }

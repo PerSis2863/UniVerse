@@ -3,7 +3,8 @@ import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, NotFoundException, ForbiddenException } from './http';
 import { recordXApiStatement } from './analytics-warehouse';
-import { bandOf, masteryOf } from '@/lib/mastery';
+import { bandOf } from '@/lib/mastery';
+import { conceptMasteryOf } from './learning-dna';
 
 // Stage 5 · D5: Peer Tutoring Time-Bank
 // Students offer help in subjects they have mastered (verified via D1 Learning DNA);
@@ -113,83 +114,44 @@ export async function getTimeBankLedger(userId: string) {
   };
 }
 
+/** At most this many classes are looked at (each costs a few queries; Workers Free allows 50 per request). */
+const MASTERY_COURSES = 4;
+
 /**
- * Detects subjects and concepts mastered by a student from their D1 Learning DNA and course grades.
+ * The concepts a student has mastered, from their D1 Learning DNA: what their teachers have seen in
+ * quizzes, rubrics and practice (src/server/learning-dna.ts). Only these are "verified" on a tutor's
+ * profile. Classes without concepts give nothing to verify.
  */
 export async function detectStudentMasteredSubjects(userId: string): Promise<PeerTutorSubject[]> {
   const enrollments = await prisma.enrollment.findMany({
-    where: { studentId: userId },
-    include: {
-      course: {
-        select: {
-          id: true,
-          name: true,
-          code: true,
-          skills: true,
-          concepts: {
-            select: { id: true, name: true, description: true, parentId: true },
-          },
-        },
-      },
-    },
+    where: { studentId: userId, course: { concepts: { some: {} } } },
+    orderBy: { enrolledAt: 'desc' },
+    take: MASTERY_COURSES,
+    select: { course: { select: { id: true, name: true, code: true } } },
   });
+  const perCourse = await Promise.all(enrollments.map(async ({ course }) => ({ course, concepts: await conceptMasteryOf(course.id, userId) })));
+  return perCourse.flatMap(({ course, concepts }) =>
+    concepts
+      .filter((c) => bandOf(c.mastery) === 'mastered')
+      .map((c) => ({ courseId: course.id, courseName: course.name, courseCode: course.code, conceptName: c.name, masteryLevel: c.mastery.level, band: 'mastered' as const, verifiedByD1: true })),
+  );
+}
 
-  const masteredSubjects: PeerTutorSubject[] = [];
-
-  for (const enr of enrollments) {
-    const course = enr.course;
-    if (!course) continue;
-
-    // Check course concept masteries
-    if (course.concepts && course.concepts.length > 0) {
-      // Find quiz submissions for this student in this course
-      const quizSubmissions = await prisma.quizSubmission.findMany({
-        where: {
-          studentId: userId,
-          quiz: { courseId: course.id },
-        },
-        select: { score: true, maxScore: true },
-      });
-
-      const avgQuizRatio =
-        quizSubmissions.length > 0
-          ? quizSubmissions.reduce((acc, q) => acc + (q.maxScore > 0 ? q.score / q.maxScore : 0), 0) /
-            quizSubmissions.length
-          : 0;
-
-      for (const concept of course.concepts) {
-        // Concept level is estimated from quiz outcomes or default high achievement
-        const obs = avgQuizRatio > 0 ? [{ at: Date.now(), outcome: avgQuizRatio }] : [];
-        const mastery = masteryOf(obs);
-        const band = bandOf(mastery);
-
-        if (band === 'mastered' || avgQuizRatio >= 0.8) {
-          masteredSubjects.push({
-            courseId: course.id,
-            courseName: course.name,
-            courseCode: course.code,
-            conceptName: concept.name,
-            masteryLevel: avgQuizRatio > 0 ? Math.round(avgQuizRatio * 100) / 100 : 0.85,
-            band: 'mastered',
-            verifiedByD1: true,
-          });
-        }
-      }
-    } else {
-      // If no fine-grained concepts exist, check if student passed with >= 80% on assignments/quizzes
-      masteredSubjects.push({
-        courseId: course.id,
-        courseName: course.name,
-        courseCode: course.code,
-        conceptName: 'Core Curriculum',
-        masteryLevel: 0.85,
-        band: 'mastered',
-        verifiedByD1: true,
-      });
-    }
-  }
-
-  return masteredSubjects;
+/** A tutor's subjects from a request: cleaned, and "verified" only where the mastery check agrees. */
+async function cleanSubjects(userId: string, raw: unknown): Promise<PeerTutorSubject[] | undefined> {
+  if (!Array.isArray(raw)) return undefined;
+  const cut = (v: unknown, n: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : undefined);
+  const subjects = raw.slice(0, 20).flatMap((x): PeerTutorSubject[] => {
+    const o = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>;
+    const courseName = cut(o.courseName, 120);
+    return courseName ? [{ courseName, courseId: cut(o.courseId, 40), courseCode: cut(o.courseCode, 30), conceptName: cut(o.conceptName, 120), verifiedByD1: o.verifiedByD1 === true }] : [];
+  });
+  if (!subjects.some((x) => x.verifiedByD1)) return subjects.map(({ verifiedByD1: _, ...x }) => x);
+  const mastered = await detectStudentMasteredSubjects(userId);
+  return subjects.map(({ verifiedByD1, ...x }) => {
+    const m = verifiedByD1 ? mastered.find((y) => y.courseId === x.courseId && y.conceptName === x.conceptName) : undefined;
+    return m ? { ...x, courseName: m.courseName, courseCode: m.courseCode, masteryLevel: m.masteryLevel, band: m.band, verifiedByD1: true } : x;
+  });
 }
 
 /**
@@ -238,7 +200,17 @@ export async function getTutorProfile(userId: string) {
 /**
  * Creates or updates a student's peer tutor profile and subject offerings.
  */
-export async function upsertTutorProfile(userId: string, input: UpsertTutorProfileInput) {
+export async function upsertTutorProfile(userId: string, body: Record<string, unknown>, organizationId: string | null = null) {
+  // The request is untrusted: lengths are capped, "verified" is decided here, and the school is the person's own.
+  const subjects = await cleanSubjects(userId, body.subjects);
+  const cut = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : undefined);
+  const input: UpsertTutorProfileInput = {
+    headline: cut(body.headline, 120),
+    bio: cut(body.bio, 1000),
+    isActive: typeof body.isActive === 'boolean' ? body.isActive : undefined,
+    subjects,
+    organizationId: organizationId ?? undefined,
+  };
   const subjectsJson = input.subjects ? JSON.stringify(input.subjects) : undefined;
 
   const profile = await prisma.peerTutorProfile.upsert({
@@ -285,8 +257,8 @@ export async function listPeerTutors(filters: {
   page?: number;
   limit?: number;
 }) {
-  const page = Math.max(1, filters.page ?? 1);
-  const limit = Math.min(50, Math.max(1, filters.limit ?? 20));
+  const page = Math.max(1, Math.floor(Number.isFinite(filters.page) ? filters.page! : 1));
+  const limit = Math.min(50, Math.max(1, Math.floor(Number.isFinite(filters.limit) ? filters.limit! : 20)));
   const skip = (page - 1) * limit;
 
   const profiles = await prisma.peerTutorProfile.findMany({
@@ -304,7 +276,7 @@ export async function listPeerTutors(filters: {
         : {}),
     },
     include: {
-      user: { select: { id: true, name: true, email: true, avatar: true } },
+      user: { select: { id: true, name: true, avatar: true } },
     },
     orderBy: { updatedAt: 'desc' },
     skip,
@@ -318,9 +290,28 @@ export async function listPeerTutors(filters: {
     },
   });
 
-  // Enrich with subjects and time bank stats
-  const enriched = await Promise.all(
-    profiles.map(async (p) => {
+  // Every tutor's stats and next free slot in two queries (not two per tutor).
+  const ids = profiles.map((p) => p.userId);
+  const [accounts, firstSlots] = ids.length
+    ? await Promise.all([
+        prisma.peerTimeBankAccount.findMany({
+          where: { userId: { in: ids } },
+          select: { userId: true, averageRating: true, ratingsCount: true, sessionsCompletedAsTutor: true, totalMinutesTutored: true },
+        }),
+        // Each tutor's first free slot, in the order Prisma sorts (no date first, then by date and time).
+        prisma.$queryRawUnsafe<{ id: string; tutorId: string; dayOfWeek: number | null; startTime: string; endTime: string; date: string | null; isBooked: unknown; createdAt: unknown }[]>(
+          `SELECT "id", "tutorId", "dayOfWeek", "startTime", "endTime", "date", "isBooked", "createdAt" FROM (
+             SELECT *, ROW_NUMBER() OVER (PARTITION BY "tutorId" ORDER BY "date" ASC, "startTime" ASC) AS "n"
+             FROM "peer_tutor_slots" WHERE "isBooked" = 0 AND "tutorId" IN (${ids.map(() => '?').join(', ')})
+           ) WHERE "n" = 1`,
+          ...ids,
+        ),
+      ])
+    : [[], []];
+  const accountOf = new Map(accounts.map((a) => [a.userId, a]));
+  const slotOf = new Map(firstSlots.map((x) => [x.tutorId, { ...x, isBooked: false }]));
+
+  const enriched = profiles.map((p) => {
       let subjects: PeerTutorSubject[] = [];
       try {
         subjects = JSON.parse(p.subjects);
@@ -346,26 +337,11 @@ export async function listPeerTutors(filters: {
         subjects = subjects.filter((s) => s.verifiedByD1);
       }
 
-      const account = await prisma.peerTimeBankAccount.findUnique({
-        where: { userId: p.userId },
-        select: {
-          averageRating: true,
-          ratingsCount: true,
-          sessionsCompletedAsTutor: true,
-          totalMinutesTutored: true,
-        },
-      });
-
-      const nextAvailableSlot = await prisma.peerTutorSlot.findFirst({
-        where: { tutorId: p.userId, isBooked: false },
-        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
-      });
-
+      const account = accountOf.get(p.userId);
       return {
         id: p.id,
         userId: p.userId,
         name: p.user.name,
-        email: p.user.email,
         avatar: p.user.avatar,
         headline: p.headline,
         bio: p.bio,
@@ -378,10 +354,9 @@ export async function listPeerTutors(filters: {
           sessionsCompletedAsTutor: account?.sessionsCompletedAsTutor ?? 0,
           totalMinutesTutored: account?.totalMinutesTutored ?? 0,
         },
-        nextAvailableSlot,
+        nextAvailableSlot: slotOf.get(p.userId) ?? null,
       };
-    }),
-  );
+  });
 
   // If filtered by subject/d1 verification, filter out items whose matching subjects became empty
   const filtered = (filters.subject || filters.courseId || filters.onlyD1Verified)

@@ -1,5 +1,5 @@
 import prisma from '@/lib/db';
-import { courseAccess } from '@/lib/course-access';
+import { courseAccess, taughtBy } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { NotFoundException } from './http';
 
@@ -26,7 +26,7 @@ export async function mySpaces(user: SessionUser) {
   const [courses, groups] = await Promise.all([
     user.role === 'STUDENT'
       ? prisma.enrollment.findMany({ where: { studentId: user.id }, select: { course: { select: { id: true, code: true, name: true } } }, take: 100 }).then((r) => r.map((e) => e.course))
-      : prisma.course.findMany({ where: { teacherId: user.id }, select: { id: true, code: true, name: true }, take: 100 }),
+      : prisma.course.findMany({ where: taughtBy(user.id), select: { id: true, code: true, name: true }, take: 100 }),
     prisma.groupMembership.findMany({ where: { userId: user.id }, select: { group: { select: { id: true, name: true } } }, take: 100 }).then((r) => r.map((m) => m.group)),
   ]);
   return { courses, groups };

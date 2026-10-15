@@ -4,6 +4,8 @@ import { Role,  type Prisma } from '@prisma/client';
 import type { Body } from '../body';
 import { pick } from '../pick';
 import { assertCanJoinCourse, courseWhereFor, studentCampuses } from '../campus-network';
+import { taughtBy } from '@/lib/course-access';
+import { enrolOrWait, leaveCourse } from '../course-enrolment';
 
 const COURSE_FIELDS = ['code', 'name', 'description', 'credits', 'department', 'color', 'emoji'] as const satisfies readonly (keyof Prisma.CourseUncheckedCreateInput)[];
 
@@ -41,9 +43,10 @@ export class CoursesService {
     });
   }
 
+  /** Courses a teacher teaches, co-teaches or assists in (Stage 5 · B2). */
   async findForTeacher(teacherId: string) {
     return prisma.course.findMany({
-      where: { teacherId },
+      where: taughtBy(teacherId),
       include: {
         _count: { select: { enrollments: true, materials: true, quizzes: true } },
       },
@@ -128,13 +131,15 @@ export class CoursesService {
         enrollments: { include: { student: { select: { id: true, name: true, email: true, avatar: true } } } },
         materials: { orderBy: { createdAt: 'desc' } },
         quizzes: { orderBy: { createdAt: 'desc' } },
+        staff: { where: { userId: user.id }, select: { role: true }, take: 1 },
       },
     });
     if (!course) throw new NotFoundException('Course not found');
-    // Only the teacher, admins and enrolled students see the roster and materials; others get the catalogue view.
-    const insider = user.role === Role.ADMIN || course.teacherId === user.id || course.enrollments.some((e) => e.studentId === user.id);
-    if (insider) return course;
-    const { enrollments, materials, quizzes, ...info } = course;
+    // Only the teaching team, admins and enrolled students see the roster and materials; others get the catalogue view.
+    const { staff, ...full } = course;
+    const insider = user.role === Role.ADMIN || course.teacherId === user.id || staff.length > 0 || course.enrollments.some((e) => e.studentId === user.id);
+    if (insider) return full;
+    const { enrollments, materials, quizzes, ...info } = full;
     return { ...info, teacher: course.teacher && { id: course.teacher.id, name: course.teacher.name, avatar: course.teacher.avatar }, _count: { enrollments: enrollments.length, materials: materials.length } };
   }
 
@@ -150,9 +155,10 @@ export class CoursesService {
   }
 
   async update(id: string, teacherId: string, role: Role, data: Body) {
-    const course = await prisma.course.findUnique({ where: { id } });
+    const course = await prisma.course.findUnique({ where: { id }, include: { staff: { where: { userId: teacherId, role: 'CO_TEACHER' }, select: { id: true }, take: 1 } } });
     if (!course) throw new NotFoundException('Course not found');
-    if (role !== Role.ADMIN && course.teacherId !== teacherId) throw new ForbiddenException();
+    // The teacher, a co-teacher or an admin (only the teacher or an admin deletes it: remove below).
+    if (role !== Role.ADMIN && course.teacherId !== teacherId && !course.staff.length) throw new ForbiddenException();
     // Only admins may reassign a course to another teacher.
     const fields = pick<Prisma.CourseUncheckedUpdateInput>(data, role === Role.ADMIN ? [...COURSE_FIELDS, 'status', 'teacherId'] : [...COURSE_FIELDS, 'status']);
     return prisma.course.update({ where: { id }, data: fields });
@@ -169,16 +175,13 @@ export class CoursesService {
     const course = await prisma.course.findUnique({ where: { id: courseId }, select: { status: true } });
     if (!course || course.status !== 'PUBLISHED') throw new NotFoundException('Course not found');
     await assertCanJoinCourse(courseId, studentId);
-    return prisma.enrollment.upsert({
-      where: { studentId_courseId: { studentId, courseId } },
-      create: { studentId, courseId },
-      update: {},
-    });
+    // A place if there is one, else the waitlist (Stage 5 · B2, src/server/course-enrolment.ts).
+    return enrolOrWait(courseId, studentId);
   }
 
+  /** Leaving a course (or its waitlist): the next on the waitlist gets the place. */
   async unenroll(courseId: string, studentId: string) {
-    return prisma.enrollment.delete({
-      where: { studentId_courseId: { studentId, courseId } },
-    });
+    await leaveCourse(courseId, studentId);
+    return { ok: true };
   }
 }

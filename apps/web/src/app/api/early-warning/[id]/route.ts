@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { audit } from '@/server/audit';
+import { teaches } from '@/lib/course-access';
 
 const STATUSES = ['OPEN', 'CONTACTED', 'RESOLVED', 'DISMISSED'];
 
@@ -11,7 +12,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
   const { id } = await params;
   const flag = await prisma.studentRiskFlag.findUnique({ where: { id }, include: { course: { select: { teacherId: true, code: true } }, student: { select: { name: true } } } });
-  if (!flag || (user.role !== 'ADMIN' && !(user.role === 'TEACHER' && flag.course.teacherId === user.id))) {
+  if (!flag || (user.role !== 'ADMIN' && !(user.role === 'TEACHER' && (flag.course.teacherId === user.id || (await teaches(flag.courseId, user.id, ['CO_TEACHER'])))))) {
     return NextResponse.json({ error: 'Not found.' }, { status: 404 });
   }
   const b = await req.json().catch(() => ({}));

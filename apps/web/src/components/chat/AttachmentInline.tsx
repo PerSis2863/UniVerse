@@ -1,7 +1,8 @@
 'use client';
 import { FileText } from 'lucide-react';
 import { safeHref } from '@/lib/safe-href';
-import { ChatVideo, VoicePlayer } from './MessageBubble';
+import { photoSrcSet } from '@/lib/image-sizes';
+import { CHAT_PHOTO_SIZES, ChatVideo, VoicePlayer } from './MessageBubble';
 
 // A chat attachment shown where it is: voice notes and audio play on the page, videos play in
 // place, photos show; other files open as a link. (Opening a voice note in its own tab showed an
@@ -12,7 +13,7 @@ export function AttachmentInline({ url, name, mime, type, durationSec }: { url: 
     : type === 'IMAGE' || /^image\//.test(mime ?? '') ? 'image' : 'file';
   if (kind === 'audio') return <div className="rounded-xl bg-indigo-600 text-white pb-2 w-fit max-w-full"><VoicePlayer src={url} mine durationSec={durationSec} /></div>;
   if (kind === 'video') return <ChatVideo url={url} />;
-  if (kind === 'image') return <img src={url} alt={name ?? ''} loading="lazy" className="rounded-xl max-h-60 max-w-full object-cover" />;
+  if (kind === 'image') return <img src={url} {...photoSrcSet(url, CHAT_PHOTO_SIZES)} alt={name ?? ''} loading="lazy" className="rounded-xl max-h-60 max-w-full object-cover" />;
   return (
     <a href={safeHref(url)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-indigo-500 hover:text-indigo-400">
       <FileText className="w-3.5 h-3.5" />{name || 'File'}

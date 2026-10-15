@@ -14,7 +14,8 @@ export async function authedFetch(input: string, init: RequestInit = {}): Promis
   if (token) headers.set('Authorization', `Bearer ${token}`);
   const pass = twoStepPass();
   if (pass) headers.set('X-UV-Pass', pass);
-  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  // A form sets its own type (with the boundary between its parts).
+  if (init.body && !headers.has('Content-Type') && !(typeof FormData !== 'undefined' && init.body instanceof FormData)) headers.set('Content-Type', 'application/json');
   return fetchWithRetry(input, { ...init, headers });
 }
 

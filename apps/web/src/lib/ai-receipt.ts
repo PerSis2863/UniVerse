@@ -21,6 +21,8 @@ export const AI_USE_KINDS = {
   chat: 'AI in chat (/ask)',
   study: 'Practice questions and flashcards',
   oral: 'Oral practice',
+  discussion: 'Discussion answer drafts',
+  syllabus: 'Syllabus drafts',
 } as const;
 export type AiUseKind = keyof typeof AI_USE_KINDS;
 export const aiUseLabel = (k: string) => (k in AI_USE_KINDS ? AI_USE_KINDS[k as AiUseKind] : 'AI help');

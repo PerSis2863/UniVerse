@@ -1,6 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { AttachmentInline } from './AttachmentInline';
+import { photoSrcSet } from '@/lib/image-sizes';
 import { haptic } from '@/lib/haptics';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 
@@ -1023,7 +1024,7 @@ function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onCha
             <div className="grid grid-cols-3 gap-1.5 mb-3">
               {media.map((m) => (
                 <button key={m.id} onClick={() => onOpenImage(m.attachmentUrl!)} className="aspect-square rounded-lg overflow-hidden bg-zinc-100 dark:bg-white/5">
-                  <img src={m.attachmentUrl!} alt="" loading="lazy" className="w-full h-full object-cover" />
+                  <img src={m.attachmentUrl!} {...photoSrcSet(m.attachmentUrl, 128)} alt="" loading="lazy" className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>

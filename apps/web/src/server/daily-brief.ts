@@ -10,6 +10,7 @@ import { featureOff } from './moderation';
 import { upcomingCalls } from './scheduled-calls';
 import { pushService } from './services/push.service';
 import { createBoard } from './tasks';
+import { taughtBy } from '@/lib/course-access';
 
 // Daily brief (Stage 4 · 4.9). What matters today for one person, across everything: their classes
 // today, what's due in the next day and a half (work, quizzes, tasks), scheduled calls, chats
@@ -105,7 +106,7 @@ async function briefData(user: SessionUser, tz: string) {
   const { day } = wall(now, tz);
   const staff = isStaff(user.role);
   const courses = staff
-    ? await prisma.course.findMany({ where: { teacherId: user.id }, select: { id: true, code: true, name: true }, take: 60 })
+    ? await prisma.course.findMany({ where: taughtBy(user.id), select: { id: true, code: true, name: true }, take: 60 })
     : (await prisma.enrollment.findMany({ where: { studentId: user.id }, select: { course: { select: { id: true, code: true, name: true } } }, take: 60 })).map((e) => e.course);
   const ids = courses.map((c) => c.id);
   const course = new Map(courses.map((c) => [c.id, c]));

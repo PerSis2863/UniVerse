@@ -7,6 +7,7 @@ import {
 import { audit } from './audit';
 import { text, type Body } from './body';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
+import { taughtBy } from '@/lib/course-access';
 
 // Stage 5 · D15, the classroom twin (live campus map). The campus drawn as buildings on a simple map
 // (admins place them); each building's rooms, with what's on in each today from the class timetable
@@ -43,7 +44,7 @@ export async function campusMap(user: SessionUser, q: URLSearchParams) {
   const { date, min, dow } = clock(q);
   const campusId = await whichCampus(user, q.get('campus'));
   const now = Date.now();
-  const mineOnly = user.role === 'TEACHER' ? { teacherId: user.id } : user.role === 'STUDENT' ? { enrollments: { some: { studentId: user.id } } } : null;
+  const mineOnly = user.role === 'TEACHER' ? taughtBy(user.id) : user.role === 'STUDENT' ? { enrollments: { some: { studentId: user.id } } } : null;
   const [buildings, campusRows, rooms, bookings, slots, live, online, events, myCourses] = await Promise.all([
     prisma.campusBuilding.findMany({ where: { campusId }, orderBy: { name: 'asc' }, take: MAX_BUILDINGS, select: { id: true, name: true, code: true, x: true, y: true, w: true, h: true, floors: true, color: true } }),
     prisma.campusBuilding.findMany({ distinct: ['campusId'], select: { campusId: true, campus: { select: { name: true } } }, take: 50 }),
@@ -113,7 +114,7 @@ export async function campusMap(user: SessionUser, q: URLSearchParams) {
 
 /** The class I'm in (or teach) now or next, and its room. */
 async function myNextClass(user: SessionUser, dow: number, min: number) {
-  const where = user.role === 'TEACHER' ? { course: { teacherId: user.id } } : user.role === 'STUDENT' ? { course: { enrollments: { some: { studentId: user.id } } } } : null;
+  const where = user.role === 'TEACHER' ? { course: taughtBy(user.id) } : user.role === 'STUDENT' ? { course: { enrollments: { some: { studentId: user.id } } } } : null;
   if (!where) return null;
   const slots = await prisma.timetableSlot.findMany({
     where, take: 300,

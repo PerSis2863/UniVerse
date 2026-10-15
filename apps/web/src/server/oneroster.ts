@@ -1,7 +1,8 @@
 import prisma from '@/lib/db';
 import { parseCsv } from '@/lib/csv';
 import type { SessionUser } from '@/lib/server-auth';
-import { BadRequestException } from './http';
+import { BadRequestException, HttpException } from './http';
+import { verifyApiKey, type ApiScope } from './public-api';
 
 // Stage 5 · C3: OneRoster 1.2 SIS Integration (1EdTech / IMS Global Standard).
 // Enables universities and schools to sync student rosters, courses, and class enrollments
@@ -617,6 +618,7 @@ export async function getOneRosterOrgs(orgId: string | null) {
 
 export async function getOneRosterCourses(orgId: string | null, limit = 100, offset = 0) {
   const courses = await prisma.course.findMany({
+    where: orgId ? { teacher: { organizationId: orgId } } : {},
     take: Math.min(limit, 100),
     skip: offset,
     orderBy: { code: 'asc' },
@@ -638,6 +640,7 @@ export async function getOneRosterCourses(orgId: string | null, limit = 100, off
 
 export async function getOneRosterClasses(orgId: string | null, limit = 100, offset = 0) {
   const courses = await prisma.course.findMany({
+    where: orgId ? { teacher: { organizationId: orgId } } : {},
     take: Math.min(limit, 100),
     skip: offset,
     orderBy: { code: 'asc' },
@@ -693,6 +696,7 @@ export async function getOneRosterUsers(orgId: string | null, role?: string, lim
 
 export async function getOneRosterEnrollments(orgId: string | null, limit = 100, offset = 0) {
   const enrollments = await prisma.enrollment.findMany({
+    where: orgId ? { student: { organizationId: orgId } } : {},
     take: Math.min(limit, 100),
     skip: offset,
     orderBy: { enrolledAt: 'desc' },
@@ -711,4 +715,29 @@ export async function getOneRosterEnrollments(orgId: string | null, limit = 100,
       primary: true,
     })),
   };
+}
+
+/**
+ * Answers a OneRoster read (GET /api/oneroster/v1p2/*). Every one needs a school's API key (Admin →
+ * Integrations → Developer, "Bearer uv_live_…") with `scope`, and gives that school's data only.
+ * They used to answer anyone, so anybody could list every account's name, email and role.
+ */
+export async function oneRosterGet(
+  req: Request,
+  scope: ApiScope,
+  read: (org: string | null, page: { limit: number; offset: number }, url: URL) => Promise<unknown>,
+): Promise<Response> {
+  try {
+    const auth = await verifyApiKey(req.headers.get('authorization'), scope);
+    const url = new URL(req.url);
+    const whole = (key: string, fallback: number, max: number) => {
+      const v = Math.floor(Number(url.searchParams.get(key) ?? fallback));
+      return Number.isFinite(v) && v >= 0 ? Math.min(v, max) : fallback;
+    };
+    const data = await read(auth.organization?.id ?? null, { limit: Math.max(1, whole('limit', 100, 100)), offset: whole('offset', 0, 1_000_000) }, url);
+    return Response.json(data, { headers: { 'Cache-Control': 'private, no-store' } });
+  } catch (e) {
+    if (e instanceof HttpException) return Response.json({ error: e.message }, { status: e.getStatus(), headers: { 'Cache-Control': 'no-store' } });
+    throw e;
+  }
 }

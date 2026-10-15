@@ -263,6 +263,13 @@ export async function masteryEvidence(courseId: string, studentId: string) {
   return (conceptId: string) => withChildren(concepts, out.get(studentId), conceptId);
 }
 
+/** One student's mastery of each concept in a course, as they see it (peer tutoring offers what's mastered). */
+export async function conceptMasteryOf(courseId: string, studentId: string) {
+  const { concepts, out } = await observations(courseId, [studentId], true);
+  const mine = out.get(studentId);
+  return concepts.map((c) => ({ id: c.id, name: c.name, mastery: masteryOf(withChildren(concepts, mine, c.id)) }));
+}
+
 /** A concept's evidence: its own and its sub-concepts' (knowing loops and recursion is evidence of control flow). */
 function withChildren(concepts: { id: string; parentId: string | null }[], mine: Map<string, Observation[]> | undefined, id: string) {
   return [...(mine?.get(id) ?? []), ...concepts.filter((c) => c.parentId === id).flatMap((c) => mine?.get(c.id) ?? [])];

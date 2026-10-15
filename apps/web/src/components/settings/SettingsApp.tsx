@@ -27,6 +27,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { aiUseLabel } from '@/lib/ai-receipt';
 import dynamic from 'next/dynamic';
 import { RecordingPrivacy } from './RecordingPrivacy';
+import { photoSrcSet } from '@/lib/image-sizes';
 
 // Sections show one at a time: their heavier parts (sign-in security, account deletion, school
 // settings, consents, family) load when their section opens.
@@ -265,7 +266,7 @@ function Profile({ role }: { role: Role }) {
       <div className="flex items-center gap-4">
         <button type="button" onClick={() => file.current?.click()} className="relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-2xl font-black flex items-center justify-center shrink-0 group" aria-label="Change photo">
           {/* eslint-disable-next-line @next/next/no-img-element -- the person's own uploaded photo */}
-          {me.avatar ? <img src={me.avatar} alt="" className="w-full h-full object-cover" /> : (me.name ?? '?').charAt(0).toUpperCase()}
+          {me.avatar ? <img src={me.avatar} {...photoSrcSet(me.avatar, 80)} alt="" className="w-full h-full object-cover" /> : (me.name ?? '?').charAt(0).toUpperCase()}
           <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">{busy === 'photo' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}</span>
         </button>
         <input ref={file} type="file" accept="image/*" className="hidden" onChange={(e) => void pickPhoto(e.target.files?.[0])} />

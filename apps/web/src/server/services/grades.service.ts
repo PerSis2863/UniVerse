@@ -26,11 +26,11 @@ export class GradesService {
     return { grades, summary, categories, assessments };
   }
 
-  /** Teachers may only see or grade their own courses; admins may see all. */
+  /** Teachers may only see or grade their own courses (with their teaching team); admins may see all. */
   private async assertCanGrade(courseId: string, user: { id: string; role: string }) {
-    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true } });
+    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true, staff: { where: { userId: user.id }, select: { role: true }, take: 1 } } });
     if (!course) throw new NotFoundException('Course not found');
-    if (user.role !== 'ADMIN' && course.teacherId !== user.id) throw new ForbiddenException('You can only manage grades for your own courses');
+    if (user.role !== 'ADMIN' && course.teacherId !== user.id && !course.staff.length) throw new ForbiddenException('You can only manage grades for your own courses');
   }
 
   async getCourseGrades(courseId: string, user: { id: string; role: string }) {

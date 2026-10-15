@@ -1,6 +1,7 @@
 'use client';
 
 import { usePrivateFileUrl } from '@/lib/private-file';
+import { photoSrcSet } from '@/lib/image-sizes';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useNow } from '@/lib/use-now';
 import { Avatar } from '@/components/ui/Avatar';
@@ -243,14 +244,14 @@ export function MessageBubble(p: Props) {
         {shown.map((x, i) => (
           <button key={x.url} type="button" onClick={() => p.onOpenImage(x.url)} className={cn('relative overflow-hidden bg-black/10', shown.length === 3 && i === 0 ? 'row-span-2 aspect-[1/2]' : 'aspect-square', i === 0 && 'rounded-tl-[14px]', i === 1 && 'rounded-tr-[14px]')}>
             {/* eslint-disable-next-line @next/next/no-img-element -- a chat photo, any size */}
-            <img src={safeHref(x.url)} alt={x.name} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
+            <img src={safeHref(x.url)} {...photoSrcSet(safeHref(x.url), shown.length === 3 && i === 0 ? 384 : 192)} alt={x.name} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
             {i === 3 && album.length > 4 && <span className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-xl font-bold">+{album.length - 4}</span>}
           </button>
         ))}
       </div>
     );
   } else if (sticker && m.attachmentUrl) {
-    content = <img src={m.attachmentUrl} alt={m.attachmentName?.replace(/\.sticker$/, '') || 'Sticker'} className="block w-32 h-32 object-contain" draggable={false} />;
+    content = <img src={m.attachmentUrl} {...photoSrcSet(m.attachmentUrl, 128)} alt={m.attachmentName?.replace(/\.sticker$/, '') || 'Sticker'} className="block w-32 h-32 object-contain" draggable={false} />;
   } else if (m.type === 'IMAGE' && m.attachmentUrl) {
     content = (
       <ChatPhoto url={m.attachmentUrl} name={m.attachmentName} size={m.attachmentSize} mine={mine} onOpen={() => p.onOpenImage(m.attachmentUrl!)} />
@@ -587,10 +588,14 @@ function ChatPhoto({ url, name, size, mine, onOpen }: { url: string; name?: stri
   }
   return (
     <button onClick={onOpen} className="block p-1">
-      <img src={url} alt={name || 'Photo'} loading="lazy" className="rounded-xl max-h-80 w-auto object-cover" />
+      {/* sizes: the widest a bubble gets (it sets the photo's natural size, so it mustn't be less). */}
+      <img src={url} {...photoSrcSet(url, CHAT_PHOTO_SIZES)} alt={name || 'Photo'} loading="lazy" className="rounded-xl max-h-80 w-auto object-cover" />
     </button>
   );
 }
+
+/** How wide a photo in a message can be: a bubble is at most 82% of the chat, and 34rem. */
+export const CHAT_PHOTO_SIZES = '(max-width: 640px) 82vw, 544px';
 
 /** A video in a chat: nothing is downloaded until play in low-data mode. */
 export function ChatVideo({ url }: { url: string }) {

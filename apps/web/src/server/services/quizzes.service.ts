@@ -7,13 +7,22 @@ import { clientIdOf, offlineTime, tellTeacher } from '../offline';
 import { publish } from '../realtime';
 import { pushService } from './push.service';
 import { shuffled } from '@/lib/seeded-shuffle';
+import { taughtBy } from '@/lib/course-access';
+import { quizMinutes } from '@/lib/assignment-policy';
+
+/** A student's extra time on timed quizzes (Stage 5 · B3.1 accommodations), as minutes for this quiz. */
+async function minutesFor(timeLimit: number | null, studentId: string) {
+  if (!timeLimit) return null;
+  const acc = await prisma.studentAccommodation.findUnique({ where: { studentId }, select: { extraDays: true, extraTimePct: true } });
+  return quizMinutes(timeLimit, acc ?? undefined);
+}
 
 export class QuizzesService {
   /** Teachers may only manage quizzes for their own courses; admins may manage any. */
   private async assertCourseOwner(courseId: string, user: { id: string; role: string }) {
-    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true } });
+    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true, staff: { where: { userId: user.id, role: 'CO_TEACHER' }, select: { id: true }, take: 1 } } });
     if (!course) throw new NotFoundException('Course not found');
-    if (user.role !== 'ADMIN' && course.teacherId !== user.id) throw new ForbiddenException('You can only manage quizzes for your own courses');
+    if (user.role !== 'ADMIN' && course.teacherId !== user.id && !course.staff.length) throw new ForbiddenException('You can only manage quizzes for your own courses');
   }
 
   private async assertQuizOwner(id: string, user: { id: string; role: string }) {
@@ -44,7 +53,7 @@ export class QuizzesService {
     // ones they're enrolled in.
     if (!user?.id) return Promise.resolve([]);
     const where: Prisma.QuizWhereInput = user.role === 'TEACHER'
-      ? { course: { teacherId: user.id } }
+      ? { course: taughtBy(user.id, ['CO_TEACHER']) }
       : { status: { not: 'DRAFT' }, course: { enrollments: { some: { studentId: user.id } } } };
     return prisma.quiz.findMany({
       where,
@@ -68,22 +77,24 @@ export class QuizzesService {
   async findOne(id: string, user?: { id?: string; role: string }) {
     const quiz = await prisma.quiz.findUnique({
       where: { id },
-      include: { questions: { orderBy: { order: 'asc' } }, course: { select: { teacherId: true } } },
+      include: { questions: { orderBy: { order: 'asc' } }, course: { select: { teacherId: true, staff: { where: { userId: user?.id ?? '', role: 'CO_TEACHER' }, select: { id: true }, take: 1 } } } },
     });
     if (!quiz || !user?.id) throw new NotFoundException('Quiz not found');
     const { course, ...rest } = quiz;
-    // The course's teacher and admins get the whole quiz, answers included.
-    if (user.role === 'ADMIN' || course.teacherId === user.id) return rest;
+    // The course's teacher, co-teachers and admins get the whole quiz, answers included.
+    if (user.role === 'ADMIN' || course.teacherId === user.id || course.staff.length) return rest;
     // Anyone else must be enrolled in the course, and drafts stay hidden. Students never receive the
     // answer key; grading happens server-side in submitQuiz.
     const enrolled = quiz.status !== 'DRAFT' && (await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId: user.id, courseId: quiz.courseId } }, select: { id: true } }));
     if (!enrolled) throw new NotFoundException('Quiz not found');
     const questions = rest.questions.map(({ correctAnswer: _hidden, ...q }) => q);
+    // Their time limit with any extra time they're allowed.
+    const timeLimit = await minutesFor(rest.timeLimit, user.id);
     // Shuffled per student (B4.3): their own order, the same again on reload. Grading compares
     // the answer text, so the order doesn't matter to it.
-    if (!quiz.shuffle) return { ...rest, questions };
+    if (!quiz.shuffle) return { ...rest, timeLimit, questions };
     const me = user.id;
-    return { ...rest, questions: shuffled(questions, `${me}:${quiz.id}`).map((q) => ({ ...q, options: Array.isArray(q.options) ? shuffled(q.options as string[], `${me}:${q.id}`) : q.options })) };
+    return { ...rest, timeLimit, questions: shuffled(questions, `${me}:${quiz.id}`).map((q) => ({ ...q, options: Array.isArray(q.options) ? shuffled(q.options as string[], `${me}:${q.id}`) : q.options })) };
   }
 
   /** Exam mode (B4.4): starts the student's clock on the server (once) and says when it ends. */
@@ -96,7 +107,8 @@ export class QuizzesService {
     if (await prisma.quizSubmission.findUnique({ where: { quizId_studentId: { quizId, studentId } }, select: { id: true } })) throw new ConflictException('You have already submitted this quiz');
     if (!quiz.examMode) return { startedAt: null, endsAt: null };
     const attempt = await prisma.quizAttempt.upsert({ where: { quizId_studentId: { quizId, studentId } }, update: {}, create: { quizId, studentId } });
-    return { startedAt: attempt.startedAt, endsAt: quiz.timeLimit ? new Date(attempt.startedAt.getTime() + quiz.timeLimit * 60_000) : null };
+    const minutes = await minutesFor(quiz.timeLimit, studentId);
+    return { startedAt: attempt.startedAt, endsAt: minutes ? new Date(attempt.startedAt.getTime() + minutes * 60_000) : null };
   }
 
   async update(id: string, updateQuizDto: UpdateQuizDto, user: { id: string; role: string }) {
@@ -210,7 +222,8 @@ export class QuizzesService {
       const seen = (integrityIn && typeof integrityIn === 'object' ? integrityIn : {}) as Record<string, unknown>;
       const count = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 ? Math.min(v as number, 999) : 0);
       const attempt = await prisma.quizAttempt.findUnique({ where: { quizId_studentId: { quizId, studentId } } });
-      const ends = attempt && quiz.timeLimit ? attempt.startedAt.getTime() + quiz.timeLimit * 60_000 : null;
+      const minutes = attempt ? await minutesFor(quiz.timeLimit, studentId) : null;
+      const ends = attempt && minutes ? attempt.startedAt.getTime() + minutes * 60_000 : null;
       const arrived = finishedAt ? finishedAt.getTime() : Date.now();
       // Two minutes' grace for slow connections and the auto-submit at zero.
       const overtimeSeconds = ends ? Math.max(0, Math.round((arrived - ends) / 1000) - 120) : 0;
@@ -240,7 +253,7 @@ export class QuizzesService {
   /** Offline quizzes finished after their due date, waiting for the teacher (upgrade 4). */
   async offlinePending(user: { id: string; role: string }) {
     return prisma.quizSubmission.findMany({
-      where: { offlineStatus: 'LATE', quiz: user.role === 'ADMIN' ? {} : { course: { teacherId: user.id } } },
+      where: { offlineStatus: 'LATE', quiz: user.role === 'ADMIN' ? {} : { course: taughtBy(user.id, ['CO_TEACHER']) } },
       select: { id: true, score: true, maxScore: true, submittedAt: true, offlineAt: true, offlineStartedAt: true, student: { select: { id: true, name: true } }, quiz: { select: { id: true, title: true, dueDate: true, course: { select: { code: true } } } } },
       orderBy: { submittedAt: 'desc' },
       take: 100,

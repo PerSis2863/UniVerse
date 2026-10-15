@@ -1602,7 +1602,71 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/courses\/([^/]+)\/question-bank$/, () => ok({ questions: [], difficulties: ['EASY', 'MEDIUM', 'HARD'] })],
   // Gradebook categories (Stage 5 · B3.4): none in the sample, so finals are plain averages.
   [/^\/api\/courses\/([^/]+)\/grade-categories$/, () => ok({ categories: [], assessments: [] })],
+  // Course calendar (Stage 5 · B2): the sample course's events.
+  [/^\/api\/courses\/([^/]+)\/calendar$/, ({ db: d, m }) => {
+    const c = course(d, m[1]);
+    if (!c) return fail('Course not found.', 404);
+    const events = ((d.board[c.id]?.events ?? []) as { id: string; title: string; startAt: string; endAt: string; type: string }[]);
+    return ok({ course: { id: c.id, code: c.code, name: c.name }, canManage: false, weekly: [], items: events.map((e) => ({ id: e.id, kind: 'event', title: e.title, at: e.startAt, endAt: e.endAt, note: e.type === 'EXAM' ? 'Exam' : 'Event', href: null })) });
+  }],
+  // Class list (Stage 5 · B2): no limit, requests or sections in the sample.
+  [/^\/api\/courses\/([^/]+)\/enrolment$/, ({ db: d, m }) => {
+    const c = course(d, m[1]);
+    if (!c) return fail('Course not found.', 404);
+    return ok({ canManage: false, capacity: null, students: [], requests: [], waitlist: [], sections: [] });
+  }],
+  // Teaching team (Stage 5 · B2): just the teacher in the sample.
+  [/^\/api\/courses\/([^/]+)\/staff$/, ({ db: d, m }) => {
+    const c = course(d, m[1]);
+    if (!c) return fail('Course not found.', 404);
+    return ok({ canEdit: d.teacherView && c.teacher.id === d.me.id, teacher: { id: c.teacher.id, name: c.teacher.name, email: 'teacher@sample.edu', avatar: null }, staff: [] });
+  }],
+  // Discussion board (Stage 5 · B2): one answered question to look at.
+  [/^\/api\/courses\/([^/]+)\/discussion$/, ({ db: d, m }) => {
+    const c = course(d, m[1]);
+    if (!c) return fail('Course not found.', 404);
+    const canManage = d.teacherView && c.teacher.id === d.me.id;
+    const at = new Date(Date.now() - 3 * 3600_000).toISOString();
+    return ok({ course: { id: c.id, code: c.code, name: c.name }, canManage, threads: [
+      { id: 'sample-thread', kind: 'QUESTION', title: 'When do we use a while loop instead of a for loop?', excerpt: 'I get the syntax but not when to pick which one.', pinned: false, locked: false, answered: true, endorsed: true, votes: 4, replies: 2, voted: false, author: { id: null, name: 'Anonymous classmate', avatar: null, staff: false, mine: false, anonymous: true }, createdAt: at, lastActivityAt: at },
+    ] });
+  }],
+  [/^\/api\/courses\/([^/]+)\/discussion\/([^/]+)$/, ({ db: d, m }) => {
+    const c = course(d, m[1]);
+    if (!c) return fail('Course not found.', 404);
+    const canManage = d.teacherView && c.teacher.id === d.me.id;
+    const at = new Date(Date.now() - 3 * 3600_000).toISOString();
+    const teacher = { id: c.teacher.id, name: c.teacher.name, avatar: null, staff: true, mine: false, anonymous: false };
+    return ok({ course: { id: c.id, code: c.code, name: c.name }, canManage,
+      thread: { id: m[2], kind: 'QUESTION', title: 'When do we use a while loop instead of a for loop?', body: 'I get the syntax but not when to pick which one.', pinned: false, locked: false, answered: true, votes: 4, voted: false, editedAt: null, createdAt: at, author: { id: null, name: 'Anonymous classmate', avatar: null, staff: false, mine: false, anonymous: true }, canEdit: false, canDelete: false, canAccept: false, canReply: true },
+      replies: [
+        { id: 'sample-reply-1', body: 'Use a for loop when you know how many times to repeat (each item in a list). Use a while loop when you repeat until something happens, like until the user types "quit".', votes: 6, voted: false, endorsed: true, accepted: true, editedAt: null, createdAt: at, author: teacher, canEdit: false, canDelete: false },
+        { id: 'sample-reply-2', body: 'This helped me: a for loop counts, a while loop waits.', votes: 2, voted: false, endorsed: false, accepted: false, editedAt: null, createdAt: at, author: { id: 'sample-student', name: 'Priya Sharma', avatar: null, staff: false, mine: false, anonymous: false }, canEdit: false, canDelete: false },
+      ] });
+  }],
   // Course modules (Stage 5 · B2): three units made from the course's sample materials and quiz.
+  // Common Cartridge export (Stage 5 · B2): the sample course's modules, so the download works.
+  [/^\/api\/courses\/([^/]+)\/cartridge$/, ({ db: d, m }) => {
+    const c = course(d, m[1]);
+    if (!c) return fail('Course not found.', 404);
+    return ok({ course: { code: c.code, name: c.name, description: null }, modules: [
+      { title: 'Getting started', summary: null, items: [{ id: 'sm-i1', kind: 'PAGE', title: 'Welcome and course plan', body: `Welcome to ${c.name}!\n\nEach week has a module: read the slides, try the practice, then take the short quiz.`, rich: false }] },
+      { title: 'Week 2', summary: null, items: [{ id: 'sm-i5', kind: 'VIDEO', title: 'Lecture recording', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }] },
+    ] });
+  }],
+  // A rich lesson page (Stage 5 · B2): a callout, a video with chapters, a quick check and flashcards.
+  [/^\/api\/courses\/([^/]+)\/modules\/([^/]+)$/, ({ m }) => {
+    if (m[2] !== 'sm-i8') return fail('That page isn’t there any more.', 404);
+    const p = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+    return ok({ id: 'sm-i8', title: 'How to study each week', body: JSON.stringify({ type: 'doc', content: [
+      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Three steps a week' }] },
+      p('Watch the short lecture, try the practice question, then go over the key words.'),
+      { type: 'callout', attrs: { tone: 'tip' }, content: [p('Little and often works best: twenty minutes a day beats three hours on Sunday.')] },
+      { type: 'embed', attrs: { kind: 'youtube', src: 'dQw4w9WgXcQ', title: 'This week’s lecture', chapters: '0:00 Welcome\n0:43 What we cover\n1:55 How to practise' } },
+      { type: 'quickCheck', attrs: { question: 'Which way of studying helps you remember more?', options: ['Reading the notes again', 'Testing yourself without looking', 'Highlighting'], answer: 1, explain: 'Pulling an answer out of memory makes it stick (it’s called retrieval practice).' } },
+      { type: 'flashcards', attrs: { title: 'Key words', cards: [{ front: 'Retrieval practice', back: 'Testing yourself to remember something' }, { front: 'Spacing', back: 'Studying a little at a time, over days' }, { front: 'Interleaving', back: 'Mixing different kinds of problems' }] } },
+    ] }) });
+  }],
   [/^\/api\/courses\/([^/]+)\/modules$/, ({ db: d, m }) => {
     const c = course(d, m[1]);
     if (!c) return fail('Course not found.', 404);
@@ -1615,6 +1679,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     const mods = [
       { id: 'sm-1', title: 'Getting started', summary: 'How the course works and what you need.', items: [
         item('sm-i1', 'PAGE', 'Welcome and course plan', { body: `Welcome to ${c.name}!\n\nEach week has a module: read the slides, try the practice, then take the short quiz.` }),
+        item('sm-i8', 'PAGE', 'How to study each week', { rich: true }),
         ...(mats[0] ? [item('sm-i2', 'FILE', mats[0].title, { refId: mats[0].id, href: mats[0].fileUrl, meta: mats[0].type })] : []),
       ] },
       { id: 'sm-2', title: 'Week 2', summary: null, items: [
@@ -2330,6 +2395,22 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/student\/guardian-accounts$/, () => { notice(); return ok({ links: [], code: null }); }],
   ['POST', /^\/api\/admin\/report-cards$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/question-bank$/, () => { notice(); return ok({ questions: [], imported: 0, added: 0 }); }],
+  ['POST', /^\/api\/courses\/([^/]+)\/staff$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/api\/courses\/([^/]+)\/enrolment$/, () => { notice(); return ok({ ok: true }); }],
+  // Syllabus draft: a small example plan; adding it only shows that it isn't saved.
+  ['POST', /^\/api\/courses\/([^/]+)\/syllabus\/draft$/, () => ok({ aiLeft: null, draft: { outcomes: ['Write programs that use loops and conditions', 'Explain how a program runs step by step'], skills: ['Programming', 'Debugging', 'Problem solving'], modules: [{ title: 'Getting started', summary: 'What programs are and how to run one.', topics: ['Your first program', 'Variables'] }, { title: 'Making decisions', summary: 'Programs that choose what to do.', topics: ['If statements', 'Boolean logic'] }] } })],
+  ['POST', /^\/api\/courses\/([^/]+)\/syllabus$/, () => { notice(); return ok({ modules: 0, items: 0, skills: false }); }],
+  // The discussion board: an example thread to look at; posting only shows that it isn't saved.
+  ['POST', /^\/api\/courses\/([^/]+)\/discussion(\/[^/]+(\/suggest)?)?$/, () => { notice(); return ok({ ok: true }); }],
+  // Assignment rules (Stage 5 · B3.1): extensions, another try and extra time aren't saved.
+  ['POST', /^\/api\/assignments\/([^/]+)\/(extensions|groups)$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/api\/assignments\/submissions\/([^/]+)\/reopen$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/api\/courses\/([^/]+)\/accommodations$/, () => { notice(); return ok({ ok: true }); }],
+  // Common Cartridge import: sample mode only shows that it isn't saved.
+  ['POST', /^\/api\/courses\/([^/]+)\/import$/, () => { notice(); return ok({ error: 'Sample mode: importing isn’t saved.' }, 400); }],
+  // Copy to a new term: sample mode only shows that it can't be saved.
+  ['POST', /^\/api\/courses\/([^/]+)\/copy$/, () => { notice(); return ok({ error: 'Sample mode: copying a course isn’t saved.' }, 400); }],
+  ['POST', /^\/api\/courses\/([^/]+)\/copy\/step$/, () => ok({ copied: 0, after: null })],
   ['POST', /^\/api\/courses\/([^/]+)\/grade-categories$/, () => { notice(); return ok({ categories: [], assessments: [] }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/modules$/, ({ db: d, body }) => {
     const done = (d as SampleDb & { moduleDone?: Set<string> }).moduleDone ??= new Set();
@@ -2340,12 +2421,15 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/courses\/([^/]+)\/board$/, ({ db: d, m, body }) => {
     const b = d.board[m[1]]; if (!b) return fail('Course not found.', 404);
     const id = sid('b');
-    if (body.kind === 'announcement') b.announcements.unshift({ id, title: body.title, body: body.body, createdAt: new Date().toISOString(), author: { name: d.me.name } });
+    if (body.kind === 'pin') { const a = b.announcements.find((x: any) => x.id === body.id); if (a) a.pinnedAt = body.on === false ? null : new Date().toISOString(); return ok({ ok: true }); }
+    if (body.kind === 'announcement') b.announcements.unshift({ id, title: body.title, body: body.body, createdAt: new Date().toISOString(), publishAt: body.publishAt || null, sentAt: body.publishAt ? null : new Date().toISOString(), pinnedAt: null, author: { name: d.me.name }, _count: { reads: 0 } });
     else if (body.kind === 'material') b.materials.unshift({ id, title: body.title, type: 'OTHER', fileUrl: body.url, size: body.size || null, createdAt: new Date().toISOString() });
     else if (body.kind === 'reading') b.readings.unshift({ id, title: body.title, description: body.description || null, url: body.url || null, category: body.category || null });
     else if (body.kind === 'event') { const s = new Date(body.startAt); b.events.push({ id, title: body.title, description: body.description || null, startAt: s.toISOString(), endAt: new Date(+s + (Number(body.durationMinutes) || 60) * 60_000).toISOString(), type: body.type || 'MEETING' }); }
     return ok({ id }, 201);
   }],
+  // "Seen" marks for announcements: nothing to record in the sample.
+  ['POST', /^\/api\/courses\/([^/]+)\/announcements\/seen$/, () => ok({ seen: 0 })],
   ['DELETE', /^\/api\/courses\/([^/]+)\/board$/, ({ db: d, m, q }) => {
     const b = d.board[m[1]]; const list = ({ announcement: 'announcements', material: 'materials', reading: 'readings', event: 'events' } as any)[q.get('kind') ?? ''];
     if (b && list) b[list] = b[list].filter((x: any) => x.id !== q.get('itemId'));
@@ -2540,7 +2624,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
     '',
     '_This is an example report generated in sample mode._',
   ].join('\n') })],
-  ['POST', /^\/api\/upload$/, () => ok({ url: '/icon-512x512.png' })],
+  ['POST', /^\/api\/upload(\/sized)?$/, () => ok({ url: '/icon-512x512.png' })],
   ['POST', /^\/api\/(billing|create-checkout-session)/, () => fail('Payments aren’t available in sample mode. Exit sample mode to subscribe.')],
 ];
 

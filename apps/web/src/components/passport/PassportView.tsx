@@ -7,6 +7,7 @@ import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { safeHref } from '@/lib/safe-href';
 import { CertificateQrButton, CopyLinkButton } from './CredentialShare';
+import { photoSrcSet } from '@/lib/image-sizes';
 
 export interface PassportData {
   name: string;
@@ -46,7 +47,7 @@ export function PassportView({ p, badgeActions, onHide }: { p: PassportData; bad
         <div aria-hidden className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-500/20 to-fuchsia-500/20 blur-3xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
           {p.avatar
-            ? <img src={p.avatar} alt="" className="w-20 h-20 rounded-2xl object-cover" />
+            ? <img src={p.avatar} {...photoSrcSet(p.avatar, 80)} alt="" className="w-20 h-20 rounded-2xl object-cover" />
             : <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-2xl font-black flex items-center justify-center">{initials}</div>}
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-500">Skills passport</p>

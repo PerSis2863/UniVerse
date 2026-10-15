@@ -9,6 +9,7 @@ import { canReadDoc } from './docs';
 import { BadRequestException, HttpException } from './http';
 import { canReadTaskBoard } from './tasks';
 import { isLanguage, translateTexts, type Translation } from './translate';
+import { announcementWhere } from './course-announcements';
 
 // "Translate" on texts that aren't chat messages (Stage 5 · B7.5): announcements, group posts, and
 // comments on tasks, docs and whiteboards; and the classroom (Stage 5 · D8, language-free classroom):
@@ -31,8 +32,8 @@ export async function readable(user: SessionUser, items: { kind: TextKind; id: s
   const ids = (k: TextKind) => [...new Set(items.filter((i) => i.kind === k).map((i) => i.id))];
   const out = new Map<string, string>();
   const [ann, posts, tasks, docs, boards] = await Promise.all([
-    // Every signed-in person can read announcements (src/server/services/announcements.service.ts).
-    ids('announcement').length ? prisma.announcement.findMany({ where: { id: { in: ids('announcement') } }, select: { id: true, title: true, body: true } }) : Promise.resolve([]),
+    // Announcements the person may read: school-wide ones and their courses' (src/server/course-announcements.ts).
+    ids('announcement').length ? announcementWhere(user).then((where) => prisma.announcement.findMany({ where: { id: { in: ids('announcement') }, ...where }, select: { id: true, title: true, body: true } })) : Promise.resolve([]),
     ids('group-post').length ? prisma.groupPost.findMany({ where: { id: { in: ids('group-post') } }, select: { id: true, body: true, group: { select: { isPublic: true, members: { where: { userId: user.id }, select: { id: true } } } } } }) : Promise.resolve([]),
     ids('task-comment').length ? prisma.taskComment.findMany({ where: { id: { in: ids('task-comment') } }, select: { id: true, body: true, task: { select: { boardId: true } } } }) : Promise.resolve([]),
     ids('doc-comment').length ? prisma.docComment.findMany({ where: { id: { in: ids('doc-comment') } }, select: { id: true, body: true, docId: true } }) : Promise.resolve([]),
