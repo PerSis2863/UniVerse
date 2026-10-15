@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { photoSrcSet } from '@/lib/image-sizes';
 
 // A person's photo, or their initials on a colour that's always the same for the same name.
 
@@ -25,7 +26,7 @@ export function Avatar({ name, src, size = 40, online }: { name: string; src?: s
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       {src && failed !== src ? (
         // eslint-disable-next-line @next/next/no-img-element -- user photos from R2 / Google, any size
-        <img loading="lazy" decoding="async" src={src} alt="" onError={() => setFailed(src)} className="w-full h-full rounded-full object-cover" />
+        <img loading="lazy" decoding="async" src={src} {...photoSrcSet(src, size)} alt="" onError={() => setFailed(src)} className="w-full h-full rounded-full object-cover" />
       ) : (
         // Initials drawn by CSS: decoration, so they don't become a button's or link's name.
         <div aria-hidden data-initials={letters} className={cn('w-full h-full rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold before:content-[attr(data-initials)]', avatarGradient(name))} style={{ fontSize: size * 0.36 }} />

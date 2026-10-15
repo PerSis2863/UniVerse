@@ -2540,7 +2540,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
     '',
     '_This is an example report generated in sample mode._',
   ].join('\n') })],
-  ['POST', /^\/api\/upload$/, () => ok({ url: '/icon-512x512.png' })],
+  ['POST', /^\/api\/upload(\/sized)?$/, () => ok({ url: '/icon-512x512.png' })],
   ['POST', /^\/api\/(billing|create-checkout-session)/, () => fail('Payments aren’t available in sample mode. Exit sample mode to subscribe.')],
 ];
 

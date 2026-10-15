@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { authedFetch } from '@/lib/authed-fetch';
 import { useInitialSearch } from '@/hooks/useInitialSearch';
+import { photoSrcSet } from '@/lib/image-sizes';
 
 interface TimeBankAccount {
   id: string;
@@ -540,7 +541,7 @@ export function PeerTutoringTimeBank() {
                       <div className="h-12 w-12 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center text-lg flex-shrink-0 shadow-inner">
                         {tutor.avatar ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={tutor.avatar} alt={tutor.name} className="h-full w-full object-cover" />
+                          <img src={tutor.avatar} {...photoSrcSet(tutor.avatar, 48)} alt={tutor.name} className="h-full w-full object-cover" />
                         ) : (
                           tutor.name.slice(0, 2).toUpperCase()
                         )}

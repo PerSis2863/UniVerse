@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { uploadChatFile } from '@/components/chat/chat-client';
 import { Switch } from '@/components/ui/Switch';
+import { photoSrcSet } from '@/lib/image-sizes';
 
 // The campus network (upgrade 9) for admins (Global Impact → Partner institutions → Campus network)
 // and teachers (Global collaboration → Research → Campus network): the directory of campuses with a
@@ -83,7 +84,7 @@ export function CampusDirectory({ network, onEdit }: { network: Network; onEdit?
             <div className="flex items-start gap-3">
               {c.logoUrl
                 // eslint-disable-next-line @next/next/no-img-element -- an admin's https logo link; next/image can't optimise on Workers
-                ? <img src={c.logoUrl} alt="" className="w-10 h-10 rounded-xl object-cover bg-zinc-100 dark:bg-white/10 shrink-0" />
+                ? <img src={c.logoUrl} {...photoSrcSet(c.logoUrl, 40)} alt="" className="w-10 h-10 rounded-xl object-cover bg-zinc-100 dark:bg-white/10 shrink-0" />
                 : <span className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0"><Building2 className="w-5 h-5" aria-hidden /></span>}
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-zinc-900 dark:text-white truncate">{c.name}</p>
@@ -259,7 +260,7 @@ function CampusForm({ editing, onDone, onCancel }: { editing: CampusCard | null;
           <div className="flex items-center gap-3">
             {f.logoUrl
               // eslint-disable-next-line @next/next/no-img-element -- uploaded to our own storage; next/image can't optimise on Workers
-              ? <img src={f.logoUrl} alt="" className="w-12 h-12 rounded-xl object-cover bg-zinc-100 dark:bg-white/10" />
+              ? <img src={f.logoUrl} {...photoSrcSet(f.logoUrl, 48)} alt="" className="w-12 h-12 rounded-xl object-cover bg-zinc-100 dark:bg-white/10" />
               : <span className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center text-zinc-400"><Building2 className="w-5 h-5" aria-hidden /></span>}
             <label className="btn-secondary cursor-pointer">
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : null}{f.logoUrl ? 'Change' : 'Upload'}

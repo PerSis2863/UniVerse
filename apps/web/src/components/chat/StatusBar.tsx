@@ -13,6 +13,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { uploadChatFile } from './chat-client';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { useAuthStore } from '@/store/auth';
+import { photoSrcSet } from '@/lib/image-sizes';
 
 // Status updates ("stories"), like WhatsApp's (src/server/chat-status.ts): a row of rings at the
 // top of Chats. Tap one to watch; your own shows who has seen it. Gone after 24 hours. Stage 5 ·
@@ -138,7 +139,7 @@ function StatusViewer({ people, start, onClose, onDeleted }: { people: Person[];
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="fixed inset-0 z-[150] bg-black flex items-center justify-center" role="dialog" aria-modal="true" aria-label={`${person.user.name}'s status`}>
       <div className="relative w-full h-full sm:max-w-md sm:h-[92vh] sm:rounded-3xl overflow-hidden" onPointerDown={() => setPaused(true)} onPointerUp={() => setPaused(false)} onPointerLeave={() => setPaused(false)}>
         {item.kind === 'IMAGE' && item.mediaUrl
-          ? <img src={item.mediaUrl} alt="" className="absolute inset-0 w-full h-full object-contain bg-black" />
+          ? <img src={item.mediaUrl} {...photoSrcSet(item.mediaUrl, '100vw')} alt="" className="absolute inset-0 w-full h-full object-contain bg-black" />
           : <div className="absolute inset-0 flex items-center justify-center p-8" style={{ background: item.background ?? COLORS[0] }}><p className="text-white text-2xl sm:text-3xl font-bold text-center leading-snug break-words whitespace-pre-wrap">{item.body}</p></div>}
         {item.kind === 'IMAGE' && item.body && <p className="absolute bottom-20 inset-x-0 px-6 text-center text-white text-base drop-shadow-lg">{item.body}</p>}
         {/* Progress, who, close */}

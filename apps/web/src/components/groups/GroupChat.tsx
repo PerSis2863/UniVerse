@@ -9,6 +9,7 @@ import { Check, Edit2, Hash, ImageIcon, Loader2, Paperclip, Send, Trash2, X } fr
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { safeHref } from '@/lib/safe-href';
+import { photoSrcSet } from '@/lib/image-sizes';
 import { Translatable } from '@/components/shared/Translatable';
 
 interface Post {
@@ -117,14 +118,21 @@ export function GroupChat({ group, onClose }: { group: { id: string | number; na
   };
 
   const upload = async (file: File, asImage: boolean) => {
-    if (file.size > 4 * 1024 * 1024) return void toast.error('Files must be 4 MB or smaller.');
+    const image = asImage || IMAGE_RE.test(file.name);
+    if (!image && file.size > 4 * 1024 * 1024) return void toast.error('Files must be 4 MB or smaller.');
     setUploading(true);
     try {
+      if (image) {
+        // Photos go up in three sizes, big ones made smaller first (src/lib/image-sizes.ts).
+        const { uploadChatFile } = await import('@/components/chat/chat-client');
+        await post({ imageUrl: await uploadChatFile(file) });
+        return;
+      }
       const res = await authedFetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.url) throw new Error(json.error || 'Upload failed.');
       const url = json.url.startsWith('/') ? `${window.location.origin}${json.url}` : json.url;
-      await post(asImage || IMAGE_RE.test(file.name) ? { imageUrl: json.url } : { text: `📎 ${url}` });
+      await post({ text: `📎 ${url}` });
     } catch (e) {
       toast.error((e as Error).message || 'Upload failed.');
     } finally {
@@ -197,7 +205,7 @@ export function GroupChat({ group, onClose }: { group: { id: string | number; na
                     <div className={`rounded-2xl text-sm overflow-hidden ${mine ? 'bg-indigo-500 text-white rounded-tr-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-100 rounded-tl-sm'}`}>
                       {p.imageUrl && (
                         <a href={safeHref(p.imageUrl)} target="_blank" rel="noopener noreferrer">
-                          <img src={p.imageUrl} alt="Shared image" loading="lazy" className="max-h-64 w-auto object-cover" />
+                          <img src={p.imageUrl} {...photoSrcSet(p.imageUrl, '(max-width: 640px) 90vw, 640px')} alt="Shared image" loading="lazy" className="max-h-64 w-auto object-cover" />
                         </a>
                       )}
                       {p.body && <div className="p-3"><Translatable kind="group-post" id={p.id} text={p.body} hide={mine || p.body.startsWith('📎 ')} render={(t) => <MessageText text={t} mine={mine} />} /></div>}

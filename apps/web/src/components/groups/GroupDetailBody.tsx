@@ -5,6 +5,7 @@ import { FileText, ImageIcon, Loader2, ExternalLink } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { safeHref } from '@/lib/safe-href';
+import { photoSrcSet } from '@/lib/image-sizes';
 
 interface GroupDetail {
   description: string | null;
@@ -36,7 +37,7 @@ export function GroupDetailBody({ groupId }: { groupId: string | number }) {
           {data.members.map((m) => (
             <div key={m.user.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
               {m.user.avatar ? (
-                <img loading="lazy" decoding="async" src={m.user.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                <img loading="lazy" decoding="async" src={m.user.avatar} {...photoSrcSet(m.user.avatar, 32)} alt="" className="w-8 h-8 rounded-full object-cover" />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-xs text-white font-bold">
                   {m.user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
