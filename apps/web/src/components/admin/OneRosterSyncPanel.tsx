@@ -356,6 +356,7 @@ export function OneRosterSyncPanel() {
           </h3>
           <p className="text-xs text-zinc-500 mt-0.5">
             External SIS and reporting platforms can consume live roster data using standard 1EdTech REST specifications.
+            Each request needs an API key from <strong>Developer</strong> (<code>Authorization: Bearer uv_live_…</code>): <code>courses.read</code> for orgs, courses and classes, <code>students.read</code> for users and enrollments. Answers hold your school’s data only.
           </p>
         </div>
 

@@ -1,9 +1,4 @@
-import { NextResponse } from 'next/server';
-import { getOneRosterOrgs } from '@/server/oneroster';
+import { getOneRosterOrgs, oneRosterGet } from '@/server/oneroster';
 
-export async function GET() {
-  const data = await getOneRosterOrgs(null);
-  return NextResponse.json(data, {
-    headers: { 'Cache-Control': 'public, max-age=60, stale-while-revalidate=300' },
-  });
-}
+// OneRoster 1.2 orgs: needs the school's API key with "courses.read" (src/server/oneroster.ts oneRosterGet).
+export const GET = (req: Request) => oneRosterGet(req, 'courses.read', (org) => getOneRosterOrgs(org));
