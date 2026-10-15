@@ -2330,6 +2330,9 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/student\/guardian-accounts$/, () => { notice(); return ok({ links: [], code: null }); }],
   ['POST', /^\/api\/admin\/report-cards$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/question-bank$/, () => { notice(); return ok({ questions: [], imported: 0, added: 0 }); }],
+  // Copy to a new term: sample mode only shows that it can't be saved.
+  ['POST', /^\/api\/courses\/([^/]+)\/copy$/, () => { notice(); return ok({ error: 'Sample mode: copying a course isn’t saved.' }, 400); }],
+  ['POST', /^\/api\/courses\/([^/]+)\/copy\/step$/, () => ok({ copied: 0, after: null })],
   ['POST', /^\/api\/courses\/([^/]+)\/grade-categories$/, () => { notice(); return ok({ categories: [], assessments: [] }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/modules$/, ({ db: d, body }) => {
     const done = (d as SampleDb & { moduleDone?: Set<string> }).moduleDone ??= new Set();

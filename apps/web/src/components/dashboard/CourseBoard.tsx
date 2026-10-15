@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from '@/components/ui/Link';
-import useSWR, { type KeyedMutator } from 'swr';
+import useSWR, { mutate as refreshKey, type KeyedMutator } from 'swr';
 import { haptic } from '@/lib/haptics';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { spring } from '@/lib/motion';
@@ -12,7 +12,7 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  BadgeCheck, Layers, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
+  BadgeCheck, Copy, Layers, Loader2, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { uploadChatFile } from '@/components/chat/chat-client';
@@ -48,6 +48,8 @@ const CourseGroupProjects = dynamic(() => import('@/components/groups/CourseGrou
 const CourseOralChecks = dynamic(() => import('@/components/oral/CourseOralChecks').then((m) => m.CourseOralChecks), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const CourseModules = dynamic(() => import('@/components/dashboard/CourseModules').then((m) => m.CourseModules), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const ClassSessions = dynamic(() => import('@/components/dashboard/ClassSessions').then((m) => m.ClassSessions), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
+// Copy to a new term (Stage 5 · B2), loaded when opened.
+const CourseCopy = dynamic(() => import('@/components/dashboard/CourseCopy').then((m) => m.CourseCopy), { ssr: false });
 const QuizManager = dynamic(() => import('@/components/quizzes/QuizManager').then((m) => m.QuizManager), { ssr: false });
 const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhiteboard').then((m) => m.CollaborationWhiteboard), {
   ssr: false,
@@ -110,6 +112,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
   const [pickedId, setCourseId] = useState<string | null>(() => link.get('course'));
   const [tab, setTab] = useState(() => (TABS.some((t) => t.id === link.get('tab')) ? link.get('tab')! : 'board'));
   const [sessionId, setSessionId] = useState<string | null>(() => link.get('session'));
+  const [copying, setCopying] = useState(false);
   // The picked course, or the first one when it isn't among yours (once your courses have loaded).
   const courseId = !courses.length || courses.some((c) => c.id === pickedId) ? pickedId : courses[0].id;
 
@@ -156,6 +159,10 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
   return (
     <>
       <Topbar title={title} subtitle={subtitle} />{tabs}
+      {copying && course && (
+        <CourseCopy course={course} onClose={() => setCopying(false)}
+          onDone={(id) => { setCopying(false); void refreshKey('/courses/my').then(() => { setCourseId(id); setTab('board'); }); }} />
+      )}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Course switcher */}
         <div className="glass-bar border-b border-zinc-200/70 dark:border-white/[0.06] px-4 sm:px-8 py-3 flex gap-2 overflow-x-auto scrollbar-none">
@@ -188,6 +195,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
               </>
             ) : (
               <>
+                {canManage && course && <button type="button" onClick={() => setCopying(true)} className="btn-secondary text-xs py-2 flex items-center gap-1.5"><Copy className="w-3.5 h-3.5" /> Copy to a new term</button>}
                 <Link href="/teacher/grades" className="btn-secondary text-xs py-2 flex items-center gap-1.5"><Star className="w-3.5 h-3.5" /> Gradebook</Link>
                 <Link href="/teacher/quizzes" className="btn-primary text-xs py-2 flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> Quizzes</Link>
               </>
