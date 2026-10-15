@@ -1,5 +1,6 @@
 import prisma from '@/lib/db';
 import { BadRequestException, NotFoundException, ForbiddenException } from './http';
+import { teaches } from '@/lib/course-access';
 
 // Stage 5 · C7: Content Marketplace
 // Allows teachers and faculty to publish curriculum packs and courses (free or paid)
@@ -352,7 +353,7 @@ export async function importPackIntoCourse(params: {
   if (!course) throw new NotFoundException('Target course not found.');
 
   // Access check: only teacher of course or admin can import modules
-  if (params.userRole !== 'ADMIN' && course.teacherId !== params.userId) {
+  if (params.userRole !== 'ADMIN' && course.teacherId !== params.userId && !(await teaches(course.id, params.userId, ['CO_TEACHER']))) {
     throw new ForbiddenException('Only course instructors or administrators can import lesson packs.');
   }
 

@@ -1602,6 +1602,12 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/courses\/([^/]+)\/question-bank$/, () => ok({ questions: [], difficulties: ['EASY', 'MEDIUM', 'HARD'] })],
   // Gradebook categories (Stage 5 · B3.4): none in the sample, so finals are plain averages.
   [/^\/api\/courses\/([^/]+)\/grade-categories$/, () => ok({ categories: [], assessments: [] })],
+  // Teaching team (Stage 5 · B2): just the teacher in the sample.
+  [/^\/api\/courses\/([^/]+)\/staff$/, ({ db: d, m }) => {
+    const c = course(d, m[1]);
+    if (!c) return fail('Course not found.', 404);
+    return ok({ canEdit: d.teacherView && c.teacher.id === d.me.id, teacher: { id: c.teacher.id, name: c.teacher.name, email: 'teacher@sample.edu', avatar: null }, staff: [] });
+  }],
   // Discussion board (Stage 5 · B2): one answered question to look at.
   [/^\/api\/courses\/([^/]+)\/discussion$/, ({ db: d, m }) => {
     const c = course(d, m[1]);
@@ -2353,6 +2359,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/student\/guardian-accounts$/, () => { notice(); return ok({ links: [], code: null }); }],
   ['POST', /^\/api\/admin\/report-cards$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/question-bank$/, () => { notice(); return ok({ questions: [], imported: 0, added: 0 }); }],
+  ['POST', /^\/api\/courses\/([^/]+)\/staff$/, () => { notice(); return ok({ ok: true }); }],
   // The discussion board: an example thread to look at; posting only shows that it isn't saved.
   ['POST', /^\/api\/courses\/([^/]+)\/discussion(\/[^/]+(\/suggest)?)?$/, () => { notice(); return ok({ ok: true }); }],
   // Copy to a new term: sample mode only shows that it can't be saved.

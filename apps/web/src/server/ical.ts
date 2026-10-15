@@ -1,5 +1,6 @@
 import { feedBlocks } from './smart-planner';
 import prisma from '@/lib/db';
+import { taughtBy } from '@/lib/course-access';
 
 // The calendar feed (/api/calendar/<token>): a person's weekly classes, quiz due dates, exams and
 // deadlines as an iCalendar file that Google, Apple or Outlook Calendar subscribe to and re-read
@@ -39,14 +40,14 @@ export async function calendarFeed(userId: string): Promise<string> {
   const now = new Date();
   const since = new Date(now.getTime() - 30 * 86_400_000);
   const until = new Date(now.getTime() + 365 * 86_400_000);
-  const mine = { OR: [{ teacherId: userId }, { enrollments: { some: { studentId: userId } } }] };
+  const mine = { OR: [...taughtBy(userId).OR, { enrollments: { some: { studentId: userId } } }] };
 
   const [courses, events] = await Promise.all([
     prisma.course.findMany({
       where: mine,
       take: 60,
       select: {
-        code: true, name: true, teacherId: true,
+        code: true, name: true, teacherId: true, staff: { where: { userId }, select: { id: true }, take: 1 },
         timetableSlots: { select: { id: true, dayOfWeek: true, startTime: true, endTime: true, type: true, createdAt: true, room: { select: { name: true } } } },
         quizzes: { where: { dueDate: { gte: since, lte: until }, status: { not: 'CLOSED' } }, select: { id: true, title: true, dueDate: true, status: true } },
       },
@@ -68,7 +69,7 @@ export async function calendarFeed(userId: string): Promise<string> {
   const event = (uid: string, props: string[]) => lines.push('BEGIN:VEVENT', `UID:${uid}@universe`, `DTSTAMP:${stamp}`, ...props, 'END:VEVENT');
 
   for (const c of courses) {
-    const teaching = c.teacherId === userId;
+    const teaching = c.teacherId === userId || c.staff.length > 0;
     // Weekly classes repeat with no end date: when a class is removed from the timetable it leaves
     // the feed, and calendars drop it at their next refresh.
     for (const s of c.timetableSlots) {

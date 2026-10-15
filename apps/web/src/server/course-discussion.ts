@@ -26,7 +26,8 @@ type Viewer = { user: SessionUser; canManage: boolean; teacherId: string };
 async function access(courseId: string, user: SessionUser): Promise<Viewer & { course: { id: string; code: string; name: string } }> {
   const a = await courseAccess(courseId, user);
   if (!a) throw new NotFoundException('Course not found.');
-  return { user, canManage: a.canManage, teacherId: a.course.teacherId, course: { id: a.course.id, code: a.course.code, name: a.course.name } };
+  // The whole teaching team moderates (assistants too).
+  return { user, canManage: a.canGrade, teacherId: a.course.teacherId, course: { id: a.course.id, code: a.course.code, name: a.course.name } };
 }
 
 const clean = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\r\n/g, '\n').trim().slice(0, max) : '');

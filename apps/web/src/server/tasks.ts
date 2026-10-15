@@ -1,7 +1,7 @@
 import prisma from '@/lib/db';
 import { MAX_BLOCKERS, PRIORITIES, REPEATS, cleanLabels, makesCycle, nextDue, parseList, type Priority, type Repeat } from '@/lib/task-extras';
 import { ACTIONS, MAX_RULES, TRIGGERS, actionsFor, matching, type Action, type Rule, type Trigger } from '@/lib/task-automation';
-import { courseAccess } from '@/lib/course-access';
+import { courseAccess, taughtBy } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { publish } from './realtime';
@@ -67,7 +67,7 @@ async function changed(boardId: string, board?: { ownerId: string; courseId: str
 export async function overview(user: SessionUser) {
   const courses = user.role === 'STUDENT'
     ? (await prisma.enrollment.findMany({ where: { studentId: user.id }, select: { course: { select: { id: true, code: true, name: true } } }, take: 100 })).map((e) => e.course)
-    : await prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : { teacherId: user.id }, select: { id: true, code: true, name: true }, take: 100 });
+    : await prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : taughtBy(user.id), select: { id: true, code: true, name: true }, take: 100 });
   const groups = (await prisma.groupMembership.findMany({ where: { userId: user.id }, select: { group: { select: { id: true, name: true } } }, take: 100 })).map((m) => m.group);
   const [boards, mine] = await Promise.all([
     prisma.taskBoard.findMany({

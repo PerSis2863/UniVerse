@@ -40,6 +40,8 @@ interface Submission {
 }
 interface Detail {
   id: string;
+  /** False for a teaching assistant: they grade, but don't change the assignment. */
+  canManage?: boolean;
   title: string;
   instructions: string;
   rubric: RubricItem[];
@@ -157,8 +159,10 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                 {bulk ? <><Loader2 className="w-4 h-4 animate-spin" /> Drafting {bulk.done}/{bulk.total}</> : <><Sparkles className="w-4 h-4" /> Draft {waiting.length} with AI</>}
               </button>
             )}
-            {data && <button type="button" className="btn-secondary" onClick={toggleOpen}>{data.status === 'OPEN' ? <><Lock className="w-4 h-4" /> Close</> : <><Unlock className="w-4 h-4" /> Reopen</>}</button>}
-            <button type="button" className="btn-ghost text-rose-500" onClick={remove} aria-label="Delete assignment"><Trash2 className="w-4 h-4" /></button>
+            {data?.canManage !== false && <>
+              {data && <button type="button" className="btn-secondary" onClick={toggleOpen}>{data.status === 'OPEN' ? <><Lock className="w-4 h-4" /> Close</> : <><Unlock className="w-4 h-4" /> Reopen</>}</button>}
+              <button type="button" className="btn-ghost text-rose-500" onClick={remove} aria-label="Delete assignment"><Trash2 className="w-4 h-4" /></button>
+            </>}
           </div>
 
           {data && (
@@ -167,7 +171,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
               <div className="mt-2 pb-1 space-y-3">
                 <Translatable kind="assignment" id={data.id} text={data.instructions} levels={{ auto: false }} className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />
                 <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">AI use
-                  <select className="input w-auto py-1.5" value={data.aiPolicy ?? 'FREE'} onChange={(e) => void setPolicy(e.target.value as AiPolicy)}>
+                  <select className="input w-auto py-1.5" value={data.aiPolicy ?? 'FREE'} disabled={data.canManage === false} onChange={(e) => void setPolicy(e.target.value as AiPolicy)}>
                     {(Object.keys(AI_POLICIES) as AiPolicy[]).map((p) => <option key={p} value={p}>{AI_POLICIES[p].label}</option>)}
                   </select>
                   <span className="text-xs text-zinc-500 dark:text-zinc-400 basis-full">{AI_POLICIES[(data.aiPolicy ?? 'FREE') as AiPolicy]?.hint} Answers handed in before a change keep what they had.</span>

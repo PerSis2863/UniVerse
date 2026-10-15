@@ -5,6 +5,7 @@ import { cachedAi, saveAi, sameQuestion, spendAi } from './ai-budget';
 import { readAppFile } from '@/lib/storage';
 import { words } from '@/lib/text-search';
 import { indexCourseSource, indexLater } from './semester';
+import { teaches } from '@/lib/course-access';
 
 // Course AI tutor. Answers come only from the course's own sources — the teacher's materials
 // (PDFs and text files, turned into text once and stored) and notes the teacher adds — and cite
@@ -23,7 +24,7 @@ export async function tutorAccess(user: { id: string; role: string }, courseId: 
   if (!course) return null;
   const base = { courseId: course.id, courseName: course.name, courseCode: course.code };
   if (user.role === 'ADMIN') return { ...base, role: 'ADMIN' };
-  if (user.role === 'TEACHER' && course.teacherId === user.id) return { ...base, role: 'TEACHER' };
+  if (user.role === 'TEACHER' && (course.teacherId === user.id || (await teaches(course.id, user.id, ['CO_TEACHER'])))) return { ...base, role: 'TEACHER' };
   if (user.role === 'STUDENT') {
     const enrolled = await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId: user.id, courseId } }, select: { id: true } });
     if (enrolled) return { ...base, role: 'STUDENT' };

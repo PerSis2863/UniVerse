@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
+import { taughtBy } from '@/lib/course-access';
 
 // Courses the signed-in person can use the AI tutor for, with how many sources are ready, and
 // how many of their flashcards are due.
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
-  const where = user.role === 'ADMIN' ? { status: 'PUBLISHED' as const } : user.role === 'TEACHER' ? { teacherId: user.id } : { enrollments: { some: { studentId: user.id } } };
+  const where = user.role === 'ADMIN' ? { status: 'PUBLISHED' as const } : user.role === 'TEACHER' ? taughtBy(user.id) : { enrollments: { some: { studentId: user.id } } };
   const [courses, due, total] = await Promise.all([
     prisma.course.findMany({
       where, orderBy: { code: 'asc' }, take: 100,

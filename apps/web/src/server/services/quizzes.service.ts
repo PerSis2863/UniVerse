@@ -7,13 +7,14 @@ import { clientIdOf, offlineTime, tellTeacher } from '../offline';
 import { publish } from '../realtime';
 import { pushService } from './push.service';
 import { shuffled } from '@/lib/seeded-shuffle';
+import { taughtBy } from '@/lib/course-access';
 
 export class QuizzesService {
   /** Teachers may only manage quizzes for their own courses; admins may manage any. */
   private async assertCourseOwner(courseId: string, user: { id: string; role: string }) {
-    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true } });
+    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true, staff: { where: { userId: user.id, role: 'CO_TEACHER' }, select: { id: true }, take: 1 } } });
     if (!course) throw new NotFoundException('Course not found');
-    if (user.role !== 'ADMIN' && course.teacherId !== user.id) throw new ForbiddenException('You can only manage quizzes for your own courses');
+    if (user.role !== 'ADMIN' && course.teacherId !== user.id && !course.staff.length) throw new ForbiddenException('You can only manage quizzes for your own courses');
   }
 
   private async assertQuizOwner(id: string, user: { id: string; role: string }) {
@@ -44,7 +45,7 @@ export class QuizzesService {
     // ones they're enrolled in.
     if (!user?.id) return Promise.resolve([]);
     const where: Prisma.QuizWhereInput = user.role === 'TEACHER'
-      ? { course: { teacherId: user.id } }
+      ? { course: taughtBy(user.id, ['CO_TEACHER']) }
       : { status: { not: 'DRAFT' }, course: { enrollments: { some: { studentId: user.id } } } };
     return prisma.quiz.findMany({
       where,
@@ -68,12 +69,12 @@ export class QuizzesService {
   async findOne(id: string, user?: { id?: string; role: string }) {
     const quiz = await prisma.quiz.findUnique({
       where: { id },
-      include: { questions: { orderBy: { order: 'asc' } }, course: { select: { teacherId: true } } },
+      include: { questions: { orderBy: { order: 'asc' } }, course: { select: { teacherId: true, staff: { where: { userId: user?.id ?? '', role: 'CO_TEACHER' }, select: { id: true }, take: 1 } } } },
     });
     if (!quiz || !user?.id) throw new NotFoundException('Quiz not found');
     const { course, ...rest } = quiz;
-    // The course's teacher and admins get the whole quiz, answers included.
-    if (user.role === 'ADMIN' || course.teacherId === user.id) return rest;
+    // The course's teacher, co-teachers and admins get the whole quiz, answers included.
+    if (user.role === 'ADMIN' || course.teacherId === user.id || course.staff.length) return rest;
     // Anyone else must be enrolled in the course, and drafts stay hidden. Students never receive the
     // answer key; grading happens server-side in submitQuiz.
     const enrolled = quiz.status !== 'DRAFT' && (await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId: user.id, courseId: quiz.courseId } }, select: { id: true } }));
@@ -240,7 +241,7 @@ export class QuizzesService {
   /** Offline quizzes finished after their due date, waiting for the teacher (upgrade 4). */
   async offlinePending(user: { id: string; role: string }) {
     return prisma.quizSubmission.findMany({
-      where: { offlineStatus: 'LATE', quiz: user.role === 'ADMIN' ? {} : { course: { teacherId: user.id } } },
+      where: { offlineStatus: 'LATE', quiz: user.role === 'ADMIN' ? {} : { course: taughtBy(user.id, ['CO_TEACHER']) } },
       select: { id: true, score: true, maxScore: true, submittedAt: true, offlineAt: true, offlineStartedAt: true, student: { select: { id: true, name: true } }, quiz: { select: { id: true, title: true, dueDate: true, course: { select: { code: true } } } } },
       orderBy: { submittedAt: 'desc' },
       take: 100,

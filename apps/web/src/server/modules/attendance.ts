@@ -1,6 +1,6 @@
 import type { Router } from '../router';
 import { AttendanceService } from '../services/attendance.service';
-import { assertManagesCourse } from '../access';
+import { assertGradesCourse } from '../access';
 import { BadRequestException } from '../http';
 import { later } from '../email';
 import { alertAbsence } from '../guardians';
@@ -16,11 +16,11 @@ export default function attendanceModule(router: Router) {
 
   r.get('student', { roles: ['STUDENT'] }, ({ user }) => attendance.getStudentAttendance(user.id));
   r.get<{ courseId: string }>('course/:courseId', { roles: ['TEACHER', 'ADMIN'] }, async ({ params, query, user }) => {
-    await assertManagesCourse(params.courseId, user);
+    await assertGradesCourse(params.courseId, user);
     return attendance.getCourseAttendance(params.courseId, validDate(query.date) ?? new Date().toISOString().split('T')[0]);
   });
   r.post<{ courseId: string }>('course/:courseId', { roles: ['TEACHER', 'ADMIN'] }, async ({ params, body, user }) => {
-    await assertManagesCourse(params.courseId, user);
+    await assertGradesCourse(params.courseId, user);
     const date = validDate(body?.date);
     if (!date) throw new BadRequestException('date must be YYYY-MM-DD');
     const { status, studentId } = body;

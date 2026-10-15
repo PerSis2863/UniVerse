@@ -9,6 +9,7 @@ import { BadRequestException, ForbiddenException } from '../http';
 import { audit } from '../audit';
 import { later, notify } from '../email';
 import { text } from '../body';
+import { taughtBy } from '@/lib/course-access';
 
 /** Tells the credential's owner about an admin decision (in-app + email). */
 const notifyCredential = (id: string, verb: 'approved' | 'rejected' | 'revoked', reason?: string) =>
@@ -47,7 +48,7 @@ export default function impactModule(router: Router) {
     if (!reason) throw new BadRequestException('reason is required');
     if (typeof body?.userId !== 'string') throw new BadRequestException('userId is required');
     if (user.role !== 'ADMIN') {
-      const teaches = await prisma.enrollment.findFirst({ where: { studentId: body.userId, course: { teacherId: user.id } }, select: { id: true } });
+      const teaches = await prisma.enrollment.findFirst({ where: { studentId: body.userId, course: taughtBy(user.id, ['CO_TEACHER']) }, select: { id: true } });
       if (!teaches) throw new ForbiddenException('You can only award points to students in your courses.');
     }
     const result = await impact.awardPoints(body.userId, {

@@ -1,11 +1,12 @@
 import { ForbiddenException, NotFoundException } from '../http';
 import prisma from '@/lib/db';
+import { teaches } from '@/lib/course-access';
 
 export class BlackboardService {
   async getBlackboardData(courseId: string, studentId: string, role?: string) {
     const course = await prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true } });
     if (!course) throw new NotFoundException('Course not found');
-    if (role !== 'ADMIN' && course.teacherId !== studentId) {
+    if (role !== 'ADMIN' && course.teacherId !== studentId && !(await teaches(courseId, studentId))) {
       const enrolled = await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId, courseId } } });
       if (!enrolled) throw new ForbiddenException('You are not enrolled in this course');
     }

@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
-import { courseAccess } from '@/lib/course-access';
+import { courseAccess, taughtBy } from '@/lib/course-access';
 import { getSessionUser, type SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
 import { audit } from './audit';
@@ -102,12 +102,12 @@ function assignmentFields(body: Record<string, unknown>, partial: boolean) {
   return data;
 }
 
-/** The assignment, if the user may see it: its course's teacher, admins, or enrolled students. */
+/** The assignment, if the user may see it: its course's teaching team, admins, or enrolled students. */
 async function access(assignmentId: string, user: SessionUser) {
   const assignment = await prisma.assignment.findUnique({ where: { id: assignmentId } });
   const a = assignment ? await courseAccess(assignment.courseId, user) : null;
   if (!assignment || !a) throw new NotFoundException('Assignment not found.');
-  return { assignment, course: a.course, canManage: a.canManage };
+  return { assignment, course: a.course, canManage: a.canManage, canGrade: a.canGrade };
 }
 
 async function manage(assignmentId: string, user: SessionUser) {
@@ -116,10 +116,12 @@ async function manage(assignmentId: string, user: SessionUser) {
   return a;
 }
 
+/** A submission, for whoever grades the course: its teacher, co-teachers, teaching assistants, admins. */
 export async function submissionForTeacher(submissionId: string, user: SessionUser) {
   const sub = await prisma.assignmentSubmission.findUnique({ where: { id: submissionId } });
   if (!sub) throw new NotFoundException('Submission not found.');
-  const a = await manage(sub.assignmentId, user);
+  const a = await access(sub.assignmentId, user);
+  if (!a.canGrade) throw new ForbiddenException('Only the course’s teaching team can do that.');
   return { sub, ...a };
 }
 
@@ -144,7 +146,7 @@ export async function listAssignments(user: SessionUser, courseId: string | null
   }
   if (user.role !== 'TEACHER' && user.role !== 'ADMIN') throw new ForbiddenException('Assignments are for courses you teach or take.');
   const rows = await prisma.assignment.findMany({
-    where: { ...(courseId ? { courseId } : {}), ...(user.role === 'ADMIN' ? {} : { course: { teacherId: user.id } }) },
+    where: { ...(courseId ? { courseId } : {}), ...(user.role === 'ADMIN' ? {} : { course: taughtBy(user.id) }) },
     orderBy: { createdAt: 'desc' },
     take: 200,
     select: {
@@ -164,9 +166,10 @@ export async function listAssignments(user: SessionUser, courseId: string | null
 }
 
 export async function assignmentDetail(assignmentId: string, user: SessionUser) {
-  const { assignment, course, canManage } = await access(assignmentId, user);
-  const base = { ...assignment, rubric: rubricOf(assignment), course: { id: course.id, code: course.code, name: course.name, color: course.color }, canManage };
-  if (!canManage) {
+  const { assignment, course, canManage, canGrade } = await access(assignmentId, user);
+  // canManage: change the assignment; canGrade: see and grade the answers (teaching assistants too).
+  const base = { ...assignment, rubric: rubricOf(assignment), course: { id: course.id, code: course.code, name: course.name, color: course.color }, canManage, canGrade };
+  if (!canGrade) {
     const mine = await prisma.assignmentSubmission.findUnique({
       where: { assignmentId_studentId: { assignmentId, studentId: user.id } },
       select: { id: true, text: true, status: true, submittedAt: true, returnedAt: true, score: true, feedback: true, criteriaScores: true, feedbackMediaUrl: true, feedbackMediaKind: true, feedbackTranscript: true, aiReceipt: true },

@@ -191,6 +191,7 @@ model User {
   coursePosts            CoursePost[]            // my replies in course discussions
   courseVotes            CourseVote[]
   announcementReads      AnnouncementRead[]
+  courseStaff            CourseStaff[]           // courses I co-teach or assist in (Stage 5 · B2)
   aiUses                 AiUse[]                 // AI help I used (Stage 5 · D12)
   wellbeingSettings      WellbeingSettings?      // wellbeing radar (Stage 5 · D13), opt-in
   wellbeingCheckins      WellbeingCheckin[]
@@ -525,6 +526,7 @@ model Course {
   classroomSessions ClassroomSession[] // in-person sessions (Stage 5 · D7)
   oralChecks        OralCheck[] // oral checks (Stage 5 · D11)
   threads           CourseThread[] // the discussion board (Stage 5 · B2)
+  staff             CourseStaff[] // co-teachers and teaching assistants (Stage 5 · B2)
   campuses       CourseCampus[] // partner campuses it's shared with (upgrade 9)
   modules        CourseModule[] // ordered units of items (Stage 5 · B2)
   gradeCategories  GradeCategory[] // gradebook categories (Stage 5 · B3.4)
@@ -5721,4 +5723,21 @@ model CourseVote {
   @@id([userId, targetId])
   @@index([targetId])
   @@map("course_votes")
+}
+
+/// A course's teaching team besides its teacher (Stage 5 · B2): CO_TEACHER (everything but the team,
+/// copying and deleting) or TA (grading, attendance, the discussion). Teacher accounts only.
+model CourseStaff {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("CO_TEACHER") // CO_TEACHER, TA
+  addedById String?
+  createdAt DateTime @default(now())
+
+  @@unique([courseId, userId])
+  @@index([userId])
+  @@map("course_staff")
 }

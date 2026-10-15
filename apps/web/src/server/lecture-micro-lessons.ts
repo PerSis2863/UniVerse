@@ -1,5 +1,5 @@
 import prisma from '@/lib/db';
-import { courseAccess } from '@/lib/course-access';
+import { courseAccess, taughtBy } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { ForbiddenException, NotFoundException } from './http';
 import { recordXApiStatement } from './analytics-warehouse';
@@ -455,7 +455,7 @@ export async function listCourseMicroLessons(
  */
 export async function listMyMicroLessons(user: SessionUser): Promise<LectureMicroLessonData[]> {
   const lessons = await prisma.lectureMicroLesson.findMany({
-    where: user.role === 'ADMIN' ? {} : { course: { OR: [{ teacherId: user.id }, { enrollments: { some: { studentId: user.id } } }] } },
+    where: user.role === 'ADMIN' ? {} : { course: { OR: [...taughtBy(user.id).OR, { enrollments: { some: { studentId: user.id } } }] } },
     orderBy: { createdAt: 'desc' },
     take: 20,
     include: { course: { select: { code: true, name: true } } },

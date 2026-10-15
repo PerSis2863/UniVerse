@@ -28,13 +28,13 @@ export async function GET(req: Request, { params }: Ctx) {
   const { id } = await params;
   const access = await courseAccess(id, user);
   if (!access) return bad('Course not found.', 404);
-  const { course, canManage } = access;
+  const { course, canManage, canGrade, staffRole } = access;
 
   const [announcements, materials, readings, events, sessions] = await Promise.all([
     // Pinned first; students see scheduled ones only from their time; the teacher sees who has seen each.
     prisma.announcement.findMany({
-      where: { courseId: id, ...(canManage ? {} : visibleNow()) }, orderBy: [{ pinnedAt: 'desc' }, { createdAt: 'desc' }], take: 50,
-      select: { id: true, title: true, body: true, createdAt: true, publishAt: true, sentAt: true, pinnedAt: true, author: { select: { name: true } }, ...(canManage ? { _count: { select: { reads: true } } } : {}) },
+      where: { courseId: id, ...(canGrade ? {} : visibleNow()) }, orderBy: [{ pinnedAt: 'desc' }, { createdAt: 'desc' }], take: 50,
+      select: { id: true, title: true, body: true, createdAt: true, publishAt: true, sentAt: true, pinnedAt: true, author: { select: { name: true } }, ...(canGrade ? { _count: { select: { reads: true } } } : {}) },
     }),
     prisma.material.findMany({ where: { courseId: id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, type: true, fileUrl: true, size: true, createdAt: true } }),
     prisma.knowledgeHubResource.findMany({ where: { courseId: id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, description: true, url: true, category: true, createdAt: true } }),
@@ -43,7 +43,8 @@ export async function GET(req: Request, { params }: Ctx) {
     sessionsForBoard(id, canManage),
   ]);
 
-  if (canManage) {
+  // The teaching team (assistants too) sees the roster and the class's quizzes.
+  if (canGrade) {
     const [quizzes, grades, enrollments] = await Promise.all([
       prisma.quiz.findMany({ where: { courseId: id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, status: true, dueDate: true, _count: { select: { questions: true, submissions: true } } } }),
       prisma.grade.findMany({ where: { courseId: id }, select: { studentId: true, score: true, maxScore: true } }),
@@ -60,7 +61,8 @@ export async function GET(req: Request, { params }: Ctx) {
       const s = byStudent.get(student.id);
       return { ...student, graded: s?.n ?? 0, average: s ? Math.round(s.sum / s.n) : null };
     });
-    return NextResponse.json({ course, canManage, announcements, materials, readings, events, sessions, quizzes, roster }, { headers: { 'Cache-Control': 'no-store' } });
+    const owns = user.role === 'ADMIN' || course.teacherId === user.id;
+    return NextResponse.json({ course, canManage, canGrade, owns, staffRole, announcements, materials, readings, events, sessions, quizzes, roster }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   const [grades, quizResults] = await Promise.all([

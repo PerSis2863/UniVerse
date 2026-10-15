@@ -6,6 +6,7 @@ import { BadRequestException, ForbiddenException, HttpException, NotFoundExcepti
 import { publish } from './realtime';
 import { pushService } from './services/push.service';
 import { can } from './permissions';
+import { taughtBy, teaches } from '@/lib/course-access';
 
 // Consent forms with an e-signature (Stage 5 · B16.4). The school (admins: any class, or every
 // student) or a teacher (one of their classes) sends a form: a trip permission, photo consent, a
@@ -74,7 +75,7 @@ export async function staffForms(user: SessionUser) {
       where: admin ? {} : { createdById: user.id }, orderBy: { createdAt: 'desc' }, take: 100,
       select: { id: true, title: true, courseId: true, dueAt: true, closedAt: true, createdAt: true, course: { select: { code: true, name: true } }, createdBy: { select: { name: true } } },
     }),
-    prisma.course.findMany({ where: admin ? {} : { teacherId: user.id }, select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 200 }),
+    prisma.course.findMany({ where: admin ? {} : taughtBy(user.id, ['CO_TEACHER']), select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 200 }),
     admin ? prisma.user.count({ where: { role: 'STUDENT', status: 'ACTIVE' } }) : Promise.resolve(0),
   ]);
   const ids = forms.map((f) => f.id);
@@ -107,7 +108,7 @@ export async function createConsentForm(user: SessionUser, b: Record<string, unk
   const all = await can(user, 'forms.school');
   if (!courseId && !all) throw new BadRequestException('Pick one of your classes.');
   const course = courseId ? await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, code: true, teacherId: true } }) : null;
-  if (courseId && (!course || (!all && course.teacherId !== user.id))) throw new NotFoundException('That class isn’t one of yours.');
+  if (courseId && (!course || (!all && course.teacherId !== user.id && !(await teaches(course.id, user.id, ['CO_TEACHER']))))) throw new NotFoundException('That class isn’t one of yours.');
   const dueAt = dueDate(b.dueAt);
   const attachmentUrl = typeof b.attachmentUrl === 'string' && b.attachmentUrl ? b.attachmentUrl : null;
   if (attachmentUrl && !isOwnBlobUrl(attachmentUrl)) throw new BadRequestException('Attach a file uploaded here.');

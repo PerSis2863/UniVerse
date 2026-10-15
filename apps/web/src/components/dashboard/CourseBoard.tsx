@@ -12,7 +12,7 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  BadgeCheck, Clock, Copy, Eye, Layers, Loader2, MessagesSquare, Pin, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
+  BadgeCheck, Clock, Copy, Eye, Layers, Loader2, MessagesSquare, Pin, UserPlus, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { uploadChatFile } from '@/components/chat/chat-client';
@@ -50,6 +50,8 @@ const CourseModules = dynamic(() => import('@/components/dashboard/CourseModules
 const ClassSessions = dynamic(() => import('@/components/dashboard/ClassSessions').then((m) => m.ClassSessions), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 // The discussion board (Stage 5 · B2), its own tab, loaded when opened.
 const CourseDiscussion = dynamic(() => import('@/components/dashboard/CourseDiscussion').then((m) => m.CourseDiscussion), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
+// The teaching team (Stage 5 · B2), loaded when opened.
+const CourseTeam = dynamic(() => import('@/components/dashboard/CourseTeam').then((m) => m.CourseTeam), { ssr: false });
 // Copy to a new term (Stage 5 · B2), loaded when opened.
 const CourseCopy = dynamic(() => import('@/components/dashboard/CourseCopy').then((m) => m.CourseCopy), { ssr: false });
 const QuizManager = dynamic(() => import('@/components/quizzes/QuizManager').then((m) => m.QuizManager), { ssr: false });
@@ -63,6 +65,11 @@ interface Course { id: string; name: string; code: string; color: string | null;
 interface Board {
   course: Course & { _count: { enrollments: number }; skills?: string | null };
   canManage: boolean;
+  /** The teaching team (teaching assistants too): roster and grading (Stage 5 · B2). */
+  canGrade?: boolean;
+  /** The course's own teacher or an admin: copying it and changing its team. */
+  owns?: boolean;
+  staffRole?: 'CO_TEACHER' | 'TA' | null;
   announcements: { id: string; title: string; body: string; createdAt: string; publishAt?: string | null; sentAt?: string | null; pinnedAt?: string | null; author: { name: string }; _count?: { reads: number } }[];
   materials: { id: string; title: string; type: 'PDF' | 'DOCX' | 'VIDEO' | 'IMAGE' | 'OTHER'; fileUrl: string; size: string | null; createdAt: string }[];
   readings: { id: string; title: string; description: string | null; url: string | null; category: string | null }[];
@@ -117,6 +124,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
   const [tab, setTab] = useState(() => (TABS.some((t) => t.id === link.get('tab')) ? link.get('tab')! : 'board'));
   const [sessionId, setSessionId] = useState<string | null>(() => link.get('session'));
   const [copying, setCopying] = useState(false);
+  const [team, setTeam] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(() => link.get('thread'));
   // The picked course, or the first one when it isn't among yours (once your courses have loaded).
   const courseId = !courses.length || courses.some((c) => c.id === pickedId) ? pickedId : courses[0].id;
@@ -151,6 +159,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
 
   const course = board?.course ?? courses.find((c) => c.id === courseId);
   const canManage = !!board?.canManage;
+  const canGrade = canManage || !!board?.canGrade;
 
   const messageInstructor = async () => {
     const teacherId = course?.teacher?.id;
@@ -164,6 +173,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
   return (
     <>
       <Topbar title={title} subtitle={subtitle} />{tabs}
+      {team && course && <CourseTeam courseId={course.id} onClose={() => setTeam(false)} />}
       {copying && course && (
         <CourseCopy course={course} onClose={() => setCopying(false)}
           onDone={(id) => { setCopying(false); void refreshKey('/courses/my').then(() => { setCourseId(id); setTab('board'); }); }} />
@@ -200,7 +210,8 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
               </>
             ) : (
               <>
-                {canManage && course && <button type="button" onClick={() => setCopying(true)} className="btn-secondary text-xs py-2 flex items-center gap-1.5"><Copy className="w-3.5 h-3.5" /> Copy to a new term</button>}
+                {canGrade && course && <button type="button" onClick={() => setTeam(true)} className="btn-secondary text-xs py-2 flex items-center gap-1.5"><UserPlus className="w-3.5 h-3.5" /> Teaching team</button>}
+                {board?.owns && course && <button type="button" onClick={() => setCopying(true)} className="btn-secondary text-xs py-2 flex items-center gap-1.5"><Copy className="w-3.5 h-3.5" /> Copy to a new term</button>}
                 <Link href="/teacher/grades" className="btn-secondary text-xs py-2 flex items-center gap-1.5"><Star className="w-3.5 h-3.5" /> Gradebook</Link>
                 <Link href="/teacher/quizzes" className="btn-primary text-xs py-2 flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> Quizzes</Link>
               </>
@@ -233,8 +244,8 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
                 {tab === 'sessions' && <ClassSessions sessions={board.sessions ?? []} canManage={canManage} materials={board.materials} openId={sessionId} refresh={() => void mutate()} />}
                 {tab === 'materials' && <Materials board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'readings' && <Readings board={board} canManage={canManage} refresh={mutate} />}
-                {tab === 'grades' && (canManage ? <Roster board={board} /> : <MyGrades board={board} />)}
-                {tab === 'quizzes' && (canManage ? <TeacherQuizzes board={board} refresh={mutate} /> : <MyQuizzes board={board} />)}
+                {tab === 'grades' && (canGrade ? <Roster board={board} /> : <MyGrades board={board} />)}
+                {tab === 'quizzes' && (canGrade ? <TeacherQuizzes board={board} refresh={mutate} readOnly={!canManage} /> : <MyQuizzes board={board} />)}
                 {tab === 'calendar' && <Events board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'projects' && canManage && course && <CourseGroupProjects courseId={course.id} />}
                 {tab === 'orals' && course && <CourseOralChecks courseId={course.id} />}
@@ -663,12 +674,12 @@ function MyQuizzes({ board }: { board: Board }) {
   );
 }
 
-function TeacherQuizzes({ board, refresh }: { board: Board; refresh: () => void }) {
+function TeacherQuizzes({ board, refresh, readOnly }: { board: Board; refresh: () => void; readOnly?: boolean }) {
   const quizzes = board.quizzes ?? [];
   const [managing, setManaging] = useState<string | null>(null);
   return (
     <>
-      <SectionHead icon={CheckCircle2} title="Quizzes" count={quizzes.length} action={<Link href="/teacher/quizzes" className="text-xs font-semibold text-indigo-500 hover:underline">Create a quiz →</Link>} />
+      <SectionHead icon={CheckCircle2} title="Quizzes" count={quizzes.length} action={!readOnly && <Link href="/teacher/quizzes" className="text-xs font-semibold text-indigo-500 hover:underline">Create a quiz →</Link>} />
       {quizzes.length === 0 ? <Empty text="No quizzes for this course yet. Create one on the Quizzes page, add questions, then publish it." /> : (
         <div className="space-y-2">
           {quizzes.map((q) => (
@@ -677,7 +688,7 @@ function TeacherQuizzes({ board, refresh }: { board: Board; refresh: () => void 
                 <p className="font-medium text-sm text-zinc-900 dark:text-white truncate">{q.title}</p>
                 <p className="text-xs text-zinc-500">{q.status === 'PUBLISHED' ? 'Published' : q.status === 'CLOSED' ? 'Closed' : 'Draft'} · {q._count.questions} questions · {q._count.submissions} submissions{q.dueDate ? ` · due ${day(q.dueDate)}` : ''}</p>
               </div>
-              <button onClick={() => setManaging(q.id)} className="btn-secondary text-xs py-1.5 px-3">Manage</button>
+              {!readOnly && <button onClick={() => setManaging(q.id)} className="btn-secondary text-xs py-1.5 px-3">Manage</button>}
             </div>
           ))}
         </div>

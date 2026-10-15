@@ -7,6 +7,7 @@ import { BadRequestException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 import { publish } from './realtime';
 import { pushService } from './services/push.service';
+import { teaches } from '@/lib/course-access';
 
 // Upgrade 3, early help with an action plan: notice → act → follow up → measure. From an
 // early-warning flag the teacher makes a short study plan (one AI request, from the student's weak
@@ -23,13 +24,13 @@ export interface PlanBody { intro: string; steps: PlanStep[]; closing: string }
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
 
-/** The flag, if this teacher (course teacher) or admin may act on it. */
+/** The flag, if this teacher (course teacher or co-teacher) or admin may act on it. */
 export async function flagFor(flagId: string, user: SessionUser) {
   const flag = await prisma.studentRiskFlag.findUnique({
     where: { id: flagId },
     include: { course: { select: { id: true, code: true, name: true, teacherId: true } }, student: { select: { id: true, name: true } } },
   });
-  if (!flag || (user.role !== 'ADMIN' && !(user.role === 'TEACHER' && flag.course.teacherId === user.id))) throw new NotFoundException('Not found.');
+  if (!flag || (user.role !== 'ADMIN' && !(user.role === 'TEACHER' && (flag.course.teacherId === user.id || (await teaches(flag.course.id, user.id, ['CO_TEACHER'])))))) throw new NotFoundException('Not found.');
   return flag;
 }
 

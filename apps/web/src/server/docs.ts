@@ -1,6 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import prisma from '@/lib/db';
-import { courseAccess } from '@/lib/course-access';
+import { courseAccess, taughtBy } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { publish } from './realtime';
@@ -116,7 +116,7 @@ function visibleDocs(user: SessionUser, courses: { id: string }[], groups: { id:
 export async function listDocs(user: SessionUser) {
   const courses = user.role === 'STUDENT'
     ? (await prisma.enrollment.findMany({ where: { studentId: user.id }, select: { course: { select: { id: true, code: true, name: true } } }, take: 100 })).map((e) => e.course)
-    : await prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : { teacherId: user.id }, select: { id: true, code: true, name: true }, take: 100 });
+    : await prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : taughtBy(user.id), select: { id: true, code: true, name: true }, take: 100 });
   const groups = (await prisma.groupMembership.findMany({ where: { userId: user.id }, select: { group: { select: { id: true, name: true } } }, take: 100 })).map((m) => m.group);
   const select = { id: true, title: true, preview: true, courseId: true, groupId: true, ownerId: true, parentId: true, updatedAt: true } as const;
   const docs = await prisma.doc.findMany({ where: visibleDocs(user, courses, groups), orderBy: { updatedAt: 'desc' }, take: 200, select });

@@ -26,6 +26,8 @@ vi.mock('@/lib/db', () => ({
     },
     course: {
       findUnique: vi.fn(),
+      // Not a co-teacher (src/lib/course-access.ts teaches).
+      count: vi.fn().mockResolvedValue(0),
     },
     courseModule: {
       findFirst: vi.fn(),

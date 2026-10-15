@@ -6,6 +6,7 @@ import { HttpException } from './http';
 import { featureOff } from './moderation';
 import { words } from '@/lib/text-search';
 import { later } from './email';
+import { taughtBy } from '@/lib/course-access';
 
 // "Ask your semester" (Stage 4 · 4.5): one search and AI answer box over a student's semester: what
 // the teacher said in class (transcripts) and the study packs, course materials, their documents,
@@ -138,7 +139,7 @@ async function scopesOf(user: SessionUser) {
   const [courses, groups] = await Promise.all([
     user.role === 'STUDENT'
       ? prisma.enrollment.findMany({ where: { studentId: user.id }, select: { courseId: true }, take: 60 }).then((r) => r.map((e) => e.courseId))
-      : prisma.course.findMany({ where: { teacherId: user.id }, select: { id: true }, take: 60 }).then((r) => r.map((c) => c.id)),
+      : prisma.course.findMany({ where: taughtBy(user.id), select: { id: true }, take: 60 }).then((r) => r.map((c) => c.id)),
     prisma.groupMembership.findMany({ where: { userId: user.id }, select: { groupId: true }, take: 60 }).then((r) => r.map((m) => m.groupId)),
   ]);
   const docs = await prisma.doc.findMany({
