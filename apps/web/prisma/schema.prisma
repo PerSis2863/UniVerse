@@ -501,10 +501,13 @@ model Course {
   teacher     User         @relation(fields: [teacherId], references: [id])
   color       String?
   emoji       String?
+  /// Stage 5 · B2: the most students it takes (null: no limit); when full, students wait (elective requests WAITLISTED).
+  capacity    Int?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
   enrollments           Enrollment[]
+  sections              CourseSection[]
   timetableSlots        TimetableSlot[]
   attendance            Attendance[]
   grades                Grade[]
@@ -556,11 +559,29 @@ model Enrollment {
   courseId   String
   course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   enrolledAt DateTime @default(now())
+  /// Stage 5 · B2: the student's section in the course (null: none).
+  sectionId  String?
+  section    CourseSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
 
   @@unique([studentId, courseId])
   @@index([studentId])
   @@index([courseId])
+  @@index([sectionId])
   @@map("enrollments")
+}
+
+/// A section of a course (Stage 5 · B2): a group of its students, e.g. "Monday lab".
+model CourseSection {
+  id          String       @id @default(cuid())
+  courseId    String
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name        String
+  position    Int          @default(0)
+  createdAt   DateTime     @default(now())
+  enrollments Enrollment[]
+
+  @@unique([courseId, name])
+  @@map("course_sections")
 }
 
 model Attendance {
@@ -1394,6 +1415,7 @@ enum ApplicationStatus {
   ACCEPTED
   REJECTED
   WITHDRAWN
+  WAITLISTED // a course request waiting for a place (Stage 5 · B2)
 }
 
 enum SkillLevel {

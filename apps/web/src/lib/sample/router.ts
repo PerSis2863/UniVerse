@@ -1609,6 +1609,12 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     const events = ((d.board[c.id]?.events ?? []) as { id: string; title: string; startAt: string; endAt: string; type: string }[]);
     return ok({ course: { id: c.id, code: c.code, name: c.name }, canManage: false, weekly: [], items: events.map((e) => ({ id: e.id, kind: 'event', title: e.title, at: e.startAt, endAt: e.endAt, note: e.type === 'EXAM' ? 'Exam' : 'Event', href: null })) });
   }],
+  // Class list (Stage 5 · B2): no limit, requests or sections in the sample.
+  [/^\/api\/courses\/([^/]+)\/enrolment$/, ({ db: d, m }) => {
+    const c = course(d, m[1]);
+    if (!c) return fail('Course not found.', 404);
+    return ok({ canManage: false, capacity: null, students: [], requests: [], waitlist: [], sections: [] });
+  }],
   // Teaching team (Stage 5 · B2): just the teacher in the sample.
   [/^\/api\/courses\/([^/]+)\/staff$/, ({ db: d, m }) => {
     const c = course(d, m[1]);
@@ -2367,6 +2373,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/admin\/report-cards$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/question-bank$/, () => { notice(); return ok({ questions: [], imported: 0, added: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/staff$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/api\/courses\/([^/]+)\/enrolment$/, () => { notice(); return ok({ ok: true }); }],
   // Syllabus draft: a small example plan; adding it only shows that it isn't saved.
   ['POST', /^\/api\/courses\/([^/]+)\/syllabus\/draft$/, () => ok({ aiLeft: null, draft: { outcomes: ['Write programs that use loops and conditions', 'Explain how a program runs step by step'], skills: ['Programming', 'Debugging', 'Problem solving'], modules: [{ title: 'Getting started', summary: 'What programs are and how to run one.', topics: ['Your first program', 'Variables'] }, { title: 'Making decisions', summary: 'Programs that choose what to do.', topics: ['If statements', 'Boolean logic'] }] } })],
   ['POST', /^\/api\/courses\/([^/]+)\/syllabus$/, () => { notice(); return ok({ modules: 0, items: 0, skills: false }); }],

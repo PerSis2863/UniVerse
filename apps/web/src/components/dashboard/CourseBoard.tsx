@@ -50,6 +50,8 @@ const CourseModules = dynamic(() => import('@/components/dashboard/CourseModules
 const ClassSessions = dynamic(() => import('@/components/dashboard/ClassSessions').then((m) => m.ClassSessions), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 // The discussion board (Stage 5 · B2), its own tab, loaded when opened.
 const CourseDiscussion = dynamic(() => import('@/components/dashboard/CourseDiscussion').then((m) => m.CourseDiscussion), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
+// The class list: size limit, requests, waitlist, sections (Stage 5 · B2), loaded with the Grades tab.
+const CourseEnrolment = dynamic(() => import('@/components/dashboard/CourseEnrolment').then((m) => m.CourseEnrolment), { ssr: false, loading: () => <div className="h-24 rounded-2xl skeleton mb-6" /> });
 // The teaching team (Stage 5 · B2), loaded when opened.
 const CourseTeam = dynamic(() => import('@/components/dashboard/CourseTeam').then((m) => m.CourseTeam), { ssr: false });
 // Copy to a new term (Stage 5 · B2), loaded when opened.
@@ -244,7 +246,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
                 {tab === 'sessions' && <ClassSessions sessions={board.sessions ?? []} canManage={canManage} materials={board.materials} openId={sessionId} refresh={() => void mutate()} />}
                 {tab === 'materials' && <Materials board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'readings' && <Readings board={board} canManage={canManage} refresh={mutate} />}
-                {tab === 'grades' && (canGrade ? <Roster board={board} /> : <MyGrades board={board} />)}
+                {tab === 'grades' && (canGrade ? <><CourseEnrolment courseId={board.course.id} onChanged={() => void mutate()} /><Roster board={board} /></> : <MyGrades board={board} />)}
                 {tab === 'quizzes' && (canGrade ? <TeacherQuizzes board={board} refresh={mutate} readOnly={!canManage} /> : <MyQuizzes board={board} />)}
                 {tab === 'calendar' && <Events board={board} canManage={canManage} refresh={mutate} side={role} />}
                 {tab === 'projects' && canManage && course && <CourseGroupProjects courseId={course.id} />}

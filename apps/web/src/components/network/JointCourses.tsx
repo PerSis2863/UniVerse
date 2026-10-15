@@ -30,9 +30,10 @@ export function JointCourses() {
     setBusy(c.id);
     haptic('tap');
     try {
-      await api.post(`/courses/${c.id}/enroll`);
+      const { data: out } = await api.post<{ enrolled: boolean; position: number | null }>(`/courses/${c.id}/enroll`);
       await Promise.all([mutate(), refresh('/courses/my')]);
-      toast.success(`You joined ${c.code}`, { description: 'It’s in My courses now, with its Blackboard and class calls.' });
+      if (out?.enrolled === false) toast(`${c.code} is full: you’re number ${out.position} on the waitlist`, { description: 'You’ll get a notice when a place opens and you’re in.' });
+      else toast.success(`You joined ${c.code}`, { description: 'It’s in My courses now, with its Blackboard and class calls.' });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {

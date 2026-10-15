@@ -12,7 +12,8 @@ export class ElectivesService {
       where: {
         status: 'PUBLISHED',
         enrollments: { none: { studentId } },
-        electiveRequests: { none: { studentId } },
+        // A withdrawn request doesn't count: the course can be asked for again.
+        electiveRequests: { none: { studentId, status: { not: 'WITHDRAWN' } } },
         AND: [courseWhereFor(campuses)],
       },
       include: {
@@ -30,10 +31,12 @@ export class ElectivesService {
     if (!courseId) throw new BadRequestException('Pick a course.');
     const semesterId = str(data.semesterId) ?? '';
     await assertCanJoinCourse(courseId, studentId);
+    // Asking again only reopens a withdrawn or declined request: a place on the waitlist is kept.
+    const before = await prisma.electiveRequest.findUnique({ where: { studentId_courseId_semesterId: { studentId, courseId, semesterId } }, select: { status: true } });
     return prisma.electiveRequest.upsert({
       where: { studentId_courseId_semesterId: { studentId, courseId, semesterId } },
       create: { courseId, semesterId, note: typeof data.note === 'string' ? data.note.slice(0, 500) : undefined, studentId },
-      update: { status: 'PENDING' },
+      update: before && (before.status === 'WITHDRAWN' || before.status === 'REJECTED') ? { status: 'PENDING' } : {},
     });
   }
 

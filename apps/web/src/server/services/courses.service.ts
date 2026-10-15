@@ -5,6 +5,7 @@ import type { Body } from '../body';
 import { pick } from '../pick';
 import { assertCanJoinCourse, courseWhereFor, studentCampuses } from '../campus-network';
 import { taughtBy } from '@/lib/course-access';
+import { enrolOrWait, leaveCourse } from '../course-enrolment';
 
 const COURSE_FIELDS = ['code', 'name', 'description', 'credits', 'department', 'color', 'emoji'] as const satisfies readonly (keyof Prisma.CourseUncheckedCreateInput)[];
 
@@ -174,16 +175,13 @@ export class CoursesService {
     const course = await prisma.course.findUnique({ where: { id: courseId }, select: { status: true } });
     if (!course || course.status !== 'PUBLISHED') throw new NotFoundException('Course not found');
     await assertCanJoinCourse(courseId, studentId);
-    return prisma.enrollment.upsert({
-      where: { studentId_courseId: { studentId, courseId } },
-      create: { studentId, courseId },
-      update: {},
-    });
+    // A place if there is one, else the waitlist (Stage 5 · B2, src/server/course-enrolment.ts).
+    return enrolOrWait(courseId, studentId);
   }
 
+  /** Leaving a course (or its waitlist): the next on the waitlist gets the place. */
   async unenroll(courseId: string, studentId: string) {
-    return prisma.enrollment.delete({
-      where: { studentId_courseId: { studentId, courseId } },
-    });
+    await leaveCourse(courseId, studentId);
+    return { ok: true };
   }
 }
