@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowUp, Check, CheckCircle2, ChevronRight, ClipboardList, EyeOff, FileText, Layers, Link2, Loader2, Lock, Paperclip, Pencil, PlayCircle, Plus, Trash2, Video, type LucideIcon } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, CheckCircle2, ChevronRight, ClipboardList, EyeOff, FileText, Layers, Link2, Loader2, Lock, Paperclip, Pencil, PlayCircle, Plus, Sparkles, Trash2, Video, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Sheet } from '@/components/ui/Sheet';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -20,6 +21,9 @@ import { fadeUp, list } from '@/lib/motion';
 import { safeHref } from '@/lib/safe-href';
 import { cn } from '@/lib/utils';
 import { ITEM_KINDS, REF_KINDS, type ItemKind } from '@/lib/course-modules';
+
+// The AI syllabus draft (Stage 5 · B2), loaded when opened.
+const SyllabusDraft = dynamic(() => import('@/components/dashboard/SyllabusDraft').then((x) => x.SyllabusDraft), { ssr: false });
 
 // The course board's Modules tab (Stage 5 · B2; server: src/server/course-modules.ts).
 // Students: what to do next, a ✓ per item, progress per module, and why a module is locked.
@@ -52,6 +56,7 @@ export function CourseModules({ courseId }: { courseId: string }) {
   const key = `/api/courses/${courseId}/modules`;
   const { data, error, isLoading, mutate } = useSWR<View>(key, authedJson);
   const [editing, setEditing] = useState<ModuleV | 'new' | null>(null);
+  const [drafting, setDrafting] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
   const [page, setPage] = useState<ItemV | null>(null);
 
@@ -91,10 +96,14 @@ export function CourseModules({ courseId }: { courseId: string }) {
 
   return (
     <div className="space-y-4">
+      {drafting && <SyllabusDraft courseId={courseId} onClose={() => setDrafting(false)} onAdded={() => { setDrafting(false); void mutate(); }} />}
       {canManage ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-zinc-500 max-w-xl">Put the course in order: units of pages, files, links, videos, quizzes, assignments and live classes. Students see a ✓ per item and what to do next.</p>
-          <button type="button" onClick={() => setEditing('new')} className="btn-primary btn-sm inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> New module</button>
+          <div className="flex gap-2 flex-wrap">
+            <button type="button" onClick={() => setDrafting(true)} className="btn-secondary btn-sm inline-flex items-center gap-1.5"><Sparkles className="w-4 h-4" /> Draft a syllabus with AI</button>
+            <button type="button" onClick={() => setEditing('new')} className="btn-primary btn-sm inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> New module</button>
+          </div>
         </div>
       ) : modules.length > 0 && (
         nextUp && nextModule ? (

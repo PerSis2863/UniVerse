@@ -2367,6 +2367,9 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/admin\/report-cards$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/question-bank$/, () => { notice(); return ok({ questions: [], imported: 0, added: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/staff$/, () => { notice(); return ok({ ok: true }); }],
+  // Syllabus draft: a small example plan; adding it only shows that it isn't saved.
+  ['POST', /^\/api\/courses\/([^/]+)\/syllabus\/draft$/, () => ok({ aiLeft: null, draft: { outcomes: ['Write programs that use loops and conditions', 'Explain how a program runs step by step'], skills: ['Programming', 'Debugging', 'Problem solving'], modules: [{ title: 'Getting started', summary: 'What programs are and how to run one.', topics: ['Your first program', 'Variables'] }, { title: 'Making decisions', summary: 'Programs that choose what to do.', topics: ['If statements', 'Boolean logic'] }] } })],
+  ['POST', /^\/api\/courses\/([^/]+)\/syllabus$/, () => { notice(); return ok({ modules: 0, items: 0, skills: false }); }],
   // The discussion board: an example thread to look at; posting only shows that it isn't saved.
   ['POST', /^\/api\/courses\/([^/]+)\/discussion(\/[^/]+(\/suggest)?)?$/, () => { notice(); return ok({ ok: true }); }],
   // Copy to a new term: sample mode only shows that it can't be saved.
