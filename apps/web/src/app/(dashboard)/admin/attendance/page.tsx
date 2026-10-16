@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { CheckinPolicy } from '@/components/attendance/CheckinPolicy';
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 type Upper = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
@@ -143,6 +144,8 @@ export default function AdminAttendance() {
 
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-6">
+          {/* The location check for class check-ins (Stage 5 · Q11). */}
+          <CheckinPolicy />
 
           {/* Filters & Actions Header */}
           <div className="flex flex-col md:flex-row justify-between items-stretch md:items-end gap-4 bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/50 p-4 sm:p-5 rounded-2xl">

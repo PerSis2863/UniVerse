@@ -20,6 +20,18 @@ import { cn } from '@/lib/utils';
 type Current = { session: { id: string; startedAt: string; course: { id: string; code: string; name: string }; mood: 'LOST' | 'OK' | null; questions: { id: string; text: string; answeredAt: string | null; createdAt: string }[] } | null };
 const KEY = '/api/classroom/current';
 
+/** Where the phone is, if the person allows it (else nothing: the server then says what's needed). */
+function here(): Promise<{ lat: number; lng: number; accuracy: number } | undefined> {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(undefined);
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
+      () => resolve(undefined),
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+    );
+  });
+}
+
 export function StudentClassroom() {
   const refreshInterval = useLiveInterval(30_000, 0);
   const { data, mutate } = useSWR<Current>(KEY, authedJson, { refreshInterval });
@@ -31,7 +43,11 @@ export function StudentClassroom() {
   const join = async (raw: string) => {
     setJoining(true);
     try {
-      const r = await authedJson<{ course: { code: string }; attendance: string }>('/api/classroom/join', { method: 'POST', body: JSON.stringify({ code: raw }) });
+      // The school may check you're on campus (Stage 5 · Q11): the position only goes with this
+      // check-in, to be compared, and is never kept.
+      const policy = await authedJson<{ on: boolean }>('/api/attendance/policy').catch(() => ({ on: false }));
+      const position = policy.on ? await here() : undefined;
+      const r = await authedJson<{ course: { code: string }; attendance: string }>('/api/classroom/join', { method: 'POST', body: JSON.stringify({ code: raw, position }) });
       setMarked(r.attendance);
       setCode('');
       toast.success(`You’re in ${r.course.code}`, { description: r.attendance === 'LATE' ? 'Marked late in attendance.' : 'Marked present in attendance.' });

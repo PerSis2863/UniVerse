@@ -156,6 +156,7 @@ model User {
   // Core Academic
   enrollments           Enrollment[]
   attendance            Attendance[]
+  attendanceExcuses     AttendanceExcuse[] @relation("AttendanceExcuses")
   submissions           QuizSubmission[]
   grades                Grade[]
   taughtCourses         Course[]
@@ -527,6 +528,9 @@ model Course {
   sections              CourseSection[]
   timetableSlots        TimetableSlot[]
   attendance            Attendance[]
+  attendanceExcuses     AttendanceExcuse[]
+  /// Stage 5 · Q11: the seating chart, JSON { rows, cols, seats: { "<row>-<col>": studentId } }.
+  seating               String?
   grades                Grade[]
   gradeChanges          GradeChange[]
   quizzes               Quiz[]
@@ -582,6 +586,8 @@ model Enrollment {
   /// Stage 5 · B2: the student's section in the course (null: none).
   sectionId  String?
   section    CourseSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  /// Stage 5 · Q11: when the guardians were last told about frequent absences here (once a week at most).
+  absenceAlertAt DateTime?
 
   @@unique([studentId, courseId])
   @@index([studentId])
@@ -620,6 +626,29 @@ model Attendance {
   @@index([courseId])
   @@index([date])
   @@map("attendance")
+}
+
+/// Stage 5 · Q11: a student's request to be excused for a class day, with a reason and maybe a
+/// document; PENDING, APPROVED (the day is marked Excused) or DECLINED.
+model AttendanceExcuse {
+  id          String    @id @default(cuid())
+  studentId   String
+  student     User      @relation("AttendanceExcuses", fields: [studentId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  date        DateTime
+  reason      String
+  fileUrl     String?
+  fileName    String?
+  status      String    @default("PENDING")
+  decidedById String?
+  decidedAt   DateTime?
+  note        String?
+  createdAt   DateTime  @default(now())
+
+  @@index([courseId, status])
+  @@index([studentId])
+  @@map("attendance_excuses")
 }
 
 model Grade {
@@ -3535,6 +3564,11 @@ model SchoolPolicy {
   studentsMinors Boolean  @default(false)
   /// Parents can message their children's teachers (Stage 5 · B16.2).
   parentMessaging Boolean @default(true)
+  /// Stage 5 · Q11: class check-ins only near the campus (the position is compared, never stored).
+  checkinGeo     Boolean  @default(false)
+  checkinLat     Float?
+  checkinLng     Float?
+  checkinRadius  Int      @default(300)
   updatedAt      DateTime @default(now())
   updatedById    String?
 

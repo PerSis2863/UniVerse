@@ -1842,6 +1842,21 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   })],
 
   [/^\/api\/notifications$/, ({ db: d }) => ok(d.notifications)],
+  // Attendance (Stage 5 · Q11): the register, the class call, excuses and the location check.
+  [/^\/api\/attendance\/register\/([^/]+)$/, ({ db: d, m, q }) => {
+    const c = course(d, m[1]) ?? d.courses[0];
+    const day = q.get('day') ?? new Date().toISOString().slice(0, 10);
+    const marks = ['PRESENT', 'PRESENT', 'LATE', 'ABSENT', 'PRESENT'];
+    return ok({
+      course: { id: c.id, code: c.code, name: c.name }, day,
+      students: (d.classmates as any[]).map((s, i) => ({ id: s.id, name: s.name, email: s.email, avatar: null, mark: i === 3 ? null : marks[i % 5], record: { attended: 8 - (i % 3), counted: 9, rate: (8 - (i % 3)) / 9 }, recent: ['PRESENT', 'PRESENT', i === 2 ? 'ABSENT' : 'LATE', 'PRESENT'], chronic: false })),
+      pendingExcuses: 1, seating: { rows: 3, cols: 4, seats: { '0-0': d.classmates[0].id, '0-1': d.classmates[1].id, '1-2': d.classmates[2].id } },
+    });
+  }],
+  [/^\/api\/attendance\/register\/[^/]+\/call$/, () => ok({ day: new Date().toISOString().slice(0, 10), length: 0, threshold: 0.75, suggestions: [] })],
+  [/^\/api\/attendance\/register\/[^/]+\/excuses$/, ({ db: d }) => ok([{ id: 'sample-ex-1', date: new Date(Date.now() - 86_400_000).toISOString(), reason: 'I had a fever and stayed home.', fileUrl: null, fileName: null, status: 'PENDING', note: null, student: { id: d.classmates[1].id, name: d.classmates[1].name }, course: { code: d.courses[0].code, name: d.courses[0].name } }])],
+  [/^\/api\/attendance\/excuses$/, () => ok([])],
+  [/^\/api\/attendance\/policy$/, () => ok({ on: false, radius: 300, lat: null, lng: null })],
   // Search everywhere (Stage 5 · Q10): the sample courses and quizzes by name.
   [/^\/api\/search$/, ({ db: d, q }) => {
     const term = (q.get('q') ?? '').toLowerCase().trim();
@@ -2178,6 +2193,11 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
+  // Attendance changes (Stage 5 · Q11).
+  ['POST', /^\/api\/attendance\/register\/[^/]+$/, ({ body }) => { notice(); return ok({ marked: Array.isArray(body?.marks) ? body.marks.length : 0 }); }],
+  ['PUT', /^\/api\/attendance\/register\/[^/]+\/seating$/, ({ body }) => { notice(); return ok(body ?? {}); }],
+  ['POST', /^\/api\/attendance\/excuses(\/[^/]+)?$/, () => { notice(); return ok({ ok: true }); }],
+  ['PUT', /^\/api\/attendance\/policy$/, () => { notice(); return ok({ on: false, radius: 300, lat: null, lng: null }); }],
   // Saving the home page's layout (Stage 5 · Q8).
   ['PUT', /^\/api\/home\/layout$/, ({ body }) => { notice(); return ok({ layout: body ?? {} }); }],
   // Reading levels (Stage 5 · D9): no AI in the sample, so no simpler versions (the original stays).
