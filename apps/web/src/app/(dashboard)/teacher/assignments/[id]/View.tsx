@@ -17,7 +17,7 @@ import { TabPill } from '@/components/ui/Glide';
 import { Translatable } from '@/components/shared/Translatable';
 import { AiReceiptView } from '@/components/assignments/AiReceipt';
 import { AI_POLICIES, type AiPolicy, type AiReceipt } from '@/lib/ai-receipt';
-import { Extensions, RulesEditor, rulesSentence, type ClassStudent, type Extension } from '@/components/assignments/AssignmentRules';
+import { Extensions, GradePosting, RulesEditor, rulesSentence, type ClassStudent, type Extension } from '@/components/assignments/AssignmentRules';
 import { withPenalty } from '@/lib/assignment-policy';
 import { HandedInView } from '@/components/assignments/HandIn';
 import { GroupModePicker, GroupsEditor, type Group } from '@/components/assignments/AssignmentGroups';
@@ -39,6 +39,8 @@ interface Submission {
   fileUrl?: string | null; fileName?: string | null; fileSize?: number | null; linkUrl?: string | null;
   /** A group's hand-in (Stage 5 · B3.2), and each member's grade { studentId: { gradeId, score } } (JSON). */
   groupId?: string | null; memberGrades?: string | null;
+  /** When its grade reached the gradebook and the student (null: held until "Post grades"). */
+  postedAt?: string | null;
   criteriaScores: Score[] | null;
   score: number | null;
   feedback: string | null;
@@ -67,6 +69,7 @@ interface Detail {
   groupMode?: GroupMode | null;
   groups?: Group[];
   peerReviews?: number; peerDueDate?: string | null; peerReviewList?: TeacherReview[];
+  postPolicy?: 'AUTO' | 'MANUAL';
   course: { code: string; name: string };
   enrolled: number;
   students?: ClassStudent[];
@@ -230,6 +233,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
             <details className="panel px-4 py-3">
               <summary className="cursor-pointer text-sm font-semibold text-zinc-900 dark:text-white py-1">Rules and extensions <span className="font-normal text-zinc-600 dark:text-zinc-400">· {[...rulesSentence(data).map((x) => x.replace(/^You can/, 'Students can')), data.extensions?.length ? `${data.extensions.length} extension${data.extensions.length === 1 ? '' : 's'}.` : ''].filter(Boolean).join(' ') || 'no late penalty, any number of hand-ins'}</span></summary>
               <div className="mt-3 pb-1 space-y-5">
+                <GradePosting assignmentId={data.id} policy={data.postPolicy ?? 'AUTO'} held={subs.filter((s) => graded(s) && !s.postedAt).length} canManage={data.canManage !== false} onChanged={() => void mutate()} />
                 <RulesEditor key={`${data.latePenalty}:${data.lateGraceMinutes}:${data.latePenaltyMax}:${data.maxAttempts}`} assignmentId={data.id} rules={data} canManage={data.canManage !== false} onSaved={() => void mutate()} />
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Peer review</h3>
@@ -272,7 +276,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                       <span className="block text-[11px] text-zinc-500">{new Date(s.submittedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}{s.lateDays ? ` · ${s.lateDays} day${s.lateDays === 1 ? '' : 's'} late${s.latePenalty && !s.lateWaived ? ` (−${s.latePenalty}%)` : ''}` : ''}{s.attempts && s.attempts > 1 ? ` · hand-in ${s.attempts}` : ''}{s.offlineAt ? ' · offline' : ''}</span>
                     </span>
                     {(s.similarity?.peer || s.similarity?.material) && <Copy className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="Similarity to check" />}
-                    <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0', (STATUS[s.status] ?? STATUS.SUBMITTED).style)}>{s.status === 'RETURNED' ? `${s.score}/${data.maxScore}` : (STATUS[s.status] ?? STATUS.SUBMITTED).label}</span>
+                    <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0', (STATUS[s.status] ?? STATUS.SUBMITTED).style)}>{s.status === 'RETURNED' ? `${s.score}/${data.maxScore}${s.postedAt ? '' : ' · not posted'}` : (STATUS[s.status] ?? STATUS.SUBMITTED).label}</span>
                   </button>
                 ))}
               </nav>
@@ -488,7 +492,7 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
         <div className="flex items-center justify-between gap-3">
           {sub.status === 'RETURNED' ? (
             <span className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Returned {sub.returnedAt ? new Date(sub.returnedAt).toLocaleDateString() : ''}</span>
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> {sub.postedAt ? 'Returned' : 'Graded, not posted yet'} {sub.returnedAt ? new Date(sub.returnedAt).toLocaleDateString() : ''}</span>
               <button type="button" onClick={() => void reopen()} className="btn-ghost btn-sm">Let them hand in again</button>
             </span>
           ) : sub.status === 'REOPENED' ? <span className="text-xs text-sky-700 dark:text-sky-300">Reopened: waiting for their new version</span> : <span />}

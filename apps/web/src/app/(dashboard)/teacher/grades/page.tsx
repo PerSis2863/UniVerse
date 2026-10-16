@@ -4,7 +4,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { ChevronRight, Download, FileSpreadsheet, GraduationCap, Layers, Loader2, Plus, Search, Trash2, X } from 'lucide-react';
+import { ChevronRight, Download, FileSpreadsheet, GraduationCap, History, Layers, Loader2, Plus, Search, Trash2, X } from 'lucide-react';
 import { Sheet } from '@/components/ui/Sheet';
 import { authedJson } from '@/lib/authed-fetch';
 import { finalGrade, letter, type Category } from '@/lib/gradebook';
@@ -42,6 +42,7 @@ export default function TeacherGradesPage() {
   const catKey = courseId ? `/api/courses/${courseId}/grade-categories` : null;
   const { data: cats, mutate: mutateCats } = useSWR<CategoryView>(catKey, authedJson);
   const [editingCats, setEditingCats] = useState(false);
+  const [history, setHistory] = useState(false);
 
   const rows = useMemo(() => {
     const grades = data?.grades ?? [];
@@ -129,6 +130,7 @@ export default function TeacherGradesPage() {
               <input className={cn('input', 'pl-9')} placeholder="Search students…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <button onClick={() => setEditingCats(true)} disabled={!courseId} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Categories and weights"><Layers className="w-4 h-4" /> <span className="hidden lg:inline">Categories</span></button>
+            <button onClick={() => setHistory(true)} disabled={!courseId} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Grade history"><History className="w-4 h-4" /> <span className="hidden lg:inline">History</span></button>
             <button onClick={exportSummary} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Export final grades"><FileSpreadsheet className="w-4 h-4" /> <span className="hidden lg:inline">Final grades</span></button>
             <button onClick={exportCsv} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Export every grade"><Download className="w-4 h-4" /> <span className="hidden lg:inline">All grades</span></button>
             <button onClick={() => setAdding({ studentId: '', assignmentName: '', score: '', maxScore: '100', feedback: '' })} disabled={!rows.length} className="btn-primary text-sm px-3 flex items-center gap-1.5 disabled:opacity-50"><Plus className="w-4 h-4" /> Add grade</button>
@@ -226,6 +228,8 @@ export default function TeacherGradesPage() {
         </div>
       )}
 
+      {history && courseId && <GradeHistorySheet courseId={courseId} onClose={() => setHistory(false)} />}
+
       {editingCats && catKey && (
         <CategoriesSheet catKey={catKey} view={cats ?? { categories: [], assessments: [] }} assessments={assessments} onChanged={(v) => void mutateCats(v, { revalidate: false })} onClose={() => setEditingCats(false)} />
       )}
@@ -287,6 +291,31 @@ function CategoriesSheet({ catKey, view, assessments, onChanged, onClose }: { ca
           </div>
         )}
       </div>
+    </Sheet>
+  );
+}
+
+/** Who changed which grade, from what to what (Stage 5 · B3.4, src/server/grade-history.ts). */
+function GradeHistorySheet({ courseId, onClose }: { courseId: string; onClose: () => void }) {
+  const { data, error } = useSWR<{ id: string; student: string; assessment: string; oldScore: number | null; newScore: number | null; maxScore: number; changedByName: string | null; createdAt: string }[]>(`/api/courses/${courseId}/grade-history`, authedJson);
+  return (
+    <Sheet title="Grade history" onClose={onClose}>
+      {error ? <p className="text-sm text-rose-700 dark:text-rose-300">{errorMessage(error, 'The history couldn’t load.')}</p>
+        : !data ? <div className="h-32 rounded-2xl skeleton" />
+        : !data.length ? <p className="text-sm text-zinc-600 dark:text-zinc-400">No changes yet. Every grade added, changed or deleted from now on is listed here.</p>
+        : (
+          <ol className="divide-y divide-zinc-200/70 dark:divide-white/[0.07]">
+            {data.map((c) => (
+              <li key={c.id} className="py-2.5 text-sm">
+                <p className="text-zinc-900 dark:text-white"><span className="font-medium">{c.student}</span> · {c.assessment}</p>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                  {c.oldScore === null ? `Given ${c.newScore}/${c.maxScore}` : c.newScore === null ? `Deleted (was ${c.oldScore}/${c.maxScore})` : `${c.oldScore} → ${c.newScore} of ${c.maxScore}`}
+                  {' · '}{c.changedByName || 'Someone'} · {new Date(c.createdAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </li>
+            ))}
+          </ol>
+        )}
     </Sheet>
   );
 }

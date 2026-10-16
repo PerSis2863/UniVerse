@@ -34,9 +34,9 @@ export async function peerView(assignmentId: string, user: SessionUser) {
       where: { assignmentId, reviewerId: user.id }, orderBy: { createdAt: 'asc' }, take: 10,
       select: { id: true, status: true, criteria: true, comment: true, submission: { select: { text: true, fileUrl: true, fileName: true, fileSize: true, linkUrl: true } } },
     }),
-    prisma.assignmentSubmission.findUnique({ where: { assignmentId_studentId: { assignmentId, studentId: user.id } }, select: { id: true, status: true } }),
+    prisma.assignmentSubmission.findUnique({ where: { assignmentId_studentId: { assignmentId, studentId: user.id } }, select: { id: true, status: true, postedAt: true } }),
   ]);
-  const graded = mine?.status === 'RETURNED' || mine?.status === 'REOPENED';
+  const graded = (mine?.status === 'RETURNED' || mine?.status === 'REOPENED') && !!mine?.postedAt;
   const open = !assignment.peerDueDate || assignment.peerDueDate > new Date();
   const visible = !!mine && (assignment.peerDueDate ? !open : graded);
   const received = visible

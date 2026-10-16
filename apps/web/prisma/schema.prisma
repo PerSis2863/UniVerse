@@ -516,6 +516,7 @@ model Course {
   timetableSlots        TimetableSlot[]
   attendance            Attendance[]
   grades                Grade[]
+  gradeChanges          GradeChange[]
   quizzes               Quiz[]
   classSessions         ClassSession[]
   materials             Material[]
@@ -3094,6 +3095,8 @@ model Assignment {
   /// Peer review (Stage 5 · B3.2): answers each student reviews (0: none), and when reviews are due
   peerReviews      Int       @default(0)
   peerDueDate      DateTime?
+  /// When students see grades (Stage 5 · B3.4): AUTO (when returned) or MANUAL (after "Post grades")
+  postPolicy       String    @default("AUTO")
   peerReviewRows   PeerReview[]
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
@@ -3151,6 +3154,8 @@ model AssignmentSubmission {
   memberGrades       String?
   peerReviews        PeerReview[]
   notes              SubmissionNote[]
+  /// When its grade reached the gradebook and the student (null: not graded, or held until posted)
+  postedAt           DateTime?
   submittedAt        DateTime   @default(now())
   returnedAt         DateTime?
   updatedAt          DateTime   @updatedAt
@@ -3159,6 +3164,26 @@ model AssignmentSubmission {
   @@index([groupId])
   @@index([studentId])
   @@map("assignment_submissions")
+}
+
+/// A change to a grade (Stage 5 · B3.4): who, when, from what to what (newScore null: deleted).
+model GradeChange {
+  id            String   @id @default(cuid())
+  courseId      String
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId     String
+  gradeId       String?
+  assessment    String
+  oldScore      Float?
+  newScore      Float?
+  maxScore      Float
+  changedById   String?
+  changedByName String?
+  createdAt     DateTime @default(now())
+
+  @@index([courseId, createdAt])
+  @@index([studentId])
+  @@map("grade_changes")
 }
 
 /// The teaching team's note on a hand-in, pinned to a place (Stage 5 · B3.3, src/lib/note-anchor.ts).

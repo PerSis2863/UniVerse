@@ -11,7 +11,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from './ht
 const MAX_NOTES = 200;
 
 async function load(submissionId: string, user: SessionUser) {
-  const sub = await prisma.assignmentSubmission.findUnique({ where: { id: submissionId }, select: { id: true, studentId: true, groupId: true, status: true, text: true, assignmentId: true, assignment: { select: { courseId: true } } } });
+  const sub = await prisma.assignmentSubmission.findUnique({ where: { id: submissionId }, select: { id: true, studentId: true, groupId: true, status: true, postedAt: true, text: true, assignmentId: true, assignment: { select: { courseId: true } } } });
   const a = sub ? await courseAccess(sub.assignment.courseId, user) : null;
   if (!sub || !a) throw new NotFoundException('Submission not found.');
   return { sub, canGrade: a.canGrade };
@@ -23,7 +23,7 @@ export async function notesFor(submissionId: string, user: SessionUser) {
   if (!canGrade) {
     const mine = sub.studentId === user.id || (!!sub.groupId && !!(await prisma.assignmentGroupMember.findFirst({ where: { groupId: sub.groupId, studentId: user.id }, select: { id: true } })));
     if (!mine) throw new NotFoundException('Submission not found.');
-    if (sub.status !== 'RETURNED' && sub.status !== 'REOPENED') return { notes: [], canEdit: false };
+    if ((sub.status !== 'RETURNED' && sub.status !== 'REOPENED') || !sub.postedAt) return { notes: [], canEdit: false };
   }
   const notes = await prisma.submissionNote.findMany({ where: { submissionId }, orderBy: { createdAt: 'asc' }, take: MAX_NOTES, select: { id: true, anchor: true, comment: true, createdAt: true, author: { select: { id: true, name: true } } } });
   return { canEdit: canGrade, notes: notes.map((n) => ({ ...n, anchor: JSON.parse(n.anchor) as Anchor })) };

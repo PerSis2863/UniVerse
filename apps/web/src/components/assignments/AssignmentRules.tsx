@@ -143,3 +143,48 @@ export function Extensions({ assignmentId, dueDate, students, extensions, onChan
     </div>
   );
 }
+
+/** When students see grades (Stage 5 · B3.4): when returned, or all at once with "Post grades". */
+export function GradePosting({ assignmentId, policy, held, canManage, onChanged }: { assignmentId: string; policy: 'AUTO' | 'MANUAL'; held: number; canManage: boolean; onChanged: () => void }) {
+  const [progress, setProgress] = useState<string | null>(null);
+  const setPolicy = async (v: string) => {
+    try { await authedJson(`/api/assignments/${assignmentId}`, { method: 'PATCH', body: JSON.stringify({ postPolicy: v }) }); toast.success(v === 'MANUAL' ? 'Grades wait until you post them' : 'Each grade shows when you return it'); onChanged(); }
+    catch (e) { toast.error(errorMessage(e, 'That didn’t change.')); }
+  };
+  // A few at a time (the server's per-request limits), until none are left.
+  const post = async () => {
+    if (!(await confirmDialog({ title: `Post ${held} grade${held === 1 ? '' : 's'}?`, message: 'Students see their grade, feedback and notes, and it goes into the gradebook. They’re told in the app.', confirmLabel: 'Post them' }))) return;
+    let done = 0;
+    setProgress(`Posting 0 of ${held}…`);
+    try {
+      for (let guard = 0; guard < 200; guard++) {
+        const out = await authedJson<{ posted: number; left: number }>(`/api/assignments/${assignmentId}/post-grades`, { method: 'POST' });
+        done += out.posted;
+        setProgress(`Posting ${done} of ${done + out.left}…`);
+        if (!out.left || !out.posted) break;
+      }
+      toast.success(`${done} grade${done === 1 ? '' : 's'} posted`);
+    } catch (e) {
+      toast.error(errorMessage(e, 'Posting stopped. Try again to post the rest.'));
+    } finally {
+      setProgress(null);
+      onChanged();
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200">Students see grades
+        <select className="input w-auto py-1.5" value={policy} disabled={!canManage} onChange={(e) => void setPolicy(e.target.value)}>
+          <option value="AUTO">when I return each one</option>
+          <option value="MANUAL">when I post them, all together</option>
+        </select>
+      </label>
+      {(held > 0 || progress) && (
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm text-zinc-700 dark:text-zinc-300"><span className="font-semibold tabular-nums">{held}</span> graded, not posted yet</span>
+          {canManage && <button type="button" onClick={() => void post()} disabled={!!progress} className="btn-primary btn-sm">{progress ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {progress}</> : `Post ${held} grade${held === 1 ? '' : 's'}`}</button>}
+        </div>
+      )}
+    </div>
+  );
+}
