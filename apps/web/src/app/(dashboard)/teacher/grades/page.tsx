@@ -134,7 +134,7 @@ export default function TeacherGradesPage() {
             <button onClick={() => setEditingCats(true)} disabled={!courseId} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Categories and weights"><Layers className="w-4 h-4" /> <span className="hidden lg:inline">Categories</span></button>
             <button onClick={() => setHistory(true)} disabled={!courseId} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Grade history"><History className="w-4 h-4" /> <span className="hidden lg:inline">History</span></button>
             <button onClick={exportSummary} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Export final grades"><FileSpreadsheet className="w-4 h-4" /> <span className="hidden lg:inline">Final grades</span></button>
-            <button onClick={exportCsv} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Export every grade"><Download className="w-4 h-4" /> <span className="hidden lg:inline">All grades</span></button>
+            <button onClick={exportCsv} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Export all grades"><Download className="w-4 h-4" /> <span className="hidden lg:inline">All grades</span></button>
             <button onClick={() => setAdding({ studentId: '', assignmentName: '', score: '', maxScore: '100', feedback: '' })} disabled={!rows.length} className="btn-primary text-sm px-3 flex items-center gap-1.5 disabled:opacity-50"><Plus className="w-4 h-4" /> Add grade</button>
           </div>
         </div>
