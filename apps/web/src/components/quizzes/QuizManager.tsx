@@ -21,7 +21,7 @@ type Question = { id: string; question: string; options: string[]; correctAnswer
 type Integrity = { left: number; pasted: number; fullscreenExits: number; overtimeSeconds: number; noStart: boolean; dropped?: number };
 type Submission = { id: string; score: number | null; maxScore: number | null; submittedAt: string; integrity?: Integrity | null; student: { name: string } };
 type Quiz = {
-  id: string; courseId?: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean; pools?: string | null; oneWay?: boolean; hardStop?: boolean;
+  id: string; courseId?: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean; pools?: string | null; oneWay?: boolean; hardStop?: boolean; practice?: boolean;
   course: { name: string; code: string }; questions: Question[]; submissions: Submission[];
   analysis?: { students: number; items: ItemResult[]; consistency: number | null; toFix: number };
 };
@@ -106,6 +106,10 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
                 </label>
               </div>
               <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between gap-3">
+                  <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Practice set</p><p className="text-xs text-zinc-600 dark:text-zinc-400">Not graded: once it isn’t a draft, students practise its questions any time under Mastery, one at a time, with hints, the answers and your explanations. It isn’t listed as a quiz to take.</p></div>
+                  <Switch checked={!!quiz.practice} disabled={busy} onChange={(v) => void patch({ practice: v }, v ? 'A practice set: students practise it under Mastery' : 'A quiz again')} label="Practice set" />
+                </div>
                 <div className="flex items-center justify-between gap-3">
                   <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Shuffle questions and answers</p><p className="text-xs text-zinc-500">Each student gets their own order (the same if they reload).</p></div>
                   <Switch checked={!!quiz.shuffle} disabled={busy} onChange={(v) => void patch({ shuffle: v }, v ? 'Questions and answers are shuffled for each student' : 'Same order for everyone')} label="Shuffle questions and answers" />

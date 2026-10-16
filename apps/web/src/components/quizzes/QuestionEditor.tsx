@@ -19,6 +19,8 @@ export interface QDraft {
   image: string; areas: Area[];
   /** NUMBER: numbers that change for each student (B4.2). */
   varying: boolean; vars: { name: string; min: string; max: string; step: string }[]; formula: string;
+  /** Any type (B4.4): a hint for practice, an explanation shown with the answer. */
+  hint: string; explain: string;
 }
 
 export const emptyDraft = (type: QuestionType = 'CHOICE'): QDraft => ({
@@ -26,13 +28,14 @@ export const emptyDraft = (type: QuestionType = 'CHOICE'): QDraft => ({
   accepted: '', pairs: [{ left: '', right: '' }, { left: '', right: '' }, { left: '', right: '' }], extra: '', items: ['', '', '', ''],
   value: '', tolerance: '', unit: '', image: '', areas: [],
   varying: false, vars: [{ name: 'a', min: '1', max: '10', step: '1' }], formula: '',
+  hint: '', explain: '',
 });
 
 const lines = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean);
 
 /** The draft as the questions API takes it. */
 export function toBody(d: QDraft): QuestionInput {
-  const base = { type: d.type, question: d.question };
+  const base = { type: d.type, question: d.question, hint: d.hint, explain: d.explain };
   switch (d.type) {
     case 'CHOICE': return { ...base, options: d.options.map((o) => o.trim()).filter(Boolean), correctAnswer: d.options[d.correct]?.trim() ?? '' };
     case 'TRUE_FALSE': return { ...base, correctAnswer: d.tf };
@@ -146,6 +149,19 @@ export function QuestionEditor({ draft, onChange, idPrefix }: { draft: QDraft; o
           <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Unit<input className={cn(input, 'mt-1')} value={draft.unit} maxLength={20} onChange={(e) => set({ unit: e.target.value })} placeholder="m/s²" /></label>
         </div>
       </>}
+
+      <details className="rounded-xl border border-zinc-200 dark:border-white/10 px-3 py-2" open={!!(draft.hint || draft.explain)}>
+        <summary className="cursor-pointer text-xs font-semibold text-zinc-700 dark:text-zinc-300">Hint and explanation (optional)</summary>
+        <div className="mt-2 space-y-2">
+          <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">Hint, shown in practice after a wrong try
+            <input value={draft.hint} maxLength={500} onChange={(e) => set({ hint: e.target.value })} className={cn(input, 'mt-1 font-normal')} placeholder="Think about what happens to the remainder." />
+          </label>
+          <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">Explanation, shown with the answer
+            <textarea value={draft.explain} rows={2} maxLength={1000} onChange={(e) => set({ explain: e.target.value })} className={cn(input, 'mt-1 font-normal')} />
+          </label>
+          <p className={small}>Students never see these while a quiz is open; the explanation appears in the review once answers are shown.</p>
+        </div>
+      </details>
     </div>
   );
 }

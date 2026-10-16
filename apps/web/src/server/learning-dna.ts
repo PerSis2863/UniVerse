@@ -227,6 +227,9 @@ async function observations(courseId: string, studentIds: string[], revealedOnly
     assignmentIds.length ? prisma.assignment.findMany({ where: { id: { in: assignmentIds.slice(0, 90) }, courseId }, select: { id: true, rubric: true } }) : Promise.resolve([]),
     assignmentIds.length ? prisma.assignmentSubmission.findMany({ where: { assignmentId: { in: assignmentIds.slice(0, 90) }, studentId: { in: ids }, status: 'RETURNED' }, select: { assignmentId: true, studentId: true, criteriaScores: true, returnedAt: true }, take: 5000 }) : Promise.resolve([]),
   ]);
+  // Practice (B4.4): each question's first try, at half weight, for its tagged concepts.
+  const practisedQs = questionIds.length ? await prisma.practiceAnswer.findMany({ where: { courseId, studentId: { in: ids } }, select: { studentId: true, questionId: true, credit: true, createdAt: true }, take: 5000 }) : [];
+  for (const p of practisedQs) for (const c of byRef.get(p.questionId) ?? []) add(p.studentId, c, { at: p.createdAt.getTime(), outcome: p.credit, weight: 0.5 });
   // Second chances' practice answers (D10), for the concept each was about.
   const practised = await prisma.secondChance.findMany({ where: { courseId, studentId: { in: ids }, conceptId: { not: null }, results: { not: null } }, select: { studentId: true, conceptId: true, results: true } });
   const now = Date.now();

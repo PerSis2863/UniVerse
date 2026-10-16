@@ -202,7 +202,8 @@ export class QuizzesService {
 
   async getStudentQuizzes(studentId: string) {
     const quizzes = await prisma.quiz.findMany({
-      where: { status: { in: ['PUBLISHED', 'CLOSED'] }, course: { enrollments: { some: { studentId } } } },
+      // Practice sets (B4.4) are practised on the Mastery page, not taken as quizzes.
+      where: { status: { in: ['PUBLISHED', 'CLOSED'] }, practice: false, course: { enrollments: { some: { studentId } } } },
       include: { 
         course: { select: { name: true } },
         _count: { select: { questions: true } }

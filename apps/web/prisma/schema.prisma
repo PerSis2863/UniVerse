@@ -293,6 +293,7 @@ model User {
   peerReviewsGiven      PeerReview[]            @relation("PeerReviewer")
   submissionNotes       SubmissionNote[]        @relation("SubmissionNotes")
   regradeRequests       RegradeRequest[]        @relation("RegradeRequests")
+  practiceAnswers       PracticeAnswer[]        @relation("PracticeAnswers")
   accommodation         StudentAccommodation?  @relation("Accommodation")
   guardianContacts      GuardianContact[]
   impactUpdates         ImpactUpdate[]
@@ -521,6 +522,7 @@ model Course {
   grades                Grade[]
   gradeChanges          GradeChange[]
   quizzes               Quiz[]
+  practiceAnswers       PracticeAnswer[]
   classSessions         ClassSession[]
   materials             Material[]
   announcements         Announcement[]
@@ -652,6 +654,8 @@ model Quiz {
   /// Exam mode extras (B4.3): one question at a time, no going back; no answers taken after time
   oneWay      Boolean    @default(false)
   hardStop    Boolean    @default(false)
+  /// A practice set (B4.4): never graded; its questions are practised any time, with the answers
+  practice    Boolean    @default(false)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -679,6 +683,7 @@ model QuizQuestion {
   meta          String?
   /// The pool it's drawn from (null: everyone gets it)
   pool          String?
+  practiced     PracticeAnswer[]
 
   @@index([quizId])
   @@map("quiz_questions")
@@ -5977,4 +5982,26 @@ model CourseStaff {
   @@unique([courseId, userId])
   @@index([userId])
   @@map("course_staff")
+}
+
+/// A question a student practised (Stage 5 · B4.4, src/server/practice.ts)
+model PracticeAnswer {
+  id         String       @id @default(cuid())
+  studentId  String
+  student    User         @relation("PracticeAnswers", fields: [studentId], references: [id], onDelete: Cascade)
+  courseId   String
+  course     Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questionId String
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  /// The first try's share of the points (what counts towards mastery)
+  credit     Float
+  tries      Int          @default(1)
+  /// Got it right in the end (on any try)
+  solved     Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @default(now()) @updatedAt
+
+  @@index([studentId, courseId])
+  @@index([questionId])
+  @@map("practice_answers")
 }

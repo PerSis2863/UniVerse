@@ -15,7 +15,7 @@ import { PictureTap } from './AnswerInput';
 export function QuizReview({ quizId, onClose }: { quizId: string; onClose: () => void }) {
   const { data, error } = useSWR<{
     courseId: string; title: string; score: number | null; maxScore: number | null; revealed: boolean;
-    questions: { id: string; type?: string; question: string; options: string[]; points: number; yourAnswer: string | string[] | null; yourText?: string; correct?: boolean; credit?: number; correctAnswer?: string; rightOptions?: string[]; image?: string; areas?: Area[] }[];
+    questions: { id: string; type?: string; question: string; options: string[]; points: number; yourAnswer: string | string[] | null; yourText?: string; correct?: boolean; credit?: number; correctAnswer?: string; rightOptions?: string[]; image?: string; areas?: Area[]; explain?: string | null }[];
   }>(`/api/quizzes/${quizId}/result`, authedJson);
   return (
     <div className="backdrop-in fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -65,6 +65,7 @@ export function QuizReview({ quizId, onClose }: { quizId: string; onClose: () =>
                 {(!q.yourAnswer || (Array.isArray(q.yourAnswer) && !q.yourAnswer.length)) && <p className="text-xs text-zinc-500">You didn’t answer this question.</p>}
               </div>
               )}
+              {data.revealed && q.explain && <p className="mt-2 text-xs rounded-lg bg-sky-500/[0.07] border border-sky-500/20 px-3 py-2 text-zinc-800 dark:text-zinc-200"><span className="font-semibold">Why: </span>{q.explain}</p>}
             </div>
           ))}
           {/* Second chances (Stage 5 · D10): a catch-up on what was missed, once the answers are shown. */}

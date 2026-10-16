@@ -55,6 +55,8 @@ export async function GET(req: Request, { params }: Ctx) {
         // A picture question: the picture always, the right areas once revealed.
         image: type === 'HOTSPOT' ? metaOf(q).image : undefined,
         areas: reveal && type === 'HOTSPOT' ? metaOf(q).areas ?? [] : undefined,
+        // The teacher's explanation (B4.4), once answers are shown.
+        explain: reveal ? metaOf(q).explain ?? null : undefined,
         // The right options of a several-answers question, to mark them in the list.
         rightOptions: reveal ? (type === 'MULTI' ? metaOf(q).correct ?? [] : CHOICE_TYPES.includes(type) ? [q.correctAnswer] : undefined) : undefined,
       };

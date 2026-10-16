@@ -123,6 +123,13 @@ describe('question types', () => {
     expect(cleanQuestionInput({ type: 'NUMBER', question: '{d}', formula: 'd/k', vars: [{ name: 'd', min: 1, max: 2, step: 1 }] })).toMatch(/uses “k”/);
     expect(cleanQuestionInput({ type: 'NUMBER', question: '{d}', formula: '1/d', vars: [{ name: 'd', min: 0, max: 2, step: 1 }] })).toMatch(/dividing by 0/);
   });
+  it('keeps a hint and an explanation, never for students', () => {
+    const q = make({ question: '2 + 2?', options: ['3', '4'], correctAnswer: '4', hint: 'Count on your fingers.', explain: 'Two and two make four.' });
+    expect(metaOf(q)).toEqual({ hint: 'Count on your fingers.', explain: 'Two and two make four.' });
+    expect(isRight(q, '4')).toBe(true);
+    expect(JSON.stringify(forStudent(q, null))).not.toContain('fingers');
+    expect(toInput(q)).toMatchObject({ hint: 'Count on your fingers.', explain: 'Two and two make four.' });
+  });
   it('gives each student their own order, and the same again', () => {
     const q = make({ type: 'CHOICE', question: 'x', options: ['a', 'b', 'c', 'd', 'e', 'f'], correctAnswer: 'a' });
     expect(forStudent(q, 'u1').options).toEqual(forStudent(q, 'u1').options);

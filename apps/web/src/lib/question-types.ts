@@ -39,6 +39,9 @@ export interface Meta {
   vars?: Record<string, Range>; formula?: string;
   /** HOTSPOT: the picture, and the areas that count (percent of its width and height). */
   image?: string; areas?: Area[];
+  /** Any type (B4.4): a hint shown in practice after a wrong try, and an explanation shown with the
+   *  answer (in practice, and in the quiz review once answers are shown). */
+  hint?: string; explain?: string;
 }
 export interface Area { x: number; y: number; w: number; h: number }
 export interface Range { min: number; max: number; step: number }
@@ -256,6 +259,8 @@ export interface QuestionInput {
   value?: unknown; tolerance?: unknown; unit?: unknown; image?: unknown; areas?: unknown;
   /** NUMBER with numbers that change: the formula, and [{ name, min, max, step }]. */
   formula?: unknown; vars?: unknown;
+  /** Any type: a hint and an explanation (optional). */
+  hint?: unknown; explain?: unknown;
 }
 export interface CleanQuestion { type: QuestionType; question: string; options: string[]; correctAnswer: string; meta: string | null }
 
@@ -266,8 +271,11 @@ export function cleanQuestionInput(b: QuestionInput): CleanQuestion | string {
   const type: QuestionType = isQuestionType(b.type) ? b.type : 'CHOICE';
   let question = typeof b.question === 'string' ? b.question.trim().slice(0, 1000) : '';
   if (!question) return 'A question needs its text.';
-  const done = (options: string[], meta: Meta | null, correctAnswer?: string): CleanQuestion =>
-    ({ type, question, options, correctAnswer: correctAnswer ?? keyText(type, meta ?? {}), meta: meta ? JSON.stringify(meta) : null });
+  const hint = cut(b.hint, 500), explain = cut(b.explain, 1000);
+  const done = (options: string[], meta: Meta | null, correctAnswer?: string): CleanQuestion => {
+    const m: Meta | null = hint || explain ? { ...(meta ?? {}), ...(hint ? { hint } : {}), ...(explain ? { explain } : {}) } : meta;
+    return { type, question, options, correctAnswer: correctAnswer ?? keyText(type, meta ?? {}), meta: m ? JSON.stringify(m) : null };
+  };
   switch (type) {
     case 'CHOICE': {
       const options = texts(b.options, 99);
@@ -383,6 +391,11 @@ export function cleanQuestionInput(b: QuestionInput): CleanQuestion | string {
 
 /** A stored question back in the teacher's words (to edit it, or save it to the bank). */
 export function toInput(q: StoredQuestion): QuestionInput {
+  const m = metaOf(q);
+  return { ...inputOf(q), ...(m.hint ? { hint: m.hint } : {}), ...(m.explain ? { explain: m.explain } : {}) };
+}
+
+function inputOf(q: StoredQuestion): QuestionInput {
   const t = typeOf(q);
   const m = metaOf(q);
   const options = optionsOf(q);
