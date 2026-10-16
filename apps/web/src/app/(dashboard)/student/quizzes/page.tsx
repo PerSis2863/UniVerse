@@ -9,7 +9,7 @@ import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import useSWR, { mutate } from 'swr';
 import { fetcher } from '@/lib/fetcher';
-import { api } from '@/lib/api';
+import { ApiError, api } from '@/lib/api';
 import { QuizReview } from '@/components/quizzes/QuizReview';
 import { enqueue, isOfflineError, newClientId } from '@/lib/outbox';
 import { getPack, type PackQuiz } from '@/lib/offline-packs';
@@ -21,7 +21,7 @@ import { readingLevel } from '@/lib/display-prefs';
 
 interface QuizSummary { id: string; title: string; status: string; completed: boolean; score?: number | null; dueDate?: string | null; timeLimit?: number | null; courseId: string; course: { name: string }; _count?: { questions: number } }
 /** A quiz being taken: its questions (from the server, or the copy saved for offline use). */
-type FullQuiz = PackQuiz & { course?: { name: string } | null; examMode?: boolean; plainWords?: boolean };
+type FullQuiz = PackQuiz & { course?: { name: string } | null; examMode?: boolean; plainWords?: boolean; oneWay?: boolean; hardStop?: boolean };
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 export default function QuizzesPage() {
@@ -64,15 +64,19 @@ export default function QuizzesPage() {
       let ends = started.getTime() + (fullQuiz.timeLimit || 30) * 60_000;
       // Exam mode (B4.4): the clock runs on the server from the first start, so reloading doesn't
       // reset it; full screen is asked for, and leaving it, the tab or pasting is noted.
+      let resumeAt = 0;
       if (fullQuiz.examMode) {
-        const clock = await api.post<{ endsAt: string | null }>(`/quizzes/${fullQuiz.id}/start`).then((r) => r.data).catch(() => null);
+        const clock = await api.post<{ endsAt: string | null; done?: string[] }>(`/quizzes/${fullQuiz.id}/start`).then((r) => r.data).catch(() => null);
         if (clock?.endsAt) ends = new Date(clock.endsAt).getTime();
+        // One way (B4.3): back after a reload, they go on from the first question not yet passed.
+        if (fullQuiz.oneWay && clock?.done?.length) resumeAt = Math.max(0, fullQuiz.questions.findIndex((q) => !clock.done!.includes(q.id)));
+        if (fullQuiz.oneWay && clock?.done?.length === fullQuiz.questions.length) resumeAt = fullQuiz.questions.length - 1;
         seen.current = { left: 0, pasted: 0, fullscreenExits: 0 };
         document.documentElement.requestFullscreen?.().catch(() => {});
       }
       setStartedAt(started.toISOString());
       setActiveQuiz(fullQuiz);
-      setCurrentQ(0);
+      setCurrentQ(resumeAt);
       setAnswers({});
       setTimeLeft(Math.max(0, Math.round((ends - started.getTime()) / 1000))); // the countdown corrects it each second
       setEndsAt(ends);
@@ -144,10 +148,19 @@ export default function QuizzesPage() {
     };
   }, [activeQuiz, submitted]);
 
-  const nextQuestion = () => {
+  const [saving, setSaving] = useState(false);
+  const nextQuestion = async () => {
     if (!activeQuiz) return;
-    if (currentQ < activeQuiz.questions.length - 1) setCurrentQ((q) => q + 1);
-    else setConfirming(true);
+    if (currentQ >= activeQuiz.questions.length - 1) { setConfirming(true); return; }
+    // One-way exams (B4.3): the answer is saved on the server before moving on, for good.
+    if (activeQuiz.examMode && activeQuiz.oneWay) {
+      const q = activeQuiz.questions[currentQ];
+      setSaving(true);
+      try { await api.post(`/quizzes/${activeQuiz.id}/answer`, { questionId: q.id, answer: answers[q.id] ?? '' }); }
+      catch (e) { if (!(e instanceof ApiError && e.status === 409)) { toast.error((e as Error).message || 'Your answer couldn’t be saved. Try again.'); return; } }
+      finally { setSaving(false); }
+    }
+    setCurrentQ((q) => q + 1);
   };
   const answeredCount = activeQuiz ? activeQuiz.questions.filter((q) => hasAnswer(answers[q.id])).length : 0;
 
@@ -316,6 +329,8 @@ export default function QuizzesPage() {
                   {activeQuiz.examMode && (
                     <p role="note" className="mb-4 text-xs rounded-xl px-3 py-2 bg-amber-500/10 text-amber-800 dark:text-amber-200">
                       Exam mode: the time limit runs on the server. Your teacher sees how often you left this page, pasted or left full screen. Nothing else is recorded.
+                      {activeQuiz.oneWay && ' One question at a time: once you go on, you can’t go back to a question.'}
+                      {activeQuiz.hardStop && ' When the time is up, no more answers are taken.'}
                     </p>
                   )}
                   {/* Progress */}
@@ -348,7 +363,7 @@ export default function QuizzesPage() {
                     />
                   </div>
                   <div className="flex gap-3 mt-8">
-                    <button onClick={nextQuestion} className="w-full btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
+                    <button onClick={() => void nextQuestion()} disabled={saving} aria-busy={saving || undefined} className="w-full btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
                       {currentQ < activeQuiz.questions.length - 1 ? 'Next Question' : 'Finish'} <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>

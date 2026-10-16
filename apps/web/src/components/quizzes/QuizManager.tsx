@@ -18,10 +18,10 @@ import { parsePools, poolSummary } from '@/lib/quiz-draw';
 import { TYPE_LABELS, typeOf } from '@/lib/question-types';
 
 type Question = { id: string; question: string; options: string[]; correctAnswer: string; points: number; type?: string; meta?: string | null; pool?: string | null };
-type Integrity = { left: number; pasted: number; fullscreenExits: number; overtimeSeconds: number; noStart: boolean };
+type Integrity = { left: number; pasted: number; fullscreenExits: number; overtimeSeconds: number; noStart: boolean; dropped?: number };
 type Submission = { id: string; score: number | null; maxScore: number | null; submittedAt: string; integrity?: Integrity | null; student: { name: string } };
 type Quiz = {
-  id: string; courseId?: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean; pools?: string | null;
+  id: string; courseId?: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean; pools?: string | null; oneWay?: boolean; hardStop?: boolean;
   course: { name: string; code: string }; questions: Question[]; submissions: Submission[];
   analysis?: { students: number; items: ItemResult[]; consistency: number | null; toFix: number };
 };
@@ -114,6 +114,16 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
                   <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Exam mode</p><p className="text-xs text-zinc-500">The time limit counts from when each student starts, on the server. You see how often they left the quiz, pasted or left full screen. No webcam, nothing recorded.</p></div>
                   <Switch checked={!!quiz.examMode} disabled={busy} onChange={(v) => void patch({ examMode: v }, v ? 'Exam mode on' : 'Exam mode off')} label="Exam mode" />
                 </div>
+                {quiz.examMode && <>
+                  <div className="flex items-center justify-between gap-3 pl-4 border-l-2 border-indigo-500/30">
+                    <div><p className="text-sm font-medium text-zinc-900 dark:text-white">One question at a time, no going back</p><p className="text-xs text-zinc-600 dark:text-zinc-400">Each answer is saved as the student moves on and can’t be changed after, even after a reload.</p></div>
+                    <Switch checked={!!quiz.oneWay} disabled={busy} onChange={(v) => void patch({ oneWay: v }, v ? 'No going back' : 'Students can change answers until they hand in')} label="One question at a time, no going back" />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 pl-4 border-l-2 border-indigo-500/30">
+                    <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Stop when time is up</p><p className="text-xs text-zinc-600 dark:text-zinc-400">Answers that arrive more than a minute after the time limit aren’t taken (with one question at a time, the ones already saved still count).</p></div>
+                    <Switch checked={!!quiz.hardStop} disabled={busy} onChange={(v) => void patch({ hardStop: v }, v ? 'Answers stop at the time limit' : 'Late answers are noted, not refused')} label="Stop when time is up" />
+                  </div>
+                </>}
                 <div className="flex items-center justify-between gap-3">
                   <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Reading help</p><p className="text-xs text-zinc-500 dark:text-zinc-400">Students can see the questions in simpler words or in their language, and listen to them; the answers stay as written. Turn it off when reading the words is what you’re testing.</p></div>
                   <Switch checked={quiz.plainWords !== false} disabled={busy} onChange={(v) => void patch({ plainWords: v }, v ? 'Reading help on' : 'Reading help off')} label="Reading help" />
@@ -275,6 +285,7 @@ function IntegrityNote({ i }: { i: Integrity }) {
     i.fullscreenExits ? `left full screen ${i.fullscreenExits}×` : '',
     i.overtimeSeconds ? `arrived ${Math.ceil(i.overtimeSeconds / 60)} min after the time limit` : '',
     i.noStart ? 'no start time (taken offline?)' : '',
+    i.dropped ? `${i.dropped} answer${i.dropped === 1 ? '' : 's'} arrived after the time and weren’t taken` : '',
   ].filter(Boolean);
   return <span className={cn('block text-[11px]', notes.length ? 'text-amber-700 dark:text-amber-300' : 'text-zinc-500')}>{notes.length ? notes.join(' · ') : 'Exam mode: nothing to note'}</span>;
 }

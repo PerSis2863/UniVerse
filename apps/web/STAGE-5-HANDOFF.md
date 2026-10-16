@@ -33,7 +33,7 @@ done, where the code is and what's left for each item. Keep that table up to dat
   time; migration **0136**). A student's due date is always `dueFor(...)` and a submission's late %
   is set when handed in (`src/lib/assignment-policy.ts`); graded answers can be REOPENED, so check
   "graded" as RETURNED or REOPENED. Q6.2a: files and links as hand-ins (**0137**); Q6.2b: group assignments (**0138**: a group's hand-in is
-  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0147`.**
+  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0148`.**
   - **16 Oct:** Q6.2c peer review (**0139**), Q6.3 notes on hand-ins (**0140**); Q6.2a/b screens tried in
     a browser; Q6.4a post grades and grade history (**0141**: a grade reaches the gradebook only through
     `publishGrades` in `src/server/assignments.ts`, which sets `postedAt`; students see a grade only when
@@ -51,7 +51,8 @@ done, where the code is and what's left for each item. Keep that table up to dat
   and the teacher's short-answer check (accepting an answer changes the key and re-marks every hand-in:
   `src/server/quiz-marking.ts`). Q7.2 pools and changing numbers (**0146**): pass the student to
   `markAnswer(q, given, studentId)` (changing numbers can't be marked without it) and count only the
-  questions in `drawn` (`drawnOf`). Next: Q7.3 exam extras.
+  questions in `drawn` (`drawnOf`). Q7.3 one-way exams and the hard stop (**0147**: answers saved
+  one by one in `quiz_attempts.answers`). Next: Q7.4 adaptive practice.
   - **Build memory:** the Next build now needs more than 4 GB; `package.json` gives it 6 GB (Cloudflare's
     build machines have 8 GB). Don't run vitest or tsc during a build.
   - **Stopped here (owner asked to merge, 15 Oct):** Q6.2c peer review is started: only the pairing

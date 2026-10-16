@@ -40,7 +40,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!quiz) return NextResponse.json({ error: 'Quiz not found.' }, { status: 404 });
 
   const b = await req.json().catch(() => ({}));
-  const data: { status?: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate?: Date | null; timeLimit?: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean; pools?: string | null } = {};
+  const data: { status?: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate?: Date | null; timeLimit?: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean; pools?: string | null; oneWay?: boolean; hardStop?: boolean } = {};
   // Question pools (Stage 5 · B4.2): { pool: how many each student gets }; null for none.
   if (b.pools === null) data.pools = null;
   else if (b.pools !== undefined) { const p = cleanPools(b.pools); data.pools = p ? JSON.stringify(p) : null; }
@@ -48,6 +48,9 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (typeof b.examMode === 'boolean') data.examMode = b.examMode;
   // Reading help (Stage 5 · D9): simpler words, translation and listening for the questions.
   if (typeof b.plainWords === 'boolean') data.plainWords = b.plainWords;
+  // Exam mode extras (B4.3).
+  if (typeof b.oneWay === 'boolean') data.oneWay = b.oneWay;
+  if (typeof b.hardStop === 'boolean') data.hardStop = b.hardStop;
   if (['DRAFT', 'PUBLISHED', 'CLOSED'].includes(b.status)) {
     if (b.status === 'PUBLISHED' && (await prisma.quizQuestion.count({ where: { quizId: id } })) === 0) {
       return NextResponse.json({ error: 'Add at least one question before publishing.' }, { status: 400 });

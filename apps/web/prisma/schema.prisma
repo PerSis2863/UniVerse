@@ -649,6 +649,9 @@ model Quiz {
   plainWords  Boolean    @default(true)
   /// Question pools (Stage 5 · B4.2): JSON { pool: how many each student gets }, see src/lib/quiz-draw.ts
   pools       String?
+  /// Exam mode extras (B4.3): one question at a time, no going back; no answers taken after time
+  oneWay      Boolean    @default(false)
+  hardStop    Boolean    @default(false)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -2561,6 +2564,8 @@ model QuizAttempt {
   studentId String
   student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
   startedAt DateTime @default(now())
+  /// One-way exams (B4.3): the answers saved so far as the student moved on (JSON { questionId: answer })
+  answers   String?
 
   @@unique([quizId, studentId])
   @@map("quiz_attempts")

@@ -2542,6 +2542,8 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['PATCH', /^\/api\/chat\/messages\/([^/]+)$/, ({ db: d, m, body }) => { for (const c of d.conversations) { const msg = c.messages.find((x: any) => x.id === m[1]); if (msg) { msg.body = body.body ?? msg.body; msg.editedAt = new Date().toISOString(); return ok(msg); } } return ok({ ok: true }); }],
   ['DELETE', /^\/api\/chat\/messages\/([^/]+)$/, ({ db: d, m }) => { for (const c of d.conversations) { const msg = c.messages.find((x: any) => x.id === m[1]); if (msg) { Object.assign(msg, { type: 'DELETED', body: '', deletedAt: new Date().toISOString(), attachmentUrl: null, reactions: {} }); } } return ok({ ok: true }); }],
 
+  // One-way exams (Stage 5 · B4.3): sample quizzes aren't exams.
+  ['POST', /^\/quizzes\/[^/]+\/(start|answer)$/, () => ok({ startedAt: null, endsAt: null, done: [] })],
   ['POST', /^\/quizzes\/([^/]+)\/submit$/, ({ db: d, m, body }) => {
     const x = d.quizzes.find((z) => z.id === m[1]); if (!x) return fail('Quiz not found', 404);
     const answers = body.answers ?? {};
