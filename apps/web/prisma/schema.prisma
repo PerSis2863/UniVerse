@@ -647,6 +647,8 @@ model Quiz {
   examMode    Boolean    @default(false)
   /// Reading help (D9): students may see questions in simpler words or their language, and listen
   plainWords  Boolean    @default(true)
+  /// Question pools (Stage 5 · B4.2): JSON { pool: how many each student gets }, see src/lib/quiz-draw.ts
+  pools       String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -672,6 +674,8 @@ model QuizQuestion {
   type          String @default("CHOICE")
   /// The answer key and settings as JSON (never sent to students)
   meta          String?
+  /// The pool it's drawn from (null: everyone gets it)
+  pool          String?
 
   @@index([quizId])
   @@map("quiz_questions")
@@ -696,6 +700,8 @@ model QuizSubmission {
   offlineStartedAt DateTime?
   offlineAt        DateTime?
   offlineStatus    String?
+  /// The questions this student got, when the quiz draws from pools (JSON ids)
+  drawn            String?
 
   @@unique([quizId, studentId])
   @@index([quizId])

@@ -154,11 +154,11 @@ export async function importItems(courseId: string, user: SessionUser, b: Record
   const lastItem = await prisma.moduleItem.findFirst({ where: { moduleId }, orderBy: { position: 'desc' }, select: { position: true } });
   const start = (lastItem?.position ?? -1) + 1;
 
-  // A few rows per statement (D1 takes 100 values a query): materials 7 columns, questions 9, items 8.
+  // A few rows per statement (D1 takes 100 values a query): materials 7 columns, questions 10, items 8.
   for (const part of chunks(materials, 12)) await prisma.material.createMany({ data: part.map((m) => ({ ...m, courseId, uploadedById: user.id })) });
   for (const q of quizzes) {
     await prisma.quiz.create({ data: { id: q.id, courseId, title: q.title, description: q.description, status: 'DRAFT' } });
-    for (const part of chunks(q.questions.map((x, i) => ({ quizId: q.id, question: x.question, options: x.options, correctAnswer: x.correct, points: x.points, order: i })), 10)) {
+    for (const part of chunks(q.questions.map((x, i) => ({ quizId: q.id, question: x.question, options: x.options, correctAnswer: x.correct, points: x.points, order: i })), 9)) {
       await prisma.quizQuestion.createMany({ data: part });
     }
   }

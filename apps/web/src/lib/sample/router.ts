@@ -2552,6 +2552,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   }],
   ['POST', /^\/quizzes$/, ({ db: d, body }) => { const x = { id: sid('quiz'), courseId: body.courseId, title: body.title, description: body.description ?? null, dueDate: at(7, 23, 59), timeLimit: body.timeLimit ?? 30, status: 'DRAFT', questions: [] as any[] }; d.quizzes.push(x as any); return ok(x, 201); }],
   ['DELETE', /^\/quizzes\/([^/]+)$/, ({ db: d, m }) => { const i = d.quizzes.findIndex((z) => z.id === m[1]); if (i >= 0) d.quizzes.splice(i, 1); return ok({ ok: true }); }],
+  ['PATCH', /^\/api\/quizzes\/[^/]+\/questions$/, () => { notice(); return ok({ ok: true }); }],
   ['PATCH', /^\/api\/quizzes\/([^/]+)$/, ({ db: d, m, body }) => {
     const x: any = d.quizzes.find((z) => z.id === m[1]); if (!x) return fail('Quiz not found.', 404);
     if (body.status === 'PUBLISHED' && !x.questions.length) return fail('Add at least one question before publishing.');

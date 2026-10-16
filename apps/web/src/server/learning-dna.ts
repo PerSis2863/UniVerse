@@ -237,7 +237,7 @@ async function observations(courseId: string, studentIds: string[], revealedOnly
       const cs = byRef.get(q.id);
       if (!cs) continue;
       // Marked by the question's type (B4.1): a share of it right counts as that share.
-      const mark = markAnswer(q, answers[q.id]);
+      const mark = markAnswer(q, answers[q.id], s.studentId);
       if (!mark.answered) continue;
       for (const c of cs) add(s.studentId, c, { at: s.submittedAt.getTime(), outcome: mark.credit, weight: 1 });
     }

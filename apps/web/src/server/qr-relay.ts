@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { forStudent } from '@/lib/question-types';
+import { forStudent, isVariant, metaOf } from '@/lib/question-types';
 import prisma from '@/lib/db';
 import { courseAccess } from '@/lib/course-access';
 import type { PreparedRelay, RelayItem } from '@/lib/qr-relay';
@@ -26,7 +26,7 @@ async function teacherCourse(courseIdRaw: unknown, user: SessionUser) {
   return access.course;
 }
 
-type QuizRow = { id: string; title: string; description: string | null; dueDate: Date | null; timeLimit: number | null; status: string; examMode: boolean; questions: { id: string; question: string; options: unknown; type: string; meta: string | null; correctAnswer: string }[] };
+type QuizRow = { id: string; title: string; description: string | null; dueDate: Date | null; timeLimit: number | null; status: string; examMode: boolean; pools: string | null; questions: { id: string; question: string; options: unknown; type: string; meta: string | null; correctAnswer: string }[] };
 const optionsOf = (v: unknown) => (Array.isArray(v) ? v.filter((o): o is string => typeof o === 'string') : []);
 
 /** Why a quiz can't travel as codes, or null when it can. */
@@ -34,6 +34,9 @@ function quizProblem(q: QuizRow): string | null {
   if (q.status === 'DRAFT') return 'Publish it first';
   if (q.status !== 'PUBLISHED') return 'It’s closed';
   if (q.examMode) return 'Exam mode needs a connection';
+  // Codes are the same for everyone (B4.2).
+  if (q.pools) return 'Each student gets their own questions';
+  if (q.questions.some((x) => isVariant(metaOf(x)))) return 'Has numbers that change for each student';
   if (!q.questions.length) return 'No questions yet';
   if (q.questions.length > MAX_QUESTIONS) return `More than ${MAX_QUESTIONS} questions`;
   if (q.questions.some((x) => x.type === 'HOTSPOT' || PICTURE.test(x.question) || optionsOf(x.options).some((o) => PICTURE.test(o)))) return 'Has pictures';
@@ -41,7 +44,7 @@ function quizProblem(q: QuizRow): string | null {
 }
 
 const quizSelect = {
-  id: true, title: true, description: true, dueDate: true, timeLimit: true, status: true, examMode: true,
+  id: true, title: true, description: true, dueDate: true, timeLimit: true, status: true, examMode: true, pools: true,
   questions: { orderBy: { order: 'asc' as const }, select: { id: true, question: true, options: true, type: true, meta: true, correctAnswer: true } },
 };
 

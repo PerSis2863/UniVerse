@@ -14,13 +14,14 @@ import { ReadingLevelControl, fetchLevels, useReadingLevel } from '@/components/
 import { errorMessage } from '@/lib/api';
 import { QuestionEditor, QuestionKey, draftReady, emptyDraft, toBody } from './QuestionEditor';
 import { ShortAnswerReview } from './ShortAnswerReview';
+import { parsePools, poolSummary } from '@/lib/quiz-draw';
 import { TYPE_LABELS, typeOf } from '@/lib/question-types';
 
-type Question = { id: string; question: string; options: string[]; correctAnswer: string; points: number; type?: string; meta?: string | null };
+type Question = { id: string; question: string; options: string[]; correctAnswer: string; points: number; type?: string; meta?: string | null; pool?: string | null };
 type Integrity = { left: number; pasted: number; fullscreenExits: number; overtimeSeconds: number; noStart: boolean };
 type Submission = { id: string; score: number | null; maxScore: number | null; submittedAt: string; integrity?: Integrity | null; student: { name: string } };
 type Quiz = {
-  id: string; courseId?: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean;
+  id: string; courseId?: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean; pools?: string | null;
   course: { name: string; code: string }; questions: Question[]; submissions: Submission[];
   analysis?: { students: number; items: ItemResult[]; consistency: number | null; toFix: number };
 };
@@ -124,6 +125,7 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
             {/* Questions */}
             <section className="space-y-3">
               <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Questions ({quiz.questions.length})</p>
+              <PoolSettings quiz={quiz} busy={busy} onSave={(pools) => void patch({ pools }, 'Pools saved')} />
               {quiz.questions.length === 0 && <p className="text-sm text-zinc-500">No questions yet — add the first one below. A quiz needs at least one question before you can publish it.</p>}
               {quiz.questions.map((q, i) => (
                 <div key={q.id} className="p-4 rounded-2xl bg-white/60 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">
@@ -131,6 +133,7 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-zinc-900 dark:text-white">{i + 1}. {q.question} <span className="text-xs font-normal text-zinc-500">· {TYPE_LABELS[typeOf(q)]} · {q.points} pt{q.points === 1 ? '' : 's'}</span></p>
                       {quiz.plainWords !== false && <QuestionLevels id={q.id} text={q.question} />}
+                      <PoolField quizId={quizId} q={q} names={[...new Set(quiz.questions.map((x) => x.pool).filter((x): x is string => !!x))]} onChanged={() => void mutate()} />
                     </div>
                     {quiz.courseId && <button onClick={() => void saveToBank(q.id)} aria-label="Save to the question bank" title="Save to the question bank" className="p-1.5 rounded-lg text-zinc-400 hover:text-indigo-500"><Library className="w-4 h-4" /></button>}
                     <button onClick={() => removeQuestion(q.id)} aria-label="Delete question" className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
@@ -164,6 +167,47 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Which pool a question is drawn from (Stage 5 · B4.2); empty: everyone gets it. */
+function PoolField({ quizId, q, names, onChanged }: { quizId: string; q: Question; names: string[]; onChanged: () => void }) {
+  const [value, setValue] = useState(q.pool ?? '');
+  const save = async () => {
+    if (value.trim() === (q.pool ?? '')) return;
+    try { await authedJson(`/api/quizzes/${quizId}/questions`, { method: 'PATCH', body: JSON.stringify({ qid: q.id, pool: value }) }); onChanged(); }
+    catch (e) { toast.error(errorMessage(e, 'The pool couldn’t be saved.')); }
+  };
+  return (
+    <label className="mt-1.5 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">Pool
+      <input value={value} maxLength={40} list={`pools-${quizId}`} onChange={(e) => setValue(e.target.value)} onBlur={() => void save()} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} placeholder="everyone gets it" className="input py-1 text-xs max-w-[12rem]" />
+      <datalist id={`pools-${quizId}`}>{names.map((n) => <option key={n} value={n} />)}</datalist>
+    </label>
+  );
+}
+
+/** How many each student gets from each pool. */
+function PoolSettings({ quiz, busy, onSave }: { quiz: Quiz; busy: boolean; onSave: (pools: Record<string, number> | null) => void }) {
+  const saved = parsePools(quiz.pools);
+  const summary = poolSummary(quiz.questions, saved);
+  const [counts, setCounts] = useState<Record<string, string>>({});
+  if (!summary.length) return <p className="text-[11px] text-zinc-600 dark:text-zinc-400">Give questions a pool name to draw some of them for each student.</p>;
+  const value = (name: string, each: number) => counts[name] ?? String(each);
+  return (
+    <div className="p-3 rounded-2xl border border-indigo-500/25 bg-indigo-500/[0.04] space-y-2">
+      <p className="text-sm font-semibold text-zinc-900 dark:text-white">Pools</p>
+      <ul className="space-y-1.5">
+        {summary.map((p) => (
+          <li key={p.name} className="flex flex-wrap items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200">
+            <span className="font-medium">{p.name}</span>: each student gets
+            <input type="number" min={1} max={p.size} value={value(p.name, p.each)} onChange={(e) => setCounts((c) => ({ ...c, [p.name]: e.target.value }))} aria-label={`How many from ${p.name}`} className="input py-1 w-16" />
+            of {p.size}
+          </li>
+        ))}
+      </ul>
+      <button type="button" disabled={busy} onClick={() => onSave(Object.fromEntries(summary.map((p) => [p.name, Math.max(1, Math.min(p.size, Math.round(Number(value(p.name, p.each))) || p.size))])))} className="btn-secondary btn-sm">Save the pools</button>
+      <p className="text-[11px] text-zinc-600 dark:text-zinc-400">Each student gets their own draw, the same if they reload; only their questions count towards their score.</p>
     </div>
   );
 }

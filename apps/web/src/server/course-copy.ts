@@ -93,7 +93,7 @@ async function put<T extends { id: string }>(rows: T[], columns: number, existin
  * Scalar columns per table (each written on every row by createMany). Checked against the schema
  * in course-copy.test.ts, so a new column can't push a statement over D1's limit unnoticed.
  */
-export const COLUMNS = { CourseConcept: 7, CourseModule: 11, Material: 8, Quiz: 12, QuizQuestion: 9, Assignment: 23, GradeCategory: 7, GradeAssessment: 4, BankQuestion: 12, ModuleItem: 9, ConceptTag: 5, OralCheck: 13 } as const;
+export const COLUMNS = { CourseConcept: 7, CourseModule: 11, Material: 8, Quiz: 13, QuizQuestion: 10, Assignment: 23, GradeCategory: 7, GradeAssessment: 4, BankQuestion: 12, ModuleItem: 9, ConceptTag: 5, OralCheck: 13 } as const;
 
 /**
  * POST /api/courses/:id/copy/step { target, stage, after?, shiftDays? }: copies up to BATCH rows of
@@ -145,7 +145,7 @@ export async function courseCopyStep(sourceId: string, user: SessionUser, body: 
     case 'quizzes': {
       const rows = await prisma.quiz.findMany({ where: { courseId: source.id, ...page }, orderBy: { id: 'asc' }, take });
       const copied = await put(
-        rows.map((q) => ({ id: id(q.id), courseId: t, title: q.title, description: q.description, dueDate: shifted(q.dueDate, shiftDays), timeLimit: q.timeLimit, status: 'DRAFT' as const, shuffle: q.shuffle, examMode: q.examMode, plainWords: q.plainWords })),
+        rows.map((q) => ({ id: id(q.id), courseId: t, title: q.title, description: q.description, dueDate: shifted(q.dueDate, shiftDays), timeLimit: q.timeLimit, status: 'DRAFT' as const, shuffle: q.shuffle, examMode: q.examMode, plainWords: q.plainWords, pools: q.pools })),
         COLUMNS.Quiz, (ids) => prisma.quiz.findMany({ where: { id: { in: ids } }, select: { id: true } }), (data) => prisma.quiz.createMany({ data }),
       );
       return { stage, copied, after: next(rows) };
@@ -153,7 +153,7 @@ export async function courseCopyStep(sourceId: string, user: SessionUser, body: 
     case 'questions': {
       const rows = await prisma.quizQuestion.findMany({ where: { quiz: { courseId: source.id }, ...page }, orderBy: { id: 'asc' }, take });
       const copied = await put(
-        rows.map((q) => ({ id: id(q.id), quizId: id(q.quizId), question: q.question, options: q.options ?? [], correctAnswer: q.correctAnswer, points: q.points, order: q.order, type: q.type, meta: q.meta })),
+        rows.map((q) => ({ id: id(q.id), quizId: id(q.quizId), question: q.question, options: q.options ?? [], correctAnswer: q.correctAnswer, points: q.points, order: q.order, type: q.type, meta: q.meta, pool: q.pool })),
         COLUMNS.QuizQuestion, (ids) => prisma.quizQuestion.findMany({ where: { id: { in: ids } }, select: { id: true } }), (data) => prisma.quizQuestion.createMany({ data }),
       );
       return { stage, copied, after: next(rows) };

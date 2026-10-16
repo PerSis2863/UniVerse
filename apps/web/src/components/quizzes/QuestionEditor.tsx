@@ -3,7 +3,7 @@
 import { useRef, useState, type PointerEvent } from 'react';
 import { toast } from 'sonner';
 import { CheckCircle2, ImageUp, Loader2, Plus, X } from 'lucide-react';
-import { QUESTION_TYPES, TYPE_LABELS, metaOf, typeOf, type Area, type QuestionInput, type QuestionType, type StoredQuestion } from '@/lib/question-types';
+import { QUESTION_TYPES, TYPE_LABELS, fillText, metaOf, readNumber, typeOf, valuesFor, variantAnswer, type Area, type Meta, type QuestionInput, type QuestionType, type StoredQuestion } from '@/lib/question-types';
 import { cn } from '@/lib/utils';
 import { uploadChatFile } from '@/components/chat/chat-client';
 import { MathPreview, PictureTap } from './AnswerInput';
@@ -17,12 +17,15 @@ export interface QDraft {
   accepted: string; pairs: { left: string; right: string }[]; extra: string; items: string[];
   value: string; tolerance: string; unit: string;
   image: string; areas: Area[];
+  /** NUMBER: numbers that change for each student (B4.2). */
+  varying: boolean; vars: { name: string; min: string; max: string; step: string }[]; formula: string;
 }
 
 export const emptyDraft = (type: QuestionType = 'CHOICE'): QDraft => ({
   type, question: '', options: ['', '', '', ''], correct: 0, picks: [false, false, false, false], partial: false, tf: 'True',
   accepted: '', pairs: [{ left: '', right: '' }, { left: '', right: '' }, { left: '', right: '' }], extra: '', items: ['', '', '', ''],
   value: '', tolerance: '', unit: '', image: '', areas: [],
+  varying: false, vars: [{ name: 'a', min: '1', max: '10', step: '1' }], formula: '',
 });
 
 const lines = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean);
@@ -41,7 +44,9 @@ export function toBody(d: QDraft): QuestionInput {
     case 'BLANKS': return base;
     case 'MATCH': return { ...base, pairs: d.pairs.filter((p) => p.left.trim() && p.right.trim()), extra: lines(d.extra) };
     case 'ORDER': return { ...base, items: d.items.map((x) => x.trim()).filter(Boolean) };
-    case 'NUMBER': return { ...base, value: d.value, tolerance: d.tolerance, unit: d.unit };
+    case 'NUMBER': return d.varying
+      ? { ...base, formula: d.formula, vars: d.vars.map((v) => ({ name: v.name.trim(), min: v.min, max: v.max, step: v.step })), tolerance: d.tolerance, unit: d.unit }
+      : { ...base, value: d.value, tolerance: d.tolerance, unit: d.unit };
     case 'MATH': return { ...base, accepted: lines(d.accepted) };
     case 'HOTSPOT': return { ...base, image: d.image, areas: d.areas };
   }
@@ -132,12 +137,45 @@ export function QuestionEditor({ draft, onChange, idPrefix }: { draft: QDraft; o
 
       {draft.type === 'HOTSPOT' && <PictureAreas draft={draft} set={set} />}
 
-      {draft.type === 'NUMBER' && (
-        <div className="grid grid-cols-3 gap-2">
-          <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Answer<input className={cn(input, 'mt-1')} inputMode="decimal" value={draft.value} maxLength={40} onChange={(e) => set({ value: e.target.value })} placeholder="9.81" /></label>
+      {draft.type === 'NUMBER' && <>
+        <label className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"><input type="checkbox" checked={draft.varying} onChange={(e) => set({ varying: e.target.checked })} className="accent-indigo-600 w-4 h-4" /> Numbers that change for each student</label>
+        {draft.varying && <Varying draft={draft} set={set} />}
+        <div className={cn('grid gap-2', draft.varying ? 'grid-cols-2' : 'grid-cols-3')}>
+          {!draft.varying && <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Answer<input className={cn(input, 'mt-1')} inputMode="decimal" value={draft.value} maxLength={40} onChange={(e) => set({ value: e.target.value })} placeholder="9.81" /></label>}
           <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Give or take<input className={cn(input, 'mt-1')} inputMode="decimal" value={draft.tolerance} maxLength={40} onChange={(e) => set({ tolerance: e.target.value })} placeholder="0.1" /></label>
           <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Unit<input className={cn(input, 'mt-1')} value={draft.unit} maxLength={20} onChange={(e) => set({ unit: e.target.value })} placeholder="m/s²" /></label>
         </div>
+      </>}
+    </div>
+  );
+}
+
+/** The changing numbers of a number question: each letter's range, the answer's formula, an example. */
+function Varying({ draft, set }: { draft: QDraft; set: (p: Partial<QDraft>) => void }) {
+  const row = (i: number, k: 'name' | 'min' | 'max' | 'step', label: string) => (
+    <label className="text-[11px] text-zinc-700 dark:text-zinc-300">{label}
+      <input value={draft.vars[i][k]} maxLength={k === 'name' ? 1 : 20} inputMode={k === 'name' ? 'text' : 'decimal'} onChange={(e) => set({ vars: draft.vars.map((v, j) => (j === i ? { ...v, [k]: e.target.value } : v)) })} className="input py-1 mt-0.5" />
+    </label>
+  );
+  // An example with made-up numbers, as a student would see it.
+  const meta: Meta = { formula: draft.formula, vars: Object.fromEntries(draft.vars.flatMap((v) => { const min = readNumber(v.min), max = readNumber(v.max), step = readNumber(v.step); return v.name && min != null && max != null && step && step > 0 && max >= min ? [[v.name.toLowerCase(), { min, max, step }]] : []; })) };
+  const values = valuesFor(meta, 'example', 'preview');
+  const answer = draft.formula ? variantAnswer(meta, 'example', 'preview') : null;
+  return (
+    <div className="space-y-2 rounded-xl border border-zinc-200 dark:border-white/10 p-2.5">
+      <p className={small}>Write each number in the question as a letter in braces, like “A car drives {'{d}'} km in {'{t}'} hours”. Each student gets their own numbers.</p>
+      {draft.vars.map((_, i) => (
+        <div key={i} className="grid grid-cols-[3rem_repeat(3,minmax(0,1fr))_auto] gap-1.5 items-end">
+          {row(i, 'name', 'Letter')}{row(i, 'min', 'From')}{row(i, 'max', 'To')}{row(i, 'step', 'Step')}
+          {draft.vars.length > 1 ? <button type="button" onClick={() => set({ vars: draft.vars.filter((__, j) => j !== i) })} aria-label={`Remove ${draft.vars[i].name || 'this number'}`} className="btn-ghost btn-icon"><X className="w-4 h-4" /></button> : <span className="w-10" />}
+        </div>
+      ))}
+      {draft.vars.length < 5 && <button type="button" onClick={() => set({ vars: [...draft.vars, { name: 'bcdfgh'[draft.vars.length] ?? '', min: '1', max: '10', step: '1' }] })} className="btn-ghost btn-sm"><Plus className="w-4 h-4" /> Add a number</button>}
+      <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">The answer’s formula
+        <input value={draft.formula} maxLength={200} spellCheck={false} onChange={(e) => set({ formula: e.target.value })} placeholder="d/t" className={cn(input, 'mt-1 font-mono font-normal')} />
+      </label>
+      {draft.question && draft.formula && (
+        <p className="text-xs text-zinc-700 dark:text-zinc-300" aria-live="polite"><span className="font-semibold">For example: </span>{fillText(draft.question, values)} <span className="font-semibold">→ {answer ?? 'the formula can’t be worked out'}</span></p>
       )}
     </div>
   );

@@ -8,6 +8,7 @@ import { publish } from '../realtime';
 import { pushService } from './push.service';
 import { shuffled } from '@/lib/seeded-shuffle';
 import { cleanGiven, forStudent, markAnswer, type Given } from '@/lib/question-types';
+import { drawFor, parsePools } from '@/lib/quiz-draw';
 import { taughtBy } from '@/lib/course-access';
 import { quizMinutes } from '@/lib/assignment-policy';
 
@@ -91,8 +92,9 @@ export class QuizzesService {
     // Each question as its type shows it to students, without the key (src/lib/question-types.ts);
     // shuffled per student when the quiz says so (B4.3): their own order, the same again on reload.
     // Grading compares the answer text, so the order doesn't matter to it.
+    // Their own draw from the quiz's pools (B4.2), and their own numbers where those change.
     const seed = quiz.shuffle ? user.id : null;
-    const prepared = rest.questions.map((q) => forStudent(q, seed));
+    const prepared = drawFor(rest.questions, parsePools(quiz.pools), `${user.id}:${quiz.id}`).map((q) => forStudent(q, seed, user.id));
     // Their time limit with any extra time they're allowed.
     const timeLimit = await minutesFor(rest.timeLimit, user.id);
     return { ...rest, timeLimit, questions: seed ? shuffled(prepared, `${seed}:${quiz.id}`) : prepared };
@@ -168,11 +170,20 @@ export class QuizzesService {
     });
 
     const subMap = new Map(submissions.map(s => [s.quizId, s]));
+    // With pools (B4.2) each student answers fewer questions than the quiz holds.
+    const pooled = quizzes.filter((q) => q.pools).slice(0, 90);
+    const sizes = pooled.length ? await prisma.quizQuestion.groupBy({ by: ['quizId', 'pool'], where: { quizId: { in: pooled.map((q) => q.id) } }, _count: { _all: true } }) : [];
+    const answering = (q: (typeof quizzes)[number]) => {
+      const pools = parsePools(q.pools);
+      if (!pools) return q._count.questions;
+      return sizes.filter((x) => x.quizId === q.id).reduce((t, x) => t + (x.pool ? Math.min(pools[x.pool] ?? x._count._all, x._count._all) : x._count._all), 0);
+    };
 
     return quizzes.map(q => {
       const sub = subMap.get(q.id);
       return {
         ...q,
+        _count: { ...q._count, questions: answering(q) },
         completed: !!sub,
         score: sub ? (sub.score !== null ? Math.round((sub.score / (sub.maxScore || 100)) * 100) : null) : null,
       };
@@ -212,12 +223,15 @@ export class QuizzesService {
     let score = 0;
     let maxScore = 0;
     const kept: Record<string, Given> = {};
-    for (const q of quiz.questions) {
+    // Only the questions this student got from the quiz's pools (B4.2) count, and are kept.
+    const pools = parsePools(quiz.pools);
+    const drawn = drawFor(quiz.questions, pools, `${studentId}:${quizId}`);
+    for (const q of drawn) {
       maxScore += q.points;
       const given = cleanGiven(q, answers[q.id]);
       if (given == null) continue;
       kept[q.id] = given;
-      score += q.points * markAnswer(q, given).credit;
+      score += q.points * markAnswer(q, given, studentId).credit;
     }
     score = Math.round(score * 100) / 100;
 
@@ -240,6 +254,7 @@ export class QuizzesService {
         studentId,
         quizId,
         answers: kept,
+        ...(pools ? { drawn: JSON.stringify(drawn.map((q) => q.id)) } : {}),
         score,
         maxScore,
         ...(integrity ? { integrity } : {}),

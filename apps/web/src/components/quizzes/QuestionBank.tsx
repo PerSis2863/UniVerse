@@ -40,6 +40,8 @@ export function QuestionBank({ courses, quizzes, onAdded }: { courses: { id: str
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState<{ questions: BankQuestionIn[]; errors: { line: number; error: string }[] } | null>(null);
   const [target, setTarget] = useState('');
+  // Added as a pool (Stage 5 · B4.2): each student gets some of them; set how many in the quiz.
+  const [pool, setPool] = useState('');
   const [busy, setBusy] = useState(false);
   const file = useRef<HTMLInputElement>(null);
 
@@ -78,8 +80,8 @@ export function QuestionBank({ courses, quizzes, onAdded }: { courses: { id: str
   const addToQuiz = async () => {
     const quiz = courseQuizzes.find((q) => q.id === target);
     if (!quiz || !chosen.length) return;
-    const r = await post<{ added: number }>({ action: 'add-to-quiz', quizId: quiz.id, ids: chosen });
-    if (r) { toast.success(`${r.added} question${r.added === 1 ? '' : 's'} added to “${quiz.title}”`); setChosen([]); onAdded(); }
+    const r = await post<{ added: number }>({ action: 'add-to-quiz', quizId: quiz.id, ids: chosen, pool });
+    if (r) { toast.success(`${r.added} question${r.added === 1 ? '' : 's'} added to “${quiz.title}”${pool.trim() ? ` as the pool “${pool.trim()}”: set how many each student gets in the quiz` : ''}`); setChosen([]); setPool(''); onAdded(); }
   };
 
   if (!courses.length) return <EmptyState icon={Library} title="No courses yet" hint="Once a course is assigned to you, it gets its own question bank." />;
@@ -118,6 +120,7 @@ export function QuestionBank({ courses, quizzes, onAdded }: { courses: { id: str
             <option value="">Add to which quiz?</option>
             {courseQuizzes.map((q) => <option key={q.id} value={q.id}>{q.title}{q.status === 'DRAFT' ? ' (draft)' : ''}</option>)}
           </select>
+          <input aria-label="As a pool (optional)" placeholder="As a pool (optional)" value={pool} maxLength={40} onChange={(e) => setPool(e.target.value)} className="input w-auto flex-1 min-w-[9rem] py-1.5" />
           <button type="button" onClick={() => void addToQuiz()} disabled={busy || !target} className="btn-primary btn-sm">Add to quiz</button>
           <button type="button" onClick={() => setChosen([])} className="btn-ghost btn-sm">Clear</button>
         </div>

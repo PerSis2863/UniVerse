@@ -5047,6 +5047,17 @@
      "updatedAt": false
     },
     {
+     "name": "pools",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "createdAt",
      "type": "DateTime",
      "kind": "scalar",
@@ -5223,6 +5234,17 @@
      "unique": false,
      "hasDefault": false,
      "updatedAt": false
+    },
+    {
+     "name": "pool",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
     }
    ]
   },
@@ -5382,6 +5404,17 @@
     },
     {
      "name": "offlineStatus",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "drawn",
      "type": "String",
      "kind": "scalar",
      "list": false,

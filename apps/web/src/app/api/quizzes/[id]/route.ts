@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cleanPools, drawnOf } from '@/lib/quiz-draw';
 import prisma from '@/lib/db';
 import type { Given } from '@/lib/question-types';
 import { getSessionUser } from '@/lib/server-auth';
@@ -20,13 +21,13 @@ export async function GET(req: Request, { params }: Ctx) {
     prisma.quizSubmission.findMany({
       where: { quizId: id },
       orderBy: { submittedAt: 'desc' },
-      select: { id: true, score: true, maxScore: true, submittedAt: true, answers: true, integrity: true, student: { select: { name: true } } },
+      select: { id: true, studentId: true, drawn: true, score: true, maxScore: true, submittedAt: true, answers: true, integrity: true, student: { select: { name: true } } },
     }),
   ]);
   // How each question worked (item analysis, Stage 5 · B4.6); the answers themselves stay here.
   const analysis = analyseQuiz(
     questions.map((q) => ({ id: q.id, options: Array.isArray(q.options) ? (q.options as string[]) : [], correctAnswer: q.correctAnswer, type: q.type, meta: q.meta })),
-    submissions.map((sub) => ({ answers: (sub.answers && typeof sub.answers === 'object' ? sub.answers : {}) as Record<string, Given> })),
+    submissions.map((sub) => ({ answers: (sub.answers && typeof sub.answers === 'object' ? sub.answers : {}) as Record<string, Given>, who: sub.studentId, drawn: drawnOf(sub.drawn) })),
   );
   return NextResponse.json({ ...quiz, questions, submissions: submissions.map((x) => ({ id: x.id, score: x.score, maxScore: x.maxScore, submittedAt: x.submittedAt, integrity: x.integrity, student: x.student })), analysis }, { headers: { 'Cache-Control': 'no-store' } });
 }
@@ -39,7 +40,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!quiz) return NextResponse.json({ error: 'Quiz not found.' }, { status: 404 });
 
   const b = await req.json().catch(() => ({}));
-  const data: { status?: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate?: Date | null; timeLimit?: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean } = {};
+  const data: { status?: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate?: Date | null; timeLimit?: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean; pools?: string | null } = {};
+  // Question pools (Stage 5 · B4.2): { pool: how many each student gets }; null for none.
+  if (b.pools === null) data.pools = null;
+  else if (b.pools !== undefined) { const p = cleanPools(b.pools); data.pools = p ? JSON.stringify(p) : null; }
   if (typeof b.shuffle === 'boolean') data.shuffle = b.shuffle;
   if (typeof b.examMode === 'boolean') data.examMode = b.examMode;
   // Reading help (Stage 5 · D9): simpler words, translation and listening for the questions.

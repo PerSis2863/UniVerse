@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BLANK, answerText, cleanGiven, cleanQuestionInput, forStudent, isRight, markAnswer, readNumber, toInput, type CleanQuestion, type QuestionInput } from './question-types';
+import { BLANK, keyFor, valuesFor, metaOf, answerText, cleanGiven, cleanQuestionInput, forStudent, isRight, markAnswer, readNumber, toInput, type CleanQuestion, type QuestionInput } from './question-types';
 
 const make = (b: QuestionInput) => { const q = cleanQuestionInput(b); if (typeof q === 'string') throw new Error(q); return { id: 'q1', ...q }; };
 
@@ -106,6 +106,22 @@ describe('question types', () => {
     expect(answerText(q, '50,35')).toBe('A point on the picture');
     expect(cleanQuestionInput({ type: 'HOTSPOT', question: 'x', image: 'https://evil.example/x.png', areas: [{ x: 1, y: 1, w: 5, h: 5 }] })).toBe('Upload the picture first.');
     expect(cleanQuestionInput({ type: 'HOTSPOT', question: 'x', image: '/api/files/abcdefghijklmnopqrstu', areas: [{ x: 99, y: 1, w: 5, h: 5 }] })).toMatch(/Mark the right area/);
+  });
+  it('numbers that change for each student, marked against their own numbers', () => {
+    const q = { ...make({ type: 'NUMBER', question: 'A car drives {d} km in {t} hours. Its average speed in km/h?', formula: 'd/t', vars: [{ name: 'd', min: 60, max: 300, step: 30 }, { name: 't', min: 2, max: 5, step: 1 }], tolerance: 0.05 }), id: 'q9' };
+    const mine = forStudent(q, null, 'alice').question;
+    expect(mine).not.toContain('{d}');
+    const v = valuesFor(metaOf(q), 'alice', 'q9');
+    expect(mine).toBe(`A car drives ${v.d} km in ${v.t} hours. Its average speed in km/h?`);
+    expect(isRight(q, String(v.d / v.t), 'alice')).toBe(true);
+    expect(isRight(q, String(v.d / v.t))).toBe(false); // can't be marked without knowing who
+    expect(keyFor(q, 'alice')).toBe(`${Math.round((v.d / v.t) * 1e9) / 1e9} (± 0.05)`);
+    expect(q.correctAnswer).toBe('= d/t (± 0.05)');
+    // Different students, different numbers (most of the time).
+    expect(new Set(['a', 'b', 'c', 'd', 'e', 'f'].map((w) => forStudent(q, null, w).question)).size).toBeGreaterThan(2);
+    expect(cleanQuestionInput({ type: 'NUMBER', question: 'No place for it', formula: 'd', vars: [{ name: 'd', min: 1, max: 2, step: 1 }] })).toMatch(/Put \{d\}/);
+    expect(cleanQuestionInput({ type: 'NUMBER', question: '{d}', formula: 'd/k', vars: [{ name: 'd', min: 1, max: 2, step: 1 }] })).toMatch(/uses “k”/);
+    expect(cleanQuestionInput({ type: 'NUMBER', question: '{d}', formula: '1/d', vars: [{ name: 'd', min: 0, max: 2, step: 1 }] })).toMatch(/dividing by 0/);
   });
   it('gives each student their own order, and the same again', () => {
     const q = make({ type: 'CHOICE', question: 'x', options: ['a', 'b', 'c', 'd', 'e', 'f'], correctAnswer: 'a' });

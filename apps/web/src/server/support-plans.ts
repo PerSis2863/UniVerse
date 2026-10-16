@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { drawnOf } from '@/lib/quiz-draw';
 import { isRight, type Given } from '@/lib/question-types';
 import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
@@ -44,7 +45,7 @@ export async function weakTopics(studentId: string, courseId: string): Promise<s
     }),
     prisma.quizSubmission.findMany({
       where: { studentId, quiz: { courseId } }, orderBy: { submittedAt: 'desc' }, take: 8,
-      select: { answers: true, quiz: { select: { title: true, questions: { select: { id: true, question: true, correctAnswer: true, options: true, type: true, meta: true } } } } },
+      select: { answers: true, drawn: true, quiz: { select: { title: true, questions: { select: { id: true, question: true, correctAnswer: true, options: true, type: true, meta: true } } } } },
     }),
   ]);
   const out: string[] = [];
@@ -58,7 +59,9 @@ export async function weakTopics(studentId: string, courseId: string): Promise<s
   }
   for (const q of quizzes) {
     const answers = (q.answers && typeof q.answers === 'object' ? q.answers : {}) as Record<string, Given>;
-    for (const question of q.quiz.questions) if (!isRight(question, answers[question.id])) out.push(`“${question.question.slice(0, 120)}” (quiz: ${q.quiz.title})`);
+    const drawn = drawnOf(q.drawn);
+    // Only the questions the student got (pools, B4.2).
+    for (const question of q.quiz.questions) if ((!drawn || drawn.includes(question.id)) && !isRight(question, answers[question.id], studentId)) out.push(`“${question.question.slice(0, 120)}” (quiz: ${q.quiz.title})`);
   }
   return [...new Set(out)].slice(0, 10);
 }

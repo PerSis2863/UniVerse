@@ -66,7 +66,7 @@ async function candidates(studentId: string, courseId: string) {
     const answers = parse<Record<string, Given>>(s.answers, {});
     for (const q of s.quiz.questions) {
       // Answered, and not fully right (marked by the question's type, B4.1).
-      const mark = markAnswer(q, answers[q.id]);
+      const mark = markAnswer(q, answers[q.id], studentId);
       if (mark.answered && mark.credit < 1) misses.push({ kind: 'QUESTION', refId: q.id, text: q.question, source: s.quiz.title, at: s.submittedAt.getTime() });
     }
   }

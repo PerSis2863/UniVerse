@@ -4,8 +4,8 @@
 // type is marked the same way everywhere. Pure; tested in question-types.test.ts.
 
 import { isUploadedFileUrl } from './file-urls';
-import { parseExpr, sameExpr } from './math-expr';
-import { shuffled } from './seeded-shuffle';
+import { evaluate, letters, parseExpr, sameExpr } from './math-expr';
+import { hash, seeded, shuffled } from './seeded-shuffle';
 
 export const QUESTION_TYPES = ['CHOICE', 'TRUE_FALSE', 'MULTI', 'SHORT', 'BLANKS', 'MATCH', 'ORDER', 'NUMBER', 'MATH', 'HOTSPOT'] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
@@ -34,10 +34,35 @@ export interface Meta {
   order?: string[];
   /** NUMBER: the answer, how far off still counts, a unit shown next to the box. */
   value?: number; tolerance?: number; unit?: string;
+  /** NUMBER with numbers that change for each student (B4.2): each letter's range, and the answer's
+   *  formula in those letters; the text shows them as {a}. */
+  vars?: Record<string, Range>; formula?: string;
   /** HOTSPOT: the picture, and the areas that count (percent of its width and height). */
   image?: string; areas?: Area[];
 }
 export interface Area { x: number; y: number; w: number; h: number }
+export interface Range { min: number; max: number; step: number }
+
+const decimals = (n: number) => (String(n).split('.')[1] ?? '').length;
+/** A NUMBER question whose numbers change for each student. */
+export const isVariant = (m: Meta) => !!m.formula && !!m.vars && Object.keys(m.vars).length > 0;
+/** The numbers one student gets (the same every time: seeded by the student and the question). */
+export function valuesFor(m: Meta, who: string, questionId: string): Record<string, number> {
+  return Object.fromEntries(Object.entries(m.vars ?? {}).sort(([a], [b]) => a.localeCompare(b)).map(([name, r]) => {
+    const count = Math.max(1, Math.floor((r.max - r.min) / r.step + 1e-9) + 1);
+    const k = Math.floor(seeded(hash(`${who}:${questionId}:${name}`))() * count);
+    return [name, Number((r.min + r.step * k).toFixed(Math.min(6, decimals(r.step) + decimals(r.min))))];
+  }));
+}
+/** The text with each {a} replaced by the student's number. */
+export const fillText = (text: string, values: Record<string, number>) => text.replace(/\{([a-z])\}/g, (all, n: string) => (n in values ? String(values[n]) : all));
+/** The right number for one student (null when it can't be worked out). */
+export function variantAnswer(m: Meta, who: string, questionId: string): number | null {
+  const tree = m.formula ? parseExpr(m.formula) : null;
+  if (!tree) return null;
+  const v = evaluate(tree, valuesFor(m, who, questionId));
+  return Number.isFinite(v) ? Math.round(v * 1e9) / 1e9 : null;
+}
 
 /** A tapped point "x,y" (percent of the picture's width and height). */
 export function readPoint(s: string): { x: number; y: number } | null {
@@ -49,7 +74,7 @@ export function readPoint(s: string): { x: number; y: number } | null {
 export const inArea = (p: { x: number; y: number }, a: Area) => p.x >= a.x && p.x <= a.x + a.w && p.y >= a.y && p.y <= a.y + a.h;
 
 /** A question as stored: `options` JSON, `meta` JSON text. */
-export interface StoredQuestion { type?: string | null; question?: string; options: unknown; correctAnswer: string; meta?: string | null }
+export interface StoredQuestion { id?: string; type?: string | null; question?: string; options: unknown; correctAnswer: string; meta?: string | null }
 /** What a student gives: text, or one text per blank / prompt / place. */
 export type Given = string | string[];
 
@@ -83,8 +108,11 @@ const asList = (g: Given | null | undefined) => (Array.isArray(g) ? g : []);
 const asText = (g: Given | null | undefined) => (typeof g === 'string' ? g : '');
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** How much of a question's points an answer earns (0 to 1), and whether anything was given. */
-export function markAnswer(q: StoredQuestion, given: Given | null | undefined): { credit: number; answered: boolean } {
+/**
+ * How much of a question's points an answer earns (0 to 1), and whether anything was given. `who`:
+ * the student, for numbers that change per student (without it those can't be marked).
+ */
+export function markAnswer(q: StoredQuestion, given: Given | null | undefined, who?: string): { credit: number; answered: boolean } {
   const m = metaOf(q);
   switch (typeOf(q)) {
     case 'CHOICE': case 'TRUE_FALSE': {
@@ -126,8 +154,9 @@ export function markAnswer(q: StoredQuestion, given: Given | null | undefined): 
     case 'NUMBER': {
       const g = asText(given);
       const x = readNumber(g);
-      if (x == null || typeof m.value !== 'number') return { credit: 0, answered: g.trim() !== '' };
-      return { credit: Math.abs(x - m.value) <= (m.tolerance ?? 0) + 1e-9 * Math.max(1, Math.abs(m.value)) ? 1 : 0, answered: true };
+      const value = isVariant(m) ? (who && q.id ? variantAnswer(m, who, q.id) : null) : m.value;
+      if (x == null || typeof value !== 'number') return { credit: 0, answered: g.trim() !== '' };
+      return { credit: Math.abs(x - value) <= (m.tolerance ?? 0) + 1e-9 * Math.max(1, Math.abs(value)) ? 1 : 0, answered: true };
     }
     case 'MATH': {
       const g = asText(given);
@@ -143,7 +172,7 @@ export function markAnswer(q: StoredQuestion, given: Given | null | undefined): 
 }
 
 /** Fully right (for item analysis, mastery and second chances). */
-export const isRight = (q: StoredQuestion, given: Given | null | undefined) => markAnswer(q, given).credit >= 1;
+export const isRight = (q: StoredQuestion, given: Given | null | undefined, who?: string) => markAnswer(q, given, who).credit >= 1;
 
 /** A student's answer made safe to store (null: nothing usable). */
 export function cleanGiven(q: StoredQuestion, raw: unknown): Given | null {
@@ -176,17 +205,28 @@ export function keyText(type: QuestionType, m: Meta, correctAnswer = ''): string
     case 'BLANKS': return (m.blanks ?? []).map((a) => a.join(' / ')).join(' · ');
     case 'MATCH': return (m.pairs ?? []).map((p) => `${p.left} → ${p.right}`).join('; ');
     case 'ORDER': return (m.order ?? []).join(' → ');
-    case 'NUMBER': return `${m.value ?? ''}${m.tolerance ? ` (± ${m.tolerance})` : ''}${m.unit ? ` ${m.unit}` : ''}`;
+    case 'NUMBER': return `${isVariant(m) ? `= ${m.formula}` : m.value ?? ''}${m.tolerance ? ` (± ${m.tolerance})` : ''}${m.unit ? ` ${m.unit}` : ''}`;
     case 'MATH': return (m.accepted ?? []).join(' / ');
     case 'HOTSPOT': return (m.areas ?? []).length > 1 ? `One of the ${(m.areas ?? []).length} marked areas` : 'The marked area';
   }
 }
 
+/** The right answer in words for one student (their own number when the numbers change). */
+export function keyFor(q: StoredQuestion, who?: string): string {
+  const m = metaOf(q);
+  if (typeOf(q) !== 'NUMBER' || !isVariant(m) || !who || !q.id) return q.correctAnswer;
+  const v = variantAnswer(m, who, q.id);
+  return `${v ?? '?'}${m.tolerance ? ` (± ${m.tolerance})` : ''}${m.unit ? ` ${m.unit}` : ''}`;
+}
+
 /** What a student may see of a question's settings (no answers). */
 export interface Ask { many?: boolean; blanks?: number; lefts?: string[]; unit?: string; image?: string; math?: boolean }
 
-/** A question for a student: no answer key, and options in their own order where that's safe. */
-export function forStudent<Q extends StoredQuestion & { id: string }>(q: Q, seed: string | null): Omit<Q, 'correctAnswer' | 'meta'> & { type: QuestionType; options: string[]; ask: Ask } {
+/**
+ * A question for a student: no answer key, options in their own order where that's safe, and their
+ * own numbers in the text when the numbers change per student (`who`).
+ */
+export function forStudent<Q extends StoredQuestion & { id: string }>(q: Q, seed: string | null, who?: string): Omit<Q, 'correctAnswer' | 'meta'> & { type: QuestionType; options: string[]; ask: Ask } {
   // Everything but the key.
   const rest = Object.fromEntries(Object.entries(q).filter(([k]) => k !== 'correctAnswer' && k !== 'meta')) as Omit<Q, 'correctAnswer' | 'meta'>;
   const t = typeOf(q);
@@ -205,7 +245,8 @@ export function forStudent<Q extends StoredQuestion & { id: string }>(q: Q, seed
   if (t === 'BLANKS') ask.blanks = (m.blanks ?? []).length;
   if (t === 'MATCH') ask.lefts = (m.pairs ?? []).map((p) => p.left);
   if (t === 'NUMBER' && m.unit) ask.unit = m.unit;
-  return { ...rest, type: t, options, ask };
+  const filled = t === 'NUMBER' && isVariant(m) && who && typeof q.question === 'string' ? { question: fillText(q.question, valuesFor(m, who, q.id)) } : {};
+  return { ...rest, ...filled, type: t, options, ask };
 }
 
 /** The question as the teacher writes it, checked; or the reason it can't be saved. */
@@ -213,6 +254,8 @@ export interface QuestionInput {
   type?: unknown; question?: unknown; options?: unknown; correctAnswer?: unknown;
   correct?: unknown; partial?: unknown; accepted?: unknown; pairs?: unknown; extra?: unknown; items?: unknown;
   value?: unknown; tolerance?: unknown; unit?: unknown; image?: unknown; areas?: unknown;
+  /** NUMBER with numbers that change: the formula, and [{ name, min, max, step }]. */
+  formula?: unknown; vars?: unknown;
 }
 export interface CleanQuestion { type: QuestionType; question: string; options: string[]; correctAnswer: string; meta: string | null }
 
@@ -284,12 +327,38 @@ export function cleanQuestionInput(b: QuestionInput): CleanQuestion | string {
       return done(options, { order });
     }
     case 'NUMBER': {
-      const value = typeof b.value === 'number' ? b.value : readNumber(String(b.value ?? ''));
-      if (value == null) return 'Give the right number.';
       const tol = b.tolerance == null || b.tolerance === '' ? 0 : typeof b.tolerance === 'number' ? b.tolerance : readNumber(String(b.tolerance));
       if (tol == null || tol < 0) return 'The tolerance must be 0 or more.';
       const unit = cut(b.unit, 20);
-      return done([], { value, ...(tol ? { tolerance: tol } : {}), ...(unit ? { unit } : {}) });
+      const extra = { ...(tol ? { tolerance: tol } : {}), ...(unit ? { unit } : {}) };
+      const formula = cut(b.formula, 200);
+      if (formula) {
+        // Numbers that change for each student: each letter's range, and the answer's formula.
+        const num = (v: unknown) => (typeof v === 'number' ? v : readNumber(String(v ?? '')));
+        const vars: Record<string, Range> = {};
+        for (const raw of (Array.isArray(b.vars) ? b.vars : []).slice(0, 5)) {
+          const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+          const name = cut(o.name, 1).toLowerCase();
+          const min = num(o.min), max = num(o.max), step = num(o.step) ?? 1;
+          if (!/^[a-z]$/.test(name) || name === 'e') return 'Each changing number needs a one-letter name (not e).';
+          if (min == null || max == null || !(step > 0) || max < min) return `Give “${name}” a range: from, to and a step above 0.`;
+          if ((max - min) / step > 10_000) return `“${name}” has too many values: use a bigger step.`;
+          vars[name] = { min, max, step };
+        }
+        if (!Object.keys(vars).length) return 'Add at least one number that changes.';
+        const tree = parseExpr(formula);
+        if (!tree) return 'The answer’s formula can’t be read.';
+        const unknown = [...letters(tree)].find((l) => !(l in vars));
+        if (unknown) return `The formula uses “${unknown}”, which isn’t one of the changing numbers.`;
+        const missing = Object.keys(vars).find((n) => !question.includes(`{${n}}`));
+        if (missing) return `Put {${missing}} in the question where its number goes.`;
+        const at = Object.fromEntries(Object.entries(vars).map(([n, r]) => [n, r.min]));
+        if (!Number.isFinite(evaluate(tree, at))) return 'The formula can’t be worked out for the smallest numbers (dividing by 0?).';
+        return done([], { formula, vars, ...extra });
+      }
+      const value = typeof b.value === 'number' ? b.value : readNumber(String(b.value ?? ''));
+      if (value == null) return 'Give the right number.';
+      return done([], { value, ...extra });
     }
     case 'MATH': {
       const accepted = [...new Set((Array.isArray(b.accepted) ? b.accepted : []).map((x) => cut(x, 200)).filter(Boolean))].slice(0, 6);
@@ -324,7 +393,9 @@ export function toInput(q: StoredQuestion): QuestionInput {
     case 'BLANKS': { let k = 0; return { type: t, question: (q.question ?? '').replace(BLANK_RE, () => `[[${(m.blanks?.[k++] ?? []).join('|')}]]`) }; }
     case 'MATCH': return { type: t, question: q.question, pairs: m.pairs ?? [], extra: options.filter((o) => !(m.pairs ?? []).some((p) => p.right === o)) };
     case 'ORDER': return { type: t, question: q.question, items: m.order ?? [] };
-    case 'NUMBER': return { type: t, question: q.question, value: m.value, tolerance: m.tolerance ?? 0, unit: m.unit ?? '' };
+    case 'NUMBER': return isVariant(m)
+      ? { type: t, question: q.question, formula: m.formula, vars: Object.entries(m.vars ?? {}).map(([name, r]) => ({ name, ...r })), tolerance: m.tolerance ?? 0, unit: m.unit ?? '' }
+      : { type: t, question: q.question, value: m.value, tolerance: m.tolerance ?? 0, unit: m.unit ?? '' };
     case 'MATH': return { type: t, question: q.question, accepted: m.accepted ?? [] };
     case 'HOTSPOT': return { type: t, question: q.question, image: m.image, areas: m.areas ?? [] };
   }

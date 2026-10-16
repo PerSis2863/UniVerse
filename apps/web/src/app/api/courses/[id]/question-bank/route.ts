@@ -4,6 +4,7 @@ import { getSessionUser } from '@/lib/server-auth';
 import { courseAccess } from '@/lib/course-access';
 import { cleanQuestion, DIFFICULTIES, type BankQuestionIn } from '@/lib/question-bank';
 import { toInput, typeOf } from '@/lib/question-types';
+import { cleanPoolName } from '@/lib/quiz-draw';
 import { oneOf, strings, text, type Body } from '@/server/body';
 
 // A course's question bank (Stage 5 · B4.1; rules in src/lib/question-bank.ts). Teachers only.
@@ -15,7 +16,7 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
 const ACTIONS = ['create', 'import', 'delete', 'add-to-quiz', 'save-from-quiz'] as const;
 const MAX_BANK = 2000;
 // D1 allows 100 bound values per statement: insert in small groups (bank rows have 12 columns,
-// quiz questions 9).
+// quiz questions 10).
 const groups = <T,>(xs: T[], n: number) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
 const row = (courseId: string, userId: string, q: BankQuestionIn) => ({ courseId, createdById: userId, question: q.question, options: q.options, correctAnswer: q.correctAnswer, points: q.points, tags: q.tags.join(','), difficulty: q.difficulty, type: q.type, meta: q.meta });
 
@@ -72,12 +73,14 @@ export async function POST(req: Request, ctx: Ctx) {
       const quiz = await prisma.quiz.findFirst({ where: { id: text(b.quizId), courseId: id }, select: { id: true } });
       if (!quiz) return bad('Pick a quiz from this course.');
       const ids = strings(b.ids).slice(0, 50);
+      // Added as a pool (Stage 5 · B4.2): each student gets some of them.
+      const pool = cleanPoolName(b.pool);
       const picked = ids.length ? await prisma.bankQuestion.findMany({ where: { courseId: id, id: { in: ids } } }) : [];
       if (!picked.length) return bad('Pick questions to add.');
       const last = await prisma.quizQuestion.findFirst({ where: { quizId: quiz.id }, orderBy: { order: 'desc' }, select: { order: true } });
       const start = (last?.order ?? -1) + 1;
       const ordered = ids.map((x) => picked.find((p) => p.id === x)).filter((p): p is (typeof picked)[number] => !!p);
-      for (const part of groups(ordered.map((p, i) => ({ quizId: quiz.id, question: p.question, options: p.options as string[], correctAnswer: p.correctAnswer, points: p.points, order: start + i, type: p.type, meta: p.meta })), 10)) {
+      for (const part of groups(ordered.map((p, i) => ({ quizId: quiz.id, question: p.question, options: p.options as string[], correctAnswer: p.correctAnswer, points: p.points, order: start + i, type: p.type, meta: p.meta, pool: pool || null })), 9)) {
         await prisma.quizQuestion.createMany({ data: part });
       }
       return NextResponse.json({ added: ordered.length });

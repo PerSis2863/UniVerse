@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { drawnOf } from '@/lib/quiz-draw';
 import { manageableQuiz } from '@/lib/quizzes';
 import type { SessionUser } from '@/lib/server-auth';
 import { cleanGiven, keyText, loose, markAnswer, metaOf, typeOf, type Given, type Meta } from '@/lib/question-types';
@@ -48,11 +49,12 @@ export async function shortAnswers(quizId: string, questionId: unknown, user: Se
 async function rescore(quizId: string) {
   const [questions, subs] = await Promise.all([
     prisma.quizQuestion.findMany({ where: { quizId }, select: { id: true, type: true, options: true, correctAnswer: true, meta: true, points: true } }),
-    prisma.quizSubmission.findMany({ where: { quizId }, select: { id: true, answers: true }, take: 2000 }),
+    prisma.quizSubmission.findMany({ where: { quizId }, select: { id: true, studentId: true, drawn: true, answers: true }, take: 2000 }),
   ]);
   const rows = subs.map((s) => {
     const answers = (s.answers && typeof s.answers === 'object' ? s.answers : {}) as Record<string, unknown>;
-    const score = questions.reduce((t, q) => { const g = cleanGiven(q, answers[q.id]); return g == null ? t : t + q.points * markAnswer(q, g).credit; }, 0);
+    const drawn = drawnOf(s.drawn);
+    const score = questions.reduce((t, q) => { if (drawn && !drawn.includes(q.id)) return t; const g = cleanGiven(q, answers[q.id]); return g == null ? t : t + q.points * markAnswer(q, g, s.studentId).credit; }, 0);
     return { id: s.id, s: Math.round(score * 100) / 100 };
   });
   if (!rows.length) return 0;
