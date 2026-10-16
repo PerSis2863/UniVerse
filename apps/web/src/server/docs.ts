@@ -11,6 +11,7 @@ import { notifyMentioned } from './mentions';
 import { pushService } from './services/push.service';
 import { indexDoc, indexLater } from './semester';
 import { docLinkIds, makesLoop } from '@/lib/doc-pages';
+import { docLink, indexItem, indexTitle, plainText } from './search-index';
 
 // Documents (Stage 4 · 3.2). The text is written together live: a Yjs document kept by the same
 // Durable Object as code rooms (cloudflare/worker.ts CodeRoom), in a room named "doc:<id>", so
@@ -159,6 +160,7 @@ export async function createDoc(user: SessionUser, body: Record<string, unknown>
   if ((await prisma.doc.count({ where: { ownerId: user.id } })) >= MAX_DOCS) throw new BadRequestException(`You can have up to ${MAX_DOCS} documents. Delete some first.`);
   const kind = kindOf(body.kind);
   const doc = await prisma.doc.create({ data: { title, ownerId: user.id, courseId, groupId, parentId, kind } });
+  await indexItem({ kind: 'doc', ref: doc.id, scope: `doc:${doc.id}`, title, body: '', sub: kind, link: docLink(doc.id, kind) }); // search (Stage 5 · Q10)
   return { id: doc.id, kind };
 }
 
@@ -200,7 +202,7 @@ export async function updateDoc(docId: string, user: SessionUser, body: Record<s
   const { doc, canEdit, canManage } = await access(docId, user);
   if (!canEdit) throw new ForbiddenException('You can only read this document.');
   const title = clean(body.title, 120);
-  if (title) await prisma.doc.update({ where: { id: docId }, data: { title } });
+  if (title) { await prisma.doc.update({ where: { id: docId }, data: { title } }); await indexTitle('doc', docId, title); }
   if ('parentId' in body) {
     if (!canManage) throw new ForbiddenException('Only whoever made this page, or runs its class or group, can move it.');
     const to = typeof body.parentId === 'string' && body.parentId ? body.parentId : null;
@@ -290,6 +292,8 @@ export async function saveVersion(docId: string, user: SessionUser, body: Record
   const name = clean(body.name, 80) || null;
   const text = clean(body.text, 300);
   await prisma.doc.update({ where: { id: docId }, data: { preview: text || null } });
+  // Its words for search everywhere (Stage 5 · Q10), the whole text, whoever saves.
+  await indexItem({ kind: 'doc', ref: docId, scope: `doc:${docId}`, title: doc.title, body: plainText(html), sub: doc.kind, link: docLink(docId, doc.kind) });
   await syncLinks(docId, html);
   if (!name) {
     const last = await prisma.docVersion.findFirst({ where: { docId }, orderBy: { createdAt: 'desc' }, select: { createdAt: true, html: true, data: true } });

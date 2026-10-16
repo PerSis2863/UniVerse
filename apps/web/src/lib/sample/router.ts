@@ -1842,6 +1842,16 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   })],
 
   [/^\/api\/notifications$/, ({ db: d }) => ok(d.notifications)],
+  // Search everywhere (Stage 5 · Q10): the sample courses and quizzes by name.
+  [/^\/api\/search$/, ({ db: d, q }) => {
+    const term = (q.get('q') ?? '').toLowerCase().trim();
+    if (term.length < 2) return ok({ results: [] });
+    const has = (t: string) => t.toLowerCase().includes(term);
+    return ok({ results: [
+      ...(d.courses as any[]).filter((c) => has(`${c.name} ${c.code} ${c.description ?? ''}`)).map((c) => ({ type: 'course', id: c.id, title: c.name, subtitle: c.code, href: d.teacherView ? `/teacher/blackboard?course=${c.id}` : `/student/courses/${c.id}` })),
+      ...(d.quizzes as any[]).filter((x) => has(`${x.title} ${x.description ?? ''}`)).map((x) => ({ type: 'assignment', id: x.id, title: x.title, subtitle: course(d, x.courseId)?.code, snippet: x.description ?? undefined, href: d.teacherView ? '/teacher/quizzes' : '/student/quizzes' })),
+    ] });
+  }],
   // The notification centre and its settings (Stage 5 · Q9).
   [/^\/api\/notifications\/centre$/, ({ db: d, q }) => {
     const group = q.get('group'), unreadOnly = q.get('unread') === '1';

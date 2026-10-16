@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
-import { BookOpen, Briefcase, ChevronRight, Command, Compass, CornerDownLeft, FileSearch, FlaskConical, HeartHandshake, Library, Loader2, MessageSquarePlus, Moon, Search, Sun, User, Users, type LucideIcon, Gauge, SignalLow } from 'lucide-react';
+import { BookOpen, Briefcase, CalendarDays, CalendarPlus, ChevronRight, ClipboardList, Command, Compass, CornerDownLeft, FilePlus2, FileSearch, FileSpreadsheet, FileText, FlaskConical, HeartHandshake, KanbanSquare, Library, Loader2, MessageSquarePlus, Moon, Paperclip, Presentation, Search, SquareCheck, Sun, User, Users, Video, type LucideIcon, Gauge, SignalLow } from 'lucide-react';
 import { isSampleMode } from '@/lib/sample-mode';
 import { startSampleMode, stopSampleMode } from '@/components/SampleMode';
 import { cn } from '@/lib/utils';
@@ -17,23 +17,41 @@ import { fetcher } from '@/lib/fetcher';
 import { applyTheme } from '@/lib/theme';
 import { spring } from '@/lib/motion';
 
-type Item = { id: string; label: string; hint?: string; icon: LucideIcon; group: string; keywords?: string; run: () => void | Promise<void> };
+type Item = { id: string; label: string; hint?: string; icon: LucideIcon; group: string; keywords?: string; run: () => void | Promise<void>; /** Kept in Recent with its address (search results). */ href?: string };
 type Person = { id: string; name: string; role: string; online?: boolean };
-type SearchResult = { type: 'course' | 'group' | 'project' | 'internship' | 'resource'; id: string; title: string; subtitle?: string; href: string };
+type SearchResult = { type: keyof typeof RESULT_KIND; id: string; title: string; subtitle?: string; snippet?: string; href: string };
 /** /courses/my: a teacher's own courses, or a student's enrolments (each holds its course). */
 type MyCourse = { id: string; name: string; code?: string; course?: MyCourse };
 
 // How platform search results (/api/search) are shown.
-const RESULT_KIND: Record<SearchResult['type'], { group: string; icon: LucideIcon }> = {
+const RESULT_KIND = {
+  // The words inside my things (Stage 5 · Q10, src/server/search-index.ts).
+  doc: { group: 'Documents', icon: FileText },
+  sheet: { group: 'Documents', icon: FileSpreadsheet },
+  slides: { group: 'Documents', icon: Presentation },
+  task: { group: 'Tasks', icon: SquareCheck },
+  board: { group: 'Tasks', icon: KanbanSquare },
+  assignment: { group: 'Assignments', icon: ClipboardList },
+  material: { group: 'Materials', icon: Paperclip },
+  event: { group: 'Events', icon: CalendarDays },
   course: { group: 'Courses', icon: BookOpen },
   group: { group: 'Groups', icon: Users },
   project: { group: 'NGO projects', icon: HeartHandshake },
   internship: { group: 'Internships', icon: Briefcase },
   resource: { group: 'Resources', icon: Library },
-};
+} satisfies Record<string, { group: string; icon: LucideIcon }>;
 
 const ROLE_BASE: Record<string, string> = { STUDENT: '/student', TEACHER: '/teacher', ADMIN: '/admin' };
 const RECENTS_KEY = 'universe_recent_commands';
+// Search results opened lately, with their address (Stage 5 · Q10).
+const RECENT_FOUND_KEY = 'universe_recent_found';
+type RecentFound = { id: string; label: string; hint?: string; href: string; type: keyof typeof RESULT_KIND };
+
+/** A snippet's matched words («…») shown highlighted. */
+function Snippet({ text, selected }: { text: string; selected: boolean }) {
+  const parts = text.split(/[«»]/);
+  return <>{parts.map((p, i) => (i % 2 ? <mark key={i} className={cn('rounded px-0.5 font-medium', selected ? 'bg-white text-indigo-800' : 'bg-amber-200 text-zinc-900 dark:bg-amber-300 dark:text-zinc-900')}>{p}</mark> : <span key={i}>{p}</span>))}</>;
+}
 
 /** Every character of the query appears in order (so "blk" finds "Blackboard"); earlier, tighter matches rank higher. */
 function score(text: string, q: string) {
@@ -60,6 +78,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
   const [debounced, setDebounced] = useState('');
   const [index, setIndex] = useState(0);
   const [recents, setRecents] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(RECENTS_KEY) ?? '[]'); } catch { return []; } });
+  const [recentFound, setRecentFound] = useState<RecentFound[]>(() => { try { const v = JSON.parse(localStorage.getItem(RECENT_FOUND_KEY) ?? '[]'); return Array.isArray(v) ? v.filter((x) => x && typeof x.href === 'string' && x.href.startsWith('/') && x.type in RESULT_KIND).slice(0, 6) : []; } catch { return []; } });
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -118,7 +137,17 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
     const dark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
     return [
       ...(role === 'STUDENT' || role === 'TEACHER' ? [{ id: 'act:tour', label: 'Take the tour', hint: 'Where everything is', icon: Compass, group: 'Actions', keywords: 'help guide welcome start where menu', run: () => window.dispatchEvent(new Event('universe:tour')) }] : []),
-      { id: 'act:message', label: 'New message', hint: 'Messages', icon: MessageSquarePlus, group: 'Actions', keywords: 'chat dm write send inbox', run: go(`${base}/inbox`) },
+      { id: 'act:message', label: 'New message', hint: 'Messages', icon: MessageSquarePlus, group: 'Actions', keywords: 'chat dm write send inbox', run: go(`${base}/inbox?new=chat`) },
+      // Make something (Stage 5 · Q10).
+      { id: 'act:doc', label: 'New document', hint: 'Docs', icon: FilePlus2, group: 'Actions', keywords: 'write word page report create', run: go('/docs?new=doc') },
+      { id: 'act:sheet', label: 'New spreadsheet', hint: 'Docs', icon: FileSpreadsheet, group: 'Actions', keywords: 'excel table numbers budget create', run: go('/docs?new=sheet') },
+      { id: 'act:slides', label: 'New presentation', hint: 'Docs', icon: Presentation, group: 'Actions', keywords: 'powerpoint slides deck create', run: go('/docs?new=slides') },
+      { id: 'act:board', label: 'New task board', hint: 'Tasks', icon: KanbanSquare, group: 'Actions', keywords: 'tasks kanban project todo create', run: go('/tasks?new=1') },
+      { id: 'act:call', label: 'Schedule a call', hint: 'Calls', icon: CalendarPlus, group: 'Actions', keywords: 'meeting video class call book plan', run: go('/calls?schedule=1') },
+      ...(role === 'TEACHER' ? [
+        { id: 'act:assignment', label: 'New assignment', hint: 'Assignments', icon: ClipboardList, group: 'Actions', keywords: 'homework essay task create set', run: go('/teacher/assignments') },
+        { id: 'act:quiz', label: 'New quiz', hint: 'Quizzes', icon: SquareCheck, group: 'Actions', keywords: 'test exam create', run: go('/teacher/quizzes') },
+      ] : []),
       {
         id: 'act:theme', label: dark ? 'Switch to light mode' : 'Switch to dark mode', icon: dark ? Sun : Moon, group: 'Actions', keywords: 'theme appearance dark light night',
         run: () => { applyTheme(dark ? 'light' : 'dark'); window.dispatchEvent(new Event('universe:theme')); },
@@ -145,19 +174,30 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
     }));
   }, [myCourses, role, base, go]);
 
-  const peopleItems: Item[] = useMemo(() => (people ?? []).slice(0, 6).map((p) => ({
-    id: `person:${p.id}`, label: p.name, hint: `${p.role.charAt(0)}${p.role.slice(1).toLowerCase()}${p.online ? ' · online' : ''}`, icon: User, group: 'People',
-    run: async () => {
-      const { id } = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: p.id }) });
-      router.push(`${base}/inbox?c=${id}`);
-    },
-  })), [people, base, router]);
+  const peopleItems: Item[] = useMemo(() => (people ?? []).slice(0, 5).flatMap((p) => {
+    const chatWith = async () => (await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: p.id }) })).id;
+    return [
+      {
+        id: `person:${p.id}`, label: p.name, hint: `${p.role.charAt(0)}${p.role.slice(1).toLowerCase()}${p.online ? ' · online' : ''}`, icon: User, group: 'People',
+        run: async () => { router.push(`${base}/inbox?c=${await chatWith()}`); },
+      },
+      // "Start a call with…" (Stage 5 · Q10): rings them like a call from the chat.
+      {
+        id: `call:${p.id}`, label: `Video call ${p.name.split(/\s+/)[0]}`, hint: p.online ? 'Online now' : 'Rings their devices', icon: Video, group: 'People',
+        run: async () => {
+          const msg = await authedJson<{ id: string }>(`/api/chat/conversations/${await chatWith()}/messages`, { method: 'POST', body: JSON.stringify({ type: 'CALL', kind: 'video' }) });
+          router.push(`/call/${msg.id}?kind=video`);
+        },
+      },
+    ];
+  }), [people, base, router]);
 
   const foundItems: Item[] = useMemo(() => {
     const mine = new Set(courses.map((c) => c.id));
     return (found?.results ?? [])
       .filter((r) => !(r.type === 'course' && mine.has(`course:${r.id}`)))
-      .map((r) => ({ id: `${r.type}:${r.id}`, label: r.title, hint: r.subtitle, icon: RESULT_KIND[r.type].icon, group: RESULT_KIND[r.type].group, run: go(r.href) }));
+      .filter((r) => r.type in RESULT_KIND)
+      .map((r) => ({ id: `${r.type}:${r.id}`, label: r.title, hint: r.snippet ? `${r.subtitle ? `${r.subtitle} · ` : ''}${r.snippet}` : r.subtitle, icon: RESULT_KIND[r.type].icon, group: RESULT_KIND[r.type].group, run: go(r.href), href: r.href }));
   }, [found, courses, go]);
 
   const results = useMemo(() => {
@@ -167,10 +207,12 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
     const quickIds = new Set((searchOnlyPages[role] ?? []).filter((p) => p.quick).map((p) => `page:${p.href}`));
     const quick = pages.filter((i) => quickIds.has(i.id)).map((i) => ({ ...i, group: 'Find' }));
     if (!q) {
-      const recent = recents.map((id) => all.find((i) => i.id === id)).filter(Boolean) as Item[];
+      // Recently opened: pages and actions, and search results (with their address).
+      const recent = recents.map((id) => all.find((i) => i.id === id) ?? recentFound.find((f) => f.id === id)).filter(Boolean)
+        .map((i) => ('run' in i! ? i : { id: i!.id, label: i!.label, hint: i!.hint, icon: RESULT_KIND[i!.type].icon, group: 'Recent', run: go(i!.href), href: i!.href })) as Item[];
       const seen = new Set(recent.map((i) => i.id));
       return [
-        ...recent.slice(0, 4).map((i) => ({ ...i, group: 'Recent' })),
+        ...recent.slice(0, 5).map((i) => ({ ...i, group: 'Recent' })),
         ...courses.slice(0, 4).filter((i) => !seen.has(i.id)),
         ...quick.filter((i) => !seen.has(i.id)),
         ...actions,
@@ -183,9 +225,9 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
       .sort((a, b) => b.s - a.s)
       .map((x) => x.i);
     // Group in a fixed order so the list doesn't jump around while typing.
-    const order = ['Courses', 'Pages', 'People', 'Groups', 'NGO projects', 'Internships', 'Resources', 'Actions'];
+    const order = ['Documents', 'Tasks', 'Assignments', 'Courses', 'Materials', 'Pages', 'People', 'Events', 'Groups', 'NGO projects', 'Internships', 'Resources', 'Actions'];
     return [...ranked, ...peopleItems, ...foundItems].sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
-  }, [debounced, pages, courses, actions, peopleItems, foundItems, recents, role]);
+  }, [debounced, pages, courses, actions, peopleItems, foundItems, recents, recentFound, role, go]);
 
   // A new search starts at the top.
   const [indexedFor, setIndexedFor] = useState(debounced);
@@ -199,6 +241,12 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
     const next = [item.id, ...recents.filter((r) => r !== item.id)].slice(0, 8);
     setRecents(next);
     try { localStorage.setItem(RECENTS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+    const type = item.id.split(':')[0] as RecentFound['type'];
+    if (item.href && type in RESULT_KIND) {
+      const kept = [{ id: item.id, label: item.label, hint: item.hint?.split(' · ')[0], href: item.href, type }, ...recentFound.filter((f) => f.id !== item.id)].slice(0, 6);
+      setRecentFound(kept);
+      try { localStorage.setItem(RECENT_FOUND_KEY, JSON.stringify(kept)); } catch { /* ignore */ }
+    }
     setOpen(false);
     try { await item.run(); } catch (e) { toast.error((e as Error)?.message || 'Could not open that. Please try again.'); }
   };
@@ -231,14 +279,14 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={onKeyDown}
-                  placeholder="Search courses, people, groups, projects, internships…"
+                  placeholder="Search documents, tasks, courses, people…"
                   aria-controls="palette-list"
                   className="flex-1 bg-transparent text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none text-[20px] font-normal tracking-tight"
                 />
                 <button onClick={() => setOpen(false)} className="text-[15px] font-medium text-tint-text">Cancel</button>
               </div>
 
-              <div id="palette-list" ref={listRef} role="listbox" className="max-h-[min(60dvh,420px)] overflow-y-auto overscroll-contain p-2">
+              <div id="palette-list" ref={listRef} role="listbox" aria-label="Results" className="max-h-[calc(100dvh-9rem)] sm:max-h-[min(60dvh,460px)] overflow-y-auto overscroll-contain p-2">
                 {results.length === 0 ? (
                   <p className="py-10 text-center text-sm text-zinc-500">
                     {debounced.length >= 2 && busy ? 'Searching…' : <>No results for &ldquo;{query}&rdquo;</>}
@@ -257,13 +305,13 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
                         onMouseMove={() => setIndex(i)}
                         className={cn('relative w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left', selected ? 'text-white' : 'text-zinc-800 dark:text-zinc-200')}
                       >
-                        {selected && <motion.span layoutId="palette-sel" transition={spring.snappy} className="absolute inset-0 rounded-xl bg-tint" />}
+                        {selected && <motion.span layoutId="palette-sel" transition={spring.snappy} className="absolute inset-0 rounded-xl bg-tint dark:bg-indigo-600" />}
                         <span className={cn('relative w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0', selected ? 'bg-white/20 text-white' : 'bg-[var(--fill)] text-tint-text')}>
                           <item.icon className="w-4 h-4" />
                         </span>
                         <span className="relative flex-1 min-w-0">
                           <span className="block text-sm font-semibold truncate">{item.label}</span>
-                          {item.hint && <span className={cn('block text-xs truncate', selected ? 'text-white/75' : 'text-zinc-500')}>{item.hint}</span>}
+                          {item.hint && <span className={cn('block text-xs', item.hint.includes('«') ? 'line-clamp-2' : 'truncate', selected ? 'text-white' : 'text-zinc-600 dark:text-zinc-400')}>{item.hint.includes('«') ? <Snippet text={item.hint} selected={selected} /> : item.hint}</span>}
                         </span>
                         {selected ? <CornerDownLeft className="relative w-4 h-4 text-white/80" /> : <ChevronRight className="relative w-4 h-4 text-zinc-300 dark:text-zinc-600" />}
                       </button>

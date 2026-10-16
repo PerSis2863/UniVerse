@@ -28,6 +28,7 @@ import { logGradeChanges } from './grade-history';
 import { receiptFor, regradesOf } from './student-assignment';
 import { cleanReplay } from '@/lib/writing-replay';
 import { cleanPolicy, dueFor, lateness, mayHandIn, withPenalty, NO_ACCOMMODATION, type Accommodation } from '@/lib/assignment-policy';
+import { indexItem } from './search-index';
 
 // Written assignments graded against a rubric. The AI only drafts: a teacher reviews every
 // score and comment, and nothing reaches the student until the teacher returns the grade, which
@@ -318,6 +319,7 @@ export async function createAssignment(user: SessionUser, body: Record<string, u
   if (!a.canManage) throw new ForbiddenException('Only the course’s teacher can add assignments.');
   const data = assignmentFields(body, false) as Prisma.AssignmentUncheckedCreateInput;
   const created = await prisma.assignment.create({ data: { ...data, courseId, createdById: user.id } });
+  await indexItem({ kind: 'assignment', ref: created.id, scope: `course:${courseId}`, title: created.title, body: created.instructions, sub: a.course.code, link: `assignment:${created.id}` }); // search (Stage 5 · Q10)
   audit(user, { action: 'assignment.created', summary: `Added assignment “${created.title}” to ${a.course.code}`, targetType: 'assignment', targetId: created.id }, req);
   // Tell the class.
   later(async () => {
@@ -335,12 +337,14 @@ export async function createAssignment(user: SessionUser, body: Record<string, u
 }
 
 export async function updateAssignment(assignmentId: string, user: SessionUser, body: Record<string, unknown>) {
-  await manage(assignmentId, user);
+  const { course } = await manage(assignmentId, user);
   const data = assignmentFields(body, true);
   if (data.rubric !== undefined && (await prisma.assignmentSubmission.count({ where: { assignmentId, status: 'RETURNED' } }))) {
     throw new BadRequestException('Grades have already been returned with this rubric, so it can’t be changed.');
   }
-  return prisma.assignment.update({ where: { id: assignmentId }, data });
+  const saved = await prisma.assignment.update({ where: { id: assignmentId }, data });
+  if (data.title !== undefined || data.instructions !== undefined) await indexItem({ kind: 'assignment', ref: saved.id, scope: `course:${saved.courseId}`, title: saved.title, body: saved.instructions, sub: course.code, link: `assignment:${saved.id}` });
+  return saved;
 }
 
 export async function deleteAssignment(assignmentId: string, user: SessionUser, req: Request) {
