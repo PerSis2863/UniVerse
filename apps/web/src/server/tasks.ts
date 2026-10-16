@@ -152,7 +152,7 @@ export async function setMember(boardId: string, user: SessionUser, body: Record
     if (board.members.length >= 100) throw new BadRequestException('A board can be shared with up to 100 people.');
     const role = body.role === 'VIEWER' ? 'VIEWER' : 'EDITOR';
     await prisma.taskBoardMember.upsert({ where: { boardId_userId: { boardId, userId: who.id } }, create: { boardId, userId: who.id, role }, update: { role } });
-    void notify(who.id, { title: `${user.name} shared a task board with you`, body: board.title, link: `/tasks/${boardId}`, type: 'info', email: false });
+    await notify(who.id, { title: `${user.name} shared a task board with you`, body: board.title, link: `/tasks/${boardId}`, type: 'info', email: false });
   }
   await changed(boardId);
   return { ok: true };
@@ -273,7 +273,7 @@ export async function updateTask(taskId: string, user: SessionUser, body: Record
     await prisma.task.create({ data: { boardId: task.boardId, listId, title: saved.title, notes: task.notes, assigneeId: saved.assigneeId, dueAt: nextDue(task.dueAt ?? new Date(), task.repeat as Repeat), position: (last?.position ?? 0) + 1, priority: task.priority, labels: task.labels, estimate: task.estimate, repeat: task.repeat, createdById: user.id } });
   }
   if (data.assigneeId && data.assigneeId !== task.assigneeId && data.assigneeId !== user.id) {
-    void notify(data.assigneeId, { title: `${user.name} gave you a task`, body: `${saved.title} · ${board.title}`, link: `/tasks/${task.boardId}?task=${taskId}`, type: 'reminder', email: false });
+    await notify(data.assigneeId, { title: `${user.name} gave you a task`, body: `${saved.title} · ${board.title}`, link: `/tasks/${task.boardId}?task=${taskId}`, type: 'reminder', email: false });
   }
   await changed(task.boardId, board);
   return { ok: true };
@@ -312,7 +312,7 @@ export async function addComment(taskId: string, user: SessionUser, body: Record
   // @mentions (3.9) notify whoever is named; the assignee hears about other comments as before.
   const pinged = await notifyMentioned(text, people, user, { title: task.title, link: `/tasks/${task.boardId}?task=${taskId}` });
   if (task.assigneeId && task.assigneeId !== user.id && !pinged.includes(task.assigneeId)) {
-    void notify(task.assigneeId, { title: `${user.name} commented on your task`, body: `${task.title}: ${text.slice(0, 140)}`, link: `/tasks/${task.boardId}?task=${taskId}`, type: 'info', email: false });
+    await notify(task.assigneeId, { title: `${user.name} commented on your task`, body: `${task.title}: ${text.slice(0, 140)}`, link: `/tasks/${task.boardId}?task=${taskId}`, type: 'info', email: false });
   }
   publish(people, { type: 'refresh', keys: [`/api/tasks/items/${taskId}/comments`, `/api/tasks/${task.boardId}`] });
   return c;

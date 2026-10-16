@@ -82,6 +82,16 @@ done, where the code is and what's left for each item. Keep that table up to dat
     cron can be fired with `wrangler dev --test-scheduled` and `curl '/__scheduled?cron=*/15+*+*+*+*'`.
   - **Browser tests:** every Q5 screen so far was tried on the built Worker (390 and 1280 px, light and
     dark, axe clean). The AI parts (syllabus draft, suggested discussion answer) need the live site.
+- **Office suite (Collaborate → Docs), 16 Oct:** spreadsheets (O1), presentations (O2) and Word
+  features in documents (O3), Progress rows O1–O3. **Migration 0150** (`docs.kind`: doc / sheet /
+  slides; `doc_versions.data`, the JSON a sheet or deck goes back to). **Next migration: 0151.**
+  Spreadsheets and presentations are docs of another kind (`/sheets/<id>`, `/slides/<id>`), so
+  sharing, comments, history, offline copies and search come with them; the live connection is
+  shared (`src/lib/use-live-doc.ts`). Engines are pure and tested (`src/lib/sheet/`,
+  `src/lib/slides/`); Excel and PowerPoint files are written and read without a library. Newer
+  Excel functions must be saved with `_xlfn.` (`excelFormula`) or other apps show #NAME?. **Lesson:**
+  never `void notify(...)` in a request: the unfinished database call left the Worker "hung" for
+  the next requests; `await` it (fixed in `src/server/docs.ts` and `src/server/tasks.ts`).
 - **What's left is written up in `STAGE-5-PLAN.md`, section 4 "Remaining work queue"**: 23 entries
   (Q1–Q23) in the order to do them, each with what exists to build on, the steps, the traps, how to
   know it's done, and its size. Q1 and Q2 are done; **finish Q3's test, then continue with Q4**.

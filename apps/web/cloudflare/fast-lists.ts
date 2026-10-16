@@ -37,7 +37,7 @@ export async function spacesList(me: Caller, db: D1Database) {
   return json({ courses, groups }, 200, NO_STORE);
 }
 
-const DOC_COLUMNS = 'id, title, preview, courseId, groupId, ownerId, parentId, updatedAt';
+const DOC_COLUMNS = 'id, title, preview, courseId, groupId, ownerId, parentId, kind, updatedAt';
 
 /**
  * GET /api/docs (src/server/docs.ts listDocs): pages I can see (mine, shared with me, my classes' and
@@ -88,6 +88,7 @@ export async function docsList(me: Caller, db: D1Database) {
       course: d.courseId ? label.get(d.courseId as string) ?? null : d.groupId ? label.get(d.groupId as string) ?? null : null,
       space: d.courseId ? `c:${d.courseId}` : d.groupId ? `g:${d.groupId}` : null,
       parentId: d.parentId,
+      kind: d.kind ?? 'doc',
       mine: d.ownerId === me.id,
       updatedAt: isoDate(d.updatedAt as string),
     })),
