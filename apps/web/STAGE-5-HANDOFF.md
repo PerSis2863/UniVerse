@@ -92,6 +92,7 @@ done, where the code is and what's left for each item. Keep that table up to dat
   Excel functions must be saved with `_xlfn.` (`excelFormula`) or other apps show #NAME?. **Browser tests and the editor:** ProseMirror reads a keyboard selection a moment after the key; a script that selects and clicks the toolbar in the same instant formats nothing (pause ~150 ms, as a person would). **Lesson:**
   never `void notify(...)` in a request: the unfinished database call left the Worker "hung" for
   the next requests; `await` it (fixed in `src/server/docs.ts` and `src/server/tasks.ts`).
+- **Q8 home pages, 16 Oct (Progress row Q8):** **migration 0151** (`users.homeLayout`); **next migration: 0152**. `GET /api/home` (`src/server/home-data.ts`) is plain D1 (no Prisma) so the light API path (`cloudflare/fast-api.ts`) runs the same code, and it's in the startup bundle (key `/api/home?tz=<zone>`, built by `homeKey()` in `src/lib/bootstrap.ts`; the head script there must build the same key). A new home card: add it to `HOME_CARDS` (`src/lib/home-layout.ts`) and to the page's `cards` map; saved layouts pick it up. Deep links that open a page's form once: `useOnceParam` (`src/lib/use-once-param.ts`, `?new=`, `?schedule=`).
 - **What's left is written up in `STAGE-5-PLAN.md`, section 4 "Remaining work queue"**: 23 entries
   (Q1–Q23) in the order to do them, each with what exists to build on, the steps, the traps, how to
   know it's done, and its size. Q1 and Q2 are done; **finish Q3's test, then continue with Q4**.

@@ -13,6 +13,7 @@ import { useNow } from '@/lib/use-now';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { fadeUp, list, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { useOnceParam } from '@/lib/use-once-param';
 import { MEETING_TEMPLATES, templateById, totalMinutes } from '@/lib/call-agenda';
 
 // Scheduled calls on the Calls page (src/server/scheduled-calls.ts): what's coming up, a Join
@@ -47,6 +48,7 @@ export function ScheduledCalls({ role }: { role?: string }) {
   const { data, mutate } = useSWR<Upcoming[]>('/api/calls/scheduled', authedJson, { refreshInterval: poll });
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  useOnceParam('schedule', () => setOpen(true)); // ?schedule=1 from the phone's "+" menu
 
   const join = async (c: Upcoming) => {
     if (c.path) return router.push(c.path);

@@ -18,6 +18,7 @@ import { SHEET_TEMPLATES } from '@/lib/sheet/templates';
 import { DECK_TEMPLATES } from '@/lib/slides/templates';
 import { Segmented } from '@/components/ui/Segmented';
 import { cn } from '@/lib/utils';
+import { useOnceParam } from '@/lib/use-once-param';
 
 // Docs (Stage 4 · 3.2): documents written together live (src/server/docs.ts). Stage 5 · B9.14: a
 // converter for files (Word, PDF, Excel, pictures, sound, video, ZIP), all on the device. B9.2:
@@ -48,6 +49,8 @@ export default function DocsPage() {
   const [show, setShow] = useState<'all' | Kind>('all');
   const [form, setForm] = useState({ title: '', courseId: '', template: '' }); // courseId holds c:<id> or g:<id>
   const [busy, setBusy] = useState(false);
+  // The phone's "+" menu opens the form for a new document or spreadsheet (?new=doc).
+  useOnceParam('new', (v) => setCreating(kindOf(v)));
   const fileRef = useRef<HTMLInputElement>(null);
   const make = async (kind: Kind, title: string) => authedJson<{ id: string }>('/api/docs', { method: 'POST', body: JSON.stringify({ kind, title, courseId: form.courseId.startsWith('c:') ? form.courseId.slice(2) : undefined, groupId: form.courseId.startsWith('g:') ? form.courseId.slice(2) : undefined }) });
   const create = async (e: React.FormEvent) => {

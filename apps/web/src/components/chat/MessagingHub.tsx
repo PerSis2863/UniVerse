@@ -19,6 +19,7 @@ import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import type { ChatFolder } from './ChatFolders';
 import type { LaterData } from './ChatDialogs';
+import { useOnceParam } from '@/lib/use-once-param';
 
 /** A built-in filter, or one of my folders (folder:<id>). */
 type Filter = 'all' | 'unread' | 'direct' | 'groups' | `folder:${string}`;
@@ -69,6 +70,7 @@ export function MessagingHub() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [dialog, setDialog] = useState<null | 'chat' | 'group'>(null);
+  useOnceParam('new', (v) => setDialog(v === 'group' ? 'group' : 'chat')); // ?new=chat from the phone's "+" menu
   const [view, setView] = useState<'chats' | 'archived'>('chats');
   // Chats, or Communities (Discord-style servers with channels).
   // A club's space (upgrade 7) and community invite links (?join=) open on Communities.

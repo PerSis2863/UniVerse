@@ -1756,6 +1756,34 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     });
   }],
 
+  // The home pages' layout, Up next, goal, needs-attention list and live numbers (Stage 5 · Q8).
+  [/^\/api\/home$/, ({ db: d }) => {
+    const now = new Date();
+    const dow = (now.getDay() + 6) % 7;
+    const todayAt = (hhmm: string) => { const [h, mi] = hhmm.split(':').map(Number); const t = new Date(now); t.setHours(h, mi, 0, 0); return t.getTime(); };
+    const layout = { order: [], hidden: [], goal: 3 };
+    const role = d.me.role;
+    const classes = (d.slots as any[]).filter((s) => s.dayOfWeek === dow && (!d.teacherView || d.taught.some((c: any) => c.id === s.courseId)))
+      .map((s) => ({ kind: 'class', id: s.id, title: s.course.name, sub: `${s.course.code} · ${String(s.type).toLowerCase()} · ${s.room.name}`, start: todayAt(s.startTime), end: todayAt(s.endTime), href: d.teacherView ? `/teacher/blackboard?course=${s.courseId}` : `/student/courses/${s.courseId}` }));
+    if (role === 'ADMIN') return ok({ layout, upNext: [], live: { attendance: { marked: 412, present: 389, absent: 23 }, fees: [{ currency: 'INR', today: 4_850_000, month: 61_200_000, payments: 7 }], safety: { open: 2, high: 0 }, active: { now: 37, today: 318 }, pending: 4 } });
+    if (d.teacherView) {
+      return ok({
+        layout, upNext: [...classes, { kind: 'grade', id: 'grade', title: '6 to grade', sub: '2 handed in late', count: 6, href: '/teacher/assignments' }],
+        attention: {
+          toGrade: 6, late: 2,
+          missing: [{ id: 'sample-a-essay', title: 'Scheduling essay', code: 'CS301', due: now.getTime() - 2 * 86_400_000, missing: 3 }],
+          atRisk: { total: 1, students: [{ id: d.people.liam.id, name: d.people.liam.name, code: 'CS220', score: 72 }] },
+          questions: { total: 2, threads: [{ id: 'sample-t-1', title: 'Is the deadlock example in the notes right?', code: 'CS301', courseId: 'sample-c-os', at: now.getTime() - 3 * 3_600_000 }, { id: 'sample-t-2', title: 'Will hashing be on the quiz?', code: 'CS220', courseId: 'sample-c-ds', at: now.getTime() - 26 * 3_600_000 }] },
+        },
+      });
+    }
+    const quizzes = (d.quizzes as any[]).filter((x) => x.status === 'PUBLISHED' && !d.submissions[x.id] && new Date(x.dueDate) > now && +new Date(x.dueDate) - +now < 7 * 86_400_000)
+      .map((x) => ({ kind: 'quiz', id: x.id, title: x.title, sub: course(d, x.courseId)?.code, due: +new Date(x.dueDate), href: '/student/quizzes' }));
+    const day = (n: number) => { const t = new Date(now); t.setDate(t.getDate() - n); return t.toISOString().slice(0, 10); };
+    const week = [6, 5, 4, 3, 2, 1, 0].map((n, i) => ({ day: day(n), actions: [2, 4, 0, 3, 5, 1, 2][i] }));
+    return ok({ layout, upNext: [...classes, ...quizzes], study: { today: 2, week } });
+  }],
+
   [/^\/grades\/student$/, ({ db: d }) => ok({ grades: d.myGrades, summary: [] })],
   [/^\/grades\/course\/([^/]+)$/, ({ db: d, m }) => ok({ enrollments: d.classmates.map((s) => ({ student: s })), grades: d.classGrades.filter((g) => g.courseId === m[1]) })],
 
@@ -2127,6 +2155,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
+  // Saving the home page's layout (Stage 5 · Q8).
+  ['PUT', /^\/api\/home\/layout$/, ({ body }) => { notice(); return ok({ layout: body ?? {} }); }],
   // Reading levels (Stage 5 · D9): no AI in the sample, so no simpler versions (the original stays).
   ['POST', /^\/api\/reading-level$/, () => ok({ levels: {}, editable: [] })],
   ['POST', /^\/api\/reading-level\/text$/, () => ok({ error: 'Simpler versions aren’t available in the sample.' }, 503)],

@@ -403,6 +403,17 @@
      "updatedAt": false
     },
     {
+     "name": "homeLayout",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "streakCurrent",
      "type": "Int",
      "kind": "scalar",
