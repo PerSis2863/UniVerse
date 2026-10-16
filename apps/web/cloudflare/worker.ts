@@ -203,6 +203,11 @@ export default {
     }
     // No www → main address redirect: phones that installed the app from www.universeimpact.com
     // were sent outside their app (and its saved files) on every launch.
+    // A Next.js file this version doesn't have reaches the Worker only when it's missing (files that
+    // exist are served before it): an open tab or the installed app asking for an earlier version's
+    // scripts. Answered here: starting Next.js just to say "not found" took more CPU than Workers
+    // Free allows ("exceeded CPU time limit"). The page then reloads itself with the new version.
+    if (url.pathname.startsWith('/_next/static/')) return new Response('Not found', { status: 404, headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' } });
     if (url.pathname.startsWith('/_next/')) return revalidatePages(request, await nextApp.fetch(request, env, ctx));
     // A page with parameters (/call/<id>, /docs/<id>, …): every address gets the same page, built
     // ahead of time (/call/open), which reads the values from the address (./page-match.ts).
