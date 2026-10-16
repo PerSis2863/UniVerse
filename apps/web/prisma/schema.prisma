@@ -3162,6 +3162,10 @@ model AssignmentSubmission {
   /// When its grade reached the gradebook and the student (null: not graded, or held until posted)
   postedAt           DateTime?
   regrades           RegradeRequest[]
+  /// How a typed answer grew (Stage 5 · B3.6): JSON { base, chunks }, see src/lib/writing-replay.ts
+  writingReplay      String?
+  /// Whether that replay ends at the text handed in (null: none kept)
+  replayMatches      Boolean?
   submittedAt        DateTime   @default(now())
   returnedAt         DateTime?
   updatedAt          DateTime   @updatedAt

@@ -33,13 +33,18 @@ done, where the code is and what's left for each item. Keep that table up to dat
   time; migration **0136**). A student's due date is always `dueFor(...)` and a submission's late %
   is set when handed in (`src/lib/assignment-policy.ts`); graded answers can be REOPENED, so check
   "graded" as RETURNED or REOPENED. Q6.2a: files and links as hand-ins (**0137**); Q6.2b: group assignments (**0138**: a group's hand-in is
-  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0143`.**
+  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0145`.**
   - **16 Oct:** Q6.2c peer review (**0139**), Q6.3 notes on hand-ins (**0140**); Q6.2a/b screens tried in
     a browser; Q6.4a post grades and grade history (**0141**: a grade reaches the gradebook only through
     `publishGrades` in `src/server/assignments.ts`, which sets `postedAt`; students see a grade only when
     `postedAt` is set); Q6.4b school letter scales (**0142**: always `letter(p, scale)` with the school's
-    scale, `useGradeScale()` in pages). Next: 6.5 student side, 6.6 writing replay; code
-    assignments with tests and grade passback to an LMS (LTI AGS, needs a real LMS) are still open.
+    scale, `useGradeScale()` in pages); Q6.5 the student's side (**0143**: signed hand-in receipts need
+    `SESSION_SECRET`; regrade requests; the rubric in plain words, one AI request per rubric); Q6.6
+    writing replay (**0144**: kept with the draft on the device, sent with a typed hand-in, read only by
+    the teaching team; the teacher's assignment omits it). Still open in Q6: code assignments with
+    tests, rubric number keys, and grade passback to an LMS (LTI AGS, needs a real LMS). Next: Q7.
+  - **Build memory:** the Next build now needs more than 4 GB; `package.json` gives it 6 GB (Cloudflare's
+    build machines have 8 GB). Don't run vitest or tsc during a build.
   - **Stopped here (owner asked to merge, 15 Oct):** Q6.2c peer review is started: only the pairing
     rules are in (`src/lib/peer-review.ts`, tested: everyone reviews and is reviewed k times, never
     their own). Still to build: migration 0139 (`assignments.peerReviews`, `peerDueDate`; table

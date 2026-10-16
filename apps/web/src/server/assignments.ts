@@ -26,6 +26,7 @@ import { MAX_PEER_REVIEWS } from '@/lib/peer-review';
 import { reviewsForTeacher } from './peer-review';
 import { logGradeChanges } from './grade-history';
 import { receiptFor, regradesOf } from './student-assignment';
+import { cleanReplay } from '@/lib/writing-replay';
 import { cleanPolicy, dueFor, lateness, mayHandIn, withPenalty, NO_ACCOMMODATION, type Accommodation } from '@/lib/assignment-policy';
 
 // Written assignments graded against a rubric. The AI only drafts: a teacher reviews every
@@ -276,6 +277,8 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
     prisma.assignmentSubmission.findMany({
       where: { assignmentId },
       orderBy: { submittedAt: 'asc' },
+      // The writing replay is loaded on its own when the teacher opens it.
+      omit: { writingReplay: true },
       include: { student: { select: { id: true, name: true, email: true, avatar: true } } },
     }),
     prisma.enrollment.findMany({ where: { courseId: course.id }, orderBy: { student: { name: 'asc' } }, take: 1000, select: { student: { select: { id: true, name: true, accommodation: { select: { extraDays: true, extraTimePct: true } } } } } }),
@@ -398,6 +401,9 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
   const attempts = (existing?.attempts ?? 0) + 1;
   // The AI receipt or "no AI" declaration (Stage 5 · D12), made from the student's own record.
   const aiReceipt = await receiptForSubmission(user.id, assignment, body.aiReceipt, !!offlineAt);
+  // How a typed answer grew (Stage 5 · B3.6): checked, and whether it ends at the answer handed in.
+  const replay = kind === 'TEXT' ? cleanReplay(body.replay, text) : null;
+  const writing = { writingReplay: replay ? JSON.stringify(replay.replay) : null, replayMatches: replay ? replay.matches : null };
   // Similarity signals for the teacher (src/server/similarity.ts), against the course's materials.
   // At most about 30 KB of material text per answer: comparing costs CPU time, and Workers Free
   // allows 10 ms per request (signalsFor also reads only the answer's first 12,000 characters).
@@ -416,11 +422,11 @@ export async function submitAnswer(assignmentId: string, user: SessionUser, body
   const saved = existing
     ? await prisma.assignmentSubmission.update({
       where: { id: existing.id },
-      data: { text, ...handIn, signals, styleSignals, offlineAt, aiReceipt, groupId, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date(), attempts, lateDays: late.days, latePenalty: late.penalty, lateWaived: false },
+      data: { text, ...handIn, ...writing, signals, styleSignals, offlineAt, aiReceipt, groupId, status: 'SUBMITTED', aiDraftedAt: null, submittedAt: new Date(), attempts, lateDays: late.days, latePenalty: late.penalty, lateWaived: false },
       select: { id: true, submittedAt: true },
     })
     : await prisma.assignmentSubmission.create({
-      data: { assignmentId, studentId: user.id, groupId, text, ...handIn, signals, styleSignals, offlineAt, aiReceipt, lateDays: late.days, latePenalty: late.penalty },
+      data: { assignmentId, studentId: user.id, groupId, text, ...handIn, ...writing, signals, styleSignals, offlineAt, aiReceipt, lateDays: late.days, latePenalty: late.penalty },
       select: { id: true, submittedAt: true },
     });
   if (existing) await prisma.$executeRawUnsafe('UPDATE assignment_submissions SET aiDraft = NULL WHERE id = ?', saved.id); // Prisma won't write a plain null to JSON

@@ -1656,6 +1656,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   }],
   // Hand-in receipts (Stage 5 · B3.5): none are made in sample mode.
   [/^\/api\/assignments\/receipts$/, () => ok({ valid: false })],
+  // Writing replays (Stage 5 · B3.6): none are kept in sample mode.
+  [/^\/api\/assignments\/submissions\/[^/]+\/replay$/, () => fail('No writing replay was kept for this answer.', 404)],
   // The school's grading scale (Stage 5 · B3.4): the standard one.
   [/^\/api\/grade-scale$/, () => ok({ scale: [{ letter: 'A', min: 90, gpa: 4 }, { letter: 'B', min: 80, gpa: 3 }, { letter: 'C', min: 70, gpa: 2 }, { letter: 'D', min: 60, gpa: 1 }, { letter: 'F', min: 0, gpa: 0 }], maxGpa: 4, custom: false, canEdit: false })],
   // Grade history (Stage 5 · B3.4): none in sample mode.

@@ -2,7 +2,7 @@
 
 import { usePathParams } from '@/hooks/usePathParams';
 import { AddressLoading } from '@/components/layout/AddressLoading';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -17,6 +17,8 @@ import { rulesSentence } from '@/components/assignments/AssignmentRules';
 import { HandInFields, HandedInView, type HandedIn } from '@/components/assignments/HandIn';
 import { StudentPeerReview } from '@/components/assignments/PeerReview';
 import { SubmissionNotes } from '@/components/assignments/SubmissionNotes';
+import { useWritingReplay } from '@/lib/use-writing-replay';
+import type { Replay } from '@/lib/writing-replay';
 import { HandInReceipt, RegradeBox, RubricHelpButton, RubricHelpText, type Regrade, type RubricHelpItem } from '@/components/assignments/StudentExtras';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
@@ -75,16 +77,19 @@ function StudentAssignmentPage({ id }: { id: string }) {
   // Drafts are kept on this device as you type (upgrade 4), so nothing is lost offline.
   const draftKey = `assignment:${id}`;
   const draftLoaded = useRef(false);
+  // The writing replay of a typed answer (Stage 5 · B3.6): kept with the draft, handed in with it.
+  const keepDraft = useCallback((r: Replay, t: string) => void saveDraft(draftKey, t, r).catch(() => {}), [draftKey]);
+  const { restore, changed: wrote, pasted, final: replayFor, reset: resetReplay, current: replayNow } = useWritingReplay(keepDraft);
   useEffect(() => {
     getDraft(draftKey).then((d) => {
-      if (d?.text) { setText((cur) => cur ?? d.text); toast('Your draft from this device is back.'); }
+      if (d?.text) { setText((cur) => cur ?? d.text); restore(d.extra, d.text); toast('Your draft from this device is back.'); }
     }).catch(() => {}).finally(() => { draftLoaded.current = true; });
-  }, [draftKey]);
+  }, [draftKey, restore]);
   useEffect(() => {
     if (!draftLoaded.current || text === null) return;
-    const t = setTimeout(() => void saveDraft(draftKey, text).catch(() => {}), 600);
+    const t = setTimeout(() => void saveDraft(draftKey, text, replayNow() ?? undefined).catch(() => {}), 600);
     return () => clearTimeout(t);
-  }, [draftKey, text]);
+  }, [draftKey, text, replayNow]);
 
   const answer = text ?? data?.mine?.text ?? '';
   const kind = data?.submitKind ?? 'TEXT';
@@ -106,18 +111,22 @@ function StudentAssignmentPage({ id }: { id: string }) {
 
   const submit = async () => {
     setSending(true);
+    const writing = kind === 'TEXT' ? replayFor(answer) : null;
+    const replay = writing ? { replay: writing } : {};
     try {
-      const r = await authedJson<{ late: boolean; latePenalty?: number }>(`/api/assignments/${id}/submission`, { method: 'PUT', body: JSON.stringify({ text: answer, aiReceipt: choice, ...handIn }) });
+      const r = await authedJson<{ late: boolean; latePenalty?: number }>(`/api/assignments/${id}/submission`, { method: 'PUT', body: JSON.stringify({ text: answer, aiReceipt: choice, ...handIn, ...replay }) });
       toast.success(r.late ? `Handed in after the due date${r.latePenalty ? `: ${r.latePenalty}% comes off the grade` : ''}.` : 'Handed in. You can change it until it’s graded.');
       setText(null);
       setReceipt(null);
       setPicked(null);
+      resetReplay();
       void saveDraft(draftKey, '').catch(() => {});
       mutate();
     } catch (err) {
       if (!isOfflineError(err)) { toast.error((err as Error).message); return; }
       // No connection: hand it in from this device's outbox when it's back.
-      await enqueue({ id: newClientId(), kind: 'assignment', method: 'PUT', url: `/api/assignments/${encodeURIComponent(id)}/submission`, ref: id, label: `Assignment: ${data?.title ?? 'answer'}`, body: { text: answer, aiReceipt: choice, ...handIn, offlineAt: new Date().toISOString() } }).catch(() => null);
+      await enqueue({ id: newClientId(), kind: 'assignment', method: 'PUT', url: `/api/assignments/${encodeURIComponent(id)}/submission`, ref: id, label: `Assignment: ${data?.title ?? 'answer'}`, body: { text: answer, aiReceipt: choice, ...handIn, ...replay, offlineAt: new Date().toISOString() } }).catch(() => null);
+      resetReplay();
       void saveDraft(draftKey, '').catch(() => {});
       toast.success('You’re offline: it’s saved on this device and handed in when you’re back online.');
     } finally {
@@ -205,10 +214,13 @@ function StudentAssignmentPage({ id }: { id: string }) {
                       rows={kind === 'TEXT' ? 14 : 3}
                       maxLength={MAX}
                       value={answer}
-                      onChange={(e) => setText(e.target.value)}
+                      onChange={(e) => { if (kind === 'TEXT') wrote(answer, e.target.value); setText(e.target.value); }}
+                      onPaste={() => { if (kind === 'TEXT') pasted(answer); }}
+                      aria-describedby={kind === 'TEXT' ? 'replay-note' : undefined}
                       placeholder={kind === 'TEXT' ? 'Write your answer here…' : 'Anything your teacher should know about it'}
                       className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-3 text-sm leading-relaxed text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"
                     />
+                    {kind === 'TEXT' && <p id="replay-note" className="text-xs text-zinc-600 dark:text-zinc-400">Your teacher can replay how your answer grew: what was written or pasted, every few seconds (never each key). It stays on this device until you hand in.</p>}
                     <AiReceiptChoice assignmentId={data.id} policy={policy} value={choice} onChange={setReceipt} />
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">{words} words · {answer.length.toLocaleString()}/{MAX.toLocaleString()} characters</span>

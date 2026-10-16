@@ -21972,6 +21972,28 @@
      "relationFields": []
     },
     {
+     "name": "writingReplay",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "replayMatches",
+     "type": "Boolean",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "submittedAt",
      "type": "DateTime",
      "kind": "scalar",

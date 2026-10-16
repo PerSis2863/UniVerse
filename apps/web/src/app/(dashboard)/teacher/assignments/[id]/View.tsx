@@ -24,6 +24,7 @@ import { GroupModePicker, GroupsEditor, type Group } from '@/components/assignme
 import { PeerReviewsOf, PeerSettings, type TeacherReview } from '@/components/assignments/PeerReview';
 import { SubmissionNotes } from '@/components/assignments/SubmissionNotes';
 import { ReceiptCheck, RegradeAnswers, type Regrade } from '@/components/assignments/StudentExtras';
+import { WritingReplay } from '@/components/assignments/WritingReplay';
 import type { GroupMode } from '@/lib/group-maker';
 import { SUBMIT_KINDS, SUBMIT_LABEL, type SubmitKind } from '@/lib/submit-kinds';
 
@@ -53,6 +54,8 @@ interface Submission {
   feedbackMediaUrl: string | null; feedbackMediaKind: string | null; feedbackTranscript: string | null;
   styleSignals: { baseline: number; differs: { label: string; now: number; usual: number }[] } | null;
   aiReceipt?: AiReceipt | null;
+  /** A writing replay was kept (Stage 5 · B3.6), and whether it ends at the text handed in. */
+  replayMatches?: boolean | null;
 }
 interface Detail {
   id: string;
@@ -388,6 +391,8 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
           <AiReceiptView receipt={sub.aiReceipt ?? null} policy={detail.aiPolicy} who={sub.student.name.split(' ')[0]} />
         </div>
       )}
+
+      <WritingReplay key={sub.id} submissionId={sub.id} matches={sub.replayMatches} name={sub.student.name} />
 
       <RegradeAnswers regrades={(detail.regrades ?? []).filter((r) => r.submissionId === sub.id)} onChanged={onChange} />
 
