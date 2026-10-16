@@ -8,8 +8,9 @@ export async function GET(req: Request) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
 
+  // Snoozed ones (Stage 5 · Q9) come back when their time comes.
   const notifications = await prisma.notification.findMany({
-    where: { userId: user.id },
+    where: { userId: user.id, OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: new Date() } }] },
     orderBy: { createdAt: 'desc' },
     take: 30,
     select: { id: true, title: true, body: true, type: true, read: true, link: true, createdAt: true },

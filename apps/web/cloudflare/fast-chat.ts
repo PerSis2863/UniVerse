@@ -41,8 +41,9 @@ async function systemUser(db: D1Database) {
 /** GET /api/notifications (src/app/api/notifications/route.ts): the newest 30. */
 export async function notifications(me: Caller, db: D1Database) {
   const { results } = await db
-    .prepare('SELECT id, title, body, type, read, link, createdAt FROM notifications WHERE userId = ? ORDER BY createdAt DESC LIMIT 30')
-    .bind(me.id)
+    // Snoozed ones (Stage 5 · Q9) come back when their time comes.
+    .prepare('SELECT id, title, body, type, read, link, createdAt FROM notifications WHERE userId = ? AND (snoozedUntil IS NULL OR snoozedUntil <= ?) ORDER BY createdAt DESC LIMIT 30')
+    .bind(me.id, dbDate(Date.now()))
     .all<Row>();
   return json(
     results.map((n) => ({ id: n.id, title: n.title, body: n.body, type: n.type, read: bool(n.read), link: n.link, createdAt: isoDate(n.createdAt as string) })),

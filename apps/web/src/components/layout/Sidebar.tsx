@@ -70,6 +70,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/student/tutor', label: 'AI tutor', keywords: 'ai study flashcards practice' },
     { href: '/student/voice-tutor', label: 'Voice tutor', keywords: 'talk speak ai tutor voice' },
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
+    { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
     { href: '/student/passport', label: 'Skills passport', keywords: 'cv profile share employers' },
     { href: '/student/offline?scan=1', label: 'Scan from the teacher’s screen', keywords: 'offline no internet moving qr codes scan note quiz announcement class' },
     { href: '/student/internships/match', label: 'Skills match', keywords: 'jobs internships ngo projects match my skills gap what to learn career' },
@@ -88,6 +89,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/teacher/tutor', label: 'AI tutor', keywords: 'ai course sources flashcards' },
     { href: '/teacher/live', label: 'Send to phones with no internet', keywords: 'offline no internet moving qr codes projector note quiz announcement class' },
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
+    { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
     { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor impact call report project updates' },
     { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize' },
     { href: '/studio?tool=convert', label: 'Convert files', keywords: 'word to pdf docx pdf to jpg png excel csv convert change format' },
@@ -96,6 +98,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
   ],
   ADMIN: [
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
+    { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
     { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor impact call report project updates' },
     { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize credentials' },
     { href: '/studio?tool=convert', label: 'Convert files', keywords: 'word to pdf docx pdf to jpg png excel csv convert change format' },
@@ -108,7 +111,7 @@ export const navByRole: Record<string, NavItem[]> = {
   STUDENT: [
     { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard, also: ['/student/calendar', '/student/planner', '/student/information'] },
     // Messages and calls are one entry: the Calls list is a tab inside Messages.
-    { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare, also: ['/calls'] },
+    { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare, also: ['/calls', '/notifications'] },
     {
       label: 'nav.schooling', icon: GraduationCap,
       subItems: [
@@ -180,7 +183,7 @@ export const navByRole: Record<string, NavItem[]> = {
       ]
     },
     { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain, also: ['/library'] },
-    { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls'] },
+    { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications'] },
     { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },
   ],
   ADMIN: [
@@ -237,7 +240,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/admin/monitoring/associations', label: 'nav.associations', also: ['/admin/monitoring/events', '/admin/monitoring/lost-found'] },
       ]
     },
-    { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/admin/announcements'] },
+    { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications', '/admin/announcements'] },
     { href: '/boards', label: 'Collaborate', icon: PenTool, also: ['/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
     { href: '/admin/billing', label: 'Billing & plans', icon: Crown },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },

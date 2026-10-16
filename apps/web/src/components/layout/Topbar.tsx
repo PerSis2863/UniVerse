@@ -228,7 +228,8 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
 
               <div className="px-5 py-3 sheet-safe-bottom flex justify-between items-center" style={{ boxShadow: 'inset 0 0.5px 0 var(--separator)' }}>
                 <button onClick={() => { markRead(); import('sonner').then(m => m.toast.success('All marked as read')); }} className="text-[15px] font-medium text-tint-text">Mark all as read</button>
-                <Link href={user?.role === 'TEACHER' ? '/teacher/inbox' : user?.role === 'ADMIN' ? '/admin/inbox' : '/student/inbox'} onClick={() => setShowNotifications(false)} className="text-[15px] font-semibold text-tint-text">Messages</Link>
+                {/* The full list: filters, snooze, settings (Stage 5 · Q9). */}
+                <Link href="/notifications" onClick={() => setShowNotifications(false)} className="text-[15px] font-semibold text-tint-text">See all</Link>
               </div>
             </motion.div>
           </>

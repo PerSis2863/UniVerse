@@ -23,6 +23,8 @@ export function dueChecks(now: number): [string, unknown[]][] {
     // A chat message scheduled for now, and someone's morning brief (Stage 4 · 4.9).
     ['SELECT 1 FROM scheduled_messages WHERE "sendAt" <= ? LIMIT 1', [dbDate(now + 2 * 60_000)]],
     ['SELECT 1 FROM daily_briefs WHERE "push" = 1 AND "nextAt" <= ? LIMIT 1', [dbDate(now + 2 * 60_000)]],
+    // Someone's daily notification summary (Stage 5 · Q9).
+    ['SELECT 1 FROM users WHERE "digestAt" <= ? LIMIT 1', [dbDate(now + 2 * 60_000)]],
     // A card due within a day on a board with a due-soon automation (Stage 5 · B9.10).
     ['SELECT 1 FROM task_automations a JOIN tasks t ON t."boardId" = a."boardId" WHERE a."trigger" = \'due-soon\' AND a."enabled" = 1 AND t."doneAt" IS NULL AND t."dueRemindedAt" IS NULL AND t."dueAt" > ? AND t."dueAt" <= ? LIMIT 1', [dbDate(now), dbDate(now + 86_400_000)]],
     // A parent's weekly summary (Stage 5 · D16).

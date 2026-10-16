@@ -14,7 +14,7 @@ export function tabsForRole(role: string): { base: string; items: TabItem[] } {
         { href: '/teacher', label: 'Home', icon: LayoutDashboard },
         { href: '/teacher/courses', label: 'Courses', icon: BookOpen },
         { href: '/teacher/students', label: 'Students', icon: Users, match: ['/teacher/students', '/teacher/early-warning', '/teacher/analytics', '/teacher/mastery', '/teacher/meetings', '/teacher/forms'] },
-        { href: '/teacher/inbox', label: 'Messages', icon: MessageSquare, match: ['/teacher/inbox', '/calls'] },
+        { href: '/teacher/inbox', label: 'Messages', icon: MessageSquare, match: ['/teacher/inbox', '/calls', '/notifications'] },
       ],
     };
   }
@@ -25,7 +25,7 @@ export function tabsForRole(role: string): { base: string; items: TabItem[] } {
         { href: '/admin', label: 'Overview', icon: LayoutDashboard },
         { href: '/admin/users', label: 'Users', icon: Users },
         { href: '/admin/credentials', label: 'Verify', icon: ShieldCheck, match: ['/admin/credentials', '/admin/certifications'] },
-        { href: '/admin/inbox', label: 'Messages', icon: MessageSquare, match: ['/admin/inbox', '/calls'] },
+        { href: '/admin/inbox', label: 'Messages', icon: MessageSquare, match: ['/admin/inbox', '/calls', '/notifications'] },
       ],
     };
   }
@@ -35,7 +35,7 @@ export function tabsForRole(role: string): { base: string; items: TabItem[] } {
       { href: '/student', label: 'Home', icon: LayoutDashboard, match: ['/student/calendar', '/student/information'] },
       { href: '/student/impact/ngo-marketplace', label: 'Impact', icon: Globe2, match: ['/student/impact', '/student/credentials', '/student/passport'] },
       { href: '/student/courses', label: 'Courses', icon: BookOpen },
-      { href: '/student/inbox', label: 'Messages', icon: MessageSquare, match: ['/student/inbox', '/calls'] },
+      { href: '/student/inbox', label: 'Messages', icon: MessageSquare, match: ['/student/inbox', '/calls', '/notifications'] },
     ],
   };
 }

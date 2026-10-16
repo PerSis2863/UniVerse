@@ -57,6 +57,8 @@ export interface NotifyInput {
   link?: string;
   type?: string; // info, grade, credential, chat, reminder …
   email?: boolean; // default true: also email people who have email notifications on
+  /** The course it's about (Stage 5 · Q9): shown in the notification centre. */
+  courseId?: string | null;
 }
 
 /** Creates an in-app notification and, if the user wants them, emails a copy. Never throws. */
@@ -64,7 +66,7 @@ export async function notify(userId: string, n: NotifyInput): Promise<void> {
   try {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, emailNotifications: true, status: true } });
     if (!user) return;
-    await prisma.notification.create({ data: { userId, title: n.title.slice(0, 200), body: n.body.slice(0, 1000), type: n.type ?? 'info', link: n.link ?? null } });
+    await prisma.notification.create({ data: { userId, title: n.title.slice(0, 200), body: n.body.slice(0, 1000), type: n.type ?? 'info', link: n.link ?? null, courseId: n.courseId ?? null } });
     publish([userId], { type: 'notification' });
     if (n.email !== false && user.emailNotifications && user.status !== 'SUSPENDED' && user.email) {
       const { html, text } = layout(n.title, n.body, n.link);
@@ -87,13 +89,13 @@ export async function notifyMany(userIds: string[], n: NotifyInput): Promise<num
     const now = new Date().toISOString().replace('Z', '+00:00');
     const title = n.title.slice(0, 200), body = n.body.slice(0, 1000);
     const people: { id: string; email: string; emailNotifications: boolean; lastSeenAt: Date | null }[] = [];
-    // D1 takes up to 100 values per query: 90 people per statement.
+    // D1 takes up to 100 values per query: 90 people per statement (with 6 other values).
     for (let i = 0; i < ids.length; i += 90) {
       const part = ids.slice(i, i + 90);
       const marks = part.map(() => '?').join(',');
       sent += await prisma.$executeRawUnsafe(
-        `INSERT INTO notifications (id, userId, title, body, type, read, link, createdAt) SELECT lower(hex(randomblob(12))), id, ?, ?, ?, 0, ?, ? FROM users WHERE status != 'SUSPENDED' AND id IN (${marks})`,
-        title, body, n.type ?? 'info', n.link ?? null, now, ...part,
+        `INSERT INTO notifications (id, userId, title, body, type, read, link, createdAt, courseId) SELECT lower(hex(randomblob(12))), id, ?, ?, ?, 0, ?, ?, ? FROM users WHERE status != 'SUSPENDED' AND id IN (${marks})`,
+        title, body, n.type ?? 'info', n.link ?? null, now, n.courseId ?? null, ...part,
       );
       people.push(...(await prisma.user.findMany({ where: { id: { in: part }, status: { not: 'SUSPENDED' } }, select: { id: true, email: true, emailNotifications: true, lastSeenAt: true } })));
     }

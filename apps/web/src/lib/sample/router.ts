@@ -5,6 +5,7 @@ import { buildSampleDb, levelInfo, LEVELS, sid, at, type SampleDb } from './data
 import { sampleAsk, sampleMetric } from './analytics';
 import { isMetricId } from '@/lib/school-metrics';
 import { answerText, cleanQuestionInput, forStudent, markAnswer, metaOf, typeOf } from '@/lib/question-types';
+import { DEFAULT_PREFS, GROUP_OF_TYPE, NOTE_GROUPS } from '@/lib/notify-prefs';
 
 // Answers the app's API requests from example data while sample mode is on.
 // GETs without a sample answer fall through to the real server (read-only);
@@ -1841,6 +1842,18 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   })],
 
   [/^\/api\/notifications$/, ({ db: d }) => ok(d.notifications)],
+  // The notification centre and its settings (Stage 5 · Q9).
+  [/^\/api\/notifications\/centre$/, ({ db: d, q }) => {
+    const group = q.get('group'), unreadOnly = q.get('unread') === '1';
+    const all = (d.notifications as any[]).map((n) => ({ ...n, group: GROUP_OF_TYPE(n.type), course: null }));
+    const unread: Record<string, number> = {};
+    for (const n of all) if (!n.read) unread[n.group] = (unread[n.group] ?? 0) + 1;
+    return ok({ items: all.filter((n) => (!group || n.group === group) && (!unreadOnly || !n.read)), next: null, unread, snoozed: 0 });
+  }],
+  [/^\/api\/notifications\/settings$/, ({ db: d }) => ok({
+    prefs: DEFAULT_PREFS, groups: NOTE_GROUPS.map(({ id, label, hint }) => ({ id, label, hint })),
+    courses: d.courses.map((c: any) => ({ id: c.id, code: c.code, name: c.name })), devices: 0, nextDigest: null,
+  })],
   [/^\/api\/chat\/conversations$/, ({ db: d }) => ok({ conversations: d.conversations.map((c) => summary(d, c)).sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (+new Date(b.activityAt) - +new Date(a.activityAt))), me: d.me.id })],
   [/^\/api\/chat\/folders$/, () => ok({ folders: [] })],
   [/^\/api\/chat\/communities\/[^/]+\/moderation$/, () => ok({ reports: [], resolved: [], timeouts: [], automod: { words: [], mode: 'BLOCK' }, log: [] })],
@@ -2609,6 +2622,14 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   }],
   ['DELETE', /^\/grades\/([^/]+)$/, ({ db: d, m }) => { d.classGrades.splice(d.classGrades.findIndex((g) => g.id === m[1]) >>> 0, 1); return ok({ ok: true }); }],
 
+  ['POST', /^\/api\/notifications\/centre$/, ({ db: d, body }) => {
+    const ids: string[] = Array.isArray(body?.ids) ? body.ids : [];
+    const hit = (n: any) => body?.all === true || ids.includes(n.id);
+    if (body?.action === 'delete' || body?.action === 'snooze') d.notifications = d.notifications.filter((n: any) => !hit(n));
+    else d.notifications.forEach((n: any) => { if (hit(n)) n.read = body?.action === 'read'; });
+    return ok({ changed: ids.length });
+  }],
+  ['PUT', /^\/api\/notifications\/settings$/, ({ body }) => { notice(); return ok({ prefs: body?.prefs ?? DEFAULT_PREFS, nextDigest: null }); }],
   ['PATCH', /^\/api\/notifications$/, ({ db: d, body }) => { d.notifications.forEach((n) => { if (!body.ids?.length || body.ids.includes(n.id)) n.read = true; }); return ok({ ok: true }); }],
   ['PATCH', /^\/api\/me$/, ({ db: d, body }) => { Object.assign(d.profile, body); return ok(d.profile); }],
   ['POST', /^\/skills$/, ({ db: d, body }) => { const s = { id: sid('sk'), userId: d.me.id, name: body.name, category: body.category ?? null, level: body.level ?? 'BEGINNER', endorsements: 0, createdAt: new Date().toISOString() }; d.skills.push(s); return ok(s, 201); }],

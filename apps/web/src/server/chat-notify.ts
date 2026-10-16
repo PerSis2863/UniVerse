@@ -124,6 +124,7 @@ export async function notifyAway(conversationId: string, from: { id: string; nam
       body: convo.isGroup ? `${from.name}: ${text}` : text,
       url: inbox(role),
       tag: `chat-${conversationId}`,
+      actions: [{ action: 'reply', title: 'Reply', url: inbox(role) }],
     }).catch(() => 0)));
   }
   await Promise.all(

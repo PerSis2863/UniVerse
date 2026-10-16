@@ -103,7 +103,7 @@ export async function createThread(courseId: string, user: SessionUser, b: Recor
   if (kind === 'QUESTION' && user.id !== v.teacherId) {
     await notify(v.teacherId, {
       title: `New question in ${v.course.code}`, body: title, type: 'info', email: false,
-      link: `/teacher/blackboard?course=${courseId}&tab=discussion&thread=${t.id}`,
+      link: `/teacher/blackboard?course=${courseId}&tab=discussion&thread=${t.id}`, courseId,
     });
   }
   publish([v.teacherId, user.id], { type: 'refresh', keys: [listKey(courseId)] });
@@ -147,7 +147,7 @@ export async function getThread(courseId: string, threadId: string, user: Sessio
 async function tell(userId: string, title: string, body: string, courseId: string, threadId: string) {
   const who = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
   const side = who?.role === 'TEACHER' || who?.role === 'ADMIN' ? 'teacher' : 'student';
-  await notify(userId, { title, body, type: 'info', email: false, link: `/${side}/blackboard?course=${courseId}&tab=discussion&thread=${threadId}` });
+  await notify(userId, { title, body, type: 'info', email: false, link: `/${side}/blackboard?course=${courseId}&tab=discussion&thread=${threadId}`, courseId });
 }
 
 /**

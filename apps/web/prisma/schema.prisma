@@ -124,6 +124,10 @@ model User {
   lastSeenAt         DateTime?
   /// Stage 5 · Q8: my home page's cards (order, hidden ones, daily goal), JSON (src/lib/home-layout.ts).
   homeLayout         String?
+  /// Stage 5 · Q9: push / summary / off per kind, muted courses, the summary's hour and time zone, JSON
+  /// (src/lib/notify-prefs.ts); digestAt: when my next daily summary is due (null: none).
+  notifyPrefs        String?
+  digestAt           DateTime?
   // Study streak (src/server/streaks.ts): days in a row with a quiz, flashcard review or tutor question.
   streakCurrent      Int       @default(0)
   streakBest         Int       @default(0)
@@ -381,6 +385,7 @@ model User {
   @@index([role])
   @@index([status])
   @@index([campusId])
+  @@index([digestAt])
   @@map("users")
 }
 
@@ -1087,6 +1092,9 @@ model Notification {
   read      Boolean  @default(false)
   link      String?
   createdAt DateTime @default(now())
+  /// Stage 5 · Q9: hidden until then, back as unread; the course it came from.
+  snoozedUntil DateTime?
+  courseId     String?
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, read])

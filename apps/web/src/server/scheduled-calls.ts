@@ -232,9 +232,11 @@ export async function remindDueCalls() {
     const mins = Math.max(1, Math.round((s.startAt.getTime() - now) / 60_000));
     const roomName = s.course ? s.course.code : s.group?.name ?? (s.conversation?.isGroup ? s.conversation.name : null);
     const body = `${s.kind === 'audio' ? 'Voice' : 'Video'} call in ${mins} min${roomName ? ` · ${roomName}` : ''}`;
-    await prisma.notification.createMany({ data: members.map((userId) => ({ userId, title: `Starting soon: ${s.title}`, body, type: 'call', link: '/calls' })) });
+    await prisma.notification.createMany({ data: members.map((userId) => ({ userId, title: `Starting soon: ${s.title}`, body, type: 'call', link: '/calls', courseId: s.courseId })) });
     publish(members.slice(0, planLimits().livePushes), { type: 'notification' });
-    if (pushBudget > 0) pushBudget -= await pushService.sendToMany(members, { title: `Starting soon: ${s.title}`, body, url: '/calls', tag: `scheduled-${s.id}` }).catch(() => 0) || 1;
+    // Join straight from the notification (Stage 5 · Q9); a chat's call starts from the Calls page.
+    const join = s.courseId ? `/call/c_${s.courseId}?kind=${s.kind === 'audio' ? 'audio' : 'video'}` : s.groupId ? `/call/g_${s.groupId}?kind=${s.kind === 'audio' ? 'audio' : 'video'}` : '/calls';
+    if (pushBudget > 0) pushBudget -= await pushService.sendToMany(members, { title: `Starting soon: ${s.title}`, body, url: '/calls', tag: `scheduled-${s.id}`, courseId: s.courseId, actions: [{ action: 'join', title: 'Join', url: join }] }).catch(() => 0) || 1;
     reminded++;
   }
   return { due: due.length, reminded };
@@ -255,12 +257,12 @@ export async function sendDueReminders() {
     const base = `/${r === 'ADMIN' ? 'admin' : r === 'TEACHER' ? 'teacher' : 'student'}/inbox`;
     return cid ? `${base}?c=${cid}${mid ? `&m=${mid}` : ''}` : `${base}?later=1`;
   };
-  await prisma.notification.createMany({ data: due.map((d) => ({ userId: d.userId, title: 'Reminder', body: d.text, type: 'event', link: inbox(d.userId, d.conversationId, d.messageId) })) });
+  await prisma.notification.createMany({ data: due.map((d) => ({ userId: d.userId, title: 'Reminder', body: d.text, type: 'reminder', link: inbox(d.userId, d.conversationId, d.messageId) })) });
   publish([...new Set(due.map((d) => d.userId))].slice(0, planLimits().livePushes), { type: 'notification' });
   let budget = planLimits().pushes;
   for (const d of due) {
     if (budget <= 0) break;
-    budget -= (await pushService.sendToMany([d.userId], { title: 'Reminder', body: d.text, url: inbox(d.userId, d.conversationId, d.messageId), tag: `remind-${d.id}` }).catch(() => 0)) || 1;
+    budget -= (await pushService.sendToMany([d.userId], { title: 'Reminder', body: d.text, url: inbox(d.userId, d.conversationId, d.messageId), tag: `remind-${d.id}`, actions: [{ action: 'open', title: 'Open', url: inbox(d.userId, d.conversationId, d.messageId) }] }).catch(() => 0)) || 1;
   }
   return due.length;
 }

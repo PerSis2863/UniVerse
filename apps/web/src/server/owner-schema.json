@@ -414,6 +414,28 @@
      "updatedAt": false
     },
     {
+     "name": "notifyPrefs",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "digestAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "streakCurrent",
      "type": "Int",
      "kind": "scalar",
@@ -8075,6 +8097,28 @@
      "id": false,
      "unique": false,
      "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "snoozedUntil",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "courseId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
      "updatedAt": false
     }
    ]

@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { count } from '../health-counts';
 import { planLimits } from '@/lib/plan-limits';
 import { quietNow } from '../quiet-hours';
+import { pushRecipients } from '../notify-settings';
 
 // Web Push (VAPID) with Web Crypto, so it runs on Cloudflare Workers (the old API used `web-push`,
 // which needs Node's networking). Push is disabled until VAPID keys are configured.
@@ -13,7 +14,18 @@ function vapid() {
   return { subject: `mailto:${process.env.VAPID_EMAIL || 'admin@universe.edu'}`, publicKey, privateKey };
 }
 
-export interface PushPayload { title: string; body: string; icon?: string; url?: string; /** Replaces an earlier notification with the same tag. */ tag?: string; /** Rings with Answer / Decline (src/worker/index.ts). */ call?: boolean }
+export interface PushPayload {
+  title: string; body: string; icon?: string; url?: string;
+  /** Replaces an earlier notification with the same tag; also says what kind it is (src/lib/notify-prefs.ts). */
+  tag?: string;
+  /** Rings with Answer / Decline (src/worker/index.ts). */
+  call?: boolean;
+  /** Stage 5 · Q9: its kind when the tag doesn't say, and the course (people who muted it get it in their summary). */
+  kind?: string;
+  courseId?: string | null;
+  /** Buttons on the notification (Reply, Join…), each opening its own address (src/worker/index.ts). */
+  actions?: { action: string; title: string; url: string }[];
+}
 
 export const pushEnabled = () => vapid() !== null;
 
@@ -46,7 +58,8 @@ export class PushService {
     if (!keys || userIds.length === 0) return 0;
     const all = [...new Set(userIds)].slice(0, 90);
     const quiet = await quietNow(all).catch(() => new Set<string>());
-    const ids = all.filter((id) => !quiet.has(id));
+    // Their settings (Stage 5 · Q9): kinds they want in the daily summary or not at all, muted courses.
+    const ids = await pushRecipients(all.filter((id) => !quiet.has(id)), payload).catch(() => all.filter((id) => !quiet.has(id)));
     if (!ids.length) return 0;
     const subscriptions = await prisma.pushSubscription.findMany({ where: { userId: { in: ids } }, orderBy: { createdAt: 'desc' }, take: planLimits().pushes });
     if (!subscriptions.length) return 0;
@@ -58,6 +71,7 @@ export class PushService {
       url: payload.url || '/',
       tag: payload.tag,
       call: payload.call === true,
+      actions: payload.actions?.slice(0, 2),
     });
     const expired: string[] = [];
     const results = await Promise.allSettled(
@@ -88,8 +102,13 @@ export class PushService {
     const keys = vapid();
     if (!keys || !items.length) return 0;
     // Quiet hours (Stage 4 · 4.10): skipped like any other push.
-    const quiet = await quietNow([...new Set(items.map((i) => i.subscription.userId).filter((u): u is string => !!u))]).catch(() => new Set<string>());
-    items = items.filter((i) => !i.subscription.userId || !quiet.has(i.subscription.userId));
+    const people = [...new Set(items.map((i) => i.subscription.userId).filter((u): u is string => !!u))];
+    const quiet = await quietNow(people).catch(() => new Set<string>());
+    // Their settings (Stage 5 · Q9), when every item is the same kind of push (the morning brief and
+    // the daily summary have their own switches and always pass).
+    const first = items[0]?.payload;
+    const allowed = first && items.every((i) => i.payload.tag === first.tag) ? new Set(await pushRecipients(people, first).catch(() => people)) : new Set(people);
+    items = items.filter((i) => !i.subscription.userId || (!quiet.has(i.subscription.userId) && allowed.has(i.subscription.userId)));
     const expired: string[] = [];
     const results = await Promise.allSettled(
       items.map(async ({ subscription: sub, payload }) => {
