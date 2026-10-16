@@ -2,6 +2,7 @@
 
 import type { Editor } from '@tiptap/react';
 import { docToDocx, docToMarkdown, imageSources, type DocxImage, type PMNode } from '@/lib/doc-export';
+import type { PageSetup } from '@/lib/page-setup';
 
 // Downloads and imports for a document (Stage 5 · B9.6; the formats are src/lib/doc-export.ts).
 
@@ -33,11 +34,11 @@ async function png(src: string): Promise<DocxImage | null> {
   } catch { return null; }
 }
 
-export async function downloadDocx(title: string, editor: Editor) {
+export async function downloadDocx(title: string, editor: Editor, page?: PageSetup) {
   const json = editor.getJSON() as PMNode;
   const images = new Map<string, DocxImage>();
   for (const src of imageSources(json).slice(0, 30)) { const img = await png(src); if (img) images.set(src, img); }
-  const files = docToDocx(json, title, { images, origin: window.location.origin });
+  const files = docToDocx(json, title, { images, origin: window.location.origin, page });
   const { zipSync, strToU8 } = await import('fflate');
   const zip = zipSync(Object.fromEntries(Object.entries(files).map(([k, v]) => [k, typeof v === 'string' ? strToU8(v) : v])));
   save(new Blob([zip], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), `${safeName(title)}.docx`);

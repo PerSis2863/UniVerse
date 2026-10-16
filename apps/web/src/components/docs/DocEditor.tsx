@@ -10,12 +10,17 @@ import CollaborationCaret from '@tiptap/extension-collaboration-caret';
 import { TableKit } from '@tiptap/extension-table';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import Image from '@tiptap/extension-image';
-import { Placeholder } from '@tiptap/extensions';
+import { CharacterCount, Placeholder } from '@tiptap/extensions';
 import { authedJson } from '@/lib/authed-fetch';
 import { colorFor, useLiveDoc, type DocStatus } from '@/lib/use-live-doc';
 import { createMentionStore, docMention, MentionMenu } from './DocMentions';
 import { DocEmbed } from './DocEmbed';
 import { SuggestionDelete, SuggestionInsert, Suggestions } from './suggestions-ext';
+import { FindReplace, PageBreak, ParagraphFormat, Subscript, Superscript, TableOfContents, TextStyle } from './word-ext';
+
+/** Word's formatting (Office suite · O3): also used by the history's read-only view, so a version
+ *  shows the same. */
+export const WORD_EXTENSIONS = [TextStyle, Subscript, Superscript, ParagraphFormat, PageBreak, TableOfContents];
 
 export { DocToolbar } from './DocToolbar';
 export type { DocStatus };
@@ -25,7 +30,7 @@ export type { DocStatus };
 // Everyone's caret shows with their name. While you write, a version is saved now and then
 // (src/server/docs.ts keeps at most one every 2 minutes).
 
-export function DocEditor({ docId, me, canEdit: mayEdit, onStatus, onPeers, onEditor, onPresence }: {
+export function DocEditor({ docId, me, canEdit: mayEdit, onStatus, onPeers, onEditor, onPresence, onYdoc }: {
   docId: string; me: { id: string; name: string };
   /** Whether I may edit, from the document's details (used offline until a ticket says). */
   canEdit: boolean;
@@ -34,6 +39,8 @@ export function DocEditor({ docId, me, canEdit: mayEdit, onStatus, onPeers, onEd
   /** Who else is here, with their cursor colour (3.8). */
   onPresence?: (people: { name: string; color: string }[]) => void;
   onEditor: (e: Editor | null) => void;
+  /** The live document (its "page" map holds the page setup). */
+  onYdoc?: (d: Y.Doc) => void;
 }) {
   const [ydoc] = useState(() => new Y.Doc());
   const [awareness] = useState(() => new Awareness(ydoc));
@@ -55,11 +62,12 @@ export function DocEditor({ docId, me, canEdit: mayEdit, onStatus, onPeers, onEd
       Image,
       DocEmbed,
       SuggestionInsert, SuggestionDelete, Suggestions.configure({ user: me }),
+      ...WORD_EXTENSIONS, FindReplace, CharacterCount,
       docMention(docId, mentions),
       Placeholder.configure({ placeholder: 'Start writing…  Use the toolbar, or type # for a heading, - for a list, [] for a checklist, @ to mention someone.' }),
     ],
     editorProps: {
-      attributes: { class: 'doc-prose focus:outline-none min-h-[60vh] px-6 sm:px-12 py-10', 'aria-label': 'Document text', 'aria-multiline': 'true' },
+      attributes: { class: 'doc-prose focus:outline-none min-h-[60vh] px-6 sm:px-12 py-10', 'aria-label': 'Document text', 'aria-multiline': 'true', spellcheck: 'true' },
       // Links open with a click when reading, or Ctrl / ⌘ + click while writing (pages in the
       // same tab, other sites in a new one; Stage 5 · B9.2).
       handleClick: (view, _pos, event) => {
@@ -74,6 +82,9 @@ export function DocEditor({ docId, me, canEdit: mayEdit, onStatus, onPeers, onEd
   }, [ydoc]);
 
   useEffect(() => { callbacks.current.onEditor(editor); return () => callbacks.current.onEditor(null); }, [editor]);
+  const onYdocRef = useRef(onYdoc);
+  useEffect(() => { onYdocRef.current = onYdoc; });
+  useEffect(() => { onYdocRef.current?.(ydoc); }, [ydoc]);
 
   // The live connection, and the copy on this device (src/lib/use-live-doc.ts).
   useLiveDoc({ docId, ydoc, awareness, mayEdit, onStatus, onPeers, onPresence });

@@ -19,7 +19,12 @@ import { PresenceStack, type Present } from '@/components/ui/PresenceStack';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { Sheet } from '@/components/ui/Sheet';
-import { DocEditor, DocToolbar, type DocStatus } from '@/components/docs/DocEditor';
+import { DocEditor, WORD_EXTENSIONS, type DocStatus } from '@/components/docs/DocEditor';
+import { WordToolbar } from '@/components/docs/WordToolbar';
+import { FindBar, PageSetupSheet, WordCount, usePageSetup } from '@/components/docs/WordPanels';
+import { fillContents, headingsOf } from '@/components/docs/word-ext';
+import { pageCss, type PageSetup } from '@/lib/page-setup';
+import type * as Y from 'yjs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { templateById } from '@/lib/doc-templates';
@@ -41,13 +46,15 @@ const call = (url: string, method: string, body?: unknown) => authedJson(url, { 
 
 const PRINT_CSS = 'body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.6;color:#18181b;max-width:46rem;margin:2rem auto;padding:0 1.5rem}h1{font-size:2rem}table{border-collapse:collapse;width:100%}td,th{border:1px solid #d4d4d8;padding:.4em .6em;text-align:left}pre{background:#f4f4f5;padding:1em;border-radius:.5em;white-space:pre-wrap}img{max-width:100%}blockquote{border-left:3px solid #818cf8;margin-left:0;padding-left:1em;color:#52525b}';
 
-function exportPdf(title: string, html: string) {
+function exportPdf(title: string, html: string, page?: PageSetup) {
   const frame = document.createElement('iframe');
   frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
   document.body.appendChild(frame);
   const d = frame.contentDocument!;
   d.open();
-  d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/</g, '&lt;')}</title><style>${PRINT_CSS}</style></head><body><h1>${title.replace(/</g, '&lt;')}</h1>${html}</body></html>`);
+  // Page setup (paper, margins, header, footer, page numbers) and page breaks (Office suite · O3).
+  const extra = `${page ? pageCss(page) : ''}.doc-page-break{break-after:page;border:0;height:0;margin:0}.doc-page-break span{display:none}.doc-toc{border:1px solid #e4e4e7;border-radius:.6em;padding:.6em 1em}.doc-toc ol{list-style:none;padding-left:0}.doc-toc-title{font-weight:700}`;
+  d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/</g, '&lt;')}</title><style>${PRINT_CSS}${extra}</style></head><body><h1>${title.replace(/</g, '&lt;')}</h1>${html}</body></html>`);
   d.close();
   setTimeout(() => { frame.contentWindow?.print(); setTimeout(() => frame.remove(), 1000); }, 300);
 }
@@ -65,8 +72,17 @@ function DocPage({ id }: { id: string }) {
   const [title, setTitle] = useState<string | null>(null);
   const [panel, setPanel] = useState<'comments' | 'suggestions' | null>(null);
   const suggestions = useSuggestionCount(editor);
-  const [sheet, setSheet] = useState<'history' | 'share' | null>(null);
+  const [sheet, setSheet] = useState<'history' | 'share' | 'page' | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [finding, setFinding] = useState(false);
+  const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
+  const [page, setPage] = usePageSetup(ydoc);
+  // Ctrl / ⌘ + F in the document opens find and replace.
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'h') && editor?.view.dom.contains(document.activeElement)) { e.preventDefault(); setFinding(true); } };
+    window.addEventListener('keydown', on);
+    return () => window.removeEventListener('keydown', on);
+  }, [editor]);
   const importRef = useRef<HTMLInputElement>(null);
   // Offline (Stage 5 · B9.7), people who may edit keep writing on this device's copy.
   const editable = (status.s === 'live' || status.s === 'offline') && status.canEdit;
@@ -114,6 +130,7 @@ function DocPage({ id }: { id: string }) {
             {status.s === 'live' ? (status.canEdit ? 'Saved as you type' : 'You can read this document') : status.s === 'connecting' ? 'Connecting…' : status.s === 'unavailable' ? 'Not available right now' : status.canEdit ? 'Offline: changes are kept on this device and sync when you’re back' : 'Offline: reconnecting'}
             {data.course && <span>· {data.course.code}</span>}
             {data.chat && <span>· Canvas of {data.chat.name}</span>}
+            {editor && <WordCount editor={editor} />}
 
           </p>
         </div>
@@ -128,10 +145,11 @@ function DocPage({ id }: { id: string }) {
             {exportOpen && editor && (
               <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.snappy} onMouseLeave={() => setExportOpen(false)}
                 className="absolute right-0 top-10 z-30 w-56 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
-                <button type="button" onClick={() => { setExportOpen(false); exportPdf(shownTitle, editor.getHTML()); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">PDF (print)</button>
-                <button type="button" onClick={() => { setExportOpen(false); void downloadDocx(shownTitle, editor).catch(() => toast.error('Couldn’t make the Word file.')); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Word (.docx)</button>
+                <button type="button" onClick={() => { setExportOpen(false); exportPdf(shownTitle, fillContents(editor.getHTML(), headingsOf(editor.state)), page); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">PDF (print)</button>
+                <button type="button" onClick={() => { setExportOpen(false); void downloadDocx(shownTitle, editor, page).catch(() => toast.error('Couldn’t make the Word file.')); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Word (.docx)</button>
                 <button type="button" onClick={() => { setExportOpen(false); downloadMarkdown(shownTitle, editor); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Markdown (.md)</button>
                 <div className="my-1 h-px bg-zinc-200 dark:bg-white/10" />
+                <button type="button" onClick={() => { setExportOpen(false); setSheet('page'); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Page setup (paper, margins, page numbers)</button>
                 <button type="button" disabled={!editable} onClick={() => { setExportOpen(false); importRef.current?.click(); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-40 inline-flex items-center gap-2"><FileUp className="w-4 h-4" />Import Word, Markdown or text</button>
               </motion.div>
             )}
@@ -143,11 +161,12 @@ function DocPage({ id }: { id: string }) {
         {data.canManage && !data.course && !data.chat && <button type="button" onClick={() => setSheet('share')} className="hidden sm:inline-flex px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-xs font-semibold items-center gap-1"><Share2 className="w-3.5 h-3.5" />Share</button>}
         {data.canManage && <button type="button" aria-label="Delete document" onClick={async () => { if (await confirmDialog({ title: 'Delete this document?', message: data.children.length ? 'Its text, versions and comments go for everyone. The pages inside it move to the top.' : 'Its text, versions and comments go for everyone.', destructive: true })) { await call(`/api/docs/${id}`, 'DELETE').catch((e) => toast.error((e as Error).message)); router.push('/docs'); } }} className="p-2 rounded-full text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>}
       </header>
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0b0e1a]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center pr-2"><div className="flex-1 min-w-0"><DocToolbar editor={editor} disabled={!editable} /></div><SuggestToggle editor={editor} disabled={!editable} /><DocAiButton editor={editor} canEdit={editable} docId={id} /><EmbedMenu editor={editor} disabled={!editable} />{!data.chat && <PageLinkButton editor={editor} disabled={!editable} currentId={id} />}</div>
+      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0b0e1a]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center pr-2"><div className="flex-1 min-w-0"><WordToolbar editor={editor} disabled={!editable} onFind={() => setFinding((f) => !f)} /></div><SuggestToggle editor={editor} disabled={!editable} /><DocAiButton editor={editor} canEdit={editable} docId={id} /><EmbedMenu editor={editor} disabled={!editable} />{!data.chat && <PageLinkButton editor={editor} disabled={!editable} currentId={id} />}</div>
+      {finding && editor && <FindBar editor={editor} canEdit={editable} onClose={() => { setFinding(false); editor.commands.focus(); }} />}
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto my-4 sm:my-8 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/[0.06] shadow-sm">
-            <DocEditor docId={id} me={data.me} canEdit={data.canEdit} onStatus={(s, canEdit) => setStatus({ s, canEdit })} onPeers={noop} onPresence={setPresent} onEditor={setEditor} />
+          <div className={cn('mx-auto my-4 sm:my-8 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/[0.06] shadow-sm', page.orientation === 'landscape' ? 'max-w-5xl' : 'max-w-3xl')}>
+            <DocEditor docId={id} me={data.me} canEdit={data.canEdit} onStatus={(s, canEdit) => setStatus({ s, canEdit })} onPeers={noop} onPresence={setPresent} onEditor={setEditor} onYdoc={setYdoc} />
           </div>
           {!data.chat && <DocPagesPanel doc={data} canEdit={data.canEdit} canMove={data.canManage} onChanged={() => void mutate()} />}
         </div>
@@ -168,6 +187,7 @@ function DocPage({ id }: { id: string }) {
       </div>
       {sheet === 'history' && <HistorySheet docId={id} editor={editor} canEdit={editable} onClose={() => setSheet(null)} />}
       {sheet === 'share' && <ShareSheet doc={data} onClose={() => setSheet(null)} onChanged={() => void mutate()} />}
+      {sheet === 'page' && <PageSetupSheet page={page} canEdit={editable} onChange={setPage} onClose={() => setSheet(null)} />}
     </div>
   );
 }
@@ -202,7 +222,7 @@ function HistorySheet({ docId, editor, canEdit, onClose }: { docId: string; edit
   const [name, setName] = useState('');
   const { data: version } = useSWR<{ html: string }>(picked ? `/api/docs/${docId}/versions/${picked}` : null, authedJson);
   // A read-only view of the version: parsed by the editor's own rules, so nothing unsafe shows.
-  const preview = useEditor({ immediatelyRender: false, editable: false, extensions: [StarterKit, TableKit, TaskList, TaskItem, Image, DocEmbed, SuggestionInsert, SuggestionDelete], content: '', editorProps: { attributes: { class: 'doc-prose px-4 py-4 text-sm' } } });
+  const preview = useEditor({ immediatelyRender: false, editable: false, extensions: [StarterKit, TableKit, TaskList, TaskItem, Image, DocEmbed, SuggestionInsert, SuggestionDelete, ...WORD_EXTENSIONS], content: '', editorProps: { attributes: { class: 'doc-prose px-4 py-4 text-sm' } } });
   useEffect(() => { if (preview && version) preview.commands.setContent(version.html); }, [preview, version]);
   const saveNamed = async () => {
     if (!editor || !name.trim()) return;
