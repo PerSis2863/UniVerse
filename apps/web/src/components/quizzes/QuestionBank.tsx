@@ -15,12 +15,14 @@ import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
 import { fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { DIFFICULTIES, parseQuestionCsv, type BankQuestionIn, type Difficulty } from '@/lib/question-bank';
+import { DIFFICULTIES, type Difficulty } from '@/lib/question-bank';
+import { readQuestionFile, type QuestionFile } from '@/lib/question-import';
 import { TYPE_LABELS, typeOf, type QuestionInput } from '@/lib/question-types';
 import { QuestionEditor, QuestionKey, draftReady, emptyDraft, toBody } from './QuestionEditor';
 
 // A course's question bank (Stage 5 · B4.1; API: /api/courses/[id]/question-bank). Teachers keep
-// reusable questions with tags and a difficulty, import them from CSV, and add them to quizzes.
+// reusable questions with tags and a difficulty, import them (CSV, GIFT, Moodle XML or QTI from
+// Canvas, Blackboard and others: src/lib/question-import.ts), and add them to quizzes.
 
 export interface BankQuestion { id: string; question: string; options: string[]; correctAnswer: string; type?: string; points: number; tags: string[]; difficulty: Difficulty | null }
 type Quiz = { id: string; title: string; courseId?: string; status: string };
@@ -38,7 +40,7 @@ export function QuestionBank({ courses, quizzes, onAdded }: { courses: { id: str
   const [level, setLevel] = useState<Difficulty | ''>('');
   const [chosen, setChosen] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
-  const [importing, setImporting] = useState<{ questions: BankQuestionIn[]; errors: { line: number; error: string }[] } | null>(null);
+  const [importing, setImporting] = useState<(QuestionFile & { name: string }) | null>(null);
   const [target, setTarget] = useState('');
   // Added as a pool (Stage 5 · B4.2): each student gets some of them; set how many in the quiz.
   const [pool, setPool] = useState('');
@@ -58,18 +60,24 @@ export function QuestionBank({ courses, quizzes, onAdded }: { courses: { id: str
     finally { setBusy(false); }
   };
 
-  const readCsv = async (f: File | undefined) => {
+  const readFile = async (f: File | undefined) => {
     if (!f) return;
-    if (f.size > 1_000_000) return void toast.error('That file is over 1 MB. Split it into smaller files.');
-    const parsed = parseQuestionCsv(await f.text());
-    if (!parsed.questions.length && !parsed.errors.length) return void toast.error('That file has no questions.');
-    setImporting(parsed);
+    if (f.size > 20_000_000) return void toast.error('That file is over 20 MB. Split it into smaller files.');
+    try {
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      // A QTI package: only its XML files are opened, and none bigger than 5 MB.
+      const zipped = bytes[0] === 0x50 && bytes[1] === 0x4b;
+      const unzip = zipped ? (await import('fflate')).unzipSync : null;
+      const parsed = readQuestionFile(f.name, bytes, unzip ? (b) => unzip(b, { filter: (x) => /\.xml$/i.test(x.name) && x.originalSize < 5_000_000 }) : undefined);
+      if (!parsed.questions.length && !parsed.errors.length) return void toast.error('That file has no questions.');
+      setImporting({ ...parsed, name: f.name });
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'That file couldn’t be read.'); }
   };
   const runImport = async () => {
     if (!importing) return;
     let done = 0;
     for (let i = 0; i < importing.questions.length; i += 200) {
-      const r = await post<{ imported: number; questions: BankQuestion[] }>({ action: 'import', questions: importing.questions.slice(i, i + 200) });
+      const r = await post<{ imported: number; questions: BankQuestion[] }>({ action: 'import', questions: importing.send.slice(i, i + 200) });
       if (!r) break;
       done += r.imported;
       await mutate({ questions: r.questions }, { revalidate: false });
@@ -93,8 +101,8 @@ export function QuestionBank({ courses, quizzes, onAdded }: { courses: { id: str
           {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <div className="flex gap-2">
-          <input ref={file} type="file" accept=".csv,text/csv" className="sr-only" aria-label="CSV file to import" onChange={(e) => { void readCsv(e.target.files?.[0]); e.target.value = ''; }} />
-          <button type="button" onClick={() => file.current?.click()} className="btn-secondary btn-sm inline-flex items-center gap-1.5"><FileUp className="w-4 h-4" /> Import CSV</button>
+          <input ref={file} type="file" accept=".csv,.txt,.gift,.xml,.zip,.imscc,text/csv,text/plain,text/xml,application/xml,application/zip" className="sr-only" aria-label="Question file to import" onChange={(e) => { void readFile(e.target.files?.[0]); e.target.value = ''; }} />
+          <button type="button" onClick={() => file.current?.click()} title="CSV, GIFT, Moodle XML or QTI (Canvas, Blackboard…)" className="btn-secondary btn-sm inline-flex items-center gap-1.5"><FileUp className="w-4 h-4" /> Import questions</button>
           <button type="button" onClick={() => setAdding(true)} className="btn-primary btn-sm inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> New question</button>
         </div>
       </div>
@@ -129,7 +137,7 @@ export function QuestionBank({ courses, quizzes, onAdded }: { courses: { id: str
       {error ? <LoadError onRetry={() => mutate()} message="Couldn’t load the question bank." />
         : isLoading || !data ? <ContentSkeleton variant="list" />
         : all.length === 0 ? (
-          <EmptyState icon={Library} title="This course’s question bank is empty" hint="Add questions one by one, import a CSV (question, options A–D, correct letter, points, tags, difficulty), or save questions from a quiz." action={{ label: 'New question', onClick: () => setAdding(true), icon: Plus }} />
+          <EmptyState icon={Library} title="This course’s question bank is empty" hint="Add questions one by one, save them from a quiz, or import a file: CSV (question, options A–D, correct letter, points, tags, difficulty), GIFT or Moodle XML from Moodle, or QTI from Canvas, Blackboard, Brightspace and others (an .xml file or the whole .zip)." action={{ label: 'New question', onClick: () => setAdding(true), icon: Plus }} />
         ) : shown.length === 0 ? <p className="text-sm text-zinc-500 text-center py-8">No questions match these filters.</p>
         : (
           <motion.ul variants={list} initial="hidden" animate="show" className="space-y-2">
@@ -167,14 +175,19 @@ export function QuestionBank({ courses, quizzes, onAdded }: { courses: { id: str
         <Sheet title="Import questions" onClose={() => setImporting(null)}
           footer={<button type="button" onClick={() => void runImport()} disabled={busy || !importing.questions.length} className="btn-primary w-full inline-flex items-center justify-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />}Import {importing.questions.length} question{importing.questions.length === 1 ? '' : 's'}</button>}>
           <div className="space-y-3 text-sm">
-            <p className="text-zinc-700 dark:text-zinc-200">{importing.questions.length} question{importing.questions.length === 1 ? '' : 's'} ready{importing.errors.length ? `, ${importing.errors.length} line${importing.errors.length === 1 ? '' : 's'} skipped` : ''}.</p>
+            <p className="text-zinc-700 dark:text-zinc-200"><span className="font-medium">{importing.name}</span> <span className="badge-blue">{importing.format}</span></p>
+            <p className="text-zinc-700 dark:text-zinc-200">{importing.questions.length} question{importing.questions.length === 1 ? '' : 's'} ready{importing.errors.length ? `, ${importing.errors.length} skipped` : ''}.</p>
             {importing.errors.length > 0 && (
-              <ul className="max-h-40 overflow-y-auto space-y-1 text-xs text-amber-800 dark:text-amber-300">
-                {importing.errors.slice(0, 50).map((e) => <li key={e.line}>Line {e.line}: {e.error}</li>)}
-              </ul>
+              <div>
+                <h3 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Not imported</h3>
+                <ul className="max-h-40 overflow-y-auto space-y-1 text-xs text-amber-800 dark:text-amber-300">
+                  {importing.errors.slice(0, 100).map((e, i) => <li key={i}><span className="font-medium">{e.where}:</span> {e.error}</li>)}
+                </ul>
+              </div>
             )}
             <ul className="space-y-1 max-h-60 overflow-y-auto">
-              {importing.questions.slice(0, 30).map((q, i) => <li key={i} className="truncate text-zinc-600 dark:text-zinc-300">{i + 1}. {q.question} <span className="text-emerald-700 dark:text-emerald-400">({q.correctAnswer})</span></li>)}
+              {importing.questions.slice(0, 50).map((q, i) => <li key={i} className="truncate text-zinc-600 dark:text-zinc-300">{i + 1}. <span className="text-xs font-medium text-indigo-700 dark:text-indigo-300">{TYPE_LABELS[q.type]}</span> {q.question} <span className="text-emerald-700 dark:text-emerald-400">({q.correctAnswer})</span></li>)}
+              {importing.questions.length > 50 && <li className="text-xs text-zinc-500 dark:text-zinc-400">…and {importing.questions.length - 50} more</li>}
             </ul>
           </div>
         </Sheet>

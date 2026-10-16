@@ -33097,6 +33097,17 @@
      "updatedAt": false
     },
     {
+     "name": "kind",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
      "name": "parent",
      "type": "Doc",
      "kind": "object",
@@ -33386,6 +33397,17 @@
      "kind": "scalar",
      "list": false,
      "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "data",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
      "id": false,
      "unique": false,
      "hasDefault": false,

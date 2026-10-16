@@ -12,24 +12,27 @@ import StarterKit from '@tiptap/starter-kit';
 import { TableKit } from '@tiptap/extension-table';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import Image from '@tiptap/extension-image';
-import { ArrowLeft, Check, Download, FileText, FileUp, ListChecks, History, Loader2, MessageSquare, MessageSquarePlus, RotateCcw, Send, Share2, Trash2, UserMinus, X } from 'lucide-react';
+import { ArrowLeft, Download, FileText, FileUp, ListChecks, History, Loader2, MessageSquare, RotateCcw, Share2, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import Link from '@/components/ui/Link';
 import { PresenceStack, type Present } from '@/components/ui/PresenceStack';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { Sheet } from '@/components/ui/Sheet';
-import { Avatar } from '@/components/ui/Avatar';
-import { DocEditor, DocToolbar, type DocStatus } from '@/components/docs/DocEditor';
+import { DocEditor, WORD_EXTENSIONS, type DocStatus } from '@/components/docs/DocEditor';
+import { WordToolbar } from '@/components/docs/WordToolbar';
+import { FindBar, PageSetupSheet, WordCount, usePageSetup } from '@/components/docs/WordPanels';
+import { fillContents, headingsOf } from '@/components/docs/word-ext';
+import { pageCss, type PageSetup } from '@/lib/page-setup';
+import type * as Y from 'yjs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { MentionInput } from '@/components/ui/MentionInput';
-import { Translatable } from '@/components/shared/Translatable';
 import { templateById } from '@/lib/doc-templates';
 import { downloadDocx, downloadMarkdown, importFile } from '@/components/docs/doc-files';
 import { DocBreadcrumb, DocPagesPanel, PageLinkButton, type PageRef } from '@/components/docs/DocPages';
 import { DocEmbed, EmbedMenu } from '@/components/docs/DocEmbed';
 import { DocAiButton } from '@/components/docs/DocAi';
+import { Comments, ShareSheet } from '@/components/docs/DocSide';
 import { SuggestToggle, SuggestionsPanel, useSuggestionCount } from '@/components/docs/Suggestions';
 import { SuggestionDelete, SuggestionInsert } from '@/components/docs/suggestions-ext';
 
@@ -37,20 +40,21 @@ import { SuggestionDelete, SuggestionInsert } from '@/components/docs/suggestion
 // select, version history (preview and restore), sharing, and PDF / Word / Markdown copies; import
 // a Word, Markdown or text file at the cursor (Stage 5 · B9.6).
 
-interface DocInfo { id: string; title: string; parentId: string | null; space: string | null; path: PageRef[]; children: PageRef[]; backlinks: PageRef[]; course: { code: string; name: string } | null; chat?: { id: string; name: string } | null; canEdit: boolean; canManage: boolean; me: { id: string; name: string }; members: { userId: string; role: string; name: string }[] }
-interface Comment { id: string; userId: string; quote: string | null; body: string; resolvedAt: string | null; createdAt: string; user: { id: string; name: string; avatar: string | null } }
+interface DocInfo { id: string; kind?: string; title: string; parentId: string | null; space: string | null; path: PageRef[]; children: PageRef[]; backlinks: PageRef[]; course: { code: string; name: string } | null; chat?: { id: string; name: string } | null; canEdit: boolean; canManage: boolean; me: { id: string; name: string }; members: { userId: string; role: string; name: string }[] }
 
 const call = (url: string, method: string, body?: unknown) => authedJson(url, { method, body: body === undefined ? undefined : JSON.stringify(body) });
 
 const PRINT_CSS = 'body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.6;color:#18181b;max-width:46rem;margin:2rem auto;padding:0 1.5rem}h1{font-size:2rem}table{border-collapse:collapse;width:100%}td,th{border:1px solid #d4d4d8;padding:.4em .6em;text-align:left}pre{background:#f4f4f5;padding:1em;border-radius:.5em;white-space:pre-wrap}img{max-width:100%}blockquote{border-left:3px solid #818cf8;margin-left:0;padding-left:1em;color:#52525b}';
 
-function exportPdf(title: string, html: string) {
+function exportPdf(title: string, html: string, page?: PageSetup) {
   const frame = document.createElement('iframe');
   frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
   document.body.appendChild(frame);
   const d = frame.contentDocument!;
   d.open();
-  d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/</g, '&lt;')}</title><style>${PRINT_CSS}</style></head><body><h1>${title.replace(/</g, '&lt;')}</h1>${html}</body></html>`);
+  // Page setup (paper, margins, header, footer, page numbers) and page breaks (Office suite · O3).
+  const extra = `${page ? pageCss(page) : ''}.doc-page-break{break-after:page;border:0;height:0;margin:0}.doc-page-break span{display:none}.doc-toc{border:1px solid #e4e4e7;border-radius:.6em;padding:.6em 1em}.doc-toc ol{list-style:none;padding-left:0}.doc-toc-title{font-weight:700}`;
+  d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/</g, '&lt;')}</title><style>${PRINT_CSS}${extra}</style></head><body><h1>${title.replace(/</g, '&lt;')}</h1>${html}</body></html>`);
   d.close();
   setTimeout(() => { frame.contentWindow?.print(); setTimeout(() => frame.remove(), 1000); }, 300);
 }
@@ -68,8 +72,17 @@ function DocPage({ id }: { id: string }) {
   const [title, setTitle] = useState<string | null>(null);
   const [panel, setPanel] = useState<'comments' | 'suggestions' | null>(null);
   const suggestions = useSuggestionCount(editor);
-  const [sheet, setSheet] = useState<'history' | 'share' | null>(null);
+  const [sheet, setSheet] = useState<'history' | 'share' | 'page' | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [finding, setFinding] = useState(false);
+  const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
+  const [page, setPage] = usePageSetup(ydoc);
+  // Ctrl / ⌘ + F in the document opens find and replace.
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'h') && editor?.view.dom.contains(document.activeElement)) { e.preventDefault(); setFinding(true); } };
+    window.addEventListener('keydown', on);
+    return () => window.removeEventListener('keydown', on);
+  }, [editor]);
   const importRef = useRef<HTMLInputElement>(null);
   // Offline (Stage 5 · B9.7), people who may edit keep writing on this device's copy.
   const editable = (status.s === 'live' || status.s === 'offline') && status.canEdit;
@@ -90,6 +103,10 @@ function DocPage({ id }: { id: string }) {
     window.history.replaceState(window.history.state, '', `${window.location.pathname}${sp.size ? `?${sp}` : ''}`);
   }, [editor, editable, id]);
 
+  // A spreadsheet or presentation opened here (an old link, a search result) goes to its own page.
+  const otherKind = data?.kind === 'sheet' || data?.kind === 'slides' ? data.kind : null;
+  useEffect(() => { if (otherKind) router.replace(`/${otherKind === 'sheet' ? 'sheets' : 'slides'}/${id}`); }, [otherKind, router, id]);
+  if (otherKind) return null;
   if (error) return <div className="p-8 text-sm text-rose-500">{(error as Error).message}</div>;
   if (!data) return <div className="flex-1 p-6"><div className="h-96 rounded-2xl skeleton" /></div>;
   const shownTitle = title ?? data.title;
@@ -113,6 +130,7 @@ function DocPage({ id }: { id: string }) {
             {status.s === 'live' ? (status.canEdit ? 'Saved as you type' : 'You can read this document') : status.s === 'connecting' ? 'Connecting…' : status.s === 'unavailable' ? 'Not available right now' : status.canEdit ? 'Offline: changes are kept on this device and sync when you’re back' : 'Offline: reconnecting'}
             {data.course && <span>· {data.course.code}</span>}
             {data.chat && <span>· Canvas of {data.chat.name}</span>}
+            {editor && <WordCount editor={editor} />}
 
           </p>
         </div>
@@ -127,10 +145,11 @@ function DocPage({ id }: { id: string }) {
             {exportOpen && editor && (
               <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.snappy} onMouseLeave={() => setExportOpen(false)}
                 className="absolute right-0 top-10 z-30 w-56 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
-                <button type="button" onClick={() => { setExportOpen(false); exportPdf(shownTitle, editor.getHTML()); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">PDF (print)</button>
-                <button type="button" onClick={() => { setExportOpen(false); void downloadDocx(shownTitle, editor).catch(() => toast.error('Couldn’t make the Word file.')); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Word (.docx)</button>
+                <button type="button" onClick={() => { setExportOpen(false); exportPdf(shownTitle, fillContents(editor.getHTML(), headingsOf(editor.state)), page); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">PDF (print)</button>
+                <button type="button" onClick={() => { setExportOpen(false); void downloadDocx(shownTitle, editor, page).catch(() => toast.error('Couldn’t make the Word file.')); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Word (.docx)</button>
                 <button type="button" onClick={() => { setExportOpen(false); downloadMarkdown(shownTitle, editor); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Markdown (.md)</button>
                 <div className="my-1 h-px bg-zinc-200 dark:bg-white/10" />
+                <button type="button" onClick={() => { setExportOpen(false); setSheet('page'); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Page setup (paper, margins, page numbers)</button>
                 <button type="button" disabled={!editable} onClick={() => { setExportOpen(false); importRef.current?.click(); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-40 inline-flex items-center gap-2"><FileUp className="w-4 h-4" />Import Word, Markdown or text</button>
               </motion.div>
             )}
@@ -142,11 +161,12 @@ function DocPage({ id }: { id: string }) {
         {data.canManage && !data.course && !data.chat && <button type="button" onClick={() => setSheet('share')} className="hidden sm:inline-flex px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-xs font-semibold items-center gap-1"><Share2 className="w-3.5 h-3.5" />Share</button>}
         {data.canManage && <button type="button" aria-label="Delete document" onClick={async () => { if (await confirmDialog({ title: 'Delete this document?', message: data.children.length ? 'Its text, versions and comments go for everyone. The pages inside it move to the top.' : 'Its text, versions and comments go for everyone.', destructive: true })) { await call(`/api/docs/${id}`, 'DELETE').catch((e) => toast.error((e as Error).message)); router.push('/docs'); } }} className="p-2 rounded-full text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>}
       </header>
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0b0e1a]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center pr-2"><div className="flex-1 min-w-0"><DocToolbar editor={editor} disabled={!editable} /></div><SuggestToggle editor={editor} disabled={!editable} /><DocAiButton editor={editor} canEdit={editable} docId={id} /><EmbedMenu editor={editor} disabled={!editable} />{!data.chat && <PageLinkButton editor={editor} disabled={!editable} currentId={id} />}</div>
+      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0b0e1a]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center pr-2"><div className="flex-1 min-w-0"><WordToolbar editor={editor} disabled={!editable} onFind={() => setFinding((f) => !f)} /></div><SuggestToggle editor={editor} disabled={!editable} /><DocAiButton editor={editor} canEdit={editable} docId={id} /><EmbedMenu editor={editor} disabled={!editable} />{!data.chat && <PageLinkButton editor={editor} disabled={!editable} currentId={id} />}</div>
+      {finding && editor && <FindBar editor={editor} canEdit={editable} onClose={() => { setFinding(false); editor.commands.focus(); }} />}
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto my-4 sm:my-8 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/[0.06] shadow-sm">
-            <DocEditor docId={id} me={data.me} canEdit={data.canEdit} onStatus={(s, canEdit) => setStatus({ s, canEdit })} onPeers={noop} onPresence={setPresent} onEditor={setEditor} />
+          <div className={cn('mx-auto my-4 sm:my-8 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-white/[0.06] shadow-sm', page.orientation === 'landscape' ? 'max-w-5xl' : 'max-w-3xl')}>
+            <DocEditor docId={id} me={data.me} canEdit={data.canEdit} onStatus={(s, canEdit) => setStatus({ s, canEdit })} onPeers={noop} onPresence={setPresent} onEditor={setEditor} onYdoc={setYdoc} />
           </div>
           {!data.chat && <DocPagesPanel doc={data} canEdit={data.canEdit} canMove={data.canManage} onChanged={() => void mutate()} />}
         </div>
@@ -154,7 +174,7 @@ function DocPage({ id }: { id: string }) {
           {panel === 'comments' && (
             <motion.aside key="comments" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={spring.smooth}
               className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#0f1322] border-l border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
-              <Comments docId={id} editor={editor} me={data.me.id} canEdit={data.canEdit} onClose={() => setPanel(null)} />
+              <Comments docId={id} me={data.me.id} canEdit={data.canEdit} onClose={() => setPanel(null)} pick={() => pickText(editor)} go={(q) => goToQuote(editor, q)} />
             </motion.aside>
           )}
           {panel === 'suggestions' && (
@@ -167,8 +187,18 @@ function DocPage({ id }: { id: string }) {
       </div>
       {sheet === 'history' && <HistorySheet docId={id} editor={editor} canEdit={editable} onClose={() => setSheet(null)} />}
       {sheet === 'share' && <ShareSheet doc={data} onClose={() => setSheet(null)} onChanged={() => void mutate()} />}
+      {sheet === 'page' && <PageSetupSheet page={page} canEdit={editable} onChange={setPage} onClose={() => setSheet(null)} />}
     </div>
   );
+}
+
+/** The selected text, for a comment about it. */
+function pickText(editor: Editor | null): string | null {
+  if (!editor) return null;
+  const { from, to } = editor.state.selection;
+  const text = editor.state.doc.textBetween(from, to, ' ').trim();
+  if (!text) { toast('Select some text in the document first.'); return null; }
+  return text;
 }
 
 /** Finds the first place a quoted bit of text is and selects it. */
@@ -186,76 +216,13 @@ function goToQuote(editor: Editor | null, quote: string) {
   editor.chain().focus().setTextSelection({ from: found, to: found + needle.length }).scrollIntoView().run();
 }
 
-function Comments({ docId, editor, me, canEdit, onClose }: { docId: string; editor: Editor | null; me: string; canEdit: boolean; onClose: () => void }) {
-  const key = `/api/docs/${docId}/comments`;
-  const { data, mutate } = useSWR<Comment[]>(key, authedJson);
-  const [body, setBody] = useState('');
-  const [quote, setQuote] = useState<string | null>(null);
-  const [showResolved, setShowResolved] = useState(false);
-  const pickSelection = () => {
-    if (!editor) return;
-    const { from, to } = editor.state.selection;
-    const text = editor.state.doc.textBetween(from, to, ' ').trim();
-    if (!text) { toast('Select some text in the document first.'); return; }
-    setQuote(text.slice(0, 500));
-  };
-  const send = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const t = body.trim();
-    if (!t) return;
-    setBody('');
-    try { await call(key, 'POST', { body: t, quote }); setQuote(null); void mutate(); } catch (err) { setBody(t); toast.error((err as Error).message); }
-  };
-  const open = (data ?? []).filter((c) => !c.resolvedAt), done = (data ?? []).filter((c) => c.resolvedAt);
-  const item = (c: Comment) => (
-    <div key={c.id} className={cn('rounded-2xl p-3 border', c.resolvedAt ? 'border-zinc-200/60 dark:border-white/[0.05] opacity-70' : 'border-zinc-200 dark:border-white/[0.08] bg-zinc-50 dark:bg-white/[0.03]')}>
-      <div className="flex items-center gap-2">
-        <Avatar name={c.user.name} src={c.user.avatar} size={24} />
-        <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-100 flex-1 truncate">{c.user.name}</span>
-        <span className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
-      </div>
-      {c.quote && <button type="button" onClick={() => goToQuote(editor, c.quote!)} className="mt-2 block w-full text-left text-xs italic text-zinc-500 border-l-2 border-amber-400 pl-2 line-clamp-2 hover:text-indigo-500">“{c.quote}”</button>}
-      <Translatable kind="doc-comment" id={c.id} text={c.body} hide={c.userId === me} className="mt-1.5 text-sm text-zinc-900 dark:text-white whitespace-pre-wrap break-words" />
-      <div className="mt-2 flex gap-3 text-[11px] font-semibold">
-        {(canEdit || c.userId === me) && <button type="button" onClick={async () => { await call(`${key}/${c.id}`, 'PATCH', { resolved: !c.resolvedAt }).catch((e) => toast.error((e as Error).message)); void mutate(); }} className="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">{c.resolvedAt ? <><RotateCcw className="w-3 h-3" />Reopen</> : <><Check className="w-3 h-3" />Resolve</>}</button>}
-        {c.userId === me && <button type="button" onClick={async () => { await call(`${key}/${c.id}`, 'PATCH', { delete: true }).catch((e) => toast.error((e as Error).message)); void mutate(); }} className="text-zinc-400 hover:text-rose-500">Delete</button>}
-      </div>
-    </div>
-  );
-  return (
-    <>
-      <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <p className="font-semibold text-zinc-900 dark:text-white">Comments {open.length > 0 && <span className="text-zinc-400 font-normal">· {open.length}</span>}</p>
-        <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
-      </div>
-      <div className="flex-1 overflow-y-auto px-3 space-y-2 pb-3">
-        {!data ? <Loader2 className="w-5 h-5 animate-spin text-indigo-400 mx-auto mt-6" /> : open.length === 0 && <p className="text-sm text-zinc-500 px-1">No open comments. Select some text and comment on it, or comment on the whole document.</p>}
-        {open.map(item)}
-        {done.length > 0 && <button type="button" onClick={() => setShowResolved((s) => !s)} className="text-xs text-zinc-500 px-1">{showResolved ? 'Hide' : 'Show'} {done.length} resolved</button>}
-        {showResolved && done.map(item)}
-      </div>
-      <form onSubmit={send} className="p-3 border-t border-zinc-200/70 dark:border-white/[0.06] space-y-2">
-        {quote ? (
-          <p className="text-xs italic text-zinc-500 border-l-2 border-amber-400 pl-2 flex gap-2"><span className="flex-1 line-clamp-2">“{quote}”</span><button type="button" onClick={() => setQuote(null)} aria-label="Not about this text"><X className="w-3 h-3" /></button></p>
-        ) : (
-          <button type="button" onClick={pickSelection} className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 inline-flex items-center gap-1"><MessageSquarePlus className="w-3.5 h-3.5" />About the text I selected</button>
-        )}
-        <div className="flex gap-2">
-          <MentionInput kind="doc" id={docId} value={body} onChange={setBody} maxLength={2000} placeholder="Write a comment (@name to notify someone)" aria-label="Comment" className="input" />
-          <button type="submit" aria-label="Send" className="w-10 shrink-0 rounded-xl btn-primary flex items-center justify-center"><Send className="w-4 h-4" /></button>
-        </div>
-      </form>
-    </>
-  );
-}
-
 function HistorySheet({ docId, editor, canEdit, onClose }: { docId: string; editor: Editor | null; canEdit: boolean; onClose: () => void }) {
   const { data, mutate } = useSWR<{ id: string; name: string | null; author: string; createdAt: string }[]>(`/api/docs/${docId}/versions`, authedJson);
   const [picked, setPicked] = useState<string | null>(null);
   const [name, setName] = useState('');
   const { data: version } = useSWR<{ html: string }>(picked ? `/api/docs/${docId}/versions/${picked}` : null, authedJson);
   // A read-only view of the version: parsed by the editor's own rules, so nothing unsafe shows.
-  const preview = useEditor({ immediatelyRender: false, editable: false, extensions: [StarterKit, TableKit, TaskList, TaskItem, Image, DocEmbed, SuggestionInsert, SuggestionDelete], content: '', editorProps: { attributes: { class: 'doc-prose px-4 py-4 text-sm' } } });
+  const preview = useEditor({ immediatelyRender: false, editable: false, extensions: [StarterKit, TableKit, TaskList, TaskItem, Image, DocEmbed, SuggestionInsert, SuggestionDelete, ...WORD_EXTENSIONS], content: '', editorProps: { attributes: { class: 'doc-prose px-4 py-4 text-sm' } } });
   useEffect(() => { if (preview && version) preview.commands.setContent(version.html); }, [preview, version]);
   const saveNamed = async () => {
     if (!editor || !name.trim()) return;
@@ -292,30 +259,6 @@ function HistorySheet({ docId, editor, canEdit, onClose }: { docId: string; edit
           ))}
         </div>
       )}
-    </Sheet>
-  );
-}
-
-function ShareSheet({ doc, onClose, onChanged }: { doc: DocInfo; onClose: () => void; onChanged: () => void }) {
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'EDITOR' | 'VIEWER'>('EDITOR');
-  const [busy, setBusy] = useState(false);
-  return (
-    <Sheet title="Share document" onClose={onClose}>
-      <form onSubmit={async (e) => { e.preventDefault(); setBusy(true); try { await call(`/api/docs/${doc.id}/members`, 'POST', { email, role }); setEmail(''); toast.success('Shared'); onChanged(); } catch (err) { toast.error((err as Error).message); } finally { setBusy(false); } }} className="flex gap-2 mb-4">
-        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Their email" className="input" />
-        <select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as 'EDITOR' | 'VIEWER')} className={cn('input', 'w-28')}><option value="EDITOR">Can edit</option><option value="VIEWER">Can read</option></select>
-        <button type="submit" disabled={busy} className="btn-primary shrink-0">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}</button>
-      </form>
-      <div className="space-y-1">
-        {doc.members.map((m) => (
-          <div key={m.userId} className="flex items-center gap-3 p-2">
-            <span className="flex-1 text-sm text-zinc-900 dark:text-white">{m.name} <span className="text-xs text-zinc-500">· {m.role === 'VIEWER' ? 'can read' : 'can edit'}</span></span>
-            <button type="button" onClick={async () => { await call(`/api/docs/${doc.id}/members`, 'POST', { userId: m.userId, remove: true }).catch((e) => toast.error((e as Error).message)); onChanged(); }} aria-label="Stop sharing" className="p-1.5 text-zinc-400 hover:text-rose-500"><UserMinus className="w-4 h-4" /></button>
-          </div>
-        ))}
-        {!doc.members.length && <p className="text-sm text-zinc-500">Only you so far.</p>}
-      </div>
     </Sheet>
   );
 }

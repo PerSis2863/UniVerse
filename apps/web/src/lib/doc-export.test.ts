@@ -91,3 +91,38 @@ describe('document export', () => {
     expect(body).toContain('<w:ins w:id="2" w:author="Asha" w:date="2026-10-11T09:30:00Z"><w:r><w:t xml:space="preserve">there</w:t></w:r></w:ins>');
   });
 });
+
+describe('Word features in the .docx (Office suite · O3)', () => {
+  const doc = { type: 'doc', content: [
+    { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Intro' }] },
+    { type: 'tableOfContents' },
+    { type: 'paragraph', attrs: { textAlign: 'center', lineHeight: '1.5', indent: 2 }, content: [
+      { type: 'text', text: 'Red big', marks: [{ type: 'textStyle', attrs: { color: 'rgb(255, 0, 0)', fontSize: '14pt', fontFamily: "'Georgia'", backgroundColor: '#ff0' } }, { type: 'bold' }] },
+      { type: 'text', text: '2', marks: [{ type: 'superscript' }] },
+    ] },
+    { type: 'pageBreak' },
+    { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Method' }] },
+  ] };
+  const files = docToDocx(doc, 'Report', { page: { size: 'Letter', orientation: 'landscape', margins: 'narrow', header: 'Lab report', footer: 'Ana', numbers: true } });
+  const body = files['word/document.xml'] as string;
+  it('keeps fonts, sizes, colours, highlight, superscript, alignment, spacing and indents', () => {
+    expect(body).toContain('<w:rFonts w:ascii="Georgia" w:hAnsi="Georgia" w:cs="Georgia"/><w:b/><w:color w:val="FF0000"/><w:sz w:val="28"/><w:szCs w:val="28"/><w:shd w:val="clear" w:color="auto" w:fill="FFFF00"/>');
+    expect(body).toContain('<w:vertAlign w:val="superscript"/>');
+    expect(body).toContain('<w:spacing w:line="360" w:lineRule="auto"/><w:ind w:left="1440"/><w:jc w:val="center"/>');
+  });
+  it('makes page breaks and a contents list from the headings', () => {
+    expect(body).toContain('<w:br w:type="page"/>');
+    expect(body.indexOf('Contents')).toBeLessThan(body.indexOf('Red big'));
+    expect(body).toMatch(/<w:ind w:left="360"\/><\/w:pPr><w:r><w:t xml:space="preserve">Method/);
+  });
+  it('sets the paper, margins, header, footer and page numbers', () => {
+    expect(body).toContain('<w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/>');
+    expect(body).toContain('w:top="720"');
+    expect(body).toMatch(/<w:headerReference w:type="default" r:id="rId\d+"\/><w:footerReference/);
+    expect(files['word/header1.xml']).toContain('Lab report');
+    expect(files['word/footer1.xml']).toContain(' PAGE ');
+    expect(files['word/footer1.xml']).toContain(' NUMPAGES ');
+    expect(files['[Content_Types].xml']).toContain('/word/footer1.xml');
+    expect(files['word/_rels/document.xml.rels']).toContain('Target="header1.xml"');
+  });
+});

@@ -6,6 +6,7 @@
 // real tracked changes (w:ins / w:del, with who and when); Markdown strikes removed text.
 
 import { EMBED_LABEL, embedHref, type EmbedAttrs } from '@/lib/doc-embeds';
+import { DEFAULT_PAGE, MARGIN_MM, PAPER, type PageSetup } from './page-setup';
 
 export interface PMMark { type: string; attrs?: Record<string, unknown> }
 export interface PMNode { type: string; attrs?: Record<string, unknown>; content?: PMNode[]; text?: string; marks?: PMMark[] }
@@ -100,10 +101,46 @@ const xml = (s: string) => s.replace(/[^\x09\x0A\x0D\x20-퟿-�]/g, '').repl
 const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
 const DRAW = 'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
 const HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+/** A CSS colour (#rgb, #rrggbb or rgb()) as Word's RRGGBB; null if it isn't one. */
+function wordColor(c: unknown): string | null {
+  if (typeof c !== 'string') return null;
+  const s = c.trim().toLowerCase();
+  let m = /^#([0-9a-f]{6})$/.exec(s);
+  if (m) return m[1].toUpperCase();
+  m = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/.exec(s);
+  if (m) return `${m[1]}${m[1]}${m[2]}${m[2]}${m[3]}${m[3]}`.toUpperCase();
+  const r = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(s);
+  return r ? [r[1], r[2], r[3]].map((x) => Math.min(255, Number(x)).toString(16).padStart(2, '0')).join('').toUpperCase() : null;
+}
+/** Text style (font, size, colour, highlight) and sub / superscript as Word run properties. */
+function styleProps(marks: PMMark[]): string {
+  const ts = marks.find((m) => m.type === 'textStyle')?.attrs ?? {};
+  const font = typeof ts.fontFamily === 'string' ? ts.fontFamily.replace(/['"]/g, '').split(',')[0].trim() : '';
+  const size = typeof ts.fontSize === 'string' ? Math.round(parseFloat(ts.fontSize) * 2) : 0;
+  const color = wordColor(ts.color), bg = wordColor(ts.backgroundColor);
+  const sub = marks.some((m) => m.type === 'subscript'), sup = marks.some((m) => m.type === 'superscript');
+  return `${font ? `<w:rFonts w:ascii="${xml(font)}" w:hAnsi="${xml(font)}" w:cs="${xml(font)}"/>` : ''}${color ? `<w:color w:val="${color}"/>` : ''}${size >= 2 && size <= 1638 ? `<w:sz w:val="${size}"/><w:szCs w:val="${size}"/>` : ''}${bg ? `<w:shd w:val="clear" w:color="auto" w:fill="${bg}"/>` : ''}${sub ? '<w:vertAlign w:val="subscript"/>' : sup ? '<w:vertAlign w:val="superscript"/>' : ''}`;
+}
+/** A paragraph's alignment, line spacing and indent as Word paragraph properties. */
+function blockProps(n: PMNode): string {
+  const a = n.attrs ?? {};
+  const jc = a.textAlign === 'center' ? 'center' : a.textAlign === 'right' ? 'right' : a.textAlign === 'justify' ? 'both' : '';
+  const lh = Number(a.lineHeight), ind = Number(a.indent);
+  return `${lh >= 0.8 && lh <= 3 ? `<w:spacing w:line="${Math.round(lh * 240)}" w:lineRule="auto"/>` : ''}${ind > 0 && ind <= 8 ? `<w:ind w:left="${ind * 720}"/>` : ''}${jc ? `<w:jc w:val="${jc}"/>` : ''}`;
+}
 /** The widest a picture goes: 6 inches, in EMUs. */
 const MAX_EMU = 5_486_400;
 
-interface Ctx { rels: string[]; nums: string[]; media: { name: string; data: Uint8Array }[]; images: Map<string, DocxImage>; origin: string; nextNum: number; nextId: number; nextChange: number }
+interface Ctx { rels: string[]; nums: string[]; media: { name: string; data: Uint8Array }[]; images: Map<string, DocxImage>; origin: string; nextNum: number; nextId: number; nextChange: number; doc: PMNode }
+
+/** The document's headings (for a table of contents). */
+function headingsIn(doc: PMNode): { level: number; text: string }[] {
+  const out: { level: number; text: string }[] = [];
+  const text = (n: PMNode): string => (n.text ?? '') + kids(n).map(text).join('');
+  const walk = (n: PMNode) => { if (n.type === 'heading') out.push({ level: Math.min(3, Math.max(1, attr(n, 'level', 1))), text: text(n) }); else kids(n).forEach(walk); };
+  walk(doc);
+  return out;
+}
 
 function rel(ctx: Ctx, type: string, target: string, external = false) {
   const id = `rId${ctx.rels.length + 10}`;
@@ -136,7 +173,13 @@ function inlineDocx(ctx: Ctx, nodes: PMNode[], extra = ''): string {
     if (n.type !== 'text' || !n.text) return '';
     const marks = n.marks ?? [];
     const has = (t: string) => marks.some((m) => m.type === t);
-    const props = `${extra}${has('bold') ? '<w:b/>' : ''}${has('italic') ? '<w:i/>' : ''}${has('underline') ? '<w:u w:val="single"/>' : ''}${has('strike') ? '<w:strike/>' : ''}${has('code') ? '<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/><w:shd w:val="clear" w:color="auto" w:fill="F4F4F5"/>' : ''}`;
+    // Word wants run properties in its order: fonts, bold, italic, strike, colour, size, underline, shading, vertical alignment.
+    const st = styleProps(marks);
+    const font = has('code') ? '<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/>' : /<w:rFonts[^>]*\/>/.exec(st)?.[0] ?? '';
+    const color = /<w:color[^>]*\/>/.exec(st)?.[0] ?? '', size = /<w:sz [^>]*\/><w:szCs[^>]*\/>/.exec(st)?.[0] ?? '';
+    const shd = has('code') ? '<w:shd w:val="clear" w:color="auto" w:fill="F4F4F5"/>' : /<w:shd[^>]*\/>/.exec(st)?.[0] ?? '';
+    const vert = /<w:vertAlign[^>]*\/>/.exec(st)?.[0] ?? '';
+    const props = `${extra}${font}${has('bold') ? '<w:b/>' : ''}${has('italic') ? '<w:i/>' : ''}${has('strike') ? '<w:strike/>' : ''}${color}${size}${has('underline') ? '<w:u w:val="single"/>' : ''}${shd}${vert}`;
     const link = marks.find((m) => m.type === 'link');
     const href = link ? attr(link, 'href', '') : '';
     const target = /^(https?:|mailto:)/i.test(href) ? href : href.startsWith('/') ? `${ctx.origin}${href}` : '';
@@ -158,8 +201,10 @@ function blocksDocx(ctx: Ctx, nodes: PMNode[], opts: { style?: string; level?: n
   return nodes.map((n) => {
     const style = opts.style ? `<w:pStyle w:val="${opts.style}"/>` : '';
     switch (n.type) {
-      case 'paragraph': return para(style, inlineDocx(ctx, kids(n), opts.extra));
-      case 'heading': return para(`<w:pStyle w:val="Heading${Math.min(3, Math.max(1, attr(n, 'level', 1)))}"/>`, inlineDocx(ctx, kids(n)));
+      case 'paragraph': return para(style + blockProps(n), inlineDocx(ctx, kids(n), opts.extra));
+      case 'heading': return para(`<w:pStyle w:val="Heading${Math.min(3, Math.max(1, attr(n, 'level', 1)))}"/>${blockProps(n)}`, inlineDocx(ctx, kids(n)));
+      case 'pageBreak': return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+      case 'tableOfContents': return para('<w:pStyle w:val="Heading2"/>', run('Contents')) + headingsIn(ctx.doc).map((h) => para(`<w:ind w:left="${(h.level - 1) * 360}"/>`, run(h.text))).join('');
       case 'blockquote': return blocksDocx(ctx, kids(n), { ...opts, style: 'Quote' });
       case 'codeBlock': return para('<w:pStyle w:val="Code"/>', run(kids(n).map((t) => t.text ?? '').join('')));
       case 'horizontalRule': return para('<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="D4D4D8"/></w:pBdr>', '');
@@ -216,18 +261,35 @@ const STYLES = `${HEAD}<w:styles ${W}><w:docDefaults><w:rPrDefault><w:rPr><w:rFo
 const lvls = (bullet: boolean) => Array.from({ length: 9 }, (_, i) => `<w:lvl w:ilvl="${i}"><w:start w:val="1"/><w:numFmt w:val="${bullet ? 'bullet' : ['decimal', 'lowerLetter', 'lowerRoman'][i % 3]}"/><w:lvlText w:val="${bullet ? ['•', '◦', '▪'][i % 3] : `%${i + 1}.`}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${720 + i * 360}" w:hanging="360"/></w:pPr></w:lvl>`).join('');
 
 /** The files inside a .docx (paths → contents) for a document; zip them to make the file. */
-export function docToDocx(doc: PMNode, title: string, opts: { images?: Map<string, DocxImage>; origin?: string } = {}): Record<string, string | Uint8Array> {
-  const ctx: Ctx = { rels: [], nums: [], media: [], images: opts.images ?? new Map(), origin: opts.origin ?? '', nextNum: 2, nextId: 1, nextChange: 1 };
+export function docToDocx(doc: PMNode, title: string, opts: { images?: Map<string, DocxImage>; origin?: string; page?: PageSetup } = {}): Record<string, string | Uint8Array> {
+  const ctx: Ctx = { rels: [], nums: [], media: [], images: opts.images ?? new Map(), origin: opts.origin ?? '', nextNum: 2, nextId: 1, nextChange: 1, doc };
+  // Page setup (Office suite · O3): paper, orientation, margins, header, footer and page numbers.
+  const page = opts.page ?? DEFAULT_PAGE;
+  const [pw, ph] = PAPER[page.size].map((mm) => Math.round((mm / 25.4) * 1440));
+  const [w, h] = page.orientation === 'landscape' ? [ph, pw] : [pw, ph];
+  const m = Math.round((MARGIN_MM[page.margins] / 25.4) * 1440);
+  const hf: Record<string, string> = {};
+  const field = '<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>';
+  const fieldPages = field.replace(' PAGE ', ' NUMPAGES ');
+  let refs = '';
+  if (page.header) { hf['word/header1.xml'] = `${HEAD}<w:hdr ${W}>${para('<w:jc w:val="center"/>', run(page.header, '<w:color w:val="52525B"/><w:sz w:val="18"/>'))}</w:hdr>`; refs += `<w:headerReference w:type="default" r:id="${rel(ctx, 'header', 'header1.xml')}"/>`; }
+  if (page.footer || page.numbers) {
+    const left = page.footer ? run(page.footer, '<w:color w:val="52525B"/><w:sz w:val="18"/>') : '';
+    const nums = page.numbers ? `${left ? run('\t') : ''}${run('Page ')}${field}${run(' of ')}${fieldPages}` : '';
+    hf['word/footer1.xml'] = `${HEAD}<w:ftr ${W}>${para(page.numbers ? `<w:tabs><w:tab w:val="right" w:pos="${w - 2 * m}"/></w:tabs>` : '', left + nums)}</w:ftr>`;
+    refs += `<w:footerReference w:type="default" r:id="${rel(ctx, 'footer', 'footer1.xml')}"/>`;
+  }
   const body = (title ? para('<w:pStyle w:val="Title"/>', run(title)) : '') + blocksDocx(ctx, kids(doc));
   const files: Record<string, string | Uint8Array> = {
-    '[Content_Types].xml': `${HEAD}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/></Types>`,
+    '[Content_Types].xml': `${HEAD}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>${hf['word/header1.xml'] ? '<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>' : ''}${hf['word/footer1.xml'] ? '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>' : ''}</Types>`,
     '_rels/.rels': `${HEAD}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`,
-    'word/document.xml': `${HEAD}<w:document ${W} ${DRAW}><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>`,
+    'word/document.xml': `${HEAD}<w:document ${W} ${DRAW}><w:body>${body}<w:sectPr>${refs}<w:pgSz w:w="${w}" w:h="${h}"${page.orientation === 'landscape' ? ' w:orient="landscape"' : ''}/><w:pgMar w:top="${m}" w:right="${m}" w:bottom="${m}" w:left="${m}" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>`,
     'word/styles.xml': STYLES,
     'word/numbering.xml': `${HEAD}<w:numbering ${W}><w:abstractNum w:abstractNumId="0"><w:multiLevelType w:val="hybridMultilevel"/>${lvls(true)}</w:abstractNum><w:abstractNum w:abstractNumId="1"><w:multiLevelType w:val="hybridMultilevel"/>${lvls(false)}</w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>${ctx.nums.join('')}</w:numbering>`,
     'word/_rels/document.xml.rels': `${HEAD}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>${ctx.rels.join('')}</Relationships>`,
   };
-  for (const m of ctx.media) files[`word/media/${m.name}`] = m.data;
+  for (const x of ctx.media) files[`word/media/${x.name}`] = x.data;
+  Object.assign(files, hf);
   return files;
 }
 

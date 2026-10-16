@@ -4795,6 +4795,8 @@ model Doc {
   preview   String? // the start of the text, for lists and search
   /// The page this one sits under (Stage 5 · B9.2): sub-pages share the parent's people.
   parentId  String?
+  /// What it is (Office suite): "doc" (a document), "sheet" (a spreadsheet) or "slides" (a presentation).
+  kind      String       @default("doc")
   parent    Doc?         @relation("DocTree", fields: [parentId], references: [id], onDelete: SetNull)
   children  Doc[]        @relation("DocTree")
   createdAt DateTime     @default(now())
@@ -4842,6 +4844,8 @@ model DocVersion {
   docId     String
   doc       Doc      @relation(fields: [docId], references: [id], onDelete: Cascade)
   html      String
+  /// A spreadsheet's or presentation's own data (JSON) to restore from; html is how it reads.
+  data      String?
   authorId  String
   name      String? // a version someone named ("Before feedback")
   createdAt DateTime @default(now())

@@ -20,7 +20,12 @@ import { docLinkIds, makesLoop } from '@/lib/doc-pages';
 // Stage 5 · B9.2: pages under pages (a wiki); a sub-page is open to whoever can open the page it
 // sits under, and links between pages are kept for "Linked from".
 
-const MAX_DOCS = 200, MAX_HTML = 400_000, VERSION_GAP_MS = 2 * 60_000, KEEP_AUTO = 50;
+const MAX_DOCS = 200, MAX_HTML = 400_000, MAX_DATA = 1_200_000, VERSION_GAP_MS = 2 * 60_000, KEEP_AUTO = 50;
+// Office suite: spreadsheets and presentations are docs of another kind (same people, comments,
+// history and live room); their versions also keep their own data (JSON) to restore from.
+export const DOC_KINDS = ['doc', 'sheet', 'slides'] as const;
+export type DocKind = (typeof DOC_KINDS)[number];
+const kindOf = (v: unknown): DocKind => (DOC_KINDS as readonly unknown[]).includes(v) ? (v as DocKind) : 'doc';
 
 interface RoomNamespace { idFromName(name: string): unknown; get(id: unknown): { fetch(url: string, init?: RequestInit): Promise<Response> } }
 
@@ -33,8 +38,8 @@ async function roomFetch(docId: string, path: string, init?: RequestInit): Promi
 
 const clean = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
-async function access(docId: string, user: SessionUser, depth = 0): Promise<{ doc: { id: string; title: string; ownerId: string; courseId: string | null; groupId: string | null; conversationId: string | null; parentId: string | null; members: { userId: string; role: string }[] }; canEdit: boolean; canManage: boolean }> {
-  const doc = await prisma.doc.findUnique({ where: { id: docId }, select: { id: true, title: true, ownerId: true, courseId: true, groupId: true, conversationId: true, parentId: true, members: { select: { userId: true, role: true } } } });
+async function access(docId: string, user: SessionUser, depth = 0): Promise<{ doc: { id: string; title: string; kind: string; ownerId: string; courseId: string | null; groupId: string | null; conversationId: string | null; parentId: string | null; members: { userId: string; role: string }[] }; canEdit: boolean; canManage: boolean }> {
+  const doc = await prisma.doc.findUnique({ where: { id: docId }, select: { id: true, title: true, kind: true, ownerId: true, courseId: true, groupId: true, conversationId: true, parentId: true, members: { select: { userId: true, role: true } } } });
   if (!doc) throw new NotFoundException('Document not found.');
   const mine = doc.members.find((m) => m.userId === user.id);
   const course = doc.courseId ? await courseAccess(doc.courseId, user) : null;
@@ -118,7 +123,7 @@ export async function listDocs(user: SessionUser) {
     ? (await prisma.enrollment.findMany({ where: { studentId: user.id }, select: { course: { select: { id: true, code: true, name: true } } }, take: 100 })).map((e) => e.course)
     : await prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : taughtBy(user.id), select: { id: true, code: true, name: true }, take: 100 });
   const groups = (await prisma.groupMembership.findMany({ where: { userId: user.id }, select: { group: { select: { id: true, name: true } } }, take: 100 })).map((m) => m.group);
-  const select = { id: true, title: true, preview: true, courseId: true, groupId: true, ownerId: true, parentId: true, updatedAt: true } as const;
+  const select = { id: true, title: true, preview: true, courseId: true, groupId: true, ownerId: true, parentId: true, kind: true, updatedAt: true } as const;
   const docs = await prisma.doc.findMany({ where: visibleDocs(user, courses, groups), orderBy: { updatedAt: 'desc' }, take: 200, select });
   // Sub-pages of pages shared with me (they share their parent's people), up to three levels down.
   const seen = new Set(docs.map((d) => d.id));
@@ -133,7 +138,7 @@ export async function listDocs(user: SessionUser) {
     frontier = next;
   }
   const code = new Map([...courses.map((c) => [c.id, c.code] as const), ...groups.map((g) => [g.id, g.name] as const)]);
-  return { courses, groups, docs: docs.map((d) => ({ id: d.id, title: d.title, preview: d.preview, course: d.courseId ? code.get(d.courseId) ?? null : d.groupId ? code.get(d.groupId) ?? null : null, space: spaceKey(d), parentId: d.parentId, mine: d.ownerId === user.id, updatedAt: d.updatedAt })) };
+  return { courses, groups, docs: docs.map((d) => ({ id: d.id, title: d.title, preview: d.preview, course: d.courseId ? code.get(d.courseId) ?? null : d.groupId ? code.get(d.groupId) ?? null : null, space: spaceKey(d), parentId: d.parentId, kind: d.kind, mine: d.ownerId === user.id, updatedAt: d.updatedAt })) };
 }
 
 export async function createDoc(user: SessionUser, body: Record<string, unknown>) {
@@ -152,8 +157,9 @@ export async function createDoc(user: SessionUser, body: Record<string, unknown>
     if (groupId && !(await groupAccess(groupId, user))) throw new NotFoundException('Group not found.');
   }
   if ((await prisma.doc.count({ where: { ownerId: user.id } })) >= MAX_DOCS) throw new BadRequestException(`You can have up to ${MAX_DOCS} documents. Delete some first.`);
-  const doc = await prisma.doc.create({ data: { title, ownerId: user.id, courseId, groupId, parentId } });
-  return { id: doc.id };
+  const kind = kindOf(body.kind);
+  const doc = await prisma.doc.create({ data: { title, ownerId: user.id, courseId, groupId, parentId, kind } });
+  return { id: doc.id, kind };
 }
 
 export async function getDoc(docId: string, user: SessionUser) {
@@ -186,7 +192,7 @@ export async function getDoc(docId: string, user: SessionUser) {
     const mine = new Set([...courses.map((c) => c.id), ...groups.map((g) => g.id)]);
     backlinks = links.map((l) => l.from).filter((f) => user.role === 'ADMIN' || f.ownerId === user.id || f.members.length || (f.courseId && mine.has(f.courseId)) || (f.groupId && mine.has(f.groupId))).map((f) => ({ id: f.id, title: f.title }));
   }
-  return { id: doc.id, title: doc.title, parentId: doc.parentId, space: spaceKey(doc), path, children, backlinks, course, chat: chat ? { id: chat.id, name: chat.isGroup ? chat.name ?? 'Group chat' : 'Chat' } : null, canEdit, canManage, me: { id: user.id, name: user.name }, members: doc.members.map((m) => ({ ...m, name: name.get(m.userId) ?? 'Someone' })) };
+  return { id: doc.id, title: doc.title, kind: kindOf(doc.kind), parentId: doc.parentId, space: spaceKey(doc), path, children, backlinks, course, chat: chat ? { id: chat.id, name: chat.isGroup ? chat.name ?? 'Group chat' : 'Chat' } : null, canEdit, canManage, me: { id: user.id, name: user.name }, members: doc.members.map((m) => ({ ...m, name: name.get(m.userId) ?? 'Someone' })) };
 }
 
 /** PATCH /api/docs/:id { title? } · { parentId: string | null } (move under another page, or to the top). */
@@ -250,7 +256,7 @@ export async function setDocMember(docId: string, user: SessionUser, body: Recor
     if (doc.members.length >= 100) throw new BadRequestException('A document can be shared with up to 100 people.');
     const role = body.role === 'VIEWER' ? 'VIEWER' : 'EDITOR';
     await prisma.docMember.upsert({ where: { docId_userId: { docId, userId: who.id } }, create: { docId, userId: who.id, role }, update: { role } });
-    void notify(who.id, { title: `${user.name} shared a document with you`, body: doc.title, link: `/docs/${docId}`, type: 'info', email: false });
+    await notify(who.id, { title: `${user.name} shared a document with you`, body: doc.title, link: `/docs/${docId}`, type: 'info', email: false });
   }
   // Who may edit changed: everyone reconnects with a fresh ticket.
   await roomFetch(docId, '/kick', { method: 'POST', body: JSON.stringify({}) });
@@ -268,21 +274,28 @@ export async function docTicket(docId: string, user: SessionUser) {
 
 // ── Versions ───────────────────────────────────────────────────────────────────────────────
 
-/** Saves a version (html + its text for the preview). Unnamed ones at most every 2 minutes. */
+/** Saves a version (html + its text for the preview; a spreadsheet's or presentation's data too).
+ *  Unnamed ones at most every 2 minutes. */
 export async function saveVersion(docId: string, user: SessionUser, body: Record<string, unknown>) {
-  const { canEdit } = await access(docId, user);
+  const { doc, canEdit } = await access(docId, user);
   if (!canEdit) throw new ForbiddenException('You can only read this document.');
   const html = typeof body.html === 'string' ? body.html : '';
   if (!html || html.length > MAX_HTML) throw new BadRequestException('That version is empty or too long.');
+  let data: string | null = null;
+  if (doc.kind !== 'doc') {
+    data = typeof body.data === 'string' ? body.data : '';
+    if (!data || data.length > MAX_DATA) throw new BadRequestException('That version is empty or too big to keep.');
+    try { JSON.parse(data); } catch { throw new BadRequestException('That version couldn’t be read.'); }
+  }
   const name = clean(body.name, 80) || null;
   const text = clean(body.text, 300);
   await prisma.doc.update({ where: { id: docId }, data: { preview: text || null } });
   await syncLinks(docId, html);
   if (!name) {
-    const last = await prisma.docVersion.findFirst({ where: { docId }, orderBy: { createdAt: 'desc' }, select: { createdAt: true, html: true } });
-    if (last && (last.html === html || Date.now() - last.createdAt.getTime() < VERSION_GAP_MS)) return { saved: false };
+    const last = await prisma.docVersion.findFirst({ where: { docId }, orderBy: { createdAt: 'desc' }, select: { createdAt: true, html: true, data: true } });
+    if (last && ((last.html === html && last.data === data) || Date.now() - last.createdAt.getTime() < VERSION_GAP_MS)) return { saved: false };
   }
-  await prisma.docVersion.create({ data: { docId, html, authorId: user.id, name } });
+  await prisma.docVersion.create({ data: { docId, html, data, authorId: user.id, name } });
   indexLater(() => indexDoc(docId)); // "Ask your semester" (Stage 4 · 4.5)
   // Keep the latest unnamed versions; named ones stay.
   const old = await prisma.docVersion.findMany({ where: { docId, name: null }, orderBy: { createdAt: 'desc' }, skip: KEEP_AUTO, take: 50, select: { id: true } });
@@ -300,7 +313,7 @@ export async function listVersions(docId: string, user: SessionUser) {
 
 export async function getVersion(docId: string, versionId: string, user: SessionUser) {
   await access(docId, user);
-  const v = await prisma.docVersion.findFirst({ where: { id: versionId, docId }, select: { id: true, html: true, name: true, createdAt: true } });
+  const v = await prisma.docVersion.findFirst({ where: { id: versionId, docId }, select: { id: true, html: true, data: true, name: true, createdAt: true } });
   if (!v) throw new NotFoundException('Version not found.');
   return v;
 }
@@ -323,7 +336,7 @@ export async function addDocComment(docId: string, user: SessionUser, body: Reco
   const people = await audience(doc);
   // @mentions (3.9) notify whoever is named; the owner hears about other comments as before.
   const pinged = await notifyMentioned(text, people, user, { title: doc.title, link: `/docs/${docId}` });
-  if (doc.ownerId !== user.id && !pinged.includes(doc.ownerId)) void notify(doc.ownerId, { title: `${user.name} commented on ${doc.title}`, body: text.slice(0, 160), link: `/docs/${docId}`, type: 'info', email: false });
+  if (doc.ownerId !== user.id && !pinged.includes(doc.ownerId)) await notify(doc.ownerId, { title: `${user.name} commented on ${doc.title}`, body: text.slice(0, 160), link: `/docs/${docId}`, type: 'info', email: false });
   publish(people, { type: 'refresh', keys: [`/api/docs/${docId}/comments`] });
   return c;
 }

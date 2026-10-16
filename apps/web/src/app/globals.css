@@ -1438,6 +1438,23 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 .doc-prose th { background: rgb(99 102 241 / 0.08); font-weight: 600; text-align: left; }
 .doc-prose .selectedCell::after { content: ''; position: absolute; inset: 0; background: rgb(99 102 241 / 0.15); pointer-events: none; }
 .doc-prose .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: rgb(99 102 241); pointer-events: none; }
+/* Word features (Office suite · O3): page breaks, the contents box, find and replace. */
+.doc-prose .doc-page-break { position: relative; margin: 1.5em 0; border-top: 2px dashed rgb(161 161 170); text-align: center; height: 0; }
+.doc-prose .doc-page-break span { position: relative; top: -0.75em; padding: 0 0.6em; background: inherit; font-size: 0.75rem; color: rgb(82 82 91); background-color: rgb(255 255 255); }
+.dark .doc-prose .doc-page-break span { color: rgb(161 161 170); background-color: rgb(24 24 27); }
+.doc-prose .doc-page-break.ProseMirror-selectednode { border-top-color: rgb(99 102 241); }
+.doc-prose .doc-toc { border: 1px solid rgb(228 228 231); border-radius: 0.9em; padding: 0.75em 1em; background: rgb(99 102 241 / 0.04); }
+.dark .doc-prose .doc-toc { border-color: rgb(255 255 255 / 0.1); }
+.doc-prose .doc-toc .doc-toc-title { font-weight: 700; margin: 0 0 0.35em; }
+.doc-prose .doc-toc ol { list-style: none; padding-left: 0; margin: 0; }
+.doc-prose .doc-toc button { color: rgb(67 56 202); text-align: left; padding: 0.1em 0; }
+.dark .doc-prose .doc-toc button { color: rgb(165 180 252); }
+.doc-prose .doc-toc button:hover { text-decoration: underline; }
+.doc-prose .doc-toc .doc-toc-empty { color: rgb(82 82 91); font-size: 0.9em; margin: 0; }
+.doc-prose .doc-toc.ProseMirror-selectednode { outline: 3px solid rgb(99 102 241); }
+.doc-prose .doc-find { background: rgb(250 204 21 / 0.45); border-radius: 2px; }
+.doc-prose .doc-find-current { background: rgb(249 115 22 / 0.65); }
+.doc-prose sub, .doc-prose sup { font-size: 0.72em; }
 .doc-prose p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; height: 0; pointer-events: none; color: rgb(161 161 170); }
 /* Other people's carets and selections */
 .collaboration-carets__caret { position: relative; margin: 0 -1px; border-left: 2px solid; border-right: 0; word-break: normal; pointer-events: none; }
