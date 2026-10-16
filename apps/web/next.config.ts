@@ -104,12 +104,20 @@ const nextConfig: NextConfig = {
     // server again (pages hold no personal data; their data refreshes on its own). Faster and fewer
     // Worker requests.
     staleTimes: { dynamic: 300, static: 300 },
+    // The build must fit Cloudflare's build machine (8 GB, 2 CPUs, 20 minutes): webpack runs in its
+    // own process (not on by default with a custom webpack config) and keeps less in memory.
+    webpackBuildWorker: true,
+    webpackMemoryOptimizations: true,
   },
+  // Source maps while pre-rendering pages cost memory and aren't used.
+  enablePrerenderSourceMaps: false,
   // Dependencies are installed by pnpm at the workspace root; trace server files from there so the
   // Cloudflare build (OpenNext) finds every file it needs.
   outputFileTracingRoot: path.join(__dirname, '../..'),
   typescript: {
-    ignoreBuildErrors: false,
+    // Types are checked before every commit (`pnpm typecheck`, AGENTS.md), so the deploy build
+    // doesn't check them again: on Cloudflare's 2-CPU build machine it cost minutes and memory.
+    ignoreBuildErrors: true,
   },
   images: {
     // Cloudflare Workers have no built-in image optimizer (it would need the paid Images binding),
