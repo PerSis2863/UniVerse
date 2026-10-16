@@ -54,7 +54,9 @@ done, where the code is and what's left for each item. Keep that table up to dat
   questions in `drawn` (`drawnOf`). Q7.3 one-way exams and the hard stop (**0147**: answers saved
   one by one in `quiz_attempts.answers`). Q7.4 adaptive practice (**0148**: practice sets and
   `practice_answers`, which count in the Learning DNA at half weight). Q7.5 live quiz game (**0149**,
-  `src/server/live-game.ts`). Next: Q7.6 QTI / GIFT import (a GIFT reader is started, not committed).
+  `src/server/live-game.ts`). Q7.6 question files into the bank (CSV, GIFT, Moodle XML, QTI 1.2 / 2.1,
+  QTI zip: `src/lib/question-import.ts`); send the reader's questions, never the checked ones (their
+  answers are in `meta`, which `cleanQuestion` doesn't read).
   - **Build memory and time (16 Oct):** Cloudflare's build machine has 8 GB, 2 CPUs and 20 minutes. The
     deploy build after PR #61 failed after 29 minutes. Now: webpack in its own process with memory
     optimisations, no type check in the build (run `pnpm typecheck` before every commit, always), 6 GB
