@@ -93,7 +93,7 @@ async function put<T extends { id: string }>(rows: T[], columns: number, existin
  * Scalar columns per table (each written on every row by createMany). Checked against the schema
  * in course-copy.test.ts, so a new column can't push a statement over D1's limit unnoticed.
  */
-export const COLUMNS = { CourseConcept: 7, CourseModule: 11, Material: 8, Quiz: 12, QuizQuestion: 7, Assignment: 22, GradeCategory: 7, GradeAssessment: 4, BankQuestion: 10, ModuleItem: 9, ConceptTag: 5, OralCheck: 13 } as const;
+export const COLUMNS = { CourseConcept: 7, CourseModule: 11, Material: 8, Quiz: 12, QuizQuestion: 7, Assignment: 23, GradeCategory: 7, GradeAssessment: 4, BankQuestion: 10, ModuleItem: 9, ConceptTag: 5, OralCheck: 13 } as const;
 
 /**
  * POST /api/courses/:id/copy/step { target, stage, after?, shiftDays? }: copies up to BATCH rows of
@@ -161,7 +161,7 @@ export async function courseCopyStep(sourceId: string, user: SessionUser, body: 
     case 'assignments': {
       const rows = await prisma.assignment.findMany({ where: { courseId: source.id, ...page }, orderBy: { id: 'asc' }, take });
       const copied = await put(
-        rows.map((a) => ({ id: id(a.id), courseId: t, createdById: user.id, title: a.title, instructions: a.instructions, rubric: a.rubric ?? [], maxScore: a.maxScore, weight: a.weight, dueDate: shifted(a.dueDate, shiftDays), status: 'OPEN', aiPolicy: a.aiPolicy, latePenalty: a.latePenalty, lateGraceMinutes: a.lateGraceMinutes, latePenaltyMax: a.latePenaltyMax, maxAttempts: a.maxAttempts, submitKind: a.submitKind, groupMode: a.groupMode, peerReviews: a.peerReviews, peerDueDate: shifted(a.peerDueDate, shiftDays), postPolicy: a.postPolicy })),
+        rows.map((a) => ({ id: id(a.id), courseId: t, createdById: user.id, title: a.title, instructions: a.instructions, rubric: a.rubric ?? [], maxScore: a.maxScore, weight: a.weight, dueDate: shifted(a.dueDate, shiftDays), status: 'OPEN', aiPolicy: a.aiPolicy, latePenalty: a.latePenalty, lateGraceMinutes: a.lateGraceMinutes, latePenaltyMax: a.latePenaltyMax, maxAttempts: a.maxAttempts, submitKind: a.submitKind, groupMode: a.groupMode, peerReviews: a.peerReviews, peerDueDate: shifted(a.peerDueDate, shiftDays), postPolicy: a.postPolicy, rubricHelp: a.rubricHelp })),
         COLUMNS.Assignment, (ids) => prisma.assignment.findMany({ where: { id: { in: ids } }, select: { id: true } }), (data) => prisma.assignment.createMany({ data }),
       );
       return { stage, copied, after: next(rows) };

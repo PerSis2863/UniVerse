@@ -38,7 +38,7 @@ interface Env {
 }
 
 // Endpoints that cost money or send email per call.
-const COSTLY = /^\/api\/(ai|summarize|premium\/ai-report|support|upload|core\/files\/upload|core\/safety\/report|student\/guardians|chat\/translate-draft|chat\/conversations\/[^/]+\/translate|tutor\/(?!cards)[^/]+\/(ask|practice|flashcards|sources)|assignments\/submissions\/[^/]+\/draft|impact-rooms\/calls\/[^/]+\/report|boards\/[^/]+\/ai|courses\/[^/]+\/discussion\/[^/]+\/suggest|courses\/[^/]+\/syllabus\/draft)(\/|$)/;
+const COSTLY = /^\/api\/(ai|summarize|premium\/ai-report|support|upload|core\/files\/upload|core\/safety\/report|student\/guardians|chat\/translate-draft|chat\/conversations\/[^/]+\/translate|tutor\/(?!cards)[^/]+\/(ask|practice|flashcards|sources)|assignments\/submissions\/[^/]+\/draft|impact-rooms\/calls\/[^/]+\/report|boards\/[^/]+\/ai|courses\/[^/]+\/discussion\/[^/]+\/suggest|courses\/[^/]+\/syllabus\/draft|assignments\/[^/]+\/rubric-help)(\/|$)/;
 
 // Sign-in steps someone could try over and over: the demo sign-in (per address) and the emailed
 // code / passkey second step and sign-up (per signed-in account). Passkey sign-in isn't here: it

@@ -17,6 +17,7 @@ import { rulesSentence } from '@/components/assignments/AssignmentRules';
 import { HandInFields, HandedInView, type HandedIn } from '@/components/assignments/HandIn';
 import { StudentPeerReview } from '@/components/assignments/PeerReview';
 import { SubmissionNotes } from '@/components/assignments/SubmissionNotes';
+import { HandInReceipt, RegradeBox, RubricHelpButton, RubricHelpText, type Regrade, type RubricHelpItem } from '@/components/assignments/StudentExtras';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Detail {
@@ -35,6 +36,9 @@ interface Detail {
   groupMode?: 'SHARED' | 'INDIVIDUAL' | null;
   /** Peer review (Stage 5 · B3.2): answers each student reviews. */
   peerReviews?: number;
+  /** A signed receipt of the hand-in, and regrade requests (Stage 5 · B3.5). */
+  receipt?: string | null;
+  regrades?: Regrade[];
   group?: { id: string; name: string; members: { id: string; name: string }[] } | null;
   /** The student's own due date (an extension or extra days), and whether they may hand in (again). */
   myDue?: string | null; extended?: boolean; canHandIn?: boolean; attemptsAllowed?: number | null;
@@ -64,6 +68,8 @@ function StudentAssignmentPage({ id }: { id: string }) {
   const [sending, setSending] = useState(false);
   // A file or link (Stage 5 · B3.2), until handed in.
   const [picked, setPicked] = useState<HandedIn | null>(null);
+  // The rubric in plain words, once asked for.
+  const [help, setHelp] = useState<RubricHelpItem[] | null>(null);
   // The AI receipt or "no AI" declaration handed in with the answer (Stage 5 · D12).
   const [receipt, setReceipt] = useState<ReceiptChoice | null>(null);
   // Drafts are kept on this device as you type (upgrade 4), so nothing is lost offline.
@@ -142,7 +148,10 @@ function StudentAssignmentPage({ id }: { id: string }) {
                 {policy !== 'FREE' && <AiPolicyNote policy={policy} />}
                 <Translatable kind="assignment" id={data.id} text={data.instructions} levels className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />
                 <div>
-                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">How it’s graded ({data.maxScore} points)</h3>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">How it’s graded ({data.maxScore} points)</h3>
+                    {!help && <RubricHelpButton assignmentId={data.id} onHelp={setHelp} />}
+                  </div>
                   <ul className="space-y-1.5">
                     {data.rubric.map((r) => {
                       const got = data.mine?.criteriaScores?.find((c) => c.id === r.id);
@@ -153,6 +162,7 @@ function StudentAssignmentPage({ id }: { id: string }) {
                             <span className="font-semibold text-zinc-900 dark:text-white shrink-0">{got ? `${got.score}/` : ''}{r.points}</span>
                           </div>
                           {got?.comment && <p className="text-xs text-indigo-600 dark:text-indigo-300 mt-0.5">{got.comment}</p>}
+                          <RubricHelpText help={help?.find((h) => h.id === r.id)} />
                         </li>
                       );
                     })}
@@ -165,6 +175,7 @@ function StudentAssignmentPage({ id }: { id: string }) {
                   <p className="flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="w-5 h-5" /> Graded: {data.mine.score}/{data.maxScore}</p>
                   {data.mine.lateDays ? <p className="text-sm text-zinc-700 dark:text-zinc-300">{data.mine.lateWaived || !data.mine.latePenalty ? `Handed in ${data.mine.lateDays} day${data.mine.lateDays === 1 ? '' : 's'} late${data.mine.latePenalty ? ': your teacher waived the penalty.' : '.'}` : `${data.mine.rawScore ?? ''}/${data.maxScore} less ${data.mine.latePenalty}% for handing it in ${data.mine.lateDays} day${data.mine.lateDays === 1 ? '' : 's'} late.`}</p> : null}
                   {reopened && <p className="text-sm font-medium text-sky-800 dark:text-sky-200">Your teacher has let you hand in again. This grade stays until they grade the new version.</p>}
+                  {!reopened && <RegradeBox submissionId={data.mine.id} regrades={data.regrades ?? []} onChanged={() => void mutate()} />}
                   {data.mine.feedback && <Translatable kind="feedback" id={data.mine.id} text={data.mine.feedback} levels className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap" />}
                   {data.mine.feedbackMediaUrl && (
                     <div className="space-y-1.5">
@@ -217,6 +228,7 @@ function StudentAssignmentPage({ id }: { id: string }) {
                 )}
               </section>
               {!!data.peerReviews && <StudentPeerReview assignmentId={data.id} />}
+              {data.mine && <HandInReceipt code={data.receipt ?? null} submittedAt={data.mine.submittedAt} />}
               {data.mine && (data.mine.aiReceipt || policy !== 'FREE') && (
                 <details className="panel px-5 py-3">
                   <summary className="cursor-pointer text-sm font-semibold text-zinc-900 dark:text-white">The AI receipt you handed in</summary>

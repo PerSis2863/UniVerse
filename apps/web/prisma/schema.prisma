@@ -292,6 +292,7 @@ model User {
   assignmentGroups      AssignmentGroupMember[] @relation("AssignmentGroups")
   peerReviewsGiven      PeerReview[]            @relation("PeerReviewer")
   submissionNotes       SubmissionNote[]        @relation("SubmissionNotes")
+  regradeRequests       RegradeRequest[]        @relation("RegradeRequests")
   accommodation         StudentAccommodation?  @relation("Accommodation")
   guardianContacts      GuardianContact[]
   impactUpdates         ImpactUpdate[]
@@ -3099,6 +3100,8 @@ model Assignment {
   peerDueDate      DateTime?
   /// When students see grades (Stage 5 · B3.4): AUTO (when returned) or MANUAL (after "Post grades")
   postPolicy       String    @default("AUTO")
+  /// The rubric in plain words, made once by AI (Stage 5 · B3.5): JSON { key, criteria: [{ id, plain, great, weak }] }
+  rubricHelp       String?
   peerReviewRows   PeerReview[]
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
@@ -3158,6 +3161,7 @@ model AssignmentSubmission {
   notes              SubmissionNote[]
   /// When its grade reached the gradebook and the student (null: not graded, or held until posted)
   postedAt           DateTime?
+  regrades           RegradeRequest[]
   submittedAt        DateTime   @default(now())
   returnedAt         DateTime?
   updatedAt          DateTime   @updatedAt
@@ -3166,6 +3170,27 @@ model AssignmentSubmission {
   @@index([groupId])
   @@index([studentId])
   @@map("assignment_submissions")
+}
+
+/// A student asking for a grade to be looked at again (Stage 5 · B3.5), and the answer.
+model RegradeRequest {
+  id            String               @id @default(cuid())
+  submissionId  String
+  submission    AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       User                 @relation("RegradeRequests", fields: [studentId], references: [id], onDelete: Cascade)
+  reason        String
+  status        String               @default("OPEN") // OPEN | ANSWERED
+  outcome       String? // CHANGED | SAME
+  reply         String?
+  repliedById   String?
+  repliedByName String?
+  createdAt     DateTime             @default(now())
+  repliedAt     DateTime?
+
+  @@index([submissionId])
+  @@index([status])
+  @@map("regrade_requests")
 }
 
 /// A change to a grade (Stage 5 · B3.4): who, when, from what to what (newScore null: deleted).

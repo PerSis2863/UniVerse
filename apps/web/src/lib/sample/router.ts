@@ -1654,6 +1654,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       { title: 'Week 2', summary: null, items: [{ id: 'sm-i5', kind: 'VIDEO', title: 'Lecture recording', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }] },
     ] });
   }],
+  // Hand-in receipts (Stage 5 · B3.5): none are made in sample mode.
+  [/^\/api\/assignments\/receipts$/, () => ok({ valid: false })],
   // The school's grading scale (Stage 5 · B3.4): the standard one.
   [/^\/api\/grade-scale$/, () => ok({ scale: [{ letter: 'A', min: 90, gpa: 4 }, { letter: 'B', min: 80, gpa: 3 }, { letter: 'C', min: 70, gpa: 2 }, { letter: 'D', min: 60, gpa: 1 }, { letter: 'F', min: 0, gpa: 0 }], maxGpa: 4, custom: false, canEdit: false })],
   // Grade history (Stage 5 · B3.4): none in sample mode.
@@ -2414,6 +2416,9 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/assignments\/([^/]+)\/(extensions|groups|peer|peer\/assign|post-grades)$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/assignments\/submissions\/([^/]+)\/(reopen|notes)$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/accommodations$/, () => { notice(); return ok({ ok: true }); }],
+  // Regrade requests and the rubric in plain words (Stage 5 · B3.5).
+  ['POST', /^\/api\/assignments\/(submissions\/[^/]+\/regrade|regrades\/[^/]+)$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/api\/assignments\/([^/]+)\/rubric-help$/, () => ok({ criteria: [] })],
   // Common Cartridge import: sample mode only shows that it isn't saved.
   ['POST', /^\/api\/courses\/([^/]+)\/import$/, () => { notice(); return ok({ error: 'Sample mode: importing isn’t saved.' }, 400); }],
   // Copy to a new term: sample mode only shows that it can't be saved.

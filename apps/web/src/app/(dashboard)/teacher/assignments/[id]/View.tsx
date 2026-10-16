@@ -23,6 +23,7 @@ import { HandedInView } from '@/components/assignments/HandIn';
 import { GroupModePicker, GroupsEditor, type Group } from '@/components/assignments/AssignmentGroups';
 import { PeerReviewsOf, PeerSettings, type TeacherReview } from '@/components/assignments/PeerReview';
 import { SubmissionNotes } from '@/components/assignments/SubmissionNotes';
+import { ReceiptCheck, RegradeAnswers, type Regrade } from '@/components/assignments/StudentExtras';
 import type { GroupMode } from '@/lib/group-maker';
 import { SUBMIT_KINDS, SUBMIT_LABEL, type SubmitKind } from '@/lib/submit-kinds';
 
@@ -70,6 +71,7 @@ interface Detail {
   groups?: Group[];
   peerReviews?: number; peerDueDate?: string | null; peerReviewList?: TeacherReview[];
   postPolicy?: 'AUTO' | 'MANUAL';
+  regrades?: Regrade[];
   course: { code: string; name: string };
   enrolled: number;
   students?: ClassStudent[];
@@ -240,6 +242,10 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                   <PeerSettings key={`${data.peerReviews}:${data.peerDueDate}`} assignmentId={data.id} peerReviews={data.peerReviews ?? 0} peerDueDate={data.peerDueDate ?? null} canManage={data.canManage !== false} groupWork={!!data.groupMode} reviews={data.peerReviewList ?? []} onChanged={() => void mutate()} />
                 </div>
                 <div>
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Check a hand-in receipt</h3>
+                  <ReceiptCheck />
+                </div>
+                <div>
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Extensions</h3>
                   <Extensions assignmentId={data.id} dueDate={data.dueDate} students={data.students ?? []} extensions={data.extensions ?? []} onChanged={() => void mutate()} />
                 </div>
@@ -275,6 +281,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                       <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{who(s)}</span>
                       <span className="block text-[11px] text-zinc-500">{new Date(s.submittedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}{s.lateDays ? ` · ${s.lateDays} day${s.lateDays === 1 ? '' : 's'} late${s.latePenalty && !s.lateWaived ? ` (−${s.latePenalty}%)` : ''}` : ''}{s.attempts && s.attempts > 1 ? ` · hand-in ${s.attempts}` : ''}{s.offlineAt ? ' · offline' : ''}</span>
                     </span>
+                    {(data.regrades ?? []).some((r) => r.submissionId === s.id && r.status === 'OPEN') && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-amber-500/15 text-amber-800 dark:text-amber-200">Regrade?</span>}
                     {(s.similarity?.peer || s.similarity?.material) && <Copy className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="Similarity to check" />}
                     <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0', (STATUS[s.status] ?? STATUS.SUBMITTED).style)}>{s.status === 'RETURNED' ? `${s.score}/${data.maxScore}${s.postedAt ? '' : ' · not posted'}` : (STATUS[s.status] ?? STATUS.SUBMITTED).label}</span>
                   </button>
@@ -381,6 +388,8 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
           <AiReceiptView receipt={sub.aiReceipt ?? null} policy={detail.aiPolicy} who={sub.student.name.split(' ')[0]} />
         </div>
       )}
+
+      <RegradeAnswers regrades={(detail.regrades ?? []).filter((r) => r.submissionId === sub.id)} onChanged={onChange} />
 
       <SubmissionNotes sub={sub} title="Notes for the student" />
 

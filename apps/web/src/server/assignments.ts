@@ -25,6 +25,7 @@ import { isGroupMode } from '@/lib/group-maker';
 import { MAX_PEER_REVIEWS } from '@/lib/peer-review';
 import { reviewsForTeacher } from './peer-review';
 import { logGradeChanges } from './grade-history';
+import { receiptFor, regradesOf } from './student-assignment';
 import { cleanPolicy, dueFor, lateness, mayHandIn, withPenalty, NO_ACCOMMODATION, type Accommodation } from '@/lib/assignment-policy';
 
 // Written assignments graded against a rubric. The AI only drafts: a teacher reviews every
@@ -196,7 +197,7 @@ export async function listAssignments(user: SessionUser, courseId: string | null
       select: {
         id: true, title: true, dueDate: true, status: true, maxScore: true, createdAt: true, course: COURSE,
         // Their own hand-in, or their group's (Stage 5 · B3.2).
-        submissions: { where: { OR: [{ studentId: user.id }, { group: { members: { some: { studentId: user.id } } } }] }, take: 1, select: { status: true, score: true, memberGrades: true, postedAt: true, submittedAt: true, returnedAt: true } },
+        submissions: { where: { OR: [{ studentId: user.id }, { group: { members: { some: { studentId: user.id } } } }] }, take: 1, select: { status: true, score: true, memberGrades: true, postedAt: true, lateDays: true, submittedAt: true, returnedAt: true } },
       },
     });
     // REOPENED: graded, and the teacher let them hand in again (the last grade shows until then).
@@ -238,12 +239,13 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
   if (!canGrade) {
     const group = assignment.groupMode ? await myGroup(assignmentId, user.id) : null;
     const subId = await handInOf(assignmentId, user.id, group?.id ?? null);
-    const [mine, rules] = await Promise.all([
+    const [mine, rules, regrades] = await Promise.all([
       prisma.assignmentSubmission.findUnique({
         where: { id: subId ?? '' },
         select: { id: true, memberGrades: true, postedAt: true, text: true, fileUrl: true, fileName: true, fileSize: true, linkUrl: true, status: true, submittedAt: true, returnedAt: true, score: true, rawScore: true, feedback: true, criteriaScores: true, feedbackMediaUrl: true, feedbackMediaKind: true, feedbackTranscript: true, aiReceipt: true, attempts: true, lateDays: true, latePenalty: true, lateWaived: true },
       }),
       studentRules(assignmentId, user.id),
+      subId ? regradesOf({ submissionId: subId }) : Promise.resolve([]),
     ]);
     // Until it's returned, a student sees their answer only (never the AI's draft). REOPENED: the
     // teacher let them hand in again after grading (the last grade stays until the next one).
@@ -257,6 +259,9 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
       ...base,
       // Group work (Stage 5 · B3.2): their group, and who handed in.
       group,
+      // A signed receipt of their hand-in, and their regrade requests (Stage 5 · B3.5).
+      receipt: mine ? receiptFor(mine) : null,
+      regrades: returned ? regrades.filter((r) => r.student.id === user.id).map((r) => ({ id: r.id, reason: r.reason, status: r.status, outcome: r.outcome, reply: r.reply, repliedByName: r.repliedByName, createdAt: r.createdAt, repliedAt: r.repliedAt })) : [],
       // The student's own due date (an extension, or extra days) and whether they may hand in (again).
       myDue: due, extended: !!rules.extension || (rules.accommodation.extraDays > 0 && !!assignment.dueDate),
       canHandIn, attemptsAllowed: assignment.maxAttempts === null ? null : assignment.maxAttempts + (rules.extension?.extraAttempts ?? 0),
@@ -267,7 +272,7 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
       } : null,
     };
   }
-  const [submissions, enrolled, extensions, groups, peerReviews] = await Promise.all([
+  const [submissions, enrolled, extensions, groups, peerReviews, regrades] = await Promise.all([
     prisma.assignmentSubmission.findMany({
       where: { assignmentId },
       orderBy: { submittedAt: 'asc' },
@@ -277,6 +282,7 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
     prisma.assignmentExtension.findMany({ where: { assignmentId }, take: 1000, select: { studentId: true, dueDate: true, extraAttempts: true, note: true } }),
     assignment.groupMode ? groupsOf(assignmentId) : Promise.resolve([]),
     assignment.peerReviews ? reviewsForTeacher(assignmentId) : Promise.resolve([]),
+    regradesOf({ assignmentId }),
   ]);
   // Similarity signals (teacher only): the classmate with the most shared phrasing, and the
   // course material the answer borrows most from.
@@ -293,6 +299,8 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
     groups,
     // Every peer review with the reviewer's name (the teaching team only).
     peerReviewList: peerReviews,
+    // Students' regrade requests (Stage 5 · B3.5).
+    regrades,
     submissions: submissions.map(({ signals, ...x }) => {
       const peer = peers.get(x.id);
       return { ...x, aiReceipt: parseReceipt(x.aiReceipt), similarity: { peer: peer ? { name: nameOf.get(peer.id) ?? 'A classmate', percent: Math.round(peer.share * 100) } : null, material: (signals as unknown as Signals | null)?.material ?? null } };
