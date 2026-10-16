@@ -1,5 +1,7 @@
 import prisma from '@/lib/db';
 import { Role } from '@prisma/client';
+import { letter } from '@/lib/gradebook';
+import { scaleFor } from '../grade-scale';
 
 // Ported from the old NestJS API's dashboard controller.
 export class DashboardService {
@@ -71,7 +73,7 @@ export class DashboardService {
     };
   }
 
-  async getTeacherDashboard(user: { id: string }) {
+  async getTeacherDashboard(user: { id: string; organizationId?: string | null }) {
     // Independent queries, run in parallel.
     const [activeCourses, totalStudentsData, pendingGrades, grades, myCoursesRaw, recent] = await Promise.all([
       prisma.course.count({
@@ -129,8 +131,9 @@ export class DashboardService {
       };
     });
 
-    const letter = (p: number) => (p >= 90 ? 'A' : p >= 80 ? 'B' : p >= 70 ? 'C' : p >= 60 ? 'D' : 'F');
-    const gradeDistributionData = ['A', 'B', 'C', 'D', 'F'].map((grade) => ({ grade, count: grades.filter((g) => letter(pct(g)) === grade).length }));
+    // Bands of the school's own scale (Stage 5 · B3.4), highest first.
+    const scale = await scaleFor(user.organizationId);
+    const gradeDistributionData = scale.map((b) => ({ grade: b.letter, count: grades.filter((g) => letter(pct(g), scale)?.letter === b.letter).length }));
 
     // Average score per month for the last 6 months that have grades.
     const byMonth = new Map<string, { label: string; sum: number; n: number; t: number }>();

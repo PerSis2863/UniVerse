@@ -33,11 +33,12 @@ done, where the code is and what's left for each item. Keep that table up to dat
   time; migration **0136**). A student's due date is always `dueFor(...)` and a submission's late %
   is set when handed in (`src/lib/assignment-policy.ts`); graded answers can be REOPENED, so check
   "graded" as RETURNED or REOPENED. Q6.2a: files and links as hand-ins (**0137**); Q6.2b: group assignments (**0138**: a group's hand-in is
-  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0142`.**
+  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0143`.**
   - **16 Oct:** Q6.2c peer review (**0139**), Q6.3 notes on hand-ins (**0140**); Q6.2a/b screens tried in
     a browser; Q6.4a post grades and grade history (**0141**: a grade reaches the gradebook only through
     `publishGrades` in `src/server/assignments.ts`, which sets `postedAt`; students see a grade only when
-    `postedAt` is set). Next: 6.4b school letter scales, 6.5 student side, 6.6 writing replay; code
+    `postedAt` is set); Q6.4b school letter scales (**0142**: always `letter(p, scale)` with the school's
+    scale, `useGradeScale()` in pages). Next: 6.5 student side, 6.6 writing replay; code
     assignments with tests and grade passback to an LMS (LTI AGS, needs a real LMS) are still open.
   - **Stopped here (owner asked to merge, 15 Oct):** Q6.2c peer review is started: only the pairing
     rules are in (`src/lib/peer-review.ts`, tested: everyone reviews and is reviewed k times, never

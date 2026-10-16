@@ -1,4 +1,6 @@
 'use client';
+import { letter } from '@/lib/gradebook';
+import { useGradeScale } from '@/lib/use-grade-scale';
 import useSWR from 'swr';
 import Link from '@/components/ui/Link';
 import { m as motion } from 'framer-motion';
@@ -110,7 +112,6 @@ function LevelRing({ progress }: { progress: number }) {
   );
 }
 
-const letter = (p: number) => (p >= 90 ? 'A' : p >= 80 ? 'B' : p >= 70 ? 'C' : p >= 60 ? 'D' : 'F');
 
 const QUICK_ACTIONS = [
   { icon: BookOpen, label: 'Courses', href: '/student/courses' },
@@ -122,6 +123,8 @@ const QUICK_ACTIONS = [
 ];
 
 export default function StudentDashboard() {
+  // The school's letter grades (Stage 5 · B3.4).
+  const scale = useGradeScale();
   const { user } = useAuthStore();
   const now = useNow();
   const { t } = useLanguageStore();
@@ -366,7 +369,7 @@ export default function StudentDashboard() {
                         <Link key={g.id} href="/student/grades" className="flex items-center gap-3 p-2 -mx-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.03] transition-colors group">
                           <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black shrink-0',
                             tone === 'emerald' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : tone === 'amber' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400')}>
-                            {letter(g.percent)}
+                            {letter(g.percent, scale)?.letter}
                           </span>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-zinc-900 dark:text-white truncate group-hover:text-indigo-500 transition-colors">{g.name}</p>

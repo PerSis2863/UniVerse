@@ -1654,6 +1654,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       { title: 'Week 2', summary: null, items: [{ id: 'sm-i5', kind: 'VIDEO', title: 'Lecture recording', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }] },
     ] });
   }],
+  // The school's grading scale (Stage 5 · B3.4): the standard one.
+  [/^\/api\/grade-scale$/, () => ok({ scale: [{ letter: 'A', min: 90, gpa: 4 }, { letter: 'B', min: 80, gpa: 3 }, { letter: 'C', min: 70, gpa: 2 }, { letter: 'D', min: 60, gpa: 1 }, { letter: 'F', min: 0, gpa: 0 }], maxGpa: 4, custom: false, canEdit: false })],
   // Grade history (Stage 5 · B3.4): none in sample mode.
   [/^\/api\/courses\/([^/]+)\/grade-history$/, () => ok([])],
   // Notes on a hand-in (Stage 5 · B3.3): none in sample mode.

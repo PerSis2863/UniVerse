@@ -8,6 +8,7 @@ import { ChevronRight, Download, FileSpreadsheet, GraduationCap, History, Layers
 import { Sheet } from '@/components/ui/Sheet';
 import { authedJson } from '@/lib/authed-fetch';
 import { finalGrade, letter, type Category } from '@/lib/gradebook';
+import { useGradeScale } from '@/lib/use-grade-scale';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { api, fetcher } from '@/lib/fetcher';
@@ -43,6 +44,7 @@ export default function TeacherGradesPage() {
   const { data: cats, mutate: mutateCats } = useSWR<CategoryView>(catKey, authedJson);
   const [editingCats, setEditingCats] = useState(false);
   const [history, setHistory] = useState(false);
+  const scale = useGradeScale();
 
   const rows = useMemo(() => {
     const grades = data?.grades ?? [];
@@ -52,9 +54,9 @@ export default function TeacherGradesPage() {
       const mine = grades.filter((g) => g.studentId === student.id);
       const r = finalGrade(mine.map((g) => ({ assessment: g.assignmentName, score: g.score, maxScore: g.maxScore })), categories, (a) => of.get(a) ?? null);
       const avg = r.final == null ? null : Math.round(r.final);
-      return { ...student, grades: mine, avg, letter: letter(r.final)?.letter ?? null, byCategory: r.byCategory, latest: mine[0] ?? null };
+      return { ...student, grades: mine, avg, letter: letter(r.final, scale)?.letter ?? null, byCategory: r.byCategory, latest: mine[0] ?? null };
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [data, cats]);
+  }, [data, cats, scale]);
   const assessments = useMemo(() => [...new Set((data?.grades ?? []).map((g) => g.assignmentName))].sort((a, b) => a.localeCompare(b)), [data]);
   const filtered = rows.filter((r) => `${r.name} ${r.email}`.toLowerCase().includes(search.toLowerCase()));
   const selected = rows.find((r) => r.id === detail) ?? null;

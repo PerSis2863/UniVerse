@@ -405,6 +405,8 @@ model Organization {
   ssoTenantId          String?
   ssoEnforced          Boolean   @default(false)
   dataRetentionDays    Int       @default(730)
+  /// The school's letter grades and GPA points (Stage 5 · B3.4): JSON [{ letter, min, gpa }], highest first
+  gradeScale           String?
   oneRosterSyncs       OneRosterSync[]
   oneRosterMappings    OneRosterMapping[]
   apiKeys              ApiKey[]

@@ -1,7 +1,7 @@
 // Report cards (Stage 5 · B15.3): what one student's card says for a term, and the printable page.
 // Import-free apart from the gradebook maths, so the server builds cards and the browser prints them.
 
-import { finalGrade, letter, type Category } from './gradebook';
+import { DEFAULT_SCALE, finalGrade, letter, maxGpa, type Category, type Scale } from './gradebook';
 
 export interface AttendanceCounts { present: number; late: number; absent: number; excused: number }
 export interface CourseLine { code: string; name: string; teacher: string | null; final: number | null; letter: string | null; graded: number; attendance: AttendanceCounts; attendanceRate: number | null }
@@ -10,7 +10,8 @@ export interface ReportCardData {
   term: { title: string; from: string; to: string };
   school: string;
   courses: CourseLine[];
-  overall: { average: number | null; gpa: number | null; attendanceRate: number | null };
+  /** gpaMax: the top of the school's GPA scale (4 on the default one; older cards don't have it). */
+  overall: { average: number | null; gpa: number | null; attendanceRate: number | null; gpaMax?: number };
 }
 
 /** Present or late out of the classes that counted (excused ones don't), in percent. */
@@ -20,19 +21,19 @@ export function attendanceRate(a: AttendanceCounts): number | null {
 }
 
 /** One course's line: the weighted final from its gradebook categories, and attendance. */
-export function courseLine(c: { code: string; name: string; teacher: string | null }, grades: { assessment: string; score: number; maxScore: number }[], categories: Category[], categoryOf: (assessment: string) => string | null, attendance: AttendanceCounts): CourseLine {
+export function courseLine(c: { code: string; name: string; teacher: string | null }, grades: { assessment: string; score: number; maxScore: number }[], categories: Category[], categoryOf: (assessment: string) => string | null, attendance: AttendanceCounts, scale: Scale = DEFAULT_SCALE): CourseLine {
   const f = finalGrade(grades, categories, categoryOf).final;
   const final = f == null ? null : Math.round(f);
-  return { ...c, final, letter: letter(final)?.letter ?? null, graded: grades.length, attendance, attendanceRate: attendanceRate(attendance) };
+  return { ...c, final, letter: letter(final, scale)?.letter ?? null, graded: grades.length, attendance, attendanceRate: attendanceRate(attendance) };
 }
 
-/** The whole card's average (of course finals), GPA (4.0 scale) and attendance. */
-export function overall(courses: CourseLine[]): ReportCardData['overall'] {
+/** The whole card's average (of course finals), GPA (on the school's scale) and attendance. */
+export function overall(courses: CourseLine[], scale: Scale = DEFAULT_SCALE): ReportCardData['overall'] {
   const finals = courses.map((c) => c.final).filter((x): x is number => x != null);
   const sum: AttendanceCounts = courses.reduce((s, c) => ({ present: s.present + c.attendance.present, late: s.late + c.attendance.late, absent: s.absent + c.attendance.absent, excused: s.excused + c.attendance.excused }), { present: 0, late: 0, absent: 0, excused: 0 });
   const average = finals.length ? Math.round(finals.reduce((a, b) => a + b, 0) / finals.length) : null;
-  const gpa = finals.length ? Math.round((finals.reduce((a, f) => a + (letter(f)?.gpa ?? 0), 0) / finals.length) * 100) / 100 : null;
-  return { average, gpa, attendanceRate: attendanceRate(sum) };
+  const gpa = finals.length ? Math.round((finals.reduce((a, f) => a + (letter(f, scale)?.gpa ?? 0), 0) / finals.length) * 100) / 100 : null;
+  return { average, gpa, attendanceRate: attendanceRate(sum), gpaMax: maxGpa(scale) };
 }
 
 const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -42,7 +43,7 @@ const day = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'n
 export function reportCardSection(d: ReportCardData, comment: string | null): string {
   const rows = d.courses.map((c) => `<tr><td><b>${esc(c.code)}</b> ${esc(c.name)}${c.teacher ? `<br><small>${esc(c.teacher)}</small>` : ''}</td><td class="n">${c.final == null ? '—' : `${c.final}%`}</td><td class="n">${esc(c.letter ?? '—')}</td><td class="n">${c.attendanceRate == null ? '—' : `${c.attendanceRate}%`}</td></tr>`).join('');
   return `<section class="card"><header><p class="school">${esc(d.school)}</p><h1>Report card · ${esc(d.term.title)}</h1><p>${esc(d.student.name)}${d.student.email ? ` · ${esc(d.student.email)}` : ''}</p><p class="muted">${day(d.term.from)} – ${day(d.term.to)}</p></header>
-<div class="sum"><div>Average<b>${d.overall.average == null ? '—' : `${d.overall.average}%`}</b></div><div>GPA (4.0)<b>${d.overall.gpa == null ? '—' : d.overall.gpa.toFixed(2)}</b></div><div>Attendance<b>${d.overall.attendanceRate == null ? '—' : `${d.overall.attendanceRate}%`}</b></div></div>
+<div class="sum"><div>Average<b>${d.overall.average == null ? '—' : `${d.overall.average}%`}</b></div><div>GPA (${(d.overall.gpaMax ?? 4).toFixed(1)})<b>${d.overall.gpa == null ? '—' : d.overall.gpa.toFixed(2)}</b></div><div>Attendance<b>${d.overall.attendanceRate == null ? '—' : `${d.overall.attendanceRate}%`}</b></div></div>
 <table><thead><tr><th>Course</th><th class="n">Final</th><th class="n">Grade</th><th class="n">Attendance</th></tr></thead><tbody>${rows || '<tr><td colspan="4">No courses this term.</td></tr>'}</tbody></table>
 ${comment ? `<div class="comment"><b>Comment</b><p>${esc(comment).replace(/\n/g, '<br>')}</p></div>` : ''}
 <p class="muted note">Grades are each course’s weighted final for the term (A ≥ 90, B ≥ 80, C ≥ 70, D ≥ 60, F below). Attendance counts present and late out of the classes held; excused absences don’t count.</p></section>`;

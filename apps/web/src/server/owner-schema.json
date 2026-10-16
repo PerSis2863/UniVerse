@@ -3045,6 +3045,17 @@
      "updatedAt": false
     },
     {
+     "name": "gradeScale",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "oneRosterSyncs",
      "type": "OneRosterSync",
      "kind": "object",
