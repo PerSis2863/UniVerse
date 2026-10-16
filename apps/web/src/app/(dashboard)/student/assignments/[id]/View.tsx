@@ -15,6 +15,7 @@ import { AiPolicyNote, AiReceiptChoice, AiReceiptView, startChoice, type Receipt
 import { isAiPolicy, type AiReceipt } from '@/lib/ai-receipt';
 import { rulesSentence } from '@/components/assignments/AssignmentRules';
 import { HandInFields, HandedInView, type HandedIn } from '@/components/assignments/HandIn';
+import { StudentPeerReview } from '@/components/assignments/PeerReview';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Detail {
@@ -31,6 +32,8 @@ interface Detail {
   submitKind?: 'TEXT' | 'FILE' | 'LINK';
   /** Group work (Stage 5 · B3.2): the student's group (null: not in one yet). */
   groupMode?: 'SHARED' | 'INDIVIDUAL' | null;
+  /** Peer review (Stage 5 · B3.2): answers each student reviews. */
+  peerReviews?: number;
   group?: { id: string; name: string; members: { id: string; name: string }[] } | null;
   /** The student's own due date (an extension or extra days), and whether they may hand in (again). */
   myDue?: string | null; extended?: boolean; canHandIn?: boolean; attemptsAllowed?: number | null;
@@ -210,6 +213,7 @@ function StudentAssignmentPage({ id }: { id: string }) {
                   <p className="text-sm text-zinc-500">{noGroup ? 'You can hand in once you’re in a group.' : 'This assignment is closed. Ask your teacher if you still need to hand it in.'}</p>
                 )}
               </section>
+              {!!data.peerReviews && <StudentPeerReview assignmentId={data.id} />}
               {data.mine && (data.mine.aiReceipt || policy !== 'FREE') && (
                 <details className="panel px-5 py-3">
                   <summary className="cursor-pointer text-sm font-semibold text-zinc-900 dark:text-white">The AI receipt you handed in</summary>

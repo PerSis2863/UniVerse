@@ -1654,6 +1654,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       { title: 'Week 2', summary: null, items: [{ id: 'sm-i5', kind: 'VIDEO', title: 'Lecture recording', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }] },
     ] });
   }],
+  // Peer review (Stage 5 · B3.2): nothing to review in sample mode.
+  [/^\/api\/assignments\/([^/]+)\/peer$/, () => ok({ rubric: [], maxScore: 0, peerDueDate: null, open: true, toDo: [], received: [], receivedLater: false })],
   // A rich lesson page (Stage 5 · B2): a callout, a video with chapters, a quick check and flashcards.
   [/^\/api\/courses\/([^/]+)\/modules\/([^/]+)$/, ({ m }) => {
     if (m[2] !== 'sm-i8') return fail('That page isn’t there any more.', 404);
@@ -2403,7 +2405,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   // The discussion board: an example thread to look at; posting only shows that it isn't saved.
   ['POST', /^\/api\/courses\/([^/]+)\/discussion(\/[^/]+(\/suggest)?)?$/, () => { notice(); return ok({ ok: true }); }],
   // Assignment rules (Stage 5 · B3.1): extensions, another try and extra time aren't saved.
-  ['POST', /^\/api\/assignments\/([^/]+)\/(extensions|groups)$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/api\/assignments\/([^/]+)\/(extensions|groups|peer|peer\/assign)$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/assignments\/submissions\/([^/]+)\/reopen$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/accommodations$/, () => { notice(); return ok({ ok: true }); }],
   // Common Cartridge import: sample mode only shows that it isn't saved.

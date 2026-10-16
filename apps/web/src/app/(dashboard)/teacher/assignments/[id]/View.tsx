@@ -21,6 +21,7 @@ import { Extensions, RulesEditor, rulesSentence, type ClassStudent, type Extensi
 import { withPenalty } from '@/lib/assignment-policy';
 import { HandedInView } from '@/components/assignments/HandIn';
 import { GroupModePicker, GroupsEditor, type Group } from '@/components/assignments/AssignmentGroups';
+import { PeerReviewsOf, PeerSettings, type TeacherReview } from '@/components/assignments/PeerReview';
 import type { GroupMode } from '@/lib/group-maker';
 import { SUBMIT_KINDS, SUBMIT_LABEL, type SubmitKind } from '@/lib/submit-kinds';
 
@@ -64,6 +65,7 @@ interface Detail {
   submitKind?: SubmitKind;
   groupMode?: GroupMode | null;
   groups?: Group[];
+  peerReviews?: number; peerDueDate?: string | null; peerReviewList?: TeacherReview[];
   course: { code: string; name: string };
   enrolled: number;
   students?: ClassStudent[];
@@ -229,6 +231,10 @@ function TeacherAssignmentPage({ id }: { id: string }) {
               <div className="mt-3 pb-1 space-y-5">
                 <RulesEditor key={`${data.latePenalty}:${data.lateGraceMinutes}:${data.latePenaltyMax}:${data.maxAttempts}`} assignmentId={data.id} rules={data} canManage={data.canManage !== false} onSaved={() => void mutate()} />
                 <div>
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Peer review</h3>
+                  <PeerSettings key={`${data.peerReviews}:${data.peerDueDate}`} assignmentId={data.id} peerReviews={data.peerReviews ?? 0} peerDueDate={data.peerDueDate ?? null} canManage={data.canManage !== false} groupWork={!!data.groupMode} reviews={data.peerReviewList ?? []} onChanged={() => void mutate()} />
+                </div>
+                <div>
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Extensions</h3>
                   <Extensions assignmentId={data.id} dueDate={data.dueDate} students={data.students ?? []} extensions={data.extensions ?? []} onChanged={() => void mutate()} />
                 </div>
@@ -370,6 +376,8 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
           <AiReceiptView receipt={sub.aiReceipt ?? null} policy={detail.aiPolicy} who={sub.student.name.split(' ')[0]} />
         </div>
       )}
+
+      <PeerReviewsOf reviews={(detail.peerReviewList ?? []).filter((r) => r.submissionId === sub.id)} rubric={detail.rubric} maxScore={detail.maxScore} />
 
       {(sub.similarity?.peer || sub.similarity?.material) && (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300" role="note">

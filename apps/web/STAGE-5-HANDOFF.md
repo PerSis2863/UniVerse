@@ -33,11 +33,10 @@ done, where the code is and what's left for each item. Keep that table up to dat
   time; migration **0136**). A student's due date is always `dueFor(...)` and a submission's late %
   is set when handed in (`src/lib/assignment-policy.ts`); graded answers can be REOPENED, so check
   "graded" as RETURNED or REOPENED. Q6.2a: files and links as hand-ins (**0137**); Q6.2b: group assignments (**0138**: a group's hand-in is
-  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0139`.**
-  - **Stopped here (owner asked to merge, 15 Oct):** Q6.2c peer review is started: only the pairing
-    rules are in (`src/lib/peer-review.ts`, tested). Still to build: migration 0139, server, routes and
-    screens; then the rest of Q6 (code with tests, PDF annotation, gradebook, student side, writing
-    replay). The Q6.2a/Q6.2b screens weren't tried in a browser yet (their API was).
+  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0140`.**
+  - **16 Oct:** Q6.2c peer review done (**0139**); Q6.2a/Q6.2b screens tried in a browser. Next: Q6.3
+    notes on PDFs, pictures and typed answers (migration 0140), then 6.4 gradebook, 6.5 student side,
+    6.6 writing replay; code assignments with tests are still open in 6.2.
   - **Stopped here (owner asked to merge, 15 Oct):** Q6.2c peer review is started: only the pairing
     rules are in (`src/lib/peer-review.ts`, tested: everyone reviews and is reviewed k times, never
     their own). Still to build: migration 0139 (`assignments.peerReviews`, `peerDueDate`; table

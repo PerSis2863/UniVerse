@@ -22,6 +22,8 @@ import { isAppFileUrl } from '@/lib/storage';
 import { SUBMIT_KINDS, isSubmitKind } from '@/lib/submit-kinds';
 import { groupsOf, myGroup } from './assignment-groups';
 import { isGroupMode } from '@/lib/group-maker';
+import { MAX_PEER_REVIEWS } from '@/lib/peer-review';
+import { reviewsForTeacher } from './peer-review';
 import { cleanPolicy, dueFor, lateness, mayHandIn, withPenalty, NO_ACCOMMODATION, type Accommodation } from '@/lib/assignment-policy';
 
 // Written assignments graded against a rubric. The AI only drafts: a teacher reviews every
@@ -110,6 +112,16 @@ function assignmentFields(body: Record<string, unknown>, partial: boolean) {
   if (!partial && body.groupMode !== undefined && body.groupMode !== null && body.groupMode !== 'NONE') {
     if (!isGroupMode(body.groupMode)) throw new BadRequestException('Choose who hands in.');
     data.groupMode = body.groupMode;
+  }
+  // Peer review (Stage 5 · B3.2): how many answers each student reviews, and by when.
+  if (body.peerReviews !== undefined) {
+    const n = Math.round(Number(body.peerReviews));
+    data.peerReviews = Number.isFinite(n) ? Math.min(MAX_PEER_REVIEWS, Math.max(0, n)) : 0;
+  }
+  if (body.peerDueDate !== undefined) {
+    const d = body.peerDueDate ? new Date(String(body.peerDueDate)) : null;
+    if (d && isNaN(+d)) throw new BadRequestException('That peer review date isn’t valid.');
+    data.peerDueDate = d;
   }
   // What students hand in (Stage 5 · B3.2).
   if (body.submitKind !== undefined) {
@@ -247,7 +259,7 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
       } : null,
     };
   }
-  const [submissions, enrolled, extensions, groups] = await Promise.all([
+  const [submissions, enrolled, extensions, groups, peerReviews] = await Promise.all([
     prisma.assignmentSubmission.findMany({
       where: { assignmentId },
       orderBy: { submittedAt: 'asc' },
@@ -256,6 +268,7 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
     prisma.enrollment.findMany({ where: { courseId: course.id }, orderBy: { student: { name: 'asc' } }, take: 1000, select: { student: { select: { id: true, name: true, accommodation: { select: { extraDays: true, extraTimePct: true } } } } } }),
     prisma.assignmentExtension.findMany({ where: { assignmentId }, take: 1000, select: { studentId: true, dueDate: true, extraAttempts: true, note: true } }),
     assignment.groupMode ? groupsOf(assignmentId) : Promise.resolve([]),
+    assignment.peerReviews ? reviewsForTeacher(assignmentId) : Promise.resolve([]),
   ]);
   // Similarity signals (teacher only): the classmate with the most shared phrasing, and the
   // course material the answer borrows most from.
@@ -270,6 +283,8 @@ export async function assignmentDetail(assignmentId: string, user: SessionUser) 
     students: enrolled.map((e) => ({ id: e.student.id, name: e.student.name, extraDays: e.student.accommodation?.extraDays ?? 0, extraTimePct: e.student.accommodation?.extraTimePct ?? 0 })),
     extensions,
     groups,
+    // Every peer review with the reviewer's name (the teaching team only).
+    peerReviewList: peerReviews,
     submissions: submissions.map(({ signals, ...x }) => {
       const peer = peers.get(x.id);
       return { ...x, aiReceipt: parseReceipt(x.aiReceipt), similarity: { peer: peer ? { name: nameOf.get(peer.id) ?? 'A classmate', percent: Math.round(peer.share * 100) } : null, material: (signals as unknown as Signals | null)?.material ?? null } };
