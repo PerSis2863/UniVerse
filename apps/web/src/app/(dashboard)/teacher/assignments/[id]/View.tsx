@@ -22,6 +22,7 @@ import { withPenalty } from '@/lib/assignment-policy';
 import { HandedInView } from '@/components/assignments/HandIn';
 import { GroupModePicker, GroupsEditor, type Group } from '@/components/assignments/AssignmentGroups';
 import { PeerReviewsOf, PeerSettings, type TeacherReview } from '@/components/assignments/PeerReview';
+import { SubmissionNotes } from '@/components/assignments/SubmissionNotes';
 import type { GroupMode } from '@/lib/group-maker';
 import { SUBMIT_KINDS, SUBMIT_LABEL, type SubmitKind } from '@/lib/submit-kinds';
 
@@ -376,6 +377,8 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
           <AiReceiptView receipt={sub.aiReceipt ?? null} policy={detail.aiPolicy} who={sub.student.name.split(' ')[0]} />
         </div>
       )}
+
+      <SubmissionNotes sub={sub} title="Notes for the student" />
 
       <PeerReviewsOf reviews={(detail.peerReviewList ?? []).filter((r) => r.submissionId === sub.id)} rubric={detail.rubric} maxScore={detail.maxScore} />
 

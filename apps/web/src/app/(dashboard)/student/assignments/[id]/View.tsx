@@ -16,6 +16,7 @@ import { isAiPolicy, type AiReceipt } from '@/lib/ai-receipt';
 import { rulesSentence } from '@/components/assignments/AssignmentRules';
 import { HandInFields, HandedInView, type HandedIn } from '@/components/assignments/HandIn';
 import { StudentPeerReview } from '@/components/assignments/PeerReview';
+import { SubmissionNotes } from '@/components/assignments/SubmissionNotes';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Detail {
@@ -176,6 +177,8 @@ function StudentAssignmentPage({ id }: { id: string }) {
                   )}
                 </section>
               )}
+
+              {returned && data.mine && <SubmissionNotes sub={data.mine} title="Your teacher’s notes" />}
 
               <section className={`panel p-5 space-y-3`}>
                 <div className="flex items-center justify-between">

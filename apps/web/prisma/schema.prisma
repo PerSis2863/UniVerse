@@ -291,6 +291,7 @@ model User {
   assignmentExtensions  AssignmentExtension[]  @relation("AssignmentExtensions")
   assignmentGroups      AssignmentGroupMember[] @relation("AssignmentGroups")
   peerReviewsGiven      PeerReview[]            @relation("PeerReviewer")
+  submissionNotes       SubmissionNote[]        @relation("SubmissionNotes")
   accommodation         StudentAccommodation?  @relation("Accommodation")
   guardianContacts      GuardianContact[]
   impactUpdates         ImpactUpdate[]
@@ -3149,6 +3150,7 @@ model AssignmentSubmission {
   group              AssignmentGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   memberGrades       String?
   peerReviews        PeerReview[]
+  notes              SubmissionNote[]
   submittedAt        DateTime   @default(now())
   returnedAt         DateTime?
   updatedAt          DateTime   @updatedAt
@@ -3157,6 +3159,22 @@ model AssignmentSubmission {
   @@index([groupId])
   @@index([studentId])
   @@map("assignment_submissions")
+}
+
+/// The teaching team's note on a hand-in, pinned to a place (Stage 5 · B3.3, src/lib/note-anchor.ts).
+model SubmissionNote {
+  id           String               @id @default(cuid())
+  submissionId String
+  submission   AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  authorId     String
+  author       User                 @relation("SubmissionNotes", fields: [authorId], references: [id], onDelete: Cascade)
+  anchor       String // JSON: { type: "box", page, x, y, w, h } | { type: "text", start, end, quote }
+  comment      String
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@index([submissionId])
+  @@map("submission_notes")
 }
 
 /// A classmate's anonymous review of an answer (Stage 5 · B3.2, src/server/peer-review.ts).
