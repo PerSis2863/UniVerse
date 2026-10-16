@@ -31,6 +31,9 @@ export const TextStyle = Mark.create({
 
 /** Sets or clears one part of the text style on the selection (the mark goes when nothing's left). */
 export function setTextStyle(editor: Editor, key: 'fontFamily' | 'fontSize' | 'color' | 'backgroundColor', value: string | null) {
+  // Straight back to the text (the editor's own focus waits a frame), so the next key typed after
+  // picking from a drop-down goes to the document, not the drop-down.
+  editor.view.focus();
   const chain = editor.chain().focus().setMark('textStyle', { [key]: value });
   chain.run();
   const attrs = editor.getAttributes('textStyle');

@@ -89,7 +89,7 @@ done, where the code is and what's left for each item. Keep that table up to dat
   sharing, comments, history, offline copies and search come with them; the live connection is
   shared (`src/lib/use-live-doc.ts`). Engines are pure and tested (`src/lib/sheet/`,
   `src/lib/slides/`); Excel and PowerPoint files are written and read without a library. Newer
-  Excel functions must be saved with `_xlfn.` (`excelFormula`) or other apps show #NAME?. **Lesson:**
+  Excel functions must be saved with `_xlfn.` (`excelFormula`) or other apps show #NAME?. **Browser tests and the editor:** ProseMirror reads a keyboard selection a moment after the key; a script that selects and clicks the toolbar in the same instant formats nothing (pause ~150 ms, as a person would). **Lesson:**
   never `void notify(...)` in a request: the unfinished database call left the Worker "hung" for
   the next requests; `await` it (fixed in `src/server/docs.ts` and `src/server/tasks.ts`).
 - **What's left is written up in `STAGE-5-PLAN.md`, section 4 "Remaining work queue"**: 23 entries

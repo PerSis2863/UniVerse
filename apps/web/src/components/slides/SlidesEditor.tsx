@@ -373,14 +373,16 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
               return (
                 <li key={s.id} className="shrink-0 flex gap-1.5 items-start" onContextMenu={(e) => { e.preventDefault(); setCurrent(s.id); setMenu({ id: s.id, x: e.clientX, y: e.clientY }); }}>
                   <span className="text-[11px] tabular-nums text-zinc-600 dark:text-zinc-400 w-4 text-right pt-1">{i + 1}</span>
-                  <button type="button" aria-current={s.id === slide?.id ? 'true' : undefined} aria-label={`Slide ${i + 1}${plainText(s.items.find((x) => x.role === 'title')?.paras) ? `: ${plainText(s.items.find((x) => x.role === 'title')?.paras)}` : ''}${s.hidden ? ' (hidden)' : ''}`}
+                  <button type="button" aria-current={s.id === slide?.id ? 'true' : undefined}
                     onClick={() => go(i)} onKeyDown={(e) => {
                       if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); go(i + 1); (e.currentTarget.closest('ol')?.children[i + 1]?.querySelector('button') as HTMLButtonElement | null)?.focus(); }
                       if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); go(i - 1); (e.currentTarget.closest('ol')?.children[i - 1]?.querySelector('button') as HTMLButtonElement | null)?.focus(); }
                       if ((e.key === 'Delete' || e.key === 'Backspace') && editable && deck.slides.length > 1) { e.preventDefault(); deleteSlides(ydoc, [s.id]); go(i - 1); }
                     }}
                     className={cn('relative rounded-lg overflow-hidden ring-offset-2 ring-offset-zinc-50 dark:ring-offset-[#0b0e1a] transition-shadow', s.id === slide?.id ? 'ring-2 ring-indigo-600 dark:ring-indigo-400' : 'ring-1 ring-zinc-300 dark:ring-white/15 hover:ring-indigo-400', s.hidden && 'opacity-50')}>
-                    <SlideView slide={s} theme={theme} W={W} scale={thumbW / W} mode="thumb" />
+                    {/* Named by its words, not by the picture of the slide (whose text isn't the name). */}
+                    <span className="sr-only">{`Slide ${i + 1}${plainText(s.items.find((x) => x.role === 'title')?.paras) ? `: ${plainText(s.items.find((x) => x.role === 'title')?.paras)}` : ''}${s.hidden ? ' (hidden)' : ''}`}</span>
+                    <div aria-hidden="true"><SlideView slide={s} theme={theme} W={W} scale={thumbW / W} mode="thumb" /></div>
                     {s.hidden && <EyeOff aria-hidden className="absolute top-1 right-1 w-4 h-4 text-zinc-700" />}
                     {commentedSlides.has(i + 1) && <span aria-hidden title="Has a comment" className="absolute top-0 right-0 w-0 h-0 border-t-[10px] border-l-[10px] border-t-amber-500 border-l-transparent" />}
                     {people.length > 0 && <span className="absolute bottom-1 left-1 flex -space-x-1">{people.slice(0, 3).map((p, k) => <span key={k} title={p.name} className="w-4 h-4 rounded-full border border-white text-[8px] font-bold text-white flex items-center justify-center" style={{ background: p.color }}>{p.name[0]}</span>)}</span>}

@@ -64,7 +64,7 @@ export function SheetToolbar({ s, on, canEdit, canUndo, canRedo, frozen, filterO
     { label: 'Find and replace…', onSelect: () => on.dialog('find'), icon: <Search className="w-4 h-4" />, hint: 'Ctrl F' },
   ];
   return (
-    <div role="toolbar" aria-label="Spreadsheet formatting" className="flex items-center gap-0.5 overflow-x-auto [scrollbar-width:none] px-2 py-1.5">
+    <div role="toolbar" aria-label="Spreadsheet formatting" className="relative flex items-center gap-0.5 overflow-x-auto [scrollbar-width:none] px-2 py-1.5">
       {btn(undefined, 'Undo', Undo2, on.undo, off || !canUndo)}
       {btn(undefined, 'Redo', Redo2, on.redo, off || !canRedo)}
       {sep('a')}
