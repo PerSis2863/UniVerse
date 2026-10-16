@@ -49,6 +49,9 @@ export async function GET(req: Request, { params }: Ctx) {
         correct: reveal ? credit >= 1 : undefined,
         credit: reveal ? credit : undefined,
         correctAnswer: reveal ? q.correctAnswer : undefined,
+        // A picture question: the picture always, the right areas once revealed.
+        image: type === 'HOTSPOT' ? metaOf(q).image : undefined,
+        areas: reveal && type === 'HOTSPOT' ? metaOf(q).areas ?? [] : undefined,
         // The right options of a several-answers question, to mark them in the list.
         rightOptions: reveal ? (type === 'MULTI' ? metaOf(q).correct ?? [] : CHOICE_TYPES.includes(type) ? [q.correctAnswer] : undefined) : undefined,
       };

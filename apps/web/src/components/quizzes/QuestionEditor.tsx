@@ -1,8 +1,12 @@
 'use client';
 
-import { CheckCircle2, Plus, X } from 'lucide-react';
-import { QUESTION_TYPES, TYPE_LABELS, metaOf, typeOf, type QuestionInput, type QuestionType, type StoredQuestion } from '@/lib/question-types';
+import { useRef, useState, type PointerEvent } from 'react';
+import { toast } from 'sonner';
+import { CheckCircle2, ImageUp, Loader2, Plus, X } from 'lucide-react';
+import { QUESTION_TYPES, TYPE_LABELS, metaOf, typeOf, type Area, type QuestionInput, type QuestionType, type StoredQuestion } from '@/lib/question-types';
 import { cn } from '@/lib/utils';
+import { uploadChatFile } from '@/components/chat/chat-client';
+import { MathPreview, PictureTap } from './AnswerInput';
 
 // Writing a quiz question of any type (Stage 5 · B4.1): the quiz editor and the question bank. The
 // server checks it with cleanQuestionInput (src/lib/question-types.ts).
@@ -12,12 +16,13 @@ export interface QDraft {
   options: string[]; correct: number; picks: boolean[]; partial: boolean; tf: 'True' | 'False';
   accepted: string; pairs: { left: string; right: string }[]; extra: string; items: string[];
   value: string; tolerance: string; unit: string;
+  image: string; areas: Area[];
 }
 
 export const emptyDraft = (type: QuestionType = 'CHOICE'): QDraft => ({
   type, question: '', options: ['', '', '', ''], correct: 0, picks: [false, false, false, false], partial: false, tf: 'True',
   accepted: '', pairs: [{ left: '', right: '' }, { left: '', right: '' }, { left: '', right: '' }], extra: '', items: ['', '', '', ''],
-  value: '', tolerance: '', unit: '',
+  value: '', tolerance: '', unit: '', image: '', areas: [],
 });
 
 const lines = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean);
@@ -37,6 +42,8 @@ export function toBody(d: QDraft): QuestionInput {
     case 'MATCH': return { ...base, pairs: d.pairs.filter((p) => p.left.trim() && p.right.trim()), extra: lines(d.extra) };
     case 'ORDER': return { ...base, items: d.items.map((x) => x.trim()).filter(Boolean) };
     case 'NUMBER': return { ...base, value: d.value, tolerance: d.tolerance, unit: d.unit };
+    case 'MATH': return { ...base, accepted: lines(d.accepted) };
+    case 'HOTSPOT': return { ...base, image: d.image, areas: d.areas };
   }
 }
 
@@ -117,6 +124,14 @@ export function QuestionEditor({ draft, onChange, idPrefix }: { draft: QDraft; o
         <p className={small}>Write them in the right order; each student sees them mixed up.</p>
       </>}
 
+      {draft.type === 'MATH' && <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">The answer, one way of writing it per line
+        <textarea className={cn(input, 'mt-1 font-mono font-normal')} rows={2} value={draft.accepted} maxLength={1200} spellCheck={false} onChange={(e) => set({ accepted: e.target.value })} placeholder="x^2 + 2x + 1" />
+        <span className="block mt-1 font-normal"><MathPreview text={draft.accepted.split('\n')[0] ?? ''} /></span>
+        <span className={cn(small, 'font-normal block mt-1')}>Any answer equal to it is right: (x+1)^2 and x^2+2x+1 both count. ^ powers, / fractions, sqrt( ) roots; LaTeX works too.</span>
+      </label>}
+
+      {draft.type === 'HOTSPOT' && <PictureAreas draft={draft} set={set} />}
+
       {draft.type === 'NUMBER' && (
         <div className="grid grid-cols-3 gap-2">
           <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Answer<input className={cn(input, 'mt-1')} inputMode="decimal" value={draft.value} maxLength={40} onChange={(e) => set({ value: e.target.value })} placeholder="9.81" /></label>
@@ -124,6 +139,61 @@ export function QuestionEditor({ draft, onChange, idPrefix }: { draft: QDraft; o
           <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Unit<input className={cn(input, 'mt-1')} value={draft.unit} maxLength={20} onChange={(e) => set({ unit: e.target.value })} placeholder="m/s²" /></label>
         </div>
       )}
+    </div>
+  );
+}
+
+/** The picture of a tap-on-the-picture question, and the areas that count: drag on it to mark one. */
+function PictureAreas({ draft, set }: { draft: QDraft; set: (p: Partial<QDraft>) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [drawing, setDrawing] = useState<Area | null>(null);
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const file = useRef<HTMLInputElement>(null);
+  const at = (e: PointerEvent<HTMLDivElement>) => { const r = e.currentTarget.getBoundingClientRect(); return { x: Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100)), y: Math.min(100, Math.max(0, ((e.clientY - r.top) / r.height) * 100)) }; };
+  const box = (a: { x: number; y: number }, b: { x: number; y: number }): Area => {
+    const r = (n: number) => Math.round(n * 10) / 10;
+    return { x: r(Math.min(a.x, b.x)), y: r(Math.min(a.y, b.y)), w: r(Math.abs(a.x - b.x)), h: r(Math.abs(a.y - b.y)) };
+  };
+  const upload = async (f: File | undefined) => {
+    if (!f) return;
+    if (!f.type.startsWith('image/')) { toast.error('Choose a picture (JPEG, PNG or WebP).'); return; }
+    setBusy(true);
+    try { set({ image: await uploadChatFile(f), areas: [] }); }
+    catch (e) { toast.error((e as Error).message || 'The picture couldn’t be uploaded.'); }
+    finally { setBusy(false); }
+  };
+  const field = (i: number, k: keyof Area, label: string) => (
+    <label className="text-[11px] text-zinc-700 dark:text-zinc-300">{label}
+      <input type="number" min={0} max={100} step={0.5} value={draft.areas[i][k]} onChange={(e) => set({ areas: draft.areas.map((a, j) => (j === i ? { ...a, [k]: Number(e.target.value) } : a)) })} className="input py-1 mt-0.5" />
+    </label>
+  );
+  return (
+    <div className="space-y-2">
+      <input ref={file} type="file" accept="image/*" className="sr-only" tabIndex={-1} aria-hidden onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = ''; }} />
+      <button type="button" onClick={() => file.current?.click()} disabled={busy} className="btn-secondary btn-sm">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageUp className="w-4 h-4" />} {draft.image ? 'Change the picture' : 'Upload the picture'}</button>
+      {draft.image && <>
+        <p className={small}>Drag on the picture to mark where a right tap goes (up to 6 areas), or set an area’s position below.</p>
+        <div
+          className="relative inline-block max-w-full rounded-xl overflow-hidden border border-zinc-200 dark:border-white/10 cursor-crosshair touch-none select-none"
+          onPointerDown={(e) => { if (draft.areas.length >= 6) return; e.currentTarget.setPointerCapture(e.pointerId); start.current = at(e); setDrawing(box(start.current, start.current)); }}
+          onPointerMove={(e) => { if (start.current) setDrawing(box(start.current, at(e))); }}
+          onPointerUp={(e) => { if (!start.current) return; const a = box(start.current, at(e)); start.current = null; setDrawing(null); if (a.w >= 1 && a.h >= 1) set({ areas: [...draft.areas, a] }); }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- the teacher's uploaded picture, any size */}
+          <img src={draft.image} alt="The question’s picture" draggable={false} className="block max-h-[22rem] w-auto" />
+          {[...draft.areas, ...(drawing ? [drawing] : [])].map((a, i) => <span key={i} aria-hidden className="absolute border-2 border-emerald-500 bg-emerald-500/20 rounded-md text-[10px] font-bold text-emerald-900 dark:text-emerald-100 px-1" style={{ left: `${a.x}%`, top: `${a.y}%`, width: `${a.w}%`, height: `${a.h}%` }}>{i < draft.areas.length ? i + 1 : ''}</span>)}
+        </div>
+        {draft.areas.length === 0 && <button type="button" onClick={() => set({ areas: [{ x: 40, y: 40, w: 20, h: 20 }] })} className="btn-ghost btn-sm block"><Plus className="w-4 h-4" /> Add an area in the middle</button>}
+        <ul className="space-y-1.5">
+          {draft.areas.map((_, i) => (
+            <li key={i} className="grid grid-cols-[auto_repeat(4,minmax(0,1fr))_auto] gap-1.5 items-end">
+              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 pb-2">Area {i + 1}</span>
+              {field(i, 'x', 'From left %')}{field(i, 'y', 'From top %')}{field(i, 'w', 'Width %')}{field(i, 'h', 'Height %')}
+              <button type="button" onClick={() => set({ areas: draft.areas.filter((__, j) => j !== i) })} aria-label={`Remove area ${i + 1}`} className="btn-ghost btn-icon"><X className="w-4 h-4" /></button>
+            </li>
+          ))}
+        </ul>
+      </>}
     </div>
   );
 }
@@ -143,5 +213,7 @@ export function QuestionKey({ q }: { q: StoredQuestion & { options: string[] } }
       </ul>
     );
   }
+  const m = metaOf(q);
+  if (type === 'HOTSPOT' && m.image) return <div className="mt-2"><PictureTap image={m.image} areas={m.areas} value="" readOnly label="The picture, with the areas that count" /></div>;
   return <p className="mt-2 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"><span className="font-semibold">Answer: </span>{q.correctAnswer}</p>;
 }

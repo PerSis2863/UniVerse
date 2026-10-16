@@ -36,7 +36,7 @@ function quizProblem(q: QuizRow): string | null {
   if (q.examMode) return 'Exam mode needs a connection';
   if (!q.questions.length) return 'No questions yet';
   if (q.questions.length > MAX_QUESTIONS) return `More than ${MAX_QUESTIONS} questions`;
-  if (q.questions.some((x) => PICTURE.test(x.question) || optionsOf(x.options).some((o) => PICTURE.test(o)))) return 'Has pictures';
+  if (q.questions.some((x) => x.type === 'HOTSPOT' || PICTURE.test(x.question) || optionsOf(x.options).some((o) => PICTURE.test(o)))) return 'Has pictures';
   return null;
 }
 

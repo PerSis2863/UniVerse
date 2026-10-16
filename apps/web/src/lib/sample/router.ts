@@ -1657,6 +1657,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   }],
   // Hand-in receipts (Stage 5 · B3.5): none are made in sample mode.
   [/^\/api\/assignments\/receipts$/, () => ok({ valid: false })],
+  // Short answers to check (Stage 5 · B4.1): none in sample mode.
+  [/^\/api\/quizzes\/[^/]+\/short-answers$/, () => ok({ accepted: [], wrong: [] })],
   // Writing replays (Stage 5 · B3.6): none are kept in sample mode.
   [/^\/api\/assignments\/submissions\/[^/]+\/replay$/, () => fail('No writing replay was kept for this answer.', 404)],
   // The school's grading scale (Stage 5 · B3.4): the standard one.
@@ -2421,6 +2423,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/courses\/([^/]+)\/accommodations$/, () => { notice(); return ok({ ok: true }); }],
   // Regrade requests and the rubric in plain words (Stage 5 · B3.5).
   ['POST', /^\/api\/assignments\/(submissions\/[^/]+\/regrade|regrades\/[^/]+)$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/api\/quizzes\/[^/]+\/short-answers(\/suggest)?$/, () => { notice(); return ok({ accepted: [], rescored: 0, suggestions: [] }); }],
   ['POST', /^\/api\/assignments\/([^/]+)\/rubric-help$/, () => ok({ criteria: [] })],
   // Common Cartridge import: sample mode only shows that it isn't saved.
   ['POST', /^\/api\/courses\/([^/]+)\/import$/, () => { notice(); return ok({ error: 'Sample mode: importing isn’t saved.' }, 400); }],

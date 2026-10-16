@@ -1,17 +1,20 @@
 // Quiz question types (Stage 5 · B4.1): one answer, true or false, several answers, short answer,
-// fill in the blanks, matching, putting in order, and a number within a tolerance. Every place that
-// marks or shows an answer goes through here, so each type is marked the same way everywhere.
-// Import-free apart from the seeded shuffle; tested in question-types.test.ts.
+// fill in the blanks, matching, putting in order, a number within a tolerance, a maths expression,
+// and tapping on a picture. Every place that marks or shows an answer goes through here, so each
+// type is marked the same way everywhere. Pure; tested in question-types.test.ts.
 
+import { isUploadedFileUrl } from './file-urls';
+import { parseExpr, sameExpr } from './math-expr';
 import { shuffled } from './seeded-shuffle';
 
-export const QUESTION_TYPES = ['CHOICE', 'TRUE_FALSE', 'MULTI', 'SHORT', 'BLANKS', 'MATCH', 'ORDER', 'NUMBER'] as const;
+export const QUESTION_TYPES = ['CHOICE', 'TRUE_FALSE', 'MULTI', 'SHORT', 'BLANKS', 'MATCH', 'ORDER', 'NUMBER', 'MATH', 'HOTSPOT'] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 export const isQuestionType = (v: unknown): v is QuestionType => typeof v === 'string' && (QUESTION_TYPES as readonly string[]).includes(v);
 
 export const TYPE_LABELS: Record<QuestionType, string> = {
   CHOICE: 'One answer', TRUE_FALSE: 'True or false', MULTI: 'Several answers', SHORT: 'Short answer',
   BLANKS: 'Fill in the blanks', MATCH: 'Matching', ORDER: 'Put in order', NUMBER: 'Number',
+  MATH: 'Maths expression', HOTSPOT: 'Tap on the picture',
 };
 /** Types whose answer is one of its options (the old multiple choice, polls, calls, retries). */
 export const CHOICE_TYPES: readonly QuestionType[] = ['CHOICE', 'TRUE_FALSE'];
@@ -20,7 +23,8 @@ export const CHOICE_TYPES: readonly QuestionType[] = ['CHOICE', 'TRUE_FALSE'];
 export interface Meta {
   /** MULTI: the right options; `partial`: credit for each right pick, less each wrong one. */
   correct?: string[]; partial?: boolean;
-  /** SHORT: accepted answers (case, accents, spaces and end punctuation don't matter). */
+  /** SHORT: accepted answers (case, accents, spaces and end punctuation don't matter). MATH: the
+   *  accepted expressions (any expression equal to one of them is right). */
   accepted?: string[];
   /** BLANKS: accepted answers for each blank, in order. */
   blanks?: string[][];
@@ -30,7 +34,19 @@ export interface Meta {
   order?: string[];
   /** NUMBER: the answer, how far off still counts, a unit shown next to the box. */
   value?: number; tolerance?: number; unit?: string;
+  /** HOTSPOT: the picture, and the areas that count (percent of its width and height). */
+  image?: string; areas?: Area[];
 }
+export interface Area { x: number; y: number; w: number; h: number }
+
+/** A tapped point "x,y" (percent of the picture's width and height). */
+export function readPoint(s: string): { x: number; y: number } | null {
+  const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(s);
+  if (!m) return null;
+  const x = Number(m[1]), y = Number(m[2]);
+  return x >= 0 && x <= 100 && y >= 0 && y <= 100 ? { x, y } : null;
+}
+export const inArea = (p: { x: number; y: number }, a: Area) => p.x >= a.x && p.x <= a.x + a.w && p.y >= a.y && p.y <= a.y + a.h;
 
 /** A question as stored: `options` JSON, `meta` JSON text. */
 export interface StoredQuestion { type?: string | null; question?: string; options: unknown; correctAnswer: string; meta?: string | null }
@@ -113,6 +129,16 @@ export function markAnswer(q: StoredQuestion, given: Given | null | undefined): 
       if (x == null || typeof m.value !== 'number') return { credit: 0, answered: g.trim() !== '' };
       return { credit: Math.abs(x - m.value) <= (m.tolerance ?? 0) + 1e-9 * Math.max(1, Math.abs(m.value)) ? 1 : 0, answered: true };
     }
+    case 'MATH': {
+      const g = asText(given);
+      const mine = parseExpr(g);
+      if (!mine) return { credit: 0, answered: g.trim() !== '' };
+      return { credit: (m.accepted ?? []).some((a) => { const key = parseExpr(a); return !!key && sameExpr(key, mine); }) ? 1 : 0, answered: true };
+    }
+    case 'HOTSPOT': {
+      const p = readPoint(asText(given));
+      return { credit: p && (m.areas ?? []).some((a) => inArea(p, a)) ? 1 : 0, answered: !!p };
+    }
   }
 }
 
@@ -122,7 +148,7 @@ export const isRight = (q: StoredQuestion, given: Given | null | undefined) => m
 /** A student's answer made safe to store (null: nothing usable). */
 export function cleanGiven(q: StoredQuestion, raw: unknown): Given | null {
   const t = typeOf(q);
-  if (t === 'CHOICE' || t === 'TRUE_FALSE' || t === 'SHORT' || t === 'NUMBER') return typeof raw === 'string' && raw.trim() ? raw.slice(0, 500) : null;
+  if (t === 'CHOICE' || t === 'TRUE_FALSE' || t === 'SHORT' || t === 'NUMBER' || t === 'MATH' || t === 'HOTSPOT') return typeof raw === 'string' && raw.trim() ? raw.slice(0, 500) : null;
   if (!Array.isArray(raw)) return null;
   const list = raw.slice(0, 20).map((x) => (typeof x === 'string' ? x.slice(0, MAX_TEXT) : ''));
   return t === 'MULTI' ? [...new Set(list.filter(Boolean))] : list;
@@ -131,7 +157,7 @@ export function cleanGiven(q: StoredQuestion, raw: unknown): Given | null {
 /** An answer in words, for reviews and the teacher. */
 export function answerText(q: StoredQuestion, given: Given | null | undefined): string {
   if (given == null) return '';
-  if (typeof given === 'string') return given;
+  if (typeof given === 'string') return typeOf(q) === 'HOTSPOT' ? (readPoint(given) ? 'A point on the picture' : '') : given;
   const m = metaOf(q);
   switch (typeOf(q)) {
     case 'MATCH': return (m.pairs ?? []).map((p, k) => `${p.left} → ${given[k] || '—'}`).join('; ');
@@ -151,11 +177,13 @@ export function keyText(type: QuestionType, m: Meta, correctAnswer = ''): string
     case 'MATCH': return (m.pairs ?? []).map((p) => `${p.left} → ${p.right}`).join('; ');
     case 'ORDER': return (m.order ?? []).join(' → ');
     case 'NUMBER': return `${m.value ?? ''}${m.tolerance ? ` (± ${m.tolerance})` : ''}${m.unit ? ` ${m.unit}` : ''}`;
+    case 'MATH': return (m.accepted ?? []).join(' / ');
+    case 'HOTSPOT': return (m.areas ?? []).length > 1 ? `One of the ${(m.areas ?? []).length} marked areas` : 'The marked area';
   }
 }
 
 /** What a student may see of a question's settings (no answers). */
-export interface Ask { many?: boolean; blanks?: number; lefts?: string[]; unit?: string }
+export interface Ask { many?: boolean; blanks?: number; lefts?: string[]; unit?: string; image?: string; math?: boolean }
 
 /** A question for a student: no answer key, and options in their own order where that's safe. */
 export function forStudent<Q extends StoredQuestion & { id: string }>(q: Q, seed: string | null): Omit<Q, 'correctAnswer' | 'meta'> & { type: QuestionType; options: string[]; ask: Ask } {
@@ -170,7 +198,9 @@ export function forStudent<Q extends StoredQuestion & { id: string }>(q: Q, seed
   if (t === 'CHOICE' || t === 'MULTI' || t === 'MATCH') options = mix(opts);
   // The items are kept scrambled already, and get each student's own order on top.
   if (t === 'ORDER') options = mix(opts);
-  if (t === 'SHORT' || t === 'NUMBER' || t === 'BLANKS') options = [];
+  if (t === 'SHORT' || t === 'NUMBER' || t === 'BLANKS' || t === 'MATH' || t === 'HOTSPOT') options = [];
+  if (t === 'MATH') ask.math = true;
+  if (t === 'HOTSPOT' && m.image) ask.image = m.image;
   if (t === 'MULTI') ask.many = true;
   if (t === 'BLANKS') ask.blanks = (m.blanks ?? []).length;
   if (t === 'MATCH') ask.lefts = (m.pairs ?? []).map((p) => p.left);
@@ -182,7 +212,7 @@ export function forStudent<Q extends StoredQuestion & { id: string }>(q: Q, seed
 export interface QuestionInput {
   type?: unknown; question?: unknown; options?: unknown; correctAnswer?: unknown;
   correct?: unknown; partial?: unknown; accepted?: unknown; pairs?: unknown; extra?: unknown; items?: unknown;
-  value?: unknown; tolerance?: unknown; unit?: unknown;
+  value?: unknown; tolerance?: unknown; unit?: unknown; image?: unknown; areas?: unknown;
 }
 export interface CleanQuestion { type: QuestionType; question: string; options: string[]; correctAnswer: string; meta: string | null }
 
@@ -261,6 +291,24 @@ export function cleanQuestionInput(b: QuestionInput): CleanQuestion | string {
       const unit = cut(b.unit, 20);
       return done([], { value, ...(tol ? { tolerance: tol } : {}), ...(unit ? { unit } : {}) });
     }
+    case 'MATH': {
+      const accepted = [...new Set((Array.isArray(b.accepted) ? b.accepted : []).map((x) => cut(x, 200)).filter(Boolean))].slice(0, 6);
+      if (!accepted.length) return 'Give the answer as a maths expression, like 2x^2 + 3x.';
+      const unread = accepted.find((a) => !parseExpr(a));
+      if (unread) return `“${unread}” can’t be read as a maths expression.`;
+      return done([], { accepted });
+    }
+    case 'HOTSPOT': {
+      const image = typeof b.image === 'string' ? b.image.trim().slice(0, 600) : '';
+      if (!image || !isUploadedFileUrl(image)) return 'Upload the picture first.';
+      const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 10) / 10 : NaN);
+      const areas = (Array.isArray(b.areas) ? b.areas.slice(0, 6) : []).map((a) => {
+        const o = (a && typeof a === 'object' ? a : {}) as Record<string, unknown>;
+        return { x: num(o.x), y: num(o.y), w: num(o.w), h: num(o.h) };
+      }).filter((a) => a.x >= 0 && a.y >= 0 && a.w >= 1 && a.h >= 1 && a.x + a.w <= 100.05 && a.y + a.h <= 100.05);
+      if (!areas.length) return 'Mark the right area on the picture.';
+      return done([], { image, areas });
+    }
   }
 }
 
@@ -277,5 +325,7 @@ export function toInput(q: StoredQuestion): QuestionInput {
     case 'MATCH': return { type: t, question: q.question, pairs: m.pairs ?? [], extra: options.filter((o) => !(m.pairs ?? []).some((p) => p.right === o)) };
     case 'ORDER': return { type: t, question: q.question, items: m.order ?? [] };
     case 'NUMBER': return { type: t, question: q.question, value: m.value, tolerance: m.tolerance ?? 0, unit: m.unit ?? '' };
+    case 'MATH': return { type: t, question: q.question, accepted: m.accepted ?? [] };
+    case 'HOTSPOT': return { type: t, question: q.question, image: m.image, areas: m.areas ?? [] };
   }
 }

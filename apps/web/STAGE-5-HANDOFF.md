@@ -47,7 +47,9 @@ done, where the code is and what's left for each item. Keep that table up to dat
   `src/lib/question-types.ts`** (`markAnswer` / `isRight`; never `answer === correctAnswer`), show
   questions to students only through `forStudent` (it drops the key and `meta`), and check the
   teacher's input with `cleanQuestionInput`. `correctAnswer` is the answer in words for the newer
-  types. Next: Q7.1b (maths, tap on an image, AI help with short answers), Q7.2 pools and variants.
+  types. Q7.1b: maths expressions (`src/lib/math-expr.ts`, equal at sample points), tap on a picture,
+  and the teacher's short-answer check (accepting an answer changes the key and re-marks every hand-in:
+  `src/server/quiz-marking.ts`). Next: Q7.2 pools and variants.
   - **Build memory:** the Next build now needs more than 4 GB; `package.json` gives it 6 GB (Cloudflare's
     build machines have 8 GB). Don't run vitest or tsc during a build.
   - **Stopped here (owner asked to merge, 15 Oct):** Q6.2c peer review is started: only the pairing

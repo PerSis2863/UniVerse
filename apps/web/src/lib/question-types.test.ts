@@ -87,6 +87,26 @@ describe('question types', () => {
     expect(cleanGiven(one, 'a')).toBe('a');
     expect((cleanGiven(one, 'x'.repeat(2000)) as string).length).toBe(500);
   });
+  it('a maths expression: any equal expression is right', () => {
+    const q = make({ type: 'MATH', question: 'Expand (x+1)^2.', accepted: ['x^2 + 2x + 1'] });
+    expect(isRight(q, '(x+1)^2')).toBe(true);
+    expect(isRight(q, '1 + 2x + x²')).toBe(true);
+    expect(isRight(q, 'x^2 + 1')).toBe(false);
+    expect(markAnswer(q, '2 +')).toEqual({ credit: 0, answered: true });
+    expect(forStudent(q, null).ask.math).toBe(true);
+    expect(cleanQuestionInput({ type: 'MATH', question: 'x', accepted: ['2 +'] })).toMatch(/can’t be read/);
+  });
+  it('tapping on a picture', () => {
+    const q = make({ type: 'HOTSPOT', question: 'Tap the heart.', image: '/api/files/abcdefghijklmnopqrstu', areas: [{ x: 40, y: 30, w: 20, h: 15 }] });
+    expect(isRight(q, '50,35')).toBe(true);
+    expect(isRight(q, '10,10')).toBe(false);
+    expect(markAnswer(q, 'nonsense')).toEqual({ credit: 0, answered: false });
+    expect(forStudent(q, null).ask.image).toBe('/api/files/abcdefghijklmnopqrstu');
+    expect(forStudent(q, null)).not.toHaveProperty('meta');
+    expect(answerText(q, '50,35')).toBe('A point on the picture');
+    expect(cleanQuestionInput({ type: 'HOTSPOT', question: 'x', image: 'https://evil.example/x.png', areas: [{ x: 1, y: 1, w: 5, h: 5 }] })).toBe('Upload the picture first.');
+    expect(cleanQuestionInput({ type: 'HOTSPOT', question: 'x', image: '/api/files/abcdefghijklmnopqrstu', areas: [{ x: 99, y: 1, w: 5, h: 5 }] })).toMatch(/Mark the right area/);
+  });
   it('gives each student their own order, and the same again', () => {
     const q = make({ type: 'CHOICE', question: 'x', options: ['a', 'b', 'c', 'd', 'e', 'f'], correctAnswer: 'a' });
     expect(forStudent(q, 'u1').options).toEqual(forStudent(q, 'u1').options);

@@ -13,6 +13,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { ReadingLevelControl, fetchLevels, useReadingLevel } from '@/components/shared/ReadingLevel';
 import { errorMessage } from '@/lib/api';
 import { QuestionEditor, QuestionKey, draftReady, emptyDraft, toBody } from './QuestionEditor';
+import { ShortAnswerReview } from './ShortAnswerReview';
 import { TYPE_LABELS, typeOf } from '@/lib/question-types';
 
 type Question = { id: string; question: string; options: string[]; correctAnswer: string; points: number; type?: string; meta?: string | null };
@@ -54,10 +55,11 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
 
   const addQuestion = async () => {
     setBusy(true);
+    const sent = draft;
     try {
-      await authedJson(`/api/quizzes/${quizId}/questions`, { method: 'POST', body: JSON.stringify({ ...toBody(draft), points }) });
-      // The next question starts with the same type.
-      setDraft(emptyDraft(draft.type));
+      await authedJson(`/api/quizzes/${quizId}/questions`, { method: 'POST', body: JSON.stringify({ ...toBody(sent), points }) });
+      // The next question starts with the same type (unless they've started another one meanwhile).
+      setDraft((d) => (d === sent ? emptyDraft(sent.type) : d));
       await mutate();
       toast.success('Question added');
     } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
@@ -134,6 +136,7 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
                     <button onClick={() => removeQuestion(q.id)} aria-label="Delete question" className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
                   </div>
                   <QuestionKey q={q} />
+                  {typeOf(q) === 'SHORT' && quiz.submissions.length > 0 && <CheckShortAnswers quizId={quizId} questionId={q.id} onChanged={() => { void mutate(); onChanged(); }} />}
                 </div>
               ))}
 
@@ -162,6 +165,17 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
         )}
       </div>
     </div>
+  );
+}
+
+/** Students' short answers that didn't match the key, loaded when opened. */
+function CheckShortAnswers({ quizId, questionId, onChanged }: { quizId: string; questionId: string; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="mt-2" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary className="cursor-pointer text-xs font-semibold text-indigo-700 dark:text-indigo-300">Check the answers</summary>
+      {open && <div className="mt-2"><ShortAnswerReview quizId={quizId} questionId={questionId} onChanged={onChanged} /></div>}
+    </details>
   );
 }
 
