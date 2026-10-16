@@ -25,6 +25,7 @@ import { PeerReviewsOf, PeerSettings, type TeacherReview } from '@/components/as
 import { SubmissionNotes } from '@/components/assignments/SubmissionNotes';
 import { ReceiptCheck, RegradeAnswers, type Regrade } from '@/components/assignments/StudentExtras';
 import { WritingReplay } from '@/components/assignments/WritingReplay';
+import { RubricLevels } from '@/components/assignments/RubricKeys';
 import type { GroupMode } from '@/lib/group-maker';
 import { SUBMIT_KINDS, SUBMIT_LABEL, type SubmitKind } from '@/lib/submit-kinds';
 
@@ -448,11 +449,13 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
           </div>
         )}
 
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">Quick scoring: in a row of levels, press 0–5 (fifths of the points) and it moves on to the next criterion.</p>
         {detail.rubric.map((r) => (
           <div key={r.id} className="grid sm:grid-cols-[1fr_7rem] gap-2">
             <div>
               <label htmlFor={`score-${r.id}`} className="text-sm font-medium text-zinc-900 dark:text-white">{r.criterion}</label>
               {r.description && <p className="text-xs text-zinc-500">{r.description}</p>}
+              <RubricLevels criterion={r.criterion} points={r.points} value={scores[r.id]?.score ?? ''} onPick={(v) => setScores((s) => ({ ...s, [r.id]: { ...s[r.id], score: String(v) } }))} />
               <textarea
                 aria-label={`Comment on ${r.criterion}`}
                 rows={2}
