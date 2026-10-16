@@ -13,7 +13,8 @@ import { api } from '@/lib/api';
 import { QuizReview } from '@/components/quizzes/QuizReview';
 import { enqueue, isOfflineError, newClientId } from '@/lib/outbox';
 import { getPack, type PackQuiz } from '@/lib/offline-packs';
-import { TabPill } from '@/components/ui/Glide';
+import { AnswerInput, hasAnswer, withShownOrder } from '@/components/quizzes/AnswerInput';
+import type { Given } from '@/lib/question-types';
 import { Translatable } from '@/components/shared/Translatable';
 import type { LevelChoice } from '@/components/shared/ReadingLevel';
 import { readingLevel } from '@/lib/display-prefs';
@@ -32,8 +33,8 @@ export default function QuizzesPage() {
   const [activeQuiz, setActiveQuiz] = useState<FullQuiz | null>(null);
   const [currentQ, setCurrentQ] = useState(0);
   const [reviewing, setReviewing] = useState<string | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  // Each question's answer as its type takes it (Stage 5 · B4.1): text, or a list.
+  const [answers, setAnswers] = useState<Record<string, Given>>({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
@@ -57,6 +58,8 @@ export default function QuizzesPage() {
         if (!saved) throw e;
         return saved;
       });
+      // A quiz whose questions were all taken out has nothing to answer.
+      if (!fullQuiz.questions?.length) { toast.error('This quiz has no questions yet. Ask your teacher.'); return; }
       const started = new Date();
       let ends = started.getTime() + (fullQuiz.timeLimit || 30) * 60_000;
       // Exam mode (B4.4): the clock runs on the server from the first start, so reloading doesn't
@@ -70,7 +73,6 @@ export default function QuizzesPage() {
       setStartedAt(started.toISOString());
       setActiveQuiz(fullQuiz);
       setCurrentQ(0);
-      setSelected(null);
       setAnswers({});
       setTimeLeft(Math.max(0, Math.round((ends - started.getTime()) / 1000))); // the countdown corrects it each second
       setEndsAt(ends);
@@ -86,11 +88,8 @@ export default function QuizzesPage() {
 
   const submitQuiz = async () => {
     if (!activeQuiz) return;
-    const finalAnswers = { ...answers };
-    if (selected !== null) {
-      finalAnswers[activeQuiz.questions[currentQ].id] = activeQuiz.questions[currentQ].options[selected];
-    }
-    
+    const finalAnswers = withShownOrder(activeQuiz.questions, answers);
+
     try {
       const res = await api.post(`/quizzes/${activeQuiz.id}/submit`, { answers: finalAnswers, ...(activeQuiz.examMode ? { integrity: seen.current } : {}) });
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
@@ -147,26 +146,10 @@ export default function QuizzesPage() {
 
   const nextQuestion = () => {
     if (!activeQuiz) return;
-    if (selected !== null) {
-      setAnswers(prev => ({
-        ...prev,
-        [activeQuiz.questions[currentQ].id]: activeQuiz.questions[currentQ].options[selected]
-      }));
-    }
-    if (currentQ < (activeQuiz?.questions.length ?? 0) - 1) {
-      setCurrentQ(q => q + 1);
-      const nextQId = activeQuiz.questions[currentQ + 1].id;
-      const answeredOpt = answers[nextQId];
-      if (answeredOpt) {
-        const optIndex = activeQuiz.questions[currentQ + 1].options.indexOf(answeredOpt);
-        setSelected(optIndex !== -1 ? optIndex : null);
-      } else {
-        setSelected(null);
-      }
-    } else {
-      setConfirming(true);
-    }
+    if (currentQ < activeQuiz.questions.length - 1) setCurrentQ((q) => q + 1);
+    else setConfirming(true);
   };
+  const answeredCount = activeQuiz ? activeQuiz.questions.filter((q) => hasAnswer(answers[q.id])).length : 0;
 
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
@@ -251,7 +234,9 @@ export default function QuizzesPage() {
                       initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
                       key={quiz.id}
                       className="p-4 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors flex items-center justify-between border border-transparent hover:border-zinc-200 dark:hover:border-white/[0.04] cursor-pointer"
+                      role="button" tabIndex={0} aria-label={`Review ${quiz.title}`}
                       onClick={() => setReviewing(quiz.id)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setReviewing(quiz.id); } }}
                     >
                       <div>
                         <h4 className="font-bold text-sm text-zinc-900 dark:text-white">{quiz.title}</h4>
@@ -318,7 +303,7 @@ export default function QuizzesPage() {
                   <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
                   <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Submit Quiz?</h3>
                   <p className="text-sm text-zinc-500 mb-6">
-                    You’ve answered {Object.keys(answers).length + (selected !== null && !answers[activeQuiz.questions[currentQ].id] ? 1 : 0)} of {activeQuiz.questions.length} questions.
+                    You’ve answered {answeredCount} of {activeQuiz.questions.length} questions.
                     Are you sure you want to submit?
                   </p>
                   <div className="flex gap-3">
@@ -336,7 +321,7 @@ export default function QuizzesPage() {
                   {/* Progress */}
                   <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-2">
                     <span>Question {currentQ + 1} of {activeQuiz.questions.length}</span>
-                    <span>{Object.keys(answers).length} answered</span>
+                    <span>{answeredCount} answered</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700 mb-6 overflow-hidden">
                     <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${((currentQ + 1) / activeQuiz.questions.length) * 100}%` }} />
@@ -353,20 +338,14 @@ export default function QuizzesPage() {
                       />
                     </div>
                   ) : <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-5">{activeQuiz.questions[currentQ].question}</h3>}
-                  <div className="space-y-3 mb-6">
-                    {activeQuiz.questions[currentQ].options.map((opt: string, i: number) => (
-                      <button
-                        key={i}
-                        onClick={() => setSelected(i)}
-                        className={`relative isolate w-full text-left p-4 rounded-xl border transition-all text-sm font-medium ${
-                          selected === i
-                            ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                            : 'border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-indigo-500/40 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                        }`}
-                      >{selected === i && <TabPill id="shboard-student-quizzes-page-0" variant="soft" />}
-                        <span className="font-bold mr-2">{LETTERS[i] || '*'}.</span> {opt}
-                      </button>
-                    ))}
+                  <div className="mb-6">
+                    <AnswerInput
+                      key={activeQuiz.questions[currentQ].id}
+                      q={activeQuiz.questions[currentQ]}
+                      label={`Your answer to question ${currentQ + 1}`}
+                      value={answers[activeQuiz.questions[currentQ].id]}
+                      onChange={(v) => setAnswers((a) => ({ ...a, [activeQuiz.questions[currentQ].id]: v }))}
+                    />
                   </div>
                   <div className="flex gap-3 mt-8">
                     <button onClick={nextQuestion} className="w-full btn-primary py-2.5 text-sm flex items-center justify-center gap-2">

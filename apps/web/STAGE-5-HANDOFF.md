@@ -33,7 +33,7 @@ done, where the code is and what's left for each item. Keep that table up to dat
   time; migration **0136**). A student's due date is always `dueFor(...)` and a submission's late %
   is set when handed in (`src/lib/assignment-policy.ts`); graded answers can be REOPENED, so check
   "graded" as RETURNED or REOPENED. Q6.2a: files and links as hand-ins (**0137**); Q6.2b: group assignments (**0138**: a group's hand-in is
-  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0145`.**
+  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0146`.**
   - **16 Oct:** Q6.2c peer review (**0139**), Q6.3 notes on hand-ins (**0140**); Q6.2a/b screens tried in
     a browser; Q6.4a post grades and grade history (**0141**: a grade reaches the gradebook only through
     `publishGrades` in `src/server/assignments.ts`, which sets `postedAt`; students see a grade only when
@@ -42,7 +42,12 @@ done, where the code is and what's left for each item. Keep that table up to dat
     `SESSION_SECRET`; regrade requests; the rubric in plain words, one AI request per rubric); Q6.6
     writing replay (**0144**: kept with the draft on the device, sent with a typed hand-in, read only by
     the teaching team; the teacher's assignment omits it). Still open in Q6: code assignments with
-    tests, rubric number keys, and grade passback to an LMS (LTI AGS, needs a real LMS). Next: Q7.
+    tests and grade passback to an LMS (LTI AGS, needs a real LMS). Q6.3b rubric level keys done.
+- **Q7 (quizzes), 16 Oct:** Q7.1a question types (**0145**). **Mark answers only through
+  `src/lib/question-types.ts`** (`markAnswer` / `isRight`; never `answer === correctAnswer`), show
+  questions to students only through `forStudent` (it drops the key and `meta`), and check the
+  teacher's input with `cleanQuestionInput`. `correctAnswer` is the answer in words for the newer
+  types. Next: Q7.1b (maths, tap on an image, AI help with short answers), Q7.2 pools and variants.
   - **Build memory:** the Next build now needs more than 4 GB; `package.json` gives it 6 GB (Cloudflare's
     build machines have 8 GB). Don't run vitest or tsc during a build.
   - **Stopped here (owner asked to merge, 15 Oct):** Q6.2c peer review is started: only the pairing

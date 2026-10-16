@@ -7,6 +7,7 @@ import { clientIdOf, offlineTime, tellTeacher } from '../offline';
 import { publish } from '../realtime';
 import { pushService } from './push.service';
 import { shuffled } from '@/lib/seeded-shuffle';
+import { cleanGiven, forStudent, markAnswer, type Given } from '@/lib/question-types';
 import { taughtBy } from '@/lib/course-access';
 import { quizMinutes } from '@/lib/assignment-policy';
 
@@ -87,14 +88,14 @@ export class QuizzesService {
     // answer key; grading happens server-side in submitQuiz.
     const enrolled = quiz.status !== 'DRAFT' && (await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId: user.id, courseId: quiz.courseId } }, select: { id: true } }));
     if (!enrolled) throw new NotFoundException('Quiz not found');
-    const questions = rest.questions.map(({ correctAnswer: _hidden, ...q }) => q);
+    // Each question as its type shows it to students, without the key (src/lib/question-types.ts);
+    // shuffled per student when the quiz says so (B4.3): their own order, the same again on reload.
+    // Grading compares the answer text, so the order doesn't matter to it.
+    const seed = quiz.shuffle ? user.id : null;
+    const prepared = rest.questions.map((q) => forStudent(q, seed));
     // Their time limit with any extra time they're allowed.
     const timeLimit = await minutesFor(rest.timeLimit, user.id);
-    // Shuffled per student (B4.3): their own order, the same again on reload. Grading compares
-    // the answer text, so the order doesn't matter to it.
-    if (!quiz.shuffle) return { ...rest, timeLimit, questions };
-    const me = user.id;
-    return { ...rest, timeLimit, questions: shuffled(questions, `${me}:${quiz.id}`).map((q) => ({ ...q, options: Array.isArray(q.options) ? shuffled(q.options as string[], `${me}:${q.id}`) : q.options })) };
+    return { ...rest, timeLimit, questions: seed ? shuffled(prepared, `${seed}:${quiz.id}`) : prepared };
   }
 
   /** Exam mode (B4.4): starts the student's clock on the server (once) and says when it ends. */
@@ -206,15 +207,19 @@ export class QuizzesService {
       throw new ConflictException('You have already submitted this quiz');
     }
 
+    // Each answer checked and marked by its question's type (Stage 5 · B4.1): a share of the points
+    // where the type gives one (several answers, blanks, matching, order). Unknown ids are dropped.
     let score = 0;
     let maxScore = 0;
-
-    quiz.questions.forEach(q => {
+    const kept: Record<string, Given> = {};
+    for (const q of quiz.questions) {
       maxScore += q.points;
-      if (answers[q.id] === q.correctAnswer) {
-        score += q.points;
-      }
-    });
+      const given = cleanGiven(q, answers[q.id]);
+      if (given == null) continue;
+      kept[q.id] = given;
+      score += q.points * markAnswer(q, given).credit;
+    }
+    score = Math.round(score * 100) / 100;
 
     // Exam mode (B4.4): what the browser noticed, and how late it arrived against the server clock.
     let integrity: Prisma.InputJsonObject | undefined;
@@ -234,7 +239,7 @@ export class QuizzesService {
       data: {
         studentId,
         quizId,
-        answers,
+        answers: kept,
         score,
         maxScore,
         ...(integrity ? { integrity } : {}),

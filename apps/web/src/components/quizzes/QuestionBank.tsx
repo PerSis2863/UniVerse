@@ -16,11 +16,13 @@ import { errorMessage } from '@/lib/api';
 import { fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { DIFFICULTIES, parseQuestionCsv, type BankQuestionIn, type Difficulty } from '@/lib/question-bank';
+import { TYPE_LABELS, typeOf, type QuestionInput } from '@/lib/question-types';
+import { QuestionEditor, QuestionKey, draftReady, emptyDraft, toBody } from './QuestionEditor';
 
 // A course's question bank (Stage 5 · B4.1; API: /api/courses/[id]/question-bank). Teachers keep
 // reusable questions with tags and a difficulty, import them from CSV, and add them to quizzes.
 
-export interface BankQuestion { id: string; question: string; options: string[]; correctAnswer: string; points: number; tags: string[]; difficulty: Difficulty | null }
+export interface BankQuestion { id: string; question: string; options: string[]; correctAnswer: string; type?: string; points: number; tags: string[]; difficulty: Difficulty | null }
 type Quiz = { id: string; title: string; courseId?: string; status: string };
 
 const LEVEL: Record<Difficulty, string> = { EASY: 'Easy', MEDIUM: 'Medium', HARD: 'Hard' };
@@ -135,13 +137,15 @@ export function QuestionBank({ courses, quizzes, onAdded }: { courses: { id: str
                   <input type="checkbox" checked={on} onChange={() => setChosen((c) => (on ? c.filter((x) => x !== q.id) : [...c, q.id]))} aria-label={`Select “${q.question}”`} className="mt-1 w-5 h-5 accent-indigo-600 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-zinc-900 dark:text-white">{q.question}</p>
-                    <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                      {q.options.map((o) => <li key={o} className={cn('text-xs px-2 py-0.5 rounded-md', o === q.correctAnswer ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300')}>{o === q.correctAnswer && <CheckCircle2 className="w-3 h-3 inline mr-1" aria-label="Right answer" />}{o}</li>)}
-                    </ul>
+                    {typeOf(q) === 'CHOICE' || typeOf(q) === 'TRUE_FALSE' ? (
+                      <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                        {q.options.map((o) => <li key={o} className={cn('text-xs px-2 py-0.5 rounded-md', o === q.correctAnswer ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300')}>{o === q.correctAnswer && <CheckCircle2 className="w-3 h-3 inline mr-1" aria-label="Right answer" />}{o}</li>)}
+                      </ul>
+                    ) : <QuestionKey q={q} />}
                     <div className="mt-2 flex flex-wrap gap-1.5 items-center">
                       {q.difficulty && <span className={cn('badge', LEVEL_STYLE[q.difficulty])}>{LEVEL[q.difficulty]}</span>}
                       {q.tags.map((t) => <button key={t} type="button" onClick={() => setTag(t)} className="badge badge-blue">#{t}</button>)}
-                      <span className="text-[11px] text-zinc-500">{q.points} pt{q.points === 1 ? '' : 's'}</span>
+                      <span className="text-[11px] text-zinc-600 dark:text-zinc-400">{TYPE_LABELS[typeOf(q)]} · {q.points} pt{q.points === 1 ? '' : 's'}</span>
                     </div>
                   </div>
                   <button type="button" aria-label="Delete question" disabled={busy} onClick={() => void (async () => {
@@ -176,29 +180,17 @@ export function QuestionBank({ courses, quizzes, onAdded }: { courses: { id: str
   );
 }
 
-function NewQuestion({ busy, onClose, onSave }: { busy: boolean; onClose: () => void; onSave: (q: { question: string; options: string[]; correctAnswer: string; points: number; tags: string; difficulty: Difficulty | null }) => Promise<void> }) {
-  const [question, setQuestion] = useState('');
-  const [options, setOptions] = useState(['', '', '', '']);
-  const [correct, setCorrect] = useState(0);
+function NewQuestion({ busy, onClose, onSave }: { busy: boolean; onClose: () => void; onSave: (q: QuestionInput & { points: number; tags: string; difficulty: Difficulty | null }) => Promise<void> }) {
+  // Any question type (Stage 5 · B4.1); the server checks it.
+  const [draft, setDraft] = useState(() => emptyDraft());
   const [points, setPoints] = useState('1');
   const [tags, setTags] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty | ''>('');
-  const filled = options.map((o) => o.trim()).filter(Boolean);
-  const ready = question.trim() && filled.length >= 2 && options[correct]?.trim();
   return (
     <Sheet title="New question" onClose={onClose}
-      footer={<button type="button" disabled={busy || !ready} onClick={() => void onSave({ question: question.trim(), options: filled, correctAnswer: options[correct].trim(), points: Number(points) || 1, tags, difficulty: difficulty || null })} className="btn-primary w-full inline-flex items-center justify-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />}Add to bank</button>}>
+      footer={<button type="button" disabled={busy || !draftReady(draft)} onClick={() => void onSave({ ...toBody(draft), points: Number(points) || 1, tags, difficulty: difficulty || null })} className="btn-primary w-full inline-flex items-center justify-center gap-2">{busy && <Loader2 className="w-4 h-4 animate-spin" />}Add to bank</button>}>
       <div className="space-y-4">
-        <Field label="Question" count={question.length} max={1000}>{(p) => <textarea {...p} className="input min-h-[80px]" value={question} maxLength={1000} onChange={(e) => setQuestion(e.target.value)} />}</Field>
-        <fieldset className="space-y-2">
-          <legend className="label">Answers (pick the right one)</legend>
-          {options.map((o, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input type="radio" name="bank-correct" checked={correct === i} onChange={() => setCorrect(i)} aria-label={`Answer ${i + 1} is right`} className="w-5 h-5 accent-indigo-600" />
-              <input className="input" aria-label={`Answer ${i + 1}`} placeholder={`Answer ${i + 1}${i < 2 ? '' : ' (optional)'}`} value={o} maxLength={300} onChange={(e) => setOptions(options.map((x, j) => (j === i ? e.target.value : x)))} />
-            </div>
-          ))}
-        </fieldset>
+        <QuestionEditor draft={draft} onChange={setDraft} idPrefix="bank" />
         <div className="grid grid-cols-2 gap-3">
           <Field label="Points">{(p) => <input {...p} type="number" min={0.5} max={100} step={0.5} className="input" value={points} onChange={(e) => setPoints(e.target.value)} />}</Field>
           <Field label="Difficulty">{(p) => (

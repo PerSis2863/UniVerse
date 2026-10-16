@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/auth';
 import { buildSampleDb, levelInfo, LEVELS, sid, at, type SampleDb } from './data';
 import { sampleAsk, sampleMetric } from './analytics';
 import { isMetricId } from '@/lib/school-metrics';
+import { answerText, cleanQuestionInput, forStudent, markAnswer, metaOf, typeOf } from '@/lib/question-types';
 
 // Answers the app's API requests from example data while sample mode is on.
 // GETs without a sample answer fall through to the real server (read-only);
@@ -577,7 +578,7 @@ function groupOut(d: SampleDb, g: any) {
 const quizOut = (d: SampleDb, qz: any, withAnswers: boolean) => ({
   id: qz.id, title: qz.title, description: qz.description, dueDate: qz.dueDate, timeLimit: qz.timeLimit, status: qz.status, courseId: qz.courseId, createdAt: at(-10),
   course: { name: course(d, qz.courseId)?.name },
-  questions: qz.questions.map(({ correctAnswer, ...x }: any) => (withAnswers ? { ...x, correctAnswer } : x)),
+  questions: qz.questions.map((x: any) => (withAnswers ? x : forStudent(x, null))),
 });
 
 // ── GET routes ─────────────────────────────────────────────────────────
@@ -1765,7 +1766,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/quizzes\/([^/]+)\/result$/, ({ db: d, m }) => {
     const x = d.quizzes.find((z) => z.id === m[1]); const sub = x && d.submissions[x.id];
     if (!x || !sub) return fail('You haven’t submitted this quiz.', 404);
-    return ok({ title: x.title, score: sub.score, maxScore: sub.maxScore, submittedAt: sub.submittedAt, revealed: true, questions: x.questions.map((qq: any) => ({ id: qq.id, question: qq.question, options: qq.options, points: qq.points, yourAnswer: sub.answers[qq.id] ?? null, correct: sub.answers[qq.id] === qq.correctAnswer, correctAnswer: qq.correctAnswer })) });
+    return ok({ title: x.title, score: sub.score, maxScore: sub.maxScore, submittedAt: sub.submittedAt, revealed: true, questions: x.questions.map((qq: any) => { const credit = markAnswer(qq, sub.answers[qq.id]).credit; return { id: qq.id, type: typeOf(qq), question: qq.question, options: forStudent(qq, null).options, points: qq.points, yourAnswer: sub.answers[qq.id] ?? null, yourText: answerText(qq, sub.answers[qq.id]), correct: credit >= 1, credit, correctAnswer: qq.correctAnswer, rightOptions: typeOf(qq) === 'MULTI' ? metaOf(qq).correct ?? [] : [qq.correctAnswer] }; }) });
   }],
   [/^\/api\/quizzes\/([^/]+)$/, ({ db: d, m }) => {
     const x = d.quizzes.find((z) => z.id === m[1]); if (!x) return fail('Quiz not found.', 404);
@@ -2542,7 +2543,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
     const x = d.quizzes.find((z) => z.id === m[1]); if (!x) return fail('Quiz not found', 404);
     const answers = body.answers ?? {};
     let score = 0, maxScore = 0;
-    for (const qq of x.questions) { maxScore += qq.points; if (answers[qq.id] === qq.correctAnswer) score += qq.points; }
+    for (const qq of x.questions) { maxScore += qq.points; score += qq.points * markAnswer(qq, answers[qq.id]).credit; }
     d.submissions[x.id] = { score, maxScore, answers, submittedAt: new Date().toISOString() };
     return ok({ id: sid('sub'), quizId: x.id, score, maxScore });
   }],
@@ -2556,7 +2557,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
     if ('timeLimit' in body) x.timeLimit = body.timeLimit;
     return ok({ ok: true });
   }],
-  ['POST', /^\/api\/quizzes\/([^/]+)\/questions$/, ({ db: d, m, body }) => { const x = d.quizzes.find((z) => z.id === m[1]); if (!x) return fail('Quiz not found.', 404); const qq = { id: sid('qq'), quizId: x.id, question: body.question, options: body.options, correctAnswer: body.correctAnswer, points: Number(body.points) || 1, order: x.questions.length }; x.questions.push(qq); return ok(qq, 201); }],
+  ['POST', /^\/api\/quizzes\/([^/]+)\/questions$/, ({ db: d, m, body }) => { const x = d.quizzes.find((z) => z.id === m[1]); if (!x) return fail('Quiz not found.', 404); const c = cleanQuestionInput(body); if (typeof c === 'string') return fail(c, 400); const qq = { id: sid('qq'), quizId: x.id, ...c, points: Number(body.points) || 1, order: x.questions.length }; x.questions.push(qq); return ok(qq, 201); }],
   ['DELETE', /^\/api\/quizzes\/([^/]+)\/questions$/, ({ db: d, m, q }) => { const x = d.quizzes.find((z) => z.id === m[1]); if (x) x.questions = x.questions.filter((qq: any) => qq.id !== q.get('qid')); return ok({ ok: true }); }],
 
   ['POST', /^\/grades\/course\/([^/]+)$/, ({ db: d, m, body }) => {

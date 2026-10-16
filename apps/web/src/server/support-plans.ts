@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { isRight, type Given } from '@/lib/question-types';
 import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
@@ -43,7 +44,7 @@ export async function weakTopics(studentId: string, courseId: string): Promise<s
     }),
     prisma.quizSubmission.findMany({
       where: { studentId, quiz: { courseId } }, orderBy: { submittedAt: 'desc' }, take: 8,
-      select: { answers: true, quiz: { select: { title: true, questions: { select: { id: true, question: true, correctAnswer: true } } } } },
+      select: { answers: true, quiz: { select: { title: true, questions: { select: { id: true, question: true, correctAnswer: true, options: true, type: true, meta: true } } } } },
     }),
   ]);
   const out: string[] = [];
@@ -56,8 +57,8 @@ export async function weakTopics(studentId: string, courseId: string): Promise<s
     }
   }
   for (const q of quizzes) {
-    const answers = (q.answers && typeof q.answers === 'object' ? q.answers : {}) as Record<string, unknown>;
-    for (const question of q.quiz.questions) if (answers[question.id] !== question.correctAnswer) out.push(`“${question.question.slice(0, 120)}” (quiz: ${q.quiz.title})`);
+    const answers = (q.answers && typeof q.answers === 'object' ? q.answers : {}) as Record<string, Given>;
+    for (const question of q.quiz.questions) if (!isRight(question, answers[question.id])) out.push(`“${question.question.slice(0, 120)}” (quiz: ${q.quiz.title})`);
   }
   return [...new Set(out)].slice(0, 10);
 }

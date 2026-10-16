@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import type { Given } from '@/lib/question-types';
 import { getSessionUser } from '@/lib/server-auth';
 import { manageableQuiz } from '@/lib/quizzes';
 import { analyseQuiz } from '@/lib/item-analysis';
@@ -24,8 +25,8 @@ export async function GET(req: Request, { params }: Ctx) {
   ]);
   // How each question worked (item analysis, Stage 5 · B4.6); the answers themselves stay here.
   const analysis = analyseQuiz(
-    questions.map((q) => ({ id: q.id, options: Array.isArray(q.options) ? (q.options as string[]) : [], correctAnswer: q.correctAnswer })),
-    submissions.map((sub) => ({ answers: (sub.answers && typeof sub.answers === 'object' ? sub.answers : {}) as Record<string, string> })),
+    questions.map((q) => ({ id: q.id, options: Array.isArray(q.options) ? (q.options as string[]) : [], correctAnswer: q.correctAnswer, type: q.type, meta: q.meta })),
+    submissions.map((sub) => ({ answers: (sub.answers && typeof sub.answers === 'object' ? sub.answers : {}) as Record<string, Given> })),
   );
   return NextResponse.json({ ...quiz, questions, submissions: submissions.map((x) => ({ id: x.id, score: x.score, maxScore: x.maxScore, submittedAt: x.submittedAt, integrity: x.integrity, student: x.student })), analysis }, { headers: { 'Cache-Control': 'no-store' } });
 }

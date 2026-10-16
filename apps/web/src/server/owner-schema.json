@@ -5201,6 +5201,28 @@
      "unique": false,
      "hasDefault": true,
      "updatedAt": false
+    },
+    {
+     "name": "type",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "meta",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
     }
    ]
   },
@@ -17642,6 +17664,28 @@
      "id": false,
      "unique": false,
      "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "type",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "meta",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
      "updatedAt": false
     }
    ]

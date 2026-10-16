@@ -5,9 +5,13 @@
 //    discrimination index D, -1…1). Needs at least 4 students.
 //  - consistency: KR-20 for the whole quiz (0…1; ~0.7 or more is good for a test). Needs at least
 //    5 students and 3 questions.
+// Each question is marked by its type (src/lib/question-types.ts); "right" means fully right, and
+// the answers chosen are counted for the types with options to choose from.
 
-export interface ItemIn { id: string; options: string[]; correctAnswer: string }
-export interface AnswersIn { answers: Record<string, string | undefined | null> }
+import { isRight, markAnswer, metaOf, typeOf, type Given } from './question-types';
+
+export interface ItemIn { id: string; options: string[]; correctAnswer: string; type?: string | null; meta?: string | null }
+export interface AnswersIn { answers: Record<string, Given | undefined | null> }
 export interface ItemResult {
   id: string;
   answered: number;
@@ -23,7 +27,7 @@ const r2 = (x: number) => Math.round(x * 100) / 100;
 
 export function analyseQuiz(items: ItemIn[], subs: AnswersIn[]): { students: number; items: ItemResult[]; consistency: number | null; toFix: number } {
   const n = subs.length;
-  const correct = subs.map((s) => items.map((q) => s.answers[q.id] === q.correctAnswer));
+  const correct = subs.map((s) => items.map((q) => isRight(q, s.answers[q.id])));
   const totals = correct.map((row) => row.filter(Boolean).length);
   // Top and bottom 27% by number right (at least one student each).
   const order = totals.map((t, i) => ({ t, i })).sort((a, b) => b.t - a.t);
@@ -32,19 +36,24 @@ export function analyseQuiz(items: ItemIn[], subs: AnswersIn[]): { students: num
   const lower = order.slice(-g).map((x) => x.i);
 
   const results = items.map((q, qi) => {
-    const answered = subs.filter((s) => s.answers[q.id] != null && s.answers[q.id] !== '').length;
+    const answered = subs.filter((s) => markAnswer(q, s.answers[q.id]).answered).length;
     const rightN = correct.filter((row) => row[qi]).length;
     const right = n ? rightN / n : null;
     const share = (idx: number[]) => idx.filter((i) => correct[i][qi]).length / idx.length;
     const separates = n >= 4 ? share(upper) - share(lower) : null;
-    const counts = q.options.map((option) => ({ option, n: subs.filter((s) => s.answers[q.id] === option).length, correct: option === q.correctAnswer }));
+    const t = typeOf(q);
+    const rightOnes = t === 'MULTI' ? metaOf(q).correct ?? [] : [q.correctAnswer];
+    const chose = (given: Given | undefined | null, option: string) => (Array.isArray(given) ? given.includes(option) : given === option);
+    const counts = t === 'CHOICE' || t === 'TRUE_FALSE' || t === 'MULTI'
+      ? q.options.map((option) => ({ option, n: subs.filter((s) => chose(s.answers[q.id], option)).length, correct: rightOnes.includes(option) }))
+      : [];
     const flags: string[] = [];
     const topWrong = counts.filter((c) => !c.correct).sort((a, b) => b.n - a.n)[0];
     const rightCount = counts.find((c) => c.correct)?.n ?? 0;
     if (right != null && n >= 3 && right < 0.3) flags.push('Most students got this wrong: check the wording and the answer key.');
     if (separates != null && separates < 0) flags.push('Students who did better overall got this wrong more often: the answer key may be wrong, or the question is confusing.');
     else if (separates != null && separates < 0.15 && right != null && right >= 0.3 && right <= 0.9) flags.push('It doesn’t separate students who know the topic from those who don’t.');
-    if (topWrong && n >= 3 && topWrong.n > rightCount) flags.push(`More students chose “${topWrong.option}” than the right answer.`);
+    if (topWrong && n >= 3 && t !== 'MULTI' && topWrong.n > rightCount) flags.push(`More students chose “${topWrong.option}” than the right answer.`);
     const unused = counts.filter((c) => !c.correct && c.n === 0);
     if (n >= 5 && unused.length && unused.length < counts.length - 1) flags.push(`Nobody chose ${unused.map((c) => `“${c.option}”`).join(', ')}: ${unused.length === 1 ? 'it isn’t' : 'they aren’t'} a believable wrong answer.`);
     if (right != null && n >= 5 && right === 1) flags.push('Everyone got this right: fine as a warm-up, but it doesn’t tell you much.');

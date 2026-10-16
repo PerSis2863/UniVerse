@@ -664,9 +664,14 @@ model QuizQuestion {
   quiz          Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
   question      String
   options       Json // string[]
+  /// The right option; for the newer types the answer in words (Stage 5 · B4.1, src/lib/question-types.ts)
   correctAnswer String
   points        Float  @default(1)
   order         Int    @default(0)
+  /// CHOICE, TRUE_FALSE, MULTI, SHORT, BLANKS, MATCH, ORDER or NUMBER
+  type          String @default("CHOICE")
+  /// The answer key and settings as JSON (never sent to students)
+  meta          String?
 
   @@index([quizId])
   @@map("quiz_questions")
@@ -2534,6 +2539,9 @@ model BankQuestion {
   difficulty    String?
   createdById   String?
   createdAt     DateTime @default(now())
+  /// Like QuizQuestion.type and .meta (Stage 5 · B4.1)
+  type          String   @default("CHOICE")
+  meta          String?
 
   @@index([courseId])
   @@map("question_bank")

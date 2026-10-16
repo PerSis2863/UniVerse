@@ -1,5 +1,6 @@
 'use client';
 import { authedJson } from '@/lib/authed-fetch';
+import type { Ask, QuestionType } from './question-types';
 import { isUploadedFileUrl } from '@/lib/file-urls';
 
 // Offline course packs: a course's announcements, materials (the files themselves), reading
@@ -31,7 +32,9 @@ export interface Pack {
   /** Open assignments to write offline (upgrade 4). */
   assignments?: PackAssignment[];
 }
-export interface PackQuiz { id: string; title: string; description: string | null; dueDate: string | null; timeLimit: number | null; questions: { id: string; question: string; options: string[] }[] }
+/** A question as a student sees it: its type (Stage 5 · B4.1) and what that type shows, never the answer. */
+export interface PackQuestion { id: string; question: string; options: string[]; type?: QuestionType; ask?: Ask }
+export interface PackQuiz { id: string; title: string; description: string | null; dueDate: string | null; timeLimit: number | null; questions: PackQuestion[] }
 export interface PackAssignment { id: string; title: string; instructions: string; dueDate: string | null; maxScore: number; rubric: { id: string; criterion: string; points: number }[] }
 
 const MAX_OFFLINE_ITEMS = 10;
@@ -47,9 +50,9 @@ async function openWork(courseId: string): Promise<{ quizzes: PackQuiz[]; assign
   const quizIds = (Array.isArray(quizRows) ? quizRows : []).filter((q) => q.courseId === courseId && q.status === 'PUBLISHED' && !q.completed).slice(0, MAX_OFFLINE_ITEMS).map((q) => q.id);
   const assignmentIds = (Array.isArray(assignmentRows) ? assignmentRows : []).filter((a) => a.status === 'OPEN' && a.mine?.status !== 'RETURNED').slice(0, MAX_OFFLINE_ITEMS).map((a) => a.id);
   const [quizzes, assignments] = await Promise.all([
-    Promise.all(quizIds.map((id) => authedJson<PackQuiz & { questions: { id: string; question: string; options: string[] }[] }>(`/api/core/quizzes/${encodeURIComponent(id)}`).then((q) => ({
+    Promise.all(quizIds.map((id) => authedJson<PackQuiz>(`/api/core/quizzes/${encodeURIComponent(id)}`).then((q) => ({
       id: q.id, title: q.title, description: q.description ?? null, dueDate: q.dueDate ?? null, timeLimit: q.timeLimit ?? null,
-      questions: (q.questions ?? []).map(({ id: qid, question, options }) => ({ id: qid, question, options: Array.isArray(options) ? options : [] })),
+      questions: (q.questions ?? []).map(({ id: qid, question, options, type, ask }) => ({ id: qid, question, options: Array.isArray(options) ? options : [], type, ask })),
     })).catch(() => null))),
     Promise.all(assignmentIds.map((id) => authedJson<PackAssignment>(`/api/assignments/${encodeURIComponent(id)}`).then((a) => ({
       id: a.id, title: a.title, instructions: a.instructions, dueDate: a.dueDate ?? null, maxScore: a.maxScore,

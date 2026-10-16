@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { courseAccess } from '@/lib/course-access';
 import { cleanQuestion, DIFFICULTIES, type BankQuestionIn } from '@/lib/question-bank';
+import { toInput, typeOf } from '@/lib/question-types';
 import { oneOf, strings, text, type Body } from '@/server/body';
 
 // A course's question bank (Stage 5 · B4.1; rules in src/lib/question-bank.ts). Teachers only.
@@ -13,13 +14,14 @@ type Ctx = { params: Promise<{ id: string }> };
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
 const ACTIONS = ['create', 'import', 'delete', 'add-to-quiz', 'save-from-quiz'] as const;
 const MAX_BANK = 2000;
-// D1 allows 100 bound values per statement: insert in small groups.
+// D1 allows 100 bound values per statement: insert in small groups (bank rows have 12 columns,
+// quiz questions 9).
 const groups = <T,>(xs: T[], n: number) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
-const row = (courseId: string, userId: string, q: BankQuestionIn) => ({ courseId, createdById: userId, question: q.question, options: q.options, correctAnswer: q.correctAnswer, points: q.points, tags: q.tags.join(','), difficulty: q.difficulty });
+const row = (courseId: string, userId: string, q: BankQuestionIn) => ({ courseId, createdById: userId, question: q.question, options: q.options, correctAnswer: q.correctAnswer, points: q.points, tags: q.tags.join(','), difficulty: q.difficulty, type: q.type, meta: q.meta });
 
 async function list(courseId: string) {
   const rows = await prisma.bankQuestion.findMany({ where: { courseId }, orderBy: { createdAt: 'desc' }, take: MAX_BANK });
-  return rows.map((r) => ({ id: r.id, question: r.question, options: Array.isArray(r.options) ? r.options as string[] : [], correctAnswer: r.correctAnswer, points: r.points, tags: r.tags ? r.tags.split(',') : [], difficulty: r.difficulty, createdAt: r.createdAt }));
+  return rows.map((r) => ({ id: r.id, question: r.question, options: Array.isArray(r.options) ? r.options as string[] : [], correctAnswer: r.correctAnswer, type: typeOf(r), points: r.points, tags: r.tags ? r.tags.split(',') : [], difficulty: r.difficulty, createdAt: r.createdAt }));
 }
 
 async function teacher(req: Request, { params }: Ctx) {
@@ -75,7 +77,7 @@ export async function POST(req: Request, ctx: Ctx) {
       const last = await prisma.quizQuestion.findFirst({ where: { quizId: quiz.id }, orderBy: { order: 'desc' }, select: { order: true } });
       const start = (last?.order ?? -1) + 1;
       const ordered = ids.map((x) => picked.find((p) => p.id === x)).filter((p): p is (typeof picked)[number] => !!p);
-      for (const part of groups(ordered.map((p, i) => ({ quizId: quiz.id, question: p.question, options: p.options as string[], correctAnswer: p.correctAnswer, points: p.points, order: start + i })), 12)) {
+      for (const part of groups(ordered.map((p, i) => ({ quizId: quiz.id, question: p.question, options: p.options as string[], correctAnswer: p.correctAnswer, points: p.points, order: start + i, type: p.type, meta: p.meta })), 10)) {
         await prisma.quizQuestion.createMany({ data: part });
       }
       return NextResponse.json({ added: ordered.length });
@@ -83,7 +85,7 @@ export async function POST(req: Request, ctx: Ctx) {
     case 'save-from-quiz': {
       const qq = await prisma.quizQuestion.findFirst({ where: { id: text(b.questionId), quiz: { courseId: id } } });
       if (!qq) return bad('Question not found.', 404);
-      const q = cleanQuestion({ question: qq.question, options: qq.options, correctAnswer: qq.correctAnswer, points: qq.points, tags: b.tags, difficulty: b.difficulty });
+      const q = cleanQuestion({ ...toInput(qq), points: qq.points, tags: b.tags, difficulty: b.difficulty });
       if (typeof q === 'string') return bad(q);
       if (await prisma.bankQuestion.findFirst({ where: { courseId: id, question: q.question }, select: { id: true } })) return bad('This question is already in the bank.', 409);
       if ((await count()) >= MAX_BANK) return bad(`A question bank holds up to ${MAX_BANK} questions.`);
