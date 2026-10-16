@@ -294,6 +294,7 @@ model User {
   submissionNotes       SubmissionNote[]        @relation("SubmissionNotes")
   regradeRequests       RegradeRequest[]        @relation("RegradeRequests")
   practiceAnswers       PracticeAnswer[]        @relation("PracticeAnswers")
+  liveGamePlayers       LiveGamePlayer[]
   accommodation         StudentAccommodation?  @relation("Accommodation")
   guardianContacts      GuardianContact[]
   impactUpdates         ImpactUpdate[]
@@ -523,6 +524,7 @@ model Course {
   gradeChanges          GradeChange[]
   quizzes               Quiz[]
   practiceAnswers       PracticeAnswer[]
+  liveGames             LiveGame[]
   classSessions         ClassSession[]
   materials             Material[]
   announcements         Announcement[]
@@ -662,6 +664,7 @@ model Quiz {
   questions   QuizQuestion[]
   submissions QuizSubmission[]
   attempts    QuizAttempt[]
+  liveGames   LiveGame[]
 
   @@index([courseId])
   @@map("quizzes")
@@ -6004,4 +6007,59 @@ model PracticeAnswer {
   @@index([studentId, courseId])
   @@index([questionId])
   @@map("practice_answers")
+}
+
+/// A live quiz game (Stage 5 · B4.5, src/server/live-game.ts)
+model LiveGame {
+  id          String           @id @default(cuid())
+  courseId    String
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  quizId      String
+  quiz        Quiz             @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  hostId      String
+  /// LOBBY | QUESTION | REVEAL | DONE
+  status      String           @default("LOBBY")
+  /// The questions in play order (JSON ids)
+  questionIds String
+  current     Int              @default(-1)
+  seconds     Int              @default(20)
+  questionAt  DateTime?
+  createdAt   DateTime         @default(now())
+  endedAt     DateTime?
+  players     LiveGamePlayer[]
+  answers     LiveGameAnswer[]
+
+  @@index([courseId, status])
+  @@map("live_games")
+}
+
+model LiveGamePlayer {
+  id       String   @id @default(cuid())
+  gameId   String
+  game     LiveGame @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name     String
+  score    Int      @default(0)
+  streak   Int      @default(0)
+  joinedAt DateTime @default(now())
+
+  @@unique([gameId, userId])
+  @@map("live_game_players")
+}
+
+model LiveGameAnswer {
+  id         String   @id @default(cuid())
+  gameId     String
+  game       LiveGame @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  userId     String
+  questionId String
+  answer     String
+  correct    Boolean
+  points     Int      @default(0)
+  ms         Int
+  createdAt  DateTime @default(now())
+
+  @@unique([gameId, userId, questionId])
+  @@map("live_game_answers")
 }

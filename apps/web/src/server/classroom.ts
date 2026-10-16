@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { addPlayer } from './live-game';
 import { courseAccess } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
@@ -191,8 +192,11 @@ export async function joinWithCode(codeRaw: unknown, user: SessionUser) {
   const before = await prisma.attendance.findUnique({ where: { studentId_courseId_date: { studentId: user.id, courseId: match.courseId, date: new Date(date) } }, select: { status: true } });
   let marked: string = before?.status ?? status;
   if (!before || before.status === 'ABSENT') { await attendance.markAttendance(match.courseId, date, user.id, status); marked = status; }
-  publish([match.teacherId], { type: 'refresh', keys: [`/api/classroom/${match.id}`] });
-  return { sessionId: match.id, course: { code: match.course.code, name: match.course.name }, attendance: marked };
+  // A quiz game running for the class (Stage 5 · B4.5): the code puts them in it too.
+  const game = await prisma.liveGame.findFirst({ where: { courseId: match.courseId, status: { not: 'DONE' } }, orderBy: { createdAt: 'desc' }, select: { id: true, hostId: true } });
+  if (game) await addPlayer(game.id, user);
+  publish([match.teacherId], { type: 'refresh', keys: [`/api/classroom/${match.id}`, ...(game ? ['/api/live/game*'] : [])] });
+  return { sessionId: match.id, course: { code: match.course.code, name: match.course.name }, attendance: marked, game: !!game };
 }
 
 async function myCheckin(sessionId: string, user: SessionUser) {

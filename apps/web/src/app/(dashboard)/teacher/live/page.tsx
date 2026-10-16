@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { toast } from 'sonner';
 import { BarChart3, Eye, EyeOff, Loader2, Lock, PenTool, Plus, Radio, Trash2, Unlock } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
@@ -17,6 +17,7 @@ import dynamic from 'next/dynamic';
 const ClassroomPanel = dynamic(() => import('@/components/live/ClassroomPanel').then((m) => m.ClassroomPanel), { ssr: false, loading: () => <div className="h-28 rounded-2xl skeleton" /> });
 // Send to phones with no internet (Stage 5 · D17): moving QR codes. Shown without a course too, for
 // items prepared earlier on this computer.
+const LiveGameHost = dynamic(() => import('@/components/live/LiveGame').then((m) => m.LiveGameHost), { ssr: false, loading: () => <div className="h-28 rounded-2xl skeleton" /> });
 const QrRelayPanel = dynamic(() => import('@/components/live/QrRelayPanel').then((m) => m.QrRelayPanel), { ssr: false, loading: () => <div className="h-28 rounded-2xl skeleton" /> });
 
 interface Poll { id: string; question: string; options: string[]; status: 'OPEN' | 'CLOSED'; showResults: boolean; createdAt: string; results: number[]; total: number }
@@ -51,6 +52,8 @@ export default function TeacherLivePage() {
           </div>
 
           {active && <ClassroomPanel key={active} courseId={active} />}
+
+          {active && <LiveGameHost key={`game-${active}`} courseId={active} />}
 
           <QrRelayPanel key={`relay-${active}`} courseId={active} courseCode={courses?.find((c) => c.id === active)?.code ?? ''} />
 

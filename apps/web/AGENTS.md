@@ -10,7 +10,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Checks before every commit
 
-- `pnpm typecheck` (both tsconfigs).
+- `pnpm typecheck` (both tsconfigs). It's the only type check: the deploy build skips it
+  (`typescript.ignoreBuildErrors` in next.config.ts) to fit Cloudflare's build machine.
 - `pnpm lint` must report **0 errors** (it did from October 2026; keep warnings under 50). For a
   quick check, lint only the files you changed: `npx eslint <files>`.
 - Fix lint errors properly (real types, no setState inside effects, no `Date.now()` while

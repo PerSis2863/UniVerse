@@ -1955,6 +1955,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/chat\/search$/, () => ok([])],
   [/^\/api\/calls\/scheduled$/, ({ q }) => ok(q.get('rooms') ? { classes: [], groups: [], chats: [] } : [])],
   [/^\/api\/live$/, ({ q }) => ok(q.get('courseId') ? { enrolled: 0, polls: [] } : [])],
+  // Live quiz game (Stage 5 · B4.5): none in sample mode.
+  [/^\/api\/live\/game$/, () => ok({ game: null })],
   [/^\/impact\/blockchain-credentials\/pending$/, ({ db: d }) => ok(d.pendingCredentials)],
   [/^\/collaborations\/projects$/, ({ db: d }) => ok(d.projects)],
   [/^\/collaborations\/projects\/([^/]+)$/, ({ db: d, m }) => { const p = d.projects.find((x) => x.id === m[1]); return p ? ok({ ...p, members: [], milestones: [] }) : fail('Not found', 404); }],
@@ -2425,6 +2427,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/courses\/([^/]+)\/accommodations$/, () => { notice(); return ok({ ok: true }); }],
   // Regrade requests and the rubric in plain words (Stage 5 · B3.5).
   ['POST', /^\/api\/assignments\/(submissions\/[^/]+\/regrade|regrades\/[^/]+)$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/api\/live\/game(\/[^/]+)?$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/[^/]+\/practice$/, () => { notice(); return ok({ right: false, credit: 0, tries: 1, hint: null, correctAnswer: null, explain: null, done: true }); }],
   ['POST', /^\/api\/quizzes\/[^/]+\/short-answers(\/suggest)?$/, () => { notice(); return ok({ accepted: [], rescored: 0, suggestions: [] }); }],
   ['POST', /^\/api\/assignments\/([^/]+)\/rubric-help$/, () => ok({ criteria: [] })],

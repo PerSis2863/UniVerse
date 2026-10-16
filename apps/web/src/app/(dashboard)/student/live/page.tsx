@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { LiveGamePlayer } from '@/components/live/LiveGame';
+import { useAuthStore } from '@/store/auth';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { CheckCircle2, Loader2, Radio } from 'lucide-react';
@@ -22,6 +24,7 @@ interface Poll { id: string; question: string; options: string[]; status: 'OPEN'
 
 /** Live polls from your teachers during class. */
 export default function StudentLivePage() {
+  const myName = useAuthStore((s) => s.user?.name);
   // Polls arrive over live updates; re-check while one is open (in case this phone is past the
   // live-push cap), and only without live updates otherwise.
   const openPoll = useLiveInterval(5000, 15_000);
@@ -49,6 +52,7 @@ export default function StudentLivePage() {
       <SectionTabs tabs={STUDENT_COURSE_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-2xl mx-auto space-y-4 stagger">
+          <LiveGamePlayer myName={myName} />
           <StudentClassroom />
           {error ? (
             <p className="text-sm text-rose-500">{(error as Error).message}</p>
