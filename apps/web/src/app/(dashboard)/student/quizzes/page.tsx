@@ -9,18 +9,19 @@ import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import useSWR, { mutate } from 'swr';
 import { fetcher } from '@/lib/fetcher';
-import { api } from '@/lib/api';
+import { ApiError, api } from '@/lib/api';
 import { QuizReview } from '@/components/quizzes/QuizReview';
 import { enqueue, isOfflineError, newClientId } from '@/lib/outbox';
 import { getPack, type PackQuiz } from '@/lib/offline-packs';
-import { TabPill } from '@/components/ui/Glide';
+import { AnswerInput, hasAnswer, withShownOrder } from '@/components/quizzes/AnswerInput';
+import type { Given } from '@/lib/question-types';
 import { Translatable } from '@/components/shared/Translatable';
 import type { LevelChoice } from '@/components/shared/ReadingLevel';
 import { readingLevel } from '@/lib/display-prefs';
 
 interface QuizSummary { id: string; title: string; status: string; completed: boolean; score?: number | null; dueDate?: string | null; timeLimit?: number | null; courseId: string; course: { name: string }; _count?: { questions: number } }
 /** A quiz being taken: its questions (from the server, or the copy saved for offline use). */
-type FullQuiz = PackQuiz & { course?: { name: string } | null; examMode?: boolean; plainWords?: boolean };
+type FullQuiz = PackQuiz & { course?: { name: string } | null; examMode?: boolean; plainWords?: boolean; oneWay?: boolean; hardStop?: boolean };
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 export default function QuizzesPage() {
@@ -32,8 +33,8 @@ export default function QuizzesPage() {
   const [activeQuiz, setActiveQuiz] = useState<FullQuiz | null>(null);
   const [currentQ, setCurrentQ] = useState(0);
   const [reviewing, setReviewing] = useState<string | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  // Each question's answer as its type takes it (Stage 5 · B4.1): text, or a list.
+  const [answers, setAnswers] = useState<Record<string, Given>>({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
@@ -57,20 +58,25 @@ export default function QuizzesPage() {
         if (!saved) throw e;
         return saved;
       });
+      // A quiz whose questions were all taken out has nothing to answer.
+      if (!fullQuiz.questions?.length) { toast.error('This quiz has no questions yet. Ask your teacher.'); return; }
       const started = new Date();
       let ends = started.getTime() + (fullQuiz.timeLimit || 30) * 60_000;
       // Exam mode (B4.4): the clock runs on the server from the first start, so reloading doesn't
       // reset it; full screen is asked for, and leaving it, the tab or pasting is noted.
+      let resumeAt = 0;
       if (fullQuiz.examMode) {
-        const clock = await api.post<{ endsAt: string | null }>(`/quizzes/${fullQuiz.id}/start`).then((r) => r.data).catch(() => null);
+        const clock = await api.post<{ endsAt: string | null; done?: string[] }>(`/quizzes/${fullQuiz.id}/start`).then((r) => r.data).catch(() => null);
         if (clock?.endsAt) ends = new Date(clock.endsAt).getTime();
+        // One way (B4.3): back after a reload, they go on from the first question not yet passed.
+        if (fullQuiz.oneWay && clock?.done?.length) resumeAt = Math.max(0, fullQuiz.questions.findIndex((q) => !clock.done!.includes(q.id)));
+        if (fullQuiz.oneWay && clock?.done?.length === fullQuiz.questions.length) resumeAt = fullQuiz.questions.length - 1;
         seen.current = { left: 0, pasted: 0, fullscreenExits: 0 };
         document.documentElement.requestFullscreen?.().catch(() => {});
       }
       setStartedAt(started.toISOString());
       setActiveQuiz(fullQuiz);
-      setCurrentQ(0);
-      setSelected(null);
+      setCurrentQ(resumeAt);
       setAnswers({});
       setTimeLeft(Math.max(0, Math.round((ends - started.getTime()) / 1000))); // the countdown corrects it each second
       setEndsAt(ends);
@@ -86,11 +92,8 @@ export default function QuizzesPage() {
 
   const submitQuiz = async () => {
     if (!activeQuiz) return;
-    const finalAnswers = { ...answers };
-    if (selected !== null) {
-      finalAnswers[activeQuiz.questions[currentQ].id] = activeQuiz.questions[currentQ].options[selected];
-    }
-    
+    const finalAnswers = withShownOrder(activeQuiz.questions, answers);
+
     try {
       const res = await api.post(`/quizzes/${activeQuiz.id}/submit`, { answers: finalAnswers, ...(activeQuiz.examMode ? { integrity: seen.current } : {}) });
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
@@ -145,28 +148,21 @@ export default function QuizzesPage() {
     };
   }, [activeQuiz, submitted]);
 
-  const nextQuestion = () => {
+  const [saving, setSaving] = useState(false);
+  const nextQuestion = async () => {
     if (!activeQuiz) return;
-    if (selected !== null) {
-      setAnswers(prev => ({
-        ...prev,
-        [activeQuiz.questions[currentQ].id]: activeQuiz.questions[currentQ].options[selected]
-      }));
+    if (currentQ >= activeQuiz.questions.length - 1) { setConfirming(true); return; }
+    // One-way exams (B4.3): the answer is saved on the server before moving on, for good.
+    if (activeQuiz.examMode && activeQuiz.oneWay) {
+      const q = activeQuiz.questions[currentQ];
+      setSaving(true);
+      try { await api.post(`/quizzes/${activeQuiz.id}/answer`, { questionId: q.id, answer: answers[q.id] ?? '' }); }
+      catch (e) { if (!(e instanceof ApiError && e.status === 409)) { toast.error((e as Error).message || 'Your answer couldn’t be saved. Try again.'); return; } }
+      finally { setSaving(false); }
     }
-    if (currentQ < (activeQuiz?.questions.length ?? 0) - 1) {
-      setCurrentQ(q => q + 1);
-      const nextQId = activeQuiz.questions[currentQ + 1].id;
-      const answeredOpt = answers[nextQId];
-      if (answeredOpt) {
-        const optIndex = activeQuiz.questions[currentQ + 1].options.indexOf(answeredOpt);
-        setSelected(optIndex !== -1 ? optIndex : null);
-      } else {
-        setSelected(null);
-      }
-    } else {
-      setConfirming(true);
-    }
+    setCurrentQ((q) => q + 1);
   };
+  const answeredCount = activeQuiz ? activeQuiz.questions.filter((q) => hasAnswer(answers[q.id])).length : 0;
 
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
@@ -251,7 +247,9 @@ export default function QuizzesPage() {
                       initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
                       key={quiz.id}
                       className="p-4 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors flex items-center justify-between border border-transparent hover:border-zinc-200 dark:hover:border-white/[0.04] cursor-pointer"
+                      role="button" tabIndex={0}
                       onClick={() => setReviewing(quiz.id)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setReviewing(quiz.id); } }}
                     >
                       <div>
                         <h4 className="font-bold text-sm text-zinc-900 dark:text-white">{quiz.title}</h4>
@@ -318,7 +316,7 @@ export default function QuizzesPage() {
                   <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
                   <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Submit Quiz?</h3>
                   <p className="text-sm text-zinc-500 mb-6">
-                    You’ve answered {Object.keys(answers).length + (selected !== null && !answers[activeQuiz.questions[currentQ].id] ? 1 : 0)} of {activeQuiz.questions.length} questions.
+                    You’ve answered {answeredCount} of {activeQuiz.questions.length} questions.
                     Are you sure you want to submit?
                   </p>
                   <div className="flex gap-3">
@@ -331,12 +329,14 @@ export default function QuizzesPage() {
                   {activeQuiz.examMode && (
                     <p role="note" className="mb-4 text-xs rounded-xl px-3 py-2 bg-amber-500/10 text-amber-800 dark:text-amber-200">
                       Exam mode: the time limit runs on the server. Your teacher sees how often you left this page, pasted or left full screen. Nothing else is recorded.
+                      {activeQuiz.oneWay && ' One question at a time: once you go on, you can’t go back to a question.'}
+                      {activeQuiz.hardStop && ' When the time is up, no more answers are taken.'}
                     </p>
                   )}
                   {/* Progress */}
                   <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-2">
                     <span>Question {currentQ + 1} of {activeQuiz.questions.length}</span>
-                    <span>{Object.keys(answers).length} answered</span>
+                    <span>{answeredCount} answered</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700 mb-6 overflow-hidden">
                     <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${((currentQ + 1) / activeQuiz.questions.length) * 100}%` }} />
@@ -353,23 +353,17 @@ export default function QuizzesPage() {
                       />
                     </div>
                   ) : <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-5">{activeQuiz.questions[currentQ].question}</h3>}
-                  <div className="space-y-3 mb-6">
-                    {activeQuiz.questions[currentQ].options.map((opt: string, i: number) => (
-                      <button
-                        key={i}
-                        onClick={() => setSelected(i)}
-                        className={`relative isolate w-full text-left p-4 rounded-xl border transition-all text-sm font-medium ${
-                          selected === i
-                            ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                            : 'border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-indigo-500/40 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                        }`}
-                      >{selected === i && <TabPill id="shboard-student-quizzes-page-0" variant="soft" />}
-                        <span className="font-bold mr-2">{LETTERS[i] || '*'}.</span> {opt}
-                      </button>
-                    ))}
+                  <div className="mb-6">
+                    <AnswerInput
+                      key={activeQuiz.questions[currentQ].id}
+                      q={activeQuiz.questions[currentQ]}
+                      label={`Your answer to question ${currentQ + 1}`}
+                      value={answers[activeQuiz.questions[currentQ].id]}
+                      onChange={(v) => setAnswers((a) => ({ ...a, [activeQuiz.questions[currentQ].id]: v }))}
+                    />
                   </div>
                   <div className="flex gap-3 mt-8">
-                    <button onClick={nextQuestion} className="w-full btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
+                    <button onClick={() => void nextQuestion()} disabled={saving} aria-busy={saving || undefined} className="w-full btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
                       {currentQ < activeQuiz.questions.length - 1 ? 'Next Question' : 'Finish'} <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>

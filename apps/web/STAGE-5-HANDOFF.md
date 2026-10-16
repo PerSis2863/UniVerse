@@ -33,11 +33,34 @@ done, where the code is and what's left for each item. Keep that table up to dat
   time; migration **0136**). A student's due date is always `dueFor(...)` and a submission's late %
   is set when handed in (`src/lib/assignment-policy.ts`); graded answers can be REOPENED, so check
   "graded" as RETURNED or REOPENED. Q6.2a: files and links as hand-ins (**0137**); Q6.2b: group assignments (**0138**: a group's hand-in is
-  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0139`.**
-  - **Stopped here (owner asked to merge, 15 Oct):** Q6.2c peer review is started: only the pairing
-    rules are in (`src/lib/peer-review.ts`, tested). Still to build: migration 0139, server, routes and
-    screens; then the rest of Q6 (code with tests, PDF annotation, gradebook, student side, writing
-    replay). The Q6.2a/Q6.2b screens weren't tried in a browser yet (their API was).
+  one row with `groupId`; each member's grade is in `memberGrades`). **Next migration: `0150`.**
+  - **16 Oct:** Q6.2c peer review (**0139**), Q6.3 notes on hand-ins (**0140**); Q6.2a/b screens tried in
+    a browser; Q6.4a post grades and grade history (**0141**: a grade reaches the gradebook only through
+    `publishGrades` in `src/server/assignments.ts`, which sets `postedAt`; students see a grade only when
+    `postedAt` is set); Q6.4b school letter scales (**0142**: always `letter(p, scale)` with the school's
+    scale, `useGradeScale()` in pages); Q6.5 the student's side (**0143**: signed hand-in receipts need
+    `SESSION_SECRET`; regrade requests; the rubric in plain words, one AI request per rubric); Q6.6
+    writing replay (**0144**: kept with the draft on the device, sent with a typed hand-in, read only by
+    the teaching team; the teacher's assignment omits it). Still open in Q6: code assignments with
+    tests and grade passback to an LMS (LTI AGS, needs a real LMS). Q6.3b rubric level keys done.
+- **Q7 (quizzes), 16 Oct:** Q7.1a question types (**0145**). **Mark answers only through
+  `src/lib/question-types.ts`** (`markAnswer` / `isRight`; never `answer === correctAnswer`), show
+  questions to students only through `forStudent` (it drops the key and `meta`), and check the
+  teacher's input with `cleanQuestionInput`. `correctAnswer` is the answer in words for the newer
+  types. Q7.1b: maths expressions (`src/lib/math-expr.ts`, equal at sample points), tap on a picture,
+  and the teacher's short-answer check (accepting an answer changes the key and re-marks every hand-in:
+  `src/server/quiz-marking.ts`). Q7.2 pools and changing numbers (**0146**): pass the student to
+  `markAnswer(q, given, studentId)` (changing numbers can't be marked without it) and count only the
+  questions in `drawn` (`drawnOf`). Q7.3 one-way exams and the hard stop (**0147**: answers saved
+  one by one in `quiz_attempts.answers`). Q7.4 adaptive practice (**0148**: practice sets and
+  `practice_answers`, which count in the Learning DNA at half weight). Q7.5 live quiz game (**0149**,
+  `src/server/live-game.ts`). Next: Q7.6 QTI / GIFT import (a GIFT reader is started, not committed).
+  - **Build memory and time (16 Oct):** Cloudflare's build machine has 8 GB, 2 CPUs and 20 minutes. The
+    deploy build after PR #61 failed after 29 minutes. Now: webpack in its own process with memory
+    optimisations, no type check in the build (run `pnpm typecheck` before every commit, always), 6 GB
+    heap. 5 min 40 s on 2 CPUs locally, peak about 6.9 GB. Owner: turn on Settings → Build → Build
+    cache. Don't run vitest or tsc during a build. Always link with `@/components/ui/Link`: a
+    prefetching `next/link` looped on the teacher's Live class page.
   - **Stopped here (owner asked to merge, 15 Oct):** Q6.2c peer review is started: only the pairing
     rules are in (`src/lib/peer-review.ts`, tested: everyone reviews and is reviewed k times, never
     their own). Still to build: migration 0139 (`assignments.peerReviews`, `peerDueDate`; table

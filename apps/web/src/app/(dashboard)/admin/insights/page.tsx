@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, Building2, Eye, GraduationCap, Minus, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs';

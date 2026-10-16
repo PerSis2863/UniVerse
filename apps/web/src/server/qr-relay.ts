@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { forStudent, isVariant, metaOf } from '@/lib/question-types';
 import prisma from '@/lib/db';
 import { courseAccess } from '@/lib/course-access';
 import type { PreparedRelay, RelayItem } from '@/lib/qr-relay';
@@ -25,7 +26,7 @@ async function teacherCourse(courseIdRaw: unknown, user: SessionUser) {
   return access.course;
 }
 
-type QuizRow = { id: string; title: string; description: string | null; dueDate: Date | null; timeLimit: number | null; status: string; examMode: boolean; questions: { id: string; question: string; options: unknown }[] };
+type QuizRow = { id: string; title: string; description: string | null; dueDate: Date | null; timeLimit: number | null; status: string; examMode: boolean; pools: string | null; questions: { id: string; question: string; options: unknown; type: string; meta: string | null; correctAnswer: string }[] };
 const optionsOf = (v: unknown) => (Array.isArray(v) ? v.filter((o): o is string => typeof o === 'string') : []);
 
 /** Why a quiz can't travel as codes, or null when it can. */
@@ -33,15 +34,18 @@ function quizProblem(q: QuizRow): string | null {
   if (q.status === 'DRAFT') return 'Publish it first';
   if (q.status !== 'PUBLISHED') return 'It’s closed';
   if (q.examMode) return 'Exam mode needs a connection';
+  // Codes are the same for everyone (B4.2).
+  if (q.pools) return 'Each student gets their own questions';
+  if (q.questions.some((x) => isVariant(metaOf(x)))) return 'Has numbers that change for each student';
   if (!q.questions.length) return 'No questions yet';
   if (q.questions.length > MAX_QUESTIONS) return `More than ${MAX_QUESTIONS} questions`;
-  if (q.questions.some((x) => PICTURE.test(x.question) || optionsOf(x.options).some((o) => PICTURE.test(o)))) return 'Has pictures';
+  if (q.questions.some((x) => x.type === 'HOTSPOT' || PICTURE.test(x.question) || optionsOf(x.options).some((o) => PICTURE.test(o)))) return 'Has pictures';
   return null;
 }
 
 const quizSelect = {
-  id: true, title: true, description: true, dueDate: true, timeLimit: true, status: true, examMode: true,
-  questions: { orderBy: { order: 'asc' as const }, select: { id: true, question: true, options: true } },
+  id: true, title: true, description: true, dueDate: true, timeLimit: true, status: true, examMode: true, pools: true,
+  questions: { orderBy: { order: 'asc' as const }, select: { id: true, question: true, options: true, type: true, meta: true, correctAnswer: true } },
 };
 
 /** The course's announcements and quizzes, each with whether it can be sent. */
@@ -80,12 +84,13 @@ export async function prepareRelay(user: SessionUser, b: Record<string, unknown>
     if (!q) throw new NotFoundException('Quiz not found');
     const problem = quizProblem(q);
     if (problem) throw new BadRequestException(`This quiz can’t be sent as codes: ${problem.toLowerCase()}.`);
-    // Questions and options only: the answers stay on the server, which marks it when it's sent.
+    // Questions as students see them (no answer key: forStudent leaves it out); the server marks it
+    // when it's sent.
     item = {
       ...base, id: q.id, kind: 'QUIZ', title: q.title,
       quiz: {
         id: q.id, title: q.title, description: q.description, dueDate: q.dueDate?.toISOString() ?? null, timeLimit: q.timeLimit,
-        questions: q.questions.map((x) => ({ id: x.id, question: x.question, options: optionsOf(x.options) })),
+        questions: q.questions.map((x) => { const s = forStudent(x, null); return { id: s.id, question: s.question, options: s.options, type: s.type, ask: s.ask }; }),
       },
     };
   } else {

@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { markAnswer, type Given } from '@/lib/question-types';
 import { courseAccess } from '@/lib/course-access';
 import { bandOf, masteryOf, nextBest, reteach, type Mastery, type Observation } from '@/lib/mastery';
 import type { SessionUser } from '@/lib/server-auth';
@@ -221,23 +222,27 @@ async function observations(courseId: string, studentIds: string[], revealedOnly
   const assignmentIds = [...new Set(tags.filter((t) => t.kind === 'CRITERION').map((t) => t.refId.split(':')[0]))];
   const ids = studentIds.slice(0, 90);
   const [questions, submissions, assignments, returned] = await Promise.all([
-    questionIds.length ? prisma.quizQuestion.findMany({ where: { quiz: { courseId } }, select: { id: true, quizId: true, correctAnswer: true } }) : Promise.resolve([]),
+    questionIds.length ? prisma.quizQuestion.findMany({ where: { quiz: { courseId } }, select: { id: true, quizId: true, correctAnswer: true, options: true, type: true, meta: true } }) : Promise.resolve([]),
     questionIds.length ? prisma.quizSubmission.findMany({ where: { quiz: { courseId }, studentId: { in: ids } }, select: { quizId: true, studentId: true, answers: true, submittedAt: true, quiz: { select: { status: true, dueDate: true } } }, take: 5000 }) : Promise.resolve([]),
     assignmentIds.length ? prisma.assignment.findMany({ where: { id: { in: assignmentIds.slice(0, 90) }, courseId }, select: { id: true, rubric: true } }) : Promise.resolve([]),
     assignmentIds.length ? prisma.assignmentSubmission.findMany({ where: { assignmentId: { in: assignmentIds.slice(0, 90) }, studentId: { in: ids }, status: 'RETURNED' }, select: { assignmentId: true, studentId: true, criteriaScores: true, returnedAt: true }, take: 5000 }) : Promise.resolve([]),
   ]);
+  // Practice (B4.4): each question's first try, at half weight, for its tagged concepts.
+  const practisedQs = questionIds.length ? await prisma.practiceAnswer.findMany({ where: { courseId, studentId: { in: ids } }, select: { studentId: true, questionId: true, credit: true, createdAt: true }, take: 5000 }) : [];
+  for (const p of practisedQs) for (const c of byRef.get(p.questionId) ?? []) add(p.studentId, c, { at: p.createdAt.getTime(), outcome: p.credit, weight: 0.5 });
   // Second chances' practice answers (D10), for the concept each was about.
   const practised = await prisma.secondChance.findMany({ where: { courseId, studentId: { in: ids }, conceptId: { not: null }, results: { not: null } }, select: { studentId: true, conceptId: true, results: true } });
   const now = Date.now();
   for (const s of submissions) {
     if (revealedOnly && s.quiz.status !== 'CLOSED' && !(s.quiz.dueDate && s.quiz.dueDate.getTime() < now)) continue;
-    const answers = parse<Record<string, string>>(s.answers, {});
+    const answers = parse<Record<string, Given>>(s.answers, {});
     for (const q of questions.filter((x) => x.quizId === s.quizId)) {
       const cs = byRef.get(q.id);
       if (!cs) continue;
-      const given = answers[q.id];
-      if (given == null || given === '') continue;
-      for (const c of cs) add(s.studentId, c, { at: s.submittedAt.getTime(), outcome: given === q.correctAnswer ? 1 : 0, weight: 1 });
+      // Marked by the question's type (B4.1): a share of it right counts as that share.
+      const mark = markAnswer(q, answers[q.id], s.studentId);
+      if (!mark.answered) continue;
+      for (const c of cs) add(s.studentId, c, { at: s.submittedAt.getTime(), outcome: mark.credit, weight: 1 });
     }
   }
   for (const s of returned) {

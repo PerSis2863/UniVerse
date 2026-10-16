@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ChevronRight, Code2, Loader2, Lock, Plus } from 'lucide-react';

@@ -45,12 +45,44 @@ export function finalGrade(grades: GradeIn[], categories: Category[], categoryOf
   return { final: w ? used.reduce((s, c) => s + c.weight * (c.average as number), 0) / w : null, byCategory, uncategorized };
 }
 
+/** A school's letter grades (Stage 5 · B3.4): each band from its minimum %, highest first, with GPA points. */
+export interface Band { letter: string; min: number; gpa: number }
+export type Scale = Band[];
+
 /** The default letter scale (A ≥ 90, B ≥ 80, C ≥ 70, D ≥ 60) and its GPA points. */
-export function letter(p: number | null): { letter: string; gpa: number } | null {
+export const DEFAULT_SCALE: Scale = [
+  { letter: 'A', min: 90, gpa: 4 }, { letter: 'B', min: 80, gpa: 3 }, { letter: 'C', min: 70, gpa: 2 }, { letter: 'D', min: 60, gpa: 1 }, { letter: 'F', min: 0, gpa: 0 },
+];
+
+/** The letter and GPA points for a percentage on a scale (the default when none is given). */
+export function letter(p: number | null, scale: Scale = DEFAULT_SCALE): { letter: string; gpa: number } | null {
   if (p == null) return null;
-  if (p >= 90) return { letter: 'A', gpa: 4 };
-  if (p >= 80) return { letter: 'B', gpa: 3 };
-  if (p >= 70) return { letter: 'C', gpa: 2 };
-  if (p >= 60) return { letter: 'D', gpa: 1 };
-  return { letter: 'F', gpa: 0 };
+  const band = scale.find((b) => p >= b.min) ?? scale[scale.length - 1];
+  return band ? { letter: band.letter, gpa: band.gpa } : null;
+}
+
+/** The highest GPA points on a scale (4 on the default one). */
+export const maxGpa = (scale: Scale = DEFAULT_SCALE) => Math.max(0, ...scale.map((b) => b.gpa));
+
+/**
+ * A scale as an admin sent it, made safe: 2–15 bands, distinct names of up to 12 characters, distinct minimums from
+ * 0 to 100, GPA points 0–10, highest first, the lowest band starting at 0. Null when it isn't one.
+ */
+export function cleanScale(raw: unknown): Scale | null {
+  if (!Array.isArray(raw) || raw.length < 2 || raw.length > 15) return null;
+  const bands = raw.map((b) => {
+    const o = (b && typeof b === 'object' ? b : {}) as Record<string, unknown>;
+    return { letter: typeof o.letter === 'string' ? o.letter.trim().slice(0, 12) : '', min: Number(o.min), gpa: Number(o.gpa) };
+  });
+  if (bands.some((b) => !b.letter || !Number.isFinite(b.min) || b.min < 0 || b.min > 100 || !Number.isFinite(b.gpa) || b.gpa < 0 || b.gpa > 10)) return null;
+  if (new Set(bands.map((b) => b.letter.toUpperCase())).size !== bands.length || new Set(bands.map((b) => b.min)).size !== bands.length) return null;
+  const sorted = bands.map((b) => ({ letter: b.letter, min: Math.round(b.min * 100) / 100, gpa: Math.round(b.gpa * 100) / 100 })).sort((a, b) => b.min - a.min);
+  sorted[sorted.length - 1].min = 0;
+  return sorted;
+}
+
+/** A stored scale (JSON), or the default. */
+export function parseScale(raw: string | null | undefined): Scale {
+  if (!raw) return DEFAULT_SCALE;
+  try { return cleanScale(JSON.parse(raw)) ?? DEFAULT_SCALE; } catch { return DEFAULT_SCALE; }
 }

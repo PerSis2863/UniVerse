@@ -1,28 +1,24 @@
-// Question bank (Stage 5 · B4.1): rules shared by the server, the bank page and CSV import.
-// Import-free.
+// Question bank (Stage 5 · B4.1): rules shared by the server, the bank page and CSV import. Any
+// question type (src/lib/question-types.ts); CSV import makes one-answer questions.
+
+import { cleanQuestionInput, type QuestionInput, type QuestionType } from './question-types';
 
 export const DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD'] as const;
 export type Difficulty = (typeof DIFFICULTIES)[number];
 
-export interface BankQuestionIn { question: string; options: string[]; correctAnswer: string; points: number; tags: string[]; difficulty: Difficulty | null }
+export interface BankQuestionIn { question: string; options: string[]; correctAnswer: string; points: number; tags: string[]; difficulty: Difficulty | null; type: QuestionType; meta: string | null }
 
 /** A question made safe to store, or the reason it can't be. */
-export function cleanQuestion(raw: { question?: unknown; options?: unknown; correctAnswer?: unknown; points?: unknown; tags?: unknown; difficulty?: unknown }): BankQuestionIn | string {
-  const question = typeof raw.question === 'string' ? raw.question.trim().slice(0, 1000) : '';
-  if (!question) return 'A question needs its text.';
-  const options = (Array.isArray(raw.options) ? raw.options : []).map((o) => (typeof o === 'string' ? o.trim().slice(0, 300) : '')).filter(Boolean);
-  if (options.length < 2 || options.length > 6) return 'Give 2 to 6 answer options.';
-  if (new Set(options.map((o) => o.toLowerCase())).size !== options.length) return 'Answer options must be different.';
-  const correct = typeof raw.correctAnswer === 'string' ? raw.correctAnswer.trim() : '';
-  const correctAnswer = options.find((o) => o === correct) ?? options.find((o) => o.toLowerCase() === correct.toLowerCase());
-  if (!correctAnswer) return 'The right answer must be one of the options.';
+export function cleanQuestion(raw: QuestionInput & { points?: unknown; tags?: unknown; difficulty?: unknown }): BankQuestionIn | string {
+  const q = cleanQuestionInput(raw);
+  if (typeof q === 'string') return q;
   const p = raw.points == null || raw.points === '' ? 1 : Number(raw.points);
   if (!Number.isFinite(p) || p < 0.5 || p > 100) return 'Points must be between 0.5 and 100.';
   const tagList = Array.isArray(raw.tags) ? raw.tags : typeof raw.tags === 'string' ? raw.tags.split(/[,;|]/) : [];
   const tags = [...new Set(tagList.map((t) => (typeof t === 'string' ? t.trim().toLowerCase().slice(0, 40) : '')).filter(Boolean))].slice(0, 8);
   const d = typeof raw.difficulty === 'string' ? raw.difficulty.trim().toUpperCase() : '';
   const difficulty = (DIFFICULTIES as readonly string[]).includes(d) ? (d as Difficulty) : null;
-  return { question, options, correctAnswer, points: Math.round(p * 2) / 2, tags, difficulty };
+  return { ...q, points: Math.round(p * 2) / 2, tags, difficulty };
 }
 
 /** Splits CSV text into rows of cells (quotes, commas or semicolons, CRLF). */

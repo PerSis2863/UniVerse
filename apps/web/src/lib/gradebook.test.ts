@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dropLowest, finalGrade, letter, pct, type Category } from './gradebook';
+import { DEFAULT_SCALE, cleanScale, dropLowest, finalGrade, letter, maxGpa, parseScale, pct, type Category } from './gradebook';
 
 const g = (assessment: string, score: number, maxScore = 100) => ({ assessment, score, maxScore });
 
@@ -55,4 +55,30 @@ describe('finalGrade', () => {
 describe('letter', () => {
   it.each([[95, 'A', 4], [90, 'A', 4], [85, 'B', 3], [72, 'C', 2], [60, 'D', 1], [59.9, 'F', 0]])('%s → %s', (p, l, gpa) => expect(letter(p)).toEqual({ letter: l, gpa }));
   it('null without grades', () => expect(letter(null)).toBeNull());
+});
+
+describe('school scales', () => {
+  const ib = [{ letter: '7', min: 80, gpa: 7 }, { letter: '4', min: 50, gpa: 4 }, { letter: '1', min: 10, gpa: 1 }];
+  it('uses a school’s own bands', () => {
+    const s = cleanScale(ib)!;
+    expect(s[s.length - 1].min).toBe(0);
+    expect(letter(85, s)).toEqual({ letter: '7', gpa: 7 });
+    expect(letter(60, s)).toEqual({ letter: '4', gpa: 4 });
+    expect(letter(5, s)).toEqual({ letter: '1', gpa: 1 });
+    expect(maxGpa(s)).toBe(7);
+    expect(maxGpa()).toBe(4);
+  });
+  it('sorts bands and refuses broken ones', () => {
+    expect(cleanScale([{ letter: 'Pass', min: 0, gpa: 1 }, { letter: 'Merit', min: 70, gpa: 3 }])!.map((b) => b.letter)).toEqual(['Merit', 'Pass']);
+    expect(cleanScale([{ letter: 'A', min: 90, gpa: 4 }])).toBeNull();
+    expect(cleanScale([{ letter: 'A', min: 90, gpa: 4 }, { letter: 'a', min: 0, gpa: 0 }])).toBeNull();
+    expect(cleanScale([{ letter: 'A', min: 90, gpa: 4 }, { letter: 'B', min: 90, gpa: 3 }])).toBeNull();
+    expect(cleanScale([{ letter: 'A', min: 120, gpa: 4 }, { letter: 'F', min: 0, gpa: 0 }])).toBeNull();
+    expect(cleanScale('nope')).toBeNull();
+  });
+  it('reads a stored scale, or the default', () => {
+    expect(parseScale(JSON.stringify(ib))[0].letter).toBe('7');
+    expect(parseScale(null)).toBe(DEFAULT_SCALE);
+    expect(parseScale('{bad')).toBe(DEFAULT_SCALE);
+  });
 });

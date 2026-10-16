@@ -21,6 +21,8 @@ export default function quizzesModule(router: Router) {
   r.get('teacher/my-quizzes', { roles: ['TEACHER', 'ADMIN'] }, ({ user }) => quizzes.getTeacherQuizzes(user.id));
   r.get('student/my-quizzes', { roles: ['STUDENT', 'ADMIN'] }, ({ user }) => quizzes.getStudentQuizzes(user.id));
   r.post<{ id: string }>(':id/start', { roles: ['STUDENT'] }, ({ user, params }) => quizzes.start(params.id, user.id));
+  // One-way exams (Stage 5 · B4.3): each answer saved as the student moves on.
+  r.post<{ id: string }>(':id/answer', { roles: ['STUDENT'] }, ({ user, params, body }) => quizzes.answer(params.id, user.id, (body ?? {}) as Record<string, unknown>));
   r.post<{ id: string }>(':id/submit', { roles: ['STUDENT'] }, async ({ user, params, body, req }) => {
     const answers = body.answers;
     if (!answers || typeof answers !== 'object' || Array.isArray(answers)) throw new BadRequestException('answers are required');

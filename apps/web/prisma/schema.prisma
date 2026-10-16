@@ -290,6 +290,11 @@ model User {
   assignmentSubmissions AssignmentSubmission[]
   assignmentExtensions  AssignmentExtension[]  @relation("AssignmentExtensions")
   assignmentGroups      AssignmentGroupMember[] @relation("AssignmentGroups")
+  peerReviewsGiven      PeerReview[]            @relation("PeerReviewer")
+  submissionNotes       SubmissionNote[]        @relation("SubmissionNotes")
+  regradeRequests       RegradeRequest[]        @relation("RegradeRequests")
+  practiceAnswers       PracticeAnswer[]        @relation("PracticeAnswers")
+  liveGamePlayers       LiveGamePlayer[]
   accommodation         StudentAccommodation?  @relation("Accommodation")
   guardianContacts      GuardianContact[]
   impactUpdates         ImpactUpdate[]
@@ -403,6 +408,8 @@ model Organization {
   ssoTenantId          String?
   ssoEnforced          Boolean   @default(false)
   dataRetentionDays    Int       @default(730)
+  /// The school's letter grades and GPA points (Stage 5 · B3.4): JSON [{ letter, min, gpa }], highest first
+  gradeScale           String?
   oneRosterSyncs       OneRosterSync[]
   oneRosterMappings    OneRosterMapping[]
   apiKeys              ApiKey[]
@@ -514,7 +521,10 @@ model Course {
   timetableSlots        TimetableSlot[]
   attendance            Attendance[]
   grades                Grade[]
+  gradeChanges          GradeChange[]
   quizzes               Quiz[]
+  practiceAnswers       PracticeAnswer[]
+  liveGames             LiveGame[]
   classSessions         ClassSession[]
   materials             Material[]
   announcements         Announcement[]
@@ -641,12 +651,20 @@ model Quiz {
   examMode    Boolean    @default(false)
   /// Reading help (D9): students may see questions in simpler words or their language, and listen
   plainWords  Boolean    @default(true)
+  /// Question pools (Stage 5 · B4.2): JSON { pool: how many each student gets }, see src/lib/quiz-draw.ts
+  pools       String?
+  /// Exam mode extras (B4.3): one question at a time, no going back; no answers taken after time
+  oneWay      Boolean    @default(false)
+  hardStop    Boolean    @default(false)
+  /// A practice set (B4.4): never graded; its questions are practised any time, with the answers
+  practice    Boolean    @default(false)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   questions   QuizQuestion[]
   submissions QuizSubmission[]
   attempts    QuizAttempt[]
+  liveGames   LiveGame[]
 
   @@index([courseId])
   @@map("quizzes")
@@ -658,9 +676,17 @@ model QuizQuestion {
   quiz          Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
   question      String
   options       Json // string[]
+  /// The right option; for the newer types the answer in words (Stage 5 · B4.1, src/lib/question-types.ts)
   correctAnswer String
   points        Float  @default(1)
   order         Int    @default(0)
+  /// CHOICE, TRUE_FALSE, MULTI, SHORT, BLANKS, MATCH, ORDER or NUMBER
+  type          String @default("CHOICE")
+  /// The answer key and settings as JSON (never sent to students)
+  meta          String?
+  /// The pool it's drawn from (null: everyone gets it)
+  pool          String?
+  practiced     PracticeAnswer[]
 
   @@index([quizId])
   @@map("quiz_questions")
@@ -685,6 +711,8 @@ model QuizSubmission {
   offlineStartedAt DateTime?
   offlineAt        DateTime?
   offlineStatus    String?
+  /// The questions this student got, when the quiz draws from pools (JSON ids)
+  drawn            String?
 
   @@unique([quizId, studentId])
   @@index([quizId])
@@ -2528,6 +2556,9 @@ model BankQuestion {
   difficulty    String?
   createdById   String?
   createdAt     DateTime @default(now())
+  /// Like QuizQuestion.type and .meta (Stage 5 · B4.1)
+  type          String   @default("CHOICE")
+  meta          String?
 
   @@index([courseId])
   @@map("question_bank")
@@ -2541,6 +2572,8 @@ model QuizAttempt {
   studentId String
   student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
   startedAt DateTime @default(now())
+  /// One-way exams (B4.3): the answers saved so far as the student moved on (JSON { questionId: answer })
+  answers   String?
 
   @@unique([quizId, studentId])
   @@map("quiz_attempts")
@@ -3089,6 +3122,14 @@ model Assignment {
   /// Group work (Stage 5 · B3.2): null (each student), SHARED (one grade per group) or INDIVIDUAL (a grade each)
   groupMode        String?
   groups           AssignmentGroup[]
+  /// Peer review (Stage 5 · B3.2): answers each student reviews (0: none), and when reviews are due
+  peerReviews      Int       @default(0)
+  peerDueDate      DateTime?
+  /// When students see grades (Stage 5 · B3.4): AUTO (when returned) or MANUAL (after "Post grades")
+  postPolicy       String    @default("AUTO")
+  /// The rubric in plain words, made once by AI (Stage 5 · B3.5): JSON { key, criteria: [{ id, plain, great, weak }] }
+  rubricHelp       String?
+  peerReviewRows   PeerReview[]
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
   submissions  AssignmentSubmission[]
@@ -3143,6 +3184,15 @@ model AssignmentSubmission {
   groupId            String?
   group              AssignmentGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   memberGrades       String?
+  peerReviews        PeerReview[]
+  notes              SubmissionNote[]
+  /// When its grade reached the gradebook and the student (null: not graded, or held until posted)
+  postedAt           DateTime?
+  regrades           RegradeRequest[]
+  /// How a typed answer grew (Stage 5 · B3.6): JSON { base, chunks }, see src/lib/writing-replay.ts
+  writingReplay      String?
+  /// Whether that replay ends at the text handed in (null: none kept)
+  replayMatches      Boolean?
   submittedAt        DateTime   @default(now())
   returnedAt         DateTime?
   updatedAt          DateTime   @updatedAt
@@ -3151,6 +3201,84 @@ model AssignmentSubmission {
   @@index([groupId])
   @@index([studentId])
   @@map("assignment_submissions")
+}
+
+/// A student asking for a grade to be looked at again (Stage 5 · B3.5), and the answer.
+model RegradeRequest {
+  id            String               @id @default(cuid())
+  submissionId  String
+  submission    AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       User                 @relation("RegradeRequests", fields: [studentId], references: [id], onDelete: Cascade)
+  reason        String
+  status        String               @default("OPEN") // OPEN | ANSWERED
+  outcome       String? // CHANGED | SAME
+  reply         String?
+  repliedById   String?
+  repliedByName String?
+  createdAt     DateTime             @default(now())
+  repliedAt     DateTime?
+
+  @@index([submissionId])
+  @@index([status])
+  @@map("regrade_requests")
+}
+
+/// A change to a grade (Stage 5 · B3.4): who, when, from what to what (newScore null: deleted).
+model GradeChange {
+  id            String   @id @default(cuid())
+  courseId      String
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId     String
+  gradeId       String?
+  assessment    String
+  oldScore      Float?
+  newScore      Float?
+  maxScore      Float
+  changedById   String?
+  changedByName String?
+  createdAt     DateTime @default(now())
+
+  @@index([courseId, createdAt])
+  @@index([studentId])
+  @@map("grade_changes")
+}
+
+/// The teaching team's note on a hand-in, pinned to a place (Stage 5 · B3.3, src/lib/note-anchor.ts).
+model SubmissionNote {
+  id           String               @id @default(cuid())
+  submissionId String
+  submission   AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  authorId     String
+  author       User                 @relation("SubmissionNotes", fields: [authorId], references: [id], onDelete: Cascade)
+  anchor       String // JSON: { type: "box", page, x, y, w, h } | { type: "text", start, end, quote }
+  comment      String
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@index([submissionId])
+  @@map("submission_notes")
+}
+
+/// A classmate's anonymous review of an answer (Stage 5 · B3.2, src/server/peer-review.ts).
+model PeerReview {
+  id           String               @id @default(cuid())
+  assignmentId String
+  assignment   Assignment           @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  submissionId String
+  submission   AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  reviewerId   String
+  reviewer     User                 @relation("PeerReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  criteria     String? // JSON [{ id, score, comment }]
+  comment      String?
+  status       String               @default("ASSIGNED") // ASSIGNED | DONE
+  createdAt    DateTime             @default(now())
+  submittedAt  DateTime?
+
+  @@unique([submissionId, reviewerId])
+  @@index([assignmentId])
+  @@index([reviewerId])
+  @@map("peer_reviews")
 }
 
 /// A group for a group assignment (Stage 5 · B3.2).
@@ -5857,4 +5985,81 @@ model CourseStaff {
   @@unique([courseId, userId])
   @@index([userId])
   @@map("course_staff")
+}
+
+/// A question a student practised (Stage 5 · B4.4, src/server/practice.ts)
+model PracticeAnswer {
+  id         String       @id @default(cuid())
+  studentId  String
+  student    User         @relation("PracticeAnswers", fields: [studentId], references: [id], onDelete: Cascade)
+  courseId   String
+  course     Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questionId String
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  /// The first try's share of the points (what counts towards mastery)
+  credit     Float
+  tries      Int          @default(1)
+  /// Got it right in the end (on any try)
+  solved     Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @default(now()) @updatedAt
+
+  @@index([studentId, courseId])
+  @@index([questionId])
+  @@map("practice_answers")
+}
+
+/// A live quiz game (Stage 5 · B4.5, src/server/live-game.ts)
+model LiveGame {
+  id          String           @id @default(cuid())
+  courseId    String
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  quizId      String
+  quiz        Quiz             @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  hostId      String
+  /// LOBBY | QUESTION | REVEAL | DONE
+  status      String           @default("LOBBY")
+  /// The questions in play order (JSON ids)
+  questionIds String
+  current     Int              @default(-1)
+  seconds     Int              @default(20)
+  questionAt  DateTime?
+  createdAt   DateTime         @default(now())
+  endedAt     DateTime?
+  players     LiveGamePlayer[]
+  answers     LiveGameAnswer[]
+
+  @@index([courseId, status])
+  @@map("live_games")
+}
+
+model LiveGamePlayer {
+  id       String   @id @default(cuid())
+  gameId   String
+  game     LiveGame @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name     String
+  score    Int      @default(0)
+  streak   Int      @default(0)
+  joinedAt DateTime @default(now())
+
+  @@unique([gameId, userId])
+  @@map("live_game_players")
+}
+
+model LiveGameAnswer {
+  id         String   @id @default(cuid())
+  gameId     String
+  game       LiveGame @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  userId     String
+  questionId String
+  answer     String
+  correct    Boolean
+  points     Int      @default(0)
+  ms         Int
+  createdAt  DateTime @default(now())
+
+  @@unique([gameId, userId, questionId])
+  @@map("live_game_answers")
 }

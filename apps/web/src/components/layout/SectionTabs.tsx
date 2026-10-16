@@ -155,6 +155,7 @@ export const ADMIN_INSIGHT_TABS: SectionTab[] = [
   { href: '/admin/analytics', label: 'Analytics' },
   { href: '/admin/reports', label: 'Reports' },
   { href: '/admin/reports/report-cards', label: 'Report cards' },
+  { href: '/admin/reports/grading-scale', label: 'Grading scale' },
   { href: '/admin/impact-metrics', label: 'Impact' },
   { href: '/admin/insights/warehouse', label: 'Analytics warehouse' },
 ];

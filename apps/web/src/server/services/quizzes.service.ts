@@ -7,6 +7,8 @@ import { clientIdOf, offlineTime, tellTeacher } from '../offline';
 import { publish } from '../realtime';
 import { pushService } from './push.service';
 import { shuffled } from '@/lib/seeded-shuffle';
+import { cleanGiven, forStudent, markAnswer, type Given } from '@/lib/question-types';
+import { drawFor, parsePools } from '@/lib/quiz-draw';
 import { taughtBy } from '@/lib/course-access';
 import { quizMinutes } from '@/lib/assignment-policy';
 
@@ -17,6 +19,23 @@ async function minutesFor(timeLimit: number | null, studentId: string) {
   return quizMinutes(timeLimit, acc ?? undefined);
 }
 
+
+/** A minute after the time limit, a hard-stop exam takes no more answers (B4.3). */
+const HARD_GRACE_MS = 60_000;
+
+/** A one-way exam's answers saved so far. */
+function savedAnswers(raw: string | null | undefined): Record<string, Given> {
+  try {
+    const v = raw ? (JSON.parse(raw) as unknown) : null;
+    return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, Given>) : {};
+  } catch { return {}; }
+}
+
+/** The questions in the order this student sees them (their draw, shuffled when the quiz says so). */
+function studentOrder<Q extends { id: string; pool?: string | null }>(quiz: { id: string; shuffle: boolean; pools: string | null; questions: Q[] }, studentId: string): Q[] {
+  const drawn = drawFor(quiz.questions, parsePools(quiz.pools), `${studentId}:${quiz.id}`);
+  return quiz.shuffle ? shuffled(drawn, `${studentId}:${quiz.id}`) : drawn;
+}
 export class QuizzesService {
   /** Teachers may only manage quizzes for their own courses; admins may manage any. */
   private async assertCourseOwner(courseId: string, user: { id: string; role: string }) {
@@ -87,19 +106,20 @@ export class QuizzesService {
     // answer key; grading happens server-side in submitQuiz.
     const enrolled = quiz.status !== 'DRAFT' && (await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId: user.id, courseId: quiz.courseId } }, select: { id: true } }));
     if (!enrolled) throw new NotFoundException('Quiz not found');
-    const questions = rest.questions.map(({ correctAnswer: _hidden, ...q }) => q);
+    // Each question as its type shows it to students, without the key (src/lib/question-types.ts);
+    // shuffled per student when the quiz says so (B4.3): their own order, the same again on reload.
+    // Grading compares the answer text, so the order doesn't matter to it.
+    // Their own draw from the quiz's pools (B4.2), and their own numbers where those change.
+    const seed = quiz.shuffle ? user.id : null;
+    const prepared = drawFor(rest.questions, parsePools(quiz.pools), `${user.id}:${quiz.id}`).map((q) => forStudent(q, seed, user.id));
     // Their time limit with any extra time they're allowed.
     const timeLimit = await minutesFor(rest.timeLimit, user.id);
-    // Shuffled per student (B4.3): their own order, the same again on reload. Grading compares
-    // the answer text, so the order doesn't matter to it.
-    if (!quiz.shuffle) return { ...rest, timeLimit, questions };
-    const me = user.id;
-    return { ...rest, timeLimit, questions: shuffled(questions, `${me}:${quiz.id}`).map((q) => ({ ...q, options: Array.isArray(q.options) ? shuffled(q.options as string[], `${me}:${q.id}`) : q.options })) };
+    return { ...rest, timeLimit, questions: seed ? shuffled(prepared, `${seed}:${quiz.id}`) : prepared };
   }
 
   /** Exam mode (B4.4): starts the student's clock on the server (once) and says when it ends. */
   async start(quizId: string, studentId: string) {
-    const quiz = await prisma.quiz.findUnique({ where: { id: quizId }, select: { id: true, courseId: true, status: true, examMode: true, timeLimit: true } });
+    const quiz = await prisma.quiz.findUnique({ where: { id: quizId }, select: { id: true, courseId: true, status: true, examMode: true, oneWay: true, timeLimit: true } });
     if (!quiz) throw new NotFoundException('Quiz not found');
     if (quiz.status !== 'PUBLISHED') throw new BadRequestException('This quiz is not open');
     const enrolled = await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId, courseId: quiz.courseId } } });
@@ -108,7 +128,35 @@ export class QuizzesService {
     if (!quiz.examMode) return { startedAt: null, endsAt: null };
     const attempt = await prisma.quizAttempt.upsert({ where: { quizId_studentId: { quizId, studentId } }, update: {}, create: { quizId, studentId } });
     const minutes = await minutesFor(quiz.timeLimit, studentId);
-    return { startedAt: attempt.startedAt, endsAt: minutes ? new Date(attempt.startedAt.getTime() + minutes * 60_000) : null };
+    // One way (B4.3): the questions already passed, so a reload goes on from the next one.
+    return { startedAt: attempt.startedAt, endsAt: minutes ? new Date(attempt.startedAt.getTime() + minutes * 60_000) : null, done: quiz.oneWay ? Object.keys(savedAnswers(attempt.answers)) : [] };
+  }
+
+  /** One-way exams (B4.3): saves one answer as the student moves on; questions passed can't change. */
+  async answer(quizId: string, studentId: string, body: Record<string, unknown>) {
+    const quiz = await prisma.quiz.findUnique({
+      where: { id: quizId },
+      select: { id: true, status: true, examMode: true, oneWay: true, hardStop: true, timeLimit: true, shuffle: true, pools: true, questions: { orderBy: { order: 'asc' }, select: { id: true, type: true, options: true, correctAnswer: true, meta: true, pool: true } } },
+    });
+    if (!quiz) throw new NotFoundException('Quiz not found');
+    if (!quiz.examMode || !quiz.oneWay) throw new BadRequestException('Answers are saved one by one only in one-way exams.');
+    if (quiz.status !== 'PUBLISHED') throw new BadRequestException('This quiz is not open');
+    const attempt = await prisma.quizAttempt.findUnique({ where: { quizId_studentId: { quizId, studentId } } });
+    if (!attempt) throw new BadRequestException('Start the quiz first.');
+    if (await prisma.quizSubmission.findUnique({ where: { quizId_studentId: { quizId, studentId } }, select: { id: true } })) throw new ConflictException('You have already submitted this quiz');
+    const minutes = await minutesFor(quiz.timeLimit, studentId);
+    if (quiz.hardStop && minutes && Date.now() > attempt.startedAt.getTime() + minutes * 60_000 + HARD_GRACE_MS) throw new BadRequestException('Time is up: answers are no longer taken.');
+    const order = studentOrder(quiz, studentId);
+    const qid = typeof body.questionId === 'string' ? body.questionId : '';
+    const at = order.findIndex((q) => q.id === qid);
+    if (at < 0) throw new NotFoundException('Question not found.');
+    const saved = savedAnswers(attempt.answers);
+    if (qid in saved) throw new ConflictException('You’ve moved past this question.');
+    // Moving on passes every question before it too (one skipped stays unanswered).
+    for (const q of order.slice(0, at)) if (!(q.id in saved)) saved[q.id] = '';
+    saved[qid] = cleanGiven(order[at], body.answer) ?? '';
+    await prisma.quizAttempt.update({ where: { id: attempt.id }, data: { answers: JSON.stringify(saved) } });
+    return { done: Object.keys(saved) };
   }
 
   async update(id: string, updateQuizDto: UpdateQuizDto, user: { id: string; role: string }) {
@@ -154,7 +202,8 @@ export class QuizzesService {
 
   async getStudentQuizzes(studentId: string) {
     const quizzes = await prisma.quiz.findMany({
-      where: { status: { in: ['PUBLISHED', 'CLOSED'] }, course: { enrollments: { some: { studentId } } } },
+      // Practice sets (B4.4) are practised on the Mastery page, not taken as quizzes.
+      where: { status: { in: ['PUBLISHED', 'CLOSED'] }, practice: false, course: { enrollments: { some: { studentId } } } },
       include: { 
         course: { select: { name: true } },
         _count: { select: { questions: true } }
@@ -167,11 +216,20 @@ export class QuizzesService {
     });
 
     const subMap = new Map(submissions.map(s => [s.quizId, s]));
+    // With pools (B4.2) each student answers fewer questions than the quiz holds.
+    const pooled = quizzes.filter((q) => q.pools).slice(0, 90);
+    const sizes = pooled.length ? await prisma.quizQuestion.groupBy({ by: ['quizId', 'pool'], where: { quizId: { in: pooled.map((q) => q.id) } }, _count: { _all: true } }) : [];
+    const answering = (q: (typeof quizzes)[number]) => {
+      const pools = parsePools(q.pools);
+      if (!pools) return q._count.questions;
+      return sizes.filter((x) => x.quizId === q.id).reduce((t, x) => t + (x.pool ? Math.min(pools[x.pool] ?? x._count._all, x._count._all) : x._count._all), 0);
+    };
 
     return quizzes.map(q => {
       const sub = subMap.get(q.id);
       return {
         ...q,
+        _count: { ...q._count, questions: answering(q) },
         completed: !!sub,
         score: sub ? (sub.score !== null ? Math.round((sub.score / (sub.maxScore || 100)) * 100) : null) : null,
       };
@@ -206,35 +264,51 @@ export class QuizzesService {
       throw new ConflictException('You have already submitted this quiz');
     }
 
+    // Each answer checked and marked by its question's type (Stage 5 · B4.1): a share of the points
+    // where the type gives one (several answers, blanks, matching, order). Unknown ids are dropped.
     let score = 0;
     let maxScore = 0;
+    // Exam mode (B4.3–4.4): the student's clock on the server, and the answers saved as they moved on.
+    const attempt = quiz.examMode ? await prisma.quizAttempt.findUnique({ where: { quizId_studentId: { quizId, studentId } } }) : null;
+    const minutes = attempt ? await minutesFor(quiz.timeLimit, studentId) : null;
+    const ends = attempt && minutes ? attempt.startedAt.getTime() + minutes * 60_000 : null;
+    const arrived = finishedAt ? finishedAt.getTime() : Date.now();
+    // A hard stop takes no answers that arrive after the time (a minute's grace for the auto-submit at zero).
+    const tooLate = quiz.examMode && quiz.hardStop && !!ends && arrived > ends + HARD_GRACE_MS;
+    const saved = quiz.examMode && quiz.oneWay ? savedAnswers(attempt?.answers) : null;
+    // One way: what was saved stays as it was; only the question they were on comes from this hand-in.
+    const source: Record<string, unknown> = { ...(tooLate ? {} : answers), ...(saved ?? {}) };
+    const dropped = tooLate ? Object.keys(answers).filter((k) => !(saved && k in saved) && answers[k] !== '' && answers[k] != null).length : 0;
 
-    quiz.questions.forEach(q => {
+    const kept: Record<string, Given> = {};
+    // Only the questions this student got from the quiz's pools (B4.2) count, and are kept.
+    const pools = parsePools(quiz.pools);
+    const drawn = drawFor(quiz.questions, pools, `${studentId}:${quizId}`);
+    for (const q of drawn) {
       maxScore += q.points;
-      if (answers[q.id] === q.correctAnswer) {
-        score += q.points;
-      }
-    });
+      const given = cleanGiven(q, source[q.id]);
+      if (given == null) continue;
+      kept[q.id] = given;
+      score += q.points * markAnswer(q, given, studentId).credit;
+    }
+    score = Math.round(score * 100) / 100;
 
     // Exam mode (B4.4): what the browser noticed, and how late it arrived against the server clock.
     let integrity: Prisma.InputJsonObject | undefined;
     if (quiz.examMode) {
       const seen = (integrityIn && typeof integrityIn === 'object' ? integrityIn : {}) as Record<string, unknown>;
       const count = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 ? Math.min(v as number, 999) : 0);
-      const attempt = await prisma.quizAttempt.findUnique({ where: { quizId_studentId: { quizId, studentId } } });
-      const minutes = attempt ? await minutesFor(quiz.timeLimit, studentId) : null;
-      const ends = attempt && minutes ? attempt.startedAt.getTime() + minutes * 60_000 : null;
-      const arrived = finishedAt ? finishedAt.getTime() : Date.now();
       // Two minutes' grace for slow connections and the auto-submit at zero.
       const overtimeSeconds = ends ? Math.max(0, Math.round((arrived - ends) / 1000) - 120) : 0;
-      integrity = { left: count(seen.left), pasted: count(seen.pasted), fullscreenExits: count(seen.fullscreenExits), overtimeSeconds, noStart: !attempt };
+      integrity = { left: count(seen.left), pasted: count(seen.pasted), fullscreenExits: count(seen.fullscreenExits), overtimeSeconds, noStart: !attempt, ...(dropped ? { dropped } : {}) };
     }
 
     const submission = await prisma.quizSubmission.create({
       data: {
         studentId,
         quizId,
-        answers,
+        answers: kept,
+        ...(pools ? { drawn: JSON.stringify(drawn.map((q) => q.id)) } : {}),
         score,
         maxScore,
         ...(integrity ? { integrity } : {}),

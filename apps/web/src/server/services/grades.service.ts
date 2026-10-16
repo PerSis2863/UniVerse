@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
 import prisma from '@/lib/db';
+import { logGradeChanges } from '../grade-history';
 
 export class GradesService {
   async getStudentGrades(studentId: string) {
@@ -43,7 +44,7 @@ export class GradesService {
     return { enrollments, grades };
   }
 
-  async postGrade(courseId: string, user: { id: string; role: string }, body: { studentId?: unknown; assignmentName?: unknown; score?: unknown; maxScore?: unknown; feedback?: unknown }) {
+  async postGrade(courseId: string, user: { id: string; role: string; name?: string }, body: { studentId?: unknown; assignmentName?: unknown; score?: unknown; maxScore?: unknown; feedback?: unknown }) {
     await this.assertCanGrade(courseId, user);
     const studentId = typeof body.studentId === 'string' ? body.studentId : '';
     const assignmentName = typeof body.assignmentName === 'string' ? body.assignmentName.trim().slice(0, 200) : '';
@@ -54,19 +55,23 @@ export class GradesService {
     if (!Number.isFinite(score) || score < 0 || score > maxScore) throw new BadRequestException(`Score must be between 0 and ${maxScore}`);
     const enrolled = await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId, courseId } } });
     if (!enrolled) throw new BadRequestException('That student is not enrolled in this course');
-    return prisma.grade.create({
+    const grade = await prisma.grade.create({
       data: {
         studentId, courseId, assignmentName, score, maxScore, status: 'GRADED',
         feedback: typeof body.feedback === 'string' && body.feedback.trim() ? body.feedback.trim().slice(0, 2000) : null,
       },
     });
+    // The grade history (Stage 5 · B3.4).
+    await logGradeChanges([{ courseId, studentId, gradeId: grade.id, assessment: assignmentName, oldScore: null, newScore: score, maxScore }], { id: user.id, name: user.name ?? '' });
+    return grade;
   }
 
-  async removeGrade(gradeId: string, user: { id: string; role: string }) {
-    const grade = await prisma.grade.findUnique({ where: { id: gradeId }, select: { courseId: true } });
+  async removeGrade(gradeId: string, user: { id: string; role: string; name?: string }) {
+    const grade = await prisma.grade.findUnique({ where: { id: gradeId }, select: { courseId: true, studentId: true, assignmentName: true, score: true, maxScore: true } });
     if (!grade) throw new NotFoundException('Grade not found');
     await this.assertCanGrade(grade.courseId, user);
     await prisma.grade.delete({ where: { id: gradeId } });
+    await logGradeChanges([{ courseId: grade.courseId, studentId: grade.studentId, gradeId: null, assessment: grade.assignmentName, oldScore: grade.score, newScore: null, maxScore: grade.maxScore }], { id: user.id, name: user.name ?? '' });
     return { ok: true };
   }
 }

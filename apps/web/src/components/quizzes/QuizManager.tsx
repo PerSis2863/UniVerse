@@ -12,12 +12,16 @@ import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { ReadingLevelControl, fetchLevels, useReadingLevel } from '@/components/shared/ReadingLevel';
 import { errorMessage } from '@/lib/api';
+import { QuestionEditor, QuestionKey, draftReady, emptyDraft, toBody } from './QuestionEditor';
+import { ShortAnswerReview } from './ShortAnswerReview';
+import { parsePools, poolSummary } from '@/lib/quiz-draw';
+import { TYPE_LABELS, typeOf } from '@/lib/question-types';
 
-type Question = { id: string; question: string; options: string[]; correctAnswer: string; points: number };
-type Integrity = { left: number; pasted: number; fullscreenExits: number; overtimeSeconds: number; noStart: boolean };
+type Question = { id: string; question: string; options: string[]; correctAnswer: string; points: number; type?: string; meta?: string | null; pool?: string | null };
+type Integrity = { left: number; pasted: number; fullscreenExits: number; overtimeSeconds: number; noStart: boolean; dropped?: number };
 type Submission = { id: string; score: number | null; maxScore: number | null; submittedAt: string; integrity?: Integrity | null; student: { name: string } };
 type Quiz = {
-  id: string; courseId?: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean;
+  id: string; courseId?: string; title: string; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate: string | null; timeLimit: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean; pools?: string | null; oneWay?: boolean; hardStop?: boolean; practice?: boolean;
   course: { name: string; code: string }; questions: Question[]; submissions: Submission[];
   analysis?: { students: number; items: ItemResult[]; consistency: number | null; toFix: number };
 };
@@ -27,7 +31,8 @@ const toLocalInput = (iso: string | null) => (iso ? new Date(new Date(iso).getTi
 /** Teacher panel: publish/close a quiz, set due date and time limit, add questions, see results. */
 export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; onClose: () => void; onChanged: () => void }) {
   const { data: quiz, isLoading, error, mutate } = useSWR<Quiz>(`/api/quizzes/${quizId}`, authedJson);
-  const [draft, setDraft] = useState({ question: '', options: ['', '', '', ''], correct: 0, points: 1 });
+  const [draft, setDraft] = useState(() => emptyDraft());
+  const [points, setPoints] = useState(1);
   const [busy, setBusy] = useState(false);
 
   // Copies a question into the course's question bank (Stage 5 · B4.1) to reuse in other quizzes.
@@ -50,12 +55,12 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
   };
 
   const addQuestion = async () => {
-    const options = draft.options.map((o) => o.trim()).filter(Boolean);
-    const correctAnswer = draft.options[draft.correct]?.trim();
     setBusy(true);
+    const sent = draft;
     try {
-      await authedJson(`/api/quizzes/${quizId}/questions`, { method: 'POST', body: JSON.stringify({ question: draft.question, options, correctAnswer, points: draft.points }) });
-      setDraft({ question: '', options: ['', '', '', ''], correct: 0, points: 1 });
+      await authedJson(`/api/quizzes/${quizId}/questions`, { method: 'POST', body: JSON.stringify({ ...toBody(sent), points }) });
+      // The next question starts with the same type (unless they've started another one meanwhile).
+      setDraft((d) => (d === sent ? emptyDraft(sent.type) : d));
       await mutate();
       toast.success('Question added');
     } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
@@ -102,6 +107,10 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
               </div>
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between gap-3">
+                  <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Practice set</p><p className="text-xs text-zinc-600 dark:text-zinc-400">Not graded: once it isn’t a draft, students practise its questions any time under Mastery, one at a time, with hints, the answers and your explanations. It isn’t listed as a quiz to take.</p></div>
+                  <Switch checked={!!quiz.practice} disabled={busy} onChange={(v) => void patch({ practice: v }, v ? 'A practice set: students practise it under Mastery' : 'A quiz again')} label="Practice set" />
+                </div>
+                <div className="flex items-center justify-between gap-3">
                   <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Shuffle questions and answers</p><p className="text-xs text-zinc-500">Each student gets their own order (the same if they reload).</p></div>
                   <Switch checked={!!quiz.shuffle} disabled={busy} onChange={(v) => void patch({ shuffle: v }, v ? 'Questions and answers are shuffled for each student' : 'Same order for everyone')} label="Shuffle questions and answers" />
                 </div>
@@ -109,6 +118,16 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
                   <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Exam mode</p><p className="text-xs text-zinc-500">The time limit counts from when each student starts, on the server. You see how often they left the quiz, pasted or left full screen. No webcam, nothing recorded.</p></div>
                   <Switch checked={!!quiz.examMode} disabled={busy} onChange={(v) => void patch({ examMode: v }, v ? 'Exam mode on' : 'Exam mode off')} label="Exam mode" />
                 </div>
+                {quiz.examMode && <>
+                  <div className="flex items-center justify-between gap-3 pl-4 border-l-2 border-indigo-500/30">
+                    <div><p className="text-sm font-medium text-zinc-900 dark:text-white">One question at a time, no going back</p><p className="text-xs text-zinc-600 dark:text-zinc-400">Each answer is saved as the student moves on and can’t be changed after, even after a reload.</p></div>
+                    <Switch checked={!!quiz.oneWay} disabled={busy} onChange={(v) => void patch({ oneWay: v }, v ? 'No going back' : 'Students can change answers until they hand in')} label="One question at a time, no going back" />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 pl-4 border-l-2 border-indigo-500/30">
+                    <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Stop when time is up</p><p className="text-xs text-zinc-600 dark:text-zinc-400">Answers that arrive more than a minute after the time limit aren’t taken (with one question at a time, the ones already saved still count).</p></div>
+                    <Switch checked={!!quiz.hardStop} disabled={busy} onChange={(v) => void patch({ hardStop: v }, v ? 'Answers stop at the time limit' : 'Late answers are noted, not refused')} label="Stop when time is up" />
+                  </div>
+                </>}
                 <div className="flex items-center justify-between gap-3">
                   <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Reading help</p><p className="text-xs text-zinc-500 dark:text-zinc-400">Students can see the questions in simpler words or in their language, and listen to them; the answers stay as written. Turn it off when reading the words is what you’re testing.</p></div>
                   <Switch checked={quiz.plainWords !== false} disabled={busy} onChange={(v) => void patch({ plainWords: v }, v ? 'Reading help on' : 'Reading help off')} label="Reading help" />
@@ -120,40 +139,30 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
             {/* Questions */}
             <section className="space-y-3">
               <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">Questions ({quiz.questions.length})</p>
+              <PoolSettings quiz={quiz} busy={busy} onSave={(pools) => void patch({ pools }, 'Pools saved')} />
               {quiz.questions.length === 0 && <p className="text-sm text-zinc-500">No questions yet — add the first one below. A quiz needs at least one question before you can publish it.</p>}
               {quiz.questions.map((q, i) => (
                 <div key={q.id} className="p-4 rounded-2xl bg-white/60 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">
                   <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-zinc-900 dark:text-white">{i + 1}. {q.question} <span className="text-xs font-normal text-zinc-500">· {q.points} pt{q.points === 1 ? '' : 's'}</span></p>
+                      <p className="text-sm font-semibold text-zinc-900 dark:text-white">{i + 1}. {q.question} <span className="text-xs font-normal text-zinc-500">· {TYPE_LABELS[typeOf(q)]} · {q.points} pt{q.points === 1 ? '' : 's'}</span></p>
                       {quiz.plainWords !== false && <QuestionLevels id={q.id} text={q.question} />}
+                      <PoolField quizId={quizId} q={q} names={[...new Set(quiz.questions.map((x) => x.pool).filter((x): x is string => !!x))]} onChanged={() => void mutate()} />
                     </div>
                     {quiz.courseId && <button onClick={() => void saveToBank(q.id)} aria-label="Save to the question bank" title="Save to the question bank" className="p-1.5 rounded-lg text-zinc-400 hover:text-indigo-500"><Library className="w-4 h-4" /></button>}
                     <button onClick={() => removeQuestion(q.id)} aria-label="Delete question" className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
                   </div>
-                  <ul className="mt-2 grid sm:grid-cols-2 gap-1.5">
-                    {q.options.map((o) => (
-                      <li key={o} className={cn('text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5', o === q.correctAnswer ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold' : 'bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400')}>
-                        {o === q.correctAnswer && <CheckCircle2 className="w-3.5 h-3.5" />} {o}
-                      </li>
-                    ))}
-                  </ul>
+                  <QuestionKey q={q} />
+                  {typeOf(q) === 'SHORT' && quiz.submissions.length > 0 && <CheckShortAnswers quizId={quizId} questionId={q.id} onChanged={() => { void mutate(); onChanged(); }} />}
                 </div>
               ))}
 
               <div className="p-4 rounded-2xl border border-dashed border-indigo-300/60 dark:border-indigo-400/25 space-y-2.5">
-                <textarea className={`input min-h-[70px]`} placeholder="Write a question…" value={draft.question} maxLength={1000} onChange={(e) => setDraft({ ...draft, question: e.target.value })} />
-                {draft.options.map((o, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <input type="radio" name="correct" checked={draft.correct === i} onChange={() => setDraft({ ...draft, correct: i })} aria-label={`Option ${i + 1} is correct`} className="accent-indigo-600" />
-                    <input className="input" placeholder={`Option ${i + 1}${i < 2 ? '' : ' (optional)'}`} value={o} maxLength={300} onChange={(e) => setDraft({ ...draft, options: draft.options.map((x, j) => (j === i ? e.target.value : x)) })} />
-                  </div>
-                ))}
+                <QuestionEditor draft={draft} onChange={setDraft} idPrefix={`quiz-${quizId}`} />
                 <div className="flex items-center justify-between gap-3">
-                  <label className="text-xs text-zinc-500 flex items-center gap-2">Points <input type="number" min={0.5} max={100} step={0.5} value={draft.points} onChange={(e) => setDraft({ ...draft, points: Number(e.target.value) })} className="w-20 px-2 py-1.5 rounded-lg bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white" /></label>
-                  <button onClick={addQuestion} disabled={busy || !draft.question.trim()} className="btn-primary"><Plus className="w-4 h-4" /> Add question</button>
+                  <label className="text-xs text-zinc-600 dark:text-zinc-400 flex items-center gap-2">Points <input type="number" min={0.5} max={100} step={0.5} value={points} onChange={(e) => setPoints(Number(e.target.value))} className="w-20 px-2 py-1.5 rounded-lg bg-zinc-50 dark:bg-white/[0.05] border border-zinc-200 dark:border-white/10 text-sm text-zinc-900 dark:text-white" /></label>
+                  <button onClick={addQuestion} disabled={busy || !draftReady(draft)} className="btn-primary"><Plus className="w-4 h-4" /> Add question</button>
                 </div>
-                <p className="text-[11px] text-zinc-500">Select the circle next to the correct answer.</p>
               </div>
             </section>
 
@@ -173,6 +182,58 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
         )}
       </div>
     </div>
+  );
+}
+
+/** Which pool a question is drawn from (Stage 5 · B4.2); empty: everyone gets it. */
+function PoolField({ quizId, q, names, onChanged }: { quizId: string; q: Question; names: string[]; onChanged: () => void }) {
+  const [value, setValue] = useState(q.pool ?? '');
+  const save = async () => {
+    if (value.trim() === (q.pool ?? '')) return;
+    try { await authedJson(`/api/quizzes/${quizId}/questions`, { method: 'PATCH', body: JSON.stringify({ qid: q.id, pool: value }) }); onChanged(); }
+    catch (e) { toast.error(errorMessage(e, 'The pool couldn’t be saved.')); }
+  };
+  return (
+    <label className="mt-1.5 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">Pool
+      <input value={value} maxLength={40} list={`pools-${quizId}`} onChange={(e) => setValue(e.target.value)} onBlur={() => void save()} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} placeholder="everyone gets it" className="input py-1 text-xs max-w-[12rem]" />
+      <datalist id={`pools-${quizId}`}>{names.map((n) => <option key={n} value={n} />)}</datalist>
+    </label>
+  );
+}
+
+/** How many each student gets from each pool. */
+function PoolSettings({ quiz, busy, onSave }: { quiz: Quiz; busy: boolean; onSave: (pools: Record<string, number> | null) => void }) {
+  const saved = parsePools(quiz.pools);
+  const summary = poolSummary(quiz.questions, saved);
+  const [counts, setCounts] = useState<Record<string, string>>({});
+  if (!summary.length) return <p className="text-[11px] text-zinc-600 dark:text-zinc-400">Give questions a pool name to draw some of them for each student.</p>;
+  const value = (name: string, each: number) => counts[name] ?? String(each);
+  return (
+    <div className="p-3 rounded-2xl border border-indigo-500/25 bg-indigo-500/[0.04] space-y-2">
+      <p className="text-sm font-semibold text-zinc-900 dark:text-white">Pools</p>
+      <ul className="space-y-1.5">
+        {summary.map((p) => (
+          <li key={p.name} className="flex flex-wrap items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200">
+            <span className="font-medium">{p.name}</span>: each student gets
+            <input type="number" min={1} max={p.size} value={value(p.name, p.each)} onChange={(e) => setCounts((c) => ({ ...c, [p.name]: e.target.value }))} aria-label={`How many from ${p.name}`} className="input py-1 w-16" />
+            of {p.size}
+          </li>
+        ))}
+      </ul>
+      <button type="button" disabled={busy} onClick={() => onSave(Object.fromEntries(summary.map((p) => [p.name, Math.max(1, Math.min(p.size, Math.round(Number(value(p.name, p.each))) || p.size))])))} className="btn-secondary btn-sm">Save the pools</button>
+      <p className="text-[11px] text-zinc-600 dark:text-zinc-400">Each student gets their own draw, the same if they reload; only their questions count towards their score.</p>
+    </div>
+  );
+}
+
+/** Students' short answers that didn't match the key, loaded when opened. */
+function CheckShortAnswers({ quizId, questionId, onChanged }: { quizId: string; questionId: string; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="mt-2" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary className="cursor-pointer text-xs font-semibold text-indigo-700 dark:text-indigo-300">Check the answers</summary>
+      {open && <div className="mt-2"><ShortAnswerReview quizId={quizId} questionId={questionId} onChanged={onChanged} /></div>}
+    </details>
   );
 }
 
@@ -228,6 +289,7 @@ function IntegrityNote({ i }: { i: Integrity }) {
     i.fullscreenExits ? `left full screen ${i.fullscreenExits}×` : '',
     i.overtimeSeconds ? `arrived ${Math.ceil(i.overtimeSeconds / 60)} min after the time limit` : '',
     i.noStart ? 'no start time (taken offline?)' : '',
+    i.dropped ? `${i.dropped} answer${i.dropped === 1 ? '' : 's'} arrived after the time and weren’t taken` : '',
   ].filter(Boolean);
   return <span className={cn('block text-[11px]', notes.length ? 'text-amber-700 dark:text-amber-300' : 'text-zinc-500')}>{notes.length ? notes.join(' · ') : 'Exam mode: nothing to note'}</span>;
 }

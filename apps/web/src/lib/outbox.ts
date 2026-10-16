@@ -216,11 +216,12 @@ export async function saveDeviceKey(rec: DeviceKeyRecord) {
 
 // ── Drafts (assignment answers written on this device) ───────────────────────────────────────
 
-export interface Draft { key: string; text: string; savedAt: number }
+/** extra: anything kept with the draft (an assignment's writing replay, Stage 5 · B3.6). */
+export interface Draft { key: string; text: string; savedAt: number; extra?: unknown }
 
-export async function saveDraft(key: string, text: string) {
+export async function saveDraft(key: string, text: string, extra?: unknown) {
   if (!outboxSupported()) return;
-  await tx('drafts', 'readwrite', (s) => (text ? s.put({ key, text, savedAt: Date.now() }) : s.delete(key)));
+  await tx('drafts', 'readwrite', (s) => (text ? s.put({ key, text, savedAt: Date.now(), ...(extra === undefined ? {} : { extra }) }) : s.delete(key)));
 }
 
 export async function getDraft(key: string): Promise<Draft | null> {

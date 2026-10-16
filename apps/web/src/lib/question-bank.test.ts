@@ -3,7 +3,7 @@ import { cleanQuestion, csvRows, parseQuestionCsv } from './question-bank';
 
 describe('cleanQuestion', () => {
   const base = { question: 'Which is a prime?', options: ['4', '7', '9'], correctAnswer: '7' };
-  it('accepts a good question with defaults', () => expect(cleanQuestion(base)).toEqual({ ...base, points: 1, tags: [], difficulty: null }));
+  it('accepts a good question with defaults', () => expect(cleanQuestion(base)).toEqual({ ...base, points: 1, tags: [], difficulty: null, type: 'CHOICE', meta: null }));
   it('needs text, 2–6 different options and a right answer among them', () => {
     expect(cleanQuestion({ ...base, question: ' ' })).toMatch(/needs its text/);
     expect(cleanQuestion({ ...base, options: ['7'] })).toMatch(/2 to 6/);

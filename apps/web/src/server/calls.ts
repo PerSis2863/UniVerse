@@ -278,13 +278,14 @@ export async function callQuestions(callId: string, user: SessionUser) {
   if (!id.startsWith('c_') || !info.host) return { quizzes: [] };
   const quizzes = await prisma.quiz.findMany({
     where: { courseId: id.slice(2) }, orderBy: { createdAt: 'desc' }, take: 10,
-    select: { id: true, title: true, questions: { orderBy: { order: 'asc' }, take: 30, select: { id: true, question: true, options: true, correctAnswer: true } } },
+    select: { id: true, title: true, questions: { where: { type: { in: ['CHOICE', 'TRUE_FALSE'] } }, orderBy: { order: 'asc' }, take: 30, select: { id: true, question: true, options: true, correctAnswer: true } } },
   });
   return {
     quizzes: quizzes
       .map((quiz) => ({
         id: quiz.id,
         title: quiz.title,
+        // One-answer questions only (a poll in the call); the other types stay in the quiz.
         questions: quiz.questions.flatMap((x) => {
           const options = (Array.isArray(x.options) ? (x.options as unknown[]) : []).map((o) => String(o)).slice(0, 6);
           const correct = options.indexOf(x.correctAnswer);

@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/auth';
 import { buildSampleDb, levelInfo, LEVELS, sid, at, type SampleDb } from './data';
 import { sampleAsk, sampleMetric } from './analytics';
 import { isMetricId } from '@/lib/school-metrics';
+import { answerText, cleanQuestionInput, forStudent, markAnswer, metaOf, typeOf } from '@/lib/question-types';
 
 // Answers the app's API requests from example data while sample mode is on.
 // GETs without a sample answer fall through to the real server (read-only);
@@ -577,7 +578,7 @@ function groupOut(d: SampleDb, g: any) {
 const quizOut = (d: SampleDb, qz: any, withAnswers: boolean) => ({
   id: qz.id, title: qz.title, description: qz.description, dueDate: qz.dueDate, timeLimit: qz.timeLimit, status: qz.status, courseId: qz.courseId, createdAt: at(-10),
   course: { name: course(d, qz.courseId)?.name },
-  questions: qz.questions.map(({ correctAnswer, ...x }: any) => (withAnswers ? { ...x, correctAnswer } : x)),
+  questions: qz.questions.map((x: any) => (withAnswers ? x : forStudent(x, null))),
 });
 
 // ── GET routes ─────────────────────────────────────────────────────────
@@ -1654,6 +1655,22 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       { title: 'Week 2', summary: null, items: [{ id: 'sm-i5', kind: 'VIDEO', title: 'Lecture recording', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }] },
     ] });
   }],
+  // Hand-in receipts (Stage 5 · B3.5): none are made in sample mode.
+  [/^\/api\/assignments\/receipts$/, () => ok({ valid: false })],
+  // Adaptive practice (Stage 5 · B4.4): nothing to practise in sample mode.
+  [/^\/api\/courses\/[^/]+\/practice$/, () => ok({ next: null, stats: { today: 0, rightFirst: 0 } })],
+  // Short answers to check (Stage 5 · B4.1): none in sample mode.
+  [/^\/api\/quizzes\/[^/]+\/short-answers$/, () => ok({ accepted: [], wrong: [] })],
+  // Writing replays (Stage 5 · B3.6): none are kept in sample mode.
+  [/^\/api\/assignments\/submissions\/[^/]+\/replay$/, () => fail('No writing replay was kept for this answer.', 404)],
+  // The school's grading scale (Stage 5 · B3.4): the standard one.
+  [/^\/api\/grade-scale$/, () => ok({ scale: [{ letter: 'A', min: 90, gpa: 4 }, { letter: 'B', min: 80, gpa: 3 }, { letter: 'C', min: 70, gpa: 2 }, { letter: 'D', min: 60, gpa: 1 }, { letter: 'F', min: 0, gpa: 0 }], maxGpa: 4, custom: false, canEdit: false })],
+  // Grade history (Stage 5 · B3.4): none in sample mode.
+  [/^\/api\/courses\/([^/]+)\/grade-history$/, () => ok([])],
+  // Notes on a hand-in (Stage 5 · B3.3): none in sample mode.
+  [/^\/api\/assignments\/submissions\/([^/]+)\/notes$/, () => ok({ notes: [], canEdit: false })],
+  // Peer review (Stage 5 · B3.2): nothing to review in sample mode.
+  [/^\/api\/assignments\/([^/]+)\/peer$/, () => ok({ rubric: [], maxScore: 0, peerDueDate: null, open: true, toDo: [], received: [], receivedLater: false })],
   // A rich lesson page (Stage 5 · B2): a callout, a video with chapters, a quick check and flashcards.
   [/^\/api\/courses\/([^/]+)\/modules\/([^/]+)$/, ({ m }) => {
     if (m[2] !== 'sm-i8') return fail('That page isn’t there any more.', 404);
@@ -1753,7 +1770,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/quizzes\/([^/]+)\/result$/, ({ db: d, m }) => {
     const x = d.quizzes.find((z) => z.id === m[1]); const sub = x && d.submissions[x.id];
     if (!x || !sub) return fail('You haven’t submitted this quiz.', 404);
-    return ok({ title: x.title, score: sub.score, maxScore: sub.maxScore, submittedAt: sub.submittedAt, revealed: true, questions: x.questions.map((qq: any) => ({ id: qq.id, question: qq.question, options: qq.options, points: qq.points, yourAnswer: sub.answers[qq.id] ?? null, correct: sub.answers[qq.id] === qq.correctAnswer, correctAnswer: qq.correctAnswer })) });
+    return ok({ title: x.title, score: sub.score, maxScore: sub.maxScore, submittedAt: sub.submittedAt, revealed: true, questions: x.questions.map((qq: any) => { const credit = markAnswer(qq, sub.answers[qq.id]).credit; return { id: qq.id, type: typeOf(qq), question: qq.question, options: forStudent(qq, null).options, points: qq.points, yourAnswer: sub.answers[qq.id] ?? null, yourText: answerText(qq, sub.answers[qq.id]), correct: credit >= 1, credit, correctAnswer: qq.correctAnswer, rightOptions: typeOf(qq) === 'MULTI' ? metaOf(qq).correct ?? [] : [qq.correctAnswer] }; }) });
   }],
   [/^\/api\/quizzes\/([^/]+)$/, ({ db: d, m }) => {
     const x = d.quizzes.find((z) => z.id === m[1]); if (!x) return fail('Quiz not found.', 404);
@@ -1938,6 +1955,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/chat\/search$/, () => ok([])],
   [/^\/api\/calls\/scheduled$/, ({ q }) => ok(q.get('rooms') ? { classes: [], groups: [], chats: [] } : [])],
   [/^\/api\/live$/, ({ q }) => ok(q.get('courseId') ? { enrolled: 0, polls: [] } : [])],
+  // Live quiz game (Stage 5 · B4.5): none in sample mode.
+  [/^\/api\/live\/game$/, () => ok({ game: null })],
   [/^\/impact\/blockchain-credentials\/pending$/, ({ db: d }) => ok(d.pendingCredentials)],
   [/^\/collaborations\/projects$/, ({ db: d }) => ok(d.projects)],
   [/^\/collaborations\/projects\/([^/]+)$/, ({ db: d, m }) => { const p = d.projects.find((x) => x.id === m[1]); return p ? ok({ ...p, members: [], milestones: [] }) : fail('Not found', 404); }],
@@ -2403,9 +2422,15 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   // The discussion board: an example thread to look at; posting only shows that it isn't saved.
   ['POST', /^\/api\/courses\/([^/]+)\/discussion(\/[^/]+(\/suggest)?)?$/, () => { notice(); return ok({ ok: true }); }],
   // Assignment rules (Stage 5 · B3.1): extensions, another try and extra time aren't saved.
-  ['POST', /^\/api\/assignments\/([^/]+)\/(extensions|groups)$/, () => { notice(); return ok({ ok: true }); }],
-  ['POST', /^\/api\/assignments\/submissions\/([^/]+)\/reopen$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/api\/assignments\/([^/]+)\/(extensions|groups|peer|peer\/assign|post-grades)$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/api\/assignments\/submissions\/([^/]+)\/(reopen|notes)$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/accommodations$/, () => { notice(); return ok({ ok: true }); }],
+  // Regrade requests and the rubric in plain words (Stage 5 · B3.5).
+  ['POST', /^\/api\/assignments\/(submissions\/[^/]+\/regrade|regrades\/[^/]+)$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/api\/live\/game(\/[^/]+)?$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/api\/courses\/[^/]+\/practice$/, () => { notice(); return ok({ right: false, credit: 0, tries: 1, hint: null, correctAnswer: null, explain: null, done: true }); }],
+  ['POST', /^\/api\/quizzes\/[^/]+\/short-answers(\/suggest)?$/, () => { notice(); return ok({ accepted: [], rescored: 0, suggestions: [] }); }],
+  ['POST', /^\/api\/assignments\/([^/]+)\/rubric-help$/, () => ok({ criteria: [] })],
   // Common Cartridge import: sample mode only shows that it isn't saved.
   ['POST', /^\/api\/courses\/([^/]+)\/import$/, () => { notice(); return ok({ error: 'Sample mode: importing isn’t saved.' }, 400); }],
   // Copy to a new term: sample mode only shows that it can't be saved.
@@ -2523,16 +2548,19 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['PATCH', /^\/api\/chat\/messages\/([^/]+)$/, ({ db: d, m, body }) => { for (const c of d.conversations) { const msg = c.messages.find((x: any) => x.id === m[1]); if (msg) { msg.body = body.body ?? msg.body; msg.editedAt = new Date().toISOString(); return ok(msg); } } return ok({ ok: true }); }],
   ['DELETE', /^\/api\/chat\/messages\/([^/]+)$/, ({ db: d, m }) => { for (const c of d.conversations) { const msg = c.messages.find((x: any) => x.id === m[1]); if (msg) { Object.assign(msg, { type: 'DELETED', body: '', deletedAt: new Date().toISOString(), attachmentUrl: null, reactions: {} }); } } return ok({ ok: true }); }],
 
+  // One-way exams (Stage 5 · B4.3): sample quizzes aren't exams.
+  ['POST', /^\/quizzes\/[^/]+\/(start|answer)$/, () => ok({ startedAt: null, endsAt: null, done: [] })],
   ['POST', /^\/quizzes\/([^/]+)\/submit$/, ({ db: d, m, body }) => {
     const x = d.quizzes.find((z) => z.id === m[1]); if (!x) return fail('Quiz not found', 404);
     const answers = body.answers ?? {};
     let score = 0, maxScore = 0;
-    for (const qq of x.questions) { maxScore += qq.points; if (answers[qq.id] === qq.correctAnswer) score += qq.points; }
+    for (const qq of x.questions) { maxScore += qq.points; score += qq.points * markAnswer(qq, answers[qq.id]).credit; }
     d.submissions[x.id] = { score, maxScore, answers, submittedAt: new Date().toISOString() };
     return ok({ id: sid('sub'), quizId: x.id, score, maxScore });
   }],
   ['POST', /^\/quizzes$/, ({ db: d, body }) => { const x = { id: sid('quiz'), courseId: body.courseId, title: body.title, description: body.description ?? null, dueDate: at(7, 23, 59), timeLimit: body.timeLimit ?? 30, status: 'DRAFT', questions: [] as any[] }; d.quizzes.push(x as any); return ok(x, 201); }],
   ['DELETE', /^\/quizzes\/([^/]+)$/, ({ db: d, m }) => { const i = d.quizzes.findIndex((z) => z.id === m[1]); if (i >= 0) d.quizzes.splice(i, 1); return ok({ ok: true }); }],
+  ['PATCH', /^\/api\/quizzes\/[^/]+\/questions$/, () => { notice(); return ok({ ok: true }); }],
   ['PATCH', /^\/api\/quizzes\/([^/]+)$/, ({ db: d, m, body }) => {
     const x: any = d.quizzes.find((z) => z.id === m[1]); if (!x) return fail('Quiz not found.', 404);
     if (body.status === 'PUBLISHED' && !x.questions.length) return fail('Add at least one question before publishing.');
@@ -2541,7 +2569,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
     if ('timeLimit' in body) x.timeLimit = body.timeLimit;
     return ok({ ok: true });
   }],
-  ['POST', /^\/api\/quizzes\/([^/]+)\/questions$/, ({ db: d, m, body }) => { const x = d.quizzes.find((z) => z.id === m[1]); if (!x) return fail('Quiz not found.', 404); const qq = { id: sid('qq'), quizId: x.id, question: body.question, options: body.options, correctAnswer: body.correctAnswer, points: Number(body.points) || 1, order: x.questions.length }; x.questions.push(qq); return ok(qq, 201); }],
+  ['POST', /^\/api\/quizzes\/([^/]+)\/questions$/, ({ db: d, m, body }) => { const x = d.quizzes.find((z) => z.id === m[1]); if (!x) return fail('Quiz not found.', 404); const c = cleanQuestionInput(body); if (typeof c === 'string') return fail(c, 400); const qq = { id: sid('qq'), quizId: x.id, ...c, points: Number(body.points) || 1, order: x.questions.length }; x.questions.push(qq); return ok(qq, 201); }],
   ['DELETE', /^\/api\/quizzes\/([^/]+)\/questions$/, ({ db: d, m, q }) => { const x = d.quizzes.find((z) => z.id === m[1]); if (x) x.questions = x.questions.filter((qq: any) => qq.id !== q.get('qid')); return ok({ ok: true }); }],
 
   ['POST', /^\/grades\/course\/([^/]+)$/, ({ db: d, m, body }) => {

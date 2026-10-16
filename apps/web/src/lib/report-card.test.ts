@@ -24,8 +24,8 @@ describe('courseLine and overall', () => {
     const a = courseLine(course, [{ assessment: 'x', score: 95, maxScore: 100 }], [], () => null, { present: 10, late: 0, absent: 0, excused: 0 });
     const b = courseLine({ ...course, code: 'MA1' }, [{ assessment: 'y', score: 75, maxScore: 100 }], [], () => null, { present: 5, late: 0, absent: 5, excused: 0 });
     const c = courseLine({ ...course, code: 'X' }, [], [], () => null, none);
-    expect(overall([a, b, c])).toEqual({ average: 85, gpa: 3, attendanceRate: 75 });
-    expect(overall([])).toEqual({ average: null, gpa: null, attendanceRate: null });
+    expect(overall([a, b, c])).toEqual({ average: 85, gpa: 3, attendanceRate: 75, gpaMax: 4 });
+    expect(overall([])).toEqual({ average: null, gpa: null, attendanceRate: null, gpaMax: 4 });
   });
 });
 

@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { CHOICE_TYPES, markAnswer, typeOf, type Given } from '@/lib/question-types';
 import { bandOf, masteryOf } from '@/lib/mastery';
 import { findMoments, groupMisses, hits, enough, keywords, LOW_SCORE, PRACTICE_WEIGHT, RETRY_WEIGHT, type Candidate, type Miss, type SessionText } from '@/lib/second-chance';
 import type { SessionUser } from '@/lib/server-auth';
@@ -49,7 +50,7 @@ async function candidates(studentId: string, courseId: string) {
   const [subs, returned, concepts] = await Promise.all([
     prisma.quizSubmission.findMany({
       where: { studentId, submittedAt: { gte: since }, quiz: { courseId } }, take: 60,
-      select: { answers: true, submittedAt: true, quiz: { select: { title: true, status: true, dueDate: true, questions: { select: { id: true, question: true, correctAnswer: true } } } } },
+      select: { answers: true, submittedAt: true, quiz: { select: { title: true, status: true, dueDate: true, questions: { select: { id: true, question: true, correctAnswer: true, options: true, type: true, meta: true } } } } },
     }),
     prisma.assignmentSubmission.findMany({
       where: { studentId, status: 'RETURNED', returnedAt: { gte: since }, assignment: { courseId } }, take: 60,
@@ -62,10 +63,11 @@ async function candidates(studentId: string, courseId: string) {
   for (const s of subs) {
     // Only once the quiz shows its answers (closed or past due), like the quiz review.
     if (s.quiz.status !== 'CLOSED' && !(s.quiz.dueDate && s.quiz.dueDate.getTime() < now)) continue;
-    const answers = parse<Record<string, string>>(s.answers, {});
+    const answers = parse<Record<string, Given>>(s.answers, {});
     for (const q of s.quiz.questions) {
-      const given = answers[q.id];
-      if (given != null && given !== '' && given !== q.correctAnswer) misses.push({ kind: 'QUESTION', refId: q.id, text: q.question, source: s.quiz.title, at: s.submittedAt.getTime() });
+      // Answered, and not fully right (marked by the question's type, B4.1).
+      const mark = markAnswer(q, answers[q.id], studentId);
+      if (mark.answered && mark.credit < 1) misses.push({ kind: 'QUESTION', refId: q.id, text: q.question, source: s.quiz.title, at: s.submittedAt.getTime() });
     }
   }
   for (const s of returned) {
@@ -167,13 +169,14 @@ async function build(user: SessionUser, a: NonNullable<Awaited<ReturnType<typeof
   const questionIds = c.misses.filter((m) => m.kind === 'QUESTION').map((m) => m.refId).slice(0, PRACTICE);
   const criteria = c.misses.filter((m) => m.kind === 'CRITERION').slice(0, PRACTICE);
   const [questions, subs] = await Promise.all([
-    questionIds.length ? prisma.quizQuestion.findMany({ where: { id: { in: questionIds }, quiz: { courseId: a.courseId } }, select: { id: true, question: true, options: true, correctAnswer: true, quiz: { select: { title: true } } } }) : Promise.resolve([]),
+    questionIds.length ? prisma.quizQuestion.findMany({ where: { id: { in: questionIds }, quiz: { courseId: a.courseId } }, select: { id: true, question: true, options: true, correctAnswer: true, type: true, quiz: { select: { title: true } } } }) : Promise.resolve([]),
     criteria.length ? prisma.assignmentSubmission.findMany({ where: { studentId: user.id, assignmentId: { in: [...new Set(criteria.map((m) => m.refId.split(':')[0]))] } }, select: { assignmentId: true, criteriaScores: true, assignment: { select: { rubric: true } } } }) : Promise.resolve([]),
   ]);
   const retry = questionIds.flatMap((id) => {
     const q = questions.find((x) => x.id === id);
     const options = parse<string[]>(q?.options, []);
-    const answer = q ? options.indexOf(q.correctAnswer) : -1;
+    // Tried again as one-answer questions: only the types whose answer is one option.
+    const answer = q && CHOICE_TYPES.includes(typeOf(q)) ? options.indexOf(q.correctAnswer) : -1;
     return q && answer >= 0 ? [{ question: q.question, options, answer, explain: '', from: 'quiz' as const, source: q.quiz.title }] : [];
   });
   const feedback = criteria.flatMap((m) => {

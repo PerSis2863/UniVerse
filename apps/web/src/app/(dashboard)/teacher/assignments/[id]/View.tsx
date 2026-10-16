@@ -17,10 +17,15 @@ import { TabPill } from '@/components/ui/Glide';
 import { Translatable } from '@/components/shared/Translatable';
 import { AiReceiptView } from '@/components/assignments/AiReceipt';
 import { AI_POLICIES, type AiPolicy, type AiReceipt } from '@/lib/ai-receipt';
-import { Extensions, RulesEditor, rulesSentence, type ClassStudent, type Extension } from '@/components/assignments/AssignmentRules';
+import { Extensions, GradePosting, RulesEditor, rulesSentence, type ClassStudent, type Extension } from '@/components/assignments/AssignmentRules';
 import { withPenalty } from '@/lib/assignment-policy';
 import { HandedInView } from '@/components/assignments/HandIn';
 import { GroupModePicker, GroupsEditor, type Group } from '@/components/assignments/AssignmentGroups';
+import { PeerReviewsOf, PeerSettings, type TeacherReview } from '@/components/assignments/PeerReview';
+import { SubmissionNotes } from '@/components/assignments/SubmissionNotes';
+import { ReceiptCheck, RegradeAnswers, type Regrade } from '@/components/assignments/StudentExtras';
+import { WritingReplay } from '@/components/assignments/WritingReplay';
+import { RubricLevels } from '@/components/assignments/RubricKeys';
 import type { GroupMode } from '@/lib/group-maker';
 import { SUBMIT_KINDS, SUBMIT_LABEL, type SubmitKind } from '@/lib/submit-kinds';
 
@@ -37,6 +42,8 @@ interface Submission {
   fileUrl?: string | null; fileName?: string | null; fileSize?: number | null; linkUrl?: string | null;
   /** A group's hand-in (Stage 5 · B3.2), and each member's grade { studentId: { gradeId, score } } (JSON). */
   groupId?: string | null; memberGrades?: string | null;
+  /** When its grade reached the gradebook and the student (null: held until "Post grades"). */
+  postedAt?: string | null;
   criteriaScores: Score[] | null;
   score: number | null;
   feedback: string | null;
@@ -48,6 +55,8 @@ interface Submission {
   feedbackMediaUrl: string | null; feedbackMediaKind: string | null; feedbackTranscript: string | null;
   styleSignals: { baseline: number; differs: { label: string; now: number; usual: number }[] } | null;
   aiReceipt?: AiReceipt | null;
+  /** A writing replay was kept (Stage 5 · B3.6), and whether it ends at the text handed in. */
+  replayMatches?: boolean | null;
 }
 interface Detail {
   id: string;
@@ -64,6 +73,9 @@ interface Detail {
   submitKind?: SubmitKind;
   groupMode?: GroupMode | null;
   groups?: Group[];
+  peerReviews?: number; peerDueDate?: string | null; peerReviewList?: TeacherReview[];
+  postPolicy?: 'AUTO' | 'MANUAL';
+  regrades?: Regrade[];
   course: { code: string; name: string };
   enrolled: number;
   students?: ClassStudent[];
@@ -227,7 +239,16 @@ function TeacherAssignmentPage({ id }: { id: string }) {
             <details className="panel px-4 py-3">
               <summary className="cursor-pointer text-sm font-semibold text-zinc-900 dark:text-white py-1">Rules and extensions <span className="font-normal text-zinc-600 dark:text-zinc-400">· {[...rulesSentence(data).map((x) => x.replace(/^You can/, 'Students can')), data.extensions?.length ? `${data.extensions.length} extension${data.extensions.length === 1 ? '' : 's'}.` : ''].filter(Boolean).join(' ') || 'no late penalty, any number of hand-ins'}</span></summary>
               <div className="mt-3 pb-1 space-y-5">
+                <GradePosting assignmentId={data.id} policy={data.postPolicy ?? 'AUTO'} held={subs.filter((s) => graded(s) && !s.postedAt).length} canManage={data.canManage !== false} onChanged={() => void mutate()} />
                 <RulesEditor key={`${data.latePenalty}:${data.lateGraceMinutes}:${data.latePenaltyMax}:${data.maxAttempts}`} assignmentId={data.id} rules={data} canManage={data.canManage !== false} onSaved={() => void mutate()} />
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Peer review</h3>
+                  <PeerSettings key={`${data.peerReviews}:${data.peerDueDate}`} assignmentId={data.id} peerReviews={data.peerReviews ?? 0} peerDueDate={data.peerDueDate ?? null} canManage={data.canManage !== false} groupWork={!!data.groupMode} reviews={data.peerReviewList ?? []} onChanged={() => void mutate()} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Check a hand-in receipt</h3>
+                  <ReceiptCheck />
+                </div>
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Extensions</h3>
                   <Extensions assignmentId={data.id} dueDate={data.dueDate} students={data.students ?? []} extensions={data.extensions ?? []} onChanged={() => void mutate()} />
@@ -264,8 +285,9 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                       <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{who(s)}</span>
                       <span className="block text-[11px] text-zinc-500">{new Date(s.submittedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}{s.lateDays ? ` · ${s.lateDays} day${s.lateDays === 1 ? '' : 's'} late${s.latePenalty && !s.lateWaived ? ` (−${s.latePenalty}%)` : ''}` : ''}{s.attempts && s.attempts > 1 ? ` · hand-in ${s.attempts}` : ''}{s.offlineAt ? ' · offline' : ''}</span>
                     </span>
+                    {(data.regrades ?? []).some((r) => r.submissionId === s.id && r.status === 'OPEN') && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-amber-500/15 text-amber-800 dark:text-amber-200">Regrade?</span>}
                     {(s.similarity?.peer || s.similarity?.material) && <Copy className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="Similarity to check" />}
-                    <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0', (STATUS[s.status] ?? STATUS.SUBMITTED).style)}>{s.status === 'RETURNED' ? `${s.score}/${data.maxScore}` : (STATUS[s.status] ?? STATUS.SUBMITTED).label}</span>
+                    <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0', (STATUS[s.status] ?? STATUS.SUBMITTED).style)}>{s.status === 'RETURNED' ? `${s.score}/${data.maxScore}${s.postedAt ? '' : ' · not posted'}` : (STATUS[s.status] ?? STATUS.SUBMITTED).label}</span>
                   </button>
                 ))}
               </nav>
@@ -371,6 +393,14 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
         </div>
       )}
 
+      <WritingReplay key={sub.id} submissionId={sub.id} matches={sub.replayMatches} name={sub.student.name} />
+
+      <RegradeAnswers regrades={(detail.regrades ?? []).filter((r) => r.submissionId === sub.id)} onChanged={onChange} />
+
+      <SubmissionNotes sub={sub} title="Notes for the student" />
+
+      <PeerReviewsOf reviews={(detail.peerReviewList ?? []).filter((r) => r.submissionId === sub.id)} rubric={detail.rubric} maxScore={detail.maxScore} />
+
       {(sub.similarity?.peer || sub.similarity?.material) && (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300" role="note">
           <p className="font-semibold flex items-center gap-2 mb-1"><Copy className="w-4 h-4" /> Similar wording (worth a look, not proof)</p>
@@ -419,11 +449,13 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
           </div>
         )}
 
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">Quick scoring: in a row of levels, press 0–5 (fifths of the points) and it moves on to the next criterion.</p>
         {detail.rubric.map((r) => (
           <div key={r.id} className="grid sm:grid-cols-[1fr_7rem] gap-2">
             <div>
               <label htmlFor={`score-${r.id}`} className="text-sm font-medium text-zinc-900 dark:text-white">{r.criterion}</label>
               {r.description && <p className="text-xs text-zinc-500">{r.description}</p>}
+              <RubricLevels criterion={r.criterion} points={r.points} value={scores[r.id]?.score ?? ''} onPick={(v) => setScores((s) => ({ ...s, [r.id]: { ...s[r.id], score: String(v) } }))} />
               <textarea
                 aria-label={`Comment on ${r.criterion}`}
                 rows={2}
@@ -477,7 +509,7 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
         <div className="flex items-center justify-between gap-3">
           {sub.status === 'RETURNED' ? (
             <span className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Returned {sub.returnedAt ? new Date(sub.returnedAt).toLocaleDateString() : ''}</span>
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> {sub.postedAt ? 'Returned' : 'Graded, not posted yet'} {sub.returnedAt ? new Date(sub.returnedAt).toLocaleDateString() : ''}</span>
               <button type="button" onClick={() => void reopen()} className="btn-ghost btn-sm">Let them hand in again</button>
             </span>
           ) : sub.status === 'REOPENED' ? <span className="text-xs text-sky-700 dark:text-sky-300">Reopened: waiting for their new version</span> : <span />}

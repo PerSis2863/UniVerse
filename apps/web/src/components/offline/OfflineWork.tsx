@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { AnswerInput, hasAnswer, withShownOrder } from '@/components/quizzes/AnswerInput';
+import type { Given } from '@/lib/question-types';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { CheckCircle2, Clock, CloudUpload, Loader2, RotateCcw, Send, Trash2 } from 'lucide-react';
@@ -9,7 +11,6 @@ import { discard, enqueue, getDraft, listOutbox, newClientId, onOutbox, retry, s
 import type { PackAssignment, PackQuiz } from '@/lib/offline-packs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
-import { TabPill } from '@/components/ui/Glide';
 
 // Offline-first classroom (upgrade 4): take a saved quiz or write a saved assignment with no
 // connection. Both go to the device's outbox (src/lib/outbox.ts) and are sent when it's back.
@@ -70,7 +71,7 @@ export function OfflineQuiz({ quiz }: { quiz: PackQuiz }) {
   const queued = useQueued(quiz.id);
   const [done, setDone] = useState<string | null>(null);
   const [run, setRun] = useState<null | { startedAt: number }>(null);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, Given>>({});
   const [now, setNow] = useState(() => Date.now());
   const finishing = useRef(false);
 
@@ -83,7 +84,7 @@ export function OfflineQuiz({ quiz }: { quiz: PackQuiz }) {
     const id = newClientId();
     await enqueue({
       id, kind: 'quiz', method: 'POST', url: `/api/core/quizzes/${encodeURIComponent(quiz.id)}/submit`, ref: quiz.id, label: `Quiz: ${quiz.title}`,
-      body: { answers, offline: { clientId: id, startedAt: new Date(run.startedAt).toISOString(), finishedAt } },
+      body: { answers: withShownOrder(quiz.questions, answers), offline: { clientId: id, startedAt: new Date(run.startedAt).toISOString(), finishedAt } },
     });
     await saveDraft(`quizdone:${quiz.id}`, finishedAt);
     setDone(finishedAt);
@@ -92,6 +93,7 @@ export function OfflineQuiz({ quiz }: { quiz: PackQuiz }) {
     toast.success(navigator.onLine ? 'Quiz finished: sending now.' : 'Quiz finished and saved on this device. It’s sent when you’re back online.');
   };
 
+  const answered = quiz.questions.filter((q) => hasAnswer(answers[q.id])).length;
   const left = run && quiz.timeLimit ? Math.max(0, Math.round((run.startedAt + quiz.timeLimit * 60_000 - now) / 1000)) : null;
   useEffect(() => {
     if (!run || !quiz.timeLimit) return;
@@ -130,20 +132,14 @@ export function OfflineQuiz({ quiz }: { quiz: PackQuiz }) {
         {quiz.questions.map((q, n) => (
           <li key={q.id} className="space-y-2">
             <p className="text-sm font-medium text-zinc-900 dark:text-white">{n + 1}. {q.question}</p>
-            <div className="grid gap-1.5">
-              {q.options.map((o) => (
-                <label key={o} className={cn('relative isolate flex items-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer', answers[q.id] === o ? 'border-indigo-500 text-zinc-900 dark:text-white' : 'border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300')}>{answers[q.id] === o && <TabPill id={`offline-${q.id}`} variant="soft" />}
-                  <input type="radio" name={q.id} checked={answers[q.id] === o} onChange={() => setAnswers((a) => ({ ...a, [q.id]: o }))} className="accent-indigo-500" /> {o}
-                </label>
-              ))}
-            </div>
+            <AnswerInput compact q={q} label={`Your answer to question ${n + 1}`} value={answers[q.id]} onChange={(v) => setAnswers((a) => ({ ...a, [q.id]: v }))} />
           </li>
         ))}
       </ol>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-zinc-500">{Object.keys(answers).length} of {quiz.questions.length} answered</span>
+        <span className="text-xs text-zinc-500">{answered} of {quiz.questions.length} answered</span>
         <button type="button" className="btn-primary" onClick={async () => {
-          const missing = quiz.questions.length - Object.keys(answers).length;
+          const missing = quiz.questions.length - answered;
           if (missing && !(await confirmDialog({ title: `Finish with ${missing} unanswered?`, confirmLabel: 'Finish' }))) return;
           void finish();
         }}><Send className="w-4 h-4" /> Finish</button>

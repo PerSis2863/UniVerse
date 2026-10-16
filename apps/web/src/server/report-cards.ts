@@ -1,6 +1,7 @@
 import prisma from '@/lib/db';
 import type { Category } from '@/lib/gradebook';
 import { courseLine, overall, type AttendanceCounts, type ReportCardData } from '@/lib/report-card';
+import { scaleFor } from './grade-scale';
 import { notifyMany } from './email';
 
 // Report cards (Stage 5 · B15.3; card maths in src/lib/report-card.ts). An admin starts a round
@@ -31,6 +32,8 @@ export async function createRun(input: { title: unknown; from: unknown; to: unkn
 /** Makes (or remakes) the cards for the next batch of students after `cursor`. */
 export async function compileBatch(runId: string, cursor: string | null) {
   const run = await prisma.reportCardRun.findUnique({ where: { id: runId } });
+  // The school's letter grades and GPA points (Stage 5 · B3.4).
+  const scale = await scaleFor(run?.createdById ? (await prisma.user.findUnique({ where: { id: run.createdById }, select: { organizationId: true } }))?.organizationId : null);
   if (!run) throw new ReportCardError('Round not found.', 404);
   const students = await prisma.user.findMany({ where: { ...studentsWhere, ...(cursor ? { id: { gt: cursor } } : {}) }, orderBy: { id: 'asc' }, take: BATCH, select: { id: true, name: true, email: true } });
   if (!students.length) return { made: 0, next: null };
@@ -54,14 +57,14 @@ export async function compileBatch(runId: string, cursor: string | null) {
       const of = new Map(assessments.filter((a) => a.courseId === course.id).map((a) => [a.name, a.categoryId]));
       const att: AttendanceCounts = { present: 0, late: 0, absent: 0, excused: 0 };
       for (const a of attendance) if (a.studentId === s.id && a.courseId === course.id) att[a.status.toLowerCase() as keyof AttendanceCounts] += a._count._all;
-      return courseLine({ code: course.code, name: course.name, teacher: course.teacher?.name ?? null }, mine, cats, (n) => of.get(n) ?? null, att);
+      return courseLine({ code: course.code, name: course.name, teacher: course.teacher?.name ?? null }, mine, cats, (n) => of.get(n) ?? null, att, scale);
     }).sort((a, b) => a.code.localeCompare(b.code));
     const data: ReportCardData = {
       student: { name: s.name, email: s.email },
       term: { title: run.title, from: run.fromDate.toISOString(), to: run.toDate.toISOString() },
       school: run.school,
       courses: lines,
-      overall: overall(lines),
+      overall: overall(lines, scale),
     };
     await prisma.reportCard.upsert({
       where: { runId_studentId: { runId, studentId: s.id } },

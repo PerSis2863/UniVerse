@@ -55,4 +55,14 @@ describe('analyseQuiz', () => {
     expect(r.consistency).toBeGreaterThan(0.7);
     expect(analyseQuiz(items, subs.slice(0, 4)).consistency).toBeNull();
   });
+  it('counts a pooled question only for the students who got it', () => {
+    const items = [{ id: 'p1', options: ['a', 'b'], correctAnswer: 'a' }, { id: 'p2', options: ['a', 'b'], correctAnswer: 'a' }];
+    const subs = [
+      { answers: { p1: 'a' }, drawn: ['p1'] }, { answers: { p1: 'a' }, drawn: ['p1'] },
+      { answers: { p2: 'b' }, drawn: ['p2'] }, { answers: { p2: 'a' }, drawn: ['p2'] }, { answers: { p2: 'a' }, drawn: ['p2'] },
+    ];
+    const r = analyseQuiz(items, subs);
+    expect(r.items.map((x) => [x.right, x.answered, x.blank])).toEqual([[1, 2, 0], [0.67, 3, 0]]);
+    expect(r.consistency).toBeNull();
+  });
 });

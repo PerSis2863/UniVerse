@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import useSWR from 'swr';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, HOME_TABS } from '@/components/layout/SectionTabs';

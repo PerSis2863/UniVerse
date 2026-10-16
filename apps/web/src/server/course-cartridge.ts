@@ -39,7 +39,7 @@ export async function cartridgeData(courseId: string, user: SessionUser) {
   const [pages, materials, quizzes, assignments] = await Promise.all([
     pageTexts(items.filter((i) => i.kind === 'PAGE').map((i) => i.id)),
     inChunks(refs('FILE'), (part) => prisma.material.findMany({ where: { courseId, id: { in: part } }, select: { id: true, title: true, fileUrl: true } })),
-    inChunks(refs('QUIZ'), (part) => prisma.quiz.findMany({ where: { courseId, id: { in: part } }, select: { id: true, title: true, description: true, questions: { orderBy: { order: 'asc' }, take: 300, select: { question: true, options: true, correctAnswer: true, points: true } } } })),
+    inChunks(refs('QUIZ'), (part) => prisma.quiz.findMany({ where: { courseId, id: { in: part } }, select: { id: true, title: true, description: true, questions: { where: { type: { in: ['CHOICE', 'TRUE_FALSE'] } }, orderBy: { order: 'asc' }, take: 300, select: { question: true, options: true, correctAnswer: true, points: true } } } })),
     inChunks(refs('ASSIGNMENT'), (part) => prisma.assignment.findMany({ where: { courseId, id: { in: part } }, select: { id: true, title: true, instructions: true, maxScore: true, dueDate: true } })),
   ]);
   const by = <T extends { id: string }>(xs: T[]) => new Map(xs.map((x) => [x.id, x]));
@@ -154,11 +154,11 @@ export async function importItems(courseId: string, user: SessionUser, b: Record
   const lastItem = await prisma.moduleItem.findFirst({ where: { moduleId }, orderBy: { position: 'desc' }, select: { position: true } });
   const start = (lastItem?.position ?? -1) + 1;
 
-  // A few rows per statement (D1 takes 100 values a query): materials 7 columns, questions 7, items 8.
+  // A few rows per statement (D1 takes 100 values a query): materials 7 columns, questions 10, items 8.
   for (const part of chunks(materials, 12)) await prisma.material.createMany({ data: part.map((m) => ({ ...m, courseId, uploadedById: user.id })) });
   for (const q of quizzes) {
     await prisma.quiz.create({ data: { id: q.id, courseId, title: q.title, description: q.description, status: 'DRAFT' } });
-    for (const part of chunks(q.questions.map((x, i) => ({ quizId: q.id, question: x.question, options: x.options, correctAnswer: x.correct, points: x.points, order: i })), 12)) {
+    for (const part of chunks(q.questions.map((x, i) => ({ quizId: q.id, question: x.question, options: x.options, correctAnswer: x.correct, points: x.points, order: i })), 9)) {
       await prisma.quizQuestion.createMany({ data: part });
     }
   }

@@ -6,9 +6,10 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { CoursePicker, useCourseChoice } from '@/components/mastery/CoursePicker';
 import { MasteryMap } from '@/components/mastery/MasteryMap';
 import { SecondChances } from '@/components/mastery/SecondChances';
+import { PracticeBox } from '@/components/mastery/PracticeBox';
 
-// A student's Learning DNA (Stage 5 · D1), with second chances on what they missed (D10): a tab of
-// Assignments & grades.
+// A student's Learning DNA (Stage 5 · D1), with second chances on what they missed (D10) and adaptive
+// practice (B4.4): a tab of Assignments & grades.
 export default function StudentMasteryPage() {
   const { courses, chosen, choose } = useCourseChoice();
   return (
@@ -20,6 +21,7 @@ export default function StudentMasteryPage() {
           <>
             <CoursePicker courses={courses} value={chosen.id} onChange={choose} />
             <SecondChances key={`sc-${chosen.id}`} courseId={chosen.id} />
+            <PracticeBox key={`pr-${chosen.id}`} courseId={chosen.id} />
             <MasteryMap key={chosen.id} courseId={chosen.id} />
           </>
         )}
