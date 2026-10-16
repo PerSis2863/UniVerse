@@ -4,7 +4,7 @@ import { usePathParams } from '@/hooks/usePathParams';
 import { AddressLoading } from '@/components/layout/AddressLoading';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { toast } from 'sonner';
 import { ArrowLeft, CheckCircle2, Loader2, Send } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';

@@ -5,7 +5,7 @@ import { AddressLoading } from '@/components/layout/AddressLoading';
 import { useCallback, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import useSWR from 'swr';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';

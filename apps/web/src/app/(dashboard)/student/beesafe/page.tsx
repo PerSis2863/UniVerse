@@ -4,7 +4,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, SUPPORT_TABS } from '@/components/layout/SectionTabs';
 import { AlertTriangle, ShieldAlert, Phone, Send, Info, Loader2, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 

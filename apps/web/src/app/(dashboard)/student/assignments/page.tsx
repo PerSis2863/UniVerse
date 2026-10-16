@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import { ChevronRight, ClipboardList } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';

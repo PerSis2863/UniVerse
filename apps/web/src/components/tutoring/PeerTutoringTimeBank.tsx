@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
+import Link from '@/components/ui/Link';
 import {
   Clock,
   Sparkles,
