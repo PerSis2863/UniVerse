@@ -2030,6 +2030,14 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/admin\/rooms$/, ({ db: d }) => ok(d.adminRooms)],
   [/^\/rooms$/, ({ db: d }) => ok(d.adminRooms.map((r) => { const c = { ...r }; delete (c as { reservations?: unknown }).reservations; return c; }))],
   [/^\/api\/admin\/timetable$/, ({ db: d }) => ok({ slots: d.slots, courses: d.courses.map((c) => ({ id: c.id, code: c.code, name: c.name })), rooms: Object.values(d.rooms).map((r: any) => ({ id: r.id, name: r.name })) })],
+  // The timetable and exam generators (Stage 5 · Q12): the sample's courses, rooms with seats, and courses sharing students.
+  [/^\/api\/admin\/timetable\/plan$/, ({ db: d }) => ok({
+    courses: d.courses.map((c: any, i: number) => ({ id: c.id, code: c.code, name: c.name, department: c.department ?? null, color: c.color ?? null, teacherId: `sample-t-${i % 2}`, teacher: i % 2 ? 'Tara Teacher' : 'Demo Teacher', students: 24 + i * 6 })),
+    rooms: Object.values(d.rooms).map((r: any, i: number) => ({ id: r.id, name: r.name, capacity: [40, 120, 30, 24][i % 4], type: 'CLASSROOM' })),
+    slots: d.slots.map((x: any) => ({ id: x.id, courseId: x.courseId, dayOfWeek: x.dayOfWeek, startTime: x.startTime, endTime: x.endTime, roomId: x.roomId ?? x.room?.id ?? null, type: x.type ?? 'LECTURE' })),
+    overlaps: d.courses.slice(1).map((c: any, i: number) => [d.courses[i].id, c.id, 10 + i]),
+    exams: [],
+  })],
   [/^\/api\/premium\/analytics$/, ({ db: d }) => ok(d.analytics)],
   // A study pack in another language (Stage 4 · 4.1): the sample's packs are shown as they are.
   [/^\/api\/class-sessions\/([^/]+)\/translation$/, () => ok({ same: true, pack: null })],
@@ -2198,6 +2206,11 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['PUT', /^\/api\/attendance\/register\/[^/]+\/seating$/, ({ body }) => { notice(); return ok(body ?? {}); }],
   ['POST', /^\/api\/attendance\/excuses(\/[^/]+)?$/, () => { notice(); return ok({ ok: true }); }],
   ['PUT', /^\/api\/attendance\/policy$/, () => { notice(); return ok({ on: false, radius: 300, lat: null, lng: null }); }],
+  // The timetable and exam generators, calendar events from a file (Stage 5 · Q12).
+  ['POST', /^\/api\/admin\/timetable\/plan$/, ({ body }) => { notice(); return ok({ added: Array.isArray(body?.slots) ? body.slots.length : 0, removed: 0, kept: 0 }); }],
+  ['POST', /^\/api\/admin\/timetable\/exams$/, ({ body }) => { notice(); return ok({ published: Array.isArray(body?.exams) ? body.exams.length : 0, replaced: 0, batch: 'exam:sample' }); }],
+  ['DELETE', /^\/api\/admin\/timetable\/exams$/, () => { notice(); return ok({ removed: 0 }); }],
+  ['POST', /^\/calendar\/import$/, ({ body }) => { notice(); return ok({ imported: Array.isArray(body?.events) ? body.events.length : 0, replaced: 0, name: 'Calendar' }); }],
   // Saving the home page's layout (Stage 5 · Q8).
   ['PUT', /^\/api\/home\/layout$/, ({ body }) => { notice(); return ok({ layout: body ?? {} }); }],
   // Reading levels (Stage 5 · D9): no AI in the sample, so no simpler versions (the original stays).

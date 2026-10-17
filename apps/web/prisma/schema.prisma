@@ -2263,11 +2263,14 @@ model CalendarEvent {
   type        String   @default("PERSONAL") // PERSONAL, EXAM, DEADLINE, MEETING
   courseId    String?
   course      Course?  @relation(fields: [courseId], references: [id])
+  /// Stage 5 · Q12: events made together ("exam:<name>", "ics:<name>", "repeat:<id>"), replaced or removed together.
+  batch       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
   @@index([courseId])
+  @@index([batch])
   @@map("calendar_events")
 }
 

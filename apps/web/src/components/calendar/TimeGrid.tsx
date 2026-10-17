@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { AnimatePresence, m as motion, type PanInfo } from 'framer-motion';
 import { addDays, addMonths, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, startOfDay, startOfMonth, startOfWeek } from 'date-fns';
 import { ChevronDown, ChevronLeft, ChevronRight, Clock, Info } from 'lucide-react';
 import { Segmented, type Segment } from '@/components/ui/Segmented';
 import { spring } from '@/lib/motion';
 import { reducedMotion } from '@/lib/page-transition';
+import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 
 // The timetable like a phone's calendar app (student and teacher calendars): days side by side
@@ -15,6 +16,9 @@ import { cn } from '@/lib/utils';
 // events marked with an info icon, and a red line at the current time. Phones open on the next 4
 // days, larger screens on the week. Swipe (or the arrows) for the next or previous days; tap a day,
 // or a date in Month, to see just that day. Saturdays and Sundays only show when something is on.
+// Agenda lists the next two weeks. Your own events (Stage 5 · Q12) can be dragged to another time
+// or day and their bottom edge dragged to change how long they are (a long press first on phones);
+// a tap (or a drag down) on empty time starts a new event there.
 
 export interface GridEntry<T = unknown> {
   id: string;
@@ -33,10 +37,12 @@ export interface GridEntry<T = unknown> {
   color: string;
   /** A one-off event (meeting, exam, office hours) rather than a weekly class. */
   event?: boolean;
+  /** The viewer's own event: it can be dragged to a new time (with onMove). */
+  movable?: boolean;
   data: T;
 }
 
-export type GridView = 'day' | 'days' | 'week' | 'month';
+export type GridView = 'day' | 'days' | 'week' | 'month' | 'agenda';
 
 /** Events without a colour of their own: deep navy, like meetings in a calendar app. */
 export const EVENT_COLOR = '#27325a';
@@ -46,7 +52,9 @@ const VIEWS: Segment<GridView>[] = [
   { value: 'days', label: '4 Days' },
   { value: 'week', label: 'Week' },
   { value: 'month', label: 'Month' },
+  { value: 'agenda', label: 'Agenda' },
 ];
+const AGENDA_DAYS = 14;
 
 const DAY_MIN = 24 * 60;
 /** Space above the first hour line and below the last, so their labels fit (px). */
@@ -151,10 +159,19 @@ function layoutDay<T>(list: GridEntry<T>[]): Placed<T>[] {
   return out;
 }
 
-export function TimeGrid<T>({ entries, loading, onOpen, label, toolbarEnd, emptyText = 'No classes' }: {
+type Drag = { id: string; dayIdx: number; start: number; end: number; create: boolean };
+type PressMode = 'move' | 'resize';
+/** A finger is dragging an event: its blocks then stop the page scrolling (see Block). */
+const touchDrag = { active: false };
+
+export function TimeGrid<T>({ entries, loading, onOpen, onMove, onCreate, label, toolbarEnd, emptyText = 'No classes' }: {
   entries: GridEntry<T>[];
   loading?: boolean;
   onOpen: (entry: GridEntry<T>, day: Date) => void;
+  /** A movable entry dragged to a day and minutes. */
+  onMove?: (entry: GridEntry<T>, day: Date, start: number, end: number) => void;
+  /** Empty time tapped (or dragged down over): a new event from start to end. */
+  onCreate?: (day: Date, start: number, end: number) => void;
   /** Accessible name, e.g. "Your timetable". */
   label: string;
   /** Extra controls beside the view switch (e.g. Office hours). */
@@ -174,6 +191,9 @@ export function TimeGrid<T>({ entries, loading, onOpen, label, toolbarEnd, empty
   const [focus, setFocus] = useState(() => startOfDay(new Date()));
   const [dir, setDir] = useState(0);
   const dragged = useRef(false);
+  // Dragging an event, or out a new one: where it is now (drawn there until let go).
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const swallowClick = useRef(false);
 
   // Weekly classes by weekday, one-off events by date.
   const index = useMemo(() => {
@@ -195,6 +215,7 @@ export function TimeGrid<T>({ entries, loading, onOpen, label, toolbarEnd, empty
   const keep = (d: Date) => shown(d) || isSameDay(d, focus);
   const days: Date[] = [];
   if (view === 'day' || view === 'month') days.push(focus);
+  else if (view === 'agenda') for (let i = 0; i < AGENDA_DAYS; i++) days.push(addDays(focus, i));
   else if (view === 'week') {
     const monday = startOfWeek(focus, { weekStartsOn: 1 });
     for (let i = 0; i < 7; i++) if (keep(addDays(monday, i))) days.push(addDays(monday, i));
@@ -209,6 +230,7 @@ export function TimeGrid<T>({ entries, loading, onOpen, label, toolbarEnd, empty
   const step = (by: 1 | -1) => {
     let next: Date;
     if (view === 'month') next = addMonths(focus, by);
+    else if (view === 'agenda') next = addDays(focus, AGENDA_DAYS * by);
     else if (view === 'week') next = addDays(focus, 7 * by);
     else if (view === 'day') {
       next = addDays(focus, by);
@@ -223,21 +245,93 @@ export function TimeGrid<T>({ entries, loading, onOpen, label, toolbarEnd, empty
     }
     go(next, by);
   };
-  const pickView = (v: GridView) => { setDir(0); setPicked(v); };
+  const pickView = (v: GridView) => {
+    setDir(0);
+    setPicked(v);
+    // Agenda starts on the first day you were looking at (a week's Monday), not the day it was opened on.
+    if (v === 'agenda' && days[0]) setFocus(startOfDay(days[0]));
+  };
   const openDay = (d: Date) => { setDir(0); setPicked('day'); setFocus(startOfDay(d)); };
 
   const showsToday = view === 'month' ? isSameMonth(focus, today) : days.some((d) => isSameDay(d, today));
   const first = days[0], last = days[days.length - 1];
-  const title = view === 'month' || isSameMonth(first, last)
-    ? format(view === 'month' ? focus : first, 'MMMM yyyy')
-    : `${format(first, 'MMM')} – ${format(last, 'MMM yyyy')}`;
+  const title = view === 'agenda'
+    ? `${format(first, 'MMM d')} – ${format(last, isSameMonth(first, last) ? 'd, yyyy' : 'MMM d, yyyy')}`
+    : view === 'month' || isSameMonth(first, last)
+      ? format(view === 'month' ? focus : first, 'MMMM yyyy')
+      : `${format(first, 'MMM')} – ${format(last, 'MMM yyyy')}`;
 
   const onDragEnd = (_: unknown, info: PanInfo) => {
     setTimeout(() => { dragged.current = false; }, 0);
     if (info.offset.x < -56 || info.velocity.x < -450) step(1);
     else if (info.offset.x > 56 || info.velocity.x > 450) step(-1);
   };
-  const open = (e: GridEntry<T>, d: Date) => { if (!dragged.current) onOpen(e, d); };
+  const open = (e: GridEntry<T>, d: Date) => {
+    if (swallowClick.current) { swallowClick.current = false; return; }
+    if (!dragged.current) onOpen(e, d);
+  };
+
+  /**
+   * A press on an event (move it, or its bottom edge: resize) or on empty time (a new event). A mouse
+   * drags straight away; a finger after a long press, so a swipe or a scroll still works. Snaps to
+   * 15 minutes; an event moves to the day under the pointer.
+   */
+  const press = (ev: PointerEvent, el: HTMLElement, dayIdx: number, entry: GridEntry<T> | null, mode: PressMode | 'create') => {
+    // The days pressed in (while the days slide, the page going out is still there too).
+    const body = el.closest<HTMLElement>('[data-grid-body]');
+    if (ev.button !== 0 || !body) return;
+    const touch = ev.pointerType === 'touch';
+    const cols = [...body.querySelectorAll<HTMLElement>('[data-day-idx]')];
+    const hh = parseFloat(getComputedStyle(body).getPropertyValue('--hh')) || 56;
+    const top = cols[dayIdx]?.getBoundingClientRect().top ?? 0;
+    const minuteAt = (y: number) => lo * 60 + ((y - top - PAD) / hh) * 60;
+    const snap = (m: number) => Math.round(m / 15) * 15;
+    const x0 = ev.clientX, y0 = ev.clientY;
+    const made = Math.max(0, Math.min(DAY_MIN - 30, Math.floor(minuteAt(y0) / 30) * 30));
+    const s0 = entry ? entry.start : made, f0 = entry ? entry.end : made + 60;
+    let state: Drag = { id: entry?.id ?? 'new', dayIdx, start: s0, end: f0, create: mode === 'create' };
+    let armed = !touch, moved = false;
+    const timer = touch && mode !== 'create' ? setTimeout(() => { armed = true; touchDrag.active = true; haptic('tap'); setDrag(state); }, 420) : null;
+    const stop = () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('pointermove', onMoveP);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      touchDrag.active = false;
+    };
+    const onCancel = () => { stop(); setDrag(null); };
+    function onMoveP(e: PointerEvent) {
+      if (!moved && Math.hypot(e.clientX - x0, e.clientY - y0) < (touch ? 8 : 4)) return;
+      // A finger that moves before the long press is scrolling or swiping.
+      if (touch && (!armed || mode === 'create')) { onCancel(); return; }
+      moved = true;
+      const delta = snap(((e.clientY - y0) / hh) * 60);
+      if (mode === 'move') {
+        const hit = cols.findIndex((c) => { const r = c.getBoundingClientRect(); return e.clientX >= r.left && e.clientX < r.right; });
+        const len = f0 - s0, start = Math.max(0, Math.min(DAY_MIN - len, s0 + delta));
+        state = { ...state, dayIdx: hit >= 0 ? hit : state.dayIdx, start, end: start + len };
+      } else if (mode === 'resize') state = { ...state, end: Math.max(s0 + 15, Math.min(DAY_MIN, f0 + delta)) };
+      else state = { ...state, end: Math.max(made + 15, Math.min(DAY_MIN, snap(minuteAt(e.clientY)))) };
+      setDrag(state);
+    }
+    function onUp() {
+      stop();
+      setDrag(null);
+      const day = days[state.dayIdx];
+      if (mode === 'create') {
+        if (!dragged.current && day) onCreate?.(day, state.start, moved ? state.end : state.start + 60);
+        return;
+      }
+      if (moved || (touch && armed)) {
+        swallowClick.current = true;
+        setTimeout(() => { swallowClick.current = false; }, 0);
+      }
+      if (moved && entry && day && (state.start !== s0 || state.end !== f0 || state.dayIdx !== dayIdx)) onMove?.(entry, day, state.start, state.end);
+    }
+    window.addEventListener('pointermove', onMoveP);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+  };
 
   const calm = reducedMotion();
   const slide = {
@@ -277,6 +371,8 @@ export function TimeGrid<T>({ entries, loading, onOpen, label, toolbarEnd, empty
   const nowShown = todayCol >= 0 && nowMin >= lo * 60 && nowMin <= hi * 60;
   const sticky = 'sticky top-[calc(var(--mobile-header-h)+var(--safe-top))] lg:top-16';
 
+  const dragEntry = drag && !drag.create ? entries.find((e) => e.id === drag.id) ?? null : null;
+
   const frame = 'relative -mx-4 sm:mx-0 bg-[var(--card-bg)] sm:rounded-2xl border-y sm:border border-[var(--card-border)] shadow-[var(--card-shadow)]';
 
   return (
@@ -309,7 +405,11 @@ export function TimeGrid<T>({ entries, loading, onOpen, label, toolbarEnd, empty
         {toolbarEnd}
       </div>
 
-      {view === 'month' ? (
+      {view === 'agenda' ? (
+        <section aria-label={`${label}, ${title}`} className={cn(frame, 'overflow-hidden')}>
+          <Agenda days={days} today={today} on={on} loading={loading} onOpen={open} />
+        </section>
+      ) : view === 'month' ? (
         <section aria-label={`${label}, ${title}`} className={cn(frame, 'overflow-x-clip')}>
           <div className={cn(sticky, 'z-20 grid grid-cols-7 bg-[var(--material-thick)] backdrop-blur-xl sm:rounded-t-2xl')} style={{ boxShadow: 'inset 0 -0.5px 0 var(--separator)' }}>
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
@@ -339,7 +439,7 @@ export function TimeGrid<T>({ entries, loading, onOpen, label, toolbarEnd, empty
                 );
               })}
               {nowShown && (
-                <span className="absolute right-1 sm:right-1.5 -translate-y-1/2 text-[10.5px] sm:text-[11px] font-semibold tabular-nums text-[var(--ios-red)] whitespace-nowrap" style={{ top: y(nowMin) }}>
+                <span className="absolute right-1 sm:right-1.5 -translate-y-1/2 text-[10.5px] sm:text-[11px] font-semibold tabular-nums text-rose-700 dark:text-rose-400 whitespace-nowrap" style={{ top: y(nowMin) }}>
                   {clock(nowMin).t}
                 </span>
               )}
@@ -390,12 +490,14 @@ export function TimeGrid<T>({ entries, loading, onOpen, label, toolbarEnd, empty
                   })}
                 </div>
 
-                <div className="flex" style={{ height: bodyH }}>
+                <div data-grid-body className="flex" style={{ height: bodyH }}>
                   {days.map((d, i) => {
                     const isToday = i === todayCol;
                     const placed = layoutDay(timed[i]);
                     return (
-                      <div key={dayKey(d)} role="group" aria-label={format(d, 'EEEE, MMMM d')} className="relative flex-1 min-w-0" style={{ boxShadow: 'inset 0.5px 0 0 var(--separator)' }}>
+                      <div key={dayKey(d)} role="group" aria-label={format(d, 'EEEE, MMMM d')} data-day-idx={i}
+                        onPointerDown={onCreate && !loading ? (ev) => { if (!(ev.target as HTMLElement).closest('button')) press(ev.nativeEvent, ev.currentTarget, i, null, 'create'); } : undefined}
+                        className={cn('relative flex-1 min-w-0', onCreate && 'cursor-cell')} style={{ boxShadow: 'inset 0.5px 0 0 var(--separator)' }}>
                         {isToday && view !== 'day' && <div aria-hidden className="absolute inset-0 bg-indigo-500/[0.04] dark:bg-indigo-400/[0.06]" />}
                         {loading ? (
                           [[9 * 60, 90], [11 * 60, 60], [14 * 60, 90]].filter((_, k) => (i + k) % 3 !== 2).map(([s, len]) => (
@@ -407,8 +509,20 @@ export function TimeGrid<T>({ entries, loading, onOpen, label, toolbarEnd, empty
                             <span className="text-sm font-medium">{emptyText}</span>
                           </div>
                         ) : (
-                          placed.map((p) => <Block key={p.e.id} p={p} y={y} wide={view === 'day' || (!phone && days.length <= 4)} onOpen={() => open(p.e, d)} />)
+                          placed.map((p) => (
+                            <Block key={p.e.id} p={p} y={y} wide={view === 'day' || (!phone && days.length <= 4)} onOpen={() => open(p.e, d)}
+                              movable={!!onMove && !!p.e.movable} onPress={(ev, el, mode) => press(ev, el, i, p.e, mode)}
+                              lifted={!!drag && !drag.create && p.e.id === drag.id} />
+                          ))
                         )}
+                        {drag?.dayIdx === i && (drag.create ? (
+                          <div aria-hidden className="absolute inset-x-[3px] z-20 rounded-md border-2 border-dashed border-indigo-500 bg-indigo-500/15 px-1.5 py-1 text-[11px] font-semibold text-indigo-800 dark:text-indigo-200 pointer-events-none"
+                            style={{ top: `calc(${y(drag.start)} + 1px)`, height: `calc(${(Math.max(drag.end, drag.start + MIN_BLOCK) - drag.start) / 60} * var(--hh) - 2px)` }}>
+                            New event · {timeRange(drag.start, drag.end)}
+                          </div>
+                        ) : dragEntry && (
+                          <Block p={{ e: { ...dragEntry, start: drag.start, end: drag.end }, s: drag.start, f: Math.max(drag.end, drag.start + MIN_BLOCK), col: 0, span: 1, cols: 1 }} y={y} wide onOpen={() => {}} dragging />
+                        ))}
                         {isToday && nowShown && (
                           <div aria-hidden className="absolute inset-x-0 z-[15] pointer-events-none" style={{ top: y(nowMin) }}>
                             <span className="absolute -left-[4px] -top-[4px] w-2 h-2 rounded-full bg-[var(--ios-red)]" />
@@ -428,21 +542,49 @@ export function TimeGrid<T>({ entries, loading, onOpen, label, toolbarEnd, empty
   );
 }
 
-/** One class or event: a solid block in its colour with white text, as much as fits. */
-function Block<T>({ p, y, wide, onOpen }: { p: Placed<T>; y: (min: number) => string; wide: boolean; onOpen: () => void }) {
+/** One class or event: a solid block in its colour with white text, as much as fits. Your own events can be dragged. */
+function Block<T>({ p, y, wide, onOpen, movable, dragging, lifted, onPress }: {
+  p: Placed<T>; y: (min: number) => string; wide: boolean; onOpen: () => void;
+  movable?: boolean; dragging?: boolean; onPress?: (ev: PointerEvent, el: HTMLElement, mode: PressMode) => void;
+  /** Being dragged: drawn where it's going instead, but kept here (a finger's touch stays on it). */
+  lifted?: boolean;
+}) {
   const { e, s, f } = p;
   const mins = f - s;
   const when = timeRange(e.start, e.end);
+  const ref = useRef<HTMLButtonElement>(null);
+  const edge = useRef<HTMLSpanElement>(null);
+  const latest = useRef(onPress);
+  useEffect(() => { latest.current = onPress; });
+  // Native listeners, there from the start: a press here never reaches the days' swipe, and the
+  // browser knows before a finger lands that a touch here may be kept from scrolling (it decides
+  // when the touch starts), so a long press can then drag instead.
+  useEffect(() => {
+    const el = ref.current, handle = edge.current;
+    if (!el || !movable) return;
+    const down = (mode: PressMode) => (ev: PointerEvent) => { if (ev.button !== 0) return; ev.stopPropagation(); latest.current?.(ev, el, mode); };
+    const onMove = down('move'), onEdge = down('resize');
+    const keep = (ev: TouchEvent) => { if (touchDrag.active) ev.preventDefault(); };
+    el.addEventListener('pointerdown', onMove);
+    handle?.addEventListener('pointerdown', onEdge);
+    el.addEventListener('touchmove', keep, { passive: false });
+    return () => { el.removeEventListener('pointerdown', onMove); handle?.removeEventListener('pointerdown', onEdge); el.removeEventListener('touchmove', keep); };
+  }, [movable]);
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onOpen}
-      aria-label={`${e.title}${e.subtitle ? `, ${e.subtitle}` : ''}, ${when}${e.location ? `, ${e.location}` : ''}${e.event ? ', event' : ''}`}
+      onContextMenu={movable ? (ev) => ev.preventDefault() : undefined}
+      tabIndex={dragging ? -1 : undefined}
       title={`${e.title}${e.subtitle ? ` · ${e.subtitle}` : ''}\n${when}${e.location ? ` · ${e.location}` : ''}`}
       className={cn(
         'absolute z-10 overflow-hidden rounded-md text-left text-white pressable',
         'shadow-[0_0_0_1px_var(--surface),0_1px_2px_rgba(0,0,0,0.12)]',
         mins < 40 ? 'px-1.5 py-0.5' : 'px-1.5 py-1 sm:px-2 sm:py-1.5',
+        movable && 'cursor-grab select-none [-webkit-touch-callout:none]',
+        dragging && 'z-30 cursor-grabbing pointer-events-none opacity-95 ring-2 ring-white/90 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.5)]',
+        lifted && 'opacity-0',
       )}
       style={{
         top: `calc(${y(s)} + 1px)`,
@@ -453,18 +595,25 @@ function Block<T>({ p, y, wide, onOpen }: { p: Placed<T>; y: (min: number) => st
       }}
     >
       {e.event && <Info aria-hidden className="absolute top-1 right-1 w-3.5 h-3.5 text-[var(--ios-orange)] drop-shadow" strokeWidth={2.6} />}
+      {/* What's spoken follows what's shown (title, place, course, time), then what didn't fit. */}
       {mins < 40 ? (
         <span className={cn('block truncate text-[11px] sm:text-xs leading-tight', e.event && 'pr-4')}>
-          <b className="font-semibold">{e.title}</b>{e.location ? <span className="opacity-85"> · {e.location}</span> : null}
+          <b className="font-semibold">{e.title}</b>{e.location ? <span> · {e.location}</span> : null}
+          <span className="sr-only">{e.subtitle ? `, ${e.subtitle}` : ''}, {when}{e.event ? ', event' : ''}</span>
         </span>
       ) : (
         <>
           <span className={cn('block font-semibold text-[11.5px] sm:text-[13px] leading-tight break-words line-clamp-2', e.event && 'pr-4')}>{e.title}</span>
-          {e.location && <span className="block mt-0.5 text-[10.5px] sm:text-xs leading-tight opacity-90 break-words line-clamp-2">{e.location}</span>}
-          {mins >= 60 && e.subtitle && <span className="block mt-0.5 text-[10.5px] sm:text-xs leading-tight opacity-80 break-words line-clamp-2">{e.subtitle}</span>}
-          {wide && <span className="block mt-0.5 text-[10.5px] sm:text-xs leading-tight opacity-80 tabular-nums">{when}</span>}
+          {e.location && <span className="block mt-0.5 text-[10.5px] sm:text-xs leading-tight break-words line-clamp-2"><span className="sr-only">, </span>{e.location}</span>}
+          {e.subtitle && (mins >= 60
+            ? <span className="block mt-0.5 text-[10.5px] sm:text-xs leading-tight break-words line-clamp-2"><span className="sr-only">, </span>{e.subtitle}</span>
+            : <span className="sr-only">, {e.subtitle}</span>)}
+          {wide ? <span className="block mt-0.5 text-[10.5px] sm:text-xs leading-tight tabular-nums"><span className="sr-only">, </span>{when}</span> : <span className="sr-only">, {when}</span>}
+          {e.event && <span className="sr-only">, event</span>}
         </>
       )}
+      {/* Drag the bottom edge to make it longer or shorter. */}
+      {movable && <span ref={edge} aria-hidden className="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize" />}
     </button>
   );
 }
@@ -520,5 +669,43 @@ function MonthGrid<T>({ focus, today, on, phone, loading, onPick }: {
         );
       })}
     </div>
+  );
+}
+
+/** Agenda: the next two weeks as a list, day by day (days with nothing on left out). */
+function Agenda<T>({ days, today, on, loading, onOpen }: {
+  days: Date[];
+  today: Date;
+  on: (d: Date) => GridEntry<T>[];
+  loading?: boolean;
+  onOpen: (e: GridEntry<T>, d: Date) => void;
+}) {
+  if (loading) return <div className="p-4 space-y-3" aria-hidden>{[0, 1, 2].map((i) => <div key={i} className="h-12 rounded-xl skeleton" />)}</div>;
+  const list = days.map((d) => ({ d, items: on(d).sort((a, b) => (isAllDay(b) ? 1 : 0) - (isAllDay(a) ? 1 : 0) || a.start - b.start) })).filter((x) => x.items.length);
+  if (!list.length) return <p className="py-14 text-center text-sm text-zinc-600 dark:text-zinc-400">Nothing on in these two weeks.</p>;
+  return (
+    <ol>
+      {list.map(({ d, items }) => (
+        <li key={dayKey(d)} style={{ boxShadow: 'inset 0 -0.5px 0 var(--separator)' }}>
+          <h3 className={cn('px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide', isSameDay(d, today) ? 'text-tint-text' : 'text-zinc-600 dark:text-zinc-400')}>
+            {isSameDay(d, today) ? 'Today · ' : ''}{format(d, 'EEEE, MMMM d')}
+          </h3>
+          <ul className="pb-2">
+            {items.map((e) => (
+              <li key={e.id}>
+                <button type="button" onClick={() => onOpen(e, d)} className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-[var(--fill)] active:bg-[var(--fill)]">
+                  <span aria-hidden className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: solid(e.color) }} />
+                  <span className="w-[7.5rem] shrink-0 text-[13px] tabular-nums text-zinc-700 dark:text-zinc-300">{isAllDay(e) ? 'All day' : timeRange(e.start, e.end)}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-zinc-900 dark:text-white">{e.title}</span>
+                    {(e.subtitle || e.location) && <span className="block truncate text-xs text-zinc-600 dark:text-zinc-400">{[e.subtitle, e.location].filter(Boolean).join(' · ')}</span>}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ol>
   );
 }
