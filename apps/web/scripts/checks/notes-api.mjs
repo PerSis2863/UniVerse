@@ -1,0 +1,22 @@
+// Notes on hand-ins on the local Worker.
+const B = 'http://localhost:8787', C = 'cmulde0g900147d341qn9mxlw';
+const H = (e) => ({ Authorization: `Bearer mock-token-${e}`, 'Content-Type': 'application/json' });
+const call = async (who, path, body, method) => { const r = await fetch(B + path, { method: method ?? (body ? 'POST' : 'GET'), headers: H(who), body: body ? JSON.stringify(body) : undefined }); return [r.status, await r.json().catch(() => ({}))]; };
+const T = 'demo@teacher.com', TOM = 'tom@teacher.com', A = 'alice@student.com', BOB = 'bob@student.com';
+const [, a] = await call(T, '/api/assignments', { courseId: C, title: 'Notes test', instructions: 'Write.', rubric: [{ criterion: 'C', points: 5 }] });
+const text = 'Loops repeat steps. A for loop counts; a while loop waits for something.';
+await call(A, `/api/assignments/${a.id}/submission`, { text }, 'PUT');
+const [, d] = await call(T, `/api/assignments/${a.id}`);
+const N = `/api/assignments/submissions/${d.submissions[0].id}/notes`;
+console.log('add words', JSON.stringify((await call(T, N, { action: 'add', anchor: { type: 'text', start: 20, end: 37, quote: 'A for loop counts' }, comment: 'Good, give an example.' }))[1]).slice(0, 30));
+console.log('TA adds a box', (await call(TOM, N, { action: 'add', anchor: { type: 'box', page: 1, x: 0.1, y: 0.1, w: 0.3, h: 0.1 }, comment: 'See here' }))[0]);
+console.log('words past the end', (await call(T, N, { action: 'add', anchor: { type: 'text', start: 10, end: 999 }, comment: 'x' }))[0], '| no comment', (await call(T, N, { action: 'add', anchor: { type: 'text', start: 0, end: 5 }, comment: ' ' }))[0], '| student adds', (await call(A, N, { action: 'add', anchor: { type: 'text', start: 0, end: 5 }, comment: 'hi' }))[0]);
+const [, list] = await call(T, N);
+console.log('teacher sees', list.notes.length, 'notes, canEdit', list.canEdit, list.notes.map((n) => n.author.name).join(', '));
+console.log('alice before grading', JSON.stringify((await call(A, N))[1]), '| bob', (await call(BOB, N))[0]);
+await call(T, `/api/assignments/submissions/${d.submissions[0].id}/return`, { criteria: d.rubric.map((r) => ({ id: r.id, score: 4 })) });
+const [, mine] = await call(A, N);
+console.log('alice after grading', mine.notes.length, 'canEdit', mine.canEdit);
+console.log('edit', (await call(T, N, { action: 'edit', noteId: list.notes[0].id, comment: 'Give an example of each.' }))[0], '| delete', (await call(T, N, { action: 'delete', noteId: list.notes[1].id }))[0], '| left', (await call(T, N))[1].notes.length);
+await call(T, `/api/assignments/${a.id}`, null, 'DELETE');
+console.log('cleaned');

@@ -1,0 +1,31 @@
+// Grades held until posted, and grade history, on the local Worker.
+const B = 'http://localhost:8787', C = 'cmulde0g900147d341qn9mxlw';
+const H = (e) => ({ Authorization: `Bearer mock-token-${e}`, 'Content-Type': 'application/json' });
+const call = async (who, path, body, method) => { const r = await fetch(B + path, { method: method ?? (body ? 'POST' : 'GET'), headers: H(who), body: body ? JSON.stringify(body) : undefined }); return [r.status, await r.json().catch(() => ({}))]; };
+const T = 'demo@teacher.com', TOM = 'tom@teacher.com', A = 'alice@student.com', BOB = 'bob@student.com';
+for (const x of (await call(T, `/api/assignments?courseId=${C}`))[1]) if (x.title === 'Post test') await call(T, `/api/assignments/${x.id}`, null, 'DELETE');
+const [, a] = await call(T, '/api/assignments', { courseId: C, title: 'Post test', instructions: 'Write.', rubric: [{ criterion: 'C', points: 10 }], postPolicy: 'MANUAL' });
+console.log('policy', a.postPolicy);
+const P = `/api/assignments/${a.id}`;
+for (const w of [A, BOB]) await call(w, `${P}/submission`, { text: 'An answer long enough to hand in for grading.' }, 'PUT');
+let [, d] = await call(T, P);
+for (const s of d.submissions) console.log('return', s.student.name, JSON.stringify((await call(T, `/api/assignments/submissions/${s.id}/return`, { criteria: d.rubric.map((r) => ({ id: r.id, score: 7 })), feedback: 'Good' }))[1]));
+const view = async (who) => { const [, v] = await call(who, P); const [, l] = await call(who, '/api/assignments'); const [, g] = await call(who, '/api/core/grades/student'); return { status: v.mine?.status, score: v.mine?.score, feedback: v.mine?.feedback, list: l.find((x) => x.id === a.id)?.mine, inGrades: (g.grades ?? []).filter((x) => x.assignmentName === 'Post test').length }; };
+console.log('alice while held', JSON.stringify(await view(A)));
+[, d] = await call(T, P);
+console.log('teacher sees postedAt', d.submissions.map((s) => s.postedAt).join(','));
+console.log('TA posts', (await call(TOM, `${P}/post-grades`, {}))[0], '| student', (await call(A, `${P}/post-grades`, {}))[0]);
+console.log('teacher posts', JSON.stringify((await call(T, `${P}/post-grades`, {}))[1]), 'again', JSON.stringify((await call(T, `${P}/post-grades`, {}))[1]));
+console.log('alice after posting', JSON.stringify(await view(A)));
+[, d] = await call(T, P);
+const alice = d.submissions.find((s) => s.student.name === 'Alice Johnson');
+console.log('regrade alice 9 (posted: shows at once)', JSON.stringify((await call(T, `/api/assignments/submissions/${alice.id}/return`, { criteria: d.rubric.map((r) => ({ id: r.id, score: 9 })) }))[1]).slice(0, 60), (await view(A)).score);
+// The gradebook's own grades.
+const ids = Object.fromEntries((await call(T, `/api/courses/${C}/enrolment`))[1].students.map((s) => [s.email, s.id]));
+const [, g] = await call(T, `/api/core/grades/course/${C}`, { studentId: ids[BOB], assignmentName: 'Pop quiz', score: 8, maxScore: 10 });
+console.log('delete a gradebook grade', (await call(T, `/api/core/grades/${g.id}`, null, 'DELETE'))[0]);
+const [, h] = await call(T, `/api/courses/${C}/grade-history`);
+console.log('history', h.slice(0, 6).map((c) => `${c.student}: ${c.assessment} ${c.oldScore ?? '·'}→${c.newScore ?? 'deleted'} by ${c.changedByName}`).join(' | '));
+console.log('history: student', (await call(A, `/api/courses/${C}/grade-history`))[0], '| TA', (await call(TOM, `/api/courses/${C}/grade-history`))[0], '| one student', (await call(T, `/api/courses/${C}/grade-history?studentId=${ids[A]}`))[1].length);
+await call(T, P, null, 'DELETE');
+console.log('cleaned');

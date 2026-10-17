@@ -1,0 +1,36 @@
+// Adaptive practice through the API.
+const base = 'http://localhost:8787', C = 'cmulde0g900147d341qn9mxlw';
+const T = 'demo@teacher.com', A = 'alice@student.com';
+const H = (e) => ({ Authorization: `Bearer mock-token-${e}`, 'Content-Type': 'application/json' });
+const call = async (who, path, body, method) => { const r = await fetch(base + path, { method: method ?? (body ? 'POST' : 'GET'), headers: H(who), body: body ? JSON.stringify(body) : undefined }); return { s: r.status, b: await r.json().catch(() => ({})) }; };
+const out = {};
+for (const q of (await call(T, '/api/core/quizzes')).b ?? []) if (q.title?.startsWith('Practice API')) await call(T, `/api/core/quizzes/${q.id}`, null, 'DELETE');
+const set = (await call(T, '/api/core/quizzes', { courseId: C, title: 'Practice API' })).b;
+const add = async (quizId, q) => (await call(T, `/api/quizzes/${quizId}/questions`, { points: 1, ...q })).b;
+const choice = await add(set.id, { question: 'Which is a loop?', options: ['for', 'if', 'def'], correctAnswer: 'for', hint: 'It repeats.', explain: 'A for loop repeats its body.' });
+const short = await add(set.id, { type: 'SHORT', question: 'Capital of France?', accepted: ['Paris'] });
+const num = await add(set.id, { type: 'NUMBER', question: '6 × 7?', value: 42, explain: 'Six sevens are forty-two.' });
+out.metaKept = JSON.parse(choice.meta ?? '{}');
+const draftOnly = (await call(A, `/api/courses/${C}/practice`, { questionId: choice.id, answer: 'for' })).s;
+out.draftNotPractisable = draftOnly;
+const s = (await call(T, `/api/quizzes/${set.id}`, { practice: true, status: 'PUBLISHED' }, 'PATCH')).b;
+out.set = [s.practice, s.status];
+out.hiddenFromQuizList = !(await call(A, '/api/core/quizzes/student/my-quizzes')).b.some((q) => q.id === set.id);
+const next = (await call(A, `/api/courses/${C}/practice`)).b;
+out.next = { has: !!next.next, why: next.why, leaks: JSON.stringify(next).includes('correctAnswer') || JSON.stringify(next).includes('"meta"'), stats: next.stats };
+const tryIt = async (questionId, answer) => (await call(A, `/api/courses/${C}/practice`, { questionId, answer })).b;
+const t1 = await tryIt(choice.id, 'if'), t2 = await tryIt(choice.id, 'def'), t3 = await tryIt(choice.id, 'if');
+out.tries = [t1, t2, t3].map((t) => `${t.tries}:${t.right}:${t.hint ?? '-'}:${t.correctAnswer ?? '-'}:${t.explain ?? '-'}:${t.done}`);
+out.rightAway = await tryIt(short.id, ' paris ');
+out.rightAway = `${out.rightAway.right}:${out.rightAway.credit}:${out.rightAway.done}`;
+const gave = (await call(A, `/api/courses/${C}/practice`, { questionId: num.id, giveUp: true })).b;
+out.giveUp = `${gave.correctAnswer}:${gave.explain}`;
+// An open quiz's questions can't be practised (their answers are still hidden).
+const open = (await call(T, '/api/core/quizzes', { courseId: C, title: 'Practice API open' })).b;
+const openQ = await add(open.id, { question: 'Open?', options: ['yes', 'no'], correctAnswer: 'yes' });
+await call(T, `/api/quizzes/${open.id}`, { status: 'PUBLISHED' }, 'PATCH');
+out.openQuiz = (await call(A, `/api/courses/${C}/practice`, { questionId: openQ.id, answer: 'yes' })).s;
+out.teacher = (await call(T, `/api/courses/${C}/practice`)).s;
+out.after = (await call(A, `/api/courses/${C}/practice`)).b.stats;
+for (const id of [set.id, open.id]) await call(T, `/api/core/quizzes/${id}`, null, 'DELETE');
+console.log(JSON.stringify(out, null, 1));

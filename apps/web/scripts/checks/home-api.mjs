@@ -1,0 +1,21 @@
+const B = 'http://localhost:8787', C = 'cmulde0g900147d341qn9mxlw';
+const H = (e) => ({ Authorization: `Bearer mock-token-${e}`, 'Content-Type': 'application/json' });
+const call = async (who, path, body, method) => { const r = await fetch(B + path, { method: method ?? (body ? 'POST' : 'GET'), headers: H(who), body: body ? JSON.stringify(body) : undefined }); return [r.status, await r.json().catch(() => ({}))]; };
+const T = 'demo@teacher.com';
+const before = (await call(T, '/api/home'))[1].attention;
+const rubric = [{ id: 'c1', criterion: 'Answer', points: 10 }];
+const [s1, past] = await call(T, '/api/assignments', { courseId: C, title: 'Home test past work', instructions: 'Write.', rubric, maxScore: 10, dueDate: new Date(Date.now() - 2 * 86_400_000).toISOString() });
+const [s2, soon] = await call(T, '/api/assignments', { courseId: C, title: 'Home test due soon', instructions: 'Write.', rubric, maxScore: 10, dueDate: new Date(Date.now() + 2 * 86_400_000).toISOString() });
+console.log('made', s1, past.id ?? past, s2, soon.id ?? soon);
+const [h1, handed] = await call('alice@student.com', `/api/assignments/${past.id}/submission`, { text: 'My late answer about the topic, written with enough words to hand in properly this time.' }, 'PUT');
+console.log('alice hands in late', h1, handed.lateDays ?? handed);
+const [q1, thread] = await call('bob@student.com', `/api/courses/${C}/discussion`, { title: 'Home test: what is on the quiz?', body: 'Please tell us.', kind: 'QUESTION' });
+console.log('bob asks', q1, thread.id ?? thread);
+const after = (await call(T, '/api/home'))[1].attention;
+console.log('before', JSON.stringify({ toGrade: before.toGrade, late: before.late, missing: before.missing.length, q: before.questions.total }));
+console.log('after', JSON.stringify({ toGrade: after.toGrade, late: after.late, missing: after.missing.filter((m) => m.title.startsWith('Home test')), q: after.questions.threads.filter((t) => t.title.startsWith('Home test')).length }));
+const st = (await call('demo@student.com', '/api/home'))[1];
+console.log('student up next has the due-soon work', st.upNext.some((u) => u.kind === 'assignment' && u.title === 'Home test due soon'));
+// Tidy up.
+for (const a of [past, soon]) if (a.id) console.log('delete', (await call(T, `/api/assignments/${a.id}`, null, 'DELETE'))[0]);
+if (thread.id) console.log('delete thread', (await call('bob@student.com', `/api/courses/${C}/discussion/${thread.id}`, null, 'DELETE'))[0]);

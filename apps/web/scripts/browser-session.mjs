@@ -3,6 +3,7 @@
 
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
 
@@ -12,7 +13,8 @@ export function playwright() {
   return require(`${execSync('npm root -g').toString().trim()}/playwright`);
 }
 
-export const launch = () => playwright().chromium.launch(process.env.PLAYWRIGHT_BROWSERS_PATH ? {} : { executablePath: '/opt/pw-browsers/chromium' });
+/** Chromium: Playwright's own (`npx playwright install chromium`), or the one a cloud container has at /opt/pw-browsers. */
+export const launch = () => playwright().chromium.launch(!process.env.PLAYWRIGHT_BROWSERS_PATH && existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {});
 
 /** The main pages per demo account. */
 export const PAGES = {

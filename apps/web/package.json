@@ -10,12 +10,17 @@
     "lint": "eslint src cloudflare scripts",
     "typecheck": "tsc --noEmit && tsc -p cloudflare/tsconfig.json",
     "test": "vitest run",
+    "check": "node scripts/local/check.mjs",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && wrangler d1 migrations apply universe-db --remote && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "db:migrate:local": "wrangler d1 migrations apply universe-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply universe-db --remote",
-    "db:seed:local": "tsx prisma/seed.ts"
+    "db:seed:local": "tsx prisma/seed.ts",
+    "local:setup": "node scripts/local/setup.mjs",
+    "local:dev": "node scripts/local/dev.mjs",
+    "local:build": "node scripts/local/build.mjs",
+    "local:serve": "node scripts/local/serve.mjs"
   },
   "dependencies": {
     "@block65/webcrypto-web-push": "2.0.0",
