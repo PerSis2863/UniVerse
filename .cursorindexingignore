@@ -1,0 +1,16 @@
+# Same exclusions for Cursor indexing (codebase search / @codebase)
+node_modules/
+dist/
+build/
+.next/
+.wrangler/
+.open-next/
+.turbo/
+coverage/
+.git/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+*.log
+*.min.js
+*.min.css

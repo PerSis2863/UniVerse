@@ -2804,6 +2804,10 @@ model SkillPassport {
   userId          String    @unique
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   slug            String    @unique // random, part of the public link
+  /// Optional vanity handle for /p/<handle> (public portfolio)
+  handle          String?   @unique
+  /// Portfolio colour theme: indigo | emerald | slate | rose | amber
+  theme           String    @default("indigo")
   isPublic        Boolean   @default(false)
   headline        String?
   showSkills      Boolean   @default(true)

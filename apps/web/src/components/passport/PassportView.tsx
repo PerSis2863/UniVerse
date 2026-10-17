@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import { safeHref } from '@/lib/safe-href';
 import { CertificateQrButton, CopyLinkButton } from './CredentialShare';
 import { photoSrcSet } from '@/lib/image-sizes';
+import { PASSPORT_THEME_CLASS, cleanPassportTheme, type PassportTheme } from '@/lib/passport-theme';
+import { linkedInAddCertificationUrl } from '@/lib/linkedin-cert';
 
 export interface PassportData {
   name: string;
@@ -39,18 +41,19 @@ const LEVEL: Record<string, { label: string; width: string }> = {
 const fmtDate = (d: string) => new Date(d).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 
 /** The passport as the public sees it (also used for the student's own preview). */
-export function PassportView({ p, badgeActions, onHide }: { p: PassportData; badgeActions?: (credentialId: string) => React.ReactNode; /** The student's own preview: hide or show one piece of evidence */ onHide?: (id: string, hidden: boolean) => void }) {
+export function PassportView({ p, badgeActions, onHide, theme }: { p: PassportData; badgeActions?: (credentialId: string) => React.ReactNode; /** The student's own preview: hide or show one piece of evidence */ onHide?: (id: string, hidden: boolean) => void; theme?: PassportTheme }) {
   const initials = p.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+  const t = PASSPORT_THEME_CLASS[cleanPassportTheme(theme)];
   return (
     <div className="space-y-5">
       <header className="relative overflow-hidden rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-5 sm:p-7">
-        <div aria-hidden className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-500/20 to-fuchsia-500/20 blur-3xl" />
+        <div aria-hidden className={`absolute -top-24 -right-24 w-72 h-72 rounded-full bg-gradient-to-br ${t.soft} blur-3xl`} />
         <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
           {p.avatar
             ? <img src={p.avatar} {...photoSrcSet(p.avatar, 80)} alt="" className="w-20 h-20 rounded-2xl object-cover" />
-            : <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-2xl font-black flex items-center justify-center">{initials}</div>}
+            : <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${t.accent} text-white text-2xl font-black flex items-center justify-center`}>{initials}</div>}
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-500">Skills passport</p>
+            <p className={`text-[11px] font-bold uppercase tracking-[0.2em] ${t.ring}`}>Skills passport</p>
             <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white break-words">{p.name}</h1>
             {p.headline && <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{p.headline}</p>}
             <p className="mt-1 text-xs text-zinc-500">{[p.department, `UniVerse member since ${fmtDate(p.memberSince)}`].filter(Boolean).join(' · ')}</p>
