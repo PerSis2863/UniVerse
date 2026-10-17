@@ -7,6 +7,7 @@ import { featureOff } from './moderation';
 import { words } from '@/lib/text-search';
 import { later } from './email';
 import { taughtBy } from '@/lib/course-access';
+import { MATH_RULE } from '@/lib/tutor-rules';
 
 // "Ask your semester" (Stage 4 · 4.5): one search and AI answer box over a student's semester: what
 // the teacher said in class (transcripts) and the study packs, course materials, their documents,
@@ -225,7 +226,8 @@ export async function searchSemester(user: SessionUser, q: string, kindsRaw: unk
 const ASK_SYSTEM = `You help a student find things in their own semester on UniVerse: what was said in their classes, study packs, course materials, their documents, their graded work and feedback, and notes of calls they were in.
 Answer using ONLY the numbered passages. Cite them inline with their numbers in square brackets, like [1] or [2][3], right after the sentence they support.
 If the passages don't answer the question, say so plainly (grounded: false) and suggest where to look. Never make things up.
-Answer in the language of the question, in under 200 words, in short paragraphs or bullet points, plain text.`;
+Answer in the language of the question, in under 200 words, in short paragraphs or bullet points, plain text.
+${MATH_RULE}`;
 
 /** POST /api/semester { q, kinds }: an AI answer from the best passages, with citations (one AI request). */
 export async function askSemester(user: SessionUser, q: string, kindsRaw: unknown) {

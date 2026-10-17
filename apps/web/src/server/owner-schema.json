@@ -436,6 +436,17 @@
      "updatedAt": false
     },
     {
+     "name": "cardsRemindAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "streakCurrent",
      "type": "Int",
      "kind": "scalar",
@@ -4003,6 +4014,17 @@
     {
      "name": "capacity",
      "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "tutorRule",
+     "type": "String",
      "kind": "scalar",
      "list": false,
      "optional": true,
@@ -20452,6 +20474,39 @@
      "id": false,
      "unique": false,
      "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "stability",
+     "type": "Float",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "difficulty",
+     "type": "Float",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "lastReview",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
      "updatedAt": false
     },
     {

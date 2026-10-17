@@ -2030,6 +2030,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/admin\/rooms$/, ({ db: d }) => ok(d.adminRooms)],
   [/^\/rooms$/, ({ db: d }) => ok(d.adminRooms.map((r) => { const c = { ...r }; delete (c as { reservations?: unknown }).reservations; return c; }))],
   [/^\/api\/admin\/timetable$/, ({ db: d }) => ok({ slots: d.slots, courses: d.courses.map((c) => ({ id: c.id, code: c.code, name: c.name })), rooms: Object.values(d.rooms).map((r: any) => ({ id: r.id, name: r.name })) })],
+  // The course tutor's rule and the class's common questions (Stage 5 · Q13): open, and none yet.
+  [/^\/api\/tutor\/[^/]+\/rule$/, () => ok({ hintsOnly: false, off: false, offUntil: null, note: '' })],
+  [/^\/api\/tutor\/[^/]+\/questions$/, () => ok({ since: new Date(Date.now() - 90 * 86_400_000).toISOString(), asked: 0, students: 0, groups: [] })],
   // The timetable and exam generators (Stage 5 · Q12): the sample's courses, rooms with seats, and courses sharing students.
   [/^\/api\/admin\/timetable\/plan$/, ({ db: d }) => ok({
     courses: d.courses.map((c: any, i: number) => ({ id: c.id, code: c.code, name: c.name, department: c.department ?? null, color: c.color ?? null, teacherId: `sample-t-${i % 2}`, teacher: i % 2 ? 'Tara Teacher' : 'Demo Teacher', students: 24 + i * 6 })),
@@ -2206,6 +2209,10 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['PUT', /^\/api\/attendance\/register\/[^/]+\/seating$/, ({ body }) => { notice(); return ok(body ?? {}); }],
   ['POST', /^\/api\/attendance\/excuses(\/[^/]+)?$/, () => { notice(); return ok({ ok: true }); }],
   ['PUT', /^\/api\/attendance\/policy$/, () => { notice(); return ok({ on: false, radius: 300, lat: null, lng: null }); }],
+  // The tutor: its rule, the flashcard reminder; a homework photo needs AI, which the sample doesn't have (Stage 5 · Q13).
+  ['PUT', /^\/api\/tutor\/[^/]+\/rule$/, ({ body }) => { notice(); return ok({ hintsOnly: !!body?.hintsOnly, off: !!body?.off, offUntil: body?.offUntil ?? null, note: body?.note ?? '' }); }],
+  ['PUT', /^\/api\/tutor\/cards\/reminder$/, ({ body }) => { notice(); return ok({ reminder: !!body?.on, next: null }); }],
+  ['POST', /^\/api\/tutor\/[^/]+\/photo$/, () => fail('The sample has no AI. Sign in to use the tutor with a photo.', 503)],
   // The timetable and exam generators, calendar events from a file (Stage 5 · Q12).
   ['POST', /^\/api\/admin\/timetable\/plan$/, ({ body }) => { notice(); return ok({ added: Array.isArray(body?.slots) ? body.slots.length : 0, removed: 0, kept: 0 }); }],
   ['POST', /^\/api\/admin\/timetable\/exams$/, ({ body }) => { notice(); return ok({ published: Array.isArray(body?.exams) ? body.exams.length : 0, replaced: 0, batch: 'exam:sample' }); }],

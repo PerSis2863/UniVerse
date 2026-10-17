@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 
-// My flashcards. GET ?due=1&courseId= → cards to review now (oldest due first) and deck counts.
+// My flashcards. GET ?due=1&courseId= → cards to review now (oldest due first), deck counts, and
+// whether the evening reminder is on (Stage 5 · Q13; cards carry their FSRS numbers for the buttons).
 // POST { courseId?, front, back } adds a card by hand.
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
@@ -11,12 +12,13 @@ export async function GET(req: Request) {
   const courseId = url.searchParams.get('courseId') || undefined;
   const dueOnly = url.searchParams.get('due') === '1';
   const where = { userId: user.id, ...(courseId ? { courseId } : {}) };
-  const [cards, due, total] = await Promise.all([
-    prisma.studyCard.findMany({ where: { ...where, ...(dueOnly ? { due: { lte: new Date() } } : {}) }, orderBy: dueOnly ? { due: 'asc' } : { createdAt: 'desc' }, take: dueOnly ? 50 : 300, select: { id: true, courseId: true, front: true, back: true, sourceTitle: true, due: true, interval: true, reps: true } }),
+  const [cards, due, total, me] = await Promise.all([
+    prisma.studyCard.findMany({ where: { ...where, ...(dueOnly ? { due: { lte: new Date() } } : {}) }, orderBy: dueOnly ? { due: 'asc' } : { createdAt: 'desc' }, take: dueOnly ? 50 : 300, select: { id: true, courseId: true, front: true, back: true, sourceTitle: true, due: true, interval: true, ease: true, reps: true, lapses: true, stability: true, difficulty: true, lastReview: true } }),
     prisma.studyCard.count({ where: { ...where, due: { lte: new Date() } } }),
     prisma.studyCard.count({ where }),
+    prisma.user.findUnique({ where: { id: user.id }, select: { cardsRemindAt: true } }),
   ]);
-  return NextResponse.json({ cards, due, total }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ cards, due, total, reminder: !!me?.cardsRemindAt }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: Request) {

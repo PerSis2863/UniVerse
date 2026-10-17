@@ -1,5 +1,6 @@
 'use client';
 
+import { MathText } from '@/components/ui/MathText';
 import { Fragment, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { m as motion } from 'framer-motion';
@@ -37,13 +38,12 @@ function Snippet({ text }: { text: string }) {
 
 /** The answer's [n] marks as links to their sources. */
 function Cited({ text, citations }: { text: string; citations: Answer['citations'] }) {
-  return (
-    <>{text.split(/(\[\d+\])/).map((p, i) => {
-      const n = /^\[(\d+)\]$/.exec(p)?.[1];
-      const c = n ? citations.find((x) => x.n === Number(n)) : undefined;
-      return c ? <Link key={i} href={c.link} title={c.title} className="align-super text-[10px] font-bold text-indigo-600 dark:text-indigo-300 px-0.5 hover:underline">{n}</Link> : <Fragment key={i}>{p}</Fragment>;
-    })}</>
-  );
+  // Formulas shown properly (Stage 5 · Q13), the [n] marks in the text between them.
+  return <MathText text={text} renderText={(t) => t.split(/(\[\d+\])/).map((p, i) => {
+    const n = /^\[(\d+)\]$/.exec(p)?.[1];
+    const c = n ? citations.find((x) => x.n === Number(n)) : undefined;
+    return c ? <Link key={i} href={c.link} title={c.title} className="align-super text-[10px] font-bold text-indigo-600 dark:text-indigo-300 px-0.5 hover:underline">{n}</Link> : <Fragment key={i}>{p}</Fragment>;
+  })} />;
 }
 
 export function SemesterSearch() {

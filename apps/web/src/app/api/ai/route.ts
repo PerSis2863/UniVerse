@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/server-auth';
 import { spendAi } from '@/server/ai-budget';
 import { logAiUse } from '@/server/ai-receipts';
 import { withTextModels } from '@/server/ai-models';
+import { MATH_RULE } from '@/lib/tutor-rules';
 
 // The models come from the owner's chain (owner console → Server → AI models): when one is busy
 // or missing, the next answers (src/server/ai-models.ts).
@@ -19,7 +20,8 @@ You help students with:
 - Providing motivational support
 - Helping with exam preparation
 Keep responses concise, friendly, and academically accurate. If you don't know something about the
-student's specific courses or deadlines, say so instead of guessing.`;
+student's specific courses or deadlines, say so instead of guessing.
+${MATH_RULE}`;
 
 function plainTextStream(text: string) {
   return new Response(text, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });

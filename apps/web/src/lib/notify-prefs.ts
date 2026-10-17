@@ -62,7 +62,7 @@ export function cleanPrefs(raw: unknown): NotifyPrefs {
 }
 
 /** Pushes with a switch of their own (the morning brief, a parent's weekly summary, this summary). */
-const OWN_SWITCH = ['daily-brief', 'parent-week', 'notify-digest'];
+const OWN_SWITCH = ['daily-brief', 'parent-week', 'notify-digest', 'remind-cards'];
 
 /** What happens to a push for this person: sent now, kept for the summary, or not sent. A call
  *  ringing always rings (quiet hours aside). */

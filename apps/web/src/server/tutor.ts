@@ -6,6 +6,8 @@ import { readAppFile } from '@/lib/storage';
 import { words } from '@/lib/text-search';
 import { indexCourseSource, indexLater } from './semester';
 import { teaches } from '@/lib/course-access';
+import { cleanRule, MATH_RULE, modeInstructions, tutorOff, type TutorMode, type TutorRule } from '@/lib/tutor-rules';
+import { featureOff } from './moderation';
 
 // Course AI tutor. Answers come only from the course's own sources — the teacher's materials
 // (PDFs and text files, turned into text once and stored) and notes the teacher adds — and cite
@@ -16,13 +18,13 @@ const CHUNK = 1_400;
 const TOP_CHUNKS = 8;
 const READABLE = /\.(pdf|txt|md|csv|html?)$/i;
 
-export type Access = { courseId: string; courseName: string; courseCode: string; role: 'STUDENT' | 'TEACHER' | 'ADMIN' };
+export type Access = { courseId: string; courseName: string; courseCode: string; role: 'STUDENT' | 'TEACHER' | 'ADMIN'; rule: TutorRule };
 
-/** Who may use the tutor for a course: its students, its teacher, admins. */
+/** Who may use the tutor for a course: its students, its teacher, admins. With the teacher's rule for it (Stage 5 · Q13). */
 export async function tutorAccess(user: { id: string; role: string }, courseId: string): Promise<Access | null> {
-  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, name: true, code: true, teacherId: true } });
+  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, name: true, code: true, teacherId: true, tutorRule: true } });
   if (!course) return null;
-  const base = { courseId: course.id, courseName: course.name, courseCode: course.code };
+  const base = { courseId: course.id, courseName: course.name, courseCode: course.code, rule: cleanRule(course.tutorRule) };
   if (user.role === 'ADMIN') return { ...base, role: 'ADMIN' };
   if (user.role === 'TEACHER' && (course.teacherId === user.id || (await teaches(course.id, user.id, ['CO_TEACHER'])))) return { ...base, role: 'TEACHER' };
   if (user.role === 'STUDENT') {
@@ -138,6 +140,16 @@ export async function coursePassages(courseId: string, query: string, k = 6) {
 
 // ─── Ask ─────────────────────────────────────────────────────────────────────────────────────
 
+/** Why a student can't use the tutor for this course right now (the teacher turned it off), or null. */
+export function tutorClosed(a: Access): string | null {
+  if (a.role !== 'STUDENT' || !tutorOff(a.rule)) return null;
+  const until = a.rule.offUntil ? new Date(a.rule.offUntil) : null;
+  return `Your teacher has turned the tutor off for ${a.courseCode}${until ? ` until ${until.toUTCString().replace(/:\d\d GMT$/, ' UTC')}` : ' for now'}. Good luck!`;
+}
+
+/** Whether AI can be used at all: a key, and not switched off by the owner. */
+export const aiOn = async () => !!process.env.GEMINI_API_KEY && !(await featureOff('ai'));
+
 const ASK_SYSTEM = `You are the AI tutor for a university course on UniVerse. Answer the student's question using ONLY the numbered course passages provided.
 Rules:
 - Cite the passages you used inline with their numbers in square brackets, like [1] or [2][3], right after the sentence they support.
@@ -152,12 +164,13 @@ type TutorAnswer = { answer: string | null; grounded?: boolean; citations: { n: 
  * so it's saved for a week and handed out again without asking AI or counting against anyone's
  * daily AI requests. The saved answer is dropped when the course's materials change.
  */
-export async function askTutor(a: Access, question: string, history: { role: 'user' | 'tutor'; text: string }[], who: Parameters<typeof spendAi>[0]): Promise<TutorAnswer> {
+export async function askTutor(a: Access, question: string, history: { role: 'user' | 'tutor'; text: string }[], who: Parameters<typeof spendAi>[0], mode: TutorMode = 'normal'): Promise<TutorAnswer> {
   const sources = await readySources(a.courseId);
   if (!sources.length) return { answer: null, reason: 'no-sources', citations: [] };
   // On the student's own record of AI help (Stage 5 · D12), saved answers too.
   await logAiUse(who?.id, { kind: 'tutor', detail: question, courseId: a.courseId });
-  const key = history.length ? null : ['tutor-ask', a.courseId, sources.map((s) => `${s.id}:${s.text.length}`).sort().join(','), sameQuestion(question)];
+  const how = modeInstructions(mode, a.rule);
+  const key = history.length ? null : ['tutor-ask', a.courseId, sources.map((s) => `${s.id}:${s.text.length}`).sort().join(','), sameQuestion(question), how];
   const saved = key && (await cachedAi<TutorAnswer>(key));
   if (saved?.answer) return { ...saved, saved: true };
   const spend = await spendAi(who);
@@ -165,7 +178,7 @@ export async function askTutor(a: Access, question: string, history: { role: 'us
   const context = history.slice(-4).map((h) => `${h.role === 'user' ? 'Student' : 'Tutor'}: ${h.text.slice(0, 600)}`).join('\n');
   const found = rank(passages(sources), `${history.filter((h) => h.role === 'user').slice(-1)[0]?.text ?? ''} ${question}`);
   const out = await geminiJson<{ answer: string; grounded: boolean; used: number[] }>(
-    ASK_SYSTEM,
+    `${ASK_SYSTEM}\n${how}`,
     `Course: ${a.courseCode} — ${a.courseName}\n\nCourse passages:\n${cite(found) || '(none matched)'}\n\n${context ? `Conversation so far:\n${context}\n\n` : ''}Student's question: ${question.slice(0, 1500)}`,
     {
       type: 'OBJECT',
@@ -197,7 +210,7 @@ export async function practiceQuestions(a: Access, topic: string, count = 5) {
   if (!sources.length) return { questions: null, reason: 'no-sources' as const };
   const ps = pick(sources, topic, 8);
   const out = await geminiJson<{ questions: { question: string; options: string[]; answer: number; explanation: string; source: number }[] }>(
-    `You write practice questions for university students from course passages. Make ${count} multiple-choice questions that test understanding (not trivia), each with 4 plausible options and exactly one correct answer. The explanation says why the answer is right, in one or two sentences. "source" is the number of the passage the question comes from. Use the language of the passages.`,
+    `You write practice questions for university students from course passages. Make ${count} multiple-choice questions that test understanding (not trivia), each with 4 plausible options and exactly one correct answer. The explanation says why the answer is right, in one or two sentences. "source" is the number of the passage the question comes from. Use the language of the passages. ${MATH_RULE}`,
     `Course: ${a.courseCode} — ${a.courseName}${topic ? `\nTopic: ${topic.slice(0, 200)}` : ''}\n\nPassages:\n${cite(ps)}`,
     {
       type: 'OBJECT',
@@ -219,7 +232,7 @@ export async function makeFlashcards(a: Access, topic: string, count = 10) {
   if (!sources.length) return { cards: null, reason: 'no-sources' as const };
   const ps = pick(sources, topic, 8);
   const out = await geminiJson<{ cards: { front: string; back: string; source: number }[] }>(
-    `You make study flashcards from course passages. Make up to ${count} cards: the front is a short question or term, the back a short, precise answer (max 40 words). Cover the key ideas, one idea per card. "source" is the passage number. Use the language of the passages.`,
+    `You make study flashcards from course passages. Make up to ${count} cards: the front is a short question or term, the back a short, precise answer (max 40 words). Cover the key ideas, one idea per card. "source" is the passage number. Use the language of the passages. ${MATH_RULE}`,
     `Course: ${a.courseCode} — ${a.courseName}${topic ? `\nTopic: ${topic.slice(0, 200)}` : ''}\n\nPassages:\n${cite(ps)}`,
     {
       type: 'OBJECT',
@@ -230,22 +243,4 @@ export async function makeFlashcards(a: Access, topic: string, count = 10) {
   );
   if (!out?.cards) return { cards: null, reason: 'unavailable' as const };
   return { cards: out.cards.filter((c) => c.front?.trim() && c.back?.trim()).slice(0, count).map((c) => ({ front: c.front.slice(0, 300), back: c.back.slice(0, 600), sourceTitle: ps.find((p) => p.n === c.source)?.title ?? null })), reason: null };
-}
-
-// ─── Spaced repetition (SM-2) ────────────────────────────────────────────────────────────────
-
-export type ReviewGrade = 'again' | 'hard' | 'good' | 'easy';
-
-/** Next interval (days), ease and repetition count after a review, following SM-2. */
-export function schedule(card: { interval: number; ease: number; reps: number; lapses: number }, grade: ReviewGrade) {
-  const q = { again: 1, hard: 3, good: 4, easy: 5 }[grade];
-  let { interval, ease, reps, lapses } = card;
-  if (q < 3) { reps = 0; interval = 0; lapses += 1; }
-  else {
-    reps += 1;
-    interval = reps === 1 ? 1 : reps === 2 ? (grade === 'easy' ? 4 : 3) : Math.round(interval * ease * (grade === 'hard' ? 0.8 : grade === 'easy' ? 1.3 : 1));
-  }
-  ease = Math.max(1.3, ease + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02)));
-  const due = new Date(Date.now() + (interval === 0 ? 10 * 60_000 : interval * 86_400_000)); // "again": in 10 minutes
-  return { interval, ease: Math.round(ease * 100) / 100, reps, lapses, due };
 }

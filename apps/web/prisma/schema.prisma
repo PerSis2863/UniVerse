@@ -128,6 +128,8 @@ model User {
   /// (src/lib/notify-prefs.ts); digestAt: when my next daily summary is due (null: none).
   notifyPrefs        String?
   digestAt           DateTime?
+  /// Stage 5 · Q13: when the next evening flashcard reminder is due (null: off).
+  cardsRemindAt      DateTime?
   // Study streak (src/server/streaks.ts): days in a row with a quiz, flashcard review or tutor question.
   streakCurrent      Int       @default(0)
   streakBest         Int       @default(0)
@@ -387,6 +389,7 @@ model User {
   @@index([status])
   @@index([campusId])
   @@index([digestAt])
+  @@index([cardsRemindAt])
   @@map("users")
 }
 
@@ -521,6 +524,8 @@ model Course {
   emoji       String?
   /// Stage 5 · B2: the most students it takes (null: no limit); when full, students wait (elective requests WAITLISTED).
   capacity    Int?
+  /// Stage 5 · Q13: the teacher's rule for the AI tutor (JSON { hintsOnly, note, off, offUntil }, src/lib/tutor-rules.ts).
+  tutorRule   String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -2936,6 +2941,10 @@ model StudyCard {
   ease        Float    @default(2.5)
   reps        Int      @default(0)
   lapses      Int      @default(0)
+  /// Stage 5 · Q13: FSRS (src/lib/fsrs.ts): days until recall falls to 90 %, difficulty 1–10, the last review.
+  stability   Float?
+  difficulty  Float?
+  lastReview  DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -5767,6 +5776,7 @@ model AiUse {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+  @@index([courseId, createdAt])
   @@map("ai_uses")
 }
 

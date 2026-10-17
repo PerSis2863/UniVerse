@@ -1,5 +1,6 @@
 'use client';
 
+import { MathText } from '@/components/ui/MathText';
 import { useState, useRef, useEffect } from 'react';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { Bot, X, Send, Sparkles, User, Minimize2, Zap, WifiOff, ArrowUpRight } from 'lucide-react';
@@ -301,7 +302,7 @@ export function AIStudyAssistant() {
                         {msg.source === 'instant' ? <><Zap className="w-3 h-3" /> Instant answer · works offline</> : <><WifiOff className="w-3 h-3" /> Saved answer</>}
                       </span>
                     )}
-                    {msg.content}
+                    {msg.role === 'user' ? msg.content : <MathText text={msg.content} />}
                     {!!msg.links?.length && (
                       <span className="mt-2 flex flex-wrap gap-1.5">
                         {msg.links.map((l) => (

@@ -14,6 +14,7 @@ export const isAiPolicy = (x: unknown): x is AiPolicy => typeof x === 'string' &
 export const AI_USE_KINDS = {
   assistant: 'AI assistant',
   tutor: 'Course AI tutor',
+  homework: 'Homework photo help',
   voice: 'Voice tutor',
   writing: 'Writing helper (Docs)',
   whiteboard: 'Whiteboard AI',
