@@ -1,0 +1,31 @@
+// Writing replay through the API: kept with a typed hand-in, checked, read by the teaching team only.
+const base = 'http://localhost:8787', C = 'cmulde0g900147d341qn9mxlw';
+const T = 'demo@teacher.com', TA = 'tom@teacher.com', A = 'alice@student.com', B = 'bob@student.com', J = 'demo@student.com';
+const H = (e) => ({ Authorization: `Bearer mock-token-${e}`, 'Content-Type': 'application/json' });
+const call = async (who, path, body, method) => { const r = await fetch(base + path, { method: method ?? (body ? 'POST' : 'GET'), headers: H(who), body: body ? JSON.stringify(body) : undefined }); return { status: r.status, body: await r.json().catch(() => ({})) }; };
+const out = {};
+for (const x of (await call(T, `/api/assignments?courseId=${C}`)).body) if (x.title.startsWith('Replay API')) await call(T, `/api/assignments/${x.id}`, null, 'DELETE');
+const a = (await call(T, '/api/assignments', { courseId: C, title: 'Replay API', instructions: 'Write about loops.', rubric: [{ criterion: 'Content', points: 10 }] })).body;
+const t0 = Date.now() - 600_000;
+const text = 'Loops repeat steps until a condition is met.';
+const good = { base: '', chunks: [{ t: t0, p: 0, d: 0, i: 'Loops repeat' }, { t: t0 + 9000, p: 12, d: 0, i: ' steps until a condition is met.', paste: true }] };
+out.alice = (await call(A, `/api/assignments/${a.id}/submission`, { text, replay: good }, 'PUT')).status;
+out.bob = (await call(B, `/api/assignments/${a.id}/submission`, { text: 'Something quite different, long enough.', replay: good }, 'PUT')).status;
+out.john = (await call(J, `/api/assignments/${a.id}/submission`, { text, replay: { base: '', chunks: [{ t: 2, p: 0, d: 0, i: 'x' }, { t: 1, p: 0, d: 0, i: 'y' }] } }, 'PUT')).status;
+const d = (await call(T, `/api/assignments/${a.id}`)).body;
+const by = (email) => d.submissions.find((s) => s.student.email === email);
+out.detail = { leaksReplay: d.submissions.some((s) => 'writingReplay' in s), alice: by(A)?.replayMatches, bob: by(B)?.replayMatches, john: by(J)?.replayMatches };
+const r = await call(T, `/api/assignments/submissions/${by(A).id}/replay`);
+out.teacher = { status: r.status, chunks: r.body.replay?.chunks?.length, matches: r.body.matches, paste: r.body.replay?.chunks?.[1]?.paste };
+out.ta = (await call(TA, `/api/assignments/submissions/${by(A).id}/replay`)).status;
+out.bobMismatch = (await call(T, `/api/assignments/submissions/${by(B).id}/replay`)).body.matches;
+out.johnNone = (await call(T, `/api/assignments/submissions/${by(J).id}/replay`)).status;
+out.studentOwn = (await call(A, `/api/assignments/submissions/${by(A).id}/replay`)).status;
+out.classmate = (await call(B, `/api/assignments/submissions/${by(A).id}/replay`)).status;
+// Too much text: dropped, the hand-in still goes in.
+const huge = { base: '', chunks: [{ t: 1, p: 0, d: 0, i: 'x'.repeat(19_000) }, ...Array.from({ length: 9 }, (_, k) => ({ t: 2 + k, p: 0, d: 19_000, i: 'y'.repeat(19_000) }))] };
+out.huge = (await call(A, `/api/assignments/${a.id}/submission`, { text: 'y'.repeat(19_000), replay: huge }, 'PUT')).status;
+out.hugeKept = (await call(T, `/api/assignments/${a.id}`)).body.submissions.find((s) => s.student.email === A)?.replayMatches;
+out.unknown = (await call(T, '/api/assignments/submissions/nope/replay')).status;
+await call(T, `/api/assignments/${a.id}`, null, 'DELETE');
+console.log(JSON.stringify(out, null, 1));

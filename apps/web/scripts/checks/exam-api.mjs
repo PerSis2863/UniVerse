@@ -1,0 +1,44 @@
+// One-way exams and the hard stop, through the API.
+import { execSync } from 'node:child_process';
+import { fileURLToPath as __path } from 'node:url';
+const APP = __path(new URL('../..', import.meta.url)).replace(/[\\/]$/, '');
+const base = 'http://localhost:8787', C = 'cmulde0g900147d341qn9mxlw';
+const T = 'demo@teacher.com', A = 'alice@student.com', B = 'bob@student.com';
+const H = (e) => ({ Authorization: `Bearer mock-token-${e}`, 'Content-Type': 'application/json' });
+const call = async (who, path, body, method) => { const r = await fetch(base + path, { method: method ?? (body ? 'POST' : 'GET'), headers: H(who), body: body ? JSON.stringify(body) : undefined }); return { s: r.status, b: await r.json().catch(() => ({})) }; };
+const out = {};
+for (const q of (await call(T, '/api/core/quizzes')).b ?? []) if (q.title?.startsWith('Exam API')) await call(T, `/api/core/quizzes/${q.id}`, null, 'DELETE');
+const quiz = (await call(T, '/api/core/quizzes', { courseId: C, title: 'Exam API', timeLimit: 10 })).b;
+for (let k = 1; k <= 3; k++) await call(T, `/api/quizzes/${quiz.id}/questions`, { question: `Q${k}: pick yes`, options: ['yes', 'no'], correctAnswer: 'yes', points: 1 });
+const set = (await call(T, `/api/quizzes/${quiz.id}`, { examMode: true, oneWay: true, hardStop: true, status: 'PUBLISHED' }, 'PATCH')).b;
+out.settings = [set.examMode, set.oneWay, set.hardStop];
+const ids = (await call(T, `/api/quizzes/${quiz.id}`)).b.questions.map((q) => q.id);
+const start = (await call(A, `/api/core/quizzes/${quiz.id}/start`, {})).b;
+out.start = [!!start.endsAt, start.done];
+const ans = (who, i, answer) => call(who, `/api/core/quizzes/${quiz.id}/answer`, { questionId: ids[i], answer });
+out.q1 = (await ans(A, 0, 'yes')).b.done?.length;
+out.q1Again = (await ans(A, 0, 'no')).s;
+out.skipToQ3 = (await ans(A, 2, 'yes')).b.done?.length;
+out.q2Back = (await ans(A, 1, 'yes')).s;
+out.resume = (await call(A, `/api/core/quizzes/${quiz.id}/start`, {})).b.done?.length;
+out.alice = (await call(A, `/api/core/quizzes/${quiz.id}/submit`, { answers: { [ids[0]]: 'no', [ids[1]]: 'yes', [ids[2]]: 'no' } })).b;
+out.alice = [out.alice.score, out.alice.maxScore];
+// Bob: answers one, then his time runs out (his start moved back 20 minutes).
+await call(B, `/api/core/quizzes/${quiz.id}/start`, {});
+out.bobQ1 = (await ans(B, 0, 'yes')).s;
+const when = new Date(Date.now() - 20 * 60_000).toISOString().replace('Z', '+00:00');
+execSync(`npx wrangler d1 execute universe-db --local --command "UPDATE quiz_attempts SET startedAt='${when}' WHERE quizId='${quiz.id}' AND studentId=(SELECT id FROM users WHERE email='bob@student.com')"`, { cwd: APP, stdio: 'ignore' });
+const late = await ans(B, 1, 'yes');
+out.bobLateAnswer = [late.s, late.b.error];
+const bob = (await call(B, `/api/core/quizzes/${quiz.id}/submit`, { answers: { [ids[1]]: 'yes', [ids[2]]: 'yes' } })).b;
+out.bob = [bob.score, bob.maxScore, JSON.stringify(bob.integrity)];
+// Not an exam: no saving one by one.
+const plain = (await call(T, '/api/core/quizzes', { courseId: C, title: 'Exam API plain' })).b;
+await call(T, `/api/quizzes/${plain.id}/questions`, { question: 'Q: pick yes', options: ['yes', 'no'], correctAnswer: 'yes', points: 1 });
+await call(T, `/api/quizzes/${plain.id}`, { status: 'PUBLISHED' }, 'PATCH');
+out.plainAnswer = (await call(A, `/api/core/quizzes/${plain.id}/answer`, { questionId: 'x', answer: 'yes' })).s;
+out.teacherAnswer = (await call(T, `/api/core/quizzes/${quiz.id}/answer`, { questionId: ids[0], answer: 'yes' })).s;
+const t = (await call(T, `/api/quizzes/${quiz.id}`)).b;
+out.teacherSees = t.submissions.map((x) => `${x.student.name.split(' ')[0]}:${x.score}:${x.integrity?.dropped ?? 0}`).sort();
+for (const id of [quiz.id, plain.id]) await call(T, `/api/core/quizzes/${id}`, null, 'DELETE');
+console.log(JSON.stringify(out, null, 1));

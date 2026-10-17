@@ -1,0 +1,97 @@
+---
+description: How the UniVerse owner works, and the rules for code, data and testing in this project
+alwaysApply: true
+---
+
+# UniVerse: working rules
+
+Start with `START-HERE.md` (where things stand, how to run it). The plan is
+`apps/web/STAGE-5-PLAN.md` (section 4 "Remaining work queue", and the **Progress** table at the
+end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `apps/web`. Also read
+`apps/web/AGENTS.md`: this is **Next.js 16**, which differs from older versions; check
+`node_modules/next/dist/docs/` before using a Next.js API.
+
+## Working with the owner
+
+- The owner is not a developer: explain in plain words, short and concrete (what they can now do,
+  what they need to do). No jargon without a one-line meaning.
+- Work through the plan's queue in order (next: **Q14**). **One commit per item**; push at
+  checkpoints. Each finished item gets a **Progress row** in `STAGE-5-PLAN.md` (what was built,
+  where, how it was tested, what's not done) and a short note in `STAGE-5-HANDOFF.md` (traps, rules
+  for code that builds on it, the next migration number). Mark the item's heading ✅.
+- **Merge only when the owner says "merge"**, each time. Don't open a pull request unless asked.
+- Anything that **costs money or needs an account** (a paid service, Workers Paid, SMS, app stores,
+  Google/Microsoft apps, Razorpay): ask first; build it behind a switch, off, and mark it **[owner]**.
+
+## Safety (never break these)
+
+- **Never handle real secrets.** Real keys live only in the Cloudflare dashboard. Local tests use
+  placeholder values on the command line (`pnpm local:serve --ai-placeholder`); never write keys in
+  `.dev.vars`, `.env*` or any committed file, and never paste them in chat.
+- **No AI model names or IDs** in commit messages, pull requests or code comments.
+- **Never weaken sign-in or access checks** (`src/server/auth.ts`, `src/lib/server-auth.ts`,
+  `src/server/access.ts`). The local **demo admin is read-only by design**: don't get around it;
+  test admin saving with unit tests (mocked Prisma) instead.
+- **Request data is untrusted**: read bodies and queries through `src/server/body.ts` (`oneOf`,
+  `str`, `text`, `strings`, `first`) and give Prisma only `pick<Prisma.XInput>(body, keys)`
+  (`src/server/pick.ts`). Every route that serves people's data checks who is asking.
+
+## Product rules
+
+- **No new emails.** Notify in the app: `notify` / `notifyMany` from `src/server/email.ts` with
+  `email: false`.
+- New features go **inside existing menus, as tabs**, not new top-level pages.
+- Motion: `import { m as motion } from 'framer-motion'` and the springs in `src/lib/motion.ts`.
+  Links: only `@/components/ui/Link`.
+- **No polling.** Live updates: `publish()` (`src/server/realtime.ts`) plus a `useLiveInterval`
+  fallback, or `useActivePoll` for screens without live updates (`src/lib/realtime-client.ts`).
+- **AI** always: `spendAi` (daily allowance), `featureOff('ai')` (the owner's switch), and the AI
+  cache (`cachedAi` / `saveAi`) when everyone would get the same answer. Show AI answers with
+  `MathText` and put `MATH_RULE` in prompts (`src/lib/tutor-rules.ts`).
+- **Sample mode** (the public demo without a database): every new GET route gets a stub in
+  `src/lib/sample/router.ts`; writes call `notice()`.
+- Accessibility: every screen axe-clean (serious/critical) at **390 and 1280 px, light and dark**,
+  and no sideways scrolling.
+
+## Platform limits (Cloudflare Workers Free)
+
+- **D1: at most 100 bound values per query** (chunk lists by 90; multi-row inserts with N rows a
+  statement) and **at most 50 queries per request**. D1 has no transactions.
+- The build machine has 8 GB, 2 CPUs and 20 minutes: keep heavy libraries out of first-load bundles
+  (dynamic `import()`).
+- The light API path (`cloudflare/fast-api.ts`) must run the same code as its Next route; the startup
+  bundle keys (`src/lib/bootstrap.ts`) must match the head script.
+
+## Database changes
+
+Hand-written SQL in `apps/web/prisma/migrations/NNNN_name.sql` (**next: 0157**) plus
+`prisma/schema.prisma`; then, from `apps/web`:
+`PRISMA_GENERATE_SKIP_AUTOINSTALL=1 npx prisma generate`,
+`npx wrangler d1 migrations apply universe-db --local`, `node scripts/gen-owner-schema.mjs`.
+A new API route: `node scripts/gen-api-routes.mjs`. Deploys apply new migrations themselves.
+
+## Before every commit
+
+- `pnpm check` (from `apps/web`): `pnpm typecheck` (the only type check: the deploy build skips it),
+  eslint on changed files (**0 errors**, the whole repo under 50 warnings, **no disable comments**:
+  fix the cause), and the unit tests (`npx vitest run`).
+- For screens: `pnpm local:build`, `pnpm local:serve`, then a Playwright + axe check like those in
+  `apps/web/scripts/checks/` (no screenshots needed). Don't edit source files while a build runs.
+  Never commit changes the build makes to `public/sw.js`, `public/fallback-*.js`,
+  `public/workbox-*.js` or `apps/web/cloudflare/next-public.gen.ts` (`local:build` puts them back).
+
+## Gotchas already learned
+
+- React hooks lint (v6): no reading refs while rendering, no `setState` directly in an effect body
+  (in a callback or a promise is fine), no reassigning variables after render, no `Date.now()` while
+  rendering (`src/lib/use-now.ts`).
+- axe "label-content-name-mismatch": don't give a button an `aria-label` different from its visible
+  text; add `sr-only` text instead. An absolutely positioned `sr-only` span inside an
+  `overflow-x-auto` toolbar can widen the page: make the toolbar `relative`.
+- ProseMirror reads a keyboard selection a moment after the key: pause ~150 ms in browser tests
+  before a toolbar action.
+- Attendance rows are stored at midnight UTC of the class day. D1 supports FTS5 and window functions.
+- KaTeX: import `katex/dist/katex.mjs` (plain `katex` may be the CommonJS copy that the chemistry
+  extension doesn't extend).
+- In browser tests, measure elements only after the calendar's days finish sliding in; phone tab
+  bars can cover elements near the bottom (scroll them into the middle first).

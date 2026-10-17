@@ -3,7 +3,15 @@
 Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
 done, where the code is and what's left for each item. Keep that table up to date as you go.
 
-## Latest (14 Oct 2026): read this first
+## Latest (17 Oct 2026): read this first
+
+- **`main` has everything through Q13** (PR #64). The work moves to **Cursor** on the owner's
+  computer: start with **`START-HERE.md`** at the top of the project (setup, `pnpm local:*`
+  commands, publishing) and the rules in **`.cursor/rules/universe.mdc`**. The browser and API
+  checks used for every item are now in **`apps/web/scripts/checks/`** (index in its README), run
+  against `pnpm local:serve`. **Next: Q14. Next migration: `0157`.**
+
+## Earlier (14 Oct 2026)
 
 - **`main` has everything up to PR #58** (Meet "Error 1101" fix, D17 moving QR codes, D18 skills match,
   page-error fixes). **Branch `claude/great-hamilton-8g8xdm` adds (not merged; merge only when the

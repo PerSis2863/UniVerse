@@ -1,0 +1,20 @@
+import { readFileSync } from 'node:fs';
+import { tmpdir as __tmp } from 'node:os';
+const SCRATCH = __tmp();
+const base = 'http://localhost:8787', H = { Authorization: 'Bearer mock-token-alice@student.com' };
+const jpg = readFileSync(`${SCRATCH}/IMG_4000.jpg`);
+const send = async (label, parts, name = 'p.webp') => {
+  const f = new FormData();
+  for (const [k, type, bytes] of parts) f.append(k, new Blob([bytes ?? jpg.subarray(0, 2000)], { type }), name);
+  const r = await fetch(`${base}/api/upload/sized?filename=${name}`, { method: 'POST', headers: H, body: f });
+  console.log(label.padEnd(34), r.status, (await r.text()).slice(0, 90));
+};
+await send('ok: two webp sizes', [['w320', 'image/webp'], ['w640', 'image/webp']]);
+await send('one size only', [['w320', 'image/webp']]);
+await send('mixed types', [['w320', 'image/webp'], ['w640', 'image/png']]);
+await send('svg', [['w320', 'image/svg+xml'], ['w640', 'image/svg+xml']], 'p.svg');
+await send('name says jpg, parts webp', [['w320', 'image/webp'], ['w640', 'image/webp']], 'p.jpg');
+await send('same width twice', [['w320', 'image/webp'], ['w320', 'image/webp']]);
+await send('odd part name', [['x', 'image/webp'], ['w640', 'image/webp']]);
+await send('too big (5 MB)', [['w320', 'image/webp', Buffer.alloc(2_600_000)], ['w640', 'image/webp', Buffer.alloc(2_600_000)]]);
+const anon = await fetch(`${base}/api/upload/sized?filename=p.webp`, { method: 'POST', body: new FormData() }); console.log('signed out'.padEnd(34), anon.status);
