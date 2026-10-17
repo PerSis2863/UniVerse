@@ -5,6 +5,7 @@ import { buildSampleDb, levelInfo, LEVELS, sid, at, type SampleDb } from './data
 import { sampleAsk, sampleMetric } from './analytics';
 import { isMetricId } from '@/lib/school-metrics';
 import { answerText, cleanQuestionInput, forStudent, markAnswer, metaOf, typeOf } from '@/lib/question-types';
+import { DEFAULT_PREFS, GROUP_OF_TYPE, NOTE_GROUPS } from '@/lib/notify-prefs';
 
 // Answers the app's API requests from example data while sample mode is on.
 // GETs without a sample answer fall through to the real server (read-only);
@@ -1756,6 +1757,34 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     });
   }],
 
+  // The home pages' layout, Up next, goal, needs-attention list and live numbers (Stage 5 · Q8).
+  [/^\/api\/home$/, ({ db: d }) => {
+    const now = new Date();
+    const dow = (now.getDay() + 6) % 7;
+    const todayAt = (hhmm: string) => { const [h, mi] = hhmm.split(':').map(Number); const t = new Date(now); t.setHours(h, mi, 0, 0); return t.getTime(); };
+    const layout = { order: [], hidden: [], goal: 3 };
+    const role = d.me.role;
+    const classes = (d.slots as any[]).filter((s) => s.dayOfWeek === dow && (!d.teacherView || d.taught.some((c: any) => c.id === s.courseId)))
+      .map((s) => ({ kind: 'class', id: s.id, title: s.course.name, sub: `${s.course.code} · ${String(s.type).toLowerCase()} · ${s.room.name}`, start: todayAt(s.startTime), end: todayAt(s.endTime), href: d.teacherView ? `/teacher/blackboard?course=${s.courseId}` : `/student/courses/${s.courseId}` }));
+    if (role === 'ADMIN') return ok({ layout, upNext: [], live: { attendance: { marked: 412, present: 389, absent: 23 }, fees: [{ currency: 'INR', today: 4_850_000, month: 61_200_000, payments: 7 }], safety: { open: 2, high: 0 }, active: { now: 37, today: 318 }, pending: 4 } });
+    if (d.teacherView) {
+      return ok({
+        layout, upNext: [...classes, { kind: 'grade', id: 'grade', title: '6 to grade', sub: '2 handed in late', count: 6, href: '/teacher/assignments' }],
+        attention: {
+          toGrade: 6, late: 2,
+          missing: [{ id: 'sample-a-essay', title: 'Scheduling essay', code: 'CS301', due: now.getTime() - 2 * 86_400_000, missing: 3 }],
+          atRisk: { total: 1, students: [{ id: d.people.liam.id, name: d.people.liam.name, code: 'CS220', score: 72 }] },
+          questions: { total: 2, threads: [{ id: 'sample-t-1', title: 'Is the deadlock example in the notes right?', code: 'CS301', courseId: 'sample-c-os', at: now.getTime() - 3 * 3_600_000 }, { id: 'sample-t-2', title: 'Will hashing be on the quiz?', code: 'CS220', courseId: 'sample-c-ds', at: now.getTime() - 26 * 3_600_000 }] },
+        },
+      });
+    }
+    const quizzes = (d.quizzes as any[]).filter((x) => x.status === 'PUBLISHED' && !d.submissions[x.id] && new Date(x.dueDate) > now && +new Date(x.dueDate) - +now < 7 * 86_400_000)
+      .map((x) => ({ kind: 'quiz', id: x.id, title: x.title, sub: course(d, x.courseId)?.code, due: +new Date(x.dueDate), href: '/student/quizzes' }));
+    const day = (n: number) => { const t = new Date(now); t.setDate(t.getDate() - n); return t.toISOString().slice(0, 10); };
+    const week = [6, 5, 4, 3, 2, 1, 0].map((n, i) => ({ day: day(n), actions: [2, 4, 0, 3, 5, 1, 2][i] }));
+    return ok({ layout, upNext: [...classes, ...quizzes], study: { today: 2, week } });
+  }],
+
   [/^\/grades\/student$/, ({ db: d }) => ok({ grades: d.myGrades, summary: [] })],
   [/^\/grades\/course\/([^/]+)$/, ({ db: d, m }) => ok({ enrollments: d.classmates.map((s) => ({ student: s })), grades: d.classGrades.filter((g) => g.courseId === m[1]) })],
 
@@ -1813,6 +1842,43 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   })],
 
   [/^\/api\/notifications$/, ({ db: d }) => ok(d.notifications)],
+  // Attendance (Stage 5 · Q11): the register, the class call, excuses and the location check.
+  [/^\/api\/attendance\/register\/([^/]+)$/, ({ db: d, m, q }) => {
+    const c = course(d, m[1]) ?? d.courses[0];
+    const day = q.get('day') ?? new Date().toISOString().slice(0, 10);
+    const marks = ['PRESENT', 'PRESENT', 'LATE', 'ABSENT', 'PRESENT'];
+    return ok({
+      course: { id: c.id, code: c.code, name: c.name }, day,
+      students: (d.classmates as any[]).map((s, i) => ({ id: s.id, name: s.name, email: s.email, avatar: null, mark: i === 3 ? null : marks[i % 5], record: { attended: 8 - (i % 3), counted: 9, rate: (8 - (i % 3)) / 9 }, recent: ['PRESENT', 'PRESENT', i === 2 ? 'ABSENT' : 'LATE', 'PRESENT'], chronic: false })),
+      pendingExcuses: 1, seating: { rows: 3, cols: 4, seats: { '0-0': d.classmates[0].id, '0-1': d.classmates[1].id, '1-2': d.classmates[2].id } },
+    });
+  }],
+  [/^\/api\/attendance\/register\/[^/]+\/call$/, () => ok({ day: new Date().toISOString().slice(0, 10), length: 0, threshold: 0.75, suggestions: [] })],
+  [/^\/api\/attendance\/register\/[^/]+\/excuses$/, ({ db: d }) => ok([{ id: 'sample-ex-1', date: new Date(Date.now() - 86_400_000).toISOString(), reason: 'I had a fever and stayed home.', fileUrl: null, fileName: null, status: 'PENDING', note: null, student: { id: d.classmates[1].id, name: d.classmates[1].name }, course: { code: d.courses[0].code, name: d.courses[0].name } }])],
+  [/^\/api\/attendance\/excuses$/, () => ok([])],
+  [/^\/api\/attendance\/policy$/, () => ok({ on: false, radius: 300, lat: null, lng: null })],
+  // Search everywhere (Stage 5 · Q10): the sample courses and quizzes by name.
+  [/^\/api\/search$/, ({ db: d, q }) => {
+    const term = (q.get('q') ?? '').toLowerCase().trim();
+    if (term.length < 2) return ok({ results: [] });
+    const has = (t: string) => t.toLowerCase().includes(term);
+    return ok({ results: [
+      ...(d.courses as any[]).filter((c) => has(`${c.name} ${c.code} ${c.description ?? ''}`)).map((c) => ({ type: 'course', id: c.id, title: c.name, subtitle: c.code, href: d.teacherView ? `/teacher/blackboard?course=${c.id}` : `/student/courses/${c.id}` })),
+      ...(d.quizzes as any[]).filter((x) => has(`${x.title} ${x.description ?? ''}`)).map((x) => ({ type: 'assignment', id: x.id, title: x.title, subtitle: course(d, x.courseId)?.code, snippet: x.description ?? undefined, href: d.teacherView ? '/teacher/quizzes' : '/student/quizzes' })),
+    ] });
+  }],
+  // The notification centre and its settings (Stage 5 · Q9).
+  [/^\/api\/notifications\/centre$/, ({ db: d, q }) => {
+    const group = q.get('group'), unreadOnly = q.get('unread') === '1';
+    const all = (d.notifications as any[]).map((n) => ({ ...n, group: GROUP_OF_TYPE(n.type), course: null }));
+    const unread: Record<string, number> = {};
+    for (const n of all) if (!n.read) unread[n.group] = (unread[n.group] ?? 0) + 1;
+    return ok({ items: all.filter((n) => (!group || n.group === group) && (!unreadOnly || !n.read)), next: null, unread, snoozed: 0 });
+  }],
+  [/^\/api\/notifications\/settings$/, ({ db: d }) => ok({
+    prefs: DEFAULT_PREFS, groups: NOTE_GROUPS.map(({ id, label, hint }) => ({ id, label, hint })),
+    courses: d.courses.map((c: any) => ({ id: c.id, code: c.code, name: c.name })), devices: 0, nextDigest: null,
+  })],
   [/^\/api\/chat\/conversations$/, ({ db: d }) => ok({ conversations: d.conversations.map((c) => summary(d, c)).sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (+new Date(b.activityAt) - +new Date(a.activityAt))), me: d.me.id })],
   [/^\/api\/chat\/folders$/, () => ok({ folders: [] })],
   [/^\/api\/chat\/communities\/[^/]+\/moderation$/, () => ok({ reports: [], resolved: [], timeouts: [], automod: { words: [], mode: 'BLOCK' }, log: [] })],
@@ -1964,6 +2030,17 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/admin\/rooms$/, ({ db: d }) => ok(d.adminRooms)],
   [/^\/rooms$/, ({ db: d }) => ok(d.adminRooms.map((r) => { const c = { ...r }; delete (c as { reservations?: unknown }).reservations; return c; }))],
   [/^\/api\/admin\/timetable$/, ({ db: d }) => ok({ slots: d.slots, courses: d.courses.map((c) => ({ id: c.id, code: c.code, name: c.name })), rooms: Object.values(d.rooms).map((r: any) => ({ id: r.id, name: r.name })) })],
+  // The course tutor's rule and the class's common questions (Stage 5 · Q13): open, and none yet.
+  [/^\/api\/tutor\/[^/]+\/rule$/, () => ok({ hintsOnly: false, off: false, offUntil: null, note: '' })],
+  [/^\/api\/tutor\/[^/]+\/questions$/, () => ok({ since: new Date(Date.now() - 90 * 86_400_000).toISOString(), asked: 0, students: 0, groups: [] })],
+  // The timetable and exam generators (Stage 5 · Q12): the sample's courses, rooms with seats, and courses sharing students.
+  [/^\/api\/admin\/timetable\/plan$/, ({ db: d }) => ok({
+    courses: d.courses.map((c: any, i: number) => ({ id: c.id, code: c.code, name: c.name, department: c.department ?? null, color: c.color ?? null, teacherId: `sample-t-${i % 2}`, teacher: i % 2 ? 'Tara Teacher' : 'Demo Teacher', students: 24 + i * 6 })),
+    rooms: Object.values(d.rooms).map((r: any, i: number) => ({ id: r.id, name: r.name, capacity: [40, 120, 30, 24][i % 4], type: 'CLASSROOM' })),
+    slots: d.slots.map((x: any) => ({ id: x.id, courseId: x.courseId, dayOfWeek: x.dayOfWeek, startTime: x.startTime, endTime: x.endTime, roomId: x.roomId ?? x.room?.id ?? null, type: x.type ?? 'LECTURE' })),
+    overlaps: d.courses.slice(1).map((c: any, i: number) => [d.courses[i].id, c.id, 10 + i]),
+    exams: [],
+  })],
   [/^\/api\/premium\/analytics$/, ({ db: d }) => ok(d.analytics)],
   // A study pack in another language (Stage 4 · 4.1): the sample's packs are shown as they are.
   [/^\/api\/class-sessions\/([^/]+)\/translation$/, () => ok({ same: true, pack: null })],
@@ -2127,6 +2204,22 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
+  // Attendance changes (Stage 5 · Q11).
+  ['POST', /^\/api\/attendance\/register\/[^/]+$/, ({ body }) => { notice(); return ok({ marked: Array.isArray(body?.marks) ? body.marks.length : 0 }); }],
+  ['PUT', /^\/api\/attendance\/register\/[^/]+\/seating$/, ({ body }) => { notice(); return ok(body ?? {}); }],
+  ['POST', /^\/api\/attendance\/excuses(\/[^/]+)?$/, () => { notice(); return ok({ ok: true }); }],
+  ['PUT', /^\/api\/attendance\/policy$/, () => { notice(); return ok({ on: false, radius: 300, lat: null, lng: null }); }],
+  // The tutor: its rule, the flashcard reminder; a homework photo needs AI, which the sample doesn't have (Stage 5 · Q13).
+  ['PUT', /^\/api\/tutor\/[^/]+\/rule$/, ({ body }) => { notice(); return ok({ hintsOnly: !!body?.hintsOnly, off: !!body?.off, offUntil: body?.offUntil ?? null, note: body?.note ?? '' }); }],
+  ['PUT', /^\/api\/tutor\/cards\/reminder$/, ({ body }) => { notice(); return ok({ reminder: !!body?.on, next: null }); }],
+  ['POST', /^\/api\/tutor\/[^/]+\/photo$/, () => fail('The sample has no AI. Sign in to use the tutor with a photo.', 503)],
+  // The timetable and exam generators, calendar events from a file (Stage 5 · Q12).
+  ['POST', /^\/api\/admin\/timetable\/plan$/, ({ body }) => { notice(); return ok({ added: Array.isArray(body?.slots) ? body.slots.length : 0, removed: 0, kept: 0 }); }],
+  ['POST', /^\/api\/admin\/timetable\/exams$/, ({ body }) => { notice(); return ok({ published: Array.isArray(body?.exams) ? body.exams.length : 0, replaced: 0, batch: 'exam:sample' }); }],
+  ['DELETE', /^\/api\/admin\/timetable\/exams$/, () => { notice(); return ok({ removed: 0 }); }],
+  ['POST', /^\/calendar\/import$/, ({ body }) => { notice(); return ok({ imported: Array.isArray(body?.events) ? body.events.length : 0, replaced: 0, name: 'Calendar' }); }],
+  // Saving the home page's layout (Stage 5 · Q8).
+  ['PUT', /^\/api\/home\/layout$/, ({ body }) => { notice(); return ok({ layout: body ?? {} }); }],
   // Reading levels (Stage 5 · D9): no AI in the sample, so no simpler versions (the original stays).
   ['POST', /^\/api\/reading-level$/, () => ok({ levels: {}, editable: [] })],
   ['POST', /^\/api\/reading-level\/text$/, () => ok({ error: 'Simpler versions aren’t available in the sample.' }, 503)],
@@ -2579,6 +2672,14 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   }],
   ['DELETE', /^\/grades\/([^/]+)$/, ({ db: d, m }) => { d.classGrades.splice(d.classGrades.findIndex((g) => g.id === m[1]) >>> 0, 1); return ok({ ok: true }); }],
 
+  ['POST', /^\/api\/notifications\/centre$/, ({ db: d, body }) => {
+    const ids: string[] = Array.isArray(body?.ids) ? body.ids : [];
+    const hit = (n: any) => body?.all === true || ids.includes(n.id);
+    if (body?.action === 'delete' || body?.action === 'snooze') d.notifications = d.notifications.filter((n: any) => !hit(n));
+    else d.notifications.forEach((n: any) => { if (hit(n)) n.read = body?.action === 'read'; });
+    return ok({ changed: ids.length });
+  }],
+  ['PUT', /^\/api\/notifications\/settings$/, ({ body }) => { notice(); return ok({ prefs: body?.prefs ?? DEFAULT_PREFS, nextDigest: null }); }],
   ['PATCH', /^\/api\/notifications$/, ({ db: d, body }) => { d.notifications.forEach((n) => { if (!body.ids?.length || body.ids.includes(n.id)) n.read = true; }); return ok({ ok: true }); }],
   ['PATCH', /^\/api\/me$/, ({ db: d, body }) => { Object.assign(d.profile, body); return ok(d.profile); }],
   ['POST', /^\/skills$/, ({ db: d, body }) => { const s = { id: sid('sk'), userId: d.me.id, name: body.name, category: body.category ?? null, level: body.level ?? 'BEGINNER', endorsements: 0, createdAt: new Date().toISOString() }; d.skills.push(s); return ok(s, 201); }],

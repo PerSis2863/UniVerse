@@ -8,6 +8,7 @@ import { publish } from './realtime';
 import { notify } from './email';
 import { groupAccess, groupPeople } from './spaces';
 import { notifyMentioned } from './mentions';
+import { indexItem } from './search-index';
 
 // Task boards (Stage 4 · 3.3): Kanban lists of cards with an assignee, a due date, a checklist,
 // notes and comments. A board is yours and whoever you add (editors or viewers), or a course's:
@@ -216,6 +217,7 @@ export async function addTask(boardId: string, user: SessionUser, body: Record<s
   if ((await prisma.task.count({ where: { boardId } })) >= MAX_TASKS) throw new BadRequestException(`A board has up to ${MAX_TASKS} cards.`);
   const last = await prisma.task.findFirst({ where: { listId }, orderBy: { position: 'desc' }, select: { position: true } });
   const task = await prisma.task.create({ data: { boardId, listId, title, createdById: user.id, position: (last?.position ?? 0) + 1 } });
+  await indexItem({ kind: 'task', ref: task.id, scope: `tboard:${boardId}`, title, body: '', sub: board.title, link: `/tasks/${boardId}?task=${task.id}` }); // search (Stage 5 · Q10)
   await runAutomations(boardId, board, task, { kind: 'created', listId }, user);
   await changed(boardId, board);
   return task;
@@ -264,6 +266,7 @@ export async function updateTask(taskId: string, user: SessionUser, body: Record
     data.blockedBy = ok.length ? JSON.stringify(ok) : null;
   }
   const saved = await prisma.task.update({ where: { id: taskId }, data });
+  if (data.title !== undefined || data.notes !== undefined) await indexItem({ kind: 'task', ref: taskId, scope: `tboard:${task.boardId}`, title: saved.title, body: saved.notes ?? '', sub: board.title, link: `/tasks/${task.boardId}?task=${taskId}` });
   // Moved to another list: the board's automations for that list run.
   if (data.listId && data.listId !== task.listId) await runAutomations(task.boardId, board, saved, { kind: 'moved', listId: data.listId }, user);
   // A repeating card marked done makes the next one, due one step later.

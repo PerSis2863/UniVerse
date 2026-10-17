@@ -1,17 +1,21 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
+import { searchMine, type FoundItem } from '@/server/search-index';
 
 // Platform-wide search for the ⌘K palette: courses, groups, NGO projects, internships and
-// knowledge-hub resources the caller can see, with the page each result opens.
+// knowledge-hub resources the caller can see, and (Stage 5 · Q10) the words inside their documents,
+// task cards and assignments, their courses' materials, task boards and campus events, with the page
+// each result opens.
 
-export interface SearchResult {
+export type SearchResult = {
   type: 'course' | 'group' | 'project' | 'internship' | 'resource';
   id: string;
   title: string;
   subtitle?: string;
+  snippet?: string;
   href: string;
-}
+} | FoundItem;
 
 const LIMIT = 5;
 
@@ -29,7 +33,8 @@ export async function GET(req: Request) {
   // SQLite LIKE is case-insensitive for ASCII.
   const text = (...fields: string[]) => ({ OR: fields.map((f) => ({ [f]: { contains: q } })) });
 
-  const [courses, groups, projects, internships, resources] = await Promise.all([
+  const [mine, courses, groups, projects, internships, resources] = await Promise.all([
+    searchMine(user, q).catch((e) => (console.error('search:', e), [] as FoundItem[])),
     prisma.course.findMany({
       where: { ...text('name', 'code', 'department'), ...(admin ? {} : { status: 'PUBLISHED' as const }) },
       select: { id: true, name: true, code: true, department: true },
@@ -61,6 +66,7 @@ export async function GET(req: Request) {
 
   const coursePage = (id: string) => (student ? `/student/courses/${id}` : admin ? '/admin/courses' : `/teacher/blackboard?course=${id}`);
   const results: SearchResult[] = [
+    ...mine,
     ...courses.map((c) => ({ type: 'course' as const, id: c.id, title: c.name, subtitle: [c.code, c.department].filter(Boolean).join(' · '), href: coursePage(c.id) })),
     ...groups.map((g) => ({ type: 'group' as const, id: g.id, title: g.name, subtitle: g.category ?? 'Group', href: `/student/groups?q=${encodeURIComponent(g.name)}` })),
     ...projects.map((p) => ({

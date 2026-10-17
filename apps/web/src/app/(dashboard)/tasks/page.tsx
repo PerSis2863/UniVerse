@@ -13,6 +13,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { useOnceParam } from '@/lib/use-once-param';
 
 // Tasks (Stage 4 · 3.3): my open tasks from every board, and my boards (src/server/tasks.ts).
 
@@ -36,6 +37,7 @@ export default function TasksPage() {
   const router = useRouter();
   const { data, isLoading } = useSWR<Overview>('/api/tasks', authedJson);
   const [creating, setCreating] = useState(false);
+  useOnceParam('new', () => setCreating(true)); // from the phone's "+" menu
   const [form, setForm] = useState({ title: '', courseId: '' }); // courseId holds c:<id> or g:<id>
   const [busy, setBusy] = useState(false);
   const [now] = useState(() => Date.now());

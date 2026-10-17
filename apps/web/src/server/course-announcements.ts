@@ -34,7 +34,7 @@ export async function sendAnnouncement(a: { id: string; title: string; body: str
   if (!students.length) return 0;
   return notifyMany(students.map((s) => s.studentId), {
     title: `${code}: ${a.title}`, body: a.body.slice(0, 200), type: 'announcement', email: false,
-    link: `/student/blackboard?course=${a.courseId}`,
+    link: `/student/blackboard?course=${a.courseId}`, courseId: a.courseId,
   });
 }
 

@@ -10,6 +10,7 @@ import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { ClipboardList, AlertCircle, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { m as motion } from 'framer-motion';
+import { StudentExcuses } from '@/components/attendance/StudentExcuses';
 
 type Status = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
 interface AttendanceData {
@@ -71,7 +72,7 @@ export default function AttendancePage() {
     <>
       <Topbar title="Attendance" subtitle="Track your class presence and absences." />
       <SectionTabs tabs={PROGRESS_TABS} />
-      <div className="flex-1 p-8 space-y-8">
+      <div className="flex-1 p-4 md:p-8 space-y-8">
         
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -79,6 +80,9 @@ export default function AttendancePage() {
           <KpiCard title="Total Absences" value={totalAbsences.toString()} icon={AlertCircle} change={0} color="rose" />
           <KpiCard title="Excused Leaves" value={totalExcused.toString()} icon={Clock} change={0} color="amber" />
         </div>
+
+        {/* Ask to be excused, and the answers (Stage 5 · Q11). */}
+        <StudentExcuses />
 
         {/* Detailed List */}
         <div className="card">
@@ -96,7 +100,7 @@ export default function AttendancePage() {
             </select>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Recent classes">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-white/[0.06] text-sm text-zinc-500 dark:text-zinc-400">

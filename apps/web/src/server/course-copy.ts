@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from './http';
+import { indexCourseAssignments } from './search-index';
 
 // Copy a course to a new term (Stage 5 · B2): its modules and their items, materials, quizzes and
 // their questions, assignments with their rubrics, gradebook categories, the question bank, the
@@ -164,6 +165,8 @@ export async function courseCopyStep(sourceId: string, user: SessionUser, body: 
         rows.map((a) => ({ id: id(a.id), courseId: t, createdById: user.id, title: a.title, instructions: a.instructions, rubric: a.rubric ?? [], maxScore: a.maxScore, weight: a.weight, dueDate: shifted(a.dueDate, shiftDays), status: 'OPEN', aiPolicy: a.aiPolicy, latePenalty: a.latePenalty, lateGraceMinutes: a.lateGraceMinutes, latePenaltyMax: a.latePenaltyMax, maxAttempts: a.maxAttempts, submitKind: a.submitKind, groupMode: a.groupMode, peerReviews: a.peerReviews, peerDueDate: shifted(a.peerDueDate, shiftDays), postPolicy: a.postPolicy, rubricHelp: a.rubricHelp })),
         COLUMNS.Assignment, (ids) => prisma.assignment.findMany({ where: { id: { in: ids } }, select: { id: true } }), (data) => prisma.assignment.createMany({ data }),
       );
+      // Searchable in the new course (Stage 5 · Q10): this page's copies, in one statement.
+      if (rows.length) await indexCourseAssignments(t, rows.map((a) => id(a.id)));
       return { stage, copied, after: next(rows) };
     }
     case 'categories': {

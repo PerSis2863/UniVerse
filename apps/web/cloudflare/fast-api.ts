@@ -19,6 +19,8 @@ import { expand } from '../src/lib/permissions';
 import { bool, dbDate, isoDate, json, parseJson, type Caller } from './fast-db';
 import { conversations, notifications, presence, thread } from './fast-chat';
 import { adminDashboard, docsList, spacesList, studentOverview, teacherDashboard } from './fast-lists';
+import { homeData } from '../src/server/home-data';
+import { cleanTimeZone } from '../src/lib/home-time';
 
 interface Env {
   DB?: D1Database;
@@ -343,6 +345,7 @@ async function bootstrap(me: Caller, request: Request, db: D1Database, env: Env,
     '/api/core/dashboard/admin': async () => (me.role === 'ADMIN' ? adminDashboard(db) : null),
     '/api/core/dashboard/teacher': async () => (me.role === 'TEACHER' ? teacherDashboard(me, db) : null),
     '/api/student/overview': async (u) => (me.role === 'GUARDIAN' ? null : studentOverview(me, db, u, request)),
+    '/api/home': (u) => home(me, db, request, u),
   };
   const read = async (res: Response) => ({ status: res.status, body: await res.json().catch(() => null) });
   const results: Record<string, { status: number; body: unknown }> = {};
@@ -457,6 +460,7 @@ async function answer(request: Request, path: string, db: D1Database, env: Env, 
   if (path === '/api/core/dashboard/admin') return me.role === 'ADMIN' ? adminDashboard(db) : null;
   if (path === '/api/core/dashboard/teacher') return me.role === 'TEACHER' ? teacherDashboard(me, db) : null;
   if (path === '/api/student/overview') return studentOverview(me, db, new URL(request.url), request);
+  if (path === '/api/home') return home(me, db, request);
   const threadOf = THREAD.exec(path);
   if (threadOf) return thread(me, decodeURIComponent(threadOf[1]), new URL(request.url), db, ctx);
   if (path === '/api/core/activity/ui') {
@@ -465,6 +469,14 @@ async function answer(request: Request, path: string, db: D1Database, env: Env, 
   }
   const typingIn = TYPING.exec(path);
   return typingIn ? typing(me, decodeURIComponent(typingIn[1]), db, env, ctx) : null;
+}
+
+/** GET /api/home (src/app/api/home/route.ts): the same code as the Next.js route. Parents get their
+ *  answer (a refusal) from the Next.js route. */
+async function home(me: Caller, db: D1Database, request: Request, u = new URL(request.url)) {
+  if (me.role === 'GUARDIAN') return null;
+  const tz = cleanTimeZone(u.searchParams.get('tz')) ?? (request as Request & { cf?: { timezone?: string } }).cf?.timezone;
+  return json(await homeData({ id: me.id, role: me.role, org: me.org ?? null }, db, { tz }), 200, { 'Cache-Control': 'no-store' });
 }
 
 const THREAD = /^\/api\/chat\/conversations\/([^/]+)\/messages$/;
@@ -484,7 +496,7 @@ export async function fastApi(request: Request, url: URL, env: Env, ctx: Executi
   const path = url.pathname;
   const get = request.method === 'GET';
   const post = request.method === 'POST';
-  const fastGet = path === '/api/chat/incoming' || path === '/api/me' || path === '/api/notifications' || path === '/api/chat/conversations' || path === '/api/core/users/me' || path === '/api/boards' || path === '/api/docs' || path === '/api/spaces' || path === '/api/core/dashboard/admin' || path === '/api/core/dashboard/teacher' || path === '/api/student/overview' || THREAD.test(path) || FILE.test(path);
+  const fastGet = path === '/api/chat/incoming' || path === '/api/me' || path === '/api/notifications' || path === '/api/chat/conversations' || path === '/api/core/users/me' || path === '/api/boards' || path === '/api/docs' || path === '/api/spaces' || path === '/api/core/dashboard/admin' || path === '/api/core/dashboard/teacher' || path === '/api/student/overview' || path === '/api/home' || THREAD.test(path) || FILE.test(path);
   if (!(get && fastGet) && !(post && (path === '/api/core/activity/ui' || path === '/api/bootstrap' || TYPING.test(path)))) return null;
   try {
     const res = await answer(request, path, db, env, ctx, next);

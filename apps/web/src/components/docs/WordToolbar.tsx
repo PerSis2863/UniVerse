@@ -46,6 +46,7 @@ export function WordToolbar({ editor, disabled, onFind }: { editor: Editor | nul
   );
   const sep = (k: string) => <span key={k} aria-hidden className="w-px h-5 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />;
   const setStyle = (v: string) => {
+    editor.view.focus(); // straight back to the text (see setTextStyle)
     const ch = c().clearNodes();
     if (v === 'h1') ch.setHeading({ level: 1 }).run();
     else if (v === 'h2') ch.setHeading({ level: 2 }).run();
@@ -72,7 +73,7 @@ export function WordToolbar({ editor, disabled, onFind }: { editor: Editor | nul
   ] : [2, 3, 4, 5, 6].map((n) => ({ label: `${n} × ${n} table`, onSelect: () => c().insertTable({ rows: n, cols: n, withHeaderRow: true }).run() }));
   const today = () => new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
   return (
-    <div role="toolbar" aria-label="Formatting" className="flex items-center gap-0.5 overflow-x-auto [scrollbar-width:none] px-2 py-1.5">
+    <div role="toolbar" aria-label="Formatting" className="relative flex items-center gap-0.5 overflow-x-auto [scrollbar-width:none] px-2 py-1.5">
       {btn(undefined, 'Undo', Undo2, () => c().undo().run())}
       {btn(undefined, 'Redo', Redo2, () => c().redo().run())}
       {sep('a')}
@@ -108,7 +109,7 @@ export function WordToolbar({ editor, disabled, onFind }: { editor: Editor | nul
       {btn(s?.align === 'center', 'Centre', AlignCenter, () => setAlign(editor, 'center'))}
       {btn(s?.align === 'right', 'Align right', AlignRight, () => setAlign(editor, 'right'))}
       {btn(s?.align === 'justify', 'Justify', AlignJustify, () => setAlign(editor, 'justify'))}
-      <Menu label="Line spacing" disabled={disabled} button={<span className="text-xs font-semibold">↕ {s?.line || '1.7'}</span>} items={[['', 'Normal'], ['1', 'Single'], ['1.15', '1.15'], ['1.5', '1.5'], ['2', 'Double']].map(([v, l]) => ({ label: l, checked: (s?.line ?? '') === v, onSelect: () => setLineHeight(editor, v || null) }))} />
+      <Menu label={`Line spacing ${s?.line || '1.7'}`} disabled={disabled} button={<span className="text-xs font-semibold"><span aria-hidden>↕ </span>{s?.line || '1.7'}</span>} items={[['', 'Normal'], ['1', 'Single'], ['1.15', '1.15'], ['1.5', '1.5'], ['2', 'Double']].map(([v, l]) => ({ label: l, checked: (s?.line ?? '') === v, onSelect: () => setLineHeight(editor, v || null) }))} />
       {btn(undefined, 'Decrease indent', IndentDecrease, () => (s?.bullet || s?.ordered || s?.task ? c().liftListItem(s.task ? 'taskItem' : 'listItem').run() : setIndent(editor, -1)))}
       {btn(undefined, 'Increase indent', IndentIncrease, () => (s?.bullet || s?.ordered || s?.task ? c().sinkListItem(s.task ? 'taskItem' : 'listItem').run() : setIndent(editor, 1)))}
       {sep('d')}

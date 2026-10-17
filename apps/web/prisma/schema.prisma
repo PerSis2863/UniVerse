@@ -122,6 +122,14 @@ model User {
   onboardedAt        DateTime? // finished registration (picked a role / name); null = signed in but never registered
   accountType        String? // STUDENT | INDEPENDENT | STAFF | ORGANIZATION | GUARDIAN (what they chose at sign-up)
   lastSeenAt         DateTime?
+  /// Stage 5 · Q8: my home page's cards (order, hidden ones, daily goal), JSON (src/lib/home-layout.ts).
+  homeLayout         String?
+  /// Stage 5 · Q9: push / summary / off per kind, muted courses, the summary's hour and time zone, JSON
+  /// (src/lib/notify-prefs.ts); digestAt: when my next daily summary is due (null: none).
+  notifyPrefs        String?
+  digestAt           DateTime?
+  /// Stage 5 · Q13: when the next evening flashcard reminder is due (null: off).
+  cardsRemindAt      DateTime?
   // Study streak (src/server/streaks.ts): days in a row with a quiz, flashcard review or tutor question.
   streakCurrent      Int       @default(0)
   streakBest         Int       @default(0)
@@ -150,6 +158,7 @@ model User {
   // Core Academic
   enrollments           Enrollment[]
   attendance            Attendance[]
+  attendanceExcuses     AttendanceExcuse[] @relation("AttendanceExcuses")
   submissions           QuizSubmission[]
   grades                Grade[]
   taughtCourses         Course[]
@@ -379,6 +388,8 @@ model User {
   @@index([role])
   @@index([status])
   @@index([campusId])
+  @@index([digestAt])
+  @@index([cardsRemindAt])
   @@map("users")
 }
 
@@ -513,6 +524,8 @@ model Course {
   emoji       String?
   /// Stage 5 · B2: the most students it takes (null: no limit); when full, students wait (elective requests WAITLISTED).
   capacity    Int?
+  /// Stage 5 · Q13: the teacher's rule for the AI tutor (JSON { hintsOnly, note, off, offUntil }, src/lib/tutor-rules.ts).
+  tutorRule   String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -520,6 +533,9 @@ model Course {
   sections              CourseSection[]
   timetableSlots        TimetableSlot[]
   attendance            Attendance[]
+  attendanceExcuses     AttendanceExcuse[]
+  /// Stage 5 · Q11: the seating chart, JSON { rows, cols, seats: { "<row>-<col>": studentId } }.
+  seating               String?
   grades                Grade[]
   gradeChanges          GradeChange[]
   quizzes               Quiz[]
@@ -575,6 +591,8 @@ model Enrollment {
   /// Stage 5 · B2: the student's section in the course (null: none).
   sectionId  String?
   section    CourseSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  /// Stage 5 · Q11: when the guardians were last told about frequent absences here (once a week at most).
+  absenceAlertAt DateTime?
 
   @@unique([studentId, courseId])
   @@index([studentId])
@@ -613,6 +631,29 @@ model Attendance {
   @@index([courseId])
   @@index([date])
   @@map("attendance")
+}
+
+/// Stage 5 · Q11: a student's request to be excused for a class day, with a reason and maybe a
+/// document; PENDING, APPROVED (the day is marked Excused) or DECLINED.
+model AttendanceExcuse {
+  id          String    @id @default(cuid())
+  studentId   String
+  student     User      @relation("AttendanceExcuses", fields: [studentId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  date        DateTime
+  reason      String
+  fileUrl     String?
+  fileName    String?
+  status      String    @default("PENDING")
+  decidedById String?
+  decidedAt   DateTime?
+  note        String?
+  createdAt   DateTime  @default(now())
+
+  @@index([courseId, status])
+  @@index([studentId])
+  @@map("attendance_excuses")
 }
 
 model Grade {
@@ -1085,6 +1126,9 @@ model Notification {
   read      Boolean  @default(false)
   link      String?
   createdAt DateTime @default(now())
+  /// Stage 5 · Q9: hidden until then, back as unread; the course it came from.
+  snoozedUntil DateTime?
+  courseId     String?
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, read])
@@ -2224,11 +2268,14 @@ model CalendarEvent {
   type        String   @default("PERSONAL") // PERSONAL, EXAM, DEADLINE, MEETING
   courseId    String?
   course      Course?  @relation(fields: [courseId], references: [id])
+  /// Stage 5 · Q12: events made together ("exam:<name>", "ics:<name>", "repeat:<id>"), replaced or removed together.
+  batch       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
   @@index([courseId])
+  @@index([batch])
   @@map("calendar_events")
 }
 
@@ -2894,6 +2941,10 @@ model StudyCard {
   ease        Float    @default(2.5)
   reps        Int      @default(0)
   lapses      Int      @default(0)
+  /// Stage 5 · Q13: FSRS (src/lib/fsrs.ts): days until recall falls to 90 %, difficulty 1–10, the last review.
+  stability   Float?
+  difficulty  Float?
+  lastReview  DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -3525,6 +3576,11 @@ model SchoolPolicy {
   studentsMinors Boolean  @default(false)
   /// Parents can message their children's teachers (Stage 5 · B16.2).
   parentMessaging Boolean @default(true)
+  /// Stage 5 · Q11: class check-ins only near the campus (the position is compared, never stored).
+  checkinGeo     Boolean  @default(false)
+  checkinLat     Float?
+  checkinLng     Float?
+  checkinRadius  Int      @default(300)
   updatedAt      DateTime @default(now())
   updatedById    String?
 
@@ -5720,6 +5776,7 @@ model AiUse {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+  @@index([courseId, createdAt])
   @@map("ai_uses")
 }
 

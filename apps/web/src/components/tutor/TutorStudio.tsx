@@ -3,7 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { BookOpen, Brain, Check, ChevronLeft, FileText, GraduationCap, Layers, Loader2, NotebookPen, Plus, RefreshCw, RotateCcw, Send, Sparkles, Trash2, X } from 'lucide-react';
+import { BookOpen, Brain, Check, ChevronLeft, FileText, GraduationCap, Layers, Loader2, NotebookPen, PlayCircle, Plus, RefreshCw, RotateCcw, Send, Settings2, Sparkles, Trash2, X } from 'lucide-react';
+import Link from '@/components/ui/Link';
+import { MathText } from '@/components/ui/MathText';
+import { Segmented } from '@/components/ui/Segmented';
+import { preview, type CardState } from '@/lib/fsrs';
+import type { TutorMode } from '@/lib/tutor-rules';
+import { HomeworkTurn, ModePicker, PhotoButton, ReminderSwitch, TeacherPanel, TutorOffBanner, photoData, useTutorRule, type HomeworkStart, type RuleInfo } from './TutorExtras';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { cn } from '@/lib/utils';
@@ -15,15 +21,16 @@ interface CoursesResp { courses: CourseItem[]; cards: { due: number; total: numb
 interface Source { id: string; title: string; kind: string; status: 'READY' | 'FAILED' | 'PENDING' | 'UNSUPPORTED'; error: string | null; chars: number; materialId: string | null }
 interface SourcesResp { course: { id: string; code: string; name: string }; canManage: boolean; sources: Source[] }
 interface Citation { n: number; title: string; excerpt: string }
-interface Turn { role: 'user' | 'tutor'; text: string; citations?: Citation[]; grounded?: boolean }
-interface Question { question: string; options: string[]; answer: number; explanation: string; sourceTitle: string | null }
-interface Card { id: string; front: string; back: string; sourceTitle: string | null; interval: number; reps: number }
+interface Turn { role: 'user' | 'tutor'; text: string; citations?: Citation[]; grounded?: boolean; homework?: HomeworkStart }
+interface Question { question: string; options: string[]; answer: number; explanation: string; sourceTitle: string | null; moment?: { title: string; link: string; at: number | null } | null }
+interface Card { id: string; front: string; back: string; sourceTitle: string | null; interval: number; ease: number; reps: number; lapses: number; stability: number | null; difficulty: number | null; lastReview: string | null }
 
 const TABS = [
   { id: 'ask', label: 'Ask', icon: Brain },
   { id: 'practice', label: 'Practice', icon: GraduationCap },
   { id: 'cards', label: 'Flashcards', icon: Layers },
   { id: 'sources', label: 'Sources', icon: FileText },
+  { id: 'teacher', label: 'Teacher', icon: Settings2 },
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
 
@@ -33,6 +40,7 @@ export function TutorStudio() {
   const [tab, setTab] = useState<Tab>('ask');
   const [topic, setTopic] = useState('');
   const course = data?.courses.find((c) => c.id === courseId);
+  const { data: rule } = useTutorRule(course?.id ?? null);
   // ?course=<id>&tab=practice|cards&topic=… (from Learning DNA's "study next", Stage 5 · D1) opens straight there.
   useEffect(() => {
     const t = setTimeout(() => {
@@ -83,18 +91,20 @@ export function TutorStudio() {
           <p className="text-xs text-zinc-500">{course.code}</p>
         </div>
       </div>
+      {rule?.off && !data.canManage && <div className="mb-4"><TutorOffBanner rule={rule} /></div>}
       <div role="tablist" className="flex gap-1 p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] mb-5 overflow-x-auto">
-        {TABS.map((t) => (
+        {TABS.filter((t) => t.id !== 'teacher' || data.canManage).map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} className={cn('relative isolate flex-1 min-w-[4.75rem] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors', tab === t.id ? 'text-zinc-900 dark:text-white' : 'text-zinc-500')}>
             {tab === t.id && <TabPill id="tutor-tab" variant="soft" />}
             <t.icon className="w-4 h-4" /> {t.label}
           </button>
         ))}
       </div>
-      {tab === 'ask' && <AskPanel courseId={course.id} onNeedSources={() => setTab('sources')} />}
-      {tab === 'practice' && <PracticePanel key={`p-${topic}`} courseId={course.id} initialTopic={topic} onNeedSources={() => setTab('sources')} />}
-      {tab === 'cards' && <CardsPanel key={`c-${topic}`} courseId={course.id} initialTopic={topic} onNeedSources={() => setTab('sources')} />}
+      {tab === 'ask' && <AskPanel courseId={course.id} rule={rule} closed={!!rule?.off && !data.canManage} onNeedSources={() => setTab('sources')} />}
+      {tab === 'practice' && <PracticePanel key={`p-${topic}`} courseId={course.id} initialTopic={topic} closed={!!rule?.off && !data.canManage} onNeedSources={() => setTab('sources')} />}
+      {tab === 'cards' && <CardsPanel key={`c-${topic}`} courseId={course.id} initialTopic={topic} closed={!!rule?.off && !data.canManage} onNeedSources={() => setTab('sources')} />}
       {tab === 'sources' && <SourcesPanel courseId={course.id} onChanged={() => mutate()} />}
+      {tab === 'teacher' && data.canManage && <TeacherPanel courseId={course.id} />}
     </div>
   );
 }
@@ -120,10 +130,11 @@ function NeedSources({ onGo, message }: { onGo: () => void; message: string }) {
   );
 }
 
-function AskPanel({ courseId, onNeedSources }: { courseId: string; onNeedSources: () => void }) {
+function AskPanel({ courseId, rule, closed, onNeedSources }: { courseId: string; rule?: RuleInfo; closed: boolean; onNeedSources: () => void }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<TutorMode>('normal');
   const [needSources, setNeedSources] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [turns, busy]);
@@ -134,7 +145,7 @@ function AskPanel({ courseId, onNeedSources }: { courseId: string; onNeedSources
     setTurns((t) => [...t, { role: 'user', text: question }]);
     setQ(''); setBusy(true);
     try {
-      const r = await authedJson<{ answer: string; grounded: boolean; citations: Citation[] }>(`/api/tutor/${courseId}/ask`, { method: 'POST', body: JSON.stringify({ question, history }) });
+      const r = await authedJson<{ answer: string; grounded: boolean; citations: Citation[] }>(`/api/tutor/${courseId}/ask`, { method: 'POST', body: JSON.stringify({ question, history, mode }) });
       setTurns((t) => [...t, { role: 'tutor', text: r.answer, citations: r.citations, grounded: r.grounded }]);
     } catch (e) {
       const err = e as Error & { body?: { code?: string } };
@@ -142,10 +153,24 @@ function AskPanel({ courseId, onNeedSources }: { courseId: string; onNeedSources
       setTurns((t) => [...t, { role: 'tutor', text: err.message }]);
     } finally { setBusy(false); }
   };
+  // A photo of a homework problem: the problem as read and the first hint (Stage 5 · Q13).
+  const sendPhoto = async (file: File) => {
+    if (busy) return;
+    setTurns((t) => [...t, { role: 'user', text: '📷 A photo of a homework problem' }]);
+    setBusy(true);
+    try {
+      const image = await photoData(file);
+      const r = await authedJson<HomeworkStart>(`/api/tutor/${courseId}/photo`, { method: 'POST', body: JSON.stringify({ image, mode }) });
+      setTurns((t) => [...t, { role: 'tutor', text: r.problem, homework: r }]);
+    } catch (e) {
+      setTurns((t) => [...t, { role: 'tutor', text: (e as Error).message }]);
+    } finally { setBusy(false); }
+  };
 
   return (
     <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] flex flex-col min-h-[28rem]">
-      <div className="flex-1 p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[60vh]">
+      <div className="px-4 pt-3 sm:px-5"><ModePicker mode={mode} setMode={setMode} rule={rule} /></div>
+      <div role="log" aria-label="Conversation with the tutor" tabIndex={0} className="flex-1 p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[60vh] outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 rounded-t-3xl">
         {needSources && <NeedSources onGo={onNeedSources} message="The tutor needs course materials to answer from." />}
         {turns.length === 0 && (
           <div className="text-center py-8">
@@ -162,7 +187,7 @@ function AskPanel({ courseId, onNeedSources }: { courseId: string; onNeedSources
         {turns.map((t, i) => (
           <div key={i} className={cn('flex', t.role === 'user' ? 'justify-end' : 'justify-start')}>
             <div className={cn('max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap', t.role === 'user' ? 'bg-indigo-600 text-white rounded-br-md' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-100 rounded-bl-md')}>
-              {t.role === 'tutor' ? <WithCitations text={t.text} /> : t.text}
+              {t.homework ? <HomeworkTurn courseId={courseId} start={t.homework} mode={mode} /> : t.role === 'tutor' ? <MathText text={t.text} renderText={(s) => <WithCitations text={s} />} /> : t.text}
               {t.role === 'tutor' && t.grounded === false && t.citations !== undefined && <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400">Not found in the course materials — check with your teacher.</p>}
               {!!t.citations?.length && (
                 <details className="mt-2 group">
@@ -184,16 +209,19 @@ function AskPanel({ courseId, onNeedSources }: { courseId: string; onNeedSources
         <div ref={end} />
       </div>
       <form onSubmit={(e) => { e.preventDefault(); void ask(q); }} className="p-3 border-t border-zinc-100 dark:border-white/[0.06] flex gap-2">
-        <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={1500} placeholder="Ask a question…" aria-label="Question" className="flex-1 min-w-0 rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
-        <button disabled={busy || !q.trim()} aria-label="Ask" className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center disabled:opacity-50"><Send className="w-4 h-4" /></button>
+        <PhotoButton disabled={busy || closed} onPicked={(f) => void sendPhoto(f)} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} disabled={closed} maxLength={1500} placeholder={closed ? 'The tutor is off for now' : 'Ask a question…'} aria-label="Question" className="flex-1 min-w-0 rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
+        <button disabled={busy || closed || !q.trim()} aria-label="Ask" className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center disabled:opacity-50"><Send className="w-4 h-4" /></button>
       </form>
       <p className="px-4 pb-3 text-[11px] text-zinc-500">AI can make mistakes — check the sources. Your questions aren’t stored.</p>
     </div>
   );
 }
 
-function PracticePanel({ courseId, initialTopic = '', onNeedSources }: { courseId: string; initialTopic?: string; onNeedSources: () => void }) {
+function PracticePanel({ courseId, initialTopic = '', closed, onNeedSources }: { courseId: string; initialTopic?: string; closed: boolean; onNeedSources: () => void }) {
   const [topic, setTopic] = useState(initialTopic);
+  // From the course materials, or (Stage 5 · Q13) from what was said in class.
+  const [from, setFrom] = useState<'materials' | 'classes'>('materials');
   const [busy, setBusy] = useState(false);
   const [qs, setQs] = useState<Question[] | null>(null);
   const [picked, setPicked] = useState<Record<number, number>>({});
@@ -202,7 +230,7 @@ function PracticePanel({ courseId, initialTopic = '', onNeedSources }: { courseI
   const make = async () => {
     setBusy(true); setQs(null); setPicked({});
     try {
-      const r = await authedJson<{ questions: Question[] }>(`/api/tutor/${courseId}/practice`, { method: 'POST', body: JSON.stringify({ topic, count: 5 }) });
+      const r = await authedJson<{ questions: Question[] }>(`/api/tutor/${courseId}/practice`, { method: 'POST', body: JSON.stringify({ topic, count: 5, from }) });
       setQs(r.questions);
     } catch (e) {
       const err = e as Error & { body?: { code?: string } };
@@ -215,9 +243,10 @@ function PracticePanel({ courseId, initialTopic = '', onNeedSources }: { courseI
   return (
     <div className="space-y-4">
       {needSources && <NeedSources onGo={onNeedSources} message="Practice questions are made from the course materials, and there are none ready yet." />}
-      <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-4 flex flex-col sm:flex-row gap-2">
-        <input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={200} placeholder="Topic (optional), e.g. recursion" aria-label="Topic" className="flex-1 rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
-        <button onClick={make} aria-busy={busy || undefined} disabled={busy} className="btn-primary">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} {qs ? 'New questions' : 'Make 5 questions'}</button>
+      <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-4 flex flex-col sm:flex-row sm:flex-wrap gap-2">
+        <Segmented<'materials' | 'classes'> label="Questions from" value={from} onChange={(v) => { setFrom(v); setQs(null); }} segments={[{ value: 'materials', label: 'The materials' }, { value: 'classes', label: 'The classes' }]} className="w-full sm:w-auto" />
+        <input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={200} placeholder="Topic (optional), e.g. recursion" aria-label="Topic" className="flex-1 min-w-[12rem] rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
+        <button onClick={make} aria-busy={busy || undefined} disabled={busy || closed} className="btn-primary">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} {qs ? 'New questions' : 'Make 5 questions'}</button>
       </div>
       {qs && (
         <>
@@ -227,7 +256,7 @@ function PracticePanel({ courseId, initialTopic = '', onNeedSources }: { courseI
               const choice = picked[i];
               return (
                 <li key={i} className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-4 sm:p-5">
-                  <p className="font-semibold text-zinc-900 dark:text-white">{i + 1}. {q.question}</p>
+                  <p className="font-semibold text-zinc-900 dark:text-white">{i + 1}. <MathText text={q.question} /></p>
                   <div className="mt-3 grid gap-2">
                     {q.options.map((o, j) => {
                       const show = choice !== undefined;
@@ -238,12 +267,19 @@ function PracticePanel({ courseId, initialTopic = '', onNeedSources }: { courseI
                             show && j === q.answer && 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200',
                             show && j === choice && j !== q.answer && 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300',
                             show && j !== q.answer && j !== choice && 'border-zinc-200 dark:border-white/10 text-zinc-400')}>
-                          <span className="inline-flex items-center gap-2">{show && j === q.answer ? <Check className="w-4 h-4" /> : show && j === choice ? <X className="w-4 h-4" /> : <span className="w-4 text-center text-xs font-bold">{String.fromCharCode(65 + j)}</span>} {o}</span>
+                          <span className="inline-flex items-center gap-2">{show && j === q.answer ? <Check className="w-4 h-4" /> : show && j === choice ? <X className="w-4 h-4" /> : <span className="w-4 text-center text-xs font-bold">{String.fromCharCode(65 + j)}</span>} <MathText text={o} /></span>
                         </button>
                       );
                     })}
                   </div>
-                  {choice !== undefined && <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">{q.explanation}{q.sourceTitle && <span className="block mt-1 text-[11px] text-zinc-500">Source: {q.sourceTitle}</span>}</p>}
+                  {choice !== undefined && (
+                    <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">
+                      <MathText text={q.explanation} />
+                      {q.moment ? (
+                        <Link href={q.moment.link} className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 hover:underline"><PlayCircle className="w-4 h-4" />Watch this moment: {q.moment.title}</Link>
+                      ) : q.sourceTitle && <span className="block mt-1 text-[11px] text-zinc-600 dark:text-zinc-400">Source: {q.sourceTitle}</span>}
+                    </p>
+                  )}
                 </li>
               );
             })}
@@ -254,14 +290,16 @@ function PracticePanel({ courseId, initialTopic = '', onNeedSources }: { courseI
   );
 }
 
-function CardsPanel({ courseId, initialTopic = '', onNeedSources }: { courseId: string; initialTopic?: string; onNeedSources: () => void }) {
-  const { data, mutate } = useSWR<{ cards: Card[]; due: number; total: number }>(`/api/tutor/cards?due=1&courseId=${courseId}`, authedJson);
+function CardsPanel({ courseId, initialTopic = '', closed, onNeedSources }: { courseId: string; initialTopic?: string; closed: boolean; onNeedSources: () => void }) {
+  const { data, mutate } = useSWR<{ cards: Card[]; due: number; total: number; reminder: boolean }>(`/api/tutor/cards?due=1&courseId=${courseId}`, authedJson);
   const [topic, setTopic] = useState(initialTopic);
   const [busy, setBusy] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [done, setDone] = useState(0);
   const [needSources, setNeedSources] = useState(false);
   const card = data?.cards[0];
+  // When each answer would bring the card back (FSRS, Stage 5 · Q13).
+  const next = card ? preview({ ...card, lastReview: card.lastReview ? new Date(card.lastReview) : null } as CardState) : { again: '', hard: '', good: '', easy: '' };
 
   const generate = async () => {
     setBusy(true);
@@ -279,7 +317,7 @@ function CardsPanel({ courseId, initialTopic = '', onNeedSources }: { courseId: 
     setFlipped(false);
     mutate((d) => d && { ...d, cards: d.cards.slice(1), due: Math.max(0, d.due - (grade === 'again' ? 0 : 1)) }, { revalidate: false });
     setDone((n) => n + 1);
-    try { await authedJson(`/api/tutor/cards/${card.id}`, { method: 'POST', body: JSON.stringify({ grade }) }); }
+    try { await authedJson(`/api/tutor/cards/${card.id}`, { method: 'POST', body: JSON.stringify({ grade, tz: Intl.DateTimeFormat().resolvedOptions().timeZone }) }); }
     catch (e) { toast.error((e as Error).message); }
     if ((data?.cards.length ?? 0) <= 1) void mutate();
   };
@@ -294,9 +332,12 @@ function CardsPanel({ courseId, initialTopic = '', onNeedSources }: { courseId: 
       {needSources && <NeedSources onGo={onNeedSources} message="Flashcards are made from the course materials, and there are none ready yet." />}
       <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-4 flex flex-col sm:flex-row gap-2">
         <input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={200} placeholder="Topic (optional)" aria-label="Flashcard topic" className="flex-1 rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
-        <button onClick={generate} aria-busy={busy || undefined} disabled={busy} className="btn-primary">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Make flashcards</button>
+        <button onClick={generate} aria-busy={busy || undefined} disabled={busy || closed} className="btn-primary">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Make flashcards</button>
       </div>
-      <p className="text-xs text-zinc-500">{data ? `${data.due} to review now · ${data.total} in this course’s deck${done ? ` · ${done} reviewed this session` : ''}` : ' '}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">{data ? `${data.due} to review now · ${data.total} in this course’s deck${done ? ` · ${done} reviewed this session` : ''}` : ' '}</p>
+        {data && data.total > 0 && <ReminderSwitch on={data.reminder} onChanged={() => void mutate()} />}
+      </div>
       {!data ? <div className="p-10"><ContentSkeleton variant="list" /></div>
         : !card ? (
           <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-10 text-center">
@@ -306,16 +347,19 @@ function CardsPanel({ courseId, initialTopic = '', onNeedSources }: { courseId: 
           </div>
         ) : (
           <div>
-            <button onClick={() => setFlipped((f) => !f)} aria-label={flipped ? 'Show question' : 'Show answer'} className="w-full min-h-[14rem] rounded-3xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-white to-indigo-50/60 dark:from-white/[0.04] dark:to-indigo-500/[0.06] p-6 flex flex-col items-center justify-center text-center">
+            <button onClick={() => setFlipped((f) => !f)} className="w-full min-h-[14rem] rounded-3xl border border-zinc-200 dark:border-white/10 bg-gradient-to-br from-white to-indigo-50/60 dark:from-white/[0.04] dark:to-indigo-500/[0.06] p-6 flex flex-col items-center justify-center text-center">
               <p className="text-[11px] font-bold uppercase tracking-widest text-indigo-500">{flipped ? 'Answer' : 'Question'}</p>
-              <p className="mt-3 text-lg font-semibold text-zinc-900 dark:text-white whitespace-pre-wrap">{flipped ? card.back : card.front}</p>
+              <p className="mt-3 text-lg font-semibold text-zinc-900 dark:text-white whitespace-pre-wrap"><MathText text={flipped ? card.back : card.front} /></p>
               {!flipped && <p className="mt-4 text-xs text-zinc-500">Tap to see the answer</p>}
               {flipped && card.sourceTitle && <p className="mt-4 text-[11px] text-zinc-500">Source: {card.sourceTitle}</p>}
+              {flipped && <span className="sr-only">. Tap to see the question again.</span>}
             </button>
             {flipped ? (
               <div className="mt-3 grid grid-cols-4 gap-2">
-                {([['again', 'Again', 'bg-rose-500/10 text-rose-600 dark:text-rose-300'], ['hard', 'Hard', 'bg-amber-500/10 text-amber-700 dark:text-amber-300'], ['good', 'Good', 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'], ['easy', 'Easy', 'bg-sky-500/10 text-sky-700 dark:text-sky-300']] as const).map(([g, l, cls]) => (
-                  <button key={g} onClick={() => review(g)} className={cn('py-2.5 rounded-xl text-sm font-semibold', cls)}>{l}</button>
+                {([['again', 'Again', 'bg-rose-500/10 text-rose-700 dark:text-rose-300'], ['hard', 'Hard', 'bg-amber-500/10 text-amber-800 dark:text-amber-300'], ['good', 'Good', 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'], ['easy', 'Easy', 'bg-sky-500/10 text-sky-800 dark:text-sky-300']] as const).map(([g, l, cls]) => (
+                  <button key={g} onClick={() => review(g)} className={cn('py-2 rounded-xl text-sm font-semibold flex flex-col items-center leading-tight', cls)}>
+                    {l}<span className="text-[11px] font-medium opacity-90">{next[g]}</span>
+                  </button>
                 ))}
               </div>
             ) : (

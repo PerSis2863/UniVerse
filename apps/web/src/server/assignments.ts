@@ -28,6 +28,7 @@ import { logGradeChanges } from './grade-history';
 import { receiptFor, regradesOf } from './student-assignment';
 import { cleanReplay } from '@/lib/writing-replay';
 import { cleanPolicy, dueFor, lateness, mayHandIn, withPenalty, NO_ACCOMMODATION, type Accommodation } from '@/lib/assignment-policy';
+import { indexItem } from './search-index';
 
 // Written assignments graded against a rubric. The AI only drafts: a teacher reviews every
 // score and comment, and nothing reaches the student until the teacher returns the grade, which
@@ -318,6 +319,7 @@ export async function createAssignment(user: SessionUser, body: Record<string, u
   if (!a.canManage) throw new ForbiddenException('Only the course’s teacher can add assignments.');
   const data = assignmentFields(body, false) as Prisma.AssignmentUncheckedCreateInput;
   const created = await prisma.assignment.create({ data: { ...data, courseId, createdById: user.id } });
+  await indexItem({ kind: 'assignment', ref: created.id, scope: `course:${courseId}`, title: created.title, body: created.instructions, sub: a.course.code, link: `assignment:${created.id}` }); // search (Stage 5 · Q10)
   audit(user, { action: 'assignment.created', summary: `Added assignment “${created.title}” to ${a.course.code}`, targetType: 'assignment', targetId: created.id }, req);
   // Tell the class.
   later(async () => {
@@ -328,18 +330,21 @@ export async function createAssignment(user: SessionUser, body: Record<string, u
       body: `${created.title}${created.dueDate ? ` · due ${created.dueDate.toUTCString().slice(0, 16)}` : ''}`,
       link: `/student/assignments/${created.id}`,
       email: false,
+      courseId,
     });
   });
   return created;
 }
 
 export async function updateAssignment(assignmentId: string, user: SessionUser, body: Record<string, unknown>) {
-  await manage(assignmentId, user);
+  const { course } = await manage(assignmentId, user);
   const data = assignmentFields(body, true);
   if (data.rubric !== undefined && (await prisma.assignmentSubmission.count({ where: { assignmentId, status: 'RETURNED' } }))) {
     throw new BadRequestException('Grades have already been returned with this rubric, so it can’t be changed.');
   }
-  return prisma.assignment.update({ where: { id: assignmentId }, data });
+  const saved = await prisma.assignment.update({ where: { id: assignmentId }, data });
+  if (data.title !== undefined || data.instructions !== undefined) await indexItem({ kind: 'assignment', ref: saved.id, scope: `course:${saved.courseId}`, title: saved.title, body: saved.instructions, sub: course.code, link: `assignment:${saved.id}` });
+  return saved;
 }
 
 export async function deleteAssignment(assignmentId: string, user: SessionUser, req: Request) {
@@ -553,7 +558,7 @@ export async function returnGrade(submissionId: string, user: SessionUser, body:
   if (hold) return { ok: true, score, rawScore, penalty, held: true };
   const out = await publishGrades({ id: sub.id, studentId: sub.studentId, gradeId: sub.gradeId, groupId: sub.groupId, before }, scores, oldScores, feedback, assignment, course, user);
   // In-app only (keeps email within the plan's allowance); a group is told together.
-  const told = { type: 'grade' as const, title: `${updated ? 'Updated grade' : 'Graded'}: ${assignment.title}`, link: `/student/assignments/${assignment.id}`, email: false };
+  const told = { type: 'grade' as const, title: `${updated ? 'Updated grade' : 'Graded'}: ${assignment.title}`, link: `/student/assignments/${assignment.id}`, email: false, courseId: assignment.courseId };
   later(() => (members.length
     ? notifyMany(ids, { ...told, body: `${course.code} · your group’s work is graded` })
     : notify(sub.studentId, { ...told, body: `${course.code} · ${score}/${assignment.maxScore}${penalty ? ` (${rawScore} less ${penalty}% for handing it in late)` : ''}` })));
@@ -622,7 +627,7 @@ export async function postGrades(assignmentId: string, user: SessionUser, req: R
   const left = await prisma.assignmentSubmission.count({ where });
   if (told.length) {
     audit(user, { action: 'grade.posted', summary: `Posted ${held.length} grade${held.length === 1 ? '' : 's'} for “${assignment.title}” in ${course.code}`, targetType: 'assignment', targetId: assignmentId }, req);
-    later(() => notifyMany([...new Set(told)], { type: 'grade', title: `Graded: ${assignment.title}`, body: `${course.code} · your grade is ready`, link: `/student/assignments/${assignment.id}`, email: false }));
+    later(() => notifyMany([...new Set(told)], { type: 'grade', title: `Graded: ${assignment.title}`, body: `${course.code} · your grade is ready`, link: `/student/assignments/${assignment.id}`, email: false, courseId: assignment.courseId }));
   }
   return { posted: held.length, left };
 }
@@ -656,7 +661,7 @@ export async function setExtension(assignmentId: string, user: SessionUser, body
     select: { studentId: true, dueDate: true, extraAttempts: true, note: true },
   });
   audit(user, { action: 'assignment.extension', summary: `Gave ${student.student.name} until ${dueDate.toUTCString().slice(0, 22)} for “${assignment.title}” (${course.code})`, targetType: 'assignment', targetId: assignmentId }, req);
-  later(() => notify(studentId, { type: 'info', title: `More time: ${assignment.title}`, body: `${course.code} · now due ${dueDate.toUTCString().slice(0, 22)}`, link: `/student/assignments/${assignmentId}`, email: false }));
+  later(() => notify(studentId, { type: 'info', title: `More time: ${assignment.title}`, body: `${course.code} · now due ${dueDate.toUTCString().slice(0, 22)}`, link: `/student/assignments/${assignmentId}`, email: false, courseId: assignment.courseId }));
   return saved;
 }
 
@@ -665,6 +670,6 @@ export async function reopenSubmission(submissionId: string, user: SessionUser) 
   const { sub, assignment, course } = await submissionForTeacher(submissionId, user);
   if (sub.status !== 'RETURNED') throw new BadRequestException('Only a graded answer can be reopened.');
   await prisma.assignmentSubmission.update({ where: { id: sub.id }, data: { status: 'REOPENED' } });
-  later(() => notify(sub.studentId, { type: 'info', title: `You can hand in again: ${assignment.title}`, body: `${course.code} · your last grade stays until the next one`, link: `/student/assignments/${assignment.id}`, email: false }));
+  later(() => notify(sub.studentId, { type: 'info', title: `You can hand in again: ${assignment.title}`, body: `${course.code} · your last grade stays until the next one`, link: `/student/assignments/${assignment.id}`, email: false, courseId: assignment.courseId }));
   return { ok: true };
 }

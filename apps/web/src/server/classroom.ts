@@ -6,6 +6,7 @@ import { BadRequestException, ForbiddenException, HttpException, NotFoundExcepti
 import { publish } from './realtime';
 import { cleanTranscript, createClassSession } from './class-companion';
 import { AttendanceService } from './services/attendance.service';
+import { assertOnCampus } from './attendance-plus';
 
 // Stage 5 · D7: phone clicker for in-person classes. The teacher starts a session for a course and
 // projects a code that changes every 30 seconds (the QR opens /student/live?checkin=<code>).
@@ -166,10 +167,12 @@ export async function teacherAction(sessionId: string, user: SessionUser, b: Rec
 // ─── Students ────────────────────────────────────────────────────────────────────────────────────
 
 /** A student enters the projected code (or scans the QR): joined and marked present or late. */
-export async function joinWithCode(codeRaw: unknown, user: SessionUser) {
+export async function joinWithCode(codeRaw: unknown, user: SessionUser, position?: unknown) {
   if (user.role !== 'STUDENT') throw new ForbiddenException('Only students join a class with a code.');
   const code = normalizeClassCode(codeRaw);
   if (!code) throw new BadRequestException('Type the 6 letters and numbers shown in class.');
+  // The school's location check (Stage 5 · Q11), when it's on: compared, never kept.
+  await assertOnCampus(position);
   const now = Date.now();
   // The open sessions of my courses; the code must be this window's or the one before (a minute).
   const candidates = await prisma.classroomSession.findMany({

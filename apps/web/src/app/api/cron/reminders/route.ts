@@ -7,8 +7,10 @@ import { remindParentMeetings } from '@/server/parent-meetings';
 import { remindDueTasks } from '@/server/tasks';
 import { sendWeeklySummaries } from '@/server/parent-copilot';
 import { sendDueAnnouncements } from '@/server/course-announcements';
+import { sendDigests } from '@/server/notify-settings';
+import { sendCardReminders } from '@/server/tutor-plus';
 
-// Reminders for scheduled calls, parent meetings, scheduled chat messages, morning briefs and parents' weekly summaries, run by the 15-minute cron
+// Reminders for scheduled calls, parent meetings, scheduled chat messages, morning briefs, parents' weekly summaries and daily notification summaries, run by the 15-minute cron
 // (cloudflare/worker.ts) only when something is actually due, so most runs never start the app. Not reachable from outside: only the
 // scheduled handler knows the token.
 
@@ -37,5 +39,9 @@ export async function POST(req: Request) {
   const parentWeeks = await sendWeeklySummaries().catch((e) => (console.error('parent weekly summaries failed:', e), null));
   // Course announcements scheduled for now (Stage 5 · B2)
   const announcements = await sendDueAnnouncements().catch((e) => (console.error('scheduled announcements failed:', e), null));
-  return NextResponse.json({ ...calls, reminders, followUps, scheduled, briefs, meetings, dueTasks, parentWeeks, announcements });
+  // Daily notification summaries due now (Stage 5 · Q9)
+  const digests = await sendDigests().catch((e) => (console.error('notification summaries failed:', e), null));
+  // Evening flashcard reminders (Stage 5 · Q13)
+  const cards = await sendCardReminders().catch((e) => (console.error('flashcard reminders failed:', e), null));
+  return NextResponse.json({ ...calls, reminders, followUps, scheduled, briefs, meetings, dueTasks, parentWeeks, announcements, digests, cards });
 }

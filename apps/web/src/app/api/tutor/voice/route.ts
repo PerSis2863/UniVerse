@@ -3,7 +3,7 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { spendAi } from '@/server/ai-budget';
 import { logAiUse } from '@/server/ai-receipts';
-import { tutorAccess } from '@/server/tutor';
+import { tutorAccess, tutorClosed } from '@/server/tutor';
 import { liveToken } from '@/server/live-token';
 
 // POST { courseId? } → a short-lived, single-use token for a spoken conversation with the AI
@@ -27,6 +27,9 @@ export async function POST(req: Request) {
   if (typeof b.courseId === 'string' && b.courseId) {
     const a = await tutorAccess(user, b.courseId);
     if (!a) return NextResponse.json({ error: 'Course not found.' }, { status: 404 });
+    // The teacher turned the tutor off for this course (Stage 5 · Q13).
+    const closed = tutorClosed(a);
+    if (closed) return NextResponse.json({ error: closed, code: 'tutor-off' }, { status: 423 });
     const [course, sources] = await Promise.all([
       prisma.course.findUnique({ where: { id: b.courseId }, select: { code: true, name: true, description: true } }),
       prisma.courseSource.findMany({ where: { courseId: b.courseId, status: 'READY' }, select: { title: true }, take: 30 }),

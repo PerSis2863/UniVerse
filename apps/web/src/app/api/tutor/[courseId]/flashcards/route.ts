@@ -3,7 +3,7 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { spendAi } from '@/server/ai-budget';
 import { logAiUse } from '@/server/ai-receipts';
-import { makeFlashcards, tutorAccess } from '@/server/tutor';
+import { aiOn, makeFlashcards, tutorAccess, tutorClosed } from '@/server/tutor';
 
 // POST { topic? } → makes flashcards from the course and adds them to my deck.
 export async function POST(req: Request, { params }: { params: Promise<{ courseId: string }> }) {
@@ -11,7 +11,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ courseI
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
   const a = await tutorAccess(user, (await params).courseId);
   if (!a) return NextResponse.json({ error: 'Course not found.' }, { status: 404 });
-  if (!process.env.GEMINI_API_KEY) return NextResponse.json({ error: 'The AI tutor isn’t set up yet.' }, { status: 503 });
+  const closed = tutorClosed(a);
+  if (closed) return NextResponse.json({ error: closed, code: 'tutor-off' }, { status: 423 });
+  if (!(await aiOn())) return NextResponse.json({ error: 'The AI tutor isn’t available right now.' }, { status: 503 });
   if ((await prisma.studyCard.count({ where: { userId: user.id } })) >= 1000) return NextResponse.json({ error: 'Your deck is full (1,000 cards). Delete some first.' }, { status: 400 });
   const spend = await spendAi(user);
   if (!spend.ok) return NextResponse.json({ error: spend.message, code: 'ai-limit' }, { status: 429 });

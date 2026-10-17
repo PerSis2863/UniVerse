@@ -1,172 +1,56 @@
 'use client';
-import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
-import { useState } from 'react';
-import { Topbar } from '@/components/layout/Topbar';
-import { CheckCircle2, XCircle, Clock, Users, Calendar } from 'lucide-react';
-import { toast } from 'sonner';
 
+import { useState } from 'react';
 import useSWR from 'swr';
+import { CalendarDays } from 'lucide-react';
+import { Topbar } from '@/components/layout/Topbar';
+import { Segmented } from '@/components/ui/Segmented';
 import { fetcher } from '@/lib/fetcher';
-import { api } from '@/lib/api';
+import { Register, useRegister } from '@/components/attendance/Register';
+import { ExcuseRequests, SeatingChart } from '@/components/attendance/SeatingAndExcuses';
+
+// Attendance for a class (Stage 5 · Q11): the register (keyboard, everyone at once, from the class
+// call), the seating chart, and excuse requests. ?course=<id>&tab=excuses opens a course's requests.
+
+type Tab = 'register' | 'seating' | 'excuses';
+const localDay = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 export default function TeacherAttendance() {
-  const [pickedCourse, setSelectedCourse] = useState<string>('');
-  const [currentDate, setCurrentDate] = useState<string>(new Date().toISOString().split('T')[0]);
-
-  const { data: coursesData } = useSWR<{ id: string; name: string; code?: string }[]>('/courses/my', fetcher);
-  const courses = coursesData || [];
-  // The picked course, or the first one.
-  const selectedCourse = pickedCourse || courses[0]?.id || '';
-
-  const { data: attendanceData, mutate } = useSWR<{
-    enrollments: { student: { id: string; name: string; email: string } }[];
-    attendance: { studentId: string; status: string }[];
-  }>(selectedCourse ? `/attendance/course/${selectedCourse}?date=${currentDate}` : null, fetcher);
-
-  const currentStudents = attendanceData?.enrollments?.map((e) => e.student) || [];
-
-  // Each student's status today, by student id.
-  const currentCourseAttendance: Record<string, string> = {};
-  for (const a of attendanceData?.attendance ?? []) currentCourseAttendance[a.studentId] = a.status;
-
-  const handleMarkAttendance = async (studentId: string, status: string) => {
-    try {
-      await api.post(`/attendance/course/${selectedCourse}`, {
-        date: currentDate,
-        studentId,
-        status
-      });
-      mutate();
-      toast.success('Attendance updated');
-    } catch {
-      toast.error('Failed to update attendance');
-    }
-  };
-
-  const presentCount = Object.values(currentCourseAttendance).filter((s) => s === 'PRESENT').length;
-  const lateCount = Object.values(currentCourseAttendance).filter((s) => s === 'LATE').length;
-  const absentCount = Object.values(currentCourseAttendance).filter((s) => s === 'ABSENT').length;
-  const totalStudents = currentStudents.length;
+  const { data: courses } = useSWR<{ id: string; name: string; code?: string }[]>('/courses/my', fetcher);
+  // Dashboard pages render only in the browser, so the address can be read straight away.
+  const [picked, setPicked] = useState(() => new URLSearchParams(window.location.search).get('course') ?? '');
+  const [tab, setTab] = useState<Tab>(() => (new URLSearchParams(window.location.search).get('tab') === 'excuses' ? 'excuses' : 'register'));
+  const [day, setDay] = useState(localDay);
+  const list = Array.isArray(courses) ? courses : [];
+  const courseId = list.some((c) => c.id === picked) ? picked : list[0]?.id ?? '';
+  const { data, mutate } = useRegister(courseId, day);
 
   return (
     <>
-      <Topbar title="Attendance Management" subtitle="Take attendance for your classes today" />
-      <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-8">
-          
-          {/* Course Selector & Stats */}
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="card flex-1">
-              <label className="block text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-2">Select Course</label>
-              <select aria-label="Course"
-                className="w-full bg-white/[0.05] border border-zinc-200 dark:border-white/10 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={selectedCourse}
-                onChange={(e) => setSelectedCourse(e.target.value)}
-              >
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
-                ))}
+      <Topbar title="Attendance" subtitle="Take the register, keep a seating chart and answer excuse requests" />
+      <div className="flex-1 p-4 md:p-8">
+        <div className="max-w-5xl mx-auto space-y-5">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Class
+              <select aria-label="Course" value={courseId} onChange={(e) => setPicked(e.target.value)} className="input mt-1 w-64 max-w-full">
+                {list.map((c) => <option key={c.id} value={c.id}>{c.code ? `${c.code} · ` : ''}{c.name}</option>)}
               </select>
-              
-              <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between text-sm text-zinc-600 dark:text-zinc-400 gap-4">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4"/> 
-                  <input type="date" aria-label="Date" value={currentDate} onChange={(e) => setCurrentDate(e.target.value)} className="bg-transparent border-none outline-none text-zinc-900 dark:text-white cursor-pointer" />
-                </div>
-                <div className="flex items-center gap-2"><Users className="w-4 h-4"/> {totalStudents} Students</div>
-              </div>
-            </div>
-            
-            <div className="card flex-1 flex items-center justify-around text-center">
-              <div>
-                <div className="text-3xl font-bold text-emerald-400 mb-1">{presentCount}</div>
-                <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Present</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-amber-400 mb-1">{lateCount}</div>
-                <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Late</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-red-400 mb-1">{absentCount}</div>
-                <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Absent</div>
-              </div>
-            </div>
+            </label>
+            <label className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Day
+              <span className="mt-1 flex items-center gap-2 input w-auto"><CalendarDays className="w-4 h-4 text-zinc-500" aria-hidden /><input type="date" aria-label="Day" value={day} max={localDay()} onChange={(e) => e.target.value && setDay(e.target.value)} className="bg-transparent outline-none" /></span>
+            </label>
+            <Segmented<Tab> label="Show" value={tab} onChange={setTab} className="ml-auto"
+              segments={[{ value: 'register', label: 'Register' }, { value: 'seating', label: 'Seating' }, { value: 'excuses', label: data?.pendingExcuses ? `Excuses (${data.pendingExcuses})` : 'Excuses' }]} />
           </div>
-
-          {/* Roster */}
-          <div className="card p-0 overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[600px]">
-              <thead>
-                <tr className="border-b border-white/[0.05] bg-white/[0.02]">
-                  <th className="p-4 text-xs font-semibold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase">Student Name</th>
-                  <th className="p-4 text-xs font-semibold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase">Email</th>
-                  <th className="p-4 text-xs font-semibold tracking-wider text-zinc-600 dark:text-zinc-400 uppercase text-right">Mark Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.05]">
-                {currentStudents.map((student) => {
-                  
-                  return (
-                    <tr key={student.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="p-4 text-zinc-900 dark:text-white text-sm font-medium">
-                        {student.name}
-                      </td>
-                      <td className="p-4 text-zinc-600 dark:text-zinc-400 text-sm">
-                        {student.email}
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleMarkAttendance(student.id, 'PRESENT')}
-                            className={`p-2 rounded-md border transition-all ${
-                              status === 'PRESENT' 
-                                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-700 dark:text-emerald-400' 
-                                : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:border-emerald-500/50 hover:text-emerald-400 hover:bg-emerald-500/10'
-                            }`}
-                            title="Mark Present"
-                          >
-                            <CheckCircle2 className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleMarkAttendance(student.id, 'LATE')}
-                            className={`p-2 rounded-md border transition-all ${
-                              status === 'LATE' 
-                                ? 'bg-amber-500/20 border-amber-500/50 text-amber-800 dark:text-amber-400' 
-                                : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:border-amber-500/50 hover:text-amber-400 hover:bg-amber-500/10'
-                            }`}
-                            title="Mark Late"
-                          >
-                            <Clock className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleMarkAttendance(student.id, 'ABSENT')}
-                            className={`p-2 rounded-md border transition-all ${
-                              status === 'ABSENT' 
-                                ? 'bg-red-500/20 border-red-500/50 text-red-700 dark:text-red-400' 
-                                : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10'
-                            }`}
-                            title="Mark Absent"
-                          >
-                            <XCircle className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {selectedCourse && !attendanceData && (
-                  <tr><td colSpan={3} className="p-4"><ContentSkeleton variant="list" /></td></tr>
-                )}
-                {attendanceData && currentStudents.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="p-8 text-center text-zinc-600 dark:text-zinc-400">
-                      No students enrolled in this course yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          {!list.length && courses ? (
+            <p className="py-10 text-center text-sm text-zinc-600 dark:text-zinc-400">You don’t teach a course yet.</p>
+          ) : tab === 'register' ? (
+            <Register courseId={courseId} day={day} data={data} mutate={() => mutate()} />
+          ) : tab === 'seating' ? (
+            data ? <SeatingChart courseId={courseId} day={day} data={data} mutate={() => mutate()} /> : <div className="h-60 rounded-2xl skeleton" />
+          ) : (
+            courseId && <ExcuseRequests courseId={courseId} onChanged={() => void mutate()} />
+          )}
         </div>
       </div>
     </>

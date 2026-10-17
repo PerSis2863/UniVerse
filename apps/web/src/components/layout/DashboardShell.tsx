@@ -4,7 +4,7 @@ import { Fragment, useState } from 'react';
 import { SampleModeBar } from '@/components/SampleMode';
 import { useSampleMode } from '@/lib/sample-mode';
 import { Sidebar } from './Sidebar';
-import { Bell, ChevronLeft, Search, Menu } from 'lucide-react';
+import { Bell, ChevronLeft, Search, Menu, Plus } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { openCommandPalette } from '@/lib/palette';
 import { DeferredShell } from './DeferredShell';
@@ -29,6 +29,10 @@ import { useSectionRoot } from '@/lib/chrome';
 import { useRouter } from 'next/navigation';
 import { SwipeBack } from './SwipeBack';
 import { PullToRefresh } from './PullToRefresh';
+import dynamic from 'next/dynamic';
+
+// The "+" menu (Stage 5 · Q8), loaded when it's opened.
+const QuickCreate = dynamic(() => import('./QuickCreate').then((m) => m.QuickCreate), { ssr: false });
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -38,7 +42,7 @@ interface DashboardShellProps {
  * iOS tab bar: a floating, frosted capsule (iOS 26). The chosen tab sits on a soft capsule that
  * springs between tabs; the last tab ("More") opens the full navigation sheet.
  */
-function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => void; moreOpen: boolean }) {
+function MobileTabBar({ role, onMore, moreOpen, onCreate, createOpen }: { role: string; onMore: () => void; moreOpen: boolean; onCreate?: () => void; createOpen: boolean }) {
   // The tapped tab lights up at once, not when its page has downloaded.
   const pathname = useOptimisticPath(usePathname());
   const { base, items } = tabsForRole(role);
@@ -52,12 +56,18 @@ function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => 
 
   return (
     <nav aria-label="Primary" className="ios-tabbar ios-glass lg:hidden z-[35] p-1">
-      <div className="grid grid-cols-5 h-full">
-        {items.map((item) => {
+      <div className={cn('grid h-full', onCreate ? 'grid-cols-6' : 'grid-cols-5')}>
+        {items.map((item, i) => {
           const active = isActive(item);
           return (
+            <Fragment key={item.href}>
+            {/* "+" (new message, document, task board, call, ask AI, scan a code) in the middle. */}
+            {onCreate && i === 2 && (
+              <button type="button" onClick={() => { haptic('tap'); onCreate(); }} aria-haspopup="dialog" aria-expanded={createOpen} aria-label="Quick create" className={cn(tab, 'text-zinc-600 dark:text-zinc-300')}>
+                <span className="relative w-9 h-9 -my-1 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/30"><Plus className="w-[22px] h-[22px]" strokeWidth={2.4} /></span>
+              </button>
+            )}
             <Link
-              key={item.href}
               href={item.href}
               data-vt="fade"
               aria-current={active ? 'page' : undefined}
@@ -70,6 +80,7 @@ function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => 
               <item.icon className="relative w-[23px] h-[23px]" strokeWidth={active ? 2.3 : 1.8} />
               <span className={cn('relative text-[10px] leading-none', active ? 'font-semibold' : 'font-medium')}>{item.label}</span>
             </Link>
+            </Fragment>
           );
         })}
         <button
@@ -90,6 +101,7 @@ function MobileTabBar({ role, onMore, moreOpen }: { role: string; onMore: () => 
 export function DashboardShell({ children }: DashboardShellProps) {
   const sampleMode = useSampleMode();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const { user } = useAuthStore();
   const pathname = usePathname();
   const openingPath = useOptimisticPath(pathname);
@@ -164,7 +176,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
       {/* The floating assistant would cover the chat composer on the Messages page */}
       <DeferredShell role={user?.role} showAssistant={!pathname.endsWith('/inbox')} signedIn={!!user} />
-      {user && <MobileTabBar role={user.role} onMore={() => setSidebarOpen((v) => !v)} moreOpen={sidebarOpen} />}
+      {user && <MobileTabBar role={user.role} onMore={() => setSidebarOpen((v) => !v)} moreOpen={sidebarOpen} createOpen={creating} onCreate={user.role === 'GUARDIAN' ? undefined : () => setCreating(true)} />}
+      {creating && user && <QuickCreate base={home} onClose={() => setCreating(false)} />}
       <OfflineBar />
       <PullToRefresh />
       <MiniPlayer />

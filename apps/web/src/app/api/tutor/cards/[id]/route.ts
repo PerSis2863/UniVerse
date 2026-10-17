@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
-import { schedule, type ReviewGrade } from '@/server/tutor';
+import { review, type ReviewGrade } from '@/lib/fsrs';
+import { reanchorReminder } from '@/server/tutor-plus';
 import { recordStudy } from '@/server/streaks';
 
 const GRADES = ['again', 'hard', 'good', 'easy'];
 
-// POST { grade } records a review (spaced repetition); DELETE removes the card.
+// POST { grade, tz? } records a review, scheduled with FSRS (Stage 5 · Q13; the evening reminder, if
+// on, moves to the next 6 pm in that time zone); DELETE removes the card.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
@@ -15,8 +17,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!GRADES.includes(b.grade)) return NextResponse.json({ error: 'Unknown answer.' }, { status: 400 });
   const card = await prisma.studyCard.findFirst({ where: { id, userId: user.id } });
   if (!card) return NextResponse.json({ error: 'Card not found.' }, { status: 404 });
-  const next = schedule(card, b.grade as ReviewGrade);
+  const next = review(card, b.grade as ReviewGrade);
   await prisma.studyCard.update({ where: { id }, data: next });
+  await reanchorReminder(user.id, b.tz);
   if (user.role === 'STUDENT') recordStudy(user.id, req);
   return NextResponse.json(next);
 }

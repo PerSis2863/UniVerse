@@ -36,7 +36,7 @@ export function SlidesToolbar({ on, canEdit, canUndo, canRedo, deck, slide, sele
   const hasText = selected.some((i) => i.kind !== 'image') || editing;
   const textOff = off || !hasText;
   return (
-    <div role="toolbar" aria-label="Presentation tools" className="flex items-center gap-0.5 overflow-x-auto [scrollbar-width:none] px-2 py-1.5">
+    <div role="toolbar" aria-label="Presentation tools" className="relative flex items-center gap-0.5 overflow-x-auto [scrollbar-width:none] px-2 py-1.5">
       <button type="button" onClick={() => on.present(false)} className="h-8 shrink-0 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold inline-flex items-center gap-1.5 mr-1" title="Present from this slide (F5 from the start)"><Play className="w-3.5 h-3.5" />Present</button>
       <Menu label="Present options" button={<ChevronDown className="w-3.5 h-3.5" />} className="min-w-6 px-1" items={[{ label: 'From the start', onSelect: () => on.present(true), hint: 'F5' }, { label: 'From this slide', onSelect: () => on.present(false) }]} />
       {sep('a')}

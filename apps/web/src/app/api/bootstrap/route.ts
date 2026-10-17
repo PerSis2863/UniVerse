@@ -5,6 +5,7 @@ import { GET as notifications } from '../notifications/route';
 import { GET as incomingCalls } from '../chat/incoming/route';
 import { GET as studentOverview } from '../student/overview/route';
 import { GET as parentChildren } from '../parent/children/route';
+import { GET as home } from '../home/route';
 import { POST as realtimeTicket } from '../realtime/ticket/route';
 import { api } from '@/server/app';
 
@@ -27,6 +28,7 @@ const ROUTES: Record<string, Handler> = {
   '/api/chat/incoming': incomingCalls,
   '/api/student/overview': studentOverview,
   '/api/parent/children': parentChildren,
+  '/api/home': home,
   '/api/core/users/me': core('users/me'),
   '/api/core/dashboard/teacher': core('dashboard/teacher'),
   '/api/core/dashboard/admin': core('dashboard/admin'),

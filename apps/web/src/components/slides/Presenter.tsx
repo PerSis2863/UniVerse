@@ -117,7 +117,7 @@ export function Presenter({ deck, docId, start, onClose }: { deck: DeckJSON; doc
       <p className="sr-only" aria-live="polite">{label}</p>
       {presenter ? (
         <div className="flex-1 min-h-0 grid grid-rows-[1fr_auto] md:grid-rows-1 md:grid-cols-[2fr_1fr] gap-4 p-4">
-          <button type="button" aria-label="Next" onClick={next} className="min-h-0 flex"><Stage deck={deck} at={cur?.i ?? 0} step={step} label={label} /></button>
+          <div onClick={next} className="min-h-0 flex cursor-pointer"><Stage deck={deck} at={cur?.i ?? 0} step={step} label={label} /></div>
           <div className="flex flex-col gap-3 min-h-0">
             <div className="flex items-center justify-between text-sm"><span className="font-semibold">{label}</span><span className="tabular-nums text-2xl font-semibold" aria-label={`Time: ${clock}`}>{clock}</span></div>
             <div><p className="text-xs uppercase tracking-wide text-zinc-400 mb-1">Next</p>{nextSlide ? <SlideView slide={nextSlide} theme={theme} W={W} scale={240 / W} mode="thumb" /> : <p className="text-sm text-zinc-400">End of the presentation</p>}</div>
@@ -125,7 +125,9 @@ export function Presenter({ deck, docId, start, onClose }: { deck: DeckJSON; doc
           </div>
         </div>
       ) : (
-        <button type="button" aria-label="Next" onClick={next} className="flex-1 min-h-0 flex"><Stage deck={deck} at={cur?.i ?? 0} step={step} label={label} /></button>
+        // A click or tap on the slide moves on (keys and the Next button do it too; the slide's own
+        // words stay readable to screen readers).
+        <div onClick={next} className="flex-1 min-h-0 flex cursor-pointer"><Stage deck={deck} at={cur?.i ?? 0} step={step} label={label} /></div>
       )}
       <div className={`absolute left-3 bottom-3 flex items-center gap-1 rounded-full bg-zinc-900/80 backdrop-blur px-2 py-1 transition-opacity ${controls || presenter ? 'opacity-100' : 'opacity-0 focus-within:opacity-100'}`}>
         <button type="button" onClick={prev} aria-label="Previous" className="p-2 rounded-full hover:bg-white/10"><ChevronLeft className="w-5 h-5" /></button>

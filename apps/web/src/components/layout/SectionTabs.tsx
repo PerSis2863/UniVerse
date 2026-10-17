@@ -276,7 +276,7 @@ function MessagesTabsInner({ chatOpen }: { chatOpen: boolean }) {
   const base = role === 'ADMIN' ? '/admin' : role === 'TEACHER' ? '/teacher' : '/student';
   return (
     <div className={cn(chatOpen && 'hidden md:block')}>
-      <SectionTabs tabs={[{ href: `${base}/inbox`, label: 'Chats' }, { href: '/calls', label: 'Calls' }, ...(role === 'ADMIN' ? [{ href: '/admin/announcements', label: 'Announcements' }] : [])]} />
+      <SectionTabs tabs={[{ href: `${base}/inbox`, label: 'Chats' }, { href: '/calls', label: 'Calls' }, { href: '/notifications', label: 'Notifications' }, ...(role === 'ADMIN' ? [{ href: '/admin/announcements', label: 'Announcements' }] : [])]} />
     </div>
   );
 }
