@@ -167,6 +167,29 @@ export class CredentialSigner {
     }
   }
 
+  /** An Ed25519 signature over raw bytes (W3C Data Integrity proofs, Stage 5 · Q14); null without a key. */
+  static signBytes(bytes: Uint8Array): { signature: Uint8Array; keyId: string } | null {
+    try {
+      const { privateKey, keyId } = this.load();
+      return { signature: new Uint8Array(cryptoSign(null, Buffer.from(bytes), privateKey)), keyId };
+    } catch (e) {
+      this.logger.warn(`Not signed: ${(e as Error).message}`);
+      return null;
+    }
+  }
+
+  /** Checks a signature made by signBytes with the platform key. */
+  static verifyBytes(bytes: Uint8Array, signature: Uint8Array): boolean {
+    try { return cryptoVerify(null, Buffer.from(bytes), this.load().publicKey, Buffer.from(signature)); } catch { return false; }
+  }
+
+  /** The public key's 32 raw bytes and its id (for a Multikey in the site's DID document). */
+  static rawPublicKey(): { raw: Uint8Array; keyId: string } {
+    const { publicKey, keyId } = this.load();
+    const jwk = publicKey.export({ format: 'jwk' }) as { x: string };
+    return { raw: new Uint8Array(Buffer.from(jwk.x, 'base64url')), keyId };
+  }
+
   /** A compact JWS (EdDSA) over `payload` with the platform key, for Open Badges 3.0 (VC-JWT). */
   static signJwt(payload: Record<string, unknown>, kid: string) {
     const { privateKey, publicKey } = this.load();

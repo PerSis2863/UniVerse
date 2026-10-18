@@ -2,7 +2,7 @@
 description: >-
   5-Advisor Council for high-stakes reviews. Trigger when the user says
   "run the council", "council this", or asks for a high-stakes decision review.
-alwaysApply: true
+alwaysApply: false
 ---
 
 # 5-Advisor Council

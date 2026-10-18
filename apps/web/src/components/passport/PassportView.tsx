@@ -9,7 +9,8 @@ import { safeHref } from '@/lib/safe-href';
 import { CertificateQrButton, CopyLinkButton } from './CredentialShare';
 import { photoSrcSet } from '@/lib/image-sizes';
 import { PASSPORT_THEME_CLASS, cleanPassportTheme, type PassportTheme } from '@/lib/passport-theme';
-import { linkedInAddCertificationUrl } from '@/lib/linkedin-cert';
+
+export type PassportCredential = NonNullable<PassportData['credentials']>[number];
 
 export interface PassportData {
   name: string;
@@ -41,7 +42,7 @@ const LEVEL: Record<string, { label: string; width: string }> = {
 const fmtDate = (d: string) => new Date(d).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 
 /** The passport as the public sees it (also used for the student's own preview). */
-export function PassportView({ p, badgeActions, onHide, theme }: { p: PassportData; badgeActions?: (credentialId: string) => React.ReactNode; /** The student's own preview: hide or show one piece of evidence */ onHide?: (id: string, hidden: boolean) => void; theme?: PassportTheme }) {
+export function PassportView({ p, badgeActions, onHide, theme }: { p: PassportData; badgeActions?: (credentialId: string, credential: PassportCredential) => React.ReactNode; /** The student's own preview: hide or show one piece of evidence */ onHide?: (id: string, hidden: boolean) => void; theme?: PassportTheme }) {
   const initials = p.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   const t = PASSPORT_THEME_CLASS[cleanPassportTheme(theme)];
   return (
@@ -106,7 +107,7 @@ export function PassportView({ p, badgeActions, onHide, theme }: { p: PassportDa
                     <a href={safeHref(c.verifyUrl)} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 inline-flex items-center gap-1 hover:underline">Verify <ExternalLink className="w-3 h-3" /></a>
                     <CopyLinkButton url={c.verifyUrl} className="text-zinc-600 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-300" />
                     <CertificateQrButton url={c.verifyUrl} cert={{ ...c, holderName: p.name }} className="text-fuchsia-600 dark:text-fuchsia-300 hover:underline" />
-                    {badgeActions?.(c.id)}
+                    {badgeActions?.(c.id, c)}
                   </div>
                 </li>
               ))}

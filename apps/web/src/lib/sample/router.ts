@@ -2030,6 +2030,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/admin\/rooms$/, ({ db: d }) => ok(d.adminRooms)],
   [/^\/rooms$/, ({ db: d }) => ok(d.adminRooms.map((r) => { const c = { ...r }; delete (c as { reservations?: unknown }).reservations; return c; }))],
   [/^\/api\/admin\/timetable$/, ({ db: d }) => ok({ slots: d.slots, courses: d.courses.map((c) => ({ id: c.id, code: c.code, name: c.name })), rooms: Object.values(d.rooms).map((r: any) => ({ id: r.id, name: r.name })) })],
+  // The skills passport's CV data and portfolio (Stage 5 · Q14): the sample student, no public portfolio.
+  [/^\/api\/passport\/cv$/, ({ db: d }) => ok({ name: d.me?.name ?? 'Sample Student', avatar: null, department: null, headline: 'Computer science student', memberSince: new Date(Date.now() - 200 * 86_400_000).toISOString(), strengths: null, theme: 'indigo', portfolioUrl: null, skills: [{ name: 'Python', category: null, level: 'INTERMEDIATE', endorsements: 2 }], evidence: [], credentials: [], courses: d.courses.slice(0, 3).map((c: any) => ({ code: c.code, name: c.name, credits: 3, department: null })), impact: { hours: 0, people: 0, credentials: 0, points: 0 } })],
+  [/^\/api\/p\/[^/]+$/, () => fail('This portfolio doesn’t exist or isn’t public.', 404)],
+  [/^\/api\/passport\/did$/, () => fail('Credential signing isn’t set up in the sample.', 503)],
   // The course tutor's rule and the class's common questions (Stage 5 · Q13): open, and none yet.
   [/^\/api\/tutor\/[^/]+\/rule$/, () => ok({ hintsOnly: false, off: false, offUntil: null, note: '' })],
   [/^\/api\/tutor\/[^/]+\/questions$/, () => ok({ since: new Date(Date.now() - 90 * 86_400_000).toISOString(), asked: 0, students: 0, groups: [] })],
@@ -2209,6 +2213,8 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['PUT', /^\/api\/attendance\/register\/[^/]+\/seating$/, ({ body }) => { notice(); return ok(body ?? {}); }],
   ['POST', /^\/api\/attendance\/excuses(\/[^/]+)?$/, () => { notice(); return ok({ ok: true }); }],
   ['PUT', /^\/api\/attendance\/policy$/, () => { notice(); return ok({ on: false, radius: 300, lat: null, lng: null }); }],
+  // The CV's AI profile needs AI, which the sample doesn't have (Stage 5 · Q14).
+  ['POST', /^\/api\/passport\/cv\/summary$/, () => fail('The sample has no AI. Write a short profile yourself.', 503)],
   // The tutor: its rule, the flashcard reminder; a homework photo needs AI, which the sample doesn't have (Stage 5 · Q13).
   ['PUT', /^\/api\/tutor\/[^/]+\/rule$/, ({ body }) => { notice(); return ok({ hintsOnly: !!body?.hintsOnly, off: !!body?.off, offUntil: body?.offUntil ?? null, note: body?.note ?? '' }); }],
   ['PUT', /^\/api\/tutor\/cards\/reminder$/, ({ body }) => { notice(); return ok({ reminder: !!body?.on, next: null }); }],

@@ -19418,6 +19418,28 @@
      "updatedAt": false
     },
     {
+     "name": "handle",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": true,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "theme",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
      "name": "isPublic",
      "type": "Boolean",
      "kind": "scalar",

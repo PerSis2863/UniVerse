@@ -80,6 +80,18 @@ A new API route: `node scripts/gen-api-routes.mjs`. Deploys apply new migrations
   Never commit changes the build makes to `public/sw.js`, `public/fallback-*.js`,
   `public/workbox-*.js` or `apps/web/cloudflare/next-public.gen.ts` (`local:build` puts them back).
 
+## Optional: Everything Claude Code (ECC)
+
+The owner may want **Everything Claude Code** (github.com/affaan-m/everything-claude-code), a large
+add-on pack for Claude Code (and partly Cursor): agents, skills, slash commands, rules, hooks.
+Rules for using it here:
+- **Don't install the whole pack**: its catalogue is sent with every request (slower, costlier).
+  Install a minimal profile or pick single pieces (e.g. a planning or review skill).
+- **Read every hook before turning it on**: hooks run commands automatically. Never enable anything
+  that sends code or data to another service (some commands send diffs to other AI providers).
+- It never overrides this file: the owner's rules, safety rules and the plan come first.
+- Ask the owner before installing it, and say what you're adding and why.
+
 ## Gotchas already learned
 
 - React hooks lint (v6): no reading refs while rendering, no `setState` directly in an effect body

@@ -11,6 +11,8 @@ done, where the code is and what's left for each item. Keep that table up to dat
   checks used for every item are now in **`apps/web/scripts/checks/`** (index in its README), run
   against `pnpm local:serve`. **Next: Q14. Next migration: `0157`.**
 
+- **Q14 skills passport, 18 Oct (Progress row Q14):** on branch `claude/funny-galileo-y4mz9r`, **not merged**; **migration 0157**; **next migration: 0158**. First job: the browser test (see the row). Wallet credentials: always `signCredential` / `verifyCredential` (`src/server/vc-data-integrity.ts`): never hand-make a `proof`, never name a cryptosuite you didn't follow, and keep internal ids out of credentials.
+
 ## Earlier (14 Oct 2026)
 
 - **`main` has everything up to PR #58** (Meet "Error 1101" fix, D17 moving QR codes, D18 skills match,
