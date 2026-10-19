@@ -132,6 +132,9 @@ model User {
   cardsRemindAt      DateTime?
   /// Stage 5 · Q15: tell me about new openings that match my verified skills.
   jobAlerts          Boolean   @default(true)
+  campusListings   CampusListing[]
+  listingReports   ListingReport[]
+  mealOrders       MealOrder[]
   donations        Donation[]
   carbonEntries    ClubCarbonEntry[]
   jobApplications    JobApplication[]
@@ -1027,10 +1030,14 @@ model CampusItem {
   startAt     DateTime?
   /// Events (upgrade 7): seats; null means no limit. RSVPs and QR check-ins in event_rsvps
   capacity    Int?
+  /// Stage 5 · Q17: a ticket price for events (minor units) and its currency; null means free
+  price       Int?
+  currency    String?
   createdById String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   rsvps       EventRsvp[]
+  mealOrders  MealOrder[]
   /// Stage 5 · D15: the building on the campus map it happens in.
   buildingId  String?
   building    CampusBuilding? @relation(fields: [buildingId], references: [id], onDelete: SetNull)
@@ -1048,8 +1055,11 @@ model EventRsvp {
   item        CampusItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   userId      String
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status      String     @default("GOING") // GOING | WAITLIST
+  status      String     @default("GOING") // GOING | WAITLIST | HELD (a paid ticket being paid for)
   checkedInAt DateTime?
+  /// Stage 5 · Q17: the payment for a paid ticket, and how long the seat is held while paying
+  orderId     String?    @unique
+  heldUntil   DateTime?
   createdAt   DateTime   @default(now())
 
   @@unique([itemId, userId])
@@ -1403,6 +1413,8 @@ model Association {
 
   memberships   AssociationMembership[]
   carbonEntries ClubCarbonEntry[]
+  elections     ClubElection[]
+  budgetEntries ClubBudgetEntry[]
 
   @@map("associations")
 }
@@ -6269,4 +6281,121 @@ model ClubCarbonEntry {
 
   @@index([associationId, occurredAt])
   @@map("club_carbon_entries")
+}
+
+/// Stage 5 · Q17: a club election. Voters and ballots are in two unlinked tables (club_voters,
+/// club_ballots, both WITHOUT ROWID so the order rows arrived in isn't kept); results after closing.
+model ClubElection {
+  id            String      @id @default(cuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  title         String
+  candidates    String      @default("[]") // [{ id, name }]
+  opensAt       DateTime
+  closesAt      DateTime
+  createdById   String?
+  createdAt     DateTime    @default(now())
+  voters        ClubVoter[]
+  ballots       ClubBallot[]
+
+  @@index([associationId])
+  @@map("club_elections")
+}
+
+model ClubVoter {
+  electionId String
+  election   ClubElection @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  userId     String
+
+  @@id([electionId, userId])
+  @@map("club_voters")
+}
+
+model ClubBallot {
+  receipt    String       @id
+  electionId String
+  election   ClubElection @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  choice     String
+
+  @@index([electionId])
+  @@map("club_ballots")
+}
+
+/// Stage 5 · Q17: money a club received (INCOME) or spent (EXPENSE), minor units.
+model ClubBudgetEntry {
+  id            String      @id @default(cuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  kind          String
+  amount        Int
+  description   String
+  occurredAt    DateTime
+  receiptUrl    String?
+  createdById   String?
+  createdAt     DateTime    @default(now())
+
+  @@index([associationId, occurredAt])
+  @@map("club_budget_entries")
+}
+
+/// Stage 5 · Q17: the campus board: SELL / SWAP / FREE / WANTED things, RIDE_OFFER / RIDE_WANT, ROOM_OFFER / ROOM_WANT.
+model CampusListing {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind          String
+  title         String
+  description   String?
+  category      String?
+  price         Int? // minor units (INR): an item's price, a ride's share, a room's monthly rent
+  photoUrl      String?
+  fromPlace     String?
+  toPlace       String?
+  departAt      DateTime?
+  seats         Int?
+  area          String?
+  availableFrom DateTime?
+  status        String          @default("ACTIVE") // ACTIVE | DONE | HIDDEN
+  reports       Int             @default(0)
+  expiresAt     DateTime
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @default(now()) @updatedAt
+  reportRows    ListingReport[]
+
+  @@index([kind, status])
+  @@index([userId])
+  @@map("campus_listings")
+}
+
+model ListingReport {
+  id        String        @id @default(cuid())
+  listingId String
+  listing   CampusListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason    String
+  createdAt DateTime      @default(now())
+
+  @@unique([listingId, userId])
+  @@map("listing_reports")
+}
+
+/// Stage 5 · Q17: a cafeteria pre-order from a day's menu (campus_items kind MENU), paid at the counter.
+model MealOrder {
+  id        String     @id @default(cuid())
+  menuId    String
+  menu      CampusItem @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     String     @default("[]") // [{ dish, qty }]
+  pickupAt  DateTime
+  note      String?
+  code      String
+  status    String     @default("PLACED") // PLACED | READY | COLLECTED | CANCELLED
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @default(now()) @updatedAt
+
+  @@index([menuId, pickupAt])
+  @@index([userId])
+  @@map("meal_orders")
 }

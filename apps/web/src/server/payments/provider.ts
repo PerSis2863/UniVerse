@@ -1,6 +1,7 @@
 import prisma from '@/lib/db';
 import { BadRequestException, HttpException, NotFoundException } from '../http';
 import { donationPaid, donationRefunded } from '../donations';
+import { ticketPaid, ticketRefunded } from '../event-tickets';
 import { statusOf } from '../fees';
 import {
   type PaymentProviderName,
@@ -140,6 +141,7 @@ export async function createUnifiedPaymentOrder(
         successUrl: `${appUrl(params.origin)}${back}${sep}paid=${created.id}&session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${appUrl(params.origin)}${back}${sep}canceled=${created.id}`,
         metadata: { orgId: params.orgId, userId: params.userId, purpose: params.purpose, paymentOrderId: created.id, invoiceId: params.purpose === 'FEE' ? params.targetId || '' : '' },
+        expiresInMinutes: params.expiresInMinutes,
       });
       orderRef = session.id;
       checkoutUrl = session.url;
@@ -292,6 +294,8 @@ async function completeOrder(orderId: string, provider: PaymentProviderName, pay
 
   // A donation to an NGO project (Stage 5 · Q16): its receipt number and the thank-you.
   if (order.purpose === 'DONATION') await donationPaid(order.id, now);
+  // A paid event ticket (Stage 5 · Q17): the held seat becomes a ticket.
+  if (order.purpose === 'EVENT') await ticketPaid(order.id);
 
   return {
     success: true,
@@ -373,6 +377,7 @@ export async function processUnifiedRefund(
   });
 
   if (order.purpose === 'DONATION') await donationRefunded(order.id);
+  if (order.purpose === 'EVENT') await ticketRefunded(order.id);
 
   // If there is an associated fee payment, update refund columns
   const feePay = await prisma.feePayment.findFirst({

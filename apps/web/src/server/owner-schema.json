@@ -458,6 +458,42 @@
      "updatedAt": false
     },
     {
+     "name": "campusListings",
+     "type": "CampusListing",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
+     "name": "listingReports",
+     "type": "ListingReport",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
+     "name": "mealOrders",
+     "type": "MealOrder",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
      "name": "donations",
      "type": "Donation",
      "kind": "object",
@@ -7702,6 +7738,28 @@
      "updatedAt": false
     },
     {
+     "name": "price",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "currency",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "createdById",
      "type": "String",
      "kind": "scalar",
@@ -7737,6 +7795,18 @@
     {
      "name": "rsvps",
      "type": "EventRsvp",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
+     "name": "mealOrders",
+     "type": "MealOrder",
      "kind": "object",
      "list": true,
      "optional": false,
@@ -7852,6 +7922,28 @@
     },
     {
      "name": "checkedInAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "orderId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": true,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "heldUntil",
      "type": "DateTime",
      "kind": "scalar",
      "list": false,
@@ -10150,6 +10242,30 @@
     {
      "name": "carbonEntries",
      "type": "ClubCarbonEntry",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
+     "name": "elections",
+     "type": "ClubElection",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
+     "name": "budgetEntries",
+     "type": "ClubBudgetEntry",
      "kind": "object",
      "list": true,
      "optional": false,
@@ -43632,6 +43748,833 @@
      "unique": false,
      "hasDefault": true,
      "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "ClubElection",
+   "delegate": "clubElection",
+   "table": "club_elections",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "associationId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "association",
+     "type": "Association",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "associationId"
+     ]
+    },
+    {
+     "name": "title",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "candidates",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "opensAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "closesAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdById",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "voters",
+     "type": "ClubVoter",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
+     "name": "ballots",
+     "type": "ClubBallot",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    }
+   ]
+  },
+  {
+   "name": "ClubVoter",
+   "delegate": "clubVoter",
+   "table": "club_voters",
+   "fields": [
+    {
+     "name": "electionId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "election",
+     "type": "ClubElection",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "electionId"
+     ]
+    },
+    {
+     "name": "userId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "ClubBallot",
+   "delegate": "clubBallot",
+   "table": "club_ballots",
+   "fields": [
+    {
+     "name": "receipt",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "electionId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "election",
+     "type": "ClubElection",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "electionId"
+     ]
+    },
+    {
+     "name": "choice",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "ClubBudgetEntry",
+   "delegate": "clubBudgetEntry",
+   "table": "club_budget_entries",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "associationId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "association",
+     "type": "Association",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "associationId"
+     ]
+    },
+    {
+     "name": "kind",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "amount",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "description",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "occurredAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "receiptUrl",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdById",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "CampusListing",
+   "delegate": "campusListing",
+   "table": "campus_listings",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "userId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "user",
+     "type": "User",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "userId"
+     ]
+    },
+    {
+     "name": "kind",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "title",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "description",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "category",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "price",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "photoUrl",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "fromPlace",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "toPlace",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "departAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "seats",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "area",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "availableFrom",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "status",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "reports",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "expiresAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "updatedAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": true
+    },
+    {
+     "name": "reportRows",
+     "type": "ListingReport",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    }
+   ]
+  },
+  {
+   "name": "ListingReport",
+   "delegate": "listingReport",
+   "table": "listing_reports",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "listingId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "listing",
+     "type": "CampusListing",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "listingId"
+     ]
+    },
+    {
+     "name": "userId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "user",
+     "type": "User",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "userId"
+     ]
+    },
+    {
+     "name": "reason",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "MealOrder",
+   "delegate": "mealOrder",
+   "table": "meal_orders",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "menuId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "menu",
+     "type": "CampusItem",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "menuId"
+     ]
+    },
+    {
+     "name": "userId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "user",
+     "type": "User",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "userId"
+     ]
+    },
+    {
+     "name": "items",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "pickupAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "note",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "code",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "status",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "updatedAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": true
     }
    ]
   }

@@ -91,6 +91,19 @@ export function readRotatingCode(prefix: 'e1' | 's1', code: string, now = Date.n
   return want.length === got.length && timingSafeEqual(want, got) ? m[2] : null;
 }
 
+/**
+ * A ticket (Stage 5 · Q17): "t1.<rsvp id>.<signature>", shown as a QR code on the holder's phone and
+ * scanned at the door. Signed like the codes above (so it can't be made up or changed) but it
+ * doesn't expire: the door marks it used, so it works once.
+ */
+export const ticketCode = (rsvpId: string) => `t1.${rsvpId}.${mac('t1', `t1.${rsvpId}`)}`;
+export function readTicketCode(code: string): string | null {
+  const m = /^t1\.([A-Za-z0-9_-]{1,64})\.([A-Za-z0-9_-]{22})$/.exec(code.trim());
+  if (!m) return null;
+  const want = Buffer.from(mac('t1', `t1.${m[1]}`)), got = Buffer.from(m[2]);
+  return want.length === got.length && timingSafeEqual(want, got) ? m[1] : null;
+}
+
 /** The code shown on the organiser's screen at an event's door. */
 export const checkinCode = (itemId: string, now = Date.now()) => rotatingCode('e1', itemId, now);
 export const readCheckinCode = (code: string, now = Date.now()) => readRotatingCode('e1', code, now);
@@ -99,6 +112,7 @@ const upcoming = () => ({ kind: 'EVENT', startAt: { gte: new Date(Date.now() - D
 
 /** GET /api/campus/events: upcoming events with seats taken and my place. */
 export async function listEvents(user: SessionUser) {
+  await dropExpiredHolds();
   const items = await prisma.campusItem.findMany({ where: upcoming(), orderBy: { startAt: 'asc' }, take: 100 });
   const ids = items.map((i) => i.id);
   const [counts, mine] = ids.length ? await Promise.all([
@@ -106,15 +120,26 @@ export async function listEvents(user: SessionUser) {
     prisma.eventRsvp.findMany({ where: { userId: user.id, itemId: { in: ids.slice(0, 90) } }, select: { itemId: true, status: true, checkedInAt: true } }),
   ]) : [[], []];
   const n = (id: string, status: string) => counts.find((c) => c.itemId === id && c.status === status)?._count._all ?? 0;
-  return items.map((i) => ({ ...i, going: n(i.id, 'GOING'), waiting: n(i.id, 'WAITLIST'), mine: mine.find((m) => m.itemId === i.id) ?? null }));
+  // Seats being paid for count as taken (Stage 5 · Q17).
+  return items.map((i) => ({ ...i, going: n(i.id, 'GOING') + n(i.id, 'HELD'), waiting: n(i.id, 'WAITLIST'), mine: mine.find((m) => m.itemId === i.id) ?? null }));
 }
+
+/** Seats held for buyers who didn't finish paying go back (Stage 5 · Q17). */
+export async function dropExpiredHolds() {
+  await prisma.eventRsvp.deleteMany({ where: { status: 'HELD', heldUntil: { lt: new Date() } } });
+}
+/** Seats taken: tickets, free places and seats being paid for. */
+export const seatsTaken = (itemId: string) => prisma.eventRsvp.count({ where: { itemId, status: { in: ['GOING', 'HELD'] } } });
 
 /** POST /api/campus/events/[id]/rsvp { going }: take a seat (or join the waiting list), or give it up. */
 export async function rsvp(user: SessionUser, itemId: string, going: boolean) {
-  const item = await prisma.campusItem.findFirst({ where: { id: itemId, kind: 'EVENT' }, select: { id: true, title: true, capacity: true, startAt: true } });
+  const item = await prisma.campusItem.findFirst({ where: { id: itemId, kind: 'EVENT' }, select: { id: true, title: true, capacity: true, startAt: true, price: true } });
   if (!item) throw new NotFoundException('Event not found.');
   if (item.startAt && item.startAt.getTime() < Date.now() - 6 * 3600_000) throw new BadRequestException('This event is over.');
   const existing = await prisma.eventRsvp.findUnique({ where: { itemId_userId: { itemId, userId: user.id } } });
+  // Paid events: a place comes with a ticket (and a bought ticket isn't given up here).
+  if (item.price && going && existing?.status !== 'GOING') throw new BadRequestException('This event needs a ticket: tap Buy ticket.');
+  if (item.price && !going && existing?.orderId) throw new BadRequestException('Paid tickets can’t be given back here. Ask the organiser.');
   if (!going) {
     if (!existing) return { status: null };
     if (existing.checkedInAt) throw new BadRequestException('You’ve already checked in to this event.');
@@ -130,7 +155,8 @@ export async function rsvp(user: SessionUser, itemId: string, going: boolean) {
     return { status: null };
   }
   if (existing) return { status: existing.status };
-  const taken = item.capacity ? await prisma.eventRsvp.count({ where: { itemId, status: 'GOING' } }) : 0;
+  await dropExpiredHolds();
+  const taken = item.capacity ? await seatsTaken(itemId) : 0;
   const status = item.capacity && taken >= item.capacity ? 'WAITLIST' : 'GOING';
   await prisma.eventRsvp.create({ data: { itemId, userId: user.id, status } });
   return { status };
@@ -140,16 +166,17 @@ export async function rsvp(user: SessionUser, itemId: string, going: boolean) {
 export async function checkIn(user: SessionUser, code: unknown) {
   const itemId = typeof code === 'string' ? readCheckinCode(code.trim()) : null;
   if (!itemId) throw new BadRequestException('This code has expired. Scan the one on the screen now.');
-  const item = await prisma.campusItem.findFirst({ where: { id: itemId, kind: 'EVENT' }, select: { id: true, title: true, capacity: true } });
+  const item = await prisma.campusItem.findFirst({ where: { id: itemId, kind: 'EVENT' }, select: { id: true, title: true, capacity: true, price: true } });
   if (!item) throw new NotFoundException('Event not found.');
   const mine = await prisma.eventRsvp.findUnique({ where: { itemId_userId: { itemId, userId: user.id } } });
   if (mine?.checkedInAt) return { title: item.title, checkedInAt: mine.checkedInAt, already: true };
   if (mine?.status === 'WAITLIST') throw new BadRequestException('You’re on the waiting list for this event. Ask the organiser at the door.');
+  if (item.price && mine?.status !== 'GOING') throw new BadRequestException('This event needs a ticket. Show it at the door.');
   const now = new Date();
   if (mine) await prisma.eventRsvp.update({ where: { id: mine.id }, data: { checkedInAt: now } });
   else {
     // Walk-ins are welcome while there are seats.
-    const taken = item.capacity ? await prisma.eventRsvp.count({ where: { itemId, status: 'GOING' } }) : 0;
+    const taken = item.capacity ? await seatsTaken(itemId) : 0;
     if (item.capacity && taken >= item.capacity) throw new BadRequestException('This event is full. Ask the organiser at the door.');
     await prisma.eventRsvp.create({ data: { itemId, userId: user.id, status: 'GOING', checkedInAt: now } });
   }

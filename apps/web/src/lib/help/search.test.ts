@@ -38,3 +38,15 @@ describe('help search: global impact (Q16)', () => {
     expect(top('carbon footprint of my club', 'STUDENT')).toBe('club-carbon');
   });
 });
+
+describe('help search: student life (Q17)', () => {
+  it('finds tickets, elections, the board and pre-orders', () => {
+    expect(top('buy a ticket for an event', 'STUDENT')).toBe('event-tickets');
+    expect(top('scan tickets at the door', 'ADMIN')).toBe('event-tickets-admin');
+    expect(top('is my vote secret', 'STUDENT')).toBe('club-elections');
+    expect(top('sell my books', 'STUDENT')).toBe('campus-board');
+    expect(top('carpool', 'STUDENT')).toBe('campus-board');
+    expect(top('pre-order food', 'STUDENT')).toBe('meal-preorders');
+    expect(top('kitchen orders', 'ADMIN')).toBe('meal-preorders-admin');
+  });
+});

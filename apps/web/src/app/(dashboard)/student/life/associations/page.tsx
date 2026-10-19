@@ -160,7 +160,7 @@ export default function AssociationsPage() {
                     <button type="button" disabled={making === club.id} onClick={() => void clubSpace(club.id)} className="text-sm font-semibold text-fuchsia-300 hover:text-fuchsia-200 inline-flex items-center gap-1 disabled:opacity-50"><MessagesSquare className="w-4 h-4" /> Create club space</button>
                   ) : null}
                   {membershipsSet.has(club.id) && (
-                    <Link href={`/student/life/associations/carbon?club=${encodeURIComponent(club.id)}`} className="text-sm font-semibold text-emerald-300 hover:text-emerald-200 inline-flex items-center gap-1"><Leaf className="w-4 h-4" aria-hidden /> Carbon</Link>
+                    <Link href={`/student/life/associations/club?club=${encodeURIComponent(club.id)}`} className="text-sm font-semibold text-emerald-300 hover:text-emerald-200 inline-flex items-center gap-1"><Leaf className="w-4 h-4" aria-hidden /> Club page</Link>
                   )}
                   <button 
                     onClick={() => handleJoin(club.id, club.name)}

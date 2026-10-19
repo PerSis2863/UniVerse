@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { Camera, ScanLine } from 'lucide-react';
 import { Sheet } from '@/components/ui/Sheet';
 
@@ -20,13 +20,14 @@ export function ScanField({ label, value, onChange, onScan, placeholder, autoFoc
 }) {
   const camera = useSyncExternalStore(noop, hasDetector, () => false);
   const [scanning, setScanning] = useState(false);
+  const id = useId();
   return (
     <div>
-      <label className="label" htmlFor={`scan-${label}`}>{label}</label>
+      <label className="label" htmlFor={id}>{label}</label>
       <div className="mt-1 flex gap-2">
         <div className="relative flex-1 min-w-0">
           <ScanLine className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
-          <input id={`scan-${label}`} value={value} autoFocus={autoFocus} disabled={busy} inputMode="text" autoComplete="off" spellCheck={false}
+          <input id={id} value={value} autoFocus={autoFocus} disabled={busy} inputMode="text" autoComplete="off" spellCheck={false}
             onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && value.trim()) { e.preventDefault(); onScan(value.trim()); } }}
             className="input pl-9 font-mono" placeholder={placeholder ?? 'Scan or type, then Enter'} />
         </div>

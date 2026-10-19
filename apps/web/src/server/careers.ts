@@ -17,6 +17,7 @@ import { BadRequestException, ConflictException, ForbiddenException, NotFoundExc
 import { featureOff } from './moderation';
 import { publish } from './realtime';
 import { pushService } from './services/push.service';
+import { directChat } from './direct-chat';
 
 // Careers (Stage 5 · Q15): a student's application tracker, interview practice with feedback, the
 // alumni and mentor directory with bookable times, and alerts for new openings that match a
@@ -329,16 +330,6 @@ export async function deleteSlot(user: SessionUser, slotId: string) {
   if (slot.bookingId) throw new BadRequestException('Someone booked this time: cancel the booking instead.');
   await prisma.mentorSlot.delete({ where: { id: slotId } });
   return myMentoring(user);
-}
-
-/** A one-to-one chat between two people (made if needed), for the booked call. */
-async function directChat(a: string, b: string) {
-  const found = await prisma.conversation.findFirst({
-    where: { isGroup: false, aboutStudentId: null, private: false, communityId: null, AND: [{ participants: { some: { userId: a } } }, { participants: { some: { userId: b } } }] },
-    select: { id: true },
-  });
-  if (found) return found.id;
-  return (await prisma.conversation.create({ data: { createdById: a, participants: { create: [{ userId: a }, { userId: b }] } }, select: { id: true } })).id;
 }
 
 /** POST /api/careers/mentoring { action: 'book', slotId, topic }: book a mentor's free time; a call goes into both Calls lists and calendars. */

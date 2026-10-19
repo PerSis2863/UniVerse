@@ -24,6 +24,8 @@ export interface CreatePaymentOrderInput {
   origin?: string;
   /** Use this gateway instead of the school's choice (donations: Stripe for cards). */
   provider?: PaymentProviderName;
+  /** Close the gateway's page after this long (Stripe: 30 minutes to 24 hours), e.g. while a seat is held. */
+  expiresInMinutes?: number;
 }
 
 export interface PaymentOrderOutput {

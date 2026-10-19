@@ -23,6 +23,9 @@ export interface CampusItem {
   hours: string | null;
   startAt: string | null;
   capacity?: number | null;
+  /** Stage 5 · Q17: a ticket price (minor units) and currency; null is free. */
+  price?: number | null;
+  currency?: string | null;
   createdAt?: string;
   /** Who added it (only returned to admins). */
   createdBy?: PersonInfo | null;
@@ -91,7 +94,7 @@ export function CampusItemList({ kind, guide }: {
   );
 }
 
-const empty = { title: '', category: '', description: '', url: '', location: '', hours: '', startAt: '', capacity: '' };
+const empty = { title: '', category: '', description: '', url: '', location: '', hours: '', startAt: '', capacity: '', price: '', currency: 'INR' };
 
 /** Admin editor for one kind of campus info. `query` filters the list; `showPast` includes past events. */
 export function CampusItemManager({ kind, label, categories, query = '', showPast = false }: { kind: CampusKind; label: string; categories?: string[]; query?: string; showPast?: boolean }) {
@@ -111,6 +114,7 @@ export function CampusItemManager({ kind, label, categories, query = '', showPas
       location: it.location ?? '', hours: it.hours ?? '',
       startAt: it.startAt ? new Date(new Date(it.startAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, kind === 'MENU' ? 10 : 16) : '',
       capacity: it.capacity ? String(it.capacity) : '',
+      price: it.price ? String(it.price / 100) : '', currency: it.currency || 'INR',
     });
   };
 
@@ -120,7 +124,7 @@ export function CampusItemManager({ kind, label, categories, query = '', showPas
     try {
       // A menu's day is saved as midday local time, so it stays on the right day in every time zone nearby.
       const startAt = form.startAt ? new Date(kind === 'MENU' ? `${form.startAt}T12:00` : form.startAt).toISOString() : null;
-      const body = JSON.stringify({ ...form, kind, startAt, capacity: form.capacity || null });
+      const body = JSON.stringify({ ...form, kind, startAt, capacity: form.capacity || null, price: kind === 'EVENT' ? form.price || null : null });
       await authedJson(editingId ? `/api/campus-items/${editingId}` : '/api/campus-items', { method: editingId ? 'PATCH' : 'POST', body });
       toast.success(editingId ? 'Saved' : `${label} added`);
       setForm(null);
@@ -170,6 +174,12 @@ export function CampusItemManager({ kind, label, categories, query = '', showPas
           <div className="grid sm:grid-cols-2 gap-3">
             {kind === 'EVENT' && <input aria-label="Date and time" className="input" type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />}
             {kind === 'EVENT' && <input className="input" type="number" min={1} placeholder="Seats (empty: no limit)" aria-label="Seats" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />}
+            {kind === 'EVENT' && (
+              <div className="flex gap-2">
+                <input className="input flex-1" inputMode="decimal" placeholder="Ticket price (empty: free)" aria-label="Ticket price" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+                <select className="input !w-24" aria-label="Currency" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })}>{['INR', 'USD', 'EUR', 'GBP'].map((c) => <option key={c}>{c}</option>)}</select>
+              </div>
+            )}
             {kind === 'MENU' && <input className="input" type="date" aria-label="Day" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />}
             {kind === 'SERVICE' && <input className="input" placeholder="Opening hours, e.g. Mon–Fri 8am–8pm" value={form.hours} maxLength={120} onChange={(e) => setForm({ ...form, hours: e.target.value })} />}
             {kind !== 'LINK' && <input className="input" placeholder={kind === 'MENU' ? 'Dining hall (optional)' : 'Location (optional)'} value={form.location} maxLength={120} onChange={(e) => setForm({ ...form, location: e.target.value })} />}
@@ -197,7 +207,7 @@ export function CampusItemManager({ kind, label, categories, query = '', showPas
                   {it.startAt && new Date(it.startAt).getTime() < now - 24 * 3600 * 1000 && <span className="ml-2 text-[10px] font-bold uppercase text-zinc-400">Past</span>}
                 </p>
                 <p className="text-xs text-zinc-500 truncate">
-                  {[it.category, it.startAt && (kind === 'MENU' ? new Date(it.startAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) : eventDate(it.startAt)), it.capacity ? `${it.capacity} seats` : null, it.hours, it.location].filter(Boolean).join(' · ') || it.url}
+                  {[it.category, it.startAt && (kind === 'MENU' ? new Date(it.startAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) : eventDate(it.startAt)), it.capacity ? `${it.capacity} seats` : null, it.price ? `${(it.price / 100).toLocaleString()} ${it.currency ?? 'INR'} ticket` : null, it.hours, it.location].filter(Boolean).join(' · ') || it.url}
                 </p>
                 {it.createdBy !== undefined && (
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-zinc-500">

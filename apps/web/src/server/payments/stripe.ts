@@ -14,6 +14,7 @@ export async function createStripeSession(params: {
   successUrl: string;
   cancelUrl: string;
   metadata?: Record<string, string>;
+  expiresInMinutes?: number;
 }): Promise<{ id: string; url: string }> {
   if (params.secretKey.startsWith('sk_test_mock') || !params.secretKey) {
     // Test mode only (provider.ts never passes a test key otherwise): no Stripe page, straight back.
@@ -34,6 +35,8 @@ export async function createStripeSession(params: {
   formData.append('line_items[0][price_data][unit_amount]', String(params.amountMinor));
   formData.append('line_items[0][price_data][product_data][name]', params.description);
   formData.append('line_items[0][quantity]', '1');
+  // Stripe accepts 30 minutes to 24 hours.
+  if (params.expiresInMinutes) formData.append('expires_at', String(Math.floor(Date.now() / 1000) + Math.min(1440, Math.max(30, params.expiresInMinutes)) * 60));
 
   if (params.metadata) {
     for (const [k, v] of Object.entries(params.metadata)) {
