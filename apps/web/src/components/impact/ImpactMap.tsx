@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
+import { sdgName } from '@/lib/impact-league';
+import { cn } from '@/lib/utils';
 
 // Live impact map (upgrade 5): verified volunteer hours as dots, drawn as plain SVG. No map tiles:
 // the CSP blocks third-party images and tiles would cost requests. The view fits the places shown.
@@ -35,6 +37,22 @@ export function ImpactMap({ places, height = 260 }: { places: Place[]; height?: 
         ))}
       </svg>
       {hover && <p className="absolute left-3 bottom-3 rounded-lg bg-white/90 dark:bg-zinc-900/90 px-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 shadow">{hover.label} · <b>{hover.hours} h</b> · {hover.people} volunteer{hover.people === 1 ? '' : 's'}</p>}
+    </div>
+  );
+}
+
+/** Stage 5 · Q16: show one UN goal's hours on the map (and in the totals), or all of them. */
+export function SdgFilter({ sdgs, value, onChange }: { sdgs: { sdg: number; hours: number }[]; value: number | null; onChange: (sdg: number | null) => void }) {
+  if (!sdgs.length) return null;
+  const chip = (on: boolean) => cn('rounded-full px-3 py-1.5 text-xs font-medium transition-colors', on ? 'bg-emerald-700 text-white' : 'bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-white/10');
+  return (
+    <div role="group" aria-label="Show the UN goal" className="flex flex-wrap gap-1.5">
+      <button type="button" aria-pressed={value === null} className={chip(value === null)} onClick={() => onChange(null)}>All goals</button>
+      {sdgs.map((g) => (
+        <button key={g.sdg} type="button" aria-pressed={value === g.sdg} className={chip(value === g.sdg)} onClick={() => onChange(g.sdg)}>
+          SDG {g.sdg} · {sdgName(g.sdg)} <span className="tabular-nums">{g.hours} h</span>
+        </button>
+      ))}
     </div>
   );
 }

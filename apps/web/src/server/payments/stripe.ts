@@ -16,16 +16,17 @@ export async function createStripeSession(params: {
   metadata?: Record<string, string>;
 }): Promise<{ id: string; url: string }> {
   if (params.secretKey.startsWith('sk_test_mock') || !params.secretKey) {
+    // Test mode only (provider.ts never passes a test key otherwise): no Stripe page, straight back.
     const mockId = `cs_test_${crypto.randomBytes(12).toString('hex')}`;
     return {
       id: mockId,
-      url: `${params.successUrl}?session_id=${mockId}`,
+      url: params.successUrl.replace('{CHECKOUT_SESSION_ID}', mockId),
     };
   }
 
   const formData = new URLSearchParams();
   formData.append('mode', 'payment');
-  formData.append('customer_email', params.customerEmail);
+  if (params.customerEmail) formData.append('customer_email', params.customerEmail);
   formData.append('client_reference_id', params.clientReferenceId);
   formData.append('success_url', params.successUrl);
   formData.append('cancel_url', params.cancelUrl);

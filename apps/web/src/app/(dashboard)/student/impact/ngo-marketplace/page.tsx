@@ -12,10 +12,13 @@ import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { useInitialSearch } from '@/hooks/useInitialSearch';
 import { TabPill } from '@/components/ui/Glide';
+import { DonateSheet } from '@/components/impact/DonateSheet';
+import { sdgName } from '@/lib/impact-league';
 
 interface NgoProject {
   id: string; name: string; description: string; type?: string | null; location?: string | null; duration?: string | null;
-  openings: number; impactPoints: number; skillsRequired?: string[] | null; sdgNumber?: number | null; ngo?: { name: string } | null;
+  openings: number; impactPoints: number; skillsRequired?: string[] | null; sdgNumber?: number | null;
+  ngo?: { name: string; donationsOn?: boolean; reg80G?: string | null; pan?: string | null } | null;
 }
 
 export default function NGOMarketplacePage() {
@@ -24,6 +27,7 @@ export default function NGOMarketplacePage() {
   const [selectedType, setSelectedType] = useState('ALL');
   const [selected, setSelected] = useState<NgoProject | null>(null);
   const [applied, setApplied] = useState<string[]>([]);
+  const [donating, setDonating] = useState<NgoProject | null>(null);
 
   const { data: projectsData, isLoading: loading } = useSWR<NgoProject[]>('/impact/ngo-projects', fetcher, {
     onError: () => toast.error('Failed to load projects'),
@@ -47,7 +51,7 @@ export default function NGOMarketplacePage() {
       });
       setApplied(prev => [...prev, p.id]);
       toast.success(`Application sent to ${p.ngo?.name || 'NGO'}!`, {
-        description: `You will earn ${p.impactPoints || 500} impact points upon completion.`
+        description: `You will earn ${p.impactPoints} impact points upon completion.`
       });
       setSelected(null);
     } catch (error) {
@@ -128,20 +132,20 @@ export default function NGOMarketplacePage() {
                             <div className="text-xs text-zinc-500 font-medium">{project.ngo?.name || 'Partner NGO'}</div>
                           </div>
                         </div>
-                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30")}>SDG {project.sdgNumber || 4}</span>
+                        {project.sdgNumber ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" title={sdgName(project.sdgNumber) ?? undefined}>SDG {project.sdgNumber}</span> : null}
                       </div>
                       
                       <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">{project.description}</p>
                       
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="flex items-center gap-1.5 text-zinc-500"><MapPin className="w-3.5 h-3.5 text-zinc-400" /> {project.location || 'Remote'}</div>
-                        <div className="flex items-center gap-1.5 text-zinc-500"><Clock className="w-3.5 h-3.5 text-zinc-400" /> {project.duration || 'Flexible'}</div>
-                        <div className="flex items-center gap-1.5 text-zinc-500"><Users className="w-3.5 h-3.5 text-zinc-400" /> {project.openings || 5} Openings</div>
-                        <div className="flex items-center gap-1.5 text-emerald-500 font-semibold"><Sparkles className="w-3.5 h-3.5" /> +{project.impactPoints || 500} Impact Pts</div>
+                        {project.location && <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400"><MapPin className="w-3.5 h-3.5 text-zinc-400" aria-hidden /> {project.location}</div>}
+                        {project.duration && <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400"><Clock className="w-3.5 h-3.5 text-zinc-400" aria-hidden /> {project.duration}</div>}
+                        <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400"><Users className="w-3.5 h-3.5 text-zinc-400" aria-hidden /> {project.openings} {project.openings === 1 ? 'opening' : 'openings'}</div>
+                        <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-semibold"><Sparkles className="w-3.5 h-3.5" aria-hidden /> +{project.impactPoints} impact points</div>
                       </div>
 
                       <div className="flex flex-wrap gap-1.5">
-                        {(project.skillsRequired || ['Communication']).map((skill: string) => (
+                        {(project.skillsRequired ?? []).map((skill: string) => (
                           <span key={skill} className="text-[10px] px-2 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
                             {skill}
                           </span>
@@ -154,10 +158,15 @@ export default function NGOMarketplacePage() {
                         onClick={() => !isApplied && setSelected(project)}
                         disabled={isApplied}
                         className={cn("w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2",
-                          isApplied ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20"
+                          isApplied ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20" : "bg-emerald-700 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-700/20"
                         )}>
                         {isApplied ? <><CheckCircle2 className="w-4 h-4" /> Application Submitted</> : <>View Details & Apply <ArrowUpRight className="w-4 h-4" /></>}
                       </button>
+                      {project.ngo?.donationsOn && (
+                        <button type="button" onClick={() => setDonating(project)} className="mt-2 w-full py-2.5 rounded-xl text-sm font-semibold border border-emerald-600/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 transition-colors inline-flex items-center justify-center gap-2">
+                          <Heart className="w-4 h-4" aria-hidden /> Donate
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 );
@@ -177,7 +186,7 @@ export default function NGOMarketplacePage() {
               <button aria-label="Close" onClick={() => setSelected(null)} className="absolute top-4 right-4 p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
               
               <div className="mb-6">
-                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border mb-3 inline-block bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30")}>SDG {selected.sdgNumber || 4}</span>
+                {selected.sdgNumber ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border mb-3 inline-block bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">SDG {selected.sdgNumber} · {sdgName(selected.sdgNumber)}</span> : null}
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">{selected.name}</h2>
                 <p className="text-sm font-medium text-zinc-500">{selected.ngo?.name || 'Partner NGO'}</p>
               </div>
@@ -191,26 +200,26 @@ export default function NGOMarketplacePage() {
                 <div className="grid grid-cols-2 gap-3 p-4 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-zinc-100 dark:border-zinc-800 text-sm">
                   <div>
                     <div className="text-zinc-500 text-xs mb-0.5">Location</div>
-                    <div className="font-medium text-zinc-900 dark:text-white">{selected.location || 'Remote'}</div>
+                    <div className="font-medium text-zinc-900 dark:text-white">{selected.location || 'Not given'}</div>
                   </div>
                   <div>
                     <div className="text-zinc-500 text-xs mb-0.5">Duration</div>
-                    <div className="font-medium text-zinc-900 dark:text-white">{selected.duration || 'Flexible'}</div>
+                    <div className="font-medium text-zinc-900 dark:text-white">{selected.duration || 'Not given'}</div>
                   </div>
                   <div>
                     <div className="text-zinc-500 text-xs mb-0.5">Type</div>
-                    <div className="font-medium text-zinc-900 dark:text-white">{selected.type || 'Volunteer'}</div>
+                    <div className="font-medium text-zinc-900 dark:text-white">{selected.type || 'Not given'}</div>
                   </div>
                   <div>
                     <div className="text-emerald-500 text-xs mb-0.5 font-semibold">Impact</div>
-                    <div className="font-bold text-emerald-600 dark:text-emerald-400">+{selected.impactPoints || 500} Points</div>
+                    <div className="font-bold text-emerald-700 dark:text-emerald-400">+{selected.impactPoints} points</div>
                   </div>
                 </div>
 
                 <div>
                   <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Required Skills</h4>
                   <div className="flex flex-wrap gap-2">
-                    {(selected.skillsRequired || ['Communication']).map((skill: string) => (
+                    {(selected.skillsRequired ?? []).map((skill: string) => (
                       <span key={skill} className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300">
                         {skill}
                       </span>
@@ -223,7 +232,7 @@ export default function NGOMarketplacePage() {
                 <button 
                   onClick={() => handleApply(selected)}
                   aria-busy={applying || undefined} disabled={applying}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                  className="w-full bg-emerald-700 hover:bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-emerald-700/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
                   {applying ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle2 className="w-5 h-5" /> Submit Application</>}
                 </button>
               </div>
@@ -231,6 +240,7 @@ export default function NGOMarketplacePage() {
           </motion.div>
         )}
       </AnimatePresence>
+      {donating?.ngo && <DonateSheet project={{ id: donating.id, name: donating.name, ngo: donating.ngo }} onClose={() => setDonating(null)} />}
     </>
   );
 }

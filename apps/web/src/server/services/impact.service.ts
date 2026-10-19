@@ -7,6 +7,9 @@ import { createHash, randomBytes } from 'node:crypto';
 import { CredentialSigner, verifyUrlFor } from './credential-signer';
 import { chainAnchorService } from './chain-anchor.service';
 import type { IssueCredentialDto, RequestCredentialDto } from '../dto';
+import { milestonesDue } from '@/lib/global-impact';
+import { notify } from '../email';
+import { pushService } from './push.service';
 
 // ── Impact level thresholds ──────────────────────────────────────────────────
 const LEVELS = [
@@ -262,6 +265,8 @@ export class ImpactService {
   }
 
   async getMyBlockchainCredentials(userId: string) {
+    // Hours verified before milestone certificates existed (Stage 5 · Q16) still earn them.
+    await this.issueMilestones(userId).catch((e) => console.error('milestone certificates', e));
     const certs = await prisma.impactCertificate.findMany({
       where: { userId },
       orderBy: { requestedAt: 'desc' },
@@ -331,6 +336,51 @@ export class ImpactService {
       sourceId: certId,
     });
     return this.toClientCredential(signed);
+  }
+
+  /**
+   * Stage 5 · Q16: a certificate at 10, 50 and 100 verified volunteering hours (shift check-ins), issued
+   * and signed by itself, once each (a unique index on userId + milestoneHours stops doubles).
+   */
+  async issueMilestones(userId: string) {
+    const [agg, issued] = await Promise.all([
+      prisma.shiftCheckin.aggregate({ where: { studentId: userId, verified: true }, _sum: { minutes: true } }),
+      prisma.impactCertificate.findMany({ where: { userId, milestoneHours: { not: null } }, select: { milestoneHours: true } }),
+    ]);
+    const due = milestonesDue((agg._sum.minutes ?? 0) / 60, issued.map((c) => c.milestoneHours as number));
+    if (!due.length) return [];
+    const done = await prisma.shiftCheckin.findMany({
+      where: { studentId: userId, verified: true }, orderBy: { checkOutAt: 'desc' }, take: 200,
+      select: { shift: { select: { project: { select: { name: true, ngo: { select: { name: true } } } } } } },
+    });
+    const projects = [...new Set(done.map((d) => d.shift.project.name))];
+    const ngos = [...new Set(done.map((d) => d.shift.project.ngo?.name).filter((n): n is string => !!n))];
+    const issuedNow: number[] = [];
+    for (const hours of due) {
+      let cert: ImpactCertificate;
+      try {
+        cert = await prisma.impactCertificate.create({
+          data: {
+            userId, certificateCode: this.newCertificateCode(), milestoneHours: hours, status: 'ISSUED', issuedAt: new Date(),
+            title: `${hours} hours of verified volunteering`,
+            projectName: (projects.slice(0, 3).join(', ') + (projects.length > 3 ? ` and ${projects.length - 3} more` : '')).slice(0, 200) || 'Volunteering',
+            organization: ngos.slice(0, 3).join(', ').slice(0, 200) || 'UniVerse',
+            hoursCompleted: hours, peopleImpacted: 0,
+            description: `Reached ${hours} hours of volunteering. Every hour was checked in and out on site (by QR code, location or the supervisor).`,
+            verifiedByName: 'UniVerse (verified shift check-ins)',
+          },
+        });
+      } catch (e) {
+        if (/unique/i.test(String((e as Error).message))) continue; // issued already (two check-outs at once)
+        throw e;
+      }
+      await this.finalizeIssue(cert.id, userId, cert.title);
+      issuedNow.push(hours);
+      const title = `You’ve earned your ${hours}-hour volunteering certificate`;
+      await notify(userId, { type: 'credential', title, body: 'It’s signed and ready to share: open My credentials.', link: '/student/credentials', email: false });
+      await pushService.sendToMany([userId], { title, body: 'Signed and ready to share.', url: '/student/credentials', tag: `credential-milestone-${hours}` }).catch(() => 0);
+    }
+    return issuedNow;
   }
 
   async approveCredential(certId: string, verifier: { id: string; name: string }) {

@@ -18,6 +18,12 @@ export interface CreatePaymentOrderInput {
   description: string;
   receiptNumber?: string;
   metadata?: Record<string, unknown>;
+  /** Where the gateway sends the payer back to (default /student/fees), with ?paid=<order id>. */
+  returnPath?: string;
+  /** The site's address the payer is using (the request's origin), so they come back to the same one. */
+  origin?: string;
+  /** Use this gateway instead of the school's choice (donations: Stripe for cards). */
+  provider?: PaymentProviderName;
 }
 
 export interface PaymentOrderOutput {
@@ -29,6 +35,7 @@ export interface PaymentOrderOutput {
   keyId: string; // client publishable key or key_id
   upiIntent?: string; // UPI deep-link string for INR payments
   checkoutUrl?: string; // Hosted checkout redirect URL
+  testMode?: boolean; // local test mode: no real gateway (see paymentsTestMode)
 }
 
 export interface VerifyPaymentInput {

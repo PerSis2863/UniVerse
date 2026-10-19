@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { Award, CheckCircle2, Clock, HandHeart, Loader2, LogOut, MapPin, Navigation, QrCode, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
-import { ImpactMap, type Place } from '@/components/impact/ImpactMap';
+import { ImpactMap, SdgFilter, type Place } from '@/components/impact/ImpactMap';
 import { authedJson } from '@/lib/authed-fetch';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -22,7 +22,7 @@ interface Shift {
   project: { id: string; name: string; sdgNumber: number | null; ngo: { name: string } | null };
   mine: { checkInAt: string | null; checkOutAt: string | null; minutes: number; verified: boolean; method: string | null } | null;
 }
-interface Report { year: number; totals: { hours: number; volunteers: number; shifts: number }; places: Place[] }
+interface Report { year: number; sdg: number | null; totals: { hours: number; volunteers: number; shifts: number }; places: Place[]; sdgs: { sdg: number; hours: number }[] }
 
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
@@ -31,7 +31,8 @@ const hrs = (m: number) => `${Math.round((m / 60) * 10) / 10} h`;
 export default function ShiftsPage() {
   const router = useRouter();
   const { data, isLoading, error, mutate } = useSWR<Shift[]>('/api/volunteer/shifts', authedJson);
-  const { data: report } = useSWR<Report>('/api/volunteer/report', authedJson, { revalidateOnFocus: false });
+  const [sdg, setSdg] = useState<number | null>(null);
+  const { data: report } = useSWR<Report>(`/api/volunteer/report${sdg ? `?sdg=${sdg}` : ''}`, authedJson, { revalidateOnFocus: false, keepPreviousData: true });
   const [busy, setBusy] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
   const handled = useRef(false);
@@ -139,7 +140,8 @@ export default function ShiftsPage() {
             {report && (
               <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={spring.smooth} className="space-y-2" aria-label="Impact map">
                 <h2 className="font-bold text-zinc-900 dark:text-white">Where students volunteered in {report.year}</h2>
-                <p className="text-sm text-zinc-500">{report.totals.hours} verified hours · {report.totals.volunteers} volunteers · {report.totals.shifts} shifts</p>
+                <SdgFilter sdgs={report.sdgs ?? []} value={sdg} onChange={setSdg} />
+                <p className="text-sm text-zinc-600 dark:text-zinc-400" aria-live="polite">{report.totals.hours} verified hours · {report.totals.volunteers} volunteers · {report.totals.shifts} shifts{report.sdg ? ` for SDG ${report.sdg}` : ''}</p>
                 <ImpactMap places={report.places} />
               </motion.section>
             )}

@@ -268,7 +268,11 @@ export function buildSampleDb(me: Me) {
     { id: 'sample-p-garden', name: 'Community Garden Build', description: 'Design and build raised beds and a rain-water system for a neighbourhood garden.', type: 'On site', location: 'Riverside', duration: '3 weekends', openings: 12, impactPoints: 80, skillsRequired: ['Carpentry', 'Design', 'Teamwork'], sdgNumber: 11, deadline: at(5), ngo: ngos.roots, _count: { applications: 19 } },
     { id: 'sample-p-health', name: 'Health Camp Volunteers', description: 'Register patients and guide families at a free weekend health camp.', type: 'On site', location: 'Community Centre', duration: '2 days', openings: 20, impactPoints: 40, skillsRequired: ['Communication', 'Organisation'], sdgNumber: 3, deadline: at(20), ngo: ngos.care, _count: { applications: 4 } },
     { id: 'sample-p-data', name: 'Water-quality Data Dashboard', description: 'Build a simple dashboard for monthly water-quality readings from local wells.', type: 'Remote', location: 'Online', duration: '6 weeks', openings: 3, impactPoints: 120, skillsRequired: ['Python', 'Data visualisation'], sdgNumber: 6, deadline: at(30), ngo: ngos.roots, _count: { applications: 7 } },
-  ].map((p) => ({ ...p, isActive: true, createdAt: at(-14), ngoId: p.ngo.name }));
+  ].map((p) => ({
+    ...p, isActive: true, createdAt: at(-14), ngoId: p.ngo.name,
+    // Stage 5 · Q16: two of them take donations, one with Indian 80G details (fictional numbers).
+    ngo: { ...p.ngo, donationsOn: p.id === 'sample-p-tutor' || p.id === 'sample-p-data', reg80G: p.id === 'sample-p-tutor' ? 'AAATS0000A20240' : null, pan: p.id === 'sample-p-tutor' ? 'AAATS0000A' : null },
+  }));
   const impactActivities = [
     { date: at(-5, 12), title: 'Community Garden Build — day 1', hours: '80 Points Logged', ngo: 'NGO_PROJECT', hash: '0x9f3a…c21e' },
     { date: at(-12, 10), title: 'Weekend Maths Tutoring', hours: '50 Points Logged', ngo: 'NGO_PROJECT', hash: '0x71bd…04aa' },

@@ -177,7 +177,7 @@ export const RESEARCH_TABS: SectionTab[] = [
 ];
 
 export const LIFE_TABS: SectionTab[] = [
-  { href: '/student/life/associations', label: 'Associations' },
+  { href: '/student/life/associations', label: 'Associations', also: ['/student/life/associations/carbon'] },
   { href: '/student/life/events', label: 'Events' },
   { href: '/student/life/lost-found', label: 'Lost & found' },
   { href: '/student/life/rooms', label: 'Room booking' },
@@ -191,6 +191,7 @@ export const IMPACT_REPORT_TABS: SectionTab[] = [
   { href: '/admin/impact-reports', label: 'Signed reports' },
   { href: '/admin/impact-reports/shifts', label: 'Volunteer shifts' },
   { href: '/admin/impact-reports/volunteering', label: 'Yearly volunteering' },
+  { href: '/admin/impact-reports/donations', label: 'Donations' },
   { href: '/impact-rooms', label: 'Impact rooms' },
   { href: '/impact-league', label: 'Impact League' },
 ];

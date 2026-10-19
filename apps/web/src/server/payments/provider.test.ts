@@ -18,8 +18,11 @@ vi.mock('@/lib/db', () => ({
     paymentOrder: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     organization: {
       findUnique: vi.fn(),
@@ -107,132 +110,89 @@ describe('Stage 5 · C6: Unified Payments Provider', () => {
   });
 
   describe('Unified Order Creation & Confirmation', () => {
-    it('creates Razorpay order for INR and generates UPI Intent', async () => {
-      vi.mocked(prisma.organization.findUnique).mockResolvedValueOnce({
-        id: 'org-1',
-        name: 'Riverside Institute',
-        paymentProvider: 'AUTO',
-        razorpayKeyId: 'rzp_test_mock_123',
-        razorpayKeySecret: 'rzp_test_sec_123',
-        stripePublishableKey: null,
-        stripeSecretKey: null,
-      } as never);
-
-      vi.mocked(prisma.paymentOrder.create).mockResolvedValueOnce({
-        id: 'po-1',
-      } as never);
-
-      const res = await createUnifiedPaymentOrder({
-        orgId: 'org-1',
-        userId: 'usr-1',
-        amount: 500000,
-        currency: 'INR',
-        purpose: 'FEE',
-        targetId: 'inv-1',
-        customerName: 'Alex Chen',
-        customerEmail: 'alex@example.com',
-        description: 'Semester 1 Fee',
-      });
-
-      expect(res.orderId).toBe('po-1');
-      expect(res.provider).toBe('RAZORPAY');
-      expect(res.amount).toBe(500000);
-      expect(res.currency).toBe('INR');
-      expect(res.upiIntent).toContain('upi://pay?');
-      expect(prisma.paymentOrder.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            organizationId: 'org-1',
-            userId: 'usr-1',
-            amount: 500000,
-            provider: 'RAZORPAY',
-          }),
-        }),
-      );
-    });
-
-    it('rejects non-positive payment order amounts', async () => {
-      await expect(
-        createUnifiedPaymentOrder({
-          orgId: 'org_1',
-          userId: 'usr_1',
-          amount: 0,
-          currency: 'INR',
-          purpose: 'FEE',
-          customerName: 'Alex Chen',
-          customerEmail: 'alex@example.com',
-          description: 'Fee payment',
-        }),
-      ).rejects.toThrow('Payment amount must be greater than zero.');
-    });
-
-    it('throws NotFoundException on confirming unknown order', async () => {
-      vi.mocked(prisma.paymentOrder.findUnique).mockResolvedValueOnce(null);
-
-      await expect(
-        confirmUnifiedPayment({
-          orderId: 'non_existent_order_id',
-          provider: 'RAZORPAY',
-          orderRef: 'order_123',
-          paymentRef: 'pay_123',
-          signature: 'sig_123',
-        }),
-      ).rejects.toThrow('Payment order not found.');
-    });
-
-    it('confirms valid Razorpay payment and reconciles FeeInvoice', async () => {
-      const orderRef = 'order_DAv173';
-      const paymentRef = 'pay_29Sk178';
-      const keySecret = 'rzp_sec_key_456';
-      const sig = computeRazorpaySignature(orderRef, paymentRef, keySecret);
-
-      vi.mocked(prisma.paymentOrder.findUnique).mockResolvedValueOnce({
-        id: 'po-1',
-        status: 'PENDING',
-        amount: 25000,
-        currency: 'INR',
-        orderRef,
-        userId: 'usr-1',
-        invoiceId: 'inv-1',
-        organization: {
-          id: 'org-1',
-          razorpayKeySecret: keySecret,
-        },
-        invoice: {
-          id: 'inv-1',
-          amount: 25000,
-          discount: 0,
-          paid: 0,
-          status: 'DUE',
-        },
-      } as never);
-
-      vi.mocked(prisma.paymentOrder.update).mockResolvedValueOnce({} as never);
+    const org = (keys: Record<string, string | null>) => ({
+      id: 'org-1', name: 'Riverside Institute', paymentProvider: 'AUTO',
+      razorpayKeyId: null, razorpayKeySecret: null, stripePublishableKey: null, stripeSecretKey: null, ...keys,
+    }) as never;
+    const input = { orgId: 'org-1', userId: 'usr-1', amount: 500000, currency: 'INR', purpose: 'FEE' as const, targetId: 'inv-1', customerName: 'Alex Chen', customerEmail: 'alex@example.com', description: 'Semester 1 Fee' };
+    const pending = (extra: Record<string, unknown>) => ({
+      id: 'po-1', status: 'PENDING', amount: 25000, currency: 'INR', provider: 'RAZORPAY', orderRef: 'order_DAv173', userId: 'usr-1', invoiceId: 'inv-1',
+      organization: { razorpayKeyId: 'rzp_live_id', razorpayKeySecret: 'rzp_sec_key_456', stripeSecretKey: null, stripePublishableKey: null }, ...extra,
+    }) as never;
+    const reconcileMocks = () => {
+      vi.mocked(prisma.paymentOrder.updateMany).mockResolvedValueOnce({ count: 1 } as never);
+      vi.mocked(prisma.paymentOrder.findUniqueOrThrow).mockResolvedValueOnce({ id: 'po-1', amount: 25000, currency: 'INR', orderRef: 'order_DAv173', userId: 'usr-1', invoiceId: 'inv-1', purpose: 'FEE', invoice: { id: 'inv-1', amount: 25000, discount: 0, paid: 0, status: 'DUE' } } as never);
       vi.mocked(prisma.feePayment.findFirst).mockResolvedValueOnce({ seq: 42 } as never);
       vi.mocked(prisma.feePayment.create).mockResolvedValueOnce({} as never);
       vi.mocked(prisma.feePayment.findMany).mockResolvedValueOnce([{ amount: 25000 }] as never);
       vi.mocked(prisma.feeInvoice.update).mockResolvedValueOnce({} as never);
+    };
 
-      const res = await confirmUnifiedPayment({
-        orderId: 'po-1',
-        provider: 'RAZORPAY',
-        orderRef,
-        paymentRef,
-        signature: sig,
-      });
+    it('creates a Razorpay order for INR, with a UPI link only to the school’s own UPI id', async () => {
+      process.env.INSTITUTION_UPI_VPA = 'school@okbank';
+      vi.mocked(prisma.organization.findUnique).mockResolvedValueOnce(org({ razorpayKeyId: 'rzp_test_mock_123', razorpayKeySecret: 'rzp_test_sec_123' }));
+      vi.mocked(prisma.paymentOrder.create).mockResolvedValueOnce({ id: 'po-1' } as never);
+      vi.mocked(prisma.paymentOrder.update).mockResolvedValueOnce({} as never);
+      const res = await createUnifiedPaymentOrder(input);
+      delete process.env.INSTITUTION_UPI_VPA;
+      expect(res).toMatchObject({ orderId: 'po-1', provider: 'RAZORPAY', amount: 500000, currency: 'INR', testMode: false });
+      expect(res.upiIntent).toContain('pa=school%40okbank');
+      expect(prisma.paymentOrder.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ organizationId: 'org-1', userId: 'usr-1', amount: 500000, provider: 'RAZORPAY', invoiceId: 'inv-1' }) }));
+    });
 
-      expect(res.success).toBe(true);
-      expect(res.orderId).toBe('po-1');
-      expect(res.receiptNumber).toBe(43);
-      expect(prisma.feeInvoice.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'inv-1' },
-          data: expect.objectContaining({
-            paid: 25000,
-            status: 'PAID',
-          }),
-        }),
-      );
+    it('refuses to take payments without real keys (no made-up gateway outside test mode)', async () => {
+      vi.mocked(prisma.organization.findUnique).mockResolvedValueOnce(org({}));
+      await expect(createUnifiedPaymentOrder(input)).rejects.toThrow('Online payments aren’t set up yet');
+      expect(prisma.paymentOrder.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects non-positive payment order amounts', async () => {
+      await expect(createUnifiedPaymentOrder({ ...input, amount: 0 })).rejects.toThrow('Payment amount must be greater than zero.');
+    });
+
+    it('throws NotFoundException on confirming unknown order', async () => {
+      vi.mocked(prisma.paymentOrder.findUnique).mockResolvedValueOnce(null);
+      await expect(confirmUnifiedPayment({ orderId: 'nope', provider: 'RAZORPAY', orderRef: 'order_123', paymentRef: 'pay_123', signature: 'sig_123' })).rejects.toThrow('Payment order not found.');
+    });
+
+    it('confirms a valid Razorpay payment and reconciles the fee bill', async () => {
+      const sig = computeRazorpaySignature('order_DAv173', 'pay_29Sk178', 'rzp_sec_key_456');
+      vi.mocked(prisma.paymentOrder.findUnique).mockResolvedValueOnce(pending({}));
+      reconcileMocks();
+      const res = await confirmUnifiedPayment({ orderId: 'po-1', provider: 'RAZORPAY', orderRef: 'ignored', paymentRef: 'pay_29Sk178', signature: sig }, 'usr-1');
+      expect(res).toMatchObject({ success: true, orderId: 'po-1', receiptNumber: 43 });
+      expect(prisma.feeInvoice.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'inv-1' }, data: expect.objectContaining({ paid: 25000, status: 'PAID' }) }));
+    });
+
+    it('refuses a signature made for another (smaller) order', async () => {
+      const sig = computeRazorpaySignature('order_CHEAP', 'pay_29Sk178', 'rzp_sec_key_456');
+      vi.mocked(prisma.paymentOrder.findUnique).mockResolvedValueOnce(pending({}));
+      await expect(confirmUnifiedPayment({ orderId: 'po-1', provider: 'RAZORPAY', orderRef: 'order_CHEAP', paymentRef: 'pay_29Sk178', signature: sig }, 'usr-1')).rejects.toThrow('not confirmed');
+      expect(prisma.paymentOrder.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('refuses someone else’s order', async () => {
+      vi.mocked(prisma.paymentOrder.findUnique).mockResolvedValueOnce(pending({}));
+      await expect(confirmUnifiedPayment({ orderId: 'po-1', provider: 'RAZORPAY', orderRef: '', paymentRef: 'x', signature: 'y' }, 'usr-2')).rejects.toThrow('Payment order not found.');
+    });
+
+    it('asks Stripe: made-up strings never count, the amount must match, a paid session does', async () => {
+      const stripeOrder = () => pending({ provider: 'STRIPE', currency: 'USD', orderRef: 'cs_live_1', organization: { stripeSecretKey: 'sk_live_x', stripePublishableKey: 'pk_live_x', razorpayKeyId: null, razorpayKeySecret: null } });
+      const reply = (body: Record<string, unknown>) => vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify(body), { status: 200 }));
+      vi.mocked(prisma.paymentOrder.findUnique).mockResolvedValueOnce(stripeOrder());
+      reply({ id: 'cs_live_1', payment_status: 'unpaid', amount_total: 25000, currency: 'usd' });
+      await expect(confirmUnifiedPayment({ orderId: 'po-1', provider: 'STRIPE', orderRef: '', paymentRef: 'pay_fake', signature: 'sig_verified_mock' }, 'usr-1')).rejects.toThrow('Stripe hasn’t confirmed');
+      vi.mocked(prisma.paymentOrder.findUnique).mockResolvedValueOnce(stripeOrder());
+      reply({ id: 'cs_live_1', payment_status: 'paid', amount_total: 100, currency: 'usd' });
+      await expect(confirmUnifiedPayment({ orderId: 'po-1', provider: 'STRIPE', orderRef: '', paymentRef: '', signature: '' }, 'usr-1')).rejects.toThrow('doesn’t match');
+      expect(prisma.paymentOrder.updateMany).not.toHaveBeenCalled();
+      vi.mocked(prisma.paymentOrder.findUnique).mockResolvedValueOnce(stripeOrder());
+      reply({ id: 'cs_live_1', payment_status: 'paid', amount_total: 25000, currency: 'usd', payment_intent: 'pi_1' });
+      reconcileMocks();
+      const res = await confirmUnifiedPayment({ orderId: 'po-1', provider: 'STRIPE', orderRef: '', paymentRef: '', signature: '' }, 'usr-1');
+      expect(res.paymentRef).toBe('pi_1');
+      expect(prisma.paymentOrder.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'po-1', status: 'PENDING' } }));
+      vi.restoreAllMocks();
     });
   });
 });

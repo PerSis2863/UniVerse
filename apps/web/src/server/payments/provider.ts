@@ -1,5 +1,6 @@
 import prisma from '@/lib/db';
-import { BadRequestException, NotFoundException } from '../http';
+import { BadRequestException, HttpException, NotFoundException } from '../http';
+import { donationPaid, donationRefunded } from '../donations';
 import { statusOf } from '../fees';
 import {
   type PaymentProviderName,
@@ -34,10 +35,34 @@ export function resolvePaymentProvider(
   return 'STRIPE';
 }
 
+/**
+ * Local test mode (`pnpm local:serve --payments-test` sets PAYMENTS_TEST_MODE=1): with no real
+ * keys, orders use made-up gateway ids and "Simulate a test payment" completes them. Without it,
+ * an order needs real keys, and a payment only counts once the gateway itself confirms it.
+ */
+export const paymentsTestMode = () => process.env.PAYMENTS_TEST_MODE === '1';
+const TEST_STRIPE = 'sk_test_mock_secret', TEST_RZP_ID = 'rzp_test_mock_12345', TEST_RZP_SECRET = 'rzp_mock_secret';
+const env = (k: string) => (process.env[k] ?? '').trim().replace(/^["']|["']$/g, '');
+
+type OrgKeys = { razorpayKeyId?: string | null; razorpayKeySecret?: string | null; stripeSecretKey?: string | null; stripePublishableKey?: string | null } | null | undefined;
+/** The gateway's keys (the school's own, else the site's), test ones only in test mode; null when not set up. */
+export function gatewayKeys(org: OrgKeys, provider: PaymentProviderName) {
+  if (provider === 'RAZORPAY') {
+    const keyId = org?.razorpayKeyId || env('RAZORPAY_KEY_ID'), secret = org?.razorpayKeySecret || env('RAZORPAY_KEY_SECRET');
+    if (keyId && secret) return { keyId, secret, test: false };
+    return paymentsTestMode() ? { keyId: TEST_RZP_ID, secret: TEST_RZP_SECRET, test: true } : null;
+  }
+  const secret = org?.stripeSecretKey || env('STRIPE_SECRET_KEY');
+  const keyId = org?.stripePublishableKey || env('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
+  if (secret) return { keyId, secret, test: false };
+  return paymentsTestMode() ? { keyId: 'pk_test_mock_publishable', secret: TEST_STRIPE, test: true } : null;
+}
+const appUrl = (origin?: string) => (origin && /^https?:\/\/[^/]+$/.test(origin) ? origin : process.env.NEXT_PUBLIC_APP_URL || 'https://universeimpact.com');
+
 export async function createUnifiedPaymentOrder(
   params: CreatePaymentOrderInput,
 ): Promise<PaymentOrderOutput> {
-  if (params.amount <= 0) {
+  if (!Number.isInteger(params.amount) || params.amount <= 0) {
     throw new BadRequestException('Payment amount must be greater than zero.');
   }
 
@@ -56,79 +81,13 @@ export async function createUnifiedPaymentOrder(
 
   if (!org) throw new NotFoundException('Organization not found.');
 
-  const provider = resolvePaymentProvider(org.paymentProvider, params.currency);
+  const provider = params.provider ?? resolvePaymentProvider(org.paymentProvider, params.currency);
+  const keys = gatewayKeys(org, provider);
+  if (!keys) throw new HttpException(`Online payments aren’t set up yet (${provider === 'RAZORPAY' ? 'Razorpay' : 'Stripe'} keys are missing).`, 503);
   const orderReceipt = params.receiptNumber || `rcpt_${Date.now().toString(36)}`;
 
-  let orderRef = '';
-  let keyId = '';
-  let upiIntent: string | undefined;
-  let checkoutUrl: string | undefined;
-
-  if (provider === 'RAZORPAY') {
-    const rzpKeyId =
-      org.razorpayKeyId || process.env.RAZORPAY_KEY_ID || 'rzp_test_mock_12345';
-    const rzpSecret =
-      org.razorpayKeySecret || process.env.RAZORPAY_KEY_SECRET || 'rzp_mock_secret';
-
-    const rzpOrder = await createRazorpayOrder({
-      keyId: rzpKeyId,
-      keySecret: rzpSecret,
-      amountMinor: params.amount,
-      currency: params.currency,
-      receipt: orderReceipt,
-      notes: {
-        orgId: params.orgId,
-        userId: params.userId,
-        purpose: params.purpose,
-        invoiceId: params.targetId || '',
-      },
-    });
-
-    orderRef = rzpOrder.id;
-    keyId = rzpKeyId;
-
-    // Generate UPI Intent URI for QR and mobile one-click payment
-    upiIntent = generateUpiIntentUri({
-      payeeVpa: process.env.INSTITUTION_UPI_VPA || 'universe@icici',
-      payeeName: org.name || 'UniVerse Education',
-      amountMinor: params.amount,
-      transactionRef: orderRef,
-      note: params.description,
-    });
-  } else {
-    // Stripe
-    const stripeSecret =
-      org.stripeSecretKey || process.env.STRIPE_SECRET_KEY || 'sk_test_mock_secret';
-    const stripePublishable =
-      org.stripePublishableKey ||
-      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
-      'pk_test_mock_publishable';
-
-    const session = await createStripeSession({
-      secretKey: stripeSecret,
-      amountMinor: params.amount,
-      currency: params.currency,
-      customerEmail: params.customerEmail,
-      customerName: params.customerName,
-      description: params.description,
-      clientReferenceId: params.targetId || params.userId,
-      successUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://universeimpact.com'}/student/fees?success=true`,
-      cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://universeimpact.com'}/student/fees?canceled=true`,
-      metadata: {
-        orgId: params.orgId,
-        userId: params.userId,
-        purpose: params.purpose,
-        invoiceId: params.targetId || '',
-      },
-    });
-
-    orderRef = session.id;
-    checkoutUrl = session.url;
-    keyId = stripePublishable;
-  }
-
-  // Persist order in database
-  const createdRecord = await prisma.paymentOrder.create({
+  // The order first, so the gateway can send the payer back to it.
+  const created = await prisma.paymentOrder.create({
     data: {
       organizationId: params.orgId,
       userId: params.userId,
@@ -136,8 +95,8 @@ export async function createUnifiedPaymentOrder(
       currency: params.currency.toUpperCase(),
       provider,
       purpose: params.purpose,
-      invoiceId: params.targetId || null,
-      orderRef,
+      invoiceId: params.purpose === 'FEE' ? params.targetId || null : null,
+      orderRef: `pending_${Date.now().toString(36)}`,
       status: 'PENDING',
       customerName: params.customerName,
       customerEmail: params.customerEmail,
@@ -147,80 +106,139 @@ export async function createUnifiedPaymentOrder(
     select: { id: true },
   });
 
+  let orderRef = '';
+  let upiIntent: string | undefined;
+  let checkoutUrl: string | undefined;
+  const back = params.returnPath || '/student/fees';
+  const sep = back.includes('?') ? '&' : '?';
+
+  try {
+    if (provider === 'RAZORPAY') {
+      const rzpOrder = await createRazorpayOrder({
+        keyId: keys.keyId,
+        keySecret: keys.secret,
+        amountMinor: params.amount,
+        currency: params.currency,
+        receipt: orderReceipt,
+        notes: { orgId: params.orgId, userId: params.userId, purpose: params.purpose, paymentOrderId: created.id },
+      });
+      orderRef = rzpOrder.id;
+      // A UPI link for QR codes and phones, to the school's own UPI id only (never a made-up one).
+      const vpa = env('INSTITUTION_UPI_VPA');
+      if (vpa && params.currency.toUpperCase() === 'INR') {
+        upiIntent = generateUpiIntentUri({ payeeVpa: vpa, payeeName: org.name || 'UniVerse', amountMinor: params.amount, transactionRef: orderRef, note: params.description });
+      }
+    } else {
+      const session = await createStripeSession({
+        secretKey: keys.secret,
+        amountMinor: params.amount,
+        currency: params.currency,
+        customerEmail: params.customerEmail,
+        customerName: params.customerName,
+        description: params.description,
+        clientReferenceId: created.id,
+        successUrl: `${appUrl(params.origin)}${back}${sep}paid=${created.id}&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${appUrl(params.origin)}${back}${sep}canceled=${created.id}`,
+        metadata: { orgId: params.orgId, userId: params.userId, purpose: params.purpose, paymentOrderId: created.id, invoiceId: params.purpose === 'FEE' ? params.targetId || '' : '' },
+      });
+      orderRef = session.id;
+      checkoutUrl = session.url;
+    }
+  } catch (e) {
+    await prisma.paymentOrder.update({ where: { id: created.id }, data: { status: 'FAILED' } });
+    throw e;
+  }
+  await prisma.paymentOrder.update({ where: { id: created.id }, data: { orderRef } });
+
   return {
-    orderId: createdRecord.id,
+    orderId: created.id,
     provider,
     orderRef,
     amount: params.amount,
     currency: params.currency.toUpperCase(),
-    keyId,
+    keyId: keys.keyId,
     upiIntent,
     checkoutUrl,
+    testMode: keys.test,
   };
 }
 
+/** Asks Stripe itself whether a Checkout session was paid, for how much and in what currency. */
+async function stripeSessionPaid(secret: string, sessionId: string) {
+  const res = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}`, { headers: { Authorization: `Bearer ${secret}` } });
+  if (!res.ok) return null;
+  const s = (await res.json()) as { id: string; payment_status?: string; amount_total?: number; currency?: string; payment_intent?: string | null };
+  return s.payment_status === 'paid' ? { paymentRef: s.payment_intent || s.id, amount: s.amount_total ?? -1, currency: (s.currency ?? '').toUpperCase() } : null;
+}
+
+/**
+ * The payer's browser says it paid: check it with the gateway before anything counts. Stripe: the
+ * Checkout session must be paid, for this order's amount and currency. Razorpay: the payment's
+ * signature over this order's own reference. `userId`: only the person who made the order.
+ */
 export async function confirmUnifiedPayment(
   params: VerifyPaymentInput,
+  userId?: string,
 ): Promise<VerifyPaymentOutput> {
   const order = await prisma.paymentOrder.findUnique({
     where: { id: params.orderId },
-    include: {
-      organization: {
-        select: {
-          id: true,
-          razorpayKeySecret: true,
-          stripeSecretKey: true,
-        },
-      },
-      invoice: true,
-    },
+    include: { organization: { select: { razorpayKeyId: true, razorpayKeySecret: true, stripeSecretKey: true, stripePublishableKey: true } } },
   });
 
-  if (!order) throw new NotFoundException('Payment order not found.');
-  if (order.status === 'COMPLETED') {
-    return {
-      success: true,
-      orderId: order.id,
-      paymentRef: order.paymentRef || params.paymentRef,
-      amount: order.amount,
-      currency: order.currency,
-      invoiceId: order.invoiceId,
-    };
-  }
+  if (!order || (userId && order.userId !== userId)) throw new NotFoundException('Payment order not found.');
+  if (order.status === 'COMPLETED') return completedResult(order.id);
+  if (order.status !== 'PENDING') throw new BadRequestException('This payment was cancelled or refunded. Start a new one.');
 
-  // Signature verification
-  let isValid = false;
-  if (params.provider === 'RAZORPAY') {
-    const keySecret =
-      order.organization?.razorpayKeySecret ||
-      process.env.RAZORPAY_KEY_SECRET ||
-      'rzp_mock_secret';
-    isValid = verifyRazorpaySignature(params.orderRef, params.paymentRef, params.signature, keySecret);
+  const provider = order.provider as PaymentProviderName;
+  const keys = gatewayKeys(order.organization, provider);
+  if (!keys) throw new HttpException('Online payments aren’t set up yet.', 503);
+
+  let paymentRef = '';
+  if (keys.test) {
+    // Local test mode only (no real keys): the made-up checkout always "pays".
+    paymentRef = `test_${order.id}`;
+  } else if (provider === 'RAZORPAY') {
+    if (!verifyRazorpaySignature(order.orderRef, params.paymentRef, params.signature, keys.secret)) throw new BadRequestException('Payment not confirmed by the gateway.');
+    paymentRef = params.paymentRef;
   } else {
-    // Stripe client confirmation token / webhook confirmation
-    isValid = Boolean(params.paymentRef && params.signature);
+    const paid = await stripeSessionPaid(keys.secret, order.orderRef);
+    if (!paid) throw new BadRequestException('Stripe hasn’t confirmed this payment yet. If you just paid, wait a moment and try again.');
+    if (paid.amount !== order.amount || paid.currency !== order.currency.toUpperCase()) throw new BadRequestException('The amount paid doesn’t match this payment.');
+    paymentRef = paid.paymentRef;
   }
+  return completeOrder(order.id, provider, paymentRef, params.signature);
+}
 
-  if (!isValid) {
-    await prisma.paymentOrder.update({
-      where: { id: order.id },
-      data: { status: 'FAILED' },
-    });
-    throw new BadRequestException('Cryptographic payment verification failed.');
+/**
+ * A gateway's signed webhook says an order was paid (the caller checked the webhook signature).
+ * The amount and currency must match the order.
+ */
+export async function confirmFromGateway(provider: PaymentProviderName, orderRef: string, paymentRef: string, amount: number, currency: string) {
+  const order = await prisma.paymentOrder.findFirst({ where: { orderRef, provider }, select: { id: true, status: true, amount: true, currency: true } });
+  if (!order) return null;
+  if (order.status === 'COMPLETED') return completedResult(order.id);
+  if (order.amount !== amount || order.currency.toUpperCase() !== currency.toUpperCase()) {
+    console.error(`Payment ${order.id}: the gateway reported ${amount} ${currency}, expected ${order.amount} ${order.currency}.`);
+    return null;
   }
+  return completeOrder(order.id, provider, paymentRef, 'webhook');
+}
 
+async function completedResult(orderId: string): Promise<VerifyPaymentOutput> {
+  const o = await prisma.paymentOrder.findUniqueOrThrow({ where: { id: orderId }, select: { id: true, paymentRef: true, amount: true, currency: true, invoiceId: true } });
+  const fee = o.invoiceId ? await prisma.feePayment.findFirst({ where: { orderId: o.id }, select: { seq: true } }) : null;
+  return { success: true, orderId: o.id, paymentRef: o.paymentRef ?? '', amount: o.amount, currency: o.currency, invoiceId: o.invoiceId, receiptNumber: fee?.seq };
+}
+
+/** Marks an order paid exactly once (the browser and a webhook may both arrive), then what it paid for. */
+async function completeOrder(orderId: string, provider: PaymentProviderName, paymentRef: string, signature: string): Promise<VerifyPaymentOutput> {
   const now = new Date();
-
-  // Update order record
-  await prisma.paymentOrder.update({
-    where: { id: order.id },
-    data: {
-      status: 'COMPLETED',
-      paymentRef: params.paymentRef,
-      signature: params.signature,
-      paidAt: now,
-    },
+  const { count } = await prisma.paymentOrder.updateMany({
+    where: { id: orderId, status: 'PENDING' },
+    data: { status: 'COMPLETED', paymentRef, signature, paidAt: now },
   });
+  if (count === 0) return completedResult(orderId);
+  const order = await prisma.paymentOrder.findUniqueOrThrow({ where: { id: orderId }, include: { invoice: true } });
 
   let receiptNumber: number | undefined;
 
@@ -239,11 +257,11 @@ export async function confirmUnifiedPayment(
         seq: nextSeq,
         invoiceId: order.invoiceId,
         amount: order.amount,
-        method: params.provider === 'RAZORPAY' ? 'UPI' : 'CARD',
-        gateway: params.provider,
+        method: provider === 'RAZORPAY' ? 'UPI' : 'CARD',
+        gateway: provider,
         orderId: order.id,
-        reference: params.paymentRef,
-        note: `Online payment via ${params.provider} (${order.orderRef})`,
+        reference: paymentRef,
+        note: `Online payment via ${provider} (${order.orderRef})`,
         paidAt: now,
         receivedById: order.userId || 'system',
       },
@@ -272,10 +290,13 @@ export async function confirmUnifiedPayment(
     });
   }
 
+  // A donation to an NGO project (Stage 5 · Q16): its receipt number and the thank-you.
+  if (order.purpose === 'DONATION') await donationPaid(order.id, now);
+
   return {
     success: true,
     orderId: order.id,
-    paymentRef: params.paymentRef,
+    paymentRef,
     amount: order.amount,
     currency: order.currency,
     invoiceId: order.invoiceId,
@@ -310,14 +331,9 @@ export async function processUnifiedRefund(
   let status = 'processed';
 
   if (order.provider === 'RAZORPAY') {
-    const keyId =
-      order.organization?.razorpayKeyId ||
-      process.env.RAZORPAY_KEY_ID ||
-      'rzp_test_mock_12345';
-    const keySecret =
-      order.organization?.razorpayKeySecret ||
-      process.env.RAZORPAY_KEY_SECRET ||
-      'rzp_mock_secret';
+    const keys = gatewayKeys(order.organization, 'RAZORPAY');
+    if (!keys) throw new HttpException('Razorpay keys are missing.', 503);
+    const { keyId, secret: keySecret } = keys;
 
     const rzpRefund = await refundRazorpayPayment({
       keyId,
@@ -329,10 +345,9 @@ export async function processUnifiedRefund(
     refundId = rzpRefund.id;
     status = rzpRefund.status;
   } else {
-    const stripeSecret =
-      order.organization?.stripeSecretKey ||
-      process.env.STRIPE_SECRET_KEY ||
-      'sk_test_mock_secret';
+    const keys = gatewayKeys(order.organization, 'STRIPE');
+    if (!keys) throw new HttpException('Stripe keys are missing.', 503);
+    const stripeSecret = keys.secret;
 
     const stripeRefund = await refundStripePayment({
       secretKey: stripeSecret,
@@ -356,6 +371,8 @@ export async function processUnifiedRefund(
       refundReason: params.reason || null,
     },
   });
+
+  if (order.purpose === 'DONATION') await donationRefunded(order.id);
 
   // If there is an associated fee payment, update refund columns
   const feePay = await prisma.feePayment.findFirst({

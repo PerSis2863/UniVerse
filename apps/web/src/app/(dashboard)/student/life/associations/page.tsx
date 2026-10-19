@@ -3,7 +3,8 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { errorMessage } from '@/lib/api';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
-import { Search, Users, ExternalLink,  MessagesSquare } from 'lucide-react';
+import Link from '@/components/ui/Link';
+import { Search, Users, ExternalLink,  MessagesSquare, Leaf } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { authedJson } from '@/lib/authed-fetch';
 import { m as motion } from 'framer-motion';
@@ -25,7 +26,7 @@ export default function AssociationsPage() {
 
   const associations = associationsData || [];
   const membershipsSet = new Set(myMemberships?.map((m) => m.associationId) || []);
-  // A club's own space (upgrade 7): a Community with its members, made by the founder.
+  // Club cards are dark navy in both themes, so their text is light in both. A club's own space (upgrade 7): a Community with its members, made by the founder.
   const router = useRouter();
   const [making, setMaking] = useState<string | null>(null);
   const mine = (id: string) => myMemberships?.find((m) => m.associationId === id);
@@ -134,7 +135,7 @@ export default function AssociationsPage() {
                   <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg`}>
                     ✨
                   </div>
-                  <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/[0.05] text-zinc-600 dark:text-zinc-300 border border-white/[0.05]">
+                  <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/[0.08] text-zinc-200 border border-white/[0.08]">
                     {club.category}
                   </span>
                 </div>
@@ -143,7 +144,7 @@ export default function AssociationsPage() {
                   <h3 className="text-xl font-bold text-white mb-2 group-hover:text-indigo-400 transition-colors">
                     {club.name}
                   </h3>
-                  <p className="text-zinc-400 text-sm leading-relaxed line-clamp-3">
+                  <p className="text-zinc-300 text-sm leading-relaxed line-clamp-3">
                     {club.description}
                   </p>
                 </div>
@@ -154,13 +155,16 @@ export default function AssociationsPage() {
                     <span>{club.members ?? club._count?.memberships ?? 0}</span>
                   </div>
                   {mine(club.id)?.association?.communityId ? (
-                    <button type="button" onClick={() => router.push('/student/inbox?space=communities')} className="text-sm font-semibold text-fuchsia-700 dark:text-fuchsia-400 hover:text-fuchsia-500 dark:hover:text-fuchsia-300 inline-flex items-center gap-1"><MessagesSquare className="w-4 h-4" /> Club space</button>
+                    <button type="button" onClick={() => router.push('/student/inbox?space=communities')} className="text-sm font-semibold text-fuchsia-300 hover:text-fuchsia-200 inline-flex items-center gap-1"><MessagesSquare className="w-4 h-4" /> Club space</button>
                   ) : mine(club.id)?.role === 'FOUNDER' && club.status === 'ACTIVE' ? (
-                    <button type="button" disabled={making === club.id} onClick={() => void clubSpace(club.id)} className="text-sm font-semibold text-fuchsia-700 dark:text-fuchsia-400 hover:text-fuchsia-500 dark:hover:text-fuchsia-300 inline-flex items-center gap-1 disabled:opacity-50"><MessagesSquare className="w-4 h-4" /> Create club space</button>
+                    <button type="button" disabled={making === club.id} onClick={() => void clubSpace(club.id)} className="text-sm font-semibold text-fuchsia-300 hover:text-fuchsia-200 inline-flex items-center gap-1 disabled:opacity-50"><MessagesSquare className="w-4 h-4" /> Create club space</button>
                   ) : null}
+                  {membershipsSet.has(club.id) && (
+                    <Link href={`/student/life/associations/carbon?club=${encodeURIComponent(club.id)}`} className="text-sm font-semibold text-emerald-300 hover:text-emerald-200 inline-flex items-center gap-1"><Leaf className="w-4 h-4" aria-hidden /> Carbon</Link>
+                  )}
                   <button 
                     onClick={() => handleJoin(club.id, club.name)}
-                    className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-400 text-sm font-semibold hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1.5 text-indigo-300 text-sm font-semibold hover:text-indigo-200 transition-colors disabled:opacity-50"
                     disabled={membershipsSet.has(club.id)}
                   >
                     {membershipsSet.has(club.id) ? 'Joined' : <>Join <ExternalLink className="w-3.5 h-3.5" /></>}

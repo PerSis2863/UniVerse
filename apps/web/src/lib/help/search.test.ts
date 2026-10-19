@@ -28,3 +28,13 @@ describe('help search: careers (Q15)', () => {
     expect(top('become a mentor', 'TEACHER')).toBe('mentor-teacher');
   });
 });
+
+describe('help search: global impact (Q16)', () => {
+  it('finds donations, certificates and the carbon tracker', () => {
+    expect(top('how do I donate to an NGO', 'STUDENT')).toBe('donations');
+    expect(top('80G receipt', 'TEACHER')).toBe('donations');
+    expect(top('turn on donations for an NGO', 'ADMIN')).toBe('donations-admin');
+    expect(top('certificate for my volunteer hours', 'STUDENT')).toBe('volunteer-shifts');
+    expect(top('carbon footprint of my club', 'STUDENT')).toBe('club-carbon');
+  });
+});

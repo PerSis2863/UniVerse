@@ -7,6 +7,7 @@ import { isMetricId } from '@/lib/school-metrics';
 import { answerText, cleanQuestionInput, forStudent, markAnswer, metaOf, typeOf } from '@/lib/question-types';
 import { DEFAULT_PREFS, GROUP_OF_TYPE, NOTE_GROUPS } from '@/lib/notify-prefs';
 import { builtInQuestions, countFillers, lengthAdvice, starParts, wordCount } from '@/lib/careers';
+import { carbonSummary, kgFor, activityOf } from '@/lib/carbon';
 
 // Answers the app's API requests from example data while sample mode is on.
 // GETs without a sample answer fall through to the real server (read-only);
@@ -378,6 +379,20 @@ const careers = (d: SampleDb) => ((d as SampleDb & { careers?: SampleCareers }).
 });
 const mentoringView = (c: SampleCareers) => ({ profile: c.profile, slots: c.slots, bookings: c.bookings });
 
+// Stage 5 · Q16: global impact in sample mode: donations, the volunteering map with UN goals, and a
+// club's carbon tracker (kept in this tab only).
+type SampleImpact = { carbon: any[] };
+const impactQ16 = (d: SampleDb) => ((d as SampleDb & { q16?: SampleImpact }).q16 ??= {
+  carbon: [
+    { id: 'sample-co2-1', activity: 'bus', quantity: 720, kgCo2e: kgFor('bus', 720), note: 'Bus to the beach clean-up, 24 people × 30 km', occurredAt: at(-12), by: 'Zoya Khan', canDelete: false },
+    { id: 'sample-co2-2', activity: 'diesel-generator', quantity: 12, kgCo2e: kgFor('diesel-generator', 12), note: 'Generator at the night market stall', occurredAt: at(-30), by: 'Aarav Shah', canDelete: false },
+    { id: 'sample-co2-3', activity: 'walk-cycle', quantity: 40, kgCo2e: kgFor('walk-cycle', 40), note: 'Cycled to the tree planting', occurredAt: at(-5), by: 'Liam Chen', canDelete: false },
+  ],
+});
+const carbonView = (d: SampleDb) => {
+  const rows = impactQ16(d).carbon.map((e) => ({ ...e, label: activityOf(e.activity)?.label ?? e.activity, unit: activityOf(e.activity)?.unit ?? '', saving: !!activityOf(e.activity)?.saving }));
+  return { club: { id: 'sample-club', name: 'Green Campus Club' }, canLog: true, entries: rows, summary: carbonSummary(rows) };
+};
 // Stage 5 · D18: skills match on the Internships page.
 const SAMPLE_SKILLS_MATCH = {
   skills: [
@@ -1533,10 +1548,23 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     { id: 'sample-sh1', title: 'Saturday tree planting', startAt: at(3, 9), endAt: at(3, 13), location: 'Riverside Park', lat: 12.9716, lng: 77.5946, radiusM: 200, capacity: 25, taken: 14, project: { id: 'sample-p1', name: 'Green City Drive', sdgNumber: 13, ngo: { name: 'Earth Collective' } }, mine: null },
     { id: 'sample-sh2', title: 'Reading club for kids', startAt: at(-5, 15), endAt: at(-5, 17), location: 'Community library', lat: 12.9352, lng: 77.6245, radiusM: 150, capacity: 10, taken: 8, project: { id: 'sample-p2', name: 'Read Together', sdgNumber: 4, ngo: { name: 'Bright Minds' } }, mine: { checkInAt: at(-5, 15), checkOutAt: at(-5, 17), minutes: 120, verified: true, method: 'QR' } },
   ])],
-  [/^\/api\/volunteer\/report$/, () => ok({ year: new Date().getFullYear(), totals: { hours: 412.5, volunteers: 63, shifts: 28 },
-    places: [{ lat: 12.9716, lng: 77.5946, label: 'Riverside Park', hours: 180, people: 31 }, { lat: 12.9352, lng: 77.6245, label: 'Community library', hours: 96, people: 14 }, { lat: 13.0358, lng: 77.597, label: 'Shelter kitchen', hours: 136.5, people: 22 }],
-    projects: [{ name: 'Green City Drive', ngo: 'Earth Collective', sdg: 13, hours: 180, people: 31 }, { name: 'Shelter kitchen', ngo: 'Food For All', sdg: 2, hours: 136.5, people: 22 }, { name: 'Read Together', ngo: 'Bright Minds', sdg: 4, hours: 96, people: 14 }],
-    sdgs: [{ sdg: 2, hours: 136.5 }, { sdg: 4, hours: 96 }, { sdg: 13, hours: 180 }] })],
+  [/^\/api\/volunteer\/report$/, ({ q }) => {
+    // Each place is one project's; ?sdg= keeps one UN goal's (Stage 5 · Q16).
+    const all = [
+      { lat: 12.9716, lng: 77.5946, label: 'Riverside Park', hours: 180, people: 31, shifts: 12, project: { name: 'Green City Drive', ngo: 'Earth Collective', sdg: 13 } },
+      { lat: 13.0358, lng: 77.597, label: 'Shelter kitchen', hours: 136.5, people: 22, shifts: 10, project: { name: 'Shelter kitchen', ngo: 'Food For All', sdg: 2 } },
+      { lat: 12.9352, lng: 77.6245, label: 'Community library', hours: 96, people: 14, shifts: 6, project: { name: 'Read Together', ngo: 'Bright Minds', sdg: 4 } },
+    ];
+    const sdg = Number(q.get('sdg')) || null;
+    const shown = sdg ? all.filter((p) => p.project.sdg === sdg) : all;
+    return ok({
+      year: new Date().getFullYear(), sdg,
+      totals: { hours: shown.reduce((t, p) => t + p.hours, 0), volunteers: shown.reduce((t, p) => t + p.people, 0), shifts: shown.reduce((t, p) => t + p.shifts, 0) },
+      places: shown.map((p) => ({ lat: p.lat, lng: p.lng, label: p.label, hours: p.hours, people: p.people })),
+      projects: shown.map((p) => ({ ...p.project, hours: p.hours, people: p.people })),
+      sdgs: [{ sdg: 2, hours: 136.5 }, { sdg: 4, hours: 96 }, { sdg: 13, hours: 180 }],
+    });
+  }],
   [/^\/api\/volunteer\/shifts\/[^/]+\/roster$/, ({ db: d }) => ok({ people: d.classmates.slice(0, 3).map((u, i) => ({ id: `sample-c${i}`, checkInAt: i ? null : at(-5, 15), checkOutAt: i ? null : at(-5, 17), method: i ? null : 'QR', minutes: i ? 0 : 120, verified: !i, student: { id: u.id, name: u.name, email: u.email ?? `${u.id}@example.edu` } })) })],
   [/^\/api\/volunteer\/projects$/, () => ok([{ id: 'sample-p1', name: 'Green City Drive', ngo: { name: 'Earth Collective' } }])],
   // Campus super-app (upgrade 7): events with RSVPs, room status, lost & found
@@ -1992,6 +2020,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/internships\/my-applications$/, ({ db: d }) => ok(d.myApplications)],
   [/^\/api\/internships\/placements$/, ({ db: d }) => ok(d.placements)],
   [/^\/api\/internships\/skills-match$/, () => ok(SAMPLE_SKILLS_MATCH)],
+  [/^\/api\/impact\/donations$/, ({ q }) => ok(q.get('projectId') ? { raised: { INR: 1_250_000 }, donors: 14, supporters: ['Zoya', 'Liam', 'Ananya'] } : { donations: [{ id: 'sample-donation-1', projectName: 'Weekend Maths Tutoring', ngoName: 'City Learning Trust', amount: 50_000, currency: 'INR', status: 'PAID', receipt: 'D-000012', paidAt: at(-6), with80G: true }] })],
+  [/^\/api\/impact\/donations\/([^/]+)$/, () => ok({ number: 'D-000012', status: 'PAID', paidAt: at(-6), amount: 50_000, currency: 'INR', project: 'Weekend Maths Tutoring', ngo: 'City Learning Trust', donor: { name: 'Sample Student', email: null, pan: 'ABCDE1234F', address: '12 Sample Street, Bengaluru' }, collectedBy: 'Sample School', payment: { method: 'Card (Stripe)', reference: 'pi_sample' }, tax80G: { ngoPan: 'AAATS0000A', reg80G: 'AAATS0000A20240', donorPanGiven: true } })],
+  [/^\/api\/admin\/donations$/, () => ok({ ngos: [{ id: 'sample-ngo-1', name: 'City Learning Trust', donationsOn: true, reg80G: 'AAATS0000A20240', pan: 'AAATS0000A', isVerified: true, projects: 2, raised: [{ currency: 'INR', amount: 1_250_000, count: 14 }] }, { id: 'sample-ngo-2', name: 'Green Roots NGO', donationsOn: false, reg80G: null, pan: null, isVerified: true, projects: 1, raised: [] }], donations: [{ id: 'sample-donation-1', receipt: 'D-000012', paidAt: at(-6), status: 'PAID', amount: 50_000, currency: 'INR', projectName: 'Weekend Maths Tutoring', ngoName: 'City Learning Trust', donorName: 'Zoya Khan', donorEmail: null, pan: null, address: null, anonymous: false }] })],
+  [/^\/api\/campus\/clubs\/[^/]+\/carbon$/, ({ db: d }) => ok(carbonView(d))],
   [/^\/api\/careers\/applications$/, ({ db: d }) => ok(careers(d).apps)],
   [/^\/api\/careers\/interview$/, ({ db: d }) => ok({ answers: careers(d).answers })],
   [/^\/api\/careers\/mentors$/, ({ db: d }) => ok({ mentors: careers(d).mentors.map((m) => ({ ...m, slots: m.slots.filter((s: any) => !careers(d).bookings.some((b) => b.slotId === s.id && b.status === 'CONFIRMED')) })) })],
@@ -2236,6 +2268,16 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
+  ['POST', /^\/api\/impact\/donations$/, () => fail('Sample mode: no money is taken. Exit sample mode to donate for real.', 400)],
+  ['PATCH', /^\/api\/admin\/donations$/, () => { notice(); return ok({ ngos: [], donations: [] }); }],
+  ['POST', /^\/api\/campus\/clubs\/[^/]+\/carbon$/, ({ db: d, body }) => {
+    const kg = kgFor(body?.activity, body?.quantity);
+    if (kg === null) return fail('Pick an activity and an amount above 0.', 400);
+    notice();
+    impactQ16(d).carbon.unshift({ id: sid('co2'), activity: String(body.activity), quantity: Number(body.quantity), kgCo2e: kg, note: body.note || null, occurredAt: body.occurredAt ?? new Date().toISOString(), by: d.me?.name ?? 'You', canDelete: true });
+    return ok(carbonView(d));
+  }],
+  ['DELETE', /^\/api\/campus\/clubs\/[^/]+\/carbon$/, ({ db: d, q }) => { notice(); const c = impactQ16(d); c.carbon = c.carbon.filter((e) => e.id !== q.get('entry')); return ok(carbonView(d)); }],
   ['POST', /^\/api\/careers\/applications$/, ({ db: d, body }) => {
     notice();
     const c = careers(d);

@@ -77,6 +77,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/student/internships/applications', label: 'Application tracker', keywords: 'jobs internships applications applied interview offer next step notes cv career tracker' },
     { href: '/student/internships/interview', label: 'Interview practice', keywords: 'job interview questions practise answer feedback star filler words career' },
     { href: '/student/internships/mentors', label: 'Mentors and alumni', keywords: 'mentor alumni career advice book a call one to one graduates' },
+    { href: '/donations', label: 'My donations', keywords: 'donate donation give money ngo charity receipt 80g tax' },
     { href: '/student/life/rooms', label: 'Room booking', keywords: 'reserve study room' },
     { href: '/campus-map', label: 'Campus map', keywords: 'map buildings where is my class room free study room now live events campus twin' },
     { href: '/student/life/medical', label: 'Medical & disability', keywords: 'health doctor accessibility' },
@@ -90,6 +91,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
   ],
   TEACHER: [
     { href: '/teacher/tutor', label: 'AI tutor', keywords: 'ai course sources flashcards' },
+    { href: '/donations', label: 'My donations', keywords: 'donate donation give money ngo charity receipt 80g tax' },
     { href: '/teacher/live', label: 'Send to phones with no internet', keywords: 'offline no internet moving qr codes projector note quiz announcement class' },
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
     { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
@@ -101,6 +103,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
   ],
   ADMIN: [
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
+    { href: '/admin/impact-reports/donations', label: 'Donations', keywords: 'ngo donations give money 80g pan receipts stripe csv charity' },
     { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
     { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor impact call report project updates' },
     { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize credentials' },

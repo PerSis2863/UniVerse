@@ -132,6 +132,8 @@ model User {
   cardsRemindAt      DateTime?
   /// Stage 5 · Q15: tell me about new openings that match my verified skills.
   jobAlerts          Boolean   @default(true)
+  donations        Donation[]
+  carbonEntries    ClubCarbonEntry[]
   jobApplications    JobApplication[]
   interviewAnswers   InterviewAnswer[]
   // Study streak (src/server/streaks.ts): days in a row with a quiz, flashcard review or tutor question.
@@ -1399,7 +1401,8 @@ model Association {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  memberships AssociationMembership[]
+  memberships   AssociationMembership[]
+  carbonEntries ClubCarbonEntry[]
 
   @@map("associations")
 }
@@ -1798,10 +1801,15 @@ model NGO {
   sdgNumbers  Json     @default("[]") // int[] — UN SDG goals e.g. [4, 13]
   location    String?
   isVerified  Boolean  @default(false)
+  /// Stage 5 · Q16: takes donations here, and its Indian tax details for receipts (80G registration, PAN)
+  donationsOn Boolean  @default(false)
+  reg80G      String?
+  pan         String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  projects NGOProject[]
+  projects  NGOProject[]
+  donations Donation[]
 
   @@map("ngos")
 }
@@ -1832,6 +1840,7 @@ model NGOProject {
   impactFollowers      ImpactFollower[]
   timePledges          TimePledge[]
   impactCalls          ImpactCall[]
+  donations            Donation[]
 
   @@index([ngoId])
   @@map("ngo_projects")
@@ -2477,7 +2486,10 @@ model ImpactCertificate {
   anchorNetwork String? // e.g. "Polygon Amoy (testnet)"
   anchoredAt    DateTime?
   anchorError   String?
+  /// Stage 5 · Q16: issued by itself at 10 / 50 / 100 verified volunteering hours
+  milestoneHours Int?
 
+  @@unique([userId, milestoneHours])
   @@index([userId])
   @@index([certificateCode])
   @@index([status])
@@ -6205,4 +6217,56 @@ model MentorSlot {
 
   @@index([mentorId, startAt])
   @@map("mentor_slots")
+}
+
+/// Stage 5 · Q16: a donation to an NGO project, paid online (payment_orders). Names are copied so the
+/// record and its receipt stay complete if the project or the account goes.
+model Donation {
+  id          String      @id @default(cuid())
+  projectId   String?
+  project     NGOProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  ngoId       String?
+  ngo         NGO?        @relation(fields: [ngoId], references: [id], onDelete: SetNull)
+  projectName String
+  ngoName     String
+  donorId     String?
+  donor       User?       @relation(fields: [donorId], references: [id], onDelete: SetNull)
+  donorName   String
+  donorEmail  String?
+  amount      Int // minor units
+  currency    String
+  status      String      @default("PENDING") // PENDING | PAID | FAILED | REFUNDED
+  orderId     String?     @unique
+  receiptNo   Int?        @unique
+  anonymous   Boolean     @default(false)
+  message     String?
+  pan         String?
+  address     String?
+  reg80G      String?
+  ngoPan      String?
+  paidAt      DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@index([projectId])
+  @@index([donorId])
+  @@index([status])
+  @@map("donations")
+}
+
+/// Stage 5 · Q16: a club's carbon tracker entry (activity × a standard factor, src/lib/carbon.ts).
+model ClubCarbonEntry {
+  id            String      @id @default(cuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  activity      String
+  quantity      Float
+  kgCo2e        Float
+  note          String?
+  occurredAt    DateTime
+  createdAt     DateTime    @default(now())
+
+  @@index([associationId, occurredAt])
+  @@map("club_carbon_entries")
 }

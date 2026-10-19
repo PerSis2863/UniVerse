@@ -1,16 +1,15 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/db';
 import { verifyRazorpayWebhookSignature } from '@/server/payments/razorpay';
-import { confirmUnifiedPayment } from '@/server/payments/provider';
+import { confirmFromGateway } from '@/server/payments/provider';
 
 export async function POST(req: Request) {
   const payload = await req.text();
   const signature = req.headers.get('x-razorpay-signature') || '';
 
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET || 'whsec_rzp_universe';
-  const isValid = verifyRazorpayWebhookSignature(payload, signature, secret);
-
-  if (!isValid && !process.env.SKIP_WEBHOOK_VERIFY) {
+  // No secret, no webhook: never a default one (anyone could sign with it).
+  const secret = (process.env.RAZORPAY_WEBHOOK_SECRET ?? '').trim();
+  if (!secret) return NextResponse.json({ error: 'Razorpay webhooks aren’t set up.' }, { status: 503 });
+  if (!verifyRazorpayWebhookSignature(payload, signature, secret)) {
     return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 400 });
   }
 
@@ -29,23 +28,13 @@ export async function POST(req: Request) {
     const orderIdGateway = typeof paymentObj?.order_id === 'string' ? paymentObj.order_id : null;
     const paymentIdGateway = typeof paymentObj?.id === 'string' ? paymentObj.id : null;
 
-    if (orderIdGateway && paymentIdGateway) {
-      const orderRecord = await prisma.paymentOrder.findFirst({
-        where: { orderRef: orderIdGateway },
-      });
-
-      if (orderRecord && orderRecord.status !== 'COMPLETED') {
-        try {
-          await confirmUnifiedPayment({
-            orderId: orderRecord.id,
-            provider: 'RAZORPAY',
-            orderRef: orderIdGateway,
-            paymentRef: paymentIdGateway,
-            signature: signature || 'webhook_confirmed',
-          });
-        } catch (err: unknown) {
-          console.error('Failed to confirm order from Razorpay webhook:', err);
-        }
+    const amount = Number(paymentObj?.amount), currency = typeof paymentObj?.currency === 'string' ? paymentObj.currency : '';
+    if (orderIdGateway && paymentIdGateway && Number.isInteger(amount)) {
+      try {
+        await confirmFromGateway('RAZORPAY', orderIdGateway, paymentIdGateway, amount, currency);
+      } catch (err: unknown) {
+        console.error('Failed to confirm order from Razorpay webhook:', err);
+        return NextResponse.json({ error: 'Not recorded yet' }, { status: 500 });
       }
     }
   }

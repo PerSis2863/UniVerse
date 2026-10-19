@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import prisma from '@/lib/db';
 import { getStripe, syncSubscription } from '@/lib/billing';
+import { confirmFromGateway } from '@/server/payments/provider';
 
 // Checking the signature needs no API key; a placeholder keeps this working if the key is missing.
 const stripeClient = () => getStripe() ?? new Stripe('sk_unset', { apiVersion: '2024-06-20' as unknown as Stripe.LatestApiVersion, httpClient: Stripe.createFetchHttpClient() });
@@ -44,6 +45,22 @@ export async function POST(req: Request) {
       } catch (err) {
         console.error('Error syncing subscription from checkout:', err);
         return NextResponse.json({ error: 'Failed to sync subscription' }, { status: 500 });
+      }
+    }
+    return NextResponse.json({ received: true });
+  }
+
+  // Fees and donations (src/server/payments/provider.ts): the order is paid once Stripe says so,
+  // even if the payer closed the tab before coming back. Async methods arrive as a second event.
+  if ((event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') && (event.data.object as Stripe.Checkout.Session).metadata?.paymentOrderId) {
+    const session = event.data.object as Stripe.Checkout.Session;
+    if (session.payment_status === 'paid') {
+      try {
+        const intent = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+        await confirmFromGateway('STRIPE', session.id, intent || session.id, session.amount_total ?? -1, session.currency ?? '');
+      } catch (err) {
+        console.error('Error recording a Stripe payment:', err);
+        return NextResponse.json({ error: 'Not recorded yet' }, { status: 500 });
       }
     }
     return NextResponse.json({ received: true });
