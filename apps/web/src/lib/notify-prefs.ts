@@ -17,7 +17,7 @@ export const NOTE_GROUPS: NoteGroup[] = [
   { id: 'grades', label: 'Grades and feedback', hint: 'Marks, feedback, report cards and certificates.', types: ['grade', 'report-card', 'credential', 'feedback'], tags: ['grade-', 'offline-quiz-', 'support-plan', 'follow-up-'] },
   { id: 'calls', label: 'Calls and meetings', hint: 'Scheduled calls starting, office hours and meetings. A call ringing for you always rings.', types: ['live', 'meeting', 'call'], tags: ['scheduled-', 'office-', 'meeting-', 'call-'] },
   { id: 'tasks', label: 'Tasks and reminders', hint: 'Reminders you set, tasks and deadlines.', types: ['reminder', 'task'], tags: ['remind-', 'task-', 'offline-work'] },
-  { id: 'school', label: 'School', hint: 'Announcements, events, fees, forms, the library and staff news.', types: ['event', 'announcement', 'consent', 'library', 'registers', 'staff', 'admissions', 'application', 'guardian', 'warning', 'fees'], tags: ['consent-', 'fees-', 'pack-', 'cover-', 'campus-network', 'parent-week', 'safety-'] },
+  { id: 'school', label: 'School', hint: 'Announcements, events, fees, forms, the library, staff news and job openings.', types: ['event', 'announcement', 'consent', 'library', 'registers', 'staff', 'admissions', 'application', 'guardian', 'warning', 'fees', 'job'], tags: ['consent-', 'fees-', 'pack-', 'cover-', 'campus-network', 'parent-week', 'safety-', 'job-'] },
   { id: 'other', label: 'Everything else', hint: 'Anything not in the groups above.', types: [], tags: [] },
 ];
 

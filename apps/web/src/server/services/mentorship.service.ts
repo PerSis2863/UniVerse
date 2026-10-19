@@ -49,10 +49,11 @@ export class MentorshipService {
 
   // ─── PHASE 3: INDUSTRY MENTORS ──────────────────────────────────
 
+  // No emails: anyone signed in can list mentors (they're reached through bookings and chat).
   getIndustryMentors() {
     return prisma.mentorProfile.findMany({
       include: {
-        user: { select: { id: true, name: true, avatar: true, email: true } },
+        user: { select: { id: true, name: true, avatar: true } },
       },
     });
   }

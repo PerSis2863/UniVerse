@@ -15,3 +15,16 @@ describe('help search: skills passport (Q14)', () => {
     expect(top('is this certificate real', 'ADMIN')).toBe('verify-credential');
   });
 });
+
+describe('help search: careers (Q15)', () => {
+  it('finds the tracker, interview practice and mentors for students', () => {
+    expect(top('track my job applications', 'STUDENT')).toBe('application-tracker');
+    expect(top('job alerts', 'STUDENT')).toBe('application-tracker');
+    expect(top('practise for an interview', 'STUDENT')).toBe('interview-practice');
+    expect(top('book a call with alumni', 'STUDENT')).toBe('mentors');
+  });
+
+  it('shows teachers how to mentor', () => {
+    expect(top('become a mentor', 'TEACHER')).toBe('mentor-teacher');
+  });
+});

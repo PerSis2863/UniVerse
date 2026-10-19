@@ -6,6 +6,7 @@ import { sampleAsk, sampleMetric } from './analytics';
 import { isMetricId } from '@/lib/school-metrics';
 import { answerText, cleanQuestionInput, forStudent, markAnswer, metaOf, typeOf } from '@/lib/question-types';
 import { DEFAULT_PREFS, GROUP_OF_TYPE, NOTE_GROUPS } from '@/lib/notify-prefs';
+import { builtInQuestions, countFillers, lengthAdvice, starParts, wordCount } from '@/lib/careers';
 
 // Answers the app's API requests from example data while sample mode is on.
 // GETs without a sample answer fall through to the real server (read-only);
@@ -355,6 +356,27 @@ const SAMPLE_IMPACT_LEDGER = {
     },
   ],
 };
+
+// Stage 5 · Q15: careers in sample mode: the tracker, practice answers, mentors and bookings, kept
+// in this tab only (the people are the sample's fictional ones).
+type SampleCareers = { apps: any[]; answers: any[]; alerts: boolean; profile: any; slots: any[]; bookings: any[]; mentors: any[] };
+const careers = (d: SampleDb) => ((d as SampleDb & { careers?: SampleCareers }).careers ??= {
+  apps: [
+    { id: 'sample-app-1', title: 'Data analyst intern', company: 'Nova Labs', url: null, location: 'Remote', stage: 'INTERVIEW', onUniverse: true, appliedAt: at(-9), nextStep: 'Video interview', nextAt: at(2, 15), notes: 'Ask about the team’s data stack. Prepare the survey-cleaning project as an example.', documents: [{ name: 'CV.pdf', url: 'https://example.com/cv.pdf' }], updatedAt: at(-1) },
+    { id: 'sample-app-2', title: 'Junior web developer (summer)', company: 'Brightside Studio', url: 'https://example.com/jobs/42', location: 'Bengaluru', stage: 'APPLIED', onUniverse: false, appliedAt: at(-4), nextStep: 'Follow-up email', nextAt: at(5, 10), notes: null, documents: [], updatedAt: at(-4) },
+    { id: 'sample-app-3', title: 'Research assistant', company: 'Blue Earth', url: null, location: 'Hybrid', stage: 'SAVED', onUniverse: false, appliedAt: null, nextStep: null, nextAt: null, notes: 'Deadline end of month.', documents: [], updatedAt: at(-2) },
+  ],
+  answers: [],
+  alerts: true,
+  profile: null,
+  slots: [],
+  bookings: [],
+  mentors: [
+    { id: 'sample-mentor-1', company: 'Nova Labs', jobTitle: 'Data scientist', skills: ['Python', 'SQL', 'Interviews'], isAlumni: true, gradYear: 2021, bio: 'Studied CS here, then moved into data. Happy to talk about first internships and technical interviews.', user: { id: 'sample-u-priya', name: 'Priya Menon', avatar: null, role: 'STUDENT' }, slots: [{ id: 'sample-slot-1', startAt: at(3, 17), minutes: 30 }, { id: 'sample-slot-2', startAt: at(10, 17), minutes: 30 }] },
+    { id: 'sample-mentor-2', company: 'UniVerse University', jobTitle: 'Careers lead', skills: ['CVs', 'Cover letters'], isAlumni: false, gradYear: null, bio: 'I help students turn coursework and volunteering into a strong CV.', user: { id: d.people.meera.id, name: d.people.meera.name, avatar: null, role: 'TEACHER' }, slots: [{ id: 'sample-slot-3', startAt: at(1, 11), minutes: 15 }] },
+  ],
+});
+const mentoringView = (c: SampleCareers) => ({ profile: c.profile, slots: c.slots, bookings: c.bookings });
 
 // Stage 5 · D18: skills match on the Internships page.
 const SAMPLE_SKILLS_MATCH = {
@@ -1970,6 +1992,12 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/internships\/my-applications$/, ({ db: d }) => ok(d.myApplications)],
   [/^\/api\/internships\/placements$/, ({ db: d }) => ok(d.placements)],
   [/^\/api\/internships\/skills-match$/, () => ok(SAMPLE_SKILLS_MATCH)],
+  [/^\/api\/careers\/applications$/, ({ db: d }) => ok(careers(d).apps)],
+  [/^\/api\/careers\/interview$/, ({ db: d }) => ok({ answers: careers(d).answers })],
+  [/^\/api\/careers\/mentors$/, ({ db: d }) => ok({ mentors: careers(d).mentors.map((m) => ({ ...m, slots: m.slots.filter((s: any) => !careers(d).bookings.some((b) => b.slotId === s.id && b.status === 'CONFIRMED')) })) })],
+  [/^\/api\/careers\/mentoring$/, ({ db: d }) => ok(mentoringView(careers(d)))],
+  [/^\/api\/careers\/alerts$/, ({ db: d }) => ok({ on: careers(d).alerts })],
+  [/^\/mentorship\/mentors$/, ({ db: d }) => ok(careers(d).mentors.map((m) => ({ id: m.id, company: m.company, jobTitle: m.jobTitle, skills: m.skills, hoursCommitted: 6, isAvailable: true, isAlumni: m.isAlumni, gradYear: m.gradYear, user: { id: m.user.id, name: m.user.name, avatar: null } })))],
   [/^\/api\/receipts\/([^/]+)$/, ({ m }) => ok({ id: m[1], amount: 499, currency: 'INR', description: 'Course fee: Data Structures', createdAt: '2026-10-10T09:30:00.000Z', user: { name: 'Alex Johnson', email: 'student@example.com' } })],
   [/^\/partners$/, ({ db: d }) => ok(d.partners)],
   [/^\/skills\/my$/, ({ db: d }) => ok(d.skills)],
@@ -2208,6 +2236,48 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
+  ['POST', /^\/api\/careers\/applications$/, ({ db: d, body }) => {
+    notice();
+    const c = careers(d);
+    const old = body?.id ? c.apps.find((a) => a.id === body.id) : null;
+    const next = { ...(old ?? { id: sid('app'), onUniverse: false, documents: [], url: null, location: null, appliedAt: at(0), nextStep: null, nextAt: null, notes: null, stage: 'APPLIED' }), ...body, updatedAt: new Date().toISOString() };
+    c.apps = [next, ...c.apps.filter((a) => a.id !== next.id)];
+    return ok(c.apps);
+  }],
+  ['DELETE', /^\/api\/careers\/applications$/, ({ db: d, q }) => { notice(); const c = careers(d); c.apps = c.apps.filter((a) => a.id !== q.get('id')); return ok(c.apps); }],
+  ['POST', /^\/api\/careers\/interview$/, ({ db: d, body }) => {
+    const role = String(body?.role ?? '').trim() || 'this role';
+    if (body?.action === 'questions') return ok({ role, questions: builtInQuestions(role), ai: false, note: 'The sample has no AI: here are common questions.' });
+    const answer = String(body?.answer ?? '');
+    const words = wordCount(answer);
+    if (words < 15) return fail('Say a bit more first: at least a few sentences.', 400);
+    const fillers = countFillers(answer), star = starParts(answer);
+    const row = { id: sid('ans'), role, question: String(body?.question ?? ''), fillers: fillers.total, star, score: null, createdAt: new Date().toISOString() };
+    careers(d).answers.unshift(row);
+    return ok({ id: row.id, createdAt: row.createdAt, checks: { words, minutes: Math.max(0.1, Math.round((words / 130) * 10) / 10), fillers, star, length: lengthAdvice(words) }, feedback: null, note: 'The sample has no AI feedback; the checks above still work.' });
+  }],
+  ['DELETE', /^\/api\/careers\/interview$/, ({ db: d, q }) => { const c = careers(d); c.answers = q.get('id') ? c.answers.filter((a) => a.id !== q.get('id')) : []; return ok({ answers: c.answers }); }],
+  ['POST', /^\/api\/careers\/alerts$/, ({ db: d, body }) => { notice(); careers(d).alerts = body?.on !== false; return ok({ on: careers(d).alerts }); }],
+  ['POST', /^\/api\/careers\/mentoring$/, ({ db: d, body }) => {
+    notice();
+    const c = careers(d);
+    if (body?.action === 'book') {
+      const m = c.mentors.find((x) => x.slots.some((s: any) => s.id === body.slotId));
+      const slot = m?.slots.find((s: any) => s.id === body.slotId);
+      if (!m || !slot) return fail('That time isn’t available any more.', 404);
+      c.bookings.push({ id: sid('booking'), slotId: slot.id, at: slot.startAt, topic: String(body.topic ?? '').slice(0, 200), status: 'CONFIRMED', callId: null, with: { id: m.user.id, name: m.user.name }, as: 'student' });
+    } else if (body?.action === 'cancel') {
+      c.bookings = c.bookings.map((b) => (b.id === body.bookingId ? { ...b, status: 'CANCELLED' } : b));
+    } else if (body?.action === 'profile') {
+      c.profile = { id: 'sample-my-mentor', company: body.company || null, jobTitle: body.jobTitle || null, skills: Array.isArray(body.skills) ? body.skills.slice(0, 10) : [], isAlumni: !!body.isAlumni, gradYear: body.isAlumni ? body.gradYear ?? null : null, bio: body.bio || null, isAvailable: body.isAvailable !== false };
+    } else if (body?.action === 'slots' && body.startAt) {
+      const weeks = Math.min(8, Math.max(1, Number(body.weeks) || 1));
+      for (let i = 0; i < weeks; i++) c.slots.push({ id: sid('slot'), startAt: new Date(new Date(body.startAt).getTime() + i * 7 * 86_400_000).toISOString(), minutes: Number(body.minutes) || 30, bookingId: null });
+      c.slots.sort((a, b) => a.startAt.localeCompare(b.startAt));
+    }
+    return ok(mentoringView(c));
+  }],
+  ['DELETE', /^\/api\/careers\/mentoring$/, ({ db: d, q }) => { notice(); const c = careers(d); c.slots = c.slots.filter((x) => x.id !== q.get('slot')); return ok(mentoringView(c)); }],
   // Attendance changes (Stage 5 · Q11).
   ['POST', /^\/api\/attendance\/register\/[^/]+$/, ({ body }) => { notice(); return ok({ marked: Array.isArray(body?.marks) ? body.marks.length : 0 }); }],
   ['PUT', /^\/api\/attendance\/register\/[^/]+\/seating$/, ({ body }) => { notice(); return ok(body ?? {}); }],

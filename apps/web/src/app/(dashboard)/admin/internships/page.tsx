@@ -16,7 +16,7 @@ type StudentPerson = PersonInfo & { studentProfile?: { department: string | null
 interface Applicant { id: string; status: string; appliedAt: string; cvUrl?: string | null; student: StudentPerson }
 interface Internship {
   id: string; title: string; description?: string; type?: string; location?: string | null; duration?: string | null;
-  isPaid?: boolean; salary?: string | null; openings?: number; deadline?: string | null; isActive: boolean; createdAt?: string;
+  isPaid?: boolean; salary?: string | null; openings?: number; deadline?: string | null; isActive: boolean; createdAt?: string; skills?: unknown;
   company?: { name: string } | null; postedBy?: PersonInfo | null; _count?: { applications: number }; applications?: Applicant[];
 }
 
@@ -32,7 +32,8 @@ const humanize = (s: string) => s.charAt(0) + s.slice(1).toLowerCase().replace(/
 const fmtDate = (v?: string | null) => (v ? format(new Date(v), 'd MMM yyyy') : 'N/A');
 const label = 'text-sm font-medium text-zinc-600 dark:text-zinc-400';
 
-const EMPTY_FORM = { title: '', company: '', description: '', location: '', type: 'FULL_TIME', duration: '', salary: '', deadline: '', status: 'Active' };
+const EMPTY_FORM = { title: '', company: '', description: '', location: '', type: 'FULL_TIME', duration: '', salary: '', deadline: '', status: 'Active', skills: '' };
+const skillList = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 
 /** Admin overview (with applicants); falls back to the public list if it isn't available. */
 async function loadInternships(): Promise<Internship[]> {
@@ -95,6 +96,7 @@ export default function AdminInternshipsPage() {
       salary: item.salary ?? '',
       deadline: item.deadline ? item.deadline.slice(0, 10) : '',
       status: item.isActive ? 'Active' : 'Closed',
+      skills: skillList(item.skills).join(', '),
     } : EMPTY_FORM);
     setEditingId(item ? item.id : null);
     setIsModalOpen(true);
@@ -182,6 +184,11 @@ export default function AdminInternshipsPage() {
                 <div className="space-y-2 md:col-span-2">
                   <label className={label}>Description</label>
                   <textarea required value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className={`input min-h-[80px]`} placeholder="What the intern will do" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className={label} htmlFor="internship-skills">Skills it needs</label>
+                  <input id="internship-skills" value={formData.skills} onChange={(e) => setFormData({ ...formData, skills: e.target.value })} type="text" className="input" placeholder="e.g. Python, SQL, Communication" aria-describedby="internship-skills-hint" />
+                  <p id="internship-skills-hint" className="text-xs text-zinc-500 dark:text-zinc-400">Up to 6, separated by commas. Students see how their checked skills match, and those who match get told about the opening.</p>
                 </div>
                 <div className="space-y-2">
                   <label className={label}>Type</label>

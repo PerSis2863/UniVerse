@@ -33,10 +33,14 @@ export const OPPORTUNITY_TABS: SectionTab[] = [
   { href: '/student/impact/companies', label: 'Companies' },
 ];
 
-// Internships (student): the openings, and how my verified skills match them (Stage 5 · D18)
+// Internships (student): the openings, how my verified skills match them (Stage 5 · D18), and careers
+// help: the application tracker, interview practice and mentors (Stage 5 · Q15)
 export const INTERNSHIP_TABS: SectionTab[] = [
   { href: '/student/internships', label: 'Openings' },
   { href: '/student/internships/match', label: 'Skills match' },
+  { href: '/student/internships/applications', label: 'Applications' },
+  { href: '/student/internships/interview', label: 'Interview practice' },
+  { href: '/student/internships/mentors', label: 'Mentors' },
 ];
 
 export const STUDENT_BOARD_TABS: SectionTab[] = [

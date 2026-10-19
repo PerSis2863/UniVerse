@@ -130,6 +130,10 @@ model User {
   digestAt           DateTime?
   /// Stage 5 · Q13: when the next evening flashcard reminder is due (null: off).
   cardsRemindAt      DateTime?
+  /// Stage 5 · Q15: tell me about new openings that match my verified skills.
+  jobAlerts          Boolean   @default(true)
+  jobApplications    JobApplication[]
+  interviewAnswers   InterviewAnswer[]
   // Study streak (src/server/streaks.ts): days in a row with a quiz, flashcard review or tutor question.
   streakCurrent      Int       @default(0)
   streakBest         Int       @default(0)
@@ -1678,12 +1682,15 @@ model Internship {
   deadline    DateTime?
   startDate   DateTime?
   isActive    Boolean        @default(true)
+  /// Stage 5 · Q15: when matching students were told about it (once per opening).
+  alertedAt   DateTime?
   postedById  String?
   postedBy    User?          @relation("InternshipPoster", fields: [postedById], references: [id])
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   applications InternshipApplication[]
+  tracked      JobApplication[]
 
   @@index([companyId])
   @@index([postedById])
@@ -2290,10 +2297,15 @@ model MentorProfile {
   skills         Json     @default("[]") // string[]
   hoursCommitted Int      @default(0)
   isAvailable    Boolean  @default(true)
+  /// Stage 5 · Q15: alumni of the school (as they say), their graduation year and a short bio.
+  isAlumni       Boolean  @default(false)
+  gradYear       Int?
+  bio            String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   bookings MentorshipBooking[]
+  slots    MentorSlot[]
 
   @@map("mentor_profiles")
 }
@@ -2307,6 +2319,9 @@ model MentorshipBooking {
   date      DateTime
   time      String
   topic     String?
+  /// Stage 5 · Q15: the mentor's slot it took, and the call made for it.
+  slotId          String?
+  scheduledCallId String?
   status    String        @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
@@ -6127,4 +6142,67 @@ model LiveGameAnswer {
 
   @@unique([gameId, userId, questionId])
   @@map("live_game_answers")
+}
+
+/// Stage 5 · Q15: a student's own application tracker (UniVerse openings and outside ones).
+model JobApplication {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  company      String
+  url          String?
+  location     String?
+  /// SAVED, APPLIED, INTERVIEW, OFFER, REJECTED
+  stage        String      @default("APPLIED")
+  appliedAt    DateTime?
+  nextStep     String?
+  nextAt       DateTime?
+  remindedAt   DateTime?
+  notes        String?
+  /// JSON [{ name, url }]
+  documents    String      @default("[]")
+  internshipId String?
+  internship   Internship? @relation(fields: [internshipId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @default(now()) @updatedAt
+
+  @@unique([userId, internshipId])
+  @@index([userId])
+  @@index([nextAt])
+  @@map("job_applications")
+}
+
+/// Stage 5 · Q15: an answer given in interview practice and the feedback it got.
+model InterviewAnswer {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String
+  question  String
+  answer    String
+  fillers   Int      @default(0)
+  /// The STAR parts found, e.g. "STAR" or "SA"
+  star      String   @default("")
+  score     Int?
+  /// JSON from the AI: { score, strengths, improve, outline }
+  feedback  String   @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("interview_answers")
+}
+
+/// Stage 5 · Q15: a time a mentor offers for a one-to-one call; bookingId once someone takes it.
+model MentorSlot {
+  id        String        @id @default(cuid())
+  mentorId  String
+  mentor    MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  startAt   DateTime
+  minutes   Int           @default(30)
+  bookingId String?       @unique
+  createdAt DateTime      @default(now())
+
+  @@index([mentorId, startAt])
+  @@map("mentor_slots")
 }
