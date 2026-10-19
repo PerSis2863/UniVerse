@@ -119,6 +119,13 @@ model User {
   termsVersion       String? // version of the Terms & Privacy the person accepted
   termsAcceptedAt    DateTime?
   tourDoneAt         DateTime? // skipped or finished the welcome tour (src/components/layout/WelcomeTour.tsx)
+  /// Stage 5 · Q18: where the guided tour got to (it resumes there), and the profile shown to others
+  tourStep           Int       @default(0)
+  coverUrl           String?
+  pronouns           String?
+  bio                String?
+  links              String    @default("[]") // [{ label, url }] (https, up to 5)
+  availability       String?
   onboardedAt        DateTime? // finished registration (picked a role / name); null = signed in but never registered
   accountType        String? // STUDENT | INDEPENDENT | STAFF | ORGANIZATION | GUARDIAN (what they chose at sign-up)
   lastSeenAt         DateTime?

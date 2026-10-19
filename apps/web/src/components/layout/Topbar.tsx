@@ -129,6 +129,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
           {/* iOS search field: opens the command palette */}
           <button
             type="button"
+            data-tour="search"
             onClick={openCommandPalette}
             className="hidden sm:flex items-center gap-2 h-9 w-56 rounded-[10px] bg-[var(--fill)] px-3 text-[15px] text-zinc-500 dark:text-zinc-400 hover:bg-[var(--fill-strong)] transition-colors"
           >
@@ -141,6 +142,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
 
           <button
             type="button"
+            data-tour="notifications"
             onClick={() => setShowNotifications(true)}
             // The count as the badge shows it, so the name contains what's on screen (WCAG 2.5.3)
             aria-label={unreadCount > 0 ? `Notifications, ${unreadCount > 99 ? '99+' : unreadCount} unread` : 'Notifications'}

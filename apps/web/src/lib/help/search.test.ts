@@ -50,3 +50,12 @@ describe('help search: student life (Q17)', () => {
     expect(top('kitchen orders', 'ADMIN')).toBe('meal-preorders-admin');
   });
 });
+
+describe('help search: profile, tour and settings (Q18)', () => {
+  it('finds them', () => {
+    expect(top('add pronouns', 'STUDENT')).toBe('profile');
+    expect(top('cover photo', 'TEACHER')).toBe('profile');
+    expect(top('restart the tour', 'ADMIN')).toBe('tour');
+    expect(top('find a setting', 'STUDENT')).toBe('settings-search');
+  });
+});

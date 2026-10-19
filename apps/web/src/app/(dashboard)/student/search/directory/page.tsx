@@ -91,7 +91,7 @@ export default function StudentDirectory() {
                   <button onClick={() => router.push(`/student/inbox?chatWith=${encodeURIComponent(student.name)}`)} className="flex-1 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
                     <Mail className="w-4 h-4" /> Message
                   </button>
-                  <button onClick={() => router.push(`/student/profile/${encodeURIComponent(student.name)}`)} className="flex-1 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                  <button onClick={() => router.push(`/people/${encodeURIComponent(student.id)}`)} className="flex-1 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
                     <User className="w-4 h-4" /> Profile
                   </button>
                 </div>

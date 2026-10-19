@@ -2065,6 +2065,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/internships\/my-applications$/, ({ db: d }) => ok(d.myApplications)],
   [/^\/api\/internships\/placements$/, ({ db: d }) => ok(d.placements)],
   [/^\/api\/internships\/skills-match$/, () => ok(SAMPLE_SKILLS_MATCH)],
+  [/^\/api\/profile\/([^/]+)$/, ({ db: d, m }) => { const p = Object.values(d.people).find((x) => x.id === decodeURIComponent(m[1]) || x.name === decodeURIComponent(m[1])) ?? d.people.zoya; return ok({ id: p.id, name: p.name, avatar: null, role: p.role, coverUrl: null, pronouns: p.id === d.people.zoya.id ? 'she/her' : null, bio: p.role === 'TEACHER' ? 'I teach operating systems and run the robotics club’s workshops.' : 'Second-year CS student. Into robotics, open data and chai.', links: [{ label: 'GitHub', url: 'https://github.com/' }], availability: p.role === 'TEACHER' ? 'Office hours Tue and Thu, 2–4 pm' : 'Usually free on Friday afternoons', memberSince: at(-200), department: 'Computer Science', year: p.role === 'STUDENT' ? 2 : null, designation: p.role === 'TEACHER' ? 'Associate Professor' : null, shared: [] }); }],
   [/^\/api\/campus\/clubs\/[^/]+\/elections$/, () => ok(sampleElections())],
   [/^\/api\/campus\/clubs\/[^/]+\/budget$/, () => ok(sampleBudget())],
   [/^\/api\/campus\/board$/, ({ db: d, q }) => ok(sampleBoard(d, q.get('section') ?? 'market', q.get('mine') === '1'))],

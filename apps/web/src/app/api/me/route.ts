@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const me = await prisma.user.findUnique({
     where: { id: user.id },
     select: {
-      name: true, email: true, phone: true, role: true, status: true, emergencyContacts: true, emailNotifications: true, noRecording: true, createdAt: true,
+      name: true, email: true, phone: true, role: true, status: true, emergencyContacts: true, emailNotifications: true, noRecording: true, createdAt: true, avatar: true, bio: true,
       studentProfile: { select: { department: true } },
       teacherProfile: { select: { department: true } },
     },
@@ -28,6 +28,8 @@ export async function GET(req: Request) {
       emailNotifications: me.emailNotifications,
       noRecording: me.noRecording,
       memberSince: me.createdAt,
+      // Stage 5 · Q18: whether the profile others see has a photo and a few words.
+      hasPhoto: !!me.avatar, hasBio: !!me.bio,
     },
     { headers: { 'Cache-Control': 'no-store' } },
   );

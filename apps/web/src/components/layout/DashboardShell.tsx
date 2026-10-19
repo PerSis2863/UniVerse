@@ -70,6 +70,7 @@ function MobileTabBar({ role, onMore, moreOpen, onCreate, createOpen }: { role: 
             <Link
               href={item.href}
               data-vt="fade"
+              data-tour-href={item.href}
               aria-current={active ? 'page' : undefined}
               onClick={() => { if (!active) haptic('tap'); }}
               className={cn(tab, active ? 'text-tint-text' : 'text-zinc-600 dark:text-zinc-300')}
@@ -85,6 +86,7 @@ function MobileTabBar({ role, onMore, moreOpen, onCreate, createOpen }: { role: 
         })}
         <button
           type="button"
+          data-tour="more"
           onClick={() => { haptic('tap'); onMore(); }}
           aria-expanded={moreOpen}
           className={cn(tab, moreOpen ? 'text-tint-text' : 'text-zinc-600 dark:text-zinc-300')}
@@ -156,10 +158,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
             <span aria-hidden className="nav-inline-title absolute left-1/2 -translate-x-1/2 max-w-[52%] truncate text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-white" style={{ top: 'calc(var(--safe-top) + 0.875rem)' }}>{pageTitle}</span>
           )}
           <div className="flex items-center">
-            <button type="button" onClick={openSearch} aria-label="Search" className="pressable w-11 h-11 flex items-center justify-center rounded-full text-tint-text">
+            <button type="button" data-tour="search" onClick={openSearch} aria-label="Search" className="pressable w-11 h-11 flex items-center justify-center rounded-full text-tint-text">
               <Search className="w-[21px] h-[21px]" strokeWidth={2.1} />
             </button>
-            <button type="button" onClick={openNotifications} aria-label={unread ? `Notifications, ${unread > 9 ? '9+' : unread} unread` : 'Notifications'} className="pressable relative w-11 h-11 flex items-center justify-center rounded-full text-tint-text">
+            <button type="button" data-tour="notifications" onClick={openNotifications} aria-label={unread ? `Notifications, ${unread > 9 ? '9+' : unread} unread` : 'Notifications'} className="pressable relative w-11 h-11 flex items-center justify-center rounded-full text-tint-text">
               <Bell className="w-[21px] h-[21px]" strokeWidth={2.1} />
               {unread > 0 && <span aria-hidden className="absolute top-[9px] right-[8px] min-w-[16px] h-4 px-1 rounded-full badge-count text-white text-[10px] font-bold leading-4 text-center">{unread > 9 ? '9+' : unread}</span>}
             </button>

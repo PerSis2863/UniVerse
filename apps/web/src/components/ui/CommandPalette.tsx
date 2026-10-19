@@ -136,7 +136,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
   const actions: Item[] = useMemo(() => {
     const dark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
     return [
-      ...(role === 'STUDENT' || role === 'TEACHER' ? [{ id: 'act:tour', label: 'Take the tour', hint: 'Where everything is', icon: Compass, group: 'Actions', keywords: 'help guide welcome start where menu', run: () => window.dispatchEvent(new Event('universe:tour')) }] : []),
+      ...(role === 'STUDENT' || role === 'TEACHER' || role === 'ADMIN' ? [{ id: 'act:tour', label: 'Take the tour', hint: 'Where everything is', icon: Compass, group: 'Actions', keywords: 'help guide welcome start where menu', run: () => window.dispatchEvent(new Event('universe:tour')) }] : []),
       { id: 'act:message', label: 'New message', hint: 'Messages', icon: MessageSquarePlus, group: 'Actions', keywords: 'chat dm write send inbox', run: go(`${base}/inbox?new=chat`) },
       // Make something (Stage 5 · Q10).
       { id: 'act:doc', label: 'New document', hint: 'Docs', icon: FilePlus2, group: 'Actions', keywords: 'write word page report create', run: go('/docs?new=doc') },

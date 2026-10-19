@@ -282,6 +282,7 @@ function NavItemComponent({
         <button
           onClick={onToggle}
           aria-expanded={isOpen}
+          data-tour-hrefs={item.subItems.map((s) => s.href.split('?')[0]).join(' ')}
           className={cn('sidebar-item w-full justify-between', active && !isOpen && 'active')}
         >
           <div className="flex items-center gap-3">
@@ -304,7 +305,7 @@ function NavItemComponent({
                 {item.subItems.map(sub => {
                   const on = isOn(pathname, sub.href, sub.also);
                   return (
-                    <Link key={sub.href} href={sub.href} data-vt="fade" onClick={onClose} aria-current={on ? 'page' : undefined}
+                    <Link key={sub.href} href={sub.href} data-vt="fade" data-tour-href={sub.href.split('?')[0]} onClick={onClose} aria-current={on ? 'page' : undefined}
                       className={cn('sidebar-item pill-host relative block text-[15px] py-1.5', on && 'active')}>
                       {on && <motion.span layoutId="sidebar-pill" transition={spring.snappy} className="sidebar-pill" />}
                       <span className="relative block truncate">{t(sub.label)}</span>
@@ -331,7 +332,7 @@ function NavItemComponent({
   if (item.href) {
     const on = isOn(pathname, item.href, item.also);
     return (
-      <Link href={item.href} data-vt="fade" onClick={onClose} aria-current={on ? 'page' : undefined}
+      <Link href={item.href} data-vt="fade" data-tour-href={item.href.split('?')[0]} onClick={onClose} aria-current={on ? 'page' : undefined}
         className={cn('sidebar-item pill-host relative block', on && 'active')}>
         {on && <motion.span layoutId="sidebar-pill" transition={spring.snappy} className="sidebar-pill" />}
         <div className="relative flex items-center gap-3">
