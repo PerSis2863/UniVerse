@@ -58,13 +58,13 @@ function PortfolioPage({ handle }: { handle: string }) {
                     <li key={pr.verifyUrl} className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] p-4">
                       <p className="font-semibold text-zinc-900 dark:text-white">{pr.title}</p>
                       <p className="text-sm text-zinc-600 dark:text-zinc-300">{pr.credentialTitle} · {pr.organization}</p>
-                      <p className="text-xs text-zinc-500 mt-1">{pr.hours} verified hours · <a href={pr.verifyUrl} className="text-indigo-500 hover:underline">Verify</a></p>
+                      <p className="text-xs text-zinc-500 mt-1">{pr.hours} verified hours · <a href={pr.verifyUrl} className="text-indigo-600 dark:text-indigo-300 underline underline-offset-2">Verify</a></p>
                     </li>
                   ))}
                 </ul>
               </section>
             )}
-            <p className="mt-6 text-center text-xs text-zinc-500">Employers: verify a certificate code at <Link href="/verify" className="text-indigo-500 hover:underline">/verify</Link></p>
+            <p className="mt-6 text-center text-xs text-zinc-500">Employers: verify a certificate code at <Link href="/verify" className="text-indigo-600 dark:text-indigo-300 underline underline-offset-2">/verify</Link></p>
           </>
         )}
       </div>

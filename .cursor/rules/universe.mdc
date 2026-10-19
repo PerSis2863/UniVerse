@@ -15,7 +15,7 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
 
 - The owner is not a developer: explain in plain words, short and concrete (what they can now do,
   what they need to do). No jargon without a one-line meaning.
-- Work through the plan's queue in order (next: **Q14**). **One commit per item**; push at
+- Work through the plan's queue in order (next: **Q15**; Q14 waits for the owner's "merge"). **One commit per item**; push at
   checkpoints. Each finished item gets a **Progress row** in `STAGE-5-PLAN.md` (what was built,
   where, how it was tested, what's not done) and a short note in `STAGE-5-HANDOFF.md` (traps, rules
   for code that builds on it, the next migration number). Mark the item's heading ✅.
@@ -64,7 +64,7 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
 
 ## Database changes
 
-Hand-written SQL in `apps/web/prisma/migrations/NNNN_name.sql` (**next: 0157**) plus
+Hand-written SQL in `apps/web/prisma/migrations/NNNN_name.sql` (**next: 0158**) plus
 `prisma/schema.prisma`; then, from `apps/web`:
 `PRISMA_GENERATE_SKIP_AUTOINSTALL=1 npx prisma generate`,
 `npx wrangler d1 migrations apply universe-db --local`, `node scripts/gen-owner-schema.mjs`.
@@ -105,5 +105,7 @@ Rules for using it here:
 - Attendance rows are stored at midnight UTC of the class day. D1 supports FTS5 and window functions.
 - KaTeX: import `katex/dist/katex.mjs` (plain `katex` may be the CommonJS copy that the chemistry
   extension doesn't extend).
+- In browser tests, mark the welcome tour as seen before loading a page (`localStorage` key
+  `universe-tour-done:<user id>`), or it covers the page and blocks clicks.
 - In browser tests, measure elements only after the calendar's days finish sliding in; phone tab
   bars can cover elements near the bottom (scroll them into the middle first).

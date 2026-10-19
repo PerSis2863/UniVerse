@@ -137,7 +137,7 @@ export default function SkillsPassportPage() {
                 ))}
               </div>
             </div>
-            <p className="text-[11px] leading-relaxed text-zinc-500">Your email, phone, grades and date of birth are never shown. Add skills in <Link href="/student/skills" className="text-indigo-500 hover:underline">My Skills</Link>; request credentials in <Link href="/student/credentials" className="text-indigo-500 hover:underline">Verified Credentials</Link>.</p>
+            <p className="text-[11px] leading-relaxed text-zinc-500">Your email, phone, grades and date of birth are never shown. Add skills in <Link href="/student/skills" className="text-indigo-600 dark:text-indigo-300 underline underline-offset-2">My Skills</Link>; request credentials in <Link href="/student/credentials" className="text-indigo-600 dark:text-indigo-300 underline underline-offset-2">Verified Credentials</Link>.</p>
           </section>
 
           {/* Stage 5 · Q14: a short address for the portfolio, its colour, and the CV builder. */}

@@ -13,12 +13,12 @@ Cursor's).
   timetable, and the AI tutor.
 - **The plan:** `apps/web/STAGE-5-PLAN.md`. Section 4 "Remaining work queue" lists every item in
   order, and the **Progress** table at the end says what's done, where the code is and what's left
-  for each item. **Next up: finish Q14 Skills passport and credentials** (browser test), then Q15 Careers, Q16 Global
+  for each item. **Next up: Q15 Careers** (Q14 is finished, see below), then Q16 Global
   impact, Q17 Student life, Q18 Onboarding and settings, Q19 Owner console, Q20 Chat bots, Q21
   Languages and right-to-left, Q22 leftovers, Q23 small items.
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: one note per item with the traps
   and the rules for code that builds on it.
-- **Q14 (skills passport) is built on branch `claude/funny-galileo-y4mz9r`, not merged yet**: its browser test is the next job (Progress row "Q14").
+- **Q14 (skills passport) is finished and tested on branch `claude/funny-galileo-y4mz9r`, not merged yet**: say "merge" to publish it (Progress row "Q14").
 - **Next database update number: `0158`** (files in `apps/web/prisma/migrations/`).
 
 **Waiting on the owner** (things only you can provide):

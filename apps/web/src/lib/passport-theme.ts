@@ -44,7 +44,7 @@ export function cleanPassportHandle(v: unknown): string | null | undefined {
   if (typeof v !== 'string') return undefined;
   const h = v.trim().toLowerCase();
   if (!h) return null;
-  if (!/^[a-z0-9]([a-z0-9-]{1,22}[a-z0-9])?$/.test(h)) return undefined;
+  if (!/^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/.test(h)) return undefined;
   if (RESERVED.has(h)) return undefined;
   return h;
 }

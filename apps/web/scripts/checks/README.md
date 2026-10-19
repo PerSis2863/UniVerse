@@ -49,6 +49,7 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `notes-ui.mjs` | Notes on hand-ins in the browser: words in a typed answer, a box on a PDF page, the student's view. |
 | `notify-ui.mjs` | Q9: notification settings (per kind, a muted course, the summary), the course on notifications, snooze hiding from the bell and the centre, mark read / all read, remove, the daily summary sent by the cron; the centre… |
 | `page-api.mjs` | Rich lesson pages on the local Worker: save, list, load, access, bad input. |
+| `passport-ui.mjs` | Q14 skills passport on the built Worker: the portfolio address (taken, too short, reserved refused) and colour, making it public, the wallet credential (signed, no internal id), Add to LinkedIn, Make my CV (look, contact, parts, AI without a key, Save as PDF), the public portfolio and passport link signed out, and /verify (a wallet file genuine, an edited one and random text not valid, a certificate code). Axe at 390/1280, light/dark. |
 | `peer-api.mjs` | Peer review on the local Worker. |
 | `peer-ui.mjs` | Peer review in the browser: the teacher's settings and "Hand out reviews", a student's review form, the reviews beside grading. 390 and 1280 px, light and dark, axe. |
 | `policy-api.mjs` | Late penalties, hand-in limits, extensions, reopening and accommodations on the local Worker. |

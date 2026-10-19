@@ -11,7 +11,7 @@ done, where the code is and what's left for each item. Keep that table up to dat
   checks used for every item are now in **`apps/web/scripts/checks/`** (index in its README), run
   against `pnpm local:serve`. **Next: Q14. Next migration: `0157`.**
 
-- **Q14 skills passport, 18 Oct (Progress row Q14):** on branch `claude/funny-galileo-y4mz9r`, **not merged**; **migration 0157**; **next migration: 0158**. First job: the browser test (see the row). Wallet credentials: always `signCredential` / `verifyCredential` (`src/server/vc-data-integrity.ts`): never hand-make a `proof`, never name a cryptosuite you didn't follow, and keep internal ids out of credentials.
+- **Q14 skills passport, 18–19 Oct (Progress row Q14): done and browser-tested** on branch `claude/funny-galileo-y4mz9r`, **not merged** (waiting for the owner's "merge"); **migration 0157**; **next migration: 0158**; **next item: Q15 Careers**. Re-run the test with `node scripts/checks/passport-ui.mjs` (it adds a passed quiz and one test credential for Alice and removes them; it marks the welcome tour as seen with the per-user key `universe-tour-done:<user id>`, as any new browser check must). Portfolio addresses: `cleanPassportHandle` (`src/lib/passport-theme.ts`) is the only rule (3–24 characters); the CV's accent is also its heading colour, so any new accent needs 4.5:1 on white. `/api/p/<handle>` is cached for 30 s, so a passport made private can still show for up to 30 s. Wallet credentials: always `signCredential` / `verifyCredential` (`src/server/vc-data-integrity.ts`): never hand-make a `proof`, never name a cryptosuite you didn't follow, and keep internal ids out of credentials.
 
 ## Earlier (14 Oct 2026)
 
