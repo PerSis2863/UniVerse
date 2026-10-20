@@ -15,7 +15,7 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
 
 - The owner is not a developer: explain in plain words, short and concrete (what they can now do,
   what they need to do). No jargon without a one-line meaning.
-- Work through the plan's queue in order (next: **Q22**). **One commit per item**; push at
+- Work through the plan's queue in order (next: **Q23**). **One commit per item**; push at
   checkpoints. Each finished item gets a **Progress row** in `STAGE-5-PLAN.md` (what was built,
   where, how it was tested, what's not done) and a short note in `STAGE-5-HANDOFF.md` (traps, rules
   for code that builds on it, the next migration number). Mark the item's heading ✅.
@@ -67,7 +67,7 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
 
 ## Database changes
 
-Hand-written SQL in `apps/web/prisma/migrations/NNNN_name.sql` (**next: 0165**) plus
+Hand-written SQL in `apps/web/prisma/migrations/NNNN_name.sql` (**next: 0167**) plus
 `prisma/schema.prisma`; then, from `apps/web`:
 `PRISMA_GENERATE_SKIP_AUTOINSTALL=1 npx prisma generate`,
 `npx wrangler d1 migrations apply universe-db --local`, `node scripts/gen-owner-schema.mjs`.
