@@ -27,7 +27,7 @@ type View = 'class' | 'concepts' | 'tags';
 interface Concept { id: string; name: string; description: string | null; parentId: string | null; position: number; tagged: number }
 interface ClassData {
   students: { id: string; name: string }[];
-  concepts: { id: string; name: string; parentId: string | null; cells: ({ level: number; n: number; band: Band } | null)[] }[];
+  concepts: { id: string; name: string; parentId: string | null; cells: ({ level: number; n: number; band: Band } | null)[]; asked?: number; askedBy?: number }[];
   reteach: { conceptId: string; name: string; average: number | null; students: number; struggling: number }[];
   untagged: boolean;
 }
@@ -77,6 +77,17 @@ function ClassView({ courseId, onTag }: { courseId: string; onTag: () => void })
           <ul className="mt-2 space-y-1.5">
             {data.reteach.map((r) => <li key={r.conceptId} className="text-sm text-zinc-800 dark:text-zinc-100"><span className="font-semibold">{r.name}</span> <span className="text-zinc-500">· class average {Math.round((r.average ?? 0) * 100)}%, {r.struggling} of {r.students} still learning</span></li>)}
           </ul>
+        </section>
+      )}
+      {data.concepts.some((c) => c.asked) && (
+        <section className={`${card} p-4`} aria-labelledby="asked-title">
+          <h2 id="asked-title" className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Asked the course tutor about (last 60 days)</h2>
+          <ul className="mt-2 space-y-1.5">
+            {[...data.concepts].filter((c) => c.asked).sort((a, b) => (b.asked ?? 0) - (a.asked ?? 0)).slice(0, 5).map((c) => (
+              <li key={c.id} className="text-sm text-zinc-800 dark:text-zinc-100"><span className="font-semibold">{c.name}</span> <span className="text-zinc-600 dark:text-zinc-400">· {c.asked} question{c.asked === 1 ? '' : 's'} from {c.askedBy} student{c.askedBy === 1 ? '' : 's'}</span></li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11px] text-zinc-600 dark:text-zinc-400">Counted for the class only, never who asked. Matched by the words in the question.</p>
         </section>
       )}
       <section className={`${card} p-2 sm:p-3 overflow-x-auto`} aria-label="Concepts by student">

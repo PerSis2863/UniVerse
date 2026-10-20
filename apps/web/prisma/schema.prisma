@@ -218,6 +218,7 @@ model User {
   announcementReads      AnnouncementRead[]
   courseStaff            CourseStaff[]           // courses I co-teach or assist in (Stage 5 · B2)
   aiUses                 AiUse[]                 // AI help I used (Stage 5 · D12)
+  conceptSignals         ConceptSignal[]         // flashcard reviews and tutor questions for the mastery map (Q22)
   wellbeingSettings      WellbeingSettings?      // wellbeing radar (Stage 5 · D13), opt-in
   wellbeingCheckins      WellbeingCheckin[]
   wellbeingAlerts        WellbeingAlert[]
@@ -585,6 +586,7 @@ model Course {
   feePlans          FeePlan[]
   pendingEnrolments PendingEnrolment[]
   concepts          CourseConcept[]
+  conceptSignals    ConceptSignal[]
   secondChances     SecondChance[]
   whisperQuestions  WhisperQuestion[]
   marketplacePacks   MarketplacePack[]
@@ -3050,6 +3052,8 @@ model StudyCard {
   stability   Float?
   difficulty  Float?
   lastReview  DateTime?
+  /// The course concept its words match (Stage 5 · Q22): its reviews count toward the mastery map
+  conceptId   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -4243,9 +4247,31 @@ model CourseConcept {
   position    Int             @default(0)
   createdAt   DateTime        @default(now())
   tags        ConceptTag[]
+  signals     ConceptSignal[]
 
   @@unique([courseId, name])
   @@map("course_concepts")
+}
+
+/// A signal for the mastery map that isn't a marked answer (Stage 5 · Q22): CARD, a flashcard review
+/// (outcome 0–1 the student gave themselves; one per card a day), or TUTOR, a question to the course
+/// tutor about the concept (no outcome; shown as "asked about it"). Matched by words (src/lib/concept-match.ts).
+model ConceptSignal {
+  id        String        @id @default(cuid())
+  courseId  String
+  course    Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  conceptId String
+  concept   CourseConcept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  kind      String
+  outcome   Float?
+  /// The card, for one review a day
+  refId     String?
+  createdAt DateTime      @default(now())
+
+  @@index([courseId, studentId])
+  @@map("concept_signals")
 }
 
 /// What tests a concept: kind QUESTION (a quiz question id), BANK (a question-bank item id) or

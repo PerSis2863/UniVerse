@@ -1298,6 +1298,18 @@
      "relationFields": []
     },
     {
+     "name": "conceptSignals",
+     "type": "ConceptSignal",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
      "name": "wellbeingSettings",
      "type": "WellbeingSettings",
      "kind": "object",
@@ -4650,6 +4662,18 @@
     {
      "name": "concepts",
      "type": "CourseConcept",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
+     "name": "conceptSignals",
+     "type": "ConceptSignal",
      "kind": "object",
      "list": true,
      "optional": false,
@@ -21283,6 +21307,17 @@
      "updatedAt": false
     },
     {
+     "name": "conceptId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "createdAt",
      "type": "DateTime",
      "kind": "scalar",
@@ -29520,6 +29555,155 @@
      "hasDefault": false,
      "updatedAt": false,
      "relationFields": []
+    },
+    {
+     "name": "signals",
+     "type": "ConceptSignal",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    }
+   ]
+  },
+  {
+   "name": "ConceptSignal",
+   "delegate": "conceptSignal",
+   "table": "concept_signals",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "courseId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "course",
+     "type": "Course",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "courseId"
+     ]
+    },
+    {
+     "name": "studentId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "student",
+     "type": "User",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "studentId"
+     ]
+    },
+    {
+     "name": "conceptId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "concept",
+     "type": "CourseConcept",
+     "kind": "object",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "conceptId"
+     ]
+    },
+    {
+     "name": "kind",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "outcome",
+     "type": "Float",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "refId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
     }
    ]
   },
