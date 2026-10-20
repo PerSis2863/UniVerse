@@ -92,19 +92,22 @@ export async function conceptAction(user: SessionUser, courseId: string, b: Reco
   }
 }
 
-/** What can be tagged in a course: quizzes' questions and assignments' rubric criteria, with their concepts. */
+/** What can be tagged in a course: quizzes' questions, the question bank (Q22) and assignments' rubric criteria, with their concepts. */
 export async function taggables(user: SessionUser, courseId: string) {
   await access(user, courseId, true);
-  const [quizzes, assignments, concepts] = await Promise.all([
+  const [quizzes, assignments, concepts, bank] = await Promise.all([
     prisma.quiz.findMany({ where: { courseId }, orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, title: true, questions: { orderBy: { order: 'asc' }, select: { id: true, question: true } } } }),
     prisma.assignment.findMany({ where: { courseId }, orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, title: true, rubric: true } }),
     prisma.courseConcept.findMany({ where: { courseId }, select: { id: true } }),
+    prisma.bankQuestion.findMany({ where: { courseId }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, question: true } }),
   ]);
-  const refs = [...quizzes.flatMap((q) => q.questions.map((x) => x.id)), ...assignments.flatMap((a) => parse<{ id: string }[]>(a.rubric, []).map((c) => `${a.id}:${c.id}`))];
+  const refs = [...quizzes.flatMap((q) => q.questions.map((x) => x.id)), ...bank.map((b) => b.id), ...assignments.flatMap((a) => parse<{ id: string }[]>(a.rubric, []).map((c) => `${a.id}:${c.id}`))];
   const tags = refs.length && concepts.length ? await prisma.conceptTag.findMany({ where: { conceptId: { in: concepts.map((c) => c.id) } }, select: { kind: true, refId: true, conceptId: true } }) : [];
   const of = (kind: TagKind, refId: string) => tags.filter((t) => t.kind === kind && t.refId === refId).map((t) => t.conceptId);
   return {
     quizzes: quizzes.map((q) => ({ id: q.id, title: q.title, items: q.questions.map((x) => ({ refId: x.id, text: x.question, concepts: of('QUESTION', x.id) })) })),
+    // Tags here go with a bank question into every quiz it's added to.
+    bank: bank.length ? [{ id: 'bank', title: 'Question bank', items: bank.map((b) => ({ refId: b.id, text: b.question, concepts: of('BANK', b.id) })) }] : [],
     assignments: assignments.map((a) => ({ id: a.id, title: a.title, items: parse<{ id: string; criterion: string; points: number }[]>(a.rubric, []).map((c) => ({ refId: `${a.id}:${c.id}`, text: c.criterion, concepts: of('CRITERION', `${a.id}:${c.id}`) })) })),
   };
 }

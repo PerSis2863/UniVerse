@@ -83,6 +83,14 @@ export async function POST(req: Request, ctx: Ctx) {
       for (const part of groups(ordered.map((p, i) => ({ quizId: quiz.id, question: p.question, options: p.options as string[], correctAnswer: p.correctAnswer, points: p.points, order: start + i, type: p.type, meta: p.meta, pool: pool || null })), 9)) {
         await prisma.quizQuestion.createMany({ data: part });
       }
+      // The concepts a bank question tests go with it (the mastery map counts the quiz's answers).
+      const bankTags = await prisma.conceptTag.findMany({ where: { kind: 'BANK', refId: { in: ordered.map((p) => p.id) } }, select: { conceptId: true, refId: true } });
+      if (bankTags.length) {
+        const made = await prisma.quizQuestion.findMany({ where: { quizId: quiz.id, order: { gte: start } }, select: { id: true, order: true } });
+        const byOrder = new Map(made.map((m) => [m.order, m.id]));
+        const rows = ordered.flatMap((p, i) => bankTags.filter((t) => t.refId === p.id).map((t) => ({ conceptId: t.conceptId, kind: 'QUESTION', refId: byOrder.get(start + i) ?? '' }))).filter((r) => r.refId);
+        if (rows.length) await prisma.conceptTag.createMany({ data: rows });
+      }
       return NextResponse.json({ added: ordered.length });
     }
     case 'save-from-quiz': {

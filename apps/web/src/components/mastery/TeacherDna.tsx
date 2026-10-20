@@ -228,7 +228,7 @@ interface Taggable { id: string; title: string; items: { refId: string; text: st
 
 function TagsView({ courseId, concepts, onChanged }: { courseId: string; concepts: Concept[]; onChanged: () => void }) {
   const key = `/api/courses/${courseId}/concepts/tags`;
-  const { data, error, mutate } = useSWR<{ quizzes: Taggable[]; assignments: Taggable[] }>(key, authedJson);
+  const { data, error, mutate } = useSWR<{ quizzes: Taggable[]; assignments: Taggable[]; bank?: Taggable[] }>(key, authedJson);
   const [busy, setBusy] = useState<string | null>(null);
   if (error && !data) return <LoadError onRetry={() => mutate()} />;
   if (!data) return <ContentSkeleton variant="list" />;
@@ -247,14 +247,14 @@ function TagsView({ courseId, concepts, onChanged }: { courseId: string; concept
       await save(r.items, `${r.items.length} tagged by the AI: check them below`, `ai-${id}`);
     } catch (e) { toast.error(errorMessage(e, 'Couldn’t suggest tags.')); setBusy(null); }
   };
-  const group = (kind: 'QUESTION' | 'CRITERION', title: string, list_: Taggable[]) => list_.length > 0 && (
+  const group = (kind: 'QUESTION' | 'CRITERION' | 'BANK', title: string, list_: Taggable[]) => list_.length > 0 && (
     <section className="space-y-3" aria-label={title}>
       <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{title}</h2>
       {list_.map((g) => (
         <div key={g.id} className={`${card} p-3 space-y-2`}>
           <div className="flex items-center justify-between gap-2">
             <p className="font-semibold text-zinc-900 dark:text-white text-sm truncate">{g.title}</p>
-            {g.items.length > 0 && <button type="button" disabled={!!busy} onClick={() => void suggest(kind, g.id)} className="btn-ghost btn-sm shrink-0">{busy === `ai-${g.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />} Suggest</button>}
+            {g.items.length > 0 && kind !== 'BANK' && <button type="button" disabled={!!busy} onClick={() => void suggest(kind, g.id)} className="btn-ghost btn-sm shrink-0">{busy === `ai-${g.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />} Suggest</button>}
           </div>
           {g.items.length === 0 ? <p className="text-xs text-zinc-500">{kind === 'QUESTION' ? 'No questions.' : 'No rubric.'}</p> : (
             <ul className="divide-y divide-zinc-200/70 dark:divide-white/[0.06]">
@@ -280,12 +280,13 @@ function TagsView({ courseId, concepts, onChanged }: { courseId: string; concept
       ))}
     </section>
   );
-  if (!data.quizzes.length && !data.assignments.length) return <p className={`${card} p-8 text-center text-sm text-zinc-500`}>This course has no quizzes or assignments to tag yet.</p>;
+  if (!data.quizzes.length && !data.assignments.length && !data.bank?.length) return <p className={`${card} p-8 text-center text-sm text-zinc-500`}>This course has no quizzes or assignments to tag yet.</p>;
   return (
     <div className="space-y-5">
       <p className="text-sm text-zinc-600 dark:text-zinc-300">Tap the concepts each question or rubric criterion tests. Students’ past answers count straight away.</p>
       {group('QUESTION', 'Quizzes', data.quizzes)}
       {group('CRITERION', 'Assignment rubrics', data.assignments)}
+      {group('BANK', 'Question bank (tags go with a question into every quiz)', data.bank ?? [])}
     </div>
   );
 }
