@@ -223,17 +223,18 @@ export async function listMarketplacePacks(filters: {
   const offset = filters.offset || 0;
 
   const [packs, total] = await Promise.all([
+    // Public: never the author's email or the pack's content (lesson text and links).
     prisma.marketplacePack.findMany({
       where,
       orderBy,
       take: limit,
       skip: offset,
+      omit: { modulesData: true },
       include: {
         author: {
           select: {
             id: true,
             name: true,
-            email: true,
           },
         },
       },
@@ -248,13 +249,13 @@ export async function getMarketplacePack(idOrSlug: string) {
   const pack = await prisma.marketplacePack.findFirst({
     where: {
       OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      status: 'PUBLISHED',
     },
     include: {
       author: {
         select: {
           id: true,
           name: true,
-          email: true,
         },
       },
       reviews: {
@@ -281,9 +282,12 @@ export async function getMarketplacePack(idOrSlug: string) {
     parsedModules = [];
   }
 
+  // A preview only (public, and before anyone pays): module and item titles, no lesson text or links.
+  const { modulesData: _content, ...rest } = pack;
+  void _content;
   return {
-    ...pack,
-    modules: parsedModules,
+    ...rest,
+    modules: parsedModules.map((m) => ({ title: m.title, summary: m.summary ?? null, position: m.position, items: (m.items ?? []).map((i) => ({ title: i.title, kind: i.kind, position: i.position })) })),
   };
 }
 
@@ -350,8 +354,12 @@ export async function importPackIntoCourse(params: {
     prisma.course.findUnique({ where: { id: params.targetCourseId } }),
   ]);
 
-  if (!pack) throw new NotFoundException('Marketplace pack not found.');
+  if (!pack || pack.status !== 'PUBLISHED') throw new NotFoundException('Marketplace pack not found.');
   if (!course) throw new NotFoundException('Target course not found.');
+  // There is no way to pay for a pack yet, so a paid one is only for its author until buying exists.
+  if (pack.priceMinor > 0 && pack.authorId !== params.userId) {
+    throw new ForbiddenException('Paid packs can’t be imported yet: buying packs isn’t available.');
+  }
 
   // Access check: only teacher of course or admin can import modules
   if (params.userRole !== 'ADMIN' && course.teacherId !== params.userId && !(await teaches(course.id, params.userId, ['CO_TEACHER']))) {

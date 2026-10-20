@@ -744,7 +744,7 @@ export function MarketplaceCatalog() {
                   {inspectedPack.title}
                 </h3>
                 <p className="text-xs text-zinc-500">
-                  Author: <span className="font-semibold text-zinc-700 dark:text-zinc-300">{inspectedPack.author?.name}</span> ({inspectedPack.author?.email}) · Estimated {inspectedPack.estimatedHours} hours
+                  Author: <span className="font-semibold text-zinc-700 dark:text-zinc-300">{inspectedPack.author?.name}</span> · Estimated {inspectedPack.estimatedHours} hours
                 </p>
               </div>
               <button

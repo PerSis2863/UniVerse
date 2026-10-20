@@ -152,6 +152,8 @@ describe('Stage 5 · C7: Content Marketplace', () => {
     it('enforces instructor or admin permission on target course', async () => {
       vi.mocked(prisma.marketplacePack.findUnique).mockResolvedValueOnce({
         id: 'pack-1',
+        status: 'PUBLISHED',
+        priceMinor: 0,
         modulesData: '[]',
       } as never);
       vi.mocked(prisma.course.findUnique).mockResolvedValueOnce({
@@ -169,6 +171,20 @@ describe('Stage 5 · C7: Content Marketplace', () => {
       ).rejects.toThrow('Only course instructors or administrators can import lesson packs.');
     });
 
+    it('refuses a paid pack to anyone but its author (buying packs does not exist yet)', async () => {
+      const paid = { id: 'pack-2', status: 'PUBLISHED', priceMinor: 49900, authorId: 'author-1', modulesData: '[]' };
+      vi.mocked(prisma.marketplacePack.findUnique).mockResolvedValueOnce(paid as never);
+      vi.mocked(prisma.course.findUnique).mockResolvedValueOnce({ id: 'crs-1', teacherId: 'teacher-1' } as never);
+      await expect(importPackIntoCourse({ packId: 'pack-2', targetCourseId: 'crs-1', userId: 'teacher-1', userRole: 'TEACHER', paymentOrderId: 'made-up' }))
+        .rejects.toThrow('Paid packs can’t be imported yet');
+    });
+
+    it('hides packs that are not published', async () => {
+      vi.mocked(prisma.marketplacePack.findUnique).mockResolvedValueOnce({ id: 'pack-3', status: 'HIDDEN', priceMinor: 0, modulesData: '[]' } as never);
+      vi.mocked(prisma.course.findUnique).mockResolvedValueOnce({ id: 'crs-1', teacherId: 'teacher-1' } as never);
+      await expect(importPackIntoCourse({ packId: 'pack-3', targetCourseId: 'crs-1', userId: 'teacher-1', userRole: 'TEACHER' })).rejects.toThrow('Marketplace pack not found.');
+    });
+
     it('deep-copies modules and items and increments download counter', async () => {
       const sampleModules = [
         {
@@ -184,6 +200,8 @@ describe('Stage 5 · C7: Content Marketplace', () => {
 
       vi.mocked(prisma.marketplacePack.findUnique).mockResolvedValueOnce({
         id: 'pack-1',
+        status: 'PUBLISHED',
+        priceMinor: 0,
         modulesData: JSON.stringify(sampleModules),
       } as never);
       vi.mocked(prisma.course.findUnique).mockResolvedValueOnce({
