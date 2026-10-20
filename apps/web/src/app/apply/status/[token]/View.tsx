@@ -6,7 +6,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
 import { format } from 'date-fns';
-import { Check, CheckCircle2, Clock, Loader2, MessageSquareText, Printer, X } from 'lucide-react';
+import { Check, CheckCircle2, Clock, FileDown, Loader2, MessageSquareText, Printer, X } from 'lucide-react';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog } from '@/components/ui/Dialogs';
@@ -30,6 +30,17 @@ function ApplicationStatusPage({ token }: { token: string }) {
   const { data, error, mutate } = useSWR<Status>(key, getJson, { refreshInterval: 120_000 });
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+
+  // The offer letter as a PDF file (Stage 5 · Q22), made on this device.
+  const downloadOffer = async () => {
+    if (!data?.offer) return;
+    setBusy('pdf');
+    try {
+      const { offerLetterPdf, saveBlob } = await import('@/components/admissions/offer-pdf');
+      saveBlob(await offerLetterPdf({ school: data.school, student: data.studentName, letter: data.offer.letter, ref: data.ref, expiresAt: data.stage === 'OFFERED' ? data.offer.expiresAt : null, date: data.offer.sentAt ? new Date(data.offer.sentAt) : undefined }), `Offer letter - ${data.studentName}.pdf`);
+    } catch { setProblem('Couldn’t make the PDF. Use Print instead.'); }
+    finally { setBusy(null); }
+  };
 
   const act = async (action: 'accept' | 'decline' | 'withdraw') => {
     const text = action === 'accept' ? { title: 'Accept the offer?', message: 'The school will then complete the enrolment.', confirmLabel: 'Accept offer' }
@@ -80,7 +91,10 @@ function ApplicationStatusPage({ token }: { token: string }) {
               <section className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 p-5 sm:p-8 print:border-0 print:bg-white print:text-black" aria-labelledby="offer-title">
                 <div className="flex items-center justify-between gap-3">
                   <h2 id="offer-title" className="font-bold text-zinc-900 dark:text-white print:text-black">Offer letter</h2>
-                  <button type="button" onClick={() => window.print()} className="btn-ghost btn-sm print:hidden"><Printer className="w-4 h-4" /> Print</button>
+                  <span className="flex gap-1 print:hidden">
+                    <button type="button" onClick={() => void downloadOffer()} className="btn-ghost btn-sm"><FileDown className="w-4 h-4" /> PDF</button>
+                    <button type="button" onClick={() => window.print()} className="btn-ghost btn-sm"><Printer className="w-4 h-4" /> Print</button>
+                  </span>
                 </div>
                 <p className="mt-4 text-sm leading-relaxed text-zinc-800 dark:text-zinc-100 whitespace-pre-wrap print:text-black">{data.offer.letter}</p>
                 {data.offer.expiresAt && data.stage === 'OFFERED' && <p className="mt-4 text-xs text-zinc-500 print:text-black">Please answer by {format(new Date(data.offer.expiresAt), 'd MMMM yyyy')}.</p>}

@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { FileText, GraduationCap, Loader2, Mail, MessageSquareText, Paperclip, Phone, Send, Star, StickyNote } from 'lucide-react';
+import { FileDown, FileText, GraduationCap, Loader2, Mail, MessageSquareText, Paperclip, Phone, Send, Star, StickyNote } from 'lucide-react';
 import { Sheet } from '@/components/ui/Sheet';
 import { Field } from '@/components/ui/Field';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
@@ -179,11 +179,22 @@ function Score({ mine, busy, onSave }: { mine: { score: number; comment: string 
 function OfferForm({ a, school, busy, onSend }: { a: Detail; school: string; busy: boolean; onSend: (letter: string, expiresAt: string) => void }) {
   const [letter, setLetter] = useState(() => a.offerLetter ?? fillLetter(a.round.offerTemplate ?? '', { student: a.studentName, contact: a.contactName, round: a.round.title, school, date: format(new Date(), 'd MMMM yyyy') }));
   const [expiresAt, setExpiresAt] = useState(a.offerExpiresAt?.slice(0, 10) ?? '');
+  const [making, setMaking] = useState(false);
+  // The letter as a PDF file to print, post or attach (Stage 5 · Q22).
+  const pdf = async () => {
+    setMaking(true);
+    try {
+      const { offerLetterPdf, saveBlob } = await import('./offer-pdf');
+      saveBlob(await offerLetterPdf({ school, student: a.studentName, letter, ref: a.ref, expiresAt: expiresAt || null }), `Offer letter - ${a.studentName}.pdf`);
+    } catch (e) { toast.error((e as Error).message || 'Couldn’t make the PDF.'); }
+    finally { setMaking(false); }
+  };
   return (
     <motion.div variants={fadeUp} initial="hidden" animate="show" className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] p-3 space-y-3">
       <Field label="Offer letter" count={letter.length} max={8000}>{(p) => <textarea {...p} rows={10} maxLength={8000} value={letter} onChange={(e) => setLetter(e.target.value)} className="input text-sm" />}</Field>
       <Field label="Answer by (optional)">{(p) => <input {...p} type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} className="input" />}</Field>
       <button type="button" disabled={busy || !letter.trim()} onClick={() => onSend(letter, expiresAt)} className="btn-primary w-full">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Make the offer</button>
+      <button type="button" disabled={making || !letter.trim()} onClick={() => void pdf()} className="btn-secondary w-full">{making ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} Download as PDF</button>
       <p className="text-[11px] text-zinc-500">The family sees it on their application page with Accept and Decline. No email is sent: you may want to call them.</p>
     </motion.div>
   );
