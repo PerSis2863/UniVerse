@@ -24,6 +24,7 @@ export const SETTINGS: SettingEntry[] = [
   { id: 'dyslexic', section: 'appearance', label: 'Dyslexia-friendly font', keywords: 'opendyslexic reading' },
   { id: 'underline', section: 'appearance', label: 'Underline links', keywords: 'links underlined' },
   { id: 'captions', section: 'appearance', label: 'Captions on in calls', keywords: 'subtitles deaf hearing' },
+  { id: 'camera-off', section: 'appearance', label: 'Join calls with the camera off', keywords: 'video webcam privacy start' },
   { id: 'language', section: 'language', label: 'Language', keywords: 'translate english hindi french spanish' },
   { id: 'low-data', section: 'language', label: 'Low data mode', keywords: 'data saver slow connection 2g' },
   { id: 'push', section: 'notifications', label: 'Notifications on this device', keywords: 'push allow alerts phone' },

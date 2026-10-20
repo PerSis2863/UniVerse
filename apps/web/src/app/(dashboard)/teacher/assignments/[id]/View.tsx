@@ -7,7 +7,7 @@ import useSWR from 'swr';
 import Link from '@/components/ui/Link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Copy, Loader2, Lock, PenLine, Send, Sparkles, Trash2, Unlock } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, BellRing, CheckCircle2, Copy, CopyPlus, Link2, Loader2, Lock, PenLine, Send, Sparkles, Trash2, Unlock } from 'lucide-react';
 import { FeedbackRecorder } from '@/components/assignments/FeedbackRecorder';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
@@ -94,6 +94,27 @@ const graded = (s: Submission) => s.status === 'RETURNED' || s.status === 'REOPE
 
 function TeacherAssignmentPage({ id }: { id: string }) {
   const router = useRouter();
+  const [reminding, setReminding] = useState(false);
+  // Stage 5 · Q23: copy the students' link, remind who hasn't handed in, duplicate.
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText(`${window.location.origin}/student/assignments/${id}`); toast.success('Link copied', { description: 'Students open it in UniVerse.' }); }
+    catch { toast.error('Couldn’t copy the link.'); }
+  };
+  const remind = async () => {
+    setReminding(true);
+    try {
+      const r = await authedJson<{ reminded: number; late?: boolean }>(`/api/assignments/${id}/remind`, { method: 'POST' });
+      toast.success(r.reminded ? `${r.reminded} student${r.reminded === 1 ? '' : 's'} reminded${r.late ? ' (it’s late)' : ''}` : 'Everyone has handed it in');
+    } catch (e) { toast.error((e as Error).message || 'Couldn’t send the reminders.'); }
+    finally { setReminding(false); }
+  };
+  const duplicate = async () => {
+    try {
+      const r = await authedJson<{ id: string }>(`/api/assignments/${id}/duplicate`, { method: 'POST' });
+      toast.success('Copy made', { description: 'Set its due date, then share it.' });
+      router.push(`/teacher/assignments/${r.id}`);
+    } catch (e) { toast.error((e as Error).message || 'Couldn’t make a copy.'); }
+  };
   const { data, isLoading, error, mutate } = useSWR<Detail>(`/api/assignments/${id}`, authedJson);
   const [selected, setSelected] = useState<string | null>(null);
   const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
@@ -200,7 +221,11 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                 {bulk ? <><Loader2 className="w-4 h-4 animate-spin" /> Drafting {bulk.done}/{bulk.total}</> : <><Sparkles className="w-4 h-4" /> Draft {waiting.length} with AI</>}
               </button>
             )}
+            {data && <button type="button" className="btn-ghost" onClick={() => void copyLink()} aria-label="Copy the link for students"><Link2 className="w-4 h-4" /> <span className="hidden sm:inline">Copy link</span></button>}
             {data?.canManage !== false && <>
+              {/* One tap: the students who haven't handed it in hear in the app (Stage 5 · Q23). */}
+              {data && subs.length < data.enrolled && <button type="button" className="btn-secondary" onClick={() => void remind()} disabled={reminding}>{reminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellRing className="w-4 h-4" />} Remind {data.enrolled - subs.length}</button>}
+              {data && <button type="button" className="btn-ghost" onClick={() => void duplicate()} aria-label="Duplicate the assignment"><CopyPlus className="w-4 h-4" /> <span className="hidden sm:inline">Duplicate</span></button>}
               {data && <button type="button" className="btn-secondary" onClick={toggleOpen}>{data.status === 'OPEN' ? <><Lock className="w-4 h-4" /> Close</> : <><Unlock className="w-4 h-4" /> Reopen</>}</button>}
               <button type="button" className="btn-ghost text-rose-500" onClick={remove} aria-label="Delete assignment"><Trash2 className="w-4 h-4" /></button>
             </>}

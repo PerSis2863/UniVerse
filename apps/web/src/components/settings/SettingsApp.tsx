@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Accessibility, Bell, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, ImagePlus, Link2, Loader2, LogOut, Moon, Palette, Plus, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, X, Bold, Contrast, Type, Underline, Captions, type LucideIcon, TextSelect } from 'lucide-react';
+import { Accessibility, Bell, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, ImagePlus, Link2, Loader2, LogOut, Moon, Palette, Plus, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, X, Bold, Contrast, Type, Underline, Captions, VideoOff, type LucideIcon, TextSelect } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { Switch } from '@/components/ui/Switch';
@@ -20,7 +20,7 @@ import { LANGUAGES, type Language } from '@/lib/i18n';
 import { useLanguageStore } from '@/store/language';
 import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
-import { appReduceMotion, captionsByDefault, hapticsOn, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCaptionsByDefault, setHaptics, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, textSize, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
+import { appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, textSize, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import useSWR from 'swr';
@@ -432,6 +432,7 @@ function Appearance() {
   const [haptics, setHap] = useState(() => typeof window === 'undefined' || hapticsOn());
   const [aids, setAids] = useState<Record<ReadingAid, boolean>>(() => ({ bold: readingAid('bold'), contrast: readingAid('contrast'), dyslexic: readingAid('dyslexic'), underline: readingAid('underline') }));
   const [cc, setCc] = useState(captionsByDefault);
+  const [camOff, setCamOff] = useState(() => typeof window !== 'undefined' && cameraOffByDefault());
   const [level, setLevel] = useState<ReadingLevelPref>(() => (typeof window === 'undefined' ? 'original' : readingLevel()));
   const [selHelp, setSelHelp] = useState(() => typeof window !== 'undefined' && selectHelp());
   const pickTheme = (v: Theme, e: React.MouseEvent) => { setTheme(v); applyTheme(v, { from: { x: e.clientX, y: e.clientY } }); };
@@ -463,6 +464,9 @@ function Appearance() {
       ))}
       <Row setting="captions" icon={Captions} title="Captions on in calls" desc="Calls start with live captions showing (you can still turn them off in a call).">
         <Switch checked={cc} label="Captions on in calls" onChange={(on) => { setCc(on); setCaptionsByDefault(on); }} />
+      </Row>
+      <Row setting="camera-off" icon={VideoOff} title="Join calls with the camera off" desc="Video calls start with your camera off; turn it on in the call when you’re ready.">
+        <Switch checked={camOff} label="Join calls with the camera off" onChange={(on) => { setCamOff(on); setCameraOffByDefault(on); }} />
       </Row>
     </Card>
   );

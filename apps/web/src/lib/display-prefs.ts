@@ -40,6 +40,9 @@ export function setReadingAid(a: ReadingAid, on: boolean) {
 }
 export const captionsByDefault = () => get('uv-captions') === '1';
 export const setCaptionsByDefault = (on: boolean) => set('uv-captions', on ? '1' : null);
+/** Video calls start with my camera off (Stage 5 · Q23); I can turn it on in the call. */
+export const cameraOffByDefault = () => get('uv-cam-off') === '1';
+export const setCameraOffByDefault = (on: boolean) => set('uv-cam-off', on ? '1' : null);
 
 /**
  * Reading level that course materials and assignment instructions open at (Stage 5 · D9): as

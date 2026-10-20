@@ -2089,6 +2089,16 @@ export class CallRoom extends DurableObject<Env> {
       else q.hidden = true;
       await this.ctx.storage.put('qa', items);
       this.qaTell(true);
+    } else if (action === 'end-all') {
+      // The host ends the call for everyone (Stage 5 · Q23): each device hears so and leaves.
+      if (!me.host) return;
+      for (const p of all) {
+        if (p.ws === ws) continue;
+        this.send(p.ws, { type: 'ended', by });
+        p.ws.serializeAttachment(null);
+        try { p.ws.close(4002, 'The host ended the call'); } catch { /* already closed */ }
+      }
+      for (const w of this.waitingRoom()) { this.send(w.ws, { type: 'ended', by }); try { w.ws.close(4002, 'The host ended the call'); } catch { /* already closed */ } }
     } else if (action === 'remove') {
       // Not the host, and a co-host only by the host. Every device of theirs leaves, and they can't
       // come back into this call for a few hours.

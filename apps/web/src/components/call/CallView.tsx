@@ -8,7 +8,7 @@ import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersH
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { AUDIO_2G_BPS, AUDIO_BPS, useLowData } from '@/store/low-data';
-import { captionsByDefault } from '@/lib/display-prefs';
+import { cameraOffByDefault, captionsByDefault } from '@/lib/display-prefs';
 import { authedJson } from '@/lib/authed-fetch';
 import { ringback } from '@/lib/call-sounds';
 import { CallRecorder, canRecord, uploadRecording, type RecSource } from '@/lib/call-recorder';
@@ -332,6 +332,40 @@ function ScreenStage({ stream, name }: { stream: MediaStream | null; name: strin
   );
 }
 
+/**
+ * Talking while muted (Stage 5 · Q23): while my microphone is muted, a copy of it is listened to on
+ * this device only (nothing is sent anywhere) and, after about a second of speech, `onTalk` runs; at
+ * most every 20 seconds. The copy stops as soon as I unmute or leave.
+ */
+function useTalkingWhileMuted(mic: { current: MediaStreamTrack | null }, muted: boolean, live: boolean, onTalk: () => void) {
+  const cb = useRef(onTalk);
+  useEffect(() => { cb.current = onTalk; });
+  useEffect(() => {
+    const raw = mic.current;
+    if (!raw || !muted || !live || raw.readyState !== 'live') return;
+    let ctx: AudioContext;
+    const copy = raw.clone();
+    copy.enabled = true;
+    try { ctx = new AudioContext(); } catch { copy.stop(); return; }
+    const src = ctx.createMediaStreamSource(new MediaStream([copy]));
+    const an = ctx.createAnalyser();
+    an.fftSize = 1024;
+    src.connect(an);
+    const buf = new Float32Array(an.fftSize);
+    let loud = 0, last = 0;
+    const timer = setInterval(() => {
+      an.getFloatTimeDomainData(buf);
+      let sum = 0;
+      for (const v of buf) sum += v * v;
+      const rms = Math.sqrt(sum / buf.length);
+      loud = rms > 0.035 ? loud + 1 : Math.max(0, loud - 1);
+      if (loud >= 6 && Date.now() - last > 20_000) { last = Date.now(); loud = 0; cb.current(); }
+    }, 150);
+    void ctx.resume().catch(() => {});
+    return () => { clearInterval(timer); src.disconnect(); copy.stop(); void ctx.close().catch(() => {}); };
+  }, [mic, muted, live]);
+}
+
 /** A live microphone level bar (no re-renders: the bar is moved directly). */
 function MicMeter({ stream, muted }: { stream: MediaStream | null; muted: boolean }) {
   const bar = useRef<HTMLSpanElement>(null);
@@ -453,6 +487,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [myPeerId, setMyPeerId] = useState<string | null>(null);
   const [meHost, setMeHost] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [mutedTalk, setMutedTalk] = useState(false);
   const [meCohost, setMeCohost] = useState(false);
   const [spotlight, setSpotlightState] = useState<string | null>(null);
   const spotlightRef = useRef<string | null>(null);
@@ -605,6 +641,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   // The cleaned microphone (noise suppression) and how to stop it.
   const micClean = useRef<CleanMic | null>(null);
   const rawMic = useRef<MediaStreamTrack | null>(null);
+  // "You're muted" when I talk while muted (Stage 5 · Q23); it goes after a few seconds.
+  useTalkingWhileMuted(rawMic, muted, phase === 'live', () => { setMutedTalk(true); setTimeout(() => setMutedTalk(false), 4000); });
 
   const send = (msg: unknown) => { if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify(msg)); };
   const announce = () => {
@@ -1203,8 +1241,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         setLocal(localRef.current);
       } else if (!localRef.current) {
         try {
-          // Voice calls start with the camera off (it can be turned on during the call).
-          const video = t.kind === 'video' && !twoGRef.current ? cameraConstraints() : false;
+          // Voice calls start with the camera off (it can be turned on during the call), and so do
+          // video calls for someone who chose that in Settings (Stage 5 · Q23).
+          const video = t.kind === 'video' && !twoGRef.current && !cameraOffByDefault() ? cameraConstraints() : false;
           const opened = await openMedia(video, noiseMode());
           if (cancelled) { opened.getTracks().forEach((x) => x.stop()); return; }
           // What's sent: the microphone through noise suppression, and the camera.
@@ -1408,6 +1447,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           }
         } else if (msg.type === 'removed') {
           finish(`${msg.by || 'The host'} removed you from the call`);
+        } else if (msg.type === 'ended') {
+          finish(`${msg.by || 'The host'} ended the call for everyone`);
         } else if (msg.type === 'role') {
           if (msg.peerId === myId.current) {
             setMeCohost(msg.cohost === true);
@@ -1783,6 +1824,17 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   };
   /** Host controls, sent through the call room (it checks I'm allowed). */
   const control = (action: ControlAction, target?: string | null, on?: boolean) => send({ type: 'control', action, target: target ?? null, on: on === true });
+  /** Leaving: a host with others still in is asked whether to end the call for everyone (Stage 5 · Q23). */
+  const leave = async () => {
+    if (meHost && Object.keys(remotesRef.current).length > 0) { setLeaving(true); return; }
+    finish();
+  };
+  const endForAll = async () => {
+    setLeaving(false);
+    control('end-all');
+    await new Promise((r) => setTimeout(r, 150)); // the room hears it before this device goes
+    finish();
+  };
 
   /** Sends this video (camera, screen or nothing) to everyone, without renegotiating. */
   const replaceVideo = async (track: MediaStreamTrack | null, isScreen = false) => {
@@ -2554,6 +2606,24 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         </div>
       </div>
 
+      {mutedTalk && muted && phase === 'live' && (
+        <div role="status" className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-full bg-zinc-900/95 border border-white/15 ps-4 pe-1.5 py-1.5 shadow-2xl text-sm">
+          <MicOff className="w-4 h-4 text-rose-400" aria-hidden /> You’re muted
+          <button type="button" onClick={() => { setMutedTalk(false); toggleMute(); }} className="rounded-full bg-white text-zinc-900 px-3 py-1 font-semibold">Unmute</button>
+        </div>
+      )}
+      {leaving && (
+        // The host leaving (Stage 5 · Q23): end it for everyone, or leave the others to carry on.
+        <div role="dialog" aria-modal="true" aria-labelledby="leave-call-title" className="absolute inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4" onClick={(e) => e.target === e.currentTarget && setLeaving(false)}>
+          <div className="w-full max-w-sm rounded-3xl bg-[#121830] border border-white/10 p-5 space-y-3 shadow-2xl">
+            <h2 id="leave-call-title" className="text-lg font-semibold">Leave the call?</h2>
+            <p className="text-sm text-zinc-300">You can end it for everyone, or leave and let the others carry on.</p>
+            <button type="button" onClick={() => void endForAll()} className="w-full rounded-full bg-rose-600 hover:bg-rose-500 px-4 py-2.5 font-semibold">End for everyone</button>
+            <button type="button" onClick={() => { setLeaving(false); finish(); }} className="w-full rounded-full bg-white/10 hover:bg-white/20 px-4 py-2.5 font-semibold">Just leave</button>
+            <button type="button" onClick={() => setLeaving(false)} autoFocus className="w-full rounded-full px-4 py-2 text-sm text-zinc-300 hover:text-white">Stay</button>
+          </div>
+        </div>
+      )}
       <motion.footer initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ ...spring.smooth, delay: 0.05 }} className="px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-3 flex items-center justify-center">
         <div className="flex items-center gap-2 sm:gap-3 rounded-full bg-white/[0.06] backdrop-blur-xl border border-white/10 px-3 py-2.5 shadow-2xl max-w-full overflow-x-auto">
           {phase !== 'error' && phase !== 'ended' && (
@@ -2599,7 +2669,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               )}
             </>
           )}
-          <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => finish()} aria-label="Leave call" className={cn(btn, 'shrink-0 bg-rose-600 hover:bg-rose-500')}><PhoneOff /></motion.button>
+          <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => void leave()} aria-label="Leave call" className={cn(btn, 'shrink-0 bg-rose-600 hover:bg-rose-500')}><PhoneOff /></motion.button>
         </div>
       </motion.footer>
       <FloatingReactions items={floats} />
