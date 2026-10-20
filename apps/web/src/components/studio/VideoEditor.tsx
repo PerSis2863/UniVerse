@@ -422,7 +422,18 @@ export function VideoEditor({ files, onClose }: { files: File[]; onClose: () => 
       recorder.current = null;
       setExporting(null);
       if (job.cancelled || !parts.length) return;
-      download(new Blob(parts, { type: fmt.type.split(';')[0] }), `${name || 'video'}.${fmt.ext}`);
+      const made = new Blob(parts, { type: fmt.type.split(';')[0] });
+      const file = name || 'video';
+      // A browser that records only WebM (Stage 5 · Q22): turned into MP4, which plays everywhere, when it can.
+      if (fmt.ext === 'webm') {
+        const t = toast.loading('Making it an MP4…');
+        void import('@/components/docs/convert-engine').then((m) => m.convertMedia(made, `${file}.webm`, 'mp4'))
+          .then((mp4) => { download(mp4, `${file}.mp4`); toast.success('Your video is ready (MP4).', { id: t }); })
+          .catch(() => { download(made, `${file}.webm`); toast.success('Your video is ready (WebM: this browser can’t make MP4).', { id: t }); });
+        setDirty(false);
+        return;
+      }
+      download(made, `${file}.${fmt.ext}`);
       setDirty(false);
       toast.success('Your video is ready.');
     };

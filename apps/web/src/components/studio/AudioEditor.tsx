@@ -227,6 +227,17 @@ export function AudioEditor({ file, onClose }: { file: File | null; onClose: () 
     download(new Blob([encodeWav(out, voice ? 22050 : RATE)], { type: 'audio/wav' }), `${name}${voice ? '-voice' : ''}.wav`);
     setDirty(false);
   };
+  // MP3 (Stage 5 · Q22): about a tenth of the WAV's size, plays everywhere; made in this browser.
+  const saveMp3 = async () => {
+    if (!ch) return;
+    setBusy('mp3');
+    try {
+      const { convertMedia } = await import('@/components/docs/convert-engine');
+      download(await convertMedia(new Blob([encodeWav(ch, RATE)], { type: 'audio/wav' }), `${name}.wav`, 'mp3'), `${name}.mp3`);
+      setDirty(false);
+    } catch (e) { toast.error((e as Error).message || 'Couldn’t make the MP3.'); }
+    finally { setBusy(null); }
+  };
 
   const close = async () => {
     if (recSince !== null) recRef.current?.stop();
@@ -295,7 +306,8 @@ export function AudioEditor({ file, onClose }: { file: File | null; onClose: () 
             {recording ? <><Square className="w-3.5 h-3.5" />Stop <span className="tabular-nums">{clock(Math.max(0, (now - recSince!) / 1000))}</span></> : <><Mic className="w-3.5 h-3.5" />{ch ? 'Record here' : 'Record'}</>}
           </button>
           <button type="button" onClick={() => save(true)} disabled={!length || recording} className="btn-secondary btn-sm" title="Mono, 22 kHz: about a quarter of the size, fine for speech">Smaller file</button>
-          <button type="button" onClick={() => save(false)} disabled={!length || recording} className="btn-primary btn-sm"><Download className="w-3.5 h-3.5" />Save WAV</button>
+          <button type="button" onClick={() => save(false)} disabled={!length || recording} className="btn-secondary btn-sm">Save WAV</button>
+          <button type="button" onClick={() => void saveMp3()} disabled={!length || recording || !!busy} className="btn-primary btn-sm">{busy === 'mp3' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}Save MP3</button>
         </div>
       </div>
 

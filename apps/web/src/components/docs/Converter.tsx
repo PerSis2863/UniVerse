@@ -83,7 +83,7 @@ export function Converter({ onClose }: { onClose: () => void }) {
         <ul className="space-y-2">
           {files.map((f, i) => {
             const kind = kinds[i];
-            const targets = targetsFor(kind);
+            const targets = targetsFor(kind, f.name);
             return (
               <li key={`${f.name}-${i}`} className="rounded-2xl border border-zinc-200 dark:border-white/10 p-3">
                 <div className="flex items-center gap-2">

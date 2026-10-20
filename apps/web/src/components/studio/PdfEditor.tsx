@@ -3,17 +3,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import { ArrowDown, ArrowUp, Download, Eraser, FilePlus2, Highlighter, Loader2, PenLine, RotateCw, Scissors, Signature, Square, Trash2, Type, Undo2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ClipboardList, Download, Eraser, FilePlus2, Highlighter, Loader2, PenLine, RotateCw, Scissors, Signature, Square, Trash2, Type, Undo2, X } from 'lucide-react';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { haptic } from '@/lib/haptics';
 import { openPdfData } from '@/lib/pdf';
 import { markAt, movePage, parseRanges, simplify, toFraction, turn, type Mark, type PageRef } from '@/lib/pdf-edit';
 import { cn } from '@/lib/utils';
+import { cleanValues, fillForm, readForm, type FormField, type FormValues } from '@/lib/pdf-form';
 
 // The Studio PDF editor (Stage 5 · B9.15; src/lib/pdf-edit.ts): pages to reorder, turn, delete,
 // add (from PDFs or pictures) and download; marks to draw on them: pen, highlighter, text, a
 // signature and white-out. Saved with pdf-lib: the pages stay as they were (text stays text), and
-// each page's marks go on top as a picture, so any language and any drawing saves exactly.
+// each page's marks go on top as a picture, so any language and any drawing saves exactly. A PDF
+// form's fields can be filled in (Stage 5 · Q22, src/lib/pdf-form.ts): the answers are written
+// onto the pages when saving.
 
 type Source = { kind: 'pdf'; bytes: ArrayBuffer; doc: PDFDocumentProxy } | { kind: 'image'; bytes: ArrayBuffer; url: string; w: number; h: number; png: boolean };
 type Tool = 'pen' | 'highlight' | 'text' | 'sign' | 'whiteout' | 'erase';
@@ -114,6 +117,10 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
   const [signature, setSignature] = useState<string | null>(null);
   const [signing, setSigning] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  // Form fields per PDF added (by its place in `sources`), and the answers given so far.
+  const [forms, setForms] = useState<Record<number, FormField[]>>({});
+  const [answers, setAnswers] = useState<Record<number, FormValues>>({});
+  const [formOpen, setFormOpen] = useState(false);
   const [drawing, setDrawingState] = useState<Mark | null>(null);
   // The mark being drawn, also kept here so a quick drag never reads a stale one.
   const drawingRef = useRef<Mark | null>(null);
@@ -135,6 +142,8 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
       const idx = sourceCount.current++;
       setSources((s) => [...s, { kind: 'pdf', bytes, doc }]);
       setPages((p) => [...p, ...Array.from({ length: Math.min(doc.numPages, 300) }, (_, i) => ({ id: nid(), source: idx, index: i, rotation: 0 as const, marks: [] }))]);
+      const fields = (await readForm(bytes.slice(0))).filter((x) => !x.readOnly);
+      if (fields.length) { setForms((m) => ({ ...m, [idx]: fields })); toast(`This PDF is a form with ${fields.length} field${fields.length === 1 ? '' : 's'}: tap Fill in the form.`); }
     } else if (f.type.startsWith('image/')) {
       const url = URL.createObjectURL(f);
       const img = new Image();
@@ -230,7 +239,11 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
       const src = sources[pr.source];
       let target;
       if (src.kind === 'pdf') {
-        if (!loaded.has(pr.source)) loaded.set(pr.source, await PDFDocument.load(src.bytes, { ignoreEncryption: true }));
+        if (!loaded.has(pr.source)) {
+          // The form's answers first, onto the pages, so they come along with them.
+          const filled = forms[pr.source] ? cleanValues(forms[pr.source], answers[pr.source] ?? {}) : {};
+          loaded.set(pr.source, await PDFDocument.load(Object.keys(filled).length ? await fillForm(src.bytes.slice(0), filled) : src.bytes, { ignoreEncryption: true }));
+        }
         [target] = await out.copyPages(loaded.get(pr.source)!, [pr.index]);
         out.addPage(target);
       } else {
@@ -309,6 +322,7 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
         <span className="text-[11px] text-zinc-500 shrink-0">{pages.length} page{pages.length === 1 ? '' : 's'}</span>
         <div className="ms-auto flex items-center gap-1 shrink-0">
           <input ref={addRef} type="file" accept="application/pdf,image/*" multiple className="hidden" onChange={async (e) => { for (const f of [...(e.target.files ?? [])].slice(0, 10)) await addFile(f).catch((err) => toast.error((err as Error).message)); e.target.value = ''; }} />
+          {Object.keys(forms).length > 0 && <button type="button" onClick={() => setFormOpen(true)} className="btn-secondary btn-sm"><ClipboardList className="w-3.5 h-3.5" />Fill in the form</button>}
           <button type="button" onClick={() => addRef.current?.click()} className="btn-secondary btn-sm"><FilePlus2 className="w-3.5 h-3.5" />Add pages</button>
           <button type="button" onClick={() => void extract()} disabled={!!busy} className="btn-secondary btn-sm">{busy === 'extract' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Scissors className="w-3.5 h-3.5" />}Some pages</button>
           <button type="button" onClick={() => void save()} disabled={!!busy || !pages.length} className="btn-primary btn-sm">{busy === 'save' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}Save PDF</button>
@@ -358,6 +372,7 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
           {page && <p className="text-xs text-zinc-500">Page {current + 1} of {pages.length}</p>}
         </div>
       </div>
+      {formOpen && <FormSheet forms={forms} answers={answers} names={sources.map((_, i) => (i === 0 ? file.name : `Added PDF ${i}`))} onChange={(src, name, v) => setAnswers((a) => ({ ...a, [src]: { ...a[src], [name]: v } }))} onClose={() => setFormOpen(false)} />}
       {signing && <SignaturePad onClose={() => setSigning(false)} onDone={(url) => { setSignature(url); setSigning(false); setTool('sign'); toast('Tap the page where it goes.'); }} />}
     </div>
   );
@@ -379,6 +394,61 @@ function SignaturePad({ onClose, onDone }: { onClose: () => void; onDone: (dataU
         <div className="flex justify-between">
           <button type="button" onClick={() => { ref.current!.getContext('2d')!.clearRect(0, 0, 600, 220); setEmpty(true); }} className="btn-secondary btn-sm">Clear</button>
           <button type="button" disabled={empty} onClick={() => onDone(ref.current!.toDataURL('image/png'))} className="btn-primary btn-sm">Use this signature</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The form's fields to fill in; the answers go onto the pages when the PDF is saved. */
+function FormSheet({ forms, answers, names, onChange, onClose }: { forms: Record<number, FormField[]>; answers: Record<number, FormValues>; names: string[]; onChange: (source: number, name: string, value: string | boolean) => void; onClose: () => void }) {
+  const value = (src: number, f: FormField) => (f.name in (answers[src] ?? {}) ? answers[src][f.name] : f.value);
+  const label = (name: string) => name.replace(/[._]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim();
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="pdf-form-title" className="bg-white dark:bg-zinc-900 w-full sm:max-w-lg max-h-[85vh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between gap-3 p-4 border-b border-zinc-200 dark:border-zinc-800">
+          <h2 id="pdf-form-title" className="font-semibold text-zinc-900 dark:text-white">Fill in the form</h2>
+          <button type="button" onClick={onClose} aria-label="Done" className="btn-primary btn-sm">Done</button>
+        </div>
+        <div className="overflow-y-auto p-4 space-y-5">
+          {Object.entries(forms).map(([k, fields]) => {
+            const src = Number(k);
+            return (
+              <section key={k} aria-label={names[src]} className="space-y-3">
+                {Object.keys(forms).length > 1 && <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">{names[src]}</h3>}
+                {fields.map((f) => {
+                  const id = `pf-${src}-${f.name}`;
+                  const v = value(src, f);
+                  if (f.kind === 'check') return (
+                    <label key={f.name} className="flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200 min-h-11"><input type="checkbox" checked={v === true} onChange={(e) => onChange(src, f.name, e.target.checked)} className="w-4 h-4" />{label(f.name)}</label>
+                  );
+                  if (f.kind === 'radio') return (
+                    <fieldset key={f.name} className="space-y-1">
+                      <legend className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{label(f.name)}</legend>
+                      {(f.options ?? []).map((o) => <label key={o} className="flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200 min-h-9"><input type="radio" name={id} checked={v === o} onChange={() => onChange(src, f.name, o)} />{o}</label>)}
+                    </fieldset>
+                  );
+                  return (
+                    <div key={f.name}>
+                      <label htmlFor={id} className="block text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-1">{label(f.name)}</label>
+                      {f.kind === 'choice' ? (
+                        <select id={id} className="input" value={String(v)} onChange={(e) => onChange(src, f.name, e.target.value)}>
+                          <option value="">—</option>
+                          {(f.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      ) : f.multiline ? (
+                        <textarea id={id} className="input min-h-[4.5rem]" maxLength={f.maxLength} value={String(v)} onChange={(e) => onChange(src, f.name, e.target.value)} />
+                      ) : (
+                        <input id={id} className="input" maxLength={f.maxLength} value={String(v)} onChange={(e) => onChange(src, f.name, e.target.value)} />
+                      )}
+                    </div>
+                  );
+                })}
+              </section>
+            );
+          })}
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">Your answers are written onto the pages when you save the PDF, so they show in any viewer.</p>
         </div>
       </div>
     </div>

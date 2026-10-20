@@ -3,12 +3,15 @@
 import { encodeWav, kindOf, markdownToHtml, outName, recordsToRows, rowsToRecords, toCsv, type Target } from '@/lib/convert-formats';
 import { parseCsv } from '@/lib/csv';
 import { openPdfData } from '@/lib/pdf';
+import type { PdfPiece } from '@/lib/pdf-to-doc';
 import type { SheetData } from 'write-excel-file/browser';
 
 // The file converter's conversions (Stage 5 · B9.14; src/lib/convert-formats.ts), all in the
 // browser: pictures with a canvas, PDFs with pdf.js (reading) and pdf-lib (making), Word with
-// mammoth, Excel with read-excel-file / write-excel-file, ZIP with fflate, sound with the browser's
-// own decoder and a WAV writer. Each library loads only when it's needed.
+// mammoth (reading) and the docs' own .docx writer (making; Q22), Excel with read-excel-file /
+// write-excel-file, ZIP with fflate, sound with the browser's own decoder and a WAV writer, MP3 and
+// MP4 with mediabunny (the browser's encoders; LAME for MP3 where it has none). Each library loads
+// only when it's needed.
 
 export interface Output { name: string; blob?: Blob; /** a document to open in Docs (HTML) */ doc?: { title: string; html: string } }
 /** Tells the page how a longer conversion is going ("Page 3 of 12"). */
@@ -83,7 +86,6 @@ async function zip(files: { name: string; data: Uint8Array }[]): Promise<Blob> {
 }
 
 const page = (title: string, body: string) => `<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/</g, '&lt;')}</title><style>body{font:16px/1.6 system-ui,sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem;color:#18181b}table{border-collapse:collapse}td,th{border:1px solid #d4d4d8;padding:4px 8px}img{max-width:100%}</style></head><body>${body}</body></html>`;
-const word = (title: string, body: string) => `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>${title.replace(/</g, '&lt;')}</title></head><body>${body}</body></html>`;
 
 /** HTML made safe to show or put in a doc: no scripts, frames, styles or event handlers. */
 function cleanHtml(html: string) {
@@ -130,6 +132,38 @@ async function sound(file: File): Promise<Blob> {
   } catch { throw new Error('This browser can’t read the sound in that file.'); }
   finally { void ctx.close(); }
 }
+
+/** MP3 (the sound) or MP4 (H.264 video, AAC sound) with mediabunny: the browser's own encoders, LAME for MP3 where it has none. */
+async function encodeMedia(file: File, to: 'mp3' | 'mp4', onProgress?: Progress): Promise<Output> {
+  const mb = await import('mediabunny');
+  if (to === 'mp3' && !(await mb.canEncodeAudio('mp3'))) (await import('@mediabunny/mp3-encoder')).registerMp3Encoder();
+  const input = new mb.Input({ source: new mb.BlobSource(file), formats: mb.ALL_FORMATS });
+  try {
+    const video = to === 'mp4' ? await input.getPrimaryVideoTrack().catch(() => null) : null;
+    const audio = (await input.getAudioTracks().catch(() => []))[0] ?? null;
+    if (to === 'mp4' && !video) throw new Error('There’s no video this browser can read in that file.');
+    if (to === 'mp3' && !audio) throw new Error('There’s no sound this browser can read in that file.');
+    if (to === 'mp4' && !(await mb.canEncodeVideo('avc', { width: 1280, height: 720 }))) throw new Error('This browser can’t make MP4 videos. Try Chrome, Edge or Safari on a computer.');
+    const aac = to === 'mp4' && audio ? await mb.canEncodeAudio('aac', { numberOfChannels: 2, sampleRate: 48_000 }) : false;
+    const output = new mb.Output({ format: to === 'mp3' ? new mb.Mp3OutputFormat() : new mb.Mp4OutputFormat(), target: new mb.BufferTarget() });
+    const conversion = await mb.Conversion.init({
+      input, output, tracks: 'primary',
+      video: to === 'mp4' ? { codec: 'avc' } : { discard: true },
+      audio: to === 'mp3' ? { codec: 'mp3', bitrate: 160_000 } : aac ? { codec: 'aac' } : { discard: true },
+    });
+    if (!conversion.isValid) throw new Error(`This browser can’t make ${to === 'mp3' ? 'an MP3' : 'an MP4'} from that file.`);
+    conversion.onProgress = (p) => onProgress?.(`${Math.round(p * 100)}%`);
+    await conversion.execute();
+    const buf = output.target.buffer;
+    if (!buf) throw new Error('Couldn’t finish the file.');
+    return { name: outName(file.name, to), blob: new Blob([buf], { type: to === 'mp3' ? 'audio/mpeg' : 'video/mp4' }) };
+  } finally {
+    input.dispose();
+  }
+}
+
+/** A sound or video made elsewhere in the app (the audio editor's WAV, the video editor's WebM) as MP3 or MP4. */
+export const convertMedia = async (blob: Blob, name: string, to: 'mp3' | 'mp4', onProgress?: Progress) => (await encodeMedia(new File([blob], name, { type: blob.type }), to, onProgress)).blob!;
 
 async function frame(file: File): Promise<Blob> {
   const url = URL.createObjectURL(file);
@@ -213,7 +247,25 @@ export async function convert(file: File, t: Target, onProgress?: Progress): Pro
       if (pics.length === 1) return [{ name: pics[0].name, blob: new Blob([pics[0].data as BlobPart], { type }) }];
       return [{ name: outName(file.name, 'zip'), blob: await zip(pics) }];
     }
-    case 'html': case 'txt': case 'md': case 'doc': case 'pdf': case 'uvdoc': {
+    case 'pdf-docx': {
+      // PDF → Word: the words, headings and pages (src/lib/pdf-to-doc.ts), not the exact layout.
+      const doc = await openPdfData(await file.arrayBuffer());
+      const n = Math.min(doc.numPages, MAX_PAGES * 5);
+      const pages: PdfPiece[][] = [];
+      for (let i = 1; i <= n; i++) {
+        onProgress?.(`Page ${i} of ${n}`);
+        const pg = await doc.getPage(i);
+        const tc = await pg.getTextContent();
+        pages.push(tc.items.flatMap((it) => ('str' in it ? [{ str: it.str, size: Math.hypot(it.transform[2], it.transform[3]) || 11, y: it.transform[5], eol: it.hasEOL }] : [])));
+        pg.cleanup();
+      }
+      if (!pages.some((p) => p.some((x) => x.str.trim()))) throw new Error('There’s no text in this PDF: it may be scanned pictures. Try PNG pictures instead.');
+      const { pdfToDoc } = await import('@/lib/pdf-to-doc');
+      const { docxBlob } = await import('./doc-files');
+      return [{ name: outName(file.name, 'docx'), blob: await docxBlob(pdfToDoc(pages), '') }];
+    }
+    case 'mp3': case 'mp4': return [await encodeMedia(file, t.id, onProgress)];
+    case 'html': case 'txt': case 'md': case 'docx': case 'pdf': case 'uvdoc': {
       if (t.id === 'pdf') {
         // A real PDF, laid out like the document (src/components/docs/doc-to-pdf.ts).
         const { documentToPdf } = await import('./doc-to-pdf');
@@ -225,7 +277,12 @@ export async function convert(file: File, t: Target, onProgress?: Progress): Pro
       if (t.id === 'html') return [{ name: outName(file.name, 'html'), blob: new Blob([page(title, html)], { type: 'text/html;charset=utf-8' }) }];
       if (t.id === 'txt') return [{ name: outName(file.name, 'txt'), blob: new Blob([htmlText(html)], { type: 'text/plain;charset=utf-8' }) }];
       if (t.id === 'md') return [{ name: outName(file.name, 'md'), blob: new Blob([htmlToMarkdown(html)], { type: 'text/markdown;charset=utf-8' }) }];
-      if (t.id === 'doc') return [{ name: outName(file.name, 'doc'), blob: new Blob([word(title, html)], { type: 'application/msword' }) }];
+      if (t.id === 'docx') {
+        // A real Word file (Q22): the content in the editor's structure, written by the docs' .docx writer.
+        const { htmlToDoc } = await import('@/lib/html-to-doc');
+        const { docxBlob } = await import('./doc-files');
+        return [{ name: outName(file.name, 'docx'), blob: await docxBlob(htmlToDoc(new DOMParser().parseFromString(html, 'text/html').body), title) }];
+      }
       return [{ name: title, doc: { title, html } }];
     }
     case 'csv': case 'json': case 'xlsx': case 'html-table': {

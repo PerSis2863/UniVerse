@@ -13,6 +13,14 @@ describe('what a file is and can become', () => {
     expect(targetsFor('image').map((t) => t.id)).toEqual(['png', 'jpg', 'webp', 'pdf-img']);
     expect(targetsFor('markdown').map((t) => t.id)).not.toContain('md');
     expect(targetsFor('word').map((t) => t.id)).toContain('uvdoc');
+    expect(targetsFor('word').map((t) => t.id)).not.toContain('docx');
+    expect(targetsFor('markdown').map((t) => t.id)).toContain('docx'); // a real Word file (Q22)
+    expect(targetsFor('pdf').map((t) => t.id)).toContain('pdf-docx');
+    // Never the file's own format: an MP3 isn't offered MP3, an MP4 isn't offered MP4, a PNG not PNG.
+    expect(targetsFor('audio', 'song.mp3').map((t) => t.id)).toEqual(['wav']);
+    expect(targetsFor('video', 'clip.mp4').map((t) => t.id)).toEqual(['mp3', 'wav', 'frame']);
+    expect(targetsFor('video', 'clip.webm').map((t) => t.id)).toContain('mp4');
+    expect(targetsFor('image', 'photo.JPEG').map((t) => t.id)).toEqual(['png', 'webp', 'pdf-img']);
     expect(targetsFor('other')).toEqual([]);
     expect(combinedTargets(['image', 'pdf']).map((t) => t.id)).toEqual(['merge-pdf', 'zip']);
     expect(combinedTargets(['image', 'word']).map((t) => t.id)).toEqual(['zip']);
