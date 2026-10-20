@@ -14,18 +14,20 @@ export async function createStripeSession(params: {
   successUrl: string;
   cancelUrl: string;
   metadata?: Record<string, string>;
+  expiresInMinutes?: number;
 }): Promise<{ id: string; url: string }> {
   if (params.secretKey.startsWith('sk_test_mock') || !params.secretKey) {
+    // Test mode only (provider.ts never passes a test key otherwise): no Stripe page, straight back.
     const mockId = `cs_test_${crypto.randomBytes(12).toString('hex')}`;
     return {
       id: mockId,
-      url: `${params.successUrl}?session_id=${mockId}`,
+      url: params.successUrl.replace('{CHECKOUT_SESSION_ID}', mockId),
     };
   }
 
   const formData = new URLSearchParams();
   formData.append('mode', 'payment');
-  formData.append('customer_email', params.customerEmail);
+  if (params.customerEmail) formData.append('customer_email', params.customerEmail);
   formData.append('client_reference_id', params.clientReferenceId);
   formData.append('success_url', params.successUrl);
   formData.append('cancel_url', params.cancelUrl);
@@ -33,6 +35,8 @@ export async function createStripeSession(params: {
   formData.append('line_items[0][price_data][unit_amount]', String(params.amountMinor));
   formData.append('line_items[0][price_data][product_data][name]', params.description);
   formData.append('line_items[0][quantity]', '1');
+  // Stripe accepts 30 minutes to 24 hours.
+  if (params.expiresInMinutes) formData.append('expires_at', String(Math.floor(Date.now() / 1000) + Math.min(1440, Math.max(30, params.expiresInMinutes)) * 60));
 
   if (params.metadata) {
     for (const [k, v] of Object.entries(params.metadata)) {

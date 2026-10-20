@@ -6,27 +6,35 @@ Workers, with its database on Cloudflare D1 and uploads on R2. This page says wh
 how to run it on your computer, and how to carry on (for the owner and for any AI agent, such as
 Cursor's).
 
-## Where things stand (17 October 2026)
+## Where things stand (20 October 2026)
 
-- **`main` has everything through Q13** (pull request #64): the Office-style documents,
+- **`main` has everything through Q18** (merged 20 Oct): Q14 skills passport, Q15 careers, Q16 global
+  impact (and online payments counted only when the gateway confirms), Q17 student life, Q18 profile,
+  settings search and the guided tour. Before that, through Q13 (pull request #64): the Office-style documents,
   spreadsheets and slides, home pages, notifications, search, attendance, the calendar and
   timetable, and the AI tutor.
 - **The plan:** `apps/web/STAGE-5-PLAN.md`. Section 4 "Remaining work queue" lists every item in
   order, and the **Progress** table at the end says what's done, where the code is and what's left
-  for each item. **Next up: Q14 Skills passport and credentials**, then Q15 Careers, Q16 Global
-  impact, Q17 Student life, Q18 Onboarding and settings, Q19 Owner console, Q20 Chat bots, Q21
+  for each item. **Next up: Q19 Owner console**, then Q20 Chat bots, Q21
   Languages and right-to-left, Q22 leftovers, Q23 small items.
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: one note per item with the traps
   and the rules for code that builds on it.
-- **Next database update number: `0157`** (files in `apps/web/prisma/migrations/`).
+- **Q14–Q18 are on the live site** (merged together on 20 Oct).
+- **Next database update number: `0162`** (files in `apps/web/prisma/migrations/`).
 
 **Waiting on the owner** (things only you can provide):
 - Two-way Google / Outlook calendar sync: a Google Cloud project and a Microsoft app.
 - Google Classroom import: a sample export, or the Classroom API.
 - Grade passback to an LMS: a real LMS to test with.
 - Payments by UPI (Razorpay) and anything else that costs money or needs an account.
+- Donations (Q16): in Stripe → Developers → Webhooks, make sure your UniVerse endpoint also sends
+  `checkout.session.completed` and `checkout.session.async_payment_succeeded`; then in Impact
+  reports → Donations switch on the NGOs that should take donations (with their 80G number and PAN
+  for Indian tax receipts). Rupee card gifts need a Stripe account that accepts INR.
+- Event tickets (Q17): make sure `SESSION_SECRET` on the Cloudflare Worker is at least 32 characters
+  (tickets and check-in codes are signed with it). Live bus positions need a GPS device or a driver app.
 - Trying on the live site what couldn't be tried locally: a real AI reading of a homework photo,
-  a calendar file from Google or Outlook, the voice tutor.
+  a calendar file from Google or Outlook, the voice tutor, a real card donation.
 
 ## Set up on your computer (once)
 

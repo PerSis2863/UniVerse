@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
+import { usePaymentReturn } from '@/lib/use-payment-return';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { ChevronDown, Receipt, Wallet } from 'lucide-react';
@@ -23,7 +24,9 @@ interface Bill {
 interface Data { bills: Bill[]; owed: Record<string, number>; next: { label: string; owed: number; currency: string; dueAt: string; overdue: boolean } | null; online: boolean }
 
 export function FamilyFees({ url, who }: { url: string; who?: string }) {
-  const { data } = useSWR<Data>(url, authedJson);
+  const { data, mutate } = useSWR<Data>(url, authedJson);
+  // Back from Stripe's page: the server checks the payment, then the bills refresh.
+  usePaymentReturn(() => { void mutate(); });
   const [open, setOpen] = useState(false);
   const [payingBill, setPayingBill] = useState<Bill | null>(null);
   // Nothing billed: no card at all.
@@ -94,11 +97,7 @@ export function FamilyFees({ url, who }: { url: string; who?: string }) {
           amount={payingBill.owed}
           currency={payingBill.currency}
           onClose={() => setPayingBill(null)}
-          onSuccess={() => {
-            setPayingBill(null);
-            // SWR mutate
-            if (typeof window !== 'undefined') window.location.reload();
-          }}
+          onSuccess={() => { void mutate(); }}
         />
       )}
     </motion.section>

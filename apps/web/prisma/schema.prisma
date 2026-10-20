@@ -119,6 +119,13 @@ model User {
   termsVersion       String? // version of the Terms & Privacy the person accepted
   termsAcceptedAt    DateTime?
   tourDoneAt         DateTime? // skipped or finished the welcome tour (src/components/layout/WelcomeTour.tsx)
+  /// Stage 5 · Q18: where the guided tour got to (it resumes there), and the profile shown to others
+  tourStep           Int       @default(0)
+  coverUrl           String?
+  pronouns           String?
+  bio                String?
+  links              String    @default("[]") // [{ label, url }] (https, up to 5)
+  availability       String?
   onboardedAt        DateTime? // finished registration (picked a role / name); null = signed in but never registered
   accountType        String? // STUDENT | INDEPENDENT | STAFF | ORGANIZATION | GUARDIAN (what they chose at sign-up)
   lastSeenAt         DateTime?
@@ -130,6 +137,15 @@ model User {
   digestAt           DateTime?
   /// Stage 5 · Q13: when the next evening flashcard reminder is due (null: off).
   cardsRemindAt      DateTime?
+  /// Stage 5 · Q15: tell me about new openings that match my verified skills.
+  jobAlerts          Boolean   @default(true)
+  campusListings   CampusListing[]
+  listingReports   ListingReport[]
+  mealOrders       MealOrder[]
+  donations        Donation[]
+  carbonEntries    ClubCarbonEntry[]
+  jobApplications    JobApplication[]
+  interviewAnswers   InterviewAnswer[]
   // Study streak (src/server/streaks.ts): days in a row with a quiz, flashcard review or tutor question.
   streakCurrent      Int       @default(0)
   streakBest         Int       @default(0)
@@ -1021,10 +1037,14 @@ model CampusItem {
   startAt     DateTime?
   /// Events (upgrade 7): seats; null means no limit. RSVPs and QR check-ins in event_rsvps
   capacity    Int?
+  /// Stage 5 · Q17: a ticket price for events (minor units) and its currency; null means free
+  price       Int?
+  currency    String?
   createdById String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   rsvps       EventRsvp[]
+  mealOrders  MealOrder[]
   /// Stage 5 · D15: the building on the campus map it happens in.
   buildingId  String?
   building    CampusBuilding? @relation(fields: [buildingId], references: [id], onDelete: SetNull)
@@ -1042,8 +1062,11 @@ model EventRsvp {
   item        CampusItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   userId      String
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status      String     @default("GOING") // GOING | WAITLIST
+  status      String     @default("GOING") // GOING | WAITLIST | HELD (a paid ticket being paid for)
   checkedInAt DateTime?
+  /// Stage 5 · Q17: the payment for a paid ticket, and how long the seat is held while paying
+  orderId     String?    @unique
+  heldUntil   DateTime?
   createdAt   DateTime   @default(now())
 
   @@unique([itemId, userId])
@@ -1395,7 +1418,10 @@ model Association {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  memberships AssociationMembership[]
+  memberships   AssociationMembership[]
+  carbonEntries ClubCarbonEntry[]
+  elections     ClubElection[]
+  budgetEntries ClubBudgetEntry[]
 
   @@map("associations")
 }
@@ -1678,12 +1704,15 @@ model Internship {
   deadline    DateTime?
   startDate   DateTime?
   isActive    Boolean        @default(true)
+  /// Stage 5 · Q15: when matching students were told about it (once per opening).
+  alertedAt   DateTime?
   postedById  String?
   postedBy    User?          @relation("InternshipPoster", fields: [postedById], references: [id])
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   applications InternshipApplication[]
+  tracked      JobApplication[]
 
   @@index([companyId])
   @@index([postedById])
@@ -1791,10 +1820,15 @@ model NGO {
   sdgNumbers  Json     @default("[]") // int[] — UN SDG goals e.g. [4, 13]
   location    String?
   isVerified  Boolean  @default(false)
+  /// Stage 5 · Q16: takes donations here, and its Indian tax details for receipts (80G registration, PAN)
+  donationsOn Boolean  @default(false)
+  reg80G      String?
+  pan         String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  projects NGOProject[]
+  projects  NGOProject[]
+  donations Donation[]
 
   @@map("ngos")
 }
@@ -1825,6 +1859,7 @@ model NGOProject {
   impactFollowers      ImpactFollower[]
   timePledges          TimePledge[]
   impactCalls          ImpactCall[]
+  donations            Donation[]
 
   @@index([ngoId])
   @@map("ngo_projects")
@@ -2290,10 +2325,15 @@ model MentorProfile {
   skills         Json     @default("[]") // string[]
   hoursCommitted Int      @default(0)
   isAvailable    Boolean  @default(true)
+  /// Stage 5 · Q15: alumni of the school (as they say), their graduation year and a short bio.
+  isAlumni       Boolean  @default(false)
+  gradYear       Int?
+  bio            String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   bookings MentorshipBooking[]
+  slots    MentorSlot[]
 
   @@map("mentor_profiles")
 }
@@ -2307,6 +2347,9 @@ model MentorshipBooking {
   date      DateTime
   time      String
   topic     String?
+  /// Stage 5 · Q15: the mentor's slot it took, and the call made for it.
+  slotId          String?
+  scheduledCallId String?
   status    String        @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
@@ -2462,7 +2505,10 @@ model ImpactCertificate {
   anchorNetwork String? // e.g. "Polygon Amoy (testnet)"
   anchoredAt    DateTime?
   anchorError   String?
+  /// Stage 5 · Q16: issued by itself at 10 / 50 / 100 verified volunteering hours
+  milestoneHours Int?
 
+  @@unique([userId, milestoneHours])
   @@index([userId])
   @@index([certificateCode])
   @@index([status])
@@ -2804,6 +2850,10 @@ model SkillPassport {
   userId          String    @unique
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   slug            String    @unique // random, part of the public link
+  /// Optional vanity handle for /p/<handle> (public portfolio)
+  handle          String?   @unique
+  /// Portfolio colour theme: indigo | emerald | slate | rose | amber
+  theme           String    @default("indigo")
   isPublic        Boolean   @default(false)
   headline        String?
   showSkills      Boolean   @default(true)
@@ -6123,4 +6173,236 @@ model LiveGameAnswer {
 
   @@unique([gameId, userId, questionId])
   @@map("live_game_answers")
+}
+
+/// Stage 5 · Q15: a student's own application tracker (UniVerse openings and outside ones).
+model JobApplication {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  company      String
+  url          String?
+  location     String?
+  /// SAVED, APPLIED, INTERVIEW, OFFER, REJECTED
+  stage        String      @default("APPLIED")
+  appliedAt    DateTime?
+  nextStep     String?
+  nextAt       DateTime?
+  remindedAt   DateTime?
+  notes        String?
+  /// JSON [{ name, url }]
+  documents    String      @default("[]")
+  internshipId String?
+  internship   Internship? @relation(fields: [internshipId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @default(now()) @updatedAt
+
+  @@unique([userId, internshipId])
+  @@index([userId])
+  @@index([nextAt])
+  @@map("job_applications")
+}
+
+/// Stage 5 · Q15: an answer given in interview practice and the feedback it got.
+model InterviewAnswer {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String
+  question  String
+  answer    String
+  fillers   Int      @default(0)
+  /// The STAR parts found, e.g. "STAR" or "SA"
+  star      String   @default("")
+  score     Int?
+  /// JSON from the AI: { score, strengths, improve, outline }
+  feedback  String   @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("interview_answers")
+}
+
+/// Stage 5 · Q15: a time a mentor offers for a one-to-one call; bookingId once someone takes it.
+model MentorSlot {
+  id        String        @id @default(cuid())
+  mentorId  String
+  mentor    MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  startAt   DateTime
+  minutes   Int           @default(30)
+  bookingId String?       @unique
+  createdAt DateTime      @default(now())
+
+  @@index([mentorId, startAt])
+  @@map("mentor_slots")
+}
+
+/// Stage 5 · Q16: a donation to an NGO project, paid online (payment_orders). Names are copied so the
+/// record and its receipt stay complete if the project or the account goes.
+model Donation {
+  id          String      @id @default(cuid())
+  projectId   String?
+  project     NGOProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  ngoId       String?
+  ngo         NGO?        @relation(fields: [ngoId], references: [id], onDelete: SetNull)
+  projectName String
+  ngoName     String
+  donorId     String?
+  donor       User?       @relation(fields: [donorId], references: [id], onDelete: SetNull)
+  donorName   String
+  donorEmail  String?
+  amount      Int // minor units
+  currency    String
+  status      String      @default("PENDING") // PENDING | PAID | FAILED | REFUNDED
+  orderId     String?     @unique
+  receiptNo   Int?        @unique
+  anonymous   Boolean     @default(false)
+  message     String?
+  pan         String?
+  address     String?
+  reg80G      String?
+  ngoPan      String?
+  paidAt      DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@index([projectId])
+  @@index([donorId])
+  @@index([status])
+  @@map("donations")
+}
+
+/// Stage 5 · Q16: a club's carbon tracker entry (activity × a standard factor, src/lib/carbon.ts).
+model ClubCarbonEntry {
+  id            String      @id @default(cuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  activity      String
+  quantity      Float
+  kgCo2e        Float
+  note          String?
+  occurredAt    DateTime
+  createdAt     DateTime    @default(now())
+
+  @@index([associationId, occurredAt])
+  @@map("club_carbon_entries")
+}
+
+/// Stage 5 · Q17: a club election. Voters and ballots are in two unlinked tables (club_voters,
+/// club_ballots, both WITHOUT ROWID so the order rows arrived in isn't kept); results after closing.
+model ClubElection {
+  id            String      @id @default(cuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  title         String
+  candidates    String      @default("[]") // [{ id, name }]
+  opensAt       DateTime
+  closesAt      DateTime
+  createdById   String?
+  createdAt     DateTime    @default(now())
+  voters        ClubVoter[]
+  ballots       ClubBallot[]
+
+  @@index([associationId])
+  @@map("club_elections")
+}
+
+model ClubVoter {
+  electionId String
+  election   ClubElection @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  userId     String
+
+  @@id([electionId, userId])
+  @@map("club_voters")
+}
+
+model ClubBallot {
+  receipt    String       @id
+  electionId String
+  election   ClubElection @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  choice     String
+
+  @@index([electionId])
+  @@map("club_ballots")
+}
+
+/// Stage 5 · Q17: money a club received (INCOME) or spent (EXPENSE), minor units.
+model ClubBudgetEntry {
+  id            String      @id @default(cuid())
+  associationId String
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  kind          String
+  amount        Int
+  description   String
+  occurredAt    DateTime
+  receiptUrl    String?
+  createdById   String?
+  createdAt     DateTime    @default(now())
+
+  @@index([associationId, occurredAt])
+  @@map("club_budget_entries")
+}
+
+/// Stage 5 · Q17: the campus board: SELL / SWAP / FREE / WANTED things, RIDE_OFFER / RIDE_WANT, ROOM_OFFER / ROOM_WANT.
+model CampusListing {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind          String
+  title         String
+  description   String?
+  category      String?
+  price         Int? // minor units (INR): an item's price, a ride's share, a room's monthly rent
+  photoUrl      String?
+  fromPlace     String?
+  toPlace       String?
+  departAt      DateTime?
+  seats         Int?
+  area          String?
+  availableFrom DateTime?
+  status        String          @default("ACTIVE") // ACTIVE | DONE | HIDDEN
+  reports       Int             @default(0)
+  expiresAt     DateTime
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @default(now()) @updatedAt
+  reportRows    ListingReport[]
+
+  @@index([kind, status])
+  @@index([userId])
+  @@map("campus_listings")
+}
+
+model ListingReport {
+  id        String        @id @default(cuid())
+  listingId String
+  listing   CampusListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason    String
+  createdAt DateTime      @default(now())
+
+  @@unique([listingId, userId])
+  @@map("listing_reports")
+}
+
+/// Stage 5 · Q17: a cafeteria pre-order from a day's menu (campus_items kind MENU), paid at the counter.
+model MealOrder {
+  id        String     @id @default(cuid())
+  menuId    String
+  menu      CampusItem @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     String     @default("[]") // [{ dish, qty }]
+  pickupAt  DateTime
+  note      String?
+  code      String
+  status    String     @default("PLACED") // PLACED | READY | COLLECTED | CANCELLED
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @default(now()) @updatedAt
+
+  @@index([menuId, pickupAt])
+  @@index([userId])
+  @@map("meal_orders")
 }

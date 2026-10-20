@@ -8,6 +8,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import Link from '@/components/ui/Link';
 import { PassportView, type PassportData } from '@/components/passport/PassportView';
+import { cleanPassportTheme } from '@/lib/passport-theme';
 import { CopyLinkButton } from '@/components/passport/CredentialShare';
 import { QrCode } from '@/components/ui/QrCode';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
@@ -45,7 +46,7 @@ function PublicPassportPage({ slug }: { slug: string }) {
           <div className="p-16"><ContentSkeleton variant="list" /></div>
         ) : (
           <>
-            <PassportView p={p} />
+            <PassportView p={p} theme={cleanPassportTheme((p as PassportData & { theme?: unknown }).theme)} />
             {!!p.evidence?.some((g) => g.count > 0) && <VerifyPassport slug={slug} name={p.name} />}
             <PassportQr name={p.name} />
             <BadgeVerifier />

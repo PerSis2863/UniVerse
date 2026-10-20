@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Accessibility, Bell, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, Loader2, LogOut, Moon, Palette, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, X, Bold, Contrast, Type, Underline, Captions, type LucideIcon, TextSelect } from 'lucide-react';
+import { Accessibility, Bell, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, ImagePlus, Link2, Loader2, LogOut, Moon, Palette, Plus, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, X, Bold, Contrast, Type, Underline, Captions, type LucideIcon, TextSelect } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { Switch } from '@/components/ui/Switch';
@@ -28,7 +28,10 @@ import { authedJson } from '@/lib/authed-fetch';
 import { aiUseLabel } from '@/lib/ai-receipt';
 import dynamic from 'next/dynamic';
 import { RecordingPrivacy } from './RecordingPrivacy';
-import { photoSrcSet } from '@/lib/image-sizes';
+import Image from 'next/image';
+import { MAX_LINKS, PRONOUN_SUGGESTIONS, linkLabel, type ProfileLink } from '@/lib/profile';
+import { searchSettings, settingHref } from '@/lib/settings-index';
+import { AvatarCropper } from './AvatarCropper';
 
 // Sections show one at a time: their heavier parts (sign-in security, account deletion, school
 // settings, consents, family) load when their section opens.
@@ -49,9 +52,14 @@ const SignedInDevices = dynamic(() => import('@/components/security/SignInSecuri
 // Settings for every portal, like the Settings app on a phone: a searchable list of sections; on
 // phones a section slides in over the list (Back, or swipe from the left edge, slides it away), on
 // bigger screens the list stays on the left. Everything shown is real and saves (no sample data).
+// Stage 5 · Q18: the search box also finds single settings (src/lib/settings-index.ts), and
+// ?section=…&setting=… opens one and scrolls to it (each has data-setting="<id>").
 
 type Role = 'STUDENT' | 'TEACHER' | 'ADMIN';
-interface Me { id?: string; name?: string; email?: string; phone?: string | null; avatar?: string | null; role?: string; emailNotifications?: boolean; createdAt?: string }
+interface Me {
+  id?: string; name?: string; email?: string; phone?: string | null; avatar?: string | null; role?: string; emailNotifications?: boolean; createdAt?: string;
+  coverUrl?: string | null; pronouns?: string | null; bio?: string | null; links?: string; availability?: string | null;
+}
 interface Section { id: string; label: string; icon: typeof User; tile: string; keywords: string; roles?: Role[] }
 
 const SECTIONS: Section[] = [
@@ -76,21 +84,30 @@ export function SettingsApp({ role }: { role: Role }) {
   const [q, setQ] = useState('');
   const { t } = useLanguageStore();
 
-  // ?section=… opens that section (links from elsewhere), and the address follows what's open.
+  // ?section=… opens that section (links from elsewhere), and the address follows what's open;
+  // &setting=… then scrolls to that one setting and marks it for a moment.
   useEffect(() => {
-    const s = new URLSearchParams(window.location.search).get('section');
+    const q = new URLSearchParams(window.location.search);
+    const s = q.get('section');
     if (s && sections.some((x) => x.id === s)) setOpen(s); // eslint-disable-line react-hooks/set-state-in-effect
     else if (window.matchMedia('(min-width: 768px)').matches) setOpen('profile');
+    if (s && q.get('setting')) flashSetting(q.get('setting')!);
   }, [sections]);
-  const go = (id: string | null) => {
+  const go = (id: string | null, setting?: string) => {
     setOpen(id);
     const url = new URL(window.location.href);
     if (id) url.searchParams.set('section', id); else url.searchParams.delete('section');
+    if (setting) url.searchParams.set('setting', setting); else url.searchParams.delete('setting');
     window.history.replaceState(null, '', url.toString());
+    if (setting) flashSetting(setting);
   };
 
   const term = q.trim().toLowerCase();
   const shown = term ? sections.filter((s) => `${s.label} ${s.keywords}`.toLowerCase().includes(term)) : sections;
+  const single = term ? searchSettings(term, role).filter((x) => sections.some((s) => s.id === x.section)).slice(0, 8) : [];
+  const copyLink = async (href: string) => {
+    try { await navigator.clipboard.writeText(new URL(href, window.location.origin).toString()); toast.success('Link copied'); } catch { toast.error('Couldn’t copy the link.'); }
+  };
   const current = sections.find((s) => s.id === open) ?? null;
 
   // Phones: swipe right from the left edge closes the section, like iOS.
@@ -110,6 +127,19 @@ export function SettingsApp({ role }: { role: Role }) {
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search settings" aria-label="Search settings" className="input pl-10" />
         {q && <button type="button" onClick={() => setQ('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>}
       </label>
+      {single.length > 0 && (
+        <div className="ios-list inset-separators" aria-label="Matching settings" role="group">
+          {single.map((x) => (
+            <div key={x.id} className="ios-cell w-full text-[15px] text-zinc-900 dark:text-white !py-0 !pr-1">
+              <button type="button" onClick={() => go(x.section, x.id)} className="flex-1 min-w-0 text-left py-3">
+                <span className="block truncate">{x.label}</span>
+                <span className="block text-xs text-zinc-500 dark:text-zinc-400 truncate">{sections.find((s) => s.id === x.section)?.label}</span>
+              </button>
+              <button type="button" onClick={() => void copyLink(settingHref(window.location.pathname, x))} aria-label={`Copy a link to ${x.label}`} className="w-10 h-10 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-900 dark:hover:text-white shrink-0"><Link2 className="w-4 h-4" aria-hidden /></button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="ios-list inset-separators">
         {shown.map((s) => (
           <button key={s.id} type="button" onClick={() => go(s.id)} aria-current={open === s.id ? 'page' : undefined}
@@ -120,7 +150,7 @@ export function SettingsApp({ role }: { role: Role }) {
             <ChevronRight className="w-4 h-4 text-zinc-400" strokeWidth={2.5} />
           </button>
         ))}
-        {!shown.length && <p className="p-4 text-sm text-zinc-500">No settings match “{q}”.</p>}
+        {!shown.length && !single.length && <p className="p-4 text-sm text-zinc-500">No settings match “{q}”.</p>}
       </div>
       <SignOut />
     </div>
@@ -162,6 +192,25 @@ export function SettingsApp({ role }: { role: Role }) {
   );
 }
 
+/** Scroll to one setting (it may still be loading) and mark it for a moment. */
+function flashSetting(id: string) {
+  let tries = 0;
+  const find = () => {
+    const els = [...document.querySelectorAll<HTMLElement>(`[data-setting="${CSS.escape(id)}"]`)].filter((e) => e.getClientRects().length);
+    const el = els[0];
+    if (!el) { if (++tries < 30) setTimeout(find, 100); return; }
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-2', 'rounded-2xl');
+    setTimeout(() => el.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2'), 2400);
+  };
+  setTimeout(find, 250);
+}
+
+/** One setting others can link to (data-setting, see src/lib/settings-index.ts). */
+function Setting({ id, children, className }: { id: string; children: React.ReactNode; className?: string }) {
+  return <div data-setting={id} className={className}>{children}</div>;
+}
+
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <section className="card p-5 sm:p-6 space-y-4">
@@ -174,9 +223,9 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
   );
 }
 
-function Row({ icon: Icon, title, desc, children }: { icon?: typeof User; title: string; desc?: string; children?: React.ReactNode }) {
+function Row({ icon: Icon, title, desc, children, setting }: { icon?: typeof User; title: string; desc?: string; children?: React.ReactNode; setting?: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-[var(--fill)]">
+    <div data-setting={setting} className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-[var(--fill)]">
       <div className="flex items-start gap-3 min-w-0">
         {Icon && <Icon className="w-5 h-5 mt-0.5 text-tint-text shrink-0" />}
         <div className="min-w-0">
@@ -198,95 +247,147 @@ function SectionBody({ id, role, title }: { id: string; role: Role; title: strin
     case 'privacy':
       return (
         <Card title={title} subtitle="Who can see you, how you sign in, and your devices">
-          <Link href="/privacy-choices" target="_blank" className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--fill)] hover:opacity-90">
+          <Link href="/privacy-choices" target="_blank" data-setting="privacy-choices" className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--fill)] hover:opacity-90">
             <span><span className="block text-sm font-medium text-zinc-900 dark:text-white">Your privacy choices</span><span className="block text-xs text-zinc-500 mt-0.5">What you control, and how to download or delete your data.</span></span>
             <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
           </Link>
-          <NetworkVisibility />
-          <RecordingPrivacy />
-          <AccountSecurity />
-          <Passkeys />
-          <SignedInDevices />
-          <RecentSignIns />
+          <Setting id="visibility"><NetworkVisibility /></Setting>
+          <Setting id="recordings"><RecordingPrivacy /></Setting>
+          <Setting id="password"><AccountSecurity /></Setting>
+          <Setting id="passkeys"><Passkeys /></Setting>
+          <Setting id="devices"><SignedInDevices /></Setting>
+          <Setting id="sign-ins"><RecentSignIns /></Setting>
         </Card>
       );
-    case 'family': return <div className="space-y-6"><GuardianAccountsCard /><GuardianContactsCard /><GuardianShareCard /></div>;
-    case 'consents': return <ConsentsPanel embedded />;
+    case 'family': return <Setting id="family" className="space-y-6"><GuardianAccountsCard /><GuardianContactsCard /><GuardianShareCard /></Setting>;
+    case 'consents': return <Setting id="consents"><ConsentsPanel embedded /></Setting>;
     case 'ai': return <AiFeatures />;
-    case 'organization': return <Card title={title} subtitle="Your school on UniVerse"><OrganizationSettings /></Card>;
+    case 'organization': return <Card title={title} subtitle="Your school on UniVerse"><Setting id="organization"><OrganizationSettings /></Setting></Card>;
     case 'storage': return <Storage role={role} />;
     case 'help': return <HelpAbout />;
     default: return null;
   }
 }
 
-// ── Profile: real details, editable name, phone and photo ─────────────────────────────────────
+const linksOf = (raw?: string) => { try { const v = JSON.parse(raw ?? '[]'); return Array.isArray(v) ? (v as ProfileLink[]) : []; } catch { return []; } };
+
+// ── Profile: real details, editable name, phone and photo; Stage 5 · Q18: cover photo, pronouns,
+// about, links and availability, shown on the profile page others see (/people/<id>).
 function Profile({ role }: { role: Role }) {
   const setUser = useAuthStore((s) => s.setUser);
   const authUser = useAuthStore((s) => s.user);
   const [me, setMe] = useState<Me | null>(null);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [busy, setBusy] = useState<null | 'save' | 'photo'>(null);
+  const [form, setForm] = useState({ name: '', phone: '', pronouns: '', bio: '', availability: '' });
+  const [links, setLinks] = useState<ProfileLink[]>([]);
+  const [busy, setBusy] = useState<null | 'save' | 'photo' | 'cover'>(null);
+  const [cropping, setCropping] = useState<File | null>(null);
+  const pronounList = useId();
   const file = useRef<HTMLInputElement>(null);
+  const coverFile = useRef<HTMLInputElement>(null);
+  const load = useCallback((m: Me) => {
+    setMe(m);
+    setForm({ name: m.name ?? '', phone: m.phone ?? '', pronouns: m.pronouns ?? '', bio: m.bio ?? '', availability: m.availability ?? '' });
+    setLinks(linksOf(m.links));
+  }, []);
 
   useEffect(() => {
-    api.get('/users/me').then((r) => { setMe(r.data); setName(r.data?.name ?? ''); setPhone(r.data?.phone ?? ''); }).catch(() => setMe({}));
-  }, []);
+    api.get('/users/me').then((r) => load(r.data ?? {})).catch(() => setMe({}));
+  }, [load]);
 
   const save = async (patch: Record<string, unknown>, done: string) => {
     try {
       const r = await api.patch('/users/me', patch);
-      setMe((m) => ({ ...m, ...r.data }));
+      load({ ...me, ...r.data });
       if (authUser) setUser({ ...authUser, ...(r.data.name ? { name: r.data.name } : {}), ...(r.data.avatar !== undefined ? { avatar: r.data.avatar } : {}) });
       toast.success(done);
+      return true;
     } catch (e) {
       toast.error((e as Error).message || 'Couldn’t save.');
+      return false;
     }
   };
   const saveDetails = async () => {
     setBusy('save');
-    await save({ name: name.trim(), phone: phone.trim() || null }, 'Profile saved');
+    await save({ name: form.name.trim(), phone: form.phone.trim() || null, pronouns: form.pronouns.trim() || null, bio: form.bio.trim() || null, availability: form.availability.trim() || null, links: links.filter((l) => l.url.trim()) }, 'Profile saved');
     setBusy(null);
   };
-  const pickPhoto = async (f: File | undefined) => {
-    if (!f) return;
-    if (!f.type.startsWith('image/')) { toast.error('Choose a photo.'); return; }
-    setBusy('photo');
+  const upload = async (f: File, kind: 'photo' | 'cover') => {
+    setBusy(kind);
     try {
       const { uploadChatFile } = await import('@/components/chat/chat-client');
-      await save({ avatar: await uploadChatFile(f) }, 'Photo updated');
+      const url = await uploadChatFile(f);
+      await save(kind === 'photo' ? { avatar: url } : { coverUrl: url }, kind === 'photo' ? 'Photo updated' : 'Cover photo updated');
     } catch (e) { toast.error((e as Error).message || 'Couldn’t upload the photo.'); }
     setBusy(null);
   };
+  const pick = (f: File | undefined, kind: 'photo' | 'cover') => {
+    if (!f) return;
+    if (!f.type.startsWith('image/')) { toast.error('Choose a photo.'); return; }
+    if (kind === 'photo') setCropping(f); else void upload(f, 'cover');
+  };
 
   if (!me) return <div className="skeleton h-72 rounded-3xl" />;
-  const changed = name.trim() !== (me.name ?? '') || phone.trim() !== (me.phone ?? '');
+  const saved = { name: me.name ?? '', phone: me.phone ?? '', pronouns: me.pronouns ?? '', bio: me.bio ?? '', availability: me.availability ?? '' };
+  const changed = (Object.keys(form) as (keyof typeof form)[]).some((k) => form[k].trim() !== saved[k]) || JSON.stringify(links.filter((l) => l.url.trim())) !== JSON.stringify(linksOf(me.links));
+  const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
   return (
     <Card title="Profile" subtitle="How others see you on UniVerse">
-      <div className="flex items-center gap-4">
+      <div data-setting="cover" className="relative h-28 sm:h-36 -mx-5 sm:-mx-6 -mt-1 overflow-hidden bg-gradient-to-r from-indigo-500/30 to-fuchsia-500/30">
+        {me.coverUrl && <Image src={me.coverUrl} alt="" fill unoptimized sizes="(max-width: 768px) 100vw, 60vw" className="object-cover" />}
+        <div className="absolute right-2 bottom-2 flex gap-1.5">
+          <button type="button" onClick={() => coverFile.current?.click()} className="btn-secondary btn-sm !bg-white/90 !text-zinc-900">{busy === 'cover' ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <ImagePlus className="w-4 h-4" aria-hidden />} {me.coverUrl ? 'Change cover' : 'Add a cover photo'}</button>
+          {me.coverUrl && <button type="button" onClick={() => void save({ coverUrl: null }, 'Cover removed')} aria-label="Remove cover photo" className="btn-secondary btn-sm btn-icon !bg-white/90 !text-zinc-900"><X className="w-4 h-4" aria-hidden /></button>}
+        </div>
+        <input ref={coverFile} type="file" accept="image/*" className="hidden" aria-label="Cover photo" onChange={(e) => { pick(e.target.files?.[0], 'cover'); e.target.value = ''; }} />
+      </div>
+      <div className="flex items-center gap-4" data-setting="photo">
         <button type="button" onClick={() => file.current?.click()} className="relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-2xl font-black flex items-center justify-center shrink-0 group" aria-label="Change photo">
-          {/* eslint-disable-next-line @next/next/no-img-element -- the person's own uploaded photo */}
-          {me.avatar ? <img src={me.avatar} {...photoSrcSet(me.avatar, 80)} alt="" className="w-full h-full object-cover" /> : (me.name ?? '?').charAt(0).toUpperCase()}
+          {me.avatar ? <Image src={me.avatar} alt="" fill unoptimized sizes="80px" className="object-cover" /> : (me.name ?? '?').charAt(0).toUpperCase()}
           <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">{busy === 'photo' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}</span>
         </button>
-        <input ref={file} type="file" accept="image/*" className="hidden" onChange={(e) => void pickPhoto(e.target.files?.[0])} />
+        <input ref={file} type="file" accept="image/*" className="hidden" aria-label="Profile photo" onChange={(e) => { pick(e.target.files?.[0], 'photo'); e.target.value = ''; }} />
         <div className="min-w-0">
-          <p className="font-semibold text-zinc-900 dark:text-white truncate">{me.name}</p>
+          <p className="font-semibold text-zinc-900 dark:text-white truncate">{me.name}{me.pronouns ? <span className="font-normal text-zinc-500"> ({me.pronouns})</span> : null}</p>
           <p className="text-sm text-zinc-500 truncate">{me.email}</p>
           <span className="inline-block mt-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/15 text-tint-text">{role === 'ADMIN' ? 'Admin' : role === 'TEACHER' ? 'Teacher' : 'Student'}</span>
-          {me.avatar && <button type="button" onClick={() => void save({ avatar: null }, 'Photo removed')} className="block text-xs text-rose-500 mt-1">Remove photo</button>}
+          <span className="flex flex-wrap gap-x-3">
+            {me.avatar && <button type="button" onClick={() => void save({ avatar: null }, 'Photo removed')} className="text-xs text-rose-600 dark:text-rose-400 mt-1">Remove photo</button>}
+            {me.id && <Link href={`/people/${me.id}`} className="text-xs text-indigo-700 dark:text-indigo-300 underline underline-offset-2 mt-1">See my profile</Link>}
+          </span>
         </div>
       </div>
-      <div className="grid sm:grid-cols-2 gap-3">
-        <label className="space-y-1"><span className="text-xs font-medium text-zinc-500">Full name</span><input className="input" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} /></label>
-        <label className="space-y-1"><span className="text-xs font-medium text-zinc-500">Phone (for account recovery)</span><input className="input" value={phone} maxLength={30} inputMode="tel" placeholder="+91 …" onChange={(e) => setPhone(e.target.value)} /></label>
+      <div className="grid sm:grid-cols-2 gap-3" data-setting="name">
+        <label className="space-y-1"><span className="text-xs font-medium text-zinc-500">Full name</span><input className="input" value={form.name} maxLength={80} onChange={(e) => set('name', e.target.value)} /></label>
+        <label className="space-y-1"><span className="text-xs font-medium text-zinc-500">Phone (for account recovery; never shown)</span><input className="input" value={form.phone} maxLength={30} inputMode="tel" placeholder="+91 …" onChange={(e) => set('phone', e.target.value)} /></label>
         <label className="space-y-1 sm:col-span-2"><span className="text-xs font-medium text-zinc-500">Email (your sign-in, can’t be changed here)</span><input className="input opacity-70" value={me.email ?? ''} readOnly /></label>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <label className="space-y-1" data-setting="pronouns"><span className="text-xs font-medium text-zinc-500">Pronouns (optional)</span>
+          <input className="input" list={pronounList} value={form.pronouns} maxLength={30} onChange={(e) => set('pronouns', e.target.value)} placeholder="e.g. she/her" />
+          <datalist id={pronounList}>{PRONOUN_SUGGESTIONS.map((p) => <option key={p} value={p} />)}</datalist>
+        </label>
+        <label className="space-y-1" data-setting="availability"><span className="text-xs font-medium text-zinc-500">When people can reach you (optional)</span>
+          <input className="input" value={form.availability} maxLength={120} onChange={(e) => set('availability', e.target.value)} placeholder="e.g. Usually free Tue and Thu afternoons" />
+        </label>
+        <label className="space-y-1 sm:col-span-2" data-setting="bio"><span className="flex justify-between text-xs font-medium text-zinc-500"><span>About me (optional)</span><span className="tabular-nums">{form.bio.length}/300</span></span>
+          <textarea className="input min-h-[80px]" value={form.bio} maxLength={300} onChange={(e) => set('bio', e.target.value)} placeholder="What you study or teach, what you’re into, what people can ask you about" />
+        </label>
+      </div>
+      <div className="space-y-2" data-setting="links">
+        <p className="text-xs font-medium text-zinc-500">Links (optional, up to {MAX_LINKS})</p>
+        {links.map((l, i) => (
+          <div key={i} className="grid grid-cols-[1fr_1.6fr_auto] gap-2">
+            <input className="input" aria-label={`Link ${i + 1} name`} value={l.label} maxLength={30} placeholder="Name (optional)" onChange={(e) => setLinks((ls) => ls.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
+            <input className="input" aria-label={`Link ${i + 1} address`} type="url" value={l.url} placeholder="https://" onChange={(e) => setLinks((ls) => ls.map((x, j) => (j === i ? { url: e.target.value, label: x.label === linkLabel(x.url) ? '' : x.label } : x)))} />
+            <button type="button" className="btn-ghost btn-icon" aria-label={`Remove link ${i + 1}`} onClick={() => setLinks((ls) => ls.filter((_, j) => j !== i))}><Trash2 className="w-4 h-4" aria-hidden /></button>
+          </div>
+        ))}
+        {links.length < MAX_LINKS && <button type="button" className="btn-ghost btn-sm" onClick={() => setLinks((ls) => [...ls, { label: '', url: '' }])}><Plus className="w-4 h-4" aria-hidden /> Add a link</button>}
       </div>
       <AnimatePresence>
         {changed && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.snappy} className="flex justify-end overflow-hidden">
-            <button type="button" className="btn-primary" disabled={busy === 'save' || name.trim().length < 2} onClick={() => void saveDetails()}>{busy === 'save' && <Loader2 className="w-4 h-4 animate-spin" />} Save changes</button>
+            <button type="button" className="btn-primary" disabled={busy === 'save' || form.name.trim().length < 2} onClick={() => void saveDetails()}>{busy === 'save' && <Loader2 className="w-4 h-4 animate-spin" />} Save changes</button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -296,6 +397,7 @@ function Profile({ role }: { role: Role }) {
           <ChevronRight className="w-4 h-4 text-indigo-500 shrink-0" />
         </Link>
       )}
+      {cropping && <AvatarCropper file={cropping} onCancel={() => setCropping(null)} onDone={(f) => { setCropping(null); void upload(f, 'photo'); }} />}
     </Card>
   );
 }
@@ -335,31 +437,31 @@ function Appearance() {
   const pickTheme = (v: Theme, e: React.MouseEvent) => { setTheme(v); applyTheme(v, { from: { x: e.clientX, y: e.clientY } }); };
   return (
     <Card title="Appearance" subtitle="How UniVerse looks and feels on this device">
-      <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Theme</p>
+      <div className="space-y-2" data-setting="theme"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Theme</p>
         <Choice id="theme" value={theme} onPick={pickTheme} options={[['light', 'Light', Sun], ['dark', 'Dark', Moon], ['system', 'Automatic', SunMoon]]} />
       </div>
-      <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Text size</p>
+      <div className="space-y-2" data-setting="text-size"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Text size</p>
         <Choice id="text" value={size} onPick={(v) => { setSize(v); setTextSize(v); }} options={[['default', 'Default'], ['large', 'Large'], ['larger', 'Larger'], ['largest', 'Largest']]} />
       </div>
-      <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reading level</p>
+      <div className="space-y-2" data-setting="reading-level"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Reading level</p>
         <Choice id="level" value={level} onPick={(v) => { setLevel(v); setReadingLevel(v); }} options={[['original', 'As written'], ['g8', 'Grade 8'], ['g5', 'Grade 5']]} />
         <p className="text-xs text-zinc-500 dark:text-zinc-400">Course materials, assignment instructions, feedback and quiz questions open rewritten by AI in simpler words, with key words explained. The original is one tap away.</p>
       </div>
-      <Row icon={TextSelect} title="Help with selected text" desc="Select any text in UniVerse to listen to it, or to read it in simpler words.">
+      <Row setting="select-help" icon={TextSelect} title="Help with selected text" desc="Select any text in UniVerse to listen to it, or to read it in simpler words.">
         <Switch checked={selHelp} label="Help with selected text" onChange={(on) => { setSelHelp(on); setSelectHelp(on); }} />
       </Row>
-      <Row icon={Accessibility} title="Reduce motion" desc="Pages and buttons change without moving or sliding (your device’s own setting is followed too).">
+      <Row setting="reduce-motion" icon={Accessibility} title="Reduce motion" desc="Pages and buttons change without moving or sliding (your device’s own setting is followed too).">
         <Switch checked={reduce} label="Reduce motion" onChange={(on) => { setReduce(on); setAppReduceMotion(on); }} />
       </Row>
-      <Row icon={Vibrate} title="Vibration" desc="A light tap when you press buttons and switch tabs (phones).">
+      <Row setting="vibration" icon={Vibrate} title="Vibration" desc="A light tap when you press buttons and switch tabs (phones).">
         <Switch checked={haptics} label="Vibration" onChange={(on) => { setHap(on); setHaptics(on); }} />
       </Row>
       {AIDS.map(([aid, Icon, title, desc]) => (
-        <Row key={aid} icon={Icon} title={title} desc={desc}>
+        <Row key={aid} setting={aid} icon={Icon} title={title} desc={desc}>
           <Switch checked={aids[aid]} label={title} onChange={(on) => { setAids((a) => ({ ...a, [aid]: on })); setReadingAid(aid, on); }} />
         </Row>
       ))}
-      <Row icon={Captions} title="Captions on in calls" desc="Calls start with live captions showing (you can still turn them off in a call).">
+      <Row setting="captions" icon={Captions} title="Captions on in calls" desc="Calls start with live captions showing (you can still turn them off in a call).">
         <Switch checked={cc} label="Captions on in calls" onChange={(on) => { setCc(on); setCaptionsByDefault(on); }} />
       </Row>
     </Card>
@@ -371,8 +473,8 @@ function LanguageData() {
   const pick = (code: Language) => { setLanguage(code); toast.success(`Language changed to ${LANGUAGES.find((l) => l.code === code)?.nativeName}`); };
   return (
     <Card title={t('settings.language')} subtitle={t('settings.language_desc')}>
-      <LowDataToggle />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <Setting id="low-data"><LowDataToggle /></Setting>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" data-setting="language">
         {LANGUAGES.map((l) => (
           <button key={l.code} type="button" onClick={() => pick(l.code)} aria-pressed={language === l.code}
             className={cn('relative isolate flex items-center gap-3 p-3.5 rounded-2xl text-left transition-colors', language === l.code ? 'text-zinc-900 dark:text-white' : 'bg-[var(--fill)] hover:opacity-90')}>
@@ -397,13 +499,13 @@ function Notifications({ role }: { role: Role }) {
   };
   return (
     <Card title="Notifications" subtitle="How UniVerse reaches you">
-      <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">On this device</p><NotificationPermissionPrompt /></div>
-      <Row icon={Bell} title="Email notifications" desc={role === 'ADMIN' ? 'New teacher and NGO applications, and messages you miss.' : role === 'TEACHER' ? 'Submissions to grade, messages you miss and reminders.' : 'New grades, credential decisions, messages you miss and quizzes due tomorrow.'}>
+      <div className="space-y-2" data-setting="push"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">On this device</p><NotificationPermissionPrompt /></div>
+      <Row setting="email" icon={Bell} title="Email notifications" desc={role === 'ADMIN' ? 'New teacher and NGO applications, and messages you miss.' : role === 'TEACHER' ? 'Submissions to grade, messages you miss and reminders.' : 'New grades, credential decisions, messages you miss and quizzes due tomorrow.'}>
         {on === null ? <Loader2 className="w-4 h-4 animate-spin text-zinc-400" /> : <Switch checked={on} label="Email notifications" onChange={(v) => void toggle(v)} />}
       </Row>
-      <NotifyKinds />
-      <QuietHoursSetting />
-      {(role === 'TEACHER' || role === 'ADMIN') && <ParentHoursSetting />}
+      <Setting id="notify-kinds"><NotifyKinds /></Setting>
+      <Setting id="quiet-hours"><QuietHoursSetting /></Setting>
+      {(role === 'TEACHER' || role === 'ADMIN') && <Setting id="parent-hours"><ParentHoursSetting /></Setting>}
     </Card>
   );
 }
@@ -412,7 +514,7 @@ function AiFeatures() {
   const { isChatbotEnabled, setChatbotEnabled } = useAiStore();
   return (
     <Card title="AI features" subtitle="Your assistants and tools">
-      <Row icon={Sparkles} title="Floating AI assistant" desc="The assistant button in the corner of every page, for quick questions and help.">
+      <Row setting="assistant" icon={Sparkles} title="Floating AI assistant" desc="The assistant button in the corner of every page, for quick questions and help.">
         <Switch checked={isChatbotEnabled} label="Floating AI assistant" onChange={(v) => { setChatbotEnabled(v); toast.success(v ? 'Assistant on' : 'Assistant off'); }} />
       </Row>
       <MyAiUses />
@@ -425,7 +527,7 @@ function AiFeatures() {
 function MyAiUses() {
   const { data } = useSWR<{ keepDays: number; uses: { id: string; kind: string; detail: string; course: string | null; createdAt: string }[] }>('/api/me/ai-uses', authedJson);
   return (
-    <details className="rounded-2xl bg-[var(--fill)] p-4">
+    <details className="rounded-2xl bg-[var(--fill)] p-4" data-setting="ai-activity">
       <summary className="cursor-pointer text-sm font-medium text-zinc-900 dark:text-white">Your AI activity{data ? ` (${data.uses.length})` : ''}</summary>
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">The AI help you used in UniVerse, kept {data?.keepDays ?? 180} days. Only you see it, unless you attach it to an assignment as an AI receipt. Reading help (translation, simpler words, listening) isn’t recorded.</p>
       {data && (data.uses.length ? (
@@ -469,16 +571,16 @@ function Storage({ role }: { role: Role }) {
         </div>
       )}
       {role === 'STUDENT' && (
-        <Link href="/student/offline" className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--fill)] hover:opacity-90">
+        <Link href="/student/offline" data-setting="offline" className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--fill)] hover:opacity-90">
           <span><span className="block text-sm font-medium text-zinc-900 dark:text-white">Offline courses</span><span className="block text-xs text-zinc-500 mt-0.5">Courses saved to open with no connection.</span></span>
           <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
         </Link>
       )}
-      <Row icon={Trash2} title="Clear data on this device" desc="Frees space; your account and everything on it stay as they are.">
+      <Row setting="clear-device" icon={Trash2} title="Clear data on this device" desc="Frees space; your account and everything on it stay as they are.">
         <button type="button" className="btn-secondary btn-sm" disabled={clearing} onClick={() => void clear()}>{clearing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Clear'}</button>
       </Row>
-      <DownloadMyData />
-      <DeleteAccount />
+      <Setting id="download-data"><DownloadMyData /></Setting>
+      <Setting id="delete-account"><DeleteAccount /></Setting>
     </Card>
   );
 }
@@ -487,7 +589,7 @@ function HelpAbout() {
   const links: [string, string][] = [['Contact & support', '/contact'], ['Accessibility', '/accessibility'], ['Privacy policy', '/privacy'], ['Terms', '/terms'], ['Security', '/security'], ['Legal notice', '/legal-notice']];
   return (
     <Card title="Help & about" subtitle="Get help, and the small print">
-      <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('universe:open-assistant'))} className="w-full flex items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/10 text-left">
+      <button type="button" data-setting="help" onClick={() => window.dispatchEvent(new CustomEvent('universe:open-assistant'))} className="w-full flex items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/10 text-left">
         <span><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Ask the help assistant</span><span className="block text-xs text-zinc-500 mt-0.5">Instant answers about using UniVerse, even offline.</span></span>
         <Sparkles className="w-5 h-5 text-fuchsia-500 shrink-0" />
       </button>

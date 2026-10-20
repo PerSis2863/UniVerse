@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
-import { getOrCreatePassport, passportContent, passportUrl, resetPassportLink } from '@/server/passport';
+import { cleanPassportTheme } from '@/lib/passport-theme';
+import { getOrCreatePassport, passportContent, passportUrl, portfolioUrl, resetPassportLink, setPassportHandle, setPassportTheme } from '@/server/passport';
 
 // The signed-in student's skills passport: settings and a preview of what the public page shows.
 // PATCH { isPublic?, headline?, showSkills?, showCredentials?, showCourses?, showImpact?, showEvidence?,
-//         strengths?, hideEvidence?: { id, hidden }, resetLink? }
+//         strengths?, handle?, theme?, hideEvidence?: { id, hidden }, resetLink? }
 
 async function view(userId: string) {
   const p = await getOrCreatePassport(userId);
   const preview = await passportContent(userId, { showSkills: true, showCredentials: true, showCourses: true, showImpact: true, showEvidence: true }, true);
   return {
     isPublic: p.isPublic, headline: p.headline, url: passportUrl(p.slug), views: p.views,
+    handle: p.handle, portfolioUrl: p.handle ? portfolioUrl(p.handle) : null, theme: cleanPassportTheme(p.theme),
     showSkills: p.showSkills, showCredentials: p.showCredentials, showCourses: p.showCourses, showImpact: p.showImpact, showEvidence: p.showEvidence,
     strengths: p.strengths, strengthsAt: p.strengthsAt,
     preview,
@@ -44,5 +46,10 @@ export async function PATCH(req: Request) {
     await prisma.skillEvidence.updateMany({ where: { id: b.hideEvidence.id, userId: user.id }, data: { hidden: b.hideEvidence.hidden === true } });
   }
   if (b.resetLink === true) await resetPassportLink(user.id);
+  if ('handle' in b) {
+    try { await setPassportHandle(user.id, b.handle); }
+    catch (e) { return NextResponse.json({ error: (e as Error).message }, { status: 400 }); }
+  }
+  if ('theme' in b) await setPassportTheme(user.id, b.theme);
   return NextResponse.json(await view(user.id));
 }

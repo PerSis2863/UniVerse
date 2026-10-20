@@ -74,6 +74,14 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
     { href: '/student/passport', label: 'Skills passport', keywords: 'cv profile share employers' },
     { href: '/student/offline?scan=1', label: 'Scan from the teacher’s screen', keywords: 'offline no internet moving qr codes scan note quiz announcement class' },
     { href: '/student/internships/match', label: 'Skills match', keywords: 'jobs internships ngo projects match my skills gap what to learn career' },
+    { href: '/student/internships/applications', label: 'Application tracker', keywords: 'jobs internships applications applied interview offer next step notes cv career tracker' },
+    { href: '/student/internships/interview', label: 'Interview practice', keywords: 'job interview questions practise answer feedback star filler words career' },
+    { href: '/student/internships/mentors', label: 'Mentors and alumni', keywords: 'mentor alumni career advice book a call one to one graduates' },
+    { href: '/donations', label: 'My donations', keywords: 'donate donation give money ngo charity receipt 80g tax' },
+    { href: '/student/life/board', label: 'Campus board', keywords: 'marketplace buy sell swap free second hand books bike carpool ride share lift housing room flat rent' },
+    { href: '/student/life/board?section=rides', label: 'Carpool and rides', keywords: 'carpool ride share lift airport travel together' },
+    { href: '/student/life/board?section=housing', label: 'Housing board', keywords: 'room flat rent housing roommate accommodation pg' },
+    { href: '/student/life/everyday', label: 'Pre-order food', keywords: 'cafeteria canteen dining food order lunch dinner pre-order pickup' },
     { href: '/student/life/rooms', label: 'Room booking', keywords: 'reserve study room' },
     { href: '/campus-map', label: 'Campus map', keywords: 'map buildings where is my class room free study room now live events campus twin' },
     { href: '/student/life/medical', label: 'Medical & disability', keywords: 'health doctor accessibility' },
@@ -87,6 +95,7 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
   ],
   TEACHER: [
     { href: '/teacher/tutor', label: 'AI tutor', keywords: 'ai course sources flashcards' },
+    { href: '/donations', label: 'My donations', keywords: 'donate donation give money ngo charity receipt 80g tax' },
     { href: '/teacher/live', label: 'Send to phones with no internet', keywords: 'offline no internet moving qr codes projector note quiz announcement class' },
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
     { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
@@ -98,6 +107,9 @@ export const searchOnlyPages: Record<string, { href: string; label: string; keyw
   ],
   ADMIN: [
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
+    { href: '/admin/impact-reports/donations', label: 'Donations', keywords: 'ngo donations give money 80g pan receipts stripe csv charity' },
+    { href: '/admin/monitoring/board', label: 'Campus board reports', keywords: 'marketplace reported posts moderation rides housing' },
+    { href: '/admin/monitoring/meals', label: 'Cafeteria pre-orders', keywords: 'kitchen canteen dining food orders pickup ready' },
     { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
     { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor impact call report project updates' },
     { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize credentials' },
@@ -270,6 +282,7 @@ function NavItemComponent({
         <button
           onClick={onToggle}
           aria-expanded={isOpen}
+          data-tour-hrefs={item.subItems.map((s) => s.href.split('?')[0]).join(' ')}
           className={cn('sidebar-item w-full justify-between', active && !isOpen && 'active')}
         >
           <div className="flex items-center gap-3">
@@ -292,7 +305,7 @@ function NavItemComponent({
                 {item.subItems.map(sub => {
                   const on = isOn(pathname, sub.href, sub.also);
                   return (
-                    <Link key={sub.href} href={sub.href} data-vt="fade" onClick={onClose} aria-current={on ? 'page' : undefined}
+                    <Link key={sub.href} href={sub.href} data-vt="fade" data-tour-href={sub.href.split('?')[0]} onClick={onClose} aria-current={on ? 'page' : undefined}
                       className={cn('sidebar-item pill-host relative block text-[15px] py-1.5', on && 'active')}>
                       {on && <motion.span layoutId="sidebar-pill" transition={spring.snappy} className="sidebar-pill" />}
                       <span className="relative block truncate">{t(sub.label)}</span>
@@ -319,7 +332,7 @@ function NavItemComponent({
   if (item.href) {
     const on = isOn(pathname, item.href, item.also);
     return (
-      <Link href={item.href} data-vt="fade" onClick={onClose} aria-current={on ? 'page' : undefined}
+      <Link href={item.href} data-vt="fade" data-tour-href={item.href.split('?')[0]} onClick={onClose} aria-current={on ? 'page' : undefined}
         className={cn('sidebar-item pill-host relative block', on && 'active')}>
         {on && <motion.span layoutId="sidebar-pill" transition={spring.snappy} className="sidebar-pill" />}
         <div className="relative flex items-center gap-3">

@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
+import { toast } from 'sonner';
 import { m as motion } from 'framer-motion';
-import { BadgeCheck, BookOpen, Briefcase, CalendarClock, Check, HeartHandshake, MapPin, Target, Users } from 'lucide-react';
+import { BadgeCheck, Bell, BookOpen, Briefcase, CalendarClock, Check, HeartHandshake, MapPin, Target, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, INTERNSHIP_TABS } from '@/components/layout/SectionTabs';
 import Link from '@/components/ui/Link';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { Switch } from '@/components/ui/Switch';
 import { authedJson } from '@/lib/authed-fetch';
 import { fadeUp, list } from '@/lib/motion';
 import type { GapModule, GapTutor, SkillMatch, Verified } from '@/lib/skills-bridge';
@@ -124,6 +126,23 @@ function OpportunityCard({ o }: { o: Opportunity }) {
   );
 }
 
+/** Job alerts (Stage 5 · Q15): a notification when a new opening matches at least half my checked skills. */
+function JobAlerts() {
+  const { data, mutate } = useSWR<{ on: boolean }>('/api/careers/alerts', authedJson);
+  const flip = async (on: boolean) => {
+    await mutate({ on }, { revalidate: false });
+    try { await mutate(await authedJson<{ on: boolean }>('/api/careers/alerts', { method: 'POST', body: JSON.stringify({ on }) }), { revalidate: false }); }
+    catch (e) { toast.error((e as Error).message); void mutate(); }
+  };
+  return (
+    <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-white/10 flex items-center gap-3">
+      <Bell className="w-4 h-4 text-zinc-500 shrink-0" aria-hidden />
+      <p id="job-alerts" className="flex-1 min-w-0 text-sm text-zinc-700 dark:text-zinc-200">Tell me when a new opening matches my skills</p>
+      <Switch checked={data?.on ?? true} disabled={!data} onChange={flip} label="Tell me when a new opening matches my skills" />
+    </div>
+  );
+}
+
 export default function SkillsMatchPage() {
   const { data, error, isLoading } = useSWR<{ skills: Verified[]; opportunities: Opportunity[] }>('/api/internships/skills-match', authedJson);
   const [kind, setKind] = useState<(typeof KINDS)[number]['id']>('ALL');
@@ -161,9 +180,10 @@ export default function SkillsMatchPage() {
                 ) : (
                   <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
                     None yet. Skills appear once your work is graded (60% or more) or your volunteering is verified. See them in your{' '}
-                    <Link href="/student/passport" className="text-indigo-700 dark:text-indigo-300 hover:underline">skills passport</Link>.
+                    <Link href="/student/passport" className="text-indigo-700 dark:text-indigo-300 underline underline-offset-2">skills passport</Link>.
                   </p>
                 )}
+                <JobAlerts />
               </motion.section>
 
               <motion.div variants={fadeUp} role="group" aria-label="Show" className="inline-flex rounded-xl bg-zinc-100 dark:bg-white/[0.06] p-1">

@@ -6,9 +6,10 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { CheckCircle2, Circle, Loader2, ShieldCheck, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
+import Link from '@/components/ui/Link';
 import { cn } from '@/lib/utils';
 
-interface Me { name: string; email: string; phone: string | null; role: string; status: string; department: string | null }
+interface Me { name: string; email: string; phone: string | null; role: string; status: string; department: string | null; hasPhoto?: boolean; hasBio?: boolean }
 const HIDE_KEY = 'universe-setup-card-hidden';
 
 /**
@@ -50,6 +51,7 @@ export function AccountSetupCard() {
     emailVerified !== null && { key: 'email', label: 'Verify your email', done: emailVerified, hint: data.email },
     { key: 'phone', label: 'Add your phone number', done: !!data.phone, hint: data.phone || 'Used for account recovery and campus alerts' },
     needsDepartment && { key: 'department', label: 'Add your department', done: !!data.department, hint: data.department || 'Helps classmates and teachers find you' },
+    { key: 'profile', label: 'Add a photo and a few words about you', done: !!data.hasPhoto && !!data.hasBio, hint: 'Shown on your profile, so classmates and teachers know who you are' },
     data.role !== 'ADMIN' && { key: 'approval', label: 'Account approved', done: data.status === 'ACTIVE', hint: data.status === 'ACTIVE' ? 'Approved by your campus admin' : 'Waiting for your campus admin to approve' },
   ].filter(Boolean) as { key: string; label: string; done: boolean; hint: string }[];
 
@@ -124,6 +126,9 @@ export function AccountSetupCard() {
                 <p className="text-xs text-zinc-500 truncate">{s.hint}</p>
                 {!s.done && s.key === 'email' && (
                   <button onClick={sendVerification} aria-busy={busy || undefined} disabled={busy} className="mt-2 text-xs font-semibold text-indigo-500 hover:text-indigo-400 disabled:opacity-50">Send verification email</button>
+                )}
+                {!s.done && s.key === 'profile' && (
+                  <Link href={`/${data.role === 'TEACHER' ? 'teacher' : data.role === 'ADMIN' ? 'admin' : 'student'}/settings?section=profile`} className="mt-2 inline-block text-xs font-semibold text-indigo-700 dark:text-indigo-300 hover:underline">Add now</Link>
                 )}
                 {!s.done && (s.key === 'phone' || s.key === 'department') && open !== s.key && (
                   <button onClick={() => { setOpen(s.key as 'phone' | 'department'); setValue(''); }} className="mt-2 text-xs font-semibold text-indigo-500 hover:text-indigo-400">Add now</button>

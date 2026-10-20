@@ -274,7 +274,8 @@
   }
   .btn-ghost:not(:disabled):hover { background-color: var(--btn-ghost-hover-bg); color: var(--btn-ghost-hover-color); }
 
-  .btn-danger { color: #fff; background-color: var(--ios-red); }
+  /* White text needs a deeper red than --ios-red to read clearly (5.1:1, Apple's accessible red). */
+  .btn-danger { color: #fff; background-color: #d70015; }
   .btn-danger:not(:disabled):hover { filter: brightness(1.07); }
   .btn-danger:not(:disabled):active { filter: brightness(0.9); }
 

@@ -191,6 +191,11 @@ export default {
       const refused = candidates.length ? schoolGate(candidates, await callerOrg(request, env)) : null;
       if (refused) return refused;
     }
+    // The site's DID document (did:web looks for it here; Stage 5 · Q14): its API route, without Next.js.
+    if (url.pathname === '/.well-known/did.json' && request.method === 'GET') {
+      const r = new Request(new URL('/api/passport/did', url), request);
+      return (await apiDirect(r, new URL(r.url), env, ctx)) ?? nextApp.fetch(r, env, ctx);
+    }
     // An API route: the light path (plain SQL) first, then the route's own code without Next.js
     // (./api-direct.ts), and Next.js only for what neither answers.
     // How long it took goes into the Health numbers (1 in 20, and every server error).

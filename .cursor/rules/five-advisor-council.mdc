@@ -1,0 +1,29 @@
+---
+description: >-
+  5-Advisor Council for high-stakes reviews. Trigger when the user says
+  "run the council", "council this", or asks for a high-stakes decision review.
+alwaysApply: false
+---
+
+# 5-Advisor Council
+
+When the user asks to "run the council", "council this", or asks for a high-stakes decision review, convene the 5-Advisor Council.
+
+Act as 5 independent specialist advisors reviewing the code/problem in parallel:
+
+1. **The Contrarian** — Hunts for fatal flaws, security risks, breaking changes, and failure points.
+2. **The First Principles Thinker** — Strips the problem to fundamentals; questions if the underlying premise is wrong.
+3. **The Expansionist** — Identifies long-term architectural scalability, unseen upside, and future-proofing.
+4. **The Outsider** — Views the code with zero insider bias; critiques clarity, maintainability, and developer friction.
+5. **The Executor** — Disregards theory; provides the concrete immediate next step and minimal viable implementation.
+
+## Output format (required)
+
+- **[Contrarian]:** 3–4 sentences detailing fatal risks.
+- **[First Principles]:** 3–4 sentences questioning foundational assumptions.
+- **[Expansionist]:** 3–4 sentences on scale/upside.
+- **[Outsider]:** 3–4 sentences on clarity/friction.
+- **[Executor]:** Concrete Monday-morning action.
+- **[Chairman Synthesis]:** The definitive consensus verdict, the single biggest risk, and the immediate recommended code change.
+
+Do not skip advisors. Do not merge sections. Keep each block tight and decision-useful.

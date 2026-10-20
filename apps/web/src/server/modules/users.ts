@@ -16,12 +16,14 @@ const INVITABLE: Role[] = ['STUDENT', 'TEACHER', 'ADMIN'];
 const inviteExpiry = () => new Date(Date.now() + 30 * 24 * 3600 * 1000);
 import { cancelDeletion, requestDeletion } from '../account-deletion';
 import { permissionsOf } from '../permissions';
+import { cleanAvailability, cleanBio, cleanLinks, cleanPronouns } from '@/lib/profile';
 
 const USER_STATUSES: UserStatus[] = ['PENDING', 'ACTIVE', 'SUSPENDED'];
 
 const safeSelect = {
   id: true, name: true, email: true, role: true, status: true,
   avatar: true, phone: true, googleId: true, emailNotifications: true, termsVersion: true, termsAcceptedAt: true, onboardedAt: true, tourDoneAt: true, createdAt: true, updatedAt: true,
+  tourStep: true, coverUrl: true, pronouns: true, bio: true, links: true, availability: true,
   studentProfile: true, teacherProfile: true,
 };
 
@@ -240,6 +242,21 @@ export default function users(router: Router) {
     }
     if (typeof body?.emailNotifications === 'boolean') data.emailNotifications = body.emailNotifications;
     if (body?.tourDone === true) data.tourDoneAt = new Date();
+    // Stage 5 · Q18: the guided tour's step (it resumes there), and the profile others see.
+    const step = Number(body?.tourStep);
+    if (body && 'tourStep' in body && Number.isInteger(step) && step >= 0 && step <= 20) data.tourStep = step;
+    if (body && 'coverUrl' in body) {
+      const c = typeof body.coverUrl === 'string' ? body.coverUrl.trim() : '';
+      if (c && (c.length > 1000 || !(/^https:\/\/\S+$/.test(c) || /^\/api\/files\/[A-Za-z0-9_-]{16,}(\/\S*)?$/.test(c)))) throw new BadRequestException('Upload a cover photo, or use an https image link.');
+      data.coverUrl = c || null;
+    }
+    if (body && 'pronouns' in body) {
+      data.pronouns = cleanPronouns(body.pronouns);
+      if (body.pronouns && !data.pronouns) throw new BadRequestException('Pronouns can have letters, slashes and spaces, like she/her.');
+    }
+    if (body && 'bio' in body) data.bio = cleanBio(body.bio);
+    if (body && 'links' in body) data.links = JSON.stringify(cleanLinks(body.links));
+    if (body && 'availability' in body) data.availability = cleanAvailability(body.availability);
     const updated = await prisma.user.update({ where: { id: user.id }, data, select: safeSelect });
     forgetUser(user.id);
     return updated;

@@ -33,6 +33,8 @@ export function dueChecks(now: number): [string, unknown[]][] {
     ['SELECT 1 FROM parent_copilot WHERE "weekly" = 1 AND "nextAt" <= ? LIMIT 1', [dbDate(now + 2 * 60_000)]],
     // A course announcement scheduled for now (Stage 5 · B2).
     ['SELECT 1 FROM announcements WHERE "sentAt" IS NULL AND "publishAt" IS NOT NULL AND "publishAt" <= ? LIMIT 1', [dbDate(now + 2 * 60_000)]],
+    // An application's next step within the hour (Stage 5 · Q15).
+    ['SELECT 1 FROM job_applications WHERE "remindedAt" IS NULL AND "nextAt" > ? AND "nextAt" <= ? LIMIT 1', [dbDate(now - 86_400_000), dbDate(now + 60 * 60_000)]],
   ];
 }
 

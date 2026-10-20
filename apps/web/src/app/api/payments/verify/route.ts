@@ -1,35 +1,14 @@
-import { NextResponse } from 'next/server';
-import { getSessionUser } from '@/lib/server-auth';
+import { route } from '@/server/assignments';
+import { BadRequestException } from '@/server/http';
 import { confirmUnifiedPayment } from '@/server/payments/provider';
-import type { PaymentProviderName } from '@/server/payments/types';
 
-export async function POST(req: Request) {
-  const user = await getSessionUser(req);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+// The payer is back from the gateway: { orderId, paymentRef?, signature? } (Razorpay's checkout
+// gives both; Stripe needs neither). The gateway is asked before anything counts, and only the
+// person who made the order can confirm it (src/server/payments/provider.ts).
+export const POST = (req: Request) => route(req, async (user) => {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const orderId = typeof body.orderId === 'string' ? body.orderId : '';
-  const provider = (typeof body.provider === 'string' ? body.provider : 'RAZORPAY') as PaymentProviderName;
-  const orderRef = typeof body.orderRef === 'string' ? body.orderRef : '';
-  const paymentRef = typeof body.paymentRef === 'string' ? body.paymentRef : '';
-  const signature = typeof body.signature === 'string' ? body.signature : '';
-
-  if (!orderId || !orderRef || !paymentRef || !signature) {
-    return NextResponse.json({ error: 'Missing required payment verification parameters' }, { status: 400 });
-  }
-
-  try {
-    const result = await confirmUnifiedPayment({
-      orderId,
-      provider,
-      orderRef,
-      paymentRef,
-      signature,
-    });
-
-    return NextResponse.json(result);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Payment verification failed';
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
-}
+  if (!orderId) throw new BadRequestException('Which payment?');
+  const s = (k: string) => (typeof body[k] === 'string' ? (body[k] as string).slice(0, 200) : '');
+  return confirmUnifiedPayment({ orderId, provider: 'STRIPE', orderRef: '', paymentRef: s('paymentRef'), signature: s('signature') }, user.id);
+});

@@ -3,6 +3,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { readRotatingCode, rotatingCode } from './campus-life';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { evidenceFromShift, safely } from './skill-evidence';
+import { impactService } from './services/impact.service';
 
 // Verified volunteering (upgrade 5). NGO projects have shifts; students sign up, check in on site by
 // scanning the supervisor's rotating QR code (or by GPS near the shift's place), and check out. A
@@ -49,6 +50,8 @@ async function award(checkinId: string, verifierName?: string | null) {
     userId: c.studentId, checkinId: c.id, title: c.shift.title, projectName: c.shift.project.name, organization: c.shift.project.ngo?.name ?? 'NGO',
     minutes: c.minutes, skills: c.shift.project.skillsRequired, verifiedById: c.verifiedById, verifiedByName: verifierName ?? null, at: c.checkOutAt ?? new Date(),
   }));
+  // Certificates at 10 / 50 / 100 verified hours (Stage 5 · Q16).
+  await safely(impactService.issueMilestones(c.studentId));
 }
 
 async function checkOutRow(id: string, at: Date) {
@@ -208,9 +211,15 @@ export async function markPresent(user: SessionUser, shiftId: string, studentId:
 
 // ── Map and yearly report ────────────────────────────────────────────────────────────────────
 
-/** GET /api/impact/volunteering?year=YYYY: verified hours by place, project and SDG (map + report). */
-export async function volunteeringReport(yearParam: string | null) {
+/**
+ * GET /api/volunteer/report?year=YYYY&sdg=N: verified hours by place, project and SDG (map + report).
+ * With `sdg`, the places, projects and totals are that UN goal's only; `sdgs` always lists every goal
+ * with hours that year (the map's filter).
+ */
+export async function volunteeringReport(yearParam: string | null, sdgParam?: string | null) {
   const year = Number(yearParam) || new Date().getUTCFullYear();
+  const sdg = Number(sdgParam);
+  const only = Number.isInteger(sdg) && sdg >= 1 && sdg <= 17 ? sdg : null;
   const from = new Date(Date.UTC(year, 0, 1)), to = new Date(Date.UTC(year + 1, 0, 1));
   const rows = await prisma.shiftCheckin.findMany({
     where: { verified: true, checkOutAt: { gte: from, lt: to } },
@@ -220,7 +229,9 @@ export async function volunteeringReport(yearParam: string | null) {
   const places = new Map<string, { lat: number; lng: number; label: string; minutes: number; people: Set<string> }>();
   const projects = new Map<string, { name: string; ngo: string; sdg: number | null; minutes: number; people: Set<string> }>();
   const sdgs = new Map<number, number>();
-  for (const r of rows) {
+  for (const r of rows) if (r.shift.project.sdgNumber) sdgs.set(r.shift.project.sdgNumber, (sdgs.get(r.shift.project.sdgNumber) ?? 0) + r.minutes);
+  const shown = only ? rows.filter((r) => r.shift.project.sdgNumber === only) : rows;
+  for (const r of shown) {
     const s = r.shift;
     if (s.lat != null && s.lng != null) {
       const k = `${s.lat.toFixed(2)},${s.lng.toFixed(2)}`;
@@ -229,12 +240,11 @@ export async function volunteeringReport(yearParam: string | null) {
     }
     const pr = projects.get(s.project.id) ?? { name: s.project.name, ngo: s.project.ngo?.name ?? '', sdg: s.project.sdgNumber, minutes: 0, people: new Set<string>() };
     pr.minutes += r.minutes; pr.people.add(r.studentId); projects.set(s.project.id, pr);
-    if (s.project.sdgNumber) sdgs.set(s.project.sdgNumber, (sdgs.get(s.project.sdgNumber) ?? 0) + r.minutes);
   }
   const hours = (m: number) => Math.round((m / 60) * 10) / 10;
   return {
-    year,
-    totals: { hours: hours(rows.reduce((t, r) => t + r.minutes, 0)), volunteers: new Set(rows.map((r) => r.studentId)).size, shifts: new Set(rows.map((r) => r.shift.id)).size },
+    year, sdg: only,
+    totals: { hours: hours(shown.reduce((t, r) => t + r.minutes, 0)), volunteers: new Set(shown.map((r) => r.studentId)).size, shifts: new Set(shown.map((r) => r.shift.id)).size },
     places: [...places.values()].map((p) => ({ lat: p.lat, lng: p.lng, label: p.label, hours: hours(p.minutes), people: p.people.size })),
     projects: [...projects.values()].map((p) => ({ name: p.name, ngo: p.ngo, sdg: p.sdg, hours: hours(p.minutes), people: p.people.size })).sort((a, b) => b.hours - a.hours),
     sdgs: [...sdgs.entries()].map(([sdg, m]) => ({ sdg, hours: hours(m) })).sort((a, b) => a.sdg - b.sdg),

@@ -6,6 +6,9 @@ import { sampleAsk, sampleMetric } from './analytics';
 import { isMetricId } from '@/lib/school-metrics';
 import { answerText, cleanQuestionInput, forStudent, markAnswer, metaOf, typeOf } from '@/lib/question-types';
 import { DEFAULT_PREFS, GROUP_OF_TYPE, NOTE_GROUPS } from '@/lib/notify-prefs';
+import { builtInQuestions, countFillers, lengthAdvice, starParts, wordCount } from '@/lib/careers';
+import { carbonSummary, kgFor, activityOf } from '@/lib/carbon';
+import { budgetSummary, dishesOf, prepList, tally } from '@/lib/student-life';
 
 // Answers the app's API requests from example data while sample mode is on.
 // GETs without a sample answer fall through to the real server (read-only);
@@ -355,6 +358,84 @@ const SAMPLE_IMPACT_LEDGER = {
     },
   ],
 };
+
+// Stage 5 · Q15: careers in sample mode: the tracker, practice answers, mentors and bookings, kept
+// in this tab only (the people are the sample's fictional ones).
+type SampleCareers = { apps: any[]; answers: any[]; alerts: boolean; profile: any; slots: any[]; bookings: any[]; mentors: any[] };
+const careers = (d: SampleDb) => ((d as SampleDb & { careers?: SampleCareers }).careers ??= {
+  apps: [
+    { id: 'sample-app-1', title: 'Data analyst intern', company: 'Nova Labs', url: null, location: 'Remote', stage: 'INTERVIEW', onUniverse: true, appliedAt: at(-9), nextStep: 'Video interview', nextAt: at(2, 15), notes: 'Ask about the team’s data stack. Prepare the survey-cleaning project as an example.', documents: [{ name: 'CV.pdf', url: 'https://example.com/cv.pdf' }], updatedAt: at(-1) },
+    { id: 'sample-app-2', title: 'Junior web developer (summer)', company: 'Brightside Studio', url: 'https://example.com/jobs/42', location: 'Bengaluru', stage: 'APPLIED', onUniverse: false, appliedAt: at(-4), nextStep: 'Follow-up email', nextAt: at(5, 10), notes: null, documents: [], updatedAt: at(-4) },
+    { id: 'sample-app-3', title: 'Research assistant', company: 'Blue Earth', url: null, location: 'Hybrid', stage: 'SAVED', onUniverse: false, appliedAt: null, nextStep: null, nextAt: null, notes: 'Deadline end of month.', documents: [], updatedAt: at(-2) },
+  ],
+  answers: [],
+  alerts: true,
+  profile: null,
+  slots: [],
+  bookings: [],
+  mentors: [
+    { id: 'sample-mentor-1', company: 'Nova Labs', jobTitle: 'Data scientist', skills: ['Python', 'SQL', 'Interviews'], isAlumni: true, gradYear: 2021, bio: 'Studied CS here, then moved into data. Happy to talk about first internships and technical interviews.', user: { id: 'sample-u-priya', name: 'Priya Menon', avatar: null, role: 'STUDENT' }, slots: [{ id: 'sample-slot-1', startAt: at(3, 17), minutes: 30 }, { id: 'sample-slot-2', startAt: at(10, 17), minutes: 30 }] },
+    { id: 'sample-mentor-2', company: 'UniVerse University', jobTitle: 'Careers lead', skills: ['CVs', 'Cover letters'], isAlumni: false, gradYear: null, bio: 'I help students turn coursework and volunteering into a strong CV.', user: { id: d.people.meera.id, name: d.people.meera.name, avatar: null, role: 'TEACHER' }, slots: [{ id: 'sample-slot-3', startAt: at(1, 11), minutes: 15 }] },
+  ],
+});
+const mentoringView = (c: SampleCareers) => ({ profile: c.profile, slots: c.slots, bookings: c.bookings });
+
+// Stage 5 · Q16: global impact in sample mode: donations, the volunteering map with UN goals, and a
+// club's carbon tracker (kept in this tab only).
+type SampleImpact = { carbon: any[] };
+const impactQ16 = (d: SampleDb) => ((d as SampleDb & { q16?: SampleImpact }).q16 ??= {
+  carbon: [
+    { id: 'sample-co2-1', activity: 'bus', quantity: 720, kgCo2e: kgFor('bus', 720), note: 'Bus to the beach clean-up, 24 people × 30 km', occurredAt: at(-12), by: 'Zoya Khan', canDelete: false },
+    { id: 'sample-co2-2', activity: 'diesel-generator', quantity: 12, kgCo2e: kgFor('diesel-generator', 12), note: 'Generator at the night market stall', occurredAt: at(-30), by: 'Aarav Shah', canDelete: false },
+    { id: 'sample-co2-3', activity: 'walk-cycle', quantity: 40, kgCo2e: kgFor('walk-cycle', 40), note: 'Cycled to the tree planting', occurredAt: at(-5), by: 'Liam Chen', canDelete: false },
+  ],
+});
+const carbonView = (d: SampleDb) => {
+  const rows = impactQ16(d).carbon.map((e) => ({ ...e, label: activityOf(e.activity)?.label ?? e.activity, unit: activityOf(e.activity)?.unit ?? '', saving: !!activityOf(e.activity)?.saving }));
+  return { club: { id: 'sample-club', name: 'Green Campus Club' }, canLog: true, entries: rows, summary: carbonSummary(rows) };
+};
+// Stage 5 · Q17: student life in sample mode: a club's elections and budget, the campus board and
+// cafeteria pre-orders (kept in this tab only).
+type SampleLife = { orders: any[] };
+const lifeQ17 = (d: SampleDb) => ((d as SampleDb & { q17?: SampleLife }).q17 ??= { orders: [] });
+const SAMPLE_CANDIDATES = [{ id: 'c1', name: 'Zoya Khan' }, { id: 'c2', name: 'Aarav Shah' }, { id: 'c3', name: 'Liam Chen' }];
+const sampleElections = () => {
+  const ballots = [['QK7M-2XPA-9DTE', 'c1'], ['B4RT-77QA-MMXP', 'c2'], ['H2NC-QW8E-KK3D', 'c1'], ['ZP9A-4RRT-DQ2M', 'c1'], ['M3XE-T7QP-6RAB', 'c3']].map(([receipt, choice]) => ({ receipt, choice }));
+  return {
+    club: { id: 'sample-as-robo', name: 'Robotics Club' }, member: true, runs: false, members: 18,
+    elections: [
+      { id: 'sample-el-open', title: 'Treasurer 2026', candidates: SAMPLE_CANDIDATES.slice(0, 2), opensAt: at(-1), closesAt: at(2, 18), state: 'OPEN', voted: false, turnout: 7, results: null },
+      { id: 'sample-el-done', title: 'President 2026', candidates: SAMPLE_CANDIDATES, opensAt: at(-20), closesAt: at(-14, 18), state: 'CLOSED', voted: true, turnout: 5,
+        results: { ...tally(SAMPLE_CANDIDATES, ballots), ballots, fingerprint: 'sample: open a real club to check a real fingerprint' } },
+    ],
+  };
+};
+const sampleBudget = () => {
+  const entries = [
+    { id: 'sample-b1', kind: 'EXPENSE', amount: 420_000, description: 'Motor kits for the line-follower workshop', occurredAt: at(-9), receiptUrl: null, by: 'Zoya Khan' },
+    { id: 'sample-b2', kind: 'INCOME', amount: 250_000, description: 'Sponsorship from Nova Labs', occurredAt: at(-16), receiptUrl: null, by: 'Zoya Khan' },
+    { id: 'sample-b3', kind: 'EXPENSE', amount: 60_000, description: 'Posters for the club fair', occurredAt: at(-30), receiptUrl: null, by: 'Aarav Shah' },
+  ];
+  return { club: { id: 'sample-as-robo', name: 'Robotics Club' }, runs: false, canSetBudget: false, summary: budgetSummary(1_500_000, entries), entries };
+};
+const sampleBoard = (d: SampleDb, section: string, mine: boolean) => {
+  const p = d.people;
+  const all = [
+    { id: 'sample-l1', kind: 'SELL', title: 'Calculus: Early Transcendentals (8th ed.)', description: 'A few pencil notes, otherwise like new.', category: 'Books', price: 45_000, user: p.zoya },
+    { id: 'sample-l2', kind: 'FREE', title: 'Desk lamp', description: 'Works fine; I’m moving out.', category: 'Furniture', price: null, user: p.liam },
+    { id: 'sample-l3', kind: 'SWAP', title: 'Arduino Uno for a Raspberry Pi Zero', description: null, category: 'Electronics', price: null, user: p.aarav },
+    { id: 'sample-l4', kind: 'RIDE_OFFER', title: 'Campus to the airport', fromPlace: 'Main gate', toPlace: 'Airport T2', departAt: at(3, 6, 30), seats: 3, price: 30_000, user: p.ananya },
+    { id: 'sample-l5', kind: 'RIDE_WANT', title: 'Weekend ride to the city centre', fromPlace: 'Hostel B', toPlace: 'City centre', departAt: at(5, 10), price: null, user: p.diego },
+    { id: 'sample-l6', kind: 'ROOM_OFFER', title: 'Room in a 3-bed flat near Gate 2', description: 'Furnished, Wi-Fi included, 10 minutes’ walk.', area: 'Koramangala', price: 1_200_000, availableFrom: at(14), user: p.zoya },
+  ].map((l) => ({ description: null, category: null, photoUrl: null, fromPlace: null, toPlace: null, departAt: null, seats: null, area: null, availableFrom: null, status: 'ACTIVE', expiresAt: at(50), createdAt: at(-2), mine: false, reported: false, ...l, user: { id: l.user.id, name: l.user.name, avatar: null } }));
+  const kinds: Record<string, string[]> = { market: ['SELL', 'SWAP', 'FREE', 'WANTED'], rides: ['RIDE_OFFER', 'RIDE_WANT'], housing: ['ROOM_OFFER', 'ROOM_WANT'] };
+  return { section, listings: mine ? [] : all.filter((l) => (kinds[section] ?? kinds.market).includes(l.kind)) };
+};
+const sampleMeals = (d: SampleDb) => ({
+  menus: d.campusItems.filter((c) => c.kind === 'MENU' && c.startAt && new Date(c.startAt).getTime() > Date.now() - 13 * 3_600_000 && new Date(c.startAt).getTime() < Date.now() + 37 * 3_600_000)
+    .map((c) => ({ id: c.id, title: c.title, category: c.category, location: c.location, startAt: c.startAt, dishes: dishesOf(c.description) })),
+  orders: lifeQ17(d).orders,
+});
 
 // Stage 5 · D18: skills match on the Internships page.
 const SAMPLE_SKILLS_MATCH = {
@@ -1511,14 +1592,28 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     { id: 'sample-sh1', title: 'Saturday tree planting', startAt: at(3, 9), endAt: at(3, 13), location: 'Riverside Park', lat: 12.9716, lng: 77.5946, radiusM: 200, capacity: 25, taken: 14, project: { id: 'sample-p1', name: 'Green City Drive', sdgNumber: 13, ngo: { name: 'Earth Collective' } }, mine: null },
     { id: 'sample-sh2', title: 'Reading club for kids', startAt: at(-5, 15), endAt: at(-5, 17), location: 'Community library', lat: 12.9352, lng: 77.6245, radiusM: 150, capacity: 10, taken: 8, project: { id: 'sample-p2', name: 'Read Together', sdgNumber: 4, ngo: { name: 'Bright Minds' } }, mine: { checkInAt: at(-5, 15), checkOutAt: at(-5, 17), minutes: 120, verified: true, method: 'QR' } },
   ])],
-  [/^\/api\/volunteer\/report$/, () => ok({ year: new Date().getFullYear(), totals: { hours: 412.5, volunteers: 63, shifts: 28 },
-    places: [{ lat: 12.9716, lng: 77.5946, label: 'Riverside Park', hours: 180, people: 31 }, { lat: 12.9352, lng: 77.6245, label: 'Community library', hours: 96, people: 14 }, { lat: 13.0358, lng: 77.597, label: 'Shelter kitchen', hours: 136.5, people: 22 }],
-    projects: [{ name: 'Green City Drive', ngo: 'Earth Collective', sdg: 13, hours: 180, people: 31 }, { name: 'Shelter kitchen', ngo: 'Food For All', sdg: 2, hours: 136.5, people: 22 }, { name: 'Read Together', ngo: 'Bright Minds', sdg: 4, hours: 96, people: 14 }],
-    sdgs: [{ sdg: 2, hours: 136.5 }, { sdg: 4, hours: 96 }, { sdg: 13, hours: 180 }] })],
+  [/^\/api\/volunteer\/report$/, ({ q }) => {
+    // Each place is one project's; ?sdg= keeps one UN goal's (Stage 5 · Q16).
+    const all = [
+      { lat: 12.9716, lng: 77.5946, label: 'Riverside Park', hours: 180, people: 31, shifts: 12, project: { name: 'Green City Drive', ngo: 'Earth Collective', sdg: 13 } },
+      { lat: 13.0358, lng: 77.597, label: 'Shelter kitchen', hours: 136.5, people: 22, shifts: 10, project: { name: 'Shelter kitchen', ngo: 'Food For All', sdg: 2 } },
+      { lat: 12.9352, lng: 77.6245, label: 'Community library', hours: 96, people: 14, shifts: 6, project: { name: 'Read Together', ngo: 'Bright Minds', sdg: 4 } },
+    ];
+    const sdg = Number(q.get('sdg')) || null;
+    const shown = sdg ? all.filter((p) => p.project.sdg === sdg) : all;
+    return ok({
+      year: new Date().getFullYear(), sdg,
+      totals: { hours: shown.reduce((t, p) => t + p.hours, 0), volunteers: shown.reduce((t, p) => t + p.people, 0), shifts: shown.reduce((t, p) => t + p.shifts, 0) },
+      places: shown.map((p) => ({ lat: p.lat, lng: p.lng, label: p.label, hours: p.hours, people: p.people })),
+      projects: shown.map((p) => ({ ...p.project, hours: p.hours, people: p.people })),
+      sdgs: [{ sdg: 2, hours: 136.5 }, { sdg: 4, hours: 96 }, { sdg: 13, hours: 180 }],
+    });
+  }],
   [/^\/api\/volunteer\/shifts\/[^/]+\/roster$/, ({ db: d }) => ok({ people: d.classmates.slice(0, 3).map((u, i) => ({ id: `sample-c${i}`, checkInAt: i ? null : at(-5, 15), checkOutAt: i ? null : at(-5, 17), method: i ? null : 'QR', minutes: i ? 0 : 120, verified: !i, student: { id: u.id, name: u.name, email: u.email ?? `${u.id}@example.edu` } })) })],
   [/^\/api\/volunteer\/projects$/, () => ok([{ id: 'sample-p1', name: 'Green City Drive', ngo: { name: 'Earth Collective' } }])],
   // Campus super-app (upgrade 7): events with RSVPs, room status, lost & found
-  [/^\/api\/campus\/events$/, ({ db: d }) => ok(d.campusItems.filter((c) => c.kind === 'EVENT').map((c, i) => ({ ...c, capacity: (c as { capacity?: number }).capacity ?? null, going: 34 + i * 11, waiting: 0, mine: i === 0 && !d.teacherView ? { status: 'GOING', checkedInAt: null } : null })))],
+  [/^\/api\/campus\/events$/, ({ db: d }) => ok(d.campusItems.filter((c) => c.kind === 'EVENT').map((c, i) => ({ ...c, capacity: (c as { capacity?: number }).capacity ?? null, going: 34 + i * 11, waiting: 0, price: i === 1 ? 15_000 : null, currency: 'INR', mine: i === 0 && !d.teacherView ? { status: 'GOING', checkedInAt: null } : null })))],
+  [/^\/api\/campus\/events\/[^/]+\/ticket$/, ({ db: d }) => ok({ code: 't1.sample-ticket.sampleSampleSampleSampl', name: d.me?.name ?? 'Sample Student', title: 'Freshers’ Welcome Night', startAt: at(6, 18), location: 'Main Quad', paid: false, usedAt: null })],
   [/^\/api\/campus\/events\/[^/]+\/attendees$/, ({ db: d }) => ok({ item: { id: 'sample', title: 'Event', capacity: null }, people: d.classmates.slice(0, 4).map((u, i) => ({ id: `sample-r${i}`, status: 'GOING', checkedInAt: i < 2 ? at(0, 18, i * 5) : null, createdAt: at(-2), user: { id: u.id, name: u.name, email: u.email ?? `${u.id}@example.edu` } })) })],
   [/^\/api\/campus\/events\/[^/]+\/code$/, () => ok({ code: 'e1.sample.0.sample-sample-sample-sa', expiresIn: 30 })],
   [/^\/api\/campus\/rooms$/, () => ok({})],
@@ -1970,6 +2065,23 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/internships\/my-applications$/, ({ db: d }) => ok(d.myApplications)],
   [/^\/api\/internships\/placements$/, ({ db: d }) => ok(d.placements)],
   [/^\/api\/internships\/skills-match$/, () => ok(SAMPLE_SKILLS_MATCH)],
+  [/^\/api\/profile\/([^/]+)$/, ({ db: d, m }) => { const p = Object.values(d.people).find((x) => x.id === decodeURIComponent(m[1]) || x.name === decodeURIComponent(m[1])) ?? d.people.zoya; return ok({ id: p.id, name: p.name, avatar: null, role: p.role, coverUrl: null, pronouns: p.id === d.people.zoya.id ? 'she/her' : null, bio: p.role === 'TEACHER' ? 'I teach operating systems and run the robotics club’s workshops.' : 'Second-year CS student. Into robotics, open data and chai.', links: [{ label: 'GitHub', url: 'https://github.com/' }], availability: p.role === 'TEACHER' ? 'Office hours Tue and Thu, 2–4 pm' : 'Usually free on Friday afternoons', memberSince: at(-200), department: 'Computer Science', year: p.role === 'STUDENT' ? 2 : null, designation: p.role === 'TEACHER' ? 'Associate Professor' : null, shared: [] }); }],
+  [/^\/api\/campus\/clubs\/[^/]+\/elections$/, () => ok(sampleElections())],
+  [/^\/api\/campus\/clubs\/[^/]+\/budget$/, () => ok(sampleBudget())],
+  [/^\/api\/campus\/board$/, ({ db: d, q }) => ok(sampleBoard(d, q.get('section') ?? 'market', q.get('mine') === '1'))],
+  [/^\/api\/admin\/campus-board$/, ({ db: d }) => ok({ listings: [{ id: 'sample-l9', kind: 'SELL', title: 'Exam answers for sale', description: 'All the answers for next week.', price: 50_000, status: 'HIDDEN', reports: 3, createdAt: at(-1), user: { id: d.people.diego.id, name: d.people.diego.name }, reportRows: [{ reason: 'Cheating', createdAt: at(-1) }, { reason: 'Not allowed', createdAt: at(-1) }, { reason: 'Scam', createdAt: at(0) }] }] })],
+  [/^\/api\/campus\/meals$/, ({ db: d }) => ok(sampleMeals(d))],
+  [/^\/api\/admin\/meal-orders$/, ({ db: d }) => ok({ menus: sampleMeals(d).menus.map((m, i) => { const orders = i ? [] : [{ id: 'sample-o1', items: [{ dish: m.dishes[0], qty: 2 }], pickupAt: at(0, 12, 45), note: null, code: 'K7QM', status: 'PLACED', user: { name: d.people.zoya.name } }, { id: 'sample-o2', items: [{ dish: m.dishes[1] ?? m.dishes[0], qty: 1 }], pickupAt: at(0, 13), note: 'No onions', code: 'B4RT', status: 'READY', user: { name: d.people.liam.name } }]; return { ...m, orders, prep: prepList(orders.filter((o) => o.status === 'PLACED')) }; }) })],
+  [/^\/api\/impact\/donations$/, ({ q }) => ok(q.get('projectId') ? { raised: { INR: 1_250_000 }, donors: 14, supporters: ['Zoya', 'Liam', 'Ananya'] } : { donations: [{ id: 'sample-donation-1', projectName: 'Weekend Maths Tutoring', ngoName: 'City Learning Trust', amount: 50_000, currency: 'INR', status: 'PAID', receipt: 'D-000012', paidAt: at(-6), with80G: true }] })],
+  [/^\/api\/impact\/donations\/([^/]+)$/, () => ok({ number: 'D-000012', status: 'PAID', paidAt: at(-6), amount: 50_000, currency: 'INR', project: 'Weekend Maths Tutoring', ngo: 'City Learning Trust', donor: { name: 'Sample Student', email: null, pan: 'ABCDE1234F', address: '12 Sample Street, Bengaluru' }, collectedBy: 'Sample School', payment: { method: 'Card (Stripe)', reference: 'pi_sample' }, tax80G: { ngoPan: 'AAATS0000A', reg80G: 'AAATS0000A20240', donorPanGiven: true } })],
+  [/^\/api\/admin\/donations$/, () => ok({ ngos: [{ id: 'sample-ngo-1', name: 'City Learning Trust', donationsOn: true, reg80G: 'AAATS0000A20240', pan: 'AAATS0000A', isVerified: true, projects: 2, raised: [{ currency: 'INR', amount: 1_250_000, count: 14 }] }, { id: 'sample-ngo-2', name: 'Green Roots NGO', donationsOn: false, reg80G: null, pan: null, isVerified: true, projects: 1, raised: [] }], donations: [{ id: 'sample-donation-1', receipt: 'D-000012', paidAt: at(-6), status: 'PAID', amount: 50_000, currency: 'INR', projectName: 'Weekend Maths Tutoring', ngoName: 'City Learning Trust', donorName: 'Zoya Khan', donorEmail: null, pan: null, address: null, anonymous: false }] })],
+  [/^\/api\/campus\/clubs\/[^/]+\/carbon$/, ({ db: d }) => ok(carbonView(d))],
+  [/^\/api\/careers\/applications$/, ({ db: d }) => ok(careers(d).apps)],
+  [/^\/api\/careers\/interview$/, ({ db: d }) => ok({ answers: careers(d).answers })],
+  [/^\/api\/careers\/mentors$/, ({ db: d }) => ok({ mentors: careers(d).mentors.map((m) => ({ ...m, slots: m.slots.filter((s: any) => !careers(d).bookings.some((b) => b.slotId === s.id && b.status === 'CONFIRMED')) })) })],
+  [/^\/api\/careers\/mentoring$/, ({ db: d }) => ok(mentoringView(careers(d)))],
+  [/^\/api\/careers\/alerts$/, ({ db: d }) => ok({ on: careers(d).alerts })],
+  [/^\/mentorship\/mentors$/, ({ db: d }) => ok(careers(d).mentors.map((m) => ({ id: m.id, company: m.company, jobTitle: m.jobTitle, skills: m.skills, hoursCommitted: 6, isAvailable: true, isAlumni: m.isAlumni, gradYear: m.gradYear, user: { id: m.user.id, name: m.user.name, avatar: null } })))],
   [/^\/api\/receipts\/([^/]+)$/, ({ m }) => ok({ id: m[1], amount: 499, currency: 'INR', description: 'Course fee: Data Structures', createdAt: '2026-10-10T09:30:00.000Z', user: { name: 'Alex Johnson', email: 'student@example.com' } })],
   [/^\/partners$/, ({ db: d }) => ok(d.partners)],
   [/^\/skills\/my$/, ({ db: d }) => ok(d.skills)],
@@ -2030,6 +2142,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/admin\/rooms$/, ({ db: d }) => ok(d.adminRooms)],
   [/^\/rooms$/, ({ db: d }) => ok(d.adminRooms.map((r) => { const c = { ...r }; delete (c as { reservations?: unknown }).reservations; return c; }))],
   [/^\/api\/admin\/timetable$/, ({ db: d }) => ok({ slots: d.slots, courses: d.courses.map((c) => ({ id: c.id, code: c.code, name: c.name })), rooms: Object.values(d.rooms).map((r: any) => ({ id: r.id, name: r.name })) })],
+  // The skills passport's CV data and portfolio (Stage 5 · Q14): the sample student, no public portfolio.
+  [/^\/api\/passport\/cv$/, ({ db: d }) => ok({ name: d.me?.name ?? 'Sample Student', avatar: null, department: null, headline: 'Computer science student', memberSince: new Date(Date.now() - 200 * 86_400_000).toISOString(), strengths: null, theme: 'indigo', portfolioUrl: null, skills: [{ name: 'Python', category: null, level: 'INTERMEDIATE', endorsements: 2 }], evidence: [], credentials: [], courses: d.courses.slice(0, 3).map((c: any) => ({ code: c.code, name: c.name, credits: 3, department: null })), impact: { hours: 0, people: 0, credentials: 0, points: 0 } })],
+  [/^\/api\/p\/[^/]+$/, () => fail('This portfolio doesn’t exist or isn’t public.', 404)],
+  [/^\/api\/passport\/did$/, () => fail('Credential signing isn’t set up in the sample.', 503)],
   // The course tutor's rule and the class's common questions (Stage 5 · Q13): open, and none yet.
   [/^\/api\/tutor\/[^/]+\/rule$/, () => ok({ hintsOnly: false, off: false, offUntil: null, note: '' })],
   [/^\/api\/tutor\/[^/]+\/questions$/, () => ok({ since: new Date(Date.now() - 90 * 86_400_000).toISOString(), asked: 0, students: 0, groups: [] })],
@@ -2204,11 +2320,76 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
+  ['POST', /^\/api\/campus\/events\/[^/]+\/buy$/, () => fail('Sample mode: no money is taken. Exit sample mode to buy a real ticket.', 400)],
+  ['POST', /^\/api\/campus\/elections\/[^/]+\/vote$/, () => { notice(); return ok({ receipt: 'SAMP-LE00-RCPT' }); }],
+  ['POST', /^\/api\/campus\/board\/[^/]+\/contact$/, () => ok({ conversationId: 'sample-conv-aarav' })],
+  ['POST', /^\/api\/campus\/meals$/, ({ db: d, body }) => {
+    const menu = sampleMeals(d).menus.find((m) => m.id === body?.menuId);
+    if (!menu || !Array.isArray(body?.items) || !body.items.length) return fail('Pick at least one dish from the menu.', 400);
+    notice();
+    lifeQ17(d).orders.push({ id: sid('order'), items: body.items, pickupAt: body.pickupAt, note: body.note || null, code: 'SMPL', status: 'PLACED', menu: { title: menu.title, category: menu.category, location: menu.location } });
+    return ok(sampleMeals(d));
+  }],
+  ['DELETE', /^\/api\/campus\/meals$/, ({ db: d, q }) => { notice(); const o = lifeQ17(d).orders.find((x) => x.id === q.get('order')); if (o) o.status = 'CANCELLED'; return ok(sampleMeals(d)); }],
+  ['POST', /^\/api\/impact\/donations$/, () => fail('Sample mode: no money is taken. Exit sample mode to donate for real.', 400)],
+  ['PATCH', /^\/api\/admin\/donations$/, () => { notice(); return ok({ ngos: [], donations: [] }); }],
+  ['POST', /^\/api\/campus\/clubs\/[^/]+\/carbon$/, ({ db: d, body }) => {
+    const kg = kgFor(body?.activity, body?.quantity);
+    if (kg === null) return fail('Pick an activity and an amount above 0.', 400);
+    notice();
+    impactQ16(d).carbon.unshift({ id: sid('co2'), activity: String(body.activity), quantity: Number(body.quantity), kgCo2e: kg, note: body.note || null, occurredAt: body.occurredAt ?? new Date().toISOString(), by: d.me?.name ?? 'You', canDelete: true });
+    return ok(carbonView(d));
+  }],
+  ['DELETE', /^\/api\/campus\/clubs\/[^/]+\/carbon$/, ({ db: d, q }) => { notice(); const c = impactQ16(d); c.carbon = c.carbon.filter((e) => e.id !== q.get('entry')); return ok(carbonView(d)); }],
+  ['POST', /^\/api\/careers\/applications$/, ({ db: d, body }) => {
+    notice();
+    const c = careers(d);
+    const old = body?.id ? c.apps.find((a) => a.id === body.id) : null;
+    const next = { ...(old ?? { id: sid('app'), onUniverse: false, documents: [], url: null, location: null, appliedAt: at(0), nextStep: null, nextAt: null, notes: null, stage: 'APPLIED' }), ...body, updatedAt: new Date().toISOString() };
+    c.apps = [next, ...c.apps.filter((a) => a.id !== next.id)];
+    return ok(c.apps);
+  }],
+  ['DELETE', /^\/api\/careers\/applications$/, ({ db: d, q }) => { notice(); const c = careers(d); c.apps = c.apps.filter((a) => a.id !== q.get('id')); return ok(c.apps); }],
+  ['POST', /^\/api\/careers\/interview$/, ({ db: d, body }) => {
+    const role = String(body?.role ?? '').trim() || 'this role';
+    if (body?.action === 'questions') return ok({ role, questions: builtInQuestions(role), ai: false, note: 'The sample has no AI: here are common questions.' });
+    const answer = String(body?.answer ?? '');
+    const words = wordCount(answer);
+    if (words < 15) return fail('Say a bit more first: at least a few sentences.', 400);
+    const fillers = countFillers(answer), star = starParts(answer);
+    const row = { id: sid('ans'), role, question: String(body?.question ?? ''), fillers: fillers.total, star, score: null, createdAt: new Date().toISOString() };
+    careers(d).answers.unshift(row);
+    return ok({ id: row.id, createdAt: row.createdAt, checks: { words, minutes: Math.max(0.1, Math.round((words / 130) * 10) / 10), fillers, star, length: lengthAdvice(words) }, feedback: null, note: 'The sample has no AI feedback; the checks above still work.' });
+  }],
+  ['DELETE', /^\/api\/careers\/interview$/, ({ db: d, q }) => { const c = careers(d); c.answers = q.get('id') ? c.answers.filter((a) => a.id !== q.get('id')) : []; return ok({ answers: c.answers }); }],
+  ['POST', /^\/api\/careers\/alerts$/, ({ db: d, body }) => { notice(); careers(d).alerts = body?.on !== false; return ok({ on: careers(d).alerts }); }],
+  ['POST', /^\/api\/careers\/mentoring$/, ({ db: d, body }) => {
+    notice();
+    const c = careers(d);
+    if (body?.action === 'book') {
+      const m = c.mentors.find((x) => x.slots.some((s: any) => s.id === body.slotId));
+      const slot = m?.slots.find((s: any) => s.id === body.slotId);
+      if (!m || !slot) return fail('That time isn’t available any more.', 404);
+      c.bookings.push({ id: sid('booking'), slotId: slot.id, at: slot.startAt, topic: String(body.topic ?? '').slice(0, 200), status: 'CONFIRMED', callId: null, with: { id: m.user.id, name: m.user.name }, as: 'student' });
+    } else if (body?.action === 'cancel') {
+      c.bookings = c.bookings.map((b) => (b.id === body.bookingId ? { ...b, status: 'CANCELLED' } : b));
+    } else if (body?.action === 'profile') {
+      c.profile = { id: 'sample-my-mentor', company: body.company || null, jobTitle: body.jobTitle || null, skills: Array.isArray(body.skills) ? body.skills.slice(0, 10) : [], isAlumni: !!body.isAlumni, gradYear: body.isAlumni ? body.gradYear ?? null : null, bio: body.bio || null, isAvailable: body.isAvailable !== false };
+    } else if (body?.action === 'slots' && body.startAt) {
+      const weeks = Math.min(8, Math.max(1, Number(body.weeks) || 1));
+      for (let i = 0; i < weeks; i++) c.slots.push({ id: sid('slot'), startAt: new Date(new Date(body.startAt).getTime() + i * 7 * 86_400_000).toISOString(), minutes: Number(body.minutes) || 30, bookingId: null });
+      c.slots.sort((a, b) => a.startAt.localeCompare(b.startAt));
+    }
+    return ok(mentoringView(c));
+  }],
+  ['DELETE', /^\/api\/careers\/mentoring$/, ({ db: d, q }) => { notice(); const c = careers(d); c.slots = c.slots.filter((x) => x.id !== q.get('slot')); return ok(mentoringView(c)); }],
   // Attendance changes (Stage 5 · Q11).
   ['POST', /^\/api\/attendance\/register\/[^/]+$/, ({ body }) => { notice(); return ok({ marked: Array.isArray(body?.marks) ? body.marks.length : 0 }); }],
   ['PUT', /^\/api\/attendance\/register\/[^/]+\/seating$/, ({ body }) => { notice(); return ok(body ?? {}); }],
   ['POST', /^\/api\/attendance\/excuses(\/[^/]+)?$/, () => { notice(); return ok({ ok: true }); }],
   ['PUT', /^\/api\/attendance\/policy$/, () => { notice(); return ok({ on: false, radius: 300, lat: null, lng: null }); }],
+  // The CV's AI profile needs AI, which the sample doesn't have (Stage 5 · Q14).
+  ['POST', /^\/api\/passport\/cv\/summary$/, () => fail('The sample has no AI. Write a short profile yourself.', 503)],
   // The tutor: its rule, the flashcard reminder; a homework photo needs AI, which the sample doesn't have (Stage 5 · Q13).
   ['PUT', /^\/api\/tutor\/[^/]+\/rule$/, ({ body }) => { notice(); return ok({ hintsOnly: !!body?.hintsOnly, off: !!body?.off, offUntil: body?.offUntil ?? null, note: body?.note ?? '' }); }],
   ['PUT', /^\/api\/tutor\/cards\/reminder$/, ({ body }) => { notice(); return ok({ reminder: !!body?.on, next: null }); }],

@@ -1,8 +1,16 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
 import type { Prisma } from '@prisma/client';
 import { pick } from '../pick';
-import { first, oneOf, str, type Body, type Query } from '../body';
+import { first, oneOf, str, strings, type Body, type Query } from '../body';
 import prisma from '@/lib/db';
+import { alertNewOpening } from '../careers';
+
+/** The skills an opening asks for: a list or "a, b, c", up to 6 (they drive skills match and job alerts). */
+function skillsOf(v: unknown): string[] {
+  const list = typeof v === 'string' ? v.split(',') : strings(v);
+  const seen = new Set<string>();
+  return list.map((x) => x.replace(/\s+/g, ' ').trim().slice(0, 40)).filter((x) => x && !seen.has(x.toLowerCase()) && seen.add(x.toLowerCase())).slice(0, 6);
+}
 
 export class InternshipsService {
   async findAll(query: Query) {
@@ -118,13 +126,17 @@ export class InternshipsService {
   async create(userId: string, data: Body) {
     type New = Prisma.InternshipUncheckedCreateInput;
     const companyId = await this.getOrCreateCompany(str(data.company));
-    return prisma.internship.create({
+    const created = await prisma.internship.create({
       data: {
         ...pick<New>(data, InternshipsService.FIELDS),
+        skills: skillsOf(data.skills),
         companyId: companyId as string,
         postedById: userId,
       } as New,
     });
+    // Students whose checked skills match hear about it (Stage 5 · Q15).
+    alertNewOpening(created.id);
+    return created;
   }
 
   async update(id: string, data: Body, user: { id: string; role: string }) {
@@ -134,10 +146,14 @@ export class InternshipsService {
     if (company) {
       updateData.companyId = await this.getOrCreateCompany(company);
     }
-    return prisma.internship.update({
+    if ('skills' in data) updateData.skills = skillsOf(data.skills);
+    const updated = await prisma.internship.update({
       where: { id },
       data: updateData,
     });
+    // Opened (or given skills) for the first time: tell matching students once.
+    if (updated.isActive && !updated.alertedAt) alertNewOpening(updated.id);
+    return updated;
   }
 
   async remove(id: string, user: { id: string; role: string }) {

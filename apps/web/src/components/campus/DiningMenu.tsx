@@ -3,16 +3,18 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
-import { MapPin, UtensilsCrossed } from 'lucide-react';
+import { MapPin, ShoppingBasket, UtensilsCrossed } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { CampusItem } from './CampusItems';
 import { TabPill } from '@/components/ui/Glide';
+import { MyMealOrders, PreOrderSheet, useMeals, type MealMenu } from './MealOrders';
 
 // Dining menu (upgrade 7): campus admins post each day's meals (Student Life management → Menus).
-// One menu per meal: its day, the dining hall, one dish per line.
+// One menu per meal: its day, the dining hall, one dish per line. Stage 5 · Q17: today's and
+// tomorrow's menus can be pre-ordered (MealOrders.tsx).
 
 const MEALS = ['Breakfast', 'Lunch', 'Dinner'];
 const dayKey = (iso: string) => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -23,6 +25,9 @@ export function DiningMenu() {
   const days = [...new Set((data ?? []).filter((m) => m.startAt && dayKey(m.startAt) >= today).map((m) => dayKey(m.startAt!)))].sort().slice(0, 7);
   const [picked, setPicked] = useState<string | null>(null);
   const day = picked && days.includes(picked) ? picked : days[0];
+  const meals_ = useMeals();
+  const [ordering, setOrdering] = useState<MealMenu | null>(null);
+  const orderable = (id: string) => meals_.data?.menus.find((m) => m.id === id && m.dishes.length);
 
   if (isLoading) return <div className="h-40 rounded-2xl skeleton" />;
   if (!day) {
@@ -38,6 +43,7 @@ export function DiningMenu() {
 
   return (
     <div className="space-y-3">
+      <MyMealOrders />
       <div className="flex gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Day">
         {days.map((k) => (
           <button key={k} type="button" role="tab" aria-selected={k === day} onClick={() => setPicked(k)} className={cn('relative isolate px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors', k === day ? 'text-white' : 'text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-white/[0.05]')}>
@@ -49,15 +55,17 @@ export function DiningMenu() {
       <motion.div key={day} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="grid sm:grid-cols-3 gap-3">
         {meals.map((m) => (
           <div key={m.id} className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] p-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-indigo-500">{m.category || 'Menu'}</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{m.category || 'Menu'}</p>
             <p className="font-semibold text-zinc-900 dark:text-white mt-0.5">{m.title}</p>
             {m.location && <p className="text-xs text-zinc-500 inline-flex items-center gap-1"><MapPin className="w-3 h-3" />{m.location}</p>}
             <ul className="mt-2 space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
-              {(m.description ?? '').split('\n').map((d) => d.trim()).filter(Boolean).map((d) => <li key={d} className="flex gap-2"><span className="text-zinc-400">·</span>{d}</li>)}
+              {(m.description ?? '').split('\n').map((d) => d.trim()).filter(Boolean).map((d) => <li key={d} className="flex gap-2"><span className="text-zinc-400" aria-hidden>·</span>{d}</li>)}
             </ul>
+            {orderable(m.id) && <button type="button" className="btn-secondary btn-sm mt-3" onClick={() => setOrdering(orderable(m.id) ?? null)}><ShoppingBasket className="w-4 h-4" aria-hidden /> Pre-order</button>}
           </div>
         ))}
       </motion.div>
+      {ordering && <PreOrderSheet menu={ordering} onClose={() => setOrdering(null)} onPlaced={() => void meals_.mutate()} />}
     </div>
   );
 }

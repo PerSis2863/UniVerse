@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   CreditCard,
@@ -41,6 +41,7 @@ export function OnlineFeePaymentModal({
     keyId: string;
     upiIntent?: string;
     checkoutUrl?: string;
+    testMode?: boolean;
   } | null>(null);
 
   const [completedReceipt, setCompletedReceipt] = useState<number | null>(null);
@@ -55,15 +56,11 @@ export function OnlineFeePaymentModal({
         keyId: string;
         upiIntent?: string;
         checkoutUrl?: string;
+        testMode?: boolean;
       }>('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          invoiceId,
-          amount,
-          currency,
-          purpose: 'FEE',
-        }),
+        body: JSON.stringify({ invoiceId }),
       });
       setOrder(res);
     } catch (err: unknown) {
@@ -73,31 +70,33 @@ export function OnlineFeePaymentModal({
     }
   };
 
-  const simulateSuccess = async () => {
+  // Only the gateway decides a payment went through: the server asks Stripe, or Razorpay's
+  // webhook records it (UPI), and this asks the server. Test mode (local only) can simulate it.
+  const confirm = async () => {
     if (!order) return;
     setLoading(true);
     try {
-      const mockPayId = `pay_${Math.random().toString(36).slice(2, 12)}`;
-      const res = await authedJson<{ receiptNumber?: number }>('/api/payments/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: order.orderId,
-          provider: order.provider,
-          orderRef: order.orderRef,
-          paymentRef: mockPayId,
-          signature: 'sig_verified_mock',
-        }),
-      });
-      toast.success('Payment completed successfully!');
-      setCompletedReceipt(res.receiptNumber ?? 101);
+      const res = await authedJson<{ receiptNumber?: number }>('/api/payments/verify', { method: 'POST', body: JSON.stringify({ orderId: order.orderId }) });
+      toast.success('Payment received');
+      setCompletedReceipt(res.receiptNumber ?? 0);
       onSuccess();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Verification failed');
+      toast.error(err instanceof Error ? err.message : 'Not confirmed yet');
     } finally {
       setLoading(false);
     }
   };
+  // A UPI payment arrives by the gateway's webhook: look every few seconds.
+  const paidRef = useRef(onSuccess);
+  useEffect(() => { paidRef.current = onSuccess; });
+  useEffect(() => {
+    if (!order || order.testMode || order.provider !== 'RAZORPAY' || completedReceipt !== null) return;
+    const t = setInterval(async () => {
+      const s = await authedJson<{ status: string }>(`/api/payments/status?orderId=${encodeURIComponent(order.orderId)}`).catch(() => null);
+      if (s?.status === 'COMPLETED') { clearInterval(t); setCompletedReceipt(0); toast.success('Payment received'); paidRef.current(); }
+    }, 4000);
+    return () => clearInterval(t);
+  }, [order, completedReceipt]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
@@ -125,7 +124,7 @@ export function OnlineFeePaymentModal({
 
         {/* Content */}
         <div className="p-6 space-y-5">
-          {completedReceipt ? (
+          {completedReceipt !== null ? (
             <div className="text-center space-y-4 py-4">
               <span className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-6 h-6" />
@@ -135,7 +134,7 @@ export function OnlineFeePaymentModal({
                   Payment Confirmed!
                 </h4>
                 <p className="text-xs text-zinc-500 mt-1">
-                  Receipt #{completedReceipt} has been generated and recorded on your student ledger.
+                  {completedReceipt ? `Receipt #${completedReceipt} is in your fee history.` : 'Your receipt is in your fee history.'}
                 </p>
               </div>
               <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 text-xs font-medium text-zinc-700 dark:text-zinc-300">
@@ -217,26 +216,29 @@ export function OnlineFeePaymentModal({
                 </div>
               )}
 
-              {order.checkoutUrl && (
+              {order.checkoutUrl && !order.testMode && (
                 <a
                   href={order.checkoutUrl}
-                  target="_blank"
-                  rel="noreferrer"
                   className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 shadow-sm transition"
                 >
-                  Open Stripe Checkout <ExternalLink className="w-3.5 h-3.5" />
+                  Pay by card with Stripe <ExternalLink className="w-3.5 h-3.5" aria-hidden />
                 </a>
               )}
 
-              {/* Instant Verification Trigger */}
-              <button
-                disabled={loading}
-                onClick={simulateSuccess}
-                className="w-full py-2.5 rounded-xl border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 text-xs font-medium inline-flex items-center justify-center gap-1.5 transition"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                {loading ? 'Confirming with Gateway...' : 'I Have Completed Payment'}
-              </button>
+              {order.provider === 'RAZORPAY' && !order.testMode && (
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 text-center" aria-live="polite">Waiting for your payment… This updates by itself once Razorpay confirms it.</p>
+              )}
+
+              {order.testMode && (
+                <button
+                  disabled={loading}
+                  onClick={confirm}
+                  className="w-full py-2.5 rounded-xl border border-amber-500/40 text-amber-800 dark:text-amber-300 text-xs font-medium inline-flex items-center justify-center gap-1.5 transition"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" aria-hidden />
+                  {loading ? 'Confirming…' : 'Simulate a test payment (test mode)'}
+                </button>
+              )}
             </div>
           )}
         </div>

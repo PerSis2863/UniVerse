@@ -33,10 +33,14 @@ export const OPPORTUNITY_TABS: SectionTab[] = [
   { href: '/student/impact/companies', label: 'Companies' },
 ];
 
-// Internships (student): the openings, and how my verified skills match them (Stage 5 · D18)
+// Internships (student): the openings, how my verified skills match them (Stage 5 · D18), and careers
+// help: the application tracker, interview practice and mentors (Stage 5 · Q15)
 export const INTERNSHIP_TABS: SectionTab[] = [
   { href: '/student/internships', label: 'Openings' },
   { href: '/student/internships/match', label: 'Skills match' },
+  { href: '/student/internships/applications', label: 'Applications' },
+  { href: '/student/internships/interview', label: 'Interview practice' },
+  { href: '/student/internships/mentors', label: 'Mentors' },
 ];
 
 export const STUDENT_BOARD_TABS: SectionTab[] = [
@@ -173,7 +177,8 @@ export const RESEARCH_TABS: SectionTab[] = [
 ];
 
 export const LIFE_TABS: SectionTab[] = [
-  { href: '/student/life/associations', label: 'Associations' },
+  { href: '/student/life/associations', label: 'Associations', also: ['/student/life/associations/carbon', '/student/life/associations/club'] },
+  { href: '/student/life/board', label: 'Campus board' },
   { href: '/student/life/events', label: 'Events' },
   { href: '/student/life/lost-found', label: 'Lost & found' },
   { href: '/student/life/rooms', label: 'Room booking' },
@@ -187,6 +192,7 @@ export const IMPACT_REPORT_TABS: SectionTab[] = [
   { href: '/admin/impact-reports', label: 'Signed reports' },
   { href: '/admin/impact-reports/shifts', label: 'Volunteer shifts' },
   { href: '/admin/impact-reports/volunteering', label: 'Yearly volunteering' },
+  { href: '/admin/impact-reports/donations', label: 'Donations' },
   { href: '/impact-rooms', label: 'Impact rooms' },
   { href: '/impact-league', label: 'Impact League' },
 ];
@@ -219,6 +225,8 @@ export const MONITORING_TABS: SectionTab[] = [
   { href: '/admin/monitoring/associations', label: 'Clubs' },
   { href: '/admin/monitoring/events', label: 'Events' },
   { href: '/admin/monitoring/lost-found', label: 'Lost & found' },
+  { href: '/admin/monitoring/board', label: 'Campus board' },
+  { href: '/admin/monitoring/meals', label: 'Pre-orders' },
 ];
 
 /**

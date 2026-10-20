@@ -1,17 +1,22 @@
 import { createHash, randomBytes } from 'node:crypto';
 import prisma from '@/lib/db';
 import { COMPANY } from '@/lib/company';
+import { cleanPassportHandle, cleanPassportTheme, type PassportTheme } from '@/lib/passport-theme';
 import { CredentialSigner, publicAppUrl, verifyUrlFor } from './services/credential-signer';
+import { didWeb, signCredential, verifyCredential } from './vc-data-integrity';
 import { evidenceGroups } from './skill-evidence';
 
 // Skills passport: the public page a student can share, and Open Badges 3.0 (1EdTech) exports of
 // their verified impact credentials. The badges are Verifiable Credentials signed with the
 // platform's Ed25519 key as a VC-JWT; anyone can check them with the public key at
 // /api/passport/jwks, or by pasting them into the passport verifier (/api/passport/verify).
+// Q14 also: W3C VC 2.0 wallet files (Data Integrity, did:web), the /p/<handle> portfolio and its
+// theme, the CV builder's data, and checking a wallet file (verifyWalletCredential).
 
 export const issuerUrl = () => `${publicAppUrl()}/api/passport/issuer`;
 export const jwksUrl = () => `${publicAppUrl()}/api/passport/jwks`;
 export const passportUrl = (slug: string) => `${publicAppUrl()}/passport/${slug}`;
+export const portfolioUrl = (handle: string) => `${publicAppUrl()}/p/${handle}`;
 
 /** The issuer's Open Badges Profile. */
 export function issuerProfile() {
@@ -85,15 +90,79 @@ export async function passportContent(userId: string, sections: Sections, owner 
   };
 }
 
+async function publicPassportRow(p: { id: string; userId: string; headline: string | null; strengths: string | null; showEvidence: boolean; showSkills: boolean; showCredentials: boolean; showCourses: boolean; showImpact: boolean; theme: string; handle: string | null; slug: string; updatedAt: Date } | null) {
+  if (!p) return null;
+  const content = await passportContent(p.userId, p);
+  if (!content) return null;
+  void prisma.skillPassport.update({ where: { id: p.id }, data: { views: { increment: 1 } } }).catch(() => {});
+  const projects = (content.credentials ?? []).slice(0, 12).map((c) => ({
+    title: c.projectName,
+    organization: c.organization,
+    hours: c.hoursCompleted,
+    credentialTitle: c.title,
+    verifyUrl: c.verifyUrl,
+  }));
+  return {
+    headline: p.headline,
+    strengths: p.showEvidence ? p.strengths : null,
+    updatedAt: p.updatedAt,
+    theme: cleanPassportTheme(p.theme),
+    handle: p.handle,
+    slug: p.slug,
+    portfolioUrl: p.handle ? portfolioUrl(p.handle) : null,
+    projects,
+    ...content,
+  };
+}
+
 /** The public passport for a link, or null if it doesn't exist or isn't public. Counts the view. */
 export async function publicPassport(slug: string) {
   if (!/^[A-Za-z0-9_-]{8,32}$/.test(slug)) return null;
   const p = await prisma.skillPassport.findUnique({ where: { slug } });
   if (!p || !p.isPublic) return null;
-  const content = await passportContent(p.userId, p);
+  return publicPassportRow(p);
+}
+
+/** Public portfolio by vanity handle (/p/<handle>). */
+export async function publicPassportByHandle(handle: string) {
+  const h = cleanPassportHandle(handle);
+  if (!h) return null;
+  const p = await prisma.skillPassport.findUnique({ where: { handle: h } });
+  if (!p || !p.isPublic) return null;
+  return publicPassportRow(p);
+}
+
+/** Set or clear the vanity handle; throws a plain Error with a user-facing message on conflict. */
+export async function setPassportHandle(userId: string, raw: unknown) {
+  const handle = cleanPassportHandle(raw);
+  if (handle === undefined) throw new Error('Use 3–24 letters, numbers or hyphens (not starting or ending with a hyphen).');
+  if (handle) {
+    const taken = await prisma.skillPassport.findFirst({ where: { handle, NOT: { userId } }, select: { id: true } });
+    if (taken) throw new Error('That portfolio address is already taken.');
+  }
+  await getOrCreatePassport(userId);
+  // Two people choosing the same address at the same moment: the database's unique index decides.
+  return prisma.skillPassport.update({ where: { userId }, data: { handle } }).catch(() => { throw new Error('That portfolio address is already taken.'); });
+}
+
+export async function setPassportTheme(userId: string, raw: unknown) {
+  const theme: PassportTheme = cleanPassportTheme(raw);
+  return prisma.skillPassport.update({ where: { userId }, data: { theme } });
+}
+
+/** Lightweight CV payload for the browser PDF builder (no heavy rendering on the Worker). */
+export async function passportCvData(userId: string) {
+  const p = await getOrCreatePassport(userId);
+  const content = await passportContent(userId, { showSkills: true, showCredentials: true, showCourses: true, showImpact: true, showEvidence: true }, true);
   if (!content) return null;
-  void prisma.skillPassport.update({ where: { id: p.id }, data: { views: { increment: 1 } } }).catch(() => {});
-  return { headline: p.headline, strengths: p.showEvidence ? p.strengths : null, updatedAt: p.updatedAt, ...content };
+  return {
+    headline: p.headline,
+    strengths: p.strengths,
+    theme: cleanPassportTheme(p.theme),
+    handle: p.handle,
+    portfolioUrl: p.handle && p.isPublic ? portfolioUrl(p.handle) : p.isPublic ? passportUrl(p.slug) : null,
+    ...content,
+  };
 }
 
 const skillsBadgeId = (passportId: string) => `${publicAppUrl()}/passport/skills/${passportId}`;
@@ -141,7 +210,23 @@ export async function openSkillsBadgeFor(userId: string) {
   };
   const keyId = CredentialSigner.jwks().keys[0].kid;
   const jwt = CredentialSigner.signJwt({ iss: issuerUrl(), jti: id, sub: identityHash, nbf: Math.floor(Date.now() / 1000), iat: Math.floor(Date.now() / 1000), vc: credential }, `${jwksUrl()}#${keyId}`);
-  return { credential, jwt, fileName: 'skills-with-evidence-open-badge' };
+  // W3C VC 2.0 for wallets (Stage 5 · Q14): the same facts, issued by the site's did:web and signed
+  // with a Data Integrity proof (eddsa-jcs-2022, src/server/vc-data-integrity.ts). The person is named,
+  // not identified by an internal id.
+  const vc = signCredential({
+    '@context': ['https://www.w3.org/ns/credentials/v2'],
+    id,
+    type: ['VerifiableCredential', 'SkillsEvidenceCredential'],
+    name: 'Skills with evidence',
+    description: credential.credentialSubject.achievement.description,
+    issuer: { id: didWeb(), name: COMPANY.legalName, url: publicAppUrl() },
+    validFrom: issued,
+    credentialSubject: {
+      name: user.name,
+      skills: shown.slice(0, 30).map((g) => ({ name: g.label, evidence: g.count, ...(g.best ? { bestResult: g.best } : {}) })),
+    },
+  });
+  return { credential, jwt, vc, fileName: 'skills-with-evidence-open-badge' };
 }
 
 /**
@@ -211,6 +296,18 @@ export async function openBadgeFor(userId: string, certificateId: string) {
  * Checks a badge someone pasted: the signature, that it was issued here, and that the credential
  * hasn't been revoked since.
  */
+/** Checks a W3C VC 2.0 wallet file this site issued (skills with evidence): its proof, and that the passport still exists. */
+export async function verifyWalletCredential(raw: unknown) {
+  const checked = verifyCredential(raw);
+  if (checked.ok === false) return { valid: false as const, reason: checked.reason };
+  const vc = checked.doc as { id?: string; name?: string; validFrom?: string; credentialSubject?: { name?: string; skills?: { name?: string; evidence?: number; bestResult?: string }[] } };
+  const skillsOf = typeof vc.id === 'string' && vc.id.startsWith(`${publicAppUrl()}/passport/skills/`) ? vc.id.split('/passport/skills/')[1] : undefined;
+  const p = skillsOf ? await prisma.skillPassport.findUnique({ where: { id: skillsOf }, select: { id: true } }) : null;
+  if (!p) return { valid: false as const, reason: 'The passport behind this credential no longer exists.' };
+  const skills = (vc.credentialSubject?.skills ?? []).slice(0, 30).map((k) => `${k.name}: ${k.evidence} piece${k.evidence === 1 ? '' : 's'} of evidence${k.bestResult ? ` (best: ${k.bestResult})` : ''}`).join('; ');
+  return { valid: true as const, badge: { name: vc.name, earner: vc.credentialSubject?.name, criteria: skills, issued: vc.validFrom, verifyUrl: vc.id } };
+}
+
 export async function verifyOpenBadge(jwt: string) {
   const payload = CredentialSigner.verifyJwt(jwt);
   if (!payload) return { valid: false as const, reason: 'The signature doesn’t match. This badge wasn’t issued by UniVerse, or it was changed.' };

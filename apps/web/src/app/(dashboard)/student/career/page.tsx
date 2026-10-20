@@ -10,7 +10,7 @@ import { Briefcase, Calendar, MapPin, Building, ChevronRight } from 'lucide-reac
 import { Topbar } from '@/components/layout/Topbar';
 import { avatarGradient } from '@/components/ui/Avatar';
 
-interface Opportunity { id: string; title: string; company: string; logo: string | null; type: string; location: string; deadline: string }
+interface Opportunity { id: string; title: string; company: string; logo: string | null; type: string; location: string; deadline: string | null }
 interface CareerEvent { id: string; title: string; date: string; location?: string | null }
 
 /** The company's logo, or its initials when it has none (or it doesn't load). */
@@ -94,9 +94,11 @@ export default function CareerPage() {
                           <span className="inline-block px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-200 dark:bg-white/10 text-zinc-900 dark:text-white">
                             {job.type}
                           </span>
-                          <span className="text-xs text-zinc-500 dark:text-zinc-500">
-                            Apply by: {new Date(job.deadline).toLocaleDateString()}
-                          </span>
+                          {job.deadline && (
+                            <span className="text-xs text-zinc-500 dark:text-zinc-500">
+                              Apply by: {new Date(job.deadline).toLocaleDateString()}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -17,7 +17,8 @@ export default function careerModule(router: Router) {
       company: i.company?.name || 'Company',
       location: i.location || 'Remote',
       type: i.type?.replace('_', ' ') || 'Internship',
-      deadline: i.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      // No made-up date: an opening without a deadline shows none.
+      deadline: i.deadline ?? null,
       // No logo: the page shows the company's initials (no third-party image service).
       logo: i.company?.logoUrl || null,
     }));

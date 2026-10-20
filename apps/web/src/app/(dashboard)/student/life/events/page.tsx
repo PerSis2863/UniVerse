@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { CalendarDays, CheckCircle2, Clock, ExternalLink, Loader2, MapPin, QrCode, Ticket, Users } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Clock, ExternalLink, Loader2, MapPin, QrCode as QrIcon, Ticket, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, LIFE_TABS } from '@/components/layout/SectionTabs';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
@@ -13,14 +13,38 @@ import { safeHref } from '@/lib/safe-href';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { TabPill, TabPanel } from '@/components/ui/Glide';
+import { Sheet } from '@/components/ui/Sheet';
+import { QrCode } from '@/components/ui/QrCode';
+import { money } from '@/components/fees/shared';
+import { usePaymentReturn } from '@/lib/use-payment-return';
 
 // Campus events (upgrade 7): RSVP (a seat, or the waiting list when it's full) and check in at the
-// door by scanning the organiser's QR code, which opens this page with ?checkin=<code>.
+// door by scanning the organiser's QR code, which opens this page with ?checkin=<code>. Stage 5 · Q17:
+// paid events (Buy ticket: card on Stripe's page, the seat held meanwhile) and a signed ticket for
+// every place, shown as a QR code the door scans once.
 
 interface Event {
   id: string; title: string; description: string | null; category: string | null; location: string | null; url: string | null;
-  startAt: string | null; capacity: number | null; going: number; waiting: number;
-  mine: { status: 'GOING' | 'WAITLIST'; checkedInAt: string | null } | null;
+  startAt: string | null; capacity: number | null; going: number; waiting: number; price: number | null; currency: string | null;
+  mine: { status: 'GOING' | 'WAITLIST' | 'HELD'; checkedInAt: string | null } | null;
+}
+interface TicketView { code: string; name: string; title: string; startAt: string | null; location: string | null; paid: boolean; usedAt: string | null }
+
+/** My ticket: a signed code as a QR for the door (it works once). */
+function TicketSheet({ ev, onClose }: { ev: Event; onClose: () => void }) {
+  const { data, error } = useSWR<TicketView>(`/api/campus/events/${ev.id}/ticket`, authedJson);
+  return (
+    <Sheet title="Your ticket" onClose={onClose}>
+      {error ? <p className="text-sm text-rose-600 dark:text-rose-400">{(error as Error).message}</p> : !data ? <div className="skeleton h-64 rounded-3xl" /> : (
+        <div className="text-center space-y-3">
+          <p className="font-bold text-zinc-900 dark:text-white">{data.title}</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{data.name}{data.startAt ? ` · ${when(data.startAt)}` : ''}{data.location ? ` · ${data.location}` : ''}</p>
+          <div className="inline-block rounded-2xl bg-white p-3"><QrCode value={data.code} size={220} title={`Ticket for ${data.title}`} /></div>
+          {data.usedAt ? <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Used at the door {when(data.usedAt)}</p> : <p className="text-xs text-zinc-500">Show this at the door. It works once and only for you; a screenshot is fine.</p>}
+        </div>
+      )}
+    </Sheet>
+  );
 }
 
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -30,7 +54,19 @@ export default function EventsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [checkedIn, setCheckedIn] = useState<{ title: string } | null>(null);
   const [filter, setFilter] = useState<'all' | 'mine'>('all');
+  const [ticket, setTicket] = useState<Event | null>(null);
   const handled = useRef(false);
+  // Back from Stripe's page: the server checks the payment, then the ticket appears.
+  usePaymentReturn(() => { void mutate(); });
+
+  const buy = async (ev: Event) => {
+    setBusy(ev.id);
+    try {
+      const r = await authedJson<{ checkoutUrl?: string }>(`/api/campus/events/${ev.id}/buy`, { method: 'POST' });
+      if (!r.checkoutUrl) throw new Error('The payment page didn’t open. Please try again.');
+      window.location.assign(r.checkoutUrl);
+    } catch (e) { toast.error((e as Error).message); setBusy(null); }
+  };
 
   // Opened from the QR code at the door: check in straight away.
   useEffect(() => {
@@ -79,7 +115,7 @@ export default function EventsPage() {
                 </button>
               ))}
             </div>
-            <p className="text-xs text-zinc-500 hidden sm:flex items-center gap-1"><QrCode className="w-3.5 h-3.5" /> At the door, scan the code on the organiser’s screen with your phone camera.</p>
+            <p className="text-xs text-zinc-500 hidden sm:flex items-center gap-1"><QrIcon className="w-3.5 h-3.5" aria-hidden /> At the door, scan the code on the organiser’s screen with your phone camera.</p>
           </div>
           <TabPanel k={filter}>
           {isLoading ? (
@@ -104,6 +140,7 @@ export default function EventsPage() {
                           {ev.startAt && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{when(ev.startAt)}</span>}
                           {ev.location && <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{ev.location}</span>}
                           <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{ev.going}{ev.capacity ? `/${ev.capacity}` : ''} going{ev.waiting ? ` · ${ev.waiting} waiting` : ''}</span>
+                          {ev.price ? <span className="font-semibold text-zinc-700 dark:text-zinc-200">{money(ev.price, ev.currency || 'INR')}</span> : null}
                         </p>
                       </div>
                       {ev.category && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 shrink-0">{ev.category}</span>}
@@ -117,13 +154,23 @@ export default function EventsPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       {ev.mine?.checkedInAt ? (
                         <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="w-4 h-4" /> Checked in</span>
+                      ) : ev.mine?.status === 'HELD' ? (
+                        <>
+                          <span className="text-sm text-amber-800 dark:text-amber-300">Your seat is held while you pay.</span>
+                          <button type="button" className="btn-secondary btn-sm" disabled={busy === ev.id} onClick={() => void buy(ev)}>Pay again</button>
+                        </>
                       ) : ev.mine ? (
                         <>
-                          <span className={cn('inline-flex items-center gap-1.5 text-sm font-semibold', ev.mine.status === 'GOING' ? 'text-indigo-600 dark:text-indigo-300' : 'text-amber-600 dark:text-amber-400')}>
+                          <span className={cn('inline-flex items-center gap-1.5 text-sm font-semibold', ev.mine.status === 'GOING' ? 'text-indigo-700 dark:text-indigo-300' : 'text-amber-800 dark:text-amber-400')}>
                             <Ticket className="w-4 h-4" /> {ev.mine.status === 'GOING' ? 'You’re going' : 'On the waiting list'}
                           </span>
-                          <button type="button" className="btn-ghost btn-sm" disabled={busy === ev.id} onClick={() => void rsvp(ev, false)}>Can’t make it</button>
+                          {ev.mine.status === 'GOING' && <button type="button" className="btn-secondary btn-sm" onClick={() => setTicket(ev)}><QrIcon className="w-4 h-4" aria-hidden /> Show ticket</button>}
+                          {!ev.price && <button type="button" className="btn-ghost btn-sm" disabled={busy === ev.id} onClick={() => void rsvp(ev, false)}>Can’t make it</button>}
                         </>
+                      ) : ev.price ? (
+                        <button type="button" className="btn-primary btn-sm rounded-full" disabled={busy === ev.id || full} onClick={() => void buy(ev)}>
+                          {busy === ev.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ticket className="w-4 h-4" />} {full ? 'Sold out' : `Buy ticket · ${money(ev.price, ev.currency || 'INR')}`}
+                        </button>
                       ) : (
                         <button type="button" className="btn-primary btn-sm rounded-full" disabled={busy === ev.id} onClick={() => void rsvp(ev, true)}>
                           {busy === ev.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ticket className="w-4 h-4" />} {full ? 'Join the waiting list' : 'Going'}
@@ -139,6 +186,7 @@ export default function EventsPage() {
           </TabPanel>
         </div>
       </div>
+      {ticket && <TicketSheet ev={ticket} onClose={() => setTicket(null)} />}
     </>
   );
 }

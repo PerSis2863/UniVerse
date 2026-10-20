@@ -6,14 +6,14 @@ import { LoadError } from '@/components/ui/LoadError';
 import { Printer } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, IMPACT_REPORT_TABS } from '@/components/layout/SectionTabs';
-import { ImpactMap, type Place } from '@/components/impact/ImpactMap';
+import { ImpactMap, SdgFilter, type Place } from '@/components/impact/ImpactMap';
 import { authedJson } from '@/lib/authed-fetch';
 
 // Yearly volunteering report (upgrade 5) for funders: verified hours from on-site check-ins, by
 // place, project and UN goal. "Print / save as PDF" uses the browser's print (no server PDF library).
 
 interface Report {
-  year: number; totals: { hours: number; volunteers: number; shifts: number }; places: Place[];
+  year: number; sdg: number | null; totals: { hours: number; volunteers: number; shifts: number }; places: Place[];
   projects: { name: string; ngo: string; sdg: number | null; hours: number; people: number }[]; sdgs: { sdg: number; hours: number }[];
 }
 
@@ -22,7 +22,8 @@ const card = 'rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-
 export default function VolunteeringReportPage() {
   const [thisYear] = useState(() => new Date().getFullYear());
   const [year, setYear] = useState(thisYear);
-  const { data, isLoading, error, mutate } = useSWR<Report>(`/api/volunteer/report?year=${year}`, authedJson);
+  const [sdg, setSdg] = useState<number | null>(null);
+  const { data, isLoading, error, mutate } = useSWR<Report>(`/api/volunteer/report?year=${year}${sdg ? `&sdg=${sdg}` : ''}`, authedJson, { keepPreviousData: true });
   const most = Math.max(1, ...(data?.sdgs ?? []).map((s) => s.hours));
   return (
     <>
@@ -49,7 +50,11 @@ export default function VolunteeringReportPage() {
                   <div key={l} className={`${card} p-4`}><p className="text-2xl font-black tabular-nums">{Number(v).toLocaleString()}</p><p className="text-xs text-zinc-500">{l}</p></div>
                 ))}
               </div>
-              <section className="space-y-2 break-inside-avoid"><h2 className="font-bold">Where</h2><ImpactMap places={data.places} /></section>
+              <section className="space-y-2 break-inside-avoid">
+                <h2 className="font-bold">Where{data.sdg ? ` (SDG ${data.sdg} only)` : ''}</h2>
+                <div className="print:hidden"><SdgFilter sdgs={data.sdgs} value={sdg} onChange={setSdg} /></div>
+                <ImpactMap places={data.places} />
+              </section>
               {data.sdgs.length > 0 && (
                 <section className="space-y-2 break-inside-avoid">
                   <h2 className="font-bold">By UN Sustainable Development Goal</h2>

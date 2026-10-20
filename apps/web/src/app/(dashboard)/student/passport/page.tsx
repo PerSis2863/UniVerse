@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { Copy, Download, ExternalLink, Eye, FileJson, Globe2, Loader2, Lock, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
+import { Copy, Download, ExternalLink, Eye, FileJson, FileText, Globe2, Loader2, Lock, Palette, Plus, RefreshCw, ShieldCheck, Sparkles, Wallet } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, CREDENTIAL_TABS } from '@/components/layout/SectionTabs';
 import Link from '@/components/ui/Link';
@@ -15,9 +15,15 @@ import { cn } from '@/lib/utils';
 import { QrCode } from '@/components/ui/QrCode';
 import { Switch } from '@/components/ui/Switch';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { CvBuilder } from '@/components/passport/CvBuilder';
+import { linkedInAddCertificationUrl } from '@/lib/linkedin-cert';
+import { COMPANY } from '@/lib/company';
+import { PASSPORT_THEMES, PASSPORT_THEME_CLASS, type PassportTheme } from '@/lib/passport-theme';
 
 interface Passport {
   isPublic: boolean; headline: string | null; url: string; views: number;
+  /** Stage 5 · Q14: the portfolio address (/p/<handle>) and its colour. */
+  handle: string | null; portfolioUrl: string | null; theme: PassportTheme;
   showSkills: boolean; showCredentials: boolean; showCourses: boolean; showImpact: boolean; showEvidence: boolean;
   strengths: string | null; strengthsAt: string | null;
   preview: PassportData | null;
@@ -37,6 +43,8 @@ export default function SkillsPassportPage() {
   const [headline, setHeadline] = useState<string | null>(null);
   const [strengths, setStrengths] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
+  const [handle, setHandle] = useState<string | null>(null);
+  const [cvOpen, setCvOpen] = useState(false);
 
   const save = async (patch: Record<string, unknown>, done?: string) => {
     setSaving(true);
@@ -129,7 +137,35 @@ export default function SkillsPassportPage() {
                 ))}
               </div>
             </div>
-            <p className="text-[11px] leading-relaxed text-zinc-500">Your email, phone, grades and date of birth are never shown. Add skills in <Link href="/student/skills" className="text-indigo-500 hover:underline">My Skills</Link>; request credentials in <Link href="/student/credentials" className="text-indigo-500 hover:underline">Verified Credentials</Link>.</p>
+            <p className="text-[11px] leading-relaxed text-zinc-500">Your email, phone, grades and date of birth are never shown. Add skills in <Link href="/student/skills" className="text-indigo-600 dark:text-indigo-300 underline underline-offset-2">My Skills</Link>; request credentials in <Link href="/student/credentials" className="text-indigo-600 dark:text-indigo-300 underline underline-offset-2">Verified Credentials</Link>.</p>
+          </section>
+
+          {/* Stage 5 · Q14: a short address for the portfolio, its colour, and the CV builder. */}
+          <section aria-labelledby="pf-title" className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-5 space-y-3">
+            <h2 id="pf-title" className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Palette className="w-4 h-4 text-indigo-500" />Portfolio</h2>
+            <form onSubmit={(e) => { e.preventDefault(); void save({ handle: (handle ?? data.handle ?? '').trim() || null }, (handle ?? '').trim() ? 'Portfolio address saved' : 'Portfolio address removed').then(() => setHandle(null)); }}>
+              <label htmlFor="pf-handle" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Your address</label>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="text-xs text-zinc-600 dark:text-zinc-400 shrink-0">…/p/</span>
+                <input id="pf-handle" value={handle ?? data.handle ?? ''} maxLength={24} onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} placeholder="ada-lovelace" className="input py-1.5 text-sm flex-1 min-w-0" />
+                <button type="submit" disabled={saving || handle === null || handle === (data.handle ?? '')} className="btn-secondary btn-sm">Save</button>
+              </div>
+            </form>
+            {data.portfolioUrl && (data.isPublic
+              ? <a href={data.portfolioUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 inline-flex items-center gap-1 hover:underline break-all"><ExternalLink className="w-3.5 h-3.5 shrink-0" />{data.portfolioUrl}</a>
+              : <p className="text-xs text-zinc-600 dark:text-zinc-400">Make your passport public to open {data.portfolioUrl}.</p>)}
+            <div>
+              <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Colour</p>
+              <div role="radiogroup" aria-label="Portfolio colour" className="flex gap-2">
+                {PASSPORT_THEMES.map((t) => (
+                  <button key={t} type="button" role="radio" aria-checked={data.theme === t} disabled={saving} onClick={() => void save({ theme: t })}
+                    className={cn('w-8 h-8 rounded-full bg-gradient-to-br ring-offset-2 ring-offset-[var(--surface)]', PASSPORT_THEME_CLASS[t].accent, data.theme === t && 'ring-2 ring-zinc-900 dark:ring-white')}>
+                    <span className="sr-only">{t.charAt(0).toUpperCase() + t.slice(1)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button type="button" onClick={() => setCvOpen(true)} className="btn-primary btn-sm w-full"><FileText className="w-4 h-4" />Make my CV (PDF)</button>
           </section>
 
           <section className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-5 space-y-3">
@@ -153,6 +189,7 @@ export default function SkillsPassportPage() {
               <div className="mt-2 mb-3 flex flex-wrap gap-2">
                 <button onClick={() => download('/api/passport/skills-badge').catch((e) => toast.error(e.message))} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 text-white inline-flex items-center gap-1"><Download className="w-3.5 h-3.5" /> Skills badge</button>
                 <button onClick={() => download('/api/passport/skills-badge?format=json').catch((e) => toast.error(e.message))} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/70 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-200 inline-flex items-center gap-1"><FileJson className="w-3.5 h-3.5" /> JSON</button>
+                <button onClick={() => download('/api/passport/skills-badge?format=vc').catch((e) => toast.error(e.message))} title="A W3C Verifiable Credential 2.0 for a digital wallet" className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/70 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-200 inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" /> Wallet</button>
               </div>
             )}
             <p className="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Your skills with evidence download as one signed badge. Download any verified credential as a signed Open Badge (the international standard used by Credly, Badgr / Canvas Credentials and digital wallets) and add it where you keep your achievements. Employers can check it with the public key or on your passport.</p>
@@ -164,9 +201,11 @@ export default function SkillsPassportPage() {
           {preview && (
             <PassportView
               p={preview}
+              theme={data.theme}
               onHide={(id, hidden) => void save({ hideEvidence: { id, hidden } }, hidden ? 'Hidden from your public passport' : 'Shown on your public passport again')}
-              badgeActions={(id) => (
+              badgeActions={(id, c) => (
                 <>
+                  <a href={linkedInAddCertificationUrl({ name: c.title, organizationName: COMPANY.legalName, issuedAt: c.issuedAt, certUrl: c.verifyUrl, certId: c.certificateCode })} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-[#0a66c2] dark:text-sky-300 inline-flex items-center gap-1 hover:underline"><Plus className="w-3 h-3" /> Add to LinkedIn</a>
                   <button onClick={() => download(`/api/passport/badge/${id}`).catch((e) => toast.error(e.message))} className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 inline-flex items-center gap-1 hover:underline"><Download className="w-3 h-3" /> Open Badge</button>
                   <button onClick={() => download(`/api/passport/badge/${id}?format=json`).catch((e) => toast.error(e.message))} className="text-xs font-semibold text-zinc-500 inline-flex items-center gap-1 hover:underline"><FileJson className="w-3 h-3" /> JSON</button>
                 </>
@@ -175,6 +214,7 @@ export default function SkillsPassportPage() {
           )}
         </div>
       </div>
+      {cvOpen && <CvBuilder onClose={() => setCvOpen(false)} />}
     </>
   );
 }
