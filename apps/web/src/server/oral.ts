@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { logGradeChanges } from './grade-history';
 import type { SessionUser } from '@/lib/server-auth';
 import { courseAccess } from '@/lib/course-access';
 import { isLanguage, LANGUAGES } from '@/lib/languages';
@@ -326,6 +327,15 @@ export async function oralCheckAction(user: SessionUser, checkId: string, b: Bod
   const final = cleanScores(rubric.map((c) => ({ ...ai.find((a) => a.id === c.id), id: c.id, score: Number(sent.find((x) => x?.id === c.id)?.score) })), rubric);
   const comment = typeof b.comment === 'string' ? b.comment.trim().slice(0, 2000) : '';
   await prisma.oralSession.update({ where: { id: s.id }, data: { status: 'CONFIRMED', finalScores: JSON.stringify(final), teacherComment: comment || null, confirmedById: user.id, confirmedAt: new Date() } });
+  // Into the gradebook (Stage 5 · Q22): one row per student and check, updated if re-marked.
+  const assessment = `Oral: ${check.title}`.slice(0, 200);
+  const score = totalOf(final), maxScore = maxOf(rubric);
+  const existing = await prisma.grade.findFirst({ where: { studentId: s.userId, courseId: check.courseId, assignmentName: assessment }, select: { id: true, score: true } });
+  const gradeData = { score, maxScore, feedback: comment || null, status: 'GRADED' as const, gradedAt: new Date() };
+  const gradeId = existing
+    ? (await prisma.grade.update({ where: { id: existing.id }, data: gradeData, select: { id: true } })).id
+    : (await prisma.grade.create({ data: { ...gradeData, studentId: s.userId, courseId: check.courseId, assignmentName: assessment }, select: { id: true } })).id;
+  await logGradeChanges([{ courseId: check.courseId, studentId: s.userId, gradeId, assessment, oldScore: existing?.score ?? null, newScore: score, maxScore }], { id: user.id, name: user.name });
   await notify(s.userId, { title: `Your oral check “${check.title}” is marked`, body: `${totalOf(final)} / ${maxOf(rubric)}${comment ? `: ${comment.slice(0, 200)}` : ''}`, link: '/student/oral-practice', type: 'grade', email: false });
   publish([s.userId], { type: 'refresh', keys: ['/api/orals', `/api/orals/${s.id}`] });
   return { ok: true, total: totalOf(final), max: maxOf(rubric) };
