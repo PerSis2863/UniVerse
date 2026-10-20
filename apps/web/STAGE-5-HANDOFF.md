@@ -3,7 +3,38 @@
 Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
 done, where the code is and what's left for each item. Keep that table up to date as you go.
 
-## Latest (17 Oct 2026): read this first
+## Handover to the cloud agent (20 Oct 2026): read this first
+
+The owner is handing the project back to a cloud session. Where things stand:
+
+- **`main` has everything through Q18**: PR #66 (Q14 skills passport, Q15 careers, Q16 global impact,
+  Q17 student life, Q18 profile / settings search / guided tour) was merged on 20 Oct at the owner's
+  "merge". Work on branch **`claude/funny-galileo-y4mz9r`** (it matches `main` apart from this note).
+- **Next: Q19 Owner console**, then Q20–Q23 (plan section 4). **Next migration: `0162`.**
+- **Read, in order:** `START-HERE.md`, `.cursor/rules/universe.mdc`, the Progress rows Q14–Q18 in
+  `STAGE-5-PLAN.md`, and the Q14–Q18 notes below (traps and rules for code that builds on them).
+- **How each item was done** (keep doing it): one commit per item; a browser check in
+  `scripts/checks/<name>-ui.mjs` on the built Worker (`pnpm local:build`, then `pnpm local:serve`
+  with `--payments-test`, `--test-secret` or `--ai-placeholder` as the item needs) with axe at
+  390 / 1280 px in light and dark and no sideways scrolling; the test cleans up after itself;
+  sample-mode stubs for new GET routes; help answers with tests; then the Progress row, a note here,
+  START-HERE and the rules' "next". Merge only when the owner says "merge" (a pull request from this
+  branch, merged; Cloudflare then builds and deploys in about 15 minutes).
+- **Traps learned in Q14–Q18** (details in each note): payments count only through
+  `completeOrder` after the gateway confirms; never add fallback keys or a "mark as paid" button.
+  New account fields must also go into `cloudflare/fast-api.ts usersMe`. The demo admin can't write
+  (every write gets 401 "Please sign in."), so unit-test admin-only writes. Hand-written test rows
+  must give JSON columns '[]' (some tables default to ''). Settings draws each section twice (use
+  `useId` for ids). Browser checks mark the tour seen with `universe-tour-done:<user id>`.
+- **Waiting on the owner:** Stripe webhook events `checkout.session.completed` and
+  `checkout.session.async_payment_succeeded` (donations and tickets); `SESSION_SECRET` of at least
+  32 characters on the Worker (tickets, check-in codes); switching NGOs on for donations; Razorpay
+  (UPI) and live bus GPS are **[owner]**.
+- **The owner:** not a developer; free tiers only; never delete the seeded sample data; end each
+  item with a plain-words summary (what changed, what they can do, what they need to do); no AI
+  model names in commits.
+
+## Earlier (17 Oct 2026)
 
 - **`main` has everything through Q13** (PR #64). The work moves to **Cursor** on the owner's
   computer: start with **`START-HERE.md`** at the top of the project (setup, `pnpm local:*`
