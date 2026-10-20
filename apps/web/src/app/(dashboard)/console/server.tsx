@@ -8,7 +8,7 @@ import { Activity, AlertCircle, Ban, BarChart3, Bug, CheckCircle2, ClipboardList
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { FEATURE_SWITCHES, parseOrgSwitches, parseSwitches } from '@/lib/feature-switches';
+import { FEATURE_SWITCHES, parseOrgSwitches, parseRollouts, parseSwitches } from '@/lib/feature-switches';
 import { card, errorMessage, fetcher, field, refreshConsole, toastWithUndo } from './shared';
 import { ConsoleSkeleton } from './shared';
 import { EmailScheduleCard } from './email-schedule';
@@ -143,6 +143,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
             <NoticeCard key={`n-${data.control.updatedAt}`} banner={data.control.banner} onSaved={() => void mutate()} />
             <FeatureCard key={`f-${data.control.updatedAt}`} switches={data.control.switches} onSaved={() => void mutate()} />
             {!!data.orgs?.length && <SchoolSwitchesCard key={`s-${data.control.updatedAt}`} switches={data.control.switches} orgs={data.orgs} onSaved={() => void mutate()} />}
+            <RolloutCard key={`r-${data.control.updatedAt}`} switches={data.control.switches} onSaved={() => void mutate()} />
           </div>
         </div>
       )}
@@ -797,6 +798,56 @@ function SchoolSwitchesCard({ switches, orgs, onSaved }: { switches: string | nu
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+/**
+ * Gradual rollout (Stage 5 · Q19, "rollout:" entries): a feature on for a share of schools only,
+ * the same schools each time (raising the share only adds schools). Outside it, the school's people
+ * see "turned off for your school". People without a school always keep it.
+ */
+function RolloutCard({ switches, onSaved }: { switches: string | null; onSaved: () => void }) {
+  const features = FEATURE_SWITCHES.filter((f) => f.id !== 'signups');
+  const [rollouts, setRollouts] = useState(() => parseRollouts(switches));
+  const [feature, setFeature] = useState(() => Object.keys(parseRollouts(switches))[0] ?? features[0]?.id ?? '');
+  const [percent, setPercent] = useState(() => parseRollouts(switches)[feature] ?? 100);
+  const [busy, setBusy] = useState(false);
+  const label = (id: string) => FEATURE_SWITCHES.find((f) => f.id === id)?.label ?? id;
+  const save = async (pct: number) => {
+    setBusy(true);
+    try {
+      const { data: res } = await api.post('/owner/server', { rollout: { feature, percent: pct } });
+      setRollouts(parseRollouts(res.control.switches));
+      setPercent(pct);
+      toastWithUndo(pct === 100 ? `${label(feature)}: on for every school` : `${label(feature)}: on for ${pct} % of schools`, res.changeId);
+      onSaved();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const active = Object.entries(rollouts);
+  return (
+    <div className={cn(card, 'p-6')}>
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Gauge className="w-4 h-4 text-indigo-500" /> Gradual rollout</h2>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 mb-3">Turn a feature on for some schools first, then more. The same schools stay in as you raise the share; 100 % is everyone again.</p>
+      {active.length > 0 && <p className="text-sm text-zinc-700 dark:text-zinc-300 mb-3">Rolling out: {active.map(([id, pct]) => `${label(id)} (${pct} %)`).join(' · ')}</p>}
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Feature
+          <select value={feature} onChange={(e) => { setFeature(e.target.value); setPercent(rollouts[e.target.value] ?? 100); }} className={cn(field, 'mt-1 block w-full sm:w-64')}>
+            {features.map((f) => <option key={f.id} value={f.id}>{f.label}{rollouts[f.id] !== undefined ? ` · ${rollouts[f.id]} %` : ''}</option>)}
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Share of schools (%)
+          <input type="number" min={0} max={100} step={5} value={percent} onChange={(e) => setPercent(Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0))))} className={cn(field, 'mt-1 block w-28')} />
+        </label>
+        <button type="button" onClick={() => void save(percent)} disabled={busy || !feature} className="btn-primary min-h-11 inline-flex items-center gap-1.5">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save</button>
+        {rollouts[feature] !== undefined && <button type="button" onClick={() => void save(100)} disabled={busy} className="btn-secondary min-h-11">On for everyone</button>}
+      </div>
     </div>
   );
 }

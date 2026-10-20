@@ -8,6 +8,9 @@
 //                                       count as paid when confirmed (fees and donations tests)
 //   pnpm local:serve --test-secret      a fresh random SESSION_SECRET for this run, so signed codes
 //                                       work (event tickets and check-in codes, passkeys)
+//   pnpm local:serve --owner-test       a made-up owner (owner@check.test) whose Google sign-in is
+//                                       checked against a key server on this machine (port 8790,
+//                                       started by scripts/checks/console-ui.mjs): the owner console
 // Never put a real key here or in a file: real keys go in Cloudflare's dashboard only.
 import { randomBytes } from 'node:crypto';
 import { run } from './run.mjs';
@@ -17,5 +20,6 @@ const vars = ['DEMO_LOGIN_ENABLED:true', 'NEXT_PUBLIC_DEMO_LOGIN:true', `DEMO_AC
 if (process.argv.includes('--ai-placeholder')) vars.push('GEMINI_API_KEY:placeholder-not-a-real-key');
 if (process.argv.includes('--payments-test')) vars.push('PAYMENTS_TEST_MODE:1');
 if (process.argv.includes('--test-secret')) vars.push(`SESSION_SECRET:${randomBytes(24).toString('hex')}`);
+if (process.argv.includes('--owner-test')) vars.push('SUPER_ADMIN_EMAILS:owner@check.test', 'FIREBASE_TEST_JWKS_URL:http://localhost:8790/jwks.json');
 console.log('Starting on http://localhost:8787 (Ctrl+C stops it).');
 run('npx', ['wrangler', 'dev', '--port', '8787', '--test-scheduled', ...vars.flatMap((v) => ['--var', v])]);

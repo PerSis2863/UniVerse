@@ -151,7 +151,7 @@ export function ConsoleSearch({ tables, onGo }: { tables: { name: string; title:
 
 // ─── Small charts ──────────────────────────────────────────────────────────────────────────────
 
-function Bars({ values, labels, tone = 'from-indigo-600/70 to-fuchsia-400/80', height = 'h-32', title }: { values: number[]; labels: string[]; tone?: string; height?: string; title: (i: number) => string }) {
+export function Bars({ values, labels, tone = 'from-indigo-600/70 to-fuchsia-400/80', height = 'h-32', title }: { values: number[]; labels: string[]; tone?: string; height?: string; title: (i: number) => string }) {
   const peak = Math.max(1, ...values);
   return (
     <div>
@@ -167,7 +167,7 @@ function Bars({ values, labels, tone = 'from-indigo-600/70 to-fuchsia-400/80', h
   );
 }
 
-function Tiles({ tiles }: { tiles: [string, string | number, string?][] }) {
+export function Tiles({ tiles }: { tiles: [string, string | number, string?][] }) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {tiles.map(([label, value, hint]) => (

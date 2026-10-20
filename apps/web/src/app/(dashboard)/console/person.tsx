@@ -9,6 +9,7 @@ import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { type Rec, type Schema, RecordEditor, SearchBox, card, errorMessage, fetcher, formatValue, matches, refreshConsole, summarize, toastWithUndo } from './shared';
+import { ViewAsButton } from './schools';
 import { ComposeDialog, LiveChat } from './chats';
 import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
@@ -165,6 +166,7 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
             <button onClick={() => setCompose('notify')} className="btn-secondary"><Bell className="w-4 h-4" /> Notify</button>
             <button onClick={() => void download()} disabled={saving} aria-busy={saving || undefined} className="btn-secondary">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Download data</button>
             <button onClick={() => void signOutEverywhere()} className="btn-secondary"><LogOut className="w-4 h-4" /> Sign out everywhere</button>
+            {!u.owner && u.status !== 'SUSPENDED' && <ViewAsButton id={String(u.id)} name={String(u.name ?? 'them')} />}
             {!u.owner && (u.status === 'SUSPENDED' ? (
               <button onClick={() => void ban(false)} className="btn-secondary !text-emerald-600 dark:!text-emerald-400 !border-emerald-500/30"><ShieldCheck className="w-4 h-4" /> Let back in</button>
             ) : (

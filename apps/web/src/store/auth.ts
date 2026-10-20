@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { User } from '@/types';
 import { api } from '@/lib/api';
+import { endViewAs, viewAsToken } from '@/lib/view-as';
 
 interface AuthStore {
   user: User | null;
@@ -48,6 +49,8 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       logout: () => {
+        // Viewing as someone (owner support): end that in this tab; the owner stays signed in.
+        if (viewAsToken()) { void endViewAs(); return; }
         localStorage.removeItem('accessToken');
         localStorage.removeItem('uv-pass');
         localStorage.removeItem('refreshToken');
@@ -61,6 +64,11 @@ export const useAuthStore = create<AuthStore>()(
         set({ accessToken, refreshToken: refreshToken ?? null });
       },
     }),
-    { name: 'universe-auth', partialize: (s) => ({ user: s.user }) }
+    {
+      name: 'universe-auth',
+      partialize: (s) => ({ user: s.user }),
+      // A "view as" tab keeps that person's account to itself (src/lib/view-as.ts).
+      storage: createJSONStorage(() => (viewAsToken() ? sessionStorage : localStorage)),
+    }
   )
 );

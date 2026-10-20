@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Activity, Ban, BarChart3, Bell, Bug, Server, Crown, Database, Download, Gauge, HardDrive, History, LayoutDashboard, Loader2, LogIn, Megaphone, MessageSquare, MessagesSquare, MousePointerClick, PhoneCall, ShieldCheck, Trash2, Undo2, Users, Wallet, X } from 'lucide-react';
+import { Activity, Ban, BarChart3, Bell, Building2, Bug, Server, Crown, Database, Download, Gauge, HardDrive, History, LayoutDashboard, Loader2, LogIn, Megaphone, MessageSquare, MessagesSquare, MousePointerClick, PhoneCall, ShieldAlert, ShieldCheck, Trash2, Undo2, Users, Wallet, X } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -20,6 +20,7 @@ import { AnnouncePanel, ChatsPanel, ComposeDialog } from './chats';
 import { DatabasePanel } from './database';
 import { HealthPanel } from './health';
 import { HealthNumbersPanel } from './health-numbers';
+import { ModerationPanel, SchoolsPanel } from './schools';
 import { CallsPanel } from './calls';
 import { AnalyticsPanel, AttentionCard, ConsoleSearch, type Go, MoneyPanel, useAttention } from './insights';
 import { useActivePoll } from '@/lib/realtime-client';
@@ -29,9 +30,11 @@ import { LoadError } from '@/components/ui/LoadError';
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
 
-type Tab = 'overview' | 'health' | 'numbers' | 'calls' | 'analytics' | 'server' | 'activity' | 'chats' | 'announce' | 'people' | 'database' | 'data' | 'money' | 'changes' | 'errors' | 'deletions';
+type Tab = 'overview' | 'schools' | 'moderation' | 'health' | 'numbers' | 'calls' | 'analytics' | 'server' | 'activity' | 'chats' | 'announce' | 'people' | 'database' | 'data' | 'money' | 'changes' | 'errors' | 'deletions';
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'schools', label: 'Schools', icon: Building2 },
+  { id: 'moderation', label: 'Moderation', icon: ShieldAlert },
   { id: 'health', label: 'Health check', icon: ShieldCheck },
   { id: 'numbers', label: 'Health numbers', icon: Gauge },
   { id: 'calls', label: 'Calls', icon: PhoneCall },
@@ -128,7 +131,7 @@ export default function OwnerConsole() {
                 <t.icon className="w-4 h-4" /> {t.label}
                 {badge > 0 && (
                   <span title={t.id === 'activity' ? 'online now' : undefined}
-                    className={cn('min-w-[1.25rem] px-1.5 rounded-full text-[10px] leading-5 text-center', t.id === 'activity' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white')}>{badge > 99 ? '99+' : badge}</span>
+                    className={cn('min-w-[1.25rem] px-1.5 rounded-full text-[10px] leading-5 text-center', t.id === 'activity' ? 'bg-emerald-700 text-white' : 'bg-rose-600 text-white')}>{badge > 99 ? '99+' : badge}</span>
                 )}
               </button>
             );
@@ -139,6 +142,10 @@ export default function OwnerConsole() {
         <TabPanel k={`${tab}-${person ?? ''}`}>
         {tab === 'overview' ? (
           <Overview onPerson={openPerson} onTab={(t, status) => show(t, { status })} />
+        ) : tab === 'schools' ? (
+          <SchoolsPanel onPerson={openPerson} />
+        ) : tab === 'moderation' ? (
+          <ModerationPanel onPerson={openPerson} />
         ) : tab === 'health' ? (
           <HealthPanel />
         ) : tab === 'numbers' ? (

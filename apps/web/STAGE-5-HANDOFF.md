@@ -3,6 +3,35 @@
 Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
 done, where the code is and what's left for each item. Keep that table up to date as you go.
 
+## Q19 · Owner console: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+
+Schools, Moderation and View as in the owner console, a rollout card on the Server tab, growth
+charts. Details in the Progress row "Q19". Rules for code that builds on it:
+
+- **View as is read-only by construction, at the server.** Its token is an ordinary `ut1.` session
+  token with `src: 'view'` (30 minutes). `viewAsRefused(method, path)` in `src/server/session-token.ts`
+  is the one list: every non-GET except `POST /api/bootstrap`, plus chat, calls, realtime, recordings
+  and `/api/files/link` even for GET. It is checked in `router.handle`, `getSessionUser`,
+  `getUserFromToken` (server actions) and the Worker's `callerOf` (which then hands the request to
+  the Next.js route, which refuses it). **A new way in that resolves a token itself must call
+  `viewAsBlocked(req, token)`.** A new GET that changes something (marks read, counts a view) must
+  either be a POST or be added to that list. Reading `src` without verifying only ever refuses more.
+- **The view-as tab must never touch the owner's sign-in.** Everything for it lives in that tab's
+  sessionStorage (`uv-view-as`, `uv-view-as-name`, `universe-auth`). `getAuthToken`, `twoStepPass`,
+  the account store's storage, `auth.signOut`, `logout`, the 401 handler, the early start-up script
+  (`bootstrapPrefetchScript`) and `reportSession` all check `viewAsToken()` first. New code that reads
+  or clears `localStorage` sign-in keys (`accessToken`, `universe-auth`, `uv-pass`) must do the same.
+- **Blocked parts answer 401 from Next.js routes** (getSessionUser returns null): in a view-as tab
+  the API client turns that into "read-only" unless the token has run out (then `/view-as?expired=1`).
+- **Rollout** entries `rollout:<id>=<pct>` sit next to `org:` entries; always write switches with the
+  4-argument `composeSwitches(off, emails, orgs, rollouts)` so neither is dropped.
+- **Churn** comes from `subscription_events` (0162), written only by `syncSubscription` when the
+  status or plan changes; there is no history from before this release.
+- **Browser check:** `pnpm local:serve --test-secret --owner-test`, then
+  `node scripts/checks/console-ui.mjs`. It runs a stand-in for Google's sign-in keys on port 8790
+  (local only; `FIREBASE_TEST_JWKS_URL` is ignored unless it points at localhost) for the made-up
+  owner `owner@check.test`, and removes that account, its log rows and the test flag at the end.
+
 ## Handover to the cloud agent (20 Oct 2026): read this first
 
 The owner is handing the project back to a cloud session. Where things stand:

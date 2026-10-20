@@ -3,6 +3,7 @@ import { getAuthToken, twoStepPass } from './auth-token';
 import { isSampleMode } from './sample-mode';
 import { fromBootstrap, inBootstrap } from './bootstrap';
 import { fetchWithRetry } from './authed-fetch';
+import { endViewAs, viewAsExpired, viewAsToken } from './view-as';
 
 /** The platform API, served by this app on Cloudflare (src/app/api/core, src/server). */
 export const API_URL = '/api/core';
@@ -128,6 +129,11 @@ async function request<T>(method: string, url: string, body: unknown, config: Ap
   if (status === 403 && (data as { code?: string } | null)?.code === 'TWO_STEP_REQUIRED' && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
     window.location.href = `/login?step=code&next=${encodeURIComponent(window.location.pathname)}`;
     return new Promise<never>(() => {});
+  }
+  if (status === 401 && viewAsToken()) {
+    // Viewing as someone: their 30 minutes are up, or this part (private messages) isn't shown.
+    if (viewAsExpired()) return endViewAs('expired');
+    throw errorFrom(403, { message: 'This is a read-only view: changes and private messages are not available.', code: 'VIEW_AS_READ_ONLY' });
   }
   if (status === 401 && !retried) {
     const fresh = await getAuthToken(true);

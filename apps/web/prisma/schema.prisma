@@ -1242,6 +1242,21 @@ model BoardMember {
 
 /// Every change the platform owner makes in the owner console, with the record before and after,
 /// so any of them can be undone. Only the owner can see this table.
+/// Each change of a school's subscription (Stripe webhook, src/lib/billing.ts): churn in the owner console.
+model SubscriptionEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  fromStatus     String?
+  toStatus       String
+  fromPlan       String?
+  toPlan         String
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([organizationId])
+  @@map("subscription_events")
+}
+
 model OwnerChange {
   id        String    @id @default(cuid())
   ownerId   String

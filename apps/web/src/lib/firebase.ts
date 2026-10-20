@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { endViewAs, viewAsToken } from './view-as';
 
 // Web App IDs look like "1:<sender id>:web:<hash>". A mis-pasted value (e.g. the project id) breaks
 // Firebase with 400 INVALID_ARGUMENT, so fall back to the known-good id.
@@ -19,6 +20,8 @@ const firebaseConfig = {
 // Initialize Firebase only if it hasn't been initialized already
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
+// A "view as" tab (owner support) must never sign the owner out of Firebase, which every tab shares.
+if (viewAsToken()) auth.signOut = () => endViewAs();
 
 // No Google Analytics: the Privacy Policy promises no third-party analytics or tracking.
 

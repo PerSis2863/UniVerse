@@ -1,3 +1,5 @@
+import { viewAsToken } from './view-as';
+
 /**
  * Returns a valid bearer token for the API / chat socket.
  *
@@ -9,6 +11,9 @@
  */
 export async function getAuthToken(forceRefresh = false): Promise<string | null> {
   if (typeof window === 'undefined') return null;
+  // The owner viewing the app as someone, in this tab only (src/lib/view-as.ts).
+  const viewing = viewAsToken();
+  if (viewing) return viewing;
 
   let stored: string | null = null;
   try {
@@ -40,6 +45,7 @@ export async function getAuthToken(forceRefresh = false): Promise<string | null>
 
 /** The pass from the emailed sign-in code (admins and the owner; src/server/two-step.ts). */
 export function twoStepPass(): string | null {
+  if (viewAsToken()) return null; // the owner's own pass never goes with someone else's session
   try {
     return localStorage.getItem('uv-pass');
   } catch {
