@@ -91,6 +91,15 @@ Rules for using it here:
   that sends code or data to another service (some commands send diffs to other AI providers).
 - It never overrides this file: the owner's rules, safety rules and the plan come first.
 - Ask the owner before installing it, and say what you're adding and why.
+- **Installed (20 Oct 2026, at the owner's request), fitted to this project:** in `.claude/` the
+  commands `/plan-item`, `/check`, `/fix-checks`, `/finish-item`, `/council`; the reviewers
+  `universe-reviewer` and `universe-security` (only when asked; no model pinned); and one hook,
+  `protect-secrets.mjs` (blocks reading or writing the local secret files). See the root `CLAUDE.md`.
+- **Left out on purpose:** ECC's hooks (one blocks `pnpm dev`, one blocks new `.md` notes, others
+  run Prettier or a full type check after every edit, which takes minutes here), its "use
+  proactively / must be used" agents (they start an extra AI session after every change), its MCP
+  servers (they need keys and send data to other services), the memory and learning hooks, and its
+  generic skills (written for other stacks: Supabase, Redis, older Next.js).
 
 ## Gotchas already learned
 
