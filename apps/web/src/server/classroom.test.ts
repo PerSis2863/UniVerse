@@ -1,7 +1,22 @@
-import { describe, expect, it, vi } from 'vitest';
-import { classCode, codeWindow, moodCounts, normalizeClassCode } from './classroom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import prisma from '@/lib/db';
+import type { SessionUser } from '@/lib/server-auth';
+import { classCode, codeWindow, moodCounts, normalizeClassCode, studentAction } from './classroom';
+import { spendAi } from './ai-budget';
+import { taAnswer } from './whisper';
 
 vi.mock('./realtime', () => ({ publish: vi.fn() }));
+vi.mock('@/lib/db', () => ({
+  default: {
+    classroomCheckin: { findUnique: vi.fn() },
+    classroomSession: { findUnique: vi.fn() },
+    classroomQuestion: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn() },
+  },
+}));
+vi.mock('./whisper', () => ({ taAnswer: vi.fn().mockResolvedValue({ answer: 'It stops at n - 1 because… [1]', citations: [{ n: 1, title: 'Loops' }], grounded: true, topic: 'loops' }) }));
+vi.mock('./ai-budget', () => ({ spendAi: vi.fn().mockResolvedValue({ ok: true }), sameQuestion: (s: string) => s.toLowerCase().replace(/[?!.\s]+$/u, '').trim() }));
+vi.mock('./ai-receipts', () => ({ logAiUse: vi.fn() }));
+vi.mock('./moderation', () => ({ featureOff: vi.fn().mockResolvedValue(false) }));
 
 describe('in-person class codes', () => {
   it('makes the same 6-character code for a secret and window, and a different one next window', async () => {
@@ -36,5 +51,46 @@ describe('moodCounts', () => {
       { mood: null, moodAt: null },
     ], now);
     expect(m).toEqual({ lost: 1, ok: 1, total: 4 });
+  });
+});
+
+describe('the class TA in an in-person class (Stage 5 · Q22)', () => {
+  type Fn = ReturnType<typeof vi.fn>;
+  const db = prisma as unknown as { classroomCheckin: Record<string, Fn>; classroomSession: Record<string, Fn>; classroomQuestion: Record<string, Fn> };
+  const student: SessionUser = { id: 's1', role: 'STUDENT', email: 's@x.edu', name: 'Sam' };
+  const started = new Date(Date.now() - 30 * 60_000);
+  const q = { id: 'q1', text: 'Why does the loop stop at n - 1?', answeredAt: null, createdAt: new Date(), answer: null, citations: null, grounded: false };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.GEMINI_API_KEY = 'test-key';
+    db.classroomCheckin.findUnique.mockResolvedValue({ id: 'ck1', session: { id: 'cs1', teacherId: 't1', startedAt: started, endedAt: null, pulse: '[]' } });
+    db.classroomQuestion.findFirst.mockResolvedValue(q);
+    db.classroomQuestion.findMany.mockResolvedValue([]);
+    db.classroomQuestion.update.mockImplementation(async ({ data }) => ({ ...q, ...data }));
+    // Notes from 25 and 5 minutes into the class: only the last ten minutes go to the TA.
+    db.classroomSession.findUnique.mockResolvedValue({ startedAt: started, transcript: JSON.stringify([{ t: 300, who: 'Dr Rao', text: 'Old part' }, { t: 1500, who: 'Dr Rao', text: 'The loop runs while i < n' }]), course: { id: 'c1', code: 'CS101', name: 'Intro', tutorRule: null } });
+  });
+
+  it('answers my question privately from the course and the last minutes of notes', async () => {
+    const r = await studentAction('cs1', student, { action: 'ta', questionId: 'q1' });
+    expect(r).toMatchObject({ answer: expect.stringContaining('n - 1'), grounded: true, citations: [{ n: 1, title: 'Loops' }] });
+    const heard = (taAnswer as Fn).mock.calls[0][2] as { text: string }[];
+    expect(heard.map((l) => l.text)).toEqual(['The loop runs while i < n']);
+    expect(db.classroomQuestion.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'q1', sessionId: 'cs1', studentId: 's1' } }));
+  });
+
+  it('reuses an answer to the same question in this class, at no cost', async () => {
+    db.classroomQuestion.findMany.mockResolvedValue([{ text: 'why does the loop stop at n - 1', answer: 'Made earlier [1]', citations: '[{"n":1,"title":"Loops"}]', grounded: true, createdAt: new Date() }]);
+    expect(await studentAction('cs1', student, { action: 'ta', questionId: 'q1' })).toMatchObject({ answer: 'Made earlier [1]' });
+    expect(taAnswer).not.toHaveBeenCalled();
+    expect(spendAi).not.toHaveBeenCalled();
+  });
+
+  it('follows the teacher’s switch and only answers my own questions', async () => {
+    db.classroomSession.findUnique.mockResolvedValueOnce({ startedAt: started, transcript: '[]', course: { id: 'c1', code: 'CS101', name: 'Intro', tutorRule: JSON.stringify({ whisperOff: true }) } });
+    await expect(studentAction('cs1', student, { action: 'ta', questionId: 'q1' })).rejects.toMatchObject({ status: 403 });
+    db.classroomQuestion.findFirst.mockResolvedValueOnce(null);
+    await expect(studentAction('cs1', student, { action: 'ta', questionId: 'someone-elses' })).rejects.toMatchObject({ status: 404 });
+    expect(taAnswer).not.toHaveBeenCalled();
   });
 });

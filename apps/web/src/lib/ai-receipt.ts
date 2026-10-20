@@ -27,6 +27,7 @@ export const AI_USE_KINDS = {
   rubric: 'Rubric explanations',
   marking: 'Help marking short answers',
   interview: 'Interview practice',
+  ta: 'Class TA (during a class)',
 } as const;
 export type AiUseKind = keyof typeof AI_USE_KINDS;
 export const aiUseLabel = (k: string) => (k in AI_USE_KINDS ? AI_USE_KINDS[k as AiUseKind] : 'AI help');

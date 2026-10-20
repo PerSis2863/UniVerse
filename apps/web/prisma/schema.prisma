@@ -5802,6 +5802,10 @@ model ClassroomQuestion {
   student    User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
   text       String
   answeredAt DateTime?
+  /// The class TA's answer, for the student who asked only (Stage 5 · Q22): text, JSON [{ n, title }], from the course materials
+  answer     String?
+  citations  String?
+  grounded   Boolean          @default(false)
   createdAt  DateTime         @default(now())
 
   @@index([sessionId])

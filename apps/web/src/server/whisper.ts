@@ -1,9 +1,10 @@
 import prisma from '@/lib/db';
 import { courseAccess } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
-import { cleanHeard, clusterTopics, heardText } from '@/lib/whisper';
+import { cleanHeard, clusterTopics, heardText, type SentLine } from '@/lib/whisper';
 import { cleanRule } from '@/lib/tutor-rules';
 import { sameQuestion, spendAi } from './ai-budget';
+import { logAiUse } from './ai-receipts';
 import { breakoutOf } from './calls';
 import { later } from './email';
 import { geminiJson } from './gemini';
@@ -37,6 +38,33 @@ Answer from the numbered course passages and from what was said in the class in 
 - "topic": two to four words naming the course concept the question is about (like "base case" or "for loops"), in the language of the class; empty if the question isn't about the class.`;
 
 type Citation = { n: number; title: string };
+
+/**
+ * The TA's answer to one question, from the course's materials and what was said lately (a class
+ * call's captions, or the notes an in-person class takes, Stage 5 · Q22). Throws when it can't.
+ */
+export async function taAnswer(course: { id: string; code: string; name: string }, question: string, heard: SentLine[]) {
+  const { found, text } = await coursePassages(course.id, `${question} ${heard.slice(-6).map((l) => l.text).join(' ')}`, 6);
+  const out = await geminiJson<{ answer: string; grounded: boolean; used: number[]; topic: string }>(
+    SYSTEM,
+    [
+      `Class: ${course.code} · ${course.name}`,
+      `Course passages:\n${text || '(none matched)'}`,
+      `What was said in the class in the last minutes:\n${heard.length ? heardText(heard) : '(no captions: the live transcript isn’t on)'}`,
+      `The student's question: ${question}`,
+    ].join('\n\n'),
+    { type: 'OBJECT', properties: { answer: { type: 'STRING' }, grounded: { type: 'BOOLEAN' }, used: { type: 'ARRAY', items: { type: 'INTEGER' } }, topic: { type: 'STRING' } }, required: ['answer', 'grounded', 'used', 'topic'] },
+    600,
+    true,
+  );
+  if (!out?.answer) throw new HttpException('The TA couldn’t answer just now. Try again in a moment.', 503);
+  const used = new Set([...(out.used ?? []), ...[...out.answer.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1]))]);
+  const citations: Citation[] = found.filter((p) => used.has(p.n)).map((p) => ({ n: p.n, title: p.title }));
+  return {
+    answer: out.answer.slice(0, 2000), citations, grounded: !!out.grounded && citations.length > 0,
+    topic: (out.topic ?? '').replace(/\s+/g, ' ').trim().slice(0, 60) || null,
+  };
+}
 
 async function access(user: SessionUser, callId: string) {
   const parent = breakoutOf(callId)?.parent ?? callId;
@@ -114,28 +142,13 @@ export async function whisperAction(user: SessionUser, callId: string, b: Record
   if (!spend.ok) throw new HttpException(spend.message, 429);
 
   const heard = cleanHeard(b.heard);
-  const { found, text } = await coursePassages(a.course.id, `${question} ${heard.slice(-6).map((l) => l.text).join(' ')}`, 6);
-  const out = await geminiJson<{ answer: string; grounded: boolean; used: number[]; topic: string }>(
-    SYSTEM,
-    [
-      `Class: ${a.course.code} · ${a.course.name}`,
-      `Course passages:\n${text || '(none matched)'}`,
-      `What was said in the class in the last minutes:\n${heard.length ? heardText(heard) : '(no captions: the live transcript isn’t on)'}`,
-      `The student's question: ${question}`,
-    ].join('\n\n'),
-    { type: 'OBJECT', properties: { answer: { type: 'STRING' }, grounded: { type: 'BOOLEAN' }, used: { type: 'ARRAY', items: { type: 'INTEGER' } }, topic: { type: 'STRING' } }, required: ['answer', 'grounded', 'used', 'topic'] },
-    600,
-    true,
-  );
-  if (!out?.answer) throw new HttpException('The TA couldn’t answer just now. Try again in a moment.', 503);
-  const used = new Set([...(out.used ?? []), ...[...out.answer.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1]))]);
-  const citations: Citation[] = found.filter((p) => used.has(p.n)).map((p) => ({ n: p.n, title: p.title }));
-  const topic = (out.topic ?? '').replace(/\s+/g, ' ').trim().slice(0, 60) || null;
+  const out = await taAnswer(a.course, question, heard);
+  await logAiUse(user.id, { kind: 'ta', detail: question, courseId: a.course.id });
   const q = await prisma.whisperQuestion.create({
-    data: { ...base, answer: out.answer.slice(0, 2000), citations: JSON.stringify(citations), grounded: !!out.grounded && citations.length > 0, live: heard.length > 0, topic },
+    data: { ...base, answer: out.answer, citations: JSON.stringify(out.citations), grounded: out.grounded, live: heard.length > 0, topic: out.topic },
     select: SELECT,
   });
-  if (topic) tell();
+  if (out.topic) tell();
   // Questions are kept a month (for the class's records), then cleared as new ones come in.
   later(() => prisma.whisperQuestion.deleteMany({ where: { courseId: a.course.id, createdAt: { lt: new Date(now - 30 * 24 * HOUR) } } }));
   return mine(q);

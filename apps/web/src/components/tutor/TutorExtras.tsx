@@ -142,8 +142,8 @@ export function TeacherPanel({ courseId }: { courseId: string }) {
           <div><p className="text-sm font-semibold text-zinc-900 dark:text-white">Hints only</p><p className="text-xs text-zinc-600 dark:text-zinc-400">The tutor guides with hints and questions and never gives a final answer, even for a photo of homework.</p></div>
         </div>
         <div className="flex items-start gap-3">
-          <Switch checked={rule.whisperOff !== true} onChange={(v) => void save({ whisperOff: !v })} disabled={busy} label="Whisper TA in class calls" />
-          <div><p className="text-sm font-semibold text-zinc-900 dark:text-white">Whisper TA in class calls</p><p className="text-xs text-zinc-600 dark:text-zinc-400">Students can quietly ask the TA during this course’s class calls. Turn it off for this class only.</p></div>
+          <Switch checked={rule.whisperOff !== true} onChange={(v) => void save({ whisperOff: !v })} disabled={busy} label="Class TA (Whisper TA)" />
+          <div><p className="text-sm font-semibold text-zinc-900 dark:text-white">Class TA (Whisper TA)</p><p className="text-xs text-zinc-600 dark:text-zinc-400">Students can quietly ask the TA during this course’s class calls and in-person classes. Turn it off for this class only.</p></div>
         </div>
         <label className="block text-sm font-semibold text-zinc-900 dark:text-white">Your instruction to the tutor
           <textarea value={form.note} maxLength={500} rows={2} onChange={(e) => setDraft({ ...form, note: e.target.value })} className="input mt-1 font-normal" placeholder="Always ask for the units. Use the method from week 3." />
