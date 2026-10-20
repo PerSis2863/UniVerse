@@ -37,7 +37,8 @@ export default function KeyboardHelp() {
   if (!open) return null;
   return (
     <Sheet title="Keyboard shortcuts" onClose={() => setOpen(false)}>
-      <div className="space-y-5">
+      {/* Focusable, so the list can be scrolled with the keyboard. */}
+      <div tabIndex={0} role="region" aria-label="All shortcuts" className="space-y-5 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
         {groups(isMac() ? '⌘' : 'Ctrl').map((g) => (
           <section key={g.title}>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">{g.title}</h3>

@@ -165,7 +165,7 @@ function RunningClass({ id, onEnded }: { id: string; onEnded: () => void }) {
         <div className="rounded-2xl p-4 border border-zinc-200/70 dark:border-white/[0.07] flex flex-wrap items-center gap-3">
           <Video className="w-5 h-5 text-indigo-600 dark:text-indigo-300 shrink-0" aria-hidden />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-zinc-900 dark:text-white">{data.call ? `This course’s class call is live: ${data.call.total} online` : 'The class call has ended'}</p>
+            <p className="text-sm font-semibold text-zinc-900 dark:text-white">{data.call ? `This course’s class call is live: ${data.call.total} online` : 'No one is in the class call right now'}</p>
             <p className="text-xs text-zinc-600 dark:text-zinc-400">Linked, it’s one class: students in the call count on the meter (never who) and are marked present like those in the room. They ask the class TA in the call.</p>
           </div>
           <div className="flex items-center gap-2">

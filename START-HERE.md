@@ -15,12 +15,13 @@ Cursor's).
   timetable, and the AI tutor.
 - **The plan:** `apps/web/STAGE-5-PLAN.md`. Section 4 "Remaining work queue" lists every item in
   order, and the **Progress** table at the end says what's done, where the code is and what's left
-  for each item. **Q19 Owner console, Q20 Chat apps, Q21 Languages and Q22 Leftovers are done (on branch `claude/great-hamilton-8g8xdm`, not merged yet). Next up: Q23 small
-  items (Phase E)**, then the full bug review the owner asked for.
+  for each item. **Q19 Owner console, Q20 Chat apps, Q21 Languages, Q22 Leftovers (with the follow-ups the owner
+  asked for) and Q23 small items are done (on branch `claude/great-hamilton-8g8xdm`, not merged yet).
+  Next up: the full bug and error review the owner asked for.**
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: one note per item with the traps
   and the rules for code that builds on it.
 - **Q14–Q18 are on the live site** (merged together on 20 Oct).
-- **Next database update number: `0167`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0171`** (files in `apps/web/prisma/migrations/`).
 
 **Waiting on the owner** (things only you can provide):
 - Two-way Google / Outlook calendar sync: a Google Cloud project and a Microsoft app.

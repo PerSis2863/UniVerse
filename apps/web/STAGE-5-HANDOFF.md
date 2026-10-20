@@ -3,6 +3,64 @@
 Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
 done, where the code is and what's left for each item. Keep that table up to date as you go.
 
+## Q23 · Small items (Phase E), two batches: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+
+Twelve items, no migration. **Next: the full bug and error review the owner asked for** (then
+anything the owner picks from "Waiting for the owner"). Rules for code that builds on it:
+
+- **Ending a call for everyone** is the host's `control` action `end-all` in the call room
+  (`cloudflare/worker.ts`): everyone else (and the waiting room) gets `{ type: 'ended', by }` and is
+  closed with code 4002. Dialogs inside a call must be drawn inside `CallView` (the call sits at
+  z-[300], `confirmDialog` at z-[120] would be hidden under it).
+- **Device-only preferences** live in `src/lib/display-prefs.ts` (`uv-cam-off`, `uv-mirror`,
+  `uv-week-start`). Anything that draws differently from one (calendars) reads it with
+  `useSyncExternalStore` and the server default (`src/lib/use-week-start.ts`), never in `useState`,
+  or the server and browser draw different things. A new setting needs a `settings-index.ts` entry
+  and a `data-setting`.
+- **Week start:** `monthGrid` / `weekStart` (`src/lib/task-calendar.ts`) and the calendar's
+  `TimeGrid` take the first day (1 Monday, 0 Sunday). Weekly timetable rows (`weekday` 0 = Monday)
+  are unchanged: only what's drawn moves.
+- **Reminders to hand in** (`remindMissing`, `src/server/assignments.ts`) are notifications of type
+  `reminder` linked to `/student/assignments/<id>`; the 12-hour limit looks for exactly that, so
+  don't reuse that type and link for other notices.
+- **Duplicate assignment** copies the rubric's concept tags (`ConceptTag` kind `CRITERION`, refId
+  `<assignmentId>:<criterionId>`). A new assignment field must be added to `duplicateAssignment`.
+- **Keyboard shortcuts** (`src/components/layout/KeyboardHelp.tsx`): `?` and `/` are ignored while
+  typing or inside a dialog. Add new app-wide shortcuts to its list.
+
+## Q22b · The Q22 leftovers the owner asked for: done (20 Oct 2026, same branch, not merged)
+
+Mastery signals from flashcards and tutor questions (D1), a hybrid class (D7), the converter extras
+(B9) and the school-admin extras (B15). Migrations **0167** (`concept_signals`, `study_cards.conceptId`),
+**0168** (`classroom_sessions.linkedCall`), **0169** (late fees), **0170** (half days, `staff_settings`).
+**Next migration: `0171`.** Rules:
+
+- **Mastery signals** go through `recordSignal` (`src/server/learning-dna.ts`; it never throws).
+  Text is matched to a concept by `matchConcept` (`src/lib/concept-match.ts`: more than half of the
+  name's words must appear). A card review is an observation at weight `CARD_WEIGHT` 0.3 (a quiz
+  answer is 1), one per card per day; a tutor question is only counted ("asked"), never right or
+  wrong. Students see their own count; teachers see class totals, never who asked.
+- **Hybrid class:** `markOnline(courseId, userIds)` (`src/server/classroom.ts`) marks students
+  present or late with the note `Online (class call)`, only while the course's in-person class is
+  linked; a mark the teacher made stays. It runs when a student gets a class-call ticket
+  (`callTicket`), when the link is switched on and when the class ends. The call room's `/pulse`
+  gives the live meter counts (app-only, like `/people`).
+- **Late fees are inside `amount`** (`fee_invoices.lateFee` says how much of it), so payments,
+  receipts and "paid in full" keep working. `applyLateFees` adds a plan's fee once to bills past
+  the due date plus the grace days (one UPDATE, safe to run again; the daily job runs it). Taking
+  it off refuses when more has been paid than the bill would be without it.
+- **Leave balances** (`src/lib/leave-balance.ts`): the leave year starts in the chosen month; only
+  Monday–Friday count; a half day (`AM`/`PM`, one day only) counts 0.5 and misses only that half's
+  classes for cover. Allowances are in `staff_settings` (one row, id `main`).
+- **PDF forms** are filled and flattened (`src/lib/pdf-form.ts fillForm`) before the editor copies
+  pages, because copying pages loses the form.
+- **Word files** from HTML go through `htmlToDoc` → the editor's own `.docx` writer
+  (`src/lib/html-to-doc.ts`, `docxBlob`); PDF → Word through `pdfToDoc` (text only: a scanned PDF
+  has none). **MP3** uses `@mediabunny/mp3-encoder` (MPL-2.0, pinned to mediabunny's version) only
+  when the browser can't encode MP3 itself.
+- **Barcodes** are Code 128 set B (`src/lib/code128.ts`); a library card is `L:<userId>`, which
+  the desk's borrower search understands.
+
 ## Q22 · Leftovers inside finished items: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
 
 Nine leftovers; the rest stay listed in the Progress row "Q22" with why. Migrations **0165**

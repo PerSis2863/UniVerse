@@ -221,7 +221,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                 {bulk ? <><Loader2 className="w-4 h-4 animate-spin" /> Drafting {bulk.done}/{bulk.total}</> : <><Sparkles className="w-4 h-4" /> Draft {waiting.length} with AI</>}
               </button>
             )}
-            {data && <button type="button" className="btn-ghost" onClick={() => void copyLink()} aria-label="Copy the link for students"><Link2 className="w-4 h-4" /> <span className="hidden sm:inline">Copy link</span></button>}
+            {data && <button type="button" className="btn-ghost" onClick={() => void copyLink()} aria-label="Copy link for students"><Link2 className="w-4 h-4" /> <span className="hidden sm:inline">Copy link</span></button>}
             {data?.canManage !== false && <>
               {/* One tap: the students who haven't handed it in hear in the app (Stage 5 · Q23). */}
               {data && subs.length < data.enrolled && <button type="button" className="btn-secondary" onClick={() => void remind()} disabled={reminding}>{reminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellRing className="w-4 h-4" />} Remind {data.enrolled - subs.length}</button>}
