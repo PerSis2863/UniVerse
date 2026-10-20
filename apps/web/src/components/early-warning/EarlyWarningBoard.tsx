@@ -112,16 +112,16 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
           <option value="">All courses</option>
           {data?.courses.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}
         </select>
-        <button onClick={refresh} disabled={refreshing} className="btn-primary ml-auto">
+        <button onClick={refresh} disabled={refreshing} className="btn-primary ms-auto">
           {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Check now
         </button>
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search student name, email or course" aria-label="Search early warnings"
-          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 pl-9 pr-9 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
-        {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"><X className="w-4 h-4" /></button>}
+          className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 ps-9 pe-9 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+        {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute end-2 top-1/2 -translate-y-1/2 p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"><X className="w-4 h-4" /></button>}
       </div>
       {debouncedQ && data && <p className="text-xs text-zinc-500">{data.flags.length} student{data.flags.length === 1 ? '' : 's'} match “{debouncedQ}”{data.flags.length >= 200 ? ' (first 200 shown)' : ''}</p>}
 
@@ -141,7 +141,7 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
                 const initials = f.student.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
                 return (
                   <li key={f.id} className="rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03]">
-                    <button onClick={() => setOpen(expanded ? null : f.id)} aria-expanded={expanded} className="w-full flex items-center gap-3 p-4 text-left">
+                    <button onClick={() => setOpen(expanded ? null : f.id)} aria-expanded={expanded} className="w-full flex items-center gap-3 p-4 text-start">
                       {f.student.avatar ? <img loading="lazy" decoding="async" src={f.student.avatar} {...photoSrcSet(f.student.avatar, 40)} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" /> : <span className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-sm font-bold flex items-center justify-center shrink-0">{initials}</span>}
                       <span className="flex-1 min-w-0">
                         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -323,7 +323,7 @@ function EarlyHelp({ f, inboxBase, onChanged }: { f: Flag; inboxBase: string; on
             {p.status === 'ACTIVE' ? (
               <>
                 <span className={cn('text-xs inline-flex items-center gap-1', followUpDue ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-zinc-500')}><CalendarClock className="w-3.5 h-3.5" /> {followUpDue ? 'Follow-up due now' : `Follow up on ${day(p.followUpAt)}`}</span>
-                {followUpDue && <button onClick={close} disabled={busy !== null} className="btn-primary btn-sm rounded-full inline-flex ml-auto">{busy === 'close' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} Close follow-up</button>}
+                {followUpDue && <button onClick={close} disabled={busy !== null} className="btn-primary btn-sm rounded-full inline-flex ms-auto">{busy === 'close' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} Close follow-up</button>}
               </>
             ) : <span className="text-xs text-zinc-500">Follow-up closed {p.followUpDoneAt ? day(p.followUpDoneAt) : ''}</span>}
           </div>

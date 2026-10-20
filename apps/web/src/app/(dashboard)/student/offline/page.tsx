@@ -68,7 +68,7 @@ export default function OfflinePage() {
             <div className="grid gap-3 stagger">
               {packs.map((p) => (
                 <div key={p.courseId} className={`panel p-4 flex items-center gap-3`}>
-                  <button type="button" onClick={async () => setOpen(await getPack(p.courseId))} className="flex-1 min-w-0 text-left">
+                  <button type="button" onClick={async () => setOpen(await getPack(p.courseId))} className="flex-1 min-w-0 text-start">
                     <p className="font-semibold text-zinc-900 dark:text-white truncate">{p.code} · {p.name}</p>
                     <p className="text-xs text-zinc-500">{p.savedFiles} of {p.files} files · {mb(p.bytes)} · saved {new Date(p.savedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                   </button>
@@ -130,7 +130,7 @@ function PackView({ pack, onBack }: { pack: Pack; onBack: () => void }) {
       </div>
       <div className={`panel divide-y divide-zinc-200 dark:divide-white/[0.06]`}>
         {tab === 'files' && (pack.files.length ? pack.files.map((f) => (
-          <button key={f.url} type="button" onClick={() => openFile(f.url, f.saved)} className="w-full text-left p-4 flex items-center gap-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]">
+          <button key={f.url} type="button" onClick={() => openFile(f.url, f.saved)} className="w-full text-start p-4 flex items-center gap-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]">
             <FileText className="w-5 h-5 text-indigo-500 shrink-0" />
             <span className="flex-1 min-w-0"><span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{f.title}</span><span className="block text-xs text-zinc-500">{f.saved ? `Saved · ${mb(f.bytes)}` : 'Needs a connection'}</span></span>
             {f.saved ? <Download className="w-4 h-4 text-emerald-500" aria-label="Saved" /> : <CloudOff className="w-4 h-4 text-zinc-400" aria-label="Not saved" />}

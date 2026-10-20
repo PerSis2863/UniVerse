@@ -117,7 +117,7 @@ export function NotificationCentre() {
         {filters.map((f) => (
           <button key={f.id} type="button" role="radio" aria-checked={group === f.id} onClick={() => { setGroup(f.id); haptic('tap'); }}
             className={cn('shrink-0 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors', group === f.id ? 'bg-indigo-600 text-white border-transparent' : 'border-zinc-200 dark:border-white/10 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
-            {f.label}{f.n ? <span className={cn('ml-1.5 text-xs tabular-nums', group === f.id ? 'text-white/90' : 'text-zinc-600 dark:text-zinc-400')}>{f.n}</span> : null}
+            {f.label}{f.n ? <span className={cn('ms-1.5 text-xs tabular-nums', group === f.id ? 'text-white/90' : 'text-zinc-600 dark:text-zinc-400')}>{f.n}</span> : null}
           </button>
         ))}
       </div>
@@ -171,7 +171,7 @@ function Row({ n, onOpen, onAct }: { n: Item; onOpen: () => void; onAct: (a: 're
       <motion.div drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.5} dragSnapToOrigin onDragEnd={onDragEnd}
         className={cn('relative flex items-start gap-3 p-3 rounded-2xl border bg-white dark:bg-[#11131f] touch-pan-y', n.read ? 'border-zinc-200/70 dark:border-white/[0.06]' : 'border-indigo-500/30')}>
         <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', TONE[n.group])}><Icon className="w-4 h-4" /></span>
-        <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
+        <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-start">
           <span className="flex items-baseline gap-2">
             <span className={cn('text-sm leading-snug', n.read ? 'font-medium text-zinc-700 dark:text-zinc-300' : 'font-semibold text-zinc-900 dark:text-white')}>{n.title}</span>
             {!n.read && <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0" aria-label="Unread" role="img" />}

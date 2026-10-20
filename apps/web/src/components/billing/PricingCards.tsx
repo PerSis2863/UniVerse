@@ -31,7 +31,7 @@ export function IntervalToggle({ interval, onChange, dark }: { interval: Billing
             <motion.span layoutId="interval-pill" className="absolute inset-0 -z-10 rounded-full bg-indigo-600 shadow-lg shadow-indigo-500/30" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />
           )}
           {i === 'month' ? 'Monthly' : 'Yearly'}
-          {i === 'year' && <span className="ml-1.5 text-[10px] font-black text-emerald-400">−20%</span>}
+          {i === 'year' && <span className="ms-1.5 text-[10px] font-black text-emerald-400">−20%</span>}
         </button>
       ))}
     </div>

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { type Language, t as translate } from '@/lib/i18n';
+import { applyLanguage } from '@/lib/language-script';
 
 interface LanguageStore {
   language: Language;
@@ -14,13 +15,11 @@ export const useLanguageStore = create<LanguageStore>()(
       language: 'en',
       setLanguage: (lang) => {
         set({ language: lang });
-        // Update document lang attribute for accessibility
-        if (typeof document !== 'undefined') {
-          document.documentElement.lang = lang;
-        }
+        // lang for screen readers, and right to left for Arabic and Urdu (Stage 5 · Q21).
+        applyLanguage(lang);
       },
       t: (key: string) => translate(key, get().language),
     }),
-    { name: 'universe-language' }
+    { name: 'universe-language', onRehydrateStorage: () => (state) => { if (state) applyLanguage(state.language); } }
   )
 );

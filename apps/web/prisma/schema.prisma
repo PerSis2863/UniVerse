@@ -1242,6 +1242,20 @@ model BoardMember {
 
 /// Every change the platform owner makes in the owner console, with the record before and after,
 /// so any of them can be undone. Only the owner can see this table.
+/// The app's screens in one language, part `chunk` of 32 (Stage 5 · Q21, src/server/ui-translations.ts).
+/// data: JSON { s: { english: translation }, r: [checked english texts] }.
+model UiTranslation {
+  lang      String
+  chunk     Int
+  data      String   @default("{\"s\":{},\"r\":[]}")
+  count     Int      @default(0)
+  reviewed  Int      @default(0)
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@id([lang, chunk])
+  @@map("ui_translations")
+}
+
 /// A school's chat app (Stage 5 · Q20): slash commands answered by the app's own server
 /// (src/server/chat-apps.ts). commands / permissions are JSON lists.
 model ChatApp {

@@ -148,7 +148,7 @@ export function QrRelayInbox() {
                 const K = KIND[it.kind];
                 return (
                   <li key={`${r.receivedAt}:${keyOf(it)}`} className="flex items-center gap-2 py-2 px-1">
-                    <button type="button" onClick={() => setOpen(r)} className="flex-1 min-w-0 text-left flex items-center gap-3">
+                    <button type="button" onClick={() => setOpen(r)} className="flex-1 min-w-0 text-start flex items-center gap-3">
                       <K.icon className={cn('w-5 h-5 shrink-0', it.kind === 'QUIZ' ? 'text-fuchsia-600 dark:text-fuchsia-300' : 'text-indigo-600 dark:text-indigo-300')} aria-hidden />
                       <span className="min-w-0">
                         <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{it.title}</span>

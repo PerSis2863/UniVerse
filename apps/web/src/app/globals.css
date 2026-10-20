@@ -1475,3 +1475,9 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0;
 }
+
+/* Right to left (Arabic, Urdu; Stage 5 · Q21): arrows and chevrons point the way the page reads.
+   Layouts use start/end classes (scripts/rtl-logical-classes.mjs), so they mirror by themselves. */
+[dir="rtl"] :is(.lucide-arrow-left, .lucide-arrow-right, .lucide-chevron-left, .lucide-chevron-right, .lucide-chevrons-left, .lucide-chevrons-right, .lucide-arrow-up-right, .lucide-send, .lucide-send-horizontal, .lucide-log-out, .lucide-log-in, .lucide-reply, .lucide-undo-2, .lucide-redo-2, .lucide-corner-up-left, .lucide-move-right, .lucide-arrow-left-right) {
+  transform: scaleX(-1);
+}

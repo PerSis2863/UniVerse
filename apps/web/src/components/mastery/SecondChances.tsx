@@ -91,7 +91,7 @@ export function SecondChances({ courseId }: { courseId: string }) {
           <ul className="mt-2 space-y-1">
             {data.done.map((d) => (
               <li key={d.key} className="flex items-center justify-between gap-2 text-sm">
-                <span className="min-w-0 truncate text-zinc-700 dark:text-zinc-300"><CheckCircle2 className="inline w-3.5 h-3.5 text-emerald-500 mr-1 -mt-0.5" aria-hidden />{d.topic}</span>
+                <span className="min-w-0 truncate text-zinc-700 dark:text-zinc-300"><CheckCircle2 className="inline w-3.5 h-3.5 text-emerald-500 me-1 -mt-0.5" aria-hidden />{d.topic}</span>
                 <span className="text-[11px] text-zinc-500 shrink-0 tabular-nums">{d.total ? `${d.right}/${d.answered} right · ` : ''}{now ? formatDistanceStrict(new Date(d.completedAt), now, { addSuffix: true }) : ''}</span>
               </li>
             ))}
@@ -240,7 +240,7 @@ function Question({ q, n, courseId, busy, onAnswer }: { q: Q; n: number; courseI
           const wrong = answered && chose === k && k !== q.answer;
           return (
             <button key={k} type="button" disabled={answered || busy} onClick={() => onAnswer(k)} aria-pressed={chose === k}
-              className={cn('w-full text-left text-sm px-3 py-2 rounded-xl border flex items-center gap-2 transition-colors',
+              className={cn('w-full text-start text-sm px-3 py-2 rounded-xl border flex items-center gap-2 transition-colors',
                 right ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'
                   : wrong ? 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300'
                   : 'border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 enabled:hover:border-indigo-400/60')}>

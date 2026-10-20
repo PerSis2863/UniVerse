@@ -110,7 +110,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       {/* Headline numbers */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 stagger">
         {tiles.map((t) => (
-          <button key={t.label} onClick={() => onTab(t.to)} className={cn(card, 'lift p-5 text-left hover:border-indigo-500/40')}>
+          <button key={t.label} onClick={() => onTab(t.to)} className={cn(card, 'lift p-5 text-start hover:border-indigo-500/40')}>
             <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center mb-3', t.alert ? 'bg-rose-500/10 text-rose-500' : 'bg-indigo-500/10 text-indigo-500')}><t.icon className="w-[18px] h-[18px]" /></span>
             <p className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white tabular-nums">{typeof t.value === 'number' ? t.value.toLocaleString() : t.value}</p>
             <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mt-1">{t.label}</p>
@@ -205,7 +205,7 @@ function OnlineCard({ online }: { online: ServerData['online'] }) {
           <li key={p.id} className="py-3 flex items-center gap-3">
             <span className="relative w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
               {p.name.split(/\s+/).map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+              <span className="absolute -bottom-0.5 -end-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
             </span>
             <span className="flex-1 min-w-0"><span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{p.name}</span><span className="block text-xs text-zinc-500">{p.role.toLowerCase()}</span></span>
             <span className="text-xs text-zinc-400 shrink-0">{p.lastSeenAt ? formatDistanceToNow(new Date(p.lastSeenAt), { addSuffix: true }) : ''}</span>
@@ -281,7 +281,7 @@ function VoiceSessionsCard() {
         <ul className="divide-y divide-zinc-200 dark:divide-white/10 max-h-[28rem] overflow-y-auto -mx-2">
           {data.sessions.map((v) => (
             <li key={v.id} className="px-2">
-              <button type="button" onClick={() => setOpen(open === v.id ? null : v.id)} aria-expanded={open === v.id} className="w-full py-3 flex items-center justify-between gap-3 text-left">
+              <button type="button" onClick={() => setOpen(open === v.id ? null : v.id)} aria-expanded={open === v.id} className="w-full py-3 flex items-center justify-between gap-3 text-start">
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{v.user.name}{v.course ? <span className="text-zinc-500 font-normal"> · {v.course}</span> : null}</span>
                   <span className="block text-xs text-zinc-500">{format(new Date(v.createdAt), 'd MMM, HH:mm')} · {mins(v.durationSec)} · {v.turns} turn{v.turns === 1 ? '' : 's'}</span>
@@ -291,7 +291,7 @@ function VoiceSessionsCard() {
               {open === v.id && (
                 <div className="pb-3 space-y-1.5">
                   {v.transcript.length === 0 ? <p className="text-xs text-zinc-500">Nothing was transcribed.</p> : v.transcript.map((l, i) => (
-                    <p key={i} className={cn('text-xs rounded-xl px-3 py-2 max-w-[90%]', l.who === 'you' ? 'ml-auto bg-indigo-500/10 text-zinc-800 dark:text-zinc-200' : 'bg-zinc-100 dark:bg-white/[0.05] text-zinc-700 dark:text-zinc-300')}>
+                    <p key={i} className={cn('text-xs rounded-xl px-3 py-2 max-w-[90%]', l.who === 'you' ? 'ms-auto bg-indigo-500/10 text-zinc-800 dark:text-zinc-200' : 'bg-zinc-100 dark:bg-white/[0.05] text-zinc-700 dark:text-zinc-300')}>
                       <span className="font-semibold">{l.who === 'you' ? v.user.name.split(' ')[0] : 'Tutor'}: </span>{l.text}
                     </p>
                   ))}
@@ -473,7 +473,7 @@ function CloudflareCard() {
                         <div key={c.code} className="flex items-center gap-3 text-sm">
                           <span className="w-10 font-semibold text-zinc-700 dark:text-zinc-200">{c.code}</span>
                           <div className="flex-1 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.max(2, pct)}%` }} /></div>
-                          <span className="w-12 text-right tabular-nums text-zinc-500">{pct}%</span>
+                          <span className="w-12 text-end tabular-nums text-zinc-500">{pct}%</span>
                         </div>
                       );
                     })}</div>
@@ -641,7 +641,7 @@ function SwitchCard({ control, onSaved }: { control: Control; onSaved: () => voi
       <div className="grid sm:grid-cols-3 gap-3" role="radiogroup" aria-label="Server mode">
         {MODES.map((m) => (
           <button key={m.id} role="radio" aria-checked={mode === m.id} onClick={() => setMode(m.id)}
-            className={cn('h-full text-left rounded-2xl border p-4 flex flex-col items-start justify-start transition-colors', mode === m.id ? TONES[m.tone] : 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40')}>
+            className={cn('h-full text-start rounded-2xl border p-4 flex flex-col items-start justify-start transition-colors', mode === m.id ? TONES[m.tone] : 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40')}>
             <m.icon className="w-5 h-5 mb-2" />
             <p className="font-semibold text-zinc-900 dark:text-white">{m.label}</p>
             <p className="text-xs text-zinc-500 mt-1">{m.text}</p>
@@ -725,9 +725,9 @@ function FeatureCard({ switches, onSaved }: { switches: string | null; onSaved: 
           return (
             <li key={f.id}>
               <button role="switch" aria-checked={on} onClick={() => void flip(f.id, f.label)} disabled={busy !== null}
-                className={cn('w-full text-left rounded-xl border p-3 flex items-start gap-3 transition-colors', on ? 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40' : 'border-rose-500/40 bg-rose-500/[0.06]')}>
+                className={cn('w-full text-start rounded-xl border p-3 flex items-start gap-3 transition-colors', on ? 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40' : 'border-rose-500/40 bg-rose-500/[0.06]')}>
                 <span className={cn('mt-0.5 w-9 h-5 rounded-full p-0.5 shrink-0 transition-colors', on ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-600')}>
-                  <span className={cn('block w-4 h-4 rounded-full bg-white shadow transition-transform', on && 'translate-x-4')} />
+                  <span className={cn('block w-4 h-4 rounded-full bg-white shadow transition-transform', on && 'translate-x-4 rtl:-translate-x-4')} />
                 </span>
                 <span className="min-w-0">
                   <span className="flex items-center gap-1.5 font-semibold text-sm text-zinc-900 dark:text-white">{f.label} {busy === f.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{!on && <span className="text-[10px] font-bold uppercase text-rose-500">off</span>}</span>
@@ -788,9 +788,9 @@ function SchoolSwitchesCard({ switches, orgs, onSaved }: { switches: string | nu
           return (
             <li key={f.id}>
               <button role="switch" aria-checked={on} onClick={() => void flip(f.id, f.label)} disabled={busy !== null || !org}
-                className={cn('w-full text-left rounded-xl border p-3 flex items-center gap-3 min-h-11 transition-colors', on ? 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40' : 'border-rose-500/40 bg-rose-500/[0.06]')}>
+                className={cn('w-full text-start rounded-xl border p-3 flex items-center gap-3 min-h-11 transition-colors', on ? 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40' : 'border-rose-500/40 bg-rose-500/[0.06]')}>
                 <span className={cn('w-9 h-5 rounded-full p-0.5 shrink-0 transition-colors', on ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-600')}>
-                  <span className={cn('block w-4 h-4 rounded-full bg-white shadow transition-transform', on && 'translate-x-4')} />
+                  <span className={cn('block w-4 h-4 rounded-full bg-white shadow transition-transform', on && 'translate-x-4 rtl:-translate-x-4')} />
                 </span>
                 <span className="flex items-center gap-1.5 font-semibold text-sm text-zinc-900 dark:text-white">{f.label} {busy === f.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}{!on && <span className="text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400">off</span>}</span>
               </button>

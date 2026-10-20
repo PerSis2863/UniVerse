@@ -445,14 +445,14 @@ export default function LoginPage() {
                 <div>
                   <label className="block text-zinc-400 text-sm font-medium mb-1.5">Email address</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                    <Mail className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                     <input
                       type="email"
                       required
                       autoComplete="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                      className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 ps-10 pe-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
                       placeholder="name@example.com"
                     />
                   </div>
@@ -466,7 +466,7 @@ export default function LoginPage() {
                     </button>
                   </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                    <Lock className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                     <input
                       id="login-password"
                       type={showPassword ? 'text' : 'password'}
@@ -474,10 +474,10 @@ export default function LoginPage() {
                       autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 pl-10 pr-11 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                      className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 ps-10 pe-11 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
                       placeholder="••••••••"
                     />
-                    <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 inline-flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-300">
+                    <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute end-2 top-1/2 -translate-y-1/2 w-8 h-8 inline-flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-300">
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -513,7 +513,7 @@ export default function LoginPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => handleLoginSuccess('mock-token-demo@student.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#121830] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#121830] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Student</div>
               <div className="text-zinc-500 text-xs mt-1">Full access to student dashboard</div>
@@ -521,7 +521,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => handleLoginSuccess('mock-token-demo@teacher.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#121830] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#121830] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Teacher</div>
               <div className="text-zinc-500 text-xs mt-1">Manage classes &amp; grades</div>
@@ -529,7 +529,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => handleLoginSuccess('mock-token-demo@admin.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#121830] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#121830] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Admin</div>
               <div className="text-zinc-500 text-xs mt-1">System configuration</div>
@@ -537,7 +537,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => handleLoginSuccess('mock-token-it-support@universe.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#121830] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-left group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#121830] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">IT Support</div>
               <div className="text-zinc-500 text-xs mt-1">Helpdesk access</div>

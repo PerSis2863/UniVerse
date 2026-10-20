@@ -207,7 +207,7 @@ export function MaterialReader({ courseId, materialId, title, onClose }: { cours
                 </button>
               </div>
               {speechSupported() && (
-                <div className="flex items-center gap-2 ml-auto">
+                <div className="flex items-center gap-2 ms-auto">
                   <button type="button" onClick={() => (speech.speaking ? speech.stop() : listen())} aria-pressed={speech.speaking} className="btn-sm btn-secondary">
                     {speech.speaking ? <><Square className="w-4 h-4" /> Stop</> : <><Volume2 className="w-4 h-4" /> Listen</>}
                   </button>
@@ -226,7 +226,7 @@ export function MaterialReader({ courseId, materialId, title, onClose }: { cours
                 ))}
               </div>
               {data.canManage && (
-                <button type="button" onClick={() => void prepareLevels()} disabled={!!prep} className="btn-sm btn-ghost ml-auto">
+                <button type="button" onClick={() => void prepareLevels()} disabled={!!prep} className="btn-sm btn-ghost ms-auto">
                   {prep ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />} {prep ? `Preparing ${prep.done} of ${prep.total}` : 'Prepare simpler versions'}
                 </button>
               )}

@@ -42,9 +42,9 @@ export function OralRoom({ oral, onBack }: { oral: OralSession; onBack: () => vo
         </div>
       )}
       {lines.length > 0 && (
-        <div className="text-left space-y-2 max-h-80 overflow-y-auto" role="log" aria-label="Captions" tabIndex={0}>
+        <div className="text-start space-y-2 max-h-80 overflow-y-auto" role="log" aria-label="Captions" tabIndex={0}>
           {lines.map((l, i) => (
-            <p key={i} className={cn('text-sm rounded-2xl px-4 py-2 max-w-[85%]', l.who === 'you' ? 'ml-auto bg-indigo-600 text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200')}>
+            <p key={i} className={cn('text-sm rounded-2xl px-4 py-2 max-w-[85%]', l.who === 'you' ? 'ms-auto bg-indigo-600 text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200')}>
               <span className="sr-only">{l.who === 'you' ? 'You: ' : 'Examiner: '}</span>{l.text}
             </p>
           ))}

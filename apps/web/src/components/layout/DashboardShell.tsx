@@ -139,12 +139,12 @@ export function DashboardShell({ children }: DashboardShellProps) {
       <a href="#main" className="skip-link">Skip to content</a>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
+      <div className="flex-1 lg:ms-64 flex flex-col min-w-0">
         {/* Mobile navigation bar (iOS): clear at the top, frosted once content scrolls under it; the
             brand gives way to the page's title when its large title has scrolled away. */}
         <header className="mobile-header nav-edge lg:hidden fixed top-0 inset-x-0 z-[35] flex items-center justify-between">
           {canGoBack ? (
-            <button type="button" onClick={back} aria-label="Back" className="pressable -ml-2 h-11 pr-3 flex items-center gap-0.5 rounded-full text-tint-text text-[17px]">
+            <button type="button" onClick={back} aria-label="Back" className="pressable -ms-2 h-11 pe-3 flex items-center gap-0.5 rounded-full text-tint-text text-[17px]">
               <ChevronLeft className="w-7 h-7" strokeWidth={2.3} />
               <span className="nav-brand-text">Back</span>
             </button>
@@ -163,7 +163,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
             </button>
             <button type="button" data-tour="notifications" onClick={openNotifications} aria-label={unread ? `Notifications, ${unread > 9 ? '9+' : unread} unread` : 'Notifications'} className="pressable relative w-11 h-11 flex items-center justify-center rounded-full text-tint-text">
               <Bell className="w-[21px] h-[21px]" strokeWidth={2.1} />
-              {unread > 0 && <span aria-hidden className="absolute top-[9px] right-[8px] min-w-[16px] h-4 px-1 rounded-full badge-count text-white text-[10px] font-bold leading-4 text-center">{unread > 9 ? '9+' : unread}</span>}
+              {unread > 0 && <span aria-hidden className="absolute top-[9px] end-[8px] min-w-[16px] h-4 px-1 rounded-full badge-count text-white text-[10px] font-bold leading-4 text-center">{unread > 9 ? '9+' : unread}</span>}
             </button>
           </div>
         </header>

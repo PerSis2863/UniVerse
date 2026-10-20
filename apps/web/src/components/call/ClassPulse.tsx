@@ -45,7 +45,7 @@ export function PulseMeter({ counts }: { counts: PulseCounts }) {
         <span className="text-zinc-400 tabular-nums">{total} {total === 1 ? 'student' : 'students'}</span>
       </div>
       <div className="mt-2 h-2 rounded-full bg-white/10 overflow-hidden flex gap-[2px]">
-        <motion.span className="h-full bg-rose-500 rounded-l-full" animate={{ width: pct(lost) }} transition={spring.smooth} />
+        <motion.span className="h-full bg-rose-500 rounded-s-full" animate={{ width: pct(lost) }} transition={spring.smooth} />
         <motion.span className="h-full bg-sky-600" animate={{ width: pct(got) }} transition={spring.smooth} />
       </div>
       <div className="mt-1.5 flex items-center gap-3 text-[11px] text-zinc-300 tabular-nums">

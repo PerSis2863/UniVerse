@@ -70,7 +70,7 @@ export function CourseOralChecks({ courseId }: { courseId: string }) {
         <motion.ul variants={list} initial="hidden" animate="show" className="space-y-2">
           {data.checks.map((c) => (
             <motion.li key={c.id} variants={fadeUp}>
-              <button type="button" onClick={() => setOpenId(c.id)} className="w-full panel p-4 flex items-center gap-3 text-left hover:border-indigo-500/40">
+              <button type="button" onClick={() => setOpenId(c.id)} className="w-full panel p-4 flex items-center gap-3 text-start hover:border-indigo-500/40">
                 <span className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0"><Mic className="w-5 h-5 text-indigo-600 dark:text-indigo-300" aria-hidden /></span>
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold text-zinc-900 dark:text-white truncate">{c.title}</span>
@@ -179,7 +179,7 @@ function CheckDetail({ id, enrolled, onBack }: { id: string; enrolled: number; o
         <ul className="space-y-2" aria-label="Attempts">
           {data.sessions.map((s) => (
             <li key={s.id} className="panel overflow-hidden">
-              <button type="button" onClick={() => setOpen(open === s.id ? null : s.id)} aria-expanded={open === s.id} className="w-full p-4 flex items-center gap-3 text-left">
+              <button type="button" onClick={() => setOpen(open === s.id ? null : s.id)} aria-expanded={open === s.id} className="w-full p-4 flex items-center gap-3 text-start">
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium text-zinc-900 dark:text-white truncate">{s.student.name}</span>
                   <span className="block text-xs text-zinc-500 dark:text-zinc-400">{new Date(s.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · {Math.max(1, Math.round(s.durationSec / 60))} min · {s.status === 'CONFIRMED' ? `${s.total} / ${s.max}` : s.aiTotal != null ? `AI suggests ${s.aiTotal} / ${s.max}` : 'no AI score'}</span>

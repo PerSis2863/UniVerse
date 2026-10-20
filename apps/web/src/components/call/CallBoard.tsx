@@ -36,7 +36,7 @@ const noop = () => {};
 export function CallBoardPanel({ boardId, onClose }: { boardId: string; onClose: () => void }) {
   return (
     <motion.section initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 40 }} transition={spring.smooth}
-      aria-label="Whiteboard" className="fixed inset-y-0 right-0 z-[330] w-full md:w-[min(64vw,1100px)] flex flex-col bg-[#121212] border-l border-white/10 shadow-2xl">
+      aria-label="Whiteboard" className="fixed inset-y-0 end-0 z-[330] w-full md:w-[min(64vw,1100px)] flex flex-col bg-[#121212] border-s border-white/10 shadow-2xl">
       <div className="h-12 shrink-0 flex items-center gap-2 px-3 border-b border-white/10 text-white">
         <p className="flex-1 text-sm font-semibold">Whiteboard</p>
         <a href={`/boards/${boardId}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full hover:bg-white/10" aria-label="Open in a new tab" title="Open in a new tab"><ExternalLink className="w-4 h-4" /></a>

@@ -155,7 +155,7 @@ function TaskList({ tasks }: { tasks: Task[] }) {
             {t.suggestedAssigneeName ? <><b>{t.suggestedAssigneeName}</b> · {t.suggestedAssigneeReason}</> : 'Nobody suggested'}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-            <span className="text-zinc-500 dark:text-zinc-400"><Clock className="inline w-3 h-3 mr-0.5" />{t.estimateHours} h · due in {t.dueDaysFromStart} day{t.dueDaysFromStart === 1 ? '' : 's'}</span>
+            <span className="text-zinc-500 dark:text-zinc-400"><Clock className="inline w-3 h-3 me-0.5" />{t.estimateHours} h · due in {t.dueDaysFromStart} day{t.dueDaysFromStart === 1 ? '' : 's'}</span>
             {t.requiredSkills.slice(0, 3).map((s) => <span key={s} className="rounded-full bg-zinc-100 dark:bg-white/[0.06] px-2 py-0.5 text-zinc-700 dark:text-zinc-300">{s}</span>)}
           </div>
         </motion.li>
@@ -200,7 +200,7 @@ function DraftPlan({ groupId, plan, slots, onRedo, onApplied }: { groupId: strin
             <div role="radiogroup" aria-label="Meeting time" className="grid gap-2 sm:grid-cols-2">
               {slots.map((s, i) => (
                 <button key={`${s.dayOfWeek}-${s.startTime}`} type="button" role="radio" aria-checked={meet && i === slotIndex} onClick={() => { setSlotIndex(i); setMeet(true); }}
-                  className={cn('text-left rounded-2xl border p-3 transition-colors', meet && i === slotIndex ? 'border-indigo-500 bg-indigo-500/5' : 'border-zinc-200/70 dark:border-white/[0.07] hover:bg-zinc-50 dark:hover:bg-white/[0.03]')}>
+                  className={cn('text-start rounded-2xl border p-3 transition-colors', meet && i === slotIndex ? 'border-indigo-500 bg-indigo-500/5' : 'border-zinc-200/70 dark:border-white/[0.07] hover:bg-zinc-50 dark:hover:bg-white/[0.03]')}>
                   <p className="text-sm font-semibold text-zinc-900 dark:text-white">{s.dayName} · {s.startTime}–{s.endTime}</p>
                   <p className={cn('text-xs', s.conflicts.length ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300')}>
                     {s.conflicts.length ? `${s.availableMemberIds.length} of ${s.totalMembers} free · ${s.conflicts.map((c) => `${c.userName.split(' ')[0]} has ${c.reason}`).join(', ')}` : `Everyone is free (${s.totalMembers})`}

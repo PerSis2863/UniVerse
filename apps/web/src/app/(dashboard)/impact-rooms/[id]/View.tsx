@@ -215,7 +215,7 @@ function ImpactRoomPage({ id }: { id: string }) {
                 {data.followers.people.length === 0 ? <p className="text-sm text-zinc-500">Nobody follows this room yet.</p> : (
                   <div className="flex flex-wrap gap-2">
                     {data.followers.people.map((p) => (
-                      <span key={p.id} className="flex items-center gap-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.05] pl-0.5 pr-2.5 py-0.5" title={ROLE_LABEL[p.followRole]}>
+                      <span key={p.id} className="flex items-center gap-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.05] ps-0.5 pe-2.5 py-0.5" title={ROLE_LABEL[p.followRole]}>
                         <Avatar name={p.name} src={p.avatar} size={22} />
                         <span className="text-xs text-zinc-700 dark:text-zinc-200">{p.name.split(/\s+/)[0]}</span>
                         {p.followRole !== 'SUPPORTER' && <span className="text-[10px] text-zinc-400">{ROLE_LABEL[p.followRole]}</span>}

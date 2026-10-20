@@ -96,7 +96,7 @@ export function DialogHost() {
               placeholder={pending.placeholder}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && value.trim()) close(true); }}
-              className="mt-3 w-full h-9 px-2.5 rounded-[9px] bg-white dark:bg-black/40 border border-black/10 dark:border-white/10 text-[15px] text-left text-zinc-900 dark:text-white outline-none focus:border-tint"
+              className="mt-3 w-full h-9 px-2.5 rounded-[9px] bg-white dark:bg-black/40 border border-black/10 dark:border-white/10 text-[15px] text-start text-zinc-900 dark:text-white outline-none focus:border-tint"
             />
           )}
         </div>

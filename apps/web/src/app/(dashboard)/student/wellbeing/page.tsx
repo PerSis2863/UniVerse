@@ -69,14 +69,14 @@ function Intro({ act, goesTo }: { act: (b: object, ok?: string) => Promise<unkno
       </div>
       <div className="space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
         <div><h3 className="font-semibold text-zinc-900 dark:text-white">What it looks at</h3>
-          <ul className="mt-1 list-disc pl-5 space-y-0.5">
+          <ul className="mt-1 list-disc ps-5 space-y-0.5">
             <li>Your check-ins: how today feels, a few words like “sleep” or “stress”, and a private note.</li>
             <li>Late nights: work you handed in, or AI help you used, after midnight.</li>
             <li>Classes where you tapped “I’m lost”, and deadlines that slipped or are coming up.</li>
           </ul>
         </div>
         <div><h3 className="font-semibold text-zinc-900 dark:text-white">What it never does</h3>
-          <ul className="mt-1 list-disc pl-5 space-y-0.5">
+          <ul className="mt-1 list-disc ps-5 space-y-0.5">
             <li>No AI reads any of this: it’s a few simple rules.</li>
             <li>Your teachers never see it. Your check-ins and notes are only for you.</li>
           </ul>

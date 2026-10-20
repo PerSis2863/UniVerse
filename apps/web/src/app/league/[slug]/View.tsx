@@ -114,10 +114,10 @@ function PublicLeaguePage({ slug }: { slug: string }) {
               {data.teams.length === 0 ? <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{data.status === 'OPEN' ? 'Teams are still working. Projects appear here once they’re handed in.' : 'No project is shown here.'}</p> : (
                 <ul className="mt-3 space-y-4">
                   {data.teams.map((t) => (
-                    <li key={t.name} className="border-l-2 border-indigo-400/60 pl-3">
+                    <li key={t.name} className="border-s-2 border-indigo-400/60 ps-3">
                       <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">{t.name} · {t.size} {t.size === 1 ? 'student' : 'students'}{t.universities.length ? ` · ${t.universities.join(', ')}` : ''}</p>
                       <p className="mt-0.5 font-bold text-zinc-900 dark:text-white">{t.project.title}</p>
-                      {t.prizes.map((p) => <p key={p} className="text-xs font-semibold text-amber-800 dark:text-amber-200 inline-flex items-center gap-1 mr-2"><Trophy className="w-3.5 h-3.5" aria-hidden />{p}</p>)}
+                      {t.prizes.map((p) => <p key={p} className="text-xs font-semibold text-amber-800 dark:text-amber-200 inline-flex items-center gap-1 me-2"><Trophy className="w-3.5 h-3.5" aria-hidden />{p}</p>)}
                       <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-line break-words">{t.project.pitch}</p>
                       {t.project.link && <a href={t.project.link} target="_blank" rel="noopener noreferrer nofollow ugc" className="mt-1 text-sm text-indigo-700 dark:text-indigo-300 underline inline-flex items-center gap-1 break-all">See the project <ExternalLink className="w-3.5 h-3.5" aria-hidden /></a>}
                     </li>

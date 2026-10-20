@@ -49,7 +49,7 @@ export function CampusMapView({ buildings, stats, editing, focus, onOpen, onMove
       className={cn('relative w-full rounded-3xl overflow-hidden border border-zinc-200 dark:border-white/10 bg-emerald-50 dark:bg-[#0d1a17] touch-none select-none', editing && 'ring-2 ring-indigo-400/60')}
       style={{ aspectRatio: `${MAP_W} / ${MAP_H}`, backgroundImage: 'linear-gradient(to right, rgba(100,116,139,.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(100,116,139,.12) 1px, transparent 1px)', backgroundSize: `${pct(50, MAP_W)} ${pct(50, MAP_H)}` }}>
       {/* Walkways: a cross through the middle, only to make it look like a campus. */}
-      <div aria-hidden className="absolute left-0 right-0 bg-zinc-300/50 dark:bg-white/10" style={{ top: '48%', height: '3%' }} />
+      <div aria-hidden className="absolute start-0 end-0 bg-zinc-300/50 dark:bg-white/10" style={{ top: '48%', height: '3%' }} />
       <div aria-hidden className="absolute top-0 bottom-0 bg-zinc-300/50 dark:bg-white/10" style={{ left: '49%', width: '2%' }} />
       {buildings.map((b) => {
         const s = stats[b.id] ?? { total: 0, inUse: 0, live: false, events: 0, next: false };
@@ -88,9 +88,9 @@ export function CampusMapView({ buildings, stats, editing, focus, onOpen, onMove
             onPointerCancel={() => setDrag(null)}>
             <span className="max-w-full truncate rounded-md bg-white/95 dark:bg-zinc-900/90 px-1.5 py-0.5 text-[11px] sm:text-xs font-bold text-zinc-900 dark:text-white shadow-sm">{shortName(b.name, b.code)}</span>
             {s.total > 0 && <span className="hidden min-[420px]:inline rounded-md bg-white/95 dark:bg-zinc-900/90 px-1 text-[10px] font-semibold tabular-nums text-zinc-800 dark:text-zinc-200">{s.inUse}/{s.total}</span>}
-            {s.live && <span aria-hidden className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-zinc-900 animate-pulse" />}
+            {s.live && <span aria-hidden className="absolute -top-1.5 -end-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-zinc-900 animate-pulse" />}
             {s.next && <MapPin aria-hidden className="absolute -top-3 left-1/2 -translate-x-1/2 w-5 h-5 text-amber-500 fill-amber-200 drop-shadow" />}
-            {s.events > 0 && <CalendarDays aria-hidden className="absolute -bottom-1.5 -right-1.5 w-4 h-4 p-0.5 rounded-full bg-white dark:bg-zinc-900 text-fuchsia-600 dark:text-fuchsia-400 shadow" />}
+            {s.events > 0 && <CalendarDays aria-hidden className="absolute -bottom-1.5 -end-1.5 w-4 h-4 p-0.5 rounded-full bg-white dark:bg-zinc-900 text-fuchsia-600 dark:text-fuchsia-400 shadow" />}
           </button>
         );
       })}

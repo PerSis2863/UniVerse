@@ -181,7 +181,7 @@ export function OfficeBar({ line, students, onNext }: { line: { waiting: number;
   const waiting = line?.waiting ?? 0;
   return (
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={spring.smooth} className="pointer-events-auto w-[min(94vw,26rem)] flex flex-col items-stretch gap-2">
-      <div className="flex items-center gap-2 rounded-full bg-black/55 backdrop-blur-xl border border-white/10 pl-3.5 pr-1.5 py-1.5">
+      <div className="flex items-center gap-2 rounded-full bg-black/55 backdrop-blur-xl border border-white/10 ps-3.5 pe-1.5 py-1.5">
         <DoorOpen className="w-4 h-4 text-emerald-300 shrink-0" />
         <span className="flex-1 min-w-0 text-xs font-semibold truncate" role="status" aria-live="polite">
           {waiting ? `${waiting} waiting · about ${Math.round(line?.avgMin ?? 5)} min each` : 'Nobody waiting'}

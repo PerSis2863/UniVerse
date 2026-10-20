@@ -52,7 +52,7 @@ export function RequestAssociationModal({ onClose, onSuccess }: RequestAssociati
               <Info className="w-5 h-5 text-blue-400 shrink-0" />
               <h3 className="font-semibold text-blue-100">Eligibility & Requirements</h3>
             </div>
-            <ul className="list-disc pl-9 space-y-1 text-sm text-blue-200/80">
+            <ul className="list-disc ps-9 space-y-1 text-sm text-blue-200/80">
               <li>Must have a minimum GPA of 2.5.</li>
               <li>Must be at least in your 2nd year of study.</li>
               <li>Must be at least 18 years old.</li>

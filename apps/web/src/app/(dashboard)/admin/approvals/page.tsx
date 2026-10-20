@@ -127,17 +127,17 @@ export default function ApprovalsPage() {
                   className={cn('relative isolate shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors', tab === t.id ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
                   {tab === t.id && <TabPill id="approvals-tab" />}
                   {t.label}
-                  {!!data?.counts[t.id] && <span className={cn('ml-1.5', t.id === 'PENDING' && tab !== t.id && 'text-indigo-500')}>{data.counts[t.id]}</span>}
+                  {!!data?.counts[t.id] && <span className={cn('ms-1.5', t.id === 'PENDING' && tab !== t.id && 'text-indigo-500')}>{data.counts[t.id]}</span>}
                 </button>
               ))}
               <button onClick={() => setShowInvitations(true)} className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
-                Invited{invitationCount?.total ? <span className="ml-1.5">{invitationCount.total}</span> : null}
+                Invited{invitationCount?.total ? <span className="ms-1.5">{invitationCount.total}</span> : null}
               </button>
             </div>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email or institution" aria-label="Search applications"
-                className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 pl-9 pr-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+                className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 ps-9 pe-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
             </div>
             {canPick && shown.length > 0 && (
               <div className="flex items-center justify-between gap-2">
@@ -169,11 +169,11 @@ export default function ApprovalsPage() {
                     return (
                       <li key={a.id} className="flex items-stretch">
                         {canPick && (
-                          <button onClick={() => toggle(a.id)} aria-pressed={picked.has(a.id)} aria-label={`Select ${a.user.name}`} className="pl-3 pr-1 flex items-center text-zinc-400 hover:text-indigo-500">
+                          <button onClick={() => toggle(a.id)} aria-pressed={picked.has(a.id)} aria-label={`Select ${a.user.name}`} className="ps-3 pe-1 flex items-center text-zinc-400 hover:text-indigo-500">
                             {picked.has(a.id) ? <CheckSquare className="w-4 h-4 text-indigo-500" /> : <Square className="w-4 h-4" />}
                           </button>
                         )}
-                        <button onClick={() => select(a.id)} className={cn('relative isolate flex-1 min-w-0 text-left p-4 flex gap-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', selected === a.id && '')}>{selected === a.id && <TabPill id="shboard-admin-approvals-page-0" variant="soft" />}
+                        <button onClick={() => select(a.id)} className={cn('relative isolate flex-1 min-w-0 text-start p-4 flex gap-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', selected === a.id && '')}>{selected === a.id && <TabPill id="shboard-admin-approvals-page-0" variant="soft" />}
                           <div className="w-9 h-9 shrink-0 rounded-full bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center text-sm font-bold text-zinc-600 dark:text-zinc-300">{a.user.name.charAt(0).toUpperCase()}</div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{a.user.name}</p>
@@ -266,12 +266,12 @@ function ApplicationDetail({ id, onBack, onDecided }: { id: string; onBack: () =
             <div className="min-w-0">
               <h2 className="text-lg font-bold text-zinc-900 dark:text-white truncate">{a.user.name}</h2>
               <p className="text-sm text-zinc-500 inline-flex items-center gap-1.5 break-all"><Mail className="w-3.5 h-3.5 shrink-0" />{a.user.email}</p>
-              {a.user.phone && <p className="text-sm text-zinc-500 inline-flex items-center gap-1.5 ml-3"><Phone className="w-3.5 h-3.5" />{a.user.phone}</p>}
+              {a.user.phone && <p className="text-sm text-zinc-500 inline-flex items-center gap-1.5 ms-3"><Phone className="w-3.5 h-3.5" />{a.user.phone}</p>}
               <p className="text-xs text-zinc-400 mt-1">Joined {format(new Date(a.user.createdAt), 'd MMM yyyy')} · {a.source === 'SIGNUP' ? 'chose this role when signing up' : 'applied from a student account'}</p>
               <p className="text-xs text-zinc-400">Account today: {a.user.role.toLowerCase()} · {a.user.status.toLowerCase()}{a.submittedAt ? ` · sent ${format(new Date(a.submittedAt), 'd MMM yyyy, HH:mm')}` : ''}</p>
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-end">
             <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold', a.requestedRole === 'ADMIN' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400')}>
               <RoleIcon className="w-3.5 h-3.5" /> {ROLE[a.requestedRole]?.label}
             </span>
@@ -403,5 +403,5 @@ function StatusBadge({ status, inline }: { status: string; inline?: boolean }) {
     WITHDRAWN: ['Withdrawn', 'bg-zinc-500/10 text-zinc-500'],
   };
   const [label, cls] = map[status] ?? [status, 'bg-zinc-500/10 text-zinc-500'];
-  return <span className={cn('text-[11px] font-bold px-2 py-0.5 rounded-full', cls, !inline && 'block mt-2 w-fit ml-auto')}>{label}</span>;
+  return <span className={cn('text-[11px] font-bold px-2 py-0.5 rounded-full', cls, !inline && 'block mt-2 w-fit ms-auto')}>{label}</span>;
 }

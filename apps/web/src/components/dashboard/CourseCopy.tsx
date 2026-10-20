@@ -115,7 +115,7 @@ export function CourseCopy({ course, onClose, onDone }: { course: { id: string; 
                 <span className="flex-1">Move them by whole weeks <span className="block text-xs text-zinc-600 dark:text-zinc-400">They stay on the same weekday. 52 weeks is about a year.</span></span>
               </label>
               {dates === 'shift' && (
-                <Field label="Weeks to move" className="pl-6">{(p) => <input {...p} type="number" inputMode="numeric" value={weeks} min={-520} max={520} onChange={(e) => setWeeks(Number(e.target.value))} className="input w-32" />}</Field>
+                <Field label="Weeks to move" className="ps-6">{(p) => <input {...p} type="number" inputMode="numeric" value={weeks} min={-520} max={520} onChange={(e) => setWeeks(Number(e.target.value))} className="input w-32" />}</Field>
               )}
             </div>
           </fieldset>

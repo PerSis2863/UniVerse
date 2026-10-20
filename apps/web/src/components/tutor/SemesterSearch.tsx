@@ -155,7 +155,7 @@ export function SemesterSearch() {
                     <Link href={r.link} className="block rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] p-3.5 hover:border-indigo-300 transition-colors">
                       <span className="flex items-center gap-2 text-xs text-zinc-500">
                         <Icon className="w-3.5 h-3.5" />{LABEL[r.kind]}{r.day ? ` · ${new Date(`${r.day}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : ''}
-                        {r.at !== null && <span className="ml-auto inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-300 font-semibold"><PlayCircle className="w-3.5 h-3.5" />{clock(r.at)}</span>}
+                        {r.at !== null && <span className="ms-auto inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-300 font-semibold"><PlayCircle className="w-3.5 h-3.5" />{clock(r.at)}</span>}
                       </span>
                       <span className="block mt-1 text-sm font-semibold text-zinc-900 dark:text-white">{r.title}</span>
                       <span className="block mt-0.5 text-sm text-zinc-600 dark:text-zinc-300 line-clamp-3"><Snippet text={r.snippet} /></span>

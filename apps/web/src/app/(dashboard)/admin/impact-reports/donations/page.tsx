@@ -37,7 +37,7 @@ function NgoRow({ n, onSaved }: { n: Ngo; onSaved: (d: Data) => void }) {
     <motion.li variants={fadeUp} className="p-4 space-y-3">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-zinc-900 dark:text-white break-words">{n.name}{!n.isVerified && <span className="ml-2 text-xs font-medium text-amber-800 dark:text-amber-300">not verified</span>}</p>
+          <p className="font-semibold text-zinc-900 dark:text-white break-words">{n.name}{!n.isVerified && <span className="ms-2 text-xs font-medium text-amber-800 dark:text-amber-300">not verified</span>}</p>
           <p className="text-xs text-zinc-600 dark:text-zinc-400">{n.projects} project{n.projects === 1 ? '' : 's'} · {n.raised.length ? n.raised.map((r) => `${money(r.amount, r.currency)} from ${r.count}`).join(' + ') : 'nothing given yet'}</p>
         </div>
         <span className="text-sm text-zinc-700 dark:text-zinc-200">Takes donations</span>

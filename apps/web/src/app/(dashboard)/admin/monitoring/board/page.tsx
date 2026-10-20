@@ -51,7 +51,7 @@ export default function AdminBoardPage() {
                       <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1', l.status === 'HIDDEN' ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300' : 'bg-amber-500/15 text-amber-800 dark:text-amber-300')}><Flag className="w-3.5 h-3.5" aria-hidden /> {l.reports} report{l.reports === 1 ? '' : 's'}{l.status === 'HIDDEN' ? ' · hidden' : ''}</span>
                     </div>
                     {l.description && <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-line break-words line-clamp-4">{l.description}</p>}
-                    <ul className="text-sm text-zinc-700 dark:text-zinc-300 list-disc pl-5">{l.reportRows.map((r, i) => <li key={i} className="break-words">“{r.reason}”</li>)}</ul>
+                    <ul className="text-sm text-zinc-700 dark:text-zinc-300 list-disc ps-5">{l.reportRows.map((r, i) => <li key={i} className="break-words">“{r.reason}”</li>)}</ul>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <button type="button" className="btn-secondary btn-sm" onClick={() => act({ method: 'PATCH', body: JSON.stringify({ id: l.id, action: 'restore' }) }, KEY, 'Restored')}><Eye className="w-4 h-4" aria-hidden /> Restore</button>
                       {l.status !== 'HIDDEN' && <button type="button" className="btn-secondary btn-sm" onClick={() => act({ method: 'PATCH', body: JSON.stringify({ id: l.id, action: 'hide' }) }, KEY, 'Hidden')}><EyeOff className="w-4 h-4" aria-hidden /> Hide</button>}

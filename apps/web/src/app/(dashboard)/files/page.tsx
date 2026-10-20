@@ -36,7 +36,7 @@ function HubList({ url, empty, onMine }: { url: string; empty: string; onMine: (
           return (
             <li key={f.id} className="flex items-center gap-2 px-4 py-3">
               {f.mime.startsWith('image/') ? <ImageIcon className="w-5 h-5 text-emerald-500 shrink-0" aria-hidden /> : <FileText className="w-5 h-5 text-indigo-500 shrink-0" aria-hidden />}
-              <span className="flex-1 min-w-0 ml-1">
+              <span className="flex-1 min-w-0 ms-1">
                 <span className="block truncate text-sm font-semibold text-zinc-900 dark:text-white">{f.name}</span>
                 {f.snippet && <span className="block text-xs text-zinc-600 dark:text-zinc-300 line-clamp-2">{f.snippet}</span>}
                 <span className="block text-xs text-zinc-500 truncate">{f.space.kind === 'me'
@@ -73,9 +73,9 @@ export default function FilesPage() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <label className="relative flex-1">
               <span className="sr-only">Search files</span>
-              <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
-              <input type="search" value={text} onChange={(e) => setText(e.target.value.slice(0, 80))} placeholder="Search names and the words inside files" className="input pl-10" />
-              {text && <button type="button" onClick={() => setText('')} aria-label="Clear the search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>}
+              <Search className="w-4 h-4 text-zinc-400 absolute start-3 top-1/2 -translate-y-1/2" aria-hidden />
+              <input type="search" value={text} onChange={(e) => setText(e.target.value.slice(0, 80))} placeholder="Search names and the words inside files" className="input ps-10" />
+              {text && <button type="button" onClick={() => setText('')} aria-label="Clear the search" className="absolute end-2 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>}
             </label>
             {!searching && <Segmented<View> segments={[{ value: 'mine', label: 'My files' }, { value: 'recent', label: 'Recent' }, { value: 'starred', label: 'Starred', icon: <Star className="w-3.5 h-3.5" aria-hidden /> }]} value={view} onChange={setView} label="Show" />}
           </div>

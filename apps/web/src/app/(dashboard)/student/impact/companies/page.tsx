@@ -62,7 +62,7 @@ export default function CorporatePartnersPage() {
                     {c.logoUrl ? <img loading="lazy" decoding="async" src={c.logoUrl} alt="" className="w-12 h-12 rounded-xl object-cover bg-white" /> : <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-black">{c.name.slice(0, 2).toUpperCase()}</div>}
                     <div className="min-w-0 flex-1">
                       <h3 className="font-bold text-zinc-900 dark:text-white truncate">{c.name}</h3>
-                      <p className="text-xs text-zinc-500 inline-flex items-center gap-1">{c.sector ?? 'Company'}{c.country && <><MapPin className="w-3 h-3 ml-1" />{c.country}</>}</p>
+                      <p className="text-xs text-zinc-500 inline-flex items-center gap-1">{c.sector ?? 'Company'}{c.country && <><MapPin className="w-3 h-3 ms-1" />{c.country}</>}</p>
                     </div>
                     {c.websiteUrl && <a href={safeHref(c.websiteUrl)} target="_blank" rel="noopener noreferrer" className="text-indigo-500" aria-label="Website"><ExternalLink className="w-4 h-4" /></a>}
                   </div>
@@ -72,7 +72,7 @@ export default function CorporatePartnersPage() {
                       {c.roles.slice(0, 3).map((r) => (
                         <Link key={r.id} href="/student/internships" className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-white/[0.03] hover:bg-indigo-500/5 text-sm">
                           <span className="font-medium text-zinc-800 dark:text-zinc-200 truncate">{r.title}</span>
-                          <span className="text-xs text-zinc-500 shrink-0 ml-2">{r.location ?? ''}</span>
+                          <span className="text-xs text-zinc-500 shrink-0 ms-2">{r.location ?? ''}</span>
                         </Link>
                       ))}
                     </div>

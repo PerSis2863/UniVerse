@@ -53,7 +53,7 @@ export function ThemeToggle() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute right-0 mt-2 w-36 rounded-xl shadow-2xl overflow-hidden z-50 border"
+              className="absolute end-0 mt-2 w-36 rounded-xl shadow-2xl overflow-hidden z-50 border"
               style={{
                 background: 'var(--card-bg)',
                 borderColor: 'var(--card-border)',

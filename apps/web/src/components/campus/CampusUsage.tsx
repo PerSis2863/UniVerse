@@ -54,7 +54,7 @@ export function CampusUsage({ date, campus, buildings }: { date: string; campus:
               <tbody>
                 {data.grid.map((row, d) => (
                   <tr key={d}>
-                    <th scope="row" className="text-left font-semibold text-zinc-700 dark:text-zinc-300 pr-1">{DAY_SHORT[d]}</th>
+                    <th scope="row" className="text-start font-semibold text-zinc-700 dark:text-zinc-300 pe-1">{DAY_SHORT[d]}</th>
                     {row.map((v, i) => (
                       <td key={i} title={`${DAY_SHORT[d]} ${HOURS[i]}:00: ${Math.round(v * 100)}% of rooms in use`} className="h-7 min-w-[1.4rem] rounded-md border border-zinc-200/70 dark:border-white/5" style={{ background: v > 0 ? `rgba(99, 102, 241, ${0.12 + v * 0.88})` : undefined }}>
                         <span className="sr-only">{Math.round(v * 100)}%</span>

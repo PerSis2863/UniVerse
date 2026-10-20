@@ -81,7 +81,7 @@ export function ReplayPanel({ sessionId, chapters, recap, recordingUrl, canMakeR
           {chapters.map((c, i) => (
             <li key={c.t} className="shrink-0">
               <button type="button" onClick={() => seek(c.t)} disabled={!recordingUrl} aria-current={i === current ? 'step' : undefined}
-                className={cn('text-left w-44 rounded-xl border px-3 py-2 transition-colors disabled:cursor-default', i === current ? 'border-transparent bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white shadow-md' : 'border-zinc-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] hover:border-indigo-300')}>
+                className={cn('text-start w-44 rounded-xl border px-3 py-2 transition-colors disabled:cursor-default', i === current ? 'border-transparent bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white shadow-md' : 'border-zinc-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] hover:border-indigo-300')}>
                 <span className={cn('block font-mono text-[11px] tabular-nums', i === current ? 'text-white/80' : 'text-indigo-600 dark:text-indigo-300')}>{clock(c.t)}</span>
                 <span className="block text-sm font-medium leading-snug line-clamp-2">{c.title}</span>
               </button>
@@ -103,7 +103,7 @@ export function ReplayPanel({ sessionId, chapters, recap, recordingUrl, canMakeR
               const Icon = r.kind === 'chapter' ? BookOpen : r.kind === 'moment' ? Star : Quote;
               return (
                 <li key={`${r.t}-${i}`}>
-                  <button type="button" onClick={() => seek(r.t)} disabled={!recordingUrl} className="w-full flex items-start gap-2.5 text-left text-sm rounded-lg p-1.5 hover:bg-indigo-500/[0.06] disabled:cursor-default">
+                  <button type="button" onClick={() => seek(r.t)} disabled={!recordingUrl} className="w-full flex items-start gap-2.5 text-start text-sm rounded-lg p-1.5 hover:bg-indigo-500/[0.06] disabled:cursor-default">
                     <span className="font-mono text-xs tabular-nums px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 shrink-0">{clock(r.t)}</span>
                     <Icon className="w-3.5 h-3.5 mt-0.5 text-zinc-400 shrink-0" aria-label={r.kind === 'said' ? 'Said in class' : r.kind} />
                     <span className="min-w-0 text-zinc-700 dark:text-zinc-300">{r.text}</span>
@@ -116,9 +116,9 @@ export function ReplayPanel({ sessionId, chapters, recap, recordingUrl, canMakeR
       </div>
       {recap && (
         <div className="rounded-xl border border-zinc-200/80 dark:border-white/[0.07] overflow-hidden">
-          <button type="button" onClick={() => setRecapOpen((v) => !v)} aria-expanded={recapOpen} className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm font-semibold text-zinc-900 dark:text-white">
+          <button type="button" onClick={() => setRecapOpen((v) => !v)} aria-expanded={recapOpen} className="w-full flex items-center gap-2 px-3 py-2.5 text-start text-sm font-semibold text-zinc-900 dark:text-white">
             <PlayCircle className="w-4 h-4 text-fuchsia-500" /> Two-minute recap
-            <ChevronDown className={cn('ml-auto w-4 h-4 text-zinc-400 transition-transform', recapOpen && 'rotate-180')} />
+            <ChevronDown className={cn('ms-auto w-4 h-4 text-zinc-400 transition-transform', recapOpen && 'rotate-180')} />
           </button>
           <AnimatePresence initial={false}>
             {recapOpen && (
@@ -159,7 +159,7 @@ export function PracticeQuestions({ practice, canWatch, seek }: { practice: Prac
                   const correct = done && k === q.answer, wrong = done && k === mine && k !== q.answer;
                   return (
                     <button key={k} type="button" disabled={done} onClick={() => setPicked((p) => ({ ...p, [i]: k }))}
-                      className={cn('w-full text-left text-sm rounded-lg px-3 py-2 border transition-colors flex items-center gap-2',
+                      className={cn('w-full text-start text-sm rounded-lg px-3 py-2 border transition-colors flex items-center gap-2',
                         correct ? 'border-sky-600 bg-sky-600/10 text-sky-800 dark:text-sky-200' : wrong ? 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-300' : done ? 'border-zinc-200 dark:border-white/10 text-zinc-500' : 'border-zinc-200 dark:border-white/10 hover:border-indigo-400 text-zinc-800 dark:text-zinc-200')}>
                       <span className="flex-1 min-w-0">{o}</span>
                       {correct && <Check className="w-4 h-4 shrink-0" aria-label="Right answer" />}
@@ -171,7 +171,7 @@ export function PracticeQuestions({ practice, canWatch, seek }: { practice: Prac
               {done && (
                 <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
                   <span className="font-semibold">{mine === q.answer ? 'Right. ' : 'Not quite. '}</span>{q.explain}
-                  {canWatch && <button type="button" onClick={() => seek(q.t)} className="ml-1.5 font-semibold text-indigo-600 dark:text-indigo-300 hover:underline">Watch where this was explained ({clock(q.t)})</button>}
+                  {canWatch && <button type="button" onClick={() => seek(q.t)} className="ms-1.5 font-semibold text-indigo-600 dark:text-indigo-300 hover:underline">Watch where this was explained ({clock(q.t)})</button>}
                 </motion.div>
               )}
             </li>

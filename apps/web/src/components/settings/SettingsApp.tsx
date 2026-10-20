@@ -123,15 +123,15 @@ export function SettingsApp({ role }: { role: Role }) {
   const list = (
     <div className="space-y-3">
       <label className="relative block">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search settings" aria-label="Search settings" className="input pl-10" />
-        {q && <button type="button" onClick={() => setQ('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>}
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search settings" aria-label="Search settings" className="input ps-10" />
+        {q && <button type="button" onClick={() => setQ('')} aria-label="Clear search" className="absolute end-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-zinc-400 hover:text-zinc-600"><X className="w-4 h-4" /></button>}
       </label>
       {single.length > 0 && (
         <div className="ios-list inset-separators" aria-label="Matching settings" role="group">
           {single.map((x) => (
-            <div key={x.id} className="ios-cell w-full text-[15px] text-zinc-900 dark:text-white !py-0 !pr-1">
-              <button type="button" onClick={() => go(x.section, x.id)} className="flex-1 min-w-0 text-left py-3">
+            <div key={x.id} className="ios-cell w-full text-[15px] text-zinc-900 dark:text-white !py-0 !pe-1">
+              <button type="button" onClick={() => go(x.section, x.id)} className="flex-1 min-w-0 text-start py-3">
                 <span className="block truncate">{x.label}</span>
                 <span className="block text-xs text-zinc-500 dark:text-zinc-400 truncate">{sections.find((s) => s.id === x.section)?.label}</span>
               </button>
@@ -143,7 +143,7 @@ export function SettingsApp({ role }: { role: Role }) {
       <div className="ios-list inset-separators">
         {shown.map((s) => (
           <button key={s.id} type="button" onClick={() => go(s.id)} aria-current={open === s.id ? 'page' : undefined}
-            className={cn('ios-cell relative isolate w-full text-left text-[15px] text-zinc-900 dark:text-white')}>
+            className={cn('ios-cell relative isolate w-full text-start text-[15px] text-zinc-900 dark:text-white')}>
             {open === s.id && <motion.span layoutId="settings-row" transition={spring.snappy} className="absolute inset-0 -z-10 hidden md:block bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/10" />}
             <span className="ios-icon-tile" style={{ background: s.tile }}><s.icon className="w-[17px] h-[17px]" strokeWidth={2.2} /></span>
             <span className="flex-1 truncate">{s.label}</span>
@@ -180,7 +180,7 @@ export function SettingsApp({ role }: { role: Role }) {
             <AnimatePresence>
               {current && (
                 <motion.div key={current.id} initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={spring.smooth} className="absolute inset-x-0 top-0 min-h-full">
-                  <button type="button" onClick={() => go(null)} className="mb-3 -ml-1 inline-flex items-center gap-0.5 text-[17px] text-tint-text pressable"><ChevronLeft className="w-6 h-6" /> Settings</button>
+                  <button type="button" onClick={() => go(null)} className="mb-3 -ms-1 inline-flex items-center gap-0.5 text-[17px] text-tint-text pressable"><ChevronLeft className="w-6 h-6" /> Settings</button>
                   <SectionBody id={current.id} role={role} title={current.label} />
                 </motion.div>
               )}
@@ -334,7 +334,7 @@ function Profile({ role }: { role: Role }) {
     <Card title="Profile" subtitle="How others see you on UniVerse">
       <div data-setting="cover" className="relative h-28 sm:h-36 -mx-5 sm:-mx-6 -mt-1 overflow-hidden bg-gradient-to-r from-indigo-500/30 to-fuchsia-500/30">
         {me.coverUrl && <Image src={me.coverUrl} alt="" fill unoptimized sizes="(max-width: 768px) 100vw, 60vw" className="object-cover" />}
-        <div className="absolute right-2 bottom-2 flex gap-1.5">
+        <div className="absolute end-2 bottom-2 flex gap-1.5">
           <button type="button" onClick={() => coverFile.current?.click()} className="btn-secondary btn-sm !bg-white/90 !text-zinc-900">{busy === 'cover' ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <ImagePlus className="w-4 h-4" aria-hidden />} {me.coverUrl ? 'Change cover' : 'Add a cover photo'}</button>
           {me.coverUrl && <button type="button" onClick={() => void save({ coverUrl: null }, 'Cover removed')} aria-label="Remove cover photo" className="btn-secondary btn-sm btn-icon !bg-white/90 !text-zinc-900"><X className="w-4 h-4" aria-hidden /></button>}
         </div>
@@ -477,10 +477,10 @@ function LanguageData() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" data-setting="language">
         {LANGUAGES.map((l) => (
           <button key={l.code} type="button" onClick={() => pick(l.code)} aria-pressed={language === l.code}
-            className={cn('relative isolate flex items-center gap-3 p-3.5 rounded-2xl text-left transition-colors', language === l.code ? 'text-zinc-900 dark:text-white' : 'bg-[var(--fill)] hover:opacity-90')}>
+            className={cn('relative isolate flex items-center gap-3 p-3.5 rounded-2xl text-start transition-colors', language === l.code ? 'text-zinc-900 dark:text-white' : 'bg-[var(--fill)] hover:opacity-90')}>
             {language === l.code && <motion.span layoutId="language-pick" transition={spring.snappy} className="absolute inset-0 -z-10 rounded-2xl bg-gradient-to-r from-indigo-500/20 to-fuchsia-500/15 ring-1 ring-indigo-400/40" />}
             <span className="text-2xl">{l.flag}</span>
-            <span className="flex-1"><span className="block font-semibold text-sm">{l.nativeName}</span><span className="block text-xs text-zinc-500">{l.name}</span></span>
+            <span className="flex-1"><span className="block font-semibold text-sm" lang={l.code} translate="no">{l.nativeName}</span><span className="block text-xs text-zinc-600 dark:text-zinc-400">{l.name}{l.drafted ? ' · translated by AI' : ''}</span></span>
             {language === l.code && <Check className="w-4 h-4 text-tint-text" />}
           </button>
         ))}
@@ -589,7 +589,7 @@ function HelpAbout() {
   const links: [string, string][] = [['Contact & support', '/contact'], ['Accessibility', '/accessibility'], ['Privacy policy', '/privacy'], ['Terms', '/terms'], ['Security', '/security'], ['Legal notice', '/legal-notice']];
   return (
     <Card title="Help & about" subtitle="Get help, and the small print">
-      <button type="button" data-setting="help" onClick={() => window.dispatchEvent(new CustomEvent('universe:open-assistant'))} className="w-full flex items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/10 text-left">
+      <button type="button" data-setting="help" onClick={() => window.dispatchEvent(new CustomEvent('universe:open-assistant'))} className="w-full flex items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/10 text-start">
         <span><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Ask the help assistant</span><span className="block text-xs text-zinc-500 mt-0.5">Instant answers about using UniVerse, even offline.</span></span>
         <Sparkles className="w-5 h-5 text-fuchsia-500 shrink-0" />
       </button>

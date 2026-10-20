@@ -236,8 +236,8 @@ export default function ApplicationPage() {
         )}
         {app.status === 'APPROVED' && (
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-8 text-white shadow-xl shadow-indigo-500/20">
-            <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/10 blur-2xl" />
-            <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-fuchsia-300/20 blur-2xl" />
+            <div aria-hidden className="pointer-events-none absolute -top-16 -end-16 w-56 h-56 rounded-full bg-white/10 blur-2xl" />
+            <div aria-hidden className="pointer-events-none absolute -bottom-20 -start-10 w-56 h-56 rounded-full bg-fuchsia-300/20 blur-2xl" />
             <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
               <div className="w-16 h-16 shrink-0 rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur flex items-center justify-center">
                 <BadgeCheck className="w-9 h-9" />
@@ -334,7 +334,7 @@ function Intro({ onPick }: { onPick: (r: Requested) => void }) {
         {(Object.keys(ROLE_INFO) as Requested[]).map((r) => {
           const Icon = ROLE_INFO[r].icon;
           return (
-            <button key={r} onClick={() => onPick(r)} className="tone-panel text-left p-5 rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] hover:border-indigo-500/50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/10 transition-all">
+            <button key={r} onClick={() => onPick(r)} className="tone-panel text-start p-5 rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] hover:border-indigo-500/50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/10 transition-all">
               <RoleIcon icon={Icon} />
               <p className="mt-3 font-semibold text-zinc-900 dark:text-white">{ROLE_INFO[r].label}</p>
               <p className="mt-1 text-sm text-zinc-500">{ROLE_INFO[r].blurb}</p>
@@ -451,7 +451,7 @@ function History({ events }: { events: HistoryEvent[] }) {
   return (
     <div className="tone-panel rounded-3xl border border-zinc-200/80 dark:border-white/[0.06] p-5 sm:p-6">
       <h3 className="font-bold text-zinc-900 dark:text-white mb-4">History</h3>
-      <ol className="relative space-y-4 before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-gradient-to-b before:from-indigo-500/40 before:to-fuchsia-500/40">
+      <ol className="relative space-y-4 before:absolute before:start-[5px] before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-gradient-to-b before:from-indigo-500/40 before:to-fuchsia-500/40">
         {[...events].reverse().map((e, i) => (
           <li key={i} className="relative flex gap-3">
             <span className={cn('mt-1 w-3 h-3 rounded-full shrink-0 ring-4 ring-white dark:ring-[#121830]', e.type === 'approved' || e.type === 'invited' ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : e.type === 'rejected' ? 'bg-rose-500' : e.type === 'info_requested' ? 'bg-amber-500' : 'bg-indigo-500')} />
@@ -552,7 +552,7 @@ function ApplicationForm({
               const on = f.requestedRole === r;
               return (
                 <button type="button" key={r} onClick={() => setF((p) => ({ ...p, requestedRole: r }))} aria-pressed={on}
-                  className={cn('relative isolate flex items-center gap-3 p-3 rounded-xl border text-left text-sm transition-colors', on ? 'border-indigo-500' : 'border-zinc-200 dark:border-white/10 bg-white/60 dark:bg-white/[0.02]')}>{on && <TabPill id="p-dashboard-application-page-0" variant="soft" />}
+                  className={cn('relative isolate flex items-center gap-3 p-3 rounded-xl border text-start text-sm transition-colors', on ? 'border-indigo-500' : 'border-zinc-200 dark:border-white/10 bg-white/60 dark:bg-white/[0.02]')}>{on && <TabPill id="p-dashboard-application-page-0" variant="soft" />}
                   <Icon className={cn('w-5 h-5', on ? 'text-indigo-500' : 'text-zinc-400')} />
                   <span className="font-semibold text-zinc-900 dark:text-white">{ROLE_INFO[r].label}</span>
                 </button>

@@ -49,7 +49,7 @@ export function ImpactReportView({ report, verified }: { report: ImpactCallRepor
       </motion.div>
       <motion.p variants={fadeUp} className="text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-line leading-relaxed">
         {report.narrative}
-        {report.ai && <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-zinc-400 align-middle"><Sparkles className="w-3 h-3" />written with AI from the figures</span>}
+        {report.ai && <span className="ms-1 inline-flex items-center gap-0.5 text-[10px] text-zinc-400 align-middle"><Sparkles className="w-3 h-3" />written with AI from the figures</span>}
       </motion.p>
       {report.call && (report.call.decisions.length > 0 || report.call.nextSteps.length > 0) && (
         <motion.div variants={fadeUp} className="grid sm:grid-cols-2 gap-3">
@@ -70,7 +70,7 @@ export function ImpactReportView({ report, verified }: { report: ImpactCallRepor
       {report.highlights.length > 0 && (
         <motion.div variants={fadeUp}>
           <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Highlights</p>
-          <ul className="mt-1.5 space-y-1.5">{report.highlights.map((h, i) => <li key={i} className="text-sm text-zinc-700 dark:text-zinc-200 border-l-2 border-indigo-400/60 pl-3">{h}</li>)}</ul>
+          <ul className="mt-1.5 space-y-1.5">{report.highlights.map((h, i) => <li key={i} className="text-sm text-zinc-700 dark:text-zinc-200 border-s-2 border-indigo-400/60 ps-3">{h}</li>)}</ul>
         </motion.div>
       )}
       <motion.p variants={fadeUp} className="text-[11px] text-zinc-500 leading-relaxed">

@@ -101,7 +101,7 @@ export default function CampusMapPage() {
               )}
               {data.canEdit && <Segmented<View> label="Show" value={view} onChange={(v) => { setView(v); setEditing(false); }} segments={[{ value: 'map', label: 'Map' }, { value: 'usage', label: 'Usage' }]} />}
               {data.canEdit && view === 'map' && (
-                <span className="flex gap-2 ml-auto">
+                <span className="flex gap-2 ms-auto">
                   {editing && <button type="button" onClick={() => void addBuilding()} className="btn-secondary btn-sm"><Plus className="w-4 h-4" />Add building</button>}
                   <button type="button" onClick={() => setEditing(!editing)} aria-pressed={editing} className={editing ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}><Pencil className="w-4 h-4" />{editing ? 'Done editing' : 'Edit map'}</button>
                 </span>
@@ -151,7 +151,7 @@ export default function CampusMapPage() {
                         return (
                           <li key={r.id} className="py-2 flex items-center gap-2">
                             <span className="flex-1 min-w-0">
-                              {b ? <button type="button" onClick={() => show(b.id)} className="block max-w-full truncate text-left font-medium text-zinc-900 dark:text-white hover:underline">{r.name}</button> : <span className="block truncate font-medium text-zinc-900 dark:text-white">{r.name}</span>}
+                              {b ? <button type="button" onClick={() => show(b.id)} className="block max-w-full truncate text-start font-medium text-zinc-900 dark:text-white hover:underline">{r.name}</button> : <span className="block truncate font-medium text-zinc-900 dark:text-white">{r.name}</span>}
                               <span className="block truncate text-xs text-zinc-600 dark:text-zinc-400">{b ? `${b.name} · ${floorName(r.floor).toLowerCase()}` : 'Not on the map'} · {r.capacity} seats{isStudyRoom(r.type, r.name) ? ' · study room' : ''}</span>
                             </span>
                             <RoomChip now={now} minute={minute} />

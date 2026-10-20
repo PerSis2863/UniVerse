@@ -26,10 +26,10 @@ export function ScanField({ label, value, onChange, onScan, placeholder, autoFoc
       <label className="label" htmlFor={id}>{label}</label>
       <div className="mt-1 flex gap-2">
         <div className="relative flex-1 min-w-0">
-          <ScanLine className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden />
+          <ScanLine className="w-4 h-4 text-zinc-400 absolute start-3 top-1/2 -translate-y-1/2" aria-hidden />
           <input id={id} value={value} autoFocus={autoFocus} disabled={busy} inputMode="text" autoComplete="off" spellCheck={false}
             onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && value.trim()) { e.preventDefault(); onScan(value.trim()); } }}
-            className="input pl-9 font-mono" placeholder={placeholder ?? 'Scan or type, then Enter'} />
+            className="input ps-9 font-mono" placeholder={placeholder ?? 'Scan or type, then Enter'} />
         </div>
         {camera && <button type="button" onClick={() => setScanning(true)} aria-label={`${label}: scan with the camera`} className="btn-secondary shrink-0"><Camera className="w-4 h-4" /></button>}
       </div>

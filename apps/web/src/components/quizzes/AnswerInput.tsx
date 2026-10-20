@@ -44,7 +44,7 @@ export function AnswerInput({ q, value, onChange, label, compact = false }: { q:
   const list = Array.isArray(value) ? value : [];
   const text = typeof value === 'string' ? value : '';
   const hint = answerHint(q);
-  const box = cn('relative isolate w-full text-left rounded-xl border transition-colors text-sm font-medium', compact ? 'px-3 py-2' : 'p-4');
+  const box = cn('relative isolate w-full text-start rounded-xl border transition-colors text-sm font-medium', compact ? 'px-3 py-2' : 'p-4');
   const on = 'border-indigo-500 text-indigo-700 dark:text-indigo-300';
   const off = 'border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-indigo-500/40 hover:bg-zinc-50 dark:hover:bg-zinc-800';
 
@@ -128,7 +128,7 @@ export function AnswerInput({ q, value, onChange, label, compact = false }: { q:
             {q.options.map((o, i) => (
               <button key={o} type="button" role="radio" aria-checked={text === o} onClick={() => onChange(o)} className={cn(box, text === o ? on : off)}>
                 {text === o && <TabPill id={`quiz-answer-${q.id}`} variant="soft" />}
-                {!compact && <span className="font-bold mr-2">{type === 'TRUE_FALSE' ? '' : `${LETTERS[i] ?? '*'}.`}</span>}{o}
+                {!compact && <span className="font-bold me-2">{type === 'TRUE_FALSE' ? '' : `${LETTERS[i] ?? '*'}.`}</span>}{o}
               </button>
             ))}
           </div>
@@ -192,7 +192,7 @@ export function PictureTap({ image, value, onChange, label, areas, readOnly = fa
         {/* eslint-disable-next-line @next/next/no-img-element -- the teacher's uploaded picture, any size */}
         <img src={image} alt="" draggable={false} className="block max-h-[24rem] w-auto select-none" />
         {(areas ?? []).map((a, i) => <span key={i} aria-hidden className="absolute border-2 border-emerald-500 bg-emerald-500/20 rounded-md" style={{ left: `${a.x}%`, top: `${a.y}%`, width: `${a.w}%`, height: `${a.h}%` }} />)}
-        {p && <span aria-hidden className="absolute w-5 h-5 -ml-2.5 -mt-2.5 rounded-full border-[3px] border-white bg-indigo-600 shadow-lg" style={{ left: `${p.x}%`, top: `${p.y}%` }} />}
+        {p && <span aria-hidden className="absolute w-5 h-5 -ms-2.5 -mt-2.5 rounded-full border-[3px] border-white bg-indigo-600 shadow-lg" style={{ left: `${p.x}%`, top: `${p.y}%` }} />}
       </div>
       {!readOnly && <p className="text-xs text-zinc-600 dark:text-zinc-400" aria-live="polite">{p ? 'Marked. Tap again to move it.' : 'Nothing marked yet.'}</p>}
     </div>

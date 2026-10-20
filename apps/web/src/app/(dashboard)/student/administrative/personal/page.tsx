@@ -142,7 +142,7 @@ export default function PersonalDataPage() {
                     {data.emergencyContacts.map((c, i) => (
                       <div key={`${c.name}-${i}`} className="flex items-start gap-3 p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-zinc-900 dark:text-white">{c.name} {i === 0 && <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500">Primary</span>}</p>
+                          <p className="text-sm font-semibold text-zinc-900 dark:text-white">{c.name} {i === 0 && <span className="ms-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500">Primary</span>}</p>
                           <p className="text-xs text-zinc-500">{[c.relation, c.phone, c.email].filter(Boolean).join(' · ')}</p>
                         </div>
                         <button onClick={() => removeContact(i)} aria-label={`Remove ${c.name}`} className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>

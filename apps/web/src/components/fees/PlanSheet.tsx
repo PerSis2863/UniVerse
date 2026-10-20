@@ -94,7 +94,7 @@ export function PlanSheet({ courses, currencies, onClose, onCreated }: {
             <div key={i} className="flex items-center gap-2">
               <span className="w-28 shrink-0 text-sm text-zinc-600 dark:text-zinc-300">{count === 1 ? 'Due' : `Instalment ${i + 1}`}</span>
               <input type="date" aria-label={`${count === 1 ? 'Due date' : `Instalment ${i + 1} due date`}`} required value={d} onChange={(e) => setDates((cur) => cur.map((x, j) => (j === i ? e.target.value : x)))} className="input flex-1 min-w-0" />
-              <span className="w-24 shrink-0 text-right text-sm tabular-nums text-zinc-700 dark:text-zinc-200">{money(shares[i] ?? 0, currency)}</span>
+              <span className="w-24 shrink-0 text-end text-sm tabular-nums text-zinc-700 dark:text-zinc-200">{money(shares[i] ?? 0, currency)}</span>
             </div>
           ))}
         </fieldset>

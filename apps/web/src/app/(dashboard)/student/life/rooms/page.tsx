@@ -131,14 +131,14 @@ export default function RoomReservationPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-400">Date</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
+                  <div className="absolute inset-y-0 start-3 flex items-center pointer-events-none text-zinc-500">
                     <CalendarIcon className="w-4 h-4" />
                   </div>
                   <input aria-label="Date" 
                     type="date" 
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 [color-scheme:dark]"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 ps-10 pe-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 [color-scheme:dark]"
                   />
                 </div>
               </div>
@@ -146,13 +146,13 @@ export default function RoomReservationPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-400">Time</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
+                  <div className="absolute inset-y-0 start-3 flex items-center pointer-events-none text-zinc-500">
                     <Clock className="w-4 h-4" />
                   </div>
                   <select aria-label="Time" 
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 ps-10 pe-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]"
                   >
                     <option value="09:00 AM">09:00 AM</option>
                     <option value="10:00 AM">10:00 AM</option>
@@ -167,13 +167,13 @@ export default function RoomReservationPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-400">Duration</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
+                  <div className="absolute inset-y-0 start-3 flex items-center pointer-events-none text-zinc-500">
                     <Clock className="w-4 h-4" />
                   </div>
                   <select aria-label="Duration" 
                     value={duration}
                     onChange={(e) => setDuration(e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 ps-10 pe-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]"
                   >
                     <option value="1">1 Hour</option>
                     <option value="2">2 Hours</option>
@@ -185,10 +185,10 @@ export default function RoomReservationPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-400">Group Size</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
+                  <div className="absolute inset-y-0 start-3 flex items-center pointer-events-none text-zinc-500">
                     <Users className="w-4 h-4" />
                   </div>
-                  <select aria-label="Group Size" className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]">
+                  <select aria-label="Group Size" className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3 ps-10 pe-4 text-white focus:outline-none focus:border-indigo-500 appearance-none [color-scheme:dark]">
                     <option value="individual">Individual (1)</option>
                     <option value="small">Small Group (2-4)</option>
                     <option value="large">Large Group (5-10)</option>
@@ -290,7 +290,7 @@ export default function RoomReservationPage() {
                     <h3 className="text-2xl font-bold text-white mb-2">Booking Confirmed!</h3>
                     <p className="text-zinc-400 text-sm mb-6">Your room has been successfully reserved.</p>
                     
-                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 mb-6 text-left">
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 mb-6 text-start">
                       <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Booking ID</div>
                       <div className="text-lg font-mono font-bold text-indigo-400 mb-4">{bookingId}</div>
                       

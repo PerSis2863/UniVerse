@@ -44,7 +44,7 @@ export default function AdminEventsPage() {
               {events.map((ev) => (
                 <li key={ev.id} className={`panel overflow-hidden`}>
                   <div className="p-4 flex flex-wrap items-center gap-3">
-                    <button type="button" onClick={() => setOpen(open === ev.id ? null : ev.id)} className="flex-1 min-w-0 text-left" aria-expanded={open === ev.id}>
+                    <button type="button" onClick={() => setOpen(open === ev.id ? null : ev.id)} className="flex-1 min-w-0 text-start" aria-expanded={open === ev.id}>
                       <p className="font-semibold text-zinc-900 dark:text-white truncate">{ev.title}</p>
                       <p className="text-xs text-zinc-500 flex flex-wrap gap-x-3">
                         {ev.startAt && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{when(ev.startAt)}</span>}

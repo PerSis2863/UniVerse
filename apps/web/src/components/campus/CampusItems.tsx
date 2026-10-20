@@ -151,7 +151,7 @@ export function CampusItemManager({ kind, label, categories, query = '', showPas
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-zinc-900 dark:text-white">
           {label}s
-          {!!data?.length && <span className="ml-2 text-xs font-medium text-zinc-500 tabular-nums">{query.trim() ? `${shown.length} of ${data.length}` : data.length}</span>}
+          {!!data?.length && <span className="ms-2 text-xs font-medium text-zinc-500 tabular-nums">{query.trim() ? `${shown.length} of ${data.length}` : data.length}</span>}
         </h3>
         <button onClick={openNew} className="btn-primary btn-sm rounded-full"><Plus className="w-3.5 h-3.5" /> Add</button>
       </div>
@@ -204,7 +204,7 @@ export function CampusItemManager({ kind, label, categories, query = '', showPas
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">
                   {it.title}
-                  {it.startAt && new Date(it.startAt).getTime() < now - 24 * 3600 * 1000 && <span className="ml-2 text-[10px] font-bold uppercase text-zinc-400">Past</span>}
+                  {it.startAt && new Date(it.startAt).getTime() < now - 24 * 3600 * 1000 && <span className="ms-2 text-[10px] font-bold uppercase text-zinc-400">Past</span>}
                 </p>
                 <p className="text-xs text-zinc-500 truncate">
                   {[it.category, it.startAt && (kind === 'MENU' ? new Date(it.startAt).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) : eventDate(it.startAt)), it.capacity ? `${it.capacity} seats` : null, it.price ? `${(it.price / 100).toLocaleString()} ${it.currency ?? 'INR'} ticket` : null, it.hours, it.location].filter(Boolean).join(' · ') || it.url}

@@ -87,7 +87,7 @@ export function ChatSafety() {
               const open = openId === f.id;
               return (
                 <motion.li key={f.id} variants={fadeUp} layout className={cn('panel', 'p-4', f.severity === 'high' && status === 'OPEN' && 'ring-1 ring-rose-500/40')}>
-                  <button type="button" onClick={() => setOpenId(open ? null : f.id)} aria-expanded={open} className="w-full flex items-start gap-3 text-left">
+                  <button type="button" onClick={() => setOpenId(open ? null : f.id)} aria-expanded={open} className="w-full flex items-start gap-3 text-start">
                     <Avatar name={f.sender.name} src={f.sender.avatar} size={40} />
                     <span className="flex-1 min-w-0">
                       <span className="flex flex-wrap items-center gap-1.5">

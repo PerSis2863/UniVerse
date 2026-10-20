@@ -103,7 +103,7 @@ export function Converter({ onClose }: { onClose: () => void }) {
                   </div>
                 ) : <p className="mt-1.5 text-xs text-zinc-500">This kind of file can’t be converted here yet.</p>}
                 {results.filter((r) => r.key.startsWith(`${f.name}:`)).flatMap((r) => r.outputs).map((o, k) => (
-                  <button key={k} type="button" onClick={() => download(o)} className="mt-2 mr-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 text-xs font-semibold"><Download className="w-3.5 h-3.5" aria-hidden />{o.name}</button>
+                  <button key={k} type="button" onClick={() => download(o)} className="mt-2 me-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 text-xs font-semibold"><Download className="w-3.5 h-3.5" aria-hidden />{o.name}</button>
                 ))}
               </li>
             );

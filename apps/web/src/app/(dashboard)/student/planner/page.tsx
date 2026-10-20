@@ -130,7 +130,7 @@ export default function StudyPlannerPage() {
                   {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   {plan ? 'Make a new plan' : 'Make my plan'}
                 </button>
-                <span className="text-[11px] text-zinc-500 text-center sm:text-right">Uses 1 of today’s AI requests</span>
+                <span className="text-[11px] text-zinc-500 text-center sm:text-end">Uses 1 of today’s AI requests</span>
               </div>
             )}
           </div>

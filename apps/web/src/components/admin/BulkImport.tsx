@@ -169,7 +169,7 @@ export function BulkImport() {
             </motion.div>
           ) : (
             <motion.div key="file" variants={fadeUp} initial="hidden" animate="show" exit={{ opacity: 0 }} className="space-y-4">
-              <p className="text-sm text-zinc-700 dark:text-zinc-200"><FileSpreadsheet className="inline w-4 h-4 -mt-0.5 mr-1 text-zinc-500" aria-hidden /><span className="font-semibold">{file.name}</span> · {file.rows.length} row{file.rows.length === 1 ? '' : 's'}</p>
+              <p className="text-sm text-zinc-700 dark:text-zinc-200"><FileSpreadsheet className="inline w-4 h-4 -mt-0.5 me-1 text-zinc-500" aria-hidden /><span className="font-semibold">{file.name}</span> · {file.rows.length} row{file.rows.length === 1 ? '' : 's'}</p>
               <fieldset className="grid sm:grid-cols-2 gap-3">
                 <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Match the columns</legend>
                 {columns.map((c) => (

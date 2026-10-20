@@ -85,7 +85,7 @@ export default function StartupIncubatorPage() {
 
           {/* Hero Banner */}
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-950/60 via-indigo-950/50 to-zinc-950 border border-white/10 p-8 shadow-2xl">
-            <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+            <div className="absolute -end-20 -top-20 w-96 h-96 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div className="space-y-3">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-700 dark:text-violet-300 text-xs font-semibold">
@@ -112,9 +112,9 @@ export default function StartupIncubatorPage() {
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search startups, sectors, skills..."
-                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-500 outline-none focus:border-indigo-500 transition-colors" />
+                className="w-full ps-10 pe-4 py-2.5 bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-500 outline-none focus:border-indigo-500 transition-colors" />
             </div>
             <div className="flex gap-2 overflow-x-auto">
               {stages.map(s => (

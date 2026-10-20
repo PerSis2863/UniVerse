@@ -114,7 +114,7 @@ function PassportQr({ name }: { name: string }) {
   const url = useSyncExternalStore(noSubscribe, () => `${window.location.origin}${window.location.pathname}`, () => '');
   if (!url) return null;
   return (
-    <section className="mt-5 tone-panel rounded-3xl border border-zinc-200 dark:border-white/10 p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+    <section className="mt-5 tone-panel rounded-3xl border border-zinc-200 dark:border-white/10 p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-5 text-center sm:text-start">
       <div className="rounded-2xl p-1.5 bg-gradient-to-br from-indigo-500 to-fuchsia-500 shrink-0">
         <QrCode value={url} size={132} className="rounded-xl block" title={`QR code for ${name}'s skills passport`} />
       </div>
@@ -145,7 +145,7 @@ function BadgeVerifier() {
   };
   return (
     <section className="mt-5 rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-5">
-      <button onClick={() => setOpen((v) => !v)} aria-expanded={open} className="w-full flex items-center gap-2 text-left font-bold text-zinc-900 dark:text-white"><ShieldCheck className="w-5 h-5 text-indigo-500" /> Verify an Open Badge file <span className="ml-auto text-xs font-normal text-zinc-500">{open ? 'Hide' : 'Show'}</span></button>
+      <button onClick={() => setOpen((v) => !v)} aria-expanded={open} className="w-full flex items-center gap-2 text-start font-bold text-zinc-900 dark:text-white"><ShieldCheck className="w-5 h-5 text-indigo-500" /> Verify an Open Badge file <span className="ms-auto text-xs font-normal text-zinc-500">{open ? 'Hide' : 'Show'}</span></button>
       {open && (
         <div className="mt-3 space-y-3">
           <p className="text-xs text-zinc-500">Paste the contents of a badge file (.jwt) you received from this person. We check the signature, that UniVerse issued it, and that it hasn’t been revoked.</p>

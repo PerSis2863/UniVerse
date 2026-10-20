@@ -101,7 +101,7 @@ function NotedText({ text, notes, number, canEdit, active, onPick, onWords }: {
       <div ref={box} onMouseUp={canEdit ? read : undefined} onKeyUp={canEdit ? read : undefined} onTouchEnd={canEdit ? () => setTimeout(read, 0) : undefined}
         className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words max-h-[28rem] overflow-y-auto rounded-xl border border-zinc-200 dark:border-white/10 p-3">
         {textParts(text, notes.map((n) => ({ id: n.id, anchor: n.anchor }))).map((p, i) => p.noteId
-          ? <mark key={i} onClick={() => onPick(p.noteId!)} className={cn('rounded-sm px-0.5 text-inherit cursor-pointer', active === p.noteId ? 'bg-amber-300 dark:bg-amber-400/50' : 'bg-amber-200/70 dark:bg-amber-400/25')}>{p.text}<sup className="ml-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-200">{number.get(p.noteId)}</sup></mark>
+          ? <mark key={i} onClick={() => onPick(p.noteId!)} className={cn('rounded-sm px-0.5 text-inherit cursor-pointer', active === p.noteId ? 'bg-amber-300 dark:bg-amber-400/50' : 'bg-amber-200/70 dark:bg-amber-400/25')}>{p.text}<sup className="ms-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-200">{number.get(p.noteId)}</sup></mark>
           : <span key={i}>{p.text}</span>)}
       </div>
       {canEdit && (
@@ -145,7 +145,7 @@ function BoxedPage({ page, notes, number, canEdit, active, onPick, onBox, childr
               <button key={n.id} type="button" onClick={() => onPick(n.id)} aria-label={`Note ${number.get(n.id)}: ${n.comment.slice(0, 80)}`}
                 style={{ left: `${a.x * 100}%`, top: `${a.y * 100}%`, width: `${a.w * 100}%`, height: `${a.h * 100}%` }}
                 className={cn('absolute border-2 rounded-sm', drawing && 'pointer-events-none', active === n.id ? 'border-amber-500 bg-amber-400/25' : 'border-amber-400 bg-amber-300/15')}>
-                <span className="absolute -top-2.5 -left-2.5 w-5 h-5 rounded-full bg-amber-400 text-amber-950 text-[10px] font-bold grid place-items-center">{number.get(n.id)}</span>
+                <span className="absolute -top-2.5 -start-2.5 w-5 h-5 rounded-full bg-amber-400 text-amber-950 text-[10px] font-bold grid place-items-center">{number.get(n.id)}</span>
               </button>
             );
           })}

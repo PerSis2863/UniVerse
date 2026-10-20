@@ -67,7 +67,7 @@ export default function MySocialImpactPage() {
 
           {/* Top Hero Card */}
           <div className="relative rounded-3xl bg-gradient-to-br from-[#0e1628] via-[#111827] to-[#1c1427] border border-zinc-200 dark:border-white/10 p-8 overflow-hidden shadow-2xl">
-            <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-to-br from-indigo-500/20 to-pink-500/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -top-24 -end-24 w-96 h-96 bg-gradient-to-br from-indigo-500/20 to-pink-500/20 rounded-full blur-3xl pointer-events-none" />
             
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 relative z-10">
               <div className="space-y-4 max-w-xl">

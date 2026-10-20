@@ -39,7 +39,7 @@ export default function TeacherAttendance() {
             <label className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Day
               <span className="mt-1 flex items-center gap-2 input w-auto"><CalendarDays className="w-4 h-4 text-zinc-500" aria-hidden /><input type="date" aria-label="Day" value={day} max={localDay()} onChange={(e) => e.target.value && setDay(e.target.value)} className="bg-transparent outline-none" /></span>
             </label>
-            <Segmented<Tab> label="Show" value={tab} onChange={setTab} className="ml-auto"
+            <Segmented<Tab> label="Show" value={tab} onChange={setTab} className="ms-auto"
               segments={[{ value: 'register', label: 'Register' }, { value: 'seating', label: 'Seating' }, { value: 'excuses', label: data?.pendingExcuses ? `Excuses (${data.pendingExcuses})` : 'Excuses' }]} />
           </div>
           {!list.length && courses ? (

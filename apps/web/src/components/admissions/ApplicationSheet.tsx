@@ -143,7 +143,7 @@ export function ApplicationSheet({ id, school, onClose, onChanged }: { id: strin
           <ol className="space-y-1.5 text-xs">
             {[...a.history].reverse().map((h, i) => (
               <li key={i} className="text-zinc-600 dark:text-zinc-300">
-                <span className="text-zinc-500 tabular-nums">{format(new Date(h.at), 'd MMM, HH:mm')}</span> · {h.byName ? `${h.byName}: ` : ''}{eventText(h.type)}{h.note ? <span className="block text-zinc-500 whitespace-pre-wrap pl-2 border-l-2 border-zinc-200 dark:border-white/10 mt-0.5">{h.note}</span> : null}
+                <span className="text-zinc-500 tabular-nums">{format(new Date(h.at), 'd MMM, HH:mm')}</span> · {h.byName ? `${h.byName}: ` : ''}{eventText(h.type)}{h.note ? <span className="block text-zinc-500 whitespace-pre-wrap ps-2 border-s-2 border-zinc-200 dark:border-white/10 mt-0.5">{h.note}</span> : null}
               </li>
             ))}
           </ol>

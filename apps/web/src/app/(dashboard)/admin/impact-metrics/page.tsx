@@ -264,7 +264,7 @@ function PeopleList({ people, role, error }: { people?: PeopleData; role: Role; 
                 </div>
               </div>
               {stats.length > 0 && (
-                <dl className={`grid gap-2 shrink-0 ${stats.length > 2 ? 'grid-cols-5 pl-10' : 'grid-cols-2'} lg:pl-0`}>
+                <dl className={`grid gap-2 shrink-0 ${stats.length > 2 ? 'grid-cols-5 ps-10' : 'grid-cols-2'} lg:ps-0`}>
                   {stats.map(([label, value]) => (
                     <div key={label} className="text-center rounded-lg bg-zinc-50 dark:bg-zinc-950/40 px-2 py-1.5 min-w-[3.5rem]">
                       <dt className="text-[10px] text-zinc-500 leading-tight">{label}</dt>

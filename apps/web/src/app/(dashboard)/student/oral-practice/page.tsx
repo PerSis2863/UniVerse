@@ -117,7 +117,7 @@ export default function OralPracticePage() {
                   </Field>
                 </div>
                 <div role="group" aria-label="Length" className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300 mr-1">Length</span>
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300 me-1">Length</span>
                   {[5, 8, 10].map((m) => <button key={m} type="button" aria-pressed={minutes === m} onClick={() => setMinutes(m)} className={cn('btn-sm', minutes === m ? 'btn-primary' : 'btn-secondary')}>{m} min</button>)}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -132,7 +132,7 @@ export default function OralPracticePage() {
                   <ul className="divide-y divide-zinc-100 dark:divide-white/[0.06]">
                     {data.practice.map((p) => (
                       <li key={p.id}>
-                        <button type="button" onClick={() => setOpen(p.id)} className="w-full flex items-center gap-3 py-2.5 text-left">
+                        <button type="button" onClick={() => setOpen(p.id)} className="w-full flex items-center gap-3 py-2.5 text-start">
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{ORAL_KINDS[p.kind as OralKind]?.label ?? 'Oral'}: {p.topic || 'open topic'}</span>
                             <span className="block text-xs text-zinc-500 dark:text-zinc-400">{new Date(p.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · {Math.max(1, Math.round(p.durationSec / 60))} min</span>

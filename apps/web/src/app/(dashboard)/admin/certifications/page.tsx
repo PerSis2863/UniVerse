@@ -158,7 +158,7 @@ export default function AdminCertificationsPage() {
                           disabled={approving === req.id}
                           onClick={() => handleReject(req)}
                         >
-                          <XCircle className="w-4 h-4 mr-1" /> Reject
+                          <XCircle className="w-4 h-4 me-1" /> Reject
                         </button>
                         <button
                           className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-emerald-600 hover:bg-emerald-500 text-white"

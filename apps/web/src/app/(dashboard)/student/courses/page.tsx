@@ -66,7 +66,7 @@ export default function CoursesPage() {
                   <div className="flex items-center gap-4 text-xs text-zinc-500 mt-5 pt-4 border-t border-zinc-200/70 dark:border-white/[0.06]">
                     <span className="inline-flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {course._count.materials} material{course._count.materials === 1 ? '' : 's'}</span>
                     <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> {course._count.quizzes} quiz{course._count.quizzes === 1 ? '' : 'zes'}</span>
-                    <span className="ml-auto inline-flex items-center gap-0.5 font-semibold text-indigo-500">Open <ChevronRight className="w-3.5 h-3.5" /></span>
+                    <span className="ms-auto inline-flex items-center gap-0.5 font-semibold text-indigo-500">Open <ChevronRight className="w-3.5 h-3.5" /></span>
                   </div>
                   <p className="text-[11px] text-zinc-400 mt-2">Enrolled {new Date(enrolledAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p>
                 </Link>

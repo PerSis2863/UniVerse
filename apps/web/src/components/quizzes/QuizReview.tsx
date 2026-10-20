@@ -42,7 +42,7 @@ export function QuizReview({ quizId, onClose }: { quizId: string; onClose: () =>
                   {q.yourText ? (
                     <p className={cn('px-3 py-2 rounded-lg border', !data.revealed ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-800 dark:text-indigo-200' : q.correct ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200' : 'border-rose-500/40 bg-rose-500/10 text-rose-800 dark:text-rose-200')}>
                       <span className="font-semibold">Your answer: </span>{q.yourText}
-                      {data.revealed && q.credit != null && q.credit > 0 && q.credit < 1 && <span className="ml-1 text-xs font-semibold">({Math.round(q.credit * q.points * 100) / 100} of {q.points} pt{q.points === 1 ? '' : 's'})</span>}
+                      {data.revealed && q.credit != null && q.credit > 0 && q.credit < 1 && <span className="ms-1 text-xs font-semibold">({Math.round(q.credit * q.points * 100) / 100} of {q.points} pt{q.points === 1 ? '' : 's'})</span>}
                     </p>
                   ) : <p className="text-xs text-zinc-500">You didn’t answer this question.</p>}
                   {data.revealed && !q.correct && q.correctAnswer && <p className="px-3 py-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"><span className="font-semibold">Right answer: </span>{q.correctAnswer}</p>}
@@ -58,7 +58,7 @@ export function QuizReview({ quizId, onClose }: { quizId: string; onClose: () =>
                         : mine && data.revealed ? 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300'
                         : mine ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300'
                         : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400')}>
-                      {right && <CheckCircle2 className="w-4 h-4" />}{o}{mine && <span className="ml-auto text-[10px] font-bold uppercase">Your answer</span>}
+                      {right && <CheckCircle2 className="w-4 h-4" />}{o}{mine && <span className="ms-auto text-[10px] font-bold uppercase">Your answer</span>}
                     </div>
                   );
                 })}

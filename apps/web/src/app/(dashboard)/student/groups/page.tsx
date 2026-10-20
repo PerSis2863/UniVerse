@@ -52,7 +52,7 @@ function ActivityRow({ item, onOpen, delay = 0 }: { item: ActivityItem; onOpen: 
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay }}
       onClick={onOpen}
-      className="w-full text-left flex gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.03] transition-colors"
+      className="w-full text-start flex gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.03] transition-colors"
     >
       <div className="w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-500 flex items-center justify-center text-xs font-bold flex-shrink-0">
         {item.author.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
@@ -178,11 +178,11 @@ export default function GroupsPage() {
             {/* Search + Filter */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                 <input
                   value={search} onChange={e => setSearch(e.target.value)}
                   placeholder="Search groups..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors text-zinc-900 dark:text-white placeholder:text-zinc-400"
+                  className="w-full ps-10 pe-4 py-2.5 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors text-zinc-900 dark:text-white placeholder:text-zinc-400"
                 />
               </div>
               <div role="tablist" aria-label="Show" className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] p-1 rounded-xl overflow-x-auto scrollbar-none">
@@ -226,7 +226,7 @@ export default function GroupsPage() {
                             so the card has one control and the Options button sits above it. The press
                             shrink is on the card: shrinking the button would pull its area back mid-tap. */}
                         <h3 className="font-bold text-zinc-900 dark:text-white text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                          <button type="button" onClick={() => setSelectedGroup(group)} className="text-left active:scale-none after:absolute after:inset-0 after:rounded-2xl after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-indigo-500/60">{group.name}</button>
+                          <button type="button" onClick={() => setSelectedGroup(group)} className="text-start active:scale-none after:absolute after:inset-0 after:rounded-2xl after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-indigo-500/60">{group.name}</button>
                         </h3>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${typeColors[group.type]}`}>{group.type}</span>
                       </div>
@@ -242,8 +242,8 @@ export default function GroupsPage() {
                           <MoreHorizontal className="w-4 h-4" />
                         </button>
                         {activeMenuId === group.id && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg z-50 py-1 overflow-hidden" onClick={e => e.stopPropagation()}>
-                            <button onClick={() => { setInviteGroup(group); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2">
+                          <div className="absolute end-0 mt-2 w-48 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg z-50 py-1 overflow-hidden" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => { setInviteGroup(group); setActiveMenuId(null); }} className="w-full text-start px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2">
                                <Users className="w-4 h-4" /> Add people
                             </button>
                             {group.isJoined && (
@@ -256,7 +256,7 @@ export default function GroupsPage() {
                               } catch {
                                 toast.error('Could not leave the group. Please try again.');
                               }
-                            }} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                            }} className="w-full text-start px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
                                <Trash2 className="w-4 h-4" /> Leave group
                             </button>
                             )}
@@ -280,7 +280,7 @@ export default function GroupsPage() {
 
                   {/* Latest Activity */}
                   <div className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between border-t border-zinc-100 dark:border-white/[0.04] pt-3">
-                    <span className="truncate pr-3">{group.latestActivity}</span>
+                    <span className="truncate pe-3">{group.latestActivity}</span>
                     <span className="whitespace-nowrap text-zinc-400">{group.time}</span>
                   </div>
                 </motion.div>
@@ -342,16 +342,16 @@ export default function GroupsPage() {
             <motion.div
               initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[420px] glass-sidebar sheet-safe-top border-l border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto"
+              className="fixed end-0 top-0 h-[100dvh] w-full sm:w-[420px] glass-sidebar sheet-safe-top border-s border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto"
             >
               <div className={`h-28 bg-gradient-to-br ${selectedGroup.color} relative flex items-end p-5`}>
-                <div className="absolute top-4 right-14">
+                <div className="absolute top-4 end-14">
                   <button aria-label="More options" onClick={() => setActiveMenuId(activeMenuId === 'detail' ? null : 'detail')} className="p-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-white transition-colors">
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                   {activeMenuId === 'detail' && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
-                      <button onClick={() => { setInviteGroup(selectedGroup); setActiveMenuId(null); }} className="w-full text-left px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2">
+                    <div className="absolute end-0 mt-2 w-48 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+                      <button onClick={() => { setInviteGroup(selectedGroup); setActiveMenuId(null); }} className="w-full text-start px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center gap-2">
                          <Users className="w-4 h-4" /> Add people
                       </button>
                       <button onClick={async () => {
@@ -365,13 +365,13 @@ export default function GroupsPage() {
                         } catch {
                           toast.error('Could not leave the group. Please try again.');
                         }
-                      }} className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                      }} className="w-full text-start px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
                          <Trash2 className="w-4 h-4" /> Leave group
                       </button>
                     </div>
                   )}
                 </div>
-                <button aria-label="Close" onClick={() => setSelectedGroup(null)} className="absolute top-4 right-4 p-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-white transition-colors">
+                <button aria-label="Close" onClick={() => setSelectedGroup(null)} className="absolute top-4 end-4 p-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-white transition-colors">
                   <X className="w-4 h-4" />
                 </button>
                 <div>
@@ -396,27 +396,27 @@ export default function GroupsPage() {
                         }
                       }}
                     >
-                      <Plus className="w-4 h-4 mr-1" /> Join Group
+                      <Plus className="w-4 h-4 me-1" /> Join Group
                     </button>
                   ) : (
                     <>
                       <button className="flex-1 btn-primary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap" onClick={() => setShowChat(true)}>
-                        <MessageSquare className="w-4 h-4 mr-1" /> Chat
+                        <MessageSquare className="w-4 h-4 me-1" /> Chat
                       </button>
                       <button className="flex-1 btn-secondary py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap" onClick={() => setShowChat(true)}>
-                        <Upload className="w-4 h-4 mr-1" /> Files
+                        <Upload className="w-4 h-4 me-1" /> Files
                       </button>
                       <button 
                         className={`flex-1 py-2 px-1 text-sm flex items-center justify-center whitespace-nowrap ${selectedGroup.isMeetingActive ? 'bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold shadow-lg shadow-green-500/30' : 'btn-secondary'}`} 
                         onClick={() => openMeeting(selectedGroup)}
                       >
-                        <Video className="w-4 h-4 mr-1" /> Meet
+                        <Video className="w-4 h-4 me-1" /> Meet
                       </button>
                       <button className="btn-secondary py-2 px-3 text-sm flex items-center justify-center" onClick={() => openMeeting(selectedGroup, 'audio')} aria-label="Voice call with the group" title="Voice call">
                         <Mic className="w-4 h-4" />
                       </button>
                       <button className="basis-full btn-secondary py-2 px-3 text-sm flex items-center justify-center" onClick={() => setShowAutopilot(true)}>
-                        <Wand2 className="w-4 h-4 mr-1" /> Project autopilot
+                        <Wand2 className="w-4 h-4 me-1" /> Project autopilot
                       </button>
                     </>
                   )}

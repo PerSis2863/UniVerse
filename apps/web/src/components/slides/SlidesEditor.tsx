@@ -366,13 +366,13 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
       </div>
       <input ref={fileRef} type="file" accept="image/*" className="hidden" aria-label="Picture to add" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; void onImage(f, pictureFor.current); }} />
       <div className="flex-1 min-h-0 flex flex-col-reverse md:flex-row">
-        <nav aria-label="Slides" className="shrink-0 md:w-52 border-t md:border-t-0 md:border-r border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-[#0b0e1a] overflow-x-auto md:overflow-y-auto md:overflow-x-hidden">
+        <nav aria-label="Slides" className="shrink-0 md:w-52 border-t md:border-t-0 md:border-e border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-[#0b0e1a] overflow-x-auto md:overflow-y-auto md:overflow-x-hidden">
           <ol className="flex md:flex-col gap-2 p-2">
             {deck.slides.map((s, i) => {
               const people = where.get(s.id) ?? [];
               return (
                 <li key={s.id} className="shrink-0 flex gap-1.5 items-start" onContextMenu={(e) => { e.preventDefault(); setCurrent(s.id); setMenu({ id: s.id, x: e.clientX, y: e.clientY }); }}>
-                  <span className="text-[11px] tabular-nums text-zinc-600 dark:text-zinc-400 w-4 text-right pt-1">{i + 1}</span>
+                  <span className="text-[11px] tabular-nums text-zinc-600 dark:text-zinc-400 w-4 text-end pt-1">{i + 1}</span>
                   <button type="button" aria-current={s.id === slide?.id ? 'true' : undefined}
                     onClick={() => go(i)} onKeyDown={(e) => {
                       if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); go(i + 1); (e.currentTarget.closest('ol')?.children[i + 1]?.querySelector('button') as HTMLButtonElement | null)?.focus(); }
@@ -383,14 +383,14 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
                     {/* Named by its words, not by the picture of the slide (whose text isn't the name). */}
                     <span className="sr-only">{`Slide ${i + 1}${plainText(s.items.find((x) => x.role === 'title')?.paras) ? `: ${plainText(s.items.find((x) => x.role === 'title')?.paras)}` : ''}${s.hidden ? ' (hidden)' : ''}`}</span>
                     <div aria-hidden="true"><SlideView slide={s} theme={theme} W={W} scale={thumbW / W} mode="thumb" /></div>
-                    {s.hidden && <EyeOff aria-hidden className="absolute top-1 right-1 w-4 h-4 text-zinc-700" />}
-                    {commentedSlides.has(i + 1) && <span aria-hidden title="Has a comment" className="absolute top-0 right-0 w-0 h-0 border-t-[10px] border-l-[10px] border-t-amber-500 border-l-transparent" />}
-                    {people.length > 0 && <span className="absolute bottom-1 left-1 flex -space-x-1">{people.slice(0, 3).map((p, k) => <span key={k} title={p.name} className="w-4 h-4 rounded-full border border-white text-[8px] font-bold text-white flex items-center justify-center" style={{ background: p.color }}>{p.name[0]}</span>)}</span>}
+                    {s.hidden && <EyeOff aria-hidden className="absolute top-1 end-1 w-4 h-4 text-zinc-700" />}
+                    {commentedSlides.has(i + 1) && <span aria-hidden title="Has a comment" className="absolute top-0 end-0 w-0 h-0 border-t-[10px] border-s-[10px] border-t-amber-500 border-s-transparent" />}
+                    {people.length > 0 && <span className="absolute bottom-1 start-1 flex -space-x-1">{people.slice(0, 3).map((p, k) => <span key={k} title={p.name} className="w-4 h-4 rounded-full border border-white text-[8px] font-bold text-white flex items-center justify-center" style={{ background: p.color }}>{p.name[0]}</span>)}</span>}
                   </button>
                 </li>
               );
             })}
-            {editable && <li className="shrink-0 md:pl-6"><button type="button" onClick={() => actions.newSlide('content')} className="w-[168px] h-[60px] md:h-auto md:py-3 rounded-lg border-2 border-dashed border-zinc-300 dark:border-white/15 text-sm text-zinc-700 dark:text-zinc-300 inline-flex items-center justify-center gap-1.5 hover:border-indigo-400"><Plus className="w-4 h-4" />New slide</button></li>}
+            {editable && <li className="shrink-0 md:ps-6"><button type="button" onClick={() => actions.newSlide('content')} className="w-[168px] h-[60px] md:h-auto md:py-3 rounded-lg border-2 border-dashed border-zinc-300 dark:border-white/15 text-sm text-zinc-700 dark:text-zinc-300 inline-flex items-center justify-center gap-1.5 hover:border-indigo-400"><Plus className="w-4 h-4" />New slide</button></li>}
           </ol>
         </nav>
         <div className="flex-1 min-w-0 min-h-0 flex flex-col">
@@ -401,7 +401,7 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
                 className="relative shadow-xl outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 touch-none" style={{ width: W * fit, height: H * fit }}>
                 <SlideView slide={slide} theme={theme} W={W} scale={fit} mode="edit" editingId={editing} override={override ?? undefined} />
                 {/* Selection, handles and the text being typed, on the same scaled canvas. */}
-                <div className="absolute left-0 top-0 origin-top-left pointer-events-none" style={{ width: W, height: H, transform: `scale(${fit})` }}>
+                <div className="absolute start-0 top-0 origin-top-left pointer-events-none" style={{ width: W, height: H, transform: `scale(${fit})` }}>
                   {slide.items.map((raw) => {
                     const it = override?.has(raw.id) ? { ...raw, ...override.get(raw.id) } : raw;
                     const on = sel.includes(it.id);
@@ -411,7 +411,7 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
                         {it.id === editing && (
                           <div ref={editBox} data-editbox contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" aria-label="Text box"
                             onBlur={stopEditing} onPaste={(e) => { e.preventDefault(); document.execCommand('insertText', false, e.clipboardData.getData('text/plain')); }}
-                            className={cn('absolute inset-0 overflow-hidden outline-none cursor-text [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-[1.2em] [&_ol]:pl-[1.2em] flex flex-col', it.kind === 'shape' ? 'p-3' : 'px-3 py-2', it.valign === 'middle' ? 'justify-center' : it.valign === 'bottom' ? 'justify-end' : '')}
+                            className={cn('absolute inset-0 overflow-hidden outline-none cursor-text [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:ps-[1.2em] [&_ol]:ps-[1.2em] flex flex-col', it.kind === 'shape' ? 'p-3' : 'px-3 py-2', it.valign === 'middle' ? 'justify-center' : it.valign === 'bottom' ? 'justify-end' : '')}
                             style={{ fontFamily: `"${it.font ?? (it.role === 'title' ? theme.title : theme.body)}", system-ui, sans-serif`, fontSize: it.size ?? 32, color: it.color ?? (it.role === 'subtitle' ? theme.muted : theme.text), lineHeight: 1.2, textAlign: it.align }} />
                         )}
                         {on && sel.length === 1 && editable && it.id !== editing && <>

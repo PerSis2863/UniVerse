@@ -43,7 +43,7 @@ function Results({ e }: { e: Election }) {
       <ul className="space-y-2">
         {r.counts.map((c) => (
           <li key={c.id} className="grid grid-cols-[minmax(0,9rem)_1fr_auto] sm:grid-cols-[12rem_1fr_auto] items-center gap-3 text-sm">
-            <span className="text-zinc-900 dark:text-white break-words font-medium">{c.name}{r.winners.includes(c.id) && <span className="ml-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">{r.winners.length > 1 ? 'tie' : 'elected'}</span>}</span>
+            <span className="text-zinc-900 dark:text-white break-words font-medium">{c.name}{r.winners.includes(c.id) && <span className="ms-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">{r.winners.length > 1 ? 'tie' : 'elected'}</span>}</span>
             <span className="h-2 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden" aria-hidden><span className="block h-full rounded-full bg-indigo-600" style={{ width: `${Math.max(2, (c.votes / most) * 100)}%` }} /></span>
             <span className="tabular-nums text-zinc-700 dark:text-zinc-200">{c.votes}</span>
           </li>

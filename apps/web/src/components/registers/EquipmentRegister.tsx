@@ -47,7 +47,7 @@ export function PersonPicker({ students, label, onPick }: { students: boolean; l
         <ul className="mt-1 divide-y divide-zinc-200/70 dark:divide-white/[0.06]">
           {!people ? <li className="py-2 text-sm text-zinc-500">Searching…</li> : people.length === 0 ? <li className="py-2 text-sm text-zinc-500">Nobody matches.</li> : people.map((p) => (
             <li key={p.id}>
-              <button type="button" onClick={() => { onPick(p); setQ(''); }} className="w-full flex items-center gap-3 py-2 px-1 rounded-xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
+              <button type="button" onClick={() => { onPick(p); setQ(''); }} className="w-full flex items-center gap-3 py-2 px-1 rounded-xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
                 <Avatar name={p.name} src={p.avatar} size={28} />
                 <span className="flex-1 min-w-0"><span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{p.name}</span><span className="block text-xs text-zinc-500 truncate">{p.email}</span></span>
                 <UserPlus className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden />
@@ -97,7 +97,7 @@ export function EquipmentRegister() {
         <motion.ul variants={list} initial="hidden" animate="show" className={cn(card, 'p-2 sm:p-3 divide-y divide-zinc-200/70 dark:divide-white/[0.06] transition-opacity', isLoading && 'opacity-60')}>
           {data.assets.map((a) => (
             <motion.li key={a.id} variants={fadeUp}>
-              <button type="button" onClick={() => { haptic('tap'); setOpen(a.id); }} className="w-full flex items-center gap-3 px-2 py-2.5 rounded-2xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
+              <button type="button" onClick={() => { haptic('tap'); setOpen(a.id); }} className="w-full flex items-center gap-3 px-2 py-2.5 rounded-2xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
                 <span className="w-20 shrink-0 font-mono text-xs text-zinc-500">{a.tag}</span>
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{a.name}</span>
@@ -208,7 +208,7 @@ function ItemSheet({ id, onClose, onChanged }: { id: string; onClose: () => void
               {data.location && <p className="text-zinc-600 dark:text-zinc-300"><MapPin className="inline w-3 h-3 -mt-0.5" aria-hidden /> {data.location}</p>}
               {data.serial && <p className="text-xs text-zinc-500">Serial {data.serial}</p>}
               {data.lastSeenAt && <p className="text-xs text-zinc-500">Last seen {formatDistanceToNow(new Date(data.lastSeenAt), { addSuffix: true })}</p>}
-              <button type="button" onClick={print} className="btn-ghost btn-sm -ml-2"><Printer className="w-4 h-4" /> Print label</button>
+              <button type="button" onClick={print} className="btn-ghost btn-sm -ms-2"><Printer className="w-4 h-4" /> Print label</button>
             </div>
           </div>
           <section className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] p-3 space-y-2" aria-label="Who has it">

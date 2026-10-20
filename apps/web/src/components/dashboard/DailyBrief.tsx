@@ -127,7 +127,7 @@ export function DailyBrief() {
             <p className="text-sm text-zinc-500">{aiError} <button type="button" onClick={() => void makeAi()} className="font-semibold text-indigo-600 dark:text-indigo-300">Try again</button></p>
           ) : data.ai && (
             <>
-              <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-100"><Sparkles className="inline w-3.5 h-3.5 -mt-0.5 mr-1 text-fuchsia-500" />{data.ai.summary}</p>
+              <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-100"><Sparkles className="inline w-3.5 h-3.5 -mt-0.5 me-1 text-fuchsia-500" />{data.ai.summary}</p>
               {data.ai.decisions.length > 0 && (
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-1">Decided in your groups</p>

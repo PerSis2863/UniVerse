@@ -79,7 +79,7 @@ export function AccountSecurity() {
               <p className="mt-1 flex items-center gap-1.5">
                 {info.verified ? <BadgeCheck className="w-4 h-4 text-emerald-500" /> : <MailWarning className="w-4 h-4 text-amber-500" />}
                 {info.email} — {info.verified ? 'verified' : 'not verified'}
-                {!info.verified && <button onClick={resend} aria-busy={busy || undefined} disabled={busy} className="ml-1 font-semibold text-indigo-600 dark:text-indigo-300 hover:underline">Send link</button>}
+                {!info.verified && <button onClick={resend} aria-busy={busy || undefined} disabled={busy} className="ms-1 font-semibold text-indigo-600 dark:text-indigo-300 hover:underline">Send link</button>}
               </p>
             )}
           </div>
@@ -90,7 +90,7 @@ export function AccountSecurity() {
               <div className="sm:col-span-2 flex gap-2">
                 <button aria-busy={busy || undefined} disabled={busy} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Change password</button>
                 <button type="button" onClick={() => setPw(null)} className="px-4 py-2 rounded-xl text-sm font-semibold text-zinc-500">Cancel</button>
-                <button type="button" onClick={sendReset} className="ml-auto text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:underline">Forgot it? Email me a reset link</button>
+                <button type="button" onClick={sendReset} className="ms-auto text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:underline">Forgot it? Email me a reset link</button>
               </div>
             </form>
           ) : (

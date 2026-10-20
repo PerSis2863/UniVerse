@@ -34,7 +34,7 @@ export function FamilyFees({ url, who }: { url: string; who?: string }) {
   const owed = Object.entries(data.owed);
   return (
     <motion.section variants={fadeUp} initial="hidden" animate="show" className="mt-4 rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-4 sm:p-5" aria-label="School fees">
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="w-full flex items-center gap-3 text-left">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="w-full flex items-center gap-3 text-start">
         <span className={cn('w-11 h-11 rounded-2xl flex items-center justify-center shrink-0', data.next?.overdue ? 'bg-rose-500/10 text-rose-600 dark:text-rose-300' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300')}><Wallet className="w-5 h-5" /></span>
         <span className="flex-1 min-w-0">
           <span className="block font-bold text-zinc-900 dark:text-white">School fees{who ? ` · ${who}` : ''}</span>

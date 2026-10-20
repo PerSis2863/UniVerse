@@ -557,7 +557,7 @@ export function SheetEditor({ docId, me, canEdit: mayEdit, title, onStatus, onPr
     }
   };
   const cellEditor = edit && edit.via === 'cell' && edit.sheet === sheet ? (
-    <div className="absolute left-0 top-0 z-[20]" data-own-pointer>
+    <div className="absolute start-0 top-0 z-[20]" data-own-pointer>
       <textarea ref={editRef} autoFocus value={edit.text} spellCheck={false} aria-label={`Edit ${addr(edit.r, edit.c)}`}
         onChange={(e) => { setEdit({ ...edit, text: e.target.value, at: e.target.selectionStart }); setHint(0); }} onKeyDown={editorKeys} onSelect={track}
         onFocus={(e) => { const n = e.currentTarget.value.length; e.currentTarget.setSelectionRange(n, n); }}
@@ -668,13 +668,13 @@ export function SheetEditor({ docId, me, canEdit: mayEdit, title, onStatus, onPr
       </div>
       <div className="flex items-stretch gap-0 border-b border-zinc-200/70 dark:border-white/[0.06] bg-white dark:bg-[#0f1322] text-sm">
         <NameBox value={areaText(area)} onGo={(t) => { if (!goTo(t)) toast.error('That isn’t a cell or range, like B3 or A1:C10.'); }} />
-        <span aria-hidden className="px-2 flex items-center text-zinc-500 dark:text-zinc-400 italic font-serif border-r border-zinc-200 dark:border-white/[0.07]">fx</span>
+        <span aria-hidden className="px-2 flex items-center text-zinc-500 dark:text-zinc-400 italic font-serif border-e border-zinc-200 dark:border-white/[0.07]">fx</span>
         <div className="relative flex-1 min-w-0">
           <input ref={barRef} aria-label="Formula bar" value={edit ? edit.text : active?.v ?? ''} readOnly={!editable} spellCheck={false}
             onFocus={() => { if (editable && !edit) setEdit({ text: active?.v ?? '', sheet, r: sel.r, c: sel.c, mode: 'edit', via: 'bar' }); }}
             onChange={(e) => { if (edit) setEdit({ ...edit, text: e.target.value, at: e.target.selectionStart ?? undefined }); setHint(0); }} onKeyDown={editorKeys} onSelect={track}
             className="w-full h-8 px-2 bg-transparent outline-none font-mono text-[13px] text-zinc-900 dark:text-zinc-100" />
-          {edit?.via === 'bar' && (suggestions.length > 0 || sig) && <div className="absolute left-0 top-8 z-30"><FormulaHelp list={suggestions} active={hint % Math.max(1, suggestions.length)} sig={sig ?? null} onPick={accept} /></div>}
+          {edit?.via === 'bar' && (suggestions.length > 0 || sig) && <div className="absolute start-0 top-8 z-30"><FormulaHelp list={suggestions} active={hint % Math.max(1, suggestions.length)} sig={sig ?? null} onPick={accept} /></div>}
         </div>
       </div>
       <SheetGrid doc={ydoc} sheet={sheet} sheetName={nameOf(ydoc, sheet)} version={version} calc={calc} view={view} sel={sel} canEdit={editable}
@@ -688,7 +688,7 @@ export function SheetEditor({ docId, me, canEdit: mayEdit, title, onStatus, onPr
         keyHandlers={{ onKeyDown, onCopy: (e) => { if (edit || (e.target as HTMLElement).closest('input, textarea')) return; e.preventDefault(); copy(false, e.clipboardData); }, onCut: (e) => { if (edit || !editable || (e.target as HTMLElement).closest('input, textarea')) return; e.preventDefault(); copy(true, e.clipboardData); }, onPaste: (e) => { if (edit || (e.target as HTMLElement).closest('input, textarea')) return; e.preventDefault(); paste(e.clipboardData.getData('text/plain')); } }} />
       {sheetCharts.length > 0 && (
         <div className="border-t border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-[#0b0e1a]">
-          <button type="button" onClick={() => setCharts((x) => !x)} aria-expanded={charts} className="w-full text-left px-3 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">Charts ({sheetCharts.length}) {charts ? '▾' : '▸'}</button>
+          <button type="button" onClick={() => setCharts((x) => !x)} aria-expanded={charts} className="w-full text-start px-3 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">Charts ({sheetCharts.length}) {charts ? '▾' : '▸'}</button>
           {charts && <SheetCharts doc={ydoc} sheet={sheet} calc={calc} version={version} canEdit={editable} />}
         </div>
       )}
@@ -726,7 +726,7 @@ function NameBox({ value, onGo }: { value: string; onGo: (t: string) => void }) 
   return (
     <input aria-label="Cell or range (type one to go there)" value={text ?? value} onFocus={(e) => { setText(value); e.currentTarget.select(); }} onBlur={() => setText(null)}
       onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { onGo(text ?? value); setText(null); e.currentTarget.blur(); } if (e.key === 'Escape') { setText(null); e.currentTarget.blur(); } }}
-      className="w-24 sm:w-28 h-8 px-2 bg-transparent border-r border-zinc-200 dark:border-white/[0.07] outline-none font-mono text-[13px] text-zinc-900 dark:text-zinc-100" />
+      className="w-24 sm:w-28 h-8 px-2 bg-transparent border-e border-zinc-200 dark:border-white/[0.07] outline-none font-mono text-[13px] text-zinc-900 dark:text-zinc-100" />
   );
 }
 
@@ -738,7 +738,7 @@ function FormulaHelp({ list, active, sig, onPick }: { list: typeof FUNCTION_HELP
         <ul role="listbox" aria-label="Functions">
           {list.map((f, i) => (
             <li key={f.name} role="option" aria-selected={i === active}>
-              <button type="button" tabIndex={-1} onMouseDown={(e) => { e.preventDefault(); onPick(f.name); }} className={cn('w-full text-left px-3 py-1.5', i === active && 'bg-indigo-50 dark:bg-indigo-500/15')}>
+              <button type="button" tabIndex={-1} onMouseDown={(e) => { e.preventDefault(); onPick(f.name); }} className={cn('w-full text-start px-3 py-1.5', i === active && 'bg-indigo-50 dark:bg-indigo-500/15')}>
                 <span className="font-mono font-semibold text-zinc-900 dark:text-white">{f.name}</span><span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">({f.args})</span>
                 <span className="block text-xs text-zinc-600 dark:text-zinc-400">{f.does}</span>
               </button>

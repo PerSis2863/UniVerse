@@ -210,7 +210,7 @@ function NeedRow({ n, onChanged }: { n: Need; onChanged: () => void }) {
             <ul className="max-h-60 overflow-y-auto">
               {data.free.map((t) => (
                 <li key={t.id}>
-                  <button type="button" disabled={busy || n.cover?.id === t.id} onClick={() => void set(t.id)} className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.05] disabled:opacity-60">
+                  <button type="button" disabled={busy || n.cover?.id === t.id} onClick={() => void set(t.id)} className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.05] disabled:opacity-60">
                     <Avatar name={t.name} src={t.avatar} size={28} />
                     <span className="flex-1 min-w-0 text-sm text-zinc-900 dark:text-white truncate">{t.name}</span>
                     <span className="text-[11px] text-zinc-500 shrink-0">{t.coversThisWeek ? `${t.coversThisWeek} cover${t.coversThisWeek === 1 ? '' : 's'} this week` : 'No covers this week'}</span>

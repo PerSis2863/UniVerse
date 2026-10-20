@@ -106,7 +106,7 @@ export function SchoolsPanel({ onPerson }: { onPerson: (id: string) => void }) {
             {list.map((s) => (
               <li key={s.id} className="py-3">
                 <button type="button" onClick={() => setOpenId(openId === s.id ? null : s.id)} aria-expanded={openId === s.id}
-                  className="w-full text-left flex flex-wrap items-center gap-x-4 gap-y-1 min-h-11 rounded-lg hover:bg-zinc-50 dark:hover:bg-white/[0.03] px-2 -mx-2">
+                  className="w-full text-start flex flex-wrap items-center gap-x-4 gap-y-1 min-h-11 rounded-lg hover:bg-zinc-50 dark:hover:bg-white/[0.03] px-2 -mx-2">
                   <span className="font-semibold text-zinc-900 dark:text-white min-w-0 flex-1 truncate">{s.name}</span>
                   <span className={cn('text-xs font-semibold rounded-full px-2 py-0.5', HEALTH[s.health].cls)}>{HEALTH[s.health].label}</span>
                   <span className="text-xs text-zinc-600 dark:text-zinc-300 tabular-nums">{s.planName}{s.subscriptionStatus ? ` · ${s.subscriptionStatus.replace('_', ' ')}` : ''}</span>
@@ -135,9 +135,9 @@ function SchoolPeople({ id, onPerson }: { id: string; onPerson: (id: string) => 
   if (!data) return <div className="h-16 rounded-xl skeleton mt-3" />;
   const row = (p: Person) => (
     <li key={p.id} className="flex flex-wrap items-center gap-2 py-1.5">
-      <button type="button" onClick={() => onPerson(p.id)} className="min-h-11 text-left text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:underline">{p.name}</button>
+      <button type="button" onClick={() => onPerson(p.id)} className="min-h-11 text-start text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:underline">{p.name}</button>
       <span className="text-xs text-zinc-500">{p.role.toLowerCase()}{p.lastSeenAt ? ` · seen ${formatDistanceToNow(new Date(p.lastSeenAt), { addSuffix: true })}` : ''}</span>
-      <span className="ml-auto"><ViewAsButton id={p.id} name={p.name} small /></span>
+      <span className="ms-auto"><ViewAsButton id={p.id} name={p.name} small /></span>
     </li>
   );
   return (
@@ -187,12 +187,12 @@ function GrowthCharts({ growth, error, retry }: { growth?: Growth; error: boolea
         {/* Scrolls sideways on a phone; focusable so it can be scrolled with the keyboard. */}
         <div className="overflow-x-auto" tabIndex={0} role="region" aria-labelledby="cohorts-h">
           <table className="text-xs tabular-nums w-full min-w-[420px]">
-            <thead><tr className="text-left text-zinc-600 dark:text-zinc-400"><th scope="col" className="py-1 pr-3 font-semibold">Joined</th><th scope="col" className="py-1 pr-3 font-semibold">People</th>{growth.cohorts.map((_, k) => <th key={k} scope="col" className="py-1 px-1 font-semibold text-center">{k === 0 ? 'Same month' : `+${k}`}</th>)}</tr></thead>
+            <thead><tr className="text-start text-zinc-600 dark:text-zinc-400"><th scope="col" className="py-1 pe-3 font-semibold">Joined</th><th scope="col" className="py-1 pe-3 font-semibold">People</th>{growth.cohorts.map((_, k) => <th key={k} scope="col" className="py-1 px-1 font-semibold text-center">{k === 0 ? 'Same month' : `+${k}`}</th>)}</tr></thead>
             <tbody>
               {growth.cohorts.map((c) => (
                 <tr key={c.month}>
-                  <th scope="row" className="py-1 pr-3 text-left font-medium text-zinc-800 dark:text-zinc-200">{monthName(c.month)}</th>
-                  <td className="py-1 pr-3 text-zinc-700 dark:text-zinc-300">{c.size}</td>
+                  <th scope="row" className="py-1 pe-3 text-start font-medium text-zinc-800 dark:text-zinc-200">{monthName(c.month)}</th>
+                  <td className="py-1 pe-3 text-zinc-700 dark:text-zinc-300">{c.size}</td>
                   {growth.cohorts.map((_, k) => (
                     <td key={k} className="p-0.5">
                       {k < c.kept.length && c.size > 0 ? (
@@ -273,7 +273,7 @@ export function ModerationPanel({ onPerson }: { onPerson: (id: string) => void }
                       <Users className="w-4 h-4" aria-hidden /> {item.person.name}
                     </button>
                   )}
-                  <span className="ml-auto flex flex-wrap gap-2">
+                  <span className="ms-auto flex flex-wrap gap-2">
                     {k.actions.filter((a) => !(item.kind === 'listing' && a.id === 'hide' && item.hidden)).map((a) => (
                       <button key={a.id} type="button" onClick={() => void act(item, a.id)} disabled={busy !== null} className="btn-secondary min-h-11 inline-flex items-center gap-1.5">
                         {busy === `${item.id}:${a.id}` && <Loader2 className="w-4 h-4 animate-spin" />} {a.label}

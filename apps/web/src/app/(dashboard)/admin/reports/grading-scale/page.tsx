@@ -55,13 +55,13 @@ function Editor({ data, onSaved }: { data: Data; onSaved: (d: Data) => void }) {
         <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Each band starts at its lowest percentage; the lowest band starts at 0. Used for letters in gradebooks, students’ grades and report cards, and for GPA. Report cards made before a change keep the scale they were made with.</p>
       </div>
       <table className="w-full text-sm">
-        <thead><tr className="text-left text-xs text-zinc-600 dark:text-zinc-400"><th className="font-medium pb-1">Letter or band</th><th className="font-medium pb-1">From (%)</th><th className="font-medium pb-1">GPA points</th><th className="sr-only">Remove</th></tr></thead>
+        <thead><tr className="text-start text-xs text-zinc-600 dark:text-zinc-400"><th className="font-medium pb-1">Letter or band</th><th className="font-medium pb-1">From (%)</th><th className="font-medium pb-1">GPA points</th><th className="sr-only">Remove</th></tr></thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={i}>
-              <td className="pr-2 py-1"><input aria-label={`Band ${i + 1} name`} value={r.letter} maxLength={12} disabled={!data.canEdit} onChange={(e) => set(i, { letter: e.target.value })} className="input py-1.5" /></td>
-              <td className="pr-2 py-1"><input aria-label={`Band ${i + 1} lowest percentage`} type="number" min={0} max={100} value={r.min} disabled={!data.canEdit} onChange={(e) => set(i, { min: e.target.value })} className="input py-1.5" /></td>
-              <td className="pr-2 py-1"><input aria-label={`Band ${i + 1} GPA points`} type="number" min={0} max={10} step={0.1} value={r.gpa} disabled={!data.canEdit} onChange={(e) => set(i, { gpa: e.target.value })} className="input py-1.5" /></td>
+              <td className="pe-2 py-1"><input aria-label={`Band ${i + 1} name`} value={r.letter} maxLength={12} disabled={!data.canEdit} onChange={(e) => set(i, { letter: e.target.value })} className="input py-1.5" /></td>
+              <td className="pe-2 py-1"><input aria-label={`Band ${i + 1} lowest percentage`} type="number" min={0} max={100} value={r.min} disabled={!data.canEdit} onChange={(e) => set(i, { min: e.target.value })} className="input py-1.5" /></td>
+              <td className="pe-2 py-1"><input aria-label={`Band ${i + 1} GPA points`} type="number" min={0} max={10} step={0.1} value={r.gpa} disabled={!data.canEdit} onChange={(e) => set(i, { gpa: e.target.value })} className="input py-1.5" /></td>
               <td className="py-1 w-10">{data.canEdit && rows.length > 2 && <button type="button" aria-label={`Remove band ${i + 1}`} onClick={() => setRows((xs) => xs.filter((_, j) => j !== i))} className="p-2 rounded-lg text-zinc-500 hover:text-rose-600 hover:bg-rose-500/10"><Trash2 className="w-4 h-4" /></button>}</td>
             </tr>
           ))}

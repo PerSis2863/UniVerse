@@ -172,7 +172,7 @@ function TrendCard({ a }: { a: CourseAnalytics }) {
                 {hover !== null && <line x1={x(hover)} x2={x(hover)} y1="0" y2="100" stroke="currentColor" className="text-zinc-300 dark:text-white/20" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
               </svg>
               {points.map((p) => p && (
-                <span key={p.i} aria-hidden className={cn('absolute w-2.5 h-2.5 -ml-[5px] -mt-[5px] rounded-full bg-indigo-500 ring-2 ring-white dark:ring-zinc-900 transition-transform', hover === p.i && 'scale-150')}
+                <span key={p.i} aria-hidden className={cn('absolute w-2.5 h-2.5 -ms-[5px] -mt-[5px] rounded-full bg-indigo-500 ring-2 ring-white dark:ring-zinc-900 transition-transform', hover === p.i && 'scale-150')}
                   style={{ left: `${x(p.i)}%`, top: `${y(p.v)}%` }} />
               ))}
               {/* Hover / tap targets: one column per week, wider than the dot */}
@@ -214,7 +214,7 @@ function DistributionCard({ a }: { a: CourseAnalytics }) {
             <span className="h-3 rounded bg-zinc-100 dark:bg-white/[0.06] overflow-hidden">
               <span className={cn('block h-full rounded bg-gradient-to-r', b.min >= 60 ? 'from-indigo-500 to-fuchsia-500' : 'from-rose-500 to-rose-400')} style={{ width: `${(b.count / max) * 100}%` }} />
             </span>
-            <span className="text-right text-zinc-900 dark:text-white font-semibold tabular-nums">{b.count}{graded ? <span className="text-zinc-400 font-normal"> · {Math.round((b.count / graded) * 100)}%</span> : null}</span>
+            <span className="text-end text-zinc-900 dark:text-white font-semibold tabular-nums">{b.count}{graded ? <span className="text-zinc-400 font-normal"> · {Math.round((b.count / graded) * 100)}%</span> : null}</span>
           </li>
         ))}
       </ul>

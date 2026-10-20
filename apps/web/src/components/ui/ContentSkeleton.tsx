@@ -37,8 +37,8 @@ export function ContentSkeleton({ variant = 'list', className }: { variant?: Var
       )}
       {variant === 'chat' && (
         <div className="space-y-3 p-4">
-          {['w-2/5', 'w-1/2 ml-auto', 'w-1/3', 'w-3/5 ml-auto', 'w-1/4', 'w-2/5 ml-auto'].map((w, i) => (
-            <Block key={i} className={cn('h-10 rounded-[20px]', w, i % 2 ? 'rounded-br-md' : 'rounded-bl-md')} />
+          {['w-2/5', 'w-1/2 ms-auto', 'w-1/3', 'w-3/5 ms-auto', 'w-1/4', 'w-2/5 ms-auto'].map((w, i) => (
+            <Block key={i} className={cn('h-10 rounded-[20px]', w, i % 2 ? 'rounded-ee-md' : 'rounded-es-md')} />
           ))}
         </div>
       )}

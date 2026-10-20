@@ -307,7 +307,7 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
         <button type="button" onClick={async () => { if (await confirmDialog({ title: 'Close the PDF editor?', message: 'Unsaved changes are lost: save the PDF first to keep them.', confirmLabel: 'Close' })) onClose(); }} aria-label="Close the PDF editor" className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
         <span className="text-sm font-semibold text-zinc-900 dark:text-white truncate max-w-[12rem]">{file.name}</span>
         <span className="text-[11px] text-zinc-500 shrink-0">{pages.length} page{pages.length === 1 ? '' : 's'}</span>
-        <div className="ml-auto flex items-center gap-1 shrink-0">
+        <div className="ms-auto flex items-center gap-1 shrink-0">
           <input ref={addRef} type="file" accept="application/pdf,image/*" multiple className="hidden" onChange={async (e) => { for (const f of [...(e.target.files ?? [])].slice(0, 10)) await addFile(f).catch((err) => toast.error((err as Error).message)); e.target.value = ''; }} />
           <button type="button" onClick={() => addRef.current?.click()} className="btn-secondary btn-sm"><FilePlus2 className="w-3.5 h-3.5" />Add pages</button>
           <button type="button" onClick={() => void extract()} disabled={!!busy} className="btn-secondary btn-sm">{busy === 'extract' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Scissors className="w-3.5 h-3.5" />}Some pages</button>
@@ -316,7 +316,7 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
       </div>
       <div className="flex-1 min-h-0 flex flex-col md:flex-row">
         {/* Pages */}
-        <ol aria-label="Pages" className="order-2 md:order-1 flex md:flex-col gap-2 p-2 overflow-auto md:w-44 shrink-0 bg-white dark:bg-[#121830] border-t md:border-t-0 md:border-r border-zinc-200 dark:border-white/10">
+        <ol aria-label="Pages" className="order-2 md:order-1 flex md:flex-col gap-2 p-2 overflow-auto md:w-44 shrink-0 bg-white dark:bg-[#121830] border-t md:border-t-0 md:border-e border-zinc-200 dark:border-white/10">
           {pages.map((p, i) => (
             <li key={p.id} className={cn('relative shrink-0 rounded-lg border-2 p-1 bg-white', i === current ? 'border-indigo-500' : 'border-transparent')}>
               <button type="button" onClick={() => setCurrent(i)} aria-label={`Page ${i + 1}`} aria-current={i === current ? 'page' : undefined} className="block">
@@ -333,7 +333,7 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
               </div>
             </li>
           ))}
-          {!pages.length && <li className="p-4 text-xs text-zinc-500"><Loader2 className="w-4 h-4 animate-spin inline mr-1" />Opening…</li>}
+          {!pages.length && <li className="p-4 text-xs text-zinc-500"><Loader2 className="w-4 h-4 animate-spin inline me-1" />Opening…</li>}
         </ol>
         {/* The page */}
         <div ref={stageRef} className="order-1 md:order-2 flex-1 min-w-0 min-h-[50vh] overflow-auto p-4 flex flex-col items-center gap-3">

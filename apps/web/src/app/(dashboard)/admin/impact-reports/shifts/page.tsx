@@ -45,7 +45,7 @@ export default function AdminShiftsPage() {
               {shifts.map((s) => (
                 <li key={s.id} className={`panel overflow-hidden`}>
                   <div className="p-4 flex flex-wrap items-center gap-3">
-                    <button type="button" onClick={() => setOpen(open === s.id ? null : s.id)} className="flex-1 min-w-0 text-left" aria-expanded={open === s.id}>
+                    <button type="button" onClick={() => setOpen(open === s.id ? null : s.id)} className="flex-1 min-w-0 text-start" aria-expanded={open === s.id}>
                       <p className="font-semibold text-zinc-900 dark:text-white truncate">{s.title} <span className="font-normal text-zinc-500">· {s.project.name}</span></p>
                       <p className="text-xs text-zinc-500 flex flex-wrap gap-x-3"><span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{when(s.startAt)}</span><span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{s.taken}/{s.capacity}</span>{s.location && <span>{s.location}</span>}</p>
                     </button>
@@ -108,7 +108,7 @@ function ShiftForm({ form, setForm, onDone }: { form: typeof empty; setForm: (f:
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" className="btn-ghost btn-sm" onClick={here}>Use where I am</button>
           <span className="text-xs text-zinc-500">With a location, students can also check in by GPS within the radius, and the shift shows on the impact map.</span>
-          <button type="button" className="btn-primary btn-sm ml-auto" disabled={busy || !form.projectId || !form.title.trim() || !form.day} onClick={() => void save()}>{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add shift</button>
+          <button type="button" className="btn-primary btn-sm ms-auto" disabled={busy || !form.projectId || !form.title.trim() || !form.day} onClick={() => void save()}>{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add shift</button>
         </div>
       </div>
     </motion.div>

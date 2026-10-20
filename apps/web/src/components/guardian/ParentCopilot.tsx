@@ -149,7 +149,7 @@ export function ParentCopilot({ studentId }: { studentId: string }) {
               {data.questions.map((q) => (
                 <motion.li key={q.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-1.5">
                   <p className="text-sm font-semibold text-zinc-900 dark:text-white">{q.question}</p>
-                  <div className="rounded-2xl rounded-tl-md bg-teal-500/10 px-3.5 py-2.5">
+                  <div className="rounded-2xl rounded-ss-md bg-teal-500/10 px-3.5 py-2.5">
                     <p className="text-sm text-zinc-800 dark:text-zinc-100 whitespace-pre-line" lang={lang}>{q.answer}</p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                       {q.used.length > 0 && <span className="text-[11px] text-zinc-600 dark:text-zinc-400">From: {q.used.join(', ')}</span>}

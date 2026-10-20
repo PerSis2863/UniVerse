@@ -102,7 +102,7 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
             {selected.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {selected.map((s) => (
-                  <button key={s.id} onClick={() => toggle(s)} className="inline-flex items-center gap-1 pl-2 pr-1.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 text-xs font-medium">
+                  <button key={s.id} onClick={() => toggle(s)} className="inline-flex items-center gap-1 ps-2 pe-1.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 text-xs font-medium">
                     {s.name.split(' ')[0]} <X className="w-3 h-3" />
                   </button>
                 ))}
@@ -116,7 +116,7 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
             {selected.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {selected.map((s) => (
-                  <button key={s.id} onClick={() => toggle(s)} className="inline-flex items-center gap-1 pl-2 pr-1.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 text-xs font-medium">
+                  <button key={s.id} onClick={() => toggle(s)} className="inline-flex items-center gap-1 ps-2 pe-1.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 text-xs font-medium">
                     {s.name.split(' ')[0]} <X className="w-3 h-3" />
                   </button>
                 ))}
@@ -125,8 +125,8 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
           </div>
         )}
         <div className="px-5 mb-2 relative">
-          <Search className="absolute left-8 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people by name or email" className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
+          <Search className="absolute start-8 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people by name or email" className="w-full ps-10 pe-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
         </div>
         <div className="flex-1 overflow-y-auto px-3 pb-3">
           {isLoading && <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>}
@@ -134,7 +134,7 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
           {people?.map((p) => {
             const isSel = selected.some((s) => s.id === p.id);
             return (
-              <button key={p.id} disabled={busy} onClick={() => (mode === 'chat' ? startChat(p) : toggle(p))} className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-left disabled:opacity-60">
+              <button key={p.id} disabled={busy} onClick={() => (mode === 'chat' ? startChat(p) : toggle(p))} className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-start disabled:opacity-60">
                 <Avatar name={p.name} src={p.avatar} online={p.online} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{p.name}</p>

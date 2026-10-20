@@ -119,7 +119,7 @@ export function Contributions({ kind, id }: { kind: string; id: string }) {
                       <span className="text-sm font-medium text-zinc-900 dark:text-white truncate">{r.name}</span>
                       {r.rating && <span className="inline-flex items-center gap-0.5 text-xs text-amber-600 dark:text-amber-400" title={`${r.rating.count} teammate rating${r.rating.count === 1 ? '' : 's'}`}><Star className="w-3 h-3 fill-current" />{r.rating.avg}</span>}
                       {r.verified.length > 0 && <BadgeCheck className="w-4 h-4 text-sky-600" aria-label={`Verified: ${r.verified.map((v) => v.skill).join(', ')}`} />}
-                      <span className="ml-auto text-xs font-semibold tabular-nums text-zinc-700 dark:text-zinc-200">{pct(r.share)}</span>
+                      <span className="ms-auto text-xs font-semibold tabular-nums text-zinc-700 dark:text-zinc-200">{pct(r.share)}</span>
                     </div>
                     <div className="mt-1 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500" style={{ width: pct(Math.min(1, r.share)) }} /></div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">

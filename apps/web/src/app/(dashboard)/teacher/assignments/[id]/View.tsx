@@ -194,7 +194,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-5">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/teacher/assignments" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white mr-auto"><ArrowLeft className="w-4 h-4" /> All assignments</Link>
+            <Link href="/teacher/assignments" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white me-auto"><ArrowLeft className="w-4 h-4" /> All assignments</Link>
             {waiting.length > 0 && (
               <button type="button" className="btn-secondary" onClick={draftAll} disabled={!!bulk} aria-busy={!!bulk || undefined}>
                 {bulk ? <><Loader2 className="w-4 h-4 animate-spin" /> Drafting {bulk.done}/{bulk.total}</> : <><Sparkles className="w-4 h-4" /> Draft {waiting.length} with AI</>}
@@ -279,7 +279,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                     type="button"
                     onClick={() => setSelected(s.id)}
                     aria-current={current?.id === s.id || undefined}
-                    className={cn('relative isolate w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2 transition-colors', current?.id === s.id ? '' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.04]')}
+                    className={cn('relative isolate w-full text-start px-3 py-2.5 rounded-xl flex items-center gap-2 transition-colors', current?.id === s.id ? '' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.04]')}
                   >{current?.id === s.id && <TabPill id="-teacher-assignments-id-page-0" variant="soft" />}
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{who(s)}</span>
@@ -404,7 +404,7 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
       {(sub.similarity?.peer || sub.similarity?.material) && (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300" role="note">
           <p className="font-semibold flex items-center gap-2 mb-1"><Copy className="w-4 h-4" /> Similar wording (worth a look, not proof)</p>
-          <ul className="list-disc pl-5 space-y-0.5">
+          <ul className="list-disc ps-5 space-y-0.5">
             {sub.similarity.peer && <li>About {sub.similarity.peer.percent}% of the phrasing is shared with {sub.similarity.peer.name}&apos;s answer.</li>}
             {sub.similarity.material && <li>About {sub.similarity.material.percent}% of its phrases appear in the course material “{sub.similarity.material.title}”.</li>}
           </ul>
@@ -423,7 +423,7 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
       {sub.aiDraft?.concerns?.length ? (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300" role="note">
           <p className="font-semibold flex items-center gap-2 mb-1"><AlertTriangle className="w-4 h-4" /> For you to check (not shown to the student)</p>
-          <ul className="list-disc pl-5 space-y-0.5">{sub.aiDraft.concerns.map((c, i) => <li key={i}>{c}</li>)}</ul>
+          <ul className="list-disc ps-5 space-y-0.5">{sub.aiDraft.concerns.map((c, i) => <li key={i}>{c}</li>)}</ul>
         </div>
       ) : null}
 

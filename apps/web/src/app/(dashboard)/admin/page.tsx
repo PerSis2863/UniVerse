@@ -104,7 +104,7 @@ export default function AdminDashboard() {
                         }} />
                       </div>
                     </div>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-500 w-20 text-right">{d.teachers} teachers</div>
+                    <div className="text-xs text-zinc-500 dark:text-zinc-500 w-20 text-end">{d.teachers} teachers</div>
                   </div>
                 ))}
               </div>

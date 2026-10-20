@@ -206,7 +206,7 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
                 </div>
               ))}
             </div>
-            <p className="mt-2 text-[11px] text-zinc-500 flex gap-3"><span><span className="inline-block w-2 h-2 rounded-sm bg-rose-500 mr-1" />new problems</span><span><span className="inline-block w-2 h-2 rounded-sm bg-amber-400 mr-1" />last seen that day</span></p>
+            <p className="mt-2 text-[11px] text-zinc-500 flex gap-3"><span><span className="inline-block w-2 h-2 rounded-sm bg-rose-500 me-1" />new problems</span><span><span className="inline-block w-2 h-2 rounded-sm bg-amber-400 me-1" />last seen that day</span></p>
           </div>
         </div>
       )}
@@ -228,7 +228,7 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
       </div>
       {picked.size > 0 && (
         <div className={cn(card, 'p-3 flex flex-wrap items-center gap-2 sticky top-2 z-10')}>
-          <span className="text-sm font-semibold text-zinc-900 dark:text-white mr-auto">{picked.size} selected</span>
+          <span className="text-sm font-semibold text-zinc-900 dark:text-white me-auto">{picked.size} selected</span>
           {filter === 'OPEN' ? (
             <>
               <button onClick={() => bulk('RESOLVED')} disabled={!!busy} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold"><CheckCircle2 className="w-4 h-4" /> Resolve</button>
@@ -258,10 +258,10 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
             const title = titleOf(e);
             return (
               <div key={e.id} className={cn(card, 'flex items-start')}>
-                <input type="checkbox" aria-label="Select" checked={picked.has(e.id)} className="mt-5 ml-4 shrink-0"
+                <input type="checkbox" aria-label="Select" checked={picked.has(e.id)} className="mt-5 ms-4 shrink-0"
                   onChange={() => setPicked((cur) => { const next = new Set(cur); if (next.has(e.id)) next.delete(e.id); else next.add(e.id); return next; })} />
                 <div className="min-w-0 flex-1">
-                <button onClick={() => setOpen(expanded ? null : e.id)} className="w-full text-left p-4 flex items-start gap-3">
+                <button onClick={() => setOpen(expanded ? null : e.id)} className="w-full text-start p-4 flex items-start gap-3">
                   {e.source === 'SERVER' ? <Server className="w-4 h-4 mt-1 text-zinc-400 shrink-0" /> : <Monitor className="w-4 h-4 mt-1 text-zinc-400 shrink-0" />}
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-zinc-900 dark:text-white break-words">{title}</p>
@@ -415,9 +415,9 @@ function AiAgents({ e, busy, onDiagnose, onRepaired }: { e: ErrorReport; busy: b
           {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : chosen?.how === 'copy' ? <Copy className="w-4 h-4" /> : <Bot className="w-4 h-4" />} {chosen?.how === 'copy' ? 'Copy brief' : 'Start repair'}
         </button>
       </div>
-      {chosen && <p className="text-xs text-zinc-500 pl-0 sm:pl-[6.5rem]">{chosen.maker} · {chosen.note}{chosen.how === 'github' && data && !data.repair.github ? ' · Needs the GITHUB_REPAIR_TOKEN secret first (Server → AI models).' : ''}</p>}
+      {chosen && <p className="text-xs text-zinc-500 ps-0 sm:ps-[6.5rem]">{chosen.maker} · {chosen.note}{chosen.how === 'github' && data && !data.repair.github ? ' · Needs the GITHUB_REPAIR_TOKEN secret first (Server → AI models).' : ''}</p>}
       {e.repairAgent && (
-        <p className="text-xs text-zinc-600 dark:text-zinc-300 pl-0 sm:pl-[6.5rem]">
+        <p className="text-xs text-zinc-600 dark:text-zinc-300 ps-0 sm:ps-[6.5rem]">
           Asked {e.repairAgent}{e.repairAt ? ` ${formatDistanceToNow(new Date(e.repairAt), { addSuffix: true })}` : ''}.
           {e.repairUrl && <> <a href={e.repairUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-tint-text inline-flex items-center gap-0.5">Follow it on GitHub <ExternalLink className="w-3 h-3" /></a></>}
         </p>

@@ -182,7 +182,7 @@ export function LiveGamePlayer({ myName }: { myName?: string }) {
             </div>
             <div role="group" aria-label="Your answer" className="grid grid-cols-2 gap-2">
               {data.question.options.map((o, i) => (
-                <button key={o} type="button" disabled={busy} onClick={() => void send({ action: 'answer', questionId: data.question!.id, answer: o })} className={cn('min-h-20 rounded-2xl px-3 py-3 text-white font-semibold text-left flex items-start gap-2 active:scale-[0.98] transition-transform', TILE[i % TILE.length])}>
+                <button key={o} type="button" disabled={busy} onClick={() => void send({ action: 'answer', questionId: data.question!.id, answer: o })} className={cn('min-h-20 rounded-2xl px-3 py-3 text-white font-semibold text-start flex items-start gap-2 active:scale-[0.98] transition-transform', TILE[i % TILE.length])}>
                   <span className="w-6 h-6 rounded-md bg-black/25 flex items-center justify-center shrink-0 text-sm">{LETTER[i]}</span><span className="break-words">{o}</span>
                 </button>
               ))}

@@ -90,7 +90,7 @@ export function MentionMenu({ store }: { store: MentionStore }) {
           {s.items.map((p, i) => (
             <li key={p.id} role="option" aria-selected={i === s.index}>
               <button type="button" onMouseDown={(e) => { e.preventDefault(); s.pick?.(p); }} onMouseEnter={() => store.set({ index: i })}
-                className={cn('relative w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-sm', i !== s.index && 'hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
+                className={cn('relative w-full flex items-center gap-2 px-2.5 py-1.5 text-start text-sm', i !== s.index && 'hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
                 {i === s.index && <motion.span layoutId="doc-mention-active" transition={spring.snappy} className="absolute inset-x-1 inset-y-0 rounded-lg bg-indigo-500/10" aria-hidden />}
                 <Avatar name={p.name} src={p.avatar} size={22} />
                 <span className="relative truncate text-zinc-800 dark:text-zinc-100">{p.name}</span>

@@ -31,7 +31,7 @@ export function Avatar({ name, src, size = 40, online }: { name: string; src?: s
         // Initials drawn by CSS: decoration, so they don't become a button's or link's name.
         <div aria-hidden data-initials={letters} className={cn('w-full h-full rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold before:content-[attr(data-initials)]', avatarGradient(name))} style={{ fontSize: size * 0.36 }} />
       )}
-      {online && <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#121830]" />}
+      {online && <span className="absolute bottom-0 end-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#121830]" />}
     </div>
   );
 }

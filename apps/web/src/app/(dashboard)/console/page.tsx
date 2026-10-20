@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Activity, Ban, BarChart3, Bell, Building2, Bug, Server, Crown, Database, Download, Gauge, HardDrive, History, LayoutDashboard, Loader2, LogIn, Megaphone, MessageSquare, MessagesSquare, MousePointerClick, PhoneCall, ShieldAlert, ShieldCheck, Trash2, Undo2, Users, Wallet, X } from 'lucide-react';
+import { Activity, Ban, BarChart3, Bell, Building2, Bug, Languages, Server, Crown, Database, Download, Gauge, HardDrive, History, LayoutDashboard, Loader2, LogIn, Megaphone, MessageSquare, MessagesSquare, MousePointerClick, PhoneCall, ShieldAlert, ShieldCheck, Trash2, Undo2, Users, Wallet, X } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -21,6 +21,7 @@ import { DatabasePanel } from './database';
 import { HealthPanel } from './health';
 import { HealthNumbersPanel } from './health-numbers';
 import { ModerationPanel, SchoolsPanel } from './schools';
+import { LanguagesPanel } from './languages';
 import { CallsPanel } from './calls';
 import { AnalyticsPanel, AttentionCard, ConsoleSearch, type Go, MoneyPanel, useAttention } from './insights';
 import { useActivePoll } from '@/lib/realtime-client';
@@ -30,11 +31,12 @@ import { LoadError } from '@/components/ui/LoadError';
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
 
-type Tab = 'overview' | 'schools' | 'moderation' | 'health' | 'numbers' | 'calls' | 'analytics' | 'server' | 'activity' | 'chats' | 'announce' | 'people' | 'database' | 'data' | 'money' | 'changes' | 'errors' | 'deletions';
+type Tab = 'overview' | 'schools' | 'moderation' | 'languages' | 'health' | 'numbers' | 'calls' | 'analytics' | 'server' | 'activity' | 'chats' | 'announce' | 'people' | 'database' | 'data' | 'money' | 'changes' | 'errors' | 'deletions';
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'schools', label: 'Schools', icon: Building2 },
   { id: 'moderation', label: 'Moderation', icon: ShieldAlert },
+  { id: 'languages', label: 'Languages', icon: Languages },
   { id: 'health', label: 'Health check', icon: ShieldCheck },
   { id: 'numbers', label: 'Health numbers', icon: Gauge },
   { id: 'calls', label: 'Calls', icon: PhoneCall },
@@ -146,6 +148,8 @@ export default function OwnerConsole() {
           <SchoolsPanel onPerson={openPerson} />
         ) : tab === 'moderation' ? (
           <ModerationPanel onPerson={openPerson} />
+        ) : tab === 'languages' ? (
+          <LanguagesPanel />
         ) : tab === 'health' ? (
           <HealthPanel />
         ) : tab === 'numbers' ? (
@@ -228,7 +232,7 @@ function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: 
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2">People matching “{dq}”{found ? ` · ${found.total}` : ''}</p>
           {!found ? <Loader2 className="w-4 h-4 animate-spin text-zinc-400" /> : found.people.length === 0 ? <p className="text-sm text-zinc-500">Nobody.</p> : (
             <ul className="grid sm:grid-cols-2 gap-1">{found.people.slice(0, 10).map((p) => (
-              <li key={p.id}><button onClick={() => onPerson(p.id)} className="w-full text-left rounded-lg px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
+              <li key={p.id}><button onClick={() => onPerson(p.id)} className="w-full text-start rounded-lg px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
                 <span className="text-sm font-semibold text-zinc-900 dark:text-white">{p.name}</span> <span className="text-[10px] font-bold uppercase text-zinc-400">{p.owner ? 'owner' : p.role}</span>
                 <span className="block text-xs text-zinc-500 truncate">{p.email}{p.phone ? ` · ${p.phone}` : ''}</span>
               </button></li>
@@ -238,7 +242,7 @@ function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: 
       )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tiles.map(([label, n, to]) => (
-          <button key={label} onClick={() => { const [t, status] = to.split(':'); onTab(t as Tab, status); }} className={cn(card, 'p-4 text-left hover:border-indigo-500/40')}>
+          <button key={label} onClick={() => { const [t, status] = to.split(':'); onTab(t as Tab, status); }} className={cn(card, 'p-4 text-start hover:border-indigo-500/40')}>
             <p className="text-2xl font-bold text-zinc-900 dark:text-white">{n}</p>
             <p className="text-xs text-zinc-500">{label}</p>
           </button>
@@ -265,7 +269,7 @@ function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: 
           <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Online now</h2>
           {online.length === 0 ? <p className="text-sm text-zinc-500">{q ? 'Nobody online matches.' : 'Nobody right now.'}</p> : (
             <ul className="space-y-2">{online.map((u) => (
-              <li key={u.id}><button onClick={() => onPerson(u.id)} className="text-sm text-left hover:text-indigo-500"><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-2" />{u.name} <span className="text-xs text-zinc-400">{u.role.toLowerCase()} · {formatDistanceToNow(new Date(u.lastSeenAt), { addSuffix: true })}</span></button></li>
+              <li key={u.id}><button onClick={() => onPerson(u.id)} className="text-sm text-start hover:text-indigo-500"><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 me-2" />{u.name} <span className="text-xs text-zinc-400">{u.role.toLowerCase()} · {formatDistanceToNow(new Date(u.lastSeenAt), { addSuffix: true })}</span></button></li>
             ))}</ul>
           )}
         </div>
@@ -344,7 +348,7 @@ function Feed({ onPerson }: { onPerson: (id: string) => void }) {
         {([['', 'Everything'], ['signin', 'Sign-ins'], ['action', 'Actions'], ['message', 'Messages'], ['ui', 'Clicks & pages']] as const).map(([k, l]) => (
           <button key={k} onClick={() => setFilter(k)} className={cn('relative isolate px-3 py-1.5 rounded-full text-xs font-semibold', filter === k ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{filter === k && <TabPill id="app-dashboard-console-page-0" />}{l}</button>
         ))}
-        {isValidating && !isLoading && <Loader2 className="ml-2 w-3.5 h-3.5 animate-spin text-zinc-400" />}
+        {isValidating && !isLoading && <Loader2 className="ms-2 w-3.5 h-3.5 animate-spin text-zinc-400" />}
       </div>
       <ul className={cn(card, 'divide-y divide-zinc-100 dark:divide-white/[0.05]')}>
         {isLoading && <li className="p-6"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></li>}
@@ -364,7 +368,7 @@ function Feed({ onPerson }: { onPerson: (id: string) => void }) {
               <Icon className="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" />
               <div className="min-w-0 flex-1 text-sm">
                 {x.user?.id ? <button onClick={() => onPerson(x.user!.id!)} className="font-semibold text-zinc-900 dark:text-white hover:text-indigo-500">{x.user.name}</button> : <span className="font-semibold">System</span>}
-                {x.user?.role && <span className="ml-1 text-[10px] font-bold uppercase text-zinc-400">{x.user.role}</span>}
+                {x.user?.role && <span className="ms-1 text-[10px] font-bold uppercase text-zinc-400">{x.user.role}</span>}
                 <p className="text-zinc-600 dark:text-zinc-300 break-words">{what}</p>
               </div>
               <time className="text-xs text-zinc-400 shrink-0" title={new Date(x.at).toLocaleString()}>{format(new Date(x.at), 'd MMM, HH:mm:ss')}</time>
@@ -426,7 +430,7 @@ function People({ onPerson, initialStatus }: { onPerson: (id: string) => void; i
       <p className="text-xs text-zinc-500">{data ? `${data.total} ${data.total === 1 ? 'person' : 'people'}${data.total > 200 ? ` · showing ${page * 200 + 1}–${page * 200 + people.length}` : ''}` : ' '}{choosable.length > 0 && ' · tick people to ban, let back in or notify several at once'}</p>
       {picked.size > 0 && (
         <div className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-2xl tone-panel border border-zinc-200 dark:border-white/10 px-4 py-2.5 shadow-lg">
-          <span className="text-sm font-semibold text-zinc-900 dark:text-white mr-auto">{picked.size} ticked{picked.size > 90 ? ' (the first 90 are changed)' : ''}</span>
+          <span className="text-sm font-semibold text-zinc-900 dark:text-white me-auto">{picked.size} ticked{picked.size > 90 ? ' (the first 90 are changed)' : ''}</span>
           <button disabled={busy} onClick={() => setNotifying(true)} className="btn-secondary inline-flex items-center gap-1.5"><Bell className="w-4 h-4" /> Notify</button>
           <button disabled={busy} onClick={() => bulk('unban')} className="btn-secondary inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4" /> Let back in</button>
           <button disabled={busy} aria-busy={busy || undefined} onClick={() => bulk('ban')} className="btn-danger inline-flex items-center gap-1.5">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />} Ban</button>
@@ -439,15 +443,15 @@ function People({ onPerson, initialStatus }: { onPerson: (id: string) => void; i
       )}
       <div className={cn(card, 'overflow-x-auto')}>
         <table className="w-full text-sm">
-          <thead className="text-left text-xs text-zinc-500">
-            <tr><th className="pl-4 py-3 w-8"><input type="checkbox" aria-label="Tick everyone shown" checked={allPicked} onChange={() => setPicked(allPicked ? new Set() : new Set(choosable.map((p) => p.id)))} /></th>{['Name', 'Email', 'Phone', 'Role', 'Status', 'Courses', 'Sign-ins', 'Messages', 'Last sign-in', 'Last active', 'Joined'].map((h) => <th key={h} className="px-4 py-3 font-medium whitespace-nowrap">{h}</th>)}</tr>
+          <thead className="text-start text-xs text-zinc-500">
+            <tr><th className="ps-4 py-3 w-8"><input type="checkbox" aria-label="Tick everyone shown" checked={allPicked} onChange={() => setPicked(allPicked ? new Set() : new Set(choosable.map((p) => p.id)))} /></th>{['Name', 'Email', 'Phone', 'Role', 'Status', 'Courses', 'Sign-ins', 'Messages', 'Last sign-in', 'Last active', 'Joined'].map((h) => <th key={h} className="px-4 py-3 font-medium whitespace-nowrap">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
             {isLoading && <tr><td className="p-6"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></td></tr>}
             {!isLoading && people.length === 0 && <tr><td colSpan={12} className="p-6 text-sm text-zinc-500">Nobody matches.</td></tr>}
             {people.map((p) => (
               <tr key={p.id} onClick={() => onPerson(p.id)} className={cn('cursor-pointer hover:bg-zinc-50 dark:hover:bg-white/[0.03]', picked.has(p.id) && 'bg-indigo-50/60 dark:bg-indigo-500/[0.08]')}>
-                <td className="pl-4 py-3" onClick={(e) => e.stopPropagation()}>{!p.owner && <input type="checkbox" aria-label={`Tick ${p.name}`} checked={picked.has(p.id)} onChange={() => toggle(p.id)} />}</td>
+                <td className="ps-4 py-3" onClick={(e) => e.stopPropagation()}>{!p.owner && <input type="checkbox" aria-label={`Tick ${p.name}`} checked={picked.has(p.id)} onChange={() => toggle(p.id)} />}</td>
                 <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-white whitespace-nowrap">{p.name} {p.owner && <Crown className="inline w-3.5 h-3.5 text-amber-500" />}</td>
                 <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{p.email}</td>
                 <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300 whitespace-nowrap">{p.phone ?? '—'}</td>
@@ -499,7 +503,7 @@ function Data({ tables, schema, initial }: { tables: { name: string; title: stri
       {shown.length === 0 && <p className="text-sm text-zinc-500">No table matches.</p>}
       <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {shown.map((t) => (
-          <li key={t.name}><button onClick={() => { setTable(t.name); setSkip(0); setQ(''); }} className={cn(card, 'w-full p-3 text-left flex justify-between hover:border-indigo-500/40')}><span className="text-sm font-medium text-zinc-900 dark:text-white">{t.title}</span><span className="text-xs text-zinc-400">{t.count}</span></button></li>
+          <li key={t.name}><button onClick={() => { setTable(t.name); setSkip(0); setQ(''); }} className={cn(card, 'w-full p-3 text-start flex justify-between hover:border-indigo-500/40')}><span className="text-sm font-medium text-zinc-900 dark:text-white">{t.title}</span><span className="text-xs text-zinc-400">{t.count}</span></button></li>
         ))}
       </ul>
       </div>
@@ -516,11 +520,11 @@ function Data({ tables, schema, initial }: { tables: { name: string; title: stri
           <button onClick={() => downloadCsv(`universe-${table}`, data.fields.map((f) => f.name), data.records.map((r) => data.fields.map((f) => { const v = r[f.name]; return v != null && typeof v === 'object' ? JSON.stringify(v) : v; })))}
             className="btn-secondary inline-flex items-center gap-1.5" title="Download the records shown (up to 50)"><Download className="w-4 h-4" /> CSV</button>
         )}
-        <SearchBox className="sm:max-w-xs ml-auto" value={q} onChange={(v) => { setQ(v); setSkip(0); }} placeholder={`Search ${table}`} />
+        <SearchBox className="sm:max-w-xs ms-auto" value={q} onChange={(v) => { setQ(v); setSkip(0); }} placeholder={`Search ${table}`} />
       </div>
       <div className={cn(card, 'overflow-x-auto')}>
         <table className="w-full text-sm">
-          <thead className="text-left text-xs text-zinc-500"><tr>{['', ...cols].map((c) => <th key={c} className="px-3 py-2 font-medium">{c}</th>)}</tr></thead>
+          <thead className="text-start text-xs text-zinc-500"><tr>{['', ...cols].map((c) => <th key={c} className="px-3 py-2 font-medium">{c}</th>)}</tr></thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
             {isLoading && <tr><td className="p-6"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></td></tr>}
             {data && data.records.length === 0 && <tr><td colSpan={cols.length + 1} className="p-6 text-sm text-zinc-500">No records{dq ? ' match' : ''}.</td></tr>}

@@ -74,8 +74,8 @@ export function OralResult({ data, who = 'You' }: { data: OralView; who?: string
       {data.summary && (
         <div className="space-y-3">
           {data.summary.summary && <p className="text-sm text-zinc-800 dark:text-zinc-200">{data.summary.summary}</p>}
-          {data.summary.strengths.length > 0 && <div><p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">What went well</p><ul className="mt-1 list-disc pl-5 text-sm text-zinc-700 dark:text-zinc-300 space-y-0.5">{data.summary.strengths.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
-          {data.summary.nextSteps.length > 0 && <div><p className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Try next time</p><ul className="mt-1 list-disc pl-5 text-sm text-zinc-700 dark:text-zinc-300 space-y-0.5">{data.summary.nextSteps.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
+          {data.summary.strengths.length > 0 && <div><p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">What went well</p><ul className="mt-1 list-disc ps-5 text-sm text-zinc-700 dark:text-zinc-300 space-y-0.5">{data.summary.strengths.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
+          {data.summary.nextSteps.length > 0 && <div><p className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Try next time</p><ul className="mt-1 list-disc ps-5 text-sm text-zinc-700 dark:text-zinc-300 space-y-0.5">{data.summary.nextSteps.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
         </div>
       )}
       {data.scores && <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{data.status === 'CONFIRMED' ? 'Scores suggested by AI and confirmed by your teacher.' : 'Scored by AI from what it heard: a guide for practice, not a grade.'}</p>}

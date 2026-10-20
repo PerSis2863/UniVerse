@@ -163,7 +163,7 @@ function ProductPreview() {
           <div className="mx-auto h-6 w-60 max-w-[50%] rounded-md bg-white/[0.05] text-[10px] text-zinc-500 flex items-center justify-center">app.universe · dashboard</div>
         </div>
         <div className="grid grid-cols-[56px_1fr] sm:grid-cols-[180px_1fr] min-h-[320px] sm:min-h-[400px]">
-          <aside className="border-r border-white/[0.06] p-3 space-y-1.5">
+          <aside className="border-e border-white/[0.06] p-3 space-y-1.5">
             {[BarChart3, BookOpen, HeartHandshake, MessagesSquare, BadgeCheck, CalendarDays].map((Icon, i) => (
               <div key={i} className={`flex items-center gap-2.5 h-9 px-2.5 rounded-lg ${i === 0 ? 'bg-indigo-500/15 text-indigo-300' : 'text-zinc-500'}`}>
                 <Icon className="w-4 h-4 shrink-0" />
@@ -197,11 +197,11 @@ function ProductPreview() {
         </div>
       </motion.div>
       {/* floating chips */}
-      <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.8, ease: EASE }} className="hidden md:block absolute -left-10 top-1/3"><div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-[#111722]/90 backdrop-blur-xl px-4 py-3 shadow-2xl mkt-float">
+      <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.8, ease: EASE }} className="hidden md:block absolute -start-10 top-1/3"><div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-[#111722]/90 backdrop-blur-xl px-4 py-3 shadow-2xl mkt-float">
         <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center"><BadgeCheck className="w-4 h-4 text-emerald-400" /></div>
         <div><div className="text-xs font-bold text-white">Credential verified</div><div className="text-[10px] text-zinc-500">Anchored on Polygon</div></div>
       </div></motion.div>
-      <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 1, ease: EASE }} className="hidden md:block absolute -right-8 bottom-16"><div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-[#111722]/90 backdrop-blur-xl px-4 py-3 shadow-2xl mkt-float [animation-delay:1.5s]">
+      <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 1, ease: EASE }} className="hidden md:block absolute -end-8 bottom-16"><div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-[#111722]/90 backdrop-blur-xl px-4 py-3 shadow-2xl mkt-float [animation-delay:1.5s]">
         <div className="w-8 h-8 rounded-full bg-fuchsia-500/15 flex items-center justify-center"><Sparkles className="w-4 h-4 text-fuchsia-400" /></div>
         <div><div className="text-xs font-bold text-white">AI match found</div><div className="text-[10px] text-zinc-500">Projects that fit your skills</div></div>
       </div></motion.div>
@@ -247,7 +247,7 @@ function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
   return (
     <Reveal delay={i * 0.04}>
       <div className="border-b border-white/[0.07]">
-        <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between gap-6 py-6 text-left">
+        <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between gap-6 py-6 text-start">
           <span className="font-bold text-lg text-white">{q}</span>
           <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }} className="shrink-0 w-8 h-8 rounded-full border border-white/10 flex items-center justify-center">
             <ChevronDown className="w-4 h-4 text-zinc-400" />
@@ -326,8 +326,8 @@ export default function ShowcasePage() {
 
         {/* ambient background */}
         <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
-          <div className="mkt-drift-a absolute top-[-20%] left-[-35%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.26), transparent)' }} />
-          <div className="mkt-drift-b absolute bottom-[-25%] right-[-40%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(192,38,211,0.17), transparent)' }} />
+          <div className="mkt-drift-a absolute top-[-20%] start-[-35%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.26), transparent)' }} />
+          <div className="mkt-drift-b absolute bottom-[-25%] end-[-40%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(192,38,211,0.17), transparent)' }} />
           <div className="absolute inset-0 opacity-[0.035]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)', backgroundSize: '64px 64px', maskImage: 'radial-gradient(ellipse at top, black 20%, transparent 70%)', WebkitMaskImage: 'radial-gradient(ellipse at top, black 20%, transparent 70%)' }} />
         </div>
 
@@ -340,7 +340,7 @@ export default function ShowcasePage() {
               <a
                 href="#product"
                 style={{ animationDelay: '0ms' }}
-                className="hero-in group inline-flex items-center gap-2 pl-1.5 pr-4 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] transition-colors mb-8"
+                className="hero-in group inline-flex items-center gap-2 ps-1.5 pe-4 py-1.5 rounded-full text-xs font-semibold border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] transition-colors mb-8"
               >
                 <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white text-[10px] font-black uppercase tracking-wider">New</span>
                 <span className="text-zinc-300">Live whiteboards: draw together with your class</span>
@@ -369,7 +369,7 @@ export default function ShowcasePage() {
                 className="hero-in mt-10 flex flex-wrap items-center justify-center gap-3"
               >
                 <Link href="/register" className="group relative inline-flex items-center gap-2 h-14 px-8 rounded-full bg-white text-zinc-900 font-bold text-sm overflow-hidden shadow-[0_0_40px_-8px_rgba(129,140,248,0.7)] hover:shadow-[0_0_60px_-6px_rgba(129,140,248,0.9)] transition-shadow">
-                  <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-indigo-200/60 to-transparent" />
+                  <span className="absolute inset-0 -translate-x-full rtl:translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-indigo-200/60 to-transparent" />
                   <span className="relative">Get started free</span>
                   <ArrowRight className="relative w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
@@ -440,7 +440,7 @@ export default function ShowcasePage() {
           <section className="px-6 pb-32">
             <SectionHeading eyebrow="How it works" title="From sign-up to real-world impact" />
             <div className="relative max-w-6xl mx-auto grid md:grid-cols-4 gap-6">
-              <motion.div aria-hidden initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 1.4, ease: EASE }} className="hidden md:block absolute top-6 left-[12%] right-[12%] h-px origin-left bg-gradient-to-r from-indigo-500/0 via-indigo-500/60 to-fuchsia-500/0" />
+              <motion.div aria-hidden initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 1.4, ease: EASE }} className="hidden md:block absolute top-6 start-[12%] end-[12%] h-px origin-left bg-gradient-to-r from-indigo-500/0 via-indigo-500/60 to-fuchsia-500/0" />
               {[
                 { t: 'Join', d: 'Sign up as a student, teacher or organization admin in under a minute.' },
                 { t: 'Learn & organize', d: 'Courses, grades, timetable, groups and messaging — all in one place.' },

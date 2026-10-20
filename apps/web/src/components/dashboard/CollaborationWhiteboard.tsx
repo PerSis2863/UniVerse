@@ -263,14 +263,14 @@ export function CollaborationWhiteboard({ boardId = 'default', title = 'Whiteboa
           <button key={c} aria-label={`Colour ${c}`} onClick={() => setColor(c)}
             className={cn('w-6 h-6 shrink-0 rounded-full border-2 transition-transform', color === c ? 'border-indigo-400 scale-110' : 'border-white dark:border-zinc-800')} style={{ background: c }} />
         ))}
-        <select aria-label="Thickness" value={width} onChange={(e) => setWidth(Number(e.target.value))} className="shrink-0 ml-1 text-xs rounded-lg bg-zinc-100 dark:bg-white/10 text-zinc-700 dark:text-zinc-200 px-2 py-1.5">
+        <select aria-label="Thickness" value={width} onChange={(e) => setWidth(Number(e.target.value))} className="shrink-0 ms-1 text-xs rounded-lg bg-zinc-100 dark:bg-white/10 text-zinc-700 dark:text-zinc-200 px-2 py-1.5">
           <option value={2}>Thin</option><option value={3}>Medium</option><option value={6}>Thick</option><option value={10}>Marker</option>
         </select>
         <div className="w-px h-6 bg-zinc-200 dark:bg-white/10 mx-1 shrink-0" />
         <button title="Undo (Ctrl+Z)" aria-label="Undo" onClick={undo} disabled={!undoStack.length} className={cn(iconBtn, 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}><Undo className="w-4 h-4" /></button>
         <button title="Redo (Ctrl+Shift+Z)" aria-label="Redo" onClick={redoFn} disabled={!redo.length} className={cn(iconBtn, 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}><Redo className="w-4 h-4" /></button>
         <button title="Clear" aria-label="Clear whiteboard" onClick={clear} disabled={!shapes.length} className={cn(iconBtn, 'text-zinc-500 hover:bg-rose-500/10 hover:text-rose-500')}><Trash2 className="w-4 h-4" /></button>
-        <div className="ml-auto flex items-center gap-2 shrink-0">
+        <div className="ms-auto flex items-center gap-2 shrink-0">
           <button onClick={share} className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1.5"><Share2 className="w-3.5 h-3.5" /> Share</button>
           <button onClick={exportPng} className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1.5"><Download className="w-3.5 h-3.5" /> Export</button>
         </div>

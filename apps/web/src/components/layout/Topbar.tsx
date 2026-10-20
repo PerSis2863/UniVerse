@@ -134,7 +134,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
             className="hidden sm:flex items-center gap-2 h-9 w-56 rounded-[10px] bg-[var(--fill)] px-3 text-[15px] text-zinc-500 dark:text-zinc-400 hover:bg-[var(--fill-strong)] transition-colors"
           >
             <Search className="w-4 h-4" />
-            <span className="flex-1 text-left">{t('common.search')}</span>
+            <span className="flex-1 text-start">{t('common.search')}</span>
             <kbd className="text-[11px] font-medium text-zinc-500">⌘K</kbd>
           </button>
 
@@ -149,7 +149,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
             className={cn('btn-ghost btn-icon relative rounded-full', showNotifications && 'bg-[var(--fill)]')}
           >
             <Bell className="w-[19px] h-[19px]" strokeWidth={2.1} />
-            {unreadCount > 0 && <span aria-hidden className="absolute top-0.5 right-0.5 min-w-[17px] h-[17px] px-1 rounded-full badge-count text-[10px] text-white font-bold leading-[17px] text-center">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+            {unreadCount > 0 && <span aria-hidden className="absolute top-0.5 end-0.5 min-w-[17px] h-[17px] px-1 rounded-full badge-count text-[10px] text-white font-bold leading-[17px] text-center">{unreadCount > 99 ? '99+' : unreadCount}</span>}
           </button>
 
           {action && (
@@ -175,7 +175,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
               role="dialog" aria-label="Notifications"
               initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
               transition={spring.gentle}
-              className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[400px] tone-panel shadow-2xl z-[130] flex flex-col sheet-safe-top sm:rounded-l-[28px] overflow-hidden"
+              className="fixed end-0 top-0 h-[100dvh] w-full sm:w-[400px] tone-panel shadow-2xl z-[130] flex flex-col sheet-safe-top sm:rounded-s-[28px] overflow-hidden"
             >
               <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
                 <div>

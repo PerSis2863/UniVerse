@@ -150,7 +150,7 @@ export function QuestionBank({ courses, quizzes, onAdded }: { courses: { id: str
                     <p className="text-sm font-medium text-zinc-900 dark:text-white">{q.question}</p>
                     {typeOf(q) === 'CHOICE' || typeOf(q) === 'TRUE_FALSE' ? (
                       <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                        {q.options.map((o) => <li key={o} className={cn('text-xs px-2 py-0.5 rounded-md', o === q.correctAnswer ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300')}>{o === q.correctAnswer && <CheckCircle2 className="w-3 h-3 inline mr-1" aria-label="Right answer" />}{o}</li>)}
+                        {q.options.map((o) => <li key={o} className={cn('text-xs px-2 py-0.5 rounded-md', o === q.correctAnswer ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300')}>{o === q.correctAnswer && <CheckCircle2 className="w-3 h-3 inline me-1" aria-label="Right answer" />}{o}</li>)}
                       </ul>
                     ) : <QuestionKey q={q} />}
                     <div className="mt-2 flex flex-wrap gap-1.5 items-center">

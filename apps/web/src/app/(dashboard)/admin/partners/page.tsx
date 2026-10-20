@@ -120,7 +120,7 @@ export default function SponsorPortalPage() {
                         {p.partner?.type ? ` · ${TYPE_LABEL[p.partner.type] ?? p.partner.type}` : ''}
                         {p.partner?.country ? ` · ${p.partner.country}` : ''}
                         {p.partner?.websiteUrl && (
-                          <a href={safeHref(p.partner.websiteUrl)} target="_blank" rel="noopener noreferrer" className="ml-2 inline-flex items-center gap-0.5 text-indigo-500 hover:text-indigo-400">Website <ExternalLink className="w-3 h-3" /></a>
+                          <a href={safeHref(p.partner.websiteUrl)} target="_blank" rel="noopener noreferrer" className="ms-2 inline-flex items-center gap-0.5 text-indigo-500 hover:text-indigo-400">Website <ExternalLink className="w-3 h-3" /></a>
                         )}
                       </p>
                       {p.company && (

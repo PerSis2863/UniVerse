@@ -238,7 +238,7 @@ export default function RegisterPage() {
                     key={role.id}
                     type="button"
                     onClick={() => setSelectedRole(role.id)}
-                    className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left group ${
+                    className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-start group ${
                       isSelected
                         ? `${role.border} bg-gradient-to-r ${role.gradient} shadow-lg ${role.glow}`
                         : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-600 hover:bg-zinc-900/60'
@@ -271,7 +271,7 @@ export default function RegisterPage() {
                     ['INDEPENDENT', 'I’m independent', 'Freelancer, professional or lifelong learner, not enrolled anywhere. No documents needed: start straight away.'],
                   ] as const).map(([id, title, text]) => (
                     <button key={id} type="button" onClick={() => setIndividual(id)} aria-pressed={individual === id}
-                      className={`relative isolate text-left p-3.5 rounded-xl border-2 transition-all ${individual === id ? 'border-indigo-500' : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-600'}`}>{individual === id && <TabPill id="app-auth-register-page-0" variant="soft" />}
+                      className={`relative isolate text-start p-3.5 rounded-xl border-2 transition-all ${individual === id ? 'border-indigo-500' : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-600'}`}>{individual === id && <TabPill id="app-auth-register-page-0" variant="soft" />}
                       <span className="flex items-center gap-2 font-semibold text-sm text-white">{individual === id && <Check className="w-4 h-4 text-indigo-400" />}{title}</span>
                       <span className="block text-xs text-zinc-400 mt-1 leading-relaxed">{text}</span>
                     </button>
@@ -303,16 +303,16 @@ export default function RegisterPage() {
               <div className={`flex items-center gap-2 p-3 rounded-xl border bg-gradient-to-r ${selectedRoleData.gradient} ${selectedRoleData.border}`}>
                 <selectedRoleData.icon className="w-4 h-4 text-white" />
                 <span className="text-white text-sm font-semibold">Joining as {selectedRoleData.label}</span>
-                <button type="button" onClick={() => setStep('role')} className="ml-auto text-white/60 hover:text-white text-xs underline">Change</button>
+                <button type="button" onClick={() => setStep('role')} className="ms-auto text-white/60 hover:text-white text-xs underline">Change</button>
               </div>
             )}
             <p className="text-sm text-zinc-400">Signed in as <span className="text-white font-medium">{finishing.email}</span></p>
             <div>
               <label className="block text-zinc-400 text-sm font-medium mb-1.5">Full Name</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <User className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                 <input type="text" required value={name} onChange={(e) => setName(e.target.value)} maxLength={100}
-                  className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                  className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 ps-10 pe-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
                   placeholder="Your name" />
               </div>
             </div>
@@ -338,7 +338,7 @@ export default function RegisterPage() {
                   <div className={`flex items-center gap-2 p-3 rounded-xl border bg-gradient-to-r ${selectedRoleData.gradient} ${selectedRoleData.border} mb-5`}>
                     <selectedRoleData.icon className="w-4 h-4 text-white" />
                     <span className="text-white text-sm font-semibold">Signing up as {selectedRoleData.label}</span>
-                    <button onClick={() => setStep('role')} className="ml-auto text-white/60 hover:text-white text-xs underline">Change</button>
+                    <button onClick={() => setStep('role')} className="ms-auto text-white/60 hover:text-white text-xs underline">Change</button>
                   </div>
                 )}
 
@@ -396,27 +396,27 @@ export default function RegisterPage() {
                   <div>
                     <label className="block text-zinc-400 text-sm font-medium mb-1.5">Full Name</label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                      <User className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                       <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
-                        className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                        className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 ps-10 pe-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
                         placeholder="John Doe" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-zinc-400 text-sm font-medium mb-1.5">Email address</label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                      <Mail className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                       <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                        className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 ps-10 pe-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
                         placeholder="name@example.com" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-zinc-400 text-sm font-medium mb-1.5">Password</label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                      <Lock className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                       <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                        className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 ps-10 pe-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
                         placeholder="••••••••" minLength={6} />
                     </div>
                   </div>

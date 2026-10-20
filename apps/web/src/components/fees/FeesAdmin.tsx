@@ -113,7 +113,7 @@ function Overview({ onGo }: { onGo: (v: View) => void }) {
                 { k: 'Still owed', v: money(t.open, t.currency), note: 'Due and part paid' },
                 { k: 'Overdue', v: money(t.overdue, t.currency), note: `${t.overdueBills} bill${t.overdueBills === 1 ? '' : 's'} past due`, go: t.overdueBills > 0 },
               ].map((x) => (
-                <button key={x.k} type="button" disabled={!x.go} onClick={() => onGo('overdue')} className={cn('text-left rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] p-3 disabled:cursor-default', x.go && 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10')}>
+                <button key={x.k} type="button" disabled={!x.go} onClick={() => onGo('overdue')} className={cn('text-start rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] p-3 disabled:cursor-default', x.go && 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10')}>
                   <span className="block text-[11px] text-zinc-500">{x.k}</span>
                   <span className="block text-lg font-black tabular-nums text-zinc-900 dark:text-white">{x.v}</span>
                   <span className="block text-[11px] text-zinc-500">{x.note}</span>
@@ -131,10 +131,10 @@ function Overview({ onGo }: { onGo: (v: View) => void }) {
                     {months.map((m) => (
                       <li key={m.month} className="flex items-center gap-2 text-sm">
                         <span className="w-16 shrink-0 text-zinc-500 tabular-nums">{format(new Date(`${m.month}-01T12:00:00Z`), 'MMM yy')}</span>
-                        <span className="flex-1 h-3 rounded-r-full bg-transparent">
-                          <motion.span className="block h-full rounded-r-full bg-indigo-500" initial={{ width: 0 }} animate={{ width: `${Math.max(2, (m.total / max) * 100)}%` }} transition={spring.gentle} />
+                        <span className="flex-1 h-3 rounded-e-full bg-transparent">
+                          <motion.span className="block h-full rounded-e-full bg-indigo-500" initial={{ width: 0 }} animate={{ width: `${Math.max(2, (m.total / max) * 100)}%` }} transition={spring.gentle} />
                         </span>
-                        <span className="w-24 shrink-0 text-right tabular-nums text-zinc-800 dark:text-zinc-100">{money(m.total, t.currency)}</span>
+                        <span className="w-24 shrink-0 text-end tabular-nums text-zinc-800 dark:text-zinc-100">{money(m.total, t.currency)}</span>
                       </li>
                     ))}
                   </ul>
@@ -213,7 +213,7 @@ function PlansView({ onIssued }: { onIssued: () => void }) {
               <motion.li key={p.id} variants={fadeUp} className={cn(card, 'p-4', p.archived && 'opacity-70')}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-semibold text-zinc-900 dark:text-white">{p.name}{p.archived && <span className="ml-2 text-[11px] font-semibold text-zinc-500">Archived</span>}</p>
+                    <p className="font-semibold text-zinc-900 dark:text-white">{p.name}{p.archived && <span className="ms-2 text-[11px] font-semibold text-zinc-500">Archived</span>}</p>
                     <p className="text-xs text-zinc-500">{p.to} · {money(total, p.currency)} per student · {p.instalments.length === 1 ? `due ${format(new Date(p.instalments[0].dueAt), 'd MMM yyyy')}` : `${p.instalments.length} instalments from ${format(new Date(p.instalments[0].dueAt), 'd MMM')}`}</p>
                     <p className="text-xs text-zinc-500 mt-0.5 truncate">{p.items.map((i) => `${i.label} ${money(i.amount, p.currency)}`).join(' · ')}</p>
                   </div>
@@ -249,7 +249,7 @@ function PlansView({ onIssued }: { onIssued: () => void }) {
 function BillRow({ b, onOpen, extra }: { b: Bill; onOpen: () => void; extra?: React.ReactNode }) {
   return (
     <motion.li variants={fadeUp}>
-      <button type="button" onClick={() => { haptic('tap'); onOpen(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
+      <button type="button" onClick={() => { haptic('tap'); onOpen(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
         <span className="w-14 shrink-0 text-xs font-semibold tabular-nums text-zinc-500">#{b.seq}</span>
         <span className="flex-1 min-w-0">
           <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{b.student.name}</span>

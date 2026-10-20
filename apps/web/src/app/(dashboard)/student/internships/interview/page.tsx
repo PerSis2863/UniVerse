@@ -130,7 +130,7 @@ export default function InterviewPracticePage() {
                 {set.questions.map((text, i) => (
                   <li key={text}>
                     <button type="button" aria-pressed={q === i} onClick={() => { setQ(i); setResult(null); }}
-                      className={cn('w-full text-left rounded-2xl px-3 py-2.5 text-sm transition-colors flex gap-2', q === i ? 'bg-indigo-500/10 text-zinc-900 dark:text-white ring-1 ring-indigo-500/40' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
+                      className={cn('w-full text-start rounded-2xl px-3 py-2.5 text-sm transition-colors flex gap-2', q === i ? 'bg-indigo-500/10 text-zinc-900 dark:text-white ring-1 ring-indigo-500/40' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
                       <span className="tabular-nums text-zinc-500 shrink-0">{i + 1}.</span><span className="min-w-0 break-words">{text}</span>
                     </button>
                   </li>
@@ -184,10 +184,10 @@ export default function InterviewPracticePage() {
                     <div className="space-y-3">
                       <p className="font-bold text-zinc-900 dark:text-white">AI feedback · <span className="tabular-nums">{result.feedback.score}/5</span></p>
                       {result.feedback.strengths.length > 0 && (
-                        <div><p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Strengths</p><ul className="mt-1 list-disc pl-5 text-sm text-zinc-700 dark:text-zinc-200 space-y-1">{result.feedback.strengths.map((s) => <li key={s}>{s}</li>)}</ul></div>
+                        <div><p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Strengths</p><ul className="mt-1 list-disc ps-5 text-sm text-zinc-700 dark:text-zinc-200 space-y-1">{result.feedback.strengths.map((s) => <li key={s}>{s}</li>)}</ul></div>
                       )}
                       {result.feedback.improve.length > 0 && (
-                        <div><p className="text-xs font-semibold text-amber-800 dark:text-amber-300">To improve</p><ul className="mt-1 list-disc pl-5 text-sm text-zinc-700 dark:text-zinc-200 space-y-1">{result.feedback.improve.map((s) => <li key={s}>{s}</li>)}</ul></div>
+                        <div><p className="text-xs font-semibold text-amber-800 dark:text-amber-300">To improve</p><ul className="mt-1 list-disc ps-5 text-sm text-zinc-700 dark:text-zinc-200 space-y-1">{result.feedback.improve.map((s) => <li key={s}>{s}</li>)}</ul></div>
                       )}
                       {result.feedback.outline && (
                         <div><p className="text-xs font-semibold text-zinc-500">A stronger answer could go</p><p className="mt-1 text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-line rounded-2xl bg-indigo-500/[0.06] p-3">{result.feedback.outline}</p></div>

@@ -47,7 +47,7 @@ function ReceiptPage({ id }: { id: string }) {
                     <h1 className="text-lg font-black">{data.school}</h1>
                     <p className="text-sm text-zinc-500 print:text-black">Fee receipt</p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-end">
                     <p className="text-xs text-zinc-500 print:text-black">Receipt</p>
                     <p className="text-xl font-black tabular-nums">#{String(data.number).padStart(6, '0')}</p>
                   </div>
@@ -65,10 +65,10 @@ function ReceiptPage({ id }: { id: string }) {
                   <span className={`text-2xl font-black tabular-nums ${data.voided ? 'line-through' : ''}`}>{money(data.amount, data.currency)}</span>
                 </div>
                 <dl className="mt-4 grid grid-cols-2 gap-y-1 text-sm">
-                  <dt className="text-zinc-500 print:text-black">Bill</dt><dd className="text-right tabular-nums">{money(data.bill.amount, data.currency)}</dd>
-                  {data.bill.discount > 0 && <><dt className="text-zinc-500 print:text-black">Discount{data.bill.discountNote ? ` (${data.bill.discountNote})` : ''}</dt><dd className="text-right tabular-nums">− {money(data.bill.discount, data.currency)}</dd></>}
-                  <dt className="text-zinc-500 print:text-black">Paid so far</dt><dd className="text-right tabular-nums">{money(data.bill.paid, data.currency)}</dd>
-                  <dt className="font-semibold">Balance</dt><dd className="text-right font-semibold tabular-nums">{data.bill.status === 'WAIVED' ? 'Waived' : money(data.bill.owed, data.currency)}</dd>
+                  <dt className="text-zinc-500 print:text-black">Bill</dt><dd className="text-end tabular-nums">{money(data.bill.amount, data.currency)}</dd>
+                  {data.bill.discount > 0 && <><dt className="text-zinc-500 print:text-black">Discount{data.bill.discountNote ? ` (${data.bill.discountNote})` : ''}</dt><dd className="text-end tabular-nums">− {money(data.bill.discount, data.currency)}</dd></>}
+                  <dt className="text-zinc-500 print:text-black">Paid so far</dt><dd className="text-end tabular-nums">{money(data.bill.paid, data.currency)}</dd>
+                  <dt className="font-semibold">Balance</dt><dd className="text-end font-semibold tabular-nums">{data.bill.status === 'WAIVED' ? 'Waived' : money(data.bill.owed, data.currency)}</dd>
                 </dl>
                 <footer className="mt-8 pt-4 border-t border-zinc-200 dark:border-white/10 flex items-center gap-2 text-[11px] text-zinc-500 print:text-black">
                   <LogoMark className="w-4 h-4" /> Recorded in UniVerse. Keep this receipt for your records.

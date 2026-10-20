@@ -440,7 +440,7 @@ export function LectureRevisionReels({
                 onClick={() => setIsPlaying(!isPlaying)}
                 className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-900 shadow-lg transition-transform hover:scale-105 active:scale-95"
               >
-                {isPlaying ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current ml-0.5" />}
+                {isPlaying ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current ms-0.5" />}
               </button>
 
               <button
@@ -462,7 +462,7 @@ export function LectureRevisionReels({
                   setProgress(0);
                   setIsPlaying(true);
                 }}
-                className={`flex-1 rounded-xl p-2 text-left transition-all ${
+                className={`flex-1 rounded-xl p-2 text-start transition-all ${
                   activeReelIdx === idx
                     ? 'ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-950/40'
                     : 'bg-white hover:bg-slate-50 dark:bg-slate-800'
@@ -504,7 +504,7 @@ export function LectureRevisionReels({
                   </>
                 ) : (
                   <>
-                    <Play className="h-5 w-5 fill-current ml-0.5" /> Listen to 5-Min Recap
+                    <Play className="h-5 w-5 fill-current ms-0.5" /> Listen to 5-Min Recap
                   </>
                 )}
               </button>
@@ -696,9 +696,9 @@ export function LectureRevisionReels({
                           key={optIdx}
                           disabled={isSubmitted}
                           onClick={() => handleAnswerSelect(q.id, optIdx)}
-                          className={`rounded-xl border p-3 text-left text-xs transition-all ${btnStyle}`}
+                          className={`rounded-xl border p-3 text-start text-xs transition-all ${btnStyle}`}
                         >
-                          <span className="mr-2 font-bold opacity-60">
+                          <span className="me-2 font-bold opacity-60">
                             {String.fromCharCode(65 + optIdx)}.
                           </span>
                           {opt}

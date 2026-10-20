@@ -94,7 +94,7 @@ export function CallsPanel({ onPerson }: { onPerson: (id: string) => void }) {
                 );
               })}
             </div>
-            <p className="mt-2 text-[11px] text-zinc-500 flex gap-3"><span><span className="inline-block w-2 h-2 rounded-sm bg-indigo-500 mr-1" />connected</span><span><span className="inline-block w-2 h-2 rounded-sm bg-rose-500 mr-1" />failed</span></p>
+            <p className="mt-2 text-[11px] text-zinc-500 flex gap-3"><span><span className="inline-block w-2 h-2 rounded-sm bg-indigo-500 me-1" />connected</span><span><span className="inline-block w-2 h-2 rounded-sm bg-rose-500 me-1" />failed</span></p>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-4">
@@ -102,7 +102,7 @@ export function CallsPanel({ onPerson }: { onPerson: (id: string) => void }) {
               <p className="text-sm font-semibold text-zinc-900 dark:text-white">Why calls failed</p>
               {data.failures.length === 0 ? <p className="text-sm text-zinc-500">No failures. 🎉</p> : data.failures.map((f) => (
                 <div key={f.key} className="flex gap-3">
-                  <span className="text-lg font-bold text-rose-500 w-10 shrink-0 text-right">{f.n}</span>
+                  <span className="text-lg font-bold text-rose-500 w-10 shrink-0 text-end">{f.n}</span>
                   <div className="text-sm">
                     <p className="font-semibold text-zinc-900 dark:text-white">{FAILURE[f.key]?.label ?? f.key}</p>
                     <p className="text-zinc-500 text-xs">{FAILURE[f.key]?.why}</p>
@@ -113,13 +113,13 @@ export function CallsPanel({ onPerson }: { onPerson: (id: string) => void }) {
             <div className={cn(card, 'p-4')}>
               <p className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Devices</p>
               <table className="w-full text-sm">
-                <thead><tr className="text-left text-[11px] uppercase tracking-wider text-zinc-400"><th className="font-semibold py-1">Device</th><th className="font-semibold py-1 text-right">Joins</th><th className="font-semibold py-1 text-right">Failed</th></tr></thead>
+                <thead><tr className="text-start text-[11px] uppercase tracking-wider text-zinc-400"><th className="font-semibold py-1">Device</th><th className="font-semibold py-1 text-end">Joins</th><th className="font-semibold py-1 text-end">Failed</th></tr></thead>
                 <tbody>
                   {data.devices.map((d) => (
                     <tr key={d.key} className="border-t border-zinc-100 dark:border-white/[0.05]">
                       <td className="py-1.5 text-zinc-700 dark:text-zinc-300">{d.key}</td>
-                      <td className="py-1.5 text-right tabular-nums">{d.n}</td>
-                      <td className={cn('py-1.5 text-right tabular-nums', d.failed / d.n > 0.1 ? 'text-rose-500 font-semibold' : 'text-zinc-500')}>{Math.round((d.failed / d.n) * 100)}%</td>
+                      <td className="py-1.5 text-end tabular-nums">{d.n}</td>
+                      <td className={cn('py-1.5 text-end tabular-nums', d.failed / d.n > 0.1 ? 'text-rose-500 font-semibold' : 'text-zinc-500')}>{Math.round((d.failed / d.n) * 100)}%</td>
                     </tr>
                   ))}
                 </tbody>

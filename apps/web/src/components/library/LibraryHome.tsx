@@ -61,7 +61,7 @@ export function LibraryHome() {
             <motion.ul variants={list} initial="hidden" animate="show" className={cn('grid grid-cols-1 sm:grid-cols-2 gap-2 transition-opacity', isLoading && 'opacity-60')}>
               {data.books.map((b) => (
                 <motion.li key={b.id} variants={fadeUp}>
-                  <button type="button" onClick={() => { haptic('tap'); setOpen(b.id); }} className={`${card} w-full p-3 flex gap-3 text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors`}>
+                  <button type="button" onClick={() => { haptic('tap'); setOpen(b.id); }} className={`${card} w-full p-3 flex gap-3 text-start hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors`}>
                     <Cover url={b.coverUrl} title={b.title} className="w-12 h-16 shrink-0" />
                     <span className="flex-1 min-w-0">
                       <span className="block text-sm font-semibold text-zinc-900 dark:text-white line-clamp-2">{b.title}</span>

@@ -159,9 +159,9 @@ export default function DocsPage() {
                       <ChevronRight className="w-4 h-4 text-zinc-400 self-center" />
                     </Link>
                     {inside.length > 0 && (
-                      <ul className="mt-2 ml-[3.25rem] space-y-0.5" aria-label={`Pages inside ${d.title}`}>
+                      <ul className="mt-2 ms-[3.25rem] space-y-0.5" aria-label={`Pages inside ${d.title}`}>
                         {inside.slice(0, 4).map((c) => <li key={c.id}><Link href={`${KINDS[kindOf(c.kind)].path}/${c.id}`} className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-300"><CornerDownRight className="w-3 h-3 text-zinc-400 shrink-0" aria-hidden /><span className="truncate">{c.title}</span></Link></li>)}
-                        {inside.length > 4 && <li className="text-xs text-zinc-500 pl-[1.125rem]">and {inside.length - 4} more</li>}
+                        {inside.length > 4 && <li className="text-xs text-zinc-500 ps-[1.125rem]">and {inside.length - 4} more</li>}
                       </ul>
                     )}
                   </div>

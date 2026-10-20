@@ -48,7 +48,7 @@ export function PassportView({ p, badgeActions, onHide, theme }: { p: PassportDa
   return (
     <div className="space-y-5">
       <header className="relative overflow-hidden rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-5 sm:p-7">
-        <div aria-hidden className={`absolute -top-24 -right-24 w-72 h-72 rounded-full bg-gradient-to-br ${t.soft} blur-3xl`} />
+        <div aria-hidden className={`absolute -top-24 -end-24 w-72 h-72 rounded-full bg-gradient-to-br ${t.soft} blur-3xl`} />
         <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
           {p.avatar
             ? <img src={p.avatar} {...photoSrcSet(p.avatar, 80)} alt="" className="w-20 h-20 rounded-2xl object-cover" />
@@ -79,7 +79,7 @@ export function PassportView({ p, badgeActions, onHide, theme }: { p: PassportDa
 
       {p.strengths && (
         <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="relative rounded-3xl border border-indigo-500/15 bg-gradient-to-br from-indigo-500/[0.06] to-fuchsia-500/[0.06] p-5 sm:p-6">
-          <Quote aria-hidden className="absolute top-4 right-4 w-8 h-8 text-indigo-500/15" />
+          <Quote aria-hidden className="absolute top-4 end-4 w-8 h-8 text-indigo-500/15" />
           <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-500">Strengths</h2>
           <p className="mt-2 text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-100">{p.strengths}</p>
         </motion.section>
@@ -181,7 +181,7 @@ function EvidenceSection({ groups, onHide }: { groups: EvidenceGroup[]; onHide?:
             const isOpen = open === g.skill;
             return (
               <li key={g.skill} className={cn('rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] overflow-hidden', g.count === 0 && 'opacity-60')}>
-                <button type="button" onClick={() => setOpen(isOpen ? null : g.skill)} aria-expanded={isOpen} className="w-full text-left p-3.5 flex items-center gap-3">
+                <button type="button" onClick={() => setOpen(isOpen ? null : g.skill)} aria-expanded={isOpen} className="w-full text-start p-3.5 flex items-center gap-3">
                   <span className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white text-sm font-black flex items-center justify-center tabular-nums">{g.count}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{g.label}</span>

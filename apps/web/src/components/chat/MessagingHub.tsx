@@ -194,7 +194,7 @@ export function MessagingHub() {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-black text-zinc-900 dark:text-white flex items-center gap-2">
               {view === 'archived' ? (
-                <><button onClick={() => setView('chats')} aria-label="Back to chats" className="p-1 -ml-1 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button> Archived</>
+                <><button onClick={() => setView('chats')} aria-label="Back to chats" className="p-1 -ms-1 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button> Archived</>
               ) : (
                 <>Chats {totalUnread > 0 && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">{totalUnread}</span>}</>
               )}
@@ -203,7 +203,7 @@ export function MessagingHub() {
               <PresencePicker />
               <button onClick={() => setSavedOpen(true)} aria-label={dueCount ? `Saved: ${dueCount} reminder${dueCount === 1 ? '' : 's'} due` : 'Saved: later and starred'} title="Later and starred" className="relative p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-amber-500 hover:bg-zinc-100 dark:hover:bg-white/10">
                 <Star className="w-5 h-5" />
-                {dueCount > 0 && <span className="absolute top-0.5 right-0.5 min-w-[1rem] h-4 px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-4 text-center">{dueCount > 9 ? '9+' : dueCount}</span>}
+                {dueCount > 0 && <span className="absolute top-0.5 end-0.5 min-w-[1rem] h-4 px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-4 text-center">{dueCount > 9 ? '9+' : dueCount}</span>}
               </button>
               <button onClick={() => setDialog('group')} aria-label="New group" title="New group" className="p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Users className="w-5 h-5" /></button>
               <button onClick={() => setDialog('chat')} aria-label="New chat" title="New chat" className="p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><MessageSquarePlus className="w-5 h-5" /></button>
@@ -219,8 +219,8 @@ export function MessagingHub() {
           </div>
           {space === 'chats' && <>
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search chats and messages" aria-label="Search chats and messages" title="Filters: from:name, in:chat, has:file, has:link, has:photo, has:voice, before:2026-10-01, after:2026-09-01" className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-indigo-500/40" />
+            <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search chats and messages" aria-label="Search chats and messages" title="Filters: from:name, in:chat, has:file, has:link, has:photo, has:voice, before:2026-10-01, after:2026-09-01" className="w-full ps-10 pe-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-indigo-500/40" />
           </div>
           {/* Message search filters (1.14): each chip adds or removes its filter in the search box. */}
           <AnimatePresence initial={false}>
@@ -262,7 +262,7 @@ export function MessagingHub() {
           {isLoading && <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div>}
           {error && <p className="p-6 text-center text-sm text-rose-500">{(error as Error).message}</p>}
           {view === 'chats' && archivedCount > 0 && !search && (
-            <button onClick={() => setView('archived')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]">
+            <button onClick={() => setView('archived')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-start hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]">
               <span className="w-12 flex justify-center"><Archive className="w-5 h-5 text-zinc-500" /></span>
               <span className="flex-1 font-semibold text-sm text-zinc-800 dark:text-zinc-200">Archived</span>
               <span className="text-xs text-zinc-500">{archivedUnread > 0 ? <span className="text-indigo-500 font-semibold">{archivedUnread} unread</span> : archivedCount}</span>
@@ -287,7 +287,7 @@ export function MessagingHub() {
                 onPointerDown={(e) => { if (e.pointerType === 'touch') press.current = setTimeout(() => { haptic('tap'); setMenuFor(c.id); }, 480); }}
                 onPointerUp={() => press.current && clearTimeout(press.current)}
                 onPointerLeave={() => press.current && clearTimeout(press.current)}
-                className={cn('relative isolate w-full flex items-center gap-3 p-3 rounded-2xl text-left transition-colors', active ? '' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}
+                className={cn('relative isolate w-full flex items-center gap-3 p-3 rounded-2xl text-start transition-colors', active ? '' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}
               >{active && <TabPill id="components-chat-messaginghub-1" variant="soft" />}
                 <Avatar name={c.title} src={c.avatarUrl} online={c.online} size={48} />
                 <div className="flex-1 min-w-0">
@@ -313,12 +313,12 @@ export function MessagingHub() {
               </button>
               {(
                 <button onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === c.id ? null : c.id); }} aria-label="Chat options"
-                  className={cn('absolute right-2 top-2 p-1 rounded-full bg-white/90 dark:bg-[#121830]/90 text-zinc-500 shadow-sm transition-opacity hidden md:block', menuFor === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
+                  className={cn('absolute end-2 top-2 p-1 rounded-full bg-white/90 dark:bg-[#121830]/90 text-zinc-500 shadow-sm transition-opacity hidden md:block', menuFor === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
               )}
               {menuFor === c.id && (
-                <div className="absolute right-2 top-9 z-30 w-52 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm" onMouseLeave={() => setMenuFor(null)}>
+                <div className="absolute end-2 top-9 z-30 w-52 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm" onMouseLeave={() => setMenuFor(null)}>
                   {!c.archived && <ListItem icon={c.pinned ? PinOff : Pin} label={c.pinned ? 'Unpin chat' : 'Pin chat'} onClick={() => setPref(c, { pinned: !c.pinned })} />}
                   {c.muted
                     ? <ListItem icon={Bell} label={mutedLabel(c)} onClick={() => setPref(c, { muted: false }, 'Unmuted')} />
@@ -344,7 +344,7 @@ export function MessagingHub() {
               <p className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-zinc-400 flex items-center gap-2">Messages {searching && <Loader2 className="w-3 h-3 animate-spin" />}</p>
               {found && found.length === 0 && !searching && <p className="px-3 pb-3 text-sm text-zinc-500">No messages contain “{deepQ}”.</p>}
               {found?.map((m) => (
-                <button key={m.id} onClick={() => { select(m.conversationId); setJumpTo(m.id); }} className="w-full flex items-start gap-3 p-3 rounded-2xl text-left hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]">
+                <button key={m.id} onClick={() => { select(m.conversationId); setJumpTo(m.id); }} className="w-full flex items-start gap-3 p-3 rounded-2xl text-start hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]">
                   <Avatar name={m.title} src={m.avatar} size={40} />
                   <span className="flex-1 min-w-0">
                     <span className="flex items-center justify-between gap-2"><span className="font-semibold text-sm text-zinc-900 dark:text-white truncate">{m.title}</span><span className="text-[11px] text-zinc-400 shrink-0">{timeLabel(m.createdAt)}</span></span>

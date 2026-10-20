@@ -112,7 +112,7 @@ export default function CallsPage() {
                 const who = withWho(c.people, c.more);
                 return (
                   <motion.li key={c.key} variants={fadeUp} className="flex items-start gap-3 p-4">
-                    <button type="button" onClick={() => { if (c.conversationId) router.push(`${inbox}?c=${c.conversationId}`); }} disabled={!c.conversationId} className="flex items-start gap-3 flex-1 min-w-0 text-left disabled:cursor-default">
+                    <button type="button" onClick={() => { if (c.conversationId) router.push(`${inbox}?c=${c.conversationId}`); }} disabled={!c.conversationId} className="flex items-start gap-3 flex-1 min-w-0 text-start disabled:cursor-default">
                       <span className={cn('w-11 h-11 rounded-full flex items-center justify-center shrink-0', c.missed ? 'bg-rose-500/10 text-rose-500' : c.live ? 'bg-emerald-500/15 text-emerald-500 animate-pulse' : 'bg-indigo-500/10 text-indigo-500')}><Icon className="w-5 h-5" /></span>
                       <span className="min-w-0">
                         <span className={cn('block font-semibold truncate', c.missed ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white')}>{c.title}</span>

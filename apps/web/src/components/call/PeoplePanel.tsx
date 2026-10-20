@@ -55,7 +55,7 @@ export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotli
           <motion.div key="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
           <motion.aside key="people" role="dialog" aria-label="People in the call"
             initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 28 }} transition={spring.smooth}
-            className="absolute z-40 inset-x-0 bottom-0 max-h-[78vh] rounded-t-3xl sm:inset-x-auto sm:right-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:w-[22rem] sm:max-h-none sm:rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0">
+            className="absolute z-40 inset-x-0 bottom-0 max-h-[78vh] rounded-t-3xl sm:inset-x-auto sm:end-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:w-[22rem] sm:max-h-none sm:rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0">
             <div className="flex items-center justify-between px-4 pt-4 pb-2">
               <p className="font-semibold">People <span className="text-zinc-400 font-normal">· {people.length}</span></p>
               <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
@@ -117,7 +117,7 @@ export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotli
                 {lit && (
                   <span className={cn(chip, 'bg-gradient-to-r from-indigo-500/30 to-fuchsia-500/30 text-white')}>
                     <Pin className="w-3.5 h-3.5" />{lit.me ? 'You’re' : `${lit.name} is`} in the spotlight
-                    {canModerate && <button type="button" onClick={() => act('spotlight', null)} className="ml-1 underline underline-offset-2">Stop</button>}
+                    {canModerate && <button type="button" onClick={() => act('spotlight', null)} className="ms-1 underline underline-offset-2">Stop</button>}
                   </span>
                 )}
               </div>
@@ -148,7 +148,7 @@ export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotli
                             <span className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
                               <motion.span className="block h-full rounded-full bg-gradient-to-r from-indigo-400 to-fuchsia-400" initial={false} animate={{ width: `${((p.talkMs ?? 0) / loudest) * 100}%` }} transition={spring.smooth} />
                             </span>
-                            <span className="text-[10px] text-zinc-500 tabular-nums w-12 text-right">{talkClock(p.talkMs ?? 0)}</span>
+                            <span className="text-[10px] text-zinc-500 tabular-nums w-12 text-end">{talkClock(p.talkMs ?? 0)}</span>
                           </div>
                         )}
                       </div>
@@ -162,7 +162,7 @@ export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotli
                     <AnimatePresence initial={false}>
                       {menu && openRow === p.id && (
                         <motion.div key="actions" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden">
-                          <div className="px-4 pb-3 pl-16 flex flex-wrap gap-1.5">
+                          <div className="px-4 pb-3 ps-16 flex flex-wrap gap-1.5">
                             {others && (p.muted
                               ? <button type="button" onClick={() => act('ask-unmute', p.id)} className={cn(chip, 'bg-white/10 hover:bg-white/20')}><Mic className="w-3.5 h-3.5" />Ask to unmute</button>
                               : <button type="button" onClick={() => act('mute', p.id)} className={cn(chip, 'bg-white/10 hover:bg-white/20')}><MicOff className="w-3.5 h-3.5" />Mute</button>)}

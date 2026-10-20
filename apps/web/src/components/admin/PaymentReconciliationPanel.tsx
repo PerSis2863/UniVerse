@@ -236,7 +236,7 @@ export function PaymentReconciliationPanel() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-start text-xs">
                   <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 font-semibold border-b border-zinc-200 dark:border-zinc-800">
                     <tr>
                       <th className="py-2.5 px-4">Order Ref</th>
@@ -246,7 +246,7 @@ export function PaymentReconciliationPanel() {
                       <th className="py-2.5 px-4">Amount</th>
                       <th className="py-2.5 px-4">Status</th>
                       <th className="py-2.5 px-4">Paid Date</th>
-                      <th className="py-2.5 px-4 text-right">Actions</th>
+                      <th className="py-2.5 px-4 text-end">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -280,7 +280,7 @@ export function PaymentReconciliationPanel() {
                         <td className="py-3 px-4 text-[11px] text-zinc-500">
                           {tx.paidAt ? new Date(tx.paidAt).toLocaleDateString() : 'Pending'}
                         </td>
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-3 px-4 text-end">
                           {tx.status === 'COMPLETED' && (
                             <button
                               onClick={() => setRefundingOrderId(tx.id)}

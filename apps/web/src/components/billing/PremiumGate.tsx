@@ -36,7 +36,7 @@ export function PremiumGate({ feature, children }: { feature: PremiumFeature; ch
           aria-hidden
           animate={{ rotate: 360 }}
           transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
-          className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-conic from-indigo-500/20 via-fuchsia-500/20 to-indigo-500/20 blur-3xl"
+          className="absolute -top-40 -end-40 w-80 h-80 rounded-full bg-conic from-indigo-500/20 via-fuchsia-500/20 to-indigo-500/20 blur-3xl"
         />
         <div className="relative">
           <div className="mx-auto mb-6 w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
@@ -47,7 +47,7 @@ export function PremiumGate({ feature, children }: { feature: PremiumFeature; ch
           </span>
           <h2 className="text-3xl font-black tracking-tight text-zinc-900 dark:text-white mb-3">{info.name}</h2>
           <p className="text-zinc-600 dark:text-zinc-400 max-w-md mx-auto mb-8">{info.description}</p>
-          <ul className="inline-flex flex-col gap-2 text-left mb-8">
+          <ul className="inline-flex flex-col gap-2 text-start mb-8">
             {plan.features.map((f) => (
               <li key={f} className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
                 <Check className="w-4 h-4 text-emerald-500 shrink-0" /> {f}

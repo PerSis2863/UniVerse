@@ -36,7 +36,7 @@ export function Cell({ title, subtitle, icon: Icon, iconBg = 'bg-indigo-500', tr
   const body = (
     <>
       {Icon && <span className={cn('ios-icon-tile', iconBg)}><Icon className="w-4 h-4" aria-hidden /></span>}
-      <span className="flex-1 min-w-0 text-left">
+      <span className="flex-1 min-w-0 text-start">
         <span className={cn('block text-[0.9375rem] truncate', destructive ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white')}>{title}</span>
         {subtitle && <span className="block text-xs text-zinc-500 dark:text-zinc-400 truncate">{subtitle}</span>}
       </span>

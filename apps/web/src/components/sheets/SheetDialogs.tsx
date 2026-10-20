@@ -121,13 +121,13 @@ function Functions({ onPick, onClose }: { onPick: (name: string) => void; onClos
     <Sheet title="Insert a function" onClose={onClose}>
       <div className="space-y-3">
         <div className="flex gap-2">
-          <label className="relative flex-1"><span className="sr-only">Search functions</span><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search, like “average” or “date”" className="input pl-9" /></label>
+          <label className="relative flex-1"><span className="sr-only">Search functions</span><Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-zinc-500" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search, like “average” or “date”" className="input ps-9" /></label>
           <select aria-label="Group" value={group} onChange={(e) => setGroup(e.target.value)} className="input w-auto"><option value="">All</option>{groups.map((g) => <option key={g} value={g}>{g}</option>)}</select>
         </div>
         <ul className="max-h-[50vh] overflow-y-auto divide-y divide-zinc-100 dark:divide-white/[0.06]">
           {list.map((f) => (
             <li key={f.name}>
-              <button type="button" onClick={() => onPick(f.name)} className="w-full text-left px-2 py-2 hover:bg-zinc-50 dark:hover:bg-white/[0.04] rounded-lg">
+              <button type="button" onClick={() => onPick(f.name)} className="w-full text-start px-2 py-2 hover:bg-zinc-50 dark:hover:bg-white/[0.04] rounded-lg">
                 <span className="font-mono text-sm font-semibold text-zinc-900 dark:text-white">{f.name}</span><span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">({f.args})</span>
                 <span className="block text-sm text-zinc-600 dark:text-zinc-400">{f.does}</span>
               </button>

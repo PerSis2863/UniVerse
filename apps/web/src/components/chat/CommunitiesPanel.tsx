@@ -62,7 +62,7 @@ export function CommunitiesPanel({ activeId, onOpen }: { activeId: string | null
         return (
           <div key={c.id} className="mb-1">
             <div className="flex items-center gap-1">
-              <button type="button" onClick={() => setOpen((o) => ({ ...o, [c.id]: !isOpen(c) }))} aria-expanded={isOpen(c)} className="flex-1 min-w-0 flex items-center gap-3 p-2.5 rounded-2xl text-left hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]">
+              <button type="button" onClick={() => setOpen((o) => ({ ...o, [c.id]: !isOpen(c) }))} aria-expanded={isOpen(c)} className="flex-1 min-w-0 flex items-center gap-3 p-2.5 rounded-2xl text-start hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]">
                 <span className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-black text-lg shrink-0" style={{ background: c.color }}>{c.name.slice(0, 1).toUpperCase()}</span>
                 <span className="flex-1 min-w-0">
                   <span className="block font-semibold text-zinc-900 dark:text-white truncate">{c.name}</span>
@@ -75,7 +75,7 @@ export function CommunitiesPanel({ activeId, onOpen }: { activeId: string | null
             </div>
             <AnimatePresence initial={false}>
               {isOpen(c) && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden ml-6 pl-3 border-l border-zinc-200 dark:border-white/10">
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={spring.smooth} className="overflow-hidden ms-6 ps-3 border-s border-zinc-200 dark:border-white/10">
                   {/* Channels under their category headings (Stage 5 · B7.4). */}
                   {groupChannels(c.channels.map((ch) => ({ ...ch, category: ch.category ?? null }))).map((g) => (
                     <div key={g.category ?? ''}>
@@ -90,7 +90,7 @@ export function CommunitiesPanel({ activeId, onOpen }: { activeId: string | null
         );
       })}
       {data && (
-        <button type="button" onClick={() => setDiscovering(true)} className="w-full mt-1 flex items-center gap-3 p-2.5 rounded-2xl text-left hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]">
+        <button type="button" onClick={() => setDiscovering(true)} className="w-full mt-1 flex items-center gap-3 p-2.5 rounded-2xl text-start hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]">
           <span className="w-11 h-11 rounded-2xl flex items-center justify-center bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 shrink-0"><Compass className="w-5 h-5" /></span>
           <span className="flex-1 min-w-0">
             <span className="block font-semibold text-zinc-900 dark:text-white">Discover communities</span>
@@ -116,10 +116,10 @@ function ChannelRow({ ch, active, onOpen }: { ch: Channel; active: boolean; onOp
   if (ch.kind === 'VOICE') {
     return (
       <li>
-        <button type="button" onClick={() => router.push(`/call/r_${ch.id}?kind=audio`)} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-left hover:bg-emerald-500/10 group">
+        <button type="button" onClick={() => router.push(`/call/r_${ch.id}?kind=audio`)} className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-start hover:bg-emerald-500/10 group">
           <Headphones className="w-4 h-4 text-emerald-500 shrink-0" />
           <span className="flex-1 min-w-0">
-            <span className="block text-sm text-zinc-700 dark:text-zinc-200 truncate">{ch.name}{ch.private && <Lock className="inline w-3 h-3 ml-1 -mt-0.5 text-zinc-400" aria-label="private" />}</span>
+            <span className="block text-sm text-zinc-700 dark:text-zinc-200 truncate">{ch.name}{ch.private && <Lock className="inline w-3 h-3 ms-1 -mt-0.5 text-zinc-400" aria-label="private" />}</span>
             {!!peers?.count && <span className="block text-[11px] text-emerald-600 dark:text-emerald-400 truncate">{peers.names.slice(0, 3).map((n) => n.split(' ')[0]).join(', ')}{peers.count > 3 ? ` +${peers.count - 3}` : ''} inside</span>}
           </span>
           <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100">Join</span>
@@ -129,9 +129,9 @@ function ChannelRow({ ch, active, onOpen }: { ch: Channel; active: boolean; onOp
   }
   return (
     <li>
-      <button type="button" onClick={onOpen} className={cn('relative isolate w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-colors', active ? 'text-indigo-700 dark:text-indigo-200' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}>{active && <TabPill id="onents-chat-communitiespanel-0" variant="soft" />}
+      <button type="button" onClick={onOpen} className={cn('relative isolate w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-start transition-colors', active ? 'text-indigo-700 dark:text-indigo-200' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}>{active && <TabPill id="onents-chat-communitiespanel-0" variant="soft" />}
         {ch.kind === 'ANNOUNCE' ? <Megaphone className="w-4 h-4 text-amber-500 shrink-0" /> : <Hash className="w-4 h-4 text-zinc-400 shrink-0" />}
-        <span className={cn('flex-1 text-sm truncate', ch.unread ? 'font-semibold text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-300')}>{ch.name}{ch.private && <Lock className="inline w-3 h-3 ml-1 -mt-0.5 text-zinc-400" aria-label="private" />}</span>
+        <span className={cn('flex-1 text-sm truncate', ch.unread ? 'font-semibold text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-300')}>{ch.name}{ch.private && <Lock className="inline w-3 h-3 ms-1 -mt-0.5 text-zinc-400" aria-label="private" />}</span>
         {ch.unread > 0 && <span className="min-w-5 h-5 px-1.5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">{ch.unread > 99 ? '99+' : ch.unread}</span>}
       </button>
     </li>
@@ -310,9 +310,9 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
             <div className="flex items-center justify-between"><p className="text-xs font-semibold text-zinc-500">{data.members.length} members</p>{mod && <button type="button" onClick={() => setAdding(!adding)} className="text-xs font-semibold text-indigo-500 inline-flex items-center gap-1"><UserPlus className="w-3.5 h-3.5" /> Add people</button>}</div>
             {adding && (
               <div className="rounded-2xl border border-zinc-200 dark:border-white/10 p-2 space-y-1">
-                <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people" className={cn('input', 'pl-9')} /></div>
+                <div className="relative"><Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people" className={cn('input', 'ps-9')} /></div>
                 {people?.filter((p) => !data.members.some((m) => m.id === p.id)).slice(0, 8).map((p) => (
-                  <button key={p.id} type="button" onClick={() => void post({ action: 'add', userIds: [p.id] }, `${p.name.split(' ')[0]} added`)} className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-left"><Avatar name={p.name} src={p.avatar} size={30} /><span className="flex-1 text-sm text-zinc-800 dark:text-zinc-200 truncate">{p.name}</span><Plus className="w-4 h-4 text-indigo-500" /></button>
+                  <button key={p.id} type="button" onClick={() => void post({ action: 'add', userIds: [p.id] }, `${p.name.split(' ')[0]} added`)} className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-start"><Avatar name={p.name} src={p.avatar} size={30} /><span className="flex-1 text-sm text-zinc-800 dark:text-zinc-200 truncate">{p.name}</span><Plus className="w-4 h-4 text-indigo-500" /></button>
                 ))}
               </div>
             )}
@@ -396,7 +396,7 @@ function CustomEmoji({ communityId }: { communityId: string }) {
             <li key={e.name} className="group relative flex flex-col items-center gap-1 rounded-xl p-2 bg-zinc-50 dark:bg-white/[0.03]">
               <img src={e.url} alt={`:${e.name}:`} className="w-8 h-8 object-contain" />
               <span className="text-[10px] text-zinc-500 truncate max-w-full">:{e.name}:</span>
-              <button type="button" onClick={() => void remove(e.name)} aria-label={`Remove :${e.name}:`} className="absolute top-1 right-1 p-0.5 rounded-full text-zinc-400 hover:text-rose-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"><X className="w-3 h-3" /></button>
+              <button type="button" onClick={() => void remove(e.name)} aria-label={`Remove :${e.name}:`} className="absolute top-1 end-1 p-0.5 rounded-full text-zinc-400 hover:text-rose-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"><X className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>
@@ -408,9 +408,9 @@ function CustomEmoji({ communityId }: { communityId: string }) {
             <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) { choose(f); if (!name) setName(clean(f.name.replace(/\.[^.]+$/, ''))); } }} />
           </label>
           <div className="relative flex-1 min-w-0">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">:</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={32} placeholder="name" aria-label="Emoji name" className={cn('input', 'pl-6 pr-6')} />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">:</span>
+            <span className="absolute start-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">:</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={32} placeholder="name" aria-label="Emoji name" className={cn('input', 'ps-6 pe-6')} />
+            <span className="absolute end-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">:</span>
           </div>
           <button type="button" disabled={!file || clean(name).length < 2 || busy} onClick={() => void add()} className="btn-primary shrink-0">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}</button>
         </div>

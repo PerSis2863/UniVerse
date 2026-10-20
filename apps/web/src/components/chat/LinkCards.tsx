@@ -25,7 +25,7 @@ function Live({ kind, id, url, mine }: { kind: AppLinkKind; id: string; url: str
   const path = new URL(url).pathname;
   const pct = data?.progress?.total ? Math.round((data.progress.done / data.progress.total) * 100) : 0;
   return (
-    <Link href={path} className={cn('mt-2 flex gap-3 rounded-xl border-l-4 px-3 py-2 transition-colors', mine ? 'bg-white/10 border-white/60 hover:bg-white/15' : 'bg-zinc-100 dark:bg-white/[0.05] border-indigo-400 hover:bg-zinc-200/70 dark:hover:bg-white/[0.08]')}>
+    <Link href={path} className={cn('mt-2 flex gap-3 rounded-xl border-s-4 px-3 py-2 transition-colors', mine ? 'bg-white/10 border-white/60 hover:bg-white/15' : 'bg-zinc-100 dark:bg-white/[0.05] border-indigo-400 hover:bg-zinc-200/70 dark:hover:bg-white/[0.08]')}>
       {data?.thumbnail && <img src={data.thumbnail} alt="" className="w-16 h-12 rounded-lg object-cover bg-white shrink-0" />}
       <span className="min-w-0 flex-1">
         <span className={cn('flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide', mine ? 'text-white/70' : 'text-zinc-500')}><Icon className="w-3 h-3" aria-hidden />{LABEL[kind]} · UniVerse</span>
@@ -58,7 +58,7 @@ export function YouTubeCard({ id, url, title, mine }: { id: string; url: string;
       ) : (
         <button type="button" onClick={() => setPlaying(true)} aria-label={`Play ${title ?? 'the video'}`} className="relative block w-full aspect-video group">
           <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
-          <span className="absolute inset-0 grid place-items-center bg-black/10 group-hover:bg-black/20 transition-colors"><span className="w-12 h-12 rounded-full bg-red-600 text-white grid place-items-center shadow-lg"><Play className="w-5 h-5 ml-0.5 fill-current" aria-hidden /></span></span>
+          <span className="absolute inset-0 grid place-items-center bg-black/10 group-hover:bg-black/20 transition-colors"><span className="w-12 h-12 rounded-full bg-red-600 text-white grid place-items-center shadow-lg"><Play className="w-5 h-5 ms-0.5 fill-current" aria-hidden /></span></span>
         </button>
       )}
       {title && <span className="block px-3 py-1.5 text-xs font-semibold line-clamp-2">{title}</span>}

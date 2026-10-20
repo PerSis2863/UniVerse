@@ -29,7 +29,7 @@ const STATUS_STYLE: Record<string, string> = {
   ARCHIVED: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
 };
 const cap = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
-const searchInput = 'w-full pl-9 pr-9 py-2 rounded-lg bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500';
+const searchInput = 'w-full ps-9 pe-9 py-2 rounded-lg bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500';
 
 export default function AdminCoursesPage() {
   const { data: courses = [], isLoading, mutate: mutateCourses } = useSWR<AdminCourse[]>('/courses/admin/all', fetcher);
@@ -188,10 +188,10 @@ export default function AdminCoursesPage() {
               ))}
             </div>
             <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
               <input value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search"
                 placeholder={view === 'courses' ? 'Search course, code, department or teacher…' : 'Search teacher name, email, department or course…'} className={searchInput} />
-              {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"><X className="w-4 h-4" /></button>}
+              {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute end-2 top-1/2 -translate-y-1/2 p-1 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"><X className="w-4 h-4" /></button>}
             </div>
             {view === 'courses' && (
               <div className="flex gap-2">
@@ -242,17 +242,17 @@ export default function AdminCoursesPage() {
                   <div className="flex items-start gap-2 mb-4 min-w-0">
                     <GraduationCap className="w-4 h-4 mt-0.5 text-zinc-500 shrink-0" />
                     <div className="min-w-0 text-sm">
-                      <p className="text-zinc-700 dark:text-zinc-300 font-medium">{course.teacher?.name || 'Unassigned'}{course.teacher?.status === 'SUSPENDED' ? <span className="ml-1 text-xs text-red-500">(suspended)</span> : null}</p>
+                      <p className="text-zinc-700 dark:text-zinc-300 font-medium">{course.teacher?.name || 'Unassigned'}{course.teacher?.status === 'SUSPENDED' ? <span className="ms-1 text-xs text-red-500">(suspended)</span> : null}</p>
                       {course.teacher?.email && <a href={`mailto:${course.teacher.email}`} className="text-xs text-indigo-500 break-all">{course.teacher.email}</a>}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-3 text-xs text-zinc-600 dark:text-zinc-400 p-3 bg-zinc-50 dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 mb-4">
-                    <div className="flex flex-col gap-1 items-center border-r border-zinc-200 dark:border-zinc-800">
+                    <div className="flex flex-col gap-1 items-center border-e border-zinc-200 dark:border-zinc-800">
                       <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5"/> Students</span>
                       <span className="text-zinc-900 dark:text-white font-medium text-sm">{course._count?.enrollments || 0}</span>
                     </div>
-                    <div className="flex flex-col gap-1 items-center border-r border-zinc-200 dark:border-zinc-800">
+                    <div className="flex flex-col gap-1 items-center border-e border-zinc-200 dark:border-zinc-800">
                       <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5"/> Materials</span>
                       <span className="text-zinc-900 dark:text-white font-medium text-sm">{course._count?.materials || 0}</span>
                     </div>
@@ -315,7 +315,7 @@ function TeacherList({ teachers, total, coursesByTeacher, onRoster }: { teachers
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium shrink-0">{t.name.charAt(0).toUpperCase()}</div>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-zinc-900 dark:text-white break-words">{t.name}{t.status !== 'ACTIVE' && <span className="ml-2 text-[11px] font-bold text-amber-600 dark:text-amber-400">{cap(t.status)}</span>}</p>
+                <p className="font-semibold text-zinc-900 dark:text-white break-words">{t.name}{t.status !== 'ACTIVE' && <span className="ms-2 text-[11px] font-bold text-amber-600 dark:text-amber-400">{cap(t.status)}</span>}</p>
                 <a href={`mailto:${t.email}`} className="text-sm text-indigo-500 break-all inline-flex items-center gap-1"><Mail className="w-3.5 h-3.5 shrink-0" />{t.email}</a>
                 <p className="text-xs text-zinc-500 mt-0.5">
                   {[t.teacherProfile?.designation, t.teacherProfile?.department].filter(Boolean).join(' · ') || 'No department set'}
@@ -372,7 +372,7 @@ function RosterSheet({ course, onClose }: { course: AdminCourse; onClose: () => 
         </div>
         <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search students" aria-label="Search students" className={searchInput} />
           </div>
           <button onClick={exportCsv} disabled={!all.length} className="btn-secondary btn-sm">CSV</button>

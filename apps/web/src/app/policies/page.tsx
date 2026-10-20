@@ -45,7 +45,7 @@ export default function PoliciesPage() {
             <div className="flex items-start gap-3">
               <FileText className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
               <div className="min-w-0">
-                <p className="font-semibold text-white inline-flex items-center gap-1.5">{d.title} <ArrowRight className="w-4 h-4 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" /></p>
+                <p className="font-semibold text-white inline-flex items-center gap-1.5">{d.title} <ArrowRight className="w-4 h-4 opacity-0 -translate-x-1 rtl:translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" /></p>
                 <p className="mt-1 text-sm text-zinc-400">{d.text}</p>
               </div>
             </div>
@@ -57,7 +57,7 @@ export default function PoliciesPage() {
         <p>These companies process data for us, under data processing agreements, to run UniVerse.</p>
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="w-full min-w-[520px] text-sm border-collapse">
-            <thead><tr className="text-left text-zinc-400"><th className="py-2 px-4 font-semibold">Provider</th><th className="py-2 px-4 font-semibold">Purpose</th><th className="py-2 px-4 font-semibold">Location</th></tr></thead>
+            <thead><tr className="text-start text-zinc-400"><th className="py-2 px-4 font-semibold">Provider</th><th className="py-2 px-4 font-semibold">Purpose</th><th className="py-2 px-4 font-semibold">Location</th></tr></thead>
             <tbody>
               {PROVIDERS.map(([a, b, c]) => (
                 <tr key={a} className="border-t border-white/10"><td className="py-2.5 px-4 text-white">{a}</td><td className="py-2.5 px-4 text-zinc-300">{b}</td><td className="py-2.5 px-4 text-zinc-400">{c}</td></tr>

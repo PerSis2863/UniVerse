@@ -56,7 +56,7 @@ export function AttentionCard({ onGo }: { onGo: (tab: string, filter?: string) =
                 <ArrowRight className="w-4 h-4 text-zinc-300 shrink-0" />
               </>
             );
-            const cls = 'w-full flex items-center gap-3 py-2.5 text-left hover:text-indigo-500';
+            const cls = 'w-full flex items-center gap-3 py-2.5 text-start hover:text-indigo-500';
             return (
               <li key={x.id}>
                 {x.href ? <a href={x.href} className={cls}>{inner}</a> : <button onClick={() => onGo(x.tab!, x.filter)} className={cls}>{inner}</button>}
@@ -89,7 +89,7 @@ export type Go =
 function Row({ icon: Icon, title, sub, onClick }: { icon: typeof Users; title: string; sub?: string; onClick: () => void }) {
   return (
     <li>
-      <button onClick={onClick} className="w-full text-left px-3 py-2 flex gap-2.5 items-start rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+      <button onClick={onClick} className="w-full text-start px-3 py-2 flex gap-2.5 items-start rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
         <Icon className="w-4 h-4 mt-0.5 text-zinc-400 shrink-0" />
         <span className="min-w-0">
           <span className="block text-sm text-zinc-900 dark:text-white truncate">{title}</span>
@@ -195,7 +195,7 @@ function Ranked({ title, rows, empty, onClick }: { title: string; rows: { key: s
               <div className="mt-1 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06]"><div className="h-full rounded-full bg-indigo-500/70" style={{ width: `${(r.value / max) * 100}%` }} /></div>
             </>
           );
-          return <li key={r.key}>{onClick ? <button onClick={() => onClick(r.key)} className="w-full text-left">{body}</button> : body}</li>;
+          return <li key={r.key}>{onClick ? <button onClick={() => onClick(r.key)} className="w-full text-start">{body}</button> : body}</li>;
         })}</ul>
       )}
     </div>
@@ -239,7 +239,7 @@ export function AnalyticsPanel({ onPerson }: { onPerson: (id: string) => void })
             <button key={d} onClick={() => setDays(d)} className={cn('relative isolate px-3 py-1.5 rounded-full text-xs font-semibold', days === d ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{days === d && <TabPill id="p-dashboard-console-insights-0" />}{d} days</button>
           ))}
           <button onClick={() => downloadCsv(`universe-analytics-${days}d`, ['Day', 'Active people', 'New accounts', 'Messages'], data.perDay.map((d) => [d.day, d.active, d.joined, d.messages]))}
-            className="btn-secondary inline-flex items-center gap-1.5 ml-1"><Download className="w-4 h-4" /> CSV</button>
+            className="btn-secondary inline-flex items-center gap-1.5 ms-1"><Download className="w-4 h-4" /> CSV</button>
         </div>
       </div>
       <Tiles tiles={[
@@ -338,17 +338,17 @@ function SpeedPanel() {
           </div>
           <div className="overflow-x-auto -mx-1">
             <table className="w-full text-sm">
-              <thead><tr className="text-left text-xs text-zinc-500">
+              <thead><tr className="text-start text-xs text-zinc-500">
                 <th className="py-1.5 px-1 font-medium">Page</th>
-                {(['LCP', 'INP', 'CLS', 'TTFB'] as const).map((k) => <th key={k} className="py-1.5 px-1 font-medium text-right">{VITAL_INFO[k].name}</th>)}
-                <th className="py-1.5 px-1 font-medium text-right">Visits</th>
+                {(['LCP', 'INP', 'CLS', 'TTFB'] as const).map((k) => <th key={k} className="py-1.5 px-1 font-medium text-end">{VITAL_INFO[k].name}</th>)}
+                <th className="py-1.5 px-1 font-medium text-end">Visits</th>
               </tr></thead>
               <tbody>
                 {data.pages.map((p) => (
                   <tr key={p.page} className="border-t border-zinc-100 dark:border-white/[0.06]">
                     <td className="py-1.5 px-1 font-mono text-xs text-zinc-700 dark:text-zinc-300 truncate max-w-[220px]">{p.page}</td>
-                    {(['LCP', 'INP', 'CLS', 'TTFB'] as const).map((k) => <td key={k} className="py-1.5 px-1 text-right">{cell(k, p.metrics[k])}</td>)}
-                    <td className="py-1.5 px-1 text-right tabular-nums text-zinc-500">{p.n}</td>
+                    {(['LCP', 'INP', 'CLS', 'TTFB'] as const).map((k) => <td key={k} className="py-1.5 px-1 text-end">{cell(k, p.metrics[k])}</td>)}
+                    <td className="py-1.5 px-1 text-end tabular-nums text-zinc-500">{p.n}</td>
                   </tr>
                 ))}
               </tbody>
@@ -415,7 +415,7 @@ export function MoneyPanel({ onPerson }: { onPerson: (id: string) => void }) {
               <button key={s} onClick={() => setStatus(s)} className={cn('relative isolate px-3 py-1 rounded-full text-xs font-semibold', status === s ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{status === s && <TabPill id="pill-5-0" />}{s ? STATUS_NAME[s] : 'All'}</button>
             ))}
             <button onClick={() => downloadCsv('universe-payments', ['Date', 'Person', 'Email', 'What', 'Type', 'Amount', 'Currency', 'Status'], recent.map((p) => [p.createdAt, p.user?.name, p.user?.email, p.description, p.type, p.amount, p.currency, p.status]))}
-              className="btn-secondary inline-flex items-center gap-1.5 ml-1"><Download className="w-4 h-4" /> CSV</button>
+              className="btn-secondary inline-flex items-center gap-1.5 ms-1"><Download className="w-4 h-4" /> CSV</button>
           </div>
         </div>
         <p className="text-xs text-zinc-500 mb-3">Changes here fix UniVerse’s records only. Stripe is not charged or refunded, so do refunds in Stripe too.</p>
@@ -507,7 +507,7 @@ function PaymentList({ rows, money, onPerson }: { rows: PaymentRowData[]; money:
           <input type="checkbox" checked={all} onChange={() => setPicked(all ? new Set() : new Set(rows.map((p) => p.id)))} /> Select all shown ({rows.length})
         </label>
         {shown.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 ml-auto">
+          <div className="flex flex-wrap items-center gap-1.5 ms-auto">
             <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">{shown.length} selected:</span>
             {STATUS_OPTIONS.map((s) => <button key={s} disabled={busy} onClick={() => void bulk(s)} className="btn-secondary !py-1 !px-2.5 text-xs">Mark {STATUS_NAME[s].toLowerCase()}</button>)}
             <button disabled={busy} onClick={() => void bulk('delete')} className="!py-1 !px-2.5 text-xs rounded-xl font-semibold text-white bg-rose-600 hover:bg-rose-500 inline-flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
@@ -546,12 +546,12 @@ function PaymentRow({ p, money, onPerson, picked, onPick }: { p: PaymentRowData;
         <select aria-label="Payment status" value={p.status} onChange={(e) => void save({ status: e.target.value }, `Marked as ${STATUS_NAME[e.target.value].toLowerCase()}`)} className={cn(small, 'font-semibold', STATUS_TONE[p.status])}>
           {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_NAME[s]}</option>)}
         </select>
-        <span className="w-20 text-right font-semibold tabular-nums text-zinc-900 dark:text-white">{money(p.amount, p.currency)}</span>
+        <span className="w-20 text-end font-semibold tabular-nums text-zinc-900 dark:text-white">{money(p.amount, p.currency)}</span>
         <button aria-label="Edit payment" onClick={() => setEditing(!editing)} className={iconBtn}><Pencil className="w-4 h-4" /></button>
         <button aria-label="Delete payment" onClick={() => void removeRecord(`/owner/payments/${p.id}`, 'this payment')} className={cn(iconBtn, 'hover:!text-rose-500')}><Trash2 className="w-4 h-4" /></button>
       </div>
       {editing && (
-        <form onSubmit={(e) => { e.preventDefault(); void save({ amount, description: what }, 'Payment updated'); }} className="mt-2 ml-7 flex flex-wrap items-center gap-2">
+        <form onSubmit={(e) => { e.preventDefault(); void save({ amount, description: what }, 'Payment updated'); }} className="mt-2 ms-7 flex flex-wrap items-center gap-2">
           <input value={what} onChange={(e) => setWhat(e.target.value)} placeholder="What it was for" className={cn(field, 'flex-1 min-w-[10rem]')} />
           <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" aria-label={`Amount in ${p.currency}`} className={cn(field, 'w-28')} />
           <button type="submit" className="btn-primary">Save</button>
@@ -577,7 +577,7 @@ function InvoiceList({ rows, money, onPerson }: { rows: MoneyData['invoiceList']
         <select aria-label="Invoice status" value={x.status} onChange={(e) => void editRecord('Invoice', x.id, { status: e.target.value, ...(e.target.value === 'COMPLETED' && { paidAt: new Date().toISOString() }) }, `Invoice ${x.number} marked as ${STATUS_NAME[e.target.value].toLowerCase()}`)} className={cn(small, 'font-semibold', STATUS_TONE[x.status])}>
           {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_NAME[s]}</option>)}
         </select>
-        <span className="w-20 text-right tabular-nums text-zinc-700 dark:text-zinc-200">{money(x.amount, x.currency)}</span>
+        <span className="w-20 text-end tabular-nums text-zinc-700 dark:text-zinc-200">{money(x.amount, x.currency)}</span>
         <button aria-label="Delete invoice" onClick={() => void removeRecord(`/owner/records/Invoice/${x.id}`, `invoice ${x.number}`)} className={cn(iconBtn, 'hover:!text-rose-500')}><Trash2 className="w-4 h-4" /></button>
       </li>
     ))}</ul>

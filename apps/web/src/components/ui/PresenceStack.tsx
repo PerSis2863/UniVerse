@@ -23,7 +23,7 @@ export function PresenceStack({ people, max = 4 }: { people: Present[]; max?: nu
           </motion.span>
         ))}
       </AnimatePresence>
-      {unique.length > max && <span className="ml-1 text-[11px] font-semibold text-zinc-500">+{unique.length - max}</span>}
+      {unique.length > max && <span className="ms-1 text-[11px] font-semibold text-zinc-500">+{unique.length - max}</span>}
     </span>
   );
 }

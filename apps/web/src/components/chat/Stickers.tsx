@@ -129,7 +129,7 @@ function PackEditor({ pack: initial, canMakeSchool, onClose, onSaved }: { pack: 
               {pack.stickers.map((s) => (
                 <li key={s.id} className="relative aspect-square rounded-xl border border-zinc-200 dark:border-white/10 p-1">
                   <img src={s.url} alt={s.label} className="w-full h-full object-contain" />
-                  <button type="button" onClick={() => void run(s.id, () => act({ action: 'remove', stickerId: s.id }))} disabled={!!busy} aria-label={`Remove ${s.label || 'sticker'}`} className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-zinc-900/80 text-white grid place-items-center"><X className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => void run(s.id, () => act({ action: 'remove', stickerId: s.id }))} disabled={!!busy} aria-label={`Remove ${s.label || 'sticker'}`} className="absolute -top-1.5 -end-1.5 w-6 h-6 rounded-full bg-zinc-900/80 text-white grid place-items-center"><X className="w-3.5 h-3.5" /></button>
                 </li>
               ))}
             </ul>

@@ -123,7 +123,7 @@ function SheetPage({ id }: { id: string }) {
         <AnimatePresence>
           {panel && (
             <motion.aside key="comments" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={spring.smooth}
-              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#0f1322] border-l border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
+              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#0f1322] border-s border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
               <Comments docId={id} me={data.me.id} canEdit={data.canEdit} onClose={() => setPanel(false)}
                 pick={() => api?.pickRef() ?? null} go={(q) => { if (!api?.goTo(q)) toast('Those cells have moved or gone since the comment.'); }}
                 aboutLabel="About the selected cells" empty="No open comments. Select some cells and comment on them, or on the whole spreadsheet." />
@@ -180,7 +180,7 @@ function SheetHistory({ docId, canEdit, api, onClose }: { docId: string; canEdit
         <div className="space-y-1">
           {!data ? <Loader2 className="w-5 h-5 animate-spin text-indigo-500" /> : !data.length && <p className="text-sm text-zinc-600 dark:text-zinc-400">No versions yet. They’re saved as people work.</p>}
           {data?.map((v) => (
-            <button key={v.id} type="button" onClick={() => setPicked(v.id)} className="w-full flex items-center gap-3 p-2.5 rounded-2xl text-left hover:bg-zinc-100 dark:hover:bg-white/[0.05]">
+            <button key={v.id} type="button" onClick={() => setPicked(v.id)} className="w-full flex items-center gap-3 p-2.5 rounded-2xl text-start hover:bg-zinc-100 dark:hover:bg-white/[0.05]">
               <FileSpreadsheet className={cn('w-4 h-4 shrink-0', v.name ? 'text-emerald-600' : 'text-zinc-500')} />
               <span className="flex-1 min-w-0">
                 <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{v.name ?? new Date(v.createdAt).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>

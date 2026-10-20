@@ -101,7 +101,7 @@ export default function AdminAnnouncements() {
               <div key={ann.id} className="card p-0 overflow-hidden group border border-white/[0.05] hover:border-indigo-500/50 transition-all flex flex-col h-full relative">
 
                 {/* Actions Overlay */}
-                <div className="absolute top-4 right-4 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-4 end-4 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => openEdit(ann)}
                     className="p-2 bg-black/60 hover:bg-indigo-600 text-zinc-300 hover:text-white rounded-md backdrop-blur-md transition-colors"

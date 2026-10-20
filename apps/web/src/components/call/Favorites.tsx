@@ -65,7 +65,7 @@ export function Favorites() {
             <Avatar name={f.name} src={f.avatar} online={f.online} size={56} />
             <span className="text-[11px] text-zinc-600 dark:text-zinc-300 truncate w-full text-center">{f.name.split(' ')[0]}</span>
             {editing ? (
-              <button type="button" onClick={() => void remove(f)} aria-label={`Remove ${f.name} from favourites`} className="absolute -top-1 right-1 w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center shadow"><X className="w-3.5 h-3.5" /></button>
+              <button type="button" onClick={() => void remove(f)} aria-label={`Remove ${f.name} from favourites`} className="absolute -top-1 end-1 w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center shadow"><X className="w-3.5 h-3.5" /></button>
             ) : (
               <div className="flex gap-1">
                 {(['audio', 'video'] as const).map((k) => (
@@ -102,11 +102,11 @@ function AddFavorite({ onClose, onAdded }: { onClose: () => void; onAdded: () =>
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <motion.div data-sheet initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={spring.smooth} role="dialog" aria-modal="true" aria-label="Add a favourite" className="w-full sm:max-w-md max-h-[80vh] flex flex-col rounded-t-3xl sm:rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 shadow-2xl">
         <div className="p-5 pb-3 flex items-center justify-between"><h3 className="text-lg font-black text-zinc-900 dark:text-white">Add a favourite</h3><button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-5 h-5" /></button></div>
-        <div className="px-5 mb-2 relative"><Search className="absolute left-8 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people" className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" /></div>
+        <div className="px-5 mb-2 relative"><Search className="absolute start-8 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people" className="w-full ps-10 pe-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" /></div>
         <div className="flex-1 overflow-y-auto px-3 pb-4 sheet-safe-bottom">
           {isLoading && <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>}
           {people?.map((p) => (
-            <button key={p.id} type="button" onClick={() => void add(p.id, p.name)} className={cn('w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-left')}>
+            <button key={p.id} type="button" onClick={() => void add(p.id, p.name)} className={cn('w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-start')}>
               <Avatar name={p.name} src={p.avatar} online={p.online} />
               <span className="flex-1 text-sm font-semibold text-zinc-900 dark:text-white truncate">{p.name}</span>
               <Star className="w-4 h-4 text-amber-500" />

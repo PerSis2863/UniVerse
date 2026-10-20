@@ -27,7 +27,7 @@ export function Paras({ paras, align, linkable }: { paras: Para[]; align?: Item[
       const kind = p.bullet, start = i;
       while (i < paras.length && paras[i].bullet === kind) i++;
       const List = kind === 'num' ? 'ol' : 'ul';
-      out.push(<List key={start} className={cn('m-0 pl-[1.2em]', kind === 'num' ? 'list-decimal' : 'list-disc')}>{paras.slice(start, i).map((q, k) => <li key={k} style={{ textAlign: q.align ?? align, marginLeft: q.level ? `${q.level * 1.2}em` : undefined }} className="my-[0.15em]">{line(q)}</li>)}</List>);
+      out.push(<List key={start} className={cn('m-0 ps-[1.2em]', kind === 'num' ? 'list-decimal' : 'list-disc')}>{paras.slice(start, i).map((q, k) => <li key={k} style={{ textAlign: q.align ?? align, marginLeft: q.level ? `${q.level * 1.2}em` : undefined }} className="my-[0.15em]">{line(q)}</li>)}</List>);
     } else { out.push(<div key={i} style={{ textAlign: a }}>{line(p)}</div>); i++; }
   }
   return <>{out}</>;
@@ -61,8 +61,8 @@ function ItemBox({ it, theme, mode, hideText }: { it: Item; theme: Theme; mode: 
 }
 
 function Band({ theme, W }: { theme: Theme; W: number }) {
-  if (theme.band === 'left') return <div aria-hidden className="absolute left-0 top-0 bottom-0" style={{ width: 24, background: theme.accent }} />;
-  if (theme.band === 'top') return <div aria-hidden className="absolute left-0 right-0 top-0" style={{ height: 18, background: theme.accent }} />;
+  if (theme.band === 'left') return <div aria-hidden className="absolute start-0 top-0 bottom-0" style={{ width: 24, background: theme.accent }} />;
+  if (theme.band === 'top') return <div aria-hidden className="absolute start-0 end-0 top-0" style={{ height: 18, background: theme.accent }} />;
   if (theme.band === 'bottom') return <div aria-hidden className="absolute rounded" style={{ left: W * 0.06, right: W * 0.06, bottom: 36, height: 6, background: theme.accent, opacity: 0.85 }} />;
   return null;
 }
@@ -85,7 +85,7 @@ export const SlideView = memo(function SlideView({ slide, theme, W, scale, mode,
   let animIndex = 0;
   return (
     <div role={label ? 'img' : undefined} aria-label={label} className={cn('relative overflow-hidden select-none', className)} style={{ width: W * scale, height: H * scale }}>
-      <div className="absolute left-0 top-0 origin-top-left" style={{ width: W, height: H, transform: `scale(${scale})`, background: slide.bg ?? theme.bg }}>
+      <div className="absolute start-0 top-0 origin-top-left" style={{ width: W, height: H, transform: `scale(${scale})`, background: slide.bg ?? theme.bg }}>
         <Band theme={theme} W={W} />
         {slide.items.map((raw) => {
           const it = override?.has(raw.id) ? { ...raw, ...override.get(raw.id) } : raw;

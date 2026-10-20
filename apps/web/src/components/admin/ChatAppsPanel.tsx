@@ -75,9 +75,9 @@ export function ChatAppsPanel() {
                   <span className="font-semibold text-zinc-900 dark:text-white">{a.name}</span>
                   {a.commands.map((c) => <code key={c.name} className="text-xs rounded-md bg-teal-500/10 text-teal-800 dark:text-teal-200 px-1.5 py-0.5">/{c.name}</code>)}
                   <button type="button" role="switch" aria-checked={a.enabled} aria-label={`${a.name} switched on`} onClick={() => void toggle(a)} disabled={busy !== null}
-                    className="ml-auto min-h-11 inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                    className="ms-auto min-h-11 inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <span className={cn('w-9 h-5 rounded-full p-0.5 transition-colors', a.enabled ? 'bg-emerald-600' : 'bg-zinc-400 dark:bg-zinc-600')}>
-                      <span className={cn('block w-4 h-4 rounded-full bg-white shadow transition-transform', a.enabled && 'translate-x-4')} />
+                      <span className={cn('block w-4 h-4 rounded-full bg-white shadow transition-transform', a.enabled && 'translate-x-4 rtl:-translate-x-4')} />
                     </span>
                     {a.enabled ? 'On' : 'Off'}
                   </button>
@@ -100,7 +100,7 @@ export function ChatAppsPanel() {
       </section>
       <section className={card} aria-labelledby="apps-how-h">
         <h2 id="apps-how-h" className="font-semibold text-zinc-900 dark:text-white">How an app answers</h2>
-        <ol className="list-decimal pl-5 mt-2 space-y-1.5 text-sm text-zinc-700 dark:text-zinc-300">
+        <ol className="list-decimal ps-5 mt-2 space-y-1.5 text-sm text-zinc-700 dark:text-zinc-300">
           <li>UniVerse sends a <code>POST</code> with JSON: the <code>command</code>, its <code>text</code>, the <code>user</code> (id, first name, role) and the <code>chat</code> (id, name). Never email addresses.</li>
           <li>Check the <code>UniVerse-Signature</code> header (<code>t=…,v1=…</code>): an HMAC-SHA256 of <code>t + &quot;.&quot; + body</code> with the app’s secret, the same as webhooks.</li>
           <li>Answer within 5 seconds with <code>{'{ "text": "…" }'}</code> (up to 2,000 characters). Add <code>&quot;visibility&quot;: &quot;me&quot;</code> to answer only the person who asked.</li>

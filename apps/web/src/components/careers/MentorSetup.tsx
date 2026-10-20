@@ -143,7 +143,7 @@ export function MentorSetup({ intro }: { intro?: string }) {
           {upcoming.length ? (
             <ul className="flex flex-wrap gap-1.5">
               {upcoming.map((s) => (
-                <li key={s.id} className={cn('inline-flex items-center gap-1 rounded-full pl-3 pr-1 py-1 text-xs font-medium', s.bookingId ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300' : 'bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-200')}>
+                <li key={s.id} className={cn('inline-flex items-center gap-1 rounded-full ps-3 pe-1 py-1 text-xs font-medium', s.bookingId ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300' : 'bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-200')}>
                   {sessionTime(s.startAt)} · {s.minutes} min{s.bookingId ? ' · booked' : ''}
                   {s.bookingId ? <span className="w-6" aria-hidden /> : (
                     <button type="button" className="w-6 h-6 inline-flex items-center justify-center rounded-full hover:bg-zinc-200 dark:hover:bg-white/10" aria-label={`Remove ${sessionTime(s.startAt)}`} onClick={() => dropSlot(s.id)}><X className="w-3.5 h-3.5" aria-hidden /></button>

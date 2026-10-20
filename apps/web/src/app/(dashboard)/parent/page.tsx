@@ -124,7 +124,7 @@ export default function ParentPage() {
             {kids.length > 0 && <button type="button" onClick={() => setAdding(true)} className="btn-secondary btn-sm"><UserPlus className="w-4 h-4" /> <span className="hidden sm:inline">Add a child</span><span className="sm:hidden">Add</span></button>}
             <button type="button" onClick={() => setSheet('updates')} aria-label={unread ? `Updates, ${unread} new` : 'Updates'} className="relative w-11 h-11 rounded-full flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10">
               <Bell className="w-5 h-5" />
-              {unread > 0 && <span aria-hidden className="absolute top-2 right-2 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center">{unread}</span>}
+              {unread > 0 && <span aria-hidden className="absolute top-2 end-2 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center">{unread}</span>}
             </button>
             <button type="button" onClick={() => setSheet('account')} aria-label="Account" className="w-11 h-11 rounded-full flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10"><CircleUser className="w-5 h-5" /></button>
           </div>

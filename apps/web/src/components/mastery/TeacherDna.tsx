@@ -83,7 +83,7 @@ function ClassView({ courseId, onTag }: { courseId: string; onTag: () => void })
         <table className="text-xs border-separate border-spacing-1 min-w-full">
           <thead>
             <tr>
-              <th scope="col" className="text-left font-semibold text-zinc-500 sticky left-0 tone-panel z-10 min-w-36 px-1">Concept</th>
+              <th scope="col" className="text-start font-semibold text-zinc-500 sticky start-0 tone-panel z-10 min-w-36 px-1">Concept</th>
               {data.students.map((s) => (
                 <th key={s.id} scope="col" className="font-semibold text-zinc-600 dark:text-zinc-300 px-0.5 align-bottom">
                   <button type="button" onClick={() => setStudent(s)} className="block max-w-[4.5rem] truncate hover:underline mx-auto" title={s.name}>{s.name.split(' ')[0]}</button>
@@ -94,7 +94,7 @@ function ClassView({ courseId, onTag }: { courseId: string; onTag: () => void })
           <tbody>
             {data.concepts.map((c) => (
               <tr key={c.id}>
-                <th scope="row" className="text-left font-medium text-zinc-800 dark:text-zinc-100 sticky left-0 tone-panel z-10 px-1 max-w-48 truncate" title={c.name}>{c.parentId ? <span className="text-zinc-400 mr-1" aria-hidden>↳</span> : null}{c.name}</th>
+                <th scope="row" className="text-start font-medium text-zinc-800 dark:text-zinc-100 sticky start-0 tone-panel z-10 px-1 max-w-48 truncate" title={c.name}>{c.parentId ? <span className="text-zinc-400 me-1" aria-hidden>↳</span> : null}{c.name}</th>
                 {c.cells.map((cell, i) => (
                   <td key={data.students[i].id} className="p-0">
                     <span className={cn('block w-12 h-7 mx-auto rounded-md text-center leading-7 tabular-nums font-semibold', !cell ? 'bg-zinc-100 dark:bg-white/[0.04] text-zinc-400' : cell.band === 'mastered' ? 'bg-emerald-500/80 text-white' : cell.band === 'nearly' ? 'bg-indigo-500/70 text-white' : 'bg-amber-500/80 text-zinc-950')}
@@ -180,8 +180,8 @@ function ConceptsView({ courseId, data, onChanged }: { courseId: string; data?: 
         <motion.ul variants={list} initial="hidden" animate="show" className={`${card} p-2 divide-y divide-zinc-200/70 dark:divide-white/[0.06]`}>
           {data.concepts.map((c, i) => (
             <motion.li key={c.id} variants={fadeUp} className="flex items-center gap-2 px-2 py-2">
-              <button type="button" onClick={() => setEditing(c)} className="flex-1 min-w-0 text-left">
-                <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{c.parentId ? <span className="text-zinc-400 mr-1" aria-hidden>↳</span> : null}{c.name}</span>
+              <button type="button" onClick={() => setEditing(c)} className="flex-1 min-w-0 text-start">
+                <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{c.parentId ? <span className="text-zinc-400 me-1" aria-hidden>↳</span> : null}{c.name}</span>
                 <span className="block text-xs text-zinc-500 truncate">{c.tagged ? `${c.tagged} question${c.tagged === 1 ? '' : 's'} or criteria` : 'Nothing tagged yet'}{c.description ? ` · ${c.description}` : ''}</span>
               </button>
               <button type="button" aria-label={`Move ${c.name} up`} disabled={i === 0} onClick={() => void move(i, -1)} className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30"><ArrowUp className="w-4 h-4" /></button>

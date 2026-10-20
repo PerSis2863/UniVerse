@@ -185,7 +185,7 @@ function AccountingContent() {
                   <option value="AUD">AUD ($)</option>
                 </select>
                 <div className="relative flex-1">
-                  <span className="absolute left-4 top-3.5 text-zinc-500 font-bold">
+                  <span className="absolute start-4 top-3.5 text-zinc-500 font-bold">
                     {currency === 'USD' || currency === 'CAD' || currency === 'AUD' ? '$' : 
                      currency === 'EUR' ? '€' : 
                      currency === 'GBP' ? '£' : 
@@ -195,7 +195,7 @@ function AccountingContent() {
                     type="number" 
                     value={customAmount} 
                     onChange={(e) => setCustomAmount(e.target.value)}
-                    className="w-full bg-[#121830] border border-white/[0.08] rounded-xl pl-8 pr-4 py-3 text-white text-lg focus:outline-none focus:border-indigo-500 transition-colors"
+                    className="w-full bg-[#121830] border border-white/[0.08] rounded-xl ps-8 pe-4 py-3 text-white text-lg focus:outline-none focus:border-indigo-500 transition-colors"
                     placeholder="0.00"
                     min="1.00"
                     step="0.01"
@@ -245,7 +245,7 @@ function AccountingContent() {
             animate={{ opacity: 1, y: 0 }}
             className="p-6 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white relative overflow-hidden shadow-xl shadow-indigo-500/20"
           >
-            <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-2xl -mr-12 -mt-12 pointer-events-none" />
+            <div className="absolute top-0 end-0 w-48 h-48 bg-white/10 rounded-full blur-2xl -me-12 -mt-12 pointer-events-none" />
             <div className="relative z-10">
               <div className="flex items-center gap-3 text-indigo-100 font-medium mb-4">
                 <Wallet className="w-5 h-5" /> Make Custom Payment
@@ -274,7 +274,7 @@ function AccountingContent() {
                 transition={{ delay: Math.min(i, 6) * 0.03 }}
                 key={i}
                 onClick={() => setActiveModal(action.id)}
-                className={`panel text-left p-5 flex flex-col items-start justify-center hover:bg-white/[0.02] transition-all cursor-pointer group ${action.border}`}
+                className={`panel text-start p-5 flex flex-col items-start justify-center hover:bg-white/[0.02] transition-all cursor-pointer group ${action.border}`}
               >
                 <div className={`w-12 h-12 rounded-xl ${action.bg} ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                   <action.icon className="w-6 h-6" />
@@ -303,14 +303,14 @@ function AccountingContent() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-start border-collapse">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-white/[0.06] text-sm text-zinc-500 dark:text-zinc-400">
                   <th className="pb-3 font-medium px-4">Date & ID</th>
                   <th className="pb-3 font-medium px-4">Description</th>
                   <th className="pb-3 font-medium px-4">Amount</th>
                   <th className="pb-3 font-medium px-4">Status</th>
-                  <th className="pb-3 font-medium px-4 text-right">Receipt</th>
+                  <th className="pb-3 font-medium px-4 text-end">Receipt</th>
                 </tr>
               </thead>
               <tbody>
@@ -346,7 +346,7 @@ function AccountingContent() {
                         </div>
                       )}
                     </td>
-                    <td className="py-4 px-4 text-right">
+                    <td className="py-4 px-4 text-end">
                       {record.status === 'COMPLETED' && (
                         <div className="flex items-center justify-end gap-2">
                           <button 

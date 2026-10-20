@@ -65,7 +65,7 @@ function ReceiptView({ id }: { id: string }) {
             <h1 className="text-3xl font-extrabold tracking-tight">Universe Impact</h1>
             <p className="mt-2 text-indigo-200">myuniverseimpact@gmail.com</p>
           </div>
-          <div className="mt-4 sm:mt-0 text-left sm:text-right">
+          <div className="mt-4 sm:mt-0 text-start sm:text-end">
             <div className="text-sm font-medium text-indigo-200 uppercase tracking-wider mb-1">Receipt</div>
             <div className="text-lg font-bold">#{transaction.id.slice(-8).toUpperCase()}</div>
           </div>
@@ -79,7 +79,7 @@ function ReceiptView({ id }: { id: string }) {
               <div className="text-lg font-bold text-zinc-900 dark:text-white">{transaction.user?.name || 'Student'}</div>
               <div className="text-zinc-600 dark:text-zinc-400">{transaction.user?.email}</div>
             </div>
-            <div className="mt-6 sm:mt-0 text-left sm:text-right">
+            <div className="mt-6 sm:mt-0 text-start sm:text-end">
               <div className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Date</div>
               <div className="text-lg font-bold text-zinc-900 dark:text-white">
                 {new Date(transaction.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
@@ -87,17 +87,17 @@ function ReceiptView({ id }: { id: string }) {
             </div>
           </div>
 
-          <table className="w-full text-left mb-10">
+          <table className="w-full text-start mb-10">
             <thead>
               <tr className="border-b border-zinc-200 dark:border-zinc-800">
                 <th className="pb-3 text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Description</th>
-                <th className="pb-3 text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-right">Amount</th>
+                <th className="pb-3 text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-end">Amount</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td className="py-4 text-zinc-900 dark:text-white font-medium">{transaction.description || 'Payment'}</td>
-                <td className="py-4 text-zinc-900 dark:text-white font-bold text-right">
+                <td className="py-4 text-zinc-900 dark:text-white font-bold text-end">
                   {currencySymbol}{transaction.amount.toFixed(2)}
                 </td>
               </tr>

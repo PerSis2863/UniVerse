@@ -136,7 +136,7 @@ function Lend({ settings, onChanged }: { settings: Settings; onChanged: () => vo
             <ul className="mt-2 divide-y divide-zinc-200/70 dark:divide-white/[0.06]">
               {!people.data ? <li className="py-2 text-sm text-zinc-500">Searching…</li> : people.data.people.length === 0 ? <li className="py-2 text-sm text-zinc-500">Nobody matches.</li> : people.data.people.map((p) => (
                 <li key={p.id}>
-                  <button type="button" onClick={() => setWho(p)} className="w-full flex items-center gap-3 py-2 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04] rounded-xl px-1">
+                  <button type="button" onClick={() => setWho(p)} className="w-full flex items-center gap-3 py-2 text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04] rounded-xl px-1">
                     <Avatar name={p.name} src={p.avatar} size={32} />
                     <span className="flex-1 min-w-0"><span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{p.name}</span><span className="block text-xs text-zinc-500 truncate">{p.role === 'TEACHER' ? 'Staff' : 'Student'} · {p.out} out{p.late ? ` · ${p.late} late` : ''}</span></span>
                   </button>
@@ -202,7 +202,7 @@ function BooksView({ onChanged }: { onChanged: () => void }) {
         <motion.ul variants={list} initial="hidden" animate="show" className={`${card} p-2 sm:p-3 divide-y divide-zinc-200/70 dark:divide-white/[0.06]`}>
           {data.books.map((b) => (
             <motion.li key={b.id} variants={fadeUp}>
-              <button type="button" onClick={() => setOpen(b.id)} className="w-full flex items-center gap-3 px-2 py-2 rounded-2xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
+              <button type="button" onClick={() => setOpen(b.id)} className="w-full flex items-center gap-3 px-2 py-2 rounded-2xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
                 <Cover url={b.coverUrl} title={b.title} className="w-9 h-12 shrink-0" />
                 <span className="flex-1 min-w-0"><span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{b.title}</span><span className="block text-xs text-zinc-500 truncate">{b.authors ?? ''}{b.shelf ? ` · shelf ${b.shelf}` : ''}</span></span>
                 <span className="text-xs text-zinc-500 tabular-nums shrink-0">{b.available}/{b.copies} in{b.waiting ? ` · ${b.waiting} waiting` : ''}</span>

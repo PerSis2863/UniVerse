@@ -285,10 +285,10 @@ function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, p
           </motion.div>
         )}
       </AnimatePresence>
-      <span className={cn('absolute bottom-2 left-2 font-medium text-white bg-black/45 backdrop-blur-md rounded-full flex items-center gap-1.5 max-w-[85%]', compact ? 'text-[11px] px-2 py-0.5' : 'text-xs px-3 py-1')}>
+      <span className={cn('absolute bottom-2 start-2 font-medium text-white bg-black/45 backdrop-blur-md rounded-full flex items-center gap-1.5 max-w-[85%]', compact ? 'text-[11px] px-2 py-0.5' : 'text-xs px-3 py-1')}>
         {muted && <MicOff className="w-3 h-3 shrink-0" />}{screen && <MonitorUp className="w-3 h-3 shrink-0" />}<span className="truncate">{me ? `${name} (you)` : name}{screen ? ' · screen' : ''}</span>
       </span>
-      <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
+      <div className="absolute top-2 start-2 flex flex-col items-start gap-1">
         <AnimatePresence>
           {hand ? (
             <motion.span key="hand" initial={{ opacity: 0, scale: 0.5, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.5 }} transition={spring.snappy}
@@ -305,7 +305,7 @@ function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, p
         )}
       </div>
       {quality && !me && (
-        <span className={cn('absolute top-2 right-2 bg-black/45 backdrop-blur-md rounded-full p-1.5', QUALITY[quality].className)} title={QUALITY[quality].label} aria-label={QUALITY[quality].label}><Signal className="w-3.5 h-3.5" /></span>
+        <span className={cn('absolute top-2 end-2 bg-black/45 backdrop-blur-md rounded-full p-1.5', QUALITY[quality].className)} title={QUALITY[quality].label} aria-label={QUALITY[quality].label}><Signal className="w-3.5 h-3.5" /></span>
       )}
     </motion.div>
   );
@@ -326,8 +326,8 @@ function ScreenStage({ stream, name }: { stream: MediaStream | null; name: strin
       {/* Muted: their voice plays from their camera tile (playing it twice would echo). */}
       <video ref={ref} autoPlay playsInline muted onDoubleClick={(e) => { void (e.currentTarget.requestFullscreen?.() ?? Promise.resolve()).catch(() => {}); }}
         className={cn('absolute inset-0 w-full h-full object-contain transition-opacity duration-500', live ? 'opacity-100' : 'opacity-0')} />
-      {!live && <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-400"><Loader2 className="w-5 h-5 animate-spin mr-2" />Loading {name}’s screen…</div>}
-      <span className="absolute top-3 left-3 text-xs font-medium text-white bg-black/55 backdrop-blur-md rounded-full px-3 py-1 inline-flex items-center gap-1.5"><MonitorUp className="w-3.5 h-3.5" />{name} is presenting</span>
+      {!live && <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-400"><Loader2 className="w-5 h-5 animate-spin me-2" />Loading {name}’s screen…</div>}
+      <span className="absolute top-3 start-3 text-xs font-medium text-white bg-black/55 backdrop-blur-md rounded-full px-3 py-1 inline-flex items-center gap-1.5"><MonitorUp className="w-3.5 h-3.5" />{name} is presenting</span>
     </>
   );
 }
@@ -2267,10 +2267,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     <AnimatePresence>
       {minimized && !held && phase !== 'error' && (
         <motion.div key="mini" initial={{ y: 40, opacity: 0, scale: 0.96 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 40, opacity: 0, scale: 0.96 }} transition={spring.smooth}
-          className="fixed left-1/2 -translate-x-1/2 z-[290] bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+0.75rem)] lg:bottom-6 flex items-center gap-2 pl-2 pr-1.5 py-1.5 rounded-full bg-[#121830]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/40 text-white max-w-[min(94vw,26rem)]" role="region" aria-label="Call in progress">
-          <button type="button" onClick={onExpand} className="flex items-center gap-2 min-w-0 pl-1" aria-label="Back to the call">
+          className="fixed left-1/2 -translate-x-1/2 z-[290] bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+0.75rem)] lg:bottom-6 flex items-center gap-2 ps-2 pe-1.5 py-1.5 rounded-full bg-[#121830]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/40 text-white max-w-[min(94vw,26rem)]" role="region" aria-label="Call in progress">
+          <button type="button" onClick={onExpand} className="flex items-center gap-2 min-w-0 ps-1" aria-label="Back to the call">
             <span className="relative flex h-2.5 w-2.5 shrink-0"><span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" /><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" /></span>
-            <span className="min-w-0 text-left"><span className="block text-sm font-semibold truncate">{info?.title ?? 'Call'}</span><span className="block text-[11px] text-zinc-400 tabular-nums">{phase === 'live' && !waiting ? clock(seconds) : status}</span></span>
+            <span className="min-w-0 text-start"><span className="block text-sm font-semibold truncate">{info?.title ?? 'Call'}</span><span className="block text-[11px] text-zinc-400 tabular-nums">{phase === 'live' && !waiting ? clock(seconds) : status}</span></span>
           </button>
           <button type="button" onClick={toggleMute} aria-pressed={muted} aria-label={muted ? 'Unmute' : 'Mute'} className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', muted ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>{muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}</button>
           <button type="button" onClick={() => finish()} aria-label="End call" className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-rose-600 hover:bg-rose-500"><PhoneOff className="w-4 h-4" /></button>
@@ -2279,7 +2279,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       {held && phase === 'live' && (
         <motion.button key="held" type="button" onClick={onResume} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} transition={spring.smooth}
           style={{ marginBottom: heldIndex * 48 }}
-          className="fixed left-4 z-[289] bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+4.5rem)] lg:bottom-20 flex items-center gap-2 px-3 py-2 rounded-full bg-amber-500/95 text-amber-950 text-xs font-semibold shadow-xl" aria-label={`On hold: ${info?.title ?? 'call'}. Resume`}>
+          className="fixed start-4 z-[289] bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+4.5rem)] lg:bottom-20 flex items-center gap-2 px-3 py-2 rounded-full bg-amber-500/95 text-amber-950 text-xs font-semibold shadow-xl" aria-label={`On hold: ${info?.title ?? 'call'}. Resume`}>
           <Pause className="w-3.5 h-3.5" /> On hold · {info?.title ?? 'Call'} · Resume
         </motion.button>
       )}
@@ -2313,15 +2313,15 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           <button type="button" onClick={toggleFullscreen} aria-label={fullscreen ? 'Exit full screen' : 'Full screen'} className="p-2.5 rounded-full hover:bg-white/10 hidden sm:block">{fullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}</button>
           {phase === 'live' ? (
             <button type="button" onClick={() => openPanel(peopleOpen ? null : 'people')} aria-expanded={peopleOpen} aria-label={`People in the call: ${count}`} title="People"
-              className={cn('ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors', peopleOpen ? 'bg-white text-zinc-900' : 'text-zinc-200 bg-white/[0.06] hover:bg-white/15')}>
+              className={cn('ms-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors', peopleOpen ? 'bg-white text-zinc-900' : 'text-zinc-200 bg-white/[0.06] hover:bg-white/15')}>
               <Users className="w-4 h-4" />{count}<span className="hidden sm:inline font-normal">in call</span>
               <AnimatePresence>
                 {canModerate && lobby.length > 0 && (
-                  <motion.span key="knock" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className="ml-0.5 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-bold flex items-center justify-center" aria-label={`${lobby.length} waiting to join`}>{lobby.length}</motion.span>
+                  <motion.span key="knock" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className="ms-0.5 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-bold flex items-center justify-center" aria-label={`${lobby.length} waiting to join`}>{lobby.length}</motion.span>
                 )}
               </AnimatePresence>
             </button>
-          ) : <span className="text-xs text-zinc-400 ml-1">{count} in call</span>}
+          ) : <span className="text-xs text-zinc-400 ms-1">{count} in call</span>}
         </div>
       </motion.header>
 
@@ -2384,7 +2384,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         <motion.main key="lobby" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
           <div className="w-full max-w-4xl grid md:grid-cols-[1.4fr_1fr] gap-6 items-center">
             <Tile id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me />
-            <div className="space-y-4 text-center md:text-left">
+            <div className="space-y-4 text-center md:text-start">
               <div className="relative w-14 h-14 mx-auto md:mx-0">
                 <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 animate-ping opacity-25" />
                 <span className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-xl shadow-fuchsia-500/30"><DoorOpen className="w-7 h-7" /></span>
@@ -2538,9 +2538,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               const tr = c.final && c.id && ccLang && c.lang && c.lang !== ccLang ? trs[c.id] : undefined;
               return (
                 <motion.p key={id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.smooth} className="max-w-full rounded-2xl bg-black/65 backdrop-blur-md px-4 py-2 text-[15px] leading-snug text-center shadow-lg">
-                  <span className="font-semibold text-indigo-300 mr-1.5">{c.name}</span>
+                  <span className="font-semibold text-indigo-300 me-1.5">{c.name}</span>
                   <span className={cn(!c.final && 'text-zinc-200')}>{tr ?? c.text}</span>
-                  {tr && <Languages className="inline w-3.5 h-3.5 ml-1.5 -mt-0.5 text-fuchsia-300/80" aria-label={`Translated from ${languageName(c.lang!)}`} />}
+                  {tr && <Languages className="inline w-3.5 h-3.5 ms-1.5 -mt-0.5 text-fuchsia-300/80" aria-label={`Translated from ${languageName(c.lang!)}`} />}
                 </motion.p>
               );
             })}
@@ -2579,21 +2579,21 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                   <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => { haptic('tap'); setMoreOpen(false); setReactOpen((o) => !o); }} aria-expanded={reactOpen} aria-label="Reactions and raise hand" title="Reactions"
                     className={cn(btn, 'shrink-0 relative', reactOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
                     <Smile />
-                    {myHand && <span className="sm:hidden absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-amber-400 text-[11px] flex items-center justify-center" aria-hidden>✋</span>}
+                    {myHand && <span className="sm:hidden absolute top-0.5 end-0.5 w-5 h-5 rounded-full bg-amber-400 text-[11px] flex items-center justify-center" aria-hidden>✋</span>}
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => openPanel(chatOpen ? null : 'chat')} aria-expanded={chatOpen} aria-label={unread ? `Chat, ${unread} new` : 'Chat'} title="Chat"
                     className={cn(btn, 'shrink-0 relative', chatOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
                     <MessageSquare />
                     <AnimatePresence>
                       {unread > 0 && (
-                        <motion.span key={unread} initial={{ scale: 0.4 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className="absolute top-0.5 right-0.5 min-w-5 h-5 px-1 rounded-full bg-fuchsia-500 text-white text-[11px] font-bold flex items-center justify-center" aria-hidden>{unread > 9 ? '9+' : unread}</motion.span>
+                        <motion.span key={unread} initial={{ scale: 0.4 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className="absolute top-0.5 end-0.5 min-w-5 h-5 px-1 rounded-full bg-fuchsia-500 text-white text-[11px] font-bold flex items-center justify-center" aria-hidden>{unread > 9 ? '9+' : unread}</motion.span>
                       )}
                     </AnimatePresence>
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => { haptic('tap'); setReactOpen(false); setMoreOpen((o) => !o); }} aria-expanded={moreOpen} aria-label="More options" title="More"
                     className={cn(btn, 'shrink-0 relative', moreOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
                     <MoreHorizontal />
-                    {(cc || recording || notes) && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-fuchsia-400" aria-hidden />}
+                    {(cc || recording || notes) && <span className="absolute top-1.5 end-1.5 w-2 h-2 rounded-full bg-fuchsia-400" aria-hidden />}
                   </motion.button>
                 </>
               )}
@@ -2644,7 +2644,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         onListen={(uid) => { setListening(uid); toast(uid ? `Hearing ${interp[uid]?.label ?? 'the interpreter'}; everyone else is quieter.` : 'Hearing the original', { icon: '🎧' }); }} />
       {/* A sign language interpreter stays on screen while someone presents or is in the spotlight. */}
       {signer && phase === 'live' && (presenter || lit || watching) && (
-        <div className="absolute z-20 left-3 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] w-40 sm:w-56 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20">
+        <div className="absolute z-20 start-3 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] w-40 sm:w-56 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20">
           <Tile id={`sign-${signer.peer.peerId}`} name={`${signer.peer.name} · ${interp[signer.peer.userId]?.label ?? 'Sign language'}`} stream={signer.stream} camera silent compact className="w-full" />
         </div>
       )}
@@ -2682,7 +2682,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         {settingsOpen && (
           <motion.div key="settings" initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 24, scale: 0.98 }} transition={spring.smooth}
             role="dialog" aria-label="Call settings"
-            className="absolute inset-x-3 sm:inset-x-auto sm:right-6 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] sm:w-96 max-h-[60vh] overflow-y-auto rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-4 space-y-4">
+            className="absolute inset-x-3 sm:inset-x-auto sm:end-6 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] sm:w-96 max-h-[60vh] overflow-y-auto rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-4 space-y-4">
             <div className="flex items-center justify-between">
               <p className="font-semibold">Sound and video</p>
               <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Close" className="p-1.5 rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
@@ -2703,7 +2703,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               <section className="space-y-1.5">
                 <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Microphone</p>
                 {devices.mics.map((d) => (
-                  <button key={d.id} type="button" onClick={() => pickMic(d.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-left hover:bg-white/[0.06]">
+                  <button key={d.id} type="button" onClick={() => pickMic(d.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-start hover:bg-white/[0.06]">
                     <span className="flex-1 truncate">{d.label}</span>{micId === d.id && <Check className="w-4 h-4 text-emerald-400" />}
                   </button>
                 ))}
@@ -2713,7 +2713,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               <section className="space-y-1.5">
                 <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Camera</p>
                 {devices.cams.map((d) => (
-                  <button key={d.id} type="button" onClick={() => void pickCam(d.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-left hover:bg-white/[0.06]">
+                  <button key={d.id} type="button" onClick={() => void pickCam(d.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-start hover:bg-white/[0.06]">
                     <span className="flex-1 truncate">{d.label}</span>{(local?.getVideoTracks()[0]?.getSettings().deviceId ?? chosenDevice('cam')) === d.id && <Check className="w-4 h-4 text-emerald-400" />}
                   </button>
                 ))}

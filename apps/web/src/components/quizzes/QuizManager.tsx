@@ -119,11 +119,11 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
                   <Switch checked={!!quiz.examMode} disabled={busy} onChange={(v) => void patch({ examMode: v }, v ? 'Exam mode on' : 'Exam mode off')} label="Exam mode" />
                 </div>
                 {quiz.examMode && <>
-                  <div className="flex items-center justify-between gap-3 pl-4 border-l-2 border-indigo-500/30">
+                  <div className="flex items-center justify-between gap-3 ps-4 border-s-2 border-indigo-500/30">
                     <div><p className="text-sm font-medium text-zinc-900 dark:text-white">One question at a time, no going back</p><p className="text-xs text-zinc-600 dark:text-zinc-400">Each answer is saved as the student moves on and can’t be changed after, even after a reload.</p></div>
                     <Switch checked={!!quiz.oneWay} disabled={busy} onChange={(v) => void patch({ oneWay: v }, v ? 'No going back' : 'Students can change answers until they hand in')} label="One question at a time, no going back" />
                   </div>
-                  <div className="flex items-center justify-between gap-3 pl-4 border-l-2 border-indigo-500/30">
+                  <div className="flex items-center justify-between gap-3 ps-4 border-s-2 border-indigo-500/30">
                     <div><p className="text-sm font-medium text-zinc-900 dark:text-white">Stop when time is up</p><p className="text-xs text-zinc-600 dark:text-zinc-400">Answers that arrive more than a minute after the time limit aren’t taken (with one question at a time, the ones already saved still count).</p></div>
                     <Switch checked={!!quiz.hardStop} disabled={busy} onChange={(v) => void patch({ hardStop: v }, v ? 'Answers stop at the time limit' : 'Late answers are noted, not refused')} label="Stop when time is up" />
                   </div>
@@ -257,14 +257,14 @@ function ItemAnalysis({ questions, analysis }: { questions: Question[]; analysis
           <div key={q.id} className={cn('p-3 rounded-2xl border', a.fix ? 'border-amber-500/40 bg-amber-500/[0.06]' : 'border-zinc-200/70 dark:border-white/[0.07]')}>
             <div className="flex items-start justify-between gap-3">
               <p className="text-sm font-medium text-zinc-900 dark:text-white min-w-0">{q.question}</p>
-              <span className="text-xs text-zinc-500 shrink-0 text-right">{a.right != null && <b className="text-zinc-900 dark:text-white">{Math.round(a.right * 100)}% right</b>}{separation(a.separates) && <><br />{separation(a.separates)}</>}</span>
+              <span className="text-xs text-zinc-500 shrink-0 text-end">{a.right != null && <b className="text-zinc-900 dark:text-white">{Math.round(a.right * 100)}% right</b>}{separation(a.separates) && <><br />{separation(a.separates)}</>}</span>
             </div>
             <ul className="mt-2 space-y-1">
               {a.counts.map((c) => (
                 <li key={c.option} className="grid grid-cols-[minmax(0,1fr)_6rem_2rem] items-center gap-2 text-xs">
-                  <span className={cn('truncate', c.correct ? 'font-semibold text-emerald-700 dark:text-emerald-400' : 'text-zinc-600 dark:text-zinc-300')}>{c.correct && <CheckCircle2 className="w-3 h-3 inline mr-1" aria-label="Right answer" />}{c.option}</span>
+                  <span className={cn('truncate', c.correct ? 'font-semibold text-emerald-700 dark:text-emerald-400' : 'text-zinc-600 dark:text-zinc-300')}>{c.correct && <CheckCircle2 className="w-3 h-3 inline me-1" aria-label="Right answer" />}{c.option}</span>
                   <span className="h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><span className={cn('block h-full rounded-full', c.correct ? 'bg-emerald-500' : 'bg-zinc-400 dark:bg-zinc-500')} style={{ width: `${(c.n / most) * 100}%` }} /></span>
-                  <span className="tabular-nums text-zinc-500 text-right">{c.n}</span>
+                  <span className="tabular-nums text-zinc-500 text-end">{c.n}</span>
                 </li>
               ))}
               {a.blank > 0 && <li className="text-[11px] text-zinc-500">{a.blank} left it blank</li>}

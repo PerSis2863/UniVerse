@@ -73,7 +73,7 @@ export function LegalMarkdown({ source }: { source: string }) {
       const [head, , ...rest] = rows;
       blocks.push(
         <div key={k} className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.03]">
-          <table className="w-full min-w-[560px] text-left text-sm">
+          <table className="w-full min-w-[560px] text-start text-sm">
             <thead className="bg-white/[0.04] text-white">
               <tr>{cells(head).map((c, j) => <th key={j} className="px-4 py-3 font-semibold">{inline(c)}</th>)}</tr>
             </thead>
@@ -94,8 +94,8 @@ export function LegalMarkdown({ source }: { source: string }) {
       while (i < lines.length && re.test(lines[i])) items.push(lines[i++].replace(re, ''));
       const List = ordered ? 'ol' : 'ul';
       blocks.push(
-        <List key={k} className={`space-y-2 pl-5 ${ordered ? 'list-decimal marker:text-indigo-400 marker:font-semibold' : 'list-disc marker:text-indigo-400'}`}>
-          {items.map((it, j) => <li key={j} className="pl-1">{inline(it)}</li>)}
+        <List key={k} className={`space-y-2 ps-5 ${ordered ? 'list-decimal marker:text-indigo-400 marker:font-semibold' : 'list-disc marker:text-indigo-400'}`}>
+          {items.map((it, j) => <li key={j} className="ps-1">{inline(it)}</li>)}
         </List>,
       );
       continue;

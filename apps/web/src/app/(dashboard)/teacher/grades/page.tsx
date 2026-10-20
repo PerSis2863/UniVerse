@@ -128,8 +128,8 @@ export default function TeacherGradesPage() {
           </select>
           <div className="flex gap-2">
             <div className="relative flex-1 md:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input className={cn('input', 'pl-9')} placeholder="Search students…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <input className={cn('input', 'ps-9')} placeholder="Search students…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <button onClick={() => setEditingCats(true)} disabled={!courseId} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Categories and weights"><Layers className="w-4 h-4" /> <span className="hidden lg:inline">Categories</span></button>
             <button onClick={() => setHistory(true)} disabled={!courseId} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Grade history"><History className="w-4 h-4" /> <span className="hidden lg:inline">History</span></button>
@@ -165,7 +165,7 @@ export default function TeacherGradesPage() {
           : (
             <div className={`panel overflow-hidden`}>
               <div className="overflow-x-auto" role="region" aria-label="Gradebook" tabIndex={0}>
-                <table className="w-full text-left">
+                <table className="w-full text-start">
                   <thead><tr className="border-b border-zinc-200/70 dark:border-white/[0.06] text-xs uppercase tracking-wider text-zinc-500">
                     <th className="p-4 font-bold">Student</th><th className="p-4 font-bold text-center hidden sm:table-cell">Graded</th><th className="p-4 font-bold hidden md:table-cell">Latest</th><th className="p-4 font-bold text-center">{cats?.categories.length ? 'Final' : 'Average'}</th><th className="p-4 font-bold">Status</th><th className="p-4" />
                   </tr></thead>
@@ -177,9 +177,9 @@ export default function TeacherGradesPage() {
                           <td className="p-4"><p className="text-sm font-medium text-zinc-900 dark:text-white">{r.name}</p><p className="text-xs text-zinc-500">{r.email}</p></td>
                           <td className="p-4 text-center text-sm text-zinc-600 dark:text-zinc-300 hidden sm:table-cell">{r.grades.length}</td>
                           <td className="p-4 text-sm text-zinc-600 dark:text-zinc-300 hidden md:table-cell">{r.latest ? `${r.latest.assignmentName} · ${r.latest.score}/${r.latest.maxScore}` : '—'}</td>
-                          <td className="p-4 text-center text-lg font-bold text-zinc-900 dark:text-white">{r.avg != null ? <>{r.avg}%{r.letter && <span className="ml-1.5 text-sm font-semibold text-zinc-500">{r.letter}</span>}</> : '—'}</td>
+                          <td className="p-4 text-center text-lg font-bold text-zinc-900 dark:text-white">{r.avg != null ? <>{r.avg}%{r.letter && <span className="ms-1.5 text-sm font-semibold text-zinc-500">{r.letter}</span>}</> : '—'}</td>
                           <td className="p-4"><span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-medium border ${b.cls}`}>{b.label}</span></td>
-                          <td className="p-4 text-right"><ChevronRight className="w-4 h-4 text-zinc-400 inline" /></td>
+                          <td className="p-4 text-end"><ChevronRight className="w-4 h-4 text-zinc-400 inline" /></td>
                         </tr>
                       );
                     })}

@@ -120,11 +120,11 @@ function InClass({ session: s, marked, onChange }: { session: NonNullable<Curren
       <div>
         <p className="text-sm font-medium text-zinc-900 dark:text-white mb-2">How’s it going?</p>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => void say('LOST')} aria-pressed={mood === 'LOST'} className={cn('rounded-2xl border p-4 text-left transition-colors min-h-16', mood === 'LOST' ? 'border-amber-500 bg-amber-500/10' : 'border-zinc-200 dark:border-white/10 hover:border-amber-400')}>
+          <button type="button" onClick={() => void say('LOST')} aria-pressed={mood === 'LOST'} className={cn('rounded-2xl border p-4 text-start transition-colors min-h-16', mood === 'LOST' ? 'border-amber-500 bg-amber-500/10' : 'border-zinc-200 dark:border-white/10 hover:border-amber-400')}>
             <HelpCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             <span className="block mt-1 font-semibold text-zinc-900 dark:text-white">I’m lost</span>
           </button>
-          <button type="button" onClick={() => void say('OK')} aria-pressed={mood === 'OK'} className={cn('rounded-2xl border p-4 text-left transition-colors min-h-16', mood === 'OK' ? 'border-emerald-500 bg-emerald-500/10' : 'border-zinc-200 dark:border-white/10 hover:border-emerald-400')}>
+          <button type="button" onClick={() => void say('OK')} aria-pressed={mood === 'OK'} className={cn('rounded-2xl border p-4 text-start transition-colors min-h-16', mood === 'OK' ? 'border-emerald-500 bg-emerald-500/10' : 'border-zinc-200 dark:border-white/10 hover:border-emerald-400')}>
             <ThumbsUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             <span className="block mt-1 font-semibold text-zinc-900 dark:text-white">I’m following</span>
           </button>

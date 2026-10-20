@@ -88,7 +88,7 @@ export function CallRecordingSheet({ id, onClose }: { id: string; onClose: () =>
                 <ol className="flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1 pb-1" aria-label="Parts of the call">
                   {data.chapters.filter((c) => inRange(c.t)).map((c) => (
                     <li key={c.t} className="shrink-0">
-                      <button type="button" onClick={() => seek(c.t)} className="text-left w-40 rounded-xl border border-zinc-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] hover:border-indigo-300 px-3 py-2">
+                      <button type="button" onClick={() => seek(c.t)} className="text-start w-40 rounded-xl border border-zinc-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] hover:border-indigo-300 px-3 py-2">
                         <span className="block font-mono text-[11px] tabular-nums text-indigo-600 dark:text-indigo-300">{clock(c.t)}</span>
                         <span className="block text-sm font-medium leading-snug line-clamp-2">{c.title}</span>
                       </button>
@@ -106,7 +106,7 @@ export function CallRecordingSheet({ id, onClose }: { id: string; onClose: () =>
                     {lines.length === 0 && <li className="text-sm text-zinc-500 px-1">Nothing found.</li>}
                     {lines.slice(0, 300).map((l, i) => (
                       <li key={`${l.t}-${i}`}>
-                        <button type="button" onClick={() => seek(l.t)} className={cn('w-full flex items-start gap-2.5 text-left text-sm rounded-lg p-1.5 hover:bg-indigo-500/[0.06]')}>
+                        <button type="button" onClick={() => seek(l.t)} className={cn('w-full flex items-start gap-2.5 text-start text-sm rounded-lg p-1.5 hover:bg-indigo-500/[0.06]')}>
                           <span className="font-mono text-xs tabular-nums text-zinc-400 shrink-0 pt-0.5">{clock(l.t)}</span>
                           <span className="min-w-0"><span className="font-semibold text-zinc-700 dark:text-zinc-200">{l.who}: </span><span className="text-zinc-600 dark:text-zinc-300">{l.text}</span></span>
                         </button>

@@ -190,7 +190,7 @@ export default function TeacherCollaborationsPage() {
                             <div key={m.id} className={`flex items-center gap-3 p-3 rounded-xl border text-sm ${done ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-zinc-100 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400'}`}>
                               <CheckCircle2 className={`w-4 h-4 flex-shrink-0 ${done ? 'text-emerald-400' : 'text-zinc-500'}`} />
                               {m.title}
-                              {done && <span className="ml-auto text-[10px] text-emerald-500 font-bold">DONE</span>}
+                              {done && <span className="ms-auto text-[10px] text-emerald-500 font-bold">DONE</span>}
                             </div>
                           );
                         })}

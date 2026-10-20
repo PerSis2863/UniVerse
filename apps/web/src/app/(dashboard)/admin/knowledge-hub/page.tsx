@@ -158,7 +158,7 @@ export default function AdminKnowledgeHubPage() {
                             <button onClick={() => remove(r)} aria-label="Delete" className="p-2 text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </div>
-                        <div className="sm:pl-[3.25rem]">
+                        <div className="sm:ps-[3.25rem]">
                           <PersonCell person={r.author} />
                         </div>
                       </li>
@@ -176,7 +176,7 @@ export default function AdminKnowledgeHubPage() {
                 <ul className="divide-y divide-zinc-200 dark:divide-zinc-800/60 max-h-[32rem] overflow-y-auto">
                   {contributors.map((c, i) => (
                     <li key={c.person.id ?? c.person.email ?? i}>
-                      <button onClick={() => setQ(c.person.email || c.person.name || '')} className="w-full text-left p-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03] flex items-center gap-3">
+                      <button onClick={() => setQ(c.person.email || c.person.name || '')} className="w-full text-start p-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03] flex items-center gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="text-sm font-medium text-zinc-900 dark:text-white truncate">{c.person.name || 'Unknown'}</span>

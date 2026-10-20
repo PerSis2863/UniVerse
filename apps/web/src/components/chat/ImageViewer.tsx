@@ -125,8 +125,8 @@ export function ImageViewer({ images, start, onClose }: { images: ViewerImage[];
         </AnimatePresence>
         {images.length > 1 && (
           <>
-            <button type="button" aria-label="Previous photo" disabled={i === 0} onClick={() => go(-1)} className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 items-center justify-center disabled:opacity-0 transition-opacity"><ChevronLeft className="w-6 h-6" /></button>
-            <button type="button" aria-label="Next photo" disabled={i === images.length - 1} onClick={() => go(1)} className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 items-center justify-center disabled:opacity-0 transition-opacity"><ChevronRight className="w-6 h-6" /></button>
+            <button type="button" aria-label="Previous photo" disabled={i === 0} onClick={() => go(-1)} className="hidden sm:flex absolute start-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 items-center justify-center disabled:opacity-0 transition-opacity"><ChevronLeft className="w-6 h-6" /></button>
+            <button type="button" aria-label="Next photo" disabled={i === images.length - 1} onClick={() => go(1)} className="hidden sm:flex absolute end-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 items-center justify-center disabled:opacity-0 transition-opacity"><ChevronRight className="w-6 h-6" /></button>
           </>
         )}
       </div>

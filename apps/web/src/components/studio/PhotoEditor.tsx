@@ -517,10 +517,10 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
         <div className="flex items-center gap-1 px-2 sm:px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121830]">
           {close}
           <p className="min-w-0 truncate text-sm font-semibold text-zinc-900 dark:text-white px-1">{doc.name}</p>
-          <div className="flex items-center gap-0.5 ml-auto shrink-0">
+          <div className="flex items-center gap-0.5 ms-auto shrink-0">
             {history}
-            <button type="button" onClick={() => switchMode(false)} title="Layers, shapes, selections and more" className="btn-ghost btn-sm ml-1"><Layers className="w-4 h-4" />All tools</button>
-            <button type="button" onClick={() => setExporting(true)} className="btn-primary btn-sm ml-1"><Download className="w-3.5 h-3.5" />Save</button>
+            <button type="button" onClick={() => switchMode(false)} title="Layers, shapes, selections and more" className="btn-ghost btn-sm ms-1"><Layers className="w-4 h-4" />All tools</button>
+            <button type="button" onClick={() => setExporting(true)} className="btn-primary btn-sm ms-1"><Download className="w-3.5 h-3.5" />Save</button>
           </div>
         </div>
         {fileInput}
@@ -538,7 +538,7 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
         {close}
         <input value={doc.name} onChange={(e) => setDoc({ ...doc, name: e.target.value.slice(0, 60) })} aria-label="Picture name" className="min-w-0 w-36 sm:w-48 bg-transparent text-sm font-semibold text-zinc-900 dark:text-white px-2 py-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/10 focus:bg-zinc-100 dark:focus:bg-white/10 outline-none" />
         <span className="text-[11px] text-zinc-500 tabular-nums shrink-0 hidden sm:inline">{doc.w} × {doc.h}</span>
-        <div className="flex items-center gap-0.5 ml-auto shrink-0">
+        <div className="flex items-center gap-0.5 ms-auto shrink-0">
           {history}
           <span className="w-px h-5 bg-zinc-200 dark:bg-white/10 mx-1" aria-hidden />
           <button type="button" onClick={() => docOp('rotateL')} aria-label="Turn the picture left" title="Turn left" className="p-2 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><RotateCcw className="w-4 h-4" /></button>
@@ -548,15 +548,15 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
           <input ref={projectRef} type="file" accept=".json,application/json" className="hidden" onChange={(e) => void openProject(e.target.files?.[0])} />
           <button type="button" onClick={() => projectRef.current?.click()} aria-label="Open a project" title="Open a project" className="p-2 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><FolderOpen className="w-4 h-4" /></button>
           <button type="button" onClick={saveProject} aria-label="Save the project" title="Save the project (to edit later)" className="p-2 rounded-lg text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><Save className="w-4 h-4" /></button>
-          <button type="button" onClick={() => switchMode(true)} title="The simple editor" className="btn-ghost btn-sm ml-1">Simple</button>
-          <button type="button" onClick={() => setExporting(true)} className="btn-primary btn-sm ml-1"><Download className="w-3.5 h-3.5" />Export</button>
+          <button type="button" onClick={() => switchMode(true)} title="The simple editor" className="btn-ghost btn-sm ms-1">Simple</button>
+          <button type="button" onClick={() => setExporting(true)} className="btn-primary btn-sm ms-1"><Download className="w-3.5 h-3.5" />Export</button>
         </div>
       </div>
       {fileInput}
 
       <div className="flex-1 min-h-0 flex flex-col md:flex-row">
         {/* Tools */}
-        <div role="toolbar" aria-label="Tools" className="order-2 md:order-1 flex md:flex-col gap-1 p-1.5 bg-white dark:bg-[#121830] border-t md:border-t-0 md:border-r border-zinc-200 dark:border-white/10 overflow-x-auto">
+        <div role="toolbar" aria-label="Tools" className="order-2 md:order-1 flex md:flex-col gap-1 p-1.5 bg-white dark:bg-[#121830] border-t md:border-t-0 md:border-e border-zinc-200 dark:border-white/10 overflow-x-auto">
           {TOOLS.map((t) => (
             <button key={t.id} type="button" onClick={() => { setTool(t.id); setDrag(null); if (t.id !== 'move') setPanel('tool'); }} aria-pressed={tool === t.id} aria-label={t.label} title={`${t.label} (${t.keys})`}
               className={cn('w-11 h-11 shrink-0 rounded-xl grid place-items-center transition-colors', tool === t.id ? 'bg-indigo-500 text-white' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10')}>
@@ -571,7 +571,7 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
         {picture}
 
         {/* Panels */}
-        <aside className="order-3 md:w-80 shrink-0 flex flex-col max-h-[45vh] md:max-h-none bg-white dark:bg-[#121830] border-t md:border-t-0 md:border-l border-zinc-200 dark:border-white/10">
+        <aside className="order-3 md:w-80 shrink-0 flex flex-col max-h-[45vh] md:max-h-none bg-white dark:bg-[#121830] border-t md:border-t-0 md:border-s border-zinc-200 dark:border-white/10">
           <div className="flex p-1.5 gap-1 border-b border-zinc-200 dark:border-white/10" role="tablist" aria-label="Panels">
             {([['layers', 'Layers', Layers], ['adjust', 'Adjust', SlidersHorizontal], ['tool', 'Options', Wand2]] as const).map(([id, label, Icon]) => (
               <button key={id} type="button" role="tab" aria-selected={panel === id} onClick={() => setPanel(id)} className={cn('flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold', panel === id ? 'bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-white' : 'text-zinc-500')}>
@@ -590,8 +590,8 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
                   {[...doc.layers].reverse().map((l) => (
                     <li key={l.id} className={cn('flex items-center gap-2 rounded-xl px-2 py-1.5 border', l.id === activeId ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-transparent hover:bg-zinc-100 dark:hover:bg-white/5')}>
                       <button type="button" onClick={() => patchLayer(l.id, { visible: !l.visible })} aria-label={l.visible ? `Hide ${l.name}` : `Show ${l.name}`} className="p-1 text-zinc-500">{l.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}</button>
-                      <button type="button" onClick={() => setActiveId(l.id)} className="flex-1 min-w-0 text-left text-sm truncate text-zinc-800 dark:text-zinc-100">
-                        {l.kind === 'text' ? <Type className="inline w-3 h-3 mr-1 -mt-0.5 text-zinc-400" aria-hidden /> : l.kind === 'shape' ? <Square className="inline w-3 h-3 mr-1 -mt-0.5 text-zinc-400" aria-hidden /> : null}{l.name}
+                      <button type="button" onClick={() => setActiveId(l.id)} className="flex-1 min-w-0 text-start text-sm truncate text-zinc-800 dark:text-zinc-100">
+                        {l.kind === 'text' ? <Type className="inline w-3 h-3 me-1 -mt-0.5 text-zinc-400" aria-hidden /> : l.kind === 'shape' ? <Square className="inline w-3 h-3 me-1 -mt-0.5 text-zinc-400" aria-hidden /> : null}{l.name}
                       </button>
                     </li>
                   ))}

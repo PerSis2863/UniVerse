@@ -81,7 +81,7 @@ export function ScheduleSheet({ now, title, initialText, initialAt, onSave, onCl
         <div role="radiogroup" aria-label="When to send" className="rounded-2xl bg-zinc-100/80 dark:bg-white/[0.04] divide-y divide-zinc-200/80 dark:divide-white/[0.06] overflow-hidden">
           {[...picks.map((p) => ({ key: p.at as number | 'custom', label: p.label, hint: scheduleLabel(new Date(p.at).toISOString()) })), { key: 'custom' as const, label: 'Pick a date and time', hint: '' }].map((o) => (
             <button key={String(o.key)} type="button" role="radio" aria-checked={choice === o.key} onClick={() => setChoice(o.key)}
-              className="w-full flex items-center gap-3 px-3.5 py-3 text-left text-sm hover:bg-zinc-200/50 dark:hover:bg-white/[0.04] transition-colors">
+              className="w-full flex items-center gap-3 px-3.5 py-3 text-start text-sm hover:bg-zinc-200/50 dark:hover:bg-white/[0.04] transition-colors">
               <span className="flex-1 min-w-0">
                 <span className="block font-medium text-zinc-900 dark:text-white">{o.label}</span>
                 {o.hint && <span className="block text-xs text-zinc-500">{o.hint}</span>}
@@ -134,11 +134,11 @@ export function ScheduledBar({ items, onSendNow, onEdit, onDelete }: {
   return (
     <div className="px-3 md:px-4 pt-2">
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
-        className="w-full flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-indigo-500/[0.08] dark:bg-indigo-400/10 text-sm text-left">
+        className="w-full flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-indigo-500/[0.08] dark:bg-indigo-400/10 text-sm text-start">
         <CalendarClock className="w-4 h-4 text-indigo-500 shrink-0" />
         <span className="font-medium text-zinc-800 dark:text-zinc-100 shrink-0">{items.length === 1 ? '1 scheduled message' : `${items.length} scheduled messages`}</span>
         <span className="text-zinc-500 truncate">· {items.length === 1 ? '' : 'next '}{scheduleLabel(items[0].sendAt)}</span>
-        <ChevronDown className={cn('ml-auto w-4 h-4 text-zinc-400 shrink-0 transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cn('ms-auto w-4 h-4 text-zinc-400 shrink-0 transition-transform', open && 'rotate-180')} />
       </button>
       <AnimatePresence initial={false}>
         {open && (
@@ -150,7 +150,7 @@ export function ScheduledBar({ items, onSendNow, onEdit, onDelete }: {
                   <p className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-300">{scheduleLabel(it.sendAt)}</p>
                   <p className="text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2 break-words">{plainText(it.body)}</p>
                 </div>
-                {busy === it.id ? <Loader2 className="w-4 h-4 mt-2 mr-2 animate-spin text-zinc-400" /> : (
+                {busy === it.id ? <Loader2 className="w-4 h-4 mt-2 me-2 animate-spin text-zinc-400" /> : (
                   <div className="flex items-center shrink-0">
                     <button type="button" onClick={() => void run(it.id, () => onSendNow(it))} aria-label="Send now" title="Send now" className="p-2 rounded-full text-zinc-500 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><Send className="w-4 h-4" /></button>
                     <button type="button" onClick={() => onEdit(it)} aria-label="Edit" title="Edit" className="p-2 rounded-full text-zinc-500 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><Pencil className="w-4 h-4" /></button>

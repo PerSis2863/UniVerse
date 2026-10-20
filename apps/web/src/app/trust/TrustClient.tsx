@@ -69,15 +69,15 @@ export function TrustClient() {
       {/* Ambient background glows */}
       <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
         <div
-          className="absolute top-[-20%] left-[-25%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full"
+          className="absolute top-[-20%] start-[-25%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full"
           style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.18), transparent)' }}
         />
         <div
-          className="absolute top-[40%] right-[-30%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full"
+          className="absolute top-[40%] end-[-30%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full"
           style={{ background: 'radial-gradient(closest-side, rgba(147,51,234,0.14), transparent)' }}
         />
         <div
-          className="absolute bottom-[-20%] left-[20%] w-[max(60vw,600px)] h-[max(60vw,600px)] rounded-full"
+          className="absolute bottom-[-20%] start-[20%] w-[max(60vw,600px)] h-[max(60vw,600px)] rounded-full"
           style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,0.10), transparent)' }}
         />
       </div>
@@ -163,7 +163,7 @@ export function TrustClient() {
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                     <span className="text-sm font-semibold text-white">{s.name}</span>
                   </div>
-                  <p className="text-xs text-zinc-400 pl-6">
+                  <p className="text-xs text-zinc-400 ps-6">
                     {s.latency && `Edge Latency: ${s.latency}`}
                     {s.encryption && `Encryption: ${s.encryption}`}
                     {s.protocol && `Security: ${s.protocol}`}
@@ -406,7 +406,7 @@ export function TrustClient() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-start text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-white/10 text-zinc-400 uppercase tracking-wider">
                         <th className="py-3 px-4 font-semibold">Provider</th>
@@ -501,7 +501,7 @@ export function TrustClient() {
 
         {/* ── Call to Action Card ── */}
         <section className="rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-950/30 via-zinc-900/60 to-purple-950/30 p-8 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
-          <div className="space-y-2 max-w-xl text-center md:text-left">
+          <div className="space-y-2 max-w-xl text-center md:text-start">
             <h3 className="text-xl sm:text-2xl font-bold text-white flex items-center justify-center md:justify-start gap-2">
               <Sparkles className="w-5 h-5 text-indigo-400" /> Manage Your Data Rights
             </h3>

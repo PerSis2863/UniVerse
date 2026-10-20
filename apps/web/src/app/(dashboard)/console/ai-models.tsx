@@ -116,7 +116,7 @@ function Agents({ data }: { data: AiData }) {
       </ul>
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="text-sm font-semibold text-tint-text">{open ? 'Hide setup' : 'How to set them up'}</button>
       {open && (
-        <ol className="list-decimal pl-5 text-sm text-zinc-600 dark:text-zinc-300 space-y-1.5">
+        <ol className="list-decimal ps-5 text-sm text-zinc-600 dark:text-zinc-300 space-y-1.5">
           <li>GitHub → Settings → Developer settings → Fine-grained tokens: a token for {data.repair.repo} with <b>Issues: read and write</b>. Add it in Cloudflare → universe-web → Settings → Variables and Secrets as the secret <code>GITHUB_REPAIR_TOKEN</code>.</li>
           <li>Claude Code: on a computer signed in to your Claude Pro or Max account, run <code>claude setup-token</code>, then add the token in GitHub → the repository → Settings → Secrets and variables → Actions as <code>CLAUDE_CODE_OAUTH_TOKEN</code>. Repairs then run on your Claude subscription.</li>
           <li>Jules: sign in at jules.google with GitHub and give it access to {data.repair.repo}.</li>

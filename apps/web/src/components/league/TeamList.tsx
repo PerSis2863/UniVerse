@@ -106,7 +106,7 @@ function TeamCard({ t, d, act }: { t: LeagueTeamView; d: LeagueDetail; act: Leag
 
       {t.project && (t.project.title || t.project.pitch) && (
         <div className="space-y-1">
-          <button type="button" onClick={() => setMore(!more)} aria-expanded={more} className="w-full flex items-center justify-between gap-2 text-left">
+          <button type="button" onClick={() => setMore(!more)} aria-expanded={more} className="w-full flex items-center justify-between gap-2 text-start">
             <span className="text-sm font-semibold text-zinc-900 dark:text-white">{t.project.title || 'Project (no title yet)'}</span>
             <motion.span animate={{ rotate: more ? 180 : 0 }} transition={spring.snappy} className="text-zinc-500 shrink-0"><ChevronDown className="w-4 h-4" aria-hidden /></motion.span>
           </button>

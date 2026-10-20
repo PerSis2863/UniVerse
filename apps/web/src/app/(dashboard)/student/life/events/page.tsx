@@ -176,7 +176,7 @@ export default function EventsPage() {
                           {busy === ev.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ticket className="w-4 h-4" />} {full ? 'Join the waiting list' : 'Going'}
                         </button>
                       )}
-                      {ev.url && <a href={safeHref(ev.url)} target="_blank" rel="noopener noreferrer" className="btn-ghost btn-sm ml-auto inline-flex"><ExternalLink className="w-4 h-4" /> More</a>}
+                      {ev.url && <a href={safeHref(ev.url)} target="_blank" rel="noopener noreferrer" className="btn-ghost btn-sm ms-auto inline-flex"><ExternalLink className="w-4 h-4" /> More</a>}
                     </div>
                   </motion.li>
                 );

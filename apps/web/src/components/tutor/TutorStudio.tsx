@@ -69,7 +69,7 @@ export function TutorStudio() {
           <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {data.courses.map((c) => (
               <li key={c.id}>
-                <button onClick={() => { setCourseId(c.id); setTab('ask'); }} className="w-full text-left rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-4 hover:border-indigo-400/60 transition-colors">
+                <button onClick={() => { setCourseId(c.id); setTab('ask'); }} className="w-full text-start rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-4 hover:border-indigo-400/60 transition-colors">
                   <p className="text-2xl">{c.emoji || '📘'}</p>
                   <p className="mt-2 font-bold text-zinc-900 dark:text-white">{c.name}</p>
                   <p className="text-xs text-zinc-500">{c.code} · {c.readySources ? `${c.readySources} source${c.readySources === 1 ? '' : 's'} ready` : c.materials ? `${c.materials} material${c.materials === 1 ? '' : 's'} to prepare` : 'No materials yet'}</p>
@@ -85,7 +85,7 @@ export function TutorStudio() {
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto min-w-0 w-full">
       <div className="flex items-center gap-2 mb-4">
-        <button onClick={() => { setCourseId(null); void mutate(); }} aria-label="All courses" className="p-2 -ml-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><ChevronLeft className="w-5 h-5" /></button>
+        <button onClick={() => { setCourseId(null); void mutate(); }} aria-label="All courses" className="p-2 -ms-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><ChevronLeft className="w-5 h-5" /></button>
         <div className="min-w-0">
           <p className="font-black text-zinc-900 dark:text-white truncate">{course.emoji || '📘'} {course.name}</p>
           <p className="text-xs text-zinc-500">{course.code}</p>
@@ -186,7 +186,7 @@ function AskPanel({ courseId, rule, closed, onNeedSources }: { courseId: string;
         )}
         {turns.map((t, i) => (
           <div key={i} className={cn('flex', t.role === 'user' ? 'justify-end' : 'justify-start')}>
-            <div className={cn('max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap', t.role === 'user' ? 'bg-indigo-600 text-white rounded-br-md' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-100 rounded-bl-md')}>
+            <div className={cn('max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap', t.role === 'user' ? 'bg-indigo-600 text-white rounded-ee-md' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-100 rounded-es-md')}>
               {t.homework ? <HomeworkTurn courseId={courseId} start={t.homework} mode={mode} /> : t.role === 'tutor' ? <MathText text={t.text} renderText={(s) => <WithCitations text={s} />} /> : t.text}
               {t.role === 'tutor' && t.grounded === false && t.citations !== undefined && <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-400">Not found in the course materials — check with your teacher.</p>}
               {!!t.citations?.length && (
@@ -262,7 +262,7 @@ function PracticePanel({ courseId, initialTopic = '', closed, onNeedSources }: {
                       const show = choice !== undefined;
                       return (
                         <button key={j} disabled={show} onClick={() => setPicked((p) => ({ ...p, [i]: j }))}
-                          className={cn('text-left text-sm px-3.5 py-2.5 rounded-xl border transition-colors',
+                          className={cn('text-start text-sm px-3.5 py-2.5 rounded-xl border transition-colors',
                             !show && 'border-zinc-200 dark:border-white/10 hover:border-indigo-400 text-zinc-700 dark:text-zinc-200',
                             show && j === q.answer && 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200',
                             show && j === choice && j !== q.answer && 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300',

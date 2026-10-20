@@ -168,7 +168,7 @@ export function WelcomeTour({ role }: { role?: string }) {
         <div aria-hidden className="absolute rounded-2xl ring-2 ring-white/90 transition-all duration-300 ease-out pointer-events-none"
           style={{ top: spot.top - pad, left: spot.left - pad, width: spot.width + pad * 2, height: spot.height + pad * 2, boxShadow: '0 0 0 9999px rgba(0,0,0,0.55)' }} />
       ) : <div aria-hidden className="absolute inset-0 bg-black/55" />}
-      <div className={cn('absolute rounded-3xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl p-5', !spot && 'left-3 right-3 bottom-3 sm:left-1/2 sm:right-auto sm:bottom-auto sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[24rem]')} style={card}>
+      <div className={cn('absolute rounded-3xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl p-5', !spot && 'start-3 end-3 bottom-3 sm:left-1/2 sm:end-auto sm:bottom-auto sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[24rem]')} style={card}>
         <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Tour · {step + 1} of {stops.length}</p>
         <h2 id="tour-title" className="mt-1.5 font-bold text-lg text-zinc-900 dark:text-white leading-snug">{stop.title}</h2>
         <p id="tour-text" className="text-sm text-zinc-600 dark:text-zinc-300 mt-1">{stop.text}{spot?.via ? ` ${spot.via}` : ''}</p>

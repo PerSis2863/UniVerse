@@ -18,7 +18,7 @@ import { TabPill, TabPanel } from '@/components/ui/Glide';
 
 const MetricChart = dynamic(() => import('./MetricChart'), { ssr: false, loading: () => <div className="h-32 rounded-xl skeleton" /> });
 
-const th = 'text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 pb-2';
+const th = 'text-start text-[11px] font-semibold uppercase tracking-wider text-zinc-500 pb-2';
 const select = 'h-8 rounded-lg bg-zinc-100 dark:bg-white/[0.06] px-2 text-xs font-medium text-zinc-700 dark:text-zinc-200 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40';
 const API = '/api/admin/school-analytics';
 const TRENDS: MetricId[] = ['attendance_trend', 'active_students_trend', 'impact_hours_by_month'];
@@ -73,11 +73,11 @@ export function SchoolAnalytics() {
           <form onSubmit={ask} className="flex gap-2">
             <label htmlFor="school-question" className="sr-only">Your question</label>
             <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" aria-hidden />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" aria-hidden />
               <input
                 id="school-question" value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={300} autoComplete="off"
                 placeholder="e.g. Which courses have the lowest attendance this month?"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
+                className="w-full ps-9 pe-3 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
               />
             </div>
             <button type="submit" disabled={busy || question.trim().length < 3} className="btn-primary shrink-0">
@@ -90,7 +90,7 @@ export function SchoolAnalytics() {
               <motion.button
                 key={s.q} type="button" whileTap={{ scale: 0.96 }} disabled={busy}
                 onClick={() => { setQuestion(s.q); void open(s.metric, { days: s.days, order: s.order }); }}
-                className="px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/15 transition-colors text-left"
+                className="px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/15 transition-colors text-start"
               >
                 {s.q}
               </motion.button>
@@ -193,12 +193,12 @@ function DataTable({ a }: { a: MetricResult }) {
   return (
     <div className="overflow-x-auto max-h-[28rem]">
       <table className="w-full text-sm min-w-[24rem]">
-        <thead><tr>{a.columns.map((c) => <th key={c.key} scope="col" className={cn(th, c.unit && 'text-right')}>{c.label}</th>)}</tr></thead>
+        <thead><tr>{a.columns.map((c) => <th key={c.key} scope="col" className={cn(th, c.unit && 'text-end')}>{c.label}</th>)}</tr></thead>
         <tbody className="divide-y divide-zinc-200 dark:divide-white/[0.06]">
           {a.rows.map((r, i) => (
             <tr key={`${r.label}-${i}`}>
               {a.columns.map((c, j) => (
-                <td key={c.key} className={cn('py-2 pr-3', c.unit ? 'text-right tabular-nums text-zinc-700 dark:text-zinc-200' : j === 0 ? 'font-medium text-zinc-900 dark:text-white' : 'text-zinc-500')}>
+                <td key={c.key} className={cn('py-2 pe-3', c.unit ? 'text-end tabular-nums text-zinc-700 dark:text-zinc-200' : j === 0 ? 'font-medium text-zinc-900 dark:text-white' : 'text-zinc-500')}>
                   {c.unit ? formatValue(Number(r[c.key]), c.unit, false) : String(r[c.key] ?? '')}
                 </td>
               ))}

@@ -62,7 +62,7 @@ export function ParentMessages({ studentId, chatId, onChat }: { studentId: strin
             {data.teachers.map((t) => (
               <motion.li key={t.id} variants={fadeUp}>
                 <button type="button" onClick={() => { haptic('tap'); if (t.conversationId) onChat(t.conversationId); else setFresh(t); }}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
                   <Avatar name={t.name} src={t.avatar} size={44} />
                   <span className="flex-1 min-w-0">
                     <span className="flex items-center gap-2">
@@ -173,7 +173,7 @@ function ChatSheet({ teacher, studentId, child, chatId, onStarted, onClose }: {
             </select>
           </label>
         </div>
-        <div className="min-h-[30vh] max-h-[50vh] overflow-y-auto space-y-1.5 pr-1" role="log" aria-live="polite" aria-label="Messages">
+        <div className="min-h-[30vh] max-h-[50vh] overflow-y-auto space-y-1.5 pe-1" role="log" aria-live="polite" aria-label="Messages">
           {chatId && !data ? <ContentSkeleton variant="list" /> : messages.length === 0 ? (
             <p className="text-sm text-zinc-500 text-center py-8">Say hello, and what you’d like to talk about.</p>
           ) : (
@@ -182,7 +182,7 @@ function ChatSheet({ teacher, studentId, child, chatId, onStarted, onClose }: {
                 <motion.p key={m.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[11px] text-zinc-500 text-center px-6 py-1">{m.body}</motion.p>
               ) : (
                 <motion.div key={m.id} layout initial={{ opacity: 0, y: 8, scale: 0.98 }} animate={{ opacity: m.pending ? 0.6 : 1, y: 0, scale: 1 }} transition={spring.bouncy} className={cn('flex', m.mine ? 'justify-end' : 'justify-start')}>
-                  <div className={cn('max-w-[80%] rounded-2xl px-3.5 py-2 text-sm', m.mine ? 'bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white rounded-br-md' : 'bg-zinc-100 dark:bg-white/[0.07] text-zinc-900 dark:text-white rounded-bl-md')}>
+                  <div className={cn('max-w-[80%] rounded-2xl px-3.5 py-2 text-sm', m.mine ? 'bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white rounded-ee-md' : 'bg-zinc-100 dark:bg-white/[0.07] text-zinc-900 dark:text-white rounded-es-md')}>
                     {m.voice && chatId ? <VoiceNote chatId={chatId} id={m.id} voice={m.voice} /> : <p className="whitespace-pre-wrap break-words">{m.translated && !original.has(m.id) ? m.translated : m.body}</p>}
                     <p className={cn('mt-0.5 text-[10px] flex items-center gap-1.5', m.mine ? 'text-white/70 justify-end' : 'text-zinc-500')}>
                       {m.pending ? <><Loader2 className="w-3 h-3 animate-spin" />Sending</> : m.failed ? 'Not sent' : when(m.at)}{m.edited && ' · edited'}
@@ -197,7 +197,7 @@ function ChatSheet({ teacher, studentId, child, chatId, onStarted, onClose }: {
               ))}
             </AnimatePresence>
           )}
-          {seen && <p className="text-[10px] text-zinc-400 text-right pr-1">Seen</p>}
+          {seen && <p className="text-[10px] text-zinc-400 text-end pe-1">Seen</p>}
           <div ref={end} />
         </div>
       </div>

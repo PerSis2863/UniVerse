@@ -52,7 +52,7 @@ export function RolesAdmin() {
         <motion.ul variants={list} initial="hidden" animate="show" className="space-y-3">
           {data.roles.map((r) => (
             <motion.li key={r.id} variants={fadeUp}>
-              <button type="button" onClick={() => { haptic('tap'); setOpen(r); }} className={`${card} w-full p-4 flex items-start gap-3 text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors`}>
+              <button type="button" onClick={() => { haptic('tap'); setOpen(r); }} className={`${card} w-full p-4 flex items-start gap-3 text-start hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors`}>
                 <span className="flex-1 min-w-0">
                   <span className="block font-semibold text-zinc-900 dark:text-white">{r.name}</span>
                   {r.description && <span className="block text-xs text-zinc-500">{r.description}</span>}

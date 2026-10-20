@@ -144,7 +144,7 @@ export function LevelEditor({ kind, id, level, lang, value, onDone, onCancel }: 
       <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={!!busy || !text.trim()} className="btn-primary btn-sm">{busy === 'save' && <Loader2 className="w-4 h-4 animate-spin" />} Save</button>
         <button type="button" onClick={onCancel} disabled={!!busy} className="btn-secondary btn-sm">Cancel</button>
-        {value.edited && <button type="button" onClick={() => void run('reset')} disabled={!!busy} className="btn-ghost btn-sm ml-auto">{busy === 'reset' ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} Use the AI’s version</button>}
+        {value.edited && <button type="button" onClick={() => void run('reset')} disabled={!!busy} className="btn-ghost btn-sm ms-auto">{busy === 'reset' ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} Use the AI’s version</button>}
       </div>
     </form>
   );

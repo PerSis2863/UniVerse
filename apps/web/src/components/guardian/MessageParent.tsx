@@ -44,7 +44,7 @@ export function MessageParentSheet({ studentId, studentName, inbox, onClose }: {
           <motion.ul variants={list} initial="hidden" animate="show" className="space-y-1">
             {data.parents.map((p) => (
               <motion.li key={p.id} variants={fadeUp}>
-                <button type="button" disabled={!!busy} onClick={() => void open(p.id)} className="w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.05] disabled:opacity-60">
+                <button type="button" disabled={!!busy} onClick={() => void open(p.id)} className="w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.05] disabled:opacity-60">
                   <Avatar name={p.name} src={p.avatar} size={40} />
                   <span className="flex-1 min-w-0"><span className="block font-semibold text-zinc-900 dark:text-white truncate">{p.name}</span><span className="block text-xs text-zinc-500">{p.relation ?? 'Parent or guardian'}</span></span>
                   {busy === p.id ? <Loader2 className="w-4 h-4 animate-spin text-zinc-400" /> : <ChevronRight className="w-4 h-4 text-zinc-400" />}

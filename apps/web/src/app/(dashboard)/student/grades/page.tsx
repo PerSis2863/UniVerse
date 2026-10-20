@@ -459,7 +459,7 @@ export default function GradesPage() {
           </div>
 
           <div className="overflow-x-auto" role="region" aria-label="Transcript" tabIndex={0}>
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-start border-collapse">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-white/[0.06] text-sm text-zinc-500 dark:text-zinc-400">
                   <th className="pb-3 font-medium px-4">Course / Assignment</th>

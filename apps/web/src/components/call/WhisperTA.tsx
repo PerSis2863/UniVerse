@@ -64,7 +64,7 @@ export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; 
           <motion.div key="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
           <motion.aside key="ta" role="dialog" aria-label="Ask the TA"
             initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 28 }} transition={spring.smooth}
-            className="absolute z-40 inset-x-0 bottom-0 h-[78vh] rounded-t-3xl sm:inset-x-auto sm:right-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:h-auto sm:w-[22rem] sm:rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0">
+            className="absolute z-40 inset-x-0 bottom-0 h-[78vh] rounded-t-3xl sm:inset-x-auto sm:end-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:h-auto sm:w-[22rem] sm:rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0">
             <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2">
               <div className="min-w-0">
                 <p className="font-semibold flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-fuchsia-300" aria-hidden />Ask the TA</p>
@@ -82,9 +82,9 @@ export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; 
               )}
               {questions.map((q) => (
                 <motion.div key={q.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.snappy} className="space-y-1.5">
-                  <div className="flex justify-end"><p className="max-w-[85%] rounded-2xl rounded-br-md px-3 py-2 text-sm bg-gradient-to-br from-indigo-500 to-fuchsia-500 whitespace-pre-wrap break-words">{q.question}</p></div>
+                  <div className="flex justify-end"><p className="max-w-[85%] rounded-2xl rounded-ee-md px-3 py-2 text-sm bg-gradient-to-br from-indigo-500 to-fuchsia-500 whitespace-pre-wrap break-words">{q.question}</p></div>
                   {q.answer && (
-                    <div className="max-w-[92%] rounded-2xl rounded-bl-md px-3 py-2 text-sm bg-white/10 leading-snug">
+                    <div className="max-w-[92%] rounded-2xl rounded-es-md px-3 py-2 text-sm bg-white/10 leading-snug">
                       <p className="whitespace-pre-wrap break-words">{q.answer}</p>
                       {(q.citations.length > 0 || q.live) && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
@@ -94,12 +94,12 @@ export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; 
                       )}
                     </div>
                   )}
-                  {q.addressed && <p className="text-[11px] text-emerald-300 pl-1">Your teacher saw questions on this and went over it.</p>}
+                  {q.addressed && <p className="text-[11px] text-emerald-300 ps-1">Your teacher saw questions on this and went over it.</p>}
                 </motion.div>
               ))}
               {busy && (
                 <div className="space-y-1.5">
-                  <div className="flex justify-end"><p className="max-w-[85%] rounded-2xl rounded-br-md px-3 py-2 text-sm bg-gradient-to-br from-indigo-500/60 to-fuchsia-500/60">{busy}</p></div>
+                  <div className="flex justify-end"><p className="max-w-[85%] rounded-2xl rounded-ee-md px-3 py-2 text-sm bg-gradient-to-br from-indigo-500/60 to-fuchsia-500/60">{busy}</p></div>
                   <p className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-2 text-xs text-zinc-300"><Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />The TA is thinking…</p>
                 </div>
               )}

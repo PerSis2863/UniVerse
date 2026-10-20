@@ -188,7 +188,7 @@ function CodeLoop({ ready, onClose }: { ready: Ready; onClose: () => void }) {
   return (
     <motion.div ref={box} tabIndex={-1} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={spring.smooth}
       className="fixed inset-0 z-[150] bg-white dark:bg-zinc-950 flex flex-col items-center justify-center p-4 sm:p-6 text-center overflow-y-auto outline-none" role="dialog" aria-modal="true" aria-label={`Codes for ${ready.title}`}>
-      <button type="button" onClick={onClose} className="absolute top-3 right-3 p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10" aria-label="Close"><X className="w-6 h-6" /></button>
+      <button type="button" onClick={onClose} className="absolute top-3 end-3 p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10" aria-label="Close"><X className="w-6 h-6" /></button>
       <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white px-10">{ready.title}</h2>
       <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">{ready.course} · On phones: <b>Offline courses → Scan from the teacher’s screen</b></p>
       <div className="mt-4 rounded-3xl bg-white p-3 sm:p-4 shadow-xl">

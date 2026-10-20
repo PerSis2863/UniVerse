@@ -3,6 +3,30 @@
 Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
 done, where the code is and what's left for each item. Keep that table up to date as you go.
 
+## Q21 · Languages and right to left: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+
+13 languages; Arabic and Urdu right to left. Details in the Progress row "Q21". Rules:
+
+- **Screens are translated in the browser, not in the code.** Don't wrap new text in `t()`: write
+  English as usual, then run `node scripts/gen-ui-strings.mjs` so the catalog has it, and the owner
+  runs Languages → Translate (only new texts go to the AI). Text built from pieces ("quiz" + "zes")
+  can't be matched: write whole phrases (`${n} quizzes` becomes the pattern "{0} quizzes").
+  A pattern needs 5+ letters of its own (two words if it starts and ends with a value):
+  "{0} to {1}" would match anyone's sentence, so it is dropped (`strongPattern`).
+- **People's content stays as written:** put `translate="no"` on anything people wrote (chat
+  messages already have it, with `dir="auto"`). Editable areas and form values are skipped by itself.
+- **Layout classes:** start/end only (`ms-`, `pe-`, `start-0`, `text-start`, `rounded-s`,
+  `border-e`); `node scripts/rtl-logical-classes.mjs` converts a file. Things that move sideways
+  (`translate-x-*`) need an `rtl:` mirror; centring with `left-1/2 -translate-x-1/2` stays physical.
+- **The translator never changes structure** (only `nodeValue` and four attributes), so React is
+  safe; it reloads the page when the language changes after something was translated.
+- **Never change text React hasn't drawn yet:** the translator starts after the page's load event
+  (idle), otherwise React sees different text than the server sent (error #418) and redraws the
+  whole page. That is also why the default number/date format is not patched globally: give a screen
+  its own `Intl` formatting with `languageInfo(lang).locale` instead.
+- **Dictionary storage:** `ui_translations` (0164), 32 parts per language by FNV hash of the English
+  text (`chunkOf`); `GET /api/i18n/:lang` joins the parts' JSON as text (no parse: CPU) with an ETag.
+
 ## Q20 · Chat apps: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
 
 A school's own slash commands, answered by its own server. Details in the Progress row "Q20".
@@ -32,6 +56,8 @@ A school's own slash commands, answered by its own server. Details in the Progre
 - **Also for the review:** in dark mode, white text on the accent colour (`--tint: #6366f1`,
   `src/app/globals.css`, e.g. your own chat bubbles) is 4.47:1, just under 4.5:1; something like
   `#5f63f0` passes, but it changes every screen, so check them all (text that uses the tint too).
+- **Also for the review:** the course tiles on Student → Courses put white letters on the course
+  colour (#3b82f6 is 3.67:1); seen in English too (20 Oct).
 
 ## Q19 · Owner console: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
 

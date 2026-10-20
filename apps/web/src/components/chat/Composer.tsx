@@ -403,7 +403,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
   return (
     <div className="border-t border-zinc-200/80 dark:border-white/[0.06] bg-white/60 dark:bg-white/[0.02] backdrop-blur-xl px-3 md:px-4 py-3">
       {(replyTo || editing) && (
-        <div className="flex items-center gap-3 mb-2 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border-l-4 border-indigo-500">
+        <div className="flex items-center gap-3 mb-2 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border-s-4 border-indigo-500">
           {editing ? <Pencil className="w-4 h-4 text-indigo-500 shrink-0" /> : null}
           <div className="min-w-0 flex-1 text-xs">
             <p className="font-semibold text-indigo-600 dark:text-indigo-300">{editing ? 'Editing message' : `Replying to ${replyTo!.sender.name}`}</p>
@@ -455,7 +455,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               <Smile className="w-5 h-5" />
             </button>
             {emoji && (
-              <div className="absolute bottom-full mb-2 left-0 z-30">
+              <div className="absolute bottom-full mb-2 start-0 z-30">
                 <EmojiPicker custom={customEmoji} onClose={() => setEmoji(false)} onPick={(e) => {
                   // At the caret, not always at the end.
                   const el = areaRef.current;
@@ -472,7 +472,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             </button>
             {stickers && (
               // Above its button; on a phone, moved left so it stays on the screen.
-              <div className="absolute bottom-full mb-2 left-0 max-sm:-left-12 z-30">
+              <div className="absolute bottom-full mb-2 start-0 max-sm:-start-12 z-30">
                 <StickerPicker onClose={() => setStickers(false)} onPick={(s) => { setStickers(false); haptic('tap'); void onSend({ sticker: s }).catch(() => {}); }} />
               </div>
             )}
@@ -496,7 +496,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                 <Paperclip className="w-5 h-5" />
               </button>
               {attach && (
-                <div className="absolute bottom-full mb-2 left-0 z-30 w-52 p-1.5 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
+                <div className="absolute bottom-full mb-2 start-0 z-30 w-52 p-1.5 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
                   <button onClick={() => mediaRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-sky-500/15 text-sky-500 flex items-center justify-center"><ImageIcon className="w-4 h-4" /></span> Photos & videos
                   </button>
@@ -513,7 +513,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                   </button>
                   <button onClick={() => setOnce(!once)} role="switch" aria-checked={once} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className={cn('w-8 h-8 rounded-full flex items-center justify-center border-2 border-dashed', once ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-zinc-300 dark:border-zinc-600 text-zinc-500')}><Flame className="w-4 h-4" /></span>
-                    <span className="flex-1 text-left">View once</span>
+                    <span className="flex-1 text-start">View once</span>
                     <span className={cn('text-[10px] font-bold uppercase', once ? 'text-indigo-500' : 'text-zinc-400')}>{once ? 'On' : 'Off'}</span>
                   </button>
                   {onSchedule && (
@@ -540,15 +540,15 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
 
           <div className="sm:relative flex-1 min-w-0 flex">
           {(slash.length > 0 || slashSnips.length > 0) && (
-            <div className="absolute bottom-full mb-2 left-0 z-30 w-80 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl" role="listbox" aria-label="Commands">
+            <div className="absolute bottom-full mb-2 start-0 z-30 w-80 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl" role="listbox" aria-label="Commands">
               {slashSnips.map((x) => (
-                <button key={x.id} role="option" aria-selected={false} onMouseDown={(e) => { e.preventDefault(); insertSnippet(fillSnippet(x.body, recipientName)); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+                <button key={x.id} role="option" aria-selected={false} onMouseDown={(e) => { e.preventDefault(); insertSnippet(fillSnippet(x.body, recipientName)); }} className="w-full text-start px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
                   <span className="text-sm font-semibold text-zinc-900 dark:text-white">/{x.shortcut} <span className="font-normal text-zinc-500">· {x.title}</span></span>
                   <span className="block text-xs text-zinc-500 truncate">{x.body}</span>
                 </button>
               ))}
               {slash.map((c) => (
-                <button key={c.name} role="option" aria-selected={false} onMouseDown={(e) => { e.preventDefault(); setText(`/${c.name} `); areaRef.current?.focus(); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+                <button key={c.name} role="option" aria-selected={false} onMouseDown={(e) => { e.preventDefault(); setText(`/${c.name} `); areaRef.current?.focus(); }} className="w-full text-start px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
                   <span className="text-sm font-semibold text-zinc-900 dark:text-white">/{c.name}</span>
                   <span className="block text-xs text-zinc-500">{c.hint}{c.example ? ` · ${c.example}` : ''}{c.app ? ` · app: ${c.app}` : ''}</span>
                 </button>
@@ -556,17 +556,17 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             </div>
           )}
           {suggestions && suggestions.length > 0 && !text && (
-            <div className="absolute bottom-full mb-2 left-0 right-0 z-20 flex gap-1.5 overflow-x-auto scrollbar-none">
+            <div className="absolute bottom-full mb-2 start-0 end-0 z-20 flex gap-1.5 overflow-x-auto scrollbar-none">
               {suggestions.map((sug) => (
                 <button key={sug} type="button" onClick={() => { setText(sug); setSuggestions(null); areaRef.current?.focus(); }} className="shrink-0 px-3 py-1.5 rounded-full bg-white dark:bg-[#121830] border border-indigo-300/60 dark:border-indigo-400/30 text-xs font-medium text-indigo-700 dark:text-indigo-200 shadow-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10">{sug}</button>
               ))}
             </div>
           )}
           {mentionList.length > 0 && (
-            <div className="absolute bottom-full mb-2 left-0 z-30 w-64 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl">
+            <div className="absolute bottom-full mb-2 start-0 z-30 w-64 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl">
               {mentionList.map((u) => (
-                <button key={u.id} onMouseDown={(e) => { e.preventDefault(); pickMention(u); }} className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-800 dark:text-zinc-100">
-                  @{u.name}{u.hint && <span className="ml-2 text-xs text-zinc-500">{u.hint}</span>}
+                <button key={u.id} onMouseDown={(e) => { e.preventDefault(); pickMention(u); }} className="w-full text-start px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-800 dark:text-zinc-100">
+                  @{u.name}{u.hint && <span className="ms-2 text-xs text-zinc-500">{u.hint}</span>}
                 </button>
               ))}
             </div>

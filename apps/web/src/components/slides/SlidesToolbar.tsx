@@ -37,7 +37,7 @@ export function SlidesToolbar({ on, canEdit, canUndo, canRedo, deck, slide, sele
   const textOff = off || !hasText;
   return (
     <div role="toolbar" aria-label="Presentation tools" className="relative flex items-center gap-0.5 overflow-x-auto [scrollbar-width:none] px-2 py-1.5">
-      <button type="button" onClick={() => on.present(false)} className="h-8 shrink-0 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold inline-flex items-center gap-1.5 mr-1" title="Present from this slide (F5 from the start)"><Play className="w-3.5 h-3.5" />Present</button>
+      <button type="button" onClick={() => on.present(false)} className="h-8 shrink-0 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold inline-flex items-center gap-1.5 me-1" title="Present from this slide (F5 from the start)"><Play className="w-3.5 h-3.5" />Present</button>
       <Menu label="Present options" button={<ChevronDown className="w-3.5 h-3.5" />} className="min-w-6 px-1" items={[{ label: 'From the start', onSelect: () => on.present(true), hint: 'F5' }, { label: 'From this slide', onSelect: () => on.present(false) }]} />
       {sep('a')}
       {btn(undefined, 'Undo', Undo2, on.undo, off || !canUndo)}
@@ -53,10 +53,10 @@ export function SlidesToolbar({ on, canEdit, canUndo, canRedo, deck, slide, sele
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Theme</p>
             <div className="grid grid-cols-2 gap-2">
               {THEMES.map((t) => (
-                <button key={t.id} type="button" aria-pressed={deck.theme === t.id} onClick={() => { on.theme(t.id); close(); }} className={cn('rounded-lg overflow-hidden border text-left', deck.theme === t.id ? 'ring-2 ring-indigo-500 border-transparent' : 'border-zinc-200 dark:border-white/10')}>
+                <button key={t.id} type="button" aria-pressed={deck.theme === t.id} onClick={() => { on.theme(t.id); close(); }} className={cn('rounded-lg overflow-hidden border text-start', deck.theme === t.id ? 'ring-2 ring-indigo-500 border-transparent' : 'border-zinc-200 dark:border-white/10')}>
                   <span className="block h-12 relative" style={{ background: t.bg }}>
-                    <span className="absolute left-2 top-2 text-sm font-bold" style={{ color: t.text, fontFamily: t.title }}>Aa</span>
-                    <span className="absolute left-2 right-2 bottom-2 h-1 rounded" style={{ background: t.accent }} />
+                    <span className="absolute start-2 top-2 text-sm font-bold" style={{ color: t.text, fontFamily: t.title }}>Aa</span>
+                    <span className="absolute start-2 end-2 bottom-2 h-1 rounded" style={{ background: t.accent }} />
                   </span>
                   <span className="block px-2 py-1 text-xs font-medium">{t.name}</span>
                 </button>
