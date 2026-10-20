@@ -13,6 +13,7 @@ import { sameQuestion, spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
 import { featureOff } from './moderation';
 import { taAnswer } from './whisper';
+import { callPeople, callPulse } from './calls';
 
 // Stage 5 · D7: phone clicker for in-person classes. The teacher starts a session for a course and
 // projects a code that changes every 30 seconds (the QR opens /student/live?checkin=<code>).
@@ -74,7 +75,7 @@ const randomSecret = () => btoa(String.fromCharCode(...crypto.getRandomValues(ne
 // ─── Teacher ─────────────────────────────────────────────────────────────────────────────────────
 
 async function teacherSession(sessionId: string, user: SessionUser) {
-  const s = await prisma.classroomSession.findUnique({ where: { id: sessionId }, select: { id: true, courseId: true, teacherId: true, secret: true, startedAt: true, endedAt: true, transcript: true, pulse: true, classSessionId: true } });
+  const s = await prisma.classroomSession.findUnique({ where: { id: sessionId }, select: { id: true, courseId: true, teacherId: true, secret: true, startedAt: true, endedAt: true, transcript: true, pulse: true, classSessionId: true, linkedCall: true } });
   if (!s) throw new NotFoundException('Session not found.');
   const access = await courseAccess(s.courseId, user);
   if (!access?.canManage) throw new NotFoundException('Session not found.');
@@ -116,9 +117,11 @@ export async function currentCode(sessionId: string, user: SessionUser) {
 /** What the teacher sees: who's here, the lost meter, questions and notes. */
 export async function teacherView(sessionId: string, user: SessionUser) {
   const s = await teacherSession(sessionId, user);
-  const [checkins, questions] = await Promise.all([
+  const [checkins, questions, call] = await Promise.all([
     prisma.classroomCheckin.findMany({ where: { sessionId }, select: { mood: true, moodAt: true }, take: 1000 }),
     prisma.classroomQuestion.findMany({ where: { sessionId }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, text: true, answeredAt: true, createdAt: true } }),
+    // The course's class call, if it's running (a hybrid class, Stage 5 · Q22): its students, lost and following.
+    open(s) ? callPulse(`c_${s.courseId}`).catch(() => null) : Promise.resolve(null),
   ]);
   return {
     id: s.id,
@@ -132,6 +135,8 @@ export async function teacherView(sessionId: string, user: SessionUser) {
     questions,
     notes: parse<unknown[]>(s.transcript, []).length,
     pulse: parse<unknown[]>(s.pulse, []).slice(-40),
+    call: call ? { ...call, linked: s.linkedCall } : null,
+    linked: s.linkedCall,
   };
 }
 
@@ -155,8 +160,17 @@ export async function teacherAction(sessionId: string, user: SessionUser, b: Rec
     await prisma.classroomSession.update({ where: { id: s.id }, data: { transcript: JSON.stringify(all) } });
     return { notes: all.length };
   }
+  if (b.action === 'link') {
+    // One class in the room and online: the call's students count on the lost meter and are marked present.
+    const on = b.on === true;
+    await prisma.classroomSession.update({ where: { id: s.id }, data: { linkedCall: on } });
+    const marked = on ? await markOnline(s.courseId, (await callPeople(`c_${s.courseId}`)).ids) : 0;
+    return { ok: true, linked: on, marked };
+  }
   if (b.action === 'end') {
     const now = Date.now();
+    // Whoever is in the linked call at the end counts too (they may have joined it before the link).
+    if (s.linkedCall) await markOnline(s.courseId, (await callPeople(`c_${s.courseId}`).catch(() => ({ ids: [] as string[] }))).ids);
     await prisma.classroomSession.update({ where: { id: s.id }, data: { endedAt: new Date(now) } });
     const lines = parse<unknown[]>(s.transcript, []);
     let pack: { id?: string; message?: string } | null = null;
@@ -175,6 +189,29 @@ export async function teacherAction(sessionId: string, user: SessionUser, b: Rec
     return { ok: true, classSessionId: pack?.id ?? null, message: note };
   }
   throw new BadRequestException('Unknown action.');
+}
+
+/**
+ * Students in a class call while its in-person class is linked to it (Stage 5 · Q22): present, or
+ * late after the first 15 minutes, as for those who joined in the room; a mark the teacher made stays
+ * (only "absent" or no mark changes). Only the course's students; a few statements however many.
+ */
+export async function markOnline(courseId: string, userIds: string[]) {
+  const now = Date.now();
+  const s = await prisma.classroomSession.findFirst({ where: { courseId, endedAt: null, linkedCall: true, startedAt: { gt: new Date(now - OPEN_MS) } }, orderBy: { startedAt: 'desc' }, select: { id: true, startedAt: true, teacherId: true } });
+  if (!s || !userIds.length) return 0;
+  const ids = (await prisma.enrollment.findMany({ where: { courseId, studentId: { in: [...new Set(userIds)].slice(0, 90) } }, select: { studentId: true } })).map((e) => e.studentId);
+  if (!ids.length) return 0;
+  const date = new Date(new Date(now).toISOString().slice(0, 10));
+  const status = now - s.startedAt.getTime() > LATE_AFTER_MS ? 'LATE' : 'PRESENT';
+  const have = await prisma.attendance.findMany({ where: { courseId, date, studentId: { in: ids } }, select: { studentId: true, status: true } });
+  const absent = have.filter((h) => h.status === 'ABSENT').map((h) => h.studentId);
+  const none = ids.filter((id) => !have.some((h) => h.studentId === id));
+  // 15 rows at a time: D1 takes at most 100 values in one statement.
+  for (let i = 0; i < none.length; i += 15) await prisma.attendance.createMany({ data: none.slice(i, i + 15).map((studentId) => ({ studentId, courseId, date, status, note: 'Online (class call)' })) });
+  if (absent.length) await prisma.attendance.updateMany({ where: { courseId, date, studentId: { in: absent } }, data: { status, note: 'Online (class call)' } });
+  if (none.length || absent.length) publish([s.teacherId], { type: 'refresh', keys: [`/api/classroom/${s.id}`] });
+  return none.length + absent.length;
 }
 
 // ─── Students ────────────────────────────────────────────────────────────────────────────────────

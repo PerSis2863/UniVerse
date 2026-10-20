@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { classCode, codeWindow, moodCounts, normalizeClassCode, studentAction } from './classroom';
+import { classCode, codeWindow, markOnline, moodCounts, normalizeClassCode, studentAction } from './classroom';
 import { spendAi } from './ai-budget';
 import { taAnswer } from './whisper';
 
@@ -11,12 +11,15 @@ vi.mock('@/lib/db', () => ({
     classroomCheckin: { findUnique: vi.fn() },
     classroomSession: { findUnique: vi.fn() },
     classroomQuestion: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn() },
+    enrollment: { findMany: vi.fn() },
+    attendance: { findMany: vi.fn(), createMany: vi.fn(), updateMany: vi.fn() },
   },
 }));
 vi.mock('./whisper', () => ({ taAnswer: vi.fn().mockResolvedValue({ answer: 'It stops at n - 1 because… [1]', citations: [{ n: 1, title: 'Loops' }], grounded: true, topic: 'loops' }) }));
 vi.mock('./ai-budget', () => ({ spendAi: vi.fn().mockResolvedValue({ ok: true }), sameQuestion: (s: string) => s.toLowerCase().replace(/[?!.\s]+$/u, '').trim() }));
 vi.mock('./ai-receipts', () => ({ logAiUse: vi.fn() }));
 vi.mock('./moderation', () => ({ featureOff: vi.fn().mockResolvedValue(false) }));
+vi.mock('./calls', () => ({ callPeople: vi.fn().mockResolvedValue({ ids: ['s1', 's2', 't9'], creator: null }), callPulse: vi.fn().mockResolvedValue({ lost: 2, got: 3, total: 6 }) }));
 
 describe('in-person class codes', () => {
   it('makes the same 6-character code for a secret and window, and a different one next window', async () => {
@@ -92,5 +95,33 @@ describe('the class TA in an in-person class (Stage 5 · Q22)', () => {
     db.classroomQuestion.findFirst.mockResolvedValueOnce(null);
     await expect(studentAction('cs1', student, { action: 'ta', questionId: 'someone-elses' })).rejects.toMatchObject({ status: 404 });
     expect(taAnswer).not.toHaveBeenCalled();
+  });
+});
+
+describe('a hybrid class: in the room and in the class call (Stage 5 · Q22)', () => {
+  type Fn = ReturnType<typeof vi.fn>;
+  const db = prisma as unknown as Record<string, Record<string, Fn>>;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    db.classroomSession.findFirst = vi.fn().mockResolvedValue({ id: 'cs1', startedAt: new Date(Date.now() - 5 * 60_000), teacherId: 't1' });
+    db.enrollment.findMany.mockResolvedValue([{ studentId: 's1' }, { studentId: 's2' }, { studentId: 's3' }]);
+  });
+
+  it('marks the call’s students present, keeping marks the teacher made', async () => {
+    db.attendance.findMany.mockResolvedValue([{ studentId: 's2', status: 'EXCUSED' }, { studentId: 's3', status: 'ABSENT' }]);
+    expect(await markOnline('c1', ['s1', 's2', 's3', 't9'])).toBe(2);
+    expect(db.enrollment.findMany.mock.calls[0][0].where).toMatchObject({ courseId: 'c1', studentId: { in: ['s1', 's2', 's3', 't9'] } }); // the teacher isn't a student: left out
+    expect(db.attendance.createMany.mock.calls[0][0].data).toEqual([expect.objectContaining({ studentId: 's1', courseId: 'c1', status: 'PRESENT', note: 'Online (class call)' })]);
+    expect(db.attendance.updateMany.mock.calls[0][0]).toMatchObject({ where: { studentId: { in: ['s3'] } }, data: { status: 'PRESENT' } });
+  });
+
+  it('late after the first 15 minutes; nothing when no in-person class is linked', async () => {
+    db.classroomSession.findFirst.mockResolvedValueOnce({ id: 'cs1', startedAt: new Date(Date.now() - 40 * 60_000), teacherId: 't1' });
+    db.attendance.findMany.mockResolvedValue([]);
+    await markOnline('c1', ['s1']);
+    expect(db.attendance.createMany.mock.calls[0][0].data[0].status).toBe('LATE');
+    db.classroomSession.findFirst.mockResolvedValueOnce(null);
+    expect(await markOnline('c1', ['s1'])).toBe(0);
+    expect(db.attendance.createMany).toHaveBeenCalledTimes(1);
   });
 });

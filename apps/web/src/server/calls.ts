@@ -249,6 +249,12 @@ export async function callTicket(callId: string, user: SessionUser, wantKind?: u
   if (res?.status === 403) throw new HttpException('The host removed you from this call.', 403);
   if (!res?.ok) throw new HttpException('Calls are unavailable right now.', 503);
   const { ticket, audience } = (await res.json()) as { ticket: string; audience?: boolean };
+  // A hybrid class (Stage 5 · Q22): joining the class call while its in-person class is linked to it
+  // marks the student present, as joining with the code in the room does.
+  if (callId.startsWith('c_') && !breakout && me?.role === 'STUDENT') {
+    const courseId = callId.slice(2);
+    await import('./classroom').then((m) => m.markOnline(courseId, [user.id])).catch((e) => console.error('hybrid attendance failed:', e));
+  }
   // The host's app sets the call up from its meeting template (Stage 5 · B8.2).
   const template = host && !breakout ? await scheduledTemplate(callId).catch(() => null) : null;
   return {
@@ -382,6 +388,14 @@ export async function callPeople(callId: string): Promise<{ ids: string[]; creat
   const res = await roomFetch(callId, '/people');
   const out = (await res?.json().catch(() => null)) as { ids?: string[]; creator?: string | null } | null;
   return { ids: Array.isArray(out?.ids) ? out.ids : [], creator: out?.creator ?? null };
+}
+
+/** A class call's students right now and how many are lost or follow (an in-person class linked to it, Stage 5 · Q22). Null when it isn't running. */
+export async function callPulse(callId: string): Promise<{ lost: number; got: number; total: number } | null> {
+  const res = await roomFetch(callId, '/pulse');
+  const o = res?.ok ? ((await res.json().catch(() => null)) as { lost?: unknown; got?: unknown; total?: unknown } | null) : null;
+  const n = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 ? (v as number) : 0);
+  return o && n(o.total) > 0 ? { lost: n(o.lost), got: n(o.got), total: n(o.total) } : null;
 }
 
 /** Watch together (4.8): the videos a call can watch from its course (class calls: the course's videos,

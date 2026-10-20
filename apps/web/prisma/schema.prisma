@@ -5796,6 +5796,8 @@ model ClassroomSession {
   transcript     String              @default("[]") // JSON [{ t, who, text }]
   pulse          String              @default("[]") // JSON [{ t, lost, got, total }]
   classSessionId String? // the study pack made when it ended
+  /// Linked to the course's class call (Stage 5 · Q22): one lost meter, and online students marked present
+  linkedCall     Boolean             @default(false)
   checkins       ClassroomCheckin[]
   questions      ClassroomQuestion[]
 

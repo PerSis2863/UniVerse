@@ -1718,6 +1718,9 @@ export class CallRoom extends DurableObject<Env> {
     if (url.pathname === '/people') {
       return Response.json({ ids: [...new Set(this.peers().map(({ peer }) => peer.userId))].slice(0, 500), creator: (await this.ctx.storage.get<string>('creator')) ?? null });
     }
+    // From the app: how many students are in and how many are lost or follow, for an in-person class
+    // linked to this class call (Stage 5 · Q22). Counts only, never who.
+    if (url.pathname === '/pulse') return Response.json(this.pulseCounts());
     // From the app: who is in the room (names only), for voice channel lists.
     if (url.pathname === '/peers') {
       const peers = this.peers().map(({ peer }) => peer.name);
