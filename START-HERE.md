@@ -6,19 +6,21 @@ Workers, with its database on Cloudflare D1 and uploads on R2. This page says wh
 how to run it on your computer, and how to carry on (for the owner and for any AI agent, such as
 Cursor's).
 
-## Where things stand (17 October 2026)
+## Where things stand (20 October 2026)
 
-- **`main` has everything through Q13** (pull request #64): the Office-style documents,
+- **`main` has everything through Q18** (merged 20 Oct): Q14 skills passport, Q15 careers, Q16 global
+  impact (and online payments counted only when the gateway confirms), Q17 student life, Q18 profile,
+  settings search and the guided tour. Before that, through Q13 (pull request #64): the Office-style documents,
   spreadsheets and slides, home pages, notifications, search, attendance, the calendar and
   timetable, and the AI tutor.
 - **The plan:** `apps/web/STAGE-5-PLAN.md`. Section 4 "Remaining work queue" lists every item in
   order, and the **Progress** table at the end says what's done, where the code is and what's left
-  for each item. **Next up: Q18 Onboarding and settings** (Q14–Q17 are finished, see below), then Q19 Owner console, Q20 Chat bots, Q21
+  for each item. **Next up: Q19 Owner console**, then Q20 Chat bots, Q21
   Languages and right-to-left, Q22 leftovers, Q23 small items.
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: one note per item with the traps
   and the rules for code that builds on it.
-- **Q14 (skills passport), Q15 (careers), Q16 (global impact: donations, volunteering certificates, the goal filter on the map, clubs' carbon tracker, and a fix that makes online payments count only when the bank confirms them) and Q17 (student life: paid and signed event tickets, secret club elections and budgets, the campus board, cafeteria pre-orders) are finished and tested on branch `claude/funny-galileo-y4mz9r`, not merged yet**: say "merge" to publish them (Progress rows "Q14"–"Q17").
-- **Next database update number: `0161`** (files in `apps/web/prisma/migrations/`).
+- **Q14–Q18 are on the live site** (merged together on 20 Oct).
+- **Next database update number: `0162`** (files in `apps/web/prisma/migrations/`).
 
 **Waiting on the owner** (things only you can provide):
 - Two-way Google / Outlook calendar sync: a Google Cloud project and a Microsoft app.

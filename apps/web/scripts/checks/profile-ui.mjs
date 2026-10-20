@@ -54,6 +54,7 @@ api.badCover = (await call(A, '/api/core/users/me', { coverUrl: 'javascript:aler
 api.linksCleaned = (await call(A, '/api/core/users/me', { links: [{ url: 'javascript:alert(1)' }, { url: 'http://kaggle.com/alice-test' }] }, 'PATCH')).b.links;
 api.noEmailOnProfile = !JSON.stringify((await call(B, `/api/profile/${alice.id}`)).b).includes('@');
 api.unknown = (await call(B, '/api/profile/nobody-here')).s;
+await call(A, '/api/core/users/me', { links: [], pronouns: null, bio: null, availability: null }, 'PATCH'); // start the browser part clean
 
 // ── Browser helpers ───────────────────────────────────────────────────────
 async function context(browser, email, { width = 390, theme = 'light', sample = false, tour = false } = {}) {
@@ -78,13 +79,16 @@ const wide = (page) => page.evaluate(() => document.documentElement.scrollWidth 
 const toast = async (page, text) => (await page.locator('[data-sonner-toast]', { hasText: text }).last().innerText({ timeout: 15_000 }).catch(() => 'missing')).split('\n')[0];
 const open = async (page, path, ready) => { await page.goto(base + path, { waitUntil: 'networkidle', timeout: 60_000 }); await ready.waitFor({ timeout: 20_000 }); };
 /** The tour's spotlight and the element it should be around. */
-const spotlightOn = (page, selector) => page.evaluate((sel) => {
-  const ring = [...document.querySelectorAll('[aria-modal="true"] > div[aria-hidden]')].find((d) => d.className.includes('ring-2'));
-  const target = [...document.querySelectorAll(sel)].find((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.right > 0 && r.left < innerWidth; });
-  if (!ring || !target) return { ring: !!ring, target: !!target };
-  const a = ring.getBoundingClientRect(), b = target.getBoundingClientRect();
-  return { around: a.left <= b.left + 1 && a.top <= b.top + 1 && a.right >= b.right - 1 && a.bottom >= b.bottom - 1 };
-}, selector);
+const spotlightOn = async (page, selector) => {
+  await page.waitForTimeout(1300); // the spotlight slides between stops and settles
+  return page.evaluate((sel) => {
+    const ring = [...document.querySelectorAll('[aria-modal="true"] > div[aria-hidden]')].find((d) => d.className.includes('ring-2'));
+    const targets = [...document.querySelectorAll(sel)].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight; });
+    if (!ring || !targets.length) return { ring: !!ring, target: targets.length > 0 };
+    const a = ring.getBoundingClientRect();
+    return { around: targets.some((t) => { const b = t.getBoundingClientRect(); return a.left <= b.left + 1 && a.top <= b.top + 1 && a.right >= b.right - 1 && a.bottom >= b.bottom - 1; }) };
+  }, selector);
+};
 
 const browser = await launch();
 try {

@@ -116,9 +116,11 @@ export function WelcomeTour({ role }: { role?: string }) {
       frame = requestAnimationFrame(measure);
     }, 60);
     const follow = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(measure); };
+    // Menus and tab bars can still be sliding into place: measure again as the page settles.
+    const settle = [350, 900].map((ms) => setTimeout(follow, ms));
     window.addEventListener('resize', follow);
     window.addEventListener('scroll', follow, true);
-    return () => { clearTimeout(start); cancelAnimationFrame(frame); window.removeEventListener('resize', follow); window.removeEventListener('scroll', follow, true); };
+    return () => { clearTimeout(start); settle.forEach(clearTimeout); cancelAnimationFrame(frame); window.removeEventListener('resize', follow); window.removeEventListener('scroll', follow, true); };
   }, [open, stop]);
   useEffect(() => { if (open) next.current?.focus({ preventScroll: true }); }, [open, step]);
 

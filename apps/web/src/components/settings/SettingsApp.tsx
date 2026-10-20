@@ -29,7 +29,7 @@ import { aiUseLabel } from '@/lib/ai-receipt';
 import dynamic from 'next/dynamic';
 import { RecordingPrivacy } from './RecordingPrivacy';
 import Image from 'next/image';
-import { MAX_LINKS, PRONOUN_SUGGESTIONS, type ProfileLink } from '@/lib/profile';
+import { MAX_LINKS, PRONOUN_SUGGESTIONS, linkLabel, type ProfileLink } from '@/lib/profile';
 import { searchSettings, settingHref } from '@/lib/settings-index';
 import { AvatarCropper } from './AvatarCropper';
 
@@ -378,7 +378,7 @@ function Profile({ role }: { role: Role }) {
         {links.map((l, i) => (
           <div key={i} className="grid grid-cols-[1fr_1.6fr_auto] gap-2">
             <input className="input" aria-label={`Link ${i + 1} name`} value={l.label} maxLength={30} placeholder="Name (optional)" onChange={(e) => setLinks((ls) => ls.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
-            <input className="input" aria-label={`Link ${i + 1} address`} type="url" value={l.url} placeholder="https://" onChange={(e) => setLinks((ls) => ls.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))} />
+            <input className="input" aria-label={`Link ${i + 1} address`} type="url" value={l.url} placeholder="https://" onChange={(e) => setLinks((ls) => ls.map((x, j) => (j === i ? { url: e.target.value, label: x.label === linkLabel(x.url) ? '' : x.label } : x)))} />
             <button type="button" className="btn-ghost btn-icon" aria-label={`Remove link ${i + 1}`} onClick={() => setLinks((ls) => ls.filter((_, j) => j !== i))}><Trash2 className="w-4 h-4" aria-hidden /></button>
           </div>
         ))}
