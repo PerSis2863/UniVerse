@@ -3,6 +3,36 @@
 Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
 done, where the code is and what's left for each item. Keep that table up to date as you go.
 
+## Q20 · Chat apps: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+
+A school's own slash commands, answered by its own server. Details in the Progress row "Q20".
+
+- **One place decides everything:** `src/server/chat-apps.ts`. `runCommand` repeats the message
+  route's posting rules (chat switched off, muted, announcement channel, community channel rules);
+  if the message route gains a rule, add it there too. Apps never run in private (E2E) chats.
+- **What leaves UniVerse** is only what the payload in `runCommand` builds: no email addresses;
+  recent messages only with `read_recent`. Keep it that way: a school's app is a third party.
+- **Signing** reuses `computeWebhookSignature` (webhooks); apps verify like
+  `scripts/checks/chat-apps-verify.mjs`. Redirects are not followed; 5-second timeout; the call
+  is under the costly rate limit in `cloudflare/worker.ts` (keep the path in `COSTLY`).
+- **Which school:** a person's `organizationId`, plus the school they own (admins). The admin pages
+  use `requireAdmin` → the admin's own school (`getOrCreateOrganization`).
+- **Answers** are posted by the system account with `metadata.app` (MessageBubble shows the app's
+  name); answers for one person are not saved anywhere.
+- **Browser check:** `pnpm local:serve --test-secret --owner-test`, then
+  `node scripts/checks/chat-apps-ui.mjs` (stand-in app on port 8791, sign-in keys on 8790).
+- **Older browser checks that now need care** (seen on 20 Oct, not app bugs): `life-ui` and
+  `impact-ui` insert a school for demo@admin.com, which fails once the demo admin already owns one
+  (opening Billing makes it); `cal-ui` clicks "Next", which now also matches the guided tour's button
+  (mark the tour seen with `universe-tour-done:<id>`).
+- **For the full bug review (found 20 Oct, not fixed yet):** the local server log showed a
+  background task failing with `prisma.notification.findMany()` → P2029 "query parameter limit
+  exceeded" (more than D1's 100 values in one query) while chats were used; find which background job
+  builds that query (likely notifying a big group) and split it.
+- **Also for the review:** in dark mode, white text on the accent colour (`--tint: #6366f1`,
+  `src/app/globals.css`, e.g. your own chat bubbles) is 4.47:1, just under 4.5:1; something like
+  `#5f63f0` passes, but it changes every screen, so check them all (text that uses the tint too).
+
 ## Q19 · Owner console: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
 
 Schools, Moderation and View as in the owner console, a rollout card on the Server tab, growth

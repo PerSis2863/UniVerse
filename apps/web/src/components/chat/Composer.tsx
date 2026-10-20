@@ -76,6 +76,8 @@ interface Props {
   disabledReason?: string;
   /** Runs a "/" command; true when handled (the text is cleared). */
   onCommand?: (name: string, arg: string) => Promise<boolean>;
+  /** The school's chat app commands (Stage 5 · Q20), shown in the "/" menu after UniVerse's own. */
+  appCommands?: { name: string; hint: string; app: string }[];
   /** AI reply suggestions for the latest messages. */
   onSuggest?: () => Promise<string[]>;
   /** Slow mode: a hint under the box. */
@@ -93,7 +95,7 @@ interface Props {
   recipientName?: string;
 }
 
-export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, onSuggest, slowModeSec, canMentionAll, customEmoji, draftKey, serverDraft, onSchedule, recipientName }: Props) {
+export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, appCommands = [], onSuggest, slowModeSec, canMentionAll, customEmoji, draftKey, serverDraft, onSchedule, recipientName }: Props) {
   const [formatting, setFormatting] = useState(false);
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [suggesting, setSuggesting] = useState(false);
@@ -269,7 +271,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
       } else {
         // "/command arg": handled by the chat (AI, reminders, calls…) instead of being sent.
         const cmd = /^\/(\w+)\s*([\s\S]*)$/.exec(value);
-        if (cmd && onCommand && SLASH_COMMANDS.some((c) => c.name === cmd[1].toLowerCase())) {
+        if (cmd && onCommand && [...SLASH_COMMANDS, ...appCommands].some((c) => c.name === cmd[1].toLowerCase())) {
           if (cmd[1].toLowerCase() === 'shrug') await onSend({ text: `${cmd[2] ? cmd[2] + ' ' : ''}¯\\_(ツ)_/¯` });
           else if (!(await onCommand(cmd[1].toLowerCase(), cmd[2].trim()))) return;
         } else await onSend({ text: value });
@@ -388,7 +390,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     setSuggesting(true);
     try { setSuggestions(await onSuggest()); } finally { setSuggesting(false); }
   };
-  const slash = !editing && /^\/\w*$/.test(text) ? SLASH_COMMANDS.filter((c) => c.name.startsWith(text.slice(1).toLowerCase())) : [];
+  const slash: { name: string; hint: string; example?: string; app?: string }[] = !editing && /^\/[\w-]*$/.test(text) && onCommand ? [...SLASH_COMMANDS, ...appCommands].filter((c) => c.name.startsWith(text.slice(1).toLowerCase())) : [];
   const slashSnips = slashTyped ? (snipData?.snippets ?? []).filter((x) => x.shortcut?.startsWith(text.slice(1).toLowerCase())).slice(0, 5) : [];
   const insertSnippet = (body: string) => { setText(body); setSuggestions(null); requestAnimationFrame(() => areaRef.current?.focus()); };
 
@@ -447,7 +449,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
           </button>
         </div>
       ) : (
-        <div className="flex items-end gap-2">
+        <div className="relative flex items-end gap-2">
           <div className="relative">
             <button onClick={() => { setEmoji((v) => !v); setAttach(false); setTranslateOpen(false); }} aria-label="Emoji" className="p-2.5 rounded-full text-zinc-500 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
               <Smile className="w-5 h-5" />
@@ -536,7 +538,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             </div>
           )}
 
-          <div className="relative flex-1 min-w-0 flex">
+          <div className="sm:relative flex-1 min-w-0 flex">
           {(slash.length > 0 || slashSnips.length > 0) && (
             <div className="absolute bottom-full mb-2 left-0 z-30 w-80 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl" role="listbox" aria-label="Commands">
               {slashSnips.map((x) => (
@@ -548,7 +550,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               {slash.map((c) => (
                 <button key={c.name} role="option" aria-selected={false} onMouseDown={(e) => { e.preventDefault(); setText(`/${c.name} `); areaRef.current?.focus(); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
                   <span className="text-sm font-semibold text-zinc-900 dark:text-white">/{c.name}</span>
-                  <span className="block text-xs text-zinc-500">{c.hint}{c.example ? ` · ${c.example}` : ''}</span>
+                  <span className="block text-xs text-zinc-500">{c.hint}{c.example ? ` · ${c.example}` : ''}{c.app ? ` · app: ${c.app}` : ''}</span>
                 </button>
               ))}
             </div>

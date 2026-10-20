@@ -1242,6 +1242,28 @@ model BoardMember {
 
 /// Every change the platform owner makes in the owner console, with the record before and after,
 /// so any of them can be undone. Only the owner can see this table.
+/// A school's chat app (Stage 5 · Q20): slash commands answered by the app's own server
+/// (src/server/chat-apps.ts). commands / permissions are JSON lists.
+model ChatApp {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  url            String
+  secret         String
+  commands       String    @default("[]")
+  permissions    String    @default("[]")
+  enabled        Boolean   @default(true)
+  createdById    String?
+  lastCalledAt   DateTime?
+  lastStatus     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
+
+  @@index([organizationId])
+  @@map("chat_apps")
+}
+
 /// Each change of a school's subscription (Stripe webhook, src/lib/billing.ts): churn in the owner console.
 model SubscriptionEvent {
   id             String   @id @default(cuid())

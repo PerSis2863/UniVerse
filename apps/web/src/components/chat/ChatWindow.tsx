@@ -97,7 +97,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [threadFor, setThreadFor] = useState<string | null>(null);
-  const [catchup, setCatchup] = useState<{ busy: boolean; text: string | null } | null>(null);
+  const [catchup, setCatchup] = useState<{ busy: boolean; text: string | null; title?: string } | null>(null);
+  // The school's chat app commands (Stage 5 · Q20): loaded once, they rarely change.
+  const { data: apps } = useSWR<{ commands: { name: string; hint: string; app: string }[] }>('/api/chat/apps', authedJson, { revalidateOnFocus: false, dedupingInterval: 600_000 });
   const [showJump, setShowJump] = useState(false);
   const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
   const [remindFor, setRemindFor] = useState<ChatMessage | null>(null);
@@ -508,6 +510,13 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       if (name === 'catchup') { void runCatchup(); return true; }
       if (name === 'poll') { onExtra('poll'); return true; }
       if (name === 'call' || name === 'video') { void call(name === 'video' ? 'video' : 'audio'); return true; }
+      const app = apps?.commands.find((c) => c.name === name);
+      if (app) {
+        const r = await chatJson<{ posted?: boolean; text?: string; app: string }>(`/api/chat/conversations/${conversationId}/app`, { method: 'POST', body: JSON.stringify({ command: name, text: arg }) });
+        if (r.posted) void mutate();
+        else if (r.text) setCatchup({ busy: false, text: r.text, title: `${r.app} · only you see this` });
+        return true;
+      }
       if (name === 'remind') {
         const m = /^(\d+)\s*(m|min|mins|minutes?|h|hrs?|hours?|d|days?)\s+(.+)$/i.exec(arg);
         if (!m) { toast.error('Try: /remind 30m hand in the essay  (m, h or d)'); return false; }
@@ -667,7 +676,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               <div className="flex items-start gap-2 px-3 md:px-5 py-2.5">
                 <Sparkles className="w-4 h-4 text-fuchsia-500 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0 text-sm text-zinc-800 dark:text-zinc-200">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-fuchsia-600 dark:text-fuchsia-300 mb-1">Catch up · only you see this</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-fuchsia-600 dark:text-fuchsia-300 mb-1">{catchup.title ?? 'Catch up · only you see this'}</p>
                   {catchup.busy ? <p className="flex items-center gap-2 text-zinc-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Reading what you missed…</p> : <p className="whitespace-pre-wrap">{catchup.text}</p>}
                 </div>
                 <button onClick={() => setCatchup(null)} aria-label="Close summary" className="p-1 rounded-full text-zinc-500 hover:bg-zinc-200/60 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
@@ -855,6 +864,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           slowModeSec={channel?.slowModeSec}
           customEmoji={channel?.emoji}
           onCommand={convo.isOfficial ? undefined : command}
+          appCommands={apps?.commands}
           onSuggest={convo.isOfficial ? undefined : suggestReplies}
         />
       </div>

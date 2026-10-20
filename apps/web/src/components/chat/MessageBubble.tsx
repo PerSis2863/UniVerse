@@ -214,7 +214,7 @@ export function MessageBubble(p: Props) {
   );
 
   const meta = (
-    <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none whitespace-nowrap', mine && !sticker ? 'text-white/70' : 'text-zinc-400')}>
+    <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none whitespace-nowrap', mine && !sticker ? 'text-white/90' : 'text-zinc-600 dark:text-zinc-400')}>
       {m.starred && <Star className="w-3 h-3 fill-current" />}
       {m.expiresAt && <span title="Disappearing message">⏱</span>}
       {m.editedAt && !deleted && (m.metadata?.moderated === 'edited' ? 'edited by UniVerse ·' : (
@@ -430,7 +430,9 @@ export function MessageBubble(p: Props) {
         onDragEnd={(_, info) => { if (info.offset.x > 60) { haptic('tap'); p.onReply(); } }}
         className={cn('flex flex-col min-w-0 max-w-[min(82%,34rem)]', mine ? 'items-end' : 'items-start')}
       >
-        {m.metadata?.ai
+        {m.metadata?.app
+          ? <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-300 mb-1 ml-2 inline-flex items-center gap-1">🧩 {m.metadata.app.name}{m.metadata.askedBy ? <span className="font-normal text-zinc-500"> · /{m.metadata.command} by {m.metadata.askedBy.split(' ')[0]}</span> : null}</span>
+          : m.metadata?.ai
           ? <span className="text-[11px] font-semibold text-fuchsia-500 mb-1 ml-2 inline-flex items-center gap-1">✨ UniVerse AI{m.metadata.askedBy ? <span className="font-normal text-zinc-500"> · asked by {m.metadata.askedBy.split(' ')[0]}</span> : null}</span>
           : showSender && !mine && <span className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-300 mb-1 ml-2" style={p.senderColor ? { color: p.senderColor } : undefined}>{m.sender.name}</span>}
         <div className={cn('flex items-center gap-1 min-w-0 max-w-full', mine && 'flex-row-reverse')}>
