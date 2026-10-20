@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Languages, Loader2 } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
+import { deviceTranslate } from '@/lib/device-translate';
 import { isLanguage, languageName } from '@/lib/languages';
 import { useLanguageStore } from '@/store/language';
 import { cn } from '@/lib/utils';
@@ -20,7 +21,8 @@ const cache = new Map<string, Result>();
 /** Whether a text has words to translate (not only emoji, numbers, links or punctuation), as the server decides. */
 const hasWords = (text: string) => text.replace(/https?:\/\/\S+/g, '').replace(/[@#]\S+/g, '').replace(/[\p{P}\p{S}\p{N}\s]/gu, '').length >= 2;
 
-export function useTextTranslation(kind: TextKind, id: string) {
+/** `text`: when given, the browser's own translator is tried first (free, on the device; Stage 5 · Q22). */
+export function useTextTranslation(kind: TextKind, id: string, text?: string) {
   const app = useLanguageStore((s) => s.language);
   const to = isLanguage(app) ? app : 'en';
   const key = `${kind}:${id}:${to}`;
@@ -31,6 +33,13 @@ export function useTextTranslation(kind: TextKind, id: string) {
     if (result) { setOriginal(false); return; }
     setLoading(true);
     try {
+      const local = text && hasWords(text) ? await deviceTranslate(text, to) : null;
+      if (local) {
+        cache.set(key, local);
+        setResult(local);
+        if (local.same) toast(`It’s already in ${languageName(to)}.`);
+        return;
+      }
       const r = await authedJson<{ translations: Record<string, Result> }>('/api/translate', { method: 'POST', body: JSON.stringify({ items: [{ kind, id }], to }) });
       const got = r.translations[`${kind}:${id}`];
       if (!got) throw new Error('Couldn’t translate this.');
@@ -67,7 +76,7 @@ export function Translatable({ kind, id, text, className, controlClassName, rend
   kind: TextKind; id: string; text: string; className?: string; controlClassName?: string; render?: (text: string, lang?: string) => React.ReactNode; hide?: boolean;
   levels?: boolean | LevelOptions; speakExtra?: string;
 }) {
-  const t = useTextTranslation(kind, id);
+  const t = useTextTranslation(kind, id, text);
   const lang = t.showing ? t.to : undefined;
   const lv = useReadingLevel(levels && isLevelKind(kind) ? kind : null, id, lang ?? '', typeof levels === 'object' ? levels : {});
   const shown = lv.leveled?.text ?? t.showing ?? text;
