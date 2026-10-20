@@ -18,10 +18,12 @@ import type { Given } from '@/lib/question-types';
 import { Translatable } from '@/components/shared/Translatable';
 import type { LevelChoice } from '@/components/shared/ReadingLevel';
 import { readingLevel } from '@/lib/display-prefs';
+import { AiPolicyNote, AiReceiptChoice, startChoice, type ReceiptChoice } from '@/components/assignments/AiReceipt';
+import { isAiPolicy } from '@/lib/ai-receipt';
 
 interface QuizSummary { id: string; title: string; status: string; completed: boolean; score?: number | null; dueDate?: string | null; timeLimit?: number | null; courseId: string; course: { name: string }; _count?: { questions: number } }
 /** A quiz being taken: its questions (from the server, or the copy saved for offline use). */
-type FullQuiz = PackQuiz & { course?: { name: string } | null; examMode?: boolean; plainWords?: boolean; oneWay?: boolean; hardStop?: boolean };
+type FullQuiz = PackQuiz & { course?: { name: string } | null; examMode?: boolean; plainWords?: boolean; oneWay?: boolean; hardStop?: boolean; aiPolicy?: string };
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 export default function QuizzesPage() {
@@ -46,6 +48,8 @@ export default function QuizzesPage() {
   const [endsAt, setEndsAt] = useState(0); // when the time limit runs out (ms)
 
   const seen = useRef({ left: 0, pasted: 0, fullscreenExits: 0 });
+  /** The AI receipt they attach when handing in (Stage 5 · Q22), for the quiz's AI rule. */
+  const [receipt, setReceipt] = useState<ReceiptChoice>(() => startChoice('FREE'));
   /** Reading level for the questions (the same for all of them; starts at the one in Settings). */
   const [quizLevel, setQuizLevel] = useState<LevelChoice>(readingLevel);
 
@@ -65,6 +69,9 @@ export default function QuizzesPage() {
       // Exam mode (B4.4): the clock runs on the server from the first start, so reloading doesn't
       // reset it; full screen is asked for, and leaving it, the tab or pasting is noted.
       let resumeAt = 0;
+      const policy = isAiPolicy(fullQuiz.aiPolicy) ? fullQuiz.aiPolicy : 'FREE';
+      // A quiz that asks for an AI receipt keeps when the student started: the receipt covers the attempt.
+      if (!fullQuiz.examMode && policy !== 'FREE') await api.post(`/quizzes/${fullQuiz.id}/start`).catch(() => null);
       if (fullQuiz.examMode) {
         const clock = await api.post<{ endsAt: string | null; done?: string[] }>(`/quizzes/${fullQuiz.id}/start`).then((r) => r.data).catch(() => null);
         if (clock?.endsAt) ends = new Date(clock.endsAt).getTime();
@@ -75,6 +82,7 @@ export default function QuizzesPage() {
         document.documentElement.requestFullscreen?.().catch(() => {});
       }
       setStartedAt(started.toISOString());
+      setReceipt(startChoice(policy));
       setActiveQuiz(fullQuiz);
       setCurrentQ(resumeAt);
       setAnswers({});
@@ -90,12 +98,13 @@ export default function QuizzesPage() {
     }
   };
 
-  const submitQuiz = async () => {
+  /** `timeUp`: handed in by itself at zero, maybe before they chose what goes on their AI receipt. */
+  const submitQuiz = async (timeUp = false) => {
     if (!activeQuiz) return;
     const finalAnswers = withShownOrder(activeQuiz.questions, answers);
 
     try {
-      const res = await api.post(`/quizzes/${activeQuiz.id}/submit`, { answers: finalAnswers, ...(activeQuiz.examMode ? { integrity: seen.current } : {}) });
+      const res = await api.post(`/quizzes/${activeQuiz.id}/submit`, { answers: finalAnswers, aiReceipt: receipt, ...(timeUp ? { timeUp: true } : {}), ...(activeQuiz.examMode ? { integrity: seen.current } : {}) });
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
       const result = res.data;
       const pct = Math.round((result.score / (result.maxScore || 100)) * 100);
@@ -127,7 +136,7 @@ export default function QuizzesPage() {
     const timer = setInterval(() => {
       const left = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
       setTimeLeft(left);
-      if (left === 0) { clearInterval(timer); void submitRef.current(); }
+      if (left === 0) { clearInterval(timer); void submitRef.current(true); }
     }, 1000);
     return () => clearInterval(timer);
   }, [activeQuiz, submitted, endsAt]);
@@ -312,20 +321,25 @@ export default function QuizzesPage() {
                   <button onClick={() => setActiveQuiz(null)} className="btn-primary px-8 py-2.5">Close</button>
                 </div>
               ) : confirming ? (
-                <div className="p-8 text-center">
+                <div className="p-6 sm:p-8 text-center max-h-[75vh] overflow-y-auto">
                   <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
                   <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Submit Quiz?</h3>
-                  <p className="text-sm text-zinc-500 mb-6">
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
                     You’ve answered {answeredCount} of {activeQuiz.questions.length} questions.
                     Are you sure you want to submit?
                   </p>
+                  {/* AI receipt (Stage 5 · Q22): attached, declined or "no AI", by the quiz's rule. */}
+                  {(activeQuiz.aiPolicy ?? 'FREE') !== 'FREE' && (
+                    <div className="text-start mb-6"><AiReceiptChoice previewUrl={`/api/core/quizzes/${activeQuiz.id}/ai-receipt`} policy={activeQuiz.aiPolicy ?? 'FREE'} value={receipt} onChange={setReceipt} what="quiz" /></div>
+                  )}
                   <div className="flex gap-3">
                     <button onClick={() => setConfirming(false)} className="flex-1 btn-secondary py-2.5 text-sm">Go Back</button>
-                    <button onClick={submitQuiz} className="flex-1 btn-primary py-2.5 text-sm">Submit</button>
+                    <button onClick={() => void submitQuiz()} className="flex-1 btn-primary py-2.5 text-sm">Submit</button>
                   </div>
                 </div>
               ) : (
                 <div className="p-6">
+                  {(activeQuiz.aiPolicy ?? 'FREE') !== 'FREE' && <AiPolicyNote policy={activeQuiz.aiPolicy ?? 'FREE'} className="mb-4 text-xs" />}
                   {activeQuiz.examMode && (
                     <p role="note" className="mb-4 text-xs rounded-xl px-3 py-2 bg-amber-500/10 text-amber-800 dark:text-amber-200">
                       Exam mode: the time limit runs on the server. Your teacher sees how often you left this page, pasted or left full screen. Nothing else is recorded.

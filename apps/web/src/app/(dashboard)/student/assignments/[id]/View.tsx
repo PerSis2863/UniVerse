@@ -221,7 +221,7 @@ function StudentAssignmentPage({ id }: { id: string }) {
                       className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-3 text-sm leading-relaxed text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500"
                     />
                     {kind === 'TEXT' && <p id="replay-note" className="text-xs text-zinc-600 dark:text-zinc-400">Your teacher can replay how your answer grew: what was written or pasted, every few seconds (never each key). It stays on this device until you hand in.</p>}
-                    <AiReceiptChoice assignmentId={data.id} policy={policy} value={choice} onChange={setReceipt} />
+                    <AiReceiptChoice previewUrl={`/api/assignments/${data.id}/ai-receipt`} policy={policy} value={choice} onChange={setReceipt} />
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">{words} words · {answer.length.toLocaleString()}/{MAX.toLocaleString()} characters</span>
                       <button type="button" className="btn-primary" onClick={submit} disabled={sending || !handInReady || (!changed && !!data.mine) || !choiceOk} aria-busy={sending || undefined}>

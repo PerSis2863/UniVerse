@@ -5568,6 +5568,17 @@
      "updatedAt": false
     },
     {
+     "name": "aiPolicy",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
      "name": "createdAt",
      "type": "DateTime",
      "kind": "scalar",
@@ -5949,6 +5960,17 @@
     },
     {
      "name": "drawn",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "aiReceipt",
      "type": "String",
      "kind": "scalar",
      "list": false,
@@ -40582,6 +40604,17 @@
      "updatedAt": false
     },
     {
+     "name": "aiPolicy",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
      "name": "createdAt",
      "type": "DateTime",
      "kind": "scalar",
@@ -40829,6 +40862,17 @@
     {
      "name": "confirmedAt",
      "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "aiReceipt",
+     "type": "String",
      "kind": "scalar",
      "list": false,
      "optional": true,

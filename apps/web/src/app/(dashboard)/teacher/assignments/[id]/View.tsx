@@ -15,7 +15,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 import { Translatable } from '@/components/shared/Translatable';
-import { AiReceiptView } from '@/components/assignments/AiReceipt';
+import { AiReceiptView, ReceiptSummary } from '@/components/assignments/AiReceipt';
 import { AI_POLICIES, type AiPolicy, type AiReceipt } from '@/lib/ai-receipt';
 import { Extensions, GradePosting, RulesEditor, rulesSentence, type ClassStudent, type Extension } from '@/components/assignments/AssignmentRules';
 import { withPenalty } from '@/lib/assignment-policy';
@@ -272,6 +272,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                   <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-500" style={{ width: `${subs.length ? (returned / subs.length) * 100 : 0}%` }} />
                 </div>
               </div>
+              <ReceiptSummary receipts={subs.map((s) => s.aiReceipt ?? null)} policy={data.aiPolicy ?? 'FREE'} className="panel" />
               <nav aria-label="Submissions" className={`panel p-2 max-h-[70vh] overflow-y-auto stagger`}>
                 {subs.map((s) => (
                   <button

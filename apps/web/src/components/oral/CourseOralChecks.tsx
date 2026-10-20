@@ -17,6 +17,8 @@ import { fadeUp, list, spring } from '@/lib/motion';
 import { ORAL_KINDS, defaultRubric, type Criterion, type OralKind } from '@/lib/oral';
 import { cn } from '@/lib/utils';
 import { CriterionScore, Transcript, type OralView } from './OralResult';
+import { AiReceiptView, ReceiptSummary } from '@/components/assignments/AiReceipt';
+import { AI_POLICIES, type AiPolicy } from '@/lib/ai-receipt';
 
 // Course board → Oral checks (Stage 5 · D11, src/server/oral.ts). The teacher sets a low-stakes oral
 // check (what the AI examiner asks, the rubric, how long); each student does it once by voice; the
@@ -26,7 +28,7 @@ import { CriterionScore, Transcript, type OralView } from './OralResult';
 type Row = { id: string; title: string; kind: string; topic: string; minutes: number; dueAt: string | null; status: string; done?: number; toConfirm?: number; confirmed?: number; open?: boolean; mine?: { id: string; status: string; total: number | null; max: number } | null };
 type List = { checks: Row[]; canManage: boolean; enrolled?: number };
 type Attempt = OralView & { student: { id: string; name: string }; aiScores: OralView['scores']; aiTotal: number | null; audioUrl: string | null };
-type Detail = { check: { id: string; title: string; kind: string; topic: string; questions: string; lang: string; minutes: number; dueAt: string | null; status: string; rubric: Criterion[] }; sessions: Attempt[]; notYet: { id: string; name: string }[] };
+type Detail = { check: { id: string; title: string; kind: string; topic: string; questions: string; lang: string; minutes: number; dueAt: string | null; status: string; rubric: Criterion[]; aiPolicy?: string }; sessions: Attempt[]; notYet: { id: string; name: string }[] };
 
 const KINDS = Object.keys(ORAL_KINDS) as OralKind[];
 const kindLabel = (k: string) => ORAL_KINDS[k as OralKind]?.label ?? 'Oral';
@@ -94,6 +96,7 @@ function NewCheck({ courseId, onDone }: { courseId: string; onDone: (id?: string
   const [lang, setLang] = useState('fr');
   const [minutes, setMinutes] = useState(8);
   const [dueAt, setDueAt] = useState('');
+  const [aiPolicy, setAiPolicy] = useState<AiPolicy>('FREE');
   const [rubric, setRubric] = useState<Criterion[]>(() => defaultRubric('VIVA'));
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -103,7 +106,7 @@ function NewCheck({ courseId, onDone }: { courseId: string; onDone: (id?: string
     e.preventDefault();
     setBusy(true);
     try {
-      const r = await authedJson<{ id: string }>(`/api/courses/${courseId}/oral-checks`, { method: 'POST', body: JSON.stringify({ title, kind, topic, questions, lang: kind === 'LANGUAGE' ? lang : '', minutes, dueAt: dueAt ? new Date(dueAt).toISOString() : null, rubric }) });
+      const r = await authedJson<{ id: string }>(`/api/courses/${courseId}/oral-checks`, { method: 'POST', body: JSON.stringify({ title, kind, topic, questions, lang: kind === 'LANGUAGE' ? lang : '', minutes, dueAt: dueAt ? new Date(dueAt).toISOString() : null, rubric, aiPolicy }) });
       toast.success('Oral check set', { description: 'Students are told in the app.' });
       onDone(r.id);
     } catch (err) { toast.error(errorMessage(err, 'Couldn’t set the oral check.')); }
@@ -124,6 +127,10 @@ function NewCheck({ courseId, onDone }: { courseId: string; onDone: (id?: string
           <Field label="Length">{(p) => <select {...p} className="input" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))}>{[3, 5, 8, 10, 15].map((m) => <option key={m} value={m}>{m} minutes</option>)}</select>}</Field>
           <Field label="Due (optional)">{(p) => <input {...p} type="datetime-local" className="input" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />}</Field>
         </div>
+        {/* AI receipts (Stage 5 · Q22): the same rules as assignments, for AI help used during the oral. */}
+        <Field label="AI use" hint={`${AI_POLICIES[aiPolicy].hint} The receipt covers the AI help they used in UniVerse during the oral.`}>
+          {(p) => <select {...p} className="input" value={aiPolicy} onChange={(e) => setAiPolicy(e.target.value as AiPolicy)}>{(Object.keys(AI_POLICIES) as AiPolicy[]).map((k) => <option key={k} value={k}>{AI_POLICIES[k].label}</option>)}</select>}
+        </Field>
         <fieldset className="space-y-2">
           <legend className="label">Rubric</legend>
           {rubric.map((c, i) => (
@@ -174,7 +181,13 @@ function CheckDetail({ id, enrolled, onBack }: { id: string; enrolled: number; o
         <p className="text-sm text-zinc-700 dark:text-zinc-300">{c.topic}</p>
         {c.questions && <p className="text-xs text-zinc-600 dark:text-zinc-400 whitespace-pre-line">{c.questions}</p>}
         <p className="text-xs text-zinc-500 dark:text-zinc-400">Rubric: {c.rubric.map((r) => `${r.name} (${r.max})`).join(' · ')}</p>
+        <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">AI use
+          <select className="input w-auto py-1.5" value={c.aiPolicy ?? 'FREE'} onChange={(e) => void act({ action: 'rule', aiPolicy: e.target.value }, `AI use: ${AI_POLICIES[e.target.value as AiPolicy].label}`)}>
+            {(Object.keys(AI_POLICIES) as AiPolicy[]).map((k) => <option key={k} value={k}>{AI_POLICIES[k].label}</option>)}
+          </select>
+        </label>
       </div>
+      <ReceiptSummary receipts={data.sessions.filter((s) => s.status !== 'STARTED').map((s) => s.aiReceipt ?? null)} policy={c.aiPolicy ?? 'FREE'} className="panel" />
       {data.sessions.length === 0 ? <p className="text-sm text-zinc-500 dark:text-zinc-400">Nobody has done it yet.</p> : (
         <ul className="space-y-2" aria-label="Attempts">
           {data.sessions.map((s) => (
@@ -187,7 +200,7 @@ function CheckDetail({ id, enrolled, onBack }: { id: string; enrolled: number; o
                 <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold shrink-0', STATUS[s.status]?.cls)}>{STATUS[s.status]?.label ?? s.status}</span>
                 <motion.span animate={{ rotate: open === s.id ? 180 : 0 }} transition={spring.snappy} className="text-zinc-500"><ChevronDown className="w-4 h-4" /></motion.span>
               </button>
-              {open === s.id && <AttemptReview s={s} onAct={act} />}
+              {open === s.id && <AttemptReview s={s} onAct={act} policy={c.aiPolicy ?? 'FREE'} />}
             </li>
           ))}
         </ul>
@@ -197,7 +210,7 @@ function CheckDetail({ id, enrolled, onBack }: { id: string; enrolled: number; o
   );
 }
 
-function AttemptReview({ s, onAct }: { s: Attempt; onAct: (body: object, ok: string) => Promise<boolean> }) {
+function AttemptReview({ s, onAct, policy }: { s: Attempt; onAct: (body: object, ok: string) => Promise<boolean>; policy: string }) {
   const { data: full } = useSWR<OralView>(`/api/orals/${s.id}`, authedJson);
   const base = s.scores ?? s.aiScores ?? [];
   const [scores, setScores] = useState<Record<string, number>>(() => Object.fromEntries(s.rubric.map((c) => [c.id, base.find((x) => x.id === c.id)?.score ?? 0])));
@@ -227,6 +240,12 @@ function AttemptReview({ s, onAct }: { s: Attempt; onAct: (body: object, ok: str
               } />
             ))}
           </ul>
+          {(s.aiReceipt || policy !== 'FREE') && (
+            <div className="rounded-xl border border-zinc-200 dark:border-white/[0.08] p-3 space-y-2">
+              <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">AI receipt</h4>
+              <AiReceiptView receipt={s.aiReceipt ?? null} policy={policy} who={s.student.name.split(' ')[0]} what="oral check" />
+            </div>
+          )}
           {!s.aiScores && <p className="text-xs text-zinc-500 dark:text-zinc-400">The AI didn’t score this one (too short, or AI was unavailable): score it from the recording and the transcript.</p>}
           <Field label="Comment for the student (optional)">{(p) => <textarea {...p} className="input min-h-[4rem]" maxLength={2000} value={comment} onChange={(e) => setComment(e.target.value)} />}</Field>
           <div className="flex flex-wrap gap-2">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { excerpt, isAiPolicy, parseReceipt, receiptProblem, usesSummary } from './ai-receipt';
+import { excerpt, isAiPolicy, parseReceipt, receiptProblem, receiptSummary, usesSummary, type AiReceipt } from './ai-receipt';
 
 describe('honest AI receipts (Stage 5 · D12)', () => {
   it('knows the three rules', () => {
@@ -36,5 +36,19 @@ describe('honest AI receipts (Stage 5 · D12)', () => {
     expect(parseReceipt('{broken')).toBeNull();
     expect(parseReceipt(JSON.stringify({ policy: 'MAYBE' }))).toBeNull();
     expect(parseReceipt(null)).toBeNull();
+  });
+
+  it('sums up a class’s receipts for the teacher (Q22)', () => {
+    const base: AiReceipt = { policy: 'RECEIPT', attached: false, declaredNone: false, note: '', uses: [], since: '', at: '' };
+    const use = (kind: string) => ({ kind, detail: '', at: '2026-10-02T10:00:00Z', courseId: null });
+    const s = receiptSummary([
+      { ...base, attached: true, uses: [use('tutor'), use('tutor')] },
+      { ...base, attached: true },
+      { ...base, declaredNone: true, note: 'Only my notes' },
+      { ...base, auto: true },
+      null,
+    ]);
+    expect(s).toEqual({ total: 5, attached: 2, withUses: 1, declaredNone: 1, notes: 1, nothing: 2, uses: 2, byKind: 'Course AI tutor ×2' });
+    expect(parseReceipt(JSON.stringify({ ...base, auto: true, during: true }))).toMatchObject({ auto: true, during: true });
   });
 });

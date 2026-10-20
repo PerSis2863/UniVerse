@@ -3,6 +3,7 @@
 import { BadgeCheck, Clock, Quote, Send } from 'lucide-react';
 import { ORAL_KINDS, type Criterion, type Line, type Score } from '@/lib/oral';
 import { cn } from '@/lib/utils';
+import type { AiReceipt } from '@/lib/ai-receipt';
 
 // An oral's result (Stage 5 · D11): the score for each rubric criterion with the reason and the
 // student's own words as evidence, a summary, strengths and next steps, and the transcript.
@@ -12,6 +13,7 @@ export interface OralView {
   rubric: Criterion[]; max: number; scores: Score[] | null; total: number | null;
   summary: { summary: string; strengths: string[]; nextSteps: string[] } | null;
   teacherComment: string | null; transcript?: Line[]; title?: string | null; note?: string;
+  checkId?: string | null; aiReceipt?: AiReceipt | null;
 }
 
 const mins = (s: number) => (s < 60 ? `${s} s` : `${Math.round(s / 60)} min`);

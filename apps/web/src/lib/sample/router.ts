@@ -2015,6 +2015,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Honest AI receipts (Stage 5 · D12): no AI help recorded in the sample.
   [/^\/api\/assignments\/([^/]+)\/ai-receipt$/, () => ok({ policy: 'FREE', since: new Date().toISOString(), uses: [] })],
   [/^\/api\/me\/ai-uses$/, () => ok({ keepDays: 180, uses: [] })],
+  [/^\/api\/core\/quizzes\/([^/]+)\/ai-receipt$/, () => ok({ policy: 'FREE', since: new Date().toISOString(), during: false, uses: [] })],
+  [/^\/api\/orals\/([^/]+)\/ai-receipt$/, () => ok({ policy: 'FREE', since: new Date().toISOString(), during: true, uses: [] })],
   // Oral practice and oral checks (Stage 5 · D11): none in the sample (the examiner needs AI).
   [/^\/api\/orals$/, () => ok({ checks: [], practice: [] })],
   [/^\/api\/orals\/([^/]+)$/, () => ok({ error: 'Not found.' }, 404)],

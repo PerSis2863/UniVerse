@@ -19,12 +19,14 @@ import { LANGUAGES } from '@/lib/languages';
 import { fadeUp, spring } from '@/lib/motion';
 import { ORAL_KINDS, type OralKind } from '@/lib/oral';
 import { cn } from '@/lib/utils';
+import { AiReceiptChoice, AiReceiptView, startChoice, type ReceiptChoice } from '@/components/assignments/AiReceipt';
+import { AI_POLICIES, isAiPolicy, type AiReceipt } from '@/lib/ai-receipt';
 
 // AI tutor → Oral practice (Stage 5 · D11, src/server/oral.ts): oral checks set by teachers (done
 // once, recorded, the teacher confirms the score) and practice on your own: a viva, a debate, a
 // language oral or an interview with the AI examiner, scored on clarity, depth and evidence.
 
-type Check = { id: string; title: string; kind: string; topic: string; minutes: number; dueAt: string | null; open: boolean; course: { id: string; code: string; name: string }; mine: { id: string; status: string; total: number | null; max: number } | null };
+type Check = { id: string; title: string; kind: string; topic: string; minutes: number; dueAt: string | null; open: boolean; aiPolicy?: string; course: { id: string; code: string; name: string }; mine: { id: string; status: string; total: number | null; max: number; receipt?: boolean } | null };
 type Practice = { id: string; kind: string; topic: string; durationSec: number; createdAt: string; total: number | null; max: number };
 type Overview = { checks: Check[]; practice: Practice[] };
 
@@ -49,7 +51,7 @@ export default function OralPracticePage() {
   const [minutes, setMinutes] = useState(8);
 
   const startCheck = async (c: Check) => {
-    if (!(await confirmDialog({ title: `Start “${c.title}”?`, message: `About ${c.minutes} minutes with the AI examiner. You can do it once. Your voice is recorded and the conversation is written down; both go to your teacher with the scores the AI suggests, and your teacher decides the score. Find a quiet place first.`, confirmLabel: 'Start' }))) return;
+    if (!(await confirmDialog({ title: `Start “${c.title}”?`, message: `About ${c.minutes} minutes with the AI examiner. You can do it once. Your voice is recorded and the conversation is written down; both go to your teacher with the scores the AI suggests, and your teacher decides the score. Find a quiet place first.${isAiPolicy(c.aiPolicy) && c.aiPolicy !== 'FREE' ? ` ${AI_POLICIES[c.aiPolicy].short}: afterwards, ${c.aiPolicy === 'NONE' ? 'you say you didn’t use AI, or attach your AI receipt and explain' : 'you attach your AI receipt'}.` : ''}`, confirmLabel: 'Start' }))) return;
     void oral.begin({ checkId: c.id });
   };
   const startPractice = (e: React.FormEvent) => {
@@ -78,7 +80,8 @@ export default function OralPracticePage() {
                         <span className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0"><Mic className="w-5 h-5 text-indigo-600 dark:text-indigo-300" aria-hidden /></span>
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold text-zinc-900 dark:text-white truncate">{c.title}</p>
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400">{c.course.code} · {ORAL_KINDS[c.kind as OralKind]?.label ?? 'Oral'} · {c.minutes} min{c.dueAt ? ` · due ${new Date(c.dueAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : ''}</p>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400">{c.course.code} · {ORAL_KINDS[c.kind as OralKind]?.label ?? 'Oral'} · {c.minutes} min{c.dueAt ? ` · due ${new Date(c.dueAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : ''}{isAiPolicy(c.aiPolicy) && c.aiPolicy !== 'FREE' ? ` · ${AI_POLICIES[c.aiPolicy].short}` : ''}</p>
+                          {c.mine?.status === 'SUBMITTED' && isAiPolicy(c.aiPolicy) && c.aiPolicy !== 'FREE' && !c.mine.receipt && <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Add your AI receipt: open it</p>}
                         </div>
                         {c.mine ? (
                           <button type="button" onClick={() => setOpen(c.mine!.id)} className="btn-secondary btn-sm shrink-0">
@@ -175,9 +178,44 @@ function ResultSheet({ id, onClose, onDeleted }: { id: string; onClose: () => vo
           </div>
         </div>
         <div className="overflow-y-auto p-4" role="region" aria-label="Result" tabIndex={0}>
+          {data?.checkId && data.status !== 'STARTED' && <OralReceipt id={id} />}
           {data ? <OralResult data={data} /> : error ? <p className="text-sm text-rose-600 dark:text-rose-400">{errorMessage(error, 'Couldn’t open it.')}</p> : <div className="h-40 rounded-2xl skeleton" />}
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+/** An oral check's AI receipt (Stage 5 · Q22): attached after the oral, until the teacher marks it. */
+function OralReceipt({ id }: { id: string }) {
+  const url = `/api/orals/${id}/ai-receipt`;
+  const { data, mutate } = useSWR<{ policy: string; given: AiReceipt | null; canChange: boolean }>(url, authedJson);
+  const [choice, setChoice] = useState<ReceiptChoice | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (!data || (!data.given && (!data.canChange || data.policy === 'FREE'))) return null;
+  const save = async () => {
+    setBusy(true);
+    try {
+      await authedJson(url, { method: 'POST', body: JSON.stringify(choice ?? startChoice(isAiPolicy(data.policy) ? data.policy : 'FREE')) });
+      toast.success('Your AI receipt is with your teacher');
+      setChoice(null);
+      await mutate();
+    } catch (e) { toast.error(errorMessage(e, 'Couldn’t save it.')); }
+    finally { setBusy(false); }
+  };
+  if (data.given && !choice) {
+    return (
+      <section className="mb-4 rounded-2xl border border-zinc-200 dark:border-white/[0.08] p-4 space-y-2" aria-label="Your AI receipt">
+        <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Your AI receipt</h3>
+        <AiReceiptView receipt={data.given} policy={data.policy} who="You" what="oral check" />
+        {data.canChange && <button type="button" onClick={() => setChoice({ attach: data.given!.attached, declaredNone: data.given!.declaredNone, note: data.given!.note })} className="btn-ghost btn-sm">Change it</button>}
+      </section>
+    );
+  }
+  return (
+    <div className="mb-4 space-y-2">
+      <AiReceiptChoice previewUrl={url} policy={data.policy} value={choice ?? startChoice(isAiPolicy(data.policy) ? data.policy : 'FREE')} onChange={setChoice} what="oral check" />
+      <button type="button" onClick={() => void save()} disabled={busy} className="btn-primary btn-sm">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Send my AI receipt</button>
+    </div>
   );
 }

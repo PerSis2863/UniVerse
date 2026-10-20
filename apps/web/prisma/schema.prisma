@@ -715,6 +715,8 @@ model Quiz {
   hardStop    Boolean    @default(false)
   /// A practice set (B4.4): never graded; its questions are practised any time, with the answers
   practice    Boolean    @default(false)
+  /// AI use (Stage 5 · Q22, D12): FREE, RECEIPT (allowed with an AI receipt), NONE (not allowed)
+  aiPolicy    String     @default("FREE")
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -770,6 +772,8 @@ model QuizSubmission {
   offlineStatus    String?
   /// The questions this student got, when the quiz draws from pools (JSON ids)
   drawn            String?
+  /// The student's AI receipt or "no AI" declaration (Stage 5 · Q22), JSON (src/lib/ai-receipt.ts)
+  aiReceipt        String?
 
   @@unique([quizId, studentId])
   @@index([quizId])
@@ -5826,6 +5830,8 @@ model OralCheck {
   dueAt     DateTime?
   /// OPEN | CLOSED
   status    String        @default("OPEN")
+  /// AI use (Stage 5 · Q22, D12): FREE, RECEIPT, NONE, as on assignments
+  aiPolicy  String        @default("FREE")
   createdAt DateTime      @default(now())
   sessions  OralSession[]
 
@@ -5857,6 +5863,8 @@ model OralSession {
   teacherComment String?
   confirmedById  String?
   confirmedAt    DateTime?
+  /// The student's AI receipt for an oral check (Stage 5 · Q22), JSON (src/lib/ai-receipt.ts)
+  aiReceipt      String?
   createdAt      DateTime   @default(now())
 
   @@unique([checkId, userId])
