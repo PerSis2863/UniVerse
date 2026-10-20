@@ -89,7 +89,7 @@ const planShape = (p: { items: string; instalments: string }) => ({ items: JSON.
 export async function feePlans(user: SessionUser) {
   await need(user, 'fees.view');
   const [plans, courses, sums] = await Promise.all([
-    prisma.feePlan.findMany({ orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, name: true, courseId: true, currency: true, items: true, instalments: true, archivedAt: true, createdAt: true, course: { select: { code: true, name: true } } } }),
+    prisma.feePlan.findMany({ orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, name: true, courseId: true, currency: true, items: true, instalments: true, lateFee: true, lateGraceDays: true, archivedAt: true, createdAt: true, course: { select: { code: true, name: true } } } }),
     prisma.course.findMany({ select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 300 }),
     prisma.$queryRawUnsafe<{ planId: string; n: number; billed: number; discount: number; paid: number; open: number; overdue: number }[]>(
       `SELECT "planId", COUNT(*) AS n, SUM(amount) AS billed, SUM(discount) AS discount, SUM(paid) AS paid,
@@ -103,7 +103,7 @@ export async function feePlans(user: SessionUser) {
     plans: plans.map((p) => {
       const s = sums.find((x) => x.planId === p.id);
       return {
-        id: p.id, name: p.name, currency: p.currency, archived: !!p.archivedAt, createdAt: p.createdAt, ...planShape(p),
+        id: p.id, name: p.name, currency: p.currency, archived: !!p.archivedAt, createdAt: p.createdAt, ...planShape(p), lateFee: p.lateFee, lateGraceDays: p.lateGraceDays,
         to: p.course ? `${p.course.code} · ${p.course.name}` : p.courseId ? 'A removed class' : 'Every student', courseId: p.courseId,
         bills: Number(s?.n ?? 0), billed: Number(s?.billed ?? 0) - Number(s?.discount ?? 0), paid: Number(s?.paid ?? 0), open: Number(s?.open ?? 0), overdue: Number(s?.overdue ?? 0),
       };
@@ -123,8 +123,34 @@ export async function createFeePlan(user: SessionUser, b: Record<string, unknown
   const items = parseItems(b.items);
   const total = items.reduce((s, i) => s + i.amount, 0);
   const instalments = parseInstalments(b.instalments, total);
-  const plan = await prisma.feePlan.create({ data: { name, courseId, currency, items: JSON.stringify(items), instalments: JSON.stringify(instalments), createdById: user.id }, select: { id: true, name: true } });
+  const late = lateRule(b);
+  const plan = await prisma.feePlan.create({ data: { name, courseId, currency, items: JSON.stringify(items), instalments: JSON.stringify(instalments), ...late, createdById: user.id }, select: { id: true, name: true } });
   return { ...plan, total, currency };
+}
+
+/** A plan's late fee (Stage 5 · Q22): a flat amount added once, this many days after the due date (0 to 90). */
+export function lateRule(b: Record<string, unknown>): { lateFee: number; lateGraceDays: number } {
+  const lateFee = b.lateFee == null || b.lateFee === '' ? 0 : toMinor(b.lateFee);
+  if (lateFee == null) throw new BadRequestException('The late fee should be an amount, like 200.');
+  const days = b.lateGraceDays == null || b.lateGraceDays === '' ? 0 : Number(b.lateGraceDays);
+  if (!Number.isInteger(days) || days < 0 || days > 90) throw new BadRequestException('Choose 0 to 90 days after the due date.');
+  return { lateFee, lateGraceDays: days };
+}
+
+/**
+ * Adds plans' late fees to bills still unpaid that many days after they were due (once a bill; one
+ * statement). Run by the daily job, or by the fees team for one plan. The fee goes into the bill's
+ * amount, so payments and receipts stay right, and into "lateFee" to show and waive.
+ */
+export async function applyLateFees(planId?: string): Promise<number> {
+  const plan = `(SELECT p.%s FROM fee_plans p WHERE p.id = fee_invoices."planId")`;
+  return prisma.$executeRawUnsafe(
+    `UPDATE fee_invoices SET amount = amount + ${plan.replace('%s', '"lateFee"')}, "lateFee" = ${plan.replace('%s', '"lateFee"')}
+     WHERE "lateFee" = 0 AND status IN ('DUE', 'PARTIAL')
+       AND "planId" IN (SELECT id FROM fee_plans WHERE "lateFee" > 0 AND "archivedAt" IS NULL${planId ? ' AND id = ?2' : ''})
+       AND julianday("dueAt") + ${plan.replace('%s', '"lateGraceDays"')} < julianday(?1)`,
+    dbNow(), ...(planId ? [planId] : []),
+  );
 }
 
 /** Who a plan bills: a class's students (not suspended), or every active student. */
@@ -144,6 +170,13 @@ export async function feePlanAction(user: SessionUser, id: string, b: Record<str
     await prisma.feePlan.update({ where: { id }, data: { archivedAt: b.action === 'archive' ? new Date() : null } });
     return { archived: b.action === 'archive' };
   }
+  // Late fees (Q22): change the rule (bills that already have one keep it), or add them now.
+  if (b.action === 'late') {
+    const late = lateRule(b);
+    await prisma.feePlan.update({ where: { id }, data: late });
+    return late;
+  }
+  if (b.action === 'apply-late') return { added: await applyLateFees(id) };
   if (b.action !== 'issue') throw new BadRequestException('Unknown action.');
   if (plan.archivedAt) throw new BadRequestException('Unarchive the plan to issue it.');
   const { instalments } = planShape(plan);
@@ -168,7 +201,7 @@ export async function feePlanAction(user: SessionUser, id: string, b: Record<str
 // ── Bills ───────────────────────────────────────────────────────────────────────────────────
 
 const invoiceSelect = {
-  id: true, seq: true, planId: true, instalment: true, label: true, currency: true, amount: true, discount: true, discountNote: true, paid: true, dueAt: true, status: true, remindedAt: true, createdAt: true,
+  id: true, seq: true, planId: true, instalment: true, label: true, currency: true, amount: true, discount: true, discountNote: true, paid: true, dueAt: true, status: true, remindedAt: true, createdAt: true, lateFee: true,
   student: { select: { id: true, name: true, email: true } },
   plan: { select: { name: true, course: { select: { code: true } } } },
 } as const;
@@ -277,6 +310,14 @@ export async function feeInvoiceAction(user: SessionUser, id: string, b: Record<
       await prisma.feeInvoice.update({ where: { id }, data: { status: b.action === 'waive' ? 'WAIVED' : 'CANCELLED', discountNote: b.action === 'waive' ? note : inv.discountNote } });
       return { status: b.action === 'waive' ? 'WAIVED' : 'CANCELLED' };
     }
+    case 'waive-late': {
+      // The late fee off the bill (Q22); a bill paid beyond what it would then be needs a payment voided first.
+      if (!inv.lateFee) throw new BadRequestException('This bill has no late fee.');
+      if (inv.paid > inv.amount - inv.lateFee - inv.discount) throw new BadRequestException('More has been paid than the bill would be without the late fee. Void a payment first.');
+      await prisma.feeInvoice.update({ where: { id }, data: { amount: inv.amount - inv.lateFee, lateFee: 0 } });
+      await sync(id);
+      return { lateFee: 0 };
+    }
     case 'reopen': {
       if (!['WAIVED', 'CANCELLED'].includes(inv.status)) throw new BadRequestException('This bill is open.');
       await prisma.feeInvoice.update({ where: { id }, data: { status: 'DUE' } });
@@ -384,7 +425,7 @@ export async function feeReport(user: SessionUser) {
 async function billsOf(studentId: string) {
   const rows = await prisma.feeInvoice.findMany({
     where: { studentId, status: { not: 'CANCELLED' } }, orderBy: [{ dueAt: 'asc' }], take: 100,
-    select: { id: true, seq: true, label: true, currency: true, amount: true, discount: true, discountNote: true, paid: true, dueAt: true, status: true, payments: { where: { voidedAt: null }, orderBy: { paidAt: 'asc' }, select: { id: true, seq: true, amount: true, method: true, paidAt: true } } },
+    select: { id: true, seq: true, label: true, currency: true, amount: true, discount: true, discountNote: true, paid: true, dueAt: true, status: true, lateFee: true, payments: { where: { voidedAt: null }, orderBy: { paidAt: 'asc' }, select: { id: true, seq: true, amount: true, method: true, paidAt: true } } },
   });
   const now = Date.now();
   const bills = rows.map((r) => shapeInvoice(r, now));

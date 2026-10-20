@@ -26209,6 +26209,28 @@
      ]
     },
     {
+     "name": "lateFee",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "lateGraceDays",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
      "name": "archivedAt",
      "type": "DateTime",
      "kind": "scalar",
@@ -26429,6 +26451,17 @@
      "id": false,
      "unique": false,
      "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "lateFee",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
      "updatedAt": false
     },
     {

@@ -25,6 +25,8 @@ export function PlanSheet({ courses, currencies, onClose, onCreated }: {
   const [items, setItems] = useState([{ label: 'Tuition', amount: '' }]);
   const [count, setCount] = useState(1);
   const [dates, setDates] = useState<string[]>(() => Array.from({ length: 12 }, (_, i) => format(addMonths(new Date(), i + 1), 'yyyy-MM-10')));
+  const [lateFee, setLateFee] = useState('');
+  const [lateDays, setLateDays] = useState(7);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const total = items.reduce((s, i) => s + toMinor(i.amount), 0);
@@ -44,6 +46,7 @@ export function PlanSheet({ courses, currencies, onClose, onCreated }: {
         name, courseId: courseId || null, currency,
         items: items.filter((i) => i.label.trim() || i.amount).map((i) => ({ label: i.label, amount: Number(i.amount) })),
         instalments: dates.slice(0, count).map((d, i) => ({ label: count === 1 ? 'Full amount' : `Instalment ${i + 1}`, dueAt: d })),
+        lateFee: lateFee ? Number(lateFee) : 0, lateGraceDays: lateDays,
       }) });
       haptic('success');
       toast.success('Fee plan saved', { description: 'Issue it when you’re ready: each student gets their bills then.' });
@@ -97,6 +100,19 @@ export function PlanSheet({ courses, currencies, onClose, onCreated }: {
               <span className="w-24 shrink-0 text-end text-sm tabular-nums text-zinc-700 dark:text-zinc-200">{money(shares[i] ?? 0, currency)}</span>
             </div>
           ))}
+        </fieldset>
+        {/* Late fee (Stage 5 · Q22): added once to a bill still unpaid some days after its due date. */}
+        <fieldset className="space-y-2">
+          <legend className="label">Late fee (optional)</legend>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+            <input type="number" min={0} step="0.01" inputMode="decimal" aria-label={`Late fee in ${currency}`} value={lateFee} onChange={(e) => setLateFee(e.target.value)} className="input w-32" placeholder="0" />
+            <span>{currency}, added</span>
+            <select aria-label="Days after the due date" value={lateDays} onChange={(e) => setLateDays(Number(e.target.value))} className="input w-auto">
+              {[0, 3, 7, 14, 30].map((d) => <option key={d} value={d}>{d ? `${d} days after` : 'the day after'}</option>)}
+            </select>
+            <span>the due date</span>
+          </div>
+          <p className="text-[11px] text-zinc-600 dark:text-zinc-400">Added once to each bill still unpaid then (checked every morning). You can waive it on a bill.</p>
         </fieldset>
         {problem && <p className="text-sm text-rose-600 dark:text-rose-400" role="alert">{problem}</p>}
         <button type="submit" disabled={busy || !name.trim() || !total} className="btn-primary w-full">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save plan</button>

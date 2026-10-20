@@ -10,7 +10,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { SearchField } from '@/components/ui/Field';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { LoadError } from '@/components/ui/LoadError';
-import { confirmDialog } from '@/components/ui/Dialogs';
+import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
 import { fadeUp, list, spring } from '@/lib/motion';
@@ -31,6 +31,7 @@ interface Plan {
   id: string; name: string; currency: string; archived: boolean; createdAt: string; to: string; courseId: string | null;
   items: { label: string; amount: number }[]; instalments: { label: string; dueAt: string; amount: number }[];
   bills: number; billed: number; paid: number; open: number; overdue: number;
+  lateFee?: number; lateGraceDays?: number;
 }
 interface Plans { currencies: string[]; courses: { id: string; code: string; name: string }[]; plans: Plan[] }
 interface Bill {
@@ -172,6 +173,21 @@ function PlansView({ onIssued }: { onIssued: () => void }) {
   if (!data) return <ContentSkeleton variant="list" />;
   const plans = data.plans.filter((p) => showArchived || !p.archived);
 
+  // Late fees (Stage 5 · Q22): change the rule, or add the fee now to bills past it.
+  const late = async (p: Plan) => {
+    const v = await promptDialog({ title: `Late fee for “${p.name}”`, message: `An amount in ${p.currency} added once to each bill still unpaid ${p.lateGraceDays ?? 0} day(s) after its due date. 0 for none.`, placeholder: '200', defaultValue: p.lateFee ? String(p.lateFee / 100) : '', confirmLabel: 'Save', maxLength: 12 });
+    if (v == null) return;
+    setBusy(p.id);
+    try {
+      await authedJson(`/api/fees/plans/${p.id}`, { method: 'POST', body: JSON.stringify({ action: 'late', lateFee: v.trim() || 0, lateGraceDays: p.lateGraceDays ?? 0 }) });
+      const r = Number(v) > 0 ? await authedJson<{ added: number }>(`/api/fees/plans/${p.id}`, { method: 'POST', body: JSON.stringify({ action: 'apply-late' }) }) : { added: 0 };
+      toast.success(Number(v) > 0 ? `Late fee saved${r.added ? `: added to ${r.added} overdue bill${r.added === 1 ? '' : 's'}` : ''}` : 'No late fee');
+      await mutate();
+      onIssued();
+    } catch (e) { toast.error(errorMessage(e, 'Couldn’t save the late fee.')); }
+    finally { setBusy(null); }
+  };
+
   const act = async (p: Plan, action: 'issue' | 'archive' | 'unarchive') => {
     if (action === 'issue') {
       const total = p.items.reduce((s, i) => s + i.amount, 0);
@@ -216,6 +232,11 @@ function PlansView({ onIssued }: { onIssued: () => void }) {
                     <p className="font-semibold text-zinc-900 dark:text-white">{p.name}{p.archived && <span className="ms-2 text-[11px] font-semibold text-zinc-500">Archived</span>}</p>
                     <p className="text-xs text-zinc-500">{p.to} · {money(total, p.currency)} per student · {p.instalments.length === 1 ? `due ${format(new Date(p.instalments[0].dueAt), 'd MMM yyyy')}` : `${p.instalments.length} instalments from ${format(new Date(p.instalments[0].dueAt), 'd MMM')}`}</p>
                     <p className="text-xs text-zinc-500 mt-0.5 truncate">{p.items.map((i) => `${i.label} ${money(i.amount, p.currency)}`).join(' · ')}</p>
+                    {manage && !p.archived ? (
+                      <button type="button" onClick={() => void late(p)} disabled={!!busy} className="mt-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 hover:underline">
+                        {p.lateFee ? `Late fee ${money(p.lateFee, p.currency)} ${p.lateGraceDays ? `${p.lateGraceDays} days after the due date` : 'after the due date'} · change` : 'Add a late fee'}
+                      </button>
+                    ) : p.lateFee ? <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">Late fee {money(p.lateFee, p.currency)}</p> : null}
                   </div>
                   {manage && <div className="flex gap-1 shrink-0">
                     {!p.archived && (

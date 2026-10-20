@@ -3784,6 +3784,9 @@ model FeePlan {
   instalments String
   createdById String
   createdBy   User         @relation("FeePlansMade", fields: [createdById], references: [id], onDelete: Cascade)
+  /// Late fee (Stage 5 · Q22): added once to a bill still unpaid this many days after its due date (minor units; 0 = none)
+  lateFee       Int        @default(0)
+  lateGraceDays Int        @default(0)
   archivedAt  DateTime?
   createdAt   DateTime     @default(now())
   invoices    FeeInvoice[]
@@ -3811,6 +3814,8 @@ model FeeInvoice {
   dueAt        DateTime
   status       String       @default("DUE")
   remindedAt   DateTime?
+  /// The late fee added to `amount` (Stage 5 · Q22), shown apart and waivable
+  lateFee      Int          @default(0)
   createdAt    DateTime     @default(now())
   payments     FeePayment[]
   paymentOrders PaymentOrder[]

@@ -10,6 +10,7 @@ import { purgeLostFound } from '@/server/campus-life';
 import { pruneCallRecordings } from '@/server/call-recordings';
 import { weeklyAutopilotReports } from '@/server/group-autopilot';
 import { wellbeingNudges } from '@/server/wellbeing';
+import { applyLateFees } from '@/server/fees';
 
 // Daily job, run by the Worker's cron trigger (cloudflare/worker.ts → wrangler.jsonc "triggers").
 // It isn't reachable from outside: the scheduled handler calls it in-process with a random
@@ -31,6 +32,8 @@ export async function POST(req: Request) {
   const earlyWarning = await assessCourses().catch((e) => (console.error('early warning failed:', e), null));
   // Group project autopilot (Stage 5 · D6): each plan's weekly report near the end of its week.
   const autopilot = await weeklyAutopilotReports().catch((e) => (console.error('autopilot reports failed:', e), null));
+  // Late fees on bills still unpaid past their plan's grace days (Stage 5 · Q22): one statement.
+  const lateFees = await applyLateFees().catch((e) => (console.error('late fees failed:', e), 0));
   // Wellbeing radar (Stage 5 · D13): private nudges for students who turned it on.
   const wellbeing = await wellbeingNudges().catch((e) => (console.error('wellbeing nudges failed:', e), null));
   // Error monitoring: AI diagnoses the day's new problems, then the owner gets a digest.
@@ -39,7 +42,7 @@ export async function POST(req: Request) {
   const ctl = await prisma.serverControl.findUnique({ where: { id: 'main' }, select: { switches: true } }).catch(() => null);
   const errorsEmail = emailDue(parseEmailSchedule(ctl?.switches).errors);
   const reported = errorsEmail.due ? await emailErrorDigest(new Date(Date.now() - errorsEmail.days * DAY)).catch((e) => (console.error('emailErrorDigest failed:', e), 0)) : 0;
-  return NextResponse.json({ reminders, guardianDigests, deleted, earlyWarning, autopilot, wellbeing, errors: { diagnosed, reported } });
+  return NextResponse.json({ reminders, guardianDigests, deleted, earlyWarning, autopilot, lateFees, wellbeing, errors: { diagnosed, reported } });
 }
 
 const DAY = 24 * 60 * 60_000;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { outstanding, parseInstalments, parseItems, split, statusOf, toMinor } from './fees';
+import { outstanding, parseInstalments, parseItems, split, statusOf, toMinor, lateRule } from './fees';
 
 describe('fee amounts', () => {
   it('reads amounts as whole minor units', () => {
@@ -60,4 +60,14 @@ describe('fee plans', () => {
     expect(() => parseInstalments(Array.from({ length: 13 }, () => ({ dueAt: '2026-12-01' })), 1000, now)).toThrow();
   });
   it('names a single instalment “Full amount”', () => expect(parseInstalments([{ dueAt: '2026-11-10' }], 1000, now)[0].label).toBe('Full amount'));
+});
+
+describe('late fees (Stage 5 · Q22)', () => {
+  it('reads the rule: an amount and 0 to 90 days after the due date', () => {
+    expect(lateRule({ lateFee: '200', lateGraceDays: 7 })).toEqual({ lateFee: 20000, lateGraceDays: 7 });
+    expect(lateRule({})).toEqual({ lateFee: 0, lateGraceDays: 0 });
+    expect(() => lateRule({ lateFee: 'lots' })).toThrow(/amount/);
+    expect(() => lateRule({ lateFee: 100, lateGraceDays: 120 })).toThrow(/90 days/);
+    expect(() => lateRule({ lateFee: 100, lateGraceDays: 1.5 })).toThrow(/90 days/);
+  });
 });
