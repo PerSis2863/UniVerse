@@ -22,9 +22,11 @@ import { MyRegisters } from '@/components/registers/MyRegisters';
 // A teacher's staff page (Stage 5 · B15.8; src/server/staff.ts): mark yourself in and out today,
 // ask for leave (and cancel it), and see the classes you've been asked to cover.
 
-interface Leave { id: string; type: string; fromDate: string; toDate: string; reason: string | null; status: string; decisionNote: string | null; decidedAt: string | null }
+interface Leave { id: string; type: string; fromDate: string; toDate: string; halfDay?: 'AM' | 'PM' | null; reason: string | null; status: string; decisionNote: string | null; decidedAt: string | null }
+interface Balance { type: string; label: string; allowance: number; used: number; pending: number; left: number | null }
 interface Cover { id: string; date: string; start: string; end: string; type: string; room: string | null; course: { code: string; name: string }; absent: string; note: string | null }
-interface Data { today: string; inAt: string | null; outAt: string | null; leave: Leave[]; covers: Cover[] }
+interface Data { today: string; inAt: string | null; outAt: string | null; leave: Leave[]; covers: Cover[]; balances?: { year: string; rows: Balance[] } }
+const half = (h?: string | null) => (h === 'AM' ? ' (morning)' : h === 'PM' ? ' (afternoon)' : '');
 
 const card = 'rounded-3xl tone-panel border border-zinc-200 dark:border-white/10';
 const todayLocal = () => format(new Date(), 'yyyy-MM-dd');
@@ -106,12 +108,24 @@ export function MyStaff() {
           <h2 id="leave-title" className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Your leave</h2>
           <button type="button" onClick={() => setAsking(true)} className="btn-primary btn-sm"><CalendarPlus className="w-4 h-4" /> Ask for leave</button>
         </div>
+        {/* What's left this leave year (Stage 5 · Q22): kinds with an allowance; working days, half days count half. */}
+        {data.balances && data.balances.rows.some((b) => b.allowance) && (
+          <ul className="mx-3 mb-2 grid grid-cols-2 sm:grid-cols-4 gap-2" aria-label={`Leave left in ${data.balances.year}`}>
+            {data.balances.rows.filter((b) => b.allowance).map((b) => (
+              <li key={b.type} className="rounded-xl border border-zinc-200/80 dark:border-white/[0.08] px-3 py-2">
+                <span className="block text-[11px] text-zinc-600 dark:text-zinc-400">{b.label}</span>
+                <span className="block text-sm font-bold tabular-nums text-zinc-900 dark:text-white">{b.left} of {b.allowance} left</span>
+                {b.pending > 0 && <span className="block text-[11px] text-zinc-600 dark:text-zinc-400 tabular-nums">{b.pending} waiting</span>}
+              </li>
+            ))}
+          </ul>
+        )}
         {data.leave.length === 0 ? <p className="px-3 pb-3 text-sm text-zinc-500">No leave in the last three months.</p> : (
           <ul className="divide-y divide-zinc-200/70 dark:divide-white/[0.06]">
             {data.leave.map((l) => (
               <li key={l.id} className="px-3 py-2.5 flex items-start gap-3">
                 <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-semibold text-zinc-900 dark:text-white">{LEAVE_LABEL[l.type] ?? 'Leave'} · {range(l.fromDate, l.toDate)}</span>
+                  <span className="block text-sm font-semibold text-zinc-900 dark:text-white">{LEAVE_LABEL[l.type] ?? 'Leave'} · {range(l.fromDate, l.toDate)}{half(l.halfDay)}</span>
                   {l.reason && <span className="block text-xs text-zinc-500 break-words">{l.reason}</span>}
                   {l.decisionNote && <span className="block text-xs text-zinc-600 dark:text-zinc-300">Note: {l.decisionNote}</span>}
                 </span>
@@ -136,16 +150,18 @@ function AskLeave({ today, onClose, onSent }: { today: string; onClose: () => vo
   const [fromDate, setFrom] = useState(today);
   const [toDate, setTo] = useState(today);
   const [reason, setReason] = useState('');
+  const [halfDay, setHalfDay] = useState<'' | 'AM' | 'PM'>('');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const oneDay = toDate <= fromDate;
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setProblem(null);
     try {
-      await authedJson('/api/staff/me', { method: 'POST', body: JSON.stringify({ action: 'leave', type, fromDate, toDate: toDate < fromDate ? fromDate : toDate, reason }) });
+      const r = await authedJson<{ over?: number }>('/api/staff/me', { method: 'POST', body: JSON.stringify({ action: 'leave', type, fromDate, toDate: toDate < fromDate ? fromDate : toDate, reason, halfDay: oneDay && halfDay ? halfDay : null }) });
       haptic('success');
-      toast.success('Leave request sent', { description: 'You’ll hear in the app when it’s decided.' });
+      toast.success('Leave request sent', { description: r.over ? `It’s ${r.over} day${r.over === 1 ? '' : 's'} over your allowance; whoever approves leave decides.` : 'You’ll hear in the app when it’s decided.' });
       onSent();
     } catch (err) { setProblem(errorMessage(err, 'Couldn’t send the request.')); setBusy(false); }
   };
@@ -166,6 +182,18 @@ function AskLeave({ today, onClose, onSent }: { today: string; onClose: () => vo
           <Field label="First day">{(p) => <input {...p} type="date" required value={fromDate} onChange={(e) => { setFrom(e.target.value); if (toDate < e.target.value) setTo(e.target.value); }} className="input" />}</Field>
           <Field label="Last day">{(p) => <input {...p} type="date" required value={toDate} min={fromDate} onChange={(e) => setTo(e.target.value)} className="input" />}</Field>
         </div>
+        {oneDay && (
+          <fieldset>
+            <legend className="label">How long</legend>
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              {([['', 'Whole day'], ['AM', 'Morning'], ['PM', 'Afternoon']] as const).map(([k, v]) => (
+                <label key={k || 'all'} className={cn('min-h-11 px-3 rounded-xl border text-sm flex items-center gap-2 cursor-pointer', halfDay === k ? 'border-indigo-600 bg-indigo-500/10' : 'border-zinc-200 dark:border-white/10')}>
+                  <input type="radio" name="leave-half" checked={halfDay === k} onChange={() => setHalfDay(k)} className="accent-indigo-600" />{v}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
         <Field label="Reason (optional)" hint="Seen by whoever approves leave." count={reason.length} max={500}>
           {(p) => <textarea {...p} rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} className="input" />}
         </Field>

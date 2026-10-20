@@ -3998,6 +3998,8 @@ model StaffLeave {
   fromDate     String
   toDate       String
   reason       String?
+  /// A single day's morning (AM) or afternoon (PM) only (Stage 5 · Q22); null for whole days
+  halfDay      String?
   status       String       @default("PENDING")
   decidedById  String?
   decidedAt    DateTime?
@@ -4125,6 +4127,17 @@ model LibraryHold {
 }
 
 /// The library's rules (one row, id "default"); fines in minor units.
+/// Staff leave allowances for the whole school (Stage 5 · Q22; one row, id "main"): days a year for
+/// each kind of leave, JSON { SICK: 12, … } (0: no limit), and the month the leave year starts.
+model StaffSettings {
+  id             String   @id
+  leaveDays      String   @default("{\"SICK\":12,\"PERSONAL\":10,\"TRAINING\":0,\"OTHER\":0}")
+  yearStartMonth Int      @default(1)
+  updatedAt      DateTime @default(now())
+
+  @@map("staff_settings")
+}
+
 model LibrarySettings {
   id          String   @id
   loanDays    Int      @default(14)

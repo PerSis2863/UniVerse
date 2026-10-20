@@ -2015,6 +2015,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Honest AI receipts (Stage 5 · D12): no AI help recorded in the sample.
   [/^\/api\/assignments\/([^/]+)\/ai-receipt$/, () => ok({ policy: 'FREE', since: new Date().toISOString(), uses: [] })],
   [/^\/api\/me\/ai-uses$/, () => ok({ keepDays: 180, uses: [] })],
+  // Staff leave allowances (Stage 5 · Q22).
+  [/^\/api\/staff\/settings$/, () => ok({ leaveDays: { SICK: 12, PERSONAL: 10, TRAINING: 0, OTHER: 0 }, yearStartMonth: 1 })],
   [/^\/api\/core\/quizzes\/([^/]+)\/ai-receipt$/, () => ok({ policy: 'FREE', since: new Date().toISOString(), during: false, uses: [] })],
   [/^\/api\/orals\/([^/]+)\/ai-receipt$/, () => ok({ policy: 'FREE', since: new Date().toISOString(), during: true, uses: [] })],
   // Oral practice and oral checks (Stage 5 · D11): none in the sample (the examiner needs AI).
