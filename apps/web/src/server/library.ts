@@ -161,6 +161,8 @@ export async function myLibrary(user: SessionUser) {
     returned: loans.filter((l) => l.returnedAt).slice(0, 20).map((l) => ({ id: l.id, book: l.copy.book, returnedAt: l.returnedAt, fine: l.fine, fineStatus: l.fineStatus })),
     holds: holds.map((h) => ({ id: h.id, status: h.status, readyUntil: h.readyUntil, createdAt: h.createdAt, book: { id: h.bookId, ...h.book } })),
     owed, currency: s.currency,
+    // My library card (Q22): the desk scans it to lend to me.
+    card: { code: `L:${user.id}`, name: user.name },
   };
 }
 
@@ -248,7 +250,9 @@ export async function findBorrowers(user: SessionUser, q: string) {
   await need(user, 'library.manage');
   const text = q.trim().slice(0, 60);
   if (text.length < 2) return { people: [] };
-  const people = await prisma.user.findMany({ where: { role: { in: ['STUDENT', 'TEACHER'] }, status: { not: 'SUSPENDED' }, OR: [{ name: { contains: text } }, { email: { contains: text.toLowerCase() } }] }, orderBy: { name: 'asc' }, take: 10, select: { id: true, name: true, email: true, avatar: true, role: true } });
+  // A library card scanned (Stage 5 · Q22): "L:" and the person's account id.
+  const card = /^L:([a-z0-9]{8,40})$/i.exec(text)?.[1];
+  const people = await prisma.user.findMany({ where: { role: { in: ['STUDENT', 'TEACHER'] }, status: { not: 'SUSPENDED' }, ...(card ? { id: card } : { OR: [{ name: { contains: text } }, { email: { contains: text.toLowerCase() } }] }) }, orderBy: { name: 'asc' }, take: 10, select: { id: true, name: true, email: true, avatar: true, role: true } });
   const loans = people.length ? await prisma.libraryLoan.findMany({ where: { borrowerId: { in: people.map((p) => p.id) }, OR: [{ returnedAt: null }, { fineStatus: 'OWED' }] }, select: { borrowerId: true, returnedAt: true, dueAt: true, fine: true, fineStatus: true } }) : [];
   const now = Date.now();
   return {
