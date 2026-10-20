@@ -10,7 +10,7 @@ import { LoadError } from '@/components/ui/LoadError';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
-import { cleanScale, letter, maxGpa, type Scale } from '@/lib/gradebook';
+import { SCALE_PRESETS, cleanScale, letter, maxGpa, type Scale } from '@/lib/gradebook';
 
 // Admin → Insights → Grading scale (Stage 5 · B3.4, src/server/grade-scale.ts): the school's letter
 // grades and GPA points, used by gradebooks, students' grades, report cards and teachers' dashboards.
@@ -54,6 +54,16 @@ function Editor({ data, onSaved }: { data: Data; onSaved: (d: Data) => void }) {
         <h2 id="scale-h" className="font-bold text-zinc-900 dark:text-white">{data.custom ? 'Your school’s scale' : 'The standard scale (A–F, GPA 4.0)'}</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Each band starts at its lowest percentage; the lowest band starts at 0. Used for letters in gradebooks, students’ grades and report cards, and for GPA. Report cards made before a change keep the scale they were made with.</p>
       </div>
+      {data.canEdit && (
+        // A board's usual scale to start from (Stage 5 · Q22); change any band before saving.
+        <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">Start from
+          <select className="input w-auto py-1.5" value="" onChange={(e) => { const p = SCALE_PRESETS.find((x) => x.id === e.target.value); if (p) setRows(rowsOf(p.scale)); }}>
+            <option value="">Choose a board’s scale…</option>
+            {SCALE_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </select>
+          <span className="basis-full text-xs text-zinc-600 dark:text-zinc-400">The usual bands, not an official conversion: check them against your board’s rules, then save.</span>
+        </label>
+      )}
       <table className="w-full text-sm">
         <thead><tr className="text-start text-xs text-zinc-600 dark:text-zinc-400"><th className="font-medium pb-1">Letter or band</th><th className="font-medium pb-1">From (%)</th><th className="font-medium pb-1">GPA points</th><th className="sr-only">Remove</th></tr></thead>
         <tbody>

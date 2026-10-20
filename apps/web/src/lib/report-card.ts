@@ -9,9 +9,20 @@ export interface ReportCardData {
   student: { name: string; email: string };
   term: { title: string; from: string; to: string };
   school: string;
+  /** The school's logo (an https or app file address; Stage 5 · Q22). */
+  logo?: string;
   courses: CourseLine[];
   /** gpaMax: the top of the school's GPA scale (4 on the default one; older cards don't have it). */
   overall: { average: number | null; gpa: number | null; attendanceRate: number | null; gpaMax?: number };
+  /** The letter bands used (older cards don't have them: the standard A–F). */
+  scale?: Scale;
+}
+
+/** "A ≥ 90, B ≥ 80, … F below" for the card's note, from its scale. */
+export function scaleNote(scale: Scale = DEFAULT_SCALE): string {
+  const sorted = [...scale].sort((a, b) => b.min - a.min);
+  const last = sorted[sorted.length - 1];
+  return [...sorted.slice(0, -1).map((b) => `${b.letter} ≥ ${b.min}`), last ? `${last.letter} below` : ''].filter(Boolean).join(', ');
 }
 
 /** Present or late out of the classes that counted (excused ones don't), in percent. */
@@ -42,11 +53,12 @@ const day = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'n
 /** One card as printable HTML (no outer page), to put several on one sheet per student. */
 export function reportCardSection(d: ReportCardData, comment: string | null): string {
   const rows = d.courses.map((c) => `<tr><td><b>${esc(c.code)}</b> ${esc(c.name)}${c.teacher ? `<br><small>${esc(c.teacher)}</small>` : ''}</td><td class="n">${c.final == null ? '—' : `${c.final}%`}</td><td class="n">${esc(c.letter ?? '—')}</td><td class="n">${c.attendanceRate == null ? '—' : `${c.attendanceRate}%`}</td></tr>`).join('');
-  return `<section class="card"><header><p class="school">${esc(d.school)}</p><h1>Report card · ${esc(d.term.title)}</h1><p>${esc(d.student.name)}${d.student.email ? ` · ${esc(d.student.email)}` : ''}</p><p class="muted">${day(d.term.from)} – ${day(d.term.to)}</p></header>
+  const logo = d.logo && /^(https:\/\/|\/api\/files\/)/.test(d.logo) ? `<img class="logo" src="${esc(d.logo)}" alt="">` : '';
+  return `<section class="card"><header>${logo}<p class="school">${esc(d.school)}</p><h1>Report card · ${esc(d.term.title)}</h1><p>${esc(d.student.name)}${d.student.email ? ` · ${esc(d.student.email)}` : ''}</p><p class="muted">${day(d.term.from)} – ${day(d.term.to)}</p></header>
 <div class="sum"><div>Average<b>${d.overall.average == null ? '—' : `${d.overall.average}%`}</b></div><div>GPA (${(d.overall.gpaMax ?? 4).toFixed(1)})<b>${d.overall.gpa == null ? '—' : d.overall.gpa.toFixed(2)}</b></div><div>Attendance<b>${d.overall.attendanceRate == null ? '—' : `${d.overall.attendanceRate}%`}</b></div></div>
 <table><thead><tr><th>Course</th><th class="n">Final</th><th class="n">Grade</th><th class="n">Attendance</th></tr></thead><tbody>${rows || '<tr><td colspan="4">No courses this term.</td></tr>'}</tbody></table>
 ${comment ? `<div class="comment"><b>Comment</b><p>${esc(comment).replace(/\n/g, '<br>')}</p></div>` : ''}
-<p class="muted note">Grades are each course’s weighted final for the term (A ≥ 90, B ≥ 80, C ≥ 70, D ≥ 60, F below). Attendance counts present and late out of the classes held; excused absences don’t count.</p></section>`;
+<p class="muted note">Grades are each course’s weighted final for the term (${esc(scaleNote(d.scale))}). Attendance counts present and late out of the classes held; excused absences don’t count.</p></section>`;
 }
 
 /** A full printable page with one or more cards (each on its own sheet); prints itself. */
@@ -54,7 +66,7 @@ export function reportCardsPage(title: string, cards: { data: ReportCardData; co
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
 body{font:14px/1.5 system-ui,-apple-system,sans-serif;color:#111;margin:0;background:#fff}
 .card{padding:40px;page-break-after:always;max-width:780px;margin:0 auto}.card:last-child{page-break-after:auto}
-h1{margin:4px 0;font-size:22px}p{margin:0}.school{font-weight:700;color:#4338ca;text-transform:uppercase;letter-spacing:.08em;font-size:12px}.muted{color:#555}
+h1{margin:4px 0;font-size:22px}.logo{max-height:56px;max-width:200px;object-fit:contain;display:block;margin-bottom:8px}p{margin:0}.school{font-weight:700;color:#4338ca;text-transform:uppercase;letter-spacing:.08em;font-size:12px}.muted{color:#555}
 .sum{display:flex;gap:40px;margin:24px 0}.sum b{display:block;font-size:22px}
 table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid #ddd;vertical-align:top}th{background:#f4f4f6;font-size:12px;text-transform:uppercase;letter-spacing:.04em}.n{text-align:right;white-space:nowrap}small{color:#555}
 .comment{margin-top:24px;padding:12px 16px;border:1px solid #ddd;border-radius:8px}.note{margin-top:24px;font-size:11px}
