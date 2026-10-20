@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { HHMM, validZone } from '@/lib/local-time';
-import { isAppFileUrl, readAppFile } from '@/lib/storage';
+import { isAppFileUrl, readAppFile, saveFile, SERVER_UPLOAD_MAX, uploadMime } from '@/lib/storage';
 import { isLanguage } from '@/lib/languages';
 import type { SessionUser } from '@/lib/server-auth';
 import { afterSend } from './chat-notify';
@@ -180,6 +180,8 @@ export async function openParentChat(user: SessionUser, conversationId: string) 
       return {
         id: m.id, mine: m.type !== 'SYSTEM' && m.senderId === user.id, system: m.type === 'SYSTEM',
         body: voice ? 'Voice note' : m.type === 'TEXT' || m.type === 'SYSTEM' ? m.body : m.attachmentName ? `📎 ${m.attachmentName}` : m.body,
+        // A photo or file in the chat, from either side (Stage 5 · Q22).
+        file: (m.type === 'IMAGE' || m.type === 'FILE') && isAppFileUrl(m.attachmentUrl) ? { url: m.attachmentUrl, name: m.attachmentName ?? 'File', image: m.type === 'IMAGE' } : null,
         translated: tr[m.id] && !tr[m.id].same ? tr[m.id].text : null,
         voice,
         at: m.createdAt, edited: !!m.editedAt,
@@ -188,14 +190,47 @@ export async function openParentChat(user: SessionUser, conversationId: string) 
   };
 }
 
-/** Sends a parent's text in a parent–teacher chat (rate-limited; the usual chat follow-up). */
-async function send(user: SessionUser, conversationId: string, participantId: string, bodyRaw: unknown) {
-  const body = typeof bodyRaw === 'string' ? bodyRaw.trim().slice(0, MAX_BODY) : '';
-  if (!body) throw new BadRequestException('Write a message first.');
+/** Not muted, and not too many messages in the last hour. */
+async function canSend(user: SessionUser) {
   const muted = await chatMuted(user.id);
   if (muted) throw new ForbiddenException(muted);
   const lastHour = await prisma.message.count({ where: { senderId: user.id, createdAt: { gt: new Date(Date.now() - 3600_000) } } });
   if (lastHour >= PER_HOUR) throw new HttpException('You’ve sent a lot of messages in the last hour. Please wait a little before sending more.', 429);
+}
+
+const PARENT_FILE = /^(image\/(png|jpeg|webp|gif)|application\/pdf)$/;
+
+/**
+ * POST /api/parent/chats/:id/file (form data "file"): a photo or a PDF from a parent, up to 4 MB
+ * (a doctor's note, a signed form). Parents have no other way to upload (Stage 5 · Q22).
+ */
+export async function sendParentFile(user: SessionUser, conversationId: string, form: FormData) {
+  await requireOn();
+  const { me } = await parentChat(user, conversationId);
+  const file = form.get('file');
+  if (!(file instanceof File) || !file.size) throw new BadRequestException('Choose a photo or a PDF.');
+  if (file.size > SERVER_UPLOAD_MAX) throw new BadRequestException('That file is too big: up to 4 MB.');
+  const mime = uploadMime(file.name, file.type);
+  if (!mime || !PARENT_FILE.test(mime)) throw new BadRequestException('Send a photo (JPG, PNG, WebP or GIF) or a PDF.');
+  await canSend(user);
+  const url = await saveFile({ ownerId: user.id, name: file.name, mime, bytes: Buffer.from(await file.arrayBuffer()) });
+  const type = mime.startsWith('image/') ? 'IMAGE' : 'FILE';
+  const name = file.name.slice(-200);
+  const [message] = await prisma.$transaction([
+    prisma.message.create({ data: { conversationId, senderId: user.id, type, body: name, attachmentUrl: url, attachmentName: name, attachmentSize: file.size, attachmentMime: mime }, select: { id: true, createdAt: true } }),
+    prisma.conversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } }),
+    prisma.conversationParticipant.update({ where: { id: me.id }, data: { lastReadAt: new Date() } }),
+  ]);
+  const system = await getSystemUser();
+  afterSend({ id: message.id, conversationId, type, body: name, metadata: null }, { id: user.id, name: user.name }, { communityId: null, systemUserId: system.id });
+  return { message: { id: message.id, mine: true, system: false, body: `📎 ${name}`, translated: null, file: { url, name, image: type === 'IMAGE' }, at: message.createdAt, edited: false } };
+}
+
+/** Sends a parent's text in a parent–teacher chat (rate-limited; the usual chat follow-up). */
+async function send(user: SessionUser, conversationId: string, participantId: string, bodyRaw: unknown) {
+  const body = typeof bodyRaw === 'string' ? bodyRaw.trim().slice(0, MAX_BODY) : '';
+  if (!body) throw new BadRequestException('Write a message first.');
+  await canSend(user);
   const [message] = await prisma.$transaction([
     prisma.message.create({ data: { conversationId, senderId: user.id, type: 'TEXT', body }, select: { id: true, body: true, createdAt: true } }),
     prisma.conversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } }),

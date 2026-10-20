@@ -5,12 +5,12 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { format, formatDistanceToNowStrict, isToday } from 'date-fns';
-import { Clock, Languages, Loader2, MessageCircle, Mic, Send, ShieldCheck } from 'lucide-react';
+import { Clock, Languages, Loader2, MessageCircle, Mic, Paperclip, Send, ShieldCheck } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Sheet } from '@/components/ui/Sheet';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { LoadError } from '@/components/ui/LoadError';
-import { authedJson } from '@/lib/authed-fetch';
+import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
 import { LANGUAGES } from '@/lib/languages';
 import { fadeUp, list, spring } from '@/lib/motion';
@@ -27,7 +27,7 @@ interface Teacher {
   last: { body: string; at: string; mine: boolean } | null; unread: number; hours: { text: string; now: boolean };
 }
 interface Voice { url: string; transcript: string | null; translated: string | null; lang: string | null; ready: boolean }
-interface Msg { id: string; mine: boolean; system: boolean; body: string; translated: string | null; voice?: Voice | null; at: string; edited: boolean; pending?: boolean; failed?: boolean }
+interface Msg { id: string; mine: boolean; system: boolean; body: string; translated: string | null; voice?: Voice | null; file?: { url: string; name: string; image: boolean } | null; at: string; edited: boolean; pending?: boolean; failed?: boolean }
 interface Chat { id: string; teacher: { name: string; avatar: string | null } | null; child: string; hours: { text: string; now: boolean }; lang: string | null; seenAt: string | null; messages: Msg[] }
 
 const card = 'rounded-3xl tone-panel border border-zinc-200 dark:border-white/10';
@@ -106,6 +106,7 @@ function ChatSheet({ teacher, studentId, child, chatId, onStarted, onClose }: {
 }) {
   const { data, mutate } = useSWR<Chat>(chatId ? `/api/parent/chats/${chatId}` : null, authedJson);
   const [text, setText] = useState('');
+  const [sendingFile, setSendingFile] = useState(false);
   const [pending, setPending] = useState<Msg[]>([]);
   const [lang, setLang] = useState<string | null>(null);
   const [original, setOriginal] = useState<Set<string>>(new Set());
@@ -149,9 +150,29 @@ function ChatSheet({ teacher, studentId, child, chatId, onStarted, onClose }: {
     catch (e) { toast.error(errorMessage(e, 'Couldn’t change the language.')); }
   };
 
+  // A photo or a PDF (a doctor's note, a signed form), up to 4 MB (Stage 5 · Q22).
+  const sendFile = async (file: File) => {
+    if (!chatId) return;
+    if (file.size > 4 * 1024 * 1024) { toast.error('That file is too big: up to 4 MB.'); return; }
+    setSendingFile(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await authedFetch(`/api/parent/chats/${chatId}/file`, { method: 'POST', body: form });
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { message?: string; error?: string }).message ?? 'Couldn’t send the file.');
+      await mutate();
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setSendingFile(false); }
+  };
+
   return (
     <Sheet title={teacher.name} onClose={onClose} footer={(
       <form onSubmit={(e) => { e.preventDefault(); void send(); }} className="flex items-end gap-2">
+        <label className="w-11 h-11 rounded-full flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 cursor-pointer shrink-0" title="Send a photo or a PDF">
+          {sendingFile ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden /> : <Paperclip className="w-5 h-5" aria-hidden />}
+          <span className="sr-only">Send a photo or a PDF</span>
+          <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" className="sr-only" disabled={sendingFile || !chatId} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void sendFile(f); }} />
+        </label>
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={2000} aria-label={`Message to ${teacher.name}`} placeholder={`Write to ${teacher.name.split(' ')[0]} about ${child}…`}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
           className="input flex-1 min-h-11 max-h-32 resize-none py-2.5" />
@@ -183,7 +204,13 @@ function ChatSheet({ teacher, studentId, child, chatId, onStarted, onClose }: {
               ) : (
                 <motion.div key={m.id} layout initial={{ opacity: 0, y: 8, scale: 0.98 }} animate={{ opacity: m.pending ? 0.6 : 1, y: 0, scale: 1 }} transition={spring.bouncy} className={cn('flex', m.mine ? 'justify-end' : 'justify-start')}>
                   <div className={cn('max-w-[80%] rounded-2xl px-3.5 py-2 text-sm', m.mine ? 'bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white rounded-ee-md' : 'bg-zinc-100 dark:bg-white/[0.07] text-zinc-900 dark:text-white rounded-es-md')}>
-                    {m.voice && chatId ? <VoiceNote chatId={chatId} id={m.id} voice={m.voice} /> : <p className="whitespace-pre-wrap break-words">{m.translated && !original.has(m.id) ? m.translated : m.body}</p>}
+                    {m.file ? (
+                      <a href={m.file.url} target="_blank" rel="noopener noreferrer" className="block">
+                        {m.file.image
+                          ? <img src={m.file.url} alt={m.file.name} className="max-h-56 max-w-full rounded-xl" loading="lazy" />
+                          : <span className="inline-flex items-center gap-1.5 underline underline-offset-2 break-all"><Paperclip className="w-4 h-4 shrink-0" aria-hidden />{m.file.name}</span>}
+                      </a>
+                    ) : m.voice && chatId ? <VoiceNote chatId={chatId} id={m.id} voice={m.voice} /> : <p className="whitespace-pre-wrap break-words">{m.translated && !original.has(m.id) ? m.translated : m.body}</p>}
                     <p className={cn('mt-0.5 text-[10px] flex items-center gap-1.5', m.mine ? 'text-white/70 justify-end' : 'text-zinc-500')}>
                       {m.pending ? <><Loader2 className="w-3 h-3 animate-spin" />Sending</> : m.failed ? 'Not sent' : when(m.at)}{m.edited && ' · edited'}
                       {m.translated && (
