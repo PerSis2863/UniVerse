@@ -2,6 +2,7 @@ import prisma from '@/lib/db';
 import { courseAccess } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { cleanHeard, clusterTopics, heardText } from '@/lib/whisper';
+import { cleanRule } from '@/lib/tutor-rules';
 import { sameQuestion, spendAi } from './ai-budget';
 import { breakoutOf } from './calls';
 import { later } from './email';
