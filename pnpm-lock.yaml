@@ -62,6 +62,9 @@ importers:
       '@google/genai':
         specifier: ^2.23.0
         version: 2.23.0
+      '@mediabunny/mp3-encoder':
+        specifier: 1.60.0
+        version: 1.60.0(mediabunny@1.60.0)
       '@mediapipe/tasks-vision':
         specifier: ^1.0.1
         version: 1.0.1
@@ -2057,6 +2060,11 @@ packages:
 
   '@marijn/find-cluster-break@1.0.4':
     resolution: {integrity: sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ==}
+
+  '@mediabunny/mp3-encoder@1.60.0':
+    resolution: {integrity: sha512-dcDS+hh0g6JBJissiTUkbRCjUFLM348qZQBGgsVawmr61CzJK9ZgN9f/9BzkVzTlhmxxriRx8jYCK+Anqx8mMQ==}
+    peerDependencies:
+      mediabunny: ^1.0.0
 
   '@mediapipe/tasks-vision@1.0.1':
     resolution: {integrity: sha512-rvRE2FmAZ6ZxKSw7wq+e+jQDpN3t1B/tD2mJz9SmAzb1msoDkd4dMoE4wAh8Z30Um0PQwLiHr9QtomhmXk3aUQ==}
@@ -9684,6 +9692,10 @@ snapshots:
       '@lezer/lr': 1.4.10
 
   '@marijn/find-cluster-break@1.0.4': {}
+
+  '@mediabunny/mp3-encoder@1.60.0(mediabunny@1.60.0)':
+    dependencies:
+      mediabunny: 1.60.0
 
   '@mediapipe/tasks-vision@1.0.1': {}
 
