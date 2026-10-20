@@ -9,6 +9,7 @@ import { spring } from '@/lib/motion';
 import { reducedMotion } from '@/lib/page-transition';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
+import { useWeekStart, weekdayNames } from '@/lib/use-week-start';
 
 // The timetable like a phone's calendar app (student and teacher calendars): days side by side
 // under a weekday and date (today in a two-tone circle), hours down the side, every class a solid
@@ -182,6 +183,7 @@ export function TimeGrid<T>({ entries, loading, onOpen, onMove, onCreate, label,
   const phone = useSyncExternalStore(phoneQuery.subscribe, phoneQuery.get, offServer);
   const touch = useSyncExternalStore(touchQuery.subscribe, touchQuery.get, offServer);
   const minute = useSyncExternalStore(subscribeMinute, minuteNow, minuteNow);
+  const weekFirst = useWeekStart();
   const now = new Date(minute * 60_000);
   const today = startOfDay(now);
   const nowMin = now.getHours() * 60 + now.getMinutes();
@@ -217,8 +219,8 @@ export function TimeGrid<T>({ entries, loading, onOpen, onMove, onCreate, label,
   if (view === 'day' || view === 'month') days.push(focus);
   else if (view === 'agenda') for (let i = 0; i < AGENDA_DAYS; i++) days.push(addDays(focus, i));
   else if (view === 'week') {
-    const monday = startOfWeek(focus, { weekStartsOn: 1 });
-    for (let i = 0; i < 7; i++) if (keep(addDays(monday, i))) days.push(addDays(monday, i));
+    const weekBegins = startOfWeek(focus, { weekStartsOn: weekFirst });
+    for (let i = 0; i < 7; i++) if (keep(addDays(weekBegins, i))) days.push(addDays(weekBegins, i));
   } else {
     for (let d = focus, i = 0; days.length < 4 && i < 14; d = addDays(d, 1), i++) if (keep(d)) days.push(d);
   }
@@ -412,14 +414,14 @@ export function TimeGrid<T>({ entries, loading, onOpen, onMove, onCreate, label,
       ) : view === 'month' ? (
         <section aria-label={`${label}, ${title}`} className={cn(frame, 'overflow-x-clip')}>
           <div className={cn(sticky, 'z-20 grid grid-cols-7 bg-[var(--material-thick)] backdrop-blur-xl sm:rounded-t-2xl')} style={{ boxShadow: 'inset 0 -0.5px 0 var(--separator)' }}>
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+            {weekdayNames(weekFirst).map((d) => (
               <span key={d} className="py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{phone ? d[0] : d}</span>
             ))}
           </div>
           <div className="relative">
             <AnimatePresence initial={false} custom={dir} mode="popLayout">
               <motion.div key={pageKey} {...pager} className="w-full touch-pan-y">
-                <MonthGrid focus={focus} today={today} on={on} phone={phone} loading={loading} onPick={(d) => { if (!dragged.current) openDay(d); }} />
+                <MonthGrid focus={focus} first={weekFirst} today={today} on={on} phone={phone} loading={loading} onPick={(d) => { if (!dragged.current) openDay(d); }} />
               </motion.div>
             </AnimatePresence>
           </div>
@@ -619,16 +621,17 @@ function Block<T>({ p, y, wide, onOpen, movable, dragging, lifted, onPress }: {
 }
 
 /** Month: the dates of the month, each with a dot (phones) or a short line (wider screens) per class. */
-function MonthGrid<T>({ focus, today, on, phone, loading, onPick }: {
+function MonthGrid<T>({ focus, first, today, on, phone, loading, onPick }: {
   focus: Date;
+  first: 0 | 1;
   today: Date;
   on: (d: Date) => GridEntry<T>[];
   phone: boolean;
   loading?: boolean;
   onPick: (d: Date) => void;
 }) {
-  const startDay = startOfWeek(startOfMonth(focus), { weekStartsOn: 1 });
-  const endDay = endOfWeek(endOfMonth(focus), { weekStartsOn: 1 });
+  const startDay = startOfWeek(startOfMonth(focus), { weekStartsOn: first });
+  const endDay = endOfWeek(endOfMonth(focus), { weekStartsOn: first });
   const cells: Date[] = [];
   for (let d = startDay; d <= endDay; d = addDays(d, 1)) cells.push(d);
   return (

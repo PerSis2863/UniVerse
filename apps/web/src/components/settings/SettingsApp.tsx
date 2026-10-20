@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Accessibility, Bell, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, ImagePlus, Link2, Loader2, LogOut, Moon, Palette, Plus, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, X, Bold, Contrast, Type, Underline, Captions, VideoOff, type LucideIcon, TextSelect } from 'lucide-react';
+import { Accessibility, Bell, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, ImagePlus, Link2, Loader2, LogOut, Moon, Palette, Plus, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, X, Bold, Contrast, Type, Underline, Captions, VideoOff, FlipHorizontal2, type LucideIcon, TextSelect } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { Switch } from '@/components/ui/Switch';
@@ -20,7 +20,7 @@ import { LANGUAGES, type Language } from '@/lib/i18n';
 import { useLanguageStore } from '@/store/language';
 import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
-import { appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, textSize, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
+import { appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, mirrorSelf, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setMirrorSelf, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, setWeekStartsOn, textSize, weekStartsOn, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import useSWR from 'swr';
@@ -433,6 +433,8 @@ function Appearance() {
   const [aids, setAids] = useState<Record<ReadingAid, boolean>>(() => ({ bold: readingAid('bold'), contrast: readingAid('contrast'), dyslexic: readingAid('dyslexic'), underline: readingAid('underline') }));
   const [cc, setCc] = useState(captionsByDefault);
   const [camOff, setCamOff] = useState(() => typeof window !== 'undefined' && cameraOffByDefault());
+  const [mirror, setMirror] = useState(() => typeof window === 'undefined' || mirrorSelf());
+  const [week, setWeek] = useState<'mon' | 'sun'>(() => (typeof window !== 'undefined' && weekStartsOn() === 0 ? 'sun' : 'mon'));
   const [level, setLevel] = useState<ReadingLevelPref>(() => (typeof window === 'undefined' ? 'original' : readingLevel()));
   const [selHelp, setSelHelp] = useState(() => typeof window !== 'undefined' && selectHelp());
   const pickTheme = (v: Theme, e: React.MouseEvent) => { setTheme(v); applyTheme(v, { from: { x: e.clientX, y: e.clientY } }); };
@@ -468,6 +470,12 @@ function Appearance() {
       <Row setting="camera-off" icon={VideoOff} title="Join calls with the camera off" desc="Video calls start with your camera off; turn it on in the call when you’re ready.">
         <Switch checked={camOff} label="Join calls with the camera off" onChange={(on) => { setCamOff(on); setCameraOffByDefault(on); }} />
       </Row>
+      <Row setting="mirror" icon={FlipHorizontal2} title="Mirror my video" desc="In calls you see yourself as in a mirror. Others always see you the right way round.">
+        <Switch checked={mirror} label="Mirror my video" onChange={(on) => { setMirror(on); setMirrorSelf(on); }} />
+      </Row>
+      <div className="space-y-2" data-setting="week-start"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Week starts on</p>
+        <Choice id="week" value={week} onPick={(v) => { setWeek(v); setWeekStartsOn(v === 'sun' ? 0 : 1); }} options={[['mon', 'Monday'], ['sun', 'Sunday']]} />
+      </div>
     </Card>
   );
 }

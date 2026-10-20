@@ -4,11 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool, Activity, ListOrdered, Ear, Focus } from 'lucide-react';
+import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool, Activity, ListOrdered, Ear, Focus, FlipHorizontal2 } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { AUDIO_2G_BPS, AUDIO_BPS, useLowData } from '@/store/low-data';
-import { cameraOffByDefault, captionsByDefault } from '@/lib/display-prefs';
+import { cameraOffByDefault, captionsByDefault, mirrorSelf, setMirrorSelf } from '@/lib/display-prefs';
 import { authedJson } from '@/lib/authed-fetch';
 import { ringback } from '@/lib/call-sounds';
 import { CallRecorder, canRecord, uploadRecording, type RecSource } from '@/lib/call-recorder';
@@ -465,6 +465,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const sfuQualityRef = useRef<Quality>(null);
   // Settings → Appearance → Captions on: calls start with captions showing.
   const [cc, setCc] = useState(captionsByDefault);
+  const [mirror, setMirror] = useState(mirrorSelf);
   const [captions, setCaptions] = useState<Record<string, Caption>>({});
   // Translated captions (Stage 4 · 4.1): I read everyone's captions in my language (the app's,
   // unless I picked another or "as spoken"). `trs`: translations by caption id.
@@ -2206,7 +2207,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canBg = backgroundsSupported();
   /** Students in a class call (not guests) can ask the Whisper TA. */
   const canTa = isClassCall && !canModerate && !isGuest && phase === 'live';
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures' | 'spatial' | 'interp' | 'framing'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures' | 'spatial' | 'interp' | 'framing' | 'mirror'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     ...(canTa ? [{ key: 'ta' as const, label: 'Ask the TA', icon: Sparkles, on: taOpen }] : []),
     ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
@@ -2222,6 +2223,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     ...(phase === 'live' && info && !info.oneToOne ? [{ key: 'spatial' as const, label: spatial ? 'Spatial audio on' : 'Spatial audio', icon: Volume2, on: spatial }] : []),
     ...(canBg && !twoG ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
+    ...(camera ? [{ key: 'mirror' as const, label: mirror ? 'Mirrored' : 'Mirror my video', icon: FlipHorizontal2, on: mirror }] : []),
     ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : info?.type === 'class' ? 'Record class' : 'Record call', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
     ...(canNotes ? [{ key: 'notes' as const, label: notes ? 'Stop notes' : info?.type === 'class' ? 'Class notes' : 'Meeting notes', icon: NotebookPen, on: notes }] : []),
     ...(canModerate && info && !info.oneToOne ? [{ key: 'poll' as const, label: 'Poll or quiz', icon: BarChart3, on: !!poll?.open }] : []),
@@ -2262,6 +2264,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (key === 'bg') setBgOpen(true);
     else if (key === 'net') { const open = !netOpen; netOpenRef.current = open; setNetOpen(open); if (open) setNet({ me: combine([...netRef.current.values()]), people: sfuRef.current ? {} : Object.fromEntries(netRef.current) }); }
     else if (key === 'flip') void flipCamera();
+    else if (key === 'mirror') { setMirror(!mirror); setMirrorSelf(!mirror); toast(mirror ? 'You see yourself as others do' : 'You see yourself as in a mirror (others see you the right way round)', { icon: '🪞' }); }
     else if (key === 'rec') { if (recording) void stopRecording(); else void startRecording(); }
     else if (key === 'notes') toggleNotes();
     else if (key === 'rooms') openPanel('rooms');
@@ -2385,7 +2388,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       ) : phase === 'prejoin' ? (
         <motion.main initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
           <div className="w-full max-w-4xl grid md:grid-cols-[1.4fr_1fr] gap-6 items-center">
-            <Tile id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me />
+            <Tile id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me />
             <div className="space-y-4">
               <div>
                 <p className="text-2xl font-bold">{info?.title ?? 'Call'}</p>
@@ -2435,7 +2438,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       ) : phase === 'lobby' ? (
         <motion.main key="lobby" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
           <div className="w-full max-w-4xl grid md:grid-cols-[1.4fr_1fr] gap-6 items-center">
-            <Tile id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me />
+            <Tile id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me />
             <div className="space-y-4 text-center md:text-start">
               <div className="relative w-14 h-14 mx-auto md:mx-0">
                 <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 animate-ping opacity-25" />
@@ -2475,7 +2478,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               ) : watching && watch ? (
                 <WatchStage watch={watch} skew={skew} mod={canModerate} status={watchStatus} held={held} onSend={send} />
               ) : lit === 'me' ? (
-                <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me hand={handPos('me')} className="absolute inset-0 h-full w-full aspect-auto rounded-none" />
+                <Tile key="me" id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me hand={handPos('me')} className="absolute inset-0 h-full w-full aspect-auto rounded-none" />
               ) : lit ? (
                 <Tile key={lit.peer.peerId} id={lit.peer.peerId} name={lit.peer.name} stream={lit.stream} silent={held || spatialOn} muted={lit.muted} camera={lit.camera} quality={lit.quality} state={lit.state}
                   paused={lit.paused || audioOnly} onShow={() => showVideo(lit.peer.peerId)} hand={handPos(lit.peer.peerId)} className="absolute inset-0 h-full w-full aspect-auto rounded-none"
@@ -2484,7 +2487,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
             </motion.div>
             <div className="shrink-0 h-24 sm:h-32 flex gap-2 overflow-x-auto justify-center">
               <AnimatePresence initial={false}>
-                {lit !== 'me' && <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact hand={handPos('me')} className="h-full shrink-0" />}
+                {lit !== 'me' && <Tile key="me" id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me compact hand={handPos('me')} className="h-full shrink-0" />}
                 {list.filter((r) => r !== lit).map((r) => (
                   <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held || spatialOn} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
                     paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact hand={handPos(r.peer.peerId)} className="h-full shrink-0"
@@ -2496,7 +2499,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         ) : (
         <main data-call-stage className={cn('flex-1 overflow-y-auto p-4 grid content-center', compact ? 'gap-2' : 'gap-4', gridFor(count))}>
           <AnimatePresence initial={false}>
-            <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact={compact} animateLayout={count <= 12} hand={handPos('me')} />
+            <Tile key="me" id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me compact={compact} animateLayout={count <= 12} hand={handPos('me')} />
             {list.map((r) => (
               <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held || spatialOn} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
                 paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact={compact} animateLayout={count <= 12} hand={handPos(r.peer.peerId)}

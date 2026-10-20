@@ -14,6 +14,14 @@ describe('task calendar', () => {
     expect(dayKey(weekStart(new Date(2026, 9, 5)))).toBe('2026-10-05');
     expect(daysBetween(new Date(2026, 9, 5), new Date(2026, 10, 2))).toBe(28);
   });
+  it('starts weeks on Sunday when asked (Q23)', () => {
+    const g = monthGrid(2026, 9, 0);
+    expect(dayKey(g[0])).toBe('2026-09-27');
+    expect(g[0].getDay()).toBe(0);
+    expect(dayKey(weekStart(new Date(2026, 9, 11), 0))).toBe('2026-10-11'); // a Sunday starts its own week
+    expect(dayKey(weekStart(new Date(2026, 9, 10), 0))).toBe('2026-10-04');
+    expect(dayKey(monthGrid(2026, 10, 0)[0])).toBe('2026-11-01'); // November 2026 starts on a Sunday
+  });
   it('places bars from creation to due date, cut to the range', () => {
     const start = new Date(2026, 9, 5);
     expect(barSpan(new Date(2026, 9, 6), new Date(2026, 9, 9), start, 28)).toEqual({ from: 1, to: 4, cutStart: false, cutEnd: false });

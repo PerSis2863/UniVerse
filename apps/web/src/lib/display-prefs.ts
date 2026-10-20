@@ -59,6 +59,14 @@ export const SPEECH_RATES = [0.8, 1, 1.25] as const;
 export const speechRate = (): number => { const v = Number(get('uv-speech-rate')); return (SPEECH_RATES as readonly number[]).includes(v) ? v : 1; };
 export const setSpeechRate = (v: number) => set('uv-speech-rate', v === 1 ? null : String(v));
 
+/** The day calendars start the week on (Stage 5 · Q23): 1 Monday (the default) or 0 Sunday. */
+export const WEEK_START_EVENT = 'uv-week-start';
+export const weekStartsOn = (): 0 | 1 => (get('uv-week-start') === 'sun' ? 0 : 1);
+export function setWeekStartsOn(v: 0 | 1) { set('uv-week-start', v === 0 ? 'sun' : null); window.dispatchEvent(new Event(WEEK_START_EVENT)); }
+/** My own video shown as in a mirror (the default; others always see it the right way round). */
+export const mirrorSelf = () => get('uv-mirror') !== 'off';
+export const setMirrorSelf = (on: boolean) => set('uv-mirror', on ? null : 'off');
+
 /** Vibration on taps (phones that support it). */
 export const hapticsOn = () => get('uv-haptics') !== 'off';
 export const setHaptics = (on: boolean) => set('uv-haptics', on ? null : 'off');

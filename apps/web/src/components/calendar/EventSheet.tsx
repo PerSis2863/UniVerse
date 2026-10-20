@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Trash2 } from 'lucide-react';
+import { CalendarPlus, Loader2, Trash2 } from 'lucide-react';
 import { Sheet } from '@/components/ui/Sheet';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api, errorMessage } from '@/lib/api';
+import { googleCalendarLink } from '@/lib/google-calendar-link';
 import { cn } from '@/lib/utils';
 
 // Making or changing your own event (Stage 5 · Q12): a title, what kind (personal, study time, a
@@ -58,6 +59,13 @@ export function localMoment(day: string, hhmm: string): Date {
   return new Date(y, (m || 1) - 1, d || 1, h || 0, min || 0);
 }
 
+/** The event as Google's add-an-event page (Stage 5 · Q23). */
+function googleLink(f: EventDraft) {
+  const start = localMoment(f.day, f.allDay ? '00:00' : f.start);
+  const end = f.allDay ? new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1) : localMoment(f.day, f.end);
+  return googleCalendarLink({ title: f.title.trim(), start, end, allDay: f.allDay, details: f.description.trim() || undefined });
+}
+
 /** A blank event on a day, from `start` to `end` minutes. */
 export function newDraft(day: Date, start = 9 * 60, end = start + 60, extra: Partial<EventDraft> = {}): EventDraft {
   return { title: '', day: dayString(day), start: clockString(start), end: clockString(Math.min(end, 23 * 60 + 59)), allDay: false, type: 'PERSONAL', color: null, courseId: '', description: '', weeks: 1, ...extra };
@@ -108,6 +116,7 @@ export function EventSheet({ draft, teacher, courses, onClose, onSaved }: {
       <div className="flex flex-wrap items-center gap-2">
         {editing && <button type="button" onClick={() => void remove(false)} disabled={!!busy} className="btn-secondary btn-sm text-rose-700 dark:text-rose-300">{busy === 'delete' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}Delete</button>}
         {editing && f.batch && <button type="button" onClick={() => void remove(true)} disabled={!!busy} className="btn-ghost btn-sm text-rose-700 dark:text-rose-300">Delete series</button>}
+        {editing && f.title.trim() && <a href={googleLink(f)} target="_blank" rel="noopener noreferrer" className="btn-ghost btn-sm"><CalendarPlus className="w-4 h-4" />Add to Google Calendar</a>}
         <span className="flex-1" />
         <button type="button" onClick={onClose} className="btn-secondary btn-sm">Cancel</button>
         <button type="submit" form="event-form" disabled={!!busy || !f.title.trim()} className="btn-primary btn-sm">{busy === 'save' && <Loader2 className="w-4 h-4 animate-spin" />}Save</button>

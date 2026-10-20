@@ -11,6 +11,7 @@ const CommandPalette = dynamic(() => import('@/components/ui/CommandPalette').th
 const AIStudyAssistant = dynamic(() => import('@/components/ui/AIStudyAssistant').then((m) => m.AIStudyAssistant), { ssr: false });
 const WelcomeTour = dynamic(() => import('@/components/layout/WelcomeTour').then((m) => m.WelcomeTour), { ssr: false });
 const PushNotificationManager = dynamic(() => import('@/components/pwa/PushNotificationManager').then((m) => m.PushNotificationManager), { ssr: false });
+const KeyboardHelp = dynamic(() => import('@/components/layout/KeyboardHelp'), { ssr: false });
 
 declare global {
   interface Window { __universePalettePending?: boolean }
@@ -50,6 +51,7 @@ export function DeferredShell({ role, showAssistant, signedIn }: { role?: string
       {idle && showAssistant && <AIStudyAssistant />}
       {idle && signedIn && <WelcomeTour role={role} />}
       {idle && signedIn && <PushNotificationManager />}
+      {idle && signedIn && <KeyboardHelp />}
     </>
   );
 }

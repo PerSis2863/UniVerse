@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { barSpan, dayKey, monthGrid, moveDue, weekStart } from '@/lib/task-calendar';
+import { useWeekStart, weekdayNames } from '@/lib/use-week-start';
 
 // Calendar and timeline views of a task board (Stage 5 · B9.8; src/lib/task-calendar.ts): cards on
 // their due dates (drag one to another day to move it), and bars from when each card was made to
@@ -15,7 +16,6 @@ interface Props { cards: ViewCard[]; lists: { id: string; title: string }[]; can
 // Fixed colours, dark enough for white text (WCAG AA); the theme's named colours are brighter.
 const TONES = ['#4f46e5', '#b45309', '#047857', '#0369a1', '#a21caf', '#be123c', '#0f766e', '#6d28d9'];
 const toneOf = (lists: { id: string }[], id: string) => ({ background: TONES[Math.max(0, lists.findIndex((l) => l.id === id)) % TONES.length] });
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function Legend({ lists }: { lists: { id: string; title: string }[] }) {
   return (
@@ -28,7 +28,8 @@ function Legend({ lists }: { lists: { id: string; title: string }[] }) {
 export function CalendarView({ cards, lists, canEdit, onOpen, onMove }: Props) {
   const [month, setMonth] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
   const [over, setOver] = useState<string | null>(null);
-  const days = monthGrid(month.y, month.m);
+  const first = useWeekStart();
+  const days = monthGrid(month.y, month.m, first);
   const today = dayKey(new Date());
   const byDay = new Map<string, ViewCard[]>();
   for (const c of cards) if (c.dueAt) { const k = dayKey(new Date(c.dueAt)); byDay.set(k, [...(byDay.get(k) ?? []), c]); }
@@ -46,7 +47,7 @@ export function CalendarView({ cards, lists, canEdit, onOpen, onMove }: Props) {
         <Legend lists={lists} />
       </div>
       <div className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] overflow-hidden bg-white/70 dark:bg-white/[0.03]">
-        <div className="grid grid-cols-7 text-[11px] font-semibold text-zinc-500 border-b border-zinc-200/80 dark:border-white/[0.07]">{WEEKDAYS.map((d) => <div key={d} className="px-2 py-1.5">{d}</div>)}</div>
+        <div className="grid grid-cols-7 text-[11px] font-semibold text-zinc-500 border-b border-zinc-200/80 dark:border-white/[0.07]">{weekdayNames(first).map((d) => <div key={d} className="px-2 py-1.5">{d}</div>)}</div>
         <div className="grid grid-cols-7">
           {days.map((d) => {
             const k = dayKey(d);
