@@ -13,15 +13,15 @@ export const TUTOR_MODES: { value: TutorMode; label: string }[] = [
   { value: 'hints', label: 'Hints only' },
 ];
 
-export interface TutorRule { hintsOnly: boolean; note: string; off: boolean; offUntil: string | null }
-export const NO_RULE: TutorRule = { hintsOnly: false, note: '', off: false, offUntil: null };
+export interface TutorRule { hintsOnly: boolean; note: string; off: boolean; offUntil: string | null; /** Whisper TA off in this course's class calls (Stage 5 · Q22). */ whisperOff: boolean }
+export const NO_RULE: TutorRule = { hintsOnly: false, note: '', off: false, offUntil: null, whisperOff: false };
 
 /** A course's stored rule (JSON) or a request's, cleaned. */
 export function cleanRule(raw: unknown): TutorRule {
   let o: Record<string, unknown> = {};
   if (typeof raw === 'string') { try { o = JSON.parse(raw) ?? {}; } catch { o = {}; } } else if (raw && typeof raw === 'object') o = raw as Record<string, unknown>;
   const until = typeof o.offUntil === 'string' && !Number.isNaN(Date.parse(o.offUntil)) ? new Date(o.offUntil).toISOString() : null;
-  return { hintsOnly: o.hintsOnly === true, note: typeof o.note === 'string' ? o.note.trim().slice(0, 500) : '', off: o.off === true, offUntil: o.off === true ? until : null };
+  return { whisperOff: o.whisperOff === true, hintsOnly: o.hintsOnly === true, note: typeof o.note === 'string' ? o.note.trim().slice(0, 500) : '', off: o.off === true, offUntil: o.off === true ? until : null };
 }
 
 /** Whether the tutor is off for students right now (off with no end, or until a time still ahead). */

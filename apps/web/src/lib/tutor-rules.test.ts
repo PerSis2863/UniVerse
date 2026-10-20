@@ -3,7 +3,8 @@ import { cleanRule, groupQuestions, modeFor, modeInstructions, tutorOff } from '
 
 describe('tutor rules (Stage 5 · Q13)', () => {
   it('cleans a stored rule and works out when the tutor is off', () => {
-    expect(cleanRule('not json')).toEqual({ hintsOnly: false, note: '', off: false, offUntil: null });
+    expect(cleanRule('not json')).toEqual({ hintsOnly: false, note: '', off: false, offUntil: null, whisperOff: false });
+    expect(cleanRule('{"whisperOff":true}').whisperOff).toBe(true); // Whisper TA off for this class (Q22)
     const r = cleanRule({ hintsOnly: true, note: `  Always ask for units. ${'x'.repeat(600)}`, off: true, offUntil: '2026-11-02T09:00:00Z' });
     expect(r.note.length).toBe(500);
     expect(r.offUntil).toBe('2026-11-02T09:00:00.000Z');

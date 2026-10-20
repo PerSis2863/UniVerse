@@ -22,7 +22,7 @@ interface Topic { topic: string; students: number; latest: string; topics: strin
 /** For students: the side panel to ask the TA. `heard` gives the last minutes of captions. */
 export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; onClose: () => void; callId: string; heard: () => SentLine[] }) {
   const url = `/api/calls/${callId}/whisper`;
-  const { data, mutate } = useSWR<{ questions: Question[] }>(open ? url : null, authedJson, { revalidateOnFocus: false });
+  const { data, mutate } = useSWR<{ questions: Question[]; off?: boolean }>(open ? url : null, authedJson, { revalidateOnFocus: false });
   const [text, setText] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [hearing, setHearing] = useState(true);
@@ -74,7 +74,10 @@ export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; 
             </div>
             <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-2" aria-live="polite">
               {!data && <div className="h-full grid place-items-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" aria-label="Loading" /></div>}
-              {data && questions.length === 0 && !busy && (
+              {data?.off && (
+                <p role="status" className="m-3 rounded-2xl bg-white/[0.06] p-3 text-sm text-zinc-200">Your teacher has turned the TA off for this class. Ask in the chat or raise your hand.</p>
+              )}
+              {data && !data.off && questions.length === 0 && !busy && (
                 <div className="h-full flex flex-col items-center justify-center text-center text-sm text-zinc-400 gap-2 px-6">
                   <MessageCircleQuestion className="w-8 h-8 text-zinc-600" aria-hidden />
                   Didn’t catch something? Ask quietly, like “what does she mean by a base case?” The TA answers from the course materials and what was just said.
@@ -105,13 +108,13 @@ export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; 
               )}
             </div>
             {!hearing && <p className="px-4 pb-1 text-[11px] text-amber-200/90">Captions aren’t reaching you yet, so the TA answers from the course materials. They start when someone speaks.</p>}
-            <form onSubmit={(e) => { e.preventDefault(); void ask(); }} className="p-3 pt-2 flex items-end gap-2 border-t border-white/[0.06]">
+            {!data?.off && <form onSubmit={(e) => { e.preventDefault(); void ask(); }} className="p-3 pt-2 flex items-end gap-2 border-t border-white/[0.06]">
               <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={500} placeholder="Ask about the class…" aria-label="Your question"
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void ask(); } }}
                 className="flex-1 min-w-0 resize-none max-h-28 rounded-2xl bg-white/[0.07] border border-white/10 px-3.5 py-2.5 text-sm placeholder:text-zinc-500 focus:outline-none focus:border-indigo-400/60" />
               <motion.button whileTap={{ scale: 0.9 }} type="submit" disabled={text.trim().length < 3 || !!busy} aria-label="Ask"
                 className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center disabled:opacity-40"><SendHorizontal className="w-4 h-4" /></motion.button>
-            </form>
+            </form>}
           </motion.aside>
         </>
       )}

@@ -17,7 +17,7 @@ import { TUTOR_MODES, type TutorMode } from '@/lib/tutor-rules';
 // teacher's panel (hints only, their instruction, off before an exam, the class's common questions),
 // and the evening flashcard reminder.
 
-export interface RuleInfo { hintsOnly: boolean; off: boolean; offUntil: string | null; note?: string }
+export interface RuleInfo { hintsOnly: boolean; off: boolean; offUntil: string | null; note?: string; whisperOff?: boolean }
 export const useTutorRule = (courseId: string | null) => useSWR<RuleInfo>(courseId ? `/api/tutor/${courseId}/rule` : null, authedJson);
 
 export function TutorOffBanner({ rule }: { rule: RuleInfo }) {
@@ -123,10 +123,10 @@ export function TeacherPanel({ courseId }: { courseId: string }) {
   const [busy, setBusy] = useState(false);
   if (!rule) return <div className="h-40 rounded-3xl skeleton" />;
   const form = draft ?? { note: rule.note ?? '', until: localInput(rule.offUntil) };
-  const save = async (patch: Partial<{ hintsOnly: boolean; off: boolean; note: string; offUntil: string | null }>) => {
+  const save = async (patch: Partial<{ hintsOnly: boolean; off: boolean; note: string; offUntil: string | null; whisperOff: boolean }>) => {
     setBusy(true);
     try {
-      const next = await authedJson<RuleInfo>(`/api/tutor/${courseId}/rule`, { method: 'PUT', body: JSON.stringify({ hintsOnly: rule.hintsOnly, off: rule.off, note: form.note, offUntil: form.until ? new Date(form.until).toISOString() : null, ...patch }) });
+      const next = await authedJson<RuleInfo>(`/api/tutor/${courseId}/rule`, { method: 'PUT', body: JSON.stringify({ hintsOnly: rule.hintsOnly, whisperOff: rule.whisperOff === true, off: rule.off, note: form.note, offUntil: form.until ? new Date(form.until).toISOString() : null, ...patch }) });
       await mutate(next, { revalidate: false });
       setDraft(null);
       toast.success('Saved');
@@ -140,6 +140,10 @@ export function TeacherPanel({ courseId }: { courseId: string }) {
         <div className="flex items-start gap-3">
           <Switch checked={rule.hintsOnly} onChange={(v) => void save({ hintsOnly: v })} disabled={busy} label="Hints only" />
           <div><p className="text-sm font-semibold text-zinc-900 dark:text-white">Hints only</p><p className="text-xs text-zinc-600 dark:text-zinc-400">The tutor guides with hints and questions and never gives a final answer, even for a photo of homework.</p></div>
+        </div>
+        <div className="flex items-start gap-3">
+          <Switch checked={rule.whisperOff !== true} onChange={(v) => void save({ whisperOff: !v })} disabled={busy} label="Whisper TA in class calls" />
+          <div><p className="text-sm font-semibold text-zinc-900 dark:text-white">Whisper TA in class calls</p><p className="text-xs text-zinc-600 dark:text-zinc-400">Students can quietly ask the TA during this course’s class calls. Turn it off for this class only.</p></div>
         </div>
         <label className="block text-sm font-semibold text-zinc-900 dark:text-white">Your instruction to the tutor
           <textarea value={form.note} maxLength={500} rows={2} onChange={(e) => setDraft({ ...form, note: e.target.value })} className="input mt-1 font-normal" placeholder="Always ask for the units. Use the method from week 3." />

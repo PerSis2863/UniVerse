@@ -42,7 +42,9 @@ async function access(user: SessionUser, callId: string) {
   if (!/^c_[a-z0-9]+$/i.test(parent)) throw new NotFoundException('The TA is for class calls.');
   const a = await courseAccess(parent.slice(2), user);
   if (!a) throw new NotFoundException('That class isn’t one of yours.');
-  return { ...a, callId: parent };
+  // The course's teachers can turn the TA off for this class (the tutor's rules, Stage 5 · Q22).
+  const course = await prisma.course.findUnique({ where: { id: parent.slice(2) }, select: { tutorRule: true } });
+  return { ...a, callId: parent, off: cleanRule(course?.tutorRule).whisperOff };
 }
 
 const mine = (q: { id: string; question: string; answer: string | null; citations: string | null; grounded: boolean; live: boolean; reused: boolean; topic: string | null; addressedAt: Date | null; createdAt: Date }) => ({
@@ -58,11 +60,11 @@ export async function whisper(user: SessionUser, callId: string) {
   const a = await access(user, callId);
   if (a.canManage) {
     const rows = await prisma.whisperQuestion.findMany({ where: { callId: a.callId, createdAt: { gte: new Date(Date.now() - TOPICS_MS) }, addressedAt: null }, select: { topic: true, studentId: true, createdAt: true }, take: 300 });
-    return { role: 'teacher' as const, topics: clusterTopics(rows.map((r) => ({ topic: r.topic, studentId: r.studentId, at: r.createdAt.getTime() }))).slice(0, 5).map(({ topic, students, latest, topics }) => ({ topic, students, latest: new Date(latest).toISOString(), topics })) };
+    return { role: 'teacher' as const, off: a.off, topics: clusterTopics(rows.map((r) => ({ topic: r.topic, studentId: r.studentId, at: r.createdAt.getTime() }))).slice(0, 5).map(({ topic, students, latest, topics }) => ({ topic, students, latest: new Date(latest).toISOString(), topics })) };
   }
   if (user.role !== 'STUDENT') throw new ForbiddenException('The TA is for the class’s students.');
   const rows = await prisma.whisperQuestion.findMany({ where: { callId: a.callId, studentId: user.id }, orderBy: { createdAt: 'asc' }, take: 40, select: SELECT });
-  return { role: 'student' as const, questions: rows.map(mine) };
+  return { role: 'student' as const, off: a.off, questions: rows.map(mine) };
 }
 
 /**
@@ -85,6 +87,7 @@ export async function whisperAction(user: SessionUser, callId: string, b: Record
   }
 
   if (a.canManage || user.role !== 'STUDENT') throw new ForbiddenException('The TA is for the class’s students.');
+  if (a.off) throw new ForbiddenException('Your teacher has turned the TA off for this class. Ask in the chat or raise your hand.');
   const question = typeof b.question === 'string' ? b.question.replace(/\s+/g, ' ').trim().slice(0, 500) : '';
   if (question.length < 3) throw new BadRequestException('Type your question.');
   const now = Date.now();
