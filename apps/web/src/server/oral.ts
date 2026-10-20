@@ -247,7 +247,7 @@ async function myAttempt(user: SessionUser, sessionId: string) {
   const s = await prisma.oralSession.findUnique({ where: { id: sessionId }, select: { id: true, userId: true, status: true, createdAt: true, aiReceipt: true, check: { select: { courseId: true, minutes: true, aiPolicy: true } } } });
   if (!s || s.userId !== user.id || !s.check) throw new NotFoundException('Oral check not found.');
   const until = new Date(s.createdAt.getTime() + (s.check.minutes + 2) * 60_000);
-  return { ...s, check: s.check, scope: { courseId: s.check.courseId, since: s.createdAt, until, policy: s.check.aiPolicy, during: true } };
+  return { ...s, check: s.check, scope: { courseId: s.check.courseId, since: s.createdAt, until, policy: s.check.aiPolicy, during: true, what: 'oral check' as const } };
 }
 
 /** GET /api/orals/:id/ai-receipt: what the student would attach for their oral check. */

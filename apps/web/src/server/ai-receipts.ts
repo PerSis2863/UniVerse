@@ -22,7 +22,7 @@ export async function logAiUse(userId: string | null | undefined, use: { kind: A
 }
 
 /** What a receipt covers: AI help in this course (or not tied to any course) from `since` until `until`. */
-export interface ReceiptScope { courseId: string; since: Date; until?: Date; policy: string; during?: boolean }
+export interface ReceiptScope { courseId: string; since: Date; until?: Date; policy: string; during?: boolean; what?: 'assignment' | 'quiz' | 'oral check' }
 
 export async function usesFor(userId: string, scope: { courseId: string; since: Date; until?: Date }): Promise<AiUseItem[]> {
   const rows = await prisma.aiUse.findMany({
@@ -61,7 +61,7 @@ export async function makeReceipt(userId: string, scope: ReceiptScope, input: un
   }
   const b = (input ?? {}) as Record<string, unknown>;
   const note = typeof b.note === 'string' ? b.note.trim().slice(0, 1000) : '';
-  const problem = receiptProblem(policy, b);
+  const problem = receiptProblem(policy, b, scope.what);
   if (problem) {
     if (how !== 'auto') throw new BadRequestException(problem);
     return JSON.stringify({ policy, attached: false, declaredNone: false, note, uses: [], since, at, auto: true, ...during } satisfies AiReceipt);

@@ -309,7 +309,7 @@ export class QuizzesService {
     }
 
     // AI receipt (Stage 5 · Q22): made here from the student's own record of AI help while taking it.
-    const aiReceipt = await makeReceipt(studentId, { courseId: quiz.courseId, since: attempt?.startedAt ?? quiz.createdAt, until: finishedAt ?? undefined, policy: quiz.aiPolicy, during: !!attempt }, receipt?.choice, finishedAt ? 'offline' : receipt?.timeUp ? 'auto' : 'given');
+    const aiReceipt = await makeReceipt(studentId, { courseId: quiz.courseId, since: attempt?.startedAt ?? quiz.createdAt, until: finishedAt ?? undefined, policy: quiz.aiPolicy, during: !!attempt, what: 'quiz' }, receipt?.choice, finishedAt ? 'offline' : receipt?.timeUp ? 'auto' : 'given');
 
     const submission = await prisma.quizSubmission.create({
       data: {

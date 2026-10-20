@@ -3,6 +3,35 @@
 Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
 done, where the code is and what's left for each item. Keep that table up to date as you go.
 
+## Q22 · Leftovers inside finished items: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+
+Nine leftovers; the rest stay listed in the Progress row "Q22" with why. Migrations **0165**
+(AI rule and receipts on quizzes and oral checks) and **0166** (the class TA's answers on in-person
+questions). Rules for code that builds on it:
+
+- **AI receipts are made in one place:** `makeReceipt` in `src/server/ai-receipts.ts` (assignments
+  call it through `receiptForSubmission`). `how`: `'given'` throws when the choice doesn't fit the
+  rule; `'offline'` keeps a hand-in with no choice; `'auto'` (a quiz handed in by itself at zero)
+  never throws, so answers are never lost, and the teacher sees it marked. `during: true` means the
+  record covers the attempt (quiz: from `quiz_attempts.startedAt`, kept for any quiz whose rule
+  isn't FREE; oral check: from the session's start to its length + 2 minutes), not "since it was set".
+- **Oral checks end by themselves**, so their receipt is attached afterwards (`POST /api/orals/:id/ai-receipt`)
+  until the teacher marks it (then 409). Don't move it into `finishOral`.
+- **Any new AI help must call `logAiUse`** (kinds in `src/lib/ai-receipt.ts AI_USE_KINDS`); the class
+  TA now does (`ta`), Whisper TA didn't before.
+- **The class TA** (Whisper TA in calls, and in-person questions) answers through one function,
+  `taAnswer` in `src/server/whisper.ts`. The teacher's switch is `tutorRule.whisperOff` and covers
+  both. In-person: `askTa` in `src/server/classroom.ts`, notes from the teacher's laptop (last ten
+  minutes) as what was said; only the asking student sees the answer.
+- **Question-bank tags** (`ConceptTag` kind `BANK`) are copied to the new quiz questions by order
+  when added to a quiz (question-bank route, `add-to-quiz`).
+- **Oral checks into the gradebook:** one `Grade` per student and check, named `Oral: <title>`,
+  updated when re-marked (with grade history).
+- **Parents' files in parent–teacher chats** go through `saveFile` (4 MB, pictures and PDF), with
+  the costly-request limit in `cloudflare/worker.ts`.
+- **Class content translation** tries the browser's own Translator first (`src/lib/device-translate.ts`,
+  Chrome; skipped on data saver), then the AI.
+
 ## Q21 · Languages and right to left: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
 
 13 languages; Arabic and Urdu right to left. Details in the Progress row "Q21". Rules:

@@ -60,11 +60,11 @@ export const excerpt = (text: string, n = 140) => {
 };
 
 /** What the student chose when handing in, checked against the assignment's rule; an error to show, or null. */
-export function receiptProblem(policy: AiPolicy, input: { attach?: unknown; declaredNone?: unknown }): string | null {
+export function receiptProblem(policy: AiPolicy, input: { attach?: unknown; declaredNone?: unknown }, what = 'assignment'): string | null {
   const attach = input.attach === true, none = input.declaredNone === true;
   if (attach && none) return 'Choose one: you didn’t use AI, or you’re attaching your AI receipt.';
-  if (policy === 'RECEIPT' && !attach) return 'This assignment asks for your AI receipt. Attach it to hand in (it can be empty).';
-  if (policy === 'NONE' && !attach && !none) return 'This assignment doesn’t allow AI. Say you didn’t use it, or attach your AI receipt and explain.';
+  if (policy === 'RECEIPT' && !attach) return `This ${what} asks for your AI receipt. Attach it to hand in (it can be empty).`;
+  if (policy === 'NONE' && !attach && !none) return `This ${what} doesn’t allow AI. Say you didn’t use it, or attach your AI receipt and explain.`;
   return null;
 }
 
