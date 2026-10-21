@@ -46,6 +46,8 @@ export const reducedMotion = () => typeof window !== 'undefined' && (document.do
 export const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)';
 /** UIKit's curve for the old page easing back. */
 export const EASE_IOS = 'cubic-bezier(0.32, 0.72, 0, 1)';
+/** Arrivals: most of the way at once, then a long soft glide into place (AgentGPT's springs). */
+export const EASE_GLIDE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 
 /** The old page as a tap leaves it: dims and drifts the way the new one will come from. */
 export function leaveFrames(m: PageMotion): Keyframe[] {
@@ -58,7 +60,7 @@ export function leaveFrames(m: PageMotion): Keyframe[] {
 export function enterFrames(m: PageMotion): Keyframe[] {
   // Never from fully transparent: the first frames would show an empty screen.
   if (m === 'shared') return [{ opacity: 0.3 }, { opacity: 1 }];
-  const from = m === 'push' ? 'translate3d(36px, 0, 0)' : m === 'pop' ? 'translate3d(-36px, 0, 0)' : m === 'tab' ? 'translate3d(0, 8px, 0)' : 'translate3d(0, 10px, 0) scale(0.996)';
+  const from = m === 'push' ? 'translate3d(56px, 0, 0)' : m === 'pop' ? 'translate3d(-56px, 0, 0)' : m === 'tab' ? 'translate3d(0, 16px, 0)' : 'translate3d(0, 20px, 0) scale(0.99)';
   return [{ opacity: 0.3, transform: from }, { opacity: 1, transform: 'none' }];
 }
 
@@ -81,16 +83,19 @@ export function revealParts(page: Element | null, m: PageMotion): Element[] {
   return parts.filter((el) => !el.classList.contains('stagger')).slice(0, 10);
 }
 
-/** One part's entrance: the first is visible at once (never a blank screen), the rest rise in. */
+/**
+ * One part's entrance: the first (the title) is half there at once (never a blank screen) and
+ * settles down into place; the rest rise in from below, far enough to see them glide.
+ */
 export function revealFrames(i: number): Keyframe[] {
-  return [{ opacity: i === 0 ? 0.35 : 0, transform: i === 0 ? 'none' : 'translate3d(0, 10px, 0)' }, { opacity: 1, transform: 'none' }];
+  return [{ opacity: i === 0 ? 0.35 : 0, transform: i === 0 ? 'translate3d(0, -10px, 0)' : 'translate3d(0, 24px, 0)' }, { opacity: 1, transform: 'none' }];
 }
-export const REVEAL_MS = 320;
-export const REVEAL_GAP_MS = 45;
+export const REVEAL_MS = 560;
+export const REVEAL_GAP_MS = 70;
 
-/** Durations in ms: quick enough that the page's information is there almost at once. */
+/** Durations in ms: the old page goes quickly; the new one is readable at once and glides to rest. */
 export const LEAVE_MS = 170;
-export const enterMs = (m: PageMotion) => (m === 'tab' ? 260 : m === 'fade' ? 300 : 340);
+export const enterMs = (m: PageMotion) => (m === 'tab' ? 420 : m === 'fade' ? 480 : 460);
 
 /**
  * What moves in a 'tab' change: everything on the page except the steady tab bar ([data-steady],

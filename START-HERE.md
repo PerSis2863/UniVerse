@@ -12,12 +12,14 @@ Cursor's).
   pass, the accessibility sweep, Phase E (Q23–Q26: undo, drag-and-drop and paste on file fields, bulk
   actions on Admin → Users, choosing several chat messages, accent colour, ringtone, course colours,
   scheduled report exports, CSV on the admin tables, a public blog written in the owner console) and
-  smooth loading everywhere (S1: placeholders shaped like the page, parts arriving in turn).
+  smooth loading everywhere (S1: placeholders shaped like the page, parts arriving in turn), and
+  S2 (22 Oct): AgentGPT-style entrance (the app assembles itself in about 1.2 s as it opens; longer,
+  softer motions everywhere).
 - **The plan:** `apps/web/STAGE-5-PLAN.md`. Section 4 "Remaining work queue" lists every item in
   order, and the **Progress** table at the end says what's done, where the code is and what's left
   for each item.
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: start with its "Next steps" and the
-  Q26, S1 and Q24/Q25 notes.
+  S2, Q26, S1 and Q24/Q25 notes.
 - **Next database update number: `0174`** (files in `apps/web/prisma/migrations/`).
 
 **Waiting on the owner** (things only you can provide):

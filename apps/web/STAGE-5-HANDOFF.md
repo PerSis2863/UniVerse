@@ -69,6 +69,36 @@ show almost nothing.
 - **Browser check:** `node scripts/checks/q26-ui.mjs` with `pnpm local:serve --test-secret --owner-test`.
   **Not run yet** (merged at the owner's request first): run it before anything else and fix what it finds.
 
+## S2 · AgentGPT-style entrance: done (22 Oct 2026, owner request)
+
+After S1 the owner still found loading "not smooth like" https://agentgpt.reworkd.ai. Its source
+(github.com/reworkd/AgentGPT, the version the live site runs: `next/src/pages/index.tsx` before
+"Redesign (#1327)") shows why: every part arrives with a big, slow, staged motion (framer-motion
+springs of 0.5–1 s: the title unfolds, the main window opens out from `scaleY 0`, the example cards
+drop 30 px in at 0.9 s, the inputs rise 30–50 px), over a background that never empties. UniVerse's
+motions were 6–10 px over 0.26–0.34 s, and the start-up placeholder was swapped for the app in one
+frame. Rules for code that builds on it:
+
+- **App entrance** (`src/lib/app-entrance.ts`, played by `DashboardShell` once per page load): the
+  page's blocks (`revealParts`) rise 36 px over 800 ms, 70 ms apart from 120 ms; a block taller than a
+  third of the screen opens out from its top edge instead (`scale(0.96, 0.9)`); the phone tab bar
+  rises 48 px; the desktop sidebar slides in 32 px from its edge (mirrored right to left). The phone
+  top bar stays put (the placeholder showed the same brand in the same place).
+- **The start-up placeholder dissolves behind the app** (`.boot-cover` in `DashboardShell`: the same
+  `AppSkeleton`, `z-index: -1`, fading 500 ms after 100 ms; its bars are hidden so nothing shows
+  twice). In front of the app it made the screen dip to empty for ~150 ms.
+- **A page that replaces its loading skeleton** (`PendingPage`): a copy of the skeleton, taken when
+  it appeared, fades out behind the arriving page (fixed, `z-index: -1`), for the same reason.
+- **Longer, softer motions everywhere:** `EASE_GLIDE` / `--ease-glide` = `cubic-bezier(0.16, 1, 0.3,
+  1)`; page parts 24 px over 560 ms, 70 ms apart (the title settles down 10 px from half visible);
+  push/pop 56 px over 460 ms; late content 16 px over 480 ms; `.stagger` rows 22 px over 560 ms, 50 ms
+  apart; `.fade-up` 14 px over 460 ms; the landing hero 28 px over 900 ms. Leaving stays quick
+  (170 ms). Still transform and opacity only with `fill: backwards`, so they run on the GPU and
+  leave nothing behind. "Reduce Motion": fades only.
+- **How it was checked:** `node scripts/load-film.mjs http://localhost:8787 --out <dir>` films a
+  reload and a tab tap on a phone at 4× slower CPU (Chrome screencast frames plus a contact sheet).
+  The frames before the first change after a tap are Playwright getting ready to tap, not the app.
+
 ## S1 · Smooth loading everywhere: done (21 Oct 2026, owner request)
 
 The owner sent a screen recording of AgentGPT reloading: the page dims, a placeholder in the page's

@@ -1,6 +1,6 @@
 'use client';
 import { MiniPlayer } from '@/components/chat/MiniPlayer';
-import { Fragment, useState } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 import { SampleModeBar } from '@/components/SampleMode';
 import { useSampleMode } from '@/lib/sample-mode';
 import { Sidebar } from './Sidebar';
@@ -21,6 +21,8 @@ import { haptic } from '@/lib/haptics';
 import { authedJson } from '@/lib/authed-fetch';
 import useSWR from 'swr';
 import { PendingPage } from './PendingPage';
+import { AppSkeleton } from './AppSkeleton';
+import { entrancePending, playAppEntrance } from '@/lib/app-entrance';
 import { isTabRoot, tabsForRole, type TabItem } from '@/lib/app-tabs';
 import { goBack } from '@/lib/app-nav';
 import { useSectionRoot } from '@/lib/chrome';
@@ -129,6 +131,12 @@ export function DashboardShell({ children }: DashboardShellProps) {
     setSidebarOpen(false);
   }
 
+  // Opening the app: the start-up placeholder stays behind the app for a moment and dissolves while
+  // the app's parts glide into place over it (src/lib/app-entrance.ts), once per page load.
+  const shellRef = useRef<HTMLDivElement>(null);
+  const [bootCover, setBootCover] = useState(entrancePending);
+  useLayoutEffect(() => { playAppEntrance(shellRef.current); }, []);
+
   const openSearch = () => {
     openCommandPalette();
   };
@@ -137,7 +145,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
   };
 
   return (
-    <div className="shell-in flex min-h-[100dvh]">
+    <div ref={shellRef} className="shell-in flex min-h-[100dvh]">
+      {bootCover && <div aria-hidden className="boot-cover" onAnimationEnd={(e) => { if (e.target === e.currentTarget) setBootCover(false); }}><AppSkeleton /></div>}
       <a href="#main" className="skip-link">Skip to content</a>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
