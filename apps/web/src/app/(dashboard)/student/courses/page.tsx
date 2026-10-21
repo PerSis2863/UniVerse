@@ -3,7 +3,6 @@ import Link from '@/components/ui/Link';
 import { useRouter } from 'next/navigation';
 import { navigateWithTransition, vtName } from '@/lib/view-transition';
 import useSWR from 'swr';
-import { m as motion } from 'framer-motion';
 import { BookOpen, ChevronRight, FileText, GraduationCap, CheckCircle2 } from 'lucide-react';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { Topbar } from '@/components/layout/Topbar';
@@ -50,9 +49,11 @@ export default function CoursesPage() {
             example={<div><ExampleRow title="Operating Systems" meta="Prof. R. Mehta · 12 materials" right="CS301" /><ExampleRow title="Sustainable Development" meta="Dr. A. Khan · 3 quizzes" right="ENV210" accent="from-emerald-500 to-teal-500" /></div>}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {enrollments.map(({ course, enrolledAt }, i) => (
-              <motion.div key={course.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.05 }}>
+          // The CSS cascade, not an animation per card in JS (that restyled every card on every frame
+          // while the page drew, on a slow phone).
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 stagger">
+            {enrollments.map(({ course, enrolledAt }) => (
+              <div key={course.id}>
                 <Link href={`/student/blackboard?course=${course.id}`}
                   onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); navigateWithTransition(router, `/student/blackboard?course=${course.id}`); }}
                   className="group block h-full rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl p-6 hover:border-indigo-500/40 hover:shadow-lg transition-all">
@@ -70,7 +71,7 @@ export default function CoursesPage() {
                   </div>
                   <p className="text-[11px] text-zinc-400 mt-2">Enrolled {new Date(enrolledAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p>
                 </Link>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}

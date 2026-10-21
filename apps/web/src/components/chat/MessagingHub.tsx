@@ -274,13 +274,16 @@ export function MessagingHub() {
               <button onClick={() => setDialog('chat')} className="mt-3 text-sm font-semibold text-indigo-500">Start a new chat</button>
             </div>
           )}
-          {conversations.map((c, i) => {
+          {/* The CSS cascade, not a JS animation per row (that restyled every row each frame while
+              the tab drew on a slow phone). */}
+          <div className="stagger">
+          {conversations.map((c) => {
             const active = c.id === activeId;
             const typing = c.typing.length > 0;
             // What I was writing there (this device's or my account's, whichever is newer).
             const draft = active ? '' : pickDraft(drafts[c.id] ?? null, { text: c.draft, at: c.draftAt }).trim();
             return (
-              <motion.div key={c.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.02 }} className="group relative">
+              <div key={c.id} className="group relative">
               <button
                 onClick={() => { if (menuFor) return setMenuFor(null); select(c.id); }}
                 onContextMenu={(e) => { e.preventDefault(); setMenuFor(c.id); }}
@@ -336,9 +339,10 @@ export function MessagingHub() {
                   <ListItem icon={MailOpen} label={c.unread > 0 ? 'Mark as read' : 'Mark as unread'} onClick={() => setPref(c, { unread: !(c.unread > 0) })} />
                 </div>
               )}
-              </motion.div>
+              </div>
             );
           })}
+          </div>
           {deepQ.length >= 2 && (
             <div className="mt-2">
               <p className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-zinc-400 flex items-center gap-2">Messages {searching && <Loader2 className="w-3 h-3 animate-spin" />}</p>

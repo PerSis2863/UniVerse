@@ -242,7 +242,10 @@
   }
   h1 { letter-spacing: -0.022em; }
 
-  ::selection { background-color: rgb(var(--tint-rgb) / 0.25); }
+  /* Under body, not on every element: a bare ::selection (it matches <html> too) makes Chrome work
+     out a selection style for every element on each restyle, about 70× slower (25 ms → 0.4 ms for
+     the home page; 4× that on a slow phone). The colour is the same. */
+  :where(body) ::selection { background-color: rgb(var(--tint-rgb) / 0.25); }
 
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -581,9 +584,11 @@
   overscroll-behavior-y: contain;
 }
 
-/* Eliminate 300ms tap delay on touch devices */
-* {
-  touch-action: manipulation;
+/* Eliminate 300ms tap delay on touch devices. In the base layer so Tailwind's touch-* utilities
+   win: outside a layer it beat every `touch-none` (drawing areas, drag handles, the side menu's
+   backdrop), which then scrolled or zoomed the page instead. */
+@layer base {
+  * { touch-action: manipulation; }
 }
 
 /* Prevent text selection during tap/swipe gestures */
@@ -822,13 +827,20 @@ html, body { overflow-x: clip; max-width: 100%; }
 .stagger > *:nth-child(11) { animation-delay: 300ms; }
 .stagger > *:nth-child(12) { animation-delay: 330ms; }
 
+/* One card rising in (delay with an inline animation-delay), and a progress bar growing from its
+   start: the same work as a JS animation, but on the GPU and with nothing to do per frame. */
+.rise-in { animation: rise 500ms var(--ease-out-soft) backwards; }
+@keyframes bar-grow { from { transform: scaleX(0); } }
+.bar-grow { animation: bar-grow 900ms var(--ease-out-soft) backwards; transform-origin: left; }
+[dir="rtl"] .bar-grow { transform-origin: right; }
+
 /* Cards that respond to the pointer: a small lift on hover, a press on tap. */
 .lift { transition: transform 220ms var(--ease-out-soft), box-shadow 220ms var(--ease-out-soft), border-color 200ms ease; }
 @media (hover: hover) { .lift:hover { transform: translate3d(0, -2px, 0); box-shadow: 0 14px 32px -16px rgba(0, 0, 0, 0.25); } }
 .lift:active { transform: scale(0.985); }
 
 @media (prefers-reduced-motion: reduce) {
-  .stagger > * { animation: none; }
+  .stagger > *, .rise-in, .bar-grow { animation: none; }
   .lift, .lift:hover, .lift:active { transition: none; transform: none; }
 }
 
@@ -947,9 +959,6 @@ html, body { overflow-x: clip; max-width: 100%; }
   .overflow-x-auto > table th { white-space: nowrap; }
 }
 
-/* Lock page scroll while a mobile drawer is open */
-body.scroll-locked { overflow: hidden; touch-action: none; }
-
 /* ═══════════════════════════════════════════════════════════════════════════
    Motion system — one feel for every tap, hover and sheet
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -1066,7 +1075,7 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 @keyframes rm-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .stagger > *, .fade-up, .page-enter, .page-push, .page-pop, .shell-in, .sheet-in, .alert-in, .hero-in { animation-name: rm-fade !important; animation-duration: 200ms !important; }
+  .stagger > *, .rise-in, .fade-up, .page-enter, .page-push, .page-pop, .shell-in, .sheet-in, .alert-in, .hero-in { animation-name: rm-fade !important; animation-duration: 200ms !important; }
   .lift:hover, .lift:active, .card-hover:hover, .kpi-card:hover { transform: none !important; }
   .animate-bounce, .animate-float, .mkt-float, .animate-heartbeat { animation: none !important; }
 }
@@ -1339,6 +1348,11 @@ html[data-collapsed] .nav-brand-text { opacity: 0; }
 }
 
 /* Floating tab bar (phones). */
+/* The phone tab bar's capsule (DashboardShell): moved by its column, mirrored right to left. */
+.tabbar-pill { transform: translate3d(calc(var(--col, 0) * 100%), 0, 0); transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1), opacity 200ms ease; }
+[dir="rtl"] .tabbar-pill { transform: translate3d(calc(var(--col, 0) * -100%), 0, 0); }
+@media (prefers-reduced-motion: reduce) { .tabbar-pill { transition: opacity 200ms ease; } }
+
 .ios-tabbar {
   position: fixed;
   left: max(0.75rem, env(safe-area-inset-left, 0px));

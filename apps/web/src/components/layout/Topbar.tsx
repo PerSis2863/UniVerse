@@ -42,6 +42,10 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const [showNotifications, setShowNotifications] = useState(false);
+  // The first rows draw with the panel and the rest once it has slid in: all 30 at once made the
+  // opening tap take about a quarter of a second on a slow phone.
+  const [allRows, setAllRows] = useState(false);
+  const openPanel = () => { setAllRows(false); setShowNotifications(true); };
   const [activeNotifTab, setActiveNotifTab] = useState('All');
   const { t } = useLanguageStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -59,9 +63,18 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Escape closes the panel, like every other dialog.
+  useEffect(() => {
+    if (!showNotifications) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowNotifications(false); };
+    window.addEventListener('keydown', onKey);
+    const rest = setTimeout(() => setAllRows(true), 450);
+    return () => { window.removeEventListener('keydown', onKey); clearTimeout(rest); };
+  }, [showNotifications]);
+
   // The mobile header's bell (DashboardShell) opens this drawer via a window event.
   useEffect(() => {
-    const open = () => setShowNotifications(true);
+    const open = () => { setAllRows(false); setShowNotifications(true); };
     window.addEventListener('universe:open-notifications', open);
     return () => window.removeEventListener('universe:open-notifications', open);
   }, []);
@@ -146,7 +159,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
           <button
             type="button"
             data-tour="notifications"
-            onClick={() => setShowNotifications(true)}
+            onClick={openPanel}
             // The count as the badge shows it, so the name contains what's on screen (WCAG 2.5.3)
             aria-label={unreadCount > 0 ? `Notifications, ${unreadCount > 99 ? '99+' : unreadCount} unread` : 'Notifications'}
             className={cn('btn-ghost btn-icon relative rounded-full', showNotifications && 'bg-[var(--fill)]')}
@@ -209,7 +222,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
                     <p className="text-[15px]">No notifications here</p>
                   </div>
                 ) : (
-                  filteredNotifications.map(n => (
+                  (allRows ? filteredNotifications : filteredNotifications.slice(0, 12)).map(n => (
                     // Plain rows with the CSS cascade: an animation each in JS (and layout tracking)
                     // restyled every row on every frame while the panel slid in.
                     <div

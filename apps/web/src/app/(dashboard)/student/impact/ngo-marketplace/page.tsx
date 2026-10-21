@@ -115,11 +115,11 @@ export default function NGOMarketplacePage() {
               <p className="text-zinc-500 mt-1">Try adjusting your filters.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
-              {filtered.map((project, i) => {
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5 stagger">
+              {filtered.map((project) => {
                 const isApplied = applied.includes(project.id);
                 return (
-                  <motion.div key={project.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
+                  <div key={project.id}
                     className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-emerald-500/40 transition-all group flex flex-col justify-between">
                     <div className="space-y-4">
                       <div className="flex justify-between items-start">
@@ -168,7 +168,7 @@ export default function NGOMarketplacePage() {
                         </button>
                       )}
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>

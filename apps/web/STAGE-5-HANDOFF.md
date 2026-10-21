@@ -8,7 +8,7 @@ done, where the code is and what's left for each item. Keep that table up to dat
 Everything up to here is merged into main (PR #67). Next migration: **0172**. Work on a fresh branch
 from main; one commit per item or batch; push; merge only when the owner says "merge".
 
-1. **Re-measure the last three phone fixes** (they pass the checks but weren't tried in a browser):
+1. ✅ **Done 21 Oct** (see "Phone smoothness, second pass" below). **Re-measure the last three phone fixes** (they pass the checks but weren't tried in a browser):
    the Notifications panel (`src/components/layout/Topbar.tsx`: slides with a whole `transform`, rows
    use the CSS `.stagger` cascade), the logo's ping (`.universe-ping` in `globals.css`, plays 5 times,
    only when `animated`), and `.stagger` now `backwards` (cards keep their hover lift and press
@@ -22,13 +22,13 @@ from main; one commit per item or batch; push; merge only when the owner says "m
    desktop-light list from before (`/student/impact/ai-match`, knowledge hub, study rooms, BeeSafe,
    credentials, community, join, scholarships, tutoring, reels, legal links, marketplace selects)
    was fixed in code; confirm and fix what's left.
-3. **Side menu's first open** (`src/components/layout/Sidebar.tsx`): the tap adds `scroll-locked` to
+3. ✅ **Done 21 Oct** (below). **Side menu's first open** (`src/components/layout/Sidebar.tsx`): the tap adds `scroll-locked` to
    `<body>`, and the next read forces a whole-page style recalculation (1,158 elements, about 210 ms at
    4× slower CPU) inside the tap. Try locking scroll without a body class change (for example
    `overscroll-behavior: contain` and `touch-action: none` on the drawer and backdrop, or set the lock
    one frame after the drawer starts moving), then measure with
    `node scripts/smoothness.mjs --profile "side menu"`.
-4. **Tab switches** cost 0.4–0.7 s of main-thread work on a slow phone (`/student` 750 ms, inbox 680,
+4. ✅ **Done 21 Oct**, partly (below). **Tab switches** cost 0.4–0.7 s of main-thread work on a slow phone (`/student` 750 ms, inbox 680,
    NGO marketplace 570, courses 390). Profile each (`--profile "tab bar"`) and lighten the first
    render: defer widgets below the fold, and replace per-row framer-motion entrances inside `.map()`
    with the CSS `.stagger` cascade (the pattern that made Notifications slow).
@@ -47,6 +47,41 @@ main thread's `UpdateLayoutTree` / `Layout` / `Paint` events and count the inval
 element and reason. That's how the endless SVG ping (SVG animations re-lay out and repaint every
 frame; they can't run on the GPU) and the per-row JS animations showed up. An idle page should
 show almost nothing.
+
+## Phone smoothness, second pass: done (21 Oct 2026, branch `claude/funny-galileo-y4mz9r`)
+
+No migration (next: **0172**). Measured with `node scripts/smoothness.mjs` (two runs) and the new
+`node scripts/checks/phone-panels.mjs` on the built Worker, 4× slower CPU, long tasks:
+Notifications open 920 → ~260 ms (worst frame 450 → ~185), side menu open ~300 → ~70 ms (it restyled
+1,059 elements, now 28), tab switches: Impact 570–770 → ~530, Courses ~400 → ~315, Messages
+510–680 → ~450, Home 750–790 → ~460 (one run 1,130: the lower cards draw inside the measured 1.5 s).
+Scrolling stays smooth. Rules for code that builds on it:
+
+- **`::selection` is under `body` (`:where(body) ::selection`), never bare.** A bare `::selection`
+  (it matches `<html>` too) made Chrome work out a selection style for every element on every
+  restyle: a full restyle of Home took 25 ms instead of 0.4 ms (×4 on a slow phone). The same goes
+  for any new page-wide pseudo-element rule: measure it (`getComputedStyle` timing after changing a
+  style on `<html>`).
+- **Never change `<body>`'s `touch-action`** (or add a class that does): it restyles every element.
+  The side menu now blocks finger scrolling on its backdrop and fixed parts (`touch-none`) and its
+  list doesn't pass scrolling on (`overscroll-contain`); `body.scroll-locked` is gone.
+- **`* { touch-action: manipulation }` is in `@layer base`.** Outside a layer it beat every
+  Tailwind `touch-none` in the app (drawing areas, drag handles, sliders), so those scrolled the page.
+  Unlayered rules in `globals.css` always beat utilities: put new element-wide rules in a layer.
+- **The phone tab bar's capsule is one CSS-positioned element** (`.tabbar-pill`, moved by `--col`,
+  mirrored right to left), not a framer-motion `layoutId`. Shared-layout animations make framer-motion
+  measure the page and every animated element on each frame; avoid `layoutId` / `layout` on things
+  that change on every navigation. The side menu's highlight only glides when the menu is on screen.
+- **Entrances in CSS:** lists and grids use `.stagger` on the parent; a single card uses `.rise-in`
+  with an inline `animationDelay`; progress bars use `.bar-grow` (scaleX, from the start side). Not
+  framer-motion `initial`/`animate` per row inside `.map()` (Home, Courses, Impact projects and the
+  chat list were changed).
+- **Home draws its first cards first** (`HomeBoard`: the top cards and the first two of the main
+  column, the rest 250 ms later; all at once while editing). The Notifications panel draws 12 rows,
+  the rest 450 ms after it opens. Escape closes it.
+- What's left: most of a tab switch is now the browser laying out the new page for the first time
+  (Next.js forces it while deciding whether to scroll); fewer elements on first render is the way
+  down. The course tile → course page step is ~400–500 ms.
 
 ## Review · Full bug and error review: done, first pass (21 Oct 2026, merged into main in PR #67)
 
