@@ -5,7 +5,7 @@ done, where the code is and what's left for each item. Keep that table up to dat
 
 ## Next steps (written 21 Oct 2026 for whoever continues; do them in this order)
 
-Everything up to here is merged into main (PR #67). Next migration: **0172**. Work on a fresh branch
+Everything up to here is merged into main (21 Oct 2026, with Q26 and S1). Next migration: **0174**. Work on a fresh branch
 from main; one commit per item or batch; push; merge only when the owner says "merge".
 
 1. ✅ **Done 21 Oct** (see "Phone smoothness, second pass" below). **Re-measure the last three phone fixes** (they pass the checks but weren't tried in a browser):
@@ -32,7 +32,7 @@ from main; one commit per item or batch; push; merge only when the owner says "m
    NGO marketplace 570, courses 390). Profile each (`--profile "tab bar"`) and lighten the first
    render: defer widgets below the fold, and replace per-row framer-motion entrances inside `.map()`
    with the CSS `.stagger` cascade (the pattern that made Notifications slow).
-5. **Started 21 Oct: first batch of 10 done** ("Q24" below; the rest listed there). **Feature and button upgrades** (the owner's request): the rest of Phase E, listed in the Q23
+5. ✅ **Done 21 Oct** (Q24, Q25, Q26 below; what's left and why is in the Q26 Progress row). **Feature and button upgrades** (the owner's request): the rest of Phase E, listed in the Q23
    Progress row's "what's left" (undo toasts, drag-and-drop and paste on file fields, bulk actions
    and CSV export on tables, sticky headers and saved filters, long-press menus, "New items ↑" on
    live lists, forward with comment, selecting several messages, device switch mid-call, colour per
@@ -47,6 +47,27 @@ main thread's `UpdateLayoutTree` / `Layout` / `Paint` events and count the inval
 element and reason. That's how the endless SVG ping (SVG animations re-lay out and repaint every
 frame; they can't run on the GPU) and the per-row JS animations showed up. An idle page should
 show almost nothing.
+
+## Q26 · Scheduled exports, table tools and a blog: done (21 Oct 2026)
+
+- **Scheduled exports** (`src/server/report-schedules.ts`, `src/components/admin/ScheduledExports.tsx`,
+  routes `src/app/api/admin/report-schedules/**`, migration 0172). A schedule keeps `dueAt`, the UTC
+  day its next file is due (`nextDue`: a day, a week or a month on; the 31st → the month's last day).
+  The daily step `report-exports` takes the 3 oldest due, runs at most 2 (CSV building is CPU work on
+  Workers Free) and the 15-minute timer carries on. `runSchedule` moves the schedule on **before**
+  making the file, so a run that dies half-way (query or CPU limit) can't repeat forever. Files go to
+  My files → "Scheduled reports" through `saveToMyFiles` (src/server/space-files.ts, same limits as an
+  upload), the newest 12 per schedule are kept. Without R2 a file must be under 1.9 MB (D1 row limit).
+- **Exports in one query each** (`src/server/report-exports.ts`, shared by the download route
+  `/api/premium/export`): raw SQL with joins. Don't go back to Prisma `select` with relations for
+  big lists: Prisma loads each relation in extra queries of ~98 ids, which D1 counts.
+- **Blog** (`src/server/blog.ts`, module `src/server/modules/blog.ts`: public `GET /api/core/blog`,
+  `GET /api/core/blog/:slug`, owner `/api/core/owner/blog…`; console tab `console/blog.tsx`; pages
+  `src/app/blog/**`, the post page built once as `/blog/open` like `/reports/[slug]`). Markdown is
+  shown with `LegalMarkdown` (no HTML; links only http(s), mailto, / and #). Reading time is stored
+  (`minutes`) so the list doesn't read the posts' text.
+- **Browser check:** `node scripts/checks/q26-ui.mjs` with `pnpm local:serve --test-secret --owner-test`.
+  **Not run yet** (merged at the owner's request first): run it before anything else and fix what it finds.
 
 ## S1 · Smooth loading everywhere: done (21 Oct 2026, owner request)
 
