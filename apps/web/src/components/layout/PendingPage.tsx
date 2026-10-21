@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { usePendingNav } from '@/lib/nav-pending';
-import { EASE_IOS, EASE_OUT, LEAVE_MS, REVEAL_GAP_MS, REVEAL_MS, enterFrames, enterMs, leaveFrames, movingParts, pageEntranceShown, pageMotion, reducedMotion, revealFrames, revealParts } from '@/lib/page-transition';
+import { EASE_GLIDE, EASE_IOS, LEAVE_MS, REVEAL_GAP_MS, REVEAL_MS, enterFrames, enterMs, leaveFrames, movingParts, pageEntranceShown, pageMotion, reducedMotion, revealFrames, revealParts } from '@/lib/page-transition';
 import { PageSkeleton, skeletonFor } from './PageSkeleton';
 
 // Past this, a page that's still downloading shows its loading skeleton (pages open without
@@ -46,6 +46,9 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
   if (!leaving && skeletonOn) setSkeletonOn(false);
   const skeleton = leaving && skeletonOn;
   const stage = useRef<HTMLDivElement>(null);
+  const skeletonBox = useRef<HTMLDivElement>(null);
+  // A copy of the loading skeleton, kept to fade out behind the page that replaces it.
+  const skeletonCopy = useRef<HTMLElement | null>(null);
   const running = useRef<Animation[]>([]);
   const leave = useRef<Animation[] | null>(null);
   const shown = useRef(pathname);
@@ -58,6 +61,7 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
   // bar stays and the dimmed content is the cue).
   useEffect(() => {
     if (!leaving) {
+      skeletonCopy.current = null;
       // Cancelled (no new page): the old page comes back. If the new page arrived, its entrance
       // has already replaced these animations.
       if (leave.current && leave.current.length && running.current[0] === leave.current[0]) { for (const a of leave.current) a.cancel(); running.current = []; }
@@ -74,6 +78,7 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
   // The skeleton fades in from the top of the page, like the new page will be.
   useLayoutEffect(() => {
     if (!skeleton) return;
+    skeletonCopy.current = (skeletonBox.current?.cloneNode(true) as HTMLElement | undefined) ?? null;
     window.scrollTo(0, 0);
     animate(running, stage.current ? [stage.current] : [], [{ opacity: 0.4 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' });
   }, [skeleton]);
@@ -86,13 +91,25 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
     shown.current = pathname;
     const m = pageMotion();
     pageEntranceShown();
+    // The page replaces its loading skeleton: the skeleton dissolves behind it while its parts come
+    // in, so the screen doesn't empty for a frame in between.
+    const copy = skeletonCopy.current;
+    skeletonCopy.current = null;
+    const area = stage.current?.getBoundingClientRect();
+    if (copy && area && !reducedMotion()) {
+      copy.setAttribute('aria-hidden', 'true');
+      copy.querySelector('.skeleton-in')?.classList.remove('skeleton-in'); // no second fade-in
+      Object.assign(copy.style, { position: 'fixed', left: `${area.left}px`, top: `${area.top}px`, width: `${area.width}px`, zIndex: '-1', pointerEvents: 'none' });
+      document.body.appendChild(copy);
+      copy.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, delay: 60, easing: 'ease-out', fill: 'both' }).finished.then(() => copy.remove(), () => copy.remove());
+    }
     if (m === 'push' || m === 'pop' || m === 'shared' || reducedMotion()) {
-      animate(running, targets(m), enterFrames(m), { duration: enterMs(m), easing: EASE_OUT });
+      animate(running, targets(m), enterFrames(m), { duration: enterMs(m), easing: EASE_GLIDE });
       return;
     }
     for (const a of running.current) a.cancel();
     running.current = revealParts(page(), m).filter((t) => typeof (t as HTMLElement).animate === 'function')
-      .map((t, i) => t.animate(revealFrames(i), { duration: REVEAL_MS, delay: Math.min(i, 8) * REVEAL_GAP_MS, easing: EASE_OUT, fill: 'backwards' }));
+      .map((t, i) => t.animate(revealFrames(i), { duration: REVEAL_MS, delay: Math.min(i, 8) * REVEAL_GAP_MS, easing: EASE_GLIDE, fill: 'backwards' }));
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Data arriving where a loading placeholder was: what replaces it fades in where it stood (one
@@ -116,7 +133,7 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
         .forEach((n, i) => {
           // Something as big as the screen comes in from half visible (never a blank screen).
           const big = n.getBoundingClientRect().height > window.innerHeight * 0.5;
-          n.animate(big ? [{ opacity: 0.4 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translate3d(0, 6px, 0)' }, { opacity: 1, transform: 'none' }], { duration: 260, delay: Math.min(i, 8) * 35, easing: EASE_OUT, fill: 'backwards' });
+          n.animate(big ? [{ opacity: 0.4 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translate3d(0, 16px, 0)' }, { opacity: 1, transform: 'none' }], { duration: 480, delay: Math.min(i, 8) * 60, easing: EASE_GLIDE, fill: 'backwards' });
         });
     });
     observer.observe(root, { childList: true, subtree: true });
@@ -126,7 +143,7 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
   return (
     <div ref={stage} className="page-stage flex flex-col flex-1 min-w-0">
       <div className={skeleton ? 'hidden' : 'contents'}>{children}</div>
-      {skeleton && <PageSkeleton variant={skeletonFor(pending ?? pathname)} />}
+      {skeleton && <div ref={skeletonBox} aria-busy="true" className="flex flex-col flex-1 min-w-0"><PageSkeleton variant={skeletonFor(pending ?? pathname)} /></div>}
     </div>
   );
 }

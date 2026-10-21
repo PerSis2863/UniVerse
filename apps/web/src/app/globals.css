@@ -865,6 +865,7 @@
   --mobile-tabbar-h: calc(var(--tabbar-bottom) + 3.75rem - env(safe-area-inset-bottom, 0px));
   --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);      /* UIKit-like sheet curve */
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-glide: cubic-bezier(0.16, 1, 0.3, 1);     /* arrivals: quick start, long soft landing */
 }
 
 html {
@@ -892,28 +893,35 @@ html, body { overflow-x: clip; max-width: 100%; }
 /* The app fading in after the installed app's launch screen (LaunchSplash). Not in a browser tab:
    there the start-up placeholder is replaced in place, and a fade from nothing showed a blank screen. */
 @media (display-mode: standalone) { .shell-in { animation: backdrop-in 260ms ease-out; } }
+/* The start-up placeholder as the app opens: it stays behind the app and dissolves while the app's
+   parts glide into place over it (src/lib/app-entrance.ts), so the screen never dips to empty
+   between the grey boxes and the page. */
+.boot-cover { position: fixed; inset: 0; z-index: -1; pointer-events: none; animation: boot-cover-out 500ms ease-out 100ms forwards; }
+.boot-cover :is(.mobile-header, aside, .ios-tabbar) { visibility: hidden; }
+@keyframes boot-cover-out { to { opacity: 0; } }
 
 /* Lists and card grids: children glide in with a short cascade (the first 12, 30 ms apart; the
    rest with the 12th). transform/opacity only and nothing left behind afterwards (`backwards`: the
    start state waits through the delay, but a held end state would override the children's own
    hover lift and press scale), so it's cheap and fixed-position children are unaffected. */
 @keyframes rise {
-  from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.985); }
+  from { opacity: 0; transform: translate3d(0, 22px, 0) scale(0.98); }
   to   { opacity: 1; transform: none; }
 }
-.stagger > * { animation: rise 340ms var(--ease-out-soft) backwards; animation-delay: 360ms; }
+/* Long enough to see each row glide into place (AgentGPT-style), 50 ms apart. */
+.stagger > * { animation: rise 560ms var(--ease-glide) backwards; animation-delay: 600ms; }
 .stagger > *:nth-child(1) { animation-delay: 0ms; }
-.stagger > *:nth-child(2) { animation-delay: 30ms; }
-.stagger > *:nth-child(3) { animation-delay: 60ms; }
-.stagger > *:nth-child(4) { animation-delay: 90ms; }
-.stagger > *:nth-child(5) { animation-delay: 120ms; }
-.stagger > *:nth-child(6) { animation-delay: 150ms; }
-.stagger > *:nth-child(7) { animation-delay: 180ms; }
-.stagger > *:nth-child(8) { animation-delay: 210ms; }
-.stagger > *:nth-child(9) { animation-delay: 240ms; }
-.stagger > *:nth-child(10) { animation-delay: 270ms; }
-.stagger > *:nth-child(11) { animation-delay: 300ms; }
-.stagger > *:nth-child(12) { animation-delay: 330ms; }
+.stagger > *:nth-child(2) { animation-delay: 50ms; }
+.stagger > *:nth-child(3) { animation-delay: 100ms; }
+.stagger > *:nth-child(4) { animation-delay: 150ms; }
+.stagger > *:nth-child(5) { animation-delay: 200ms; }
+.stagger > *:nth-child(6) { animation-delay: 250ms; }
+.stagger > *:nth-child(7) { animation-delay: 300ms; }
+.stagger > *:nth-child(8) { animation-delay: 350ms; }
+.stagger > *:nth-child(9) { animation-delay: 400ms; }
+.stagger > *:nth-child(10) { animation-delay: 450ms; }
+.stagger > *:nth-child(11) { animation-delay: 500ms; }
+.stagger > *:nth-child(12) { animation-delay: 550ms; }
 
 /* One card rising in (delay with an inline animation-delay), and a progress bar growing from its
    start: the same work as a JS animation, but on the GPU and with nothing to do per frame. */
@@ -1154,8 +1162,8 @@ a.group:not(.sidebar-item):active { scale: 0.985; transition-duration: 70ms; }
 html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 
 /* Content that fades in once data arrives (replaces per-row staggering) */
-@keyframes fade-up { from { opacity: 0; transform: translate3d(0, 6px, 0); } }
-.fade-up { animation: fade-up 260ms var(--ease-out-soft); }
+@keyframes fade-up { from { opacity: 0; transform: translate3d(0, 14px, 0); } }
+.fade-up { animation: fade-up 460ms var(--ease-glide); }
 
 /* "Reduce Motion" (iPhone: Settings → Accessibility → Motion; Android: Remove animations), the way
    iOS does it: movement turns into a quick fade instead of everything switching off. Slides, rises,
@@ -1299,8 +1307,8 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 .low-data .animate-pulse, .low-data .animate-ping, .low-data .animate-float { animation: none !important; }
 
 /* Landing hero: fade up with CSS so it shows as soon as the page arrives (not after the JavaScript loads). */
-@keyframes hero-in { from { opacity: 0.001; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-.hero-in { animation: hero-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes hero-in { from { opacity: 0.001; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+.hero-in { animation: hero-in 0.9s var(--ease-glide) both; }
 @media (prefers-reduced-motion: reduce) { .hero-in { animation: none; } }
 
 /* Navigation progress bar */
