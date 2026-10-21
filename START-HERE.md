@@ -17,7 +17,8 @@ Cursor's).
   order, and the **Progress** table at the end says what's done, where the code is and what's left
   for each item. **Q19 Owner console, Q20 Chat apps, Q21 Languages, Q22 Leftovers (with the follow-ups the owner
   asked for), Q23 small items and the full review (bugs, database limits, light-mode readability,
-  phone buttons and smoothness) are done (on branch `claude/great-hamilton-8g8xdm`, not merged yet).**
+  phone buttons and smoothness) are done and merged into main (PR #67, 21 Oct).
+  Next up: the numbered list "Next steps" at the top of `apps/web/STAGE-5-HANDOFF.md`.**
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: one note per item with the traps
   and the rules for code that builds on it.
 - **Q14–Q18 are on the live site** (merged together on 20 Oct).
