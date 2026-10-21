@@ -149,7 +149,7 @@ function PeoplePanel({ data }: { data: Analytics }) {
     const date = new Date().toLocaleDateString('en-CA');
     const joinedOn = (p: Person) => (p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-CA') : '');
     if (tab === 'teachers') downloadCsv(`teachers-${date}`, ['Name', 'Email', 'Designation', 'Department', 'Courses', 'Published', 'Enrollments', 'Course codes', 'Joined'], teachers.filter((t) => shown.has(t.id)).map((t) => [t.name, t.email, t.designation ?? '', t.department ?? '', t.courses, t.publishedCourses, t.students, t.courseCodes.join(' '), joinedOn(t)]));
-    else if (tab === 'students') downloadCsv(`top-students-${date}`, ['Rank', 'Name', 'Email', 'Department', 'Year', 'GPA', 'Courses', 'Impact level', 'Impact XP', 'Joined'], students.filter((x) => shown.has(x.id)).map((x, i) => [i + 1, x.name, x.email, x.department ?? '', x.year || '', x.gpa.toFixed(2), x.enrollments, x.impactLevel, x.impactXP, joinedOn(x)]));
+    else if (tab === 'students') downloadCsv(`top-students-${date}`, ['Rank', 'Name', 'Email', 'Department', 'Year', 'GPA', 'Courses', 'Impact level', 'Impact XP', 'Joined'], students.filter((x) => shown.has(x.id)).map((x) => [students.indexOf(x) + 1, x.name, x.email, x.department ?? '', x.year || '', x.gpa.toFixed(2), x.enrollments, x.impactLevel, x.impactXP, joinedOn(x)]));
     else downloadCsv(`admins-${date}`, ['Name', 'Email', 'Joined'], admins.filter((a) => shown.has(a.id)).map((a) => [a.name, a.email, joinedOn(a)]));
   };
 

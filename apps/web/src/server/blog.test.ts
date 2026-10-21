@@ -22,7 +22,7 @@ describe('the blog (Phase E)', () => {
   });
 
   it('checks a post: title, text, address and cover picture', () => {
-    expect(postFields(post)).toMatchObject({ slug: 'our-new-term-starts', summary: null, coverUrl: null });
+    expect(postFields(post)).toMatchObject({ slug: 'our-new-term-starts', summary: null, coverUrl: null, minutes: 1 });
     expect(() => postFields({ body: 'x' })).toThrow('title');
     expect(() => postFields({ title: 'T', body: '  ' })).toThrow('Write the post');
     expect(() => postFields({ ...post, slug: '???', title: '!!!' })).toThrow('letters or numbers');
@@ -53,11 +53,11 @@ describe('the blog (Phase E)', () => {
     db.findFirst.mockResolvedValue(null);
     await expect(publicPost('a-draft')).rejects.toThrow('isn’t on the blog');
     expect(db.findFirst.mock.calls[0][0].where).toEqual({ slug: 'a-draft', status: 'PUBLISHED' });
-    const rows = Array.from({ length: 25 }, (_, i) => ({ slug: `p${i}`, title: 'T', summary: null, coverUrl: null, authorName: null, publishedAt: new Date(Date.UTC(2026, 0, 30 - i)), body: 'word '.repeat(440) }));
+    const rows = Array.from({ length: 25 }, (_, i) => ({ slug: `p${i}`, title: 'T', summary: null, coverUrl: null, authorName: null, publishedAt: new Date(Date.UTC(2026, 0, 30 - i)), minutes: 2 }));
     db.findMany.mockResolvedValue(rows);
     const res = await (await publicPosts(undefined)).json();
     expect(res.posts).toHaveLength(24);
-    expect(res.posts[0]).not.toHaveProperty('body');
+    expect(db.findMany.mock.calls[0][0].select).not.toHaveProperty('body');
     expect(res.posts[0].minutes).toBe(2);
     expect(res.more).toBe(res.posts[23].publishedAt);
     expect(db.findMany.mock.calls[0][0].where).toEqual({ status: 'PUBLISHED' });

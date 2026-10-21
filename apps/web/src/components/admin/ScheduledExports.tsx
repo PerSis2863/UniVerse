@@ -19,7 +19,8 @@ const EVERY = [{ id: 'DAY', label: 'Every day' }, { id: 'WEEK', label: 'Every we
 const ROLES = [{ id: '', label: 'Every role' }, { id: 'STUDENT', label: 'Students' }, { id: 'TEACHER', label: 'Teachers' }, { id: 'ADMIN', label: 'Admins' }, { id: 'INDUSTRY_MENTOR', label: 'Mentors' }, { id: 'GUARDIAN', label: 'Parents' }];
 const STATUSES = [{ id: '', label: 'Any status' }, { id: 'ACTIVE', label: 'Active' }, { id: 'PENDING', label: 'Pending' }, { id: 'SUSPENDED', label: 'Suspended' }];
 const select = 'rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40';
-const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+// The next file's day is a UTC day (the daily run is at 08:00 UTC).
+const day = (iso: string, utc = false) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', ...(utc ? { timeZone: 'UTC' } : {}) });
 
 function Choice({ label, value, options, onChange }: { label: string; value: string; options: { id: string; label: string }[]; onChange: (v: string) => void }) {
   const id = useId();
@@ -87,7 +88,7 @@ export function ScheduledExports() {
                 <span className="block text-xs text-zinc-500">
                   {EVERY.find((e) => e.id === s.every)?.label ?? s.every}
                   {s.lastRunAt ? ` · last saved ${day(s.lastRunAt)}` : ' · first file at the next daily run (08:00 UTC)'}
-                  {s.nextRunAt && ` · next ${day(s.nextRunAt)}`}
+                  {s.nextRunAt && ` · next ${day(s.nextRunAt, true)}`}
                 </span>
                 {s.lastError && <span className="block text-xs text-amber-700 dark:text-amber-400 mt-0.5">Last time: {s.lastError}</span>}
               </span>

@@ -64,7 +64,7 @@ function BlogPost({ slug }: { slug: string }) {
     <LegalShell eyebrow="Blog" title={post.title} intro={post.summary ?? undefined}>
       <div className="-mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-zinc-400">
         <span>{postDate(post.publishedAt)} · {post.minutes} min read{post.authorName ? ` · ${post.authorName}` : ''}</span>
-        <button type="button" onClick={() => void share()} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 font-semibold text-indigo-300 hover:bg-white/[0.06]"><Link2 className="w-4 h-4" aria-hidden />Share</button>
+        <button type="button" onClick={() => void share()} className="inline-flex items-center gap-1.5 rounded-lg px-3 min-h-11 font-semibold text-indigo-300 hover:bg-white/[0.06]"><Link2 className="w-4 h-4" aria-hidden />Share</button>
       </div>
       {post.coverUrl && <Photo src={post.coverUrl} shown="(min-width: 768px) 768px, 100vw" className="w-full rounded-2xl border border-white/10 object-cover max-h-[28rem]" />}
       <article><LegalMarkdown source={post.body} /></article>

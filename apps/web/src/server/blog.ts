@@ -35,7 +35,7 @@ export function postFields(b: Record<string, unknown>) {
   if (body.length > MAX_BODY) throw new BadRequestException(`A post can be up to ${MAX_BODY.toLocaleString('en')} characters.`);
   const slug = slugify(text(b.slug) || title);
   if (!slug) throw new BadRequestException('The address needs some letters or numbers.');
-  return { title, body, slug, summary: text(b.summary).trim().slice(0, 300) || null, coverUrl: cover(b.coverUrl), authorName: text(b.authorName).trim().slice(0, 80) || null };
+  return { title, body, slug, minutes: readMinutes(body), summary: text(b.summary).trim().slice(0, 300) || null, coverUrl: cover(b.coverUrl), authorName: text(b.authorName).trim().slice(0, 80) || null };
 }
 
 async function slugFree(slug: string, id?: string) {
@@ -100,16 +100,17 @@ export async function publicPosts(beforeRaw: string | undefined) {
     where: { status: 'PUBLISHED', ...(before ? { publishedAt: { lt: before } } : {}) },
     orderBy: { publishedAt: 'desc' },
     take: PAGE + 1,
-    select: { slug: true, title: true, summary: true, coverUrl: true, authorName: true, publishedAt: true, body: true },
+    // Not the posts' text: the list needs only the reading time, worked out when a post is saved.
+    select: { slug: true, title: true, summary: true, coverUrl: true, authorName: true, publishedAt: true, minutes: true },
   });
-  const posts = rows.slice(0, PAGE).map(({ body, ...p }) => ({ ...p, minutes: readMinutes(body) }));
+  const posts = rows.slice(0, PAGE);
   return cached({ posts, more: rows.length > PAGE ? posts[posts.length - 1].publishedAt : null });
 }
 
 /** GET /blog/:slug — one published post and the three newest others. */
 export async function publicPost(slug: string) {
-  const p = await prisma.blogPost.findFirst({ where: { slug: slugify(slug), status: 'PUBLISHED' }, select: { slug: true, title: true, summary: true, coverUrl: true, authorName: true, publishedAt: true, updatedAt: true, body: true } });
+  const p = await prisma.blogPost.findFirst({ where: { slug: slugify(slug), status: 'PUBLISHED' }, select: { slug: true, title: true, summary: true, coverUrl: true, authorName: true, publishedAt: true, updatedAt: true, body: true, minutes: true } });
   if (!p) throw new NotFoundException('This post isn’t on the blog.');
   const more = await prisma.blogPost.findMany({ where: { status: 'PUBLISHED', NOT: { slug: p.slug } }, orderBy: { publishedAt: 'desc' }, take: 3, select: { slug: true, title: true, summary: true, publishedAt: true } });
-  return cached({ ...p, minutes: readMinutes(p.body), more });
+  return cached({ ...p, more });
 }

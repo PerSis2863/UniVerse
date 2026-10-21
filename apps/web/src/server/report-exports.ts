@@ -46,49 +46,56 @@ export const MEMBER_SELECT = {
   teacherProfile: { select: { department: true, designation: true } },
 } as const;
 
+// Each export is one SQL query with its joins: Prisma would load each relation in more queries of
+// ~98 ids at a time, and a school of a few thousand would pass D1's 50 queries in one run (which
+// also stopped the daily jobs that save scheduled exports).
+const q = <T,>(sql: string, ...args: unknown[]) => prisma.$queryRawUnsafe<T[]>(sql, ...args);
+/** A stored date (D1 keeps text) as a date, so the file shows it like the others. */
+const when = (v: unknown) => (v ? new Date(String(v)) : '');
+
+type MemberRow = { name: string; email: string; phone: string | null; role: string; status: string; accountType: string | null; impactLevel: number; impactXP: number; lastSeenAt: string | null; createdAt: string; sDept: string | null; year: number | null; gpa: number | null; tDept: string | null; designation: string | null };
+
 export const EXPORTS = {
   members: async (params: URLSearchParams) => {
-    const users = await prisma.user.findMany({
-      where: memberWhere(memberFilter(params)),
-      orderBy: { createdAt: 'asc' },
-      take: 20_000,
-      select: MEMBER_SELECT,
-    });
+    const f = memberFilter(params);
+    const like = f.q ? `%${f.q.replace(/[%_\\]/g, (c) => `\\${c}`)}%` : null;
+    const users = await q<MemberRow>(
+      `SELECT u.name, u.email, u.phone, u.role, u.status, u.accountType, u.impactLevel, u.impactXP, u.lastSeenAt, u.createdAt,
+              sp.department AS sDept, sp.year, sp.gpa, tp.department AS tDept, tp.designation
+         FROM users u LEFT JOIN student_profiles sp ON sp.userId = u.id LEFT JOIN teacher_profiles tp ON tp.userId = u.id
+        WHERE (? IS NULL OR u.role = ?) AND (? IS NULL OR u.status = ?)
+          AND (? IS NULL OR u.name LIKE ? ESCAPE '\\' OR u.email LIKE lower(?) ESCAPE '\\' OR u.phone LIKE ? ESCAPE '\\')
+        ORDER BY u.createdAt ASC LIMIT 20000`,
+      f.role ?? null, f.role ?? null, f.status ?? null, f.status ?? null, like, like, like, like,
+    );
     return toCsv(
       ['Name', 'Email', 'Phone', 'Role', 'Status', 'Account type', 'Department', 'Year', 'GPA', 'Designation', 'Impact level', 'Impact XP', 'Last active', 'Joined'],
       users.map((u) => [
         u.name, u.email, u.phone ?? '', u.role, u.status, u.accountType ?? '',
-        u.studentProfile?.department ?? u.teacherProfile?.department ?? '',
-        u.studentProfile?.year ?? '', u.studentProfile && u.studentProfile.gpa > 0 ? u.studentProfile.gpa : '',
-        u.teacherProfile?.designation ?? '',
-        u.impactLevel, u.impactXP, u.lastSeenAt ?? 'Never', u.createdAt,
+        u.sDept ?? u.tDept ?? '', u.year ?? '', u.gpa && Number(u.gpa) > 0 ? Number(u.gpa) : '', u.designation ?? '',
+        u.impactLevel, u.impactXP, u.lastSeenAt ? when(u.lastSeenAt) : 'Never', when(u.createdAt),
       ]),
     );
   },
   impact: async () => {
-    const points = await prisma.impactPoint.findMany({
-      orderBy: { awardedAt: 'desc' },
-      take: 50_000,
-      select: { points: true, reason: true, sourceType: true, awardedAt: true, user: { select: { name: true, email: true, phone: true, role: true, status: true } } },
-    });
+    const points = await q<{ name: string; email: string; phone: string | null; role: string; status: string; points: number; reason: string; sourceType: string; awardedAt: string }>(
+      `SELECT u.name, u.email, u.phone, u.role, u.status, p.points, p.reason, p.sourceType, p.awardedAt
+         FROM impact_points p JOIN users u ON u.id = p.userId ORDER BY p.awardedAt DESC LIMIT 50000`,
+    );
     return toCsv(
       ['Member', 'Email', 'Phone', 'Role', 'Status', 'Points', 'Reason', 'Source', 'Awarded'],
-      points.map((p) => [p.user.name, p.user.email, p.user.phone ?? '', p.user.role, p.user.status, p.points, p.reason, p.sourceType, p.awardedAt]),
+      points.map((p) => [p.name, p.email, p.phone ?? '', p.role, p.status, p.points, p.reason, p.sourceType, when(p.awardedAt)]),
     );
   },
   applications: async () => {
-    const apps = await prisma.nGOProjectApplication.findMany({
-      orderBy: { appliedAt: 'desc' },
-      select: {
-        status: true, appliedAt: true,
-        student: { select: { name: true, email: true, phone: true, role: true, status: true } },
-        project: { select: { name: true, ngo: { select: { name: true } } } },
-      },
-      take: 20_000,
-    });
+    const apps = await q<{ name: string; email: string; phone: string | null; role: string; userStatus: string; project: string; ngo: string; status: string; appliedAt: string }>(
+      `SELECT u.name, u.email, u.phone, u.role, u.status AS userStatus, pr.name AS project, n.name AS ngo, a.status, a.appliedAt
+         FROM ngo_project_applications a JOIN users u ON u.id = a.studentId JOIN ngo_projects pr ON pr.id = a.projectId JOIN ngos n ON n.id = pr.ngoId
+        ORDER BY a.appliedAt DESC LIMIT 20000`,
+    );
     return toCsv(
       ['Student', 'Email', 'Phone', 'Role', 'Account status', 'Project', 'NGO', 'Application status', 'Applied'],
-      apps.map((a) => [a.student.name, a.student.email, a.student.phone ?? '', a.student.role, a.student.status, a.project.name, a.project.ngo.name, a.status, a.appliedAt]),
+      apps.map((a) => [a.name, a.email, a.phone ?? '', a.role, a.userStatus, a.project, a.ngo, a.status, when(a.appliedAt)]),
     );
   },
 };

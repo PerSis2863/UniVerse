@@ -71,7 +71,7 @@ try {
     await page.getByRole('button', { name: 'New post' }).click();
     await page.getByLabel('Title').fill('Check post: a new term');
     ok('the address follows the title', (await page.getByLabel('Address').inputValue()) === 'check-post-a-new-term');
-    await page.getByLabel('Summary (shown in the list and when the link is shared)').fill('What changes this term.');
+    await page.getByLabel('Summary (shown under the title and in the list of posts)').fill('What changes this term.');
     await page.getByLabel('Post').fill('## What is new\n\nA paragraph with **bold** and a [link](https://example.com).\n\n- One\n- Two');
     await page.getByRole('radio', { name: 'Preview' }).or(page.getByRole('button', { name: 'Preview' })).first().click();
     ok('the preview shows the Markdown as on the blog', await page.getByRole('heading', { name: 'What is new' }).isVisible());

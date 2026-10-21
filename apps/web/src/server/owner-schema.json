@@ -28808,6 +28808,17 @@
      "updatedAt": false
     },
     {
+     "name": "dueAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
      "name": "lastRunAt",
      "type": "DateTime",
      "kind": "scalar",
@@ -28927,6 +28938,17 @@
     {
      "name": "status",
      "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "minutes",
+     "type": "Int",
      "kind": "scalar",
      "list": false,
      "optional": false,

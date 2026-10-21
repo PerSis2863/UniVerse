@@ -4147,11 +4147,13 @@ model ReportSchedule {
   type      String // members, impact, applications (src/server/report-exports.ts)
   filters   String? // JSON { role?, status? } for members
   every     String    @default("WEEK") // DAY, WEEK, MONTH
+  dueAt     DateTime  @default(now()) // the (UTC) day the next file is due
   lastRunAt DateTime?
   lastError String?
   createdAt DateTime  @default(now())
 
   @@index([ownerId])
+  @@index([dueAt])
   @@map("report_schedules")
 }
 
@@ -4165,6 +4167,7 @@ model BlogPost {
   coverUrl    String?
   authorName  String?
   status      String    @default("DRAFT") // DRAFT, PUBLISHED
+  minutes     Int       @default(1) // to read
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @default(now()) @updatedAt

@@ -65,7 +65,7 @@ export function BlogList() {
       )}
       {more && (
         <div className="text-center">
-          <button type="button" onClick={() => void setSize(size + 1)} disabled={isValidating} className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/[0.06]">
+          <button type="button" onClick={() => void setSize(size + 1)} disabled={isValidating} className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 min-h-11 text-sm font-semibold text-white hover:bg-white/[0.06]">
             {isValidating && <Loader2 className="w-4 h-4 animate-spin" aria-hidden />}Older posts
           </button>
         </div>

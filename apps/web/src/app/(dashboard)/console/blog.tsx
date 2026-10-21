@@ -4,6 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { ArrowLeft, ExternalLink, FileText, ImagePlus, Loader2, Newspaper, Plus, Send, Trash2, Undo2, X } from 'lucide-react';
+import Link from '@/components/ui/Link';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Photo } from '@/components/ui/Photo';
@@ -50,7 +51,7 @@ export function BlogPanel() {
           <p className="text-sm text-zinc-500">News and stories on the public site, at universe…/blog. Drafts are only seen here.</p>
         </div>
         <div className="flex gap-2">
-          <a href="/blog" target="_blank" rel="noopener" className="btn-secondary btn-sm"><ExternalLink className="w-3.5 h-3.5" aria-hidden />Open the blog</a>
+          <Link href="/blog" target="_blank" rel="noopener" className="btn-secondary btn-sm"><ExternalLink className="w-3.5 h-3.5" aria-hidden />Open the blog</Link>
           <button type="button" className="btn-primary btn-sm" onClick={() => setEditing({ key: 'new', id: null, post: null, draft: EMPTY })}><Plus className="w-3.5 h-3.5" aria-hidden />New post</button>
         </div>
       </div>
@@ -97,8 +98,9 @@ function Editor({ id, post, draft: initial, onClose, onSaved }: { id: string | n
     setBusy(status ?? 'save');
     try {
       const body = { ...d, ...(status ? { status } : {}) };
-      // A new post is saved as a draft first, then published.
+      // A new post is saved as a draft first (and kept, so a failed publish can be tried again), then published.
       let saved = id ? (await api.put<Post>(`/owner/blog/${id}`, body)).data : (await api.post<Post>('/owner/blog', d)).data;
+      if (!id) onSaved(saved);
       if (!id && status === 'PUBLISHED') saved = (await api.put<Post>(`/owner/blog/${saved.id}`, body)).data;
       onSaved(saved);
       setD((x) => ({ ...x, slug: saved.slug }));
@@ -124,7 +126,7 @@ function Editor({ id, post, draft: initial, onClose, onSaved }: { id: string | n
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={onClose} className="btn-ghost btn-sm -ms-2"><ArrowLeft className="w-4 h-4" aria-hidden />All posts</button>
         <span className="flex-1" />
-        {published && <a href={`/blog/${d.slug}`} target="_blank" rel="noopener" className="btn-secondary btn-sm"><ExternalLink className="w-3.5 h-3.5" aria-hidden />View</a>}
+        {published && <Link href={`/blog/${d.slug}`} target="_blank" rel="noopener" className="btn-secondary btn-sm"><ExternalLink className="w-3.5 h-3.5" aria-hidden />View</Link>}
         {id && <button type="button" onClick={() => void remove()} disabled={busy !== null} className="btn-ghost btn-sm text-rose-600 dark:text-rose-400"><Trash2 className="w-3.5 h-3.5" aria-hidden />Delete</button>}
         {published
           ? <button type="button" onClick={() => void save('DRAFT')} disabled={busy !== null} className="btn-secondary btn-sm">{busy === 'DRAFT' ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden /> : <Undo2 className="w-3.5 h-3.5" aria-hidden />}Take back</button>
@@ -143,13 +145,13 @@ function Editor({ id, post, draft: initial, onClose, onSaved }: { id: string | n
           </span>
         </label>
         <label className="block"><span className="text-xs font-medium text-zinc-500">Written by (optional)</span><input value={d.authorName} onChange={set('authorName')} maxLength={80} className={cn(field, 'mt-1')} placeholder="The UniVerse team" /></label>
-        <label className="block md:col-span-2"><span className="text-xs font-medium text-zinc-500">Summary (shown in the list and when the link is shared)</span><textarea value={d.summary} onChange={set('summary')} maxLength={300} rows={2} className={cn(field, 'mt-1 resize-y')} /></label>
+        <label className="block md:col-span-2"><span className="text-xs font-medium text-zinc-500">Summary (shown under the title and in the list of posts)</span><textarea value={d.summary} onChange={set('summary')} maxLength={300} rows={2} className={cn(field, 'mt-1 resize-y')} /></label>
         <div className="md:col-span-2">
           <span className="text-xs font-medium text-zinc-500">Cover picture (optional)</span>
           {d.coverUrl ? (
             <div className="mt-1 relative w-fit">
               <Photo src={d.coverUrl} shown={320} className="h-32 w-auto max-w-full rounded-xl object-cover border border-zinc-200 dark:border-white/10" />
-              <button type="button" aria-label="Remove the cover picture" onClick={() => setD((x) => ({ ...x, coverUrl: '' }))} className="absolute top-1.5 end-1.5 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80"><X className="w-3.5 h-3.5" aria-hidden /></button>
+              <button type="button" aria-label="Remove the cover picture" onClick={() => setD((x) => ({ ...x, coverUrl: '' }))} className="absolute top-1 end-1 min-w-11 min-h-11 inline-flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"><X className="w-3.5 h-3.5" aria-hidden /></button>
             </div>
           ) : (
             <FileDrop onFiles={(f) => void addCover(f)} accept="image/*" disabled={upload !== null} className="mt-1">

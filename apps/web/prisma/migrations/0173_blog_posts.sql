@@ -9,6 +9,7 @@ CREATE TABLE "blog_posts" (
     "coverUrl" TEXT,
     "authorName" TEXT,
     "status" TEXT NOT NULL DEFAULT 'DRAFT',
+    "minutes" INTEGER NOT NULL DEFAULT 1,
     "publishedAt" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
