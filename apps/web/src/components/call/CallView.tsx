@@ -13,7 +13,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { ringback } from '@/lib/call-sounds';
 import { CallRecorder, canRecord, uploadRecording, type RecSource } from '@/lib/call-recorder';
 import { SfuLink, kindOf, type Layer, type MediaKind, type SfuTrack } from '@/lib/sfu-client';
-import { type CleanMic, type NoiseMode, audioConstraints, chooseDevice, chosenDevice, cleanMic, listDevices, noiseMode, openMedia, setNoiseMode } from '@/lib/call-media';
+import { type CleanMic, type NoiseMode, audioConstraints, chooseDevice, chosenDevice, cleanMic, listDevices, noiseMode, openMedia, playOnSpeaker, setNoiseMode } from '@/lib/call-media';
 import { captionsSupported, useCaptions } from '@/lib/use-captions';
 import { canTranslateOnDevice, captionTranslator } from '@/lib/caption-translate';
 import { isLanguage, languageName } from '@/lib/languages';
@@ -260,9 +260,11 @@ function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, p
     const v = ref.current;
     if (!v) return;
     if (v.srcObject !== stream) v.srcObject = stream;
+    // Their sound on the speaker or headset picked in the call's settings (where the browser can).
+    if (!me) void playOnSpeaker(v, chosenDevice('speaker'));
     // Phones sometimes don't start a new source by themselves: a black tile with sound.
     if (stream) void v.play().catch(() => {});
-  }, [stream, live]);
+  }, [stream, live, me]);
   const hasVideo = camera && !paused && live;
   return (
     <motion.div
@@ -2019,8 +2021,21 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   // ── Microphone, camera and noise suppression settings ─────────────────────────────────────
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [noise, setNoise] = useState<NoiseMode>(() => noiseMode());
-  const [devices, setDevices] = useState<{ mics: { id: string; label: string }[]; cams: { id: string; label: string }[] }>({ mics: [], cams: [] });
+  const [devices, setDevices] = useState<Awaited<ReturnType<typeof listDevices>>>({ mics: [], cams: [], speakers: [] });
   const [micId, setMicId] = useState<string | null>(null);
+  const [speakerId, setSpeakerId] = useState<string | null>(() => chosenDevice('speaker'));
+  // A headset plugged in or taken out while the settings are open: the lists follow.
+  useEffect(() => {
+    if (!settingsOpen || !navigator.mediaDevices?.addEventListener) return;
+    const changed = () => { void listDevices().then(setDevices); };
+    navigator.mediaDevices.addEventListener('devicechange', changed);
+    return () => navigator.mediaDevices.removeEventListener('devicechange', changed);
+  }, [settingsOpen]);
+  const pickSpeaker = (id: string) => {
+    chooseDevice('speaker', id);
+    setSpeakerId(id);
+    for (const v of document.querySelectorAll<HTMLVideoElement>('video[data-peer]')) if (!v.muted) void playOnSpeaker(v, id);
+  };
   const openSettings = async () => {
     setSettingsOpen((o) => !o);
     setDevices(await listDevices());
@@ -2779,6 +2794,16 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                 {devices.mics.map((d) => (
                   <button key={d.id} type="button" onClick={() => pickMic(d.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-start hover:bg-white/[0.06]">
                     <span className="flex-1 truncate">{d.label}</span>{micId === d.id && <Check className="w-4 h-4 text-emerald-400" />}
+                  </button>
+                ))}
+              </section>
+            )}
+            {devices.speakers.length > 0 && (
+              <section className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Speaker</p>
+                {devices.speakers.map((d) => (
+                  <button key={d.id} type="button" onClick={() => pickSpeaker(d.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-start hover:bg-white/[0.06]">
+                    <span className="flex-1 truncate">{d.label}</span>{speakerId === d.id && <Check className="w-4 h-4 text-emerald-400" />}
                   </button>
                 ))}
               </section>

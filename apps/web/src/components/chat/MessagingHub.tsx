@@ -126,7 +126,11 @@ export function MessagingHub() {
         ...('unread' in body ? { markedUnread: !!body.unread, unread: body.unread ? Math.max(1, x.unread) : 0 } : {}),
       }),
     }, { revalidate: false });
-    try { await chatJson(`/api/chat/conversations/${c.id}/prefs`, { method: 'PATCH', body: JSON.stringify(body) }); if (ok) toast.success(ok); }
+    try {
+      await chatJson(`/api/chat/conversations/${c.id}/prefs`, { method: 'PATCH', body: JSON.stringify(body) });
+      // Archiving (or taking out of the archive) can be undone from the message.
+      if (ok) toast.success(ok, 'archived' in body ? { action: { label: 'Undo', onClick: () => void setPref(c, { archived: !body.archived }) } } : undefined);
+    }
     catch (e) { toast.error((e as Error).message); }
     finally { mutate(); }
   };

@@ -104,7 +104,17 @@ export function EventSheet({ draft, teacher, courses, onClose, onSaved }: {
     setBusy('delete');
     try {
       await api.delete(`/calendar/${f.id}${series ? '?series=1' : ''}`);
-      toast.success(series ? 'Series deleted' : 'Event deleted');
+      if (series) toast.success('Series deleted');
+      else {
+        // Undo makes it again, the same as it was (a new event).
+        const start = localMoment(f.day, f.allDay ? '00:00' : f.start);
+        const end = f.allDay ? new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1) : localMoment(f.day, f.end);
+        const again = { title: f.title.trim(), description: f.description.trim(), startAt: start.toISOString(), endAt: end.toISOString(), type: f.type, color: f.color, ...(teacher ? { courseId: f.courseId || null } : {}) };
+        toast('Event deleted', {
+          duration: 6000,
+          action: { label: 'Undo', onClick: () => { void api.post('/calendar', again).then(() => { toast.success('Event put back'); onSaved(); }, (err) => toast.error(errorMessage(err, 'Couldn’t put it back.'))); } },
+        });
+      }
       onSaved();
       onClose();
     } catch (err) { toast.error(errorMessage(err, 'Couldn’t delete the event.')); }

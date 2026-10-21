@@ -1,12 +1,12 @@
 'use client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
-import { confirmDialog } from '@/components/ui/Dialogs';
+import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 
 import { useEffect, useMemo, useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import {
   Search, Filter, MoreVertical, UserCheck, UserX, Shield, Clock,
-  GraduationCap, User, ChevronDown, X, Mail, Calendar, Trash2, Phone, BookOpen,  LogIn, ClipboardCheck,
+  GraduationCap, User, ChevronDown, X, Mail, Calendar, Trash2, Phone, BookOpen,  LogIn, ClipboardCheck, Download, BookmarkPlus, Loader2,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { api } from '@/lib/api';
@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 import { SectionTabs, ADMIN_PEOPLE_TABS } from '@/components/layout/SectionTabs';
 import Link from '@/components/ui/Link';
+import { downloadCsv } from '@/lib/csv-download';
+import { useSavedViews } from '@/lib/saved-views';
 
 type Role = 'STUDENT' | 'TEACHER' | 'ADMIN';
 type Status = 'PENDING' | 'ACTIVE' | 'SUSPENDED';
@@ -50,6 +52,16 @@ const STATUS_STYLE: Record<Status, string> = {
 const cap = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 const errorMessage = (e: unknown, fallback: string) => (e as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
 const ago = (d?: string | null) => (d ? formatDistanceToNow(new Date(d), { addSuffix: true }) : null);
+type View = { search: string; role: 'All' | Role; status: 'All' | Status };
+interface BulkResult { changed: number; skipped: { id: string; name: string; why: string }[] }
+const chunks = <T,>(list: T[], size: number) => Array.from({ length: Math.ceil(list.length / size) }, (_, i) => list.slice(i * size, i * size + size));
+
+/** The people shown (or chosen) as a CSV file. */
+function exportPeople(list: Person[]) {
+  downloadCsv(`universe-users-${format(new Date(), 'yyyy-MM-dd')}`,
+    ['Name', 'Email', 'Phone', 'Role', 'Status', 'Department', 'Courses', 'Last active', 'Joined'],
+    list.map((u) => [u.name, u.email, u.phone, ROLE_LABEL[u.role] ?? u.role, cap(u.status), u.studentProfile?.department ?? u.teacherProfile?.department ?? '', courseLine(u), u.lastSeenAt ? format(new Date(u.lastSeenAt), 'yyyy-MM-dd HH:mm') : '', format(new Date(u.createdAt), 'yyyy-MM-dd')]));
+}
 
 /** Department / year / designation in one short line. */
 function profileLine(u: Person) {
@@ -93,6 +105,10 @@ export default function AdminUsers() {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Person | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  // Several people at once (Phase E): ticked rows, then an action for all of them.
+  const [picked, setPicked] = useState<Set<string>>(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const saved = useSavedViews<View>('uv-admin-users-views');
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(searchTerm.trim()), 300);
@@ -149,6 +165,49 @@ export default function AdminUsers() {
   };
 
   const filtersOn = !!searchTerm || roleFilter !== 'All' || statusFilter !== 'All';
+
+  const toggle = (id: string) => setPicked((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const allShown = filteredUsers.length > 0 && filteredUsers.every((u) => picked.has(u.id));
+  const toggleAll = () => setPicked((p) => {
+    const n = new Set(p);
+    for (const u of filteredUsers) { if (allShown) n.delete(u.id); else n.add(u.id); }
+    return n;
+  });
+  const pickedPeople = (allUsers ?? []).filter((u) => picked.has(u.id));
+
+  const runBulk = async (path: string, body: Record<string, unknown>, size: number, done: (n: number) => string) => {
+    setBulkBusy(true);
+    let changed = 0;
+    const skipped: BulkResult['skipped'] = [];
+    try {
+      for (const ids of chunks([...picked], size)) {
+        const { data } = await api.post<BulkResult>(path, { ...body, ids });
+        changed += data.changed ?? 0;
+        skipped.push(...(data.skipped ?? []));
+      }
+      if (changed) toast.success(done(changed));
+      if (skipped.length) toast.message(`${skipped.length} not changed`, { description: skipped.slice(0, 4).map((x) => `${x.name}: ${x.why}`).join('\n') + (skipped.length > 4 ? '\n…' : '') });
+      if (!changed && !skipped.length) toast.message('Nothing to change: they already are.');
+      setPicked(new Set());
+      refresh();
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not change these accounts'));
+      if (changed) refresh();
+    } finally { setBulkBusy(false); }
+  };
+  const bulkStatus = (status: Status) => runBulk('/users/bulk/status', { status }, 200, (n) => `${n} account${n === 1 ? '' : 's'} ${status === 'SUSPENDED' ? 'deactivated' : 'reactivated'}.`);
+  const bulkRole = async (role: 'STUDENT' | 'TEACHER') => {
+    const label = role === 'STUDENT' ? 'students' : 'teachers';
+    if (!(await confirmDialog({ title: `Make ${picked.size === 1 ? 'this person' : `these ${picked.size} people`} ${label}?`, message: `For fixing a wrong role. Only people with no courses yet change (anyone teaching or enrolled is skipped, and admins aren't changed here). They see the ${role === 'STUDENT' ? 'student' : 'teacher'} pages the next time they open UniVerse.`, confirmLabel: `Make ${label}` }))) return;
+    void runBulk('/users/bulk/role', { role }, 20, (n) => `${n} ${n === 1 ? 'person is' : 'people are'} now ${label}.`);
+  };
+  const saveView = async () => {
+    const name = await promptDialog({ title: 'Save these filters', message: 'Saved on this device, for this list.', placeholder: 'Pending teachers', maxLength: 40, confirmLabel: 'Save' });
+    if (!name?.trim()) return;
+    saved.save(name, { search: searchTerm, role: roleFilter, status: statusFilter });
+    toast.success('View saved');
+  };
+  const applyView = (v: View) => { setSearchTerm(v.search); setRoleFilter(v.role); setStatusFilter(v.status); };
 
   const rowMenu = (user: Person, up = false) => (
     <div className="relative inline-block text-start">
@@ -254,8 +313,41 @@ export default function AdminUsers() {
                 ))}
               </div>
             )}
+            <button type="button" onClick={() => exportPeople(filteredUsers)} disabled={!filteredUsers.length} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors whitespace-nowrap text-sm">
+              <Download className="w-4 h-4" />Export CSV
+            </button>
           </div>
         </div>
+
+        {/* Saved views (this device) */}
+        {(filtersOn || saved.views.length > 0) && (
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Saved views">
+            {saved.views.map((v) => {
+              const on = v.value.search === searchTerm && v.value.role === roleFilter && v.value.status === statusFilter;
+              return (
+                <span key={v.name} className={cn('inline-flex items-center rounded-full border text-xs font-medium', on ? 'border-indigo-500 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300' : 'border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300')}>
+                  <button type="button" aria-pressed={on} onClick={() => applyView(v.value)} className="ps-3 pe-1.5 py-1">{v.name}</button>
+                  <button type="button" onClick={() => saved.remove(v.name)} className="min-w-6 min-h-6 me-0.5 inline-flex items-center justify-center rounded-full opacity-70 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10"><X className="w-3 h-3" /><span className="sr-only">Remove the view {v.name}</span></button>
+                </span>
+              );
+            })}
+            {filtersOn && <button type="button" onClick={() => void saveView()} className="inline-flex items-center gap-1 rounded-full border border-dashed border-zinc-300 dark:border-zinc-600 px-3 py-1 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:border-indigo-500"><BookmarkPlus className="w-3.5 h-3.5" />Save view</button>}
+          </div>
+        )}
+
+        {/* What to do with the ticked people */}
+        {picked.size > 0 && (
+          <div role="region" aria-label="Selected people" className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-50 dark:bg-indigo-950/80 backdrop-blur px-3 py-2 shadow-lg">
+            <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-100 me-1">{picked.size} selected</span>
+            {bulkBusy && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" aria-label="Working" />}
+            <button type="button" disabled={bulkBusy} onClick={() => void bulkStatus('SUSPENDED')} className="btn-secondary btn-sm"><UserX className="w-3.5 h-3.5" />Deactivate</button>
+            <button type="button" disabled={bulkBusy} onClick={() => void bulkStatus('ACTIVE')} className="btn-secondary btn-sm"><UserCheck className="w-3.5 h-3.5" />Reactivate</button>
+            <button type="button" disabled={bulkBusy} onClick={() => void bulkRole('STUDENT')} className="btn-secondary btn-sm"><User className="w-3.5 h-3.5" />Make students</button>
+            <button type="button" disabled={bulkBusy} onClick={() => void bulkRole('TEACHER')} className="btn-secondary btn-sm"><GraduationCap className="w-3.5 h-3.5" />Make teachers</button>
+            <button type="button" onClick={() => exportPeople(pickedPeople)} className="btn-secondary btn-sm"><Download className="w-3.5 h-3.5" />Export</button>
+            <button type="button" onClick={() => setPicked(new Set())} className="btn-ghost btn-sm ms-auto">Clear</button>
+          </div>
+        )}
 
         {(filtersOn || truncated) && (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -275,7 +367,8 @@ export default function AdminUsers() {
               {/* Phones: cards */}
               <ul className="md:hidden divide-y divide-zinc-100 dark:divide-zinc-800/60">
                 {filteredUsers.map((user) => (
-                  <li key={user.id} className="p-4 flex gap-3">
+                  <li key={user.id} className={cn('p-4 flex gap-3', picked.has(user.id) && 'bg-indigo-500/[0.06]')}>
+                    <input type="checkbox" checked={picked.has(user.id)} onChange={() => toggle(user.id)} aria-label={`Select ${user.name}`} className="mt-3 w-5 h-5 shrink-0 accent-indigo-600" />
                     <button onClick={() => setSelectedUser(user)} className="flex-1 min-w-0 flex gap-3 text-start">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium shrink-0">{user.name.charAt(0).toUpperCase()}</div>
                       <div className="min-w-0 flex-1">
@@ -292,10 +385,12 @@ export default function AdminUsers() {
               </ul>
 
               {/* Desktop: table */}
-              <div className="hidden md:block overflow-x-auto">
+              {/* Its own scroll box, so the column names stay on top while the list scrolls. */}
+              <div className="hidden md:block overflow-auto max-h-[calc(100dvh-16rem)] min-h-[300px] rounded-xl">
                 <table className="w-full text-start border-collapse">
-                  <thead>
-                    <tr className="border-b border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+                  <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900 shadow-[inset_0_-1px_0_var(--separator)]">
+                    <tr className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+                      <th className="p-4 w-10"><input type="checkbox" checked={allShown} onChange={toggleAll} aria-label={allShown ? 'Clear the shown users' : 'Select every shown user'} className="w-4 h-4 accent-indigo-600" /></th>
                       <th className="p-4">User</th>
                       <th className="p-4">Role</th>
                       <th className="p-4">Status</th>
@@ -307,7 +402,8 @@ export default function AdminUsers() {
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
                     {filteredUsers.map((user, i) => (
-                      <tr key={user.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
+                      <tr key={user.id} className={cn('hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors', picked.has(user.id) && 'bg-indigo-500/[0.06]')}>
+                        <td className="p-4"><input type="checkbox" checked={picked.has(user.id)} onChange={() => toggle(user.id)} aria-label={`Select ${user.name}`} className="w-4 h-4 accent-indigo-600" /></td>
                         <td className="p-4">
                           <button onClick={() => setSelectedUser(user)} className="flex items-center gap-3 text-start hover:opacity-80 transition-opacity">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium shadow-lg flex-shrink-0">

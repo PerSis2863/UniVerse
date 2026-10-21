@@ -32,7 +32,7 @@ from main; one commit per item or batch; push; merge only when the owner says "m
    NGO marketplace 570, courses 390). Profile each (`--profile "tab bar"`) and lighten the first
    render: defer widgets below the fold, and replace per-row framer-motion entrances inside `.map()`
    with the CSS `.stagger` cascade (the pattern that made Notifications slow).
-5. **Feature and button upgrades** (the owner's request): the rest of Phase E, listed in the Q23
+5. **Started 21 Oct: first batch of 10 done** ("Q24" below; the rest listed there). **Feature and button upgrades** (the owner's request): the rest of Phase E, listed in the Q23
    Progress row's "what's left" (undo toasts, drag-and-drop and paste on file fields, bulk actions
    and CSV export on tables, sticky headers and saved filters, long-press menus, "New items ↑" on
    live lists, forward with comment, selecting several messages, device switch mid-call, colour per
@@ -47,6 +47,48 @@ main thread's `UpdateLayoutTree` / `Layout` / `Paint` events and count the inval
 element and reason. That's how the endless SVG ping (SVG animations re-lay out and repaint every
 frame; they can't run on the GPU) and the per-row JS animations showed up. An idle page should
 show almost nothing.
+
+## Q24 · Phase E, third batch (10 items): done (21 Oct 2026, branch `claude/funny-galileo-y4mz9r`)
+
+No migration (next: **0172**). Rules for code that builds on it:
+
+- **Undo after a delete:** `removeWithUndo(label, { hide, restore, commit })` (`src/lib/undo.ts`): off
+  the screen at once, deleted when the message goes (5 s), Undo sends nothing. Used for task cards
+  (no "are you sure?" any more) and notifications (Notifications page); the course board's
+  `useRemove` is the same pattern. A deleted calendar event's Undo makes it again (a new event, same fields); archiving
+  a chat has Undo (it's a toggle). Deletes with server-side clean-up (docs, boards, users, courses)
+  still ask first: they'd need soft-delete columns for a real undo.
+- **Files dropped or pasted:** wrap a file button in `<FileDrop onFiles accept multiple>`
+  (`src/components/ui/FileDrop.tsx`, hook `useFileDrop` in `src/lib/use-file-drop.ts`); it keeps to
+  the field's `accept` list. On: assignment hand-in, excuse documents, course materials (already
+  there before: Files, chat, the editors, bulk import, Convert/Compress).
+- **CSV downloads:** `downloadCsv(name, header, rows)` from `src/lib/csv-download.ts` (formulas
+  neutralised, Excel-friendly). The fee screens re-export it; the owner console still has its own.
+- **Saved filters:** `useSavedViews<T>(key)` (`src/lib/saved-views.ts`): up to 8 named views on this
+  device. Admin → Users uses `uv-admin-users-views`.
+- **Admin → Users:** tick rows (or all shown) → Deactivate / Reactivate (`POST /users/bulk/status`,
+  200 at a time), Make students / Make teachers (`POST /users/bulk/role`, 20 at a time, **only people
+  with no courses**: anyone teaching or enrolled, admins, guardians, yourself and the owner are
+  skipped with the reason), Export (CSV). Column names stay on top (the table has its own scroll
+  box). Audit entries `user.status_changed` / `user.role_changed`. The read-only demo admin is
+  refused like every other write. Logic and tests: `src/server/user-bulk.ts`.
+- **Invitations:** Renew = another 30 days (`POST /users/invitations/:id/renew`, `user.invitation_renewed`);
+  no email is sent, so Copy link puts the sign-up address on the clipboard.
+- **Language:** `LanguageMenu` (`src/components/layout/LanguageMenu.tsx`) in the desktop top bar and
+  the phone's side menu (`row`); the button has no language-dependent text (server and browser
+  drawings match).
+- **Chat:** the jump button counts messages from others that arrived while reading further up
+  ("2 new"), not older ones loaded at the top. Forward takes an optional comment, sent after the
+  copy in each chat; private (end-to-end) chats aren't offered (they only take messages encrypted
+  on the device).
+- **Calls:** Speaker in the call's settings where the browser can (`setSinkId`: Chrome, Edge,
+  Firefox; not Safari on iPhone), kept in `uv-call-speaker` and applied to every remote tile
+  (`playOnSpeaker`); the device lists follow a headset plugged in or out while settings are open.
+- **What's left of Phase E:** selecting several messages, long-press menus beyond chats, colour per
+  course (a student's own), ringtone choice, time zone on online classes, accent colours, app icon
+  choice, scheduled report exports, bulk actions / CSV / sticky headers / saved views on the other
+  admin tables, Undo on the remaining deletes, drop and paste on the remaining file fields, and the
+  public-site list (pricing toggle, FAQ, status page link, blog, OpenGraph images).
 
 ## Accessibility sweep, all four ways: done (21 Oct 2026, same branch)
 

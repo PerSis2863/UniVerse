@@ -101,6 +101,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   // The school's chat app commands (Stage 5 · Q20): loaded once, they rarely change.
   const { data: apps } = useSWR<{ commands: { name: string; hint: string; app: string }[] }>('/api/chat/apps', authedJson, { revalidateOnFocus: false, dedupingInterval: 600_000 });
   const [showJump, setShowJump] = useState(false);
+  // Messages from others that arrived while reading further up (the jump button shows how many).
+  const [unseen, setUnseen] = useState(0);
+  const lastId = useRef<string | null>(null);
   const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
   const [remindFor, setRemindFor] = useState<ChatMessage | null>(null);
   const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
@@ -189,8 +192,14 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     const last = messages[messages.length - 1];
     if (lastCount.current === 0 || (grew && (nearBottom || last?.senderId === me))) {
       requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: lastCount.current === 0 ? 'auto' : 'smooth' }));
+    } else if (grew && last && lastId.current && last.id !== lastId.current) {
+      // New at the end (not older ones loaded at the top) while reading history: count them.
+      const from = messages.findIndex((m) => m.id === lastId.current);
+      const fresh = from >= 0 ? messages.slice(from + 1).filter((m) => m.senderId !== me).length : 0;
+      if (fresh) requestAnimationFrame(() => setUnseen((n) => n + fresh));
     }
     lastCount.current = messages.length;
+    lastId.current = last?.id ?? null;
   }, [messages, me]);
 
   const loadOlder = async () => {
@@ -739,7 +748,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
           onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f && !convo.isOfficial) send({ file: f }).catch(() => {}); }}
           ref={scrollRef}
-          onScroll={(e) => { const el = e.currentTarget; setShowJump(el.scrollHeight - el.scrollTop - el.clientHeight > 400); }}
+          onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; setShowJump(gap > 400); if (gap < 160) setUnseen(0); }}
           role="log" aria-label="Messages" aria-relevant="additions" tabIndex={0}
           className="relative flex-1 overflow-y-auto px-3 md:px-6 py-4 space-y-1.5 outline-none"
           style={WALLPAPERS.find((w) => w.id === wallpaper)?.style}
@@ -821,11 +830,12 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         </div>
 
         <AnimatePresence>
-          {showJump && (
+          {(showJump || unseen > 0) && (
             <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-              onClick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })}
-              className="absolute bottom-28 end-6 md:end-10 z-20 w-10 h-10 rounded-full bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-lg flex items-center justify-center text-zinc-600 dark:text-zinc-300">
-              <ArrowDown className="w-4 h-4" />
+              onClick={() => { setUnseen(0); scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }}
+              className={cn('absolute bottom-28 end-6 md:end-10 z-20 h-10 rounded-full border shadow-lg flex items-center justify-center gap-1.5', unseen > 0 ? 'px-3.5 bg-indigo-600 border-indigo-600 text-white text-sm font-semibold' : 'w-10 bg-white dark:bg-[#121830] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
+              <ArrowDown className="w-4 h-4" aria-hidden />
+              {unseen > 0 ? <span>{unseen > 99 ? '99+' : unseen} new</span> : <span className="sr-only">Go to the newest message</span>}
             </motion.button>
           )}
         </AnimatePresence>

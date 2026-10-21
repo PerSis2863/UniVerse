@@ -6,6 +6,7 @@ import { ExternalLink, Link2, Loader2, Paperclip, X } from 'lucide-react';
 import { FileBubble } from '@/components/chat/FilePreview';
 import { uploadChatFile } from '@/components/chat/chat-client';
 import { safeHref } from '@/lib/safe-href';
+import { FileDrop } from '@/components/ui/FileDrop';
 
 // Files and links handed in for an assignment (Stage 5 · B3.2, src/lib/submit-kinds.ts): what the
 // grader and the student see, and the student's picker.
@@ -75,9 +76,11 @@ export function HandInFields({ kind, value, onChange, disabled }: { kind: 'FILE'
         </div>
       ) : null}
       <input ref={input} type="file" className="hidden" onChange={(e) => void pick(e.target.files?.[0])} />
-      <button type="button" disabled={disabled || progress !== null} onClick={() => input.current?.click()} className="btn-secondary btn-sm">
-        {progress !== null ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading… {progress}%</> : <><Paperclip className="w-4 h-4" /> {value.fileUrl ? 'Choose another file' : 'Choose a file (up to 25 MB)'}</>}
-      </button>
+      <FileDrop onFiles={(f) => void pick(f[0])} disabled={disabled || progress !== null}>
+        <button type="button" disabled={disabled || progress !== null} onClick={() => input.current?.click()} className="btn-secondary btn-sm">
+          {progress !== null ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading… {progress}%</> : <><Paperclip className="w-4 h-4" /> {value.fileUrl ? 'Choose another file' : 'Choose a file (up to 25 MB)'}</>}
+        </button>
+      </FileDrop>
     </div>
   );
 }

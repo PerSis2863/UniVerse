@@ -17,6 +17,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { haptic } from '@/lib/haptics';
+import { removeWithUndo } from '@/lib/undo';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Sheet } from '@/components/ui/Sheet';
@@ -193,7 +194,15 @@ function TaskBoardPage({ id }: { id: string }) {
       )}
 
       {current && <CardSheet card={current} board={data} onClose={() => setOpen(null)} onPatch={(p) => patchTask(current, p)}
-        onDelete={async () => { setOpen(null); await act((b) => ({ ...b, tasks: b.tasks.filter((x) => x.id !== current.id) }), `/api/tasks/items/${current.id}`, 'DELETE'); }} />}
+        onDelete={() => {
+          setOpen(null);
+          const card = current;
+          removeWithUndo(`Deleted “${card.title}”`, {
+            hide: () => { if (data) void mutate({ ...data, tasks: data.tasks.filter((x) => x.id !== card.id) }, { revalidate: false }); },
+            restore: () => void mutate(),
+            commit: async () => { await call(`/api/tasks/items/${card.id}`, 'DELETE'); void mutate(); },
+          });
+        }} />}
       {sharing && <ShareSheet board={data} onClose={() => setSharing(false)} onChanged={() => void mutate()} />}
       {automating && <AutomationsSheet boardId={id} lists={lists} people={data.people} onClose={() => setAutomating(false)} />}
     </>
@@ -230,7 +239,7 @@ function AddCard({ onAdd }: { onAdd: (title: string) => Promise<void> }) {
   );
 }
 
-function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; board: Board; onClose: () => void; onPatch: (p: Record<string, unknown>) => Promise<void>; onDelete: () => Promise<void> }) {
+function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; board: Board; onClose: () => void; onPatch: (p: Record<string, unknown>) => Promise<void>; onDelete: () => void }) {
   const [title, setTitle] = useState(card.title);
   const [notes, setNotes] = useState(card.notes ?? '');
   const [item, setItem] = useState('');
@@ -243,7 +252,8 @@ function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; bo
   const dateValue = day ? `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}` : '';
   return (
     <Sheet title="Card" onClose={onClose} footer={!ro ? (
-      <button type="button" onClick={async () => { if (await confirmDialog({ title: 'Delete this card?', destructive: true })) void onDelete(); }} className="text-sm font-semibold text-rose-600 inline-flex items-center gap-1.5"><Trash2 className="w-4 h-4" />Delete card</button>
+      // No "are you sure?": the message after it has Undo.
+      <button type="button" onClick={onDelete} className="text-sm font-semibold text-rose-600 inline-flex items-center gap-1.5"><Trash2 className="w-4 h-4" />Delete card</button>
     ) : undefined}>
       <div className="space-y-4">
         <div className="flex items-start gap-2">

@@ -26,11 +26,5 @@ export function StatusChip({ status, overdue, className }: { status: BillStatus;
   return <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold shrink-0', tone, className)}><Icon className="w-3 h-3" aria-hidden />{label}</span>;
 }
 
-/** Downloads rows as a CSV file (spreadsheet-safe: formulas are neutralised). */
-export function downloadCsv(name: string, header: string[], rows: (string | number)[][]) {
-  const cell = (v: string | number) => { let x = String(v ?? ''); if (/^[=+\-@]/.test(x)) x = `'${x}`; return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
-  const csv = [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n');
-  const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
-  Object.assign(document.createElement('a'), { href: url, download: name }).click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+/** Downloads rows as a CSV file (the shared helper, kept here for the fee screens' imports). */
+export { downloadCsv } from '@/lib/csv-download';

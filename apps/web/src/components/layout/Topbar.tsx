@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/auth';
 import Link from '@/components/ui/Link';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { LanguageMenu } from './LanguageMenu';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { useLanguageStore } from '@/store/language';
 import useSWR from 'swr';
@@ -155,6 +156,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
           </button>
 
           <ThemeToggle />
+          <LanguageMenu />
 
           <button
             type="button"

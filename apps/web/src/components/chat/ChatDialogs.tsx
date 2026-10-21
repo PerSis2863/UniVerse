@@ -83,11 +83,17 @@ export function ForwardDialog({ message, onClose, onDone }: { message: ChatMessa
   const [q, setQ] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const chats = (data?.conversations ?? []).filter((c) => !c.isOfficial && c.title.toLowerCase().includes(q.toLowerCase()));
+  const [comment, setComment] = useState('');
+  // Private (end-to-end) chats only take messages encrypted on the device, so a copy can't go there.
+  const chats = (data?.conversations ?? []).filter((c) => !c.isOfficial && !c.private && c.title.toLowerCase().includes(q.toLowerCase()));
   const send = async () => {
     setBusy(true);
     try {
-      await Promise.all(picked.map((id) => chatJson(`/api/chat/conversations/${id}/messages`, { method: 'POST', body: JSON.stringify({ forwardOf: message.id }) })));
+      // The message, then what you add about it, in each chat.
+      await Promise.all(picked.map(async (id) => {
+        await chatJson(`/api/chat/conversations/${id}/messages`, { method: 'POST', body: JSON.stringify({ forwardOf: message.id }) });
+        if (comment.trim()) await chatJson(`/api/chat/conversations/${id}/messages`, { method: 'POST', body: JSON.stringify({ type: 'TEXT', body: comment.trim() }) });
+      }));
       toast.success(picked.length === 1 ? 'Message forwarded' : `Forwarded to ${picked.length} chats`);
       onDone();
     } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
@@ -116,6 +122,9 @@ export function ForwardDialog({ message, onClose, onDone }: { message: ChatMessa
         })}
       </div>
       {picked.length >= 5 && <p className="text-xs text-zinc-500 mt-2">You can forward to up to 5 chats at once.</p>}
+      <label className="block mt-4 text-sm font-medium text-zinc-800 dark:text-zinc-200">Add a message (optional)
+        <textarea value={comment} onChange={(e) => setComment(e.target.value)} maxLength={2000} rows={2} className="input mt-1" placeholder="Sent after it, in each chat" />
+      </label>
     </Sheet>
   );
 }
