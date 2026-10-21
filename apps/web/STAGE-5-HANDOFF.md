@@ -1096,6 +1096,8 @@ Progress table (row D6).
   - **New or removed API route:** run `node scripts/gen-api-routes.mjs` (the build does it anyway;
     `src/lib/api-routes.test.ts` fails when the table is stale and checks the matcher against Next.js's
     for every route). Testing locally: start `wrangler dev` with `NODE_ENV=production`, as deployed.
+  - (Oct 2026: since 4 Sept 2026 Cloudflare only checks 64 MiB uncompressed, on every plan; the
+    upload was ~43 MiB uncompressed, 9.8 MB gzipped. The compressed 3 MB / 10 MB limits are gone.)
   - Upload size is now ~8.0 MB gzipped (was 7.1). Cloudflare documents 3 MB (free) and 10 MB (paid);
     deploys have been succeeding above 3 MB.
 - **Pages:** the 171 pages built ahead of time, and in-app navigation to them, are served from the

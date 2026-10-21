@@ -13,7 +13,9 @@ import { APP_URL } from './email';
 
 const WORKER = 'universe-web';
 const DATABASE = 'universe-db';
-const BUILD_MINUTES = 3000; // a month on Workers Free and Paid
+// Build minutes a month: 3,000 on Workers Free, 6,000 on Paid (then $0.005 a minute). Read when
+// asked: on Workers the variables are filled in per request.
+const buildMinutes = () => (process.env.WORKERS_PAID?.trim().toLowerCase() === 'true' ? 6000 : 3000);
 
 type Part<T> = { ok: boolean; data?: T; error?: string };
 
@@ -58,7 +60,7 @@ async function builds() {
   const thisMonth = list.filter((b) => Date.parse(b.created_on) >= month);
   return {
     minutesUsed: Math.ceil(thisMonth.reduce((s, b) => s + minutes(b), 0)),
-    minutesLimit: BUILD_MINUTES,
+    minutesLimit: buildMinutes(),
     count: thisMonth.length,
     // The list may stop at 100 builds; more than that in a month is counted as at least this.
     partial: list.length >= 100 && thisMonth.length === list.length,
