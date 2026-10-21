@@ -48,6 +48,33 @@ element and reason. That's how the endless SVG ping (SVG animations re-lay out a
 frame; they can't run on the GPU) and the per-row JS animations showed up. An idle page should
 show almost nothing.
 
+## Q25 · Phase E, fourth batch (10 items): code done, browser check pending (21 Oct 2026, merged at the owner's request)
+
+No migration (next: **0172**). **First thing next time:** build, serve, run
+`node scripts/checks/phase-e2-ui.mjs` and fix what it finds (it wasn't run before the merge).
+Rules for code that builds on it:
+
+- **Press and hold:** `useLongPress(onLong)` (`src/lib/use-long-press.ts`) → spread `bind(item)` on the
+  element and start its onClick with `if (press.wasLong()) return;`. A moving finger cancels it.
+  Task cards use it (the card sheet's Move to is how cards change list on a phone).
+- **Accent colour:** `ACCENTS` / `setAccent` in `src/lib/display-prefs.ts`, `data-accent` on `<html>`
+  (set by `DISPLAY_PREFS_SCRIPT` before paint); the tokens per accent are in `globals.css`
+  (`:root[data-accent=…]` and `:root.dark[data-accent=…]`, components layer). Use `bg-tint`,
+  `text-tint-text`, `btn-*` for anything that should follow it; `indigo-*` classes don't.
+- **Ringtone:** `RINGTONES`, `chosenRingtone`, `ringtone(waiting, which)` in `src/lib/call-sounds.ts`
+  (`uv-ringtone`; Vibrate only plays nothing).
+- **My course colours:** `useMyCourseColors()` / `setMyCourseColor(code, hex)`
+  (`src/lib/my-course-colors.ts`), keyed by course code, this device only; pass `mine[code] ?? color`
+  to `courseColor` / `courseShade`.
+- **Several chat messages:** ChatWindow's `picked` set (max 50); while choosing, a tap on a message
+  ticks it (`onClickCapture`), Escape stops. `ForwardDialog` takes `messages` (sent one by one, in
+  order). Copy takes text messages only (not private ones).
+- **Undo** now also on Files (files and folders), whiteboards and announcements (`removeWithUndo`).
+- **Share picture:** `public/og.jpg` (1200 × 630) via `metadataBase` + `openGraph.images` in
+  `src/app/layout.tsx` (`NEXT_PUBLIC_APP_URL`, else universeimpact.com).
+- **Time zones:** `zoneLabel()` (`src/lib/zone-label.ts`, browser only) under class calls and in the
+  schedule form. Timetable slots still have no zone (they're the school's own time).
+
 ## Q24 · Phase E, third batch (10 items): done (21 Oct 2026, branch `claude/funny-galileo-y4mz9r`)
 
 No migration (next: **0172**). Rules for code that builds on it:

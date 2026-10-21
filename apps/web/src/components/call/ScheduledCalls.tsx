@@ -15,6 +15,7 @@ import { fadeUp, list, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useOnceParam } from '@/lib/use-once-param';
 import { MEETING_TEMPLATES, templateById, totalMinutes } from '@/lib/call-agenda';
+import { zoneLabel } from '@/lib/zone-label';
 
 // Scheduled calls on the Calls page (src/server/scheduled-calls.ts): what's coming up, a Join
 // button from 10 minutes before, and a sheet to book one for a class, group or chat.
@@ -121,6 +122,10 @@ export function ScheduledCalls({ role }: { role?: string }) {
           </AnimatePresence>
         </motion.ul>
       )}
+      {data && rows.length > 0 && (
+        // Everyone sees the times in their own zone: say which one, for classes across time zones.
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">Times are in your time zone ({zoneLabel().text}). Classmates elsewhere see them in theirs.</p>
+      )}
       <AnimatePresence>{open && <ScheduleSheet onClose={() => setOpen(false)} onDone={(c) => { void mutate((d) => [...(d ?? []), c].sort((a, b) => a.startAt.localeCompare(b.startAt)), { revalidate: false }); setOpen(false); }} />}</AnimatePresence>
     </section>
   );
@@ -180,8 +185,9 @@ function ScheduleSheet({ onClose, onDone }: { onClose: () => void; onDone: (c: U
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block space-y-1.5 col-span-2 sm:col-span-1">
-            <span className="text-xs font-semibold text-zinc-500">Starts</span>
+            <span className="text-xs font-semibold text-zinc-500">Starts (your time, {zoneLabel().short})</span>
             <input type="datetime-local" required value={startAt} onChange={(e) => setStartAt(e.target.value)} className="input" />
+            <span className="block text-xs text-zinc-600 dark:text-zinc-400">Everyone invited sees it in their own time zone.</span>
           </label>
           <label className="block space-y-1.5 col-span-2 sm:col-span-1">
             <span className="text-xs font-semibold text-zinc-500">Length</span>

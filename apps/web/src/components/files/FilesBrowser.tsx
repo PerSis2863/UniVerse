@@ -8,7 +8,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { ArrowLeft, ChevronRight, Copy, Download, Eye, FileText, Folder, FolderPlus, History, ImageIcon, KanbanSquare, Link2, Loader2, MessageSquare, MoreHorizontal, Pencil, RotateCcw, Star, Trash2, Upload } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
-import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
+import { promptDialog } from '@/components/ui/Dialogs';
 import { Sheet } from '@/components/ui/Sheet';
 import { PdfViewer, TextViewer } from '@/components/chat/FilePreview';
 import { ImageViewer } from '@/components/chat/ImageViewer';
@@ -18,6 +18,7 @@ import { previewKind } from '@/lib/pdf';
 import { fadeUp, list, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
+import { removeWithUndo } from '@/lib/undo';
 
 // A files hub (Stage 4 · 3.7, src/server/space-files.ts): folders, files with every version,
 // previews (PDF, text, photos), and where a file is used. Used for a space's files and for My
@@ -72,6 +73,12 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
     try { await authedJson(path, { method, ...(body ? { body: JSON.stringify(body) } : {}) }); await mutate(); if (ok) toast.success(ok); return true; }
     catch (e) { toast.error((e as Error).message); return false; } finally { setBusy(null); }
   };
+  // Deleting: gone at once with Undo, deleted for real when the message goes.
+  const removeLater = (what: 'file' | 'folder', item: { id: string; name: string }) => removeWithUndo(`Deleted “${item.name}”`, {
+    hide: () => void mutate((cur) => cur && (what === 'file' ? { ...cur, files: cur.files.filter((x) => x.id !== item.id) } : { ...cur, folders: cur.folders.filter((x) => x.id !== item.id) }), { revalidate: false }),
+    restore: () => void mutate(),
+    commit: async () => { await authedJson(what === 'file' ? `/api/space-files/${item.id}` : `/api/space-folders/${item.id}`, { method: 'DELETE' }); void mutate(); },
+  });
   const uploadFiles = async (files: File[]) => {
     if (files.length > 10) toast.message('The first 10 files are uploading.');
     for (const f of files.slice(0, 10)) {
@@ -143,7 +150,7 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
               {data.canManage && (
                 <>
                   <button type="button" aria-label={`Rename ${f.name}`} onClick={() => void (async () => { const n = (await promptDialog({ title: 'Rename folder', defaultValue: f.name, confirmLabel: 'Rename', maxLength: 60 }))?.trim(); if (n) await call('r', `/api/space-folders/${f.id}`, 'PATCH', { name: n }); })()} className="p-1.5 text-zinc-400 hover:text-indigo-500"><Pencil className="w-4 h-4" /></button>
-                  <button type="button" aria-label={`Delete ${f.name}`} onClick={() => void call('d', `/api/space-folders/${f.id}`, 'DELETE', undefined, 'Folder deleted')} className="p-1.5 text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
+                  <button type="button" aria-label={`Delete ${f.name}`} onClick={() => removeLater('folder', f)} className="p-1.5 text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
                 </>
               )}
             </motion.li>
@@ -177,7 +184,7 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
                           {data.folders.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>
                       )}
-                      {f.canChange && <button type="button" onClick={() => void (async () => { setMenu(null); if (await confirmDialog({ title: `Delete ${f.name}?`, message: 'Every version is deleted. Copies already shared in chats stay.', destructive: true, confirmLabel: 'Delete' })) await call('del', `/api/space-files/${f.id}`, 'DELETE', undefined, 'Deleted'); })()} className="w-full text-start px-3 py-2 rounded-xl hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 inline-flex items-center gap-2"><Trash2 className="w-4 h-4" />Delete</button>}
+                      {f.canChange && <button type="button" onClick={() => { setMenu(null); removeLater('file', f); }} className="w-full text-start px-3 py-2 rounded-xl hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 inline-flex items-center gap-2"><Trash2 className="w-4 h-4" />Delete</button>}
                     </motion.div>
                   )}
                 </AnimatePresence>

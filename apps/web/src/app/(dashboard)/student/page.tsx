@@ -24,6 +24,7 @@ import { HomeBoard } from '@/components/home/HomeBoard';
 import { UpNextCard } from '@/components/home/UpNext';
 import { GoalCard } from '@/components/home/RoleCards';
 import { useHome } from '@/components/home/use-home';
+import { useMyCourseColors } from '@/lib/my-course-colors';
 
 interface Overview {
   name: string;
@@ -134,6 +135,7 @@ export default function StudentDashboard() {
   const fmt = (v: number | null | undefined, suffix = '') => (v === null || v === undefined ? '—' : `${v}${suffix}`);
 
   const home = useHome();
+  const mine = useMyCourseColors();
   const cards: Record<string, React.ReactNode | null> = {
     upnext: <UpNextCard items={home.data?.upNext} loading={home.isLoading} empty="Nothing coming up today. A good time to review flashcards or pick up an impact project." />,
     brief: <DailyBrief />,
@@ -204,7 +206,7 @@ export default function StudentDashboard() {
             {data.schedule.map((c) => (
               <li key={c.id} className="flex items-center gap-4">
                 <span className="w-11 text-end text-xs font-semibold text-zinc-500 tabular-nums">{c.start}</span>
-                <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-4 ring-indigo-500/10" style={{ backgroundColor: courseColor(c.course.color, c.course.code) }} />
+                <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-4 ring-indigo-500/10" style={{ backgroundColor: courseColor(mine[c.course.code] ?? c.course.color, c.course.code) }} />
                 <div className="flex-1 min-w-0 flex items-center justify-between gap-3 p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{c.course.name}</p>
@@ -235,8 +237,8 @@ export default function StudentDashboard() {
                 className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06] hover:border-indigo-500/30 transition-colors"
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ backgroundColor: `${courseColor(c.color, c.code)}22` }}>
-                    {c.emoji || <BookOpen className="w-4 h-4" style={{ color: courseColor(c.color, c.code) }} />}
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ backgroundColor: `${courseColor(mine[c.code] ?? c.color, c.code)}22` }}>
+                    {c.emoji || <BookOpen className="w-4 h-4" style={{ color: courseColor(mine[c.code] ?? c.color, c.code) }} />}
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{c.name}</p>

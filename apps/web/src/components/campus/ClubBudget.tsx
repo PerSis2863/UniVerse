@@ -12,6 +12,7 @@ import { money } from '@/components/fees/shared';
 import { authedJson } from '@/lib/authed-fetch';
 import { fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { FileDrop } from '@/components/ui/FileDrop';
 
 // Stage 5 · Q17: a club's money. Admins set the year's budget; the founder records what came in and
 // went out (with a receipt); members see it all (src/server/club-governance.ts).
@@ -75,8 +76,10 @@ export function ClubBudget({ clubId }: { clubId: string }) {
             <Field label="Date">{(p) => <input {...p} className="input" type="date" max={today()} value={date} onChange={(e) => setDate(e.target.value)} />}</Field>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <input ref={file} type="file" className="sr-only" id={`receipt-${clubId}`} accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); }} />
-            <label htmlFor={`receipt-${clubId}`} className="btn-ghost btn-sm cursor-pointer"><Paperclip className="w-4 h-4" aria-hidden /> {receiptUrl ? 'Receipt attached' : 'Attach a receipt'}</label>
+            <input ref={file} type="file" className="sr-only" id={`receipt-${clubId}`} accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); e.target.value = ''; }} />
+            <FileDrop hint={false} onFiles={(f) => void upload(f[0])} accept=".pdf,.png,.jpg,.jpeg">
+              <label htmlFor={`receipt-${clubId}`} title="Or drop the receipt here" className="btn-ghost btn-sm cursor-pointer"><Paperclip className="w-4 h-4" aria-hidden /> {receiptUrl ? 'Receipt attached' : 'Attach a receipt'}</label>
+            </FileDrop>
             <span className="flex-1" />
             <button type="button" className="btn-primary" disabled={busy || !amount || !description.trim()} onClick={add}>{busy ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Plus className="w-4 h-4" aria-hidden />} Record</button>
           </div>

@@ -78,7 +78,9 @@ export function ContactPicker({ onClose, onPick }: { onClose: () => void; onPick
 }
 
 // ─── Forward ─────────────────────────────────────────────────────────────
-export function ForwardDialog({ message, onClose, onDone }: { message: ChatMessage; onClose: () => void; onDone: () => void }) {
+/** One message, or several chosen together (sent in the order they were written). */
+export function ForwardDialog({ message, messages, onClose, onDone }: { message?: ChatMessage; messages?: ChatMessage[]; onClose: () => void; onDone: () => void }) {
+  const items = messages ?? (message ? [message] : []);
   const { data } = useSWR<{ conversations: ConversationSummary[] }>('/api/chat/conversations', authedJson);
   const [q, setQ] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
@@ -91,10 +93,11 @@ export function ForwardDialog({ message, onClose, onDone }: { message: ChatMessa
     try {
       // The message, then what you add about it, in each chat.
       await Promise.all(picked.map(async (id) => {
-        await chatJson(`/api/chat/conversations/${id}/messages`, { method: 'POST', body: JSON.stringify({ forwardOf: message.id }) });
+        for (const one of items) await chatJson(`/api/chat/conversations/${id}/messages`, { method: 'POST', body: JSON.stringify({ forwardOf: one.id }) });
         if (comment.trim()) await chatJson(`/api/chat/conversations/${id}/messages`, { method: 'POST', body: JSON.stringify({ type: 'TEXT', body: comment.trim() }) });
       }));
-      toast.success(picked.length === 1 ? 'Message forwarded' : `Forwarded to ${picked.length} chats`);
+      const what = items.length === 1 ? 'Message' : `${items.length} messages`;
+      toast.success(picked.length === 1 ? `${what} forwarded` : `${what} forwarded to ${picked.length} chats`);
       onDone();
     } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
   };
@@ -104,7 +107,7 @@ export function ForwardDialog({ message, onClose, onDone }: { message: ChatMessa
         {busy && <Loader2 className="w-4 h-4 animate-spin" />} Forward{picked.length > 1 ? ` to ${picked.length} chats` : ''}
       </button>
     }>
-      <p className="text-xs text-zinc-500 mb-3 truncate">“{previewText(message)}”</p>
+      <p className="text-xs text-zinc-500 mb-3 truncate">{items.length === 1 ? `“${previewText(items[0])}”` : `${items.length} messages`}</p>
       <div className="relative mb-3">
         <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
         <input className={cn('input', 'ps-9')} placeholder="Search chats" value={q} onChange={(e) => setQ(e.target.value)} />

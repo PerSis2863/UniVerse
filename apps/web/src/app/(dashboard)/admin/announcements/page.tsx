@@ -8,6 +8,7 @@ import { api, errorMessage } from '@/lib/api';
 import { Megaphone, Edit, Trash2, Plus, Calendar, User, X, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { removeWithUndo } from '@/lib/undo';
 
 interface Announcement { id: string; title: string; body?: string | null; content?: string | null; createdAt: string; author?: { name: string } | null; course?: { name: string } | null }
 
@@ -19,7 +20,6 @@ export default function AdminAnnouncements() {
   const [editTarget, setEditTarget] = useState<Announcement | null>(null);
   const [formTitle, setFormTitle] = useState('');
   const [formBody, setFormBody] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
 
   const openCreate = () => {
@@ -58,17 +58,14 @@ export default function AdminAnnouncements() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    setConfirmDelete(null);
-    void mutate(announcements.filter((a) => a.id !== id), { revalidate: false });
-    try {
-      await api.delete(`/announcements/${id}`);
-      toast.success('Announcement deleted.');
-    } catch (e) {
-      toast.error(errorMessage(e, 'Could not delete the announcement.'));
-      void mutate();
-    }
-  };
+  // Gone at once with Undo; deleted when the message goes.
+  const handleDelete = (id: string) => removeWithUndo('Announcement deleted', {
+    hide: () => void mutate(announcements.filter((a) => a.id !== id), { revalidate: false }),
+    restore: () => void mutate(),
+    commit: async () => {
+      try { await api.delete(`/announcements/${id}`); } catch (e) { throw new Error(errorMessage(e, 'Could not delete the announcement.')); }
+    },
+  });
 
   return (
     <>
@@ -110,7 +107,7 @@ export default function AdminAnnouncements() {
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => setConfirmDelete(ann.id)}
+                    onClick={() => handleDelete(ann.id)}
                     className="p-2 bg-black/60 hover:bg-red-500/80 text-zinc-300 hover:text-zinc-900 dark:hover:text-white rounded-md backdrop-blur-md transition-colors"
                     title="Delete"
                   >
@@ -179,22 +176,6 @@ export default function AdminAnnouncements() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {confirmDelete && (
-        <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
-            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
-              <Trash2 className="w-6 h-6 text-red-400" />
-            </div>
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-white text-center">Delete Announcement?</h2>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400 text-center">This action cannot be undone. The announcement will be permanently removed.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmDelete(null)} className="flex-1 px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors">Cancel</button>
-              <button onClick={() => void handleDelete(confirmDelete)} className="btn-danger flex-1">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
