@@ -10,6 +10,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { api, errorMessage } from '@/lib/api';
 import { TabPill } from '@/components/ui/Glide';
+import { FileDrop } from '@/components/ui/FileDrop';
 
 const CATEGORIES = ['All', 'Computer Science', 'Business', 'Finance', 'General'];
 
@@ -56,15 +57,16 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      setFormData({
-        ...formData,
-        title: file.name.split('.')[0] || 'New File',
-        type: file.type.includes('pdf') ? 'PDF' : 'Document'
-      });
-    }
+    if (e.target.files && e.target.files[0]) takeFile(e.target.files[0]);
+  };
+  // Chosen, dropped or pasted (Phase E).
+  const takeFile = (file: File) => {
+    setSelectedFile(file);
+    setFormData({
+      ...formData,
+      title: file.name.split('.')[0] || 'New File',
+      type: file.type.includes('pdf') ? 'PDF' : 'Document'
+    });
   };
 
   const handleAdd = async () => {
@@ -329,24 +331,28 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
               ) : (
                 <div>
                   <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Upload File *</label>
-                  <div 
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={(e) => { handleFileChange(e); e.target.value = ''; }}
+                  />
+                  <FileDrop hint={false} onFiles={(f) => takeFile(f[0])}>
+                  {/* A button, so it can be reached and used with the keyboard too. */}
+                  <button
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="w-full border-2 border-dashed border-zinc-700 hover:border-indigo-500 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors bg-zinc-950/50"
                   >
-                    <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      className="hidden" 
-                      onChange={handleFileChange}
-                    />
                     <Upload className="w-8 h-8 text-zinc-500 mb-2" />
                     <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 text-center">
-                      {selectedFile ? selectedFile.name : 'Click to select a file'}
+                      {selectedFile ? selectedFile.name : 'Choose a file'}
                     </p>
                     <p className="text-xs text-zinc-500 mt-1">
-                      {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB` : 'PDF, DOCX, MP4 up to 50MB'}
+                      {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB` : 'PDF, DOCX, MP4 up to 50MB · or drop it here'}
                     </p>
-                  </div>
+                  </button>
+                  </FileDrop>
                   {selectedFile && (
                     <div className="mt-3">
                       <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300 block mb-1">Rename File (Optional)</label>

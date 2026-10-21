@@ -20,7 +20,7 @@ import { LANGUAGES, type Language } from '@/lib/i18n';
 import { useLanguageStore } from '@/store/language';
 import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
-import { appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, mirrorSelf, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setMirrorSelf, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, setWeekStartsOn, textSize, weekStartsOn, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
+import { ACCENTS, accent as savedAccent, setAccent, type Accent, appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, mirrorSelf, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setMirrorSelf, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, setWeekStartsOn, textSize, weekStartsOn, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import useSWR from 'swr';
@@ -32,6 +32,8 @@ import Image from 'next/image';
 import { MAX_LINKS, PRONOUN_SUGGESTIONS, linkLabel, type ProfileLink } from '@/lib/profile';
 import { searchSettings, settingHref } from '@/lib/settings-index';
 import { AvatarCropper } from './AvatarCropper';
+import { FileDrop } from '@/components/ui/FileDrop';
+import { RINGTONES, chooseRingtone, chosenRingtone, ringtone, type Ringtone } from '@/lib/call-sounds';
 
 // Sections show one at a time: their heavier parts (sign-in security, account deletion, school
 // settings, consents, family) load when their section opens.
@@ -341,10 +343,12 @@ function Profile({ role }: { role: Role }) {
         <input ref={coverFile} type="file" accept="image/*" className="hidden" aria-label="Cover photo" onChange={(e) => { pick(e.target.files?.[0], 'cover'); e.target.value = ''; }} />
       </div>
       <div className="flex items-center gap-4" data-setting="photo">
-        <button type="button" onClick={() => file.current?.click()} className="relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-2xl font-black flex items-center justify-center shrink-0 group" aria-label="Change photo">
+        <FileDrop hint={false} accept="image/*" onFiles={(f) => pick(f[0], 'photo')} className="rounded-full shrink-0">
+        <button type="button" onClick={() => file.current?.click()} title="Or drop a photo here" className="relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-2xl font-black flex items-center justify-center shrink-0 group" aria-label="Change photo">
           {me.avatar ? <Image src={me.avatar} alt="" fill unoptimized sizes="80px" className="object-cover" /> : (me.name ?? '?').charAt(0).toUpperCase()}
           <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">{busy === 'photo' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}</span>
         </button>
+        </FileDrop>
         <input ref={file} type="file" accept="image/*" className="hidden" aria-label="Profile photo" onChange={(e) => { pick(e.target.files?.[0], 'photo'); e.target.value = ''; }} />
         <div className="min-w-0">
           <p className="font-semibold text-zinc-900 dark:text-white truncate">{me.name}{me.pronouns ? <span className="font-normal text-zinc-500"> ({me.pronouns})</span> : null}</p>
@@ -437,11 +441,23 @@ function Appearance() {
   const [week, setWeek] = useState<'mon' | 'sun'>(() => (typeof window !== 'undefined' && weekStartsOn() === 0 ? 'sun' : 'mon'));
   const [level, setLevel] = useState<ReadingLevelPref>(() => (typeof window === 'undefined' ? 'original' : readingLevel()));
   const [selHelp, setSelHelp] = useState(() => typeof window !== 'undefined' && selectHelp());
+  const [acc, setAcc] = useState<Accent>(() => (typeof window === 'undefined' ? 'indigo' : savedAccent()));
   const pickTheme = (v: Theme, e: React.MouseEvent) => { setTheme(v); applyTheme(v, { from: { x: e.clientX, y: e.clientY } }); };
   return (
     <Card title="Appearance" subtitle="How UniVerse looks and feels on this device">
       <div className="space-y-2" data-setting="theme"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Theme</p>
         <Choice id="theme" value={theme} onPick={pickTheme} options={[['light', 'Light', Sun], ['dark', 'Dark', Moon], ['system', 'Automatic', SunMoon]]} />
+      </div>
+      <div className="space-y-2" data-setting="accent"><p id="accent-label" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Colour</p>
+        <div role="radiogroup" aria-labelledby="accent-label" className="flex flex-wrap gap-2">
+          {ACCENTS.map((a) => (
+            <button key={a.id} type="button" role="radio" aria-checked={acc === a.id} onClick={() => { setAcc(a.id); setAccent(a.id); }}
+              className={cn('flex flex-col items-center gap-1 rounded-2xl px-2 py-1.5 text-xs font-medium', acc === a.id ? 'bg-[var(--fill)] text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400 hover:bg-[var(--fill)]')}>
+              <span aria-hidden className={cn('w-8 h-8 rounded-full flex items-center justify-center ring-offset-2 ring-offset-[var(--surface)]', acc === a.id && 'ring-2 ring-zinc-900 dark:ring-white')} style={{ background: a.swatch }}>{acc === a.id && <Check className="w-4 h-4 text-white" />}</span>
+              {a.name}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="space-y-2" data-setting="text-size"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Text size</p>
         <Choice id="text" value={size} onPick={(v) => { setSize(v); setTextSize(v); }} options={[['default', 'Default'], ['large', 'Large'], ['larger', 'Larger'], ['largest', 'Largest']]} />
@@ -515,10 +531,33 @@ function Notifications({ role }: { role: Role }) {
       <Row setting="email" icon={Bell} title="Email notifications" desc={role === 'ADMIN' ? 'New teacher and NGO applications, and messages you miss.' : role === 'TEACHER' ? 'Submissions to grade, messages you miss and reminders.' : 'New grades, credential decisions, messages you miss and quizzes due tomorrow.'}>
         {on === null ? <Loader2 className="w-4 h-4 animate-spin text-zinc-400" /> : <Switch checked={on} label="Email notifications" onChange={(v) => void toggle(v)} />}
       </Row>
+      <Setting id="ringtone"><RingtoneSetting /></Setting>
       <Setting id="notify-kinds"><NotifyKinds /></Setting>
       <Setting id="quiet-hours"><QuietHoursSetting /></Setting>
       {(role === 'TEACHER' || role === 'ADMIN') && <Setting id="parent-hours"><ParentHoursSetting /></Setting>}
     </Card>
+  );
+}
+
+/** The incoming-call sound on this device, with a two-second preview. */
+function RingtoneSetting() {
+  const [tone, setTone] = useState<Ringtone>(() => (typeof window === 'undefined' ? 'classic' : chosenRingtone()));
+  const stop = useRef<(() => void) | null>(null);
+  useEffect(() => () => stop.current?.(), []);
+  const pick = (r: Ringtone) => {
+    setTone(r);
+    chooseRingtone(r);
+    stop.current?.();
+    if (r === 'silent') { navigator.vibrate?.([200, 100, 200]); return; }
+    const end = ringtone(false, r);
+    stop.current = end;
+    setTimeout(() => { end(); if (stop.current === end) stop.current = null; }, 2200);
+  };
+  return (
+    <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Ringtone for calls</p>
+      <Choice id="ringtone" value={tone} onPick={(v) => pick(v)} options={(Object.keys(RINGTONES) as Ringtone[]).map((k) => [k, RINGTONES[k].name])} />
+      <p className="text-xs text-zinc-600 dark:text-zinc-400">On this device. Tapping one plays it for a moment.</p>
+    </div>
   );
 }
 

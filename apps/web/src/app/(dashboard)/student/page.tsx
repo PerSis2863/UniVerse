@@ -24,6 +24,7 @@ import { HomeBoard } from '@/components/home/HomeBoard';
 import { UpNextCard } from '@/components/home/UpNext';
 import { GoalCard } from '@/components/home/RoleCards';
 import { useHome } from '@/components/home/use-home';
+import { useMyCourseColors } from '@/lib/my-course-colors';
 
 interface Overview {
   name: string;
@@ -43,12 +44,7 @@ function Panel({ title, icon: Icon, action, children, className, delay = 0 }: {
   title: string; icon: LucideIcon; action?: React.ReactNode; children: React.ReactNode; className?: string; delay?: number;
 }) {
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay, ease: EASE }}
-      className={cn(card, className)}
-    >
+    <section className={cn(card, 'rise-in', className)} style={{ animationDelay: `${delay}s` }}>
       <div className="flex items-center justify-between mb-5">
         <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
           <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500/15 to-fuchsia-500/15 border border-indigo-500/20 flex items-center justify-center">
@@ -59,7 +55,7 @@ function Panel({ title, icon: Icon, action, children, className, delay = 0 }: {
         {action}
       </div>
       {children}
-    </motion.section>
+    </section>
   );
 }
 
@@ -67,13 +63,7 @@ function StatTile({ label, value, sub, icon: Icon, gradient, delay }: {
   label: string; value: string; sub: string; icon: LucideIcon; gradient: string; delay: number;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay, ease: EASE }}
-      whileHover={{ y: -4 }}
-      className={cn(card, 'group overflow-hidden')}
-    >
+    <div className={cn(card, 'group overflow-hidden rise-in lift')} style={{ animationDelay: `${delay}s` }}>
       <div aria-hidden className={cn('absolute -top-20 -end-20 w-48 h-48 rounded-full opacity-[0.12] group-hover:opacity-25 transition-opacity bg-gradient-to-br', gradient)} style={{ maskImage: 'radial-gradient(closest-side, black, transparent)', WebkitMaskImage: 'radial-gradient(closest-side, black, transparent)' }} />
       <div className={cn('relative w-11 h-11 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-lg mb-5', gradient)}>
         <Icon className="w-5 h-5 text-white" />
@@ -81,14 +71,14 @@ function StatTile({ label, value, sub, icon: Icon, gradient, delay }: {
       <div className="relative text-3xl font-black tracking-tight text-zinc-900 dark:text-white tabular-nums">{value}</div>
       <div className="relative text-sm font-medium text-zinc-600 dark:text-zinc-300 mt-1">{label}</div>
       <div className="relative text-xs text-zinc-500 mt-0.5">{sub}</div>
-    </motion.div>
+    </div>
   );
 }
 
 function Bar({ value, className }: { value: number; className: string }) {
   return (
     <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-white/[0.06] overflow-hidden">
-      <motion.div initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 0.9, ease: EASE }} className={cn('h-full rounded-full', className)} />
+      <div style={{ width: `${value}%` }} className={cn('h-full rounded-full bar-grow', className)} />
     </div>
   );
 }
@@ -145,6 +135,7 @@ export default function StudentDashboard() {
   const fmt = (v: number | null | undefined, suffix = '') => (v === null || v === undefined ? '—' : `${v}${suffix}`);
 
   const home = useHome();
+  const mine = useMyCourseColors();
   const cards: Record<string, React.ReactNode | null> = {
     upnext: <UpNextCard items={home.data?.upNext} loading={home.isLoading} empty="Nothing coming up today. A good time to review flashcards or pick up an impact project." />,
     brief: <DailyBrief />,
@@ -215,7 +206,7 @@ export default function StudentDashboard() {
             {data.schedule.map((c) => (
               <li key={c.id} className="flex items-center gap-4">
                 <span className="w-11 text-end text-xs font-semibold text-zinc-500 tabular-nums">{c.start}</span>
-                <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-4 ring-indigo-500/10" style={{ backgroundColor: courseColor(c.course.color, c.course.code) }} />
+                <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-4 ring-indigo-500/10" style={{ backgroundColor: courseColor(mine[c.course.code] ?? c.course.color, c.course.code) }} />
                 <div className="flex-1 min-w-0 flex items-center justify-between gap-3 p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{c.course.name}</p>
@@ -239,18 +230,15 @@ export default function StudentDashboard() {
         {data.courses.length === 0 ? (
           <p className="text-sm text-zinc-500">You&apos;re not enrolled in any courses yet.</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {data.courses.map((c, i) => (
-              <motion.div
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 stagger">
+            {data.courses.map((c) => (
+              <div
                 key={c.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 + i * 0.05 }}
                 className="p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06] hover:border-indigo-500/30 transition-colors"
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ backgroundColor: `${courseColor(c.color, c.code)}22` }}>
-                    {c.emoji || <BookOpen className="w-4 h-4" style={{ color: courseColor(c.color, c.code) }} />}
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ backgroundColor: `${courseColor(mine[c.code] ?? c.color, c.code)}22` }}>
+                    {c.emoji || <BookOpen className="w-4 h-4" style={{ color: courseColor(mine[c.code] ?? c.color, c.code) }} />}
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{c.name}</p>
@@ -267,7 +255,7 @@ export default function StudentDashboard() {
                     <Bar value={c.attendance ?? 0} className="bg-gradient-to-r from-emerald-500 to-teal-400" />
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
@@ -289,12 +277,7 @@ export default function StudentDashboard() {
     ),
     goal: <GoalCard study={home.data?.study} goal={home.layout.goal} onGoal={(goal) => void home.saveLayout({ ...home.layout, goal })} />,
     level: data ? (
-      <motion.section
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1, ease: EASE }}
-        className={cn(card, 'overflow-hidden')}
-      >
+      <section className={cn(card, 'overflow-hidden rise-in')} style={{ animationDelay: '0.1s' }}>
         <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-fuchsia-500/10 pointer-events-none" />
         <div className="relative flex items-center gap-5">
           <div className="relative shrink-0">
@@ -317,7 +300,7 @@ export default function StudentDashboard() {
             </Link>
           </div>
         </div>
-      </motion.section>
+      </section>
     ) : null,
     streak: data?.streak ? <StreakCard streak={data.streak} /> : null,
     deadlines: data ? (
@@ -402,11 +385,9 @@ function StreakCard({ streak }: { streak: NonNullable<Overview['streak']> }) {
       ? `Done for today. Come back tomorrow for day ${current + 1}.`
       : `Study today to keep your ${current}-day streak going.`;
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.12, ease: EASE }}
-      className={cn(card, 'overflow-hidden')}
+    <section
+      className={cn(card, 'overflow-hidden rise-in')}
+      style={{ animationDelay: '0.12s' }}
       aria-label={`Study streak: ${current} day${current === 1 ? '' : 's'}`}
     >
       <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-amber-500/10 pointer-events-none" />
@@ -434,6 +415,6 @@ function StreakCard({ streak }: { streak: NonNullable<Overview['streak']> }) {
         </div>
         <p className="text-xs text-zinc-500 mt-3">{message}</p>
       </div>
-    </motion.section>
+    </section>
   );
 }

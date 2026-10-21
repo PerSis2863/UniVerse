@@ -71,5 +71,21 @@ export const setMirrorSelf = (on: boolean) => set('uv-mirror', on ? null : 'off'
 export const hapticsOn = () => get('uv-haptics') !== 'off';
 export const setHaptics = (on: boolean) => set('uv-haptics', on ? null : 'off');
 
-/** For app/layout.tsx: applies the saved text size and reduce motion before the first paint. */
-export const DISPLAY_PREFS_SCRIPT = `(function(){try{var d=document.documentElement,s=localStorage,t=s.getItem('uv-text');if(t==='large'||t==='larger'||t==='largest')d.dataset.text=t;if(s.getItem('uv-reduce-motion')==='1')d.classList.add('reduce-motion');${Object.values(READING_AIDS).map((a) => `if(s.getItem('${a.key}')==='1')d.classList.add('${a.cls}');`).join('')}}catch(e){}})();`;
+/** The accent colour (Phase E): buttons, highlights, links and focus rings; indigo is the default. */
+export const ACCENTS = [
+  { id: 'indigo', name: 'Indigo', swatch: '#4f46e5' },
+  { id: 'violet', name: 'Violet', swatch: '#6d28d9' },
+  { id: 'blue', name: 'Blue', swatch: '#1d4ed8' },
+  { id: 'teal', name: 'Teal', swatch: '#0f766e' },
+  { id: 'rose', name: 'Rose', swatch: '#be123c' },
+  { id: 'amber', name: 'Amber', swatch: '#b45309' },
+] as const;
+export type Accent = (typeof ACCENTS)[number]['id'];
+export const accent = (): Accent => (ACCENTS.find((a) => a.id === get('uv-accent'))?.id ?? 'indigo');
+export function setAccent(a: Accent) {
+  set('uv-accent', a === 'indigo' ? null : a);
+  if (a === 'indigo') delete document.documentElement.dataset.accent; else document.documentElement.dataset.accent = a;
+}
+
+/** For app/layout.tsx: applies the saved text size, accent and reduce motion before the first paint. */
+export const DISPLAY_PREFS_SCRIPT = `(function(){try{var d=document.documentElement,s=localStorage,t=s.getItem('uv-text');if(t==='large'||t==='larger'||t==='largest')d.dataset.text=t;var a=s.getItem('uv-accent');if(a&&/^(violet|blue|teal|rose|amber)$/.test(a))d.dataset.accent=a;if(s.getItem('uv-reduce-motion')==='1')d.classList.add('reduce-motion');${Object.values(READING_AIDS).map((a) => `if(s.getItem('${a.key}')==='1')d.classList.add('${a.cls}');`).join('')}}catch(e){}})();`;

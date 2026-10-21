@@ -33,16 +33,20 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  // Links shared in chats and social apps show the picture (public/og.jpg, 1200 × 630).
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://universeimpact.com'),
   openGraph: {
     type: 'website',
     title: 'UniVerse Impact',
     description: 'The all-in-one university management platform.',
     siteName: 'UniVerse Impact',
+    images: [{ url: '/og.jpg', width: 1200, height: 630, alt: 'UniVerse: one place for your whole campus' }],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'UniVerse Impact',
     description: 'The all-in-one university management platform.',
+    images: ['/og.jpg'],
   },
 };
 

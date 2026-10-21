@@ -4,12 +4,13 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Building2, Globe, GraduationCap, Inbox, Loader2, Search, Trash2, UserPlus, X } from 'lucide-react';
+import { ArrowLeft, Building2, Copy, Globe, GraduationCap, Inbox, Loader2, RefreshCw, Search, Trash2, UserPlus, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { confirmDialog } from '@/components/ui/Dialogs';
 
-// Approvals → Invited: everyone invited who hasn't signed up yet, with search and cancel.
+// Approvals → Invited: everyone invited who hasn't signed up yet, with search, cancel, renew (another
+// 30 days: "resend" without an email, since none is sent) and the sign-up link to share again.
 
 interface Invitation { id: string; email: string; role: 'STUDENT' | 'TEACHER' | 'ADMIN'; expiresAt: string; createdAt: string }
 const ROLE = {
@@ -26,6 +27,24 @@ export function InvitationsPanel({ onBack, onInvite }: { onBack: () => void; onI
   const items = useMemo(() => data?.items ?? [], [data]);
   const term = q.trim().toLowerCase();
   const shown = useMemo(() => items.filter((i) => (!term || i.email.toLowerCase().includes(term)) && (!role || i.role === role)), [items, term, role]);
+
+  const [renewing, setRenewing] = useState<string | null>(null);
+  const renew = async (inv: Invitation) => {
+    setRenewing(inv.id);
+    try {
+      await api.post(`/users/invitations/${inv.id}/renew`);
+      toast.success(`Renewed for 30 days. Send ${inv.email} the sign-up link again.`);
+      await mutate();
+    } catch {
+      toast.error('Could not renew the invitation.');
+    } finally { setRenewing(null); }
+  };
+  const copyLink = async (inv: Invitation) => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/register`);
+      toast.success(`Sign-up link copied. ${inv.email} is approved when they sign up with that address.`);
+    } catch { toast.error('Copying isn’t allowed here. The link is your site address followed by /register.'); }
+  };
 
   const cancel = async (inv: Invitation) => {
     if (!(await confirmDialog({ title: `Cancel the invitation for ${inv.email}?`, message: 'They can still sign up, but will need approval like anyone else.', destructive: true, confirmLabel: 'Cancel invitation' }))) return;
@@ -87,6 +106,8 @@ export function InvitationsPanel({ onBack, onInvite }: { onBack: () => void; onI
                       <span>· expires {formatDistanceToNow(new Date(inv.expiresAt), { addSuffix: true })}</span>
                     </p>
                   </div>
+                  <button type="button" onClick={() => void copyLink(inv)} className="p-2 rounded-lg text-zinc-500 hover:text-indigo-600 hover:bg-indigo-500/10"><Copy className="w-4 h-4" /><span className="sr-only">Copy the sign-up link for {inv.email}</span></button>
+                  <button type="button" onClick={() => void renew(inv)} disabled={renewing === inv.id} className="btn-secondary btn-sm">{renewing === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}Renew<span className="sr-only"> the invitation for {inv.email}</span></button>
                   <button onClick={() => cancel(inv)} aria-label={`Cancel invitation for ${inv.email}`} className="p-2 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10"><Trash2 className="w-4 h-4" /></button>
                 </li>
               );

@@ -11,8 +11,6 @@ import { DeferredShell } from './DeferredShell';
 import { useAuthStore } from '@/store/auth';
 import { usePathname } from 'next/navigation';
 import Link from '@/components/ui/Link';
-import { m as motion } from 'framer-motion';
-import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { OfflineBar } from '@/components/pwa/OfflineBar';
@@ -53,10 +51,18 @@ function MobileTabBar({ role, onMore, moreOpen, onCreate, createOpen }: { role: 
     return prefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
   };
   const tab = 'relative flex flex-col items-center justify-center gap-[3px] select-none rounded-full transition-colors';
+  // The capsule under the chosen tab: one element that slides by its column with a CSS transition
+  // (on the GPU). A shared-layout animation instead made framer-motion measure the page and every
+  // animated element on each frame of the slide, while the new page was drawing.
+  const cols = items.length + 1 + (onCreate ? 1 : 0);
+  const activeIndex = items.findIndex(isActive);
+  const column = moreOpen ? cols - 1 : activeIndex < 0 ? -1 : activeIndex + (onCreate && activeIndex >= 2 ? 1 : 0);
 
   return (
     <nav aria-label="Primary" className="ios-tabbar ios-glass lg:hidden z-[35] p-1">
-      <div className={cn('grid h-full', onCreate ? 'grid-cols-6' : 'grid-cols-5')}>
+      <div className={cn('relative grid h-full', onCreate ? 'grid-cols-6' : 'grid-cols-5')}>
+        <span aria-hidden className="tabbar-pill absolute inset-y-0 start-0 rounded-full bg-gradient-to-r from-indigo-500/[0.18] to-fuchsia-500/[0.14] dark:from-indigo-500/[0.38] dark:to-fuchsia-500/[0.26] ring-1 ring-indigo-400/20"
+          style={{ width: `${100 / cols}%`, '--col': Math.max(column, 0), opacity: column < 0 ? 0 : 1 } as React.CSSProperties} />
         {items.map((item, i) => {
           const active = isActive(item);
           return (
@@ -75,9 +81,6 @@ function MobileTabBar({ role, onMore, moreOpen, onCreate, createOpen }: { role: 
               onClick={() => { if (!active) haptic('tap'); }}
               className={cn(tab, active ? 'text-tint-text' : 'text-zinc-600 dark:text-zinc-300')}
             >
-              {active && (
-                <motion.span layoutId="tabbar-pill" transition={spring.snappy} aria-hidden className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500/[0.18] to-fuchsia-500/[0.14] dark:from-indigo-500/[0.38] dark:to-fuchsia-500/[0.26] ring-1 ring-indigo-400/20" />
-              )}
               <item.icon className="relative w-[23px] h-[23px]" strokeWidth={active ? 2.3 : 1.8} />
               <span className={cn('relative text-[10px] leading-none', active ? 'font-semibold' : 'font-medium')}>{item.label}</span>
             </Link>
@@ -91,7 +94,6 @@ function MobileTabBar({ role, onMore, moreOpen, onCreate, createOpen }: { role: 
           aria-expanded={moreOpen}
           className={cn(tab, moreOpen ? 'text-tint-text' : 'text-zinc-600 dark:text-zinc-300')}
         >
-          {moreOpen && <motion.span layoutId="tabbar-pill" transition={spring.snappy} aria-hidden className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500/[0.18] to-fuchsia-500/[0.14] dark:from-indigo-500/[0.38] dark:to-fuchsia-500/[0.26] ring-1 ring-indigo-400/20" />}
           <Menu className="relative w-[23px] h-[23px]" strokeWidth={moreOpen ? 2.3 : 1.8} />
           <span className={cn('relative text-[10px] leading-none', moreOpen ? 'font-semibold' : 'font-medium')}>More</span>
         </button>

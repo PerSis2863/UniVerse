@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { ArrowDown, ArrowUp, EyeOff, LayoutGrid, Plus, RotateCcw } from 'lucide-react';
 import { arrange, EMPTY_LAYOUT, hideCard, moveCard, showCard, type CardDef, type HomeLayout, type HomeRole } from '@/lib/home-layout';
@@ -21,6 +21,13 @@ export function HomeBoard({ role, layout, onSave, cards, afterTop }: {
   afterTop?: ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
+  // The cards further down draw a moment after the first ones: drawing every card in the tap that
+  // opened Home took about half a second on a slow phone, before anything showed.
+  const [rest, setRest] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setRest(true), 250);
+    return () => clearTimeout(t);
+  }, []);
   const a = arrange(role, layout);
   const zoneSize = (c: CardDef) => a[c.zone].length;
 
@@ -44,9 +51,9 @@ export function HomeBoard({ role, layout, onSave, cards, afterTop }: {
   };
 
   const top = a.top.map(frame).filter(Boolean);
-  const main = a.main.map(frame).filter(Boolean);
-  const side = a.side.map(frame).filter(Boolean);
-  const both = main.length > 0 && side.length > 0;
+  const main = a.main.map(frame).filter(Boolean).slice(0, rest || editing ? undefined : 2);
+  const side = rest || editing ? a.side.map(frame).filter(Boolean) : [];
+  const both = main.length > 0 && a.side.some((c) => cards[c.id] != null);
 
   return (
     <div className="space-y-6">

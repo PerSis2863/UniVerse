@@ -14,6 +14,8 @@ import { TimeGrid, type GridEntry } from './TimeGrid';
 import { EventSheet, clockString, dayString, newDraft, type EventDraft, type EventKind } from './EventSheet';
 import { toEntries, type CalEvent, type Slot } from './entries';
 import type { ClassData } from '@/components/dashboard/ClassDetailModal';
+import { FileDrop } from '@/components/ui/FileDrop';
+import { useMyCourseColors } from '@/lib/my-course-colors';
 
 // The student's and teacher's calendar (Stage 5 · Q12): the timetable and events on TimeGrid, with
 // your own events made, dragged to a new time, changed and deleted; "New event" (also from the
@@ -28,7 +30,9 @@ export function useCalendar() {
   const events = useSWR<CalEvent[]>('/calendar/my', fetcher);
   const slotList = Array.isArray(slots.data) ? slots.data : NO_SLOTS;
   const eventList = Array.isArray(events.data) ? events.data : NO_EVENTS;
-  const entries = useMemo(() => toEntries(slotList, eventList, me), [slotList, eventList, me]);
+  // A student's own course colours (this device) on their classes.
+  const mine = useMyCourseColors();
+  const entries = useMemo(() => toEntries(slotList.map((s) => (s.course?.code && mine[s.course.code] ? { ...s, course: { ...s.course, color: mine[s.course.code] } } : s)), eventList, me), [slotList, eventList, me, mine]);
   /** Moves one of your events: shown at once, put back if the server says no. */
   const move = (id: string, startAt: Date, endAt: Date) => {
     const times = { startAt: startAt.toISOString(), endAt: endAt.toISOString() };
@@ -115,10 +119,12 @@ export function CalendarBoard({ cal, label, teacher, courses, presets = [], onOp
         toolbarEnd={
           <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:ms-auto">
             {presets.map((p) => <button key={p.label} type="button" onClick={() => setDraft(p.draft())} className="btn-secondary flex-1 sm:flex-none"><p.icon className="w-4 h-4" />{p.label}</button>)}
-            <input ref={fileRef} type="file" accept=".ics,text/calendar" className="hidden" onChange={(e) => void importFile(e.target.files?.[0])} />
-            <button type="button" onClick={() => fileRef.current?.click()} disabled={importing} title="Add events from a Google, Outlook or Apple calendar file (.ics)" className="btn-secondary flex-1 sm:flex-none">
+            <input ref={fileRef} type="file" accept=".ics,text/calendar" className="hidden" onChange={(e) => { void importFile(e.target.files?.[0]); e.target.value = ''; }} />
+            <FileDrop hint={false} onFiles={(f) => void importFile(f[0])} accept=".ics,text/calendar" disabled={importing} className="flex flex-1 sm:flex-none">
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={importing} title="Add events from a Google, Outlook or Apple calendar file (.ics); or drop the file here" className="btn-secondary flex-1 sm:flex-none">
               {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}Import
             </button>
+            </FileDrop>
             <button type="button" onClick={create} className="btn-primary flex-1 sm:flex-none"><CalendarPlus className="w-4 h-4" />New event</button>
           </div>
         }

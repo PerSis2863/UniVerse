@@ -31,6 +31,9 @@ import { SUBJECTS } from '@/lib/options/academic';
 import { QuizReview } from '@/components/quizzes/QuizReview';
 import { TranslatableAnnouncement } from '@/components/shared/Translatable';
 import { CourseCalendar, courseCalendarKey } from '@/components/dashboard/CourseCalendar';
+import { FileDrop } from '@/components/ui/FileDrop';
+
+const MATERIAL_TYPES = '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.zip,.png,.jpg,.jpeg,.webp,.gif,.mp4,.mov';
 
 /** Class recordings open through a 10-minute private link (src/lib/private-file.ts). */
 function openRecording(e: React.MouseEvent, url: string) {
@@ -518,10 +521,12 @@ function Materials({ board, canManage, refresh }: SectionProps) {
       {form && (
         <FormShell title="Add a file or a link" onClose={() => setForm(null)}>
           <input className="input" placeholder="Title, e.g. Week 3 slides" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <label className={cn('flex items-center justify-center gap-2 p-5 rounded-xl border-2 border-dashed text-sm cursor-pointer transition-colors', form.fileName ? 'border-emerald-400/50 text-emerald-600 dark:text-emerald-400' : 'border-zinc-300 dark:border-white/15 text-zinc-500 hover:border-indigo-400/60')}>
-            <input type="file" className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.zip,.png,.jpg,.jpeg,.webp,.gif,.mp4,.mov" onChange={(e) => pickFile(e.target.files?.[0])} />
-            {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading… {uploading}%</> : form.fileName ? <><CheckCircle2 className="w-4 h-4" /> {form.fileName} · {form.size}</> : <><Paperclip className="w-4 h-4" /> Choose a file (up to 4 MB)</>}
-          </label>
+          <FileDrop onFiles={(f) => pickFile(f[0])} accept={MATERIAL_TYPES} disabled={!!uploading}>
+            <label className={cn('flex items-center justify-center gap-2 p-5 rounded-xl border-2 border-dashed text-sm cursor-pointer transition-colors', form.fileName ? 'border-emerald-400/50 text-emerald-600 dark:text-emerald-400' : 'border-zinc-300 dark:border-white/15 text-zinc-500 hover:border-indigo-400/60')}>
+              <input type="file" className="hidden" accept={MATERIAL_TYPES} onChange={(e) => pickFile(e.target.files?.[0])} />
+              {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading… {uploading}%</> : form.fileName ? <><CheckCircle2 className="w-4 h-4" /> {form.fileName} · {form.size}</> : <><Paperclip className="w-4 h-4" /> Choose a file (up to 4 MB)</>}
+            </label>
+          </FileDrop>
           {!form.fileName && <input className="input" placeholder="…or paste a link (Google Drive, YouTube, website)" maxLength={1000} value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />}
           <button disabled={busy || !!uploading || !form.title.trim() || !form.url.trim()} onClick={async () => (await post({ kind: 'material', ...form }, 'Material shared with the class')) && setForm(null)} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Share with class</button>
         </FormShell>

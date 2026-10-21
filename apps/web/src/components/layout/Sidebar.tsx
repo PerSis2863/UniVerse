@@ -12,8 +12,9 @@ import {
   Coffee, Shield, Map, Globe2, Crown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
+import { LanguageMenu } from './LanguageMenu';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useLanguageStore } from '@/store/language';
@@ -264,13 +265,16 @@ function NavItemComponent({
   pathname, 
   onClose,
   isOpen,
-  onToggle
+  onToggle,
+  glide,
 }: { 
   item: NavItem; 
   pathname: string; 
   onClose?: () => void;
   isOpen: boolean;
   onToggle: () => void;
+  /** The highlight slides to the new entry (on screen); otherwise it just moves. */
+  glide: boolean;
 }) {
   const { t } = useLanguageStore();
   const hasActiveChild = item.subItems?.some(sub => isOn(pathname, sub.href, sub.also) || pathname.startsWith(sub.href + '/'));
@@ -307,7 +311,7 @@ function NavItemComponent({
                   return (
                     <Link key={sub.href} href={sub.href} data-vt="fade" data-tour-href={sub.href.split('?')[0]} onClick={onClose} aria-current={on ? 'page' : undefined}
                       className={cn('sidebar-item pill-host relative block text-[15px] py-1.5', on && 'active')}>
-                      {on && <motion.span layoutId="sidebar-pill" transition={spring.snappy} className="sidebar-pill" />}
+                      {on && <motion.span layoutId={glide ? 'sidebar-pill' : undefined} transition={spring.snappy} className="sidebar-pill" />}
                       <span className="relative block truncate">{t(sub.label)}</span>
                     </Link>
                   );
@@ -334,7 +338,7 @@ function NavItemComponent({
     return (
       <Link href={item.href} data-vt="fade" data-tour-href={item.href.split('?')[0]} onClick={onClose} aria-current={on ? 'page' : undefined}
         className={cn('sidebar-item pill-host relative block', on && 'active')}>
-        {on && <motion.span layoutId="sidebar-pill" transition={spring.snappy} className="sidebar-pill" />}
+        {on && <motion.span layoutId={glide ? 'sidebar-pill' : undefined} transition={spring.snappy} className="sidebar-pill" />}
         <div className="relative flex items-center gap-3">
           <item.icon className="w-[18px] h-[18px] flex-shrink-0 text-tint-text" strokeWidth={2} />
           <span>{t(item.label)}</span>
@@ -347,6 +351,13 @@ function NavItemComponent({
 }
 
 
+const WIDE = '(min-width: 1024px)';
+const subscribeWide = (onChange: () => void) => {
+  const q = window.matchMedia(WIDE);
+  q.addEventListener('change', onChange);
+  return () => q.removeEventListener('change', onChange);
+};
+
 export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose?: () => void }) {
   const { user, logout } = useAuthStore();
   // The tapped entry lights up at once, not when its page has downloaded.
@@ -354,17 +365,19 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   const router = useRouter();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const { t } = useLanguageStore();
+  // On a phone the closed menu is off screen: sliding its highlight there on every page change made
+  // framer-motion measure the page on each frame of the tab switch.
+  const wide = useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE).matches, () => true);
 
-  // Lock background scrolling while the mobile navigation sheet is open.
+  // Escape closes the mobile navigation sheet. The page behind doesn't scroll while it's open
+  // because the backdrop and the sheet's fixed parts take no finger scrolling (touch-none) and its
+  // list doesn't pass scrolling on (overscroll-contain). Not a class or style on <body>: changing
+  // the body's touch-action restyles every element on the page (about 0.2 s on a slow phone).
   useEffect(() => {
     if (!isOpen) return;
-    document.body.classList.add('scroll-locked');
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose?.(); };
     window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.classList.remove('scroll-locked');
-      window.removeEventListener('keydown', onKey);
-    };
+    return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
 
   if (!user) return null;
@@ -392,7 +405,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
         aria-hidden="true"
         onClick={onClose}
         className={cn(
-          "fixed inset-0 z-[95] bg-black/50 lg:hidden transition-opacity duration-300",
+          "fixed inset-0 z-[95] bg-black/50 lg:hidden transition-opacity duration-300 touch-none",
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
       />
@@ -406,7 +419,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
         )}
       >
         {/* Brand */}
-      <div className="flex items-center gap-3 px-5 h-16">
+      <div className="flex items-center gap-3 px-5 h-16 touch-none lg:touch-manipulation">
         <UniverseLogo size="md" animated={false} withGlow={false} />
         <div className="min-w-0">
           <div className="font-bold text-[17px] leading-tight tracking-tight text-zinc-900 dark:text-white">UniVerse</div>
@@ -415,7 +428,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
+      <nav className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
         {nav.map((item, i) => (
           <NavItemComponent 
             key={i} 
@@ -424,12 +437,13 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
             onClose={onClose}
             isOpen={openIndex === i || (item.subItems?.some(sub => isOn(pathname, sub.href, sub.also) || pathname.startsWith(sub.href + '/')) && openIndex === null) ? true : false}
             onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+            glide={isOpen || wide}
           />
         ))}
       </nav>
 
       {/* User */}
-      <div className="px-3 pt-3 sheet-safe-bottom lg:pb-4" style={{ boxShadow: 'inset 0 0.5px 0 var(--separator)' }}>
+      <div className="px-3 pt-3 sheet-safe-bottom lg:pb-4 touch-none lg:touch-manipulation" style={{ boxShadow: 'inset 0 0.5px 0 var(--separator)' }}>
         <div className="flex items-center gap-3 px-2 py-2 rounded-xl">
           <div className="w-9 h-9 rounded-full bg-gradient-to-b from-[#a5abb8] to-[#848993] flex items-center justify-center text-[13px] font-semibold text-white flex-shrink-0">
             {initials}
@@ -439,6 +453,8 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
             <div className="text-[12px] text-zinc-500 truncate">{user.email}</div>
           </div>
         </div>
+        {/* Phones have no top bar with the language button. */}
+        <LanguageMenu row className="lg:hidden mt-1" />
         <button onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-[15px] text-[var(--ios-red)] hover:bg-[var(--fill)] transition-colors">
           <LogOut className="w-[18px] h-[18px]" />

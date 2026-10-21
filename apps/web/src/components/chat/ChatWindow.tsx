@@ -9,10 +9,10 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff, Lock } from 'lucide-react';
+import { ArrowDown, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff, Lock, Check, Copy, CornerUpRight, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
-import { MessageBubble } from './MessageBubble';
+import { FORWARDABLE, MessageBubble } from './MessageBubble';
 import { Avatar } from '@/components/ui/Avatar';
 import { ImageViewer } from './ImageViewer';
 import { LockSwitch, LockedChat, useChatLocked } from './ChatLock';
@@ -21,7 +21,7 @@ import { Composer, type ComposerExtra, type SendPayload } from './Composer';
 import { ContactPicker, ForwardDialog, MessageInfo, PollDialog, RemindSheet } from './ChatDialogs';
 import { ChatExport } from './ChatExport';
 import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
-import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS } from './chat-client';
+import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS , previewText } from './chat-client';
 import { useLiveInterval, useLiveTyping, useRealtimeConnected } from '@/lib/realtime-client';
 import { useLanguageStore } from '@/store/language';
 import { cachedChat, cacheChat, enqueue, isOfflineError, listOutbox, newClientId, onOutbox, type OutboxItem } from '@/lib/outbox';
@@ -32,6 +32,7 @@ import dynamic from 'next/dynamic';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { encryptForChat, myDevice } from './private-chat';
 import { PrivateBanner, SafetyCode, StartPrivateChat } from './PrivateChat';
+import { removeWithUndo } from '@/lib/undo';
 
 const ThreadPanel = dynamic(() => import('./ThreadPanel').then((m) => m.ThreadPanel));
 
@@ -101,7 +102,13 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   // The school's chat app commands (Stage 5 · Q20): loaded once, they rarely change.
   const { data: apps } = useSWR<{ commands: { name: string; hint: string; app: string }[] }>('/api/chat/apps', authedJson, { revalidateOnFocus: false, dedupingInterval: 600_000 });
   const [showJump, setShowJump] = useState(false);
+  // Messages from others that arrived while reading further up (the jump button shows how many).
+  const [unseen, setUnseen] = useState(0);
+  const lastId = useRef<string | null>(null);
   const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
+  // Choosing several messages (Phase E): null when not choosing.
+  const [picked, setPicked] = useState<Set<string> | null>(null);
+  const [forwardMany, setForwardMany] = useState<ChatMessage[] | null>(null);
   const [remindFor, setRemindFor] = useState<ChatMessage | null>(null);
   const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
   const [extra, setExtra] = useState<'poll' | 'contact' | null>(null);
@@ -189,8 +196,14 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     const last = messages[messages.length - 1];
     if (lastCount.current === 0 || (grew && (nearBottom || last?.senderId === me))) {
       requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: lastCount.current === 0 ? 'auto' : 'smooth' }));
+    } else if (grew && last && lastId.current && last.id !== lastId.current) {
+      // New at the end (not older ones loaded at the top) while reading history: count them.
+      const from = messages.findIndex((m) => m.id === lastId.current);
+      const fresh = from >= 0 ? messages.slice(from + 1).filter((m) => m.senderId !== me).length : 0;
+      if (fresh) requestAnimationFrame(() => setUnseen((n) => n + fresh));
     }
     lastCount.current = messages.length;
+    lastId.current = last?.id ?? null;
   }, [messages, me]);
 
   const loadOlder = async () => {
@@ -245,6 +258,47 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       action: { label: 'Undo', onClick: () => { undone = true; mutate(); } },
       onAutoClose: () => { if (!undone) chatJson(`/api/chat/messages/${m.id}/state`, { method: 'POST', body: JSON.stringify({ hidden: true }) }).then(() => onChanged()).catch((e) => { toast.error(e.message); mutate(); }); },
       onDismiss: () => { if (!undone) chatJson(`/api/chat/messages/${m.id}/state`, { method: 'POST', body: JSON.stringify({ hidden: true }) }).then(() => onChanged()).catch(() => mutate()); },
+    });
+  };
+
+  // ── Several messages at once ──
+  useEffect(() => {
+    if (!picked) return;
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setPicked(null); };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [picked]);
+  const togglePick = (id: string) => setPicked((cur) => {
+    const next = new Set(cur ?? []);
+    if (next.has(id)) next.delete(id); else if (next.size < 50) next.add(id); else toast.message('Up to 50 messages at a time.');
+    return next.size ? next : null;
+  });
+  const pickedMessages = picked ? messages.filter((m) => picked.has(m.id)) : [];
+  const copyPicked = async () => {
+    const lines = pickedMessages.filter((m) => m.type === 'TEXT' && !m.metadata?.e2e && m.body?.trim()).map((m) => (convo?.isGroup ? `${m.sender?.name ?? ''}: ${m.body}` : m.body));
+    if (!lines.length) return void toast.message('Nothing to copy: only text messages are copied.');
+    try { await navigator.clipboard.writeText(lines.join('\n')); toast.success(lines.length === 1 ? 'Copied' : `${lines.length} messages copied`); setPicked(null); }
+    catch { toast.error('Copying isn’t allowed here.'); }
+  };
+  const forwardPicked = () => {
+    const ok = pickedMessages.filter((m) => FORWARDABLE.has(m.type) && !m.metadata?.e2e && !m.metadata?.viewOnce);
+    if (!ok.length) return void toast.message('These can’t be forwarded (private or view-once messages, calls, polls).');
+    if (ok.length < pickedMessages.length) toast.message(`${pickedMessages.length - ok.length} of them can’t be forwarded and are left out.`);
+    setForwardMany(ok);
+  };
+  const hidePicked = () => {
+    const ids = pickedMessages.filter((m) => !m.pending).map((m) => m.id);
+    setPicked(null);
+    removeWithUndo(ids.length === 1 ? 'Message deleted for you' : `${ids.length} messages deleted for you`, {
+      hide: () => {
+        mutate((prev) => (prev ? { ...prev, messages: prev.messages.filter((x) => !ids.includes(x.id)) } : prev), { revalidate: false });
+        setOlder((cur) => cur.filter((x) => !ids.includes(x.id)));
+      },
+      restore: () => void mutate(),
+      commit: async () => {
+        for (const id of ids) await chatJson(`/api/chat/messages/${id}/state`, { method: 'POST', body: JSON.stringify({ hidden: true }) });
+        onChanged();
+      },
     });
   };
 
@@ -739,7 +793,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
           onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f && !convo.isOfficial) send({ file: f }).catch(() => {}); }}
           ref={scrollRef}
-          onScroll={(e) => { const el = e.currentTarget; setShowJump(el.scrollHeight - el.scrollTop - el.clientHeight > 400); }}
+          onScroll={(e) => { const el = e.currentTarget; const gap = el.scrollHeight - el.scrollTop - el.clientHeight; setShowJump(gap > 400); if (gap < 160) setUnseen(0); }}
           role="log" aria-label="Messages" aria-relevant="additions" tabIndex={0}
           className="relative flex-1 overflow-y-auto px-3 md:px-6 py-4 space-y-1.5 outline-none"
           style={WALLPAPERS.find((w) => w.id === wallpaper)?.style}
@@ -776,7 +830,15 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                 const newDay = n === 0;
                 const showSender = !!convo.isGroup && (newDay || prev?.senderId !== m.senderId || prev?.type === 'SYSTEM');
                 return (
-                  <div key={m.id} id={`msg-${m.id}`} className={cn(!newDay && prev?.senderId !== m.senderId && 'pt-2')}>
+                  <div key={m.id} id={`msg-${m.id}`}
+                    className={cn(!newDay && prev?.senderId !== m.senderId && 'pt-2', picked && 'relative ps-10 rounded-xl', picked?.has(m.id) && 'bg-indigo-500/10')}
+                    // While choosing, a tap anywhere on a message ticks it instead of opening anything.
+                    onClickCapture={picked && m.type !== 'SYSTEM' ? (e) => { e.preventDefault(); e.stopPropagation(); togglePick(m.id); } : undefined}>
+                    {picked && m.type !== 'SYSTEM' && (
+                      <button type="button" role="checkbox" aria-checked={picked.has(m.id)} className={cn('absolute start-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 flex items-center justify-center', picked.has(m.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-400 dark:border-white/40')}>
+                        {picked.has(m.id) && <Check className="w-3.5 h-3.5" aria-hidden />}<span className="sr-only">Select the message {m.senderId === me ? 'you sent' : `from ${m.sender?.name ?? 'them'}`}: {previewText(m)}</span>
+                      </button>
+                    )}
                     <MessageBubble
                       onCallBack={(kind) => void call(kind)}
                       customEmoji={emojiMap}
@@ -797,6 +859,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                       onRemind={!m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED' ? () => setRemindFor(m) : undefined}
                       onPin={canPin && m.type !== 'DELETED' && m.type !== 'SYSTEM' && !m.pending ? () => pin(m) : undefined}
                       onForward={() => setForwarding(m)}
+                      onSelect={!m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED' ? () => setPicked(new Set([m.id])) : undefined}
                       onInfo={() => setInfoMsg(m)}
                       onVote={(o) => vote(m, o)}
                       onOpenContact={openContact}
@@ -821,11 +884,12 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         </div>
 
         <AnimatePresence>
-          {showJump && (
+          {(showJump || unseen > 0) && (
             <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-              onClick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })}
-              className="absolute bottom-28 end-6 md:end-10 z-20 w-10 h-10 rounded-full bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-lg flex items-center justify-center text-zinc-600 dark:text-zinc-300">
-              <ArrowDown className="w-4 h-4" />
+              onClick={() => { setUnseen(0); scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }}
+              className={cn('absolute bottom-28 end-6 md:end-10 z-20 h-10 rounded-full border shadow-lg flex items-center justify-center gap-1.5', unseen > 0 ? 'px-3.5 bg-indigo-600 border-indigo-600 text-white text-sm font-semibold' : 'w-10 bg-white dark:bg-[#121830] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
+              <ArrowDown className="w-4 h-4" aria-hidden />
+              {unseen > 0 ? <span>{unseen > 99 ? '99+' : unseen} new</span> : <span className="sr-only">Go to the newest message</span>}
             </motion.button>
           )}
         </AnimatePresence>
@@ -842,7 +906,16 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
             }}
             onClose={() => setEditScheduled(null)} />
         )}
-        <Composer
+        {picked && (
+          <div role="region" aria-label="Chosen messages" className="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-zinc-200 dark:border-white/10 bg-white dark:bg-[#0f1322]">
+            <span className="text-sm font-semibold text-zinc-900 dark:text-white me-auto">{picked.size} selected</span>
+            <button type="button" onClick={() => void copyPicked()} className="btn-secondary btn-sm"><Copy className="w-4 h-4" />Copy</button>
+            <button type="button" onClick={forwardPicked} className="btn-secondary btn-sm"><CornerUpRight className="w-4 h-4" />Forward</button>
+            <button type="button" onClick={hidePicked} className="btn-secondary btn-sm"><EyeOff className="w-4 h-4" />Delete for me</button>
+            <button type="button" onClick={() => setPicked(null)} className="btn-ghost btn-sm">Cancel</button>
+          </div>
+        )}
+        {!picked && <Composer
           draftKey={conversationId}
           serverDraft={{ text: convo.draft, at: convo.draftAt }}
           onSchedule={convo.isOfficial ? undefined : schedule}
@@ -866,7 +939,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           onCommand={convo.isOfficial ? undefined : command}
           appCommands={apps?.commands}
           onSuggest={convo.isOfficial ? undefined : suggestReplies}
-        />
+        />}
       </div>
 
       <AnimatePresence>
@@ -890,6 +963,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       </AnimatePresence>
 
       {forwarding && <ForwardDialog message={forwarding} onClose={() => setForwarding(null)} onDone={() => { setForwarding(null); onChanged(); }} />}
+      {forwardMany && <ForwardDialog messages={forwardMany} onClose={() => setForwardMany(null)} onDone={() => { setForwardMany(null); setPicked(null); onChanged(); }} />}
       {remindFor && <RemindSheet message={remindFor} onClose={() => setRemindFor(null)} />}
       {infoMsg && <MessageInfo message={infoMsg} members={convo.members} me={me} onClose={() => setInfoMsg(null)} />}
       {extra === 'poll' && <PollDialog onClose={() => setExtra(null)} onCreate={(poll) => sendSpecial({ type: 'POLL', poll })} />}

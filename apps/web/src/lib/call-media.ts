@@ -12,14 +12,23 @@
 
 export type NoiseMode = 'strong' | 'standard' | 'off';
 
-const KEY = { noise: 'uv-call-noise', mic: 'uv-call-mic', cam: 'uv-call-cam' } as const;
+const KEY = { noise: 'uv-call-noise', mic: 'uv-call-mic', cam: 'uv-call-cam', speaker: 'uv-call-speaker' } as const;
 const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const write = (k: string, v: string | null) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* private mode */ } };
 
 export const noiseMode = (): NoiseMode => (['strong', 'standard', 'off'].includes(read(KEY.noise) ?? '') ? (read(KEY.noise) as NoiseMode) : 'strong');
 export const setNoiseMode = (m: NoiseMode) => write(KEY.noise, m);
-export const chosenDevice = (kind: 'mic' | 'cam') => read(KEY[kind]);
-export const chooseDevice = (kind: 'mic' | 'cam', id: string | null) => write(KEY[kind], id);
+export const chosenDevice = (kind: 'mic' | 'cam' | 'speaker') => read(KEY[kind]);
+export const chooseDevice = (kind: 'mic' | 'cam' | 'speaker', id: string | null) => write(KEY[kind], id);
+
+/** Whether this browser can send call sound to a chosen speaker or headset (not Safari on iPhone). */
+export const canPickSpeaker = () => typeof HTMLMediaElement !== 'undefined' && 'setSinkId' in HTMLMediaElement.prototype;
+/** Plays an element's sound on that speaker ('' is the system's own choice). */
+export function playOnSpeaker(el: HTMLMediaElement, id: string | null) {
+  const sink = el as HTMLMediaElement & { setSinkId?: (id: string) => Promise<void>; sinkId?: string };
+  if (!sink.setSinkId || (sink.sinkId ?? '') === (id ?? '')) return Promise.resolve();
+  return sink.setSinkId(id ?? '').catch(() => {});
+}
 
 /** Phones and tablets borrowed over Continuity (the person may well be using them themselves). */
 const BORROWED = /iphone|ipad|continuity/i;
@@ -80,6 +89,7 @@ export async function listDevices() {
   return {
     mics: all.filter((d) => d.kind === 'audioinput' && d.deviceId !== 'default' && d.deviceId !== 'communications').map((d, i) => named(d, i, 'Microphone')),
     cams: all.filter((d) => d.kind === 'videoinput').map((d, i) => named(d, i, 'Camera')),
+    speakers: canPickSpeaker() ? all.filter((d) => d.kind === 'audiooutput' && d.deviceId !== 'default' && d.deviceId !== 'communications').map((d, i) => named(d, i, 'Speaker')) : [],
   };
 }
 

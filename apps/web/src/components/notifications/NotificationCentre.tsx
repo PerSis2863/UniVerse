@@ -5,6 +5,7 @@ import { mutate as refresh } from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { removeWithUndo } from '@/lib/undo';
 import { AnimatePresence, m as motion, type PanInfo } from 'framer-motion';
 import { formatDistanceToNowStrict, isToday, isYesterday } from 'date-fns';
 import { AtSign, Bell, BellOff, CalendarClock, Check, CheckCheck, Clock, GraduationCap, Loader2, MessageSquare, School, Settings2, Trash2, type LucideIcon } from 'lucide-react';
@@ -78,6 +79,19 @@ export function NotificationCentre() {
   }, [more, isValidating, setSize]);
 
   const act = async (action: 'read' | 'unread' | 'snooze' | 'delete', ids: string[] | 'all', until?: Date) => {
+    // Removing some: gone at once, Undo for a few seconds, deleted when the message goes.
+    if (action === 'delete' && ids !== 'all') {
+      removeWithUndo(ids.length === 1 ? 'Notification removed' : `${ids.length} notifications removed`, {
+        hide: () => void mutate((pages) => pages?.map((p) => ({ ...p, items: p.items.filter((n) => !ids.includes(n.id)) })), { revalidate: false }),
+        restore: () => void mutate(),
+        commit: async () => {
+          await authedJson('/api/notifications/centre', { method: 'POST', body: JSON.stringify({ action, ids }) });
+          void mutate();
+          void refresh('/api/notifications'); // the bell
+        },
+      });
+      return;
+    }
     // Shown straight away; put back if saving fails.
     await mutate((pages) => pages?.map((p) => ({
       ...p,

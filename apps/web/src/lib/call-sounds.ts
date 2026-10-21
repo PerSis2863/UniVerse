@@ -46,11 +46,27 @@ function pattern(tones: { freq: number[]; on: number; off: number }, volume: num
 /** What the caller hears while it rings: 425 Hz, 1 s on, 3 s off (the familiar European ringback). */
 export const ringback = () => pattern({ freq: [425], on: 1000, off: 3000 }, 0.06);
 
-/** Incoming call: two soft tones, repeating (a short beep instead while already on a call). */
-export const ringtone = (waiting = false) => (waiting
+/** The incoming-call sounds to choose from (Settings → Notifications, kept on this device). */
+export const RINGTONES = {
+  classic: { name: 'Classic', tones: { freq: [660, 880], on: 900, off: 1400 }, volume: 0.05 },
+  soft: { name: 'Soft', tones: { freq: [440, 554], on: 1200, off: 1800 }, volume: 0.035 },
+  bright: { name: 'Bright', tones: { freq: [988, 1319], on: 500, off: 900 }, volume: 0.04 },
+  pulse: { name: 'Pulse', tones: { freq: [740], on: 220, off: 380 }, volume: 0.04 },
+  silent: { name: 'Vibrate only', tones: null, volume: 0 },
+} as const;
+export type Ringtone = keyof typeof RINGTONES;
+export const chosenRingtone = (): Ringtone => {
+  try { const v = localStorage.getItem('uv-ringtone'); return v && v in RINGTONES ? (v as Ringtone) : 'classic'; } catch { return 'classic'; }
+};
+export const chooseRingtone = (r: Ringtone) => { try { if (r === 'classic') localStorage.removeItem('uv-ringtone'); else localStorage.setItem('uv-ringtone', r); } catch { /* private mode */ } };
+
+/** Incoming call: the chosen ringtone, repeating (a short beep instead while already on a call). */
+export const ringtone = (waiting = false, which: Ringtone = chosenRingtone()) => {
   // Call waiting: two short soft beeps every few seconds, so the current call isn't drowned out.
-  ? pattern({ freq: [440], on: 180, off: 2800 }, 0.03)
-  : pattern({ freq: [660, 880], on: 900, off: 1400 }, 0.05));
+  if (waiting) return pattern({ freq: [440], on: 180, off: 2800 }, 0.03);
+  const r = RINGTONES[which];
+  return r.tones ? pattern({ freq: [...r.tones.freq], on: r.tones.on, off: r.tones.off }, r.volume) : () => {};
+};
 
 /** A soft two-note chime, once (office hours: it's your turn). */
 export function chime() {

@@ -15,6 +15,7 @@ import type { TemplateId } from '@/components/boards/templates';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
+import { removeWithUndo } from '@/lib/undo';
 
 // Whiteboards: every student, teacher and admin can draw on a board, add photos, and share it so
 // classmates and teachers draw on it together live (see /boards/[id]).
@@ -65,17 +66,14 @@ export default function BoardsPage() {
     }
   };
 
-  const remove = async (b: BoardSummary) => {
+  // Gone at once with Undo (for everyone it's shared with, once the message goes).
+  const remove = (b: BoardSummary) => {
     setMenu(null);
-    if (!(await confirmDialog({ title: `Delete “${b.title}”?`, message: 'The board is deleted for everyone it is shared with. This can’t be undone.', confirmLabel: 'Delete', destructive: true }))) return;
-    mutate((list) => list?.filter((x) => x.id !== b.id), { revalidate: false });
-    try {
-      await authedJson(`/api/boards/${b.id}`, { method: 'DELETE' });
-      toast.success('Board deleted');
-    } catch (e) {
-      toast.error((e as Error).message);
-      mutate();
-    }
+    removeWithUndo(`Deleted “${b.title}”`, {
+      hide: () => void mutate((list) => list?.filter((x) => x.id !== b.id), { revalidate: false }),
+      restore: () => void mutate(),
+      commit: () => authedJson(`/api/boards/${b.id}`, { method: 'DELETE' }),
+    });
   };
 
   const leave = async (b: BoardSummary) => {

@@ -19,6 +19,7 @@ import { fadeUp, list } from '@/lib/motion';
 import { haptic } from '@/lib/haptics';
 import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
+import { FileDrop } from '@/components/ui/FileDrop';
 
 // Consent forms for teachers and school admins (Stage 5 · B16.4; src/server/consent-forms.ts):
 // send a form to the parents of a class (admins: of every student), then follow who agreed,
@@ -182,9 +183,11 @@ function CreateSheet({ data, onClose, onCreated }: { data: List; onClose: () => 
               <button type="button" aria-label="Remove the attachment" onClick={() => setFile(null)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
             </span>
           ) : (
-            <button type="button" onClick={() => picker.current?.click()} disabled={uploading} className="btn-secondary btn-sm">
-              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />} Attach a file (optional)
-            </button>
+            <FileDrop onFiles={(f) => void upload(f[0])} accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" disabled={uploading}>
+              <button type="button" onClick={() => picker.current?.click()} disabled={uploading} className="btn-secondary btn-sm">
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />} Attach a file (optional)
+              </button>
+            </FileDrop>
           )}
         </div>
         <Field label="Answer by (optional)">

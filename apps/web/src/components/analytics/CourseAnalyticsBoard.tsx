@@ -139,7 +139,6 @@ function TrendCard({ a }: { a: CourseAnalytics }) {
   const marked = points.filter((p): p is { i: number; v: number } => p !== null);
   const line = marked.map((p, k) => `${k ? 'L' : 'M'}${x(p.i)} ${y(p.v)}`).join(' ');
   const hasData = marked.length > 0;
-  const half = 50 / Math.max(1, n - 1); // half the gap between weeks: each week's hover column
   const fmtWeek = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
   return (
@@ -181,7 +180,8 @@ function TrendCard({ a }: { a: CourseAnalytics }) {
               {a.trend.map((w, i) => (
                 <button key={w.week} type="button" onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onClick={() => setHover(i)} onBlur={() => setHover(null)}
                   aria-label={`Week of ${fmtWeek(w.week)}: ${w.average === null ? 'no marks' : `${Math.round(w.average)}% average from ${w.items} marks`}`}
-                  className="absolute top-0 bottom-0 focus:outline-none" style={{ left: `${Math.max(0, x(i) - half)}%`, width: `${Math.min(100, x(i) + half) - Math.max(0, x(i) - half)}%` }} />
+                  // Equal slices (each at least 24 px, see minWidth): the first and last used to be cut in half.
+                  className="absolute top-0 bottom-0 focus:outline-none" style={{ left: `${(i / n) * 100}%`, width: `${100 / n}%` }} />
               ))}
               {hover !== null && (
                 <div role="status" className="pointer-events-none absolute -top-2 z-10 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs shadow-lg whitespace-nowrap"

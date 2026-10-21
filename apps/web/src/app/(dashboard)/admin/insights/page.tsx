@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import Link from '@/components/ui/Link';
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Building2, Eye, GraduationCap, Minus, Users } from 'lucide-react';
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Building2, Download, Eye, GraduationCap, Minus, Users } from 'lucide-react';
+import { downloadCsv } from '@/lib/csv-download';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs';
 import { SchoolAnalytics } from '@/components/insights/SchoolAnalytics';
@@ -114,11 +115,18 @@ export default function AdminInsightsPage() {
               </section>
 
               <section className="space-y-3">
-                <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Departments</h2>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Departments</h2>
+                  {data.departments.length > 0 && (
+                    <button type="button" className="btn-secondary btn-sm" onClick={() => downloadCsv(`departments-${new Date().toISOString().slice(0, 10)}`, ['Department', 'Average grade (%)', 'Previous 30 days (%)', 'Attendance (%)', 'Grades given'], data.departments.map((d) => [d.name, d.grade, d.previous, d.attendance, d.graded]))}>
+                      <Download className="w-3.5 h-3.5" />Export CSV<span className="sr-only"> of the departments</span>
+                    </button>
+                  )}
+                </div>
                 {data.departments.length === 0 ? (
                   <p className={`panel p-5 text-sm text-zinc-500`}>No grades or attendance in the last 60 days yet.</p>
                 ) : (
-                  <div tabIndex={0} role="region" aria-label="Table" className="panel p-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-indigo-500">
+                  <div tabIndex={0} role="region" aria-label="Departments" className="panel p-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-indigo-500">
                     <table className="w-full text-sm min-w-[32rem]">
                       <thead><tr><th className={th}>Department</th><th className={th}>Average grade</th><th className={th}>vs previous 30 days</th><th className={th}>Attendance</th><th className={`${th} text-end`}>Grades given</th></tr></thead>
                       <tbody className="divide-y divide-zinc-200 dark:divide-white/[0.06]">
@@ -138,13 +146,21 @@ export default function AdminInsightsPage() {
               </section>
 
               <section className="space-y-3">
-                <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Teacher workload</h2>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Teacher workload</h2>
+                  {data.teachers.length > 0 && (
+                    <button type="button" className="btn-secondary btn-sm" onClick={() => downloadCsv(`teacher-workload-${new Date().toISOString().slice(0, 10)}`, ['Teacher', 'Email', 'Courses', 'Students', 'Answers to grade', 'Grades (30 days)', 'At-risk students', 'Last seen'], data.teachers.map((t) => [t.name, t.email, t.courses, t.students, t.toGrade, t.graded30, t.flagged, t.lastSeenAt ? t.lastSeenAt.slice(0, 10) : '']))}>
+                      <Download className="w-3.5 h-3.5" />Export CSV<span className="sr-only"> of the teachers</span>
+                    </button>
+                  )}
+                </div>
                 {data.teachers.length === 0 ? (
                   <p className={`panel p-5 text-sm text-zinc-500`}>No active teachers yet.</p>
                 ) : (
-                  <div tabIndex={0} role="region" aria-label="Table" className="panel p-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-indigo-500">
+                  // Its own scroll box when all are shown, so the column names stay on top.
+                  <div tabIndex={0} role="region" aria-label="Teacher workload" className="panel p-4 overflow-auto max-h-[75vh] focus-visible:outline-2 focus-visible:outline-indigo-500">
                     <table className="w-full text-sm min-w-[36rem]">
-                      <thead><tr><th className={th}>Teacher</th><th className={`${th} text-end`}>Courses</th><th className={`${th} text-end`}>Students</th><th className={`${th} text-end`}>Answers to grade</th><th className={`${th} text-end`}>Grades (30 days)</th><th className={`${th} text-end`}>At-risk students</th><th className={`${th} text-end`}>Last seen</th></tr></thead>
+                      <thead className="sticky -top-4 z-10 bg-white dark:bg-zinc-950"><tr><th className={th}>Teacher</th><th className={`${th} text-end`}>Courses</th><th className={`${th} text-end`}>Students</th><th className={`${th} text-end`}>Answers to grade</th><th className={`${th} text-end`}>Grades (30 days)</th><th className={`${th} text-end`}>At-risk students</th><th className={`${th} text-end`}>Last seen</th></tr></thead>
                       <tbody className="divide-y divide-zinc-200 dark:divide-white/[0.06]">
                         {(showAllTeachers ? data.teachers : data.teachers.slice(0, 15)).map((t) => (
                           <tr key={t.id}>

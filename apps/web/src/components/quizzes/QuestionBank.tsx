@@ -19,6 +19,7 @@ import { DIFFICULTIES, type Difficulty } from '@/lib/question-bank';
 import { readQuestionFile, type QuestionFile } from '@/lib/question-import';
 import { TYPE_LABELS, typeOf, type QuestionInput } from '@/lib/question-types';
 import { QuestionEditor, QuestionKey, draftReady, emptyDraft, toBody } from './QuestionEditor';
+import { FileDrop } from '@/components/ui/FileDrop';
 
 // A course's question bank (Stage 5 · B4.1; API: /api/courses/[id]/question-bank). Teachers keep
 // reusable questions with tags and a difficulty, import them (CSV, GIFT, Moodle XML or QTI from
@@ -102,7 +103,9 @@ export function QuestionBank({ courses, quizzes, onAdded }: { courses: { id: str
         </select>
         <div className="flex gap-2">
           <input ref={file} type="file" accept=".csv,.txt,.gift,.xml,.zip,.imscc,text/csv,text/plain,text/xml,application/xml,application/zip" className="sr-only" aria-label="Question file to import" onChange={(e) => { void readFile(e.target.files?.[0]); e.target.value = ''; }} />
-          <button type="button" onClick={() => file.current?.click()} title="CSV, GIFT, Moodle XML or QTI (Canvas, Blackboard…)" className="btn-secondary btn-sm inline-flex items-center gap-1.5"><FileUp className="w-4 h-4" /> Import questions</button>
+          <FileDrop hint={false} onFiles={(f) => void readFile(f[0])} accept=".csv,.txt,.gift,.xml,.zip,.imscc,text/csv,text/plain,text/xml,application/xml,application/zip">
+            <button type="button" onClick={() => file.current?.click()} title="CSV, GIFT, Moodle XML or QTI (Canvas, Blackboard…); or drop the file here" className="btn-secondary btn-sm inline-flex items-center gap-1.5"><FileUp className="w-4 h-4" /> Import questions</button>
+          </FileDrop>
           <button type="button" onClick={() => setAdding(true)} className="btn-primary btn-sm inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> New question</button>
         </div>
       </div>

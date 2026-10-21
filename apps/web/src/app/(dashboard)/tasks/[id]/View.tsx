@@ -17,6 +17,8 @@ import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { haptic } from '@/lib/haptics';
+import { removeWithUndo } from '@/lib/undo';
+import { useLongPress } from '@/lib/use-long-press';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Sheet } from '@/components/ui/Sheet';
@@ -52,6 +54,10 @@ function TaskBoardPage({ id }: { id: string }) {
   const [newList, setNewList] = useState('');
   const [drag, setDrag] = useState<{ id: string; over: string | null } | null>(null);
   const [now] = useState(() => Date.now());
+  // Press and hold a card (or right-click it): done, move to another list, delete. Dragging
+  // doesn't work by finger, so on phones this is how a card changes list.
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const press = useLongPress<string>((cardId) => setMenuFor(cardId));
 
   /** Optimistic change, then the server; on failure, the board as the server has it. */
   const act = async (change: (b: Board) => Board, url: string, method: string, body?: unknown) => {
@@ -76,10 +82,18 @@ function TaskBoardPage({ id }: { id: string }) {
     void patchTask(t, { listId, position });
   };
 
+  /** Gone at once, deleted for real when the message goes; Undo puts it back. */
+  const deleteCard = (card: Card) => removeWithUndo(`Deleted “${card.title}”`, {
+    hide: () => { if (data) void mutate({ ...data, tasks: data.tasks.filter((x) => x.id !== card.id) }, { revalidate: false }); },
+    restore: () => void mutate(),
+    commit: async () => { await call(`/api/tasks/items/${card.id}`, 'DELETE'); void mutate(); },
+  });
+
   if (error) return <div className="p-8 text-sm text-rose-500">{(error as Error).message}</div>;
   if (!data) return <div className="flex-1 p-6"><div className="h-64 rounded-2xl skeleton" /></div>;
   const person = (uid: string | null) => data.people.find((p) => p.id === uid) ?? null;
   const current = data.tasks.find((t) => t.id === open) ?? null;
+  const menuCard = data.canEdit ? data.tasks.find((t) => t.id === menuFor) ?? null : null;
   const lists = [...data.lists].sort((a, b) => a.position - b.position);
 
   const cardView = (t: Card) => {
@@ -88,7 +102,7 @@ function TaskBoardPage({ id }: { id: string }) {
     const late = !t.doneAt && t.dueAt && new Date(t.dueAt).getTime() < now;
     const blocked = openBlockers(t.blockedBy, data.tasks);
     return (
-      <motion.button layout="position" transition={spring.smooth} key={t.id} type="button" onClick={() => setOpen(t.id)}
+      <motion.button layout="position" transition={spring.smooth} key={t.id} type="button" {...(data.canEdit ? press.bind(t.id) : {})} onClick={() => { if (press.wasLong()) return; setOpen(t.id); }}
         draggable={data.canEdit} onDragStart={(e) => { (e as unknown as DragEvent).dataTransfer?.setData('text/plain', t.id); setDrag({ id: t.id, over: null }); }} onDragEnd={() => setDrag(null)}
         onDragOver={(e) => { if (drag) { e.preventDefault(); if (drag.over !== t.id) setDrag({ ...drag, over: t.id }); } }}
         onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const moving = data.tasks.find((x) => x.id === drag?.id); if (moving && moving.id !== t.id) moveTo(moving, t.listId, t); setDrag(null); }}
@@ -193,7 +207,20 @@ function TaskBoardPage({ id }: { id: string }) {
       )}
 
       {current && <CardSheet card={current} board={data} onClose={() => setOpen(null)} onPatch={(p) => patchTask(current, p)}
-        onDelete={async () => { setOpen(null); await act((b) => ({ ...b, tasks: b.tasks.filter((x) => x.id !== current.id) }), `/api/tasks/items/${current.id}`, 'DELETE'); }} />}
+        onDelete={() => { setOpen(null); deleteCard(current); }} />}
+      {menuCard && (
+        <Sheet title={menuCard.title} onClose={() => setMenuFor(null)}>
+          <div className="space-y-1">
+            <button type="button" onClick={() => { setMenuFor(null); void patchTask(menuCard, { done: !menuCard.doneAt }); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-sm font-medium text-zinc-900 dark:text-white hover:bg-[var(--fill)]"><Check className="w-4 h-4" />{menuCard.doneAt ? 'Mark not done' : 'Mark done'}</button>
+            <button type="button" onClick={() => { setMenuFor(null); setOpen(menuCard.id); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-sm font-medium text-zinc-900 dark:text-white hover:bg-[var(--fill)]"><KanbanSquare className="w-4 h-4" />Open the card</button>
+            {lists.filter((l) => l.id !== menuCard.listId).length > 0 && <p className="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Move to</p>}
+            {lists.filter((l) => l.id !== menuCard.listId).map((l) => (
+              <button key={l.id} type="button" onClick={() => { setMenuFor(null); moveTo(menuCard, l.id); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-sm text-zinc-800 dark:text-zinc-100 hover:bg-[var(--fill)]"><List className="w-4 h-4" />{l.title}</button>
+            ))}
+            <button type="button" onClick={() => { setMenuFor(null); deleteCard(menuCard); }} className="w-full flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl text-start text-sm font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-500/10"><Trash2 className="w-4 h-4" />Delete card</button>
+          </div>
+        </Sheet>
+      )}
       {sharing && <ShareSheet board={data} onClose={() => setSharing(false)} onChanged={() => void mutate()} />}
       {automating && <AutomationsSheet boardId={id} lists={lists} people={data.people} onClose={() => setAutomating(false)} />}
     </>
@@ -230,7 +257,7 @@ function AddCard({ onAdd }: { onAdd: (title: string) => Promise<void> }) {
   );
 }
 
-function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; board: Board; onClose: () => void; onPatch: (p: Record<string, unknown>) => Promise<void>; onDelete: () => Promise<void> }) {
+function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; board: Board; onClose: () => void; onPatch: (p: Record<string, unknown>) => Promise<void>; onDelete: () => void }) {
   const [title, setTitle] = useState(card.title);
   const [notes, setNotes] = useState(card.notes ?? '');
   const [item, setItem] = useState('');
@@ -243,7 +270,8 @@ function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; bo
   const dateValue = day ? `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}` : '';
   return (
     <Sheet title="Card" onClose={onClose} footer={!ro ? (
-      <button type="button" onClick={async () => { if (await confirmDialog({ title: 'Delete this card?', destructive: true })) void onDelete(); }} className="text-sm font-semibold text-rose-600 inline-flex items-center gap-1.5"><Trash2 className="w-4 h-4" />Delete card</button>
+      // No "are you sure?": the message after it has Undo.
+      <button type="button" onClick={onDelete} className="text-sm font-semibold text-rose-600 inline-flex items-center gap-1.5"><Trash2 className="w-4 h-4" />Delete card</button>
     ) : undefined}>
       <div className="space-y-4">
         <div className="flex items-start gap-2">

@@ -8,6 +8,7 @@ import { FileUp, Loader2, Send } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
+import { FileDrop } from '@/components/ui/FileDrop';
 
 // A student asks to be excused (Stage 5 · Q11): a class, a day, why, and a document if there is
 // one (a doctor's note); the teacher answers, and an approved day shows as Excused.
@@ -71,7 +72,9 @@ export function StudentExcuses() {
           </label>
           <div className="sm:col-span-2 flex flex-wrap items-center gap-2">
             <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => void upload(e.target.files?.[0])} />
-            <button type="button" onClick={() => fileRef.current?.click()} disabled={!!busy} className="btn-secondary btn-sm">{busy === 'upload' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}{file ? 'Change document' : 'Add a document (optional)'}</button>
+            <FileDrop onFiles={(f) => void upload(f[0])} accept="image/*,application/pdf" disabled={!!busy}>
+              <button type="button" onClick={() => fileRef.current?.click()} disabled={!!busy} className="btn-secondary btn-sm">{busy === 'upload' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}{file ? 'Change document' : 'Add a document (optional)'}</button>
+            </FileDrop>
             {file && <span className="text-xs text-zinc-700 dark:text-zinc-300 truncate max-w-[14rem]">{file.name}</span>}
             <span className="flex-1" />
             <button type="button" onClick={() => setOpen(false)} className="btn-secondary btn-sm">Cancel</button>

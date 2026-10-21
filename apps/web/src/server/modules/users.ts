@@ -1,5 +1,5 @@
 import { Role, UserStatus, type Prisma } from '@prisma/client';
-import { oneOf } from '../body';
+import { oneOf, strings } from '../body';
 import type { Router } from '../router';
 import prisma from '@/lib/db';
 import { pick } from '../pick';
@@ -9,6 +9,7 @@ import { audit } from '../audit';
 import { currentApplication } from './applications';
 import { TERMS_VERSION } from '@/lib/terms-version';
 import { exportUserData } from '../export';
+import { bulkRole, bulkStatus, renewInvitation } from '../user-bulk';
 
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
 const INVITABLE: Role[] = ['STUDENT', 'TEACHER', 'ADMIN'];
@@ -198,6 +199,28 @@ export default function users(router: Router) {
     }
     audit(user, { action: 'user.invited', summary: `Invited ${toInvite.length} people as ${role}`, targetType: 'invitation', metadata: { count: toInvite.length, role } }, req);
     return { invited: toInvite.length, alreadyMembers: [...existing], invalid, expiresAt };
+  });
+
+  // "Resend": another 30 days (no email; the admin shares the sign-up link).
+  r.post<{ id: string }>('invitations/:id/renew', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
+    const done = await renewInvitation(params.id);
+    audit(user, { action: 'user.invitation_renewed', summary: `Renewed the invitation for ${done.email}`, targetType: 'invitation', targetId: done.id }, req);
+    return done;
+  });
+
+  // Several people at once (Admin → Users, Phase E): status, or a wrong role (no courses yet).
+  r.post('bulk/status', { roles: ['ADMIN'] }, async ({ body, user, req }) => {
+    if (!oneOf(USER_STATUSES, body?.status)) throw new BadRequestException(`status must be one of ${USER_STATUSES.join(', ')}`);
+    const out = await bulkStatus(user, strings(body?.ids), body.status);
+    if (out.changed) audit(user, { action: 'user.status_changed', summary: `Set ${out.changed} account${out.changed === 1 ? '' : 's'} to ${body.status}: ${out.names.slice(0, 10).join(', ')}${out.changed > 10 ? '…' : ''}`, targetType: 'user', metadata: { status: body.status, count: out.changed } }, req);
+    return out;
+  });
+  r.post('bulk/role', { roles: ['ADMIN'] }, async ({ body, user, req }) => {
+    const role = oneOf(['STUDENT', 'TEACHER'] as const, body?.role) ? body.role : null;
+    if (!role) throw new BadRequestException('Choose Student or Teacher.');
+    const out = await bulkRole(user, strings(body?.ids), role);
+    if (out.changed) audit(user, { action: 'user.role_changed', summary: `Made ${out.names.slice(0, 10).join(', ')}${out.changed > 10 ? '…' : ''} ${role === 'STUDENT' ? 'students' : 'teachers'}`, targetType: 'user', metadata: { role, count: out.changed } }, req);
+    return out;
   });
 
   r.delete<{ id: string }>('invitations/:id', { roles: ['ADMIN'] }, async ({ params, user, req }) => {

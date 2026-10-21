@@ -3,7 +3,170 @@
 Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
 done, where the code is and what's left for each item. Keep that table up to date as you go.
 
-## Review · Full bug and error review: done (21 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+## Next steps (written 21 Oct 2026 for whoever continues; do them in this order)
+
+Everything up to here is merged into main (PR #67). Next migration: **0172**. Work on a fresh branch
+from main; one commit per item or batch; push; merge only when the owner says "merge".
+
+1. ✅ **Done 21 Oct** (see "Phone smoothness, second pass" below). **Re-measure the last three phone fixes** (they pass the checks but weren't tried in a browser):
+   the Notifications panel (`src/components/layout/Topbar.tsx`: slides with a whole `transform`, rows
+   use the CSS `.stagger` cascade), the logo's ping (`.universe-ping` in `globals.css`, plays 5 times,
+   only when `animated`), and `.stagger` now `backwards` (cards keep their hover lift and press
+   scale). Build, serve, then `node scripts/smoothness.mjs http://localhost:8787`. Before the fixes,
+   at 4× slower CPU: Notifications open about 920 ms of long tasks (worst frame 450 ms), side menu
+   open about 300 ms, tab switches 390–750 ms, scrolling smooth (0–8 slow frames). Also check by eye:
+   the panel slides in and out on the right, and from the left in Arabic or Urdu (Settings →
+   Language); the rows cascade in; tapping a row still scales it; the home logo stops pinging.
+2. ✅ **Done 21 Oct** (see "Accessibility sweep, all four ways" below). **Re-run the accessibility sweep** on the new build: `node scripts/crawl.mjs --axe` (desktop
+   light), `--phone --dark --axe`, and the two not run yet: phone light and desktop dark. The
+   desktop-light list from before (`/student/impact/ai-match`, knowledge hub, study rooms, BeeSafe,
+   credentials, community, join, scholarships, tutoring, reels, legal links, marketplace selects)
+   was fixed in code; confirm and fix what's left.
+3. ✅ **Done 21 Oct** (below). **Side menu's first open** (`src/components/layout/Sidebar.tsx`): the tap adds `scroll-locked` to
+   `<body>`, and the next read forces a whole-page style recalculation (1,158 elements, about 210 ms at
+   4× slower CPU) inside the tap. Try locking scroll without a body class change (for example
+   `overscroll-behavior: contain` and `touch-action: none` on the drawer and backdrop, or set the lock
+   one frame after the drawer starts moving), then measure with
+   `node scripts/smoothness.mjs --profile "side menu"`.
+4. ✅ **Done 21 Oct**, partly (below). **Tab switches** cost 0.4–0.7 s of main-thread work on a slow phone (`/student` 750 ms, inbox 680,
+   NGO marketplace 570, courses 390). Profile each (`--profile "tab bar"`) and lighten the first
+   render: defer widgets below the fold, and replace per-row framer-motion entrances inside `.map()`
+   with the CSS `.stagger` cascade (the pattern that made Notifications slow).
+5. **Started 21 Oct: first batch of 10 done** ("Q24" below; the rest listed there). **Feature and button upgrades** (the owner's request): the rest of Phase E, listed in the Q23
+   Progress row's "what's left" (undo toasts, drag-and-drop and paste on file fields, bulk actions
+   and CSV export on tables, sticky headers and saved filters, long-press menus, "New items ↑" on
+   live lists, forward with comment, selecting several messages, device switch mid-call, colour per
+   course, language switch in the top bar, admin "Resend invite" and bulk role change, and so on).
+   Batches of about 10, as new tabs inside existing menus.
+6. Then anything the owner picks from "Waiting on the owner" in `START-HERE.md`.
+
+**How the slow spots were found** (repeat it for any new one): a Playwright phone (390 × 844, touch)
+with `Emulation.setCPUThrottlingRate` 4, `browser.startTracing` with the categories
+`devtools.timeline` and `disabled-by-default-devtools.timeline.invalidationTracking`, then sum the
+main thread's `UpdateLayoutTree` / `Layout` / `Paint` events and count the invalidation events by
+element and reason. That's how the endless SVG ping (SVG animations re-lay out and repaint every
+frame; they can't run on the GPU) and the per-row JS animations showed up. An idle page should
+show almost nothing.
+
+## Q25 · Phase E, fourth batch (10 items): code done, browser check pending (21 Oct 2026, merged at the owner's request)
+
+No migration (next: **0172**). **First thing next time:** build, serve, run
+`node scripts/checks/phase-e2-ui.mjs` and fix what it finds (it wasn't run before the merge).
+Rules for code that builds on it:
+
+- **Press and hold:** `useLongPress(onLong)` (`src/lib/use-long-press.ts`) → spread `bind(item)` on the
+  element and start its onClick with `if (press.wasLong()) return;`. A moving finger cancels it.
+  Task cards use it (the card sheet's Move to is how cards change list on a phone).
+- **Accent colour:** `ACCENTS` / `setAccent` in `src/lib/display-prefs.ts`, `data-accent` on `<html>`
+  (set by `DISPLAY_PREFS_SCRIPT` before paint); the tokens per accent are in `globals.css`
+  (`:root[data-accent=…]` and `:root.dark[data-accent=…]`, components layer). Use `bg-tint`,
+  `text-tint-text`, `btn-*` for anything that should follow it; `indigo-*` classes don't.
+- **Ringtone:** `RINGTONES`, `chosenRingtone`, `ringtone(waiting, which)` in `src/lib/call-sounds.ts`
+  (`uv-ringtone`; Vibrate only plays nothing).
+- **My course colours:** `useMyCourseColors()` / `setMyCourseColor(code, hex)`
+  (`src/lib/my-course-colors.ts`), keyed by course code, this device only; pass `mine[code] ?? color`
+  to `courseColor` / `courseShade`.
+- **Several chat messages:** ChatWindow's `picked` set (max 50); while choosing, a tap on a message
+  ticks it (`onClickCapture`), Escape stops. `ForwardDialog` takes `messages` (sent one by one, in
+  order). Copy takes text messages only (not private ones).
+- **Undo** now also on Files (files and folders), whiteboards and announcements (`removeWithUndo`).
+- **Share picture:** `public/og.jpg` (1200 × 630) via `metadataBase` + `openGraph.images` in
+  `src/app/layout.tsx` (`NEXT_PUBLIC_APP_URL`, else universeimpact.com).
+- **Time zones:** `zoneLabel()` (`src/lib/zone-label.ts`, browser only) under class calls and in the
+  schedule form. Timetable slots still have no zone (they're the school's own time).
+
+## Q24 · Phase E, third batch (10 items): done (21 Oct 2026, branch `claude/funny-galileo-y4mz9r`)
+
+No migration (next: **0172**). Rules for code that builds on it:
+
+- **Undo after a delete:** `removeWithUndo(label, { hide, restore, commit })` (`src/lib/undo.ts`): off
+  the screen at once, deleted when the message goes (5 s), Undo sends nothing. Used for task cards
+  (no "are you sure?" any more) and notifications (Notifications page); the course board's
+  `useRemove` is the same pattern. A deleted calendar event's Undo makes it again (a new event, same fields); archiving
+  a chat has Undo (it's a toggle). Deletes with server-side clean-up (docs, boards, users, courses)
+  still ask first: they'd need soft-delete columns for a real undo.
+- **Files dropped or pasted:** wrap a file button in `<FileDrop onFiles accept multiple>`
+  (`src/components/ui/FileDrop.tsx`, hook `useFileDrop` in `src/lib/use-file-drop.ts`); it keeps to
+  the field's `accept` list. On: assignment hand-in, excuse documents, course materials (already
+  there before: Files, chat, the editors, bulk import, Convert/Compress).
+- **CSV downloads:** `downloadCsv(name, header, rows)` from `src/lib/csv-download.ts` (formulas
+  neutralised, Excel-friendly). The fee screens re-export it; the owner console still has its own.
+- **Saved filters:** `useSavedViews<T>(key)` (`src/lib/saved-views.ts`): up to 8 named views on this
+  device. Admin → Users uses `uv-admin-users-views`.
+- **Admin → Users:** tick rows (or all shown) → Deactivate / Reactivate (`POST /users/bulk/status`,
+  200 at a time), Make students / Make teachers (`POST /users/bulk/role`, 20 at a time, **only people
+  with no courses**: anyone teaching or enrolled, admins, guardians, yourself and the owner are
+  skipped with the reason), Export (CSV). Column names stay on top (the table has its own scroll
+  box). Audit entries `user.status_changed` / `user.role_changed`. The read-only demo admin is
+  refused like every other write. Logic and tests: `src/server/user-bulk.ts`.
+- **Invitations:** Renew = another 30 days (`POST /users/invitations/:id/renew`, `user.invitation_renewed`);
+  no email is sent, so Copy link puts the sign-up address on the clipboard.
+- **Language:** `LanguageMenu` (`src/components/layout/LanguageMenu.tsx`) in the desktop top bar and
+  the phone's side menu (`row`); the button has no language-dependent text (server and browser
+  drawings match).
+- **Chat:** the jump button counts messages from others that arrived while reading further up
+  ("2 new"), not older ones loaded at the top. Forward takes an optional comment, sent after the
+  copy in each chat; private (end-to-end) chats aren't offered (they only take messages encrypted
+  on the device).
+- **Calls:** Speaker in the call's settings where the browser can (`setSinkId`: Chrome, Edge,
+  Firefox; not Safari on iPhone), kept in `uv-call-speaker` and applied to every remote tile
+  (`playOnSpeaker`); the device lists follow a headset plugged in or out while settings are open.
+- **What's left of Phase E:** selecting several messages, long-press menus beyond chats, colour per
+  course (a student's own), ringtone choice, time zone on online classes, accent colours, app icon
+  choice, scheduled report exports, bulk actions / CSV / sticky headers / saved views on the other
+  admin tables, Undo on the remaining deletes, drop and paste on the remaining file fields, and the
+  public-site list (pricing toggle, FAQ, status page link, blog, OpenGraph images).
+
+## Accessibility sweep, all four ways: done (21 Oct 2026, same branch)
+
+`node scripts/crawl.mjs --axe` with and without `--phone` and `--dark` (183 pages, every role; the
+two never run before were phone light and desktop dark). Each run: 178–179 pages clean before the
+fixes. Fixed: the Terms and Privacy pages' "policies" link (colour only, now underlined), the
+study rooms search card's labels (the card is dark in both modes, but light mode's darker greys
+applied: it's now `.on-dark`, and `.on-dark` areas get dark mode's lighter greys, like `.dark`; mark
+any new always-dark card the same way), the teacher analytics trend's first and last week buttons
+(cut to 12 px on phones: now equal slices of at least 24 px), the ⌘K hint in the top bar search
+(too dark in dark mode). The parent pages were never crawled: there was no local parent account;
+`scripts/local/test-accounts.mjs` now makes `test-parent@local.test` (Alice's parent), and they're
+clean. The only thing left in every run is `/js/api.js` failing to load (an outside script this
+machine can't reach; not a page problem).
+
+## Phone smoothness, second pass: done (21 Oct 2026, branch `claude/funny-galileo-y4mz9r`)
+
+No migration (next: **0172**). Measured with `node scripts/smoothness.mjs` (two runs) and the new
+`node scripts/checks/phone-panels.mjs` on the built Worker, 4× slower CPU, long tasks:
+Notifications open 920 → ~260 ms (worst frame 450 → ~185), side menu open ~300 → ~70 ms (it restyled
+1,059 elements, now 28), tab switches: Impact 570–770 → ~530, Courses ~400 → ~315, Messages
+510–680 → ~450, Home 750–790 → ~460 (one run 1,130: the lower cards draw inside the measured 1.5 s).
+Scrolling stays smooth. Rules for code that builds on it:
+
+- **`::selection` is under `body` (`:where(body) ::selection`), never bare.** A bare `::selection`
+  (it matches `<html>` too) made Chrome work out a selection style for every element on every
+  restyle: a full restyle of Home took 25 ms instead of 0.4 ms (×4 on a slow phone). The same goes
+  for any new page-wide pseudo-element rule: measure it (`getComputedStyle` timing after changing a
+  style on `<html>`).
+- **Never change `<body>`'s `touch-action`** (or add a class that does): it restyles every element.
+  The side menu now blocks finger scrolling on its backdrop and fixed parts (`touch-none`) and its
+  list doesn't pass scrolling on (`overscroll-contain`); `body.scroll-locked` is gone.
+- **`* { touch-action: manipulation }` is in `@layer base`.** Outside a layer it beat every
+  Tailwind `touch-none` in the app (drawing areas, drag handles, sliders), so those scrolled the page.
+  Unlayered rules in `globals.css` always beat utilities: put new element-wide rules in a layer.
+- **The phone tab bar's capsule is one CSS-positioned element** (`.tabbar-pill`, moved by `--col`,
+  mirrored right to left), not a framer-motion `layoutId`. Shared-layout animations make framer-motion
+  measure the page and every animated element on each frame; avoid `layoutId` / `layout` on things
+  that change on every navigation. The side menu's highlight only glides when the menu is on screen.
+- **Entrances in CSS:** lists and grids use `.stagger` on the parent; a single card uses `.rise-in`
+  with an inline `animationDelay`; progress bars use `.bar-grow` (scaleX, from the start side). Not
+  framer-motion `initial`/`animate` per row inside `.map()` (Home, Courses, Impact projects and the
+  chat list were changed).
+- **Home draws its first cards first** (`HomeBoard`: the top cards and the first two of the main
+  column, the rest 250 ms later; all at once while editing). The Notifications panel draws 12 rows,
+  the rest 450 ms after it opens. Escape closes it.
+- What's left: most of a tab switch is now the browser laying out the new page for the first time
+  (Next.js forces it while deciding whether to scroll); fewer elements on first render is the way
+  down. The course tile → course page step is ~400–500 ms.
+
+## Review · Full bug and error review: done, first pass (21 Oct 2026, merged into main in PR #67)
 
 Migration `0171_job_runs` (next: **0172**). Rules for code that builds on it:
 
@@ -39,7 +202,7 @@ Migration `0171_job_runs` (next: **0172**). Rules for code that builds on it:
   (co-teacher) and Tom (TA on CS101), local only. `scripts/crawl.mjs --dark --axe`,
   `scripts/smoothness.mjs` (phone, CPU 4× slower: frames over 34 ms and long tasks per action).
 
-## Q23 · Small items (Phase E), two batches: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+## Q23 · Small items (Phase E), two batches: done (20 Oct 2026, merged into main 21 Oct in PR #67)
 
 Twelve items, no migration. Rules for code that builds on it:
 
@@ -63,7 +226,7 @@ Twelve items, no migration. Rules for code that builds on it:
 - **Keyboard shortcuts** (`src/components/layout/KeyboardHelp.tsx`): `?` and `/` are ignored while
   typing or inside a dialog. Add new app-wide shortcuts to its list.
 
-## Q22b · The Q22 leftovers the owner asked for: done (20 Oct 2026, same branch, not merged)
+## Q22b · The Q22 leftovers the owner asked for: done (20 Oct 2026, merged into main 21 Oct in PR #67)
 
 Mastery signals from flashcards and tutor questions (D1), a hybrid class (D7), the converter extras
 (B9) and the school-admin extras (B15). Migrations **0167** (`concept_signals`, `study_cards.conceptId`),
@@ -96,7 +259,7 @@ Mastery signals from flashcards and tutor questions (D1), a hybrid class (D7), t
 - **Barcodes** are Code 128 set B (`src/lib/code128.ts`); a library card is `L:<userId>`, which
   the desk's borrower search understands.
 
-## Q22 · Leftovers inside finished items: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+## Q22 · Leftovers inside finished items: done (20 Oct 2026, merged into main 21 Oct in PR #67)
 
 Nine leftovers; the rest stay listed in the Progress row "Q22" with why. Migrations **0165**
 (AI rule and receipts on quizzes and oral checks) and **0166** (the class TA's answers on in-person
@@ -125,7 +288,7 @@ questions). Rules for code that builds on it:
 - **Class content translation** tries the browser's own Translator first (`src/lib/device-translate.ts`,
   Chrome; skipped on data saver), then the AI.
 
-## Q21 · Languages and right to left: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+## Q21 · Languages and right to left: done (20 Oct 2026, merged into main 21 Oct in PR #67)
 
 13 languages; Arabic and Urdu right to left. Details in the Progress row "Q21". Rules:
 
@@ -149,7 +312,7 @@ questions). Rules for code that builds on it:
 - **Dictionary storage:** `ui_translations` (0164), 32 parts per language by FNV hash of the English
   text (`chunkOf`); `GET /api/i18n/:lang` joins the parts' JSON as text (no parse: CPU) with an ETag.
 
-## Q20 · Chat apps: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+## Q20 · Chat apps: done (20 Oct 2026, merged into main 21 Oct in PR #67)
 
 A school's own slash commands, answered by its own server. Details in the Progress row "Q20".
 
@@ -181,7 +344,7 @@ A school's own slash commands, answered by its own server. Details in the Progre
 - **Also for the review:** the course tiles on Student → Courses put white letters on the course
   colour (#3b82f6 is 3.67:1); seen in English too (20 Oct).
 
-## Q19 · Owner console: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+## Q19 · Owner console: done (20 Oct 2026, merged into main 21 Oct in PR #67)
 
 Schools, Moderation and View as in the owner console, a rollout card on the Server tab, growth
 charts. Details in the Progress row "Q19". Rules for code that builds on it:
