@@ -3,8 +3,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { usePendingNav } from '@/lib/nav-pending';
-import { EASE_IOS, EASE_OUT, LEAVE_MS, enterFrames, enterMs, leaveFrames, movingParts, pageEntranceShown, pageMotion, reducedMotion } from '@/lib/page-transition';
-import { PageSkeleton } from './PageSkeleton';
+import { EASE_IOS, EASE_OUT, LEAVE_MS, REVEAL_GAP_MS, REVEAL_MS, enterFrames, enterMs, leaveFrames, movingParts, pageEntranceShown, pageMotion, reducedMotion, revealFrames, revealParts } from '@/lib/page-transition';
+import { PageSkeleton, skeletonFor } from './PageSkeleton';
 
 // Past this, a page that's still downloading shows its loading skeleton (pages open without
 // prefetching, to keep requests low, so a first visit takes a moment on the free plan).
@@ -18,7 +18,7 @@ function animate(running: Ref<Animation[]>, targets: Element[], frames: Keyframe
   running.current = [];
   // "Reduce Motion": the page fades instead of sliding (like iOS), rather than changing with no motion.
   const calm = reducedMotion();
-  const keyframes = calm ? frames.map(({ transform: _transform, ...rest }) => rest) : frames;
+  const keyframes = calm ? frames.map((f) => { const rest = { ...f }; delete rest.transform; return rest; }) : frames;
   const timing = calm ? { ...options, duration: Math.min(Number(options.duration) || 200, 200) } : options;
   running.current = targets.filter((t) => typeof (t as HTMLElement).animate === 'function').map((t) => t.animate(keyframes, timing));
   return running.current;
@@ -78,19 +78,55 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
     animate(running, stage.current ? [stage.current] : [], [{ opacity: 0.4 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' });
   }, [skeleton]);
 
-  // The new page is on screen (before it's painted): it comes in.
+  // The new page is on screen (before it's painted): it comes in. Deeper and back slide the whole
+  // page; otherwise it assembles itself: the title at once, then the tabs and each block of the
+  // content rising in one after another (the way a well-made app's screen loads).
   useLayoutEffect(() => {
     if (shown.current === pathname) return;
     shown.current = pathname;
     const m = pageMotion();
     pageEntranceShown();
-    animate(running, targets(m), enterFrames(m), { duration: enterMs(m), easing: EASE_OUT });
+    if (m === 'push' || m === 'pop' || m === 'shared' || reducedMotion()) {
+      animate(running, targets(m), enterFrames(m), { duration: enterMs(m), easing: EASE_OUT });
+      return;
+    }
+    for (const a of running.current) a.cancel();
+    running.current = revealParts(page(), m).filter((t) => typeof (t as HTMLElement).animate === 'function')
+      .map((t, i) => t.animate(revealFrames(i), { duration: REVEAL_MS, delay: Math.min(i, 8) * REVEAL_GAP_MS, easing: EASE_OUT, fill: 'backwards' }));
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Data arriving where a loading placeholder was: what replaces it fades in where it stood (one
+  // after another for a list), instead of popping in. Watches for placeholders leaving the page.
+  useEffect(() => {
+    const root = stage.current;
+    if (!root || typeof MutationObserver === 'undefined') return;
+    const isPlaceholder = (n: Element) => n.classList.contains('skeleton') || n.matches('[aria-busy="true"], [role="status"][aria-label="Loading"]')
+      || (n.childElementCount === 1 && !!n.firstElementChild?.matches('svg.animate-spin')) // a box with just a spinner
+      || (n.childElementCount > 0 && n.childElementCount < 40 && !!n.querySelector(':scope > .skeleton, :scope > * > .skeleton'));
+    const observer = new MutationObserver((records) => {
+      if (reducedMotion()) return;
+      let placeholderLeft = false;
+      const added: HTMLElement[] = [];
+      for (const r of records) {
+        r.removedNodes.forEach((n) => { if (!placeholderLeft && n instanceof Element && isPlaceholder(n)) placeholderLeft = true; });
+        r.addedNodes.forEach((n) => { if (n instanceof HTMLElement) added.push(n); });
+      }
+      if (!placeholderLeft) return;
+      added.filter((n) => n.isConnected && !isPlaceholder(n) && !n.matches('[data-page-path]') && !n.querySelector('[data-page-path]') && n.getBoundingClientRect().height > 0).slice(0, 12)
+        .forEach((n, i) => {
+          // Something as big as the screen comes in from half visible (never a blank screen).
+          const big = n.getBoundingClientRect().height > window.innerHeight * 0.5;
+          n.animate(big ? [{ opacity: 0.4 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translate3d(0, 6px, 0)' }, { opacity: 1, transform: 'none' }], { duration: 260, delay: Math.min(i, 8) * 35, easing: EASE_OUT, fill: 'backwards' });
+        });
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div ref={stage} className="page-stage flex flex-col flex-1 min-w-0">
       <div className={skeleton ? 'hidden' : 'contents'}>{children}</div>
-      {skeleton && <PageSkeleton />}
+      {skeleton && <PageSkeleton variant={skeletonFor(pending ?? pathname)} />}
     </div>
   );
 }

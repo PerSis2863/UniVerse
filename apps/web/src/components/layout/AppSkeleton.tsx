@@ -1,5 +1,9 @@
+'use client';
+
 import { LaunchSplash } from './LaunchSplash';
 import { LogoMark } from '@/components/ui/LogoMark';
+import { usePathname } from 'next/navigation';
+import { PageSkeleton, skeletonFor } from './PageSkeleton';
 
 /**
  * Shown while the session is being restored, so the dashboard never flashes a blank screen. Shaped
@@ -7,6 +11,7 @@ import { LogoMark } from '@/components/ui/LogoMark';
  * floating tab bar), so nothing jumps or pops in when the app appears.
  */
 export function AppSkeleton() {
+  const pathname = usePathname();
   return (
     <div className="flex min-h-[100dvh]" aria-busy="true" aria-label="Loading">
       <LaunchSplash />
@@ -24,22 +29,10 @@ export function AppSkeleton() {
         <span className="font-bold text-[17px] tracking-tight text-zinc-900 dark:text-white">UniVerse</span>
       </div>
 
-      <div className="mobile-main flex-1 lg:ms-64 min-w-0">
-        <div className="px-4 pt-3 pb-2 lg:px-8 lg:pt-0 lg:h-16 lg:flex lg:flex-col lg:justify-center space-y-2">
-          <div className="skeleton h-9 w-52 rounded-xl lg:h-6 lg:w-48" />
-          <div className="skeleton h-3.5 w-64 rounded-lg" />
-        </div>
-        <div className="p-4 md:p-8 space-y-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="skeleton h-28 rounded-2xl" />
-            ))}
-          </div>
-          <div className="grid lg:grid-cols-3 gap-4">
-            <div className="skeleton lg:col-span-2 h-72 rounded-2xl" />
-            <div className="skeleton h-72 rounded-2xl" />
-          </div>
-        </div>
+      {/* The same placeholder the page itself shows while it loads (shaped like this page), so
+          opening the app goes from one to the other with nothing in between. */}
+      <div className="mobile-main flex-1 lg:ms-64 min-w-0 flex flex-col">
+        <PageSkeleton variant={skeletonFor(pathname)} />
       </div>
 
       {/* Phones: the floating tab bar */}

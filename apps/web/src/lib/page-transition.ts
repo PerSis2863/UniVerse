@@ -56,10 +56,37 @@ export function leaveFrames(m: PageMotion): Keyframe[] {
 
 /** The new page coming in. */
 export function enterFrames(m: PageMotion): Keyframe[] {
-  if (m === 'shared') return [{ opacity: 0 }, { opacity: 1 }];
+  // Never from fully transparent: the first frames would show an empty screen.
+  if (m === 'shared') return [{ opacity: 0.3 }, { opacity: 1 }];
   const from = m === 'push' ? 'translate3d(36px, 0, 0)' : m === 'pop' ? 'translate3d(-36px, 0, 0)' : m === 'tab' ? 'translate3d(0, 8px, 0)' : 'translate3d(0, 10px, 0) scale(0.996)';
-  return [{ opacity: 0, transform: from }, { opacity: 1, transform: 'none' }];
+  return [{ opacity: 0.3, transform: from }, { opacity: 1, transform: 'none' }];
 }
+
+/**
+ * The parts of an arriving page, in reading order, for its entrance one after another (like a page
+ * assembling itself): the title, the tab bar, then each block of the content (the big content area
+ * is split into its own blocks). Lists that already cascade (.stagger) and empty or hidden parts
+ * are left to themselves. At most 10, the rest arrive with the last.
+ */
+export function revealParts(page: Element | null, m: PageMotion): Element[] {
+  if (!page) return [];
+  const shown = (el: Element) => { const r = el.getBoundingClientRect(); return r.height > 0 && r.width > 0; };
+  const top = m === 'tab' ? movingParts(page) : Array.from(page.children);
+  const parts: Element[] = [];
+  for (const el of top.filter(shown)) {
+    const big = el.children.length > 1 && el.getBoundingClientRect().height > window.innerHeight * 0.4 && !el.classList.contains('stagger');
+    if (big) parts.push(...Array.from(el.children).filter(shown));
+    else parts.push(el);
+  }
+  return parts.filter((el) => !el.classList.contains('stagger')).slice(0, 10);
+}
+
+/** One part's entrance: the first is visible at once (never a blank screen), the rest rise in. */
+export function revealFrames(i: number): Keyframe[] {
+  return [{ opacity: i === 0 ? 0.35 : 0, transform: i === 0 ? 'none' : 'translate3d(0, 10px, 0)' }, { opacity: 1, transform: 'none' }];
+}
+export const REVEAL_MS = 320;
+export const REVEAL_GAP_MS = 45;
 
 /** Durations in ms: quick enough that the page's information is there almost at once. */
 export const LEAVE_MS = 170;

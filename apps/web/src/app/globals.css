@@ -889,7 +889,9 @@ html, body { overflow-x: clip; max-width: 100%; }
 .page-push { animation: page-push 380ms var(--ease-ios); }
 .page-pop { animation: page-pop 380ms var(--ease-ios); }
 /* The app fades in once it's ready after a reload, instead of snapping over its placeholder. */
-.shell-in { animation: backdrop-in 260ms ease-out; }
+/* The app fading in after the installed app's launch screen (LaunchSplash). Not in a browser tab:
+   there the start-up placeholder is replaced in place, and a fade from nothing showed a blank screen. */
+@media (display-mode: standalone) { .shell-in { animation: backdrop-in 260ms ease-out; } }
 
 /* Lists and card grids: children glide in with a short cascade (the first 12, 30 ms apart; the
    rest with the 12th). transform/opacity only and nothing left behind afterwards (`backwards`: the
@@ -1124,7 +1126,9 @@ html, body { overflow-x: clip; max-width: 100%; }
 @keyframes skeleton-sweep { from { background-position: 150% 0; } to { background-position: -50% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; background-image: none; } }
 /* A loading placeholder fades in instead of popping (a quick 140 ms, so it never feels slower). */
-.skeleton-in { animation: backdrop-in 140ms ease-out; }
+/* Placeholders come in from half visible: from nothing, the first frames looked like a blank page. */
+@keyframes skeleton-in { from { opacity: 0.5; } }
+.skeleton-in { animation: skeleton-in 140ms ease-out; }
 
 /* Press feedback: controls whose own utilities only animate colours (\`transition-colors\`, the
    usual case) would snap back from the pressed scale. Unlayered, so it adds scale to their list. */

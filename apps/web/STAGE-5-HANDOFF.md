@@ -48,6 +48,31 @@ element and reason. That's how the endless SVG ping (SVG animations re-lay out a
 frame; they can't run on the GPU) and the per-row JS animations showed up. An idle page should
 show almost nothing.
 
+## S1 · Smooth loading everywhere: done (21 Oct 2026, owner request)
+
+The owner sent a screen recording of AgentGPT reloading: the page dims, a placeholder in the page's
+own shape appears, then the window and its parts come in one after another, with nothing jumping.
+UniVerse had a blank frame on reload (the shell faded in from 0 after the start-up skeleton), one
+generic grey layout for every page, and the whole new page fading in from nothing.
+
+- **Placeholders shaped like the page:** `src/components/layout/PageSkeleton.tsx` has four variants
+  (`dashboard`, `list`, `cards`, `detail`) and `skeletonFor(path)` picks one from the address. Used by
+  `AppSkeleton` (start-up, now a client component reading the path), `(dashboard)/loading.tsx` and
+  `PendingPage` (while a tapped page downloads, the pending path decides). A new kind of page: add
+  its address to the right list in `skeletonFor`.
+- **Part-by-part entrance:** `PendingPage`'s entrance animates `revealParts(page, motion)` (the
+  page's top parts; a big wrapper is split into its children; `.stagger` lists are left to their own
+  cascade; at most 10) with `revealFrames(i)`, 45 ms apart, `fill: 'backwards'`. Back/forward,
+  shared-element moves and reduced motion keep the single whole-page animation.
+- **Late content fades in:** a `MutationObserver` on the stage in `PendingPage` notices when a
+  placeholder leaves (`.skeleton`, `aria-busy="true"`, `role="status"` + `aria-label="Loading"`, a
+  box holding only a spinner) and fades in what replaced it (up to 12 nodes, 260 ms). So a component
+  only needs a normal loading state; don't add your own entrance for "data arrived".
+- `.shell-in` (the start-up fade) only plays in the installed app (`display-mode: standalone`),
+  where the launch splash covers it.
+- How it was checked: Chrome screencast frames (CDP `Page.startScreencast`) on a phone at 4× slower
+  CPU, made into contact sheets; compare frame by frame for blank or jumping frames.
+
 ## Q25 · Phase E, fourth batch (10 items): done (21 Oct 2026; merged in PR #68, fixes after it on the same branch)
 
 No migration (next: **0172**). Tested with `node scripts/checks/phase-e2-ui.mjs` (after the merge:
