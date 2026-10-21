@@ -1,8 +1,10 @@
-import prisma from '@/lib/db';
+import prisma, { queriesUsed } from '@/lib/db';
+import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
 import { notify, notifyMany } from './email';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from './http';
 import { can, need } from './permissions';
+import { publish } from './realtime';
 
 // The library (Stage 5 · B15.4). Librarians (admins, or staff with library.manage) add books (by
 // ISBN, looked up on Open Library: free, no key) with their copies, each with a barcode; lend a
@@ -68,10 +70,15 @@ export function fineFor(due: Date, returned: Date, perDay: number, cap: number) 
   return cap > 0 ? Math.min(fine, cap) : fine;
 }
 
-/** Holds whose kept copy wasn't collected in time: they expire and the copy goes to the next person (up to 20 at a time). */
+/**
+ * Holds whose kept copy wasn't collected in time: they expire and the copy goes to the next person.
+ * A few at a time (about 8 queries each, and this runs when library pages open: D1 answers 50 a
+ * request); any left over go on the next visit.
+ */
 async function expireHolds() {
-  const late = await prisma.libraryHold.findMany({ where: { status: 'READY', readyUntil: { lt: new Date() } }, take: 20, select: { id: true, copyId: true, bookId: true } });
+  const late = await prisma.libraryHold.findMany({ where: { status: 'READY', readyUntil: { lt: new Date() } }, take: 4, select: { id: true, copyId: true, bookId: true } });
   for (const h of late) {
+    if (queriesUsed() > 30) break;
     await prisma.libraryHold.update({ where: { id: h.id }, data: { status: 'EXPIRED' } });
     if (h.copyId) await passOn(h.copyId, h.bookId);
   }
@@ -320,7 +327,9 @@ export async function deskAction(user: SessionUser, b: Record<string, unknown>) 
       // One notice per person, listing their late books.
       const byPerson = new Map<string, string[]>();
       for (const l of late) byPerson.set(l.borrowerId, [...(byPerson.get(l.borrowerId) ?? []), l.copy.book.title]);
-      for (const [id, titles] of byPerson) await notify(id, { type: 'library', title: titles.length === 1 ? `Please return: ${titles[0]}` : `Please return ${titles.length} library books`, body: `${titles.slice(0, 3).join(', ')}${titles.length > 3 ? '…' : ''} ${titles.length === 1 ? 'is' : 'are'} past the due date.`, link: '/library', email: false });
+      // One insert for everyone (one notify() each was two queries a person: past D1's 50 a request).
+      await prisma.notification.createMany({ data: [...byPerson].map(([userId, titles]) => ({ userId, type: 'library', title: titles.length === 1 ? `Please return: ${titles[0]}` : `Please return ${titles.length} library books`, body: `${titles.slice(0, 3).join(', ')}${titles.length > 3 ? '…' : ''} ${titles.length === 1 ? 'is' : 'are'} past the due date.`, link: '/library' })) });
+      publish([...byPerson.keys()].slice(0, planLimits().livePushes), { type: 'notification' });
       await prisma.libraryLoan.updateMany({ where: { id: { in: late.map((l) => l.id) } }, data: { remindedAt: new Date() } });
       return { reminded: byPerson.size, loans: late.length };
     }

@@ -383,44 +383,34 @@ export async function importPackIntoCourse(params: {
 
   let totalItemsImported = 0;
 
-  // Deep-copy each module and its items
-  for (const mod of modules) {
-    const createdMod = await prisma.courseModule.create({
-      data: {
-        courseId: params.targetCourseId,
-        title: mod.title,
-        summary: mod.summary || null,
-        position: basePosition++,
-        published: true,
-      },
-      select: { id: true },
-    });
-
-    if (mod.items && mod.items.length > 0) {
-      let itemPos = 0;
-      for (const item of mod.items) {
-        // A pack is whatever its publisher sent: only pages, links and videos (nothing else carries
-        // over without the course's own quizzes and files), web links, and pages checked like a teacher's.
-        const kind = item.kind || 'PAGE';
-        if (!['PAGE', 'LINK', 'VIDEO'].includes(kind) || typeof item.title !== 'string' || !item.title.trim()) continue;
-        const url = kind === 'PAGE' ? null : typeof item.url === 'string' && /^https?:\/\//i.test(item.url) ? item.url.slice(0, 1000) : null;
-        if (kind !== 'PAGE' && !url) continue;
-        let body: string | null = null;
-        if (kind === 'PAGE') { try { body = cleanPageBody(item.body) || null; } catch (e) { if (!(e instanceof LessonPageError)) throw e; } }
-        await prisma.moduleItem.create({
-          data: {
-            moduleId: createdMod.id,
-            title: item.title.trim().slice(0, 200),
-            kind,
-            body,
-            url,
-            position: itemPos++,
-          },
-        });
-        totalItemsImported++;
-      }
+  // Deep-copy each module and its items: everything checked first, then two inserts (one create per
+  // module and item was past D1's 50 queries a request for a pack of any size, and stopped halfway).
+  const newId = () => `c${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
+  const moduleRows: { id: string; courseId: string; title: string; summary: string | null; position: number; published: boolean }[] = [];
+  const itemRows: { moduleId: string; title: string; kind: string; body: string | null; url: string | null; position: number }[] = [];
+  for (const mod of modules.slice(0, 50)) {
+    const id = newId();
+    moduleRows.push({ id, courseId: params.targetCourseId, title: String(mod.title ?? 'Module').slice(0, 200), summary: mod.summary || null, position: basePosition++, published: true });
+    let itemPos = 0;
+    for (const item of (mod.items ?? []).slice(0, 200)) {
+      // A pack is whatever its publisher sent: only pages, links and videos (nothing else carries
+      // over without the course's own quizzes and files), web links, and pages checked like a teacher's.
+      const kind = item.kind || 'PAGE';
+      if (!['PAGE', 'LINK', 'VIDEO'].includes(kind) || typeof item.title !== 'string' || !item.title.trim()) continue;
+      const url = kind === 'PAGE' ? null : typeof item.url === 'string' && /^https?:\/\//i.test(item.url) ? item.url.slice(0, 1000) : null;
+      if (kind !== 'PAGE' && !url) continue;
+      let body: string | null = null;
+      if (kind === 'PAGE') { try { body = cleanPageBody(item.body) || null; } catch (e) { if (!(e instanceof LessonPageError)) throw e; } }
+      itemRows.push({ moduleId: id, title: item.title.trim().slice(0, 200), kind, body, url, position: itemPos++ });
     }
   }
+  if (moduleRows.length) await prisma.courseModule.createMany({ data: moduleRows });
+  // Long pages one at a time (D1's statement size), the rest together, as the course package import does.
+  const big = itemRows.filter((r) => (r.body?.length ?? 0) > 50_000);
+  for (const r of big) await prisma.moduleItem.create({ data: r });
+  const rest = itemRows.filter((r) => !big.includes(r));
+  if (rest.length) await prisma.moduleItem.createMany({ data: rest });
+  totalItemsImported = itemRows.length;
 
   // Record import transaction
   await prisma.marketplaceImport.create({

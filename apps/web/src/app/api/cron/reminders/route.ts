@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { queriesUsed } from '@/lib/db';
 import { remindDueCalls, sendDueReminders } from '@/server/scheduled-calls';
 import { remindSupportFollowUps } from '@/server/support-plans';
 import { sendDueScheduled } from '@/server/scheduled-messages';
@@ -24,27 +25,34 @@ export async function POST(req: Request) {
   if (!token || !globalThis.__universeCronToken || token !== globalThis.__universeCronToken) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
-  const calls = await remindDueCalls();
-  const reminders = await sendDueReminders().catch((e) => (console.error('chat reminders failed:', e), 0));
-  // Early help: 7-day follow-ups of study plans (upgrade 3)
-  const followUps = await remindSupportFollowUps().catch((e) => (console.error('support plan follow-ups failed:', e), 0));
-  // Chat messages scheduled to send now (Stage 4 · 1.4)
-  const scheduled = await sendDueScheduled().catch((e) => (console.error('scheduled messages failed:', e), null));
-  // Morning briefs due now (Stage 4 · 4.9)
-  const briefs = await sendMorningBriefs().catch((e) => (console.error('morning briefs failed:', e), null));
-  // Parent–teacher meetings starting soon (Stage 5 · B16.3)
-  const meetings = await remindParentMeetings().catch((e) => (console.error('parent meeting reminders failed:', e), null));
-  // Task board automations: cards due within a day (Stage 5 · B9.10)
-  const dueTasks = await remindDueTasks().catch((e) => (console.error('due task automations failed:', e), null));
-  // Parents' weekly summaries (Stage 5 · D16)
-  const parentWeeks = await sendWeeklySummaries().catch((e) => (console.error('parent weekly summaries failed:', e), null));
-  // Course announcements scheduled for now (Stage 5 · B2)
-  const announcements = await sendDueAnnouncements().catch((e) => (console.error('scheduled announcements failed:', e), null));
-  // Daily notification summaries due now (Stage 5 · Q9)
-  const digests = await sendDigests().catch((e) => (console.error('notification summaries failed:', e), null));
-  // Evening flashcard reminders (Stage 5 · Q13)
-  const cards = await sendCardReminders().catch((e) => (console.error('flashcard reminders failed:', e), null));
-  // Application tracker next steps within the hour (Stage 5 · Q15)
-  const applications = await remindApplications().catch((e) => (console.error('application reminders failed:', e), null));
-  return NextResponse.json({ ...calls, reminders, followUps, scheduled, briefs, meetings, dueTasks, parentWeeks, announcements, digests, cards, applications });
+  // Most urgent first. They share this run's 50 queries (Workers Free): when it's nearly used up,
+  // the rest wait for the next run 15 minutes later (they're still due, so the check starts it).
+  const jobs: [string, () => Promise<unknown>][] = [
+    ['calls', () => remindDueCalls()],
+    // Parent–teacher meetings starting soon (Stage 5 · B16.3)
+    ['meetings', () => remindParentMeetings()],
+    // Chat messages scheduled to send now (Stage 4 · 1.4), course announcements scheduled for now (Stage 5 · B2)
+    ['scheduled', () => sendDueScheduled()],
+    ['announcements', () => sendDueAnnouncements()],
+    ['reminders', () => sendDueReminders()],
+    // Task board automations: cards due within a day (Stage 5 · B9.10); application next steps (Q15)
+    ['dueTasks', () => remindDueTasks()],
+    ['applications', () => remindApplications()],
+    // Early help: 7-day follow-ups of study plans (upgrade 3)
+    ['followUps', () => remindSupportFollowUps()],
+    // Morning briefs (Stage 4 · 4.9), parents' weekly summaries (D16), daily notification summaries (Q9), evening flashcards (Q13)
+    ['briefs', () => sendMorningBriefs()],
+    ['parentWeeks', () => sendWeeklySummaries()],
+    ['digests', () => sendDigests()],
+    ['cards', () => sendCardReminders()],
+  ];
+  const out: Record<string, unknown> = {};
+  const waiting: string[] = [];
+  for (const [name, run] of jobs) {
+    if (queriesUsed() > 38) { waiting.push(name); continue; }
+    out[name] = await run().catch((e) => (console.error(`${name} reminders failed:`, e), null));
+  }
+  const calls = (out.calls ?? {}) as Record<string, unknown>;
+  delete out.calls;
+  return NextResponse.json({ ...calls, ...out, waiting, queries: queriesUsed() });
 }

@@ -33,9 +33,11 @@ vi.mock('@/lib/db', () => ({
       findFirst: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
+      createMany: vi.fn(),
     },
     moduleItem: {
       create: vi.fn(),
+      createMany: vi.fn(),
     },
   },
 }));
@@ -228,15 +230,12 @@ describe('Stage 5 · C7: Content Marketplace', () => {
       expect(res.success).toBe(true);
       expect(res.modulesImported).toBe(1);
       expect(res.itemsImported).toBe(2);
-      expect(prisma.courseModule.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            courseId: 'crs-1',
-            title: 'Module A',
-            position: 4, // positioned after existing position 3
-          }),
-        }),
-      );
+      // Two inserts for the whole pack (D1 answers 50 queries a request).
+      const mods = vi.mocked(prisma.courseModule.createMany).mock.calls[0][0] as { data: { id: string; courseId: string; title: string; position: number }[] };
+      expect(mods.data).toEqual([expect.objectContaining({ courseId: 'crs-1', title: 'Module A', position: 4 })]); // after existing position 3
+      const items = vi.mocked(prisma.moduleItem.createMany).mock.calls[0][0] as { data: { moduleId: string; title: string; kind: string; url: string | null }[] };
+      expect(items.data.map((i) => [i.moduleId, i.title, i.kind])).toEqual([[mods.data[0].id, 'Item 1', 'PAGE'], [mods.data[0].id, 'Item 2', 'LINK']]);
+      expect(prisma.moduleItem.create).not.toHaveBeenCalled();
       expect(prisma.marketplacePack.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'pack-1' },
