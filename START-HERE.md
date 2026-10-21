@@ -8,17 +8,17 @@ Cursor's).
 
 ## Where things stand (21 October 2026)
 
-- **`main` has everything through Q25** (merged 21 Oct): the full review, the phone smoothness second
-  pass, the accessibility sweep at phone and desktop sizes in light and dark, and Phase E batches
-  three and four (Q24, Q25: undo, drag-and-drop and paste on file fields, bulk actions on Admin →
-  Users, the language button, choosing several chat messages, accent colour, ringtone, course
-  colours, the share picture and more).
+- **`main` has everything through Q26** (merged 21 Oct): the full review, the phone smoothness second
+  pass, the accessibility sweep, Phase E (Q23–Q26: undo, drag-and-drop and paste on file fields, bulk
+  actions on Admin → Users, choosing several chat messages, accent colour, ringtone, course colours,
+  scheduled report exports, CSV on the admin tables, a public blog written in the owner console) and
+  smooth loading everywhere (S1: placeholders shaped like the page, parts arriving in turn).
 - **The plan:** `apps/web/STAGE-5-PLAN.md`. Section 4 "Remaining work queue" lists every item in
   order, and the **Progress** table at the end says what's done, where the code is and what's left
   for each item.
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: start with its "Next steps" and the
-  Q25 note (its browser check, `scripts/checks/phase-e2-ui.mjs`, hasn't been run yet).
-- **Next database update number: `0172`** (files in `apps/web/prisma/migrations/`).
+  Q26, S1 and Q24/Q25 notes.
+- **Next database update number: `0174`** (files in `apps/web/prisma/migrations/`).
 
 **Waiting on the owner** (things only you can provide):
 - Two-way Google / Outlook calendar sync: a Google Cloud project and a Microsoft app.

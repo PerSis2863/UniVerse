@@ -40,8 +40,6 @@ const offEdge = () => (typeof document !== 'undefined' && document.documentEleme
 export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobileTitle, sharedId }: TopbarProps) {
   const router = useRouter();
   const { user } = useAuthStore();
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const [showNotifications, setShowNotifications] = useState(false);
   // The first rows draw with the panel and the rest once it has slid in: all 30 at once made the
   // opening tap take about a quarter of a second on a slow phone.

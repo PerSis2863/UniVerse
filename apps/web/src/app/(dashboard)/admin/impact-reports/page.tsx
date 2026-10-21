@@ -4,7 +4,8 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { Copy, Eye, EyeOff, ExternalLink, FileCheck2, Loader2, Sparkles } from 'lucide-react';
+import { Copy, Download, Eye, EyeOff, ExternalLink, FileCheck2, Loader2, Sparkles } from 'lucide-react';
+import { downloadCsv } from '@/lib/csv-download';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, IMPACT_REPORT_TABS } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
@@ -116,9 +117,16 @@ export default function ImpactReportsPage() {
       </div>
 
       <section className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] overflow-hidden">
-        <div className="p-5 border-b border-zinc-100 dark:border-white/[0.06]">
-          <p className="font-bold text-zinc-900 dark:text-white">Verified credential holders</p>
-          <p className="text-xs text-zinc-500 mt-0.5">For your review only — issued reports never include names. The latest 100 signed, non-revoked credentials that feed the figures.</p>
+        <div className="p-5 border-b border-zinc-100 dark:border-white/[0.06] flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-zinc-900 dark:text-white">Verified credential holders</p>
+            <p className="text-xs text-zinc-500 mt-0.5">For your review only — issued reports never include names. The latest 100 signed, non-revoked credentials that feed the figures.</p>
+          </div>
+          {holders.length > 0 && (
+            <button type="button" className="btn-secondary btn-sm" onClick={() => downloadCsv(`credential-holders-${new Date().toLocaleDateString('en-CA')}`, ['Student', 'Email', 'Role', 'Credential', 'Organisation', 'Project', 'Hours', 'People impacted', 'Issued', 'Verified by'], holders.map((h) => [h.user?.name ?? 'Deleted account', h.user?.email ?? '', h.user?.role ?? '', h.title, h.organization, h.projectName, h.hoursCompleted, h.peopleImpacted, new Date(h.issuedAt).toLocaleDateString('en-CA'), h.verifiedByName ?? '']))}>
+              <Download className="w-3.5 h-3.5" aria-hidden />Export CSV<span className="sr-only"> of the credential holders</span>
+            </button>
+          )}
         </div>
         {!data ? (
           <ContentSkeleton variant="list" className="p-4" />
@@ -144,9 +152,10 @@ export default function ImpactReportsPage() {
                 </li>
               ))}
             </ul>
-            <div className="hidden md:block overflow-x-auto">
+            {/* Its own scroll box, so the column names stay on top. */}
+            <div tabIndex={0} role="region" aria-label="Verified credential holders" className="hidden md:block overflow-auto max-h-[70vh] focus-visible:outline-2 focus-visible:outline-indigo-500">
               <table className="w-full text-sm">
-                <thead className="text-start text-xs text-zinc-500 bg-zinc-50 dark:bg-white/[0.02]">
+                <thead className="sticky top-0 z-10 text-start text-xs text-zinc-500 bg-zinc-50 dark:bg-zinc-900">
                   <tr>
                     <th className="px-5 py-2.5 font-semibold">Student</th>
                     <th className="px-3 py-2.5 font-semibold">Credential</th>

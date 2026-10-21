@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import dynamic from 'next/dynamic';
 import { m as motion } from 'framer-motion';
-import { Users, UserCheck, BookOpen, Sparkles, Trophy, GraduationCap, ShieldCheck, Presentation } from 'lucide-react';
+import { Users, UserCheck, BookOpen, Sparkles, Trophy, GraduationCap, ShieldCheck, Presentation, Download } from 'lucide-react';
+import { downloadCsv } from '@/lib/csv-download';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs';
 import { PremiumGate } from '@/components/billing/PremiumGate';
@@ -142,6 +143,15 @@ function PeoplePanel({ data }: { data: Analytics }) {
       }))
       : admins.filter((a) => matchesQuery(q, personText(a))).map((a) => ({ person: a, facts: joined(a) ?? '', right: [] as string[] }));
   const total = tab === 'teachers' ? teachers.length : tab === 'students' ? students.length : admins.length;
+  // The people shown (after the search), with the numbers in their own columns.
+  const exportCsv = () => {
+    const shown = new Set(rows.map((r) => r.person.id));
+    const date = new Date().toLocaleDateString('en-CA');
+    const joinedOn = (p: Person) => (p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-CA') : '');
+    if (tab === 'teachers') downloadCsv(`teachers-${date}`, ['Name', 'Email', 'Designation', 'Department', 'Courses', 'Published', 'Enrollments', 'Course codes', 'Joined'], teachers.filter((t) => shown.has(t.id)).map((t) => [t.name, t.email, t.designation ?? '', t.department ?? '', t.courses, t.publishedCourses, t.students, t.courseCodes.join(' '), joinedOn(t)]));
+    else if (tab === 'students') downloadCsv(`top-students-${date}`, ['Rank', 'Name', 'Email', 'Department', 'Year', 'GPA', 'Courses', 'Impact level', 'Impact XP', 'Joined'], students.filter((x) => shown.has(x.id)).map((x) => [students.indexOf(x) + 1, x.name, x.email, x.department ?? '', x.year || '', x.gpa.toFixed(2), x.enrollments, x.impactLevel, x.impactXP, joinedOn(x)]));
+    else downloadCsv(`admins-${date}`, ['Name', 'Email', 'Joined'], admins.filter((a) => shown.has(a.id)).map((a) => [a.name, a.email, joinedOn(a)]));
+  };
 
   return (
     <div className={card}>
@@ -157,7 +167,10 @@ function PeoplePanel({ data }: { data: Analytics }) {
           ))}
         </div>
       </div>
-      <AdminSearch className="mb-4" value={q} onChange={setQ} placeholder={`Search ${tab === 'students' ? 'students' : tab} by name, email, department…`} shown={rows.length} total={total} />
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <AdminSearch className="flex-1 min-w-48" value={q} onChange={setQ} placeholder={`Search ${tab === 'students' ? 'students' : tab} by name, email, department…`} shown={rows.length} total={total} />
+        {rows.length > 0 && <button type="button" className="btn-secondary btn-sm" onClick={exportCsv}><Download className="w-3.5 h-3.5" aria-hidden />Export CSV<span className="sr-only"> of the {tab === 'students' ? 'top students' : tab} shown</span></button>}
+      </div>
       {total === 0 ? (
         <p className="text-sm text-zinc-500">{tab === 'students' ? 'No students have a recorded GPA yet.' : tab === 'teachers' ? 'No teachers yet.' : 'No admins found.'}</p>
       ) : rows.length === 0 ? (

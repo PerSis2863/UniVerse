@@ -72,7 +72,7 @@ export default function BoardsPage() {
     removeWithUndo(`Deleted “${b.title}”`, {
       hide: () => void mutate((list) => list?.filter((x) => x.id !== b.id), { revalidate: false }),
       restore: () => void mutate(),
-      commit: () => authedJson(`/api/boards/${b.id}`, { method: 'DELETE' }),
+      commit: async () => { await authedJson(`/api/boards/${b.id}`, { method: 'DELETE' }); void mutate(); },
     });
   };
 

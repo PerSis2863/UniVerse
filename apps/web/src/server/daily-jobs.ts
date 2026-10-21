@@ -10,6 +10,7 @@ import { pruneCallRecordings } from './call-recordings';
 import { weeklyAutopilotReports } from './group-autopilot';
 import { wellbeingNudges } from './wellbeing';
 import { applyLateFees } from './fees';
+import { dueReportExports } from './report-schedules';
 
 // The daily jobs, in steps (Stage 5 · bug review). D1 answers at most 50 queries in one run on
 // Workers Free (a cron run is one run), and the daily jobs need far more once a school is real:
@@ -139,6 +140,8 @@ export const STEPS: Step[] = [
   { job: 'guardian-digests', run: () => inSlices(10, async (n) => { const r = await sendWeeklyDigests(n); return { more: r.checked === n, count: r.sent }; }) },
   { job: 'early-warning', run: (cursor) => earlyWarning(cursor) },
   { job: 'autopilot', run: () => inSlices(12, async (n) => { const r = await weeklyAutopilotReports({ limit: n }); return { more: r.more > 0, count: r.made }; }) },
+  // Scheduled report exports (Phase E): a CSV in each admin's My files when it's due.
+  { job: 'report-exports', run: () => dueReportExports(left) },
   { job: 'wellbeing', run: () => inSlices(14, async (n) => { const r = await wellbeingNudges(n); return { more: r.checked === n, count: r.sent }; }) },
   // AI explains the day's new problems (a few a run), then the owner's problems email when it's due.
   // At most 8 a day, as before (the cursor counts today's).

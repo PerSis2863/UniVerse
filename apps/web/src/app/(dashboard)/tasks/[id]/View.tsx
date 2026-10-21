@@ -2,7 +2,7 @@
 
 import { usePathParams } from '@/hooks/usePathParams';
 import { AddressLoading } from '@/components/layout/AddressLoading';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -42,6 +42,12 @@ interface Board {
 
 const call = (url: string, method: string, body?: unknown) => authedJson(url, { method, body: body === undefined ? undefined : JSON.stringify(body) });
 
+const subscribeCoarse = (on: () => void) => {
+  const q = window.matchMedia('(pointer: coarse)');
+  q.addEventListener('change', on);
+  return () => q.removeEventListener('change', on);
+};
+
 function TaskBoardPage({ id }: { id: string }) {
   const router = useRouter();
   const search = useSearchParams();
@@ -58,6 +64,9 @@ function TaskBoardPage({ id }: { id: string }) {
   // doesn't work by finger, so on phones this is how a card changes list.
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const press = useLongPress<string>((cardId) => setMenuFor(cardId));
+  // Dragging cards is for a mouse: on a touch screen, holding a draggable card starts the browser's
+  // own drag, which cancels the press-and-hold menu.
+  const finger = useSyncExternalStore(subscribeCoarse, () => window.matchMedia('(pointer: coarse)').matches, () => false);
 
   /** Optimistic change, then the server; on failure, the board as the server has it. */
   const act = async (change: (b: Board) => Board, url: string, method: string, body?: unknown) => {
@@ -103,7 +112,7 @@ function TaskBoardPage({ id }: { id: string }) {
     const blocked = openBlockers(t.blockedBy, data.tasks);
     return (
       <motion.button layout="position" transition={spring.smooth} key={t.id} type="button" {...(data.canEdit ? press.bind(t.id) : {})} onClick={() => { if (press.wasLong()) return; setOpen(t.id); }}
-        draggable={data.canEdit} onDragStart={(e) => { (e as unknown as DragEvent).dataTransfer?.setData('text/plain', t.id); setDrag({ id: t.id, over: null }); }} onDragEnd={() => setDrag(null)}
+        draggable={data.canEdit && !finger} onDragStart={(e) => { (e as unknown as DragEvent).dataTransfer?.setData('text/plain', t.id); setDrag({ id: t.id, over: null }); }} onDragEnd={() => setDrag(null)}
         onDragOver={(e) => { if (drag) { e.preventDefault(); if (drag.over !== t.id) setDrag({ ...drag, over: t.id }); } }}
         onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const moving = data.tasks.find((x) => x.id === drag?.id); if (moving && moving.id !== t.id) moveTo(moving, t.listId, t); setDrag(null); }}
         className={cn('w-full text-start rounded-xl bg-white dark:bg-zinc-900 border p-3 shadow-sm hover:border-indigo-400/60 transition-colors', drag?.over === t.id ? 'border-indigo-500 ring-2 ring-indigo-500/30' : 'border-zinc-200 dark:border-white/[0.07]', drag?.id === t.id && 'opacity-50')}>
@@ -211,13 +220,13 @@ function TaskBoardPage({ id }: { id: string }) {
       {menuCard && (
         <Sheet title={menuCard.title} onClose={() => setMenuFor(null)}>
           <div className="space-y-1">
-            <button type="button" onClick={() => { setMenuFor(null); void patchTask(menuCard, { done: !menuCard.doneAt }); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-sm font-medium text-zinc-900 dark:text-white hover:bg-[var(--fill)]"><Check className="w-4 h-4" />{menuCard.doneAt ? 'Mark not done' : 'Mark done'}</button>
-            <button type="button" onClick={() => { setMenuFor(null); setOpen(menuCard.id); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-sm font-medium text-zinc-900 dark:text-white hover:bg-[var(--fill)]"><KanbanSquare className="w-4 h-4" />Open the card</button>
+            <button type="button" onClick={() => { setMenuFor(null); void patchTask(menuCard, { done: !menuCard.doneAt }); }} className="w-full min-h-11 flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-sm font-medium text-zinc-900 dark:text-white hover:bg-[var(--fill)]"><Check className="w-4 h-4" />{menuCard.doneAt ? 'Mark not done' : 'Mark done'}</button>
+            <button type="button" onClick={() => { setMenuFor(null); setOpen(menuCard.id); }} className="w-full min-h-11 flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-sm font-medium text-zinc-900 dark:text-white hover:bg-[var(--fill)]"><KanbanSquare className="w-4 h-4" />Open the card</button>
             {lists.filter((l) => l.id !== menuCard.listId).length > 0 && <p className="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Move to</p>}
             {lists.filter((l) => l.id !== menuCard.listId).map((l) => (
-              <button key={l.id} type="button" onClick={() => { setMenuFor(null); moveTo(menuCard, l.id); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-sm text-zinc-800 dark:text-zinc-100 hover:bg-[var(--fill)]"><List className="w-4 h-4" />{l.title}</button>
+              <button key={l.id} type="button" onClick={() => { setMenuFor(null); moveTo(menuCard, l.id); }} className="w-full min-h-11 flex items-center gap-3 px-3 py-2.5 rounded-xl text-start text-sm text-zinc-800 dark:text-zinc-100 hover:bg-[var(--fill)]"><List className="w-4 h-4" />{l.title}</button>
             ))}
-            <button type="button" onClick={() => { setMenuFor(null); deleteCard(menuCard); }} className="w-full flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl text-start text-sm font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-500/10"><Trash2 className="w-4 h-4" />Delete card</button>
+            <button type="button" onClick={() => { setMenuFor(null); deleteCard(menuCard); }} className="w-full min-h-11 flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl text-start text-sm font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-500/10"><Trash2 className="w-4 h-4" />Delete card</button>
           </div>
         </Sheet>
       )}

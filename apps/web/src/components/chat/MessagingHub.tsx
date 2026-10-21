@@ -263,7 +263,20 @@ export function MessagingHub() {
         ) : (
         <div className="flex-1 overflow-y-auto p-2">
           {view === 'chats' && !search && <div className="-mx-2 -mt-2 mb-1"><StatusBar /></div>}
-          {isLoading && <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div>}
+          {/* Shaped like the chats coming (a picture, a name and a line), not a spinner. */}
+          {isLoading && (
+            <div role="status" aria-label="Loading" className="space-y-1">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-3">
+                  <div className="skeleton w-12 h-12 rounded-full shrink-0" />
+                  <div className="flex-1 space-y-2 min-w-0">
+                    <div className="skeleton h-3.5 rounded-md" style={{ width: `${40 + ((i * 17) % 35)}%` }} />
+                    <div className="skeleton h-3 rounded-md" style={{ width: `${55 + ((i * 23) % 35)}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {error && <p className="p-6 text-center text-sm text-rose-500">{(error as Error).message}</p>}
           {view === 'chats' && archivedCount > 0 && !search && (
             <button onClick={() => setView('archived')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-start hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]">
@@ -293,7 +306,8 @@ export function MessagingHub() {
                 onContextMenu={(e) => { e.preventDefault(); setMenuFor(c.id); }}
                 onPointerDown={(e) => { if (e.pointerType === 'touch') press.current = setTimeout(() => { haptic('tap'); setMenuFor(c.id); }, 480); }}
                 onPointerUp={() => press.current && clearTimeout(press.current)}
-                onPointerLeave={() => press.current && clearTimeout(press.current)}
+                // Only the finger: a "mouse left" right after a touch starts would cancel the press.
+                onPointerLeave={(e) => e.pointerType === 'touch' && press.current && clearTimeout(press.current)}
                 className={cn('relative isolate w-full flex items-center gap-3 p-3 rounded-2xl text-start transition-colors', active ? '' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}
               >{active && <TabPill id="components-chat-messaginghub-1" variant="soft" />}
                 <Avatar name={c.title} src={c.avatarUrl} online={c.online} size={48} />

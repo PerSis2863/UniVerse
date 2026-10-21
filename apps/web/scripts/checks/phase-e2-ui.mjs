@@ -27,6 +27,9 @@ const out = { checks: [], axe: [], wide: [] };
 const ok = (name, v) => out.checks.push(`${v ? '✓' : '✗'} ${name}`);
 
 async function axe(page, where) {
+  // Nothing half-way through a hover or an opening animation.
+  await page.mouse.move(1, 1).catch(() => {});
+  await page.waitForTimeout(400);
   await page.addScriptTag({ path: AXE });
   const v = await page.evaluate(async () => (await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] } })).violations.filter((x) => x.impact === 'serious' || x.impact === 'critical').map((x) => `${x.id}: ${x.nodes.map((n) => n.target.join(' ')).slice(0, 2).join(' | ')}`));
   if (v.length) out.axe.push(`${where}: ${v.join('; ')}`);
@@ -49,7 +52,8 @@ try {
     return { ctx, page: await ctx.newPage() };
   };
 
-  // ── A task card's press-and-hold menu, on a phone ──
+  // ── A task card's press-and-hold menu, on a phone ── (SKIP=tasks leaves it out)
+  if (!(process.env.SKIP ?? '').includes('tasks')) {
   made.taskBoard = (await call(S, '/api/tasks', { title: 'Phase E board' })).b.id;
   const board = (await call(S, `/api/tasks/${made.taskBoard}`)).b;
   const [todo, doing] = [...board.lists].sort((a, b) => a.position - b.position);
@@ -79,6 +83,8 @@ try {
     await ctx.close();
   }
 
+  }
+
   // ── Admin → Insights: CSV ──
   {
     const { ctx, page } = await open(AD, 1280, 'light');
@@ -96,35 +102,46 @@ try {
   made.convo = (await call(S, '/api/chat/conversations', { userId: aId })).b.id;
   made.other = (await call(S, '/api/chat/conversations', { userId: uid('bob@student.com') })).b.id;
   for (const n of ['one', 'two', 'three']) await call(A, `/api/chat/conversations/${made.convo}/messages`, { type: 'TEXT', body: `Phase E pick ${n}` });
-  for (const [width, theme] of [[1280, 'light'], [390, 'dark']]) {
+  for (const [width, theme] of [[1280, 'light'], [390, 'dark']].filter(([w]) => w > 500 || !(process.env.SKIP ?? '').includes('chatphone'))) {
     const { ctx, page } = await open(S, width, theme);
     await page.goto(`${base}/student/inbox?c=${made.convo}`, { waitUntil: 'networkidle', timeout: 60_000 });
     const log = page.getByLabel('Messages', { exact: true });
-    await log.getByText('Phase E pick three').waitFor({ timeout: 20_000 });
-    await log.getByText('Phase E pick one').click({ button: 'right' });
+    await log.getByText('Phase E pick three', { exact: true }).waitFor({ timeout: 20_000 });
+    // A phone: press and hold (a finger, by the browser's touch events); a computer: right-click.
+    const hold = async (loc) => {
+      if (width >= 500) return loc.click({ button: 'right' });
+      await loc.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+      await page.waitForTimeout(300);
+      const b = await loc.boundingBox();
+      const cdp = await ctx.newCDPSession(page);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: b.x + b.width / 2, y: b.y + b.height / 2 }] });
+      await page.waitForTimeout(700);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
+    await hold(log.getByText('Phase E pick one', { exact: true }));
     await page.getByRole('menuitem', { name: 'Select' }).or(page.getByRole('button', { name: 'Select', exact: true })).first().click();
-    await log.getByText('Phase E pick two').click();
+    await log.getByText('Phase E pick two', { exact: true }).click();
     const bar = page.getByRole('region', { name: 'Chosen messages' });
     if (width === 1280) ok('Select, then tap another: "2 selected"', /2 selected/.test(await bar.innerText()));
     await axe(page, `choosing messages ${width} ${theme}`);
     if (width === 1280) {
       await bar.getByRole('button', { name: 'Copy' }).click();
       ok('Copy puts both on the clipboard, in order', (await page.evaluate(() => navigator.clipboard.readText())) === 'Phase E pick one\nPhase E pick two');
-      await log.getByText('Phase E pick one').click({ button: 'right' });
+      await log.getByText('Phase E pick one', { exact: true }).click({ button: 'right' });
       await page.getByRole('menuitem', { name: 'Select' }).or(page.getByRole('button', { name: 'Select', exact: true })).first().click();
-      await log.getByText('Phase E pick two').click();
+      await log.getByText('Phase E pick two', { exact: true }).click();
       await bar.getByRole('button', { name: 'Forward' }).click();
       await page.getByRole('dialog').getByRole('button', { name: /Bob/ }).first().click();
       await page.getByRole('dialog').getByRole('button', { name: /^Forward/ }).last().click();
       await page.waitForTimeout(1500);
       const got = rows(`SELECT body FROM messages WHERE conversationId='${made.other}' AND forwarded=1 AND createdAt >= '${made.began}' ORDER BY createdAt`);
       ok(`both forwarded to Bob, in order: ${JSON.stringify(got.map((m) => m.body))}`, got.length === 2 && got[0].body === 'Phase E pick one' && got[1].body === 'Phase E pick two');
-      await log.getByText('Phase E pick three').click({ button: 'right' });
+      await log.getByText('Phase E pick three', { exact: true }).click({ button: 'right' });
       await page.getByRole('menuitem', { name: 'Select' }).or(page.getByRole('button', { name: 'Select', exact: true })).first().click();
       await bar.getByRole('button', { name: 'Delete for me' }).click();
       await page.getByRole('button', { name: 'Undo' }).click();
       await page.waitForTimeout(800);
-      ok('Delete for me, then Undo: still there', await log.getByText('Phase E pick three').isVisible());
+      ok('Delete for me, then Undo: still there', await log.getByText('Phase E pick three', { exact: true }).isVisible());
     } else await page.keyboard.press('Escape');
     await ctx.close();
   }
@@ -132,9 +149,9 @@ try {
   // ── Settings: ringtone and accent colour; my own course colour ──
   for (const [width, theme] of [[1280, 'light'], [390, 'dark']]) {
     const { ctx, page } = await open(S, width, theme);
-    await page.goto(`${base}/settings?section=appearance`, { waitUntil: 'networkidle', timeout: 60_000 });
+    await page.goto(`${base}/student/settings?section=appearance`, { waitUntil: 'networkidle', timeout: 60_000 });
     const teal = page.getByRole('radio', { name: /Teal/ });
-    if (!(await teal.isVisible().catch(() => false))) { await page.goto(`${base}/settings`, { waitUntil: 'networkidle' }); await page.getByRole('button', { name: /Appearance/ }).first().click(); }
+    if (!(await teal.isVisible().catch(() => false))) { await page.goto(`${base}/student/settings?section=appearance`, { waitUntil: 'networkidle' }); }
     await page.getByRole('radio', { name: /Teal/ }).click();
     const tint = await page.evaluate(() => [document.documentElement.dataset.accent, getComputedStyle(document.documentElement).getPropertyValue('--tint').trim()]);
     if (width === 1280) ok(`accent Teal: ${tint.join(' ')}`, tint[0] === 'teal' && tint[1] === '#0f766e');
@@ -144,10 +161,16 @@ try {
     await page.goto(`${base}/student`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(800);
     await axe(page, `home with teal ${width} ${theme}`);
+    // Amber, the lightest of them: buttons, badges and the menu's highlight still read.
+    await page.evaluate(() => { localStorage.setItem('uv-accent', 'amber'); document.documentElement.dataset.accent = 'amber'; });
+    for (const path of ['/student/courses', '/student/settings?section=appearance']) {
+      await page.goto(base + path, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(600);
+      await axe(page, `${path} with amber ${width} ${theme}`);
+    }
+    await page.evaluate(() => { localStorage.setItem('uv-accent', 'teal'); document.documentElement.dataset.accent = 'teal'; });
     if (width === 1280) {
-      await page.goto(`${base}/settings`, { waitUntil: 'networkidle' });
-      const notif = page.getByRole('button', { name: /^Notifications/ }).last();
-      await notif.click().catch(() => {});
+      await page.goto(`${base}/student/settings?section=notifications`, { waitUntil: 'networkidle' });
       const soft = page.getByRole('button', { name: 'Soft', exact: true });
       if (await soft.waitFor({ timeout: 8000 }).then(() => true, () => false)) {
         await soft.click();
@@ -170,7 +193,7 @@ try {
   // ── A photo dropped on the profile picture opens the cropper ──
   {
     const { ctx, page } = await open(S, 1280, 'light');
-    await page.goto(`${base}/settings`, { waitUntil: 'networkidle', timeout: 60_000 });
+    await page.goto(`${base}/student/settings?section=profile`, { waitUntil: 'networkidle', timeout: 60_000 });
     const photo = page.getByRole('button', { name: 'Change photo' });
     await photo.waitFor({ timeout: 15_000 });
     await photo.evaluate((el) => {
@@ -187,9 +210,8 @@ try {
     const { ctx, page } = await open(S, 1280, 'light');
     await page.goto(`${base}/boards`, { waitUntil: 'networkidle', timeout: 60_000 });
     const del = async () => {
-      const tile = page.locator('li, article, div').filter({ hasText: 'Phase E whiteboard' }).last();
-      await tile.getByRole('button', { name: /More|Options|Actions|menu/i }).first().click();
-      await page.getByRole('menuitem', { name: /Delete/ }).or(page.getByRole('button', { name: /^Delete/ })).first().click();
+      await page.getByRole('button', { name: 'More for Phase E whiteboard' }).click();
+      await page.getByRole('button', { name: 'Delete', exact: true }).click();
     };
     await page.getByText('Phase E whiteboard').first().waitFor({ timeout: 15_000 });
     await del();
@@ -210,7 +232,9 @@ try {
     ok(`share picture in the page: ${og}`, /\/og\.jpg$/.test(og) && /<meta name="twitter:card" content="summary_large_image"/.test(html));
     const img = await fetch(`${base}/og.jpg`);
     ok(`the picture is served (${img.status}, ${img.headers.get('content-type')})`, img.status === 200 && /image\/jpeg/.test(img.headers.get('content-type') ?? ''));
-    const { ctx, page } = await open(S, 390, 'light');
+    // Signed out: the public home page (signed in, it goes to your dashboard).
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    const page = await ctx.newPage();
     await page.goto(`${base}/`, { waitUntil: 'networkidle', timeout: 60_000 });
     ok('the footer links to Status & trust', await page.getByRole('link', { name: 'Status & trust' }).count() > 0);
     await ctx.close();
@@ -227,7 +251,7 @@ try {
     await p2.goto(`${base}/calls`, { waitUntil: 'networkidle', timeout: 60_000 });
     const note = p2.getByText(/Times are in your time zone/);
     const seen = await note.waitFor({ timeout: 15_000 }).then(() => true, () => false);
-    if (width === 390) ok(`class calls name the time zone: "${seen ? (await note.innerText()).slice(0, 80) : ''}"`, seen && /Asia\/Kolkata/.test(await note.innerText()));
+    if (width === 390) ok(`class calls name the time zone: "${seen ? (await note.innerText()).slice(0, 80) : ''}"`, seen && /Asia\/(Kolkata|Calcutta)/.test(await note.innerText()));
     await axe(p2, `calls with the zone ${width} ${theme}`);
     await c2.close();
     void page;

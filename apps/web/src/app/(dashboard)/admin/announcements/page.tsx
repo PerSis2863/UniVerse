@@ -64,6 +64,7 @@ export default function AdminAnnouncements() {
     restore: () => void mutate(),
     commit: async () => {
       try { await api.delete(`/announcements/${id}`); } catch (e) { throw new Error(errorMessage(e, 'Could not delete the announcement.')); }
+      void mutate();
     },
   });
 

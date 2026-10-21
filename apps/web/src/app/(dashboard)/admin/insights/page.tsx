@@ -118,7 +118,7 @@ export default function AdminInsightsPage() {
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Departments</h2>
                   {data.departments.length > 0 && (
-                    <button type="button" className="btn-secondary btn-sm" onClick={() => downloadCsv(`departments-${new Date().toISOString().slice(0, 10)}`, ['Department', 'Average grade (%)', 'Previous 30 days (%)', 'Attendance (%)', 'Grades given'], data.departments.map((d) => [d.name, d.grade, d.previous, d.attendance, d.graded]))}>
+                    <button type="button" className="btn-secondary btn-sm" onClick={() => downloadCsv(`departments-${new Date().toLocaleDateString('en-CA')}`, ['Department', 'Average grade (%)', 'Previous 30 days (%)', 'Attendance (%)', 'Grades given'], data.departments.map((d) => [d.name, d.grade, d.previous, d.attendance, d.graded]))}>
                       <Download className="w-3.5 h-3.5" />Export CSV<span className="sr-only"> of the departments</span>
                     </button>
                   )}
@@ -149,7 +149,7 @@ export default function AdminInsightsPage() {
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Teacher workload</h2>
                   {data.teachers.length > 0 && (
-                    <button type="button" className="btn-secondary btn-sm" onClick={() => downloadCsv(`teacher-workload-${new Date().toISOString().slice(0, 10)}`, ['Teacher', 'Email', 'Courses', 'Students', 'Answers to grade', 'Grades (30 days)', 'At-risk students', 'Last seen'], data.teachers.map((t) => [t.name, t.email, t.courses, t.students, t.toGrade, t.graded30, t.flagged, t.lastSeenAt ? t.lastSeenAt.slice(0, 10) : '']))}>
+                    <button type="button" className="btn-secondary btn-sm" onClick={() => downloadCsv(`teacher-workload-${new Date().toLocaleDateString('en-CA')}`, ['Teacher', 'Email', 'Courses', 'Students', 'Answers to grade', 'Grades (30 days)', 'At-risk students', 'Last seen'], data.teachers.map((t) => [t.name, t.email, t.courses, t.students, t.toGrade, t.graded30, t.flagged, t.lastSeenAt ? new Date(t.lastSeenAt).toLocaleDateString('en-CA') : '']))}>
                       <Download className="w-3.5 h-3.5" />Export CSV<span className="sr-only"> of the teachers</span>
                     </button>
                   )}

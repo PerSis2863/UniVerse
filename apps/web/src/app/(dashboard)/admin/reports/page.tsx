@@ -10,6 +10,7 @@ import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs
 import { PremiumGate } from '@/components/billing/PremiumGate';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { AdminSearch, PersonCell, type PersonInfo } from '@/components/admin/AdminPeople';
+import { ScheduledExports } from '@/components/admin/ScheduledExports';
 
 const EXPORTS = [
   { type: 'members', title: 'Members', desc: 'Every account: name, email, phone, role, status, department, last active and join date. Use the filters below to narrow it.', icon: Users },
@@ -262,7 +263,7 @@ export default function ReportsPage() {
           <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4">Data exports · Pro</h2>
         </section>
         <PremiumGate feature="data_exports">
-          <div className="px-4 md:px-8"><Exports /></div>
+          <div className="px-4 md:px-8"><Exports /><ScheduledExports /></div>
         </PremiumGate>
         <section className="px-4 md:px-8 pt-10">
           <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4">AI reporting · Enterprise</h2>
