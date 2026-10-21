@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { cn } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
+import { reducedMotion } from '@/lib/page-transition';
 
 /*
  * Designed replacements for window.confirm / window.prompt.
@@ -46,6 +47,7 @@ export function DialogHost() {
   const [value, setValue] = useState('');
   const confirmRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // A new prompt starts from its default text.
   const [shown, setShown] = useState(pending);
@@ -55,16 +57,23 @@ export function DialogHost() {
   }
   useEffect(() => {
     if (!pending) return;
+    // A new dialog right after one that's fading out: shown at once, fully.
+    if (rootRef.current) { for (const a of rootRef.current.getAnimations()) a.cancel(); rootRef.current.style.pointerEvents = ''; }
     const t = setTimeout(() => (pending.kind === 'prompt' ? inputRef.current?.select() : confirmRef.current?.focus()), 30);
     return () => clearTimeout(t);
   }, [pending]);
 
   if (!pending) return null;
 
+  // The answer goes back at once; the alert then fades away, as on iOS (not with Reduce Motion).
   const close = (ok: boolean) => {
-    const p = pending;
-    current = null;
-    emit();
+    const p = pending, el = rootRef.current;
+    if (el?.style.pointerEvents === 'none') return; // already closing
+    const finish = () => { if (current === p) { current = null; emit(); } };
+    if (el && !reducedMotion()) {
+      el.style.pointerEvents = 'none';
+      el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: 'ease-out', fill: 'forwards' }).finished.then(finish, finish);
+    } else finish();
     if (p.kind === 'confirm') { if (ok && p.destructive) haptic('warning'); p.resolve(ok); }
     else p.resolve(ok ? value.trim() || null : null);
   };
@@ -77,6 +86,7 @@ export function DialogHost() {
 
   return (
     <div
+      ref={rootRef}
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="ui-dialog-title"
@@ -96,7 +106,7 @@ export function DialogHost() {
               placeholder={pending.placeholder}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && value.trim()) close(true); }}
-              className="mt-3 w-full h-9 px-2.5 rounded-[9px] bg-white dark:bg-black/40 border border-black/10 dark:border-white/10 text-[15px] text-left text-zinc-900 dark:text-white outline-none focus:border-tint"
+              className="mt-3 w-full h-9 px-2.5 rounded-[9px] bg-white dark:bg-black/40 border border-black/10 dark:border-white/10 text-[15px] text-start text-zinc-900 dark:text-white outline-none focus:border-tint"
             />
           )}
         </div>

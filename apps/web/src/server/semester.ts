@@ -143,10 +143,13 @@ async function scopesOf(user: SessionUser) {
       : prisma.course.findMany({ where: taughtBy(user.id), select: { id: true }, take: 60 }).then((r) => r.map((c) => c.id)),
     prisma.groupMembership.findMany({ where: { userId: user.id }, select: { groupId: true }, take: 60 }).then((r) => r.map((m) => m.groupId)),
   ]);
-  const docs = await prisma.doc.findMany({
-    where: { OR: [{ ownerId: user.id }, { members: { some: { userId: user.id } } }, ...(courses.length ? [{ courseId: { in: courses } }] : []), ...(groups.length ? [{ groupId: { in: groups } }] : [])] },
-    orderBy: { updatedAt: 'desc' }, take: 80, select: { id: true },
-  });
+  // Apart and put together: long lists inside OR can't be split for D1's 100 values (src/lib/d1-split.ts).
+  const found = await Promise.all([
+    prisma.doc.findMany({ where: { OR: [{ ownerId: user.id }, { members: { some: { userId: user.id } } }] }, orderBy: { updatedAt: 'desc' }, take: 80, select: { id: true, updatedAt: true } }),
+    courses.length ? prisma.doc.findMany({ where: { courseId: { in: courses } }, orderBy: { updatedAt: 'desc' }, take: 80, select: { id: true, updatedAt: true } }) : [],
+    groups.length ? prisma.doc.findMany({ where: { groupId: { in: groups } }, orderBy: { updatedAt: 'desc' }, take: 80, select: { id: true, updatedAt: true } }) : [],
+  ]);
+  const docs = [...new Map(found.flat().map((d) => [d.id, d])).values()].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 80);
   return { courses, docs: docs.map((d) => d.id), scopes: [`user:${user.id}`, ...courses.map((c) => `course:${c}`), ...docs.map((d) => `doc:${d.id}`)] };
 }
 

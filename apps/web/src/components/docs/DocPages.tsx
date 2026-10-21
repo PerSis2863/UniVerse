@@ -115,17 +115,17 @@ export function PageLinkButton({ editor, disabled, currentId }: { editor: Editor
         <FileSymlink className="w-4 h-4" /><span className="max-sm:sr-only">Link a page</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-10 z-40 w-72 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-2 space-y-1.5" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>
+        <div className="absolute end-0 top-10 z-40 w-72 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-2 space-y-1.5" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>
           <label className="relative block">
             <span className="sr-only">Find a page</span>
-            <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" aria-hidden />
-            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a page" className="input py-1.5 pl-8 text-sm" />
+            <Search className="w-3.5 h-3.5 text-zinc-400 absolute start-2.5 top-1/2 -translate-y-1/2" aria-hidden />
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a page" className="input py-1.5 ps-8 text-sm" />
           </label>
           {!data ? <div className="h-16 rounded-xl skeleton" /> : !shown.length ? <p className="text-xs text-zinc-500 px-1 py-2">No pages found.</p> : (
             <ul className="max-h-64 overflow-y-auto">
               {shown.map((d) => (
                 <li key={d.id}>
-                  <button type="button" onClick={() => pick(d)} className="w-full text-left px-2 py-1.5 rounded-lg text-sm text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><FileText className="w-3.5 h-3.5 text-indigo-500 shrink-0" aria-hidden /><span className="truncate">{d.title}</span></button>
+                  <button type="button" onClick={() => pick(d)} className="w-full text-start px-2 py-1.5 rounded-lg text-sm text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><FileText className="w-3.5 h-3.5 text-indigo-500 shrink-0" aria-hidden /><span className="truncate">{d.title}</span></button>
                 </li>
               ))}
             </ul>

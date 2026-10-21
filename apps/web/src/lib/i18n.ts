@@ -1,15 +1,29 @@
-export type Language = 'en' | 'fr' | 'es' | 'hi';
+export type Language = 'en' | 'fr' | 'es' | 'hi' | 'ar' | 'ur' | 'bn' | 'ta' | 'te' | 'mr' | 'pt' | 'id' | 'sw';
 
-export const LANGUAGES: { code: Language; name: string; nativeName: string; flag: string; dir: 'ltr' | 'rtl' }[] = [
-  { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧', dir: 'ltr' },
-  { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷', dir: 'ltr' },
-  { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸', dir: 'ltr' },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिंदी', flag: '🇮🇳', dir: 'ltr' },
+// `locale` formats dates, numbers and money (Intl; src/lib/locale-format.ts): Indian grouping for
+// Hindi and English (₹1,00,000), Western digits in Arabic and Urdu. `drafted`: the screens are
+// translated by the AI translator (Owner console → Languages), not by hand (Stage 5 · Q21).
+export const LANGUAGES: { code: Language; name: string; nativeName: string; flag: string; dir: 'ltr' | 'rtl'; locale: string; drafted?: boolean }[] = [
+  { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧', dir: 'ltr', locale: 'en-IN' },
+  { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷', dir: 'ltr', locale: 'fr-FR' },
+  { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸', dir: 'ltr', locale: 'es-ES' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिंदी', flag: '🇮🇳', dir: 'ltr', locale: 'hi-IN' },
+  { code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇸🇦', dir: 'rtl', locale: 'ar-u-nu-latn', drafted: true },
+  { code: 'ur', name: 'Urdu', nativeName: 'اردو', flag: '🇵🇰', dir: 'rtl', locale: 'ur-PK-u-nu-latn', drafted: true },
+  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা', flag: '🇧🇩', dir: 'ltr', locale: 'bn-IN', drafted: true },
+  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', flag: '🇮🇳', dir: 'ltr', locale: 'ta-IN', drafted: true },
+  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు', flag: '🇮🇳', dir: 'ltr', locale: 'te-IN', drafted: true },
+  { code: 'mr', name: 'Marathi', nativeName: 'मराठी', flag: '🇮🇳', dir: 'ltr', locale: 'mr-IN', drafted: true },
+  { code: 'pt', name: 'Portuguese', nativeName: 'Português', flag: '🇧🇷', dir: 'ltr', locale: 'pt-BR', drafted: true },
+  { code: 'id', name: 'Indonesian', nativeName: 'Bahasa Indonesia', flag: '🇮🇩', dir: 'ltr', locale: 'id-ID', drafted: true },
+  { code: 'sw', name: 'Swahili', nativeName: 'Kiswahili', flag: '🇰🇪', dir: 'ltr', locale: 'sw-KE', drafted: true },
 ];
+export const isAppLanguage = (x: unknown): x is Language => LANGUAGES.some((l) => l.code === x);
+export const languageInfo = (code: Language) => LANGUAGES.find((l) => l.code === code) ?? LANGUAGES[0];
 
 type TranslationMap = Record<string, string>;
 
-export const translations: Record<Language, TranslationMap> = {
+export const translations: Partial<Record<Language, TranslationMap>> = {
   en: {
     // Nav
     'nav.dashboard': 'Dashboard',
@@ -620,5 +634,5 @@ export const translations: Record<Language, TranslationMap> = {
 };
 
 export function t(key: string, lang: Language): string {
-  return translations[lang]?.[key] ?? translations.en[key] ?? key;
+  return translations[lang]?.[key] ?? translations.en?.[key] ?? key;
 }

@@ -59,7 +59,7 @@ export function SuggestionsPanel({ editor, canEdit, onClose }: { editor: Editor 
           <p className="text-sm text-zinc-500 px-1">No suggestions. Turn on <strong>Suggest</strong> in the toolbar to suggest changes: what you add is underlined in green and what you remove is struck through, until someone accepts or rejects it.</p>
         ) : list.map((s) => (
           <div key={`${s.kind}:${s.id}`} className="rounded-xl border border-zinc-200 dark:border-white/10 p-2.5 space-y-1.5">
-            <button type="button" onClick={() => show(s)} className="block w-full text-left">
+            <button type="button" onClick={() => show(s)} className="block w-full text-start">
               <span className="block text-[11px] text-zinc-500">{s.name} · {s.kind === 'insert' ? 'added' : 'removed'}{s.at ? ` · ${formatDistanceToNowStrict(new Date(s.at), { addSuffix: true })}` : ''}</span>
               <span className={cn('block text-sm line-clamp-3', s.kind === 'insert' ? 'text-emerald-800 dark:text-emerald-300 underline decoration-emerald-600 underline-offset-2' : 'text-rose-800 dark:text-rose-300 line-through')}>{s.text.trim() || '(spaces)'}</span>
             </button>

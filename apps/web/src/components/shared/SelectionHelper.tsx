@@ -62,7 +62,7 @@ export default function SelectionHelper() {
   const listen = (t: string) => (speech.speaking ? speech.stop() : speech.speak([t.slice(0, 20_000)], { rate: speechRate() }));
   const close = () => { speech.stop(); setShown(null); setText(null); };
   const long = (text?.length ?? 0) > MAX;
-  const bar = 'fixed z-[70] left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6';
+  const bar = 'fixed z-[70] start-3 end-3 sm:left-1/2 sm:end-auto sm:-translate-x-1/2 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-6';
 
   return (
     <AnimatePresence mode="wait" initial={false}>

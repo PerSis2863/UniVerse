@@ -10,7 +10,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { SearchField } from '@/components/ui/Field';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { LoadError } from '@/components/ui/LoadError';
-import { confirmDialog } from '@/components/ui/Dialogs';
+import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
 import { fadeUp, list, spring } from '@/lib/motion';
@@ -31,6 +31,7 @@ interface Plan {
   id: string; name: string; currency: string; archived: boolean; createdAt: string; to: string; courseId: string | null;
   items: { label: string; amount: number }[]; instalments: { label: string; dueAt: string; amount: number }[];
   bills: number; billed: number; paid: number; open: number; overdue: number;
+  lateFee?: number; lateGraceDays?: number;
 }
 interface Plans { currencies: string[]; courses: { id: string; code: string; name: string }[]; plans: Plan[] }
 interface Bill {
@@ -113,7 +114,7 @@ function Overview({ onGo }: { onGo: (v: View) => void }) {
                 { k: 'Still owed', v: money(t.open, t.currency), note: 'Due and part paid' },
                 { k: 'Overdue', v: money(t.overdue, t.currency), note: `${t.overdueBills} bill${t.overdueBills === 1 ? '' : 's'} past due`, go: t.overdueBills > 0 },
               ].map((x) => (
-                <button key={x.k} type="button" disabled={!x.go} onClick={() => onGo('overdue')} className={cn('text-left rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] p-3 disabled:cursor-default', x.go && 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10')}>
+                <button key={x.k} type="button" disabled={!x.go} onClick={() => onGo('overdue')} className={cn('text-start rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] p-3 disabled:cursor-default', x.go && 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10')}>
                   <span className="block text-[11px] text-zinc-500">{x.k}</span>
                   <span className="block text-lg font-black tabular-nums text-zinc-900 dark:text-white">{x.v}</span>
                   <span className="block text-[11px] text-zinc-500">{x.note}</span>
@@ -131,10 +132,10 @@ function Overview({ onGo }: { onGo: (v: View) => void }) {
                     {months.map((m) => (
                       <li key={m.month} className="flex items-center gap-2 text-sm">
                         <span className="w-16 shrink-0 text-zinc-500 tabular-nums">{format(new Date(`${m.month}-01T12:00:00Z`), 'MMM yy')}</span>
-                        <span className="flex-1 h-3 rounded-r-full bg-transparent">
-                          <motion.span className="block h-full rounded-r-full bg-indigo-500" initial={{ width: 0 }} animate={{ width: `${Math.max(2, (m.total / max) * 100)}%` }} transition={spring.gentle} />
+                        <span className="flex-1 h-3 rounded-e-full bg-transparent">
+                          <motion.span className="block h-full rounded-e-full bg-indigo-500" initial={{ width: 0 }} animate={{ width: `${Math.max(2, (m.total / max) * 100)}%` }} transition={spring.gentle} />
                         </span>
-                        <span className="w-24 shrink-0 text-right tabular-nums text-zinc-800 dark:text-zinc-100">{money(m.total, t.currency)}</span>
+                        <span className="w-24 shrink-0 text-end tabular-nums text-zinc-800 dark:text-zinc-100">{money(m.total, t.currency)}</span>
                       </li>
                     ))}
                   </ul>
@@ -171,6 +172,21 @@ function PlansView({ onIssued }: { onIssued: () => void }) {
   if (error && !data) return <LoadError onRetry={() => mutate()} />;
   if (!data) return <ContentSkeleton variant="list" />;
   const plans = data.plans.filter((p) => showArchived || !p.archived);
+
+  // Late fees (Stage 5 · Q22): change the rule, or add the fee now to bills past it.
+  const late = async (p: Plan) => {
+    const v = await promptDialog({ title: `Late fee for “${p.name}”`, message: `An amount in ${p.currency} added once to each bill still unpaid ${p.lateGraceDays ?? 0} day(s) after its due date. 0 for none.`, placeholder: '200', defaultValue: p.lateFee ? String(p.lateFee / 100) : '', confirmLabel: 'Save', maxLength: 12 });
+    if (v == null) return;
+    setBusy(p.id);
+    try {
+      await authedJson(`/api/fees/plans/${p.id}`, { method: 'POST', body: JSON.stringify({ action: 'late', lateFee: v.trim() || 0, lateGraceDays: p.lateGraceDays ?? 0 }) });
+      const r = Number(v) > 0 ? await authedJson<{ added: number }>(`/api/fees/plans/${p.id}`, { method: 'POST', body: JSON.stringify({ action: 'apply-late' }) }) : { added: 0 };
+      toast.success(Number(v) > 0 ? `Late fee saved${r.added ? `: added to ${r.added} overdue bill${r.added === 1 ? '' : 's'}` : ''}` : 'No late fee');
+      await mutate();
+      onIssued();
+    } catch (e) { toast.error(errorMessage(e, 'Couldn’t save the late fee.')); }
+    finally { setBusy(null); }
+  };
 
   const act = async (p: Plan, action: 'issue' | 'archive' | 'unarchive') => {
     if (action === 'issue') {
@@ -213,9 +229,14 @@ function PlansView({ onIssued }: { onIssued: () => void }) {
               <motion.li key={p.id} variants={fadeUp} className={cn(card, 'p-4', p.archived && 'opacity-70')}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-semibold text-zinc-900 dark:text-white">{p.name}{p.archived && <span className="ml-2 text-[11px] font-semibold text-zinc-500">Archived</span>}</p>
+                    <p className="font-semibold text-zinc-900 dark:text-white">{p.name}{p.archived && <span className="ms-2 text-[11px] font-semibold text-zinc-500">Archived</span>}</p>
                     <p className="text-xs text-zinc-500">{p.to} · {money(total, p.currency)} per student · {p.instalments.length === 1 ? `due ${format(new Date(p.instalments[0].dueAt), 'd MMM yyyy')}` : `${p.instalments.length} instalments from ${format(new Date(p.instalments[0].dueAt), 'd MMM')}`}</p>
                     <p className="text-xs text-zinc-500 mt-0.5 truncate">{p.items.map((i) => `${i.label} ${money(i.amount, p.currency)}`).join(' · ')}</p>
+                    {manage && !p.archived ? (
+                      <button type="button" onClick={() => void late(p)} disabled={!!busy} className="mt-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 hover:underline">
+                        {p.lateFee ? `Late fee ${money(p.lateFee, p.currency)} ${p.lateGraceDays ? `${p.lateGraceDays} days after the due date` : 'after the due date'} · change` : 'Add a late fee'}
+                      </button>
+                    ) : p.lateFee ? <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">Late fee {money(p.lateFee, p.currency)}</p> : null}
                   </div>
                   {manage && <div className="flex gap-1 shrink-0">
                     {!p.archived && (
@@ -249,7 +270,7 @@ function PlansView({ onIssued }: { onIssued: () => void }) {
 function BillRow({ b, onOpen, extra }: { b: Bill; onOpen: () => void; extra?: React.ReactNode }) {
   return (
     <motion.li variants={fadeUp}>
-      <button type="button" onClick={() => { haptic('tap'); onOpen(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
+      <button type="button" onClick={() => { haptic('tap'); onOpen(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
         <span className="w-14 shrink-0 text-xs font-semibold tabular-nums text-zinc-500">#{b.seq}</span>
         <span className="flex-1 min-w-0">
           <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{b.student.name}</span>

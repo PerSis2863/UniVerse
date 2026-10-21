@@ -78,8 +78,8 @@ export function SnippetsSheet({ onClose, onInsert, recipientName }: { onClose: (
           <motion.div key="list" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={spring.smooth} className="space-y-3">
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search saved replies" className={`input pl-9`} />
+                <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search saved replies" className={`input ps-9`} />
               </div>
               <button type="button" disabled={list.length >= (data?.max ?? 50)} onClick={() => setEdit({ id: crypto.randomUUID().slice(0, 8), title: '', body: '', shortcut: null })} className="btn-primary"><Plus className="w-4 h-4" />New</button>
             </div>
@@ -95,7 +95,7 @@ export function SnippetsSheet({ onClose, onInsert, recipientName }: { onClose: (
                 {shown.map((s) => (
                   <li key={s.id} className="group rounded-xl border border-zinc-200 dark:border-white/10 hover:border-indigo-400/60 transition-colors">
                     <div className="flex items-start gap-1">
-                      <button type="button" onClick={() => { onInsert(fillSnippet(s.body, recipientName)); onClose(); }} className="flex-1 min-w-0 text-left p-3">
+                      <button type="button" onClick={() => { onInsert(fillSnippet(s.body, recipientName)); onClose(); }} className="flex-1 min-w-0 text-start p-3">
                         <span className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{s.title}</span>
                           {s.shortcut && <span className="text-[11px] font-mono text-indigo-600 dark:text-indigo-300 shrink-0">/{s.shortcut}</span>}
@@ -103,7 +103,7 @@ export function SnippetsSheet({ onClose, onInsert, recipientName }: { onClose: (
                         <span className="block mt-0.5 text-xs text-zinc-500 line-clamp-2">{s.body}</span>
                       </button>
                       <button type="button" aria-label={`Edit ${s.title}`} onClick={() => setEdit(s)} className="p-2 mt-1.5 text-zinc-400 hover:text-indigo-500"><Pencil className="w-4 h-4" /></button>
-                      <button type="button" aria-label={`Delete ${s.title}`} disabled={busy} onClick={() => void save(list.filter((x) => x.id !== s.id), 'Deleted')} className="p-2 mt-1.5 mr-1 text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
+                      <button type="button" aria-label={`Delete ${s.title}`} disabled={busy} onClick={() => void save(list.filter((x) => x.id !== s.id), 'Deleted')} className="p-2 mt-1.5 me-1 text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </li>
                 ))}

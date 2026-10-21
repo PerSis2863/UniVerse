@@ -45,7 +45,7 @@ export function PracticeBox({ courseId }: { courseId: string }) {
           <h2 id="practice-title" className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Dumbbell className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Practice</h2>
           <p className="text-xs text-zinc-600 dark:text-zinc-400">Questions picked for what you’re still learning. Try as often as you like; it never changes a grade.</p>
         </div>
-        {data && data.stats.today > 0 && <p className="text-xs text-zinc-700 dark:text-zinc-300 text-right shrink-0">Today: {data.stats.today} practised<br />{data.stats.rightFirst} right first time</p>}
+        {data && data.stats.today > 0 && <p className="text-xs text-zinc-700 dark:text-zinc-300 text-end shrink-0">Today: {data.stats.today} practised<br />{data.stats.rightFirst} right first time</p>}
       </div>
       {isLoading || !data ? <p className="text-sm text-zinc-600 dark:text-zinc-400 inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Finding a question…</p>
         : !q ? <p className="text-sm text-zinc-600 dark:text-zinc-400">Nothing to practise yet. Questions appear here when your teacher adds a practice set or a quiz closes.</p>

@@ -354,6 +354,55 @@ export async function deleteAssignment(assignmentId: string, user: SessionUser, 
   return { ok: true };
 }
 
+/**
+ * POST /api/assignments/:id/duplicate (Stage 5 · Q23): a copy in the same course, open, with no due
+ * date and no answers ("… (copy)"), for the teacher to adjust; its rubric's concept tags come along.
+ * Nobody is told until the teacher sets it up and shares it.
+ */
+export async function duplicateAssignment(assignmentId: string, user: SessionUser, req: Request) {
+  const { assignment: a, course } = await manage(assignmentId, user);
+  const copy = await prisma.assignment.create({
+    data: {
+      courseId: a.courseId, createdById: user.id, title: `${a.title} (copy)`.slice(0, 200), instructions: a.instructions, rubric: a.rubric ?? [], maxScore: a.maxScore, weight: a.weight,
+      dueDate: null, status: 'OPEN', aiPolicy: a.aiPolicy, latePenalty: a.latePenalty, lateGraceMinutes: a.lateGraceMinutes, latePenaltyMax: a.latePenaltyMax, maxAttempts: a.maxAttempts,
+      submitKind: a.submitKind, groupMode: a.groupMode, peerReviews: a.peerReviews, postPolicy: a.postPolicy, rubricHelp: a.rubricHelp,
+    },
+    select: { id: true, title: true },
+  });
+  const tags = await prisma.conceptTag.findMany({ where: { kind: 'CRITERION', refId: { startsWith: `${a.id}:` } }, select: { conceptId: true, refId: true }, take: 90 });
+  if (tags.length) await prisma.conceptTag.createMany({ data: tags.map((t) => ({ conceptId: t.conceptId, kind: 'CRITERION', refId: `${copy.id}:${t.refId.slice(a.id.length + 1)}` })) });
+  audit(user, { action: 'assignment.created', summary: `Duplicated assignment “${a.title}” in ${course.code}`, targetType: 'assignment', targetId: copy.id }, req);
+  return copy;
+}
+
+/**
+ * POST /api/assignments/:id/remind (Stage 5 · Q23): one tap tells the class's students who haven't
+ * handed it in (late, after the due date). In the app only, and at most once every 12 hours.
+ */
+export async function remindMissing(assignmentId: string, user: SessionUser) {
+  const { assignment: a, course } = await manage(assignmentId, user);
+  const link = `/student/assignments/${a.id}`;
+  const since = new Date(Date.now() - 12 * 3_600_000);
+  if (await prisma.notification.findFirst({ where: { link, type: 'reminder', createdAt: { gte: since } }, select: { id: true } })) throw new BadRequestException('They were reminded in the last 12 hours.');
+  const [enrolled, handedIn] = await Promise.all([
+    prisma.enrollment.findMany({ where: { courseId: a.courseId, student: { status: { not: 'SUSPENDED' } } }, select: { studentId: true }, take: 1000 }),
+    prisma.assignmentSubmission.findMany({ where: { assignmentId: a.id }, select: { studentId: true, groupId: true }, take: 2000 }),
+  ]);
+  const done = new Set(handedIn.map((x) => x.studentId));
+  // A group's answer counts for everyone in the group.
+  const groups = [...new Set(handedIn.map((x) => x.groupId).filter((g): g is string => !!g))];
+  if (groups.length) for (const m of await prisma.assignmentGroupMember.findMany({ where: { assignmentId: a.id, groupId: { in: groups.slice(0, 90) } }, select: { studentId: true } })) done.add(m.studentId);
+  const missing = enrolled.map((e) => e.studentId).filter((id) => !done.has(id));
+  if (!missing.length) return { reminded: 0 };
+  const late = !!a.dueDate && a.dueDate.getTime() < Date.now();
+  await notifyMany(missing, {
+    type: 'reminder', email: false, courseId: a.courseId, link,
+    title: late ? `${course.code}: “${a.title}” is late` : `${course.code}: “${a.title}” isn’t handed in yet`,
+    body: late ? 'It was due already. Hand it in as soon as you can, or talk to your teacher.' : a.dueDate ? `It’s due ${a.dueDate.toUTCString().slice(0, 16)}.` : 'Your teacher is waiting for it.',
+  });
+  return { reminded: missing.length, late };
+}
+
 // ─── Student ────────────────────────────────────────────────────────────────────────────────────
 
 export async function submitAnswer(assignmentId: string, user: SessionUser, body: Record<string, unknown>, req: Request) {

@@ -106,7 +106,7 @@ export function CallChatPanel({ open, onClose, lines, onSend, linked, title }: {
           <motion.div key="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
           <motion.aside key="chat" role="dialog" aria-label="Chat in the call"
             initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 28 }} transition={spring.smooth}
-            className="absolute z-40 inset-x-0 bottom-0 h-[78vh] rounded-t-3xl sm:inset-x-auto sm:right-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:h-auto sm:w-[22rem] sm:rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0">
+            className="absolute z-40 inset-x-0 bottom-0 h-[78vh] rounded-t-3xl sm:inset-x-auto sm:end-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:h-auto sm:w-[22rem] sm:rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0">
             <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2">
               <div className="min-w-0">
                 <p className="font-semibold">Chat</p>
@@ -127,7 +127,7 @@ export function CallChatPanel({ open, onClose, lines, onSend, linked, title }: {
                 return (
                   <motion.div key={l.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.snappy} className={cn('flex flex-col', l.mine ? 'items-end' : 'items-start', first && i > 0 && 'pt-1.5')}>
                     {first && <span className="text-[11px] text-zinc-400 px-1 mb-0.5">{l.mine ? 'You' : l.name} · {new Date(l.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>}
-                    <div className={cn('max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-snug whitespace-pre-wrap break-words', l.mine ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500 rounded-br-md' : 'bg-white/10 rounded-bl-md')}>
+                    <div className={cn('max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-snug whitespace-pre-wrap break-words', l.mine ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500 rounded-ee-md' : 'bg-white/10 rounded-es-md')}>
                       {l.file && (
                         l.file.mime.startsWith('image/') ? (
                           <a href={l.file.url} target="_blank" rel="noopener noreferrer" className="block -mx-1 -mt-0.5 mb-1">

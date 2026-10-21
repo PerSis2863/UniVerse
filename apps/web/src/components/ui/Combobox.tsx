@@ -266,7 +266,7 @@ export function Combobox({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.85 }}
                 transition={{ duration: 0.14 }}
-                className="inline-flex items-center gap-1 max-w-full rounded-lg bg-indigo-500/10 text-indigo-700 dark:text-indigo-200 border border-indigo-500/20 pl-2 pr-1 py-0.5 text-xs font-medium"
+                className="inline-flex items-center gap-1 max-w-full rounded-lg bg-indigo-500/10 text-indigo-700 dark:text-indigo-200 border border-indigo-500/20 ps-2 pe-1 py-0.5 text-xs font-medium"
               >
                 <span className="truncate">{c}</span>
                 <button type="button" onClick={(e) => { e.preventDefault(); removeChip(i); }} aria-label={`Remove ${c}`} className="p-0.5 rounded hover:bg-indigo-500/20">
@@ -326,7 +326,7 @@ export function Combobox({
             transition={{ duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}
             style={{ transformOrigin: 'top center' }}
             onMouseDown={(e) => e.preventDefault()} // keep focus in the input
-            className="absolute z-50 left-0 right-0 mt-1.5 max-h-72 overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl shadow-xl shadow-black/10 dark:shadow-black/40 p-1"
+            className="absolute z-50 start-0 end-0 mt-1.5 max-h-72 overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl shadow-xl shadow-black/10 dark:shadow-black/40 p-1"
           >
             {loadState === 'loading' && (
               <div className="flex items-center gap-2 px-3 py-3 text-sm text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /> Loading {sizeHint ?? 'options'}…</div>

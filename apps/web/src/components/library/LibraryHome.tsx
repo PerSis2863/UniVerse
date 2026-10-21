@@ -5,7 +5,9 @@ import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { format, formatDistanceToNowStrict } from 'date-fns';
-import { BookMarked, BookOpen, Clock, Loader2, MapPin, RefreshCw, X } from 'lucide-react';
+import { BookMarked, BookOpen, Clock, IdCard, Loader2, MapPin, RefreshCw, X } from 'lucide-react';
+import { QrCode } from '@/components/ui/QrCode';
+import { Barcode } from '@/components/ui/Barcode';
 import { Sheet } from '@/components/ui/Sheet';
 import { SearchField } from '@/components/ui/Field';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
@@ -29,6 +31,7 @@ interface Mine {
   returned: { id: string; book: { title: string }; returnedAt: string; fine: number; fineStatus: string | null }[];
   holds: { id: string; status: string; readyUntil: string | null; book: { id: string; title: string; authors: string | null; coverUrl: string | null } }[];
   owed: number; currency: string;
+  card?: { code: string; name: string };
 }
 interface Detail { id: string; isbn: string | null; title: string; authors: string | null; publisher: string | null; year: number | null; subjects: string | null; coverUrl: string | null; shelf: string | null; available: number; nextDue: string | null; queue: number; myHold: { id: string; status: string; readyUntil: string | null } | null; myLoan: { dueAt: string } | null; copyCount: number }
 
@@ -46,10 +49,17 @@ export function LibraryHome() {
   const { data, error, mutate, isLoading } = useSWR<{ books: BookRow[] }>(`/api/library?q=${encodeURIComponent(dq)}`, authedJson, { keepPreviousData: true });
   const mine = useSWR<Mine>('/api/library/me', authedJson);
   const [open, setOpen] = useState<string | null>(null);
+  const [showCard, setShowCard] = useState(false);
   const refresh = () => { void mutate(); void mine.mutate(); };
 
   return (
     <div className="space-y-4">
+      {mine.data?.card && (
+        <div className="flex justify-end">
+          <button type="button" onClick={() => setShowCard(true)} className="btn-secondary btn-sm"><IdCard className="w-4 h-4" aria-hidden /> My library card</button>
+        </div>
+      )}
+      {showCard && mine.data?.card && <LibraryCard card={mine.data.card} onClose={() => setShowCard(false)} />}
       <MyBooks data={mine.data} onChanged={refresh} onOpen={setOpen} />
       <section className="space-y-3" aria-labelledby="catalogue-title">
         <h2 id="catalogue-title" className="font-bold text-zinc-900 dark:text-white">Find a book</h2>
@@ -61,7 +71,7 @@ export function LibraryHome() {
             <motion.ul variants={list} initial="hidden" animate="show" className={cn('grid grid-cols-1 sm:grid-cols-2 gap-2 transition-opacity', isLoading && 'opacity-60')}>
               {data.books.map((b) => (
                 <motion.li key={b.id} variants={fadeUp}>
-                  <button type="button" onClick={() => { haptic('tap'); setOpen(b.id); }} className={`${card} w-full p-3 flex gap-3 text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors`}>
+                  <button type="button" onClick={() => { haptic('tap'); setOpen(b.id); }} className={`${card} w-full p-3 flex gap-3 text-start hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors`}>
                     <Cover url={b.coverUrl} title={b.title} className="w-12 h-16 shrink-0" />
                     <span className="flex-1 min-w-0">
                       <span className="block text-sm font-semibold text-zinc-900 dark:text-white line-clamp-2">{b.title}</span>
@@ -180,6 +190,22 @@ function BookSheet({ id, onClose, onChanged }: { id: string; onClose: () => void
           ))}
         </div>
       )}
+    </Sheet>
+  );
+}
+
+/** My library card (Stage 5 · Q22): shown at the desk to borrow; it scans as a QR code or a barcode. */
+function LibraryCard({ card, onClose }: { card: { code: string; name: string }; onClose: () => void }) {
+  return (
+    <Sheet title="My library card" onClose={onClose}>
+      <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white p-5 text-center text-black space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-600">Library card</p>
+        <p className="text-lg font-bold">{card.name}</p>
+        <QrCode value={card.code} size={180} className="mx-auto" title="Library card QR code" />
+        <Barcode value={card.code} height={48} className="w-full max-w-xs mx-auto" title="Library card barcode" />
+        <p className="font-mono text-xs text-zinc-700 break-all">{card.code}</p>
+      </div>
+      <p className="mt-3 text-xs text-zinc-600 dark:text-zinc-400">Show this at the library desk to borrow a book. Turn your screen brightness up if it doesn’t scan.</p>
     </Sheet>
   );
 }

@@ -138,7 +138,7 @@ export default function StudentChoices() {
                     <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Spring 2027 Electives</h3>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">Registration closes in 14 days.</p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-end">
                     <div className="text-sm font-medium text-zinc-900 dark:text-white">Credits Selected: <span className="text-indigo-600 dark:text-indigo-400">{selectedCredits} / 12</span></div>
                   </div>
                 </div>

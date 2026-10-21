@@ -93,17 +93,17 @@ function RoleStatusTable({ rows }: { rows: { role: string; status: string; count
         <table className="w-full text-xs sm:text-sm">
           <thead>
             <tr className="text-xs text-zinc-500">
-              <th className="text-left font-medium pb-2">Role</th>
-              {STATUS_COLS.map((s) => <th key={s} className="text-right font-medium pb-2">{s.charAt(0) + s.slice(1).toLowerCase()}</th>)}
-              <th className="text-right font-medium pb-2">Total</th>
+              <th className="text-start font-medium pb-2">Role</th>
+              {STATUS_COLS.map((s) => <th key={s} className="text-end font-medium pb-2">{s.charAt(0) + s.slice(1).toLowerCase()}</th>)}
+              <th className="text-end font-medium pb-2">Total</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
             {roles.map((role) => (
               <tr key={role}>
                 <td className="py-2 text-zinc-700 dark:text-zinc-200">{ROLE_LABEL[role] ?? role}</td>
-                {STATUS_COLS.map((s) => <td key={s} className="py-2 text-right tabular-nums text-zinc-600 dark:text-zinc-300">{nf.format(get(role, s))}</td>)}
-                <td className="py-2 text-right tabular-nums font-bold text-zinc-900 dark:text-white">{nf.format(rows.filter((r) => r.role === role).reduce((n, r) => n + r.count, 0))}</td>
+                {STATUS_COLS.map((s) => <td key={s} className="py-2 text-end tabular-nums text-zinc-600 dark:text-zinc-300">{nf.format(get(role, s))}</td>)}
+                <td className="py-2 text-end tabular-nums font-bold text-zinc-900 dark:text-white">{nf.format(rows.filter((r) => r.role === role).reduce((n, r) => n + r.count, 0))}</td>
               </tr>
             ))}
           </tbody>
@@ -171,7 +171,7 @@ function PeoplePanel({ data }: { data: Analytics }) {
                 <PersonCell className="flex-1" person={r.person} showActivity extra={r.facts || null} />
               </div>
               {r.right.length > 0 && (
-                <div className="text-xs text-zinc-600 dark:text-zinc-400 md:text-right space-y-0.5">
+                <div className="text-xs text-zinc-600 dark:text-zinc-400 md:text-end space-y-0.5">
                   <p className="font-semibold text-zinc-900 dark:text-white">{r.right[0]}</p>
                   {r.right.slice(1).filter(Boolean).map((x) => <p key={x} className="break-words">{x}</p>)}
                 </div>

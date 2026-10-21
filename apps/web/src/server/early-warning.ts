@@ -83,6 +83,10 @@ export async function assessCourse(courseId: string, now = Date.now()) {
 
   const flagBy = new Map(flags.map((f) => [f.studentId, f]));
   const newlyAtRisk: { studentId: string; score: number }[] = [];
+  // Few queries however big the class (D1 answers 50 a run): new flags in one insert, unchanged ones
+  // just "last checked" in one update, and only the flags that changed one by one.
+  const created: { studentId: string; courseId: string; score: number; level: string; reasons: { code: string; text: string }[]; computedAt: Date }[] = [];
+  const unchanged: string[] = [];
   const writes: Promise<unknown>[] = [];
 
   for (const e of enrollments) {
@@ -101,7 +105,7 @@ export async function assessCourse(courseId: string, now = Date.now()) {
 
     if (!existing) {
       if (level === 'OK') continue;
-      writes.push(prisma.studentRiskFlag.create({ data: { studentId: e.studentId, courseId, score, level, reasons, computedAt: new Date(now) } }));
+      created.push({ studentId: e.studentId, courseId, score, level, reasons, computedAt: new Date(now) });
       if (level === 'AT_RISK') newlyAtRisk.push({ studentId: e.studentId, score });
       continue;
     }
@@ -111,8 +115,11 @@ export async function assessCourse(courseId: string, now = Date.now()) {
       status = 'OPEN';
       if (level === 'AT_RISK') newlyAtRisk.push({ studentId: e.studentId, score });
     }
-    writes.push(prisma.studentRiskFlag.update({ where: { id: existing.id }, data: { score, level, reasons, status, computedAt: new Date(now) } }));
+    if (existing.score === score && existing.level === level && existing.status === status && JSON.stringify(existing.reasons) === JSON.stringify(reasons)) unchanged.push(existing.id);
+    else writes.push(prisma.studentRiskFlag.update({ where: { id: existing.id }, data: { score, level, reasons, status, computedAt: new Date(now) } }));
   }
+  if (created.length) writes.push(prisma.studentRiskFlag.createMany({ data: created }));
+  if (unchanged.length) writes.push(prisma.studentRiskFlag.updateMany({ where: { courseId, id: { in: unchanged } }, data: { computedAt: new Date(now) } }));
   await Promise.all(writes);
 
   if (newlyAtRisk.length) {

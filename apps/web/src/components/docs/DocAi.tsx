@@ -75,7 +75,7 @@ export function DocAiButton({ editor, canEdit, docId }: { editor: Editor | null;
         <Sparkles className="w-4 h-4" /><span className="max-sm:sr-only">AI</span>
       </button>
       {open && (
-        <div role="dialog" aria-label="Write with AI" className="absolute right-0 top-10 z-40 w-[22rem] max-sm:fixed max-sm:inset-x-4 max-sm:top-28 max-sm:w-auto rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-2" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>
+        <div role="dialog" aria-label="Write with AI" className="absolute end-0 top-10 z-40 w-[22rem] max-sm:fixed max-sm:inset-x-4 max-sm:top-28 max-sm:w-auto rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-2" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>
           {!answer ? (
             <>
               <p className="px-2 pt-1 pb-2 text-xs text-zinc-500">Select text in the document, then choose. You’ll see the answer before anything changes. Each one uses an AI request.</p>
@@ -85,9 +85,9 @@ export function DocAiButton({ editor, canEdit, docId }: { editor: Editor | null;
                   return (
                     <li key={a.id} className="flex items-center gap-1">
                       <button type="button" disabled={!allowed || !!busy} onMouseDown={(e) => e.preventDefault()} onClick={() => void ask(a.id)} title={allowed ? a.hint : 'You can only read this document'}
-                        className="flex-1 text-left px-2 py-1.5 rounded-lg text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-40 disabled:hover:bg-transparent">
+                        className="flex-1 text-start px-2 py-1.5 rounded-lg text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-40 disabled:hover:bg-transparent">
                         <span className="flex items-center gap-2 text-zinc-800 dark:text-zinc-100">{busy === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-indigo-500" aria-hidden />}{a.label}</span>
-                        <span className="block text-[11px] text-zinc-500 pl-[1.375rem]">{a.hint}</span>
+                        <span className="block text-[11px] text-zinc-500 ps-[1.375rem]">{a.hint}</span>
                       </button>
                       {a.id === 'translate' && (
                         <select value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Translate into" className="input py-1 text-xs w-auto shrink-0">

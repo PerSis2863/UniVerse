@@ -140,7 +140,7 @@ export default function RoomBookingsPage() {
                     <ul className="space-y-3">
                       {bookers.map((p, i) => (
                         <li key={p.person.id ?? p.person.email ?? i} className="flex items-center gap-2">
-                          <button onClick={() => setQ(p.person.email || p.person.name || '')} className="min-w-0 flex-1 text-left">
+                          <button onClick={() => setQ(p.person.email || p.person.name || '')} className="min-w-0 flex-1 text-start">
                             <span className="flex items-center gap-2 min-w-0">
                               <span className="text-sm font-medium text-zinc-900 dark:text-white truncate">{p.person.name}</span>
                               <RoleBadge role={p.person.role} />

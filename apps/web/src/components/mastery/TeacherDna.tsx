@@ -27,7 +27,7 @@ type View = 'class' | 'concepts' | 'tags';
 interface Concept { id: string; name: string; description: string | null; parentId: string | null; position: number; tagged: number }
 interface ClassData {
   students: { id: string; name: string }[];
-  concepts: { id: string; name: string; parentId: string | null; cells: ({ level: number; n: number; band: Band } | null)[] }[];
+  concepts: { id: string; name: string; parentId: string | null; cells: ({ level: number; n: number; band: Band } | null)[]; asked?: number; askedBy?: number }[];
   reteach: { conceptId: string; name: string; average: number | null; students: number; struggling: number }[];
   untagged: boolean;
 }
@@ -79,11 +79,22 @@ function ClassView({ courseId, onTag }: { courseId: string; onTag: () => void })
           </ul>
         </section>
       )}
+      {data.concepts.some((c) => c.asked) && (
+        <section className={`${card} p-4`} aria-labelledby="asked-title">
+          <h2 id="asked-title" className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Asked the course tutor about (last 60 days)</h2>
+          <ul className="mt-2 space-y-1.5">
+            {[...data.concepts].filter((c) => c.asked).sort((a, b) => (b.asked ?? 0) - (a.asked ?? 0)).slice(0, 5).map((c) => (
+              <li key={c.id} className="text-sm text-zinc-800 dark:text-zinc-100"><span className="font-semibold">{c.name}</span> <span className="text-zinc-600 dark:text-zinc-400">· {c.asked} question{c.asked === 1 ? '' : 's'} from {c.askedBy} student{c.askedBy === 1 ? '' : 's'}</span></li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11px] text-zinc-600 dark:text-zinc-400">Counted for the class only, never who asked. Matched by the words in the question.</p>
+        </section>
+      )}
       <section className={`${card} p-2 sm:p-3 overflow-x-auto`} aria-label="Concepts by student">
         <table className="text-xs border-separate border-spacing-1 min-w-full">
           <thead>
             <tr>
-              <th scope="col" className="text-left font-semibold text-zinc-500 sticky left-0 tone-panel z-10 min-w-36 px-1">Concept</th>
+              <th scope="col" className="text-start font-semibold text-zinc-500 sticky start-0 tone-panel z-10 min-w-36 px-1">Concept</th>
               {data.students.map((s) => (
                 <th key={s.id} scope="col" className="font-semibold text-zinc-600 dark:text-zinc-300 px-0.5 align-bottom">
                   <button type="button" onClick={() => setStudent(s)} className="block max-w-[4.5rem] truncate hover:underline mx-auto" title={s.name}>{s.name.split(' ')[0]}</button>
@@ -94,7 +105,7 @@ function ClassView({ courseId, onTag }: { courseId: string; onTag: () => void })
           <tbody>
             {data.concepts.map((c) => (
               <tr key={c.id}>
-                <th scope="row" className="text-left font-medium text-zinc-800 dark:text-zinc-100 sticky left-0 tone-panel z-10 px-1 max-w-48 truncate" title={c.name}>{c.parentId ? <span className="text-zinc-400 mr-1" aria-hidden>↳</span> : null}{c.name}</th>
+                <th scope="row" className="text-start font-medium text-zinc-800 dark:text-zinc-100 sticky start-0 tone-panel z-10 px-1 max-w-48 truncate" title={c.name}>{c.parentId ? <span className="text-zinc-400 me-1" aria-hidden>↳</span> : null}{c.name}</th>
                 {c.cells.map((cell, i) => (
                   <td key={data.students[i].id} className="p-0">
                     <span className={cn('block w-12 h-7 mx-auto rounded-md text-center leading-7 tabular-nums font-semibold', !cell ? 'bg-zinc-100 dark:bg-white/[0.04] text-zinc-400' : cell.band === 'mastered' ? 'bg-emerald-500/80 text-white' : cell.band === 'nearly' ? 'bg-indigo-500/70 text-white' : 'bg-amber-500/80 text-zinc-950')}
@@ -180,8 +191,8 @@ function ConceptsView({ courseId, data, onChanged }: { courseId: string; data?: 
         <motion.ul variants={list} initial="hidden" animate="show" className={`${card} p-2 divide-y divide-zinc-200/70 dark:divide-white/[0.06]`}>
           {data.concepts.map((c, i) => (
             <motion.li key={c.id} variants={fadeUp} className="flex items-center gap-2 px-2 py-2">
-              <button type="button" onClick={() => setEditing(c)} className="flex-1 min-w-0 text-left">
-                <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{c.parentId ? <span className="text-zinc-400 mr-1" aria-hidden>↳</span> : null}{c.name}</span>
+              <button type="button" onClick={() => setEditing(c)} className="flex-1 min-w-0 text-start">
+                <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{c.parentId ? <span className="text-zinc-400 me-1" aria-hidden>↳</span> : null}{c.name}</span>
                 <span className="block text-xs text-zinc-500 truncate">{c.tagged ? `${c.tagged} question${c.tagged === 1 ? '' : 's'} or criteria` : 'Nothing tagged yet'}{c.description ? ` · ${c.description}` : ''}</span>
               </button>
               <button type="button" aria-label={`Move ${c.name} up`} disabled={i === 0} onClick={() => void move(i, -1)} className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30"><ArrowUp className="w-4 h-4" /></button>
@@ -228,7 +239,7 @@ interface Taggable { id: string; title: string; items: { refId: string; text: st
 
 function TagsView({ courseId, concepts, onChanged }: { courseId: string; concepts: Concept[]; onChanged: () => void }) {
   const key = `/api/courses/${courseId}/concepts/tags`;
-  const { data, error, mutate } = useSWR<{ quizzes: Taggable[]; assignments: Taggable[] }>(key, authedJson);
+  const { data, error, mutate } = useSWR<{ quizzes: Taggable[]; assignments: Taggable[]; bank?: Taggable[] }>(key, authedJson);
   const [busy, setBusy] = useState<string | null>(null);
   if (error && !data) return <LoadError onRetry={() => mutate()} />;
   if (!data) return <ContentSkeleton variant="list" />;
@@ -247,14 +258,14 @@ function TagsView({ courseId, concepts, onChanged }: { courseId: string; concept
       await save(r.items, `${r.items.length} tagged by the AI: check them below`, `ai-${id}`);
     } catch (e) { toast.error(errorMessage(e, 'Couldn’t suggest tags.')); setBusy(null); }
   };
-  const group = (kind: 'QUESTION' | 'CRITERION', title: string, list_: Taggable[]) => list_.length > 0 && (
+  const group = (kind: 'QUESTION' | 'CRITERION' | 'BANK', title: string, list_: Taggable[]) => list_.length > 0 && (
     <section className="space-y-3" aria-label={title}>
       <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{title}</h2>
       {list_.map((g) => (
         <div key={g.id} className={`${card} p-3 space-y-2`}>
           <div className="flex items-center justify-between gap-2">
             <p className="font-semibold text-zinc-900 dark:text-white text-sm truncate">{g.title}</p>
-            {g.items.length > 0 && <button type="button" disabled={!!busy} onClick={() => void suggest(kind, g.id)} className="btn-ghost btn-sm shrink-0">{busy === `ai-${g.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />} Suggest</button>}
+            {g.items.length > 0 && kind !== 'BANK' && <button type="button" disabled={!!busy} onClick={() => void suggest(kind, g.id)} className="btn-ghost btn-sm shrink-0">{busy === `ai-${g.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />} Suggest</button>}
           </div>
           {g.items.length === 0 ? <p className="text-xs text-zinc-500">{kind === 'QUESTION' ? 'No questions.' : 'No rubric.'}</p> : (
             <ul className="divide-y divide-zinc-200/70 dark:divide-white/[0.06]">
@@ -280,12 +291,13 @@ function TagsView({ courseId, concepts, onChanged }: { courseId: string; concept
       ))}
     </section>
   );
-  if (!data.quizzes.length && !data.assignments.length) return <p className={`${card} p-8 text-center text-sm text-zinc-500`}>This course has no quizzes or assignments to tag yet.</p>;
+  if (!data.quizzes.length && !data.assignments.length && !data.bank?.length) return <p className={`${card} p-8 text-center text-sm text-zinc-500`}>This course has no quizzes or assignments to tag yet.</p>;
   return (
     <div className="space-y-5">
       <p className="text-sm text-zinc-600 dark:text-zinc-300">Tap the concepts each question or rubric criterion tests. Students’ past answers count straight away.</p>
       {group('QUESTION', 'Quizzes', data.quizzes)}
       {group('CRITERION', 'Assignment rubrics', data.assignments)}
+      {group('BANK', 'Question bank (tags go with a question into every quiz)', data.bank ?? [])}
     </div>
   );
 }

@@ -144,7 +144,7 @@ function MeetingRow({ m, onOpen, onRemove }: { m: Meeting; onOpen: () => void; o
   return (
     <li>
       <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
-        <button type="button" onClick={onOpen} className="flex-1 min-w-0 flex items-center gap-3 text-left">
+        <button type="button" onClick={onOpen} className="flex-1 min-w-0 flex items-center gap-3 text-start">
           <span className="w-24 shrink-0 text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">{time(m.startAt)}–{endTime(m)}</span>
           <Avatar name={m.parent.name} src={m.parent.avatar} size={36} />
           <span className="flex-1 min-w-0">

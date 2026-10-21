@@ -42,7 +42,7 @@ export function ShortAnswerReview({ quizId, questionId, onChanged }: { quizId: s
     <div className="space-y-2 text-sm">
       <p className="text-xs text-zinc-700 dark:text-zinc-300"><span className="font-semibold">Accepted: </span>
         {data.accepted.map((a) => (
-          <span key={a} className="inline-flex items-center gap-1 mr-1.5 mb-1 rounded-full bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 pl-2 pr-0.5 py-0.5">{a}
+          <span key={a} className="inline-flex items-center gap-1 me-1.5 mb-1 rounded-full bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 ps-2 pe-0.5 py-0.5">{a}
             {data.accepted.length > 1 && <button type="button" onClick={() => void change('unaccept', a)} disabled={!!busy} aria-label={`Stop accepting “${a}”`} className="w-6 h-6 inline-flex items-center justify-center rounded-full hover:bg-emerald-500/20"><X className="w-3.5 h-3.5" /></button>}
           </span>
         ))}

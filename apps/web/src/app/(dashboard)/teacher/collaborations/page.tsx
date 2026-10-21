@@ -13,6 +13,7 @@ import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import Link from '@/components/ui/Link';
 
 
 interface ApiProject { id: string; title: string; status: string; partner?: string | null; ngo?: string | null; _count?: { members?: number } }
@@ -190,7 +191,7 @@ export default function TeacherCollaborationsPage() {
                             <div key={m.id} className={`flex items-center gap-3 p-3 rounded-xl border text-sm ${done ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-zinc-100 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400'}`}>
                               <CheckCircle2 className={`w-4 h-4 flex-shrink-0 ${done ? 'text-emerald-400' : 'text-zinc-500'}`} />
                               {m.title}
-                              {done && <span className="ml-auto text-[10px] text-emerald-500 font-bold">DONE</span>}
+                              {done && <span className="ms-auto text-[10px] text-emerald-500 font-bold">DONE</span>}
                             </div>
                           );
                         })}
@@ -213,9 +214,9 @@ export default function TeacherCollaborationsPage() {
                       </div>
                     </div>
 
-                    <a href="/teacher/inbox" className="btn-primary">
+                    <Link href="/teacher/inbox" className="btn-primary">
                       <MessageSquare className="w-4 h-4" /> Message the team in Inbox
-                    </a>
+                    </Link>
                   </div>
 
                   <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">

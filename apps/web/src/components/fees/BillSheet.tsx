@@ -27,6 +27,8 @@ import { METHOD_LABEL, StatusChip, major, money, type BillStatus } from './share
 interface Payment { id: string; seq: number; amount: number; method: string; reference: string | null; note: string | null; paidAt: string; voidedAt: string | null; voidReason: string | null; receivedBy: { name: string } }
 interface Bill {
   id: string; seq: number; label: string; currency: string; amount: number; discount: number; discountNote: string | null; paid: number; owed: number; overdue: boolean;
+  /** The late fee inside `amount` (Stage 5 · Q22). */
+  lateFee?: number;
   dueAt: string; status: BillStatus; remindedAt: string | null; student: { id: string; name: string; email: string }; payments: Payment[];
 }
 interface Detail { invoice: Bill; parents: { name: string; email: string; relation: string | null }[] }
@@ -103,6 +105,12 @@ export function BillSheet({ id, onClose, onChanged }: { id: string; onClose: () 
               ))}
             </dl>
             {bill.discountNote && <p className="text-xs text-zinc-500">{bill.status === 'WAIVED' ? 'Waived' : 'Discount'}: {bill.discountNote}</p>}
+            {!!bill.lateFee && (
+              <p className="text-xs text-amber-800 dark:text-amber-300 flex flex-wrap items-center gap-2">
+                Includes a late fee of {money(bill.lateFee, bill.currency)}.
+                {manage && ['DUE', 'PARTIAL', 'PAID'].includes(bill.status) && <button type="button" disabled={busy} onClick={() => void act({ action: 'waive-late' }, 'Late fee taken off')} className="font-semibold underline">Take it off</button>}
+              </p>
+            )}
 
             {manage && <div className="flex flex-wrap gap-2">
               {bill.owed > 0 && <button type="button" onClick={() => setMode(mode === 'pay' ? null : 'pay')} className="btn-primary btn-sm"><Wallet className="w-4 h-4" /> Record a payment</button>}

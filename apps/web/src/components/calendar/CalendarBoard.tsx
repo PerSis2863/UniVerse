@@ -113,7 +113,7 @@ export function CalendarBoard({ cal, label, teacher, courses, presets = [], onOp
         onMove={moveTo}
         onCreate={(day, start, end) => setDraft(newDraft(day, start, end))}
         toolbarEnd={
-          <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:ml-auto">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:ms-auto">
             {presets.map((p) => <button key={p.label} type="button" onClick={() => setDraft(p.draft())} className="btn-secondary flex-1 sm:flex-none"><p.icon className="w-4 h-4" />{p.label}</button>)}
             <input ref={fileRef} type="file" accept=".ics,text/calendar" className="hidden" onChange={(e) => void importFile(e.target.files?.[0])} />
             <button type="button" onClick={() => fileRef.current?.click()} disabled={importing} title="Add events from a Google, Outlook or Apple calendar file (.ics)" className="btn-secondary flex-1 sm:flex-none">

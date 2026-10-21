@@ -21,9 +21,10 @@ async function placesLeft(courseId: string) {
 
 async function enrol(courseId: string, studentIds: string[]) {
   if (!studentIds.length) return;
-  for (const studentId of studentIds) {
-    await prisma.enrollment.upsert({ where: { studentId_courseId: { studentId, courseId } }, create: { studentId, courseId }, update: {} });
-  }
+  // Two queries however many (one upsert each was past D1's 50 a request for a big waitlist).
+  const have = new Set((await prisma.enrollment.findMany({ where: { courseId, studentId: { in: studentIds } }, select: { studentId: true } })).map((e) => e.studentId));
+  const fresh = [...new Set(studentIds)].filter((id) => !have.has(id));
+  if (fresh.length) await prisma.enrollment.createMany({ data: fresh.map((studentId) => ({ studentId, courseId })) });
   await prisma.electiveRequest.updateMany({ where: { courseId, studentId: { in: studentIds }, status: { in: ['PENDING', 'REVIEWING', 'WAITLISTED'] } }, data: { status: 'ACCEPTED' } });
 }
 

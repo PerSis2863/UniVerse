@@ -135,7 +135,7 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
         <motion.ul variants={list} initial="hidden" animate="show" className={`panel divide-y divide-zinc-200/70 dark:divide-white/[0.06]`}>
           {data.folders.map((f) => (
             <motion.li key={f.id} variants={fadeUp} className="flex items-center gap-3 px-4 py-3">
-              <button type="button" onClick={() => setFolder(f.id)} className="flex-1 min-w-0 flex items-center gap-3 text-left">
+              <button type="button" onClick={() => setFolder(f.id)} className="flex-1 min-w-0 flex items-center gap-3 text-start">
                 <Folder className="w-5 h-5 text-amber-500 shrink-0" />
                 <span className="flex-1 min-w-0 truncate text-sm font-semibold text-zinc-900 dark:text-white">{f.name}</span>
                 <span className="text-xs text-zinc-500">{f.items} {f.items === 1 ? 'item' : 'items'}</span>
@@ -152,7 +152,7 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
             const kindOf = f.mime.startsWith('image/') ? 'image' : previewKind(f.name, f.mime);
             return (
               <motion.li key={f.id} variants={fadeUp} className="relative flex items-center gap-2 px-4 py-3">
-                <button type="button" onClick={() => (kindOf ? setView(f) : window.open(f.url, '_blank', 'noopener'))} className="flex-1 min-w-0 flex items-center gap-3 text-left">
+                <button type="button" onClick={() => (kindOf ? setView(f) : window.open(f.url, '_blank', 'noopener'))} className="flex-1 min-w-0 flex items-center gap-3 text-start">
                   {f.mime.startsWith('image/') ? <ImageIcon className="w-5 h-5 text-emerald-500 shrink-0" /> : <FileText className="w-5 h-5 text-indigo-500 shrink-0" />}
                   <span className="flex-1 min-w-0">
                     <span className="block truncate text-sm font-semibold text-zinc-900 dark:text-white">{f.name}</span>
@@ -165,11 +165,11 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
                 <button type="button" aria-label={`More for ${f.name}`} aria-expanded={menu === f.id} onClick={() => setMenu(menu === f.id ? null : f.id)} className="p-1.5 text-zinc-400 hover:text-indigo-500"><MoreHorizontal className="w-4 h-4" /></button>
                 <AnimatePresence>
                   {menu === f.id && (
-                    <motion.div initial={{ opacity: 0, y: -4, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.97 }} transition={spring.snappy} className="absolute right-3 top-12 z-30 w-56 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5 text-sm">
-                      <button type="button" onClick={() => { setMenu(null); setDetail(f.id); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><History className="w-4 h-4" />Versions and where it’s used</button>
-                      {f.canChange && <button type="button" onClick={() => { setMenu(null); setDetail(f.id); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><Link2 className="w-4 h-4" />Share a link</button>}
-                      <button type="button" onClick={() => { setMenu(null); setDetail(f.id); setTimeout(() => versionPicker.current?.click(), 50); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><Upload className="w-4 h-4" />Upload a new version</button>
-                      {f.canChange && <button type="button" onClick={() => void (async () => { setMenu(null); const n = (await promptDialog({ title: 'Rename file', defaultValue: f.name, confirmLabel: 'Rename', maxLength: 120 }))?.trim(); if (n) await call('r', `/api/space-files/${f.id}`, 'PATCH', { name: n }); })()} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><Pencil className="w-4 h-4" />Rename</button>}
+                    <motion.div initial={{ opacity: 0, y: -4, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.97 }} transition={spring.snappy} className="absolute end-3 top-12 z-30 w-56 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5 text-sm">
+                      <button type="button" onClick={() => { setMenu(null); setDetail(f.id); }} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><History className="w-4 h-4" />Versions and where it’s used</button>
+                      {f.canChange && <button type="button" onClick={() => { setMenu(null); setDetail(f.id); }} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><Link2 className="w-4 h-4" />Share a link</button>}
+                      <button type="button" onClick={() => { setMenu(null); setDetail(f.id); setTimeout(() => versionPicker.current?.click(), 50); }} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><Upload className="w-4 h-4" />Upload a new version</button>
+                      {f.canChange && <button type="button" onClick={() => void (async () => { setMenu(null); const n = (await promptDialog({ title: 'Rename file', defaultValue: f.name, confirmLabel: 'Rename', maxLength: 120 }))?.trim(); if (n) await call('r', `/api/space-files/${f.id}`, 'PATCH', { name: n }); })()} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><Pencil className="w-4 h-4" />Rename</button>}
                       {f.canChange && (folder || data.folders.length > 0) && (
                         <select aria-label="Move to folder" defaultValue="" onChange={(e) => { setMenu(null); void call('m', `/api/space-files/${f.id}`, 'PATCH', { folderId: e.target.value === 'top' ? null : e.target.value }, 'Moved'); }} className="w-full mt-1 px-2 py-1.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-xs">
                           <option value="" disabled>Move to…</option>
@@ -177,7 +177,7 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
                           {data.folders.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>
                       )}
-                      {f.canChange && <button type="button" onClick={() => void (async () => { setMenu(null); if (await confirmDialog({ title: `Delete ${f.name}?`, message: 'Every version is deleted. Copies already shared in chats stay.', destructive: true, confirmLabel: 'Delete' })) await call('del', `/api/space-files/${f.id}`, 'DELETE', undefined, 'Deleted'); })()} className="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 inline-flex items-center gap-2"><Trash2 className="w-4 h-4" />Delete</button>}
+                      {f.canChange && <button type="button" onClick={() => void (async () => { setMenu(null); if (await confirmDialog({ title: `Delete ${f.name}?`, message: 'Every version is deleted. Copies already shared in chats stay.', destructive: true, confirmLabel: 'Delete' })) await call('del', `/api/space-files/${f.id}`, 'DELETE', undefined, 'Deleted'); })()} className="w-full text-start px-3 py-2 rounded-xl hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 inline-flex items-center gap-2"><Trash2 className="w-4 h-4" />Delete</button>}
                     </motion.div>
                   )}
                 </AnimatePresence>

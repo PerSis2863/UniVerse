@@ -1,5 +1,5 @@
 import prisma from '@/lib/db';
-import { findWatchWords, parseOrgSwitches, parseSwitches, parseWatchWords } from '@/lib/feature-switches';
+import { findWatchWords, parseOrgSwitches, parseRollouts, parseSwitches, parseWatchWords, schoolOff } from '@/lib/feature-switches';
 import { ownerEmails } from './auth';
 import { notify } from './email';
 
@@ -7,12 +7,12 @@ import { notify } from './email';
 // person muted in chat, and watch words that alert the owner (owner console → Live chats). The
 // switches and words are read at most once a minute per instance.
 
-let cached: { off: string[]; orgs: Record<string, string[]>; words: string[]; at: number } = { off: [], orgs: {}, words: [], at: 0 };
+let cached: { off: string[]; orgs: Record<string, string[]>; rollouts: Record<string, number>; words: string[]; at: number } = { off: [], orgs: {}, rollouts: {}, words: [], at: 0 };
 
 async function rules() {
   if (Date.now() - cached.at < 60_000) return cached;
   const row = await prisma.serverControl.findUnique({ where: { id: 'main' }, select: { switches: true, watchWords: true } }).catch(() => null);
-  cached = { off: parseSwitches(row?.switches), orgs: parseOrgSwitches(row?.switches), words: parseWatchWords(row?.watchWords), at: Date.now() };
+  cached = { off: parseSwitches(row?.switches), orgs: parseOrgSwitches(row?.switches), rollouts: parseRollouts(row?.switches), words: parseWatchWords(row?.watchWords), at: Date.now() };
   return cached;
 }
 
@@ -21,10 +21,10 @@ export function forgetRules() {
   cached = { ...cached, at: 0 };
 }
 
-/** Whether a feature is switched off for everyone, or (with `orgId`) for that person's school. */
+/** Whether a feature is switched off for everyone, or (with `orgId`) for that person's school (its switches and rollouts). */
 export async function featureOff(id: string, orgId?: string | null) {
   const r = await rules();
-  return r.off.includes(id) || (!!orgId && !!r.orgs[orgId]?.includes(id));
+  return r.off.includes(id) || schoolOff(r.orgs, r.rollouts, orgId).includes(id);
 }
 
 /** Why this person can't send chat messages right now, or null if they can. */

@@ -15,7 +15,7 @@ import type { Band } from '@/lib/mastery';
 // a tile that fills and glows as it's mastered, grouped under broader concepts, and what to study
 // next (straight into the course tutor's practice). Teachers open the same map for any student.
 
-interface Concept { id: string; name: string; description: string | null; parentId: string | null; band: Band; level: number; confidence: number; n: number; trend: number }
+interface Concept { id: string; name: string; description: string | null; parentId: string | null; band: Band; level: number; confidence: number; n: number; trend: number; asked?: number }
 interface Data { course: { id: string; code: string; name: string }; student: string | null; concepts: Concept[]; next: { id: string; name: string; band: Band }[]; counts: { mastered: number; total: number } }
 
 export const BAND: Record<Band, { label: string; tone: string; fill: string }> = {
@@ -80,7 +80,7 @@ export function MasteryMap({ courseId, studentId, practice = true }: { courseId:
           );
         })}
       </motion.div>
-      <p className="text-[11px] text-zinc-500">Worked out from your quiz answers (once a quiz closes), your teacher’s rubric scores and your second-chance practice, newest counting most. Only you and your teacher see it.</p>
+      <p className="text-[11px] text-zinc-500">Worked out from your quiz answers (once a quiz closes), your teacher’s rubric scores, your practice and second chances, and (lightly) your flashcard reviews, newest counting most. Questions you ask the course tutor show as “asked” and don’t change it. Only you and your teacher see it; your teacher sees what you asked only as a count for the whole class.</p>
     </div>
   );
 }
@@ -96,7 +96,7 @@ function Tile({ c }: { c: Concept }) {
       <div className="mt-2 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" role="img" aria-label={c.n ? `${Math.round(c.level * 100)}% from ${c.n} answer${c.n === 1 ? '' : 's'}` : 'No answers yet'}>
         <motion.div className={cn('h-full rounded-full', b.fill)} initial={{ width: 0 }} animate={{ width: `${c.n ? Math.max(6, c.level * 100) : 0}%` }} transition={spring.gentle} />
       </div>
-      <p className="mt-1 text-[10px] text-zinc-500 tabular-nums">{c.n ? `${c.n} answer${c.n === 1 ? '' : 's'}` : '—'}</p>
+      <p className="mt-1 text-[10px] text-zinc-600 dark:text-zinc-400 tabular-nums">{c.n ? `${c.n} answer${c.n === 1 ? '' : 's'}` : '—'}{c.asked ? ` · asked the tutor ${c.asked}×` : ''}</p>
     </li>
   );
 }

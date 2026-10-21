@@ -5,7 +5,8 @@ import useSWR from 'swr';
 import { AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { Check, Loader2, Mic, MicOff, QrCode, School, Square } from 'lucide-react';
+import { Check, Link2, Loader2, Mic, MicOff, QrCode, School, Square, Video } from 'lucide-react';
+import { Switch } from '@/components/ui/Switch';
 import Link from '@/components/ui/Link';
 import { RotatingQr } from '@/components/ui/RotatingQr';
 import { confirmDialog } from '@/components/ui/Dialogs';
@@ -25,6 +26,9 @@ type View = {
   mood: { lost: number; ok: number; total: number };
   questions: { id: string; text: string; answeredAt: string | null; createdAt: string }[];
   notes: number;
+  /** The course's class call when it's running (Stage 5 · Q22): its students, lost and following. */
+  call?: { lost: number; got: number; total: number; linked: boolean } | null;
+  linked?: boolean;
 };
 type Line = { t: number; who: string; text: string };
 
@@ -105,8 +109,19 @@ function RunningClass({ id, onEnded }: { id: string; onEnded: () => void }) {
   };
 
   if (!data) return <div className="h-40 rounded-2xl skeleton" />;
-  const joined = data.mood.total;
-  const lostShare = joined ? data.mood.lost / joined : 0;
+  // A hybrid class: the linked call's students on the same meter.
+  const online = data.linked && data.call ? data.call : null;
+  const room = data.mood.total;
+  const joined = room + (online?.total ?? 0);
+  const lost = data.mood.lost + (online?.lost ?? 0), following = data.mood.ok + (online?.got ?? 0);
+  const lostShare = joined ? lost / joined : 0;
+  const link = async (on: boolean) => {
+    try {
+      const r = await authedJson<{ marked: number }>(`/api/classroom/${id}`, { method: 'POST', body: JSON.stringify({ action: 'link', on }) });
+      toast.success(on ? `Linked: one class in the room and online${r.marked ? ` (${r.marked} marked present)` : ''}` : 'Not linked any more');
+      void mutate();
+    } catch (e) { toast.error(errorMessage(e, 'Couldn’t change that.')); }
+  };
   const open = data.questions.filter((q) => !q.answeredAt);
 
   return (
@@ -115,7 +130,7 @@ function RunningClass({ id, onEnded }: { id: string; onEnded: () => void }) {
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">● In class now</p>
           <h2 id="inperson-live-title" className="font-semibold text-zinc-900 dark:text-white">{data.course.code} · {data.course.name}</h2>
-          <p className="text-xs text-zinc-500">Started {formatDistanceToNowStrict(new Date(data.startedAt), { addSuffix: true })} · {joined} of {data.enrolled} joined</p>
+          <p className="text-xs text-zinc-500">Started {formatDistanceToNowStrict(new Date(data.startedAt), { addSuffix: true })} · {online ? `${room} in the room, ${online.total} online, of ${data.enrolled}` : `${joined} of ${data.enrolled} joined`}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setShowCode(true)} className="btn-primary"><QrCode className="w-4 h-4" /> Show the code</button>
@@ -126,7 +141,8 @@ function RunningClass({ id, onEnded }: { id: string; onEnded: () => void }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <div className={cn('rounded-2xl p-4 border', lostShare >= 0.2 ? 'border-amber-500/40 bg-amber-500/5' : 'border-zinc-200/70 dark:border-white/[0.07]')} aria-live="polite">
           <p className="text-xs text-zinc-500 dark:text-zinc-400">Right now</p>
-          <p className="text-2xl font-black tabular-nums text-zinc-900 dark:text-white">{data.mood.lost} lost <span className="text-base font-semibold text-zinc-500">· {data.mood.ok} following</span></p>
+          <p className="text-2xl font-black tabular-nums text-zinc-900 dark:text-white">{lost} lost <span className="text-base font-semibold text-zinc-500">· {following} following</span></p>
+          {online && <p className="text-xs text-zinc-600 dark:text-zinc-400">Room and online together ({online.lost} lost online)</p>}
           <div className="mt-2 h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" role="img" aria-label={`${Math.round(lostShare * 100)}% of the class is lost`}>
             <div className="h-full rounded-full bg-amber-500 transition-[width] duration-500" style={{ width: `${Math.round(lostShare * 100)}%` }} />
           </div>
@@ -144,6 +160,21 @@ function RunningClass({ id, onEnded }: { id: string; onEnded: () => void }) {
           ) : <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Notes need Chrome, Edge or Safari on this laptop.</p>}
         </div>
       </div>
+
+      {(data.call || data.linked) && (
+        <div className="rounded-2xl p-4 border border-zinc-200/70 dark:border-white/[0.07] flex flex-wrap items-center gap-3">
+          <Video className="w-5 h-5 text-indigo-600 dark:text-indigo-300 shrink-0" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-zinc-900 dark:text-white">{data.call ? `This course’s class call is live: ${data.call.total} online` : 'No one is in the class call right now'}</p>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">Linked, it’s one class: students in the call count on the meter (never who) and are marked present like those in the room. They ask the class TA in the call.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-zinc-500" aria-hidden />
+            <Switch checked={!!data.linked} onChange={(v) => void link(v)} label="Link the class call to this class" />
+          </div>
+          <Link href={`/call/c_${data.course.id}?kind=video`} className="btn-ghost btn-sm">Open the call</Link>
+        </div>
+      )}
 
       <div>
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Questions {open.length ? `(${open.length} new)` : ''}</h3>

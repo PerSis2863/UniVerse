@@ -153,8 +153,8 @@ export default function LeaderboardPage() {
   const rest = (search !== '' ? filtered : leaderboard).filter(u => u.rank > 3);
 
   const getTrendIcon = (trend: string, val?: number) => {
-    if (trend === 'up') return <div className="flex items-center text-emerald-500"><ArrowUp className="w-3 h-3 mr-0.5" />{val}</div>;
-    if (trend === 'down') return <div className="flex items-center text-red-500"><ArrowDown className="w-3 h-3 mr-0.5" />{val}</div>;
+    if (trend === 'up') return <div className="flex items-center text-emerald-500"><ArrowUp className="w-3 h-3 me-0.5" />{val}</div>;
+    if (trend === 'down') return <div className="flex items-center text-red-500"><ArrowDown className="w-3 h-3 me-0.5" />{val}</div>;
     return <div className="flex items-center text-zinc-400"><Minus className="w-3 h-3" /></div>;
   };
 
@@ -207,7 +207,7 @@ export default function LeaderboardPage() {
                     {LEVELS.map((lv) => {
                       const isCurrentLevel = (myLevelInfo?.current?.level || 1) === lv.level;
                       return (
-                        <div key={lv.level} className={cn('p-4 text-center border-r last:border-0 border-zinc-200 dark:border-zinc-800', isCurrentLevel ? 'bg-indigo-500/5' : '')}>
+                        <div key={lv.level} className={cn('p-4 text-center border-e last:border-0 border-zinc-200 dark:border-zinc-800', isCurrentLevel ? 'bg-indigo-500/5' : '')}>
                           <div className="text-2xl mb-1">{lv.emoji}</div>
                           <div className={`text-xs font-bold mb-0.5 ${isCurrentLevel ? 'text-indigo-400' : 'text-zinc-300 dark:text-zinc-300'}`}>Lv.{lv.level}</div>
                           <div className={`text-[9px] leading-tight ${isCurrentLevel ? 'text-indigo-400' : 'text-zinc-500'}`}>{lv.title}</div>
@@ -269,7 +269,7 @@ export default function LeaderboardPage() {
                   <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-10 h-10 bg-amber-400 rounded-full border-4 border-white dark:border-zinc-900 flex items-center justify-center text-sm font-black text-amber-900">1</div>
                   <div className="font-bold text-base text-zinc-900 dark:text-white truncate w-full">{top3[0].name}</div>
                   <div className="text-sm text-amber-600 dark:text-amber-400 font-bold">{top3[0].totalPoints.toLocaleString()} pts</div>
-                  <div className="text-[9px] text-amber-500/70 mt-0.5">{top3[0].levelInfo?.current?.title || 'UniVerse Legend'}</div>
+                  <div className="text-[10px] text-amber-800 dark:text-amber-300 mt-0.5">{top3[0].levelInfo?.current?.title || 'UniVerse Legend'}</div>
                 </div>
               </motion.div>
 
@@ -284,7 +284,7 @@ export default function LeaderboardPage() {
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 bg-orange-300 dark:bg-orange-800 rounded-full border-4 border-white dark:border-zinc-900 flex items-center justify-center text-xs font-bold text-orange-900 dark:text-orange-200">3</div>
                   <div className="font-bold text-sm text-zinc-900 dark:text-white truncate w-full">{top3[2].name}</div>
                   <div className="text-xs text-orange-600 dark:text-orange-500 font-medium">{top3[2].totalPoints.toLocaleString()} pts</div>
-                  <div className="text-[9px] text-orange-400/70 mt-0.5">{top3[2].levelInfo?.current?.title || 'Global Catalyst'}</div>
+                  <div className="text-[10px] text-orange-800 dark:text-orange-300 mt-0.5">{top3[2].levelInfo?.current?.title || 'Global Catalyst'}</div>
                 </div>
               </motion.div>
             </div>
@@ -302,9 +302,9 @@ export default function LeaderboardPage() {
               ))}
             </div>
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search students..."
-                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-500 outline-none focus:border-indigo-500 transition-colors" />
+                className="w-full ps-10 pe-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-500 outline-none focus:border-indigo-500 transition-colors" />
             </div>
           </div>
 
@@ -314,7 +314,7 @@ export default function LeaderboardPage() {
               <div className="col-span-1 text-center">Rank</div>
               <div className="col-span-5">Student</div>
               <div className="col-span-3">Level</div>
-              <div className="col-span-2 text-right">XP</div>
+              <div className="col-span-2 text-end">XP</div>
               <div className="col-span-1 text-center">Trend</div>
             </div>
 
@@ -350,7 +350,7 @@ export default function LeaderboardPage() {
                     </div>
                   </div>
 
-                  <div className="hidden sm:block col-span-2 text-right">
+                  <div className="hidden sm:block col-span-2 text-end">
                     <div className="font-bold text-zinc-900 dark:text-white">{user.totalPoints.toLocaleString()}</div>
                     <div className="text-[10px] text-zinc-500">xp</div>
                   </div>

@@ -165,8 +165,8 @@ export function SimplePanel({ task, api }: { task: Task; api: SimpleApi }) {
         ) : task === 'draw' ? (
           <>
             <div className="flex gap-2" role="radiogroup" aria-label="Draw with">
-              <button type="button" role="radio" aria-checked={!api.eraser} onClick={() => api.setEraser(false)} className={chip(!api.eraser)}><Pencil className="inline w-4 h-4 mr-1 -mt-0.5" aria-hidden />Pen</button>
-              <button type="button" role="radio" aria-checked={api.eraser} onClick={() => api.setEraser(true)} className={chip(api.eraser)}><Eraser className="inline w-4 h-4 mr-1 -mt-0.5" aria-hidden />Eraser</button>
+              <button type="button" role="radio" aria-checked={!api.eraser} onClick={() => api.setEraser(false)} className={chip(!api.eraser)}><Pencil className="inline w-4 h-4 me-1 -mt-0.5" aria-hidden />Pen</button>
+              <button type="button" role="radio" aria-checked={api.eraser} onClick={() => api.setEraser(true)} className={chip(api.eraser)}><Eraser className="inline w-4 h-4 me-1 -mt-0.5" aria-hidden />Eraser</button>
             </div>
             {/* Hidden, not removed, for the eraser: the panel keeps its height, so the photo doesn't jump. */}
             <div className={cn(api.eraser && 'invisible')}><Swatches value={api.brush.color} onChange={(c) => api.setBrush({ ...api.brush, color: c })} label="Pen colour" /></div>

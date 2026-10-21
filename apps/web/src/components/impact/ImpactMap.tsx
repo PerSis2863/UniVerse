@@ -36,7 +36,7 @@ export function ImpactMap({ places, height = 260 }: { places: Place[]; height?: 
           </motion.circle>
         ))}
       </svg>
-      {hover && <p className="absolute left-3 bottom-3 rounded-lg bg-white/90 dark:bg-zinc-900/90 px-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 shadow">{hover.label} · <b>{hover.hours} h</b> · {hover.people} volunteer{hover.people === 1 ? '' : 's'}</p>}
+      {hover && <p className="absolute start-3 bottom-3 rounded-lg bg-white/90 dark:bg-zinc-900/90 px-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 shadow">{hover.label} · <b>{hover.hours} h</b> · {hover.people} volunteer{hover.people === 1 ? '' : 's'}</p>}
     </div>
   );
 }

@@ -34,14 +34,18 @@ async function png(src: string): Promise<DocxImage | null> {
   } catch { return null; }
 }
 
-export async function downloadDocx(title: string, editor: Editor, page?: PageSetup) {
-  const json = editor.getJSON() as PMNode;
+/** A real Word file (.docx) of a document in the editor's structure, its pictures inside (the converter uses it too). */
+export async function docxBlob(json: PMNode, title: string, page?: PageSetup): Promise<Blob> {
   const images = new Map<string, DocxImage>();
   for (const src of imageSources(json).slice(0, 30)) { const img = await png(src); if (img) images.set(src, img); }
   const files = docToDocx(json, title, { images, origin: window.location.origin, page });
   const { zipSync, strToU8 } = await import('fflate');
   const zip = zipSync(Object.fromEntries(Object.entries(files).map(([k, v]) => [k, typeof v === 'string' ? strToU8(v) : v])));
-  save(new Blob([zip], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), `${safeName(title)}.docx`);
+  return new Blob([zip], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+
+export async function downloadDocx(title: string, editor: Editor, page?: PageSetup) {
+  save(await docxBlob(editor.getJSON() as PMNode, title, page), `${safeName(title)}.docx`);
 }
 
 /** Puts a Word, Markdown, text or web page file into the document at the cursor. */

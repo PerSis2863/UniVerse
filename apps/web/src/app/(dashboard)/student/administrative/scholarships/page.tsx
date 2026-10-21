@@ -140,7 +140,7 @@ export default function Scholarships() {
                 </div>
               </div>
             </div>
-            <div className="text-center md:text-right">
+            <div className="text-center md:text-end">
               <div className="text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-1">Total Awarded</div>
               <div className="text-3xl font-bold text-zinc-900 dark:text-white">${totalAwarded.toLocaleString()}</div>
             </div>
@@ -166,7 +166,7 @@ export default function Scholarships() {
                         </div>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-2xl line-clamp-2">{app.scholarship?.description}</p>
                       </div>
-                      <div className="text-right flex-shrink-0">
+                      <div className="text-end flex-shrink-0">
                         <div className="text-xl font-bold text-zinc-900 dark:text-white">${app.scholarship?.amount?.toLocaleString()}</div>
                         <div className="text-xs text-zinc-500 dark:text-zinc-500">Amount</div>
                       </div>
@@ -225,7 +225,7 @@ export default function Scholarships() {
                         <div className="text-xs text-zinc-500 dark:text-zinc-500 mb-1">Deadline</div>
                         <div className="text-sm font-medium text-zinc-600 dark:text-zinc-300">{award.deadline ? new Date(award.deadline).toLocaleDateString() : 'Rolling'}</div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-end">
                         <div className="text-lg font-bold text-zinc-900 dark:text-white">${award.amount?.toLocaleString()}</div>
                       </div>
                     </div>

@@ -95,7 +95,7 @@ function FormRow({ form, onOpen }: { form: Summary; onOpen: () => void }) {
   const pct = form.students ? Math.min(100, Math.round((answered / form.students) * 100)) : 0;
   return (
     <motion.li variants={fadeUp}>
-      <button type="button" onClick={onOpen} className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
+      <button type="button" onClick={onOpen} className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
         <span className={cn('w-11 h-11 rounded-2xl flex items-center justify-center shrink-0', form.closed ? 'bg-zinc-500/10 text-zinc-500' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300')}>
           {form.closed ? <Lock className="w-5 h-5" /> : <FileSignature className="w-5 h-5" />}
         </span>
@@ -108,7 +108,7 @@ function FormRow({ form, onOpen }: { form: Summary; onOpen: () => void }) {
           <span className="mt-1.5 flex items-center gap-2">
             <span className="flex-1 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden flex" aria-hidden>
               <motion.span className="h-full bg-emerald-500" initial={{ width: 0 }} animate={{ width: `${form.students ? (form.yes / form.students) * 100 : 0}%` }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} />
-              <motion.span className="h-full bg-rose-500 ml-px" initial={{ width: 0 }} animate={{ width: `${form.students ? (form.no / form.students) * 100 : 0}%` }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} />
+              <motion.span className="h-full bg-rose-500 ms-px" initial={{ width: 0 }} animate={{ width: `${form.students ? (form.no / form.students) * 100 : 0}%` }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} />
             </span>
             <span className="text-[11px] text-zinc-500 tabular-nums shrink-0">{answered}/{form.students} answered · {pct}%</span>
           </span>
@@ -177,7 +177,7 @@ function CreateSheet({ data, onClose, onCreated }: { data: List; onClose: () => 
         <div className="flex flex-wrap items-center gap-2">
           <input ref={picker} type="file" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); e.target.value = ''; }} />
           {file ? (
-            <span className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-white/10 pl-3 pr-1 py-1 text-sm max-w-full">
+            <span className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-white/10 ps-3 pe-1 py-1 text-sm max-w-full">
               <Paperclip className="w-4 h-4 shrink-0 text-zinc-500" /><span className="truncate">{file.name}</span>
               <button type="button" aria-label="Remove the attachment" onClick={() => setFile(null)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
             </span>

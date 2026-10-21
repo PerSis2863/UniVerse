@@ -15,7 +15,7 @@ import { apiDirect } from './api-direct';
 import { isBuiltPage, pageFor } from './page-match';
 import { fanOut, readRelay } from '../src/lib/fanout';
 import { routeOf } from '../src/lib/route-label';
-import { callsDue } from './due-check';
+import { callsDue, dailyPending } from './due-check';
 import { dbDate } from './fast-db';
 import { checkUsage, pageNotice, schoolGate, schoolSwitchCandidates, serverGate, withNotice } from './usage-guard';
 
@@ -38,7 +38,7 @@ interface Env {
 }
 
 // Endpoints that cost money or send email per call.
-const COSTLY = /^\/api\/(ai|summarize|premium\/ai-report|support|upload|core\/files\/upload|core\/safety\/report|student\/guardians|chat\/translate-draft|chat\/conversations\/[^/]+\/translate|tutor\/(?!cards)[^/]+\/(ask|practice|flashcards|sources)|assignments\/submissions\/[^/]+\/draft|impact-rooms\/calls\/[^/]+\/report|boards\/[^/]+\/ai|courses\/[^/]+\/discussion\/[^/]+\/suggest|courses\/[^/]+\/syllabus\/draft|assignments\/[^/]+\/rubric-help|quizzes\/[^/]+\/short-answers\/suggest)(\/|$)/;
+const COSTLY = /^\/api\/(ai|summarize|premium\/ai-report|support|upload|core\/files\/upload|core\/safety\/report|student\/guardians|chat\/translate-draft|chat\/conversations\/[^/]+\/translate|chat\/conversations\/[^/]+\/app$|parent\/chats\/[^/]+\/file$|admin\/chat-apps\/[^/]+\/test$|tutor\/(?!cards)[^/]+\/(ask|practice|flashcards|sources)|assignments\/submissions\/[^/]+\/draft|impact-rooms\/calls\/[^/]+\/report|boards\/[^/]+\/ai|courses\/[^/]+\/discussion\/[^/]+\/suggest|courses\/[^/]+\/syllabus\/draft|assignments\/[^/]+\/rubric-help|quizzes\/[^/]+\/short-answers\/suggest)(\/|$)/;
 
 // Sign-in steps someone could try over and over: the demo sign-in (per address) and the emailed
 // code / passkey second step and sign-up (per signed-in account). Passkey sign-in isn't here: it
@@ -259,6 +259,9 @@ export default {
     if (guard.alert) await runJob('usage-alert', guard.alert).catch((e) => console.error('usage alert failed:', e));
     // Scheduled-call reminders: one cheap query; the app only starts when a call is due.
     if (await callsDue(env)) await runJob('reminders');
+    // The rest of today's daily steps, while some are left (src/server/daily-jobs.ts; they share
+    // this run's 50 queries with the reminders, and stop in time).
+    if (await dailyPending(env)) await runJob('daily-more').catch((e) => console.error('daily steps failed:', e));
   },
 };
 
@@ -1718,6 +1721,9 @@ export class CallRoom extends DurableObject<Env> {
     if (url.pathname === '/people') {
       return Response.json({ ids: [...new Set(this.peers().map(({ peer }) => peer.userId))].slice(0, 500), creator: (await this.ctx.storage.get<string>('creator')) ?? null });
     }
+    // From the app: how many students are in and how many are lost or follow, for an in-person class
+    // linked to this class call (Stage 5 · Q22). Counts only, never who.
+    if (url.pathname === '/pulse') return Response.json(this.pulseCounts());
     // From the app: who is in the room (names only), for voice channel lists.
     if (url.pathname === '/peers') {
       const peers = this.peers().map(({ peer }) => peer.name);
@@ -2086,6 +2092,16 @@ export class CallRoom extends DurableObject<Env> {
       else q.hidden = true;
       await this.ctx.storage.put('qa', items);
       this.qaTell(true);
+    } else if (action === 'end-all') {
+      // The host ends the call for everyone (Stage 5 · Q23): each device hears so and leaves.
+      if (!me.host) return;
+      for (const p of all) {
+        if (p.ws === ws) continue;
+        this.send(p.ws, { type: 'ended', by });
+        p.ws.serializeAttachment(null);
+        try { p.ws.close(4002, 'The host ended the call'); } catch { /* already closed */ }
+      }
+      for (const w of this.waitingRoom()) { this.send(w.ws, { type: 'ended', by }); try { w.ws.close(4002, 'The host ended the call'); } catch { /* already closed */ } }
     } else if (action === 'remove') {
       // Not the host, and a co-host only by the host. Every device of theirs leaves, and they can't
       // come back into this call for a few hours.

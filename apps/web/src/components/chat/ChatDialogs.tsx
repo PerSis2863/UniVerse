@@ -59,13 +59,13 @@ export function ContactPicker({ onClose, onPick }: { onClose: () => void; onPick
   return (
     <Sheet title="Share a contact" onClose={onClose}>
       <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-        <input autoFocus className={cn('input', 'pl-9')} placeholder="Search people" value={q} onChange={(e) => setQ(e.target.value)} />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+        <input autoFocus className={cn('input', 'ps-9')} placeholder="Search people" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       {isLoading && <div className="py-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div>}
       <div className="space-y-1">
         {people?.map((u) => (
-          <button key={u.id} disabled={!!busy} onClick={async () => { setBusy(u.id); try { await onPick(u.id); onClose(); } finally { setBusy(null); } }} className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-white/[0.05] text-left">
+          <button key={u.id} disabled={!!busy} onClick={async () => { setBusy(u.id); try { await onPick(u.id); onClose(); } finally { setBusy(null); } }} className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-white/[0.05] text-start">
             <Avatar name={u.name} src={u.avatar} online={u.online} size={38} />
             <span className="flex-1 min-w-0"><span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{u.name}</span><span className="block text-xs text-zinc-500 capitalize">{u.role.toLowerCase()}</span></span>
             {busy === u.id && <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />}
@@ -100,14 +100,14 @@ export function ForwardDialog({ message, onClose, onDone }: { message: ChatMessa
     }>
       <p className="text-xs text-zinc-500 mb-3 truncate">“{previewText(message)}”</p>
       <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-        <input className={cn('input', 'pl-9')} placeholder="Search chats" value={q} onChange={(e) => setQ(e.target.value)} />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+        <input className={cn('input', 'ps-9')} placeholder="Search chats" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       <div className="space-y-1">
         {chats.map((c) => {
           const on = picked.includes(c.id);
           return (
-            <button key={c.id} onClick={() => setPicked(on ? picked.filter((x) => x !== c.id) : picked.length >= 5 ? picked : [...picked, c.id])} className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-white/[0.05] text-left">
+            <button key={c.id} onClick={() => setPicked(on ? picked.filter((x) => x !== c.id) : picked.length >= 5 ? picked : [...picked, c.id])} className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-white/[0.05] text-start">
               <Avatar name={c.title} src={c.avatarUrl} size={38} />
               <span className="flex-1 min-w-0 text-sm font-medium text-zinc-900 dark:text-white truncate">{c.title}</span>
               <span className={cn('w-5 h-5 rounded-full border-2 flex items-center justify-center', on ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-300 dark:border-white/30')}>{on && <Check className="w-3 h-3" />}</span>
@@ -200,7 +200,7 @@ function LaterList({ onOpen }: { onOpen: (conversationId: string, messageId: str
   };
   const row = (r: LaterItem, kind: 'due' | 'upcoming' | 'done') => (
     <div key={r.id} className={cn('p-3 rounded-2xl border', kind === 'due' ? 'border-amber-500/30 bg-amber-500/5' : 'border-zinc-200/70 dark:border-white/[0.07]', kind === 'done' && 'opacity-70')}>
-      <button type="button" onClick={() => r.chat && onOpen(r.chat.id, r.messageId)} disabled={!r.chat} className="w-full text-left disabled:cursor-default">
+      <button type="button" onClick={() => r.chat && onOpen(r.chat.id, r.messageId)} disabled={!r.chat} className="w-full text-start disabled:cursor-default">
         <p className="text-[11px] text-zinc-500 mb-1 flex items-center gap-1">
           <AlarmClock className="w-3 h-3" aria-hidden />{kind === 'done' ? 'Done' : kind === 'due' ? `Came up ${whenLabel(r.dueAt)}` : whenLabel(r.dueAt)}{r.chat ? ` · ${r.chat.title}` : ''}
         </p>
@@ -213,7 +213,7 @@ function LaterList({ onOpen }: { onOpen: (conversationId: string, messageId: str
         {kind !== 'done' && snoozeChoices(new Date()).map((c) => (
           <button key={c.id} type="button" disabled={busy === r.id} onClick={() => void act(r, { action: 'snooze', at: c.at.toISOString() }, `Moved to ${whenLabel(c.at.toISOString())}`)} className="text-zinc-600 dark:text-zinc-300">{kind === 'due' ? `Snooze: ${c.label.toLowerCase()}` : c.label}</button>
         ))}
-        <button type="button" disabled={busy === r.id} onClick={() => void act(r, null)} className="text-zinc-500 inline-flex items-center gap-1 ml-auto" aria-label="Delete reminder"><Trash2 className="w-3.5 h-3.5" /></button>
+        <button type="button" disabled={busy === r.id} onClick={() => void act(r, null)} className="text-zinc-500 inline-flex items-center gap-1 ms-auto" aria-label="Delete reminder"><Trash2 className="w-3.5 h-3.5" /></button>
       </div>
     </div>
   );
@@ -256,7 +256,7 @@ function StarredList({ onOpen }: { onOpen: (conversationId: string, messageId: s
       <div className="space-y-2">
         {data?.map((m) => (
           <div key={m.id} className="p-3 rounded-2xl border border-zinc-200/70 dark:border-white/[0.07] hover:bg-zinc-50 dark:hover:bg-white/[0.03]">
-            <button onClick={() => onOpen(m.chat.id, m.id)} className="w-full text-left">
+            <button onClick={() => onOpen(m.chat.id, m.id)} className="w-full text-start">
               <p className="text-[11px] text-zinc-500 mb-1">{m.sender.name} · {m.chat.title} · {timeLabel(m.createdAt)}</p>
               <p className="text-sm text-zinc-900 dark:text-white line-clamp-3">{previewText(m)}</p>
             </button>

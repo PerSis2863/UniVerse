@@ -156,8 +156,8 @@ export default function AdminAuditLog() {
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto space-y-6">
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
           <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-            <input className={`${input} w-full pl-9`} placeholder="Search people, emails or descriptions…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+            <input className={`${input} w-full ps-9`} placeholder="Search people, emails or descriptions…" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <select className={input} value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} aria-label="Type of activity">
             <option value="">All activity</option>

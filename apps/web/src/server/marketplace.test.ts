@@ -33,9 +33,11 @@ vi.mock('@/lib/db', () => ({
       findFirst: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
+      createMany: vi.fn(),
     },
     moduleItem: {
       create: vi.fn(),
+      createMany: vi.fn(),
     },
   },
 }));
@@ -152,6 +154,8 @@ describe('Stage 5 · C7: Content Marketplace', () => {
     it('enforces instructor or admin permission on target course', async () => {
       vi.mocked(prisma.marketplacePack.findUnique).mockResolvedValueOnce({
         id: 'pack-1',
+        status: 'PUBLISHED',
+        priceMinor: 0,
         modulesData: '[]',
       } as never);
       vi.mocked(prisma.course.findUnique).mockResolvedValueOnce({
@@ -169,6 +173,20 @@ describe('Stage 5 · C7: Content Marketplace', () => {
       ).rejects.toThrow('Only course instructors or administrators can import lesson packs.');
     });
 
+    it('refuses a paid pack to anyone but its author (buying packs does not exist yet)', async () => {
+      const paid = { id: 'pack-2', status: 'PUBLISHED', priceMinor: 49900, authorId: 'author-1', modulesData: '[]' };
+      vi.mocked(prisma.marketplacePack.findUnique).mockResolvedValueOnce(paid as never);
+      vi.mocked(prisma.course.findUnique).mockResolvedValueOnce({ id: 'crs-1', teacherId: 'teacher-1' } as never);
+      await expect(importPackIntoCourse({ packId: 'pack-2', targetCourseId: 'crs-1', userId: 'teacher-1', userRole: 'TEACHER', paymentOrderId: 'made-up' }))
+        .rejects.toThrow('Paid packs can’t be imported yet');
+    });
+
+    it('hides packs that are not published', async () => {
+      vi.mocked(prisma.marketplacePack.findUnique).mockResolvedValueOnce({ id: 'pack-3', status: 'HIDDEN', priceMinor: 0, modulesData: '[]' } as never);
+      vi.mocked(prisma.course.findUnique).mockResolvedValueOnce({ id: 'crs-1', teacherId: 'teacher-1' } as never);
+      await expect(importPackIntoCourse({ packId: 'pack-3', targetCourseId: 'crs-1', userId: 'teacher-1', userRole: 'TEACHER' })).rejects.toThrow('Marketplace pack not found.');
+    });
+
     it('deep-copies modules and items and increments download counter', async () => {
       const sampleModules = [
         {
@@ -184,6 +202,8 @@ describe('Stage 5 · C7: Content Marketplace', () => {
 
       vi.mocked(prisma.marketplacePack.findUnique).mockResolvedValueOnce({
         id: 'pack-1',
+        status: 'PUBLISHED',
+        priceMinor: 0,
         modulesData: JSON.stringify(sampleModules),
       } as never);
       vi.mocked(prisma.course.findUnique).mockResolvedValueOnce({
@@ -210,15 +230,12 @@ describe('Stage 5 · C7: Content Marketplace', () => {
       expect(res.success).toBe(true);
       expect(res.modulesImported).toBe(1);
       expect(res.itemsImported).toBe(2);
-      expect(prisma.courseModule.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            courseId: 'crs-1',
-            title: 'Module A',
-            position: 4, // positioned after existing position 3
-          }),
-        }),
-      );
+      // Two inserts for the whole pack (D1 answers 50 queries a request).
+      const mods = vi.mocked(prisma.courseModule.createMany).mock.calls[0][0] as { data: { id: string; courseId: string; title: string; position: number }[] };
+      expect(mods.data).toEqual([expect.objectContaining({ courseId: 'crs-1', title: 'Module A', position: 4 })]); // after existing position 3
+      const items = vi.mocked(prisma.moduleItem.createMany).mock.calls[0][0] as { data: { moduleId: string; title: string; kind: string; url: string | null }[] };
+      expect(items.data.map((i) => [i.moduleId, i.title, i.kind])).toEqual([[mods.data[0].id, 'Item 1', 'PAGE'], [mods.data[0].id, 'Item 2', 'LINK']]);
+      expect(prisma.moduleItem.create).not.toHaveBeenCalled();
       expect(prisma.marketplacePack.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'pack-1' },

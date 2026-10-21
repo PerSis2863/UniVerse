@@ -4,7 +4,7 @@ import { jwksFor, keysMayHaveRotated } from './jwks-cache';
 import type { User } from '@prisma/client';
 import prisma from '@/lib/db';
 import { ForbiddenException, UnauthorizedException } from './http';
-import { isSessionToken, verifySessionToken } from './session-token';
+import { isSessionToken, isViewAsToken, verifySessionToken, viewAsRefused } from './session-token';
 import { campusForEmail } from './campus-network';
 
 // Turns a bearer token into a platform user (ported from the old NestJS API).
@@ -80,6 +80,11 @@ export function demoWriteBlocked(req: Request, user: { role: string }, token: st
   if (!token?.startsWith('mock-token-') || user.role !== 'ADMIN') return false;
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return false;
   return !DEMO_ADMIN_WRITABLE.test(new URL(req.url).pathname);
+}
+
+/** The owner viewing the app as someone (read-only, src/server/session-token.ts): changes and private messages refused. */
+export function viewAsBlocked(req: Request, token: string | null): boolean {
+  return isViewAsToken(token) && viewAsRefused(req.method, new URL(req.url).pathname);
 }
 
 /**

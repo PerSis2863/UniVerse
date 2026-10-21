@@ -6,7 +6,7 @@ import { isLanguage } from '@/server/translate';
 
 type Ctx = { params: Promise<{ id: string }> };
 const MUTE_FOR: Record<string, number | null> = { '1h': 3600_000, '8h': 8 * 3600_000, '1w': 7 * 86_400_000, always: null };
-const MAX_PINNED = 5;
+const MAX_PINNED = 10; // Stage 5 · Q23: was 5
 
 // PATCH { pinned?, muted?: '1h' | '8h' | '1w' | 'always' | false | { until: ISO time, up to a year }, archived?, unread?, translateTo?: lang | null,
 // draft?: text | null } — the caller's own settings for this chat. The draft is what they were

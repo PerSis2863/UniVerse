@@ -53,17 +53,17 @@ export function PresencePicker() {
   return (
     <div className="relative">
       <button type="button" onClick={() => (open ? setOpen(false) : begin())} aria-label={`Your status: ${PRESENCE_LABEL[current]}`} title={`Your status: ${PRESENCE_LABEL[current]}`} aria-expanded={open}
-        className="h-8 pl-2 pr-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-200 max-w-[9rem]">
+        className="h-8 ps-2 pe-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-200 max-w-[9rem]">
         <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', DOT[current])} />
         <span className="truncate">{data?.statusEmoji ? `${data.statusEmoji} ` : ''}{data?.statusText || PRESENCE_LABEL[current]}</span>
       </button>
       <AnimatePresence>
         {open && draft && (
           <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy}
-            className="absolute right-0 top-10 z-40 w-72 p-3 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl space-y-3" role="dialog" aria-label="Set your status">
+            className="absolute end-0 top-10 z-40 w-72 p-3 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl space-y-3" role="dialog" aria-label="Set your status">
             <ul className="space-y-0.5" role="radiogroup" aria-label="Availability">{ORDER.map((p) => (
               <li key={p}>
-                <button type="button" role="radio" aria-checked={draft.presence === p} onClick={() => setDraft({ ...draft, presence: p })} className={cn('relative isolate w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-sm transition-colors', draft.presence === p ? 'text-indigo-700 dark:text-indigo-200' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200')}>{draft.presence === p && <TabPill id="mponents-chat-presencepicker-0" variant="soft" />}
+                <button type="button" role="radio" aria-checked={draft.presence === p} onClick={() => setDraft({ ...draft, presence: p })} className={cn('relative isolate w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-start text-sm transition-colors', draft.presence === p ? 'text-indigo-700 dark:text-indigo-200' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200')}>{draft.presence === p && <TabPill id="mponents-chat-presencepicker-0" variant="soft" />}
                   <span className={cn('w-2.5 h-2.5 rounded-full', DOT[p])} />
                   <span className="flex-1">{PRESENCE_LABEL[p]}</span>
                   {HINT[p] && <span className="text-[10px] text-zinc-500">{HINT[p]}</span>}

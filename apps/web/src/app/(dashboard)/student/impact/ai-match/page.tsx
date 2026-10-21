@@ -12,6 +12,7 @@ import {
   ChevronRight,   Target, Brain
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import Link from '@/components/ui/Link';
 import { cn } from '@/lib/utils';
 
 interface MatchedProject {
@@ -52,19 +53,19 @@ function MatchBar({ pct }: { pct: number }) {
   const color = pct >= 90 ? 'from-emerald-500 to-teal-500' : pct >= 75 ? 'from-blue-500 to-indigo-500' : 'from-amber-500 to-orange-500';
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
         <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
           className={`h-full bg-gradient-to-r ${color} rounded-full`} />
       </div>
-      <span className="text-xs font-bold text-white">{pct}%</span>
+      <span className="text-xs font-bold text-zinc-900 dark:text-white">{pct}%</span>
     </div>
   );
 }
 
-function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: (id: string) => void }) {
+function ProjectMatchCard({ match }: { match: MatchedProject }) {
   const [applied, setApplied] = useState(false);
   const [applying, setApplying] = useState(false);
-  const rankColors = ['text-amber-400', 'text-zinc-400', 'text-orange-500', 'text-blue-400', 'text-purple-400'];
+  const rankColors = ['text-amber-600 dark:text-amber-400', 'text-zinc-500 dark:text-zinc-300', 'text-orange-600 dark:text-orange-400', 'text-blue-600 dark:text-blue-400', 'text-purple-600 dark:text-purple-400'];
   const sdgGrad = SDG_COLORS[match.project.sdgNumber || 1] || 'from-indigo-500 to-purple-600';
 
   const handleApply = async () => {
@@ -82,11 +83,11 @@ function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: 
 
   return (
     <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: match.rank * 0.1 }}
-      className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 hover:border-zinc-700 transition-all">
+      className="bg-white/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
       <div className="flex items-start gap-4">
         {/* Rank badge */}
         <div className="flex flex-col items-center gap-1 flex-shrink-0">
-          <div className={`text-2xl font-black ${rankColors[match.rank - 1] || 'text-zinc-400'}`}>#{match.rank}</div>
+          <div className={`text-2xl font-black ${rankColors[match.rank - 1] || 'text-zinc-500 dark:text-zinc-300'}`}>#{match.rank}</div>
           <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${sdgGrad} flex items-center justify-center text-xs font-bold text-white`}>
             {match.project.sdgNumber || '?'}
           </div>
@@ -94,17 +95,17 @@ function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: 
 
         <div className="flex-1 min-w-0">
           {/* Title + org */}
-          <h3 className="text-white font-bold text-sm leading-snug mb-0.5">{match.project.name}</h3>
+          <h3 className="text-zinc-900 dark:text-white font-bold text-sm leading-snug mb-0.5">{match.project.name}</h3>
           <div className="flex items-center gap-1.5 mb-3">
-            <span className="text-xs text-indigo-400 font-medium">{match.project.ngo.name}</span>
-            {match.project.ngo.isVerified && <CheckCircle2 className="w-3 h-3 text-blue-400" />}
+            <span className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">{match.project.ngo.name}</span>
+            {match.project.ngo.isVerified && <CheckCircle2 className="w-3 h-3 text-blue-500 dark:text-blue-400" />}
           </div>
 
           {/* AI Match score */}
           <div className="mb-3">
             <div className="flex items-center gap-2 mb-1.5">
               <Brain className="w-3.5 h-3.5 text-purple-400" />
-              <span className="text-xs font-semibold text-purple-400">AI Match Score</span>
+              <span className="text-xs font-semibold text-purple-700 dark:text-purple-400">AI Match Score</span>
             </div>
             <MatchBar pct={match.matchPercentage} />
           </div>
@@ -129,7 +130,7 @@ function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: 
             {match.project.location && (
               <span className="flex items-center gap-1 text-zinc-500"><Globe2 className="w-3 h-3" />{match.project.location}</span>
             )}
-            <span className="flex items-center gap-1 text-amber-400 font-semibold"><Star className="w-3 h-3" />{match.project.impactPoints} XP</span>
+            <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400 font-semibold"><Star className="w-3 h-3" />{match.project.impactPoints} XP</span>
             <span className="flex items-center gap-1 text-zinc-500"><Users className="w-3 h-3" />{match.project.openings} spots</span>
           </div>
 
@@ -139,7 +140,7 @@ function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: 
               <span key={skill} className={cn('text-[10px] px-2 py-0.5 rounded-md font-medium border',
                 match.skillMatches.some(m => m.toLowerCase() === skill.toLowerCase())
                   ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400'
-                  : 'bg-zinc-800 border-zinc-700 text-zinc-500')}>
+                  : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300')}>
                 {skill}
               </span>
             ))}
@@ -186,8 +187,8 @@ export default function AIMatchPage() {
                 <Brain className="w-6 h-6 text-white" />
               </div>
               <div className="flex-1">
-                <h2 className="text-white font-bold text-base mb-1">Your Personalized Top 5 Projects</h2>
-                <p className="text-zinc-400 text-xs leading-relaxed mb-3">
+                <h2 className="text-zinc-900 dark:text-white font-bold text-base mb-1">Your Personalized Top 5 Projects</h2>
+                <p className="text-zinc-600 dark:text-zinc-400 text-xs leading-relaxed mb-3">
                   Our AI analyzed your skills profile, enrolled courses, and interests to surface the 5 projects where you’ll have the highest impact and best chance of acceptance.
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -199,7 +200,7 @@ export default function AIMatchPage() {
                 </div>
               </div>
               <button aria-label="Refresh" onClick={() => void mutate()} disabled={refreshing}
-                className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all flex-shrink-0">
+                className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex-shrink-0 pressable">
                 <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
               </button>
             </div>
@@ -214,39 +215,39 @@ export default function AIMatchPage() {
                 </div>
                 <div className="absolute -inset-1 rounded-2xl border border-purple-500/30 animate-ping opacity-30" />
               </div>
-              <p className="text-zinc-400 text-sm font-medium">AI is analyzing your profile...</p>
-              <p className="text-zinc-600 text-xs">Matching skills, courses, and interests</p>
+              <p className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">AI is analyzing your profile...</p>
+              <p className="text-zinc-500 text-xs">Matching skills, courses, and interests</p>
             </div>
           ) : (
             <div className="space-y-4">
               {matches.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-zinc-800 p-10 text-center">
+                <div className="rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 p-10 text-center">
                   <Brain className="w-8 h-8 text-purple-400 mx-auto mb-3" />
-                  <p className="font-semibold text-white">{loadError ? 'Couldn’t reach the matching service' : 'No matches yet'}</p>
+                  <p className="font-semibold text-zinc-900 dark:text-white">{loadError ? 'Couldn’t reach the matching service' : 'No matches yet'}</p>
                   <p className="text-sm text-zinc-500 mt-1">
                     {loadError ? 'Please try again in a moment.' : 'Add skills to your profile and check back as NGOs post new projects.'}
                   </p>
                 </div>
               )}
               {matches.map(match => (
-                <ProjectMatchCard key={match.project.id} match={match} onApply={() => {}} />
+                <ProjectMatchCard key={match.project.id} match={match} />
               ))}
             </div>
           )}
 
           {/* Tips */}
-          <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-5">
-            <h3 className="text-white font-bold text-sm mb-3 flex items-center gap-2"><Target className="w-4 h-4 text-amber-400" /> Improve Your Matches</h3>
+          <div className="bg-white/70 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5">
+            <h3 className="text-zinc-900 dark:text-white font-bold text-sm mb-3 flex items-center gap-2"><Target className="w-4 h-4 text-amber-500 dark:text-amber-400" /> Improve Your Matches</h3>
             <div className="space-y-2">
               {[
                 { tip: 'Add more skills to your profile', href: '/student/skills' },
                 { tip: 'Enroll in relevant SDG courses', href: '/student/courses' },
                 { tip: 'Complete your career profile', href: '/student/career' },
               ].map(({ tip, href }) => (
-                <a key={tip} href={href} className="flex items-center justify-between p-3 bg-zinc-800/50 hover:bg-zinc-800 rounded-xl transition-all group">
-                  <span className="text-xs text-zinc-400 group-hover:text-white transition-colors">{tip}</span>
-                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors" />
-                </a>
+                <Link key={tip} href={href} className="flex items-center justify-between p-3 bg-zinc-100 dark:bg-zinc-800/50 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-xl transition-colors group pressable">
+                  <span className="text-xs text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">{tip}</span>
+                  <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors" />
+                </Link>
               ))}
             </div>
           </div>

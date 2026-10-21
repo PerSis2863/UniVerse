@@ -16,9 +16,9 @@ export function MiniPlayer() {
     <AnimatePresence>
       {show && (
         <motion.div key="mini-voice" initial={{ y: 40, opacity: 0, scale: 0.96 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 40, opacity: 0, scale: 0.96 }} transition={spring.smooth}
-          className="fixed z-[280] right-3 lg:right-6 bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+4.5rem)] lg:bottom-6 w-[min(92vw,20rem)] rounded-2xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl p-2.5 flex items-center gap-2.5" role="region" aria-label="Voice message playing">
+          className="fixed z-[280] end-3 lg:end-6 bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+4.5rem)] lg:bottom-6 w-[min(92vw,20rem)] rounded-2xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl p-2.5 flex items-center gap-2.5" role="region" aria-label="Voice message playing">
           <button type="button" onClick={() => v.src && voice.toggle(v.src, v.title)} aria-label={v.playing ? 'Pause' : 'Play'} className="w-9 h-9 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center">
-            {v.playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+            {v.playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ms-0.5" />}
           </button>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-zinc-900 dark:text-white truncate flex items-center gap-1"><Mic className="w-3 h-3 shrink-0 text-indigo-500" />{v.title}</p>

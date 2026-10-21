@@ -22,7 +22,7 @@ const [, john] = await call(S, `${P}/peer`);
 console.log('john sees reviews of his work before grading', john.received.length, 'later', john.receivedLater);
 const [, d] = await call(T, P);
 console.log('teacher sees', d.peerReviewList.length, 'reviews,', d.peerReviewList.filter((r) => r.status === 'DONE').length, 'done, with names', d.peerReviewList.every((r) => r.reviewer?.name));
-const johnSub = d.submissions.find((x) => x.student.name === 'John Doe');
+const johnSub = d.submissions.find((x) => x.student.name.startsWith('John'));
 await call(T, `/api/assignments/submissions/${johnSub.id}/return`, { criteria: d.rubric.map((r) => ({ id: r.id, score: 3 })), feedback: 'Fine' });
 const [, john2] = await call(S, `${P}/peer`);
 console.log('john after his grade', john2.received.length, 'review(s), anonymous', !JSON.stringify(john2.received).includes('Alice'));

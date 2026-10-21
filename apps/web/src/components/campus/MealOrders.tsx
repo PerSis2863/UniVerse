@@ -96,7 +96,7 @@ export function MyMealOrders() {
               <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', STATUS[o.status][1])}>{STATUS[o.status][0]}</span>
               <p className="mt-1 text-zinc-900 dark:text-white break-words">{o.items.map((i) => `${i.qty}× ${i.dish}`).join(', ')}</p>
               <p className="text-xs text-zinc-600 dark:text-zinc-400">{time(o.pickupAt)}{o.menu.location ? ` · ${o.menu.location}` : ''}</p>
-              {o.status === 'PLACED' && <button type="button" className="btn-ghost btn-sm mt-1 -ml-2" onClick={() => cancel(o.id)}>Cancel</button>}
+              {o.status === 'PLACED' && <button type="button" className="btn-ghost btn-sm mt-1 -ms-2" onClick={() => cancel(o.id)}>Cancel</button>}
             </div>
           </li>
         ))}

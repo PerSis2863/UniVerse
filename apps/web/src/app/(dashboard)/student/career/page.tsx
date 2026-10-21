@@ -140,7 +140,7 @@ export default function CareerPage() {
                   ))}
                 </div>
                 <button onClick={() => router.push('/student/calendar')} className="w-full mt-4 py-2 border border-zinc-200 dark:border-white/10 rounded-lg text-sm font-medium text-zinc-900 dark:text-white hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors flex items-center justify-center group">
-                  View All Events <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                  View All Events <ChevronRight className="w-4 h-4 ms-1 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
             </div>

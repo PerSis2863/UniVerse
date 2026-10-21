@@ -74,7 +74,7 @@ export function DatabasePanel({ onOpenTable }: { onOpenTable: (name: string) => 
           {data.busiest.length === 0 ? <p className="text-sm text-zinc-500">Nothing added in the last two weeks.</p> : (
             <ul className="space-y-2">{data.busiest.map((b) => (
               <li key={b.name}>
-                <button onClick={() => onOpenTable(b.name)} className="w-full text-left">
+                <button onClick={() => onOpenTable(b.name)} className="w-full text-start">
                   <div className="flex justify-between text-sm"><span className="text-zinc-700 dark:text-zinc-200 truncate">{nice(b.name)}</span><span className="text-zinc-500 shrink-0">+{num(b.count)}</span></div>
                   <div className="mt-1 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${(b.count / data.busiest[0].count) * 100}%` }} /></div>
                 </button>
@@ -114,7 +114,7 @@ export function DatabasePanel({ onOpenTable }: { onOpenTable: (name: string) => 
             <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
               {shown.filter((t) => t.area === area).map((t) => (
                 <li key={t.name}>
-                  <button onClick={() => onOpenTable(t.name)} className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]">
+                  <button onClick={() => onOpenTable(t.name)} className="w-full text-start px-4 py-3 flex items-center gap-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]">
                     <Table2 className="w-4 h-4 text-zinc-400 shrink-0" />
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{nice(t.name)}</span>
@@ -122,7 +122,7 @@ export function DatabasePanel({ onOpenTable }: { onOpenTable: (name: string) => 
                     </span>
                     {!!t.today && <span className="hidden sm:inline-flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-400"><Plus className="w-3 h-3" />{num(t.today)} today</span>}
                     {!!t.week && <span className="hidden md:inline text-xs text-zinc-500">+{num(t.week)} this week</span>}
-                    <span className="text-sm font-bold text-zinc-900 dark:text-white tabular-nums w-16 text-right">{num(t.rows)}</span>
+                    <span className="text-sm font-bold text-zinc-900 dark:text-white tabular-nums w-16 text-end">{num(t.rows)}</span>
                     <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
                   </button>
                 </li>

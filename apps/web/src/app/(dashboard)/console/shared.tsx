@@ -44,10 +44,10 @@ export const matches = (q: string, ...values: unknown[]) => {
 export function SearchBox({ value, onChange, placeholder, className }: { value: string; onChange: (v: string) => void; placeholder: string; className?: string }) {
   return (
     <div className={cn('relative flex-1 min-w-[12rem]', className)}>
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
-      <input type="text" enterKeyHint="search" className={cn(field, 'pl-9 pr-9')} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} aria-label={placeholder} />
+      <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+      <input type="text" enterKeyHint="search" className={cn(field, 'ps-9 pe-9')} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} aria-label={placeholder} />
       {value && (
-        <button type="button" onClick={() => onChange('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+        <button type="button" onClick={() => onChange('')} aria-label="Clear search" className="absolute end-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
           <X className="w-4 h-4" />
         </button>
       )}

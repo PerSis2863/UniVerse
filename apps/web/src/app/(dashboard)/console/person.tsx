@@ -9,6 +9,7 @@ import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { type Rec, type Schema, RecordEditor, SearchBox, card, errorMessage, fetcher, formatValue, matches, refreshConsole, summarize, toastWithUndo } from './shared';
+import { ViewAsButton } from './schools';
 import { ComposeDialog, LiveChat } from './chats';
 import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
@@ -165,6 +166,7 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
             <button onClick={() => setCompose('notify')} className="btn-secondary"><Bell className="w-4 h-4" /> Notify</button>
             <button onClick={() => void download()} disabled={saving} aria-busy={saving || undefined} className="btn-secondary">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Download data</button>
             <button onClick={() => void signOutEverywhere()} className="btn-secondary"><LogOut className="w-4 h-4" /> Sign out everywhere</button>
+            {!u.owner && u.status !== 'SUSPENDED' && <ViewAsButton id={String(u.id)} name={String(u.name ?? 'them')} />}
             {!u.owner && (u.status === 'SUSPENDED' ? (
               <button onClick={() => void ban(false)} className="btn-secondary !text-emerald-600 dark:!text-emerald-400 !border-emerald-500/30"><ShieldCheck className="w-4 h-4" /> Let back in</button>
             ) : (
@@ -216,7 +218,7 @@ function SectionBlock({ s, onEdit, forceOpen }: { s: Section; onEdit: (r: Rec) =
   const editable = s.model !== 'AuditLog';
   return (
     <div className={card}>
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 p-4 text-left">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 p-4 text-start">
         <span className="font-semibold text-zinc-900 dark:text-white">{s.title} <span className="text-zinc-400 font-normal">· {s.count}</span></span>
         <ChevronDown className={cn('w-4 h-4 text-zinc-400 transition-transform', open && 'rotate-180')} />
       </button>
@@ -255,10 +257,10 @@ function Conversations({ personId, personName, onClose }: { personId: string; pe
           <button onClick={onClose} className="text-sm text-zinc-500">Close</button>
         </div>
         <div className="flex-1 grid md:grid-cols-[260px_1fr] min-h-0">
-          <ul className={cn('overflow-y-auto border-r border-zinc-100 dark:border-white/[0.06]', open && 'hidden md:block')}>
+          <ul className={cn('overflow-y-auto border-e border-zinc-100 dark:border-white/[0.06]', open && 'hidden md:block')}>
             {isLoading ? <li className="p-6"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></li> : !convos?.length ? <li className="p-6 text-sm text-zinc-500">No conversations.</li> : convos.map((c) => (
               <li key={c.id}>
-                <button onClick={() => setOpen(c.id)} className={cn('relative isolate w-full text-left p-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', open === c.id && '')}>{open === c.id && <TabPill id="app-dashboard-console-person-0" variant="soft" />}
+                <button onClick={() => setOpen(c.id)} className={cn('relative isolate w-full text-start p-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', open === c.id && '')}>{open === c.id && <TabPill id="app-dashboard-console-person-0" variant="soft" />}
                   <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{c.isGroup ? c.name ?? 'Group' : c.participants.map((p) => p.user.name).filter((n) => n !== personName).join(', ') || 'Chat'}</p>
                   <p className="text-xs text-zinc-500">{c._count.messages} messages · {formatDistanceToNow(new Date(c.updatedAt), { addSuffix: true })}</p>
                 </button>

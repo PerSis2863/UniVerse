@@ -155,7 +155,7 @@ export function ImpactScholarshipExchange() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Balance Card */}
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 p-6 text-white shadow-xl border border-indigo-500/20">
-          <div className="absolute right-0 top-0 -mr-6 -mt-6 h-32 w-32 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
+          <div className="absolute end-0 top-0 -me-6 -mt-6 h-32 w-32 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
           <div className="flex items-center justify-between">
             <span className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-300 border border-indigo-400/30">
               Impact Credit Balance

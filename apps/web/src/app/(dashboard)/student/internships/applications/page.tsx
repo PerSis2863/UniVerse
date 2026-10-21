@@ -242,7 +242,7 @@ export default function ApplicationsPage() {
                       <li key={a.id} className="py-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm">
                         <span className="font-semibold text-zinc-900 dark:text-white">{a.nextStep || 'Next step'}</span>
                         <span className="text-zinc-600 dark:text-zinc-400 min-w-0 break-words">{a.title} · {a.company}</span>
-                        <span className="sm:ml-auto tabular-nums text-zinc-700 dark:text-zinc-300">{when(a.nextAt!)}</span>
+                        <span className="sm:ms-auto tabular-nums text-zinc-700 dark:text-zinc-300">{when(a.nextAt!)}</span>
                       </li>
                     ))}
                   </ul>

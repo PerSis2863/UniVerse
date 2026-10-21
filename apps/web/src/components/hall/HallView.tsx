@@ -431,9 +431,9 @@ export function HallView({ hallId }: { hallId: string }) {
             <button type="button" onClick={() => setTimerMenu((v) => !v)} aria-expanded={timerMenu} className="inline-flex items-center gap-1.5 rounded-full px-3 h-9 text-xs font-semibold bg-white/10 hover:bg-white/15"><Timer className="w-3.5 h-3.5" />Focus timer</button>
           )}
           {timerMenu && !tv && (
-            <div className="absolute right-0 top-full mt-2 z-30 w-52 rounded-2xl bg-[#121830] border border-white/10 shadow-2xl p-1.5">
+            <div className="absolute end-0 top-full mt-2 z-30 w-52 rounded-2xl bg-[#121830] border border-white/10 shadow-2xl p-1.5">
               {[[25, 5], [50, 10]].map(([f, b]) => (
-                <button key={f} type="button" onClick={() => { setTimerMenu(false); send({ type: 'hall-timer', on: true, focus: f, brk: b }); }} className="w-full text-left rounded-xl px-3 py-2 text-sm hover:bg-white/10">{f} min focus · {b} min break</button>
+                <button key={f} type="button" onClick={() => { setTimerMenu(false); send({ type: 'hall-timer', on: true, focus: f, brk: b }); }} className="w-full text-start rounded-xl px-3 py-2 text-sm hover:bg-white/10">{f} min focus · {b} min break</button>
               ))}
               <p className="px-3 pt-1 pb-1.5 text-[11px] text-zinc-400">Runs for everyone in the hall.</p>
             </div>
@@ -454,7 +454,7 @@ export function HallView({ hallId }: { hallId: string }) {
 
       <div className="relative flex-1 min-h-0">
         {phase === 'connecting' ? (
-          <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-400"><Loader2 className="w-4 h-4 mr-2 animate-spin" />Opening the Study Hall…</div>
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-400"><Loader2 className="w-4 h-4 me-2 animate-spin" />Opening the Study Hall…</div>
         ) : (
           <svg ref={svgRef} viewBox={`${vx} ${vy} ${view.w} ${view.h}`} preserveAspectRatio="xMidYMid meet" className="w-full h-full touch-none select-none cursor-pointer" onPointerDown={walkTo}
             role="application" aria-label="Study Hall map. Tap or click to walk there, tap a table to sit at it, or use the arrow keys.">

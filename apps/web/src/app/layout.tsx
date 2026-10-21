@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from 'next';
+import { LANGUAGE_SCRIPT } from '@/lib/language-script';
+import UiTranslatorGate from '@/components/i18n/UiTranslatorGate';
 import './globals.css';
 
 import { Toaster } from 'sonner';
@@ -63,6 +65,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
         {/* The page colour before the stylesheet arrives: a refresh in dark mode never flashes white */}
         <script dangerouslySetInnerHTML={{ __html: DISPLAY_PREFS_SCRIPT }} />
+        {/* The saved language's direction (Arabic and Urdu read right to left) before paint */}
+        <script dangerouslySetInnerHTML={{ __html: LANGUAGE_SCRIPT }} />
         <style dangerouslySetInnerHTML={{ __html: 'html{background:#f5f6fb}html.dark{background:#0a0d16;color-scheme:dark}' }} />
         {/* An old tab after a deploy can ask for page files that no longer exist: load the new
             version (once), or show a Reload screen, never a blank or unstyled page. */}
@@ -75,6 +79,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen antialiased" style={{ color: 'var(--text-primary)' }}>
           <ErrorMonitorBootstrap />
           <UpdateNotifier />
+          <UiTranslatorGate />
           <div aria-hidden className="ambient-bg"><div className="ambient-bg__grid" /></div>
           <MotionProvider>{children}<CallHost /></MotionProvider>
           <Suspense fallback={null}><NavProgress /></Suspense>

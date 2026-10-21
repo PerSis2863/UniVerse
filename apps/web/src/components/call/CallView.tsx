@@ -4,11 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool, Activity, ListOrdered, Ear, Focus } from 'lucide-react';
+import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool, Activity, ListOrdered, Ear, Focus, FlipHorizontal2 } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { AUDIO_2G_BPS, AUDIO_BPS, useLowData } from '@/store/low-data';
-import { captionsByDefault } from '@/lib/display-prefs';
+import { cameraOffByDefault, captionsByDefault, mirrorSelf, setMirrorSelf } from '@/lib/display-prefs';
 import { authedJson } from '@/lib/authed-fetch';
 import { ringback } from '@/lib/call-sounds';
 import { CallRecorder, canRecord, uploadRecording, type RecSource } from '@/lib/call-recorder';
@@ -285,10 +285,10 @@ function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, p
           </motion.div>
         )}
       </AnimatePresence>
-      <span className={cn('absolute bottom-2 left-2 font-medium text-white bg-black/45 backdrop-blur-md rounded-full flex items-center gap-1.5 max-w-[85%]', compact ? 'text-[11px] px-2 py-0.5' : 'text-xs px-3 py-1')}>
+      <span className={cn('absolute bottom-2 start-2 font-medium text-white bg-black/45 backdrop-blur-md rounded-full flex items-center gap-1.5 max-w-[85%]', compact ? 'text-[11px] px-2 py-0.5' : 'text-xs px-3 py-1')}>
         {muted && <MicOff className="w-3 h-3 shrink-0" />}{screen && <MonitorUp className="w-3 h-3 shrink-0" />}<span className="truncate">{me ? `${name} (you)` : name}{screen ? ' · screen' : ''}</span>
       </span>
-      <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
+      <div className="absolute top-2 start-2 flex flex-col items-start gap-1">
         <AnimatePresence>
           {hand ? (
             <motion.span key="hand" initial={{ opacity: 0, scale: 0.5, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.5 }} transition={spring.snappy}
@@ -305,7 +305,7 @@ function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, p
         )}
       </div>
       {quality && !me && (
-        <span className={cn('absolute top-2 right-2 bg-black/45 backdrop-blur-md rounded-full p-1.5', QUALITY[quality].className)} title={QUALITY[quality].label} aria-label={QUALITY[quality].label}><Signal className="w-3.5 h-3.5" /></span>
+        <span className={cn('absolute top-2 end-2 bg-black/45 backdrop-blur-md rounded-full p-1.5', QUALITY[quality].className)} title={QUALITY[quality].label} aria-label={QUALITY[quality].label}><Signal className="w-3.5 h-3.5" /></span>
       )}
     </motion.div>
   );
@@ -326,10 +326,44 @@ function ScreenStage({ stream, name }: { stream: MediaStream | null; name: strin
       {/* Muted: their voice plays from their camera tile (playing it twice would echo). */}
       <video ref={ref} autoPlay playsInline muted onDoubleClick={(e) => { void (e.currentTarget.requestFullscreen?.() ?? Promise.resolve()).catch(() => {}); }}
         className={cn('absolute inset-0 w-full h-full object-contain transition-opacity duration-500', live ? 'opacity-100' : 'opacity-0')} />
-      {!live && <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-400"><Loader2 className="w-5 h-5 animate-spin mr-2" />Loading {name}’s screen…</div>}
-      <span className="absolute top-3 left-3 text-xs font-medium text-white bg-black/55 backdrop-blur-md rounded-full px-3 py-1 inline-flex items-center gap-1.5"><MonitorUp className="w-3.5 h-3.5" />{name} is presenting</span>
+      {!live && <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-400"><Loader2 className="w-5 h-5 animate-spin me-2" />Loading {name}’s screen…</div>}
+      <span className="absolute top-3 start-3 text-xs font-medium text-white bg-black/55 backdrop-blur-md rounded-full px-3 py-1 inline-flex items-center gap-1.5"><MonitorUp className="w-3.5 h-3.5" />{name} is presenting</span>
     </>
   );
+}
+
+/**
+ * Talking while muted (Stage 5 · Q23): while my microphone is muted, a copy of it is listened to on
+ * this device only (nothing is sent anywhere) and, after about a second of speech, `onTalk` runs; at
+ * most every 20 seconds. The copy stops as soon as I unmute or leave.
+ */
+function useTalkingWhileMuted(mic: { current: MediaStreamTrack | null }, muted: boolean, live: boolean, onTalk: () => void) {
+  const cb = useRef(onTalk);
+  useEffect(() => { cb.current = onTalk; });
+  useEffect(() => {
+    const raw = mic.current;
+    if (!raw || !muted || !live || raw.readyState !== 'live') return;
+    let ctx: AudioContext;
+    const copy = raw.clone();
+    copy.enabled = true;
+    try { ctx = new AudioContext(); } catch { copy.stop(); return; }
+    const src = ctx.createMediaStreamSource(new MediaStream([copy]));
+    const an = ctx.createAnalyser();
+    an.fftSize = 1024;
+    src.connect(an);
+    const buf = new Float32Array(an.fftSize);
+    let loud = 0, last = 0;
+    const timer = setInterval(() => {
+      an.getFloatTimeDomainData(buf);
+      let sum = 0;
+      for (const v of buf) sum += v * v;
+      const rms = Math.sqrt(sum / buf.length);
+      loud = rms > 0.035 ? loud + 1 : Math.max(0, loud - 1);
+      if (loud >= 6 && Date.now() - last > 20_000) { last = Date.now(); loud = 0; cb.current(); }
+    }, 150);
+    void ctx.resume().catch(() => {});
+    return () => { clearInterval(timer); src.disconnect(); copy.stop(); void ctx.close().catch(() => {}); };
+  }, [mic, muted, live]);
 }
 
 /** A live microphone level bar (no re-renders: the bar is moved directly). */
@@ -431,6 +465,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const sfuQualityRef = useRef<Quality>(null);
   // Settings → Appearance → Captions on: calls start with captions showing.
   const [cc, setCc] = useState(captionsByDefault);
+  const [mirror, setMirror] = useState(mirrorSelf);
   const [captions, setCaptions] = useState<Record<string, Caption>>({});
   // Translated captions (Stage 4 · 4.1): I read everyone's captions in my language (the app's,
   // unless I picked another or "as spoken"). `trs`: translations by caption id.
@@ -453,6 +488,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [myPeerId, setMyPeerId] = useState<string | null>(null);
   const [meHost, setMeHost] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [mutedTalk, setMutedTalk] = useState(false);
   const [meCohost, setMeCohost] = useState(false);
   const [spotlight, setSpotlightState] = useState<string | null>(null);
   const spotlightRef = useRef<string | null>(null);
@@ -605,6 +642,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   // The cleaned microphone (noise suppression) and how to stop it.
   const micClean = useRef<CleanMic | null>(null);
   const rawMic = useRef<MediaStreamTrack | null>(null);
+  // "You're muted" when I talk while muted (Stage 5 · Q23); it goes after a few seconds.
+  useTalkingWhileMuted(rawMic, muted, phase === 'live', () => { setMutedTalk(true); setTimeout(() => setMutedTalk(false), 4000); });
 
   const send = (msg: unknown) => { if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify(msg)); };
   const announce = () => {
@@ -1203,8 +1242,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         setLocal(localRef.current);
       } else if (!localRef.current) {
         try {
-          // Voice calls start with the camera off (it can be turned on during the call).
-          const video = t.kind === 'video' && !twoGRef.current ? cameraConstraints() : false;
+          // Voice calls start with the camera off (it can be turned on during the call), and so do
+          // video calls for someone who chose that in Settings (Stage 5 · Q23).
+          const video = t.kind === 'video' && !twoGRef.current && !cameraOffByDefault() ? cameraConstraints() : false;
           const opened = await openMedia(video, noiseMode());
           if (cancelled) { opened.getTracks().forEach((x) => x.stop()); return; }
           // What's sent: the microphone through noise suppression, and the camera.
@@ -1408,6 +1448,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           }
         } else if (msg.type === 'removed') {
           finish(`${msg.by || 'The host'} removed you from the call`);
+        } else if (msg.type === 'ended') {
+          finish(`${msg.by || 'The host'} ended the call for everyone`);
         } else if (msg.type === 'role') {
           if (msg.peerId === myId.current) {
             setMeCohost(msg.cohost === true);
@@ -1499,6 +1541,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         const current = ws.current === sock;
         if (current) ws.current = null;
         if (ev.code === 4001) finish('The host removed you from the call');
+        if (ev.code === 4002) finish('The host ended the call for everyone');
         if (ev.code === 4003) finish('The host didn’t let you in');
         if (ev.code === 4005) finish('Thanks for coming! Your turn has ended.');
         if (ev.code === 4006) finish('Office hours have closed for now.');
@@ -1783,6 +1826,17 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   };
   /** Host controls, sent through the call room (it checks I'm allowed). */
   const control = (action: ControlAction, target?: string | null, on?: boolean) => send({ type: 'control', action, target: target ?? null, on: on === true });
+  /** Leaving: a host with others still in is asked whether to end the call for everyone (Stage 5 · Q23). */
+  const leave = async () => {
+    if (meHost && Object.keys(remotesRef.current).length > 0) { setLeaving(true); return; }
+    finish();
+  };
+  const endForAll = async () => {
+    setLeaving(false);
+    control('end-all');
+    await new Promise((r) => setTimeout(r, 150)); // the room hears it before this device goes
+    finish();
+  };
 
   /** Sends this video (camera, screen or nothing) to everyone, without renegotiating. */
   const replaceVideo = async (track: MediaStreamTrack | null, isScreen = false) => {
@@ -2154,7 +2208,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canBg = backgroundsSupported();
   /** Students in a class call (not guests) can ask the Whisper TA. */
   const canTa = isClassCall && !canModerate && !isGuest && phase === 'live';
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures' | 'spatial' | 'interp' | 'framing'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures' | 'spatial' | 'interp' | 'framing' | 'mirror'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     ...(canTa ? [{ key: 'ta' as const, label: 'Ask the TA', icon: Sparkles, on: taOpen }] : []),
     ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
@@ -2170,6 +2224,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     ...(phase === 'live' && info && !info.oneToOne ? [{ key: 'spatial' as const, label: spatial ? 'Spatial audio on' : 'Spatial audio', icon: Volume2, on: spatial }] : []),
     ...(canBg && !twoG ? [{ key: 'bg' as const, label: 'Background', icon: Wand2, on: bgChoice.kind !== 'none' }] : []),
     ...(camera && touch ? [{ key: 'flip' as const, label: 'Flip camera', icon: RefreshCcw }] : []),
+    ...(camera ? [{ key: 'mirror' as const, label: mirror ? 'Mirrored' : 'Mirror my video', icon: FlipHorizontal2, on: mirror }] : []),
     ...(canRec ? [{ key: 'rec' as const, label: recording ? 'Stop recording' : info?.type === 'class' ? 'Record class' : 'Record call', icon: recording ? Square : Circle, on: recording, tone: recording ? '' : 'fill-rose-500 text-rose-500' }] : []),
     ...(canNotes ? [{ key: 'notes' as const, label: notes ? 'Stop notes' : info?.type === 'class' ? 'Class notes' : 'Meeting notes', icon: NotebookPen, on: notes }] : []),
     ...(canModerate && info && !info.oneToOne ? [{ key: 'poll' as const, label: 'Poll or quiz', icon: BarChart3, on: !!poll?.open }] : []),
@@ -2210,6 +2265,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (key === 'bg') setBgOpen(true);
     else if (key === 'net') { const open = !netOpen; netOpenRef.current = open; setNetOpen(open); if (open) setNet({ me: combine([...netRef.current.values()]), people: sfuRef.current ? {} : Object.fromEntries(netRef.current) }); }
     else if (key === 'flip') void flipCamera();
+    else if (key === 'mirror') { setMirror(!mirror); setMirrorSelf(!mirror); toast(mirror ? 'You see yourself as others do' : 'You see yourself as in a mirror (others see you the right way round)', { icon: '🪞' }); }
     else if (key === 'rec') { if (recording) void stopRecording(); else void startRecording(); }
     else if (key === 'notes') toggleNotes();
     else if (key === 'rooms') openPanel('rooms');
@@ -2267,10 +2323,10 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     <AnimatePresence>
       {minimized && !held && phase !== 'error' && (
         <motion.div key="mini" initial={{ y: 40, opacity: 0, scale: 0.96 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: 40, opacity: 0, scale: 0.96 }} transition={spring.smooth}
-          className="fixed left-1/2 -translate-x-1/2 z-[290] bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+0.75rem)] lg:bottom-6 flex items-center gap-2 pl-2 pr-1.5 py-1.5 rounded-full bg-[#121830]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/40 text-white max-w-[min(94vw,26rem)]" role="region" aria-label="Call in progress">
-          <button type="button" onClick={onExpand} className="flex items-center gap-2 min-w-0 pl-1" aria-label="Back to the call">
+          className="fixed left-1/2 -translate-x-1/2 z-[290] bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+0.75rem)] lg:bottom-6 flex items-center gap-2 ps-2 pe-1.5 py-1.5 rounded-full bg-[#121830]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/40 text-white max-w-[min(94vw,26rem)]" role="region" aria-label="Call in progress">
+          <button type="button" onClick={onExpand} className="flex items-center gap-2 min-w-0 ps-1" aria-label="Back to the call">
             <span className="relative flex h-2.5 w-2.5 shrink-0"><span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" /><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" /></span>
-            <span className="min-w-0 text-left"><span className="block text-sm font-semibold truncate">{info?.title ?? 'Call'}</span><span className="block text-[11px] text-zinc-400 tabular-nums">{phase === 'live' && !waiting ? clock(seconds) : status}</span></span>
+            <span className="min-w-0 text-start"><span className="block text-sm font-semibold truncate">{info?.title ?? 'Call'}</span><span className="block text-[11px] text-zinc-400 tabular-nums">{phase === 'live' && !waiting ? clock(seconds) : status}</span></span>
           </button>
           <button type="button" onClick={toggleMute} aria-pressed={muted} aria-label={muted ? 'Unmute' : 'Mute'} className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', muted ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>{muted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}</button>
           <button type="button" onClick={() => finish()} aria-label="End call" className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-rose-600 hover:bg-rose-500"><PhoneOff className="w-4 h-4" /></button>
@@ -2279,7 +2335,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       {held && phase === 'live' && (
         <motion.button key="held" type="button" onClick={onResume} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} transition={spring.smooth}
           style={{ marginBottom: heldIndex * 48 }}
-          className="fixed left-4 z-[289] bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+4.5rem)] lg:bottom-20 flex items-center gap-2 px-3 py-2 rounded-full bg-amber-500/95 text-amber-950 text-xs font-semibold shadow-xl" aria-label={`On hold: ${info?.title ?? 'call'}. Resume`}>
+          className="fixed start-4 z-[289] bottom-[calc(var(--mobile-tabbar-h,0px)+env(safe-area-inset-bottom)+4.5rem)] lg:bottom-20 flex items-center gap-2 px-3 py-2 rounded-full bg-amber-500/95 text-amber-950 text-xs font-semibold shadow-xl" aria-label={`On hold: ${info?.title ?? 'call'}. Resume`}>
           <Pause className="w-3.5 h-3.5" /> On hold · {info?.title ?? 'Call'} · Resume
         </motion.button>
       )}
@@ -2313,15 +2369,15 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           <button type="button" onClick={toggleFullscreen} aria-label={fullscreen ? 'Exit full screen' : 'Full screen'} className="p-2.5 rounded-full hover:bg-white/10 hidden sm:block">{fullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}</button>
           {phase === 'live' ? (
             <button type="button" onClick={() => openPanel(peopleOpen ? null : 'people')} aria-expanded={peopleOpen} aria-label={`People in the call: ${count}`} title="People"
-              className={cn('ml-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors', peopleOpen ? 'bg-white text-zinc-900' : 'text-zinc-200 bg-white/[0.06] hover:bg-white/15')}>
+              className={cn('ms-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors', peopleOpen ? 'bg-white text-zinc-900' : 'text-zinc-200 bg-white/[0.06] hover:bg-white/15')}>
               <Users className="w-4 h-4" />{count}<span className="hidden sm:inline font-normal">in call</span>
               <AnimatePresence>
                 {canModerate && lobby.length > 0 && (
-                  <motion.span key="knock" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className="ml-0.5 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-bold flex items-center justify-center" aria-label={`${lobby.length} waiting to join`}>{lobby.length}</motion.span>
+                  <motion.span key="knock" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className="ms-0.5 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-bold flex items-center justify-center" aria-label={`${lobby.length} waiting to join`}>{lobby.length}</motion.span>
                 )}
               </AnimatePresence>
             </button>
-          ) : <span className="text-xs text-zinc-400 ml-1">{count} in call</span>}
+          ) : <span className="text-xs text-zinc-400 ms-1">{count} in call</span>}
         </div>
       </motion.header>
 
@@ -2333,7 +2389,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       ) : phase === 'prejoin' ? (
         <motion.main initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
           <div className="w-full max-w-4xl grid md:grid-cols-[1.4fr_1fr] gap-6 items-center">
-            <Tile id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me />
+            <Tile id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me />
             <div className="space-y-4">
               <div>
                 <p className="text-2xl font-bold">{info?.title ?? 'Call'}</p>
@@ -2383,8 +2439,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       ) : phase === 'lobby' ? (
         <motion.main key="lobby" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
           <div className="w-full max-w-4xl grid md:grid-cols-[1.4fr_1fr] gap-6 items-center">
-            <Tile id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me />
-            <div className="space-y-4 text-center md:text-left">
+            <Tile id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me />
+            <div className="space-y-4 text-center md:text-start">
               <div className="relative w-14 h-14 mx-auto md:mx-0">
                 <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 animate-ping opacity-25" />
                 <span className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-xl shadow-fuchsia-500/30"><DoorOpen className="w-7 h-7" /></span>
@@ -2423,7 +2479,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               ) : watching && watch ? (
                 <WatchStage watch={watch} skew={skew} mod={canModerate} status={watchStatus} held={held} onSend={send} />
               ) : lit === 'me' ? (
-                <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me hand={handPos('me')} className="absolute inset-0 h-full w-full aspect-auto rounded-none" />
+                <Tile key="me" id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me hand={handPos('me')} className="absolute inset-0 h-full w-full aspect-auto rounded-none" />
               ) : lit ? (
                 <Tile key={lit.peer.peerId} id={lit.peer.peerId} name={lit.peer.name} stream={lit.stream} silent={held || spatialOn} muted={lit.muted} camera={lit.camera} quality={lit.quality} state={lit.state}
                   paused={lit.paused || audioOnly} onShow={() => showVideo(lit.peer.peerId)} hand={handPos(lit.peer.peerId)} className="absolute inset-0 h-full w-full aspect-auto rounded-none"
@@ -2432,7 +2488,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
             </motion.div>
             <div className="shrink-0 h-24 sm:h-32 flex gap-2 overflow-x-auto justify-center">
               <AnimatePresence initial={false}>
-                {lit !== 'me' && <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact hand={handPos('me')} className="h-full shrink-0" />}
+                {lit !== 'me' && <Tile key="me" id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me compact hand={handPos('me')} className="h-full shrink-0" />}
                 {list.filter((r) => r !== lit).map((r) => (
                   <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held || spatialOn} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
                     paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact hand={handPos(r.peer.peerId)} className="h-full shrink-0"
@@ -2444,7 +2500,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         ) : (
         <main data-call-stage className={cn('flex-1 overflow-y-auto p-4 grid content-center', compact ? 'gap-2' : 'gap-4', gridFor(count))}>
           <AnimatePresence initial={false}>
-            <Tile key="me" id="me" name={myName} stream={local} mirrored muted={muted} camera={camera} me compact={compact} animateLayout={count <= 12} hand={handPos('me')} />
+            <Tile key="me" id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me compact={compact} animateLayout={count <= 12} hand={handPos('me')} />
             {list.map((r) => (
               <Tile key={r.peer.peerId} id={r.peer.peerId} name={r.peer.name} stream={r.stream} silent={held || spatialOn} muted={r.muted} camera={r.camera} quality={r.quality} state={r.state}
                 paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact={compact} animateLayout={count <= 12} hand={handPos(r.peer.peerId)}
@@ -2538,9 +2594,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               const tr = c.final && c.id && ccLang && c.lang && c.lang !== ccLang ? trs[c.id] : undefined;
               return (
                 <motion.p key={id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.smooth} className="max-w-full rounded-2xl bg-black/65 backdrop-blur-md px-4 py-2 text-[15px] leading-snug text-center shadow-lg">
-                  <span className="font-semibold text-indigo-300 mr-1.5">{c.name}</span>
+                  <span className="font-semibold text-indigo-300 me-1.5">{c.name}</span>
                   <span className={cn(!c.final && 'text-zinc-200')}>{tr ?? c.text}</span>
-                  {tr && <Languages className="inline w-3.5 h-3.5 ml-1.5 -mt-0.5 text-fuchsia-300/80" aria-label={`Translated from ${languageName(c.lang!)}`} />}
+                  {tr && <Languages className="inline w-3.5 h-3.5 ms-1.5 -mt-0.5 text-fuchsia-300/80" aria-label={`Translated from ${languageName(c.lang!)}`} />}
                 </motion.p>
               );
             })}
@@ -2554,6 +2610,24 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         </div>
       </div>
 
+      {mutedTalk && muted && phase === 'live' && (
+        <div role="status" className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-full bg-zinc-900/95 border border-white/15 ps-4 pe-1.5 py-1.5 shadow-2xl text-sm">
+          <MicOff className="w-4 h-4 text-rose-400" aria-hidden /> You’re muted
+          <button type="button" onClick={() => { setMutedTalk(false); toggleMute(); }} className="rounded-full bg-white text-zinc-900 px-3 py-1 font-semibold">Unmute</button>
+        </div>
+      )}
+      {leaving && (
+        // The host leaving (Stage 5 · Q23): end it for everyone, or leave the others to carry on.
+        <div role="dialog" aria-modal="true" aria-labelledby="leave-call-title" className="absolute inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4" onClick={(e) => e.target === e.currentTarget && setLeaving(false)}>
+          <div className="w-full max-w-sm rounded-3xl bg-[#121830] border border-white/10 p-5 space-y-3 shadow-2xl">
+            <h2 id="leave-call-title" className="text-lg font-semibold">Leave the call?</h2>
+            <p className="text-sm text-zinc-300">You can end it for everyone, or leave and let the others carry on.</p>
+            <button type="button" onClick={() => void endForAll()} className="w-full rounded-full bg-rose-600 hover:bg-rose-500 px-4 py-2.5 font-semibold">End for everyone</button>
+            <button type="button" onClick={() => { setLeaving(false); finish(); }} className="w-full rounded-full bg-white/10 hover:bg-white/20 px-4 py-2.5 font-semibold">Just leave</button>
+            <button type="button" onClick={() => setLeaving(false)} autoFocus className="w-full rounded-full px-4 py-2 text-sm text-zinc-300 hover:text-white">Stay</button>
+          </div>
+        </div>
+      )}
       <motion.footer initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ ...spring.smooth, delay: 0.05 }} className="px-4 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-3 flex items-center justify-center">
         <div className="flex items-center gap-2 sm:gap-3 rounded-full bg-white/[0.06] backdrop-blur-xl border border-white/10 px-3 py-2.5 shadow-2xl max-w-full overflow-x-auto">
           {phase !== 'error' && phase !== 'ended' && (
@@ -2579,27 +2653,27 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                   <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => { haptic('tap'); setMoreOpen(false); setReactOpen((o) => !o); }} aria-expanded={reactOpen} aria-label="Reactions and raise hand" title="Reactions"
                     className={cn(btn, 'shrink-0 relative', reactOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
                     <Smile />
-                    {myHand && <span className="sm:hidden absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-amber-400 text-[11px] flex items-center justify-center" aria-hidden>✋</span>}
+                    {myHand && <span className="sm:hidden absolute top-0.5 end-0.5 w-5 h-5 rounded-full bg-amber-400 text-[11px] flex items-center justify-center" aria-hidden>✋</span>}
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => openPanel(chatOpen ? null : 'chat')} aria-expanded={chatOpen} aria-label={unread ? `Chat, ${unread} new` : 'Chat'} title="Chat"
                     className={cn(btn, 'shrink-0 relative', chatOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
                     <MessageSquare />
                     <AnimatePresence>
                       {unread > 0 && (
-                        <motion.span key={unread} initial={{ scale: 0.4 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className="absolute top-0.5 right-0.5 min-w-5 h-5 px-1 rounded-full bg-fuchsia-500 text-white text-[11px] font-bold flex items-center justify-center" aria-hidden>{unread > 9 ? '9+' : unread}</motion.span>
+                        <motion.span key={unread} initial={{ scale: 0.4 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className="absolute top-0.5 end-0.5 min-w-5 h-5 px-1 rounded-full bg-fuchsia-500 text-white text-[11px] font-bold flex items-center justify-center" aria-hidden>{unread > 9 ? '9+' : unread}</motion.span>
                       )}
                     </AnimatePresence>
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => { haptic('tap'); setReactOpen(false); setMoreOpen((o) => !o); }} aria-expanded={moreOpen} aria-label="More options" title="More"
                     className={cn(btn, 'shrink-0 relative', moreOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
                     <MoreHorizontal />
-                    {(cc || recording || notes) && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-fuchsia-400" aria-hidden />}
+                    {(cc || recording || notes) && <span className="absolute top-1.5 end-1.5 w-2 h-2 rounded-full bg-fuchsia-400" aria-hidden />}
                   </motion.button>
                 </>
               )}
             </>
           )}
-          <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => finish()} aria-label="Leave call" className={cn(btn, 'shrink-0 bg-rose-600 hover:bg-rose-500')}><PhoneOff /></motion.button>
+          <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => void leave()} aria-label="Leave call" className={cn(btn, 'shrink-0 bg-rose-600 hover:bg-rose-500')}><PhoneOff /></motion.button>
         </div>
       </motion.footer>
       <FloatingReactions items={floats} />
@@ -2644,7 +2718,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         onListen={(uid) => { setListening(uid); toast(uid ? `Hearing ${interp[uid]?.label ?? 'the interpreter'}; everyone else is quieter.` : 'Hearing the original', { icon: '🎧' }); }} />
       {/* A sign language interpreter stays on screen while someone presents or is in the spotlight. */}
       {signer && phase === 'live' && (presenter || lit || watching) && (
-        <div className="absolute z-20 left-3 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] w-40 sm:w-56 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20">
+        <div className="absolute z-20 start-3 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] w-40 sm:w-56 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20">
           <Tile id={`sign-${signer.peer.peerId}`} name={`${signer.peer.name} · ${interp[signer.peer.userId]?.label ?? 'Sign language'}`} stream={signer.stream} camera silent compact className="w-full" />
         </div>
       )}
@@ -2682,7 +2756,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         {settingsOpen && (
           <motion.div key="settings" initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 24, scale: 0.98 }} transition={spring.smooth}
             role="dialog" aria-label="Call settings"
-            className="absolute inset-x-3 sm:inset-x-auto sm:right-6 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] sm:w-96 max-h-[60vh] overflow-y-auto rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-4 space-y-4">
+            className="absolute inset-x-3 sm:inset-x-auto sm:end-6 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] sm:w-96 max-h-[60vh] overflow-y-auto rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-4 space-y-4">
             <div className="flex items-center justify-between">
               <p className="font-semibold">Sound and video</p>
               <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Close" className="p-1.5 rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
@@ -2703,7 +2777,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               <section className="space-y-1.5">
                 <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Microphone</p>
                 {devices.mics.map((d) => (
-                  <button key={d.id} type="button" onClick={() => pickMic(d.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-left hover:bg-white/[0.06]">
+                  <button key={d.id} type="button" onClick={() => pickMic(d.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-start hover:bg-white/[0.06]">
                     <span className="flex-1 truncate">{d.label}</span>{micId === d.id && <Check className="w-4 h-4 text-emerald-400" />}
                   </button>
                 ))}
@@ -2713,7 +2787,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               <section className="space-y-1.5">
                 <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Camera</p>
                 {devices.cams.map((d) => (
-                  <button key={d.id} type="button" onClick={() => void pickCam(d.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-left hover:bg-white/[0.06]">
+                  <button key={d.id} type="button" onClick={() => void pickCam(d.id)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-start hover:bg-white/[0.06]">
                     <span className="flex-1 truncate">{d.label}</span>{(local?.getVideoTracks()[0]?.getSettings().deviceId ?? chosenDevice('cam')) === d.id && <Check className="w-4 h-4 text-emerald-400" />}
                   </button>
                 ))}

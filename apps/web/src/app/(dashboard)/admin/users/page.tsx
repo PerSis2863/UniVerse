@@ -16,6 +16,7 @@ import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 import { SectionTabs, ADMIN_PEOPLE_TABS } from '@/components/layout/SectionTabs';
+import Link from '@/components/ui/Link';
 
 type Role = 'STUDENT' | 'TEACHER' | 'ADMIN';
 type Status = 'PENDING' | 'ACTIVE' | 'SUSPENDED';
@@ -150,7 +151,7 @@ export default function AdminUsers() {
   const filtersOn = !!searchTerm || roleFilter !== 'All' || statusFilter !== 'All';
 
   const rowMenu = (user: Person, up = false) => (
-    <div className="relative inline-block text-left">
+    <div className="relative inline-block text-start">
       <button
         onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
         aria-label={`Actions for ${user.name}`}
@@ -159,7 +160,7 @@ export default function AdminUsers() {
         <MoreVertical className="w-4 h-4" />
       </button>
       {openMenuId === user.id && (
-        <div className={cn('absolute right-0 z-30 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl w-44 py-1 text-left animate-in fade-in duration-150', up ? 'bottom-10' : 'top-10')}>
+        <div className={cn('absolute end-0 z-30 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl w-44 py-1 text-start animate-in fade-in duration-150', up ? 'bottom-10' : 'top-10')}>
           <button onClick={() => { setSelectedUser(user); setOpenMenuId(null); }} className="w-full px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2">
             <User className="w-3.5 h-3.5" /> View profile
           </button>
@@ -209,17 +210,17 @@ export default function AdminUsers() {
         {/* Actions Bar */}
         <div className="flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center">
           <div className="relative w-full sm:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 dark:text-zinc-400" />
             <input
               type="text"
               placeholder="Search name, email, phone or department…"
               aria-label="Search users"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-9 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+              className="w-full ps-10 pe-9 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
             />
             {searchTerm && (
-              <button onClick={() => setSearchTerm('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"><X className="w-4 h-4" /></button>
+              <button onClick={() => setSearchTerm('')} aria-label="Clear search" className="absolute end-2 top-1/2 -translate-y-1/2 p-1 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"><X className="w-4 h-4" /></button>
             )}
           </div>
           <div className="flex gap-2 w-full sm:w-auto relative">
@@ -240,12 +241,12 @@ export default function AdminUsers() {
               <ChevronDown className="w-3 h-3" />
             </button>
             {showFilterDropdown && (
-              <div className="absolute right-0 top-11 z-30 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl w-48 py-1 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute end-0 top-11 z-30 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl w-48 py-1 animate-in fade-in slide-in-from-top-2 duration-150">
                 {ROLE_FILTERS.map((r) => (
                   <button
                     key={r}
                     onClick={() => { setRoleFilter(r); setShowFilterDropdown(false); }}
-                    className={cn('relative isolate w-full flex justify-between text-left px-4 py-2 text-sm transition-colors', roleFilter === r ? 'text-indigo-500' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800')}
+                    className={cn('relative isolate w-full flex justify-between text-start px-4 py-2 text-sm transition-colors', roleFilter === r ? 'text-indigo-500' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800')}
                   >{roleFilter === r && <TabPill id="p-dashboard-admin-users-page-0" variant="soft" />}
                     <span>{r === 'All' ? 'All roles' : `${ROLE_LABEL[r]}s`}</span>
                     <span className="text-zinc-400">{roleCounts[r] ?? 0}</span>
@@ -275,7 +276,7 @@ export default function AdminUsers() {
               <ul className="md:hidden divide-y divide-zinc-100 dark:divide-zinc-800/60">
                 {filteredUsers.map((user) => (
                   <li key={user.id} className="p-4 flex gap-3">
-                    <button onClick={() => setSelectedUser(user)} className="flex-1 min-w-0 flex gap-3 text-left">
+                    <button onClick={() => setSelectedUser(user)} className="flex-1 min-w-0 flex gap-3 text-start">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium shrink-0">{user.name.charAt(0).toUpperCase()}</div>
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-zinc-900 dark:text-white truncate">{user.name}</p>
@@ -292,7 +293,7 @@ export default function AdminUsers() {
 
               {/* Desktop: table */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-start border-collapse">
                   <thead>
                     <tr className="border-b border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
                       <th className="p-4">User</th>
@@ -301,14 +302,14 @@ export default function AdminUsers() {
                       <th className="p-4">Courses</th>
                       <th className="p-4">Last active</th>
                       <th className="p-4">Joined</th>
-                      <th className="p-4 text-right">Actions</th>
+                      <th className="p-4 text-end">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
                     {filteredUsers.map((user, i) => (
                       <tr key={user.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                         <td className="p-4">
-                          <button onClick={() => setSelectedUser(user)} className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity">
+                          <button onClick={() => setSelectedUser(user)} className="flex items-center gap-3 text-start hover:opacity-80 transition-opacity">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium shadow-lg flex-shrink-0">
                               {user.name.charAt(0).toUpperCase()}
                             </div>
@@ -327,7 +328,7 @@ export default function AdminUsers() {
                         <td className="p-4 text-sm text-zinc-600 dark:text-zinc-400">{courseLine(user)}</td>
                         <td className="p-4 text-sm text-zinc-600 dark:text-zinc-400" title={user.lastSeenAt ? new Date(user.lastSeenAt).toLocaleString() : undefined}>{ago(user.lastSeenAt) ?? 'Never'}</td>
                         <td className="p-4 text-sm text-zinc-600 dark:text-zinc-400">{format(new Date(user.createdAt), 'd MMM yyyy')}</td>
-                        <td className="p-4 text-right">{rowMenu(user, filteredUsers.length > 3 && i >= filteredUsers.length - 2)}</td>
+                        <td className="p-4 text-end">{rowMenu(user, filteredUsers.length > 3 && i >= filteredUsers.length - 2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -382,7 +383,7 @@ function UserDetail({ user, onClose, onDelete, onStatus }: { user: Person; onClo
             <div className="min-w-0">
               <div className="text-xl font-bold text-zinc-900 dark:text-white break-words">{user.name}</div>
               <a href={`mailto:${user.email}`} className="text-sm text-indigo-500 break-all inline-flex items-center gap-1"><Mail className="w-3.5 h-3.5 shrink-0" />{user.email}</a>
-              {user.phone && <a href={`tel:${user.phone}`} className="block text-sm text-zinc-500"><Phone className="w-3.5 h-3.5 inline mr-1" />{user.phone}</a>}
+              {user.phone && <a href={`tel:${user.phone}`} className="block text-sm text-zinc-500"><Phone className="w-3.5 h-3.5 inline me-1" />{user.phone}</a>}
               <div className="mt-2 flex flex-wrap gap-1.5"><RoleBadge role={user.role} /><StatusBadge status={user.status} /></div>
             </div>
           </div>
@@ -394,7 +395,7 @@ function UserDetail({ user, onClose, onDelete, onStatus }: { user: Person; onClo
             {user.teacherProfile && <Fact label="Position">{user.teacherProfile.designation || 'Not set'}</Fact>}
             <Fact label="Last active">{user.lastSeenAt ? <span title={new Date(user.lastSeenAt).toLocaleString()}>{ago(user.lastSeenAt)}</span> : 'No activity recorded'}</Fact>
             <Fact label="Last sign-in">{isLoading ? '…' : o?.signIns[0] ? ago(o.signIns[0].createdAt) : 'None recorded'}</Fact>
-            <Fact label="Member since"><Calendar className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />{format(new Date(user.createdAt), 'd MMMM yyyy')}</Fact>
+            <Fact label="Member since"><Calendar className="w-3.5 h-3.5 inline me-1 -mt-0.5" />{format(new Date(user.createdAt), 'd MMMM yyyy')}</Fact>
             <Fact label="Registration">{user.onboardedAt ? `Completed ${format(new Date(user.onboardedAt), 'd MMM yyyy')}` : 'Not finished'}{user.accountType ? ` · ${cap(user.accountType)}` : ''}</Fact>
             <Fact label="Terms accepted">{user.termsAcceptedAt ? format(new Date(user.termsAcceptedAt), 'd MMM yyyy') : 'Not yet'}</Fact>
             <Fact label="Courses">{courseLine(user)}</Fact>
@@ -436,7 +437,7 @@ function UserDetail({ user, onClose, onDelete, onStatus }: { user: Person; onClo
                     </ul>
                   ) : <p className="text-sm text-zinc-500">Not enrolled in any course.</p>}
                   <div className="mt-2 grid grid-cols-2 gap-3">
-                    <Fact label="Quizzes submitted"><ClipboardCheck className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />{o.quizSubmissions}</Fact>
+                    <Fact label="Quizzes submitted"><ClipboardCheck className="w-3.5 h-3.5 inline me-1 -mt-0.5" />{o.quizSubmissions}</Fact>
                     <Fact label="Attendance">{attTotal ? `${Math.round((((att.PRESENT ?? 0) + (att.LATE ?? 0)) / attTotal) * 100)}% present · ${att.ABSENT ?? 0} absent of ${attTotal}` : 'No records yet'}</Fact>
                   </div>
                 </section>
@@ -462,7 +463,7 @@ function UserDetail({ user, onClose, onDelete, onStatus }: { user: Person; onClo
                   <ul className="space-y-1.5">
                     {o.applications.map((a) => (
                       <li key={a.id} className="text-sm text-zinc-700 dark:text-zinc-300">
-                        <a href={`/admin/approvals?id=${a.id}`} className="text-indigo-500 hover:underline">{ROLE_LABEL[a.requestedRole]} access</a>
+                        <Link href={`/admin/approvals?id=${a.id}`} className="text-indigo-500 hover:underline">{ROLE_LABEL[a.requestedRole]} access</Link>
                         <span className="text-zinc-500"> · {cap(a.status.replace('_', ' '))}{a.submittedAt ? ` · sent ${format(new Date(a.submittedAt), 'd MMM yyyy')}` : ''}</span>
                       </li>
                     ))}

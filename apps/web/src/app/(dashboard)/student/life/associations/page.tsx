@@ -70,7 +70,7 @@ export default function AssociationsPage() {
           <div className="relative group">
             <div className="absolute inset-0 bg-indigo-500/10 rounded-2xl blur-xl transition-all group-hover:bg-indigo-500/20" />
             <div className="relative flex items-center bg-[#121830] border border-white/[0.08] rounded-2xl p-2 shadow-2xl">
-              <div className="pl-4 pr-3 text-zinc-500">
+              <div className="ps-4 pe-3 text-zinc-500">
                 <Search className="w-5 h-5" />
               </div>
               <input 
@@ -82,7 +82,7 @@ export default function AssociationsPage() {
               />
               <button 
                 onClick={(e) => ((e.currentTarget.previousElementSibling as HTMLInputElement | null)?.focus())}
-                className="px-6 py-2 rounded-xl bg-white text-black font-bold hover:scale-105 transition-transform ml-2 shrink-0"
+                className="px-6 py-2 rounded-xl bg-white text-black font-bold hover:scale-105 transition-transform ms-2 shrink-0"
               >
                 Search
               </button>
@@ -129,7 +129,7 @@ export default function AssociationsPage() {
                 key={club.id}
                 className="group relative bg-[#121830] border border-white/[0.06] rounded-3xl p-6 hover:border-indigo-500/30 transition-all overflow-hidden flex flex-col h-full"
               >
-                <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-500 to-purple-600 opacity-10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:opacity-20 transition-opacity`} />
+                <div className={`absolute top-0 end-0 w-32 h-32 bg-gradient-to-br from-indigo-500 to-purple-600 opacity-10 rounded-full blur-3xl -me-16 -mt-16 group-hover:opacity-20 transition-opacity`} />
                 
                 <div className="flex items-start justify-between mb-4 relative z-10">
                   <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg`}>

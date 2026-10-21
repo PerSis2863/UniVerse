@@ -44,3 +44,29 @@ export function verifySessionToken(token: string): string | null {
     return null;
   }
 }
+
+/** The `src` of a "view as" token (the owner seeing the app as one person, read-only; owner.ts). */
+export const VIEW_AS_SRC = 'view';
+export const VIEW_AS_TTL_SEC = 30 * 60;
+
+/** A token's `src`, read without checking it: only ever used to refuse more, never to allow. */
+export function sessionSource(token: string): string | null {
+  if (!token.startsWith(PREFIX)) return null;
+  try {
+    const p = JSON.parse(Buffer.from(token.slice(PREFIX.length).split('.')[0], 'base64url').toString('utf8')) as { src?: unknown };
+    return typeof p.src === 'string' ? p.src : null;
+  } catch {
+    return null;
+  }
+}
+
+export const isViewAsToken = (token: string | null | undefined) => !!token && sessionSource(token) === VIEW_AS_SRC;
+
+/**
+ * What a "view as" token may not do: any change (the app's start-up batch, POST /api/bootstrap,
+ * only reads), and private messages, calls and live updates are never shown to support.
+ */
+export function viewAsRefused(method: string, pathname: string): boolean {
+  if (/^\/api\/(chat|calls|realtime|call-recordings|files\/link)(\/|$)|^\/api\/core\/(messages|conversations)(\/|$)/.test(pathname)) return true;
+  return !(method === 'GET' || method === 'HEAD' || method === 'OPTIONS') && pathname !== '/api/bootstrap';
+}

@@ -5,11 +5,12 @@ import type { Given } from '@/lib/question-types';
 import { getSessionUser } from '@/lib/server-auth';
 import { manageableQuiz } from '@/lib/quizzes';
 import { analyseQuiz } from '@/lib/item-analysis';
+import { isAiPolicy, parseReceipt, type AiPolicy } from '@/lib/ai-receipt';
 
 type Ctx = { params: Promise<{ id: string }> };
 
 // GET: quiz with questions (incl. answers) for its teacher. PATCH: status / due date / time limit /
-// shuffle / exam mode / reading help.
+// shuffle / exam mode / reading help / AI rule.
 export async function GET(req: Request, { params }: Ctx) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
@@ -21,7 +22,7 @@ export async function GET(req: Request, { params }: Ctx) {
     prisma.quizSubmission.findMany({
       where: { quizId: id },
       orderBy: { submittedAt: 'desc' },
-      select: { id: true, studentId: true, drawn: true, score: true, maxScore: true, submittedAt: true, answers: true, integrity: true, student: { select: { name: true } } },
+      select: { id: true, studentId: true, drawn: true, score: true, maxScore: true, submittedAt: true, answers: true, integrity: true, aiReceipt: true, student: { select: { name: true } } },
     }),
   ]);
   // How each question worked (item analysis, Stage 5 · B4.6); the answers themselves stay here.
@@ -29,7 +30,7 @@ export async function GET(req: Request, { params }: Ctx) {
     questions.map((q) => ({ id: q.id, options: Array.isArray(q.options) ? (q.options as string[]) : [], correctAnswer: q.correctAnswer, type: q.type, meta: q.meta })),
     submissions.map((sub) => ({ answers: (sub.answers && typeof sub.answers === 'object' ? sub.answers : {}) as Record<string, Given>, who: sub.studentId, drawn: drawnOf(sub.drawn) })),
   );
-  return NextResponse.json({ ...quiz, questions, submissions: submissions.map((x) => ({ id: x.id, score: x.score, maxScore: x.maxScore, submittedAt: x.submittedAt, integrity: x.integrity, student: x.student })), analysis }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ ...quiz, questions, submissions: submissions.map((x) => ({ id: x.id, score: x.score, maxScore: x.maxScore, submittedAt: x.submittedAt, integrity: x.integrity, aiReceipt: parseReceipt(x.aiReceipt), student: x.student })), analysis }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
@@ -40,7 +41,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!quiz) return NextResponse.json({ error: 'Quiz not found.' }, { status: 404 });
 
   const b = await req.json().catch(() => ({}));
-  const data: { status?: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate?: Date | null; timeLimit?: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean; pools?: string | null; oneWay?: boolean; hardStop?: boolean; practice?: boolean } = {};
+  const data: { status?: 'DRAFT' | 'PUBLISHED' | 'CLOSED'; dueDate?: Date | null; timeLimit?: number | null; shuffle?: boolean; examMode?: boolean; plainWords?: boolean; pools?: string | null; oneWay?: boolean; hardStop?: boolean; practice?: boolean; aiPolicy?: AiPolicy } = {};
   // Question pools (Stage 5 · B4.2): { pool: how many each student gets }; null for none.
   if (b.pools === null) data.pools = null;
   else if (b.pools !== undefined) { const p = cleanPools(b.pools); data.pools = p ? JSON.stringify(p) : null; }
@@ -53,6 +54,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (typeof b.hardStop === 'boolean') data.hardStop = b.hardStop;
   // A practice set (B4.4): never graded, practised under Mastery.
   if (typeof b.practice === 'boolean') data.practice = b.practice;
+  // AI receipts (Stage 5 · Q22): the same three rules as assignments.
+  if (isAiPolicy(b.aiPolicy)) data.aiPolicy = b.aiPolicy;
   if (['DRAFT', 'PUBLISHED', 'CLOSED'].includes(b.status)) {
     if (b.status === 'PUBLISHED' && (await prisma.quizQuestion.count({ where: { quizId: id } })) === 0) {
       return NextResponse.json({ error: 'Add at least one question before publishing.' }, { status: 400 });

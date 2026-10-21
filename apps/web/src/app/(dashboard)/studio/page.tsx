@@ -89,7 +89,7 @@ function Tools() {
               <motion.ul variants={list} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-3 gap-3" aria-label="Tools">
                 {TOOLS.map((t) => (
                   <motion.li key={t.id} variants={fadeUp}>
-                    <button type="button" onClick={() => pick(t.id)} className="w-full h-full text-left rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-4 sm:p-5 hover:border-indigo-400/60 transition-colors">
+                    <button type="button" onClick={() => pick(t.id)} className="w-full h-full text-start rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-4 sm:p-5 hover:border-indigo-400/60 transition-colors">
                       <span className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${t.tint} text-white grid place-items-center`}><t.icon className="w-5 h-5" aria-hidden /></span>
                       <span className="block mt-3 font-bold text-zinc-900 dark:text-white">{t.name}</span>
                       <span className="block mt-0.5 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">{t.what}</span>
@@ -155,7 +155,7 @@ function PhotoStart({ onOpen }: { onOpen: (d: Doc) => void }) {
         <ul className="mt-2 grid grid-cols-2 sm:grid-cols-5 gap-2">
           {SIZES.map((s) => (
             <li key={s.id}>
-              <button type="button" onClick={() => onOpen({ name: s.name, w: s.w, h: s.h, background: '#ffffff', layers: [] })} className="w-full rounded-2xl border border-zinc-200 dark:border-white/10 p-3 text-left hover:border-indigo-400/60 transition-colors">
+              <button type="button" onClick={() => onOpen({ name: s.name, w: s.w, h: s.h, background: '#ffffff', layers: [] })} className="w-full rounded-2xl border border-zinc-200 dark:border-white/10 p-3 text-start hover:border-indigo-400/60 transition-colors">
                 <span className="block mx-auto mb-2 bg-zinc-200 dark:bg-white/10 rounded" style={{ aspectRatio: `${s.w} / ${s.h}`, height: 40 }} aria-hidden />
                 <span className="block text-sm font-semibold text-zinc-900 dark:text-white">{s.name}</span>
                 <span className="block text-[11px] text-zinc-600 dark:text-zinc-400 tabular-nums">{s.w} × {s.h}</span>

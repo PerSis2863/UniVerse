@@ -45,7 +45,7 @@ export function Comments({ docId, me, canEdit, onClose, pick, go, aboutLabel = '
         <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-100 flex-1 truncate">{c.user.name}</span>
         <span className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
       </div>
-      {c.quote && <button type="button" onClick={() => go(c.quote!)} className="mt-2 block w-full text-left text-xs italic text-zinc-500 border-l-2 border-amber-400 pl-2 line-clamp-2 hover:text-indigo-500">“{c.quote}”</button>}
+      {c.quote && <button type="button" onClick={() => go(c.quote!)} className="mt-2 block w-full text-start text-xs italic text-zinc-500 border-s-2 border-amber-400 ps-2 line-clamp-2 hover:text-indigo-500">“{c.quote}”</button>}
       <Translatable kind="doc-comment" id={c.id} text={c.body} hide={c.userId === me} className="mt-1.5 text-sm text-zinc-900 dark:text-white whitespace-pre-wrap break-words" />
       <div className="mt-2 flex gap-3 text-[11px] font-semibold">
         {(canEdit || c.userId === me) && <button type="button" onClick={async () => { await call(`${key}/${c.id}`, 'PATCH', { resolved: !c.resolvedAt }).catch((e) => toast.error((e as Error).message)); void mutate(); }} className="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">{c.resolvedAt ? <><RotateCcw className="w-3 h-3" />Reopen</> : <><Check className="w-3 h-3" />Resolve</>}</button>}
@@ -67,7 +67,7 @@ export function Comments({ docId, me, canEdit, onClose, pick, go, aboutLabel = '
       </div>
       <form onSubmit={send} className="p-3 border-t border-zinc-200/70 dark:border-white/[0.06] space-y-2">
         {quote ? (
-          <p className="text-xs italic text-zinc-500 border-l-2 border-amber-400 pl-2 flex gap-2"><span className="flex-1 line-clamp-2">“{quote}”</span><button type="button" onClick={() => setQuote(null)} aria-label="Not about this text"><X className="w-3 h-3" /></button></p>
+          <p className="text-xs italic text-zinc-500 border-s-2 border-amber-400 ps-2 flex gap-2"><span className="flex-1 line-clamp-2">“{quote}”</span><button type="button" onClick={() => setQuote(null)} aria-label="Not about this text"><X className="w-3 h-3" /></button></p>
         ) : (
           <button type="button" onClick={pickSelection} className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 inline-flex items-center gap-1"><MessageSquarePlus className="w-3.5 h-3.5" />{aboutLabel}</button>
         )}

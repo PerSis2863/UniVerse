@@ -69,7 +69,7 @@ export function AdmissionsAdmin() {
               <motion.ul variants={list} initial="hidden" animate="show" className="space-y-3">
                 {data.rounds.map((r) => (
                   <motion.li key={r.id} variants={fadeUp} className={`${card} p-4`}>
-                    <button type="button" onClick={() => { haptic('tap'); openRound(r.id); }} className="w-full flex items-start gap-3 text-left">
+                    <button type="button" onClick={() => { haptic('tap'); openRound(r.id); }} className="w-full flex items-start gap-3 text-start">
                       <span className="flex-1 min-w-0">
                         <span className="flex items-center gap-2"><span className="font-semibold text-zinc-900 dark:text-white truncate">{r.title}</span>
                           <span className={cn('text-[11px] font-semibold rounded-full px-2 py-0.5', r.open ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300')}>{PHASE[r.phase]}</span></span>
@@ -121,7 +121,7 @@ function RoundView({ id, school, onBack, onEdit }: { id: string; school: string;
 
   return (
     <motion.div variants={fadeUp} initial="hidden" animate="show" className="space-y-4">
-      <button type="button" onClick={onBack} className="btn-ghost btn-sm -ml-2"><ArrowLeft className="w-4 h-4" /> All rounds</button>
+      <button type="button" onClick={onBack} className="btn-ghost btn-sm -ms-2"><ArrowLeft className="w-4 h-4" /> All rounds</button>
       <section className={`${card} p-4 sm:p-5 space-y-3`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -161,7 +161,7 @@ function RoundView({ id, school, onBack, onEdit }: { id: string; school: string;
           <motion.ul variants={list} initial="hidden" animate="show" className="divide-y divide-zinc-200/70 dark:divide-white/[0.06]">
             {data.applications.map((a) => (
               <motion.li key={a.id} variants={fadeUp}>
-                <button type="button" onClick={() => { haptic('tap'); setApp(a.id); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
+                <button type="button" onClick={() => { haptic('tap'); setApp(a.id); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{a.studentName}</span>
                     <span className="block text-xs text-zinc-500 truncate">{a.contactName} · <span className="font-mono">{a.ref}</span> · {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}{a.documents ? ` · ${a.documents} document${a.documents === 1 ? '' : 's'}` : ''}</span>

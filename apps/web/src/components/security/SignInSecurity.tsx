@@ -72,7 +72,7 @@ export function Passkeys() {
                     <p className="text-zinc-900 dark:text-white truncate">{p.name}</p>
                     <p className="text-xs text-zinc-600 dark:text-zinc-400">Added {ago(p.createdAt)}{p.lastUsedAt ? ` · used ${ago(p.lastUsedAt)}` : ' · not used yet'}</p>
                   </div>
-                  <button type="button" onClick={() => void remove(p)} disabled={!!busy} aria-label={`Remove ${p.name}`} className="ml-auto p-2 rounded-lg text-zinc-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 min-w-11 min-h-11 inline-flex items-center justify-center">
+                  <button type="button" onClick={() => void remove(p)} disabled={!!busy} aria-label={`Remove ${p.name}`} className="ms-auto p-2 rounded-lg text-zinc-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 min-w-11 min-h-11 inline-flex items-center justify-center">
                     {busy === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                   </button>
                 </li>
@@ -131,14 +131,14 @@ export function SignedInDevices() {
                 <div className="min-w-0 text-sm">
                   <p className="text-zinc-900 dark:text-white">
                     {d.device ?? 'Unknown device'}
-                    {d.current && <span className="ml-2 rounded-full bg-emerald-100 dark:bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300">This device</span>}
+                    {d.current && <span className="ms-2 rounded-full bg-emerald-100 dark:bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300">This device</span>}
                   </p>
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">
                     {[d.place, `signed in ${ago(d.signedInAt)}${d.method ? ` with ${METHOD[d.method] ?? d.method}` : ''}`, `last seen ${ago(d.lastSeenAt)}`].filter(Boolean).join(' · ')}
                   </p>
                 </div>
                 {!d.current && (
-                  <button type="button" onClick={() => void signOut(d)} disabled={busy !== null} className="ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 min-h-11 text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+                  <button type="button" onClick={() => void signOut(d)} disabled={busy !== null} className="ms-auto shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 min-h-11 text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
                     {busy === d.sessionAt ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />} Sign out
                   </button>
                 )}

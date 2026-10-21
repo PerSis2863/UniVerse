@@ -105,8 +105,8 @@ export function Register({ courseId, day, data, mutate }: { courseId: string; da
           </select>
         </div>
         {selected.size > 0 && (
-          <div className="inline-flex items-center gap-1 ml-auto" role="group" aria-label={`Mark the ${selected.size} selected`}>
-            <span className="text-xs text-zinc-700 dark:text-zinc-300 mr-1">{selected.size} selected:</span>
+          <div className="inline-flex items-center gap-1 ms-auto" role="group" aria-label={`Mark the ${selected.size} selected`}>
+            <span className="text-xs text-zinc-700 dark:text-zinc-300 me-1">{selected.size} selected:</span>
             {MARKS.map((m) => <button key={m} type="button" disabled={busy} onClick={() => { void save([...selected].map((id) => ({ studentId: id, status: m }))); setSelected(new Set()); }} className="btn-secondary btn-sm">{MARK_UI[m].label}</button>)}
           </div>
         )}
@@ -127,7 +127,7 @@ export function Register({ courseId, day, data, mutate }: { courseId: string; da
           <input type="checkbox" aria-label="Select everyone" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(students.map((s) => s.id)))} className="w-4 h-4 accent-indigo-600" />
           <span className="flex-1">Student</span>
           <span className="hidden md:block w-40">Record</span>
-          <span className="w-[13.5rem] text-right">Today</span>
+          <span className="w-[13.5rem] text-end">Today</span>
         </div>
         <div ref={rows} role="list" aria-label={`${data.course.code} register for ${day}`}>
           {students.map((s, i) => {

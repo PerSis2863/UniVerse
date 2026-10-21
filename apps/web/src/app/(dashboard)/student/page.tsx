@@ -74,7 +74,7 @@ function StatTile({ label, value, sub, icon: Icon, gradient, delay }: {
       whileHover={{ y: -4 }}
       className={cn(card, 'group overflow-hidden')}
     >
-      <div aria-hidden className={cn('absolute -top-20 -right-20 w-48 h-48 rounded-full opacity-[0.12] group-hover:opacity-25 transition-opacity bg-gradient-to-br', gradient)} style={{ maskImage: 'radial-gradient(closest-side, black, transparent)', WebkitMaskImage: 'radial-gradient(closest-side, black, transparent)' }} />
+      <div aria-hidden className={cn('absolute -top-20 -end-20 w-48 h-48 rounded-full opacity-[0.12] group-hover:opacity-25 transition-opacity bg-gradient-to-br', gradient)} style={{ maskImage: 'radial-gradient(closest-side, black, transparent)', WebkitMaskImage: 'radial-gradient(closest-side, black, transparent)' }} />
       <div className={cn('relative w-11 h-11 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-lg mb-5', gradient)}>
         <Icon className="w-5 h-5 text-white" />
       </div>
@@ -214,7 +214,7 @@ export default function StudentDashboard() {
           <ol className="space-y-3">
             {data.schedule.map((c) => (
               <li key={c.id} className="flex items-center gap-4">
-                <span className="w-11 text-right text-xs font-semibold text-zinc-500 tabular-nums">{c.start}</span>
+                <span className="w-11 text-end text-xs font-semibold text-zinc-500 tabular-nums">{c.start}</span>
                 <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-4 ring-indigo-500/10" style={{ backgroundColor: courseColor(c.course.color, c.course.code) }} />
                 <div className="flex-1 min-w-0 flex items-center justify-between gap-3 p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">
                   <div className="min-w-0">
@@ -419,7 +419,7 @@ function StreakCard({ streak }: { streak: NonNullable<Overview['streak']> }) {
             <p className="text-xs font-semibold uppercase tracking-wider text-orange-500 dark:text-orange-300">Study streak</p>
             <p className="text-lg font-black text-zinc-900 dark:text-white leading-tight">{current} day{current === 1 ? '' : 's'}</p>
           </div>
-          {best > 0 && <span className="ml-auto text-xs text-zinc-500 shrink-0">Best {best}</span>}
+          {best > 0 && <span className="ms-auto text-xs text-zinc-500 shrink-0">Best {best}</span>}
         </div>
         <div className="flex justify-between gap-1 mt-4">
           {week.map((d, i) => (

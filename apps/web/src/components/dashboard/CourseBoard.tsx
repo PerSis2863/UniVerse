@@ -329,7 +329,7 @@ function LatestPack({ board, onOpen }: { board: Board; onOpen: (id: string) => v
   if (!s || now - new Date(s.startedAt).getTime() > 7 * 86_400_000) return null;
   return (
     <motion.button type="button" onClick={() => onOpen(s.id)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth}
-      className="w-full mb-5 text-left rounded-2xl p-4 flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/25 lift">
+      className="w-full mb-5 text-start rounded-2xl p-4 flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/25 lift">
       <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center"><NotebookPen className="w-5 h-5" /></div>
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-zinc-900 dark:text-white text-sm">Study pack from {new Date(s.startedAt).toLocaleDateString(undefined, { weekday: 'long' })}’s class</p>
@@ -642,7 +642,7 @@ function Roster({ board }: { board: Board }) {
             <div key={s.id} className="p-4 flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 flex items-center justify-center text-xs font-bold shrink-0">{s.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</div>
               <div className="flex-1 min-w-0"><p className="text-sm font-medium text-zinc-900 dark:text-white truncate">{s.name}</p><p className="text-xs text-zinc-500 truncate">{s.email}</p></div>
-              <div className="text-right"><p className="text-sm font-bold text-zinc-900 dark:text-white">{s.average != null ? `${s.average}%` : '—'}</p><p className="text-[10px] text-zinc-500">{s.graded} graded</p></div>
+              <div className="text-end"><p className="text-sm font-bold text-zinc-900 dark:text-white">{s.average != null ? `${s.average}%` : '—'}</p><p className="text-[10px] text-zinc-500">{s.graded} graded</p></div>
             </div>
           ))}
         </div>

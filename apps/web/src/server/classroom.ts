@@ -7,6 +7,13 @@ import { publish } from './realtime';
 import { cleanTranscript, createClassSession } from './class-companion';
 import { AttendanceService } from './services/attendance.service';
 import { assertOnCampus } from './attendance-plus';
+import { cleanRule } from '@/lib/tutor-rules';
+import { recentHeard } from '@/lib/whisper';
+import { sameQuestion, spendAi } from './ai-budget';
+import { logAiUse } from './ai-receipts';
+import { featureOff } from './moderation';
+import { taAnswer } from './whisper';
+import { callPeople, callPulse } from './calls';
 
 // Stage 5 · D7: phone clicker for in-person classes. The teacher starts a session for a course and
 // projects a code that changes every 30 seconds (the QR opens /student/live?checkin=<code>).
@@ -23,6 +30,13 @@ const LATE_AFTER_MS = 15 * 60_000;
 const MOOD_MS = 5 * 60_000; // "I'm lost" counts for five minutes, then it resets
 const MAX_LINES = 4000;
 const MAX_QUESTIONS = 10;
+const TA_PER_CLASS_HOUR = 60;
+const TA_REUSE_MS = 15 * 60_000;
+/** A student's question as they see it, with the class TA's answer if they asked for one (Stage 5 · Q22). */
+const QUESTION = { id: true, text: true, answeredAt: true, createdAt: true, answer: true, citations: true, grounded: true } as const;
+const questionView = (q: { id: string; text: string; answeredAt: Date | null; createdAt: Date; answer: string | null; citations: string | null; grounded: boolean }) => ({ ...q, citations: parse<{ n: number; title: string }[]>(q.citations, []) });
+/** Whether the class TA answers in this course now: AI is on and the teacher hasn't turned the TA off. */
+const taOn = async (tutorRule: string | null) => !!process.env.GEMINI_API_KEY && !cleanRule(tutorRule).whisperOff && !(await featureOff('ai'));
 
 const attendance = new AttendanceService();
 
@@ -61,7 +75,7 @@ const randomSecret = () => btoa(String.fromCharCode(...crypto.getRandomValues(ne
 // ─── Teacher ─────────────────────────────────────────────────────────────────────────────────────
 
 async function teacherSession(sessionId: string, user: SessionUser) {
-  const s = await prisma.classroomSession.findUnique({ where: { id: sessionId }, select: { id: true, courseId: true, teacherId: true, secret: true, startedAt: true, endedAt: true, transcript: true, pulse: true, classSessionId: true } });
+  const s = await prisma.classroomSession.findUnique({ where: { id: sessionId }, select: { id: true, courseId: true, teacherId: true, secret: true, startedAt: true, endedAt: true, transcript: true, pulse: true, classSessionId: true, linkedCall: true } });
   if (!s) throw new NotFoundException('Session not found.');
   const access = await courseAccess(s.courseId, user);
   if (!access?.canManage) throw new NotFoundException('Session not found.');
@@ -103,9 +117,11 @@ export async function currentCode(sessionId: string, user: SessionUser) {
 /** What the teacher sees: who's here, the lost meter, questions and notes. */
 export async function teacherView(sessionId: string, user: SessionUser) {
   const s = await teacherSession(sessionId, user);
-  const [checkins, questions] = await Promise.all([
+  const [checkins, questions, call] = await Promise.all([
     prisma.classroomCheckin.findMany({ where: { sessionId }, select: { mood: true, moodAt: true }, take: 1000 }),
     prisma.classroomQuestion.findMany({ where: { sessionId }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, text: true, answeredAt: true, createdAt: true } }),
+    // The course's class call, if it's running (a hybrid class, Stage 5 · Q22): its students, lost and following.
+    open(s) ? callPulse(`c_${s.courseId}`).catch(() => null) : Promise.resolve(null),
   ]);
   return {
     id: s.id,
@@ -119,6 +135,8 @@ export async function teacherView(sessionId: string, user: SessionUser) {
     questions,
     notes: parse<unknown[]>(s.transcript, []).length,
     pulse: parse<unknown[]>(s.pulse, []).slice(-40),
+    call: call ? { ...call, linked: s.linkedCall } : null,
+    linked: s.linkedCall,
   };
 }
 
@@ -142,8 +160,17 @@ export async function teacherAction(sessionId: string, user: SessionUser, b: Rec
     await prisma.classroomSession.update({ where: { id: s.id }, data: { transcript: JSON.stringify(all) } });
     return { notes: all.length };
   }
+  if (b.action === 'link') {
+    // One class in the room and online: the call's students count on the lost meter and are marked present.
+    const on = b.on === true;
+    await prisma.classroomSession.update({ where: { id: s.id }, data: { linkedCall: on } });
+    const marked = on ? await markOnline(s.courseId, (await callPeople(`c_${s.courseId}`)).ids) : 0;
+    return { ok: true, linked: on, marked };
+  }
   if (b.action === 'end') {
     const now = Date.now();
+    // Whoever is in the linked call at the end counts too (they may have joined it before the link).
+    if (s.linkedCall) await markOnline(s.courseId, (await callPeople(`c_${s.courseId}`).catch(() => ({ ids: [] as string[] }))).ids);
     await prisma.classroomSession.update({ where: { id: s.id }, data: { endedAt: new Date(now) } });
     const lines = parse<unknown[]>(s.transcript, []);
     let pack: { id?: string; message?: string } | null = null;
@@ -162,6 +189,29 @@ export async function teacherAction(sessionId: string, user: SessionUser, b: Rec
     return { ok: true, classSessionId: pack?.id ?? null, message: note };
   }
   throw new BadRequestException('Unknown action.');
+}
+
+/**
+ * Students in a class call while its in-person class is linked to it (Stage 5 · Q22): present, or
+ * late after the first 15 minutes, as for those who joined in the room; a mark the teacher made stays
+ * (only "absent" or no mark changes). Only the course's students; a few statements however many.
+ */
+export async function markOnline(courseId: string, userIds: string[]) {
+  const now = Date.now();
+  const s = await prisma.classroomSession.findFirst({ where: { courseId, endedAt: null, linkedCall: true, startedAt: { gt: new Date(now - OPEN_MS) } }, orderBy: { startedAt: 'desc' }, select: { id: true, startedAt: true, teacherId: true } });
+  if (!s || !userIds.length) return 0;
+  const ids = (await prisma.enrollment.findMany({ where: { courseId, studentId: { in: [...new Set(userIds)].slice(0, 90) } }, select: { studentId: true } })).map((e) => e.studentId);
+  if (!ids.length) return 0;
+  const date = new Date(new Date(now).toISOString().slice(0, 10));
+  const status = now - s.startedAt.getTime() > LATE_AFTER_MS ? 'LATE' : 'PRESENT';
+  const have = await prisma.attendance.findMany({ where: { courseId, date, studentId: { in: ids } }, select: { studentId: true, status: true } });
+  const absent = have.filter((h) => h.status === 'ABSENT').map((h) => h.studentId);
+  const none = ids.filter((id) => !have.some((h) => h.studentId === id));
+  // 15 rows at a time: D1 takes at most 100 values in one statement.
+  for (let i = 0; i < none.length; i += 15) await prisma.attendance.createMany({ data: none.slice(i, i + 15).map((studentId) => ({ studentId, courseId, date, status, note: 'Online (class call)' })) });
+  if (absent.length) await prisma.attendance.updateMany({ where: { courseId, date, studentId: { in: absent } }, data: { status, note: 'Online (class call)' } });
+  if (none.length || absent.length) publish([s.teacherId], { type: 'refresh', keys: [`/api/classroom/${s.id}`] });
+  return none.length + absent.length;
 }
 
 // ─── Students ────────────────────────────────────────────────────────────────────────────────────
@@ -215,12 +265,13 @@ export async function currentForStudent(user: SessionUser) {
   const c = await prisma.classroomCheckin.findFirst({
     where: { studentId: user.id, session: { endedAt: null, startedAt: { gt: new Date(now - OPEN_MS) } } },
     orderBy: { joinedAt: 'desc' },
-    select: { mood: true, moodAt: true, session: { select: { id: true, startedAt: true, course: { select: { id: true, code: true, name: true } } } } },
+    select: { mood: true, moodAt: true, session: { select: { id: true, startedAt: true, course: { select: { id: true, code: true, name: true, tutorRule: true } } } } },
   });
   if (!c) return { session: null };
-  const questions = await prisma.classroomQuestion.findMany({ where: { sessionId: c.session.id, studentId: user.id }, orderBy: { createdAt: 'desc' }, select: { id: true, text: true, answeredAt: true, createdAt: true } });
+  const questions = await prisma.classroomQuestion.findMany({ where: { sessionId: c.session.id, studentId: user.id }, orderBy: { createdAt: 'desc' }, select: QUESTION });
   const mood = c.mood && c.moodAt && now - c.moodAt.getTime() < MOOD_MS ? c.mood : null;
-  return { session: { id: c.session.id, startedAt: c.session.startedAt, course: c.session.course, mood, questions } };
+  const { tutorRule, ...course } = c.session.course;
+  return { session: { id: c.session.id, startedAt: c.session.startedAt, course, mood, questions: questions.map(questionView), ta: await taOn(tutorRule) } };
 }
 
 /** A student's actions during class: mood (LOST, OK or clear) and ask. */
@@ -246,11 +297,40 @@ export async function studentAction(sessionId: string, user: SessionUser, b: Rec
     const text = typeof b.text === 'string' ? b.text.replace(/\s+/g, ' ').trim().slice(0, 500) : '';
     if (text.length < 3) throw new BadRequestException('Write your question first.');
     if ((await prisma.classroomQuestion.count({ where: { sessionId, studentId: user.id } })) >= MAX_QUESTIONS) throw new BadRequestException(`You can send up to ${MAX_QUESTIONS} questions in one class.`);
-    const q = await prisma.classroomQuestion.create({ data: { sessionId, studentId: user.id, text }, select: { id: true, text: true, answeredAt: true, createdAt: true } });
+    const q = await prisma.classroomQuestion.create({ data: { sessionId, studentId: user.id, text }, select: QUESTION });
     publish([teacher], { type: 'refresh', keys: [`/api/classroom/${sessionId}`] });
-    return q;
+    return questionView(q);
   }
+  if (b.action === 'ta') return askTa(sessionId, user, b.questionId);
   throw new BadRequestException('Unknown action.');
+}
+
+/**
+ * The class TA's answer to one of my questions in an in-person class (Stage 5 · Q22, as Whisper TA in
+ * class calls): from the course's materials and the notes the teacher's laptop has taken in the last
+ * ten minutes. Only the student sees it. The same question asked in this class in the last 15
+ * minutes gets the answer already made (when it came from the course materials), at no cost.
+ */
+async function askTa(sessionId: string, user: SessionUser, questionId: unknown) {
+  const q = typeof questionId === 'string' ? await prisma.classroomQuestion.findFirst({ where: { id: questionId, sessionId, studentId: user.id }, select: QUESTION }) : null;
+  if (!q) throw new NotFoundException('Question not found.');
+  if (q.answer) return questionView(q);
+  const s = await prisma.classroomSession.findUnique({ where: { id: sessionId }, select: { startedAt: true, transcript: true, course: { select: { id: true, code: true, name: true, tutorRule: true } } } });
+  if (!s) throw new NotFoundException('Class not found.');
+  if (cleanRule(s.course.tutorRule).whisperOff) throw new ForbiddenException('Your teacher has turned the TA off for this class. Your question is with them.');
+  const now = Date.now();
+  const norm = sameQuestion(q.text);
+  const recent = await prisma.classroomQuestion.findMany({ where: { sessionId, answer: { not: null }, createdAt: { gte: new Date(now - 3_600_000) } }, select: { text: true, answer: true, citations: true, grounded: true, createdAt: true }, take: 200 });
+  const same = recent.find((r) => r.grounded && now - r.createdAt.getTime() < TA_REUSE_MS && sameQuestion(r.text) === norm);
+  if (same) return questionView(await prisma.classroomQuestion.update({ where: { id: q.id }, data: { answer: same.answer, citations: same.citations, grounded: true }, select: QUESTION }));
+  if (recent.length >= TA_PER_CLASS_HOUR) throw new HttpException('The TA has answered all it can for this class this hour. Your question is with your teacher.', 429);
+  if (!(await taOn(null))) throw new HttpException('The TA isn’t available right now. Your question is with your teacher.', 503);
+  const spend = await spendAi(user);
+  if (!spend.ok) throw new HttpException(spend.message, 429);
+  const notes = parse<{ t: number; who: string; text: string }[]>(s.transcript, []).map((l) => ({ at: s.startedAt.getTime() + l.t * 1000, who: l.who, text: l.text }));
+  const out = await taAnswer(s.course, q.text, recentHeard(notes, now));
+  await logAiUse(user.id, { kind: 'ta', detail: q.text, courseId: s.course.id });
+  return questionView(await prisma.classroomQuestion.update({ where: { id: q.id }, data: { answer: out.answer, citations: JSON.stringify(out.citations), grounded: out.grounded }, select: QUESTION }));
 }
 
 /** POST /api/classroom/[id]: the teacher's or a student's action, by who's asking. */

@@ -55,10 +55,10 @@ export default function AdminQuizzesPage() {
             <>
               <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                   <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search quiz, course or teacher…" aria-label="Search quizzes"
-                    className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 pl-9 pr-9 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
-                  {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-400"><X className="w-4 h-4" /></button>}
+                    className="w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 ps-9 pe-9 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+                  {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute end-2 top-1/2 -translate-y-1/2 p-1 text-zinc-400"><X className="w-4 h-4" /></button>}
                 </div>
                 <select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status"
                   className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-200">
@@ -81,7 +81,7 @@ export default function AdminQuizzesPage() {
                     return (
                       <div key={x.id} className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03]">
                         <div className="p-4 flex items-start gap-3">
-                          <button onClick={() => setOpen(expanded ? null : x.id)} aria-expanded={expanded} className="min-w-0 flex-1 text-left">
+                          <button onClick={() => setOpen(expanded ? null : x.id)} aria-expanded={expanded} className="min-w-0 flex-1 text-start">
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="font-semibold text-zinc-900 dark:text-white break-words">{x.title}</p>
                               <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS[x.status] ?? ''}`}>{x.status.toLowerCase()}</span>
@@ -146,9 +146,9 @@ function QuizDetail({ quiz }: { quiz: Quiz }) {
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{subs.length} submission{subs.length === 1 ? '' : 's'}{avg != null ? ` · average ${avg}%` : ''}</p>
             <div className="relative sm:w-60">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search students" aria-label="Search submissions"
-                className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 pl-8 pr-3 py-1.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+                className="w-full rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 ps-8 pe-3 py-1.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
             </div>
           </div>
           {rows.length === 0 ? <p className="text-sm text-zinc-500">No students match “{q}”.</p> : (
@@ -161,7 +161,7 @@ function QuizDetail({ quiz }: { quiz: Quiz }) {
                       <p className="text-sm font-medium text-zinc-900 dark:text-white truncate">{s.student.name}</p>
                       <a href={`mailto:${s.student.email}`} className="text-xs text-zinc-500 hover:text-indigo-500 break-all">{s.student.email}</a>
                     </div>
-                    <div className="text-right shrink-0">
+                    <div className="text-end shrink-0">
                       <p className={cn('text-sm font-bold', p == null ? 'text-zinc-500' : p >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500')}>
                         {s.score != null && s.maxScore != null ? `${s.score}/${s.maxScore}` : 'Not scored'}{p != null ? ` · ${p}%` : ''}
                       </p>

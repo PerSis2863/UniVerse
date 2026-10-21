@@ -336,7 +336,7 @@ export function OrganizationSettings() {
                 maxLength={7}
                 className="input w-28 font-mono text-xs uppercase"
               />
-              <div className="flex items-center gap-1.5 ml-2">
+              <div className="flex items-center gap-1.5 ms-2">
                 {PRESET_COLORS.map((p) => (
                   <button
                     key={p.name}
@@ -431,7 +431,7 @@ export function OrganizationSettings() {
             }`}
           >
             <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${
-              ssoEnabled ? "translate-x-5" : "translate-x-0"
+              ssoEnabled ? "translate-x-5 rtl:-translate-x-5" : "translate-x-0"
             }`} />
           </button>
         </div>
@@ -455,7 +455,7 @@ export function OrganizationSettings() {
                       key={p.id}
                       type="button"
                       onClick={() => setSsoDraft((d) => ({ ...d, ssoProvider: p.id as "MICROSOFT" | "GOOGLE" | "SAML" }))}
-                      className={`p-3.5 rounded-2xl border text-left transition-all ${
+                      className={`p-3.5 rounded-2xl border text-start transition-all ${
                         isSel
                           ? "border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-950 dark:text-indigo-200 shadow-sm"
                           : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
@@ -564,7 +564,7 @@ export function OrganizationSettings() {
                   key={opt.days}
                   type="button"
                   onClick={() => setRetentionDraft(opt.days)}
-                  className={`p-3.5 rounded-2xl border text-left transition-all ${
+                  className={`p-3.5 rounded-2xl border text-start transition-all ${
                     isSel
                       ? "border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-950 dark:text-indigo-200 shadow-sm"
                       : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"

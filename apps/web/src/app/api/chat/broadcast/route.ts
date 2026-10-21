@@ -2,6 +2,7 @@ import prisma from '@/lib/db';
 import { getSystemUser, MAX_BODY } from '@/lib/chat';
 import { planLimits } from '@/lib/plan-limits';
 import { route } from '@/server/assignments';
+import { inParts } from '@/server/d1-parts';
 import { BadRequestException, ForbiddenException, HttpException } from '@/server/http';
 import { chatMuted, featureOff } from '@/server/moderation';
 import { publish } from '@/server/realtime';
@@ -27,10 +28,11 @@ export const POST = (req: Request) =>
     const people = await prisma.user.findMany({ where: { id: { in: ids }, status: 'ACTIVE' }, select: { id: true } });
 
     // Existing private chats with these people, then new ones for the rest.
-    const existing = await prisma.conversation.findMany({
-      where: { isGroup: false, private: false, AND: [{ participants: { some: { userId: user.id } } }, { participants: { some: { userId: { in: people.map((p) => p.id) } } } }] },
+    // In parts: a list inside a relation filter isn't split for D1's 100 values (src/lib/d1-split.ts).
+    const existing = await inParts(people.map((p) => p.id), (part) => prisma.conversation.findMany({
+      where: { isGroup: false, private: false, AND: [{ participants: { some: { userId: user.id } } }, { participants: { some: { userId: { in: part } } } }] },
       select: { id: true, participants: { select: { userId: true } } },
-    });
+    }));
     const chatWith = new Map<string, string>();
     for (const c of existing) {
       const other = c.participants.find((p) => p.userId !== user.id)?.userId;

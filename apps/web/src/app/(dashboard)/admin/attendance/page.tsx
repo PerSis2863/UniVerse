@@ -153,7 +153,7 @@ export default function AdminAttendance() {
               <div>
                 <label htmlFor="att-date" className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1 block">Date</label>
                 <div className="flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden focus-within:border-indigo-500 transition-colors">
-                  <div className="pl-3 text-zinc-500"><Calendar className="w-4 h-4" /></div>
+                  <div className="ps-3 text-zinc-500"><Calendar className="w-4 h-4" /></div>
                   <input
                     id="att-date"
                     type="date"
@@ -170,19 +170,19 @@ export default function AdminAttendance() {
               <div className="min-w-0">
                 <label htmlFor="att-course" className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1 block">Course</label>
                 <div className="relative flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden focus-within:border-indigo-500 transition-colors">
-                  <div className="absolute left-3 text-zinc-500 pointer-events-none"><Filter className="w-4 h-4" /></div>
+                  <div className="absolute start-3 text-zinc-500 pointer-events-none"><Filter className="w-4 h-4" /></div>
                   <select
                     id="att-course"
                     value={selectedCourse}
                     onChange={(e) => { setSelectedCourse(e.target.value); setLocalEdits({}); setQ(''); }}
-                    className="w-full sm:w-72 pl-10 pr-8 py-2 bg-transparent text-sm text-zinc-900 dark:text-white outline-none appearance-none truncate"
+                    className="w-full sm:w-72 ps-10 pe-8 py-2 bg-transparent text-sm text-zinc-900 dark:text-white outline-none appearance-none truncate"
                   >
                     {courses.length === 0 && <option value="">No courses yet</option>}
                     {courses.map((c) => (
                       <option key={c.id} value={c.id}>{c.code} - {c.name}{c.teacher ? ` (${c.teacher.name})` : ''}</option>
                     ))}
                   </select>
-                  <div className="absolute right-3 text-zinc-500 pointer-events-none"><ChevronDown className="w-4 h-4" /></div>
+                  <div className="absolute end-3 text-zinc-500 pointer-events-none"><ChevronDown className="w-4 h-4" /></div>
                 </div>
               </div>
             </div>
@@ -245,10 +245,10 @@ export default function AdminAttendance() {
               </div>
               <div className="flex gap-2 items-center">
                 <div className="relative flex-1 sm:w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                   <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search students" aria-label="Search students"
-                    className="w-full pl-9 pr-8 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500" />
-                  {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-400"><X className="w-4 h-4" /></button>}
+                    className="w-full ps-9 pe-8 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500" />
+                  {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute end-2 top-1/2 -translate-y-1/2 p-1 text-zinc-400"><X className="w-4 h-4" /></button>}
                 </div>
                 {stats.unmarked > 0 && (
                   <button onClick={markRestPresent} className="btn-secondary btn-sm whitespace-nowrap">Mark rest present</button>
@@ -279,7 +279,7 @@ export default function AdminAttendance() {
                         <div className="min-w-0">
                           <div className="text-sm font-medium text-zinc-900 dark:text-white truncate">
                             {student.name}
-                            {localEdits[student.id] && <span className="ml-2 text-[10px] font-bold uppercase text-indigo-500">unsaved</span>}
+                            {localEdits[student.id] && <span className="ms-2 text-[10px] font-bold uppercase text-indigo-500">unsaved</span>}
                           </div>
                           <a href={`mailto:${student.email}`} className="block text-xs text-zinc-500 hover:text-indigo-500 truncate">{student.email}</a>
                           <div className="text-[11px] text-zinc-400">

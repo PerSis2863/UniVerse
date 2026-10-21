@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { CheckCircle2, HelpCircle, Loader2, School, Send, ThumbsUp } from 'lucide-react';
+import { CheckCircle2, HelpCircle, Loader2, School, Send, Sparkles, ThumbsUp } from 'lucide-react';
 import { Field } from '@/components/ui/Field';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
@@ -15,9 +15,11 @@ import { cn } from '@/lib/utils';
 
 // Student's Live page → in-person class (Stage 5 · D7, src/server/classroom.ts): join with the code on
 // the screen (scanning the QR opens this page with ?checkin=<code> and joins straight away), which
-// takes attendance; then tell the teacher you're lost or following, and send questions.
+// takes attendance; then tell the teacher you're lost or following, and send questions. The class TA
+// (Stage 5 · Q22) can answer a question privately from the course materials and the class notes.
 
-type Current = { session: { id: string; startedAt: string; course: { id: string; code: string; name: string }; mood: 'LOST' | 'OK' | null; questions: { id: string; text: string; answeredAt: string | null; createdAt: string }[] } | null };
+type Question = { id: string; text: string; answeredAt: string | null; createdAt: string; answer?: string | null; citations?: { n: number; title: string }[]; grounded?: boolean };
+type Current = { session: { id: string; startedAt: string; course: { id: string; code: string; name: string }; mood: 'LOST' | 'OK' | null; questions: Question[]; ta?: boolean } | null };
 const KEY = '/api/classroom/current';
 
 /** Where the phone is, if the person allows it (else nothing: the server then says what's needed). */
@@ -94,6 +96,7 @@ function InClass({ session: s, marked, onChange }: { session: NonNullable<Curren
   const [mood, setMood] = useState(s.mood);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [asking, setAsking] = useState<string | null>(null);
   const post = (body: object) => authedJson(`/api/classroom/${s.id}`, { method: 'POST', body: JSON.stringify(body) });
 
   const say = async (m: 'LOST' | 'OK') => {
@@ -109,6 +112,12 @@ function InClass({ session: s, marked, onChange }: { session: NonNullable<Curren
     catch (err) { toast.error(errorMessage(err, 'Couldn’t send the question.')); }
     finally { setSending(false); }
   };
+  const askTa = async (id: string) => {
+    setAsking(id);
+    try { await post({ action: 'ta', questionId: id }); onChange(); }
+    catch (err) { toast.error(errorMessage(err, 'The TA couldn’t answer just now.')); }
+    finally { setAsking(null); }
+  };
 
   return (
     <motion.section variants={fadeUp} initial="hidden" animate="show" className="panel p-5 space-y-4" aria-labelledby="in-class-title">
@@ -120,11 +129,11 @@ function InClass({ session: s, marked, onChange }: { session: NonNullable<Curren
       <div>
         <p className="text-sm font-medium text-zinc-900 dark:text-white mb-2">How’s it going?</p>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => void say('LOST')} aria-pressed={mood === 'LOST'} className={cn('rounded-2xl border p-4 text-left transition-colors min-h-16', mood === 'LOST' ? 'border-amber-500 bg-amber-500/10' : 'border-zinc-200 dark:border-white/10 hover:border-amber-400')}>
+          <button type="button" onClick={() => void say('LOST')} aria-pressed={mood === 'LOST'} className={cn('rounded-2xl border p-4 text-start transition-colors min-h-16', mood === 'LOST' ? 'border-amber-500 bg-amber-500/10' : 'border-zinc-200 dark:border-white/10 hover:border-amber-400')}>
             <HelpCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             <span className="block mt-1 font-semibold text-zinc-900 dark:text-white">I’m lost</span>
           </button>
-          <button type="button" onClick={() => void say('OK')} aria-pressed={mood === 'OK'} className={cn('rounded-2xl border p-4 text-left transition-colors min-h-16', mood === 'OK' ? 'border-emerald-500 bg-emerald-500/10' : 'border-zinc-200 dark:border-white/10 hover:border-emerald-400')}>
+          <button type="button" onClick={() => void say('OK')} aria-pressed={mood === 'OK'} className={cn('rounded-2xl border p-4 text-start transition-colors min-h-16', mood === 'OK' ? 'border-emerald-500 bg-emerald-500/10' : 'border-zinc-200 dark:border-white/10 hover:border-emerald-400')}>
             <ThumbsUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             <span className="block mt-1 font-semibold text-zinc-900 dark:text-white">I’m following</span>
           </button>
@@ -132,7 +141,7 @@ function InClass({ session: s, marked, onChange }: { session: NonNullable<Curren
         <p className="mt-2 text-xs text-zinc-500">Your teacher sees how many are lost, not who. It resets after five minutes.</p>
       </div>
       <form onSubmit={ask} className="space-y-2">
-        <Field label="Ask a question" hint="Your teacher sees it without your name." count={text.length} max={500}>
+        <Field label="Ask a question" hint={s.ta ? 'Your teacher sees it without your name. You can also ask the class TA for an answer now, just for you.' : 'Your teacher sees it without your name.'} count={text.length} max={500}>
           {(p) => <textarea {...p} className="input min-h-[4.5rem]" maxLength={500} placeholder="Why does the loop stop at n - 1?" value={text} onChange={(e) => setText(e.target.value)} />}
         </Field>
         <button type="submit" disabled={sending || text.trim().length < 3} className="btn-secondary btn-sm">{sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Send</button>
@@ -140,9 +149,24 @@ function InClass({ session: s, marked, onChange }: { session: NonNullable<Curren
       {s.questions.length > 0 && (
         <ul className="space-y-1.5" aria-label="Your questions">
           {s.questions.map((q) => (
-            <li key={q.id} className="text-sm flex items-start gap-2">
-              {q.answeredAt ? <CheckCircle2 className="w-4 h-4 mt-0.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden /> : <span className="w-4 h-4 mt-0.5 rounded-full border border-zinc-300 dark:border-white/20 shrink-0" aria-hidden />}
-              <span className="text-zinc-700 dark:text-zinc-300"><span className="sr-only">{q.answeredAt ? 'Answered: ' : 'Not answered yet: '}</span>{q.text}</span>
+            <li key={q.id} className="text-sm">
+              <div className="flex items-start gap-2">
+                {q.answeredAt ? <CheckCircle2 className="w-4 h-4 mt-0.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden /> : <span className="w-4 h-4 mt-0.5 rounded-full border border-zinc-300 dark:border-white/20 shrink-0" aria-hidden />}
+                <span className="text-zinc-700 dark:text-zinc-300 min-w-0 flex-1"><span className="sr-only">{q.answeredAt ? 'Answered: ' : 'Not answered yet: '}</span>{q.text}</span>
+                {s.ta && !q.answer && (
+                  <button type="button" onClick={() => void askTa(q.id)} disabled={asking !== null} className="btn-ghost btn-sm shrink-0 text-indigo-700 dark:text-indigo-300" aria-label={`Ask the TA now: ${q.text}`}>
+                    {asking === q.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" aria-hidden />} Ask the TA
+                  </button>
+                )}
+              </div>
+              {q.answer && (
+                <div className="mt-1.5 ms-6 rounded-xl bg-indigo-500/[0.07] px-3 py-2" role="note" aria-label="The TA’s answer">
+                  <p className="text-zinc-800 dark:text-zinc-200 whitespace-pre-line">{q.answer}</p>
+                  <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                    {q.grounded && q.citations?.length ? `From the course: ${q.citations.map((c) => `[${c.n}] ${c.title}`).join(' · ')}` : 'Not from the course materials: check with your teacher.'} Only you see this.
+                  </p>
+                </div>
+              )}
             </li>
           ))}
         </ul>

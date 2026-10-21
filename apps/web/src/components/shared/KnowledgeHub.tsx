@@ -181,13 +181,13 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
           {/* Controls */}
           <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
             <div className="relative w-full md:w-96">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 dark:text-zinc-400" />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 dark:text-zinc-400" />
               <input 
                 type="text" 
                 placeholder="Search resources..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500 z-10 relative"
+                className="w-full ps-10 pe-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500 z-10 relative"
               />
             </div>
             <div className="flex gap-3">
@@ -228,25 +228,25 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
 
             {/* Resources List */}
             <div className="flex-1 relative z-10">
-              <div className="bg-zinc-900/50 backdrop-blur-xl border border-white/[0.05] rounded-2xl overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-white/[0.05] flex justify-between items-center bg-white/[0.02]">
-                  <h3 className="font-semibold text-white">Files in {activeCategory}</h3>
-                  <span className="text-sm text-zinc-400">{filteredResources.length} items</span>
+              <div className="bg-white/80 dark:bg-zinc-900/50 backdrop-blur-xl border border-zinc-200 dark:border-white/[0.05] rounded-2xl overflow-hidden shadow-sm">
+                <div className="p-4 border-b border-zinc-200 dark:border-white/[0.05] flex justify-between items-center bg-zinc-50 dark:bg-white/[0.02]">
+                  <h3 className="font-semibold text-zinc-900 dark:text-white">Files in {activeCategory}</h3>
+                  <span className="text-sm text-zinc-600 dark:text-zinc-400">{filteredResources.length} items</span>
                 </div>
-                <div className="divide-y divide-zinc-800/50">
+                <div className="divide-y divide-zinc-200 dark:divide-zinc-800/50">
                   {loading ? (
                     <ContentSkeleton variant="list" className="p-4" />
                   ) : filteredResources.length === 0 ? (
                     <EmptyState compact icon={FolderOpen} title="No resources here yet" hint="Share notes, slides or links and they’ll appear in this category." />
                   ) : (
                     filteredResources.map((resource) => (
-                      <div key={resource.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">
+                      <div key={resource.id} className="p-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors group">
                         <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-lg bg-white/[0.04] flex items-center justify-center text-zinc-400 group-hover:bg-indigo-500/10 group-hover:text-indigo-400 transition-colors shrink-0">
+                          <div className="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-white/[0.04] flex items-center justify-center text-zinc-500 dark:text-zinc-400 group-hover:bg-indigo-500/10 group-hover:text-indigo-400 transition-colors shrink-0">
                             <FileText className="w-5 h-5" />
                           </div>
                           <div>
-                            <h4 className="text-sm font-medium text-white mb-0.5">{resource.title}</h4>
+                            <h4 className="text-sm font-medium text-zinc-900 dark:text-white mb-0.5">{resource.title}</h4>
                             <div className="flex items-center gap-3 text-xs text-zinc-500">
                               <span>{resource.type}</span>
                               {resource.size && <span>• {resource.size}</span>}
@@ -254,24 +254,24 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-2 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                           <button 
                             onClick={() => handleShareFile(resource.title, resource.url)}
-                            className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                            className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                             title="Share"
                           >
                             <Share2 className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => handleDownload(resource)}
-                            className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+                            className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                             title={resource.type === 'Link' ? 'Open Link' : 'Download'}
                           >
                             {resource.type === 'Link' ? <ExternalLink className="w-4 h-4" /> : <Download className="w-4 h-4" />}
                           </button>
                           <button 
                             onClick={() => handleDelete(resource.id)}
-                            className="p-2 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                            className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
                             title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />

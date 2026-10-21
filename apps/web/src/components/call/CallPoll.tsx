@@ -106,7 +106,7 @@ export function PollComposer({ open, onClose, onStart, questionsFor }: {
                       <div key={quizItem.id}>
                         <p className="px-3 pt-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">{quizItem.title}</p>
                         {quizItem.questions.map((x) => (
-                          <button key={x.id} type="button" onClick={() => pickQuestion(x)} className="w-full text-left px-3 py-2 text-sm hover:bg-white/[0.08] truncate">{x.q}</button>
+                          <button key={x.id} type="button" onClick={() => pickQuestion(x)} className="w-full text-start px-3 py-2 text-sm hover:bg-white/[0.08] truncate">{x.q}</button>
                         ))}
                       </div>
                     ))}
@@ -137,13 +137,13 @@ export function PollComposer({ open, onClose, onStart, questionsFor }: {
                 {quiz && <p className="text-xs text-zinc-400">Tick the right answer. Nobody sees it, or anyone’s answers, until you end the quiz.</p>}
               </div>
 
-              <button type="button" role="switch" aria-checked={anon} onClick={() => { haptic('tap'); setAnon((a) => !a); }} className="w-full flex items-center justify-between gap-3 text-left">
+              <button type="button" role="switch" aria-checked={anon} onClick={() => { haptic('tap'); setAnon((a) => !a); }} className="w-full flex items-center justify-between gap-3 text-start">
                 <span>
                   <span className="block text-sm font-medium">Anonymous</span>
                   <span className="block text-xs text-zinc-400">{anon ? 'You see only how many picked each answer.' : 'You see who picked what (only you and co-hosts).'}</span>
                 </span>
                 <span className={cn('relative w-11 h-7 rounded-full transition-colors shrink-0', anon ? 'bg-emerald-500' : 'bg-white/20')}>
-                  <motion.span layout transition={spring.snappy} className={cn('absolute top-0.5 w-6 h-6 rounded-full bg-white shadow', anon ? 'right-0.5' : 'left-0.5')} />
+                  <motion.span layout transition={spring.snappy} className={cn('absolute top-0.5 w-6 h-6 rounded-full bg-white shadow', anon ? 'end-0.5' : 'start-0.5')} />
                 </span>
               </button>
 
@@ -170,11 +170,11 @@ export function PollCard({ poll, mod, onVote, onSend }: { poll: PollView; mod: b
 
   return (
     <motion.div key="poll-card" initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.97 }} transition={spring.smooth}
-      className="absolute z-[25] inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] sm:inset-x-auto sm:left-4 sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:w-[22rem] pointer-events-auto">
+      className="absolute z-[25] inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] sm:inset-x-auto sm:start-4 sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:w-[22rem] pointer-events-auto">
       <AnimatePresence mode="wait" initial={false}>
         {folded ? (
           <motion.button key="pill" type="button" onClick={() => { haptic('tap'); setFolded(false); }} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={spring.snappy}
-            className="inline-flex items-center gap-2 pl-3 pr-4 py-2 rounded-full bg-[#121830]/95 backdrop-blur-xl border border-fuchsia-400/30 shadow-xl text-sm font-semibold">
+            className="inline-flex items-center gap-2 ps-3 pe-4 py-2 rounded-full bg-[#121830]/95 backdrop-blur-xl border border-fuchsia-400/30 shadow-xl text-sm font-semibold">
             <BarChart3 className="w-4 h-4 text-fuchsia-300" />{label} · {answers}{poll.open && poll.mine === null && !mod && <span className="w-2 h-2 rounded-full bg-fuchsia-400 animate-pulse" aria-label="Not answered yet" />}
           </motion.button>
         ) : (
@@ -195,9 +195,9 @@ export function PollCard({ poll, mod, onVote, onSend }: { poll: PollView; mod: b
                 return (
                   <li key={i}>
                     <button type="button" role="radio" aria-checked={mine} disabled={!poll.open} onClick={() => { if (!mine) { haptic('tap'); onVote(i); } }}
-                      className={cn('relative w-full overflow-hidden rounded-2xl border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-default',
+                      className={cn('relative w-full overflow-hidden rounded-2xl border px-3 py-2.5 text-start text-sm transition-colors disabled:cursor-default',
                         right ? 'border-emerald-400/50' : wrong ? 'border-rose-400/50' : mine ? 'border-fuchsia-400/60' : 'border-white/10 hover:border-white/25')}>
-                      {poll.counts && <motion.span aria-hidden initial={{ width: 0 }} animate={{ width: `${pct(i)}%` }} transition={spring.smooth} className={cn('absolute inset-y-0 left-0', right ? 'bg-emerald-500/30' : wrong ? 'bg-rose-500/25' : 'bg-gradient-to-r from-indigo-500/35 to-fuchsia-500/30')} />}
+                      {poll.counts && <motion.span aria-hidden initial={{ width: 0 }} animate={{ width: `${pct(i)}%` }} transition={spring.smooth} className={cn('absolute inset-y-0 start-0', right ? 'bg-emerald-500/30' : wrong ? 'bg-rose-500/25' : 'bg-gradient-to-r from-indigo-500/35 to-fuchsia-500/30')} />}
                       <span className="relative flex items-center gap-2">
                         <span className="flex-1">{o}</span>
                         {right && <Check className="w-4 h-4 text-emerald-300" strokeWidth={3} aria-label="The right answer" />}

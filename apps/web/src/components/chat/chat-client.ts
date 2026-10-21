@@ -33,6 +33,7 @@ export interface ChatMessage {
     link?: { url: string; title: string; description: string | null; site: string } | null; // link preview
     broadcast?: boolean;
     ai?: boolean; askedBy?: string; // an answer from UniVerse AI (/ask), with the question in `question`
+    app?: { id: string; name: string }; command?: string; // an answer from one of the school's chat apps (Stage 5 · Q20)
     recording?: { id: string; durationSec: number }; // VIDEO / AUDIO: a call's recording (Stage 4 · 2.9)
     huddle?: { callId: string }; // someone started a huddle, a drop-in voice room in this chat (Stage 4 · 1.11)
     /** A private chat's encrypted message (Stage 5 · B7.6). */

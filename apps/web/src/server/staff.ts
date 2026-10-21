@@ -5,6 +5,7 @@ import { BadRequestException, ConflictException, ForbiddenException, NotFoundExc
 import { need } from './permissions';
 import { publish } from './realtime';
 import { pushService } from './services/push.service';
+import { balances, inHalf, leaveYear, workingDays } from '@/lib/leave-balance';
 
 // Staff (Stage 5 · B15.8). Teachers mark themselves in each day, ask for leave and see the classes
 // they cover. Managers (admins, or staff with staff.manage) see who's in, approve or decline leave,
@@ -39,11 +40,14 @@ export async function myStaff(user: SessionUser, today: string | null) {
   const day = isDay(today) && nearToday(today) ? today : new Date().toISOString().slice(0, 10);
   const [att, leave, covers] = await Promise.all([
     prisma.staffAttendance.findUnique({ where: { userId_date: { userId: user.id, date: day } }, select: { inAt: true, outAt: true } }),
-    prisma.staffLeave.findMany({ where: { userId: user.id, toDate: { gte: addDays(day, -90) } }, orderBy: { fromDate: 'desc' }, take: 30, select: { id: true, type: true, fromDate: true, toDate: true, reason: true, status: true, decisionNote: true, decidedAt: true, createdAt: true } }),
+    prisma.staffLeave.findMany({ where: { userId: user.id, toDate: { gte: addDays(day, -90) } }, orderBy: { fromDate: 'desc' }, take: 30, select: { id: true, type: true, fromDate: true, toDate: true, halfDay: true, reason: true, status: true, decisionNote: true, decidedAt: true, createdAt: true } }),
     prisma.staffCover.findMany({ where: { coverTeacherId: user.id, date: { gte: day } }, orderBy: [{ date: 'asc' }], take: 30, select: { id: true, date: true, note: true, absentTeacher: { select: { name: true } }, slot: { select: { startTime: true, endTime: true, type: true, room: { select: { name: true } }, course: { select: { code: true, name: true } } } } } }),
   ]);
+  const { year, of } = await balancesOf([user.id], day);
   return {
     today: day, inAt: att?.inAt ?? null, outAt: att?.outAt ?? null, leave,
+    // What's left of each kind of leave this leave year (Q22).
+    balances: { year: year.label, rows: of(user.id).map((r) => ({ ...r, label: typeLabel(r.type) })) },
     covers: covers.map((c) => ({ id: c.id, date: c.date, start: c.slot.startTime, end: c.slot.endTime, type: c.slot.type, room: c.slot.room?.name ?? null, course: c.slot.course, absent: c.absentTeacher.name, note: c.note }))
       .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)),
   };
@@ -74,10 +78,15 @@ export async function myStaffAction(user: SessionUser, b: Record<string, unknown
     const clash = await prisma.staffLeave.findFirst({ where: { userId: user.id, status: { in: ['PENDING', 'APPROVED'] }, fromDate: { lte: toDate }, toDate: { gte: fromDate } }, select: { fromDate: true, toDate: true } });
     if (clash) throw new ConflictException(`You already asked for leave from ${clash.fromDate} to ${clash.toDate}.`);
     const reason = typeof b.reason === 'string' ? b.reason.trim().slice(0, 500) || null : null;
-    const leave = await prisma.staffLeave.create({ data: { userId: user.id, type, fromDate, toDate, reason }, select: { id: true } });
+    // Half a day (Q22): one day's morning or afternoon.
+    const halfDay = fromDate === toDate && (b.halfDay === 'AM' || b.halfDay === 'PM') ? b.halfDay : null;
+    const leave = await prisma.staffLeave.create({ data: { userId: user.id, type, fromDate, toDate, reason, halfDay }, select: { id: true } });
     const days = daysBetween(fromDate, toDate) + 1;
-    await notifyManagers({ title: `Leave request: ${user.name}`, body: `${typeLabel(type)} · ${fromDate}${days > 1 ? ` to ${toDate} (${days} days)` : ''}${reason ? ` · ${reason.slice(0, 80)}` : ''}`, link: '/admin/staff?view=leave' });
-    return { id: leave.id };
+    // Over the allowance is allowed (the manager decides), but said.
+    const bal = (await balancesOf([user.id])).of(user.id).find((r) => r.type === type);
+    const over = bal && bal.left != null && bal.left - bal.pending < 0 ? -(bal.left - bal.pending) : 0;
+    await notifyManagers({ title: `Leave request: ${user.name}`, body: `${typeLabel(type)} · ${fromDate}${halfDay ? ` (${halfDay === 'AM' ? 'morning' : 'afternoon'})` : days > 1 ? ` to ${toDate} (${days} days)` : ''}${over ? ` · ${over} day${over === 1 ? '' : 's'} over the allowance` : ''}${reason ? ` · ${reason.slice(0, 80)}` : ''}`, link: '/admin/staff?view=leave' });
+    return { id: leave.id, over, days: workingDays(fromDate, toDate, halfDay) };
   }
   if (b.action === 'cancel') {
     const id = typeof b.leaveId === 'string' ? b.leaveId : '';
@@ -95,6 +104,44 @@ export async function myStaffAction(user: SessionUser, b: Record<string, unknown
     return { cancelled: true };
   }
   throw new BadRequestException('Unknown action.');
+}
+
+// ── Leave allowances (Stage 5 · Q22) ─────────────────────────────────────────────────────────
+
+const DEFAULT_DAYS: Record<string, number> = { SICK: 12, PERSONAL: 10, TRAINING: 0, OTHER: 0 };
+
+/** The school's leave allowances (days a year per kind, 0: no limit) and the month its leave year starts. */
+export async function staffSettings() {
+  const row = await prisma.staffSettings.findUnique({ where: { id: 'main' } }).catch(() => null);
+  let days: Record<string, number> = DEFAULT_DAYS;
+  try { if (row) days = { ...DEFAULT_DAYS, ...(JSON.parse(row.leaveDays) as Record<string, number>) }; } catch { /* the defaults */ }
+  return { leaveDays: Object.fromEntries(LEAVE_TYPES.map((t) => [t, Math.max(0, Number(days[t]) || 0)])), yearStartMonth: row?.yearStartMonth ?? 1 };
+}
+
+/** POST /api/staff/settings { leaveDays: { SICK: 12, … }, yearStartMonth }: managers. */
+export async function saveStaffSettings(user: SessionUser, b: Record<string, unknown>) {
+  await need(user, 'staff.manage');
+  const raw = (b.leaveDays && typeof b.leaveDays === 'object' ? b.leaveDays : {}) as Record<string, unknown>;
+  const leaveDays: Record<string, number> = {};
+  for (const t of LEAVE_TYPES) {
+    const n = Number(raw[t] ?? 0);
+    if (!Number.isFinite(n) || n < 0 || n > 365 || Math.round(n * 2) !== n * 2) throw new BadRequestException('Days a year: 0 to 365, in half days.');
+    leaveDays[t] = n;
+  }
+  const month = Number(b.yearStartMonth ?? 1);
+  if (!Number.isInteger(month) || month < 1 || month > 12) throw new BadRequestException('Choose the month the leave year starts.');
+  const data = { leaveDays: JSON.stringify(leaveDays), yearStartMonth: month, updatedAt: new Date() };
+  await prisma.staffSettings.upsert({ where: { id: 'main' }, update: data, create: { id: 'main', ...data } });
+  return { leaveDays, yearStartMonth: month };
+}
+
+/** Each person's leave balances this leave year (a few statements, however many people). */
+async function balancesOf(userIds: string[], today = new Date().toISOString().slice(0, 10)) {
+  const settings = await staffSettings();
+  const year = leaveYear(today, settings.yearStartMonth);
+  const rows = userIds.length ? await prisma.staffLeave.findMany({ where: { userId: { in: userIds.slice(0, 90) }, status: { in: ['APPROVED', 'PENDING'] }, fromDate: { lte: year.to }, toDate: { gte: year.from } }, select: { userId: true, type: true, fromDate: true, toDate: true, halfDay: true, status: true }, take: 3000 }) : [];
+  const of = (id: string) => balances(settings.leaveDays, rows.filter((r) => r.userId === id), year, LEAVE_TYPES);
+  return { year, of };
 }
 
 const typeLabel = (t: string) => ({ SICK: 'Sick leave', PERSONAL: 'Personal leave', TRAINING: 'Training', OTHER: 'Leave' } as Record<string, string>)[t] ?? 'Leave';
@@ -133,10 +180,13 @@ export async function leaveRequests(user: SessionUser, status: string | null) {
   const where = status === 'PENDING' || status === 'APPROVED' || status === 'DECLINED' || status === 'CANCELLED' ? { status } : { toDate: { gte: addDays(new Date().toISOString().slice(0, 10), -60) } };
   const rows = await prisma.staffLeave.findMany({
     where, orderBy: [{ fromDate: 'asc' }], take: 200,
-    select: { id: true, type: true, fromDate: true, toDate: true, reason: true, status: true, decisionNote: true, decidedAt: true, createdAt: true, user: { select: { id: true, name: true, avatar: true } }, _count: { select: { covers: true } } },
+    select: { id: true, type: true, fromDate: true, toDate: true, halfDay: true, reason: true, status: true, decisionNote: true, decidedAt: true, createdAt: true, user: { select: { id: true, name: true, avatar: true } }, _count: { select: { covers: true } } },
   });
   const order = { PENDING: 0, APPROVED: 1, DECLINED: 2, CANCELLED: 3 } as Record<string, number>;
-  return { pending: rows.filter((r) => r.status === 'PENDING').length, rows: rows.sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || a.fromDate.localeCompare(b.fromDate)) };
+  // Each request with the person's balance for its kind of leave (Q22).
+  const { year, of } = await balancesOf([...new Set(rows.map((r) => r.user.id))]);
+  const withBalance = rows.map((r) => ({ ...r, days: workingDays(r.fromDate, r.toDate, r.halfDay), balance: of(r.user.id).find((x) => x.type === r.type) ?? null }));
+  return { year: year.label, settings: await staffSettings(), pending: rows.filter((r) => r.status === 'PENDING').length, rows: withBalance.sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || a.fromDate.localeCompare(b.fromDate)) };
 }
 
 /** POST /api/staff/leave/:id { action: 'approve' | 'decline', note? } */
@@ -163,7 +213,7 @@ export async function coverNeeds(user: SessionUser, from: string | null, to: str
   await need(user, 'staff.manage');
   const start = isDay(from) ? from : new Date().toISOString().slice(0, 10);
   const end = isDay(to) && to >= start ? (daysBetween(start, to) < MAX_RANGE_DAYS ? to : addDays(start, MAX_RANGE_DAYS - 1)) : addDays(start, 6);
-  const leave = await prisma.staffLeave.findMany({ where: { status: 'APPROVED', fromDate: { lte: end }, toDate: { gte: start } }, select: { id: true, userId: true, fromDate: true, toDate: true, user: { select: { id: true, name: true } } }, take: 100 });
+  const leave = await prisma.staffLeave.findMany({ where: { status: 'APPROVED', fromDate: { lte: end }, toDate: { gte: start } }, select: { id: true, userId: true, fromDate: true, toDate: true, halfDay: true, user: { select: { id: true, name: true } } }, take: 100 });
   if (!leave.length) return { from: start, to: end, needs: [] as Need[], uncovered: 0 };
   const teacherIds = [...new Set(leave.map((l) => l.userId))];
   const [slots, covers] = await Promise.all([
@@ -174,7 +224,8 @@ export async function coverNeeds(user: SessionUser, from: string | null, to: str
   for (const l of leave) {
     for (const date of eachDay(l.fromDate < start ? start : l.fromDate, l.toDate > end ? end : l.toDate)) {
       const dow = weekday(date);
-      for (const s of slots.filter((x) => x.course.teacherId === l.userId && x.dayOfWeek === dow)) {
+      // A half-day leave (Q22) misses only that half's classes.
+      for (const s of slots.filter((x) => x.course.teacherId === l.userId && x.dayOfWeek === dow && inHalf(l.halfDay, x.startTime))) {
         const c = covers.find((x) => x.date === date && x.slotId === s.id);
         needs.push({ date, slotId: s.id, start: s.startTime, end: s.endTime, type: s.type, room: s.room?.name ?? null, course: { code: s.course.code, name: s.course.name }, absent: l.user, leaveId: l.id, cover: c?.coverTeacher ?? null });
       }
@@ -194,11 +245,12 @@ export async function freeTeachers(user: SessionUser, date: string | null, slotI
   const [teachers, busySlots, onLeave, coversThatDay, coversThatWeek] = await Promise.all([
     prisma.user.findMany({ where: { role: 'TEACHER', status: { not: 'SUSPENDED' }, id: { not: slot.course.teacherId } }, orderBy: { name: 'asc' }, take: 1000, select: { id: true, name: true, avatar: true } }),
     prisma.timetableSlot.findMany({ where: { dayOfWeek: slot.dayOfWeek }, select: { startTime: true, endTime: true, course: { select: { teacherId: true } } }, take: 3000 }),
-    prisma.staffLeave.findMany({ where: { status: 'APPROVED', fromDate: { lte: date }, toDate: { gte: date } }, select: { userId: true } }),
+    prisma.staffLeave.findMany({ where: { status: 'APPROVED', fromDate: { lte: date }, toDate: { gte: date } }, select: { userId: true, halfDay: true } }),
     prisma.staffCover.findMany({ where: { date, coverTeacherId: { not: null } }, select: { coverTeacherId: true, slotId: true, slot: { select: { startTime: true, endTime: true } } } }),
     prisma.staffCover.groupBy({ by: ['coverTeacherId'], where: { date: { gte: monday, lte: addDays(monday, 6) }, coverTeacherId: { not: null } }, _count: { _all: true } }),
   ]);
-  const away = new Set(onLeave.map((l) => l.userId));
+  // Away then: on leave that day, or that half of it (Q22).
+  const away = new Set(onLeave.filter((l) => inHalf(l.halfDay, slot.startTime)).map((l) => l.userId));
   const want = { start: slot.startTime, end: slot.endTime };
   const free = teachers.filter((t) => !away.has(t.id)
     && !busySlots.some((s) => s.course.teacherId === t.id && overlaps(want, { start: s.startTime, end: s.endTime }))
@@ -213,7 +265,7 @@ export async function setCover(user: SessionUser, b: Record<string, unknown>) {
   if (!isDay(b.date) || typeof b.slotId !== 'string' || typeof b.leaveId !== 'string') throw new BadRequestException('Choose a class and a day.');
   const date = b.date, slotId = b.slotId;
   const [slot, leave] = await Promise.all([
-    prisma.timetableSlot.findUnique({ where: { id: slotId }, select: { dayOfWeek: true, startTime: true, endTime: true, room: { select: { name: true } }, course: { select: { code: true, teacherId: true, teacher: { select: { name: true } } } } } }),
+    prisma.timetableSlot.findUnique({ where: { id: slotId }, select: { dayOfWeek: true, startTime: true, endTime: true, room: { select: { name: true } }, course: { select: { id: true, code: true, teacherId: true, teacher: { select: { name: true } } } } } }),
     prisma.staffLeave.findUnique({ where: { id: b.leaveId }, select: { id: true, userId: true, status: true, fromDate: true, toDate: true } }),
   ]);
   if (!slot || !leave || leave.status !== 'APPROVED' || leave.userId !== slot.course.teacherId || date < leave.fromDate || date > leave.toDate || weekday(date) !== slot.dayOfWeek) {
@@ -239,6 +291,9 @@ export async function setCover(user: SessionUser, b: Record<string, unknown>) {
     await notify(coverId, { type: 'staff', title, body, link: '/teacher/staff', email: false });
     await pushService.sendToUser(coverId, { title, body, url: '/teacher/staff', tag: `cover-${date}-${slotId}` }).catch(() => {});
     publish([coverId], { type: 'refresh', keys: ['/api/staff/me*'] });
+    // The class hears who's taking it (Q22): the teacher's name only, never why their teacher is away.
+    const students = (await prisma.enrollment.findMany({ where: { courseId: slot.course.id, student: { status: { not: 'SUSPENDED' } } }, select: { studentId: true }, take: 500 })).map((e) => e.studentId);
+    if (students.length) await notifyMany(students, { type: 'reminder', title: `${slot.course.code}: ${pick.name} is taking your class`, body: `${date}, ${slot.startTime}–${slot.endTime}${slot.room ? ` in ${slot.room.name}` : ''}, instead of ${slot.course.teacher.name}.`, link: '/student/calendar', email: false });
   }
   return { cover: { id: pick.id, name: pick.name } };
 }

@@ -17,7 +17,7 @@ interface Insights {
   teachers: { id: string; name: string; email: string; lastSeenAt: string | null; courses: number; students: number; toGrade: number; graded30: number; flagged: number }[];
 }
 
-const th = 'text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 pb-2';
+const th = 'text-start text-[11px] font-semibold uppercase tracking-wider text-zinc-500 pb-2';
 
 /** One measure, one hue: a thin bar for a percentage, with the number as text beside it. */
 function Meter({ value, label }: { value: number | null; label: string }) {
@@ -118,17 +118,17 @@ export default function AdminInsightsPage() {
                 {data.departments.length === 0 ? (
                   <p className={`panel p-5 text-sm text-zinc-500`}>No grades or attendance in the last 60 days yet.</p>
                 ) : (
-                  <div className={`panel p-4 overflow-x-auto`}>
+                  <div tabIndex={0} role="region" aria-label="Table" className="panel p-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-indigo-500">
                     <table className="w-full text-sm min-w-[32rem]">
-                      <thead><tr><th className={th}>Department</th><th className={th}>Average grade</th><th className={th}>vs previous 30 days</th><th className={th}>Attendance</th><th className={`${th} text-right`}>Grades given</th></tr></thead>
+                      <thead><tr><th className={th}>Department</th><th className={th}>Average grade</th><th className={th}>vs previous 30 days</th><th className={th}>Attendance</th><th className={`${th} text-end`}>Grades given</th></tr></thead>
                       <tbody className="divide-y divide-zinc-200 dark:divide-white/[0.06]">
                         {data.departments.map((d) => (
                           <tr key={d.name}>
-                            <td className="py-2.5 pr-3 font-medium text-zinc-900 dark:text-white">{d.name}</td>
-                            <td className="py-2.5 pr-3"><Meter value={d.grade} label="Average grade" /></td>
-                            <td className="py-2.5 pr-3"><Change now={d.grade} before={d.previous} /></td>
-                            <td className="py-2.5 pr-3"><Meter value={d.attendance} label="Attendance" /></td>
-                            <td className="py-2.5 text-right tabular-nums text-zinc-600 dark:text-zinc-300">{d.graded}</td>
+                            <td className="py-2.5 pe-3 font-medium text-zinc-900 dark:text-white">{d.name}</td>
+                            <td className="py-2.5 pe-3"><Meter value={d.grade} label="Average grade" /></td>
+                            <td className="py-2.5 pe-3"><Change now={d.grade} before={d.previous} /></td>
+                            <td className="py-2.5 pe-3"><Meter value={d.attendance} label="Attendance" /></td>
+                            <td className="py-2.5 text-end tabular-nums text-zinc-600 dark:text-zinc-300">{d.graded}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -142,19 +142,19 @@ export default function AdminInsightsPage() {
                 {data.teachers.length === 0 ? (
                   <p className={`panel p-5 text-sm text-zinc-500`}>No active teachers yet.</p>
                 ) : (
-                  <div className={`panel p-4 overflow-x-auto`}>
+                  <div tabIndex={0} role="region" aria-label="Table" className="panel p-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-indigo-500">
                     <table className="w-full text-sm min-w-[36rem]">
-                      <thead><tr><th className={th}>Teacher</th><th className={`${th} text-right`}>Courses</th><th className={`${th} text-right`}>Students</th><th className={`${th} text-right`}>Answers to grade</th><th className={`${th} text-right`}>Grades (30 days)</th><th className={`${th} text-right`}>At-risk students</th><th className={`${th} text-right`}>Last seen</th></tr></thead>
+                      <thead><tr><th className={th}>Teacher</th><th className={`${th} text-end`}>Courses</th><th className={`${th} text-end`}>Students</th><th className={`${th} text-end`}>Answers to grade</th><th className={`${th} text-end`}>Grades (30 days)</th><th className={`${th} text-end`}>At-risk students</th><th className={`${th} text-end`}>Last seen</th></tr></thead>
                       <tbody className="divide-y divide-zinc-200 dark:divide-white/[0.06]">
                         {(showAllTeachers ? data.teachers : data.teachers.slice(0, 15)).map((t) => (
                           <tr key={t.id}>
-                            <td className="py-2.5 pr-3"><p className="font-medium text-zinc-900 dark:text-white">{t.name}</p><p className="text-xs text-zinc-500">{t.email}</p></td>
-                            <td className="py-2.5 text-right tabular-nums">{t.courses}</td>
-                            <td className="py-2.5 text-right tabular-nums">{t.students}</td>
-                            <td className={cn('py-2.5 text-right tabular-nums', t.toGrade >= 20 && 'font-semibold text-amber-700 dark:text-amber-400')}>{t.toGrade}</td>
-                            <td className="py-2.5 text-right tabular-nums">{t.graded30}</td>
-                            <td className="py-2.5 text-right tabular-nums">{t.flagged}</td>
-                            <td className="py-2.5 text-right text-xs text-zinc-500">{t.lastSeenAt ? new Date(t.lastSeenAt).toLocaleDateString() : 'Never'}</td>
+                            <td className="py-2.5 pe-3"><p className="font-medium text-zinc-900 dark:text-white">{t.name}</p><p className="text-xs text-zinc-500">{t.email}</p></td>
+                            <td className="py-2.5 text-end tabular-nums">{t.courses}</td>
+                            <td className="py-2.5 text-end tabular-nums">{t.students}</td>
+                            <td className={cn('py-2.5 text-end tabular-nums', t.toGrade >= 20 && 'font-semibold text-amber-700 dark:text-amber-400')}>{t.toGrade}</td>
+                            <td className="py-2.5 text-end tabular-nums">{t.graded30}</td>
+                            <td className="py-2.5 text-end tabular-nums">{t.flagged}</td>
+                            <td className="py-2.5 text-end text-xs text-zinc-500">{t.lastSeenAt ? new Date(t.lastSeenAt).toLocaleDateString() : 'Never'}</td>
                           </tr>
                         ))}
                       </tbody>

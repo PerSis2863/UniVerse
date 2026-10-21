@@ -9,4 +9,16 @@
 
 Also follow `.cursor/rules/universe.mdc` and `START-HERE.md` when working in this repo.
 
-Optional add-on: Everything Claude Code (ECC). See the ECC section in `.cursor/rules/universe.mdc` before installing any of it.
+## Claude Code setup in this repo (`.claude/`)
+
+A small set adapted from Everything Claude Code (ECC) to this project; the full pack is not
+installed (see the ECC section in `.cursor/rules/universe.mdc` for why, and before adding more).
+
+- **Commands** (type them in Claude Code): `/plan-item [Qn]` plan the next queue item before coding;
+  `/check [quick|full]` run the project's checks and show only failures; `/fix-checks` fix what
+  fails; `/finish-item [Qn]` Progress row, handoff note, START-HERE, commit and push (no merge);
+  `/council <topic>` the five-advisor review.
+- **Reviewers** (subagents, only when asked): `universe-reviewer` (bugs and project rules) and
+  `universe-security` (access, input, secrets, money, files).
+- **Hook:** `.claude/hooks/protect-secrets.mjs` blocks any tool call that reads or writes the local
+  secret files (`.dev.vars`, `.env*`; `*.example` is fine). Turned on in `.claude/settings.json`.

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/db';
-import { logAiUse, receiptForSubmission } from './ai-receipts';
+import { logAiUse, makeReceipt, receiptForSubmission } from './ai-receipts';
 
 vi.mock('@/lib/db', () => ({ default: { aiUse: { create: vi.fn(), findMany: vi.fn() } } }));
 vi.mock('@/lib/course-access', () => ({ courseAccess: vi.fn() }));
@@ -52,5 +52,20 @@ describe('AI receipts on the server (Stage 5 · D12)', () => {
   it('an answer sent later from an offline device is kept, marked offline', async () => {
     expect(JSON.parse((await receiptForSubmission('u1', a('RECEIPT'), undefined, true))!)).toMatchObject({ policy: 'RECEIPT', offline: true, uses: [] });
     expect(await receiptForSubmission('u1', a('FREE'), undefined, true)).toBeNull();
+  });
+
+  it('quizzes and oral checks (Q22): the receipt covers the attempt; a quiz handed in at time-up is kept as it was', async () => {
+    const until = new Date('2026-10-02T10:30:00Z');
+    const scope = { courseId: 'c1', since: set, until, policy: 'NONE', during: true };
+    const r = JSON.parse((await makeReceipt('u1', scope, { attach: true, note: 'Asked the tutor once' }))!);
+    expect(r).toMatchObject({ policy: 'NONE', attached: true, during: true, since: set.toISOString() });
+    expect(db.aiUse.findMany.mock.calls[0][0].where.createdAt).toEqual({ gte: set, lte: until });
+    // Time ran out before they chose: no throwing (the answers would be lost), marked for the teacher.
+    const auto = JSON.parse((await makeReceipt('u1', scope, { attach: false, declaredNone: false }, 'auto'))!);
+    expect(auto).toMatchObject({ policy: 'NONE', attached: false, declaredNone: false, auto: true, uses: [] });
+    await expect(makeReceipt('u1', scope, { attach: false }, 'given')).rejects.toMatchObject({ message: expect.stringContaining('doesn’t allow AI') });
+    // A choice that fits is kept as chosen, even at time-up.
+    expect(JSON.parse((await makeReceipt('u1', scope, { declaredNone: true }, 'auto'))!)).toMatchObject({ declaredNone: true });
+    expect(JSON.parse((await makeReceipt('u1', scope, { declaredNone: true }, 'auto'))!).auto).toBeUndefined();
   });
 });

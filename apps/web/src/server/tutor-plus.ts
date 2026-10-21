@@ -170,7 +170,7 @@ export async function practiceFromClasses(a: Access, user: SessionUser, topic: s
 /** GET: the rule (staff see the instruction too). */
 export function readRule(a: Access) {
   const r = a.rule;
-  return { hintsOnly: r.hintsOnly, off: tutorOff(r), offUntil: r.offUntil, ...(a.role === 'STUDENT' ? {} : { note: r.note }) };
+  return { hintsOnly: r.hintsOnly, off: tutorOff(r), offUntil: r.offUntil, whisperOff: r.whisperOff, ...(a.role === 'STUDENT' ? {} : { note: r.note }) };
 }
 
 /** PUT { hintsOnly, note, off, offUntil }: the course's teaching team. */

@@ -163,7 +163,7 @@ function VerifyCredentialPage({ id }: { id: string }) {
                     {c.description && <p className="text-sm mt-3 break-words" style={{ color: 'var(--text-secondary)' }}>{c.description}</p>}
                   </div>
                   {selfUrl && (
-                    <div className="flex flex-col items-center gap-1.5 sm:pl-2">
+                    <div className="flex flex-col items-center gap-1.5 sm:ps-2">
                       <div className="rounded-2xl p-1.5 bg-gradient-to-br from-indigo-500 to-fuchsia-500">
                         <QrCode value={selfUrl} size={120} className="rounded-xl block" title="QR code for this verification page" />
                       </div>
@@ -187,7 +187,7 @@ function VerifyCredentialPage({ id }: { id: string }) {
               {c && (
                 <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                   {selfUrl && <CopyLinkButton url={selfUrl} className="btn-primary" />}
-                  <p className="text-xs text-zinc-500 sm:ml-auto">Certificate <span className="font-mono">{c.certificateCode}</span></p>
+                  <p className="text-xs text-zinc-500 sm:ms-auto">Certificate <span className="font-mono">{c.certificateCode}</span></p>
                 </div>
               )}
 

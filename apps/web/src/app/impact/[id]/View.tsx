@@ -108,7 +108,7 @@ function PublicImpactPage({ id }: { id: string }) {
                 <ul className="mt-3 divide-y divide-zinc-200/70 dark:divide-white/[0.07]">
                   {data.reports.map((r) => (
                     <li key={r.id} id={`report-${r.id}`} className="py-3">
-                      <button type="button" onClick={() => setOpen(open === r.id ? null : r.id)} aria-expanded={open === r.id} className="w-full flex items-center gap-3 text-left">
+                      <button type="button" onClick={() => setOpen(open === r.id ? null : r.id)} aria-expanded={open === r.id} className="w-full flex items-center gap-3 text-start">
                         <span className="flex-1 min-w-0">
                           <span className="block font-semibold text-zinc-900 dark:text-white truncate">{r.title}</span>
                           <span className="block text-xs text-zinc-500">{new Date(r.startsAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}{r.verified ? ' · verified' : ''}</span>
@@ -133,7 +133,7 @@ function PublicImpactPage({ id }: { id: string }) {
                 <h2 className="text-lg font-black text-zinc-900 dark:text-white">News from the project</h2>
                 <ul className="mt-3 space-y-4">
                   {data.updates.map((u) => (
-                    <li key={u.id} className="border-l-2 border-emerald-400/60 pl-3">
+                    <li key={u.id} className="border-s-2 border-emerald-400/60 ps-3">
                       <p className="text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-line break-words">{u.body}</p>
                       <p className="mt-1 text-[11px] text-zinc-500">{u.by} · {new Date(u.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                     </li>

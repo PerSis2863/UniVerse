@@ -93,7 +93,7 @@ function ThreadList({ courseId, onOpen }: { courseId: string; onOpen: (id: strin
               <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{q.trim() || filter !== 'all' ? 'Nothing matches.' : 'No posts yet. Ask the first question: others probably wonder too.'}</p>
             </div>
           ) : data.threads.map((t) => (
-            <button key={t.id} type="button" onClick={() => onOpen(t.id)} className="w-full text-left flex gap-3 p-3 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] hover:border-indigo-400/60 transition-colors">
+            <button key={t.id} type="button" onClick={() => onOpen(t.id)} className="w-full text-start flex gap-3 p-3 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.03] hover:border-indigo-400/60 transition-colors">
               <span className="flex flex-col items-center justify-center w-11 shrink-0 text-xs font-bold tabular-nums text-zinc-700 dark:text-zinc-200" aria-label={`${t.votes} upvotes`}><ChevronUp className="w-4 h-4" aria-hidden />{t.votes}</span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5 flex-wrap">

@@ -52,7 +52,7 @@ function Sent({ ref_, token, round }: { ref_: string; token: string; round: stri
       <h1 className="mt-3 text-2xl font-black text-zinc-900 dark:text-white">Application sent</h1>
       <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{round} · reference <span className="font-mono font-bold">{ref_}</span></p>
       {token && (
-        <div className="mt-6 text-left rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4">
+        <div className="mt-6 text-start rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4">
           <p className="text-sm font-semibold text-zinc-900 dark:text-white">Keep this link: it’s how you follow your application</p>
           <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5">We don’t send emails. Bookmark it or copy it somewhere safe; anyone with it can see the application.</p>
           <div className="mt-3 flex flex-col sm:flex-row gap-2">
@@ -147,7 +147,7 @@ function ApplyForm({ slug, round, onSent }: { slug: string; round: Round; onSent
       )}
 
       {/* People don't see this; robots fill it in. */}
-      <div aria-hidden className="absolute -left-[9999px] w-px h-px overflow-hidden">
+      <div aria-hidden className="absolute -start-[9999px] w-px h-px overflow-hidden">
         <label>Website<input tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} /></label>
       </div>
 
@@ -188,7 +188,7 @@ function Question({ f, value, file, error, onChange, onFile }: { f: FormField; v
       <Field label={label} hint={file ? undefined : f.help ?? 'PDF, JPG or PNG, up to 4 MB'} error={error}>
         {(p) => (
           <div className="flex items-center gap-2">
-            <input {...p} type="file" accept={FILE_TYPES.join(',')} onChange={(e) => { const x = e.target.files?.[0] ?? null; if (x && x.size > MAX_FILE_BYTES) e.target.value = ''; onFile(x); }} className="block w-full text-sm text-zinc-600 dark:text-zinc-300 file:mr-3 file:rounded-xl file:border-0 file:bg-indigo-500/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 dark:file:text-indigo-300" />
+            <input {...p} type="file" accept={FILE_TYPES.join(',')} onChange={(e) => { const x = e.target.files?.[0] ?? null; if (x && x.size > MAX_FILE_BYTES) e.target.value = ''; onFile(x); }} className="block w-full text-sm text-zinc-600 dark:text-zinc-300 file:me-3 file:rounded-xl file:border-0 file:bg-indigo-500/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 dark:file:text-indigo-300" />
             {file && <Paperclip className="w-4 h-4 text-emerald-600 shrink-0" aria-label="Attached" />}
           </div>
         )}

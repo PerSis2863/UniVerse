@@ -178,7 +178,7 @@ export default function TimetableManagementPage() {
                   return (
                     <li key={t.teacher.id ?? i} className="py-3 grid gap-2 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:items-center">
                       <PersonCell person={t.teacher} extra={[t.teacher.teacherProfile?.designation, t.teacher.teacherProfile?.department].filter(Boolean).join(' · ') || null} />
-                      <div className="text-xs text-zinc-600 dark:text-zinc-400 md:text-right">
+                      <div className="text-xs text-zinc-600 dark:text-zinc-400 md:text-end">
                         <p className="font-semibold text-zinc-900 dark:text-white">{t.classes} class{t.classes === 1 ? '' : 'es'} · {(t.minutes / 60).toFixed(1)} h / week</p>
                         <p>{courses.map((c) => c.code).join(', ')} · {courses.reduce((n, c) => n + c.students, 0)} enrolled</p>
                       </div>

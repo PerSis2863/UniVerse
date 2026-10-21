@@ -125,7 +125,14 @@ export async function listDocs(user: SessionUser) {
     : await prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : taughtBy(user.id), select: { id: true, code: true, name: true }, take: 100 });
   const groups = (await prisma.groupMembership.findMany({ where: { userId: user.id }, select: { group: { select: { id: true, name: true } } }, take: 100 })).map((m) => m.group);
   const select = { id: true, title: true, preview: true, courseId: true, groupId: true, ownerId: true, parentId: true, kind: true, updatedAt: true } as const;
-  const docs = await prisma.doc.findMany({ where: visibleDocs(user, courses, groups), orderBy: { updatedAt: 'desc' }, take: 200, select });
+  // Three lookups, put together: long course and group lists inside OR can't be split for D1's 100
+  // values (an admin sees the whole school's courses); on their own they are (src/lib/d1-split.ts).
+  const found = await Promise.all([
+    prisma.doc.findMany({ where: visibleDocs(user, [], []), orderBy: { updatedAt: 'desc' }, take: 200, select }),
+    courses.length ? prisma.doc.findMany({ where: { courseId: { in: courses.map((c) => c.id) } }, orderBy: { updatedAt: 'desc' }, take: 200, select }) : [],
+    groups.length ? prisma.doc.findMany({ where: { groupId: { in: groups.map((g) => g.id) } }, orderBy: { updatedAt: 'desc' }, take: 200, select }) : [],
+  ]);
+  const docs = [...new Map(found.flat().map((d) => [d.id, d])).values()].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 200);
   // Sub-pages of pages shared with me (they share their parent's people), up to three levels down.
   const seen = new Set(docs.map((d) => d.id));
   let frontier = docs.map((d) => d.id);

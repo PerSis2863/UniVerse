@@ -193,7 +193,7 @@ export function AIStudyAssistant() {
   if (!isChatbotEnabled || isDismissed) return null;
 
   return (
-    <div className={cn("fixed above-tabbar right-[max(1rem,env(safe-area-inset-right))] lg:right-6 z-[30] flex flex-col items-end gap-2 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]", tucked && !isOpen && "translate-y-24 opacity-0 pointer-events-none lg:translate-y-0 lg:opacity-100 lg:pointer-events-auto")}>
+    <div className={cn("fixed above-tabbar end-[max(1rem,env(safe-area-inset-right))] lg:end-6 z-[30] flex flex-col items-end gap-2 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]", tucked && !isOpen && "translate-y-24 opacity-0 pointer-events-none lg:translate-y-0 lg:opacity-100 lg:pointer-events-auto")}>
       <AnimatePresence>
         {!isOpen && (
           <motion.div
@@ -250,7 +250,7 @@ export function AIStudyAssistant() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 350, damping: 25 } }}
             exit={{ opacity: 0, y: 20, scale: 0.95, transition: { duration: 0.2 } }}
-            className="absolute bottom-0 right-0 w-[calc(100vw-2rem)] max-w-[400px] h-[min(550px,calc(100dvh-10rem))] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="absolute bottom-0 end-0 w-[calc(100vw-2rem)] max-w-[400px] h-[min(550px,calc(100dvh-10rem))] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="p-4 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
@@ -294,8 +294,8 @@ export function AIStudyAssistant() {
                   <div className={cn(
                     "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm whitespace-pre-wrap break-words",
                     msg.role === 'user' 
-                      ? "bg-indigo-500 text-white rounded-br-sm" 
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-bl-sm"
+                      ? "bg-indigo-500 text-white rounded-ee-sm" 
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-es-sm"
                   )}>
                     {(msg.source === 'instant' || msg.source === 'saved') && (
                       <span className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
@@ -316,7 +316,7 @@ export function AIStudyAssistant() {
                       <span className="mt-2 flex flex-col items-start gap-1">
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Related</span>
                         {msg.related.map((h) => (
-                          <button key={h.id} type="button" onClick={() => handleSend(h.q[0])} className="text-left text-xs font-medium text-indigo-600 dark:text-indigo-300 hover:underline">
+                          <button key={h.id} type="button" onClick={() => handleSend(h.q[0])} className="text-start text-xs font-medium text-indigo-600 dark:text-indigo-300 hover:underline">
                             {h.q[0]}
                           </button>
                         ))}
@@ -331,7 +331,7 @@ export function AIStudyAssistant() {
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 text-white">
                     <Bot className="w-4 h-4" />
                   </div>
-                  <div className="bg-zinc-100 dark:bg-zinc-800 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex gap-1">
+                  <div className="bg-zinc-100 dark:bg-zinc-800 rounded-2xl rounded-es-sm px-4 py-3 shadow-sm flex gap-1">
                     <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" />
                     <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: '0.15s' }} />
                     <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: '0.3s' }} />
@@ -375,7 +375,7 @@ export function AIStudyAssistant() {
                   disabled={!inputValue.trim() || isTyping}
                   className="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-600 transition-colors"
                 >
-                  <Send className="w-4 h-4 ml-0.5" />
+                  <Send className="w-4 h-4 ms-0.5" />
                 </button>
               </form>
             </div>

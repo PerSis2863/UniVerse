@@ -58,7 +58,7 @@ function shuffleInto(ids: string[], rooms: number, seed: number): Record<string,
 
 const TIMERS = [0, 5, 10, 15, 20, 30];
 const initials = (name: string) => name.split(/\s+/).map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '?';
-const panel = 'absolute z-40 inset-x-0 bottom-0 max-h-[82vh] rounded-t-3xl sm:inset-x-auto sm:right-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:w-[24rem] sm:max-h-none sm:rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0';
+const panel = 'absolute z-40 inset-x-0 bottom-0 max-h-[82vh] rounded-t-3xl sm:inset-x-auto sm:end-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:w-[24rem] sm:max-h-none sm:rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0';
 const pill = 'relative isolate px-3 py-1.5 rounded-full text-xs font-semibold transition-colors';
 
 export function BreakoutPanel({ open, onClose, bo, people, room, onSend, onJoin }: {
@@ -271,7 +271,7 @@ function Running({ bo, people, room, send, onJoin }: {
                       const inside = here.includes(p.name);
                       return (
                         <button key={p.k} type="button" onClick={() => setMoving((m) => (m === p.k ? null : p.k))} aria-expanded={moving === p.k} title={inside ? `${p.name} is in this room. Tap to move` : `${p.name} hasn’t arrived yet. Tap to move`}
-                          className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-0.5 rounded-full bg-white/[0.07] hover:bg-white/[0.12] text-xs">
+                          className="inline-flex items-center gap-1.5 ps-1 pe-2.5 py-0.5 rounded-full bg-white/[0.07] hover:bg-white/[0.12] text-xs">
                           <span className={cn('w-1.5 h-1.5 rounded-full', inside ? 'bg-emerald-400' : 'bg-zinc-500')} />{p.name}
                         </button>
                       );
@@ -380,7 +380,7 @@ export function RoomPicker({ open, onClose, bo, onPick }: { open: boolean; onClo
                 {bo.rooms.map((r) => (
                   <li key={r.n}>
                     <button type="button" onClick={() => { haptic('tap'); onPick(r.n); onClose(); }} aria-pressed={bo.mine === r.n}
-                      className={cn('w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm transition-colors', bo.mine === r.n ? 'bg-gradient-to-r from-indigo-500/40 to-fuchsia-500/40' : 'hover:bg-white/[0.08]')}>
+                      className={cn('w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-start text-sm transition-colors', bo.mine === r.n ? 'bg-gradient-to-r from-indigo-500/40 to-fuchsia-500/40' : 'hover:bg-white/[0.08]')}>
                       <DoorOpen className="w-4 h-4 text-fuchsia-300 shrink-0" />
                       <span className="flex-1 font-medium">{r.name}</span>
                       <span className="text-xs text-zinc-400">{r.count} in</span>
@@ -389,7 +389,7 @@ export function RoomPicker({ open, onClose, bo, onPick }: { open: boolean; onClo
                 ))}
                 {bo.mine !== null && (
                   <li>
-                    <button type="button" onClick={() => { haptic('tap'); onPick(0); onClose(); }} className="w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm hover:bg-white/[0.08]">
+                    <button type="button" onClick={() => { haptic('tap'); onPick(0); onClose(); }} className="w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-start text-sm hover:bg-white/[0.08]">
                       <ArrowLeft className="w-4 h-4 shrink-0" /><span className="flex-1 font-medium">Back to the main call</span>
                     </button>
                   </li>

@@ -72,11 +72,11 @@ export function ClassDetailModal({ selectedClass, onClose }: ClassDetailModalPro
           <motion.div
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 280 }}
-            className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[400px] glass-sidebar border-l border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-[150] overflow-y-auto flex flex-col"
+            className="fixed end-0 top-0 h-[100dvh] w-full sm:w-[400px] glass-sidebar border-s border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-[150] overflow-y-auto flex flex-col"
           >
             {/* Header (padded below the phone status bar so the close button is always tappable) */}
             <div className="relative flex items-end px-5 pb-5 pt-[calc(env(safe-area-inset-top)+3.5rem)] bg-gradient-to-br from-indigo-500/25 via-transparent to-fuchsia-500/20">
-              <button onClick={onClose} aria-label="Close" className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] right-4 w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-zinc-900 dark:text-white flex items-center justify-center transition-colors">
+              <button onClick={onClose} aria-label="Close" className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] end-4 w-10 h-10 rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-zinc-900 dark:text-white flex items-center justify-center transition-colors">
                 <X className="w-5 h-5" />
               </button>
               <div>
@@ -146,7 +146,7 @@ export function ClassDetailModal({ selectedClass, onClose }: ClassDetailModalPro
                   }].map((item, i) => {
                     const Icon = item.icon;
                     return (
-                      <button key={i} onClick={item.action} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/60 dark:hover:bg-white/[0.05] text-left transition-colors group">
+                      <button key={i} onClick={item.action} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/60 dark:hover:bg-white/[0.05] text-start transition-colors group">
                         <Icon className="w-4 h-4 text-zinc-400 group-hover:text-indigo-500 transition-colors" />
                         <span className="text-sm text-zinc-700 dark:text-zinc-300 flex-1">{item.label}</span>
                         <ChevronR className="w-3.5 h-3.5 text-zinc-300 group-hover:text-indigo-400 transition-colors" />

@@ -7,6 +7,7 @@ import { spendAi } from './ai-budget';
 import { geminiJson } from './gemini';
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
+import { CARD_OUTCOME, CARD_WEIGHT, matchConcept } from '@/lib/concept-match';
 
 // Learning DNA (Stage 5 · D1). A course's teacher keeps its concepts (AI can propose a list from the
 // course once) and tags what tests each one: quiz questions, question-bank items, rubric criteria
@@ -92,19 +93,22 @@ export async function conceptAction(user: SessionUser, courseId: string, b: Reco
   }
 }
 
-/** What can be tagged in a course: quizzes' questions and assignments' rubric criteria, with their concepts. */
+/** What can be tagged in a course: quizzes' questions, the question bank (Q22) and assignments' rubric criteria, with their concepts. */
 export async function taggables(user: SessionUser, courseId: string) {
   await access(user, courseId, true);
-  const [quizzes, assignments, concepts] = await Promise.all([
+  const [quizzes, assignments, concepts, bank] = await Promise.all([
     prisma.quiz.findMany({ where: { courseId }, orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, title: true, questions: { orderBy: { order: 'asc' }, select: { id: true, question: true } } } }),
     prisma.assignment.findMany({ where: { courseId }, orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, title: true, rubric: true } }),
     prisma.courseConcept.findMany({ where: { courseId }, select: { id: true } }),
+    prisma.bankQuestion.findMany({ where: { courseId }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, question: true } }),
   ]);
-  const refs = [...quizzes.flatMap((q) => q.questions.map((x) => x.id)), ...assignments.flatMap((a) => parse<{ id: string }[]>(a.rubric, []).map((c) => `${a.id}:${c.id}`))];
+  const refs = [...quizzes.flatMap((q) => q.questions.map((x) => x.id)), ...bank.map((b) => b.id), ...assignments.flatMap((a) => parse<{ id: string }[]>(a.rubric, []).map((c) => `${a.id}:${c.id}`))];
   const tags = refs.length && concepts.length ? await prisma.conceptTag.findMany({ where: { conceptId: { in: concepts.map((c) => c.id) } }, select: { kind: true, refId: true, conceptId: true } }) : [];
   const of = (kind: TagKind, refId: string) => tags.filter((t) => t.kind === kind && t.refId === refId).map((t) => t.conceptId);
   return {
     quizzes: quizzes.map((q) => ({ id: q.id, title: q.title, items: q.questions.map((x) => ({ refId: x.id, text: x.question, concepts: of('QUESTION', x.id) })) })),
+    // Tags here go with a bank question into every quiz it's added to.
+    bank: bank.length ? [{ id: 'bank', title: 'Question bank', items: bank.map((b) => ({ refId: b.id, text: b.question, concepts: of('BANK', b.id) })) }] : [],
     assignments: assignments.map((a) => ({ id: a.id, title: a.title, items: parse<{ id: string; criterion: string; points: number }[]>(a.rubric, []).map((c) => ({ refId: `${a.id}:${c.id}`, text: c.criterion, concepts: of('CRITERION', `${a.id}:${c.id}`) })) })),
   };
 }
@@ -199,6 +203,38 @@ export async function suggestTags(user: SessionUser, courseId: string, b: Record
   };
 }
 
+// ── Signals that aren't marked answers (Stage 5 · Q22) ──────────────────────────────────────────
+
+const ASKED_DAYS = 60;
+const SIGNAL_DAYS = 180;
+
+/**
+ * A flashcard review (`grade`) or a question to the course tutor, for the concept its words match.
+ * One review a card a day counts (the last). Returns the concept, if any; never throws (the review
+ * or the answer matters more than its signal).
+ */
+export async function recordSignal(s: { courseId: string; studentId: string; kind: 'CARD' | 'TUTOR'; text: string; grade?: string; cardId?: string; conceptId?: string | null }) {
+  try {
+    const concepts = await prisma.courseConcept.findMany({ where: { courseId: s.courseId }, select: { id: true, name: true, description: true, parentId: true }, take: MAX_CONCEPTS });
+    if (!concepts.length) return null;
+    const conceptId = s.conceptId && concepts.some((c) => c.id === s.conceptId) ? s.conceptId : matchConcept(s.text, concepts);
+    if (!conceptId) return null;
+    if (s.kind === 'CARD') {
+      const outcome = CARD_OUTCOME[s.grade ?? ''];
+      if (outcome === undefined || !s.cardId) return conceptId;
+      const day = new Date(); day.setUTCHours(0, 0, 0, 0);
+      await prisma.conceptSignal.deleteMany({ where: { studentId: s.studentId, kind: 'CARD', refId: s.cardId, createdAt: { gte: day } } });
+      await prisma.conceptSignal.create({ data: { courseId: s.courseId, studentId: s.studentId, conceptId, kind: 'CARD', outcome, refId: s.cardId } });
+    } else {
+      await prisma.conceptSignal.create({ data: { courseId: s.courseId, studentId: s.studentId, conceptId, kind: 'TUTOR' } });
+    }
+    return conceptId;
+  } catch (e) {
+    console.error('mastery signal failed:', e);
+    return null;
+  }
+}
+
 // ── Mastery ─────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -209,7 +245,9 @@ export async function suggestTags(user: SessionUser, courseId: string, b: Record
 async function observations(courseId: string, studentIds: string[], revealedOnly = false) {
   const concepts = await prisma.courseConcept.findMany({ where: { courseId }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }], select: { id: true, name: true, description: true, parentId: true, position: true } });
   const out = new Map<string, Map<string, Observation[]>>();
-  if (!concepts.length || !studentIds.length) return { concepts, out };
+  /** Questions to the course tutor per student and concept (last 60 days): attention, not a score. */
+  const asked = new Map<string, Map<string, number>>();
+  if (!concepts.length || !studentIds.length) return { concepts, out, asked };
   const tags = await prisma.conceptTag.findMany({ where: { conceptId: { in: concepts.map((c) => c.id) } }, select: { kind: true, refId: true, conceptId: true } });
   const byRef = new Map<string, string[]>();
   for (const t of tags) byRef.set(t.refId, [...(byRef.get(t.refId) ?? []), t.conceptId]);
@@ -230,6 +268,17 @@ async function observations(courseId: string, studentIds: string[], revealedOnly
   // Practice (B4.4): each question's first try, at half weight, for its tagged concepts.
   const practisedQs = questionIds.length ? await prisma.practiceAnswer.findMany({ where: { courseId, studentId: { in: ids } }, select: { studentId: true, questionId: true, credit: true, createdAt: true }, take: 5000 }) : [];
   for (const p of practisedQs) for (const c of byRef.get(p.questionId) ?? []) add(p.studentId, c, { at: p.createdAt.getTime(), outcome: p.credit, weight: 0.5 });
+  // Flashcard reviews (lightly: the student marks themselves) and tutor questions (Q22).
+  const now0 = Date.now();
+  const signals = await prisma.conceptSignal.findMany({ where: { courseId, studentId: { in: ids }, createdAt: { gte: new Date(now0 - SIGNAL_DAYS * 86_400_000) } }, select: { studentId: true, conceptId: true, kind: true, outcome: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 5000 });
+  for (const g of signals) {
+    if (g.kind === 'CARD' && g.outcome != null) add(g.studentId, g.conceptId, { at: g.createdAt.getTime(), outcome: g.outcome, weight: CARD_WEIGHT });
+    else if (g.kind === 'TUTOR' && now0 - g.createdAt.getTime() < ASKED_DAYS * 86_400_000) {
+      const m = asked.get(g.studentId) ?? new Map<string, number>();
+      m.set(g.conceptId, (m.get(g.conceptId) ?? 0) + 1);
+      asked.set(g.studentId, m);
+    }
+  }
   // Second chances' practice answers (D10), for the concept each was about.
   const practised = await prisma.secondChance.findMany({ where: { courseId, studentId: { in: ids }, conceptId: { not: null }, results: { not: null } }, select: { studentId: true, conceptId: true, results: true } });
   const now = Date.now();
@@ -259,7 +308,7 @@ async function observations(courseId: string, studentIds: string[], revealedOnly
       if (r.conceptId && concepts.some((c) => c.id === r.conceptId) && Number.isFinite(x.at)) add(r.studentId, r.conceptId, { at: x.at, outcome: x.right ? 1 : 0, weight: Math.min(1, Math.max(0.1, Number(x.w) || 0.5)) });
     }
   }
-  return { concepts, out };
+  return { concepts, out, asked };
 }
 
 /** One student's evidence per concept, as they see it (second chances use it to skip what's mastered since). */
@@ -286,15 +335,16 @@ export async function studentMastery(user: SessionUser, courseId: string, studen
   const studentId = a.canManage && studentParam ? studentParam : user.id;
   if (a.canManage && studentParam && !(await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId, courseId } }, select: { id: true } }))) throw new NotFoundException('That student isn’t in this course.');
   if (!a.canManage && user.role !== 'STUDENT') throw new ForbiddenException('This is for the course’s students and teacher.');
-  const { concepts, out } = await observations(courseId, [studentId], studentId === user.id);
+  const { concepts, out, asked } = await observations(courseId, [studentId], studentId === user.id);
   const mine = out.get(studentId);
+  const myAsked = asked.get(studentId);
   const rows = concepts.map((c) => ({ ...c, mastery: masteryOf(withChildren(concepts, mine, c.id)) }));
   // Study the specific sub-concepts, not the broad concept above them.
   const leaves = rows.filter((r) => !concepts.some((c) => c.parentId === r.id));
   const name = studentId === user.id ? null : (await prisma.user.findUnique({ where: { id: studentId }, select: { name: true } }))?.name ?? null;
   return {
     course: { id: a.course.id, code: a.course.code, name: a.course.name }, student: name,
-    concepts: rows.map((r) => ({ id: r.id, name: r.name, description: r.description, parentId: r.parentId, band: bandOf(r.mastery), ...r.mastery })),
+    concepts: rows.map((r) => ({ id: r.id, name: r.name, description: r.description, parentId: r.parentId, band: bandOf(r.mastery), ...r.mastery, asked: myAsked?.get(r.id) ?? 0 })),
     next: nextBest(leaves).map((r) => ({ id: r.id, name: r.name, band: bandOf(r.mastery) })),
     counts: { mastered: rows.filter((r) => bandOf(r.mastery) === 'mastered').length, total: rows.length },
   };
@@ -305,13 +355,15 @@ export async function classMastery(user: SessionUser, courseId: string) {
   const a = await access(user, courseId, true);
   const students = await prisma.enrollment.findMany({ where: { courseId }, select: { student: { select: { id: true, name: true } } }, orderBy: { student: { name: 'asc' } }, take: 90 });
   const ids = students.map((s) => s.student.id);
-  const { concepts, out } = await observations(courseId, ids);
+  const { concepts, out, asked } = await observations(courseId, ids);
+  // Tutor questions per concept for the whole class, never per student.
+  const askedOf = (conceptId: string) => { let n = 0, by = 0; for (const m of asked.values()) { const k = m.get(conceptId) ?? 0; n += k; if (k) by++; } return { asked: n, askedBy: by }; };
   const grid = concepts.map((c) => ({ conceptId: c.id, levels: ids.map((id) => { const o = withChildren(concepts, out.get(id), c.id); return o.length ? masteryOf(o) : null; }) }));
   const cell = (m: Mastery | null) => (m ? { level: m.level, n: m.n, band: bandOf(m) } : null);
   return {
     course: { id: a.course.id, code: a.course.code, name: a.course.name },
     students: students.map((s) => s.student),
-    concepts: concepts.map((c, i) => ({ id: c.id, name: c.name, parentId: c.parentId, cells: grid[i].levels.map(cell) })),
+    concepts: concepts.map((c, i) => ({ id: c.id, name: c.name, parentId: c.parentId, cells: grid[i].levels.map(cell), ...askedOf(c.id) })),
     reteach: reteach(grid).map((r) => ({ ...r, name: concepts.find((c) => c.id === r.conceptId)?.name ?? '' })),
     untagged: concepts.length > 0 && !grid.some((g) => g.levels.some((l) => l)),
   };

@@ -99,7 +99,7 @@ function VideoEmbed({ attrs, editable, update }: { attrs: EmbedAttrs; editable: 
           {chapters.map((c, i) => (
             <li key={`${c.at}-${i}`}>
               <button type="button" onClick={() => jump(c.at)} aria-current={i === current ? 'true' : undefined}
-                className={cn('w-full text-left flex gap-3 px-2 py-1.5 rounded-lg text-sm transition-colors', i === current ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-200' : 'text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
+                className={cn('w-full text-start flex gap-3 px-2 py-1.5 rounded-lg text-sm transition-colors', i === current ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-200' : 'text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
                 <span className="tabular-nums font-semibold text-indigo-700 dark:text-indigo-300 w-14 shrink-0">{c.label}</span><span className="min-w-0">{c.title}</span>
               </button>
             </li>
@@ -296,19 +296,19 @@ export function EmbedMenu({ editor, disabled, kinds, extra = [] }: {
         <Plus className="w-4 h-4" /><span className="max-sm:sr-only">Insert</span>
       </button>
       {step && (
-        <div className="absolute right-0 top-10 z-40 w-72 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-2" onKeyDown={(e) => { if (e.key === 'Escape') close(); }}>
+        <div className="absolute end-0 top-10 z-40 w-72 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-2" onKeyDown={(e) => { if (e.key === 'Escape') close(); }}>
           {step === 'menu' && (
             <ul>
               {items.map((it) => (
                 <li key={it.id}>
                   <button type="button" onClick={() => (it.id === 'code' ? put({ kind: 'code', lang: 'python', code: 'print("Hello!")' }) : it.id === 'math' ? put({ kind: 'math', tex: 'x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}' }) : setStep(it.id))}
-                    className="w-full text-left px-2 py-2 rounded-lg text-sm text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><it.icon className="w-4 h-4 text-indigo-500" aria-hidden />{it.label}</button>
+                    className="w-full text-start px-2 py-2 rounded-lg text-sm text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><it.icon className="w-4 h-4 text-indigo-500" aria-hidden />{it.label}</button>
                 </li>
               ))}
               {extra.map((it) => (
                 <li key={it.id}>
                   <button type="button" onClick={() => { if (editor) it.run(editor); close(); }}
-                    className="w-full text-left px-2 py-2 rounded-lg text-sm text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><it.icon className="w-4 h-4 text-indigo-500" aria-hidden />{it.label}</button>
+                    className="w-full text-start px-2 py-2 rounded-lg text-sm text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.06] inline-flex items-center gap-2"><it.icon className="w-4 h-4 text-indigo-500" aria-hidden />{it.label}</button>
                 </li>
               ))}
             </ul>
@@ -329,7 +329,7 @@ export function EmbedMenu({ editor, disabled, kinds, extra = [] }: {
               <p className="text-sm font-semibold text-zinc-900 dark:text-white">{step === 'board' ? 'Which whiteboard?' : 'Which task board?'}</p>
               {!picks ? <div className="h-16 rounded-xl skeleton" /> : !picks.length ? <p className="text-xs text-zinc-500">You don’t have any yet.</p> : (
                 <ul className="max-h-60 overflow-y-auto">
-                  {picks.slice(0, 50).map((b) => <li key={b.id}><button type="button" onClick={() => put({ kind: step, src: b.id, title: b.title })} className="w-full text-left px-2 py-1.5 rounded-lg text-sm text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.06] truncate">{b.title}</button></li>)}
+                  {picks.slice(0, 50).map((b) => <li key={b.id}><button type="button" onClick={() => put({ kind: step, src: b.id, title: b.title })} className="w-full text-start px-2 py-1.5 rounded-lg text-sm text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.06] truncate">{b.title}</button></li>)}
                 </ul>
               )}
             </div>

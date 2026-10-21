@@ -303,7 +303,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
                         aria-selected={selected}
                         onClick={() => choose(item)}
                         onMouseMove={() => setIndex(i)}
-                        className={cn('relative w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left', selected ? 'text-white' : 'text-zinc-800 dark:text-zinc-200')}
+                        className={cn('relative w-full flex items-center gap-3 px-3 py-2 rounded-xl text-start', selected ? 'text-white' : 'text-zinc-800 dark:text-zinc-200')}
                       >
                         {selected && <motion.span layoutId="palette-sel" transition={spring.snappy} className="absolute inset-0 rounded-xl bg-tint dark:bg-indigo-600" />}
                         <span className={cn('relative w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0', selected ? 'bg-white/20 text-white' : 'bg-[var(--fill)] text-tint-text')}>

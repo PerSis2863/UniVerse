@@ -58,7 +58,7 @@ export function SeatingChart({ courseId, day, data, mutate }: { courseId: string
             <button type="button" aria-label="One row fewer" onClick={() => resize(-1, 0)} className="btn-secondary btn-sm px-2"><Minus className="w-3.5 h-3.5" /></button>
             <span className="text-sm tabular-nums">{rows}</span>
             <button type="button" aria-label="One row more" onClick={() => resize(1, 0)} className="btn-secondary btn-sm px-2"><Plus className="w-3.5 h-3.5" /></button>
-            <span className="text-xs text-zinc-700 dark:text-zinc-300 ml-2">Seats a row</span>
+            <span className="text-xs text-zinc-700 dark:text-zinc-300 ms-2">Seats a row</span>
             <button type="button" aria-label="One seat fewer a row" onClick={() => resize(0, -1)} className="btn-secondary btn-sm px-2"><Minus className="w-3.5 h-3.5" /></button>
             <span className="text-sm tabular-nums">{cols}</span>
             <button type="button" aria-label="One seat more a row" onClick={() => resize(0, 1)} className="btn-secondary btn-sm px-2"><Plus className="w-3.5 h-3.5" /></button>
@@ -122,7 +122,7 @@ export function ExcuseRequests({ courseId, onChanged }: { courseId: string; onCh
           <div className="flex flex-wrap items-baseline gap-2">
             <p className="text-sm font-semibold text-zinc-900 dark:text-white">{x.student.name}</p>
             <p className="text-xs text-zinc-600 dark:text-zinc-400">{format(new Date(x.date), 'EEE d MMM yyyy')}</p>
-            <span className={cn('ml-auto text-xs font-semibold px-2 py-0.5 rounded-full', x.status === 'PENDING' ? 'bg-amber-500/15 text-amber-800 dark:text-amber-200' : x.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-200' : 'bg-zinc-500/15 text-zinc-700 dark:text-zinc-300')}>{x.status === 'PENDING' ? 'Waiting' : x.status === 'APPROVED' ? 'Excused' : 'Declined'}</span>
+            <span className={cn('ms-auto text-xs font-semibold px-2 py-0.5 rounded-full', x.status === 'PENDING' ? 'bg-amber-500/15 text-amber-800 dark:text-amber-200' : x.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-200' : 'bg-zinc-500/15 text-zinc-700 dark:text-zinc-300')}>{x.status === 'PENDING' ? 'Waiting' : x.status === 'APPROVED' ? 'Excused' : 'Declined'}</span>
           </div>
           <p className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">{x.reason}</p>
           {x.fileUrl && <a href={x.fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-indigo-700 dark:text-indigo-300 underline"><FileText className="w-4 h-4" />{x.fileName ?? 'The document'}</a>}

@@ -105,7 +105,7 @@ export default function LostFoundPage() {
                           {!mine && <button type="button" className="btn-secondary btn-sm rounded-full inline-flex" onClick={() => void message(it)}><MessageCircle className="w-4 h-4" /> Message them</button>}
                           {mine && it.status === 'OPEN' && <button type="button" className="btn-secondary btn-sm rounded-full inline-flex" onClick={() => void setStatus(it, 'RESOLVED')}><CheckCircle2 className="w-4 h-4" /> Sorted</button>}
                           {mine && it.status === 'RESOLVED' && <button type="button" className="btn-ghost btn-sm" onClick={() => void setStatus(it, 'OPEN')}>Show again</button>}
-                          {mine && <button type="button" className="btn-ghost btn-sm text-rose-500 ml-auto" onClick={() => void remove(it)} aria-label={`Delete ${it.title}`}><Trash2 className="w-4 h-4" /></button>}
+                          {mine && <button type="button" className="btn-ghost btn-sm text-rose-500 ms-auto" onClick={() => void remove(it)} aria-label={`Delete ${it.title}`}><Trash2 className="w-4 h-4" /></button>}
                         </div>
                       </div>
                     </motion.li>
@@ -155,7 +155,7 @@ function ReportForm({ onClose, onDone }: { onClose: () => void; onDone: (kind: '
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
           <button type="button" className="btn-secondary btn-sm inline-flex" onClick={() => fileRef.current?.click()}><Camera className="w-4 h-4" /> {photo ? 'Change photo' : 'Add a photo'}</button>
           {photo && <span className="text-xs text-zinc-500 truncate">{photo.name}</span>}
-          <button type="button" className="btn-primary btn-sm ml-auto" disabled={busy || title.trim().length < 2} onClick={() => void save()}>{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Post</button>
+          <button type="button" className="btn-primary btn-sm ms-auto" disabled={busy || title.trim().length < 2} onClick={() => void save()}>{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Post</button>
         </div>
       </div>
     </motion.div>

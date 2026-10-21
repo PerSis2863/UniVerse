@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { attendanceRate, courseLine, overall, reportCardsPage } from './report-card';
+import { SCALE_PRESETS, cleanScale } from './gradebook';
+import { attendanceRate, courseLine, overall, reportCardsPage, reportCardSection, scaleNote } from './report-card';
 
 const none = { present: 0, late: 0, absent: 0, excused: 0 };
 
@@ -37,5 +38,20 @@ describe('reportCardsPage', () => {
     expect(html).toContain('&lt;b&gt;Eve&lt;/b&gt;');
     expect(html).not.toContain('<script>x</script>');
     expect(html.match(/<section class="card">/g)).toHaveLength(2);
+  });
+});
+
+describe('the school’s scale and logo on the card (Q22)', () => {
+  it('writes the bands it was made with', () => {
+    expect(scaleNote()).toBe('A ≥ 90, B ≥ 80, C ≥ 70, D ≥ 60, F below');
+    expect(scaleNote(SCALE_PRESETS.find((p) => p.id === 'ib')!.scale)).toBe('7 ≥ 80, 6 ≥ 70, 5 ≥ 60, 4 ≥ 50, 3 ≥ 40, 2 ≥ 25, 1 below');
+  });
+  it('every preset is a valid scale', () => {
+    for (const p of SCALE_PRESETS) expect(cleanScale(p.scale)).toEqual(p.scale);
+  });
+  it('shows the logo only from a safe address', () => {
+    const d = { student: { name: 'A', email: '' }, term: { title: 'T1', from: '2026-01-01', to: '2026-03-31' }, school: 'S', courses: [], overall: { average: null, gpa: null, attendanceRate: null } };
+    expect(reportCardSection({ ...d, logo: 'https://x.org/logo.png' }, null)).toContain('<img class="logo" src="https://x.org/logo.png"');
+    expect(reportCardSection({ ...d, logo: 'javascript:alert(1)' }, null)).not.toContain('<img');
   });
 });

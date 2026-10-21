@@ -11,7 +11,7 @@ import { SectionTabs, STUDENT_COURSE_TABS } from '@/components/layout/SectionTab
 import { fetcher } from '@/lib/fetcher';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
-import { courseColor } from '@/lib/course-color';
+import { courseShade } from '@/lib/course-color';
 import { JointCourses } from '@/components/network/JointCourses';
 
 interface Enrollment {
@@ -57,7 +57,7 @@ export default function CoursesPage() {
                   onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); navigateWithTransition(router, `/student/blackboard?course=${course.id}`); }}
                   className="group block h-full rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl p-6 hover:border-indigo-500/40 hover:shadow-lg transition-all">
                   <div className="flex items-start justify-between mb-5">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ background: courseColor(course.color, course.code), viewTransitionName: vtName('course', course.id) }}>{course.code.slice(-3)}</div>
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ background: courseShade(course.color, course.code), viewTransitionName: vtName('course', course.id) }}>{course.code.slice(-3)}</div>
                     <span className="text-xs font-mono text-zinc-500">{course.code} · {course.credits} cr</span>
                   </div>
                   <h3 className="text-lg font-bold text-zinc-900 dark:text-white group-hover:text-indigo-500 transition-colors w-fit" style={{ viewTransitionName: vtName('course-title', course.id) }}>{course.name}</h3>
@@ -66,7 +66,7 @@ export default function CoursesPage() {
                   <div className="flex items-center gap-4 text-xs text-zinc-500 mt-5 pt-4 border-t border-zinc-200/70 dark:border-white/[0.06]">
                     <span className="inline-flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {course._count.materials} material{course._count.materials === 1 ? '' : 's'}</span>
                     <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> {course._count.quizzes} quiz{course._count.quizzes === 1 ? '' : 'zes'}</span>
-                    <span className="ml-auto inline-flex items-center gap-0.5 font-semibold text-indigo-500">Open <ChevronRight className="w-3.5 h-3.5" /></span>
+                    <span className="ms-auto inline-flex items-center gap-0.5 font-semibold text-indigo-500">Open <ChevronRight className="w-3.5 h-3.5" /></span>
                   </div>
                   <p className="text-[11px] text-zinc-400 mt-2">Enrolled {new Date(enrolledAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</p>
                 </Link>

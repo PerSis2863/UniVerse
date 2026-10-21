@@ -97,7 +97,7 @@ function Results({ d, act }: { d: LeagueDetail; act: LeagueAct }) {
         <ul className="space-y-2" aria-label="Prizes">
           {c.prizes.map((p) => (
             <li key={p.id} className="flex flex-wrap items-center gap-2">
-              <label htmlFor={`award-${p.id}`} className="flex-1 min-w-[10rem] text-sm text-zinc-800 dark:text-zinc-200"><Trophy className="inline w-4 h-4 mr-1 text-amber-600 dark:text-amber-400" aria-hidden />{p.title}{p.sponsor && <span className="text-zinc-600 dark:text-zinc-400"> · {p.sponsor}</span>}</label>
+              <label htmlFor={`award-${p.id}`} className="flex-1 min-w-[10rem] text-sm text-zinc-800 dark:text-zinc-200"><Trophy className="inline w-4 h-4 me-1 text-amber-600 dark:text-amber-400" aria-hidden />{p.title}{p.sponsor && <span className="text-zinc-600 dark:text-zinc-400"> · {p.sponsor}</span>}</label>
               <select id={`award-${p.id}`} className="input !w-auto !py-1.5 text-sm" value={p.teamId ?? ''} onChange={(e) => void act({ action: 'award', prizeId: p.id, teamId: e.target.value || null }, e.target.value ? 'Prize given' : 'Prize taken back')}>
                 <option value="">Not given</option>
                 {submitted.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}

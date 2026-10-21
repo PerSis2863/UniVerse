@@ -89,7 +89,7 @@ export function FeedbackRecorder({ submissionId, media, onChange }: {
   return (
     <div className="rounded-xl border border-zinc-200 dark:border-white/10 p-3 space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium text-zinc-900 dark:text-white mr-auto">Voice or video feedback</span>
+        <span className="text-sm font-medium text-zinc-900 dark:text-white me-auto">Voice or video feedback</span>
         {!rec && !media.url && (
           <>
             <button type="button" onClick={() => void start('AUDIO')} disabled={!!busy} className="btn-secondary btn-sm rounded-full inline-flex"><Mic className="w-3.5 h-3.5" /> Voice</button>
@@ -103,7 +103,7 @@ export function FeedbackRecorder({ submissionId, media, onChange }: {
           <motion.div key="rec" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={spring.snappy} className="flex items-center gap-3">
             {rec.kind === 'VIDEO' && <video ref={preview} autoPlay muted playsInline className="w-32 aspect-video rounded-lg bg-black object-cover" />}
             <span className="inline-flex items-center gap-2 text-sm font-semibold text-rose-600 dark:text-rose-400"><span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" /> Recording {clock(secs)} / 5:00</span>
-            <button type="button" onClick={() => void stop()} className="btn-primary btn-sm rounded-full inline-flex ml-auto"><Square className="w-3.5 h-3.5 fill-current" /> Stop and attach</button>
+            <button type="button" onClick={() => void stop()} className="btn-primary btn-sm rounded-full inline-flex ms-auto"><Square className="w-3.5 h-3.5 fill-current" /> Stop and attach</button>
           </motion.div>
         )}
       </AnimatePresence>

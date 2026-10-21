@@ -11,6 +11,7 @@ import { cleanGiven, forStudent, markAnswer, type Given } from '@/lib/question-t
 import { drawFor, parsePools } from '@/lib/quiz-draw';
 import { taughtBy } from '@/lib/course-access';
 import { quizMinutes } from '@/lib/assignment-policy';
+import { makeReceipt, usesFor } from '../ai-receipts';
 
 /** A student's extra time on timed quizzes (Stage 5 · B3.1 accommodations), as minutes for this quiz. */
 async function minutesFor(timeLimit: number | null, studentId: string) {
@@ -119,14 +120,16 @@ export class QuizzesService {
 
   /** Exam mode (B4.4): starts the student's clock on the server (once) and says when it ends. */
   async start(quizId: string, studentId: string) {
-    const quiz = await prisma.quiz.findUnique({ where: { id: quizId }, select: { id: true, courseId: true, status: true, examMode: true, oneWay: true, timeLimit: true } });
+    const quiz = await prisma.quiz.findUnique({ where: { id: quizId }, select: { id: true, courseId: true, status: true, examMode: true, oneWay: true, timeLimit: true, aiPolicy: true } });
     if (!quiz) throw new NotFoundException('Quiz not found');
     if (quiz.status !== 'PUBLISHED') throw new BadRequestException('This quiz is not open');
     const enrolled = await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId, courseId: quiz.courseId } } });
     if (!enrolled) throw new ForbiddenException('You are not enrolled in this course');
     if (await prisma.quizSubmission.findUnique({ where: { quizId_studentId: { quizId, studentId } }, select: { id: true } })) throw new ConflictException('You have already submitted this quiz');
-    if (!quiz.examMode) return { startedAt: null, endsAt: null };
+    // An AI receipt (Stage 5 · Q22) covers the attempt, so its start is kept for that too.
+    if (!quiz.examMode && quiz.aiPolicy === 'FREE') return { startedAt: null, endsAt: null };
     const attempt = await prisma.quizAttempt.upsert({ where: { quizId_studentId: { quizId, studentId } }, update: {}, create: { quizId, studentId } });
+    if (!quiz.examMode) return { startedAt: attempt.startedAt, endsAt: null };
     const minutes = await minutesFor(quiz.timeLimit, studentId);
     // One way (B4.3): the questions already passed, so a reload goes on from the next one.
     return { startedAt: attempt.startedAt, endsAt: minutes ? new Date(attempt.startedAt.getTime() + minutes * 60_000) : null, done: quiz.oneWay ? Object.keys(savedAnswers(attempt.answers)) : [] };
@@ -241,7 +244,8 @@ export class QuizzesService {
    * outbox. A retry with the same clientId gets the saved result back. Finished before the due date
    * it counts as on time; finished after it, it's kept but waits for the teacher to accept it.
    */
-  async submitQuiz(studentId: string, quizId: string, answers: Prisma.InputJsonObject, offline?: { clientId?: unknown; startedAt?: unknown; finishedAt?: unknown }, integrityIn?: unknown) {
+  /** `receipt`: the student's AI receipt choice (Stage 5 · Q22); `timeUp`: handed in by itself when the time ran out. */
+  async submitQuiz(studentId: string, quizId: string, answers: Prisma.InputJsonObject, offline?: { clientId?: unknown; startedAt?: unknown; finishedAt?: unknown }, integrityIn?: unknown, receipt?: { choice?: unknown; timeUp?: boolean }) {
     const clientId = clientIdOf(offline?.clientId);
     const finishedAt = offlineTime(offline?.finishedAt);
     const startedAt = offlineTime(offline?.startedAt);
@@ -269,8 +273,9 @@ export class QuizzesService {
     let score = 0;
     let maxScore = 0;
     // Exam mode (B4.3–4.4): the student's clock on the server, and the answers saved as they moved on.
-    const attempt = quiz.examMode ? await prisma.quizAttempt.findUnique({ where: { quizId_studentId: { quizId, studentId } } }) : null;
-    const minutes = attempt ? await minutesFor(quiz.timeLimit, studentId) : null;
+    // (Also when the quiz asks for an AI receipt, which covers the attempt from its start.)
+    const attempt = quiz.examMode || quiz.aiPolicy !== 'FREE' ? await prisma.quizAttempt.findUnique({ where: { quizId_studentId: { quizId, studentId } } }) : null;
+    const minutes = attempt && quiz.examMode ? await minutesFor(quiz.timeLimit, studentId) : null;
     const ends = attempt && minutes ? attempt.startedAt.getTime() + minutes * 60_000 : null;
     const arrived = finishedAt ? finishedAt.getTime() : Date.now();
     // A hard stop takes no answers that arrive after the time (a minute's grace for the auto-submit at zero).
@@ -303,11 +308,15 @@ export class QuizzesService {
       integrity = { left: count(seen.left), pasted: count(seen.pasted), fullscreenExits: count(seen.fullscreenExits), overtimeSeconds, noStart: !attempt, ...(dropped ? { dropped } : {}) };
     }
 
+    // AI receipt (Stage 5 · Q22): made here from the student's own record of AI help while taking it.
+    const aiReceipt = await makeReceipt(studentId, { courseId: quiz.courseId, since: attempt?.startedAt ?? quiz.createdAt, until: finishedAt ?? undefined, policy: quiz.aiPolicy, during: !!attempt, what: 'quiz' }, receipt?.choice, finishedAt ? 'offline' : receipt?.timeUp ? 'auto' : 'given');
+
     const submission = await prisma.quizSubmission.create({
       data: {
         studentId,
         quizId,
         answers: kept,
+        ...(aiReceipt ? { aiReceipt } : {}),
         ...(pools ? { drawn: JSON.stringify(drawn.map((q) => q.id)) } : {}),
         score,
         maxScore,
@@ -322,6 +331,16 @@ export class QuizzesService {
     // Proof of learning (upgrade 2): a passed quiz is evidence for the course's skills.
     if (!offlineStatus) await safely(evidenceFromQuiz({ studentId, submissionId: submission.id, quizId, score, maxScore }));
     return submission;
+  }
+
+  /** GET /api/quizzes/:id/ai-receipt: what a student would attach if they handed in now (Stage 5 · Q22). */
+  async receiptPreview(quizId: string, studentId: string) {
+    const quiz = await prisma.quiz.findUnique({ where: { id: quizId }, select: { courseId: true, createdAt: true, aiPolicy: true, status: true } });
+    const enrolled = quiz && quiz.status !== 'DRAFT' && (await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId, courseId: quiz.courseId } }, select: { id: true } }));
+    if (!quiz || !enrolled) throw new NotFoundException('Quiz not found');
+    const attempt = await prisma.quizAttempt.findUnique({ where: { quizId_studentId: { quizId, studentId } }, select: { startedAt: true } });
+    const since = attempt?.startedAt ?? quiz.createdAt;
+    return { policy: quiz.aiPolicy, since, during: !!attempt, uses: await usesFor(studentId, { courseId: quiz.courseId, since }) };
   }
 
   /** Offline quizzes finished after their due date, waiting for the teacher (upgrade 4). */

@@ -17,6 +17,8 @@ import { claimSessionReport, reportSession } from '@/lib/sign-in-history';
 import { adoptEarlyBootstrap, startBootstrap } from '@/lib/bootstrap';
 import { authedJson } from '@/lib/authed-fetch';
 import { isSampleMode } from '@/lib/sample-mode';
+import { viewAsToken } from '@/lib/view-as';
+import ViewAsBanner from '@/components/layout/ViewAsBanner';
 
 type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null; owner?: boolean; onboardedAt?: string | null; permissions?: string[] };
 
@@ -38,7 +40,7 @@ const RESYNC_MS = 5 * 60 * 1000;
 /** A saved sign-in on this device (checked before Firebase has restored it). */
 function hasSession() {
   try {
-    return !!localStorage.getItem('accessToken') && !!localStorage.getItem('universe-auth');
+    return !!viewAsToken() || (!!localStorage.getItem('accessToken') && !!localStorage.getItem('universe-auth'));
   } catch {
     return false;
   }
@@ -90,7 +92,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     let photoURL: string | null | undefined;
     let unsubscribe = () => {};
     const onSession = async (firebaseSignedIn: boolean) => {
-      const token = localStorage.getItem('accessToken');
+      const token = viewAsToken() ?? localStorage.getItem('accessToken');
       signedIn = firebaseSignedIn || !!token?.startsWith('mock-token-') || !!token?.startsWith('ut1.');
       if (!cancelled) setIsSignedIn(signedIn);
       if (signedIn) {
@@ -104,7 +106,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
     // Demo and LMS (LTI) sessions don't use Firebase: skip loading it (about 30 kB) for them.
     // Everyone else loads it here, after the page has rendered, not before.
-    const stored = (() => { try { return localStorage.getItem('accessToken'); } catch { return null; } })();
+    const stored = viewAsToken() ?? (() => { try { return localStorage.getItem('accessToken'); } catch { return null; } })();
     if (stored?.startsWith('mock-token-') || stored?.startsWith('ut1.')) void onSession(false);
     else {
       void Promise.all([import('@/lib/firebase'), import('firebase/auth')]).then(([{ auth }, { onAuthStateChanged }]) => {
@@ -170,6 +172,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <NavDataPreload />
         <ActivityTracker />
         <SelectionHelp />
+        <ViewAsBanner />
         {children}
       </DashboardShell>
     </DataConfig>

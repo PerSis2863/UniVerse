@@ -54,6 +54,28 @@ export const DEFAULT_SCALE: Scale = [
   { letter: 'A', min: 90, gpa: 4 }, { letter: 'B', min: 80, gpa: 3 }, { letter: 'C', min: 70, gpa: 2 }, { letter: 'D', min: 60, gpa: 1 }, { letter: 'F', min: 0, gpa: 0 },
 ];
 
+/**
+ * Ready-made scales to start from (Stage 5 · Q22): the school can still change any band. Boards set
+ * their own rules each year, so these are the usual ones, not official conversions: CBSE's nine-point
+ * grades (pass at 33%), the 10-point bands many ICSE schools use, and IB's 1–7 with typical
+ * boundaries (each IB subject's real boundaries differ every session).
+ */
+export const SCALE_PRESETS: { id: string; label: string; scale: Scale }[] = [
+  { id: 'standard', label: 'A–F on 4.0', scale: DEFAULT_SCALE },
+  { id: 'cbse', label: 'CBSE (A1–E, 10 points)', scale: [
+    { letter: 'A1', min: 91, gpa: 10 }, { letter: 'A2', min: 81, gpa: 9 }, { letter: 'B1', min: 71, gpa: 8 }, { letter: 'B2', min: 61, gpa: 7 },
+    { letter: 'C1', min: 51, gpa: 6 }, { letter: 'C2', min: 41, gpa: 5 }, { letter: 'D', min: 33, gpa: 4 }, { letter: 'E', min: 0, gpa: 0 },
+  ] },
+  { id: 'icse', label: 'ICSE-style (A+–E, 10 points)', scale: [
+    { letter: 'A+', min: 90, gpa: 10 }, { letter: 'A', min: 80, gpa: 9 }, { letter: 'B+', min: 70, gpa: 8 }, { letter: 'B', min: 60, gpa: 7 },
+    { letter: 'C+', min: 50, gpa: 6 }, { letter: 'C', min: 40, gpa: 5 }, { letter: 'D', min: 33, gpa: 4 }, { letter: 'E', min: 0, gpa: 0 },
+  ] },
+  { id: 'ib', label: 'IB (7 to 1)', scale: [
+    { letter: '7', min: 80, gpa: 7 }, { letter: '6', min: 70, gpa: 6 }, { letter: '5', min: 60, gpa: 5 }, { letter: '4', min: 50, gpa: 4 },
+    { letter: '3', min: 40, gpa: 3 }, { letter: '2', min: 25, gpa: 2 }, { letter: '1', min: 0, gpa: 1 },
+  ] },
+];
+
 /** The letter and GPA points for a percentage on a scale (the default when none is given). */
 export function letter(p: number | null, scale: Scale = DEFAULT_SCALE): { letter: string; gpa: number } | null {
   if (p == null) return null;

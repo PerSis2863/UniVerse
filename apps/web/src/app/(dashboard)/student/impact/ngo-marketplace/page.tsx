@@ -73,7 +73,7 @@ export default function NGOMarketplacePage() {
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Hero */}
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-950/60 via-teal-950/50 to-zinc-950 border border-white/10 p-8 shadow-2xl">
-            <div className="absolute -left-20 -top-20 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+            <div className="absolute -start-20 -top-20 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div className="space-y-3">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
@@ -88,9 +88,9 @@ export default function NGOMarketplacePage() {
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search NGOs and projects..."
-                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-500 outline-none focus:border-indigo-500 transition-colors" />
+                className="w-full ps-10 pe-4 py-2.5 bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-white placeholder-zinc-500 outline-none focus:border-indigo-500 transition-colors" />
             </div>
             <div className="flex gap-2 overflow-x-auto">
               {types.map(t => (
@@ -183,7 +183,7 @@ export default function NGOMarketplacePage() {
             onClick={e => e.target === e.currentTarget && setSelected(null)}>
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               className="tone-panel border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl relative">
-              <button aria-label="Close" onClick={() => setSelected(null)} className="absolute top-4 right-4 p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
+              <button aria-label="Close" onClick={() => setSelected(null)} className="absolute top-4 end-4 p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"><X className="w-5 h-5" /></button>
               
               <div className="mb-6">
                 {selected.sdgNumber ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border mb-3 inline-block bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">SDG {selected.sdgNumber} · {sdgName(selected.sdgNumber)}</span> : null}

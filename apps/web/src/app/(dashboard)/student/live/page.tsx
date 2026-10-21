@@ -85,7 +85,7 @@ export default function StudentLivePage() {
                         aria-checked={p.myVote === i}
                         disabled={sending === p.id}
                         onClick={() => answer(p, i)}
-                        className={cn('relative isolate w-full text-left px-4 py-3 rounded-xl border text-sm font-medium transition-colors flex items-center justify-between', p.myVote === i ? 'border-indigo-500 text-indigo-700 dark:text-indigo-300' : 'border-zinc-200 dark:border-white/10 hover:border-indigo-400 text-zinc-800 dark:text-zinc-200')}
+                        className={cn('relative isolate w-full text-start px-4 py-3 rounded-xl border text-sm font-medium transition-colors flex items-center justify-between', p.myVote === i ? 'border-indigo-500 text-indigo-700 dark:text-indigo-300' : 'border-zinc-200 dark:border-white/10 hover:border-indigo-400 text-zinc-800 dark:text-zinc-200')}
                       >{p.myVote === i && <TabPill id={`poll-${p.id}`} variant="soft" />}
                         {o}
                         {sending === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : p.myVote === i ? <CheckCircle2 className="w-4 h-4" /> : null}

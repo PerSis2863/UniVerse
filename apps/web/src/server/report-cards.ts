@@ -33,8 +33,11 @@ export async function createRun(input: { title: unknown; from: unknown; to: unkn
 export async function compileBatch(runId: string, cursor: string | null) {
   const run = await prisma.reportCardRun.findUnique({ where: { id: runId } });
   // The school's letter grades and GPA points (Stage 5 · B3.4).
-  const scale = await scaleFor(run?.createdById ? (await prisma.user.findUnique({ where: { id: run.createdById }, select: { organizationId: true } }))?.organizationId : null);
+  const orgId = run?.createdById ? (await prisma.user.findUnique({ where: { id: run.createdById }, select: { organizationId: true } }))?.organizationId : null;
+  const [scale, org] = await Promise.all([scaleFor(orgId), orgId ? prisma.organization.findUnique({ where: { id: orgId }, select: { logoUrl: true } }) : Promise.resolve(null)]);
   if (!run) throw new ReportCardError('Round not found.', 404);
+  // The school's logo on the card (Stage 5 · Q22), when it's an image the card can show.
+  const logo = org?.logoUrl && /^(https:\/\/|\/api\/files\/)/.test(org.logoUrl) ? org.logoUrl : undefined;
   const students = await prisma.user.findMany({ where: { ...studentsWhere, ...(cursor ? { id: { gt: cursor } } : {}) }, orderBy: { id: 'asc' }, take: BATCH, select: { id: true, name: true, email: true } });
   if (!students.length) return { made: 0, next: null };
   const ids = students.map((s) => s.id);
@@ -63,8 +66,11 @@ export async function compileBatch(runId: string, cursor: string | null) {
       student: { name: s.name, email: s.email },
       term: { title: run.title, from: run.fromDate.toISOString(), to: run.toDate.toISOString() },
       school: run.school,
+      ...(logo ? { logo } : {}),
       courses: lines,
       overall: overall(lines, scale),
+      // The bands the letters came from, for the note on the card (Q22).
+      scale,
     };
     await prisma.reportCard.upsert({
       where: { runId_studentId: { runId, studentId: s.id } },

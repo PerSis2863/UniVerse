@@ -103,13 +103,13 @@ export default function StudentSupport() {
           <div className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/20 rounded-2xl p-12 text-center">
             <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-4">How can we help you today?</h2>
             <div className="relative max-w-2xl mx-auto">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-600 dark:text-zinc-400" />
+              <Search className="absolute start-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-600 dark:text-zinc-400" />
               <input 
                 type="text" 
                 placeholder="Search for articles, tutorials, and FAQs..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-white dark:bg-zinc-900/80 border border-zinc-700 rounded-xl text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-lg shadow-xl"
+                className="w-full ps-12 pe-4 py-4 bg-white dark:bg-zinc-900/80 border border-zinc-700 rounded-xl text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-lg shadow-xl"
               />
             </div>
           </div>
@@ -345,19 +345,19 @@ export default function StudentSupport() {
               <div className="dark p-8 overflow-y-auto space-y-8 bg-zinc-950 flex-1">
                 {/* Search Bar */}
                 <div className="relative max-w-2xl mx-auto mt-4">
-                  <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                  <div className="absolute inset-y-0 start-4 flex items-center pointer-events-none">
                     <Search className="h-5 w-5 text-zinc-500" />
                   </div>
                   <input 
                     type="text" 
-                    className="dark w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-indigo-500 text-lg shadow-lg"
+                    className="dark w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 ps-12 pe-4 text-white focus:outline-none focus:border-indigo-500 text-lg shadow-lg"
                     placeholder="Your campus library catalogue and databases are in Apps & Links"
                     readOnly
                     onFocus={() => { handleCloseModal(); router.push('/student/links'); }}
                   />
                   <button 
                     onClick={() => { handleCloseModal(); router.push('/student/links'); }}
-                    className="btn-primary absolute inset-y-2 right-2">
+                    className="btn-primary absolute inset-y-2 end-2">
                     Open
                   </button>
                 </div>

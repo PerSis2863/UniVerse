@@ -126,7 +126,7 @@ export default function MentorsPage() {
           )}
 
           <motion.section variants={fadeUp} className="panel" aria-labelledby="be-mentor-h">
-            <button type="button" className="w-full flex items-center gap-3 p-4 sm:p-5 text-left" aria-expanded={mentorOpen} aria-controls="be-mentor" onClick={() => setMentorOpen((v) => !v)}>
+            <button type="button" className="w-full flex items-center gap-3 p-4 sm:p-5 text-start" aria-expanded={mentorOpen} aria-controls="be-mentor" onClick={() => setMentorOpen((v) => !v)}>
               <span className="flex-1 min-w-0">
                 <span id="be-mentor-h" className="block font-bold text-zinc-900 dark:text-white">Be a mentor</span>
                 <span className="block text-sm text-zinc-600 dark:text-zinc-400">Graduated, or a few years ahead? Offer times to students who are where you were.</span>

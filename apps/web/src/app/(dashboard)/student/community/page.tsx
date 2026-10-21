@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { TranslatableAnnouncement } from '@/components/shared/Translatable';
+import Link from '@/components/ui/Link';
 
 interface Post { id: string; title?: string | null; content?: string | null; body?: string | null; createdAt?: string | null; author?: { name: string } | null }
 
@@ -77,7 +78,7 @@ export default function StudentCommunity() {
             ) : (
               <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between gap-4">
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">Campus news from your teachers and admins appears here. Want to start a discussion?</p>
-                <a href="/student/groups" className="btn-primary btn-sm shrink-0">Open Groups</a>
+                <Link href="/student/groups" className="btn-primary btn-sm shrink-0">Open Groups</Link>
               </div>
             )}
 
@@ -125,13 +126,13 @@ export default function StudentCommunity() {
           <div className="w-full lg:w-80 space-y-6">
             
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 dark:text-zinc-400" />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 dark:text-zinc-400" />
               <input 
                 type="text" 
                 placeholder="Search discussions..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all"
+                className="w-full ps-10 pe-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all"
               />
             </div>
 
@@ -161,7 +162,7 @@ export default function StudentCommunity() {
                       {user.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-zinc-200">{user.name}</div>
+                      <div className="text-sm font-medium text-zinc-900 dark:text-zinc-200">{user.name}</div>
                       <div className="text-xs text-zinc-500 dark:text-zinc-500">{user.posts} posts</div>
                     </div>
                   </div>

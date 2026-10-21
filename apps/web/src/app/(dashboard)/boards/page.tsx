@@ -121,11 +121,11 @@ export default function BoardsPage() {
               ))}
             </div>
             <label className="relative flex-1 sm:max-w-xs">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-zinc-400" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search boards" aria-label="Search boards"
-                className="w-full h-10 pl-9 pr-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+                className="w-full h-10 ps-9 pe-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
             </label>
-            <button onClick={create} aria-busy={creating || undefined} disabled={creating} className="btn-primary sm:ml-auto">
+            <button onClick={create} aria-busy={creating || undefined} disabled={creating} className="btn-primary sm:ms-auto">
               {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} New board
             </button>
           </div>
@@ -170,16 +170,16 @@ export default function BoardsPage() {
                         </div>
                         {b.memberCount > 0 && <span className="text-xs text-zinc-500 inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {b.memberCount + 1}</span>}
                         {b.linkAccess !== 'NONE' && <span className="text-xs text-zinc-500 inline-flex items-center gap-1"><Globe2 className="w-3.5 h-3.5" /> Link</span>}
-                        {b.myRole === 'VIEWER' && <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-500/10 text-zinc-500">View only</span>}
+                        {b.myRole === 'VIEWER' && <span className="ms-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-500/10 text-zinc-500">View only</span>}
                       </div>
                     </div>
                   </Link>
                   <button onClick={(e) => { e.stopPropagation(); setMenu(menu === b.id ? null : b.id); }} aria-label={`More for ${b.title}`}
-                    className="absolute right-3 top-3 w-9 h-9 rounded-xl inline-flex items-center justify-center text-zinc-700 dark:text-zinc-200 bg-white/85 dark:bg-zinc-900/75 backdrop-blur border border-zinc-200 dark:border-white/10 shadow-sm hover:bg-white dark:hover:bg-zinc-800">
+                    className="absolute end-3 top-3 w-9 h-9 rounded-xl inline-flex items-center justify-center text-zinc-700 dark:text-zinc-200 bg-white/85 dark:bg-zinc-900/75 backdrop-blur border border-zinc-200 dark:border-white/10 shadow-sm hover:bg-white dark:hover:bg-zinc-800">
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                   {menu === b.id && (
-                    <div onClick={(e) => e.stopPropagation()} className="absolute right-3 top-14 z-10 w-44 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-xl py-1 text-sm">
+                    <div onClick={(e) => e.stopPropagation()} className="absolute end-3 top-14 z-10 w-44 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-xl py-1 text-sm">
                       <button onClick={() => copy(b)} className="w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-white/5 text-zinc-700 dark:text-zinc-200"><Copy className="w-4 h-4" /> Make a copy</button>
                       {b.mine
                         ? <button onClick={() => remove(b)} className="w-full px-3 py-2 flex items-center gap-2 hover:bg-rose-500/10 text-rose-500"><Trash2 className="w-4 h-4" /> Delete</button>

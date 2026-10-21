@@ -1220,6 +1220,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       createdAt: "2026-10-05T09:00:00.000Z",
     },
   ])],
+  [/^\/api\/admin\/chat-apps$/, () => ok({
+    apps: [{ id: 'sample-app-1', name: 'Library desk', description: 'Looks books up in the school library catalogue.', url: 'https://library.example.edu/universe', commands: [{ name: 'library', hint: 'Find a book in the school library' }], permissions: ['post'], enabled: true, lastCalledAt: new Date(Date.now() - 3600_000).toISOString(), lastStatus: '200', createdAt: new Date(Date.now() - 7 * 86_400_000).toISOString() }],
+    permissions: ['post', 'read_recent'], builtIn: ['ask', 'catchup', 'remind', 'poll', 'call', 'video', 'shrug'],
+  })],
   [/^\/api\/admin\/webhooks$/, () => ok([
     {
       id: "wh-sample-1",
@@ -1977,6 +1981,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/chat\/conversations$/, ({ db: d }) => ok({ conversations: d.conversations.map((c) => summary(d, c)).sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (+new Date(b.activityAt) - +new Date(a.activityAt))), me: d.me.id })],
   [/^\/api\/chat\/folders$/, () => ok({ folders: [] })],
   [/^\/api\/chat\/communities\/[^/]+\/moderation$/, () => ok({ reports: [], resolved: [], timeouts: [], automod: { words: [], mode: 'BLOCK' }, log: [] })],
+  // School chat apps (Stage 5 · Q20): one example command in the "/" menu.
+  [/^\/api\/chat\/apps$/, () => ok({ commands: [{ name: 'library', hint: 'Find a book in the school library', app: 'Library desk' }] })],
   [/^\/api\/chat\/snippets$/, () => ok({ max: 50, snippets: [{ id: 'sample-s1', title: 'Deadline reminder', shortcut: 'due', body: 'Hi {name}, a quick reminder: the lab report is due soon.' }] })],
   [/^\/api\/tasks$/, () => ok({ courses: [], boards: [], mine: [] })],
   [/^\/api\/docs$/, () => ok({ courses: [], docs: [] })],
@@ -2009,6 +2015,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Honest AI receipts (Stage 5 · D12): no AI help recorded in the sample.
   [/^\/api\/assignments\/([^/]+)\/ai-receipt$/, () => ok({ policy: 'FREE', since: new Date().toISOString(), uses: [] })],
   [/^\/api\/me\/ai-uses$/, () => ok({ keepDays: 180, uses: [] })],
+  // Staff leave allowances (Stage 5 · Q22).
+  [/^\/api\/staff\/settings$/, () => ok({ leaveDays: { SICK: 12, PERSONAL: 10, TRAINING: 0, OTHER: 0 }, yearStartMonth: 1 })],
+  [/^\/api\/core\/quizzes\/([^/]+)\/ai-receipt$/, () => ok({ policy: 'FREE', since: new Date().toISOString(), during: false, uses: [] })],
+  [/^\/api\/orals\/([^/]+)\/ai-receipt$/, () => ok({ policy: 'FREE', since: new Date().toISOString(), during: true, uses: [] })],
   // Oral practice and oral checks (Stage 5 · D11): none in the sample (the examiner needs AI).
   [/^\/api\/orals$/, () => ok({ checks: [], practice: [] })],
   [/^\/api\/orals\/([^/]+)$/, () => ok({ error: 'Not found.' }, 404)],

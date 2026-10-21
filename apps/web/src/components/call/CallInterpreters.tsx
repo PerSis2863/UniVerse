@@ -35,7 +35,7 @@ export function InterpretersSheet({ open, onClose, people, interp, canManage, li
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Listen to</p>
                 {[{ userId: null as string | null, label: 'The original', name: '' }, ...spoken].map((o) => (
                   <button key={o.userId ?? 'original'} type="button" role="radio" aria-checked={listening === o.userId} onClick={() => onListen(o.userId)}
-                    className={cn('w-full text-left px-3 py-2 rounded-xl text-sm', listening === o.userId ? 'bg-white text-zinc-900 font-semibold' : 'bg-white/[0.06] hover:bg-white/10')}>
+                    className={cn('w-full text-start px-3 py-2 rounded-xl text-sm', listening === o.userId ? 'bg-white text-zinc-900 font-semibold' : 'bg-white/[0.06] hover:bg-white/10')}>
                     {o.label}{o.name ? <span className={listening === o.userId ? 'text-zinc-600' : 'text-zinc-400'}> · {o.name}</span> : null}
                   </button>
                 ))}

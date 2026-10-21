@@ -143,7 +143,7 @@ export default function AdminFinances() {
       {isStripeModalOpen && (
         <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl p-6 relative">
-            <button aria-label="Close" onClick={() => setIsStripeModalOpen(false)} className="absolute top-4 right-4 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            <button aria-label="Close" onClick={() => setIsStripeModalOpen(false)} className="absolute top-4 end-4 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
               <X className="w-5 h-5" />
             </button>
             <div className="flex flex-col items-center text-center space-y-4 pt-4">
@@ -244,7 +244,7 @@ export default function AdminFinances() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {stats.map((stat, i) => (
               <div key={i} className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl p-6 relative overflow-hidden group hover:bg-white dark:bg-zinc-900/80 transition-all duration-300">
-                <div className={`absolute -right-6 -top-6 w-32 h-32 rounded-full bg-gradient-to-br ${stat.color} opacity-[0.03] group-hover:opacity-[0.08] blur-2xl transition-opacity duration-500`}></div>
+                <div className={`absolute -end-6 -top-6 w-32 h-32 rounded-full bg-gradient-to-br ${stat.color} opacity-[0.03] group-hover:opacity-[0.08] blur-2xl transition-opacity duration-500`}></div>
                 
                 <div className="flex justify-between items-start mb-4">
                   <div className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">{stat.label}</div>
@@ -261,7 +261,7 @@ export default function AdminFinances() {
                   <div className={`flex items-center text-xs font-semibold px-2.5 py-1 rounded-full w-max ${
                     stat.up ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
                   }`}>
-                    {stat.up ? <TrendingUp className="w-3.5 h-3.5 mr-1" /> : <TrendingDown className="w-3.5 h-3.5 mr-1" />}
+                    {stat.up ? <TrendingUp className="w-3.5 h-3.5 me-1" /> : <TrendingDown className="w-3.5 h-3.5 me-1" />}
                     {stat.note}
                   </div>
                 )}

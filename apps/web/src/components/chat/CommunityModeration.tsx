@@ -114,7 +114,7 @@ export function CommunityModeration({ communityId, members }: { communityId: str
       {/* Log */}
       <div className="rounded-2xl bg-zinc-50 dark:bg-white/[0.03] p-3">
         <button type="button" onClick={() => setShowLog(!showLog)} aria-expanded={showLog} className="w-full text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
-          <History className="w-4 h-4 text-zinc-500" /><span className="flex-1 text-left">Moderator log</span><ChevronDown className={cn('w-4 h-4 text-zinc-400 transition-transform', showLog && 'rotate-180')} />
+          <History className="w-4 h-4 text-zinc-500" /><span className="flex-1 text-start">Moderator log</span><ChevronDown className={cn('w-4 h-4 text-zinc-400 transition-transform', showLog && 'rotate-180')} />
         </button>
         <AnimatePresence initial={false}>
           {showLog && (

@@ -26,7 +26,7 @@ vi.mock('./tutor', () => ({ aiOn: vi.fn().mockResolvedValue(true), tutorClosed: 
 type Fn = ReturnType<typeof vi.fn>;
 const db = prisma as unknown as Record<string, Record<string, Fn>> & { $executeRawUnsafe: Fn };
 const cached = cachedAi as unknown as Fn;
-const rule = { hintsOnly: false, note: '', off: false, offUntil: null };
+const rule = { hintsOnly: false, note: '', off: false, offUntil: null, whisperOff: false };
 const student: Access = { courseId: 'c1', courseName: 'Chemistry', courseCode: 'CH101', role: 'STUDENT', rule };
 const me = { id: 's1', name: 'Sam', email: 's@x', role: 'STUDENT' };
 const ref = 'a'.repeat(32);
@@ -57,7 +57,7 @@ describe('the tutor’s study tools (Stage 5 · Q13)', () => {
     await expect(saveRule(teacher, { off: true, offUntil: '2000-01-01T00:00:00Z' })).rejects.toThrow(/future/);
     const out = await saveRule(teacher, { hintsOnly: true, off: true, note: 'Use SI units' });
     expect(out).toMatchObject({ hintsOnly: true, off: true, note: 'Use SI units' });
-    expect(JSON.parse(db.course.update.mock.calls[0][0].data.tutorRule)).toEqual({ hintsOnly: true, note: 'Use SI units', off: true, offUntil: null });
+    expect(JSON.parse(db.course.update.mock.calls[0][0].data.tutorRule)).toEqual({ hintsOnly: true, note: 'Use SI units', off: true, offUntil: null, whisperOff: false });
   });
 
   it('shows the teacher only students’ questions, grouped, with no names', async () => {

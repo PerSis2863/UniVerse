@@ -25,7 +25,13 @@ import { LeaveChip, LEAVE_LABEL, dayLabel, range } from './shared';
 type View = 'today' | 'leave' | 'cover';
 interface RegisterRow { id: string; name: string; email: string; avatar: string | null; status: 'in' | 'leave' | 'missing'; inAt: string | null; outAt: string | null; leaveType: string | null }
 interface Register { date: string; counts: { in: number; leave: number; missing: number }; rows: RegisterRow[] }
-interface LeaveRow { id: string; type: string; fromDate: string; toDate: string; reason: string | null; status: string; decisionNote: string | null; user: { id: string; name: string; avatar: string | null }; _count: { covers: number } }
+interface LeaveRow {
+  id: string; type: string; fromDate: string; toDate: string; halfDay?: 'AM' | 'PM' | null; reason: string | null; status: string; decisionNote: string | null; user: { id: string; name: string; avatar: string | null }; _count: { covers: number };
+  /** Working days, and the person's balance for this kind of leave this year (Stage 5 · Q22). */
+  days?: number; balance?: { allowance: number; used: number; pending: number; left: number | null } | null;
+}
+interface LeaveSettings { leaveDays: Record<string, number>; yearStartMonth: number }
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 interface Need { date: string; slotId: string; start: string; end: string; type: string; room: string | null; course: { code: string; name: string }; absent: { id: string; name: string }; leaveId: string; cover: { id: string; name: string } | null }
 interface Cover { from: string; to: string; needs: Need[]; uncovered: number }
 
@@ -95,8 +101,9 @@ function TodayView() {
 }
 
 function LeaveView() {
-  const { data, error, mutate } = useSWR<{ pending: number; rows: LeaveRow[] }>('/api/staff/leave', authedJson);
+  const { data, error, mutate } = useSWR<{ pending: number; rows: LeaveRow[]; year?: string; settings?: LeaveSettings }>('/api/staff/leave', authedJson);
   const [busy, setBusy] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   if (error && !data) return <LoadError onRetry={() => mutate()} />;
   if (!data) return <ContentSkeleton variant="list" />;
   const decide = async (l: LeaveRow, action: 'approve' | 'decline') => {
@@ -114,15 +121,33 @@ function LeaveView() {
     } catch (e) { toast.error(errorMessage(e, 'Couldn’t do that.')); }
     finally { setBusy(null); }
   };
-  if (!data.rows.length) return <p className={`${card} p-8 text-center text-sm text-zinc-500`}>No leave requests in the last two months.</p>;
+  const allowances = data.settings && (
+    <section className={`${card} p-3 sm:p-4 mb-3`} aria-labelledby="allow-title">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="allow-title" className="text-sm font-semibold text-zinc-900 dark:text-white">Leave allowances{data.year ? ` · ${data.year}` : ''}</h2>
+        <button type="button" onClick={() => setEditing(!editing)} aria-expanded={editing} className="btn-secondary btn-sm">{editing ? 'Close' : 'Change'}</button>
+      </div>
+      <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">{Object.entries(data.settings.leaveDays).map(([t, n]) => `${LEAVE_LABEL[t] ?? t}: ${n ? `${n} days` : 'no limit'}`).join(' · ')} a year, from 1 {MONTHS[data.settings.yearStartMonth - 1]}. Working days count; half days count half.</p>
+      {editing && <AllowanceForm settings={data.settings} onSaved={() => { setEditing(false); void mutate(); }} />}
+    </section>
+  );
+  if (!data.rows.length) return <>{allowances}<p className={`${card} p-8 text-center text-sm text-zinc-500`}>No leave requests in the last two months.</p></>;
   return (
+    <>
+    {allowances}
     <motion.ul variants={list} initial="hidden" animate="show" className={`${card} p-2 sm:p-3 divide-y divide-zinc-200/70 dark:divide-white/[0.06]`}>
       {data.rows.map((l) => (
         <motion.li key={l.id} variants={fadeUp} className="px-3 py-3 flex items-start gap-3">
           <Avatar name={l.user.name} src={l.user.avatar} size={36} />
           <span className="flex-1 min-w-0">
             <span className="block text-sm font-semibold text-zinc-900 dark:text-white">{l.user.name}</span>
-            <span className="block text-xs text-zinc-600 dark:text-zinc-300">{LEAVE_LABEL[l.type] ?? 'Leave'} · {range(l.fromDate, l.toDate)}</span>
+            <span className="block text-xs text-zinc-600 dark:text-zinc-300">{LEAVE_LABEL[l.type] ?? 'Leave'} · {range(l.fromDate, l.toDate)}{l.halfDay === 'AM' ? ' (morning)' : l.halfDay === 'PM' ? ' (afternoon)' : ''}</span>
+            {l.balance && l.balance.left != null && (
+              // What's left of their allowance; for a request waiting, what it would leave.
+              <span className={cn('block text-[11px] tabular-nums', l.status === 'PENDING' && l.balance.left - (l.days ?? 0) < 0 ? 'text-amber-800 dark:text-amber-300 font-semibold' : 'text-zinc-600 dark:text-zinc-400')}>
+                {l.status === 'PENDING' ? `${l.days ?? 0} working day${l.days === 1 ? '' : 's'} · would leave ${l.balance.left - (l.days ?? 0)} of ${l.balance.allowance}` : `${l.balance.left} of ${l.balance.allowance} left this year`}
+              </span>
+            )}
             {l.reason && <span className="block text-xs text-zinc-500 break-words">{l.reason}</span>}
             {l.decisionNote && <span className="block text-xs text-zinc-500">Note: {l.decisionNote}</span>}
             {l.status === 'APPROVED' && l._count.covers > 0 && <span className="block text-[11px] text-emerald-700 dark:text-emerald-300">{l._count.covers} class{l._count.covers === 1 ? '' : 'es'} covered</span>}
@@ -137,6 +162,41 @@ function LeaveView() {
         </motion.li>
       ))}
     </motion.ul>
+    </>
+  );
+}
+
+/** Days a year for each kind of leave, and the month the leave year starts (Stage 5 · Q22). */
+function AllowanceForm({ settings, onSaved }: { settings: LeaveSettings; onSaved: () => void }) {
+  const [days, setDays] = useState<Record<string, string>>(() => Object.fromEntries(Object.entries(settings.leaveDays).map(([t, n]) => [t, String(n)])));
+  const [month, setMonth] = useState(settings.yearStartMonth);
+  const [busy, setBusy] = useState(false);
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await authedJson('/api/staff/settings', { method: 'POST', body: JSON.stringify({ leaveDays: Object.fromEntries(Object.entries(days).map(([t, v]) => [t, Number(v) || 0])), yearStartMonth: month }) });
+      haptic('success');
+      toast.success('Leave allowances saved');
+      onSaved();
+    } catch (err) { toast.error(errorMessage(err, 'Couldn’t save them.')); }
+    finally { setBusy(false); }
+  };
+  return (
+    <form onSubmit={save} className="mt-3 space-y-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {Object.keys(settings.leaveDays).map((t) => (
+          <label key={t} className="text-xs text-zinc-700 dark:text-zinc-300">{LEAVE_LABEL[t] ?? t} (days a year)
+            <input type="number" min={0} max={365} step={0.5} value={days[t]} onChange={(e) => setDays({ ...days, [t]: e.target.value })} className="input mt-1" />
+          </label>
+        ))}
+      </div>
+      <label className="flex flex-wrap items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300">The leave year starts on 1
+        <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="input w-auto">{MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select>
+      </label>
+      <p className="text-[11px] text-zinc-600 dark:text-zinc-400">0 means no limit. People can still ask beyond their allowance; you see it when deciding.</p>
+      <button type="submit" disabled={busy} className="btn-primary btn-sm">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save</button>
+    </form>
   );
 }
 
@@ -210,7 +270,7 @@ function NeedRow({ n, onChanged }: { n: Need; onChanged: () => void }) {
             <ul className="max-h-60 overflow-y-auto">
               {data.free.map((t) => (
                 <li key={t.id}>
-                  <button type="button" disabled={busy || n.cover?.id === t.id} onClick={() => void set(t.id)} className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.05] disabled:opacity-60">
+                  <button type="button" disabled={busy || n.cover?.id === t.id} onClick={() => void set(t.id)} className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.05] disabled:opacity-60">
                     <Avatar name={t.name} src={t.avatar} size={28} />
                     <span className="flex-1 min-w-0 text-sm text-zinc-900 dark:text-white truncate">{t.name}</span>
                     <span className="text-[11px] text-zinc-500 shrink-0">{t.coversThisWeek ? `${t.coversThisWeek} cover${t.coversThisWeek === 1 ? '' : 's'} this week` : 'No covers this week'}</span>

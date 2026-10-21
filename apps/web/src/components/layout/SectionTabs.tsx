@@ -145,6 +145,7 @@ export const ADMIN_PEOPLE_TABS: SectionTab[] = [
   { href: '/admin/import', label: 'Import & export', need: ['import.run', 'export.run'] },
   { href: '/admin/integrations/oneroster', label: 'OneRoster SIS', need: 'admin' },
   { href: '/admin/integrations/developer', label: 'Developer API', need: 'admin' },
+  { href: '/admin/integrations/chat-apps', label: 'Chat apps', need: 'admin' },
 ];
 
 /** Admin → Finances: the platform's money, and school fees (Stage 5 · B15.2). */

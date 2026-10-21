@@ -74,7 +74,7 @@ export function VideoNoteRecorder({ onSend, onClose }: { onSend: (file: File, du
   const done = phase === 'recording' ? Math.min(1, secs / MAX_SEC) : 0;
   return createPortal(
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[95] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center gap-6 p-6" role="dialog" aria-label="Record a video note">
-      <button type="button" onClick={onClose} aria-label="Cancel" className="absolute top-[calc(env(safe-area-inset-top)+1rem)] right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center"><X className="w-5 h-5" /></button>
+      <button type="button" onClick={onClose} aria-label="Cancel" className="absolute top-[calc(env(safe-area-inset-top)+1rem)] end-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center"><X className="w-5 h-5" /></button>
       <motion.div initial={{ scale: 0.85 }} animate={{ scale: 1 }} transition={spring.smooth} className="relative w-64 h-64">
         <svg className="absolute -inset-3 w-[17.5rem] h-[17.5rem] -rotate-90" viewBox="0 0 248 248" aria-hidden>
           <circle cx="124" cy="124" r="118" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="6" />

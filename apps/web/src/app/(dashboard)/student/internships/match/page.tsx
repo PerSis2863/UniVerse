@@ -76,7 +76,7 @@ function OpportunityCard({ o }: { o: Opportunity }) {
           <h3 className="font-bold text-zinc-900 dark:text-white leading-snug break-words">{o.title}</h3>
           <p className="text-sm text-zinc-600 dark:text-zinc-400 truncate">{o.org}{o.kind === 'PROJECT' ? ' · NGO project' : ''}</p>
         </div>
-        <div className="text-right shrink-0">
+        <div className="text-end shrink-0">
           <p className={cn('text-xl font-black tabular-nums', t.text)}>{o.match.percent}%</p>
           <p className="text-[11px] text-zinc-500">match</p>
         </div>

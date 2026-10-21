@@ -124,7 +124,7 @@ export default function VoiceTutorPage() {
           {lines.length > 0 && (
             <section aria-label="Captions" className="space-y-2">
               {lines.map((l, i) => (
-                <p key={i} className={cn('text-sm rounded-2xl px-4 py-2 max-w-[85%]', l.who === 'you' ? 'ml-auto bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200')}>{l.text}</p>
+                <p key={i} className={cn('text-sm rounded-2xl px-4 py-2 max-w-[85%]', l.who === 'you' ? 'ms-auto bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200')}>{l.text}</p>
               ))}
             </section>
           )}

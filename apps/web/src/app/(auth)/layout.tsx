@@ -20,8 +20,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         style={{ background: 'linear-gradient(135deg, rgba(16,18,58,0.85) 0%, rgba(20,16,56,0.8) 50%, rgba(15,12,41,0.85) 100%)' }}
       >
         {/* Ambient blobs */}
-        <div className="absolute -top-60 -left-60 w-[760px] h-[760px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(closest-side, rgba(99,102,241,0.3), transparent)' }} />
-        <div className="absolute -bottom-60 -right-40 w-[620px] h-[620px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(closest-side, rgba(217,70,239,0.2), transparent)' }} />
+        <div className="absolute -top-60 -start-60 w-[760px] h-[760px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(closest-side, rgba(99,102,241,0.3), transparent)' }} />
+        <div className="absolute -bottom-60 -end-40 w-[620px] h-[620px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(closest-side, rgba(217,70,239,0.2), transparent)' }} />
 
         {/* Content */}
         <div className="relative z-10 flex flex-col h-full p-12">

@@ -242,7 +242,7 @@ describe('Group Project Autopilot (Stage 5 · D6)', () => {
       vi.mocked(prisma.groupAutopilotReport.findFirst).mockResolvedValueOnce(null);
       vi.mocked(prisma.groupAutopilotReport.create).mockResolvedValueOnce({ id: 'r1', createdAt: new Date(now) } as never);
 
-      expect(await weeklyAutopilotReports({ now })).toEqual({ made: 1 });
+      expect(await weeklyAutopilotReports({ now })).toEqual({ made: 1, more: 0 });
       expect(vi.mocked(prisma.groupAutopilotReport.create).mock.calls[0]?.[0]).toMatchObject({ data: { planId: 'a', weekNumber: 1, health: 'AT_RISK' } });
       expect(vi.mocked(notifyMany)).toHaveBeenCalledWith(['u1', 'u2'], expect.objectContaining({ email: false, title: 'Week 1 report: Plan a' }));
       expect(vi.mocked(notify)).toHaveBeenCalledWith('teacher-1', expect.objectContaining({ email: false, link: '/teacher/blackboard?course=course-1&tab=projects' }));

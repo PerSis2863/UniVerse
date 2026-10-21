@@ -117,7 +117,7 @@ export default function TeacherRoomReservationPage() {
               <h3 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
                 Available Rooms
                 {loadingRooms && <Loader2 className="w-4 h-4 animate-spin" />}
-                {!loadingRooms && <span className="text-zinc-500 dark:text-zinc-500 font-normal text-sm ml-2">({filteredRooms.length} found)</span>}
+                {!loadingRooms && <span className="text-zinc-500 dark:text-zinc-500 font-normal text-sm ms-2">({filteredRooms.length} found)</span>}
               </h3>
               {!loadingRooms && filteredRooms.map((room) => (
                 <div key={room.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors gap-4">

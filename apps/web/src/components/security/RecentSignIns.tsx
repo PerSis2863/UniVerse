@@ -70,7 +70,7 @@ export function RecentSignIns() {
                   </p>
                   <p className="text-xs text-zinc-500">{[s.device, place, s.ip].filter(Boolean).join(' · ')}</p>
                 </div>
-                <time className="ml-auto shrink-0 text-xs text-zinc-400" dateTime={s.createdAt} title={new Date(s.createdAt).toLocaleString()}>
+                <time className="ms-auto shrink-0 text-xs text-zinc-400" dateTime={s.createdAt} title={new Date(s.createdAt).toLocaleString()}>
                   {formatDistanceToNow(new Date(s.createdAt), { addSuffix: true })}
                 </time>
               </li>

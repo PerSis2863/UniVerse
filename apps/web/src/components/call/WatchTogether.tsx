@@ -179,7 +179,7 @@ export function WatchStage({ watch, skew, mod, status, held = false, onSend }: {
           <AnimatePresence>
             {ownMode && (
               <motion.div key="own" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.smooth}
-                className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/70 backdrop-blur-xl border border-white/10 pl-3.5 pr-1.5 py-1.5 text-xs font-semibold">
+                className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/70 backdrop-blur-xl border border-white/10 ps-3.5 pe-1.5 py-1.5 text-xs font-semibold">
                 You’re watching on your own
                 <button type="button" onClick={backToEveryone} className="h-7 px-3 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 font-bold inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />Back to everyone</button>
               </motion.div>
@@ -210,12 +210,12 @@ export function WatchStage({ watch, skew, mod, status, held = false, onSend }: {
         </AnimatePresence>
 
         {/* Comments at their moment in the video */}
-        <div className="absolute left-3 bottom-3 max-w-[70%] flex flex-col items-start gap-1.5 pointer-events-none" aria-live="polite">
+        <div className="absolute start-3 bottom-3 max-w-[70%] flex flex-col items-start gap-1.5 pointer-events-none" aria-live="polite">
           <AnimatePresence initial={false}>
             {current.map((m) => (
               <motion.p key={m.id} layout initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={spring.smooth}
                 className="rounded-2xl bg-black/70 backdrop-blur-md px-3 py-1.5 text-sm shadow-lg">
-                <span className="font-semibold text-fuchsia-300 mr-1.5">{m.name}</span>{m.text}
+                <span className="font-semibold text-fuchsia-300 me-1.5">{m.name}</span>{m.text}
               </motion.p>
             ))}
           </AnimatePresence>
@@ -224,7 +224,7 @@ export function WatchStage({ watch, skew, mod, status, held = false, onSend }: {
         <AnimatePresence>
           {listOpen && (
             <motion.aside key="list" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={spring.smooth}
-              className="absolute top-3 right-3 bottom-3 w-64 max-w-[80%] rounded-2xl bg-[#121830]/95 backdrop-blur-xl border border-white/10 p-3 flex flex-col gap-2" aria-label="Comments on the video">
+              className="absolute top-3 end-3 bottom-3 w-64 max-w-[80%] rounded-2xl bg-[#121830]/95 backdrop-blur-xl border border-white/10 p-3 flex flex-col gap-2" aria-label="Comments on the video">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">Comments · {notes.length}</p>
                 <button type="button" onClick={() => setListOpen(false)} aria-label="Close" className="p-1 rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
@@ -233,8 +233,8 @@ export function WatchStage({ watch, skew, mod, status, held = false, onSend }: {
                 {notes.length === 0 && <li className="text-xs text-zinc-400">Comments people write while watching show up here, at their moment in the video.</li>}
                 {[...notes].sort((a, b) => a.t - b.t).map((m) => (
                   <li key={m.id}>
-                    <button type="button" onClick={() => seekTo(m.t)} className="w-full text-left rounded-xl px-2 py-1.5 hover:bg-white/[0.06] text-xs">
-                      <span className="font-mono text-fuchsia-300 mr-1.5">{clock(m.t)}</span><span className="font-semibold">{m.name}</span>
+                    <button type="button" onClick={() => seekTo(m.t)} className="w-full text-start rounded-xl px-2 py-1.5 hover:bg-white/[0.06] text-xs">
+                      <span className="font-mono text-fuchsia-300 me-1.5">{clock(m.t)}</span><span className="font-semibold">{m.name}</span>
                       <span className="block text-zinc-300">{m.text}</span>
                     </button>
                   </li>
@@ -265,7 +265,7 @@ export function WatchStage({ watch, skew, mod, status, held = false, onSend }: {
           <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggle} disabled={!view.ready || !!failed}
             className="w-10 h-10 rounded-full bg-white text-zinc-900 flex items-center justify-center disabled:opacity-40"
             aria-label={isPlaying ? (ctl && !ownMode ? 'Pause for everyone' : 'Pause just for me') : (ctl && !ownMode ? 'Play for everyone' : 'Play just for me')}>
-            {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+            {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ms-0.5" />}
           </motion.button>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold truncate">{title}</p>
@@ -274,7 +274,7 @@ export function WatchStage({ watch, skew, mod, status, held = false, onSend }: {
               {' · '}{!ctl ? `${watch.byName} controls it for everyone` : status ?? (watch.lock ? 'Only you and the hosts control it' : 'Everyone can control it')}
             </p>
           </div>
-          <form onSubmit={(e) => { e.preventDefault(); sendNote(); }} className="hidden sm:flex items-center gap-1 h-9 rounded-full bg-white/10 pl-3 pr-1 w-56">
+          <form onSubmit={(e) => { e.preventDefault(); sendNote(); }} className="hidden sm:flex items-center gap-1 h-9 rounded-full bg-white/10 ps-3 pe-1 w-56">
             <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder={`Comment at ${clock(view.t)}…`} aria-label="Comment on this moment"
               className="flex-1 min-w-0 bg-transparent outline-none text-xs placeholder:text-zinc-400" />
             <button type="submit" disabled={!note.trim()} aria-label="Send comment" className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/10 disabled:opacity-40"><Send className="w-3.5 h-3.5" /></button>
@@ -301,7 +301,7 @@ export function WatchStage({ watch, skew, mod, status, held = false, onSend }: {
             </>
           )}
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); sendNote(); }} className="sm:hidden flex items-center gap-1 h-9 rounded-full bg-white/10 pl-3 pr-1">
+        <form onSubmit={(e) => { e.preventDefault(); sendNote(); }} className="sm:hidden flex items-center gap-1 h-9 rounded-full bg-white/10 ps-3 pe-1">
           <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder={`Comment at ${clock(view.t)}…`} aria-label="Comment on this moment"
             className="flex-1 min-w-0 bg-transparent outline-none text-xs placeholder:text-zinc-400" />
           <button type="submit" disabled={!note.trim()} aria-label="Send comment" className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/10 disabled:opacity-40"><Send className="w-3.5 h-3.5" /></button>
@@ -377,7 +377,7 @@ export function WatchPicker({ open, callId, onClose, onStart }: { open: boolean;
                   <ul className="space-y-1" aria-label="Course videos">
                     {videos.map((v) => (
                       <li key={v.id}>
-                        <button type="button" onClick={() => fromMaterial(v)} className="w-full flex items-center gap-2.5 rounded-2xl px-3 py-2 hover:bg-white/[0.06] text-left">
+                        <button type="button" onClick={() => fromMaterial(v)} className="w-full flex items-center gap-2.5 rounded-2xl px-3 py-2 hover:bg-white/[0.06] text-start">
                           <span className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0"><Clapperboard className="w-4 h-4 text-indigo-200" /></span>
                           <span className="min-w-0 text-sm font-medium truncate">{v.title}</span>
                         </button>

@@ -37,7 +37,7 @@ export default function VolunteeringReportPage() {
             <select className="rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white" value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Year">
               {[0, 1, 2, 3].map((i) => <option key={i} value={thisYear - i}>{thisYear - i}</option>)}
             </select>
-            <button type="button" className="btn-primary btn-sm ml-auto" onClick={() => window.print()}><Printer className="w-4 h-4" /> Print / save as PDF</button>
+            <button type="button" className="btn-primary btn-sm ms-auto" onClick={() => window.print()}><Printer className="w-4 h-4" /> Print / save as PDF</button>
           </div>
           {error && !data ? <LoadError onRetry={() => mutate()} message="Couldn’t load the volunteering report." /> : isLoading || !data ? <div className="h-64 rounded-2xl skeleton" /> : (
             <article className="space-y-5 text-zinc-900 dark:text-white print:text-black">
@@ -62,7 +62,7 @@ export default function VolunteeringReportPage() {
                     <div key={s.sdg} className="flex items-center gap-3 text-sm">
                       <span className="w-14 shrink-0 font-semibold">SDG {s.sdg}</span>
                       <span className="flex-1 h-2.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><span className="block h-full rounded-full bg-emerald-500" style={{ width: `${(s.hours / most) * 100}%` }} /></span>
-                      <span className="w-16 text-right tabular-nums">{s.hours} h</span>
+                      <span className="w-16 text-end tabular-nums">{s.hours} h</span>
                     </div>
                   ))}
                 </section>
@@ -71,8 +71,8 @@ export default function VolunteeringReportPage() {
                 <h2 className="font-bold">By project</h2>
                 {!data.projects.length ? <p className="text-sm text-zinc-500">No verified hours this year yet.</p> : (
                   <table className="w-full text-sm">
-                    <thead><tr className="text-left text-xs text-zinc-500"><th className="py-1">Project</th><th>Organisation</th><th className="text-right">Volunteers</th><th className="text-right">Hours</th></tr></thead>
-                    <tbody>{data.projects.map((p) => <tr key={p.name} className="border-t border-zinc-200 dark:border-white/10"><td className="py-1.5">{p.name}{p.sdg ? ` (SDG ${p.sdg})` : ''}</td><td>{p.ngo}</td><td className="text-right tabular-nums">{p.people}</td><td className="text-right tabular-nums">{p.hours}</td></tr>)}</tbody>
+                    <thead><tr className="text-start text-xs text-zinc-500"><th className="py-1">Project</th><th>Organisation</th><th className="text-end">Volunteers</th><th className="text-end">Hours</th></tr></thead>
+                    <tbody>{data.projects.map((p) => <tr key={p.name} className="border-t border-zinc-200 dark:border-white/10"><td className="py-1.5">{p.name}{p.sdg ? ` (SDG ${p.sdg})` : ''}</td><td>{p.ngo}</td><td className="text-end tabular-nums">{p.people}</td><td className="text-end tabular-nums">{p.hours}</td></tr>)}</tbody>
                   </table>
                 )}
               </section>

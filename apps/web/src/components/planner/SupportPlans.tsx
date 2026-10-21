@@ -57,7 +57,7 @@ export function SupportPlans() {
                 return (
                   <li key={i}>
                     <button type="button" onClick={() => p.active && void tick(p, i, !on)} disabled={!p.active} aria-pressed={on}
-                      className={cn('w-full text-left flex items-start gap-3 rounded-2xl p-3 border transition-colors', on ? 'border-emerald-500/30 bg-emerald-500/[0.06]' : 'border-zinc-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.03] hover:border-indigo-400/40')}>
+                      className={cn('w-full text-start flex items-start gap-3 rounded-2xl p-3 border transition-colors', on ? 'border-emerald-500/30 bg-emerald-500/[0.06]' : 'border-zinc-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.03] hover:border-indigo-400/40')}>
                       <motion.span animate={{ scale: on ? [1, 1.25, 1] : 1 }} transition={{ duration: 0.25 }}
                         className={cn('mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 border-2', on ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-300 dark:border-white/25')}>
                         {on && <Check className="w-3 h-3" />}

@@ -422,7 +422,18 @@ export function VideoEditor({ files, onClose }: { files: File[]; onClose: () => 
       recorder.current = null;
       setExporting(null);
       if (job.cancelled || !parts.length) return;
-      download(new Blob(parts, { type: fmt.type.split(';')[0] }), `${name || 'video'}.${fmt.ext}`);
+      const made = new Blob(parts, { type: fmt.type.split(';')[0] });
+      const file = name || 'video';
+      // A browser that records only WebM (Stage 5 · Q22): turned into MP4, which plays everywhere, when it can.
+      if (fmt.ext === 'webm') {
+        const t = toast.loading('Making it an MP4…');
+        void import('@/components/docs/convert-engine').then((m) => m.convertMedia(made, `${file}.webm`, 'mp4'))
+          .then((mp4) => { download(mp4, `${file}.mp4`); toast.success('Your video is ready (MP4).', { id: t }); })
+          .catch(() => { download(made, `${file}.webm`); toast.success('Your video is ready (WebM: this browser can’t make MP4).', { id: t }); });
+        setDirty(false);
+        return;
+      }
+      download(made, `${file}.${fmt.ext}`);
       setDirty(false);
       toast.success('Your video is ready.');
     };
@@ -463,7 +474,7 @@ export function VideoEditor({ files, onClose }: { files: File[]; onClose: () => 
         <button type="button" onClick={() => void close()} aria-label="Close the video editor" className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
         <input value={name} onChange={(e) => setName(e.target.value.replace(/[\\/:*?"<>|]/g, '').slice(0, 60))} aria-label="Video name" className="text-sm font-semibold bg-transparent text-zinc-900 dark:text-white rounded-md px-1.5 py-1 w-40 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         <span className="text-[11px] text-zinc-500 tabular-nums shrink-0">{clock(total)} · {clips.length} clip{clips.length === 1 ? '' : 's'}</span>
-        <div className="ml-auto flex items-center gap-1 shrink-0">
+        <div className="ms-auto flex items-center gap-1 shrink-0">
           <button type="button" onClick={() => step(undo, setUndo, setRedo)} disabled={!undo.length || !!exporting} aria-label="Undo" title="Undo" className="p-2 rounded-lg text-zinc-600 dark:text-zinc-300 disabled:opacity-30"><Undo2 className="w-4 h-4" /></button>
           <button type="button" onClick={() => step(redo, setRedo, setUndo)} disabled={!redo.length || !!exporting} aria-label="Redo" title="Redo" className="p-2 rounded-lg text-zinc-600 dark:text-zinc-300 disabled:opacity-30"><Redo2 className="w-4 h-4" /></button>
           <input ref={addRef} type="file" accept="video/*,image/*" multiple className="hidden" onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; if (fs.length) void addFiles(fs); }} />
@@ -483,7 +494,7 @@ export function VideoEditor({ files, onClose }: { files: File[]; onClose: () => 
               </div>
               <div className="flex items-center gap-2 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 p-2 shadow-sm">
                 <button type="button" onClick={() => void play()} disabled={!clips.length || !!exporting} aria-label={playing ? 'Pause' : 'Play'} className="w-10 h-10 shrink-0 rounded-xl grid place-items-center bg-indigo-600 text-white disabled:opacity-40">{playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}</button>
-                <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300 w-12 text-right shrink-0">{clock(time)}</span>
+                <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300 w-12 text-end shrink-0">{clock(time)}</span>
                 <input type="range" min={0} max={Math.max(0.1, total)} step={0.05} value={Math.min(time, total)} onChange={(e) => seek(Number(e.target.value))} disabled={!!exporting} aria-label="Playhead" aria-valuetext={`${clock(time)} of ${clock(total)}`} className="flex-1 min-w-0 accent-indigo-600" />
                 <span className="text-xs tabular-nums text-zinc-500 w-12 shrink-0">{clock(total)}</span>
                 <button type="button" onClick={() => { const next = splitAt(clips, time, nid); if (next === clips) { toast.message('Move the playhead inside a clip, away from its ends.'); return; } commit({ clips: next }); haptic('tap'); }} disabled={!clips.length || !!exporting} title="Split the clip at the playhead" className="btn-secondary btn-sm shrink-0"><Scissors className="w-3.5 h-3.5" /><span className="max-sm:sr-only">Split</span></button>
@@ -495,7 +506,7 @@ export function VideoEditor({ files, onClose }: { files: File[]; onClose: () => 
                     <li key={c.id} className="shrink-0" style={{ width: Math.max(72, Math.min(240, clipLength(c) * 14)) }}>
                       <button type="button" onClick={() => { setSelected(c.id); setPanel('clip'); seek(clipBegins(clips, i) + 0.001); }} aria-pressed={c.id === selected} aria-label={`Clip ${i + 1}: ${s?.name ?? ''}, ${clipLength(c).toFixed(1)} seconds`}
                         className={cn('relative block w-full h-16 rounded-xl overflow-hidden border-2 bg-zinc-800 bg-cover bg-center', c.id === selected ? 'border-indigo-500' : 'border-transparent')} style={s ? { backgroundImage: `url(${s.thumb})` } : undefined}>
-                        <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1.5 py-0.5 text-left truncate tabular-nums">{i + 1} · {clipLength(c).toFixed(1)} s</span>
+                        <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1.5 py-0.5 text-start truncate tabular-nums">{i + 1} · {clipLength(c).toFixed(1)} s</span>
                       </button>
                     </li>
                   );
@@ -563,7 +574,7 @@ export function VideoEditor({ files, onClose }: { files: File[]; onClose: () => 
                           </select>
                           {COLORS.map((c) => <button key={c} type="button" onClick={() => setOverlay(o.id, { color: c })} aria-label={`Colour ${c}`} aria-pressed={o.color === c} className={cn('w-6 h-6 rounded-full border border-zinc-300', o.color === c && 'ring-2 ring-indigo-500 ring-offset-1')} style={{ background: c }} />)}
                           <label className="flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-300"><input type="checkbox" checked={o.box} onChange={(e) => setOverlay(o.id, { box: e.target.checked })} />Box</label>
-                          <span className="ml-auto flex gap-1">
+                          <span className="ms-auto flex gap-1">
                             <button type="button" onClick={() => seek(o.from)} aria-label={`Go to text ${i + 1}`} className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Play className="w-3.5 h-3.5" /></button>
                             <button type="button" onClick={() => commit({ overlays: overlays.filter((x) => x.id !== o.id) })} aria-label={`Delete text ${i + 1}`} className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-600 hover:bg-zinc-100 dark:hover:bg-white/10"><Trash2 className="w-3.5 h-3.5" /></button>
                           </span>

@@ -110,7 +110,7 @@ export function MenuList({ items, label, onDone }: { items: MenuItem[]; label: s
         return (
           <button key={i} type="button" role={it.checked === undefined ? 'menuitem' : 'menuitemcheckbox'} aria-checked={it.checked} disabled={it.disabled}
             onClick={() => { onDone(); it.onSelect(); }}
-            className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] focus:bg-zinc-100 dark:focus:bg-white/[0.06] outline-none disabled:opacity-40">
+            className="w-full text-start px-3 py-2 flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] focus:bg-zinc-100 dark:focus:bg-white/[0.06] outline-none disabled:opacity-40">
             <span className="w-4 h-4 shrink-0 flex items-center justify-center text-zinc-500 dark:text-zinc-400">{it.checked ? <Check className="w-4 h-4" /> : it.icon}</span>
             <span className="flex-1">{it.label}</span>
             {it.hint && <kbd className="text-[11px] text-zinc-500 dark:text-zinc-400 font-sans">{it.hint}</kbd>}
@@ -134,7 +134,7 @@ export function ColorGrid({ label, value, onPick, none = 'No colour' }: { label:
         ))}
       </div>
       <div className="flex items-center gap-2">
-        <button type="button" onClick={() => onPick(null)} className="flex-1 text-xs font-medium px-2 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-left">{none}</button>
+        <button type="button" onClick={() => onPick(null)} className="flex-1 text-xs font-medium px-2 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-start">{none}</button>
         <label className="text-xs inline-flex items-center gap-1.5">Other
           <input type="color" value={value ?? '#000000'} onChange={(e) => onPick(e.target.value)} className="w-7 h-7 rounded border border-zinc-300 dark:border-white/20 bg-transparent" />
         </label>

@@ -57,7 +57,7 @@ export function VoicePlayer({ src, mine, durationSec, title = 'Voice message', w
   return (
     <div className="flex items-center gap-2.5 px-3 pt-2.5 w-64 max-w-full">
       <button onClick={() => voice.toggle(play, title, durationSec)} disabled={!live} aria-label={playing ? 'Pause' : 'Play'} className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', mine ? 'bg-white text-indigo-600' : 'bg-indigo-600 text-white')}>
-        {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+        {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ms-0.5" />}
       </button>
       <div className="flex-1 min-w-0">
         <div role="slider" aria-label="Seek" aria-valuemin={0} aria-valuemax={Math.round(dur)} aria-valuenow={Math.round(pos)} tabIndex={0}
@@ -97,7 +97,7 @@ export function LocalVoicePlayer({ src, mine, durationSec }: { src: string; mine
         onLoadedMetadata={(e) => { if (Number.isFinite(e.currentTarget.duration)) setDur(e.currentTarget.duration); }}
       />
       <button onClick={toggle} aria-label={playing ? 'Pause' : 'Play'} className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', mine ? 'bg-white text-indigo-600' : 'bg-indigo-600 text-white')}>
-        {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+        {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ms-0.5" />}
       </button>
       <div className="flex-1 min-w-0">
         <input
@@ -207,14 +207,14 @@ export function MessageBubble(p: Props) {
     // A sticker stands on its own, without a bubble.
     sticker ? 'bg-transparent text-zinc-900 dark:text-white'
       : mine
-      ? 'bg-tint text-white rounded-br-[6px]'
-      : 'bg-[#e9e9eb] dark:bg-[#26252a] text-zinc-900 dark:text-white rounded-bl-[6px]',
+      ? 'bg-tint text-white rounded-ee-[6px]'
+      : 'bg-[#e9e9eb] dark:bg-[#26252a] text-zinc-900 dark:text-white rounded-es-[6px]',
     m.pending && 'opacity-60',
     highlight && 'ring-4 ring-amber-400/70',
   );
 
   const meta = (
-    <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none whitespace-nowrap', mine && !sticker ? 'text-white/70' : 'text-zinc-400')}>
+    <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none whitespace-nowrap', mine && !sticker ? 'text-white/90' : 'text-zinc-600 dark:text-zinc-400')}>
       {m.starred && <Star className="w-3 h-3 fill-current" />}
       {m.expiresAt && <span title="Disappearing message">⏱</span>}
       {m.editedAt && !deleted && (m.metadata?.moderated === 'edited' ? 'edited by UniVerse ·' : (
@@ -242,7 +242,7 @@ export function MessageBubble(p: Props) {
     content = (
       <div className={cn('grid gap-0.5 p-0.5 w-72 max-w-full', shown.length === 2 ? 'grid-cols-2' : 'grid-cols-2')}>
         {shown.map((x, i) => (
-          <button key={x.url} type="button" onClick={() => p.onOpenImage(x.url)} className={cn('relative overflow-hidden bg-black/10', shown.length === 3 && i === 0 ? 'row-span-2 aspect-[1/2]' : 'aspect-square', i === 0 && 'rounded-tl-[14px]', i === 1 && 'rounded-tr-[14px]')}>
+          <button key={x.url} type="button" onClick={() => p.onOpenImage(x.url)} className={cn('relative overflow-hidden bg-black/10', shown.length === 3 && i === 0 ? 'row-span-2 aspect-[1/2]' : 'aspect-square', i === 0 && 'rounded-ss-[14px]', i === 1 && 'rounded-se-[14px]')}>
             {/* eslint-disable-next-line @next/next/no-img-element -- a chat photo, any size */}
             <img src={safeHref(x.url)} {...photoSrcSet(safeHref(x.url), shown.length === 3 && i === 0 ? 384 : 192)} alt={x.name} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
             {i === 3 && album.length > 4 && <span className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-xl font-bold">+{album.length - 4}</span>}
@@ -321,8 +321,8 @@ export function MessageBubble(p: Props) {
             const chosen = mineVotes.includes(i);
             return (
               <button key={i} onClick={() => { haptic('tap'); p.onVote(i); }} disabled={m.pending}
-                className={cn('relative w-full text-left rounded-xl px-3 py-2 overflow-hidden border transition-colors', mine ? 'border-white/25 hover:bg-white/10' : 'border-zinc-200 dark:border-white/10 hover:bg-zinc-50 dark:hover:bg-white/[0.04]')}>
-                <span className={cn('absolute inset-y-0 left-0 transition-[width] duration-500', mine ? 'bg-white/20' : 'bg-indigo-500/15')} style={{ width: `${pct}%` }} />
+                className={cn('relative w-full text-start rounded-xl px-3 py-2 overflow-hidden border transition-colors', mine ? 'border-white/25 hover:bg-white/10' : 'border-zinc-200 dark:border-white/10 hover:bg-zinc-50 dark:hover:bg-white/[0.04]')}>
+                <span className={cn('absolute inset-y-0 start-0 transition-[width] duration-500', mine ? 'bg-white/20' : 'bg-indigo-500/15')} style={{ width: `${pct}%` }} />
                 <span className="relative flex items-center gap-2">
                   <span className={cn('w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0', chosen ? (mine ? 'bg-white border-white text-indigo-600' : 'bg-indigo-600 border-indigo-600 text-white') : mine ? 'border-white/60' : 'border-zinc-300 dark:border-white/30')}>
                     {chosen && <Check className="w-3 h-3" />}
@@ -417,7 +417,7 @@ export function MessageBubble(p: Props) {
     <div className={cn('group relative flex gap-2 items-end', mine ? 'justify-end' : 'justify-start')}>
       {/* Swipe-right-to-reply hint */}
       {touch && interactive && (
-        <motion.div style={{ opacity: replyHint }} className="absolute left-1 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-500 flex items-center justify-center pointer-events-none">
+        <motion.div style={{ opacity: replyHint }} className="absolute start-1 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-500 flex items-center justify-center pointer-events-none">
           <CornerUpLeft className="w-4 h-4" />
         </motion.div>
       )}
@@ -430,9 +430,11 @@ export function MessageBubble(p: Props) {
         onDragEnd={(_, info) => { if (info.offset.x > 60) { haptic('tap'); p.onReply(); } }}
         className={cn('flex flex-col min-w-0 max-w-[min(82%,34rem)]', mine ? 'items-end' : 'items-start')}
       >
-        {m.metadata?.ai
-          ? <span className="text-[11px] font-semibold text-fuchsia-500 mb-1 ml-2 inline-flex items-center gap-1">✨ UniVerse AI{m.metadata.askedBy ? <span className="font-normal text-zinc-500"> · asked by {m.metadata.askedBy.split(' ')[0]}</span> : null}</span>
-          : showSender && !mine && <span className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-300 mb-1 ml-2" style={p.senderColor ? { color: p.senderColor } : undefined}>{m.sender.name}</span>}
+        {m.metadata?.app
+          ? <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-300 mb-1 ms-2 inline-flex items-center gap-1">🧩 {m.metadata.app.name}{m.metadata.askedBy ? <span className="font-normal text-zinc-500"> · /{m.metadata.command} by {m.metadata.askedBy.split(' ')[0]}</span> : null}</span>
+          : m.metadata?.ai
+          ? <span className="text-[11px] font-semibold text-fuchsia-500 mb-1 ms-2 inline-flex items-center gap-1">✨ UniVerse AI{m.metadata.askedBy ? <span className="font-normal text-zinc-500"> · asked by {m.metadata.askedBy.split(' ')[0]}</span> : null}</span>
+          : showSender && !mine && <span className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-300 mb-1 ms-2" style={p.senderColor ? { color: p.senderColor } : undefined}>{m.sender.name}</span>}
         <div className={cn('flex items-center gap-1 min-w-0 max-w-full', mine && 'flex-row-reverse')}>
           <div
             className={bubble}
@@ -446,7 +448,7 @@ export function MessageBubble(p: Props) {
               <p className={cn('px-3.5 pt-2 text-[11px] italic flex items-center gap-1', mine ? 'text-white/70' : 'text-zinc-500')}><CornerUpRight className="w-3 h-3" /> Forwarded</p>
             )}
             {m.replyTo && !deleted && (
-              <div className={cn('mx-2 mt-2 px-3 py-1.5 rounded-lg border-l-4 text-xs', mine ? 'bg-white/10 border-white/60' : 'bg-zinc-100 dark:bg-white/[0.05] border-indigo-400')}>
+              <div className={cn('mx-2 mt-2 px-3 py-1.5 rounded-lg border-s-4 text-xs', mine ? 'bg-white/10 border-white/60' : 'bg-zinc-100 dark:bg-white/[0.05] border-indigo-400')}>
                 <p className="font-semibold">{m.replyTo.sender.id === me ? 'You' : m.replyTo.sender.name}</p>
                 <p className="opacity-80 line-clamp-2">{plainText(m.replyTo.body) || (m.replyTo.type === 'TEXT' ? 'Message deleted' : 'Attachment')}</p>
               </div>
@@ -464,7 +466,7 @@ export function MessageBubble(p: Props) {
                 <MoreVertical className="w-4 h-4" />
               </button>
               {picker && (
-                <div className={cn('absolute z-20 bottom-full mb-1 flex gap-1 p-1.5 rounded-full bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-xl', mine ? 'right-0' : 'left-0')}>
+                <div className={cn('absolute z-20 bottom-full mb-1 flex gap-1 p-1.5 rounded-full bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-xl', mine ? 'end-0' : 'start-0')}>
                   {REACTIONS.map((e) => (
                     <button key={e} onClick={() => { p.onReact(e); close(); }} className="w-8 h-8 rounded-full text-lg hover:bg-zinc-100 dark:hover:bg-white/10 hover:scale-125 transition-transform">{e}</button>
                   ))}
@@ -474,13 +476,13 @@ export function MessageBubble(p: Props) {
               {fullPicker && (
                 <>
                   <div className="fixed inset-0 z-[60]" onClick={close} aria-hidden />
-                  <div className={cn('z-[61] fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5rem)] flex justify-center sm:absolute sm:inset-x-auto sm:bottom-full sm:mb-1', mine ? 'sm:right-0' : 'sm:left-0')}>
+                  <div className={cn('z-[61] fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5rem)] flex justify-center sm:absolute sm:inset-x-auto sm:bottom-full sm:mb-1', mine ? 'sm:end-0' : 'sm:start-0')}>
                     <EmojiPicker onPick={(e) => { p.onReact(e); close(); }} onClose={close} custom={p.customEmoji ? Object.entries(p.customEmoji).map(([name, url]) => ({ name, url })) : []} />
                   </div>
                 </>
               )}
               {menu && (
-                <div className={cn('absolute z-20 w-48 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-xl text-sm', picker ? 'top-full mt-1' : 'bottom-full mb-1', mine ? 'right-0' : 'left-0')} onMouseLeave={() => !touch && setMenu(false)}>
+                <div className={cn('absolute z-20 w-48 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-xl text-sm', picker ? 'top-full mt-1' : 'bottom-full mb-1', mine ? 'end-0' : 'start-0')} onMouseLeave={() => !touch && setMenu(false)}>
                   <MenuItem icon={CornerUpLeft} label="Reply" onClick={() => { p.onReply(); close(); }} />
                   {p.onThread && <MenuItem icon={MessageCircle} label="Reply in thread" onClick={() => { p.onThread!(); close(); }} />}
                   {FORWARDABLE.has(m.type) && <MenuItem icon={CornerUpRight} label="Forward" onClick={() => { p.onForward(); close(); }} />}
@@ -506,12 +508,12 @@ export function MessageBubble(p: Props) {
         </div>
 
         {m.thread && m.thread.count > 0 && p.onThread && (
-          <button type="button" onClick={p.onThread} className={cn('mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-500 hover:underline', mine ? 'mr-2' : 'ml-2')}>
+          <button type="button" onClick={p.onThread} className={cn('mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-500 hover:underline', mine ? 'me-2' : 'ms-2')}>
             <MessageCircle className="w-3.5 h-3.5" /> {m.thread.count} {m.thread.count === 1 ? 'reply' : 'replies'}
           </button>
         )}
         {reactionEntries.length > 0 && (
-          <div className={cn('flex gap-1 -mt-1.5 z-10', mine ? 'mr-2' : 'ml-2')}>
+          <div className={cn('flex gap-1 -mt-1.5 z-10', mine ? 'me-2' : 'ms-2')}>
             {reactionEntries.map(([emoji, users]) => (
               <button
                 key={emoji}
@@ -580,7 +582,7 @@ function ChatPhoto({ url, name, size, mine, onOpen }: { url: string; name?: stri
   const [show, setShow] = useState(false);
   if (lowData && !mine && !show) {
     return (
-      <button onClick={() => setShow(true)} className="m-1 flex items-center gap-3 px-4 py-3 rounded-xl bg-black/5 dark:bg-white/[0.06] text-left">
+      <button onClick={() => setShow(true)} className="m-1 flex items-center gap-3 px-4 py-3 rounded-xl bg-black/5 dark:bg-white/[0.06] text-start">
         <ImageIcon className="w-5 h-5 opacity-70" />
         <span className="text-sm"><span className="block font-medium">Photo{size ? ` · ${formatBytes(size)}` : ''}</span><span className="block text-[11px] opacity-70">Low-data mode · tap to load</span></span>
       </button>
@@ -621,7 +623,7 @@ function ViewOnce({ m, mine }: { m: ChatMessage; mine: boolean }) {
   };
   return (
     <>
-      <button type="button" onClick={show} disabled={mine || gone} className="flex items-center gap-2.5 px-3.5 py-3 text-left w-60 max-w-full">
+      <button type="button" onClick={show} disabled={mine || gone} className="flex items-center gap-2.5 px-3.5 py-3 text-start w-60 max-w-full">
         <span className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0 border-2 border-dashed', mine ? 'border-white/60' : gone ? 'border-zinc-300 dark:border-zinc-600 text-zinc-400' : 'border-indigo-500 text-indigo-500')}><Flame className="w-4 h-4" /></span>
         <span className="min-w-0">
           <span className="block text-sm font-semibold">{label}</span>
@@ -677,7 +679,7 @@ function VoiceTranscript({ id, transcript, mine, pending }: { id: string; transc
 /** A link's title and description (read by the server when the message was sent). */
 function LinkCard({ link, mine }: { link: NonNullable<NonNullable<ChatMessage['metadata']>['link']>; mine: boolean }) {
   return (
-    <a href={safeHref(link.url)} target="_blank" rel="noopener noreferrer nofollow" className={cn('mt-2 block rounded-xl border-l-4 px-3 py-2 transition-colors', mine ? 'bg-white/10 border-white/60 hover:bg-white/15' : 'bg-zinc-100 dark:bg-white/[0.05] border-indigo-400 hover:bg-zinc-200/70 dark:hover:bg-white/[0.08]')}>
+    <a href={safeHref(link.url)} target="_blank" rel="noopener noreferrer nofollow" className={cn('mt-2 block rounded-xl border-s-4 px-3 py-2 transition-colors', mine ? 'bg-white/10 border-white/60 hover:bg-white/15' : 'bg-zinc-100 dark:bg-white/[0.05] border-indigo-400 hover:bg-zinc-200/70 dark:hover:bg-white/[0.08]')}>
       <span className={cn('flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide', mine ? 'text-white/70' : 'text-zinc-500')}><ExternalLink className="w-3 h-3" />{link.site}</span>
       <span className="block text-sm font-semibold leading-snug line-clamp-2 mt-0.5">{link.title}</span>
       {link.description && <span className={cn('block text-xs leading-snug line-clamp-2 mt-0.5', mine ? 'text-white/80' : 'text-zinc-600 dark:text-zinc-400')}>{link.description}</span>}

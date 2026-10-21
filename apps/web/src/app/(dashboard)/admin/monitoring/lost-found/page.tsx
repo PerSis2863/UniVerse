@@ -53,7 +53,7 @@ export default function AdminLostFoundPage() {
                       <img src={it.photoUrl} alt="" loading="lazy" className="w-12 h-12 rounded-lg object-cover shrink-0" />
                     </>) : <span className="w-12 h-12 rounded-lg bg-zinc-100 dark:bg-white/5 shrink-0" />}
                     <span className="flex-1 min-w-0 text-sm">
-                      <span className={cn('text-[10px] font-bold uppercase mr-1.5', it.kind === 'FOUND' ? 'text-emerald-500' : 'text-amber-500')}>{it.kind}</span>
+                      <span className={cn('text-[10px] font-bold uppercase me-1.5', it.kind === 'FOUND' ? 'text-emerald-500' : 'text-amber-500')}>{it.kind}</span>
                       <b className="text-zinc-900 dark:text-white">{it.title}</b>
                       <span className="block text-xs text-zinc-500 truncate">
                         {it.reporter.name} · {new Date(it.createdAt).toLocaleDateString()}{it.location ? <> · <MapPin className="inline w-3 h-3" /> {it.location}</> : null} · {it.status === 'OPEN' ? (Date.parse(it.expiresAt) < now ? 'expired' : 'open') : it.status.toLowerCase()}

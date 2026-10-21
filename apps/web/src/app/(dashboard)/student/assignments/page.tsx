@@ -9,6 +9,14 @@ import { SectionTabs, PROGRESS_TABS } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { getDraft } from '@/lib/outbox';
+import { dueChip, type DueTone } from '@/lib/due-chip';
+import { useNow } from '@/lib/use-now';
+
+const CHIP: Record<DueTone, string> = {
+  soon: 'bg-rose-500/10 text-rose-700 dark:text-rose-300',
+  today: 'bg-orange-500/10 text-orange-700 dark:text-orange-300',
+  week: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300',
+};
 
 interface Row {
   id: string;
@@ -35,6 +43,7 @@ function state(a: Row, drafted: boolean) {
 
 export default function StudentAssignmentsPage() {
   const { data, isLoading, error } = useSWR<Row[]>('/api/assignments', authedJson);
+  const now = useNow();
   const todo = (data ?? []).filter((a) => !a.mine && a.status === 'OPEN');
   const rest = (data ?? []).filter((a) => a.mine || a.status !== 'OPEN');
   // Assignments with a draft on this device (src/lib/outbox.ts), for the "Draft" label.
@@ -72,6 +81,7 @@ export default function StudentAssignmentsPage() {
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">{g.title}</h2>
                 {g.list.map((a) => {
                   const s = state(a, drafts.has(a.id));
+                  const chip = !a.mine && a.status === 'OPEN' && a.dueDate ? dueChip(new Date(a.dueDate).getTime(), now) : null;
                   return (
                     <Link key={a.id} href={`/student/assignments/${a.id}`} className={`panel lift p-4 flex items-center gap-4 hover:border-indigo-400/50`}>
                       <div className="min-w-0 flex-1">
@@ -79,6 +89,7 @@ export default function StudentAssignmentsPage() {
                         <h3 data-shared={`assignment:${a.id}`} className="font-semibold text-zinc-900 dark:text-white truncate">{a.title}</h3>
                         {a.dueDate && <p className="text-xs text-zinc-500 mt-0.5">Due {new Date(a.dueDate).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>}
                       </div>
+                      {chip && <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 tabular-nums ${CHIP[chip.tone]}`}>{chip.label}</span>}
                       <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${s.style}`}>{s.label}</span>
                       <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
                     </Link>

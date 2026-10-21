@@ -36,7 +36,7 @@ function when(r: UpNextRow) {
 function ActionButton({ row, big }: { row: UpNextRow; big?: boolean }) {
   const { item, ready, action } = row;
   if (!ready && item.start) {
-    return <span className={cn('shrink-0 text-xs font-medium text-zinc-600 dark:text-zinc-400 text-right', big && 'text-sm')}>Join from {format(new Date(item.start - JOIN_EARLY_MIN * 60_000), 'HH:mm')}</span>;
+    return <span className={cn('shrink-0 text-xs font-medium text-zinc-600 dark:text-zinc-400 text-end', big && 'text-sm')}>Join from {format(new Date(item.start - JOIN_EARLY_MIN * 60_000), 'HH:mm')}</span>;
   }
   return (
     <Link href={item.href} className={cn(big ? 'btn-primary' : 'btn-secondary btn-sm', 'shrink-0')} aria-label={`${action}: ${item.title}`}>

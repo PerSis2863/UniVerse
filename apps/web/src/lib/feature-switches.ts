@@ -110,16 +110,53 @@ export function orgSwitchEntries(orgs: Record<string, string[]>): string[] {
   return Object.entries(orgs).flatMap(([org, ids]) => (ORG_ENTRY.test(`org:${org}=x`) ? ids.filter((id) => IDS.has(id)).map((id) => `org:${org}=${id}`) : []));
 }
 
-/** The whole stored list from its three parts (null when empty). */
-export function composeSwitches(off: string[], emails: string[], orgs: Record<string, string[]>): string | null {
-  const list = [...off, ...emails, ...orgSwitchEntries(orgs)];
+// ─── Gradual rollout: a feature on for N % of schools (Stage 5 · B20) ─────────────────────────────
+// Stored as "rollout:<feature id>=<percent>". A school is in when bucket(feature, school) < percent;
+// the bucket is a stable hash, so raising the percent only adds schools. A school outside the
+// rollout has the feature off exactly like a per-school switch (same enforcement). People not in a
+// school keep it. No entry (or 100) means everyone.
+
+const ROLLOUT_ENTRY = /^rollout:(\w+)=(\d{1,3})$/;
+
+/** Rollouts: { featureId: percent (0–99) }. 100 % is stored as no entry. */
+export function parseRollouts(raw: string | null | undefined): Record<string, number> {
+  const out: Record<string, number> = {};
+  let list: unknown = [];
+  try { list = raw ? JSON.parse(raw) : []; } catch { return out; }
+  if (!Array.isArray(list)) return out;
+  for (const item of list) {
+    const m = typeof item === 'string' ? ROLLOUT_ENTRY.exec(item) : null;
+    if (m && IDS.has(m[1]) && Number(m[2]) < 100) out[m[1]] = Number(m[2]);
+  }
+  return out;
+}
+
+/** A school's place 0–99 in a feature's rollout (FNV-1a hash: stable, no storage). */
+export function rolloutBucket(featureId: string, orgId: string): number {
+  let h = 0x811c9dc5;
+  for (const c of `${featureId}:${orgId}`) h = Math.imul(h ^ c.charCodeAt(0), 0x01000193) >>> 0;
+  return h % 100;
+}
+
+/** Everything off for this school: its own switches plus the rollouts it isn't in yet. */
+export function schoolOff(orgs: Record<string, string[]>, rollouts: Record<string, number>, orgId: string | null | undefined): string[] {
+  if (!orgId) return [];
+  const off = new Set(orgs[orgId] ?? []);
+  for (const [id, pct] of Object.entries(rollouts)) if (rolloutBucket(id, orgId) >= pct) off.add(id);
+  return [...off];
+}
+
+/** The whole stored list from its parts (null when empty). */
+export function composeSwitches(off: string[], emails: string[], orgs: Record<string, string[]>, rollouts: Record<string, number>): string | null {
+  const roll = Object.entries(rollouts).filter(([id, pct]) => IDS.has(id) && Number.isInteger(pct) && pct >= 0 && pct < 100).map(([id, pct]) => `rollout:${id}=${pct}`);
+  const list = [...off, ...emails, ...orgSwitchEntries(orgs), ...roll];
   return list.length ? JSON.stringify(list) : null;
 }
 
-/** Features that are off for some school and cover this request's path (cheap: no school yet). */
-export function orgCandidates(orgs: Record<string, string[]>, method: string, path: string): FeatureSwitch[] {
+/** Features off for some school (a switch or a rollout) that cover this request's path (cheap: no school yet). */
+export function orgCandidates(orgs: Record<string, string[]>, method: string, path: string, rollouts: Record<string, number> = {}): FeatureSwitch[] {
   if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return [];
-  const ids = new Set(Object.values(orgs).flat());
+  const ids = new Set([...Object.values(orgs).flat(), ...Object.keys(rollouts)]);
   if (!ids.size) return [];
   return FEATURE_SWITCHES.filter((f) => ids.has(f.id) && f.paths?.test(path) && !f.allow?.includes(method));
 }

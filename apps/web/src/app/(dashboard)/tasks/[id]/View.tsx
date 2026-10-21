@@ -92,7 +92,7 @@ function TaskBoardPage({ id }: { id: string }) {
         draggable={data.canEdit} onDragStart={(e) => { (e as unknown as DragEvent).dataTransfer?.setData('text/plain', t.id); setDrag({ id: t.id, over: null }); }} onDragEnd={() => setDrag(null)}
         onDragOver={(e) => { if (drag) { e.preventDefault(); if (drag.over !== t.id) setDrag({ ...drag, over: t.id }); } }}
         onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const moving = data.tasks.find((x) => x.id === drag?.id); if (moving && moving.id !== t.id) moveTo(moving, t.listId, t); setDrag(null); }}
-        className={cn('w-full text-left rounded-xl bg-white dark:bg-zinc-900 border p-3 shadow-sm hover:border-indigo-400/60 transition-colors', drag?.over === t.id ? 'border-indigo-500 ring-2 ring-indigo-500/30' : 'border-zinc-200 dark:border-white/[0.07]', drag?.id === t.id && 'opacity-50')}>
+        className={cn('w-full text-start rounded-xl bg-white dark:bg-zinc-900 border p-3 shadow-sm hover:border-indigo-400/60 transition-colors', drag?.over === t.id ? 'border-indigo-500 ring-2 ring-indigo-500/30' : 'border-zinc-200 dark:border-white/[0.07]', drag?.id === t.id && 'opacity-50')}>
         {(t.labels.length > 0 || t.priority) && (
           <div className="flex flex-wrap items-center gap-1 mb-1.5">
             {t.priority && <span className={cn('inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold', PRIORITY_TONE[t.priority])}><Flag className="w-2.5 h-2.5" aria-hidden />{PRIORITY_LABEL[t.priority]}</span>}
@@ -180,7 +180,7 @@ function TaskBoardPage({ id }: { id: string }) {
               return (
                 <div key={t.id} className="flex items-center gap-3 px-4 py-2.5">
                   <button type="button" disabled={!data.canEdit} onClick={() => void patchTask(t, { done: !t.doneAt })} aria-label={t.doneAt ? 'Mark not done' : 'Mark done'} className={cn('w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0', t.doneAt ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-300 dark:border-white/20')}>{t.doneAt && <Check className="w-3 h-3" />}</button>
-                  <button type="button" onClick={() => setOpen(t.id)} className={cn('flex-1 min-w-0 text-left text-sm truncate', t.doneAt ? 'line-through text-zinc-400' : 'text-zinc-900 dark:text-white')}>{t.title}</button>
+                  <button type="button" onClick={() => setOpen(t.id)} className={cn('flex-1 min-w-0 text-start text-sm truncate', t.doneAt ? 'line-through text-zinc-400' : 'text-zinc-900 dark:text-white')}>{t.title}</button>
                   <span className="text-xs text-zinc-500 w-24 truncate">{l.title}</span>
                   <span className="text-xs text-zinc-500 w-20">{t.dueAt ? new Date(t.dueAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : ''}</span>
                   <span className="w-6">{who && <Avatar name={who.name} src={who.avatar} size={22} />}</span>
@@ -210,7 +210,7 @@ function ListHeader({ title, count, open, limit, canEdit, onRename, onDelete, on
       {editing ? (
         <input autoFocus value={value} maxLength={60} onChange={(e) => setValue(e.target.value)} onBlur={() => { setEditing(false); if (value.trim() && value.trim() !== title) onRename(value.trim()); }} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()} className="flex-1 rounded-lg bg-white dark:bg-zinc-900 px-2 py-1 text-sm font-semibold outline-none" />
       ) : (
-        <button type="button" disabled={!canEdit} onClick={() => { setValue(title); setEditing(true); }} className="flex-1 text-left text-sm font-semibold text-zinc-800 dark:text-zinc-100 truncate">{title}</button>
+        <button type="button" disabled={!canEdit} onClick={() => { setValue(title); setEditing(true); }} className="flex-1 text-start text-sm font-semibold text-zinc-800 dark:text-zinc-100 truncate">{title}</button>
       )}
       {limit
         ? <button type="button" disabled={!canEdit} onClick={onLimit} title="Open cards / limit" className={cn('text-xs tabular-nums rounded px-1', open > limit ? 'bg-rose-500 text-white font-semibold' : 'text-zinc-500')}>{open}/{limit}</button>
@@ -292,7 +292,7 @@ function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; bo
             <div key={i} className="flex items-center gap-2 group">
               <button type="button" disabled={ro} onClick={() => setChecklist(card.checklist.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))} className={cn('w-4 h-4 rounded border-2 flex items-center justify-center', c.done ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-300 dark:border-white/20')}>{c.done && <Check className="w-3 h-3" />}</button>
               <span className={cn('flex-1 text-sm', c.done && 'line-through text-zinc-400')}>{c.text}</span>
-              {!ro && <button type="button" onClick={() => setChecklist(card.checklist.filter((_, j) => j !== i))} aria-label="Remove" className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-rose-500"><X className="w-3.5 h-3.5" /></button>}
+              {!ro && <button type="button" onClick={() => setChecklist(card.checklist.filter((_, j) => j !== i))} aria-label="Remove" className="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-visible:opacity-100 p-1 text-zinc-400 hover:text-rose-500"><X className="w-3.5 h-3.5" /></button>}
             </div>
           ))}
           {!ro && card.checklist.length < 30 && (

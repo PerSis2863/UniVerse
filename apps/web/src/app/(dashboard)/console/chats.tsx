@@ -66,7 +66,7 @@ export function ChatsPanel({ onPerson, initialChat }: { onPerson: (id: string) =
       <WatchWords onOpen={(id, highlight) => setOpen({ id, highlight })} />
       <SearchBox value={q} onChange={setQ} placeholder="Search people, group names and every message" />
       <div className={cn(card, 'grid md:grid-cols-[300px_1fr] h-[75vh] min-h-[420px] overflow-hidden')}>
-        <div className={cn('overflow-y-auto border-r border-zinc-100 dark:border-white/[0.06]', open && 'hidden md:block')}>
+        <div className={cn('overflow-y-auto border-e border-zinc-100 dark:border-white/[0.06]', open && 'hidden md:block')}>
           {isLoading ? <div className="p-6"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div> : (
             <>
               {!!data?.hits.length && (
@@ -74,7 +74,7 @@ export function ChatsPanel({ onPerson, initialChat }: { onPerson: (id: string) =
                   <p className="px-3 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-zinc-400">Messages</p>
                   <ul>{data.hits.map((h) => (
                     <li key={h.id}>
-                      <button onClick={() => setOpen({ id: h.conversationId, highlight: h.id })} className="w-full text-left px-3 py-2 hover:bg-zinc-50 dark:hover:bg-white/[0.03]">
+                      <button onClick={() => setOpen({ id: h.conversationId, highlight: h.id })} className="w-full text-start px-3 py-2 hover:bg-zinc-50 dark:hover:bg-white/[0.03]">
                         <p className="text-xs text-zinc-500 truncate"><span className="font-semibold text-zinc-700 dark:text-zinc-300">{h.sender?.name ?? 'UniVerse'}</span> · {h.conversation.isGroup ? h.conversation.name ?? 'Group' : 'private chat'} · {formatDistanceToNow(new Date(h.createdAt), { addSuffix: true })}</p>
                         <p className={cn('text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2', h.deletedAt && 'line-through opacity-60')}>{h.body}</p>
                       </button>
@@ -89,7 +89,7 @@ export function ChatsPanel({ onPerson, initialChat }: { onPerson: (id: string) =
                   const live = c.participants.some((p) => online(p.user.lastSeenAt));
                   return (
                     <li key={c.id}>
-                      <button onClick={() => setOpen({ id: c.id })} className={cn('relative isolate w-full text-left p-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', open?.id === c.id && '')}>{open?.id === c.id && <TabPill id="app-dashboard-console-chats-1" variant="soft" />}
+                      <button onClick={() => setOpen({ id: c.id })} className={cn('relative isolate w-full text-start p-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03]', open?.id === c.id && '')}>{open?.id === c.id && <TabPill id="app-dashboard-console-chats-1" variant="soft" />}
                         <div className="flex items-center gap-2">
                           {c.isGroup ? <Users className="w-3.5 h-3.5 text-zinc-400 shrink-0" /> : <MessageSquare className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
                           <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate flex-1">{chatTitle(c)}</p>
@@ -143,7 +143,7 @@ function WatchWords({ onOpen }: { onOpen: (conversationId: string, messageId: st
   const flagged = data?.flagged ?? [];
   return (
     <div className={cn(card, flagged.length > 0 && 'border-amber-500/40')}>
-      <button onClick={() => setShow(!show)} aria-expanded={show} className="w-full flex items-center gap-2 p-4 text-left">
+      <button onClick={() => setShow(!show)} aria-expanded={show} className="w-full flex items-center gap-2 p-4 text-start">
         <AlertTriangle className={cn('w-4 h-4 shrink-0', flagged.length ? 'text-amber-500' : 'text-zinc-400')} />
         <span className="font-semibold text-zinc-900 dark:text-white flex-1">Watch words</span>
         <span className="text-xs text-zinc-500">{data ? `${data.words.length} words · ${flagged.length} flagged in 14 days` : ''}</span>
@@ -160,7 +160,7 @@ function WatchWords({ onOpen }: { onOpen: (conversationId: string, messageId: st
             <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05] rounded-xl border border-zinc-100 dark:border-white/[0.05] max-h-72 overflow-y-auto">
               {flagged.map((h) => (
                 <li key={h.id}>
-                  <button onClick={() => onOpen(h.conversationId, h.id)} className="w-full text-left px-3 py-2 hover:bg-zinc-50 dark:hover:bg-white/[0.03]">
+                  <button onClick={() => onOpen(h.conversationId, h.id)} className="w-full text-start px-3 py-2 hover:bg-zinc-50 dark:hover:bg-white/[0.03]">
                     <p className="text-xs text-zinc-500 truncate"><span className="font-semibold text-zinc-700 dark:text-zinc-300">{h.sender?.name ?? 'UniVerse'}</span> · {h.conversation.isGroup ? h.conversation.name ?? 'Group' : 'private chat'} · {formatDistanceToNow(new Date(h.createdAt), { addSuffix: true })}{h.deletedAt ? ' · removed' : ''}</p>
                     <p className={cn('text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2', h.deletedAt && 'line-through opacity-60')}>{h.body}</p>
                   </button>
@@ -248,7 +248,7 @@ export function LiveChat({ id, onBack, onPerson, highlight }: { id: string; onBa
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {c.participants.map(({ user: u, role }) => (
-            <span key={u.id} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] pl-2 pr-1 py-0.5 text-xs text-zinc-700 dark:text-zinc-300">
+            <span key={u.id} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] ps-2 pe-1 py-0.5 text-xs text-zinc-700 dark:text-zinc-300">
               <span className={cn('w-1.5 h-1.5 rounded-full', online(u.lastSeenAt) ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-600')} />
               <button onClick={() => onPerson?.(u.id)} disabled={!onPerson} className="hover:underline disabled:no-underline" title={u.email}>{u.name}</button>
               {role === 'ADMIN' && c.isGroup && <span className="text-[10px] text-zinc-400">admin</span>}
@@ -277,7 +277,7 @@ export function LiveChat({ id, onBack, onPerson, highlight }: { id: string; onBa
             return (
               <li key={m.id} id={`m-${m.id}`} className="group flex justify-center items-center gap-2">
                 <span className={cn('text-xs px-3 py-1 rounded-full text-center max-w-[85%]', m.metadata?.team ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-200' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-500', m.deletedAt && 'line-through opacity-60')}>{m.body}</span>
-                {!m.deletedAt && <button onClick={() => void remove(m)} aria-label="Remove" className="sm:opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>}
+                {!m.deletedAt && <button onClick={() => void remove(m)} aria-label="Remove" className="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-visible:opacity-100 text-zinc-400 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>}
               </li>
             );
           }
@@ -288,7 +288,7 @@ export function LiveChat({ id, onBack, onPerson, highlight }: { id: string; onBa
                   <button onClick={() => m.sender && onPerson?.(m.sender.id)} disabled={!onPerson} className="font-semibold text-indigo-600 dark:text-indigo-300 hover:underline disabled:no-underline">{m.sender?.name ?? 'UniVerse'}</button>
                   {' · '}{format(new Date(m.createdAt), 'd MMM, HH:mm')}{flags.length ? ` · ${flags.join(' · ')}` : ''}
                 </p>
-                <span className="flex gap-2.5 shrink-0 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
+                <span className="flex gap-2.5 shrink-0 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 group-focus-within:opacity-100">
                   {busy === m.id ? <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" /> : (
                     <>
                       {m.type === 'TEXT' && !m.deletedAt && <button onClick={() => { setEditing(m.id); setDraft(m.body); }} aria-label="Edit message" title="Edit (shows “edited by UniVerse”)" className="text-zinc-400 hover:text-indigo-500"><Pencil className="w-3.5 h-3.5" /></button>}

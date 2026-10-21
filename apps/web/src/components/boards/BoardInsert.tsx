@@ -37,7 +37,7 @@ export function BoardInsert({ controls, disabled, className }: { controls: React
     } catch { toast.error('Couldn’t add that picture.'); }
     finally { setBusy(null); }
   };
-  const item = 'px-2.5 py-2 rounded-xl text-left text-sm text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.06]';
+  const item = 'px-2.5 py-2 rounded-xl text-start text-sm text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-white/[0.06]';
 
   return (
     <div className="relative">
@@ -45,7 +45,7 @@ export function BoardInsert({ controls, disabled, className }: { controls: React
         <Shapes className="w-4 h-4" /><span className="hidden md:inline">Add</span>
       </button>
       {open && (
-        <div role="dialog" aria-label="Add to the board" className="absolute right-0 top-11 z-40 w-[22rem] max-sm:fixed max-sm:inset-x-4 max-sm:top-16 max-sm:w-auto rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-2 space-y-2" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>
+        <div role="dialog" aria-label="Add to the board" className="absolute end-0 top-11 z-40 w-[22rem] max-sm:fixed max-sm:inset-x-4 max-sm:top-16 max-sm:w-auto rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-2 space-y-2" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>
           <Segmented<Tab> segments={[{ value: 'templates', label: 'Templates' }, { value: 'shapes', label: 'Shapes' }, { value: 'stamps', label: 'Stamps' }, { value: 'files', label: 'Pictures' }]} value={tab} onChange={setTab} label="Add" className="w-full" />
           <div className="max-h-[60vh] overflow-y-auto">
             {tab === 'templates' && (
@@ -72,8 +72,8 @@ export function BoardInsert({ controls, disabled, className }: { controls: React
               <div className="space-y-2 p-1">
                 <label className="relative block">
                   <span className="sr-only">Find a picture</span>
-                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" aria-hidden />
-                  <input value={q} onChange={(e) => setQ(e.target.value.slice(0, 80))} placeholder="Search your files, classes and groups" className="input py-1.5 pl-8 text-sm" />
+                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute start-2.5 top-1/2 -translate-y-1/2" aria-hidden />
+                  <input value={q} onChange={(e) => setQ(e.target.value.slice(0, 80))} placeholder="Search your files, classes and groups" className="input py-1.5 ps-8 text-sm" />
                 </label>
                 {!files ? <div className="h-24 rounded-xl skeleton" /> : !pictures.length ? <p className="text-xs text-zinc-500 px-1">No pictures {q.trim().length >= 2 ? 'match' : 'changed lately'}. Upload them in Collaborate → Files.</p> : (
                   <ul className="grid grid-cols-3 gap-1.5">

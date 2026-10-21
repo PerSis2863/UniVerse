@@ -144,24 +144,24 @@ function DocPage({ id }: { id: string }) {
           <AnimatePresence>
             {exportOpen && editor && (
               <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.snappy} onMouseLeave={() => setExportOpen(false)}
-                className="absolute right-0 top-10 z-30 w-56 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
-                <button type="button" onClick={() => { setExportOpen(false); exportPdf(shownTitle, fillContents(editor.getHTML(), headingsOf(editor.state)), page); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">PDF (print)</button>
-                <button type="button" onClick={() => { setExportOpen(false); void downloadDocx(shownTitle, editor, page).catch(() => toast.error('Couldn’t make the Word file.')); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Word (.docx)</button>
-                <button type="button" onClick={() => { setExportOpen(false); downloadMarkdown(shownTitle, editor); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Markdown (.md)</button>
+                className="absolute end-0 top-10 z-30 w-56 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
+                <button type="button" onClick={() => { setExportOpen(false); exportPdf(shownTitle, fillContents(editor.getHTML(), headingsOf(editor.state)), page); }} className="w-full text-start px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">PDF (print)</button>
+                <button type="button" onClick={() => { setExportOpen(false); void downloadDocx(shownTitle, editor, page).catch(() => toast.error('Couldn’t make the Word file.')); }} className="w-full text-start px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Word (.docx)</button>
+                <button type="button" onClick={() => { setExportOpen(false); downloadMarkdown(shownTitle, editor); }} className="w-full text-start px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Markdown (.md)</button>
                 <div className="my-1 h-px bg-zinc-200 dark:bg-white/10" />
-                <button type="button" onClick={() => { setExportOpen(false); setSheet('page'); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Page setup (paper, margins, page numbers)</button>
-                <button type="button" disabled={!editable} onClick={() => { setExportOpen(false); importRef.current?.click(); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-40 inline-flex items-center gap-2"><FileUp className="w-4 h-4" />Import Word, Markdown or text</button>
+                <button type="button" onClick={() => { setExportOpen(false); setSheet('page'); }} className="w-full text-start px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Page setup (paper, margins, page numbers)</button>
+                <button type="button" disabled={!editable} onClick={() => { setExportOpen(false); importRef.current?.click(); }} className="w-full text-start px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-40 inline-flex items-center gap-2"><FileUp className="w-4 h-4" />Import Word, Markdown or text</button>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
         <button type="button" onClick={() => setSheet('history')} title="Version history" aria-label="Version history" className="p-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><History className="w-4 h-4" /></button>
-        <button type="button" onClick={() => setPanel(panel === 'suggestions' ? null : 'suggestions')} aria-pressed={panel === 'suggestions'} title="Suggestions" aria-label={`Suggestions${suggestions ? `, ${suggestions} waiting` : ''}`} className={cn('relative p-2 rounded-full', panel === 'suggestions' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}><ListChecks className="w-4 h-4" />{suggestions > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full text-white text-[10px] font-bold grid place-items-center tabular-nums" style={{ background: '#047857' }} aria-hidden>{suggestions}</span>}</button>
+        <button type="button" onClick={() => setPanel(panel === 'suggestions' ? null : 'suggestions')} aria-pressed={panel === 'suggestions'} title="Suggestions" aria-label={`Suggestions${suggestions ? `, ${suggestions} waiting` : ''}`} className={cn('relative p-2 rounded-full', panel === 'suggestions' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}><ListChecks className="w-4 h-4" />{suggestions > 0 && <span className="absolute -top-0.5 -end-0.5 min-w-4 h-4 px-1 rounded-full text-white text-[10px] font-bold grid place-items-center tabular-nums" style={{ background: '#047857' }} aria-hidden>{suggestions}</span>}</button>
         <button type="button" onClick={() => setPanel(panel === 'comments' ? null : 'comments')} aria-pressed={panel === 'comments'} title="Comments" aria-label="Comments" className={cn('p-2 rounded-full', panel === 'comments' ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-300' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10')}><MessageSquare className="w-4 h-4" /></button>
         {data.canManage && !data.course && !data.chat && <button type="button" onClick={() => setSheet('share')} className="hidden sm:inline-flex px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-xs font-semibold items-center gap-1"><Share2 className="w-3.5 h-3.5" />Share</button>}
         {data.canManage && <button type="button" aria-label="Delete document" onClick={async () => { if (await confirmDialog({ title: 'Delete this document?', message: data.children.length ? 'Its text, versions and comments go for everyone. The pages inside it move to the top.' : 'Its text, versions and comments go for everyone.', destructive: true })) { await call(`/api/docs/${id}`, 'DELETE').catch((e) => toast.error((e as Error).message)); router.push('/docs'); } }} className="p-2 rounded-full text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>}
       </header>
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0b0e1a]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center pr-2"><div className="flex-1 min-w-0"><WordToolbar editor={editor} disabled={!editable} onFind={() => setFinding((f) => !f)} /></div><SuggestToggle editor={editor} disabled={!editable} /><DocAiButton editor={editor} canEdit={editable} docId={id} /><EmbedMenu editor={editor} disabled={!editable} />{!data.chat && <PageLinkButton editor={editor} disabled={!editable} currentId={id} />}</div>
+      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#0b0e1a]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center pe-2"><div className="flex-1 min-w-0"><WordToolbar editor={editor} disabled={!editable} onFind={() => setFinding((f) => !f)} /></div><SuggestToggle editor={editor} disabled={!editable} /><DocAiButton editor={editor} canEdit={editable} docId={id} /><EmbedMenu editor={editor} disabled={!editable} />{!data.chat && <PageLinkButton editor={editor} disabled={!editable} currentId={id} />}</div>
       {finding && editor && <FindBar editor={editor} canEdit={editable} onClose={() => { setFinding(false); editor.commands.focus(); }} />}
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 overflow-y-auto">
@@ -173,13 +173,13 @@ function DocPage({ id }: { id: string }) {
         <AnimatePresence>
           {panel === 'comments' && (
             <motion.aside key="comments" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={spring.smooth}
-              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#0f1322] border-l border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
+              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#0f1322] border-s border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
               <Comments docId={id} me={data.me.id} canEdit={data.canEdit} onClose={() => setPanel(null)} pick={() => pickText(editor)} go={(q) => goToQuote(editor, q)} />
             </motion.aside>
           )}
           {panel === 'suggestions' && (
             <motion.aside key="suggestions" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={spring.smooth}
-              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#0f1322] border-l border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
+              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#0f1322] border-s border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
               <SuggestionsPanel editor={editor} canEdit={editable} onClose={() => setPanel(null)} />
             </motion.aside>
           )}
@@ -249,7 +249,7 @@ function HistorySheet({ docId, editor, canEdit, onClose }: { docId: string; edit
         <div className="space-y-1">
           {!data ? <Loader2 className="w-5 h-5 animate-spin text-indigo-400" /> : !data.length && <p className="text-sm text-zinc-500">No versions yet. They’re saved as people write.</p>}
           {data?.map((v) => (
-            <button key={v.id} type="button" onClick={() => setPicked(v.id)} className="w-full flex items-center gap-3 p-2.5 rounded-2xl text-left hover:bg-zinc-100 dark:hover:bg-white/[0.05]">
+            <button key={v.id} type="button" onClick={() => setPicked(v.id)} className="w-full flex items-center gap-3 p-2.5 rounded-2xl text-start hover:bg-zinc-100 dark:hover:bg-white/[0.05]">
               <FileText className={cn('w-4 h-4 shrink-0', v.name ? 'text-fuchsia-500' : 'text-zinc-400')} />
               <span className="flex-1 min-w-0">
                 <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{v.name ?? new Date(v.createdAt).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>

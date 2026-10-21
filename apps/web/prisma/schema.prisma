@@ -218,6 +218,7 @@ model User {
   announcementReads      AnnouncementRead[]
   courseStaff            CourseStaff[]           // courses I co-teach or assist in (Stage 5 · B2)
   aiUses                 AiUse[]                 // AI help I used (Stage 5 · D12)
+  conceptSignals         ConceptSignal[]         // flashcard reviews and tutor questions for the mastery map (Q22)
   wellbeingSettings      WellbeingSettings?      // wellbeing radar (Stage 5 · D13), opt-in
   wellbeingCheckins      WellbeingCheckin[]
   wellbeingAlerts        WellbeingAlert[]
@@ -585,6 +586,7 @@ model Course {
   feePlans          FeePlan[]
   pendingEnrolments PendingEnrolment[]
   concepts          CourseConcept[]
+  conceptSignals    ConceptSignal[]
   secondChances     SecondChance[]
   whisperQuestions  WhisperQuestion[]
   marketplacePacks   MarketplacePack[]
@@ -715,6 +717,8 @@ model Quiz {
   hardStop    Boolean    @default(false)
   /// A practice set (B4.4): never graded; its questions are practised any time, with the answers
   practice    Boolean    @default(false)
+  /// AI use (Stage 5 · Q22, D12): FREE, RECEIPT (allowed with an AI receipt), NONE (not allowed)
+  aiPolicy    String     @default("FREE")
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -770,6 +774,8 @@ model QuizSubmission {
   offlineStatus    String?
   /// The questions this student got, when the quiz draws from pools (JSON ids)
   drawn            String?
+  /// The student's AI receipt or "no AI" declaration (Stage 5 · Q22), JSON (src/lib/ai-receipt.ts)
+  aiReceipt        String?
 
   @@unique([quizId, studentId])
   @@index([quizId])
@@ -1242,6 +1248,57 @@ model BoardMember {
 
 /// Every change the platform owner makes in the owner console, with the record before and after,
 /// so any of them can be undone. Only the owner can see this table.
+/// The app's screens in one language, part `chunk` of 32 (Stage 5 · Q21, src/server/ui-translations.ts).
+/// data: JSON { s: { english: translation }, r: [checked english texts] }.
+model UiTranslation {
+  lang      String
+  chunk     Int
+  data      String   @default("{\"s\":{},\"r\":[]}")
+  count     Int      @default(0)
+  reviewed  Int      @default(0)
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@id([lang, chunk])
+  @@map("ui_translations")
+}
+
+/// A school's chat app (Stage 5 · Q20): slash commands answered by the app's own server
+/// (src/server/chat-apps.ts). commands / permissions are JSON lists.
+model ChatApp {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  url            String
+  secret         String
+  commands       String    @default("[]")
+  permissions    String    @default("[]")
+  enabled        Boolean   @default(true)
+  createdById    String?
+  lastCalledAt   DateTime?
+  lastStatus     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
+
+  @@index([organizationId])
+  @@map("chat_apps")
+}
+
+/// Each change of a school's subscription (Stripe webhook, src/lib/billing.ts): churn in the owner console.
+model SubscriptionEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  fromStatus     String?
+  toStatus       String
+  fromPlan       String?
+  toPlan         String
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([organizationId])
+  @@map("subscription_events")
+}
+
 model OwnerChange {
   id        String    @id @default(cuid())
   ownerId   String
@@ -2995,6 +3052,8 @@ model StudyCard {
   stability   Float?
   difficulty  Float?
   lastReview  DateTime?
+  /// The course concept its words match (Stage 5 · Q22): its reviews count toward the mastery map
+  conceptId   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -3725,6 +3784,9 @@ model FeePlan {
   instalments String
   createdById String
   createdBy   User         @relation("FeePlansMade", fields: [createdById], references: [id], onDelete: Cascade)
+  /// Late fee (Stage 5 · Q22): added once to a bill still unpaid this many days after its due date (minor units; 0 = none)
+  lateFee       Int        @default(0)
+  lateGraceDays Int        @default(0)
   archivedAt  DateTime?
   createdAt   DateTime     @default(now())
   invoices    FeeInvoice[]
@@ -3752,6 +3814,8 @@ model FeeInvoice {
   dueAt        DateTime
   status       String       @default("DUE")
   remindedAt   DateTime?
+  /// The late fee added to `amount` (Stage 5 · Q22), shown apart and waivable
+  lateFee      Int          @default(0)
   createdAt    DateTime     @default(now())
   payments     FeePayment[]
   paymentOrders PaymentOrder[]
@@ -3934,6 +3998,8 @@ model StaffLeave {
   fromDate     String
   toDate       String
   reason       String?
+  /// A single day's morning (AM) or afternoon (PM) only (Stage 5 · Q22); null for whole days
+  halfDay      String?
   status       String       @default("PENDING")
   decidedById  String?
   decidedAt    DateTime?
@@ -4061,6 +4127,28 @@ model LibraryHold {
 }
 
 /// The library's rules (one row, id "default"); fines in minor units.
+/// Staff leave allowances for the whole school (Stage 5 · Q22; one row, id "main"): days a year for
+/// each kind of leave, JSON { SICK: 12, … } (0: no limit), and the month the leave year starts.
+model StaffSettings {
+  id             String   @id
+  leaveDays      String   @default("{\"SICK\":12,\"PERSONAL\":10,\"TRAINING\":0,\"OTHER\":0}")
+  yearStartMonth Int      @default(1)
+  updatedAt      DateTime @default(now())
+
+  @@map("staff_settings")
+}
+
+/// The daily jobs in steps (Stage 5 · bug review, src/server/daily-jobs.ts): where each got to today.
+model JobRun {
+  job       String   @id
+  day       String
+  cursor    String?
+  done      Boolean  @default(false)
+  updatedAt DateTime @default(now())
+
+  @@map("job_runs")
+}
+
 model LibrarySettings {
   id          String   @id
   loanDays    Int      @default(14)
@@ -4188,9 +4276,31 @@ model CourseConcept {
   position    Int             @default(0)
   createdAt   DateTime        @default(now())
   tags        ConceptTag[]
+  signals     ConceptSignal[]
 
   @@unique([courseId, name])
   @@map("course_concepts")
+}
+
+/// A signal for the mastery map that isn't a marked answer (Stage 5 · Q22): CARD, a flashcard review
+/// (outcome 0–1 the student gave themselves; one per card a day), or TUTOR, a question to the course
+/// tutor about the concept (no outcome; shown as "asked about it"). Matched by words (src/lib/concept-match.ts).
+model ConceptSignal {
+  id        String        @id @default(cuid())
+  courseId  String
+  course    Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  conceptId String
+  concept   CourseConcept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  kind      String
+  outcome   Float?
+  /// The card, for one review a day
+  refId     String?
+  createdAt DateTime      @default(now())
+
+  @@index([courseId, studentId])
+  @@map("concept_signals")
 }
 
 /// What tests a concept: kind QUESTION (a quiz question id), BANK (a question-bank item id) or
@@ -5715,6 +5825,8 @@ model ClassroomSession {
   transcript     String              @default("[]") // JSON [{ t, who, text }]
   pulse          String              @default("[]") // JSON [{ t, lost, got, total }]
   classSessionId String? // the study pack made when it ended
+  /// Linked to the course's class call (Stage 5 · Q22): one lost meter, and online students marked present
+  linkedCall     Boolean             @default(false)
   checkins       ClassroomCheckin[]
   questions      ClassroomQuestion[]
 
@@ -5747,6 +5859,10 @@ model ClassroomQuestion {
   student    User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
   text       String
   answeredAt DateTime?
+  /// The class TA's answer, for the student who asked only (Stage 5 · Q22): text, JSON [{ n, title }], from the course materials
+  answer     String?
+  citations  String?
+  grounded   Boolean          @default(false)
   createdAt  DateTime         @default(now())
 
   @@index([sessionId])
@@ -5775,6 +5891,8 @@ model OralCheck {
   dueAt     DateTime?
   /// OPEN | CLOSED
   status    String        @default("OPEN")
+  /// AI use (Stage 5 · Q22, D12): FREE, RECEIPT, NONE, as on assignments
+  aiPolicy  String        @default("FREE")
   createdAt DateTime      @default(now())
   sessions  OralSession[]
 
@@ -5806,6 +5924,8 @@ model OralSession {
   teacherComment String?
   confirmedById  String?
   confirmedAt    DateTime?
+  /// The student's AI receipt for an oral check (Stage 5 · Q22), JSON (src/lib/ai-receipt.ts)
+  aiReceipt      String?
   createdAt      DateTime   @default(now())
 
   @@unique([checkId, userId])

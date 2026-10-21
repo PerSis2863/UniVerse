@@ -33,6 +33,9 @@ interface TopbarProps {
   sharedId?: string;
 }
 
+/** Where the notifications panel slides from: off the end edge (right, or left in right-to-left). */
+const offEdge = () => (typeof document !== 'undefined' && document.documentElement.dir === 'rtl' ? 'translateX(-100%)' : 'translateX(100%)');
+
 export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobileTitle, sharedId }: TopbarProps) {
   const router = useRouter();
   const { user } = useAuthStore();
@@ -134,7 +137,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
             className="hidden sm:flex items-center gap-2 h-9 w-56 rounded-[10px] bg-[var(--fill)] px-3 text-[15px] text-zinc-500 dark:text-zinc-400 hover:bg-[var(--fill-strong)] transition-colors"
           >
             <Search className="w-4 h-4" />
-            <span className="flex-1 text-left">{t('common.search')}</span>
+            <span className="flex-1 text-start">{t('common.search')}</span>
             <kbd className="text-[11px] font-medium text-zinc-500">⌘K</kbd>
           </button>
 
@@ -149,7 +152,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
             className={cn('btn-ghost btn-icon relative rounded-full', showNotifications && 'bg-[var(--fill)]')}
           >
             <Bell className="w-[19px] h-[19px]" strokeWidth={2.1} />
-            {unreadCount > 0 && <span aria-hidden className="absolute top-0.5 right-0.5 min-w-[17px] h-[17px] px-1 rounded-full badge-count text-[10px] text-white font-bold leading-[17px] text-center">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+            {unreadCount > 0 && <span aria-hidden className="absolute top-0.5 end-0.5 min-w-[17px] h-[17px] px-1 rounded-full badge-count text-[10px] text-white font-bold leading-[17px] text-center">{unreadCount > 99 ? '99+' : unreadCount}</span>}
           </button>
 
           {action && (
@@ -173,9 +176,11 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
             <motion.div
               ref={dropdownRef}
               role="dialog" aria-label="Notifications"
-              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+              // A whole transform (not x) so it slides on the GPU, smooth even while the list renders;
+              // from the left in right-to-left languages, where the panel sits.
+              initial={{ transform: offEdge() }} animate={{ transform: 'translateX(0%)' }} exit={{ transform: offEdge() }}
               transition={spring.gentle}
-              className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[400px] tone-panel shadow-2xl z-[130] flex flex-col sheet-safe-top sm:rounded-l-[28px] overflow-hidden"
+              className="fixed end-0 top-0 h-[100dvh] w-full sm:w-[400px] tone-panel shadow-2xl z-[130] flex flex-col sheet-safe-top sm:rounded-s-[28px] overflow-hidden"
             >
               <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
                 <div>
@@ -197,7 +202,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
                 />
               </div>
 
-              <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2">
+              <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2 stagger">
                 {filteredNotifications.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-zinc-400">
                     <Archive className="w-12 h-12 mb-3 opacity-30" />
@@ -205,7 +210,9 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
                   </div>
                 ) : (
                   filteredNotifications.map(n => (
-                    <motion.div layout transition={spring.smooth} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                    // Plain rows with the CSS cascade: an animation each in JS (and layout tracking)
+                    // restyled every row on every frame while the panel slid in.
+                    <div
                       key={n.id} onClick={() => { if (n.unread) markRead([n.id]); if (n.link?.startsWith("/")) { setShowNotifications(false); router.push(n.link); } }}
                       className="p-3.5 rounded-[20px] bg-[var(--surface-2)] dark:bg-white/[0.06] cursor-pointer flex items-start gap-3 active:scale-[0.98] transition-transform"
                     >
@@ -221,7 +228,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
                         {n.important && <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--ios-red)]"><AlertCircle className="w-3 h-3" /> Important</span>}
                       </div>
                       {n.unread && <div className="w-2.5 h-2.5 rounded-full bg-tint mt-1.5 flex-shrink-0" />}
-                    </motion.div>
+                    </div>
                   ))
                 )}
               </div>

@@ -5,17 +5,16 @@ export function dayKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** The six weeks shown for a month, Monday first: 42 days starting on or before the 1st. */
-export function monthGrid(year: number, month: number): Date[] {
-  const first = new Date(year, month, 1);
-  const back = (first.getDay() + 6) % 7; // days since Monday
+/** The six weeks shown for a month, Monday first (or Sunday, `first` 0): 42 days starting on or before the 1st. */
+export function monthGrid(year: number, month: number, first: 0 | 1 = 1): Date[] {
+  const back = (new Date(year, month, 1).getDay() + 7 - first) % 7; // days since the week began
   return Array.from({ length: 42 }, (_, i) => new Date(year, month, 1 - back + i));
 }
 
-/** The Monday of the week a day falls in (local midnight). */
-export function weekStart(d: Date) {
+/** The Monday (or Sunday, `first` 0) of the week a day falls in (local midnight). */
+export function weekStart(d: Date, first: 0 | 1 = 1) {
   const m = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  m.setDate(m.getDate() - ((m.getDay() + 6) % 7));
+  m.setDate(m.getDate() - ((m.getDay() + 7 - first) % 7));
   return m;
 }
 

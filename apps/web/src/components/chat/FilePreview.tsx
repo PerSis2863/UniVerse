@@ -192,7 +192,7 @@ export function FileBubble({ url, name, size, mime, mine }: { url: string; name:
               <img src={thumb.src} alt={`First page of ${title}`} className="w-full object-cover object-top" />
             </motion.span>
           ) : (
-            <motion.pre initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={spring.smooth} className={cn('h-28 overflow-hidden rounded-[12px] p-2.5 text-left text-[11px] leading-snug font-mono whitespace-pre-wrap break-all', mine ? 'bg-black/20 text-white/90' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-200')}>{lines}</motion.pre>
+            <motion.pre initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={spring.smooth} className={cn('h-28 overflow-hidden rounded-[12px] p-2.5 text-start text-[11px] leading-snug font-mono whitespace-pre-wrap break-all', mine ? 'bg-black/20 text-white/90' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-700 dark:text-zinc-200')}>{lines}</motion.pre>
           )}
         </button>
       )}

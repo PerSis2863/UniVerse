@@ -42,7 +42,7 @@ function ReceiptPage({ id }: { id: string }) {
                   <h1 className="text-lg font-black break-words">{data.ngo}</h1>
                   <p className="text-sm text-zinc-500 print:text-black">Donation receipt</p>
                 </div>
-                <div className="text-right">
+                <div className="text-end">
                   <p className="text-xs text-zinc-500 print:text-black">Receipt</p>
                   <p className="text-xl font-black tabular-nums">{data.number}</p>
                 </div>

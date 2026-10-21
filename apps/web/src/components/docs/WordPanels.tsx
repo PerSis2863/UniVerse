@@ -33,7 +33,7 @@ export function FindBar({ editor, canEdit, onClose }: { editor: Editor; canEdit:
         <button type="button" disabled={!s?.n} onClick={() => replaceCurrent(editor, repl)} className="btn-secondary btn-sm disabled:opacity-40">Replace</button>
         <button type="button" disabled={!s?.n} onClick={() => { const n = replaceAll(editor, repl); toast.success(`Replaced ${n}`); }} className="btn-secondary btn-sm disabled:opacity-40">Replace all</button>
       </>}
-      <button type="button" aria-label="Close find" onClick={onClose} className="ml-auto p-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
+      <button type="button" aria-label="Close find" onClick={onClose} className="ms-auto p-1.5 rounded-lg hover:bg-white/60 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
     </div>
   );
 }

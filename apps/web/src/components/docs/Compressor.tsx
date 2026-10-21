@@ -121,7 +121,7 @@ export function Compressor({ onClose }: { onClose?: () => void }) {
                 {r.state === 'done' && r.out && (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-800 dark:text-emerald-300"><CheckCircle2 className="w-4 h-4" aria-hidden />{saved ? `${formatSize(r.file.size)} → ${formatSize(r.out.blob.size)} · ${saved}% smaller` : 'Unchanged'}</span>
-                    <button type="button" onClick={() => save(r.out!.name, r.out!.blob)} className="btn-secondary btn-sm ml-auto"><Download className="w-4 h-4" />Download</button>
+                    <button type="button" onClick={() => save(r.out!.name, r.out!.blob)} className="btn-secondary btn-sm ms-auto"><Download className="w-4 h-4" />Download</button>
                     {r.out.note && <p className="w-full text-xs text-zinc-600 dark:text-zinc-400">{r.out.note}</p>}
                   </div>
                 )}

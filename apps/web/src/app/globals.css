@@ -34,9 +34,20 @@
   --color-zinc-800: #212843;
   --color-zinc-900: #141a30;
   --color-zinc-950: #0b0f1c;
+  /* The older pages' slate and gray text greys, made to read like the zinc ones (4.5:1 on the light
+     backgrounds here, lighter in dark mode below), keeping their own hue. */
+  --color-slate-400: #5f6b7e;
+  --color-slate-500: #566173;
+  --color-slate-600: #475264;
+  --color-gray-400: #626b78;
+  --color-gray-500: #5a6270;
+  --color-gray-600: #4b5260;
 
   /* iOS system colours for the semantic states (indigo and fuchsia stay UniVerse's two tones). */
   --color-emerald-500: #34c759;
+  /* White text on the deeper greens reads at 4.5:1 (#059669 was 3.77): buttons and badges. */
+  --color-emerald-600: #047857;
+  --color-emerald-700: #065f46;
   --color-green-500: #34c759;
   --color-rose-500: #ff3b30;
   --color-red-500: #ff3b30;
@@ -60,9 +71,19 @@
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600) { color: #6d28d9; }
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-fuchsia-500, .text-fuchsia-600, .text-pink-500, .text-pink-600) { color: #a21caf; }
 /* Dark mode keeps the lighter text greys (the darker light-mode ones would dim text on navy). */
-.dark { --color-zinc-400: #aeaeb2; --color-zinc-500: #8e8e93; --color-zinc-600: #636366; }
+.dark { --color-zinc-400: #aeaeb2; --color-zinc-500: #8e8e93; --color-zinc-600: #636366;
+  --color-slate-400: #a8b1c2; --color-slate-500: #8f99ab; --color-slate-600: #646d7e;
+  --color-gray-400: #a3a8b3; --color-gray-500: #8f949f; --color-gray-600: #636870; }
 /* Dark mode: indigo text without its own dark: colour is lifted so it reads on navy. */
 .dark .text-indigo-500:not([class*="dark:text-"]) { color: #8e8cff; }
+/* ...and so is the other coloured text written for light backgrounds (the 600 shades, no dark:
+   colour of its own; red, blue and violet were under 4.5:1 on navy). Not on white chips. */
+.dark :is(.text-emerald-600, .text-green-600, .text-teal-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #4ade80; }
+.dark :is(.text-amber-600, .text-orange-600, .text-yellow-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #fbbf24; }
+.dark :is(.text-red-600, .text-rose-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #fb7185; }
+.dark :is(.text-blue-600, .text-sky-600, .text-cyan-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #60a5fa; }
+.dark :is(.text-indigo-600, .text-violet-600, .text-purple-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #a5a3ff; }
+.dark :is(.text-fuchsia-600, .text-pink-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #f472b6; }
 /* Keyboard focus is always visible: unlayered, so a utility's outline-none can't hide it. Not on
    things focused only by code (tabindex -1: sheets, the page itself after "Skip to content"). */
 :where(a, button, [role="button"], [role="tab"], [role="switch"], [role="menuitem"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
@@ -142,8 +163,8 @@
   }
 
   .dark {
-    --tint: #6366f1;
-    --tint-rgb: 99 102 241;
+    --tint: #5f63f0; /* white text on it: 4.64:1 (#6366f1 was 4.47) */
+    --tint-rgb: 95 99 240;
     --tint-text: #a5b4fc;
     --ios-green: #30d158;
     --ios-red: #ff453a;
@@ -477,6 +498,10 @@
   .universe-n-beam { animation: nLineDash 2.4s ease-in-out 3; animation-delay: 0.6s; }
   .universe-node-pulse { animation: pingNode 3s ease-in-out 3; }
   @keyframes pingNode { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+  /* The nodes' ping, also a few times only (an endless one on the sidebar logo kept every page busy:
+     SVG animations re-lay out and repaint each frame, they can't run on the GPU). */
+  .universe-ping { animation: universePing 1.2s cubic-bezier(0, 0, 0.2, 1) 5; }
+  @keyframes universePing { 75%, 100% { transform: scale(2); opacity: 0; } }
 
 }
 
@@ -776,13 +801,14 @@ html, body { overflow-x: clip; max-width: 100%; }
 .shell-in { animation: backdrop-in 260ms ease-out; }
 
 /* Lists and card grids: children glide in with a short cascade (the first 12, 30 ms apart; the
-   rest with the 12th). transform/opacity only and nothing left behind afterwards, so it's cheap
-   and fixed-position children are unaffected. */
+   rest with the 12th). transform/opacity only and nothing left behind afterwards (`backwards`: the
+   start state waits through the delay, but a held end state would override the children's own
+   hover lift and press scale), so it's cheap and fixed-position children are unaffected. */
 @keyframes rise {
   from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.985); }
   to   { opacity: 1; transform: none; }
 }
-.stagger > * { animation: rise 340ms var(--ease-out-soft) both; animation-delay: 360ms; }
+.stagger > * { animation: rise 340ms var(--ease-out-soft) backwards; animation-delay: 360ms; }
 .stagger > *:nth-child(1) { animation-delay: 0ms; }
 .stagger > *:nth-child(2) { animation-delay: 30ms; }
 .stagger > *:nth-child(3) { animation-delay: 60ms; }
@@ -1464,7 +1490,7 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 /* Reduce Motion for the CSS animations (framer-motion ones calm down in src/lib/motion.ts). As
    there, nothing freezes: decorative loops stop, and things that slide or rise in just fade in. */
 @media (prefers-reduced-motion: reduce) {
-  .universe-u-beam, .universe-n-beam, .universe-node-pulse, .empty-icon { animation: none; }
+  .universe-u-beam, .universe-n-beam, .universe-node-pulse, .universe-ping, .empty-icon { animation: none; }
   .bubble-glass.received, .bubble-glass.sent, .sheet-in, .fade-up, .alert-in { animation-name: backdrop-in; }
 }
 
@@ -1474,4 +1500,10 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
   background-image: linear-gradient(45deg, #e4e4e7 25%, transparent 25%), linear-gradient(-45deg, #e4e4e7 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e4e4e7 75%), linear-gradient(-45deg, transparent 75%, #e4e4e7 75%);
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}
+
+/* Right to left (Arabic, Urdu; Stage 5 · Q21): arrows and chevrons point the way the page reads.
+   Layouts use start/end classes (scripts/rtl-logical-classes.mjs), so they mirror by themselves. */
+[dir="rtl"] :is(.lucide-arrow-left, .lucide-arrow-right, .lucide-chevron-left, .lucide-chevron-right, .lucide-chevrons-left, .lucide-chevrons-right, .lucide-arrow-up-right, .lucide-send, .lucide-send-horizontal, .lucide-log-out, .lucide-log-in, .lucide-reply, .lucide-undo-2, .lucide-redo-2, .lucide-corner-up-left, .lucide-move-right, .lucide-arrow-left-right) {
+  transform: scaleX(-1);
 }

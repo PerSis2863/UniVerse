@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { boardAccess, canEdit, kick, MAX_BOARD_MEMBERS } from '@/server/boards';
-import { later, notify } from '@/server/email';
+import { later, notifyMany } from '@/server/email';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -35,19 +35,18 @@ export async function POST(req: Request, { params }: Ctx) {
   // An editor can't lower another person's access; the owner can change anyone's.
   const changed = access.role === 'OWNER' ? people.filter((p) => had.has(p.id) && had.get(p.id) !== role) : [];
 
-  await prisma.$transaction([
-    ...added.map((p) => prisma.boardMember.create({ data: { boardId: id, userId: p.id, role } })),
-    ...changed.map((p) => prisma.boardMember.update({ where: { boardId_userId: { boardId: id, userId: p.id } }, data: { role } })),
-  ]);
+  // One insert for everyone new and one update per role (D1 allows 50 queries a request).
+  if (added.length) await prisma.boardMember.createMany({ data: added.map((p) => ({ boardId: id, userId: p.id, role })) });
+  if (changed.length) await prisma.boardMember.updateMany({ where: { boardId: id, userId: { in: changed.map((p) => p.id) } }, data: { role } });
   if (changed.length) await kick(id, { userIds: changed.map((p) => p.id) });
 
   const title = access.board.title;
-  later(() => Promise.all(added.map((p) => notify(p.id, {
+  later(() => notifyMany(added.map((p) => p.id), {
     type: 'board',
     title: `${user.name} shared a whiteboard with you`,
     body: `“${title}” — you can ${role === 'EDITOR' ? 'draw on it together live' : 'view it'}.`,
     link: `/boards/${id}`,
-  }))));
+  }));
   return NextResponse.json({ added: added.length, updated: changed.length });
 }
 

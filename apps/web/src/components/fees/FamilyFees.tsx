@@ -18,7 +18,7 @@ import { CreditCard } from 'lucide-react';
 // (/api/student/fees). Paying online isn't switched on yet, so it says to pay at the office.
 
 interface Bill {
-  id: string; seq: number; label: string; currency: string; amount: number; discount: number; discountNote: string | null; paid: number; owed: number; overdue: boolean; dueAt: string; status: BillStatus;
+  id: string; seq: number; label: string; currency: string; amount: number; discount: number; discountNote: string | null; paid: number; owed: number; overdue: boolean; dueAt: string; status: BillStatus; lateFee?: number;
   payments: { id: string; seq: number; amount: number; method: string; paidAt: string }[];
 }
 interface Data { bills: Bill[]; owed: Record<string, number>; next: { label: string; owed: number; currency: string; dueAt: string; overdue: boolean } | null; online: boolean }
@@ -34,7 +34,7 @@ export function FamilyFees({ url, who }: { url: string; who?: string }) {
   const owed = Object.entries(data.owed);
   return (
     <motion.section variants={fadeUp} initial="hidden" animate="show" className="mt-4 rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-4 sm:p-5" aria-label="School fees">
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="w-full flex items-center gap-3 text-left">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="w-full flex items-center gap-3 text-start">
         <span className={cn('w-11 h-11 rounded-2xl flex items-center justify-center shrink-0', data.next?.overdue ? 'bg-rose-500/10 text-rose-600 dark:text-rose-300' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300')}><Wallet className="w-5 h-5" /></span>
         <span className="flex-1 min-w-0">
           <span className="block font-bold text-zinc-900 dark:text-white">School fees{who ? ` · ${who}` : ''}</span>
@@ -54,7 +54,7 @@ export function FamilyFees({ url, who }: { url: string; who?: string }) {
                   <div className="flex items-start gap-3">
                     <span className="flex-1 min-w-0">
                       <span className="block text-sm font-semibold text-zinc-900 dark:text-white">{b.label}</span>
-                      <span className="block text-xs text-zinc-500">Bill #{b.seq} · due {format(new Date(b.dueAt), 'd MMM yyyy')} · {money(b.amount - b.discount, b.currency)}{b.discount ? ` after ${money(b.discount, b.currency)} off` : ''}</span>
+                      <span className="block text-xs text-zinc-500">Bill #{b.seq} · due {format(new Date(b.dueAt), 'd MMM yyyy')} · {money(b.amount - b.discount, b.currency)}{b.discount ? ` after ${money(b.discount, b.currency)} off` : ''}{b.lateFee ? ` · includes a ${money(b.lateFee, b.currency)} late fee` : ''}</span>
                     </span>
                     <span className="flex flex-col items-end gap-1 shrink-0">
                       {b.owed > 0 && <span className="text-sm font-bold tabular-nums text-zinc-900 dark:text-white">{money(b.owed, b.currency)}</span>}

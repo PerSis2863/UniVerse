@@ -114,7 +114,7 @@ export function CourseEnrolment({ courseId, onChanged }: { courseId: string; onC
         {data.sections.length ? (
           <ul className="mt-2 flex flex-wrap gap-2">
             {data.sections.map((s) => (
-              <li key={s.id} className="text-xs pl-3 pr-1 py-1 rounded-xl border border-zinc-200 dark:border-white/10 text-zinc-800 dark:text-zinc-200 inline-flex items-center gap-1">
+              <li key={s.id} className="text-xs ps-3 pe-1 py-1 rounded-xl border border-zinc-200 dark:border-white/10 text-zinc-800 dark:text-zinc-200 inline-flex items-center gap-1">
                 <span className="font-semibold">{s.name}</span> · {s.students}
                 {canManage && <>
                   <button type="button" aria-label={`Rename ${s.name}`} onClick={async () => { const name = await promptDialog({ title: 'Rename section', defaultValue: s.name, maxLength: 60, confirmLabel: 'Rename' }); if (name?.trim()) void act({ action: 'section-rename', sectionId: s.id, name }, 'rn', 'Renamed'); }} className="px-1.5 py-0.5 rounded hover:bg-black/5 dark:hover:bg-white/10">Rename</button>
@@ -140,7 +140,7 @@ export function CourseEnrolment({ courseId, onChanged }: { courseId: string; onC
             {data.students.map((p) => (
               <li key={p.id} className="py-2 flex items-center gap-3 flex-wrap">
                 <Avatar name={p.name} src={p.avatar} size={28} />
-                <span className="min-w-0 flex-1 text-sm text-zinc-900 dark:text-white truncate">{p.name}{p.accommodation && extraText(p.accommodation) ? <span className="ml-2 text-xs font-medium text-indigo-700 dark:text-indigo-300">{extraText(p.accommodation)}</span> : null}</span>
+                <span className="min-w-0 flex-1 text-sm text-zinc-900 dark:text-white truncate">{p.name}{p.accommodation && extraText(p.accommodation) ? <span className="ms-2 text-xs font-medium text-indigo-700 dark:text-indigo-300">{extraText(p.accommodation)}</span> : null}</span>
                 {canManage && <button type="button" aria-label={`Extra time for ${p.name}`} title="Extra time" onClick={() => setExtra({ id: p.id, name: p.name, a: p.accommodation ?? { extraDays: 0, extraTimePct: 0, note: null } })} className="p-1.5 rounded-lg text-zinc-500 hover:text-indigo-600 hover:bg-indigo-500/10"><Clock className="w-4 h-4" /></button>}
                 {data.sections.length > 0 && (
                   <>

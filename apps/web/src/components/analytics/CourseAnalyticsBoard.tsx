@@ -153,7 +153,9 @@ function TrendCard({ a }: { a: CourseAnalytics }) {
           <div className="flex flex-col justify-between text-[10px] text-zinc-400 h-40 py-0 -mt-1.5 -mb-1.5 shrink-0" aria-hidden>
             <span>100%</span><span>50%</span><span>0%</span>
           </div>
-          <div className="flex-1 min-w-0">
+          {/* At least 24 px a week (a finger's tap target): many weeks on a phone scroll sideways. */}
+          <div className="flex-1 min-w-0 overflow-x-auto overscroll-x-contain">
+           <div style={{ minWidth: n * 24 }}>
             <div className="relative h-40" onMouseLeave={() => setHover(null)}>
               <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible" aria-hidden>
                 {[0, 50, 100].map((g) => <line key={g} x1="0" x2="100" y1={g} y2={g} stroke="currentColor" className="text-zinc-200 dark:text-white/10" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
@@ -172,7 +174,7 @@ function TrendCard({ a }: { a: CourseAnalytics }) {
                 {hover !== null && <line x1={x(hover)} x2={x(hover)} y1="0" y2="100" stroke="currentColor" className="text-zinc-300 dark:text-white/20" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
               </svg>
               {points.map((p) => p && (
-                <span key={p.i} aria-hidden className={cn('absolute w-2.5 h-2.5 -ml-[5px] -mt-[5px] rounded-full bg-indigo-500 ring-2 ring-white dark:ring-zinc-900 transition-transform', hover === p.i && 'scale-150')}
+                <span key={p.i} aria-hidden className={cn('absolute w-2.5 h-2.5 -ms-[5px] -mt-[5px] rounded-full bg-indigo-500 ring-2 ring-white dark:ring-zinc-900 transition-transform', hover === p.i && 'scale-150')}
                   style={{ left: `${x(p.i)}%`, top: `${y(p.v)}%` }} />
               ))}
               {/* Hover / tap targets: one column per week, wider than the dot */}
@@ -192,6 +194,7 @@ function TrendCard({ a }: { a: CourseAnalytics }) {
             <div className="mt-1.5 flex justify-between text-[10px] text-zinc-400" aria-hidden>
               <span>{fmtWeek(a.trend[0].week)}</span><span className="hidden sm:inline">{fmtWeek(a.trend[Math.floor(n / 2)].week)}</span><span>{fmtWeek(a.trend[n - 1].week)}</span>
             </div>
+           </div>
           </div>
         </div>
       )}
@@ -214,7 +217,7 @@ function DistributionCard({ a }: { a: CourseAnalytics }) {
             <span className="h-3 rounded bg-zinc-100 dark:bg-white/[0.06] overflow-hidden">
               <span className={cn('block h-full rounded bg-gradient-to-r', b.min >= 60 ? 'from-indigo-500 to-fuchsia-500' : 'from-rose-500 to-rose-400')} style={{ width: `${(b.count / max) * 100}%` }} />
             </span>
-            <span className="text-right text-zinc-900 dark:text-white font-semibold tabular-nums">{b.count}{graded ? <span className="text-zinc-400 font-normal"> · {Math.round((b.count / graded) * 100)}%</span> : null}</span>
+            <span className="text-end text-zinc-900 dark:text-white font-semibold tabular-nums">{b.count}{graded ? <span className="text-zinc-400 font-normal"> · {Math.round((b.count / graded) * 100)}%</span> : null}</span>
           </li>
         ))}
       </ul>

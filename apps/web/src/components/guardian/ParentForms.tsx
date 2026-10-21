@@ -74,7 +74,7 @@ function FormList({ title, forms, onOpen }: { title: string; forms: Form[]; onOp
           const late = waiting && !!f.dueAt && now > 0 && new Date(f.dueAt).getTime() < now;
           return (
             <motion.li key={f.id} variants={fadeUp}>
-              <button type="button" onClick={() => { haptic('tap'); onOpen(f.id); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
+              <button type="button" onClick={() => { haptic('tap'); onOpen(f.id); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
                 <span className={cn('w-11 h-11 rounded-2xl flex items-center justify-center shrink-0', waiting ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300' : 'bg-zinc-500/10 text-zinc-500')}>
                   <FileSignature className="w-5 h-5" />
                 </span>

@@ -107,7 +107,7 @@ export default function MedicalPage() {
             
             {/* Medical Profile */}
             <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 relative overflow-hidden group hover:border-pink-500/30 transition-colors">
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-pink-500/5 rounded-full blur-2xl group-hover:bg-pink-500/10 transition-colors" />
+              <div className="absolute -top-10 -end-10 w-40 h-40 bg-pink-500/5 rounded-full blur-2xl group-hover:bg-pink-500/10 transition-colors" />
               <div className="flex justify-between items-start mb-6">
                 <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center">
                   <Stethoscope className="w-6 h-6 text-pink-400" />
@@ -141,7 +141,7 @@ export default function MedicalPage() {
 
             {/* Emergency Contacts */}
             <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 relative overflow-hidden group hover:border-red-500/30 transition-colors">
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-red-500/5 rounded-full blur-2xl group-hover:bg-red-500/10 transition-colors" />
+              <div className="absolute -top-10 -end-10 w-40 h-40 bg-red-500/5 rounded-full blur-2xl group-hover:bg-red-500/10 transition-colors" />
               <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center mb-6">
                 <HeartPulse className="w-6 h-6 text-red-400" />
               </div>

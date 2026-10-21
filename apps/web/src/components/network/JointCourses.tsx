@@ -8,7 +8,7 @@ import { ArrowLeftRight, Building2, CheckCircle2, GraduationCap, Loader2, Plus, 
 import Link from '@/components/ui/Link';
 import { api } from '@/lib/api';
 import { authedJson } from '@/lib/authed-fetch';
-import { courseColor } from '@/lib/course-color';
+import { courseShade } from '@/lib/course-color';
 import { haptic } from '@/lib/haptics';
 
 // My courses → courses from partner campuses (upgrade 9): courses a partner campus shared with the
@@ -61,8 +61,8 @@ export function JointCourses() {
             <motion.div key={c.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.05 }}
               className="flex flex-col rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl p-5">
               <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0" style={{ background: courseColor(c.color, c.code) }}>{c.code.slice(-3)}</div>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-right">{c.viaExchange ? 'Exchange campus' : c.campus ?? 'Partner campus'}</span>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0" style={{ background: courseShade(c.color, c.code) }}>{c.code.slice(-3)}</div>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-end">{c.viaExchange ? 'Exchange campus' : c.campus ?? 'Partner campus'}</span>
               </div>
               <h3 className="font-bold text-zinc-900 dark:text-white">{c.name}</h3>
               <p className="text-xs font-mono text-zinc-500 mt-0.5">{c.code} · {c.credits} cr{c.campus ? ` · ${c.campus}` : ''}</p>

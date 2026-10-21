@@ -47,7 +47,7 @@ export default function InternshipHistoryPage() {
                     <p className="font-semibold text-zinc-900 dark:text-white truncate">{p.internship.title}</p>
                     <p className="text-xs text-zinc-500 truncate">{p.internship.company.name}{p.internship.company.sector ? ` · ${p.internship.company.sector}` : ''}</p>
                   </div>
-                  <div className="text-right text-xs text-zinc-500 shrink-0">
+                  <div className="text-end text-xs text-zinc-500 shrink-0">
                     {p.internship.location && <p className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" />{p.internship.location}</p>}
                     <p>{new Date(p.internship.startDate ?? p.updatedAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</p>
                   </div>

@@ -141,7 +141,7 @@ function Exports() {
           whileHover={{ y: -4 }}
           onClick={() => download(e.type)}
           disabled={busy !== null}
-          className="group text-left rounded-3xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-6 hover:border-indigo-500/40 transition-colors disabled:opacity-70"
+          className="group text-start rounded-3xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-6 hover:border-indigo-500/40 transition-colors disabled:opacity-70"
         >
           <div className="flex items-center justify-between mb-5">
             <div className="w-11 h-11 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
@@ -173,7 +173,7 @@ function ReportBody({ markdown }: { markdown: string }) {
   let list: string[] = [];
   const flush = () => {
     if (list.length) {
-      blocks.push(<ul key={`ul-${blocks.length}`} className="list-disc pl-5 space-y-1.5 mb-4">{list.map((l, i) => <li key={i}>{renderInline(l)}</li>)}</ul>);
+      blocks.push(<ul key={`ul-${blocks.length}`} className="list-disc ps-5 space-y-1.5 mb-4">{list.map((l, i) => <li key={i}>{renderInline(l)}</li>)}</ul>);
       list = [];
     }
   };

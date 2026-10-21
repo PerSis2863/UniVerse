@@ -62,7 +62,7 @@ function CampusMap({ campuses }: { campuses: CampusCard[] }) {
           </motion.circle>
         ))}
       </svg>
-      {hover && <p className="absolute left-3 bottom-3 rounded-lg bg-white/90 dark:bg-zinc-900/90 px-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 shadow">{hover.name}{hover.city ? ` · ${hover.city}` : ''} · <b>{nf.format(hover.students)}</b> students</p>}
+      {hover && <p className="absolute start-3 bottom-3 rounded-lg bg-white/90 dark:bg-zinc-900/90 px-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 shadow">{hover.name}{hover.city ? ` · ${hover.city}` : ''} · <b>{nf.format(hover.students)}</b> students</p>}
     </div>
   );
 }
@@ -182,7 +182,7 @@ export function ShareCourses({ network, admin }: { network: Network; admin: bool
                   <AnimatePresence initial={false}>
                     {c.sharedWith.map((s) => (
                       <motion.span key={s.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={spring.snappy}
-                        className="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-xs font-medium">
+                        className="inline-flex items-center gap-1 ps-2.5 pe-1 py-1 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-xs font-medium">
                         {s.name}
                         <button type="button" onClick={() => void unshare(c, s)} disabled={busy === c.id} aria-label={`Stop sharing ${c.code} with ${s.name}`} className="p-0.5 rounded-full hover:bg-indigo-500/20"><X className="w-3 h-3" /></button>
                       </motion.span>
@@ -273,7 +273,7 @@ function CampusForm({ editing, onDone, onCancel }: { editing: CampusCard | null;
       <div className="flex flex-wrap items-center gap-2">
         <button type="submit" disabled={busy || uploading || !f.name.trim()} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} {editing ? 'Save' : 'Add campus'}</button>
         <button type="button" onClick={onCancel} className="btn-secondary">Cancel</button>
-        {editing && <button type="button" onClick={() => void remove()} className="ml-auto inline-flex items-center gap-1.5 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /> Remove campus</button>}
+        {editing && <button type="button" onClick={() => void remove()} className="ms-auto inline-flex items-center gap-1.5 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /> Remove campus</button>}
       </div>
     </motion.form>
   );

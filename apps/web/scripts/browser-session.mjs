@@ -34,13 +34,14 @@ export const MORE_PAGES = {
 export const ALL_PAGES = Object.fromEntries(Object.entries(PAGES).map(([email, pages]) => [email, [...pages, ...(MORE_PAGES[email] ?? [])]]));
 
 /** A browser context signed in as a demo account (mock token, only with demo login on). */
-export async function signedIn(browser, base, email, viewport = { width: 1366, height: 900 }) {
+export async function signedIn(browser, base, email, viewport = { width: 1366, height: 900 }, options = {}) {
   const token = `mock-token-${email}`;
   const me = await fetch(`${base}/api/core/auth/me`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json());
-  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
+  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1, ...options });
   await ctx.addInitScript(([t, user]) => {
     localStorage.setItem('accessToken', t);
     localStorage.setItem('universe-auth', JSON.stringify({ state: { user }, version: 0 }));
+    localStorage.setItem(`universe-tour-done:${user.id}`, '1'); // no first-time tour over the page
   }, [token, me]);
   return ctx;
 }

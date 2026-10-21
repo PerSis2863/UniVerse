@@ -62,11 +62,11 @@ interface Credential {
 }
 
 const STATUS_MAP: Record<CredentialStatus, { label: string; color: string; bg: string; dot: string }> = {
-  ISSUED: { label: 'Verified & Signed', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', dot: 'bg-emerald-400' },
-  PENDING: { label: 'Awaiting Verification', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', dot: 'bg-amber-400' },
-  REVOKED: { label: 'Revoked', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', dot: 'bg-red-400' },
-  REJECTED: { label: 'Not Approved', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', dot: 'bg-red-400' },
-  UNVERIFIED_LEGACY: { label: 'Unverified (legacy)', color: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-500/20', dot: 'bg-zinc-400' },
+  ISSUED: { label: 'Verified & Signed', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', dot: 'bg-emerald-400' },
+  PENDING: { label: 'Awaiting Verification', color: 'text-amber-800 dark:text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', dot: 'bg-amber-400' },
+  REVOKED: { label: 'Revoked', color: 'text-red-700 dark:text-red-400', bg: 'bg-red-500/10 border-red-500/20', dot: 'bg-red-400' },
+  REJECTED: { label: 'Not Approved', color: 'text-red-700 dark:text-red-400', bg: 'bg-red-500/10 border-red-500/20', dot: 'bg-red-400' },
+  UNVERIFIED_LEGACY: { label: 'Unverified (legacy)', color: 'text-zinc-600 dark:text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-500/20', dot: 'bg-zinc-400' },
 };
 
 function apiErrorMessage(err: unknown, fallback: string): string {
@@ -227,7 +227,7 @@ function CredentialCard({ cred }: { cred: Credential }) {
               )}
               {cred.blockchainHash && (
                 <div className="text-xs font-mono text-zinc-500 truncate max-w-[140px]" title={cred.blockchainHash}>
-                  <Hash className="w-3 h-3 inline mr-1 text-emerald-600" />{cred.blockchainHash.slice(0, 10)}…
+                  <Hash className="w-3 h-3 inline me-1 text-emerald-600" />{cred.blockchainHash.slice(0, 10)}…
                 </div>
               )}
             </div>
@@ -267,7 +267,7 @@ function CredentialCard({ cred }: { cred: Credential }) {
               <ExternalLink className="w-3 h-3" /> Public Page
             </a>
             <button onClick={() => setExpanded(v => !v)}
-              className="dark flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all ml-auto">
+              className="dark flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all ms-auto">
               {expanded ? <><ChevronUp className="w-3 h-3" /> Hide Proof</> : <><ChevronDown className="w-3 h-3" /> Show Proof</>}
             </button>
           </div>
@@ -285,20 +285,20 @@ function CredentialCard({ cred }: { cred: Credential }) {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Certificate ID</span><span className="font-mono text-zinc-600 dark:text-zinc-300">{cred.certificateCode}</span></div>
-                <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">SHA-256 Hash</span><span className="font-mono text-emerald-700 dark:text-emerald-400 text-[10px] break-all text-right">{cred.blockchainHash}</span></div>
-                <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">Ed25519 Signature</span><span className="font-mono text-zinc-600 dark:text-zinc-300 text-[10px] break-all text-right">{cred.signature}</span></div>
+                <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">SHA-256 Hash</span><span className="font-mono text-emerald-700 dark:text-emerald-400 text-[10px] break-all text-end">{cred.blockchainHash}</span></div>
+                <div className="flex items-start justify-between text-xs gap-4"><span className="text-zinc-500 flex-shrink-0">Ed25519 Signature</span><span className="font-mono text-zinc-600 dark:text-zinc-300 text-[10px] break-all text-end">{cred.signature}</span></div>
                 <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Signing Key ID</span><span className="font-mono text-zinc-600 dark:text-zinc-300">{cred.signingKeyId}</span></div>
                 <div className="flex items-center justify-between text-xs gap-4"><span className="text-zinc-500">Format</span><span className="text-zinc-600 dark:text-zinc-300">W3C Verifiable Credential</span></div>
                 <div className="flex items-start justify-between text-xs gap-4">
                   <span className="text-zinc-500 flex-shrink-0">Blockchain</span>
                   {cred.blockchain?.status === 'CONFIRMED' && cred.blockchain.explorerUrl ? (
-                    <a href={safeHref(cred.blockchain.explorerUrl)} target="_blank" rel="noopener noreferrer" className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 text-right inline-flex items-center gap-1">
+                    <a href={safeHref(cred.blockchain.explorerUrl)} target="_blank" rel="noopener noreferrer" className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 text-end inline-flex items-center gap-1">
                       Anchored on {cred.blockchain.network} <ExternalLink className="w-3 h-3" />
                     </a>
                   ) : cred.blockchain?.status === 'PENDING' ? (
-                    <span className="text-amber-800 dark:text-amber-400 text-right">Being recorded on {cred.blockchain.network}…</span>
+                    <span className="text-amber-800 dark:text-amber-400 text-end">Being recorded on {cred.blockchain.network}…</span>
                   ) : (
-                    <span className="text-zinc-500 text-right">Not anchored yet</span>
+                    <span className="text-zinc-500 text-end">Not anchored yet</span>
                   )}
                 </div>
               </div>

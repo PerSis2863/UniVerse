@@ -94,7 +94,7 @@ export default function TeacherCourses() {
               <div key={course.id} className="card p-0 overflow-hidden group border border-white/[0.05] hover:border-indigo-500/50 transition-all flex flex-col h-full relative cursor-pointer" onClick={() => setShowDetailsModal(course)}>
                 
                 {/* Actions Overlay */}
-                <div className="absolute top-4 right-4 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                <div className="absolute top-4 end-4 z-10 flex gap-2 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                   <button aria-label="Edit" onClick={() => openEdit(course)} className="p-2 bg-black/60 hover:bg-black text-zinc-300 hover:text-zinc-900 dark:hover:text-white rounded-md backdrop-blur-md transition-colors">
                     <Edit className="w-4 h-4" />
                   </button>
@@ -105,7 +105,7 @@ export default function TeacherCourses() {
 
                 <div className="flex flex-col h-full">
                   <div className="h-32 p-6 flex flex-col justify-end relative" style={{ backgroundColor: courseColor(course.color, course.code) }}>
-                    <div className="absolute top-4 left-4 text-4xl opacity-50 group-hover:opacity-100 transition-opacity group-hover:scale-110 duration-300">
+                    <div className="absolute top-4 start-4 text-4xl opacity-50 group-hover:opacity-100 transition-opacity group-hover:scale-110 duration-300">
                       {course.emoji || '📚'}
                     </div>
                     {/* A shade under the text so white reads on any course colour. */}
@@ -148,10 +148,10 @@ export default function TeacherCourses() {
         <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowDetailsModal(null)}>
           <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
             <div className="h-32 p-6 flex flex-col justify-end relative" style={{ backgroundColor: courseColor(showDetailsModal.color, showDetailsModal.code) }}>
-               <button aria-label="Close" onClick={() => setShowDetailsModal(null)} className="absolute top-4 right-4 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-zinc-900 dark:text-white transition-colors">
+               <button aria-label="Close" onClick={() => setShowDetailsModal(null)} className="absolute top-4 end-4 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-white transition-colors">
                 <X className="w-5 h-5" />
               </button>
-              <div className="absolute top-4 left-4 text-4xl opacity-50">
+              <div className="absolute top-4 start-4 text-4xl opacity-50">
                 {showDetailsModal.emoji || '📚'}
               </div>
               <h2 className="text-2xl font-bold text-zinc-900 dark:text-white drop-shadow-md z-10">{showDetailsModal.name}</h2>

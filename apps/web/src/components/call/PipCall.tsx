@@ -24,7 +24,7 @@ function Tile({ t, big }: { t: PipTile; big?: boolean }) {
       ) : (
         <span className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">{initials}</span>
       )}
-      <span className="absolute left-1.5 bottom-1.5 max-w-[85%] truncate rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium flex items-center gap-1">
+      <span className="absolute start-1.5 bottom-1.5 max-w-[85%] truncate rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium flex items-center gap-1">
         {t.muted && <MicOff className="w-2.5 h-2.5 text-rose-300 shrink-0" />}{t.screen ? `${t.name}’s screen` : t.me ? 'You' : t.name}
       </span>
     </div>

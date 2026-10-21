@@ -7,7 +7,7 @@ import useSWR from 'swr';
 import Link from '@/components/ui/Link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Copy, Loader2, Lock, PenLine, Send, Sparkles, Trash2, Unlock } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, BellRing, CheckCircle2, Copy, CopyPlus, Link2, Loader2, Lock, PenLine, Send, Sparkles, Trash2, Unlock } from 'lucide-react';
 import { FeedbackRecorder } from '@/components/assignments/FeedbackRecorder';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
@@ -15,7 +15,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 import { Translatable } from '@/components/shared/Translatable';
-import { AiReceiptView } from '@/components/assignments/AiReceipt';
+import { AiReceiptView, ReceiptSummary } from '@/components/assignments/AiReceipt';
 import { AI_POLICIES, type AiPolicy, type AiReceipt } from '@/lib/ai-receipt';
 import { Extensions, GradePosting, RulesEditor, rulesSentence, type ClassStudent, type Extension } from '@/components/assignments/AssignmentRules';
 import { withPenalty } from '@/lib/assignment-policy';
@@ -94,6 +94,27 @@ const graded = (s: Submission) => s.status === 'RETURNED' || s.status === 'REOPE
 
 function TeacherAssignmentPage({ id }: { id: string }) {
   const router = useRouter();
+  const [reminding, setReminding] = useState(false);
+  // Stage 5 · Q23: copy the students' link, remind who hasn't handed in, duplicate.
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText(`${window.location.origin}/student/assignments/${id}`); toast.success('Link copied', { description: 'Students open it in UniVerse.' }); }
+    catch { toast.error('Couldn’t copy the link.'); }
+  };
+  const remind = async () => {
+    setReminding(true);
+    try {
+      const r = await authedJson<{ reminded: number; late?: boolean }>(`/api/assignments/${id}/remind`, { method: 'POST' });
+      toast.success(r.reminded ? `${r.reminded} student${r.reminded === 1 ? '' : 's'} reminded${r.late ? ' (it’s late)' : ''}` : 'Everyone has handed it in');
+    } catch (e) { toast.error((e as Error).message || 'Couldn’t send the reminders.'); }
+    finally { setReminding(false); }
+  };
+  const duplicate = async () => {
+    try {
+      const r = await authedJson<{ id: string }>(`/api/assignments/${id}/duplicate`, { method: 'POST' });
+      toast.success('Copy made', { description: 'Set its due date, then share it.' });
+      router.push(`/teacher/assignments/${r.id}`);
+    } catch (e) { toast.error((e as Error).message || 'Couldn’t make a copy.'); }
+  };
   const { data, isLoading, error, mutate } = useSWR<Detail>(`/api/assignments/${id}`, authedJson);
   const [selected, setSelected] = useState<string | null>(null);
   const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
@@ -194,13 +215,17 @@ function TeacherAssignmentPage({ id }: { id: string }) {
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-5">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/teacher/assignments" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white mr-auto"><ArrowLeft className="w-4 h-4" /> All assignments</Link>
+            <Link href="/teacher/assignments" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white me-auto"><ArrowLeft className="w-4 h-4" /> All assignments</Link>
             {waiting.length > 0 && (
               <button type="button" className="btn-secondary" onClick={draftAll} disabled={!!bulk} aria-busy={!!bulk || undefined}>
                 {bulk ? <><Loader2 className="w-4 h-4 animate-spin" /> Drafting {bulk.done}/{bulk.total}</> : <><Sparkles className="w-4 h-4" /> Draft {waiting.length} with AI</>}
               </button>
             )}
+            {data && <button type="button" className="btn-ghost" onClick={() => void copyLink()} aria-label="Copy link for students"><Link2 className="w-4 h-4" /> <span className="hidden sm:inline">Copy link</span></button>}
             {data?.canManage !== false && <>
+              {/* One tap: the students who haven't handed it in hear in the app (Stage 5 · Q23). */}
+              {data && subs.length < data.enrolled && <button type="button" className="btn-secondary" onClick={() => void remind()} disabled={reminding}>{reminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellRing className="w-4 h-4" />} Remind {data.enrolled - subs.length}</button>}
+              {data && <button type="button" className="btn-ghost" onClick={() => void duplicate()} aria-label="Duplicate the assignment"><CopyPlus className="w-4 h-4" /> <span className="hidden sm:inline">Duplicate</span></button>}
               {data && <button type="button" className="btn-secondary" onClick={toggleOpen}>{data.status === 'OPEN' ? <><Lock className="w-4 h-4" /> Close</> : <><Unlock className="w-4 h-4" /> Reopen</>}</button>}
               <button type="button" className="btn-ghost text-rose-500" onClick={remove} aria-label="Delete assignment"><Trash2 className="w-4 h-4" /></button>
             </>}
@@ -272,6 +297,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                   <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-500" style={{ width: `${subs.length ? (returned / subs.length) * 100 : 0}%` }} />
                 </div>
               </div>
+              <ReceiptSummary receipts={subs.map((s) => s.aiReceipt ?? null)} policy={data.aiPolicy ?? 'FREE'} className="panel" />
               <nav aria-label="Submissions" className={`panel p-2 max-h-[70vh] overflow-y-auto stagger`}>
                 {subs.map((s) => (
                   <button
@@ -279,7 +305,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
                     type="button"
                     onClick={() => setSelected(s.id)}
                     aria-current={current?.id === s.id || undefined}
-                    className={cn('relative isolate w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2 transition-colors', current?.id === s.id ? '' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.04]')}
+                    className={cn('relative isolate w-full text-start px-3 py-2.5 rounded-xl flex items-center gap-2 transition-colors', current?.id === s.id ? '' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.04]')}
                   >{current?.id === s.id && <TabPill id="-teacher-assignments-id-page-0" variant="soft" />}
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{who(s)}</span>
@@ -404,7 +430,7 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
       {(sub.similarity?.peer || sub.similarity?.material) && (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300" role="note">
           <p className="font-semibold flex items-center gap-2 mb-1"><Copy className="w-4 h-4" /> Similar wording (worth a look, not proof)</p>
-          <ul className="list-disc pl-5 space-y-0.5">
+          <ul className="list-disc ps-5 space-y-0.5">
             {sub.similarity.peer && <li>About {sub.similarity.peer.percent}% of the phrasing is shared with {sub.similarity.peer.name}&apos;s answer.</li>}
             {sub.similarity.material && <li>About {sub.similarity.material.percent}% of its phrases appear in the course material “{sub.similarity.material.title}”.</li>}
           </ul>
@@ -423,7 +449,7 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
       {sub.aiDraft?.concerns?.length ? (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300" role="note">
           <p className="font-semibold flex items-center gap-2 mb-1"><AlertTriangle className="w-4 h-4" /> For you to check (not shown to the student)</p>
-          <ul className="list-disc pl-5 space-y-0.5">{sub.aiDraft.concerns.map((c, i) => <li key={i}>{c}</li>)}</ul>
+          <ul className="list-disc ps-5 space-y-0.5">{sub.aiDraft.concerns.map((c, i) => <li key={i}>{c}</li>)}</ul>
         </div>
       ) : null}
 

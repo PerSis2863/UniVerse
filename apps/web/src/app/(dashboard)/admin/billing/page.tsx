@@ -97,7 +97,7 @@ function BillingContent() {
         animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-[2rem] border border-zinc-200 dark:border-white/[0.06] bg-gradient-to-br from-white to-indigo-50/60 dark:from-zinc-900/70 dark:to-indigo-950/30 p-6 md:p-8"
       >
-        <div aria-hidden className="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-indigo-500/10 blur-3xl" />
+        <div aria-hidden className="absolute -end-20 -top-20 w-72 h-72 rounded-full bg-indigo-500/10 blur-3xl" />
         <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">

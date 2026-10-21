@@ -116,13 +116,13 @@ export default function NGOMentorshipPage() {
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="relative w-full sm:w-96">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 dark:text-zinc-400" />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 dark:text-zinc-400" />
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search by project, partner, or skill..."
-                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all"
+                className="w-full ps-10 pe-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all"
               />
             </div>
 
@@ -135,15 +135,15 @@ export default function NGOMentorshipPage() {
                 >
                   <Filter className="w-4 h-4" />
                   {statusFilter === 'All' ? 'Filter' : statusFilter}
-                  <ChevronDown className="w-3 h-3 ml-1" />
+                  <ChevronDown className="w-3 h-3 ms-1" />
                 </button>
                 {showFilterDropdown && (
-                  <div className="absolute right-0 top-11 z-30 bg-white dark:bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl w-40 py-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="absolute end-0 top-11 z-30 bg-white dark:bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl w-40 py-1 animate-in fade-in slide-in-from-top-2 duration-150">
                     {STATUSES.map(s => (
                       <button
                         key={s}
                         onClick={() => { setStatusFilter(s); setShowFilterDropdown(false); }}
-                        className={`relative isolate w-full text-left px-4 py-2 text-sm transition-colors ${
+                        className={`relative isolate w-full text-start px-4 py-2 text-sm transition-colors ${
                           statusFilter === s ? 'text-indigo-400' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                         }`}
                       >{statusFilter === s && <TabPill id="collaborations-projects-page-0" variant="soft" />}

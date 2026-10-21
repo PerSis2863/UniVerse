@@ -111,7 +111,7 @@ export default function ReportCardsPage() {
                     {data.runs.map((r) => (
                       <motion.li key={r.id} variants={fadeUp} layout transition={spring.smooth} className="card p-4 sm:p-5">
                         <div className="flex items-start justify-between gap-3">
-                          <button type="button" onClick={() => setOpenId(r.id)} className="text-left min-w-0 flex-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50">
+                          <button type="button" onClick={() => setOpenId(r.id)} className="text-start min-w-0 flex-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50">
                             <h2 className="font-bold text-zinc-900 dark:text-white truncate">{r.title}</h2>
                             <p className="text-sm text-zinc-500 dark:text-zinc-400">{day(r.fromDate)} – {day(r.toDate)} · {r.cards} of {r.total} card{r.total === 1 ? '' : 's'}</p>
                           </button>
@@ -212,7 +212,7 @@ function RunDetail({ run, onBack, ...actions }: ActionProps & { run: Run; onBack
 
   return (
     <div className="max-w-4xl">
-      <button type="button" onClick={onBack} className="btn-ghost btn-sm -ml-2 mb-3"><ArrowLeft className="w-4 h-4" /> All rounds</button>
+      <button type="button" onClick={onBack} className="btn-ghost btn-sm -ms-2 mb-3"><ArrowLeft className="w-4 h-4" /> All rounds</button>
       <div className="card p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -259,14 +259,14 @@ function CardRow({ card, title, open, onToggle, onComment }: { card: Card; title
   const d = card.data;
   return (
     <li>
-      <button type="button" onClick={onToggle} aria-expanded={open} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-zinc-50 dark:hover:bg-white/[0.03] focus-visible:outline-none focus-visible:bg-zinc-50 dark:focus-visible:bg-white/[0.04]">
+      <button type="button" onClick={onToggle} aria-expanded={open} className="w-full flex items-center gap-3 px-4 py-3 text-start hover:bg-zinc-50 dark:hover:bg-white/[0.03] focus-visible:outline-none focus-visible:bg-zinc-50 dark:focus-visible:bg-white/[0.04]">
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-zinc-900 dark:text-white truncate">{card.student.name}</p>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{card.student.email} · {d.courses.length} course{d.courses.length === 1 ? '' : 's'}{card.comment ? ' · commented' : ''}</p>
         </div>
-        <div className="hidden sm:block text-right w-16"><p className="text-[11px] text-zinc-500 dark:text-zinc-400">GPA</p><p className="font-semibold tabular-nums text-zinc-900 dark:text-white">{d.overall.gpa == null ? '—' : d.overall.gpa.toFixed(2)}</p></div>
-        <div className="hidden sm:block text-right w-20"><p className="text-[11px] text-zinc-500 dark:text-zinc-400">Attendance</p><p className="font-semibold tabular-nums text-zinc-900 dark:text-white">{pct(d.overall.attendanceRate)}</p></div>
-        <div className="text-right w-16"><p className="text-[11px] text-zinc-500 dark:text-zinc-400">Average</p><p className={cn('font-bold tabular-nums', tone(d.overall.average))}>{pct(d.overall.average)}</p></div>
+        <div className="hidden sm:block text-end w-16"><p className="text-[11px] text-zinc-500 dark:text-zinc-400">GPA</p><p className="font-semibold tabular-nums text-zinc-900 dark:text-white">{d.overall.gpa == null ? '—' : d.overall.gpa.toFixed(2)}</p></div>
+        <div className="hidden sm:block text-end w-20"><p className="text-[11px] text-zinc-500 dark:text-zinc-400">Attendance</p><p className="font-semibold tabular-nums text-zinc-900 dark:text-white">{pct(d.overall.attendanceRate)}</p></div>
+        <div className="text-end w-16"><p className="text-[11px] text-zinc-500 dark:text-zinc-400">Average</p><p className={cn('font-bold tabular-nums', tone(d.overall.average))}>{pct(d.overall.average)}</p></div>
         <motion.span animate={{ rotate: open ? 180 : 0 }} transition={spring.snappy} className="text-zinc-400"><ChevronDown className="w-4 h-4" /></motion.span>
       </button>
       <AnimatePresence initial={false}>
@@ -278,15 +278,15 @@ function CardRow({ card, title, open, onToggle, onComment }: { card: Card; title
                 <div className="overflow-x-auto rounded-2xl border border-zinc-200/70 dark:border-white/[0.07]" role="region" aria-label={`${card.student.name}’s courses`} tabIndex={0}>
                   <table className="w-full text-sm">
                     <thead className="bg-zinc-50 dark:bg-white/[0.03] text-xs text-zinc-500 dark:text-zinc-400">
-                      <tr><th className="text-left font-medium px-3 py-2">Course</th><th className="text-right font-medium px-3 py-2">Final</th><th className="text-right font-medium px-3 py-2">Grade</th><th className="text-right font-medium px-3 py-2">Attendance</th></tr>
+                      <tr><th className="text-start font-medium px-3 py-2">Course</th><th className="text-end font-medium px-3 py-2">Final</th><th className="text-end font-medium px-3 py-2">Grade</th><th className="text-end font-medium px-3 py-2">Attendance</th></tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
                       {d.courses.map((c) => (
                         <tr key={c.code}>
                           <td className="px-3 py-2"><span className="font-semibold text-zinc-900 dark:text-white">{c.code}</span> <span className="text-zinc-600 dark:text-zinc-300">{c.name}</span>{c.graded === 0 && <span className="block text-xs text-zinc-500 dark:text-zinc-400">No grades this term</span>}</td>
-                          <td className={cn('px-3 py-2 text-right tabular-nums', tone(c.final))}>{pct(c.final)}</td>
-                          <td className="px-3 py-2 text-right font-semibold text-zinc-900 dark:text-white">{c.letter ?? '—'}</td>
-                          <td className="px-3 py-2 text-right tabular-nums text-zinc-700 dark:text-zinc-300">{pct(c.attendanceRate)}</td>
+                          <td className={cn('px-3 py-2 text-end tabular-nums', tone(c.final))}>{pct(c.final)}</td>
+                          <td className="px-3 py-2 text-end font-semibold text-zinc-900 dark:text-white">{c.letter ?? '—'}</td>
+                          <td className="px-3 py-2 text-end tabular-nums text-zinc-700 dark:text-zinc-300">{pct(c.attendanceRate)}</td>
                         </tr>
                       ))}
                     </tbody>

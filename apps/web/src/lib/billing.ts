@@ -73,6 +73,8 @@ export async function syncSubscription(sub: Stripe.Subscription) {
   // current_period_end moved from the subscription to its items in newer Stripe API versions.
   const periodEnd = (item as { current_period_end?: number } | undefined)?.current_period_end ?? sub.current_period_end;
   const ended = sub.status === 'canceled' || sub.status === 'incomplete_expired';
+  const before = await prisma.organization.findFirst({ where, select: { id: true, plan: true, subscriptionStatus: true } });
+  const nextPlan = ended ? 'STARTER' : plan ?? before?.plan ?? 'STARTER';
 
   await prisma.organization.updateMany({
     where,
@@ -86,4 +88,8 @@ export async function syncSubscription(sub: Stripe.Subscription) {
       cancelAtPeriodEnd: sub.cancel_at_period_end,
     },
   });
+  // The history behind the owner console's churn chart (Stage 5 · Q19).
+  if (before && (before.subscriptionStatus !== sub.status || before.plan !== nextPlan)) {
+    await prisma.subscriptionEvent.create({ data: { organizationId: before.id, fromStatus: before.subscriptionStatus, toStatus: sub.status, fromPlan: before.plan, toPlan: nextPlan } });
+  }
 }

@@ -51,7 +51,7 @@ export function InstallBanner() {
 
   return (
     <div
-      className="fixed above-tabbar left-4 right-4 lg:left-auto lg:right-6 lg:w-96 z-[36] animate-in slide-in-from-bottom-4 duration-500"
+      className="fixed above-tabbar start-4 end-4 lg:start-auto lg:end-6 lg:w-96 z-[36] animate-in slide-in-from-bottom-4 duration-500"
       role="dialog"
       aria-label="Install UniVerse app"
     >
@@ -62,13 +62,13 @@ export function InstallBanner() {
         {/* Dismiss */}
         <button
           onClick={handleDismiss}
-          className="absolute top-3 right-3 p-1 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.06] transition-colors"
+          className="absolute top-3 end-3 p-1 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.06] transition-colors"
           aria-label="Dismiss install banner"
         >
           <X className="w-4 h-4" />
         </button>
 
-        <div className="flex items-start gap-3 pr-6">
+        <div className="flex items-start gap-3 pe-6">
           {/* Icon */}
           <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
             <LogoMark className="w-8 h-8" />

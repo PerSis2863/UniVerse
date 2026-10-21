@@ -19,7 +19,7 @@ export function AgendaBar({ agenda, skew, canRun, onGo, onEdit }: { agenda: Agen
   const c = agendaClock(agenda, now);
   if (!c) {
     return canRun ? (
-      <div className="pointer-events-auto mx-auto rounded-full bg-black/45 backdrop-blur-xl border border-white/10 pl-3 pr-1 py-1 flex items-center gap-2 text-xs">
+      <div className="pointer-events-auto mx-auto rounded-full bg-black/45 backdrop-blur-xl border border-white/10 ps-3 pe-1 py-1 flex items-center gap-2 text-xs">
         <ListOrdered className="w-3.5 h-3.5 text-sky-300" aria-hidden />
         <span className="text-zinc-200">Agenda ready · {agenda.items.length} items · {totalMinutes(agenda.items)} min</span>
         <button type="button" onClick={() => onGo(0)} className="h-7 px-3 rounded-full bg-white text-zinc-900 font-semibold inline-flex items-center gap-1"><Play className="w-3 h-3" />Start</button>

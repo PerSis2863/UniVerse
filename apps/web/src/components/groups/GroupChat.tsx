@@ -202,7 +202,7 @@ export function GroupChat({ group, onClose }: { group: { id: string | number; na
                         </button>
                       </div>
                     )}
-                    <div className={`rounded-2xl text-sm overflow-hidden ${mine ? 'bg-indigo-500 text-white rounded-tr-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-100 rounded-tl-sm'}`}>
+                    <div className={`rounded-2xl text-sm overflow-hidden ${mine ? 'bg-indigo-500 text-white rounded-se-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-100 rounded-ss-sm'}`}>
                       {p.imageUrl && (
                         <a href={safeHref(p.imageUrl)} target="_blank" rel="noopener noreferrer">
                           <img src={p.imageUrl} {...photoSrcSet(p.imageUrl, '(max-width: 640px) 90vw, 640px')} alt="Shared image" loading="lazy" className="max-h-64 w-auto object-cover" />

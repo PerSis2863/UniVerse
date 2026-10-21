@@ -102,9 +102,11 @@ export async function notifyAway(conversationId: string, from: { id: string; nam
     }
   }
   if (members.length === 0) return;
+  // Who was told about this chat in the last hour: found by the chat's link, not a list of people
+  // (a big group's list is more than D1's 100 values in one query).
   const recent = await prisma.notification.findMany({
-    where: { userId: { in: members.map((m) => m.userId) }, type: 'chat', link: { endsWith: `?c=${conversationId}` }, createdAt: { gt: new Date(now.getTime() - EMAIL_GAP_MS) } },
-    select: { userId: true },
+    where: { type: 'chat', link: { endsWith: `?c=${conversationId}` }, createdAt: { gt: new Date(now.getTime() - EMAIL_GAP_MS) } },
+    select: { userId: true }, take: 5000,
   });
   const skip = new Set(recent.map((r) => r.userId));
   const text = (type === 'TEXT' ? body : PREVIEW[type] ?? body).slice(0, 200);
@@ -127,17 +129,11 @@ export async function notifyAway(conversationId: string, from: { id: string; nam
       actions: [{ action: 'reply', title: 'Reply', url: inbox(role) }],
     }).catch(() => 0)));
   }
-  await Promise.all(
-    fresh
-      .map((m) =>
-        notify(m.userId, {
-          type: 'chat',
-          title,
-          body: convo.isGroup ? `${from.name}: ${text}` : text,
-          link: inbox(m.user.role),
-        }),
-      ),
-  );
+  // One batch per inbox link (by role): a few statements however big the group, inside D1's 50
+  // queries a request (one notify() each was two or more queries per person).
+  const byLink = new Map<string, string[]>();
+  for (const m of fresh) byLink.set(inbox(m.user.role), [...(byLink.get(inbox(m.user.role)) ?? []), m.userId]);
+  for (const [link, ids] of byLink) await notifyMany(ids, { type: 'chat', title, body: convo.isGroup ? `${from.name}: ${text}` : text, link });
 }
 
 /**

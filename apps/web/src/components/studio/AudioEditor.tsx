@@ -227,6 +227,17 @@ export function AudioEditor({ file, onClose }: { file: File | null; onClose: () 
     download(new Blob([encodeWav(out, voice ? 22050 : RATE)], { type: 'audio/wav' }), `${name}${voice ? '-voice' : ''}.wav`);
     setDirty(false);
   };
+  // MP3 (Stage 5 · Q22): about a tenth of the WAV's size, plays everywhere; made in this browser.
+  const saveMp3 = async () => {
+    if (!ch) return;
+    setBusy('mp3');
+    try {
+      const { convertMedia } = await import('@/components/docs/convert-engine');
+      download(await convertMedia(new Blob([encodeWav(ch, RATE)], { type: 'audio/wav' }), `${name}.wav`, 'mp3'), `${name}.mp3`);
+      setDirty(false);
+    } catch (e) { toast.error((e as Error).message || 'Couldn’t make the MP3.'); }
+    finally { setBusy(null); }
+  };
 
   const close = async () => {
     if (recSince !== null) recRef.current?.stop();
@@ -288,14 +299,15 @@ export function AudioEditor({ file, onClose }: { file: File | null; onClose: () 
         <button type="button" onClick={() => void close()} aria-label="Close the audio editor" className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
         <input value={name} onChange={(e) => setName(e.target.value.replace(/[\\/:*?"<>|]/g, '').slice(0, 60))} aria-label="Sound name" className="text-sm font-semibold bg-transparent text-zinc-900 dark:text-white rounded-md px-1.5 py-1 w-40 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         {!!length && <span className="text-[11px] text-zinc-500 tabular-nums shrink-0">{clock(secs(length))} · {ch!.length === 1 ? 'mono' : 'stereo'}</span>}
-        <div className="ml-auto flex items-center gap-1 shrink-0">
+        <div className="ms-auto flex items-center gap-1 shrink-0">
           <input ref={addRef} type="file" accept="audio/*,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void add(f, ch ? cursor : 0); e.target.value = ''; }} />
           <button type="button" onClick={() => addRef.current?.click()} disabled={!!busy || recording} className="btn-secondary btn-sm" title="Adds a sound file at the cursor">{busy === 'add' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FilePlus2 className="w-3.5 h-3.5" />}{ch ? 'Add audio' : 'Open audio'}</button>
           <button type="button" onClick={() => void record()} disabled={!!busy} className={cn('btn-sm', recording ? 'btn-danger' : 'btn-secondary')} aria-pressed={recording}>
             {recording ? <><Square className="w-3.5 h-3.5" />Stop <span className="tabular-nums">{clock(Math.max(0, (now - recSince!) / 1000))}</span></> : <><Mic className="w-3.5 h-3.5" />{ch ? 'Record here' : 'Record'}</>}
           </button>
           <button type="button" onClick={() => save(true)} disabled={!length || recording} className="btn-secondary btn-sm" title="Mono, 22 kHz: about a quarter of the size, fine for speech">Smaller file</button>
-          <button type="button" onClick={() => save(false)} disabled={!length || recording} className="btn-primary btn-sm"><Download className="w-3.5 h-3.5" />Save WAV</button>
+          <button type="button" onClick={() => save(false)} disabled={!length || recording} className="btn-secondary btn-sm">Save WAV</button>
+          <button type="button" onClick={() => void saveMp3()} disabled={!length || recording || !!busy} className="btn-primary btn-sm">{busy === 'mp3' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}Save MP3</button>
         </div>
       </div>
 
@@ -357,7 +369,7 @@ export function AudioEditor({ file, onClose }: { file: File | null; onClose: () 
               <span className="text-zinc-500">seconds</span>
               <button type="button" onClick={() => setSel({ start: 0, end: length })} className="btn-secondary btn-sm">Select all</button>
               {hasSel && <button type="button" onClick={() => setSel(null)} className="btn-secondary btn-sm">Clear</button>}
-              <div className="ml-auto flex gap-1">
+              <div className="ms-auto flex gap-1">
                 <button type="button" onClick={() => setView({ start: sel!.start, end: sel!.end })} disabled={!hasSel} className="btn-secondary btn-sm"><ZoomIn className="w-3.5 h-3.5" />Zoom to selection</button>
                 <button type="button" onClick={() => setView(null)} disabled={!view} className="btn-secondary btn-sm"><Maximize2 className="w-3.5 h-3.5" />Show all</button>
               </div>

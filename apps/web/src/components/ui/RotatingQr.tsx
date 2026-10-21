@@ -28,7 +28,7 @@ export function RotatingQr({ endpoint, path, title, onClose, showCode }: { endpo
   const url = code ? `${window.location.origin}${path}?checkin=${encodeURIComponent(code.code)}` : '';
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={spring.smooth} className="fixed inset-0 z-[150] bg-white dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center" role="dialog" aria-modal="true" aria-label={`Check-in code for ${title}`}>
-      <button type="button" onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10" aria-label="Close"><X className="w-6 h-6" /></button>
+      <button type="button" onClick={onClose} className="absolute top-4 end-4 p-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10" aria-label="Close"><X className="w-6 h-6" /></button>
       <h2 className="text-2xl font-black text-zinc-900 dark:text-white">{title}</h2>
       <p className="text-zinc-500 mt-1 inline-flex items-center gap-1"><Maximize2 className="w-4 h-4" /> Scan with your phone camera to check in</p>
       <div className="mt-6 rounded-3xl bg-white p-4 shadow-xl">

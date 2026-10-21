@@ -96,7 +96,7 @@ export function adoptEarlyBootstrap(): boolean {
  */
 export const bootstrapPrefetchScript = `(function(){try{
 var p=location.pathname;if(!/^\\/(student|teacher|admin|boards|application|console|parent)(\\/|$)/.test(p))return;
-if(sessionStorage.getItem('universe:sample-mode')==='1')return;
+if(sessionStorage.getItem('universe:sample-mode')==='1'||sessionStorage.getItem('uv-view-as'))return;
 var t=localStorage.getItem('accessToken');if(!t||!localStorage.getItem('universe-auth'))return;
 if(!/^(mock-token-|ut1\\.)/.test(t)){var b=JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));if(!b.exp||b.exp*1000<Date.now()+60000)return;}
 var dow=(new Date().getDay()+6)%7;

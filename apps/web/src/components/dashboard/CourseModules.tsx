@@ -250,7 +250,7 @@ function ItemRow({ item, locked, canManage, students, first, last, onOpen, onTog
           </button>
         )
       )}
-      {locked ? <span className="flex-1 min-w-0">{label}</span> : <ItemOpen item={item} onOpen={onOpen} className="flex-1 min-w-0 text-left rounded-lg -mx-1 px-1 py-1 hover:bg-zinc-100/70 dark:hover:bg-white/[0.04]">{label}</ItemOpen>}
+      {locked ? <span className="flex-1 min-w-0">{label}</span> : <ItemOpen item={item} onOpen={onOpen} className="flex-1 min-w-0 text-start rounded-lg -mx-1 px-1 py-1 hover:bg-zinc-100/70 dark:hover:bg-white/[0.04]">{label}</ItemOpen>}
       {canManage && (
         <>
           <span className="text-xs tabular-nums text-zinc-500 shrink-0" title="Students who finished it">{item.doneCount ?? 0}/{students} done</span>

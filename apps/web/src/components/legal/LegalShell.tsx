@@ -9,8 +9,8 @@ export function LegalShell({ eyebrow = 'Legal', title, intro, updated, children 
   return (
     <div className="dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#0a0d13', color: '#ffffff' }}>
       <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-20%] left-[-35%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.22), transparent)' }} />
-        <div className="absolute bottom-[-25%] right-[-40%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(192,38,211,0.14), transparent)' }} />
+        <div className="absolute top-[-20%] start-[-35%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.22), transparent)' }} />
+        <div className="absolute bottom-[-25%] end-[-40%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(192,38,211,0.14), transparent)' }} />
       </div>
       <MarketingNav />
       <main className="relative z-10 px-4 sm:px-6 pt-32 md:pt-40 pb-20">
@@ -38,7 +38,7 @@ export function Section({ id, title, children }: { id?: string; title: string; c
 
 export function Bullets({ items }: { items: React.ReactNode[] }) {
   return (
-    <ul className="space-y-2 pl-5 list-disc marker:text-indigo-400">
+    <ul className="space-y-2 ps-5 list-disc marker:text-indigo-400">
       {items.map((x, i) => <li key={i}>{x}</li>)}
     </ul>
   );
@@ -49,7 +49,7 @@ export function Card({ children, className = '' }: { children: React.ReactNode; 
 }
 
 export function A({ href, children }: { href: string; children: React.ReactNode }) {
-  const cls = 'text-indigo-400 hover:text-indigo-300 underline-offset-2 hover:underline break-words';
+  const cls = 'text-indigo-400 hover:text-indigo-300 underline underline-offset-2 decoration-indigo-400/50 hover:decoration-current break-words'; // underlined: links in text can't differ by colour alone
   return href.startsWith('/') ? <Link href={href} className={cls}>{children}</Link> : <a href={href} className={cls} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener">{children}</a>;
 }
 

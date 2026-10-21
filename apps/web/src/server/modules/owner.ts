@@ -6,7 +6,7 @@ import { forgetUser, isOwnerEmail } from '../auth';
 import { dbSchema as schema } from '../db-schema';
 import { decideDeletion, eraseAccount } from '../account-deletion';
 import { publishChat } from '../realtime';
-import { composeSwitches, emailScheduleEntries, FEATURE_SWITCHES, OWNER_EMAILS, parseEmailSchedule, parseOrgSwitches, parseSwitches } from '@/lib/feature-switches';
+import { composeSwitches, emailScheduleEntries, FEATURE_SWITCHES, OWNER_EMAILS, parseEmailSchedule, parseOrgSwitches, parseRollouts, parseSwitches } from '@/lib/feature-switches';
 import { forgetRules } from '../moderation';
 import { countTables, selectColumns } from '../table-stats';
 import { serverSettings } from '../server-settings';
@@ -343,7 +343,7 @@ export default function ownerModule(router: Router) {
       const off = parseSwitches(JSON.stringify(body.switches));
       const was = parseSwitches(ctl.switches);
       // The email schedule and the per-school switches live in the same list.
-      data.switches = composeSwitches(off, emailScheduleEntries(parseEmailSchedule(ctl.switches)), parseOrgSwitches(ctl.switches));
+      data.switches = composeSwitches(off, emailScheduleEntries(parseEmailSchedule(ctl.switches)), parseOrgSwitches(ctl.switches), parseRollouts(ctl.switches));
       const name = (id: string) => FEATURE_SWITCHES.find((f) => f.id === id)?.label ?? id;
       const turnedOff = off.filter((x) => !was.includes(x)).map(name);
       const turnedOn = was.filter((x) => !off.includes(x)).map(name);
@@ -360,7 +360,7 @@ export default function ownerModule(router: Router) {
         next[e.id] = v[e.id];
       }
       const list = data.switches ?? ctl.switches;
-      data.switches = composeSwitches(parseSwitches(list), emailScheduleEntries(next), parseOrgSwitches(list));
+      data.switches = composeSwitches(parseSwitches(list), emailScheduleEntries(next), parseOrgSwitches(list), parseRollouts(list));
       const changed = OWNER_EMAILS.filter((e) => next[e.id] !== before[e.id]).map((e) => `${e.label} email: ${next[e.id]}`);
       if (changed.length) switched = [switched, changed.join(' · ')].filter(Boolean).join(' · ');
     }
@@ -378,8 +378,22 @@ export default function ownerModule(router: Router) {
       else now.delete(feature.id);
       if (now.size) orgs[org.id] = [...now];
       else delete orgs[org.id];
-      data.switches = composeSwitches(parseSwitches(list), emailScheduleEntries(parseEmailSchedule(list)), orgs);
+      data.switches = composeSwitches(parseSwitches(list), emailScheduleEntries(parseEmailSchedule(list)), orgs, parseRollouts(list));
       switched = [switched, `${feature.label} ${v.off === true ? 'turned off' : 'turned back on'} for ${org.name}`].filter(Boolean).join(' · ');
+    }
+    // Gradual rollout: { feature, percent } — the feature on for that share of schools (100 = all).
+    if (body?.rollout !== undefined) {
+      const v = (body.rollout ?? {}) as { feature?: unknown; percent?: unknown };
+      const feature = FEATURE_SWITCHES.find((f) => f.id === v.feature);
+      const pct = Number(v.percent);
+      if (!feature || !Number.isInteger(pct) || pct < 0 || pct > 100) throw new BadRequestException('Pick a feature and a share from 0 to 100 %');
+      if (feature.id === 'signups') throw new BadRequestException('Sign-ups can’t be rolled out per school (a new person has no school yet).');
+      const list = data.switches ?? ctl.switches;
+      const rollouts = parseRollouts(list);
+      if (pct === 100) delete rollouts[feature.id];
+      else rollouts[feature.id] = pct;
+      data.switches = composeSwitches(parseSwitches(list), emailScheduleEntries(parseEmailSchedule(list)), parseOrgSwitches(list), rollouts);
+      switched = [switched, pct === 100 ? `${feature.label}: on for every school` : `${feature.label}: on for ${pct} % of schools`].filter(Boolean).join(' · ');
     }
     // Daily AI limits (src/server/ai-budget.ts).
     let aiChange = '';

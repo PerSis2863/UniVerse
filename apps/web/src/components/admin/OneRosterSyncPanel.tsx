@@ -246,7 +246,7 @@ export function OneRosterSyncPanel() {
               <div className="font-bold flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-amber-500" /> Validation Notices ({preview.warnings.length})
               </div>
-              <ul className="list-disc pl-5 space-y-0.5 pt-1">
+              <ul className="list-disc ps-5 space-y-0.5 pt-1">
                 {preview.warnings.map((w, i) => <li key={i}>{w}</li>)}
               </ul>
             </div>
@@ -314,7 +314,7 @@ export function OneRosterSyncPanel() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full text-start text-xs border-collapse">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[11px]">
                   <th className="py-3 px-3 font-semibold">Date</th>

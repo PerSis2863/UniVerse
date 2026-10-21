@@ -15,7 +15,7 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
 
 - The owner is not a developer: explain in plain words, short and concrete (what they can now do,
   what they need to do). No jargon without a one-line meaning.
-- Work through the plan's queue in order (next: **Q19**). **One commit per item**; push at
+- Work through the plan's queue in order (Q1–Q23 are done; next: **the full bug and error review**). **One commit per item**; push at
   checkpoints. Each finished item gets a **Progress row** in `STAGE-5-PLAN.md` (what was built,
   where, how it was tested, what's not done) and a short note in `STAGE-5-HANDOFF.md` (traps, rules
   for code that builds on it, the next migration number). Mark the item's heading ✅.
@@ -43,6 +43,9 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
 - New features go **inside existing menus, as tabs**, not new top-level pages.
 - Motion: `import { m as motion } from 'framer-motion'` and the springs in `src/lib/motion.ts`.
   Links: only `@/components/ui/Link`.
+  Languages (Q21): use start/end classes (`ms-` `me-` `ps-` `pe-` `start-` `end-` `text-start`), not left/right, so
+  Arabic and Urdu mirror (`node scripts/rtl-logical-classes.mjs` converts); after adding or changing screen text run
+  `node scripts/gen-ui-strings.mjs` (the catalog the translations come from); mark people's own content `translate="no"`.
 - **No polling.** Live updates: `publish()` (`src/server/realtime.ts`) plus a `useLiveInterval`
   fallback, or `useActivePoll` for screens without live updates (`src/lib/realtime-client.ts`).
 - **AI** always: `spendAi` (daily allowance), `featureOff('ai')` (the owner's switch), and the AI
@@ -56,7 +59,10 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
 ## Platform limits (Cloudflare Workers Free)
 
 - **D1: at most 100 bound values per query** (chunk lists by 90; multi-row inserts with N rows a
-  statement) and **at most 50 queries per request**. D1 has no transactions.
+  statement) and **at most 50 queries per request**. D1 has no transactions. A long `in` list is
+  split for you (`src/lib/d1-split.ts`, wired in `src/lib/db.ts`) except inside `OR`, a relation
+  filter or `notIn`: write those as separate lookups and merge. Long jobs check `queriesUsed()` and
+  carry on in the next run (`src/server/daily-jobs.ts`, table `job_runs`).
 - The build machine has 8 GB, 2 CPUs and 20 minutes: keep heavy libraries out of first-load bundles
   (dynamic `import()`).
 - The light API path (`cloudflare/fast-api.ts`) must run the same code as its Next route; the startup
@@ -64,7 +70,7 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
 
 ## Database changes
 
-Hand-written SQL in `apps/web/prisma/migrations/NNNN_name.sql` (**next: 0162**) plus
+Hand-written SQL in `apps/web/prisma/migrations/NNNN_name.sql` (**next: 0172**) plus
 `prisma/schema.prisma`; then, from `apps/web`:
 `PRISMA_GENERATE_SKIP_AUTOINSTALL=1 npx prisma generate`,
 `npx wrangler d1 migrations apply universe-db --local`, `node scripts/gen-owner-schema.mjs`.
@@ -91,6 +97,15 @@ Rules for using it here:
   that sends code or data to another service (some commands send diffs to other AI providers).
 - It never overrides this file: the owner's rules, safety rules and the plan come first.
 - Ask the owner before installing it, and say what you're adding and why.
+- **Installed (20 Oct 2026, at the owner's request), fitted to this project:** in `.claude/` the
+  commands `/plan-item`, `/check`, `/fix-checks`, `/finish-item`, `/council`; the reviewers
+  `universe-reviewer` and `universe-security` (only when asked; no model pinned); and one hook,
+  `protect-secrets.mjs` (blocks reading or writing the local secret files). See the root `CLAUDE.md`.
+- **Left out on purpose:** ECC's hooks (one blocks `pnpm dev`, one blocks new `.md` notes, others
+  run Prettier or a full type check after every edit, which takes minutes here), its "use
+  proactively / must be used" agents (they start an extra AI session after every change), its MCP
+  servers (they need keys and send data to other services), the memory and learning hooks, and its
+  generic skills (written for other stacks: Supabase, Redis, older Next.js).
 
 ## Gotchas already learned
 

@@ -95,7 +95,7 @@ export function ClubCarbon({ clubId, showName = true }: { clubId: string; showNa
               <li key={x.key} className="grid grid-cols-[minmax(0,10rem)_1fr_auto] sm:grid-cols-[14rem_1fr_auto] items-center gap-3 text-sm">
                 <span className="text-zinc-800 dark:text-zinc-100 break-words">{x.label}{x.saving ? ' (saved)' : ''}</span>
                 <span className="h-2 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden" aria-hidden><span className={`block h-full rounded-full ${x.saving ? 'bg-teal-500' : 'bg-emerald-600'}`} style={{ width: `${Math.max(2, (x.kg / most) * 100)}%` }} /></span>
-                <span className="tabular-nums text-zinc-700 dark:text-zinc-200 text-right">{kg(x.kg)}</span>
+                <span className="tabular-nums text-zinc-700 dark:text-zinc-200 text-end">{kg(x.kg)}</span>
               </li>
             ))}
           </ul>

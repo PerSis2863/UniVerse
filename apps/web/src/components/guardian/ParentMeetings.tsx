@@ -78,7 +78,7 @@ export function ParentMeetings({ studentId }: { studentId: string }) {
             {data.teachers.map((t) => (
               <motion.li key={t.id} variants={fadeUp}>
                 <button type="button" disabled={!t.free || t.booked} onClick={() => { haptic('tap'); setBooking(t); }}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors disabled:hover:bg-transparent disabled:cursor-default">
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors disabled:hover:bg-transparent disabled:cursor-default">
                   <Avatar name={t.name} src={t.avatar} size={44} />
                   <span className="flex-1 min-w-0">
                     <span className="flex items-center gap-2">
@@ -103,7 +103,7 @@ export function ParentMeetings({ studentId }: { studentId: string }) {
           <ul className="divide-y divide-zinc-200/70 dark:divide-white/[0.06]">
             {data.past.map((m) => (
               <li key={m.id}>
-                <button type="button" disabled={!m.summary} onClick={() => setNotes(m)} className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04] disabled:hover:bg-transparent disabled:cursor-default">
+                <button type="button" disabled={!m.summary} onClick={() => setNotes(m)} className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04] disabled:hover:bg-transparent disabled:cursor-default">
                   <Avatar name={m.teacher.name} src={m.teacher.avatar} size={36} />
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{m.teacher.name}{m.child ? ` · ${m.child}` : ''}</span>
@@ -209,7 +209,7 @@ function BookSheet({ teacher, studentId, child, onClose, onBooked }: { teacher: 
                       <button key={s.id} type="button" aria-pressed={on} onClick={() => { haptic('tap'); setPicked(s.id); }}
                         className={cn('min-h-11 px-3 rounded-xl border text-sm font-semibold tabular-nums transition-colors', on ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-200 dark:border-white/10 text-zinc-800 dark:text-zinc-100 hover:bg-black/[0.03] dark:hover:bg-white/[0.05]')}>
                         {format(new Date(s.startAt), 'HH:mm')}
-                        {s.mode === 'IN_PERSON' && <><MapPin className="inline w-3.5 h-3.5 ml-1 -mt-0.5" aria-hidden /><span className="sr-only">, in person</span></>}
+                        {s.mode === 'IN_PERSON' && <><MapPin className="inline w-3.5 h-3.5 ms-1 -mt-0.5" aria-hidden /><span className="sr-only">, in person</span></>}
                       </button>
                     );
                   })}

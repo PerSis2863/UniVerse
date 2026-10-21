@@ -47,7 +47,7 @@ export function StatusBar() {
             <span className={cn('block rounded-full p-[2px]', mine ? 'bg-zinc-300 dark:bg-zinc-600' : '')}>
               <span className="block rounded-full bg-white dark:bg-[#121830] p-[2px]"><Avatar name={me?.name ?? "You"} src={me?.avatar ?? null} size={48} /></span>
             </span>
-            <span onClick={(e) => { e.stopPropagation(); setComposing(true); }} className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center ring-2 ring-white dark:ring-[#121830]"><Plus className="w-3 h-3" /></span>
+            <span onClick={(e) => { e.stopPropagation(); setComposing(true); }} className="absolute -bottom-0.5 -end-0.5 w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center ring-2 ring-white dark:ring-[#121830]"><Plus className="w-3 h-3" /></span>
           </button>
           <span className="text-[11px] text-zinc-500 truncate w-full text-center">{mine ? 'You' : 'Add'}</span>
         </div>
@@ -61,7 +61,7 @@ export function StatusBar() {
             <span className={cn('text-[11px] truncate w-full text-center', p.unseen ? 'text-zinc-800 dark:text-zinc-200 font-medium' : 'text-zinc-500')}>{p.user.name.split(' ')[0]}</span>
           </div>
         ))}
-        {data && others.length === 0 && <p className="self-center text-xs text-zinc-500 pl-1">Status updates from people you chat with show here for 24 hours.</p>}
+        {data && others.length === 0 && <p className="self-center text-xs text-zinc-500 ps-1">Status updates from people you chat with show here for 24 hours.</p>}
       </div>
       <AnimatePresence>
         {watching !== null && people[watching] && (
@@ -154,14 +154,14 @@ function StatusViewer({ people, start, onClose, onDeleted }: { people: Person[];
           ))}</div>
           <div className="flex items-center gap-2 text-white">
             <Avatar name={person.user.name} src={person.user.avatar} size={36} />
-            <div className="flex-1 min-w-0"><p className="font-semibold text-sm truncate">{person.mine ? 'You' : person.user.name}</p><p className="text-[11px] text-white/70">{formatDistanceToNowStrict(new Date(item.createdAt), { addSuffix: true })}{item.audience === 'CLOSE' && <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-emerald-500/90 px-1.5 text-[10px] font-semibold text-white"><Star className="w-2.5 h-2.5 fill-current" aria-hidden />Close friends</span>}</p></div>
+            <div className="flex-1 min-w-0"><p className="font-semibold text-sm truncate">{person.mine ? 'You' : person.user.name}</p><p className="text-[11px] text-white/70">{formatDistanceToNowStrict(new Date(item.createdAt), { addSuffix: true })}{item.audience === 'CLOSE' && <span className="ms-1.5 inline-flex items-center gap-0.5 rounded-full bg-emerald-500/90 px-1.5 text-[10px] font-semibold text-white"><Star className="w-2.5 h-2.5 fill-current" aria-hidden />Close friends</span>}</p></div>
             {person.mine && <button type="button" onClick={remove} aria-label="Delete this status" className="p-2 rounded-full hover:bg-white/10"><Trash2 className="w-5 h-5" /></button>}
             <button type="button" onClick={onClose} aria-label="Close" className="p-2 rounded-full hover:bg-white/10"><X className="w-5 h-5" /></button>
           </div>
         </div>
         {/* Tap left / right */}
-        <button type="button" aria-label="Previous" onClick={prev} className="absolute left-0 top-20 bottom-24 w-1/3" />
-        <button type="button" aria-label="Next" onClick={next} className="absolute right-0 top-20 bottom-24 w-2/3" />
+        <button type="button" aria-label="Previous" onClick={prev} className="absolute start-0 top-20 bottom-24 w-1/3" />
+        <button type="button" aria-label="Next" onClick={next} className="absolute end-0 top-20 bottom-24 w-2/3" />
         {!person.mine && (
           // React (one emoji, only they see it) or reply privately.
           <div className="absolute bottom-0 inset-x-0 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] bg-gradient-to-t from-black/70 to-transparent space-y-2" onPointerDown={(e) => e.stopPropagation()}>
@@ -278,13 +278,13 @@ function CloseFriends({ onClose }: { onClose: () => void }) {
       <div role="dialog" aria-modal="true" aria-labelledby="close-title" className="w-full sm:max-w-sm max-h-[80%] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#121830] text-zinc-900 dark:text-white">
         <div className="flex items-center justify-between p-4 pb-2"><h2 id="close-title" className="font-bold">Close friends</h2><button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button></div>
         <p className="px-4 text-xs text-zinc-500">Only they see statuses you share with close friends. They aren’t told they’re on the list.</p>
-        <div className="relative px-4 pt-3"><Search className="absolute left-7 top-1/2 mt-1.5 -translate-y-1/2 w-4 h-4 text-zinc-400" aria-hidden /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search people" className="input pl-9" /></div>
+        <div className="relative px-4 pt-3"><Search className="absolute start-7 top-1/2 mt-1.5 -translate-y-1/2 w-4 h-4 text-zinc-400" aria-hidden /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search people" className="input ps-9" /></div>
         <ul className="flex-1 overflow-y-auto px-2 py-2">
           {!data && <li className="py-6 grid place-items-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" aria-label="Loading" /></li>}
           {data && !shown.length && <li className="px-2 py-6 text-sm text-zinc-500 text-center">{data.people.length ? 'Nobody matches.' : 'Your close friends come from the people you chat with.'}</li>}
           {shown.map((p) => (
             <li key={p.id}>
-              <button type="button" role="checkbox" aria-checked={picked.has(p.id)} onClick={() => toggle(p.id)} className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/5 text-left">
+              <button type="button" role="checkbox" aria-checked={picked.has(p.id)} onClick={() => toggle(p.id)} className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/5 text-start">
                 <Avatar name={p.name} src={p.avatar} size={34} />
                 <span className="flex-1 text-sm truncate">{p.name}</span>
                 <span className={cn('w-5 h-5 rounded-full border grid place-items-center', picked.has(p.id) ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-zinc-300 dark:border-white/20')}>{picked.has(p.id) && <Check className="w-3 h-3" aria-hidden />}</span>

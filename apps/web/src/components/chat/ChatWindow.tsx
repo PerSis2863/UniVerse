@@ -97,7 +97,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [threadFor, setThreadFor] = useState<string | null>(null);
-  const [catchup, setCatchup] = useState<{ busy: boolean; text: string | null } | null>(null);
+  const [catchup, setCatchup] = useState<{ busy: boolean; text: string | null; title?: string } | null>(null);
+  // The school's chat app commands (Stage 5 · Q20): loaded once, they rarely change.
+  const { data: apps } = useSWR<{ commands: { name: string; hint: string; app: string }[] }>('/api/chat/apps', authedJson, { revalidateOnFocus: false, dedupingInterval: 600_000 });
   const [showJump, setShowJump] = useState(false);
   const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
   const [remindFor, setRemindFor] = useState<ChatMessage | null>(null);
@@ -508,6 +510,13 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       if (name === 'catchup') { void runCatchup(); return true; }
       if (name === 'poll') { onExtra('poll'); return true; }
       if (name === 'call' || name === 'video') { void call(name === 'video' ? 'video' : 'audio'); return true; }
+      const app = apps?.commands.find((c) => c.name === name);
+      if (app) {
+        const r = await chatJson<{ posted?: boolean; text?: string; app: string }>(`/api/chat/conversations/${conversationId}/app`, { method: 'POST', body: JSON.stringify({ command: name, text: arg }) });
+        if (r.posted) void mutate();
+        else if (r.text) setCatchup({ busy: false, text: r.text, title: `${r.app} · only you see this` });
+        return true;
+      }
       if (name === 'remind') {
         const m = /^(\d+)\s*(m|min|mins|minutes?|h|hrs?|hours?|d|days?)\s+(.+)$/i.exec(arg);
         if (!m) { toast.error('Try: /remind 30m hand in the essay  (m, h or d)'); return false; }
@@ -604,8 +613,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Header */}
         <div className="relative z-20 flex items-center gap-3 px-3 md:px-5 h-16 shrink-0 border-b border-zinc-200/80 dark:border-white/[0.06] bg-white/60 dark:bg-white/[0.02] backdrop-blur-xl">
-          <button onClick={onBack} aria-label="Back" className="md:hidden p-2 -ml-1 rounded-full text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button>
-          <button onClick={() => setInfoOpen((v) => !v)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
+          <button onClick={onBack} aria-label="Back" className="md:hidden p-2 -ms-1 rounded-full text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button>
+          <button onClick={() => setInfoOpen((v) => !v)} className="flex items-center gap-3 min-w-0 flex-1 text-start">
             {channel
               ? <span className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0" style={{ background: channel.color ?? '#4f46e5' }}>{channel.kind === 'ANNOUNCE' ? <Megaphone className="w-5 h-5" /> : <Hash className="w-5 h-5" />}</span>
               : <Avatar name={convo.title} src={convo.avatarUrl} online={!convo.isGroup && other?.online} size={40} />}
@@ -638,7 +647,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           <div className="relative hidden sm:block">
             <button onClick={() => setTranslateOpen((v) => !v)} aria-label="Translate messages" title={convo.translateTo ? `Auto-translating into ${languageName(convo.translateTo)}` : 'Translate messages'} aria-expanded={translateOpen} className={cn('relative p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', convo.translateTo || translateOpen ? 'text-indigo-500' : 'text-zinc-600 dark:text-zinc-300')}>
               <Languages className="w-5 h-5" />
-              {convo.translateTo && <span className="absolute -bottom-0.5 -right-0.5 text-[9px] font-black uppercase px-1 rounded bg-indigo-500 text-white">{convo.translateTo}</span>}
+              {convo.translateTo && <span className="absolute -bottom-0.5 -end-0.5 text-[9px] font-black uppercase px-1 rounded bg-indigo-500 text-white">{convo.translateTo}</span>}
             </button>
             {translateOpen && (
               <LanguagePicker title="Auto-translate messages into" offLabel="Off — show originals" value={convo.translateTo ?? null} suggested={[appLanguage]} onPick={setAutoTranslate} onClose={() => setTranslateOpen(false)} />
@@ -667,7 +676,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               <div className="flex items-start gap-2 px-3 md:px-5 py-2.5">
                 <Sparkles className="w-4 h-4 text-fuchsia-500 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0 text-sm text-zinc-800 dark:text-zinc-200">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-fuchsia-600 dark:text-fuchsia-300 mb-1">Catch up · only you see this</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-fuchsia-600 dark:text-fuchsia-300 mb-1">{catchup.title ?? 'Catch up · only you see this'}</p>
                   {catchup.busy ? <p className="flex items-center gap-2 text-zinc-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Reading what you missed…</p> : <p className="whitespace-pre-wrap">{catchup.text}</p>}
                 </div>
                 <button onClick={() => setCatchup(null)} aria-label="Close summary" className="p-1 rounded-full text-zinc-500 hover:bg-zinc-200/60 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
@@ -686,7 +695,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                   document.getElementById(`msg-${current.id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
                   setPinIndex((i) => i + 1);
                 }}
-                className="flex items-center gap-2 min-w-0 flex-1 text-left"
+                className="flex items-center gap-2 min-w-0 flex-1 text-start"
                 aria-label="Go to pinned message"
               >
                 <Pin className="w-4 h-4 text-indigo-500 shrink-0" />
@@ -800,7 +809,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                     />
                     {lastMine?.id === m.id && seenBy > 0 && (
                       <motion.button type="button" onClick={() => setInfoMsg(m)} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                        className="ml-auto mr-2 mt-0.5 flex items-center gap-1 text-[11px] text-zinc-500 hover:text-sky-500">
+                        className="ms-auto me-2 mt-0.5 flex items-center gap-1 text-[11px] text-zinc-500 hover:text-sky-500">
                         <CheckCheck className="w-3.5 h-3.5 text-sky-500" />{seenBy === others.length ? 'Seen by everyone' : `Seen by ${seenBy}`}
                       </motion.button>
                     )}
@@ -815,7 +824,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           {showJump && (
             <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
               onClick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })}
-              className="absolute bottom-28 right-6 md:right-10 z-20 w-10 h-10 rounded-full bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-lg flex items-center justify-center text-zinc-600 dark:text-zinc-300">
+              className="absolute bottom-28 end-6 md:end-10 z-20 w-10 h-10 rounded-full bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-lg flex items-center justify-center text-zinc-600 dark:text-zinc-300">
               <ArrowDown className="w-4 h-4" />
             </motion.button>
           )}
@@ -855,6 +864,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           slowModeSec={channel?.slowModeSec}
           customEmoji={channel?.emoji}
           onCommand={convo.isOfficial ? undefined : command}
+          appCommands={apps?.commands}
           onSuggest={convo.isOfficial ? undefined : suggestReplies}
         />
       </div>
@@ -944,7 +954,7 @@ function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onCha
   return (
     <motion.aside
       initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 40, opacity: 0 }}
-      className="absolute md:relative inset-0 md:inset-auto z-30 md:z-auto w-full md:w-80 shrink-0 flex flex-col border-l border-zinc-200/80 dark:border-white/[0.06] bg-white dark:bg-[#121830] md:bg-white/60 md:dark:bg-white/[0.02] backdrop-blur-xl overflow-y-auto"
+      className="absolute md:relative inset-0 md:inset-auto z-30 md:z-auto w-full md:w-80 shrink-0 flex flex-col border-s border-zinc-200/80 dark:border-white/[0.06] bg-white dark:bg-[#121830] md:bg-white/60 md:dark:bg-white/[0.02] backdrop-blur-xl overflow-y-auto"
     >
       <div className="flex items-center justify-between px-5 h-16 shrink-0 border-b border-zinc-200/80 dark:border-white/[0.06]">
         <h3 className="font-bold text-zinc-900 dark:text-white">{convo.isGroup ? 'Group info' : 'Contact info'}</h3>
@@ -1009,7 +1019,7 @@ function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onCha
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2 flex items-center gap-1.5"><Star className="w-3.5 h-3.5 text-amber-500" /> Starred in this chat</p>
           <div className="space-y-1.5">
             {starredHere.slice(-5).reverse().map((m) => (
-              <button key={m.id} onClick={() => document.getElementById(`msg-${m.id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })} className="w-full text-left text-sm text-zinc-700 dark:text-zinc-300 truncate p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
+              <button key={m.id} onClick={() => document.getElementById(`msg-${m.id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })} className="w-full text-start text-sm text-zinc-700 dark:text-zinc-300 truncate p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
                 {m.body || m.attachmentName || 'Attachment'}
               </button>
             ))}
@@ -1108,7 +1118,7 @@ function AddMembers({ conversationId, existing, onClose, onDone }: { conversatio
         </div>
         <div className="overflow-y-auto p-2">
           {people?.filter((p) => !existing.includes(p.id)).map((p) => (
-            <button key={p.id} disabled={busy} onClick={() => add(p.id)} className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-left">
+            <button key={p.id} disabled={busy} onClick={() => add(p.id)} className="w-full flex items-center gap-3 p-2.5 rounded-2xl hover:bg-zinc-50 dark:hover:bg-white/[0.04] text-start">
               <Avatar name={p.name} src={p.avatar} online={p.online} size={36} />
               <span className="text-sm font-medium text-zinc-900 dark:text-white">{p.name}</span>
             </button>

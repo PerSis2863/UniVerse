@@ -205,7 +205,7 @@ export function WeekPlanner({ data }: { data: PlanData }) {
                       {list.map(({ s, i }) => {
                         const c = byId.get(s.courseId);
                         return (
-                          <li key={i} className={cn('rounded-lg px-2 py-1.5 text-xs border-l-4 bg-zinc-50 dark:bg-white/[0.03]', flagged.has(i) && 'bg-amber-500/10 ring-1 ring-amber-500/50')} style={{ borderLeftColor: courseColor(c?.color, c?.code ?? '') }}>
+                          <li key={i} className={cn('rounded-lg px-2 py-1.5 text-xs border-s-4 bg-zinc-50 dark:bg-white/[0.03]', flagged.has(i) && 'bg-amber-500/10 ring-1 ring-amber-500/50')} style={{ borderLeftColor: courseColor(c?.color, c?.code ?? '') }}>
                             <p className="font-semibold text-zinc-900 dark:text-white tabular-nums">{hhmm(s.start)}–{hhmm(s.end)} · {c?.code}</p>
                             <p className="text-zinc-700 dark:text-zinc-300 truncate">{s.roomId ? roomById.get(s.roomId)?.name : <span className="font-semibold text-amber-800 dark:text-amber-200">No room</span>}{c?.teacher ? ` · ${c.teacher}` : ''}</p>
                           </li>

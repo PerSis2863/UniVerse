@@ -64,7 +64,7 @@ export function RolesSection({ communityId, roles, counts, onChanged }: { commun
       {roles.length > 0 && (
         <ul className="flex flex-wrap gap-1.5">
           {roles.map((r) => (
-            <li key={r.id} className="inline-flex items-center gap-1 rounded-full bg-zinc-50 dark:bg-white/[0.03] pr-1">
+            <li key={r.id} className="inline-flex items-center gap-1 rounded-full bg-zinc-50 dark:bg-white/[0.03] pe-1">
               <RoleChip role={r} className="text-[11px]" />
               <span className="text-[10px] text-zinc-500 tabular-nums">{counts[r.id] ?? 0}</span>
               <button type="button" disabled={busy === r.id} aria-label={`Delete role ${r.name}`} onClick={async () => { if (await confirmDialog({ title: `Delete the ${r.name} role?`, message: 'It comes off everyone who has it, and private channels it opened close to them.', destructive: true, confirmLabel: 'Delete' })) void post({ action: 'role-delete', roleId: r.id }, 'Role deleted', r.id); }} className="p-1 rounded-full text-zinc-400 hover:text-rose-500"><X className="w-3 h-3" /></button>
@@ -104,9 +104,9 @@ export function MemberRolesButton({ communityId, userId, name, roles, held, onCh
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
-          <div role="group" aria-label={`Roles for ${name}`} className="absolute right-0 top-full mt-1 z-20 w-52 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-xl p-1">
+          <div role="group" aria-label={`Roles for ${name}`} className="absolute end-0 top-full mt-1 z-20 w-52 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-xl p-1">
             {roles.map((r) => (
-              <button key={r.id} type="button" role="checkbox" aria-checked={held.includes(r.id)} disabled={busy} onClick={() => void toggle(r.id)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+              <button key={r.id} type="button" role="checkbox" aria-checked={held.includes(r.id)} disabled={busy} onClick={() => void toggle(r.id)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-start hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
                 <span className={cn('w-4 h-4 rounded border grid place-items-center', held.includes(r.id) ? 'border-transparent' : 'border-zinc-300 dark:border-white/20')} style={held.includes(r.id) ? { background: r.color } : undefined}>{held.includes(r.id) && <Check className="w-3 h-3 text-white" aria-hidden />}</span>
                 <span className="flex-1 truncate" style={{ color: r.color }}>{r.name}</span>
               </button>
@@ -147,7 +147,7 @@ export function ChannelSettingsRow({ channel, first, last, roles, categories, on
     <li className="flex items-center gap-1.5 rounded-xl px-2 py-1.5 bg-zinc-50 dark:bg-white/[0.03]">
       <Icon className={cn('w-4 h-4 shrink-0', channel.kind === 'VOICE' ? 'text-emerald-500' : channel.kind === 'ANNOUNCE' ? 'text-amber-500' : 'text-zinc-400')} aria-hidden />
       <span className="flex-1 min-w-0 text-sm truncate text-zinc-800 dark:text-zinc-200">
-        {channel.name}{channel.private && <Lock className="inline w-3 h-3 ml-1 -mt-0.5 text-zinc-400" aria-label="private" />}
+        {channel.name}{channel.private && <Lock className="inline w-3 h-3 ms-1 -mt-0.5 text-zinc-400" aria-label="private" />}
         {channel.category && <span className="block text-[10px] text-zinc-500 truncate">{channel.category}</span>}
       </span>
       <button type="button" disabled={first} onClick={() => void move('up')} aria-label={`Move ${channel.name} up`} className="p-1 rounded-lg text-zinc-400 hover:text-indigo-500 disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5" /></button>

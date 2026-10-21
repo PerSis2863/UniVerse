@@ -3,7 +3,245 @@
 Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
 done, where the code is and what's left for each item. Keep that table up to date as you go.
 
-## Latest (17 Oct 2026): read this first
+## Review · Full bug and error review: done (21 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+
+Migration `0171_job_runs` (next: **0172**). Rules for code that builds on it:
+
+- **Long `in` lists are split for you.** `src/lib/d1-split.ts` (wired in `src/lib/db.ts` as a Prisma
+  query extension) runs a query whose `in` lists pass 95 values in parts and merges them: counts and
+  updateMany/deleteMany counts add up, groupBy rows are joined, findMany/findFirst are re-sorted
+  (SQLite order, nulls first when ascending) and `take` applied after. Parts run **one after
+  another**: run together inside one extension call they all came back empty on D1. It does **not**
+  split an `in` inside `OR`, inside a relation filter (`some: { id: { in } }`) or `notIn`: write
+  those as separate lookups and merge (as `src/server/tasks.ts` overview, `docs.ts` listDocs and
+  `semester.ts` do). Only Prisma's own auto-split (findMany whose whole `where` is one list) and
+  `createMany` were safe before this.
+- **Queries are counted per request** (`queriesUsed()` in `src/lib/db.ts`, keyed by the Worker
+  request's context; 0 under `next dev`). A warning with a short stack is logged at 40 and 50. A
+  cron run is one request: every `runJob` in one scheduled invocation shares the 50.
+- **Daily jobs run in steps** (`src/server/daily-jobs.ts`, table `job_runs`: one row per job per
+  day, a cursor, `done`). The daily cron starts the day's rows and runs what fits in 42 queries;
+  each 15-minute tick continues while a row isn't done (`cloudflare/due-check.ts` `dailyPending`,
+  then `/api/cron/daily-more`). A step that throws is logged and marked done, so one bad step never
+  blocks the rest. A new daily job: add a step with its own budget check (`left()`), never a loop
+  that can pass 50.
+- **Reminders** (`/api/cron/reminders`) run jobs in priority order and skip the rest once 38 queries
+  are used (`waiting` in its reply).
+- **Light mode:** slate and gray 400–600 and emerald 600/700 are remapped in `globals.css` so text
+  reads at 4.5:1; dark mode has its own lifts. Dark-first pages need `text-zinc-900 dark:text-white`
+  style pairs; a coloured shade with a `dark:text-` of its own isn't lifted.
+- **Touch screens:** Tailwind 4's `hover:` only applies with a mouse, so `opacity-0
+  group-hover:opacity-100` hides buttons on phones for good. Use `pointer-fine:opacity-0
+  pointer-fine:group-hover:opacity-100 focus-within:opacity-100`.
+- **Closing motion:** `Sheet` slides down (phone) or fades (desktop) before it unmounts; `Dialogs`
+  fade out. Both are instant with reduced motion.
+- **Local test accounts:** `scripts/local/test-accounts.mjs` (run by `setup.mjs`) adds Tara
+  (co-teacher) and Tom (TA on CS101), local only. `scripts/crawl.mjs --dark --axe`,
+  `scripts/smoothness.mjs` (phone, CPU 4× slower: frames over 34 ms and long tasks per action).
+
+## Q23 · Small items (Phase E), two batches: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+
+Twelve items, no migration. Rules for code that builds on it:
+
+- **Ending a call for everyone** is the host's `control` action `end-all` in the call room
+  (`cloudflare/worker.ts`): everyone else (and the waiting room) gets `{ type: 'ended', by }` and is
+  closed with code 4002. Dialogs inside a call must be drawn inside `CallView` (the call sits at
+  z-[300], `confirmDialog` at z-[120] would be hidden under it).
+- **Device-only preferences** live in `src/lib/display-prefs.ts` (`uv-cam-off`, `uv-mirror`,
+  `uv-week-start`). Anything that draws differently from one (calendars) reads it with
+  `useSyncExternalStore` and the server default (`src/lib/use-week-start.ts`), never in `useState`,
+  or the server and browser draw different things. A new setting needs a `settings-index.ts` entry
+  and a `data-setting`.
+- **Week start:** `monthGrid` / `weekStart` (`src/lib/task-calendar.ts`) and the calendar's
+  `TimeGrid` take the first day (1 Monday, 0 Sunday). Weekly timetable rows (`weekday` 0 = Monday)
+  are unchanged: only what's drawn moves.
+- **Reminders to hand in** (`remindMissing`, `src/server/assignments.ts`) are notifications of type
+  `reminder` linked to `/student/assignments/<id>`; the 12-hour limit looks for exactly that, so
+  don't reuse that type and link for other notices.
+- **Duplicate assignment** copies the rubric's concept tags (`ConceptTag` kind `CRITERION`, refId
+  `<assignmentId>:<criterionId>`). A new assignment field must be added to `duplicateAssignment`.
+- **Keyboard shortcuts** (`src/components/layout/KeyboardHelp.tsx`): `?` and `/` are ignored while
+  typing or inside a dialog. Add new app-wide shortcuts to its list.
+
+## Q22b · The Q22 leftovers the owner asked for: done (20 Oct 2026, same branch, not merged)
+
+Mastery signals from flashcards and tutor questions (D1), a hybrid class (D7), the converter extras
+(B9) and the school-admin extras (B15). Migrations **0167** (`concept_signals`, `study_cards.conceptId`),
+**0168** (`classroom_sessions.linkedCall`), **0169** (late fees), **0170** (half days, `staff_settings`).
+**Next migration: `0171`.** Rules:
+
+- **Mastery signals** go through `recordSignal` (`src/server/learning-dna.ts`; it never throws).
+  Text is matched to a concept by `matchConcept` (`src/lib/concept-match.ts`: more than half of the
+  name's words must appear). A card review is an observation at weight `CARD_WEIGHT` 0.3 (a quiz
+  answer is 1), one per card per day; a tutor question is only counted ("asked"), never right or
+  wrong. Students see their own count; teachers see class totals, never who asked.
+- **Hybrid class:** `markOnline(courseId, userIds)` (`src/server/classroom.ts`) marks students
+  present or late with the note `Online (class call)`, only while the course's in-person class is
+  linked; a mark the teacher made stays. It runs when a student gets a class-call ticket
+  (`callTicket`), when the link is switched on and when the class ends. The call room's `/pulse`
+  gives the live meter counts (app-only, like `/people`).
+- **Late fees are inside `amount`** (`fee_invoices.lateFee` says how much of it), so payments,
+  receipts and "paid in full" keep working. `applyLateFees` adds a plan's fee once to bills past
+  the due date plus the grace days (one UPDATE, safe to run again; the daily job runs it). Taking
+  it off refuses when more has been paid than the bill would be without it.
+- **Leave balances** (`src/lib/leave-balance.ts`): the leave year starts in the chosen month; only
+  Monday–Friday count; a half day (`AM`/`PM`, one day only) counts 0.5 and misses only that half's
+  classes for cover. Allowances are in `staff_settings` (one row, id `main`).
+- **PDF forms** are filled and flattened (`src/lib/pdf-form.ts fillForm`) before the editor copies
+  pages, because copying pages loses the form.
+- **Word files** from HTML go through `htmlToDoc` → the editor's own `.docx` writer
+  (`src/lib/html-to-doc.ts`, `docxBlob`); PDF → Word through `pdfToDoc` (text only: a scanned PDF
+  has none). **MP3** uses `@mediabunny/mp3-encoder` (MPL-2.0, pinned to mediabunny's version) only
+  when the browser can't encode MP3 itself.
+- **Barcodes** are Code 128 set B (`src/lib/code128.ts`); a library card is `L:<userId>`, which
+  the desk's borrower search understands.
+
+## Q22 · Leftovers inside finished items: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+
+Nine leftovers; the rest stay listed in the Progress row "Q22" with why. Migrations **0165**
+(AI rule and receipts on quizzes and oral checks) and **0166** (the class TA's answers on in-person
+questions). Rules for code that builds on it:
+
+- **AI receipts are made in one place:** `makeReceipt` in `src/server/ai-receipts.ts` (assignments
+  call it through `receiptForSubmission`). `how`: `'given'` throws when the choice doesn't fit the
+  rule; `'offline'` keeps a hand-in with no choice; `'auto'` (a quiz handed in by itself at zero)
+  never throws, so answers are never lost, and the teacher sees it marked. `during: true` means the
+  record covers the attempt (quiz: from `quiz_attempts.startedAt`, kept for any quiz whose rule
+  isn't FREE; oral check: from the session's start to its length + 2 minutes), not "since it was set".
+- **Oral checks end by themselves**, so their receipt is attached afterwards (`POST /api/orals/:id/ai-receipt`)
+  until the teacher marks it (then 409). Don't move it into `finishOral`.
+- **Any new AI help must call `logAiUse`** (kinds in `src/lib/ai-receipt.ts AI_USE_KINDS`); the class
+  TA now does (`ta`), Whisper TA didn't before.
+- **The class TA** (Whisper TA in calls, and in-person questions) answers through one function,
+  `taAnswer` in `src/server/whisper.ts`. The teacher's switch is `tutorRule.whisperOff` and covers
+  both. In-person: `askTa` in `src/server/classroom.ts`, notes from the teacher's laptop (last ten
+  minutes) as what was said; only the asking student sees the answer.
+- **Question-bank tags** (`ConceptTag` kind `BANK`) are copied to the new quiz questions by order
+  when added to a quiz (question-bank route, `add-to-quiz`).
+- **Oral checks into the gradebook:** one `Grade` per student and check, named `Oral: <title>`,
+  updated when re-marked (with grade history).
+- **Parents' files in parent–teacher chats** go through `saveFile` (4 MB, pictures and PDF), with
+  the costly-request limit in `cloudflare/worker.ts`.
+- **Class content translation** tries the browser's own Translator first (`src/lib/device-translate.ts`,
+  Chrome; skipped on data saver), then the AI.
+
+## Q21 · Languages and right to left: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+
+13 languages; Arabic and Urdu right to left. Details in the Progress row "Q21". Rules:
+
+- **Screens are translated in the browser, not in the code.** Don't wrap new text in `t()`: write
+  English as usual, then run `node scripts/gen-ui-strings.mjs` so the catalog has it, and the owner
+  runs Languages → Translate (only new texts go to the AI). Text built from pieces ("quiz" + "zes")
+  can't be matched: write whole phrases (`${n} quizzes` becomes the pattern "{0} quizzes").
+  A pattern needs 5+ letters of its own (two words if it starts and ends with a value):
+  "{0} to {1}" would match anyone's sentence, so it is dropped (`strongPattern`).
+- **People's content stays as written:** put `translate="no"` on anything people wrote (chat
+  messages already have it, with `dir="auto"`). Editable areas and form values are skipped by itself.
+- **Layout classes:** start/end only (`ms-`, `pe-`, `start-0`, `text-start`, `rounded-s`,
+  `border-e`); `node scripts/rtl-logical-classes.mjs` converts a file. Things that move sideways
+  (`translate-x-*`) need an `rtl:` mirror; centring with `left-1/2 -translate-x-1/2` stays physical.
+- **The translator never changes structure** (only `nodeValue` and four attributes), so React is
+  safe; it reloads the page when the language changes after something was translated.
+- **Never change text React hasn't drawn yet:** the translator starts after the page's load event
+  (idle), otherwise React sees different text than the server sent (error #418) and redraws the
+  whole page. That is also why the default number/date format is not patched globally: give a screen
+  its own `Intl` formatting with `languageInfo(lang).locale` instead.
+- **Dictionary storage:** `ui_translations` (0164), 32 parts per language by FNV hash of the English
+  text (`chunkOf`); `GET /api/i18n/:lang` joins the parts' JSON as text (no parse: CPU) with an ETag.
+
+## Q20 · Chat apps: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+
+A school's own slash commands, answered by its own server. Details in the Progress row "Q20".
+
+- **One place decides everything:** `src/server/chat-apps.ts`. `runCommand` repeats the message
+  route's posting rules (chat switched off, muted, announcement channel, community channel rules);
+  if the message route gains a rule, add it there too. Apps never run in private (E2E) chats.
+- **What leaves UniVerse** is only what the payload in `runCommand` builds: no email addresses;
+  recent messages only with `read_recent`. Keep it that way: a school's app is a third party.
+- **Signing** reuses `computeWebhookSignature` (webhooks); apps verify like
+  `scripts/checks/chat-apps-verify.mjs`. Redirects are not followed; 5-second timeout; the call
+  is under the costly rate limit in `cloudflare/worker.ts` (keep the path in `COSTLY`).
+- **Which school:** a person's `organizationId`, plus the school they own (admins). The admin pages
+  use `requireAdmin` → the admin's own school (`getOrCreateOrganization`).
+- **Answers** are posted by the system account with `metadata.app` (MessageBubble shows the app's
+  name); answers for one person are not saved anywhere.
+- **Browser check:** `pnpm local:serve --test-secret --owner-test`, then
+  `node scripts/checks/chat-apps-ui.mjs` (stand-in app on port 8791, sign-in keys on 8790).
+- **Older browser checks that now need care** (seen on 20 Oct, not app bugs): `life-ui` and
+  `impact-ui` insert a school for demo@admin.com, which fails once the demo admin already owns one
+  (opening Billing makes it); `cal-ui` clicks "Next", which now also matches the guided tour's button
+  (mark the tour seen with `universe-tour-done:<id>`).
+- **For the full bug review (found 20 Oct, not fixed yet):** the local server log showed a
+  background task failing with `prisma.notification.findMany()` → P2029 "query parameter limit
+  exceeded" (more than D1's 100 values in one query) while chats were used; find which background job
+  builds that query (likely notifying a big group) and split it.
+- **Also for the review:** in dark mode, white text on the accent colour (`--tint: #6366f1`,
+  `src/app/globals.css`, e.g. your own chat bubbles) is 4.47:1, just under 4.5:1; something like
+  `#5f63f0` passes, but it changes every screen, so check them all (text that uses the tint too).
+- **Also for the review:** the course tiles on Student → Courses put white letters on the course
+  colour (#3b82f6 is 3.67:1); seen in English too (20 Oct).
+
+## Q19 · Owner console: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+
+Schools, Moderation and View as in the owner console, a rollout card on the Server tab, growth
+charts. Details in the Progress row "Q19". Rules for code that builds on it:
+
+- **View as is read-only by construction, at the server.** Its token is an ordinary `ut1.` session
+  token with `src: 'view'` (30 minutes). `viewAsRefused(method, path)` in `src/server/session-token.ts`
+  is the one list: every non-GET except `POST /api/bootstrap`, plus chat, calls, realtime, recordings
+  and `/api/files/link` even for GET. It is checked in `router.handle`, `getSessionUser`,
+  `getUserFromToken` (server actions) and the Worker's `callerOf` (which then hands the request to
+  the Next.js route, which refuses it). **A new way in that resolves a token itself must call
+  `viewAsBlocked(req, token)`.** A new GET that changes something (marks read, counts a view) must
+  either be a POST or be added to that list. Reading `src` without verifying only ever refuses more.
+- **The view-as tab must never touch the owner's sign-in.** Everything for it lives in that tab's
+  sessionStorage (`uv-view-as`, `uv-view-as-name`, `universe-auth`). `getAuthToken`, `twoStepPass`,
+  the account store's storage, `auth.signOut`, `logout`, the 401 handler, the early start-up script
+  (`bootstrapPrefetchScript`) and `reportSession` all check `viewAsToken()` first. New code that reads
+  or clears `localStorage` sign-in keys (`accessToken`, `universe-auth`, `uv-pass`) must do the same.
+- **Blocked parts answer 401 from Next.js routes** (getSessionUser returns null): in a view-as tab
+  the API client turns that into "read-only" unless the token has run out (then `/view-as?expired=1`).
+- **Rollout** entries `rollout:<id>=<pct>` sit next to `org:` entries; always write switches with the
+  4-argument `composeSwitches(off, emails, orgs, rollouts)` so neither is dropped.
+- **Churn** comes from `subscription_events` (0162), written only by `syncSubscription` when the
+  status or plan changes; there is no history from before this release.
+- **Browser check:** `pnpm local:serve --test-secret --owner-test`, then
+  `node scripts/checks/console-ui.mjs`. It runs a stand-in for Google's sign-in keys on port 8790
+  (local only; `FIREBASE_TEST_JWKS_URL` is ignored unless it points at localhost) for the made-up
+  owner `owner@check.test`, and removes that account, its log rows and the test flag at the end.
+
+## Handover to the cloud agent (20 Oct 2026): read this first
+
+The owner is handing the project back to a cloud session. Where things stand:
+
+- **`main` has everything through Q18**: PR #66 (Q14 skills passport, Q15 careers, Q16 global impact,
+  Q17 student life, Q18 profile / settings search / guided tour) was merged on 20 Oct at the owner's
+  "merge". Work on branch **`claude/funny-galileo-y4mz9r`** (it matches `main` apart from this note).
+- **Next: Q19 Owner console**, then Q20–Q23 (plan section 4). **Next migration: `0162`.**
+- **Read, in order:** `START-HERE.md`, `.cursor/rules/universe.mdc`, the Progress rows Q14–Q18 in
+  `STAGE-5-PLAN.md`, and the Q14–Q18 notes below (traps and rules for code that builds on them).
+- **How each item was done** (keep doing it): one commit per item; a browser check in
+  `scripts/checks/<name>-ui.mjs` on the built Worker (`pnpm local:build`, then `pnpm local:serve`
+  with `--payments-test`, `--test-secret` or `--ai-placeholder` as the item needs) with axe at
+  390 / 1280 px in light and dark and no sideways scrolling; the test cleans up after itself;
+  sample-mode stubs for new GET routes; help answers with tests; then the Progress row, a note here,
+  START-HERE and the rules' "next". Merge only when the owner says "merge" (a pull request from this
+  branch, merged; Cloudflare then builds and deploys in about 15 minutes).
+- **Traps learned in Q14–Q18** (details in each note): payments count only through
+  `completeOrder` after the gateway confirms; never add fallback keys or a "mark as paid" button.
+  New account fields must also go into `cloudflare/fast-api.ts usersMe`. The demo admin can't write
+  (every write gets 401 "Please sign in."), so unit-test admin-only writes. Hand-written test rows
+  must give JSON columns '[]' (some tables default to ''). Settings draws each section twice (use
+  `useId` for ids). Browser checks mark the tour seen with `universe-tour-done:<user id>`.
+- **Waiting on the owner:** Stripe webhook events `checkout.session.completed` and
+  `checkout.session.async_payment_succeeded` (donations and tickets); `SESSION_SECRET` of at least
+  32 characters on the Worker (tickets, check-in codes); switching NGOs on for donations; Razorpay
+  (UPI) and live bus GPS are **[owner]**.
+- **The owner:** not a developer; free tiers only; never delete the seeded sample data; end each
+  item with a plain-words summary (what changed, what they can do, what they need to do); no AI
+  model names in commits.
+
+## Earlier (17 Oct 2026)
 
 - **`main` has everything through Q13** (PR #64). The work moves to **Cursor** on the owner's
   computer: start with **`START-HERE.md`** at the top of the project (setup, `pnpm local:*`

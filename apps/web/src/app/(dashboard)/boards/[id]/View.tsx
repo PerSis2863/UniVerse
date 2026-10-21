@@ -261,7 +261,7 @@ function BoardPage({ id }: { id: string }) {
     );
   }
   if (error) {
-    return <div className="flex-1 flex items-center justify-center p-8 text-sm text-rose-500">Couldn’t open the board. <button onClick={() => mutate()} className="ml-1 underline font-semibold">Try again</button></div>;
+    return <div className="flex-1 flex items-center justify-center p-8 text-sm text-rose-500">Couldn’t open the board. <button onClick={() => mutate()} className="ms-1 underline font-semibold">Try again</button></div>;
   }
 
   const others = peers.filter((p, i, all) => all.findIndex((x) => x.userId === p.userId) === i);
@@ -272,16 +272,16 @@ function BoardPage({ id }: { id: string }) {
       <header className="flex items-center gap-2 px-2 sm:px-3 h-14 border-b border-zinc-200 dark:border-white/[0.08] bg-white/95 dark:bg-zinc-950/95 backdrop-blur shrink-0">
         <Link href="/boards" aria-label="Back to boards" className="w-9 h-9 rounded-xl inline-flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><ArrowLeft className="w-5 h-5" /></Link>
         <div className="min-w-0 flex-1">
-          <button onClick={rename} disabled={!canEdit} className="block max-w-full text-left font-bold text-zinc-900 dark:text-white truncate disabled:cursor-default" title={canEdit ? 'Rename' : undefined}>
+          <button onClick={rename} disabled={!canEdit} className="block max-w-full text-start font-bold text-zinc-900 dark:text-white truncate disabled:cursor-default" title={canEdit ? 'Rename' : undefined}>
             {board?.title ?? 'Whiteboard'}
           </button>
           <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
             <span className={cn('w-1.5 h-1.5 rounded-full', STATUS[status].dot)} /> {STATUS[status].label}
-            {!canEdit && <span className="inline-flex items-center gap-1 ml-1"><Eye className="w-3 h-3" /> View only</span>}
+            {!canEdit && <span className="inline-flex items-center gap-1 ms-1"><Eye className="w-3 h-3" /> View only</span>}
           </p>
         </div>
 
-        <div className="hidden sm:flex -space-x-2 mr-1" aria-label={`${others.length} people here`}>
+        <div className="hidden sm:flex -space-x-2 me-1" aria-label={`${others.length} people here`}>
           {others.slice(0, 5).map((p) => (
             <div key={p.userId} title={p.name} className="rounded-full ring-2" style={{ ['--tw-ring-color' as string]: p.color }}>
               <Avatar name={p.name} src={p.avatar} size={28} />
@@ -321,9 +321,9 @@ function BoardPage({ id }: { id: string }) {
           <button onClick={() => setTimerOpen((o) => !o)} disabled={status !== 'live' || !canEdit} className={btn} title="Workshop timer for everyone" aria-expanded={timerOpen}><TimerIcon className="w-4 h-4" /></button>
           <AnimatePresence>
             {timerOpen && (
-              <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy} className="absolute right-0 top-11 z-40 w-44 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
-                {[1, 3, 5, 10, 15].map((m) => <button key={m} type="button" onClick={() => { controls.current?.setTimer(m); setTimerOpen(false); }} className="w-full text-left px-3 py-1.5 rounded-xl text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06]">{m} {m === 1 ? 'minute' : 'minutes'}</button>)}
-                {timer && <button type="button" onClick={() => { controls.current?.setTimer(null); setTimerOpen(false); }} className="w-full text-left px-3 py-1.5 rounded-xl text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-500/10">Stop the timer</button>}
+              <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy} className="absolute end-0 top-11 z-40 w-44 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
+                {[1, 3, 5, 10, 15].map((m) => <button key={m} type="button" onClick={() => { controls.current?.setTimer(m); setTimerOpen(false); }} className="w-full text-start px-3 py-1.5 rounded-xl text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06]">{m} {m === 1 ? 'minute' : 'minutes'}</button>)}
+                {timer && <button type="button" onClick={() => { controls.current?.setTimer(null); setTimerOpen(false); }} className="w-full text-start px-3 py-1.5 rounded-xl text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-500/10">Stop the timer</button>}
               </motion.div>
             )}
           </AnimatePresence>
@@ -335,11 +335,11 @@ function BoardPage({ id }: { id: string }) {
           <AnimatePresence>
             {aiOpen && (
               <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy}
-                className="absolute right-0 top-11 z-40 w-64 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
-                {canEdit && <button type="button" onClick={() => void runAi('themes')} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Group notes into themes</span><span className="block text-xs text-zinc-500">Adds the sticky notes again, sorted into columns</span></button>}
-                {canEdit && <button type="button" onClick={() => void tidySketch()} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Tidy a sketch into a diagram</span><span className="block text-xs text-zinc-500">Select your drawing (or nothing, for the whole board): AI redraws it cleanly beside it</span></button>}
-                {canEdit && <button type="button" onClick={() => void runAi('mindmap')} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Mind map from a topic…</span><span className="block text-xs text-zinc-500">Draws a mind map beside your board</span></button>}
-                <button type="button" onClick={() => void runAi('summary')} className="w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Summarise this board</span><span className="block text-xs text-zinc-500">A summary and next steps</span></button>
+                className="absolute end-0 top-11 z-40 w-64 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
+                {canEdit && <button type="button" onClick={() => void runAi('themes')} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Group notes into themes</span><span className="block text-xs text-zinc-500">Adds the sticky notes again, sorted into columns</span></button>}
+                {canEdit && <button type="button" onClick={() => void tidySketch()} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Tidy a sketch into a diagram</span><span className="block text-xs text-zinc-500">Select your drawing (or nothing, for the whole board): AI redraws it cleanly beside it</span></button>}
+                {canEdit && <button type="button" onClick={() => void runAi('mindmap')} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Mind map from a topic…</span><span className="block text-xs text-zinc-500">Draws a mind map beside your board</span></button>}
+                <button type="button" onClick={() => void runAi('summary')} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Summarise this board</span><span className="block text-xs text-zinc-500">A summary and next steps</span></button>
               </motion.div>
             )}
           </AnimatePresence>
@@ -358,7 +358,7 @@ function BoardPage({ id }: { id: string }) {
           {summary.nextSteps.length > 0 && (
             <>
               <p className="mt-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">Next steps</p>
-              <ul className="mt-1.5 space-y-1 text-sm text-zinc-700 dark:text-zinc-200 list-disc pl-5">{summary.nextSteps.map((x, i) => <li key={i}>{x}</li>)}</ul>
+              <ul className="mt-1.5 space-y-1 text-sm text-zinc-700 dark:text-zinc-200 list-disc ps-5">{summary.nextSteps.map((x, i) => <li key={i}>{x}</li>)}</ul>
             </>
           )}
           <p className="mt-4 text-[11px] text-zinc-400 inline-flex items-center gap-1"><Sparkles className="w-3 h-3" />Made with AI from the text on the board</p>
@@ -379,7 +379,7 @@ function BoardPage({ id }: { id: string }) {
               </motion.div>
             )}
             {presentState && !presentState.mine && presentState.name && (
-              <motion.div key="following" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="pointer-events-auto flex items-center gap-2 rounded-full bg-indigo-600/95 text-white pl-3 pr-1 py-1 shadow-xl text-xs font-semibold">
+              <motion.div key="following" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="pointer-events-auto flex items-center gap-2 rounded-full bg-indigo-600/95 text-white ps-3 pe-1 py-1 shadow-xl text-xs font-semibold">
                 <MonitorUp className="w-3.5 h-3.5" />{presentState.name.split(' ')[0]} is presenting
                 <button type="button" onClick={() => { const on = !follow; setFollow(on); controls.current?.follow(on); }} className="px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25">{follow ? 'Stop following' : 'Follow'}</button>
               </motion.div>

@@ -3,6 +3,8 @@ import { getSessionUser } from '@/lib/server-auth';
 import { modeFor } from '@/lib/tutor-rules';
 import { aiOn, askTutor, tutorAccess, tutorClosed } from '@/server/tutor';
 import { recordStudy } from '@/server/streaks';
+import { recordSignal } from '@/server/learning-dna';
+import { later } from '@/server/email';
 
 // POST { question, history?: [{ role: 'user' | 'tutor', text }], mode?: 'normal' | 'simple' | 'hints' }
 // → { answer, grounded, citations }. Conversations aren't stored on the server. A hints-only course
@@ -24,6 +26,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ courseI
   if (r.reason === 'no-sources') return NextResponse.json({ error: 'This course has no materials the tutor can read yet.', code: 'no-sources' }, { status: 409 });
   if (r.reason === 'limit') return NextResponse.json({ error: r.message, code: 'ai-limit' }, { status: 429 });
   if (r.reason === 'unavailable') return NextResponse.json({ error: 'The tutor is busy right now. Please try again in a moment.' }, { status: 503 });
-  if (user.role === 'STUDENT') recordStudy(user.id, req);
+  if (user.role === 'STUDENT') {
+    recordStudy(user.id, req);
+    // "Asked the tutor about recursion 4 times" on the mastery map (Stage 5 · Q22), after answering.
+    later(() => recordSignal({ courseId: a.courseId, studentId: user.id, kind: 'TUTOR', text: question }));
+  }
   return NextResponse.json(r);
 }

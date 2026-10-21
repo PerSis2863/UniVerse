@@ -44,7 +44,7 @@ export function HealthPanel() {
   return (
     <div className="space-y-5">
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 sm:p-7 text-white shadow-xl shadow-indigo-500/20">
-        <div aria-hidden className="pointer-events-none absolute -top-16 -right-10 w-56 h-56 rounded-full bg-white/10 blur-2xl" />
+        <div aria-hidden className="pointer-events-none absolute -top-16 -end-10 w-56 h-56 rounded-full bg-white/10 blur-2xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
           <div className={cn('w-24 h-24 shrink-0 rounded-full p-1 bg-gradient-to-br', ring)}>
             <div className="w-full h-full rounded-full bg-indigo-950/80 flex flex-col items-center justify-center">
@@ -78,7 +78,7 @@ export function HealthPanel() {
             const on = open === i;
             return (
               <li key={i} className="tone-panel rounded-2xl border border-zinc-200/80 dark:border-white/[0.06] overflow-hidden">
-                <button onClick={() => setOpen(on ? null : i)} className="w-full flex items-center gap-3 p-4 text-left">
+                <button onClick={() => setOpen(on ? null : i)} className="w-full flex items-center gap-3 p-4 text-start">
                   <span className={cn('w-2.5 h-2.5 shrink-0 rounded-full', t.dot)} />
                   <span className="flex-1 min-w-0">
                     <span className="block font-semibold text-zinc-900 dark:text-white">{f.title}</span>
@@ -88,7 +88,7 @@ export function HealthPanel() {
                   <ChevronDown className={cn('w-4 h-4 shrink-0 text-zinc-400 transition-transform', on && 'rotate-180')} />
                 </button>
                 {on && (
-                  <div className="px-4 pb-4 pl-[2.6rem] space-y-2 text-sm">
+                  <div className="px-4 pb-4 ps-[2.6rem] space-y-2 text-sm">
                     <p className="text-zinc-600 dark:text-zinc-300">{f.detail}</p>
                     <p className="flex gap-2 p-3 rounded-xl bg-indigo-500/[0.07] border border-indigo-500/20 text-zinc-800 dark:text-zinc-100">
                       <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-indigo-500" /> <span><b>What to do:</b> {f.fix}</span>
@@ -107,7 +107,7 @@ export function HealthPanel() {
         <div className="tone-panel rounded-2xl border border-zinc-200/80 dark:border-white/[0.06] p-4">
           <button onClick={() => setShowPassed((v) => !v)} className="w-full flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-white">
             <CheckCircle2 className="w-4 h-4 text-emerald-500" /> {data.passed.length} checks passed
-            <ChevronDown className={cn('ml-auto w-4 h-4 text-zinc-400 transition-transform', showPassed && 'rotate-180')} />
+            <ChevronDown className={cn('ms-auto w-4 h-4 text-zinc-400 transition-transform', showPassed && 'rotate-180')} />
           </button>
           {showPassed && (
             <ul className="mt-3 grid sm:grid-cols-2 gap-1.5 text-sm text-zinc-600 dark:text-zinc-300">

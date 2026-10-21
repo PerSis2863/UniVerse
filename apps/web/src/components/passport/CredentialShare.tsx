@@ -87,8 +87,8 @@ export function CertificateQrDialog({ url, cert, onClose }: { url: string; cert:
 
         <div id="credential-print" className="relative overflow-hidden rounded-2xl border border-indigo-200/70 bg-white p-5 sm:p-7 text-center text-zinc-900 shadow-sm">
           <div aria-hidden className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
-          <div aria-hidden className="absolute -top-20 -left-20 w-56 h-56 rounded-full bg-indigo-500/10 blur-3xl" />
-          <div aria-hidden className="absolute -bottom-20 -right-20 w-56 h-56 rounded-full bg-fuchsia-500/10 blur-3xl" />
+          <div aria-hidden className="absolute -top-20 -start-20 w-56 h-56 rounded-full bg-indigo-500/10 blur-3xl" />
+          <div aria-hidden className="absolute -bottom-20 -end-20 w-56 h-56 rounded-full bg-fuchsia-500/10 blur-3xl" />
           <div className="relative">
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-indigo-600">UniVerse Impact · Verified credential</p>
             {cert.holderName && (

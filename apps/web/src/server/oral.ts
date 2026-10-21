@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { logGradeChanges } from './grade-history';
 import type { SessionUser } from '@/lib/server-auth';
 import { courseAccess } from '@/lib/course-access';
 import { isLanguage, LANGUAGES } from '@/lib/languages';
@@ -9,7 +10,8 @@ import {
 } from '@/lib/oral';
 import type { Body } from './body';
 import { spendAi } from './ai-budget';
-import { logAiUse } from './ai-receipts';
+import { logAiUse, makeReceipt, usesFor } from './ai-receipts';
+import { isAiPolicy, parseReceipt } from '@/lib/ai-receipt';
 import { notify, notifyMany } from './email';
 import { geminiJson } from './gemini';
 import { BadRequestException, ConflictException, HttpException, NotFoundException } from './http';
@@ -67,7 +69,7 @@ ${transcriptForScoring(o.lines)}`;
 }
 
 /** A session as the student or teacher sees it. `ai`: include the AI's draft (a check's draft stays hidden from the student until confirmed). */
-function view(s: { id: string; kind: string; topic: string; lang: string; rubric: string; transcript: string; durationSec: number; audioUrl: string | null; aiScores: string | null; aiSummary: string | null; status: string; finalScores: string | null; teacherComment: string | null; confirmedAt: Date | null; createdAt: Date; checkId: string | null; courseId: string | null }, ai: boolean, transcript = true) {
+function view(s: { id: string; kind: string; topic: string; lang: string; rubric: string; transcript: string; durationSec: number; audioUrl: string | null; aiScores: string | null; aiSummary: string | null; status: string; finalScores: string | null; teacherComment: string | null; confirmedAt: Date | null; createdAt: Date; checkId: string | null; courseId: string | null; aiReceipt?: string | null }, ai: boolean, transcript = true) {
   const rubric = rubricOf(s.rubric, s.kind);
   const aiScores = ai && s.aiScores ? cleanScores(json(s.aiScores, []), rubric) : null;
   const final = s.finalScores ? cleanScores(json(s.finalScores, []), rubric) : null;
@@ -77,7 +79,7 @@ function view(s: { id: string; kind: string; topic: string; lang: string; rubric
     rubric, max: maxOf(rubric), scores: shown, total: shown ? totalOf(shown) : null,
     aiScores, aiTotal: aiScores ? totalOf(aiScores) : null,
     summary: ai || s.status === 'CONFIRMED' ? json<Summary | null>(s.aiSummary, null) : null,
-    teacherComment: s.teacherComment, audioUrl: s.audioUrl,
+    teacherComment: s.teacherComment, audioUrl: s.audioUrl, aiReceipt: parseReceipt(s.aiReceipt),
     ...(transcript ? { transcript: json<Line[]>(s.transcript, []) } : {}),
   };
 }
@@ -91,7 +93,7 @@ export async function oralOverview(user: SessionUser) {
     courseIds.length ? prisma.oralCheck.findMany({
       where: { courseId: { in: courseIds }, OR: [{ status: 'OPEN' }, { sessions: { some: { userId: user.id } } }] },
       orderBy: { createdAt: 'desc' }, take: 30,
-      select: { id: true, title: true, kind: true, topic: true, minutes: true, dueAt: true, status: true, rubric: true, course: { select: { id: true, code: true, name: true } }, sessions: { where: { userId: user.id }, select: { id: true, status: true, finalScores: true, rubric: true, kind: true, createdAt: true } } },
+      select: { id: true, title: true, kind: true, topic: true, minutes: true, dueAt: true, status: true, rubric: true, aiPolicy: true, course: { select: { id: true, code: true, name: true } }, sessions: { where: { userId: user.id }, select: { id: true, status: true, finalScores: true, rubric: true, kind: true, createdAt: true, aiReceipt: true } } },
     }) : Promise.resolve([]),
     prisma.oralSession.findMany({ where: { userId: user.id, checkId: null }, orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, kind: true, topic: true, rubric: true, aiScores: true, durationSec: true, createdAt: true, courseId: true } }),
   ]);
@@ -102,9 +104,9 @@ export async function oralOverview(user: SessionUser) {
       const rubric = rubricOf(c.rubric, c.kind);
       const final = mine?.finalScores ? cleanScores(json(mine.finalScores, []), rubric) : null;
       return {
-        id: c.id, title: c.title, kind: c.kind, topic: c.topic, minutes: c.minutes, dueAt: c.dueAt, course: c.course,
+        id: c.id, title: c.title, kind: c.kind, topic: c.topic, minutes: c.minutes, dueAt: c.dueAt, course: c.course, aiPolicy: c.aiPolicy,
         open: c.status === 'OPEN' && (!c.dueAt || c.dueAt.getTime() > now),
-        mine: mine ? { id: mine.id, status: mine.status, total: final ? totalOf(final) : null, max: maxOf(rubric) } : null,
+        mine: mine ? { id: mine.id, status: mine.status, total: final ? totalOf(final) : null, max: maxOf(rubric), receipt: !!mine.aiReceipt } : null,
       };
     }),
     practice: practice.map((p) => {
@@ -236,6 +238,35 @@ export async function deleteOral(user: SessionUser, id: string) {
   return { ok: true };
 }
 
+// ── AI receipts on oral checks (Stage 5 · Q22) ─────────────────────────────────────────────────
+// An oral ends by itself when the time runs out, so the student attaches their receipt (or says they
+// didn't use AI) afterwards, until the teacher has marked it. It covers the oral itself: from its
+// start to the end of its time (and two minutes over), made from the student's own record.
+
+async function myAttempt(user: SessionUser, sessionId: string) {
+  const s = await prisma.oralSession.findUnique({ where: { id: sessionId }, select: { id: true, userId: true, status: true, createdAt: true, aiReceipt: true, check: { select: { courseId: true, minutes: true, aiPolicy: true } } } });
+  if (!s || s.userId !== user.id || !s.check) throw new NotFoundException('Oral check not found.');
+  const until = new Date(s.createdAt.getTime() + (s.check.minutes + 2) * 60_000);
+  return { ...s, check: s.check, scope: { courseId: s.check.courseId, since: s.createdAt, until, policy: s.check.aiPolicy, during: true, what: 'oral check' as const } };
+}
+
+/** GET /api/orals/:id/ai-receipt: what the student would attach for their oral check. */
+export async function oralReceiptPreview(user: SessionUser, sessionId: string) {
+  const s = await myAttempt(user, sessionId);
+  const until = s.scope.until.getTime() < Date.now() ? s.scope.until : new Date();
+  return { policy: s.check.aiPolicy, since: s.createdAt, during: true, uses: await usesFor(user.id, { ...s.scope, until }), given: parseReceipt(s.aiReceipt), canChange: s.status === 'SUBMITTED' };
+}
+
+/** POST /api/orals/:id/ai-receipt { attach, declaredNone, note }: the student's receipt for their oral check. */
+export async function setOralReceipt(user: SessionUser, sessionId: string, b: Body) {
+  const s = await myAttempt(user, sessionId);
+  if (s.status === 'STARTED') throw new BadRequestException('Finish the oral check first.');
+  if (s.status !== 'SUBMITTED') throw new ConflictException('Your teacher has marked this oral check already.');
+  const aiReceipt = await makeReceipt(user.id, s.scope, b);
+  await prisma.oralSession.update({ where: { id: s.id }, data: { aiReceipt } });
+  return { ok: true, aiReceipt: parseReceipt(aiReceipt) };
+}
+
 // ── Teachers ───────────────────────────────────────────────────────────────────────────────────
 
 /** GET /api/courses/:id/oral-checks: the course's oral checks (teacher: with how many did each; student: the open ones and mine). */
@@ -272,7 +303,9 @@ export async function createOralCheck(user: SessionUser, courseId: string, b: Bo
     dueAt = new Date(String(b.dueAt));
     if (isNaN(dueAt.getTime()) || dueAt.getTime() < Date.now()) throw new BadRequestException('Choose a due date in the future.');
   }
-  const check = await prisma.oralCheck.create({ data: { courseId, teacherId: user.id, title, kind: b.kind, topic, questions, lang, rubric: JSON.stringify(rubric), minutes, dueAt } });
+  // AI receipts (Stage 5 · Q22): the same three rules as assignments.
+  const aiPolicy = isAiPolicy(b.aiPolicy) ? b.aiPolicy : 'FREE';
+  const check = await prisma.oralCheck.create({ data: { courseId, teacherId: user.id, title, kind: b.kind, topic, questions, lang, rubric: JSON.stringify(rubric), minutes, dueAt, aiPolicy } });
   const students = (await prisma.enrollment.findMany({ where: { courseId }, select: { studentId: true } })).map((e) => e.studentId);
   await notifyMany(students, { title: `New oral check: ${title}`, body: `${access.course.code}: a ${minutes}-minute ${ORAL_KINDS[b.kind].label.toLowerCase()} with the AI examiner. Your teacher confirms the score.`, link: '/student/oral-practice', type: 'reminder', email: false });
   return { id: check.id };
@@ -299,11 +332,16 @@ export async function oralCheckDetail(user: SessionUser, checkId: string) {
   };
 }
 
-/** POST /api/oral-checks/:id { action: 'confirm', sessionId, scores, comment } | 'retry' (sessionId) | 'close' | 'open'. */
+/** POST /api/oral-checks/:id { action: 'confirm', sessionId, scores, comment } | 'retry' (sessionId) | 'close' | 'open' | 'rule' (aiPolicy). */
 export async function oralCheckAction(user: SessionUser, checkId: string, b: Body) {
   const check = await managed(user, checkId);
   if (b.action === 'close' || b.action === 'open') {
     await prisma.oralCheck.update({ where: { id: check.id }, data: { status: b.action === 'close' ? 'CLOSED' : 'OPEN' } });
+    return { ok: true };
+  }
+  if (b.action === 'rule') {
+    if (!isAiPolicy(b.aiPolicy)) throw new BadRequestException('Choose the AI rule.');
+    await prisma.oralCheck.update({ where: { id: check.id }, data: { aiPolicy: b.aiPolicy } });
     return { ok: true };
   }
   const s = typeof b.sessionId === 'string' ? await prisma.oralSession.findFirst({ where: { id: b.sessionId, checkId } }) : null;
@@ -326,6 +364,15 @@ export async function oralCheckAction(user: SessionUser, checkId: string, b: Bod
   const final = cleanScores(rubric.map((c) => ({ ...ai.find((a) => a.id === c.id), id: c.id, score: Number(sent.find((x) => x?.id === c.id)?.score) })), rubric);
   const comment = typeof b.comment === 'string' ? b.comment.trim().slice(0, 2000) : '';
   await prisma.oralSession.update({ where: { id: s.id }, data: { status: 'CONFIRMED', finalScores: JSON.stringify(final), teacherComment: comment || null, confirmedById: user.id, confirmedAt: new Date() } });
+  // Into the gradebook (Stage 5 · Q22): one row per student and check, updated if re-marked.
+  const assessment = `Oral: ${check.title}`.slice(0, 200);
+  const score = totalOf(final), maxScore = maxOf(rubric);
+  const existing = await prisma.grade.findFirst({ where: { studentId: s.userId, courseId: check.courseId, assignmentName: assessment }, select: { id: true, score: true } });
+  const gradeData = { score, maxScore, feedback: comment || null, status: 'GRADED' as const, gradedAt: new Date() };
+  const gradeId = existing
+    ? (await prisma.grade.update({ where: { id: existing.id }, data: gradeData, select: { id: true } })).id
+    : (await prisma.grade.create({ data: { ...gradeData, studentId: s.userId, courseId: check.courseId, assignmentName: assessment }, select: { id: true } })).id;
+  await logGradeChanges([{ courseId: check.courseId, studentId: s.userId, gradeId, assessment, oldScore: existing?.score ?? null, newScore: score, maxScore }], { id: user.id, name: user.name });
   await notify(s.userId, { title: `Your oral check “${check.title}” is marked`, body: `${totalOf(final)} / ${maxOf(rubric)}${comment ? `: ${comment.slice(0, 200)}` : ''}`, link: '/student/oral-practice', type: 'grade', email: false });
   publish([s.userId], { type: 'refresh', keys: ['/api/orals', `/api/orals/${s.id}`] });
   return { ok: true, total: totalOf(final), max: maxOf(rubric) };

@@ -48,7 +48,7 @@ export function LanguagePicker({ value, onPick, onClose, offLabel, title, placem
       className={cn(
         'absolute z-40 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl overflow-hidden',
         placement === 'below' ? 'top-full mt-2' : 'bottom-full mb-2',
-        align === 'right' ? 'right-0' : 'left-0',
+        align === 'right' ? 'end-0' : 'start-0',
       )}
     >
       <p className="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{title}</p>
@@ -83,9 +83,9 @@ function Row({ selected, onClick, label, hint }: { selected: boolean; onClick: (
     <button
       onClick={onClick}
       aria-pressed={selected}
-      className={cn('w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06]', selected ? 'text-indigo-600 dark:text-indigo-300 font-semibold' : 'text-zinc-700 dark:text-zinc-200')}
+      className={cn('w-full flex items-center gap-2 px-3 py-2 text-start text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06]', selected ? 'text-indigo-600 dark:text-indigo-300 font-semibold' : 'text-zinc-700 dark:text-zinc-200')}
     >
-      <span className="flex-1 truncate">{label}{hint && <span className="ml-1.5 text-xs font-normal text-zinc-400">{hint}</span>}</span>
+      <span className="flex-1 truncate">{label}{hint && <span className="ms-1.5 text-xs font-normal text-zinc-400">{hint}</span>}</span>
       {selected && <Check className="w-4 h-4 shrink-0" />}
     </button>
   );

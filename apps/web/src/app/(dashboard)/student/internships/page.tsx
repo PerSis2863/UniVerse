@@ -103,13 +103,13 @@ export default function StudentInternships() {
           
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 dark:text-zinc-400" />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 dark:text-zinc-400" />
               <input 
                 type="text" 
                 placeholder="Search by role, company, or skills..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all"
+                className="w-full ps-10 pe-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all"
               />
             </div>
             <button onClick={() => setShowFilterDrawer(true)} className="flex items-center gap-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
@@ -118,7 +118,7 @@ export default function StudentInternships() {
             <button onClick={() => setShowMyApplications(true)} className="btn-primary">
               <Briefcase className="w-4 h-4" /> My Applications
               {applications.length > 0 && (
-                <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">{applications.length}</span>
+                <span className="ms-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">{applications.length}</span>
               )}
             </button>
           </div>
@@ -209,7 +209,7 @@ export default function StudentInternships() {
         {showFilterDrawer && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowFilterDrawer(false)} />
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }} className="fixed right-0 top-0 h-[100dvh] w-full sm:w-80 glass-sidebar sheet-safe-top border-l border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto">
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }} className="fixed end-0 top-0 h-[100dvh] w-full sm:w-80 glass-sidebar sheet-safe-top border-s border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto">
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Filter className="w-5 h-5 text-indigo-500" /> Filters</h2>
                 <button aria-label="Close" onClick={() => setShowFilterDrawer(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-500 transition-colors"><X className="w-5 h-5" /></button>
@@ -302,7 +302,7 @@ export default function StudentInternships() {
         {showMyApplications && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowMyApplications(false)} />
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }} className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[500px] glass-sidebar sheet-safe-top border-l border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto flex flex-col">
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }} className="fixed end-0 top-0 h-[100dvh] w-full sm:w-[500px] glass-sidebar sheet-safe-top border-s border-[var(--separator)] dark:border-white/[0.07] shadow-2xl z-50 overflow-y-auto flex flex-col">
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                   <Briefcase className="w-6 h-6 text-indigo-500" /> My Applications

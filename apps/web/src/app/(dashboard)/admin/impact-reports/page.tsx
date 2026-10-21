@@ -146,12 +146,12 @@ export default function ImpactReportsPage() {
             </ul>
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="text-left text-xs text-zinc-500 bg-zinc-50 dark:bg-white/[0.02]">
+                <thead className="text-start text-xs text-zinc-500 bg-zinc-50 dark:bg-white/[0.02]">
                   <tr>
                     <th className="px-5 py-2.5 font-semibold">Student</th>
                     <th className="px-3 py-2.5 font-semibold">Credential</th>
-                    <th className="px-3 py-2.5 font-semibold text-right">Hours</th>
-                    <th className="px-3 py-2.5 font-semibold text-right">People</th>
+                    <th className="px-3 py-2.5 font-semibold text-end">Hours</th>
+                    <th className="px-3 py-2.5 font-semibold text-end">People</th>
                     <th className="px-3 py-2.5 font-semibold">Issued</th>
                     <th className="px-5 py-2.5 font-semibold">Verified by</th>
                   </tr>
@@ -167,8 +167,8 @@ export default function ImpactReportsPage() {
                         <p className="text-zinc-800 dark:text-zinc-200">{h.title}</p>
                         <p className="text-xs text-zinc-500">{h.organization} — {h.projectName}</p>
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-zinc-800 dark:text-zinc-200">{h.hoursCompleted}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-zinc-800 dark:text-zinc-200">{h.peopleImpacted.toLocaleString()}</td>
+                      <td className="px-3 py-3 text-end tabular-nums text-zinc-800 dark:text-zinc-200">{h.hoursCompleted}</td>
+                      <td className="px-3 py-3 text-end tabular-nums text-zinc-800 dark:text-zinc-200">{h.peopleImpacted.toLocaleString()}</td>
                       <td className="px-3 py-3 text-xs text-zinc-500 whitespace-nowrap">{fmtDate(h.issuedAt) ?? '—'}</td>
                       <td className="px-5 py-3 text-xs text-zinc-600 dark:text-zinc-400">{h.verifiedByName ?? 'Not recorded'}</td>
                     </tr>

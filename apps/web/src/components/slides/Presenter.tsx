@@ -129,7 +129,7 @@ export function Presenter({ deck, docId, start, onClose }: { deck: DeckJSON; doc
         // words stay readable to screen readers).
         <div onClick={next} className="flex-1 min-h-0 flex cursor-pointer"><Stage deck={deck} at={cur?.i ?? 0} step={step} label={label} /></div>
       )}
-      <div className={`absolute left-3 bottom-3 flex items-center gap-1 rounded-full bg-zinc-900/80 backdrop-blur px-2 py-1 transition-opacity ${controls || presenter ? 'opacity-100' : 'opacity-0 focus-within:opacity-100'}`}>
+      <div className={`absolute start-3 bottom-3 flex items-center gap-1 rounded-full bg-zinc-900/80 backdrop-blur px-2 py-1 transition-opacity ${controls || presenter ? 'opacity-100' : 'opacity-0 focus-within:opacity-100'}`}>
         <button type="button" onClick={prev} aria-label="Previous" className="p-2 rounded-full hover:bg-white/10"><ChevronLeft className="w-5 h-5" /></button>
         <span className="text-sm tabular-nums px-1">{pos + 1} / {list.length}</span>
         <button type="button" onClick={next} aria-label="Next slide" className="p-2 rounded-full hover:bg-white/10"><ChevronRight className="w-5 h-5" /></button>
@@ -155,7 +155,7 @@ export function Audience({ deck, docId }: { deck: DeckJSON; docId: string }) {
   return (
     <div className="fixed inset-0 bg-black text-white flex flex-col" onDoubleClick={() => void document.documentElement.requestFullscreen?.().catch(() => {})}>
       {ended ? <p className="m-auto text-zinc-400">The presentation has ended.</p> : <Stage deck={deck} at={Math.min(at.i, deck.slides.length - 1)} step={at.step} label={`Slide ${at.i + 1}`} />}
-      <p className="absolute bottom-2 right-3 text-xs text-zinc-600">Double-click for full screen</p>
+      <p className="absolute bottom-2 end-3 text-xs text-zinc-600">Double-click for full screen</p>
     </div>
   );
 }

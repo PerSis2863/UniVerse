@@ -176,7 +176,7 @@ export function OfflineAssignment({ assignment }: { assignment: PackAssignment }
 
   return (
     <div className="p-4 space-y-3">
-      <button type="button" onClick={() => setOpen((o) => !o)} className="w-full text-left flex items-center gap-3" aria-expanded={open}>
+      <button type="button" onClick={() => setOpen((o) => !o)} className="w-full text-start flex items-center gap-3" aria-expanded={open}>
         <span className="flex-1 min-w-0">
           <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{assignment.title}</span>
           <span className="block text-xs text-zinc-500">{queued ? 'Handed in offline · waiting to send' : `${assignment.maxScore} points${assignment.dueDate ? ` · due ${when(assignment.dueDate)}` : ''}${text ? ' · draft saved on this device' : ''}`}</span>
@@ -187,7 +187,7 @@ export function OfflineAssignment({ assignment }: { assignment: PackAssignment }
         {open && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={spring.snappy} className="space-y-3 overflow-hidden">
             <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{assignment.instructions}</p>
-            {assignment.rubric.length > 0 && <ul className="text-xs text-zinc-500 list-disc pl-5">{assignment.rubric.map((r) => <li key={r.id}>{r.criterion} ({r.points})</li>)}</ul>}
+            {assignment.rubric.length > 0 && <ul className="text-xs text-zinc-500 list-disc ps-5">{assignment.rubric.map((r) => <li key={r.id}>{r.criterion} ({r.points})</li>)}</ul>}
             <textarea rows={10} maxLength={20_000} value={text} onChange={(e) => setText(e.target.value)} placeholder="Write your answer here. It’s saved on this device as you type."
               className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-3 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-indigo-500" />
             <div className="flex items-center justify-between gap-2">

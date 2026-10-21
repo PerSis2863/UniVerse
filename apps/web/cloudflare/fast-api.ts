@@ -10,7 +10,7 @@ import { jwtVerify, type JWTPayload } from 'jose';
 import { presenceOf } from '../src/lib/presence';
 import { ownerEmailList } from '../src/lib/owner-emails';
 import { jwksFor, keysMayHaveRotated } from '../src/server/jwks-cache';
-import { isSessionToken, verifySessionToken } from '../src/server/session-token';
+import { isSessionToken, isViewAsToken, verifySessionToken, viewAsRefused } from '../src/server/session-token';
 import { hasPass, needsTwoStep } from '../src/server/two-step';
 import { securityHeaders } from '../security-headers';
 import { fileCsp } from '../src/lib/file-csp';
@@ -83,6 +83,8 @@ async function callerOf(request: Request, db: D1Database): Promise<Caller | null
   const header = request.headers.get('authorization')?.trim() ?? '';
   const token = header.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : '';
   if (!token) return null;
+  // The owner viewing as someone (read-only): changes and private messages go to the Next.js route, which refuses them.
+  if (isViewAsToken(token) && viewAsRefused(request.method, new URL(request.url).pathname)) return null;
   // Admins and the owner need the pass from the emailed sign-in code (src/server/two-step.ts);
   // without it the Next.js route answers (and asks for the code).
   const gate = (c: Caller | null) => (c && needsTwoStep(c.role, token) && !hasPass(request, c.id, token) ? null : c);
@@ -334,6 +336,8 @@ async function recordAppOpen(me: Caller, request: Request, db: D1Database) {
  */
 async function bootstrap(me: Caller, request: Request, db: D1Database, env: Env, ctx: ExecutionContext, next: (r: Request) => Promise<Response>) {
   const b = (await request.clone().json().catch(() => ({}))) as { keys?: unknown; ticket?: unknown; session?: unknown };
+  // Viewing as someone (read-only): no calls, live updates, "online" dot or sign-in history entry for them.
+  const viewing = isViewAsToken(request.headers.get('authorization')?.slice(7).trim());
   const keys = Array.isArray(b.keys) ? [...new Set(b.keys.filter((k): k is string => typeof k === 'string'))].slice(0, 8) : [];
   const origin = new URL(request.url).origin;
   const own: Record<string, (u: URL) => Promise<Response | null>> = {
@@ -341,7 +345,7 @@ async function bootstrap(me: Caller, request: Request, db: D1Database, env: Env,
     '/api/notifications': () => notifications(me, db),
     '/api/core/users/me': () => usersMe(me, db),
     // For anyone else the Next.js route answers (and refuses).
-    '/api/chat/incoming': async () => (me.role === 'GUARDIAN' ? null : incoming(me, db)),
+    '/api/chat/incoming': async () => (me.role === 'GUARDIAN' || viewing ? null : incoming(me, db)),
     '/api/core/dashboard/admin': async () => (me.role === 'ADMIN' ? adminDashboard(db) : null),
     '/api/core/dashboard/teacher': async () => (me.role === 'TEACHER' ? teacherDashboard(me, db) : null),
     '/api/student/overview': async (u) => (me.role === 'GUARDIAN' ? null : studentOverview(me, db, u, request)),
@@ -359,7 +363,7 @@ async function bootstrap(me: Caller, request: Request, db: D1Database, env: Env,
     else rest.push(key);
   });
   let ticket: string | undefined;
-  if (b.ticket === true && env.REALTIME) {
+  if (b.ticket === true && env.REALTIME && !viewing) {
     const hub = env.REALTIME.get(env.REALTIME.idFromName(me.id));
     tasks.push(
       hub.fetch('https://realtime/ticket', { method: 'POST' }).then(async (res) => {
@@ -371,7 +375,7 @@ async function bootstrap(me: Caller, request: Request, db: D1Database, env: Env,
     if (seen) ctx.waitUntil(seen.run().catch(() => {}));
   }
   // Recorded here; only if that fails does the Next.js route record it.
-  let session = b.session === true;
+  let session = b.session === true && !viewing;
   if (session) tasks.push(recordAppOpen(me, request, db).then(() => { session = false; }, () => {}));
   await Promise.all(tasks);
   if (rest.length || session) {

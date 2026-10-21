@@ -47,7 +47,7 @@ export function FolderSheet({ folder, chats, onSave, onDelete, onClose }: {
         <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Chats in this folder</p>
         <div className="space-y-0.5">
           {chats.map((c) => (
-            <button key={c.id} type="button" onClick={() => toggle(c.id)} className="w-full flex items-center gap-3 p-2 rounded-2xl text-left hover:bg-zinc-100 dark:hover:bg-white/[0.04]">
+            <button key={c.id} type="button" onClick={() => toggle(c.id)} className="w-full flex items-center gap-3 p-2 rounded-2xl text-start hover:bg-zinc-100 dark:hover:bg-white/[0.04]">
               <Avatar name={c.title} src={c.avatarUrl} size={36} />
               <span className="flex-1 truncate text-sm text-zinc-900 dark:text-white">{c.title}</span>
               <span className={cn('w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors', picked.has(c.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-300 dark:border-white/20')}>{picked.has(c.id) && <Check className="w-3 h-3" />}</span>

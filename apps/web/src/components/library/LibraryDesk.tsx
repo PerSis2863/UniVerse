@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { format, formatDistanceToNowStrict } from 'date-fns';
-import { BellRing, BookPlus, BookUp, Check, Loader2, Plus, Search, Trash2, Undo2 } from 'lucide-react';
+import { BellRing, BookPlus, BookUp, Check, Loader2, Plus, Printer, Search, Trash2, Undo2 } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Sheet } from '@/components/ui/Sheet';
 import { Field, SearchField } from '@/components/ui/Field';
@@ -91,7 +91,10 @@ function Lend({ settings, onChanged }: { settings: Settings; onChanged: () => vo
   const [days, setDays] = useState(settings.loanDays);
   const [busy, setBusy] = useState(false);
   useEffect(() => { const t = setTimeout(() => setDq(q.trim()), 300); return () => clearTimeout(t); }, [q]);
-  const people = useSWR<{ people: Person[] }>(!who && dq.length >= 2 ? `/api/library/desk/people?q=${encodeURIComponent(dq)}` : null, authedJson);
+  // A scanned library card (Q22) picks its person straight away.
+  const people = useSWR<{ people: Person[] }>(!who && dq.length >= 2 ? `/api/library/desk/people?q=${encodeURIComponent(dq)}` : null, authedJson, {
+    onSuccess: (d) => { if (/^L:/i.test(dq) && d.people.length === 1) { setWho(d.people[0]); setQ(''); setDq(''); } },
+  });
   const scan = async (c: string) => {
     try { setCopy(await authedJson<Scanned>(`/api/library/desk/copy?barcode=${encodeURIComponent(c)}`)); }
     catch (e) { setCopy(null); toast.error(errorMessage(e, 'Couldn’t find that copy.')); }
@@ -131,12 +134,12 @@ function Lend({ settings, onChanged }: { settings: Settings; onChanged: () => vo
         </div>
       ) : (
         <div>
-          <SearchField value={q} onChange={setQ} placeholder="Borrower: name or email" />
+          <SearchField value={q} onChange={setQ} placeholder="Borrower: name, email or library card" />
           {dq.length >= 2 && (
             <ul className="mt-2 divide-y divide-zinc-200/70 dark:divide-white/[0.06]">
               {!people.data ? <li className="py-2 text-sm text-zinc-500">Searching…</li> : people.data.people.length === 0 ? <li className="py-2 text-sm text-zinc-500">Nobody matches.</li> : people.data.people.map((p) => (
                 <li key={p.id}>
-                  <button type="button" onClick={() => setWho(p)} className="w-full flex items-center gap-3 py-2 text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04] rounded-xl px-1">
+                  <button type="button" onClick={() => setWho(p)} className="w-full flex items-center gap-3 py-2 text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04] rounded-xl px-1">
                     <Avatar name={p.name} src={p.avatar} size={32} />
                     <span className="flex-1 min-w-0"><span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{p.name}</span><span className="block text-xs text-zinc-500 truncate">{p.role === 'TEACHER' ? 'Staff' : 'Student'} · {p.out} out{p.late ? ` · ${p.late} late` : ''}</span></span>
                   </button>
@@ -202,7 +205,7 @@ function BooksView({ onChanged }: { onChanged: () => void }) {
         <motion.ul variants={list} initial="hidden" animate="show" className={`${card} p-2 sm:p-3 divide-y divide-zinc-200/70 dark:divide-white/[0.06]`}>
           {data.books.map((b) => (
             <motion.li key={b.id} variants={fadeUp}>
-              <button type="button" onClick={() => setOpen(b.id)} className="w-full flex items-center gap-3 px-2 py-2 rounded-2xl text-left hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
+              <button type="button" onClick={() => setOpen(b.id)} className="w-full flex items-center gap-3 px-2 py-2 rounded-2xl text-start hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
                 <Cover url={b.coverUrl} title={b.title} className="w-9 h-12 shrink-0" />
                 <span className="flex-1 min-w-0"><span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{b.title}</span><span className="block text-xs text-zinc-500 truncate">{b.authors ?? ''}{b.shelf ? ` · shelf ${b.shelf}` : ''}</span></span>
                 <span className="text-xs text-zinc-500 tabular-nums shrink-0">{b.available}/{b.copies} in{b.waiting ? ` · ${b.waiting} waiting` : ''}</span>
@@ -301,7 +304,10 @@ function ManageBook({ id, onClose, onChanged }: { id: string; onClose: () => voi
           <section aria-label="Copies">
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Copies · {data.copies.length}</p>
-              <button type="button" disabled={!!busy} onClick={() => void act({ action: 'copies', copies: 1 }, 'Copy added', 'add')} className="btn-ghost btn-sm">{busy === 'add' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Add a copy</button>
+              <span className="flex gap-1">
+                {data.copies.length > 0 && <button type="button" onClick={() => { void import('./labels').then((m) => m.printLabels(data.copies.map((c) => ({ barcode: c.barcode, title: data.title, shelf: data.shelf })))).catch((e: Error) => toast.error(e.message)); }} className="btn-ghost btn-sm"><Printer className="w-4 h-4" /> Print labels</button>}
+                <button type="button" disabled={!!busy} onClick={() => void act({ action: 'copies', copies: 1 }, 'Copy added', 'add')} className="btn-ghost btn-sm">{busy === 'add' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Add a copy</button>
+              </span>
             </div>
             <ul className="divide-y divide-zinc-200/70 dark:divide-white/[0.06]">
               {data.copies.map((c) => (

@@ -25,22 +25,28 @@ export function kindOf(name: string, mime = ''): Kind {
 }
 
 const T = (id: string, label: string, ext: string, hint?: string): Target => ({ id, label, ext, hint });
-const DOCISH = [T('html', 'Web page', 'html'), T('txt', 'Plain text', 'txt'), T('md', 'Markdown', 'md'), T('doc', 'Word (.doc)', 'doc', 'Opens in Word, Pages and Google Docs'), T('pdf', 'PDF', 'pdf', 'A PDF file laid out like the document'), T('uvdoc', 'A UniVerse doc', '', 'Opens in Docs, to edit together')];
+const DOCISH = [T('html', 'Web page', 'html'), T('txt', 'Plain text', 'txt'), T('md', 'Markdown', 'md'), T('docx', 'Word (.docx)', 'docx', 'Opens in Word, Pages and Google Docs'), T('pdf', 'PDF', 'pdf', 'A PDF file laid out like the document'), T('uvdoc', 'A UniVerse doc', '', 'Opens in Docs, to edit together')];
 
-/** What a file of this kind can become. */
-export function targetsFor(kind: Kind): Target[] {
+/** What a file of this kind can become (never its own format, when its name is given). */
+export function targetsFor(kind: Kind, name?: string): Target[] {
+  const ext = name?.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
+  const same = (t: Target) => !!ext && (t.ext === ext || (ext === 'jpeg' && t.ext === 'jpg'));
+  return targetsOf(kind).filter((t) => !same(t));
+}
+
+function targetsOf(kind: Kind): Target[] {
   switch (kind) {
     case 'image': return [T('png', 'PNG', 'png'), T('jpg', 'JPG', 'jpg'), T('webp', 'WebP', 'webp'), T('pdf-img', 'PDF', 'pdf')];
-    case 'pdf': return [T('png-pages', 'PNG pictures', 'png', 'One per page (a ZIP for several)'), T('jpg-pages', 'JPG pictures', 'jpg', 'One per page (a ZIP for several)'), T('pdf-text', 'Plain text', 'txt')];
-    case 'word': return DOCISH;
+    case 'pdf': return [T('pdf-docx', 'Word (.docx)', 'docx', 'The text and headings, page by page, ready to edit'), T('png-pages', 'PNG pictures', 'png', 'One per page (a ZIP for several)'), T('jpg-pages', 'JPG pictures', 'jpg', 'One per page (a ZIP for several)'), T('pdf-text', 'Plain text', 'txt')];
+    case 'word': return DOCISH.filter((t) => t.id !== 'docx');
     case 'text': return DOCISH.filter((t) => t.id !== 'txt');
     case 'markdown': return DOCISH.filter((t) => t.id !== 'md');
     case 'html': return DOCISH.filter((t) => t.id !== 'html');
     case 'sheet': return [T('csv', 'CSV', 'csv'), T('json', 'JSON', 'json'), T('html-table', 'Web page (table)', 'html')];
     case 'csv': return [T('xlsx', 'Excel (.xlsx)', 'xlsx'), T('json', 'JSON', 'json'), T('html-table', 'Web page (table)', 'html')];
     case 'json': return [T('csv', 'CSV', 'csv', 'A list of records'), T('xlsx', 'Excel (.xlsx)', 'xlsx', 'A list of records')];
-    case 'audio': return [T('wav', 'WAV', 'wav')];
-    case 'video': return [T('wav', 'Audio (WAV)', 'wav', 'The sound track'), T('frame', 'Picture (PNG)', 'png', 'A frame from one second in')];
+    case 'audio': return [T('mp3', 'MP3', 'mp3', 'Plays everywhere'), T('wav', 'WAV', 'wav')];
+    case 'video': return [T('mp4', 'MP4 video', 'mp4', 'Plays everywhere'), T('mp3', 'Audio (MP3)', 'mp3', 'The sound track'), T('wav', 'Audio (WAV)', 'wav', 'The sound track'), T('frame', 'Picture (PNG)', 'png', 'A frame from one second in')];
     case 'zip': return [T('unzip', 'The files inside', '')];
     default: return [];
   }

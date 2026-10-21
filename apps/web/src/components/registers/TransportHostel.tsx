@@ -39,7 +39,7 @@ export function BusRegister() {
         <motion.ul variants={list} initial="hidden" animate="show" className="space-y-2">
           {data.routes.map((r) => (
             <motion.li key={r.id} variants={fadeUp}>
-              <button type="button" onClick={() => { haptic('tap'); setOpen(r.id); }} className={`${card} w-full p-4 flex items-center gap-3 text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.03]`}>
+              <button type="button" onClick={() => { haptic('tap'); setOpen(r.id); }} className={`${card} w-full p-4 flex items-center gap-3 text-start hover:bg-black/[0.02] dark:hover:bg-white/[0.03]`}>
                 <span className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0"><Bus className="w-5 h-5" aria-hidden /></span>
                 <span className="flex-1 min-w-0">
                   <span className="block font-semibold text-zinc-900 dark:text-white truncate">{r.name}</span>
@@ -186,7 +186,7 @@ export function HostelRegister() {
           <motion.ul variants={list} initial="hidden" animate="show" className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1">
             {data.rooms.filter((r) => r.building === b).map((r) => (
               <motion.li key={r.id} variants={fadeUp}>
-                <button type="button" onClick={() => { haptic('tap'); setOpen(r.id); }} className={cn('w-full rounded-2xl border p-2.5 text-left transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.04]', r.residents.length >= r.beds ? 'border-zinc-300 dark:border-white/15' : 'border-emerald-500/30')}>
+                <button type="button" onClick={() => { haptic('tap'); setOpen(r.id); }} className={cn('w-full rounded-2xl border p-2.5 text-start transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.04]', r.residents.length >= r.beds ? 'border-zinc-300 dark:border-white/15' : 'border-emerald-500/30')}>
                   <span className="flex items-center justify-between"><span className="text-sm font-bold text-zinc-900 dark:text-white">{r.name}</span><BedDouble className="w-4 h-4 text-zinc-400" aria-hidden /></span>
                   <span className={cn('block text-[11px] tabular-nums', r.residents.length >= r.beds ? 'text-zinc-500' : 'text-emerald-700 dark:text-emerald-300')}>{r.residents.length}/{r.beds} {r.residents.length >= r.beds ? 'full' : 'free beds: ' + (r.beds - r.residents.length)}</span>
                 </button>

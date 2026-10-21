@@ -127,11 +127,11 @@ export default function AdminAssociationsMonitoringPage() {
                   <div key={assoc.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl relative overflow-hidden">
                     <div className="p-5 sm:p-6">
                       {assoc.status === 'PENDING' && (
-                        <div className="absolute top-0 right-0 p-2 text-amber-500" title="Waiting for review">
+                        <div className="absolute top-0 end-0 p-2 text-amber-500" title="Waiting for review">
                           <AlertCircle className="w-5 h-5" />
                         </div>
                       )}
-                      <h3 className="font-semibold text-zinc-900 dark:text-white pr-6">{assoc.name}</h3>
+                      <h3 className="font-semibold text-zinc-900 dark:text-white pe-6">{assoc.name}</h3>
                       <p className="text-xs text-zinc-500 mb-4">{assoc.category}{assoc.createdAt ? ` · Created ${fmtDate(assoc.createdAt)}` : ''}</p>
 
                       <div className="space-y-2 mb-4 text-sm">

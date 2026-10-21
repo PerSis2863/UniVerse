@@ -58,7 +58,7 @@ export function ProfileView({ id }: { id: string }) {
                         ? <Link href={`${settingsFor(me?.role)}?section=profile`} className="btn-secondary btn-sm"><Pencil className="w-4 h-4" aria-hidden /> Edit profile</Link>
                         : <button type="button" className="btn-primary btn-sm" onClick={message}><MessageSquare className="w-4 h-4" aria-hidden /> Message</button>}
                     </div>
-                    <h1 id="profile-name" className="mt-3 text-2xl font-black text-zinc-900 dark:text-white break-words">{p.name}{p.pronouns && <span className="ml-2 text-base font-medium text-zinc-600 dark:text-zinc-400">({p.pronouns})</span>}</h1>
+                    <h1 id="profile-name" className="mt-3 text-2xl font-black text-zinc-900 dark:text-white break-words">{p.name}{p.pronouns && <span className="ms-2 text-base font-medium text-zinc-600 dark:text-zinc-400">({p.pronouns})</span>}</h1>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5"><Building2 className="w-4 h-4 shrink-0" aria-hidden /> {line}</p>
                     {p.availability && <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-200 flex items-start gap-1.5"><CalendarClock className="w-4 h-4 mt-0.5 shrink-0" aria-hidden /> {p.availability}</p>}
                     {p.bio && <p className="mt-3 text-[15px] text-zinc-800 dark:text-zinc-100 whitespace-pre-line break-words">{p.bio}</p>}

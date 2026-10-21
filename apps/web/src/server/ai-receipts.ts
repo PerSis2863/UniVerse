@@ -21,15 +21,20 @@ export async function logAiUse(userId: string | null | undefined, use: { kind: A
   catch { /* the help itself matters more than its record */ }
 }
 
-/** The AI help on a receipt for this assignment: since it was set, in its course or not tied to any course. */
-export async function usesForAssignment(userId: string, a: { courseId: string; createdAt: Date }, until = new Date()): Promise<AiUseItem[]> {
+/** What a receipt covers: AI help in this course (or not tied to any course) from `since` until `until`. */
+export interface ReceiptScope { courseId: string; since: Date; until?: Date; policy: string; during?: boolean; what?: 'assignment' | 'quiz' | 'oral check' }
+
+export async function usesFor(userId: string, scope: { courseId: string; since: Date; until?: Date }): Promise<AiUseItem[]> {
   const rows = await prisma.aiUse.findMany({
-    where: { userId, createdAt: { gte: a.createdAt, lte: until }, OR: [{ courseId: null }, { courseId: a.courseId }] },
+    where: { userId, createdAt: { gte: scope.since, lte: scope.until ?? new Date() }, OR: [{ courseId: null }, { courseId: scope.courseId }] },
     orderBy: { createdAt: 'asc' }, take: MAX_ON_RECEIPT,
     select: { kind: true, detail: true, courseId: true, createdAt: true },
   });
   return rows.map((r) => ({ kind: r.kind, detail: r.detail, at: r.createdAt.toISOString(), courseId: r.courseId }));
 }
+
+/** The AI help on a receipt for this assignment: since it was set, in its course or not tied to any course. */
+export const usesForAssignment = (userId: string, a: { courseId: string; createdAt: Date }, until = new Date()) => usesFor(userId, { courseId: a.courseId, since: a.createdAt, until });
 
 /** GET /api/assignments/:id/ai-receipt: what the student would attach if they handed in now. */
 export async function receiptPreview(user: SessionUser, assignmentId: string) {
@@ -41,26 +46,35 @@ export async function receiptPreview(user: SessionUser, assignmentId: string) {
 }
 
 /**
- * The receipt (JSON) to keep with a submission, from what the student chose when handing in:
- * { attach, declaredNone, note }. Null when there's nothing to keep. Throws when the choice doesn't
- * fit the assignment's rule. Sent from an offline device without a choice: kept, marked offline.
+ * The receipt (JSON) to keep, from what the student chose: { attach, declaredNone, note }. Null when
+ * there's nothing to keep. Throws when the choice doesn't fit the rule, except `how`: 'offline' (sent
+ * later from a device with no connection and no choice: kept, marked offline) and 'auto' (a quiz
+ * handed in by itself when the time ran out: kept as it was, marked so the teacher knows).
  */
-export async function receiptForSubmission(userId: string, a: { courseId: string; createdAt: Date; aiPolicy: string }, input: unknown, offline: boolean): Promise<string | null> {
-  const policy = isAiPolicy(a.aiPolicy) ? a.aiPolicy : 'FREE';
-  const since = a.createdAt.toISOString(), at = new Date().toISOString();
+export async function makeReceipt(userId: string, scope: ReceiptScope, input: unknown, how: 'given' | 'offline' | 'auto' = 'given'): Promise<string | null> {
+  const policy = isAiPolicy(scope.policy) ? scope.policy : 'FREE';
+  const since = scope.since.toISOString(), at = new Date().toISOString();
+  const during = scope.during ? { during: true } : {};
   if (input == null || typeof input !== 'object') {
     if (policy === 'FREE') return null;
-    if (offline) return JSON.stringify({ policy, attached: false, declaredNone: false, note: '', uses: [], since, at, offline: true } satisfies AiReceipt);
+    if (how === 'offline') return JSON.stringify({ policy, attached: false, declaredNone: false, note: '', uses: [], since, at, offline: true, ...during } satisfies AiReceipt);
   }
   const b = (input ?? {}) as Record<string, unknown>;
-  const problem = receiptProblem(policy, b);
-  if (problem) throw new BadRequestException(problem);
-  const attached = b.attach === true, declaredNone = b.declaredNone === true;
   const note = typeof b.note === 'string' ? b.note.trim().slice(0, 1000) : '';
+  const problem = receiptProblem(policy, b, scope.what);
+  if (problem) {
+    if (how !== 'auto') throw new BadRequestException(problem);
+    return JSON.stringify({ policy, attached: false, declaredNone: false, note, uses: [], since, at, auto: true, ...during } satisfies AiReceipt);
+  }
+  const attached = b.attach === true, declaredNone = b.declaredNone === true;
   if (policy === 'FREE' && !attached && !note) return null;
-  const uses = attached ? await usesForAssignment(userId, a) : [];
-  return JSON.stringify({ policy, attached, declaredNone, note, uses, since, at } satisfies AiReceipt);
+  const uses = attached ? await usesFor(userId, scope) : [];
+  return JSON.stringify({ policy, attached, declaredNone, note, uses, since, at, ...during } satisfies AiReceipt);
 }
+
+/** An assignment's receipt (D12): the AI help since it was set. */
+export const receiptForSubmission = (userId: string, a: { courseId: string; createdAt: Date; aiPolicy: string }, input: unknown, offline: boolean) =>
+  makeReceipt(userId, { courseId: a.courseId, since: a.createdAt, policy: a.aiPolicy }, input, offline ? 'offline' : 'given');
 
 /** GET /api/me/ai-uses: my record of AI help (the last 180 days), with course codes. */
 export async function myAiUses(user: SessionUser) {

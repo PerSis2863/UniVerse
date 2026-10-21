@@ -66,3 +66,15 @@ export async function callsDue<S>(env: { DB?: Db<S> }, wait = (ms: number) => ne
     }
   }
 }
+
+/** Daily steps left for today (src/server/daily-jobs.ts, table job_runs): one small query. */
+export async function dailyPending<S>(env: { DB?: Db<S> }): Promise<boolean> {
+  if (!env.DB) return false;
+  try {
+    const [r] = await env.DB.batch([env.DB.prepare('SELECT 1 FROM job_runs WHERE "done" = 0 LIMIT 1').bind()]);
+    return (r?.results?.length ?? 0) > 0;
+  } catch (e) {
+    console.warn(`daily steps check failed: ${e instanceof Error ? e.message : String(e)}`);
+    return false;
+  }
+}

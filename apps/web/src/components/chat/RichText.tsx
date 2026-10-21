@@ -127,8 +127,8 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
     try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* blocked */ }
   };
   return (
-    <div className="my-1.5 rounded-xl overflow-hidden bg-[#0f1220] text-[#e4e6f1] ring-1 ring-white/10 max-w-full text-left">
-      <div className="flex items-center justify-between gap-3 pl-3 pr-1.5 py-1 bg-white/[0.05] text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+    <div className="my-1.5 rounded-xl overflow-hidden bg-[#0f1220] text-[#e4e6f1] ring-1 ring-white/10 max-w-full text-start">
+      <div className="flex items-center justify-between gap-3 ps-3 pe-1.5 py-1 bg-white/[0.05] text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
         <span>{lang || 'code'}</span>
         <button type="button" onClick={() => void copy()} aria-label="Copy code" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md hover:bg-white/10 normal-case tracking-normal text-[11px]">
           {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}{copied ? 'Copied' : 'Copy'}
@@ -158,12 +158,12 @@ export function RichText({ text, mine, emoji }: { text: string; mine: boolean; e
   }
   const blocks = parseBlocks(text);
   return (
-    <div className="break-words [overflow-wrap:anywhere] space-y-1">
+    <div className="break-words [overflow-wrap:anywhere] space-y-1" translate="no" dir="auto">
       {blocks.map((b, i) => {
         if (b.kind === 'code') return <CodeBlock key={i} code={b.code} lang={b.lang} />;
-        if (b.kind === 'quote') return <blockquote key={i} className={cn('border-l-[3px] pl-2.5 whitespace-pre-wrap', mine ? 'border-white/60 text-white/90' : 'border-indigo-400/70 text-zinc-700 dark:text-zinc-300')}><Inline text={b.text} mine={mine} emoji={emoji} /></blockquote>;
-        if (b.kind === 'ul') return <ul key={i} className="list-disc pl-5 space-y-0.5">{b.items.map((it, j) => <li key={j}><Inline text={it} mine={mine} emoji={emoji} /></li>)}</ul>;
-        if (b.kind === 'ol') return <ol key={i} start={b.start} className="list-decimal pl-6 space-y-0.5">{b.items.map((it, j) => <li key={j}><Inline text={it} mine={mine} emoji={emoji} /></li>)}</ol>;
+        if (b.kind === 'quote') return <blockquote key={i} className={cn('border-s-[3px] ps-2.5 whitespace-pre-wrap', mine ? 'border-white/60 text-white/90' : 'border-indigo-400/70 text-zinc-700 dark:text-zinc-300')}><Inline text={b.text} mine={mine} emoji={emoji} /></blockquote>;
+        if (b.kind === 'ul') return <ul key={i} className="list-disc ps-5 space-y-0.5">{b.items.map((it, j) => <li key={j}><Inline text={it} mine={mine} emoji={emoji} /></li>)}</ul>;
+        if (b.kind === 'ol') return <ol key={i} start={b.start} className="list-decimal ps-6 space-y-0.5">{b.items.map((it, j) => <li key={j}><Inline text={it} mine={mine} emoji={emoji} /></li>)}</ol>;
         return <p key={i} className="whitespace-pre-wrap"><Inline text={b.text} mine={mine} emoji={emoji} /></p>;
       })}
     </div>

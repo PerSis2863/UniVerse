@@ -22,7 +22,7 @@ interface Topic { topic: string; students: number; latest: string; topics: strin
 /** For students: the side panel to ask the TA. `heard` gives the last minutes of captions. */
 export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; onClose: () => void; callId: string; heard: () => SentLine[] }) {
   const url = `/api/calls/${callId}/whisper`;
-  const { data, mutate } = useSWR<{ questions: Question[] }>(open ? url : null, authedJson, { revalidateOnFocus: false });
+  const { data, mutate } = useSWR<{ questions: Question[]; off?: boolean }>(open ? url : null, authedJson, { revalidateOnFocus: false });
   const [text, setText] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [hearing, setHearing] = useState(true);
@@ -64,7 +64,7 @@ export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; 
           <motion.div key="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40 sm:hidden" aria-hidden />
           <motion.aside key="ta" role="dialog" aria-label="Ask the TA"
             initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 28 }} transition={spring.smooth}
-            className="absolute z-40 inset-x-0 bottom-0 h-[78vh] rounded-t-3xl sm:inset-x-auto sm:right-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:h-auto sm:w-[22rem] sm:rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0">
+            className="absolute z-40 inset-x-0 bottom-0 h-[78vh] rounded-t-3xl sm:inset-x-auto sm:end-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:h-auto sm:w-[22rem] sm:rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0">
             <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2">
               <div className="min-w-0">
                 <p className="font-semibold flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-fuchsia-300" aria-hidden />Ask the TA</p>
@@ -74,7 +74,10 @@ export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; 
             </div>
             <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-2" aria-live="polite">
               {!data && <div className="h-full grid place-items-center"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" aria-label="Loading" /></div>}
-              {data && questions.length === 0 && !busy && (
+              {data?.off && (
+                <p role="status" className="m-3 rounded-2xl bg-white/[0.06] p-3 text-sm text-zinc-200">Your teacher has turned the TA off for this class. Ask in the chat or raise your hand.</p>
+              )}
+              {data && !data.off && questions.length === 0 && !busy && (
                 <div className="h-full flex flex-col items-center justify-center text-center text-sm text-zinc-400 gap-2 px-6">
                   <MessageCircleQuestion className="w-8 h-8 text-zinc-600" aria-hidden />
                   Didn’t catch something? Ask quietly, like “what does she mean by a base case?” The TA answers from the course materials and what was just said.
@@ -82,9 +85,9 @@ export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; 
               )}
               {questions.map((q) => (
                 <motion.div key={q.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.snappy} className="space-y-1.5">
-                  <div className="flex justify-end"><p className="max-w-[85%] rounded-2xl rounded-br-md px-3 py-2 text-sm bg-gradient-to-br from-indigo-500 to-fuchsia-500 whitespace-pre-wrap break-words">{q.question}</p></div>
+                  <div className="flex justify-end"><p className="max-w-[85%] rounded-2xl rounded-ee-md px-3 py-2 text-sm bg-gradient-to-br from-indigo-500 to-fuchsia-500 whitespace-pre-wrap break-words">{q.question}</p></div>
                   {q.answer && (
-                    <div className="max-w-[92%] rounded-2xl rounded-bl-md px-3 py-2 text-sm bg-white/10 leading-snug">
+                    <div className="max-w-[92%] rounded-2xl rounded-es-md px-3 py-2 text-sm bg-white/10 leading-snug">
                       <p className="whitespace-pre-wrap break-words">{q.answer}</p>
                       {(q.citations.length > 0 || q.live) && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
@@ -94,24 +97,24 @@ export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; 
                       )}
                     </div>
                   )}
-                  {q.addressed && <p className="text-[11px] text-emerald-300 pl-1">Your teacher saw questions on this and went over it.</p>}
+                  {q.addressed && <p className="text-[11px] text-emerald-300 ps-1">Your teacher saw questions on this and went over it.</p>}
                 </motion.div>
               ))}
               {busy && (
                 <div className="space-y-1.5">
-                  <div className="flex justify-end"><p className="max-w-[85%] rounded-2xl rounded-br-md px-3 py-2 text-sm bg-gradient-to-br from-indigo-500/60 to-fuchsia-500/60">{busy}</p></div>
+                  <div className="flex justify-end"><p className="max-w-[85%] rounded-2xl rounded-ee-md px-3 py-2 text-sm bg-gradient-to-br from-indigo-500/60 to-fuchsia-500/60">{busy}</p></div>
                   <p className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-2 text-xs text-zinc-300"><Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />The TA is thinking…</p>
                 </div>
               )}
             </div>
             {!hearing && <p className="px-4 pb-1 text-[11px] text-amber-200/90">Captions aren’t reaching you yet, so the TA answers from the course materials. They start when someone speaks.</p>}
-            <form onSubmit={(e) => { e.preventDefault(); void ask(); }} className="p-3 pt-2 flex items-end gap-2 border-t border-white/[0.06]">
+            {!data?.off && <form onSubmit={(e) => { e.preventDefault(); void ask(); }} className="p-3 pt-2 flex items-end gap-2 border-t border-white/[0.06]">
               <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={500} placeholder="Ask about the class…" aria-label="Your question"
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void ask(); } }}
                 className="flex-1 min-w-0 resize-none max-h-28 rounded-2xl bg-white/[0.07] border border-white/10 px-3.5 py-2.5 text-sm placeholder:text-zinc-500 focus:outline-none focus:border-indigo-400/60" />
               <motion.button whileTap={{ scale: 0.9 }} type="submit" disabled={text.trim().length < 3 || !!busy} aria-label="Ask"
                 className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center disabled:opacity-40"><SendHorizontal className="w-4 h-4" /></motion.button>
-            </form>
+            </form>}
           </motion.aside>
         </>
       )}

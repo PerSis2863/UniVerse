@@ -6,13 +6,15 @@ import { spendAi } from './ai-budget';
 import { notify } from './email';
 import { geminiJson } from './gemini';
 import { liveToken } from './live-token';
-import { createOralCheck, finishOral, oralCheckAction, oralSession, startOral } from './oral';
+import { createOralCheck, finishOral, oralCheckAction, oralSession, setOralReceipt, startOral } from './oral';
 
 vi.mock('@/lib/db', () => ({
   default: {
     oralCheck: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), count: vi.fn() },
     oralSession: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), deleteMany: vi.fn() },
+    grade: { findFirst: vi.fn(), create: vi.fn().mockResolvedValue({ id: 'g-new' }), update: vi.fn().mockResolvedValue({ id: 'g1' }) },
     enrollment: { findMany: vi.fn().mockResolvedValue([]) },
+    aiUse: { findMany: vi.fn().mockResolvedValue([{ kind: 'tutor', detail: 'What is a quantum?', courseId: 'c1', createdAt: new Date('2026-10-02T10:03:00Z') }]) },
   },
 }));
 vi.mock('@/lib/course-access', () => ({ courseAccess: vi.fn() }));
@@ -23,9 +25,10 @@ vi.mock('./gemini', () => ({ geminiJson: vi.fn() }));
 vi.mock('./live-token', () => ({ liveToken: vi.fn().mockResolvedValue({ token: 'tok', model: 'live-model' }) }));
 vi.mock('./moderation', () => ({ featureOff: vi.fn().mockResolvedValue(false) }));
 vi.mock('./realtime', () => ({ publish: vi.fn() }));
+vi.mock('./grade-history', () => ({ logGradeChanges: vi.fn() }));
 
 type Fn = ReturnType<typeof vi.fn>;
-const db = prisma as unknown as { oralCheck: Record<string, Fn>; oralSession: Record<string, Fn>; enrollment: Record<string, Fn> };
+const db = prisma as unknown as { oralCheck: Record<string, Fn>; oralSession: Record<string, Fn>; enrollment: Record<string, Fn>; grade: Record<string, Fn>; aiUse: Record<string, Fn> };
 const student: SessionUser = { id: 's1', role: 'STUDENT', email: 's@x.edu', name: 'Sam Lee' };
 const teacher: SessionUser = { id: 't1', role: 'TEACHER', email: 't@x.edu', name: 'Tess' };
 const RUBRIC = JSON.stringify([{ id: 'clarity', name: 'Clarity', desc: '', max: 4 }, { id: 'depth', name: 'Depth', desc: '', max: 4 }]);
@@ -116,6 +119,13 @@ describe('oral exams on the server (Stage 5 · D11)', () => {
     expect(JSON.parse(data.finalScores)).toEqual([{ id: 'clarity', score: 4, reason: 'Clear.', quote: 'q' }, { id: 'depth', score: 2, reason: '', quote: '' }]);
     expect(data).toMatchObject({ status: 'CONFIRMED', teacherComment: 'Well argued.', confirmedById: 't1' });
     expect(notify).toHaveBeenCalledWith('s1', expect.objectContaining({ body: '6 / 8: Well argued.', email: false }));
+    // Into the gradebook (Q22): a new row the first time, the same row when re-marked.
+    expect(db.grade.create.mock.calls[0][0].data).toMatchObject({ studentId: 's1', assignmentName: `Oral: ${check.title}`, score: 6, maxScore: 8, feedback: 'Well argued.' });
+    db.grade.findFirst.mockResolvedValueOnce({ id: 'g1', score: 6 });
+    db.oralSession.findFirst.mockResolvedValueOnce({ id: 'o1', userId: 's1', status: 'CONFIRMED', kind: 'VIVA', rubric: RUBRIC, aiScores: '[]' });
+    await oralCheckAction(teacher, 'k1', { action: 'confirm', sessionId: 'o1', scores: [{ id: 'clarity', score: 3 }, { id: 'depth', score: 3 }] });
+    expect(db.grade.update.mock.calls[0][0]).toMatchObject({ where: { id: 'g1' }, data: { score: 6 } });
+    expect(db.grade.create).toHaveBeenCalledTimes(1);
 
     vi.mocked(courseAccess).mockResolvedValue({ canManage: false } as never);
     await expect(oralCheckAction(student, 'k1', { action: 'close' })).rejects.toMatchObject({ message: 'Oral check not found.' });
@@ -139,5 +149,23 @@ describe('oral exams on the server (Stage 5 · D11)', () => {
     expect(JSON.parse(db.oralCheck.create.mock.calls[0][0].data.rubric).map((c: { id: string }) => c.id)).toEqual(['clarity', 'depth', 'evidence']);
     vi.mocked(courseAccess).mockResolvedValue({ canManage: false } as never);
     await expect(createOralCheck(student, 'c1', { title: 'Viva', kind: 'VIVA', topic: 'Loops', minutes: 5 })).rejects.toMatchObject({ message: 'Course not found.' });
+  });
+
+  it('AI receipts on oral checks (Q22): attached after the oral, covering its time, until it is marked', async () => {
+    const started = new Date('2026-10-02T10:00:00Z');
+    const attempt = (status: string) => ({ id: 'o1', userId: 's1', status, createdAt: started, aiReceipt: null, check: { courseId: 'c1', minutes: 5, aiPolicy: 'NONE' } });
+    db.oralSession.findUnique.mockResolvedValueOnce(attempt('SUBMITTED'));
+    const r = await setOralReceipt(student, 'o1', { attach: true, note: 'Checked a word' });
+    expect(r.aiReceipt).toMatchObject({ policy: 'NONE', attached: true, during: true, note: 'Checked a word' });
+    expect(r.aiReceipt?.uses).toHaveLength(1);
+    // From the start of the oral to its end (5 minutes) and two minutes over.
+    expect(db.aiUse.findMany.mock.calls.at(-1)![0].where.createdAt).toEqual({ gte: started, lte: new Date('2026-10-02T10:07:00Z') });
+    expect(db.oralSession.update).toHaveBeenLastCalledWith({ where: { id: 'o1' }, data: { aiReceipt: expect.stringContaining('"attached":true') } });
+    db.oralSession.findUnique.mockResolvedValueOnce(attempt('SUBMITTED'));
+    await expect(setOralReceipt(student, 'o1', {})).rejects.toMatchObject({ message: expect.stringContaining('doesn’t allow AI') });
+    db.oralSession.findUnique.mockResolvedValueOnce(attempt('CONFIRMED'));
+    await expect(setOralReceipt(student, 'o1', { declaredNone: true })).rejects.toMatchObject({ status: 409 });
+    db.oralSession.findUnique.mockResolvedValueOnce({ ...attempt('SUBMITTED'), userId: 'someone-else' });
+    await expect(setOralReceipt(student, 'o1', { declaredNone: true })).rejects.toMatchObject({ status: 404 });
   });
 });

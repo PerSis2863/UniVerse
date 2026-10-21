@@ -163,7 +163,7 @@ export function UniverseLogo({
               cy="34"
               r="1.8"
               fill="#38bdf8"
-              className="animate-ping origin-center"
+              className={cn(animated && 'universe-ping')}
               style={{ transformOrigin: '42px 34px' }}
             />
           </g>
@@ -208,7 +208,7 @@ export function UniverseLogo({
                 stroke="#f97316"
                 strokeWidth="1"
                 opacity="0.5"
-                className="animate-ping"
+                className="universe-ping"
                 style={{ transformOrigin: '50px 80px' }}
               />
             )}

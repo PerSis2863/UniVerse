@@ -72,7 +72,7 @@ export function CourseGroupProjects({ courseId }: { courseId: string }) {
           const expanded = open === p.id;
           return (
             <motion.li key={p.id} variants={fadeUp} className="rounded-2xl border border-zinc-200/70 dark:border-white/[0.07] bg-white dark:bg-zinc-900/50 overflow-hidden">
-              <button type="button" onClick={() => setOpen(expanded ? null : p.id)} aria-expanded={expanded} className="w-full text-left p-4 flex items-start gap-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03] focus-visible:outline-none focus-visible:bg-zinc-50 dark:focus-visible:bg-white/[0.04]">
+              <button type="button" onClick={() => setOpen(expanded ? null : p.id)} aria-expanded={expanded} className="w-full text-start p-4 flex items-start gap-3 hover:bg-zinc-50 dark:hover:bg-white/[0.03] focus-visible:outline-none focus-visible:bg-zinc-50 dark:focus-visible:bg-white/[0.04]">
                 <span className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0"><Users className="w-5 h-5 text-indigo-600 dark:text-indigo-300" /></span>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-zinc-900 dark:text-white truncate">{p.group.name} · {p.title}</p>

@@ -65,7 +65,7 @@ function CalloutView({ node, updateAttributes, editor }: NodeViewProps) {
       <div contentEditable={false} className={cn('flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide select-none', t.text)}>
         <t.icon className="w-4 h-4 shrink-0" aria-hidden />
         {editable ? (
-          <select aria-label="Kind of callout" value={tone} onChange={(e) => updateAttributes({ tone: e.target.value })} className="bg-transparent uppercase font-bold tracking-wide rounded-md -ml-1 px-1 min-h-[28px] hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+          <select aria-label="Kind of callout" value={tone} onChange={(e) => updateAttributes({ tone: e.target.value })} className="bg-transparent uppercase font-bold tracking-wide rounded-md -ms-1 px-1 min-h-[28px] hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
             {CALLOUT_TONES.map((k) => <option key={k} value={k}>{TONE[k].label}</option>)}
           </select>
         ) : t.label}
@@ -84,7 +84,7 @@ function BlockFrame({ label, icon: Icon, note, editable, selected, onDelete, chi
     <NodeViewWrapper contentEditable={false} className={cn('my-4 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] overflow-hidden not-prose', selected && editable && 'ring-2 ring-indigo-500')}>
       <div className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wide text-indigo-700 dark:text-indigo-300 border-b border-zinc-200/70 dark:border-white/[0.06]" data-drag-handle>
         <Icon className="w-4 h-4" aria-hidden />
-        <span className="flex-1">{label}{note && <span className="ml-1.5 normal-case tracking-normal font-medium text-zinc-600 dark:text-zinc-400">{note}</span>}</span>
+        <span className="flex-1">{label}{note && <span className="ms-1.5 normal-case tracking-normal font-medium text-zinc-600 dark:text-zinc-400">{note}</span>}</span>
         {editable && <button type="button" onClick={onDelete} aria-label={`Remove this ${label.toLowerCase()}`} className="p-1.5 rounded-md text-zinc-500 hover:text-rose-600"><Trash2 className="w-3.5 h-3.5" /></button>}
       </div>
       <div className="p-4">{children}</div>

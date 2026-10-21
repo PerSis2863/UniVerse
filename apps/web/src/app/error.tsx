@@ -42,7 +42,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         </div>
         {reporting === 'open' && (
           <form
-            className="mt-5 w-full text-left space-y-2"
+            className="mt-5 w-full text-start space-y-2"
             onSubmit={(e) => { e.preventDefault(); reportProblem(error, note); setReporting('sent'); }}
           >
             <label htmlFor="problem-note" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">What were you doing when it happened? (optional)</label>

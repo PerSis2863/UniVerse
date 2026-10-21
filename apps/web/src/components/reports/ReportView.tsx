@@ -75,9 +75,9 @@ export function ReportView({ d, verification }: { d: ReportData; verification?: 
         {d.byOrganization.length === 0 ? <p className="mt-3 text-sm text-zinc-500">No verified credentials in this period.</p> : (
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm min-w-[28rem]">
-              <thead><tr className="text-left text-xs text-zinc-500"><th className="py-2 font-semibold">Organisation</th><th className="py-2 font-semibold text-right">Hours</th><th className="py-2 font-semibold text-right">People</th><th className="py-2 font-semibold text-right">Credentials</th><th className="py-2 font-semibold text-right">Students</th></tr></thead>
+              <thead><tr className="text-start text-xs text-zinc-500"><th className="py-2 font-semibold">Organisation</th><th className="py-2 font-semibold text-end">Hours</th><th className="py-2 font-semibold text-end">People</th><th className="py-2 font-semibold text-end">Credentials</th><th className="py-2 font-semibold text-end">Students</th></tr></thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-white/[0.06]">
-                {d.byOrganization.map((o) => <tr key={o.name} className="text-zinc-800 dark:text-zinc-200"><td className="py-2 pr-3">{o.name}</td><td className="py-2 text-right tabular-nums">{o.hours}</td><td className="py-2 text-right tabular-nums">{o.people}</td><td className="py-2 text-right tabular-nums">{o.credentials}</td><td className="py-2 text-right tabular-nums">{o.students}</td></tr>)}
+                {d.byOrganization.map((o) => <tr key={o.name} className="text-zinc-800 dark:text-zinc-200"><td className="py-2 pe-3">{o.name}</td><td className="py-2 text-end tabular-nums">{o.hours}</td><td className="py-2 text-end tabular-nums">{o.people}</td><td className="py-2 text-end tabular-nums">{o.credentials}</td><td className="py-2 text-end tabular-nums">{o.students}</td></tr>)}
               </tbody>
             </table>
           </div>
