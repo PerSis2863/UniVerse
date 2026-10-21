@@ -1220,6 +1220,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       createdAt: "2026-10-05T09:00:00.000Z",
     },
   ])],
+  [/^\/api\/admin\/report-schedules$/, () => ok({ schedules: [], max: 10, folder: 'Scheduled reports' })],
   [/^\/api\/admin\/chat-apps$/, () => ok({
     apps: [{ id: 'sample-app-1', name: 'Library desk', description: 'Looks books up in the school library catalogue.', url: 'https://library.example.edu/universe', commands: [{ name: 'library', hint: 'Find a book in the school library' }], permissions: ['post'], enabled: true, lastCalledAt: new Date(Date.now() - 3600_000).toISOString(), lastStatus: '200', createdAt: new Date(Date.now() - 7 * 86_400_000).toISOString() }],
     permissions: ['post', 'read_recent'], builtIn: ['ask', 'catchup', 'remind', 'poll', 'call', 'video', 'shrug'],

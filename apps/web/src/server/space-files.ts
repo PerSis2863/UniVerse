@@ -4,7 +4,7 @@ import { isOwnBlobUrl } from '@/lib/chat';
 import { courseAccess } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { searchWords, snippet } from '@/lib/files-hub';
-import { deleteFile } from '@/lib/storage';
+import { deleteFile, saveFile } from '@/lib/storage';
 import { later } from './email';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { publish } from './realtime';
@@ -308,4 +308,29 @@ export async function filesHub(user: SessionUser, view: string | null, qRaw: str
       snippet: q.length >= 2 ? snippet(r.text ?? null, q) : null,
     })),
   };
+}
+
+/**
+ * Saves a file the app made (a scheduled report) to someone's My files, in a top-level folder named
+ * `folder` (made when it isn't there). The same limits as an upload: 1,000 files, 100 MB.
+ */
+export async function saveToMyFiles(userId: string, folder: string, file: { name: string; mime: string; bytes: Buffer }) {
+  const where = { spaceKind: 'me' as const, spaceId: userId };
+  const [found, folders, files, used] = await Promise.all([
+    prisma.spaceFolder.findFirst({ where: { ...where, parentId: null, name: folder }, select: { id: true } }),
+    prisma.spaceFolder.count({ where }),
+    prisma.spaceFile.count({ where }),
+    usage('me', userId),
+  ]);
+  if (files >= MAX_FILES) throw new BadRequestException(`My files can hold up to ${MAX_FILES} files. Delete some first.`);
+  if (used + file.bytes.length > MY_QUOTA) throw new BadRequestException(full('me'));
+  if (!found && folders >= MAX_FOLDERS) throw new BadRequestException(`My files can have up to ${MAX_FOLDERS} folders.`);
+  const folderId = found?.id ?? (await prisma.spaceFolder.create({ data: { ...where, parentId: null, name: folder, createdById: userId }, select: { id: true } })).id;
+  const up = { url: await saveFile({ ownerId: userId, name: file.name, mime: file.mime, bytes: file.bytes }), mime: file.mime, size: file.bytes.length };
+  const f = await prisma.spaceFile.create({
+    data: { ...where, folderId, name: file.name, ...up, createdById: userId, updatedById: userId, versions: { create: { ...up, uploadedById: userId } } },
+    select: { id: true },
+  });
+  await refresh('me', userId);
+  return f;
 }

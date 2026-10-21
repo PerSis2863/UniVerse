@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { LoadError } from '@/components/ui/LoadError';
-import { Printer } from 'lucide-react';
+import { Download, Printer } from 'lucide-react';
+import { downloadCsv } from '@/lib/csv-download';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, IMPACT_REPORT_TABS } from '@/components/layout/SectionTabs';
 import { ImpactMap, SdgFilter, type Place } from '@/components/impact/ImpactMap';
@@ -37,7 +38,12 @@ export default function VolunteeringReportPage() {
             <select className="rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white" value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Year">
               {[0, 1, 2, 3].map((i) => <option key={i} value={thisYear - i}>{thisYear - i}</option>)}
             </select>
-            <button type="button" className="btn-primary btn-sm ms-auto" onClick={() => window.print()}><Printer className="w-4 h-4" /> Print / save as PDF</button>
+            {!!data?.projects.length && (
+              <button type="button" className="btn-secondary btn-sm ms-auto" onClick={() => downloadCsv(`volunteering-${data.year}${data.sdg ? `-sdg-${data.sdg}` : ''}`, ['Project', 'Organisation', 'UN goal (SDG)', 'Volunteers', 'Verified hours'], data.projects.map((p) => [p.name, p.ngo, p.sdg ?? '', p.people, p.hours]))}>
+                <Download className="w-4 h-4" aria-hidden />Export CSV<span className="sr-only"> of the projects</span>
+              </button>
+            )}
+            <button type="button" className={`btn-primary btn-sm ${data?.projects.length ? '' : 'ms-auto'}`} onClick={() => window.print()}><Printer className="w-4 h-4" /> Print / save as PDF</button>
           </div>
           {error && !data ? <LoadError onRetry={() => mutate()} message="Couldn’t load the volunteering report." /> : isLoading || !data ? <div className="h-64 rounded-2xl skeleton" /> : (
             <article className="space-y-5 text-zinc-900 dark:text-white print:text-black">
@@ -70,10 +76,13 @@ export default function VolunteeringReportPage() {
               <section className="space-y-2">
                 <h2 className="font-bold">By project</h2>
                 {!data.projects.length ? <p className="text-sm text-zinc-500">No verified hours this year yet.</p> : (
+                  // Its own scroll box on screen (not when printed), so the column names stay on top.
+                  <div tabIndex={0} role="region" aria-label="Hours by project" className="max-h-[70vh] overflow-auto print:max-h-none print:overflow-visible focus-visible:outline-2 focus-visible:outline-indigo-500">
                   <table className="w-full text-sm">
-                    <thead><tr className="text-start text-xs text-zinc-500"><th className="py-1">Project</th><th>Organisation</th><th className="text-end">Volunteers</th><th className="text-end">Hours</th></tr></thead>
+                    <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-950 print:static"><tr className="text-start text-xs text-zinc-500"><th className="py-1">Project</th><th>Organisation</th><th className="text-end">Volunteers</th><th className="text-end">Hours</th></tr></thead>
                     <tbody>{data.projects.map((p) => <tr key={p.name} className="border-t border-zinc-200 dark:border-white/10"><td className="py-1.5">{p.name}{p.sdg ? ` (SDG ${p.sdg})` : ''}</td><td>{p.ngo}</td><td className="text-end tabular-nums">{p.people}</td><td className="text-end tabular-nums">{p.hours}</td></tr>)}</tbody>
                   </table>
+                  </div>
                 )}
               </section>
             </article>

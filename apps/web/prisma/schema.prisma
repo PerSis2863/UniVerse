@@ -311,6 +311,7 @@ model User {
 
   // Billing: the organization (and its subscription) this admin owns
   ownedOrganization     Organization?
+  reportSchedules       ReportSchedule[]
   studyDays             StudyDay[]
   assignmentsCreated    Assignment[]           @relation("AssignmentAuthor")
   assignmentSubmissions AssignmentSubmission[]
@@ -4136,6 +4137,22 @@ model StaffSettings {
   updatedAt      DateTime @default(now())
 
   @@map("staff_settings")
+}
+
+/// A data export saved to an admin's My files on a schedule (Stage 5 · Phase E, src/server/report-schedules.ts).
+model ReportSchedule {
+  id        String    @id @default(cuid())
+  ownerId   String
+  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  type      String // members, impact, applications (src/server/report-exports.ts)
+  filters   String? // JSON { role?, status? } for members
+  every     String    @default("WEEK") // DAY, WEEK, MONTH
+  lastRunAt DateTime?
+  lastError String?
+  createdAt DateTime  @default(now())
+
+  @@index([ownerId])
+  @@map("report_schedules")
 }
 
 /// The daily jobs in steps (Stage 5 · bug review, src/server/daily-jobs.ts): where each got to today.

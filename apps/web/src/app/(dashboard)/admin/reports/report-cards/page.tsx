@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react';
 import useSWR, { mutate as revalidate } from 'swr';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowLeft, ChevronDown, ClipboardList, Loader2, Plus, Printer, RefreshCw, Send, Trash2, Undo2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ClipboardList, Download, Loader2, Plus, Printer, RefreshCw, Send, Trash2, Undo2 } from 'lucide-react';
+import { downloadCsv } from '@/lib/csv-download';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs';
 import { Sheet } from '@/components/ui/Sheet';
@@ -235,6 +236,11 @@ function RunDetail({ run, onBack, ...actions }: ActionProps & { run: Run; onBack
       <div className="mt-6 flex flex-col sm:flex-row gap-2 sm:items-center">
         <SearchField value={q} onChange={(v) => { setQ(v); setLimit(60); }} placeholder="Search students" className="flex-1" />
         <Segmented<'name' | 'low'> label="Sort by" value={sort} onChange={setSort} segments={[{ value: 'name', label: 'Name' }, { value: 'low', label: 'Lowest first' }]} />
+        {shown.length > 0 && (
+          <button type="button" className="btn-secondary btn-sm" onClick={() => downloadCsv(`${run.title}`, ['Student', 'Email', 'Average (%)', 'GPA', 'Attendance (%)', 'Courses', 'Comment'], shown.map((c) => [c.student.name, c.student.email, c.average ?? '', c.data.overall.gpa ?? '', c.data.overall.attendanceRate ?? '', c.data.courses.length, c.comment ?? '']))}>
+            <Download className="w-4 h-4" aria-hidden />Export CSV<span className="sr-only"> of these cards</span>
+          </button>
+        )}
       </div>
 
       {error && !data ? <LoadError className="mt-4" onRetry={() => mutate()} />
