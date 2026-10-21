@@ -238,7 +238,7 @@ export default function GroupsPage() {
                         </span>
                       )}
                       <div className="relative z-10">
-                        <button className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100" aria-label={`Options for ${group.name}`} onClick={e => { e.stopPropagation(); setActiveMenuId(activeMenuId === group.id ? null : group.id); }}>
+                        <button className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-visible:opacity-100" aria-label={`Options for ${group.name}`} onClick={e => { e.stopPropagation(); setActiveMenuId(activeMenuId === group.id ? null : group.id); }}>
                           <MoreHorizontal className="w-4 h-4" />
                         </button>
                         {activeMenuId === group.id && (

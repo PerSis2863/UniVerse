@@ -498,6 +498,10 @@
   .universe-n-beam { animation: nLineDash 2.4s ease-in-out 3; animation-delay: 0.6s; }
   .universe-node-pulse { animation: pingNode 3s ease-in-out 3; }
   @keyframes pingNode { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+  /* The nodes' ping, also a few times only (an endless one on the sidebar logo kept every page busy:
+     SVG animations re-lay out and repaint each frame, they can't run on the GPU). */
+  .universe-ping { animation: universePing 1.2s cubic-bezier(0, 0, 0.2, 1) 5; }
+  @keyframes universePing { 75%, 100% { transform: scale(2); opacity: 0; } }
 
 }
 
@@ -797,13 +801,14 @@ html, body { overflow-x: clip; max-width: 100%; }
 .shell-in { animation: backdrop-in 260ms ease-out; }
 
 /* Lists and card grids: children glide in with a short cascade (the first 12, 30 ms apart; the
-   rest with the 12th). transform/opacity only and nothing left behind afterwards, so it's cheap
-   and fixed-position children are unaffected. */
+   rest with the 12th). transform/opacity only and nothing left behind afterwards (`backwards`: the
+   start state waits through the delay, but a held end state would override the children's own
+   hover lift and press scale), so it's cheap and fixed-position children are unaffected. */
 @keyframes rise {
   from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.985); }
   to   { opacity: 1; transform: none; }
 }
-.stagger > * { animation: rise 340ms var(--ease-out-soft) both; animation-delay: 360ms; }
+.stagger > * { animation: rise 340ms var(--ease-out-soft) backwards; animation-delay: 360ms; }
 .stagger > *:nth-child(1) { animation-delay: 0ms; }
 .stagger > *:nth-child(2) { animation-delay: 30ms; }
 .stagger > *:nth-child(3) { animation-delay: 60ms; }
@@ -1485,7 +1490,7 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 /* Reduce Motion for the CSS animations (framer-motion ones calm down in src/lib/motion.ts). As
    there, nothing freezes: decorative loops stop, and things that slide or rise in just fade in. */
 @media (prefers-reduced-motion: reduce) {
-  .universe-u-beam, .universe-n-beam, .universe-node-pulse, .empty-icon { animation: none; }
+  .universe-u-beam, .universe-n-beam, .universe-node-pulse, .universe-ping, .empty-icon { animation: none; }
   .bubble-glass.received, .bubble-glass.sent, .sheet-in, .fade-up, .alert-in { animation-name: backdrop-in; }
 }
 

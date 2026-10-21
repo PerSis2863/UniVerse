@@ -38,7 +38,7 @@ export default function MySocialImpactPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="p-4 sm:p-8">
         <ContentSkeleton variant="dashboard" />
       </div>
     );

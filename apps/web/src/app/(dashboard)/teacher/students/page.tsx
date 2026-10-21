@@ -175,7 +175,7 @@ export default function TeacherStudents() {
                       </div>
                     </td>
                     <td className="p-4 text-end relative">
-                      <button aria-label="More options" onClick={(e) => { e.stopPropagation(); setActionMenuOpen(actionMenuOpen === rowKey(student) ? null : rowKey(student)); }} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 border border-zinc-700 bg-zinc-100 dark:bg-zinc-800/50">
+                      <button aria-label="More options" onClick={(e) => { e.stopPropagation(); setActionMenuOpen(actionMenuOpen === rowKey(student) ? null : rowKey(student)); }} className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus:opacity-100 border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/50">
                         <MoreVertical className="w-4 h-4" />
                       </button>
                       {actionMenuOpen === rowKey(student) && (

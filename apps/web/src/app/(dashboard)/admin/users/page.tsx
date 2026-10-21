@@ -16,6 +16,7 @@ import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 import { SectionTabs, ADMIN_PEOPLE_TABS } from '@/components/layout/SectionTabs';
+import Link from '@/components/ui/Link';
 
 type Role = 'STUDENT' | 'TEACHER' | 'ADMIN';
 type Status = 'PENDING' | 'ACTIVE' | 'SUSPENDED';
@@ -462,7 +463,7 @@ function UserDetail({ user, onClose, onDelete, onStatus }: { user: Person; onClo
                   <ul className="space-y-1.5">
                     {o.applications.map((a) => (
                       <li key={a.id} className="text-sm text-zinc-700 dark:text-zinc-300">
-                        <a href={`/admin/approvals?id=${a.id}`} className="text-indigo-500 hover:underline">{ROLE_LABEL[a.requestedRole]} access</a>
+                        <Link href={`/admin/approvals?id=${a.id}`} className="text-indigo-500 hover:underline">{ROLE_LABEL[a.requestedRole]} access</Link>
                         <span className="text-zinc-500"> · {cap(a.status.replace('_', ' '))}{a.submittedAt ? ` · sent ${format(new Date(a.submittedAt), 'd MMM yyyy')}` : ''}</span>
                       </li>
                     ))}

@@ -396,7 +396,7 @@ function CustomEmoji({ communityId }: { communityId: string }) {
             <li key={e.name} className="group relative flex flex-col items-center gap-1 rounded-xl p-2 bg-zinc-50 dark:bg-white/[0.03]">
               <img src={e.url} alt={`:${e.name}:`} className="w-8 h-8 object-contain" />
               <span className="text-[10px] text-zinc-500 truncate max-w-full">:{e.name}:</span>
-              <button type="button" onClick={() => void remove(e.name)} aria-label={`Remove :${e.name}:`} className="absolute top-1 end-1 p-0.5 rounded-full text-zinc-400 hover:text-rose-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"><X className="w-3 h-3" /></button>
+              <button type="button" onClick={() => void remove(e.name)} aria-label={`Remove :${e.name}:`} className="absolute top-1 end-1 p-0.5 rounded-full text-zinc-400 hover:text-rose-500 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus:opacity-100"><X className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>

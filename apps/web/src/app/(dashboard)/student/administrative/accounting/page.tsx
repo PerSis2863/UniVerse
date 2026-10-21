@@ -14,6 +14,7 @@ import { getAuthToken } from '@/lib/auth-token';
 import { authedFetch } from '@/lib/authed-fetch';
 import { useAuthStore } from '@/store/auth';
 import { FamilyFees } from '@/components/fees/FamilyFees';
+import Link from '@/components/ui/Link';
 
 const quickActions = [
   { id: 'statements', title: 'View Statements', subtitle: 'Payments and receipts', icon: FileText, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'hover:border-blue-500/50' },
@@ -147,7 +148,7 @@ function AccountingContent() {
           <div className="text-center py-6 space-y-3">
             <p className="text-white font-semibold">No aid disbursements recorded</p>
             <p className="text-sm text-zinc-400 max-w-sm mx-auto">Scholarships and financial aid applied to your account by your institution will appear here.</p>
-            <a href="/student/administrative/scholarships" className="inline-block text-sm font-semibold text-indigo-400 hover:underline">Browse scholarships</a>
+            <Link href="/student/administrative/scholarships" className="inline-block text-sm font-semibold text-indigo-400 hover:underline">Browse scholarships</Link>
           </div>
         );
       case 'appointment':
@@ -155,7 +156,7 @@ function AccountingContent() {
           <div className="text-center py-6 space-y-3">
             <p className="text-white font-semibold">Talk to the finance office</p>
             <p className="text-sm text-zinc-400 max-w-sm mx-auto">Send a request through Support and the finance team will reply to arrange a time with an advisor.</p>
-            <a href="/student/support" className="btn-primary">Contact finance via Support</a>
+            <Link href="/student/support" className="btn-primary">Contact finance via Support</Link>
           </div>
         );
       case 'tax':
@@ -386,7 +387,7 @@ function AccountingContent() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#121830] border border-zinc-800 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+              className="dark bg-[#121830] border border-zinc-800 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
             >
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30">
                 <div className="flex items-center gap-3">

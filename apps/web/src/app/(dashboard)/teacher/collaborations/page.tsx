@@ -13,6 +13,7 @@ import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import Link from '@/components/ui/Link';
 
 
 interface ApiProject { id: string; title: string; status: string; partner?: string | null; ngo?: string | null; _count?: { members?: number } }
@@ -213,9 +214,9 @@ export default function TeacherCollaborationsPage() {
                       </div>
                     </div>
 
-                    <a href="/teacher/inbox" className="btn-primary">
+                    <Link href="/teacher/inbox" className="btn-primary">
                       <MessageSquare className="w-4 h-4" /> Message the team in Inbox
-                    </a>
+                    </Link>
                   </div>
 
                   <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">

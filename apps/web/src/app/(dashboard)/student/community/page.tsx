@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { TranslatableAnnouncement } from '@/components/shared/Translatable';
+import Link from '@/components/ui/Link';
 
 interface Post { id: string; title?: string | null; content?: string | null; body?: string | null; createdAt?: string | null; author?: { name: string } | null }
 
@@ -77,7 +78,7 @@ export default function StudentCommunity() {
             ) : (
               <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between gap-4">
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">Campus news from your teachers and admins appears here. Want to start a discussion?</p>
-                <a href="/student/groups" className="btn-primary btn-sm shrink-0">Open Groups</a>
+                <Link href="/student/groups" className="btn-primary btn-sm shrink-0">Open Groups</Link>
               </div>
             )}
 

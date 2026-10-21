@@ -59,7 +59,10 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
 ## Platform limits (Cloudflare Workers Free)
 
 - **D1: at most 100 bound values per query** (chunk lists by 90; multi-row inserts with N rows a
-  statement) and **at most 50 queries per request**. D1 has no transactions.
+  statement) and **at most 50 queries per request**. D1 has no transactions. A long `in` list is
+  split for you (`src/lib/d1-split.ts`, wired in `src/lib/db.ts`) except inside `OR`, a relation
+  filter or `notIn`: write those as separate lookups and merge. Long jobs check `queriesUsed()` and
+  carry on in the next run (`src/server/daily-jobs.ts`, table `job_runs`).
 - The build machine has 8 GB, 2 CPUs and 20 minutes: keep heavy libraries out of first-load bundles
   (dynamic `import()`).
 - The light API path (`cloudflare/fast-api.ts`) must run the same code as its Next route; the startup
@@ -67,7 +70,7 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
 
 ## Database changes
 
-Hand-written SQL in `apps/web/prisma/migrations/NNNN_name.sql` (**next: 0171**) plus
+Hand-written SQL in `apps/web/prisma/migrations/NNNN_name.sql` (**next: 0172**) plus
 `prisma/schema.prisma`; then, from `apps/web`:
 `PRISMA_GENERATE_SKIP_AUTOINSTALL=1 npx prisma generate`,
 `npx wrangler d1 migrations apply universe-db --local`, `node scripts/gen-owner-schema.mjs`.

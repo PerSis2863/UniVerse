@@ -3,10 +3,45 @@
 Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
 done, where the code is and what's left for each item. Keep that table up to date as you go.
 
+## Review · Full bug and error review: done (21 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
+
+Migration `0171_job_runs` (next: **0172**). Rules for code that builds on it:
+
+- **Long `in` lists are split for you.** `src/lib/d1-split.ts` (wired in `src/lib/db.ts` as a Prisma
+  query extension) runs a query whose `in` lists pass 95 values in parts and merges them: counts and
+  updateMany/deleteMany counts add up, groupBy rows are joined, findMany/findFirst are re-sorted
+  (SQLite order, nulls first when ascending) and `take` applied after. Parts run **one after
+  another**: run together inside one extension call they all came back empty on D1. It does **not**
+  split an `in` inside `OR`, inside a relation filter (`some: { id: { in } }`) or `notIn`: write
+  those as separate lookups and merge (as `src/server/tasks.ts` overview, `docs.ts` listDocs and
+  `semester.ts` do). Only Prisma's own auto-split (findMany whose whole `where` is one list) and
+  `createMany` were safe before this.
+- **Queries are counted per request** (`queriesUsed()` in `src/lib/db.ts`, keyed by the Worker
+  request's context; 0 under `next dev`). A warning with a short stack is logged at 40 and 50. A
+  cron run is one request: every `runJob` in one scheduled invocation shares the 50.
+- **Daily jobs run in steps** (`src/server/daily-jobs.ts`, table `job_runs`: one row per job per
+  day, a cursor, `done`). The daily cron starts the day's rows and runs what fits in 42 queries;
+  each 15-minute tick continues while a row isn't done (`cloudflare/due-check.ts` `dailyPending`,
+  then `/api/cron/daily-more`). A step that throws is logged and marked done, so one bad step never
+  blocks the rest. A new daily job: add a step with its own budget check (`left()`), never a loop
+  that can pass 50.
+- **Reminders** (`/api/cron/reminders`) run jobs in priority order and skip the rest once 38 queries
+  are used (`waiting` in its reply).
+- **Light mode:** slate and gray 400–600 and emerald 600/700 are remapped in `globals.css` so text
+  reads at 4.5:1; dark mode has its own lifts. Dark-first pages need `text-zinc-900 dark:text-white`
+  style pairs; a coloured shade with a `dark:text-` of its own isn't lifted.
+- **Touch screens:** Tailwind 4's `hover:` only applies with a mouse, so `opacity-0
+  group-hover:opacity-100` hides buttons on phones for good. Use `pointer-fine:opacity-0
+  pointer-fine:group-hover:opacity-100 focus-within:opacity-100`.
+- **Closing motion:** `Sheet` slides down (phone) or fades (desktop) before it unmounts; `Dialogs`
+  fade out. Both are instant with reduced motion.
+- **Local test accounts:** `scripts/local/test-accounts.mjs` (run by `setup.mjs`) adds Tara
+  (co-teacher) and Tom (TA on CS101), local only. `scripts/crawl.mjs --dark --axe`,
+  `scripts/smoothness.mjs` (phone, CPU 4× slower: frames over 34 ms and long tasks per action).
+
 ## Q23 · Small items (Phase E), two batches: done (20 Oct 2026, branch `claude/great-hamilton-8g8xdm`, not merged)
 
-Twelve items, no migration. **Next: the full bug and error review the owner asked for** (then
-anything the owner picks from "Waiting for the owner"). Rules for code that builds on it:
+Twelve items, no migration. Rules for code that builds on it:
 
 - **Ending a call for everyone** is the host's `control` action `end-all` in the call room
   (`cloudflare/worker.ts`): everyone else (and the waiting room) gets `{ type: 'ended', by }` and is

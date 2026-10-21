@@ -62,7 +62,7 @@ function MatchBar({ pct }: { pct: number }) {
   );
 }
 
-function ProjectMatchCard({ match, onApply }: { match: MatchedProject; onApply: (id: string) => void }) {
+function ProjectMatchCard({ match }: { match: MatchedProject }) {
   const [applied, setApplied] = useState(false);
   const [applying, setApplying] = useState(false);
   const rankColors = ['text-amber-600 dark:text-amber-400', 'text-zinc-500 dark:text-zinc-300', 'text-orange-600 dark:text-orange-400', 'text-blue-600 dark:text-blue-400', 'text-purple-600 dark:text-purple-400'];
@@ -230,7 +230,7 @@ export default function AIMatchPage() {
                 </div>
               )}
               {matches.map(match => (
-                <ProjectMatchCard key={match.project.id} match={match} onApply={() => {}} />
+                <ProjectMatchCard key={match.project.id} match={match} />
               ))}
             </div>
           )}

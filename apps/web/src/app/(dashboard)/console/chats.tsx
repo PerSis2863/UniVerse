@@ -277,7 +277,7 @@ export function LiveChat({ id, onBack, onPerson, highlight }: { id: string; onBa
             return (
               <li key={m.id} id={`m-${m.id}`} className="group flex justify-center items-center gap-2">
                 <span className={cn('text-xs px-3 py-1 rounded-full text-center max-w-[85%]', m.metadata?.team ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-200' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-500', m.deletedAt && 'line-through opacity-60')}>{m.body}</span>
-                {!m.deletedAt && <button onClick={() => void remove(m)} aria-label="Remove" className="sm:opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>}
+                {!m.deletedAt && <button onClick={() => void remove(m)} aria-label="Remove" className="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-visible:opacity-100 text-zinc-400 hover:text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>}
               </li>
             );
           }
@@ -288,7 +288,7 @@ export function LiveChat({ id, onBack, onPerson, highlight }: { id: string; onBa
                   <button onClick={() => m.sender && onPerson?.(m.sender.id)} disabled={!onPerson} className="font-semibold text-indigo-600 dark:text-indigo-300 hover:underline disabled:no-underline">{m.sender?.name ?? 'UniVerse'}</button>
                   {' · '}{format(new Date(m.createdAt), 'd MMM, HH:mm')}{flags.length ? ` · ${flags.join(' · ')}` : ''}
                 </p>
-                <span className="flex gap-2.5 shrink-0 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
+                <span className="flex gap-2.5 shrink-0 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 group-focus-within:opacity-100">
                   {busy === m.id ? <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" /> : (
                     <>
                       {m.type === 'TEXT' && !m.deletedAt && <button onClick={() => { setEditing(m.id); setDraft(m.body); }} aria-label="Edit message" title="Edit (shows “edited by UniVerse”)" className="text-zinc-400 hover:text-indigo-500"><Pencil className="w-3.5 h-3.5" /></button>}
