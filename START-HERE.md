@@ -24,9 +24,10 @@ Cursor's).
 
 **Moving to the $5 Cloudflare plan (Workers Paid)**, in this order:
 1. In Cloudflare: Workers & Pages → Plans → Workers Paid ($5 a month, plus any local tax).
-2. Then say "merge" for the pull request "Workers Paid: keep the bill at $5" (it tells the app it's
-   on the paid plan and caps each request at 5 s of CPU). Not before step 1: on the free plan the
-   app would use limits the plan doesn't have, and the guard would stop the free-plan warnings.
+2. Then, on universe-web → Settings → Variables and Secrets: add a **Secret** named `WORKERS_PAID`
+   with the value `true` (if it's already there, leave it). This tells the app it's on the paid plan,
+   so the spending guard watches the $5 allowances. Not before step 1: on the free plan the app
+   would use limits the plan doesn't have.
 3. Workers & Pages → universe-web → Settings → Build: builds only for `main` (turn off builds for
    other branches). 6,000 build minutes a month are included; each build takes ~15–20 minutes.
 4. Optional: Manage Account → Billing → Billable Usage → Set Budget Alert at $1 (an email if
