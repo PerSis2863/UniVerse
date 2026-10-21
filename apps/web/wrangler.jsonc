@@ -3,7 +3,8 @@
   "name": "universe-web",
   // Wraps the Next.js app (.open-next/worker.js) and adds live updates and the daily cron job.
   "main": "cloudflare/worker.ts",
-  // Keeps the upload under the Workers size limit (3 MB gzipped on the free plan).
+  // Keeps the upload small (Cloudflare checks 64 MiB uncompressed since Sept 2026; it was about
+  // 43 MiB in Oct 2026: `npx wrangler deploy --dry-run` prints it).
   "minify": true,
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -101,6 +102,17 @@
   "observability": {
     "enabled": true,
     "head_sampling_rate": 0.25
+  },
+  // The account is on Workers Paid ($5/month): the app uses the paid limits (src/lib/plan-limits.ts)
+  // and the spending guard pauses the app at 90% of anything the $5 includes, so the bill stays at
+  // $5 (cloudflare/usage-guard.ts). In code, not the dashboard: a deploy removes dashboard variables.
+  "vars": {
+    "WORKERS_PAID": "true"
+  },
+  // No request may use more than 5 s of CPU (the paid default is 30 s), so a runaway request can't
+  // spend the month's included processing time between two guard checks. Requests average ~4 ms.
+  "limits": {
+    "cpu_ms": 5000
   }
   // Secrets (DATABASE_URL, STRIPE_SECRET_KEY, R2_*, GEMINI_API_KEY, …) are set with
   // `wrangler secret put` or in the Cloudflare dashboard — never here. See DEPLOY-CLOUDFLARE.md.
