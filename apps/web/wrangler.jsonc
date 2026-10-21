@@ -102,18 +102,11 @@
   "observability": {
     "enabled": true,
     "head_sampling_rate": 0.25
-  },
-  // The account is on Workers Paid ($5/month): the app uses the paid limits (src/lib/plan-limits.ts)
-  // and the spending guard pauses the app at 90% of anything the $5 includes, so the bill stays at
-  // $5 (cloudflare/usage-guard.ts). In code, not the dashboard: a deploy removes dashboard variables.
-  "vars": {
-    "WORKERS_PAID": "true"
-  },
-  // No request may use more than 5 s of CPU (the paid default is 30 s), so a runaway request can't
-  // spend the month's included processing time between two guard checks. Requests average ~4 ms.
-  "limits": {
-    "cpu_ms": 5000
   }
+  // Workers Paid: set the secret WORKERS_PAID=true on universe-web (Settings → Variables and
+  // Secrets, type Secret; secrets survive deploys). The deploy of 21 Oct 2026 with WORKERS_PAID
+  // under "vars" here plus a "limits.cpu_ms" was refused: a var can't share a secret's name, and a
+  // CPU limit needs Workers Paid. Add a CPU limit only once the account is on Workers Paid.
   // Secrets (DATABASE_URL, STRIPE_SECRET_KEY, R2_*, GEMINI_API_KEY, …) are set with
   // `wrangler secret put` or in the Cloudflare dashboard — never here. See DEPLOY-CLOUDFLARE.md.
 }
