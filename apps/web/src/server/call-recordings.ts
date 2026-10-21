@@ -206,8 +206,8 @@ export async function deleteCallRecording(id: string, user: SessionUser) {
 }
 
 /** Daily job: recordings older than 90 days are deleted (up to 200 a day). */
-export async function pruneCallRecordings() {
-  const old = await prisma.callRecording.findMany({ where: { createdAt: { lt: new Date(Date.now() - KEEP_DAYS * 86_400_000) } }, take: 200, select: { id: true, url: true, messageId: true } });
+export async function pruneCallRecordings(limit = 200) {
+  const old = await prisma.callRecording.findMany({ where: { createdAt: { lt: new Date(Date.now() - KEEP_DAYS * 86_400_000) } }, take: limit, select: { id: true, url: true, messageId: true } });
   for (const rec of old) await removeRecording(rec, `🎬 This call recording was removed after ${KEEP_DAYS} days.`);
   return old.length;
 }

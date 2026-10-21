@@ -4138,6 +4138,17 @@ model StaffSettings {
   @@map("staff_settings")
 }
 
+/// The daily jobs in steps (Stage 5 · bug review, src/server/daily-jobs.ts): where each got to today.
+model JobRun {
+  job       String   @id
+  day       String
+  cursor    String?
+  done      Boolean  @default(false)
+  updatedAt DateTime @default(now())
+
+  @@map("job_runs")
+}
+
 model LibrarySettings {
   id          String   @id
   loanDays    Int      @default(14)

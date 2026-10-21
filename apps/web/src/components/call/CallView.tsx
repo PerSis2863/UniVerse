@@ -1541,6 +1541,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         const current = ws.current === sock;
         if (current) ws.current = null;
         if (ev.code === 4001) finish('The host removed you from the call');
+        if (ev.code === 4002) finish('The host ended the call for everyone');
         if (ev.code === 4003) finish('The host didn’t let you in');
         if (ev.code === 4005) finish('Thanks for coming! Your turn has ended.');
         if (ev.code === 4006) finish('Office hours have closed for now.');

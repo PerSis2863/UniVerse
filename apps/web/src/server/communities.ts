@@ -91,17 +91,18 @@ export async function listCommunities(user: SessionUser) {
     },
   });
   const channelIds = memberships.flatMap((m) => m.community.channels.map((c) => c.id));
-  // Unread per channel: others' messages after my last read (the same rule as Chats).
-  const unread = channelIds.length
-    ? await prisma.$queryRawUnsafe<{ conversationId: string; n: number }[]>(
-      `SELECT m."conversationId", COUNT(*) AS n FROM "messages" m
-       JOIN "conversation_participants" p ON p."conversationId" = m."conversationId" AND p."userId" = ?
-       WHERE m."conversationId" IN (${channelIds.map(() => '?').join(', ')}) AND m."senderId" <> ? AND m."deletedAt" IS NULL AND m."threadId" IS NULL
-         AND julianday(m."createdAt") > COALESCE(julianday(p."lastReadAt"), julianday(p."joinedAt"))
-       GROUP BY m."conversationId"`,
-      user.id, ...channelIds, user.id,
-    )
-    : [];
+  // Unread per channel: others' messages after my last read (the same rule as Chats). 90 channels a
+  // statement: D1 takes 100 values, and someone can be in many communities with many channels.
+  const parts: string[][] = [];
+  for (let i = 0; i < channelIds.length && i < 450; i += 90) parts.push(channelIds.slice(i, i + 90));
+  const unread = (await Promise.all(parts.map((part) => prisma.$queryRawUnsafe<{ conversationId: string; n: number }[]>(
+    `SELECT m."conversationId", COUNT(*) AS n FROM "messages" m
+     JOIN "conversation_participants" p ON p."conversationId" = m."conversationId" AND p."userId" = ?
+     WHERE m."conversationId" IN (${part.map(() => '?').join(', ')}) AND m."senderId" <> ? AND m."deletedAt" IS NULL AND m."threadId" IS NULL
+       AND julianday(m."createdAt") > COALESCE(julianday(p."lastReadAt"), julianday(p."joinedAt"))
+     GROUP BY m."conversationId"`,
+    user.id, ...part, user.id,
+  )))).flat();
   const unreadOf = new Map(unread.map((u) => [u.conversationId, Number(u.n)]));
   return memberships.map((m) => ({
     id: m.community.id,

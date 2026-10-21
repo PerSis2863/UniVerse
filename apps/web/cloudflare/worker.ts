@@ -15,7 +15,7 @@ import { apiDirect } from './api-direct';
 import { isBuiltPage, pageFor } from './page-match';
 import { fanOut, readRelay } from '../src/lib/fanout';
 import { routeOf } from '../src/lib/route-label';
-import { callsDue } from './due-check';
+import { callsDue, dailyPending } from './due-check';
 import { dbDate } from './fast-db';
 import { checkUsage, pageNotice, schoolGate, schoolSwitchCandidates, serverGate, withNotice } from './usage-guard';
 
@@ -259,6 +259,9 @@ export default {
     if (guard.alert) await runJob('usage-alert', guard.alert).catch((e) => console.error('usage alert failed:', e));
     // Scheduled-call reminders: one cheap query; the app only starts when a call is due.
     if (await callsDue(env)) await runJob('reminders');
+    // The rest of today's daily steps, while some are left (src/server/daily-jobs.ts; they share
+    // this run's 50 queries with the reminders, and stop in time).
+    if (await dailyPending(env)) await runJob('daily-more').catch((e) => console.error('daily steps failed:', e));
   },
 };
 

@@ -26,7 +26,10 @@ await esbuild.build({
   conditions: ['workerd', 'worker', 'browser'], mainFields: ['module', 'main'], logLevel: 'error',
   plugins: [{ name: 'stub-next', setup(b) {
     b.onResolve({ filter: /\.open-next\/worker\.js$/ }, () => ({ path: 'next-stub', namespace: 'stub' }));
-    b.onLoad({ filter: /.*/, namespace: 'stub' }, () => ({ contents: 'export default { fetch: () => new Response("next") };', loader: 'js' }));
+    // The API served without Next.js (every route handler, the database): not needed by call rooms.
+    b.onResolve({ filter: /^\.\/api-direct$/ }, () => ({ path: 'api-direct-stub', namespace: 'stub' }));
+    b.onLoad({ filter: /^next-stub$/, namespace: 'stub' }, () => ({ contents: 'export default { fetch: () => new Response("next") };', loader: 'js' }));
+    b.onLoad({ filter: /^api-direct-stub$/, namespace: 'stub' }, () => ({ contents: 'export const apiDirect = async () => null;', loader: 'js' }));
   } }],
 });
 writeFileSync(join(dir, 'test-entry.mjs'), `export { CallRoom, RealtimeHub, BoardRoom, CodeRoom } from './worker.mjs';
@@ -542,6 +545,29 @@ if (process.env.TIMER) {
   await sleep(200);
   check(!last(T3, 'rec-blocked') && stateOf(M3, T3.peerId)?.recording === true, 'recording: allowed when the school allows it');
   for (const p of [T, M, T2, B, M2, T3, M3]) await leave(p);
+}
+
+// ── The host ends the call for everyone (Stage 5 · Q23) and the in-person class meter (/pulse, Q22) ──
+{
+  const id = 'c_course20';
+  const T = await joinRoom(id, teacher, true);
+  const S1 = await joinRoom(id, ana), S2 = await joinRoom(id, ben);
+  const closed = new Map();
+  for (const p of [T, S1, S2]) p.ws.addEventListener('close', (e) => closed.set(p.user.id, e.code));
+  const pulse = await (await room(id).fetch('https://call/pulse')).json();
+  check(pulse.total === 2 && pulse.lost === 0, 'pulse: the app reads how many students are in the call');
+  send(S1, { type: 'control', action: 'end-all' });
+  await sleep(200);
+  check(!closed.size && !S2.msgs.some((m) => m.type === 'ended'), 'end for everyone: a student can’t');
+  send(T, { type: 'control', action: 'end-all' });
+  for (let i = 0; i < 20 && closed.size < 2; i++) await sleep(50);
+  check(S1.msgs.some((m) => m.type === 'ended' && m.by === 'Ms Teacher') && S2.msgs.some((m) => m.type === 'ended'), 'end for everyone: each student is told who ended it');
+  // The room closes each student's connection with code 4002 (the local runtime may leave the
+  // second one closing rather than closed: the app leaves on the "ended" message anyway).
+  check([...closed.values()].every((c) => c === 4002) && S1.ws.readyState >= 2 && S2.ws.readyState >= 2 && T.ws.readyState === 1, 'end for everyone: their devices are disconnected (code 4002); the host stays until they leave');
+  check(!T.msgs.some((m) => m.type === 'left'), 'end for everyone: the host isn’t sent "left" for each of them');
+  check((await (await room(id).fetch('https://call/pulse')).json()).total === 0, 'end for everyone: the meter shows nobody in the call');
+  await leave(T);
 }
 
 // An ordinary call (no breakouts) still works as before.

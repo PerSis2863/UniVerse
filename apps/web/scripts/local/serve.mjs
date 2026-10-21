@@ -15,7 +15,7 @@
 import { randomBytes } from 'node:crypto';
 import { run } from './run.mjs';
 
-const accounts = ['demo@student.com', 'demo@teacher.com', 'demo@admin.com', 'it-support@universe.com', 'alice@student.com', 'bob@student.com', 'tara@teacher.com', 'tom@teacher.com'];
+const accounts = ['demo@student.com', 'demo@teacher.com', 'demo@admin.com', 'it-support@universe.com', 'alice@student.com', 'bob@student.com', 'tara@teacher.com', 'tom@teacher.com', 'test-parent@local.test'];
 const vars = ['DEMO_LOGIN_ENABLED:true', 'NEXT_PUBLIC_DEMO_LOGIN:true', `DEMO_ACCOUNT_EMAILS:${accounts.join(',')}`];
 if (process.argv.includes('--ai-placeholder')) vars.push('GEMINI_API_KEY:placeholder-not-a-real-key');
 if (process.argv.includes('--payments-test')) vars.push('PAYMENTS_TEST_MODE:1');

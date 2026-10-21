@@ -105,9 +105,9 @@ export async function actOnToken(token: string, body: Record<string, unknown>) {
 
 // ─── Emails ─────────────────────────────────────────────────────────────────────────────────────
 
-/** From the daily job: the weekly email for confirmed guardians whose last one is a week old. */
+/** From the daily job: the weekly email for confirmed guardians whose last one is a week old (`checked`: how many were due, up to `limit`). */
 export async function sendWeeklyDigests(limit = 40) {
-  if (!guardianEmailsEnabled()) return 0;
+  if (!guardianEmailsEnabled()) return { sent: 0, checked: 0 };
   const due = await prisma.guardianContact.findMany({
     where: { confirmedAt: { not: null }, weeklyDigest: true, OR: [{ lastDigestAt: null }, { lastDigestAt: { lt: new Date(Date.now() - WEEK_MS) } }] },
     orderBy: { lastDigestAt: 'asc' },
@@ -133,7 +133,7 @@ ${dueSoon ? `<p style="margin-top:16px"><b>Due in the next 7 days</b></p><ul sty
     if (await sendEmail(c.email, `${c.student.name}'s week on UniVerse Impact`, html, text(html))) sent++;
     await prisma.guardianContact.update({ where: { id: c.id }, data: { lastDigestAt: new Date() } });
   }
-  return sent;
+  return { sent, checked: due.length };
 }
 
 /** A student was just marked absent (not before): their confirmed guardians who want alerts hear about it. */

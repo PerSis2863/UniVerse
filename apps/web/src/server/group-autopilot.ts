@@ -549,13 +549,14 @@ export async function weeklyAutopilotReports({ limit = 25, now = Date.now() } = 
     take: 300,
     select: { id: true, title: true, groupId: true, boardId: true, createdAt: true, courseId: true, group: { select: { name: true } }, course: { select: { teacherId: true } } },
   })).filter((p) => weeklyReportDue(p.createdAt, now));
-  if (!plans.length) return { made: 0 };
+  if (!plans.length) return { made: 0, more: 0 };
   const done = new Set((await Promise.all(Array.from({ length: Math.ceil(plans.length / 45) }, (_, i) => {
     const part = plans.slice(i * 45, i * 45 + 45);
     // 2 values a plan: under D1's 100 bound values.
     return prisma.groupAutopilotReport.findMany({ where: { OR: part.map((p) => ({ planId: p.id, weekNumber: weekOf(p, now) })) }, select: { planId: true } });
   }))).flat().map((r) => r.planId));
-  const due = plans.filter((p) => !done.has(p.id)).slice(0, limit);
+  const waiting = plans.filter((p) => !done.has(p.id));
+  const due = waiting.slice(0, limit);
 
   let made = 0;
   for (const p of due) {
@@ -571,7 +572,8 @@ export async function weeklyAutopilotReports({ limit = 25, now = Date.now() } = 
       console.error('autopilot weekly report failed:', p.id, e);
     }
   }
-  return { made };
+  // `more`: reports still to make after these (the daily job's next step carries on).
+  return { made, more: waiting.length - due.length };
 }
 
 /** The group's reports, newest first. */
