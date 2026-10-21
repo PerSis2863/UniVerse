@@ -293,7 +293,8 @@ export function MessagingHub() {
                 onContextMenu={(e) => { e.preventDefault(); setMenuFor(c.id); }}
                 onPointerDown={(e) => { if (e.pointerType === 'touch') press.current = setTimeout(() => { haptic('tap'); setMenuFor(c.id); }, 480); }}
                 onPointerUp={() => press.current && clearTimeout(press.current)}
-                onPointerLeave={() => press.current && clearTimeout(press.current)}
+                // Only the finger: a "mouse left" right after a touch starts would cancel the press.
+                onPointerLeave={(e) => e.pointerType === 'touch' && press.current && clearTimeout(press.current)}
                 className={cn('relative isolate w-full flex items-center gap-3 p-3 rounded-2xl text-start transition-colors', active ? '' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}
               >{active && <TabPill id="components-chat-messaginghub-1" variant="soft" />}
                 <Avatar name={c.title} src={c.avatarUrl} online={c.online} size={48} />

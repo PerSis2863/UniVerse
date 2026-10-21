@@ -48,14 +48,16 @@ element and reason. That's how the endless SVG ping (SVG animations re-lay out a
 frame; they can't run on the GPU) and the per-row JS animations showed up. An idle page should
 show almost nothing.
 
-## Q25 · Phase E, fourth batch (10 items): code done, browser check pending (21 Oct 2026, merged at the owner's request)
+## Q25 · Phase E, fourth batch (10 items): done (21 Oct 2026; merged in PR #68, fixes after it on the same branch)
 
-No migration (next: **0172**). **First thing next time:** build, serve, run
-`node scripts/checks/phase-e2-ui.mjs` and fix what it finds (it wasn't run before the merge).
-Rules for code that builds on it:
+No migration (next: **0172**). Tested with `node scripts/checks/phase-e2-ui.mjs` (after the merge:
+the fixes it and a code review found are in the Progress row). Rules for code that builds on it:
 
 - **Press and hold:** `useLongPress(onLong)` (`src/lib/use-long-press.ts`) → spread `bind(item)` on the
-  element and start its onClick with `if (press.wasLong()) return;`. A moving finger cancels it.
+  element and start its onClick with `if (press.wasLong()) return;`. A moving finger cancels it; only
+  the finger that started it can end it (phones also send a "mouse left" as a touch starts); the
+  click from lifting that finger is swallowed (it would land on what just opened). Don't make the
+  same element `draggable` on touch screens: holding it starts the browser's own drag.
   Task cards use it (the card sheet's Move to is how cards change list on a phone).
 - **Accent colour:** `ACCENTS` / `setAccent` in `src/lib/display-prefs.ts`, `data-accent` on `<html>`
   (set by `DISPLAY_PREFS_SCRIPT` before paint); the tokens per accent are in `globals.css`

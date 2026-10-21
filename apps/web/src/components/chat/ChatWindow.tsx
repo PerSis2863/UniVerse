@@ -268,11 +268,14 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, [picked]);
-  const togglePick = (id: string) => setPicked((cur) => {
-    const next = new Set(cur ?? []);
-    if (next.has(id)) next.delete(id); else if (next.size < 50) next.add(id); else toast.message('Up to 50 messages at a time.');
-    return next.size ? next : null;
-  });
+  const togglePick = (id: string) => {
+    if (picked && !picked.has(id) && picked.size >= 50) return void toast.message('Up to 50 messages at a time.');
+    setPicked((cur) => {
+      const next = new Set(cur ?? []);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next.size ? next : null;
+    });
+  };
   const pickedMessages = picked ? messages.filter((m) => picked.has(m.id)) : [];
   const copyPicked = async () => {
     const lines = pickedMessages.filter((m) => m.type === 'TEXT' && !m.metadata?.e2e && m.body?.trim()).map((m) => (convo?.isGroup ? `${m.sender?.name ?? ''}: ${m.body}` : m.body));
@@ -281,20 +284,21 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     catch { toast.error('Copying isn’t allowed here.'); }
   };
   const forwardPicked = () => {
-    const ok = pickedMessages.filter((m) => FORWARDABLE.has(m.type) && !m.metadata?.e2e && !m.metadata?.viewOnce);
+    const ok = pickedMessages.filter((m) => FORWARDABLE.has(m.type) && !m.pending && !m.metadata?.e2e && !m.metadata?.viewOnce);
     if (!ok.length) return void toast.message('These can’t be forwarded (private or view-once messages, calls, polls).');
     if (ok.length < pickedMessages.length) toast.message(`${pickedMessages.length - ok.length} of them can’t be forwarded and are left out.`);
     setForwardMany(ok);
   };
   const hidePicked = () => {
     const ids = pickedMessages.filter((m) => !m.pending).map((m) => m.id);
+    const before = older; // older pages loaded by scrolling up: Undo puts them back too
     setPicked(null);
     removeWithUndo(ids.length === 1 ? 'Message deleted for you' : `${ids.length} messages deleted for you`, {
       hide: () => {
         mutate((prev) => (prev ? { ...prev, messages: prev.messages.filter((x) => !ids.includes(x.id)) } : prev), { revalidate: false });
         setOlder((cur) => cur.filter((x) => !ids.includes(x.id)));
       },
-      restore: () => void mutate(),
+      restore: () => { setOlder(before); void mutate(); },
       commit: async () => {
         for (const id of ids) await chatJson(`/api/chat/messages/${id}/state`, { method: 'POST', body: JSON.stringify({ hidden: true }) });
         onChanged();
@@ -832,9 +836,15 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                 return (
                   <div key={m.id} id={`msg-${m.id}`}
                     className={cn(!newDay && prev?.senderId !== m.senderId && 'pt-2', picked && 'relative ps-10 rounded-xl', picked?.has(m.id) && 'bg-indigo-500/10')}
-                    // While choosing, a tap anywhere on a message ticks it instead of opening anything.
-                    onClickCapture={picked && m.type !== 'SYSTEM' ? (e) => { e.preventDefault(); e.stopPropagation(); togglePick(m.id); } : undefined}>
-                    {picked && m.type !== 'SYSTEM' && (
+                    // While choosing, a tap anywhere on a message ticks it instead of opening anything;
+                    // pressing and holding, right-clicking, double-clicking (a ❤️) and swiping do nothing.
+                    {...(picked ? {
+                      onClickCapture: (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); if (m.type !== 'SYSTEM' && !m.pending) togglePick(m.id); },
+                      onPointerDownCapture: (e: React.PointerEvent) => e.stopPropagation(),
+                      onContextMenuCapture: (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); },
+                      onDoubleClickCapture: (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); },
+                    } : {})}>
+                    {picked && m.type !== 'SYSTEM' && !m.pending && (
                       <button type="button" role="checkbox" aria-checked={picked.has(m.id)} className={cn('absolute start-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 flex items-center justify-center', picked.has(m.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-400 dark:border-white/40')}>
                         {picked.has(m.id) && <Check className="w-3.5 h-3.5" aria-hidden />}<span className="sr-only">Select the message {m.senderId === me ? 'you sent' : `from ${m.sender?.name ?? 'them'}`}: {previewText(m)}</span>
                       </button>

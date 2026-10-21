@@ -288,8 +288,8 @@
   .btn-primary:not(:disabled):active { filter: brightness(0.9); }
 
   /* Accent colours (Settings → Appearance, src/lib/display-prefs.ts): the same tokens as indigo's
-     above. Text shades read at 4.5:1 or more on white (light) and on navy (dark), and white text
-     on the tint does too. */
+     above. Text shades read at 4.5:1 or more on white (light) and on navy (dark), also on their own
+     tinted fills (teal and amber use their darker shade there), and white text on the tint does too. */
   :root[data-accent="violet"] {
     --tint: #6d28d9; --tint-rgb: 109 40 217; --tint-text: #6d28d9;
     --sidebar-item-active-bg: rgba(109, 40, 217, 0.12); --sidebar-item-active-color: #6d28d9;
@@ -322,10 +322,10 @@
   }
   :root[data-accent="teal"] {
     --tint: #0f766e; --tint-rgb: 15 118 110; --tint-text: #0f766e;
-    --sidebar-item-active-bg: rgba(15, 118, 110, 0.12); --sidebar-item-active-color: #0f766e;
+    --sidebar-item-active-bg: rgba(15, 118, 110, 0.12); --sidebar-item-active-color: #115e59;
     --btn-ghost-color: #0f766e; --btn-ghost-hover-bg: rgba(15, 118, 110, 0.1); --btn-ghost-hover-color: #115e59;
-    --btn-secondary-bg: rgba(15, 118, 110, 0.1); --btn-secondary-color: #0f766e;
-    --badge-blue-bg: rgba(15, 118, 110, 0.12); --badge-blue-color: #0f766e;
+    --btn-secondary-bg: rgba(15, 118, 110, 0.1); --btn-secondary-color: #115e59;
+    --badge-blue-bg: rgba(15, 118, 110, 0.12); --badge-blue-color: #115e59;
     --accent-from: #0f766e; --accent-to: #115e59;
   }
   :root.dark[data-accent="teal"] {
@@ -352,10 +352,10 @@
   }
   :root[data-accent="amber"] {
     --tint: #b45309; --tint-rgb: 180 83 9; --tint-text: #b45309;
-    --sidebar-item-active-bg: rgba(180, 83, 9, 0.12); --sidebar-item-active-color: #b45309;
+    --sidebar-item-active-bg: rgba(180, 83, 9, 0.12); --sidebar-item-active-color: #92400e;
     --btn-ghost-color: #b45309; --btn-ghost-hover-bg: rgba(180, 83, 9, 0.1); --btn-ghost-hover-color: #92400e;
-    --btn-secondary-bg: rgba(180, 83, 9, 0.1); --btn-secondary-color: #b45309;
-    --badge-blue-bg: rgba(180, 83, 9, 0.12); --badge-blue-color: #b45309;
+    --btn-secondary-bg: rgba(180, 83, 9, 0.1); --btn-secondary-color: #92400e;
+    --badge-blue-bg: rgba(180, 83, 9, 0.12); --badge-blue-color: #92400e;
     --accent-from: #b45309; --accent-to: #92400e;
   }
   :root.dark[data-accent="amber"] {

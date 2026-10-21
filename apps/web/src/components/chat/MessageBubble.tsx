@@ -443,7 +443,7 @@ export function MessageBubble(p: Props) {
             onDoubleClick={() => { if (interactive) { haptic('tap'); p.onReact('❤️'); } }}
             onPointerDown={startPress}
             onPointerUp={cancelPress}
-            onPointerLeave={cancelPress}
+            onPointerLeave={(e) => { if (e.pointerType === 'touch') cancelPress(); }}
             onContextMenu={(e) => { if (interactive && !touch) { e.preventDefault(); setMenu(true); setPicker(false); } }}
           >
             {m.forwarded && !deleted && (

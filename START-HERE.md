@@ -17,7 +17,8 @@ Cursor's).
   order, and the **Progress** table at the end says what's done, where the code is and what's left
   for each item.
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: start with its "Next steps" and the
-  Q25 note (its browser check, `scripts/checks/phase-e2-ui.mjs`, hasn't been run yet).
+  Q24/Q25 notes. Fixes found by Q25's browser check after the merge are on branch
+  `claude/funny-galileo-y4mz9r`, not merged yet.
 - **Next database update number: `0172`** (files in `apps/web/prisma/migrations/`).
 
 **Waiting on the owner** (things only you can provide):
