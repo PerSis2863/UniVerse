@@ -78,18 +78,18 @@ export default function BeeSafeReporting() {
                 <AlertTriangle className="w-6 h-6 text-red-500" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-red-400 mb-1 flex items-center gap-2">
+                <h3 className="text-xl font-bold text-red-700 dark:text-red-400 mb-1 flex items-center gap-2">
                   In an emergency, call {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : emergencyNumber} immediately.
                 </h3>
                 {countryName && !loading && (
-                  <div className="text-xs text-red-300/80 mb-2">Detected region: {countryName}</div>
+                  <div className="text-xs text-red-800 dark:text-red-300/80 mb-2">Detected region: {countryName}</div>
                 )}
-                <p className="text-sm text-red-300/80 max-w-xl">
+                <p className="text-sm text-red-800 dark:text-red-300/80 max-w-xl">
                   This system is for non-emergency reporting. Reports submitted here are reviewed during regular business hours. For immediate on-campus assistance, contact Campus Security.
                 </p>
               </div>
             </div>
-            <a href={`tel:${SECURITY_PHONE.replace(/[^+\d]/g, '')}`} className="flex-shrink-0 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-bold transition-colors w-full md:w-auto">
+            <a href={`tel:${SECURITY_PHONE.replace(/[^+\d]/g, '')}`} className="flex-shrink-0 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold transition-colors w-full md:w-auto">
               <Phone className="w-5 h-5" /> {process.env.NEXT_PUBLIC_CAMPUS_SECURITY_PHONE ? 'Call Campus Security' : `Call emergency (${SECURITY_PHONE})`}
             </a>
           </div>

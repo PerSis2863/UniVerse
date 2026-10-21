@@ -161,7 +161,7 @@ export default function StudentCommunity() {
                       {user.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-zinc-200">{user.name}</div>
+                      <div className="text-sm font-medium text-zinc-900 dark:text-zinc-200">{user.name}</div>
                       <div className="text-xs text-zinc-500 dark:text-zinc-500">{user.posts} posts</div>
                     </div>
                   </div>

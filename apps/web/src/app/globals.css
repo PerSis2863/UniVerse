@@ -34,9 +34,20 @@
   --color-zinc-800: #212843;
   --color-zinc-900: #141a30;
   --color-zinc-950: #0b0f1c;
+  /* The older pages' slate and gray text greys, made to read like the zinc ones (4.5:1 on the light
+     backgrounds here, lighter in dark mode below), keeping their own hue. */
+  --color-slate-400: #5f6b7e;
+  --color-slate-500: #566173;
+  --color-slate-600: #475264;
+  --color-gray-400: #626b78;
+  --color-gray-500: #5a6270;
+  --color-gray-600: #4b5260;
 
   /* iOS system colours for the semantic states (indigo and fuchsia stay UniVerse's two tones). */
   --color-emerald-500: #34c759;
+  /* White text on the deeper greens reads at 4.5:1 (#059669 was 3.77): buttons and badges. */
+  --color-emerald-600: #047857;
+  --color-emerald-700: #065f46;
   --color-green-500: #34c759;
   --color-rose-500: #ff3b30;
   --color-red-500: #ff3b30;
@@ -60,9 +71,19 @@
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600) { color: #6d28d9; }
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-fuchsia-500, .text-fuchsia-600, .text-pink-500, .text-pink-600) { color: #a21caf; }
 /* Dark mode keeps the lighter text greys (the darker light-mode ones would dim text on navy). */
-.dark { --color-zinc-400: #aeaeb2; --color-zinc-500: #8e8e93; --color-zinc-600: #636366; }
+.dark { --color-zinc-400: #aeaeb2; --color-zinc-500: #8e8e93; --color-zinc-600: #636366;
+  --color-slate-400: #a8b1c2; --color-slate-500: #8f99ab; --color-slate-600: #646d7e;
+  --color-gray-400: #a3a8b3; --color-gray-500: #8f949f; --color-gray-600: #636870; }
 /* Dark mode: indigo text without its own dark: colour is lifted so it reads on navy. */
 .dark .text-indigo-500:not([class*="dark:text-"]) { color: #8e8cff; }
+/* ...and so is the other coloured text written for light backgrounds (the 600 shades, no dark:
+   colour of its own; red, blue and violet were under 4.5:1 on navy). Not on white chips. */
+.dark :is(.text-emerald-600, .text-green-600, .text-teal-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #4ade80; }
+.dark :is(.text-amber-600, .text-orange-600, .text-yellow-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #fbbf24; }
+.dark :is(.text-red-600, .text-rose-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #fb7185; }
+.dark :is(.text-blue-600, .text-sky-600, .text-cyan-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #60a5fa; }
+.dark :is(.text-indigo-600, .text-violet-600, .text-purple-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #a5a3ff; }
+.dark :is(.text-fuchsia-600, .text-pink-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #f472b6; }
 /* Keyboard focus is always visible: unlayered, so a utility's outline-none can't hide it. Not on
    things focused only by code (tabindex -1: sheets, the page itself after "Skip to content"). */
 :where(a, button, [role="button"], [role="tab"], [role="switch"], [role="menuitem"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
@@ -142,8 +163,8 @@
   }
 
   .dark {
-    --tint: #6366f1;
-    --tint-rgb: 99 102 241;
+    --tint: #5f63f0; /* white text on it: 4.64:1 (#6366f1 was 4.47) */
+    --tint-rgb: 95 99 240;
     --tint-text: #a5b4fc;
     --ios-green: #30d158;
     --ios-red: #ff453a;

@@ -368,7 +368,7 @@ export function ConsentsPanel({ embedded = false }: { embedded?: boolean }) {
             <AlertCircle className="w-5 h-5 text-zinc-600 dark:text-zinc-400 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-zinc-600 dark:text-zinc-400">
               Changes to your consent preferences are saved instantly across all campus edge nodes. If you have questions regarding data processing or wish to contact our Data Protection Officer directly, please reach out to{' '}
-              <a href="mailto:dpo@universeimpact.com" className="text-indigo-500 hover:underline">
+              <a href="mailto:dpo@universeimpact.com" className="text-indigo-600 dark:text-indigo-300 underline underline-offset-2">
                 dpo@universeimpact.com
               </a>.
             </div>

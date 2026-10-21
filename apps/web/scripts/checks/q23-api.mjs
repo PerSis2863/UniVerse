@@ -10,7 +10,9 @@ const APP = __path(new URL('../..', import.meta.url)).replace(/[\\/]$/, '');
 const base = 'http://localhost:8787', C = 'cmulde0g900147d341qn9mxlw';
 const T = 'demo@teacher.com', A = 'alice@student.com', B = 'bob@student.com';
 const H = (e) => ({ Authorization: `Bearer mock-token-${e}`, 'Content-Type': 'application/json' });
-const call = async (who, path, body, method) => { const r = await fetch(base + path, { method: method ?? (body ? 'POST' : 'GET'), headers: H(who), body: body ? JSON.stringify(body) : undefined }); return { s: r.status, b: await r.json().catch(() => ({})) }; };
+// One retry: a kept-alive connection can go stale while the slow database commands run.
+const send = (who, path, body, method) => fetch(base + path, { method: method ?? (body ? 'POST' : 'GET'), headers: H(who), body: body ? JSON.stringify(body) : undefined });
+const call = async (who, path, body, method) => { const r = await send(who, path, body, method).catch(() => send(who, path, body, method)); return { s: r.status, b: await r.json().catch(() => ({})) }; };
 const sql = (c) => execSync(`npx wrangler d1 execute universe-db --local --json --command "${c.replace(/"/g, '\\"')}"`, { cwd: APP, encoding: 'utf8' });
 const rows = (c) => JSON.parse(sql(c))[0]?.results ?? [];
 const ts = (d = new Date()) => d.toISOString().replace('Z', '+00:00');

@@ -57,8 +57,11 @@ export function CampusMapView({ buildings, stats, editing, focus, onOpen, onMove
         const color = b.color ?? '#6366f1';
         const level = loadLevel(s.inUse, s.total);
         const label = `${b.name}: ${s.total ? `${s.inUse} of ${s.total} room${s.total === 1 ? '' : 's'} in use` : 'no rooms placed yet'}${s.live ? ', a class live now' : ''}${s.events ? `, ${s.events} event${s.events === 1 ? '' : 's'} now or soon` : ''}${s.next ? ', your next class' : ''}`;
+        // The spoken name starts with the short name shown on the map (people using voice control say what they see).
+        const short = shortName(b.name, b.code);
+        const spoken = b.name.includes(short) ? label : `${short}, ${label}`;
         return (
-          <button key={b.id} type="button" aria-label={editing ? `${label}. Move with the arrow keys, Enter to change it.` : label}
+          <button key={b.id} type="button" aria-label={editing ? `${spoken}. Move with the arrow keys, Enter to change it.` : spoken}
             className={cn('absolute rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 p-1 transition-shadow focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500/60',
               editing ? 'cursor-grab active:cursor-grabbing' : 'hover:shadow-lg', (focus === b.id || s.next) && 'ring-4 ring-amber-400/80 z-10', drag?.id === b.id && 'shadow-2xl z-20')}
             style={{ left: pct(box.x, MAP_W), top: pct(box.y, MAP_H), width: pct(box.w, MAP_W), height: pct(box.h, MAP_H), borderColor: color, background: `${color}${FILL[level]}` }}
@@ -86,7 +89,7 @@ export function CampusMapView({ buildings, stats, editing, focus, onOpen, onMove
               setDrag(null);
             }}
             onPointerCancel={() => setDrag(null)}>
-            <span className="max-w-full truncate rounded-md bg-white/95 dark:bg-zinc-900/90 px-1.5 py-0.5 text-[11px] sm:text-xs font-bold text-zinc-900 dark:text-white shadow-sm">{shortName(b.name, b.code)}</span>
+            <span className="max-w-full truncate rounded-md bg-white/95 dark:bg-zinc-900/90 px-1.5 py-0.5 text-[11px] sm:text-xs font-bold text-zinc-900 dark:text-white shadow-sm">{short}</span>
             {s.total > 0 && <span className="hidden min-[420px]:inline rounded-md bg-white/95 dark:bg-zinc-900/90 px-1 text-[10px] font-semibold tabular-nums text-zinc-800 dark:text-zinc-200">{s.inUse}/{s.total}</span>}
             {s.live && <span aria-hidden className="absolute -top-1.5 -end-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-zinc-900 animate-pulse" />}
             {s.next && <MapPin aria-hidden className="absolute -top-3 left-1/2 -translate-x-1/2 w-5 h-5 text-amber-500 fill-amber-200 drop-shadow" />}

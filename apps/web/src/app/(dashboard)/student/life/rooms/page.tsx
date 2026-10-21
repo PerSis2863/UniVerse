@@ -111,8 +111,8 @@ export default function RoomReservationPage() {
               <Map className="w-7 h-7" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white mb-1">Need a quiet place?</h2>
-              <p className="text-indigo-200/80 text-sm">
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-1">Need a quiet place?</h2>
+              <p className="text-indigo-900/80 dark:text-indigo-200/80 text-sm">
                 Reserve library study rooms, media labs, or presentation spaces up to 2 weeks in advance.
               </p>
             </div>

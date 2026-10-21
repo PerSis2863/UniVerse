@@ -269,7 +269,7 @@ export default function LeaderboardPage() {
                   <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-10 h-10 bg-amber-400 rounded-full border-4 border-white dark:border-zinc-900 flex items-center justify-center text-sm font-black text-amber-900">1</div>
                   <div className="font-bold text-base text-zinc-900 dark:text-white truncate w-full">{top3[0].name}</div>
                   <div className="text-sm text-amber-600 dark:text-amber-400 font-bold">{top3[0].totalPoints.toLocaleString()} pts</div>
-                  <div className="text-[9px] text-amber-500/70 mt-0.5">{top3[0].levelInfo?.current?.title || 'UniVerse Legend'}</div>
+                  <div className="text-[10px] text-amber-800 dark:text-amber-300 mt-0.5">{top3[0].levelInfo?.current?.title || 'UniVerse Legend'}</div>
                 </div>
               </motion.div>
 
@@ -284,7 +284,7 @@ export default function LeaderboardPage() {
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 bg-orange-300 dark:bg-orange-800 rounded-full border-4 border-white dark:border-zinc-900 flex items-center justify-center text-xs font-bold text-orange-900 dark:text-orange-200">3</div>
                   <div className="font-bold text-sm text-zinc-900 dark:text-white truncate w-full">{top3[2].name}</div>
                   <div className="text-xs text-orange-600 dark:text-orange-500 font-medium">{top3[2].totalPoints.toLocaleString()} pts</div>
-                  <div className="text-[9px] text-orange-400/70 mt-0.5">{top3[2].levelInfo?.current?.title || 'Global Catalyst'}</div>
+                  <div className="text-[10px] text-orange-800 dark:text-orange-300 mt-0.5">{top3[2].levelInfo?.current?.title || 'Global Catalyst'}</div>
                 </div>
               </motion.div>
             </div>

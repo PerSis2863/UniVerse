@@ -5,7 +5,9 @@ const APP = __path(new URL('../..', import.meta.url)).replace(/[\\/]$/, '');
 const base = 'http://localhost:8787', C = 'cmulde0g900147d341qn9mxlw';
 const T = 'demo@teacher.com', A = 'alice@student.com', B = 'bob@student.com', J = 'demo@student.com';
 const H = (e) => ({ Authorization: `Bearer mock-token-${e}`, 'Content-Type': 'application/json' });
-const call = async (who, path, body, method) => { const r = await fetch(base + path, { method: method ?? (body ? 'POST' : 'GET'), headers: H(who), body: body ? JSON.stringify(body) : undefined }); return { s: r.status, b: await r.json().catch(() => ({})) }; };
+// One retry: a kept-alive connection can go stale while the slow database commands run.
+const send = (who, path, body, method) => fetch(base + path, { method: method ?? (body ? 'POST' : 'GET'), headers: H(who), body: body ? JSON.stringify(body) : undefined });
+const call = async (who, path, body, method) => { const r = await send(who, path, body, method).catch(() => send(who, path, body, method)); return { s: r.status, b: await r.json().catch(() => ({})) }; };
 const out = {};
 for (const q of (await call(T, '/api/core/quizzes')).b ?? []) if (q.title?.startsWith('Game API')) await call(T, `/api/core/quizzes/${q.id}`, null, 'DELETE');
 const quiz = (await call(T, '/api/core/quizzes', { courseId: C, title: 'Game API' })).b;

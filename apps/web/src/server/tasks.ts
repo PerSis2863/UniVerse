@@ -70,17 +70,19 @@ export async function overview(user: SessionUser) {
     ? (await prisma.enrollment.findMany({ where: { studentId: user.id }, select: { course: { select: { id: true, code: true, name: true } } }, take: 100 })).map((e) => e.course)
     : await prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : taughtBy(user.id), select: { id: true, code: true, name: true }, take: 100 });
   const groups = (await prisma.groupMembership.findMany({ where: { userId: user.id }, select: { group: { select: { id: true, name: true } } }, take: 100 })).map((m) => m.group);
-  const [boards, mine] = await Promise.all([
-    prisma.taskBoard.findMany({
-      where: { OR: [{ ownerId: user.id }, { members: { some: { userId: user.id } } }, ...(courses.length ? [{ courseId: { in: courses.map((c) => c.id) } }] : []), ...(groups.length ? [{ groupId: { in: groups.map((g) => g.id) } }] : [])] },
-      orderBy: { updatedAt: 'desc' }, take: 100,
-      select: { id: true, title: true, courseId: true, groupId: true, ownerId: true, updatedAt: true, _count: { select: { tasks: true } } },
-    }),
+  // Three lookups, put together: the course and group lists can be long (an admin's whole school),
+  // and a long list inside OR can't be split for D1's 100 values (src/lib/d1-split.ts); on their own they are.
+  const select = { id: true, title: true, courseId: true, groupId: true, ownerId: true, updatedAt: true, _count: { select: { tasks: true } } } as const;
+  const [own, ofCourses, ofGroups, mine] = await Promise.all([
+    prisma.taskBoard.findMany({ where: { OR: [{ ownerId: user.id }, { members: { some: { userId: user.id } } }] }, orderBy: { updatedAt: 'desc' }, take: 100, select }),
+    courses.length ? prisma.taskBoard.findMany({ where: { courseId: { in: courses.map((c) => c.id) } }, orderBy: { updatedAt: 'desc' }, take: 100, select }) : [],
+    groups.length ? prisma.taskBoard.findMany({ where: { groupId: { in: groups.map((g) => g.id) } }, orderBy: { updatedAt: 'desc' }, take: 100, select }) : [],
     prisma.task.findMany({
       where: { assigneeId: user.id, doneAt: null }, orderBy: [{ dueAt: 'asc' }, { updatedAt: 'desc' }], take: 200,
       select: { id: true, title: true, dueAt: true, boardId: true, board: { select: { title: true } }, list: { select: { title: true } } },
     }),
   ]);
+  const boards = [...new Map([...own, ...ofCourses, ...ofGroups].map((b) => [b.id, b])).values()].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 100);
   const code = new Map([...courses.map((c) => [c.id, c.code] as const), ...groups.map((g) => [g.id, g.name] as const)]);
   return {
     courses, groups,

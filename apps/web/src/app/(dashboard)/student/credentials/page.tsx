@@ -62,11 +62,11 @@ interface Credential {
 }
 
 const STATUS_MAP: Record<CredentialStatus, { label: string; color: string; bg: string; dot: string }> = {
-  ISSUED: { label: 'Verified & Signed', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', dot: 'bg-emerald-400' },
-  PENDING: { label: 'Awaiting Verification', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', dot: 'bg-amber-400' },
-  REVOKED: { label: 'Revoked', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', dot: 'bg-red-400' },
-  REJECTED: { label: 'Not Approved', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', dot: 'bg-red-400' },
-  UNVERIFIED_LEGACY: { label: 'Unverified (legacy)', color: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-500/20', dot: 'bg-zinc-400' },
+  ISSUED: { label: 'Verified & Signed', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', dot: 'bg-emerald-400' },
+  PENDING: { label: 'Awaiting Verification', color: 'text-amber-800 dark:text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', dot: 'bg-amber-400' },
+  REVOKED: { label: 'Revoked', color: 'text-red-700 dark:text-red-400', bg: 'bg-red-500/10 border-red-500/20', dot: 'bg-red-400' },
+  REJECTED: { label: 'Not Approved', color: 'text-red-700 dark:text-red-400', bg: 'bg-red-500/10 border-red-500/20', dot: 'bg-red-400' },
+  UNVERIFIED_LEGACY: { label: 'Unverified (legacy)', color: 'text-zinc-600 dark:text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-500/20', dot: 'bg-zinc-400' },
 };
 
 function apiErrorMessage(err: unknown, fallback: string): string {

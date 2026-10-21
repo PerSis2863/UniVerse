@@ -49,7 +49,7 @@ export function Card({ children, className = '' }: { children: React.ReactNode; 
 }
 
 export function A({ href, children }: { href: string; children: React.ReactNode }) {
-  const cls = 'text-indigo-400 hover:text-indigo-300 underline-offset-2 hover:underline break-words';
+  const cls = 'text-indigo-400 hover:text-indigo-300 underline underline-offset-2 decoration-indigo-400/50 hover:decoration-current break-words'; // underlined: links in text can't differ by colour alone
   return href.startsWith('/') ? <Link href={href} className={cls}>{children}</Link> : <a href={href} className={cls} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener">{children}</a>;
 }
 

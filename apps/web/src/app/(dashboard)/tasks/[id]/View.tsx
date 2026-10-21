@@ -292,7 +292,7 @@ function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; bo
             <div key={i} className="flex items-center gap-2 group">
               <button type="button" disabled={ro} onClick={() => setChecklist(card.checklist.map((x, j) => (j === i ? { ...x, done: !x.done } : x)))} className={cn('w-4 h-4 rounded border-2 flex items-center justify-center', c.done ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-300 dark:border-white/20')}>{c.done && <Check className="w-3 h-3" />}</button>
               <span className={cn('flex-1 text-sm', c.done && 'line-through text-zinc-400')}>{c.text}</span>
-              {!ro && <button type="button" onClick={() => setChecklist(card.checklist.filter((_, j) => j !== i))} aria-label="Remove" className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-rose-500"><X className="w-3.5 h-3.5" /></button>}
+              {!ro && <button type="button" onClick={() => setChecklist(card.checklist.filter((_, j) => j !== i))} aria-label="Remove" className="pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-visible:opacity-100 p-1 text-zinc-400 hover:text-rose-500"><X className="w-3.5 h-3.5" /></button>}
             </div>
           ))}
           {!ro && card.checklist.length < 30 && (

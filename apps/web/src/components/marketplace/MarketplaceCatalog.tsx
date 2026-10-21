@@ -534,6 +534,7 @@ export function MarketplaceCatalog() {
               {/* Level Filter */}
               <div className="flex items-center gap-2">
                 <select
+                  aria-label="Level"
                   value={selectedLevel}
                   onChange={(e) => setSelectedLevel(e.target.value)}
                   className="rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -547,6 +548,7 @@ export function MarketplaceCatalog() {
 
                 {/* Price Filter */}
                 <select
+                  aria-label="Price"
                   value={selectedPriceFilter}
                   onChange={(e) => setSelectedPriceFilter(e.target.value as 'all' | 'free' | 'paid')}
                   className="rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -558,6 +560,7 @@ export function MarketplaceCatalog() {
 
                 {/* Sort Filter */}
                 <select
+                  aria-label="Sort by"
                   value={selectedSort}
                   onChange={(e) =>
                     setSelectedSort(
@@ -994,6 +997,7 @@ export function MarketplaceCatalog() {
                 </div>
               ) : (
                 <select
+                  aria-label="Target course"
                   value={targetCourseId}
                   onChange={(e) => setTargetCourseId(e.target.value)}
                   className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2.5 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"

@@ -476,7 +476,7 @@ export function TrustClient() {
                     </h4>
                     <div className="space-y-2 text-xs text-zinc-300">
                       <p><span className="text-zinc-500">Officer:</span> Institutional Compliance & Data Protection Officer</p>
-                      <p><span className="text-zinc-500">Official Inquiries:</span> <a href="mailto:dpo@universeimpact.com" className="text-indigo-400 hover:underline">dpo@universeimpact.com</a></p>
+                      <p><span className="text-zinc-500">Official Inquiries:</span> <a href="mailto:dpo@universeimpact.com" className="text-indigo-400 underline underline-offset-2">dpo@universeimpact.com</a></p>
                       <p><span className="text-zinc-500">Privacy Escalations:</span> <a href="mailto:privacy@universeimpact.com" className="text-indigo-400 hover:underline">privacy@universeimpact.com</a></p>
                       <p><span className="text-zinc-500">Jurisdiction:</span> New Delhi, India & Global Educational Partners</p>
                     </div>

@@ -429,23 +429,29 @@ export function LectureRevisionReels({
             {/* Bottom Controls Bar */}
             <div className="relative z-20 flex items-center justify-between border-t border-white/10 bg-black/40 p-4 backdrop-blur-md text-white">
               <button
+                type="button"
                 onClick={handlePrevReel}
                 disabled={activeReelIdx === 0}
-                className="rounded-full p-2 hover:bg-white/10 disabled:opacity-30"
+                aria-label="Previous reel"
+                className="rounded-full p-3 hover:bg-white/10 disabled:opacity-30 active:scale-90 transition-transform"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
 
               <button
+                type="button"
                 onClick={() => setIsPlaying(!isPlaying)}
+                aria-label={isPlaying ? 'Pause' : 'Play'}
                 className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-900 shadow-lg transition-transform hover:scale-105 active:scale-95"
               >
                 {isPlaying ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current ms-0.5" />}
               </button>
 
               <button
+                type="button"
                 onClick={handleNextReel}
-                className="rounded-full p-2 hover:bg-white/10"
+                aria-label="Next reel"
+                className="rounded-full p-3 hover:bg-white/10 active:scale-90 transition-transform"
               >
                 <ChevronRight className="h-5 w-5" />
               </button>

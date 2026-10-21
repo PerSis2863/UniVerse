@@ -74,12 +74,12 @@ export default function StartupIncubatorPage() {
         title={`🚀 ${t('impact.startups')}`}
         subtitle="Join, co-found, or fund student startups tackling real-world social challenges with verified CSR backing."
         rightNode={
-          <button onClick={() => setPitching(true)} className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/30 transition-all">
-            <Lightbulb className="w-4 h-4" />
-      <SectionTabs tabs={OPPORTUNITY_TABS} /> Pitch My Startup
+          <button type="button" onClick={() => setPitching(true)} className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/30 transition-[background-color,box-shadow] pressable">
+            <Lightbulb className="w-4 h-4" aria-hidden /> Pitch My Startup
           </button>
         }
       />
+      <SectionTabs tabs={OPPORTUNITY_TABS} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-8">
 

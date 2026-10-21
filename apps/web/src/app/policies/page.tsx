@@ -55,7 +55,7 @@ export default function PoliciesPage() {
 
       <Section id="subprocessors" title="Service providers (subprocessors)">
         <p>These companies process data for us, under data processing agreements, to run UniVerse.</p>
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
+        <div tabIndex={0} role="region" aria-label="Table" className="overflow-x-auto -mx-4 sm:mx-0 focus-visible:outline-2 focus-visible:outline-indigo-400">
           <table className="w-full min-w-[520px] text-sm border-collapse">
             <thead><tr className="text-start text-zinc-400"><th className="py-2 px-4 font-semibold">Provider</th><th className="py-2 px-4 font-semibold">Purpose</th><th className="py-2 px-4 font-semibold">Location</th></tr></thead>
             <tbody>
@@ -69,7 +69,7 @@ export default function PoliciesPage() {
       </Section>
 
       <Section id="retention" title="How long we keep data">
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
+        <div tabIndex={0} role="region" aria-label="Table" className="overflow-x-auto -mx-4 sm:mx-0 focus-visible:outline-2 focus-visible:outline-indigo-400">
           <table className="w-full min-w-[440px] text-sm border-collapse">
             <tbody>
               {RETENTION.map(([a, b]) => (

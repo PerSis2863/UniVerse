@@ -8,7 +8,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { DeadlineList, type DeadlineItem } from '@/components/progress/DeadlineList';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
-import { courseColor } from '@/lib/course-color';
+import { courseColor, courseShade } from '@/lib/course-color';
 import { cn } from '@/lib/utils';
 import { SupportPlans } from '@/components/planner/SupportPlans';
 import { SmartWeek } from '@/components/planner/SmartWeek';
@@ -216,7 +216,7 @@ export default function StudyPlannerPage() {
                                   <span className="w-1 rounded-full shrink-0" style={{ backgroundColor: color }} aria-hidden />
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md" style={{ backgroundColor: `${color}1f`, color }}>{c?.code ?? b.course}</span>
+                                      <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md text-white" style={{ background: courseShade(c?.color, c?.code ?? b.course) }}>{c?.code ?? b.course}</span>
                                       <span className="text-[11px] text-zinc-500 inline-flex items-center gap-1"><Clock className="w-3 h-3" />{b.minutes} min</span>
                                     </div>
                                     <p className="text-sm font-semibold text-zinc-900 dark:text-white mt-1 break-words">{b.task}</p>

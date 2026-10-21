@@ -153,7 +153,9 @@ function TrendCard({ a }: { a: CourseAnalytics }) {
           <div className="flex flex-col justify-between text-[10px] text-zinc-400 h-40 py-0 -mt-1.5 -mb-1.5 shrink-0" aria-hidden>
             <span>100%</span><span>50%</span><span>0%</span>
           </div>
-          <div className="flex-1 min-w-0">
+          {/* At least 24 px a week (a finger's tap target): many weeks on a phone scroll sideways. */}
+          <div className="flex-1 min-w-0 overflow-x-auto overscroll-x-contain">
+           <div style={{ minWidth: n * 24 }}>
             <div className="relative h-40" onMouseLeave={() => setHover(null)}>
               <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible" aria-hidden>
                 {[0, 50, 100].map((g) => <line key={g} x1="0" x2="100" y1={g} y2={g} stroke="currentColor" className="text-zinc-200 dark:text-white/10" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
@@ -192,6 +194,7 @@ function TrendCard({ a }: { a: CourseAnalytics }) {
             <div className="mt-1.5 flex justify-between text-[10px] text-zinc-400" aria-hidden>
               <span>{fmtWeek(a.trend[0].week)}</span><span className="hidden sm:inline">{fmtWeek(a.trend[Math.floor(n / 2)].week)}</span><span>{fmtWeek(a.trend[n - 1].week)}</span>
             </div>
+           </div>
           </div>
         </div>
       )}

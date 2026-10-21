@@ -64,7 +64,7 @@ function JoinContent() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="dark min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mx-auto mb-3" />
           <p className="text-zinc-400 text-sm">Validating invite link...</p>
@@ -75,7 +75,7 @@ function JoinContent() {
 
   if (status === 'invalid') {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+      <div className="dark min-h-screen bg-zinc-950 flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
           <div className="w-16 h-16 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-4">
             <XCircle className="w-8 h-8 text-red-400" />
@@ -94,7 +94,7 @@ function JoinContent() {
   const Icon = roleData?.icon || GraduationCap;
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+    <div className="dark min-h-screen bg-zinc-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -135,7 +135,7 @@ function JoinContent() {
           </Link>
         </div>
 
-        <p className="mt-6 text-center text-xs text-zinc-600">
+        <p className="mt-6 text-center text-xs text-zinc-400">
           Invite code: <span className="font-mono text-zinc-500">{code}</span>
         </p>
       </div>
@@ -146,7 +146,7 @@ function JoinContent() {
 export default function JoinPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="dark min-h-screen bg-zinc-950 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
       </div>
     }>

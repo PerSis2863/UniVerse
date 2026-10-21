@@ -1,7 +1,11 @@
-const B = 'http://localhost:8787', C = 'cmv9cjlv40003psp7tz9audko';
+const B = 'http://localhost:8787';
 const H = (e) => ({ Authorization: `Bearer mock-token-${e}`, 'Content-Type': 'application/json' });
 const call = async (who, path, body, method) => { const r = await fetch(B + path, { method: method ?? (body ? 'POST' : 'GET'), headers: H(who), body: body ? JSON.stringify(body) : undefined }); return [r.status, await r.json().catch(() => ({}))]; };
 const T = 'demo@teacher.com', S = 'demo@student.com', A = 'alice@student.com', BOB = 'bob@student.com', TARA = 'tara@teacher.com';
+// Its own course (deleted at the end), with Tara as its TA (scripts/local/test-accounts.mjs makes her).
+const [, made] = await call(T, '/api/core/courses', { name: 'Enrolment check course', code: `EN${Date.now() % 100000}`, credits: 3 });
+const C = made.id;
+await call(T, `/api/courses/${C}/staff`, { action: 'add', email: TARA, role: 'TA' });
 const E = `/api/courses/${C}/enrolment`;
 console.log('publish', (await call(T, `/api/core/courses/${C}`, { status: 'PUBLISHED' }, 'PATCH'))[0]);
 console.log('limit 1', JSON.stringify(await call(T, E, { action: 'capacity', capacity: 1 })), 'TA sets limit', (await call(TARA, E, { action: 'capacity', capacity: 5 }))[0]);
@@ -24,3 +28,4 @@ console.log('assign', (await call(T, E, { action: 'assign', studentId: alice.id,
 [, v] = await call(T, E); console.log('sections', JSON.stringify(v.sections), 'alice section', v.students.find((s) => s.id === alice.id).sectionId === sec.id);
 console.log('delete section', (await call(T, E, { action: 'section-delete', sectionId: sec.id }))[0], 'student view', (await call(S, E))[0]);
 console.log('bad limit', JSON.stringify(await call(T, E, { action: 'capacity', capacity: 0 })), 'no limit', (await call(T, E, { action: 'capacity', capacity: null }))[0]);
+console.log('course removed', (await call(T, `/api/core/courses/${C}`, undefined, 'DELETE'))[0]);

@@ -1,17 +1,19 @@
 // Visits every page of the app as each demo role and reports what's broken.
 //
 //   NEXT_PUBLIC_DEMO_LOGIN=true pnpm dev -p 3100        (in another terminal)
-//   node scripts/crawl.mjs [http://localhost:3100] [--only student|teacher|admin|parent] [--paths /a,/b] [--json out.json] [--phone]
+//   node scripts/crawl.mjs [http://localhost:3100] [--only student|teacher|admin|parent] [--paths /a,/b] [--json out.json] [--phone] [--dark] [--axe]
 //
 // The page list comes from the app folder (every page.tsx without a [param] in its path). Each
 // portal's pages are opened as its demo account (shared pages as the student). For each page it
 // notes: the error screen or Next's error overlay, uncaught errors, console errors, requests that
 // failed or answered 5xx, a page still showing only a skeleton after loading, and sideways scrolling.
-// --phone opens every page as a phone (390 × 844, touch). Needs Playwright
+// --phone opens every page as a phone (390 × 844, touch), --dark in dark mode, and --axe adds the
+// accessibility check (axe-core, WCAG 2.2 AA, serious and critical only). Needs Playwright
 // (see scripts/browser-session.mjs). Exits 1 when any page has a problem.
 
 import { readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
+import { createRequire } from 'node:module';
 import { baseUrl, launch, signedIn } from './browser-session.mjs';
 
 const base = baseUrl();
@@ -39,6 +41,9 @@ const ROLE_OF = (path) => (path.startsWith('/teacher') ? 'teacher' : path.starts
 // The parent is a local test account (scripts/local/serve.mjs signs it in, here only).
 const EMAIL = { student: 'demo@student.com', teacher: 'demo@teacher.com', admin: 'demo@admin.com', parent: 'test-parent@local.test' };
 const phone = process.argv.includes('--phone');
+const dark = process.argv.includes('--dark');
+const withAxe = process.argv.includes('--axe');
+const AXE = withAxe ? createRequire(import.meta.url).resolve('axe-core/axe.min.js') : null;
 // The owner console needs the owner account; sign-in and sign-up pages redirect when signed in.
 const SKIP = [/^\/console/, /^\/(login|register|forgot-password|reset-password)$/];
 // Expected under `next dev`: live updates need the Durable Objects, which only run in wrangler.
@@ -53,6 +58,7 @@ const results = [];
 for (const [role, pages] of Object.entries(byRole)) {
   if (only && only !== role) continue;
   const ctx = await signedIn(browser, base, EMAIL[role], phone ? { width: 390, height: 844 } : undefined, phone ? { isMobile: true, hasTouch: true } : {});
+  await ctx.addInitScript((d) => localStorage.setItem('theme', d ? 'dark' : 'light'), dark);
   for (const path of pages) {
     const page = await ctx.newPage();
     const problems = [];
@@ -76,6 +82,15 @@ for (const [role, pages] of Object.entries(byRole)) {
       if (state.errorScreen) problems.unshift('error screen');
       if (state.onlySkeleton) problems.push('still loading (only a skeleton) after load');
       if (state.wide) problems.push('scrolls sideways');
+      if (AXE) {
+        // Let entrance animations finish first (rows mid-fade read as low contrast).
+        await page.waitForFunction(() => !document.getAnimations().some((x) => x.playState === 'running' && x.effect?.getTiming().iterations !== Infinity), null, { timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(300);
+        await page.addScriptTag({ path: AXE });
+        const found = await page.evaluate(async () => (await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] }, resultTypes: ['violations'] })).violations
+          .filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `axe ${v.id}: ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(' | ')}`));
+        problems.push(...found);
+      }
     } catch (e) {
       problems.unshift(`did not load: ${String(e.message).split('\n')[0].slice(0, 120)}`);
     }

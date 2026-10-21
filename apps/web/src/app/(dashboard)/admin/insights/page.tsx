@@ -118,7 +118,7 @@ export default function AdminInsightsPage() {
                 {data.departments.length === 0 ? (
                   <p className={`panel p-5 text-sm text-zinc-500`}>No grades or attendance in the last 60 days yet.</p>
                 ) : (
-                  <div className={`panel p-4 overflow-x-auto`}>
+                  <div tabIndex={0} role="region" aria-label="Table" className="panel p-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-indigo-500">
                     <table className="w-full text-sm min-w-[32rem]">
                       <thead><tr><th className={th}>Department</th><th className={th}>Average grade</th><th className={th}>vs previous 30 days</th><th className={th}>Attendance</th><th className={`${th} text-end`}>Grades given</th></tr></thead>
                       <tbody className="divide-y divide-zinc-200 dark:divide-white/[0.06]">
@@ -142,7 +142,7 @@ export default function AdminInsightsPage() {
                 {data.teachers.length === 0 ? (
                   <p className={`panel p-5 text-sm text-zinc-500`}>No active teachers yet.</p>
                 ) : (
-                  <div className={`panel p-4 overflow-x-auto`}>
+                  <div tabIndex={0} role="region" aria-label="Table" className="panel p-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-indigo-500">
                     <table className="w-full text-sm min-w-[36rem]">
                       <thead><tr><th className={th}>Teacher</th><th className={`${th} text-end`}>Courses</th><th className={`${th} text-end`}>Students</th><th className={`${th} text-end`}>Answers to grade</th><th className={`${th} text-end`}>Grades (30 days)</th><th className={`${th} text-end`}>At-risk students</th><th className={`${th} text-end`}>Last seen</th></tr></thead>
                       <tbody className="divide-y divide-zinc-200 dark:divide-white/[0.06]">
