@@ -5,7 +5,7 @@ import { COMPANY, LEGAL_LINKS } from '@/lib/company';
 const COLUMNS = [
   { title: 'Product', links: [{ href: '/#product', label: 'Platform' }, { href: '/#solutions', label: 'Solutions' }, { href: '/#security', label: 'Security' }] },
   { title: 'For', links: [{ href: '/#solutions', label: 'Students' }, { href: '/#solutions', label: 'Universities' }, { href: '/#solutions', label: 'NGOs & organizations' }] },
-  { title: 'Company', links: [{ href: '/#faq', label: 'FAQ' }, { href: '/trust', label: 'Status & trust' }, { href: '/contact#sales', label: 'Talk to sales' }] },
+  { title: 'Company', links: [{ href: '/#faq', label: 'FAQ' }, { href: '/blog', label: 'Blog' }, { href: '/trust', label: 'Status & trust' }, { href: '/contact#sales', label: 'Talk to sales' }] },
 ];
 
 export function MarketingFooter() {

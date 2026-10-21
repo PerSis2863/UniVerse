@@ -4155,6 +4155,24 @@ model ReportSchedule {
   @@map("report_schedules")
 }
 
+/// A post on the public blog (Stage 5 · Phase E, src/server/blog.ts): written by the owner in Markdown.
+model BlogPost {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  summary     String?
+  body        String
+  coverUrl    String?
+  authorName  String?
+  status      String    @default("DRAFT") // DRAFT, PUBLISHED
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  @@index([status, publishedAt])
+  @@map("blog_posts")
+}
+
 /// The daily jobs in steps (Stage 5 · bug review, src/server/daily-jobs.ts): where each got to today.
 model JobRun {
   job       String   @id
