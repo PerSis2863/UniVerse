@@ -17,7 +17,7 @@ from main; one commit per item or batch; push; merge only when the owner says "m
    open about 300 ms, tab switches 390–750 ms, scrolling smooth (0–8 slow frames). Also check by eye:
    the panel slides in and out on the right, and from the left in Arabic or Urdu (Settings →
    Language); the rows cascade in; tapping a row still scales it; the home logo stops pinging.
-2. **Re-run the accessibility sweep** on the new build: `node scripts/crawl.mjs --axe` (desktop
+2. ✅ **Done 21 Oct** (see "Accessibility sweep, all four ways" below). **Re-run the accessibility sweep** on the new build: `node scripts/crawl.mjs --axe` (desktop
    light), `--phone --dark --axe`, and the two not run yet: phone light and desktop dark. The
    desktop-light list from before (`/student/impact/ai-match`, knowledge hub, study rooms, BeeSafe,
    credentials, community, join, scholarships, tutoring, reels, legal links, marketplace selects)
@@ -47,6 +47,20 @@ main thread's `UpdateLayoutTree` / `Layout` / `Paint` events and count the inval
 element and reason. That's how the endless SVG ping (SVG animations re-lay out and repaint every
 frame; they can't run on the GPU) and the per-row JS animations showed up. An idle page should
 show almost nothing.
+
+## Accessibility sweep, all four ways: done (21 Oct 2026, same branch)
+
+`node scripts/crawl.mjs --axe` with and without `--phone` and `--dark` (183 pages, every role; the
+two never run before were phone light and desktop dark). Each run: 178–179 pages clean before the
+fixes. Fixed: the Terms and Privacy pages' "policies" link (colour only, now underlined), the
+study rooms search card's labels (the card is dark in both modes, but light mode's darker greys
+applied: it's now `.on-dark`, and `.on-dark` areas get dark mode's lighter greys, like `.dark`; mark
+any new always-dark card the same way), the teacher analytics trend's first and last week buttons
+(cut to 12 px on phones: now equal slices of at least 24 px), the ⌘K hint in the top bar search
+(too dark in dark mode). The parent pages were never crawled: there was no local parent account;
+`scripts/local/test-accounts.mjs` now makes `test-parent@local.test` (Alice's parent), and they're
+clean. The only thing left in every run is `/js/api.js` failing to load (an outside script this
+machine can't reach; not a page problem).
 
 ## Phone smoothness, second pass: done (21 Oct 2026, branch `claude/funny-galileo-y4mz9r`)
 

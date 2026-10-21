@@ -151,7 +151,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
           >
             <Search className="w-4 h-4" />
             <span className="flex-1 text-start">{t('common.search')}</span>
-            <kbd className="text-[11px] font-medium text-zinc-500">⌘K</kbd>
+            <kbd className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">⌘K</kbd>
           </button>
 
           <ThemeToggle />

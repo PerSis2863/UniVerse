@@ -70,8 +70,9 @@
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-sky-500, .text-sky-600, .text-cyan-500, .text-cyan-600) { color: #0369a1; }
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600) { color: #6d28d9; }
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-fuchsia-500, .text-fuchsia-600, .text-pink-500, .text-pink-600) { color: #a21caf; }
-/* Dark mode keeps the lighter text greys (the darker light-mode ones would dim text on navy). */
-.dark { --color-zinc-400: #aeaeb2; --color-zinc-500: #8e8e93; --color-zinc-600: #636366;
+/* Dark mode keeps the lighter text greys (the darker light-mode ones would dim text on navy); so do
+   areas that are dark in both modes (.on-dark: calls, the study rooms search). */
+.dark, .on-dark { --color-zinc-400: #aeaeb2; --color-zinc-500: #8e8e93; --color-zinc-600: #636366;
   --color-slate-400: #a8b1c2; --color-slate-500: #8f99ab; --color-slate-600: #646d7e;
   --color-gray-400: #a3a8b3; --color-gray-500: #8f949f; --color-gray-600: #636870; }
 /* Dark mode: indigo text without its own dark: colour is lifted so it reads on navy. */

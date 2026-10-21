@@ -33,7 +33,7 @@ export function LegalDocPage({ doc }: { doc: LegalDocId }) {
         </Link>
         <p>
           Questions about this document? Email <Mail to={COMPANY.email.legal} />, or see all our{' '}
-          <Link href="/policies" className="text-indigo-400 hover:underline">policies</Link>.
+          <Link href="/policies" className="text-indigo-700 dark:text-indigo-300 underline underline-offset-2">policies</Link>.
         </p>
       </div>
     </LegalShell>

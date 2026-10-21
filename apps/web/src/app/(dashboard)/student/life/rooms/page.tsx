@@ -123,13 +123,13 @@ export default function RoomReservationPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="p-8 rounded-3xl bg-[#121830] border border-white/[0.08] shadow-2xl"
+            className="on-dark p-8 rounded-3xl bg-[#121830] border border-white/[0.08] shadow-2xl"
           >
             <h3 className="text-lg font-bold text-white mb-6">Find a Space</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-400">Date</label>
+                <label className="text-sm font-medium text-zinc-300">Date</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 start-3 flex items-center pointer-events-none text-zinc-500">
                     <CalendarIcon className="w-4 h-4" />
@@ -144,7 +144,7 @@ export default function RoomReservationPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-400">Time</label>
+                <label className="text-sm font-medium text-zinc-300">Time</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 start-3 flex items-center pointer-events-none text-zinc-500">
                     <Clock className="w-4 h-4" />
@@ -165,7 +165,7 @@ export default function RoomReservationPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-400">Duration</label>
+                <label className="text-sm font-medium text-zinc-300">Duration</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 start-3 flex items-center pointer-events-none text-zinc-500">
                     <Clock className="w-4 h-4" />
@@ -183,7 +183,7 @@ export default function RoomReservationPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-400">Group Size</label>
+                <label className="text-sm font-medium text-zinc-300">Group Size</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 start-3 flex items-center pointer-events-none text-zinc-500">
                     <Users className="w-4 h-4" />
