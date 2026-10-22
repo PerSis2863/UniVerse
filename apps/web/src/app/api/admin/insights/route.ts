@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAdmin } from '@/lib/billing';
+import { schoolSql, schoolsOf, usersIn } from '@/server/school-scope';
 
 // School-wide insights for admins (/admin/insights): students flagged in more than one course,
 // how each department is doing (grades now vs the month before, attendance), and each teacher's
-// workload. Counted in SQL: a handful of queries whatever the size of the school.
+// workload. Counted in SQL: a handful of queries whatever the size of the school. Only the admin's
+// own school: people by their school, courses (and their grades and attendance) by their teacher's.
 
 const DAY = 86_400_000;
 const iso = (ms: number) => new Date(ms).toISOString().replace('Z', '+00:00'); // how dates are stored in D1
@@ -17,10 +19,13 @@ export async function GET(req: Request) {
   if (auth instanceof NextResponse) return auth;
   const now = Date.now();
   const d30 = iso(now - 30 * DAY), d60 = iso(now - 60 * DAY);
+  const schools = await schoolsOf(auth.user);
+  const t = schoolSql(schools, 't'); // a course's teacher
+  const u = schoolSql(schools, 'u');
 
   const [flags, depts, attendance, teachers, totals] = await Promise.all([
     prisma.studentRiskFlag.findMany({
-      where: { status: 'OPEN', level: { in: ['AT_RISK', 'WATCH'] } },
+      where: { status: 'OPEN', level: { in: ['AT_RISK', 'WATCH'] }, student: usersIn(schools) },
       orderBy: { score: 'desc' },
       take: 400,
       select: { score: true, level: true, reasons: true, student: { select: { id: true, name: true, email: true } }, course: { select: { id: true, code: true } } },
@@ -30,19 +35,19 @@ export async function GET(req: Request) {
               AVG(CASE WHEN g.gradedAt >= ? AND g.maxScore > 0 THEN g.score * 100.0 / g.maxScore END) AS recent,
               AVG(CASE WHEN g.gradedAt < ? AND g.maxScore > 0 THEN g.score * 100.0 / g.maxScore END) AS previous,
               SUM(CASE WHEN g.gradedAt >= ? THEN 1 ELSE 0 END) AS graded
-       FROM grades g JOIN courses c ON c.id = g.courseId
-       WHERE g.status = 'GRADED' AND g.gradedAt >= ?
+       FROM grades g JOIN courses c ON c.id = g.courseId JOIN users t ON t.id = c.teacherId
+       WHERE g.status = 'GRADED' AND g.gradedAt >= ? AND ${t.sql}
        GROUP BY dept ORDER BY dept`,
-      d30, d30, d30, d60,
+      d30, d30, d30, d60, ...t.args,
     ),
     prisma.$queryRawUnsafe<{ dept: string; attended: Num; counted: Num }[]>(
       `SELECT COALESCE(NULLIF(TRIM(c.department), ''), 'Other') AS dept,
               SUM(CASE WHEN a.status IN ('PRESENT', 'LATE') THEN 1 ELSE 0 END) AS attended,
               SUM(CASE WHEN a.status != 'EXCUSED' THEN 1 ELSE 0 END) AS counted
-       FROM attendance a JOIN courses c ON c.id = a.courseId
-       WHERE a.date >= ?
+       FROM attendance a JOIN courses c ON c.id = a.courseId JOIN users t ON t.id = c.teacherId
+       WHERE a.date >= ? AND ${t.sql}
        GROUP BY dept`,
-      d30,
+      d30, ...t.args,
     ),
     prisma.$queryRawUnsafe<{ id: string; name: string; email: string; lastSeenAt: string | null; courses: Num; students: Num; toGrade: Num; graded30: Num; flagged: Num }[]>(
       `SELECT u.id, u.name, u.email, u.lastSeenAt,
@@ -52,19 +57,19 @@ export async function GET(req: Request) {
               (SELECT COUNT(*) FROM grades g JOIN courses c ON c.id = g.courseId WHERE c.teacherId = u.id AND g.gradedAt >= ?) AS graded30,
               (SELECT COUNT(*) FROM student_risk_flags f JOIN courses c ON c.id = f.courseId WHERE c.teacherId = u.id AND f.status = 'OPEN' AND f.level = 'AT_RISK') AS flagged
        FROM users u
-       WHERE u.role = 'TEACHER' AND u.status = 'ACTIVE'
+       WHERE u.role = 'TEACHER' AND u.status = 'ACTIVE' AND ${u.sql}
        ORDER BY toGrade DESC, students DESC
        LIMIT 200`,
-      d30,
+      d30, ...u.args,
     ),
     prisma.$queryRawUnsafe<{ students: Num; teachers: Num; courses: Num; grade30: Num; attended: Num; counted: Num }[]>(
-      `SELECT (SELECT COUNT(*) FROM users WHERE role = 'STUDENT' AND status = 'ACTIVE') AS students,
-              (SELECT COUNT(*) FROM users WHERE role = 'TEACHER' AND status = 'ACTIVE') AS teachers,
-              (SELECT COUNT(*) FROM courses) AS courses,
-              (SELECT AVG(score * 100.0 / maxScore) FROM grades WHERE status = 'GRADED' AND maxScore > 0 AND gradedAt >= ?) AS grade30,
-              (SELECT SUM(CASE WHEN status IN ('PRESENT', 'LATE') THEN 1 ELSE 0 END) FROM attendance WHERE date >= ?) AS attended,
-              (SELECT SUM(CASE WHEN status != 'EXCUSED' THEN 1 ELSE 0 END) FROM attendance WHERE date >= ?) AS counted`,
-      d30, d30, d30,
+      `SELECT (SELECT COUNT(*) FROM users u WHERE u.role = 'STUDENT' AND u.status = 'ACTIVE' AND ${u.sql}) AS students,
+              (SELECT COUNT(*) FROM users u WHERE u.role = 'TEACHER' AND u.status = 'ACTIVE' AND ${u.sql}) AS teachers,
+              (SELECT COUNT(*) FROM courses c JOIN users t ON t.id = c.teacherId WHERE ${t.sql}) AS courses,
+              (SELECT AVG(g.score * 100.0 / g.maxScore) FROM grades g JOIN courses c ON c.id = g.courseId JOIN users t ON t.id = c.teacherId WHERE g.status = 'GRADED' AND g.maxScore > 0 AND g.gradedAt >= ? AND ${t.sql}) AS grade30,
+              (SELECT SUM(CASE WHEN a.status IN ('PRESENT', 'LATE') THEN 1 ELSE 0 END) FROM attendance a JOIN courses c ON c.id = a.courseId JOIN users t ON t.id = c.teacherId WHERE a.date >= ? AND ${t.sql}) AS attended,
+              (SELECT SUM(CASE WHEN a.status != 'EXCUSED' THEN 1 ELSE 0 END) FROM attendance a JOIN courses c ON c.id = a.courseId JOIN users t ON t.id = c.teacherId WHERE a.date >= ? AND ${t.sql}) AS counted`,
+      ...u.args, ...u.args, ...t.args, d30, ...t.args, d30, ...t.args, d30, ...t.args,
     ),
   ]);
 
@@ -100,16 +105,16 @@ export async function GET(req: Request) {
     }
   }
 
-  const t = totals[0];
-  const counted = n(t?.counted ?? null) ?? 0;
+  const tot = totals[0];
+  const counted = n(tot?.counted ?? null) ?? 0;
   return NextResponse.json(
     {
       totals: {
-        students: n(t?.students ?? 0) ?? 0,
-        teachers: n(t?.teachers ?? 0) ?? 0,
-        courses: n(t?.courses ?? 0) ?? 0,
-        grade30: t?.grade30 === null || t?.grade30 === undefined ? null : Math.round(n(t.grade30)!),
-        attendance30: counted ? Math.round(((n(t?.attended ?? 0) ?? 0) / counted) * 100) : null,
+        students: n(tot?.students ?? 0) ?? 0,
+        teachers: n(tot?.teachers ?? 0) ?? 0,
+        courses: n(tot?.courses ?? 0) ?? 0,
+        grade30: tot?.grade30 === null || tot?.grade30 === undefined ? null : Math.round(n(tot.grade30)!),
+        attendance30: counted ? Math.round(((n(tot?.attended ?? 0) ?? 0) / counted) * 100) : null,
         flaggedStudents: byStudent.size,
       },
       atRisk,

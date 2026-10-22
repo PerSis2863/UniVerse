@@ -9,6 +9,7 @@ import { notify } from './email';
 import { BadRequestException, NotFoundException } from './http';
 import { EXPORTS, ROLES, STATUSES, isExportType, type ExportType } from './report-exports';
 import { saveToMyFiles } from './space-files';
+import { schoolsOf } from './school-scope';
 
 // Scheduled report exports (Stage 5 · Phase E; Admin → Reports → Scheduled exports). An admin picks
 // a data export and how often; the daily jobs (daily-jobs.ts `report-exports`) save a fresh CSV to
@@ -113,14 +114,16 @@ export async function runSchedule(s: Row, now = new Date()): Promise<{ ok: boole
     return { ok: false, error };
   };
   try {
-    const owner = await prisma.user.findUnique({ where: { id: s.ownerId }, select: { role: true, status: true, email: true, ownedOrganization: { select: { plan: true, subscriptionStatus: true } } } });
+    const owner = await prisma.user.findUnique({ where: { id: s.ownerId }, select: { id: true, organizationId: true, role: true, status: true, email: true, ownedOrganization: { select: { plan: true, subscriptionStatus: true } } } });
     if (!owner || owner.role !== 'ADMIN' || owner.status !== 'ACTIVE') return await failed('Only an active admin’s exports are made.');
     const plan: PlanId = isOwnerEmail(owner.email) ? 'ENTERPRISE' : effectivePlan(owner.ownedOrganization as { plan: PlanId; subscriptionStatus: string | null } | null);
     if (!hasFeature(plan, 'data_exports')) return await failed('Data exports need the Pro plan.');
     if (!isExportType(s.type)) return await failed('This report isn’t available any more.');
     const f = parseFilters(s.filters);
     const params = new URLSearchParams(Object.entries(f).filter(([, v]) => typeof v === 'string') as [string, string][]);
-    const bytes = Buffer.from('\uFEFF' + (await EXPORTS[s.type](params)), 'utf8');
+    // The admin's own school only, as when they download it (school-scope.ts).
+    const schools = await schoolsOf({ id: owner.id, organizationId: owner.organizationId, owner: isOwnerEmail(owner.email) });
+    const bytes = Buffer.from('\uFEFF' + (await EXPORTS[s.type](params, schools)), 'utf8');
     // Without R2 a file is kept in the database, whose rows hold at most 2 MB.
     if (bytes.length > (hasR2Storage() ? SERVER_UPLOAD_MAX : 1_900_000)) return await failed(s.type === 'members' ? 'The file is too big to save. Narrow it with a role or status.' : 'The file is too big to save. Download it from Admin → Reports instead.');
     const name = `${label} ${now.toISOString().slice(0, 10)}.csv`;

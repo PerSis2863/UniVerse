@@ -4,6 +4,9 @@ import { pick } from '../pick';
 import { first, oneOf, str, strings, type Body, type Query } from '../body';
 import prisma from '@/lib/db';
 import { alertNewOpening } from '../careers';
+import { assertInSchool, peopleWhere, schoolsOf, usersIn } from '../school-scope';
+
+type Who = { id: string; role: string; organizationId?: string | null; email?: string };
 
 /** The skills an opening asks for: a list or "a, b, c", up to 6 (they drive skills match and job alerts). */
 function skillsOf(v: unknown): string[] {
@@ -27,16 +30,18 @@ export class InternshipsService {
     });
   }
 
-  /** Admin view: every internship (active or not) with who posted it and every applicant's details. */
-  findAllForAdmin() {
+  /** Admin view: every internship (active or not) with who posted it and the admin's own school's applicants. */
+  async findAllForAdmin(admin: Who) {
+    const mine = { student: await peopleWhere(admin) };
     return prisma.internship.findMany({
       orderBy: { createdAt: 'desc' },
       take: 200,
       include: {
         company: { select: { id: true, name: true } },
         postedBy: { select: { id: true, name: true, email: true, role: true } },
-        _count: { select: { applications: true } },
+        _count: { select: { applications: { where: mine } } },
         applications: {
+          where: mine,
           orderBy: { appliedAt: 'desc' },
           take: 200,
           select: {
@@ -53,13 +58,14 @@ export class InternshipsService {
     });
   }
 
-  async findOne(id: string, user: { id: string; role: string }) {
+  async findOne(id: string, user: Who) {
     const item = await prisma.internship.findUnique({ where: { id }, include: { company: true } });
     if (!item) throw new NotFoundException();
-    // Applicant details are only visible to admins and whoever posted the internship.
+    // Applicant details are only visible to whoever posted the internship (all of them) and admins
+    // (their own school's applicants).
     if (user.role === 'ADMIN' || item.postedById === user.id) {
       const applications = await prisma.internshipApplication.findMany({
-        where: { internshipId: id },
+        where: { internshipId: id, ...(item.postedById === user.id ? {} : { student: await peopleWhere(user) }) },
         include: { student: { select: { id: true, name: true, email: true, avatar: true } } },
       });
       return { ...item, applications };
@@ -67,10 +73,20 @@ export class InternshipsService {
     return item;
   }
 
-  private async assertCanManage(internshipId: string, user: { id: string; role: string }) {
+  /**
+   * The poster, or an admin of the poster's school (and of the applicant's, when deciding an
+   * application). Another school's admin gets "not found".
+   */
+  private async assertCanManage(internshipId: string, user: Who, studentId?: string) {
     const item = await prisma.internship.findUnique({ where: { id: internshipId }, select: { postedById: true } });
     if (!item) throw new NotFoundException();
-    if (user.role !== 'ADMIN' && item.postedById !== user.id) throw new ForbiddenException('Only the poster or an admin can do this.');
+    if (item.postedById === user.id) return;
+    if (user.role !== 'ADMIN') throw new ForbiddenException('Only the poster or an admin can do this.');
+    const schools = await schoolsOf(user);
+    if (schools === 'all') return;
+    const poster = item.postedById ? await prisma.user.findFirst({ where: { id: item.postedById, ...usersIn(schools) }, select: { id: true } }) : null;
+    if (!poster) throw new NotFoundException();
+    if (studentId) await assertInSchool(user, studentId);
   }
 
   async apply(internshipId: string, studentId: string, body: Body) {
@@ -87,7 +103,7 @@ export class InternshipsService {
     return prisma.internshipApplication.findMany({ where: { studentId }, include: { internship: { include: { company: true } } } });
   }
 
-  async updateApplication(id: string, data: Body, user: { id: string; role: string }) {
+  async updateApplication(id: string, data: Body, user: Who) {
     const app = await prisma.internshipApplication.findUnique({ where: { id }, select: { internshipId: true, studentId: true } });
     if (!app) throw new NotFoundException();
 
@@ -101,7 +117,7 @@ export class InternshipsService {
     }
 
     // Reviewers (poster or admin) set the status.
-    await this.assertCanManage(app.internshipId, user);
+    await this.assertCanManage(app.internshipId, user, app.studentId);
     const allowed = ['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED'] as const;
     const status = data.status;
     if (!oneOf(allowed, status)) throw new BadRequestException('Invalid status');
@@ -139,7 +155,7 @@ export class InternshipsService {
     return created;
   }
 
-  async update(id: string, data: Body, user: { id: string; role: string }) {
+  async update(id: string, data: Body, user: Who) {
     await this.assertCanManage(id, user);
     const company = str(data.company);
     const updateData = pick<Prisma.InternshipUncheckedUpdateInput>(data, InternshipsService.FIELDS);
@@ -156,7 +172,7 @@ export class InternshipsService {
     return updated;
   }
 
-  async remove(id: string, user: { id: string; role: string }) {
+  async remove(id: string, user: Who) {
     await this.assertCanManage(id, user);
     return prisma.internship.delete({
       where: { id }

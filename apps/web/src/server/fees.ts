@@ -5,6 +5,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from './ht
 import { publish } from './realtime';
 import { pushService } from './services/push.service';
 import { can, need } from './permissions';
+import { inSchools, schoolSql, schoolsOf, usersIn } from './school-scope';
 
 // School fees (Stage 5 · B15.2). An admin makes a fee plan for one class or every student (items,
 // currency, instalments with due dates) and issues it: one bill per student per instalment, in one
@@ -16,6 +17,8 @@ import { can, need } from './permissions';
 // their children's bills and receipts in the parent app, students their own. Paying online needs
 // the owner's payment account (Stripe exists; UPI/Razorpay doesn't yet), so it isn't switched on.
 // Amounts are whole minor units (paise, cents).
+// Each school sees only its own fees (school-scope.ts): bills by their student's school, plans by
+// their creator's school, and a plan bills only its school's students.
 
 export const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'AUD', 'CAD', 'ZAR', 'KES', 'NGN'] as const;
 export const METHODS = ['CASH', 'BANK', 'CHEQUE', 'UPI', 'CARD', 'OTHER'] as const;
@@ -88,14 +91,17 @@ const planShape = (p: { items: string; instalments: string }) => ({ items: JSON.
 /** GET /api/fees/plans: every plan with how much it billed and collected; the classes to pick from. */
 export async function feePlans(user: SessionUser) {
   await need(user, 'fees.view');
+  const schools = await schoolsOf(user);
+  const sc = schoolSql(schools);
   const [plans, courses, sums] = await Promise.all([
-    prisma.feePlan.findMany({ orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, name: true, courseId: true, currency: true, items: true, instalments: true, lateFee: true, lateGraceDays: true, archivedAt: true, createdAt: true, course: { select: { code: true, name: true } } } }),
-    prisma.course.findMany({ select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 300 }),
+    prisma.feePlan.findMany({ where: { createdBy: usersIn(schools) }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, name: true, courseId: true, currency: true, items: true, instalments: true, lateFee: true, lateGraceDays: true, archivedAt: true, createdAt: true, course: { select: { code: true, name: true } } } }),
+    prisma.course.findMany({ where: { teacher: usersIn(schools) }, select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 300 }),
     prisma.$queryRawUnsafe<{ planId: string; n: number; billed: number; discount: number; paid: number; open: number; overdue: number }[]>(
-      `SELECT "planId", COUNT(*) AS n, SUM(amount) AS billed, SUM(discount) AS discount, SUM(paid) AS paid,
-              SUM(CASE WHEN status IN ('DUE','PARTIAL') THEN amount - discount - paid ELSE 0 END) AS open,
-              SUM(CASE WHEN status IN ('DUE','PARTIAL') AND "dueAt" < ? THEN amount - discount - paid ELSE 0 END) AS overdue
-       FROM fee_invoices WHERE "planId" IS NOT NULL AND status != 'CANCELLED' GROUP BY "planId"`, dbNow()),
+      `SELECT i."planId" AS "planId", COUNT(*) AS n, SUM(i.amount) AS billed, SUM(i.discount) AS discount, SUM(i.paid) AS paid,
+              SUM(CASE WHEN i.status IN ('DUE','PARTIAL') THEN i.amount - i.discount - i.paid ELSE 0 END) AS open,
+              SUM(CASE WHEN i.status IN ('DUE','PARTIAL') AND i."dueAt" < ? THEN i.amount - i.discount - i.paid ELSE 0 END) AS overdue
+       FROM fee_invoices i JOIN users u ON u.id = i."studentId"
+       WHERE i."planId" IS NOT NULL AND i.status != 'CANCELLED' AND ${sc.sql} GROUP BY i."planId"`, dbNow(), ...sc.args),
   ]);
   return {
     currencies: CURRENCIES,
@@ -119,7 +125,7 @@ export async function createFeePlan(user: SessionUser, b: Record<string, unknown
   const currency = CURRENCIES.find((c) => c === b.currency);
   if (!currency) throw new BadRequestException('Choose a currency.');
   const courseId = typeof b.courseId === 'string' && b.courseId ? b.courseId : null;
-  if (courseId && !(await prisma.course.findUnique({ where: { id: courseId }, select: { id: true } }))) throw new NotFoundException('That class doesn’t exist.');
+  if (courseId && !(await prisma.course.findFirst({ where: { id: courseId, teacher: usersIn(await schoolsOf(user)) }, select: { id: true } }))) throw new NotFoundException('That class doesn’t exist.');
   const items = parseItems(b.items);
   const total = items.reduce((s, i) => s + i.amount, 0);
   const instalments = parseInstalments(b.instalments, total);
@@ -153,10 +159,13 @@ export async function applyLateFees(planId?: string): Promise<number> {
   );
 }
 
-/** Who a plan bills: a class's students (not suspended), or every active student. */
-const target = (courseId: string | null) => courseId
-  ? { sql: `u.id IN (SELECT "studentId" FROM enrollments WHERE "courseId" = ?) AND u.status != 'SUSPENDED'`, args: [courseId] }
-  : { sql: `u.role = 'STUDENT' AND u.status = 'ACTIVE'`, args: [] as string[] };
+/** Who a plan bills: a class's students (not suspended), or every active student; only in these schools. */
+export const target = (courseId: string | null, schools: Awaited<ReturnType<typeof schoolsOf>>) => {
+  const sc = schoolSql(schools);
+  return courseId
+    ? { sql: `u.id IN (SELECT "studentId" FROM enrollments WHERE "courseId" = ?) AND u.status != 'SUSPENDED' AND ${sc.sql}`, args: [courseId, ...sc.args] }
+    : { sql: `u.role = 'STUDENT' AND u.status = 'ACTIVE' AND ${sc.sql}`, args: sc.args };
+};
 
 /**
  * POST /api/fees/plans/:id { action: 'issue' | 'archive' | 'unarchive' }. Issuing bills every student
@@ -164,7 +173,8 @@ const target = (courseId: string | null) => courseId
  */
 export async function feePlanAction(user: SessionUser, id: string, b: Record<string, unknown>) {
   await need(user, 'fees.manage');
-  const plan = await prisma.feePlan.findUnique({ where: { id }, select: { id: true, name: true, courseId: true, currency: true, items: true, instalments: true, archivedAt: true } });
+  const mine = await schoolsOf(user);
+  const plan = await prisma.feePlan.findFirst({ where: { id, createdBy: usersIn(mine) }, select: { id: true, name: true, courseId: true, currency: true, items: true, instalments: true, archivedAt: true, createdBy: { select: { id: true, organizationId: true } } } });
   if (!plan) throw new NotFoundException('That fee plan doesn’t exist.');
   if (b.action === 'archive' || b.action === 'unarchive') {
     await prisma.feePlan.update({ where: { id }, data: { archivedAt: b.action === 'archive' ? new Date() : null } });
@@ -180,7 +190,8 @@ export async function feePlanAction(user: SessionUser, id: string, b: Record<str
   if (b.action !== 'issue') throw new BadRequestException('Unknown action.');
   if (plan.archivedAt) throw new BadRequestException('Unarchive the plan to issue it.');
   const { instalments } = planShape(plan);
-  const t = target(plan.courseId);
+  // The issuer's school; the platform owner issues for the school of whoever made the plan.
+  const t = target(plan.courseId, mine === 'all' ? await schoolsOf(plan.createdBy) : mine);
   const now = dbNow();
   let issued = 0;
   for (const [i, inst] of instalments.entries()) {
@@ -216,10 +227,12 @@ export async function feeInvoices(user: SessionUser, q: URLSearchParams) {
   const overdue = q.get('overdue') === '1';
   const text = (q.get('q') ?? '').trim().slice(0, 60);
   const seq = /^#?\d{1,9}$/.test(text) ? Number(text.replace('#', '')) : null;
+  const school = usersIn(await schoolsOf(user));
   const where = {
     ...(planId ? { planId } : {}),
     ...(overdue ? { status: { in: OPEN }, dueAt: { lt: new Date() } } : status && ['DUE', 'PARTIAL', 'PAID', 'WAIVED', 'CANCELLED'].includes(status) ? { status } : { status: { not: 'CANCELLED' } }),
-    ...(seq ? { seq } : text ? { student: { OR: [{ name: { contains: text } }, { email: { contains: text } }] } } : {}),
+    ...(seq ? { seq } : {}),
+    student: !seq && text ? { AND: [school, { OR: [{ name: { contains: text } }, { email: { contains: text } }] }] } : school,
   };
   const rows = await prisma.feeInvoice.findMany({ where, orderBy: overdue ? { dueAt: 'asc' } : { seq: 'desc' }, take: 300, select: invoiceSelect });
   const now = Date.now();
@@ -227,8 +240,9 @@ export async function feeInvoices(user: SessionUser, q: URLSearchParams) {
   return { invoices: list, shown: list.length, owed: list.reduce((s, r) => s + r.owed, 0), currencies: [...new Set(list.map((r) => r.currency))] };
 }
 
-async function invoiceFor(id: string) {
-  const inv = await prisma.feeInvoice.findUnique({ where: { id }, select: { ...invoiceSelect, payments: { orderBy: { paidAt: 'asc' }, select: { id: true, seq: true, amount: true, method: true, reference: true, note: true, paidAt: true, voidedAt: true, voidReason: true, receivedBy: { select: { name: true } } } } } });
+/** A bill of a student in the viewer's school; another school's looks not found. */
+async function invoiceFor(user: SessionUser, id: string) {
+  const inv = await prisma.feeInvoice.findFirst({ where: { id, student: usersIn(await schoolsOf(user)) }, select: { ...invoiceSelect, payments: { orderBy: { paidAt: 'asc' }, select: { id: true, seq: true, amount: true, method: true, reference: true, note: true, paidAt: true, voidedAt: true, voidReason: true, receivedBy: { select: { name: true } } } } } });
   if (!inv) throw new NotFoundException('That bill doesn’t exist.');
   return inv;
 }
@@ -236,7 +250,7 @@ async function invoiceFor(id: string) {
 /** GET /api/fees/invoices/:id: the bill, its payments, and the student's parents (to know who to talk to). */
 export async function feeInvoice(user: SessionUser, id: string) {
   await need(user, 'fees.view');
-  const inv = await invoiceFor(id);
+  const inv = await invoiceFor(user, id);
   const parents = await prisma.guardianLink.findMany({ where: { studentId: inv.student.id }, select: { relation: true, guardian: { select: { name: true, email: true } } }, take: 6 });
   return { invoice: shapeInvoice(inv), parents: parents.map((p) => ({ name: p.guardian.name, email: p.guardian.email, relation: p.relation })) };
 }
@@ -258,7 +272,7 @@ async function sync(id: string) {
  */
 export async function feeInvoiceAction(user: SessionUser, id: string, b: Record<string, unknown>) {
   await need(user, 'fees.manage');
-  const inv = await invoiceFor(id);
+  const inv = await invoiceFor(user, id);
   const note = typeof b.note === 'string' ? b.note.trim().slice(0, 300) || null : null;
   switch (b.action) {
     case 'pay': {
@@ -333,7 +347,7 @@ export async function voidFeePayment(user: SessionUser, id: string, b: Record<st
   await need(user, 'fees.manage');
   const reason = typeof b.reason === 'string' ? b.reason.trim().slice(0, 200) : '';
   if (!reason) throw new BadRequestException('Say why the payment is voided.');
-  const p = await prisma.feePayment.findUnique({ where: { id }, select: { invoiceId: true, voidedAt: true } });
+  const p = await prisma.feePayment.findFirst({ where: { id, invoice: { student: usersIn(await schoolsOf(user)) } }, select: { invoiceId: true, voidedAt: true } });
   if (!p) throw new NotFoundException('That payment doesn’t exist.');
   if (p.voidedAt) throw new BadRequestException('That payment is already voided.');
   await prisma.feePayment.update({ where: { id }, data: { voidedAt: new Date(), voidReason: reason } });
@@ -360,7 +374,7 @@ async function tellFamily(studentId: string, n: { title: string; body: string; t
 export async function remindOverdue(user: SessionUser, b: Record<string, unknown>) {
   await need(user, 'fees.manage');
   const ids = Array.isArray(b.invoiceIds) ? b.invoiceIds.filter((x): x is string => typeof x === 'string').slice(0, 60) : null;
-  const remindable = { ...(ids ? { id: { in: ids } } : {}), status: { in: OPEN }, dueAt: { lt: new Date() }, OR: [{ remindedAt: null }, { remindedAt: { lt: new Date(Date.now() - REMIND_EVERY_MS) } }] };
+  const remindable = { ...(ids ? { id: { in: ids } } : {}), student: usersIn(await schoolsOf(user)), status: { in: OPEN }, dueAt: { lt: new Date() }, OR: [{ remindedAt: null }, { remindedAt: { lt: new Date(Date.now() - REMIND_EVERY_MS) } }] };
   const due = await prisma.feeInvoice.findMany({
     where: remindable,
     orderBy: { dueAt: 'asc' }, take: 60,
@@ -396,20 +410,22 @@ export async function feeReport(user: SessionUser) {
   await need(user, 'fees.view');
   const now = dbNow();
   const since = new Date(); since.setUTCMonth(since.getUTCMonth() - 11, 1); since.setUTCHours(0, 0, 0, 0);
+  const schools = await schoolsOf(user);
+  const sc = schoolSql(schools);
   const [totals, byMethod, byMonth, byStatus] = await Promise.all([
     prisma.$queryRawUnsafe<{ currency: string; billed: number; discount: number; paid: number; open: number; overdue: number; overdueBills: number; bills: number }[]>(
-      `SELECT currency, SUM(amount) AS billed, SUM(discount) AS discount, SUM(paid) AS paid, COUNT(*) AS bills,
-              SUM(CASE WHEN status IN ('DUE','PARTIAL') THEN amount - discount - paid ELSE 0 END) AS open,
-              SUM(CASE WHEN status IN ('DUE','PARTIAL') AND "dueAt" < ? THEN amount - discount - paid ELSE 0 END) AS overdue,
-              SUM(CASE WHEN status IN ('DUE','PARTIAL') AND "dueAt" < ? THEN 1 ELSE 0 END) AS "overdueBills"
-       FROM fee_invoices WHERE status NOT IN ('CANCELLED', 'WAIVED') GROUP BY currency`, now, now),
+      `SELECT i.currency AS currency, SUM(i.amount) AS billed, SUM(i.discount) AS discount, SUM(i.paid) AS paid, COUNT(*) AS bills,
+              SUM(CASE WHEN i.status IN ('DUE','PARTIAL') THEN i.amount - i.discount - i.paid ELSE 0 END) AS open,
+              SUM(CASE WHEN i.status IN ('DUE','PARTIAL') AND i."dueAt" < ? THEN i.amount - i.discount - i.paid ELSE 0 END) AS overdue,
+              SUM(CASE WHEN i.status IN ('DUE','PARTIAL') AND i."dueAt" < ? THEN 1 ELSE 0 END) AS "overdueBills"
+       FROM fee_invoices i JOIN users u ON u.id = i."studentId" WHERE i.status NOT IN ('CANCELLED', 'WAIVED') AND ${sc.sql} GROUP BY i.currency`, now, now, ...sc.args),
     prisma.$queryRawUnsafe<{ currency: string; method: string; total: number; n: number }[]>(
-      `SELECT i.currency AS currency, p.method AS method, SUM(p.amount) AS total, COUNT(*) AS n FROM fee_payments p JOIN fee_invoices i ON i.id = p."invoiceId"
-       WHERE p."voidedAt" IS NULL GROUP BY i.currency, p.method`),
+      `SELECT i.currency AS currency, p.method AS method, SUM(p.amount) AS total, COUNT(*) AS n FROM fee_payments p JOIN fee_invoices i ON i.id = p."invoiceId" JOIN users u ON u.id = i."studentId"
+       WHERE p."voidedAt" IS NULL AND ${sc.sql} GROUP BY i.currency, p.method`, ...sc.args),
     prisma.$queryRawUnsafe<{ currency: string; month: string; total: number }[]>(
-      `SELECT i.currency AS currency, substr(p."paidAt", 1, 7) AS month, SUM(p.amount) AS total FROM fee_payments p JOIN fee_invoices i ON i.id = p."invoiceId"
-       WHERE p."voidedAt" IS NULL AND p."paidAt" >= ? GROUP BY i.currency, month ORDER BY month`, since.toISOString().replace('Z', '+00:00')),
-    prisma.feeInvoice.groupBy({ by: ['status'], _count: { _all: true } }),
+      `SELECT i.currency AS currency, substr(p."paidAt", 1, 7) AS month, SUM(p.amount) AS total FROM fee_payments p JOIN fee_invoices i ON i.id = p."invoiceId" JOIN users u ON u.id = i."studentId"
+       WHERE p."voidedAt" IS NULL AND p."paidAt" >= ? AND ${sc.sql} GROUP BY i.currency, month ORDER BY month`, since.toISOString().replace('Z', '+00:00'), ...sc.args),
+    prisma.feeInvoice.groupBy({ by: ['status'], where: { student: usersIn(schools) }, _count: { _all: true } }),
   ]);
   const n = (v: unknown) => Number(v ?? 0);
   return {
@@ -455,14 +471,18 @@ export async function feeReceipt(user: SessionUser, id: string) {
     where: { id },
     select: {
       seq: true, amount: true, method: true, reference: true, note: true, paidAt: true, voidedAt: true, voidReason: true, receivedBy: { select: { name: true } },
-      invoice: { select: { seq: true, label: true, currency: true, amount: true, discount: true, discountNote: true, paid: true, status: true, studentId: true, student: { select: { name: true, email: true } } } },
+      invoice: { select: { seq: true, label: true, currency: true, amount: true, discount: true, discountNote: true, paid: true, status: true, studentId: true, student: { select: { name: true, email: true, organizationId: true } } } },
     },
   });
   if (!p) throw new NotFoundException('That receipt doesn’t exist.');
-  const allowed = p.invoice.studentId === user.id || (await can(user, 'fees.view'))
+  const studentOrg = p.invoice.student.organizationId;
+  const allowed = p.invoice.studentId === user.id || ((await can(user, 'fees.view')) && inSchools(await schoolsOf(user), studentOrg))
     || (user.role === 'GUARDIAN' && !!(await prisma.guardianLink.findUnique({ where: { guardianId_studentId: { guardianId: user.id, studentId: p.invoice.studentId } }, select: { id: true } })));
   if (!allowed) throw new NotFoundException('That receipt doesn’t exist.');
-  const org = await prisma.organization.findFirst({ orderBy: { createdAt: 'asc' }, select: { name: true } });
+  // The student's school's name (the main school, people in none, is the first one made).
+  const org = studentOrg
+    ? await prisma.organization.findUnique({ where: { id: studentOrg }, select: { name: true } })
+    : await prisma.organization.findFirst({ orderBy: { createdAt: 'asc' }, select: { name: true } });
   const inv = p.invoice;
   return {
     school: org?.name ?? 'UniVerse', number: p.seq, amount: p.amount, currency: inv.currency, method: p.method, reference: p.reference, note: p.note, paidAt: p.paidAt,

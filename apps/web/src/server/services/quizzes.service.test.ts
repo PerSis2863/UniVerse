@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/db';
 import { QuizzesService } from './quizzes.service';
 
-vi.mock('@/lib/db', () => ({ default: { quiz: { findUnique: vi.fn(), findMany: vi.fn().mockResolvedValue([]) }, enrollment: { findUnique: vi.fn() } } }));
+vi.mock('@/lib/db', () => ({ default: { quiz: { findUnique: vi.fn(), findMany: vi.fn().mockResolvedValue([]) }, enrollment: { findUnique: vi.fn() }, organization: { findUnique: vi.fn().mockResolvedValue(null) } } }));
 vi.mock('../skill-evidence', () => ({ evidenceFromQuiz: vi.fn(), safely: vi.fn() }));
 vi.mock('../offline', () => ({ clientIdOf: vi.fn(), offlineTime: vi.fn(), tellTeacher: vi.fn() }));
 vi.mock('../realtime', () => ({ publish: vi.fn() }));
@@ -65,7 +65,8 @@ describe('who may open a quiz', () => {
     await service.findAll({ id: 's1', role: 'STUDENT' });
     expect(db.quiz.findMany.mock.calls[1][0].where).toEqual({ status: { not: 'DRAFT' }, course: { enrollments: { some: { studentId: 's1' } } } });
     await service.findAll({ id: 'a1', role: 'ADMIN' });
-    expect(db.quiz.findMany.mock.calls[2][0].where).toBeUndefined();
+    // An admin: their own school's courses (here the main school: teachers in no school).
+    expect(db.quiz.findMany.mock.calls[2][0].where).toEqual({ course: { teacher: { organizationId: null } } });
     expect(await service.findAll(undefined)).toEqual([]);
   });
 });

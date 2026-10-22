@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { EXPORTS, MEMBER_SELECT, isExportType, memberFilter, memberWhere } from '@/server/report-exports';
 import { requireFeature } from '@/lib/billing';
+import { schoolsOf, usersIn } from '@/server/school-scope';
 
 export async function GET(req: Request) {
   const auth = await requireFeature(req, 'data_exports');
@@ -13,7 +14,7 @@ export async function GET(req: Request) {
 
   // ?type=members&format=json : a preview of who the members export will contain (first 50 + total).
   if (type === 'members' && params.get('format') === 'json') {
-    const where = memberWhere(memberFilter(params));
+    const where = { AND: [usersIn(await schoolsOf(auth.user)), memberWhere(memberFilter(params))] };
     const [total, people] = await Promise.all([
       prisma.user.count({ where }),
       prisma.user.findMany({ where, orderBy: { createdAt: 'desc' }, take: 50, select: MEMBER_SELECT }),
@@ -21,7 +22,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ total, people }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
-  const csv = await EXPORTS[type](params);
+  // Only the admin's own school's people (school-scope.ts).
+  const csv = await EXPORTS[type](params, await schoolsOf(auth.user));
   const date = new Date().toISOString().slice(0, 10);
   return new Response('﻿' + csv, {
     headers: {

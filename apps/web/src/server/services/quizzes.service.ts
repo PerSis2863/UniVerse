@@ -12,6 +12,9 @@ import { drawFor, parsePools } from '@/lib/quiz-draw';
 import { taughtBy } from '@/lib/course-access';
 import { quizMinutes } from '@/lib/assignment-policy';
 import { makeReceipt, usesFor } from '../ai-receipts';
+import { inSchools, schoolsOf, usersIn } from '../school-scope';
+
+type Who = { id: string; role: string; organizationId?: string | null; owner?: boolean };
 
 /** A student's extra time on timed quizzes (Stage 5 · B3.1 accommodations), as minutes for this quiz. */
 async function minutesFor(timeLimit: number | null, studentId: string) {
@@ -38,29 +41,33 @@ function studentOrder<Q extends { id: string; pool?: string | null }>(quiz: { id
   return quiz.shuffle ? shuffled(drawn, `${studentId}:${quiz.id}`) : drawn;
 }
 export class QuizzesService {
-  /** Teachers may only manage quizzes for their own courses; admins may manage any. */
-  private async assertCourseOwner(courseId: string, user: { id: string; role: string }) {
-    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true, staff: { where: { userId: user.id, role: 'CO_TEACHER' }, select: { id: true }, take: 1 } } });
+  /** Teachers may only manage quizzes for their own courses; admins, their school's courses. */
+  private async assertCourseOwner(courseId: string, user: Who) {
+    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true, teacher: { select: { organizationId: true } }, staff: { where: { userId: user.id, role: 'CO_TEACHER' }, select: { id: true }, take: 1 } } });
     if (!course) throw new NotFoundException('Course not found');
-    if (user.role !== 'ADMIN' && course.teacherId !== user.id && !course.staff.length) throw new ForbiddenException('You can only manage quizzes for your own courses');
+    if (course.teacherId === user.id || course.staff.length) return;
+    if (user.role !== 'ADMIN') throw new ForbiddenException('You can only manage quizzes for your own courses');
+    // Another school's course looks like it doesn't exist (school-scope.ts).
+    if (!inSchools(await schoolsOf(user), course.teacher?.organizationId)) throw new NotFoundException('Course not found');
   }
 
-  private async assertQuizOwner(id: string, user: { id: string; role: string }) {
+  private async assertQuizOwner(id: string, user: Who) {
     const quiz = await prisma.quiz.findUnique({ where: { id }, select: { courseId: true } });
     if (!quiz) throw new NotFoundException('Quiz not found');
     await this.assertCourseOwner(quiz.courseId, user);
   }
 
-  async create(createQuizDto: CreateQuizDto, user: { id: string; role: string }) {
+  async create(createQuizDto: CreateQuizDto, user: Who) {
     await this.assertCourseOwner(createQuizDto.courseId, user);
     // New quizzes always start as drafts; they are published once they have questions.
     return prisma.quiz.create({ data: { ...createQuizDto, status: 'DRAFT' } });
   }
 
-  findAll(user?: { id?: string; role: string }) {
-    // Admins oversee every quiz: who teaches the course, how many questions and submissions it has.
-    if (user?.role === 'ADMIN') {
+  async findAll(user?: { id?: string; role: string; organizationId?: string | null; owner?: boolean }) {
+    // Admins oversee their school's quizzes: who teaches the course, how many questions and submissions it has.
+    if (user?.role === 'ADMIN' && user.id) {
       return prisma.quiz.findMany({
+        where: { course: { teacher: usersIn(await schoolsOf(user as Who)) } },
         include: {
           course: { select: { id: true, code: true, name: true, teacher: { select: { id: true, name: true, email: true } }, _count: { select: { enrollments: true } } } },
           _count: { select: { questions: true, submissions: true } },
@@ -71,7 +78,7 @@ export class QuizzesService {
     }
     // Everyone else only sees quizzes of their own courses: the ones they teach, or (not drafts) the
     // ones they're enrolled in.
-    if (!user?.id) return Promise.resolve([]);
+    if (!user?.id) return [];
     const where: Prisma.QuizWhereInput = user.role === 'TEACHER'
       ? { course: taughtBy(user.id, ['CO_TEACHER']) }
       : { status: { not: 'DRAFT' }, course: { enrollments: { some: { studentId: user.id } } } };
@@ -84,7 +91,7 @@ export class QuizzesService {
   }
 
   /** Who submitted a quiz, with their score (the course's teacher or an admin). */
-  async getSubmissions(id: string, user: { id: string; role: string }) {
+  async getSubmissions(id: string, user: Who) {
     await this.assertQuizOwner(id, user);
     return prisma.quizSubmission.findMany({
       where: { quizId: id },
@@ -94,15 +101,16 @@ export class QuizzesService {
     });
   }
 
-  async findOne(id: string, user?: { id?: string; role: string }) {
+  async findOne(id: string, user?: { id?: string; role: string; organizationId?: string | null; owner?: boolean }) {
     const quiz = await prisma.quiz.findUnique({
       where: { id },
-      include: { questions: { orderBy: { order: 'asc' } }, course: { select: { teacherId: true, staff: { where: { userId: user?.id ?? '', role: 'CO_TEACHER' }, select: { id: true }, take: 1 } } } },
+      include: { questions: { orderBy: { order: 'asc' } }, course: { select: { teacherId: true, teacher: { select: { organizationId: true } }, staff: { where: { userId: user?.id ?? '', role: 'CO_TEACHER' }, select: { id: true }, take: 1 } } } },
     });
     if (!quiz || !user?.id) throw new NotFoundException('Quiz not found');
     const { course, ...rest } = quiz;
-    // The course's teacher, co-teachers and admins get the whole quiz, answers included.
-    if (user.role === 'ADMIN' || course.teacherId === user.id || course.staff.length) return rest;
+    // The course's teacher, co-teachers and the school's admins get the whole quiz, answers included.
+    if (course.teacherId === user.id || course.staff.length) return rest;
+    if (user.role === 'ADMIN' && inSchools(await schoolsOf(user as Who), course.teacher?.organizationId)) return rest;
     // Anyone else must be enrolled in the course, and drafts stay hidden. Students never receive the
     // answer key; grading happens server-side in submitQuiz.
     const enrolled = quiz.status !== 'DRAFT' && (await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId: user.id, courseId: quiz.courseId } }, select: { id: true } }));
@@ -162,7 +170,7 @@ export class QuizzesService {
     return { done: Object.keys(saved) };
   }
 
-  async update(id: string, updateQuizDto: UpdateQuizDto, user: { id: string; role: string }) {
+  async update(id: string, updateQuizDto: UpdateQuizDto, user: Who) {
     await this.assertQuizOwner(id, user);
     if (updateQuizDto.courseId) await this.assertCourseOwner(updateQuizDto.courseId, user);
     return prisma.quiz.update({
@@ -171,7 +179,7 @@ export class QuizzesService {
     });
   }
 
-  async remove(id: string, user: { id: string; role: string }) {
+  async remove(id: string, user: Who) {
     await this.assertQuizOwner(id, user);
     return prisma.quiz.delete({
       where: { id },
@@ -344,9 +352,9 @@ export class QuizzesService {
   }
 
   /** Offline quizzes finished after their due date, waiting for the teacher (upgrade 4). */
-  async offlinePending(user: { id: string; role: string }) {
+  async offlinePending(user: Who) {
     return prisma.quizSubmission.findMany({
-      where: { offlineStatus: 'LATE', quiz: user.role === 'ADMIN' ? {} : { course: taughtBy(user.id, ['CO_TEACHER']) } },
+      where: { offlineStatus: 'LATE', quiz: { course: user.role === 'ADMIN' ? { teacher: usersIn(await schoolsOf(user)) } : taughtBy(user.id, ['CO_TEACHER']) } },
       select: { id: true, score: true, maxScore: true, submittedAt: true, offlineAt: true, offlineStartedAt: true, student: { select: { id: true, name: true } }, quiz: { select: { id: true, title: true, dueDate: true, course: { select: { code: true } } } } },
       orderBy: { submittedAt: 'desc' },
       take: 100,
@@ -354,7 +362,7 @@ export class QuizzesService {
   }
 
   /** The teacher accepts a late offline quiz (it counts) or removes it (the student is told). */
-  async decideOffline(submissionId: string, accept: boolean, user: { id: string; role: string }) {
+  async decideOffline(submissionId: string, accept: boolean, user: Who) {
     const sub = await prisma.quizSubmission.findUnique({ where: { id: submissionId }, select: { id: true, quizId: true, studentId: true, score: true, maxScore: true, offlineStatus: true, quiz: { select: { title: true, courseId: true } } } });
     if (!sub || sub.offlineStatus !== 'LATE') throw new NotFoundException('Nothing to decide here.');
     await this.assertCourseOwner(sub.quiz.courseId, user);

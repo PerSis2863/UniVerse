@@ -5,6 +5,7 @@ import { notify, notifyMany } from './email';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from './http';
 import { can, need } from './permissions';
 import { publish } from './realtime';
+import { inSchools, peopleWhere, schoolsOf, usersIn } from './school-scope';
 
 // The library (Stage 5 · B15.4). Librarians (admins, or staff with library.manage) add books (by
 // ISBN, looked up on Open Library: free, no key) with their copies, each with a barcode; lend a
@@ -128,12 +129,15 @@ export async function bookDetail(user: SessionUser, id: string) {
     where: { id },
     select: {
       id: true, isbn: true, title: true, authors: true, publisher: true, year: true, subjects: true, coverUrl: true, shelf: true,
-      copies: { orderBy: { barcode: 'asc' }, select: { id: true, barcode: true, status: true, heldUntil: true, note: true, heldForId: true, loans: { where: { returnedAt: null }, take: 1, select: { dueAt: true, borrower: { select: { id: true, name: true } } } } } },
-      holds: { where: { status: { in: ['WAITING', 'READY'] } }, orderBy: { createdAt: 'asc' }, select: { id: true, status: true, userId: true, readyUntil: true, user: { select: { name: true } } } },
+      copies: { orderBy: { barcode: 'asc' }, select: { id: true, barcode: true, status: true, heldUntil: true, note: true, heldForId: true, loans: { where: { returnedAt: null }, take: 1, select: { dueAt: true, borrower: { select: { id: true, name: true, organizationId: true } } } } } },
+      holds: { where: { status: { in: ['WAITING', 'READY'] } }, orderBy: { createdAt: 'asc' }, select: { id: true, status: true, userId: true, readyUntil: true, user: { select: { name: true, organizationId: true } } } },
     },
   });
   if (!b) throw new NotFoundException('That book isn’t in the library.');
   const librarian = await canRun(user);
+  // The catalogue is shared, but a librarian sees only their own school's borrowers' names.
+  const schools = librarian ? await schoolsOf(user) : 'all';
+  const who = (p: { id: string; name: string; organizationId: string | null }) => (inSchools(schools, p.organizationId) ? { id: p.id, name: p.name } : OTHER_SCHOOL);
   const myLoan = b.copies.find((c) => c.loans[0]?.borrower.id === user.id);
   const nextDue = b.copies.map((c) => c.loans[0]?.dueAt).filter((d): d is Date => !!d).sort((x, y) => x.getTime() - y.getTime())[0] ?? null;
   return {
@@ -141,12 +145,14 @@ export async function bookDetail(user: SessionUser, id: string) {
     available: b.copies.filter((c) => c.status === 'AVAILABLE').length, copyCount: b.copies.length, nextDue,
     myHold: b.holds.find((h) => h.userId === user.id) ?? null, myLoan: myLoan ? { dueAt: myLoan.loans[0].dueAt } : null,
     queue: b.holds.filter((h) => h.status === 'WAITING').length,
-    copies: librarian ? b.copies.map((c) => ({ id: c.id, barcode: c.barcode, status: c.status, note: c.note, heldUntil: c.heldUntil, loan: c.loans[0] ? { dueAt: c.loans[0].dueAt, borrower: c.loans[0].borrower } : null })) : [],
-    holds: librarian ? b.holds.map((h) => ({ id: h.id, status: h.status, name: h.user.name, readyUntil: h.readyUntil })) : [],
+    copies: librarian ? b.copies.map((c) => ({ id: c.id, barcode: c.barcode, status: c.status, note: c.note, heldUntil: c.heldUntil, loan: c.loans[0] ? { dueAt: c.loans[0].dueAt, borrower: who(c.loans[0].borrower) } : null })) : [],
+    holds: librarian ? b.holds.map((h) => ({ id: h.id, status: h.status, name: who({ id: h.userId, ...h.user }).name, readyUntil: h.readyUntil })) : [],
   };
 }
 
 const canRun = (user: SessionUser) => can(user, 'library.manage');
+/** Who has a copy, when it's another school's reader (names stay with their own school). */
+const OTHER_SCHOOL = { id: '', name: 'someone at another school' };
 
 // ── My library (students and teachers) ──────────────────────────────────────────────────────
 
@@ -203,8 +209,9 @@ export async function myLibraryAction(user: SessionUser, b: Record<string, unkno
 
 async function renew(user: SessionUser, loanId: string, byLibrarian: boolean) {
   const s = await librarySettings();
-  const loan = await prisma.libraryLoan.findUnique({ where: { id: loanId }, select: { id: true, borrowerId: true, dueAt: true, returnedAt: true, renewals: true, copy: { select: { bookId: true } } } });
+  const loan = await prisma.libraryLoan.findUnique({ where: { id: loanId }, select: { id: true, borrowerId: true, dueAt: true, returnedAt: true, renewals: true, copy: { select: { bookId: true } }, borrower: { select: { organizationId: true } } } });
   if (!loan || (!byLibrarian && loan.borrowerId !== user.id) || loan.returnedAt) throw new NotFoundException('That loan doesn’t exist.');
+  if (byLibrarian && !inSchools(await schoolsOf(user), loan.borrower.organizationId)) throw new NotFoundException('That loan doesn’t exist.');
   if (!byLibrarian && loan.renewals >= s.maxRenewals) throw new BadRequestException(`Books can be renewed ${s.maxRenewals} times. Bring it to the library.`);
   if (!byLibrarian && (await prisma.libraryHold.count({ where: { bookId: loan.copy.bookId, status: 'WAITING' } }))) throw new BadRequestException('Someone is waiting for this book, so it can’t be renewed.');
   const from = Math.max(Date.now(), loan.dueAt.getTime());
@@ -220,14 +227,16 @@ export async function libraryDesk(user: SessionUser) {
   await need(user, 'library.manage');
   await expireHolds();
   const now = new Date();
+  // Books are shared; loans, holds and fines are only of the librarian's own school's people.
+  const mine = usersIn(await schoolsOf(user));
   const [s, books, copies, out, overdue, holds, fines] = await Promise.all([
     librarySettings(),
     prisma.libraryBook.count(),
     prisma.libraryCopy.groupBy({ by: ['status'], _count: { _all: true } }),
-    prisma.libraryLoan.count({ where: { returnedAt: null } }),
-    prisma.libraryLoan.findMany({ where: { returnedAt: null, dueAt: { lt: now } }, orderBy: { dueAt: 'asc' }, take: 200, select: { id: true, dueAt: true, remindedAt: true, borrower: { select: { id: true, name: true, email: true } }, copy: { select: { barcode: true, book: { select: { title: true } } } } } }),
-    prisma.libraryHold.groupBy({ by: ['status'], where: { status: { in: ['WAITING', 'READY'] } }, _count: { _all: true } }),
-    prisma.libraryLoan.findMany({ where: { fineStatus: 'OWED' }, orderBy: { returnedAt: 'desc' }, take: 200, select: { id: true, fine: true, returnedAt: true, borrower: { select: { name: true } }, copy: { select: { book: { select: { title: true } } } } } }),
+    prisma.libraryLoan.count({ where: { returnedAt: null, borrower: mine } }),
+    prisma.libraryLoan.findMany({ where: { returnedAt: null, dueAt: { lt: now }, borrower: mine }, orderBy: { dueAt: 'asc' }, take: 200, select: { id: true, dueAt: true, remindedAt: true, borrower: { select: { id: true, name: true, email: true } }, copy: { select: { barcode: true, book: { select: { title: true } } } } } }),
+    prisma.libraryHold.groupBy({ by: ['status'], where: { status: { in: ['WAITING', 'READY'] }, user: mine }, _count: { _all: true } }),
+    prisma.libraryLoan.findMany({ where: { fineStatus: 'OWED', borrower: mine }, orderBy: { returnedAt: 'desc' }, take: 200, select: { id: true, fine: true, returnedAt: true, borrower: { select: { name: true } }, copy: { select: { book: { select: { title: true } } } } } }),
   ]);
   const count = (st: string) => copies.find((c) => c.status === st)?._count._all ?? 0;
   return {
@@ -245,11 +254,15 @@ export async function scanCopy(user: SessionUser, barcode: string | null) {
   if (!code) throw new BadRequestException('Scan or type a barcode.');
   const c = await prisma.libraryCopy.findUnique({
     where: { barcode: code },
-    select: { id: true, barcode: true, status: true, heldUntil: true, heldForId: true, book: { select: { id: true, title: true, authors: true, coverUrl: true } }, loans: { where: { returnedAt: null }, take: 1, select: { id: true, dueAt: true, borrower: { select: { id: true, name: true } } } } },
+    select: { id: true, barcode: true, status: true, heldUntil: true, heldForId: true, book: { select: { id: true, title: true, authors: true, coverUrl: true } }, loans: { where: { returnedAt: null }, take: 1, select: { id: true, dueAt: true, borrower: { select: { id: true, name: true, organizationId: true } } } } },
   });
   if (!c) throw new NotFoundException(`No copy has the barcode ${code}.`);
-  const heldFor = c.heldForId ? await prisma.user.findUnique({ where: { id: c.heldForId }, select: { id: true, name: true } }) : null;
-  return { id: c.id, barcode: c.barcode, status: c.status, book: c.book, loan: c.loans[0] ?? null, heldFor, heldUntil: c.heldUntil };
+  const schools = await schoolsOf(user);
+  const heldFor = c.heldForId ? await prisma.user.findFirst({ where: { id: c.heldForId, ...usersIn(schools) }, select: { id: true, name: true } }) : null;
+  const l = c.loans[0];
+  // Another school's reader's loan: the copy is out, but not who has it (and it can't be changed here).
+  const loan = l ? (inSchools(schools, l.borrower.organizationId) ? { id: l.id, dueAt: l.dueAt, borrower: { id: l.borrower.id, name: l.borrower.name } } : { id: '', dueAt: l.dueAt, borrower: OTHER_SCHOOL }) : null;
+  return { id: c.id, barcode: c.barcode, status: c.status, book: c.book, loan, heldFor, heldUntil: c.heldUntil };
 }
 
 /** GET /api/library/desk/people?q=: students and staff to lend to, with how many books they have and anything late. */
@@ -259,7 +272,7 @@ export async function findBorrowers(user: SessionUser, q: string) {
   if (text.length < 2) return { people: [] };
   // A library card scanned (Stage 5 · Q22): "L:" and the person's account id.
   const card = /^L:([a-z0-9]{8,40})$/i.exec(text)?.[1];
-  const people = await prisma.user.findMany({ where: { role: { in: ['STUDENT', 'TEACHER'] }, status: { not: 'SUSPENDED' }, ...(card ? { id: card } : { OR: [{ name: { contains: text } }, { email: { contains: text.toLowerCase() } }] }) }, orderBy: { name: 'asc' }, take: 10, select: { id: true, name: true, email: true, avatar: true, role: true } });
+  const people = await prisma.user.findMany({ where: { AND: [await peopleWhere(user), { role: { in: ['STUDENT', 'TEACHER'] }, status: { not: 'SUSPENDED' }, ...(card ? { id: card } : { OR: [{ name: { contains: text } }, { email: { contains: text.toLowerCase() } }] }) }] }, orderBy: { name: 'asc' }, take: 10, select: { id: true, name: true, email: true, avatar: true, role: true } });
   const loans = people.length ? await prisma.libraryLoan.findMany({ where: { borrowerId: { in: people.map((p) => p.id) }, OR: [{ returnedAt: null }, { fineStatus: 'OWED' }] }, select: { borrowerId: true, returnedAt: true, dueAt: true, fine: true, fineStatus: true } }) : [];
   const now = Date.now();
   return {
@@ -282,7 +295,7 @@ export async function deskAction(user: SessionUser, b: Record<string, unknown>) 
       const s = await librarySettings();
       const copy = await prisma.libraryCopy.findUnique({ where: { barcode: String(b.barcode ?? '').trim() }, select: { id: true, status: true, heldForId: true, bookId: true, book: { select: { title: true } } } });
       if (!copy) throw new NotFoundException('No copy has that barcode.');
-      const borrower = await prisma.user.findUnique({ where: { id: String(b.borrowerId ?? '') }, select: { id: true, name: true, role: true, status: true } });
+      const borrower = await prisma.user.findFirst({ where: { id: String(b.borrowerId ?? ''), ...(await peopleWhere(user)) }, select: { id: true, name: true, role: true, status: true } });
       if (!borrower || !BORROWERS.includes(borrower.role) || borrower.status === 'SUSPENDED') throw new BadRequestException('Choose a student or staff member.');
       if (copy.status === 'ON_LOAN') throw new ConflictException('This copy is out. Return it first.');
       if (copy.status === 'HELD' && copy.heldForId !== borrower.id) throw new ConflictException('This copy is kept for someone who reserved it.');
@@ -300,10 +313,11 @@ export async function deskAction(user: SessionUser, b: Record<string, unknown>) 
     }
     case 'return': {
       const s = await librarySettings();
-      const copy = await prisma.libraryCopy.findUnique({ where: { barcode: String(b.barcode ?? '').trim() }, select: { id: true, bookId: true, book: { select: { title: true } }, loans: { where: { returnedAt: null }, take: 1, select: { id: true, dueAt: true, borrowerId: true, borrower: { select: { name: true } } } } } });
+      const copy = await prisma.libraryCopy.findUnique({ where: { barcode: String(b.barcode ?? '').trim() }, select: { id: true, bookId: true, book: { select: { title: true } }, loans: { where: { returnedAt: null }, take: 1, select: { id: true, dueAt: true, borrowerId: true, borrower: { select: { name: true, organizationId: true } } } } } });
       if (!copy) throw new NotFoundException('No copy has that barcode.');
       const loan = copy.loans[0];
       if (!loan) throw new BadRequestException('This copy isn’t out.');
+      if (!inSchools(await schoolsOf(user), loan.borrower.organizationId)) throw new NotFoundException('That loan doesn’t exist.');
       const now = new Date();
       const fine = fineFor(loan.dueAt, now, s.finePerDay, s.fineCap);
       await prisma.libraryLoan.update({ where: { id: loan.id }, data: { returnedAt: now, fine, fineStatus: fine > 0 ? 'OWED' : null } });
@@ -314,13 +328,13 @@ export async function deskAction(user: SessionUser, b: Record<string, unknown>) 
     case 'fine': {
       const to = b.to === 'PAID' || b.to === 'WAIVED' ? b.to : null;
       if (!to) throw new BadRequestException('Paid or waived?');
-      const res = await prisma.libraryLoan.updateMany({ where: { id: String(b.loanId ?? ''), fineStatus: 'OWED' }, data: { fineStatus: to } });
+      const res = await prisma.libraryLoan.updateMany({ where: { id: String(b.loanId ?? ''), fineStatus: 'OWED', borrower: await peopleWhere(user) }, data: { fineStatus: to } });
       if (!res.count) throw new NotFoundException('There’s no fine owed on that loan.');
       return { fineStatus: to };
     }
     case 'remind': {
       const late = await prisma.libraryLoan.findMany({
-        where: { returnedAt: null, dueAt: { lt: new Date() }, OR: [{ remindedAt: null }, { remindedAt: { lt: new Date(Date.now() - REMIND_EVERY_MS) } }] },
+        where: { returnedAt: null, dueAt: { lt: new Date() }, borrower: await peopleWhere(user), OR: [{ remindedAt: null }, { remindedAt: { lt: new Date(Date.now() - REMIND_EVERY_MS) } }] },
         take: 80, select: { id: true, borrowerId: true, dueAt: true, copy: { select: { book: { select: { title: true } } } } },
       });
       if (!late.length) return { reminded: 0 };

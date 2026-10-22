@@ -196,3 +196,14 @@ describe('Stage 5 · C6: Unified Payments Provider', () => {
     });
   });
 });
+
+describe('school payment keys stored encrypted', () => {
+  it('a sealed secret is decrypted for the gateway, an old plain one still works', async () => {
+    vi.stubEnv('SESSION_SECRET', 'a-test-session-secret-of-at-least-32-chars');
+    const { seal } = await import('../secret-box');
+    const { gatewayKeys } = await import('./provider');
+    expect(await gatewayKeys({ razorpayKeyId: 'rzp_live_id', razorpayKeySecret: await seal('rzp_sec') }, 'RAZORPAY')).toMatchObject({ keyId: 'rzp_live_id', secret: 'rzp_sec' });
+    expect(await gatewayKeys({ stripeSecretKey: 'sk_live_plain' }, 'STRIPE')).toMatchObject({ secret: 'sk_live_plain' });
+    vi.unstubAllEnvs();
+  });
+});

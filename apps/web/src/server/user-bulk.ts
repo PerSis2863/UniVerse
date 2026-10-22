@@ -1,5 +1,6 @@
 import type { Role, UserStatus } from '@prisma/client';
 import prisma from '@/lib/db';
+import { inSchools, type SchoolIds } from './school-scope';
 import { forgetUser, isOwnerEmail } from './auth';
 import { BadRequestException, NotFoundException } from './http';
 
@@ -75,9 +76,10 @@ export async function bulkRole(actor: Actor, ids: string[], role: Role) {
 }
 
 /** "Resend": another 30 days for an invitation (no email is sent; share the sign-up link). */
-export async function renewInvitation(id: string, now = new Date()) {
-  const inv = await prisma.invitation.findUnique({ where: { id }, select: { id: true, email: true, status: true } });
-  if (!inv || inv.status !== 'PENDING') throw new NotFoundException('Invitation not found');
+export async function renewInvitation(id: string, now = new Date(), schools: SchoolIds | 'all' = 'all') {
+  const inv = await prisma.invitation.findUnique({ where: { id }, select: { id: true, email: true, status: true, organizationId: true } });
+  // Another school's invitation looks the same as none.
+  if (!inv || inv.status !== 'PENDING' || !inSchools(schools, inv.organizationId)) throw new NotFoundException('Invitation not found');
   const expiresAt = new Date(now.getTime() + 30 * 24 * 3600 * 1000);
   await prisma.invitation.update({ where: { id: inv.id }, data: { expiresAt } });
   return { id: inv.id, email: inv.email, expiresAt };

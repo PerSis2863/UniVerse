@@ -2,7 +2,8 @@ import { joinClubSpace } from '../campus-life';
 import { NotFoundException } from '../http';
 import { AssociationStatus } from '@prisma/client';
 import prisma from '@/lib/db';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, User } from '@prisma/client';
+import { peopleWhere, schoolsOf, usersIn } from '../school-scope';
 import { differenceInYears } from 'date-fns';
 
 export class AssociationsService {
@@ -77,9 +78,10 @@ export class AssociationsService {
     return { success: true };
   }
 
-  /** Admin view: every membership with the member's details (newest first, capped). */
-  findAllMembershipsForAdmin() {
+  /** Admin view: the admin's own school's memberships with the member's details (newest first, capped). */
+  async findAllMembershipsForAdmin(admin: User) {
     return prisma.associationMembership.findMany({
+      where: { user: await peopleWhere(admin) },
       orderBy: { joinedAt: 'desc' },
       take: 1000,
       select: {
@@ -153,6 +155,14 @@ export class AssociationsService {
     });
 
     return association;
+  }
+
+  /** Admins change only their own school's associations (founded by one of its people); others look "not found". */
+  async assertAdminCanManage(id: string, admin: User) {
+    const schools = await schoolsOf(admin);
+    if (schools === 'all') return;
+    const found = await prisma.association.findFirst({ where: { id, memberships: { some: { role: 'FOUNDER', user: usersIn(schools) } } }, select: { id: true } });
+    if (!found) throw new NotFoundException('Association not found');
   }
 
   async updateStatus(id: string, status: AssociationStatus) {

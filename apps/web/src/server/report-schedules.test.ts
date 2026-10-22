@@ -9,13 +9,14 @@ vi.mock('@/lib/db', () => ({
   default: {
     reportSchedule: { count: vi.fn(), create: vi.fn(), update: vi.fn(), findMany: vi.fn() },
     user: { findUnique: vi.fn() },
+    organization: { findUnique: vi.fn(async () => null) },
     spaceFile: { findMany: vi.fn(), delete: vi.fn() },
     $queryRawUnsafe: vi.fn(),
   },
 }));
 vi.mock('@/lib/storage', () => ({ SERVER_UPLOAD_MAX: 4 * 1024 * 1024, deleteFile: vi.fn(async () => {}) }));
 vi.mock('@/lib/r2', () => ({ hasR2Storage: () => false }));
-vi.mock('./auth', () => ({ isOwnerEmail: (e: string) => e === 'owner@x.test' }));
+vi.mock('./auth', () => ({ isOwnerEmail: (e: string) => e === 'owner@x.test', isOwner: () => false }));
 vi.mock('./email', () => ({ notify: vi.fn(async () => {}) }));
 vi.mock('./space-files', () => ({ saveToMyFiles: vi.fn() }));
 
@@ -71,6 +72,8 @@ describe('scheduled report exports (Phase E)', () => {
     const [owner, folder, file] = (saveToMyFiles as unknown as Fn).mock.calls[0];
     expect([owner, folder, file.mime]).toEqual(['a1', 'Scheduled reports', 'text/csv']);
     expect(file.bytes.toString('utf8')).toContain('t@x.test,,TEACHER,ACTIVE,,Physics');
+    // Only the admin's school: here the main one (people in no school).
+    expect(db.$queryRawUnsafe.mock.calls[0][0]).toContain('u.organizationId IS NULL');
     expect((notify as unknown as Fn).mock.calls[0][1].email).toBe(false);
   });
 

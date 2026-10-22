@@ -5,6 +5,7 @@ import { hasR2Storage } from "@/lib/r2";
 import { isDemoLoginEnabled } from "@/server/auth";
 import { audit } from "@/server/audit";
 import { cleanSlug, cleanCustomDomain, cleanBrandColor } from "@/server/tenant";
+import { peopleWhere } from "@/server/school-scope";
 
 // Admin → Settings: the organization details, branding, subdomains, and security status.
 
@@ -12,9 +13,11 @@ export async function GET(req: Request) {
   const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
 
+  // The admin's own school's applications and accounts only.
+  const mine = await peopleWhere(auth.user);
   const [pendingApplications, suspended, memberCount] = await Promise.all([
-    prisma.roleApplication.count({ where: { status: "PENDING" } }),
-    prisma.user.count({ where: { status: "SUSPENDED" } }),
+    prisma.roleApplication.count({ where: { status: "PENDING", user: mine } }),
+    prisma.user.count({ where: { AND: [mine, { status: "SUSPENDED" }] } }),
     prisma.user.count({ where: { organizationId: auth.org.id } }),
   ]);
 

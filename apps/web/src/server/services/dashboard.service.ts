@@ -2,6 +2,7 @@ import prisma from '@/lib/db';
 import { Role } from '@prisma/client';
 import { letter } from '@/lib/gradebook';
 import { scaleFor } from '../grade-scale';
+import { peopleWhere } from '../school-scope';
 
 // Ported from the old NestJS API's dashboard controller.
 export class DashboardService {
@@ -172,28 +173,33 @@ export class DashboardService {
     };
   }
 
-  async getAdminDashboard() {
+  /** Only the admin's own school: its people, their payments, and courses taught by its teachers (the platform owner sees all). */
+  async getAdminDashboard(admin: Parameters<typeof peopleWhere>[0]) {
+    const mine = await peopleWhere(admin);
     // Independent queries, run in parallel.
     const [totalStudents, totalTeachers, totalCourses, studentsByDept, teachersByDept, recentPaymentsRaw, pendingUsersRaw, revenueObj] =
       await Promise.all([
-        prisma.user.count({ where: { role: Role.STUDENT } }),
-        prisma.user.count({ where: { role: Role.TEACHER } }),
-        prisma.course.count(),
+        prisma.user.count({ where: { AND: [mine, { role: Role.STUDENT }] } }),
+        prisma.user.count({ where: { AND: [mine, { role: Role.TEACHER }] } }),
+        prisma.course.count({ where: { teacher: mine } }),
         prisma.studentProfile.groupBy({
           by: ['department'],
+          where: { user: mine },
           _count: { userId: true },
         }),
         prisma.teacherProfile.groupBy({
           by: ['department'],
+          where: { user: mine },
           _count: { userId: true },
         }),
         prisma.payment.findMany({
+          where: { user: mine },
           take: 5,
           orderBy: { createdAt: 'desc' },
           include: { user: true },
         }),
         prisma.user.findMany({
-          where: { status: 'PENDING' },
+          where: { AND: [mine, { status: 'PENDING' }] },
           take: 5,
           orderBy: { createdAt: 'desc' },
           include: {
@@ -203,7 +209,7 @@ export class DashboardService {
         }),
         prisma.payment.aggregate({
           _sum: { amount: true },
-          where: { status: 'COMPLETED' },
+          where: { status: 'COMPLETED', user: mine },
         }),
       ]);
 

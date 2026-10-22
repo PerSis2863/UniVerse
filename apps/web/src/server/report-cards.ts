@@ -3,42 +3,63 @@ import type { Category } from '@/lib/gradebook';
 import { courseLine, overall, type AttendanceCounts, type ReportCardData } from '@/lib/report-card';
 import { scaleFor } from './grade-scale';
 import { notifyMany } from './email';
+import { inSchools, schoolsOf, usersIn, type SchoolIds } from './school-scope';
 
 // Report cards (Stage 5 · B15.3; card maths in src/lib/report-card.ts). An admin starts a round
 // for a term (dates); cards are made 25 students per request (the browser asks for the next batch,
 // so no request runs long on Workers), then the admin adds comments and publishes. Students see
-// published cards in Grades and can print them; nothing is emailed.
+// published cards in Grades and can print them; nothing is emailed. A round belongs to the school of
+// the admin who started it (school-scope.ts): its cards are that school's students, and another
+// school's admins can't see or change it ("not found"); the platform owner sees every round.
 
 const BATCH = 25;
 const chunks = <T,>(xs: T[], n = 90) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
 const inChunks = async <T,>(ids: string[], run: (part: string[]) => Promise<T[]>) => (await Promise.all(chunks([...new Set(ids)]).map(run))).flat();
-const studentsWhere = { role: 'STUDENT' as const, status: { not: 'SUSPENDED' as const }, enrollments: { some: {} } };
+const studentsWhere = (schools: SchoolIds | 'all') => ({ AND: [usersIn(schools), { role: 'STUDENT' as const, status: { not: 'SUSPENDED' as const }, enrollments: { some: {} } }] });
+
+type Viewer = Parameters<typeof schoolsOf>[0];
+type Run = NonNullable<Awaited<ReturnType<typeof prisma.reportCardRun.findUnique>>>;
+
+/** A round's starter: their school (null for the main school, also when they're gone) and the schools its cards cover. */
+async function runSchool(createdById: string | null) {
+  const creator = createdById ? await prisma.user.findUnique({ where: { id: createdById }, select: { id: true, organizationId: true } }) : null;
+  // A plain record (never 'all'): a round is one school's, even the platform owner's.
+  return { orgId: creator?.organizationId ?? null, schools: creator ? await schoolsOf({ ...creator }) : ([null] as SchoolIds) };
+}
+
+/** The round, if it's one of the viewer's school's; otherwise "not found". */
+async function findRun(viewer: Viewer, runId: string): Promise<Run> {
+  const run = runId ? await prisma.reportCardRun.findUnique({ where: { id: runId } }) : null;
+  if (!run) throw new ReportCardError('Round not found.', 404);
+  const viewing = await schoolsOf(viewer);
+  if (viewing !== 'all' && !inSchools(viewing, (await runSchool(run.createdById)).orgId)) throw new ReportCardError('Round not found.', 404);
+  return run;
+}
 
 export class ReportCardError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
 
-export async function createRun(input: { title: unknown; from: unknown; to: unknown }, school: string, userId: string) {
+export async function createRun(input: { title: unknown; from: unknown; to: unknown }, school: string, user: { id: string; organizationId?: string | null }) {
   const title = typeof input.title === 'string' ? input.title.trim().slice(0, 120) : '';
   const from = typeof input.from === 'string' ? new Date(input.from) : null;
   const to = typeof input.to === 'string' ? new Date(input.to) : null;
   if (!title) throw new ReportCardError('Give the round a name, e.g. “Term 1 2026–27”.');
   if (!from || !to || Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) throw new ReportCardError('Pick the term’s first and last day.');
   to.setHours(23, 59, 59, 999);
-  const total = await prisma.user.count({ where: studentsWhere });
-  return prisma.reportCardRun.create({ data: { title, fromDate: from, toDate: to, school: school.slice(0, 120), total, createdById: userId } });
+  const total = await prisma.user.count({ where: studentsWhere(await schoolsOf({ id: user.id, organizationId: user.organizationId ?? null })) });
+  return prisma.reportCardRun.create({ data: { title, fromDate: from, toDate: to, school: school.slice(0, 120), total, createdById: user.id } });
 }
 
 /** Makes (or remakes) the cards for the next batch of students after `cursor`. */
-export async function compileBatch(runId: string, cursor: string | null) {
-  const run = await prisma.reportCardRun.findUnique({ where: { id: runId } });
-  // The school's letter grades and GPA points (Stage 5 · B3.4).
-  const orgId = run?.createdById ? (await prisma.user.findUnique({ where: { id: run.createdById }, select: { organizationId: true } }))?.organizationId : null;
+export async function compileBatch(viewer: Viewer, runId: string, cursor: string | null) {
+  const run = await findRun(viewer, runId);
+  // The school's letter grades and GPA points (Stage 5 · B3.4), and its students.
+  const { orgId, schools } = await runSchool(run.createdById);
   const [scale, org] = await Promise.all([scaleFor(orgId), orgId ? prisma.organization.findUnique({ where: { id: orgId }, select: { logoUrl: true } }) : Promise.resolve(null)]);
-  if (!run) throw new ReportCardError('Round not found.', 404);
   // The school's logo on the card (Stage 5 · Q22), when it's an image the card can show.
   const logo = org?.logoUrl && /^(https:\/\/|\/api\/files\/)/.test(org.logoUrl) ? org.logoUrl : undefined;
-  const students = await prisma.user.findMany({ where: { ...studentsWhere, ...(cursor ? { id: { gt: cursor } } : {}) }, orderBy: { id: 'asc' }, take: BATCH, select: { id: true, name: true, email: true } });
+  const students = await prisma.user.findMany({ where: { ...studentsWhere(schools), ...(cursor ? { id: { gt: cursor } } : {}) }, orderBy: { id: 'asc' }, take: BATCH, select: { id: true, name: true, email: true } });
   if (!students.length) return { made: 0, next: null };
   const ids = students.map((s) => s.id);
   const range = { gte: run.fromDate, lte: run.toDate };
@@ -81,29 +102,38 @@ export async function compileBatch(runId: string, cursor: string | null) {
   return { made: students.length, next: students.length === BATCH ? students[students.length - 1].id : null };
 }
 
-export async function listRuns() {
-  const runs = await prisma.reportCardRun.findMany({ orderBy: { createdAt: 'desc' }, take: 50, include: { _count: { select: { cards: true } } } });
-  return runs.map(({ _count, ...r }) => ({ ...r, cards: _count.cards }));
+/** The viewer's school's rounds (newest 50), by the school of whoever started each. */
+export async function listRuns(viewer: Viewer) {
+  const viewing = await schoolsOf(viewer);
+  const runs = await prisma.reportCardRun.findMany({ orderBy: { createdAt: 'desc' }, take: viewing === 'all' ? 50 : 300, include: { _count: { select: { cards: true } } } });
+  let mine = runs;
+  if (viewing !== 'all') {
+    const starters = [...new Set(runs.map((r) => r.createdById).filter((id): id is string => !!id))];
+    const found = await inChunks(starters, (part) => prisma.user.findMany({ where: { id: { in: part } }, select: { id: true, organizationId: true } }));
+    const orgOf = new Map(found.map((u) => [u.id, u.organizationId]));
+    mine = runs.filter((r) => inSchools(viewing, (r.createdById && orgOf.get(r.createdById)) || null));
+  }
+  return mine.slice(0, 50).map(({ _count, ...r }) => ({ ...r, cards: _count.cards }));
 }
 
-export async function runDetail(runId: string) {
-  const run = await prisma.reportCardRun.findUnique({ where: { id: runId } });
-  if (!run) throw new ReportCardError('Round not found.', 404);
+export async function runDetail(viewer: Viewer, runId: string) {
+  const run = await findRun(viewer, runId);
   const cards = await prisma.reportCard.findMany({ where: { runId }, orderBy: { student: { name: 'asc' } }, select: { id: true, data: true, comment: true, average: true, student: { select: { id: true, name: true, email: true } } } });
   return { run, cards };
 }
 
-export async function setComment(cardId: string, comment: unknown) {
+export async function setComment(viewer: Viewer, cardId: string, comment: unknown) {
   const text = typeof comment === 'string' ? comment.trim().slice(0, 2000) : '';
+  const found = cardId ? await prisma.reportCard.findUnique({ where: { id: cardId }, select: { runId: true } }) : null;
+  if (!found || !(await findRun(viewer, found.runId).then(() => true, () => false))) throw new ReportCardError('Card not found.', 404);
   const card = await prisma.reportCard.update({ where: { id: cardId }, data: { comment: text || null } }).catch(() => null);
   if (!card) throw new ReportCardError('Card not found.', 404);
   return { ok: true };
 }
 
 /** Publishes (students see the cards and get an in-app notification) or takes a round back. */
-export async function setPublished(runId: string, published: boolean) {
-  const run = await prisma.reportCardRun.findUnique({ where: { id: runId } });
-  if (!run) throw new ReportCardError('Round not found.', 404);
+export async function setPublished(viewer: Viewer, runId: string, published: boolean) {
+  const run = await findRun(viewer, runId);
   if (published && !(await prisma.reportCard.count({ where: { runId } }))) throw new ReportCardError('Make the cards first.');
   await prisma.reportCardRun.update({ where: { id: runId }, data: { publishedAt: published ? new Date() : null } });
   if (published && !run.publishedAt) {
@@ -113,7 +143,11 @@ export async function setPublished(runId: string, published: boolean) {
   return { ok: true };
 }
 
-export const deleteRun = (runId: string) => prisma.reportCardRun.delete({ where: { id: runId } }).then(() => ({ ok: true }));
+export async function deleteRun(viewer: Viewer, runId: string) {
+  await findRun(viewer, runId);
+  await prisma.reportCardRun.delete({ where: { id: runId } });
+  return { ok: true };
+}
 
 /** A student's published cards, newest first. */
 export async function myCards(studentId: string) {

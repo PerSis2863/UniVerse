@@ -6,7 +6,7 @@ const documents = new DocumentsService();
 export default function documentsModule(router: Router) {
   const r = router.controller('documents');
 
-  r.get('', { roles: ['ADMIN'] }, () => documents.findAll());
+  r.get('', { roles: ['ADMIN'] }, ({ user }) => documents.findAll(user));
   r.get('my', ({ user }) => documents.findByUser(user.id));
   r.post('', ({ user, body }) => documents.create(user.id, body));
   r.patch<{ id: string }>(':id', ({ params, user, body }) => documents.update(params.id, user.id, body));

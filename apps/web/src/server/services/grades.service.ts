@@ -1,6 +1,9 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
 import prisma from '@/lib/db';
 import { logGradeChanges } from '../grade-history';
+import { inSchools, schoolsOf } from '../school-scope';
+
+type Grader = { id: string; role: string; organizationId?: string | null; owner?: boolean; name?: string };
 
 export class GradesService {
   async getStudentGrades(studentId: string) {
@@ -27,14 +30,17 @@ export class GradesService {
     return { grades, summary, categories, assessments };
   }
 
-  /** Teachers may only see or grade their own courses (with their teaching team); admins may see all. */
-  private async assertCanGrade(courseId: string, user: { id: string; role: string }) {
-    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true, staff: { where: { userId: user.id }, select: { role: true }, take: 1 } } });
+  /** Teachers may only see or grade their own courses (with their teaching team); admins, their school's courses. */
+  private async assertCanGrade(courseId: string, user: Grader) {
+    const course = await prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true, teacher: { select: { organizationId: true } }, staff: { where: { userId: user.id }, select: { role: true }, take: 1 } } });
     if (!course) throw new NotFoundException('Course not found');
-    if (user.role !== 'ADMIN' && course.teacherId !== user.id && !course.staff.length) throw new ForbiddenException('You can only manage grades for your own courses');
+    if (course.teacherId === user.id || course.staff.length) return;
+    if (user.role !== 'ADMIN') throw new ForbiddenException('You can only manage grades for your own courses');
+    // Another school's course looks like it doesn't exist (school-scope.ts).
+    if (!inSchools(await schoolsOf(user), course.teacher?.organizationId)) throw new NotFoundException('Course not found');
   }
 
-  async getCourseGrades(courseId: string, user: { id: string; role: string }) {
+  async getCourseGrades(courseId: string, user: Grader) {
     await this.assertCanGrade(courseId, user);
     const student = { select: { id: true, name: true, email: true, avatar: true } };
     const [enrollments, grades] = await Promise.all([
@@ -44,7 +50,7 @@ export class GradesService {
     return { enrollments, grades };
   }
 
-  async postGrade(courseId: string, user: { id: string; role: string; name?: string }, body: { studentId?: unknown; assignmentName?: unknown; score?: unknown; maxScore?: unknown; feedback?: unknown }) {
+  async postGrade(courseId: string, user: Grader, body: { studentId?: unknown; assignmentName?: unknown; score?: unknown; maxScore?: unknown; feedback?: unknown }) {
     await this.assertCanGrade(courseId, user);
     const studentId = typeof body.studentId === 'string' ? body.studentId : '';
     const assignmentName = typeof body.assignmentName === 'string' ? body.assignmentName.trim().slice(0, 200) : '';
@@ -66,7 +72,7 @@ export class GradesService {
     return grade;
   }
 
-  async removeGrade(gradeId: string, user: { id: string; role: string; name?: string }) {
+  async removeGrade(gradeId: string, user: Grader) {
     const grade = await prisma.grade.findUnique({ where: { id: gradeId }, select: { courseId: true, studentId: true, assignmentName: true, score: true, maxScore: true } });
     if (!grade) throw new NotFoundException('Grade not found');
     await this.assertCanGrade(grade.courseId, user);

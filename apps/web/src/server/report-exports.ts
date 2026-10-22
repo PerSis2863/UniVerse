@@ -1,6 +1,7 @@
 import prisma from '@/lib/db';
+import { schoolSql, type SchoolIds } from './school-scope';
 
-// The data exports of Admin → Reports (Pro): every account, the impact points ledger and NGO
+// The data exports of Admin → Reports (Pro), of the admin's own school (school-scope.ts): every account, the impact points ledger and NGO
 // applications, as CSV. Downloaded from /api/premium/export, or saved to an admin's My files on a
 // schedule (report-schedules.ts, Phase E).
 
@@ -56,17 +57,18 @@ const when = (v: unknown) => (v ? new Date(String(v)) : '');
 type MemberRow = { name: string; email: string; phone: string | null; role: string; status: string; accountType: string | null; impactLevel: number; impactXP: number; lastSeenAt: string | null; createdAt: string; sDept: string | null; year: number | null; gpa: number | null; tDept: string | null; designation: string | null };
 
 export const EXPORTS = {
-  members: async (params: URLSearchParams) => {
+  members: async (params: URLSearchParams, schools: SchoolIds | 'all') => {
     const f = memberFilter(params);
+    const mine = schoolSql(schools);
     const like = f.q ? `%${f.q.replace(/[%_\\]/g, (c) => `\\${c}`)}%` : null;
     const users = await q<MemberRow>(
       `SELECT u.name, u.email, u.phone, u.role, u.status, u.accountType, u.impactLevel, u.impactXP, u.lastSeenAt, u.createdAt,
               sp.department AS sDept, sp.year, sp.gpa, tp.department AS tDept, tp.designation
          FROM users u LEFT JOIN student_profiles sp ON sp.userId = u.id LEFT JOIN teacher_profiles tp ON tp.userId = u.id
-        WHERE (? IS NULL OR u.role = ?) AND (? IS NULL OR u.status = ?)
+        WHERE ${mine.sql} AND (? IS NULL OR u.role = ?) AND (? IS NULL OR u.status = ?)
           AND (? IS NULL OR u.name LIKE ? ESCAPE '\\' OR u.email LIKE lower(?) ESCAPE '\\' OR u.phone LIKE ? ESCAPE '\\')
         ORDER BY u.createdAt ASC LIMIT 20000`,
-      f.role ?? null, f.role ?? null, f.status ?? null, f.status ?? null, like, like, like, like,
+      ...mine.args, f.role ?? null, f.role ?? null, f.status ?? null, f.status ?? null, like, like, like, like,
     );
     return toCsv(
       ['Name', 'Email', 'Phone', 'Role', 'Status', 'Account type', 'Department', 'Year', 'GPA', 'Designation', 'Impact level', 'Impact XP', 'Last active', 'Joined'],
@@ -77,21 +79,26 @@ export const EXPORTS = {
       ]),
     );
   },
-  impact: async () => {
+  impact: async (_params: URLSearchParams, schools: SchoolIds | 'all') => {
+    const mine = schoolSql(schools);
     const points = await q<{ name: string; email: string; phone: string | null; role: string; status: string; points: number; reason: string; sourceType: string; awardedAt: string }>(
       `SELECT u.name, u.email, u.phone, u.role, u.status, p.points, p.reason, p.sourceType, p.awardedAt
-         FROM impact_points p JOIN users u ON u.id = p.userId ORDER BY p.awardedAt DESC LIMIT 50000`,
+         FROM impact_points p JOIN users u ON u.id = p.userId WHERE ${mine.sql} ORDER BY p.awardedAt DESC LIMIT 50000`,
+      ...mine.args,
     );
     return toCsv(
       ['Member', 'Email', 'Phone', 'Role', 'Status', 'Points', 'Reason', 'Source', 'Awarded'],
       points.map((p) => [p.name, p.email, p.phone ?? '', p.role, p.status, p.points, p.reason, p.sourceType, when(p.awardedAt)]),
     );
   },
-  applications: async () => {
+  applications: async (_params: URLSearchParams, schools: SchoolIds | 'all') => {
+    const mine = schoolSql(schools);
     const apps = await q<{ name: string; email: string; phone: string | null; role: string; userStatus: string; project: string; ngo: string; status: string; appliedAt: string }>(
       `SELECT u.name, u.email, u.phone, u.role, u.status AS userStatus, pr.name AS project, n.name AS ngo, a.status, a.appliedAt
          FROM ngo_project_applications a JOIN users u ON u.id = a.studentId JOIN ngo_projects pr ON pr.id = a.projectId JOIN ngos n ON n.id = pr.ngoId
+        WHERE ${mine.sql}
         ORDER BY a.appliedAt DESC LIMIT 20000`,
+      ...mine.args,
     );
     return toCsv(
       ['Student', 'Email', 'Phone', 'Role', 'Account status', 'Project', 'NGO', 'Application status', 'Applied'],

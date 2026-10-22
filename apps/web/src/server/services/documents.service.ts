@@ -1,6 +1,7 @@
 
-import type { Prisma } from '@prisma/client';
+import type { Prisma, User } from '@prisma/client';
 import { pick } from '../pick';
+import { peopleWhere } from '../school-scope';
 import type { Body } from '../body';
 
 type NewDocument = Prisma.StudentDocumentUncheckedCreateInput;
@@ -8,9 +9,10 @@ const FIELDS = ['type', 'title', 'fileUrl', 'issuedAt', 'expiresAt'] as const sa
 import prisma from '@/lib/db';
 
 export class DocumentsService {
-  /** Admin list: every document with its owner's details (newest first, capped for the Workers CPU budget). */
-  findAll() {
+  /** Admin list: the admin's own school's documents with their owners' details (newest first, capped for the Workers CPU budget). */
+  async findAll(admin: User) {
     return prisma.studentDocument.findMany({
+      where: { user: await peopleWhere(admin) },
       include: { user: { select: { id: true, name: true, email: true, role: true, status: true, phone: true } } },
       orderBy: { createdAt: 'desc' },
       take: 1000,

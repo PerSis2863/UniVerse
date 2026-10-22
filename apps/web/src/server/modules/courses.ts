@@ -9,20 +9,20 @@ export default function coursesModule(router: Router) {
   const r = router.controller('courses');
 
   r.get('', ({ query, user }) => courses.findAll({ search: first(query.search), department: first(query.department) }, user));
-  r.get('admin/all', { roles: ['ADMIN'] }, () => courses.findAllForAdmin());
+  r.get('admin/all', { roles: ['ADMIN'] }, ({ user }) => courses.findAllForAdmin(user));
   r.get('my', ({ user }) => (user.role === 'TEACHER' ? courses.findForTeacher(user.id) : courses.findForStudent(user.id)));
   r.get('my-students', ({ user }) => (user.role === 'TEACHER' ? courses.findMyStudents(user.id) : []));
   r.get<{ id: string }>(':id', ({ params, user }) => courses.findOne(params.id, user));
 
   r.post('', { roles: ['TEACHER', 'ADMIN'] }, async ({ user, body, req }) => {
     const teacherId = (user.role === 'ADMIN' && str(body.teacherId)) || user.id;
-    const course = await courses.create(teacherId, body);
+    const course = await courses.create(teacherId, body, user);
     audit(user, { action: 'course.created', summary: `Created course ${course.code} · ${course.name}`, targetType: 'course', targetId: course.id }, req);
     return course;
   });
 
   r.patch<{ id: string }>(':id', { roles: ['TEACHER', 'ADMIN'] }, async ({ params, user, body, req }) => {
-    const course = await courses.update(params.id, user.id, user.role, body);
+    const course = await courses.update(params.id, user, body);
     const changed = Object.keys(body ?? {}).filter((k) => ['code', 'name', 'description', 'credits', 'department', 'color', 'emoji', 'status', 'teacherId'].includes(k));
     if (changed.length) {
       const what = body.status ? `status to ${body.status}` : changed.join(', ');
@@ -32,7 +32,7 @@ export default function coursesModule(router: Router) {
   });
 
   r.delete<{ id: string }>(':id', { roles: ['TEACHER', 'ADMIN'] }, async ({ params, user, req }) => {
-    const course = await courses.remove(params.id, user.id, user.role);
+    const course = await courses.remove(params.id, user);
     audit(user, { action: 'course.deleted', summary: `Deleted course ${course.code} · ${course.name}`, targetType: 'course', targetId: params.id }, req);
     return course;
   });

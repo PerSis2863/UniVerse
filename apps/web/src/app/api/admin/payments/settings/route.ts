@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAdmin } from '@/lib/billing';
 import { audit } from '@/server/audit';
+import { text } from '@/server/body';
+import { canSeal, open, seal } from '@/server/secret-box';
+
+// Admin → Payments: the school's own Razorpay / Stripe keys. Secrets are encrypted before they're
+// saved (src/server/secret-box.ts) and never sent back, only whether one is saved and readable.
 
 export async function GET(req: Request) {
   const auth = await requireAdmin(req);
@@ -19,12 +24,15 @@ export async function GET(req: Request) {
     },
   });
 
+  // A saved secret that can't be decrypted (SESSION_SECRET changed) counts as missing: enter it again.
+  const [rzp, stripe] = await Promise.all([open(org?.razorpayKeySecret), open(org?.stripeSecretKey)]);
   return NextResponse.json({
     paymentProvider: org?.paymentProvider || 'AUTO',
     razorpayKeyId: org?.razorpayKeyId || null,
-    hasRazorpaySecret: Boolean(org?.razorpayKeySecret),
+    hasRazorpaySecret: Boolean(rzp),
     stripePublishableKey: org?.stripePublishableKey || null,
-    hasStripeSecret: Boolean(org?.stripeSecretKey),
+    hasStripeSecret: Boolean(stripe),
+    unreadableSecret: (!!org?.razorpayKeySecret && !rzp) || (!!org?.stripeSecretKey && !stripe),
   });
 }
 
@@ -35,19 +43,16 @@ export async function PATCH(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const data: Record<string, unknown> = {};
 
-  if (typeof body.paymentProvider === 'string') {
-    const p = body.paymentProvider.toUpperCase();
-    if (['AUTO', 'RAZORPAY', 'STRIPE'].includes(p)) data.paymentProvider = p;
+  const provider = text(body.paymentProvider).toUpperCase();
+  if (['AUTO', 'RAZORPAY', 'STRIPE'].includes(provider)) data.paymentProvider = provider;
+  if (typeof body.razorpayKeyId === 'string') data.razorpayKeyId = text(body.razorpayKeyId).trim().slice(0, 100) || null;
+  if (typeof body.stripePublishableKey === 'string') data.stripePublishableKey = text(body.stripePublishableKey).trim().slice(0, 300) || null;
+  const rzpSecret = text(body.razorpayKeySecret).trim().slice(0, 300), stripeSecret = text(body.stripeSecretKey).trim().slice(0, 300);
+  if ((rzpSecret || stripeSecret) && !canSeal()) {
+    return NextResponse.json({ error: 'Payment keys can’t be saved safely yet: the server’s SESSION_SECRET isn’t set. Ask the site owner.' }, { status: 503 });
   }
-
-  if (typeof body.razorpayKeyId === 'string') data.razorpayKeyId = body.razorpayKeyId.trim() || null;
-  if (typeof body.razorpayKeySecret === 'string' && body.razorpayKeySecret.trim()) {
-    data.razorpayKeySecret = body.razorpayKeySecret.trim();
-  }
-  if (typeof body.stripePublishableKey === 'string') data.stripePublishableKey = body.stripePublishableKey.trim() || null;
-  if (typeof body.stripeSecretKey === 'string' && body.stripeSecretKey.trim()) {
-    data.stripeSecretKey = body.stripeSecretKey.trim();
-  }
+  if (rzpSecret) data.razorpayKeySecret = await seal(rzpSecret);
+  if (stripeSecret) data.stripeSecretKey = await seal(stripeSecret);
 
   const updated = await prisma.organization.update({
     where: { id: auth.org.id },

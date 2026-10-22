@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { byMonth } from '@/lib/month-buckets';
 import { requireAdmin } from '@/lib/billing';
-
+import { peopleWhere } from '@/server/school-scope';
 
 // Live impact figures for the (free) Impact Analytics page. Deeper analytics live behind
-// the Pro plan at /api/premium/analytics.
+// the Pro plan at /api/premium/analytics. Students and impact points are the admin's own school's
+// (NGOs and their projects are shared by every school).
 export async function GET(req: Request) {
   const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
@@ -14,14 +15,15 @@ export async function GET(req: Request) {
   since.setUTCMonth(since.getUTCMonth() - 7, 1);
   since.setUTCHours(0, 0, 0, 0);
 
+  const mine = await peopleWhere(auth.user);
   const [students, ngos, activeProjects, impact, sectors, monthly] = await Promise.all([
-    prisma.user.count({ where: { role: 'STUDENT' } }),
+    prisma.user.count({ where: { AND: [mine, { role: 'STUDENT' }] } }),
     prisma.nGO.count(),
     prisma.nGOProject.count({ where: { isActive: true } }),
-    prisma.impactPoint.aggregate({ _sum: { points: true } }),
+    prisma.impactPoint.aggregate({ where: { user: mine }, _sum: { points: true } }),
     prisma.nGO.groupBy({ by: ['sector'], _count: { _all: true } }),
     prisma.impactPoint
-      .findMany({ where: { awardedAt: { gte: since } }, select: { awardedAt: true, points: true } })
+      .findMany({ where: { awardedAt: { gte: since }, user: mine }, select: { awardedAt: true, points: true } })
       .then((rows) => byMonth(rows, (r) => r.awardedAt, (r) => r.points)),
   ]);
 

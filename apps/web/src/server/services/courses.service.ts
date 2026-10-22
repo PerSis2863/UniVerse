@@ -6,6 +6,9 @@ import { pick } from '../pick';
 import { assertCanJoinCourse, courseWhereFor, studentCampuses } from '../campus-network';
 import { taughtBy } from '@/lib/course-access';
 import { enrolOrWait, leaveCourse } from '../course-enrolment';
+import { assertInSchool, inSchools, schoolsOf, usersIn } from '../school-scope';
+
+type Who = { id: string; role: string; organizationId?: string | null; owner?: boolean };
 
 const COURSE_FIELDS = ['code', 'name', 'description', 'credits', 'department', 'color', 'emoji'] as const satisfies readonly (keyof Prisma.CourseUncheckedCreateInput)[];
 
@@ -32,8 +35,10 @@ export class CoursesService {
     });
   }
 
-  async findAllForAdmin() {
+  /** Every course of the admin's school (a course belongs to its teacher's school, school-scope.ts). */
+  async findAllForAdmin(user: Who) {
     return prisma.course.findMany({
+      where: { teacher: usersIn(await schoolsOf(user)) },
       include: {
         teacher: { select: { id: true, name: true, avatar: true, email: true, status: true } },
         _count: { select: { enrollments: true, materials: true, quizzes: true } },
@@ -123,11 +128,11 @@ export class CoursesService {
     });
   }
 
-  async findOne(id: string, user: { id: string; role: string }) {
+  async findOne(id: string, user: Who) {
     const course = await prisma.course.findUnique({
       where: { id },
       include: {
-        teacher: { select: { id: true, name: true, avatar: true, email: true } },
+        teacher: { select: { id: true, name: true, avatar: true, email: true, organizationId: true } },
         enrollments: { include: { student: { select: { id: true, name: true, email: true, avatar: true } } } },
         materials: { orderBy: { createdAt: 'desc' } },
         quizzes: { orderBy: { createdAt: 'desc' } },
@@ -135,15 +140,19 @@ export class CoursesService {
       },
     });
     if (!course) throw new NotFoundException('Course not found');
-    // Only the teaching team, admins and enrolled students see the roster and materials; others get the catalogue view.
-    const { staff, ...full } = course;
-    const insider = user.role === Role.ADMIN || course.teacherId === user.id || staff.length > 0 || course.enrollments.some((e) => e.studentId === user.id);
+    // Only the teaching team, the school's admins and enrolled students see the roster and materials; others get the catalogue view.
+    const { staff, teacher: { organizationId: teacherOrg, ...teacher }, ...rest } = course;
+    const full = { ...rest, teacher };
+    const insider = course.teacherId === user.id || staff.length > 0 || course.enrollments.some((e) => e.studentId === user.id)
+      || (user.role === Role.ADMIN && inSchools(await schoolsOf(user), teacherOrg));
     if (insider) return full;
     const { enrollments, materials, quizzes, ...info } = full;
     return { ...info, teacher: course.teacher && { id: course.teacher.id, name: course.teacher.name, avatar: course.teacher.avatar }, _count: { enrollments: enrollments.length, materials: materials.length } };
   }
 
-  async create(teacherId: string, data: Body) {
+  /** `by`: the admin creating it for another teacher, who must be in their school. */
+  async create(teacherId: string, data: Body, by?: Who) {
+    if (by && teacherId !== by.id) await assertInSchool(by, teacherId);
     const fields = pick<Prisma.CourseUncheckedCreateInput>(data, COURSE_FIELDS);
     if (typeof fields.code !== 'string' || !fields.code.trim() || typeof fields.name !== 'string' || !fields.name.trim()) {
       throw new BadRequestException('Course name and code are required');
@@ -154,20 +163,34 @@ export class CoursesService {
     });
   }
 
-  async update(id: string, teacherId: string, role: Role, data: Body) {
-    const course = await prisma.course.findUnique({ where: { id }, include: { staff: { where: { userId: teacherId, role: 'CO_TEACHER' }, select: { id: true }, take: 1 } } });
+  /** Another school's course looks like it doesn't exist to an admin (school-scope.ts). */
+  private async assertAdminOf(user: Who, teacherOrg: string | null | undefined) {
+    if (!inSchools(await schoolsOf(user), teacherOrg)) throw new NotFoundException('Course not found');
+  }
+
+  async update(id: string, user: Who, data: Body) {
+    const course = await prisma.course.findUnique({ where: { id }, include: { teacher: { select: { organizationId: true } }, staff: { where: { userId: user.id, role: 'CO_TEACHER' }, select: { id: true }, take: 1 } } });
     if (!course) throw new NotFoundException('Course not found');
-    // The teacher, a co-teacher or an admin (only the teacher or an admin deletes it: remove below).
-    if (role !== Role.ADMIN && course.teacherId !== teacherId && !course.staff.length) throw new ForbiddenException();
-    // Only admins may reassign a course to another teacher.
-    const fields = pick<Prisma.CourseUncheckedUpdateInput>(data, role === Role.ADMIN ? [...COURSE_FIELDS, 'status', 'teacherId'] : [...COURSE_FIELDS, 'status']);
+    // The teacher, a co-teacher or the school's admin (only the teacher or an admin deletes it: remove below).
+    const team = course.teacherId === user.id || course.staff.length > 0;
+    if (user.role !== Role.ADMIN && !team) throw new ForbiddenException();
+    if (user.role === Role.ADMIN && !team) await this.assertAdminOf(user, course.teacher?.organizationId);
+    // Only admins may reassign a course to another teacher, one of their school.
+    const fields = pick<Prisma.CourseUncheckedUpdateInput>(data, user.role === Role.ADMIN ? [...COURSE_FIELDS, 'status', 'teacherId'] : [...COURSE_FIELDS, 'status']);
+    if (fields.teacherId !== undefined) {
+      if (typeof fields.teacherId !== 'string' || !fields.teacherId) throw new BadRequestException('Choose a teacher');
+      if (fields.teacherId !== course.teacherId) await assertInSchool(user, fields.teacherId);
+    }
     return prisma.course.update({ where: { id }, data: fields });
   }
 
-  async remove(id: string, teacherId: string, role: Role) {
-    const course = await prisma.course.findUnique({ where: { id } });
+  async remove(id: string, user: Who) {
+    const course = await prisma.course.findUnique({ where: { id }, include: { teacher: { select: { organizationId: true } } } });
     if (!course) throw new NotFoundException('Course not found');
-    if (role !== Role.ADMIN && course.teacherId !== teacherId) throw new ForbiddenException();
+    if (course.teacherId !== user.id) {
+      if (user.role !== Role.ADMIN) throw new ForbiddenException();
+      await this.assertAdminOf(user, course.teacher?.organizationId);
+    }
     return prisma.course.delete({ where: { id } });
   }
 
