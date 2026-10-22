@@ -106,6 +106,14 @@ Rules for using it here:
   proactively / must be used" agents (they start an extra AI session after every change), its MCP
   servers (they need keys and send data to other services), the memory and learning hooks, and its
   generic skills (written for other stacks: Supabase, Redis, older Next.js).
+- **22 Oct 2026: the worldflowai copy (github.com/worldflowai/everything-claude-code) checked** at the
+  owner's request. It's the same pack (agents, commands, the same hooks), set up for that company's
+  own projects: nothing in it beats what's installed above (its `/verify` and "verification loop" are
+  `/check`; its build fixer is `/fix-checks`; its planner and reviewers are `/plan-item` and the two
+  reviewers). One piece is worth having: the "strategic compact" reminder (counts tool calls and,
+  after about 60, suggests `/compact` or `/clear` once an item is finished, so long histories aren't
+  re-sent). It runs only on this computer, but changing `.claude/settings.json` needs the owner's
+  own approval in Claude Code, so it's not turned on yet.
 
 ## Gotchas already learned
 
