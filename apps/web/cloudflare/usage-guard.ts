@@ -40,14 +40,21 @@ const METERS = [
   { key: 'logs', label: 'Log events (estimated)', limit: 20_000_000 },
   { key: 'liveRequests', label: 'Live updates and whiteboards', limit: 1_000_000 },
   { key: 'liveGbSeconds', label: 'Live updates running time (GB-s)', limit: 400_000 },
-  { key: 'liveStorage', label: 'Live updates storage', limit: 5 * GB, bytes: true },
+  // 1 GB on the owner's plan page (Workers Paid, Oct 2026).
+  { key: 'liveStorage', label: 'Live updates storage', limit: 1 * GB, bytes: true },
   { key: 'dbRowsRead', label: 'Database rows read', limit: 25_000_000_000 },
   { key: 'dbRowsWritten', label: 'Database rows written', limit: 50_000_000 },
   { key: 'dbStorage', label: 'Database size', limit: 5 * GB, bytes: true },
   { key: 'filesWrites', label: 'File uploads and listings (R2 class A)', limit: 1_000_000 },
   { key: 'filesReads', label: 'File downloads (R2 class B)', limit: 10_000_000 },
   { key: 'filesStorage', label: 'Stored files (R2)', limit: 10 * GB, bytes: true },
+  // Building the site after each merge (Workers Builds, $0.005 a minute past 6,000). Pausing the app
+  // can't stop a build, so this one never pauses it: past 90% the build itself stops in its first
+  // seconds (scripts/build-budget.mjs asks /api/build-budget), so a refused build costs ~1 minute.
+  { key: 'buildMinutes', label: 'Site builds (minutes)', limit: 6000 },
 ] as const;
+/** Meters the app's pause can't help with. */
+const NOT_PAUSED: ReadonlySet<string> = new Set(['buildMinutes']);
 
 type MeterKey = (typeof METERS)[number]['key'];
 
@@ -189,6 +196,28 @@ const READERS: { keys: MeterKey[]; read: (env: GuardEnv, v: Record<string, unkno
       return { filesStorage: [...seen.values()].reduce((a, b) => a + b, 0) };
     },
   },
+  {
+    keys: ['buildMinutes'],
+    read: async (env, v) => {
+      // Workers Builds' REST API (the same read-only token): this billing month's builds, in minutes.
+      const api = async <T,>(path: string): Promise<T> => {
+        const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}${path}`, { headers: { Authorization: `Bearer ${env.CF_USAGE_TOKEN}` } });
+        const body = (await res.json().catch(() => null)) as { success?: boolean; result?: T; errors?: { message: string }[] } | null;
+        if (!res.ok || !body?.success) throw new Error(body?.errors?.[0]?.message ?? `Cloudflare answered ${res.status}`);
+        return body.result as T;
+      };
+      const tag = (await api<{ id: string; tag?: string }[]>('/workers/scripts')).find((x) => x.id === 'universe-web')?.tag;
+      if (!tag) throw new Error('Worker universe-web not found');
+      const from = Date.parse(String(v.from));
+      const list = await api<{ created_on: string; running_on?: string | null; stopped_on?: string | null }[]>(`/builds/workers/${tag}/builds?per_page=100`);
+      const minutes = list.filter((b) => Date.parse(b.created_on) >= from).reduce((sum, b) => {
+        // A build still running counts until now; each build is billed by the started minute.
+        const end = b.stopped_on ? Date.parse(b.stopped_on) : Date.now();
+        return b.running_on ? sum + Math.ceil(Math.max(0, end - Date.parse(b.running_on)) / 60_000) : sum;
+      }, 0);
+      return { buildMinutes: minutes };
+    },
+  },
 ];
 
 /** Reads this billing month's usage of everything the $5 includes. `null` = couldn't be read. */
@@ -283,8 +312,9 @@ export async function checkUsage(env: GuardEnv, now = new Date()): Promise<{ sum
   // On Workers Free only files (R2) are ever charged, so only they can pause the app: the monthly
   // figures for the rest describe the $5 plan, which a free account can pass without paying anything.
   const billable = paid ? meters : meters.filter((m) => m.key.startsWith('files'));
-  const top = billable.reduce((a, b) => (share(b) > share(a) ? b : a));
-  const readable = billable.some((m) => m.used !== null);
+  const pausable = billable.filter((m) => !NOT_PAUSED.has(m.key));
+  const top = pausable.reduce((a, b) => (share(b) > share(a) ? b : a));
+  const readable = pausable.some((m) => m.used !== null);
   // Only real readings change the pause: if Cloudflare couldn't be read, keep things as they are.
   const paused = readable ? share(top) >= PAUSE_AT : bool(prev?.paused);
   const reason = paused ? `${top.label} reached ${percent(top)} of what ${paid ? 'the $5 plan' : "Cloudflare's free file storage"} includes.` : null;
@@ -292,7 +322,9 @@ export async function checkUsage(env: GuardEnv, now = new Date()): Promise<{ sum
   const daily = today && dailyAlert(today.meters, todayKey, prev?.dailyAlerted ?? null);
   if (today) errors.push(...today.errors.map((e) => `today: ${e}`));
   // Each email goes once per billing month: a warning, then (if it comes to that) the pause.
-  const level = paused ? 'pause' : share(top) >= WARN_AT ? 'warn' : null;
+  // The warning counts builds too (they can't pause the app, but their own gate stops them at 90%).
+  const warnTop = billable.reduce((a, b) => (share(b) > share(a) ? b : a));
+  const level = paused ? 'pause' : share(warnTop) >= WARN_AT ? 'warn' : null;
   const was = prev?.alerted ?? '';
   const send = level && !was.startsWith(`${window.key}:${level === 'warn' ? '' : 'pause'}`) ? `${window.key}:${level}` : null;
 
@@ -315,13 +347,30 @@ export async function checkUsage(env: GuardEnv, now = new Date()): Promise<{ sum
     const keep = paid ? 'keep your Cloudflare bill at $5' : 'avoid file storage charges';
     await emailOwner(env, `UniVerse is paused to ${keep}`, `${reason}\n\nTo ${keep}, the app now shows a "taking a short break" page. ${reopen}\n\nTo open it again now and accept extra charges, add a secret named CF_GUARD_OFF (any value) to universe-web in Cloudflare.\n\nUsage this billing month:\n${list}`);
   } else if (send) {
-    await emailOwner(env, paid ? 'UniVerse has used 70% of the $5 Cloudflare plan' : "UniVerse has used 70% of Cloudflare's free file storage", `${top.label} is at ${percent(top)} of what ${paid ? 'the $5 plan' : "Cloudflare's free file storage (R2)"} includes this billing month. If anything reaches 90%, UniVerse pauses itself until the next billing month so nothing extra is charged.\n\nUsage this billing month:\n${list}`);
+    await emailOwner(env, paid ? 'UniVerse has used 70% of the $5 Cloudflare plan' : "UniVerse has used 70% of Cloudflare's free file storage", `${warnTop.label} is at ${percent(warnTop)} of what ${paid ? 'the $5 plan' : "Cloudflare's free file storage (R2)"} includes this billing month. If anything reaches 90%, UniVerse pauses itself until the next billing month so nothing extra is charged (site builds stop instead: new changes go live next month, or add the CF_GUARD_OFF secret to allow them and accept the extra cost, $0.005 a minute).\n\nUsage this billing month:\n${list}`);
   }
   const todayTop = today?.meters.filter((m) => m.used !== null).reduce<Meter | null>((a, b) => (!a || share(b) > share(a) ? b : a), null);
   return {
     summary: `${paused ? 'paused' : 'running'}; highest ${top.key} ${percent(top)}${todayTop ? `; today ${todayTop.key} ${percent(todayTop)}` : ''}${errors.length ? `; unreadable: ${errors.length}` : ''}`,
     alert: daily && today ? dailyAlertText(daily, today.meters) : null,
   };
+}
+
+/**
+ * GET /api/build-budget, asked by each site build in its first seconds (scripts/build-budget.mjs):
+ * stop when this billing month's build minutes have passed 90% of what the $5 includes (from the
+ * last 15-minute check). CF_GUARD_OFF lets builds through, as it lets the app run.
+ */
+export async function buildBudget(env: GuardEnv): Promise<Response> {
+  const row = env.DB ? await env.DB.prepare('SELECT meters FROM usage_guard WHERE id = ?').bind('main').first<{ meters: string | null }>().catch(() => null) : null;
+  let used: number | null = null;
+  try { used = (JSON.parse(row?.meters ?? '[]') as Meter[]).find((m) => m.key === 'buildMinutes')?.used ?? null; } catch { /* not read yet */ }
+  const limit = METERS.find((m) => m.key === 'buildMinutes')!.limit;
+  const stop = paidPlan(env) && !env.CF_GUARD_OFF && used !== null && used >= PAUSE_AT * limit;
+  return Response.json(
+    { stop, used, limit, reason: stop ? `This month's site builds have used ${used} of the ${limit} minutes the $5 Cloudflare plan includes.` : null },
+    { headers: { 'Cache-Control': 'no-store' } },
+  );
 }
 
 // ─── The gate: what the app's requests see ─────────────────────────────────────────────────────
