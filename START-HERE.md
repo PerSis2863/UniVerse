@@ -20,7 +20,7 @@ Cursor's).
   for each item.
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: start with its "Next steps" and the
   S2, Q26, S1 and Q24/Q25 notes.
-- **Next database update number: `0174`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0176`** (files in `apps/web/prisma/migrations/`).
 
 **Moving to the $5 Cloudflare plan (Workers Paid)**, in this order:
 1. In Cloudflare: Workers & Pages → Plans → Workers Paid ($5 a month, plus any local tax).

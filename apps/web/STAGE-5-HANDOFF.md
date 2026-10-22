@@ -48,6 +48,39 @@ element and reason. That's how the endless SVG ping (SVG animations re-lay out a
 frame; they can't run on the GPU) and the per-row JS animations showed up. An idle page should
 show almost nothing.
 
+## Security: admins see only their own school; payment keys encrypted (22 Oct 2026)
+
+- **The rule** (`src/server/school-scope.ts`): `schoolsOf(user)` → the schools an admin's views
+  cover: their `organizationId`, plus the organisation they own (`organizations.ownerId`, where
+  OneRoster puts imported people); an admin in no school runs the main school (people with no
+  `organizationId`); the verified platform owner gets `'all'`. Use `usersIn(schools)` (Prisma, users),
+  `orgIn(schools)` (any record with its own `organizationId`), `schoolSql(schools, alias)` (raw SQL),
+  `assertInSchool(user, personId)` (by-id: throws "not found"), `keepInSchool` (bulk), `inSchools`.
+  A course belongs to its teacher's school (`access.ts` `adminOf`). **Any new admin endpoint that
+  lists or changes people's data must use these.**
+- Tests: `src/server/school-scope*.test.ts` (one file per area); browser check
+  `scripts/checks/school-scope-ui.mjs` (moves the demo admin into the test school for a moment).
+- Migrations 0174 (`invitations.organizationId`; the invited person joins that school) and 0175
+  (`safety_alerts.organizationId`, kept for anonymous reports).
+- **Payment keys** (`src/server/secret-box.ts`): `seal(value, "<orgId>:<field>")` / `open(...)`,
+  AES-GCM, key from SESSION_SECRET (HKDF). Old plain keys are encrypted by the daily step
+  `seal-secrets`. If SESSION_SECRET changes, schools must enter their keys again (Admin → Payments
+  says so) and their payments stop meanwhile (never the site's keys).
+- Still shared by every school (no school column yet): see the "Sec" Progress row.
+
+## Cost guard: build minutes (22 Oct 2026)
+
+`cloudflare/usage-guard.ts` meter `buildMinutes` (Workers Builds REST API, same read-only token);
+`/api/build-budget` (answered in `cloudflare/worker.ts` before the gate) and
+`scripts/build-budget.mjs` (first step of `pnpm build`, only on Workers Builds: `WORKERS_CI=1`):
+not `main` → stop; past 90% of 6,000 minutes on the paid plan → stop. `CF_GUARD_OFF` overrides.
+
+## S4 · Scroll motion on every page (22 Oct 2026, owner request)
+
+`src/lib/scroll-motion.ts` (see its header) + `src/components/ScrollMotion.tsx` in the root layout;
+CSS `[data-sr]` and `.aurora-a/.aurora-b` in `globals.css`. It only tags parts that start below the
+screen, so the page entrance (S1-S3) isn't doubled. Opt out with `data-no-motion`.
+
 ## Q26 · Scheduled exports, table tools and a blog: done (21 Oct 2026)
 
 - **Scheduled exports** (`src/server/report-schedules.ts`, `src/components/admin/ScheduledExports.tsx`,
