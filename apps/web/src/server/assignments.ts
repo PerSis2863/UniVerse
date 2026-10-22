@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { courseAccess, taughtBy } from '@/lib/course-access';
+import { schoolsOf, usersIn } from './school-scope';
 import { getSessionUser, type SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
 import { audit } from './audit';
@@ -188,7 +189,7 @@ export async function submissionForTeacher(submissionId: string, user: SessionUs
 
 const COURSE = { select: { id: true, code: true, name: true, color: true } } as const;
 
-/** Teachers: assignments in courses they teach (admins: every course, or one). Students: their courses'. */
+/** Teachers: assignments in courses they teach (admins: their school's courses, or one). Students: their courses'. */
 export async function listAssignments(user: SessionUser, courseId: string | null) {
   if (user.role === 'STUDENT') {
     const enrolled = (await prisma.enrollment.findMany({ where: { studentId: user.id }, select: { courseId: true } })).map((e) => e.courseId);
@@ -212,8 +213,10 @@ export async function listAssignments(user: SessionUser, courseId: string | null
     });
   }
   if (user.role !== 'TEACHER' && user.role !== 'ADMIN') throw new ForbiddenException('Assignments are for courses you teach or take.');
+  // Admins: courses whose teacher is in their school (school-scope.ts); the platform owner, every one.
+  const scope = user.role !== 'ADMIN' ? { course: taughtBy(user.id) } : await schoolsOf(user).then((s) => (s === 'all' ? {} : { course: { teacher: usersIn(s) } }));
   const rows = await prisma.assignment.findMany({
-    where: { ...(courseId ? { courseId } : {}), ...(user.role === 'ADMIN' ? {} : { course: taughtBy(user.id) }) },
+    where: { ...(courseId ? { courseId } : {}), ...scope },
     orderBy: { createdAt: 'desc' },
     take: 200,
     select: {

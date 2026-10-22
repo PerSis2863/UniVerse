@@ -7,7 +7,7 @@ import { inSchools, schoolsOf, usersIn } from '@/server/school-scope';
 
 // Verified impact reports (admins). GET: issued reports + organisations to choose from.
 // POST { title, organization?, from, to, preview? } → a preview of the figures, or issues the report.
-// The lists are the admin's own school's: reports its admins issued, and its people's credentials.
+// The lists and figures are the admin's own school's: reports its admins issued, and its people's credentials.
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   if (sp.get('preview') === '1') {
     const period = parsePeriod(sp.get('from'), sp.get('to'));
     if (!period) return NextResponse.json({ error: 'Choose a valid period.' }, { status: 400 });
-    return NextResponse.json(await computeReport({ title: sp.get('title')?.trim().slice(0, 140) || 'Verified impact report', organization: sp.get('organization')?.trim().slice(0, 200) || null, ...period }));
+    return NextResponse.json(await computeReport({ title: sp.get('title')?.trim().slice(0, 140) || 'Verified impact report', organization: sp.get('organization')?.trim().slice(0, 200) || null, ...period, schools: await schoolsOf(user) }));
   }
   const schools = await schoolsOf(user);
   const mine = usersIn(schools);
@@ -59,8 +59,10 @@ export async function POST(req: Request) {
   const { from, to } = period;
   const title = typeof b.title === 'string' && b.title.trim() ? b.title.trim().slice(0, 140) : 'Verified impact report';
   const organization = typeof b.organization === 'string' && b.organization.trim() ? b.organization.trim().slice(0, 200) : null;
+  // Only the admin's own school's people's credentials count (the owner's report: everyone's).
+  const schools = await schoolsOf(user);
   try {
-    const r = await issueReport({ title, organization, from, to }, { id: user.id, name: user.name });
+    const r = await issueReport({ title, organization, from, to, schools }, { id: user.id, name: user.name });
     audit(user, { action: 'impact_report.issued', summary: `Issued impact report “${title}”${organization ? ` for ${organization}` : ''}`, targetType: 'impact_report', targetId: r.id }, req);
     return NextResponse.json({ id: r.id, url: reportUrl(r.slug) });
   } catch {

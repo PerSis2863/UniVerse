@@ -5,6 +5,7 @@ import { later, notifyMany } from './email';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { pushService } from './services/push.service';
 import { taughtBy } from '@/lib/course-access';
+import { schoolsOf, usersIn } from './school-scope';
 
 // Office hours with a queue (Stage 4 · 4.7). A teacher opens office hours for a while (30 minutes to
 // 2 hours, maybe with a topic); their students see them in Calls and join the line in the call room
@@ -80,7 +81,10 @@ export async function addOfficeNote(user: SessionUser, b: Record<string, unknown
   const studentId = String(b.studentId ?? '');
   const body = typeof b.body === 'string' ? b.body.trim().slice(0, 2000) : '';
   if (!body) throw new BadRequestException('Write the note first.');
-  const mine = user.role === 'ADMIN' || !!(await prisma.enrollment.findFirst({ where: { studentId, course: taughtBy(user.id, ['CO_TEACHER']) }, select: { id: true } }));
+  // Admins: any student of their own school (another school's look "not found").
+  const mine = user.role === 'ADMIN'
+    ? !!(await prisma.user.findFirst({ where: { id: studentId, ...usersIn(await schoolsOf(user)) }, select: { id: true } }))
+    : !!(await prisma.enrollment.findFirst({ where: { studentId, course: taughtBy(user.id, ['CO_TEACHER']) }, select: { id: true } }));
   if (!mine) throw new NotFoundException('That student isn’t in one of your classes.');
   return prisma.officeNote.create({ data: { teacherId: user.id, studentId, body }, select: { id: true, body: true, createdAt: true } });
 }
