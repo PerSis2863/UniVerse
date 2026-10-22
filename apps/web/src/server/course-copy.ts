@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from './http';
+import { inSchools, schoolsOf } from './school-scope';
 import { indexCourseAssignments } from './search-index';
 
 // Copy a course to a new term (Stage 5 · B2): its modules and their items, materials, quizzes and
@@ -59,10 +60,17 @@ export function parentsFirst<T extends { id: string; parentId: string | null }>(
 const DAY = 86_400_000;
 const shifted = (d: Date | null, shiftDays: number | null) => (d && shiftDays !== null ? new Date(d.getTime() + shiftDays * DAY) : null);
 
+/**
+ * The course, if this person may copy it or copy into it: its teacher, or an admin of its school (a
+ * course is its teacher's school, school-scope.ts). Another school's course looks gone to an admin,
+ * so its quizzes, answer keys and materials can't be copied out of it or into it.
+ */
 async function managed(courseId: string, user: SessionUser) {
-  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, code: true, name: true, description: true, skills: true, credits: true, department: true, color: true, emoji: true, teacherId: true } });
+  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, code: true, name: true, description: true, skills: true, credits: true, department: true, color: true, emoji: true, teacherId: true, teacher: { select: { organizationId: true } } } });
   if (!course) throw new NotFoundException('That course isn’t there any more.');
-  if (user.role !== 'ADMIN' && course.teacherId !== user.id) throw new ForbiddenException('Only the course’s teacher or an admin can copy it.');
+  if (course.teacherId === user.id) return course;
+  if (user.role !== 'ADMIN') throw new ForbiddenException('Only the course’s teacher or an admin can copy it.');
+  if (!inSchools(await schoolsOf(user), course.teacher?.organizationId)) throw new NotFoundException('That course isn’t there any more.');
   return course;
 }
 

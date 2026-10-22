@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const preview = await previewOneRosterSync(auth.org.id, payload);
+    const preview = await previewOneRosterSync(auth.org.id, auth.user, payload);
     return NextResponse.json(preview);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Invalid OneRoster data';

@@ -2,7 +2,7 @@ import prisma from '@/lib/db';
 import { toCsv } from '@/lib/csv';
 import { IMPORT_COLUMNS, IMPORT_KINDS, MAX_IMPORT_ROWS, type ImportKind } from '@/lib/import-columns';
 import type { SessionUser } from '@/lib/server-auth';
-import { BadRequestException, NotFoundException } from './http';
+import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { need } from './permissions';
 import { inSchools, schoolSql, schoolsOf, usersIn, type SchoolIds } from './school-scope';
 
@@ -17,7 +17,8 @@ import { inSchools, schoolSql, schoolsOf, usersIn, type SchoolIds } from './scho
 // Every lookup and write is one statement whatever the number of rows (JSON in one bound value,
 // read with json_each), so 1,000 rows stay within D1's 50 statements and 100 values a request.
 // An admin imports into (and exports) only their own school (school-scope.ts): people, invitations
-// and courses (a course is its teacher's school) of another school are never matched or changed.
+// and courses (a course is its teacher's school) of another school are never matched or changed,
+// and an import is undone only when everything it changed is the viewer's school's.
 
 export type Action = 'invite' | 'enrol' | 'create' | 'update' | 'skip' | 'error';
 export interface RowResult { n: number; action: Action; message: string; label: string }
@@ -360,10 +361,13 @@ export async function importHistory(user: SessionUser) {
 export async function undoImport(user: SessionUser, id: string, b: Record<string, unknown>) {
   await need(user, 'import.run');
   if (b.action !== 'undo') throw new BadRequestException('Unknown action.');
-  const batch = await prisma.importBatch.findFirst({ where: { id, createdBy: usersIn(await schoolsOf(user)) }, select: { undo: true, undoneAt: true, createdAt: true } });
+  const schools = await schoolsOf(user);
+  const batch = await prisma.importBatch.findFirst({ where: { id, createdBy: usersIn(schools) }, select: { undo: true, undoneAt: true, createdAt: true } });
   if (!batch) throw new NotFoundException('That import doesn’t exist.');
   if (batch.undoneAt) throw new BadRequestException('This import was already undone.');
   if (Date.now() - batch.createdAt.getTime() > UNDO_DAYS * 86_400_000) throw new BadRequestException(`Imports can be undone for ${UNDO_DAYS} days.`);
+  // Its maker may also run a school the viewer doesn't (one they own): then it's theirs to undo.
+  if (await touchesOtherSchools(JSON.parse(batch.undo) as Undo, schools)) throw new ForbiddenException('This import also changed another school’s records: only whoever made it can undo it.');
   // Claimed first, so two clicks never undo twice.
   const claim = await prisma.importBatch.updateMany({ where: { id, undoneAt: null }, data: { undoneAt: new Date(), undoneById: user.id } });
   if (!claim.count) throw new BadRequestException('This import was already undone.');
@@ -390,6 +394,27 @@ export async function undoImport(user: SessionUser, id: string, b: Record<string
       OR EXISTS (SELECT 1 FROM timetable_slots WHERE "courseId" = c.id))`, u.courses)).map((x) => x.id);
   await writeWith(`DELETE FROM courses WHERE id IN ${ids}`, u.courses.filter((c) => !used.includes(c)));
   return { undone: true, kept: { invitations: Number(invitesKept), courses: used.length } };
+}
+
+/**
+ * How many of the records an undo would change aren't the viewer's schools': invitations by their
+ * school, enrolments by their student's and course's, courses (and the teacher a change would put
+ * back) by their teacher's. One statement; each list is one JSON value, the schools the last.
+ */
+async function touchesOtherSchools(u: Undo, schools: Schools): Promise<boolean> {
+  if (schools === 'all') return false;
+  const ids = (n: number, path = '') => `(SELECT ${path ? `json_extract(value, '$.${path}')` : 'value'} FROM json_each(?${n}))`;
+  const ours = (a: string) => (schools.includes(null) ? `(${a}.organizationId IS NULL OR ${a}.organizationId IN ${ids(8)})` : `(${a}.organizationId IS NOT NULL AND ${a}.organizationId IN ${ids(8)})`);
+  const course = `JOIN courses c ON c.id = x."courseId" JOIN users t ON t.id = c."teacherId"`;
+  const rows = await prisma.$queryRawUnsafe<{ n: number | bigint }[]>(`SELECT
+      (SELECT COUNT(*) FROM invitations i WHERE (i.id IN ${ids(1)} OR lower(i.email) IN ${ids(2, 'email')}) AND NOT ${ours('i')})
+    + (SELECT COUNT(*) FROM enrollments x JOIN users s ON s.id = x."studentId" ${course} WHERE x.id IN ${ids(3)} AND NOT (${ours('s')} AND ${ours('t')}))
+    + (SELECT COUNT(*) FROM pending_enrolments x ${course} WHERE x.id IN ${ids(4)} AND NOT ${ours('t')})
+    + (SELECT COUNT(*) FROM courses c JOIN users t ON t.id = c."teacherId" WHERE (c.id IN ${ids(5)} OR c.id IN ${ids(6, 'id')}) AND NOT ${ours('t')})
+    + (SELECT COUNT(*) FROM users t WHERE t.id IN ${ids(6, 'before.teacherId')} AND NOT ${ours('t')})
+    + (SELECT COUNT(*) FROM timetable_slots x ${course} WHERE x.id IN ${ids(7)} AND NOT ${ours('t')}) AS n`,
+  ...[u.invitations, u.reinvites, u.enrollments, u.pending, u.courses, u.courseUpdates, u.slots, schools.filter(Boolean)].map((list) => JSON.stringify(list ?? [])));
+  return Number(rows[0]?.n ?? 0) > 0;
 }
 
 /** When someone invited by an import joins: the classes waiting for them become real enrolments. */

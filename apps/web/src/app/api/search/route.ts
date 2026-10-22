@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
+import { schoolsOf, usersIn } from '@/server/school-scope';
 import { searchMine, type FoundItem } from '@/server/search-index';
 
 // Platform-wide search for the ⌘K palette: courses, groups, NGO projects, internships and
 // knowledge-hub resources the caller can see, and (Stage 5 · Q10) the words inside their documents,
 // task cards and assignments, their courses' materials, task boards and campus events, with the page
-// each result opens.
+// each result opens. An admin finds their own school's courses (drafts too; a course is its
+// teacher's school) and knowledge-hub resources (by their author's school, besides public ones and
+// their own), never another school's (school-scope.ts).
 
 export type SearchResult = {
   type: 'course' | 'group' | 'project' | 'internship' | 'resource';
@@ -32,11 +35,13 @@ export async function GET(req: Request) {
   const qs = encodeURIComponent(q);
   // SQLite LIKE is case-insensitive for ASCII.
   const text = (...fields: string[]) => ({ OR: fields.map((f) => ({ [f]: { contains: q } })) });
+  const schools = admin ? await schoolsOf(user) : 'all';
+  const ofSchool = schools !== 'all';
 
   const [mine, courses, groups, projects, internships, resources] = await Promise.all([
     searchMine(user, q).catch((e) => (console.error('search:', e), [] as FoundItem[])),
     prisma.course.findMany({
-      where: { ...text('name', 'code', 'department'), ...(admin ? {} : { status: 'PUBLISHED' as const }) },
+      where: { ...text('name', 'code', 'department'), ...(admin ? (ofSchool ? { teacher: usersIn(schools) } : {}) : { status: 'PUBLISHED' as const }) },
       select: { id: true, name: true, code: true, department: true },
       take: LIMIT,
     }),
@@ -58,7 +63,7 @@ export async function GET(req: Request) {
         })
       : [],
     prisma.knowledgeHubResource.findMany({
-      where: { AND: [admin ? {} : { OR: [{ isPublic: true }, { authorId: user.id }] }, text('title', 'description', 'category')] },
+      where: { AND: [admin && !ofSchool ? {} : { OR: [{ isPublic: true }, { authorId: user.id }, ...(admin ? [{ author: usersIn(schools) }] : [])] }, text('title', 'description', 'category')] },
       select: { id: true, title: true, category: true },
       take: LIMIT,
     }),
