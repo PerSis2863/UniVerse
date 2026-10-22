@@ -4,6 +4,7 @@ import { isAppFileUrl } from '@/lib/storage';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { publish } from './realtime';
+import { inSchools, peopleWhere, schoolSql, schoolsOf, usersIn, type SchoolIds } from './school-scope';
 import { pushService } from './services/push.service';
 
 // The campus network (upgrade 9): several universities in one UniVerse. A campus is a group of
@@ -15,6 +16,9 @@ import { pushService } from './services/push.service';
 //
 // Privacy: the directory shows campuses and counts, never people. Search only finds people at
 // other campuses who turned on "Let partner campuses find me" (src/app/api/chat/users).
+//
+// Admins move, assign and send on exchange only their own school's people (school-scope.ts), and
+// share only their own school's courses. Campuses themselves are network-wide.
 
 const DAY = 86_400_000;
 const MAX_DOMAINS = 10;
@@ -69,12 +73,13 @@ export async function campusForEmail(email: string | null | undefined): Promise<
   return best?.id ?? null;
 }
 
-/** Puts people who have no campus yet into the one their email domain belongs to. Returns how many moved. */
-export async function assignByDomain(): Promise<number> {
+/** Puts people of these schools who have no campus yet into the one their email domain belongs to. Returns how many moved. */
+export async function assignByDomain(schools: SchoolIds | 'all'): Promise<number> {
   const pairs = (await campusList(true)).flatMap((c) => c.domains.map((d) => ({ id: c.id, d }))).sort((a, b) => b.d.length - a.d.length).slice(0, 30);
+  const school = schoolSql(schools, '"users"');
   let moved = 0;
   for (const p of pairs) {
-    moved += await prisma.$executeRawUnsafe(`UPDATE "users" SET "campusId" = ? WHERE "campusId" IS NULL AND (lower("email") LIKE ? OR lower("email") LIKE ?)`, p.id, `%@${p.d}`, `%.${p.d}`);
+    moved += await prisma.$executeRawUnsafe(`UPDATE "users" SET "campusId" = ? WHERE "campusId" IS NULL AND (lower("email") LIKE ? OR lower("email") LIKE ?) AND ${school.sql}`, p.id, `%@${p.d}`, `%.${p.d}`, ...school.args);
   }
   return moved;
 }
@@ -140,8 +145,9 @@ export async function networkOverview(user: SessionUser) {
   ]);
   const name = (id: string | null | undefined) => rows.find((r) => r.id === id)?.name ?? null;
   const ex = me?.studentProfile;
-  const unassigned = user.role === 'ADMIN'
-    ? num((await prisma.$queryRawUnsafe<{ n: Num }[]>(`SELECT COUNT(*) AS n FROM "users" WHERE "campusId" IS NULL AND "status" = 'ACTIVE' AND "role" IN ('STUDENT', 'TEACHER')`))[0]?.n)
+  const school = user.role === 'ADMIN' ? schoolSql(await schoolsOf(user), 'u') : null;
+  const unassigned = school
+    ? num((await prisma.$queryRawUnsafe<{ n: Num }[]>(`SELECT COUNT(*) AS n FROM "users" u WHERE u."campusId" IS NULL AND u."status" = 'ACTIVE' AND u."role" IN ('STUDENT', 'TEACHER') AND ${school.sql}`, ...school.args))[0]?.n)
     : null;
   return {
     campuses: rows.map((r) => ({
@@ -205,7 +211,7 @@ export async function createCampus(user: SessionUser, body: Record<string, unkno
   await assertDomainsFree(domains, null);
   const campus = await prisma.campus.create({ data: { ...(data as Prisma.CampusCreateInput), emailDomains: JSON.stringify(domains) }, select: { id: true, name: true } });
   cache = null;
-  const moved = domains.length ? await assignByDomain() : 0;
+  const moved = domains.length ? await assignByDomain(await schoolsOf(user)) : 0;
   return { ...campus, moved };
 }
 
@@ -216,7 +222,7 @@ export async function updateCampus(user: SessionUser, id: string, body: Record<s
   const campus = await prisma.campus.update({ where: { id }, data, select: { id: true, name: true } }).catch(() => null);
   if (!campus) throw new NotFoundException('This campus no longer exists.');
   cache = null;
-  const moved = data.emailDomains !== undefined ? await assignByDomain() : 0;
+  const moved = data.emailDomains !== undefined ? await assignByDomain(await schoolsOf(user)) : 0;
   return { ...campus, moved };
 }
 
@@ -237,7 +243,7 @@ export async function setPersonCampus(user: SessionUser, body: Record<string, un
   const campusId = typeof body.campusId === 'string' && body.campusId ? body.campusId : null;
   if (!email) throw new BadRequestException('Type the person’s email address.');
   if (campusId && !(await prisma.campus.findUnique({ where: { id: campusId }, select: { id: true } }))) throw new NotFoundException('This campus no longer exists.');
-  const person = await prisma.user.findUnique({ where: { email }, select: { id: true, name: true } });
+  const person = await prisma.user.findFirst({ where: { email, ...(await peopleWhere(user)) }, select: { id: true, name: true } });
   if (!person) throw new NotFoundException(`No one on UniVerse uses ${email}.`);
   await prisma.user.update({ where: { id: person.id }, data: { campusId } });
   return { name: person.name };
@@ -246,9 +252,10 @@ export async function setPersonCampus(user: SessionUser, body: Record<string, un
 // ─── Joint courses ───────────────────────────────────────────────────────────────────────────
 
 async function requireCourseManager(user: SessionUser, courseId: string) {
-  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, code: true, teacherId: true, teacher: { select: { campusId: true } } } });
+  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, code: true, teacherId: true, teacher: { select: { campusId: true, organizationId: true } } } });
   if (!course) throw new NotFoundException('Course not found.');
-  if (user.role !== 'ADMIN' && course.teacherId !== user.id) throw new ForbiddenException('Only the course’s teacher or an admin can share it.');
+  // Admins: only their own school's courses (a course is its teacher's school).
+  if (course.teacherId !== user.id && !(user.role === 'ADMIN' && inSchools(await schoolsOf(user), course.teacher.organizationId))) throw new ForbiddenException('Only the course’s teacher or an admin can share it.');
   return course;
 }
 
@@ -273,7 +280,7 @@ export async function unshareCourse(user: SessionUser, courseId: string, campusI
 /** Courses for the sharing screens: the teacher's own (admins: every course), with the campuses each is shared with. */
 export async function shareableCourses(user: SessionUser) {
   const courses = await prisma.course.findMany({
-    where: user.role === 'ADMIN' ? {} : { teacherId: user.id },
+    where: user.role === 'ADMIN' ? { teacher: usersIn(await schoolsOf(user)) } : { teacherId: user.id },
     orderBy: [{ status: 'asc' }, { code: 'asc' }],
     take: user.role === 'ADMIN' ? 300 : 60,
     select: {
@@ -337,7 +344,7 @@ const day = (v: unknown) => {
 export async function setExchange(user: SessionUser, body: Record<string, unknown>) {
   requireAdmin(user);
   const email = text(body.email, 200).toLowerCase();
-  const student = email ? await prisma.user.findUnique({ where: { email }, select: { id: true, name: true, role: true, campusId: true } }) : null;
+  const student = email ? await prisma.user.findFirst({ where: { email, ...(await peopleWhere(user)) }, select: { id: true, name: true, role: true, campusId: true } }) : null;
   if (!student || student.role !== 'STUDENT') throw new NotFoundException(email ? `No student on UniVerse uses ${email}.` : 'Type the student’s email address.');
   const campus = typeof body.campusId === 'string' ? await prisma.campus.findUnique({ where: { id: body.campusId }, select: { id: true, name: true } }) : null;
   if (!campus) throw new NotFoundException('Pick the campus they’re going to.');
@@ -355,7 +362,7 @@ export async function setExchange(user: SessionUser, body: Record<string, unknow
 
 export async function endExchange(user: SessionUser, studentId: string) {
   requireAdmin(user);
-  await prisma.studentProfile.updateMany({ where: { userId: studentId }, data: { exchangeCampusId: null, exchangeFrom: null, exchangeUntil: null } });
+  await prisma.studentProfile.updateMany({ where: { userId: studentId, user: await peopleWhere(user) }, data: { exchangeCampusId: null, exchangeFrom: null, exchangeUntil: null } });
   return { ok: true };
 }
 
@@ -363,7 +370,7 @@ export async function endExchange(user: SessionUser, studentId: string) {
 export async function exchangeList(user: SessionUser) {
   requireAdmin(user);
   const rows = await prisma.studentProfile.findMany({
-    where: { exchangeCampusId: { not: null } },
+    where: { exchangeCampusId: { not: null }, user: await peopleWhere(user) },
     orderBy: { exchangeFrom: 'desc' },
     take: 200,
     select: { exchangeFrom: true, exchangeUntil: true, exchangeCampus: { select: { name: true } }, user: { select: { id: true, name: true, email: true, campus: { select: { name: true } } } } },

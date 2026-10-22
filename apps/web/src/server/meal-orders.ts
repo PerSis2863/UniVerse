@@ -5,6 +5,7 @@ import { cleanOrderItems, dishesOf, pickupOk, prepList } from '@/lib/student-lif
 import type { Body } from './body';
 import { notify } from './email';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
+import { peopleWhere } from './school-scope';
 import { pushService } from './services/push.service';
 
 // Cafeteria pre-orders (Stage 5 · Q17): order from today's or tomorrow's menu (campus_items kind MENU,
@@ -57,9 +58,11 @@ export async function cancelMealOrder(user: SessionUser, id: string) {
 export async function kitchenOrders(user: SessionUser, day: string | null) {
   if (user.role !== 'ADMIN') throw new ForbiddenException('Admins only.');
   const d = day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? new Date(`${day}T12:00:00Z`) : new Date();
+  // Only orders by the admin's own school's people (school-scope.ts).
+  const mine = await peopleWhere(user);
   const menus = await prisma.campusItem.findMany({
     where: { kind: 'MENU', startAt: { gte: new Date(d.getTime() - 14 * 3_600_000), lte: new Date(d.getTime() + 14 * 3_600_000) } }, orderBy: { startAt: 'asc' }, take: 20,
-    select: { id: true, title: true, category: true, location: true, startAt: true, mealOrders: { orderBy: { pickupAt: 'asc' }, take: 500, select: { id: true, items: true, pickupAt: true, note: true, code: true, status: true, user: { select: { name: true } } } } },
+    select: { id: true, title: true, category: true, location: true, startAt: true, mealOrders: { where: { user: mine }, orderBy: { pickupAt: 'asc' }, take: 500, select: { id: true, items: true, pickupAt: true, note: true, code: true, status: true, user: { select: { name: true } } } } },
   });
   return {
     menus: menus.map(({ mealOrders, ...m }) => {
@@ -73,7 +76,7 @@ export async function kitchenOrders(user: SessionUser, day: string | null) {
 export async function setMealOrderStatus(user: SessionUser, b: Body) {
   if (user.role !== 'ADMIN') throw new ForbiddenException('Admins only.');
   const status = ['READY', 'COLLECTED', 'CANCELLED'].includes(String(b.status)) ? String(b.status) : null;
-  const o = await prisma.mealOrder.findUnique({ where: { id: typeof b.id === 'string' ? b.id : '' }, select: { id: true, userId: true, code: true, status: true, menu: { select: { location: true } } } });
+  const o = await prisma.mealOrder.findFirst({ where: { id: typeof b.id === 'string' ? b.id : '', user: await peopleWhere(user) }, select: { id: true, userId: true, code: true, status: true, menu: { select: { location: true } } } });
   if (!o || !status) throw new NotFoundException('Order not found.');
   await prisma.mealOrder.update({ where: { id: o.id }, data: { status } });
   if (status === 'READY' && o.status !== 'READY') {
