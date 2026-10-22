@@ -1,6 +1,6 @@
 'use client';
 import { MiniPlayer } from '@/components/chat/MiniPlayer';
-import { Fragment, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SampleModeBar } from '@/components/SampleMode';
 import { useSampleMode } from '@/lib/sample-mode';
 import { Sidebar } from './Sidebar';
@@ -32,6 +32,9 @@ import { PullToRefresh } from './PullToRefresh';
 import dynamic from 'next/dynamic';
 
 // The "+" menu (Stage 5 · Q8), loaded when it's opened.
+// The main tabs are downloaded once per visit, when the app is idle (see DashboardShell).
+let tabsPrefetched = false;
+
 const QuickCreate = dynamic(() => import('./QuickCreate').then((m) => m.QuickCreate), { ssr: false });
 
 interface DashboardShellProps {
@@ -136,6 +139,25 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const [bootCover, setBootCover] = useState(entrancePending);
   useLayoutEffect(() => { playAppEntrance(shellRef.current); }, []);
+
+  // The main tabs download quietly once the app is idle, so a first tap on one opens at once and
+  // its entrance glides straight away instead of waiting on the network (pages open without
+  // prefetching otherwise, to keep requests low). One request each, from the cache; not in
+  // low-data mode or with the browser's data saver on.
+  const role = user?.role;
+  useEffect(() => {
+    if (!role || tabsPrefetched) return;
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+    if (saveData || document.documentElement.classList.contains('low-data')) return;
+    const run = () => {
+      tabsPrefetched = true;
+      for (const t of tabsForRole(role).items) if (t.href !== window.location.pathname) router.prefetch(t.href);
+    };
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    if (w.requestIdleCallback) { const id = w.requestIdleCallback(run, { timeout: 4000 }); return () => w.cancelIdleCallback?.(id); }
+    const t = window.setTimeout(run, 2500);
+    return () => window.clearTimeout(t);
+  }, [role, router]);
 
   const openSearch = () => {
     openCommandPalette();

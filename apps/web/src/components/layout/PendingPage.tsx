@@ -3,12 +3,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { usePendingNav } from '@/lib/nav-pending';
-import { EASE_GLIDE, EASE_IOS, LEAVE_MS, REVEAL_GAP_MS, REVEAL_MS, enterFrames, enterMs, leaveFrames, movingParts, pageEntranceShown, pageMotion, reducedMotion, revealFrames, revealParts } from '@/lib/page-transition';
+import { EASE_GLIDE, EASE_IOS, LEAVE_MS, REVEAL_GAP_MS, REVEAL_MS, enterFrames, enterMs, isTall, leaveFrames, movingParts, pageEntranceShown, pageMotion, reducedMotion, revealFrames, revealParts } from '@/lib/page-transition';
 import { PageSkeleton, skeletonFor } from './PageSkeleton';
 
 // Past this, a page that's still downloading shows its loading skeleton (pages open without
 // prefetching, to keep requests low, so a first visit takes a moment on the free plan).
-const SKELETON_AFTER = 260;
+const SKELETON_AFTER = 180;
 
 type Ref<T> = { current: T };
 
@@ -75,12 +75,18 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(t);
   }, [leaving, pending]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The skeleton fades in from the top of the page, like the new page will be.
+  // The skeleton glides in the way the page will: its blocks rise into place one after another
+  // (from half visible, so the screen never empties while the old page goes).
   useLayoutEffect(() => {
     if (!skeleton) return;
     skeletonCopy.current = (skeletonBox.current?.cloneNode(true) as HTMLElement | undefined) ?? null;
     window.scrollTo(0, 0);
-    animate(running, stage.current ? [stage.current] : [], [{ opacity: 0.4 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' });
+    for (const a of running.current) a.cancel();
+    const blocks = Array.from(skeletonBox.current?.firstElementChild?.children ?? []);
+    const calm = reducedMotion();
+    running.current = blocks.map((b, i) => b.animate(
+      calm ? [{ opacity: 0.5 }, { opacity: 1 }] : [{ opacity: 0.45, transform: 'translate3d(0, 18px, 0)' }, { opacity: 1, transform: 'none' }],
+      { duration: calm ? 200 : 460, delay: calm ? 0 : Math.min(i, 8) * 55, easing: EASE_GLIDE, fill: 'backwards' }));
   }, [skeleton]);
 
   // The new page is on screen (before it's painted): it comes in. Deeper and back slide the whole
@@ -109,7 +115,7 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
     }
     for (const a of running.current) a.cancel();
     running.current = revealParts(page(), m).filter((t) => typeof (t as HTMLElement).animate === 'function')
-      .map((t, i) => t.animate(revealFrames(i), { duration: REVEAL_MS, delay: Math.min(i, 8) * REVEAL_GAP_MS, easing: EASE_GLIDE, fill: 'backwards' }));
+      .map((t, i) => t.animate(revealFrames(i, isTall(t)), { duration: REVEAL_MS, delay: Math.min(i, 8) * REVEAL_GAP_MS, easing: EASE_GLIDE, fill: 'backwards' }));
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Data arriving where a loading placeholder was: what replaces it fades in where it stood (one

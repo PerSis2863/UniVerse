@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { setPendingNav } from '@/lib/nav-pending';
 import { motionFor, startPageTransition } from '@/lib/page-transition';
 import { rememberShared } from '@/lib/shared-element';
@@ -16,6 +16,7 @@ export function NavProgress() {
   const search = useSearchParams();
   const [state, setState] = useState<'idle' | 'loading' | 'done'>('idle');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -55,15 +56,28 @@ export function NavProgress() {
       const here = onScreen();
       if (!nav && here && here !== location.pathname) startPageTransition('pop');
     };
+    // A mouse button going down on a link starts downloading its page, a moment before the click
+    // lands, so it can open the moment it does. Mouse only: on a touch screen a finger also goes
+    // down to scroll, which would download pages nobody opens.
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      const a = (e.target as Element | null)?.closest?.('a');
+      if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+      const url = new URL(a.href, location.href);
+      if (url.origin !== location.origin || url.pathname === location.pathname || url.pathname.startsWith('/api/')) return;
+      router.prefetch(url.pathname + url.search);
+    };
+    document.addEventListener('pointerdown', onDown, true);
     document.addEventListener('click', onClick, true);
     window.addEventListener('popstate', onPop, true);
     nav?.addEventListener('navigate', onNavigate);
     return () => {
+      document.removeEventListener('pointerdown', onDown, true);
       document.removeEventListener('click', onClick, true);
       window.removeEventListener('popstate', onPop, true);
       nav?.removeEventListener('navigate', onNavigate);
     };
-  }, []);
+  }, [router]);
 
   // The new page is shown: finish the bar.
   const route = `${pathname}?${search}`;

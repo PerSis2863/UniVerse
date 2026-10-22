@@ -69,6 +69,28 @@ show almost nothing.
 - **Browser check:** `node scripts/checks/q26-ui.mjs` with `pnpm local:serve --test-secret --owner-test`.
   **Not run yet** (merged at the owner's request first): run it before anything else and fix what it finds.
 
+## S3 · Every page glides in: done (22 Oct 2026, owner request)
+
+After S2 the owner still found page loads "not smooth like AgentGPT". AgentGPT's pages are
+prefetched, so each tap shows the next page at once and its entrance always plays; UniVerse opened
+pages without prefetching, so a first tap mostly showed a dimmed page, then grey boxes, and the
+glide only at the end. Public pages and sign-in had no entrance at all. Rules:
+
+- **The main tabs are prefetched** once per visit when the app is idle (`DashboardShell`,
+  `router.prefetch` for `tabsForRole(role).items`; one request each, from the cache; skipped in
+  low-data mode and with the browser's data saver). With `staleTimes` (5 min, `next.config.ts`) a
+  tab opens at once and its entrance plays straight away.
+- **Mouse press prefetches** the link's page a moment before the click (`NavProgress`). Not on
+  touch: a finger also goes down to scroll, which would download pages nobody opens.
+- **The loading skeleton glides in** (`PendingPage`: its blocks rise 18 px from half visible, 55 ms
+  apart) and shows after 180 ms (was 260).
+- **Stronger page entrances:** parts rise 32 px over 620 ms, 80 ms apart; the title settles down
+  14 px; a part as tall as a third of the screen opens out from its top edge (`revealFrames`,
+  `isTall` in `src/lib/page-transition.ts`).
+- **Public pages and sign-in** glide in with CSS `.hero-in` (from the first paint, no JavaScript):
+  the legal pages' shell (`LegalShell`: eyebrow, title, intro, content in turn), the sign-in form
+  and its desktop copy (`(auth)/layout.tsx`).
+
 ## S2 · AgentGPT-style entrance: done (22 Oct 2026, owner request)
 
 After S1 the owner still found loading "not smooth like" https://agentgpt.reworkd.ai. Its source

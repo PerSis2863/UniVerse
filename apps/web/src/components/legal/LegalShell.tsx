@@ -15,11 +15,12 @@ export function LegalShell({ eyebrow = 'Legal', title, intro, updated, children 
       <MarketingNav />
       <main className="relative z-10 px-4 sm:px-6 pt-32 md:pt-40 pb-20">
         <div className="max-w-3xl mx-auto">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-400">{eyebrow}</p>
-          <h1 className="mt-3 text-3xl sm:text-5xl font-black tracking-tight break-words">{title}</h1>
-          {intro && <div className="mt-4 text-base sm:text-lg text-zinc-400 leading-relaxed">{intro}</div>}
-          {updated && <p className="mt-3 text-xs text-zinc-500">Last updated {updated}</p>}
-          <div className="mt-10 space-y-10">{children}</div>
+          {/* The page glides in part by part as it opens (.hero-in, CSS: from the first paint). */}
+          <p className="hero-in text-xs font-bold uppercase tracking-[0.2em] text-indigo-400">{eyebrow}</p>
+          <h1 style={{ animationDelay: '80ms' }} className="hero-in mt-3 text-3xl sm:text-5xl font-black tracking-tight break-words">{title}</h1>
+          {intro && <div style={{ animationDelay: '160ms' }} className="hero-in mt-4 text-base sm:text-lg text-zinc-400 leading-relaxed">{intro}</div>}
+          {updated && <p style={{ animationDelay: '200ms' }} className="hero-in mt-3 text-xs text-zinc-500">Last updated {updated}</p>}
+          <div style={{ animationDelay: '260ms' }} className="hero-in mt-10 space-y-10">{children}</div>
         </div>
       </main>
       <MarketingFooter />
