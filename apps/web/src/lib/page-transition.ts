@@ -61,6 +61,8 @@ export function enterFrames(m: PageMotion): Keyframe[] {
   // Never from fully transparent: the first frames would show an empty screen.
   if (m === 'shared') return [{ opacity: 0.3 }, { opacity: 1 }];
   const from = m === 'push' ? 'translate3d(56px, 0, 0)' : m === 'pop' ? 'translate3d(-56px, 0, 0)' : m === 'tab' ? 'translate3d(0, 16px, 0)' : 'translate3d(0, 20px, 0) scale(0.99)';
+  // Between tabs the content hands over through a short blur (one surface changing what it shows).
+  if (m === 'tab') return [{ opacity: 0.3, transform: from, filter: 'blur(8px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }];
   return [{ opacity: 0.3, transform: from }, { opacity: 1, transform: 'none' }];
 }
 
@@ -89,11 +91,29 @@ export function revealParts(page: Element | null, m: PageMotion): Element[] {
  * as tall as a third of the screen opens out from its top edge (AgentGPT's window).
  */
 export function revealFrames(i: number, tall = false): Keyframe[] {
-  if (i > 0 && tall) return [{ opacity: 0, transform: 'translate3d(0, 24px, 0) scale(0.97, 0.92)', transformOrigin: '50% 0' }, { opacity: 1, transform: 'none', transformOrigin: '50% 0' }];
-  return [{ opacity: i === 0 ? 0.35 : 0, transform: i === 0 ? 'translate3d(0, -14px, 0)' : 'translate3d(0, 32px, 0)' }, { opacity: 1, transform: 'none' }];
+  // M1: each part also comes into focus (from a soft blur), far enough and slow enough to see.
+  if (i > 0 && tall) return [{ opacity: 0, transform: 'translate3d(0, 40px, 0) scale(0.96, 0.9)', transformOrigin: '50% 0', filter: 'blur(10px)' }, { opacity: 1, transform: 'none', transformOrigin: '50% 0', filter: 'blur(0)' }];
+  if (i === 0) return [{ opacity: 0.35, transform: 'translate3d(0, -14px, 0)', filter: 'blur(6px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }];
+  return [{ opacity: 0, transform: 'translate3d(0, 48px, 0) scale(0.97)', filter: 'blur(10px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }];
 }
-export const REVEAL_MS = 620;
-export const REVEAL_GAP_MS = 80;
+export const REVEAL_MS = 880;
+export const REVEAL_GAP_MS = 95;
+
+/** A page's title sweeping into view along its reading direction, out of a blur (M1). */
+export function titleFrames(rtl: boolean): Keyframe[] {
+  const hidden = rtl ? 'inset(-20% 0 -30% 100%)' : 'inset(-20% 100% -30% 0)';
+  return [{ clipPath: hidden, filter: 'blur(8px)', transform: 'translate3d(0, 10px, 0)' }, { clipPath: 'inset(-20% 0 -30% 0)', filter: 'blur(0)', transform: 'none' }];
+}
+export const TITLE_MS = 900;
+
+/** The page's visible title (the phone's large title or the computer's bar title) sweeps into view. */
+export function sweepTitle(page: Element | null | undefined, delay = 60) {
+  const title = [...(page?.querySelectorAll('h1') ?? [])].find((h) => h.getBoundingClientRect().height > 0);
+  if (title && typeof title.animate === 'function' && !reducedMotion()) title.animate(titleFrames(document.documentElement.dir === 'rtl'), { duration: TITLE_MS, delay, easing: EASE_GLIDE, fill: 'backwards' });
+}
+
+/** Drops the movement from frames for "Reduce Motion": only the fade is left. */
+export const calmFrames = (frames: Keyframe[]) => frames.map(({ opacity }) => (opacity === undefined ? {} : { opacity }));
 /** A part counts as tall (and opens out) from a third of the screen's height. */
 export const isTall = (el: Element) => el.getBoundingClientRect().height > window.innerHeight * 0.34;
 

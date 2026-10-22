@@ -48,6 +48,19 @@ element and reason. That's how the endless SVG ping (SVG animations re-lay out a
 frame; they can't run on the GPU) and the per-row JS animations showed up. An idle page should
 show almost nothing.
 
+## M1 · Motion you can see on every page (22 Oct 2026, owner request)
+
+The owner said the site still looked the same after S1–S4: the motion was there but faint and
+short, and only below the fold. Now (all automatic, nothing to add to a page):
+- `src/lib/page-transition.ts`: `revealFrames` (blur 10 px → 0, 48 px rise, 880 ms, 95 ms apart),
+  `titleFrames`/`sweepTitle` (the visible h1 sweeps in along the reading direction), `calmFrames`
+  (Reduce Motion keeps only the fade). Used by `PendingPage` and `app-entrance.ts`.
+- `src/components/layout/PageAurora.tsx` in `DashboardShell`'s `<main>` and the landing hero: three
+  SVG ribbon layers drifting by transform (CSS `ribbon-1..3`), masked out before the cards, paused
+  off screen, `min(340px, 50vh)` tall on touch screens. Not full-screen on purpose (see `.ambient-bg`).
+- `scroll-motion.ts`: figures, bars and lines play wherever they are; `startSheen` (mouse only) adds
+  `.sheen` to the `.panel`/`.card` under the pointer. CSS at the end of `globals.css` (M1 section).
+
 ## Security: admins see only their own school; payment keys encrypted (22 Oct 2026)
 
 - **The rule** (`src/server/school-scope.ts`): `schoolsOf(user)` → the schools an admin's views

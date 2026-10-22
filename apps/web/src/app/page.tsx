@@ -1,7 +1,7 @@
 'use client';
 
 import Link from '@/components/ui/Link';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AnimatePresence, MotionConfig, m as motion, useMotionTemplate, useMotionValue, useScroll, useSpring, useTransform,
@@ -14,6 +14,7 @@ import {
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
+import { PageAurora } from '@/components/layout/PageAurora';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { TabPanel, TabPill } from '@/components/ui/Glide';
 
@@ -334,6 +335,7 @@ export default function ShowcasePage() {
         <MarketingNav />
 
         <main className="relative z-10">
+          <PageAurora hero />
           {/* ── Hero ─────────────────────────────────────────── */}
           <section className="px-6 pt-36 md:pt-44 pb-16">
             <motion.div style={{ y: heroY, opacity: heroOpacity }} className="max-w-5xl mx-auto flex flex-col items-center text-center">
@@ -347,13 +349,14 @@ export default function ShowcasePage() {
                 <ArrowRight className="w-3 h-3 text-zinc-500 group-hover:translate-x-0.5 transition-transform" />
               </a>
 
-              <h1
-                style={{ animationDelay: '80ms' }}
-                className="hero-in text-[2.75rem] leading-[1.05] sm:text-6xl md:text-7xl lg:text-[5.25rem] font-black tracking-[-0.035em]"
-              >
-                The impact platform
+              {/* Each word rises out of its own mask, one after another (M1). */}
+              <h1 className="text-[2.75rem] leading-[1.05] sm:text-6xl md:text-7xl lg:text-[5.25rem] font-black tracking-[-0.035em]">
+                {['The', 'impact', 'platform'].map((w, i) => (
+                  <Fragment key={w}><span className="word-mask"><span className="word-rise" style={{ animationDelay: `${80 + i * 90}ms` }}>{w}</span></span>{' '}</Fragment>
+                ))}
                 <br />
-                for <RotatingWord />
+                <span className="word-mask"><span className="word-rise" style={{ animationDelay: '350ms' }}>for</span></span>{' '}
+                <span className="word-rise" style={{ animationDelay: '440ms' }}><RotatingWord /></span>
               </h1>
 
               <p

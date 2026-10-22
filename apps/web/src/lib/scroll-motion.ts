@@ -7,6 +7,8 @@ import { EASE_GLIDE, reducedMotion } from './page-transition';
 // overflow-hidden` bar tracks; chart SVGs), and a MutationObserver catches parts that arrive later.
 // Transform and opacity only (the GPU does the work), nothing for "Reduce Motion", nothing printed.
 // Opt out with data-no-motion on any container; opt in an element with data-reveal.
+// M1: figures, bars and lines play on every page, not only below the fold, and on computers a soft
+// light follows the pointer over cards (.sheen in globals.css).
 
 const BLOCK = 'section, article, .panel, .card, [data-reveal], [class*="rounded-2xl"], [class*="rounded-3xl"]';
 const SKIP = '[data-no-motion], [role="dialog"], [role="menu"], [role="listbox"], [aria-modal="true"], .stagger, nav, header, footer, table, form, .fixed, .sticky, [data-page-skeleton], [role="status"]';
@@ -125,10 +127,11 @@ export function scan(root: ParentNode = document) {
     return !!svg && !svg.classList.contains('lucide') && w >= 60 && el.getAttribute('fill') === 'none' && !!el.getAttribute('stroke');
   });
   if (!found.length) return;
-  // Reads first (one layout), then writes: only what is still below the screen moves.
-  const below = found.filter(([el]) => {
+  // Reads first (one layout), then writes. Blocks move only if still below the screen (the page's
+  // entrance brings in the rest); figures, bars and lines play wherever they are, on every page.
+  const below = found.filter(([el, kind]) => {
     const r = el.getBoundingClientRect();
-    return r.top > fold && r.height > 0;
+    return r.height > 0 && (kind !== 'block' || r.top > fold);
   });
   const o = observer();
   for (const [el, kind] of below) {
@@ -143,9 +146,44 @@ let mo: MutationObserver | null = null;
 const queued: Element[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;
 
+const CARD = '.panel, .card, .card-hover';
+
+/**
+ * The light under the pointer (computers with a mouse or trackpad): one listener for the page,
+ * at most once a frame; only cards without a background picture of their own take it.
+ */
+function startSheen(): () => void {
+  if (!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) return () => {};
+  let lit: HTMLElement | null = null, x = 0, y = 0, frame = 0;
+  const off = () => { lit?.classList.remove('sheen'); lit = null; };
+  const paint = () => {
+    frame = 0;
+    if (!lit) return;
+    const r = lit.getBoundingClientRect();
+    lit.style.setProperty('--mx', `${x - r.left}px`);
+    lit.style.setProperty('--my', `${y - r.top}px`);
+  };
+  const move = (e: PointerEvent) => {
+    if (e.pointerType !== 'mouse') return;
+    x = e.clientX; y = e.clientY;
+    const card = (e.target as Element | null)?.closest?.(CARD) as HTMLElement | null;
+    if (card !== lit) {
+      off();
+      if (card && !card.closest(SKIP) && (card.classList.contains('sheen') || getComputedStyle(card).backgroundImage === 'none')) { lit = card; card.classList.add('sheen'); }
+    }
+    if (lit && !frame) frame = requestAnimationFrame(paint);
+  };
+  document.addEventListener('pointermove', move, { passive: true });
+  document.addEventListener('pointerleave', off);
+  return () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerleave', off); off(); };
+}
+
+let stopSheen: (() => void) | null = null;
+
 /** Starts scroll motion for the whole app (once). Returns a stop function. */
 export function startScrollMotion(): () => void {
   if (typeof window === 'undefined' || mo || reducedMotion()) return () => {};
+  stopSheen = startSheen();
   const flush = () => {
     timer = null;
     const roots = queued.splice(0, 40);
@@ -157,5 +195,5 @@ export function startScrollMotion(): () => void {
   });
   mo.observe(document.body, { childList: true, subtree: true });
   scan(document);
-  return () => { mo?.disconnect(); mo = null; io?.disconnect(); io = null; };
+  return () => { mo?.disconnect(); mo = null; io?.disconnect(); io = null; stopSheen?.(); stopSheen = null; };
 }

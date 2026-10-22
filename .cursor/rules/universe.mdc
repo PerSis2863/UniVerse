@@ -46,6 +46,15 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
   Languages (Q21): use start/end classes (`ms-` `me-` `ps-` `pe-` `start-` `end-` `text-start`), not left/right, so
   Arabic and Urdu mirror (`node scripts/rtl-logical-classes.mjs` converts); after adding or changing screen text run
   `node scripts/gen-ui-strings.mjs` (the catalog the translations come from); mark people's own content `translate="no"`.
+- **The motion layer (M1) works on every page by itself**, so new pages get it with nothing added:
+  pages assemble out of a blur (`revealFrames`, `src/lib/page-transition.ts`), the title sweeps in
+  (`sweepTitle`), glowing ribbons drift behind the top (`PageAurora`), figures count up, bars fill,
+  charts draw (`src/lib/scroll-motion.ts`), cards glow under the mouse (`.sheen`). Opt a part out
+  with `data-no-motion`. Rules (from Apple's motion guidance, in our words): motion has a job
+  (arriving, changing, answering a tap), never makes anyone wait (no blocking, nothing to sit
+  through), stays brief on things people do often (tab switches ~0.4 s), and Reduce Motion (the
+  device's or Settings → Appearance) leaves only fades. Transform, opacity and short filters only;
+  never animate what sits under frosted glass across the whole screen (each frame redoes the blur).
 - **No polling.** Live updates: `publish()` (`src/server/realtime.ts`) plus a `useLiveInterval`
   fallback, or `useActivePoll` for screens without live updates (`src/lib/realtime-client.ts`).
 - **AI** always: `spendAi` (daily allowance), `featureOff('ai')` (the owner's switch), and the AI

@@ -21,6 +21,7 @@ import { haptic } from '@/lib/haptics';
 import { authedJson } from '@/lib/authed-fetch';
 import useSWR from 'swr';
 import { PendingPage } from './PendingPage';
+import { PageAurora } from './PageAurora';
 import { AppSkeleton } from './AppSkeleton';
 import { entrancePending, playAppEntrance } from '@/lib/app-entrance';
 import { isTabRoot, tabsForRole, type TabItem } from '@/lib/app-tabs';
@@ -203,6 +204,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
         <SwipeBack enabled={canGoBack} pathname={pathname} onBack={back} />
         <main id="main" tabIndex={-1} className="mobile-main flex-1 flex flex-col min-w-0 overflow-x-clip outline-none">
+          <PageAurora />
           <SampleModeBar />
           {/* Re-mount pages when switching between sample and real data so they reload from the right source */}
           <Fragment key={sampleMode ? 'sample' : 'real'}><PendingPage>{children}</PendingPage></Fragment>
