@@ -17,7 +17,8 @@ const SWITCHABLE: Role[] = ['STUDENT', 'TEACHER'];
 type Actor = { id: string };
 export interface Skipped { id: string; name: string; why: string }
 
-function cleanIds(ids: string[], max: number) {
+/** The ids asked for: valid, without repeats, at most `max` (checked before anything is looked up). */
+export function cleanIds(ids: string[], max: number) {
   const unique = [...new Set(ids.filter((id) => /^[A-Za-z0-9_-]{1,40}$/.test(id)))];
   if (!unique.length) throw new BadRequestException('Choose at least one person.');
   if (unique.length > max) throw new BadRequestException(`Choose up to ${max} people at a time.`);

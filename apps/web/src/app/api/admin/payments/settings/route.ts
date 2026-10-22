@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   });
 
   // A saved secret that can't be decrypted (SESSION_SECRET changed) counts as missing: enter it again.
-  const [rzp, stripe] = await Promise.all([open(org?.razorpayKeySecret), open(org?.stripeSecretKey)]);
+  const [rzp, stripe] = await Promise.all([open(org?.razorpayKeySecret, `${auth.org.id}:razorpayKeySecret`), open(org?.stripeSecretKey, `${auth.org.id}:stripeSecretKey`)]);
   return NextResponse.json({
     paymentProvider: org?.paymentProvider || 'AUTO',
     razorpayKeyId: org?.razorpayKeyId || null,
@@ -51,8 +51,8 @@ export async function PATCH(req: Request) {
   if ((rzpSecret || stripeSecret) && !canSeal()) {
     return NextResponse.json({ error: 'Payment keys can’t be saved safely yet: the server’s SESSION_SECRET isn’t set. Ask the site owner.' }, { status: 503 });
   }
-  if (rzpSecret) data.razorpayKeySecret = await seal(rzpSecret);
-  if (stripeSecret) data.stripeSecretKey = await seal(stripeSecret);
+  if (rzpSecret) data.razorpayKeySecret = await seal(rzpSecret, `${auth.org.id}:razorpayKeySecret`);
+  if (stripeSecret) data.stripeSecretKey = await seal(stripeSecret, `${auth.org.id}:stripeSecretKey`);
 
   const updated = await prisma.organization.update({
     where: { id: auth.org.id },

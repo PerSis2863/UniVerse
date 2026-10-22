@@ -46,15 +46,29 @@ export const paymentsTestMode = () => process.env.PAYMENTS_TEST_MODE === '1';
 const TEST_STRIPE = 'sk_test_mock_secret', TEST_RZP_ID = 'rzp_test_mock_12345', TEST_RZP_SECRET = 'rzp_mock_secret';
 const env = (k: string) => (process.env[k] ?? '').trim().replace(/^["']|["']$/g, '');
 
-type OrgKeys = { razorpayKeyId?: string | null; razorpayKeySecret?: string | null; stripeSecretKey?: string | null; stripePublishableKey?: string | null } | null | undefined;
-/** The gateway's keys (the school's own, else the site's), test ones only in test mode; null when not set up. School secrets are stored encrypted (secret-box.ts). */
+type OrgKeys = { id?: string; razorpayKeyId?: string | null; razorpayKeySecret?: string | null; stripeSecretKey?: string | null; stripePublishableKey?: string | null } | null | undefined;
+/**
+ * The gateway's keys (the school's own, else the site's), test ones only in test mode; null when not
+ * set up. School secrets are stored encrypted (secret-box.ts). A school secret that is saved but
+ * can't be read (the server's SESSION_SECRET changed) means "not set up", never the site's keys:
+ * the school's payments would otherwise be paid into the site's own account.
+ */
 export async function gatewayKeys(org: OrgKeys, provider: PaymentProviderName) {
+  const school = async (field: 'razorpayKeySecret' | 'stripeSecretKey') => {
+    const stored = org?.[field];
+    if (!stored) return { saved: false, secret: null };
+    return { saved: true, secret: await openSecret(stored, `${org?.id ?? ''}:${field}`) };
+  };
   if (provider === 'RAZORPAY') {
-    const keyId = org?.razorpayKeyId || env('RAZORPAY_KEY_ID'), secret = (await openSecret(org?.razorpayKeySecret)) || env('RAZORPAY_KEY_SECRET');
+    const own = await school('razorpayKeySecret');
+    if (own.saved && !own.secret) return null;
+    const keyId = org?.razorpayKeyId || env('RAZORPAY_KEY_ID'), secret = own.secret || env('RAZORPAY_KEY_SECRET');
     if (keyId && secret) return { keyId, secret, test: false };
     return paymentsTestMode() ? { keyId: TEST_RZP_ID, secret: TEST_RZP_SECRET, test: true } : null;
   }
-  const secret = (await openSecret(org?.stripeSecretKey)) || env('STRIPE_SECRET_KEY');
+  const own = await school('stripeSecretKey');
+  if (own.saved && !own.secret) return null;
+  const secret = own.secret || env('STRIPE_SECRET_KEY');
   const keyId = org?.stripePublishableKey || env('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
   if (secret) return { keyId, secret, test: false };
   return paymentsTestMode() ? { keyId: 'pk_test_mock_publishable', secret: TEST_STRIPE, test: true } : null;
@@ -185,7 +199,7 @@ export async function confirmUnifiedPayment(
 ): Promise<VerifyPaymentOutput> {
   const order = await prisma.paymentOrder.findUnique({
     where: { id: params.orderId },
-    include: { organization: { select: { razorpayKeyId: true, razorpayKeySecret: true, stripeSecretKey: true, stripePublishableKey: true } } },
+    include: { organization: { select: { id: true, razorpayKeyId: true, razorpayKeySecret: true, stripeSecretKey: true, stripePublishableKey: true } } },
   });
 
   if (!order || (userId && order.userId !== userId)) throw new NotFoundException('Payment order not found.');

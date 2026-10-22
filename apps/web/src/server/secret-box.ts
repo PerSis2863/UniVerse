@@ -5,7 +5,8 @@ import prisma from '@/lib/db';
 // copy of the database alone doesn't give anyone the keys. Stored as "enc:v1:<iv>.<ciphertext>"
 // (base64url). A value without that prefix is an older plain one: still read, and encrypted by the
 // daily jobs (daily-jobs.ts `seal-secrets`). If SESSION_SECRET changes, saved keys can't be read
-// any more and the school enters them again (Admin → Payments says so).
+// any more and the school enters them again (Admin → Payments says so); payments then stop rather
+// than fall back to the site's own keys (payments/provider.ts).
 
 const PREFIX = 'enc:v1:';
 const b64 = (u: Uint8Array) => Buffer.from(u).toString('base64url');
@@ -32,24 +33,28 @@ export const isSealed = (v: string | null | undefined) => !!v && v.startsWith(PR
 /** Whether secrets can be encrypted here (SESSION_SECRET of 32+ characters is set). */
 export const canSeal = () => key() !== null;
 
-/** Encrypts a secret for the database. Throws when SESSION_SECRET isn't set: never stored plain. */
-export async function seal(plain: string): Promise<string> {
+/**
+ * Encrypts a secret for the database. `context` names where it's kept ("<school id>:<field>"): it's
+ * bound to the value, so a sealed key copied to another school or field doesn't open. Throws when
+ * SESSION_SECRET isn't set: never stored plain.
+ */
+export async function seal(plain: string, context: string): Promise<string> {
   const k = key();
   if (!k) throw new Error('SESSION_SECRET is not set, so secrets can’t be stored safely.');
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const out = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await k, new TextEncoder().encode(plain)));
+  const out = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(context) }, await k, new TextEncoder().encode(plain)));
   return `${PREFIX}${b64(iv)}.${b64(out)}`;
 }
 
-/** The secret from the database: decrypted, an older plain value as it is, or null (empty, or unreadable after SESSION_SECRET changed). */
-export async function open(stored: string | null | undefined): Promise<string | null> {
+/** The secret from the database: decrypted, an older plain value as it is, or null (empty, or unreadable: SESSION_SECRET changed, or moved from another `context`). */
+export async function open(stored: string | null | undefined, context: string): Promise<string | null> {
   if (!stored) return null;
   if (!isSealed(stored)) return stored;
   const k = key();
   const [iv, data] = stored.slice(PREFIX.length).split('.');
   if (!k || !iv || !data) return null;
   try {
-    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(iv) }, await k, unb64(data)));
+    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(iv), additionalData: new TextEncoder().encode(context) }, await k, unb64(data)));
   } catch {
     return null;
   }
@@ -70,7 +75,7 @@ export async function sealOldSecrets(): Promise<{ done: boolean; info: number }>
     const data: Record<string, string> = {};
     for (const k of ['razorpayKeySecret', 'stripeSecretKey', 'razorpayWebhookSecret', 'stripeWebhookSecret'] as const) {
       const v = o[k];
-      if (v && !isSealed(v)) data[k] = await seal(v);
+      if (v && !isSealed(v)) data[k] = await seal(v, `${o.id}:${k}`);
     }
     if (Object.keys(data).length) { await prisma.organization.update({ where: { id: o.id }, data }); sealed++; }
   }

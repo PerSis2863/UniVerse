@@ -10,8 +10,9 @@ type Guard = {
   dailyAlertText(a: Alert, meters: Meter[]): { title: string; body: string };
   checkUsage(env: Record<string, unknown>, now?: Date): Promise<{ summary: string; alert: { title: string; body: string } | null }>;
   buildBudget(env: Record<string, unknown>): Promise<Response>;
+  forgetBuildsRead(): void;
 };
-const { buildBudget, checkUsage, dailyAlert, dailyAlertText } = (await import('../../cloudflare/usage-guard' as string)) as Guard;
+const { buildBudget, forgetBuildsRead, checkUsage, dailyAlert, dailyAlertText } = (await import('../../cloudflare/usage-guard' as string)) as Guard;
 
 const meter = (key: string, used: number | null, limit: number): Meter => ({ key, label: key, used, limit });
 
@@ -119,12 +120,14 @@ describe('checkUsage on each plan', () => {
     const meters = String(saved[0].meters);
     expect(JSON.parse(meters).find((m: { key: string }) => m.key === 'buildMinutes')).toMatchObject({ used: 5600, limit: 6000 });
     expect(saved[0].alerted).toMatch(/:warn$/); // the 70% email still goes
-    const ask = async (extra: Record<string, unknown>) => (await buildBudget(env({ WORKERS_PAID: 'true', ...extra }, d1({ meters }).db))).json();
+    const ask = async (extra: Record<string, unknown>) => (forgetBuildsRead(), await buildBudget(env({ WORKERS_PAID: 'true', ...extra }, d1({ meters }).db))).json();
     expect(await ask({})).toMatchObject({ stop: true, used: 5600 });
     expect(await ask({ CF_GUARD_OFF: '1' })).toMatchObject({ stop: false });
     // Under 90%, or on the free plan (builds aren't charged there): build.
     const low = JSON.stringify([{ key: 'buildMinutes', used: 3000, limit: 6000 }]);
+    forgetBuildsRead();
     expect(await (await buildBudget(env({ WORKERS_PAID: 'true' }, d1({ meters: low }).db))).json()).toMatchObject({ stop: false });
+    forgetBuildsRead();
     expect(await (await buildBudget(env({}, d1({ meters }).db))).json()).toMatchObject({ stop: false });
   });
 });

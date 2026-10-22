@@ -9,7 +9,7 @@ import { audit } from '../audit';
 import { currentApplication } from './applications';
 import { TERMS_VERSION } from '@/lib/terms-version';
 import { exportUserData } from '../export';
-import { bulkRole, bulkStatus, renewInvitation } from '../user-bulk';
+import { ROLE_BATCH, STATUS_BATCH, bulkRole, bulkStatus, cleanIds, renewInvitation } from '../user-bulk';
 import { assertInSchool, inSchools, keepInSchool, orgIn, peopleWhere, schoolsOf, usersIn } from '../school-scope';
 
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
@@ -169,6 +169,9 @@ export default function users(router: Router) {
     if (!EMAIL_RE.test(email)) throw new BadRequestException('Enter a valid email address.');
     if (!INVITABLE.includes(role)) throw new BadRequestException('Choose Student, Staff or Organization.');
     if (await prisma.user.findUnique({ where: { email } })) throw new ConflictException('User with this email already exists');
+    // Another school's pending invitation stays theirs (it decides which school the person joins).
+    const pending = await prisma.invitation.findUnique({ where: { email }, select: { organizationId: true } });
+    if (pending && !inSchools(await schoolsOf(user), pending.organizationId)) throw new ConflictException('This address already has an invitation from another school.');
     const invitation = await prisma.invitation.upsert({
       where: { email },
       update: { role, status: 'PENDING', expiresAt: inviteExpiry(), organizationId: user.organizationId ?? null },
@@ -193,6 +196,12 @@ export default function users(router: Router) {
       const rows = await prisma.user.findMany({ where: { email: { in: valid.slice(i, i + 90) } }, select: { email: true } });
       rows.forEach((r) => existing.add(r.email.toLowerCase()));
     }
+    // Another school's pending invitations stay theirs: those addresses are left out, like members.
+    const schools = await schoolsOf(user);
+    for (let i = 0; i < valid.length; i += 90) {
+      const theirs = await prisma.invitation.findMany({ where: { email: { in: valid.slice(i, i + 90).filter((e) => !existing.has(e)) } }, select: { email: true, organizationId: true } });
+      theirs.filter((inv) => !inSchools(schools, inv.organizationId)).forEach((inv) => existing.add(inv.email.toLowerCase()));
+    }
     const toInvite = valid.filter((e) => !existing.has(e));
     const expiresAt = inviteExpiry();
     for (let i = 0; i < toInvite.length; i += 25) {
@@ -214,14 +223,14 @@ export default function users(router: Router) {
   // Several people at once (Admin → Users, Phase E): status, or a wrong role (no courses yet).
   r.post('bulk/status', { roles: ['ADMIN'] }, async ({ body, user, req }) => {
     if (!oneOf(USER_STATUSES, body?.status)) throw new BadRequestException(`status must be one of ${USER_STATUSES.join(', ')}`);
-    const out = await bulkStatus(user, await keepInSchool(user, strings(body?.ids)), body.status);
+    const out = await bulkStatus(user, await keepInSchool(user, cleanIds(strings(body?.ids), STATUS_BATCH)), body.status);
     if (out.changed) audit(user, { action: 'user.status_changed', summary: `Set ${out.changed} account${out.changed === 1 ? '' : 's'} to ${body.status}: ${out.names.slice(0, 10).join(', ')}${out.changed > 10 ? '…' : ''}`, targetType: 'user', metadata: { status: body.status, count: out.changed } }, req);
     return out;
   });
   r.post('bulk/role', { roles: ['ADMIN'] }, async ({ body, user, req }) => {
     const role = oneOf(['STUDENT', 'TEACHER'] as const, body?.role) ? body.role : null;
     if (!role) throw new BadRequestException('Choose Student or Teacher.');
-    const out = await bulkRole(user, await keepInSchool(user, strings(body?.ids)), role);
+    const out = await bulkRole(user, await keepInSchool(user, cleanIds(strings(body?.ids), ROLE_BATCH)), role);
     if (out.changed) audit(user, { action: 'user.role_changed', summary: `Made ${out.names.slice(0, 10).join(', ')}${out.changed > 10 ? '…' : ''} ${role === 'STUDENT' ? 'students' : 'teachers'}`, targetType: 'user', metadata: { role, count: out.changed } }, req);
     return out;
   });

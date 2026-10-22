@@ -361,10 +361,16 @@ export async function checkUsage(env: GuardEnv, now = new Date()): Promise<{ sum
  * stop when this billing month's build minutes have passed 90% of what the $5 includes (from the
  * last 15-minute check). CF_GUARD_OFF lets builds through, as it lets the app run.
  */
+let buildsRead: { at: number; used: number | null } | null = null;
 export async function buildBudget(env: GuardEnv): Promise<Response> {
-  const row = env.DB ? await env.DB.prepare('SELECT meters FROM usage_guard WHERE id = ?').bind('main').first<{ meters: string | null }>().catch(() => null) : null;
-  let used: number | null = null;
-  try { used = (JSON.parse(row?.meters ?? '[]') as Meter[]).find((m) => m.key === 'buildMinutes')?.used ?? null; } catch { /* not read yet */ }
+  // Public (builds can't sign in), so the figure is read at most once a minute.
+  if (!buildsRead || Date.now() - buildsRead.at >= 60_000) {
+    const row = env.DB ? await env.DB.prepare('SELECT meters FROM usage_guard WHERE id = ?').bind('main').first<{ meters: string | null }>().catch(() => null) : null;
+    let used: number | null = null;
+    try { used = (JSON.parse(row?.meters ?? '[]') as Meter[]).find((m) => m.key === 'buildMinutes')?.used ?? null; } catch { /* not read yet */ }
+    buildsRead = { at: Date.now(), used };
+  }
+  const { used } = buildsRead;
   const limit = METERS.find((m) => m.key === 'buildMinutes')!.limit;
   const stop = paidPlan(env) && !env.CF_GUARD_OFF && used !== null && used >= PAUSE_AT * limit;
   return Response.json(
@@ -372,6 +378,8 @@ export async function buildBudget(env: GuardEnv): Promise<Response> {
     { headers: { 'Cache-Control': 'no-store' } },
   );
 }
+/** For tests: forget the figure read. */
+export const forgetBuildsRead = () => { buildsRead = null; };
 
 // ─── The gate: what the app's requests see ─────────────────────────────────────────────────────
 // Two switches decide it: the spending guard above (usage_guard) and the owner's server switch in

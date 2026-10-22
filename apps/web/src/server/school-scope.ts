@@ -28,6 +28,8 @@ export function schoolsOf(user: Who): Promise<SchoolIds | 'all'> {
       return ids;
     })();
     memo.set(user, p);
+    // A failed lookup isn't kept: the next call tries again.
+    p.catch(() => memo.delete(user));
   }
   return p;
 }
