@@ -85,13 +85,17 @@ export function revealParts(page: Element | null, m: PageMotion): Element[] {
 
 /**
  * One part's entrance: the first (the title) is half there at once (never a blank screen) and
- * settles down into place; the rest rise in from below, far enough to see them glide.
+ * settles down into place; the rest rise in from below, far enough to see them glide, and a part
+ * as tall as a third of the screen opens out from its top edge (AgentGPT's window).
  */
-export function revealFrames(i: number): Keyframe[] {
-  return [{ opacity: i === 0 ? 0.35 : 0, transform: i === 0 ? 'translate3d(0, -10px, 0)' : 'translate3d(0, 24px, 0)' }, { opacity: 1, transform: 'none' }];
+export function revealFrames(i: number, tall = false): Keyframe[] {
+  if (i > 0 && tall) return [{ opacity: 0, transform: 'translate3d(0, 24px, 0) scale(0.97, 0.92)', transformOrigin: '50% 0' }, { opacity: 1, transform: 'none', transformOrigin: '50% 0' }];
+  return [{ opacity: i === 0 ? 0.35 : 0, transform: i === 0 ? 'translate3d(0, -14px, 0)' : 'translate3d(0, 32px, 0)' }, { opacity: 1, transform: 'none' }];
 }
-export const REVEAL_MS = 560;
-export const REVEAL_GAP_MS = 70;
+export const REVEAL_MS = 620;
+export const REVEAL_GAP_MS = 80;
+/** A part counts as tall (and opens out) from a third of the screen's height. */
+export const isTall = (el: Element) => el.getBoundingClientRect().height > window.innerHeight * 0.34;
 
 /** Durations in ms: the old page goes quickly; the new one is readable at once and glides to rest. */
 export const LEAVE_MS = 170;

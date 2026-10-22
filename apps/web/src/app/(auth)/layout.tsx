@@ -31,7 +31,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </Link>
 
           {/* Middle copy */}
-          <div className="mt-auto mb-auto pt-16 pb-8">
+          <div className="hero-in mt-auto mb-auto pt-16 pb-8">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-semibold mb-6">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               Global University &amp; NGO Impact Ecosystem
@@ -84,7 +84,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="flex lg:hidden pt-2 pb-8">
           <UniverseLogo size="md" showText={true} animated={false} withGlow={false} />
         </div>
-        <div className="w-full max-w-md mx-auto flex-1 flex flex-col justify-center pb-8 lg:pb-0">
+        {/* The form glides up into place as the page opens (.hero-in, CSS: from the first paint). */}
+        <div style={{ animationDelay: '120ms' }} className="hero-in w-full max-w-md mx-auto flex-1 flex flex-col justify-center pb-8 lg:pb-0">
           <MaintenanceGate>{children}</MaintenanceGate>
         </div>
       </div>
