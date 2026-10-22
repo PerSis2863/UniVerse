@@ -21,6 +21,7 @@ export async function POST(
     const updated = await reviewResearchDataRequest({
       requestId: id,
       reviewerId: user.id,
+      reviewer: user,
       status,
       rejectionReason: typeof body.rejectionReason === 'string' ? body.rejectionReason : undefined,
       validityDays: typeof body.validityDays === 'number' ? body.validityDays : undefined,

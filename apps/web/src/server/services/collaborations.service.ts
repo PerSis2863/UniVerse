@@ -2,8 +2,9 @@ import type { Prisma } from '@prisma/client';
 import { ForbiddenException, NotFoundException } from '../http';
 import { pick } from '../pick';
 import type { Body } from '../body';
+import { inSchools, schoolsOf, usersIn } from '../school-scope';
 
-type Actor = { id: string; role: string };
+type Actor = { id: string; role: string; organizationId?: string | null; owner?: boolean };
 type NewProject = Prisma.CollaborationProjectUncheckedCreateInput;
 type NewMilestone = Prisma.ProjectMilestoneUncheckedCreateInput;
 const PROJECT_FIELDS = ['title', 'description', 'partner', 'ngo', 'deadline', 'contactEmail', 'ngoProjectId'] as const satisfies readonly (keyof NewProject)[];
@@ -17,29 +18,46 @@ export class CollaborationsService {
     return prisma.teacherCollaboration.create({ data: { ...pick<New>(data, ['partnerId', 'type', 'title', 'description']), initiatorId } as New });
   }
   async update(id: string, actor: Actor, data: Body) {
-    const c = await prisma.teacherCollaboration.findUnique({ where: { id }, select: { initiatorId: true, partnerId: true } });
+    const c = await prisma.teacherCollaboration.findUnique({ where: { id }, select: { initiatorId: true, partnerId: true, initiator: { select: { organizationId: true } } } });
     if (!c) throw new NotFoundException();
-    if (actor.role !== 'ADMIN' && c.initiatorId !== actor.id && c.partnerId !== actor.id) throw new ForbiddenException();
+    if (c.initiatorId !== actor.id && c.partnerId !== actor.id) {
+      if (actor.role !== 'ADMIN') throw new ForbiddenException();
+      // An admin, for a collaboration started in their school (school-scope.ts).
+      if (!inSchools(await schoolsOf(actor), c.initiator.organizationId)) throw new NotFoundException();
+    }
     return prisma.teacherCollaboration.update({ where: { id }, data: pick<Prisma.TeacherCollaborationUncheckedUpdateInput>(data, ['title', 'description', 'status', 'type']) });
   }
 
+  /** Whether an admin runs the school of a project's supervising teacher (a project with none: the owner only). */
+  private async adminOfProject(actor: Actor, supervisor: { organizationId: string | null } | null) {
+    if (actor.role !== 'ADMIN') return false;
+    const schools = await schoolsOf(actor);
+    return schools === 'all' || (!!supervisor && inSchools(schools, supervisor.organizationId));
+  }
+
   private async assertSupervisor(projectId: string, actor: Actor) {
-    const p = await prisma.collaborationProject.findUnique({ where: { id: projectId }, select: { supervisingTeacherId: true } });
+    const p = await prisma.collaborationProject.findUnique({ where: { id: projectId }, select: { supervisingTeacherId: true, supervisingTeacher: { select: { organizationId: true } } } });
     if (!p) throw new NotFoundException();
-    if (actor.role !== 'ADMIN' && p.supervisingTeacherId !== actor.id) throw new ForbiddenException('Only the supervising teacher or an admin can do this.');
+    if (p.supervisingTeacherId === actor.id) return;
+    if (actor.role !== 'ADMIN') throw new ForbiddenException('Only the supervising teacher or an admin can do this.');
+    // Another school's project looks like it doesn't exist.
+    if (!(await this.adminOfProject(actor, p.supervisingTeacher))) throw new NotFoundException();
   }
 
   // ─── PHASE 3: COLLABORATION PROJECTS (NGO/Student Projects) ──────────────────
 
-  // `detailed` (admins only): also the supervisor's email/department and the members' contact details,
-  // so the admin review page can show who is involved.
-  getProjects(opts: { detailed?: boolean } = {}) {
-    if (opts.detailed) {
+  // `admin`: the admin's school's projects (by supervising teacher), with the supervisor's
+  // email/department and the members' contact details (members of their school), so the admin review
+  // page can show who is involved.
+  async getProjects(opts: { admin?: Actor } = {}) {
+    if (opts.admin) {
+      const people = usersIn(await schoolsOf(opts.admin));
       return prisma.collaborationProject.findMany({
+        where: Object.keys(people).length ? { supervisingTeacher: people } : {},
         include: {
           supervisingTeacher: { select: { id: true, name: true, avatar: true, email: true, role: true, status: true, teacherProfile: { select: { department: true, designation: true } } } },
           ngoProject: { select: { id: true, name: true, ngo: { select: { name: true } } } },
-          members: { select: { role: true, joinedAt: true, user: { select: { id: true, name: true, email: true, role: true } } }, orderBy: { joinedAt: 'asc' }, take: 25 },
+          members: { where: { user: people }, select: { role: true, joinedAt: true, user: { select: { id: true, name: true, email: true, role: true } } }, orderBy: { joinedAt: 'asc' }, take: 25 },
           _count: { select: { members: true, milestones: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -57,18 +75,21 @@ export class CollaborationsService {
     });
   }
 
-  /** Members' email addresses only for admins and the supervising teacher, like getProjects. */
-  async getProjectById(id: string, viewer: { id: string; role: string }) {
-    const project = await prisma.collaborationProject.findUnique({
+  /** Members' email addresses only for the school's admins and the supervising teacher, like getProjects. */
+  async getProjectById(id: string, viewer: Actor) {
+    const found = await prisma.collaborationProject.findUnique({
       where: { id },
       include: {
-        supervisingTeacher: { select: { id: true, name: true, avatar: true } },
+        supervisingTeacher: { select: { id: true, name: true, avatar: true, organizationId: true } },
         ngoProject: { select: { id: true, name: true, ngo: { select: { name: true } } } },
         members: { include: { user: { select: { id: true, name: true, avatar: true, email: true } } } },
         milestones: { orderBy: { dueDate: 'asc' } },
       },
     });
-    if (!project || viewer.role === 'ADMIN' || project.supervisingTeacherId === viewer.id) return project;
+    if (!found) return found;
+    const { supervisingTeacher: sup, ...rest } = found;
+    const project = { ...rest, supervisingTeacher: sup && { id: sup.id, name: sup.name, avatar: sup.avatar } };
+    if (project.supervisingTeacherId === viewer.id || (await this.adminOfProject(viewer, sup))) return project;
     return { ...project, members: project.members.map((m) => ({ ...m, user: { ...m.user, email: undefined } })) };
   }
 
@@ -82,7 +103,8 @@ export class CollaborationsService {
     });
   }
 
-  reviewProject(id: string, status: string) {
+  async reviewProject(id: string, status: string, actor: Actor) {
+    await this.assertSupervisor(id, actor);
     return prisma.collaborationProject.update({
       where: { id },
       data: { status },

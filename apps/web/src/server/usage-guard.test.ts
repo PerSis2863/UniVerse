@@ -9,8 +9,10 @@ type Guard = {
   dailyAlert(meters: Meter[], today: string, last: string | null): Alert | null;
   dailyAlertText(a: Alert, meters: Meter[]): { title: string; body: string };
   checkUsage(env: Record<string, unknown>, now?: Date): Promise<{ summary: string; alert: { title: string; body: string } | null }>;
+  buildBudget(env: Record<string, unknown>): Promise<Response>;
+  forgetBuildsRead(): void;
 };
-const { checkUsage, dailyAlert, dailyAlertText } = (await import('../../cloudflare/usage-guard' as string)) as Guard;
+const { buildBudget, forgetBuildsRead, checkUsage, dailyAlert, dailyAlertText } = (await import('../../cloudflare/usage-guard' as string)) as Guard;
 
 const meter = (key: string, used: number | null, limit: number): Meter => ({ key, label: key, used, limit });
 
@@ -39,8 +41,14 @@ describe('daily allowance warnings (Workers Free)', () => {
 });
 
 // Cloudflare's analytics (GraphQL) answered from a table, and a D1 stand-in that keeps the saved row.
-function cloudflare(monthly: Record<string, number>, today: Record<string, number>) {
-  return vi.fn(async (_url: string, init?: RequestInit) => {
+function cloudflare(monthly: Record<string, number>, today: Record<string, number>, buildMinutes = 0) {
+  return vi.fn(async (url: string, init?: RequestInit) => {
+    // Workers Builds (REST): one build of `buildMinutes` this month.
+    if (url.endsWith('/workers/scripts')) return new Response(JSON.stringify({ success: true, result: [{ id: 'universe-web', tag: 't1' }] }));
+    if (url.includes('/builds/workers/')) {
+      const start = Date.parse('2026-10-10T10:00:00Z');
+      return new Response(JSON.stringify({ success: true, result: [{ created_on: new Date(start).toISOString(), running_on: new Date(start).toISOString(), stopped_on: new Date(start + buildMinutes * 60_000).toISOString() }] }));
+    }
     const { query, variables } = JSON.parse(String(init?.body)) as { query: string; variables: { fromDay: string; toDay: string } };
     const u = variables.fromDay === variables.toDay ? today : monthly;
     const sum = (o: Record<string, number>) => [{ sum: o }];
@@ -102,5 +110,24 @@ describe('checkUsage on each plan', () => {
     expect(saved[0].paused).toBe(1);
     expect(r.alert).toBeNull();
     expect(saved[0].daily).toBeUndefined();
+  });
+
+  it('paid plan: site build minutes never pause the app; past 90% each new build stops in its first seconds', async () => {
+    vi.stubGlobal('fetch', cloudflare({ requests: 1000 }, {}, 5600));
+    const { db, saved } = d1({ paused: 0, alerted: null });
+    await checkUsage(env({ WORKERS_PAID: 'true' }, db), now);
+    expect(saved[0].paused).toBe(0);
+    const meters = String(saved[0].meters);
+    expect(JSON.parse(meters).find((m: { key: string }) => m.key === 'buildMinutes')).toMatchObject({ used: 5600, limit: 6000 });
+    expect(saved[0].alerted).toMatch(/:warn$/); // the 70% email still goes
+    const ask = async (extra: Record<string, unknown>) => (forgetBuildsRead(), await buildBudget(env({ WORKERS_PAID: 'true', ...extra }, d1({ meters }).db))).json();
+    expect(await ask({})).toMatchObject({ stop: true, used: 5600 });
+    expect(await ask({ CF_GUARD_OFF: '1' })).toMatchObject({ stop: false });
+    // Under 90%, or on the free plan (builds aren't charged there): build.
+    const low = JSON.stringify([{ key: 'buildMinutes', used: 3000, limit: 6000 }]);
+    forgetBuildsRead();
+    expect(await (await buildBudget(env({ WORKERS_PAID: 'true' }, d1({ meters: low }).db))).json()).toMatchObject({ stop: false });
+    forgetBuildsRead();
+    expect(await (await buildBudget(env({}, d1({ meters }).db))).json()).toMatchObject({ stop: false });
   });
 });

@@ -22,6 +22,8 @@ interface GatewaySettings {
   hasRazorpaySecret: boolean;
   stripePublishableKey: string | null;
   hasStripeSecret: boolean;
+  /** A saved secret key can't be read any more (the server's secret changed): enter it again. */
+  unreadableSecret?: boolean;
 }
 
 export function PaymentReconciliationPanel() {
@@ -339,6 +341,9 @@ export function PaymentReconciliationPanel() {
             </div>
           </div>
 
+          {settings?.unreadableSecret && (
+            <p role="alert" className="rounded-xl bg-amber-500/10 text-amber-800 dark:text-amber-300 text-sm px-4 py-3">A saved secret key can&apos;t be read any more (the server&apos;s security key was changed). Enter it again below and save.</p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
             {/* Razorpay credentials */}
             <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 space-y-3">

@@ -9,6 +9,7 @@ import { notify } from './email';
 import { groupAccess, groupPeople } from './spaces';
 import { notifyMentioned } from './mentions';
 import { indexItem } from './search-index';
+import { inSchools, schoolsOf, usersIn } from './school-scope';
 
 // Task boards (Stage 4 · 3.3): Kanban lists of cards with an assignee, a due date, a checklist,
 // notes and comments. A board is yours and whoever you add (editors or viewers), or a course's:
@@ -22,6 +23,15 @@ export interface CheckItem { text: string; done: boolean }
 
 const clean = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
+/** An admin of the school whose person owns this board (school-scope.ts); the platform owner, any. */
+async function adminOver(ownerId: string, user: SessionUser) {
+  if (user.role !== 'ADMIN') return false;
+  const schools = await schoolsOf(user);
+  if (schools === 'all') return true;
+  const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { organizationId: true } });
+  return !!owner && inSchools(schools, owner.organizationId);
+}
+
 /** What I may do on a board. */
 async function access(boardId: string, user: SessionUser) {
   const board = await prisma.taskBoard.findUnique({ where: { id: boardId }, select: { id: true, title: true, ownerId: true, courseId: true, groupId: true, members: { select: { userId: true, role: true } } } });
@@ -29,9 +39,12 @@ async function access(boardId: string, user: SessionUser) {
   const mine = board.members.find((m) => m.userId === user.id);
   let course: Awaited<ReturnType<typeof courseAccess>> = null;
   if (board.courseId) course = await courseAccess(board.courseId, user);
-  const group = board.groupId ? await groupAccess(board.groupId, user) : null;
+  let group = board.groupId ? await groupAccess(board.groupId, user) : null;
+  // Admins see their own school's boards only (whoever owns it is in their school): another
+  // school's look "not found". groupAccess lets in any admin, so one outside the group is checked too.
+  if (group && !group.group.members.length && !(await adminOver(board.ownerId, user))) group = null;
   const isOwner = board.ownerId === user.id;
-  const canSee = isOwner || !!mine || !!course || !!group || user.role === 'ADMIN';
+  const canSee = isOwner || !!mine || !!course || !!group || (await adminOver(board.ownerId, user));
   if (!canSee) throw new NotFoundException('Board not found.');
   const canEdit = isOwner || mine?.role === 'EDITOR' || !!course || !!group;
   const canManage = isOwner || !!course?.canManage || !!group?.canManage;
@@ -68,7 +81,7 @@ async function changed(boardId: string, board?: { ownerId: string; courseId: str
 export async function overview(user: SessionUser) {
   const courses = user.role === 'STUDENT'
     ? (await prisma.enrollment.findMany({ where: { studentId: user.id }, select: { course: { select: { id: true, code: true, name: true } } }, take: 100 })).map((e) => e.course)
-    : await prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : taughtBy(user.id), select: { id: true, code: true, name: true }, take: 100 });
+    : await prisma.course.findMany({ where: user.role === 'ADMIN' ? { teacher: usersIn(await schoolsOf(user)) } : taughtBy(user.id), select: { id: true, code: true, name: true }, take: 100 });
   const groups = (await prisma.groupMembership.findMany({ where: { userId: user.id }, select: { group: { select: { id: true, name: true } } }, take: 100 })).map((m) => m.group);
   // Three lookups, put together: the course and group lists can be long (an admin's whole school),
   // and a long list inside OR can't be split for D1's 100 values (src/lib/d1-split.ts); on their own they are.

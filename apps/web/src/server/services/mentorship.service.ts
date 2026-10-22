@@ -2,8 +2,14 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '../h
 import type { Prisma } from '@prisma/client';
 import { pick } from '../pick';
 import { oneOf, type Body } from '../body';
+import { inSchools, schoolsOf } from '../school-scope';
 
-type Actor = { id: string; role: string };
+type Actor = { id: string; role: string; organizationId?: string | null; owner?: boolean };
+
+/** An admin, for a student of their school (school-scope.ts). */
+async function adminOf(actor: Actor, studentOrg: string | null | undefined) {
+  return actor.role === 'ADMIN' && inSchools(await schoolsOf(actor), studentOrg);
+}
 import prisma from '@/lib/db';
 
 export class MentorshipService {
@@ -18,12 +24,15 @@ export class MentorshipService {
   }
 
   private async requestFor(id: string, actor: Actor) {
-    const req = await prisma.mentorshipRequest.findUnique({ where: { id }, select: { studentId: true, teacherId: true } });
+    const req = await prisma.mentorshipRequest.findUnique({ where: { id }, select: { studentId: true, teacherId: true, student: { select: { organizationId: true } } } });
     if (!req) throw new NotFoundException();
     const isTeacher = req.teacherId === actor.id;
     const isStudent = req.studentId === actor.id;
-    if (!isTeacher && !isStudent && actor.role !== 'ADMIN') throw new ForbiddenException();
-    return { isTeacher: isTeacher || actor.role === 'ADMIN', isStudent };
+    if (isTeacher || isStudent) return { isTeacher, isStudent };
+    if (actor.role !== 'ADMIN') throw new ForbiddenException();
+    // Another school's request looks like it doesn't exist.
+    if (!(await adminOf(actor, req.student.organizationId))) throw new NotFoundException();
+    return { isTeacher: true, isStudent };
   }
 
   async updateStatus(id: string, actor: Actor, data: Body) {
@@ -98,9 +107,11 @@ export class MentorshipService {
   }
 
   async updateBookingStatus(id: string, actor: Actor, status: string) {
-    const booking = await prisma.mentorshipBooking.findUnique({ where: { id }, select: { studentId: true, mentor: { select: { userId: true } } } });
+    const booking = await prisma.mentorshipBooking.findUnique({ where: { id }, select: { studentId: true, student: { select: { organizationId: true } }, mentor: { select: { userId: true } } } });
     if (!booking) throw new NotFoundException();
-    const isMentor = booking.mentor.userId === actor.id || actor.role === 'ADMIN';
+    const isMentor = booking.mentor.userId === actor.id || (await adminOf(actor, booking.student.organizationId));
+    // Another school's booking looks like it doesn't exist to an admin.
+    if (!isMentor && actor.role === 'ADMIN' && booking.studentId !== actor.id) throw new NotFoundException();
     const allowed = isMentor ? ['PENDING', 'CONFIRMED', 'DECLINED', 'COMPLETED', 'CANCELLED'] : booking.studentId === actor.id ? ['CANCELLED'] : [];
     if (!allowed.includes(status)) throw new ForbiddenException();
     return prisma.mentorshipBooking.update({

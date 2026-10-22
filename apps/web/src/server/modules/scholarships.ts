@@ -8,7 +8,7 @@ export default function scholarshipsModule(router: Router) {
   const r = router.controller('scholarships');
 
   r.get('', () => scholarships.findAll());
-  r.get('admin', { roles: ['ADMIN'] }, () => scholarships.findAllForAdmin());
+  r.get('admin', { roles: ['ADMIN'] }, ({ user }) => scholarships.findAllForAdmin(user));
   r.get('my-applications', ({ user }) => scholarships.getMyApplications(user.id));
   r.post('', { roles: ['ADMIN'] }, async ({ body, user, req }) => {
     const s = await scholarships.create(body);
@@ -17,7 +17,7 @@ export default function scholarshipsModule(router: Router) {
   });
   r.post<{ id: string }>(':id/apply', ({ params, user, body }) => scholarships.apply(params.id, user.id, body));
   r.patch<{ id: string }>('applications/:id', { roles: ['ADMIN'] }, async ({ params, body, user, req }) => {
-    const app = await scholarships.updateApplication(params.id, body);
+    const app = await scholarships.updateApplication(params.id, body, user);
     if (body?.status) {
       audit(user, { action: 'scholarship.application_decided', summary: `Set a scholarship application to ${body.status}`, targetType: 'scholarship_application', targetId: params.id, metadata: { status: body.status } }, req);
     }

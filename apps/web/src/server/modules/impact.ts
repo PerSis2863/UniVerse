@@ -10,6 +10,7 @@ import { audit } from '../audit';
 import { later, notify } from '../email';
 import { text } from '../body';
 import { taughtBy } from '@/lib/course-access';
+import { assertInSchool } from '../school-scope';
 
 /** Tells the credential's owner about an admin decision (in-app + email). */
 const notifyCredential = (id: string, verb: 'approved' | 'rejected' | 'revoked', reason?: string) =>
@@ -47,7 +48,9 @@ export default function impactModule(router: Router) {
     const reason = typeof body?.reason === 'string' ? body.reason.trim().slice(0, 200) : '';
     if (!reason) throw new BadRequestException('reason is required');
     if (typeof body?.userId !== 'string') throw new BadRequestException('userId is required');
-    if (user.role !== 'ADMIN') {
+    // Admins: only their own school's people.
+    if (user.role === 'ADMIN') await assertInSchool(user, body.userId);
+    else {
       const teaches = await prisma.enrollment.findFirst({ where: { studentId: body.userId, course: taughtBy(user.id, ['CO_TEACHER']) }, select: { id: true } });
       if (!teaches) throw new ForbiddenException('You can only award points to students in your courses.');
     }
@@ -84,10 +87,12 @@ export default function impactModule(router: Router) {
   // Verified credentials
   r.get('blockchain-credentials', ({ user }) => impact.getMyBlockchainCredentials(user.id));
   r.post('blockchain-credentials/request', ({ user, body }) => impact.requestCredential(user.id, validate<RequestCredentialDto>(RequestCredentialDto, body)));
-  r.get('blockchain-credentials/pending', { roles: ['ADMIN'] }, () => impact.getPendingCredentialRequests());
-  r.get('blockchain-credentials/recent', { roles: ['ADMIN'] }, () => impact.getRecentCredentialDecisions());
+  // Admins see and decide only their own school's students' credentials (another school's look "not found").
+  r.get('blockchain-credentials/pending', { roles: ['ADMIN'] }, ({ user }) => impact.getPendingCredentialRequests(user));
+  r.get('blockchain-credentials/recent', { roles: ['ADMIN'] }, ({ user }) => impact.getRecentCredentialDecisions(user));
   r.post('blockchain-credentials/issue', { roles: ['ADMIN'] }, async ({ user, body, req }) => {
     const dto = validate<IssueCredentialDto>(IssueCredentialDto, body);
+    await assertInSchool(user, dto.studentId);
     const result = await impact.issueCredentialDirect({ id: user.id, name: user.name }, dto);
     const id = (result as { id?: string })?.id;
     if (id) await safely(evidenceFromCredential(id)); // proof of learning (upgrade 2)
@@ -99,9 +104,10 @@ export default function impactModule(router: Router) {
     }), req);
     return result;
   });
-  r.post('blockchain-credentials/legacy/send-to-review', { roles: ['ADMIN'] }, () => impact.sendLegacyCredentialsToReview());
-  r.post('blockchain-credentials/anchor/retry', { roles: ['ADMIN'] }, () => impact.anchorOutstandingCredentials());
+  r.post('blockchain-credentials/legacy/send-to-review', { roles: ['ADMIN'] }, ({ user }) => impact.sendLegacyCredentialsToReview(user));
+  r.post('blockchain-credentials/anchor/retry', { roles: ['ADMIN'] }, ({ user }) => impact.anchorOutstandingCredentials(user));
   r.post<{ id: string }>('blockchain-credentials/:id/approve', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
+    await impact.assertCredentialInSchool(params.id, user);
     const result = await impact.approveCredential(params.id, { id: user.id, name: user.name });
     await safely(evidenceFromCredential(params.id));
     audit(user, async () => ({ action: 'credential.approved', summary: `Approved and signed ${await credentialLabel(params.id)}`, targetType: 'credential', targetId: params.id }), req);
@@ -110,6 +116,7 @@ export default function impactModule(router: Router) {
   });
   r.post<{ id: string }>('blockchain-credentials/:id/reject', { roles: ['ADMIN'] }, async ({ params, body, user, req }) => {
     const { reason } = validate<CredentialDecisionDto>(CredentialDecisionDto, body);
+    await impact.assertCredentialInSchool(params.id, user);
     const result = await impact.rejectCredential(params.id, reason);
     audit(user, async () => ({ action: 'credential.rejected', summary: `Rejected ${await credentialLabel(params.id)}${reason ? `: ${reason}` : ''}`, targetType: 'credential', targetId: params.id }), req);
     notifyCredential(params.id, 'rejected', reason);
@@ -117,6 +124,7 @@ export default function impactModule(router: Router) {
   });
   r.post<{ id: string }>('blockchain-credentials/:id/revoke', { roles: ['ADMIN'] }, async ({ params, body, user, req }) => {
     const { reason } = validate<CredentialDecisionDto>(CredentialDecisionDto, body);
+    await impact.assertCredentialInSchool(params.id, user);
     const result = await impact.revokeCredential(params.id, reason);
     await safely(evidenceFromCredential(params.id)); // a revoked credential is no longer evidence
     audit(user, async () => ({ action: 'credential.revoked', summary: `Revoked ${await credentialLabel(params.id)}${reason ? `: ${reason}` : ''}`, targetType: 'credential', targetId: params.id }), req);
@@ -130,16 +138,16 @@ export default function impactModule(router: Router) {
   // Legacy certificates
   r.get('certificates', ({ user }) => impact.getCertificates(user.id));
   r.post('certificates/request', ({ user, body }) => impact.requestCertificate(user.id, text(body.title)));
-  r.get('certificates/pending', { roles: ['ADMIN'] }, () => impact.getPendingCertificateRequests());
+  r.get('certificates/pending', { roles: ['ADMIN'] }, ({ user }) => impact.getPendingCertificateRequests(user));
   r.post<{ id: string }>('certificates/:id/approve', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
-    const doc = await impact.approveCertificate(params.id);
+    const doc = await impact.approveCertificate(params.id, user);
     audit(user, async () => ({ action: 'certificate.approved', summary: `Approved certificate “${doc.title}” for ${await userName(doc.userId)}`, targetType: 'certificate', targetId: params.id }), req);
     later(() => notify(doc.userId, { title: 'Your certificate is ready', body: `“${doc.title}” was approved. You can download it now.`, link: '/student/impact/certifications', type: 'credential', email: false }));
     return doc;
   });
   r.post<{ id: string }>('certificates/:id/reject', { roles: ['ADMIN'] }, async ({ params, body, user, req }) => {
     const reason = typeof body?.reason === 'string' ? body.reason.trim().slice(0, 500) : '';
-    const doc = await impact.rejectCertificate(params.id);
+    const doc = await impact.rejectCertificate(params.id, user);
     audit(user, async () => ({ action: 'certificate.rejected', summary: `Turned down certificate “${doc.title}” for ${await userName(doc.userId)}${reason ? `: ${reason}` : ''}`, targetType: 'certificate', targetId: params.id }), req);
     later(() => notify(doc.userId, { title: 'Your certificate request was not approved', body: `“${doc.title}”${reason ? `\nReason: ${reason}` : ''}\nYou can request it again once the details are in order.`, link: '/student/impact/certifications', type: 'credential', email: false }));
     return { ok: true };

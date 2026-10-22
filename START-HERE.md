@@ -20,7 +20,7 @@ Cursor's).
   for each item.
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: start with its "Next steps" and the
   S2, Q26, S1 and Q24/Q25 notes.
-- **Next database update number: `0174`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0176`** (files in `apps/web/prisma/migrations/`).
 
 **Moving to the $5 Cloudflare plan (Workers Paid)**, in this order:
 1. In Cloudflare: Workers & Pages → Plans → Workers Paid ($5 a month, plus any local tax).
@@ -30,13 +30,19 @@ Cursor's).
    would use limits the plan doesn't have.
 3. Workers & Pages → universe-web → Settings → Build: builds only for `main` (turn off builds for
    other branches). 6,000 build minutes a month are included; each build takes ~15–20 minutes.
+   (Since 22 Oct 2026 the app also does this itself: a build of any other branch stops in its first
+   seconds, see `apps/web/scripts/build-budget.mjs`.)
 4. Optional: Manage Account → Billing → Billable Usage → Set Budget Alert at $1 (an email if
    anything is ever charged beyond the $5).
 5. Optional: a secret `CF_BILLING_DAY` = the day of the month you upgraded (without it the guard
    counts the last 31 days: never too little, so it may pause a little early).
 The spending guard (`cloudflare/usage-guard.ts`) then emails at 70% of anything the $5 includes and
-pauses the app at 90% until the next billing month, so nothing extra is charged. Cloudflare itself
-has no setting that caps the bill.
+pauses the app at 90% until the next billing month, so nothing extra is charged. Site builds can't be
+paused that way, so they have their own stop: past 90% of the 6,000 build minutes, each new build
+stops in its first seconds (it asks the live site, `/api/build-budget`) and changes go live after the
+next billing month starts. Nothing on the account can be billed beyond these: there are no AI,
+KV, Queues, Vectorize or image services switched on. Cloudflare itself has no setting that caps the
+bill. To go past a limit on purpose (and pay for it), add the secret `CF_GUARD_OFF`.
 
 **Waiting on the owner** (things only you can provide):
 - Two-way Google / Outlook calendar sync: a Google Cloud project and a Microsoft app.

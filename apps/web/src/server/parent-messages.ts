@@ -15,6 +15,7 @@ import { schoolPolicy } from './safety';
 import { storedTranslations, translateMessages, translateTexts } from './translate';
 import { DEFAULT_HOURS, hoursOf, hoursText, inHours, parseDays } from './parent-hours';
 import { taughtBy } from '@/lib/course-access';
+import { schoolsOf, usersIn } from './school-scope';
 
 // Parent–teacher messages (Stage 5 · B16.2). A parent–teacher chat is an ordinary one-to-one chat
 // marked with the child it's about (conversations.aboutStudentId), so the teacher answers from
@@ -318,10 +319,10 @@ export async function postParentChat(user: SessionUser, conversationId: string, 
 
 const isStaff = (u: SessionUser) => u.role === 'TEACHER' || u.role === 'ADMIN';
 
-/** A student in one of my classes (admins: any student). */
+/** A student in one of my classes (admins: any student of their school; another school's look "not found"). */
 async function myStudent(user: SessionUser, studentId: string) {
   const s = await prisma.user.findFirst({
-    where: { id: studentId, role: 'STUDENT', ...(user.role === 'ADMIN' ? {} : { enrollments: { some: { course: taughtBy(user.id, ['CO_TEACHER']) } } }) },
+    where: { id: studentId, role: 'STUDENT', ...(user.role === 'ADMIN' ? usersIn(await schoolsOf(user)) : { enrollments: { some: { course: taughtBy(user.id, ['CO_TEACHER']) } } }) },
     select: { id: true, name: true },
   });
   if (!s) throw new NotFoundException('That student isn’t in one of your classes.');

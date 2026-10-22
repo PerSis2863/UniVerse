@@ -6,6 +6,7 @@ import type { Body } from './body';
 import { directChat } from './direct-chat';
 import { notifyMany } from './email';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from './http';
+import { peopleWhere } from './school-scope';
 
 // The campus board (Stage 5 · Q17): a marketplace (sell, swap, give away, wanted), rides and housing.
 // Only students post and reply (school accounts, so everyone is a verified student); replies are a
@@ -55,7 +56,8 @@ export async function setListingStatus(user: SessionUser, id: string, b: Body) {
 /** DELETE /api/campus/board/[id]: the poster or an admin. */
 export async function deleteListing(user: SessionUser, id: string) {
   const l = await prisma.campusListing.findUnique({ where: { id }, select: { userId: true } });
-  if (!l || (l.userId !== user.id && user.role !== 'ADMIN')) throw new NotFoundException('Post not found.');
+  // An admin removes only their own school's students' posts (school-scope.ts).
+  if (!l || (l.userId !== user.id && (user.role !== 'ADMIN' || !(await prisma.user.count({ where: { id: l.userId, ...(await peopleWhere(user)) } }))))) throw new NotFoundException('Post not found.');
   await prisma.campusListing.delete({ where: { id } });
   return user.role === 'ADMIN' ? reportedListings(user) : listBoard(user, null, true);
 }
@@ -74,7 +76,7 @@ export async function reportListing(user: SessionUser, id: string, reason: unkno
   studentOnly(user);
   const why = typeof reason === 'string' ? reason.trim().slice(0, 300) : '';
   if (why.length < 3) throw new BadRequestException('Say briefly what’s wrong.');
-  const l = await prisma.campusListing.findUnique({ where: { id }, select: { userId: true, title: true } });
+  const l = await prisma.campusListing.findUnique({ where: { id }, select: { userId: true, title: true, user: { select: { organizationId: true } } } });
   if (!l) throw new NotFoundException('Post not found.');
   if (l.userId === user.id) throw new BadRequestException('This is your own post.');
   try {
@@ -86,7 +88,9 @@ export async function reportListing(user: SessionUser, id: string, reason: unkno
   const reports = await prisma.listingReport.count({ where: { listingId: id } });
   await prisma.campusListing.update({ where: { id }, data: { reports, ...(reports >= HIDE_AFTER_REPORTS ? { status: 'HIDDEN' } : {}) } });
   if (reports === HIDE_AFTER_REPORTS) {
-    const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true }, take: 20 });
+    // The poster's school's admins: its own, and the admin who owns it (school-scope.ts).
+    const org = l.user.organizationId;
+    const admins = await prisma.user.findMany({ where: { role: 'ADMIN', OR: [{ organizationId: org }, ...(org ? [{ ownedOrganization: { id: org } }] : [])] }, select: { id: true }, take: 20 });
     await notifyMany(admins.map((a) => a.id), { type: 'warning', title: `A campus board post was hidden: ${l.title}`, body: `${reports} students reported it. Look at it in Student life → Campus board.`, link: '/admin/monitoring/board', email: false });
   }
   return { ok: true, hidden: reports >= HIDE_AFTER_REPORTS };
@@ -97,8 +101,9 @@ export async function reportListing(user: SessionUser, id: string, reason: unkno
 /** GET /api/admin/campus-board: reported posts with the reasons. */
 export async function reportedListings(user: SessionUser) {
   if (user.role !== 'ADMIN') throw new ForbiddenException('Admins only.');
+  // Only the admin's own school's students' posts (school-scope.ts).
   const rows = await prisma.campusListing.findMany({
-    where: { reports: { gt: 0 } }, orderBy: [{ status: 'asc' }, { reports: 'desc' }], take: 200,
+    where: { reports: { gt: 0 }, user: await peopleWhere(user) }, orderBy: [{ status: 'asc' }, { reports: 'desc' }], take: 200,
     select: { ...SELECT, reports: true, reportRows: { select: { reason: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 10 } },
   });
   return { listings: rows.map((r) => ({ ...r, userId: undefined })) };
@@ -108,7 +113,7 @@ export async function reportedListings(user: SessionUser) {
 export async function moderateListing(user: SessionUser, b: Body) {
   if (user.role !== 'ADMIN') throw new ForbiddenException('Admins only.');
   const id = typeof b.id === 'string' ? b.id : '';
-  if (!(await prisma.campusListing.findUnique({ where: { id }, select: { id: true } }))) throw new NotFoundException('Post not found.');
+  if (!(await prisma.campusListing.findFirst({ where: { id, user: await peopleWhere(user) }, select: { id: true } }))) throw new NotFoundException('Post not found.');
   if (b.action === 'restore') {
     await prisma.listingReport.deleteMany({ where: { listingId: id } });
     await prisma.campusListing.update({ where: { id }, data: { status: 'ACTIVE', reports: 0 } });

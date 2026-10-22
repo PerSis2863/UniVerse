@@ -12,6 +12,7 @@ import { pushService } from './services/push.service';
 import { indexDoc, indexLater } from './semester';
 import { docLinkIds, makesLoop } from '@/lib/doc-pages';
 import { docLink, indexItem, indexTitle, plainText } from './search-index';
+import { inSchools, keepInSchool, schoolsOf, usersIn } from './school-scope';
 
 // Documents (Stage 4 · 3.2). The text is written together live: a Yjs document kept by the same
 // Durable Object as code rooms (cloudflare/worker.ts CodeRoom), in a room named "doc:<id>", so
@@ -39,17 +40,32 @@ async function roomFetch(docId: string, path: string, init?: RequestInit): Promi
 
 const clean = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
+/** An admin of the school whose person owns this doc (school-scope.ts); the platform owner, any. */
+async function adminOver(ownerId: string, user: SessionUser) {
+  if (user.role !== 'ADMIN') return false;
+  const schools = await schoolsOf(user);
+  if (schools === 'all') return true;
+  const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { organizationId: true } });
+  return !!owner && inSchools(schools, owner.organizationId);
+}
+
 async function access(docId: string, user: SessionUser, depth = 0): Promise<{ doc: { id: string; title: string; kind: string; ownerId: string; courseId: string | null; groupId: string | null; conversationId: string | null; parentId: string | null; members: { userId: string; role: string }[] }; canEdit: boolean; canManage: boolean }> {
   const doc = await prisma.doc.findUnique({ where: { id: docId }, select: { id: true, title: true, kind: true, ownerId: true, courseId: true, groupId: true, conversationId: true, parentId: true, members: { select: { userId: true, role: true } } } });
   if (!doc) throw new NotFoundException('Document not found.');
   const mine = doc.members.find((m) => m.userId === user.id);
   const course = doc.courseId ? await courseAccess(doc.courseId, user) : null;
-  const group = doc.groupId ? await groupAccess(doc.groupId, user) : null;
+  // Admins open their own school's docs only (whoever owns it is in their school): another
+  // school's look "not found", private docs and chat canvases included.
+  let admin: Promise<boolean> | undefined;
+  const asAdmin = () => (admin ??= adminOver(doc.ownerId, user));
+  let group = doc.groupId ? await groupAccess(doc.groupId, user) : null;
+  // groupAccess lets in any admin: one who isn't in the group, only for their school's docs.
+  if (group && !group.group.members.length && !(await asAdmin())) group = null;
   const chat = doc.conversationId ? await chatAccess(doc.conversationId, user) : null;
   const isOwner = doc.ownerId === user.id;
   // A chat's canvas belongs to the chat: someone who left it can't open it any more.
-  if (doc.conversationId && !chat && user.role !== 'ADMIN') throw new NotFoundException('Document not found.');
-  if (!isOwner && !mine && !course && !group && !chat && user.role !== 'ADMIN') {
+  if (doc.conversationId && !chat && !(await asAdmin())) throw new NotFoundException('Document not found.');
+  if (!isOwner && !mine && !course && !group && !chat && !(await asAdmin())) {
     // A sub-page shares the people of the page above it.
     if (doc.parentId && depth < 5) { const up = await access(doc.parentId, user, depth + 1); return { doc, canEdit: up.canEdit, canManage: up.canManage }; }
     throw new NotFoundException('Document not found.');
@@ -122,7 +138,7 @@ function visibleDocs(user: SessionUser, courses: { id: string }[], groups: { id:
 export async function listDocs(user: SessionUser) {
   const courses = user.role === 'STUDENT'
     ? (await prisma.enrollment.findMany({ where: { studentId: user.id }, select: { course: { select: { id: true, code: true, name: true } } }, take: 100 })).map((e) => e.course)
-    : await prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : taughtBy(user.id), select: { id: true, code: true, name: true }, take: 100 });
+    : await prisma.course.findMany({ where: user.role === 'ADMIN' ? { teacher: usersIn(await schoolsOf(user)) } : taughtBy(user.id), select: { id: true, code: true, name: true }, take: 100 });
   const groups = (await prisma.groupMembership.findMany({ where: { userId: user.id }, select: { group: { select: { id: true, name: true } } }, take: 100 })).map((m) => m.group);
   const select = { id: true, title: true, preview: true, courseId: true, groupId: true, ownerId: true, parentId: true, kind: true, updatedAt: true } as const;
   // Three lookups, put together: long course and group lists inside OR can't be split for D1's 100
@@ -199,7 +215,9 @@ export async function getDoc(docId: string, user: SessionUser) {
     // Only pages I can open myself.
     const { courses, groups } = await mySpaces(user);
     const mine = new Set([...courses.map((c) => c.id), ...groups.map((g) => g.id)]);
-    backlinks = links.map((l) => l.from).filter((f) => user.role === 'ADMIN' || f.ownerId === user.id || f.members.length || (f.courseId && mine.has(f.courseId)) || (f.groupId && mine.has(f.groupId))).map((f) => ({ id: f.id, title: f.title }));
+    // An admin also sees pages owned by their school's people (not another school's).
+    const ofSchool = new Set(user.role === 'ADMIN' ? await keepInSchool(user, [...new Set(links.map((l) => l.from.ownerId))]) : []);
+    backlinks = links.map((l) => l.from).filter((f) => ofSchool.has(f.ownerId) || f.ownerId === user.id || f.members.length || (f.courseId && mine.has(f.courseId)) || (f.groupId && mine.has(f.groupId))).map((f) => ({ id: f.id, title: f.title }));
   }
   return { id: doc.id, title: doc.title, kind: kindOf(doc.kind), parentId: doc.parentId, space: spaceKey(doc), path, children, backlinks, course, chat: chat ? { id: chat.id, name: chat.isGroup ? chat.name ?? 'Group chat' : 'Chat' } : null, canEdit, canManage, me: { id: user.id, name: user.name }, members: doc.members.map((m) => ({ ...m, name: name.get(m.userId) ?? 'Someone' })) };
 }

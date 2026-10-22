@@ -3,16 +3,20 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { audit } from '@/server/audit';
 import { teaches } from '@/lib/course-access';
+import { inSchools, schoolsOf } from '@/server/school-scope';
 
 const STATUSES = ['OPEN', 'CONTACTED', 'RESOLVED', 'DISMISSED'];
 
-// PATCH { status?, note? } — the teacher (or an admin) records what they did.
+// PATCH { status?, note? } — the teacher (or an admin of the school: the student's and the course
+// teacher's) records what they did. Another school's flag looks like one that doesn't exist.
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
   const { id } = await params;
-  const flag = await prisma.studentRiskFlag.findUnique({ where: { id }, include: { course: { select: { teacherId: true, code: true } }, student: { select: { name: true } } } });
-  if (!flag || (user.role !== 'ADMIN' && !(user.role === 'TEACHER' && (flag.course.teacherId === user.id || (await teaches(flag.courseId, user.id, ['CO_TEACHER'])))))) {
+  const flag = await prisma.studentRiskFlag.findUnique({ where: { id }, include: { course: { select: { teacherId: true, code: true, teacher: { select: { organizationId: true } } } }, student: { select: { name: true, organizationId: true } } } });
+  const schools = flag && user.role === 'ADMIN' ? await schoolsOf(user) : null;
+  const admin = !!flag && !!schools && inSchools(schools, flag.student.organizationId) && inSchools(schools, flag.course.teacher?.organizationId);
+  if (!flag || (!admin && !(user.role === 'TEACHER' && (flag.course.teacherId === user.id || (await teaches(flag.courseId, user.id, ['CO_TEACHER'])))))) {
     return NextResponse.json({ error: 'Not found.' }, { status: 404 });
   }
   const b = await req.json().catch(() => ({}));

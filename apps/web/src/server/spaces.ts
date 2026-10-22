@@ -2,6 +2,7 @@ import prisma from '@/lib/db';
 import { courseAccess, taughtBy } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { NotFoundException } from './http';
+import { inSchools, schoolsOf } from './school-scope';
 
 // Spaces (Stage 4 · 3.1): every course and study group is a workspace with its call, documents,
 // task boards and (courses) code rooms in one place. Nothing extra is stored: a space is the course
@@ -9,11 +10,17 @@ import { NotFoundException } from './http';
 
 export type SpaceKind = 'course' | 'group';
 
-/** Whether I'm in this group, and whether I run it (its creator, admins and moderators). */
+/**
+ * Whether I'm in this group, and whether I run it (its creator, its admins and moderators, and the
+ * school admins of the school whose person made it: school-scope.ts).
+ */
 export async function groupAccess(groupId: string, user: SessionUser) {
-  const g = await prisma.group.findUnique({ where: { id: groupId }, select: { id: true, name: true, description: true, createdById: true, members: { where: { userId: user.id }, select: { role: true } } } });
-  if (!g || (!g.members.length && user.role !== 'ADMIN')) return null;
-  return { group: g, canManage: g.createdById === user.id || ['ADMIN', 'MODERATOR'].includes(g.members[0]?.role ?? '') || user.role === 'ADMIN' };
+  const found = await prisma.group.findUnique({ where: { id: groupId }, select: { id: true, name: true, description: true, createdById: true, createdBy: { select: { organizationId: true } }, members: { where: { userId: user.id }, select: { role: true } } } });
+  if (!found) return null;
+  const { createdBy, ...g } = found;
+  const schoolAdmin = user.role === 'ADMIN' && inSchools(await schoolsOf(user), createdBy?.organizationId);
+  if (!g.members.length && !schoolAdmin) return null;
+  return { group: g, canManage: g.createdById === user.id || ['ADMIN', 'MODERATOR'].includes(g.members[0]?.role ?? '') || schoolAdmin };
 }
 
 /** A group's members (up to 300), for live updates. */

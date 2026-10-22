@@ -9,10 +9,11 @@ vi.mock('@/lib/db', () => ({
   default: {
     wellbeingSettings: { findUnique: vi.fn(), upsert: vi.fn(), updateMany: vi.fn(), update: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn() },
     wellbeingCheckin: { upsert: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
-    wellbeingAlert: { count: vi.fn(), create: vi.fn().mockResolvedValue({ id: 'w1' }), deleteMany: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    wellbeingAlert: { count: vi.fn(), create: vi.fn().mockResolvedValue({ id: 'w1' }), deleteMany: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     aiUse: { findMany: vi.fn().mockResolvedValue([]) }, assignmentSubmission: { findMany: vi.fn().mockResolvedValue([]) }, quizSubmission: { findMany: vi.fn().mockResolvedValue([]) },
     classroomCheckin: { count: vi.fn().mockResolvedValue(0) }, assignment: { count: vi.fn().mockResolvedValue(0) }, quiz: { count: vi.fn().mockResolvedValue(0) },
-    staffRole: { findMany: vi.fn().mockResolvedValue([{ members: [{ userId: 'c1' }] }]) }, user: { findMany: vi.fn().mockResolvedValue([]) },
+    staffRole: { findMany: vi.fn().mockResolvedValue([{ members: [{ userId: 'c1' }] }]) }, user: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn().mockResolvedValue({ organizationId: null }) },
+    organization: { findUnique: vi.fn().mockResolvedValue(null) },
   },
 }));
 vi.mock('./email', () => ({ notify: vi.fn(), notifyMany: vi.fn() }));
@@ -76,6 +77,7 @@ describe('wellbeing radar on the server (Stage 5 · D13)', () => {
     db.wellbeingAlert.findMany.mockResolvedValue([{ id: 'a', status: 'CLOSED' }, { id: 'b', status: 'OPEN' }]);
     expect((await wellbeingRequests(teacher)).requests.map((r) => r.id)).toEqual(['b', 'a']);
     db.wellbeingAlert.findUnique.mockResolvedValue({ id: 'b', userId: 's1', status: 'OPEN', reason: 'ASKED' });
+    db.wellbeingAlert.findFirst.mockResolvedValue({ id: 'b', userId: 's1', status: 'OPEN', reason: 'ASKED' });
     await wellbeingRequestAction(teacher, { id: 'b', action: 'seen' });
     expect(notify).toHaveBeenCalledWith('s1', expect.objectContaining({ title: 'A counsellor has seen your request', email: false }));
   });

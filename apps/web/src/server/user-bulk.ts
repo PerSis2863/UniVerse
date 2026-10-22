@@ -1,5 +1,6 @@
 import type { Role, UserStatus } from '@prisma/client';
 import prisma from '@/lib/db';
+import { inSchools, type SchoolIds } from './school-scope';
 import { forgetUser, isOwnerEmail } from './auth';
 import { BadRequestException, NotFoundException } from './http';
 
@@ -16,7 +17,8 @@ const SWITCHABLE: Role[] = ['STUDENT', 'TEACHER'];
 type Actor = { id: string };
 export interface Skipped { id: string; name: string; why: string }
 
-function cleanIds(ids: string[], max: number) {
+/** The ids asked for: valid, without repeats, at most `max` (checked before anything is looked up). */
+export function cleanIds(ids: string[], max: number) {
   const unique = [...new Set(ids.filter((id) => /^[A-Za-z0-9_-]{1,40}$/.test(id)))];
   if (!unique.length) throw new BadRequestException('Choose at least one person.');
   if (unique.length > max) throw new BadRequestException(`Choose up to ${max} people at a time.`);
@@ -75,9 +77,10 @@ export async function bulkRole(actor: Actor, ids: string[], role: Role) {
 }
 
 /** "Resend": another 30 days for an invitation (no email is sent; share the sign-up link). */
-export async function renewInvitation(id: string, now = new Date()) {
-  const inv = await prisma.invitation.findUnique({ where: { id }, select: { id: true, email: true, status: true } });
-  if (!inv || inv.status !== 'PENDING') throw new NotFoundException('Invitation not found');
+export async function renewInvitation(id: string, now = new Date(), schools: SchoolIds | 'all' = 'all') {
+  const inv = await prisma.invitation.findUnique({ where: { id }, select: { id: true, email: true, status: true, organizationId: true } });
+  // Another school's invitation looks the same as none.
+  if (!inv || inv.status !== 'PENDING' || !inSchools(schools, inv.organizationId)) throw new NotFoundException('Invitation not found');
   const expiresAt = new Date(now.getTime() + 30 * 24 * 3600 * 1000);
   await prisma.invitation.update({ where: { id: inv.id }, data: { expiresAt } });
   return { id: inv.id, email: inv.email, expiresAt };

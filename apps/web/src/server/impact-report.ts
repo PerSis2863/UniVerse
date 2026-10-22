@@ -2,12 +2,14 @@ import { createHash, randomBytes } from 'node:crypto';
 import prisma from '@/lib/db';
 import { COMPANY } from '@/lib/company';
 import { CredentialSigner, publicAppUrl } from './services/credential-signer';
+import { usersIn, type SchoolIds } from './school-scope';
 
 // Verified impact reports for sponsors and partner organisations (e.g. for CSRD / ESRS social
 // disclosures). A report counts only verified credentials — work checked by staff and signed —
 // for a period (and optionally one organisation), freezes the figures, and signs the snapshot
 // with the platform key. The public report page re-checks the signature, so a sponsor or auditor
-// can see the figures haven't been changed since they were issued.
+// can see the figures haven't been changed since they were issued. An admin's report counts their
+// own school's people's credentials only (`schools`, school-scope.ts); the platform owner's, everyone's.
 
 export const reportUrl = (slug: string) => `${publicAppUrl()}/reports/${slug}`;
 
@@ -30,13 +32,16 @@ export interface ReportData {
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 
+export type ReportOpts = { title: string; organization: string | null; from: Date; to: Date; /** Whose credentials count: these schools' people, or 'all'. */ schools: SchoolIds | 'all' };
+
 /** Figures for a period from verified, signed, non-revoked credentials. */
-export async function computeReport(opts: { title: string; organization: string | null; from: Date; to: Date }): Promise<ReportData> {
+export async function computeReport(opts: ReportOpts): Promise<ReportData> {
   const certs = await prisma.impactCertificate.findMany({
     where: {
       status: 'ISSUED', revokedAt: null, signature: { not: null },
       issuedAt: { gte: opts.from, lte: opts.to },
       ...(opts.organization ? { organization: opts.organization } : {}),
+      ...(opts.schools === 'all' ? {} : { user: usersIn(opts.schools) }),
     },
     select: { id: true, userId: true, organization: true, projectName: true, hoursCompleted: true, peopleImpacted: true, issuedAt: true },
     orderBy: { issuedAt: 'asc' },
@@ -85,7 +90,7 @@ export async function computeReport(opts: { title: string; organization: string 
 }
 
 /** Issues (stores and signs) a report. */
-export async function issueReport(opts: { title: string; organization: string | null; from: Date; to: Date }, by: { id: string; name: string }) {
+export async function issueReport(opts: ReportOpts, by: { id: string; name: string }) {
   const data = await computeReport(opts);
   const slug = randomBytes(9).toString('base64url');
   const jwt = CredentialSigner.signJwt({ iss: `${publicAppUrl()}/api/passport/issuer`, sub: reportUrl(slug), iat: Math.floor(Date.now() / 1000), report: data }, `${publicAppUrl()}/api/passport/jwks#${CredentialSigner.jwks().keys[0].kid}`);

@@ -196,3 +196,19 @@ describe('Stage 5 · C6: Unified Payments Provider', () => {
     });
   });
 });
+
+describe('school payment keys stored encrypted', () => {
+  it('a sealed secret is decrypted for the gateway, an old plain one still works', async () => {
+    vi.stubEnv('SESSION_SECRET', 'a-test-session-secret-of-at-least-32-chars');
+    const { seal } = await import('../secret-box');
+    const { gatewayKeys } = await import('./provider');
+    expect(await gatewayKeys({ id: 'o1', razorpayKeyId: 'rzp_live_id', razorpayKeySecret: await seal('rzp_sec', 'o1:razorpayKeySecret') }, 'RAZORPAY')).toMatchObject({ keyId: 'rzp_live_id', secret: 'rzp_sec' });
+    expect(await gatewayKeys({ id: 'o1', stripeSecretKey: 'sk_live_plain' }, 'STRIPE')).toMatchObject({ secret: 'sk_live_plain' });
+    // Saved but unreadable (another school's sealed key, or SESSION_SECRET changed): no payments,
+    // never the site's own keys (the school's money would go to the site's account).
+    vi.stubEnv('STRIPE_SECRET_KEY', 'sk_live_site');
+    expect(await gatewayKeys({ id: 'o2', stripeSecretKey: await seal('sk_school', 'o1:stripeSecretKey') }, 'STRIPE')).toBeNull();
+    expect(await gatewayKeys({ id: 'o2' }, 'STRIPE')).toMatchObject({ secret: 'sk_live_site' });
+    vi.unstubAllEnvs();
+  });
+});

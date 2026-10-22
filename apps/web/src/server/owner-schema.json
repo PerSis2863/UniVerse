@@ -2099,6 +2099,18 @@
      "relationFields": []
     },
     {
+     "name": "auditEntries",
+     "type": "AuditLog",
+     "kind": "object",
+     "list": true,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": []
+    },
+    {
      "name": "reportSchedules",
      "type": "ReportSchedule",
      "kind": "object",
@@ -10085,6 +10097,20 @@
      "updatedAt": false
     },
     {
+     "name": "actor",
+     "type": "User",
+     "kind": "object",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false,
+     "relationFields": [
+      "actorId"
+     ]
+    },
+    {
      "name": "actorName",
      "type": "String",
      "kind": "scalar",
@@ -10405,6 +10431,17 @@
      "kind": "scalar",
      "list": false,
      "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "organizationId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
      "id": false,
      "unique": false,
      "hasDefault": false,
@@ -16036,6 +16073,17 @@
     {
      "name": "resolvedAt",
      "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "organizationId",
+     "type": "String",
      "kind": "scalar",
      "list": false,
      "optional": true,

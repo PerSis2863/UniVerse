@@ -2,6 +2,7 @@ import { ForbiddenException, NotFoundException, BadRequestException } from '../h
 import prisma from '@/lib/db';
 import { oneOf, str, type Body } from '../body';
 import { assertCanJoinCourse, courseWhereFor, studentCampuses } from '../campus-network';
+import { schoolsOf, usersIn } from '../school-scope';
 
 export class ElectivesService {
   async getAvailableElectives(studentId: string) {
@@ -60,8 +61,11 @@ export class ElectivesService {
     });
   }
 
-  async reviewMajorRequest(id: string, reviewer: { id: string; role: string }, data: Body) {
+  async reviewMajorRequest(id: string, reviewer: { id: string; role: string; organizationId?: string | null; owner?: boolean }, data: Body) {
     if (reviewer.role !== 'ADMIN') throw new ForbiddenException('Only admins can review major change requests.');
+    // Only a request by a student of the admin's school (another school's looks like it doesn't exist).
+    const mine = await prisma.majorChangeRequest.findFirst({ where: { id, student: usersIn(await schoolsOf(reviewer)) }, select: { id: true } });
+    if (!mine) throw new NotFoundException('Request not found');
     // "APPROVED" is what this endpoint used to ask for; the status column calls it ACCEPTED.
     const status = data.status === 'APPROVED' ? 'ACCEPTED' : data.status;
     if (!oneOf(['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED'] as const, status)) throw new BadRequestException('Invalid status');

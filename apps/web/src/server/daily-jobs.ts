@@ -11,6 +11,7 @@ import { weeklyAutopilotReports } from './group-autopilot';
 import { wellbeingNudges } from './wellbeing';
 import { applyLateFees } from './fees';
 import { dueReportExports } from './report-schedules';
+import { sealOldSecrets } from './secret-box';
 
 // The daily jobs, in steps (Stage 5 · bug review). D1 answers at most 50 queries in one run on
 // Workers Free (a cron run is one run), and the daily jobs need far more once a school is real:
@@ -135,6 +136,8 @@ async function inSlices(cost: number, slice: (n: number) => Promise<{ more: bool
 export const STEPS: Step[] = [
   { job: 'quiz-reminders', run: () => quizReminders() },
   { job: 'late-fees', run: async () => ({ done: true, info: await applyLateFees() }) },
+  // Schools' payment keys saved before they were encrypted (secret-box.ts).
+  { job: 'seal-secrets', run: () => sealOldSecrets() },
   { job: 'retention', run: async () => (left() < 16 ? { done: false } : { done: true, info: await retention() }) },
   { job: 'old-files', run: () => oldFiles() },
   { job: 'guardian-digests', run: () => inSlices(10, async (n) => { const r = await sendWeeklyDigests(n); return { more: r.checked === n, count: r.sent }; }) },

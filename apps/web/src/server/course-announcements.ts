@@ -3,6 +3,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { notifyMany } from './email';
 import { BadRequestException, NotFoundException } from './http';
 import { taughtBy } from '@/lib/course-access';
+import { schoolsOf, usersIn } from './school-scope';
 
 // Course announcements (Stage 5 · B2): sent now or at a set time (the 15-minute cron sends the due
 // ones: cloudflare/due-check.ts → /api/cron/reminders), pinned to the top, and "seen by 28 of 32"
@@ -96,8 +97,12 @@ export async function markSeen(courseId: string, user: SessionUser, rawIds: unkn
  * except for whoever wrote them and admins. (Before, any signed-in person could read any course's.)
  */
 export async function announcementWhere(user: SessionUser) {
+  // Admins: their school's (by author, school-scope.ts); the owner sees all.
+  if (user.role === 'ADMIN') {
+    const people = usersIn(await schoolsOf(user));
+    return Object.keys(people).length ? { author: people } : {};
+  }
   const school = user.organizationId && !user.owner ? { author: { organizationId: user.organizationId } } : {};
-  if (user.role === 'ADMIN') return { ...school };
   const [enrolled, taught] = await Promise.all([
     prisma.enrollment.findMany({ where: { studentId: user.id }, select: { courseId: true }, take: 200 }),
     user.role === 'TEACHER' ? prisma.course.findMany({ where: taughtBy(user.id), select: { id: true }, take: 200 }) : Promise.resolve([]),

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/server-auth';
+import { oneOf, str } from '@/server/body';
+import { HttpException } from '@/server/http';
 import { cleanGrievanceType, listPrivacyGrievances, resolvePrivacyGrievance, submitPrivacyGrievance } from '@/server/compliance';
 
 // India DPDP Act 2023 (Sections 11-14): Data Principal Rights (Correction, Erasure, Nomination, Grievance).
@@ -45,19 +47,25 @@ export async function PATCH(req: Request) {
   }
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const grievanceId = typeof body.grievanceId === 'string' ? body.grievanceId : '';
-  const status = body.status === 'RESOLVED' || body.status === 'REJECTED' || body.status === 'IN_REVIEW' ? body.status : null;
-  const resolutionNote = typeof body.resolutionNote === 'string' ? body.resolutionNote : null;
+  const grievanceId = str(body.grievanceId) ?? '';
+  const status = oneOf(['RESOLVED', 'REJECTED', 'IN_REVIEW'] as const, body.status) ? body.status : null;
+  const resolutionNote = str(body.resolutionNote) ?? null;
 
   if (!grievanceId || !status) {
     return NextResponse.json({ error: 'grievanceId and valid status required' }, { status: 400 });
   }
 
-  const updated = await resolvePrivacyGrievance({
-    grievanceId,
-    status,
-    resolutionNote,
-  });
-
-  return NextResponse.json(updated);
+  try {
+    // Only a request from someone in the admin's own school (another school's looks not found).
+    const updated = await resolvePrivacyGrievance({
+      actor: user,
+      grievanceId,
+      status,
+      resolutionNote,
+    });
+    return NextResponse.json(updated);
+  } catch (err: unknown) {
+    if (err instanceof HttpException) return NextResponse.json({ error: err.message }, { status: err.getStatus() });
+    throw err;
+  }
 }

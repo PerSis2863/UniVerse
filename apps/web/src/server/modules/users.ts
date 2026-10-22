@@ -9,7 +9,8 @@ import { audit } from '../audit';
 import { currentApplication } from './applications';
 import { TERMS_VERSION } from '@/lib/terms-version';
 import { exportUserData } from '../export';
-import { bulkRole, bulkStatus, renewInvitation } from '../user-bulk';
+import { ROLE_BATCH, STATUS_BATCH, bulkRole, bulkStatus, cleanIds, renewInvitation } from '../user-bulk';
+import { assertInSchool, inSchools, keepInSchool, orgIn, peopleWhere, schoolsOf, usersIn } from '../school-scope';
 
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
 const INVITABLE: Role[] = ['STUDENT', 'TEACHER', 'ADMIN'];
@@ -58,22 +59,21 @@ export default function users(router: Router) {
 
   // Admin people list. Each row also carries when they were last active and how many courses they
   // teach / are enrolled in (counted in the same query). Capped (default 1,000, ?limit up to 5,000);
-  // ?search= (or ?q=) narrows by name or email on the server.
-  r.get('', { roles: ['ADMIN'] }, ({ query }) => {
+  // ?search= (or ?q=) narrows by name or email on the server. Only the admin's own school's people.
+  r.get('', { roles: ['ADMIN'] }, async ({ query, user }) => {
     const where: Prisma.UserWhereInput = {};
     if (oneOf(Object.values(Role), query.role)) where.role = query.role;
     if (oneOf(Object.values(UserStatus), query.status)) where.status = query.status;
     const search = typeof query.search === 'string' && query.search ? query.search : typeof query.q === 'string' ? query.q.trim().slice(0, 80) : '';
     if (search) where.OR = [{ name: { contains: search } }, { email: { contains: search } }];
     const take = Math.min(Math.max(Number(query.limit) || 1000, 1), 5000);
-    return prisma.user.findMany({ where, select: listSelect, orderBy: { createdAt: 'desc' }, take });
+    return prisma.user.findMany({ where: { AND: [await peopleWhere(user), where] }, select: listSelect, orderBy: { createdAt: 'desc' }, take });
   });
 
   // One person at a glance for admins: courses they teach or take, recent sign-ins and activity counts.
   // Registered with two segments, so it never collides with ':id'.
-  r.get<{ id: string }>(':id/overview', { roles: ['ADMIN'] }, async ({ params }) => {
-    const exists = await prisma.user.findUnique({ where: { id: params.id }, select: { id: true } });
-    if (!exists) throw new NotFoundException('User not found');
+  r.get<{ id: string }>(':id/overview', { roles: ['ADMIN'] }, async ({ params, user }) => {
+    await assertInSchool(user, params.id);
     const [taught, enrolled, signIns, quizSubmissions, attendance, applications] = await Promise.all([
       prisma.course.findMany({
         where: { teacherId: params.id },
@@ -124,12 +124,13 @@ export default function users(router: Router) {
     });
   });
 
-  r.get('stats', { roles: ['ADMIN'] }, async () => {
+  r.get('stats', { roles: ['ADMIN'] }, async ({ user }) => {
+    const mine = usersIn(await schoolsOf(user));
     const [total, students, teachers, pending] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { role: 'STUDENT' } }),
-      prisma.user.count({ where: { role: 'TEACHER' } }),
-      prisma.user.count({ where: { status: 'PENDING' } }),
+      prisma.user.count({ where: mine }),
+      prisma.user.count({ where: { AND: [mine, { role: 'STUDENT' }] } }),
+      prisma.user.count({ where: { AND: [mine, { role: 'TEACHER' }] } }),
+      prisma.user.count({ where: { AND: [mine, { status: 'PENDING' }] } }),
     ]);
     return { total, students, teachers, pending };
   });
@@ -142,14 +143,16 @@ export default function users(router: Router) {
   }));
 
   // Pending invitations. Registered before ':id', which would otherwise match "invitations".
-  r.get('invitations', { roles: ['ADMIN'] }, async () => {
-    const rows = await prisma.invitation.findMany({ where: { status: 'PENDING', expiresAt: { gt: new Date() } }, orderBy: { createdAt: 'desc' }, take: 1000, select: { id: true, email: true, role: true, expiresAt: true, createdAt: true } });
+  r.get('invitations', { roles: ['ADMIN'] }, async ({ user }) => {
+    const rows = await prisma.invitation.findMany({ where: { AND: [orgIn(await schoolsOf(user)), { status: 'PENDING', expiresAt: { gt: new Date() } }] }, orderBy: { createdAt: 'desc' }, take: 1000, select: { id: true, email: true, role: true, expiresAt: true, createdAt: true } });
     return { items: rows, total: rows.length };
   });
 
-  // Other people's contact details and grades (GPA) are for admins; everyone else gets a public card.
+  // Other people's contact details and grades (GPA) are for their own school's admins; everyone
+  // else (another school's admins too) gets a public card.
   r.get<{ id: string }>(':id', async ({ params, user }) => {
-    if (user.role === 'ADMIN' || params.id === user.id) return findOne(params.id);
+    if (params.id === user.id) return findOne(params.id);
+    if (user.role === 'ADMIN' && await assertInSchool(user, params.id).then(() => true, () => false)) return findOne(params.id);
     const card = await prisma.user.findUnique({
       where: { id: params.id },
       select: { id: true, name: true, avatar: true, role: true, studentProfile: { select: { department: true, year: true } }, teacherProfile: { select: { department: true } } },
@@ -166,10 +169,13 @@ export default function users(router: Router) {
     if (!EMAIL_RE.test(email)) throw new BadRequestException('Enter a valid email address.');
     if (!INVITABLE.includes(role)) throw new BadRequestException('Choose Student, Staff or Organization.');
     if (await prisma.user.findUnique({ where: { email } })) throw new ConflictException('User with this email already exists');
+    // Another school's pending invitation stays theirs (it decides which school the person joins).
+    const pending = await prisma.invitation.findUnique({ where: { email }, select: { organizationId: true } });
+    if (pending && !inSchools(await schoolsOf(user), pending.organizationId)) throw new ConflictException('This address already has an invitation from another school.');
     const invitation = await prisma.invitation.upsert({
       where: { email },
-      update: { role, status: 'PENDING', expiresAt: inviteExpiry() },
-      create: { email, role, status: 'PENDING', expiresAt: inviteExpiry() },
+      update: { role, status: 'PENDING', expiresAt: inviteExpiry(), organizationId: user.organizationId ?? null },
+      create: { email, role, status: 'PENDING', expiresAt: inviteExpiry(), organizationId: user.organizationId ?? null },
     });
     audit(user, { action: 'user.invited', summary: `Invited ${email} as ${role}`, targetType: 'invitation', targetId: invitation.id, metadata: { email, role } }, req);
     return { success: true, invitation };
@@ -190,11 +196,17 @@ export default function users(router: Router) {
       const rows = await prisma.user.findMany({ where: { email: { in: valid.slice(i, i + 90) } }, select: { email: true } });
       rows.forEach((r) => existing.add(r.email.toLowerCase()));
     }
+    // Another school's pending invitations stay theirs: those addresses are left out, like members.
+    const schools = await schoolsOf(user);
+    for (let i = 0; i < valid.length; i += 90) {
+      const theirs = await prisma.invitation.findMany({ where: { email: { in: valid.slice(i, i + 90).filter((e) => !existing.has(e)) } }, select: { email: true, organizationId: true } });
+      theirs.filter((inv) => !inSchools(schools, inv.organizationId)).forEach((inv) => existing.add(inv.email.toLowerCase()));
+    }
     const toInvite = valid.filter((e) => !existing.has(e));
     const expiresAt = inviteExpiry();
     for (let i = 0; i < toInvite.length; i += 25) {
       await prisma.$transaction(toInvite.slice(i, i + 25).map((email) => prisma.invitation.upsert({
-        where: { email }, update: { role, status: 'PENDING', expiresAt }, create: { email, role, status: 'PENDING', expiresAt },
+        where: { email }, update: { role, status: 'PENDING', expiresAt, organizationId: user.organizationId ?? null }, create: { email, role, status: 'PENDING', expiresAt, organizationId: user.organizationId ?? null },
       })));
     }
     audit(user, { action: 'user.invited', summary: `Invited ${toInvite.length} people as ${role}`, targetType: 'invitation', metadata: { count: toInvite.length, role } }, req);
@@ -203,7 +215,7 @@ export default function users(router: Router) {
 
   // "Resend": another 30 days (no email; the admin shares the sign-up link).
   r.post<{ id: string }>('invitations/:id/renew', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
-    const done = await renewInvitation(params.id);
+    const done = await renewInvitation(params.id, new Date(), await schoolsOf(user));
     audit(user, { action: 'user.invitation_renewed', summary: `Renewed the invitation for ${done.email}`, targetType: 'invitation', targetId: done.id }, req);
     return done;
   });
@@ -211,21 +223,21 @@ export default function users(router: Router) {
   // Several people at once (Admin → Users, Phase E): status, or a wrong role (no courses yet).
   r.post('bulk/status', { roles: ['ADMIN'] }, async ({ body, user, req }) => {
     if (!oneOf(USER_STATUSES, body?.status)) throw new BadRequestException(`status must be one of ${USER_STATUSES.join(', ')}`);
-    const out = await bulkStatus(user, strings(body?.ids), body.status);
+    const out = await bulkStatus(user, await keepInSchool(user, cleanIds(strings(body?.ids), STATUS_BATCH)), body.status);
     if (out.changed) audit(user, { action: 'user.status_changed', summary: `Set ${out.changed} account${out.changed === 1 ? '' : 's'} to ${body.status}: ${out.names.slice(0, 10).join(', ')}${out.changed > 10 ? '…' : ''}`, targetType: 'user', metadata: { status: body.status, count: out.changed } }, req);
     return out;
   });
   r.post('bulk/role', { roles: ['ADMIN'] }, async ({ body, user, req }) => {
     const role = oneOf(['STUDENT', 'TEACHER'] as const, body?.role) ? body.role : null;
     if (!role) throw new BadRequestException('Choose Student or Teacher.');
-    const out = await bulkRole(user, strings(body?.ids), role);
+    const out = await bulkRole(user, await keepInSchool(user, cleanIds(strings(body?.ids), ROLE_BATCH)), role);
     if (out.changed) audit(user, { action: 'user.role_changed', summary: `Made ${out.names.slice(0, 10).join(', ')}${out.changed > 10 ? '…' : ''} ${role === 'STUDENT' ? 'students' : 'teachers'}`, targetType: 'user', metadata: { role, count: out.changed } }, req);
     return out;
   });
 
   r.delete<{ id: string }>('invitations/:id', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
     const inv = await prisma.invitation.findUnique({ where: { id: params.id } });
-    if (!inv) throw new NotFoundException('Invitation not found');
+    if (!inv || !inSchools(await schoolsOf(user), inv.organizationId)) throw new NotFoundException('Invitation not found');
     await prisma.invitation.delete({ where: { id: inv.id } });
     audit(user, { action: 'user.invitation_revoked', summary: `Cancelled the invitation for ${inv.email}`, targetType: 'invitation', targetId: inv.id }, req);
     return { success: true };
@@ -289,6 +301,7 @@ export default function users(router: Router) {
     const status = body.status as UserStatus;
     if (!USER_STATUSES.includes(status)) throw new BadRequestException(`status must be one of ${USER_STATUSES.join(', ')}`);
     if (params.id === user.id) throw new BadRequestException("You can't change the status of your own account.");
+    await assertInSchool(user, params.id);
     await assertNotOwner(params.id);
     const updated = await prisma.user.update({ where: { id: params.id }, data: { status }, select: safeSelect });
     forgetUser(params.id);
@@ -298,6 +311,7 @@ export default function users(router: Router) {
 
   r.delete<{ id: string }>(':id', { roles: ['ADMIN'] }, async ({ params, user, req }) => {
     if (params.id === user.id) throw new BadRequestException("You can't delete your own account here.");
+    await assertInSchool(user, params.id);
     await assertNotOwner(params.id);
     const target = await prisma.user.findUnique({ where: { id: params.id }, select: { name: true, email: true, role: true } });
     if (!target) throw new NotFoundException('User not found');

@@ -10,6 +10,7 @@ vi.mock('@/lib/db', () => ({
     calendarEvent: { deleteMany: vi.fn() },
     enrollment: { findMany: vi.fn() },
     $executeRawUnsafe: vi.fn(),
+    organization: { findUnique: vi.fn().mockResolvedValue(null) },
   },
 }));
 vi.mock('./email', () => ({ later: vi.fn(), notifyMany: vi.fn() }));
@@ -60,7 +61,8 @@ describe('timetable generator: saving (Stage 5 · Q12)', () => {
     const exams = Array.from({ length: 15 }, (_, i) => ({ courseId: `c${i}`, startAt: '2026-11-02T09:00:00.000Z', endAt: '2026-11-02T11:00:00.000Z', rooms: 'Hall (40)' }));
     const out = await publishExams(admin, { name: ' End of term ', exams });
     expect(out).toEqual({ published: 15, replaced: 3, batch: 'exam:End of term' });
-    expect(db.calendarEvent.deleteMany).toHaveBeenCalledWith({ where: { batch: 'exam:End of term' } });
+    // Only this school's timetable of that name (an admin in no school runs the main school).
+    expect(db.calendarEvent.deleteMany).toHaveBeenCalledWith({ where: { batch: 'exam:End of term', course: { teacher: { organizationId: null } } } });
     expect(db.$executeRawUnsafe).toHaveBeenCalledTimes(2);
     const values = db.$executeRawUnsafe.mock.calls[0].slice(1);
     expect(values.length).toBe(98);

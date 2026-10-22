@@ -2,8 +2,9 @@ import prisma from '@/lib/db';
 import { toCsv } from '@/lib/csv';
 import { IMPORT_COLUMNS, IMPORT_KINDS, MAX_IMPORT_ROWS, type ImportKind } from '@/lib/import-columns';
 import type { SessionUser } from '@/lib/server-auth';
-import { BadRequestException, NotFoundException } from './http';
+import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { need } from './permissions';
+import { inSchools, schoolSql, schoolsOf, usersIn, type SchoolIds } from './school-scope';
 
 // Bulk import from CSV with a preview and undo (Stage 5 · B15.7). The admin's browser reads the file
 // and matches its columns (src/lib/csv.ts); the server checks every row and says what it would do
@@ -15,6 +16,9 @@ import { need } from './permissions';
 //   timetable   weekly class times with rooms (room clashes refused)
 // Every lookup and write is one statement whatever the number of rows (JSON in one bound value,
 // read with json_each), so 1,000 rows stay within D1's 50 statements and 100 values a request.
+// An admin imports into (and exports) only their own school (school-scope.ts): people, invitations
+// and courses (a course is its teacher's school) of another school are never matched or changed,
+// and an import is undone only when everything it changed is the viewer's school's.
 
 export type Action = 'invite' | 'enrol' | 'create' | 'update' | 'skip' | 'error';
 export interface RowResult { n: number; action: Action; message: string; label: string }
@@ -68,26 +72,32 @@ interface Plan {
   slots: { id: string; courseId: string; dayOfWeek: number; startTime: string; endTime: string; roomId: string | null; type: string }[];
 }
 const emptyPlan = (): Plan => ({ results: [], invites: [], reinvites: [], enrol: [], pending: [], courses: [], courseUpdates: [], slots: [] });
+type Schools = SchoolIds | 'all';
+const OTHER_ACCOUNT = 'This email has an account outside your school: it’s left as it is.';
+const OTHER_INVITE = 'This email was invited by another school: it’s left as it is.';
 
-async function coursesByCode(codes: string[]) {
-  const rows = await readWith<{ id: string; code: string; name: string; teacherId: string; credits: number; department: string | null; description: string | null; status: string }>(
-    `SELECT id, code, name, "teacherId", credits, department, description, status FROM courses WHERE upper(code) IN (SELECT upper(value) FROM json_each(?1))`, [...new Set(codes)]);
-  return new Map(rows.map((c) => [c.code.toUpperCase(), c]));
+/** Courses by code; `other` are codes used by another school's course (a course is its teacher's school). */
+async function coursesByCode(codes: string[], schools: Schools) {
+  const rows = await readWith<{ id: string; code: string; name: string; teacherId: string; credits: number; department: string | null; description: string | null; status: string; org: string | null }>(
+    `SELECT c.id, c.code, c.name, c."teacherId", c.credits, c.department, c.description, c.status, t.organizationId AS org FROM courses c LEFT JOIN users t ON t.id = c."teacherId" WHERE upper(c.code) IN (SELECT upper(value) FROM json_each(?1))`, [...new Set(codes)]);
+  const mine = rows.filter((c) => inSchools(schools, c.org));
+  return Object.assign(new Map(mine.map((c) => [c.code.toUpperCase(), c])), { other: new Set(rows.filter((c) => !mine.includes(c)).map((c) => c.code.toUpperCase())) });
 }
+/** Accounts by email (lowercase), with their school (`org`) so another school's are never changed. */
 async function usersByEmail(emails: string[]) {
-  const rows = await readWith<{ id: string; email: string; role: string; name: string }>(`SELECT id, lower(email) AS email, role, name FROM users WHERE lower(email) IN (SELECT value FROM json_each(?1))`, [...new Set(emails)]);
+  const rows = await readWith<{ id: string; email: string; role: string; name: string; org: string | null }>(`SELECT id, lower(email) AS email, role, name, organizationId AS org FROM users WHERE lower(email) IN (SELECT value FROM json_each(?1))`, [...new Set(emails)]);
   return new Map(rows.map((u) => [u.email, u]));
 }
 async function invitesByEmail(emails: string[]) {
-  const rows = await readWith<{ email: string; role: string; status: string; expiresAt: string }>(`SELECT lower(email) AS email, role, status, "expiresAt" FROM invitations WHERE lower(email) IN (SELECT value FROM json_each(?1))`, [...new Set(emails)]);
+  const rows = await readWith<{ email: string; role: string; status: string; expiresAt: string; org: string | null }>(`SELECT lower(email) AS email, role, status, "expiresAt", organizationId AS org FROM invitations WHERE lower(email) IN (SELECT value FROM json_each(?1))`, [...new Set(emails)]);
   return new Map(rows.map((i) => [i.email, i]));
 }
 
-async function planPeople(rows: Row[]): Promise<Plan> {
+async function planPeople(rows: Row[], schools: Schools): Promise<Plan> {
   const plan = emptyPlan();
   const emails = rows.map((r) => (r.email ?? '').trim().toLowerCase());
-  const [users, invites, courses] = await Promise.all([usersByEmail(emails.filter(Boolean)), invitesByEmail(emails.filter(Boolean)), coursesByCode(rows.flatMap((r) => readCodes(r.courses)))]);
-  const enrolled = new Set((await readWith<{ k: string }>(`SELECT "studentId" || ':' || "courseId" AS k FROM enrollments WHERE "studentId" IN (SELECT value FROM json_each(?1))`, [...users.values()].map((u) => u.id))).map((x) => x.k));
+  const [users, invites, courses] = await Promise.all([usersByEmail(emails.filter(Boolean)), invitesByEmail(emails.filter(Boolean)), coursesByCode(rows.flatMap((r) => readCodes(r.courses)), schools)]);
+  const enrolled = new Set((await readWith<{ k: string }>(`SELECT "studentId" || ':' || "courseId" AS k FROM enrollments WHERE "studentId" IN (SELECT value FROM json_each(?1))`, [...users.values()].filter((u) => inSchools(schools, u.org)).map((u) => u.id))).map((x) => x.k));
   const seen = new Map<string, number>();
   rows.forEach((r, i) => {
     const n = i + 1, email = emails[i];
@@ -103,6 +113,7 @@ async function planPeople(rows: Row[]): Promise<Plan> {
     if (missing.length) return out('error', `No course with code ${missing.join(', ')}.`);
     const wanted = codes.map((c) => courses.get(c.toUpperCase())!);
     const user = users.get(email);
+    if (user && !inSchools(schools, user.org)) return out('error', OTHER_ACCOUNT);
     if (user) {
       if (!wanted.length) return out('skip', `Already has an account (${user.role.toLowerCase()}).`);
       if (user.role !== 'STUDENT') return out('skip', `Already has an account as ${user.role.toLowerCase()}: only students are put in classes.`);
@@ -112,6 +123,7 @@ async function planPeople(rows: Row[]): Promise<Plan> {
       return out('enrol', `Has an account: will be put in ${add.map((c) => c.code).join(', ')}.`);
     }
     const inv = invites.get(email);
+    if (inv && !inSchools(schools, inv.org)) return out('error', OTHER_INVITE);
     if (inv) plan.reinvites.push({ email, role, before: { role: inv.role, status: inv.status, expiresAt: inv.expiresAt } });
     else plan.invites.push({ id: newId(), email, role });
     if (role === 'STUDENT') wanted.forEach((c) => plan.pending.push({ id: newId(), email, courseId: c.id }));
@@ -121,11 +133,11 @@ async function planPeople(rows: Row[]): Promise<Plan> {
   return plan;
 }
 
-async function planEnrolments(rows: Row[]): Promise<Plan> {
+async function planEnrolments(rows: Row[], schools: Schools): Promise<Plan> {
   const plan = emptyPlan();
   const emails = rows.map((r) => (r.email ?? '').trim().toLowerCase());
-  const [users, invites, courses] = await Promise.all([usersByEmail(emails.filter(Boolean)), invitesByEmail(emails.filter(Boolean)), coursesByCode(rows.map((r) => (r.course ?? '').trim()).filter(Boolean))]);
-  const ids = [...users.values()].map((u) => u.id);
+  const [users, invites, courses] = await Promise.all([usersByEmail(emails.filter(Boolean)), invitesByEmail(emails.filter(Boolean)), coursesByCode(rows.map((r) => (r.course ?? '').trim()).filter(Boolean), schools)]);
+  const ids = [...users.values()].filter((u) => inSchools(schools, u.org)).map((u) => u.id);
   const [enrolled, pending] = await Promise.all([
     readWith<{ k: string }>(`SELECT "studentId" || ':' || "courseId" AS k FROM enrollments WHERE "studentId" IN (SELECT value FROM json_each(?1))`, ids).then((x) => new Set(x.map((y) => y.k))),
     readWith<{ k: string }>(`SELECT lower(email) || ':' || "courseId" AS k FROM pending_enrolments WHERE lower(email) IN (SELECT value FROM json_each(?1))`, [...new Set(emails)]).then((x) => new Set(x.map((y) => y.k))),
@@ -142,6 +154,7 @@ async function planEnrolments(rows: Row[]): Promise<Plan> {
     if (seen.has(key)) return out('skip', `Same as row ${seen.get(key)}.`);
     seen.set(key, n);
     const user = users.get(email);
+    if (user && !inSchools(schools, user.org)) return out('error', OTHER_ACCOUNT);
     if (user) {
       if (user.role !== 'STUDENT') return out('error', `${user.name} is a ${user.role.toLowerCase()}, not a student.`);
       if (enrolled.has(`${user.id}:${course.id}`)) return out('skip', `Already in ${course.code}.`);
@@ -149,7 +162,7 @@ async function planEnrolments(rows: Row[]): Promise<Plan> {
       return out('enrol', `${user.name} will be put in ${course.code}.`);
     }
     const inv = invites.get(email);
-    if (inv?.status === 'PENDING' && inv.role === 'STUDENT') {
+    if (inv?.status === 'PENDING' && inv.role === 'STUDENT' && inSchools(schools, inv.org)) {
       if (pending.has(key)) return out('skip', `Already waiting to join ${course.code}.`);
       plan.pending.push({ id: newId(), email, courseId: course.id });
       return out('enrol', `Invited, not joined yet: will be put in ${course.code} when they join.`);
@@ -159,11 +172,12 @@ async function planEnrolments(rows: Row[]): Promise<Plan> {
   return plan;
 }
 
-async function planCourses(rows: Row[]): Promise<Plan> {
+async function planCourses(rows: Row[], schools: Schools): Promise<Plan> {
   const plan = emptyPlan();
   const codes = rows.map((r) => (r.code ?? '').trim());
   const teacherEmails = rows.map((r) => (r.teacher ?? '').trim().toLowerCase()).filter(Boolean);
-  const [existing, teachers] = await Promise.all([coursesByCode(codes.filter(Boolean)), usersByEmail(teacherEmails)]);
+  const [existing, everyTeacher] = await Promise.all([coursesByCode(codes.filter(Boolean), schools), usersByEmail(teacherEmails)]);
+  const teachers = new Map([...everyTeacher].filter(([, t]) => inSchools(schools, t.org)));
   const seen = new Map<string, number>();
   rows.forEach((r, i) => {
     const n = i + 1, code = codes[i];
@@ -172,6 +186,7 @@ async function planCourses(rows: Row[]): Promise<Plan> {
     if (!CODE_RE.test(code)) return out('error', code ? 'Codes are up to 20 letters, numbers, spaces or - _ . /' : 'Give the course a code.');
     if (seen.has(code.toUpperCase())) return out('error', `Same code as row ${seen.get(code.toUpperCase())}.`);
     seen.set(code.toUpperCase(), n);
+    if (existing.other.has(code.toUpperCase())) return out('error', `The code ${code} is taken: choose another.`);
     const name = r.name?.trim().slice(0, 120) || null;
     const teacherEmail = r.teacher?.trim().toLowerCase();
     const teacher = teacherEmail ? teachers.get(teacherEmail) : undefined;
@@ -206,10 +221,10 @@ async function planCourses(rows: Row[]): Promise<Plan> {
 
 const overlaps = (a: { start: string; end: string }, b: { start: string; end: string }) => a.start < b.end && b.start < a.end;
 
-async function planTimetable(rows: Row[]): Promise<Plan> {
+async function planTimetable(rows: Row[], schools: Schools): Promise<Plan> {
   const plan = emptyPlan();
   const [courses, rooms] = await Promise.all([
-    coursesByCode(rows.map((r) => (r.course ?? '').trim()).filter(Boolean)),
+    coursesByCode(rows.map((r) => (r.course ?? '').trim()).filter(Boolean), schools),
     prisma.room.findMany({ select: { id: true, name: true }, take: 1000 }),
   ]);
   const roomByName = new Map(rooms.map((r) => [r.name.trim().toLowerCase(), r]));
@@ -261,8 +276,10 @@ function readRequest(b: Record<string, unknown>) {
   return { kind, rows };
 }
 
-const planFor = (kind: ImportKind, rows: Row[]) =>
-  kind === 'people' ? planPeople(rows) : kind === 'enrolments' ? planEnrolments(rows) : kind === 'courses' ? planCourses(rows) : planTimetable(rows);
+const planFor = async (user: SessionUser, kind: ImportKind, rows: Row[]) => {
+  const schools = await schoolsOf(user);
+  return kind === 'people' ? planPeople(rows, schools) : kind === 'enrolments' ? planEnrolments(rows, schools) : kind === 'courses' ? planCourses(rows, schools) : planTimetable(rows, schools);
+};
 
 const countOf = (results: RowResult[]) => {
   const c: Record<Action, number> = { invite: 0, enrol: 0, create: 0, update: 0, skip: 0, error: 0 };
@@ -274,7 +291,7 @@ const countOf = (results: RowResult[]) => {
 export async function previewImport(user: SessionUser, b: Record<string, unknown>) {
   await need(user, 'import.run');
   const { kind, rows } = readRequest(b);
-  const plan = await planFor(kind, rows);
+  const plan = await planFor(user, kind, rows);
   return { kind, counts: countOf(plan.results), results: plan.results };
 }
 
@@ -289,14 +306,15 @@ interface Undo {
 export async function runImport(user: SessionUser, b: Record<string, unknown>) {
   await need(user, 'import.run');
   const { kind, rows } = readRequest(b);
-  const plan = await planFor(kind, rows);
+  const plan = await planFor(user, kind, rows);
   const counts = countOf(plan.results);
   if (!counts.invite && !counts.enrol && !counts.create && !counts.update) throw new BadRequestException('Nothing to import: every row is skipped or has a problem.');
   const now = dbDate();
   const expires = dbDate(new Date(Date.now() + INVITE_DAYS * 86_400_000));
-  await writeWith(`INSERT INTO invitations (id, email, role, status, "expiresAt", "createdAt", "updatedAt")
-    SELECT json_extract(value, '$.id'), json_extract(value, '$.email'), json_extract(value, '$.role'), 'PENDING', ?2, ?3, ?3 FROM json_each(?1) WHERE true
-    ON CONFLICT(email) DO NOTHING`, plan.invites, expires, now);
+  // New invitations are the admin's school's (like Admin → Users → Invite).
+  await writeWith(`INSERT INTO invitations (id, email, role, status, "expiresAt", "createdAt", "updatedAt", organizationId)
+    SELECT json_extract(value, '$.id'), json_extract(value, '$.email'), json_extract(value, '$.role'), 'PENDING', ?2, ?3, ?3, ?4 FROM json_each(?1) WHERE true
+    ON CONFLICT(email) DO NOTHING`, plan.invites, expires, now, user.organizationId ?? null);
   await writeWith(`UPDATE invitations SET role = (SELECT json_extract(value, '$.role') FROM json_each(?1) WHERE json_extract(value, '$.email') = lower(invitations.email)),
     status = 'PENDING', "expiresAt" = ?2, "updatedAt" = ?3 WHERE lower(email) IN (SELECT json_extract(value, '$.email') FROM json_each(?1))`, plan.reinvites, expires, now);
   await writeWith(`INSERT INTO enrollments (id, "studentId", "courseId", "enrolledAt")
@@ -330,7 +348,8 @@ export async function runImport(user: SessionUser, b: Record<string, unknown>) {
 /** GET /api/admin/import: the last imports, newest first, with whether they can still be undone. */
 export async function importHistory(user: SessionUser) {
   await need(user, 'import.run');
-  const rows = await prisma.importBatch.findMany({ orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, kind: true, fileName: true, rows: true, summary: true, createdAt: true, undoneAt: true, createdBy: { select: { name: true } } } });
+  // Imports made by the admin's own school's people.
+  const rows = await prisma.importBatch.findMany({ where: { createdBy: usersIn(await schoolsOf(user)) }, orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, kind: true, fileName: true, rows: true, summary: true, createdAt: true, undoneAt: true, createdBy: { select: { name: true } } } });
   const now = Date.now();
   return { batches: rows.map((r) => ({ ...r, summary: JSON.parse(r.summary) as Record<Action, number>, by: r.createdBy.name, createdBy: undefined, canUndo: !r.undoneAt && now - r.createdAt.getTime() < UNDO_DAYS * 86_400_000 })) };
 }
@@ -342,10 +361,13 @@ export async function importHistory(user: SessionUser) {
 export async function undoImport(user: SessionUser, id: string, b: Record<string, unknown>) {
   await need(user, 'import.run');
   if (b.action !== 'undo') throw new BadRequestException('Unknown action.');
-  const batch = await prisma.importBatch.findUnique({ where: { id }, select: { undo: true, undoneAt: true, createdAt: true } });
+  const schools = await schoolsOf(user);
+  const batch = await prisma.importBatch.findFirst({ where: { id, createdBy: usersIn(schools) }, select: { undo: true, undoneAt: true, createdAt: true } });
   if (!batch) throw new NotFoundException('That import doesn’t exist.');
   if (batch.undoneAt) throw new BadRequestException('This import was already undone.');
   if (Date.now() - batch.createdAt.getTime() > UNDO_DAYS * 86_400_000) throw new BadRequestException(`Imports can be undone for ${UNDO_DAYS} days.`);
+  // Its maker may also run a school the viewer doesn't (one they own): then it's theirs to undo.
+  if (await touchesOtherSchools(JSON.parse(batch.undo) as Undo, schools)) throw new ForbiddenException('This import also changed another school’s records: only whoever made it can undo it.');
   // Claimed first, so two clicks never undo twice.
   const claim = await prisma.importBatch.updateMany({ where: { id, undoneAt: null }, data: { undoneAt: new Date(), undoneById: user.id } });
   if (!claim.count) throw new BadRequestException('This import was already undone.');
@@ -374,6 +396,27 @@ export async function undoImport(user: SessionUser, id: string, b: Record<string
   return { undone: true, kept: { invitations: Number(invitesKept), courses: used.length } };
 }
 
+/**
+ * How many of the records an undo would change aren't the viewer's schools': invitations by their
+ * school, enrolments by their student's and course's, courses (and the teacher a change would put
+ * back) by their teacher's. One statement; each list is one JSON value, the schools the last.
+ */
+async function touchesOtherSchools(u: Undo, schools: Schools): Promise<boolean> {
+  if (schools === 'all') return false;
+  const ids = (n: number, path = '') => `(SELECT ${path ? `json_extract(value, '$.${path}')` : 'value'} FROM json_each(?${n}))`;
+  const ours = (a: string) => (schools.includes(null) ? `(${a}.organizationId IS NULL OR ${a}.organizationId IN ${ids(8)})` : `(${a}.organizationId IS NOT NULL AND ${a}.organizationId IN ${ids(8)})`);
+  const course = `JOIN courses c ON c.id = x."courseId" JOIN users t ON t.id = c."teacherId"`;
+  const rows = await prisma.$queryRawUnsafe<{ n: number | bigint }[]>(`SELECT
+      (SELECT COUNT(*) FROM invitations i WHERE (i.id IN ${ids(1)} OR lower(i.email) IN ${ids(2, 'email')}) AND NOT ${ours('i')})
+    + (SELECT COUNT(*) FROM enrollments x JOIN users s ON s.id = x."studentId" ${course} WHERE x.id IN ${ids(3)} AND NOT (${ours('s')} AND ${ours('t')}))
+    + (SELECT COUNT(*) FROM pending_enrolments x ${course} WHERE x.id IN ${ids(4)} AND NOT ${ours('t')})
+    + (SELECT COUNT(*) FROM courses c JOIN users t ON t.id = c."teacherId" WHERE (c.id IN ${ids(5)} OR c.id IN ${ids(6, 'id')}) AND NOT ${ours('t')})
+    + (SELECT COUNT(*) FROM users t WHERE t.id IN ${ids(6, 'before.teacherId')} AND NOT ${ours('t')})
+    + (SELECT COUNT(*) FROM timetable_slots x ${course} WHERE x.id IN ${ids(7)} AND NOT ${ours('t')}) AS n`,
+  ...[u.invitations, u.reinvites, u.enrollments, u.pending, u.courses, u.courseUpdates, u.slots, schools.filter(Boolean)].map((list) => JSON.stringify(list ?? [])));
+  return Number(rows[0]?.n ?? 0) > 0;
+}
+
 /** When someone invited by an import joins: the classes waiting for them become real enrolments. */
 export async function applyPendingEnrolments(userId: string, email: string) {
   const e = email.trim().toLowerCase();
@@ -388,7 +431,9 @@ export const EXPORTS = ['students', 'teachers', 'courses', 'enrolments', 'timeta
 /** GET /api/admin/import/export?kind=: a CSV with the same headers the import reads. */
 export async function exportCsv(user: SessionUser, kind: string | null) {
   await need(user, 'export.run');
-  const q = <T,>(sql: string) => prisma.$queryRawUnsafe<T[]>(sql);
+  // Only the admin's school: its people (u), and courses by their teacher's school (t).
+  const schools = await schoolsOf(user);
+  const q = <T,>(sql: string, alias: 'u' | 't') => { const w = schoolSql(schools, alias); return prisma.$queryRawUnsafe<T[]>(sql.replace('{school}', w.sql), ...w.args); };
   switch (kind) {
     case 'students':
     case 'teachers': {
@@ -398,23 +443,23 @@ export async function exportCsv(user: SessionUser, kind: string | null) {
                 ${role === 'STUDENT'
                   ? `(SELECT group_concat(c.code, ';') FROM enrollments e JOIN courses c ON c.id = e."courseId" WHERE e."studentId" = u.id)`
                   : `(SELECT group_concat(c.code, ';') FROM courses c WHERE c."teacherId" = u.id)`} AS courses
-         FROM users u WHERE u.role = '${role}' ORDER BY u.name LIMIT 20000`);
+         FROM users u WHERE u.role = '${role}' AND {school} ORDER BY u.name LIMIT 20000`, 'u');
       return toCsv(['Email', 'Name', 'Role', 'Courses', 'Status', 'Joined'], rows.map((r) => [r.email, r.name, role.toLowerCase(), r.courses ?? '', r.status.toLowerCase(), r.joined]));
     }
     case 'courses': {
       const rows = await q<{ code: string; name: string; teacher: string | null; credits: number; department: string | null; status: string; description: string | null; students: number }>(
         `SELECT c.code, c.name, t.email AS teacher, c.credits, c.department, c.status, c.description, (SELECT COUNT(*) FROM enrollments e WHERE e."courseId" = c.id) AS students
-         FROM courses c LEFT JOIN users t ON t.id = c."teacherId" ORDER BY c.code LIMIT 5000`);
+         FROM courses c LEFT JOIN users t ON t.id = c."teacherId" WHERE {school} ORDER BY c.code LIMIT 5000`, 't');
       return toCsv(['Code', 'Name', 'Teacher', 'Credits', 'Department', 'Status', 'Description', 'Students'], rows.map((r) => [r.code, r.name, r.teacher ?? '', r.credits, r.department ?? '', r.status.toLowerCase(), r.description ?? '', Number(r.students)]));
     }
     case 'enrolments': {
       const rows = await q<{ email: string; name: string; code: string; at: string }>(
-        `SELECT u.email, u.name, c.code, substr(e."enrolledAt", 1, 10) AS at FROM enrollments e JOIN users u ON u.id = e."studentId" JOIN courses c ON c.id = e."courseId" ORDER BY c.code, u.name LIMIT 50000`);
+        `SELECT u.email, u.name, c.code, substr(e."enrolledAt", 1, 10) AS at FROM enrollments e JOIN users u ON u.id = e."studentId" JOIN courses c ON c.id = e."courseId" WHERE {school} ORDER BY c.code, u.name LIMIT 50000`, 'u');
       return toCsv(['Email', 'Course', 'Name', 'Enrolled'], rows.map((r) => [r.email, r.code, r.name, r.at]));
     }
     case 'timetable': {
       const rows = await q<{ code: string; day: number; start: string; end: string; room: string | null; type: string }>(
-        `SELECT c.code, s."dayOfWeek" AS day, s."startTime" AS start, s."endTime" AS "end", r.name AS room, s.type FROM timetable_slots s JOIN courses c ON c.id = s."courseId" LEFT JOIN rooms r ON r.id = s."roomId" ORDER BY s."dayOfWeek", s."startTime", c.code LIMIT 10000`);
+        `SELECT c.code, s."dayOfWeek" AS day, s."startTime" AS start, s."endTime" AS "end", r.name AS room, s.type FROM timetable_slots s JOIN courses c ON c.id = s."courseId" LEFT JOIN users t ON t.id = c."teacherId" LEFT JOIN rooms r ON r.id = s."roomId" WHERE {school} ORDER BY s."dayOfWeek", s."startTime", c.code LIMIT 10000`, 't');
       return toCsv(['Course', 'Day', 'Start', 'End', 'Room', 'Type'], rows.map((r) => [r.code, DAY_NAMES[r.day] ?? '', r.start, r.end, r.room ?? '', r.type.toLowerCase()]));
     }
     default: throw new BadRequestException('Choose what to export.');

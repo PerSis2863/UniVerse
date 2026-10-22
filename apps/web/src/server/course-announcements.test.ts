@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-const db = vi.hoisted(() => ({ enrollment: { findMany: vi.fn() }, course: { findMany: vi.fn() } }));
+const db = vi.hoisted(() => ({ enrollment: { findMany: vi.fn() }, course: { findMany: vi.fn() }, organization: { findUnique: vi.fn(async () => null) } }));
 vi.mock('@/lib/db', () => ({ default: db }));
 vi.mock('./email', () => ({ notifyMany: vi.fn() }));
 
@@ -36,8 +36,8 @@ describe('course announcements', () => {
     const teacher = (await announcementWhere(user('TEACHER'))) as Scoped;
     expect(teacher.AND[0].OR[0]).toEqual({ courseId: null, target: { in: ['ALL', 'TEACHERS', 'STUDENTS'] } });
     expect(teacher.AND[0].OR[1]).toEqual({ courseId: { in: ['c1', 'c2'] } });
-    // Admins: everything at their school.
-    expect(await announcementWhere(user('ADMIN', 'org1'))).toEqual({ author: { organizationId: 'org1' } });
-    expect(await announcementWhere(user('ADMIN'))).toEqual({});
+    // Admins: everything at their own school (school-scope.ts); one in no school runs the main school.
+    expect(await announcementWhere(user('ADMIN', 'org1'))).toEqual({ author: { organizationId: { in: ['org1'] } } });
+    expect(await announcementWhere(user('ADMIN'))).toEqual({ author: { organizationId: null } });
   });
 });

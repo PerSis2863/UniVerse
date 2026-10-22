@@ -8,5 +8,5 @@ export default function dashboardModule(router: Router) {
 
   r.get('student', { roles: ['STUDENT'] }, ({ user }) => dashboard.getStudentDashboard(user));
   r.get('teacher', { roles: ['TEACHER'] }, ({ user }) => dashboard.getTeacherDashboard(user));
-  r.get('admin', { roles: ['ADMIN'] }, () => dashboard.getAdminDashboard());
+  r.get('admin', { roles: ['ADMIN'] }, ({ user }) => dashboard.getAdminDashboard(user));
 }

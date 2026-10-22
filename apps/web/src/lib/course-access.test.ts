@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const db = vi.hoisted(() => ({ course: { findUnique: vi.fn(), count: vi.fn() }, enrollment: { findUnique: vi.fn() } }));
+const db = vi.hoisted(() => ({ course: { findUnique: vi.fn(), count: vi.fn() }, enrollment: { findUnique: vi.fn() }, organization: { findUnique: vi.fn().mockResolvedValue(null) } }));
 vi.mock('@/lib/db', () => ({ default: db }));
 
 import { courseAccess, ownsCourse, taughtBy } from './course-access';
 
-const course = (staff: { role: string }[] = []) => ({ id: 'c1', name: 'Intro', code: 'CS101', color: null, teacherId: 't1', skills: null, teacher: { id: 't1', name: 'T' }, _count: { enrollments: 3 }, staff });
+const course = (staff: { role: string }[] = []) => ({ id: 'c1', name: 'Intro', code: 'CS101', color: null, teacherId: 't1', skills: null, teacher: { id: 't1', name: 'T', organizationId: null }, _count: { enrollments: 3 }, staff });
 const who = (id: string, role = 'TEACHER') => ({ id, name: id, email: `${id}@x`, role });
 
 describe('course access with a teaching team (Stage 5 · B2)', () => {
@@ -17,6 +17,8 @@ describe('course access with a teaching team (Stage 5 · B2)', () => {
     const admin = await courseAccess('c1', who('a1', 'ADMIN'));
     expect(admin).toMatchObject({ canManage: true, canGrade: true });
     expect(admin!.course).not.toHaveProperty('staff');
+    // The teacher's school is only checked, never returned.
+    expect(admin!.course.teacher).toEqual({ id: 't1', name: 'T' });
   });
 
   it('a co-teacher manages, an assistant only grades', async () => {
@@ -37,9 +39,13 @@ describe('course access with a teaching team (Stage 5 · B2)', () => {
     expect(await courseAccess('nope', who('t1'))).toBeNull();
   });
 
-  it('only the teacher or an admin owns the course', () => {
+  it('only the teacher or an admin of its school owns the course', async () => {
     expect(ownsCourse({ teacherId: 't1' }, who('t1'))).toBe(true);
-    expect(ownsCourse({ teacherId: 't1' }, who('a', 'ADMIN'))).toBe(true);
+    db.course.findUnique.mockResolvedValue(course());
+    const a = await courseAccess('c1', who('a', 'ADMIN'));
+    expect(ownsCourse(a!.course, who('a', 'ADMIN'))).toBe(true);
+    // An admin counts only for a course courseAccess gave them (it checked the school).
+    expect(ownsCourse({ teacherId: 't1' }, who('a', 'ADMIN'))).toBe(false);
     expect(ownsCourse({ teacherId: 't1' }, who('t2'))).toBe(false);
   });
 

@@ -1,6 +1,7 @@
 import prisma from '@/lib/db';
-import { BadRequestException, ForbiddenException } from './http';
+import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import type { SessionUser } from '@/lib/server-auth';
+import { assertInSchool, schoolsOf, usersIn } from './school-scope';
 
 // Stage 5 · C5: Compliance and Trust (India DPDP Act 2023, FERPA, COPPA, GDPR).
 
@@ -58,7 +59,7 @@ export async function logEducationalRecordAccess(params: {
  * Retrieves educational record access logs.
  * - Students can view access logs for their own records.
  * - Guardians can view access logs for their linked children.
- * - Admins can view access logs for any student in their organization.
+ * - Admins can view access logs for any student in their school (another school's student looks not found).
  */
 export async function getEducationalRecordAccessLogs(studentId: string, currentUser: SessionUser) {
   const isSelf = currentUser.id === studentId;
@@ -75,6 +76,7 @@ export async function getEducationalRecordAccessLogs(studentId: string, currentU
   if (!isSelf && !isAdmin && !isGuardian) {
     throw new ForbiddenException('You do not have permission to view this student’s educational record access log.');
   }
+  if (!isSelf && !isGuardian) await assertInSchool(currentUser, studentId);
 
   return prisma.educationalRecordLog.findMany({
     where: { studentId },
@@ -125,11 +127,12 @@ export async function submitPrivacyGrievance(params: {
 /**
  * Lists privacy grievances:
  * - Regular user: sees their own filed requests.
- * - Admin: sees requests filed by members of their organization.
+ * - Admin: sees requests filed by members of their school (school-scope.ts).
  */
 export async function listPrivacyGrievances(currentUser: SessionUser) {
   if (currentUser.role === 'ADMIN' || currentUser.owner) {
     return prisma.privacyGrievance.findMany({
+      where: { user: usersIn(await schoolsOf(currentUser)) },
       orderBy: { createdAt: 'desc' },
       take: 100,
       include: {
@@ -145,13 +148,17 @@ export async function listPrivacyGrievances(currentUser: SessionUser) {
 }
 
 /**
- * Admin resolves or updates a privacy grievance.
+ * Admin resolves or updates a privacy grievance filed by someone in their school (another school's
+ * looks not found).
  */
 export async function resolvePrivacyGrievance(params: {
+  actor: SessionUser;
   grievanceId: string;
   status: 'IN_REVIEW' | 'RESOLVED' | 'REJECTED';
   resolutionNote?: string | null;
 }) {
+  const mine = await prisma.privacyGrievance.findFirst({ where: { id: params.grievanceId, user: usersIn(await schoolsOf(params.actor)) }, select: { id: true } });
+  if (!mine) throw new NotFoundException('Request not found.');
   return prisma.privacyGrievance.update({
     where: { id: params.grievanceId },
     data: {

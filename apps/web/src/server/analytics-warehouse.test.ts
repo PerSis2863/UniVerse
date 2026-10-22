@@ -26,6 +26,9 @@ vi.mock('@/lib/db', () => ({
       update: vi.fn(),
       findMany: vi.fn(),
     },
+    // The reviewer, an admin of org_1 (research requests are reviewed by their own school's admins).
+    user: { findUnique: vi.fn().mockResolvedValue({ id: 'admin_1', organizationId: 'org_1' }) },
+    organization: { findUnique: vi.fn().mockResolvedValue(null) },
   },
 }));
 

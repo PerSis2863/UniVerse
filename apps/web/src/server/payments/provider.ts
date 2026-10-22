@@ -1,3 +1,4 @@
+import { open as openSecret } from '../secret-box';
 import prisma from '@/lib/db';
 import { BadRequestException, HttpException, NotFoundException } from '../http';
 import { donationPaid, donationRefunded } from '../donations';
@@ -45,15 +46,29 @@ export const paymentsTestMode = () => process.env.PAYMENTS_TEST_MODE === '1';
 const TEST_STRIPE = 'sk_test_mock_secret', TEST_RZP_ID = 'rzp_test_mock_12345', TEST_RZP_SECRET = 'rzp_mock_secret';
 const env = (k: string) => (process.env[k] ?? '').trim().replace(/^["']|["']$/g, '');
 
-type OrgKeys = { razorpayKeyId?: string | null; razorpayKeySecret?: string | null; stripeSecretKey?: string | null; stripePublishableKey?: string | null } | null | undefined;
-/** The gateway's keys (the school's own, else the site's), test ones only in test mode; null when not set up. */
-export function gatewayKeys(org: OrgKeys, provider: PaymentProviderName) {
+type OrgKeys = { id?: string; razorpayKeyId?: string | null; razorpayKeySecret?: string | null; stripeSecretKey?: string | null; stripePublishableKey?: string | null } | null | undefined;
+/**
+ * The gateway's keys (the school's own, else the site's), test ones only in test mode; null when not
+ * set up. School secrets are stored encrypted (secret-box.ts). A school secret that is saved but
+ * can't be read (the server's SESSION_SECRET changed) means "not set up", never the site's keys:
+ * the school's payments would otherwise be paid into the site's own account.
+ */
+export async function gatewayKeys(org: OrgKeys, provider: PaymentProviderName) {
+  const school = async (field: 'razorpayKeySecret' | 'stripeSecretKey') => {
+    const stored = org?.[field];
+    if (!stored) return { saved: false, secret: null };
+    return { saved: true, secret: await openSecret(stored, `${org?.id ?? ''}:${field}`) };
+  };
   if (provider === 'RAZORPAY') {
-    const keyId = org?.razorpayKeyId || env('RAZORPAY_KEY_ID'), secret = org?.razorpayKeySecret || env('RAZORPAY_KEY_SECRET');
+    const own = await school('razorpayKeySecret');
+    if (own.saved && !own.secret) return null;
+    const keyId = org?.razorpayKeyId || env('RAZORPAY_KEY_ID'), secret = own.secret || env('RAZORPAY_KEY_SECRET');
     if (keyId && secret) return { keyId, secret, test: false };
     return paymentsTestMode() ? { keyId: TEST_RZP_ID, secret: TEST_RZP_SECRET, test: true } : null;
   }
-  const secret = org?.stripeSecretKey || env('STRIPE_SECRET_KEY');
+  const own = await school('stripeSecretKey');
+  if (own.saved && !own.secret) return null;
+  const secret = own.secret || env('STRIPE_SECRET_KEY');
   const keyId = org?.stripePublishableKey || env('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
   if (secret) return { keyId, secret, test: false };
   return paymentsTestMode() ? { keyId: 'pk_test_mock_publishable', secret: TEST_STRIPE, test: true } : null;
@@ -83,7 +98,7 @@ export async function createUnifiedPaymentOrder(
   if (!org) throw new NotFoundException('Organization not found.');
 
   const provider = params.provider ?? resolvePaymentProvider(org.paymentProvider, params.currency);
-  const keys = gatewayKeys(org, provider);
+  const keys = await gatewayKeys(org, provider);
   if (!keys) throw new HttpException(`Online payments aren’t set up yet (${provider === 'RAZORPAY' ? 'Razorpay' : 'Stripe'} keys are missing).`, 503);
   const orderReceipt = params.receiptNumber || `rcpt_${Date.now().toString(36)}`;
 
@@ -184,7 +199,7 @@ export async function confirmUnifiedPayment(
 ): Promise<VerifyPaymentOutput> {
   const order = await prisma.paymentOrder.findUnique({
     where: { id: params.orderId },
-    include: { organization: { select: { razorpayKeyId: true, razorpayKeySecret: true, stripeSecretKey: true, stripePublishableKey: true } } },
+    include: { organization: { select: { id: true, razorpayKeyId: true, razorpayKeySecret: true, stripeSecretKey: true, stripePublishableKey: true } } },
   });
 
   if (!order || (userId && order.userId !== userId)) throw new NotFoundException('Payment order not found.');
@@ -192,7 +207,7 @@ export async function confirmUnifiedPayment(
   if (order.status !== 'PENDING') throw new BadRequestException('This payment was cancelled or refunded. Start a new one.');
 
   const provider = order.provider as PaymentProviderName;
-  const keys = gatewayKeys(order.organization, provider);
+  const keys = await gatewayKeys(order.organization, provider);
   if (!keys) throw new HttpException('Online payments aren’t set up yet.', 503);
 
   let paymentRef = '';
@@ -335,7 +350,7 @@ export async function processUnifiedRefund(
   let status = 'processed';
 
   if (order.provider === 'RAZORPAY') {
-    const keys = gatewayKeys(order.organization, 'RAZORPAY');
+    const keys = await gatewayKeys(order.organization, 'RAZORPAY');
     if (!keys) throw new HttpException('Razorpay keys are missing.', 503);
     const { keyId, secret: keySecret } = keys;
 
@@ -349,7 +364,7 @@ export async function processUnifiedRefund(
     refundId = rzpRefund.id;
     status = rzpRefund.status;
   } else {
-    const keys = gatewayKeys(order.organization, 'STRIPE');
+    const keys = await gatewayKeys(order.organization, 'STRIPE');
     if (!keys) throw new HttpException('Stripe keys are missing.', 503);
     const stripeSecret = keys.secret;
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { byMonth } from '@/lib/month-buckets';
 import { requireFeature } from '@/lib/billing';
+import { schoolsOf, usersIn } from '@/server/school-scope';
 
 type MonthRow = { month: Date; value: bigint | number };
 
@@ -25,33 +26,37 @@ export async function GET(req: Request) {
   since.setUTCMonth(since.getUTCMonth() - 11, 1);
   since.setUTCHours(0, 0, 0, 0);
 
+  // Only the admin's own school: its people, and courses by their teacher's school.
+  const mine = usersIn(await schoolsOf(auth.user));
+  const course = { teacher: mine };
+
   // Contact details shown for every person listed on the page.
   const person = { id: true, name: true, email: true, status: true, phone: true, lastSeenAt: true, createdAt: true } as const;
 
   const [roles, activeUsers, courses, enrollments, impactTotal, applications, signups, impact, topContributors, roleStatus, admins, teachers, topStudents] = await Promise.all([
-    prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
-    prisma.user.count({ where: { status: 'ACTIVE' } }),
-    prisma.course.count(),
-    prisma.enrollment.count(),
-    prisma.impactPoint.aggregate({ _sum: { points: true } }),
-    prisma.nGOProjectApplication.groupBy({ by: ['status'], _count: { _all: true } }),
+    prisma.user.groupBy({ by: ['role'], where: mine, _count: { _all: true } }),
+    prisma.user.count({ where: { AND: [mine, { status: 'ACTIVE' }] } }),
+    prisma.course.count({ where: course }),
+    prisma.enrollment.count({ where: { course } }),
+    prisma.impactPoint.aggregate({ where: { user: mine }, _sum: { points: true } }),
+    prisma.nGOProjectApplication.groupBy({ by: ['status'], where: { student: mine }, _count: { _all: true } }),
     prisma.user
-      .findMany({ where: { createdAt: { gte: since } }, select: { createdAt: true } })
+      .findMany({ where: { AND: [mine, { createdAt: { gte: since } }] }, select: { createdAt: true } })
       .then((rows) => byMonth(rows, (r) => r.createdAt)),
     prisma.impactPoint
-      .findMany({ where: { awardedAt: { gte: since } }, select: { awardedAt: true, points: true } })
+      .findMany({ where: { awardedAt: { gte: since }, user: mine }, select: { awardedAt: true, points: true } })
       .then((rows) => byMonth(rows, (r) => r.awardedAt, (r) => r.points)),
     prisma.user.findMany({
-      where: { role: 'STUDENT', impactXP: { gt: 0 } },
+      where: { AND: [mine, { role: 'STUDENT', impactXP: { gt: 0 } }] },
       orderBy: { impactXP: 'desc' },
       take: 5,
       select: { id: true, name: true, email: true, impactXP: true, impactLevel: true },
     }),
     // Per-role breakdown by account status (active / pending / suspended).
-    prisma.user.groupBy({ by: ['role', 'status'], _count: { _all: true } }),
-    prisma.user.findMany({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' }, take: 100, select: person }),
+    prisma.user.groupBy({ by: ['role', 'status'], where: mine, _count: { _all: true } }),
+    prisma.user.findMany({ where: { AND: [mine, { role: 'ADMIN' }] }, orderBy: { createdAt: 'asc' }, take: 100, select: person }),
     prisma.user.findMany({
-      where: { role: 'TEACHER' },
+      where: { AND: [mine, { role: 'TEACHER' }] },
       orderBy: { name: 'asc' },
       take: 200,
       select: {
@@ -62,7 +67,7 @@ export async function GET(req: Request) {
     }),
     // Top students by GPA (only students with a recorded GPA).
     prisma.studentProfile.findMany({
-      where: { gpa: { gt: 0 }, user: { role: 'STUDENT' } },
+      where: { gpa: { gt: 0 }, user: { AND: [mine, { role: 'STUDENT' }] } },
       orderBy: [{ gpa: 'desc' }, { year: 'desc' }],
       take: 25,
       select: {

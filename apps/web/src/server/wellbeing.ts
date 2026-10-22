@@ -6,6 +6,7 @@ import { notify, notifyMany } from './email';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from './http';
 import { can } from './permissions';
 import { publish } from './realtime';
+import { schoolsOf, usersIn } from './school-scope';
 
 // Wellbeing radar (Stage 5 · D13), opt-in and privacy-first. A student who turns it on checks in
 // (mood, tags, a private note) and gets private nudges from plain rules (src/lib/wellbeing.ts; no AI
@@ -46,18 +47,23 @@ export async function signalsOf(userId: string, tz: string, now = new Date()): P
   };
 }
 
-/** Who receives requests: people given the counsellor permission; if there are none, the school admins. */
-async function counsellors() {
-  const roles = await prisma.staffRole.findMany({ where: { permissions: { contains: 'wellbeing.counsel' } }, select: { members: { select: { userId: true } } }, take: 20 });
+/**
+ * Who receives a student's requests: people of the student's school given the counsellor
+ * permission; if there are none, the school's admins (and the admin who owns the school).
+ */
+async function counsellors(studentId: string) {
+  const org = (await prisma.user.findUnique({ where: { id: studentId }, select: { organizationId: true } }))?.organizationId ?? null;
+  const school = org ? { OR: [{ organizationId: org }, { ownedOrganization: { id: org } }] } : { organizationId: null };
+  const roles = await prisma.staffRole.findMany({ where: { permissions: { contains: 'wellbeing.counsel' } }, select: { members: { where: { user: school }, select: { userId: true } } }, take: 20 });
   const named = [...new Set(roles.flatMap((r) => r.members.map((m) => m.userId)))];
   if (named.length) return { ids: named, who: 'counsellors' as const };
-  const admins = await prisma.user.findMany({ where: { role: 'ADMIN', status: { not: 'SUSPENDED' } }, select: { id: true }, take: 20 });
+  const admins = await prisma.user.findMany({ where: { role: 'ADMIN', status: { not: 'SUSPENDED' }, ...school }, select: { id: true }, take: 20 });
   return { ids: admins.map((a) => a.id), who: 'admins' as const };
 }
 
 async function sendAlert(user: { id: string; name: string | null }, reason: 'ASKED' | 'PATTERN', message: string) {
   const alert = await prisma.wellbeingAlert.create({ data: { userId: user.id, reason, message } });
-  const to = await counsellors();
+  const to = await counsellors(user.id);
   await notifyMany(to.ids, {
     title: reason === 'ASKED' ? `${user.name ?? 'A student'} would like to talk` : `${user.name ?? 'A student'} may be having a hard time`,
     body: reason === 'ASKED' ? 'They asked a counsellor to reach out to them.' : 'Their wellbeing check-ins show a hard stretch, and they agreed that a counsellor may be told.',
@@ -76,7 +82,7 @@ export async function wellbeingView(user: SessionUser) {
   const [checkins, requests, to] = await Promise.all([
     prisma.wellbeingCheckin.findMany({ where: { userId: user.id, day: { in: lastDays(today, 14) } }, orderBy: { day: 'desc' }, select: { day: true, mood: true, tags: true, note: true } }),
     prisma.wellbeingAlert.findMany({ where: { userId: user.id, reason: 'ASKED' }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, status: true, message: true, createdAt: true, handledAt: true } }),
-    counsellors(),
+    counsellors(user.id),
   ]);
   const signals = s?.optedIn ? await signalsOf(user.id, tz) : null;
   return {
@@ -147,8 +153,9 @@ async function counsellorOnly(user: SessionUser) {
 /** GET /api/wellbeing/requests: requests students sent (open first). Never check-ins or notes. */
 export async function wellbeingRequests(user: SessionUser) {
   await counsellorOnly(user);
+  // Only the counsellor's own school's students (school-scope.ts).
   const rows = await prisma.wellbeingAlert.findMany({
-    orderBy: { createdAt: 'desc' }, take: 100,
+    where: { user: usersIn(await schoolsOf(user)) }, orderBy: { createdAt: 'desc' }, take: 100,
     select: { id: true, reason: true, message: true, status: true, createdAt: true, handledAt: true, user: { select: { id: true, name: true, email: true } } },
   });
   const rank = { OPEN: 0, SEEN: 1, CLOSED: 2 } as Record<string, number>;
@@ -158,7 +165,7 @@ export async function wellbeingRequests(user: SessionUser) {
 /** POST /api/wellbeing/requests { id, action: 'seen' | 'close' }: the student is told when it's seen. */
 export async function wellbeingRequestAction(user: SessionUser, b: Body) {
   await counsellorOnly(user);
-  const a = typeof b.id === 'string' ? await prisma.wellbeingAlert.findUnique({ where: { id: b.id } }) : null;
+  const a = typeof b.id === 'string' ? await prisma.wellbeingAlert.findFirst({ where: { id: b.id, user: usersIn(await schoolsOf(user)) } }) : null;
   if (!a) throw new NotFoundException('Request not found.');
   if (b.action !== 'seen' && b.action !== 'close') throw new BadRequestException('Unknown action.');
   await prisma.wellbeingAlert.update({ where: { id: a.id }, data: { status: b.action === 'seen' ? 'SEEN' : 'CLOSED', handledById: user.id, handledAt: new Date() } });

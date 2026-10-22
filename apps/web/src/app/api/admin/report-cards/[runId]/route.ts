@@ -7,7 +7,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ runId: s
   const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
   try {
-    return NextResponse.json(await runDetail((await params).runId), { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(await runDetail(auth.user, (await params).runId), { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
     if (e instanceof ReportCardError) return NextResponse.json({ error: e.message }, { status: e.status });
     throw e;

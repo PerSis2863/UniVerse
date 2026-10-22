@@ -1,12 +1,17 @@
 import prisma from '@/lib/db';
 import { parseCsv } from '@/lib/csv';
 import type { SessionUser } from '@/lib/server-auth';
-import { BadRequestException, HttpException } from './http';
+import { BadRequestException, ForbiddenException, HttpException } from './http';
 import { verifyApiKey, type ApiScope } from './public-api';
+import { inSchools, schoolsOf, usersIn, type SchoolIds } from './school-scope';
 
 // Stage 5 · C3: OneRoster 1.2 SIS Integration (1EdTech / IMS Global Standard).
 // Enables universities and schools to sync student rosters, courses, and class enrollments
 // from Student Information Systems (PowerSchool, Infinite Campus, Skyward, etc.).
+// An admin syncs into their own school only (school-scope.ts): accounts are matched by email and
+// courses by code only within the admin's schools (a course is its teacher's school). Another
+// school's email or course code is left out with a reason, never matched, enrolled or given a new
+// teacher; the preview doesn't look outside the school, so it can't tell whose an email is.
 
 export interface OneRosterOrg {
   sourcedId: string;
@@ -72,7 +77,7 @@ export interface OneRosterPreviewItem {
   type: 'USER' | 'COURSE' | 'ENROLLMENT';
   sourcedId: string;
   label: string;
-  action: 'create' | 'match' | 'enrol' | 'skip';
+  action: 'create' | 'match' | 'enrol' | 'skip' | 'error';
   detail: string;
 }
 
@@ -195,12 +200,26 @@ function normalizeOneRosterRole(rawRole?: string): 'student' | 'teacher' | 'admi
   return 'student';
 }
 
+// ── The admin's school ────────────────────────────────────────────────────────
+
+const OTHER_ACCOUNT = 'This email has an account outside your school: it’s left out.';
+const takenMessage = (title: string, code: string) => `${title}: the code ${code} is taken, so it’s left out (give it another code in the SIS).`;
+
+/** The schools the admin syncs into (school-scope.ts); the school synced into must be one of them. */
+async function syncSchools(actor: SessionUser, orgId: string | null): Promise<SchoolIds | 'all'> {
+  const schools = await schoolsOf(actor);
+  if (!inSchools(schools, orgId)) throw new ForbiddenException('You can only sync into your own school.');
+  return schools;
+}
+
 // ── Preview Sync ─────────────────────────────────────────────────────────────
 
 export async function previewOneRosterSync(
   orgId: string | null,
+  actor: SessionUser,
   payload: OneRosterPayload,
 ): Promise<OneRosterPreviewResult> {
+  const schools = await syncSchools(actor, orgId);
   const warnings: string[] = [];
   const items: OneRosterPreviewItem[] = [];
 
@@ -217,11 +236,11 @@ export async function previewOneRosterSync(
     throw new BadRequestException('OneRoster archive contains no valid users or classes.');
   }
 
-  // 1. Check existing users
+  // 1. Check existing users (the school's only: whether another school has an email isn't shown)
   const userEmails = users.map((u) => u.email).filter(Boolean);
   const existingUsers = userEmails.length > 0
     ? await prisma.user.findMany({
-        where: { email: { in: userEmails } },
+        where: { email: { in: userEmails }, ...usersIn(schools) },
         select: { id: true, email: true, name: true, role: true },
       })
     : [];
@@ -246,7 +265,8 @@ export async function previewOneRosterSync(
   let usersExisting = 0;
 
   for (const u of users) {
-    const isExisting = existingEmailMap.has(u.email) || userMappingMap.has(u.sourcedId);
+    // Matched by email, as the sync does (an earlier sync's mapping alone isn't a match).
+    const isExisting = existingEmailMap.has(u.email);
     if (isExisting) {
       usersExisting++;
       items.push({
@@ -268,15 +288,16 @@ export async function previewOneRosterSync(
     }
   }
 
-  // 2. Check existing courses / classes
-  const classCodes = classes.map((c) => c.classCode || c.sourcedId);
+  // 2. Check existing courses / classes (another school's code is taken: like bulk import)
+  const classCodes = classes.map((c) => (c.classCode || c.sourcedId).toUpperCase());
   const existingCourses = classCodes.length > 0
     ? await prisma.course.findMany({
         where: { code: { in: classCodes } },
-        select: { id: true, code: true, name: true },
+        select: { id: true, code: true, name: true, teacher: { select: { organizationId: true } } },
       })
     : [];
-  const existingCourseMap = new Map(existingCourses.map((c) => [c.code.toUpperCase(), c]));
+  const existingCourseMap = new Map(existingCourses.filter((c) => inSchools(schools, c.teacher?.organizationId)).map((c) => [c.code.toUpperCase(), c]));
+  const takenCodes = new Set(existingCourses.filter((c) => !inSchools(schools, c.teacher?.organizationId)).map((c) => c.code.toUpperCase()));
 
   const classSourcedIds = classes.map((c) => c.sourcedId);
   const existingClassMappings = classSourcedIds.length > 0
@@ -294,8 +315,15 @@ export async function previewOneRosterSync(
   let coursesToCreate = 0;
   let coursesExisting = 0;
 
+  const leftOutClasses = new Set<string>();
   for (const c of classes) {
     const code = (c.classCode || c.sourcedId).toUpperCase();
+    if (takenCodes.has(code)) {
+      leftOutClasses.add(c.sourcedId);
+      warnings.push(takenMessage(c.title, code));
+      items.push({ type: 'COURSE', sourcedId: c.sourcedId, label: c.title, action: 'error', detail: takenMessage(c.title, code) });
+      continue;
+    }
     const isExisting = existingCourseMap.has(code) || classMappingMap.has(c.sourcedId);
     if (isExisting) {
       coursesExisting++;
@@ -330,6 +358,8 @@ export async function previewOneRosterSync(
       warnings.push(`Enrollment ${e.sourcedId} references unknown class ${e.classSourcedId}`);
       continue;
     }
+    // Its class is left out (see its notice).
+    if (leftOutClasses.has(e.classSourcedId)) continue;
     if (!validUserSourcedIds.has(e.userSourcedId) && !userMappingMap.has(e.userSourcedId)) {
       warnings.push(`Enrollment ${e.sourcedId} references unknown user ${e.userSourcedId}`);
       continue;
@@ -345,7 +375,7 @@ export async function previewOneRosterSync(
     });
   }
 
-  const summary = `OneRoster preview: ${usersToCreate} new users, ${usersExisting} matched users; ${coursesToCreate} new courses, ${coursesExisting} matched courses; ${enrollmentsToCreate} roster memberships.`;
+  const summary = `OneRoster preview: ${usersToCreate} new users, ${usersExisting} matched users; ${coursesToCreate} new courses, ${coursesExisting} matched courses${leftOutClasses.size ? `, ${leftOutClasses.size} left out (code taken)` : ''}; ${enrollmentsToCreate} roster memberships.`;
 
   return {
     valid: warnings.length < 50,
@@ -386,29 +416,39 @@ export async function executeOneRosterSync(
     throw new BadRequestException('OneRoster archive contains no data to sync.');
   }
 
-  // Fallback default teacher (actor or first faculty)
+  const schools = await syncSchools(actor, orgId);
+  // Rows left out, with why (another school's email or course code).
+  const leftOut: { type: 'USER' | 'COURSE' | 'ENROLLMENT'; sourcedId: string; label: string; message: string }[] = [];
+
+  // Fallback default teacher (actor or first faculty of the school)
   let defaultTeacherId = actor.id;
   const firstTeacher = await prisma.user.findFirst({
-    where: { role: 'TEACHER', ...(orgId ? { organizationId: orgId } : {}) },
+    where: { role: 'TEACHER', ...(orgId ? { organizationId: orgId } : usersIn(schools)) },
     select: { id: true },
   });
   if (firstTeacher) defaultTeacherId = firstTeacher.id;
 
   // 1. Process Users (chunked in groups of 30)
-  const userMap = new Map<string, string>(); // sourcedId -> userId
+  const userMap = new Map<string, string>(); // sourcedId -> userId: only the school's people (matched in it, or made in it)
 
   for (let i = 0; i < users.length; i += 30) {
     const batch = users.slice(i, i + 30);
     const emails = batch.map((u) => u.email);
 
+    // Every school's, so another school's account is left out rather than matched (or made twice).
     const existingInDb = await prisma.user.findMany({
       where: { email: { in: emails } },
-      select: { id: true, email: true },
+      select: { id: true, email: true, organizationId: true },
     });
-    const emailToId = new Map(existingInDb.map((u) => [u.email.toLowerCase(), u.id]));
+    const emailToId = new Map(existingInDb.filter((u) => inSchools(schools, u.organizationId)).map((u) => [u.email.toLowerCase(), u.id]));
+    const elsewhere = new Set(existingInDb.filter((u) => !inSchools(schools, u.organizationId)).map((u) => u.email.toLowerCase()));
 
     for (const u of batch) {
       const emailLower = u.email.toLowerCase();
+      if (elsewhere.has(emailLower)) {
+        leftOut.push({ type: 'USER', sourcedId: u.sourcedId, label: emailLower, message: OTHER_ACCOUNT });
+        continue;
+      }
       let userId = emailToId.get(emailLower);
 
       if (!userId) {
@@ -455,20 +495,26 @@ export async function executeOneRosterSync(
   }
 
   // 2. Process Courses / Classes (chunked in groups of 30)
-  const classMap = new Map<string, string>(); // sourcedId -> courseId
+  const classMap = new Map<string, string>(); // sourcedId -> courseId: only the school's courses
 
   for (let i = 0; i < classes.length; i += 30) {
     const batch = classes.slice(i, i + 30);
     const codes = batch.map((c) => (c.classCode || c.sourcedId).toUpperCase());
 
+    // A course is its teacher's school: another school's code is taken (never matched or taken over).
     const existingCourses = await prisma.course.findMany({
       where: { code: { in: codes } },
-      select: { id: true, code: true },
+      select: { id: true, code: true, teacher: { select: { organizationId: true } } },
     });
-    const codeToId = new Map(existingCourses.map((c) => [c.code.toUpperCase(), c.id]));
+    const codeToId = new Map(existingCourses.filter((c) => inSchools(schools, c.teacher?.organizationId)).map((c) => [c.code.toUpperCase(), c.id]));
+    const taken = new Set(existingCourses.filter((c) => !inSchools(schools, c.teacher?.organizationId)).map((c) => c.code.toUpperCase()));
 
     for (const c of batch) {
       const code = (c.classCode || c.sourcedId).toUpperCase();
+      if (taken.has(code)) {
+        leftOut.push({ type: 'COURSE', sourcedId: c.sourcedId, label: c.title, message: takenMessage(c.title, code) });
+        continue;
+      }
       let courseId = codeToId.get(code);
 
       if (!courseId) {
@@ -509,7 +555,8 @@ export async function executeOneRosterSync(
     }
   }
 
-  // 3. Process Enrollments (chunked in groups of 30)
+  // 3. Process Enrollments (chunked in groups of 30). Both sides are the school's (userMap and
+  // classMap hold nothing else); a left-out person or class leaves its enrolments out too.
   let enrolledCount = 0;
 
   for (let i = 0; i < enrollments.length; i += 30) {
@@ -522,12 +569,13 @@ export async function executeOneRosterSync(
       if (!userId || !courseId) continue;
 
       if (e.role === 'teacher') {
-        // Assign as course teacher
-        await prisma.course.update({
-          where: { id: courseId },
+        // Assign as course teacher: a school's person, and only on a course that's still the school's.
+        const set = await prisma.course.updateMany({
+          where: { id: courseId, ...(schools === 'all' ? {} : { teacher: usersIn(schools) }) },
           data: { teacherId: userId },
         });
-        enrolledCount++;
+        if (set.count) enrolledCount++;
+        else leftOut.push({ type: 'ENROLLMENT', sourcedId: e.sourcedId, label: `${e.userSourcedId} → ${e.classSourcedId}`, message: 'The class isn’t your school’s: its teacher is left as they are.' });
       } else {
         // Enroll student
         const exists = await prisma.enrollment.findUnique({
@@ -553,7 +601,9 @@ export async function executeOneRosterSync(
     }
   }
 
-  const summary = `Successfully synchronized OneRoster SIS data: ${users.length} users, ${classes.length} courses/classes, ${enrolledCount} active memberships.`;
+  const people = users.length - leftOut.filter((x) => x.type === 'USER').length;
+  const courses = classes.length - leftOut.filter((x) => x.type === 'COURSE').length;
+  const summary = `Successfully synchronized OneRoster SIS data: ${people} users, ${courses} courses/classes, ${enrolledCount} active memberships.${leftOut.length ? ` ${leftOut.length} left out (an email or course code used outside your school).` : ''}`;
 
   // 4. Record OneRosterSync operation log
   const syncRecord = await prisma.oneRosterSync.create({
@@ -562,9 +612,9 @@ export async function executeOneRosterSync(
       syncType: 'CSV_BATCH',
       status: 'SUCCESS',
       summary,
-      coursesCount: classes.length,
-      classesCount: classes.length,
-      usersCount: users.length,
+      coursesCount: courses,
+      classesCount: courses,
+      usersCount: people,
       enrollmentsCount: enrolledCount,
       actorId: actor.id,
     },
@@ -575,10 +625,12 @@ export async function executeOneRosterSync(
     status: 'SUCCESS',
     summary,
     counts: {
-      users: users.length,
-      classes: classes.length,
+      users: people,
+      classes: courses,
       enrollments: enrolledCount,
+      leftOut: leftOut.length,
     },
+    leftOut: leftOut.slice(0, 100),
   };
 }
 

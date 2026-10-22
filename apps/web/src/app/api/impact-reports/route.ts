@@ -3,9 +3,11 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { audit } from '@/server/audit';
 import { computeReport, issueReport, reportUrl } from '@/server/impact-report';
+import { inSchools, schoolsOf, usersIn } from '@/server/school-scope';
 
 // Verified impact reports (admins). GET: issued reports + organisations to choose from.
 // POST { title, organization?, from, to, preview? } → a preview of the figures, or issues the report.
+// The lists and figures are the admin's own school's: reports its admins issued, and its people's credentials.
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
@@ -15,21 +17,33 @@ export async function GET(req: Request) {
   if (sp.get('preview') === '1') {
     const period = parsePeriod(sp.get('from'), sp.get('to'));
     if (!period) return NextResponse.json({ error: 'Choose a valid period.' }, { status: 400 });
-    return NextResponse.json(await computeReport({ title: sp.get('title')?.trim().slice(0, 140) || 'Verified impact report', organization: sp.get('organization')?.trim().slice(0, 200) || null, ...period }));
+    return NextResponse.json(await computeReport({ title: sp.get('title')?.trim().slice(0, 140) || 'Verified impact report', organization: sp.get('organization')?.trim().slice(0, 200) || null, ...period, schools: await schoolsOf(user) }));
   }
-  const [reports, orgs, holders] = await Promise.all([
-    prisma.impactReport.findMany({ orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, slug: true, title: true, organization: true, periodStart: true, periodEnd: true, isPublic: true, views: true, createdAt: true, createdByName: true } }),
-    prisma.impactCertificate.groupBy({ by: ['organization'], where: { status: 'ISSUED', revokedAt: null }, _count: { _all: true }, orderBy: { _count: { organization: 'desc' } }, take: 100 }),
+  const schools = await schoolsOf(user);
+  const mine = usersIn(schools);
+  const [issued, orgs, holders] = await Promise.all([
+    prisma.impactReport.findMany({ orderBy: { createdAt: 'desc' }, take: schools === 'all' ? 100 : 300, select: { id: true, slug: true, title: true, organization: true, periodStart: true, periodEnd: true, isPublic: true, views: true, createdAt: true, createdByName: true, createdById: true } }),
+    prisma.impactCertificate.groupBy({ by: ['organization'], where: { status: 'ISSUED', revokedAt: null, user: mine }, _count: { _all: true }, orderBy: { _count: { organization: 'desc' } }, take: 100 }),
     // The admin's own view of who is behind the figures (the issued report itself carries no names).
     prisma.impactCertificate.findMany({
-      where: { status: 'ISSUED', revokedAt: null, signature: { not: null } },
+      where: { status: 'ISSUED', revokedAt: null, signature: { not: null }, user: mine },
       select: { id: true, title: true, organization: true, projectName: true, hoursCompleted: true, peopleImpacted: true, issuedAt: true, verifiedByName: true, user: { select: { id: true, name: true, email: true, role: true } } },
       orderBy: { issuedAt: 'desc' },
       take: 100,
     }),
   ]);
+  // Reports by the school of whoever issued them (one that's gone counts as the main school's).
+  let reports = issued;
+  if (schools !== 'all') {
+    const ids = [...new Set(issued.map((r) => r.createdById))];
+    const orgOf = new Map<string, string | null>();
+    for (let i = 0; i < ids.length; i += 90) {
+      for (const u of await prisma.user.findMany({ where: { id: { in: ids.slice(i, i + 90) } }, select: { id: true, organizationId: true } })) orgOf.set(u.id, u.organizationId);
+    }
+    reports = issued.filter((r) => inSchools(schools, orgOf.get(r.createdById) ?? null));
+  }
   return NextResponse.json({
-    reports: reports.map((r) => ({ ...r, url: reportUrl(r.slug) })),
+    reports: reports.slice(0, 100).map((r) => ({ id: r.id, slug: r.slug, title: r.title, organization: r.organization, periodStart: r.periodStart, periodEnd: r.periodEnd, isPublic: r.isPublic, views: r.views, createdAt: r.createdAt, createdByName: r.createdByName, url: reportUrl(r.slug) })),
     organizations: orgs.map((o) => ({ name: o.organization, credentials: o._count._all })),
     holders,
   }, { headers: { 'Cache-Control': 'no-store' } });
@@ -45,8 +59,10 @@ export async function POST(req: Request) {
   const { from, to } = period;
   const title = typeof b.title === 'string' && b.title.trim() ? b.title.trim().slice(0, 140) : 'Verified impact report';
   const organization = typeof b.organization === 'string' && b.organization.trim() ? b.organization.trim().slice(0, 200) : null;
+  // Only the admin's own school's people's credentials count (the owner's report: everyone's).
+  const schools = await schoolsOf(user);
   try {
-    const r = await issueReport({ title, organization, from, to }, { id: user.id, name: user.name });
+    const r = await issueReport({ title, organization, from, to, schools }, { id: user.id, name: user.name });
     audit(user, { action: 'impact_report.issued', summary: `Issued impact report “${title}”${organization ? ` for ${organization}` : ''}`, targetType: 'impact_report', targetId: r.id }, req);
     return NextResponse.json({ id: r.id, url: reportUrl(r.slug) });
   } catch {

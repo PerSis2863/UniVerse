@@ -8,6 +8,7 @@ import { audit } from '../audit';
 import { later, notify } from '../email';
 import { oneOf } from '../body';
 import { applyPendingEnrolments } from '../bulk-import';
+import { schoolsOf, usersIn } from '../school-scope';
 
 // Applications to become a teacher or NGO representative.
 //
@@ -27,7 +28,13 @@ const FREE_MAIL = /@(gmail|googlemail|yahoo|ymail|outlook|hotmail|live|msn|iclou
 export const ROLE_LABEL: Record<RequestableRole, string> = { STUDENT: 'verified student', TEACHER: 'teacher', ADMIN: 'organization representative' };
 
 type HistoryEvent = { at: string; by?: string | null; byName?: string | null; type: string; note?: string | null };
-type Actor = { id: string; name?: string | null; role: string };
+type Actor = { id: string; name?: string | null; role: string; organizationId?: string | null; email?: string };
+
+/** Active admins who look after this school's people (its own admins and the admin who owns it; null = the main school). */
+function schoolAdminsWhere(organizationId: string | null | undefined): Prisma.UserWhereInput {
+  const school: Prisma.UserWhereInput = organizationId ? { OR: [{ organizationId }, { ownedOrganization: { is: { id: organizationId } } }] } : { organizationId: null };
+  return { AND: [{ role: 'ADMIN', status: 'ACTIVE' }, school] };
+}
 
 const historyOf = (v: Prisma.JsonValue | null): HistoryEvent[] => (Array.isArray(v) ? (v as unknown as HistoryEvent[]) : []);
 const withEvent = (v: Prisma.JsonValue | null, e: Omit<HistoryEvent, 'at'>) => [...historyOf(v), { at: new Date().toISOString(), ...e }] as unknown as Prisma.InputJsonValue;
@@ -60,7 +67,9 @@ export async function startSignupApplication(user: Actor, requestedRole: Request
 /** Grants the role at once for someone an admin invited, and records it as an approved application. */
 export async function approveInvited(user: Actor & { email: string }, role: RequestableRole, invitationId: string) {
   await prisma.user.update({ where: { id: user.id }, data: { role, status: 'ACTIVE', accountType: role === 'STUDENT' ? 'STUDENT' : role === 'TEACHER' ? 'STAFF' : 'ORGANIZATION' } });
-  await prisma.invitation.update({ where: { id: invitationId }, data: { status: 'ACTIVE' } });
+  const invitation = await prisma.invitation.update({ where: { id: invitationId }, data: { status: 'ACTIVE' }, select: { organizationId: true } });
+  // They join the school that invited them (unless they're in one already), so its admins can see them.
+  if (invitation?.organizationId) await prisma.user.updateMany({ where: { id: user.id, organizationId: null }, data: { organizationId: invitation.organizationId } });
   if (role === 'STUDENT') await prisma.studentProfile.upsert({ where: { userId: user.id }, update: {}, create: { userId: user.id } });
   // Classes a bulk import put them in before they had an account (Stage 5 · B15.7).
   if (role === 'STUDENT') await applyPendingEnrolments(user.id, user.email);
@@ -206,10 +215,13 @@ export default function applicationsModule(router: Router) {
   // ── For admins ──
 
   /** Applications with a status filter and search, plus counts for the tabs. */
-  r.get('', { roles: ['ADMIN'] }, async ({ query }) => {
+  // Only the admin's own school's applicants (the platform owner sees all).
+  r.get('', { roles: ['ADMIN'] }, async ({ query, user }) => {
     const status = (['PENDING', 'NEEDS_INFO', 'APPROVED', 'REJECTED', 'WITHDRAWN'] as const).find((s) => s === query.status) ?? 'PENDING';
     const q = typeof query.q === 'string' ? query.q.trim().slice(0, 80) : '';
+    const mine: Prisma.RoleApplicationWhereInput = { user: usersIn(await schoolsOf(user)) };
     const where: Prisma.RoleApplicationWhereInput = {
+      ...mine,
       status,
       ...(q ? { OR: [{ user: { name: { contains: q } } }, { user: { email: { contains: q } } }, { institution: { contains: q } }, { department: { contains: q } }] } : {}),
     };
@@ -220,22 +232,23 @@ export default function applicationsModule(router: Router) {
         take: 100,
         include: { user: { select: applicantSelect }, reviewedBy: { select: { id: true, name: true } } },
       }),
-      prisma.roleApplication.groupBy({ by: ['status'], _count: { _all: true } }),
+      prisma.roleApplication.groupBy({ by: ['status'], where: mine, _count: { _all: true } }),
     ]);
     const counts = Object.fromEntries(grouped.map((g) => [g.status, g._count._all]));
     return { items: items.map((a) => ({ ...a, history: historyOf(a.history), user: publicApplicant(a.user) })), counts };
   });
 
   /** One application with automatic checks to help the review. */
-  r.get<{ id: string }>(':id', { roles: ['ADMIN'] }, async ({ params }) => {
-    const app = await prisma.roleApplication.findUnique({
-      where: { id: params.id },
+  r.get<{ id: string }>(':id', { roles: ['ADMIN'] }, async ({ params, user }) => {
+    const mine = usersIn(await schoolsOf(user));
+    const app = await prisma.roleApplication.findFirst({
+      where: { id: params.id, user: mine },
       include: { user: { select: applicantSelect }, reviewedBy: { select: { id: true, name: true } } },
     });
     if (!app) throw new NotFoundException('Application not found');
     const [previous, sameStaffId] = await Promise.all([
       prisma.roleApplication.findMany({ where: { userId: app.userId, id: { not: app.id }, status: { not: 'DRAFT' } }, select: { id: true, status: true, submittedAt: true, adminNote: true }, orderBy: { createdAt: 'desc' } }),
-      app.staffId ? prisma.roleApplication.count({ where: { staffId: app.staffId, userId: { not: app.userId } } }) : 0,
+      app.staffId ? prisma.roleApplication.count({ where: { staffId: app.staffId, userId: { not: app.userId }, user: mine } }) : 0,
     ]);
     return { ...app, history: historyOf(app.history), user: publicApplicant(app.user), previous, checks: reviewChecks(app, app.user, previous, sameStaffId) };
   });
@@ -336,7 +349,8 @@ async function submit(id: string, user: Actor) {
   });
   const label = ROLE_LABEL[app.requestedRole as RequestableRole] ?? 'staff';
   later(async () => {
-    const admins = await prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE' }, select: { id: true } });
+    // Only the applicant's own school's admins hear about it.
+    const admins = await prisma.user.findMany({ where: schoolAdminsWhere(user.organizationId), select: { id: true }, take: 500 });
     await Promise.all(
       admins.map((a) => notify(a.id, {
         type: 'application',
@@ -351,8 +365,9 @@ async function submit(id: string, user: Actor) {
   return done;
 }
 
+/** An application the admin may decide on: only their own school's applicants (another school's look "not found"). */
 async function openForReview(id: string, admin: Actor) {
-  const app = await prisma.roleApplication.findUnique({ where: { id }, include: { user: { select: { name: true, email: true, role: true, status: true } } } });
+  const app = await prisma.roleApplication.findFirst({ where: { id, user: usersIn(await schoolsOf(admin)) }, include: { user: { select: { name: true, email: true, role: true, status: true } } } });
   if (!app) throw new NotFoundException('Application not found');
   if (app.userId === admin.id) throw new ForbiddenException("You can't review your own application.");
   if (app.status !== 'PENDING' && app.status !== 'NEEDS_INFO') throw new ConflictException(`This application is already ${app.status.toLowerCase().replace('_', ' ')}.`);

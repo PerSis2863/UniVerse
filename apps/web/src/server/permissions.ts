@@ -2,6 +2,7 @@ import prisma from '@/lib/db';
 import { PERMISSION_KEYS, PERMISSIONS, expand, isPermission, type Permission } from '@/lib/permissions';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from './http';
+import { peopleWhere } from './school-scope';
 
 // Custom roles and permissions (Stage 5 · B15.6). Admins make roles as sets of permissions
 // (src/lib/permissions.ts) and put staff accounts in them; can(user, 'fees.manage') replaces "is an
@@ -36,13 +37,16 @@ export async function need(user: SessionUser, p: Permission) {
 // ── Managing roles (admins only) ────────────────────────────────────────────────────────────
 
 const adminOnly = (u: SessionUser) => { if (u.role !== 'ADMIN') throw new ForbiddenException('Only school admins manage roles.'); };
+// A role has no school of its own: it's the school of the admin who made it, and holds only that
+// school's staff (school-scope.ts). Another school's roles and people look "not found".
 
 /** GET /api/admin/roles: every role with its members; the permission list. */
 export async function listRoles(user: SessionUser) {
   adminOnly(user);
+  const mine = await peopleWhere(user);
   const roles = await prisma.staffRole.findMany({
-    orderBy: { name: 'asc' }, take: 100,
-    select: { id: true, name: true, description: true, permissions: true, updatedAt: true, members: { orderBy: { createdAt: 'asc' }, take: 200, select: { user: { select: { id: true, name: true, email: true, avatar: true } } } } },
+    where: { createdBy: mine }, orderBy: { name: 'asc' }, take: 100,
+    select: { id: true, name: true, description: true, permissions: true, updatedAt: true, members: { where: { user: mine }, orderBy: { createdAt: 'asc' }, take: 200, select: { user: { select: { id: true, name: true, email: true, avatar: true } } } } },
   });
   return {
     permissions: PERMISSION_KEYS.map((key) => ({ key, ...PERMISSIONS[key] })),
@@ -73,7 +77,8 @@ export async function createRole(user: SessionUser, b: Record<string, unknown>) 
  */
 export async function roleAction(user: SessionUser, id: string, b: Record<string, unknown>) {
   adminOnly(user);
-  const role = await prisma.staffRole.findUnique({ where: { id }, select: { id: true, name: true, members: { select: { userId: true } } } });
+  const mine = await peopleWhere(user);
+  const role = await prisma.staffRole.findFirst({ where: { id, createdBy: mine }, select: { id: true, name: true, members: { select: { userId: true } } } });
   if (!role) throw new NotFoundException('That role doesn’t exist.');
   const memberIds = role.members.map((m) => m.userId);
   switch (b.action) {
@@ -93,7 +98,7 @@ export async function roleAction(user: SessionUser, id: string, b: Record<string
     case 'add':
     case 'remove': {
       const userId = typeof b.userId === 'string' ? b.userId : '';
-      const person = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, role: true } });
+      const person = await prisma.user.findFirst({ where: { id: userId, ...mine }, select: { id: true, name: true, role: true } });
       if (!person) throw new NotFoundException('That person doesn’t exist.');
       if (b.action === 'add') {
         if (person.role !== 'TEACHER') throw new BadRequestException(person.role === 'ADMIN' ? `${person.name} is an admin and can already do everything.` : 'Roles are for staff accounts.');
@@ -114,7 +119,7 @@ export async function findStaff(user: SessionUser, q: string) {
   const text = q.trim().slice(0, 60);
   if (text.length < 2) return { people: [] };
   const people = await prisma.user.findMany({
-    where: { role: 'TEACHER', status: { not: 'SUSPENDED' }, OR: [{ name: { contains: text } }, { email: { contains: text.toLowerCase() } }] },
+    where: { AND: [await peopleWhere(user), { role: 'TEACHER', status: { not: 'SUSPENDED' }, OR: [{ name: { contains: text } }, { email: { contains: text.toLowerCase() } }] }] },
     orderBy: { name: 'asc' }, take: 10, select: { id: true, name: true, email: true, avatar: true },
   });
   return { people };

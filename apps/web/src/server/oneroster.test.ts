@@ -53,6 +53,8 @@ describe('OneRoster 1.2 SIS Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // The admin owns org-1, the school they sync into (school-scope.ts).
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ id: 'org-1' } as never);
   });
 
   describe('parseOneRosterCsvTable', () => {
@@ -117,7 +119,7 @@ describe('OneRoster 1.2 SIS Integration', () => {
         ],
       };
 
-      const res = await previewOneRosterSync('org-1', payload);
+      const res = await previewOneRosterSync('org-1', actor, payload);
       expect(res.counts.usersTotal).toBe(2);
       expect(res.counts.usersExisting).toBe(1);
       expect(res.counts.usersToCreate).toBe(1);
@@ -139,7 +141,7 @@ describe('OneRoster 1.2 SIS Integration', () => {
         ],
       };
 
-      const res = await previewOneRosterSync('org-1', payload);
+      const res = await previewOneRosterSync('org-1', actor, payload);
       expect(res.warnings.length).toBeGreaterThan(0);
       expect(res.warnings[0]).toContain('unknown class UNKNOWN_CLASS');
     });

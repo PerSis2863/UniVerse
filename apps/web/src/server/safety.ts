@@ -7,6 +7,7 @@ import { notify, notifyMany } from './email';
 import { geminiJson } from './gemini';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { featureOff } from './moderation';
+import { assertInSchool, schoolsOf, usersIn } from './school-scope';
 import { pushService } from './services/push.service';
 
 // Safe by default for young students (Stage 4 · 4.10).
@@ -160,9 +161,11 @@ const VERDICT_SCHEMA = {
 };
 export const KIND_LABEL: Record<SafetyKind, string> = { bullying: 'Bullying', threat: 'Threat', self_harm: 'May be at risk', sexual: 'Sexual or grooming', personal_info: 'Personal details', hate: 'Hate' };
 
-/** The school's moderators: admins (not the app's own account). */
-async function moderators() {
-  return (await prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE', email: { not: SYSTEM_EMAIL } }, select: { id: true }, take: 50 })).map((u) => u.id);
+/** The sender's school's moderators: its admins, and the admin who owns it (not the app's own account). */
+async function moderators(senderId: string) {
+  const org = (await prisma.user.findUnique({ where: { id: senderId }, select: { organizationId: true } }))?.organizationId ?? null;
+  const school = org ? { OR: [{ organizationId: org }, { ownedOrganization: { id: org } }] } : { organizationId: null };
+  return (await prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE', email: { not: SYSTEM_EMAIL }, ...school }, select: { id: true }, take: 50 })).map((u) => u.id);
 }
 
 /**
@@ -207,7 +210,7 @@ export async function guardMessage(m: { id: string; conversationId: string; body
     data: { messageId: m.id, conversationId: m.conversationId, senderId: from.id, kind, severity: verdict.severity, reason: verdict.reason.slice(0, 300), excerpt: m.body.slice(0, 1000), source },
     select: { id: true },
   });
-  const mods = await moderators();
+  const mods = await moderators(from.id);
   const title = `${verdict.severity === 'high' ? 'Urgent: ' : ''}a chat message may need a look`;
   const body = `${KIND_LABEL[kind]} · ${verdict.severity} · from ${from.name}`;
   await notifyMany(mods, { type: 'warning', title, body, link: '/admin/safety/chats', email: false });
@@ -223,16 +226,18 @@ export async function guardMessage(m: { id: string; conversationId: string; body
 export async function listFlags(user: SessionUser, statusRaw: unknown) {
   if (!isAdmin(user)) throw new ForbiddenException('Only school admins see chat safety flags.');
   const status = statusRaw === 'REVIEWED' || statusRaw === 'DISMISSED' ? statusRaw : 'OPEN';
+  // Only flags on the admin's own school's people (school-scope.ts).
+  const sender = usersIn(await schoolsOf(user));
   const [flags, open] = await Promise.all([
     prisma.safetyFlag.findMany({
-      where: { status }, orderBy: { createdAt: 'desc' }, take: 100,
+      where: { status, sender }, orderBy: { createdAt: 'desc' }, take: 100,
       select: {
         id: true, kind: true, severity: true, reason: true, excerpt: true, source: true, repeats: true, status: true, note: true, createdAt: true, reviewedAt: true,
         sender: { select: { id: true, name: true, role: true, avatar: true, chatMutedUntil: true } },
         conversation: { select: { id: true, isGroup: true, name: true, community: { select: { name: true } }, _count: { select: { participants: true } } } },
       },
     }),
-    prisma.safetyFlag.count({ where: { status: 'OPEN' } }),
+    prisma.safetyFlag.count({ where: { status: 'OPEN', sender } }),
   ]);
   const rank = { high: 0, medium: 1, low: 2 } as Record<string, number>;
   return {
@@ -251,8 +256,9 @@ export async function listFlags(user: SessionUser, statusRaw: unknown) {
 /** GET /api/safety/flags/:id: a flag with the messages around it (for judging it). */
 export async function flagContext(user: SessionUser, id: string) {
   if (!isAdmin(user)) throw new ForbiddenException('Only school admins see chat safety flags.');
-  const flag = await prisma.safetyFlag.findUnique({ where: { id }, select: { conversationId: true, messageId: true, createdAt: true } });
+  const flag = await prisma.safetyFlag.findUnique({ where: { id }, select: { conversationId: true, messageId: true, createdAt: true, senderId: true } });
   if (!flag) throw new NotFoundException('That flag doesn’t exist.');
+  await assertInSchool(user, flag.senderId).catch(() => { throw new NotFoundException('That flag doesn’t exist.'); });
   const at = flag.createdAt;
   const pick = { id: true, body: true, type: true, createdAt: true, deletedAt: true, sender: { select: { name: true, role: true } } } as const;
   const [before, after] = await Promise.all([
@@ -269,6 +275,7 @@ export async function reviewFlag(user: SessionUser, id: string, b: Record<string
   if (!isAdmin(user)) throw new ForbiddenException('Only school admins review chat safety flags.');
   const flag = await prisma.safetyFlag.findUnique({ where: { id }, select: { id: true, senderId: true } });
   if (!flag) throw new NotFoundException('That flag doesn’t exist.');
+  await assertInSchool(user, flag.senderId).catch(() => { throw new NotFoundException('That flag doesn’t exist.'); });
   const note = typeof b.note === 'string' ? b.note.trim().slice(0, 500) || null : undefined;
   if (b.action === 'pause' || b.action === 'unpause') {
     // A day without sending messages (they can still read), or lifted.
@@ -283,7 +290,7 @@ export async function reviewFlag(user: SessionUser, id: string, b: Record<string
 /** GET /api/safety/policy: the policy (school admins), with how many flags are open. */
 export async function policyView(user: SessionUser) {
   if (!isAdmin(user)) throw new ForbiddenException('Only school admins see the safety policy.');
-  const [p, open] = await Promise.all([schoolPolicy(), prisma.safetyFlag.count({ where: { status: 'OPEN' } })]);
+  const [p, open] = await Promise.all([schoolPolicy(), prisma.safetyFlag.count({ where: { status: 'OPEN', sender: usersIn(await schoolsOf(user)) } })]);
   return { ...p, open, ai: !!process.env.GEMINI_API_KEY && !(await featureOff('ai')) };
 }
 

@@ -311,6 +311,7 @@ model User {
 
   // Billing: the organization (and its subscription) this admin owns
   ownedOrganization     Organization?
+  auditEntries          AuditLog[]             @relation("AuditActor")
   reportSchedules       ReportSchedule[]
   studyDays             StudyDay[]
   assignmentsCreated    Assignment[]           @relation("AssignmentAuthor")
@@ -1396,6 +1397,8 @@ model UiEvent {
 model AuditLog {
   id         String   @id @default(cuid())
   actorId    String?
+  /// Who did it (no database foreign key: entries outlive the person; lets admins see only their school's entries)
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   actorName  String?
   actorRole  String?
   action     String // e.g. "user.role_changed", "grade.posted"
@@ -1438,9 +1441,12 @@ model Invitation {
   role      Role
   status    UserStatus @default(PENDING)
   expiresAt DateTime
+  /// The school that sent it (null: the main school). Security fix, Oct 2026.
+  organizationId String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
+  @@index([organizationId])
   @@map("invitations")
 }
 
@@ -2287,9 +2293,12 @@ model SafetyAlert {
   isAnonymous Boolean       @default(false)
   isResolved  Boolean       @default(false)
   resolvedAt  DateTime?
+  /// The reporter's school (null: the main school), kept even for anonymous reports. Oct 2026.
+  organizationId String?
   createdAt   DateTime      @default(now())
 
   @@index([reporterId])
+  @@index([organizationId])
   @@map("safety_alerts")
 }
 

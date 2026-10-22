@@ -12,7 +12,7 @@ const ACTIONS = ['create', 'compile', 'comment', 'publish', 'unpublish', 'delete
 export async function GET(req: Request) {
   const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
-  return NextResponse.json({ runs: await listRuns(), school: auth.org.name }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ runs: await listRuns(auth.user), school: auth.org.name }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: Request) {
@@ -23,19 +23,19 @@ export async function POST(req: Request) {
   try {
     switch (b.action) {
       case 'create': {
-        const run = await createRun({ title: b.title, from: b.from, to: b.to }, auth.org.name, auth.user.id);
+        const run = await createRun({ title: b.title, from: b.from, to: b.to }, auth.org.name, auth.user);
         audit(auth.user, { action: 'report-cards.created', summary: `Started report cards “${run.title}”`, targetType: 'report-card-run', targetId: run.id }, req);
         return NextResponse.json(run);
       }
-      case 'compile': return NextResponse.json(await compileBatch(text(b.runId), str(b.cursor) ?? null));
-      case 'comment': return NextResponse.json(await setComment(text(b.cardId), b.comment));
+      case 'compile': return NextResponse.json(await compileBatch(auth.user, text(b.runId), str(b.cursor) ?? null));
+      case 'comment': return NextResponse.json(await setComment(auth.user, text(b.cardId), b.comment));
       case 'publish':
       case 'unpublish': {
-        const r = await setPublished(text(b.runId), b.action === 'publish');
+        const r = await setPublished(auth.user, text(b.runId), b.action === 'publish');
         audit(auth.user, { action: `report-cards.${b.action}ed`, summary: `${b.action === 'publish' ? 'Published' : 'Took back'} report cards`, targetType: 'report-card-run', targetId: text(b.runId) }, req);
         return NextResponse.json(r);
       }
-      case 'delete': return NextResponse.json(await deleteRun(text(b.runId)));
+      case 'delete': return NextResponse.json(await deleteRun(auth.user, text(b.runId)));
     }
   } catch (e) {
     if (e instanceof ReportCardError) return NextResponse.json({ error: e.message }, { status: e.status });

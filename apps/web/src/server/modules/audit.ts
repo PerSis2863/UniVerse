@@ -1,18 +1,26 @@
 import type { Prisma } from '@prisma/client';
 import type { Router } from '../router';
 import prisma from '@/lib/db';
+import { schoolsOf, usersIn, type SchoolIds } from '../school-scope';
 
 // Activity & audit log (admins only). Entries are written by audit() in ../audit.ts.
+// A school's admins see only entries by their own school's people (the platform owner sees all,
+// including entries with no actor or by people since deleted).
+
+/** Only entries whose actor is in these schools ({} for the owner). */
+function actorScope(schools: SchoolIds | 'all'): Prisma.AuditLogWhereInput {
+  return schools === 'all' ? {} : { actor: usersIn(schools) };
+}
 
 /** A search that looks like an email also matches entries by people whose address contains it. */
-async function withActorEmail(query: Record<string, unknown>): Promise<Prisma.AuditLogWhereInput> {
+async function withActorEmail(query: Record<string, unknown>, schools: SchoolIds | 'all'): Promise<Prisma.AuditLogWhereInput> {
   const where = whereFrom(query);
   const q = typeof query.q === 'string' ? query.q.trim().slice(0, 100) : '';
   if (q.includes('@') && where.OR) {
-    const people = await prisma.user.findMany({ where: { email: { contains: q } }, select: { id: true }, take: 50 });
+    const people = await prisma.user.findMany({ where: { AND: [usersIn(schools), { email: { contains: q } }] }, select: { id: true }, take: 50 });
     if (people.length) where.OR = [...(where.OR as Prisma.AuditLogWhereInput[]), { actorId: { in: people.map((p) => p.id) } }];
   }
-  return where;
+  return { AND: [actorScope(schools), where] };
 }
 
 function whereFrom(query: Record<string, unknown>): Prisma.AuditLogWhereInput {
@@ -47,10 +55,10 @@ export default function auditModule(router: Router) {
   const r = router.controller('audit', { roles: ['ADMIN'] });
 
   // Newest first, 50 per page; pass the last entry's id as ?cursor= for the next page.
-  r.get('', async ({ query }) => {
+  r.get('', async ({ query, user }) => {
     const take = Math.min(Math.max(Number(query.limit) || 50, 1), 200);
     const rows = await prisma.auditLog.findMany({
-      where: await withActorEmail(query),
+      where: await withActorEmail(query, await schoolsOf(user)),
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: take + 1,
       ...(typeof query.cursor === 'string' && query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
@@ -69,14 +77,14 @@ export default function auditModule(router: Router) {
   });
 
   // Distinct action names for the filter menu.
-  r.get('actions', async () => {
-    const rows = await prisma.auditLog.groupBy({ by: ['action'], _count: { _all: true }, orderBy: { action: 'asc' } });
+  r.get('actions', async ({ user }) => {
+    const rows = await prisma.auditLog.groupBy({ by: ['action'], where: actorScope(await schoolsOf(user)), _count: { _all: true }, orderBy: { action: 'asc' } });
     return rows.map((row) => ({ action: row.action, count: row._count._all }));
   });
 
   // CSV of the filtered entries (up to 10,000).
-  r.get('export', async ({ query }) => {
-    const rows = await prisma.auditLog.findMany({ where: await withActorEmail(query), orderBy: { createdAt: 'desc' }, take: 10_000 });
+  r.get('export', async ({ query, user }) => {
+    const rows = await prisma.auditLog.findMany({ where: await withActorEmail(query, await schoolsOf(user)), orderBy: { createdAt: 'desc' }, take: 10_000 });
     const header = ['Time (UTC)', 'Actor', 'Actor role', 'Action', 'Summary', 'Target type', 'Target id', 'IP', 'Details'];
     const lines = rows.map((e) =>
       [e.createdAt.toISOString(), e.actorName, e.actorRole, e.action, e.summary, e.targetType, e.targetId, e.ip, e.metadata].map(csvCell).join(','),

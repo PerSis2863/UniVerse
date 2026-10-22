@@ -1,7 +1,8 @@
-import { BadRequestException } from '../http';
+import { BadRequestException, NotFoundException } from '../http';
+import { peopleWhere } from '../school-scope';
 
 import prisma from '@/lib/db';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, User } from '@prisma/client';
 import { pick } from '../pick';
 import { oneOf, type Body } from '../body';
 
@@ -10,14 +11,16 @@ const SCHOLARSHIP_FIELDS = ['name', 'description', 'amount', 'currency', 'provid
 
 export class ScholarshipsService {
   findAll() { return prisma.scholarship.findMany({ where: { isActive: true }, include: { _count: { select: { applications: true } } } }); }
-  /** Admin view: every scholarship (open or closed) with its applicants' details. */
-  findAllForAdmin() {
+  /** Admin view: every scholarship (open or closed) with its applicants' details, only the admin's own school's applicants. */
+  async findAllForAdmin(admin: User) {
+    const mine = { student: await peopleWhere(admin) };
     return prisma.scholarship.findMany({
       orderBy: { createdAt: 'desc' },
       take: 200,
       include: {
-        _count: { select: { applications: true } },
+        _count: { select: { applications: { where: mine } } },
         applications: {
+          where: mine,
           orderBy: { appliedAt: 'desc' },
           take: 200,
           select: {
@@ -40,9 +43,11 @@ export class ScholarshipsService {
   getMyApplications(studentId: string) { return prisma.scholarshipApplication.findMany({ where: { studentId }, include: { scholarship: true } }); }
   /** Only the scholarship's own fields (this used to pass the whole request body to the database). */
   create(data: Body) { return prisma.scholarship.create({ data: pick<NewScholarship>(data, SCHOLARSHIP_FIELDS) as NewScholarship }); }
-  /** Admins decide an application: its status is the only thing they set. */
-  updateApplication(id: string, data: Body) {
+  /** Admins decide an application of their own school's student: its status is the only thing they set. */
+  async updateApplication(id: string, data: Body, admin: User) {
     if (!oneOf(['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'] as const, data.status)) throw new BadRequestException('Invalid status');
+    const found = await prisma.scholarshipApplication.findFirst({ where: { id, student: await peopleWhere(admin) }, select: { id: true } });
+    if (!found) throw new NotFoundException('Application not found');
     return prisma.scholarshipApplication.update({ where: { id }, data: { status: data.status } });
   }
 }

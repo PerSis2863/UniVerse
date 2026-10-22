@@ -1,8 +1,10 @@
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { notify } from './email';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from './http';
 import { need } from './permissions';
+import { inSchools, peopleWhere, schoolsOf, type SchoolIds } from './school-scope';
 
 // Registers (Stage 5 · B15.5), kept by admins or staff with registers.manage:
 //   equipment  each item with a tag (printed as a QR label), where it is, who has it, its state,
@@ -17,6 +19,18 @@ const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const text = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) || null : null);
 const firstName = (n: string) => n.split(/\s+/)[0] || n;
+
+// Routes, rooms and equipment have no school of their own (shared), but the people in them do: a
+// register keeper sees and changes only their own school's people. Another school's riders and
+// residents still take a seat or a bed, so they show without a name; equipment lent to another
+// school's person is theirs, so it's left out (and "not found").
+const OTHER = { id: '', name: 'A student at another school', avatar: null };
+const mask = <T extends { id: string; name: string; avatar: string | null; organizationId: string | null }>(schools: SchoolIds | 'all', p: T) => (inSchools(schools, p.organizationId) ? { id: p.id, name: p.name, avatar: p.avatar } : OTHER);
+/** Equipment a register keeper may see: not lent out, or lent to their own school's people. */
+async function visibleAssets(user: SessionUser): Promise<Prisma.AssetWhereInput> {
+  const schools = await schoolsOf(user);
+  return schools === 'all' ? {} : { OR: [{ assignedToId: null }, { assignedTo: await peopleWhere(user) }] };
+}
 
 // ── Equipment ───────────────────────────────────────────────────────────────────────────────
 
@@ -36,14 +50,15 @@ export async function assetList(user: SessionUser, q: URLSearchParams) {
   const s = (q.get('q') ?? '').trim().slice(0, 60);
   const status = ASSET_STATUSES.find((x) => x === q.get('status'));
   const category = q.get('category') || undefined;
+  const visible = await visibleAssets(user);
   const [assets, byStatus, categories] = await Promise.all([
     prisma.asset.findMany({
-      where: { ...(status ? { status } : {}), ...(category ? { category } : {}), ...(s ? { OR: [{ name: { contains: s } }, { tag: { contains: s.toUpperCase() } }, { serial: { contains: s } }, { location: { contains: s } }, { assignedTo: { name: { contains: s } } }] } : {}) },
+      where: { AND: [visible, { ...(status ? { status } : {}), ...(category ? { category } : {}), ...(s ? { OR: [{ name: { contains: s } }, { tag: { contains: s.toUpperCase() } }, { serial: { contains: s } }, { location: { contains: s } }, { assignedTo: { name: { contains: s } } }] } : {}) }] },
       orderBy: { updatedAt: 'desc' }, take: 300,
       select: { id: true, tag: true, name: true, category: true, location: true, status: true, lastSeenAt: true, assignedTo: { select: { id: true, name: true } } },
     }),
-    prisma.asset.groupBy({ by: ['status'], _count: { _all: true } }),
-    prisma.asset.groupBy({ by: ['category'], _count: { _all: true }, orderBy: { category: 'asc' } }),
+    prisma.asset.groupBy({ by: ['status'], where: visible, _count: { _all: true } }),
+    prisma.asset.groupBy({ by: ['category'], where: visible, _count: { _all: true }, orderBy: { category: 'asc' } }),
   ]);
   return {
     assets, byStatus: Object.fromEntries(byStatus.map((x) => [x.status, x._count._all])),
@@ -85,17 +100,17 @@ export async function addAssets(user: SessionUser, b: Record<string, unknown>) {
 /** GET /api/registers/assets/:id: an item with its history. */
 export async function assetDetail(user: SessionUser, id: string) {
   await need(user, 'registers.manage');
-  const a = await prisma.asset.findUnique({ where: { id }, include: { assignedTo: { select: { id: true, name: true, email: true } }, events: { orderBy: { at: 'desc' }, take: 50 } } });
+  const a = await prisma.asset.findFirst({ where: { id, ...(await visibleAssets(user)) }, include: { assignedTo: { select: { id: true, name: true, email: true } }, events: { orderBy: { at: 'desc' }, take: 50 } } });
   if (!a) throw new NotFoundException('That item isn’t in the register.');
   const people = [...new Set(a.events.map((e) => e.byId).filter((x): x is string => !!x))];
-  const names = people.length ? await prisma.user.findMany({ where: { id: { in: people } }, select: { id: true, name: true } }) : [];
+  const names = people.length ? await prisma.user.findMany({ where: { id: { in: people }, ...(await peopleWhere(user)) }, select: { id: true, name: true } }) : [];
   return { ...a, events: a.events.map((e) => ({ ...e, by: names.find((n) => n.id === e.byId)?.name ?? null })) };
 }
 
 /** POST /api/registers/assets/:id { action: 'save' | 'move' | 'lend' | 'return' | 'status' | 'seen' | 'delete', … } */
 export async function assetAction(user: SessionUser, id: string, b: Record<string, unknown>) {
   await need(user, 'registers.manage');
-  const a = await prisma.asset.findUnique({ where: { id }, select: { id: true, tag: true, name: true, location: true, status: true, assignedToId: true, assignedTo: { select: { name: true } } } });
+  const a = await prisma.asset.findFirst({ where: { id, ...(await visibleAssets(user)) }, select: { id: true, tag: true, name: true, location: true, status: true, assignedToId: true, assignedTo: { select: { name: true } } } });
   if (!a) throw new NotFoundException('That item isn’t in the register.');
   const note = text(b.note, 300);
   switch (b.action) {
@@ -113,7 +128,7 @@ export async function assetAction(user: SessionUser, id: string, b: Record<strin
       return { location };
     }
     case 'lend': {
-      const person = await prisma.user.findUnique({ where: { id: typeof b.userId === 'string' ? b.userId : '' }, select: { id: true, name: true, role: true, status: true } });
+      const person = await prisma.user.findFirst({ where: { id: typeof b.userId === 'string' ? b.userId : '', ...(await peopleWhere(user)) }, select: { id: true, name: true, role: true, status: true } });
       if (!person || !['STUDENT', 'TEACHER', 'ADMIN'].includes(person.role) || person.status === 'SUSPENDED') throw new BadRequestException('Choose a student or member of staff.');
       if (a.assignedToId === person.id) return { assignedTo: person.name };
       await prisma.asset.update({ where: { id }, data: { assignedToId: person.id, status: 'IN_USE', updatedAt: new Date() } });
@@ -155,13 +170,14 @@ export async function stockCheck(user: SessionUser, b: Record<string, unknown>) 
   const tags = Array.isArray(b.tags) ? [...new Set(b.tags.filter((x): x is string => typeof x === 'string').map((x) => x.trim().toUpperCase()).filter(Boolean))].slice(0, 200) : [];
   if (!tags.length) throw new BadRequestException('Scan at least one tag.');
   const location = text(b.location, 120);
-  const found = await prisma.asset.findMany({ where: { tag: { in: tags } }, select: { id: true, tag: true, name: true, location: true } });
+  const visible = await visibleAssets(user);
+  const found = await prisma.asset.findMany({ where: { tag: { in: tags }, ...visible }, select: { id: true, tag: true, name: true, location: true } });
   const now = new Date();
   if (found.length) {
     await prisma.asset.updateMany({ where: { id: { in: found.map((f) => f.id) } }, data: { lastSeenAt: now, ...(location ? { location } : {}) } });
     await prisma.assetEvent.createMany({ data: found.map((f) => ({ assetId: f.id, type: location && f.location !== location ? 'moved' : 'seen', note: location ? (f.location !== location ? `${f.location ? `${f.location} → ` : ''}${location} (stock check)` : `Stock check at ${location}`) : 'Stock check', byId: user.id })) });
   }
-  const missingThere = location ? await prisma.asset.findMany({ where: { location, tag: { notIn: tags }, status: { notIn: ['RETIRED', 'LOST'] } }, select: { tag: true, name: true }, take: 200 }) : [];
+  const missingThere = location ? await prisma.asset.findMany({ where: { location, tag: { notIn: tags }, status: { notIn: ['RETIRED', 'LOST'] }, ...visible }, select: { tag: true, name: true }, take: 200 }) : [];
   return { seen: found.map((f) => ({ tag: f.tag, name: f.name })), unknown: tags.filter((t) => !found.some((f) => f.tag === t)), notSeenThere: missingThere };
 }
 
@@ -171,7 +187,7 @@ export async function findPeople(user: SessionUser, q: string, studentsOnly: boo
   const s = q.trim().slice(0, 60);
   if (s.length < 2) return { people: [] };
   const people = await prisma.user.findMany({
-    where: { role: { in: studentsOnly ? ['STUDENT'] : ['STUDENT', 'TEACHER', 'ADMIN'] }, status: { not: 'SUSPENDED' }, OR: [{ name: { contains: s } }, { email: { contains: s.toLowerCase() } }] },
+    where: { AND: [await peopleWhere(user), { role: { in: studentsOnly ? ['STUDENT'] : ['STUDENT', 'TEACHER', 'ADMIN'] }, status: { not: 'SUSPENDED' }, OR: [{ name: { contains: s } }, { email: { contains: s.toLowerCase() } }] }] },
     orderBy: { name: 'asc' }, take: 10, select: { id: true, name: true, email: true, avatar: true, role: true },
   });
   return { people };
@@ -213,9 +229,10 @@ export async function createRoute(user: SessionUser, b: Record<string, unknown>)
 /** GET /api/registers/routes/:id: a route and who rides it, by stop. */
 export async function routeDetail(user: SessionUser, id: string) {
   await need(user, 'registers.manage');
-  const r = await prisma.transportRoute.findUnique({ where: { id }, include: { riders: { orderBy: { createdAt: 'asc' }, select: { stop: true, student: { select: { id: true, name: true, avatar: true } } } } } });
+  const r = await prisma.transportRoute.findUnique({ where: { id }, include: { riders: { orderBy: { createdAt: 'asc' }, select: { stop: true, student: { select: { id: true, name: true, avatar: true, organizationId: true } } } } } });
   if (!r) throw new NotFoundException('That route doesn’t exist.');
-  return { ...r, stops: parseStops(r.stops), riders: r.riders.map((x) => ({ ...x.student, stop: x.stop })) };
+  const schools = await schoolsOf(user);
+  return { ...r, stops: parseStops(r.stops), riders: r.riders.map((x) => ({ ...mask(schools, x.student), stop: x.stop })) };
 }
 
 /** POST /api/registers/routes/:id { action: 'save', … } | { action: 'add', studentId, stop? } | { action: 'remove', studentId } | { action: 'delete' } */
@@ -225,9 +242,15 @@ export async function routeAction(user: SessionUser, id: string, b: Record<strin
   if (!r) throw new NotFoundException('That route doesn’t exist.');
   switch (b.action) {
     case 'save': await prisma.transportRoute.update({ where: { id }, data: { ...routeFields(b), updatedAt: new Date() } }); return { saved: true };
-    case 'delete': await prisma.transportRoute.delete({ where: { id } }); return { deleted: true };
+    case 'delete': {
+      // Deleting a route takes every rider off it: not another school's students.
+      const others = await prisma.transportRider.count({ where: { routeId: id, NOT: { student: await peopleWhere(user) } } });
+      if (others) throw new BadRequestException('Students of another school ride this route, so it can’t be deleted here.');
+      await prisma.transportRoute.delete({ where: { id } });
+      return { deleted: true };
+    }
     case 'add': {
-      const student = await prisma.user.findUnique({ where: { id: typeof b.studentId === 'string' ? b.studentId : '' }, select: { id: true, name: true, role: true, busRide: { select: { routeId: true } } } });
+      const student = await prisma.user.findFirst({ where: { id: typeof b.studentId === 'string' ? b.studentId : '', ...(await peopleWhere(user)) }, select: { id: true, name: true, role: true, busRide: { select: { routeId: true } } } });
       if (!student || student.role !== 'STUDENT') throw new BadRequestException('Choose a student.');
       const stops = parseStops(r.stops);
       const stop = typeof b.stop === 'string' && stops.some((s) => s.name === b.stop) ? b.stop : null;
@@ -240,7 +263,7 @@ export async function routeAction(user: SessionUser, id: string, b: Record<strin
       return { added: student.name, moved: !!moving };
     }
     case 'remove': {
-      await prisma.transportRider.deleteMany({ where: { routeId: id, studentId: typeof b.studentId === 'string' ? b.studentId : '' } });
+      await prisma.transportRider.deleteMany({ where: { routeId: id, studentId: typeof b.studentId === 'string' ? b.studentId : '', student: await peopleWhere(user) } });
       return { removed: true };
     }
     default: throw new BadRequestException('Unknown action.');
@@ -252,8 +275,9 @@ export async function routeAction(user: SessionUser, id: string, b: Record<strin
 /** GET /api/registers/rooms: every room with who lives there. */
 export async function rooms(user: SessionUser) {
   await need(user, 'registers.manage');
-  const rows = await prisma.hostelRoom.findMany({ orderBy: [{ building: 'asc' }, { name: 'asc' }], take: 1000, select: { id: true, building: true, name: true, beds: true, notes: true, residents: { orderBy: { createdAt: 'asc' }, select: { bed: true, since: true, student: { select: { id: true, name: true, avatar: true } } } } } });
-  return { rooms: rows.map((r) => ({ ...r, residents: r.residents.map((x) => ({ ...x.student, bed: x.bed, since: x.since })) })) };
+  const rows = await prisma.hostelRoom.findMany({ orderBy: [{ building: 'asc' }, { name: 'asc' }], take: 1000, select: { id: true, building: true, name: true, beds: true, notes: true, residents: { orderBy: { createdAt: 'asc' }, select: { bed: true, since: true, student: { select: { id: true, name: true, avatar: true, organizationId: true } } } } } });
+  const schools = await schoolsOf(user);
+  return { rooms: rows.map((r) => ({ ...r, residents: r.residents.map((x) => ({ ...mask(schools, x.student), bed: x.bed, since: x.since })) })) };
 }
 
 export function roomFields(b: Record<string, unknown>) {
@@ -298,7 +322,7 @@ export async function roomAction(user: SessionUser, id: string, b: Record<string
       return { deleted: true };
     }
     case 'add': {
-      const student = await prisma.user.findUnique({ where: { id: typeof b.studentId === 'string' ? b.studentId : '' }, select: { id: true, name: true, role: true, hostelRoom: { select: { roomId: true } } } });
+      const student = await prisma.user.findFirst({ where: { id: typeof b.studentId === 'string' ? b.studentId : '', ...(await peopleWhere(user)) }, select: { id: true, name: true, role: true, hostelRoom: { select: { roomId: true } } } });
       if (!student || student.role !== 'STUDENT') throw new BadRequestException('Choose a student.');
       const already = student.hostelRoom?.roomId === id;
       if (!already && r.residents.length >= r.beds) throw new BadRequestException(`${r.building} ${r.name} is full (${r.beds} beds).`);
@@ -308,7 +332,7 @@ export async function roomAction(user: SessionUser, id: string, b: Record<string
       return { added: student.name, moved: !!student.hostelRoom && !already };
     }
     case 'remove': {
-      await prisma.hostelResident.deleteMany({ where: { roomId: id, studentId: typeof b.studentId === 'string' ? b.studentId : '' } });
+      await prisma.hostelResident.deleteMany({ where: { roomId: id, studentId: typeof b.studentId === 'string' ? b.studentId : '', student: await peopleWhere(user) } });
       return { removed: true };
     }
     default: throw new BadRequestException('Unknown action.');
