@@ -20,6 +20,7 @@ vi.mock('@/lib/db', () => ({
     privacyGrievance: {
       create: vi.fn(),
       findMany: vi.fn(),
+      findFirst: vi.fn(),
       update: vi.fn(),
     },
     guardianLink: {
@@ -27,6 +28,13 @@ vi.mock('@/lib/db', () => ({
     },
   },
 }));
+// Schools (school-scope.ts): an admin's school check, stubbed per test.
+vi.mock('./school-scope', () => ({
+  assertInSchool: vi.fn(async () => undefined),
+  schoolsOf: vi.fn(async () => ['org-a']),
+  usersIn: vi.fn(() => ({ organizationId: { in: ['org-a'] } })),
+}));
+import { assertInSchool } from './school-scope';
 
 describe('compliance helpers and services', () => {
   beforeEach(() => {
@@ -124,6 +132,12 @@ describe('compliance helpers and services', () => {
       expect(res).toEqual([]);
     });
 
+    it('refuses an admin of another school (not found)', async () => {
+      vi.mocked(assertInSchool).mockRejectedValueOnce(Object.assign(new Error('User not found'), { status: 404 }));
+      await expect(getEducationalRecordAccessLogs('student-1', adminUser)).rejects.toThrow('User not found');
+      expect(prisma.educationalRecordLog.findMany).not.toHaveBeenCalled();
+    });
+
     it('forbids unrelated stranger from viewing student access logs', async () => {
       await expect(getEducationalRecordAccessLogs('student-1', strangerUser)).rejects.toThrow(
         'You do not have permission to view this student’s educational record access log'
@@ -179,13 +193,24 @@ describe('compliance helpers and services', () => {
   });
 
   describe('resolvePrivacyGrievance', () => {
+    const admin = { id: 'admin-1', role: 'ADMIN', email: 'a@school.edu', name: 'Admin', organizationId: 'org-a' } as SessionUser;
+
+    it('refuses a request from another school (not found)', async () => {
+      vi.mocked(prisma.privacyGrievance.findFirst).mockResolvedValueOnce(null);
+      await expect(resolvePrivacyGrievance({ actor: admin, grievanceId: 'grv-9', status: 'RESOLVED' })).rejects.toThrow('Request not found.');
+      expect(vi.mocked(prisma.privacyGrievance.findFirst).mock.calls[0][0]).toMatchObject({ where: { id: 'grv-9', user: { organizationId: { in: ['org-a'] } } } });
+      expect(prisma.privacyGrievance.update).not.toHaveBeenCalled();
+    });
+
     it('updates status and records resolvedAt', async () => {
+      vi.mocked(prisma.privacyGrievance.findFirst).mockResolvedValueOnce({ id: 'grv-1' } as never);
       vi.mocked(prisma.privacyGrievance.update).mockResolvedValueOnce({
         id: 'grv-1',
         status: 'RESOLVED',
       } as never);
 
       await resolvePrivacyGrievance({
+        actor: admin,
         grievanceId: 'grv-1',
         status: 'RESOLVED',
         resolutionNote: 'Data purged in accordance with DPDP Section 12',

@@ -4,12 +4,15 @@ import { cleanPan, cleanReg80G, offers80G, receiptLabel } from '@/lib/global-imp
 import type { Body } from './body';
 import { notify } from './email';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
+import { schoolsOf, usersIn } from './school-scope';
 
 // Donations to NGO projects (Stage 5 · Q16). Paid by card through Stripe Checkout (src/server/donate.ts
 // starts one; src/server/payments/provider.ts confirms it with Stripe and calls donationPaid). The
 // money reaches the school's Stripe account, which passes it on to the NGO; the receipt says so.
 // India: an 80G section on the receipt when the NGO has its 80G number and PAN and the gift is in
 // rupees; the deduction itself needs the NGO's Form 10BE, which the receipt points out.
+// A school's admins see only their own school's donors (school-scope.ts); NGOs are shared by every
+// school, so only the platform owner changes an NGO's donation settings.
 
 /** The payment for a donation went through: number its receipt and thank the donor (once). */
 export async function donationPaid(orderId: string, at: Date) {
@@ -59,7 +62,13 @@ export async function projectSupport(projectId: string) {
 /** GET /api/impact/donations/[id]: a receipt, for the donor and admins. */
 export async function donationReceipt(user: SessionUser, id: string) {
   const d = await prisma.donation.findUnique({ where: { id } });
-  if (!d || (d.donorId !== user.id && user.role !== 'ADMIN') || !d.receiptNo || !d.paidAt) throw new NotFoundException('Receipt not found.');
+  if (!d || !d.receiptNo || !d.paidAt) throw new NotFoundException('Receipt not found.');
+  // The donor, or an admin of the donor's school (another school's receipt looks not found).
+  if (d.donorId !== user.id) {
+    const schools = user.role === 'ADMIN' ? await schoolsOf(user) : null;
+    const ok = schools === 'all' || (!!schools && !!d.donorId && !!(await prisma.user.findFirst({ where: { id: d.donorId, ...usersIn(schools) }, select: { id: true } })));
+    if (!ok) throw new NotFoundException('Receipt not found.');
+  }
   const order = d.orderId ? await prisma.paymentOrder.findUnique({ where: { id: d.orderId }, select: { paymentRef: true, provider: true, organization: { select: { name: true } } } }) : null;
   const tax = offers80G(d.currency, { reg80G: d.reg80G, pan: d.ngoPan });
   return {
@@ -79,13 +88,14 @@ const adminOnly = (user: SessionUser) => { if (user.role !== 'ADMIN') throw new 
 /** GET /api/admin/donations: every NGO's donation settings and totals, and the latest donations. */
 export async function adminDonations(user: SessionUser) {
   adminOnly(user);
+  const donor = usersIn(await schoolsOf(user));
   const [ngos, rows, totals] = await Promise.all([
     prisma.nGO.findMany({ orderBy: { name: 'asc' }, take: 200, select: { id: true, name: true, donationsOn: true, reg80G: true, pan: true, isVerified: true, _count: { select: { projects: true } } } }),
     prisma.donation.findMany({
-      where: { status: { in: ['PAID', 'REFUNDED'] } }, orderBy: { paidAt: 'desc' }, take: 500,
+      where: { status: { in: ['PAID', 'REFUNDED'] }, donor }, orderBy: { paidAt: 'desc' }, take: 500,
       select: { id: true, receiptNo: true, paidAt: true, status: true, amount: true, currency: true, projectName: true, ngoName: true, ngoId: true, donorName: true, donorEmail: true, pan: true, address: true, anonymous: true },
     }),
-    prisma.donation.groupBy({ by: ['ngoId', 'currency'], where: { status: 'PAID' }, _sum: { amount: true }, _count: { _all: true } }),
+    prisma.donation.groupBy({ by: ['ngoId', 'currency'], where: { status: 'PAID', donor }, _sum: { amount: true }, _count: { _all: true } }),
   ]);
   return {
     ngos: ngos.map((n) => ({ ...n, projects: n._count.projects, _count: undefined, raised: totals.filter((t) => t.ngoId === n.id).map((t) => ({ currency: t.currency, amount: t._sum.amount ?? 0, count: t._count._all })) })),
@@ -96,6 +106,8 @@ export async function adminDonations(user: SessionUser) {
 /** PATCH /api/admin/donations { ngoId, donationsOn?, reg80G?, pan? }: an NGO's donation settings. */
 export async function saveNgoDonationSettings(user: SessionUser, b: Body) {
   adminOnly(user);
+  // An NGO is shared by every school (no school of its own), so a change here would reach other schools' receipts.
+  if ((await schoolsOf(user)) !== 'all') throw new ForbiddenException('NGOs are shared by every school, so only the platform owner changes their donation settings.');
   const ngoId = typeof b.ngoId === 'string' ? b.ngoId : '';
   if (!(await prisma.nGO.findUnique({ where: { id: ngoId }, select: { id: true } }))) throw new NotFoundException('NGO not found.');
   const data: { donationsOn?: boolean; reg80G?: string | null; pan?: string | null } = {};

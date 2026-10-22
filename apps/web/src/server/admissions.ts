@@ -9,6 +9,7 @@ import {
 import { notify } from './email';
 import { need } from './permissions';
 import { BadRequestException, HttpException, NotFoundException } from './http';
+import { inSchools, schoolsOf, usersIn } from './school-scope';
 
 // Admissions (Stage 5 · B15.1). An admin opens a round: dates, the classes admitted students join,
 // an application form (src/lib/admission-form.ts) and an offer letter template. Families apply on
@@ -19,6 +20,8 @@ import { BadRequestException, HttpException, NotFoundException } from './http';
 // notes, write to the family (shown on their page), make an offer the family accepts or declines
 // there, and enrol accepted students: a pre-approved student invitation for the student's email
 // and their classes waiting for them (pending_enrolments, src/server/bulk-import.ts).
+// A round belongs to the school of the admin who opened it: other schools' admins don't see it, its
+// applications or its classes (school-scope.ts).
 
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
 const REF_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -43,21 +46,27 @@ export const isOpen = (r: { opensAt: Date; closesAt: Date; closedAt: Date | null
 /** open, upcoming (not open yet), ended (past its closing date) or closed (by an admin). */
 export const phaseOf = (r: { opensAt: Date; closesAt: Date; closedAt: Date | null }, now = Date.now()) =>
   r.closedAt ? 'closed' : r.opensAt.getTime() > now ? 'upcoming' : r.closesAt.getTime() < now ? 'ended' : 'open';
-const school = async () => (await prisma.organization.findFirst({ orderBy: { createdAt: 'asc' }, select: { name: true } }))?.name ?? 'Our school';
+/** A school's name (people in no school: the main school, the first one made). */
+const school = async (orgId: string | null = null) =>
+  (orgId ? await prisma.organization.findUnique({ where: { id: orgId }, select: { name: true } }) : await prisma.organization.findFirst({ orderBy: { createdAt: 'asc' }, select: { name: true } }))?.name ?? 'Our school';
+/** Rounds opened by someone in the viewer's school. */
+const myRounds = async (user: SessionUser) => ({ createdBy: usersIn(await schoolsOf(user)) });
 
 // ── Rounds (admins) ─────────────────────────────────────────────────────────────────────────
 
 /** GET /api/admissions: every round with how many applications are at each stage; the classes to choose from. */
 export async function admissionRounds(user: SessionUser) {
   await need(user, 'admissions.review');
+  const schools = await schoolsOf(user);
+  const mine = { createdBy: usersIn(schools) };
   const [rounds, counts, courses] = await Promise.all([
-    prisma.admissionRound.findMany({ orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, slug: true, title: true, opensAt: true, closesAt: true, closedAt: true, createdAt: true, courseIds: true } }),
-    prisma.admissionApplication.groupBy({ by: ['roundId', 'stage'], _count: { _all: true } }),
-    prisma.course.findMany({ select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 300 }),
+    prisma.admissionRound.findMany({ where: mine, orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, slug: true, title: true, opensAt: true, closesAt: true, closedAt: true, createdAt: true, courseIds: true } }),
+    prisma.admissionApplication.groupBy({ by: ['roundId', 'stage'], where: { round: mine }, _count: { _all: true } }),
+    prisma.course.findMany({ where: { teacher: usersIn(schools) }, select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 300 }),
   ]);
   return {
     courses,
-    school: await school(),
+    school: await school(user.organizationId ?? null),
     rounds: rounds.map((r) => {
       const byStage = Object.fromEntries(counts.filter((c) => c.roundId === r.id).map((c) => [c.stage, c._count._all]));
       return { ...r, courseIds: parse<string[]>(r.courseIds, []), open: isOpen(r), phase: phaseOf(r), byStage, total: Object.values(byStage).reduce((a, b) => a + b, 0) };
@@ -79,9 +88,10 @@ function readRound(b: Record<string, unknown>) {
   return { title, intro, opensAt, closesAt, fields, courseIds, offerTemplate };
 }
 
-async function checkCourses(ids: string[]) {
+/** The round's classes: all of them in the admin's school. */
+async function checkCourses(user: SessionUser, ids: string[]) {
   if (!ids.length) return;
-  const found = await prisma.course.count({ where: { id: { in: ids } } });
+  const found = await prisma.course.count({ where: { id: { in: ids }, teacher: usersIn(await schoolsOf(user)) } });
   if (found !== ids.length) throw new BadRequestException('One of those classes doesn’t exist any more.');
 }
 
@@ -89,7 +99,7 @@ async function checkCourses(ids: string[]) {
 export async function createRound(user: SessionUser, b: Record<string, unknown>) {
   await need(user, 'admissions.manage');
   const r = readRound(b);
-  await checkCourses(r.courseIds);
+  await checkCourses(user, r.courseIds);
   const base = r.title.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'apply';
   const slug = `${base}-${randomBytes(3).toString('hex')}`;
   const round = await prisma.admissionRound.create({
@@ -102,7 +112,7 @@ export async function createRound(user: SessionUser, b: Record<string, unknown>)
 /** GET /api/admissions/:id?stage=&q=: the round (with its form) and its applications. */
 export async function roundDetail(user: SessionUser, id: string, q: URLSearchParams) {
   await need(user, 'admissions.review');
-  const round = await prisma.admissionRound.findUnique({ where: { id } });
+  const round = await prisma.admissionRound.findFirst({ where: { id, ...(await myRounds(user)) } });
   if (!round) throw new NotFoundException('That round doesn’t exist.');
   const stage = STAGES.find((s) => s === q.get('stage'));
   const text = (q.get('q') ?? '').trim().slice(0, 60);
@@ -127,7 +137,7 @@ export async function roundDetail(user: SessionUser, id: string, q: URLSearchPar
 /** POST /api/admissions/:id { action: 'save', …round } | { action: 'close' | 'reopen' } */
 export async function roundAction(user: SessionUser, id: string, b: Record<string, unknown>) {
   await need(user, 'admissions.manage');
-  const round = await prisma.admissionRound.findUnique({ where: { id }, select: { id: true } });
+  const round = await prisma.admissionRound.findFirst({ where: { id, ...(await myRounds(user)) }, select: { id: true } });
   if (!round) throw new NotFoundException('That round doesn’t exist.');
   if (b.action === 'close' || b.action === 'reopen') {
     await prisma.admissionRound.update({ where: { id }, data: { closedAt: b.action === 'close' ? new Date() : null } });
@@ -135,7 +145,7 @@ export async function roundAction(user: SessionUser, id: string, b: Record<strin
   }
   if (b.action !== 'save') throw new BadRequestException('Unknown action.');
   const r = readRound(b);
-  await checkCourses(r.courseIds);
+  await checkCourses(user, r.courseIds);
   await prisma.admissionRound.update({ where: { id }, data: { title: r.title, intro: r.intro, opensAt: r.opensAt, closesAt: r.closesAt, fields: JSON.stringify(r.fields), courseIds: JSON.stringify(r.courseIds), offerTemplate: r.offerTemplate } });
   return { saved: true };
 }
@@ -152,7 +162,7 @@ const appSelect = {
 /** GET /api/admissions/applications/:id: everything about one application. */
 export async function applicationDetail(user: SessionUser, id: string) {
   await need(user, 'admissions.review');
-  const a = await prisma.admissionApplication.findUnique({ where: { id }, select: appSelect });
+  const a = await prisma.admissionApplication.findFirst({ where: { id, round: await myRounds(user) }, select: appSelect });
   if (!a) throw new NotFoundException('That application doesn’t exist.');
   const courseIds = parse<string[]>(a.round.courseIds, []);
   const courses = courseIds.length ? await prisma.course.findMany({ where: { id: { in: courseIds } }, select: { code: true, name: true } }) : [];
@@ -171,7 +181,7 @@ export async function applicationDetail(user: SessionUser, id: string) {
  */
 export async function applicationAction(user: SessionUser, id: string, b: Record<string, unknown>) {
   await need(user, b.action === 'score' ? 'admissions.review' : 'admissions.manage');
-  const a = await prisma.admissionApplication.findUnique({ where: { id }, select: { id: true, stage: true, history: true, studentName: true, studentEmail: true, contactName: true, offerExpiresAt: true, round: { select: { title: true, courseIds: true, offerTemplate: true } } } });
+  const a = await prisma.admissionApplication.findFirst({ where: { id, round: await myRounds(user) }, select: { id: true, stage: true, history: true, studentName: true, studentEmail: true, contactName: true, offerExpiresAt: true, round: { select: { title: true, courseIds: true, offerTemplate: true, createdBy: { select: { organizationId: true } } } } } });
   if (!a) throw new NotFoundException('That application doesn’t exist.');
   const stage = a.stage as Stage;
   const by = { by: user.id, byName: user.name };
@@ -225,13 +235,22 @@ export async function applicationAction(user: SessionUser, id: string, b: Record
       const email = typeof b.studentEmail === 'string' ? b.studentEmail.trim().toLowerCase() : (a.studentEmail ?? '');
       if (!EMAIL_RE.test(email)) throw new BadRequestException('Enter the email the student will sign up with.');
       const courseIds = parse<string[]>(a.round.courseIds, []);
-      const [user0] = await prisma.$queryRawUnsafe<{ id: string; role: string; name: string }[]>(`SELECT id, role, name FROM users WHERE lower(email) = ? LIMIT 1`, email);
+      const [user0] = await prisma.$queryRawUnsafe<{ id: string; role: string; name: string; organizationId: string | null }[]>(`SELECT id, role, name, "organizationId" FROM users WHERE lower(email) = ? LIMIT 1`, email);
       if (user0 && user0.role !== 'STUDENT') throw new BadRequestException(`${email} already has a ${user0.role.toLowerCase()} account. Use the student’s own email.`);
+      // Into the round's school (whoever opened it); another school's student or invitation isn't taken over.
+      const org = a.round.createdBy.organizationId ?? null;
+      const schools = await schoolsOf(user);
+      const ours = (o: string | null) => inSchools(schools, o);
+      if (user0 && !ours(user0.organizationId ?? null)) throw new BadRequestException(`${email} is already used by an account at another school. Use the student’s own email.`);
+      if (!user0) {
+        const inv = await prisma.invitation.findUnique({ where: { email }, select: { organizationId: true } });
+        if (inv && !ours(inv.organizationId ?? null)) throw new BadRequestException(`${email} already has an invitation from another school. Use the student’s own email.`);
+      }
       if (user0) {
         // Already has a student account: straight into the classes.
         for (const courseId of courseIds) await prisma.enrollment.upsert({ where: { studentId_courseId: { studentId: user0.id, courseId } }, update: {}, create: { studentId: user0.id, courseId } });
       } else {
-        await prisma.invitation.upsert({ where: { email }, update: { role: 'STUDENT', status: 'PENDING', expiresAt: new Date(Date.now() + 60 * 86_400_000) }, create: { email, role: 'STUDENT', status: 'PENDING', expiresAt: new Date(Date.now() + 60 * 86_400_000) } });
+        await prisma.invitation.upsert({ where: { email }, update: { role: 'STUDENT', status: 'PENDING', expiresAt: new Date(Date.now() + 60 * 86_400_000), organizationId: org }, create: { email, role: 'STUDENT', status: 'PENDING', expiresAt: new Date(Date.now() + 60 * 86_400_000), organizationId: org } });
         for (const courseId of courseIds) await prisma.pendingEnrolment.upsert({ where: { email_courseId: { email, courseId } }, update: {}, create: { email, courseId } });
       }
       await save({ stage: 'ENROLLED', enrolledAt: new Date(), studentEmail: email }, { type: 'enrolled', note: user0 ? `Put ${user0.name} in their classes` : `Invited ${email} as a student` });
@@ -245,9 +264,9 @@ export async function applicationAction(user: SessionUser, id: string, b: Record
 
 /** GET /api/admissions/public/:slug: what the public form needs. */
 export async function publicRound(slug: string) {
-  const r = await prisma.admissionRound.findUnique({ where: { slug }, select: { id: true, title: true, intro: true, fields: true, opensAt: true, closesAt: true, closedAt: true } });
+  const r = await prisma.admissionRound.findUnique({ where: { slug }, select: { id: true, title: true, intro: true, fields: true, opensAt: true, closesAt: true, closedAt: true, createdBy: { select: { organizationId: true } } } });
   if (!r) throw new NotFoundException('This application form doesn’t exist.');
-  return { title: r.title, intro: r.intro, fields: parse<FormField[]>(r.fields, []), opensAt: r.opensAt, closesAt: r.closesAt, open: isOpen(r), notYet: !r.closedAt && r.opensAt.getTime() > Date.now(), school: await school() };
+  return { title: r.title, intro: r.intro, fields: parse<FormField[]>(r.fields, []), opensAt: r.opensAt, closesAt: r.closesAt, open: isOpen(r), notYet: !r.closedAt && r.opensAt.getTime() > Date.now(), school: await school(r.createdBy.organizationId) };
 }
 
 const text = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -317,12 +336,12 @@ export async function submitApplication(slug: string, form: FormData, ip: string
 
 /** GET /api/admissions/status/:token: what the family sees on their private page. */
 export async function familyStatus(token: string) {
-  const a = token.length >= 20 ? await prisma.admissionApplication.findUnique({ where: { token }, select: { ref: true, studentName: true, stage: true, message: true, offerLetter: true, offerSentAt: true, offerExpiresAt: true, respondedAt: true, createdAt: true, files: true, round: { select: { title: true } } } }) : null;
+  const a = token.length >= 20 ? await prisma.admissionApplication.findUnique({ where: { token }, select: { ref: true, studentName: true, stage: true, message: true, offerLetter: true, offerSentAt: true, offerExpiresAt: true, respondedAt: true, createdAt: true, files: true, round: { select: { title: true, createdBy: { select: { organizationId: true } } } } } }) : null;
   if (!a) throw new NotFoundException('This link doesn’t match an application.');
   const stage = a.stage as Stage;
   const offerOpen = stage === 'OFFERED' && (!a.offerExpiresAt || a.offerExpiresAt.getTime() > Date.now());
   return {
-    school: await school(), round: a.round.title, ref: a.ref, studentName: a.studentName, submittedAt: a.createdAt,
+    school: await school(a.round.createdBy.organizationId), round: a.round.title, ref: a.ref, studentName: a.studentName, submittedAt: a.createdAt,
     stage, stageLabel: STAGE_LABEL[stage], explanation: STAGE_FOR_FAMILY[stage], message: a.message,
     offer: ['OFFERED', 'ACCEPTED', 'DECLINED', 'ENROLLED'].includes(stage) && a.offerLetter ? { letter: a.offerLetter, sentAt: a.offerSentAt, expiresAt: a.offerExpiresAt, respondedAt: a.respondedAt } : null,
     canRespond: offerOpen, offerExpired: stage === 'OFFERED' && !offerOpen, canWithdraw: !FINAL.includes(stage) && stage !== 'ACCEPTED',

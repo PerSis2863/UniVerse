@@ -160,7 +160,7 @@ export async function applyLateFees(planId?: string): Promise<number> {
 }
 
 /** Who a plan bills: a class's students (not suspended), or every active student; only in these schools. */
-export const target = (courseId: string | null, schools: Awaited<ReturnType<typeof schoolsOf>>) => {
+const target = (courseId: string | null, schools: Awaited<ReturnType<typeof schoolsOf>>) => {
   const sc = schoolSql(schools);
   return courseId
     ? { sql: `u.id IN (SELECT "studentId" FROM enrollments WHERE "courseId" = ?) AND u.status != 'SUSPENDED' AND ${sc.sql}`, args: [courseId, ...sc.args] }

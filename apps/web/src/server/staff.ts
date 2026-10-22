@@ -5,6 +5,7 @@ import { BadRequestException, ConflictException, ForbiddenException, NotFoundExc
 import { need } from './permissions';
 import { publish } from './realtime';
 import { pushService } from './services/push.service';
+import { schoolsOf, usersIn } from './school-scope';
 import { balances, inHalf, leaveYear, workingDays } from '@/lib/leave-balance';
 
 // Staff (Stage 5 · B15.8). Teachers mark themselves in each day, ask for leave and see the classes
@@ -12,6 +13,7 @@ import { balances, inHalf, leaveYear, workingDays } from '@/lib/leave-balance';
 // and plan cover: every class an absent teacher would miss on a date (from the weekly timetable)
 // gets a teacher who's free then (no class of their own at that time, not on leave, not already
 // covering), fewest covers this week first. In-app and push only, never email.
+// Managers see and act on their own school's teachers only (school-scope.ts).
 
 export const LEAVE_TYPES = ['SICK', 'PERSONAL', 'TRAINING', 'OTHER'] as const;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -85,7 +87,7 @@ export async function myStaffAction(user: SessionUser, b: Record<string, unknown
     // Over the allowance is allowed (the manager decides), but said.
     const bal = (await balancesOf([user.id])).of(user.id).find((r) => r.type === type);
     const over = bal && bal.left != null && bal.left - bal.pending < 0 ? -(bal.left - bal.pending) : 0;
-    await notifyManagers({ title: `Leave request: ${user.name}`, body: `${typeLabel(type)} · ${fromDate}${halfDay ? ` (${halfDay === 'AM' ? 'morning' : 'afternoon'})` : days > 1 ? ` to ${toDate} (${days} days)` : ''}${over ? ` · ${over} day${over === 1 ? '' : 's'} over the allowance` : ''}${reason ? ` · ${reason.slice(0, 80)}` : ''}`, link: '/admin/staff?view=leave' });
+    await notifyManagers(user, { title: `Leave request: ${user.name}`, body: `${typeLabel(type)} · ${fromDate}${halfDay ? ` (${halfDay === 'AM' ? 'morning' : 'afternoon'})` : days > 1 ? ` to ${toDate} (${days} days)` : ''}${over ? ` · ${over} day${over === 1 ? '' : 's'} over the allowance` : ''}${reason ? ` · ${reason.slice(0, 80)}` : ''}`, link: '/admin/staff?view=leave' });
     return { id: leave.id, over, days: workingDays(fromDate, toDate, halfDay) };
   }
   if (b.action === 'cancel') {
@@ -100,7 +102,7 @@ export async function myStaffAction(user: SessionUser, b: Record<string, unknown
     await prisma.staffCover.deleteMany({ where: { leaveId: id } });
     const told = [...new Set(covers.map((c) => c.coverTeacherId).filter((x): x is string => !!x))];
     if (told.length) await notifyMany(told, { type: 'staff', title: 'Cover no longer needed', body: `${user.name} is back: the classes you were covering (${leave.fromDate}${leave.toDate !== leave.fromDate ? ` to ${leave.toDate}` : ''}) are theirs again.`, link: '/teacher/staff', email: false });
-    if (leave.status === 'APPROVED') await notifyManagers({ title: `Leave cancelled: ${user.name}`, body: `${leave.fromDate}${leave.toDate !== leave.fromDate ? ` to ${leave.toDate}` : ''}`, link: '/admin/staff?view=leave' });
+    if (leave.status === 'APPROVED') await notifyManagers(user, { title: `Leave cancelled: ${user.name}`, body: `${leave.fromDate}${leave.toDate !== leave.fromDate ? ` to ${leave.toDate}` : ''}`, link: '/admin/staff?view=leave' });
     return { cancelled: true };
   }
   throw new BadRequestException('Unknown action.');
@@ -146,11 +148,13 @@ async function balancesOf(userIds: string[], today = new Date().toISOString().sl
 
 const typeLabel = (t: string) => ({ SICK: 'Sick leave', PERSONAL: 'Personal leave', TRAINING: 'Training', OTHER: 'Leave' } as Record<string, string>)[t] ?? 'Leave';
 
-/** Admins and staff who may manage staff, in the app. */
-async function notifyManagers(n: { title: string; body: string; link: string }) {
+/** The teacher's school's admins (and the admin who owns it) and staff who may manage staff, in the app. */
+async function notifyManagers(teacher: SessionUser, n: { title: string; body: string; link: string }) {
+  const org = teacher.organizationId ?? null;
+  const school = org ? { OR: [{ organizationId: org }, { ownedOrganization: { id: org } }] } : { organizationId: null };
   const [admins, holders] = await Promise.all([
-    prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE' }, select: { id: true }, take: 20 }),
-    prisma.staffRoleMember.findMany({ where: { role: { permissions: { contains: '"staff.manage"' } } }, select: { userId: true }, take: 40 }),
+    prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE', ...school }, select: { id: true }, take: 20 }),
+    prisma.staffRoleMember.findMany({ where: { role: { permissions: { contains: '"staff.manage"' } }, user: school }, select: { userId: true }, take: 40 }),
   ]);
   const ids = [...new Set([...admins.map((a) => a.id), ...holders.map((h) => h.userId)])];
   if (ids.length) await notifyMany(ids, { type: 'staff', ...n, email: false });
@@ -162,10 +166,11 @@ async function notifyManagers(n: { title: string; body: string; link: string }) 
 export async function staffRegister(user: SessionUser, date: string | null) {
   await need(user, 'staff.manage');
   const day = isDay(date) ? date : new Date().toISOString().slice(0, 10);
+  const school = usersIn(await schoolsOf(user));
   const [teachers, att, leave] = await Promise.all([
-    prisma.user.findMany({ where: { role: 'TEACHER', status: { not: 'SUSPENDED' } }, orderBy: { name: 'asc' }, take: 1000, select: { id: true, name: true, email: true, avatar: true } }),
-    prisma.staffAttendance.findMany({ where: { date: day }, select: { userId: true, inAt: true, outAt: true } }),
-    prisma.staffLeave.findMany({ where: { status: 'APPROVED', fromDate: { lte: day }, toDate: { gte: day } }, select: { userId: true, type: true } }),
+    prisma.user.findMany({ where: { role: 'TEACHER', status: { not: 'SUSPENDED' }, ...school }, orderBy: { name: 'asc' }, take: 1000, select: { id: true, name: true, email: true, avatar: true } }),
+    prisma.staffAttendance.findMany({ where: { date: day, user: school }, select: { userId: true, inAt: true, outAt: true } }),
+    prisma.staffLeave.findMany({ where: { status: 'APPROVED', fromDate: { lte: day }, toDate: { gte: day }, user: school }, select: { userId: true, type: true } }),
   ]);
   const rows = teachers.map((t) => {
     const a = att.find((x) => x.userId === t.id), l = leave.find((x) => x.userId === t.id);
@@ -179,7 +184,7 @@ export async function leaveRequests(user: SessionUser, status: string | null) {
   await need(user, 'staff.manage');
   const where = status === 'PENDING' || status === 'APPROVED' || status === 'DECLINED' || status === 'CANCELLED' ? { status } : { toDate: { gte: addDays(new Date().toISOString().slice(0, 10), -60) } };
   const rows = await prisma.staffLeave.findMany({
-    where, orderBy: [{ fromDate: 'asc' }], take: 200,
+    where: { ...where, user: usersIn(await schoolsOf(user)) }, orderBy: [{ fromDate: 'asc' }], take: 200,
     select: { id: true, type: true, fromDate: true, toDate: true, halfDay: true, reason: true, status: true, decisionNote: true, decidedAt: true, createdAt: true, user: { select: { id: true, name: true, avatar: true } }, _count: { select: { covers: true } } },
   });
   const order = { PENDING: 0, APPROVED: 1, DECLINED: 2, CANCELLED: 3 } as Record<string, number>;
@@ -192,7 +197,7 @@ export async function leaveRequests(user: SessionUser, status: string | null) {
 /** POST /api/staff/leave/:id { action: 'approve' | 'decline', note? } */
 export async function decideLeave(user: SessionUser, id: string, b: Record<string, unknown>) {
   await need(user, 'staff.manage');
-  const leave = await prisma.staffLeave.findUnique({ where: { id }, select: { id: true, userId: true, status: true, type: true, fromDate: true, toDate: true } });
+  const leave = await prisma.staffLeave.findFirst({ where: { id, user: usersIn(await schoolsOf(user)) }, select: { id: true, userId: true, status: true, type: true, fromDate: true, toDate: true } });
   if (!leave) throw new NotFoundException('That leave request doesn’t exist.');
   if (leave.userId === user.id) throw new ForbiddenException('Someone else decides on your own leave.');
   const to = b.action === 'approve' ? 'APPROVED' : b.action === 'decline' ? 'DECLINED' : null;
@@ -213,7 +218,7 @@ export async function coverNeeds(user: SessionUser, from: string | null, to: str
   await need(user, 'staff.manage');
   const start = isDay(from) ? from : new Date().toISOString().slice(0, 10);
   const end = isDay(to) && to >= start ? (daysBetween(start, to) < MAX_RANGE_DAYS ? to : addDays(start, MAX_RANGE_DAYS - 1)) : addDays(start, 6);
-  const leave = await prisma.staffLeave.findMany({ where: { status: 'APPROVED', fromDate: { lte: end }, toDate: { gte: start } }, select: { id: true, userId: true, fromDate: true, toDate: true, halfDay: true, user: { select: { id: true, name: true } } }, take: 100 });
+  const leave = await prisma.staffLeave.findMany({ where: { status: 'APPROVED', fromDate: { lte: end }, toDate: { gte: start }, user: usersIn(await schoolsOf(user)) }, select: { id: true, userId: true, fromDate: true, toDate: true, halfDay: true, user: { select: { id: true, name: true } } }, take: 100 });
   if (!leave.length) return { from: start, to: end, needs: [] as Need[], uncovered: 0 };
   const teacherIds = [...new Set(leave.map((l) => l.userId))];
   const [slots, covers] = await Promise.all([
@@ -239,11 +244,12 @@ export async function coverNeeds(user: SessionUser, from: string | null, to: str
 export async function freeTeachers(user: SessionUser, date: string | null, slotId: string | null) {
   await need(user, 'staff.manage');
   if (!isDay(date) || !slotId) throw new BadRequestException('Choose a class and a day.');
-  const slot = await prisma.timetableSlot.findUnique({ where: { id: slotId }, select: { dayOfWeek: true, startTime: true, endTime: true, course: { select: { teacherId: true } } } });
+  const school = usersIn(await schoolsOf(user));
+  const slot = await prisma.timetableSlot.findFirst({ where: { id: slotId, course: { teacher: school } }, select: { dayOfWeek: true, startTime: true, endTime: true, course: { select: { teacherId: true } } } });
   if (!slot) throw new NotFoundException('That class time doesn’t exist.');
   const monday = addDays(date, -weekday(date));
   const [teachers, busySlots, onLeave, coversThatDay, coversThatWeek] = await Promise.all([
-    prisma.user.findMany({ where: { role: 'TEACHER', status: { not: 'SUSPENDED' }, id: { not: slot.course.teacherId } }, orderBy: { name: 'asc' }, take: 1000, select: { id: true, name: true, avatar: true } }),
+    prisma.user.findMany({ where: { role: 'TEACHER', status: { not: 'SUSPENDED' }, id: { not: slot.course.teacherId }, ...school }, orderBy: { name: 'asc' }, take: 1000, select: { id: true, name: true, avatar: true } }),
     prisma.timetableSlot.findMany({ where: { dayOfWeek: slot.dayOfWeek }, select: { startTime: true, endTime: true, course: { select: { teacherId: true } } }, take: 3000 }),
     prisma.staffLeave.findMany({ where: { status: 'APPROVED', fromDate: { lte: date }, toDate: { gte: date } }, select: { userId: true, halfDay: true } }),
     prisma.staffCover.findMany({ where: { date, coverTeacherId: { not: null } }, select: { coverTeacherId: true, slotId: true, slot: { select: { startTime: true, endTime: true } } } }),
@@ -264,9 +270,10 @@ export async function setCover(user: SessionUser, b: Record<string, unknown>) {
   await need(user, 'staff.manage');
   if (!isDay(b.date) || typeof b.slotId !== 'string' || typeof b.leaveId !== 'string') throw new BadRequestException('Choose a class and a day.');
   const date = b.date, slotId = b.slotId;
+  const school = usersIn(await schoolsOf(user));
   const [slot, leave] = await Promise.all([
-    prisma.timetableSlot.findUnique({ where: { id: slotId }, select: { dayOfWeek: true, startTime: true, endTime: true, room: { select: { name: true } }, course: { select: { id: true, code: true, teacherId: true, teacher: { select: { name: true } } } } } }),
-    prisma.staffLeave.findUnique({ where: { id: b.leaveId }, select: { id: true, userId: true, status: true, fromDate: true, toDate: true } }),
+    prisma.timetableSlot.findFirst({ where: { id: slotId, course: { teacher: school } }, select: { dayOfWeek: true, startTime: true, endTime: true, room: { select: { name: true } }, course: { select: { id: true, code: true, teacherId: true, teacher: { select: { name: true } } } } } }),
+    prisma.staffLeave.findFirst({ where: { id: b.leaveId, user: school }, select: { id: true, userId: true, status: true, fromDate: true, toDate: true } }),
   ]);
   if (!slot || !leave || leave.status !== 'APPROVED' || leave.userId !== slot.course.teacherId || date < leave.fromDate || date > leave.toDate || weekday(date) !== slot.dayOfWeek) {
     throw new BadRequestException('That class isn’t missed on that day.');
