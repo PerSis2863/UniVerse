@@ -18,7 +18,7 @@ vi.mock('@/lib/db', () => ({
     studentProfile: { upsert: vi.fn() },
     teacherProfile: { upsert: vi.fn() },
     auditLog: { findMany: vi.fn(), groupBy: vi.fn() },
-    safetyAlert: { findMany: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
+    safetyAlert: { findMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
     scholarshipApplication: { findFirst: vi.fn(), update: vi.fn() },
   },
 }));
@@ -131,12 +131,18 @@ describe('activity log', () => {
 describe('safety reports', () => {
   const safety = new SafetyService();
 
-  it("lists only reports by the admin's school's people (anonymous ones: the owner only)", async () => {
+  it("lists only the admin's school's reports, anonymous ones by the school they came from", async () => {
     db.safetyAlert.findMany.mockResolvedValue([]);
     await safety.findAll(adminA() as never);
-    expect(db.safetyAlert.findMany.mock.calls[0][0].where).toEqual({ reporter: { organizationId: { in: ['orgA'] } } });
+    expect(db.safetyAlert.findMany.mock.calls[0][0].where).toEqual({ OR: [{ reporter: { organizationId: { in: ['orgA'] } } }, { AND: [{ reporterId: null }, { organizationId: { in: ['orgA'] } }] }] });
     await safety.findAll(owner() as never);
     expect(db.safetyAlert.findMany.mock.calls[1][0].where).toEqual({});
+  });
+
+  it('an anonymous report keeps its school (not its reporter)', async () => {
+    db.safetyAlert.create.mockResolvedValue({ id: 'r1', createdAt: new Date(), severity: 'MEDIUM', location: null });
+    await safety.create({ id: 'u1', organizationId: 'orgA' }, { title: 'T', description: 'D', isAnonymous: true });
+    expect(db.safetyAlert.create.mock.calls[0][0].data).toMatchObject({ reporterId: null, isAnonymous: true, organizationId: 'orgA' });
   });
 
   it("another school's report can't be resolved", async () => {

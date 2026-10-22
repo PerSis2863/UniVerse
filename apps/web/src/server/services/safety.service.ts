@@ -3,13 +3,14 @@ import { AlertSeverity, type Prisma, type User } from '@prisma/client';
 import prisma from '@/lib/db';
 import { BadRequestException, NotFoundException } from '../http';
 import { later, notifyMany } from '../email';
-import { schoolsOf, usersIn, type SchoolIds } from '../school-scope';
+import { orgIn, schoolsOf, usersIn, type SchoolIds } from '../school-scope';
 
 const SEVERITIES = Object.values(AlertSeverity) as string[];
 
-// A school's admins see only reports by their own school's people. Anonymous reports keep no
-// reporter (so no school): only the platform owner sees those in the list.
-const scope = (schools: SchoolIds | 'all'): Prisma.SafetyAlertWhereInput => (schools === 'all' ? {} : { reporter: usersIn(schools) });
+// A school's admins see only reports by their own school's people. An anonymous report keeps no
+// reporter but does keep the school it came from (migration 0175; older ones: the main school).
+const scope = (schools: SchoolIds | 'all'): Prisma.SafetyAlertWhereInput =>
+  schools === 'all' ? {} : { OR: [{ reporter: usersIn(schools) }, { AND: [{ reporterId: null }, orgIn(schools) as Prisma.SafetyAlertWhereInput] }] };
 
 /** Active admins who look after this school's people (its own admins and the admin who owns it; null = the main school). */
 function schoolAdminsWhere(organizationId: string | null | undefined): Prisma.UserWhereInput {
@@ -37,13 +38,13 @@ export class SafetyService {
     const severity = typeof data?.severity === 'string' && SEVERITIES.includes(data.severity) ? (data.severity as AlertSeverity) : undefined;
     const isAnonymous = !!data?.isAnonymous;
     const alert = await prisma.safetyAlert.create({
-      data: { title, description, location: str(data?.location, 300) || null, severity, reporterId: isAnonymous ? null : reporterId, isAnonymous },
+      data: { title, description, location: str(data?.location, 300) || null, severity, reporterId: isAnonymous ? null : reporterId, isAnonymous, organizationId: reporter.organizationId ?? null },
     });
     // The reporter's school's active admins hear about it at once in the app (no email: it keeps the
     // plan's allowance for sign-in codes; urgent reports are marked Urgent in the bell). Anonymous
-    // reports still go to every active admin, as before: the report keeps no school to narrow it by.
+    // ones too: the report keeps the school, not the person.
     later(async () => {
-      const admins = await prisma.user.findMany({ where: isAnonymous ? { role: 'ADMIN', status: 'ACTIVE' } : schoolAdminsWhere(reporter.organizationId), select: { id: true }, take: 500 });
+      const admins = await prisma.user.findMany({ where: schoolAdminsWhere(reporter.organizationId), select: { id: true }, take: 500 });
       const urgent = alert.severity === 'HIGH' || alert.severity === 'CRITICAL';
       await notifyMany(admins.map((a) => a.id), {
         title: `${urgent ? 'Urgent ' : ''}BeeSafe report: ${title}`,
@@ -55,7 +56,7 @@ export class SafetyService {
     });
     return { id: alert.id, createdAt: alert.createdAt };
   }
-  /** Only a report the admin can see (another school's, or an anonymous one for a school admin, looks "not found"). */
+  /** Only a report the admin can see (another school's looks "not found"). */
   async resolve(id: string, admin: User) {
     const found = await prisma.safetyAlert.findFirst({ where: { id, ...scope(await schoolsOf(admin)) }, select: { id: true } });
     if (!found) throw new NotFoundException('Report not found');

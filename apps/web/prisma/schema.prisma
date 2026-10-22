@@ -2293,9 +2293,12 @@ model SafetyAlert {
   isAnonymous Boolean       @default(false)
   isResolved  Boolean       @default(false)
   resolvedAt  DateTime?
+  /// The reporter's school (null: the main school), kept even for anonymous reports. Oct 2026.
+  organizationId String?
   createdAt   DateTime      @default(now())
 
   @@index([reporterId])
+  @@index([organizationId])
   @@map("safety_alerts")
 }
 
