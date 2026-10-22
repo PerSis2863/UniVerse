@@ -6,6 +6,7 @@ import './globals.css';
 import { Toaster } from 'sonner';
 import ErrorMonitorBootstrap from '@/components/ErrorMonitorBootstrap';
 import { MotionProvider } from '@/components/MotionProvider';
+import { ScrollMotion } from '@/components/ScrollMotion';
 import { CallHost } from '@/components/call/CallHost';
 import { UpdateNotifier } from '@/components/pwa/UpdateNotifier';
 import { Suspense } from 'react';
@@ -85,7 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <UpdateNotifier />
           <UiTranslatorGate />
           <div aria-hidden className="ambient-bg"><div className="ambient-bg__grid" /></div>
-          <MotionProvider>{children}<CallHost /></MotionProvider>
+          <MotionProvider>{children}<CallHost /><ScrollMotion /></MotionProvider>
           <Suspense fallback={null}><NavProgress /></Suspense>
           {/* iOS notification banners: drop in at the top, frosted, rounded. */}
           <Toaster

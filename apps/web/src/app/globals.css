@@ -1619,3 +1619,20 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 [dir="rtl"] :is(.lucide-arrow-left, .lucide-arrow-right, .lucide-chevron-left, .lucide-chevron-right, .lucide-chevrons-left, .lucide-chevrons-right, .lucide-arrow-up-right, .lucide-send, .lucide-send-horizontal, .lucide-log-out, .lucide-log-in, .lucide-reply, .lucide-undo-2, .lucide-redo-2, .lucide-corner-up-left, .lucide-move-right, .lucide-arrow-left-right) {
   transform: scaleX(-1);
 }
+
+/* ─── S4 · Scroll motion (src/lib/scroll-motion.ts) ───────────────────────────
+   Blocks below the fold wait a little lower and see-through, and rise into place as they scroll
+   into view, like the "Relay" site. Set only by the script (never for Reduce Motion), and never
+   when printing. */
+[data-sr="wait"] { opacity: 0; transform: translate3d(0, 36px, 0) scale(0.985); }
+[data-sr="in"] { opacity: 1; transform: none; transition: opacity 720ms var(--ease-glide), transform 900ms var(--ease-glide); }
+@media print { [data-sr] { opacity: 1 !important; transform: none !important; } }
+
+/* A slow drifting glow behind the public pages (landing, legal, sign-in): two soft blobs move on
+   long loops. GPU-only transforms; still for Reduce Motion. */
+@keyframes aurora-a { 0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); } 50% { transform: translate3d(6vw, 4vh, 0) rotate(8deg) scale(1.08); } 100% { transform: translate3d(-3vw, 8vh, 0) rotate(-4deg) scale(0.96); } }
+@keyframes aurora-b { 0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); } 50% { transform: translate3d(-7vw, -5vh, 0) rotate(-10deg) scale(1.1); } 100% { transform: translate3d(4vw, -2vh, 0) rotate(6deg) scale(0.95); } }
+.aurora-a { animation: aurora-a 26s ease-in-out infinite alternate; will-change: transform; }
+.aurora-b { animation: aurora-b 32s ease-in-out infinite alternate; will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .aurora-a, .aurora-b { animation: none; } }
+html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
