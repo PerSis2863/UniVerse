@@ -1,6 +1,14 @@
 import crypto from 'crypto';
 import prisma from '@/lib/db';
 import { BadRequestException, NotFoundException } from './http';
+import { inSchools, schoolsOf, type SchoolIds } from './school-scope';
+
+/**
+ * The organization id the warehouse routes file the main school's records under (people in no
+ * school, src/server/school-scope.ts). Only ever read as "the main school", never as a real school.
+ */
+export const MAIN_SCHOOL_ORG = 'default-org';
+const schoolOfOrg = (orgId: string | null | undefined) => (!orgId || orgId === MAIN_SCHOOL_ORG ? null : orgId);
 
 export const VALID_XAPI_VERBS = [
   'experienced',
@@ -86,6 +94,8 @@ export async function recordXApiStatement(input: RecordXApiStatementInput) {
 
 export async function listXApiStatements(filters: {
   organizationId?: string;
+  /** An admin's schools (school-scope.ts): only statements recorded in them ('all' for the owner). */
+  schools?: SchoolIds | 'all';
   actorId?: string;
   verb?: string;
   objectType?: string;
@@ -96,6 +106,12 @@ export async function listXApiStatements(filters: {
 }) {
   const where: Record<string, unknown> = {};
   if (filters.organizationId) where.organizationId = filters.organizationId;
+  if (filters.schools && filters.schools !== 'all') {
+    const ids = filters.schools.filter((s): s is string => !!s);
+    // The main school's statements are recorded with no organization.
+    where.OR = [...(filters.schools.includes(null) ? [{ organizationId: null }, { organizationId: MAIN_SCHOOL_ORG }] : []), ...(ids.length ? [{ organizationId: { in: ids } }] : [])];
+    if (!(where.OR as unknown[]).length) where.id = { in: [] };
+  }
   if (filters.actorId) where.actorId = filters.actorId;
   if (filters.verb) where.verb = filters.verb.toLowerCase();
   if (filters.objectType) where.objectType = filters.objectType.toLowerCase();
@@ -323,6 +339,8 @@ export async function listResearchDataRequests(organizationId: string) {
 export async function reviewResearchDataRequest(params: {
   requestId: string;
   reviewerId: string;
+  /** The signed-in reviewer (for the platform owner, who reviews every school's); else looked up by reviewerId. */
+  reviewer?: Parameters<typeof schoolsOf>[0];
   status: 'APPROVED' | 'REJECTED';
   rejectionReason?: string;
   validityDays?: number;
@@ -330,7 +348,9 @@ export async function reviewResearchDataRequest(params: {
   const req = await prisma.researchDataRequest.findUnique({
     where: { id: params.requestId },
   });
-  if (!req) throw new NotFoundException('Research request not found.');
+  // Only a request of the reviewer's own school; another school's looks like one that doesn't exist.
+  const reviewer = params.reviewer ?? (await prisma.user.findUnique({ where: { id: params.reviewerId }, select: { id: true, organizationId: true } }));
+  if (!req || !reviewer || !inSchools(await schoolsOf(reviewer), schoolOfOrg(req.organizationId))) throw new NotFoundException('Research request not found.');
 
   if (params.status === 'REJECTED') {
     return prisma.researchDataRequest.update({

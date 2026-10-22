@@ -1,5 +1,6 @@
 import prisma from '@/lib/db';
 import { taughtBy } from '@/lib/course-access';
+import { schoolsOf, usersIn } from './school-scope';
 
 // Course analytics for teachers: how a class is doing (average, trend, grade spread, attendance,
 // completed work) and who is falling behind, with plain reasons and a suggested next step.
@@ -46,10 +47,10 @@ const BANDS = [
 const mean = (xs: number[]) => (xs.length ? xs.reduce((n, x) => n + x, 0) / xs.length : null);
 const round = (x: number | null) => (x === null ? null : Math.round(x * 10) / 10);
 
-/** The courses this person may analyse: their own, or every published course for admins. */
-export function analyticsCourses(user: { id: string; role: string }) {
+/** The courses this person may analyse: their own, or for admins their school's published courses (a course belongs to its teacher's school). */
+export async function analyticsCourses(user: Parameters<typeof schoolsOf>[0] & { role: string }) {
   return prisma.course.findMany({
-    where: user.role === 'ADMIN' ? { status: 'PUBLISHED' } : taughtBy(user.id),
+    where: user.role === 'ADMIN' ? { status: 'PUBLISHED', teacher: usersIn(await schoolsOf(user)) } : taughtBy(user.id),
     select: { id: true, code: true, name: true },
     orderBy: { code: 'asc' },
     take: 200,

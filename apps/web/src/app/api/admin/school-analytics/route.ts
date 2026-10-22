@@ -18,11 +18,11 @@ export const GET = (req: Request) => route(req, async (user) => {
   const many = p.get('metrics');
   if (many) {
     const ids = [...new Set(many.split(','))].filter(isMetricId).slice(0, 4);
-    return { results: await Promise.all(ids.map((id) => runMetric(id))) };
+    return { results: await Promise.all(ids.map((id) => runMetric(user, id))) };
   }
   const id = p.get('metric');
   if (!isMetricId(id)) throw new BadRequestException('Unknown measure.');
-  return runMetric(id, { days: Number(p.get('days')) || null, order: p.get('order'), department: p.get('department') });
+  return runMetric(user, id, { days: Number(p.get('days')) || null, order: p.get('order'), department: p.get('department') });
 });
 
 export const POST = (req: Request) => route(req, async (user) => {

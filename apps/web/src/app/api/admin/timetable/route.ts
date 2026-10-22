@@ -1,15 +1,19 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAdmin } from '@/lib/billing';
+import { peopleWhere } from '@/server/school-scope';
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-// GET: every timetable slot plus the courses and rooms to schedule them in.
+// GET: every timetable slot plus the courses and rooms to schedule them in. Only the admin's own
+// school's courses (a course belongs to its teacher's school); rooms are shared by every school.
 export async function GET(req: Request) {
   const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
+  const course = { teacher: await peopleWhere(auth.user) };
   const [slots, courses, rooms] = await Promise.all([
     prisma.timetableSlot.findMany({
+      where: { course },
       orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
       include: {
         course: {
@@ -24,7 +28,7 @@ export async function GET(req: Request) {
       },
       take: 1000,
     }),
-    prisma.course.findMany({ orderBy: { code: 'asc' }, select: { id: true, code: true, name: true } }),
+    prisma.course.findMany({ where: course, orderBy: { code: 'asc' }, select: { id: true, code: true, name: true } }),
     prisma.room.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
   ]);
   return NextResponse.json({ slots, courses, rooms }, { headers: { 'Cache-Control': 'no-store' } });
@@ -38,6 +42,10 @@ export async function POST(req: Request) {
   const dayOfWeek = Number(b.dayOfWeek);
   if (typeof b.courseId !== 'string' || !(dayOfWeek >= 0 && dayOfWeek <= 6) || !TIME.test(b.startTime) || !TIME.test(b.endTime) || b.endTime <= b.startTime) {
     return NextResponse.json({ error: 'Choose a course, day and a valid start/end time.' }, { status: 400 });
+  }
+  // Another school's course looks like one that doesn't exist.
+  if (!(await prisma.course.findFirst({ where: { id: b.courseId, teacher: await peopleWhere(auth.user) }, select: { id: true } }))) {
+    return NextResponse.json({ error: 'Course not found.' }, { status: 404 });
   }
   const slot = await prisma.timetableSlot.create({
     data: {
@@ -57,6 +65,6 @@ export async function DELETE(req: Request) {
   if (auth instanceof NextResponse) return auth;
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing slot.' }, { status: 400 });
-  await prisma.timetableSlot.delete({ where: { id } }).catch(() => null);
+  await prisma.timetableSlot.deleteMany({ where: { id, course: { teacher: await peopleWhere(auth.user) } } });
   return NextResponse.json({ ok: true });
 }

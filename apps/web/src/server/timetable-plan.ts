@@ -3,12 +3,14 @@ import type { SessionUser } from '@/lib/server-auth';
 import { str, strings, type Body } from './body';
 import { later, notifyMany } from './email';
 import { BadRequestException, ForbiddenException } from './http';
+import { schoolSql, schoolsOf, usersIn, type SchoolIds } from './school-scope';
 
 // The timetable and exam timetable generators' server side (Stage 5 · Q12). The planning itself
 // happens in the admin's browser (src/lib/schedule-solver.ts); this gives it what it needs (courses
 // with their teacher and students, rooms with their seats, which courses share students, the
 // current week) and saves an accepted plan: a week of classes, or exams on the calendar of every
-// student and teacher of the course.
+// student and teacher of the course. An admin plans only their own school's courses (a course
+// belongs to its teacher's school, school-scope.ts); rooms are shared by every school.
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const SLOT_TYPES = ['LECTURE', 'LAB', 'TUTORIAL'];
@@ -20,29 +22,39 @@ function assertAdmin(user: SessionUser) {
   if (user.role !== 'ADMIN' && !user.owner) throw new ForbiddenException('Only admins plan the timetable.');
 }
 
+/** Calendar events of this school's courses ({} for the owner). */
+const ofSchool = (schools: SchoolIds | 'all') => (schools === 'all' ? {} : { course: { teacher: usersIn(schools) } });
+
 /** Published exam timetables: their name, how many exams, first and last day. */
-async function examBatches() {
-  const rows = await prisma.calendarEvent.groupBy({ by: ['batch'], where: { batch: { startsWith: 'exam:' } }, _count: { _all: true }, _min: { startAt: true }, _max: { endAt: true } });
+async function examBatches(schools: SchoolIds | 'all') {
+  const rows = await prisma.calendarEvent.groupBy({ by: ['batch'], where: { batch: { startsWith: 'exam:' }, ...ofSchool(schools) }, _count: { _all: true }, _min: { startAt: true }, _max: { endAt: true } });
   return rows.map((r) => ({ batch: r.batch!, name: r.batch!.slice(5), exams: r._count._all, from: r._min.startAt, to: r._max.endAt }));
 }
 
 /** GET: everything both generators need, in one go (five queries). */
 export async function planInputs(user: SessionUser) {
   assertAdmin(user);
+  const schools = await schoolsOf(user);
+  const teacher = usersIn(schools);
+  const tx = schoolSql(schools, 'tx'), ty = schoolSql(schools, 'ty');
   const [courses, rooms, slots, pairs, exams] = await Promise.all([
     prisma.course.findMany({
-      where: { status: { not: 'ARCHIVED' } },
+      where: { status: { not: 'ARCHIVED' }, teacher },
       orderBy: { code: 'asc' },
       take: 400,
       select: { id: true, code: true, name: true, department: true, color: true, teacherId: true, teacher: { select: { name: true } }, _count: { select: { enrollments: true } } },
     }),
     prisma.room.findMany({ orderBy: { name: 'asc' }, take: 300, select: { id: true, name: true, capacity: true, type: true } }),
-    prisma.timetableSlot.findMany({ take: 1500, select: { id: true, courseId: true, dayOfWeek: true, startTime: true, endTime: true, roomId: true, type: true } }),
+    prisma.timetableSlot.findMany({ where: { course: { teacher } }, take: 1500, select: { id: true, courseId: true, dayOfWeek: true, startTime: true, endTime: true, roomId: true, type: true } }),
     // Courses that share students, and how many: a student in both can't be in both at once.
     prisma.$queryRawUnsafe<{ a: string; b: string; n: number | bigint }[]>(
-      `SELECT x."courseId" AS a, y."courseId" AS b, COUNT(*) AS n FROM "enrollments" x JOIN "enrollments" y ON x."studentId" = y."studentId" AND x."courseId" < y."courseId" GROUP BY x."courseId", y."courseId" LIMIT 6000`,
+      `SELECT x."courseId" AS a, y."courseId" AS b, COUNT(*) AS n FROM "enrollments" x JOIN "enrollments" y ON x."studentId" = y."studentId" AND x."courseId" < y."courseId"
+       JOIN "courses" cx ON cx."id" = x."courseId" JOIN "users" tx ON tx."id" = cx."teacherId"
+       JOIN "courses" cy ON cy."id" = y."courseId" JOIN "users" ty ON ty."id" = cy."teacherId"
+       WHERE ${tx.sql} AND ${ty.sql} GROUP BY x."courseId", y."courseId" LIMIT 6000`,
+      ...tx.args, ...ty.args,
     ),
-    examBatches(),
+    examBatches(schools),
   ]);
   return {
     courses: courses.map((c) => ({ id: c.id, code: c.code, name: c.name, department: c.department, color: c.color, teacherId: c.teacherId, teacher: c.teacher?.name ?? null, students: c._count.enrollments })),
@@ -87,8 +99,10 @@ export async function saveWeek(user: SessionUser, b: Body) {
   assertAdmin(user);
   const { courseIds, slots } = cleanWeek(b);
   const roomIds = [...new Set(slots.flatMap((s) => (s.roomId ? [s.roomId] : [])))];
+  // Another school's course counts as one that doesn't exist.
+  const teacher = usersIn(await schoolsOf(user));
   const [courses, rooms, existing] = await Promise.all([
-    Promise.all(chunks(courseIds, 90).map((ids) => prisma.course.findMany({ where: { id: { in: ids } }, select: { id: true } }))).then((r) => r.flat()),
+    Promise.all(chunks(courseIds, 90).map((ids) => prisma.course.findMany({ where: { id: { in: ids }, teacher }, select: { id: true } }))).then((r) => r.flat()),
     Promise.all(chunks(roomIds, 90).map((ids) => prisma.room.findMany({ where: { id: { in: ids } }, select: { id: true } }))).then((r) => r.flat()),
     Promise.all(chunks(courseIds, 90).map((ids) => prisma.timetableSlot.findMany({ where: { courseId: { in: ids } }, select: { id: true, courseId: true, dayOfWeek: true, startTime: true, endTime: true, roomId: true, type: true } }))).then((r) => r.flat()),
   ]);
@@ -137,11 +151,14 @@ export async function publishExams(user: SessionUser, b: Body) {
     return { courseId, start, end, rooms: (str(o.rooms) ?? '').trim().slice(0, 400) };
   });
   const ids = [...new Set(exams.map((e) => e.courseId))];
-  const courses = (await Promise.all(chunks(ids, 90).map((part) => prisma.course.findMany({ where: { id: { in: part } }, select: { id: true, code: true, name: true } })))).flat();
+  // Only the admin's own school's courses (another school's look like they don't exist).
+  const schools = await schoolsOf(user);
+  const courses = (await Promise.all(chunks(ids, 90).map((part) => prisma.course.findMany({ where: { id: { in: part }, teacher: usersIn(schools) }, select: { id: true, code: true, name: true } })))).flat();
   const byId = new Map(courses.map((c) => [c.id, c]));
   if (byId.size !== ids.length) throw new BadRequestException('One of those courses no longer exists.');
   const batch = `exam:${name}`;
-  const replaced = await prisma.calendarEvent.deleteMany({ where: { batch } });
+  // Replaces only this school's timetable of that name (another school may use the same name).
+  const replaced = await prisma.calendarEvent.deleteMany({ where: { batch, ...ofSchool(schools) } });
   const now = dbDate(new Date());
   // 7 values an exam, 14 exams a statement.
   for (const part of chunks(exams, 14)) {
@@ -170,6 +187,6 @@ export async function publishExams(user: SessionUser, b: Body) {
 export async function removeExams(user: SessionUser, batch: string | null) {
   assertAdmin(user);
   if (!batch?.startsWith('exam:')) throw new BadRequestException('Which exam timetable?');
-  const res = await prisma.calendarEvent.deleteMany({ where: { batch } });
+  const res = await prisma.calendarEvent.deleteMany({ where: { batch, ...ofSchool(await schoolsOf(user)) } });
   return { removed: res.count };
 }

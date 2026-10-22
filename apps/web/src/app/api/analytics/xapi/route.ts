@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/server-auth';
 import { listXApiStatements, recordXApiStatement } from '@/server/analytics-warehouse';
+import { schoolsOf } from '@/server/school-scope';
 
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
@@ -14,9 +15,9 @@ export async function GET(req: Request) {
   const offset = searchParams.get('offset') ? Number(searchParams.get('offset')) : 0;
 
   try {
+    // Admins: everyone's statements in their own school(s); anyone else: their own.
     const data = await listXApiStatements({
-      organizationId: user.organizationId || undefined,
-      actorId: user.role === 'ADMIN' ? undefined : user.id,
+      ...(user.role === 'ADMIN' ? { schools: await schoolsOf(user) } : { organizationId: user.organizationId || undefined, actorId: user.id }),
       verb,
       objectType,
       contextCourseId,

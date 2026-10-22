@@ -1,16 +1,20 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAdmin } from '@/lib/billing';
+import { peopleWhere } from '@/server/school-scope';
 
-// GET: all rooms with their bookings (admin). POST: add a room.
+// GET: all rooms with their bookings (admin). POST: add a room. Rooms have no school of their own
+// yet, so every admin sees them; the bookings shown (and cancellable) are the admin's own school's.
 export async function GET(req: Request) {
   const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
+  const mine = await peopleWhere(auth.user);
   const rooms = await prisma.room.findMany({
     orderBy: { name: 'asc' },
     take: 300,
     include: {
       reservations: {
+        where: { user: mine },
         orderBy: [{ date: 'desc' }, { time: 'asc' }],
         take: 100,
         include: { user: { select: { id: true, name: true, email: true, role: true, status: true, phone: true } } },
@@ -39,6 +43,7 @@ export async function DELETE(req: Request) {
   if (auth instanceof NextResponse) return auth;
   const id = new URL(req.url).searchParams.get('reservationId');
   if (!id) return NextResponse.json({ error: 'Missing reservation.' }, { status: 400 });
-  await prisma.roomReservation.delete({ where: { id } }).catch(() => null);
+  // Another school's booking looks like one that's already gone.
+  await prisma.roomReservation.deleteMany({ where: { id, user: await peopleWhere(auth.user) } });
   return NextResponse.json({ ok: true });
 }

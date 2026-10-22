@@ -8,12 +8,14 @@ import { cachedAi, sameQuestion, saveAi, spendAi } from './ai-budget';
 import { geminiJson } from './gemini';
 import { BadRequestException } from './http';
 import { featureOff } from './moderation';
+import { schoolSql, schoolsOf, type SchoolIds } from './school-scope';
 
 // School analytics for admins (Insights → School insights): runs one measure from the catalogue in
 // src/lib/school-metrics.ts. Every measure is fixed SQL with bound values and at most 50 rows
 // (60 for weekly trends), so a question can never read anything else or run up D1. Questions in
 // plain words cost one small AI request that only picks the measure; the pick is saved for a week,
-// and the numbers are always counted fresh.
+// and the numbers are always counted fresh. Only the admin's own school (school-scope.ts): people by
+// their school, courses (and their attendance, grades and flags) by their teacher's.
 
 const DAY = 86_400_000;
 const iso = (ms: number) => new Date(ms).toISOString().replace('Z', '+00:00'); // how dates are stored in D1
@@ -23,27 +25,37 @@ const dept = (col: string) => `COALESCE(NULLIF(TRIM(${col}), ''), 'Other')`;
 const dayLabel = (k: string) => new Date(`${k}T00:00:00Z`).toLocaleDateString('en-US', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 const monthLabel = (k: string) => new Date(`${k}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
-let deptCache: { at: number; list: string[] } | null = null;
+const deptCache = new Map<string, { at: number; list: string[] }>();
 
-/** Department names from courses and student profiles ("Other" for blank ones), kept 5 minutes. */
-export async function departments(): Promise<string[]> {
-  if (deptCache && Date.now() - deptCache.at < 300_000) return deptCache.list;
+/** A school's department names from its courses and students' profiles ("Other" for blank ones), kept 5 minutes. */
+export async function departments(schools: SchoolIds | 'all'): Promise<string[]> {
+  const key = JSON.stringify(schools);
+  const hit = deptCache.get(key);
+  if (hit && Date.now() - hit.at < 300_000) return hit.list;
+  const t = schoolSql(schools, 't'), u = schoolSql(schools, 'u');
   const rows = await prisma.$queryRawUnsafe<{ d: string }[]>(
-    `SELECT ${dept('department')} AS d FROM courses UNION SELECT ${dept('department')} AS d FROM student_profiles ORDER BY d LIMIT 100`,
+    `SELECT ${dept('c.department')} AS d FROM courses c JOIN users t ON t.id = c.teacherId WHERE ${t.sql}
+     UNION SELECT ${dept('sp.department')} AS d FROM student_profiles sp JOIN users u ON u.id = sp.userId WHERE ${u.sql} ORDER BY d LIMIT 100`,
+    ...t.args, ...u.args,
   );
-  deptCache = { at: Date.now(), list: rows.map((r) => r.d) };
-  return deptCache.list;
+  if (deptCache.size > 200) deptCache.clear();
+  deptCache.set(key, { at: Date.now(), list: rows.map((r) => r.d) });
+  return rows.map((r) => r.d);
 }
 
 type Raw = Record<string, string | number | bigint | null>;
 const q = (sql: string, ...values: unknown[]) => prisma.$queryRawUnsafe<Raw[]>(sql, ...values);
 
-/** Runs one measure. Settings are made safe first; a department that doesn't exist is ignored (with a note). */
-export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<MetricResult> {
+/** Runs one measure for the viewer's school. Settings are made safe first; a department that doesn't exist is ignored (with a note). */
+export async function runMetric(viewer: Parameters<typeof schoolsOf>[0], id: MetricId, raw: MetricParams = {}): Promise<MetricResult> {
   const meta = metricMeta(id);
   const { days, order } = normaliseParams(meta, raw);
+  const schools = await schoolsOf(viewer);
+  // A course's teacher (t) or a person (u) in the school: joined and checked in each measure.
+  const T = schoolSql(schools, 't'), U = schoolSql(schools, 'u');
+  const tj = ' JOIN users t ON t.id = c.teacherId', tw = ` AND ${T.sql}`, uw = ` AND ${U.sql}`;
   const wanted = raw.department?.trim().slice(0, 80) || '';
-  const list = meta.department ? await departments() : [];
+  const list = meta.department ? await departments(schools) : [];
   const department = wanted && meta.department ? list.find((d) => d.toLowerCase() === wanted.toLowerCase()) ?? null : null;
   const note = wanted && meta.department && !department ? `There’s no department called “${wanted}”, so this shows every department.` : undefined;
 
@@ -70,9 +82,9 @@ export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<M
   switch (id) {
     case 'attendance_by_course': {
       const found = await q(
-        `SELECT * FROM (SELECT c.code AS label, c.name AS name, ${ATT} FROM attendance a JOIN courses c ON c.id = a.courseId
-         WHERE a.date >= ?${inDept('c.department')} GROUP BY c.id) WHERE counted > 0 ORDER BY attended * 1.0 / counted ${dir}, counted DESC LIMIT 50`,
-        since, ...deptValue,
+        `SELECT * FROM (SELECT c.code AS label, c.name AS name, ${ATT} FROM attendance a JOIN courses c ON c.id = a.courseId${tj}
+         WHERE a.date >= ?${tw}${inDept('c.department')} GROUP BY c.id) WHERE counted > 0 ORDER BY attended * 1.0 / counted ${dir}, counted DESC LIMIT 50`,
+        since, ...T.args, ...deptValue,
       );
       rows = found.map((r) => ({ label: String(r.label), name: String(r.name ?? ''), ...rate(r) }));
       overall = weighted(rows, 'counted');
@@ -80,9 +92,9 @@ export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<M
     }
     case 'attendance_by_department': {
       const found = await q(
-        `SELECT * FROM (SELECT ${dept('c.department')} AS label, ${ATT} FROM attendance a JOIN courses c ON c.id = a.courseId
-         WHERE a.date >= ? GROUP BY label) WHERE counted > 0 ORDER BY attended * 1.0 / counted ${dir}, label LIMIT 50`,
-        since,
+        `SELECT * FROM (SELECT ${dept('c.department')} AS label, ${ATT} FROM attendance a JOIN courses c ON c.id = a.courseId${tj}
+         WHERE a.date >= ?${tw} GROUP BY label) WHERE counted > 0 ORDER BY attended * 1.0 / counted ${dir}, label LIMIT 50`,
+        since, ...T.args,
       );
       rows = found.map((r) => ({ label: String(r.label), ...rate(r) }));
       overall = weighted(rows, 'counted');
@@ -90,18 +102,18 @@ export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<M
     }
     case 'attendance_trend': {
       const found = await q(
-        `SELECT * FROM (SELECT ${bucket('a.date')} AS k, ${ATT} FROM attendance a JOIN courses c ON c.id = a.courseId
-         WHERE a.date >= ?${inDept('c.department')} GROUP BY k) WHERE counted > 0 ORDER BY k LIMIT 60`,
-        since, ...deptValue,
+        `SELECT * FROM (SELECT ${bucket('a.date')} AS k, ${ATT} FROM attendance a JOIN courses c ON c.id = a.courseId${tj}
+         WHERE a.date >= ?${tw}${inDept('c.department')} GROUP BY k) WHERE counted > 0 ORDER BY k LIMIT 60`,
+        since, ...T.args, ...deptValue,
       );
       rows = found.map((r) => ({ label: period(String(r.k)), ...rate(r) }));
       break;
     }
     case 'grades_by_course': {
       const found = await q(
-        `SELECT c.code AS label, c.name AS name, ${GRADE} FROM grades g JOIN courses c ON c.id = g.courseId
-         WHERE ${GRADED}${inDept('c.department')} GROUP BY c.id ORDER BY v ${dir}, n DESC LIMIT 50`,
-        since, ...deptValue,
+        `SELECT c.code AS label, c.name AS name, ${GRADE} FROM grades g JOIN courses c ON c.id = g.courseId${tj}
+         WHERE ${GRADED}${tw}${inDept('c.department')} GROUP BY c.id ORDER BY v ${dir}, n DESC LIMIT 50`,
+        since, ...T.args, ...deptValue,
       );
       rows = found.map((r) => ({ label: String(r.label), name: String(r.name ?? ''), value: num(r.v), n: num(r.n) }));
       overall = weighted(rows, 'n');
@@ -109,9 +121,9 @@ export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<M
     }
     case 'grades_by_department': {
       const found = await q(
-        `SELECT ${dept('c.department')} AS label, ${GRADE} FROM grades g JOIN courses c ON c.id = g.courseId
-         WHERE ${GRADED} GROUP BY label ORDER BY v ${dir}, label LIMIT 50`,
-        since,
+        `SELECT ${dept('c.department')} AS label, ${GRADE} FROM grades g JOIN courses c ON c.id = g.courseId${tj}
+         WHERE ${GRADED}${tw} GROUP BY label ORDER BY v ${dir}, label LIMIT 50`,
+        since, ...T.args,
       );
       rows = found.map((r) => ({ label: String(r.label), value: num(r.v), n: num(r.n) }));
       overall = weighted(rows, 'n');
@@ -119,9 +131,9 @@ export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<M
     }
     case 'grade_trend': {
       const found = await q(
-        `SELECT ${bucket('g.gradedAt')} AS k, ${GRADE} FROM grades g JOIN courses c ON c.id = g.courseId
-         WHERE ${GRADED}${inDept('c.department')} GROUP BY k ORDER BY k LIMIT 60`,
-        since, ...deptValue,
+        `SELECT ${bucket('g.gradedAt')} AS k, ${GRADE} FROM grades g JOIN courses c ON c.id = g.courseId${tj}
+         WHERE ${GRADED}${tw}${inDept('c.department')} GROUP BY k ORDER BY k LIMIT 60`,
+        since, ...T.args, ...deptValue,
       );
       rows = found.map((r) => ({ label: period(String(r.k)), value: num(r.v), n: num(r.n) }));
       break;
@@ -129,8 +141,9 @@ export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<M
     case 'at_risk_by_department': {
       const found = await q(
         `SELECT ${dept('c.department')} AS label, COUNT(DISTINCT f.studentId) AS v, COUNT(DISTINCT CASE WHEN f.level = 'AT_RISK' THEN f.studentId END) AS atRisk
-         FROM student_risk_flags f JOIN courses c ON c.id = f.courseId
-         WHERE f.status = 'OPEN' AND f.level IN ('AT_RISK', 'WATCH') GROUP BY label ORDER BY v ${dir}, label LIMIT 50`,
+         FROM student_risk_flags f JOIN courses c ON c.id = f.courseId${tj}
+         WHERE f.status = 'OPEN' AND f.level IN ('AT_RISK', 'WATCH')${tw} GROUP BY label ORDER BY v ${dir}, label LIMIT 50`,
+        ...T.args,
       );
       rows = found.map((r) => ({ label: String(r.label), value: num(r.v), atRisk: num(r.atRisk) }));
       break;
@@ -139,8 +152,8 @@ export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<M
       const found = await q(
         `SELECT ${bucket('s.day')} AS k, COUNT(DISTINCT s.userId) AS v
          FROM study_days s JOIN users u ON u.id = s.userId${department ? ' LEFT JOIN student_profiles sp ON sp.userId = u.id' : ''}
-         WHERE u.role = 'STUDENT' AND s.day >= ?${inDept('sp.department')} GROUP BY k ORDER BY k LIMIT 60`,
-        since.slice(0, 10), ...deptValue,
+         WHERE u.role = 'STUDENT' AND s.day >= ?${uw}${inDept('sp.department')} GROUP BY k ORDER BY k LIMIT 60`,
+        since.slice(0, 10), ...U.args, ...deptValue,
       );
       rows = found.map((r) => ({ label: period(String(r.k)), value: num(r.v) }));
       break;
@@ -149,8 +162,8 @@ export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<M
       const found = await q(
         `SELECT ${dept('sp.department')} AS label, SUM(CASE WHEN u.lastSeenAt IS NULL OR u.lastSeenAt < ? THEN 1 ELSE 0 END) AS v, COUNT(*) AS total
          FROM users u LEFT JOIN student_profiles sp ON sp.userId = u.id
-         WHERE u.role = 'STUDENT' AND u.status = 'ACTIVE' GROUP BY label ORDER BY v ${dir}, label LIMIT 50`,
-        since,
+         WHERE u.role = 'STUDENT' AND u.status = 'ACTIVE'${uw} GROUP BY label ORDER BY v ${dir}, label LIMIT 50`,
+        since, ...U.args,
       );
       rows = found.map((r) => ({ label: String(r.label), value: num(r.v), total: num(r.total), share: num(r.total) ? (num(r.v) / num(r.total)) * 100 : 0 }));
       break;
@@ -162,9 +175,9 @@ export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<M
                 (SELECT COUNT(*) FROM courses c WHERE c.teacherId = u.id) AS courses,
                 (SELECT COUNT(DISTINCT e.studentId) FROM enrollments e JOIN courses c ON c.id = e.courseId WHERE c.teacherId = u.id) AS students,
                 (SELECT COUNT(*) FROM grades g JOIN courses c ON c.id = g.courseId WHERE c.teacherId = u.id AND g.gradedAt >= ?) AS graded
-         FROM users u WHERE u.role = 'TEACHER' AND u.status = 'ACTIVE'
+         FROM users u WHERE u.role = 'TEACHER' AND u.status = 'ACTIVE'${uw}
          ORDER BY v ${dir}, students DESC LIMIT 50`,
-        since,
+        since, ...U.args,
       );
       rows = found.map((r) => ({ label: String(r.label ?? 'Teacher'), value: num(r.v), courses: num(r.courses), students: num(r.students), graded: num(r.graded) }));
       break;
@@ -172,9 +185,9 @@ export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<M
     case 'grading_time_by_course': {
       const found = await q(
         `SELECT * FROM (SELECT c.code AS label, c.name AS name, AVG(julianday(s.returnedAt) - julianday(s.submittedAt)) AS v, COUNT(*) AS n
-         FROM assignment_submissions s JOIN assignments a ON a.id = s.assignmentId JOIN courses c ON c.id = a.courseId
-         WHERE s.returnedAt IS NOT NULL AND s.returnedAt >= ?${inDept('c.department')} GROUP BY c.id) WHERE v IS NOT NULL ORDER BY v ${dir} LIMIT 50`,
-        since, ...deptValue,
+         FROM assignment_submissions s JOIN assignments a ON a.id = s.assignmentId JOIN courses c ON c.id = a.courseId${tj}
+         WHERE s.returnedAt IS NOT NULL AND s.returnedAt >= ?${tw}${inDept('c.department')} GROUP BY c.id) WHERE v IS NOT NULL ORDER BY v ${dir} LIMIT 50`,
+        since, ...T.args, ...deptValue,
       );
       rows = found.map((r) => ({ label: String(r.label), name: String(r.name ?? ''), value: Math.max(0, num(r.v)), n: num(r.n) }));
       overall = weighted(rows, 'n');
@@ -183,8 +196,8 @@ export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<M
     case 'impact_hours_by_month': {
       const found = await q(
         `SELECT substr(sc.checkOutAt, 1, 7) AS k, SUM(sc.minutes) / 60.0 AS v, COUNT(DISTINCT sc.studentId) AS people
-         FROM shift_checkins sc WHERE sc.verified = 1 AND sc.checkOutAt >= ? GROUP BY k ORDER BY k LIMIT 24`,
-        since,
+         FROM shift_checkins sc JOIN users u ON u.id = sc.studentId WHERE sc.verified = 1 AND sc.checkOutAt >= ?${uw} GROUP BY k ORDER BY k LIMIT 24`,
+        since, ...U.args,
       );
       // Every month in the window, so quiet months show as zero.
       const byMonth = new Map(found.map((r) => [String(r.k), r]));
@@ -198,9 +211,9 @@ export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<M
     case 'impact_hours_by_project': {
       const found = await q(
         `SELECT p.name AS label, SUM(sc.minutes) / 60.0 AS v, COUNT(DISTINCT sc.studentId) AS people
-         FROM shift_checkins sc JOIN volunteer_shifts sh ON sh.id = sc.shiftId JOIN ngo_projects p ON p.id = sh.projectId
-         WHERE sc.verified = 1 AND sc.checkOutAt >= ? GROUP BY p.id ORDER BY v ${dir} LIMIT 50`,
-        since,
+         FROM shift_checkins sc JOIN volunteer_shifts sh ON sh.id = sc.shiftId JOIN ngo_projects p ON p.id = sh.projectId JOIN users u ON u.id = sc.studentId
+         WHERE sc.verified = 1 AND sc.checkOutAt >= ?${uw} GROUP BY p.id ORDER BY v ${dir} LIMIT 50`,
+        since, ...U.args,
       );
       rows = found.map((r) => ({ label: String(r.label), value: num(r.v), people: num(r.people) }));
       break;
@@ -208,7 +221,8 @@ export async function runMetric(id: MetricId, raw: MetricParams = {}): Promise<M
     case 'enrollment_by_department': {
       const found = await q(
         `SELECT ${dept('c.department')} AS label, COUNT(DISTINCT e.studentId) AS v, COUNT(DISTINCT c.id) AS courses
-         FROM enrollments e JOIN courses c ON c.id = e.courseId GROUP BY label ORDER BY v ${dir}, label LIMIT 50`,
+         FROM enrollments e JOIN courses c ON c.id = e.courseId${tj} WHERE ${T.sql} GROUP BY label ORDER BY v ${dir}, label LIMIT 50`,
+        ...T.args,
       );
       rows = found.map((r) => ({ label: String(r.label), value: num(r.v), courses: num(r.courses) }));
       break;
@@ -261,9 +275,9 @@ export async function askSchool(user: SessionUser, question: string): Promise<Me
   if (text.length < 3) throw new BadRequestException('Type a question first.');
   const same = sameQuestion(text);
   const suggested = SUGGESTIONS.find((s) => sameQuestion(s.q) === same);
-  if (suggested) return { ...(await runMetric(suggested.metric, suggested)), via: 'suggestion', question: text };
+  if (suggested) return { ...(await runMetric(user, suggested.metric, suggested)), via: 'suggestion', question: text };
 
-  const list = await departments();
+  const list = await departments(await schoolsOf(user));
   const key = ['school-analytics', same];
   let pick = await cachedAi<Pick>(key, 7);
   let via: MetricResult['via'] = 'saved';
@@ -290,5 +304,5 @@ export async function askSchool(user: SessionUser, question: string): Promise<Me
     }
   }
   if (!pick || pick.metric === 'none') return { help: true, message: aiMessage && !pick ? `${aiMessage} ${HELP_MESSAGE}` : HELP_MESSAGE };
-  return { ...(await runMetric(pick.metric, pick)), via, question: text };
+  return { ...(await runMetric(user, pick.metric, pick)), via, question: text };
 }
