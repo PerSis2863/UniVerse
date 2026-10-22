@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
 import prisma from '@/lib/db';
 import type { ImpactCertificate } from '@prisma/client';
+import { inSchools, peopleWhere, schoolsOf, usersIn } from '../school-scope';
 import { first, type Body, type Query } from '../body';
 import { getCertificateHtml } from './certificate-template';
 import { createHash, randomBytes } from 'node:crypto';
@@ -44,6 +45,9 @@ const ADMIN_PERSON_SELECT = {
   studentProfile: { select: { department: true, year: true } },
   _count: { select: { impactCertificates: { where: { status: 'ISSUED' as const } } } },
 } as const;
+
+/** The signed-in admin (or viewer) whose school limits what they see. */
+type Admin = { id: string; role: string; organizationId?: string | null; email?: string };
 
 // ── Deterministic blockchain-style hash ─────────────────────────────────────
 function generateBlockchainHash(data: string): string {
@@ -296,9 +300,10 @@ export class ImpactService {
     return this.toClientCredential(cert);
   }
 
-  async getPendingCredentialRequests() {
+  /** Admins: their own school's pending requests (the platform owner sees all). */
+  async getPendingCredentialRequests(admin: Admin) {
     const certs = await prisma.impactCertificate.findMany({
-      where: { status: 'DRAFT' },
+      where: { status: 'DRAFT', user: await peopleWhere(admin) },
       include: { user: { select: ADMIN_PERSON_SELECT } },
       orderBy: { requestedAt: 'asc' },
       take: 300,
@@ -306,10 +311,10 @@ export class ImpactService {
     return certs.map((c) => ({ ...this.toClientCredential(c), student: c.user }));
   }
 
-  /** Admins: the latest decisions (issued, rejected, revoked) with the student and the verifying admin. */
-  async getRecentCredentialDecisions() {
+  /** Admins: the latest decisions (issued, rejected, revoked) on their own school's students, with the student and the verifying admin. */
+  async getRecentCredentialDecisions(admin: Admin) {
     const certs = await prisma.impactCertificate.findMany({
-      where: { status: { not: 'DRAFT' } },
+      where: { status: { not: 'DRAFT' }, user: await peopleWhere(admin) },
       select: {
         id: true, title: true, organization: true, projectName: true, hoursCompleted: true, peopleImpacted: true, status: true,
         signature: true, issuedAt: true, requestedAt: true, revokedAt: true, revokedReason: true, verifiedByName: true,
@@ -383,6 +388,14 @@ export class ImpactService {
     return issuedNow;
   }
 
+  /** Throws "not found" unless the credential's holder is in the admin's school. */
+  async assertCredentialInSchool(certId: string, admin: Admin) {
+    const schools = await schoolsOf(admin);
+    if (schools === 'all') return;
+    const found = await prisma.impactCertificate.findFirst({ where: { id: certId, user: usersIn(schools) }, select: { id: true } });
+    if (!found) throw new NotFoundException('Credential not found');
+  }
+
   async approveCredential(certId: string, verifier: { id: string; name: string }) {
     const cert = await prisma.impactCertificate.findUnique({ where: { id: certId } });
     if (!cert) throw new NotFoundException('Credential not found');
@@ -447,9 +460,9 @@ export class ImpactService {
    * Credentials created before verification existed were self-issued and never signed.
    * This moves them back to the review queue so an admin can verify (or reject) them.
    */
-  async sendLegacyCredentialsToReview() {
+  async sendLegacyCredentialsToReview(admin: Admin) {
     const { count } = await prisma.impactCertificate.updateMany({
-      where: { status: 'ISSUED', signature: null },
+      where: { status: 'ISSUED', signature: null, user: await peopleWhere(admin) },
       data: { status: 'DRAFT' },
     });
     return { movedToReview: count };
@@ -517,9 +530,24 @@ export class ImpactService {
     return { ...CredentialSigner.publicKeyInfo(), blockchain: this.chain.publicInfo };
   }
 
-  /** Admin: (re)anchor issued credentials that are not yet confirmed on-chain. */
-  anchorOutstandingCredentials() {
-    return this.chain.anchorOutstanding();
+  /** Admin: (re)anchor issued credentials that are not yet confirmed on-chain (a school's admin: only its students'). */
+  async anchorOutstandingCredentials(admin: Admin) {
+    const schools = await schoolsOf(admin);
+    if (schools === 'all') return this.chain.anchorOutstanding();
+    if (!this.chain.canAnchor()) return { queued: 0, enabled: false };
+    const certs = await prisma.impactCertificate.findMany({
+      where: {
+        status: 'ISSUED',
+        signature: { not: null },
+        OR: [{ anchorStatus: null }, { anchorStatus: 'FAILED' }, { anchorStatus: 'PENDING' }],
+        user: usersIn(schools),
+      },
+      select: { id: true },
+      orderBy: { issuedAt: 'asc' },
+      take: 25,
+    });
+    for (const c of certs) void this.chain.anchorCredential(c.id);
+    return { queued: certs.length, enabled: true };
   }
 
   // ── AI Skill-to-Project Matching ─────────────────────────────────────────
@@ -603,21 +631,25 @@ export class ImpactService {
     return prisma.studentDocument.findMany({ where: { userId, type: 'CERTIFICATE' }, orderBy: { createdAt: 'desc' } });
   }
 
-  async getPendingCertificateRequests() {
-    return prisma.studentDocument.findMany({ where: { type: 'CERTIFICATE', isVerified: false }, include: { user: { select: ADMIN_PERSON_SELECT } }, orderBy: { createdAt: 'asc' }, take: 300 });
+  /** Admins: their own school's pending certificate requests. */
+  async getPendingCertificateRequests(admin: Admin) {
+    return prisma.studentDocument.findMany({ where: { type: 'CERTIFICATE', isVerified: false, user: await peopleWhere(admin) }, include: { user: { select: ADMIN_PERSON_SELECT } }, orderBy: { createdAt: 'asc' }, take: 300 });
   }
 
   async requestCertificate(userId: string, title: string) {
     return prisma.studentDocument.create({ data: { userId, type: 'CERTIFICATE', title, isVerified: false, fileUrl: '' } });
   }
 
-  async approveCertificate(id: string) {
+  /** Only a certificate request (not another kind of document) of the admin's own school's student. */
+  async approveCertificate(id: string, admin: Admin) {
+    const doc = await prisma.studentDocument.findFirst({ where: { id, type: 'CERTIFICATE', user: await peopleWhere(admin) }, select: { id: true } });
+    if (!doc) throw new NotFoundException('Certificate request not found');
     return prisma.studentDocument.update({ where: { id }, data: { isVerified: true, issuedAt: new Date() } });
   }
 
   /** Turns down a pending certificate request: it's removed, so the student can ask again later. */
-  async rejectCertificate(id: string) {
-    const doc = await prisma.studentDocument.findUnique({ where: { id }, select: { id: true, userId: true, title: true, type: true, isVerified: true } });
+  async rejectCertificate(id: string, admin: Admin) {
+    const doc = await prisma.studentDocument.findFirst({ where: { id, user: await peopleWhere(admin) }, select: { id: true, userId: true, title: true, type: true, isVerified: true } });
     if (!doc || doc.type !== 'CERTIFICATE' || doc.isVerified) throw new NotFoundException('This request was already handled.');
     await prisma.studentDocument.delete({ where: { id } });
     return doc;
@@ -627,9 +659,11 @@ export class ImpactService {
    * The certificate as a print-ready page (the old API rendered a PDF with a headless browser,
    * which Workers can't run). It opens the browser's print dialog, where "Save as PDF" gives the file.
    */
-  async generateCertificateHtml(id: string, viewer: { id: string; role: string }) {
-    const doc = await prisma.studentDocument.findUnique({ where: { id }, include: { user: { select: { name: true } } } });
-    if (!doc || !doc.isVerified || (doc.userId !== viewer.id && viewer.role !== 'ADMIN')) throw new Error('Certificate not found or not verified');
+  async generateCertificateHtml(id: string, viewer: Admin) {
+    const doc = await prisma.studentDocument.findUnique({ where: { id }, include: { user: { select: { name: true, organizationId: true } } } });
+    // The holder, or an admin of the holder's school.
+    const allowed = !!doc && (doc.userId === viewer.id || (viewer.role === 'ADMIN' && inSchools(await schoolsOf(viewer), doc.user.organizationId)));
+    if (!doc || !doc.isVerified || !allowed) throw new Error('Certificate not found or not verified');
     const html = getCertificateHtml({
       studentName: doc.user.name || 'Student',
       certificateTitle: doc.title,

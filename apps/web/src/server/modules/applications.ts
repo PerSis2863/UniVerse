@@ -67,7 +67,9 @@ export async function startSignupApplication(user: Actor, requestedRole: Request
 /** Grants the role at once for someone an admin invited, and records it as an approved application. */
 export async function approveInvited(user: Actor & { email: string }, role: RequestableRole, invitationId: string) {
   await prisma.user.update({ where: { id: user.id }, data: { role, status: 'ACTIVE', accountType: role === 'STUDENT' ? 'STUDENT' : role === 'TEACHER' ? 'STAFF' : 'ORGANIZATION' } });
-  await prisma.invitation.update({ where: { id: invitationId }, data: { status: 'ACTIVE' } });
+  const invitation = await prisma.invitation.update({ where: { id: invitationId }, data: { status: 'ACTIVE' }, select: { organizationId: true } });
+  // They join the school that invited them (unless they're in one already), so its admins can see them.
+  if (invitation?.organizationId) await prisma.user.updateMany({ where: { id: user.id, organizationId: null }, data: { organizationId: invitation.organizationId } });
   if (role === 'STUDENT') await prisma.studentProfile.upsert({ where: { userId: user.id }, update: {}, create: { userId: user.id } });
   // Classes a bulk import put them in before they had an account (Stage 5 · B15.7).
   if (role === 'STUDENT') await applyPendingEnrolments(user.id, user.email);
