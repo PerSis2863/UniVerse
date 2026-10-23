@@ -14,6 +14,10 @@ const AXE = require.resolve('axe-core/axe.min.js');
 const APP = fileURLToPath(new URL('../..', import.meta.url));
 const base = 'http://localhost:8787', OWNER = 'owner@check.test';
 const out = process.argv[2] ?? '/tmp';
+// The board's frames, from the same code that draws it (Node strips the types).
+const { guideElements } = await import('../../src/components/boards/universe-guide.ts');
+const frames = guideElements().filter((e) => e.type === 'frame');
+let boardId = null;
 const sql = (c) => execSync(`npx wrangler d1 execute universe-db --local --command "${c.replace(/"/g, '\\"')}"`, { cwd: APP, stdio: 'ignore' });
 const rows = (c) => JSON.parse(execSync(`npx wrangler d1 execute universe-db --local --json --command "${c.replace(/"/g, '\\"')}"`, { cwd: APP, stdio: ['ignore', 'pipe', 'ignore'] }).toString())[0].results;
 
@@ -63,38 +67,34 @@ try {
       await page.addScriptTag({ path: AXE });
       r.axe = await page.evaluate(async () => (await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] } })).violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).slice(0, 2).join(' | ')}`));
       await page.screenshot({ path: `${out}/console-${theme}.png` });
-      if (theme === 'dark') {
-        await openBtn.click();
-        await page.waitForURL(/\/boards\/[^/?]+\?template=guide/, { timeout: 30_000 });
-        r.boardId = new URL(page.url()).pathname.split('/').pop();
-        await page.locator('.excalidraw').first().waitFor({ timeout: 60_000 });
-        await page.waitForTimeout(9000);
-        await page.mouse.click(720, 500);
+      // Dark: "Open the whiteboard" makes the board; light: it goes back to the same one.
+      await openBtn.click();
+      await page.waitForURL(/\/boards\//, { timeout: 30_000 });
+      const id = new URL(page.url()).pathname.split('/').pop();
+      if (theme === 'dark') { boardId = id; r.made = page.url().includes('template=guide'); } else r.sameBoard = id === boardId && !page.url().includes('template=');
+      await page.locator('.excalidraw').first().waitFor({ timeout: 60_000 });
+      await page.waitForTimeout(theme === 'dark' ? 9000 : 6000);
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('Shift+1');
+      await page.waitForTimeout(1200);
+      await page.screenshot({ path: `${out}/board-${theme}-all.png` });
+      // Each frame: drag a box round it in the zoomed-out view (its place worked out from the layout,
+      // centred as "zoom to fit" centres it), then zoom to the selection.
+      const box = await page.locator('.excalidraw').first().boundingBox();
+      const zoomText = await page.locator('.excalidraw').getByText(/^\d+%$/).first().textContent();
+      const z = Number(zoomText.replace('%', '')) / 100;
+      const W = Math.max(...frames.map((f) => f.x + f.width)), H = Math.max(...frames.map((f) => f.y + f.height));
+      const at = (x, y) => [box.x + box.width / 2 + (x - W / 2) * z, box.y + box.height / 2 + (y - H / 2) * z];
+      r.zoom = z;
+      for (const [i, f] of frames.entries()) {
         await page.keyboard.press('Shift+1');
-        await page.waitForTimeout(1500);
-        await page.screenshot({ path: `${out}/board-all.png` });
-        r.saved = rows(`SELECT length(COALESCE(thumbnail,'')) AS t FROM boards WHERE id='${r.boardId}'`)[0];
-        // Opening again from the console goes back to the same board.
-        await page.goto(`${base}/console?tab=guide`, { waitUntil: 'networkidle', timeout: 60_000 });
-        await page.getByRole('button', { name: 'Open the whiteboard' }).click();
-        await page.waitForURL(/\/boards\//, { timeout: 30_000 });
-        r.sameBoard = new URL(page.url()).pathname.endsWith(r.boardId) && !page.url().includes('template=');
-        await page.locator('.excalidraw').first().waitFor({ timeout: 60_000 });
-        await page.waitForTimeout(6000);
-        await page.mouse.click(720, 500);
-        await page.keyboard.press('Shift+1');
-        await page.waitForTimeout(1200);
-        // Closer looks: zoom in around a few spots.
-        for (const [i, [x, y]] of [[420, 330], [980, 330], [420, 640], [980, 640]].entries()) {
-          await page.keyboard.press('Shift+1');
-          await page.waitForTimeout(600);
-          await page.mouse.move(x, y);
-          await page.keyboard.down('Control');
-          for (let k = 0; k < 8; k++) await page.mouse.wheel(0, -100);
-          await page.keyboard.up('Control');
-          await page.waitForTimeout(800);
-          await page.screenshot({ path: `${out}/board-zoom-${i}.png` });
-        }
+        await page.waitForTimeout(500);
+        const [x1, y1] = at(f.x - 250, f.y - 250), [x2, y2] = at(f.x + f.width + 250, f.y + f.height + 250);
+        await page.mouse.move(x1, y1); await page.mouse.down(); await page.mouse.move(x2, y2, { steps: 8 }); await page.mouse.up();
+        await page.keyboard.press('Shift+2');
+        await page.waitForTimeout(700);
+        await page.screenshot({ path: `${out}/board-${theme}-${i + 1}.png` });
+        await page.keyboard.press('Escape');
       }
       r.errors = errors.filter((e) => !e.includes("reading 'waiting'"));
       console.log(JSON.stringify(r));

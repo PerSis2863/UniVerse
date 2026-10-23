@@ -24,7 +24,9 @@ function section(key: string, name: string) {
       els.push({ type: 'rectangle', id: id(), x, y, width, height, backgroundColor: bg, fillStyle: 'solid', roundness: { type: 3 }, label: { text: label, fontSize, verticalAlign: 'top', textAlign: 'left' }, ...rest } as El);
     },
     note(x: number, y: number, width: number, height: number, t: string, bg: string, fontSize = 16) {
-      els.push({ type: 'rectangle', id: id(), x, y, width, height, backgroundColor: bg, fillStyle: 'solid', strokeColor: 'transparent', roundness: { type: 3 }, label: { text: t, fontSize, textAlign: 'left', verticalAlign: 'top' } } as El);
+      // White and grey notes keep a soft edge, so they still show on a dark board.
+      const edge = bg === C.white || bg === C.grey ? '#ced4da' : 'transparent';
+      els.push({ type: 'rectangle', id: id(), x, y, width, height, backgroundColor: bg, fillStyle: 'solid', strokeColor: edge, roundness: { type: 3 }, label: { text: t, fontSize, textAlign: 'left', verticalAlign: 'top' } } as El);
     },
     raw(e: El) { els.push({ id: id(), ...e } as El); },
     name,
@@ -268,14 +270,14 @@ function demoPlan() {
   return s;
 }
 
-/** Every section, placed two to a row, each inside a named frame. */
+/** Every section, four to a row (the whole board fits a wide screen), each inside a named frame. */
 export function guideElements(): ExcalidrawElementSkeleton[] {
   const sections = [startHere(), everyFeature(), whereThingsStand(), swot(), webAndApp(), howItWasBuilt(), ownersWeek(), technical(), lookingBack(), demoPlan()];
   const out: El[] = [];
-  const PAD = 80, GAP = 260;
+  const PAD = 80, GAP = 700;
   let y = 0;
-  for (let i = 0; i < sections.length; i += 2) {
-    const pair = sections.slice(i, i + 2);
+  for (let i = 0; i < sections.length; i += 4) {
+    const pair = sections.slice(i, i + 4);
     const sizes = pair.map(size);
     let x = 0;
     pair.forEach((s, j) => {

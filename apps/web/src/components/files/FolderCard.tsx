@@ -88,7 +88,7 @@ export function FolderCard({ name, sub, peek, tone, seed, index, onOpen, action,
   };
 
   return (
-    <div className={cn('folder-card', `folder-${look}`, opening && 'is-open', !files.length && 'is-empty', className)} onPointerEnter={() => setWarm(true)} onFocus={() => setWarm(true)}>
+    <div className={cn('folder-card', `folder-tone-${look}`, opening && 'is-open', !files.length && 'is-empty', className)} onPointerEnter={() => setWarm(true)} onFocus={() => setWarm(true)}>
       <svg aria-hidden width="0" height="0" className="absolute">
         <defs>
           <clipPath id={`${id}b`} clipPathUnits="objectBoundingBox"><path d={BACK} /></clipPath>
