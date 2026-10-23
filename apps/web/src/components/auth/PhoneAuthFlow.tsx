@@ -5,7 +5,7 @@ import { authErrorMessage } from '@/lib/auth-errors';
 import { Loader2, ArrowLeft, User, Globe } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
-import PhoneInput from 'react-phone-number-input';
+import PhoneInput, { type Country } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { OtpInput, type OtpStatus } from '@/components/ui/OtpInput';
 
@@ -32,6 +32,12 @@ type Step = 'PHONE_INPUT' | 'CODE_INPUT';
 export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlowProps) {
   const [step, setStep] = useState<Step>('PHONE_INPUT');
   const [phoneNumber, setPhoneNumber] = useState('');
+  // The country to start from: the browser's language region (en-IN → India), else the US. The
+  // number box always shows its code (+91…), so the chosen country is visible.
+  const [country] = useState(() => {
+    const region = typeof navigator === 'undefined' ? '' : /-([A-Z]{2})$/i.exec(navigator.language)?.[1]?.toUpperCase();
+    return (region || 'US') as Country;
+  });
   const [code, setCode] = useState('');
   const [check, setCheck] = useState<OtpStatus>('idle');
   // Signed in by the code: carried on once the tick has played.
@@ -99,7 +105,7 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
           window.grecaptcha?.reset(widgetId);
         });
       }
-      setError(authErrorMessage(err, 'Failed to send SMS code. Make sure the phone number includes the country code (e.g. +1).'));
+      setError(authErrorMessage(err, 'The SMS code couldn’t be sent. Check the number and the country code, then try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +171,10 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
                 placeholder="Enter phone number"
                 value={phoneNumber}
                 onChange={(value) => setPhoneNumber(value || '')}
-                defaultCountry="US"
+                defaultCountry={country}
+                international
+                withCountryCallingCode
+                countryCallingCodeEditable={false}
                 flagComponent={CustomFlag}
                 className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 px-4 text-sm focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition-colors"
                 disabled={isLoading}

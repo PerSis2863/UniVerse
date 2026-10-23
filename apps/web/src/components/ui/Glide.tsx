@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 // - <TabPanel k={tab}>: the section under the tabs. A new tab's content rises in quickly (no exit
 //   wait, so the information shows at once). Transform and opacity only.
 
-/** Ink capsule (`pill`), soft fill (`soft`) or underline (`line`) that glides between tabs sharing an id (M4: the Cadra look). */
+/** Two-tone capsule (`pill`), soft two-tone fill (`soft`) or underline (`line`) that glides between tabs sharing an id. */
 export function TabPill({ id, variant = 'pill', className }: { id: string; variant?: 'pill' | 'line' | 'soft'; className?: string }) {
   return (
     <motion.span
@@ -20,10 +20,10 @@ export function TabPill({ id, variant = 'pill', className }: { id: string; varia
       className={cn(
         'absolute -z-10 pointer-events-none',
         variant === 'line'
-          ? 'inset-x-2 -bottom-px h-0.5 rounded-full bg-zinc-900 dark:bg-white'
+          ? 'inset-x-2 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500'
           : variant === 'soft'
-            ? 'inset-0 rounded-[inherit] bg-zinc-900/[0.07] dark:bg-white/[0.1]'
-            : 'inset-0 rounded-[inherit] bg-zinc-900 dark:bg-zinc-700 shadow-[0_8px_18px_-10px_rgba(0,0,0,0.6)]',
+            ? 'inset-0 rounded-[inherit] bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/10 ring-1 ring-indigo-400/20 dark:from-indigo-500/30 dark:to-fuchsia-500/20'
+            : 'inset-0 rounded-[inherit] bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-[0_6px_18px_-8px_rgba(139,92,246,0.8)]',
         className,
       )}
     />
