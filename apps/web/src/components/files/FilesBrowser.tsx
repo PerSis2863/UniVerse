@@ -19,6 +19,7 @@ import { fadeUp, list, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
 import { removeWithUndo } from '@/lib/undo';
+import { FolderCard, fileMeta } from './FolderCard';
 
 // A files hub (Stage 4 · 3.7, src/server/space-files.ts): folders, files with every version,
 // previews (PDF, text, photos), and where a file is used. Used for a space's files and for My
@@ -26,7 +27,7 @@ import { removeWithUndo } from '@/lib/undo';
 // share links that expire).
 
 export interface FileItem { id: string; name: string; url: string; mime: string; size: number; updatedAt: string; versions: number; by: string; canChange: boolean; starred: boolean }
-interface Listing { path: { id: string; name: string }[]; canManage: boolean; usage: number; quota: number; folders: { id: string; name: string; items: number }[]; files: FileItem[] }
+interface Listing { path: { id: string; name: string }[]; canManage: boolean; usage: number; quota: number; folders: { id: string; name: string; items: number; updatedAt?: string; preview?: { name: string; url: string; mime: string; size: number }[] }[]; files: FileItem[] }
 interface ShareLink { id: string; path: string; expiresAt: string; opens: number }
 interface Detail {
   id: string; name: string; canChange: boolean; links: ShareLink[];
@@ -63,6 +64,9 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
   const [view, setView] = useState<FileItem | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
   const [menu, setMenu] = useState<string | null>(null);
+  // The folder whose "···" menu is open, and where the next picked files go.
+  const [folderMenu, setFolderMenu] = useState<string | null>(null);
+  const uploadInto = useRef<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
   const versionPicker = useRef<HTMLInputElement>(null);
@@ -79,13 +83,13 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
     restore: () => void mutate(),
     commit: async () => { await authedJson(what === 'file' ? `/api/space-files/${item.id}` : `/api/space-folders/${item.id}`, { method: 'DELETE' }); void mutate(); },
   });
-  const uploadFiles = async (files: File[]) => {
+  const uploadFiles = async (files: File[], into: string | null = folder) => {
     if (files.length > 10) toast.message('The first 10 files are uploading.');
     for (const f of files.slice(0, 10)) {
       setProgress(0);
       try {
         const [url, text] = await Promise.all([uploadChatFile(f, setProgress), extractText(f)]);
-        await call('upload', base, 'POST', { action: 'file', name: f.name, url, mime: f.type || 'application/octet-stream', size: f.size, folderId: folder, text });
+        await call('upload', base, 'POST', { action: 'file', name: f.name, url, mime: f.type || 'application/octet-stream', size: f.size, folderId: into, text });
       } catch (e) { toast.error(`${f.name}: ${(e as Error).message}`); }
     }
     setProgress(null);
@@ -121,7 +125,7 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
         <span className="flex-1" />
         <button type="button" onClick={() => void newFolder()} disabled={!!busy} className="btn-secondary"><FolderPlus className="w-4 h-4" />Folder</button>
         <button type="button" onClick={() => picker.current?.click()} disabled={progress !== null} className="btn-primary">{progress !== null ? <><Loader2 className="w-4 h-4 animate-spin" />{progress}%</> : <><Upload className="w-4 h-4" />Upload</>}</button>
-        <input ref={picker} type="file" multiple className="hidden" onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; void uploadFiles(fs); }} />
+        <input ref={picker} type="file" multiple className="hidden" onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; const into = uploadInto.current ?? folder; uploadInto.current = null; void uploadFiles(fs, into); }} />
       </div>
 
       {data && (
@@ -139,22 +143,37 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
           <p className="text-sm text-zinc-500 mt-1">{emptyHint} You can drop files here too.</p>
         </div>
       ) : (
+        <>
+        {data.folders.length > 0 && (
+          // Folders that open (M5): the files inside fan out of each one.
+          <ul aria-label="Folders" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10 pt-10 pb-2">
+            {data.folders.map((f) => (
+              <li key={f.id} className="relative">
+                <FolderCard
+                  name={f.name} seed={f.id}
+                  sub={`${f.items} ${f.items === 1 ? 'item' : 'items'}`}
+                  peek={(f.preview ?? []).map((x) => ({ name: x.name, meta: fileMeta(x.name, x.size), image: x.mime.startsWith('image/') ? x.url : undefined, kind: x.mime.startsWith('image/') ? 'image' : 'doc' }))}
+                  onOpen={() => setFolder(f.id)}
+                  action={data.canManage
+                    ? { kind: 'more', label: `More for ${f.name}`, onClick: () => setFolderMenu(folderMenu === f.id ? null : f.id) }
+                    : { kind: 'add', label: `Add files to ${f.name}`, onClick: () => { uploadInto.current = f.id; picker.current?.click(); } }}
+                />
+                <AnimatePresence>
+                  {folderMenu === f.id && (
+                    <motion.div initial={{ opacity: 0, y: -4, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.97 }} transition={spring.snappy}
+                      className="absolute end-0 top-full mt-2 z-30 w-52 rounded-2xl bg-[var(--surface)] border border-[var(--card-border)] shadow-2xl p-1.5 text-sm">
+                      <button type="button" onClick={() => { setFolderMenu(null); uploadInto.current = f.id; picker.current?.click(); }} className="w-full text-start px-3 py-2 rounded-xl hover:bg-[var(--fill)] inline-flex items-center gap-2"><Upload className="w-4 h-4" />Add files here</button>
+                      <button type="button" onClick={() => void (async () => { setFolderMenu(null); const n = (await promptDialog({ title: 'Rename folder', defaultValue: f.name, confirmLabel: 'Rename', maxLength: 60 }))?.trim(); if (n) await call('r', `/api/space-folders/${f.id}`, 'PATCH', { name: n }); })()} className="w-full text-start px-3 py-2 rounded-xl hover:bg-[var(--fill)] inline-flex items-center gap-2"><Pencil className="w-4 h-4" />Rename</button>
+                      <button type="button" onClick={() => { setFolderMenu(null); removeLater('folder', f); }} className="w-full text-start px-3 py-2 rounded-xl hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 inline-flex items-center gap-2"><Trash2 className="w-4 h-4" />Delete</button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </li>
+            ))}
+          </ul>
+        )}
+        {data.files.length > 0 && (
         <motion.ul variants={list} initial="hidden" animate="show" className={`panel divide-y divide-zinc-200/70 dark:divide-white/[0.06]`}>
-          {data.folders.map((f) => (
-            <motion.li key={f.id} variants={fadeUp} className="flex items-center gap-3 px-4 py-3">
-              <button type="button" onClick={() => setFolder(f.id)} className="flex-1 min-w-0 flex items-center gap-3 text-start">
-                <Folder className="w-5 h-5 text-amber-500 shrink-0" />
-                <span className="flex-1 min-w-0 truncate text-sm font-semibold text-zinc-900 dark:text-white">{f.name}</span>
-                <span className="text-xs text-zinc-500">{f.items} {f.items === 1 ? 'item' : 'items'}</span>
-              </button>
-              {data.canManage && (
-                <>
-                  <button type="button" aria-label={`Rename ${f.name}`} onClick={() => void (async () => { const n = (await promptDialog({ title: 'Rename folder', defaultValue: f.name, confirmLabel: 'Rename', maxLength: 60 }))?.trim(); if (n) await call('r', `/api/space-folders/${f.id}`, 'PATCH', { name: n }); })()} className="p-1.5 text-zinc-400 hover:text-indigo-500"><Pencil className="w-4 h-4" /></button>
-                  <button type="button" aria-label={`Delete ${f.name}`} onClick={() => removeLater('folder', f)} className="p-1.5 text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
-                </>
-              )}
-            </motion.li>
-          ))}
           {data.files.map((f) => {
             const kindOf = f.mime.startsWith('image/') ? 'image' : previewKind(f.name, f.mime);
             return (
@@ -192,6 +211,8 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
             );
           })}
         </motion.ul>
+        )}
+        </>
       )}
 
       <input ref={versionPicker} type="file" className="hidden" onChange={(e) => {

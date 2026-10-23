@@ -3,13 +3,13 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, STUDENT_LEARN_TABS, TEACHER_LEARN_TABS } from '@/components/layout/SectionTabs';
 import { uploadChatFile } from '@/components/chat/chat-client';
-import { Search, Folder, FileText, ExternalLink, Download, Plus, X, Upload, Trash2, Share2, FolderOpen } from 'lucide-react';
+import { Search, FileText, ExternalLink, Download, Plus, X, Upload, Trash2, Share2, FolderOpen } from 'lucide-react';
+import { FolderCard } from '@/components/files/FolderCard';
 import { useState, useRef } from 'react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { api, errorMessage } from '@/lib/api';
-import { TabPill } from '@/components/ui/Glide';
 import { FileDrop } from '@/components/ui/FileDrop';
 
 const CATEGORIES = ['All', 'Computer Science', 'Business', 'Finance', 'General'];
@@ -209,24 +209,21 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
           </div>
 
           <div className="flex flex-col lg:flex-row gap-8">
-            {/* Sidebar Categories */}
-            <div className="w-full lg:w-64 shrink-0 space-y-2 relative z-10">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4 px-2">Categories</h3>
-              {CATEGORIES.map(category => (
-                <button
-                  key={category}
-                  onClick={() => setActiveCategory(category)}
-                  className={`relative isolate w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    activeCategory === category 
-                      ? 'text-indigo-400 border border-indigo-500/20' 
-                      : 'text-zinc-400 hover:bg-zinc-900 hover:text-white border border-transparent'
-                  }`}
-                >{activeCategory === category && <TabPill id="mponents-shared-knowledgehub-0" variant="soft" />}
-                  <Folder className={`w-4 h-4 ${activeCategory === category ? 'text-indigo-400' : 'text-zinc-500'}`} />
-                  {category}
-                </button>
-              ))}
-            </div>
+            {/* Categories, as folders that open (M5): each fans out its first resources. */}
+            <ul aria-label="Categories" className="w-full lg:w-72 shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-x-5 gap-y-10 pt-8 relative z-10">
+              {CATEGORIES.map((category) => {
+                const inside = resources.filter((r) => category === 'All' || r.category === category);
+                return (
+                  <li key={category} className={activeCategory === category ? 'folder-chosen' : undefined}>
+                    <FolderCard name={category} seed={`kh-${category}`} sub={`${inside.length} ${inside.length === 1 ? 'item' : 'items'}`}
+                      label={`Show ${category}, ${inside.length} ${inside.length === 1 ? 'item' : 'items'}${activeCategory === category ? ' (shown)' : ''}`}
+                      peek={inside.slice(0, 3).map((r) => ({ name: r.title, meta: [r.type?.toUpperCase(), r.size].filter(Boolean).join(' · ') }))}
+                      onOpen={() => setActiveCategory(category)}
+                      action={category !== 'All' ? { kind: 'add', label: `Add a resource to ${category}`, onClick: () => setShowAddModal(true) } : undefined} />
+                  </li>
+                );
+              })}
+            </ul>
 
             {/* Resources List */}
             <div className="flex-1 relative z-10">

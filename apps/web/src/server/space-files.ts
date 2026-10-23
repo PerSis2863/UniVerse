@@ -93,10 +93,20 @@ export async function listFiles(kind: string, id: string, user: SessionUser, fol
         folder.id,
       )
     : [];
-  const names = new Map((await prisma.user.findMany({ where: { id: { in: [...new Set(files.map((f) => f.createdById))] } }, select: { id: true, name: true } })).map((u) => [u.id, u.name]));
+  const [people, inside] = await Promise.all([
+    prisma.user.findMany({ where: { id: { in: [...new Set(files.map((f) => f.createdById))] } }, select: { id: true, name: true } }),
+    // What's inside each folder, newest first: the folder card fans out its first three (M5).
+    folders.length ? prisma.spaceFile.findMany({ where: { ...where, folderId: { in: folders.map((f) => f.id) } }, orderBy: { updatedAt: 'desc' }, take: 240, select: { folderId: true, name: true, url: true, mime: true, size: true, updatedAt: true } }) : [],
+  ]);
+  const names = new Map(people.map((u) => [u.id, u.name]));
+  const peek = new Map<string, typeof inside>();
+  for (const f of inside) if (f.folderId) peek.set(f.folderId, [...(peek.get(f.folderId) ?? []), f].slice(0, 3));
   return {
     path, canManage: s.canManage, usage: used, quota: quotaOf(s.kind),
-    folders: folders.map((f) => ({ id: f.id, name: f.name, items: f._count.files + f._count.children })),
+    folders: folders.map((f) => {
+      const top = peek.get(f.id) ?? [];
+      return { id: f.id, name: f.name, items: f._count.files + f._count.children, updatedAt: top[0]?.updatedAt ?? f.createdAt, preview: top.map((x) => ({ name: x.name, url: x.url, mime: x.mime, size: x.size })) };
+    }),
     files: files.map((f) => ({ id: f.id, name: f.name, url: f.url, mime: f.mime, size: f.size, updatedAt: f.updatedAt, versions: f._count.versions, by: names.get(f.createdById) ?? 'Someone', canChange: s.canManage || f.createdById === user.id, starred: starred.has(f.id) })),
   };
 }

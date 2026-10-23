@@ -3,6 +3,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { Wallet, CreditCard, Receipt, FileText, Download, CheckCircle2, ArrowRight, Clock, X,      Loader2 } from 'lucide-react';
+import { FolderCard } from '@/components/files/FolderCard';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, Suspense } from 'react';
 import { toast } from 'sonner';
@@ -286,6 +287,16 @@ function AccountingContent() {
             ))}
           </div>
         </div>
+
+        {/* Receipts, as a folder that opens (M5): the latest ones fan out; it opens the statements. */}
+        {transactions.some((t) => t.status === 'COMPLETED') && (
+          <div className="max-w-xs pt-6">
+            <FolderCard name="Receipts" seed="receipts" tone="art"
+              sub={`${transactions.filter((t) => t.status === 'COMPLETED').length} receipts`}
+              peek={transactions.filter((t) => t.status === 'COMPLETED').slice(0, 3).map((t) => ({ name: t.description || 'Payment', meta: `PDF · ${(t.currency ?? 'USD').toUpperCase()} ${t.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}` }))}
+              onOpen={() => setActiveModal('statements')} />
+          </div>
+        )}
 
         {/* Detailed List */}
         <div className="card">
