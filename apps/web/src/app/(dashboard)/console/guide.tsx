@@ -14,7 +14,7 @@ import { GUIDE_TITLE, guideHref } from '@/components/boards/guide-title';
 // makes the board in the owner's whiteboards; later opens go back to it. "Make a fresh one" starts again.
 
 const PARTS = [
-  ['Start here', 'Blank canvas: what UniVerse is, and how to read the board'],
+  ['Start here', 'Blank canvas: the banner across the top: what UniVerse is, its numbers, how to read the board'],
   ['Every feature', 'Mind map: everything students, teachers, admins, parents and you can do'],
   ['Where things stand', 'Kanban: done, in progress, and what waits on you'],
   ['Strengths and risks', 'SWOT analysis'],
@@ -62,6 +62,7 @@ export function GuidePanel() {
           </button>
         </div>
       </div>
+      <p className="mt-3 text-xs text-zinc-500">“Make a fresh one” draws the latest version (packed edge to edge, everything up to date). An older copy stays in Whiteboards until you delete it.</p>
       <ol className="mt-6 grid sm:grid-cols-2 gap-3">
         {PARTS.map(([title, what], i) => (
           <li key={title} className="flex gap-3 rounded-2xl border border-[var(--card-border)] p-3.5">

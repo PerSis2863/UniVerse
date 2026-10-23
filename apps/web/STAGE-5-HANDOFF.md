@@ -1408,3 +1408,22 @@ Progress table (row D6).
   `optionalCookiesAllowed()` is true (false with Global Privacy Control) and stop on the event.
 - App pages set the tab title from the Topbar title (`<title> | UniVerse Impact`).
 - Button gradient: `#4f46e5 → #7c3aed → #9333ea` (the lighter ends failed contrast with white text).
+
+## M13 · Flow card, the console deck, sign-in, the packed board
+
+- Flow card: `src/components/landing/FlowCard.tsx` takes a flow id from `flows.ts` (a name, so server
+  layouts can pass it; `compact` hides the written steps). Its lines are drawn in the box's real
+  pixels (ResizeObserver): with a stretched viewBox and `non-scaling-stroke`, `pathLength` dashes
+  don't cover the line. Same reason the console's line chart wipes in with `clip-path` instead.
+- Console: tabs, labels, icons and groups live in `console/deck.tsx` (`TABS`, `GROUPS`); a new section
+  goes in `T` and one group. `Ticker` rolls a number from what it showed. `card` (shared.tsx) carries
+  `.deck-card` (a background-image top edge in `@layer components`, so utilities still win).
+- The console page keeps a linked tab in `linked` until it's open (the address effect used to write
+  "overview" over `?tab=` on the first render).
+- Sign-in: `(auth)/layout.tsx` draws its own dark river (`LightTrail` skips the root one on `/login`
+  and `/register`, like `/`).
+- Explainer board: `guideElements()` packs bands (`bands`); a column may hold two frames. Frames are
+  scaled with `place()`; keep new sections roughly the same proportions as their band neighbours.
+- Previewing the owner console on the dev server: sign in as the demo admin, set `owner: true` in the
+  stored user, answer `/api/bootstrap` with 503 and add `owner: true` to `/users/me` (route
+  interception), and serve sample `/owner/overview`, `/owner/attention`, `/owner/tables`.

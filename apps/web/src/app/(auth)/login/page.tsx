@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Mail, Lock, Loader2, Eye, EyeOff, Building2, ArrowRight, Fingerprint } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff, Building2, ArrowRight, Fingerprint } from 'lucide-react';
 import Link from '@/components/ui/Link';
+import { Accent, Tag } from '@/components/landing/bits';
 import { useAuthStore } from '@/store/auth';
 import { auth, warmUpPopupSignIn } from '@/lib/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, OAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
@@ -262,15 +263,12 @@ export default function LoginPage() {
       <div className="w-full">
         {/* Header */}
         <div className="mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-4">
-            <Sparkles className="w-3 h-3" />
-            UniVerse Impact
-          </div>
-          <h1 className="text-3xl font-black text-white mb-2">Welcome back</h1>
-          <p className="text-zinc-400 text-sm">Sign in to continue making an impact.</p>
+          <Tag>welcome back</Tag>
+          <h1 className="mt-5 text-4xl font-bold tracking-[-0.03em] text-white mb-2">Welcome <Accent>back.</Accent></h1>
+          <p className="text-zinc-300 text-sm">Sign in to pick up where you left off.</p>
         </div>
 
-        <div className="bg-white/[0.04] backdrop-blur-xl shadow-2xl shadow-indigo-950/40 border border-white/10 rounded-2xl p-6 sm:p-8">
+        <div className="rounded-3xl border border-white/[0.08] bg-[#0d0f1d]/75 backdrop-blur-md shadow-[0_40px_120px_-40px_rgba(99,102,241,0.55)] p-6 sm:p-8">
           {twoStep ? (
             <TwoStepPanel
               onDone={() => { const t = twoStep; setTwoStep(null); void handleLoginSuccess(t.token, t.method); }}
@@ -545,7 +543,7 @@ export default function LoginPage() {
           </div>
         </div>
         )}
-        <p className="mt-6 text-center text-xs text-zinc-600">
+        <p className="mt-6 text-center text-xs text-zinc-400">
           <Link href="/terms" className="hover:text-indigo-400">Terms and Conditions</Link>
           {' · '}
           <Link href="/privacy" className="hover:text-indigo-400">Privacy Policy</Link>

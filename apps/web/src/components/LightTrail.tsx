@@ -22,14 +22,16 @@ import { cn } from '@/lib/utils';
 const DARK = { strands: ['#a5b4fc', '#c4b5fd', '#f0abfc', '#e879f9', '#818cf8', '#f9a8d4'], bands: ['#6366f1', '#8b5cf6', '#d946ef', '#60a5fa', '#c026d3'], pulse: '#fdf4ff', spark: '#f5d0fe' };
 const LIGHT = { strands: ['#6366f1', '#7c3aed', '#c026d3', '#a21caf', '#8b5cf6', '#db2777'], bands: ['#818cf8', '#a78bfa', '#e879f9', '#93c5fd', '#f0abfc'], pulse: '#a21caf', spark: '#a21caf' };
 
+const OWN_RIVER = new Set(['/', '/login', '/register']);
+
 /**
  * `tone="dark"`: always the dark look (the landing page). `hero`: the landing page's opening (the
  * first bend between the hero's words and card, drawn in on arrival). `strength`: 0–1.
  */
 export function LightTrail({ tone = 'auto', hero = false, strength = 1, className }: { tone?: 'auto' | 'dark'; hero?: boolean; strength?: number; className?: string }) {
   const pathname = usePathname();
-  // The landing page draws its own (dark) river: the root one would sit hidden under it.
-  if (tone === 'auto' && pathname === '/') return null;
+  // The landing page and sign-in draw their own (dark) river: the root one would sit hidden under it.
+  if (tone === 'auto' && OWN_RIVER.has(pathname)) return null;
   return <River tone={tone} hero={hero} strength={strength} className={className} />;
 }
 

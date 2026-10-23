@@ -1,22 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Activity, Ban, BarChart3, Bell, Building2, Bug, Languages, Server, Crown, Database, Download, Gauge, HardDrive, History, LayoutDashboard, Loader2, LogIn, Megaphone, MessageSquare, MessagesSquare, MousePointerClick, PhoneCall, ShieldAlert, ShieldCheck, Trash2, Undo2, Users, Wallet, X, Newspaper, Presentation } from 'lucide-react';
+import { Activity, Ban, Bell, Crown, Download, History, Loader2, LogIn, MessageSquare, MousePointerClick, ShieldCheck, Undo2, X } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { TabPanel, TabPill } from '@/components/ui/Glide';
-import { ConsoleSkeleton, type Rec, type Schema, RecordEditor, SearchBox, card, downloadCsv, errorMessage, fetcher, field, formatValue, matches, refreshConsole, summarize, toastWithUndo, undoChange, useDebounced } from './shared';
+import { ConsoleSkeleton, heavy, type Rec, type Schema, RecordEditor, SearchBox, card, downloadCsv, errorMessage, fetcher, field, formatValue, matches, refreshConsole, summarize, toastWithUndo, undoChange, useDebounced } from './shared';
 import { PersonPanel } from './person';
 import { ErrorsPanel } from './errors';
 import { DeletionsPanel } from './deletions';
 import { GuidePanel } from './guide';
-import { type PlanUsage, PlanUsageCard, ServerPanel } from './server';
+import { FlowsPanel } from './flows';
+import { DeckHeader, DeckNav, TABS, type Tab } from './deck';
+import { Overview } from './overview';
+import { ServerPanel } from './server';
 import { AnnouncePanel, ChatsPanel, ComposeDialog } from './chats';
 import { DatabasePanel } from './database';
 import { HealthPanel } from './health';
@@ -25,40 +28,13 @@ import { ModerationPanel, SchoolsPanel } from './schools';
 import { LanguagesPanel } from './languages';
 import { BlogPanel } from './blog';
 import { CallsPanel } from './calls';
-import { AnalyticsPanel, AttentionCard, ConsoleSearch, type Go, MoneyPanel, useAttention } from './insights';
+import { AnalyticsPanel, ConsoleSearch, type Go, MoneyPanel, useAttention } from './insights';
 import { useActivePoll } from '@/lib/realtime-client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { LoadError } from '@/components/ui/LoadError';
 
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
-
-type Tab = 'overview' | 'schools' | 'moderation' | 'languages' | 'health' | 'numbers' | 'calls' | 'analytics' | 'server' | 'activity' | 'chats' | 'announce' | 'blog' | 'people' | 'database' | 'data' | 'money' | 'changes' | 'errors' | 'deletions' | 'guide';
-const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'schools', label: 'Schools', icon: Building2 },
-  { id: 'moderation', label: 'Moderation', icon: ShieldAlert },
-  { id: 'languages', label: 'Languages', icon: Languages },
-  { id: 'health', label: 'Health check', icon: ShieldCheck },
-  { id: 'numbers', label: 'Health numbers', icon: Gauge },
-  { id: 'calls', label: 'Calls', icon: PhoneCall },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { id: 'server', label: 'Server', icon: Server },
-  { id: 'activity', label: 'Live activity', icon: Activity },
-  { id: 'chats', label: 'Live chats', icon: MessagesSquare },
-  { id: 'announce', label: 'Announce', icon: Megaphone },
-  { id: 'blog', label: 'Blog', icon: Newspaper },
-  { id: 'people', label: 'People', icon: Users },
-  { id: 'database', label: 'Database', icon: HardDrive },
-  { id: 'data', label: 'All data', icon: Database },
-  { id: 'money', label: 'Money', icon: Wallet },
-  { id: 'changes', label: 'Changes & undo', icon: History },
-  { id: 'errors', label: 'Errors', icon: Bug },
-  { id: 'deletions', label: 'Deletion requests', icon: Trash2 },
-  { id: 'guide', label: 'Explain UniVerse', icon: Presentation },
-];
-
-const heavy = { revalidateOnFocus: false, dedupingInterval: 30_000, errorRetryCount: 2 };
 
 export default function OwnerConsole() {
   const owner = useAuthStore((s) => s.user?.owner === true);
@@ -68,14 +44,19 @@ export default function OwnerConsole() {
   // Where a link from another tab or the search box points: a chat, an error, a filter.
   const [focus, setFocus] = useState<{ chat?: string; error?: { id: string; status: string }; changes?: string; status?: string; n: number }>({ n: 0 });
   // Links such as /console?tab=errors (from the error digest email) open that tab; ?person= opens a person.
+  // `linked`: the tab the address asked for, until it is open (so the line below doesn't overwrite
+  // the address with the first render's "overview" before then).
+  const linked = useRef<Tab | null>(null);
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     const t = p.get('tab');
-    if (t && TABS.some((x) => x.id === t)) setTab(t as Tab); // eslint-disable-line react-hooks/set-state-in-effect
-    if (p.get('person')) { setPerson(p.get('person')); setTab('people'); }
+    if (t && TABS.some((x) => x.id === t)) { linked.current = t as Tab; setTab(t as Tab); } // eslint-disable-line react-hooks/set-state-in-effect
+    if (p.get('person')) { linked.current = 'people'; setPerson(p.get('person')); setTab('people'); }
   }, []);
   // The address keeps the open tab (and person), so refresh and Back land in the same place.
   useEffect(() => {
+    if (linked.current && linked.current !== tab) return;
+    linked.current = null;
     const p = new URLSearchParams(window.location.search);
     p.set('tab', tab);
     if (tab === 'people' && person) p.set('person', person); else p.delete('person');
@@ -119,32 +100,12 @@ export default function OwnerConsole() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <header className="px-4 sm:px-8 pt-6 pb-4 border-b border-zinc-200/70 dark:border-white/[0.06]">
-        <h1 className="text-2xl font-black text-zinc-900 dark:text-white flex items-center gap-2"><Crown className="w-6 h-6 text-amber-500" /> Owner console</h1>
-        <div className="flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
-          <p className="text-sm text-zinc-500">Everything on UniVerse. Only you can open this page. Every change here can be undone.</p>
-          {tables && <ConsoleSearch tables={tables.tables} onGo={go} />}
-        </div>
-        <nav className="mt-4 flex flex-wrap gap-1" aria-label="Console sections">
-          {TABS.map((t) => {
-            const badge = attention?.badges[t.id] ?? 0;
-            return (
-              <button key={t.id} onClick={() => { setTab(t.id); setFocus({ n: focus.n + 1 }); if (t.id !== 'people') setPerson(null); if (t.id === 'data') setDataTable(null); }}
-                aria-current={tab === t.id ? 'page' : undefined}
-                className={cn('relative isolate inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-colors duration-200', tab === t.id ? 'text-white' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
-                {tab === t.id && <TabPill id="console-tab" />}
-                <t.icon className="w-4 h-4" /> {t.label}
-                {badge > 0 && (
-                  <span title={t.id === 'activity' ? 'online now' : undefined}
-                    className={cn('min-w-[1.25rem] px-1.5 rounded-full text-[10px] leading-5 text-center', t.id === 'activity' ? 'bg-emerald-700 text-white' : 'bg-rose-600 text-white')}>{badge > 99 ? '99+' : badge}</span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
+    <div className="console-deck flex-1 overflow-y-auto">
+      <header className="px-4 sm:px-8 pt-4 sm:pt-6 max-w-6xl mx-auto">
+        <DeckHeader needs={attention ? attention.items.length : null} search={tables && <ConsoleSearch tables={tables.tables} onGo={go} />} />
+        <DeckNav tab={tab} badges={attention?.badges} onTab={(t) => { setTab(t); setFocus({ n: focus.n + 1 }); if (t !== 'people') setPerson(null); if (t === 'data') setDataTable(null); }} />
       </header>
-      <main className="p-4 sm:p-8 max-w-6xl mx-auto">
+      <main className="px-4 sm:px-8 py-6 max-w-6xl mx-auto">
         <TabPanel k={`${tab}-${person ?? ''}`}>
         {tab === 'overview' ? (
           <Overview onPerson={openPerson} onTab={(t, status) => show(t, { status })} />
@@ -186,6 +147,8 @@ export default function OwnerConsole() {
           <DeletionsPanel onOpenPerson={openPerson} />
         ) : tab === 'guide' ? (
           <GuidePanel />
+        ) : tab === 'flows' ? (
+          <FlowsPanel />
         ) : (
           <Changes key={`changes-${focus.n}`} initialQuery={focus.changes} />
         )}
@@ -195,135 +158,10 @@ export default function OwnerConsole() {
   );
 }
 
-// ─── Overview ──────────────────────────────────────────────────────────────────────────────────
-
-interface OverviewData {
-  roles: Record<string, number>; statuses: Record<string, number>; online: { id: string; name: string; role: string; lastSeenAt: string }[];
-  signInsToday: number; newUsers: number; messagesToday: number; pendingApps: number; openErrors: number; pendingDeletions: number;
-  signUps: { day: string; count: number }[]; countries: { name: string; count: number }[]; devices: { name: string; count: number }[];
-  recentSignIns: { id: string; createdAt: string; kind: string; method: string | null; device: string | null; city: string | null; country: string | null; ip: string | null; user: { id: string; name: string; role: string; email: string } }[];
-  recentActions: { id: string; createdAt: string; actorId: string | null; actorName: string | null; summary: string }[];
-  usage?: PlanUsage | null;
-}
-
-
 type PersonRow = {
   id: string; name: string; email: string; phone: string | null; role: string; status: string; accountType: string | null; onboardedAt: string | null; createdAt: string; lastSeenAt: string | null;
   lastSignIn: { createdAt: string; device: string | null; country: string | null; city: string | null } | null; owner: boolean; signIns: number; courses: number; messages: number;
 };
-
-function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; onTab: (t: Tab, status?: string) => void }) {
-  const { data } = useSWR<OverviewData>('/owner/overview', fetcher, {
-    ...heavy,
-    refreshInterval: useActivePoll(60_000),
-  });
-  const [q, setQ] = useState('');
-  const dq = useDebounced(q.trim());
-  const { data: found } = useSWR<{ total: number; people: PersonRow[] }>(dq ? `/owner/people?q=${encodeURIComponent(dq)}` : null, fetcher);
-  if (!data) return <ConsoleSkeleton />;
-  const total = Object.values(data.roles).reduce((a, b) => a + b, 0);
-  const tiles: [string, number, Tab][] = [
-    ['People', total, 'people'], ['Students', data.roles.STUDENT ?? 0, 'people'], ['Teachers', data.roles.TEACHER ?? 0, 'people'], ['Admins', data.roles.ADMIN ?? 0, 'people'],
-    ['Online now', data.online.length, 'activity'], ['Sign-ins today', data.signInsToday, 'activity'], ['Messages today', data.messagesToday, 'activity'], ['New this week', data.newUsers, 'people'],
-    ['Waiting for approval', data.statuses.PENDING ?? 0, 'people:PENDING' as Tab], ['Suspended', data.statuses.SUSPENDED ?? 0, 'people:SUSPENDED' as Tab], ['Open errors', data.openErrors ?? 0, 'errors'], ['Deletion requests', data.pendingDeletions ?? 0, 'deletions'],
-  ];
-  const online = data.online.filter((u) => matches(q, u.name, u.role));
-  const signIns = data.recentSignIns.filter((x) => matches(q, x.user.name, x.user.email, x.user.role, x.device, x.city, x.country, x.ip, x.method));
-  const actions = data.recentActions.filter((a) => matches(q, a.actorName, a.summary));
-  const peak = Math.max(1, ...(data.signUps ?? []).map((d) => d.count));
-  return (
-    <div className="space-y-6">
-      <AttentionCard onGo={(t, status) => onTab(t as Tab, status)} />
-      <SearchBox value={q} onChange={setQ} placeholder="Search people, sign-ins and actions" />
-      {dq && (
-        <div className={cn(card, 'p-4')}>
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2">People matching “{dq}”{found ? ` · ${found.total}` : ''}</p>
-          {!found ? <Loader2 className="w-4 h-4 animate-spin text-zinc-400" /> : found.people.length === 0 ? <p className="text-sm text-zinc-500">Nobody.</p> : (
-            <ul className="grid sm:grid-cols-2 gap-1">{found.people.slice(0, 10).map((p) => (
-              <li key={p.id}><button onClick={() => onPerson(p.id)} className="w-full text-start rounded-lg px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
-                <span className="text-sm font-semibold text-zinc-900 dark:text-white">{p.name}</span> <span className="text-[10px] font-bold uppercase text-zinc-400">{p.owner ? 'owner' : p.role}</span>
-                <span className="block text-xs text-zinc-500 truncate">{p.email}{p.phone ? ` · ${p.phone}` : ''}</span>
-              </button></li>
-            ))}</ul>
-          )}
-        </div>
-      )}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {tiles.map(([label, n, to]) => (
-          <button key={label} onClick={() => { const [t, status] = to.split(':'); onTab(t as Tab, status); }} className={cn(card, 'p-4 text-start hover:border-indigo-500/40')}>
-            <p className="text-2xl font-bold text-zinc-900 dark:text-white">{n}</p>
-            <p className="text-xs text-zinc-500">{label}</p>
-          </button>
-        ))}
-      </div>
-      <PlanUsageCard usage={data.usage ?? null} />
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className={cn(card, 'p-5 lg:col-span-1')}>
-          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">New accounts · 14 days</h2>
-          <div className="flex items-end gap-1 h-28" role="img" aria-label="New accounts per day">
-            {(data.signUps ?? []).map((d) => (
-              <div key={d.day} className="flex-1 flex flex-col items-center justify-end h-full" title={`${format(new Date(d.day), 'd MMM')}: ${d.count}`}>
-                <div className="w-full rounded-t bg-gradient-to-t from-indigo-600/70 to-fuchsia-400/80" style={{ height: `${Math.max(d.count ? 6 : 2, (d.count / peak) * 100)}%`, opacity: d.count ? 1 : 0.25 }} />
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-zinc-500">{(data.signUps ?? []).reduce((a, d) => a + d.count, 0)} in the last 14 days</p>
-        </div>
-        <TopList title="Where people sign in from · 30 days" rows={data.countries ?? []} />
-        <TopList title="Devices · 30 days" rows={data.devices ?? []} />
-      </div>
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className={cn(card, 'p-5')}>
-          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Online now</h2>
-          {online.length === 0 ? <p className="text-sm text-zinc-500">{q ? 'Nobody online matches.' : 'Nobody right now.'}</p> : (
-            <ul className="space-y-2">{online.map((u) => (
-              <li key={u.id}><button onClick={() => onPerson(u.id)} className="text-sm text-start hover:text-indigo-500"><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 me-2" />{u.name} <span className="text-xs text-zinc-400">{u.role.toLowerCase()} · {formatDistanceToNow(new Date(u.lastSeenAt), { addSuffix: true })}</span></button></li>
-            ))}</ul>
-          )}
-        </div>
-        <div className={cn(card, 'p-5')}>
-          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Latest sign-ins</h2>
-          {signIns.length === 0 && <p className="text-sm text-zinc-500">No sign-ins match.</p>}
-          <ul className="space-y-2">{signIns.map((s) => (
-            <li key={s.id} className="text-sm">
-              <button onClick={() => onPerson(s.user.id)} className="font-medium text-zinc-900 dark:text-white hover:text-indigo-500">{s.user.name}</button>
-              <span className="text-zinc-500"> · {s.kind === 'SIGN_UP' ? 'signed up' : s.kind === 'SIGN_IN' ? 'signed in' : 'opened the app'}{s.method ? ` with ${s.method}` : ''}</span>
-              <p className="text-xs text-zinc-400">{[s.device, s.city, s.country, s.ip].filter(Boolean).join(' · ')} · {format(new Date(s.createdAt), 'd MMM, HH:mm')}</p>
-            </li>
-          ))}</ul>
-        </div>
-        <div className={cn(card, 'p-5 lg:col-span-2')}>
-          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Latest actions</h2>
-          {actions.length === 0 && <p className="text-sm text-zinc-500">No actions match.</p>}
-          <ul className="space-y-2">{actions.map((a) => (
-            <li key={a.id} className="text-sm">
-              {a.actorId ? <button onClick={() => onPerson(a.actorId!)} className="font-medium text-zinc-900 dark:text-white hover:text-indigo-500">{a.actorName}</button> : <span className="font-medium">System</span>}
-              <span className="text-zinc-600 dark:text-zinc-300"> · {a.summary}</span>
-              <span className="text-xs text-zinc-400"> · {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}</span>
-            </li>
-          ))}</ul>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TopList({ title, rows }: { title: string; rows: { name: string; count: number }[] }) {
-  const max = Math.max(1, ...rows.map((r) => r.count));
-  return (
-    <div className={cn(card, 'p-5')}>
-      <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">{title}</h2>
-      {rows.length === 0 ? <p className="text-sm text-zinc-500">No sign-ins yet.</p> : (
-        <ul className="space-y-2">{rows.map((r) => (
-          <li key={r.name} className="text-sm">
-            <div className="flex justify-between gap-2"><span className="truncate text-zinc-700 dark:text-zinc-200">{r.name}</span><span className="text-zinc-400 tabular-nums">{r.count}</span></div>
-            <div className="mt-1 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06]"><div className="h-full rounded-full bg-indigo-500/70" style={{ width: `${(r.count / max) * 100}%` }} /></div>
-          </li>
-        ))}</ul>
-      )}
-    </div>
-  );
-}
 
 // ─── Live activity ─────────────────────────────────────────────────────────────────────────────
 
