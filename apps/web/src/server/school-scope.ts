@@ -14,24 +14,25 @@ type Who = { id: string; role?: string; organizationId?: string | null; owner?: 
 /** A school id, or null for the main school (people in no school). */
 export type SchoolIds = (string | null)[];
 
-const memo = new WeakMap<object, Promise<SchoolIds | 'all'>>();
+// The answer per signed-in user object (the sign-in cache keeps the same object for a minute; a
+// changed user gets a new object). Only the finished answer is kept: a promise still waiting on the
+// database must never be shared between requests. Workers can't hand one request's I/O to another,
+// so a second request awaiting it hangs and is cancelled ("your Worker's code had hung").
+const memo = new WeakMap<object, SchoolIds | 'all'>();
 
 /** The schools this person's admin views cover, or 'all' for the platform owner. */
-export function schoolsOf(user: Who): Promise<SchoolIds | 'all'> {
-  let p = memo.get(user);
-  if (!p) {
-    p = (async () => {
-      if (user.owner === true || isOwner(user as Parameters<typeof isOwner>[0])) return 'all';
-      const owned = await prisma.organization.findUnique({ where: { ownerId: user.id }, select: { id: true } });
-      const ids: SchoolIds = [user.organizationId ?? null];
-      if (owned && owned.id !== user.organizationId) ids.push(owned.id);
-      return ids;
-    })();
-    memo.set(user, p);
-    // A failed lookup isn't kept: the next call tries again.
-    p.catch(() => memo.delete(user));
+export async function schoolsOf(user: Who): Promise<SchoolIds | 'all'> {
+  const known = memo.get(user);
+  if (known) return known;
+  let answer: SchoolIds | 'all';
+  if (user.owner === true || isOwner(user as Parameters<typeof isOwner>[0])) answer = 'all';
+  else {
+    const owned = await prisma.organization.findUnique({ where: { ownerId: user.id }, select: { id: true } });
+    answer = [user.organizationId ?? null];
+    if (owned && owned.id !== user.organizationId) answer.push(owned.id);
   }
-  return p;
+  memo.set(user, answer);
+  return answer;
 }
 
 /** Whether a person of this school (organizationId) is in these schools. */

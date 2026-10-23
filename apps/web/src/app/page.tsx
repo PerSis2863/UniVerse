@@ -14,7 +14,7 @@ import {
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
-import { PageAurora } from '@/components/layout/PageAurora';
+import { LightTrail } from '@/components/LightTrail';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { TabPanel, TabPill } from '@/components/ui/Glide';
 
@@ -327,6 +327,7 @@ export default function ShowcasePage() {
 
         {/* ambient background */}
         <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
+          <LightTrail />
           <div className="mkt-drift-a absolute top-[-20%] start-[-35%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.26), transparent)' }} />
           <div className="mkt-drift-b absolute bottom-[-25%] end-[-40%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(192,38,211,0.17), transparent)' }} />
           <div className="absolute inset-0 opacity-[0.035]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)', backgroundSize: '64px 64px', maskImage: 'radial-gradient(ellipse at top, black 20%, transparent 70%)', WebkitMaskImage: 'radial-gradient(ellipse at top, black 20%, transparent 70%)' }} />
@@ -335,7 +336,6 @@ export default function ShowcasePage() {
         <MarketingNav />
 
         <main className="relative z-10">
-          <PageAurora hero />
           {/* ── Hero ─────────────────────────────────────────── */}
           <section className="px-6 pt-36 md:pt-44 pb-16">
             <motion.div style={{ y: heroY, opacity: heroOpacity }} className="max-w-5xl mx-auto flex flex-col items-center text-center">

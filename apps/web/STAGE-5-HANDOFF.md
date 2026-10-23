@@ -48,6 +48,17 @@ element and reason. That's how the endless SVG ping (SVG animations re-lay out a
 frame; they can't run on the GPU) and the per-row JS animations showed up. An idle page should
 show almost nothing.
 
+## M4 · The "Cadra" look everywhere and the light trail (23 Oct 2026, owner request)
+
+- The look is one block at the end of `src/app/globals.css` ("M4 · The Cadra look"): tokens on `:root`
+  / `.dark` (unlayered, so they win over the older `@layer base` ones), ink buttons only under
+  `:root:not([data-accent])`, solid `.panel`, `.glass-sidebar`, `.ios-glass`, `.kpi-row`.
+- `src/components/LightTrail.tsx` (root layout; on the landing page inside its own background):
+  `.trail-track` is 300vh and moves -200vh over the page's scroll (`animation-timeline: scroll(root)`,
+  else a rAF scroll listener). Strands use `vector-effect: non-scaling-stroke`. Colours `--trail-a/b/c`,
+  strength `--trail-strength` (0.5 light, 0.95 dark).
+- Removed: `PageAurora` (top-of-page ribbons) and the side menu's Recent list (`recent-pages.ts`).
+
 ## M3 · Error hub, the "Cadra" reel's motion, breadcrumbs and recent pages (23 Oct 2026, owner request)
 
 - `src/app/(dashboard)/console/errors.tsx`: `ErrorsPanel` (summary, filters, list) and `ErrorDetail`
@@ -60,7 +71,7 @@ show almost nothing.
   ≤ 28 px under `[data-cells]`, `grid-cols-*`, `flex-wrap`) and `rollChanged` (characterData on
   `.tabular-nums`, its own count-up writes skipped via `writing`).
 - `Breadcrumb` in `Topbar` from `crumbsFor(navByRole[role], pathname)`; desktop header is `min-h-16`.
-  `RecentPages` in the side menu (`rememberPage` from Topbar; cleared on sign-out).
+  (The Recent list added here was removed again in M4 at the owner's request.)
 
 ## M2 · Bug check, new transitions, the $5 plan (22 Oct 2026, owner request)
 
@@ -1341,3 +1352,12 @@ Progress table (row D6).
 - Simple mode draws on one "Drawing" layer (`drawId`), so its eraser never touches the photo.
 - `commitRun(key, doc)` in `PhotoEditor.tsx` makes changes to one thing in a row one undo step.
 
+
+## M6 · Code boxes (OtpInput)
+
+- `<OtpInput value onChange onComplete status onSettled />`: the parent sets `status` to `checking`
+  when it sends the code, then `good` or `bad`; `onSettled` fires once the animation has played
+  (go on after `good`; clear the code and set `idle` after `bad`). One real input over the boxes,
+  `autocomplete="one-time-code"`. The ring stays at least ~1 s however fast the answer comes.
+- Workers: never await a promise another request started (Cloudflare cancels it as "code had
+  hung"); `getPrisma()` gives each request its own client, and module caches keep finished values only.

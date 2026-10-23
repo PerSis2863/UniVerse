@@ -2,8 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { BarChart3, Briefcase, History, PenTool, ShieldCheck, type LucideIcon } from 'lucide-react';
-import { forgetRecentPages, useRecentPages } from '@/lib/recent-pages';
+import { BarChart3, Briefcase, PenTool, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { userCan } from '@/lib/permissions';
 import {
   LayoutDashboard, Users,
@@ -359,23 +358,6 @@ const subscribeWide = (onChange: () => void) => {
   return () => q.removeEventListener('change', onChange);
 };
 
-/** The three pages opened last (src/lib/recent-pages.ts), above the menu: back to them in one tap. */
-function RecentPages({ pathname, onClose }: { pathname: string; onClose?: () => void }) {
-  const recent = useRecentPages(pathname);
-  if (!recent.length) return null;
-  return (
-    <div className="mb-2 pb-2 border-b border-[var(--sidebar-border)]">
-      <p className="px-3 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 flex items-center gap-1"><History className="w-3 h-3" /> Recent</p>
-      {recent.map((p) => (
-        <Link key={p.path} href={p.path} onClick={onClose} className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-[13px] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-900/[0.04] dark:hover:bg-white/[0.05] truncate">
-          <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600 shrink-0" />
-          <span className="truncate">{p.title}</span>
-        </Link>
-      ))}
-    </div>
-  );
-}
-
 export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose?: () => void }) {
   const { user, logout } = useAuthStore();
   // The tapped entry lights up at once, not when its page has downloaded.
@@ -412,7 +394,6 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
     } catch (error) {
       console.warn('Firebase signOut failed:', error);
     }
-    forgetRecentPages();
     logout();
     router.push('/login');
   };
@@ -448,7 +429,6 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
-        <RecentPages pathname={pathname} onClose={onClose} />
         {nav.map((item, i) => (
           <NavItemComponent 
             key={i} 
@@ -476,7 +456,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
         {/* Phones have no top bar with the language button. */}
         <LanguageMenu row className="lg:hidden mt-1" />
         <button onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-[15px] text-[var(--ios-red)] hover:bg-[var(--fill)] transition-colors">
+          className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-[15px] text-red-700 dark:text-[var(--ios-red)] hover:bg-[var(--fill)] transition-colors">
           <LogOut className="w-[18px] h-[18px]" />
           <span>{t('nav.logout')}</span>
         </button>

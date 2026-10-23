@@ -19,7 +19,6 @@ import { Segmented } from '@/components/ui/Segmented';
 import { setPageTitle } from '@/lib/chrome';
 import { spring } from '@/lib/motion';
 import { crumbsFor } from '@/lib/breadcrumbs';
-import { rememberPage } from '@/lib/recent-pages';
 import { navByRole } from './Sidebar';
 
 type ApiNotification = { id: string; title: string; body: string; type: string; read: boolean; link: string | null; createdAt: string };
@@ -79,10 +78,8 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
   const { t } = useLanguageStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // The phone's navigation bar shows this title once the large title scrolls away (iOS), and the
-  // side menu's "Recent" lists the page under it (src/lib/recent-pages.ts).
-  const pathname = usePathname();
-  useEffect(() => { setPageTitle(title); rememberPage(window.location.pathname + window.location.search, title); }, [title, pathname]);
+  // The phone's navigation bar shows this title once the large title scrolls away (iOS).
+  useEffect(() => { setPageTitle(title); }, [title]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -272,7 +269,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
                           <span className="text-[12px] text-zinc-400 whitespace-nowrap">{n.time}</span>
                         </div>
                         {n.body && <p className="text-[13px] text-zinc-500 dark:text-zinc-400 line-clamp-2 mt-0.5">{n.body}</p>}
-                        {n.important && <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--ios-red)]"><AlertCircle className="w-3 h-3" /> Important</span>}
+                        {n.important && <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 dark:text-[var(--ios-red)]"><AlertCircle className="w-3 h-3" /> Important</span>}
                       </div>
                       {n.unread && <div className="w-2.5 h-2.5 rounded-full bg-tint mt-1.5 flex-shrink-0" />}
                     </div>
