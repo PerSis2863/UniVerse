@@ -1450,7 +1450,7 @@ Progress table (row D6).
 
 - Turning phone sign-in back on: set `PHONE_SIGN_IN = true` in `src/lib/sign-in-options.ts`, only
   after the owner turns on Firebase billing (SMS codes cost money).
-- The passkey button asks `GET /api/auth/passkeys/available` (public); it's off while
+- The passkey button asks `GET /api/core/auth/passkeys/available` (public); it's off while
   `SESSION_SECRET` is missing on the Worker.
 - Changing the explainer board's design: raise `GUIDE_VERSION` in `src/components/boards/guide-title.ts`.
   The owner's boards list then renames the old board "(old)" and makes the new one once per device;
