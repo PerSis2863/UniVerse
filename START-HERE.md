@@ -82,7 +82,8 @@ From `apps/web`:
 | `pnpm local:dev` | The quick way while editing: http://localhost:3000, pages change as you save. |
 | `pnpm local:build` | Builds the site exactly as Cloudflare does (10–15 minutes). |
 | `pnpm local:serve` | Runs that build on http://localhost:8787. Add `--ai-placeholder` for the AI tutor's checks. |
-| `pnpm check` | The checks before every commit: types, lint of changed files, unit tests. |
+| `pnpm check` | The checks before every commit: types, lint of changed files, unit tests, `pnpm lean`. |
+| `pnpm lean` | Lists files nothing uses and links to pages that don't exist (keep it at zero). |
 | `node scripts/checks/<name>.mjs` | A browser or API check, while `local:serve` runs (list: `scripts/checks/README.md`). |
 
 On the login page, **"Or test with demo accounts"** signs in without a password (locally only):

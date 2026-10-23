@@ -281,7 +281,7 @@
   /* Primary: UniVerse's two tones, indigo into violet and fuchsia, with a soft glow. */
   .btn-primary {
     color: #fff;
-    background: linear-gradient(135deg, #6366f1 0%, #7c3aed 55%, #a855f7 100%);
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 55%, #9333ea 100%);
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 6px 16px -6px rgb(124 58 237 / 0.55);
   }
   .btn-primary:not(:disabled):hover { filter: brightness(1.08); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 8px 22px -6px rgb(168 85 247 / 0.6); }
@@ -370,7 +370,6 @@
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 6px 16px -6px rgb(var(--tint-rgb) / 0.55);
   }
   :root[data-accent] .btn-primary:not(:disabled):hover { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 8px 22px -6px rgb(var(--tint-rgb) / 0.6); }
-
 
   .btn-secondary { color: var(--btn-secondary-color); background-color: var(--btn-secondary-bg); }
   .btn-secondary:not(:disabled):hover { background-color: var(--fill-strong); }
@@ -492,13 +491,6 @@
   .badge-red   { background-color: var(--badge-red-bg);   color: var(--badge-red-color); }
   .badge-blue  { background-color: var(--badge-blue-bg);  color: var(--badge-blue-color); }
 
-  .gradient-text {
-    background: linear-gradient(135deg, var(--tint), #32ade6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
   /* ─── Sidebar ─── */
   /* iPadOS sidebar rows: rounded, a soft tinted selection that glides between rows. */
   .sidebar-item {
@@ -554,29 +546,9 @@
     transform: translateY(-2px);
   }
 
-  .gradient-border { position: relative; }
-  .gradient-border::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(99,102,241,0.4), rgba(6,182,212,0.4));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-  }
-
   @keyframes shimmer {
     0% { background-position: -200% 0; }
     100% { background-position: 200% 0; }
-  }
-  .animate-shimmer {
-    animation: shimmer 2s infinite;
-    background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.05) 50%, transparent 75%);
-    background-size: 200% 100%;
   }
 
   @keyframes uCurveDash { 0% { stroke-dashoffset: 140; } 100% { stroke-dashoffset: 0; } }
@@ -593,8 +565,6 @@
   @keyframes universePing { 75%, 100% { transform: scale(2); opacity: 0; } }
 
 }
-
-
 
 /* ─── iOS Safe Area Support ─────────────────────── */
 .pb-safe {
@@ -665,10 +635,6 @@
 }
 
 /* Smooth iOS-style momentum scrolling */
-.ios-scroll {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-}
 
 /* Eliminate 300ms tap delay on touch devices. In the base layer so Tailwind's touch-* utilities
    win: outside a layer it beat every `touch-none` (drawing areas, drag handles, the side menu's
@@ -685,9 +651,6 @@
 
 /* PWA standalone mode - hide browser chrome elements */
 @media (display-mode: standalone) {
-  .hide-in-pwa {
-    display: none !important;
-  }
   /* Safe-area spacing is handled by the fixed mobile header / tab bar (see "Mobile app shell" below). */
 }
 
@@ -717,137 +680,13 @@
 
 /* ─── Apple Ecosystem UI ───────────────────────── */
 @layer components {
-  .search-glass {
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 12px;
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .search-glass:focus-within {
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(99, 102, 241, 0.4);
-    box-shadow: 
-      0 0 0 1px rgba(99, 102, 241, 0.2),
-      0 8px 24px rgba(0, 0, 0, 0.12);
-  }
-
-  .glass-input {
-    background: transparent;
-    border: none;
-    outline: none;
-    color: #f1f5f9;
-    font-size: 16px;
-    width: 100%;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  }
-
-  .glass-input::placeholder {
-    color: #94a3b8;
-  }
-
-  .bubble-glass {
-    backdrop-filter: blur(20px);
-    border-radius: 20px;
-    padding: 12px 16px;
-    max-width: 70%;
-    word-wrap: break-word;
-  }
-
-  .bubble-glass.received {
-    background: rgba(255, 255, 255, 0.1);
-    animation: slideInLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-bottom-left-radius: 4px;
-    color: #f1f5f9;
-  }
-
-  .bubble-glass.sent {
-    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
-    color: white;
-    animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-    border-bottom-right-radius: 4px;
-  }
-
-  .bubble-timestamp {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
-    margin-top: 4px;
-    display: block;
-    opacity: 0;
-    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .bubble-glass:hover .bubble-timestamp {
-    opacity: 1;
-  }
-
-  .chat-item-glass {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: transparent;
-  }
-
-  .chat-item-glass:hover {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(20px);
-  }
-
-  .chat-item-glass.selected {
-    background: rgba(99, 102, 241, 0.1);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    backdrop-filter: blur(20px);
-  }
-
-  .empty-glass {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    padding: 40px;
-    text-align: center;
-    animation: fadeIn 0.5s ease-out forwards;
-  }
-
-  .empty-icon {
-    font-size: 64px;
-    margin-bottom: 20px;
-    animation: float 3s ease-in-out infinite;
-  }
 
   @keyframes float {
     0%, 100% { transform: translateY(0px); }
     50% { transform: translateY(-10px); }
   }
 
-  @keyframes slideInLeft {
-    from { opacity: 0; transform: translateX(-20px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-
-  @keyframes slideInRight {
-    from { opacity: 0; transform: translateX(20px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
 }
-
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Mobile app shell — iOS-style polish
@@ -977,16 +816,6 @@ html, body { overflow-x: clip; max-width: 100%; }
 .pressable:active { transform: scale(0.96); opacity: 0.85; }
 
 /* Horizontal chip/filter rows: swipeable, snapping, no visible scrollbar */
-.scroll-chips {
-  display: flex;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x proximity;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-.scroll-chips::-webkit-scrollbar { display: none; }
-.scroll-chips > * { scroll-snap-align: start; flex-shrink: 0; }
 
 @media (hover: none) and (pointer: coarse) {
   /* iOS zooms the page when focusing inputs under 16px — keep inputs at 16px on touch devices */
@@ -1175,26 +1004,21 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
   html { scroll-behavior: auto; }
   .stagger > *, .rise-in, .fade-up, .page-enter, .page-push, .page-pop, .shell-in, .sheet-in, .alert-in, .hero-in { animation-name: rm-fade !important; animation-duration: 200ms !important; }
   .lift:hover, .lift:active, .card-hover:hover, .kpi-card:hover { transform: none !important; }
-  .animate-bounce, .animate-float, .mkt-float, .animate-heartbeat { animation: none !important; }
+  .animate-bounce, .animate-heartbeat { animation: none !important; }
 }
 
 /* Marketing: gentle floating chips on the landing page */
-@keyframes mkt-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-.mkt-float { animation: mkt-float 5s ease-in-out infinite; }
+
 /* The landing page's slow background glows and the call-to-action's ring: CSS animations run off the
    main thread, so they never compete with scrolling (they used to be endless framer loops). */
 @keyframes mkt-drift-a { 50% { transform: translate3d(40px, -30px, 0); } }
 @keyframes mkt-drift-b { 50% { transform: translate3d(-40px, 30px, 0); } }
-@keyframes mkt-spin { to { rotate: 360deg; } }
+
 .mkt-drift-a { animation: mkt-drift-a 18s ease-in-out infinite; will-change: transform; }
 .mkt-drift-b { animation: mkt-drift-b 22s ease-in-out infinite; will-change: transform; }
-.mkt-spin { animation: mkt-spin 40s linear infinite; }
 /* Its in-page links (Product, FAQ…) glide down instead of jumping. */
 @media (prefers-reduced-motion: no-preference) { html:has(.mkt-smooth) { scroll-behavior: smooth; } }
-@media (prefers-reduced-motion: reduce) { .mkt-float, .mkt-drift-a, .mkt-drift-b, .mkt-spin { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .mkt-drift-a, .mkt-drift-b { animation: none; } }
 
 /* ─── Background: UniVerse's two tones ─── */
 /* Indigo light from the top left, fuchsia from the bottom right, and a faint grid, behind every
@@ -1304,7 +1128,7 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 
 /* Low-data mode: lighter visuals (no blur layers or looping decorative animations). */
 .low-data *, .low-data *::before, .low-data *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
-.low-data .animate-pulse, .low-data .animate-ping, .low-data .animate-float { animation: none !important; }
+.low-data .animate-pulse, .low-data .animate-ping { animation: none !important; }
 
 /* Landing hero: fade up with CSS so it shows as soon as the page arrives (not after the JavaScript loads). */
 @keyframes hero-in { from { opacity: 0.001; transform: translateY(28px); } to { opacity: 1; transform: none; } }
@@ -1433,7 +1257,6 @@ html[data-collapsed] .nav-brand-text { opacity: 0; }
 .ios-cell { display: flex; align-items: center; gap: 0.875rem; min-height: 2.875rem; padding: 0.625rem 1rem; transition: background-color 160ms var(--ease-ios); }
 :is(a, button).ios-cell:active { background: var(--fill); scale: 1; }
 .ios-icon-tile { display: inline-flex; align-items: center; justify-content: center; width: 1.875rem; height: 1.875rem; border-radius: 0.5rem; color: #fff; flex-shrink: 0; }
-.ios-section-header { padding: 0 1rem 0.375rem; font-size: 0.8125rem; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.02em; }
 
 /* Alerts: pop in from slightly larger, like UIAlertController. */
 @keyframes alert-in { from { opacity: 0; transform: scale(1.12); } }
@@ -1472,7 +1295,6 @@ html[data-collapsed] .nav-brand-text { opacity: 0; }
    Run on the live page with the Web Animations API (src/lib/page-transition.ts, PendingPage), so
    nothing freezes while the next page loads. The page area is its own compositor layer only while
    it moves (the animation promotes it), so the bars, sidebar and tab bar stay still. */
-
 
 /* ─── Installed app: behave like an app, not a web page ─────────────────────────────────────── */
 /* A long press on a button, tab, link or picture doesn't open the browser's preview/copy menu, and
@@ -1602,8 +1424,8 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 /* Reduce Motion for the CSS animations (framer-motion ones calm down in src/lib/motion.ts). As
    there, nothing freezes: decorative loops stop, and things that slide or rise in just fade in. */
 @media (prefers-reduced-motion: reduce) {
-  .universe-u-beam, .universe-n-beam, .universe-node-pulse, .universe-ping, .empty-icon { animation: none; }
-  .bubble-glass.received, .bubble-glass.sent, .sheet-in, .fade-up, .alert-in { animation-name: backdrop-in; }
+  .universe-u-beam, .universe-n-beam, .universe-node-pulse, .universe-ping { animation: none; }
+  .sheet-in, .fade-up, .alert-in { animation-name: backdrop-in; }
 }
 
 /* Studio (Stage 5 · B9.15): the checkerboard behind see-through parts of a picture. */
@@ -1673,7 +1495,6 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 .word-rise { display: inline-block; animation: word-rise 900ms var(--ease-glide) backwards; }
 @keyframes word-rise { from { transform: translate3d(0, 105%, 0) rotate(4deg); opacity: 0; filter: blur(6px); } }
 @media (prefers-reduced-motion: reduce) { .word-rise { animation-name: backdrop-in; } }
-
 
 /* ═══ M4 · The "Cadra" look everywhere (owner request, 23 Oct 2026) ═══════════════════════════
    Crisp solid cards with soft shadows and neutral greys, on UniVerse's two tones (the owner asked
@@ -1750,7 +1571,7 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 .dark .ios-segment-thumb { background: var(--ink-soft); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06); }
 
 /* Headline-number rows (.kpi-row): the first card in the two tones, the second softly blue. */
-.kpi-row > :first-child { background: linear-gradient(135deg, #6366f1 0%, #7c3aed 55%, #a855f7 100%); border-color: transparent; color: #ffffff; }
+.kpi-row > :first-child { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 55%, #9333ea 100%); border-color: transparent; color: #ffffff; }
 .kpi-row > :first-child :is(.text-zinc-900, .text-zinc-800, .text-zinc-700, .text-zinc-600, .text-zinc-500, .text-zinc-400, [class*="dark:text-"]) { color: inherit; }
 .kpi-row > :first-child :is(.text-xs, .text-sm, .text-\[11px\], .text-\[12px\]) { opacity: 0.78; }
 .kpi-row > :nth-child(2) { background: #dbe7fb; border-color: transparent; }

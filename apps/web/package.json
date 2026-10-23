@@ -20,7 +20,8 @@
     "local:setup": "node scripts/local/setup.mjs",
     "local:dev": "node scripts/local/dev.mjs",
     "local:build": "node scripts/local/build.mjs",
-    "local:serve": "node scripts/local/serve.mjs"
+    "local:serve": "node scripts/local/serve.mjs",
+    "lean": "node scripts/lean.mjs"
   },
   "dependencies": {
     "@block65/webcrypto-web-push": "2.0.0",

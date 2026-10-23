@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { A, Bullets, Card, LegalShell, Mail, Section } from '@/components/legal/LegalShell';
 import { COMPANY } from '@/lib/company';
+import { CookieChoiceControl } from '@/components/marketing/CookieNotice';
 
 export const metadata: Metadata = { title: 'Your Privacy Choices', description: 'The choices you have over your information on UniVerse, and how to use them.' };
 
@@ -43,9 +44,12 @@ export default function PrivacyChoicesPage() {
 
       <Section title="Cookies">
         <p>
-          We only use what the platform needs to work: keeping you signed in, remembering your theme and language, and security. These can’t be
-          switched off without breaking sign-in, so there is no cookie banner. We use no analytics, advertising or social media trackers.
+          Essential cookies keep the platform working: keeping you signed in, remembering your theme and language, and security. These can’t be
+          switched off without breaking sign-in. We use no analytics, advertising or social media trackers today. If we ever add optional ones,
+          they only run if you choose <strong>Accept all</strong>, and never when your browser sends Global Privacy Control.
         </p>
+        <p>Your choice on this device (change it whenever you like):</p>
+        <CookieChoiceControl />
       </Section>
 
       <Section title="Access, correct, download or delete your data">

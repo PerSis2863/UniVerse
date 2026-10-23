@@ -12,6 +12,8 @@ Allow: /legal-notice
 Allow: /login
 Allow: /register
 Allow: /verify/
+Allow: /blog
+Allow: /trust
 Disallow: /
 
 Sitemap: https://universeimpact.com/sitemap.xml

@@ -1395,3 +1395,16 @@ Progress table (row D6).
 - Sparks: `.btn-primary` or `[data-spark]`; nothing under `[data-no-motion]`.
 - The owner's guide board: `GUIDE_TITLE` / `guideHref` in `src/components/boards/guide-title.ts` (small
   on purpose: importing `universe-guide.ts` pulls the whole board into a bundle).
+
+## M12 · Lean code and the launch list
+
+- `pnpm lean` (`scripts/lean.mjs`, also run by `pnpm check`): files under `src/` nothing imports, and
+  `href` / `push` / `replace` / `redirect` literals that match no page. A file used only from config
+  goes in `BY_CONFIG` (now: `src/server/test-setup.ts` for vitest, `src/worker/index.ts` for next-pwa).
+- Cookie choice: `src/lib/cookie-consent.ts` (`localStorage` `uv-cookies` = `all` | `essential`, the
+  `uv-cookies` event when it changes). The notice (`CookieNotice.tsx`, in the marketing footer) asks
+  once; Privacy choices has `CookieChoiceControl` to change it. Only essential cookies exist today:
+  anything optional added later (analytics, ads, embeds) must start only when
+  `optionalCookiesAllowed()` is true (false with Global Privacy Control) and stop on the event.
+- App pages set the tab title from the Topbar title (`<title> | UniVerse Impact`).
+- Button gradient: `#4f46e5 → #7c3aed → #9333ea` (the lighter ends failed contrast with white text).
