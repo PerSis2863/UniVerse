@@ -8,6 +8,23 @@ import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/tran
 type El = ExcalidrawElementSkeleton & { id?: string; x?: number; y?: number; width?: number; height?: number };
 const C = { student: '#a5d8ff', teacher: '#b2f2bb', admin: '#ffec99', parent: '#ffc9c9', owner: '#d0bfff', tech: '#99e9f2', warm: '#ffd8a8', grey: '#f1f3f5', white: '#ffffff' };
 
+// Text in a box doesn't wrap by itself: break each line to the box's width (about 0.6 em a letter
+// in the hand-drawn font), keeping a bullet's indent.
+function wrap(t: string, width: number, fontSize: number) {
+  const max = Math.max(8, Math.floor((width - 24) / (fontSize * 0.6)));
+  return t.split('\n').flatMap((line) => {
+    const indent = /^(• |\s+)/.exec(line)?.[0].replace(/•/, ' ') ?? '';
+    const out: string[] = [];
+    let cur = '';
+    for (const w of line.split(' ')) {
+      if (cur && (cur + ' ' + w).length > max) { out.push(cur); cur = indent + w; } else cur = cur ? `${cur} ${w}` : w;
+    }
+    out.push(cur);
+    return out;
+  }).join('\n');
+}
+const INK = '#1e1e1e';
+
 /** One frame's worth of shapes, in its own coordinates (0, 0 at its top left). */
 function section(key: string, name: string) {
   const els: El[] = [];
@@ -21,12 +38,12 @@ function section(key: string, name: string) {
     },
     box(x: number, y: number, width: number, height: number, label: string, bg = 'transparent', extra: Partial<El> & { fontSize?: number } = {}) {
       const { fontSize = 20, ...rest } = extra;
-      els.push({ type: 'rectangle', id: id(), x, y, width, height, backgroundColor: bg, fillStyle: 'solid', roundness: { type: 3 }, label: { text: label, fontSize, verticalAlign: 'top', textAlign: 'left' }, ...rest } as El);
+      els.push({ type: 'rectangle', id: id(), x, y, width, height, backgroundColor: bg, fillStyle: 'solid', roundness: { type: 3 }, label: { text: wrap(label, width, fontSize), fontSize, verticalAlign: 'top', textAlign: 'left', strokeColor: INK }, ...rest } as El);
     },
     note(x: number, y: number, width: number, height: number, t: string, bg: string, fontSize = 16) {
       // White and grey notes keep a soft edge, so they still show on a dark board.
       const edge = bg === C.white || bg === C.grey ? '#ced4da' : 'transparent';
-      els.push({ type: 'rectangle', id: id(), x, y, width, height, backgroundColor: bg, fillStyle: 'solid', strokeColor: edge, roundness: { type: 3 }, label: { text: t, fontSize, textAlign: 'left', verticalAlign: 'top' } } as El);
+      els.push({ type: 'rectangle', id: id(), x, y, width, height, backgroundColor: bg, fillStyle: 'solid', strokeColor: edge, roundness: { type: 3 }, label: { text: wrap(t, width, fontSize), fontSize, textAlign: 'left', verticalAlign: 'top', strokeColor: INK } } as El);
     },
     raw(e: El) { els.push({ id: id(), ...e } as El); },
     name,
@@ -102,7 +119,12 @@ function everyFeature() {
     const bx = cx + Math.cos(a) * r, by = cy + Math.sin(a) * r * 0.82;
     const id = s.id(`b${i}`);
     s.raw({ type: 'ellipse', id, x: bx - 140, y: by - 50, width: 280, height: 100, backgroundColor: colour, fillStyle: 'solid', label: { text: title, fontSize: 24 } } as El);
-    s.raw({ type: 'arrow', x: cx, y: cy, start: { id: s.id('centre') }, end: { id } } as El);
+    // Edge to edge (where the line leaves each ellipse), so it never crosses a label.
+    const dx = Math.cos(a), dy = Math.sin(a) * 0.82, len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
+    const edge = (rx: number, ry: number) => 1 / Math.hypot(ux / rx, uy / ry);
+    const sx = cx + ux * (edge(170, 80) + 8), sy = cy + uy * (edge(170, 80) + 8);
+    const ex = bx - ux * (edge(140, 50) + 8), ey = by - uy * (edge(140, 50) + 8);
+    s.raw({ type: 'arrow', x: sx, y: sy, width: ex - sx, height: ey - sy, points: [[0, 0], [ex - sx, ey - sy]], strokeWidth: 2 } as El);
     const right = Math.cos(a) > 0.2, left = Math.cos(a) < -0.2;
     const nx = right ? bx + 160 : left ? bx - 160 - 440 : bx - 220;
     const ny = right || left ? by - 60 : by < cy ? by - 60 - 230 : by + 70;
@@ -261,12 +283,12 @@ function lookingBack() {
 function demoPlan() {
   const s = section('lesson', '10 · Showing UniVerse to a new school (Lesson plan)');
   s.text(0, 0, 'Lesson plan: showing UniVerse to a new school (45 minutes)', 36);
-  s.box(0, 70, 1500, 170, 'Learning aims (by the end, the school can…)\n\n• sign in as a student, teacher and admin   • find any feature with search   • set up its first course and class', C.owner, { fontSize: 20 });
-  s.box(0, 260, 480, 460, `Starter (10 min)\n\n${bullets('Open the public demo (no account needed)', 'Show a student’s home page and Up next', 'Switch to dark mode and another language')}`, C.admin, { fontSize: 20 });
-  s.box(510, 260, 480, 460, `Main activity (25 min)\n\n${bullets('Teacher: make a course, an assignment, a quiz', 'Student: hand it in, try the AI tutor', 'Everyone: a live whiteboard together', 'Admin: attendance and the timetable')}`, C.teacher, { fontSize: 20 });
-  s.box(1020, 260, 480, 460, `Plenary (10 min)\n\n${bullets('Show the grades a parent sees', 'Answer questions', 'Agree the next step: an admin account')}`, C.student, { fontSize: 20 });
-  s.box(0, 740, 735, 250, `Resources\n\n${bullets('The demo site and its sample data', 'This whiteboard', 'Help pages and the blog')}`, C.grey, { fontSize: 20 });
-  s.box(765, 740, 735, 250, `Checking understanding\n\n${bullets('Can they find “Attendance” with search?', 'Can a teacher grade a hand-in alone?', 'Do they know where to ask for help?')}`, C.warm, { fontSize: 20 });
+  s.box(0, 70, 1500, 190, `Learning aims (by the end, the school can…)\n\n${bullets('sign in as a student, teacher and admin', 'find any feature with search', 'set up its first course and class')}`, C.owner, { fontSize: 20 });
+  s.box(0, 280, 480, 460, `Starter (10 min)\n\n${bullets('Open the public demo (no account needed)', 'Show a student’s home page and Up next', 'Switch to dark mode and another language')}`, C.admin, { fontSize: 20 });
+  s.box(510, 280, 480, 460, `Main activity (25 min)\n\n${bullets('Teacher: make a course, an assignment, a quiz', 'Student: hand it in, try the AI tutor', 'Everyone: a live whiteboard together', 'Admin: attendance and the timetable')}`, C.teacher, { fontSize: 20 });
+  s.box(1020, 280, 480, 460, `Plenary (10 min)\n\n${bullets('Show the grades a parent sees', 'Answer questions', 'Agree the next step: an admin account')}`, C.student, { fontSize: 20 });
+  s.box(0, 760, 735, 250, `Resources\n\n${bullets('The demo site and its sample data', 'This whiteboard', 'Help pages and the blog')}`, C.grey, { fontSize: 20 });
+  s.box(765, 760, 735, 250, `Checking understanding\n\n${bullets('Can they find “Attendance” with search?', 'Can a teacher grade a hand-in alone?', 'Do they know where to ask for help?')}`, C.warm, { fontSize: 20 });
   return s;
 }
 

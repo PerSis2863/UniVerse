@@ -24,7 +24,7 @@ const COLORS = ['#a5d8ff', '#b2f2bb', '#ffec99', '#ffc9c9', '#d0bfff', '#99e9f2'
 const box = (x: number, y: number, width: number, height: number, text: string, bg = 'transparent', extra: Partial<Record<string, unknown>> = {}) =>
   ({ type: 'rectangle', x, y, width, height, backgroundColor: bg, fillStyle: 'solid', roundness: { type: 3 }, label: { text, fontSize: 20, verticalAlign: 'top' }, ...extra }) as ExcalidrawElementSkeleton;
 const note = (x: number, y: number, text: string, bg: string) =>
-  ({ type: 'rectangle', x, y, width: 200, height: 90, backgroundColor: bg, fillStyle: 'solid', strokeColor: 'transparent', roundness: { type: 3 }, label: { text, fontSize: 16 } }) as ExcalidrawElementSkeleton;
+  ({ type: 'rectangle', x, y, width: 200, height: 90, backgroundColor: bg, fillStyle: 'solid', strokeColor: 'transparent', roundness: { type: 3 }, label: { text, fontSize: 16, strokeColor: '#1e1e1e' } }) as ExcalidrawElementSkeleton; // the text's own colour: it would take the note's (invisible) edge
 const text = (x: number, y: number, t: string, fontSize = 28) => ({ type: 'text', x, y, text: t, fontSize }) as ExcalidrawElementSkeleton;
 
 export function templateElements(id: TemplateId): ExcalidrawElementSkeleton[] {
