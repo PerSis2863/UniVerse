@@ -209,8 +209,8 @@ export function MessageBubble(p: Props) {
     // A sticker stands on its own, without a bubble.
     sticker ? 'bg-transparent text-zinc-900 dark:text-white'
       : mine
-      ? 'bg-tint text-white rounded-ee-[6px]'
-      : 'bg-[#e9e9eb] dark:bg-[#26252a] text-zinc-900 dark:text-white rounded-es-[6px]',
+      ? 'bubble-mine bg-tint text-white rounded-ee-[6px]'
+      : 'bubble-theirs bg-[#e9e9eb] dark:bg-[#26252a] text-zinc-900 dark:text-white rounded-es-[6px]',
     m.pending && 'opacity-60',
     highlight && 'ring-4 ring-amber-400/70',
   );

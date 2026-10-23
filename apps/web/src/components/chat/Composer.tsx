@@ -598,7 +598,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               if (e.key === 'Escape' && editing) { onCancelEdit(); setText(beforeEdit()); }
             }}
             placeholder={editing ? 'Edit your message' : onCommand ? 'Type a message, or / for commands' : 'Type a message'}
-            className="flex-1 min-w-0 resize-none max-h-40 px-4 py-2.5 rounded-3xl bg-zinc-100 dark:bg-white/[0.06] border border-transparent focus:border-indigo-500/40 focus:outline-none text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500"
+            className="msg-search flex-1 min-w-0 resize-none max-h-40 px-4 py-2.5 rounded-3xl bg-zinc-100 dark:bg-white/[0.06] border border-transparent focus:border-indigo-500/40 focus:outline-none transition-shadow duration-200 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500"
           />
           </div>
 
@@ -608,7 +608,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               onPointerUp={() => clearTimeout(holdTimer.current)} onPointerLeave={() => clearTimeout(holdTimer.current)} onPointerCancel={() => clearTimeout(holdTimer.current)}
               onContextMenu={(e) => { if (canSchedule) { e.preventDefault(); openSchedule(); } }}
               title={canSchedule ? 'Send · hold or right-click to schedule' : undefined}
-              disabled={busy || !text.trim()} aria-label={editing ? 'Save' : 'Send'} className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25 disabled:opacity-50 active:scale-95 transition-transform">
+              disabled={busy || !text.trim()} aria-label={editing ? 'Save' : 'Send'} className="send-in w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg shadow-fuchsia-500/30 disabled:opacity-50 active:scale-95 transition-transform">
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           ) : (

@@ -92,6 +92,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [hasMoreOlder, setHasMoreOlder] = useState<boolean | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [pending, setPending] = useState<ChatMessage[]>([]);
+  // New messages glide in; those already here when the chat opened (openedAt, below) don't. Mine
+  // glide as I send them (the server's copy that replaces the "sending" one then stays still).
+  const arrival = (m: ChatMessage, mine: boolean) => (mine ? (m.pending ? 'msg-arrive-mine' : undefined) : Date.parse(m.createdAt) > openedAt ? 'msg-arrive-theirs' : undefined);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -670,7 +673,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     <div className="flex-1 flex min-w-0 min-h-0">
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Header */}
-        <div className="relative z-20 flex items-center gap-3 px-3 md:px-5 h-16 shrink-0 border-b border-zinc-200/80 dark:border-white/[0.06] bg-white/60 dark:bg-white/[0.02] backdrop-blur-xl">
+        <div className="relative z-20 flex items-center gap-3 px-3 md:px-5 h-16 shrink-0 bg-white/60 dark:bg-white/[0.025] backdrop-blur-xl after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-indigo-400/40 after:to-transparent dark:after:via-fuchsia-400/30">
           <button onClick={onBack} aria-label="Back" className="md:hidden p-2 -ms-1 rounded-full text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button>
           <button onClick={() => setInfoOpen((v) => !v)} className="flex items-center gap-3 min-w-0 flex-1 text-start">
             {channel
@@ -835,7 +838,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                 const showSender = !!convo.isGroup && (newDay || prev?.senderId !== m.senderId || prev?.type === 'SYSTEM');
                 return (
                   <div key={m.id} id={`msg-${m.id}`}
-                    className={cn(!newDay && prev?.senderId !== m.senderId && 'pt-2', picked && 'relative ps-10 rounded-xl', picked?.has(m.id) && 'bg-indigo-500/10')}
+                    className={cn(!newDay && prev?.senderId !== m.senderId && 'pt-2', picked && 'relative ps-10 rounded-xl', picked?.has(m.id) && 'bg-indigo-500/10', m.type !== 'SYSTEM' && arrival(m, m.senderId === me))}
                     // While choosing, a tap anywhere on a message ticks it instead of opening anything;
                     // pressing and holding, right-clicking, double-clicking (a ❤️) and swiping do nothing.
                     {...(picked ? {
