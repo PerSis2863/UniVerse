@@ -1377,3 +1377,11 @@ Progress table (row D6).
   quotes or status). Prices come from `src/lib/plans.ts`.
 - The landing `main` is `data-no-motion`: constantly changing parts (typing, ticking runs) would keep
   waking the site-wide reveals, which then hid whole sections.
+
+## M9 · The river of light
+
+- `LightTrail` (canvas) follows the scrolling element it hears scroll events from (capture phase):
+  the window or a panel at least half the screen tall, never one inside `aside`/`nav`/dialogs.
+  The landing page renders its own (`tone="dark" from={0.9} strength={0.72}`); the root one skips `/`.
+- Keep it cheap: ≤30 fps, ~2.6 M canvas pixels at most, still for Reduce Motion / low-memory phones,
+  nothing while the tab is hidden. Dark cards are 93% opaque, so it glows through without any blur.

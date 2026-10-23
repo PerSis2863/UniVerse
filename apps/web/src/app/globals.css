@@ -1624,8 +1624,8 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
    Blocks below the fold wait a little lower and see-through, and rise into place as they scroll
    into view, like the "Relay" site. Set only by the script (never for Reduce Motion), and never
    when printing. */
-[data-sr="wait"] { opacity: 0; transform: translate3d(0, 36px, 0) scale(0.985); }
-[data-sr="in"] { opacity: 1; transform: none; transition: opacity 720ms var(--ease-glide), transform 900ms var(--ease-glide); }
+[data-sr="wait"] { opacity: 0; transform: translate3d(0, 36px, 0) scale(0.985); filter: blur(8px); }
+[data-sr="in"] { opacity: 1; transform: none; filter: blur(0); transition: opacity 720ms var(--ease-glide), transform 900ms var(--ease-glide), filter 700ms var(--ease-glide); }
 @media print { [data-sr] { opacity: 1 !important; transform: none !important; } }
 
 /* A slow drifting glow behind the public pages (landing, legal, sign-in): two soft blobs move on
@@ -1706,7 +1706,7 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
   --fill: rgba(255, 255, 255, 0.07); --fill-strong: rgba(255, 255, 255, 0.12);
   --separator: rgba(255, 255, 255, 0.08);
   --material: rgba(14, 17, 32, 0.84); --material-thick: rgba(14, 17, 32, 0.95); --material-highlight: rgba(255, 255, 255, 0.06);
-  --card-bg: #11152a; --card-border: rgba(255, 255, 255, 0.07); --card-hover-bg: #151a31; --card-hover-border: rgba(255, 255, 255, 0.14);
+  --card-bg: rgba(17, 21, 42, 0.93); --card-border: rgba(255, 255, 255, 0.07); --card-hover-bg: rgba(21, 26, 49, 0.95); --card-hover-border: rgba(255, 255, 255, 0.14);
   --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 18px 40px -26px rgba(0, 0, 0, 0.85);
   --sidebar-bg: #0b0e1a; --sidebar-border: rgba(255, 255, 255, 0.06);
   --sidebar-item-color: #a1a1aa; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.06); --sidebar-item-hover-color: #ffffff;
@@ -1757,27 +1757,10 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 .dark .kpi-row > :nth-child(2) { background: #16243d; }
 .kpi-row > * > [aria-hidden].absolute { display: none; }
 
-/* M4 · The light trail behind every page (src/components/LightTrail.tsx): fine purple strands
-   with a soft glow, three screens tall, sliding up with the scroll so the light runs down the page. */
-:root { --trail-a: #8b5cf6; --trail-b: #d946ef; --trail-c: #6366f1; --trail-strength: 0.5; }
-.dark { --trail-strength: 0.95; }
-.light-trail { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; opacity: var(--trail-strength); }
-.trail-track { position: absolute; top: 0; left: 0; width: 100%; height: 300vh; will-change: transform; }
-.trail-layer { position: absolute; inset: 0; width: 100%; height: 100%; will-change: transform; }
-@keyframes strand-sway-a { 0% { transform: translate3d(-1.5%, 0, 0) scaleX(1); } 100% { transform: translate3d(2%, 0.6%, 0) scaleX(1.04); } }
-@keyframes strand-sway-b { 0% { transform: translate3d(2%, -0.4%, 0) scaleX(1.03); } 100% { transform: translate3d(-2%, 0.4%, 0) scaleX(0.97); } }
-@keyframes trail-breathe { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
-.trail-strands-1 { animation: strand-sway-a 16s ease-in-out infinite alternate; }
-.trail-strands-2 { animation: strand-sway-b 21s ease-in-out infinite alternate; }
-.trail-glow { animation: trail-breathe 9s ease-in-out infinite; }
-@keyframes trail-travel { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(0, -200vh, 0); } }
-@supports (animation-timeline: scroll()) {
-  .light-trail:not(.trail-still) .trail-track { animation: trail-travel linear both; animation-timeline: scroll(root); }
-}
-.trail-still .trail-track, .trail-still .trail-layer { animation: none !important; }
-@media (prefers-reduced-motion: reduce) { .trail-track, .trail-layer { animation: none !important; } }
-html.reduce-motion .trail-track, html.reduce-motion .trail-layer { animation: none !important; }
-@media print { .light-trail { display: none; } }
+/* M9 · The river of light behind every page (src/components/LightTrail.tsx): a canvas the size of
+   the screen, behind the page; it draws the stretch of the river that's in view. */
+.light-river { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+@media print { .light-river { display: none; } }
 
 /* ═══ M5 · Folders that open (src/components/files/FolderCard.tsx, the owner's folder video) ═══
    Back panel (tab top right) · the folder's files · a frosted front flap (tab top left). Pointing at
@@ -1909,3 +1892,11 @@ html.reduce-motion :is(.folder-front, .folder-file, .folder-stack) { transition:
 .pricing-range:focus-visible { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6); }
 @media (prefers-reduced-motion: reduce) { .flow-dash, .bento-step { animation: none; } }
 html.reduce-motion :is(.flow-dash, .bento-step) { animation: none; }
+
+/* M9 · Cards answer the pointer the way the Relay video's glass cards do: a two-tone edge glow
+   (dark mode) or a soft indigo lift (light). Border and shadow only: nothing to re-blur. */
+@media (hover: hover) and (pointer: fine) {
+  :is(.panel, .card, .card-hover) { transition: border-color 260ms ease, box-shadow 320ms ease, transform 320ms var(--ease-glide); }
+  :is(.panel, .card, .card-hover):hover { border-color: rgba(99, 102, 241, 0.28); box-shadow: var(--card-shadow), 0 18px 44px -28px rgba(99, 102, 241, 0.45); }
+  .dark :is(.panel, .card, .card-hover):hover { border-color: rgba(232, 121, 249, 0.28); box-shadow: var(--card-shadow), 0 0 0 1px rgba(232, 121, 249, 0.08), 0 24px 60px -30px rgba(192, 38, 211, 0.55); }
+}
