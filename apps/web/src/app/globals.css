@@ -240,8 +240,10 @@
     font-family: var(--font-display);
     color: inherit;
     letter-spacing: -0.015em;
+    text-wrap: balance; /* lines of a heading about the same length */
   }
   h1 { letter-spacing: -0.022em; }
+  p { text-wrap: pretty; } /* no single word left alone on the last line */
 
   /* Under body, not on every element: a bare ::selection (it matches <html> too) makes Chrome work
      out a selection style for every element on each restyle, about 70× slower (25 ms → 0.4 ms for
@@ -1573,7 +1575,7 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 /* Headline-number rows (.kpi-row): the first card in the two tones, the second softly blue. */
 .kpi-row > :first-child { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 55%, #9333ea 100%); border-color: transparent; color: #ffffff; }
 .kpi-row > :first-child :is(.text-zinc-900, .text-zinc-800, .text-zinc-700, .text-zinc-600, .text-zinc-500, .text-zinc-400, [class*="dark:text-"]) { color: inherit; }
-.kpi-row > :first-child :is(.text-xs, .text-sm, .text-\[11px\], .text-\[12px\]) { opacity: 0.78; }
+.kpi-row > :first-child :is(.text-xs, .text-sm, .text-\[11px\], .text-\[12px\]) { opacity: 0.9; } /* 0.78 fell under 4.5:1 on the violet */
 .kpi-row > :nth-child(2) { background: #dbe7fb; border-color: transparent; }
 .dark .kpi-row > :nth-child(2) { background: #16243d; }
 .kpi-row > * > [aria-hidden].absolute { display: none; }
@@ -1735,7 +1737,7 @@ html.reduce-motion .flow-comet { display: none; }
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   animation: beam-spin 2.6s linear infinite;
 }
-.beam-once::after { animation: beam-spin 1.4s cubic-bezier(0.4, 0, 0.2, 1) 1 forwards, beam-fade 1.4s ease-in forwards; }
+.beam-once::after { animation: beam-spin 1.4s cubic-bezier(0.4, 0, 0.2, 1) 1 forwards, beam-fade 1.4s ease-out forwards; }
 @keyframes beam-spin { to { --beam: 360deg; } }
 @keyframes beam-fade { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
 /* Filled bars catch a glint of light now and then. */

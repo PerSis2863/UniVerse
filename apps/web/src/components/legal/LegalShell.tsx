@@ -32,7 +32,7 @@ export function Section({ id, title, children }: { id?: string; title: string; c
   return (
     <section id={id} className="scroll-mt-28">
       <h2 className="text-xl sm:text-2xl font-bold text-white">{title}</h2>
-      <div className="mt-3 space-y-3 text-[15px] leading-relaxed text-zinc-300">{children}</div>
+      <div className="mt-3 space-y-3 text-[15px] leading-relaxed text-zinc-300 [&>p]:max-w-[75ch] [&>ul]:max-w-[75ch] [&>ol]:max-w-[75ch]">{children}</div>
     </section>
   );
 }

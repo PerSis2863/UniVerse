@@ -102,6 +102,10 @@ live only in the dashboard (Settings → Variables and secrets).
 
 ## For AI agents (Cursor and others)
 
+Every outside tool, skill and repository the owner asked to use (Everything Claude Code, Ponytail,
+Impeccable, Emil Kowalski's skills, AgentGPT, the design references) is in `AGENT-TOOLKIT.md`, with
+where it lives in this repo and how to install the full version.
+
 Read **`.cursor/rules/universe.mdc`** (Cursor loads it by itself): how the owner works, the rules
 for code in this project and how to test. Then the Progress table and section 4 of
 `apps/web/STAGE-5-PLAN.md`, and `apps/web/STAGE-5-HANDOFF.md`.

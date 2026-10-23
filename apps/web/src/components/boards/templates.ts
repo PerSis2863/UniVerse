@@ -1,5 +1,4 @@
 import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform';
-import { guideElements } from './universe-guide';
 
 // Starting layouts for new whiteboards. They're added on the first open of an empty board, as
 // ordinary shapes everyone can move, edit or delete.
@@ -102,8 +101,13 @@ export function templateElements(id: TemplateId): ExcalidrawElementSkeleton[] {
         box(510, 550, 490, 200, 'Checking understanding', COLORS[6]),
       ];
     case 'guide':
-      return guideElements();
+      return []; // loaded on demand: templateFor()
     default:
       return [];
   }
+}
+
+/** A template's shapes; the owner's guide board is loaded only when it's asked for (it's big). */
+export async function templateFor(id: TemplateId): Promise<ExcalidrawElementSkeleton[]> {
+  return id === 'guide' ? (await import('./universe-guide')).guideElements() : templateElements(id);
 }

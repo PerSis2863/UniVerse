@@ -14,9 +14,8 @@ const AXE = require.resolve('axe-core/axe.min.js');
 const APP = fileURLToPath(new URL('../..', import.meta.url));
 const base = 'http://localhost:8787', OWNER = 'owner@check.test';
 const out = process.argv[2] ?? '/tmp';
-// The board's frames, from the same code that draws it (Node strips the types).
-const { guideElements } = await import('../../src/components/boards/universe-guide.ts');
-const frames = guideElements().filter((e) => e.type === 'frame');
+// The board's frames, from the same code that draws it (tsx: the board file imports other files).
+const frames = JSON.parse(execSync(`npx tsx -e "import('./src/components/boards/universe-guide.ts').then((m) => console.log(JSON.stringify((m.guideElements ?? m.default.guideElements)().filter((e) => e.type === 'frame'))))"`, { cwd: APP }).toString());
 let boardId = null;
 const sql = (c) => execSync(`npx wrangler d1 execute universe-db --local --command "${c.replace(/"/g, '\\"')}"`, { cwd: APP, stdio: 'ignore' });
 const rows = (c) => JSON.parse(execSync(`npx wrangler d1 execute universe-db --local --json --command "${c.replace(/"/g, '\\"')}"`, { cwd: APP, stdio: ['ignore', 'pipe', 'ignore'] }).toString())[0].results;

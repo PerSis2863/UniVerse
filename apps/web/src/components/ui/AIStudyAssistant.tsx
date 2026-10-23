@@ -197,9 +197,9 @@ export function AIStudyAssistant() {
       <AnimatePresence>
         {!isOpen && (
           <motion.div
-            initial={{ scale: 0, opacity: 0 }}
+            initial={{ scale: 0.85, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
+            exit={{ scale: 0.85, opacity: 0 }}
             className="flex flex-col items-end gap-2"
           >
             {/* Dismiss Button - only shows on hover or mobile */}
@@ -213,9 +213,9 @@ export function AIStudyAssistant() {
             </button>
 
               <motion.button
-                initial={{ scale: 0, opacity: 0 }}
+                initial={{ scale: 0.85, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 300, damping: 20 } }}
-                exit={{ scale: 0, opacity: 0 }}
+                exit={{ scale: 0.85, opacity: 0 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsOpen(true)}

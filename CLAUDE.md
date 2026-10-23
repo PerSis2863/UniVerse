@@ -7,7 +7,9 @@
    - Prefer scoped @file / @folder over unconstrained @codebase.
    - After a feature or bugfix is done, start a fresh thread or run /clear so history is not re-sent every turn.
 
-Also follow `.cursor/rules/universe.mdc` and `START-HERE.md` when working in this repo.
+Also follow `.cursor/rules/universe.mdc` and `START-HERE.md` when working in this repo. Every outside
+tool, skill and repository the owner asked for (ECC, Ponytail, Impeccable, Emil Kowalski's skills,
+AgentGPT, the design references) is in `AGENT-TOOLKIT.md`: what it is, where it lives, how to install it.
 
 ## Claude Code setup in this repo (`.claude/`)
 
@@ -17,8 +19,11 @@ installed (see the ECC section in `.cursor/rules/universe.mdc` for why, and befo
 - **Commands** (type them in Claude Code): `/plan-item [Qn]` plan the next queue item before coding;
   `/check [quick|full]` run the project's checks and show only failures; `/fix-checks` fix what
   fails; `/finish-item [Qn]` Progress row, handoff note, START-HERE, commit and push (no merge);
-  `/council <topic>` the five-advisor review.
+  `/council <topic>` the five-advisor review; `/polish <page>` a design and motion review (after
+  Impeccable and Emil Kowalski's skills; rules in `.cursor/rules/universe.mdc`).
 - **Reviewers** (subagents, only when asked): `universe-reviewer` (bugs and project rules) and
   `universe-security` (access, input, secrets, money, files).
+- **Skills** (copied from github.com/emilkowalski/skills, MIT): `emil-design-eng`, `review-animations`,
+  `animation-performance`, `mobile-native` in `.claude/skills/`.
 - **Hook:** `.claude/hooks/protect-secrets.mjs` blocks any tool call that reads or writes the local
   secret files (`.dev.vars`, `.env*`; `*.example` is fine). Turned on in `.claude/settings.json`.

@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Copy, Globe2, Loader2, LogOut, MoreHorizontal, PenTool, Plus, Search, Trash2, Users } from 'lucide-react';
+import { Clock, Copy, Globe2, Loader2, LogOut, MoreHorizontal, PenLine, PenTool, Plus, Search, Trash2, Users } from 'lucide-react';
+import { m as motion } from 'framer-motion';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
-import { confirmDialog } from '@/components/ui/Dialogs';
+import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { NewBoardDialog } from '@/components/boards/NewBoardDialog';
 import type { TemplateId } from '@/components/boards/templates';
 import { Avatar } from '@/components/ui/Avatar';
@@ -92,6 +93,22 @@ export default function BoardsPage() {
     });
   };
 
+  // Rename (anyone who can edit the board): shows the new name at once, and puts the old one back if
+  // the server says no.
+  const rename = async (b: BoardSummary) => {
+    setMenu(null);
+    const title = (await promptDialog({ title: 'Rename board', defaultValue: b.title, confirmLabel: 'Rename', maxLength: 120 }))?.trim();
+    if (!title || title === b.title) return;
+    void mutate((list) => list?.map((x) => (x.id === b.id ? { ...x, title } : x)), { revalidate: false });
+    try {
+      await authedJson(`/api/boards/${b.id}`, { method: 'PATCH', body: JSON.stringify({ title }) });
+      toast.success('Board renamed');
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+    void mutate();
+  };
+
   const leave = async (b: BoardSummary) => {
     setMenu(null);
     if (!(await confirmDialog({ title: `Leave “${b.title}”?`, message: 'It will no longer appear in your boards. The owner can share it with you again.', confirmLabel: 'Leave' }))) return;
@@ -164,41 +181,45 @@ export default function BoardsPage() {
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {list.map((b) => (
-                <div key={b.id} className="group relative rounded-3xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 overflow-hidden hover:border-indigo-500/40 transition-colors">
+                <div key={b.id} className="group relative rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white dark:bg-[#0c0e1b]/80 overflow-hidden shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-indigo-400/50 hover:shadow-[0_24px_60px_-28px_rgba(124,58,237,0.55)]">
                   <Link href={b.mine && b.title === GUIDE_TITLE ? guideHref(b.id) : `/boards/${b.id}`} className="block">
-                    <div className="aspect-[16/9] bg-zinc-50 dark:bg-white/[0.03] flex items-center justify-center overflow-hidden border-b border-zinc-100 dark:border-white/[0.05]">
+                    {/* The preview on a canvas of dots; in dark mode it's inverted like the board itself, so it isn't a white box. */}
+                    <div className="relative aspect-[16/10] overflow-hidden bg-zinc-50 dark:bg-[#0a0b14] bg-[radial-gradient(circle_at_1px_1px,rgb(99_102_241/0.18)_1px,transparent_0)] [background-size:18px_18px]">
                       {b.thumbnail
-                        ? <img loading="lazy" decoding="async" src={b.thumbnail} alt="" className="w-full h-full object-contain" />
-                        : <PenTool className="w-10 h-10 text-zinc-300 dark:text-zinc-700" />}
+                        ? <img loading="lazy" decoding="async" src={b.thumbnail} alt="" className="w-full h-full object-contain p-3 transition-transform duration-500 ease-out group-hover:scale-[1.04] dark:invert dark:hue-rotate-180 dark:opacity-90" />
+                        : <div className="w-full h-full grid place-items-center"><span className="w-14 h-14 rounded-2xl grid place-items-center bg-gradient-to-br from-indigo-500/15 to-fuchsia-500/15 text-indigo-500 dark:text-indigo-300"><PenTool className="w-7 h-7" /></span></div>}
+                      <span aria-hidden className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white dark:from-[#0c0e1b] to-transparent" />
                     </div>
-                    <div className="p-4">
-                      <p className="font-bold text-zinc-900 dark:text-white truncate">{b.title}</p>
-                      <p className="mt-0.5 text-xs text-zinc-500 truncate">
-                        {b.mine ? 'You' : b.owner.name} · edited {ago(b.updatedAt)}
+                    <div className="px-4 pb-4 pt-1">
+                      <p className="font-semibold text-zinc-900 dark:text-white truncate">{b.title}</p>
+                      <p className="mt-1 text-xs text-zinc-500 flex items-center gap-1.5 truncate">
+                        <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden /> {b.mine ? 'You' : b.owner.name} · edited {ago(b.updatedAt)}
                       </p>
                       <div className="mt-3 flex items-center gap-2">
                         <div className="flex -space-x-2">
                           {[b.owner, ...b.people].slice(0, 4).map((p) => (
-                            <div key={p.id} className="rounded-full ring-2 ring-white dark:ring-zinc-900"><Avatar name={p.name} src={p.avatar} size={24} /></div>
+                            <div key={p.id} className="rounded-full ring-2 ring-white dark:ring-[#0c0e1b]"><Avatar name={p.name} src={p.avatar} size={24} /></div>
                           ))}
                         </div>
-                        {b.memberCount > 0 && <span className="text-xs text-zinc-500 inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {b.memberCount + 1}</span>}
-                        {b.linkAccess !== 'NONE' && <span className="text-xs text-zinc-500 inline-flex items-center gap-1"><Globe2 className="w-3.5 h-3.5" /> Link</span>}
-                        {b.myRole === 'VIEWER' && <span className="ms-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-500/10 text-zinc-500">View only</span>}
+                        {b.memberCount > 0 && <span className="text-[11px] font-medium text-zinc-600 dark:text-zinc-300 inline-flex items-center gap-1 h-6 px-2 rounded-full border border-zinc-200 dark:border-white/10"><Users className="w-3.5 h-3.5" aria-hidden /> {b.memberCount + 1}</span>}
+                        {b.linkAccess !== 'NONE' && <span className="text-[11px] font-medium text-zinc-600 dark:text-zinc-300 inline-flex items-center gap-1 h-6 px-2 rounded-full border border-zinc-200 dark:border-white/10"><Globe2 className="w-3.5 h-3.5" aria-hidden /> Link</span>}
+                        {b.myRole === 'VIEWER' && <span className="ms-auto text-[11px] font-semibold h-6 px-2 inline-flex items-center rounded-full bg-zinc-500/10 text-zinc-600 dark:text-zinc-300">View only</span>}
                       </div>
                     </div>
                   </Link>
-                  <button onClick={(e) => { e.stopPropagation(); setMenu(menu === b.id ? null : b.id); }} aria-label={`More for ${b.title}`}
-                    className="absolute end-3 top-3 w-9 h-9 rounded-xl inline-flex items-center justify-center text-zinc-700 dark:text-zinc-200 bg-white/85 dark:bg-zinc-900/75 backdrop-blur border border-zinc-200 dark:border-white/10 shadow-sm hover:bg-white dark:hover:bg-zinc-800">
+                  <button onClick={(e) => { e.stopPropagation(); setMenu(menu === b.id ? null : b.id); }} aria-label={`More for ${b.title}`} aria-expanded={menu === b.id}
+                    className={cn('absolute end-3 top-3 w-9 h-9 rounded-xl inline-flex items-center justify-center text-zinc-700 dark:text-zinc-100 bg-white/85 dark:bg-zinc-900/70 backdrop-blur border border-zinc-200 dark:border-white/10 shadow-sm transition-[opacity,background-color] duration-200 hover:bg-white dark:hover:bg-zinc-800 focus-visible:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100', menu === b.id && '[@media(hover:hover)]:opacity-100')}>
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                   {menu === b.id && (
-                    <div onClick={(e) => e.stopPropagation()} className="absolute end-3 top-14 z-10 w-44 rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 shadow-xl py-1 text-sm">
-                      <button onClick={() => copy(b)} className="w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-white/5 text-zinc-700 dark:text-zinc-200"><Copy className="w-4 h-4" /> Make a copy</button>
+                    <motion.div onClick={(e) => e.stopPropagation()} initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
+                      className="absolute end-3 top-14 z-10 w-48 origin-top-right rtl:origin-top-left rounded-2xl border border-zinc-200 dark:border-white/10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl shadow-2xl p-1.5 text-sm">
+                      {b.myRole !== 'VIEWER' && <button onClick={() => void rename(b)} className="w-full px-3 py-2 rounded-xl flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200"><PenLine className="w-4 h-4" /> Rename</button>}
+                      <button onClick={() => copy(b)} className="w-full px-3 py-2 rounded-xl flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200"><Copy className="w-4 h-4" /> Make a copy</button>
                       {b.mine
-                        ? <button onClick={() => remove(b)} className="w-full px-3 py-2 flex items-center gap-2 hover:bg-rose-500/10 text-rose-500"><Trash2 className="w-4 h-4" /> Delete</button>
-                        : <button onClick={() => leave(b)} className="w-full px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-white/5 text-zinc-700 dark:text-zinc-200"><LogOut className="w-4 h-4" /> Leave board</button>}
-                    </div>
+                        ? <button onClick={() => remove(b)} className="w-full px-3 py-2 rounded-xl flex items-center gap-2 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400"><Trash2 className="w-4 h-4" /> Delete</button>
+                        : <button onClick={() => leave(b)} className="w-full px-3 py-2 rounded-xl flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200"><LogOut className="w-4 h-4" /> Leave board</button>}
+                    </motion.div>
                   )}
                 </div>
               ))}
