@@ -1676,24 +1676,24 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 
 
 /* ═══ M4 · The "Cadra" look everywhere (owner request, 23 Oct 2026) ═══════════════════════════
-   A calm warm-grey canvas, crisp solid cards with soft shadows, neutral greys, and "ink" (near
-   black, near white in dark mode) for the main action and the selected item, which slides between
-   choices. Unlayered, so it wins over the older tokens above; an accent picked in Settings →
-   Appearance (data-accent) still colours the buttons. Solid cards also mean no frosted-glass blur
-   to redo on every frame: smoother scrolling on phones. */
+   Crisp solid cards with soft shadows and neutral greys, on UniVerse's two tones (the owner asked
+   to keep them): indigo and fuchsia glows behind the page, a tinted side menu and bars, and the
+   indigo → fuchsia gradient for the main button and the selected item. Unlayered, so it wins over
+   the older tokens above; an accent picked in Settings → Appearance (data-accent) still colours the
+   buttons. Solid cards also mean no frosted-glass blur to redo on every frame: smoother on phones. */
 :root {
   --ink: #111113; --ink-contrast: #ffffff; --ink-soft: #2a2a2e;
   --color-zinc-700: #3f3f46; --color-zinc-800: #27272a; --color-zinc-900: #18181b; --color-zinc-950: #0c0c0d;
-  --background: #f2f2ef;
-  --surface: #ffffff; --surface-2: #f6f6f3;
+  --background: #f4f5fa;
+  --surface: #ffffff; --surface-2: #f6f6fb;
   --fill: rgba(17, 17, 19, 0.055); --fill-strong: rgba(17, 17, 19, 0.1);
   --separator: rgba(17, 17, 19, 0.08);
   --material: rgba(255, 255, 255, 0.84); --material-thick: rgba(255, 255, 255, 0.95); --material-highlight: rgba(255, 255, 255, 0.9);
   --card-bg: #ffffff; --card-border: rgba(17, 17, 19, 0.07); --card-hover-bg: #ffffff; --card-hover-border: rgba(17, 17, 19, 0.14);
   --card-shadow: 0 1px 1px rgba(17, 17, 19, 0.03), 0 14px 34px -24px rgba(17, 17, 19, 0.28);
-  --sidebar-bg: #f2f2ef; --sidebar-border: rgba(17, 17, 19, 0.07);
+  --sidebar-bg: #f4f5fa; --sidebar-border: rgba(17, 17, 19, 0.07);
   --sidebar-item-color: #3a3a3e; --sidebar-item-hover-bg: rgba(17, 17, 19, 0.05); --sidebar-item-hover-color: #111113;
-  --topbar-bg: rgba(242, 242, 239, 0.82); --topbar-border: rgba(17, 17, 19, 0.07);
+  --topbar-bg: rgba(244, 245, 250, 0.82); --topbar-border: rgba(17, 17, 19, 0.07);
   --toast-bg: rgba(255, 255, 255, 0.94);
   --input-bg: #ffffff; --input-border: rgba(17, 17, 19, 0.1);
   --text-primary: #111113; --text-secondary: #5f5f66; --text-muted: #77777e;
@@ -1701,16 +1701,16 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 .dark {
   --ink: #f4f4f5; --ink-contrast: #111113; --ink-soft: #2c2c31;
   --color-zinc-700: #3f3f46; --color-zinc-800: #27272a; --color-zinc-900: #18181b; --color-zinc-950: #0c0c0d;
-  --background: #0c0c0d;
-  --surface: #161618; --surface-2: #1d1d20;
+  --background: #0a0d16;
+  --surface: #121627; --surface-2: #191e33;
   --fill: rgba(255, 255, 255, 0.07); --fill-strong: rgba(255, 255, 255, 0.12);
   --separator: rgba(255, 255, 255, 0.08);
-  --material: rgba(22, 22, 24, 0.84); --material-thick: rgba(22, 22, 24, 0.95); --material-highlight: rgba(255, 255, 255, 0.06);
-  --card-bg: #151517; --card-border: rgba(255, 255, 255, 0.07); --card-hover-bg: #19191c; --card-hover-border: rgba(255, 255, 255, 0.14);
+  --material: rgba(14, 17, 32, 0.84); --material-thick: rgba(14, 17, 32, 0.95); --material-highlight: rgba(255, 255, 255, 0.06);
+  --card-bg: #11152a; --card-border: rgba(255, 255, 255, 0.07); --card-hover-bg: #151a31; --card-hover-border: rgba(255, 255, 255, 0.14);
   --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 18px 40px -26px rgba(0, 0, 0, 0.85);
-  --sidebar-bg: #0c0c0d; --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-bg: #0b0e1a; --sidebar-border: rgba(255, 255, 255, 0.06);
   --sidebar-item-color: #a1a1aa; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.06); --sidebar-item-hover-color: #ffffff;
-  --topbar-bg: rgba(12, 12, 13, 0.82); --topbar-border: rgba(255, 255, 255, 0.06);
+  --topbar-bg: rgba(10, 13, 22, 0.82); --topbar-border: rgba(255, 255, 255, 0.06);
   --toast-bg: rgba(24, 24, 27, 0.95);
   --input-bg: rgba(255, 255, 255, 0.05); --input-border: rgba(255, 255, 255, 0.09);
   --text-primary: #f4f4f5; --text-secondary: #a1a1aa; --text-muted: #8b8b93;
@@ -1726,8 +1726,9 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 }
 /* The main button and the selected item keep UniVerse's two tones, indigo into fuchsia (owner, 23 Oct). */
 
-/* The page canvas: no coloured glows or grid behind it (the landing page keeps its own). */
-.ambient-bg { display: none; }
+/* The page canvas: UniVerse's two tones again (owner, 23 Oct): the indigo and fuchsia glows behind
+   every page (.ambient-bg, still: nothing to redraw while scrolling), the side menu, bars and pop-ups
+   tinted the same way. Solid, so no frosted-glass blur is redone on every frame. */
 
 /* Cards and panels: solid, a hairline edge, a soft shadow, generous corners. */
 .panel, .dark .panel {
@@ -1735,16 +1736,16 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
   border-radius: 1.25rem; -webkit-backdrop-filter: none; backdrop-filter: none;
 }
 .card, .card-hover, .kpi-card { border-radius: 1.25rem; }
-.tone-panel, .dark .tone-panel { background: var(--surface); }
 
-/* The side menu: on the canvas itself, with the selection as a sliding two-tone pill. */
-.glass-sidebar, .dark .glass-sidebar { background: var(--sidebar-bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* The side menu: indigo at the top, fuchsia at the bottom, the selection a sliding two-tone pill. */
+.glass-sidebar, .dark .glass-sidebar { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.glass-sidebar { background: linear-gradient(180deg, #eef0ff 0%, #f7f7fb 45%, #fbf1fd 100%); }
+.dark .glass-sidebar { background: radial-gradient(130% 50% at 0% 0%, rgba(99, 102, 241, 0.34), transparent 70%), radial-gradient(130% 50% at 100% 100%, rgba(192, 38, 211, 0.26), transparent 70%), #0b0e1a; }
 .sidebar-item.active, .sidebar-item.pill-host.active { color: var(--sidebar-item-active-color); }
 .sidebar-item.active svg { color: inherit; }
 
-/* Bars and floating controls: plain frosted white (or charcoal), no two-tone wash. */
-.glass-bar, .dark .glass-bar { background: var(--material); }
-.ios-glass { background: var(--material); box-shadow: 0 0 0 1px var(--card-border), 0 16px 36px -18px rgba(0, 0, 0, 0.35); }
+/* Bars and floating controls keep their two-tone wash ("Materials" above), with a hairline edge. */
+.ios-glass { box-shadow: 0 0 0 1px var(--card-border), 0 16px 36px -18px rgba(0, 0, 0, 0.35); }
 .dark .ios-glass { box-shadow: 0 0 0 1px var(--card-border), 0 18px 40px -16px rgba(0, 0, 0, 0.8); }
 .dark .ios-segment-thumb { background: var(--ink-soft); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06); }
 
@@ -1781,7 +1782,9 @@ html.reduce-motion .trail-track, html.reduce-motion .trail-layer { animation: no
 /* ═══ M5 · Folders that open (src/components/files/FolderCard.tsx, the owner's folder video) ═══
    Back panel (tab top right) · the folder's files · a frosted front flap (tab top left). Pointing at
    the folder (or a tap, or keyboard focus) tips the flap forward and fans the files up out of it. */
-.folder-card { position: relative; aspect-ratio: 1.55 / 1; min-height: 9.5rem; perspective: 1000px; isolation: isolate; -webkit-tap-highlight-color: transparent; }
+/* Height from the width by padding (not aspect-ratio: Safari mis-sizes grid rows with it, so folders overlapped). */
+.folder-card { position: relative; perspective: 1000px; isolation: isolate; -webkit-tap-highlight-color: transparent; }
+.folder-card::before { content: ''; display: block; padding-top: 64.5%; }
 .folder-hit { position: absolute; inset: 0; z-index: 3; border-radius: 1.25rem; cursor: pointer; }
 .folder-hit:focus-visible { outline-offset: 4px; }
 /* No filter or backdrop-filter in the folder: Safari blurs a whole filtered group, text included. The
@@ -1791,7 +1794,7 @@ html.reduce-motion .trail-track, html.reduce-motion .trail-layer { animation: no
 .dark .folder-stack::before { box-shadow: 0 24px 40px -8px rgb(0 0 0 / 0.65), 0 3px 8px rgb(0 0 0 / 0.45); }
 .folder-back { position: absolute; inset: 0 0 6% 0; overflow: hidden; background: linear-gradient(180deg, #f1f1f2, #e4e4e7); }
 .folder-art { position: absolute; inset: 0; }
-.folder-light:not(.is-empty) .folder-back::after { content: ''; position: absolute; left: 30%; right: 8%; top: 30%; height: 6%; border-radius: 999px; background: linear-gradient(90deg, #3b2a4a, #7d3d36); opacity: 0.85; }
+.folder-tone-light:not(.is-empty) .folder-back::after { content: ''; position: absolute; left: 30%; right: 8%; top: 30%; height: 6%; border-radius: 999px; background: linear-gradient(90deg, #3b2a4a, #7d3d36); opacity: 0.85; }
 .folder-files { position: absolute; left: 8%; right: 8%; top: 10%; height: 58%; }
 .folder-file {
   position: absolute; inset: 0; border-radius: 0.9rem; overflow: hidden; padding: 0.55rem 0.7rem;
@@ -1822,17 +1825,17 @@ html.reduce-motion .trail-track, html.reduce-motion .trail-layer { animation: no
 /* Frosted white in light and dark mode (two tones: the colours behind, white glass in front). */
 .folder-frost { position: absolute; inset: 0; }
 .folder-front::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(255 255 255 / 0.25) 0%, rgb(247 247 248 / 0.55) 45%, rgb(247 247 248 / 0.85) 100%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9); }
-.folder-light .folder-front::after { background: linear-gradient(180deg, rgb(255 255 255 / 0.85), rgb(247 247 248 / 0.95)); }
+.folder-tone-light .folder-front::after { background: linear-gradient(180deg, rgb(255 255 255 / 0.85), rgb(247 247 248 / 0.95)); }
 .dark .folder-front { background: #e9e9ec; }
 .dark .folder-front::after { background: linear-gradient(180deg, rgb(240 240 243 / 0.2) 0%, rgb(233 233 236 / 0.55) 45%, rgb(233 233 236 / 0.85) 100%); }
-.folder-dark .folder-front { background: #1a1416; }
-.folder-dark .folder-front::after { background: linear-gradient(180deg, rgb(26 20 22 / 0.35), rgb(26 20 22 / 0.75) 45%, rgb(26 20 22 / 0.85)); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1); }
+.folder-tone-dark .folder-front { background: #1a1416; }
+.folder-tone-dark .folder-front::after { background: linear-gradient(180deg, rgb(26 20 22 / 0.35), rgb(26 20 22 / 0.75) 45%, rgb(26 20 22 / 0.85)); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1); }
 .folder-label { position: absolute; left: 7%; right: 34%; bottom: 13%; z-index: 1; }
-.folder-dark .folder-label { left: 34%; right: 7%; bottom: auto; top: 30%; text-align: end; }
+.folder-tone-dark .folder-label { left: 34%; right: 7%; bottom: auto; top: 30%; text-align: end; }
 .folder-name { font-size: 0.98rem; font-weight: 600; letter-spacing: -0.015em; color: #111113; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .folder-sub { margin-top: 0.1rem; font: 500 0.74rem/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: #5f5f66; }
-.folder-dark .folder-name { color: #ffffff; }
-.folder-dark .folder-sub { color: #c4c4cc; }
+.folder-tone-dark .folder-name { color: #ffffff; }
+.folder-tone-dark .folder-sub { color: #c4c4cc; }
 .folder-action {
   position: absolute; right: 6%; bottom: 9%; z-index: 4; width: 3.1rem; height: 3.1rem; border-radius: 1rem;
   display: flex; align-items: center; justify-content: center;
@@ -1841,7 +1844,7 @@ html.reduce-motion .trail-track, html.reduce-motion .trail-layer { animation: no
 .folder-action:active { transform: scale(0.94); }
 .folder-action-add { background: #111113; color: #fff; box-shadow: 0 10px 20px -8px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.12); }
 .folder-action-more { background: linear-gradient(180deg, #ffffff, #eeeef0); color: #111113; box-shadow: 0 8px 16px -8px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(17 17 19 / 0.08), inset 0 1px 0 #fff; }
-.folder-dark .folder-action { display: none; }
+.folder-tone-dark .folder-action { display: none; }
 
 /* Open: the flap tips forward and the files rise, fanned. */
 .folder-card:is(:hover, :focus-within, .is-open) .folder-front { transform: rotateX(-14deg) translate3d(0, 2%, 0); }
@@ -1890,3 +1893,19 @@ html.reduce-motion :is(.folder-front, .folder-file, .folder-stack) { transition:
 .otp-spark:nth-child(3n) { width: 3px; height: 3px; background: #fff; }
 .reduce-motion .otp-done.is-shown .otp-tick path { animation: none; stroke-dashoffset: 0; }
 @media (prefers-reduced-motion: reduce) { .otp-done.is-shown .otp-tick path { animation: none; stroke-dashoffset: 0; } .otp-caret { animation: none; } }
+
+/* ═══ Landing page (src/components/landing/, the owner's Relay video in UniVerse's two tones) ═══ */
+/* The flow card's connectors: light running along the line. */
+.flow-dash { stroke-dasharray: 6 10; animation: flow-dash 1.6s linear infinite; }
+@keyframes flow-dash { to { stroke-dashoffset: -32; } }
+/* The role chain's dots light up one after another. */
+.bento-step { animation: bento-step 2s ease-in-out infinite; }
+@keyframes bento-step { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.3); box-shadow: 0 0 10px #e879f9; } }
+/* The pricing slider: a two-tone track and a white knob. */
+.pricing-range { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: linear-gradient(90deg, #6366f1, #d946ef); outline: none; }
+.pricing-range::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(217, 70, 239, 0.35), 0 4px 12px rgba(0, 0, 0, 0.5); cursor: grab; transition: transform 150ms; }
+.pricing-range::-webkit-slider-thumb:active { transform: scale(1.15); cursor: grabbing; }
+.pricing-range::-moz-range-thumb { width: 22px; height: 22px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(217, 70, 239, 0.35), 0 4px 12px rgba(0, 0, 0, 0.5); cursor: grab; }
+.pricing-range:focus-visible { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6); }
+@media (prefers-reduced-motion: reduce) { .flow-dash, .bento-step { animation: none; } }
+html.reduce-motion :is(.flow-dash, .bento-step) { animation: none; }

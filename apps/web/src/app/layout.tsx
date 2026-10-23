@@ -86,6 +86,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ErrorMonitorBootstrap />
           <UpdateNotifier />
           <UiTranslatorGate />
+          {/* UniVerse's two tones behind every page: indigo light from the top left, fuchsia from the bottom right. */}
+          <div aria-hidden className="ambient-bg"><div className="ambient-bg__grid" /></div>
           <LightTrail />
           <MotionProvider>{children}<CallHost /><ScrollMotion /></MotionProvider>
           <Suspense fallback={null}><NavProgress /></Suspense>

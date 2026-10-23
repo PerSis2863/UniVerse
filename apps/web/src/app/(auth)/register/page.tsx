@@ -78,6 +78,11 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // From the landing page's "Pick the task you hate most" card: ?email=… fills the email in.
+  useEffect(() => {
+    const given = new URLSearchParams(window.location.search).get('email');
+    if (given) queueMicrotask(() => setEmail(given.slice(0, 200)));
+  }, []);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);

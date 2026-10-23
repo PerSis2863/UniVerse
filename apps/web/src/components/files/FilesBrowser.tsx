@@ -147,9 +147,10 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
         {data.folders.length > 0 && (
           // Folders that open (M5): the files inside fan out of each one.
           <ul aria-label="Folders" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10 pt-10 pb-2">
-            {data.folders.map((f) => (
+            {data.folders.map((f, i) => (
               <li key={f.id} className="relative">
                 <FolderCard
+                  index={i}
                   name={f.name} seed={f.id}
                   sub={`${f.items} ${f.items === 1 ? 'item' : 'items'}`}
                   peek={(f.preview ?? []).map((x) => ('folder' in x ? { name: x.name, meta: `Folder · ${x.folder} item${x.folder === 1 ? '' : 's'}`, kind: 'folder' as const } : { name: x.name, meta: fileMeta(x.name, x.size), image: x.mime.startsWith('image/') ? x.url : undefined, kind: x.mime.startsWith('image/') ? 'image' as const : 'doc' as const }))}

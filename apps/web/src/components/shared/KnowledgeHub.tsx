@@ -211,11 +211,11 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Categories, as folders that open (M5): each fans out its first resources. */}
             <ul aria-label="Categories" className="w-full lg:w-72 shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-x-5 gap-y-10 pt-8 relative z-10">
-              {CATEGORIES.map((category) => {
+              {CATEGORIES.map((category, i) => {
                 const inside = resources.filter((r) => category === 'All' || r.category === category);
                 return (
                   <li key={category} className={activeCategory === category ? 'folder-chosen' : undefined}>
-                    <FolderCard name={category} seed={`kh-${category}`} sub={`${inside.length} ${inside.length === 1 ? 'item' : 'items'}`}
+                    <FolderCard name={category} seed={`kh-${category}`} index={i} sub={`${inside.length} ${inside.length === 1 ? 'item' : 'items'}`}
                       label={`Show ${category}, ${inside.length} ${inside.length === 1 ? 'item' : 'items'}${activeCategory === category ? ' (shown)' : ''}`}
                       peek={inside.slice(0, 3).map((r) => ({ name: r.title, meta: [r.type?.toUpperCase(), r.size].filter(Boolean).join(' · ') }))}
                       onOpen={() => setActiveCategory(category)}

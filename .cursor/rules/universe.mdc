@@ -55,10 +55,15 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
   through), stays brief on things people do often (tab switches ~0.4 s), and Reduce Motion (the
   device's or Settings → Appearance) leaves only fades. Transform, opacity and short filters only;
   never animate what sits under frosted glass across the whole screen (each frame redoes the blur).
-- **The look (M4, "Cadra")**: warm-grey canvas, solid white (charcoal) cards with a hairline edge,
-  neutral greys, ink (`var(--ink)`) for the main button and the selected item, the purple trail as
-  the one colour. Use `.panel` / `.card` / `.btn-primary` / `TabPill`, not new gradients or frosted
-  cards; a row of headline numbers gets `kpi-row` (first card ink, second soft blue).
+- **The look (M4, "Cadra", with UniVerse's two tones)**: solid white (navy-charcoal) cards with a
+  hairline edge and neutral greys, on the two tones the owner wants kept: indigo and fuchsia glows
+  behind every page (`.ambient-bg`, root layout), a tinted side menu and bars, the indigo → fuchsia
+  gradient on `.btn-primary`, the selected item and `TabPill`, and the purple trail. Don't turn the
+  two tones into black and white again. Use `.panel` / `.card` / `.btn-primary` / `TabPill`, not
+  frosted cards; a row of headline numbers gets `kpi-row` (first card the gradient, second soft blue).
+- **Folders** (`FolderCard`): always colourful (UniVerse palettes; pass `index` in a list so
+  neighbours differ); no `filter`/`backdrop-filter`/`aspect-ratio` in them (Safari blurs or
+  mis-sizes them). Check new screens in Safari too.
 - **No polling.** Live updates: `publish()` (`src/server/realtime.ts`) plus a `useLiveInterval`
   fallback, or `useActivePoll` for screens without live updates (`src/lib/realtime-client.ts`).
 - **AI** always: `spendAi` (daily allowance), `featureOff('ai')` (the owner's switch), and the AI
