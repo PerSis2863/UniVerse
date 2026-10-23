@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 import { removeWithUndo } from '@/lib/undo';
 import { useAuthStore } from '@/store/auth';
-import { GUIDE_TITLE, guideHref } from '@/components/boards/guide-title';
+import { GUIDE_TITLE, GUIDE_VERSION, guideHref } from '@/components/boards/guide-title';
 
 // Whiteboards: every student, teacher and admin can draw on a board, add photos, and share it so
 // classmates and teachers draw on it together live (see /boards/[id]).
@@ -55,14 +55,17 @@ export default function BoardsPage() {
   const router = useRouter();
   const { data, error, isLoading, mutate } = useSWR<BoardSummary[]>('/api/boards', authedJson);
   const owner = useAuthStore((s) => !!s.user?.owner);
-  // The owner's "UniVerse explained" board is there without asking: made once (on this device) if
-  // it's missing. Deleted on purpose later: it stays deleted here (the console can make a fresh one).
+  // The owner's "UniVerse explained" board is there without asking: made once per design version (on
+  // this device). A board from an older design is renamed "(old)" and the new one is made, so a new
+  // design shows up by itself. Deleted on purpose later: it stays deleted (the console can make one).
   useEffect(() => {
-    if (!owner || !data || data.some((b) => b.mine && b.title === GUIDE_TITLE)) return;
-    try { if (making || localStorage.getItem('uv-guide-made') === '1') return; } catch { return; }
+    if (!owner || !data) return;
+    try { if (making || localStorage.getItem('uv-guide-made') === GUIDE_VERSION) return; } catch { return; }
     making = true;
-    void authedJson('/api/boards', { method: 'POST', body: JSON.stringify({ title: GUIDE_TITLE }) })
-      .then(() => { try { localStorage.setItem('uv-guide-made', '1'); } catch { /* private mode */ } return mutate(); }, () => {})
+    const old = data.filter((b) => b.mine && b.title === GUIDE_TITLE);
+    void Promise.all(old.map((b) => authedJson(`/api/boards/${b.id}`, { method: 'PATCH', body: JSON.stringify({ title: `${GUIDE_TITLE} (old)` }) }).catch(() => {})))
+      .then(() => authedJson('/api/boards', { method: 'POST', body: JSON.stringify({ title: GUIDE_TITLE }) }))
+      .then(() => { try { localStorage.setItem('uv-guide-made', GUIDE_VERSION); } catch { /* private mode */ } return mutate(); }, () => {})
       .finally(() => { making = false; });
   }, [owner, data, mutate]);
   const [tab, setTab] = useState<'all' | 'mine' | 'shared'>('all');

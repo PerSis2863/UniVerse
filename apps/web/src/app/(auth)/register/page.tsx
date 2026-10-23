@@ -20,6 +20,8 @@ import { homeFor } from '@/lib/role-home';
 
 // Phone sign-in carries a phone-number library (about 50 KB): it loads when someone chooses it
 // (or points at the button), not with the page.
+import { PHONE_SIGN_IN } from '@/lib/sign-in-options';
+
 const loadPhoneFlow = () => import('@/components/auth/PhoneAuthFlow');
 const preloadPhoneFlow = () => { loadPhoneFlow().catch(() => {}); };
 const PhoneAuthFlow = dynamic(() => loadPhoneFlow().then((m) => m.PhoneAuthFlow), { ssr: false, loading: () => <div className="h-56 rounded-2xl skeleton" /> });
@@ -346,7 +348,7 @@ export default function RegisterPage() {
                 )}
 
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-6">
+                <div className={`grid grid-cols-1 ${PHONE_SIGN_IN ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-2.5 mb-6`}>
                   <button
                     type="button"
                     onClick={handleGoogleRegister}
@@ -375,18 +377,20 @@ export default function RegisterPage() {
                     </svg>
                     Microsoft
                   </button>
-                  <button
-                    type="button"
-                    onPointerEnter={preloadPhoneFlow} onFocus={preloadPhoneFlow}
-                    onClick={() => { if (!needAgreement()) setShowPhoneFlow(true); }}
-                    disabled={isLoading}
-                    className="flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-3 font-semibold text-xs transition-colors disabled:opacity-50"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    Phone
-                  </button>
+                  {PHONE_SIGN_IN && (
+                    <button
+                      type="button"
+                      onPointerEnter={preloadPhoneFlow} onFocus={preloadPhoneFlow}
+                      onClick={() => { if (!needAgreement()) setShowPhoneFlow(true); }}
+                      disabled={isLoading}
+                      className="flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-3 font-semibold text-xs transition-colors disabled:opacity-50"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      Phone
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-4 mb-6">
