@@ -1693,7 +1693,6 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
   --card-shadow: 0 1px 1px rgba(17, 17, 19, 0.03), 0 14px 34px -24px rgba(17, 17, 19, 0.28);
   --sidebar-bg: #f2f2ef; --sidebar-border: rgba(17, 17, 19, 0.07);
   --sidebar-item-color: #3a3a3e; --sidebar-item-hover-bg: rgba(17, 17, 19, 0.05); --sidebar-item-hover-color: #111113;
-  --sidebar-item-active-bg: #111113; --sidebar-item-active-color: #ffffff;
   --topbar-bg: rgba(242, 242, 239, 0.82); --topbar-border: rgba(17, 17, 19, 0.07);
   --toast-bg: rgba(255, 255, 255, 0.94);
   --input-bg: #ffffff; --input-border: rgba(17, 17, 19, 0.1);
@@ -1711,7 +1710,6 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
   --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 18px 40px -26px rgba(0, 0, 0, 0.85);
   --sidebar-bg: #0c0c0d; --sidebar-border: rgba(255, 255, 255, 0.06);
   --sidebar-item-color: #a1a1aa; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.06); --sidebar-item-hover-color: #ffffff;
-  --sidebar-item-active-bg: #f4f4f5; --sidebar-item-active-color: #111113;
   --topbar-bg: rgba(12, 12, 13, 0.82); --topbar-border: rgba(255, 255, 255, 0.06);
   --toast-bg: rgba(24, 24, 27, 0.95);
   --input-bg: rgba(255, 255, 255, 0.05); --input-border: rgba(255, 255, 255, 0.09);
@@ -1726,13 +1724,7 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
   --btn-secondary-bg: rgba(255, 255, 255, 0.08); --btn-secondary-color: #f4f4f5;
   --btn-ghost-color: #f4f4f5; --btn-ghost-hover-bg: rgba(255, 255, 255, 0.08); --btn-ghost-hover-color: #ffffff;
 }
-:root:not([data-accent]) .btn-primary {
-  background: var(--ink); color: var(--ink-contrast);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 10px 22px -14px rgba(0, 0, 0, 0.55);
-}
-:root:not([data-accent]) .btn-primary:not(:disabled):hover { filter: none; background: var(--ink-soft); color: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16), 0 14px 26px -14px rgba(0, 0, 0, 0.6); }
-:root:not([data-accent]) .dark .btn-primary:not(:disabled):hover, :root.dark:not([data-accent]) .btn-primary:not(:disabled):hover { background: #ffffff; color: #111113; }
-@media (hover: hover) and (pointer: fine) { .btn-primary::after { background: linear-gradient(105deg, transparent 30%, rgb(127 127 127 / 0.28) 50%, transparent 70%); } }
+/* The main button and the selected item keep UniVerse's two tones, indigo into fuchsia (owner, 23 Oct). */
 
 /* The page canvas: no coloured glows or grid behind it (the landing page keeps its own). */
 .ambient-bg { display: none; }
@@ -1745,9 +1737,8 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 .card, .card-hover, .kpi-card { border-radius: 1.25rem; }
 .tone-panel, .dark .tone-panel { background: var(--surface); }
 
-/* The side menu: on the canvas itself, with the selection as a sliding ink pill. */
+/* The side menu: on the canvas itself, with the selection as a sliding two-tone pill. */
 .glass-sidebar, .dark .glass-sidebar { background: var(--sidebar-bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
-.sidebar-pill, .dark .sidebar-pill { background: var(--sidebar-item-active-bg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 10px 22px -14px rgba(0, 0, 0, 0.6); }
 .sidebar-item.active, .sidebar-item.pill-host.active { color: var(--sidebar-item-active-color); }
 .sidebar-item.active svg { color: inherit; }
 
@@ -1757,8 +1748,8 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 .dark .ios-glass { box-shadow: 0 0 0 1px var(--card-border), 0 18px 40px -16px rgba(0, 0, 0, 0.8); }
 .dark .ios-segment-thumb { background: var(--ink-soft); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06); }
 
-/* Headline-number rows (.kpi-row): the first card in ink, the second softly blue, as in the reel. */
-.kpi-row > :first-child { background: var(--ink); border-color: transparent; color: var(--ink-contrast); }
+/* Headline-number rows (.kpi-row): the first card in the two tones, the second softly blue. */
+.kpi-row > :first-child { background: linear-gradient(135deg, #6366f1 0%, #7c3aed 55%, #a855f7 100%); border-color: transparent; color: #ffffff; }
 .kpi-row > :first-child :is(.text-zinc-900, .text-zinc-800, .text-zinc-700, .text-zinc-600, .text-zinc-500, .text-zinc-400, [class*="dark:text-"]) { color: inherit; }
 .kpi-row > :first-child :is(.text-xs, .text-sm, .text-\[11px\], .text-\[12px\]) { opacity: 0.78; }
 .kpi-row > :nth-child(2) { background: #dbe7fb; border-color: transparent; }

@@ -18,11 +18,20 @@ const MESSAGES: Record<string, string> = {
   'auth/invalid-verification-code': 'That code isn’t right. Check the SMS and try again.',
   'auth/code-expired': 'That code has expired. Ask for a new one.',
   'auth/quota-exceeded': 'Too many SMS codes were requested. Please try again later.',
+  'auth/missing-phone-number': 'Enter your phone number first.',
+  'auth/operation-not-allowed': 'Signing in with a phone number isn’t turned on for UniVerse yet. Use email or Google for now. (Site owner: Firebase → Authentication → Sign-in method → Phone.)',
+  'auth/billing-not-enabled': 'Phone sign-in isn’t available yet: sending SMS codes needs the site’s Firebase billing turned on. Use email or Google for now.',
+  'auth/unauthorized-domain': 'Phone sign-in isn’t allowed on this web address yet. Use email or Google for now. (Site owner: add it under Firebase → Authentication → Settings → Authorized domains.)',
+  'auth/captcha-check-failed': 'The “are you human” check didn’t pass. Reload the page and try again.',
+  'auth/invalid-app-credential': 'The “are you human” check didn’t pass. Reload the page and try again; if it keeps happening, use email or Google.',
+  'auth/admin-restricted-operation': 'New accounts can’t be made with a phone number here. Use email or Google.',
 };
 
 export function authErrorMessage(err: unknown, fallback = 'Something went wrong. Please try again.'): string {
   const code = (err as { code?: string } | null)?.code;
   if (code && MESSAGES[code]) return MESSAGES[code];
   const msg = (err as { message?: string } | null)?.message;
-  return msg && !msg.startsWith('Firebase:') ? msg : fallback;
+  if (msg && !msg.startsWith('Firebase:')) return msg;
+  // An error without a message of ours: say which one, so it can be looked up.
+  return code ? `${fallback} (${code.replace(/^auth\//, '')})` : fallback;
 }
