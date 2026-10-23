@@ -67,6 +67,8 @@ function Breadcrumb({ title, className }: { title: string; className?: string })
 const offEdge = () => (typeof document !== 'undefined' && document.documentElement.dir === 'rtl' ? 'translateX(-100%)' : 'translateX(100%)');
 
 export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobileTitle, sharedId }: TopbarProps) {
+  // The browser tab says which page this is ("Files | UniVerse Impact"), like the public pages' titles.
+  useEffect(() => { if (title) document.title = `${title} | UniVerse Impact`; }, [title]);
   const router = useRouter();
   const { user } = useAuthStore();
   const [showNotifications, setShowNotifications] = useState(false);

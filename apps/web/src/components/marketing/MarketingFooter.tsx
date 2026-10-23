@@ -1,6 +1,7 @@
 import Link from '@/components/ui/Link';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { COMPANY, LEGAL_LINKS } from '@/lib/company';
+import { CookieNotice } from './CookieNotice';
 
 const COLUMNS = [
   { title: 'Product', links: [{ href: '/#product', label: 'Platform' }, { href: '/#how', label: 'How it works' }, { href: '/#faq', label: 'FAQ' }] },
@@ -11,6 +12,7 @@ const COLUMNS = [
 export function MarketingFooter() {
   return (
     <footer className="relative z-10 border-t border-white/[0.06] mt-10">
+      <CookieNotice />
       <div className="max-w-7xl mx-auto px-6 py-14 grid gap-10 grid-cols-2 md:grid-cols-[1.5fr_repeat(3,1fr)]">
         <div className="col-span-2 md:col-span-1">
           <div className="flex items-center gap-2.5 mb-4">

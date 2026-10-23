@@ -110,6 +110,29 @@ A new API route: `node scripts/gen-api-routes.mjs`. Deploys apply new migrations
   Never commit changes the build makes to `public/sw.js`, `public/fallback-*.js`,
   `public/workbox-*.js` or `apps/web/cloudflare/next-public.gen.ts` (`local:build` puts them back).
 
+## Keep it lean (after Ponytail, github.com/DietrichGebert/ponytail)
+
+The owner wants the project to stay simple as it grows. Before writing new code, go down this
+ladder and stop at the first step that works:
+1. Is it needed at all? (Don't build for a "maybe later".)
+2. Does the codebase already have it? (Search `src/lib`, `src/components/ui`, `src/server` first.)
+3. Does the language, the browser or the platform do it (Web APIs, CSS, Next.js, Workers, D1)?
+4. Does a package already installed do it? Don't add a new package for something small.
+5. Can it be one line or a few? Otherwise the smallest version that works, plus one small test for
+   any logic.
+
+Never "simplify" away input checks (`src/server/body.ts`), error handling that protects data, sign-in
+and access checks, security headers or accessibility (labels, contrast, keyboard, Reduce Motion).
+
+- Delete instead of commenting out. When something replaces old code, remove the old code in the
+  same change.
+- A known shortcut gets a `shortcut:` comment saying what was left out and when it would matter.
+- In the summary to the owner, say what was left out on purpose.
+- `pnpm lean` (also part of `pnpm check`) lists files nothing imports and links to pages that don't
+  exist. Keep it at zero. A file used only from config goes in its `BY_CONFIG` list, with the reason.
+- The Ponytail plugin itself installs only from Claude Code, typed by the owner:
+  `/plugin marketplace add DietrichGebert/ponytail`. These rules cover what it does, so it's optional.
+
 ## Optional: Everything Claude Code (ECC)
 
 The owner may want **Everything Claude Code** (github.com/affaan-m/everything-claude-code), a large

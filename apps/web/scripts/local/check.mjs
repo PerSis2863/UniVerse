@@ -1,5 +1,5 @@
 // The checks before every commit (apps/web/AGENTS.md): types, lint on the files changed since
-// main, and the unit tests. Run from apps/web:  pnpm check
+// main, the unit tests, and the lean check (no unused files, no links to missing pages). Run from apps/web:  pnpm check
 import { spawnSync } from 'node:child_process';
 import { APP, run } from './run.mjs';
 
@@ -12,4 +12,5 @@ const files = [...new Set(`${diff.stdout ?? ''}\n${untracked.stdout ?? ''}`.spli
 if (files.length) run('npx', ['eslint', ...files]);
 else console.log('\n(no changed code files to lint)');
 run('npx', ['vitest', 'run']);
+run('node', ['scripts/lean.mjs']);
 console.log('\n✔ All checks passed.');

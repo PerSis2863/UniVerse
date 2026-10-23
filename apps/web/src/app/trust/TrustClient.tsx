@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { authedJson } from '@/lib/authed-fetch';
+import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import Link from '@/components/ui/Link';
@@ -53,6 +54,9 @@ const DEFAULT_SYSTEMS: SystemStatus[] = [
 ];
 
 export function TrustClient() {
+  // Each role has its own settings page (parents have none: their app); signed out, sign in first.
+  const role = useAuthStore((st) => st.user?.role);
+  const settingsHref = !role ? '/login' : role === 'GUARDIAN' ? '/parent' : `/${role.toLowerCase()}/settings`;
   const [activeTab, setActiveTab] = useState<'dpdp' | 'ferpa' | 'security' | 'subprocessors' | 'dpo'>('dpdp');
 
   const { data: statusData, isLoading, mutate } = useSWR<TrustStatusResponse>(
@@ -511,7 +515,7 @@ export function TrustClient() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Link
-              href="/settings"
+              href={settingsHref}
               className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2"
             >
               Account Settings <ChevronRight className="w-4 h-4" />
