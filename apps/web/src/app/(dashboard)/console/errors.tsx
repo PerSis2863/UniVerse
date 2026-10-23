@@ -166,7 +166,8 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
     setBusy(ids?.[0] ?? 'all');
     try {
       const { data: r } = await api.post('/owner/errors/diagnose', { ...(ids ? { ids } : {}), ...(model ? { model } : {}) });
-      toast.success(r.diagnosed ? `Diagnosed ${r.diagnosed} problem${r.diagnosed === 1 ? '' : 's'}` : 'Nothing new to diagnose');
+      const filed = r.filed ? ` · ${r.filed} from outdated browsers or bots filed as ignored` : '';
+      toast.success((r.diagnosed ? `Diagnosed ${r.diagnosed} problem${r.diagnosed === 1 ? '' : 's'}` : 'Nothing new to diagnose') + filed);
       mutate();
     } catch (e) {
       toast.error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Diagnosis failed');
@@ -216,11 +217,11 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
           <div className="grid grid-cols-2 gap-3">
             {kpis.map((k) => (
               <div key={k.label} className={cn('rounded-2xl p-4 border', k.tone === 'ink' ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900' : k.tone === 'alert' ? 'bg-rose-500/[0.08] border-rose-500/20' : k.tone === 'soft' ? 'bg-indigo-500/[0.07] border-indigo-500/15' : 'bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-white/[0.06]')}>
-                <p className={cn('flex items-center gap-1.5 text-xs font-medium', k.tone === 'ink' ? 'text-white/70 dark:text-zinc-500' : 'text-zinc-500')}>
+                <p className={cn('flex items-center gap-1.5 text-xs font-medium', k.tone === 'ink' ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-500')}>
                   <span className={cn('w-6 h-6 rounded-lg flex items-center justify-center', k.tone === 'ink' ? 'bg-white/10 dark:bg-zinc-900/10' : 'bg-zinc-900/[0.05] dark:bg-white/[0.06]')}><k.icon className="w-3.5 h-3.5" /></span>{k.label}
                 </p>
                 <p className={cn('mt-3 text-3xl font-bold tabular-nums tracking-tight', k.tone === 'alert' ? 'text-rose-600 dark:text-rose-400' : k.tone === 'ink' ? '' : 'text-zinc-900 dark:text-white')}>{k.value}</p>
-                <p className={cn('mt-1 text-[11px]', k.tone === 'ink' ? 'text-white/60 dark:text-zinc-500' : 'text-zinc-500')}>{k.hint}</p>
+                <p className={cn('mt-1 text-[11px]', k.tone === 'ink' ? 'text-zinc-400 dark:text-zinc-600' : 'text-zinc-500')}>{k.hint}</p>
               </div>
             ))}
           </div>

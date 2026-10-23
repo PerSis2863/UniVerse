@@ -65,16 +65,17 @@ try {
       }, [ownerToken, me.b, theme]);
       await ctx.route(/\/api\//, (route) => { const h = route.request().headers(); return route.continue(h.authorization ? undefined : { headers: { ...h, authorization: `Bearer ${ownerToken}` } }); });
       const page = await ctx.newPage();
-      const errors = []; page.on('pageerror', (e) => errors.push(e.message.slice(0, 120)));
+      // workbox-window can't read a registration with service workers blocked (this test only).
+      const errors = []; page.on('pageerror', (e) => { if (!/reading 'waiting'/.test(e.message)) errors.push(e.message.slice(0, 120)); });
       await page.goto(`${base}/console?tab=errors`, { waitUntil: 'networkidle', timeout: 60_000 });
       const row = page.getByRole('button', { name: /people counts fail/ });
       await row.waitFor({ timeout: 20_000 });
       const key = `${theme}-${width}`;
       if (width < 500) {
         r[`${key} details hidden until chosen`] = !(await page.getByRole('article').isVisible().catch(() => false));
-        await row.click();
-        await page.getByRole('button', { name: 'All problems' }).waitFor({ timeout: 5000 });
       }
+      await row.click();
+      if (width < 500) await page.getByRole('button', { name: 'All problems' }).waitFor({ timeout: 5000 });
       const art = page.getByRole('article', { name: /people counts fail/ });
       await art.waitFor({ timeout: 5000 });
       r[`${key} detail shows the AI's cause`] = await art.getByText('Likely cause').isVisible();
