@@ -1,6 +1,6 @@
 'use client';
 
-import { EASE_GLIDE, reducedMotion, revealParts } from './page-transition';
+import { EASE_GLIDE, lightFrames, reducedMotion, revealParts, sweepTitle } from './page-transition';
 
 // The app's entrance when it opens (a reload, a new tab, just signed in), choreographed the way
 // AgentGPT's screen arrives: nothing snaps in; the page's blocks rise into place one after another
@@ -24,7 +24,7 @@ export function playAppEntrance(shell: HTMLElement | null) {
   const run = (el: Element | null | undefined, frames: Keyframe[], duration: number, delay = 0) => {
     if (!el || typeof (el as HTMLElement).animate !== 'function') return;
     // "Reduce Motion": a short fade instead of the movement.
-    const keyframes = calm ? frames.map(({ opacity }) => ({ opacity })) : frames;
+    const keyframes = calm ? frames.map(({ opacity }) => ({ opacity })) : lightFrames(frames);
     el.animate(keyframes, { duration: calm ? 220 : duration, delay: calm ? 0 : delay, easing: EASE_GLIDE, fill: 'backwards' });
   };
   const desktop = window.matchMedia('(min-width: 1024px)').matches;
@@ -40,10 +40,12 @@ export function playAppEntrance(shell: HTMLElement | null) {
   revealParts(page, 'fade').forEach((part, i) => {
     const tall = part.getBoundingClientRect().height > window.innerHeight * 0.34;
     run(part, tall
-      ? [{ opacity: 0, transform: 'translate3d(0, 24px, 0) scale(0.96, 0.9)', transformOrigin: '50% 0' }, { opacity: 1, transform: 'none', transformOrigin: '50% 0' }]
-      : [{ opacity: 0, transform: 'translate3d(0, 36px, 0)' }, { opacity: 1, transform: 'none' }],
-    800, 120 + Math.min(i, 6) * 70);
+      ? [{ opacity: 0, transform: 'translate3d(0, 40px, 0) scale(0.96, 0.9)', transformOrigin: '50% 0', filter: 'blur(10px)' }, { opacity: 1, transform: 'none', transformOrigin: '50% 0', filter: 'blur(0)' }]
+      : [{ opacity: 0, transform: 'translate3d(0, 48px, 0) scale(0.97)', filter: 'blur(10px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }],
+    950, 120 + Math.min(i, 6) * 90);
   });
+  // The page's title sweeps in out of a blur (M1).
+  sweepTitle(page, 160);
 
   // The floating tab bar (phones) rises into place from below.
   run(shell.querySelector('nav.ios-tabbar'), [{ opacity: 0, transform: 'translate3d(0, 48px, 0)' }, { opacity: 1, transform: 'none' }], 700, 40);

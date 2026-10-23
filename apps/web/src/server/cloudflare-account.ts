@@ -10,12 +10,13 @@
 
 import { adminEnabled } from './cloudflare-admin';
 import { APP_URL } from './email';
+import { workersPaid } from '@/lib/plan-limits';
 
 const WORKER = 'universe-web';
 const DATABASE = 'universe-db';
 // Build minutes a month: 3,000 on Workers Free, 6,000 on Paid (then $0.005 a minute). Read when
 // asked: on Workers the variables are filled in per request.
-const buildMinutes = () => (process.env.WORKERS_PAID?.trim().toLowerCase() === 'true' ? 6000 : 3000);
+const buildMinutes = () => (workersPaid() ? 6000 : 3000);
 
 type Part<T> = { ok: boolean; data?: T; error?: string };
 
