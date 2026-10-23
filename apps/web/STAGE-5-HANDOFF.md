@@ -1361,3 +1361,19 @@ Progress table (row D6).
   `autocomplete="one-time-code"`. The ring stays at least ~1 s however fast the answer comes.
 - Workers: never await a promise another request started (Cloudflare cancels it as "code had
   hung"); `getPrisma()` gives each request its own client, and module caches keep finished values only.
+
+## M7 · Two tones, folders, Explain UniVerse
+
+- Keep the two tones (owner, 23 Oct): `.ambient-bg` glows, tinted `.glass-sidebar`/bars, the gradient
+  `.btn-primary` and selection. Never black-and-white "ink" for them again.
+- `FolderCard`'s tone class is `folder-tone-*`: never reuse a class name an inner part uses
+  (`folder-art` collided and made cards absolutely positioned). No filter/backdrop-filter in folders.
+- Whiteboard templates: give a note's label its own `strokeColor` (it defaults to the container's).
+  Box text doesn't wrap by itself: `wrap()` in `universe-guide.ts`.
+
+## M8 · Landing page
+
+- Sections in `src/components/landing/`; claims must be true of the product (no made-up usage numbers,
+  quotes or status). Prices come from `src/lib/plans.ts`.
+- The landing `main` is `data-no-motion`: constantly changing parts (typing, ticking runs) would keep
+  waking the site-wide reveals, which then hid whole sections.

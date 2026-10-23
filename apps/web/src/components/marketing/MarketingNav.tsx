@@ -9,9 +9,9 @@ import { cn } from '@/lib/utils';
 
 const LINKS = [
   { href: '/#product', label: 'Product' },
-  { href: '/#solutions', label: 'Solutions' },
-  { href: '/#security', label: 'Security' },
-  { href: '/#faq', label: 'FAQ' },
+  { href: '/#how', label: 'How it works' },
+  { href: '/#roles', label: 'For schools' },
+  { href: '/#pricing', label: 'Pricing' },
 ];
 
 export function MarketingNav() {
@@ -58,7 +58,7 @@ export function MarketingNav() {
           </Link>
           <Link
             href="/register"
-            className="group inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-white text-zinc-900 text-sm font-bold hover:bg-indigo-50 transition-colors"
+            className="group inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-white text-sm font-bold bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_6px_24px_-8px_rgba(192,38,211,0.8)] hover:brightness-110 transition"
           >
             Get started <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
