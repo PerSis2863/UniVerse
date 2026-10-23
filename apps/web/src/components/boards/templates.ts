@@ -1,9 +1,11 @@
 import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform';
+import { guideElements } from './universe-guide';
 
 // Starting layouts for new whiteboards. They're added on the first open of an empty board, as
 // ordinary shapes everyone can move, edit or delete.
 
-export type TemplateId = 'blank' | 'kanban' | 'mindmap' | 'week' | 'swot' | 'venn' | 'timeline' | 'cornell' | 'retro' | 'lesson';
+// 'guide': the owner's "UniVerse explained" board (all ten, owner console); not offered in New board.
+export type TemplateId = 'blank' | 'kanban' | 'mindmap' | 'week' | 'swot' | 'venn' | 'timeline' | 'cornell' | 'retro' | 'lesson' | 'guide';
 
 export const TEMPLATES: { id: TemplateId; name: string; description: string }[] = [
   { id: 'blank', name: 'Blank', description: 'An empty canvas' },
@@ -99,6 +101,8 @@ export function templateElements(id: TemplateId): ExcalidrawElementSkeleton[] {
         box(0, 550, 490, 200, 'Resources', '#f8f9fa'),
         box(510, 550, 490, 200, 'Checking understanding', COLORS[6]),
       ];
+    case 'guide':
+      return guideElements();
     default:
       return [];
   }

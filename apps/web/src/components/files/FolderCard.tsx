@@ -18,23 +18,26 @@ export type FolderPeek = { name: string; meta?: string; image?: string; kind?: '
 const BACK = 'M0,0.27 Q0,0.17 0.055,0.17 L0.43,0.17 C0.49,0.17 0.5,0 0.57,0 L0.945,0 Q1,0 1,0.09 L1,0.91 Q1,1 0.945,1 L0.055,1 Q0,1 0,0.91 Z';
 const FRONT = 'M0,0.11 Q0,0 0.055,0 L0.36,0 C0.43,0 0.44,0.15 0.52,0.15 L0.945,0.15 Q1,0.15 1,0.26 L1,0.89 Q1,1 0.945,1 L0.055,1 Q0,1 0,0.89 Z';
 
-// Streaks of colour for the back panel (picked from the folder's name, so each folder keeps its own).
+// Streaks of colour for the back panel, in UniVerse's own colours (indigo, violet, fuchsia, and the
+// blues and pinks beside them). A list gives each folder the next set, so folders side by side differ.
 const PALETTES = [
-  ['#1f2a44', '#c2413b', '#efe6de', '#3b5ba5'],
-  ['#2b1a16', '#d9481e', '#1d2c2a', '#f2865a'],
-  ['#14281e', '#c8a13a', '#0f1f17', '#7aa36a'],
-  ['#251b3d', '#7b5cff', '#ece3f7', '#c2185b'],
-  ['#0f202a', '#2a9dad', '#e6f0f2', '#ff7a59'],
+  ['#1e1b4b', '#6366f1', '#e0e7ff', '#a855f7'],
+  ['#2e1065', '#d946ef', '#fae8ff', '#7c3aed'],
+  ['#172554', '#3b82f6', '#ede9fe', '#8b5cf6'],
+  ['#3b0764', '#f43f5e', '#ffe4e6', '#c026d3'],
+  ['#0c1a3a', '#06b6d4', '#e0f2fe', '#6366f1'],
+  ['#2e1065', '#a78bfa', '#fdf2f8', '#ec4899'],
 ];
 const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
-export const folderArt = (seed: string) => {
-  const [a, b, c, d] = PALETTES[hash(seed) % PALETTES.length];
+const palette = (seed: string, index?: number) => PALETTES[(index ?? hash(seed)) % PALETTES.length];
+export const folderArt = (seed: string, index?: number) => {
+  const [a, b, c, d] = palette(seed, index);
   const angle = 100 + (hash(`${seed}a`) % 40);
   return `linear-gradient(${angle}deg, ${a} 0%, ${a} 12%, ${b} 21%, ${c} 29%, ${d} 38%, ${a} 47%, ${b} 57%, ${c} 64%, ${d} 76%, ${a} 100%)`;
 };
 /** The haze the back's colours leave on the frosted front flap (soft glows: no blur filter, which Safari renders badly here). */
-export const folderFrost = (seed: string) => {
-  const [, b, , d] = PALETTES[hash(seed) % PALETTES.length];
+export const folderFrost = (seed: string, index?: number) => {
+  const [, b, , d] = palette(seed, index);
   return `radial-gradient(70% 90% at 12% 0%, ${b}88, transparent 70%), radial-gradient(60% 80% at 88% 0%, ${d}77, transparent 72%), radial-gradient(50% 60% at 50% 10%, ${b}33, transparent 80%)`;
 };
 
@@ -51,13 +54,15 @@ const FAN = [
   { x: '10%', y: '-19%', r: '5deg' },
 ];
 
-export function FolderCard({ name, sub, peek, tone, seed, onOpen, action, label, className }: {
+export function FolderCard({ name, sub, peek, tone, seed, index, onOpen, action, label, className }: {
   name: string;
   /** Under the name: "3 items", or a date on dark folders ("Wed 19 Aug"). */
   sub: string;
   peek: FolderPeek[];
   tone?: 'art' | 'light' | 'dark';
   seed?: string;
+  /** Its place in a list of folders: picks its colours, so neighbours never match. */
+  index?: number;
   onOpen: () => void;
   action?: { kind: 'add' | 'more'; label: string; onClick: () => void; menu?: ReactNode };
   /** What a screen reader hears for the folder (default: "Open <name>, <sub>"). */
@@ -65,8 +70,8 @@ export function FolderCard({ name, sub, peek, tone, seed, onOpen, action, label,
   className?: string;
 }) {
   const id = useId().replace(/:/g, '');
-  // As in the video: colours behind a frosted white front, now and then an all-white one (dark only when asked).
-  const look = tone ?? (['art', 'art', 'light'] as const)[hash(seed ?? name) % 3];
+  // Always colourful unless a screen asks for the white or dark folder.
+  const look = tone ?? 'art';
   const [opening, setOpening] = useState(false);
   // Whether the last press was a finger (then the opening plays before the folder's page comes).
   const touch = useRef(false);
@@ -95,7 +100,7 @@ export function FolderCard({ name, sub, peek, tone, seed, onOpen, action, label,
         onClick={() => { open(touch.current); touch.current = false; }} />
       <div aria-hidden className="folder-stack">
         <div className="folder-back" style={{ clipPath: `url(#${id}b)`, WebkitClipPath: `url(#${id}b)` }}>
-          {look !== 'light' && <div className="folder-art" style={{ background: folderArt(seed ?? name) }} />}
+          {look !== 'light' && <div className="folder-art" style={{ background: folderArt(seed ?? name, index) }} />}
         </div>
         <div className="folder-files">
           {files.map((f, i) => {
@@ -113,7 +118,7 @@ export function FolderCard({ name, sub, peek, tone, seed, onOpen, action, label,
           {action?.kind === 'add' && <div className="folder-file folder-new is-doc" style={{ '--fx': '4%', '--fy': '-16%', '--fr': '2deg' } as React.CSSProperties}><span className="folder-file-name">New file</span><span className="folder-file-meta">Add</span><span className="folder-file-lines" /></div>}
         </div>
         <div className="folder-front" style={{ clipPath: `url(#${id}f)`, WebkitClipPath: `url(#${id}f)` }}>
-          {look !== 'light' && <div className="folder-frost" style={{ background: folderFrost(seed ?? name) }} />}
+          {look !== 'light' && <div className="folder-frost" style={{ background: folderFrost(seed ?? name, index) }} />}
           <div className="folder-label">
             <p className="folder-name">{name}</p>
             <p className="folder-sub">{sub}</p>

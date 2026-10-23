@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Activity, Ban, BarChart3, Bell, Building2, Bug, Languages, Server, Crown, Database, Download, Gauge, HardDrive, History, LayoutDashboard, Loader2, LogIn, Megaphone, MessageSquare, MessagesSquare, MousePointerClick, PhoneCall, ShieldAlert, ShieldCheck, Trash2, Undo2, Users, Wallet, X, Newspaper } from 'lucide-react';
+import { Activity, Ban, BarChart3, Bell, Building2, Bug, Languages, Server, Crown, Database, Download, Gauge, HardDrive, History, LayoutDashboard, Loader2, LogIn, Megaphone, MessageSquare, MessagesSquare, MousePointerClick, PhoneCall, ShieldAlert, ShieldCheck, Trash2, Undo2, Users, Wallet, X, Newspaper, Presentation } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -15,6 +15,7 @@ import { ConsoleSkeleton, type Rec, type Schema, RecordEditor, SearchBox, card, 
 import { PersonPanel } from './person';
 import { ErrorsPanel } from './errors';
 import { DeletionsPanel } from './deletions';
+import { GuidePanel } from './guide';
 import { type PlanUsage, PlanUsageCard, ServerPanel } from './server';
 import { AnnouncePanel, ChatsPanel, ComposeDialog } from './chats';
 import { DatabasePanel } from './database';
@@ -32,7 +33,7 @@ import { LoadError } from '@/components/ui/LoadError';
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.
 
-type Tab = 'overview' | 'schools' | 'moderation' | 'languages' | 'health' | 'numbers' | 'calls' | 'analytics' | 'server' | 'activity' | 'chats' | 'announce' | 'blog' | 'people' | 'database' | 'data' | 'money' | 'changes' | 'errors' | 'deletions';
+type Tab = 'overview' | 'schools' | 'moderation' | 'languages' | 'health' | 'numbers' | 'calls' | 'analytics' | 'server' | 'activity' | 'chats' | 'announce' | 'blog' | 'people' | 'database' | 'data' | 'money' | 'changes' | 'errors' | 'deletions' | 'guide';
 const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'schools', label: 'Schools', icon: Building2 },
@@ -54,6 +55,7 @@ const TABS: { id: Tab; label: string; icon: typeof Users }[] = [
   { id: 'changes', label: 'Changes & undo', icon: History },
   { id: 'errors', label: 'Errors', icon: Bug },
   { id: 'deletions', label: 'Deletion requests', icon: Trash2 },
+  { id: 'guide', label: 'Explain UniVerse', icon: Presentation },
 ];
 
 const heavy = { revalidateOnFocus: false, dedupingInterval: 30_000, errorRetryCount: 2 };
@@ -182,6 +184,8 @@ export default function OwnerConsole() {
           <ErrorsPanel key={`errors-${focus.n}`} onPerson={openPerson} focus={focus.error} />
         ) : tab === 'deletions' ? (
           <DeletionsPanel onOpenPerson={openPerson} />
+        ) : tab === 'guide' ? (
+          <GuidePanel />
         ) : (
           <Changes key={`changes-${focus.n}`} initialQuery={focus.changes} />
         )}
