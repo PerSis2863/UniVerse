@@ -684,13 +684,13 @@ function grouped<T>(items: T[], area: (t: T) => string, line: (t: T, area: strin
   for (let i = 0; i < small.length; i += max) out.push(frame(`Smaller areas${small.length > max ? ` (${i / max + 1})` : ''}`, small.slice(i, i + max), out.length));
   return out;
 }
-const routeFrames = () => grouped(ROUTES, routeArea, (r, a, own) => (own ? r.slice(`/api/${a}`.length) || '/' : r.slice(5)), (t, l, i) => listing(`routes${i}`, `Server routes · ${t}`, `Server routes: ${t}`, C.tech, l), 90, 24);
+const routeFrames = () => grouped(ROUTES, routeArea, (r, a, own) => (own ? r.slice(`/api/${a}`.length) || '/' : r.slice(5)), (t, l, i) => listing(`routes${i}`, `Routes · ${t.replace('Smaller areas', 'more')}`, `Server routes: ${t}`, C.tech, l), 90, 24);
 const PAGE_WHO: Record<string, string> = { student: 'students', admin: 'school admins', teacher: 'teachers', other: 'everyone else' };
 const pageFrames = () => grouped(PAGES, pageArea, (p, a) => (a === 'other' ? p : p.slice(a.length + 1) || '/'), (t, l, i) => listing(`pages${i}`, `Pages · ${t}`, `Every page address: ${t}`, C.student, l), 90, 20, (a) => PAGE_WHO[a]);
-const tableFrames = () => grouped(TABLES, ([n]) => tableGroup(n), ([n, f, l]) => `${n} · ${f} fields${l ? `, ${l} links` : ''}`, (t, l, i) => listing(`tables${i}`, `Tables · ${t}`, `Database tables: ${t}`, C.admin, l), 60, 1);
+const tableFrames = () => grouped(TABLES, ([n]) => tableGroup(n), ([n, f, l]) => `${n} · ${f} fields${l ? `, ${l} links` : ''}`, (t, l, i) => listing(`tables${i}`, `Tables · ${t.split(' ')[0]}`, `Database tables: ${t}`, C.admin, l), 60, 1);
 const migrationFrames = () => {
   const lines = MIGRATIONS.map((m) => `${m.slice(0, 4)} · ${m.slice(5).replace(/_/g, ' ')}`);
-  return Array.from({ length: Math.ceil(lines.length / 90) }, (_, i) => listing(`migrations${i}`, `Database changes (${i + 1})`, `How the database grew: changes ${i * 90 + 1}–${Math.min(lines.length, i * 90 + 90)} of ${lines.length}`, C.owner, lines.slice(i * 90, i * 90 + 90)));
+  return Array.from({ length: Math.ceil(lines.length / 90) }, (_, i) => listing(`migrations${i}`, `DB changes ${i + 1}`, `How the database grew: changes ${i * 90 + 1}–${Math.min(lines.length, i * 90 + 90)} of ${lines.length}`, C.owner, lines.slice(i * 90, i * 90 + 90)));
 };
 
 function languages() {
