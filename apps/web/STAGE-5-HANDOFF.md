@@ -1445,3 +1445,26 @@ Progress table (row D6).
   board keeps working when renamed, it just stops being found as "UniVerse explained".
 - Outside tools: `AGENT-TOOLKIT.md` (repo root). Emil Kowalski's skills in `.claude/skills/` are
   copies (MIT): update by copying the folders again.
+
+## M15 · Simpler sign-in, the board arrives by itself
+
+- Turning phone sign-in back on: set `PHONE_SIGN_IN = true` in `src/lib/sign-in-options.ts`, only
+  after the owner turns on Firebase billing (SMS codes cost money).
+- The passkey button asks `GET /api/core/auth/passkeys/available` (public); it's off while
+  `SESSION_SECRET` is missing on the Worker.
+- Changing the explainer board's design: raise `GUIDE_VERSION` in `src/components/boards/guide-title.ts`.
+  The owner's boards list then renames the old board "(old)" and makes the new one once per device;
+  nothing is deleted.
+- Fresh cloud container: run `npx prisma generate` before `pnpm check` (otherwise hundreds of
+  `@prisma/client` type errors), and `NODE_OPTIONS=--max-old-space-size=8192` if the type check runs
+  out of memory.
+
+## M16 · The explainer board fills in full
+
+- The guide's shapes keep their ids (`convertToExcalidrawElements(els, { regenerateIds: false })`
+  for the guide only): never generate them randomly, or topping up stops working. Box labels still
+  get random ids; `guideTopUp` treats a label as part of its box.
+- Opening the guide (`?template=guide`) on a board that has `g<version>-` shapes runs `guideTopUp`;
+  a board of an older design (other prefix) is left alone and replaced through `GUIDE_VERSION`.
+- Testing the board without the Worker: bundle `universe-guide.ts` with Excalidraw using the
+  esbuild in `node_modules/.pnpm/esbuild@*/` and convert it in Chromium (text sizes need a browser).

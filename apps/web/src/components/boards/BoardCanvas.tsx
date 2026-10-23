@@ -19,6 +19,8 @@ import type { ExcalidrawElement, FileId, OrderedExcalidrawElement } from '@excal
 import type { RemoteExcalidrawElement } from '@excalidraw/excalidraw/data/reconcile';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { isUploadedFileUrl } from '@/lib/file-urls';
+import { guideTopUp } from './guide-fill';
+import { GUIDE_ID_PREFIX } from './guide-title';
 import { templateFor, type TemplateId } from './templates';
 import { MAX_VOTES, type Voted } from './votes';
 
@@ -420,11 +422,19 @@ export default function BoardCanvas({
             // Open on the drawing, whatever the screen size (not on an empty corner of the canvas).
             if (!framed.current) {
               framed.current = true;
-              if (template && template !== 'blank' && editable.current && msg.elements.length === 0 && !api.getSceneElements().length) {
+              if (template === 'guide' && editable.current && msg.elements.some((e) => e.id.startsWith(GUIDE_ID_PREFIX))) {
+                // The guide board, part-filled (someone left while it was being sent): add what's missing.
+                void templateFor(template).then((els) => {
+                  const scene = guideTopUp(api.getSceneElementsIncludingDeleted(), convertToExcalidrawElements(els, { regenerateIds: false }));
+                  if (scene) api.updateScene({ elements: scene, captureUpdate: CaptureUpdateAction.NEVER });
+                });
+                api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.9, animate: false });
+              } else if (template && template !== 'blank' && editable.current && msg.elements.length === 0 && !api.getSceneElements().length) {
                 // Added once it's loaded (the guide comes in its own file), unless someone drew meanwhile.
                 void templateFor(template).then((els) => {
                   if (api.getSceneElements().length) return;
-                  api.updateScene({ elements: convertToExcalidrawElements(els), captureUpdate: CaptureUpdateAction.IMMEDIATELY });
+                  // The guide keeps its own ids, so a part-filled board can be topped up later.
+                  api.updateScene({ elements: convertToExcalidrawElements(els, { regenerateIds: template !== 'guide' }), captureUpdate: CaptureUpdateAction.IMMEDIATELY });
                   api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.9, animate: false });
                 });
               } else if (api.getSceneElements().length) api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.9, animate: false });
