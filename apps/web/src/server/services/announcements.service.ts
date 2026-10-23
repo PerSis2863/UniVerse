@@ -19,7 +19,8 @@ export class AnnouncementsService {
   async findAll(user: SessionUser) {
     return prisma.announcement.findMany({
       where: await announcementWhere(user),
-      include: { author: { select: { name: true, avatar: true } }, course: { select: { name: true } } },
+      // Staff also see how many people have read each one (M17: "Seen by" on Messages → Announcements).
+      include: { author: { select: { name: true, avatar: true } }, course: { select: { name: true } }, ...(user.role === 'ADMIN' || user.role === 'TEACHER' ? { _count: { select: { reads: true } } } : {}) },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });

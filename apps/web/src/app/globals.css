@@ -1935,3 +1935,25 @@ html.reduce-motion :is(.comms-icon-on, .pin-float, .pin-typing, .chat-aura, .str
 @keyframes bar-rise { from { transform: scaleY(0); } }
 @media (prefers-reduced-motion: reduce) { .poster, .insight-bar { animation: none; } }
 html.reduce-motion :is(.poster, .insight-bar) { animation: none; }
+
+/* ═══ M17 · Notifications: priority, and stacks that fan out (components/notifications) ═══════ */
+.note-priority { background: linear-gradient(140deg, rgb(99 102 241 / 0.1), rgb(217 70 239 / 0.1)); box-shadow: inset 0 0 0 1px rgb(217 70 239 / 0.25), 0 16px 40px -28px rgb(192 38 211 / 0.7); }
+.note-peek { position: absolute; inset-inline: 0; bottom: 0; height: 100%; border-radius: 1rem; background: rgb(255 255 255 / 0.85); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06); transition: transform 300ms var(--ease-glide); }
+.dark .note-peek { background: rgb(36 38 66 / 0.92); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.09); }
+.note-peek-1 { transform: translate3d(0, 10px, 0) scale(0.95); z-index: 1; }
+.note-peek-2 { transform: translate3d(0, 20px, 0) scale(0.9); opacity: 0.65; }
+@media (hover: hover) { .note-stack:hover .note-peek-1 { transform: translate3d(0, 13px, 0) scale(0.95); } .note-stack:hover .note-peek-2 { transform: translate3d(0, 26px, 0) scale(0.9); } }
+
+/* ═══ M17 · Announcements: the broadcast studio's phone and waves ═══════════════════════════════ */
+.phone { background: linear-gradient(160deg, #27272a, #09090b); box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.08), 0 30px 60px -30px rgb(79 70 229 / 0.7), 0 0 0 1px rgb(0 0 0 / 0.4); }
+.phone-screen { background: radial-gradient(120% 80% at 20% 0%, #6366f1, transparent 60%), radial-gradient(110% 80% at 90% 100%, #c026d3, transparent 60%), #120a2e; }
+.push-card { animation: push-in 600ms var(--ease-glide) 200ms backwards; }
+@keyframes push-in { from { opacity: 0; transform: translate3d(0, -28px, 0) scale(0.92); } }
+.phone-sent { animation: phone-sent 900ms var(--ease-glide); }
+@keyframes phone-sent { 30% { transform: scale(0.97) rotate(-1deg); } 60% { transform: scale(1.02) rotate(0.5deg); } }
+.broadcast-icon::before, .broadcast-icon::after { content: ''; position: absolute; inset: 0; border-radius: inherit; border: 2px solid rgb(217 70 239 / 0.5); animation: broadcast 2.6s var(--ease-out-soft) infinite; }
+.broadcast-icon::after { animation-delay: 1.3s; }
+@keyframes broadcast { from { transform: scale(1); opacity: 0.8; } to { transform: scale(1.8); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .push-card, .phone-sent, .broadcast-icon::before, .broadcast-icon::after { animation: none; } }
+html.reduce-motion :is(.push-card, .phone-sent) { animation: none; }
+html.reduce-motion .broadcast-icon::before, html.reduce-motion .broadcast-icon::after { animation: none; }
