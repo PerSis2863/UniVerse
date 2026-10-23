@@ -3,9 +3,9 @@ import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { COMPANY, LEGAL_LINKS } from '@/lib/company';
 
 const COLUMNS = [
-  { title: 'Product', links: [{ href: '/#product', label: 'Platform' }, { href: '/#how', label: 'How it works' }, { href: '/#pricing', label: 'Pricing' }] },
+  { title: 'Product', links: [{ href: '/#product', label: 'Platform' }, { href: '/#how', label: 'How it works' }, { href: '/#faq', label: 'FAQ' }] },
   { title: 'For', links: [{ href: '/#roles', label: 'Students' }, { href: '/#roles', label: 'Teachers' }, { href: '/#roles', label: 'School admins' }] },
-  { title: 'Company', links: [{ href: '/#faq', label: 'FAQ' }, { href: '/blog', label: 'Blog' }, { href: '/trust', label: 'Status & trust' }, { href: '/contact#sales', label: 'Talk to sales' }] },
+  { title: 'Company', links: [{ href: '/blog', label: 'Blog' }, { href: '/trust', label: 'Status & trust' }, { href: '/contact#sales', label: 'Talk to sales' }] },
 ];
 
 export function MarketingFooter() {

@@ -49,7 +49,7 @@ function Gauge() {
 }
 
 const ROLES = [
-  { line: 'Hand-ins, grades, the timetable and an AI tutor, in one place.', who: 'Students', what: 'free, on every plan' },
+  { line: 'Hand-ins, grades, the timetable and an AI tutor, in one place.', who: 'Students', what: 'always free' },
   { line: 'The register fills itself from the class call, and quizzes mark themselves.', who: 'Teachers', what: 'courses, quizzes, attendance' },
   { line: 'Fees, admissions and reports, without the spreadsheets.', who: 'School admins', what: 'one school or many' },
 ];
@@ -81,7 +81,7 @@ export function Proof() {
           <Reveal delay={0.16}>
             <p className="font-mono text-xs text-zinc-400">what students pay</p>
             <p className="mt-2 text-6xl font-bold tracking-tight text-white"><CountUp to={0} prefix="$" /></p>
-            <p className="mt-2 font-mono text-xs text-zinc-400">on every plan: the school pays, not the student</p>
+            <p className="mt-2 font-mono text-xs text-zinc-400">students never pay to use UniVerse</p>
             <Gauge />
           </Reveal>
         </div>
