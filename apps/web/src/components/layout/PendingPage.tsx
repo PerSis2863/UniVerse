@@ -111,7 +111,8 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
       copy.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, delay: 60, easing: 'ease-out', fill: 'both' }).finished.then(() => copy.remove(), () => copy.remove());
     }
     // Opened from a card a moment ago (and no skeleton in between): the page grows out of it (M2).
-    const from = m === 'push' ? takeOrigin(pathname) : null;
+    // Deeper or sideways (a course card opens Blackboard); not between tabs or going back.
+    const from = m === 'push' || m === 'fade' ? takeOrigin(pathname) : null;
     if (from && !copy && stage.current && !reducedMotion()) {
       animate(running, [stage.current], zoomFrames(from, stage.current.getBoundingClientRect()), { duration: ZOOM_MS, easing: EASE_GLIDE });
       return;
