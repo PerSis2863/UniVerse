@@ -148,7 +148,7 @@ export function SheetEditor({ docId, me, canEdit: mayEdit, title, onStatus, onPr
     awareness.setLocalStateField('user', { name: me.name, color: colorFor(me.id) });
     const on = () => setOthers([...awareness.getStates().entries()].filter(([id]) => id !== ydoc.clientID).flatMap(([, st]) => {
       const s = st as { user?: { name?: string; color?: string }; cell?: { sheet: string; r: number; c: number } };
-      return s.cell ? [{ name: s.user?.name ?? 'Someone', color: s.user?.color ?? '#6366f1', ...s.cell }] : [];
+      return s.cell ? [{ name: s.user?.name ?? 'Someone', color: s.user?.color ?? '#253745', ...s.cell }] : [];
     }));
     awareness.on('change', on);
     return () => awareness.off('change', on);
@@ -663,10 +663,10 @@ export function SheetEditor({ docId, me, canEdit: mayEdit, title, onStatus, onPr
 
   return (
     <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-      <div className="border-b border-zinc-200/70 dark:border-white/[0.06] bg-white/80 dark:bg-[#0b0e1a]/80">
+      <div className="border-b border-zinc-200/70 dark:border-white/[0.06] bg-white/80 dark:bg-[#06141b]/80">
         <SheetToolbar s={activeStyle} on={actions} canEdit={editable} canUndo={stacks.undo > 0} canRedo={stacks.redo > 0} frozen={view.freeze} filterOn={!!view.filter} merged={!!mergeHere} sel={sel} />
       </div>
-      <div className="flex items-stretch gap-0 border-b border-zinc-200/70 dark:border-white/[0.06] bg-white dark:bg-[#0f1322] text-sm">
+      <div className="flex items-stretch gap-0 border-b border-zinc-200/70 dark:border-white/[0.06] bg-white dark:bg-[#0b1a24] text-sm">
         <NameBox value={areaText(area)} onGo={(t) => { if (!goTo(t)) toast.error('That isn’t a cell or range, like B3 or A1:C10.'); }} />
         <span aria-hidden className="px-2 flex items-center text-zinc-500 dark:text-zinc-400 italic font-serif border-e border-zinc-200 dark:border-white/[0.07]">fx</span>
         <div className="relative flex-1 min-w-0">
@@ -687,7 +687,7 @@ export function SheetEditor({ docId, me, canEdit: mayEdit, title, onStatus, onPr
         onFilterMenu={(c, el) => { const b = el.getBoundingClientRect(); setFilterFor({ c, x: b.left, y: b.bottom }); }}
         keyHandlers={{ onKeyDown, onCopy: (e) => { if (edit || (e.target as HTMLElement).closest('input, textarea')) return; e.preventDefault(); copy(false, e.clipboardData); }, onCut: (e) => { if (edit || !editable || (e.target as HTMLElement).closest('input, textarea')) return; e.preventDefault(); copy(true, e.clipboardData); }, onPaste: (e) => { if (edit || (e.target as HTMLElement).closest('input, textarea')) return; e.preventDefault(); paste(e.clipboardData.getData('text/plain')); } }} />
       {sheetCharts.length > 0 && (
-        <div className="border-t border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-[#0b0e1a]">
+        <div className="border-t border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-[#06141b]">
           <button type="button" onClick={() => setCharts((x) => !x)} aria-expanded={charts} className="w-full text-start px-3 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">Charts ({sheetCharts.length}) {charts ? '▾' : '▸'}</button>
           {charts && <SheetCharts doc={ydoc} sheet={sheet} calc={calc} version={version} canEdit={editable} />}
         </div>
@@ -732,7 +732,7 @@ function NameBox({ value, onGo }: { value: string; onGo: (t: string) => void }) 
 
 function FormulaHelp({ list, active, sig, onPick }: { list: typeof FUNCTION_HELP; active: number; sig: (typeof FUNCTION_HELP)[number] | null; onPick: (n: string) => void }) {
   return (
-    <div className="mt-1 w-80 max-w-[90vw] rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm overflow-hidden">
+    <div className="mt-1 w-80 max-w-[90vw] rounded-xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm overflow-hidden">
       {sig && !list.length && <p className="px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300"><span className="font-mono font-semibold">{sig.name}({sig.args})</span><br />{sig.does}</p>}
       {list.length > 0 && (
         <ul role="listbox" aria-label="Functions">
@@ -771,7 +771,7 @@ function Floating({ x, y, onClose, children }: { x: number; y: number; onClose: 
     return () => { document.removeEventListener('pointerdown', down, true); document.removeEventListener('keydown', key, true); };
   }, [x, y]);
   return createPortal(
-    <div ref={box} style={{ position: 'fixed', left: -9999, top: -9999 }} className="z-[70] min-w-52 max-w-72 max-h-[70vh] overflow-y-auto rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm text-zinc-800 dark:text-zinc-100">{children}</div>,
+    <div ref={box} style={{ position: 'fixed', left: -9999, top: -9999 }} className="z-[70] min-w-52 max-w-72 max-h-[70vh] overflow-y-auto rounded-xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm text-zinc-800 dark:text-zinc-100">{children}</div>,
     document.body,
   );
 }

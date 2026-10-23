@@ -127,7 +127,7 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
     try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* blocked */ }
   };
   return (
-    <div className="my-1.5 rounded-xl overflow-hidden bg-[#0f1220] text-[#e4e6f1] ring-1 ring-white/10 max-w-full text-start">
+    <div className="my-1.5 rounded-xl overflow-hidden bg-[#0b1a24] text-[#e4e6f1] ring-1 ring-white/10 max-w-full text-start">
       <div className="flex items-center justify-between gap-3 ps-3 pe-1.5 py-1 bg-white/[0.05] text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
         <span>{lang || 'code'}</span>
         <button type="button" onClick={() => void copy()} aria-label="Copy code" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md hover:bg-white/10 normal-case tracking-normal text-[11px]">

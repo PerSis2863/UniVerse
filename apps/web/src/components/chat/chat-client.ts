@@ -310,12 +310,12 @@ export const disappearingLabel = (sec?: number | null) => DISAPPEARING_OPTIONS.f
 
 /** Pick a wallpaper per browser (not synced). */
 export const WALLPAPERS: { id: string; label: string; style: React.CSSProperties }[] = [
-  { id: 'dots', label: 'Dots', style: { backgroundImage: 'radial-gradient(rgba(99,102,241,0.08) 1px, transparent 1px)', backgroundSize: '22px 22px' } },
+  { id: 'dots', label: 'Dots', style: { backgroundImage: 'radial-gradient(rgba(37,55,69,0.08) 1px, transparent 1px)', backgroundSize: '22px 22px' } },
   { id: 'plain', label: 'Plain', style: {} },
-  { id: 'aurora', label: 'Aurora', style: { backgroundImage: 'radial-gradient(60% 50% at 20% 10%, rgba(99,102,241,0.16), transparent), radial-gradient(50% 40% at 90% 80%, rgba(217,70,239,0.14), transparent)' } },
+  { id: 'aurora', label: 'Aurora', style: { backgroundImage: 'radial-gradient(60% 50% at 20% 10%, rgba(37,55,69,0.16), transparent), radial-gradient(50% 40% at 90% 80%, rgba(107,85,96,0.14), transparent)' } },
   { id: 'mint', label: 'Mint', style: { backgroundImage: 'linear-gradient(160deg, rgba(16,185,129,0.10), rgba(6,182,212,0.06))' } },
-  { id: 'sunset', label: 'Sunset', style: { backgroundImage: 'linear-gradient(160deg, rgba(251,146,60,0.12), rgba(236,72,153,0.08))' } },
-  { id: 'grid', label: 'Grid', style: { backgroundImage: 'linear-gradient(rgba(99,102,241,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.06) 1px, transparent 1px)', backgroundSize: '28px 28px' } },
+  { id: 'sunset', label: 'Sunset', style: { backgroundImage: 'linear-gradient(160deg, rgba(251,146,60,0.12), rgba(107,85,96,0.08))' } },
+  { id: 'grid', label: 'Grid', style: { backgroundImage: 'linear-gradient(rgba(37,55,69,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(37,55,69,0.06) 1px, transparent 1px)', backgroundSize: '28px 28px' } },
 ];
 export function getWallpaper(): string {
   try { return localStorage.getItem('universe:chat-wallpaper') ?? 'dots'; } catch { return 'dots'; }
@@ -327,5 +327,5 @@ export function setWallpaper(id: string) {
 
 // A bright colour per person for the glow behind their picture (M17); the same person, the same glow.
 // Only the brand's two tones and the shades between them.
-const AURAS = ['#818cf8', '#a78bfa', '#c084fc', '#e879f9', '#f472b6', '#6366f1', '#d946ef', '#8b5cf6'];
+const AURAS = ['#4a5c6a', '#746e7a', '#82757f', '#9e8189', '#9e8189', '#253745', '#6b5560', '#53515e'];
 export const auraOf = (id: string) => AURAS[[...id].reduce((t, c) => (t * 31 + c.charCodeAt(0)) >>> 0, 7) % AURAS.length];

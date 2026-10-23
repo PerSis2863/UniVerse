@@ -13,7 +13,7 @@ export function GradeDistributionChart({ data: gradeDistributionData }: { data: 
             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
             cursor={{ fill: 'var(--tw-colors-zinc-100)', opacity: 0.5 }}
           />
-          <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={40} />
+          <Bar dataKey="count" fill="#253745" radius={[4, 4, 0, 0]} barSize={40} />
         </BarChart>
       </ResponsiveContainer>
   );

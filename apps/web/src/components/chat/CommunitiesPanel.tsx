@@ -27,7 +27,7 @@ import { groupChannels } from '@/lib/community-roles';
 type Kind = 'TEXT' | 'ANNOUNCE' | 'VOICE';
 interface Channel { id: string; name: string; kind: Kind; slowModeSec: number; unread: number; category?: string | null; private?: boolean }
 interface Community { id: string; name: string; description: string | null; color: string; members: number; role: 'OWNER' | 'MOD' | 'MEMBER'; channels: Channel[] }
-const COLORS = ['#4f46e5', '#7c3aed', '#db2777', '#e11d48', '#ea580c', '#059669', '#0891b2', '#334155'];
+const COLORS = ['#253745', '#484652', '#6b5560', '#e11d48', '#ea580c', '#059669', '#0891b2', '#253745'];
 
 export function CommunitiesPanel({ activeId, onOpen }: { activeId: string | null; onOpen: (channelId: string) => void }) {
   const { data, isLoading, mutate } = useSWR<Community[]>('/api/chat/communities', authedJson, { revalidateOnFocus: true });
@@ -171,7 +171,7 @@ function CreateCommunity({ onClose, onDone }: { onClose: () => void; onDone: () 
       <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Name (e.g. CS Department, Chess Club)" className="input" />
       <input value={description} onChange={(e) => setDescription(e.target.value)} maxLength={200} placeholder="What it's for (optional)" className="input" />
       <div className="flex gap-2" role="radiogroup" aria-label="Colour">{COLORS.map((c) => (
-        <button key={c} type="button" role="radio" aria-checked={color === c} onClick={() => setColor(c)} className={cn('w-8 h-8 rounded-xl ring-2 ring-offset-2 ring-offset-white dark:ring-offset-[#121830]', color === c ? 'ring-indigo-500' : 'ring-transparent')} style={{ background: c }} />
+        <button key={c} type="button" role="radio" aria-checked={color === c} onClick={() => setColor(c)} className={cn('w-8 h-8 rounded-xl ring-2 ring-offset-2 ring-offset-white dark:ring-offset-[#11212d]', color === c ? 'ring-indigo-500' : 'ring-transparent')} style={{ background: c }} />
       ))}</div>
       <p className="text-xs text-zinc-500">It starts with #general, #announcements (only moderators post) and a Study room voice channel.</p>
       <button type="button" onClick={() => void create()} disabled={busy || !name.trim()} className="btn-primary w-full py-3">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Create community</button>

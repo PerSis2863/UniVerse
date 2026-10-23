@@ -64,8 +64,8 @@ function GpaSparkline({ data }: { data: { sem: string; gpa: number }[] }) {
       <svg ref={svgRef} width="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
         <defs>
           <linearGradient id="gpaGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+            <stop offset="0%" stopColor="#253745" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#253745" stopOpacity="0" />
           </linearGradient>
           <clipPath id="sparkClip">
             <motion.rect
@@ -84,7 +84,7 @@ function GpaSparkline({ data }: { data: { sem: string; gpa: number }[] }) {
         <path
           d={pathD}
           fill="none"
-          stroke="#6366f1"
+          stroke="#253745"
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -99,7 +99,7 @@ function GpaSparkline({ data }: { data: { sem: string; gpa: number }[] }) {
               animate={{ r: 4, opacity: 1 }}
               transition={{ delay: 0.9 + i * 0.1 }}
               cx={p.x} cy={p.y}
-              fill="white" stroke="#6366f1" strokeWidth="2"
+              fill="white" stroke="#253745" strokeWidth="2"
             />
             <motion.text
               initial={{ opacity: 0, y: -5 }}
@@ -109,7 +109,7 @@ function GpaSparkline({ data }: { data: { sem: string; gpa: number }[] }) {
               textAnchor="middle"
               fontSize="10"
               fontWeight="700"
-              fill="#6366f1"
+              fill="#253745"
             >
               {data[i].gpa.toFixed(2)}
             </motion.text>
@@ -120,7 +120,7 @@ function GpaSparkline({ data }: { data: { sem: string; gpa: number }[] }) {
               x={p.x} y={height - 2}
               textAnchor="middle"
               fontSize="8"
-              fill="#71717a"
+              fill="#5a6a73"
             >
               {data[i].sem.split(' ')[0].slice(0, 3)} {data[i].sem.split(' ')[1]}
             </motion.text>
@@ -147,7 +147,7 @@ function GradeDonut({ grades, avg }: { grades: { grade: string; percentage: numb
 
   const slices = [
     { label: 'A grades', count: counts.A, color: '#10b981', pct: (counts.A / total) * 100 },
-    { label: 'B grades', count: counts.B, color: '#6366f1', pct: (counts.B / total) * 100 },
+    { label: 'B grades', count: counts.B, color: '#253745', pct: (counts.B / total) * 100 },
     { label: 'C grades', count: counts.C, color: '#f59e0b', pct: (counts.C / total) * 100 },
     { label: 'D/F grades', count: counts.D + counts.F, color: '#ef4444', pct: ((counts.D + counts.F) / total) * 100 },
   ].filter(s => s.count > 0);
@@ -269,7 +269,7 @@ export default function GradesPage() {
             title="Your grades will appear here"
             description="As teachers grade your assignments and quizzes, you'll see each result, your average per course, your GPA trend across terms and a downloadable transcript."
             steps={['Submit assignments and take quizzes', 'Teachers grade your work', 'Track your GPA and download your transcript here']}
-            example={<div><ExampleRow title="Assignment 2 · Operating Systems" meta="Graded 2 days ago" right="91% · A" /><ExampleRow title="Midterm · Sustainable Development" meta="Graded last week" right="74% · C" accent="from-amber-500 to-orange-500" /></div>}
+            example={<div><ExampleRow title="Assignment 2 · Operating Systems" meta="Graded 2 days ago" right="91% · A" /><ExampleRow title="Midterm · Sustainable Development" meta="Graded last week" right="74% · C" accent="from-fuchsia-400 to-fuchsia-600" /></div>}
             action={{ label: 'Go to my courses', href: '/student/courses' }}
           />
         </div>

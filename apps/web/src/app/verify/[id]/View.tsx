@@ -49,7 +49,7 @@ const RESULT_UI: Record<VerifyResult, { badge: string; title: string; text: stri
     text: 'Issued by UniVerse Impact after staff checked the work, and unchanged since it was signed.',
     icon: ShieldCheck,
     tone: 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/30',
-    ring: 'from-emerald-400 to-teal-500',
+    ring: 'from-indigo-400 to-indigo-600',
   },
   REVOKED: {
     badge: 'Revoked',
@@ -73,7 +73,7 @@ const RESULT_UI: Record<VerifyResult, { badge: string; title: string; text: stri
     text: 'This credential was signed with a key the platform no longer recognises. Contact UniVerse Impact support.',
     icon: ShieldAlert,
     tone: 'text-amber-700 dark:text-amber-300 bg-amber-500/10 border-amber-500/30',
-    ring: 'from-amber-400 to-orange-500',
+    ring: 'from-fuchsia-400 to-fuchsia-600',
   },
   NOT_FOUND: {
     badge: 'Not found',

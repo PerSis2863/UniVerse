@@ -177,7 +177,7 @@ function Editor({ id, post, draft: initial, onClose, onSaved }: { id: string | n
           </>
         ) : (
           // As it shows on the blog (the public site is always dark).
-          <div className="dark rounded-2xl p-5 sm:p-8" style={{ backgroundColor: '#0a0d13' }}>
+          <div className="dark rounded-2xl p-5 sm:p-8" style={{ backgroundColor: '#06141b' }}>
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white break-words">{d.title || 'Untitled'}</h1>
             {d.summary && <p className="mt-3 text-zinc-400">{d.summary}</p>}
             <div className="mt-6">{d.body.trim() ? <LegalMarkdown source={d.body} /> : <p className="text-sm text-zinc-500">Nothing written yet.</p>}</div>

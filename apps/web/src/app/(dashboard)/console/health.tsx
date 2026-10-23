@@ -37,7 +37,7 @@ export function HealthPanel() {
     );
   }
 
-  const ring = data.score >= 85 ? 'from-emerald-400 to-teal-500' : data.score >= 60 ? 'from-amber-400 to-orange-500' : 'from-rose-500 to-fuchsia-500';
+  const ring = data.score >= 85 ? 'from-indigo-400 to-indigo-600' : data.score >= 60 ? 'from-fuchsia-400 to-fuchsia-600' : 'from-rose-500 to-fuchsia-500';
   const counts = { high: 0, medium: 0, low: 0 };
   for (const f of data.findings) counts[f.severity] = (counts[f.severity] ?? 0) + 1;
 

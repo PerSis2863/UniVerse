@@ -77,7 +77,7 @@ export function NgoProjectBoard({ filter, sort = 'newest', guide }: Props) {
         example={
           <div>
             <ExampleRow title="Weekend Maths Tutoring" meta="City Learning Trust · Remote · 4 openings" right="+50 XP" />
-            <ExampleRow title="Community Garden Build" meta="Green Roots NGO · On site · closes in 5 days" right="+80 XP" accent="from-emerald-500 to-teal-500" />
+            <ExampleRow title="Community Garden Build" meta="Green Roots NGO · On site · closes in 5 days" right="+80 XP" accent="from-indigo-400 to-indigo-600" />
           </div>
         }
         action={{ label: 'Browse the NGO marketplace', href: '/student/impact/ngo-marketplace' }}

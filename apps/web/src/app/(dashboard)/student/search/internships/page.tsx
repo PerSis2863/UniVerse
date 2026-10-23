@@ -30,7 +30,7 @@ export default function InternshipHistoryPage() {
               title="See where your campus gets placed"
               description="Every time a student from your campus is accepted for an internship on UniVerse, the company and role show up here — a great way to discover where to apply."
               steps={['Browse open internships under Schooling → Internships', 'Apply with your CV and a short cover letter', 'Accepted placements appear here (without names)']}
-              example={<div><ExampleRow title="Software Engineering Intern" meta="Acme Technologies · Bengaluru · Summer" right="Tech" /><ExampleRow title="Policy Research Intern" meta="Civic Futures Lab · Remote · 3 months" right="Policy" accent="from-emerald-500 to-teal-500" /></div>}
+              example={<div><ExampleRow title="Software Engineering Intern" meta="Acme Technologies · Bengaluru · Summer" right="Tech" /><ExampleRow title="Policy Research Intern" meta="Civic Futures Lab · Remote · 3 months" right="Policy" accent="from-indigo-400 to-indigo-600" /></div>}
               action={{ label: 'Browse internships', href: '/student/internships' }}
             />
           ) : (

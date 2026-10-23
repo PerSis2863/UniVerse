@@ -8,12 +8,14 @@ Cursor's).
 
 ## Where things stand (23 October 2026)
 
-- **Latest (23 Oct): `main` has everything through M15**: the motion and look items M1–M15 (the
+- **Latest (23 Oct): `main` has everything through M16**: the motion and look items M1–M16 (the
   Relay light river, the "Cadra" card look, the owner console deck, the "UniVerse explained" board,
   lean code, design skills, a simpler sign-in). Each has a Progress row (`STAGE-5-PLAN.md`) and a
   note at the end of `STAGE-5-HANDOFF.md`. The work queue is finished; what's left waits on the owner
-  (below). **M16** (on branch `claude/youthful-fermi-sbdtcp`, not merged yet): the explainer
-  board always fills in full.
+  (below). M16: the explainer board always fills in full. **M17** (on branch
+  `claude/youthful-fermi-sbdtcp`, not merged yet): a much bigger explainer board, Messages, Calls,
+  Notifications and Announcements redesigned with features from other apps, Collaborate Home with 14
+  features, liquid tabs, and the owner's colours (dark blue #253745 and dark pink #6B5560).
 - **`main` has everything through Q26** (merged 21 Oct): the full review, the phone smoothness second
   pass, the accessibility sweep, Phase E (Q23–Q26: undo, drag-and-drop and paste on file fields, bulk
   actions on Admin → Users, choosing several chat messages, accent colour, ringtone, course colours,
@@ -26,7 +28,7 @@ Cursor's).
   for each item.
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: start with its "Next steps" and the
   S2, Q26, S1 and Q24/Q25 notes.
-- **Next database update number: `0176`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0177`** (files in `apps/web/prisma/migrations/`).
 
 **Moving to the $5 Cloudflare plan (Workers Paid)**, in this order:
 1. In Cloudflare: Workers & Pages → Plans → Workers Paid ($5 a month, plus any local tax).

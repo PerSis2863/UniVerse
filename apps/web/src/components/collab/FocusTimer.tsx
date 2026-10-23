@@ -38,7 +38,7 @@ export function FocusTimer() {
       <div className="relative w-40 h-40">
         <svg viewBox="0 0 128 128" className="w-full h-full -rotate-90" aria-hidden>
           <defs>
-            <linearGradient id="focus-ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={brk ? '#14b8a6' : '#6366f1'} /><stop offset="1" stopColor={brk ? '#22d3ee' : '#d946ef'} /></linearGradient>
+            <linearGradient id="focus-ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={brk ? '#14b8a6' : '#253745'} /><stop offset="1" stopColor={brk ? '#22d3ee' : '#6b5560'} /></linearGradient>
           </defs>
           <circle cx="64" cy="64" r={R} fill="none" strokeWidth="9" className="stroke-zinc-200 dark:stroke-white/[0.07]" />
           <circle cx="64" cy="64" r={R} fill="none" strokeWidth="9" strokeLinecap="round" stroke="url(#focus-ring)" strokeDasharray={C} strokeDashoffset={C * (1 - done)}
@@ -74,7 +74,7 @@ export function FocusPill() {
   const full = PRESETS[s.preset][s.phase === 'focus' ? 0 : 1] * 60_000;
   if (!s.endsAt && left >= full) return null;
   return (
-    <Link href="/collab" className={cn('menu-pop inline-flex items-center gap-1.5 px-3 h-9 rounded-full text-xs font-bold tabular-nums text-white shadow-lg', s.phase === 'break' ? 'bg-gradient-to-r from-teal-500 to-cyan-500 shadow-cyan-500/30' : 'bg-gradient-to-r from-indigo-600 to-fuchsia-600 shadow-fuchsia-500/30')}
+    <Link href="/collab" className={cn('menu-pop inline-flex items-center gap-1.5 px-3 h-9 rounded-full text-xs font-bold tabular-nums text-white shadow-lg', s.phase === 'break' ? 'bg-gradient-to-r from-indigo-400 to-indigo-600 shadow-cyan-500/30' : 'bg-gradient-to-r from-indigo-600 to-fuchsia-600 shadow-fuchsia-500/30')}
       aria-label={`${s.phase === 'break' ? 'Break' : 'Focus'}: ${mmss(left)} left${s.endsAt ? '' : ', paused'}`}>
       {s.phase === 'break' ? <Coffee className="w-3.5 h-3.5" /> : <Timer className={cn('w-3.5 h-3.5', s.endsAt && 'animate-pulse')} />}
       {mmss(left)}{!s.endsAt && <Pause className="w-3 h-3 opacity-80" />}

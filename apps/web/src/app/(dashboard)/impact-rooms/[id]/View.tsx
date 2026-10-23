@@ -328,7 +328,7 @@ function PledgeCard({ data, busy, run, call }: { data: Room; busy: string | null
           <div>
             <div className="flex items-baseline justify-between text-sm"><span className="text-zinc-700 dark:text-zinc-200">This month</span><span className="font-semibold tabular-nums text-zinc-900 dark:text-white">{p.hoursThisMonth} / {p.hoursPerMonth} h</span></div>
             <div className="mt-1.5 h-2 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden">
-              <motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-indigo-500" initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={spring.gentle} />
+              <motion.div className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-indigo-600" initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={spring.gentle} />
             </div>
             <p className="mt-1.5 text-[11px] text-zinc-500">{p.hoursSoFar} verified hours since you pledged{p.running ? ` · until ${new Date(p.endsAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : ' · this pledge has ended'}{p.skill ? ` · ${p.skill}` : ''}. Hours count when a shift on this project is checked in and out.</p>
           </div>

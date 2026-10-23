@@ -66,7 +66,7 @@ export function reportCardsPage(title: string, cards: { data: ReportCardData; co
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
 body{font:14px/1.5 system-ui,-apple-system,sans-serif;color:#111;margin:0;background:#fff}
 .card{padding:40px;page-break-after:always;max-width:780px;margin:0 auto}.card:last-child{page-break-after:auto}
-h1{margin:4px 0;font-size:22px}.logo{max-height:56px;max-width:200px;object-fit:contain;display:block;margin-bottom:8px}p{margin:0}.school{font-weight:700;color:#4338ca;text-transform:uppercase;letter-spacing:.08em;font-size:12px}.muted{color:#555}
+h1{margin:4px 0;font-size:22px}.logo{max-height:56px;max-width:200px;object-fit:contain;display:block;margin-bottom:8px}p{margin:0}.school{font-weight:700;color:#1b2c39;text-transform:uppercase;letter-spacing:.08em;font-size:12px}.muted{color:#555}
 .sum{display:flex;gap:40px;margin:24px 0}.sum b{display:block;font-size:22px}
 table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid #ddd;vertical-align:top}th{background:#f4f4f6;font-size:12px;text-transform:uppercase;letter-spacing:.04em}.n{text-align:right;white-space:nowrap}small{color:#555}
 .comment{margin-top:24px;padding:12px 16px;border:1px solid #ddd;border-radius:8px}.note{margin-top:24px;font-size:11px}

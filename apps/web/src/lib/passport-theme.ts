@@ -15,7 +15,7 @@ export const PASSPORT_THEME_CLASS: Record<PassportTheme, { accent: string; soft:
     ring: 'text-indigo-500',
   },
   emerald: {
-    accent: 'from-emerald-500 to-teal-500',
+    accent: 'from-indigo-400 to-indigo-600',
     soft: 'from-emerald-500/20 to-teal-500/20',
     ring: 'text-emerald-500',
   },
@@ -30,7 +30,7 @@ export const PASSPORT_THEME_CLASS: Record<PassportTheme, { accent: string; soft:
     ring: 'text-rose-500',
   },
   amber: {
-    accent: 'from-amber-500 to-orange-500',
+    accent: 'from-fuchsia-400 to-fuchsia-600',
     soft: 'from-amber-500/20 to-orange-500/20',
     ring: 'text-amber-600',
   },

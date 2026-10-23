@@ -37,20 +37,20 @@ interface MatchedProject {
 }
 
 const SDG_COLORS: Record<number, string> = {
-  1: 'from-red-600 to-red-700', 2: 'from-yellow-600 to-orange-600',
-  3: 'from-green-600 to-emerald-600', 4: 'from-red-500 to-rose-600',
-  5: 'from-orange-500 to-red-500', 6: 'from-sky-500 to-blue-600',
-  7: 'from-yellow-400 to-amber-500', 8: 'from-rose-700 to-rose-800',
-  9: 'from-orange-600 to-amber-600', 10: 'from-pink-600 to-rose-700',
-  11: 'from-amber-600 to-yellow-600', 12: 'from-amber-500 to-yellow-500',
-  13: 'from-green-700 to-teal-700', 14: 'from-blue-600 to-cyan-600',
-  15: 'from-green-600 to-lime-600', 16: 'from-blue-700 to-indigo-700',
-  17: 'from-blue-600 to-blue-800',
+  1: 'from-red-600 to-red-700', 2: 'from-fuchsia-400 to-fuchsia-600',
+  3: 'from-indigo-400 to-indigo-600', 4: 'from-red-500 to-rose-600',
+  5: 'from-fuchsia-400 to-fuchsia-600', 6: 'from-indigo-600 to-fuchsia-600',
+  7: 'from-fuchsia-400 to-fuchsia-600', 8: 'from-rose-700 to-rose-800',
+  9: 'from-fuchsia-400 to-fuchsia-600', 10: 'from-pink-600 to-rose-700',
+  11: 'from-fuchsia-400 to-fuchsia-600', 12: 'from-fuchsia-400 to-fuchsia-600',
+  13: 'from-indigo-400 to-indigo-600', 14: 'from-indigo-600 to-fuchsia-600',
+  15: 'from-indigo-400 to-indigo-600', 16: 'from-indigo-600 to-fuchsia-600',
+  17: 'from-indigo-600 to-fuchsia-600',
 };
 
 
 function MatchBar({ pct }: { pct: number }) {
-  const color = pct >= 90 ? 'from-emerald-500 to-teal-500' : pct >= 75 ? 'from-blue-500 to-indigo-500' : 'from-amber-500 to-orange-500';
+  const color = pct >= 90 ? 'from-indigo-400 to-indigo-600' : pct >= 75 ? 'from-indigo-600 to-fuchsia-600' : 'from-fuchsia-400 to-fuchsia-600';
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">

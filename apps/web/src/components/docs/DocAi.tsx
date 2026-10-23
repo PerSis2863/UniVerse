@@ -75,7 +75,7 @@ export function DocAiButton({ editor, canEdit, docId }: { editor: Editor | null;
         <Sparkles className="w-4 h-4" /><span className="max-sm:sr-only">AI</span>
       </button>
       {open && (
-        <div role="dialog" aria-label="Write with AI" className="absolute end-0 top-10 z-40 w-[22rem] max-sm:fixed max-sm:inset-x-4 max-sm:top-28 max-sm:w-auto rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-2" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>
+        <div role="dialog" aria-label="Write with AI" className="absolute end-0 top-10 z-40 w-[22rem] max-sm:fixed max-sm:inset-x-4 max-sm:top-28 max-sm:w-auto rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl p-2" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>
           {!answer ? (
             <>
               <p className="px-2 pt-1 pb-2 text-xs text-zinc-500">Select text in the document, then choose. You’ll see the answer before anything changes. Each one uses an AI request.</p>

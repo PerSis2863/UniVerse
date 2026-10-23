@@ -12,7 +12,7 @@ export const EASE = [0.22, 1, 0.36, 1] as const;
 export function Tag({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <span className={cn('inline-flex items-center gap-2 h-7 px-3 rounded-full border border-white/[0.08] bg-white/[0.04] font-mono text-xs text-zinc-300', className)}>
-      <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_8px_#e879f9]" /> {children}
+      <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_8px_#9e8189]" /> {children}
     </span>
   );
 }
@@ -45,7 +45,7 @@ export function CountUp({ to, prefix = '', suffix = '', className }: { to: numbe
 }
 
 /** The two-tone button (indigo into fuchsia), the page's one bright action. */
-export const primary = 'group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-bold text-white bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_8px_30px_-8px_rgba(192,38,211,0.7)] hover:brightness-110 active:scale-[0.98] transition';
+export const primary = 'group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-bold text-white bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_8px_30px_-8px_rgba(107,85,96,0.7)] hover:brightness-110 active:scale-[0.98] transition';
 export const ghost = 'group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-semibold text-white border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] active:scale-[0.98] transition';
 /** A dark glass card. */
-export const glass = 'rounded-3xl border border-white/[0.08] bg-[#0d0f1d]/70 backdrop-blur-md';
+export const glass = 'rounded-3xl border border-white/[0.08] bg-[#0b1a24]/70 backdrop-blur-md';

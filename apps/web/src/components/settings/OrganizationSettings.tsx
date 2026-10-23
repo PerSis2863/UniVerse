@@ -48,13 +48,13 @@ type RetentionSettings = {
 };
 
 const PRESET_COLORS = [
-  { name: "Indigo", hex: "#4f46e5" },
+  { name: "Indigo", hex: "#253745" },
   { name: "Crimson", hex: "#e11d48" },
   { name: "Emerald", hex: "#059669" },
   { name: "Amber", hex: "#d97706" },
-  { name: "Violet", hex: "#7c3aed" },
+  { name: "Violet", hex: "#484652" },
   { name: "Sky", hex: "#0284c7" },
-  { name: "Slate", hex: "#334155" },
+  { name: "Slate", hex: "#253745" },
 ];
 
 function StatusRow({ ok, neutral, title, detail }: { ok: boolean; neutral?: boolean; title: string; detail: string }) {
@@ -155,7 +155,7 @@ export function OrganizationSettings() {
   const name = draft.name ?? org?.name ?? "";
   const slug = draft.slug ?? org?.slug ?? "";
   const customDomain = draft.customDomain ?? org?.customDomain ?? "";
-  const brandColor = draft.brandColor ?? org?.brandColor ?? "#4f46e5";
+  const brandColor = draft.brandColor ?? org?.brandColor ?? "#253745";
   const appTitle = draft.appTitle ?? org?.appTitle ?? "";
   const tagline = draft.tagline ?? org?.tagline ?? "";
 
@@ -324,14 +324,14 @@ export function OrganizationSettings() {
               <input
                 type="color"
                 aria-label="Color picker"
-                value={brandColor || "#4f46e5"}
+                value={brandColor || "#253745"}
                 onChange={(e) => setDraft((d) => ({ ...d, brandColor: e.target.value }))}
                 className="w-9 h-9 rounded-xl border border-zinc-200 dark:border-zinc-800 cursor-pointer bg-transparent"
               />
               <input
                 type="text"
                 aria-label="Color hex"
-                value={brandColor || "#4f46e5"}
+                value={brandColor || "#253745"}
                 onChange={(e) => setDraft((d) => ({ ...d, brandColor: e.target.value }))}
                 maxLength={7}
                 className="input w-28 font-mono text-xs uppercase"
@@ -360,7 +360,7 @@ export function OrganizationSettings() {
             </span>
             <span
               className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
-              style={{ backgroundColor: brandColor || "#4f46e5" }}
+              style={{ backgroundColor: brandColor || "#253745" }}
             >
               LIVE THEME
             </span>
@@ -377,7 +377,7 @@ export function OrganizationSettings() {
             <div className="flex items-center gap-2">
               <span
                 className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white"
-                style={{ backgroundColor: brandColor || "#4f46e5" }}
+                style={{ backgroundColor: brandColor || "#253745" }}
               >
                 Sign In
               </span>

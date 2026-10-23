@@ -22,14 +22,14 @@ const PUBLIC = { id: true, email: true, name: true, confirmedAt: true, weeklyDig
 
 function frame(title: string, body: string, token: string, button?: { href: string; label: string }) {
   const manage = `${APP_URL()}/guardian/updates/${token}`;
-  const html = `<!doctype html><html><body style="margin:0;background:#f4f4f5;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  const html = `<!doctype html><html><body style="margin:0;background:#f2ece6;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px"><tr><td align="center">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:16px;padding:32px">
-<tr><td style="font-size:17px;font-weight:700;color:#18181b">UniVerse <span style="color:#6366f1">Impact</span></td></tr>
-<tr><td style="padding-top:16px;font-size:20px;font-weight:700;color:#18181b">${escapeHtml(title)}</td></tr>
-<tr><td style="padding-top:8px;font-size:15px;line-height:1.55;color:#3f3f46">${body}</td></tr>
-${button ? `<tr><td style="padding-top:24px"><a href="${escapeHtml(button.href)}" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 20px;border-radius:10px">${escapeHtml(button.label)}</a></td></tr>` : ''}
-<tr><td style="padding-top:24px;font-size:12px;color:#a1a1aa">You get this because a student added your address on UniVerse Impact. <a href="${escapeHtml(manage)}" style="color:#6366f1">Change or stop these emails</a>.</td></tr>
+<tr><td style="font-size:17px;font-weight:700;color:#11212d">UniVerse <span style="color:#253745">Impact</span></td></tr>
+<tr><td style="padding-top:16px;font-size:20px;font-weight:700;color:#11212d">${escapeHtml(title)}</td></tr>
+<tr><td style="padding-top:8px;font-size:15px;line-height:1.55;color:#33434f">${body}</td></tr>
+${button ? `<tr><td style="padding-top:24px"><a href="${escapeHtml(button.href)}" style="display:inline-block;background:#253745;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 20px;border-radius:10px">${escapeHtml(button.label)}</a></td></tr>` : ''}
+<tr><td style="padding-top:24px;font-size:12px;color:#9ba8ab">You get this because a student added your address on UniVerse Impact. <a href="${escapeHtml(manage)}" style="color:#253745">Change or stop these emails</a>.</td></tr>
 </table></td></tr></table></body></html>`;
   return { html, manage };
 }
@@ -122,12 +122,12 @@ export async function sendWeeklyDigests(limit = 40) {
     if (!progress.has(c.studentId)) progress.set(c.studentId, await studentProgress(c.studentId, 7));
     const p = progress.get(c.studentId)!;
     const name = escapeHtml(c.student.name.split(' ')[0] || c.student.name);
-    const rows = p.courses.map((co) => `<tr><td style="padding:6px 0;color:#18181b">${escapeHtml(co.code)} · ${escapeHtml(co.name)}</td><td align="right" style="padding:6px 0;color:#3f3f46">${co.grade === null ? '–' : `${co.grade}%`}</td><td align="right" style="padding:6px 0 6px 12px;color:#3f3f46">${co.attendance === null ? '–' : `${co.attendance}%`}</td></tr>`).join('');
+    const rows = p.courses.map((co) => `<tr><td style="padding:6px 0;color:#11212d">${escapeHtml(co.code)} · ${escapeHtml(co.name)}</td><td align="right" style="padding:6px 0;color:#33434f">${co.grade === null ? '–' : `${co.grade}%`}</td><td align="right" style="padding:6px 0 6px 12px;color:#33434f">${co.attendance === null ? '–' : `${co.attendance}%`}</td></tr>`).join('');
     const dueSoon = p.deadlines.slice(0, 6).map((d) => `<li>${escapeHtml(d.title)}${d.course ? ` (${escapeHtml(d.course.code)})` : ''}, ${new Date(d.due).toUTCString().slice(0, 16)}</li>`).join('');
     const link = shareLinksEnabled() ? `${APP_URL()}/guardian/${issueGuardianToken(c.studentId, 7).token}` : null;
     const body = `<p>Here's ${name}'s week on UniVerse Impact.</p>
 <p><b>Average grade:</b> ${p.average === null ? 'nothing graded yet' : `${p.average}%`} · <b>Attendance:</b> ${p.attendance === null ? 'not recorded yet' : `${p.attendance}%`}</p>
-${rows ? `<table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-top:8px"><tr><td style="color:#a1a1aa;font-size:12px">Course</td><td align="right" style="color:#a1a1aa;font-size:12px">Grade</td><td align="right" style="color:#a1a1aa;font-size:12px;padding-left:12px">Attendance</td></tr>${rows}</table>` : ''}
+${rows ? `<table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-top:8px"><tr><td style="color:#9ba8ab;font-size:12px">Course</td><td align="right" style="color:#9ba8ab;font-size:12px">Grade</td><td align="right" style="color:#9ba8ab;font-size:12px;padding-left:12px">Attendance</td></tr>${rows}</table>` : ''}
 ${dueSoon ? `<p style="margin-top:16px"><b>Due in the next 7 days</b></p><ul style="padding-left:18px;margin:4px 0">${dueSoon}</ul>` : '<p style="margin-top:16px">Nothing is due in the next 7 days.</p>'}`;
     const { html } = frame(`${c.student.name}'s week`, body, c.token, link ? { href: link, label: 'See full progress' } : undefined);
     if (await sendEmail(c.email, `${c.student.name}'s week on UniVerse Impact`, html, text(html))) sent++;

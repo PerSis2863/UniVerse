@@ -72,7 +72,7 @@ export class CallRecorder {
     if (++this.frame % FPS === 0) this.wire();
     const g = this.canvas?.getContext('2d');
     if (!g) return;
-    g.fillStyle = '#0b0e1a';
+    g.fillStyle = '#06141b';
     g.fillRect(0, 0, W, H);
     const all = this.sources();
     const shared = all.find((s) => s.sharing && s.showVideo && s.video?.videoWidth);
@@ -90,9 +90,9 @@ export class CallRecorder {
         g.fillRect(x, y, w, h);
         g.drawImage(v, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
       } else {
-        g.fillStyle = '#18181b';
+        g.fillStyle = '#11212d';
         g.fillRect(x, y, w, h);
-        g.fillStyle = '#6366f1';
+        g.fillStyle = '#253745';
         g.beginPath();
         g.arc(x + w / 2, y + h / 2, Math.min(w, h) / 6, 0, Math.PI * 2);
         g.fill();

@@ -20,7 +20,7 @@ export default function TeacherCourses() {
   const [showEditModal, setShowEditModal] = useState<TeacherCourse | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState<TeacherCourse | null>(null);
   
-  const [formData, setFormData] = useState({ code: '', name: '', description: '', emoji: '📚', color: '#6366f1' });
+  const [formData, setFormData] = useState({ code: '', name: '', description: '', emoji: '📚', color: '#253745' });
 
   const handleCreate = async () => {
     if (!formData.name || !formData.code) {
@@ -31,7 +31,7 @@ export default function TeacherCourses() {
       await api.post('/courses', formData);
       await mutate();
       setShowCreateModal(false);
-      setFormData({ code: '', name: '', description: '', emoji: '📚', color: '#6366f1' });
+      setFormData({ code: '', name: '', description: '', emoji: '📚', color: '#253745' });
       toast.success('Course created successfully!');
     } catch (e) {
       toast.error(errorMessage(e, 'Failed to create course'));

@@ -45,7 +45,7 @@ export default function ImpactRoomsPage() {
                   <motion.li key={r.id} variants={fadeUp}>
                     <Link href={`/impact-rooms/${r.id}`} className={`panel p-4 flex flex-col gap-3 h-full hover:border-indigo-400/60 transition-colors`}>
                       <div className="flex items-start gap-3">
-                        <span className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-indigo-500 text-white flex items-center justify-center shrink-0 overflow-hidden">
+                        <span className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 text-white flex items-center justify-center shrink-0 overflow-hidden">
                           {/* eslint-disable-next-line @next/next/no-img-element -- an NGO's logo link; next/image can't optimise on Workers */}
                           {r.ngo.logoUrl ? <img src={r.ngo.logoUrl} alt="" className="w-full h-full object-cover" /> : <HandHeart className="w-5 h-5" />}
                         </span>

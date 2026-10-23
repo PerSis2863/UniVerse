@@ -24,14 +24,14 @@ const ROLE_DETAILS: Record<string, {
     description: 'You\'ve been invited to join as staff / mentor. Manage courses, students, and academic content.',
     icon: Building2,
     color: 'emerald',
-    gradient: 'from-emerald-500 to-teal-600',
+    gradient: 'from-indigo-400 to-indigo-600',
   },
   ADMIN: {
     label: 'Organisation',
     description: 'You\'ve been invited to join for your organisation. Post projects and collaborate with universities.',
     icon: Globe,
     color: 'amber',
-    gradient: 'from-amber-500 to-orange-600',
+    gradient: 'from-fuchsia-400 to-fuchsia-600',
   },
 };
 

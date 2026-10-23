@@ -20,11 +20,11 @@ export const TASKS: { id: Task; label: string; icon: typeof Crop }[] = [
   { id: 'draw', label: 'Draw', icon: Pencil },
   { id: 'background', label: 'Background', icon: Scissors },
 ];
-const SWATCHES = ['#000000', '#ffffff', '#ef4444', '#f59e0b', '#22c55e', '#0ea5e9', '#6366f1', '#ec4899'];
+const SWATCHES = ['#000000', '#ffffff', '#ef4444', '#f59e0b', '#22c55e', '#0ea5e9', '#253745', '#6b5560'];
 
 export function SimpleBar({ onTask, onAddPhoto, busy }: { onTask: (t: Task) => void; onAddPhoto: () => void; busy: boolean }) {
   return (
-    <div role="toolbar" aria-label="Edit" className="flex md:justify-center gap-1 overflow-x-auto px-2 py-2 bg-white dark:bg-[#121830] border-t border-zinc-200 dark:border-white/10">
+    <div role="toolbar" aria-label="Edit" className="flex md:justify-center gap-1 overflow-x-auto px-2 py-2 bg-white dark:bg-[#11212d] border-t border-zinc-200 dark:border-white/10">
       {TASKS.map((t) => (
         <button key={t.id} type="button" onClick={() => onTask(t.id)} className="shrink-0 min-w-[4.5rem] flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/10">
           <t.icon className="w-5 h-5" aria-hidden />
@@ -63,7 +63,7 @@ const TITLES: Record<Task, string> = { crop: 'Crop', turn: 'Turn and flip', adju
 function Swatches({ value, onChange, label }: { value: string; onChange: (c: string) => void; label: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2" role="group" aria-label={label}>
-      {SWATCHES.map((c) => <button key={c} type="button" onClick={() => onChange(c)} aria-label={`${label}: ${c}`} aria-pressed={value === c} className={cn('w-8 h-8 rounded-full border border-zinc-300 dark:border-white/25', value === c && 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-white dark:ring-offset-[#121830]')} style={{ background: c }} />)}
+      {SWATCHES.map((c) => <button key={c} type="button" onClick={() => onChange(c)} aria-label={`${label}: ${c}`} aria-pressed={value === c} className={cn('w-8 h-8 rounded-full border border-zinc-300 dark:border-white/25', value === c && 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-white dark:ring-offset-[#11212d]')} style={{ background: c }} />)}
       <input type="color" value={value} onChange={(e) => onChange(e.target.value)} aria-label={`${label}: any colour`} className="w-9 h-9 rounded-lg border border-zinc-200 dark:border-white/10 bg-transparent" />
     </div>
   );
@@ -76,8 +76,8 @@ export function SimplePanel({ task, api }: { task: Task; api: SimpleApi }) {
   const { photo, active } = api;
   const needPhoto = (task === 'adjust' || task === 'looks') && !photo;
   return (
-    <section aria-labelledby="simple-task" className="bg-white dark:bg-[#121830] border-t border-zinc-200 dark:border-white/10 max-h-[40dvh] overflow-y-auto">
-      <div className="sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-2 bg-white dark:bg-[#121830] border-b border-zinc-100 dark:border-white/5">
+    <section aria-labelledby="simple-task" className="bg-white dark:bg-[#11212d] border-t border-zinc-200 dark:border-white/10 max-h-[40dvh] overflow-y-auto">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-2 bg-white dark:bg-[#11212d] border-b border-zinc-100 dark:border-white/5">
         <h2 id="simple-task" className="font-bold text-zinc-900 dark:text-white">{TITLES[task]}</h2>
         <button type="button" onClick={api.done} className="btn-primary btn-sm"><Check className="w-4 h-4" />Done</button>
       </div>

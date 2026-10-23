@@ -29,10 +29,10 @@ type Item = PinT & { at: string; sub: string };
 const KIND: Record<PinKind, { label: string; icon: LucideIcon; tone: string }> = {
   board: { label: 'Whiteboard', icon: PenTool, tone: 'from-violet-500 to-fuchsia-500' },
   doc: { label: 'Document', icon: FileText, tone: 'from-indigo-500 to-fuchsia-500' },
-  sheet: { label: 'Spreadsheet', icon: FileSpreadsheet, tone: 'from-emerald-500 to-teal-600' },
-  slides: { label: 'Presentation', icon: Presentation, tone: 'from-orange-500 to-rose-500' },
-  tasks: { label: 'Task board', icon: KanbanSquare, tone: 'from-amber-500 to-orange-500' },
-  code: { label: 'Code room', icon: Code2, tone: 'from-sky-500 to-indigo-500' },
+  sheet: { label: 'Spreadsheet', icon: FileSpreadsheet, tone: 'from-indigo-400 to-indigo-600' },
+  slides: { label: 'Presentation', icon: Presentation, tone: 'from-fuchsia-400 to-fuchsia-600' },
+  tasks: { label: 'Task board', icon: KanbanSquare, tone: 'from-fuchsia-400 to-fuchsia-600' },
+  code: { label: 'Code room', icon: Code2, tone: 'from-indigo-600 to-fuchsia-600' },
   file: { label: 'File', icon: File, tone: 'from-zinc-500 to-zinc-700' },
 };
 const FILTERS: [PinKind | 'all', string][] = [['all', 'Everything'], ['doc', 'Docs'], ['sheet', 'Sheets'], ['slides', 'Slides'], ['board', 'Boards'], ['tasks', 'Tasks'], ['code', 'Code'], ['file', 'Files']];
@@ -301,7 +301,7 @@ function Activity({ at, now }: { at: string[]; now: number }) {
       </div>
       <div className="grid grid-cols-7 gap-1.5" role="img" aria-label={`Changes to your shared work in the last four weeks: ${days.reduce((a, b) => a + b, 0)} in all, on ${days.filter(Boolean).length} days`}>
         {days.map((n, i) => (
-          <span key={i} className="activity-cell aspect-square rounded-md" style={{ ['--i' as string]: i, background: n ? `rgb(168 85 247 / ${0.25 + (0.75 * n) / max})` : undefined }} />
+          <span key={i} className="activity-cell aspect-square rounded-md" style={{ ['--i' as string]: i, background: n ? `rgb(107 85 96 / ${0.25 + (0.75 * n) / max})` : undefined }} />
         ))}
       </div>
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Each square is a day; brighter means more of your shared work changed.</p>

@@ -7,14 +7,14 @@ describe('readable colours', () => {
     expect(contrast('#777777', '#ffffff')).toBeCloseTo(4.48, 1);
   });
   it('keeps colours that read, and nudges those that don’t', () => {
-    expect(readable('#1f2937', '#ffffff')).toBe('#1f2937');
-    const onDark = readable('#b91c1c', '#0f1322');
-    expect(contrast(onDark, '#0f1322')).toBeGreaterThanOrEqual(4.5);
+    expect(readable('#253745', '#ffffff')).toBe('#253745');
+    const onDark = readable('#b91c1c', '#0b1a24');
+    expect(contrast(onDark, '#0b1a24')).toBeGreaterThanOrEqual(4.5);
     const onLight = readable('#fde68a', '#ffffff');
     expect(contrast(onLight, '#ffffff')).toBeGreaterThanOrEqual(4.5);
   });
   it('picks black or white on a fill', () => {
-    expect(textOn('#ffeb84')).toBe('#18181b');
+    expect(textOn('#ffeb84')).toBe('#11212d');
     expect(textOn('#1e3a8a')).toBe('#ffffff');
   });
 });

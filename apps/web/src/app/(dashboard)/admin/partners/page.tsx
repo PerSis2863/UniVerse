@@ -94,7 +94,7 @@ export default function SponsorPortalPage() {
               title="Track every sponsorship and agreement"
               description="Record what each partner organization supports — scholarships, events, internships or projects — with start and end dates, all in one place."
               steps={['Add partner organizations under Partner Institutions', 'Create a partnership with its title and dates', 'Keep track of what is active and what is ending']}
-              example={<div><ExampleRow title="Merit Scholarship Fund" meta="Acme Foundation · Jan–Dec 2026" right="Active" /><ExampleRow title="Hackathon Sponsorship" meta="Greenline Energy · Nov 2026" right="Active" accent="from-emerald-500 to-teal-500" /></div>}
+              example={<div><ExampleRow title="Merit Scholarship Fund" meta="Acme Foundation · Jan–Dec 2026" right="Active" /><ExampleRow title="Hackathon Sponsorship" meta="Greenline Energy · Nov 2026" right="Active" accent="from-indigo-400 to-indigo-600" /></div>}
               action={{ label: 'New partnership', onClick: () => setForm({ partnerId: partners?.[0]?.id ?? '', title: '', description: '', startDate: '', endDate: '' }) }}
             />
           ) : (

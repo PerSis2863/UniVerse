@@ -7,7 +7,8 @@ import type { MessageEffect } from '@/lib/message-effects';
 // chat for about three seconds when a message sent with one arrives. One canvas, drawn by
 // requestAnimationFrame and removed after; nothing plays with Reduce Motion.
 
-const COLORS = ['#818cf8', '#a855f7', '#e879f9', '#f472b6', '#fbbf24', '#34d399', '#38bdf8'];
+// The owner's palettes: dark pink, rose, and the blues.
+const COLORS = ['#6b5560', '#c7a9a3', '#e8d2c4', '#9e8189', '#f7efe7', '#4a5c6a', '#9ba8ab'];
 const DURATION = 3000;
 type P = { x: number; y: number; vx: number; vy: number; r: number; spin: number; a: number; c: string; s: number; t0: number };
 
@@ -26,7 +27,7 @@ function particles(effect: MessageEffect, w: number, h: number): P[] {
   const base = (o: Partial<P>): P => ({ x: 0, y: 0, vx: 0, vy: 0, r: 0, spin: 0, a: 1, c: pick(COLORS), s: 8, t0: 0, ...o });
   if (effect === 'confetti') return Array.from({ length: 170 }, () => base({ x: rnd(0, w), y: rnd(-h * 0.6, -10), vx: rnd(-0.06, 0.06), vy: rnd(0.18, 0.42), r: rnd(0, 6), spin: rnd(-0.01, 0.01), s: rnd(5, 10) }));
   if (effect === 'balloons') return Array.from({ length: 16 }, (_, i) => base({ x: ((i + rnd(0.2, 0.8)) / 16) * w, y: h + rnd(20, 380), vy: -rnd(0.22, 0.36), spin: rnd(0, 6), s: rnd(22, 34) }));
-  if (effect === 'hearts') return Array.from({ length: 46 }, () => base({ x: w / 2 + rnd(-w * 0.35, w * 0.35), y: h + rnd(0, 260), vx: rnd(-0.03, 0.03), vy: -rnd(0.16, 0.34), spin: rnd(0, 6), s: rnd(8, 20), c: pick(['#f472b6', '#e879f9', '#fb7185', '#c084fc']) }));
+  if (effect === 'hearts') return Array.from({ length: 46 }, () => base({ x: w / 2 + rnd(-w * 0.35, w * 0.35), y: h + rnd(0, 260), vx: rnd(-0.03, 0.03), vy: -rnd(0.16, 0.34), spin: rnd(0, 6), s: rnd(8, 20), c: pick(['#c7a9a3', '#9e8189', '#6b5560', '#e8d2c4']) }));
   if (effect === 'fireworks') {
     return Array.from({ length: 5 }, (_, b) => {
       const cx = rnd(w * 0.15, w * 0.85), cy = rnd(h * 0.15, h * 0.55), c = pick(COLORS), t0 = b * 420;
@@ -59,7 +60,7 @@ export function ScreenEffect({ effect, onDone }: { effect: MessageEffect; onDone
       const fade = t > DURATION - 600 ? Math.max(0, (DURATION - t) / 600) : 1;
       if (effect === 'lasers') {
         // Beams sweeping from the bottom corners over a dimmed chat.
-        ctx.fillStyle = `rgba(8, 6, 30, ${0.45 * fade})`;
+        ctx.fillStyle = `rgba(6, 20, 27, ${0.45 * fade})`;
         ctx.fillRect(0, 0, w, h);
         ctx.globalCompositeOperation = 'lighter';
         for (let i = 0; i < 6; i++) {

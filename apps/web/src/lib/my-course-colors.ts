@@ -10,9 +10,9 @@ const KEY = 'uv-course-colors';
 const EVENT = 'uv-course-colors';
 /** The picks offered (each takes white text at 4.5:1 or more). */
 export const MY_COURSE_COLORS = [
-  { value: '#4f46e5', name: 'Indigo' }, { value: '#7c3aed', name: 'Violet' }, { value: '#be123c', name: 'Red' },
+  { value: '#253745', name: 'Indigo' }, { value: '#484652', name: 'Violet' }, { value: '#be123c', name: 'Red' },
   { value: '#c2410c', name: 'Orange' }, { value: '#a16207', name: 'Gold' }, { value: '#15803d', name: 'Green' },
-  { value: '#0f766e', name: 'Teal' }, { value: '#0369a1', name: 'Blue' }, { value: '#52525b', name: 'Grey' },
+  { value: '#0f766e', name: 'Teal' }, { value: '#0369a1', name: 'Blue' }, { value: '#4a5c6a', name: 'Grey' },
 ] as const;
 
 const read = () => { try { return localStorage.getItem(KEY) ?? ''; } catch { return ''; } };

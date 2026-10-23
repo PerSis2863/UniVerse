@@ -49,7 +49,7 @@ export default function CoursesPage() {
             title="Your courses will appear here"
             description="When you're enrolled in a course, you'll see it here with its teacher, and open its Blackboard for announcements, materials, grades and quizzes."
             steps={['Your teacher or admin enrolls you in courses', 'Open a course to see materials and announcements', 'Check your grades and quiz results as you go']}
-            example={<div><ExampleRow title="Operating Systems" meta="Prof. R. Mehta · 12 materials" right="CS301" /><ExampleRow title="Sustainable Development" meta="Dr. A. Khan · 3 quizzes" right="ENV210" accent="from-emerald-500 to-teal-500" /></div>}
+            example={<div><ExampleRow title="Operating Systems" meta="Prof. R. Mehta · 12 materials" right="CS301" /><ExampleRow title="Sustainable Development" meta="Dr. A. Khan · 3 quizzes" right="ENV210" accent="from-indigo-400 to-indigo-600" /></div>}
           />
         ) : (
           // The CSS cascade, not an animation per card in JS (that restyled every card on every frame

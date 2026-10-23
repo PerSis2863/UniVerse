@@ -111,7 +111,7 @@ export function WordCount({ editor, docId }: { editor: Editor; docId?: string })
         {label}{goal ? ` of ${goal.toLocaleString()}` : ''}
       </button>
       {open && (
-        <span role="dialog" aria-label="Writing goal" className="menu-pop absolute start-0 top-6 z-40 w-56 p-2 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-xs text-zinc-700 dark:text-zinc-200">
+        <span role="dialog" aria-label="Writing goal" className="menu-pop absolute start-0 top-6 z-40 w-56 p-2 rounded-xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl text-xs text-zinc-700 dark:text-zinc-200">
           <span className="block px-1 pb-1.5 font-semibold">Writing goal for this document</span>
           <span className="grid grid-cols-3 gap-1">
             {GOALS.map((g) => <button key={g} type="button" onClick={() => setGoal(g)} aria-pressed={goal === g} className={cn('py-1.5 rounded-lg font-semibold', goal === g ? 'bg-indigo-600 text-white' : 'bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10')}>{g.toLocaleString()}</button>)}

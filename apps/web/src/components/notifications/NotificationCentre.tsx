@@ -203,7 +203,7 @@ function Row({ n, onOpen, onAct }: { n: Item; onOpen: () => void; onAct: (a: 're
         <span className="text-indigo-700 dark:text-indigo-300 inline-flex items-center gap-1">{n.read ? 'Unread' : 'Read'}<Check className="w-4 h-4" /></span>
       </div>
       <motion.div drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.5} dragSnapToOrigin onDragEnd={onDragEnd}
-        className={cn('relative flex items-start gap-3 p-3 rounded-2xl border bg-white dark:bg-[#11131f] touch-pan-y', n.read ? 'border-zinc-200/70 dark:border-white/[0.06]' : 'border-indigo-500/30')}>
+        className={cn('relative flex items-start gap-3 p-3 rounded-2xl border bg-white dark:bg-[#11212d] touch-pan-y', n.read ? 'border-zinc-200/70 dark:border-white/[0.06]' : 'border-indigo-500/30')}>
         <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', TONE[n.group])}><Icon className="w-4 h-4" /></span>
         <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-start">
           <span className="flex items-baseline gap-2">

@@ -44,7 +44,7 @@ export default function StudentCommunity() {
     const name: string | undefined = p?.author?.name;
     if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
   }
-  const COLORS = ['from-pink-500 to-rose-500', 'from-blue-500 to-cyan-500', 'from-indigo-500 to-purple-500'];
+  const COLORS = ['from-pink-500 to-rose-500', 'from-indigo-600 to-fuchsia-600', 'from-indigo-500 to-purple-500'];
   const topContributors: Contributor[] = [...counts.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)

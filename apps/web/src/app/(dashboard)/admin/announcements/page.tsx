@@ -165,7 +165,7 @@ function Phone({ title, body, justSent }: { title: string; body: string; justSen
           <p className="mt-1 text-sm font-bold text-zinc-900 dark:text-white leading-snug">{cut}</p>
           <p className="text-xs text-zinc-700 dark:text-white/80 line-clamp-2">{b}</p>
         </div>
-        <div className="mt-3 rounded-2xl bg-white dark:bg-[#151a33] p-3 text-start shadow-lg">
+        <div className="mt-3 rounded-2xl bg-white dark:bg-[#11212d] p-3 text-start shadow-lg">
           <p className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-300 inline-flex items-center gap-1"><Bell className="w-3 h-3" />In the app</p>
           <p className="mt-1 text-sm font-bold text-zinc-900 dark:text-white leading-snug line-clamp-2">{t}</p>
           <p className="mt-0.5 text-xs text-zinc-600 dark:text-zinc-300 line-clamp-6 whitespace-pre-line">{b}</p>

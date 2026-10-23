@@ -18,15 +18,15 @@ export type FolderPeek = { name: string; meta?: string; image?: string; kind?: '
 const BACK = 'M0,0.27 Q0,0.17 0.055,0.17 L0.43,0.17 C0.49,0.17 0.5,0 0.57,0 L0.945,0 Q1,0 1,0.09 L1,0.91 Q1,1 0.945,1 L0.055,1 Q0,1 0,0.91 Z';
 const FRONT = 'M0,0.11 Q0,0 0.055,0 L0.36,0 C0.43,0 0.44,0.15 0.52,0.15 L0.945,0.15 Q1,0.15 1,0.26 L1,0.89 Q1,1 0.945,1 L0.055,1 Q0,1 0,0.89 Z';
 
-// Streaks of colour for the back panel, in UniVerse's own colours (indigo, violet, fuchsia, and the
-// blues and pinks beside them). A list gives each folder the next set, so folders side by side differ.
+// Streaks of colour for the back panel, from the owner's palettes (dark blue and dark pink, 23 Oct
+// 2026), mixed six ways. A list gives each folder the next set, so folders side by side differ.
 const PALETTES = [
-  ['#1e1b4b', '#6366f1', '#e0e7ff', '#a855f7'],
-  ['#2e1065', '#d946ef', '#fae8ff', '#7c3aed'],
-  ['#172554', '#3b82f6', '#ede9fe', '#8b5cf6'],
-  ['#3b0764', '#f43f5e', '#ffe4e6', '#c026d3'],
-  ['#0c1a3a', '#06b6d4', '#e0f2fe', '#6366f1'],
-  ['#2e1065', '#a78bfa', '#fdf2f8', '#ec4899'],
+  ['#11212d', '#6b5560', '#e8d2c4', '#253745'],
+  ['#3e3239', '#9e8189', '#f7efe7', '#6b5560'],
+  ['#06141b', '#4a5c6a', '#ccd0cf', '#6b5560'],
+  ['#253745', '#c7a9a3', '#f7efe7', '#3e3239'],
+  ['#2a2127', '#6b5560', '#e8d2c4', '#9ba8ab'],
+  ['#11212d', '#9e8189', '#efe1d6', '#253745'],
 ];
 const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 const palette = (seed: string, index?: number) => PALETTES[(index ?? hash(seed)) % PALETTES.length];

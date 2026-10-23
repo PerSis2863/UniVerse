@@ -137,7 +137,7 @@ function SessionCard({ s, canManage, open, linked, onToggle, recordingUrl, refre
   return (
     <motion.article layout transition={spring.smooth} className={cn('panel', 'overflow-hidden')}>
       <button type="button" onClick={onToggle} aria-expanded={open} className="w-full text-start p-4 sm:p-5 flex items-start gap-3">
-        <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20"><NotebookPen className="w-5 h-5" /></div>
+        <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-fuchsia-400 to-fuchsia-600 text-white flex items-center justify-center shadow-md shadow-amber-500/20"><NotebookPen className="w-5 h-5" /></div>
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-zinc-900 dark:text-white">{dayOf(s.startedAt)}</p>
           <p className="text-xs text-zinc-500 flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">

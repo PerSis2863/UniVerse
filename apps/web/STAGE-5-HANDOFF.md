@@ -1468,3 +1468,20 @@ Progress table (row D6).
   a board of an older design (other prefix) is left alone and replaced through `GUIDE_VERSION`.
 - Testing the board without the Worker: bundle `universe-guide.ts` with Excalidraw using the
   esbuild in `node_modules/.pnpm/esbuild@*/` and convert it in Chromium (text sizes need a browser).
+
+## M17 · Bigger board, Messages redesign, Collaborate Home, the owner's colours
+
+- **Colours:** the owner's two palettes are mapped onto Tailwind's names in `@theme` (`globals.css`),
+  so every `indigo-*` / `violet-*` / `purple-*` / `fuchsia-*` / `pink-*` / `zinc-*` class follows.
+  The owner wants a lot of the dark blue #253745 and the dark pink #6B5560 (a greyer first version
+  was "so dull"): keep the navy side menu (`dark` class on the `<aside>` in `Sidebar.tsx`), the
+  dark-pink menu pill and the blue → pink gradients. Hard-coded colours in new code: use the palette
+  hex values only (lower case; some tests compare hex strings).
+- Text colours in light mode are pinned for contrast (`:where(html:not(.dark)) … .text-fuchsia-500 {
+  color: #6b5560 }` and friends near the top of `globals.css`); in dark mode the 400 shades are
+  lifted. Check new screens with axe in both themes.
+- Send effects travel in a message's `metadata.effect`, silent sends in `metadata.silent` (the
+  messages route reads them with `effectOf`; `chat-notify.ts` skips pushes for silent ones).
+- Collaborate pins live in `users.collabPins` (JSON list, migration 0176); the next migration is 0177.
+- The board's text needs its fonts loaded before converting (`fontsFor()` in `BoardCanvas.tsx`);
+  anything that converts Excalidraw shapes should go through it.

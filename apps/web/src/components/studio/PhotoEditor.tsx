@@ -36,7 +36,7 @@ const TOOLS: { id: Tool; label: string; icon: typeof Brush; keys: string }[] = [
 ];
 const HISTORY = 20;
 const MODE_KEY = 'studio-photo-mode';
-const swatches = ['#000000', '#ffffff', '#ef4444', '#f59e0b', '#22c55e', '#0ea5e9', '#6366f1', '#a855f7', '#ec4899'];
+const swatches = ['#000000', '#ffffff', '#ef4444', '#f59e0b', '#22c55e', '#0ea5e9', '#253745', '#6b5560', '#6b5560'];
 
 export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () => void }) {
   const [doc, setDoc] = useState<Doc>(initial);
@@ -45,8 +45,8 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
   const [activeId, setActiveId] = useState<string | null>(initial.layers.at(-1)?.id ?? null);
   const [tool, setTool] = useState<Tool>('move');
   const [panel, setPanel] = useState<Panel>('layers');
-  const [brush, setBrush] = useState({ size: 24, color: '#6366f1', opacity: 1 });
-  const [shape, setShape] = useState<ShapeProps>({ type: 'rect', fill: null, stroke: '#6366f1', width: 8, radius: 12 });
+  const [brush, setBrush] = useState({ size: 24, color: '#253745', opacity: 1 });
+  const [shape, setShape] = useState<ShapeProps>({ type: 'rect', fill: null, stroke: '#253745', width: 8, radius: 12 });
   const [drag, setDrag] = useState<Rect | null>(null); // the crop or selection rectangle being drawn or kept
   const [busy, setBusy] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -513,8 +513,8 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
 
   if (simple) {
     return (
-      <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#0b0f1e]">
-        <div className="flex items-center gap-1 px-2 sm:px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121830]">
+      <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#06141b]">
+        <div className="flex items-center gap-1 px-2 sm:px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#11212d]">
           {close}
           <p className="min-w-0 truncate text-sm font-semibold text-zinc-900 dark:text-white px-1">{doc.name}</p>
           <div className="flex items-center gap-0.5 ms-auto shrink-0">
@@ -532,9 +532,9 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
   }
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#0b0f1e]">
+    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#06141b]">
       {/* Top bar */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121830] overflow-x-auto">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#11212d] overflow-x-auto">
         {close}
         <input value={doc.name} onChange={(e) => setDoc({ ...doc, name: e.target.value.slice(0, 60) })} aria-label="Picture name" className="min-w-0 w-36 sm:w-48 bg-transparent text-sm font-semibold text-zinc-900 dark:text-white px-2 py-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/10 focus:bg-zinc-100 dark:focus:bg-white/10 outline-none" />
         <span className="text-[11px] text-zinc-500 tabular-nums shrink-0 hidden sm:inline">{doc.w} × {doc.h}</span>
@@ -556,7 +556,7 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
 
       <div className="flex-1 min-h-0 flex flex-col md:flex-row">
         {/* Tools */}
-        <div role="toolbar" aria-label="Tools" className="order-2 md:order-1 flex md:flex-col gap-1 p-1.5 bg-white dark:bg-[#121830] border-t md:border-t-0 md:border-e border-zinc-200 dark:border-white/10 overflow-x-auto">
+        <div role="toolbar" aria-label="Tools" className="order-2 md:order-1 flex md:flex-col gap-1 p-1.5 bg-white dark:bg-[#11212d] border-t md:border-t-0 md:border-e border-zinc-200 dark:border-white/10 overflow-x-auto">
           {TOOLS.map((t) => (
             <button key={t.id} type="button" onClick={() => { setTool(t.id); setDrag(null); if (t.id !== 'move') setPanel('tool'); }} aria-pressed={tool === t.id} aria-label={t.label} title={`${t.label} (${t.keys})`}
               className={cn('w-11 h-11 shrink-0 rounded-xl grid place-items-center transition-colors', tool === t.id ? 'bg-indigo-500 text-white' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10')}>
@@ -571,7 +571,7 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
         {picture}
 
         {/* Panels */}
-        <aside className="order-3 md:w-80 shrink-0 flex flex-col max-h-[45vh] md:max-h-none bg-white dark:bg-[#121830] border-t md:border-t-0 md:border-s border-zinc-200 dark:border-white/10">
+        <aside className="order-3 md:w-80 shrink-0 flex flex-col max-h-[45vh] md:max-h-none bg-white dark:bg-[#11212d] border-t md:border-t-0 md:border-s border-zinc-200 dark:border-white/10">
           <div className="flex p-1.5 gap-1 border-b border-zinc-200 dark:border-white/10" role="tablist" aria-label="Panels">
             {([['layers', 'Layers', Layers], ['adjust', 'Adjust', SlidersHorizontal], ['tool', 'Options', Wand2]] as const).map(([id, label, Icon]) => (
               <button key={id} type="button" role="tab" aria-selected={panel === id} onClick={() => setPanel(id)} className={cn('flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold', panel === id ? 'bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-white' : 'text-zinc-500')}>
@@ -672,7 +672,7 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
 function Swatches({ value, onChange, label }: { value: string; onChange: (c: string) => void; label: string }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={label}>
-      {swatches.map((c) => <button key={c} type="button" onClick={() => onChange(c)} aria-label={`${label} ${c}`} aria-pressed={value === c} className={cn('w-6 h-6 rounded-full border border-zinc-300 dark:border-white/20', value === c && 'ring-2 ring-indigo-500 ring-offset-1 ring-offset-white dark:ring-offset-[#121830]')} style={{ background: c }} />)}
+      {swatches.map((c) => <button key={c} type="button" onClick={() => onChange(c)} aria-label={`${label} ${c}`} aria-pressed={value === c} className={cn('w-6 h-6 rounded-full border border-zinc-300 dark:border-white/20', value === c && 'ring-2 ring-indigo-500 ring-offset-1 ring-offset-white dark:ring-offset-[#11212d]')} style={{ background: c }} />)}
       <input type="color" value={value} onChange={(e) => onChange(e.target.value)} aria-label={`${label}: any colour`} className="w-7 h-7 rounded-md border border-zinc-200 dark:border-white/10 bg-transparent" />
     </div>
   );
@@ -735,7 +735,7 @@ function ToolOptions({ tool, brush, setBrush, shape, setShape, active, setText, 
         {(shape.type === 'rect' || shape.type === 'ellipse') && (
           <label className="flex items-center justify-between text-xs text-zinc-500">Fill
             <span className="flex items-center gap-2">
-              <button type="button" onClick={() => setShape({ ...shape, fill: shape.fill ? null : '#a5b4fc' })} aria-pressed={!!shape.fill} className={cn('px-2 py-1 rounded-md text-[11px] font-semibold', shape.fill ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-white/10')}>{shape.fill ? 'On' : 'Off'}</button>
+              <button type="button" onClick={() => setShape({ ...shape, fill: shape.fill ? null : '#9ba8ab' })} aria-pressed={!!shape.fill} className={cn('px-2 py-1 rounded-md text-[11px] font-semibold', shape.fill ? 'bg-indigo-500 text-white' : 'bg-zinc-100 dark:bg-white/10')}>{shape.fill ? 'On' : 'Off'}</button>
               {shape.fill && <input type="color" value={shape.fill} onChange={(e) => setShape({ ...shape, fill: e.target.value })} aria-label="Fill colour" className="w-7 h-7 rounded-md bg-transparent" />}
             </span>
           </label>
@@ -797,7 +797,7 @@ function ExportSheet({ doc, title, onName, onClose }: { doc: Doc; title: string;
   };
   return (
     <div className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-labelledby="export-title" className="sheet-in w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-5 space-y-4">
+      <div role="dialog" aria-modal="true" aria-labelledby="export-title" className="sheet-in w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl p-5 space-y-4">
         <div className="flex items-center justify-between"><h2 id="export-title" className="font-bold text-zinc-900 dark:text-white">{title}</h2><button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button></div>
         <label className="block text-xs text-zinc-600 dark:text-zinc-400">Name
           <input value={doc.name} onChange={(e) => onName(e.target.value.slice(0, 60))} className="input text-sm mt-1" />

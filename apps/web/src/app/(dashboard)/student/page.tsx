@@ -90,8 +90,8 @@ function LevelRing({ progress }: { progress: number }) {
     <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
       <defs>
         <linearGradient id="lvl" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#6366f1" />
-          <stop offset="100%" stopColor="#d946ef" />
+          <stop offset="0%" stopColor="#253745" />
+          <stop offset="100%" stopColor="#6b5560" />
         </linearGradient>
       </defs>
       <circle cx="50" cy="50" r={r} fill="none" strokeWidth="8" className="stroke-zinc-200 dark:stroke-white/[0.07]" />
@@ -182,8 +182,8 @@ export default function StudentDashboard() {
         ) : !data ? null : (
           <>
             <StatTile delay={0} label="Enrolled courses" value={String(s!.courses)} sub={s!.courses ? 'This term' : 'Not enrolled yet'} icon={BookOpen} gradient="from-indigo-500 to-violet-500" />
-            <StatTile delay={0.05} label="Attendance" value={fmt(s!.attendance, '%')} sub={s!.attendance === null ? 'No records yet' : 'Present or late'} icon={ClipboardCheck} gradient="from-emerald-500 to-teal-500" />
-            <StatTile delay={0.1} label="Average grade" value={fmt(s!.averageGrade, '%')} sub={s!.averageGrade === null ? 'No grades yet' : 'Weighted, all courses'} icon={GraduationCap} gradient="from-sky-500 to-cyan-500" />
+            <StatTile delay={0.05} label="Attendance" value={fmt(s!.attendance, '%')} sub={s!.attendance === null ? 'No records yet' : 'Present or late'} icon={ClipboardCheck} gradient="from-indigo-400 to-indigo-600" />
+            <StatTile delay={0.1} label="Average grade" value={fmt(s!.averageGrade, '%')} sub={s!.averageGrade === null ? 'No grades yet' : 'Weighted, all courses'} icon={GraduationCap} gradient="from-indigo-600 to-fuchsia-600" />
             <StatTile delay={0.15} label="Impact XP" value={data.level.xp.toLocaleString()} sub={`${data.level.current.emoji} ${data.level.current.title}`} icon={Trophy} gradient="from-fuchsia-500 to-pink-500" />
           </>
         )}
@@ -252,7 +252,7 @@ export default function StudentDashboard() {
                   </div>
                   <div>
                     <div className="flex justify-between text-[11px] mb-1"><span className="text-zinc-500">Attendance</span><span className="font-semibold text-zinc-900 dark:text-white">{fmt(c.attendance, '%')}</span></div>
-                    <Bar value={c.attendance ?? 0} className="bg-gradient-to-r from-emerald-500 to-teal-400" />
+                    <Bar value={c.attendance ?? 0} className="bg-gradient-to-r from-indigo-400 to-indigo-600" />
                   </div>
                 </div>
               </div>
@@ -393,7 +393,7 @@ function StreakCard({ streak }: { streak: NonNullable<Overview['streak']> }) {
       <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-amber-500/10 pointer-events-none" />
       <div className="relative">
         <div className="flex items-center gap-3">
-          <div className={cn('w-11 h-11 rounded-2xl flex items-center justify-center shrink-0', current > 0 ? 'bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-lg shadow-orange-500/25' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-400')}>
+          <div className={cn('w-11 h-11 rounded-2xl flex items-center justify-center shrink-0', current > 0 ? 'bg-gradient-to-br from-fuchsia-400 to-fuchsia-600 text-white shadow-lg shadow-orange-500/25' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-400')}>
             <Flame className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -406,7 +406,7 @@ function StreakCard({ streak }: { streak: NonNullable<Overview['streak']> }) {
           {week.map((d, i) => (
             <div key={d.day} className="flex flex-col items-center gap-1 flex-1">
               <span
-                className={cn('w-full max-w-8 h-2 rounded-full', d.studied ? 'bg-gradient-to-r from-orange-500 to-amber-400' : 'bg-zinc-200 dark:bg-white/[0.08]', i === week.length - 1 && !d.studied && 'ring-1 ring-orange-400/60')}
+                className={cn('w-full max-w-8 h-2 rounded-full', d.studied ? 'bg-gradient-to-r from-fuchsia-400 to-fuchsia-600' : 'bg-zinc-200 dark:bg-white/[0.08]', i === week.length - 1 && !d.studied && 'ring-1 ring-orange-400/60')}
                 title={`${new Date(`${d.day}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}: ${d.studied ? 'studied' : 'no study'}`}
               />
               <span className="text-[10px] text-zinc-500">{new Date(`${d.day}T12:00:00`).toLocaleDateString(undefined, { weekday: 'narrow' })}</span>

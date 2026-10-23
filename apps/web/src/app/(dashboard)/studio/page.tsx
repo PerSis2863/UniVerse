@@ -32,11 +32,11 @@ const PANELS: Panel[] = ['convert', 'compress', 'photo', 'audio'];
 interface Tool { id: Panel | 'pdf' | 'video'; name: string; what: string; icon: LucideIcon; tint: string }
 const TOOLS: Tool[] = [
   { id: 'convert', name: 'Convert files', what: 'Word to PDF, PDF to pictures, Excel to CSV and more', icon: Repeat2, tint: 'from-indigo-500 to-sky-500' },
-  { id: 'compress', name: 'Compress files', what: 'Make PDFs, photos, videos and documents smaller', icon: Minimize2, tint: 'from-emerald-500 to-teal-500' },
+  { id: 'compress', name: 'Compress files', what: 'Make PDFs, photos, videos and documents smaller', icon: Minimize2, tint: 'from-indigo-400 to-indigo-600' },
   { id: 'pdf', name: 'Edit a PDF', what: 'Sign, fill in, reorder or remove pages', icon: FileText, tint: 'from-rose-500 to-amber-500' },
   { id: 'photo', name: 'Edit a photo', what: 'Crop, adjust, add text, remove a background', icon: Palette, tint: 'from-indigo-500 to-fuchsia-500' },
   { id: 'video', name: 'Edit a video', what: 'Trim, join clips, add text and music', icon: Clapperboard, tint: 'from-violet-500 to-sky-500' },
-  { id: 'audio', name: 'Edit sound', what: 'Record, trim and clean up audio', icon: AudioWaveform, tint: 'from-emerald-500 to-sky-500' },
+  { id: 'audio', name: 'Edit sound', what: 'Record, trim and clean up audio', icon: AudioWaveform, tint: 'from-indigo-400 to-indigo-600' },
 ];
 
 export default function ToolsPage() {

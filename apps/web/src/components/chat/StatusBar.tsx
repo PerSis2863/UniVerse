@@ -25,7 +25,7 @@ const REACTIONS = ['❤️', '😂', '😮', '😢', '👏', '🔥'];
 const firstName = (name: string) => name.split(' ').find((w) => w && !w.endsWith('.')) ?? name;
 interface Person { user: { id: string; name: string; avatar: string | null }; mine: boolean; items: Item[]; unseen: number }
 
-const COLORS = ['#4f46e5', '#7c3aed', '#db2777', '#e11d48', '#ea580c', '#059669', '#0891b2', '#18181b'];
+const COLORS = ['#253745', '#484652', '#6b5560', '#e11d48', '#ea580c', '#059669', '#0891b2', '#11212d'];
 const SHOW_MS = 5000;
 
 export function StatusBar() {
@@ -45,17 +45,17 @@ export function StatusBar() {
         <div role="listitem" className="shrink-0 flex flex-col items-center gap-1 w-14">
           <button type="button" onClick={() => (mine ? setWatching(people.indexOf(mine)) : setComposing(true))} aria-label={mine ? 'Your status' : 'Add a status'} className="relative">
             <span className={cn('block rounded-full p-[2px]', mine ? 'bg-zinc-300 dark:bg-zinc-600' : '')}>
-              <span className="block rounded-full bg-white dark:bg-[#121830] p-[2px]"><Avatar name={me?.name ?? "You"} src={me?.avatar ?? null} size={48} /></span>
+              <span className="block rounded-full bg-white dark:bg-[#11212d] p-[2px]"><Avatar name={me?.name ?? "You"} src={me?.avatar ?? null} size={48} /></span>
             </span>
-            <span onClick={(e) => { e.stopPropagation(); setComposing(true); }} className="absolute -bottom-0.5 -end-0.5 w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center ring-2 ring-white dark:ring-[#121830]"><Plus className="w-3 h-3" /></span>
+            <span onClick={(e) => { e.stopPropagation(); setComposing(true); }} className="absolute -bottom-0.5 -end-0.5 w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center ring-2 ring-white dark:ring-[#11212d]"><Plus className="w-3 h-3" /></span>
           </button>
           <span className="text-[11px] text-zinc-500 truncate w-full text-center">{mine ? 'You' : 'Add'}</span>
         </div>
         {others.map((p) => (
           <div key={p.user.id} role="listitem" className="shrink-0 flex flex-col items-center gap-1 w-14">
             <button type="button" onClick={() => setWatching(people.indexOf(p))} aria-label={`${p.user.name}'s status${p.unseen ? ', new' : ''}`}>
-              <span className={cn('block rounded-full p-[2px]', p.unseen ? 'bg-gradient-to-tr from-emerald-400 via-indigo-500 to-fuchsia-500' : 'bg-zinc-300 dark:bg-zinc-600')}>
-                <span className="block rounded-full bg-white dark:bg-[#121830] p-[2px]"><Avatar name={p.user.name} src={p.user.avatar} size={48} /></span>
+              <span className={cn('block rounded-full p-[2px]', p.unseen ? 'bg-gradient-to-tr from-indigo-400 to-indigo-600' : 'bg-zinc-300 dark:bg-zinc-600')}>
+                <span className="block rounded-full bg-white dark:bg-[#11212d] p-[2px]"><Avatar name={p.user.name} src={p.user.avatar} size={48} /></span>
               </span>
             </button>
             <span className={cn('text-[11px] truncate w-full text-center', p.unseen ? 'text-zinc-800 dark:text-zinc-200 font-medium' : 'text-zinc-500')}>{p.user.name.split(' ')[0]}</span>
@@ -184,7 +184,7 @@ function StatusViewer({ people, start, onClose, onDeleted }: { people: Person[];
         )}
         <AnimatePresence>
           {showViewers && (
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={spring.smooth} className="absolute bottom-0 inset-x-0 max-h-[55%] overflow-y-auto rounded-t-3xl bg-white dark:bg-[#121830] p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={spring.smooth} className="absolute bottom-0 inset-x-0 max-h-[55%] overflow-y-auto rounded-t-3xl bg-white dark:bg-[#11212d] p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
               <div className="flex items-center justify-between mb-2"><p className="font-semibold text-zinc-900 dark:text-white">Viewed by</p><button type="button" onClick={() => setShowViewers(false)} aria-label="Close" className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button></div>
               {!item.viewers?.length ? <p className="text-sm text-zinc-500 py-4">Nobody yet.</p> : item.viewers.map((v) => (
                 <div key={v.id} className="flex items-center gap-3 py-2"><Avatar name={v.name} src={v.avatar} size={36} /><span className="flex-1 text-sm text-zinc-900 dark:text-white">{v.name}</span>{v.reaction && <span className="text-lg" aria-label={`reacted ${v.reaction}`}>{v.reaction}</span>}<span className="text-xs text-zinc-500">{formatDistanceToNowStrict(new Date(v.viewedAt), { addSuffix: true })}</span></div>
@@ -275,7 +275,7 @@ function CloseFriends({ onClose }: { onClose: () => void }) {
   };
   return (
     <div className="absolute inset-0 z-10 bg-black/60 flex items-end sm:items-center justify-center" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-labelledby="close-title" className="w-full sm:max-w-sm max-h-[80%] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#121830] text-zinc-900 dark:text-white">
+      <div role="dialog" aria-modal="true" aria-labelledby="close-title" className="w-full sm:max-w-sm max-h-[80%] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#11212d] text-zinc-900 dark:text-white">
         <div className="flex items-center justify-between p-4 pb-2"><h2 id="close-title" className="font-bold">Close friends</h2><button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button></div>
         <p className="px-4 text-xs text-zinc-500">Only they see statuses you share with close friends. They aren’t told they’re on the list.</p>
         <div className="relative px-4 pt-3"><Search className="absolute start-7 top-1/2 mt-1.5 -translate-y-1/2 w-4 h-4 text-zinc-400" aria-hidden /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search people" className="input ps-9" /></div>

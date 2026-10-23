@@ -25,7 +25,7 @@ type Snapshot = { clips: Clip[]; overlays: Overlay[] };
 const MAX_CLIPS = 40;
 const MAX_SECONDS = 15 * 60;
 const SIZES = [{ id: 's', label: 'Small', v: 0.045 }, { id: 'm', label: 'Medium', v: 0.065 }, { id: 'l', label: 'Large', v: 0.1 }] as const;
-const COLORS = ['#ffffff', '#facc15', '#22d3ee', '#f472b6', '#111827'];
+const COLORS = ['#ffffff', '#facc15', '#22d3ee', '#9e8189', '#11212d'];
 let seq = 0;
 const nid = () => `v${Date.now().toString(36)}${(seq++).toString(36)}`;
 /** Moves a video or sound to a time (media elements are outside React). */
@@ -469,8 +469,8 @@ export function VideoEditor({ files, onClose }: { files: File[]; onClose: () => 
   const tabs: { value: Panel; label: string }[] = [{ value: 'clip', label: 'Clip' }, { value: 'text', label: 'Text' }, { value: 'music', label: 'Music' }, { value: 'video', label: 'Video' }];
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#0b0f1e]" onKeyDown={onKey}>
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121830] overflow-x-auto">
+    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#06141b]" onKeyDown={onKey}>
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#11212d] overflow-x-auto">
         <button type="button" onClick={() => void close()} aria-label="Close the video editor" className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
         <input value={name} onChange={(e) => setName(e.target.value.replace(/[\\/:*?"<>|]/g, '').slice(0, 60))} aria-label="Video name" className="text-sm font-semibold bg-transparent text-zinc-900 dark:text-white rounded-md px-1.5 py-1 w-40 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         <span className="text-[11px] text-zinc-500 tabular-nums shrink-0">{clock(total)} · {clips.length} clip{clips.length === 1 ? '' : 's'}</span>
@@ -492,7 +492,7 @@ export function VideoEditor({ files, onClose }: { files: File[]; onClose: () => 
               <div className="rounded-2xl bg-black overflow-hidden" style={{ height: 'min(56vh, 520px)' }}>
                 <canvas ref={canvasRef} width={out.w} height={out.h} role="img" aria-label={`Preview at ${clock(time)}`} className="w-full h-full object-contain" />
               </div>
-              <div className="flex items-center gap-2 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 p-2 shadow-sm">
+              <div className="flex items-center gap-2 rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 p-2 shadow-sm">
                 <button type="button" onClick={() => void play()} disabled={!clips.length || !!exporting} aria-label={playing ? 'Pause' : 'Play'} className="w-10 h-10 shrink-0 rounded-xl grid place-items-center bg-indigo-600 text-white disabled:opacity-40">{playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}</button>
                 <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300 w-12 text-end shrink-0">{clock(time)}</span>
                 <input type="range" min={0} max={Math.max(0.1, total)} step={0.05} value={Math.min(time, total)} onChange={(e) => seek(Number(e.target.value))} disabled={!!exporting} aria-label="Playhead" aria-valuetext={`${clock(time)} of ${clock(total)}`} className="flex-1 min-w-0 accent-indigo-600" />
@@ -514,7 +514,7 @@ export function VideoEditor({ files, onClose }: { files: File[]; onClose: () => 
               </ol>
             </div>
 
-            <aside className="rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 p-3 shadow-sm space-y-3 self-start" aria-label="Edit">
+            <aside className="rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 p-3 shadow-sm space-y-3 self-start" aria-label="Edit">
               <Segmented<Panel> segments={tabs} value={panel} onChange={setPanel} label="Edit" className="w-full" />
 
               {panel === 'clip' && (sel ? (
@@ -626,7 +626,7 @@ export function VideoEditor({ files, onClose }: { files: File[]; onClose: () => 
 
       {exporting && (
         <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="export-title" className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#121830] p-5 space-y-3">
+          <div role="dialog" aria-modal="true" aria-labelledby="export-title" className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#11212d] p-5 space-y-3">
             <h2 id="export-title" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Film className="w-4 h-4 text-indigo-500" aria-hidden />Making your video…</h2>
             <div role="progressbar" aria-label="Export progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(exporting.progress * 100)} className="h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
               <div className="h-full bg-indigo-600 transition-[width]" style={{ width: `${Math.round(exporting.progress * 100)}%` }} />

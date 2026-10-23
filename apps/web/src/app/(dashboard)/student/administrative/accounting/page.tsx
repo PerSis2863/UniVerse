@@ -177,7 +177,7 @@ function AccountingContent() {
                 <select aria-label="Currency"
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="bg-[#121830] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-lg focus:outline-none focus:border-indigo-500 transition-colors font-semibold"
+                  className="bg-[#11212d] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-lg focus:outline-none focus:border-indigo-500 transition-colors font-semibold"
                 >
                   <option value="USD">USD ($)</option>
                   <option value="EUR">EUR (€)</option>
@@ -197,7 +197,7 @@ function AccountingContent() {
                     type="number" 
                     value={customAmount} 
                     onChange={(e) => setCustomAmount(e.target.value)}
-                    className="w-full bg-[#121830] border border-white/[0.08] rounded-xl ps-8 pe-4 py-3 text-white text-lg focus:outline-none focus:border-indigo-500 transition-colors"
+                    className="w-full bg-[#11212d] border border-white/[0.08] rounded-xl ps-8 pe-4 py-3 text-white text-lg focus:outline-none focus:border-indigo-500 transition-colors"
                     placeholder="0.00"
                     min="1.00"
                     step="0.01"
@@ -398,7 +398,7 @@ function AccountingContent() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="dark bg-[#121830] border border-zinc-800 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+              className="dark bg-[#11212d] border border-zinc-800 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
             >
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/30">
                 <div className="flex items-center gap-3">

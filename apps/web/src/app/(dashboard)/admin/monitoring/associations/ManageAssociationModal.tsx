@@ -39,7 +39,7 @@ export function ManageAssociationModal({ association, onClose, onSuccess }: Mana
 
   return (
     <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="sheet-in bg-[#121830] border border-white/[0.1] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">
+      <div className="sheet-in bg-[#11212d] border border-white/[0.1] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-white/[0.05]">
           <h2 className="text-xl font-bold text-white">Manage Association</h2>
           <button aria-label="Close" onClick={onClose} className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors">
@@ -66,7 +66,7 @@ export function ManageAssociationModal({ association, onClose, onSuccess }: Mana
                 <select aria-label="Category" 
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-[#1c2340] border border-white/[0.1] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  className="w-full bg-[#1b2c39] border border-white/[0.1] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                 >
                   <option value="Academic">Academic</option>
                   <option value="Cultural">Cultural</option>

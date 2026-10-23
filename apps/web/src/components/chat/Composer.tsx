@@ -511,7 +511,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                 <Paperclip className="w-5 h-5" />
               </button>
               {attach && (
-                <div className="absolute bottom-full mb-2 start-0 z-30 w-52 p-1.5 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
+                <div className="absolute bottom-full mb-2 start-0 z-30 w-52 p-1.5 rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
                   <button onClick={() => mediaRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-sky-500/15 text-sky-500 flex items-center justify-center"><ImageIcon className="w-4 h-4" /></span> Photos & videos
                   </button>
@@ -555,7 +555,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
 
           <div className="sm:relative flex-1 min-w-0 flex">
           {(slash.length > 0 || slashSnips.length > 0) && (
-            <div className="absolute bottom-full mb-2 start-0 z-30 w-80 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl" role="listbox" aria-label="Commands">
+            <div className="absolute bottom-full mb-2 start-0 z-30 w-80 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl" role="listbox" aria-label="Commands">
               {slashSnips.map((x) => (
                 <button key={x.id} role="option" aria-selected={false} onMouseDown={(e) => { e.preventDefault(); insertSnippet(fillSnippet(x.body, recipientName)); }} className="w-full text-start px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
                   <span className="text-sm font-semibold text-zinc-900 dark:text-white">/{x.shortcut} <span className="font-normal text-zinc-500">· {x.title}</span></span>
@@ -571,7 +571,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             </div>
           )}
           {beforeRewrite !== null && (
-            <div className="absolute bottom-full mb-2 start-0 z-20 menu-pop inline-flex items-center gap-2 ps-3 pe-1 py-1 rounded-full bg-white dark:bg-[#121830] border border-fuchsia-300/60 dark:border-fuchsia-400/30 text-xs font-semibold text-zinc-700 dark:text-zinc-200 shadow-lg">
+            <div className="absolute bottom-full mb-2 start-0 z-20 menu-pop inline-flex items-center gap-2 ps-3 pe-1 py-1 rounded-full bg-white dark:bg-[#11212d] border border-fuchsia-300/60 dark:border-fuchsia-400/30 text-xs font-semibold text-zinc-700 dark:text-zinc-200 shadow-lg">
               <Wand2 className="w-3.5 h-3.5 text-fuchsia-500" /> Rewritten
               <button type="button" onClick={() => { setText(beforeRewrite); setBeforeRewrite(null); }} className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/10 hover:text-fuchsia-500">Undo</button>
             </div>
@@ -579,12 +579,12 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
           {suggestions && suggestions.length > 0 && !text && (
             <div className="absolute bottom-full mb-2 start-0 end-0 z-20 flex gap-1.5 overflow-x-auto scrollbar-none">
               {suggestions.map((sug) => (
-                <button key={sug} type="button" onClick={() => { setText(sug); setSuggestions(null); areaRef.current?.focus(); }} className="shrink-0 px-3 py-1.5 rounded-full bg-white dark:bg-[#121830] border border-indigo-300/60 dark:border-indigo-400/30 text-xs font-medium text-indigo-700 dark:text-indigo-200 shadow-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10">{sug}</button>
+                <button key={sug} type="button" onClick={() => { setText(sug); setSuggestions(null); areaRef.current?.focus(); }} className="shrink-0 px-3 py-1.5 rounded-full bg-white dark:bg-[#11212d] border border-indigo-300/60 dark:border-indigo-400/30 text-xs font-medium text-indigo-700 dark:text-indigo-200 shadow-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10">{sug}</button>
               ))}
             </div>
           )}
           {mentionList.length > 0 && (
-            <div className="absolute bottom-full mb-2 start-0 z-30 w-64 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl">
+            <div className="absolute bottom-full mb-2 start-0 z-30 w-64 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl">
               {mentionList.map((u) => (
                 <button key={u.id} onMouseDown={(e) => { e.preventDefault(); pickMention(u); }} className="w-full text-start px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-800 dark:text-zinc-100">
                   @{u.name}{u.hint && <span className="ms-2 text-xs text-zinc-500">{u.hint}</span>}

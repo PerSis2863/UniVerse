@@ -28,8 +28,8 @@ import { useOnceParam } from '@/lib/use-once-param';
 type Kind = 'doc' | 'sheet' | 'slides';
 const KINDS: Record<Kind, { label: string; one: string; icon: typeof FileText; tone: string; path: string; placeholder: string }> = {
   doc: { label: 'Documents', one: 'document', icon: FileText, tone: 'from-indigo-500 to-fuchsia-500', path: '/docs', placeholder: 'Lab report' },
-  sheet: { label: 'Spreadsheets', one: 'spreadsheet', icon: FileSpreadsheet, tone: 'from-emerald-500 to-teal-600', path: '/sheets', placeholder: 'Science marks' },
-  slides: { label: 'Presentations', one: 'presentation', icon: Presentation, tone: 'from-orange-500 to-rose-500', path: '/slides', placeholder: 'Project pitch' },
+  sheet: { label: 'Spreadsheets', one: 'spreadsheet', icon: FileSpreadsheet, tone: 'from-indigo-400 to-indigo-600', path: '/sheets', placeholder: 'Science marks' },
+  slides: { label: 'Presentations', one: 'presentation', icon: Presentation, tone: 'from-fuchsia-400 to-fuchsia-600', path: '/slides', placeholder: 'Project pitch' },
 };
 const kindOf = (k: string | undefined): Kind => (k === 'sheet' || k === 'slides' ? k : 'doc');
 

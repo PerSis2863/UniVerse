@@ -120,7 +120,7 @@ export default function StudentDirectory() {
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="dark relative w-full max-w-md bg-[#121830] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              className="dark relative w-full max-w-md bg-[#11212d] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
               <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-white/[0.02]">
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Filter Directory</h2>

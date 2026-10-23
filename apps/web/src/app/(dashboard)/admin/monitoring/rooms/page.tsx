@@ -82,7 +82,7 @@ export default function RoomBookingsPage() {
               title="Add your campus rooms"
               description="Once rooms are added, students and teachers can book them from Student Life → Room reservation, and every booking shows up here."
               steps={['Add each bookable room with its capacity', 'Students and teachers book time slots', 'See upcoming bookings and cancel if needed']}
-              example={<div><ExampleRow title="Study Room 3" meta="Study room · 8 seats · Whiteboard" right="4 bookings" /><ExampleRow title="Lab B-204" meta="Lab · 30 seats · Projector" right="2 bookings" accent="from-emerald-500 to-teal-500" /></div>}
+              example={<div><ExampleRow title="Study Room 3" meta="Study room · 8 seats · Whiteboard" right="4 bookings" /><ExampleRow title="Lab B-204" meta="Lab · 30 seats · Projector" right="2 bookings" accent="from-indigo-400 to-indigo-600" /></div>}
               action={{ label: 'Add room', onClick: () => setForm({ name: '', capacity: '', type: 'Classroom', amenities: '' }) }}
             />
           ) : (

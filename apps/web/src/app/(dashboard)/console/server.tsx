@@ -120,7 +120,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       </div>
 
       {/* Sections */}
-      <div className="sticky top-0 z-10 -mx-1 px-1 py-2 bg-zinc-50/80 dark:bg-[#0a0d16]/80 backdrop-blur-xl">
+      <div className="sticky top-0 z-10 -mx-1 px-1 py-2 bg-zinc-50/80 dark:bg-[#06141b]/80 backdrop-blur-xl">
         <div className="flex gap-2 overflow-x-auto" role="tablist" aria-label="Server sections">
           {SECTIONS.map((x) => (
             <button key={x.id} role="tab" aria-selected={section === x.id} onClick={() => pick(x.id)}
@@ -866,7 +866,7 @@ function MeterTile({ m }: { m: UsageMeter }) {
       </div>
       <p className="mt-1 text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">{amount(m.used!, m.bytes)} <span className="text-xs font-normal text-zinc-500">of {amount(m.limit, m.bytes)}</span></p>
       <div className="mt-2 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" aria-hidden>
-        <div className={cn('h-full rounded-full', pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400')} style={{ width: `${Math.max(pct, 1.5)}%` }} />
+        <div className={cn('h-full rounded-full', pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-gradient-to-r from-indigo-400 to-indigo-600')} style={{ width: `${Math.max(pct, 1.5)}%` }} />
       </div>
     </li>
   );

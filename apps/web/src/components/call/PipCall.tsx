@@ -18,7 +18,7 @@ function Tile({ t, big }: { t: PipTile; big?: boolean }) {
   }, [t.stream]);
   const initials = t.name.split(/\s+/).map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '?';
   return (
-    <div className={cn('relative rounded-xl overflow-hidden bg-[#161c33] flex items-center justify-center', big ? 'col-span-2 aspect-video' : 'aspect-video')}>
+    <div className={cn('relative rounded-xl overflow-hidden bg-[#11212d] flex items-center justify-center', big ? 'col-span-2 aspect-video' : 'aspect-video')}>
       {t.video && t.stream ? (
         <video ref={ref} autoPlay playsInline muted className={cn('w-full h-full', t.screen ? 'object-contain bg-black' : 'object-cover', t.me && !t.screen && '-scale-x-100')} />
       ) : (
@@ -40,7 +40,7 @@ export function PipCall({ title, clock, tiles, muted, camera, hand, watching, on
   const rest = tiles.filter((t) => t !== big).slice(0, big ? 2 : 4);
   const btn = 'w-10 h-10 rounded-full flex items-center justify-center transition-colors';
   return (
-    <div className="h-[100dvh] flex flex-col bg-[#0b0e1a] text-white p-2 gap-2 select-none">
+    <div className="h-[100dvh] flex flex-col bg-[#06141b] text-white p-2 gap-2 select-none">
       <div className="flex items-center justify-between gap-2 px-1">
         <p className="text-xs font-semibold truncate">{title}</p>
         <span className="text-[11px] text-zinc-400 tabular-nums shrink-0">{clock}</span>

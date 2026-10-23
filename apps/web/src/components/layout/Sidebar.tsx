@@ -413,7 +413,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       <aside
         aria-label="Navigation"
         className={cn(
-          "fixed start-0 top-0 bottom-0 w-[min(84vw,320px)] lg:w-64 glass-sidebar border-e border-[var(--sidebar-border)] flex flex-col z-[100] lg:z-50 sheet-safe-top lg:pt-0 rounded-e-[28px] lg:rounded-none",
+          "dark fixed start-0 top-0 bottom-0 w-[min(84vw,320px)] lg:w-64 glass-sidebar border-e border-[var(--sidebar-border)] flex flex-col z-[100] lg:z-50 sheet-safe-top lg:pt-0 rounded-e-[28px] lg:rounded-none",
           "transition-transform duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform lg:translate-x-0",
           isOpen ? "translate-x-0 shadow-2xl lg:shadow-none" : "-translate-x-full rtl:translate-x-full"
         )}

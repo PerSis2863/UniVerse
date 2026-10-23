@@ -136,7 +136,7 @@ function EditBuilding({ building, rooms, onChanged, onGone }: { building: Buildi
         <input type="number" min={1} max={MAX_FLOORS} value={form.floors} onChange={(e) => setForm({ ...form, floors: Math.max(1, Math.min(MAX_FLOORS, Number(e.target.value) || 1)) })} className="input text-sm mt-1 !w-24" />
       </label>
       <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Colour">
-        {BUILDING_COLORS.map((c) => <button key={c} type="button" role="radio" aria-checked={form.color === c} aria-label={`Colour ${c}`} onClick={() => setForm({ ...form, color: c })} className={cn('w-7 h-7 rounded-full border border-white/40', form.color === c && 'ring-2 ring-offset-2 ring-indigo-500 ring-offset-white dark:ring-offset-[#121830]')} style={{ background: c }} />)}
+        {BUILDING_COLORS.map((c) => <button key={c} type="button" role="radio" aria-checked={form.color === c} aria-label={`Colour ${c}`} onClick={() => setForm({ ...form, color: c })} className={cn('w-7 h-7 rounded-full border border-white/40', form.color === c && 'ring-2 ring-offset-2 ring-indigo-500 ring-offset-white dark:ring-offset-[#11212d]')} style={{ background: c }} />)}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm text-zinc-800 dark:text-zinc-200">Width<input type="range" min={60} max={600} value={form.w} onChange={(e) => setForm({ ...form, w: sizeOf(Number(e.target.value)) })} className="w-full accent-indigo-500" /></label>

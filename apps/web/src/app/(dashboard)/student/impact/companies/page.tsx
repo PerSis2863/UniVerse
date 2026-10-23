@@ -50,7 +50,7 @@ export default function CorporatePartnersPage() {
               title="Corporate partners will appear here"
               description="Companies that partner with your campus — for CSR projects, fellowships and internships — show up here with their open roles."
               steps={['Your admin adds company partners', 'Companies post internships and fellowships', 'Apply directly from their open roles']}
-              example={<div><ExampleRow title="Acme Technologies" meta="Technology · 3 open internships" right="Partner" /><ExampleRow title="Greenline Energy" meta="Clean energy · CSR fellowship" right="Partner" accent="from-emerald-500 to-teal-500" /></div>}
+              example={<div><ExampleRow title="Acme Technologies" meta="Technology · 3 open internships" right="Partner" /><ExampleRow title="Greenline Energy" meta="Clean energy · CSR fellowship" right="Partner" accent="from-indigo-400 to-indigo-600" /></div>}
               action={{ label: 'Browse internships', href: '/student/internships' }}
             />
           ) : (

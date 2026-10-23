@@ -64,9 +64,9 @@ export default function AdminFinances() {
     const pendingPayouts = Math.abs(pending.filter(t => t.amount < 0).reduce((acc, t) => acc + t.amount, 0));
 
     return [
-      { label: 'Total Revenue', value: `$${totalRevenue.toFixed(2)}`, note: 'All completed payments', icon: DollarSign, color: 'from-emerald-400 to-teal-500' },
-      { label: 'This Month', value: `$${thisMonth.toFixed(2)}`, note: change == null ? (thisMonth > 0 ? 'No revenue last month to compare' : 'No payments yet this month') : `${change >= 0 ? '+' : ''}${change.toFixed(1)}% vs last month`, up: change == null ? undefined : change >= 0, icon: Wallet, color: 'from-blue-400 to-indigo-500' },
-      { label: 'Pending Payouts', value: `$${pendingPayouts.toFixed(2)}`, note: `${pending.length} pending transaction${pending.length === 1 ? '' : 's'}`, icon: CreditCard, color: 'from-amber-400 to-orange-500' },
+      { label: 'Total Revenue', value: `$${totalRevenue.toFixed(2)}`, note: 'All completed payments', icon: DollarSign, color: 'from-indigo-400 to-indigo-600' },
+      { label: 'This Month', value: `$${thisMonth.toFixed(2)}`, note: change == null ? (thisMonth > 0 ? 'No revenue last month to compare' : 'No payments yet this month') : `${change >= 0 ? '+' : ''}${change.toFixed(1)}% vs last month`, up: change == null ? undefined : change >= 0, icon: Wallet, color: 'from-indigo-600 to-fuchsia-600' },
+      { label: 'Pending Payouts', value: `$${pendingPayouts.toFixed(2)}`, note: `${pending.length} pending transaction${pending.length === 1 ? '' : 's'}`, icon: CreditCard, color: 'from-fuchsia-400 to-fuchsia-600' },
       { label: 'Total Transactions', value: transactions.length.toString(), note: 'Recorded in UniVerse', icon: Activity, color: 'from-purple-400 to-pink-500' }
     ];
   }, [transactions]);

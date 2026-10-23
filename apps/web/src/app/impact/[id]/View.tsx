@@ -73,7 +73,7 @@ function PublicImpactPage({ id }: { id: string }) {
           <motion.div variants={list} initial="hidden" animate="show" className="space-y-5">
             <motion.section variants={fadeUp} className={panel}>
               <div className="flex items-start gap-4">
-                <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-indigo-500 text-white flex items-center justify-center shrink-0 overflow-hidden">
+                <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 text-white flex items-center justify-center shrink-0 overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element -- an NGO's logo link; next/image can't optimise on Workers */}
                   {data.ngo.logoUrl ? <img src={data.ngo.logoUrl} alt="" className="w-full h-full object-cover" /> : <HandHeart className="w-7 h-7" />}
                 </span>

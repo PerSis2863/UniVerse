@@ -134,7 +134,7 @@ export default function PersonalDataPage() {
                     title="Add someone we can reach in an emergency"
                     description="Your campus uses these contacts only in urgent situations. You can add up to five."
                     steps={['Add a parent, guardian or close contact', 'Include a phone number they answer', 'Keep it up to date when details change']}
-                    example={<div><ExampleRow title="Priya Sharma" meta="Mother · +91 98765 43210" right="Primary" /><ExampleRow title="Rahul Verma" meta="Guardian · +91 91234 56789" accent="from-emerald-500 to-teal-500" /></div>}
+                    example={<div><ExampleRow title="Priya Sharma" meta="Mother · +91 98765 43210" right="Primary" /><ExampleRow title="Rahul Verma" meta="Guardian · +91 91234 56789" accent="from-indigo-400 to-indigo-600" /></div>}
                     action={{ label: 'Add emergency contact', onClick: () => setContactForm({ ...blank }) }}
                   />
                 ) : (
