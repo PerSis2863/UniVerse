@@ -259,6 +259,8 @@ export function SectionTabs({ tabs, small, label = 'Sections', end }: { tabs: Se
           const on = pathname === t.href || !!t.also?.includes(pathname);
           return (
             <Link key={t.href} href={t.href} data-vt="tab" aria-current={on ? 'page' : undefined} className="ios-segment">
+              {/* M17: a softer tail follows the highlight a moment later, so it moves like liquid. */}
+              {on && <motion.span layoutId={`tabs-tail-${group}`} transition={{ type: 'spring', stiffness: 170, damping: 24 }} className="ios-segment-tail" aria-hidden />}
               {on && <motion.span layoutId={`tabs-${group}`} transition={spring.snappy} className="ios-segment-thumb" aria-hidden />}
               {t.label}
             </Link>

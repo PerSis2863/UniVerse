@@ -1957,3 +1957,6 @@ html.reduce-motion :is(.poster, .insight-bar) { animation: none; }
 @media (prefers-reduced-motion: reduce) { .push-card, .phone-sent, .broadcast-icon::before, .broadcast-icon::after { animation: none; } }
 html.reduce-motion :is(.push-card, .phone-sent) { animation: none; }
 html.reduce-motion .broadcast-icon::before, html.reduce-motion .broadcast-icon::after { animation: none; }
+
+/* M17: every page's section tabs: a soft two-tone tail lagging behind the highlight as it moves. */
+.ios-segment-tail { position: absolute; inset: 0; z-index: -2; border-radius: inherit; pointer-events: none; background: linear-gradient(120deg, rgb(129 140 248 / 0.35), rgb(232 121 249 / 0.3)); transform: scale(1.04, 1.12); }
