@@ -1,13 +1,14 @@
 import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform';
 import { FLOWS } from '../landing/flows';
 import { GUIDE_AREAS as AREAS, GUIDE_ID_PREFIX } from './guide-title';
-import { ENUMS, LANGUAGES, MIGRATIONS, PAGES, ROUTES, TABLES, TESTS, VERSIONS } from './guide-data.gen';
+import { CORE, DEPS, DESCRIBED, ENUM_LIST, ENUMS, FIELDS, HISTORY, LANGUAGES, METHODS, MIGRATIONS, PAGES, ROUTES, TABLES, TEST_FILES, TESTS, VERSIONS } from './guide-data.gen';
 
 // "UniVerse explained" (owner console → Explain UniVerse): one whiteboard about the whole site, in
 // named frames: the ten whiteboard templates, every page by role, the jobs it runs by itself, how a
 // request travels, safety, limits, a glossary, and charts and long lists made from the code itself
-// (guide-data.gen.ts, written at build time: every route, page, table, database change, language). Sized to fill a screen at 10% zoom
-// (about 17,000 × 9,000), with small even gaps. Like any template it's added on the first open of
+// (guide-data.gen.ts, written at build time: every route with its methods and purpose, page, table with
+// its fields, core endpoint, described code file, test file, library and plan item). As wide as a
+// screen at 10% zoom (about 17,000), with small even gaps. Like any template it's added on the first open of
 // the new, empty board, as ordinary shapes the owner can edit; later openings add back any shape that
 // never reached the room (guide-fill.ts), so the ids must stay fixed.
 // Keep it true: when a big feature lands or goes, change the notes here (old boards keep theirs).
@@ -106,7 +107,7 @@ function startHere() {
   s.text(8820, 0, `The ${AREAS.length} areas`, 50);
   const per = Math.ceil(AREAS.length / 4);
   for (let col = 0; col < 4; col++) {
-    s.note(8820 + col * 2030, 90, 1990, 560, AREAS.slice(col * per, col * per + per).map((t, i) => `${col * per + i + 1}  ${t}`).join('\n'), C.grey, 28);
+    s.note(8820 + col * 2030, 90, 1990, Math.max(560, 40 + per * 36), AREAS.slice(col * per, col * per + per).map((t, i) => `${col * per + i + 1}  ${t}`).join('\n'), C.grey, 28);
   }
   // The languages, and how to read the board.
   s.note(0, 700, 8320, 150, `Languages: ${LANGUAGES.map((l) => l[1]).join(', ')}`, C.white, 44);
@@ -666,10 +667,20 @@ function weights() {
 }
 
 // ─── 30+ · Everything, listed (from guide-data.gen.ts) ──────────────────────────────────────────
-/** A frame of columns of lines (one note a column), `per` lines a column. */
+/**
+ * A frame of columns of lines (one note a column), `per` lines a column. Long lines wrap with an
+ * indent, and one entry never splits across two columns.
+ */
 function listing(key: string, name: string, title: string, colour: string, lines: string[], per = 30) {
   const s = section(key, name);
-  for (let c = 0; c * per < lines.length; c++) s.note(c * 660, 70, 640, 70 + per * 26, lines.slice(c * per, c * per + per).join('\n'), c % 2 ? C.white : C.grey, 19);
+  const cols: string[][] = [[]];
+  for (const l of lines) {
+    const w = wrap(l, 606, 19).split('\n').map((x, i) => (i ? `   ${x.trimStart()}` : x));
+    if (cols[cols.length - 1].length && cols[cols.length - 1].length + w.length > per) cols.push([]);
+    cols[cols.length - 1].push(...w);
+  }
+  const tall = Math.max(per, ...cols.map((c) => c.length)); // one entry can be longer than a column
+  cols.forEach((c, i) => s.note(i * 660, 70, 640, 70 + tall * 26, c.join('\n'), i % 2 ? C.white : C.grey, 19));
   return titled(s, title, colour);
 }
 /** One frame per big area, the small areas together, `max` lines each. */
@@ -685,10 +696,25 @@ function grouped<T>(items: T[], area: (t: T) => string, line: (t: T, area: strin
   for (let i = 0; i < small.length; i += max) out.push(frame(`Smaller areas${small.length > max ? ` (${i / max + 1})` : ''}`, small.slice(i, i + max), out.length));
   return out;
 }
-const routeFrames = () => grouped(ROUTES, routeArea, (r, a, own) => (own ? r.slice(`/api/${a}`.length) || '/' : r.slice(5)), (t, l, i) => listing(`routes${i}`, `Routes · ${t.replace('Smaller areas', 'more')}`, `Server routes: ${t}`, C.tech, l), 90, 24);
+// What each file says it does (its opening comment): routes by their address, pages by theirs.
+const SAYS = new Map(DESCRIBED);
+const PAGE_SAYS = new Map(DESCRIBED.filter(([f]) => /^src\/app\/(.*\/)?page\.tsx$/.test(f))
+  .map(([f, t]) => [f.replace(/^src\/app/, '').replace(/\/\([^)]+\)/g, '').replace(/\/page\.tsx$/, '') || '/', t]));
+const says = (t?: string) => (t ? ` — ${t}` : '');
+const routeFrames = () => grouped(ROUTES, routeArea, (r, a, own) => `${METHODS[r] || 'ANY'}  ${(own ? r.slice(`/api/${a}`.length) || '/' : r.slice(5))}${says(SAYS.get(`src/app${r}/route.ts`))}`,
+  (t, l, i) => listing(`routes${i}`, `Routes · ${t.replace('Smaller areas', 'more')}`, `Server routes: ${t}`, C.tech, l), 90, 24);
 const PAGE_WHO: Record<string, string> = { student: 'students', admin: 'school admins', teacher: 'teachers', other: 'everyone else' };
-const pageFrames = () => grouped(PAGES, pageArea, (p, a) => (a === 'other' ? p : p.slice(a.length + 1) || '/'), (t, l, i) => listing(`pages${i}`, `Pages · ${t}`, `Every page address: ${t}`, C.student, l), 90, 20, (a) => PAGE_WHO[a]);
-const tableFrames = () => grouped(TABLES, ([n]) => tableGroup(n), ([n, f, l]) => `${n} · ${f} fields${l ? `, ${l} links` : ''}`, (t, l, i) => listing(`tables${i}`, `Tables · ${t.split(' ')[0]}`, `Database tables: ${t}`, C.admin, l), 60, 1);
+const pageFrames = () => grouped(PAGES, pageArea, (p, a) => `${a === 'other' ? p : p.slice(a.length + 1) || '/'}${says(PAGE_SAYS.get(p))}`, (t, l, i) => listing(`pages${i}`, `Pages · ${t}`, `Every page address: ${t}`, C.student, l), 90, 20, (a) => PAGE_WHO[a]);
+const tableFrames = () => grouped(TABLES, ([n]) => tableGroup(n), ([n, f, l]) => `${n} (${f} fields${l ? `, ${l} links` : ''}): ${FIELDS[n] ?? ''}`, (t, l, i) => listing(`tables${i}`, `Tables · ${t.split(' ')[0]}`, `Database tables and their fields: ${t}`, C.admin, l), 40, 1);
+const coreFrames = () => grouped(CORE, (c) => c.split(' ')[1].split('/')[1], (c) => c, (t, l, i) => listing(`core${i}`, `Core · ${t.split(':')[0].replace('Smaller areas', 'more')}`, `The core API (/api/core/…): ${t}`, C.tech, l), 90, 12);
+const codeArea = (f: string) => { const p = f.split('/'); return p[0] === 'src' ? p.slice(0, p[1] === 'components' ? 3 : 2).join('/') : p[0]; };
+const codeFrames = () => grouped(DESCRIBED.filter(([f]) => !f.startsWith('src/app/')), ([f]) => codeArea(f), ([f, t], a) => `• ${f.slice(a.length + 1)} — ${t}`,
+  (t, l, i) => listing(`code${i}`, `Code · ${t.split(':')[0].replace('Smaller areas', 'more').replace(/^src\/(components\/)?/, '')}`, `What each file does: ${t}`, C.grey, l), 70, 15, (a) => a);
+const chunks = <T,>(items: T[], n: number) => Array.from({ length: Math.ceil(items.length / n) }, (_, i) => items.slice(i * n, i * n + n));
+const historyFrames = () => chunks(HISTORY, 60).map((h, i) => listing(`history${i}`, `Built, step ${i * 60 + 1}+`, `How it was built, item by item (${i * 60 + 1}–${i * 60 + h.length} of ${HISTORY.length})`, C.owner, h.map(([id, t]) => `• ${id} · ${t}`)));
+const testFrames = () => chunks(TEST_FILES, 90).map((t, i) => listing(`testfiles${i}`, `Test files ${i + 1}`, `Every unit test file and its cases (${TEST_FILES.reduce((a, [, n]) => a + n, 0).toLocaleString('en-US')} cases in all)${i ? ` (${i + 1})` : ''}`, C.teacher, t.map(([f, n]) => `${f} · ${n}`)));
+const enumsFrame = () => listing('enums', 'Enums', `The ${ENUM_LIST.length} fixed lists the database uses`, C.admin, ENUM_LIST.map(([n, v]) => `• ${n}: ${v.join(', ')}`));
+const depsFrame = () => listing('deps', 'Libraries', `Every library (${DEPS.length}) and its version`, C.tech, DEPS.map(([n, v, dev]) => `${n} · ${v}${dev ? ' (building and tests)' : ''}`));
 const migrationFrames = () => {
   const lines = MIGRATIONS.map((m) => `${m.slice(0, 4)} · ${m.slice(5).replace(/_/g, ' ')}`);
   return Array.from({ length: Math.ceil(lines.length / 90) }, (_, i) => listing(`migrations${i}`, `DB changes ${i + 1}`, `How the database grew: changes ${i * 90 + 1}–${Math.min(lines.length, i * 90 + 90)} of ${lines.length}`, C.owner, lines.slice(i * 90, i * 90 + 90)));
@@ -721,6 +747,112 @@ function guards() {
   });
   return titled(s, 'Guards and scheduled jobs: what runs by itself', C.parent);
 }
+
+// ─── M17 · More areas: Messages, Collaborate, the look, how-tos, journeys ───────────────────────
+/** A grid of titled notes, `cols` a row. */
+function cards(key: string, name: string, title: string, colour: string, items: [string, string][], cols = 4, w = 560, h = 190, fill = C.white) {
+  const s = section(key, name);
+  items.forEach(([t, d], i) => s.note((i % cols) * (w + 30), 70 + Math.floor(i / cols) * (h + 30), w, h, `${t}\n${d}`, i % 2 ? fill : C.grey, 22));
+  return titled(s, title, colour);
+}
+/** Steps in a row of boxes joined by arrows, wrapping every `per` steps. */
+function journey(key: string, name: string, title: string, colour: string, steps: [string, string][], per = 4) {
+  const s = section(key, name);
+  steps.forEach(([t, d], i) => {
+    const x = (i % per) * 520, y = 70 + Math.floor(i / per) * 320;
+    s.note(x, y, 460, 270, `${i + 1} · ${t}\n\n${d}`, i % 2 ? C.white : colour, 22);
+    if (i % per !== per - 1 && i < steps.length - 1) s.raw({ type: 'arrow', x: x + 465, y: y + 135, width: 50, height: 0, points: [[0, 0], [50, 0]], strokeWidth: 2 } as El);
+  });
+  return titled(s, title, colour);
+}
+
+const messagesArea = () => cards('msg', 'Messages', 'Messages: everything it does', C.student, [
+  ['Chats and groups', 'One-to-one and groups, with each person in their own colour'], ['Communities', 'Channels, roles and moderation, like Discord or a WhatsApp community'],
+  ['Threads', 'Replies to one message open beside the chat'], ['Status updates', 'Photos and words for 24 hours, like stories'],
+  ['Folders', 'Your own chips above the list: All, Unread, Direct, Groups, yours'], ['Voice notes', 'Keep playing in a mini player while you move around'],
+  ['Video notes', 'Round videos up to a minute'], ['Huddles', 'A drop-in voice room inside any chat'],
+  ['Calls', 'Voice and video, a knock to join, ringing with the app closed'], ['Private chats', 'End-to-end encrypted on the two devices, with a safety code'],
+  ['Chat lock', 'A locked chat needs your passkey or PIN to open'], ['Scheduled messages', 'Pick when a message goes out'],
+  ['Saved replies', 'Snippets and templates for answers you give often'], ['Polls and stickers', 'Quick votes; the school’s sticker packs and your own'],
+  ['Translation', 'Read any message in your language'], ['Link cards', 'Docs, boards and task boards show live inside a chat'],
+  ['Photos and files', 'Full-screen viewer; PDFs and code previewed'], ['Search', 'Filters typed in the box: from:, in:, has:file, before:'],
+  ['Starred and export', 'Keep messages; download a whole chat'], ['Presence', 'Online, busy, away, with your own status line'],
+  ['Broadcasts', 'Staff send one message to many people at once'], ['Safety', 'Report, block, and the school’s rules on who may message whom'],
+], 4);
+
+const collaborateArea = () => cards('collab', 'Collaborate', 'Collaborate: every tool, all live together', C.teacher, [
+  ['Spaces', 'Each class and study group: its call, docs, boards, tasks and files in one place'], ['Whiteboards', 'Live drawing, 10 templates, shapes for science and maths, AI drawing, votes, timer, presenting'],
+  ['Docs', 'Word’s formatting, suggestions, comments, versions, @mentions, embeds, a wiki of pages'], ['Sheets', 'Excel in the browser: formulas, charts, many sheets, comments'],
+  ['Slides', 'PowerPoint’s way: layouts, presenter view, written together'], ['Tasks', 'Boards of cards, calendar and timeline views, automations'],
+  ['Code rooms', 'Code written together live, run in the browser'], ['Files', 'Folders, every version, previews, search inside files'],
+  ['Tools', 'Photo, audio, video and PDF editors; convert and compress files'], ['Fair group work', 'Who did what in a space, for the teacher'],
+  ['AI help', 'Writing help in docs, drawing on boards'], ['Works offline', 'Edits wait and catch up when the phone is back online'],
+], 4);
+
+const designArea = () => cards('look', 'The look', 'The look and the motion: the rules every page follows', C.owner, [
+  ['Two tones', 'Indigo into fuchsia: the brand. Never green, never another palette'], ['The light river', 'Fine strands of light down every page, answering the pointer'],
+  ['Cards', 'Dark, slightly see-through, a two-tone edge glow on hover'], ['Type', 'Text that means something is 11 px or more; lines near 75 characters'],
+  ['Entering', 'Ease-out, never ease-in; nothing grows from nothing (start at 0.9)'], ['Speed', 'Presses 100–160 ms, menus 150–250, sheets up to 500; exits faster'],
+  ['Lists', 'Items arrive one after another, 30–80 ms apart'], ['Every day things', 'What you use many times a day barely moves'],
+  ['Phones', 'Hover extras only where there is a mouse; big touch targets'], ['Reduce Motion', 'Turns every movement off; the page still works'],
+  ['Contrast', 'Grey text checked against what is really behind it, in both themes'], ['Loading', 'Placeholders shaped like the page; parts arrive in turn'],
+], 4);
+
+const ownerHowTo = () => cards('howto', 'How do I…', 'How do I…? (the owner’s everyday jobs)', C.owner, [
+  ['See what needs me', 'Owner console → Overview → What needs you'], ['Approve a school or person', 'Owner console → People → People and schools'],
+  ['Undo a change', 'Owner console → Data & money → Changes and undo'], ['Fix an error', 'Owner console → Health → Errors (an AI suggests the fix)'],
+  ['Tell everyone something', 'Owner console → Live → Announce to everyone'], ['Check the costs', 'Owner console → Overview → plan usage; the guard emails at 70%'],
+  ['Edit any record', 'Owner console → Data & money → All data'], ['Handle a deletion request', 'Owner console → People → Deletion requests'],
+  ['Write a blog post', 'Owner console → Content → Blog'], ['Get this board fresh', 'Owner console → Content → Explain UniVerse → Make a fresh one'],
+  ['Switch AI models', 'Owner console → Server → AI models'], ['Put changes live', 'Say “merge”: GitHub merges, Cloudflare builds and deploys'],
+], 3, 620);
+
+const schoolFaq = () => cards('faq', 'Questions', 'Questions schools ask, answered', C.admin, [
+  ['What does it cost students?', 'Nothing, always'], ['Where is our data?', 'On Cloudflare’s network; each school sees only its own'],
+  ['Can we bring our students in?', 'A CSV import (with undo) or OneRoster'], ['Does it work with our LMS?', 'LTI, Common Cartridge, grade passback'],
+  ['Which languages?', `${LANGUAGES.length}, including right-to-left ones`], ['Without internet?', 'It installs like an app; work waits and syncs later'],
+  ['Is it accessible?', 'Checked against WCAG 2.2 AA on phone and desktop'], ['Our own payments?', 'Each school’s own Stripe or Razorpay, keys encrypted'],
+  ['Can people take their data?', 'Download it any time, or ask to delete it'], ['Phones?', 'The website installs on phones; store apps need developer accounts'],
+  ['Who sees children’s messages?', 'Not parents, not other schools; reports go to the school'], ['How do we start?', 'Sign up, the owner approves the school, invite staff'],
+], 3, 620);
+
+const waitingArea = () => cards('waiting', 'Waiting', 'Waiting on the owner (things only you can provide)', C.parent, [
+  ['Phone sign-in', 'Firebase billing (SMS codes cost money)'], ['UPI payments', 'A Razorpay account and keys'],
+  ['Calendar sync', 'A Google Cloud project and a Microsoft app'], ['Google Classroom import', 'A sample export or the Classroom API'],
+  ['Phone apps in the stores', 'Apple and Google developer accounts'], ['GIF search in chat', 'A Tenor or Giphy key'],
+  ['Exact Word / PowerPoint to PDF', 'A paid conversion service'], ['Live streaming to YouTube', 'Kept free for now (Stream Live is paid)'],
+], 2, 620);
+
+const messageLife = () => journey('msglife', 'A message', 'A message’s journey, from typing to read', C.student, [
+  ['Typed', 'The message box keeps a draft per chat'], ['Sent', 'Shown at once, marked “sending”'], ['Checked', 'The server checks who you are and that you may write here'],
+  ['Stored', 'Saved in the database (D1)'], ['Delivered', 'Each person’s live room passes it to every tab and device'], ['Pushed', 'People who are away get a notification'],
+  ['Read', 'Read ticks go back to the sender'], ['Kept', 'Found again by search; starred, exported or deleted later'],
+]);
+
+const uploadLife = () => journey('filelife', 'A file', 'A file’s journey, from picking to finding it again', C.tech, [
+  ['Picked', 'Dropped, pasted or chosen; photos are shrunk first'], ['Checked', 'Type and size checked; your quota counted'], ['Stored', 'Saved in R2 (Cloudflare’s storage)'],
+  ['Read', 'The words inside are taken out, so search finds them'], ['Versioned', 'A new upload keeps the old one as a version'], ['Shared', 'Shown where it is used: a chat, a doc, a space'],
+]);
+
+const securityLayers = () => {
+  const s = section('layers', 'Layers');
+  const layers: [string, string][] = [
+    ['Cloudflare’s edge', 'HTTPS only, strict browser rules'], ['Rate limits', 'Floods stopped per person and per address'], ['Sign-in token', 'Its signature checked on every request'],
+    ['Role', 'Student, teacher, admin, parent or owner'], ['School', 'An admin only ever reaches their own school'], ['Input checks', 'Every value read and checked'], ['The data', 'Changes logged; the owner can undo'],
+  ];
+  layers.forEach(([t, d], i) => s.note(i * 60, 70 + i * 130, 1800 - i * 120, 115, `${t} — ${d}`, [C.owner, C.parent, C.admin, C.teacher, C.student, C.tech, C.warm][i], 24));
+  return titled(s, 'Every request passes these layers, outside in', C.parent);
+};
+
+const glance = () => {
+  const s = section('glance', 'At a glance');
+  const cases = TEST_FILES.reduce((a, [, n]) => a + n, 0);
+  const fields = TABLES.reduce((a, [, f]) => a + f, 0);
+  ([[ROUTES.length, 'app routes'], [CORE.length, 'core API endpoints'], [PAGES.length, 'pages'], [TABLES.length, 'tables'], [fields, 'table fields'], [ENUM_LIST.length, 'fixed lists (enums)'],
+    [MIGRATIONS.length, 'database changes'], [DESCRIBED.length, 'files that say what they do'], [TEST_FILES.length, 'test files'], [cases, 'test cases'], [DEPS.length, 'libraries'], [HISTORY.length, 'plan items built']] as const)
+    .forEach(([n, t], i) => s.note((i % 4) * 470, 70 + Math.floor(i / 4) * 250, 440, 220, `${n.toLocaleString('en-US')}\n${t}`, [C.student, C.teacher, C.admin, C.parent, C.owner, C.tech][i % 6], 40));
+  return titled(s, 'UniVerse at a glance, counted from the code', C.tech);
+};
 
 // Frame names are kept short (each area's template is named in the banner's list), so they don't
 // run into each other when the whole board is zoomed out.
@@ -770,7 +902,8 @@ export function guideElements(): ExcalidrawElementSkeleton[] {
     [[students()], [teachers()], [admins()], [parents()], [consoleMap()], [whereThingsStand()], [lookingBack()]],
     [[swot()], [webAndApp()], [demoPlan()], [safety()], [limits()], [glossary()]],
     [[codeNumbers()], [database()], [permissions(), notifications()], [signIn()], [assignmentLife(), checks()], [stack(), weights()]],
-    ...packed([languages(), testsChart(), guards(), ...routeFrames(), ...pageFrames(), ...tableFrames(), ...migrationFrames()]),
+    [[messagesArea()], [collaborateArea()], [designArea()], [ownerHowTo(), waitingArea()], [schoolFaq()], [messageLife(), uploadLife()], [securityLayers(), glance()]],
+    ...packed([languages(), testsChart(), guards(), enumsFrame(), depsFrame(), ...historyFrames(), ...testFrames(), ...coreFrames(), ...routeFrames(), ...pageFrames(), ...tableFrames(), ...codeFrames(), ...migrationFrames()]),
   ];
   const W = natural(bands[0][0][0]).w;
   const out: El[] = [];

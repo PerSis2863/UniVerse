@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { GUIDE_AREAS, GUIDE_TITLE, guideHref } from '@/components/boards/guide-title';
 
 // Explain UniVerse: one whiteboard about the whole site (every feature, how it works, the technology),
-// in 29 areas (src/components/boards/universe-guide.ts; the list is in guide-title.ts). The first open
+// in about a hundred areas (src/components/boards/universe-guide.ts; the list is in guide-title.ts). The first open
 // makes the board in the owner's whiteboards; later opens go back to it. "Make a fresh one" starts again.
 
 

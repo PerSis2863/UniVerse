@@ -3,7 +3,7 @@
 // whole board.
 export const GUIDE_TITLE = 'UniVerse explained';
 /** Raise when the board's design changes: the owner's boards list then makes the new one by itself. */
-export const GUIDE_VERSION = '4';
+export const GUIDE_VERSION = '5';
 /** Every shape's id starts with this, so a board of this design can be told apart and topped up. */
 export const GUIDE_ID_PREFIX = `g${GUIDE_VERSION}-`;
 /** Opening it always asks for the guide template: it fills an empty board, or adds what's missing. */
@@ -18,7 +18,11 @@ export const GUIDE_AREAS = [
   'Website and phone app (Venn diagram)', 'Looking back (Retrospective)', 'Showing it to a school (Lesson plan)',
   'Safety and privacy', 'Limits and costs', 'Words used on this board', 'The code in numbers (charts)',
   'The database: 298 tables (chart)', 'Who can do what (matrix)', 'Signing in, step by step', 'An assignment’s life (states)',
-  'Notifications: what goes where (matrix)', 'The stack, with versions', 'Checks every change passes', 'What each page loads first (chart)', 'Languages: every one, by name',
-  'Unit tests: by where they live', 'Guards and scheduled jobs', 'Every server route, listed', 'Every page address, listed',
-  'Every database table, with its fields', 'How the database grew: every change',
+  'Notifications: what goes where (matrix)', 'The stack, with versions', 'Checks every change passes', 'What each page loads first (chart)',
+  'Messages: everything it does', 'Collaborate: every tool', 'The look and the motion: the rules', 'How do I…? (the owner’s jobs)',
+  'Waiting on the owner', 'Questions schools ask', 'A message’s journey', 'A file’s journey', 'The layers every request passes',
+  'UniVerse at a glance (counted)', 'Languages: every one, by name', 'Unit tests: by where they live', 'Guards and scheduled jobs',
+  'The fixed lists (enums)', 'Every library and its version', 'How it was built, item by item', 'Every unit test file',
+  'The core API, every endpoint', 'Every server route: methods and purpose', 'Every page address and what it is',
+  'Every database table, with its fields', 'What each code file does', 'How the database grew: every change',
 ];
