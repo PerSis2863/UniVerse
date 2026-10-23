@@ -210,7 +210,7 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
 
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Categories, as folders that open (M5): each fans out its first resources. */}
-            <ul aria-label="Categories" className="w-full lg:w-72 shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-x-5 gap-y-10 pt-8 relative z-10">
+            <ul aria-label="Categories" className="w-full lg:w-60 shrink-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-x-4 gap-y-8 pt-8 relative z-10">
               {CATEGORIES.map((category, i) => {
                 const inside = resources.filter((r) => category === 'All' || r.category === category);
                 return (

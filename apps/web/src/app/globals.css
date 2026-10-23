@@ -1766,7 +1766,7 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
    Back panel (tab top right) · the folder's files · a frosted front flap (tab top left). Pointing at
    the folder (or a tap, or keyboard focus) tips the flap forward and fans the files up out of it. */
 /* Height from the width by padding (not aspect-ratio: Safari mis-sizes grid rows with it, so folders overlapped). */
-.folder-card { position: relative; perspective: 1000px; isolation: isolate; -webkit-tap-highlight-color: transparent; }
+.folder-card { position: relative; perspective: 1000px; isolation: isolate; -webkit-tap-highlight-color: transparent; container-type: inline-size; }
 .folder-card::before { content: ''; display: block; padding-top: 64.5%; }
 .folder-hit { position: absolute; inset: 0; z-index: 3; border-radius: 1.25rem; cursor: pointer; }
 .folder-hit:focus-visible { outline-offset: 4px; }
@@ -1794,9 +1794,9 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 .folder-file.is-folder::after { content: ''; position: absolute; left: 0; top: -0.55rem; width: 38%; height: 0.75rem; border-radius: 0.5rem 0.7rem 0 0; background: #f4f4f6; }
 .folder-file.is-folder .folder-file-lines { display: none; }
 .folder-file.is-picture::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(0 0 0 / 0.45), transparent 45%); }
-.folder-file-name { position: relative; font-size: 0.72rem; font-weight: 600; letter-spacing: -0.01em; color: inherit; max-width: 62%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.folder-file-name { position: relative; font-size: clamp(0.58rem, 4.6cqi, 0.72rem); font-weight: 600; letter-spacing: -0.01em; color: inherit; max-width: 62%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .folder-file.is-doc .folder-file-name { color: #111113; }
-.folder-file-meta { position: relative; font: 500 0.62rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; opacity: 0.75; white-space: nowrap; color: inherit; }
+.folder-file-meta { position: relative; font: 500 clamp(0.5rem, 3.9cqi, 0.62rem)/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; opacity: 0.75; white-space: nowrap; color: inherit; }
 .folder-file.is-doc .folder-file-meta { color: #5f5f66; }
 .folder-file-lines { position: absolute; left: 0.7rem; right: 1.4rem; top: 2rem; height: 3.2rem; background: repeating-linear-gradient(180deg, rgb(127 127 127 / 0.22) 0 6px, transparent 6px 13px); border-radius: 3px; mask-image: linear-gradient(90deg, #000 70%, transparent); }
 .folder-new { opacity: 0; transform: translate3d(0, 40%, 0); }
@@ -1815,12 +1815,12 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 .folder-tone-dark .folder-front::after { background: linear-gradient(180deg, rgb(26 20 22 / 0.35), rgb(26 20 22 / 0.75) 45%, rgb(26 20 22 / 0.85)); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1); }
 .folder-label { position: absolute; left: 7%; right: 34%; bottom: 13%; z-index: 1; }
 .folder-tone-dark .folder-label { left: 34%; right: 7%; bottom: auto; top: 30%; text-align: end; }
-.folder-name { font-size: 0.98rem; font-weight: 600; letter-spacing: -0.015em; color: #111113; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.folder-sub { margin-top: 0.1rem; font: 500 0.74rem/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: #5f5f66; }
+.folder-name { font-size: clamp(0.8rem, 6.4cqi, 0.98rem); font-weight: 600; letter-spacing: -0.015em; color: #111113; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.folder-sub { margin-top: 0.1rem; font: 500 clamp(0.62rem, 4.8cqi, 0.74rem)/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: #5f5f66; }
 .folder-tone-dark .folder-name { color: #ffffff; }
 .folder-tone-dark .folder-sub { color: #c4c4cc; }
 .folder-action {
-  position: absolute; right: 6%; bottom: 9%; z-index: 4; width: 3.1rem; height: 3.1rem; border-radius: 1rem;
+  position: absolute; right: 6%; bottom: 9%; z-index: 4; width: clamp(2.1rem, 17cqi, 3.1rem); height: clamp(2.1rem, 17cqi, 3.1rem); border-radius: clamp(0.7rem, 5.5cqi, 1rem);
   display: flex; align-items: center; justify-content: center;
   transition: transform 300ms var(--ease-glide), box-shadow 300ms ease;
 }
@@ -1884,12 +1884,6 @@ html.reduce-motion :is(.folder-front, .folder-file, .folder-stack) { transition:
 /* The role chain's dots light up one after another. */
 .bento-step { animation: bento-step 2s ease-in-out infinite; }
 @keyframes bento-step { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.3); box-shadow: 0 0 10px #e879f9; } }
-/* The pricing slider: a two-tone track and a white knob. */
-.pricing-range { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: linear-gradient(90deg, #6366f1, #d946ef); outline: none; }
-.pricing-range::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(217, 70, 239, 0.35), 0 4px 12px rgba(0, 0, 0, 0.5); cursor: grab; transition: transform 150ms; }
-.pricing-range::-webkit-slider-thumb:active { transform: scale(1.15); cursor: grabbing; }
-.pricing-range::-moz-range-thumb { width: 22px; height: 22px; border: 0; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(217, 70, 239, 0.35), 0 4px 12px rgba(0, 0, 0, 0.5); cursor: grab; }
-.pricing-range:focus-visible { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6); }
 @media (prefers-reduced-motion: reduce) { .flow-dash, .bento-step { animation: none; } }
 html.reduce-motion :is(.flow-dash, .bento-step) { animation: none; }
 
@@ -1900,3 +1894,36 @@ html.reduce-motion :is(.flow-dash, .bento-step) { animation: none; }
   :is(.panel, .card, .card-hover):hover { border-color: rgba(99, 102, 241, 0.28); box-shadow: var(--card-shadow), 0 18px 44px -28px rgba(99, 102, 241, 0.45); }
   .dark :is(.panel, .card, .card-hover):hover { border-color: rgba(232, 121, 249, 0.28); box-shadow: var(--card-shadow), 0 0 0 1px rgba(232, 121, 249, 0.08), 0 24px 60px -30px rgba(192, 38, 211, 0.55); }
 }
+
+/* ═══ M11 · Light that answers people (src/lib/light-motion.ts, scroll-motion.ts) ═══════════════
+   All light, all cheap: one pseudo-element or a few spans at a time, transforms and opacity, the
+   beam's angle as a registered property (browsers without it show a still beam). */
+@property --beam { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+/* The edge beam: a comet of light running round a card under the pointer (.beam), or once round a
+   card as it rises into view (.beam-once). A 1px ring cut out with a mask, on top of the card. */
+.beam::after, .beam-once::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: conic-gradient(from var(--beam), transparent 0deg 210deg, #818cf8 260deg, #f0abfc 300deg, #e879f9 318deg, transparent 350deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: beam-spin 2.6s linear infinite;
+}
+.beam-once::after { animation: beam-spin 1.4s cubic-bezier(0.4, 0, 0.2, 1) 1 forwards, beam-fade 1.4s ease-in forwards; }
+@keyframes beam-spin { to { --beam: 360deg; } }
+@keyframes beam-fade { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
+/* Filled bars catch a glint of light now and then. */
+.bar-glint { position: relative; overflow: hidden; }
+.bar-glint::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.55) 50%, transparent 70%); transform: translateX(-120%); animation: bar-glint 3.8s ease-in-out 0.5s infinite; pointer-events: none; }
+@keyframes bar-glint { 0% { transform: translateX(-120%); } 40%, 100% { transform: translateX(120%); } }
+/* The page bar: a comet with a bright head. */
+.nav-comet::after { content: ''; position: absolute; inset-inline-end: -3px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: radial-gradient(circle, #fff 0%, #f0abfc 45%, transparent 70%); box-shadow: 0 0 12px 3px rgb(232 121 249 / 0.7); }
+/* Sparks from a press (light-motion.ts). */
+.spark-burst { position: fixed; z-index: 250; width: 0; height: 0; pointer-events: none; }
+.spark-burst span { position: absolute; left: 0; top: 0; width: 5px; height: 5px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.spark-burst i { position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid rgb(240 171 252 / 0.8); box-shadow: 0 0 14px rgb(232 121 249 / 0.5); }
+/* Loading placeholders shimmer in the two tones. */
+.skeleton { background-image: linear-gradient(100deg, transparent 20%, rgb(196 181 253 / 0.38) 45%, rgb(240 171 252 / 0.3) 55%, transparent 80%); }
+.dark .skeleton { background-image: linear-gradient(100deg, transparent 20%, rgb(167 139 250 / 0.1) 45%, rgb(232 121 249 / 0.08) 55%, transparent 80%); }
+@media (prefers-reduced-motion: reduce) { .beam::after, .beam-once::after, .bar-glint::after { animation: none; } .beam-once::after { opacity: 0; } .skeleton { background-image: none; } }
+html.reduce-motion :is(.beam, .beam-once, .bar-glint)::after { animation: none; }
+html.reduce-motion .beam-once::after { opacity: 0; }

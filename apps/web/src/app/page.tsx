@@ -9,29 +9,25 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
-import { StrandField } from '@/components/landing/StrandField';
 import { LightTrail } from '@/components/LightTrail';
 import { HeroFlow } from '@/components/landing/HeroFlow';
 import { Proof } from '@/components/landing/Proof';
 import { Glue } from '@/components/landing/Glue';
 import { Bento } from '@/components/landing/Bento';
 import { Statement } from '@/components/landing/Statement';
-import { Pricing } from '@/components/landing/Pricing';
 import { SplitCta } from '@/components/landing/SplitCta';
 import { Accent, EASE, Reveal, Tag, ghost, primary } from '@/components/landing/bits';
 
-// The public landing page, in the style of the owner's Relay video (a dark page, a bundle of light
-// pouring through the hero, a live flow card, numbers that draw themselves as you scroll) and in
+// The public landing page, in the style of the owner's Relay video (a dark page, one river of light
+// from top to bottom, a live flow card, numbers that draw themselves as you scroll) and in
 // UniVerse's two tones: indigo into fuchsia, never green. Every claim on it is about what the
 // product does; no invented usage numbers or quotes. Sections: src/components/landing/.
 
 const FAQ = [
-  { q: 'Is UniVerse free to use?', a: 'Yes. The Starter plan is free forever and includes the full student, teacher and admin portals, the NGO marketplace, messaging and verified credentials. Organizations upgrade only when they want premium analytics, exports or AI reporting.' },
-  { q: 'How does an organization upgrade?', a: 'Admins see the plans in Billing & Plans inside the admin portal. Pro can be started there with a 14-day free trial; Enterprise is tailored to each institution, so admins contact our team from the same page for a quote.' },
-  { q: 'Can we switch plans or cancel later?', a: 'Any time. Admins manage their subscription, payment method and invoices from Billing & Plans inside the admin dashboard.' },
-  { q: 'Who pays — students or organizations?', a: 'Organizations. Students never pay to use UniVerse. Premium plans are purchased by a university, NGO or company admin for their organization.' },
+  { q: 'Is UniVerse free to use?', a: 'Yes for students: they never pay. A school, university or NGO sets UniVerse up for its people, and everyone in it gets the student, teacher and admin portals, messaging, the NGO marketplace and verified credentials.' },
+  { q: 'Who sets it up?', a: 'An admin at the school or organization signs up and invites teachers and students. Each school only ever sees its own people and data.' },
+  { q: 'Does it work on phones and in other languages?', a: 'Yes. It installs as an app on iOS, Android and desktop, works on a patchy connection, and speaks 13 languages, including Arabic and Urdu, which read right to left.' },
   { q: 'How are credentials verified?', a: 'Each certificate is fingerprinted and anchored on the Polygon blockchain. Anyone can open its public verification link to confirm it is genuine and unaltered.' },
-  { q: 'Do you offer custom contracts or invoicing?', a: 'Yes — Enterprise customers can request invoiced billing. Email us and we will get back to you.' },
 ];
 
 function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
@@ -111,8 +107,9 @@ export default function ShowcasePage() {
         <motion.div style={{ scaleX: progress }} className="fixed top-0 inset-x-0 h-[2px] origin-left z-[60] bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500" />
         {/* The page's two-tone glow and the river of light, behind everything below the hero. */}
         <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
-          {/* The river of light, from below the hero to the bottom of the page (the hero has its own bend). */}
-          <LightTrail tone="dark" from={0.9} strength={0.72} />
+          {/* One river of light from the top of the page to the bottom: it pours in on arrival and
+              bends in the gap between the hero's words and its card. */}
+          <LightTrail tone="dark" hero className="opacity-70 lg:opacity-100" />
           <div className="mkt-drift-a absolute top-[30%] start-[-30%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.16), transparent)' }} />
           <div className="mkt-drift-b absolute bottom-[-25%] end-[-35%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(192,38,211,0.12), transparent)' }} />
         </div>
@@ -124,8 +121,6 @@ export default function ShowcasePage() {
         <main data-no-motion className="relative z-10">
           {/* ── Hero: the light pours through behind the words and the flow card ── */}
           <section data-no-motion className="relative min-h-[100svh] px-6 pt-32 md:pt-36 pb-20 overflow-hidden">
-            <StrandField className="absolute inset-0 w-full h-full pointer-events-none opacity-60 lg:opacity-100" />
-            <div aria-hidden className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#07080f] pointer-events-none" />
             <div className="relative max-w-6xl mx-auto grid lg:grid-cols-[1.05fr_1fr] gap-12 items-center">
               <div>
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }}>
@@ -158,7 +153,6 @@ export default function ShowcasePage() {
           <Glue />
           <Bento />
           <Statement />
-          <Pricing />
 
           <section id="faq" className="px-6 py-24 scroll-mt-24">
             <div className="max-w-3xl mx-auto">
