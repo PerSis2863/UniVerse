@@ -51,7 +51,8 @@ try {
   for (const e of made) sql(`INSERT INTO error_reports (id, fingerprint, source, kind, message, path, userAgent, count, users, status, severity, diagnosis, diagnosedAt, firstSeen, lastSeen) VALUES (${q(e.id)}, ${q(e.id)}, ${q(e.source)}, ${q(e.kind)}, ${q(e.message)}, ${q(e.path)}, ${q(e.ua)}, ${e.count}, 1, ${q(e.status)}, ${q(e.severity)}, ${q(e.diagnosis)}, ${e.diagnosis ? q(at(e.h)) : 'NULL'}, ${q(at(e.h + 24))}, ${q(at(e.h))})`);
   const me = await call('/api/core/auth/me');
   r.ownerSignIn = me.s === 200 && me.b.owner === true;
-  r.diagnose = (await call('/api/core/owner/errors/diagnose', {})).s;
+  const d = (await call('/api/core/owner/errors/diagnose', {})).s;
+  r.diagnose = d >= 200 && d < 300;
   r.botIgnored = rows(`SELECT status FROM error_reports WHERE id='${tag}a'`)[0]?.status === 'IGNORED';
   r.othersOpen = rows(`SELECT COUNT(*) AS n FROM error_reports WHERE id IN ('${tag}b','${tag}c') AND status IN ('NEW','DIAGNOSED')`)[0].n === 2;
 
