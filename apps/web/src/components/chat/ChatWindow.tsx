@@ -21,7 +21,7 @@ import { Composer, type ComposerExtra, type SendPayload } from './Composer';
 import { ContactPicker, ForwardDialog, MessageInfo, PollDialog, RemindSheet } from './ChatDialogs';
 import { ChatExport } from './ChatExport';
 import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
-import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS , previewText } from './chat-client';
+import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS, previewText, auraOf } from './chat-client';
 import { useLiveInterval, useLiveTyping, useRealtimeConnected } from '@/lib/realtime-client';
 import { useLanguageStore } from '@/store/language';
 import { cachedChat, cacheChat, enqueue, isOfflineError, listOutbox, newClientId, onOutbox, type OutboxItem } from '@/lib/outbox';
@@ -33,6 +33,9 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { encryptForChat, myDevice } from './private-chat';
 import { PrivateBanner, SafetyCode, StartPrivateChat } from './PrivateChat';
 import { removeWithUndo } from '@/lib/undo';
+import { isScreenEffect, type MessageEffect } from '@/lib/message-effects';
+import { undoSendOn, undoWindow } from './SendExtras';
+import { ScreenEffect } from './ScreenEffect';
 
 const ThreadPanel = dynamic(() => import('./ThreadPanel').then((m) => m.ThreadPanel));
 
@@ -94,7 +97,17 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [pending, setPending] = useState<ChatMessage[]>([]);
   // New messages glide in; those already here when the chat opened (openedAt, below) don't. Mine
   // glide as I send them (the server's copy that replaces the "sending" one then stays still).
-  const arrival = (m: ChatMessage, mine: boolean) => (mine ? (m.pending ? 'msg-arrive-mine' : undefined) : Date.parse(m.createdAt) > openedAt ? 'msg-arrive-theirs' : undefined);
+  const arrival = (m: ChatMessage, mine: boolean) => {
+    const fresh = mine ? !!m.pending : Date.parse(m.createdAt) > openedAt;
+    if (!fresh) return undefined;
+    // A bubble effect (M17, iMessage) changes how it lands: slam, loud, gentle.
+    const fx = m.metadata?.effect;
+    if (fx === 'slam' || fx === 'loud' || fx === 'gentle') return `msg-fx-${fx}`;
+    return mine ? 'msg-arrive-mine' : 'msg-arrive-theirs';
+  };
+  // Screen effects (M17, iMessage): mine play as I send; theirs as they arrive; any can be replayed.
+  const [playing, setPlaying] = useState<{ key: string; effect: MessageEffect } | null>(null);
+  const [played, setPlayed] = useState<ReadonlySet<string>>(() => new Set());
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -387,7 +400,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     onChanged();
   };
 
-  const send = async ({ text, file: picked, voice, viewOnce, album, videoNote, sticker }: SendPayload) => {
+  const send = async ({ text, file: picked, voice, viewOnce, album, videoNote, sticker, effect, silent }: SendPayload) => {
     const file = picked ?? videoNote?.file;
     haptic('tap');
     const tempId = `temp-${crypto.randomUUID()}`;
@@ -446,16 +459,20 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         appendSent(msg, tempId);
         if (text) await send({ text });
       } else if (text) {
-        setPending((p) => [...p, { ...base, type: 'TEXT', body: text, attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null } as ChatMessage]);
+        const extra = { ...(effect ? { effect } : {}), ...(silent ? { silent: true } : {}) };
+        setPending((p) => [...p, { ...base, type: 'TEXT', body: text, attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null, metadata: Object.keys(extra).length ? extra : null } as ChatMessage]);
+        // Undo send (M17, after Gmail): it waits a few seconds first, and Undo takes it back unsent.
+        if (undoSendOn() && !(await undoWindow(text))) { setPending((p) => p.filter((x) => x.id !== tempId)); return; }
+        if (isScreenEffect(effect)) setPlaying({ key: tempId, effect: effect! });
         const clientId = newClientId();
         try {
-          const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ body: text, replyToId, clientId }) });
+          const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ body: text, replyToId, clientId, ...extra }) });
           appendSent(msg, tempId);
         } catch (err) {
           if (!isOfflineError(err)) throw err;
           // No connection: it waits in the outbox and is sent when the connection is back.
           setPending((p) => p.filter((x) => x.id !== tempId));
-          await enqueue({ id: clientId, kind: 'message', method: 'POST', url: key, ref: conversationId, label: `Message: ${text.slice(0, 40)}${text.length > 40 ? '…' : ''}`, body: { body: text, replyToId, clientId } });
+          await enqueue({ id: clientId, kind: 'message', method: 'POST', url: key, ref: conversationId, label: `Message: ${text.slice(0, 40)}${text.length > 40 ? '…' : ''}`, body: { body: text, replyToId, clientId, ...extra } });
         }
       }
     } catch (e) {
@@ -593,6 +610,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     }
     return false;
   };
+  // Magic Compose (M17): my draft in another tone.
+  const rewrite = async (text: string, tone: string) => (await chatJson<{ text: string }>(`/api/chat/conversations/${conversationId}/ai`, { method: 'POST', body: JSON.stringify({ action: 'rewrite', text, tone }) })).text;
+
   const suggestReplies = async () => {
     try {
       const r = await chatJson<{ replies: string[] }>(`/api/chat/conversations/${conversationId}/ai`, { method: 'POST', body: JSON.stringify({ action: 'replies' }) });
@@ -669,11 +689,18 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     );
   }
 
+  // A screen effect to play: one I just sent, or the newest one that arrived while the chat was open.
+  const incomingFx = playing ? undefined : [...messages].reverse().find((m) => m.senderId !== me && isScreenEffect(m.metadata?.effect) && Date.parse(m.createdAt) > openedAt && !played.has(m.id));
+  const fx = playing ?? (incomingFx?.metadata?.effect ? { key: incomingFx.id, effect: incomingFx.metadata.effect } : null);
+
   return (
     <div className="flex-1 flex min-w-0 min-h-0">
-      <div className="flex-1 flex flex-col min-w-0 min-h-0">
+      <div className="relative flex-1 flex flex-col min-w-0 min-h-0">
+        {fx && <ScreenEffect key={fx.key} effect={fx.effect} onDone={() => { setPlaying(null); setPlayed((p) => new Set(p).add(fx.key)); }} />}
         {/* Header */}
-        <div className="relative z-20 flex items-center gap-3 px-3 md:px-5 h-16 shrink-0 bg-white/60 dark:bg-white/[0.025] backdrop-blur-xl after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-indigo-400/40 after:to-transparent dark:after:via-fuchsia-400/30">
+        <div className="relative isolate z-20 flex items-center gap-3 px-3 md:px-5 h-[68px] shrink-0 bg-white/60 dark:bg-white/[0.025] backdrop-blur-xl after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-indigo-400/40 after:to-transparent dark:after:via-fuchsia-400/30">
+          {/* The other person's glow (M17), spilling softly from behind their picture. */}
+          <span aria-hidden className="chat-aura" style={{ ['--aura' as string]: auraOf(other?.id ?? conversationId) }} />
           <button onClick={onBack} aria-label="Back" className="md:hidden p-2 -ms-1 rounded-full text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button>
           <button onClick={() => setInfoOpen((v) => !v)} className="flex items-center gap-3 min-w-0 flex-1 text-start">
             {channel
@@ -874,6 +901,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                       onForward={() => setForwarding(m)}
                       onSelect={!m.pending && m.type !== 'SYSTEM' && m.type !== 'DELETED' ? () => setPicked(new Set([m.id])) : undefined}
                       onInfo={() => setInfoMsg(m)}
+                      onReplayEffect={isScreenEffect(m.metadata?.effect) ? () => setPlaying({ key: `${m.id}:${Date.now()}`, effect: m.metadata!.effect! }) : undefined}
                       onVote={(o) => vote(m, o)}
                       onOpenContact={openContact}
                       onReact={(e) => react(m, e)}
@@ -952,6 +980,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           onCommand={convo.isOfficial ? undefined : command}
           appCommands={apps?.commands}
           onSuggest={convo.isOfficial ? undefined : suggestReplies}
+          onRewrite={convo.isOfficial || convo.private ? undefined : rewrite}
         />}
       </div>
 

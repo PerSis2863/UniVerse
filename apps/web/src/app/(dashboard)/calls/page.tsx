@@ -10,7 +10,7 @@ import { Clapperboard, Coffee, DoorOpen, GraduationCap, Headphones, Link2, Loade
 import { Topbar } from '@/components/layout/Topbar';
 import { ScheduledCalls } from '@/components/call/ScheduledCalls';
 import { Favorites } from '@/components/call/Favorites';
-import { MessagesTabs } from '@/components/layout/SectionTabs';
+import { CommsDeck } from '@/components/chat/CommsDeck';
 import { authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { useAuthStore } from '@/store/auth';
@@ -75,7 +75,7 @@ export default function CallsPage() {
     <>
       <Topbar title="Messages" subtitle="Scheduled calls, and every call you were in over the last 30 days" />
       <Suspense fallback={null}><NoteFromLink /></Suspense>
-      <MessagesTabs />
+      <CommsDeck />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-2xl mx-auto space-y-5">
           <OfficeHoursCard role={role} />

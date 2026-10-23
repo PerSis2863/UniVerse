@@ -26,6 +26,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { appLink, firstLink, youtubeId } from '@/lib/app-links';
 import { AppLinkCard, YouTubeCard } from './LinkCards';
 import { PrivateText } from './PrivateText';
+import { EFFECTS } from '@/lib/message-effects';
 
 // Each person keeps the same colour everywhere, so a list of chats is easy to scan.
 /**
@@ -155,6 +156,8 @@ interface Props {
   onThread?: () => void;
   /** A community channel's own emoji (name → picture). */
   customEmoji?: Record<string, string>;
+  /** Plays this message's screen effect again (M17). */
+  onReplayEffect?: () => void;
 }
 
 export type TranslationState = { status: 'pending' } | { status: 'error'; message?: string } | { status: 'done'; text: string; from: string; same: boolean };
@@ -390,7 +393,14 @@ export function MessageBubble(p: Props) {
     const yt = link && !app ? youtubeId(link) : null;
     content = (
       <div className="px-3.5 py-2.5">
-        <RichText text={showing ? (t as { text: string }).text : m.body} mine={mine} emoji={p.customEmoji} />
+        {m.metadata?.effect === 'ink'
+          ? <InvisibleInk mine={mine}><RichText text={showing ? (t as { text: string }).text : m.body} mine={mine} emoji={p.customEmoji} /></InvisibleInk>
+          : <RichText text={showing ? (t as { text: string }).text : m.body} mine={mine} emoji={p.customEmoji} />}
+        {p.onReplayEffect && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); p.onReplayEffect?.(); }} className={cn('mt-1 inline-flex items-center gap-1 text-[11px] font-semibold', mine ? 'text-white/80 hover:text-white' : 'text-fuchsia-600 dark:text-fuchsia-300 hover:underline')}>
+            {EFFECTS.find((x) => x.id === m.metadata?.effect)?.emoji} Replay {EFFECTS.find((x) => x.id === m.metadata?.effect)?.label.toLowerCase()}
+          </button>
+        )}
         {app && link ? <AppLinkCard kind={app.kind} id={app.id} url={link} mine={mine} />
           : yt && link ? <YouTubeCard id={yt} url={link} title={m.metadata?.link?.title} mine={mine} />
           : m.metadata?.link && <LinkCard link={m.metadata.link} mine={mine} />}
@@ -687,5 +697,24 @@ function LinkCard({ link, mine }: { link: NonNullable<NonNullable<ChatMessage['m
       <span className="block text-sm font-semibold leading-snug line-clamp-2 mt-0.5">{link.title}</span>
       {link.description && <span className={cn('block text-xs leading-snug line-clamp-2 mt-0.5', mine ? 'text-white/80' : 'text-zinc-600 dark:text-zinc-400')}>{link.description}</span>}
     </a>
+  );
+}
+
+/**
+ * Invisible ink (M17, after iMessage): the words hide under shimmering specks until tapped or
+ * hovered, then cover over again a few seconds later.
+ */
+function InvisibleInk({ mine, children }: { mine: boolean; children: React.ReactNode }) {
+  const [shown, setShown] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const reveal = () => { setShown(true); clearTimeout(timer.current); timer.current = setTimeout(() => setShown(false), 6000); };
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return (
+    <span role="button" tabIndex={0} aria-label={shown ? undefined : 'Hidden message: tap to reveal'} aria-pressed={shown}
+      onClick={(e) => { e.stopPropagation(); reveal(); }} onMouseEnter={reveal} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); reveal(); } }}
+      className={cn('ink relative block rounded-lg', shown ? 'ink-shown' : 'ink-hidden', mine && 'ink-mine')}>
+      <span className="ink-words block">{children}</span>
+      {!shown && <span aria-hidden className="ink-specks absolute inset-0 rounded-lg" />}
+    </span>
   );
 }

@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useLayoutEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { m as motion } from 'framer-motion';
 import { useAuthStore } from '@/store/auth';
 import Link from '@/components/ui/Link';
@@ -275,27 +275,4 @@ const FocusPill = dynamic(() => import('@/components/collab/FocusTimer').then((m
 /** Collaborate's tabs, with the focus timer beside them while a round runs (M17). */
 export function CollabTabs() {
   return <SectionTabs tabs={COLLAB_TABS} end={<FocusPill />} />;
-}
-
-/**
- * Messages and calls are one menu entry ("Messages"): Chats is the inbox, Calls the call log.
- * On phones the tabs step aside while a conversation is open, so the chat gets the full screen.
- */
-export function MessagesTabs() {
-  // useSearchParams needs a Suspense boundary (pages are prerendered); the fallback shows the tabs.
-  return <Suspense fallback={<MessagesTabsInner chatOpen={false} />}><MessagesTabsWithQuery /></Suspense>;
-}
-
-function MessagesTabsWithQuery() {
-  return <MessagesTabsInner chatOpen={!!useSearchParams().get('c')} />;
-}
-
-function MessagesTabsInner({ chatOpen }: { chatOpen: boolean }) {
-  const role = useAuthStore((s) => s.user?.role);
-  const base = role === 'ADMIN' ? '/admin' : role === 'TEACHER' ? '/teacher' : '/student';
-  return (
-    <div className={cn(chatOpen && 'hidden md:block')}>
-      <SectionTabs tabs={[{ href: `${base}/inbox`, label: 'Chats' }, { href: '/calls', label: 'Calls' }, { href: '/notifications', label: 'Notifications' }, ...(role === 'ADMIN' ? [{ href: '/admin/announcements', label: 'Announcements' }] : [])]} />
-    </div>
-  );
 }

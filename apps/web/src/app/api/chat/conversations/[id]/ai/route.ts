@@ -12,8 +12,14 @@ import { publishChat } from '@/server/realtime';
 //   ask      "/ask …": answered in the chat for everyone, from the recent conversation.
 //   catchup  what you missed since you last read the chat, just for you (not saved).
 //   replies  three short replies you could send to the latest messages, just for you.
+//   rewrite  my draft in another tone (M17, after Google Messages' Magic Compose), just for me.
 
 type Line = { who: string; text: string };
+const REWRITE: Record<string, string> = {
+  friendly: 'so it sounds warmer and friendlier', formal: 'so it sounds polite and formal, for a teacher or an office',
+  shorter: 'so it is shorter and to the point', fix: 'fixing only spelling, grammar and punctuation',
+  excited: 'so it sounds excited and upbeat, with an emoji or two', clear: 'so it is clearer and easier to follow',
+};
 
 async function recent(conversationId: string, userId: string, opts: { since?: Date | null; take: number }) {
   const rows = await prisma.message.findMany({
@@ -59,6 +65,20 @@ export const POST = (req: Request, { params }: { params: Promise<{ id: string }>
         transcript(lines), { type: 'object', properties: { replies: { type: 'array', items: { type: 'string' } } }, required: ['replies'] }, 200, true,
       );
       return { replies: (out?.replies ?? []).map((r) => r.slice(0, 120)).slice(0, 3) };
+    }
+
+    if (action === 'rewrite') {
+      const text = String(b.text ?? '').trim().slice(0, 2000);
+      const how = REWRITE[String(b.tone)];
+      if (!text || !how) throw new BadRequestException('Type a message to rewrite first.');
+      const spend = await spendAi(user);
+      if (!spend.ok) throw new HttpException(spend.message, 429);
+      const out = await geminiText(
+        `Rewrite this chat message ${how}. Keep its meaning, its language, names, numbers, links and @mentions. Reply with only the rewritten message: no quotes, no notes.`,
+        text, 400,
+      );
+      if (!out) throw new HttpException('Couldn’t rewrite it right now. Try again in a moment.', 503);
+      return { text: out.trim().replace(/^["“”]+|["“”]+$/g, '').slice(0, 2000) };
     }
 
     if (action === 'ask') {

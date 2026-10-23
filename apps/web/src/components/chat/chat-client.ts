@@ -4,6 +4,7 @@ import { authedFetch } from '@/lib/authed-fetch';
 import { shrinkImage } from '@/lib/shrink-image';
 import { makePhotoSizes } from '@/lib/photo-sizes';
 import type { E2EPayload } from '@/lib/e2e';
+import type { MessageEffect } from '@/lib/message-effects';
 
 export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'AUDIO' | 'VIDEO' | 'CALL' | 'POLL' | 'LOCATION' | 'CONTACT' | 'SYSTEM' | 'DELETED';
 
@@ -22,6 +23,7 @@ export interface ChatMessage {
     endedAt?: string; answered?: boolean; declinedBy?: string; // CALL: how it went
     question?: string; options?: string[]; multiple?: boolean; // POLL
     lat?: number; lng?: number; label?: string | null; // LOCATION
+    effect?: MessageEffect; silent?: boolean; // TEXT (M17): played as it arrives (iMessage), sent without notifying (Telegram)
     userId?: string; name?: string; role?: string; avatar?: string | null; // CONTACT
     moderated?: 'edited' | 'removed' | 'community'; team?: boolean; // changed or posted by UniVerse (owner console)
     viewOnce?: boolean; opened?: boolean; openedCount?: number; // view-once photo / video / voice message
@@ -322,3 +324,8 @@ export function setWallpaper(id: string) {
   try { localStorage.setItem('universe:chat-wallpaper', id); } catch { /* ignore */ }
   window.dispatchEvent(new Event('universe:wallpaper'));
 }
+
+// A bright colour per person for the glow behind their picture (M17); the same person, the same glow.
+// Only the brand's two tones and the shades between them.
+const AURAS = ['#818cf8', '#a78bfa', '#c084fc', '#e879f9', '#f472b6', '#6366f1', '#d946ef', '#8b5cf6'];
+export const auraOf = (id: string) => AURAS[[...id].reduce((t, c) => (t * 31 + c.charCodeAt(0)) >>> 0, 7) % AURAS.length];

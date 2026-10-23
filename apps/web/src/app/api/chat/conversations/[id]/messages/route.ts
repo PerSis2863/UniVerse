@@ -15,6 +15,7 @@ import { listScheduled } from '@/server/scheduled-messages';
 import { recordServerError } from '@/server/errors';
 import { chatMuted, featureOff } from '@/server/moderation';
 import { validPayload } from '@/lib/e2e';
+import { effectOf } from '@/lib/message-effects';
 
 /** What a private message shows wherever it can't be decrypted (lists, notifications). */
 const PRIVATE_BODY = '🔒 Private message';
@@ -296,6 +297,13 @@ export async function POST(req: Request, { params }: Ctx) {
     } else if (!text) {
       return NextResponse.json({ error: 'Message is empty.' }, { status: 400 });
     }
+  }
+  // M17: an effect played as the message arrives (iMessage's screen and bubble effects), and a silent
+  // message (Telegram's "send without sound": delivered as usual, but nobody is notified).
+  if (data.type === 'TEXT' && !convo?.private) {
+    const effect = effectOf(b.effect);
+    const extra = { ...(effect ? { effect } : {}), ...(b.silent === true ? { silent: true } : {}) };
+    if (Object.keys(extra).length) data.metadata = { ...((data.metadata as object | undefined) ?? {}), ...extra };
   }
   if (convo?.disappearingSec) data.expiresAt = new Date(Date.now() + convo.disappearingSec * 1000);
 

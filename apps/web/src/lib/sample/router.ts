@@ -1981,6 +1981,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   })],
   [/^\/api\/chat\/conversations$/, ({ db: d }) => ok({ conversations: d.conversations.map((c) => summary(d, c)).sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (+new Date(b.activityAt) - +new Date(a.activityAt))), me: d.me.id })],
   [/^\/api\/chat\/folders$/, () => ok({ folders: [] })],
+  [/^\/api\/chat\/streaks$/, () => ok({ streaks: {} })],
   [/^\/api\/chat\/communities\/[^/]+\/moderation$/, () => ok({ reports: [], resolved: [], timeouts: [], automod: { words: [], mode: 'BLOCK' }, log: [] })],
   // School chat apps (Stage 5 · Q20): one example command in the "/" menu.
   [/^\/api\/chat\/apps$/, () => ok({ commands: [{ name: 'library', hint: 'Find a book in the school library', app: 'Library desk' }] })],

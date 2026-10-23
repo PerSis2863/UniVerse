@@ -44,7 +44,7 @@ export function afterSend(
     // nobody is notified per message (only @mentions, below). Chats and groups notify as usual.
     if (chat.communityId) await publishGroupChannel(conversationId);
     // A sticker (Stage 5 · B7.2) is a photo message, announced as a sticker.
-    else await notifyAway(conversationId, from, chat.systemUserId, type === 'IMAGE' && (message.metadata as { sticker?: boolean } | null)?.sticker ? 'STICKER' : type, body, id);
+    else await notifyAway(conversationId, from, chat.systemUserId, type === 'IMAGE' && (message.metadata as { sticker?: boolean } | null)?.sticker ? 'STICKER' : type, body, id, !!(message.metadata as { silent?: boolean } | null)?.silent);
   });
   if (type === 'TEXT' && body.includes('@')) later(() => notifyMentions(conversationId, from, body));
   // Watch words (owner console → Live chats) alert the owner.
@@ -65,7 +65,8 @@ const PREVIEW: Record<string, string> = { PRIVATE: '🔒 New private message', S
 // Pushes the message to everyone's open tabs. Members who don't have UniVerse open get a
 // notification (and an email if they have them on), at most once an hour per chat, so a busy chat
 // doesn't flood their inbox.
-export async function notifyAway(conversationId: string, from: { id: string; name: string }, systemUserId: string, type: string, body: string, messageId: string) {
+/** `silent` (M17): a message sent without sound reaches open tabs but notifies nobody. */
+export async function notifyAway(conversationId: string, from: { id: string; name: string }, systemUserId: string, type: string, body: string, messageId: string, silent = false) {
   const everyone = await prisma.conversationParticipant.findMany({ where: { conversationId }, select: { userId: true } });
   const online = await deliver(everyone.map((m) => m.userId), { type: 'chat', conversationId, ...(type === 'CALL' ? { call: true } : {}) });
   const now = new Date();
@@ -101,7 +102,7 @@ export async function notifyAway(conversationId: string, from: { id: string; nam
       }).catch(() => 0);
     }
   }
-  if (members.length === 0) return;
+  if (members.length === 0 || silent) return;
   // Who was told about this chat in the last hour: found by the chat's link, not a list of people
   // (a big group's list is more than D1's 100 values in one query).
   const recent = await prisma.notification.findMany({

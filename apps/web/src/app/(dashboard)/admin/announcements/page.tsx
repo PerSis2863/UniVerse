@@ -3,7 +3,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { Topbar } from '@/components/layout/Topbar';
-import { MessagesTabs } from '@/components/layout/SectionTabs';
+import { CommsDeck } from '@/components/chat/CommsDeck';
 import { api, errorMessage } from '@/lib/api';
 import { Megaphone, Edit, Trash2, Plus, Calendar, User, X, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -71,7 +71,7 @@ export default function AdminAnnouncements() {
   return (
     <>
       <Topbar title="Announcements" subtitle="Manage system-wide and course-specific announcements" />
-      <MessagesTabs />
+      <CommsDeck />
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="flex justify-end mb-6">
           <button

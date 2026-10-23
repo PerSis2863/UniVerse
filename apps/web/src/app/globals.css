@@ -1814,11 +1814,12 @@ html.reduce-motion .deck-orbit::before { animation: none; }
 .menu-pop { transform-origin: top right; animation: menu-pop 180ms var(--ease-out-soft); }
 [dir='rtl'] .menu-pop { transform-origin: top left; }
 @keyframes menu-pop { from { opacity: 0; transform: scale(0.94) translateY(-4px); } }
-/* An open chat glides in: a short slide on wide screens, a push from the side on phones. */
-.chat-glide { animation: chat-glide 300ms var(--ease-glide); }
-@keyframes chat-glide { from { opacity: 0; transform: translate3d(18px, 0, 0); } }
-[dir='rtl'] .chat-glide { animation-name: chat-glide-rtl; }
-@keyframes chat-glide-rtl { from { opacity: 0; transform: translate3d(-18px, 0, 0); } }
+/* An open chat opens like a portal on wide screens: a circle of the chat spreading out from the row
+   you clicked (--py: its height); on phones it's pushed in from the side. */
+.chat-glide { animation: chat-portal 460ms var(--ease-glide); }
+@keyframes chat-portal { from { clip-path: circle(0% at 0% var(--py, 50%)); opacity: 0.4; } to { clip-path: circle(150% at 0% var(--py, 50%)); opacity: 1; } }
+[dir='rtl'] .chat-glide { animation-name: chat-portal-rtl; }
+@keyframes chat-portal-rtl { from { clip-path: circle(0% at 100% var(--py, 50%)); opacity: 0.4; } to { clip-path: circle(150% at 100% var(--py, 50%)); opacity: 1; } }
 @media (max-width: 767px) {
   .chat-glide { animation: chat-push 380ms var(--ease-ios); }
   [dir='rtl'] .chat-glide { animation-name: chat-push-rtl; }
@@ -1870,3 +1871,54 @@ html.reduce-motion .collab-hero::before { animation: none; }
 @keyframes goal-pop { 0% { transform: rotate(-90deg) scale(0.6); } 50% { transform: rotate(-90deg) scale(1.35); } 100% { transform: rotate(-90deg) scale(1); } }
 @media (prefers-reduced-motion: reduce) { .goal-reached { animation: none; } }
 html.reduce-motion .goal-reached { animation: none; }
+
+/* ═══ M17 · Message effects (iMessage) and the message box's extras (components/chat) ══════════ */
+/* Bubble effects: how a message lands. */
+.msg-fx-slam { transform-origin: center; animation: fx-slam 560ms var(--ease-glide); }
+@keyframes fx-slam { 0% { opacity: 0; transform: scale(2.4) translate3d(0, -24px, 0); } 55% { opacity: 1; transform: scale(0.92); } 75% { transform: scale(1.04); } }
+.msg-fx-loud { transform-origin: center; animation: fx-loud 900ms var(--ease-out-soft); }
+@keyframes fx-loud { 0% { opacity: 0; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.35); } 40% { transform: scale(1.35) rotate(-3deg); } 50% { transform: scale(1.32) rotate(3deg); } 60% { transform: scale(1.3) rotate(-2deg); } 80% { transform: scale(1.05) rotate(0); } }
+.msg-fx-gentle { transform-origin: bottom; animation: fx-gentle 1500ms var(--ease-out-soft); }
+@keyframes fx-gentle { 0% { opacity: 0; transform: scale(0.55); } 60% { opacity: 0.85; transform: scale(0.8); } }
+/* Invisible ink: blurred words under drifting specks until tapped. */
+.ink-words { transition: filter 450ms var(--ease-out-soft), opacity 450ms var(--ease-out-soft); }
+.ink-hidden { cursor: pointer; }
+.ink-hidden .ink-words { filter: blur(7px); opacity: 0.45; user-select: none; }
+.ink-specks { pointer-events: none; background-image: radial-gradient(circle, rgb(255 255 255 / 0.95) 0.7px, transparent 1.5px), radial-gradient(circle, rgb(216 180 254 / 0.9) 0.7px, transparent 1.5px); background-size: 7px 7px, 11px 11px; animation: ink-drift 1.8s linear infinite; }
+:where(html:not(.dark)) .ink:not(.ink-mine) .ink-specks { background-image: radial-gradient(circle, rgb(49 46 129 / 0.75) 0.7px, transparent 1.5px), radial-gradient(circle, rgb(126 34 206 / 0.6) 0.7px, transparent 1.5px); }
+@keyframes ink-drift { to { background-position: 7px -7px, -11px 11px; } }
+/* The quick reaction flies up a little as it's sent. */
+.quick-pop { display: inline-block; animation: quick-pop 520ms var(--ease-glide); }
+@keyframes quick-pop { 0% { transform: scale(1); } 40% { transform: scale(1.7) translate3d(0, -10px, 0) rotate(-10deg); } 70% { transform: scale(0.9); } }
+@media (prefers-reduced-motion: reduce) { .msg-fx-slam, .msg-fx-loud, .msg-fx-gentle, .ink-specks, .quick-pop { animation: none; } }
+html.reduce-motion :is(.msg-fx-slam, .msg-fx-loud, .msg-fx-gentle, .ink-specks, .quick-pop) { animation: none; }
+
+/* ═══ M17 · The Messages deck, folder rail, pinned bubbles and auras (components/chat) ═════════ */
+.comms-deck { background: rgb(255 255 255 / 0.7); box-shadow: inset 0 0 0 1px rgb(99 102 241 / 0.14), 0 18px 40px -26px rgb(79 70 229 / 0.5); backdrop-filter: blur(16px); }
+.dark .comms-deck { background: rgb(255 255 255 / 0.04); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 18px 40px -26px rgb(168 85 247 / 0.55); }
+/* The liquid highlight: a bright head and a softer tail that lags behind it. */
+.comms-head { background: linear-gradient(120deg, #4f46e5, #7c3aed 55%, #c026d3); box-shadow: 0 8px 22px -8px rgb(192 38 211 / 0.75), inset 0 1px 0 rgb(255 255 255 / 0.25); }
+.comms-tail { background: linear-gradient(120deg, rgb(129 140 248 / 0.45), rgb(232 121 249 / 0.4)); transform: scale(1.04, 1.12); }
+.comms-icon-on { animation: comms-icon 520ms var(--ease-glide); }
+@keyframes comms-icon { 0% { transform: scale(0.6) rotate(-20deg); } 60% { transform: scale(1.18) rotate(6deg); } }
+/* The folder rail (Telegram desktop): the chosen folder's pill and edge glide between icons. */
+.rail-pill { background: linear-gradient(140deg, rgb(99 102 241 / 0.9), rgb(192 38 211 / 0.9)); box-shadow: 0 6px 18px -6px rgb(192 38 211 / 0.7); }
+.rail-edge { background: linear-gradient(#a5b4fc, #f0abfc); box-shadow: 0 0 10px rgb(232 121 249 / 0.8); }
+/* Pinned chats float gently, each a little out of step (iMessage's pinned bubbles). */
+.pin-float { animation: pin-float 5.5s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -0.7s); }
+@keyframes pin-float { 50% { transform: translate3d(0, -4px, 0); } }
+.pin-typing { animation: pin-typing 1.4s ease-in-out infinite; }
+@keyframes pin-typing { 50% { transform: translate3d(0, -2px, 0) scale(1.06); } }
+/* A soft glow in the person's colour behind their picture: on for unread chats, and on hover. */
+.row-aura { position: relative; isolation: isolate; }
+.row-aura::before { content: ''; position: absolute; inset: -9px; z-index: -1; border-radius: 9999px; background: radial-gradient(closest-side, var(--aura, #a855f7), transparent); opacity: 0; transition: opacity 300ms var(--ease-out-soft); }
+.row-aura.on::before { opacity: 0.5; }
+@media (hover: hover) { .group:hover .row-aura::before { opacity: 0.6; } }
+/* The chat's header glows in the other person's colour. */
+.chat-aura { position: absolute; inset-inline-start: -30px; top: -70px; width: 260px; height: 200px; z-index: -1; pointer-events: none; border-radius: 9999px; background: radial-gradient(closest-side, var(--aura, #a855f7), transparent); opacity: 0.4; animation: msg-halo 7s ease-in-out infinite; }
+.streak { display: inline-flex; align-items: center; gap: 1px; font-size: 11px; font-weight: 800; color: #ea580c; }
+.dark .streak { color: #fdba74; }
+.streak > i { font-style: normal; display: inline-block; animation: streak-flicker 2.4s ease-in-out infinite; }
+@keyframes streak-flicker { 50% { transform: scale(1.15) rotate(-6deg); } }
+@media (prefers-reduced-motion: reduce) { .comms-icon-on, .pin-float, .pin-typing, .chat-aura, .streak > i { animation: none; } }
+html.reduce-motion :is(.comms-icon-on, .pin-float, .pin-typing, .chat-aura, .streak > i) { animation: none; }
