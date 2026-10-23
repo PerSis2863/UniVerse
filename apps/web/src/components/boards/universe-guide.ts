@@ -778,6 +778,10 @@ const messagesArea = () => cards('msg', 'Messages', 'Messages: everything it doe
   ['Photos and files', 'Full-screen viewer; PDFs and code previewed'], ['Search', 'Filters typed in the box: from:, in:, has:file, before:'],
   ['Starred and export', 'Keep messages; download a whole chat'], ['Presence', 'Online, busy, away, with your own status line'],
   ['Broadcasts', 'Staff send one message to many people at once'], ['Safety', 'Report, block, and the school’s rules on who may message whom'],
+  ['Message effects', 'Confetti, balloons, hearts, fireworks, lasers; slam, loud, gentle, invisible ink (after iMessage)'], ['Send silently', 'Arrives without a notification (after Telegram)'],
+  ['Undo send', 'Messages wait four seconds so you can take them back (after Gmail)'], ['Rewrite with AI', 'Friendlier, formal, shorter, clearer (after Google Messages)'],
+  ['Quick reaction', 'Each chat’s own one-tap emoji, sent big (after Messenger)'], ['Streaks', '🔥 days in a row you’ve both written (after Snapchat)'],
+  ['Folder rail and pinned bubbles', 'Folders down the side (Telegram desktop); pinned chats float at the top (iMessage)'], ['Calls, notifications, announcements', 'Contact posters and a week of call minutes; notification stacks with Priority; a phone preview and “Seen by”'],
 ], 4);
 
 const collaborateArea = () => cards('collab', 'Collaborate', 'Collaborate: every tool, all live together', C.teacher, [
@@ -787,6 +791,10 @@ const collaborateArea = () => cards('collab', 'Collaborate', 'Collaborate: every
   ['Code rooms', 'Code written together live, run in the browser'], ['Files', 'Folders, every version, previews, search inside files'],
   ['Tools', 'Photo, audio, video and PDF editors; convert and compress files'], ['Fair group work', 'Who did what in a space, for the teacher'],
   ['AI help', 'Writing help in docs, drawing on boards'], ['Works offline', 'Edits wait and catch up when the phone is back online'],
+  ['Home', 'Recent work from every tool, one search across all of it, pins kept on your account'], ['Share by QR', 'Any item as a QR code for the projector'],
+  ['Focus timer', '25/5, 50/10 or 15/3 rounds, with a pill beside the tabs while it runs'], ['Quick notes', 'A notepad that becomes a document in one tap'],
+  ['Due this week and streaks', 'Your cards day by day; four weeks of activity'], ['Outline to mind map', 'Paste an indented list on a whiteboard'],
+  ['Writing goals', 'A ring on the word count fills as you write'], ['Shortcuts', '/ to search; d s p b t to make something new; f for the timer'],
 ], 4);
 
 const designArea = () => cards('look', 'The look', 'The look and the motion: the rules every page follows', C.owner, [

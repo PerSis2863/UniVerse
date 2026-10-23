@@ -223,7 +223,7 @@ export function MessagingHub() {
         {rail.map((r, i) => (
           <div key={r.id} className="contents">
             {i === 6 && <span aria-hidden className="my-1 h-px w-7 shrink-0 bg-zinc-200 dark:bg-white/10" />}
-            <button type="button" onClick={r.run} aria-label={r.label} aria-current={r.on ? 'true' : undefined} title={r.label}
+            <button type="button" onClick={r.run} aria-label={r.count ? `${r.label}, ${r.count} unread` : r.label} aria-current={r.on ? 'true' : undefined} title={r.label}
               className={cn('group relative isolate shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center transition-colors duration-200', r.on ? 'text-white' : 'text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
               {r.on && <>
                 <motion.span layoutId="rail-pill" transition={spring.snappy} className="rail-pill absolute inset-0 -z-10 rounded-2xl" aria-hidden />

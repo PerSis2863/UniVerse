@@ -119,23 +119,26 @@ export default function CallsPage() {
                 const who = withWho(c.people, c.more);
                 return (
                   <motion.li key={c.key} variants={fadeUp} className="relative flex items-start gap-3">
-                    <button type="button" onClick={() => { if (c.conversationId) router.push(`${inbox}?c=${c.conversationId}`); }} disabled={!c.conversationId} className="flex items-start gap-3 flex-1 min-w-0 text-start disabled:cursor-default">
+                    <div className="relative flex items-start gap-3 flex-1 min-w-0 text-start">
                       <span className={cn('call-node relative z-10 w-11 h-11 rounded-full flex items-center justify-center shrink-0 ring-4 ring-[var(--surface,#fff)] dark:ring-[#0b1020]', c.missed ? 'bg-rose-500/10 text-rose-500' : c.live ? 'bg-emerald-500/15 text-emerald-500 animate-pulse' : 'bg-indigo-500/10 text-indigo-500')}><Icon className="w-5 h-5" /></span>
-                      <span className="call-card min-w-0 flex-1 panel px-4 py-3">
-                        <span className={cn('block font-semibold truncate', c.missed ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white')}>{c.title}</span>
+                      <span className="call-card relative min-w-0 flex-1 panel px-4 py-3">
+                        {/* The whole card opens the chat; the note, recording and study links sit above it. */}
+                        {c.conversationId
+                          ? <button type="button" onClick={() => router.push(`${inbox}?c=${c.conversationId}`)} className={cn('block max-w-full font-semibold truncate text-start after:absolute after:inset-0', c.missed ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white')}>{c.title}</button>
+                          : <span className={cn('block font-semibold truncate', c.missed ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white')}>{c.title}</span>}
                         <span className="block text-xs text-zinc-500">{chat ? (c.kind === 'video' ? 'Video' : 'Voice') : TYPE_LABEL[c.type]} · {detail} · {formatDistanceToNowStrict(new Date(c.at), { addSuffix: true })}</span>
                         {who && <span className="block text-xs text-zinc-500 truncate">{who}</span>}
                         {(c.noteId || c.recordingId || c.study) && (
-                          <span className="mt-1.5 flex flex-wrap gap-1.5">
-                            {c.noteId && <span role="link" tabIndex={0} onClick={(e) => { e.stopPropagation(); router.push(`/calls?note=${c.noteId}`, { scroll: false }); }} onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/calls?note=${c.noteId}`, { scroll: false }); }} className={chip}><NotebookPen className="w-3 h-3" />Notes</span>}
-                            {c.recordingId && <span role="link" tabIndex={0} onClick={(e) => { e.stopPropagation(); router.push(`/calls?recording=${c.recordingId}`, { scroll: false }); }} onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/calls?recording=${c.recordingId}`, { scroll: false }); }} className={chip}><Clapperboard className="w-3 h-3" />Recording</span>}
-                            {c.study && <span role="link" tabIndex={0} onClick={(e) => { e.stopPropagation(); router.push(`${board}?course=${c.study!.courseId}&tab=sessions&session=${c.study!.sessionId}`); }} onKeyDown={(e) => { if (e.key === 'Enter') router.push(`${board}?course=${c.study!.courseId}&tab=sessions&session=${c.study!.sessionId}`); }} className={chip}><GraduationCap className="w-3 h-3" />Study pack</span>}
+                          <span className="relative z-10 mt-1.5 flex flex-wrap gap-1.5">
+                            {c.noteId && <button type="button" onClick={() => router.push(`/calls?note=${c.noteId}`, { scroll: false })} className={chip}><NotebookPen className="w-3 h-3" />Notes</button>}
+                            {c.recordingId && <button type="button" onClick={() => router.push(`/calls?recording=${c.recordingId}`, { scroll: false })} className={chip}><Clapperboard className="w-3 h-3" />Recording</button>}
+                            {c.study && <button type="button" onClick={() => router.push(`${board}?course=${c.study!.courseId}&tab=sessions&session=${c.study!.sessionId}`)} className={chip}><GraduationCap className="w-3 h-3" />Study pack</button>}
                           </span>
                         )}
                       </span>
-                    </button>
+                    </div>
                     {c.live ? (
-                      <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => router.push(`/call/${c.callId}`)} className="px-4 py-2 rounded-full bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-500/25">Join</motion.button>
+                      <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => router.push(`/call/${c.callId}`)} className="px-4 py-2 rounded-full bg-emerald-700 text-white text-sm font-bold shadow-lg shadow-emerald-500/25">Join</motion.button>
                     ) : chat ? (
                       <div className="flex gap-1 shrink-0">
                         {(['audio', 'video'] as const).map((k) => (

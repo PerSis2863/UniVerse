@@ -232,7 +232,7 @@ function Recap({ items }: { items: Item[] }) {
   if (!by.length) return <p className="text-sm text-zinc-600 dark:text-zinc-400">Nothing new today.</p>;
   return (
     <div className="stagger flex flex-wrap gap-1.5" aria-label="Today">
-      {by.map(({ g, n }) => { const Icon = ICON[g.id]; return <span key={g.id} className={cn('inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold', TONE[g.id])}><Icon className="w-3.5 h-3.5" />{g.label} · {n}</span>; })}
+      {by.map(({ g, n }) => { const Icon = ICON[g.id]; return <span key={g.id} className="inline-flex items-center gap-1.5 ps-1 pe-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-100"><span className={cn('w-5 h-5 rounded-full flex items-center justify-center', TONE[g.id])}><Icon className="w-3 h-3" /></span>{g.label} · {n}</span>; })}
     </div>
   );
 }
