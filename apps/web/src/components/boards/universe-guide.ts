@@ -69,38 +69,43 @@ function size(s: Section) {
 const lines = (...l: string[]) => l.join('\n');
 const bullets = (...l: string[]) => l.map((x) => `• ${x}`).join('\n');
 
-// ─── 1 · Blank canvas: start here ───────────────────────────────────────────────────────────────
+// ─── 1 · Blank canvas: start here (the banner across the top) ───────────────────────────────────
 function startHere() {
-  const s = section('start', '1 · Start here (Blank canvas)');
-  s.text(0, 0, 'UniVerse, explained', 56);
-  s.text(0, 90, lines(
-    'UniVerse is one platform for a whole school, on the web and as a phone app.',
+  const s = section('start', '1 · Start here');
+  s.text(0, 0, 'UniVerse, explained', 110);
+  s.text(0, 170, lines(
+    'One platform for a whole school, on the web and as a phone app.',
     'Students, teachers, parents, school admins and the owner each get their own menu.',
     'This board explains every part: what it does, how it works, and the technology underneath.',
-    'Each framed area uses one of the ten whiteboard templates. Zoom out to see them all.',
-  ), 24);
-  s.text(0, 260, 'Colours on this board', 30);
+    'Each framed area uses one of the ten whiteboard templates. Zoom in on any of them.',
+  ), 42);
+  // The numbers that describe it, as a strip under the words.
+  ([['5', 'roles, one sign-in'], ['13', 'languages, 2 right to left'], ['8', 'quiz question types, auto-marked'], ['10', 'whiteboard templates'], ['$0', 'for students, always'], ['$5', 'a month to run (Cloudflare)']] as const)
+    .forEach(([n, t], i) => s.note(i * 520, 430, 490, 160, `${n}\n${t}`, [C.student, C.teacher, C.admin, C.parent, C.owner, C.tech][i], 38));
+  s.text(3200, 0, 'Colours on this board', 40);
   ([['Students', C.student], ['Teachers', C.teacher], ['School admins', C.admin], ['Parents', C.parent], ['Owner (you)', C.owner], ['Technical', C.tech]] as const)
-    .forEach(([t, c], i) => s.note((i % 3) * 300, 320 + Math.floor(i / 3) * 110, 280, 90, t, c, 22));
-  s.text(0, 560, 'The ten areas', 30);
-  s.note(0, 620, 900, 330, lines(
-    '1  Start here — this page (Blank canvas)',
-    '2  Every feature — a mind map of the whole site',
-    '3  Where things stand — Kanban: done, in progress, to do',
-    '4  Strengths and risks — SWOT analysis',
-    '5  Website and phone app — Venn diagram',
-    '6  How it was built — Timeline',
-    '7  The owner’s week — Weekly planner',
-    '8  How it works, technically — Cornell notes',
-    '9  Looking back — Retrospective',
-    '10 Showing UniVerse to a new school — Lesson plan',
-  ), C.grey, 20);
+    .forEach(([t, c], i) => s.note(3200 + (i % 2) * 400, 80 + Math.floor(i / 2) * 175, 380, 160, t, c, 28));
+  s.text(4060, 0, 'The ten areas', 40);
+  s.note(4060, 80, 1240, 510, lines(
+    '1  Start here: this banner (Blank canvas)',
+    '2  Every feature: a mind map of the whole site',
+    '3  Where things stand: Kanban, done to do',
+    '4  Strengths and risks: SWOT analysis',
+    '5  Website and phone app: Venn diagram',
+  ), C.grey, 28);
+  s.note(5330, 80, 1240, 510, lines(
+    '6  How it was built: Timeline',
+    '7  The owner’s week: Weekly planner',
+    '8  How it works, technically: Cornell notes',
+    '9  Looking back: Retrospective',
+    '10 Showing UniVerse to a school: Lesson plan',
+  ), C.grey, 28);
   return s;
 }
 
 // ─── 2 · Mind map: every feature ────────────────────────────────────────────────────────────────
 function everyFeature() {
-  const s = section('map', '2 · Every feature (Mind map)');
+  const s = section('map', '2 · Every feature');
   const cx = 1300, cy = 900;
   s.raw({ type: 'ellipse', id: s.id('centre'), x: cx - 170, y: cy - 80, width: 340, height: 160, backgroundColor: C.owner, fillStyle: 'solid', label: { text: 'UniVerse', fontSize: 36 } } as El);
   const branches: [string, string, string][] = [
@@ -130,35 +135,44 @@ function everyFeature() {
     const ny = right || left ? by - 60 : by < cy ? by - 60 - 230 : by + 70;
     s.note(nx, ny, 440, 220, body, C.white, 15);
   });
+  // The corners the branches leave free: who it's for, what every page does, where things live, cost.
+  const corners: [number, number, number, string, string][] = [
+    [60, 40, 360, `Who uses it\n\n${bullets('Students (always free)', 'Teachers and teaching assistants', 'School admins, one school or many', 'Parents, mentors and alumni', 'The owner (you)')}`, C.parent],
+    [1800, 40, 360, `On every page\n\n${bullets('13 languages, 2 read right to left', 'Light and dark, Reduce Motion', 'Works on a patchy connection', 'Installs as an app on any phone')}`, C.student],
+    [60, 1460, 250, `Where things live\n${bullets('D1 database, R2 files', 'Durable Objects: live rooms', 'Firebase: sign-in')}`, C.tech],
+    [1800, 1460, 250, `What it costs to run\n${bullets('Workers Paid: $5 a month', 'A guard pauses at 90%', 'AI with daily allowances')}`, C.tech],
+  ];
+  corners.forEach(([x, y, h, t, c]) => s.note(x, y, 700, h, t, c, 26));
   return s;
 }
 
 // ─── 3 · Kanban: where things stand ─────────────────────────────────────────────────────────────
 function whereThingsStand() {
-  const s = section('kanban', '3 · Where things stand (Kanban)');
+  const s = section('kanban', '3 · Where things stand');
   s.text(0, 0, 'Where things stand (23 Oct 2026)', 36);
   const cols: [string, string, string[]][] = [
     ['To do (owner decides)', C.parent, [
-      'Phone sign-in: turn on SMS in Firebase (needs billing: costs money)',
+      'Phone sign-in: turn on Firebase billing so SMS codes can be sent (costs money)',
       'Keep Cloudflare Workers Paid on ($5 a month)',
       'Phone app in the app stores (needs Apple and Google accounts)',
       'Anything else that costs money or needs an account: always the owner’s call',
     ]],
     ['In progress', C.admin, [
       'The full bug and error review',
-      'Check folders and code boxes on Safari and iPhone',
+      'Check every new screen on Safari and iPhone',
       'Parent link code and console codes as code boxes',
+      'Watching the Cloudflare plan: the guard pauses at 90%',
     ]],
     ['Done', C.teacher, [
       'Work queue Q1–Q23: courses, quizzes, attendance, calendar, AI tutor, search, notifications…',
-      'Office suite: sheets, slides, Word features',
-      'Security parts 1–7, payment keys encrypted, admins see only their school',
-      'Motion M1–M6: page entrances, light trail, folders, code boxes',
-      'Errors hub redesign; Cloudflare “code had hung” fixed',
+      'Office suite (sheets, slides, Word) and security parts 1–7; payment keys encrypted',
+      'The look: light trail, folders, code boxes, the owner console deck and feature flows',
+      'Launch list and lean code: cookie choice, icons, contrast, broken links, pnpm lean',
     ]],
   ];
+  const tall = Math.max(...cols.map(([, , items]) => items.length)) * 165 + 80;
   cols.forEach(([title, colour, items], i) => {
-    s.box(i * 470, 70, 440, 900, title, 'transparent', { strokeStyle: 'dashed', fontSize: 26 });
+    s.box(i * 470, 70, 440, tall, title, 'transparent', { strokeStyle: 'dashed', fontSize: 26 });
     items.forEach((t, j) => s.note(i * 470 + 20, 130 + j * 165, 400, 145, t, colour, 18));
   });
   return s;
@@ -166,7 +180,7 @@ function whereThingsStand() {
 
 // ─── 4 · SWOT ──────────────────────────────────────────────────────────────────────────────────
 function swot() {
-  const s = section('swot', '4 · Strengths and risks (SWOT analysis)');
+  const s = section('swot', '4 · Strengths and risks');
   s.text(0, 0, 'UniVerse: strengths, weaknesses, opportunities, threats', 36);
   const q: [string, string, string][] = [
     ['Strengths', C.teacher, bullets('Everything a school needs in one place, one sign-in', 'Runs on Cloudflare’s network: fast everywhere, low cost', 'Works on phones, installs as an app, many languages', '  (Arabic and Urdu read right to left)', 'Accessible: screens checked with axe, light and dark', 'AI built in, with a daily allowance and an off switch')],
@@ -180,22 +194,22 @@ function swot() {
 
 // ─── 5 · Venn: website and phone app ────────────────────────────────────────────────────────────
 function webAndApp() {
-  const s = section('venn', '5 · Website and phone app (Venn diagram)');
+  const s = section('venn', '5 · Web and phone app');
   s.text(0, 0, 'Website and phone app: what’s the same, what’s different', 36);
   s.raw({ type: 'ellipse', x: 0, y: 80, width: 900, height: 820, backgroundColor: C.student, fillStyle: 'solid', opacity: 55 } as El);
   s.raw({ type: 'ellipse', x: 560, y: 80, width: 900, height: 820, backgroundColor: C.parent, fillStyle: 'solid', opacity: 55 } as El);
   s.text(150, 130, 'Website (a browser)', 30);
-  s.text(80, 220, lines('Side menu, big screens', 'Search with ⌘K / Ctrl+K', 'Owner console and admin', '  screens at full size', 'Office editing at full size', 'Drag and drop files'), 22);
+  s.text(80, 220, lines('Side menu, big screens', 'Search with ⌘K / Ctrl+K', 'Owner console and admin', '  screens at full size', 'Office editing at full size', 'Drag and drop files', 'Wide tables and charts', 'Keyboard shortcuts'), 22);
   s.text(1000, 130, 'Phone app', 30);
-  s.text(1030, 220, lines('Installs from the browser', '  (a web app, “PWA”)', 'Tab bar at the bottom', 'Push notifications', 'Camera: scan, homework photos', 'Pages already opened', '  work without internet'), 22);
+  s.text(1030, 220, lines('Installs from the browser', '  (a web app, “PWA”)', 'Tab bar at the bottom', 'Push notifications', 'Camera: scan, homework photos', 'Pages already opened', '  work without internet', 'Home-screen icon,', '  opens full screen'), 22);
   s.text(640, 300, 'Both', 30);
-  s.text(600, 360, lines('One account, same data', 'Live updates', 'Every feature', 'Every language', 'Light and dark mode', 'Reduce Motion', 'Same code: one site'), 22);
+  s.text(600, 360, lines('One account, same data', 'Live updates', 'Every feature', 'Every language', 'Light and dark mode', 'Reduce Motion', 'Same code: one site', 'Same sign-in'), 22);
   return s;
 }
 
 // ─── 6 · Timeline: how it was built ─────────────────────────────────────────────────────────────
 function howItWasBuilt() {
-  const s = section('timeline', '6 · How it was built (Timeline)');
+  const s = section('timeline', '6 · How it was built');
   s.text(0, 0, 'How UniVerse was built', 36);
   s.raw({ type: 'arrow', x: 0, y: 380, width: 2100, height: 0, points: [[0, 0], [2100, 0]], strokeWidth: 3 } as El);
   const events: [string, string][] = [
@@ -206,17 +220,27 @@ function howItWasBuilt() {
     ['22 Oct 2026', 'Cloudflare Workers Paid: more time per request, a spending guard at 90%'],
     ['23 Oct 2026', 'New look and motion: light trail, opening folders, code boxes, errors hub; the “hung” requests fixed'],
   ];
+  // What each step made possible (on the other side of the line).
+  const why = [
+    'Each role got its own area, with messages and files shared between them',
+    '23 items, each tried in a real browser on phone and desktop before it was merged',
+    'Word, Excel and PowerPoint files open and save inside UniVerse',
+    'Every request checks who is asking; secrets never reach the browser',
+    'A guard checks the plan’s usage every 15 minutes',
+    'The look the owner asked for, and requests that no longer hang',
+  ];
   events.forEach(([when, what], i) => {
     const x = 100 + i * 380;
     s.raw({ type: 'ellipse', x: x - 14, y: 366, width: 28, height: 28, backgroundColor: '#7c3aed', fillStyle: 'solid' } as El);
     s.note(x - 170, i % 2 ? 430 : 90, 340, 250, `${when}\n\n${what}`, [C.student, C.teacher, C.admin, C.parent, C.owner, C.tech][i], 17);
+    s.note(x - 170, i % 2 ? 90 : 430, 340, 250, why[i], C.white, 16);
   });
   return s;
 }
 
 // ─── 7 · Weekly planner: the owner's week ───────────────────────────────────────────────────────
 function ownersWeek() {
-  const s = section('week', '7 · The owner’s week (Weekly planner)');
+  const s = section('week', '7 · The owner’s week');
   s.text(0, 0, 'A week of looking after UniVerse (owner console)', 36);
   const days: [string, string][] = [
     ['Monday', 'Health check and Errors: anything red? The errors hub explains each one and can suggest a fix.'],
@@ -227,16 +251,26 @@ function ownersWeek() {
     ['Saturday', 'Blog and Announce: tell schools what’s new.'],
     ['Sunday', 'Rest. Daily jobs keep running by themselves: digests, clean-ups, search index, sealing old keys.'],
   ];
+  const where = [
+    'Open: Health → Health check, Errors',
+    'Open: People → Moderation',
+    'Open: People → Schools, People',
+    'Open: Data & money → Money',
+    'Open: Health → Server',
+    'Open: Content → Blog, and Live → Announce',
+    'Nothing to open: the error digest email says if anything needs you',
+  ];
   days.forEach(([d, t], i) => {
     s.box(i * 300, 70, 280, 620, d, i >= 5 ? C.grey : 'transparent', { fontSize: 24 });
     s.note(i * 300 + 15, 130, 250, 300, t, i === 6 ? C.tech : C.owner, 17);
+    s.note(i * 300 + 15, 445, 250, 230, where[i], C.white, 16);
   });
   return s;
 }
 
 // ─── 8 · Cornell notes: how it works, technically ───────────────────────────────────────────────
 function technical() {
-  const s = section('cornell', '8 · How it works, technically (Cornell notes)');
+  const s = section('cornell', '8 · How it works');
   s.text(0, 0, 'How UniVerse works, technically', 36);
   const rows: [string, string][] = [
     ['Where does it run?', 'On Cloudflare Workers: small servers in hundreds of cities, close to every user. The Next.js app is turned into a Worker by OpenNext.'],
@@ -264,7 +298,7 @@ function technical() {
 
 // ─── 9 · Retrospective ─────────────────────────────────────────────────────────────────────────
 function lookingBack() {
-  const s = section('retro', '9 · Looking back (Retrospective)');
+  const s = section('retro', '9 · Looking back');
   s.text(0, 0, 'Looking back on the latest work', 36);
   const cols: [string, string, string[]][] = [
     ['Went well 😊', C.teacher, ['The errors hub now explains problems and files bot noise away', 'Cloudflare “code had hung” found and fixed: each request gets its own database client', 'Folders and code boxes from the owner’s videos']],
@@ -281,7 +315,7 @@ function lookingBack() {
 
 // ─── 10 · Lesson plan: showing UniVerse to a new school ─────────────────────────────────────────
 function demoPlan() {
-  const s = section('lesson', '10 · Showing UniVerse to a new school (Lesson plan)');
+  const s = section('lesson', '10 · Showing it to a school');
   s.text(0, 0, 'Lesson plan: showing UniVerse to a new school (45 minutes)', 36);
   s.box(0, 70, 1500, 190, `Learning aims (by the end, the school can…)\n\n${bullets('sign in as a student, teacher and admin', 'find any feature with search', 'set up its first course and class')}`, C.owner, { fontSize: 20 });
   s.box(0, 280, 480, 460, `Starter (10 min)\n\n${bullets('Open the public demo (no account needed)', 'Show a student’s home page and Up next', 'Switch to dark mode and another language')}`, C.admin, { fontSize: 20 });
@@ -292,23 +326,53 @@ function demoPlan() {
   return s;
 }
 
-/** Every section, four to a row (the whole board fits a wide screen), each inside a named frame. */
+// Frame names are kept short (each area's template is named in the banner's list), so they don't
+// run into each other when the whole board is zoomed out.
+// Scaled copy of a shape: position, size, text and arrow points (frames are made separately).
+function place(e: El, k: number, dx: number, dy: number): El {
+  const o = { ...e, x: (e.x ?? 0) * k + dx, y: (e.y ?? 0) * k + dy } as El & { fontSize?: number; label?: { fontSize?: number }; points?: [number, number][] };
+  if (e.width != null) o.width = e.width * k;
+  if (e.height != null) o.height = e.height * k;
+  if (o.fontSize) o.fontSize *= k;
+  if (o.label) o.label = { ...o.label, fontSize: (o.label.fontSize ?? 20) * k };
+  if (o.points) o.points = o.points.map(([px, py]): [number, number] => [px * k, py * k]);
+  return o;
+}
+
+/**
+ * The board, packed (the owner: "no room left, information everywhere"): "Start here" as a banner
+ * across the top, then two bands. In a band every column is the same height and the band is exactly
+ * as wide as the banner, so frames touch with only a thin gap; a column can hold two frames, one
+ * above the other. Each frame is scaled as a whole to fit (text keeps its proportions).
+ */
 export function guideElements(): ExcalidrawElementSkeleton[] {
-  const sections = [startHere(), everyFeature(), whereThingsStand(), swot(), webAndApp(), howItWasBuilt(), ownersWeek(), technical(), lookingBack(), demoPlan()];
+  const [start, map, kanban, swotS, venn, timeline, week, cornell, retro, lesson] =
+    [startHere(), everyFeature(), whereThingsStand(), swot(), webAndApp(), howItWasBuilt(), ownersWeek(), technical(), lookingBack(), demoPlan()];
+  const bands: Section[][][] = [[[start]], [[map], [timeline, week], [cornell]], [[kanban], [swotS], [venn], [retro], [lesson]]];
+  const PAD = 70, GAP = 60, BAND_GAP = 160;
+  const natural = (s: Section) => { const z = size(s); return { w: z.w + PAD * 2, h: z.h + PAD * 2 }; };
+  const W = natural(start).w;
   const out: El[] = [];
-  const PAD = 80, GAP = 700;
   let y = 0;
-  for (let i = 0; i < sections.length; i += 4) {
-    const pair = sections.slice(i, i + 4);
-    const sizes = pair.map(size);
+  for (const cols of bands) {
+    // Column widths for one band height H: a column of m frames, scaled to one width, is
+    // (H - GAP(m-1)) / R wide, where R adds up each frame's height over width. Solve for H.
+    const R = cols.map((c) => c.reduce((a, s) => { const z = natural(s); return a + z.h / z.w; }, 0));
+    const H = (W - GAP * (cols.length - 1) + GAP * cols.reduce((a, c, i) => a + (c.length - 1) / R[i], 0)) / R.reduce((a, r) => a + 1 / r, 0);
     let x = 0;
-    pair.forEach((s, j) => {
-      const { w, h } = sizes[j];
-      for (const e of s.els) out.push({ ...e, x: (e.x ?? 0) + x + PAD, y: (e.y ?? 0) + y + PAD } as El);
-      out.push({ type: 'frame', id: s.id('frame'), name: s.name, children: s.els.map((e) => e.id as string), x, y, width: w + PAD * 2, height: h + PAD * 2 } as unknown as El);
-      x += w + PAD * 2 + GAP;
+    cols.forEach((c, i) => {
+      const cw = (H - GAP * (c.length - 1)) / R[i];
+      let cy = y;
+      for (const s of c) {
+        const z = natural(s);
+        const k = cw / z.w;
+        for (const e of s.els) out.push(place(e, k, x + PAD * k, cy + PAD * k));
+        out.push({ type: 'frame', id: s.id('frame'), name: s.name, children: s.els.map((e) => e.id as string), x, y: cy, width: cw, height: z.h * k } as unknown as El);
+        cy += z.h * k + GAP;
+      }
+      x += cw + GAP;
     });
-    y += Math.max(...sizes.map((z) => z.h)) + PAD * 2 + GAP;
+    y += H + BAND_GAP;
   }
   return out;
 }

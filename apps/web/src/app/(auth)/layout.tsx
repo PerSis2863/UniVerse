@@ -2,85 +2,48 @@ import Link from '@/components/ui/Link';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { ApiWarmup } from '@/components/ApiWarmup';
 import { MaintenanceGate } from '@/components/MaintenanceGate';
+import { LightTrail } from '@/components/LightTrail';
+import { FlowCard } from '@/components/landing/FlowCard';
+import { Accent, Tag } from '@/components/landing/bits';
+
+// Sign in and sign up, in the landing page's look (src/app/page.tsx): the dark page with its river
+// of light, the same headline and flow card on the left, the form in a glass card on the right.
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    // The auth screens are designed dark-only; the "dark" class makes dark: variants (logo text etc.) apply here in light mode too.
-    <div
-      className="dark min-h-[100dvh] flex"
-      style={{
-        background:
-          'radial-gradient(90% 55% at 0% 0%, rgba(79,70,229,0.30), transparent 70%), radial-gradient(90% 55% at 100% 100%, rgba(192,38,211,0.22), transparent 70%), #0a0d13',
-      }}
-    >
+    // Dark-only; the "dark" class makes dark: variants (logo text etc.) apply here in light mode too.
+    <div className="dark relative min-h-[100dvh] flex overflow-x-clip" style={{ backgroundColor: '#07080f', color: '#ffffff' }}>
       <ApiWarmup />
-      {/* ── Left Panel — always dark ─────────────────── */}
-      <div
-        className="hidden lg:flex w-[52%] relative overflow-hidden flex-col"
-        style={{ background: 'linear-gradient(135deg, rgba(16,18,58,0.85) 0%, rgba(20,16,56,0.8) 50%, rgba(15,12,41,0.85) 100%)' }}
-      >
-        {/* Ambient blobs */}
-        <div className="aurora-a absolute -top-60 -start-60 w-[760px] h-[760px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(closest-side, rgba(99,102,241,0.3), transparent)' }} />
-        <div className="aurora-b absolute -bottom-60 -end-40 w-[620px] h-[620px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(closest-side, rgba(217,70,239,0.2), transparent)' }} />
+      <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
+        <LightTrail tone="dark" strength={0.85} className="opacity-60 lg:opacity-90" />
+        <div className="mkt-drift-a absolute top-[-20%] start-[-25%] w-[max(60vw,600px)] h-[max(60vw,600px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.18), transparent)' }} />
+        <div className="mkt-drift-b absolute bottom-[-25%] end-[-30%] w-[max(60vw,600px)] h-[max(60vw,600px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(192,38,211,0.14), transparent)' }} />
+      </div>
 
-        {/* Content */}
-        <div className="relative z-10 flex flex-col h-full p-12">
-          {/* Logo */}
-          <Link href="/" className="inline-flex">
-            <UniverseLogo size="lg" animated={true} withGlow={true} showText={true} />
-          </Link>
-
-          {/* Middle copy */}
-          <div className="hero-in mt-auto mb-auto pt-16 pb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-semibold mb-6">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              Global University &amp; NGO Impact Ecosystem
-            </div>
-
-            <h2 className="text-5xl font-black mb-5 leading-[1.1] text-white">
-              Connect.<br />
-              Collaborate.<br />
-              <span className="bg-gradient-to-r from-indigo-400 via-fuchsia-400 to-amber-400 bg-clip-text text-transparent">
-                Make Impact.
-              </span>
-            </h2>
-
-            <p className="text-zinc-400 text-base leading-relaxed max-w-sm mb-10">
-              UniVerse empowers students, world-class universities, and leading NGOs to collaborate on real-world projects, research initiatives, and social impact summits.
-            </p>
-
-            {/* Platform capabilities */}
-            <div className="grid grid-cols-2 gap-3 max-w-sm">
-              {[
-                { t: 'Blockchain-verified', l: 'Credentials anchored on Polygon' },
-                { t: 'AI-powered', l: 'Study help & project matching' },
-                { t: 'Real-time', l: 'Live chat & notifications' },
-                { t: 'Install anywhere', l: 'iOS, Android & desktop' },
-              ].map(s => (
-                <div
-                  key={s.t}
-                  className="rounded-2xl p-4 border border-white/[0.07] hover:border-indigo-500/40 transition-colors bg-white/[0.04]"
-                >
-                  <div className="text-sm font-black bg-gradient-to-r from-indigo-300 via-white to-fuchsia-300 bg-clip-text text-transparent leading-tight mb-1">
-                    {s.t}
-                  </div>
-                  <div className="text-zinc-500 text-xs font-medium">{s.l}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="text-zinc-600 text-xs flex items-center justify-between">
-            <span>© 2026 UniVerse Impact Network</span>
-            <span className="flex items-center gap-1">Made with <span className="text-red-500">❤️</span> by Aditya Bhatt</span>
-          </div>
+      {/* ── Left: what UniVerse does (wide screens) ── */}
+      <div className="hidden lg:flex relative z-10 w-[52%] flex-col p-12">
+        <Link href="/" className="inline-flex self-start">
+          <UniverseLogo size="lg" animated={true} withGlow={true} showText={true} />
+        </Link>
+        <div className="hero-in my-auto py-10">
+          <Tag>free for students / 13 languages</Tag>
+          <h2 className="mt-6 text-5xl xl:text-6xl font-bold tracking-[-0.035em] leading-[1.04] text-white">
+            The school day runs <Accent>itself.</Accent>
+          </h2>
+          <p className="mt-5 text-zinc-300 text-base leading-relaxed max-w-md">
+            UniVerse runs the steps between classes, grades and parents, and only asks a person when it matters.
+          </p>
+          <FlowCard compact className="mt-9" />
+          <p className="mt-6 font-mono text-xs text-zinc-400">13 languages / 8 question types / $0 for students</p>
+        </div>
+        <div className="font-mono text-xs text-zinc-500 flex items-center justify-between gap-4">
+          <span>© 2026 UniVerse Impact Network</span>
+          <span>Made with <span className="text-fuchsia-400">♥</span> by Aditya Bhatt</span>
         </div>
       </div>
 
-      {/* Right Panel */}
-      <div className="flex-1 flex flex-col p-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:p-12" style={{ color: '#ffffff' }}>
-        {/* Mobile logo */}
+      {/* ── Right: the form ── */}
+      <div className="relative z-10 flex-1 flex flex-col p-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:p-12">
         <div className="flex lg:hidden pt-2 pb-8">
           <UniverseLogo size="md" showText={true} animated={false} withGlow={false} />
         </div>

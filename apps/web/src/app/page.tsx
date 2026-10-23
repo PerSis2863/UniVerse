@@ -10,7 +10,7 @@ import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { LightTrail } from '@/components/LightTrail';
-import { HeroFlow } from '@/components/landing/HeroFlow';
+import { FlowCard } from '@/components/landing/FlowCard';
 import { Proof } from '@/components/landing/Proof';
 import { Glue } from '@/components/landing/Glue';
 import { Bento } from '@/components/landing/Bento';
@@ -144,7 +144,7 @@ export default function ShowcasePage() {
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.8 }} className="mt-5 font-mono text-xs text-zinc-400">free for students / no card / every role in one app</motion.p>
               </div>
               <motion.div initial={{ opacity: 0, y: 40, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 1.1, delay: 0.35, ease: EASE }} style={{ transformPerspective: 1200 }} className="flex justify-center lg:justify-end">
-                <HeroFlow />
+                <FlowCard />
               </motion.div>
             </div>
           </section>

@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Mail, Lock, Loader2, User, ArrowRight, ArrowLeft, GraduationCap, Building2, Globe, Check, Users } from 'lucide-react';
+import { Mail, Lock, Loader2, User, ArrowRight, ArrowLeft, GraduationCap, Building2, Globe, Check, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
+import { Accent, Tag } from '@/components/landing/bits';
 import { useAuthStore } from '@/store/auth';
 import { auth, warmUpPopupSignIn } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithPopup, updateProfile } from 'firebase/auth';
@@ -204,11 +205,8 @@ export default function RegisterPage() {
     <div className="w-full">
       {/* Header */}
       <div className="mb-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-4">
-          <Sparkles className="w-3 h-3" />
-          Join the Network
-        </div>
-        <h1 className="text-3xl font-black text-white mb-2">Create an account</h1>
+        <Tag>join the network</Tag>
+        <h1 className="mt-5 text-4xl font-bold tracking-[-0.03em] text-white mb-2">Create an <Accent>account.</Accent></h1>
         <p className="text-zinc-400 text-sm">{finishing ? 'You’re signed in — choose how you’ll use UniVerse to finish creating your account.' : 'Join as an individual, a parent, a staff member or an organization.'}</p>
       </div>
 
@@ -225,7 +223,7 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      <div className="bg-white/[0.04] backdrop-blur-xl shadow-2xl shadow-indigo-950/40 border border-white/10 rounded-2xl p-6 sm:p-8">
+      <div className="rounded-3xl border border-white/[0.08] bg-[#0d0f1d]/75 backdrop-blur-md shadow-[0_40px_120px_-40px_rgba(99,102,241,0.55)] p-6 sm:p-8">
         {error && !showPhoneFlow && (
           <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">{error}</div>
         )}
@@ -456,7 +454,7 @@ export default function RegisterPage() {
         )}
       </div>
 
-      <p className="mt-6 text-center text-xs text-zinc-600">
+      <p className="mt-6 text-center text-xs text-zinc-400">
         Read our{' '}
         <Link href="/terms" target="_blank" className="text-indigo-400 hover:underline">Terms and Conditions</Link>
         {' and '}

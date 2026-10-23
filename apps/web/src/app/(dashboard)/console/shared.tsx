@@ -20,9 +20,12 @@ export const errorMessage = (e: unknown) => {
   const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
   return Array.isArray(m) ? m.join(', ') : m || (e as Error)?.message || 'Something went wrong';
 };
-export const card = 'rounded-2xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50';
+/** The console's card (M13): a two-tone hairline along the top edge (globals.css .deck-card), a soft glow. */
+export const card = 'deck-card rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white dark:bg-[#0c0e1b]/80 shadow-[0_18px_50px_-34px_rgba(79,70,229,0.5)]';
+/** For the heavier console calls: no refetch on focus, two retries at most (each costs server CPU). */
+export const heavy = { revalidateOnFocus: false, dedupingInterval: 30_000, errorRetryCount: 2 };
 export const field =
-  'w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/60 px-3 py-2 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40';
+  'w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#0b0d1a] px-3 py-2 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 transition-shadow focus:outline-none focus:border-indigo-400/60 focus:ring-2 focus:ring-fuchsia-500/25 focus:shadow-[0_0_24px_-6px_rgba(217,70,239,0.45)]';
 
 /** `value`, once it has stopped changing for `ms` (so a search asks the server once per pause, not per key). */
 export function useDebounced<T>(value: T, ms = 300) {

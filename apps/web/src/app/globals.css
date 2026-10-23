@@ -1699,14 +1699,20 @@ html.reduce-motion :is(.folder-front, .folder-file, .folder-stack) { transition:
 @media (prefers-reduced-motion: reduce) { .otp-done.is-shown .otp-tick path { animation: none; stroke-dashoffset: 0; } .otp-caret { animation: none; } }
 
 /* ═══ Landing page (src/components/landing/, the owner's Relay video in UniVerse's two tones) ═══ */
-/* The flow card's connectors: light running along the line. */
-.flow-dash { stroke-dasharray: 6 10; animation: flow-dash 1.6s linear infinite; }
-@keyframes flow-dash { to { stroke-dashoffset: -32; } }
+/* M13 · The flow card (FlowCard.tsx): one light runs through the job, a step every 2 s (8 s a round):
+   a comet along each line (.flow-comet, arriving as its step lights), the step's box and row lit. */
+.flow-comet { stroke-dasharray: 22 130; stroke-dashoffset: 22; opacity: 0; filter: drop-shadow(0 0 3px #e879f9); animation: flow-comet 8s linear infinite; }
+@keyframes flow-comet { 0% { stroke-dashoffset: 22; opacity: 1; } 22% { stroke-dashoffset: -100; opacity: 1; } 23%, 100% { stroke-dashoffset: -100; opacity: 0; } }
+.flow-on { animation: flow-on 8s ease-in-out infinite; }
+@keyframes flow-on { 0%, 30%, 100% { box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.8); } 5%, 22% { box-shadow: 0 0 0 1px rgb(232 121 249 / 0.6), 0 0 28px -4px rgb(192 38 211 / 0.7); } }
+.flow-row { animation: flow-row 8s ease-in-out infinite; }
+@keyframes flow-row { 0%, 30%, 100% { background-color: transparent; } 5%, 22% { background-color: rgb(255 255 255 / 0.06); } }
 /* The role chain's dots light up one after another. */
 .bento-step { animation: bento-step 2s ease-in-out infinite; }
 @keyframes bento-step { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.3); box-shadow: 0 0 10px #e879f9; } }
-@media (prefers-reduced-motion: reduce) { .flow-dash, .bento-step { animation: none; } }
-html.reduce-motion :is(.flow-dash, .bento-step) { animation: none; }
+@media (prefers-reduced-motion: reduce) { .flow-on, .flow-row, .bento-step { animation: none; } .flow-comet { display: none; } }
+html.reduce-motion :is(.flow-on, .flow-row, .bento-step) { animation: none; }
+html.reduce-motion .flow-comet { display: none; }
 
 /* M9 · Cards answer the pointer the way the Relay video's glass cards do: a two-tone edge glow
    (dark mode) or a soft indigo lift (light). Border and shadow only: nothing to re-blur. */
@@ -1748,3 +1754,28 @@ html.reduce-motion :is(.flow-dash, .bento-step) { animation: none; }
 @media (prefers-reduced-motion: reduce) { .beam::after, .beam-once::after, .bar-glint::after { animation: none; } .beam-once::after { opacity: 0; } .skeleton { background-image: none; } }
 html.reduce-motion :is(.beam, .beam-once, .bar-glint)::after { animation: none; }
 html.reduce-motion .beam-once::after { opacity: 0; }
+
+/* ═══ M13 · The owner console's deck (console/deck.tsx, overview.tsx) ═══════════════════════════
+   The header's grid and pulse line, the slow ring round icon tiles, the line chart wiping in, the
+   live dot, and the cards' two-tone top edge (a background image: no ::before, no positioning). */
+.deck-grid { background-image: linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px); background-size: 34px 34px; mask-image: radial-gradient(110% 90% at 25% 0%, #000 25%, transparent 75%); }
+.deck-pulse { stroke-dasharray: 90 1000; stroke-dashoffset: 90; filter: drop-shadow(0 0 4px #e879f9); animation: deck-pulse 7s linear infinite; }
+@keyframes deck-pulse { to { stroke-dashoffset: -1000; } }
+.deck-orbit { position: relative; isolation: isolate; }
+.deck-orbit::before { content: ''; position: absolute; inset: -1.5px; z-index: -1; border-radius: inherit; padding: 1.5px; background: conic-gradient(from var(--beam), #818cf8, #e879f9 25%, transparent 45%, transparent 70%, #818cf8); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: deck-orbit 6s linear infinite; }
+@keyframes deck-orbit { to { --beam: 360deg; } }
+.deck-ping { animation: deck-ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+@keyframes deck-ping { 0% { box-shadow: 0 0 0 0 rgb(232 121 249 / 0.55); } 80%, 100% { box-shadow: 0 0 0 7px rgb(232 121 249 / 0); } }
+.deck-glow { background: radial-gradient(closest-side, rgb(139 92 246 / 0.22), transparent); animation: mkt-drift-a 18s ease-in-out infinite; }
+.deck-draw { animation: deck-draw 1.4s var(--ease-glide, ease-out) backwards; }
+@keyframes deck-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@layer components {
+  .deck-card { background-image: linear-gradient(90deg, transparent 8%, rgb(99 102 241 / 0.3), rgb(217 70 239 / 0.3), transparent 92%); background-size: 100% 1px; background-repeat: no-repeat; }
+  .dark .deck-card { background-image: linear-gradient(90deg, transparent 8%, rgb(129 140 248 / 0.45), rgb(232 121 249 / 0.4), transparent 92%); }
+  .console-deck table th { font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; }
+  .console-deck tbody tr { transition: background-color 0.15s; }
+  .console-deck tbody tr:hover { background-color: rgb(99 102 241 / 0.05); }
+}
+@media (prefers-reduced-motion: reduce) { .deck-pulse, .deck-orbit::before, .deck-ping, .deck-glow, .deck-draw { animation: none; } }
+html.reduce-motion :is(.deck-pulse, .deck-ping, .deck-glow, .deck-draw) { animation: none; }
+html.reduce-motion .deck-orbit::before { animation: none; }
