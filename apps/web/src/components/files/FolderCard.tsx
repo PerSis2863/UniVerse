@@ -6,13 +6,13 @@ import { cn } from '@/lib/utils';
 import { reducedMotion } from '@/lib/page-transition';
 
 // A folder that opens (M5, the owner's folder video): a back panel with a tab on its top right, a
-// frosted front flap with a tab on its top left, and the folder's first files tucked between them.
+// frosted white front flap with a tab on its top left, and the folder's first files tucked between them.
 // Pointing at it (or focusing it) tips the flap forward and the files rise out of it, fanned; the
 // round button adds a file ("+", a new sheet peeks out as you point at it) or opens the folder's menu.
 // On a touch screen a tap plays the opening, then opens the folder. Used for every folder of files:
 // My files, spaces' files, scheduled reports, receipts. Styles: globals.css, "M5 · Folders".
 
-export type FolderPeek = { name: string; meta?: string; image?: string; kind?: 'doc' | 'image' | 'sheet' };
+export type FolderPeek = { name: string; meta?: string; image?: string; kind?: 'doc' | 'image' | 'sheet' | 'folder' };
 
 // The two panels' outlines, as fractions of the box (so they stretch with it).
 const BACK = 'M0,0.27 Q0,0.17 0.055,0.17 L0.43,0.17 C0.49,0.17 0.5,0 0.57,0 L0.945,0 Q1,0 1,0.09 L1,0.91 Q1,1 0.945,1 L0.055,1 Q0,1 0,0.91 Z';
@@ -31,6 +31,11 @@ export const folderArt = (seed: string) => {
   const [a, b, c, d] = PALETTES[hash(seed) % PALETTES.length];
   const angle = 100 + (hash(`${seed}a`) % 40);
   return `linear-gradient(${angle}deg, ${a} 0%, ${a} 12%, ${b} 21%, ${c} 29%, ${d} 38%, ${a} 47%, ${b} 57%, ${c} 64%, ${d} 76%, ${a} 100%)`;
+};
+/** The haze the back's colours leave on the frosted front flap (soft glows: no blur filter, which Safari renders badly here). */
+export const folderFrost = (seed: string) => {
+  const [, b, , d] = PALETTES[hash(seed) % PALETTES.length];
+  return `radial-gradient(70% 90% at 12% 0%, ${b}88, transparent 70%), radial-gradient(60% 80% at 88% 0%, ${d}77, transparent 72%), radial-gradient(50% 60% at 50% 10%, ${b}33, transparent 80%)`;
 };
 
 /** "PDF · 1.2 MB" for a file. */
@@ -60,7 +65,8 @@ export function FolderCard({ name, sub, peek, tone, seed, onOpen, action, label,
   className?: string;
 }) {
   const id = useId().replace(/:/g, '');
-  const look = tone ?? (['art', 'light', 'dark'] as const)[hash(seed ?? name) % 3];
+  // As in the video: colours behind a frosted white front, now and then an all-white one (dark only when asked).
+  const look = tone ?? (['art', 'art', 'light'] as const)[hash(seed ?? name) % 3];
   const [opening, setOpening] = useState(false);
   // Whether the last press was a finger (then the opening plays before the folder's page comes).
   const touch = useRef(false);
@@ -96,7 +102,7 @@ export function FolderCard({ name, sub, peek, tone, seed, onOpen, action, label,
             const at = FAN[files.length === 1 ? 1 : files.length === 2 ? i + (i ? 1 : 0) : i];
             const picture = warm && f.image;
             return (
-              <div key={i} className={cn('folder-file', picture || f.kind === 'image' ? 'is-picture' : 'is-doc')}
+              <div key={i} className={cn('folder-file', picture || f.kind === 'image' ? 'is-picture' : 'is-doc', f.kind === 'folder' && 'is-folder')}
                 style={{ '--i': i, '--fx': at.x, '--fy': at.y, '--fr': at.r, ...(picture ? { backgroundImage: `url("${f.image}")` } : f.kind === 'image' ? { background: folderArt(`${f.name}${i}`) } : {}) } as Record<string, string | number> as React.CSSProperties}>
                 <span className="folder-file-name">{f.name}</span>
                 {f.meta && <span className="folder-file-meta">{f.meta}</span>}
@@ -107,6 +113,7 @@ export function FolderCard({ name, sub, peek, tone, seed, onOpen, action, label,
           {action?.kind === 'add' && <div className="folder-file folder-new is-doc" style={{ '--fx': '4%', '--fy': '-16%', '--fr': '2deg' } as React.CSSProperties}><span className="folder-file-name">New file</span><span className="folder-file-meta">Add</span><span className="folder-file-lines" /></div>}
         </div>
         <div className="folder-front" style={{ clipPath: `url(#${id}f)`, WebkitClipPath: `url(#${id}f)` }}>
+          {look !== 'light' && <div className="folder-frost" style={{ background: folderFrost(seed ?? name) }} />}
           <div className="folder-label">
             <p className="folder-name">{name}</p>
             <p className="folder-sub">{sub}</p>
