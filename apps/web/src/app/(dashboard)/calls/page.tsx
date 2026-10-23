@@ -6,7 +6,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { Clapperboard, Coffee, DoorOpen, GraduationCap, Headphones, Link2, Loader2, NotebookPen, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Users, Video } from 'lucide-react';
+import { Activity, Clapperboard, Coffee, DoorOpen, GraduationCap, Headphones, Link2, Loader2, NotebookPen, Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Users, Video } from 'lucide-react';
+import { isToday, isYesterday } from 'date-fns';
+import { callInsights } from '@/lib/call-insights';
+import { useNow } from '@/lib/use-now';
 import { Topbar } from '@/components/layout/Topbar';
 import { ScheduledCalls } from '@/components/call/ScheduledCalls';
 import { Favorites } from '@/components/call/Favorites';
@@ -77,10 +80,9 @@ export default function CallsPage() {
       <Suspense fallback={null}><NoteFromLink /></Suspense>
       <CommsDeck />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-2xl mx-auto space-y-5">
-          <OfficeHoursCard role={role} />
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+          <div className="space-y-5 min-w-0">
           <Favorites />
-          <ScheduledCalls role={role} />
           <div className="flex gap-2" role="tablist">
             {(['all', 'missed', 'notes'] as const).map((f) => (
               <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)} className={cn('relative isolate px-4 py-2 rounded-xl text-sm font-semibold transition-colors', filter === f ? 'text-white' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]')}>
@@ -102,8 +104,13 @@ export default function CallsPage() {
               <p className="text-sm text-zinc-500 mt-1">Start one from any chat with the phone or camera button.</p>
             </motion.div>
           ) : (
-            <motion.ul variants={list} initial="hidden" animate="show" className={`panel divide-y divide-zinc-200/80 dark:divide-white/[0.06] overflow-hidden`}>
-              {rows.map((c) => {
+            // The log as a timeline (M17): a glowing line down the days, a node for each call.
+            <div className="space-y-6">
+            {byDay(rows).map(([day, dayRows]) => (
+            <section key={day} aria-label={day}>
+            <h3 className="mb-2 ps-14 text-xs font-bold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{day}</h3>
+            <motion.ul variants={list} initial="hidden" animate="show" className="call-timeline relative space-y-2">
+              {dayRows.map((c) => {
                 const chat = c.type === 'chat';
                 const Icon = chat ? (c.live ? (c.kind === 'video' ? Video : Phone) : c.missed ? PhoneMissed : c.outgoing ? PhoneOutgoing : PhoneIncoming) : TYPE_ICON[c.type];
                 const detail = chat
@@ -111,10 +118,10 @@ export default function CallsPage() {
                   : c.durationSec ? dur(c.durationSec) : 'Joined';
                 const who = withWho(c.people, c.more);
                 return (
-                  <motion.li key={c.key} variants={fadeUp} className="flex items-start gap-3 p-4">
+                  <motion.li key={c.key} variants={fadeUp} className="relative flex items-start gap-3">
                     <button type="button" onClick={() => { if (c.conversationId) router.push(`${inbox}?c=${c.conversationId}`); }} disabled={!c.conversationId} className="flex items-start gap-3 flex-1 min-w-0 text-start disabled:cursor-default">
-                      <span className={cn('w-11 h-11 rounded-full flex items-center justify-center shrink-0', c.missed ? 'bg-rose-500/10 text-rose-500' : c.live ? 'bg-emerald-500/15 text-emerald-500 animate-pulse' : 'bg-indigo-500/10 text-indigo-500')}><Icon className="w-5 h-5" /></span>
-                      <span className="min-w-0">
+                      <span className={cn('call-node relative z-10 w-11 h-11 rounded-full flex items-center justify-center shrink-0 ring-4 ring-[var(--surface,#fff)] dark:ring-[#0b1020]', c.missed ? 'bg-rose-500/10 text-rose-500' : c.live ? 'bg-emerald-500/15 text-emerald-500 animate-pulse' : 'bg-indigo-500/10 text-indigo-500')}><Icon className="w-5 h-5" /></span>
+                      <span className="call-card min-w-0 flex-1 panel px-4 py-3">
                         <span className={cn('block font-semibold truncate', c.missed ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white')}>{c.title}</span>
                         <span className="block text-xs text-zinc-500">{chat ? (c.kind === 'video' ? 'Video' : 'Voice') : TYPE_LABEL[c.type]} · {detail} · {formatDistanceToNowStrict(new Date(c.at), { addSuffix: true })}</span>
                         {who && <span className="block text-xs text-zinc-500 truncate">{who}</span>}
@@ -144,10 +151,58 @@ export default function CallsPage() {
                 );
               })}
             </motion.ul>
+            </section>
+            ))}
+            </div>
           )}
           </TabPanel>
+          </div>
+          <aside className="space-y-5 min-w-0 lg:sticky lg:top-4">
+            <Insights rows={data ?? []} />
+            <OfficeHoursCard role={role} />
+            <ScheduledCalls role={role} />
+          </aside>
         </div>
       </div>
     </>
+  );
+}
+
+/** Calls grouped by day, newest first: Today, Yesterday, then the date. */
+function byDay(rows: CallRow[]): [string, CallRow[]][] {
+  const out = new Map<string, CallRow[]>();
+  for (const c of rows) {
+    const d = new Date(c.at);
+    const key = isToday(d) ? 'Today' : isYesterday(d) ? 'Yesterday' : d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+    out.set(key, [...(out.get(key) ?? []), c]);
+  }
+  return [...out];
+}
+
+/** This week on calls (M17, like a phone's Screen Time): minutes a day, totals, who you call most. */
+function Insights({ rows }: { rows: CallRow[] }) {
+  const now = useNow();
+  if (!now || !rows.length) return null;
+  const s = callInsights(rows, now);
+  const max = Math.max(1, ...s.days.map((d) => d.minutes));
+  return (
+    <section className="panel p-5" aria-labelledby="ins-h">
+      <h2 id="ins-h" className="text-sm font-bold text-zinc-900 dark:text-white inline-flex items-center gap-1.5"><Activity className="w-4 h-4 text-fuchsia-500" /> This week</h2>
+      <p className="mt-2 text-3xl font-black text-zinc-900 dark:text-white tabular-nums">{s.minutes}<span className="text-base font-bold text-zinc-500 dark:text-zinc-400"> min on calls</span></p>
+      <div className="mt-4 h-28 flex items-end gap-2" role="img" aria-label={`Minutes on calls each day this week: ${s.days.map((d) => `${d.label} ${d.minutes}`).join(', ')}`}>
+        {s.days.map((d, i) => (
+          <div key={d.label} className="flex-1 h-full flex flex-col items-center justify-end gap-1.5">
+            <span className="insight-bar w-full rounded-lg" style={{ height: `${Math.max(6, (d.minutes / max) * 100)}%`, ['--i' as string]: i, opacity: d.minutes ? 1 : 0.35 }} />
+            <span className={cn('text-xs', i === s.days.length - 1 ? 'font-bold text-indigo-600 dark:text-indigo-300' : 'text-zinc-500 dark:text-zinc-400')}>{d.label}</span>
+          </div>
+        ))}
+      </div>
+      <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-2xl bg-zinc-100 dark:bg-white/[0.05] py-2"><dt className="text-xs text-zinc-500 dark:text-zinc-400">Calls</dt><dd className="text-lg font-black text-zinc-900 dark:text-white">{s.calls}</dd></div>
+        <div className="rounded-2xl bg-zinc-100 dark:bg-white/[0.05] py-2"><dt className="text-xs text-zinc-500 dark:text-zinc-400">Missed</dt><dd className="text-lg font-black text-rose-600 dark:text-rose-400">{s.missed}</dd></div>
+        <div className="rounded-2xl bg-zinc-100 dark:bg-white/[0.05] py-2"><dt className="text-xs text-zinc-500 dark:text-zinc-400">Longest</dt><dd className="text-lg font-black text-zinc-900 dark:text-white">{s.longest ? dur(s.longest) : '–'}</dd></div>
+      </dl>
+      {s.top && <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">You talk most with <b className="text-zinc-900 dark:text-white" translate="no">{s.top.title}</b> ({s.top.count} call{s.top.count === 1 ? '' : 's'}).</p>}
+    </section>
   );
 }

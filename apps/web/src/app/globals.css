@@ -1922,3 +1922,16 @@ html.reduce-motion :is(.msg-fx-slam, .msg-fx-loud, .msg-fx-gentle, .ink-specks, 
 @keyframes streak-flicker { 50% { transform: scale(1.15) rotate(-6deg); } }
 @media (prefers-reduced-motion: reduce) { .comms-icon-on, .pin-float, .pin-typing, .chat-aura, .streak > i { animation: none; } }
 html.reduce-motion :is(.comms-icon-on, .pin-float, .pin-typing, .chat-aura, .streak > i) { animation: none; }
+
+/* ═══ M17 · Calls: contact posters, the timeline and this week's bars ═════════════════════════ */
+.poster { box-shadow: 0 14px 30px -18px var(--aura, #a855f7); transition: transform 350ms var(--ease-glide), box-shadow 350ms var(--ease-glide); animation: poster-in 560ms var(--ease-glide) backwards; animation-delay: calc(var(--i, 0) * 60ms); }
+.poster-bg { background: radial-gradient(130% 90% at 15% 0%, color-mix(in srgb, var(--aura, #a855f7) 75%, white), var(--aura, #a855f7) 40%, #1e1b4b 100%); }
+@media (hover: hover) { .poster:hover { transform: translate3d(0, -4px, 0) rotate(-1.5deg); box-shadow: 0 22px 44px -16px var(--aura, #a855f7); } }
+@keyframes poster-in { from { opacity: 0; transform: translate3d(0, 16px, 0) scale(0.94); } }
+.call-timeline::before { content: ''; position: absolute; inset-inline-start: 21px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: linear-gradient(#818cf8, #c084fc 55%, rgb(232 121 249 / 0)); opacity: 0.55; }
+.call-card { transition: transform 200ms var(--ease-out-soft); }
+@media (hover: hover) { .call-timeline li:hover .call-card { transform: translate3d(4px, 0, 0); } [dir='rtl'] .call-timeline li:hover .call-card { transform: translate3d(-4px, 0, 0); } }
+.insight-bar { background: linear-gradient(to top, #6366f1, #c026d3); transform-origin: bottom; animation: bar-rise 700ms var(--ease-glide) backwards; animation-delay: calc(var(--i, 0) * 60ms); box-shadow: 0 0 14px -4px rgb(192 38 211 / 0.6); }
+@keyframes bar-rise { from { transform: scaleY(0); } }
+@media (prefers-reduced-motion: reduce) { .poster, .insight-bar { animation: none; } }
+html.reduce-motion :is(.poster, .insight-bar) { animation: none; }
