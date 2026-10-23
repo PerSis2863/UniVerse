@@ -96,17 +96,21 @@
     // Every 15 minutes: the spending guard (cloudflare/usage-guard.ts).
     "crons": ["0 8 * * *", "*/15 * * * *", "30 7 * * *"]
   },
-  // Workers Logs: keep a quarter of requests (about 90k log events a day were being recorded,
-  // close to the free plan's 200k daily allowance). Request charts stay representative, and app
-  // errors are still caught in full by the owner console's error reports (error_reports).
+  // Workers Logs: every request (it was a quarter on the free plan's 200k a day; about 90k a day
+  // were being recorded then). App errors are also caught by the owner console's error reports.
   "observability": {
     "enabled": true,
-    "head_sampling_rate": 0.25
-  }
-  // Workers Paid: set the secret WORKERS_PAID=true on universe-web (Settings → Variables and
-  // Secrets, type Secret; secrets survive deploys). The deploy of 21 Oct 2026 with WORKERS_PAID
-  // under "vars" here plus a "limits.cpu_ms" was refused: a var can't share a secret's name, and a
-  // CPU limit needs Workers Paid. Add a CPU limit only once the account is on Workers Paid.
+    "head_sampling_rate": 1
+  },
+  // The account is on Workers Paid ($5) since 22 Oct 2026: CF_PLAN turns on the paid limits in the
+  // app (src/lib/plan-limits.ts `workersPaid`; a WORKERS_PAID=true secret also still works). Its own
+  // name, so it can't clash with that secret. keep_vars: settings added in the dashboard survive a deploy.
+  "vars": { "CF_PLAN": "paid" },
+  "keep_vars": true,
+  // A runaway request stops at 15 s of CPU (Paid allows up to 5 min; ordinary requests use a few ms),
+  // so one bug can't run up the bill. Workers Logs keep every request now: Paid includes 20 million
+  // log events a month (about 3 million at today's traffic); the guard counts them.
+  "limits": { "cpu_ms": 15000 }
   // Secrets (DATABASE_URL, STRIPE_SECRET_KEY, R2_*, GEMINI_API_KEY, …) are set with
   // `wrangler secret put` or in the Cloudflare dashboard — never here. See DEPLOY-CLOUDFLARE.md.
 }

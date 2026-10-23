@@ -89,7 +89,8 @@ function guard(ms){
   setTimeout(function(){
     if(document.visibilityState==='hidden')return;
     var why=blank();if(!why)return;
-    try{navigator.sendBeacon('/api/errors',new Blob([JSON.stringify({errors:[{kind:'render',message:'Blank page: '+why,path:location.pathname}]})],{type:'application/json'}));}catch(x){}
+    // A browser too old for the app (bots posing as Chrome 71) isn't a fault to report.
+    if(window.structuredClone)try{navigator.sendBeacon('/api/errors',new Blob([JSON.stringify({errors:[{kind:'render',message:'Blank page: '+why,path:location.pathname}]})],{type:'application/json'}));}catch(x){}
     click=null;window.__uvRecover();
   },ms);
 }

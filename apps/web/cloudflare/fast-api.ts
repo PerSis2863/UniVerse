@@ -9,6 +9,7 @@
 import { jwtVerify, type JWTPayload } from 'jose';
 import { presenceOf } from '../src/lib/presence';
 import { ownerEmailList } from '../src/lib/owner-emails';
+import { workersPaid } from '../src/lib/plan-limits';
 import { jwksFor, keysMayHaveRotated } from '../src/server/jwks-cache';
 import { isSessionToken, isViewAsToken, verifySessionToken, viewAsRefused } from '../src/server/session-token';
 import { hasPass, needsTwoStep } from '../src/server/two-step';
@@ -174,7 +175,7 @@ async function typing(me: Caller, conversationId: string, db: D1Database, env: E
     const others = results.filter((p) => p.userId !== me.id);
     // Not in big groups: one live request per member every few seconds while anyone types
     // (planLimits().livePushes, src/server/realtime.ts publishTyping).
-    const cap = String((env as { WORKERS_PAID?: unknown }).WORKERS_PAID ?? '').trim().toLowerCase() === 'true' ? 500 : 40;
+    const cap = workersPaid(env as Record<string, unknown>) ? 500 : 40;
     if (others.length <= cap) ctx.waitUntil(Promise.all(others.map((p) => hubs.get(hubs.idFromName(p.userId)).fetch('https://realtime/publish', { method: 'POST', body }).catch(() => {}))));
   }
   return json({ ok: true });

@@ -204,7 +204,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
         <SwipeBack enabled={canGoBack} pathname={pathname} onBack={back} />
         <main id="main" tabIndex={-1} className="mobile-main flex-1 flex flex-col min-w-0 overflow-x-clip outline-none">
-          <PageAurora />
+          {/* A zero-height holder: the light sits at the top of the page area without making <main> a positioned box. */}
+          <div className="relative h-0"><PageAurora /></div>
           <SampleModeBar />
           {/* Re-mount pages when switching between sample and real data so they reload from the right source */}
           <Fragment key={sampleMode ? 'sample' : 'real'}><PendingPage>{children}</PendingPage></Fragment>

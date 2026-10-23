@@ -65,7 +65,13 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
 - Accessibility: every screen axe-clean (serious/critical) at **390 and 1280 px, light and dark**,
   and no sideways scrolling.
 
-## Platform limits (Cloudflare Workers Free)
+## Platform limits (Cloudflare Workers Paid since 22 Oct 2026; the D1 rules below still hold)
+
+- Paid: 30 s CPU (capped at 15 s in wrangler.jsonc), 10,000 subrequests a request; 10 M requests,
+  30 M CPU ms and 20 M log events included a month; the spending guard pauses at 90%. Plan-dependent
+  numbers go through `planLimits()` / `workersPaid()` (`src/lib/plan-limits.ts`), never a new check.
+- Links start loading a page on intent (hover, touch, focus) in `@/components/ui/Link`; never turn
+  on prefetch-everything for menus (two requests per link).
 
 - **D1: at most 100 bound values per query** (chunk lists by 90; multi-row inserts with N rows a
   statement) and **at most 50 queries per request**. D1 has no transactions. A long `in` list is

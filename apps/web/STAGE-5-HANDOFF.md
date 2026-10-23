@@ -48,6 +48,17 @@ element and reason. That's how the endless SVG ping (SVG animations re-lay out a
 frame; they can't run on the GPU) and the per-row JS animations showed up. An idle page should
 show almost nothing.
 
+## M2 · Bug check, new transitions, the $5 plan (22 Oct 2026, owner request)
+
+- Workers Paid is on in the code: `CF_PLAN=paid` (wrangler.jsonc vars, `keep_vars`), `limits.cpu_ms`
+  15000, `head_sampling_rate` 1. `workersPaid(env)` in `src/lib/plan-limits.ts` is the one check
+  (also used by the guard and the light API path). Going back to Free: remove `CF_PLAN` and `limits`.
+- Links prefetch on intent (`@/components/ui/Link`: 90 ms hover, touch start, focus; once per page).
+- `src/lib/tap-motion.ts`: icon bounce (tab bar, side menu) and the card a page was opened from
+  (`takeOrigin`); `PendingPage` zooms the page out of it on 'push' unless a skeleton came first.
+- Depth: `.page-aurora` has a scroll-timeline animation (`aurora-depth`, globals.css M2 section).
+- `PageAurora` sits in a zero-height `relative` holder in `<main>`; its bloom animates an inner layer.
+
 ## M1 · Motion you can see on every page (22 Oct 2026, owner request)
 
 The owner said the site still looked the same after S1–S4: the motion was there but faint and

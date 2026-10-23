@@ -2,13 +2,15 @@
 // Workers Paid, this billing month against what the $5 includes; on Workers Free, today's daily
 // allowances (reset 00:00 UTC) plus files this month, the only thing a free account is charged for.
 
+import { workersPaid } from '@/lib/plan-limits';
+
 export interface UsageMeter { key: string; label: string; used: number | null; limit: number; bytes?: boolean }
 
 const parse = <T>(raw: string | null | undefined, fallback: T): T => {
   try { return raw ? (JSON.parse(raw) as T) : fallback; } catch { return fallback; }
 };
 
-export const paidPlan = () => process.env.WORKERS_PAID?.trim().toLowerCase() === 'true';
+export const paidPlan = () => workersPaid();
 
 /** The meters that matter for this plan, and whether they count today or this month. */
 export function watchedUsage(guard: { meters: string | null; daily?: string | null } | null): { meters: UsageMeter[]; today: boolean } {

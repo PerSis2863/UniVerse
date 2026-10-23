@@ -22,6 +22,7 @@
 import { blockedFeature, orgCandidates, parseOrgSwitches, parseRollouts, parseSwitches, schoolOff, type FeatureSwitch } from '../src/lib/feature-switches';
 import { bool, dbDate } from './fast-db';
 import { ownerEmailList } from '../src/lib/owner-emails';
+import { workersPaid } from '../src/lib/plan-limits';
 
 export interface GuardEnv {
   DB?: D1Database;
@@ -69,8 +70,8 @@ const DAILY_METERS: readonly { key: MeterKey; label: string; limit: number }[] =
 const DAILY_WARN = 0.7;
 const DAILY_HIGH = 0.9;
 
-/** Whether the account is on Workers Paid (the WORKERS_PAID variable, as in src/lib/plan-limits.ts). */
-export const paidPlan = (env: GuardEnv) => String(env.WORKERS_PAID ?? '').trim().toLowerCase() === 'true';
+/** Whether the account is on Workers Paid (CF_PLAN=paid or WORKERS_PAID=true, src/lib/plan-limits.ts). */
+export const paidPlan = (env: GuardEnv) => workersPaid(env);
 export type Meter = { key: MeterKey; label: string; used: number | null; limit: number; bytes?: boolean };
 
 // R2 operations that are free; everything else that isn't class B is counted as class A.

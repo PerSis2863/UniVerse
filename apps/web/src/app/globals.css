@@ -1642,7 +1642,6 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
    they fade out before the frosted cards and pause off screen. Softer in light mode. */
 :root { --aurora-a: #818cf8; --aurora-b: #e879f9; --aurora-c: #2dd4bf; --aurora-strength: 0.55; }
 .dark { --aurora-a: #6366f1; --aurora-b: #d946ef; --aurora-c: #22d3ee; --aurora-strength: 1; }
-main#main { position: relative; }
 .page-aurora {
   position: absolute; inset-inline: 0; top: 0; height: min(460px, 70vh); z-index: -1;
   pointer-events: none; overflow: hidden; opacity: var(--aurora-strength);
@@ -1697,3 +1696,12 @@ html.reduce-motion .aurora-ribbon, .low-data .aurora-ribbon { animation: none; }
 .word-rise { display: inline-block; animation: word-rise 900ms var(--ease-glide) backwards; }
 @keyframes word-rise { from { transform: translate3d(0, 105%, 0) rotate(4deg); opacity: 0; filter: blur(6px); } }
 @media (prefers-reduced-motion: reduce) { .word-rise { animation-name: backdrop-in; } }
+
+/* M2 · Depth: the light behind the top of the page scrolls at two-thirds of the page's speed, so
+   the page seems to float above it. Driven by the scroll itself on the GPU (no script). */
+@keyframes aurora-depth { to { transform: translate3d(0, 160px, 0); } }
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    html:not(.reduce-motion) .page-aurora { animation: aurora-depth linear both; animation-timeline: scroll(root); animation-range: 0 480px; }
+  }
+}

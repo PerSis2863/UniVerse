@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { usePendingNav } from '@/lib/nav-pending';
 import { EASE_GLIDE, EASE_IOS, LEAVE_MS, REVEAL_GAP_MS, REVEAL_MS, enterFrames, enterMs, isTall, leaveFrames, movingParts, pageEntranceShown, pageMotion, reducedMotion, revealFrames, revealParts, calmFrames, lightFrames, sweepTitle } from '@/lib/page-transition';
 import { PageSkeleton, skeletonFor } from './PageSkeleton';
+import { ZOOM_MS, takeOrigin, zoomFrames } from '@/lib/tap-motion';
 
 // Past this, a page that's still downloading shows its loading skeleton (pages open without
 // prefetching, to keep requests low, so a first visit takes a moment on the free plan).
@@ -108,6 +109,12 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
       Object.assign(copy.style, { position: 'fixed', left: `${area.left}px`, top: `${area.top}px`, width: `${area.width}px`, zIndex: '-1', pointerEvents: 'none' });
       document.body.appendChild(copy);
       copy.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, delay: 60, easing: 'ease-out', fill: 'both' }).finished.then(() => copy.remove(), () => copy.remove());
+    }
+    // Opened from a card a moment ago (and no skeleton in between): the page grows out of it (M2).
+    const from = m === 'push' ? takeOrigin(pathname) : null;
+    if (from && !copy && stage.current && !reducedMotion()) {
+      animate(running, [stage.current], zoomFrames(from, stage.current.getBoundingClientRect()), { duration: ZOOM_MS, easing: EASE_GLIDE });
+      return;
     }
     if (m === 'push' || m === 'pop' || m === 'shared' || reducedMotion()) {
       animate(running, targets(m), enterFrames(m), { duration: enterMs(m), easing: EASE_GLIDE });

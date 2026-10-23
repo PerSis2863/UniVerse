@@ -24,10 +24,11 @@ Cursor's).
 
 **Moving to the $5 Cloudflare plan (Workers Paid)**, in this order:
 1. In Cloudflare: Workers & Pages → Plans → Workers Paid ($5 a month, plus any local tax).
-2. Then, on universe-web → Settings → Variables and Secrets: add a **Secret** named `WORKERS_PAID`
-   with the value `true` (if it's already there, leave it). This tells the app it's on the paid plan,
-   so the spending guard watches the $5 allowances. Not before step 1: on the free plan the app
-   would use limits the plan doesn't have.
+2. Done in the code since 22 Oct 2026 (the owner upgraded): `apps/web/wrangler.jsonc` sets
+   `CF_PLAN=paid`, which turns on the paid limits and the spending guard's monthly $5 view, plus a
+   15-second CPU cap per request and full Workers Logs. Nothing to add in the dashboard (an older
+   `WORKERS_PAID` secret can stay). If the account ever goes back to Workers Free, remove `CF_PLAN`
+   and `limits` from wrangler.jsonc first (Free refuses a deploy with a CPU limit).
 3. Workers & Pages → universe-web → Settings → Build: builds only for `main` (turn off builds for
    other branches). 6,000 build minutes a month are included; each build takes ~15–20 minutes.
    (Since 22 Oct 2026 the app also does this itself: a build of any other branch stops in its first

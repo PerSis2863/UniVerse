@@ -41,7 +41,9 @@ export function PageAurora({ hero = false }: { hero?: boolean }) {
   }, [pathname]);
 
   return (
-    <div ref={box} aria-hidden data-no-motion className={hero ? 'page-aurora page-aurora-hero' : 'page-aurora'}>
+    <div aria-hidden data-no-motion className={hero ? 'page-aurora page-aurora-hero' : 'page-aurora'}>
+      {/* The bloom moves this inner layer: the outer one keeps its own (lighter in light mode) opacity. */}
+      <div ref={box} className="absolute inset-0">
       {RIBBONS.map((r, i) => (
         <svg key={i} className={r.cls} viewBox="0 0 1440 420" preserveAspectRatio="none">
           <defs>
@@ -58,6 +60,7 @@ export function PageAurora({ hero = false }: { hero?: boolean }) {
           <path d={r.d} fill="none" stroke={`url(#${id}g${i})`} strokeWidth={r.core} strokeLinecap="round" opacity="0.9" />
         </svg>
       ))}
+      </div>
     </div>
   );
 }
