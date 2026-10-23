@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { StrandField } from '@/components/landing/StrandField';
+import { LightTrail } from '@/components/LightTrail';
 import { HeroFlow } from '@/components/landing/HeroFlow';
 import { Proof } from '@/components/landing/Proof';
 import { Glue } from '@/components/landing/Glue';
@@ -108,8 +109,10 @@ export default function ShowcasePage() {
       <script dangerouslySetInnerHTML={{ __html: "if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone){location.replace('/app')}" }} />
       <div className="mkt-smooth dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#07080f', color: '#ffffff' }}>
         <motion.div style={{ scaleX: progress }} className="fixed top-0 inset-x-0 h-[2px] origin-left z-[60] bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500" />
-        {/* The page's two-tone glow behind everything below the hero. */}
+        {/* The page's two-tone glow and the river of light, behind everything below the hero. */}
         <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
+          {/* The river of light, from below the hero to the bottom of the page (the hero has its own bend). */}
+          <LightTrail tone="dark" from={0.9} strength={0.72} />
           <div className="mkt-drift-a absolute top-[30%] start-[-30%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(79,70,229,0.16), transparent)' }} />
           <div className="mkt-drift-b absolute bottom-[-25%] end-[-35%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(192,38,211,0.12), transparent)' }} />
         </div>
