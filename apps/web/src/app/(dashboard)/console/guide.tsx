@@ -7,12 +7,12 @@ import { Loader2, Presentation } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { card } from './shared';
 import { cn } from '@/lib/utils';
+import { GUIDE_TITLE, guideHref } from '@/components/boards/guide-title';
 
 // Explain UniVerse: one whiteboard about the whole site (every feature, how it works, the technology),
 // made from all ten whiteboard templates (src/components/boards/universe-guide.ts). The first open
 // makes the board in the owner's whiteboards; later opens go back to it. "Make a fresh one" starts again.
 
-export const GUIDE_TITLE = 'UniVerse explained';
 const PARTS = [
   ['Start here', 'Blank canvas: what UniVerse is, and how to read the board'],
   ['Every feature', 'Mind map: everything students, teachers, admins, parents and you can do'],
@@ -36,10 +36,10 @@ export function GuidePanel() {
       if (!fresh) {
         const boards = await authedJson<{ id: string; title: string; mine: boolean }[]>('/api/boards');
         const mine = boards.find((b) => b.mine && b.title === GUIDE_TITLE);
-        if (mine) return router.push(`/boards/${mine.id}`);
+        if (mine) return router.push(guideHref(mine.id));
       }
       const board = await authedJson<{ id: string }>('/api/boards', { method: 'POST', body: JSON.stringify({ title: GUIDE_TITLE }) });
-      router.push(`/boards/${board.id}?template=guide`);
+      router.push(guideHref(board.id));
     } catch (e) {
       toast.error((e as Error).message || 'The whiteboard couldn’t be opened.');
       setBusy(null);

@@ -83,6 +83,8 @@ function play(el: Element, kind: Kind) {
   const h = el as HTMLElement;
   if (kind === 'block') {
     h.dataset.sr = 'in';
+    // A plain card (no picture or gradient of its own) gets a beam of light round its edge as it lands (M11).
+    if (cardOf(h) === h && getComputedStyle(h).backgroundImage === 'none' && beamOn(h, 'beam-once')) setTimeout(() => beamOff(h, 'beam-once'), 1500);
     const done = () => { delete h.dataset.sr; };
     h.addEventListener('transitionend', done, { once: true });
     setTimeout(done, 1200);
@@ -90,7 +92,9 @@ function play(el: Element, kind: Kind) {
     countUp(el);
   } else if (kind === 'bar') {
     const rtl = getComputedStyle(h).direction === 'rtl';
-    h.animate([{ transform: 'scaleX(0)', transformOrigin: rtl ? 'right center' : 'left center' }, { transform: 'scaleX(1)', transformOrigin: rtl ? 'right center' : 'left center' }], { duration: 1000, easing: EASE_GLIDE, delay: 120 });
+    h.animate([{ transform: 'scaleX(0)', transformOrigin: rtl ? 'right center' : 'left center' }, { transform: 'scaleX(1)', transformOrigin: rtl ? 'right center' : 'left center' }], { duration: 1000, easing: EASE_GLIDE, delay: 120 })
+      // Filled: a glint of light runs along it now and then (M11).
+      .finished.then(() => h.classList.add('bar-glint'), () => {});
   } else if (kind === 'cells') {
     Array.from(el.children).slice(0, 400).forEach((c, i) => {
       if (typeof (c as HTMLElement).animate === 'function') c.animate([{ opacity: 0, transform: 'scale(0.4)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: Math.min(i * 5, 1000), easing: EASE_GLIDE, fill: 'backwards' });
@@ -164,6 +168,39 @@ const queued: Element[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;
 
 const CARD = '.panel, .card, .card-hover';
+// Cards in the app are often plain bordered, rounded boxes (no .panel/.card class): those count too
+// when they're big enough to be a card (not a chip or a field).
+const BOX = '[class*="rounded-2xl"][class*="border"], [class*="rounded-3xl"][class*="border"], [class*="rounded-[2"][class*="border"]';
+function cardOf(el: Element | null): HTMLElement | null {
+  const c = el?.closest?.(CARD) as HTMLElement | null;
+  if (c) return c;
+  let n = el?.closest?.(BOX) as HTMLElement | null;
+  for (let i = 0; n && i < 4; i++) {
+    const r = n.getBoundingClientRect();
+    if (r.width >= 160 && r.height >= 72 && !n.matches('input, textarea, select')) return n;
+    n = n.parentElement?.closest(BOX) as HTMLElement | null;
+  }
+  return null;
+}
+/**
+ * The edge beam (M11) draws on the card's ::after, inside it: only on a card not using ::after for
+ * something else. A card that isn't positioned is made `relative` while the beam shows, if nothing
+ * inside it is absolutely positioned (so nothing can move). Returns whether the beam is on.
+ */
+function beamOn(el: HTMLElement, cls: 'beam' | 'beam-once'): boolean {
+  if (getComputedStyle(el, '::after').content !== 'none' && !el.classList.contains('beam') && !el.classList.contains('beam-once')) return false;
+  if (getComputedStyle(el).position === 'static') {
+    if (el.querySelector('[class*="absolute"]')) return false;
+    el.style.position = 'relative';
+    el.dataset.beamPos = '1';
+  }
+  el.classList.add(cls);
+  return true;
+}
+function beamOff(el: HTMLElement, cls: 'beam' | 'beam-once') {
+  el.classList.remove(cls);
+  if (el.dataset.beamPos && !el.classList.contains('beam') && !el.classList.contains('beam-once')) { el.style.position = ''; delete el.dataset.beamPos; }
+}
 
 /**
  * The light under the pointer (computers with a mouse or trackpad): one listener for the page,
@@ -172,7 +209,7 @@ const CARD = '.panel, .card, .card-hover';
 function startSheen(): () => void {
   if (!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) return () => {};
   let lit: HTMLElement | null = null, x = 0, y = 0, frame = 0;
-  const off = () => { lit?.classList.remove('sheen'); lit = null; };
+  const off = () => { if (lit) { lit.classList.remove('sheen'); beamOff(lit, 'beam'); } lit = null; };
   const paint = () => {
     frame = 0;
     if (!lit) return;
@@ -183,10 +220,15 @@ function startSheen(): () => void {
   const move = (e: PointerEvent) => {
     if (e.pointerType !== 'mouse') return;
     x = e.clientX; y = e.clientY;
-    const card = (e.target as Element | null)?.closest?.(CARD) as HTMLElement | null;
+    const card = cardOf(e.target as Element | null);
     if (card !== lit) {
       off();
-      if (card && !card.closest(SKIP) && (card.classList.contains('sheen') || getComputedStyle(card).backgroundImage === 'none')) { lit = card; card.classList.add('sheen'); }
+      if (card && !card.closest(SKIP) && (card.classList.contains('sheen') || getComputedStyle(card).backgroundImage === 'none')) {
+        lit = card;
+        // The edge beam first (its check reads ::after before .sheen changes anything), then the spotlight.
+        beamOn(card, 'beam');
+        card.classList.add('sheen');
+      }
     }
     if (lit && !frame) frame = requestAnimationFrame(paint);
   };

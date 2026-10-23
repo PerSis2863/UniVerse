@@ -10,7 +10,8 @@ import { cn } from '@/lib/utils';
 //   · soft bands: wide, out-of-focus ribbons of light that drift and sway (drawn at a quarter of the
 //     size and stretched: a free, smooth blur that also works in Safari);
 //   · fine strands: a dense bundle, tight and white-hot at each bend, fanning out in between;
-//   · pulses: light running down the strands; and sparks drifting along them.
+//   · pulses: light running down the strands; and sparks drifting along them;
+//   · it answers the pointer (or a finger): the strands part round it and glow there (M11).
 // On the landing page it pours in from the top right when the page opens, bends in the gap between
 // the hero's words and its card, and carries on down the page. It belongs to the page: it moves with
 // whatever scrolls (the window, or the app's own panel; not menus or dialogs).
@@ -57,6 +58,8 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
     let lite = false, slow = 0;
     // The soft bands move slowly: repaint them every third frame (or after a scroll) and reuse them.
     let softFrame = 0, softAt = NaN;
+    // The pointer (or finger): the strands part round it and it glows (M11). `pv` eases in and out.
+    let px = -9999, py = -9999, pAt = -1e9, pv = 0;
     const born = performance.now();
 
     const resize = () => {
@@ -108,7 +111,19 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
         }
         c.stroke();
       };
-      const strandX = (st: (typeof strands)[number]) => (y: number) => centre(y) + st.o * 2 * spread(y) + Math.sin(y / st.wob + t * st.speed + st.phase) * (3 + 7 * Math.abs(st.o));
+      pv += ((ms - pAt < 2500 ? 1 : 0) - pv) * 0.08;
+      const near = pv > 0.01;
+      // Strands near the pointer lean away from it, smoothly (no jump at its centre), like hair.
+      const part = (x: number, y: number) => {
+        if (!near) return 0;
+        const dy = y - sy - py, dx = x - px;
+        if (dy > 420 || dy < -420) return 0;
+        return pv * 70 * Math.exp(-(dy * dy) / 45000) * (dx / 130) * Math.exp(-(dx * dx) / 33800);
+      };
+      const strandX = (st: (typeof strands)[number]) => (y: number) => {
+        const x = centre(y) + st.o * 2 * spread(y) + Math.sin(y / st.wob + t * st.speed + st.phase) * (3 + 7 * Math.abs(st.o));
+        return x + part(x, y);
+      };
 
       // 1 · The soft bands (a quarter-size canvas, stretched: soft-focus light).
       const repaint = still || softAt !== sy || grow < 1 || softFrame++ % 3 === 0;
@@ -125,6 +140,15 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
           sctx.globalAlpha = b.alpha * k * (0.4 + 0.6 * eased);
           sctx.lineWidth = b.width * (phone ? 0.6 : 1);
           trace(sctx, (y) => centre(y) + b.o * spread(y) * 1.3 + Math.sin(t * b.speed + b.phase + y / 520) * 46);
+        }
+        // A glow where the pointer touches the river.
+        if (near && Math.abs(px - centre(sy + py)) < spread(sy + py) + 220) {
+          const g = sctx.createRadialGradient(px, py, 0, px, py, 180);
+          g.addColorStop(0, dark ? 'rgba(240,171,252,0.35)' : 'rgba(192,38,211,0.14)');
+          g.addColorStop(1, 'rgba(99,102,241,0)');
+          sctx.globalAlpha = pv * k;
+          sctx.fillStyle = g;
+          sctx.fillRect(px - 180, py - 180, 360, 360);
         }
         // A white-hot glow at each bend in view (bends are where the swing turns: theta = π/2 + nπ).
         for (let n = Math.floor(((2 * Math.PI * (y0 - 300)) / P + phi - Math.PI / 2) / Math.PI); ; n++) {
@@ -147,7 +171,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
 
       // 2 · The fine strands, coloured along the river (indigo → violet → fuchsia → pink). Bright in
       // the hero; further down (and in the app) mostly the soft glow, so text in front stays easy to read.
-      const sharp = hero ? 1 - 0.62 * ramp(sy + H * 0.5) : 0.6;
+      const sharp = hero ? 1 - 0.62 * ramp(sy + H * 0.5) : phone ? 0.42 : 0.6;
       ctx.globalCompositeOperation = dark ? 'lighter' : 'source-over';
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -215,6 +239,13 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
       else return;
       if (still) kick();
     };
+    const onPointer = (e: PointerEvent) => { px = e.clientX; py = e.clientY; pAt = performance.now(); };
+    const onLeave = () => { pAt = -1e9; };
+    if (!still) {
+      window.addEventListener('pointermove', onPointer, { passive: true });
+      window.addEventListener('pointerdown', onPointer, { passive: true });
+      document.documentElement.addEventListener('pointerleave', onLeave);
+    }
     resize();
     kick();
     const onResize = () => { resize(); kick(); };
@@ -231,6 +262,9 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
       window.removeEventListener('resize', onResize);
       document.removeEventListener('visibilitychange', onVisible);
       themeWatch.disconnect();
+      window.removeEventListener('pointermove', onPointer);
+      window.removeEventListener('pointerdown', onPointer);
+      document.documentElement.removeEventListener('pointerleave', onLeave);
     };
   }, [tone, hero, strength]);
 

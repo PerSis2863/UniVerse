@@ -1385,3 +1385,13 @@ Progress table (row D6).
   The landing page renders its own (`tone="dark" from={0.9} strength={0.72}`); the root one skips `/`.
 - Keep it cheap: ≤30 fps, ~2.6 M canvas pixels at most, still for Reduce Motion / low-memory phones,
   nothing while the tab is hidden. Dark cards are 93% opaque, so it glows through without any blur.
+
+## M11 · Light that answers people
+
+- Edge beam: `.beam` / `.beam-once` draw on `::after` (a masked conic ring, `@property --beam`).
+  `beamOn` skips a card already using `::after`; a static card is made `relative` only while the beam
+  shows and only if it has no absolutely positioned parts. Don't give cards their own `::after` and
+  expect the beam too.
+- Sparks: `.btn-primary` or `[data-spark]`; nothing under `[data-no-motion]`.
+- The owner's guide board: `GUIDE_TITLE` / `guideHref` in `src/components/boards/guide-title.ts` (small
+  on purpose: importing `universe-guide.ts` pulls the whole board into a bundle).

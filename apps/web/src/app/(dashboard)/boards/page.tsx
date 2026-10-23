@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -16,6 +16,8 @@ import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
 import { removeWithUndo } from '@/lib/undo';
+import { useAuthStore } from '@/store/auth';
+import { GUIDE_TITLE, guideHref } from '@/components/boards/guide-title';
 
 // Whiteboards: every student, teacher and admin can draw on a board, add photos, and share it so
 // classmates and teachers draw on it together live (see /boards/[id]).
@@ -45,9 +47,23 @@ function ago(iso: string) {
   return d < 30 ? `${d} d ago` : new Date(iso).toLocaleDateString();
 }
 
+/** A guide board is being made (the list can load twice before it lands). */
+let making = false;
+
 export default function BoardsPage() {
   const router = useRouter();
   const { data, error, isLoading, mutate } = useSWR<BoardSummary[]>('/api/boards', authedJson);
+  const owner = useAuthStore((s) => !!s.user?.owner);
+  // The owner's "UniVerse explained" board is there without asking: made once (on this device) if
+  // it's missing. Deleted on purpose later: it stays deleted here (the console can make a fresh one).
+  useEffect(() => {
+    if (!owner || !data || data.some((b) => b.mine && b.title === GUIDE_TITLE)) return;
+    try { if (making || localStorage.getItem('uv-guide-made') === '1') return; } catch { return; }
+    making = true;
+    void authedJson('/api/boards', { method: 'POST', body: JSON.stringify({ title: GUIDE_TITLE }) })
+      .then(() => { try { localStorage.setItem('uv-guide-made', '1'); } catch { /* private mode */ } return mutate(); }, () => {})
+      .finally(() => { making = false; });
+  }, [owner, data, mutate]);
   const [tab, setTab] = useState<'all' | 'mine' | 'shared'>('all');
   const [q, setQ] = useState('');
   const [creating, setCreating] = useState(false);
@@ -149,7 +165,7 @@ export default function BoardsPage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {list.map((b) => (
                 <div key={b.id} className="group relative rounded-3xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 overflow-hidden hover:border-indigo-500/40 transition-colors">
-                  <Link href={`/boards/${b.id}`} className="block">
+                  <Link href={b.mine && b.title === GUIDE_TITLE ? guideHref(b.id) : `/boards/${b.id}`} className="block">
                     <div className="aspect-[16/9] bg-zinc-50 dark:bg-white/[0.03] flex items-center justify-center overflow-hidden border-b border-zinc-100 dark:border-white/[0.05]">
                       {b.thumbnail
                         ? <img loading="lazy" decoding="async" src={b.thumbnail} alt="" className="w-full h-full object-contain" />

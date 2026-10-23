@@ -146,7 +146,7 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
         <>
         {data.folders.length > 0 && (
           // Folders that open (M5): the files inside fan out of each one.
-          <ul aria-label="Folders" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10 pt-10 pb-2">
+          <ul aria-label="Folders" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-x-4 sm:gap-x-6 gap-y-8 pt-8 pb-2">
             {data.folders.map((f, i) => (
               <li key={f.id} className="relative">
                 <FolderCard
