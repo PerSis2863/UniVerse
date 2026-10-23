@@ -1,6 +1,6 @@
 import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform';
 import { FLOWS } from '../landing/flows';
-import { GUIDE_AREAS as AREAS } from './guide-title';
+import { GUIDE_AREAS as AREAS, GUIDE_ID_PREFIX } from './guide-title';
 import { ENUMS, LANGUAGES, MIGRATIONS, PAGES, ROUTES, TABLES, TESTS, VERSIONS } from './guide-data.gen';
 
 // "UniVerse explained" (owner console → Explain UniVerse): one whiteboard about the whole site, in
@@ -8,7 +8,8 @@ import { ENUMS, LANGUAGES, MIGRATIONS, PAGES, ROUTES, TABLES, TESTS, VERSIONS } 
 // request travels, safety, limits, a glossary, and charts and long lists made from the code itself
 // (guide-data.gen.ts, written at build time: every route, page, table, database change, language). Sized to fill a screen at 10% zoom
 // (about 17,000 × 9,000), with small even gaps. Like any template it's added on the first open of
-// the new, empty board, as ordinary shapes the owner can edit.
+// the new, empty board, as ordinary shapes the owner can edit; later openings add back any shape that
+// never reached the room (guide-fill.ts), so the ids must stay fixed.
 // Keep it true: when a big feature lands or goes, change the notes here (old boards keep theirs).
 
 type El = ExcalidrawElementSkeleton & { id?: string; x?: number; y?: number; width?: number; height?: number };
@@ -35,7 +36,7 @@ const INK = '#1e1e1e';
 function section(key: string, name: string) {
   const els: El[] = [];
   let n = 0;
-  const id = (s?: string) => `${key}-${s ?? n++}`;
+  const id = (s?: string) => `${GUIDE_ID_PREFIX}${key}-${s ?? n++}`;
   return {
     id,
     els,

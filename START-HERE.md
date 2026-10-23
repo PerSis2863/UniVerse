@@ -12,7 +12,8 @@ Cursor's).
   Relay light river, the "Cadra" card look, the owner console deck, the "UniVerse explained" board,
   lean code, design skills, a simpler sign-in). Each has a Progress row (`STAGE-5-PLAN.md`) and a
   note at the end of `STAGE-5-HANDOFF.md`. The work queue is finished; what's left waits on the owner
-  (below).
+  (below). **M16** (on branch `claude/youthful-fermi-sbdtcp`, not merged yet): the explainer
+  board always fills in full.
 - **`main` has everything through Q26** (merged 21 Oct): the full review, the phone smoothness second
   pass, the accessibility sweep, Phase E (Q23–Q26: undo, drag-and-drop and paste on file fields, bulk
   actions on Admin → Users, choosing several chat messages, accent colour, ringtone, course colours,

@@ -1458,3 +1458,13 @@ Progress table (row D6).
 - Fresh cloud container: run `npx prisma generate` before `pnpm check` (otherwise hundreds of
   `@prisma/client` type errors), and `NODE_OPTIONS=--max-old-space-size=8192` if the type check runs
   out of memory.
+
+## M16 · The explainer board fills in full
+
+- The guide's shapes keep their ids (`convertToExcalidrawElements(els, { regenerateIds: false })`
+  for the guide only): never generate them randomly, or topping up stops working. Box labels still
+  get random ids; `guideTopUp` treats a label as part of its box.
+- Opening the guide (`?template=guide`) on a board that has `g<version>-` shapes runs `guideTopUp`;
+  a board of an older design (other prefix) is left alone and replaced through `GUIDE_VERSION`.
+- Testing the board without the Worker: bundle `universe-guide.ts` with Excalidraw using the
+  esbuild in `node_modules/.pnpm/esbuild@*/` and convert it in Chromium (text sizes need a browser).

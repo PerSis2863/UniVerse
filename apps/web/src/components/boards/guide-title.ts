@@ -3,8 +3,10 @@
 // whole board.
 export const GUIDE_TITLE = 'UniVerse explained';
 /** Raise when the board's design changes: the owner's boards list then makes the new one by itself. */
-export const GUIDE_VERSION = '3';
-/** Opening it always asks for the guide template: it only fills in a board that is still empty. */
+export const GUIDE_VERSION = '4';
+/** Every shape's id starts with this, so a board of this design can be told apart and topped up. */
+export const GUIDE_ID_PREFIX = `g${GUIDE_VERSION}-`;
+/** Opening it always asks for the guide template: it fills an empty board, or adds what's missing. */
 export const guideHref = (id: string) => `/boards/${id}?template=guide`;
 
 /** The board's areas, in order (its banner lists them; the console's Explain UniVerse shows them). */
