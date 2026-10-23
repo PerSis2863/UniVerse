@@ -82,6 +82,8 @@ export default function auth(router: Router) {
     audit(user, { action: 'security.passkey_removed', summary: `${user.name} removed a passkey`, targetType: 'user', targetId: user.id }, req);
     return { ok: true };
   });
+  // Whether the sign-in page should offer a passkey at all (off until SESSION_SECRET is set).
+  r.get('passkeys/available', { public: true }, () => ({ enabled: passkeysEnabled() }));
   r.post('passkeys/sign-in/options', { public: true }, ({ req }) => passkeyOptions(req, 'signin'));
   r.post('passkeys/sign-in', { public: true }, async ({ req, body }) => {
     const userId = await usePasskey(req, 'signin', body);

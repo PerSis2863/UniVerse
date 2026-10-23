@@ -2,6 +2,8 @@
 // draws it). Its own small file so the boards list and the console can name it without loading the
 // whole board.
 export const GUIDE_TITLE = 'UniVerse explained';
+/** Raise when the board's design changes: the owner's boards list then makes the new one by itself. */
+export const GUIDE_VERSION = '3';
 /** Opening it always asks for the guide template: it only fills in a board that is still empty. */
 export const guideHref = (id: string) => `/boards/${id}?template=guide`;
 

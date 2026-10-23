@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Loader2, Eye, EyeOff, Building2, ArrowRight, Fingerprint } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff, Building2, Fingerprint, Phone } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Accent, Tag } from '@/components/landing/bits';
 import { useAuthStore } from '@/store/auth';
@@ -16,6 +16,7 @@ import { EmailVerifyPanel } from '@/components/auth/EmailVerifyPanel';
 import { TwoStepPanel } from '@/components/auth/TwoStepPanel';
 import dynamic from 'next/dynamic';
 import { homeFor } from '@/lib/role-home';
+import { PHONE_SIGN_IN } from '@/lib/sign-in-options';
 
 // Phone sign-in carries a phone-number library (about 50 KB): it loads when someone chooses it
 // (or points at the button), not with the page.
@@ -41,7 +42,16 @@ export default function LoginPage() {
   // Ready the Google/Apple window now, so a tap opens it straight away (not blocked).
   useEffect(() => { warmUpPopupSignIn(); }, []);
   // Passkeys need the browser's support (known after hydration: the page is built ahead of time).
-  const canPasskey = usePasskeysSupported() === true;
+  // A passkey is offered when this browser can use one and the site has passkeys switched on.
+  const browserPasskey = usePasskeysSupported() === true;
+  const [sitePasskeys, setSitePasskeys] = useState(false);
+  useEffect(() => {
+    if (!browserPasskey) return;
+    let gone = false;
+    api.get<{ enabled: boolean }>('/auth/passkeys/available').then((r) => { if (!gone) setSitePasskeys(r.data.enabled === true); }, () => {});
+    return () => { gone = true; };
+  }, [browserPasskey]);
+  const canPasskey = browserPasskey && sitePasskeys;
 
   // Sent here by the app (?step=code) when an admin's session still needs the emailed code.
   useEffect(() => {
@@ -213,9 +223,6 @@ export default function LoginPage() {
     tenantId?: string | null;
     enforced?: boolean;
   } | null>(null);
-  const [showSsoInput, setShowSsoInput] = useState(false);
-  const [ssoEmail, setSsoEmail] = useState('');
-  const [ssoSearching, setSsoSearching] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -228,35 +235,6 @@ export default function LoginPage() {
       .catch(() => {});
   }, []);
 
-  const handleSsoLookup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ssoEmail.trim() || !ssoEmail.includes('@')) {
-      setError('Please enter your institutional email (e.g. name@riverside.edu).');
-      return;
-    }
-    setSsoSearching(true);
-    setError('');
-    try {
-      const res = await fetch(`/api/auth/sso/lookup?email=${encodeURIComponent(ssoEmail.trim())}`);
-      const data = await res.json();
-      if (!data.hasSso) {
-        setError(`No single sign-on configuration found for @${ssoEmail.split('@')[1]}. Please sign in using email & password or Google/Microsoft.`);
-      } else if (data.provider === 'MICROSOFT') {
-        await handleMicrosoftLogin(data.tenantId);
-      } else if (data.provider === 'GOOGLE') {
-        await handleGoogleLogin();
-      } else if (data.provider === 'SAML') {
-        const samlProvider = new OAuthProvider(data.tenantId || 'saml.school');
-        const userCredential = await signInWithPopup(auth, samlProvider);
-        const token = await userCredential.user.getIdToken();
-        await handleLoginSuccess(token, 'sso');
-      }
-    } catch (err) {
-      setError(authErrorMessage(err, 'Failed to initiate institutional SSO.'));
-    } finally {
-      setSsoSearching(false);
-    }
-  };
 
   return (
     <>
@@ -321,8 +299,8 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Social buttons: Google, Microsoft, Apple */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
+              {/* Google, Microsoft, Apple, and a passkey (or phone) when the site has them on */}
+              <div className={`grid grid-cols-1 ${['sm:grid-cols-3', 'sm:grid-cols-4', 'sm:grid-cols-5'][Number(canPasskey) + Number(PHONE_SIGN_IN)]} gap-2.5 mb-6`}>
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
@@ -364,74 +342,32 @@ export default function LoginPage() {
                   </svg>
                   Apple
                 </button>
-              </div>
-
-              {/* School SSO, Phone and Passkey */}
-              <div className={`grid ${canPasskey ? 'grid-cols-3' : 'grid-cols-2'} gap-2.5 mb-6`}>
-                <button
-                  type="button"
-                  onClick={() => setShowSsoInput(!showSsoInput)}
-                  className={`flex items-center justify-center gap-1.5 border rounded-xl py-2 px-3 text-xs font-semibold transition-colors ${
-                    showSsoInput ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300' : 'border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  <Building2 className="w-3.5 h-3.5" />
-                  School SSO
-                </button>
-                <button
-                  type="button"
-                  onPointerEnter={preloadPhoneFlow} onFocus={preloadPhoneFlow}
-                  onClick={() => setShowPhoneFlow(true)}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-1.5 border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 rounded-xl py-2 px-3 text-xs font-semibold transition-colors disabled:opacity-50"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  Use Phone
-                </button>
+                {PHONE_SIGN_IN && (
+                  <button
+                    type="button"
+                    onPointerEnter={preloadPhoneFlow} onFocus={preloadPhoneFlow}
+                    onClick={() => setShowPhoneFlow(true)}
+                    disabled={isLoading}
+                    className="w-full flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-3 font-semibold text-xs transition-colors disabled:opacity-50"
+                  >
+                    <Phone className="w-4 h-4" />
+                    Phone
+                  </button>
+                )}
                 {canPasskey && (
                   <button
                     type="button"
                     onClick={() => void handlePasskeyLogin()}
                     disabled={isLoading}
-                    className="flex items-center justify-center gap-1.5 border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 rounded-xl py-2 px-3 text-xs font-semibold transition-colors disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 rounded-xl py-2.5 px-3 font-semibold text-xs transition-colors disabled:opacity-50"
                   >
-                    <Fingerprint className="w-3.5 h-3.5" />
+                    <Fingerprint className="w-4 h-4" />
                     Passkey
                   </button>
                 )}
               </div>
 
-              {/* School SSO Email Input Drawer */}
-              {showSsoInput && (
-                <form onSubmit={handleSsoLookup} className="mb-6 p-4 rounded-xl bg-zinc-900/80 border border-indigo-500/30">
-                  <label className="block text-xs font-medium text-zinc-300 mb-2">
-                    Institutional Email (Single Sign-On)
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      value={ssoEmail}
-                      onChange={(e) => setSsoEmail(e.target.value)}
-                      placeholder="student@school.edu"
-                      className="flex-1 bg-zinc-950 border border-zinc-800 text-white placeholder:text-zinc-600 rounded-lg px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
-                      required
-                    />
-                    <button
-                      type="submit"
-                      disabled={ssoSearching || !ssoEmail.trim()}
-                      className="btn-primary px-3 py-2 text-xs font-semibold flex items-center gap-1 shrink-0"
-                    >
-                      {ssoSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
-                      Continue
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-zinc-500 mt-2">
-                    Enter your campus or district email address to authenticate with your institution’s Entra ID, Google Workspace, or SAML portal.
-                  </p>
-                </form>
-              )}
+
 
               <div className="flex items-center gap-4 mb-6">
                 <div className="flex-1 h-px bg-zinc-800"></div>
