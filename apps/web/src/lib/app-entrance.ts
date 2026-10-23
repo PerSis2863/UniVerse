@@ -1,6 +1,6 @@
 'use client';
 
-import { EASE_GLIDE, reducedMotion, revealParts, sweepTitle } from './page-transition';
+import { EASE_GLIDE, lightFrames, reducedMotion, revealParts, sweepTitle } from './page-transition';
 
 // The app's entrance when it opens (a reload, a new tab, just signed in), choreographed the way
 // AgentGPT's screen arrives: nothing snaps in; the page's blocks rise into place one after another
@@ -24,7 +24,7 @@ export function playAppEntrance(shell: HTMLElement | null) {
   const run = (el: Element | null | undefined, frames: Keyframe[], duration: number, delay = 0) => {
     if (!el || typeof (el as HTMLElement).animate !== 'function') return;
     // "Reduce Motion": a short fade instead of the movement.
-    const keyframes = calm ? frames.map(({ opacity }) => ({ opacity })) : frames;
+    const keyframes = calm ? frames.map(({ opacity }) => ({ opacity })) : lightFrames(frames);
     el.animate(keyframes, { duration: calm ? 220 : duration, delay: calm ? 0 : delay, easing: EASE_GLIDE, fill: 'backwards' });
   };
   const desktop = window.matchMedia('(min-width: 1024px)').matches;

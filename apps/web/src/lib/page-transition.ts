@@ -40,6 +40,9 @@ export function pageEntranceShown() {
   nextMotion = 'fade';
 }
 
+/** A phone with little memory (Android reports it; iPhones don't): decorative blur and drifting light are left out there. */
+export const lowEndDevice = () => typeof navigator !== 'undefined' && ((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8) <= 2;
+
 export const reducedMotion = () => typeof window !== 'undefined' && (document.documentElement.classList.contains('reduce-motion') || !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 
 /** Fast start, soft landing: the page is readable almost at once, then settles. */
@@ -109,8 +112,11 @@ export const TITLE_MS = 900;
 /** The page's visible title (the phone's large title or the computer's bar title) sweeps into view. */
 export function sweepTitle(page: Element | null | undefined, delay = 60) {
   const title = [...(page?.querySelectorAll('h1') ?? [])].find((h) => h.getBoundingClientRect().height > 0);
-  if (title && typeof title.animate === 'function' && !reducedMotion()) title.animate(titleFrames(document.documentElement.dir === 'rtl'), { duration: TITLE_MS, delay, easing: EASE_GLIDE, fill: 'backwards' });
+  if (title && typeof title.animate === 'function' && !reducedMotion()) title.animate(lightFrames(titleFrames(document.documentElement.dir === 'rtl')), { duration: TITLE_MS, delay, easing: EASE_GLIDE, fill: 'backwards' });
 }
+
+/** Leaves out blur on low-end phones (the movement stays). */
+export const lightFrames = (frames: Keyframe[]) => (lowEndDevice() ? frames.map((f) => { const rest = { ...f }; delete rest.filter; return rest; }) : frames);
 
 /** Drops the movement from frames for "Reduce Motion": only the fade is left. */
 export const calmFrames = (frames: Keyframe[]) => frames.map(({ opacity }) => (opacity === undefined ? {} : { opacity }));

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { lowEndDevice } from '@/lib/page-transition';
 
 // Glowing ribbons of light behind the top of every page (M1, like the "Relay" site the owner
 // sent): three soft bands that drift and sway on slow loops and bloom in again on each new page.
@@ -25,6 +26,8 @@ export function PageAurora({ hero = false }: { hero?: boolean }) {
   useEffect(() => {
     const el = box.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
+    // Low-end phones keep the light still.
+    if (lowEndDevice()) { el.classList.add('aurora-paused'); return; }
     const io = new IntersectionObserver(([e]) => el.classList.toggle('aurora-paused', !e.isIntersecting));
     io.observe(el);
     return () => io.disconnect();

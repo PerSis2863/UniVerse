@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { usePendingNav } from '@/lib/nav-pending';
-import { EASE_GLIDE, EASE_IOS, LEAVE_MS, REVEAL_GAP_MS, REVEAL_MS, enterFrames, enterMs, isTall, leaveFrames, movingParts, pageEntranceShown, pageMotion, reducedMotion, revealFrames, revealParts, calmFrames, sweepTitle } from '@/lib/page-transition';
+import { EASE_GLIDE, EASE_IOS, LEAVE_MS, REVEAL_GAP_MS, REVEAL_MS, enterFrames, enterMs, isTall, leaveFrames, movingParts, pageEntranceShown, pageMotion, reducedMotion, revealFrames, revealParts, calmFrames, lightFrames, sweepTitle } from '@/lib/page-transition';
 import { PageSkeleton, skeletonFor } from './PageSkeleton';
 
 // Past this, a page that's still downloading shows its loading skeleton (pages open without
@@ -18,7 +18,7 @@ function animate(running: Ref<Animation[]>, targets: Element[], frames: Keyframe
   running.current = [];
   // "Reduce Motion": the page fades instead of sliding (like iOS), rather than changing with no motion.
   const calm = reducedMotion();
-  const keyframes = calm ? calmFrames(frames) : frames;
+  const keyframes = calm ? calmFrames(frames) : lightFrames(frames);
   const timing = calm ? { ...options, duration: Math.min(Number(options.duration) || 200, 200) } : options;
   running.current = targets.filter((t) => typeof (t as HTMLElement).animate === 'function').map((t) => t.animate(keyframes, timing));
   return running.current;
@@ -115,7 +115,7 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
     }
     for (const a of running.current) a.cancel();
     running.current = revealParts(page(), m).filter((t) => typeof (t as HTMLElement).animate === 'function')
-      .map((t, i) => t.animate(revealFrames(i, isTall(t)), { duration: REVEAL_MS, delay: Math.min(i, 8) * REVEAL_GAP_MS, easing: EASE_GLIDE, fill: 'backwards' }));
+      .map((t, i) => t.animate(lightFrames(revealFrames(i, isTall(t))), { duration: REVEAL_MS, delay: Math.min(i, 8) * REVEAL_GAP_MS, easing: EASE_GLIDE, fill: 'backwards' }));
     // The page's title sweeps in (not between tabs: the title stays put there).
     if (m !== 'tab') sweepTitle(page());
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps

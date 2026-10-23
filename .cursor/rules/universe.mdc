@@ -123,6 +123,13 @@ Rules for using it here:
   after about 60, suggests `/compact` or `/clear` once an item is finished, so long histories aren't
   re-sent). It runs only on this computer, but changing `.claude/settings.json` needs the owner's
   own approval in Claude Code, so it's not turned on yet.
+- **22 Oct 2026: the current pack (github.com/affaan-m/ecc, 311 skills) checked for smoothness.**
+  Its motion skills (`motion-foundations`, `motion-patterns`, `motion-advanced`) describe what the
+  M1 motion layer already does (word reveals, count-ups, path drawing, cursor light, pausing when
+  off screen), so they aren't installed. Some of their rules clash with this project ("never
+  `framer-motion`": we use `m` from it; page transitions that wait for the old page: ours never
+  wait, see `page-transition.ts`). Taken from them: decorative blur and drifting light are left out
+  on low-memory phones (`lowEndDevice`). `liquid-glass-design` is for SwiftUI apps, not the web.
 
 ## Gotchas already learned
 
