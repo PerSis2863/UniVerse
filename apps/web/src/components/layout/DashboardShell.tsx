@@ -21,7 +21,6 @@ import { haptic } from '@/lib/haptics';
 import { authedJson } from '@/lib/authed-fetch';
 import useSWR from 'swr';
 import { PendingPage } from './PendingPage';
-import { PageAurora } from './PageAurora';
 import { AppSkeleton } from './AppSkeleton';
 import { entrancePending, playAppEntrance } from '@/lib/app-entrance';
 import { isTabRoot, tabsForRole, type TabItem } from '@/lib/app-tabs';
@@ -67,7 +66,7 @@ function MobileTabBar({ role, onMore, moreOpen, onCreate, createOpen }: { role: 
   return (
     <nav aria-label="Primary" className="ios-tabbar ios-glass lg:hidden z-[35] p-1">
       <div className={cn('relative grid h-full', onCreate ? 'grid-cols-6' : 'grid-cols-5')}>
-        <span aria-hidden className="tabbar-pill absolute inset-y-0 start-0 rounded-full bg-gradient-to-r from-indigo-500/[0.18] to-fuchsia-500/[0.14] dark:from-indigo-500/[0.38] dark:to-fuchsia-500/[0.26] ring-1 ring-indigo-400/20"
+        <span aria-hidden className="tabbar-pill absolute inset-y-0 start-0 rounded-full bg-[var(--ink)] shadow-[0_8px_18px_-10px_rgba(0,0,0,0.6)]"
           style={{ width: `${100 / cols}%`, '--col': Math.max(column, 0), opacity: column < 0 ? 0 : 1 } as React.CSSProperties} />
         {items.map((item, i) => {
           const active = isActive(item);
@@ -76,7 +75,7 @@ function MobileTabBar({ role, onMore, moreOpen, onCreate, createOpen }: { role: 
             {/* "+" (new message, document, task board, call, ask AI, scan a code) in the middle. */}
             {onCreate && i === 2 && (
               <button type="button" onClick={() => { haptic('tap'); onCreate(); }} aria-haspopup="dialog" aria-expanded={createOpen} aria-label="Quick create" className={cn(tab, 'text-zinc-600 dark:text-zinc-300')}>
-                <span className="relative w-9 h-9 -my-1 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/30"><Plus className="w-[22px] h-[22px]" strokeWidth={2.4} /></span>
+                <span className="relative w-9 h-9 -my-1 rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white flex items-center justify-center shadow-md shadow-fuchsia-500/30"><Plus className="w-[22px] h-[22px]" strokeWidth={2.4} /></span>
               </button>
             )}
             <Link
@@ -85,7 +84,7 @@ function MobileTabBar({ role, onMore, moreOpen, onCreate, createOpen }: { role: 
               data-tour-href={item.href}
               aria-current={active ? 'page' : undefined}
               onClick={() => { if (!active) haptic('tap'); }}
-              className={cn(tab, active ? 'text-tint-text' : 'text-zinc-600 dark:text-zinc-300')}
+              className={cn(tab, active ? 'text-[var(--ink-contrast)]' : 'text-zinc-600 dark:text-zinc-300')}
             >
               <item.icon className="relative w-[23px] h-[23px]" strokeWidth={active ? 2.3 : 1.8} />
               <span className={cn('relative text-[10px] leading-none', active ? 'font-semibold' : 'font-medium')}>{item.label}</span>
@@ -98,7 +97,7 @@ function MobileTabBar({ role, onMore, moreOpen, onCreate, createOpen }: { role: 
           data-tour="more"
           onClick={() => { haptic('tap'); onMore(); }}
           aria-expanded={moreOpen}
-          className={cn(tab, moreOpen ? 'text-tint-text' : 'text-zinc-600 dark:text-zinc-300')}
+          className={cn(tab, moreOpen ? 'text-[var(--ink-contrast)]' : 'text-zinc-600 dark:text-zinc-300')}
         >
           <Menu className="relative w-[23px] h-[23px]" strokeWidth={moreOpen ? 2.3 : 1.8} />
           <span className={cn('relative text-[10px] leading-none', moreOpen ? 'font-semibold' : 'font-medium')}>More</span>
@@ -204,8 +203,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
         <SwipeBack enabled={canGoBack} pathname={pathname} onBack={back} />
         <main id="main" tabIndex={-1} className="mobile-main flex-1 flex flex-col min-w-0 overflow-x-clip outline-none">
-          {/* A zero-height holder: the light sits at the top of the page area without making <main> a positioned box. */}
-          <div className="relative h-0"><PageAurora /></div>
           <SampleModeBar />
           {/* Re-mount pages when switching between sample and real data so they reload from the right source */}
           <Fragment key={sampleMode ? 'sample' : 'real'}><PendingPage>{children}</PendingPage></Fragment>

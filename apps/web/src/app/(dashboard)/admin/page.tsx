@@ -77,7 +77,7 @@ export default function AdminDashboard() {
         <HomeBoard role="admin" layout={home.layout} onSave={(l) => void home.saveLayout(l)} afterTop={<AccountSetupCard />} cards={{
           live: <LiveNumbersCard live={home.data?.live} />,
           kpis: (
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="kpi-row grid grid-cols-2 xl:grid-cols-4 gap-4">
               <KpiCard title={t('admin.total_students')} value={data?.totalStudents || 0} icon={Users} color="indigo" />
               <KpiCard title="Teachers" value={data?.totalTeachers || 0} icon={GraduationCap} color="amber" />
               <KpiCard title={t('admin.active_courses')} value={data?.totalCourses || 0} icon={BookOpen} color="cyan" />

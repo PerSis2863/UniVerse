@@ -109,7 +109,7 @@ export default function TeacherDashboard() {
         <HomeBoard role="teacher" layout={home.layout} onSave={(l) => void home.saveLayout(l)} afterTop={<AccountSetupCard />} cards={{
           upnext: <UpNextCard items={home.data?.upNext} loading={home.isLoading} empty="No classes or calls coming up, and nothing waiting to be graded." />,
           kpis: (
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="kpi-row grid grid-cols-2 xl:grid-cols-4 gap-4">
               <KpiCard title={t('teacher.total_students')} value={totalStudents.toString()} icon={Users} color="indigo" />
               <KpiCard title={t('teacher.active_courses')} value={activeCourses.toString()} icon={BookOpen} color="cyan" />
               <KpiCard title={t('teacher.pending_grades')} value={pendingGrades.toString()} icon={FileText} color="amber" />

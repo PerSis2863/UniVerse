@@ -19,7 +19,6 @@ import { Segmented } from '@/components/ui/Segmented';
 import { setPageTitle } from '@/lib/chrome';
 import { spring } from '@/lib/motion';
 import { crumbsFor } from '@/lib/breadcrumbs';
-import { rememberPage } from '@/lib/recent-pages';
 import { navByRole } from './Sidebar';
 
 type ApiNotification = { id: string; title: string; body: string; type: string; read: boolean; link: string | null; createdAt: string };
@@ -79,10 +78,8 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
   const { t } = useLanguageStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // The phone's navigation bar shows this title once the large title scrolls away (iOS), and the
-  // side menu's "Recent" lists the page under it (src/lib/recent-pages.ts).
-  const pathname = usePathname();
-  useEffect(() => { setPageTitle(title); rememberPage(window.location.pathname + window.location.search, title); }, [title, pathname]);
+  // The phone's navigation bar shows this title once the large title scrolls away (iOS).
+  useEffect(() => { setPageTitle(title); }, [title]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

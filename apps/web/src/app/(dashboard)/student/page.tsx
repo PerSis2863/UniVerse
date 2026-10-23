@@ -176,7 +176,7 @@ export default function StudentDashboard() {
       </div>
     ),
     stats: (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="kpi-row grid grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-40 rounded-3xl skeleton" />)
         ) : !data ? null : (
