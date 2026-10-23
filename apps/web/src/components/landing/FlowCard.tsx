@@ -10,7 +10,8 @@ import { FLOWS } from './flows';
 // happens, one question, the two ways it can go, and the steps written out underneath. A light runs
 // through it step by step, without stopping or starting over: the line to the question, the
 // question, then each way in turn, with its step lit below (globals.css, "M13": .flow-comet,
-// .flow-on; still for Reduce Motion). Used on the landing page, sign-in and the owner console.
+// .flow-on; still for Reduce Motion). Always dark and nearly solid, so its greys stay readable on light pages too.
+// Used on the landing page, sign-in and the owner console.
 
 const PHASE = 2; // seconds per step; four steps a round
 
@@ -50,7 +51,7 @@ export function FlowCard({ flow: which = 'late', compact = false, className }: {
   // The lines: each comet leaves in the step before the box it points to, and arrives as it lights.
   const lines: [string, number][] = [['M30 50 L 40 50', 0], ['M60 50 C 65 50, 64 24, 69 24', 1], ['M60 50 C 65 50, 64 76, 69 76', 2]];
   return (
-    <div className={cn(glass, 'relative w-full max-w-[520px] p-5 text-start shadow-[0_40px_120px_-40px_rgba(99,102,241,0.55)]', className)}>
+    <div className={cn(glass, 'dark bg-[#0d0f1d]/95 relative w-full max-w-[520px] p-5 text-start shadow-[0_40px_120px_-40px_rgba(99,102,241,0.55)]', className)}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <span className="shrink-0 w-9 h-9 rounded-xl grid place-items-center bg-gradient-to-br from-indigo-500/25 to-fuchsia-500/25 border border-white/10">
@@ -90,7 +91,7 @@ export function FlowCard({ flow: which = 'late', compact = false, className }: {
       <ol className="pt-3 border-t border-white/[0.06] space-y-0.5" aria-label="Steps">
         {steps.map(({ step: [title, detail], tag }, i) => (
           <li key={tag} style={{ animationDelay: `${i * PHASE}s` }} className="flow-row grid grid-cols-[1.5rem_1fr] gap-x-2 rounded-lg px-2 py-1.5">
-            <span className="font-mono text-[11px] text-zinc-500 pt-0.5">0{i + 1}</span>
+            <span className="font-mono text-[11px] text-zinc-400 pt-0.5">0{i + 1}</span>
             <div className="min-w-0">
               <p className="flex items-baseline justify-between gap-3">
                 <span className="text-[13px] font-semibold text-zinc-100 truncate">{title}</span>

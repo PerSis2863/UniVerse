@@ -71,7 +71,7 @@ const bullets = (...l: string[]) => l.map((x) => `• ${x}`).join('\n');
 
 // ─── 1 · Blank canvas: start here (the banner across the top) ───────────────────────────────────
 function startHere() {
-  const s = section('start', '1 · Start here (Blank canvas)');
+  const s = section('start', '1 · Start here');
   s.text(0, 0, 'UniVerse, explained', 110);
   s.text(0, 170, lines(
     'One platform for a whole school, on the web and as a phone app.',
@@ -81,7 +81,7 @@ function startHere() {
   ), 42);
   // The numbers that describe it, as a strip under the words.
   ([['5', 'roles, one sign-in'], ['13', 'languages, 2 right to left'], ['8', 'quiz question types, auto-marked'], ['10', 'whiteboard templates'], ['$0', 'for students, always'], ['$5', 'a month to run (Cloudflare)']] as const)
-    .forEach(([n, t], i) => s.note(i * 520, 430, 490, 160, `${n}\n${t}`, [C.student, C.teacher, C.admin, C.parent, C.owner, C.tech][i], 30));
+    .forEach(([n, t], i) => s.note(i * 520, 430, 490, 160, `${n}\n${t}`, [C.student, C.teacher, C.admin, C.parent, C.owner, C.tech][i], 38));
   s.text(3200, 0, 'Colours on this board', 40);
   ([['Students', C.student], ['Teachers', C.teacher], ['School admins', C.admin], ['Parents', C.parent], ['Owner (you)', C.owner], ['Technical', C.tech]] as const)
     .forEach(([t, c], i) => s.note(3200 + (i % 2) * 400, 80 + Math.floor(i / 2) * 175, 380, 160, t, c, 28));
@@ -105,7 +105,7 @@ function startHere() {
 
 // ─── 2 · Mind map: every feature ────────────────────────────────────────────────────────────────
 function everyFeature() {
-  const s = section('map', '2 · Every feature (Mind map)');
+  const s = section('map', '2 · Every feature');
   const cx = 1300, cy = 900;
   s.raw({ type: 'ellipse', id: s.id('centre'), x: cx - 170, y: cy - 80, width: 340, height: 160, backgroundColor: C.owner, fillStyle: 'solid', label: { text: 'UniVerse', fontSize: 36 } } as El);
   const branches: [string, string, string][] = [
@@ -142,13 +142,13 @@ function everyFeature() {
     [60, 1460, 250, `Where things live\n${bullets('D1 database, R2 files', 'Durable Objects: live rooms', 'Firebase: sign-in')}`, C.tech],
     [1800, 1460, 250, `What it costs to run\n${bullets('Workers Paid: $5 a month', 'A guard pauses at 90%', 'AI with daily allowances')}`, C.tech],
   ];
-  corners.forEach(([x, y, h, t, c]) => s.note(x, y, 700, h, t, c, 17));
+  corners.forEach(([x, y, h, t, c]) => s.note(x, y, 700, h, t, c, 26));
   return s;
 }
 
 // ─── 3 · Kanban: where things stand ─────────────────────────────────────────────────────────────
 function whereThingsStand() {
-  const s = section('kanban', '3 · Where things stand (Kanban)');
+  const s = section('kanban', '3 · Where things stand');
   s.text(0, 0, 'Where things stand (23 Oct 2026)', 36);
   const cols: [string, string, string[]][] = [
     ['To do (owner decides)', C.parent, [
@@ -180,7 +180,7 @@ function whereThingsStand() {
 
 // ─── 4 · SWOT ──────────────────────────────────────────────────────────────────────────────────
 function swot() {
-  const s = section('swot', '4 · Strengths and risks (SWOT analysis)');
+  const s = section('swot', '4 · Strengths and risks');
   s.text(0, 0, 'UniVerse: strengths, weaknesses, opportunities, threats', 36);
   const q: [string, string, string][] = [
     ['Strengths', C.teacher, bullets('Everything a school needs in one place, one sign-in', 'Runs on Cloudflare’s network: fast everywhere, low cost', 'Works on phones, installs as an app, many languages', '  (Arabic and Urdu read right to left)', 'Accessible: screens checked with axe, light and dark', 'AI built in, with a daily allowance and an off switch')],
@@ -194,7 +194,7 @@ function swot() {
 
 // ─── 5 · Venn: website and phone app ────────────────────────────────────────────────────────────
 function webAndApp() {
-  const s = section('venn', '5 · Website and phone app (Venn diagram)');
+  const s = section('venn', '5 · Web and phone app');
   s.text(0, 0, 'Website and phone app: what’s the same, what’s different', 36);
   s.raw({ type: 'ellipse', x: 0, y: 80, width: 900, height: 820, backgroundColor: C.student, fillStyle: 'solid', opacity: 55 } as El);
   s.raw({ type: 'ellipse', x: 560, y: 80, width: 900, height: 820, backgroundColor: C.parent, fillStyle: 'solid', opacity: 55 } as El);
@@ -209,7 +209,7 @@ function webAndApp() {
 
 // ─── 6 · Timeline: how it was built ─────────────────────────────────────────────────────────────
 function howItWasBuilt() {
-  const s = section('timeline', '6 · How it was built (Timeline)');
+  const s = section('timeline', '6 · How it was built');
   s.text(0, 0, 'How UniVerse was built', 36);
   s.raw({ type: 'arrow', x: 0, y: 380, width: 2100, height: 0, points: [[0, 0], [2100, 0]], strokeWidth: 3 } as El);
   const events: [string, string][] = [
@@ -240,7 +240,7 @@ function howItWasBuilt() {
 
 // ─── 7 · Weekly planner: the owner's week ───────────────────────────────────────────────────────
 function ownersWeek() {
-  const s = section('week', '7 · The owner’s week (Weekly planner)');
+  const s = section('week', '7 · The owner’s week');
   s.text(0, 0, 'A week of looking after UniVerse (owner console)', 36);
   const days: [string, string][] = [
     ['Monday', 'Health check and Errors: anything red? The errors hub explains each one and can suggest a fix.'],
@@ -270,7 +270,7 @@ function ownersWeek() {
 
 // ─── 8 · Cornell notes: how it works, technically ───────────────────────────────────────────────
 function technical() {
-  const s = section('cornell', '8 · How it works, technically (Cornell notes)');
+  const s = section('cornell', '8 · How it works');
   s.text(0, 0, 'How UniVerse works, technically', 36);
   const rows: [string, string][] = [
     ['Where does it run?', 'On Cloudflare Workers: small servers in hundreds of cities, close to every user. The Next.js app is turned into a Worker by OpenNext.'],
@@ -298,7 +298,7 @@ function technical() {
 
 // ─── 9 · Retrospective ─────────────────────────────────────────────────────────────────────────
 function lookingBack() {
-  const s = section('retro', '9 · Looking back (Retrospective)');
+  const s = section('retro', '9 · Looking back');
   s.text(0, 0, 'Looking back on the latest work', 36);
   const cols: [string, string, string[]][] = [
     ['Went well 😊', C.teacher, ['The errors hub now explains problems and files bot noise away', 'Cloudflare “code had hung” found and fixed: each request gets its own database client', 'Folders and code boxes from the owner’s videos']],
@@ -315,7 +315,7 @@ function lookingBack() {
 
 // ─── 10 · Lesson plan: showing UniVerse to a new school ─────────────────────────────────────────
 function demoPlan() {
-  const s = section('lesson', '10 · Showing UniVerse to a new school (Lesson plan)');
+  const s = section('lesson', '10 · Showing it to a school');
   s.text(0, 0, 'Lesson plan: showing UniVerse to a new school (45 minutes)', 36);
   s.box(0, 70, 1500, 190, `Learning aims (by the end, the school can…)\n\n${bullets('sign in as a student, teacher and admin', 'find any feature with search', 'set up its first course and class')}`, C.owner, { fontSize: 20 });
   s.box(0, 280, 480, 460, `Starter (10 min)\n\n${bullets('Open the public demo (no account needed)', 'Show a student’s home page and Up next', 'Switch to dark mode and another language')}`, C.admin, { fontSize: 20 });
@@ -326,6 +326,8 @@ function demoPlan() {
   return s;
 }
 
+// Frame names are kept short (each area's template is named in the banner's list), so they don't
+// run into each other when the whole board is zoomed out.
 // Scaled copy of a shape: position, size, text and arrow points (frames are made separately).
 function place(e: El, k: number, dx: number, dy: number): El {
   const o = { ...e, x: (e.x ?? 0) * k + dx, y: (e.y ?? 0) * k + dy } as El & { fontSize?: number; label?: { fontSize?: number }; points?: [number, number][] };
