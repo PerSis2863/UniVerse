@@ -130,7 +130,7 @@ function DocPage({ id }: { id: string }) {
             {status.s === 'live' ? (status.canEdit ? 'Saved as you type' : 'You can read this document') : status.s === 'connecting' ? 'Connecting…' : status.s === 'unavailable' ? 'Not available right now' : status.canEdit ? 'Offline: changes are kept on this device and sync when you’re back' : 'Offline: reconnecting'}
             {data.course && <span>· {data.course.code}</span>}
             {data.chat && <span>· Canvas of {data.chat.name}</span>}
-            {editor && <WordCount editor={editor} />}
+            {editor && <WordCount editor={editor} docId={id} />}
 
           </p>
         </div>

@@ -81,10 +81,45 @@ export function PageSetupSheet({ page, canEdit, onChange, onClose }: { page: Pag
   );
 }
 
-/** Words, characters and roughly how long it takes to read. */
-export function WordCount({ editor }: { editor: Editor }) {
+const GOALS = [250, 500, 1000, 1500, 2000, 3000];
+const goalKey = (docId: string) => `uv-doc-goal:${docId}`;
+
+/**
+ * Words, characters and roughly how long it takes to read; tapped, a writing goal for this
+ * document (M17, kept on this device): a ring fills as you write and sparkles once it's reached.
+ */
+export function WordCount({ editor, docId }: { editor: Editor; docId?: string }) {
   const s = useEditorState({ editor, selector: ({ editor: e }) => { const st = e.storage as unknown as { characterCount?: { words: () => number; characters: () => number } }; return { words: st.characterCount?.words() ?? 0, chars: st.characterCount?.characters() ?? 0 }; } });
+  const [goal, setGoalState] = useState<number>(() => { try { return docId ? Number(localStorage.getItem(goalKey(docId))) || 0 : 0; } catch { return 0; } });
+  const [open, setOpen] = useState(false);
+  const setGoal = (n: number) => { setGoalState(n); setOpen(false); try { if (docId) { if (n) localStorage.setItem(goalKey(docId), String(n)); else localStorage.removeItem(goalKey(docId)); } } catch { /* private mode */ } };
   if (!s) return null;
   const minutes = Math.max(1, Math.round(s.words / 220));
-  return <span title={`${s.chars.toLocaleString()} characters · about ${minutes} minute${minutes === 1 ? '' : 's'} to read`}>· {s.words.toLocaleString()} word{s.words === 1 ? '' : 's'}</span>;
+  const label = `${s.words.toLocaleString()} word${s.words === 1 ? '' : 's'}`;
+  const title = `${s.chars.toLocaleString()} characters · about ${minutes} minute${minutes === 1 ? '' : 's'} to read`;
+  if (!docId) return <span title={title}>· {label}</span>;
+  const done = goal ? Math.min(1, s.words / goal) : 0, reached = !!goal && s.words >= goal;
+  return (
+    <span className="relative inline-flex items-center">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} title={`${title}. Set a writing goal`} className="inline-flex items-center gap-1 rounded-full hover:text-indigo-600 dark:hover:text-indigo-300">
+        · {goal ? (
+          <svg viewBox="0 0 20 20" className={cn('w-3.5 h-3.5 -rotate-90', reached && 'goal-reached')} aria-hidden>
+            <circle cx="10" cy="10" r="8" fill="none" strokeWidth="3" className="stroke-zinc-300 dark:stroke-white/15" />
+            <circle cx="10" cy="10" r="8" fill="none" strokeWidth="3" strokeLinecap="round" strokeDasharray={50.3} strokeDashoffset={50.3 * (1 - done)} className={cn('transition-[stroke-dashoffset] duration-500 ease-out', reached ? 'stroke-emerald-500' : 'stroke-fuchsia-500')} />
+          </svg>
+        ) : null}
+        {label}{goal ? ` of ${goal.toLocaleString()}` : ''}
+      </button>
+      {open && (
+        <span role="dialog" aria-label="Writing goal" className="menu-pop absolute start-0 top-6 z-40 w-56 p-2 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-xs text-zinc-700 dark:text-zinc-200">
+          <span className="block px-1 pb-1.5 font-semibold">Writing goal for this document</span>
+          <span className="grid grid-cols-3 gap-1">
+            {GOALS.map((g) => <button key={g} type="button" onClick={() => setGoal(g)} aria-pressed={goal === g} className={cn('py-1.5 rounded-lg font-semibold', goal === g ? 'bg-indigo-600 text-white' : 'bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10')}>{g.toLocaleString()}</button>)}
+          </span>
+          {goal > 0 && <button type="button" onClick={() => setGoal(0)} className="mt-1.5 w-full py-1 rounded-lg text-zinc-500 hover:text-rose-500">No goal</button>}
+          <span className="block px-1 pt-1.5 text-zinc-500">{goal ? (reached ? 'Goal reached. Well done!' : `${(goal - s.words).toLocaleString()} words to go`) : 'Pick a number of words to aim for.'}</span>
+        </span>
+      )}
+    </span>
+  );
 }

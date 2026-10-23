@@ -8,7 +8,7 @@ import { m as motion } from 'framer-motion';
 import { ChevronRight, CornerDownRight, FileSpreadsheet, FileText, FileUp, Loader2, Presentation, Repeat2 } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
-import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
+import { CollabTabs } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { spring } from '@/lib/motion';
@@ -89,7 +89,7 @@ export default function DocsPage() {
   return (
     <>
       <Topbar title="Docs" subtitle="Write together: notes, reports and plans, with comments and history" />
-      <SectionTabs tabs={COLLAB_TABS} />
+      <CollabTabs />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex flex-wrap justify-end gap-2">

@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useLayoutEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { m as motion } from 'framer-motion';
 import { useAuthStore } from '@/store/auth';
@@ -87,6 +88,7 @@ export const PROGRESS_TABS: SectionTab[] = [
 
 /** Whiteboards and shared code editors: one "Collaborate" entry in every portal. */
 export const COLLAB_TABS: SectionTab[] = [
+  { href: '/collab', label: 'Home' },
   { href: '/spaces', label: 'Spaces' },
   { href: '/boards', label: 'Whiteboards' },
   { href: '/docs', label: 'Docs' },
@@ -234,7 +236,7 @@ export const MONITORING_TABS: SectionTab[] = [
  * The tabs as an iOS segmented control. The tapped segment's thumb slides over at once (before its
  * page has loaded), so switching feels instant.
  */
-export function SectionTabs({ tabs, small, label = 'Sections' }: { tabs: SectionTab[]; small?: boolean; label?: string }) {
+export function SectionTabs({ tabs, small, label = 'Sections', end }: { tabs: SectionTab[]; small?: boolean; label?: string; /** Beside the tabs (e.g. Collaborate's focus timer). */ end?: React.ReactNode }) {
   const here = usePathname();
   const pathname = useOptimisticPath(here);
   const group = tabs.map((t) => t.href).join('|');
@@ -251,7 +253,7 @@ export function SectionTabs({ tabs, small, label = 'Sections' }: { tabs: Section
   }, [role, here, group]); // eslint-disable-line react-hooks/exhaustive-deps
   if (shown.length < 2) return null;
   return (
-    <nav aria-label={label} data-steady className={small ? 'px-4 sm:px-8 pt-3' : 'px-4 sm:px-8 pt-4'}>
+    <nav aria-label={label} data-steady className={cn(small ? 'px-4 sm:px-8 pt-3' : 'px-4 sm:px-8 pt-4', end && 'flex flex-wrap items-center gap-3')}>
       <div className={cn('ios-segmented', !small && 'large')}>
         {shown.map((t) => {
           const on = pathname === t.href || !!t.also?.includes(pathname);
@@ -263,8 +265,16 @@ export function SectionTabs({ tabs, small, label = 'Sections' }: { tabs: Section
           );
         })}
       </div>
+      {end}
     </nav>
   );
+}
+
+// The focus timer's pill loads on its own: most pages with tabs never show it.
+const FocusPill = dynamic(() => import('@/components/collab/FocusTimer').then((m) => m.FocusPill), { ssr: false });
+/** Collaborate's tabs, with the focus timer beside them while a round runs (M17). */
+export function CollabTabs() {
+  return <SectionTabs tabs={COLLAB_TABS} end={<FocusPill />} />;
 }
 
 /**

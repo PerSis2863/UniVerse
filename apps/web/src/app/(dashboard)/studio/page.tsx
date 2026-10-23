@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { m as motion } from 'framer-motion';
 import { ArrowLeft, AudioWaveform, Clapperboard, FileText, History, ImagePlus, Loader2, Mic, Minimize2, Music, Palette, Repeat2, type LucideIcon } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
-import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
+import { CollabTabs } from '@/components/layout/SectionTabs';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { SIZES } from '@/lib/studio';
 import { fadeUp, list } from '@/lib/motion';
@@ -41,7 +41,7 @@ const TOOLS: Tool[] = [
 
 export default function ToolsPage() {
   return (
-    <Suspense fallback={<><Topbar title="Tools" /><SectionTabs tabs={COLLAB_TABS} /><div className="flex-1 p-8"><ContentSkeleton variant="grid" /></div></>}>
+    <Suspense fallback={<><Topbar title="Tools" /><CollabTabs /><div className="flex-1 p-8"><ContentSkeleton variant="grid" /></div></>}>
       <Tools />
     </Suspense>
   );
@@ -71,7 +71,7 @@ function Tools() {
   return (
     <>
       <Topbar title="Tools" subtitle="Convert, compress and edit files: PDFs, photos, video and sound" />
-      <SectionTabs tabs={COLLAB_TABS} />
+      <CollabTabs />
       <input ref={pdfRef} type="file" accept="application/pdf" className="hidden" aria-label="Choose a PDF to edit" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPdf(f); e.target.value = ''; }} />
       <input ref={videoRef} type="file" accept="video/*,image/*" multiple className="hidden" aria-label="Choose videos to edit" onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; if (fs.length) setVideo(fs); }} />
       {editor ?? (

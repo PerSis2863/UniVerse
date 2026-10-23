@@ -5,7 +5,7 @@ import { LoadError } from '@/components/ui/LoadError';
 import { ChevronRight, GraduationCap, LayoutGrid, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
-import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
+import { CollabTabs } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { FeatureGuide } from '@/components/ui/FeatureGuide';
 
@@ -25,7 +25,7 @@ export default function SpacesPage() {
   return (
     <>
       <Topbar title="Spaces" subtitle="Each class and study group, with its call, documents, tasks and code in one place" />
-      <SectionTabs tabs={COLLAB_TABS} />
+      <CollabTabs />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6">
           {error && !data ? <LoadError onRetry={() => mutate()} message="Couldn’t load your spaces." /> : isLoading ? <div className="h-40 rounded-2xl skeleton" /> : !data?.courses.length && !data?.groups.length ? (

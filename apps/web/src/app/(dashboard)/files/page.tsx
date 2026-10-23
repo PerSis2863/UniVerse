@@ -6,7 +6,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { Download, Eye, FileText, ImageIcon, Search, Star, X } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
-import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
+import { CollabTabs } from '@/components/layout/SectionTabs';
 import { Segmented } from '@/components/ui/Segmented';
 import { FilesBrowser, FileViewer, StarButton } from '@/components/files/FilesBrowser';
 import { formatBytes } from '@/components/chat/chat-client';
@@ -67,7 +67,7 @@ export default function FilesPage() {
   return (
     <>
       <Topbar title="Files" subtitle="Your own files, and files from every class and group you’re in" />
-      <SectionTabs tabs={COLLAB_TABS} />
+      <CollabTabs />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">

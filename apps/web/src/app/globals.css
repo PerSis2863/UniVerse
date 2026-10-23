@@ -1851,3 +1851,22 @@ html.reduce-motion .deck-orbit::before { animation: none; }
   .msg-ring-new, .typing-dots i, .badge-bump, .menu-pop, .chat-glide, .msg-arrive-mine, .msg-arrive-theirs, .msg-orbit, .msg-halo, .send-in { animation: none; }
 }
 html.reduce-motion :is(.msg-ring-new, .typing-dots i, .badge-bump, .menu-pop, .chat-glide, .msg-arrive-mine, .msg-arrive-theirs, .msg-orbit, .msg-halo, .send-in) { animation: none; }
+
+/* ═══ M17 · Collaborate → Home (components/collab) ═════════════════════════════════════════════
+   The hero's slow two-tone aurora (one blurred layer drifting, transform only) and the activity
+   squares lighting up in turn. */
+.collab-hero { isolation: isolate; }
+.collab-hero::before { content: ''; position: absolute; inset: -40% -10% auto auto; width: 70%; height: 180%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, rgb(99 102 241 / 0.22), transparent 70%), radial-gradient(closest-side at 70% 60%, rgb(217 70 239 / 0.18), transparent 70%);
+  animation: collab-aurora 16s ease-in-out infinite alternate; }
+@keyframes collab-aurora { to { transform: translate3d(-18%, 12%, 0) rotate(8deg); } }
+.activity-cell { background: rgb(113 113 122 / 0.12); animation: activity-in 420ms var(--ease-glide) backwards; animation-delay: calc(var(--i, 0) * 14ms); }
+@keyframes activity-in { from { opacity: 0; transform: scale(0.6); } }
+@media (prefers-reduced-motion: reduce) { .collab-hero::before, .activity-cell { animation: none; } }
+html.reduce-motion :is(.activity-cell) { animation: none; }
+html.reduce-motion .collab-hero::before { animation: none; }
+/* A document's writing goal, reached: the ring pops once with a glow. */
+.goal-reached { animation: goal-pop 700ms var(--ease-glide); filter: drop-shadow(0 0 4px rgb(16 185 129 / 0.7)); }
+@keyframes goal-pop { 0% { transform: rotate(-90deg) scale(0.6); } 50% { transform: rotate(-90deg) scale(1.35); } 100% { transform: rotate(-90deg) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .goal-reached { animation: none; } }
+html.reduce-motion .goal-reached { animation: none; }

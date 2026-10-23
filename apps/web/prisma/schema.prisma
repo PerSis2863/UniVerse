@@ -131,6 +131,8 @@ model User {
   lastSeenAt         DateTime?
   /// Stage 5 · Q8: my home page's cards (order, hidden ones, daily goal), JSON (src/lib/home-layout.ts).
   homeLayout         String?
+  /// M17: pinned items on Collaborate → Home (JSON, src/lib/collab-pins.ts).
+  collabPins         String?
   /// Stage 5 · Q9: push / summary / off per kind, muted courses, the summary's hour and time zone, JSON
   /// (src/lib/notify-prefs.ts); digestAt: when my next daily summary is due (null: none).
   notifyPrefs        String?

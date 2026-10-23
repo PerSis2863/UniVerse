@@ -1987,6 +1987,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/chat\/snippets$/, () => ok({ max: 50, snippets: [{ id: 'sample-s1', title: 'Deadline reminder', shortcut: 'due', body: 'Hi {name}, a quick reminder: the lab report is due soon.' }] })],
   [/^\/api\/tasks$/, () => ok({ courses: [], boards: [], mine: [] })],
   [/^\/api\/docs$/, () => ok({ courses: [], docs: [] })],
+  [/^\/api\/collab\/pins$/, () => ok({ pins: [] })],
   [/^\/api\/spaces$/, () => ok({ courses: [], groups: [] })],
   [/^\/api\/docs\/([^/]+)$/, () => fail('Documents aren’t in the sample yet.', 404)],
   [/^\/api\/tasks\/([^/]+)$/, () => fail('Task boards aren’t in the sample yet.', 404)],
