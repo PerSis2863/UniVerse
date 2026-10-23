@@ -27,7 +27,7 @@ import { FolderCard, fileMeta } from './FolderCard';
 // share links that expire).
 
 export interface FileItem { id: string; name: string; url: string; mime: string; size: number; updatedAt: string; versions: number; by: string; canChange: boolean; starred: boolean }
-interface Listing { path: { id: string; name: string }[]; canManage: boolean; usage: number; quota: number; folders: { id: string; name: string; items: number; updatedAt?: string; preview?: { name: string; url: string; mime: string; size: number }[] }[]; files: FileItem[] }
+interface Listing { path: { id: string; name: string }[]; canManage: boolean; usage: number; quota: number; folders: { id: string; name: string; items: number; updatedAt?: string; preview?: ({ name: string; url: string; mime: string; size: number } | { name: string; folder: number })[] }[]; files: FileItem[] }
 interface ShareLink { id: string; path: string; expiresAt: string; opens: number }
 interface Detail {
   id: string; name: string; canChange: boolean; links: ShareLink[];
@@ -152,7 +152,7 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
                 <FolderCard
                   name={f.name} seed={f.id}
                   sub={`${f.items} ${f.items === 1 ? 'item' : 'items'}`}
-                  peek={(f.preview ?? []).map((x) => ({ name: x.name, meta: fileMeta(x.name, x.size), image: x.mime.startsWith('image/') ? x.url : undefined, kind: x.mime.startsWith('image/') ? 'image' : 'doc' }))}
+                  peek={(f.preview ?? []).map((x) => ('folder' in x ? { name: x.name, meta: `Folder · ${x.folder} item${x.folder === 1 ? '' : 's'}`, kind: 'folder' as const } : { name: x.name, meta: fileMeta(x.name, x.size), image: x.mime.startsWith('image/') ? x.url : undefined, kind: x.mime.startsWith('image/') ? 'image' as const : 'doc' as const }))}
                   onOpen={() => setFolder(f.id)}
                   action={data.canManage
                     ? { kind: 'more', label: `More for ${f.name}`, onClick: () => setFolderMenu(folderMenu === f.id ? null : f.id) }
