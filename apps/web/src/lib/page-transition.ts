@@ -56,7 +56,9 @@ export const EASE_GLIDE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 export function leaveFrames(m: PageMotion): Keyframe[] {
   if (m === 'shared') return [{ opacity: 1 }, { opacity: 0.4 }];
   const to = m === 'push' ? 'translate3d(-18px, 0, 0)' : m === 'pop' ? 'translate3d(18px, 0, 0)' : m === 'tab' ? 'translate3d(0, 4px, 0)' : 'translate3d(0, 6px, 0) scale(0.996)';
-  return [{ opacity: 1, transform: 'none' }, { opacity: m === 'tab' ? 0.35 : 0.4, transform: to }];
+  // M3: switching sections, the old page also goes soft (out of focus), as in the "Cadra" reel.
+  if (m === 'fade' || m === 'tab') return [{ opacity: 1, transform: 'none', filter: 'blur(0)' }, { opacity: m === 'tab' ? 0.35 : 0.4, transform: to, filter: 'blur(6px)' }];
+  return [{ opacity: 1, transform: 'none' }, { opacity: 0.4, transform: to }];
 }
 
 /** The new page coming in. */

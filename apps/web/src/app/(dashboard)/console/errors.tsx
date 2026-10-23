@@ -4,7 +4,8 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Bot, CheckCircle2, ChevronDown, Copy, ExternalLink, EyeOff, Loader2, RotateCcw, Server, Monitor, Sparkles, User } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Bot, Bug, CheckCircle2, ChevronLeft, ChevronRight, Copy, ExternalLink, EyeOff, Lightbulb, Loader2, RotateCcw, Search, Server, Monitor, ShieldCheck, Sparkles, User, Users, Wrench } from 'lucide-react';
+import { unsupportedBrowser } from '@/lib/browser-support';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { SearchBox, card, fetcher, matches } from './shared';
@@ -100,9 +101,28 @@ function Diagnosis({ text }: { text: string }) {
   );
 }
 
+/** The AI diagnosis' parts ("**Likely cause:** …"), when it has the usual shape. */
+function diagnosisParts(text: string | null) {
+  if (!text) return null;
+  const part = (label: string) => new RegExp(`\\*\\*${label}:\\*\\*\\s*([\\s\\S]*?)(?=\\n\\n\\*\\*|$)`).exec(text)?.[1]?.trim() ?? null;
+  const cause = part('Likely cause'), where = part('Where to look'), fix = part('Suggested fix');
+  return cause || where || fix ? { cause, where, fix } : null;
+}
+
+const STATUS: Record<ErrorReport['status'], { label: string; cls: string }> = {
+  NEW: { label: 'New', cls: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300' },
+  DIAGNOSED: { label: 'Diagnosed', cls: 'bg-sky-500/10 text-sky-600 dark:text-sky-300' },
+  RESOLVED: { label: 'Resolved', cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300' },
+  IGNORED: { label: 'Ignored', cls: 'bg-zinc-500/10 text-zinc-500' },
+};
+const DOT: Record<string, string> = { high: 'bg-rose-500', medium: 'bg-amber-400', low: 'bg-zinc-400' };
+const chip = 'inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full';
+const action = 'inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-sm font-semibold disabled:opacity-60';
+
 export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => void; focus?: { id: string; status: string } }) {
   // The console search opens one problem, in the list it belongs to.
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>(focus && (focus.status === 'RESOLVED' || focus.status === 'IGNORED') ? focus.status : 'OPEN');
+  // The problem shown in detail (on a phone the details replace the list until "All problems").
   const [open, setOpen] = useState<string | null>(focus?.id ?? null);
   const [busy, setBusy] = useState<string | null>(null);
   const [q, setQ] = useState('');
@@ -116,6 +136,8 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
     .sort((a, b) => (sort === 'often' ? b.count - a.count : sort === 'people' ? b.users - a.users : 0));
   const sum = data?.summary;
   const peak = Math.max(1, ...(sum?.perDay ?? []).map((d) => Math.max(d.new, d.seen)));
+  // On a computer the first problem is shown when none is chosen.
+  const current = items.find((e) => e.id === open) ?? items[0] ?? null;
 
   const bulk = async (status: 'RESOLVED' | 'IGNORED' | 'NEW') => {
     setBusy('bulk');
@@ -158,6 +180,7 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
     try {
       await api.patch(`/owner/errors/${id}`, { status });
       toast.success(status === 'RESOLVED' ? 'Marked resolved. It will reopen if it happens again.' : status === 'IGNORED' ? 'Ignored' : 'Reopened');
+      if (open === id) setOpen(null);
       mutate();
     } catch {
       toast.error('Could not update');
@@ -166,14 +189,22 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
     }
   };
 
+  const kpis = sum ? ([
+    { label: 'Open problems', value: openCount, hint: `${sum.openServer} server · ${sum.openBrowser} browser`, icon: Bug, tone: 'ink' },
+    { label: 'High severity', value: sum.openHigh, hint: 'open, from the AI diagnosis', icon: AlertTriangle, tone: sum.openHigh ? 'alert' : 'soft' },
+    { label: 'People affected', value: sum.peopleAffected, hint: `${sum.timesSeen} times in total`, icon: Users, tone: 'plain' },
+    { label: 'Seen today', value: sum.seenToday, hint: `${sum.newToday} new today`, icon: Activity, tone: 'plain' },
+  ] as const) : [];
+
   return (
     <div className="space-y-4">
+      {/* The headline: what this is, and the one action that matters most. */}
       <div className={cn(card, 'p-5 flex flex-col sm:flex-row sm:items-center gap-4')}>
-        <div className="w-11 h-11 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0"><Bot className="w-5 h-5" /></div>
-        <div className="flex-1 text-sm text-zinc-600 dark:text-zinc-400">
-          <p className="font-semibold text-zinc-900 dark:text-white">Automatic error monitoring</p>
-          Crashes in browsers, the app and on the server are collected and grouped. Each day, AI diagnoses new problems and you get an email digest.
-          Pages that break after an update reload themselves.
+        <div className="w-11 h-11 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shrink-0"><Bot className="w-5 h-5" /></div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">Error monitoring</p>
+          <p className="font-semibold text-zinc-900 dark:text-white">{openCount ? `${openCount} open problem${openCount === 1 ? '' : 's'} to look at` : 'Nothing open: everything people ran into has been dealt with'}</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">Crashes in browsers and on the server are collected and grouped. Each day AI diagnoses the new ones; outdated browsers and bots are filed as ignored by themselves.</p>
         </div>
         <button onClick={() => diagnose()} disabled={!!busy} className="btn-primary shrink-0">
           {busy === 'all' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Diagnose new
@@ -181,158 +212,248 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
       </div>
 
       {sum && (
-        <div className="grid lg:grid-cols-[1fr_1.2fr] gap-4">
+        <div className="grid lg:grid-cols-[1.25fr_1fr] gap-4">
           <div className="grid grid-cols-2 gap-3">
-            {([
-              ['Open problems', openCount, `${sum.openServer} server · ${sum.openBrowser} browser`],
-              ['High severity', sum.openHigh, 'open, from AI diagnosis'],
-              ['People affected', sum.peopleAffected, `${sum.timesSeen} times in total`],
-              ['Seen today', sum.seenToday, `${sum.newToday} new today`],
-            ] as const).map(([label, value, hint]) => (
-              <div key={label} className={cn(card, 'p-4')}>
-                <p className={cn('text-2xl font-bold', label === 'High severity' && value ? 'text-rose-500' : 'text-zinc-900 dark:text-white')}>{value}</p>
-                <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">{label}</p>
-                <p className="text-[11px] text-zinc-400">{hint}</p>
+            {kpis.map((k) => (
+              <div key={k.label} className={cn('rounded-2xl p-4 border', k.tone === 'ink' ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900' : k.tone === 'alert' ? 'bg-rose-500/[0.08] border-rose-500/20' : k.tone === 'soft' ? 'bg-indigo-500/[0.07] border-indigo-500/15' : 'bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-white/[0.06]')}>
+                <p className={cn('flex items-center gap-1.5 text-xs font-medium', k.tone === 'ink' ? 'text-white/70 dark:text-zinc-500' : 'text-zinc-500')}>
+                  <span className={cn('w-6 h-6 rounded-lg flex items-center justify-center', k.tone === 'ink' ? 'bg-white/10 dark:bg-zinc-900/10' : 'bg-zinc-900/[0.05] dark:bg-white/[0.06]')}><k.icon className="w-3.5 h-3.5" /></span>{k.label}
+                </p>
+                <p className={cn('mt-3 text-3xl font-bold tabular-nums tracking-tight', k.tone === 'alert' ? 'text-rose-600 dark:text-rose-400' : k.tone === 'ink' ? '' : 'text-zinc-900 dark:text-white')}>{k.value}</p>
+                <p className={cn('mt-1 text-[11px]', k.tone === 'ink' ? 'text-white/60 dark:text-zinc-500' : 'text-zinc-500')}>{k.hint}</p>
               </div>
             ))}
           </div>
-          <div className={cn(card, 'p-4')}>
-            <p className="text-sm font-semibold text-zinc-900 dark:text-white">Problems per day · 14 days</p>
-            <div className="mt-3 flex items-end gap-1 h-28" role="img" aria-label="Problems per day">
+          <div className={cn(card, 'p-4 flex flex-col')}>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5"><BarChart3 className="w-4 h-4 text-zinc-400" /> Problems per day</p>
+              <span className="text-[11px] text-zinc-500">last 14 days</span>
+            </div>
+            <div className="mt-3 flex-1 min-h-28 flex items-end gap-1" role="img" aria-label={`Problems per day: ${sum.perDay.reduce((n, d) => n + d.new, 0)} new in 14 days`}>
               {sum.perDay.map((d) => (
-                <div key={d.day} className="flex-1 flex items-end gap-px h-full" title={`${format(new Date(d.day), 'd MMM')}: ${d.new} new, ${d.seen} still happening`}>
-                  <div className="flex-1 rounded-t bg-rose-500/80" style={{ height: `${Math.max(d.new ? 6 : 2, (d.new / peak) * 100)}%`, opacity: d.new ? 1 : 0.25 }} />
-                  <div className="flex-1 rounded-t bg-amber-400/80" style={{ height: `${Math.max(d.seen ? 6 : 2, (d.seen / peak) * 100)}%`, opacity: d.seen ? 1 : 0.25 }} />
+                <div key={d.day} className="group relative flex-1 flex items-end gap-px h-full">
+                  <div className="flex-1 rounded-t-md bg-rose-500/85" style={{ height: `${Math.max(d.new ? 6 : 2, (d.new / peak) * 100)}%`, opacity: d.new ? 1 : 0.2 }} />
+                  <div className="flex-1 rounded-t-md bg-amber-400/85" style={{ height: `${Math.max(d.seen ? 6 : 2, (d.seen / peak) * 100)}%`, opacity: d.seen ? 1 : 0.2 }} />
+                  <span className="pointer-events-none absolute bottom-full mb-1 start-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-zinc-900 text-white text-[11px] px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">{format(new Date(d.day), 'd MMM')}: {d.new} new · {d.seen} seen</span>
                 </div>
               ))}
             </div>
-            <p className="mt-2 text-[11px] text-zinc-500 flex gap-3"><span><span className="inline-block w-2 h-2 rounded-sm bg-rose-500 me-1" />new problems</span><span><span className="inline-block w-2 h-2 rounded-sm bg-amber-400 me-1" />last seen that day</span></p>
+            <div className="mt-1 flex justify-between text-[10px] text-zinc-400 tabular-nums" aria-hidden>
+              {sum.perDay.length > 0 && <><span>{format(new Date(sum.perDay[0].day), 'd MMM')}</span><span>{format(new Date(sum.perDay[sum.perDay.length - 1].day), 'd MMM')}</span></>}
+            </div>
+            <p className="mt-2 text-[11px] text-zinc-500 flex gap-3"><span><span className="inline-block w-2 h-2 rounded-sm bg-rose-500 me-1" />new problems</span><span><span className="inline-block w-2 h-2 rounded-sm bg-amber-400 me-1" />still happening that day</span></p>
           </div>
         </div>
       )}
 
-      <SearchBox value={q} onChange={setQ} placeholder="Search errors (message, page, browser, person, diagnosis)" />
-      <div className="flex flex-wrap gap-1 items-center">
-        {FILTERS.map((f) => (
-          <button key={f.id} onClick={() => setFilter(f.id)} className={cn('relative isolate px-3.5 py-1.5 rounded-full text-sm font-semibold', filter === f.id ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{filter === f.id && <TabPill id="pill-7-0" />}
-            {f.label}{f.id === 'OPEN' && openCount ? ` (${openCount})` : f.id !== 'OPEN' && data?.counts[f.id] ? ` (${data.counts[f.id]})` : ''}
-          </button>
-        ))}
-        <span className="flex-1" />
-        <select aria-label="Where" value={source} onChange={(e) => setSource(e.target.value as typeof source)} className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm">
-          <option value="ALL">Server and browser</option><option value="SERVER">Server only</option><option value="CLIENT">Browser only</option>
-        </select>
-        <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900 px-2 py-1.5 text-sm">
-          {SORTS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
-        </select>
-      </div>
-      {picked.size > 0 && (
-        <div className={cn(card, 'p-3 flex flex-wrap items-center gap-2 sticky top-2 z-10')}>
-          <span className="text-sm font-semibold text-zinc-900 dark:text-white me-auto">{picked.size} selected</span>
-          {filter === 'OPEN' ? (
-            <>
-              <button onClick={() => bulk('RESOLVED')} disabled={!!busy} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold"><CheckCircle2 className="w-4 h-4" /> Resolve</button>
-              <button onClick={() => bulk('IGNORED')} disabled={!!busy} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><EyeOff className="w-4 h-4" /> Ignore</button>
-            </>
-          ) : (
-            <button onClick={() => bulk('NEW')} disabled={!!busy} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><RotateCcw className="w-4 h-4" /> Reopen</button>
+      <div className="grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] gap-4 items-start">
+        {/* The list */}
+        <div className={cn('space-y-3 min-w-0', open && 'hidden lg:block')}>
+          <div className="flex flex-wrap gap-1 items-center">
+            {FILTERS.map((f) => (
+              <button key={f.id} onClick={() => { setFilter(f.id); setOpen(null); setPicked(new Set()); }} className={cn('relative isolate px-3.5 py-1.5 rounded-full text-sm font-semibold', filter === f.id ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{filter === f.id && <TabPill id="pill-7-0" />}
+                {f.label}{f.id === 'OPEN' && openCount ? ` (${openCount})` : f.id !== 'OPEN' && data?.counts[f.id] ? ` (${data.counts[f.id]})` : ''}
+              </button>
+            ))}
+          </div>
+          <SearchBox value={q} onChange={setQ} placeholder="Search message, page, browser, person" />
+          <div className="flex gap-2">
+            <select aria-label="Where" value={source} onChange={(e) => setSource(e.target.value as typeof source)} className={cn(select, 'flex-1')}>
+              <option value="ALL">Server and browser</option><option value="SERVER">Server only</option><option value="CLIENT">Browser only</option>
+            </select>
+            <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className={cn(select, 'flex-1')}>
+              {SORTS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+            </select>
+          </div>
+          {picked.size > 0 && (
+            <div className={cn(card, 'p-2.5 flex flex-wrap items-center gap-2 sticky top-2 z-10')}>
+              <span className="text-sm font-semibold text-zinc-900 dark:text-white me-auto ps-1">{picked.size} selected</span>
+              {filter === 'OPEN' ? (
+                <>
+                  <button onClick={() => bulk('RESOLVED')} disabled={!!busy} className={cn(action, 'bg-emerald-600 text-white')}><CheckCircle2 className="w-4 h-4" /> Resolve</button>
+                  <button onClick={() => bulk('IGNORED')} disabled={!!busy} className={cn(action, 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}><EyeOff className="w-4 h-4" /> Ignore</button>
+                </>
+              ) : (
+                <button onClick={() => bulk('NEW')} disabled={!!busy} className={cn(action, 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}><RotateCcw className="w-4 h-4" /> Reopen</button>
+              )}
+              <button onClick={() => setPicked(new Set())} className="text-sm text-zinc-500 px-2">Clear</button>
+            </div>
           )}
-          <button onClick={() => setPicked(new Set())} className="text-sm text-zinc-500 px-2">Clear</button>
-        </div>
-      )}
 
-      {isLoading ? (
-        <ContentSkeleton variant="list" />
-      ) : data?.items.length && !items.length ? (
-        <p className="text-sm text-zinc-500">No errors match.</p>
-      ) : !data?.items.length ? (
-        <div className={cn(card, 'p-10 text-center')}>
-          <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500" />
-          <p className="mt-3 font-semibold text-zinc-900 dark:text-white">{filter === 'OPEN' ? 'No open problems' : 'Nothing here'}</p>
-          <p className="text-sm text-zinc-500">{filter === 'OPEN' ? 'Everything people ran into has been dealt with.' : ''}</p>
+          {isLoading ? (
+            <ContentSkeleton variant="list" />
+          ) : data?.items.length && !items.length ? (
+            <p className="text-sm text-zinc-500 px-1">No problems match.</p>
+          ) : !data?.items.length ? (
+            <div className={cn(card, 'p-10 text-center')}>
+              <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500" />
+              <p className="mt-3 font-semibold text-zinc-900 dark:text-white">{filter === 'OPEN' ? 'No open problems' : 'Nothing here'}</p>
+              <p className="text-sm text-zinc-500">{filter === 'OPEN' ? 'Everything people ran into has been dealt with.' : ''}</p>
+            </div>
+          ) : (
+            <ul className={cn(card, 'divide-y divide-zinc-100 dark:divide-white/[0.05] overflow-hidden')}>
+              {items.map((e) => {
+                const on = current?.id === e.id;
+                const bot = e.source === 'CLIENT' && !!unsupportedBrowser(e.userAgent);
+                return (
+                  <li key={e.id} className={cn('relative flex items-start gap-2 ps-3 pe-2 transition-colors', on ? 'bg-indigo-500/[0.06] dark:bg-white/[0.04]' : 'hover:bg-zinc-50 dark:hover:bg-white/[0.02]')}>
+                    {on && <span aria-hidden className="absolute inset-y-2 start-0 w-1 rounded-e-full bg-indigo-500" />}
+                    <input type="checkbox" aria-label={`Select: ${titleOf(e)}`} checked={picked.has(e.id)} className="mt-4 shrink-0"
+                      onChange={() => setPicked((cur) => { const next = new Set(cur); if (next.has(e.id)) next.delete(e.id); else next.add(e.id); return next; })} />
+                    <button onClick={() => setOpen(e.id)} aria-current={on ? 'true' : undefined} className="min-w-0 flex-1 text-start py-3 flex items-start gap-2.5">
+                      <span aria-hidden className={cn('mt-1.5 w-2 h-2 rounded-full shrink-0', DOT[e.severity ?? ''] ?? 'bg-zinc-300 dark:bg-zinc-600')} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-zinc-900 dark:text-white line-clamp-2 break-words">{titleOf(e)}</span>
+                        <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500">
+                          {e.source === 'SERVER' ? <Server className="w-3 h-3" /> : <Monitor className="w-3 h-3" />}
+                          <span className="truncate max-w-[10rem]">{e.path ?? 'unknown page'}</span>
+                          <span className="tabular-nums">{e.count}× · {e.users} {e.users === 1 ? 'person' : 'people'}</span>
+                          <span>{formatDistanceToNow(new Date(e.lastSeen), { addSuffix: true })}</span>
+                          {e.status === 'NEW' && <span className={cn(chip, STATUS.NEW.cls)}>New</span>}
+                          {bot && <span className={cn(chip, 'bg-zinc-500/10 text-zinc-500')}>Old browser or bot</span>}
+                        </span>
+                      </span>
+                      <ChevronRight className="w-4 h-4 mt-1 text-zinc-300 dark:text-zinc-600 shrink-0 lg:hidden" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
-      ) : (
-        <div className="space-y-2">
-          {items.map((e) => {
-            const expanded = open === e.id;
-            const title = titleOf(e);
-            return (
-              <div key={e.id} className={cn(card, 'flex items-start')}>
-                <input type="checkbox" aria-label="Select" checked={picked.has(e.id)} className="mt-5 ms-4 shrink-0"
-                  onChange={() => setPicked((cur) => { const next = new Set(cur); if (next.has(e.id)) next.delete(e.id); else next.add(e.id); return next; })} />
-                <div className="min-w-0 flex-1">
-                <button onClick={() => setOpen(expanded ? null : e.id)} className="w-full text-start p-4 flex items-start gap-3">
-                  {e.source === 'SERVER' ? <Server className="w-4 h-4 mt-1 text-zinc-400 shrink-0" /> : <Monitor className="w-4 h-4 mt-1 text-zinc-400 shrink-0" />}
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-zinc-900 dark:text-white break-words">{title}</p>
-                    <p className="mt-0.5 text-xs text-zinc-500 flex flex-wrap gap-x-3 gap-y-1">
-                      <span>{e.path ?? 'unknown page'}</span>
-                      <span>{e.count}× · {e.users} {e.users === 1 ? 'person' : 'people'}</span>
-                      <span>last {formatDistanceToNow(new Date(e.lastSeen), { addSuffix: true })}</span>
-                      {e.lastUser && <span>{e.lastUser.name}</span>}
-                      {e.status === 'NEW' && <span className="font-semibold text-indigo-500">New</span>}
-                    </p>
-                  </div>
-                  {e.severity && <span className={cn('text-[10px] font-bold uppercase px-2 py-0.5 rounded-full shrink-0', SEVERITY[e.severity])}>{e.severity}</span>}
-                  <ChevronDown className={cn('w-4 h-4 text-zinc-400 shrink-0 transition-transform', expanded && 'rotate-180')} />
-                </button>
-                {expanded && (
-                  <div className="px-4 pb-4 space-y-4 border-t border-zinc-100 dark:border-white/[0.06] pt-4">
-                    {e.diagnosis ? (
-                      <div className="rounded-xl bg-indigo-500/5 border border-indigo-500/15 p-4">
-                        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-indigo-500 flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> AI diagnosis</p>
-                        <Diagnosis text={e.diagnosis} />
-                      </div>
-                    ) : (
-                      <p className="text-sm text-zinc-500">Not diagnosed yet.</p>
-                    )}
-                    <dl className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">
-                      <div><dt className="text-xs text-zinc-500">What it means</dt><dd className="text-zinc-800 dark:text-zinc-200">{KIND[e.kind] ?? 'An error the app caught and recorded.'}</dd></div>
-                      <div><dt className="text-xs text-zinc-500">Where</dt><dd className="text-zinc-800 dark:text-zinc-200 break-all">{e.source === 'SERVER' ? 'On the server' : 'In the browser'} · {e.path ?? 'unknown page'}</dd></div>
-                      <div><dt className="text-xs text-zinc-500">How often</dt><dd className="text-zinc-800 dark:text-zinc-200">{e.count} {e.count === 1 ? 'time' : 'times'}, {e.users} {e.users === 1 ? 'person' : 'people'}</dd></div>
-                      <div><dt className="text-xs text-zinc-500">First seen</dt><dd className="text-zinc-800 dark:text-zinc-200">{format(new Date(e.firstSeen), 'd MMM yyyy, HH:mm')}</dd></div>
-                      <div><dt className="text-xs text-zinc-500">Last seen</dt><dd className="text-zinc-800 dark:text-zinc-200">{format(new Date(e.lastSeen), 'd MMM yyyy, HH:mm')}</dd></div>
-                      <div><dt className="text-xs text-zinc-500">Device</dt><dd className="text-zinc-800 dark:text-zinc-200">{device(e.userAgent) ?? (e.source === 'SERVER' ? 'Server' : 'Unknown')}</dd></div>
-                      {e.lastUser && (
-                        <div><dt className="text-xs text-zinc-500">Last person</dt><dd>
-                          <button onClick={() => onPerson?.(e.lastUser!.id)} disabled={!onPerson} className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-300 hover:underline"><User className="w-3.5 h-3.5" />{e.lastUser.name}</button>
-                          <span className="text-xs text-zinc-500"> · {e.lastUser.role.toLowerCase()}</span>
-                        </dd></div>
-                      )}
-                    </dl>
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1">Error</p>
-                      <pre className="text-xs whitespace-pre-wrap break-words rounded-xl bg-zinc-50 dark:bg-black/30 p-3 text-zinc-700 dark:text-zinc-300 max-h-64 overflow-auto">{e.message}{e.stack ? `\n\n${e.stack}` : ''}</pre>
-                      <p className="mt-2 text-xs text-zinc-500">
-                        {e.source === 'SERVER' ? 'Server' : 'Browser'} · {e.kind} · first seen {formatDistanceToNow(new Date(e.firstSeen), { addSuffix: true })}
-                        {e.userAgent ? ` · ${e.userAgent.slice(0, 90)}` : ''}
-                      </p>
-                    </div>
-                    <AiAgents e={e} busy={busy === e.id} onDiagnose={(model) => diagnose([e.id], model)} onRepaired={() => mutate()} />
-                    <div className="flex flex-wrap gap-2">
-                      <button onClick={() => void copy(e)} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><Copy className="w-4 h-4" /> Copy details</button>
-                      {e.source !== 'SERVER' && e.path && e.path.startsWith('/') && (
-                        <a href={e.path} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-zinc-200 dark:border-white/10 text-sm font-semibold text-zinc-700 dark:text-zinc-200"><ExternalLink className="w-4 h-4" /> Open page</a>
-                      )}
-                      {e.status !== 'RESOLVED' && e.status !== 'IGNORED' ? (
-                        <>
-                          <button onClick={() => setStatus(e.id, 'RESOLVED')} disabled={!!busy} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold disabled:opacity-60"><CheckCircle2 className="w-4 h-4" /> Resolved</button>
-                          <button onClick={() => setStatus(e.id, 'IGNORED')} disabled={!!busy} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-sm font-semibold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-60"><EyeOff className="w-4 h-4" /> Ignore</button>
-                        </>
-                      ) : (
-                        <button onClick={() => setStatus(e.id, 'NEW')} disabled={!!busy} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-60"><RotateCcw className="w-4 h-4" /> Reopen</button>
-                      )}
-                    </div>
-                  </div>
-                )}
-                </div>
-              </div>
-            );
-          })}
+
+        {/* The details of the chosen problem */}
+        <div className={cn('min-w-0 lg:sticky lg:top-20', !open && 'hidden lg:block')}>
+          {current ? (
+            <ErrorDetail key={current.id} e={current} busy={busy} onBack={() => setOpen(null)} onPerson={onPerson}
+              onStatus={(st) => void setStatus(current.id, st)} onCopy={() => void copy(current)} onDiagnose={(model) => diagnose([current.id], model)} onRepaired={() => mutate()} />
+          ) : !isLoading && (
+            <div className={cn(card, 'p-10 text-center text-sm text-zinc-500 hidden lg:block')}>Choose a problem to see its details.</div>
+          )}
         </div>
-      )}
+      </div>
       <CspReports />
     </div>
+  );
+}
+
+/** One problem in detail: what happened, the AI's reading of it, the technical record, and what to do. */
+function ErrorDetail({ e, busy, onBack, onPerson, onStatus, onCopy, onDiagnose, onRepaired }: {
+  e: ErrorReport; busy: string | null; onBack: () => void; onPerson?: (id: string) => void;
+  onStatus: (status: 'RESOLVED' | 'IGNORED' | 'NEW') => void; onCopy: () => void; onDiagnose: (model?: string) => void; onRepaired: () => void;
+}) {
+  const [tab, setTab] = useState<'overview' | 'technical' | 'fix'>('overview');
+  const parts = diagnosisParts(e.diagnosis);
+  const bot = e.source === 'CLIENT' ? unsupportedBrowser(e.userAgent) : null;
+  const closed = e.status === 'RESOLVED' || e.status === 'IGNORED';
+  const facts: [string, React.ReactNode][] = [
+    ['Times seen', <span key="c" className="tabular-nums">{e.count}</span>],
+    ['People', <span key="u" className="tabular-nums">{e.users}</span>],
+    ['First seen', format(new Date(e.firstSeen), 'd MMM yyyy, HH:mm')],
+    ['Last seen', `${format(new Date(e.lastSeen), 'd MMM, HH:mm')} · ${formatDistanceToNow(new Date(e.lastSeen), { addSuffix: true })}`],
+    ['Where', `${e.source === 'SERVER' ? 'Server' : 'Browser'} · ${e.path ?? 'unknown page'}`],
+    ['Device', device(e.userAgent) ?? (e.source === 'SERVER' ? 'Server' : 'Unknown')],
+  ];
+  return (
+    <article className={cn(card, 'overflow-hidden')} aria-label={titleOf(e)}>
+      <header className="p-5 border-b border-zinc-100 dark:border-white/[0.06] space-y-3">
+        <button type="button" onClick={onBack} className="lg:hidden -ms-1 inline-flex items-center gap-1 text-sm font-semibold text-tint-text"><ChevronLeft className="w-4 h-4" /> All problems</button>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className={cn(chip, STATUS[e.status].cls)}>{STATUS[e.status].label}</span>
+          {e.severity && <span className={cn(chip, 'uppercase', SEVERITY[e.severity])}>{e.severity}</span>}
+          <span className={cn(chip, 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300')}>{e.source === 'SERVER' ? <Server className="w-3 h-3" /> : <Monitor className="w-3 h-3" />}{e.source === 'SERVER' ? 'Server' : 'Browser'} · {e.kind}</span>
+        </div>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-white break-words leading-snug">{titleOf(e)}</h3>
+        <div className="flex flex-wrap gap-2">
+          {!closed ? (
+            <>
+              <button onClick={() => onStatus('RESOLVED')} disabled={!!busy} className={cn(action, 'bg-emerald-600 hover:bg-emerald-500 text-white')}><CheckCircle2 className="w-4 h-4" /> Mark resolved</button>
+              <button onClick={() => onStatus('IGNORED')} disabled={!!busy} className={cn(action, 'bg-[var(--fill)] text-zinc-700 dark:text-zinc-200')}><EyeOff className="w-4 h-4" /> Ignore</button>
+            </>
+          ) : (
+            <button onClick={() => onStatus('NEW')} disabled={!!busy} className={cn(action, 'bg-[var(--fill)] text-zinc-700 dark:text-zinc-200')}><RotateCcw className="w-4 h-4" /> Reopen</button>
+          )}
+          <button onClick={onCopy} className={cn(action, 'bg-[var(--fill)] text-zinc-700 dark:text-zinc-200')}><Copy className="w-4 h-4" /> Copy details</button>
+          {e.source !== 'SERVER' && e.path && e.path.startsWith('/') && (
+            <a href={e.path} target="_blank" rel="noopener noreferrer" className={cn(action, 'bg-[var(--fill)] text-zinc-700 dark:text-zinc-200')}><ExternalLink className="w-4 h-4" /> Open page</a>
+          )}
+        </div>
+      </header>
+
+      {bot && (
+        <p className="mx-5 mt-4 rounded-xl bg-zinc-500/[0.07] p-3 text-sm text-zinc-700 dark:text-zinc-300 flex gap-2">
+          <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0 text-emerald-500" />
+          <span>This came from {bot}, not from a fault in UniVerse. {closed ? '' : 'It can be ignored safely.'}</span>
+        </p>
+      )}
+
+      <dl className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-zinc-100 dark:bg-white/[0.05] mt-4 border-y border-zinc-100 dark:border-white/[0.05]">
+        {facts.map(([k, v]) => (
+          <div key={k} className="bg-white dark:bg-zinc-900 px-4 py-3 min-w-0">
+            <dt className="text-[11px] font-medium text-zinc-500">{k}</dt>
+            <dd className="mt-0.5 text-sm font-semibold text-zinc-900 dark:text-white break-words">{v}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="px-5 pt-4" role="tablist" aria-label="Problem details">
+        <div className="inline-flex rounded-full bg-[var(--fill)] p-1 gap-1">
+          {([['overview', 'Overview'], ['technical', 'Technical'], ['fix', 'Fix with AI']] as const).map(([id, label]) => (
+            <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
+              className={cn('px-3.5 py-1.5 rounded-full text-sm font-semibold transition-colors', tab === id ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500')}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="p-5 space-y-4" role="tabpanel">
+        {tab === 'overview' && (
+          <>
+            <section>
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">What it means</h4>
+              <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">{KIND[e.kind] ?? 'An error the app caught and recorded.'}</p>
+            </section>
+            {e.diagnosis ? (
+              <section className="rounded-2xl bg-indigo-500/[0.05] border border-indigo-500/15 p-4">
+                <h4 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-indigo-500 flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> AI diagnosis</h4>
+                {parts ? (
+                  <div className="grid gap-3">
+                    {([['Likely cause', parts.cause, Lightbulb], ['Where to look', parts.where, Search], ['Suggested fix', parts.fix, Wrench]] as const).filter(([, v]) => v).map(([label, text, Icon]) => (
+                      <div key={label} className="flex gap-3">
+                        <span className="w-7 h-7 rounded-lg bg-white dark:bg-white/[0.06] text-indigo-500 flex items-center justify-center shrink-0"><Icon className="w-3.5 h-3.5" /></span>
+                        <div className="min-w-0"><p className="text-xs font-semibold text-zinc-500">{label}</p><p className="text-sm text-zinc-800 dark:text-zinc-200 break-words">{text}</p></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <Diagnosis text={e.diagnosis} />}
+              </section>
+            ) : (
+              <p className="text-sm text-zinc-500">Not diagnosed yet. Open “Fix with AI” to diagnose it now.</p>
+            )}
+            {e.lastUser && (
+              <section>
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">Last person who ran into it</h4>
+                <button onClick={() => onPerson?.(e.lastUser!.id)} disabled={!onPerson} className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-300 hover:underline"><User className="w-4 h-4" />{e.lastUser.name}</button>
+                <span className="text-xs text-zinc-500"> · {e.lastUser.role.toLowerCase()} · {e.lastUser.email}</span>
+              </section>
+            )}
+          </>
+        )}
+        {tab === 'technical' && (
+          <>
+            <section>
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Error and stack</h4>
+              <pre className="text-xs whitespace-pre-wrap break-words rounded-xl bg-zinc-950 text-zinc-100 p-3 max-h-80 overflow-auto font-mono">{e.message}{e.stack ? `\n\n${e.stack}` : '\n\n(no stack trace)'}</pre>
+            </section>
+            <dl className="grid gap-2 text-sm">
+              <div><dt className="text-[11px] font-medium text-zinc-500">Kind</dt><dd className="text-zinc-800 dark:text-zinc-200">{e.source === 'SERVER' ? 'Server' : 'Browser'} · {e.kind}</dd></div>
+              <div><dt className="text-[11px] font-medium text-zinc-500">Page</dt><dd className="text-zinc-800 dark:text-zinc-200 break-all font-mono text-xs">{e.path ?? 'unknown'}</dd></div>
+              {e.userAgent && <div><dt className="text-[11px] font-medium text-zinc-500">Browser signature</dt><dd className="text-zinc-800 dark:text-zinc-200 break-all font-mono text-xs">{e.userAgent}</dd></div>}
+            </dl>
+          </>
+        )}
+        {tab === 'fix' && <AiAgents e={e} busy={busy === e.id} onDiagnose={onDiagnose} onRepaired={onRepaired} />}
+      </div>
+    </article>
   );
 }
 
