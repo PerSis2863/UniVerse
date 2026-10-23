@@ -86,14 +86,21 @@ function revalidatePages(request: Request, res: Response): Response {
 }
 
 // The build these pages belong to (public/BUILD_ID), read once per instance: cached pages are kept
-// per build, so a deploy never serves pages that point at the previous build's files.
-let buildId: Promise<string | null> | null = null;
-function currentBuild(origin: string, env: Env) {
-  buildId ??= (env.ASSETS ? env.ASSETS.fetch(`${origin}/BUILD_ID`).then((r) => (r.ok ? r.text() : null)).then((t) => t?.trim() || null) : Promise.resolve(null)).catch(() => {
-    buildId = null;
+// per build, so a deploy never serves pages that point at the previous build's files. Only the
+// answer is kept, never the pending read: one request's fetch can't be awaited by another (Workers
+// cancels the waiting one as hung).
+let buildId: string | null | undefined;
+async function currentBuild(origin: string, env: Env): Promise<string | null> {
+  if (buildId !== undefined) return buildId;
+  if (!env.ASSETS) return (buildId = null);
+  try {
+    const r = await env.ASSETS.fetch(`${origin}/BUILD_ID`);
+    const id = r.ok ? (await r.text()).trim() || null : null;
+    if (id) buildId = id;
+    return id;
+  } catch {
     return null;
-  });
-  return buildId;
+  }
 }
 
 /**

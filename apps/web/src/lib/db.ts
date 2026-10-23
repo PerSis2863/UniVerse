@@ -69,27 +69,23 @@ function createClient(db: D1Database): PrismaClient {
   return withListSplit(new WasmPrismaClient({ adapter }));
 }
 
-// A client connects once, and queries that arrive while it's connecting await that same promise
-// (Prisma's ClientEngine: `case "connecting": return await this.#e.promise`). On Workers a request
-// must never wait on a promise another request started: the waiting request has no I/O of its own,
-// so the runtime cancels it as hung ("your Worker's code had hung", HTTP 500 after ~30 ms, in bursts
-// when a dashboard's many requests reach a fresh instance together, Oct 2026). So each request uses
-// its own client until one has finished connecting; from then on that one serves every request.
-let warm: { db: D1Database; client: PrismaClient } | null = null;
-const starting = new WeakMap<object, PrismaClient>(); // per request (keyed by its context)
+// One client per request, never shared (the setup Cloudflare's and Prisma's D1 guides use). A shared
+// client makes requests wait on each other's promises, and on Workers a request must never wait on
+// a promise another request started: it has no I/O of its own, so the runtime cancels it as hung
+// ("your Worker's code had hung", HTTP 500). Two ways that happened here: Prisma's ClientEngine
+// shares its connect promise (bursts on a fresh instance, PR #44), and Prisma's DataLoader batches
+// the findUnique calls of one tick into one query (`batchBy` / `nextTick` in its runtime), across
+// requests on a shared client (/api/chat/folders and /api/calls/scheduled on 23 Oct 2026).
+const perRequest = new WeakMap<object, PrismaClient>(); // keyed by the request's context
 
 export function getPrisma(): PrismaClient {
   const { env, ctx } = getCloudflareContext();
   if (!env.DB) throw new Error('D1 binding "DB" is missing; check wrangler.jsonc');
-  if (warm?.db === env.DB) return warm.client;
   const key = (ctx as object | undefined) ?? env.DB;
-  let client = starting.get(key);
+  let client = perRequest.get(key);
   if (!client) {
-    const c = createClient(env.DB);
-    starting.set(key, c);
-    // Started by this request; once connected it's safe to share.
-    c.$connect().then(() => { if (warm?.db !== env.DB) warm = { db: env.DB, client: c }; }, () => {});
-    client = c;
+    client = createClient(env.DB);
+    perRequest.set(key, client);
   }
   return client;
 }
