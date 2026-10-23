@@ -1427,3 +1427,21 @@ Progress table (row D6).
 - Previewing the owner console on the dev server: sign in as the demo admin, set `owner: true` in the
   stored user, answer `/api/bootstrap` with 503 and add `owner: true` to `/users/me` (route
   interception), and serve sample `/owner/overview`, `/owner/attention`, `/owner/tables`.
+
+## M14 · The full board, boards list, design skills, agent toolkit
+
+- Board data: `scripts/gen-guide-data.mjs` writes `src/components/boards/guide-data.gen.ts` from the
+  route tables, `src/server/owner-schema.json`, `prisma/migrations`, `src/lib/i18n.ts`, test files
+  and package.json (the build runs it after gen-api-routes; `--check` says if it's stale). Never
+  import `cloudflare/api-routes.gen.ts` or `owner-schema.json` into client code: the first pulls every
+  server route into the bundle, the second is 900 KB.
+- The guide loads on demand (`templateFor` in templates.ts); BoardCanvas fills the empty board when
+  it arrives, unless someone drew meanwhile. Live rooms take messages up to 32 MiB (Cloudflare,
+  Oct 2025), and a board up to 20,000 shapes (BoardRoom).
+- Board layout: curated bands, then `packed()` for the long lists (tallest first, an even share per
+  band). Keep each new list frame's columns about 30 lines (`listing`).
+- `guide-ui.mjs` loads the board through `npx tsx` (the board file imports other files now).
+- Boards list: Rename uses `PATCH /api/boards/:id` (editors and the owner of the board); the guide
+  board keeps working when renamed, it just stops being found as "UniVerse explained".
+- Outside tools: `AGENT-TOOLKIT.md` (repo root). Emil Kowalski's skills in `.claude/skills/` are
+  copies (MIT): update by copying the folders again.

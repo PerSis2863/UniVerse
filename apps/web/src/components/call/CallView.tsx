@@ -2388,7 +2388,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               <Users className="w-4 h-4" />{count}<span className="hidden sm:inline font-normal">in call</span>
               <AnimatePresence>
                 {canModerate && lobby.length > 0 && (
-                  <motion.span key="knock" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={spring.snappy} className="ms-0.5 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-bold flex items-center justify-center" aria-label={`${lobby.length} waiting to join`}>{lobby.length}</motion.span>
+                  <motion.span key="knock" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }} transition={spring.snappy} className="ms-0.5 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-amber-950 text-[11px] font-bold flex items-center justify-center" aria-label={`${lobby.length} waiting to join`}>{lobby.length}</motion.span>
                 )}
               </AnimatePresence>
             </button>

@@ -110,6 +110,11 @@ A new API route: `node scripts/gen-api-routes.mjs`. Deploys apply new migrations
   Never commit changes the build makes to `public/sw.js`, `public/fallback-*.js`,
   `public/workbox-*.js` or `apps/web/cloudflare/next-public.gen.ts` (`local:build` puts them back).
 
+## Outside tools
+
+`AGENT-TOOLKIT.md` (repo root) lists every outside tool, skill and repository the owner asked to use,
+where each lives here and how to install it. They serve these rules; these rules win any clash.
+
 ## Keep it lean (after Ponytail, github.com/DietrichGebert/ponytail)
 
 The owner wants the project to stay simple as it grows. Before writing new code, go down this
@@ -132,6 +137,40 @@ and access checks, security headers or accessibility (labels, contrast, keyboard
   exist. Keep it at zero. A file used only from config goes in its `BY_CONFIG` list, with the reason.
 - The Ponytail plugin itself installs only from Claude Code, typed by the owner:
   `/plugin marketplace add DietrichGebert/ponytail`. These rules cover what it does, so it's optional.
+
+## Design and motion (after Impeccable and Emil Kowalski's skills)
+
+Adapted, in our own words, from github.com/pbakaus/impeccable (Apache-2.0) and
+github.com/emilkowalski/skills (MIT). The owner's look comes first: the two tones (indigo into
+fuchsia), the glow, the light river and the italic accent word are the brand, even where those
+guides call them "AI-looking". Never swap them for another palette.
+
+Motion (Emil Kowalski):
+- Ask first: how often is it seen? Something used many times a day (keyboard shortcuts, the command
+  palette, list navigation) gets no animation or almost none. Every animation needs a reason:
+  where something came from, a change of state, feedback, or explaining how something works.
+- Entering: ease-out, never ease-in (it feels slow). Use the project's curves (`--ease-glide`,
+  `--ease-ios`, `--ease-out-soft` in globals.css, `spring` in `@/lib/motion`), not plain `ease`.
+- UI motion stays under 300 ms (press 100–160, menus 150–250, sheets up to 500); exits faster than
+  entrances; explanatory motion (the landing page, flow cards) may be longer.
+- Nothing grows from nothing: start at scale 0.85–0.95 with opacity 0, never `scale: 0`. Menus and
+  popovers grow from where they were opened (`origin-top-right`, `rtl:origin-top-left`).
+- Name the properties: `transition-[transform,opacity]` or Tailwind's `transition`, not
+  `transition-all` in new code (it animates layout and costs frames). Animate transform and opacity;
+  avoid animating width, height, top or left.
+- Lists that appear together are staggered 30–80 ms. Reduce Motion always stops movement.
+- Phones: hover-only extras sit behind `@media (hover: hover)` (Tailwind's `hover:` does this);
+  something that only shows on hover must show without it on touch screens.
+
+Look and reading (Impeccable):
+- Text that carries meaning is 11 px or more (12 px for running text). No new `text-[10px]`.
+- Running text stays near 75 characters a line (`max-w-[75ch]`); headings balance, paragraphs don't
+  leave one word alone (globals.css sets `text-wrap: balance` and `pretty`).
+- Grey text needs 4.5:1 against what's really behind it (a see-through card on a light page turns
+  grey: check both themes). Never grey text on a coloured background without checking.
+- No cards inside cards; spacing and type sizes from the scale already in use.
+- To find problems on a page, Impeccable's checker can scan it: `npx impeccable detect <url>` (it
+  downloads the checker the first time). Judge its findings against the brand rule above.
 
 ## Optional: Everything Claude Code (ECC)
 

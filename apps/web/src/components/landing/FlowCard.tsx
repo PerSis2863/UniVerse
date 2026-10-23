@@ -83,8 +83,8 @@ export function FlowCard({ flow: which = 'late', compact = false, className }: {
         <Node title={flow.check[0]} phase={1} className="left-[40%] top-1/2 w-[20%] !rounded-full" />
         <Node title={flow.yes[0]} phase={2} person={flow.person === 'yes'} className="left-[69%] top-[24%] w-[31%]" />
         <Node title={flow.no[0]} phase={3} person={flow.person === 'no'} className="left-[69%] top-[76%] w-[31%]" />
-        <span className="absolute left-[60%] top-[18%] font-mono text-[10px] text-zinc-300" aria-hidden>yes</span>
-        <span className="absolute left-[60%] top-[74%] font-mono text-[10px] text-zinc-300" aria-hidden>no</span>
+        <span className="absolute left-[60%] top-[18%] font-mono text-[11px] text-zinc-300" aria-hidden>yes</span>
+        <span className="absolute left-[60%] top-[74%] font-mono text-[11px] text-zinc-300" aria-hidden>no</span>
       </div>
 
       {!compact && <>
@@ -95,14 +95,14 @@ export function FlowCard({ flow: which = 'late', compact = false, className }: {
             <div className="min-w-0">
               <p className="flex items-baseline justify-between gap-3">
                 <span className="text-[13px] font-semibold text-zinc-100 truncate">{title}</span>
-                <span className="shrink-0 font-mono text-[10px] text-zinc-400">{tag}</span>
+                <span className="shrink-0 font-mono text-[11px] text-zinc-400">{tag}</span>
               </p>
               <p className="text-xs text-zinc-400">{detail}</p>
             </div>
           </li>
         ))}
       </ol>
-      <p className="mt-3 font-mono text-[11px] text-zinc-400">{flow.note}</p>
+      <p className="mt-3 font-mono text-xs text-zinc-400">{flow.note}</p>
       </>}
     </div>
   );

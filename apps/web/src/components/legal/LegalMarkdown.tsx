@@ -104,5 +104,5 @@ export function LegalMarkdown({ source }: { source: string }) {
     while (i < lines.length && lines[i].trim() && !/^(#{2,4}\s|\||---+\s*$)/.test(lines[i]) && !bullet.test(lines[i]) && !numbered.test(lines[i])) para.push(lines[i++].trim());
     blocks.push(<p key={k}>{inline(para.join(' '))}</p>);
   }
-  return <div className="space-y-4 text-[15px] leading-relaxed text-zinc-300">{blocks}</div>;
+  return <div className="space-y-4 text-[15px] leading-relaxed text-zinc-300 [&>p]:max-w-[75ch] [&>ul]:max-w-[75ch] [&>ol]:max-w-[75ch]">{blocks}</div>;
 }

@@ -47,7 +47,7 @@ export function GoalCard({ study, goal, onGoal }: { study: { today: number; week
           <Ring value={study.today} max={goal} />
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-xl font-black text-zinc-900 dark:text-white tabular-nums">{study.today}/{goal}</span>
-            <span className="text-[10px] text-zinc-600 dark:text-zinc-400">today</span>
+            <span className="text-[11px] text-zinc-600 dark:text-zinc-400">today</span>
           </div>
         </div>
         <div className="min-w-0 space-y-2">
@@ -70,7 +70,7 @@ export function GoalCard({ study, goal, onGoal }: { study: { today: number; week
                 <span aria-hidden className="w-full h-10 rounded-lg bg-zinc-200 dark:bg-white/[0.07] overflow-hidden flex items-end">
                   <span className={cn('w-full rounded-lg', d.actions >= goal ? 'bg-emerald-500' : 'bg-indigo-400')} style={{ height: `${Math.min(100, (d.actions / goal) * 100)}%` }} />
                 </span>
-                <span aria-hidden className="text-[10px] text-zinc-600 dark:text-zinc-400">{label.slice(0, 2)}</span>
+                <span aria-hidden className="text-[11px] text-zinc-600 dark:text-zinc-400">{label.slice(0, 2)}</span>
               </div>
             );
           })}

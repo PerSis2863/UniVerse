@@ -7,24 +7,12 @@ import { Loader2, Presentation } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { card } from './shared';
 import { cn } from '@/lib/utils';
-import { GUIDE_TITLE, guideHref } from '@/components/boards/guide-title';
+import { GUIDE_AREAS, GUIDE_TITLE, guideHref } from '@/components/boards/guide-title';
 
 // Explain UniVerse: one whiteboard about the whole site (every feature, how it works, the technology),
-// made from all ten whiteboard templates (src/components/boards/universe-guide.ts). The first open
+// in 29 areas (src/components/boards/universe-guide.ts; the list is in guide-title.ts). The first open
 // makes the board in the owner's whiteboards; later opens go back to it. "Make a fresh one" starts again.
 
-const PARTS = [
-  ['Start here', 'Blank canvas: the banner across the top: what UniVerse is, its numbers, how to read the board'],
-  ['Every feature', 'Mind map: everything students, teachers, admins, parents and you can do'],
-  ['Where things stand', 'Kanban: done, in progress, and what waits on you'],
-  ['Strengths and risks', 'SWOT analysis'],
-  ['Website and phone app', 'Venn diagram: what’s the same and what’s different'],
-  ['How it was built', 'Timeline: from the first stages to this week'],
-  ['The owner’s week', 'Weekly planner: what to check in this console, day by day'],
-  ['How it works, technically', 'Cornell notes: Cloudflare, the database, live rooms, sign-in, AI, safety, cost'],
-  ['Looking back', 'Retrospective: what went well, what to improve, ideas, actions'],
-  ['Showing UniVerse to a school', 'Lesson plan: a 45-minute demo'],
-];
 
 export function GuidePanel() {
   const router = useRouter();
@@ -51,7 +39,7 @@ export function GuidePanel() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-2xl">
           <h2 className="font-semibold text-xl text-zinc-900 dark:text-white flex items-center gap-2"><Presentation className="w-5 h-5 text-violet-500" /> UniVerse, explained on one whiteboard</h2>
-          <p className="mt-1.5 text-sm text-zinc-600 dark:text-zinc-300">Every feature, how things work and the technology underneath, in ten areas: one for each whiteboard template. It opens in Collaborate → Whiteboards, where you can edit it, present it or share it like any board.</p>
+          <p className="mt-1.5 text-sm text-zinc-600 dark:text-zinc-300">Every feature, how things work and the technology underneath, in {GUIDE_AREAS.length} kinds of area: the ten whiteboard templates, every page by role, charts made from the real code, and every route, page and database table listed. It opens in Collaborate → Whiteboards, where you can edit it, present it or share it like any board.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => void open(false)} disabled={!!busy} className="btn-primary">
@@ -63,13 +51,16 @@ export function GuidePanel() {
         </div>
       </div>
       <p className="mt-3 text-xs text-zinc-500">“Make a fresh one” draws the latest version (packed edge to edge, everything up to date). An older copy stays in Whiteboards until you delete it.</p>
-      <ol className="mt-6 grid sm:grid-cols-2 gap-3">
-        {PARTS.map(([title, what], i) => (
-          <li key={title} className="flex gap-3 rounded-2xl border border-[var(--card-border)] p-3.5">
-            <span className="w-7 h-7 shrink-0 rounded-full bg-violet-500/10 text-violet-700 dark:text-violet-300 text-xs font-bold flex items-center justify-center">{i + 1}</span>
-            <span><span className="block text-sm font-semibold text-zinc-900 dark:text-white">{title}</span><span className="block text-xs text-zinc-600 dark:text-zinc-300 mt-0.5">{what}</span></span>
-          </li>
-        ))}
+      <ol className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        {GUIDE_AREAS.map((area, i) => {
+          const [title, what] = area.split(': ');
+          return (
+            <li key={area} className="flex gap-3 rounded-2xl border border-[var(--card-border)] p-3">
+              <span className="w-7 h-7 shrink-0 rounded-full bg-violet-500/10 text-violet-700 dark:text-violet-300 text-xs font-bold flex items-center justify-center">{i + 1}</span>
+              <span className="min-w-0"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">{title}</span>{what && <span className="block text-xs text-zinc-600 dark:text-zinc-300 mt-0.5">{what}</span>}</span>
+            </li>
+          );
+        })}
       </ol>
     </div>
   );

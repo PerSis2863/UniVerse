@@ -19,7 +19,7 @@ import type { ExcalidrawElement, FileId, OrderedExcalidrawElement } from '@excal
 import type { RemoteExcalidrawElement } from '@excalidraw/excalidraw/data/reconcile';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { isUploadedFileUrl } from '@/lib/file-urls';
-import { templateElements, type TemplateId } from './templates';
+import { templateFor, type TemplateId } from './templates';
 import { MAX_VOTES, type Voted } from './votes';
 
 // The live whiteboard: Excalidraw (every drawing tool, shapes, text, arrows, pictures, laser
@@ -421,9 +421,13 @@ export default function BoardCanvas({
             if (!framed.current) {
               framed.current = true;
               if (template && template !== 'blank' && editable.current && msg.elements.length === 0 && !api.getSceneElements().length) {
-                api.updateScene({ elements: convertToExcalidrawElements(templateElements(template)), captureUpdate: CaptureUpdateAction.IMMEDIATELY });
-              }
-              if (api.getSceneElements().length) api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.9, animate: false });
+                // Added once it's loaded (the guide comes in its own file), unless someone drew meanwhile.
+                void templateFor(template).then((els) => {
+                  if (api.getSceneElements().length) return;
+                  api.updateScene({ elements: convertToExcalidrawElements(els), captureUpdate: CaptureUpdateAction.IMMEDIATELY });
+                  api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.9, animate: false });
+                });
+              } else if (api.getSceneElements().length) api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.9, animate: false });
             }
             if (presenter.current && following.current) applyView(presenter.current.view);
             break;
