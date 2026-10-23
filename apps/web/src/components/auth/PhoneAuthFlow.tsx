@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { authErrorMessage } from '@/lib/auth-errors';
-import { Loader2, KeyRound, ArrowLeft, User, Globe } from 'lucide-react';
+import { Loader2, ArrowLeft, User, Globe } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
+import { OtpInput, type OtpStatus } from '@/components/ui/OtpInput';
 
 // Add the window type extension here so we don't get TS errors
 declare global {
@@ -32,6 +33,9 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
   const [step, setStep] = useState<Step>('PHONE_INPUT');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [code, setCode] = useState('');
+  const [check, setCheck] = useState<OtpStatus>('idle');
+  // Signed in by the code: carried on once the tick has played.
+  const [token, setToken] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -101,27 +105,29 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
     }
   };
 
-  const handleVerifyCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!code) {
-      setError('Please enter the verification code.');
-      return;
-    }
-
+  // The boxes form a ring while the code is checked; right: green and a tick, then signed in.
+  const handleVerifyCode = async (value = code) => {
+    if (value.length !== 6 || check !== 'idle') return;
     setIsLoading(true);
     setError('');
-
+    setCheck('checking');
     try {
       if (!confirmationResult) throw new Error('No confirmation result found.');
-      const result = await confirmationResult.confirm(code);
-      const token = await result.user.getIdToken();
-      await onSuccess(token, isRegister ? name : undefined);
+      const result = await confirmationResult.confirm(value);
+      setToken(await result.user.getIdToken());
+      setCheck('good');
     } catch (err) {
       console.error('Error verifying code:', err);
       setError(authErrorMessage(err, 'Invalid verification code.'));
-    } finally {
-      setIsLoading(false);
+      setCheck('bad');
     }
+  };
+  const settled = async (s: 'good' | 'bad') => {
+    if (s === 'good' && token) {
+      try { await onSuccess(token, isRegister ? name : undefined); } catch (err) { setError(authErrorMessage(err, 'Could not sign you in.')); }
+    } else setCode('');
+    setCheck('idle');
+    setIsLoading(false);
   };
 
   return (
@@ -214,22 +220,10 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
           </div>
         </form>
       ) : (
-        <form onSubmit={handleVerifyCode} className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); void handleVerifyCode(); }} className="space-y-4">
           <div>
-            <label className="block text-zinc-400 text-sm font-medium mb-1.5">Verification Code</label>
-            <div className="relative">
-              <KeyRound className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-              <input
-                type="text"
-                required
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                className="w-full bg-zinc-900/50 border border-zinc-800 text-white placeholder:text-zinc-500 rounded-xl py-2.5 ps-10 pe-4 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors tracking-widest text-center"
-                placeholder="123456"
-                disabled={isLoading}
-                maxLength={6}
-              />
-            </div>
+            <p className="block text-zinc-400 text-sm font-medium mb-3 text-center">{check === 'good' ? <span className="text-emerald-300">Verified</span> : 'Verification code'}</p>
+            <OtpInput value={code} onChange={setCode} onComplete={(v) => void handleVerifyCode(v)} status={check} onSettled={(st) => void settled(st)} label="Verification code" onDark autoFocus />
             <p className="text-zinc-500 text-xs mt-2 text-center">
               We sent an SMS to {phoneNumber}
             </p>

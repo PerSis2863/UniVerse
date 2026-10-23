@@ -456,7 +456,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
         {/* Phones have no top bar with the language button. */}
         <LanguageMenu row className="lg:hidden mt-1" />
         <button onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-[15px] text-[var(--ios-red)] hover:bg-[var(--fill)] transition-colors">
+          className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-[15px] text-red-700 dark:text-[var(--ios-red)] hover:bg-[var(--fill)] transition-colors">
           <LogOut className="w-[18px] h-[18px]" />
           <span>{t('nav.logout')}</span>
         </button>

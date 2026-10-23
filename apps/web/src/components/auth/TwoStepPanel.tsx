@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Fingerprint, Loader2, ShieldCheck } from 'lucide-react';
 import { api } from '@/lib/api';
 import { passkeyError, passkeysSupported, passkeyTwoStep } from '@/lib/passkey-client';
+import { OtpInput, type OtpStatus } from '@/components/ui/OtpInput';
 
 /**
  * Second sign-in step for admins and the owner: their passkey when they have one on this device
@@ -12,6 +13,7 @@ import { passkeyError, passkeysSupported, passkeyTwoStep } from '@/lib/passkey-c
  */
 export function TwoStepPanel({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
   const [code, setCode] = useState('');
+  const [check, setCheck] = useState<OtpStatus>('idle');
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [busy, setBusy] = useState<'send' | 'verify' | 'passkey' | null>(null);
   const [error, setError] = useState('');
@@ -55,18 +57,26 @@ export function TwoStepPanel({ onDone, onCancel }: { onDone: () => void; onCance
     })();
   }, []);
 
-  const verify = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // The boxes form a ring while the code is checked; right: green and a tick, then signed in.
+  const verify = async (value = code) => {
+    if (value.length !== 6 || check !== 'idle') return;
     setBusy('verify');
     setError('');
+    setCheck('checking');
     try {
-      const { data } = await api.post<{ pass: string }>('/auth/two-step/verify', { code });
+      const { data } = await api.post<{ pass: string }>('/auth/two-step/verify', { code: value });
       localStorage.setItem('uv-pass', data.pass);
-      onDone();
+      setCheck('good');
     } catch (err) {
       setError((err as Error).message || 'That code did not work.');
-      setBusy(null);
+      setCheck('bad');
     }
+  };
+  const settled = (s: 'good' | 'bad') => {
+    if (s === 'good') return onDone();
+    setCode('');
+    setCheck('idle');
+    setBusy(null);
   };
 
   if (withPasskey === null) return <div className="h-48 rounded-2xl skeleton" role="status" aria-label="Loading" />;
@@ -96,28 +106,21 @@ export function TwoStepPanel({ onDone, onCancel }: { onDone: () => void; onCance
   }
 
   return (
-    <form onSubmit={verify} className="space-y-5">
+    <form onSubmit={(e) => { e.preventDefault(); void verify(); }} className="space-y-5">
       <div className="flex items-center gap-3">
         <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
           <ShieldCheck className="w-5 h-5 text-white" />
         </span>
         <div>
-          <h2 className="text-xl font-bold text-white">Check your email</h2>
-          <p className="text-sm text-zinc-400">{sentTo ? `We sent a 6-digit code to ${sentTo}.` : 'Sending you a 6-digit code…'}</p>
+          {check === 'good' ? (
+            <><h2 className="text-xl font-bold text-emerald-300">Verified</h2><p className="text-sm text-zinc-400">Signing you in…</p></>
+          ) : (
+            <><h2 className="text-xl font-bold text-white">Check your email</h2><p className="text-sm text-zinc-400">{sentTo ? `We sent a 6-digit code to ${sentTo}.` : 'Sending you a 6-digit code…'}</p></>
+          )}
         </div>
       </div>
       {error && <div role="alert" className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-700 dark:text-red-400 text-sm">{error}</div>}
-      <input
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        autoFocus
-        maxLength={6}
-        value={code}
-        onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-        placeholder="123456"
-        aria-label="Sign-in code"
-        className="w-full text-center text-2xl tracking-[0.5em] font-bold py-3 rounded-xl bg-white/[0.06] border border-white/10 text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-400"
-      />
+      <OtpInput value={code} onChange={setCode} onComplete={(v) => void verify(v)} status={check} onSettled={settled} label="Sign-in code" onDark autoFocus />
       <button type="submit" disabled={code.length !== 6 || !!busy} className="btn-primary w-full">
         {busy === 'verify' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Finish signing in'}
       </button>

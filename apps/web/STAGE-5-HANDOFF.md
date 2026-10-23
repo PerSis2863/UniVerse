@@ -1352,3 +1352,12 @@ Progress table (row D6).
 - Simple mode draws on one "Drawing" layer (`drawId`), so its eraser never touches the photo.
 - `commitRun(key, doc)` in `PhotoEditor.tsx` makes changes to one thing in a row one undo step.
 
+
+## M6 · Code boxes (OtpInput)
+
+- `<OtpInput value onChange onComplete status onSettled />`: the parent sets `status` to `checking`
+  when it sends the code, then `good` or `bad`; `onSettled` fires once the animation has played
+  (go on after `good`; clear the code and set `idle` after `bad`). One real input over the boxes,
+  `autocomplete="one-time-code"`. The ring stays at least ~1 s however fast the answer comes.
+- Workers: never await a promise another request started (Cloudflare cancels it as "code had
+  hung"); `getPrisma()` gives each request its own client, and module caches keep finished values only.
