@@ -1,5 +1,5 @@
 'use client';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { openCommandPalette } from '@/lib/palette';
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Search, Plus,  X, Archive, AlertCircle } from 'lucide-react';
@@ -18,6 +18,9 @@ import { EmailNotificationsSwitch } from '@/components/notifications/EmailNotifi
 import { Segmented } from '@/components/ui/Segmented';
 import { setPageTitle } from '@/lib/chrome';
 import { spring } from '@/lib/motion';
+import { crumbsFor } from '@/lib/breadcrumbs';
+import { rememberPage } from '@/lib/recent-pages';
+import { navByRole } from './Sidebar';
 
 type ApiNotification = { id: string; title: string; body: string; type: string; read: boolean; link: string | null; createdAt: string };
 const NOTIF_ICON: Record<string, string> = { info: '🔔', success: '✅', warning: '⚠️', error: '⛔', message: '💬', grade: '🎓', event: '📅', announcement: '📣', chat: '💬', call: '📞' };
@@ -32,6 +35,33 @@ interface TopbarProps {
   hideMobileTitle?: boolean;
   /** Pairs this title with a list card's (data-shared) so it glides in from the card (src/lib/shared-element.ts). */
   sharedId?: string;
+}
+
+/**
+ * "Where am I" above the title: the menu group and entry this page belongs to ("Schooling ›
+ * Courses › Week 2"), from the side menu (src/lib/breadcrumbs.ts). Nothing on a menu entry's own
+ * page outside a group, where it would only repeat the title.
+ */
+function Breadcrumb({ title, className }: { title: string; className?: string }) {
+  const pathname = usePathname();
+  const { user } = useAuthStore();
+  const { t } = useLanguageStore();
+  const c = user ? crumbsFor(navByRole[user.role] ?? [], pathname) : null;
+  if (!c) return null;
+  const tr = (label: string) => (label.startsWith('nav.') ? t(label) : label);
+  const entry = tr(c.entry.label);
+  const here = pathname === c.entry.href;
+  if (!c.group && here) return null;
+  const sep = <li aria-hidden className="text-zinc-300 dark:text-zinc-600">›</li>;
+  return (
+    <nav aria-label="Breadcrumb" className={cn('min-w-0 text-[12px] font-medium text-zinc-500 dark:text-zinc-400', className)}>
+      <ol className="flex items-center gap-1.5 min-w-0">
+        {c.group && <><li className="shrink-0">{tr(c.group)}</li>{sep}</>}
+        <li className={cn('min-w-0 truncate', here && 'text-tint-text')}>{here ? <span aria-current="page">{entry}</span> : <Link href={c.entry.href} className="hover:text-zinc-900 dark:hover:text-white">{entry}</Link>}</li>
+        {!here && entry !== title && <>{sep}<li className="min-w-0 truncate text-tint-text" aria-current="page">{title}</li></>}
+      </ol>
+    </nav>
+  );
 }
 
 /** Where the notifications panel slides from: off the end edge (right, or left in right-to-left). */
@@ -49,8 +79,10 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
   const { t } = useLanguageStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // The phone's navigation bar shows this title once the large title scrolls away (iOS).
-  useEffect(() => { setPageTitle(title); }, [title]);
+  // The phone's navigation bar shows this title once the large title scrolls away (iOS), and the
+  // side menu's "Recent" lists the page under it (src/lib/recent-pages.ts).
+  const pathname = usePathname();
+  useEffect(() => { setPageTitle(title); rememberPage(window.location.pathname + window.location.search, title); }, [title, pathname]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -115,6 +147,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
           <div className="flex items-start gap-3 min-w-0 flex-1 basis-[60%]">
             {leftNode}
             <div className="min-w-0">
+              <Breadcrumb title={title} className="mb-0.5" />
               <h1 data-shared={sharedId} className="large-title text-zinc-900 dark:text-white break-words">{title}</h1>
               {subtitle && <p className="text-[15px] text-zinc-500 dark:text-zinc-400 mt-1 leading-snug">{subtitle}</p>}
             </div>
@@ -130,10 +163,11 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
       </div>
 
       {/* Desktop: iPadOS navigation bar, clear at the top and frosted once the page scrolls under it. */}
-      <header className="hidden lg:flex lg:sticky lg:top-0 z-20 nav-edge px-8 h-16 items-center justify-between gap-4">
+      <header className="hidden lg:flex lg:sticky lg:top-0 z-20 nav-edge px-8 min-h-16 py-2 items-center justify-between gap-4">
         <div className="flex items-center gap-4 min-w-0">
           {leftNode}
           <div className="min-w-0">
+            <Breadcrumb title={title} />
             <h1 data-shared={sharedId} className="font-bold text-[22px] leading-tight tracking-tight text-zinc-900 dark:text-white truncate max-w-md">{title}</h1>
             {subtitle && <p className="text-[13px] text-zinc-500 dark:text-zinc-400 line-clamp-1 max-w-xl">{subtitle ?? `${t('common.greeting')}, ${user?.name?.split(' ')[0]}!`}</p>}
           </div>

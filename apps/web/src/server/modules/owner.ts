@@ -1,5 +1,5 @@
 import type { Router } from '../router';
-import { diagnoseErrors } from '../errors';
+import { diagnoseErrors, ignoreUnsupported } from '../errors';
 import prisma from '@/lib/db';
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
 import { forgetUser, isOwnerEmail } from '../auth';
@@ -205,11 +205,16 @@ export default function ownerModule(router: Router) {
 
   r.post('errors/diagnose', async ({ body }) => {
     const ids = Array.isArray((body as { ids?: unknown })?.ids) ? ((body as { ids: unknown[] }).ids.filter((x) => typeof x === 'string') as string[]).slice(0, 10) : undefined;
-    if (!process.env.GEMINI_API_KEY) throw new BadRequestException('AI diagnosis needs the GEMINI_API_KEY secret.');
+    // Outdated browsers and bots are filed away first: that needs no AI.
+    const filed = await ignoreUnsupported();
+    if (!process.env.GEMINI_API_KEY) {
+      if (filed) return { diagnosed: 0, filed };
+      throw new BadRequestException('AI diagnosis needs the GEMINI_API_KEY secret.');
+    }
     // The owner can pick the Gemini model for a diagnosis (otherwise the usual chain answers).
     const wanted = (body as { model?: unknown })?.model;
     const model = TEXT_MODELS.some((m) => m.id === wanted) ? (wanted as string) : undefined;
-    return { diagnosed: await diagnoseErrors(ids ? { ids, model } : { limit: 10, model }) };
+    return { diagnosed: await diagnoseErrors(ids ? { ids, model } : { limit: 10, model }), filed };
   });
 
   // Repair with an AI agent (Claude Code, Jules, Antigravity): src/server/repair-agents.ts.

@@ -8,7 +8,8 @@ import { EASE_GLIDE, reducedMotion } from './page-transition';
 // Transform and opacity only (the GPU does the work), nothing for "Reduce Motion", nothing printed.
 // Opt out with data-no-motion on any container; opt in an element with data-reveal.
 // M1: figures, bars and lines play on every page, not only below the fold, and on computers a soft
-// light follows the pointer over cards (.sheen in globals.css).
+// light follows the pointer over cards (.sheen in globals.css). M3: grids of small squares
+// (heatmaps, bins, seats) fill in one by one, and a figure that changes rolls into its new value.
 
 const BLOCK = 'section, article, .panel, .card, [data-reveal], [class*="rounded-2xl"], [class*="rounded-3xl"]';
 const SKIP = '[data-no-motion], [role="dialog"], [role="menu"], [role="listbox"], [aria-modal="true"], .stagger, nav, header, footer, table, form, .fixed, .sticky, [data-page-skeleton], [role="status"]';
@@ -16,8 +17,17 @@ const FIGURE = '.tabular-nums';
 const BAR = '[class*="rounded-full"][class*="overflow-hidden"] > [style*="width"]:not(.bar-grow):not(img)';
 const LINE = 'svg path, svg polyline';
 const MAX_PER_SCAN = 160;
+/** Heatmaps and seat or bin grids: many small squares filling in one by one (M3, the "Cadra" reel). */
+const CELLS = '[data-cells], [class*="grid-cols-"], [class*="flex-wrap"]';
+const isCellGrid = (el: Element) => {
+  if (el.childElementCount < 20) return false;
+  const kids = Array.from(el.children).slice(0, 3);
+  return kids.every((k) => { const r = k.getBoundingClientRect(); return r.width > 0 && r.width <= 28 && r.height <= 28 && Math.abs(r.width - r.height) <= 6; });
+};
+/** Text nodes this file is writing to (a count-up), so its own changes aren't taken for new values. */
+const writing = new WeakSet<Node>();
 
-type Kind = 'block' | 'figure' | 'bar' | 'line';
+type Kind = 'block' | 'figure' | 'bar' | 'line' | 'cells';
 const kinds = new WeakMap<Element, Kind>();
 const seen = new WeakSet<Element>();
 let io: IntersectionObserver | null = null;
@@ -54,6 +64,7 @@ function countUp(el: Element) {
   if (!f) return;
   const start = performance.now(), duration = 1100;
   let written = formatFigure(f, 0);
+  writing.add(node);
   node.nodeValue = written;
   const step = (now: number) => {
     // React changed the number meanwhile: leave its value alone.
@@ -63,6 +74,7 @@ function countUp(el: Element) {
     written = t === 1 ? text : formatFigure(f, f.value * eased);
     node.nodeValue = written;
     if (t < 1) requestAnimationFrame(step);
+    else setTimeout(() => writing.delete(node));
   };
   requestAnimationFrame(step);
 }
@@ -79,6 +91,10 @@ function play(el: Element, kind: Kind) {
   } else if (kind === 'bar') {
     const rtl = getComputedStyle(h).direction === 'rtl';
     h.animate([{ transform: 'scaleX(0)', transformOrigin: rtl ? 'right center' : 'left center' }, { transform: 'scaleX(1)', transformOrigin: rtl ? 'right center' : 'left center' }], { duration: 1000, easing: EASE_GLIDE, delay: 120 });
+  } else if (kind === 'cells') {
+    Array.from(el.children).slice(0, 400).forEach((c, i) => {
+      if (typeof (c as HTMLElement).animate === 'function') c.animate([{ opacity: 0, transform: 'scale(0.4)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: Math.min(i * 5, 1000), easing: EASE_GLIDE, fill: 'backwards' });
+    });
   } else {
     const path = el as SVGGeometryElement;
     let length = 0;
@@ -121,6 +137,7 @@ export function scan(root: ParentNode = document) {
   take(BLOCK, 'block');
   take(FIGURE, 'figure', (el) => el.childNodes.length === 1 && !!parseFigure(el.textContent ?? ''));
   take(BAR, 'bar');
+  take(CELLS, 'cells', isCellGrid);
   take(LINE, 'line', (el) => {
     const svg = (el as SVGElement).ownerSVGElement;
     const w = svg?.viewBox?.baseVal?.width ?? 0;
@@ -180,6 +197,23 @@ function startSheen(): () => void {
 
 let stopSheen: (() => void) | null = null;
 
+/**
+ * A figure whose value changes on screen (live numbers, a filter applied) rolls into its new value
+ * out of a short blur, like a ticker. Not the first value (that counts up) and not plain text.
+ */
+function rollChanged(records: MutationRecord[]) {
+  const done = new Set<Element>();
+  for (const rec of records) {
+    const node = rec.type === 'characterData' ? rec.target : rec.addedNodes[0];
+    if (!node || node.nodeType !== Node.TEXT_NODE || writing.has(node)) continue;
+    const el = node.parentElement;
+    if (!el || done.has(el) || !el.matches(FIGURE) || !seen.has(el) || el.closest(SKIP) || !parseFigure(node.nodeValue ?? '')) continue;
+    done.add(el);
+    const inline = getComputedStyle(el).display === 'inline';
+    el.animate(inline ? [{ opacity: 0.25, filter: 'blur(3px)' }, { opacity: 1, filter: 'blur(0)' }] : [{ opacity: 0.25, filter: 'blur(3px)', transform: 'translate3d(0, 0.35em, 0)' }, { opacity: 1, filter: 'blur(0)', transform: 'none' }], { duration: 420, easing: EASE_GLIDE });
+  }
+}
+
 /** Starts scroll motion for the whole app (once). Returns a stop function. */
 export function startScrollMotion(): () => void {
   if (typeof window === 'undefined' || mo || reducedMotion()) return () => {};
@@ -192,8 +226,9 @@ export function startScrollMotion(): () => void {
   mo = new MutationObserver((records) => {
     for (const rec of records) for (const n of rec.addedNodes) if (n.nodeType === Node.ELEMENT_NODE && queued.length < 200) queued.push(n as Element);
     if (queued.length && !timer) timer = setTimeout(flush, 120);
+    if (!reducedMotion()) rollChanged(records);
   });
-  mo.observe(document.body, { childList: true, subtree: true });
+  mo.observe(document.body, { childList: true, subtree: true, characterData: true });
   scan(document);
   return () => { mo?.disconnect(); mo = null; io?.disconnect(); io = null; stopSheen?.(); stopSheen = null; };
 }

@@ -1,5 +1,6 @@
 import prisma from '@/lib/db';
 import { ownerEmailList } from '@/lib/owner-emails';
+import { unsupportedBrowser, unsupportedNote } from '@/lib/browser-support';
 import { geminiJson } from './gemini';
 import { APP_URL, escapeHtml, sendEmail } from './email';
 
@@ -98,8 +99,11 @@ export async function recordError(input: ErrorInput): Promise<void> {
       return;
     }
     if ((await prisma.errorReport.count()) >= MAX_GROUPS) return;
+    // A browser too old for the app, or a bot: kept for the record but filed as ignored.
+    const unsupported = input.source === 'CLIENT' ? unsupportedBrowser(input.userAgent) : null;
     await prisma.errorReport.create({
       data: {
+        ...(unsupported ? { status: 'IGNORED', severity: 'low', diagnosis: unsupportedNote(unsupported), diagnosedAt: new Date() } : {}),
         fingerprint,
         source: input.source,
         kind: input.kind.slice(0, 20),
@@ -113,6 +117,22 @@ export async function recordError(input: ErrorInput): Promise<void> {
   } catch (e) {
     console.error('recordError failed:', e);
   }
+}
+
+/**
+ * Open browser reports from outdated browsers or bots (recorded before they were recognised) are
+ * filed as ignored, with a note saying why. Runs before each diagnosis, so no AI is spent on them.
+ */
+export async function ignoreUnsupported(): Promise<number> {
+  const open = await prisma.errorReport.findMany({ where: { source: 'CLIENT', status: { in: ['NEW', 'DIAGNOSED'] }, userAgent: { not: null } }, select: { id: true, userAgent: true }, take: 200 });
+  let n = 0;
+  for (const r of open) {
+    const why = unsupportedBrowser(r.userAgent);
+    if (!why) continue;
+    await prisma.errorReport.update({ where: { id: r.id }, data: { status: 'IGNORED', severity: 'low', diagnosis: unsupportedNote(why), diagnosedAt: new Date() } });
+    n++;
+  }
+  return n;
 }
 
 /** For server code: record an exception from a request. */
@@ -142,6 +162,7 @@ const SCHEMA = {
 
 /** Asks AI to diagnose error groups (the given ids, or up to `limit` new ones). Returns how many. */
 export async function diagnoseErrors(opts: { ids?: string[]; limit?: number; model?: string } = {}): Promise<number> {
+  await ignoreUnsupported();
   const rows = await prisma.errorReport.findMany({
     where: opts.ids ? { id: { in: opts.ids } } : { status: 'NEW', diagnosedAt: null },
     orderBy: [{ count: 'desc' }, { lastSeen: 'desc' }],

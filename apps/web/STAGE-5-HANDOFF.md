@@ -48,6 +48,20 @@ element and reason. That's how the endless SVG ping (SVG animations re-lay out a
 frame; they can't run on the GPU) and the per-row JS animations showed up. An idle page should
 show almost nothing.
 
+## M3 · Error hub, the "Cadra" reel's motion, breadcrumbs and recent pages (23 Oct 2026, owner request)
+
+- `src/app/(dashboard)/console/errors.tsx`: `ErrorsPanel` (summary, filters, list) and `ErrorDetail`
+  (tabs Overview / Technical / Fix with AI; `diagnosisParts` reads the AI's **Likely cause** etc.).
+  Check: `node scripts/checks/error-hub-ui.mjs <shots dir>` with `pnpm local:serve --test-secret --owner-test`.
+- `src/lib/browser-support.ts` `unsupportedBrowser(ua)`: bots, made-up Mac signatures, Chrome/Firefox
+  < 100, Safari < 15.4. `recordError` files such reports as IGNORED; `ignoreUnsupported()` runs before
+  each diagnosis. The recovery script doesn't report blank pages without `structuredClone`.
+- Motion: `leaveFrames` blurs on 'fade'/'tab'; `scroll-motion.ts` kind 'cells' (≥ 20 square children
+  ≤ 28 px under `[data-cells]`, `grid-cols-*`, `flex-wrap`) and `rollChanged` (characterData on
+  `.tabular-nums`, its own count-up writes skipped via `writing`).
+- `Breadcrumb` in `Topbar` from `crumbsFor(navByRole[role], pathname)`; desktop header is `min-h-16`.
+  `RecentPages` in the side menu (`rememberPage` from Topbar; cleared on sign-out).
+
 ## M2 · Bug check, new transitions, the $5 plan (22 Oct 2026, owner request)
 
 - Workers Paid is on in the code: `CF_PLAN=paid` (wrangler.jsonc vars, `keep_vars`), `limits.cpu_ms`
