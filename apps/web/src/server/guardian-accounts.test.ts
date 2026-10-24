@@ -38,9 +38,9 @@ describe('guardian allowlist', () => {
 describe('homeFor', () => {
   it('sends each role to its home', () => {
     expect(homeFor({ role: 'GUARDIAN' })).toBe('/parent');
-    expect(homeFor({ role: 'TEACHER' })).toBe('/teacher');
+    expect(homeFor({ role: 'TEACHER' })).toBe('/trace');
     expect(homeFor({ role: 'ADMIN', owner: true })).toBe('/console');
-    expect(homeFor({ role: 'INDUSTRY_MENTOR' })).toBe('/student');
+    expect(homeFor({ role: 'INDUSTRY_MENTOR' })).toBe('/trace');
     expect(homeFor(null)).toBe('/login');
   });
 });

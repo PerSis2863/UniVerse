@@ -12,25 +12,23 @@ import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { LightTrail } from '@/components/LightTrail';
 import { PassportCard } from '@/components/landing/PassportCard';
 import { TraceSection } from '@/components/landing/TraceSection';
-import { Proof } from '@/components/landing/Proof';
-import { Glue } from '@/components/landing/Glue';
-import { Bento } from '@/components/landing/Bento';
-import { Statement } from '@/components/landing/Statement';
+import { CampaignsSection, HowSection, MapsSection, PricingSection } from '@/components/landing/Business';
 import { SplitCta } from '@/components/landing/SplitCta';
 import { Accent, EASE, Reveal, Tag, ghost, primary } from '@/components/landing/bits';
 
 // The public landing page, in the style of the owner's Relay video (a dark page, one river of light
 // from top to bottom, a live flow card, numbers that draw themselves as you scroll) and in
-// UniVerse's two tones: indigo into fuchsia, never green. Every claim on it is about what the
-// product does; no invented usage numbers or quotes. Sections: src/components/landing/.
+// UniVerse's two tones: dark blue and hot pink. Every claim on it is about what the product does; no
+// invented usage numbers or quotes. Business mode (src/lib/business.ts): UniVerse Trace for brands,
+// shops, drivers and buyers. Sections: src/components/landing/.
 
 const FAQ = [
-  { q: 'What is UniVerse Trace?', a: 'A passport for every product. Each unit gets its own signed code (printed as a QR code). Buyers scan it to see it’s genuine and where it has been; shops and installers scan it to earn the brand’s points; the brand sees every scan live and every likely copy. Try the sample: universeimpact.com/t/demo.' },
+  { q: 'What is UniVerse Trace?', a: 'A passport for every product. Each unit gets its own signed code (printed as a QR code). Buyers scan it to see it’s genuine and where it has been; shops and installers scan it to earn the brand’s points; the brand sees every scan live on a map, every shipment on the road and every likely copy. Try the sample: universeimpact.com/t/demo.' },
   { q: 'How does it catch fake products?', a: 'Codes are signed, so nobody can make up a valid one. A copied label is caught when the same code is scanned far from where it was first checked, or far too often; the brand can then block it with one tap.' },
-  { q: 'Is UniVerse free to use?', a: 'Yes for students: they never pay. A school, university or NGO sets UniVerse up for its people, and everyone in it gets the student, teacher and admin portals, messaging, the NGO marketplace and verified credentials.' },
-  { q: 'Who sets it up?', a: 'An admin at the school or organization signs up and invites teachers and students. Each school only ever sees its own people and data.' },
+  { q: 'What does it cost?', a: 'Starting is free: 10,000 passports, the live maps, tracking, shop rewards and the wallet. Campaigns cost 5 cents per verified sale, nothing per view or click. PRO adds a million passports and your whole category on the map.' },
+  { q: 'How does live tracking work without a tracker?', a: 'The brand sends the driver a link. The driver opens it on their phone and taps Start sharing: the batch’s position goes to the brand’s map every few seconds while the page is open, with its speed and arrival time. No app, no sign-in, no hardware.' },
+  { q: 'Is the market data private?', a: 'A brand’s own map shows its scans snapped to areas of about 11 km, so no shop or person can be picked out. The category view on PRO is coarser still (about 55 km) and only shows an area once at least five scans fall in it.' },
   { q: 'Does it work on phones and in other languages?', a: 'Yes. It installs as an app on iOS, Android and desktop, works on a patchy connection, and speaks 13 languages, including Arabic and Urdu, which read right to left.' },
-  { q: 'How are credentials verified?', a: 'Each certificate is fingerprinted and anchored on the Polygon blockchain. Anyone can open its public verification link to confirm it is genuine and unaltered.' },
 ];
 
 function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
@@ -138,13 +136,14 @@ export default function ShowcasePage() {
                   <motion.span className="inline-block" initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.9, delay: 0.42, ease: EASE }}><Accent>passport.</Accent></motion.span>
                 </h1>
                 <motion.p initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.55, ease: EASE }} className="mt-6 text-lg text-zinc-300 max-w-md leading-relaxed">
-                  One code on every unit. Buyers see it’s genuine, shops earn points for every sale, and you see where every product really goes, and catch copies the day they appear.
+                  One code on every unit. Buyers see it’s genuine, shops earn points for every sale, and you watch every product move on a live map: where it sells, where each shipment is, and every copy the day it appears.
                 </motion.p>
                 <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.65, ease: EASE }} className="mt-9 flex flex-wrap items-center gap-3">
-                  <Link href="/t/demo" className={primary}>Scan a sample <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
+                  <Link href="/register" className={primary}>Start free <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
+                  <Link href="/t/demo" className={ghost}>Scan a sample</Link>
                   <button type="button" onClick={handleInstallClick} className={ghost}><Smartphone className="w-4 h-4" /> {installed ? 'Open the app' : 'Get the app'}</button>
                 </motion.div>
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.8 }} className="mt-5 font-mono text-xs text-zinc-400">for brands, shops and buyers / no card / schools still run on UniVerse too</motion.p>
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.8 }} className="mt-5 font-mono text-xs text-zinc-400">for brands, shops, drivers and buyers / free to start / no card</motion.p>
               </div>
               <motion.div initial={{ opacity: 0, y: 40, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 1.1, delay: 0.35, ease: EASE }} style={{ transformPerspective: 1200 }} className="flex justify-center lg:justify-end">
                 <PassportCard />
@@ -153,10 +152,10 @@ export default function ShowcasePage() {
           </section>
 
           <TraceSection />
-          <Proof />
-          <Glue />
-          <Bento />
-          <Statement />
+          <MapsSection />
+          <HowSection />
+          <CampaignsSection />
+          <PricingSection />
 
           <section id="faq" className="px-6 py-24 scroll-mt-24">
             <div className="max-w-3xl mx-auto">

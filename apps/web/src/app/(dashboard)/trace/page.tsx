@@ -4,33 +4,38 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
-import { Ban, ExternalLink, Gift, Loader2, MapPin, Package, Plus, Printer, ScanLine, ShieldCheck, Sparkles, Truck, Wand2 } from 'lucide-react';
+import { AnimatePresence, m as motion } from 'framer-motion';
+import { ArrowRight, Ban, Crown, ExternalLink, Globe2, Loader2, MapPin, Megaphone, Package, Plus, Printer, Rocket, ScanLine, Settings2, ShieldCheck, Sparkles, Trash2, Truck, Wallet, Wand2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { InstrumentBoard, type InstrumentCell } from '@/components/instruments/Board';
 import { Facts, HeatStrip, Meter, Ring, Spark, Stack } from '@/components/instruments/parts';
+import { TraceTabs } from '@/components/trace/TraceTabs';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
+import { fmt } from '@/lib/instruments';
 import { useActivePoll } from '@/lib/realtime-client';
 import { useNow } from '@/lib/use-now';
 import { STAGES, STAGE_LABEL, type Stage } from '@/lib/trace';
-import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 
-// UniVerse Trace, the brand's side (the owner, 24 Oct 2026: "something unique and different and
-// bold"): every product gets a passport. Add a product, make a batch (one signed code per unit),
-// print the codes, record where the batch goes, and watch every scan live: genuine checks, likely
-// copies, where products really end up and the points shops earn. Everyone who isn't an admin sees
-// their own points from scanning (Scan & earn). Server: src/server/trace.ts.
+// UniVerse Trace, the brand's console (the owner, 24 Oct 2026: "something unique and different and
+// bold"; then "do all 4 of them"). Anyone signed in can start a brand for free: every product gets a
+// passport, batches get printable signed codes, every scan shows up live with likely copies caught,
+// shops earn the brand's points, campaigns pay per verified scan, and the maps show where it sells and
+// where each shipment is. Server: src/server/trace*.ts. The other Trace pages hang off TraceTabs.
 
-interface Batch { id: string; label: string; quantity: number; origin: string | null; madeAt: string | null; createdAt: string }
-interface Product { id: string; name: string; sku: string | null; category: string | null; description: string | null; story: string | null; rewardPoints: number; warrantyMonths: number; batches: Batch[]; _count: { codes: number } }
+interface Brand { id: string; name: string; slug: string; category: string | null; color: string | null; logoUrl: string | null; plan: string; pointValue: number; currency: string; minCashout: number }
+interface BrandInfo { brand: Brand | null; pro?: boolean; units?: number; unitLimit?: number }
+interface Batch { id: string; label: string; quantity: number; origin: string | null; madeAt: string | null; createdAt: string; status: string; destPlace: string | null; carrierKey: string | null }
+interface Product { id: string; name: string; sku: string | null; category: string | null; description: string | null; story: string | null; rewardPoints: number; warrantyMonths: number; sample: boolean; batches: Batch[]; _count: { codes: number } }
 interface Overview {
   days: number; products: number; batches: number; units: number; scanned: number; claimed: number; points: number;
   scans: number[]; suspect: number[]; first: number; seen: number; suspects: number;
   places: { place: string; scans: number }[];
   recent: { id: string; verdict: string; place: string | null; createdAt: string; code: { id: string; label: string; serial: number; product: { name: string }; batch: { label: string } } }[];
   suspectList: { id: string; place: string | null; createdAt: string; code: { id: string; label: string; status: string; firstPlace: string | null; scanCount: number; product: { name: string } } }[];
+  campaigns: { active: number; scans: number; fees: number }; pendingCashouts: number; currency: string;
 }
 
 const VERDICT: Record<string, { label: string; cls: string }> = {
@@ -38,27 +43,104 @@ const VERDICT: Record<string, { label: string; cls: string }> = {
   SEEN: { label: 'Genuine · checked again', cls: 'bg-zinc-500/10 text-zinc-700 dark:text-zinc-300' },
   SUSPECT: { label: 'Likely copy', cls: 'bg-amber-500/15 text-amber-800 dark:text-amber-300' },
 };
+const BATCH_STATUS: Record<string, string> = { MADE: 'Made', IN_TRANSIT: 'On the move', DELIVERED: 'Delivered' };
+const CATEGORIES = ['Food', 'Drinks', 'Cosmetics', 'Fashion', 'Electronics', 'Auto parts', 'Pharma', 'Home', 'Toys', 'Agriculture'];
+const CURRENCIES = ['EUR', 'USD', 'GBP', 'INR', 'AED', 'CHF'];
+const money = (n: number, c: string) => n.toLocaleString(undefined, { style: 'currency', currency: c, maximumFractionDigits: 2 });
 
 export default function TracePage() {
-  const admin = useAuthStore((s) => s.user?.role === 'ADMIN' || s.user?.owner === true);
+  const { data, mutate } = useSWR<BrandInfo>('/trace/brand', fetcher);
   return (
     <>
-      <Topbar title="Trace" subtitle={admin ? 'Every product gets a passport: genuine checks, where it goes, rewards for shops' : 'Scan products, prove they’re genuine, earn points'} />
+      <Topbar title="Trace" subtitle="Every product gets a passport: genuine checks, live maps, rewards and campaigns" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">{admin ? <BrandConsole /> : <ScanAndEarn />}</div>
+        <div className="max-w-6xl mx-auto space-y-6">
+          <TraceTabs />
+          {!data ? <div className="ins-board"><div className="ins-board-inner h-[420px] skeleton" /></div>
+            : data.brand ? <BrandConsole info={data as Required<BrandInfo> & { brand: Brand }} onChange={() => void mutate()} />
+            : <StartBrand onDone={() => void mutate()} />}
+        </div>
       </div>
     </>
   );
 }
 
-function BrandConsole() {
+/** No brand yet: start one, free, in one step. */
+function StartBrand({ onDone }: { onDone: () => void }) {
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('');
+  const [busy, setBusy] = useState<'start' | 'sample' | null>(null);
+  const start = async (sample: boolean) => {
+    if (!name.trim()) { toast.error('What is your brand called?'); return; }
+    setBusy(sample ? 'sample' : 'start');
+    try {
+      await api.post('/trace/brand', { name, category });
+      if (sample) { await api.post('/trace/demo'); toast.success('Your brand is ready, with a sample product to explore.'); }
+      else toast.success('Your brand is ready. Add your first product.');
+      onDone();
+    } catch (e) { toast.error(errorMessage(e, 'Could not start the brand.')); } finally { setBusy(null); }
+  };
+  return (
+    <>
+      <section className="trace-hero relative overflow-hidden rounded-[32px] p-8 sm:p-12 text-white">
+        <span aria-hidden className="passport-glow passport-glow-a" />
+        <div className="relative grid lg:grid-cols-[1.2fr_1fr] gap-10 items-center">
+          <div>
+            <span className="passport-pill">UniVerse Trace · free to start</span>
+            <h2 className="mt-4 text-4xl sm:text-5xl font-black tracking-tight leading-[1.05]">Every product gets a passport.</h2>
+            <p className="mt-4 text-lg text-zinc-300">One code on each unit. Buyers scan it and see it’s genuine. Shops scan it and earn your points. You see where every product sells, live on a map, where each shipment is right now, and every copied label the moment it appears.</p>
+            <ul className="mt-6 grid sm:grid-cols-2 gap-2 text-sm text-zinc-200">
+              {['10,000 passports free', 'Live market map', 'Real-time shipment tracking', 'Pay only per verified scan'].map((t) => (
+                <li key={t} className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-pink-300 shrink-0" aria-hidden />{t}</li>
+              ))}
+            </ul>
+          </div>
+          <form onSubmit={(e) => { e.preventDefault(); void start(false); }} className="rounded-3xl bg-white/[0.06] ring-1 ring-white/10 p-6 backdrop-blur">
+            <h3 className="text-lg font-bold">Start your brand</h3>
+            <label className="mt-4 block text-xs font-semibold text-zinc-300">Brand name
+              <input required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder="Aurora Foods" className="mt-1 w-full h-11 rounded-xl bg-white/10 px-3 text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-pink-400" />
+            </label>
+            <label className="mt-3 block text-xs font-semibold text-zinc-300">What you make
+              <input list="trace-categories" maxLength={60} value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Food, cosmetics, auto parts…" className="mt-1 w-full h-11 rounded-xl bg-white/10 px-3 text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-pink-400" />
+              <datalist id="trace-categories">{CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist>
+            </label>
+            <div className="mt-5 grid gap-2">
+              <button type="submit" disabled={!!busy} className="btn-primary justify-center">{busy === 'start' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}Start free</button>
+              <button type="button" onClick={() => void start(true)} disabled={!!busy} className="btn-secondary justify-center">{busy === 'sample' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}Start with a sample product</button>
+            </div>
+            <p className="mt-3 text-[11px] text-zinc-400">The sample fills your maps with a made-up olive oil so you can see everything working. Delete it any time.</p>
+          </form>
+        </div>
+      </section>
+      <section className="grid sm:grid-cols-3 gap-4">
+        {[
+          [ScanLine, '1 · Passports', 'Add a product, make a batch, print one signed code per unit. Nobody can guess or forge one.'],
+          [Globe2, '2 · Live maps', 'Every scan lights up its city. Every shipment moves on the map while a driver shares the link.'],
+          [Megaphone, '3 · Campaigns', 'Offer shops bonus points for each genuine sale in a city. You pay only for scans that prove a sale.'],
+        ].map(([Icon, t, d]) => {
+          const I = Icon as typeof ScanLine;
+          return <div key={t as string} className="panel p-5"><I className="w-5 h-5 text-pink-500" aria-hidden /><p className="mt-3 font-bold text-zinc-900 dark:text-white">{t as string}</p><p className="mt-1 text-sm text-zinc-500">{d as string}</p></div>;
+        })}
+      </section>
+      <Link href="/trace/wallet" className="panel p-5 flex items-center gap-4 group">
+        <span className="w-11 h-11 rounded-2xl grid place-items-center bg-pink-500/10 text-pink-600 dark:text-pink-300"><Wallet className="w-5 h-5" aria-hidden /></span>
+        <span className="flex-1"><span className="block font-bold text-zinc-900 dark:text-white">Just selling or fitting products?</span><span className="block text-sm text-zinc-500">Scan the codes on what you sell and collect the brands’ points in your wallet.</span></span>
+        <ArrowRight className="w-5 h-5 text-zinc-400 group-hover:translate-x-1 transition-transform" aria-hidden />
+      </Link>
+    </>
+  );
+}
+
+function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; units: number; unitLimit: number }; onChange: () => void }) {
   const poll = useActivePoll(30_000);
   const now = useNow();
   const { data: products, mutate: reloadProducts } = useSWR<Product[]>('/trace/products', fetcher);
   const { data: ov, mutate: reloadOverview } = useSWR<Overview>('/trace/overview?days=30', fetcher, { refreshInterval: poll });
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
-  const reload = () => { void reloadProducts(); void reloadOverview(); };
+  const [settings, setSettings] = useState(false);
+  const reload = () => { void reloadProducts(); void reloadOverview(); onChange(); };
+  const { brand } = info;
 
   const tryDemo = async () => {
     setBusy(true);
@@ -72,31 +154,10 @@ function BrandConsole() {
 
   if (!products || !ov) return <div className="ins-board"><div className="ins-board-inner h-[420px] skeleton" /></div>;
 
-  if (products.length === 0 && !adding) {
-    return (
-      <section className="trace-hero relative overflow-hidden rounded-[32px] p-8 sm:p-12 text-white">
-        <span aria-hidden className="passport-glow passport-glow-a" />
-        <div className="relative max-w-2xl">
-          <span className="passport-pill">UniVerse Trace</span>
-          <h2 className="mt-4 text-4xl sm:text-5xl font-black tracking-tight leading-[1.05]">Every product gets a passport.</h2>
-          <p className="mt-4 text-lg text-zinc-300">One code on each unit. Buyers scan it and see it’s genuine. Shops scan it and earn points. You see where every product really goes, and catch copied labels the moment they appear.</p>
-          <ol className="mt-6 grid sm:grid-cols-3 gap-3 text-sm">
-            {[['1', 'Add a product', 'Its name, story and the points a shop earns.'], ['2', 'Print the codes', 'One signed code per unit: nobody can guess or forge one.'], ['3', 'Watch it live', 'Every scan, where it happened, and every likely copy.']].map(([n, t, d]) => (
-              <li key={n} className="rounded-2xl bg-white/[0.06] p-4"><span className="font-mono text-pink-300">{n}</span><p className="mt-1 font-bold">{t}</p><p className="text-zinc-300">{d}</p></li>
-            ))}
-          </ol>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <button type="button" onClick={() => void tryDemo()} disabled={busy} className="btn-primary">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}Try it with a sample product</button>
-            <button type="button" onClick={() => setAdding(true)} className="btn-secondary"><Plus className="w-4 h-4" />Add your first product</button>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   const total = ov.first + ov.seen + ov.suspects;
   const genuinePct = total ? ((ov.first + ov.seen) / total) * 100 : 100;
   const labels = ov.scans.map((_, i) => (now ? new Date(now - (ov.days - 1 - i) * 86_400_000).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : ''));
+  const usage = info.unitLimit ? (info.units / info.unitLimit) * 100 : 0;
   const cells: InstrumentCell[] = [
     { id: 'scans', label: 'Scans · 30 days', value: total, unit: 'scans', note: `${ov.scans.at(-1) ?? 0} today`, body: <Spark values={ov.scans} />,
       detail: { title: 'Scans per day', description: 'Every time someone checked one of your products.', series: ov.scans, labels } },
@@ -106,23 +167,72 @@ function BrandConsole() {
       body: <HeatStrip rows={[{ label: 'copies', values: ov.suspect.slice(-30) }, { label: 'scans', values: ov.scans.slice(-30) }]} foot={[labels[0] ?? '', 'today']} />,
       detail: { title: 'Likely copies per day', description: 'Scans of a code far from where it was first checked, or checked too often.', series: ov.suspect, labels, threshold: 1 } },
     { id: 'units', label: 'Units with a passport', value: ov.units, unit: 'units', note: `${ov.scanned.toLocaleString()} scanned at least once`, body: <Meter pct={ov.units ? (ov.scanned / ov.units) * 100 : 0} /> },
-    { id: 'points', label: 'Points earned by shops', value: ov.points, unit: 'points', note: `${ov.claimed} units claimed`, body: <Stack a={ov.scans.map((n, i) => n - (ov.suspect[i] ?? 0))} b={ov.suspect} /> },
+    { id: 'points', label: 'Points earned by shops', value: ov.points, unit: 'points', note: `${ov.claimed} units claimed · worth ${money(ov.points * brand.pointValue, brand.currency)}`, body: <Stack a={ov.scans.map((n, i) => n - (ov.suspect[i] ?? 0))} b={ov.suspect} /> },
+    { id: 'campaigns', label: 'Campaign scans', value: ov.campaigns.scans, unit: 'scans', warn: ov.pendingCashouts > 0,
+      note: `${ov.campaigns.active} running · fees ${money(ov.campaigns.fees, 'EUR')}${ov.pendingCashouts ? ` · ${ov.pendingCashouts} cash-out${ov.pendingCashouts === 1 ? '' : 's'} waiting` : ''}`,
+      body: <Facts rows={[['Running', String(ov.campaigns.active)], ['Verified sales paid', String(ov.campaigns.scans)], ['Cash-outs waiting', String(ov.pendingCashouts)]]} /> },
     { id: 'places', label: 'Where it’s scanned', value: ov.places.length, unit: 'places', body: ov.places.length ? <Facts rows={ov.places.map((p) => [p.place, String(p.scans)] as [string, string])} /> : <p className="text-sm text-zinc-500">No scans yet.</p> },
   ];
 
   return (
     <>
+      {/* The brand */}
+      <section className="panel p-5 flex flex-wrap items-center gap-4">
+        <span className="w-12 h-12 rounded-2xl grid place-items-center text-white font-black text-lg shadow-lg" style={{ background: brand.color ?? '#ec4899' }} aria-hidden>{brand.name.slice(0, 1).toUpperCase()}</span>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-bold text-lg text-zinc-900 dark:text-white flex items-center gap-2 flex-wrap">{brand.name}
+            <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider', info.pro ? 'bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-200' : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300')}>{info.pro ? 'PRO' : 'FREE'}</span>
+          </h2>
+          <p className="text-xs text-zinc-500">{[brand.category, `1 point = ${money(brand.pointValue, brand.currency)}`, `cash-outs from ${brand.minCashout.toLocaleString()} points`].filter(Boolean).join(' · ')}</p>
+        </div>
+        <div className="w-full sm:w-64">
+          <div className="flex justify-between text-[11px] text-zinc-500"><span>Passports used</span><span className="font-mono">{fmt(info.units)} / {fmt(info.unitLimit)}</span></div>
+          <div className="mt-1 h-2 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden">
+            <motion.div className={cn('h-full rounded-full', usage > 85 ? 'bg-amber-500' : 'bg-gradient-to-r from-pink-500 to-fuchsia-500')} initial={{ width: 0 }} animate={{ width: `${Math.min(100, usage)}%` }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} />
+          </div>
+        </div>
+        <button type="button" onClick={() => setSettings((v) => !v)} aria-expanded={settings} className="btn-secondary btn-sm"><Settings2 className="w-4 h-4" />Brand settings</button>
+      </section>
+      <AnimatePresence initial={false}>
+        {settings && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
+            <BrandSettings brand={brand} pro={info.pro} onDone={() => { setSettings(false); onChange(); }} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <InstrumentBoard icon={ScanLine} title="Trace live" subtitle={`${ov.products} products · ${ov.batches} batches · last 30 days`} cells={cells} storageKey="trace-live" />
+
+      <div className="grid sm:grid-cols-3 gap-3">
+        {([['/trace/map', Globe2, 'Market map', 'Where it sells, city by city, live'], ['/trace/tracking', Truck, 'Tracking', 'Every shipment, where it is now'], ['/trace/campaigns', Megaphone, 'Campaigns', 'Pay per verified sale']] as const).map(([href, Icon, t, d]) => (
+          <Link key={href} href={href} className="panel p-4 flex items-center gap-3 group hover:-translate-y-0.5 transition-transform">
+            <span className="w-10 h-10 rounded-2xl grid place-items-center bg-pink-500/10 text-pink-600 dark:text-pink-300"><Icon className="w-5 h-5" aria-hidden /></span>
+            <span className="min-w-0 flex-1"><span className="block font-semibold text-sm text-zinc-900 dark:text-white">{t}</span><span className="block text-xs text-zinc-500 truncate">{d}</span></span>
+            <ArrowRight className="w-4 h-4 text-zinc-400 group-hover:translate-x-1 transition-transform" aria-hidden />
+          </Link>
+        ))}
+      </div>
 
       <section aria-labelledby="products-h" className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="products-h" className="text-lg font-bold text-zinc-900 dark:text-white">Products</h2>
           <div className="flex gap-2">
-            <button type="button" onClick={() => void tryDemo()} disabled={busy} className="btn-secondary btn-sm"><Wand2 className="w-4 h-4" />Sample product</button>
+            {!products.some((p) => p.sample) && <button type="button" onClick={() => void tryDemo()} disabled={busy} className="btn-secondary btn-sm">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}Sample product</button>}
             <button type="button" onClick={() => setAdding((v) => !v)} className="btn-primary btn-sm"><Plus className="w-4 h-4" />New product</button>
           </div>
         </div>
         {adding && <ProductForm onDone={() => { setAdding(false); reload(); }} />}
+        {products.length === 0 && !adding && (
+          <div className="panel p-8 text-center">
+            <Package className="w-8 h-8 mx-auto text-zinc-400" aria-hidden />
+            <p className="mt-3 font-semibold text-zinc-900 dark:text-white">No products yet</p>
+            <p className="mt-1 text-sm text-zinc-500">Add one, or try the sample to see the maps and passports working.</p>
+            <div className="mt-4 flex justify-center gap-2">
+              <button type="button" onClick={() => void tryDemo()} disabled={busy} className="btn-secondary btn-sm"><Wand2 className="w-4 h-4" />Try the sample</button>
+              <button type="button" onClick={() => setAdding(true)} className="btn-primary btn-sm"><Plus className="w-4 h-4" />Add a product</button>
+            </div>
+          </div>
+        )}
         <div className="grid lg:grid-cols-2 gap-4">{products.map((p) => <ProductCard key={p.id} p={p} onChange={reload} />)}</div>
       </section>
 
@@ -150,7 +260,61 @@ function BrandConsole() {
           )}
         </section>
       </div>
+
+      <PlanCard pro={info.pro} />
     </>
+  );
+}
+
+function PlanCard({ pro }: { pro: boolean }) {
+  return (
+    <section id="plan" className="grid md:grid-cols-2 gap-4 scroll-mt-24" aria-label="Plans">
+      <div className={cn('panel p-6', !pro && 'ring-2 ring-pink-500/40')}>
+        <p className="text-xs font-bold tracking-wider text-zinc-500">FREE {!pro && '· YOUR PLAN'}</p>
+        <p className="mt-2 text-3xl font-black text-zinc-900 dark:text-white">0 €</p>
+        <ul className="mt-4 space-y-1.5 text-sm text-zinc-600 dark:text-zinc-300">
+          {['10,000 passports', 'Your live market map and tracking', 'Shop rewards and wallet', 'Campaigns: 5 cents per verified sale'].map((t) => <li key={t} className="flex gap-2"><ShieldCheck className="w-4 h-4 text-pink-500 shrink-0 mt-0.5" aria-hidden />{t}</li>)}
+        </ul>
+      </div>
+      <div className={cn('trace-hero text-white rounded-[28px] p-6 relative overflow-hidden', pro && 'ring-2 ring-fuchsia-400/60')}>
+        <span aria-hidden className="passport-glow passport-glow-a" />
+        <div className="relative">
+          <p className="text-xs font-bold tracking-wider text-fuchsia-200 flex items-center gap-1.5"><Crown className="w-3.5 h-3.5" aria-hidden />PRO {pro && '· YOUR PLAN'}</p>
+          <p className="mt-2 text-3xl font-black">Market intelligence</p>
+          <ul className="mt-4 space-y-1.5 text-sm text-zinc-200">
+            {['1,000,000 passports', 'Your whole category on the map, city by city (anonymised, live)', 'Your share in each city and where you’re missing', 'Everything in Free'].map((t) => <li key={t} className="flex gap-2"><Sparkles className="w-4 h-4 text-fuchsia-300 shrink-0 mt-0.5" aria-hidden />{t}</li>)}
+          </ul>
+          {!pro && <Link href="/contact" className="btn-primary mt-5 inline-flex">Talk to us about PRO</Link>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BrandSettings({ brand, pro, onDone }: { brand: Brand; pro: boolean; onDone: () => void }) {
+  const [f, setF] = useState({ name: brand.name, category: brand.category ?? '', color: brand.color ?? '#ec4899', logoUrl: brand.logoUrl ?? '', pointValue: String(brand.pointValue), currency: brand.currency, minCashout: String(brand.minCashout) });
+  const [saving, setSaving] = useState(false);
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try { await api.patch('/trace/brand', f); toast.success('Brand saved'); onDone(); }
+    catch (err) { toast.error(errorMessage(err, 'Could not save.')); } finally { setSaving(false); }
+  };
+  return (
+    <form onSubmit={(e) => void save(e)} className="panel p-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <label className="block sm:col-span-2"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Brand name</span><input required maxLength={80} value={f.name} onChange={set('name')} className="input mt-1" /></label>
+      <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Category{pro ? '' : ' (decides your market on PRO)'}</span><input list="trace-categories-2" maxLength={60} value={f.category} onChange={set('category')} className="input mt-1" /><datalist id="trace-categories-2">{CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist></label>
+      <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Colour</span><input type="color" value={f.color} onChange={set('color')} className="input mt-1 h-10 p-1" /></label>
+      <label className="block sm:col-span-2"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Logo address (https)</span><input type="url" value={f.logoUrl} onChange={set('logoUrl')} className="input mt-1" placeholder="https://…" /></label>
+      <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">What 1 point is worth</span><input type="number" min={0} max={100} step={0.001} value={f.pointValue} onChange={set('pointValue')} className="input mt-1" /></label>
+      <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Currency</span><select value={f.currency} onChange={set('currency')} className="input mt-1">{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</select></label>
+      <label className="block sm:col-span-2"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Smallest cash-out (points)</span><input type="number" min={1} max={1000000} value={f.minCashout} onChange={set('minCashout')} className="input mt-1" /></label>
+      <div className="sm:col-span-2 flex items-end justify-end gap-2">
+        <button type="button" onClick={onDone} className="btn-secondary">Cancel</button>
+        <button type="submit" disabled={saving} className="btn-primary">{saving && <Loader2 className="w-4 h-4 animate-spin" />}Save</button>
+      </div>
+    </form>
   );
 }
 
@@ -214,15 +378,21 @@ function ProductCard({ p, onChange }: { p: Product; onChange: () => void }) {
       setBatchOpen(false); onChange();
     } catch (err) { toast.error(errorMessage(err, 'Could not make the batch.')); } finally { setSaving(false); }
   };
+  const remove = async () => {
+    if (!window.confirm(p.sample ? 'Delete the sample product and all its sample scans, shipments and campaign?' : `Delete “${p.name}” and all its batches and scans? This can’t be undone.`)) return;
+    try { await api.delete(`/trace/products/${p.id}`); toast.success(p.sample ? 'Sample removed' : 'Product deleted'); onChange(); }
+    catch (err) { toast.error(errorMessage(err, 'Could not delete it.')); }
+  };
   return (
     <article className="panel p-5">
       <div className="flex items-start gap-3">
         <span className="w-11 h-11 shrink-0 rounded-2xl grid place-items-center bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"><Package className="w-5 h-5" /></span>
         <div className="min-w-0 flex-1">
-          <h3 className="font-bold text-zinc-900 dark:text-white truncate">{p.name}</h3>
+          <h3 className="font-bold text-zinc-900 dark:text-white truncate flex items-center gap-2">{p.name}{p.sample && <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-semibold text-pink-700 dark:text-pink-200"><Sparkles className="w-3 h-3" aria-hidden />sample</span>}</h3>
           <p className="text-xs text-zinc-500">{[p.category, `${p.rewardPoints} points per unit`, p.warrantyMonths ? `${p.warrantyMonths}-month warranty` : null].filter(Boolean).join(' · ')}</p>
         </div>
         <span className="shrink-0 font-mono text-[11px] text-zinc-500">{p._count.codes.toLocaleString()} scanned</span>
+        <button type="button" onClick={() => void remove()} aria-label={`Delete ${p.name}`} title="Delete" className="shrink-0 w-8 h-8 grid place-items-center rounded-full text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors"><Trash2 className="w-4 h-4" /></button>
       </div>
       <ul className="mt-4 space-y-2">
         {p.batches.map((x) => <BatchRow key={x.id} batch={x} onChange={onChange} />)}
@@ -262,10 +432,11 @@ function BatchRow({ batch, onChange }: { batch: Batch; onChange: () => void }) {
       <div className="flex flex-wrap items-center gap-2">
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{batch.label}</span>
-          <span className="block font-mono text-[11px] text-zinc-500">{batch.quantity.toLocaleString()} units{batch.origin ? ` · made in ${batch.origin}` : ''}</span>
+          <span className="block font-mono text-[11px] text-zinc-500">{batch.quantity.toLocaleString()} units{batch.origin ? ` · made in ${batch.origin}` : ''} · <span className={cn(batch.status === 'IN_TRANSIT' && 'text-pink-600 dark:text-pink-300', batch.status === 'DELIVERED' && 'text-emerald-600 dark:text-emerald-400')}>{BATCH_STATUS[batch.status] ?? batch.status}{batch.destPlace && batch.status === 'IN_TRANSIT' ? ` → ${batch.destPlace}` : ''}</span></span>
         </span>
         <Link href={`/trace/print?batch=${batch.id}`} className="btn-secondary btn-sm"><Printer className="w-3.5 h-3.5" />Print codes</Link>
-        <button type="button" onClick={() => setOpen((v) => !v)} className="btn-secondary btn-sm" aria-expanded={open}><Truck className="w-3.5 h-3.5" />Where is it?</button>
+        <button type="button" onClick={() => setOpen((v) => !v)} className="btn-secondary btn-sm" aria-expanded={open}><MapPin className="w-3.5 h-3.5" />Record a stop</button>
+        {batch.status === 'IN_TRANSIT' && <Link href="/trace/tracking" className="btn-secondary btn-sm" aria-label={`Track ${batch.label}`} title="Track it"><Truck className="w-3.5 h-3.5" /></Link>}
         <button type="button" onClick={() => void sample()} className="btn-secondary btn-sm" aria-label={`Open a passport from ${batch.label}`} title="Open a passport"><ExternalLink className="w-3.5 h-3.5" /></button>
       </div>
       {open && (
@@ -278,41 +449,5 @@ function BatchRow({ batch, onChange }: { batch: Batch; onChange: () => void }) {
         </form>
       )}
     </li>
-  );
-}
-
-function ScanAndEarn() {
-  const { data } = useSWR<{ balance: number; claims: { code: string; at: string; product: string; points: number }[] }>('/trace/me', fetcher);
-  return (
-    <>
-      <section className="trace-hero relative overflow-hidden rounded-[32px] p-8 text-white">
-        <span aria-hidden className="passport-glow passport-glow-a" />
-        <div className="relative flex flex-wrap items-center gap-6">
-          <div className="flex-1 min-w-60">
-            <span className="passport-pill">Scan &amp; earn</span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-black tracking-tight">Scan a product. Prove it’s real. Get points.</h2>
-            <p className="mt-2 text-zinc-300">Point your phone’s camera at the code on a product. You’ll see if it’s genuine, and if you sell or install it, you earn the brand’s points.</p>
-          </div>
-          <div className="text-center">
-            <p className="font-mono text-6xl font-light tabular-nums">{data ? data.balance.toLocaleString() : '…'}</p>
-            <p className="text-sm text-zinc-300 inline-flex items-center gap-1.5"><Gift className="w-4 h-4 text-pink-300" />your points</p>
-          </div>
-        </div>
-      </section>
-      <section className="panel p-5">
-        <h2 className="font-bold text-zinc-900 dark:text-white">Products you scanned</h2>
-        {!data ? <div className="mt-3 h-20 skeleton rounded-xl" /> : data.claims.length === 0 ? <p className="mt-3 text-sm text-zinc-500">Nothing yet. Your first scan shows here.</p> : (
-          <ul className="mt-3 divide-y divide-zinc-100 dark:divide-white/[0.06]">
-            {data.claims.map((c) => (
-              <li key={c.code} className="py-2.5 flex items-center gap-3 text-sm">
-                <span className="min-w-0 flex-1 truncate text-zinc-800 dark:text-zinc-100">{c.product} <span className="font-mono text-[11px] text-zinc-500">{c.code}</span></span>
-                <span className="shrink-0 font-semibold text-zinc-900 dark:text-white">+{c.points}</span>
-                <span className="shrink-0 font-mono text-[11px] text-zinc-500">{formatDistanceToNow(new Date(c.at), { addSuffix: true })}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </>
   );
 }

@@ -5,7 +5,7 @@ import { CookieNotice } from './CookieNotice';
 
 const COLUMNS = [
   { title: 'Product', links: [{ href: '/#product', label: 'Platform' }, { href: '/#how', label: 'How it works' }, { href: '/#faq', label: 'FAQ' }] },
-  { title: 'For', links: [{ href: '/#roles', label: 'Students' }, { href: '/#roles', label: 'Teachers' }, { href: '/#roles', label: 'School admins' }] },
+  { title: 'For', links: [{ href: '/register', label: 'Brands' }, { href: '/#campaigns', label: 'Shops & installers' }, { href: '/t/demo', label: 'Buyers' }] },
   { title: 'Company', links: [{ href: '/blog', label: 'Blog' }, { href: '/trust', label: 'Status & trust' }, { href: '/contact#sales', label: 'Talk to sales' }] },
 ];
 

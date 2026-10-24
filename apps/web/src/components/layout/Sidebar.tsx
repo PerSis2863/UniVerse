@@ -2,15 +2,8 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { BarChart3, Briefcase, PenTool, ScanLine, ShieldCheck, type LucideIcon } from 'lucide-react';
-import { userCan } from '@/lib/permissions';
-import {
-  LayoutDashboard, Users,
-  MessageSquare, Settings, LogOut,
-  GraduationCap, Brain,
-  AlertTriangle, Folder, ChevronDown,
-  Coffee, Shield, Map, Globe2, Crown
-} from 'lucide-react';
+import { Building2, ChevronDown, Globe2, LogOut, Megaphone, MessageSquare, PenTool, ScanLine, Settings, ShieldCheck, Truck, Wallet, type LucideIcon } from 'lucide-react';
+import { inboxFor, settingsFor } from '@/lib/business';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
@@ -30,26 +23,6 @@ export type NavItem = {
   also?: string[];
 };
 
-/**
- * Staff with custom roles (Stage 5 · B15.6) get an "Office" group with the admin areas their
- * permissions open, before Messages and Settings.
- */
-function withOffice(nav: NavItem[], user: { role?: string; permissions?: string[] }): NavItem[] {
-  const subItems = [
-    userCan(user, 'fees.view') && { href: '/admin/fees', label: 'School fees' },
-    userCan(user, 'staff.manage') && { href: '/admin/staff', label: 'Staff' },
-    userCan(user, 'library.manage') && { href: '/admin/library', label: 'Library desk' },
-    userCan(user, 'registers.manage') && { href: '/admin/registers', label: 'Registers' },
-    userCan(user, 'admissions.review') && { href: '/admin/admissions', label: 'Admissions' },
-    // Counsellors (Stage 5 · D13) are staff given this permission; admins reach it from Safety.
-    user.role !== 'ADMIN' && userCan(user, 'wellbeing.counsel') && { href: '/admin/wellbeing', label: 'Wellbeing requests' },
-    (userCan(user, 'import.run') || userCan(user, 'export.run')) && { href: '/admin/import', label: 'Import & export' },
-  ].filter((x): x is { href: string; label: string } => !!x);
-  if (!subItems.length) return nav;
-  const at = Math.max(0, nav.length - 2);
-  return [...nav.slice(0, at), { label: 'Office', icon: Briefcase, subItems }, ...nav.slice(at)];
-}
-
 /** Whether `pathname` is the page of this entry (its href without a query, or one of `also`). */
 const isOn = (pathname: string, href: string | undefined, also?: string[]) => !!href && (pathname === href.split('?')[0] || !!also?.includes(pathname));
 
@@ -57,210 +30,31 @@ const isOn = (pathname: string, href: string | undefined, also?: string[]) => !!
  * Pages that are tabs of another menu entry, or only reached from search (Ctrl+K / the search
  * button): listed in search by name. `quick` ones also show before anything is typed.
  */
-export const searchOnlyPages: Record<string, { href: string; label: string; keywords?: string; quick?: boolean }[]> = {
-  STUDENT: [
-    { href: '/student/search/directory', label: 'Student directory', keywords: 'people find students classmates', quick: true },
-    { href: '/student/search/internships', label: 'Internship history', keywords: 'placements companies past internships', quick: true },
-    { href: '/student/links', label: 'Apps & links', keywords: 'tools portals email library wifi', quick: true },
-    { href: '/student/calendar', label: 'Timetable', keywords: 'calendar schedule classes week' },
-    { href: '/student/planner', label: 'Study planner', keywords: 'plan study schedule ai deadlines revision' },
-    { href: '/student/information', label: 'Information', keywords: 'news announcements updates' },
-    { href: '/student/attendance', label: 'Attendance', keywords: 'absences presence' },
-    { href: '/student/quizzes', label: 'Quizzes', keywords: 'tests exams' },
-    { href: '/student/assignments', label: 'Assignments', keywords: 'essay homework coursework hand in' },
-    { href: '/student/tutor', label: 'AI tutor', keywords: 'ai study flashcards practice' },
-    { href: '/student/voice-tutor', label: 'Voice tutor', keywords: 'talk speak ai tutor voice' },
+export const searchOnlyPages: Record<string, { href: string; label: string; keywords?: string; quick?: boolean }[]> = Object.fromEntries(
+  ['STUDENT', 'TEACHER', 'ADMIN'].map((role) => [role, [
+    { href: '/trace/campaigns', label: 'New campaign', keywords: 'campaign bonus points city pay per scan verified sale promotion', quick: true },
+    { href: '/trace/tracking', label: 'Track a shipment', keywords: 'shipment truck delivery where is live position driver eta', quick: true },
+    { href: '/trace/wallet', label: 'Cash out points', keywords: 'wallet points money cash out pay bank upi paypal', quick: true },
     { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
     { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
-    { href: '/student/passport', label: 'Skills passport', keywords: 'cv profile share employers' },
-    { href: '/student/offline?scan=1', label: 'Scan from the teacher’s screen', keywords: 'offline no internet moving qr codes scan note quiz announcement class' },
-    { href: '/student/internships/match', label: 'Skills match', keywords: 'jobs internships ngo projects match my skills gap what to learn career' },
-    { href: '/student/internships/applications', label: 'Application tracker', keywords: 'jobs internships applications applied interview offer next step notes cv career tracker' },
-    { href: '/student/internships/interview', label: 'Interview practice', keywords: 'job interview questions practise answer feedback star filler words career' },
-    { href: '/student/internships/mentors', label: 'Mentors and alumni', keywords: 'mentor alumni career advice book a call one to one graduates' },
-    { href: '/donations', label: 'My donations', keywords: 'donate donation give money ngo charity receipt 80g tax' },
-    { href: '/student/life/board', label: 'Campus board', keywords: 'marketplace buy sell swap free second hand books bike carpool ride share lift housing room flat rent' },
-    { href: '/student/life/board?section=rides', label: 'Carpool and rides', keywords: 'carpool ride share lift airport travel together' },
-    { href: '/student/life/board?section=housing', label: 'Housing board', keywords: 'room flat rent housing roommate accommodation pg' },
-    { href: '/student/life/everyday', label: 'Pre-order food', keywords: 'cafeteria canteen dining food order lunch dinner pre-order pickup' },
-    { href: '/student/life/rooms', label: 'Room booking', keywords: 'reserve study room' },
-    { href: '/campus-map', label: 'Campus map', keywords: 'map buildings where is my class room free study room now live events campus twin' },
-    { href: '/student/life/medical', label: 'Medical & disability', keywords: 'health doctor accessibility' },
-    { href: '/student/life/everyday', label: 'Everyday life', keywords: 'dining menu food transport campus' },
-    { href: '/student/life/events', label: 'Campus events', keywords: 'rsvp check in qr ticket event' },
-    { href: '/student/life/lost-found', label: 'Lost & found', keywords: 'lost found missing item' },
-    { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor donate time pledge impact call project updates' },
-    { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition team hackathon universities demo day prize' },
     { href: '/studio?tool=convert', label: 'Convert files', keywords: 'word to pdf docx pdf to jpg png excel csv convert change format' },
     { href: '/studio?tool=compress', label: 'Compress files', keywords: 'compress reduce shrink smaller file size pdf photo image video zip' },
-  ],
-  TEACHER: [
-    { href: '/teacher/tutor', label: 'AI tutor', keywords: 'ai course sources flashcards' },
-    { href: '/donations', label: 'My donations', keywords: 'donate donation give money ngo charity receipt 80g tax' },
-    { href: '/teacher/live', label: 'Send to phones with no internet', keywords: 'offline no internet moving qr codes projector note quiz announcement class' },
-    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
-    { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
-    { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor impact call report project updates' },
-    { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize' },
-    { href: '/studio?tool=convert', label: 'Convert files', keywords: 'word to pdf docx pdf to jpg png excel csv convert change format' },
-    { href: '/studio?tool=compress', label: 'Compress files', keywords: 'compress reduce shrink smaller file size pdf photo image video zip' },
-    { href: '/campus-map', label: 'Campus map', keywords: 'map buildings where is my class room free study room now live events campus twin' },
-  ],
-  ADMIN: [
-    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
-    { href: '/admin/impact-reports/donations', label: 'Donations', keywords: 'ngo donations give money 80g pan receipts stripe csv charity' },
-    { href: '/admin/monitoring/board', label: 'Campus board reports', keywords: 'marketplace reported posts moderation rides housing' },
-    { href: '/admin/monitoring/meals', label: 'Cafeteria pre-orders', keywords: 'kitchen canteen dining food orders pickup ready' },
-    { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
-    { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor impact call report project updates' },
-    { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize credentials' },
-    { href: '/studio?tool=convert', label: 'Convert files', keywords: 'word to pdf docx pdf to jpg png excel csv convert change format' },
-    { href: '/studio?tool=compress', label: 'Compress files', keywords: 'compress reduce shrink smaller file size pdf photo image video zip' },
-    { href: '/campus-map', label: 'Campus map', keywords: 'map buildings where is my class room free study room now live events campus twin usage heatmap' },
-  ],
-};
+  ]]),
+);
 
-export const navByRole: Record<string, NavItem[]> = {
-  STUDENT: [
-    { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard, also: ['/student/calendar', '/student/planner', '/student/information'] },
-    // Messages and calls are one entry: the Calls list is a tab inside Messages.
-    { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare, also: ['/calls', '/notifications'] },
-    { href: '/trace', label: 'Scan & earn', icon: ScanLine },
-    {
-      label: 'nav.schooling', icon: GraduationCap,
-      subItems: [
-        { href: '/student/courses', label: 'nav.courses', also: ['/student/live', '/student/offline'] },
-        { href: '/marketplace', label: 'Course Marketplace' },
-        { href: '/student/groups', label: 'nav.groups' },
-        { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor', '/student/voice-tutor', '/student/tutoring', '/student/reels'] },
-        { href: '/student/internships', label: 'nav.internships' },
-        { href: '/student/choices', label: 'nav.my_choices' },
-        { href: '/student/assignments', label: 'Assignments & grades', also: ['/student/grades', '/student/attendance', '/student/quizzes', '/student/mastery'] },
-        { href: '/collab', label: 'Collaborate', also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
-        { href: '/student/skills', label: 'Learning resources', also: ['/student/knowledge-hub', '/library'] },
-      ]
-    },
-    {
-      label: 'nav.administrative_data', icon: Folder,
-      subItems: [
-        { href: '/student/administrative/personal', label: 'nav.personal_data' },
-        { href: '/student/administrative/documents', label: 'nav.school_documents' },
-        { href: '/student/administrative/accounting', label: 'nav.accounting' },
-        { href: '/student/administrative/scholarships', label: 'nav.scholarships' },
-      ]
-    },
-    {
-      label: 'nav.global_impact', icon: Globe2,
-      subItems: [
-        { href: '/student/impact/ai-match', label: 'AI project match' },
-        { href: '/student/impact/ngo-marketplace', label: 'Opportunities', also: ['/student/impact/startups', '/student/impact/companies', '/student/impact/shifts', '/impact-rooms', '/impact-league'] },
-        { href: '/student/impact/edu-society', label: 'nav.edu_society' },
-        { href: '/student/credentials', label: 'Credentials & passport', also: ['/student/passport'] },
-        { href: '/student/impact/leaderboard', label: 'Leaderboard' },
-      ]
-    },
-    { href: '/student/life/associations', label: 'nav.student_life', icon: Coffee, also: ['/student/life/rooms', '/student/life/medical', '/student/life/everyday', '/student/life/events', '/student/life/lost-found', '/campus-map'] },
-    { href: '/student/community', label: 'nav.community', icon: Users },
-    { href: '/student/support', label: 'Support & BeeSafe', icon: AlertTriangle, also: ['/student/beesafe'] },
-    { href: '/student/settings?section=language', label: 'nav.settings', icon: Settings },
-  ],
-  TEACHER: [
-    { href: '/teacher', label: 'nav.dashboard', icon: LayoutDashboard },
-    {
-      label: 'nav.global_collab', icon: Globe2,
-      subItems: [
-        { href: '/teacher/collaborations', label: 'nav.inter_uni_research', also: ['/teacher/network'] },
-        { href: '/teacher/collaborations/projects', label: 'nav.ngo_mentorship', also: ['/impact-rooms', '/impact-league'] },
-        { href: '/teacher/mentorship', label: 'nav.volunteer_mentor' },
-      ]
-    },
-    {
-      label: 'nav.schooling', icon: GraduationCap,
-      subItems: [
-        { href: '/teacher/courses', label: 'nav.my_courses' },
-        { href: '/marketplace', label: 'Curriculum Marketplace' },
-        { href: '/teacher/blackboard', label: 'nav.blackboard', also: ['/teacher/tutor', '/teacher/reels'] },
-        { href: '/teacher/students', label: 'nav.students', also: ['/teacher/early-warning', '/teacher/analytics', '/teacher/mastery', '/teacher/meetings', '/teacher/forms'] },
-        { href: '/teacher/attendance', label: 'nav.attendance' },
-        { href: '/teacher/grades', label: 'nav.grades' },
-        { href: '/teacher/quizzes', label: 'nav.quizzes' },
-        { href: '/teacher/assignments', label: 'Assignments' },
-        { href: '/teacher/live', label: 'Live class' },
-        { href: '/collab', label: 'Collaborate', also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
-        { href: '/teacher/calendar', label: 'nav.timetable', also: ['/teacher/staff'] },
-      ]
-    },
-    {
-      label: 'nav.campus_services', icon: Map,
-      subItems: [
-        { href: '/teacher/services/rooms', label: 'nav.room_reservation', also: ['/campus-map'] },
-      ]
-    },
-    { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain, also: ['/library'] },
-    { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications'] },
-    { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },
-  ],
-  ADMIN: [
-    { href: '/admin', label: 'nav.overview', icon: LayoutDashboard },
-    {
-      label: 'nav.global_impact', icon: Globe2,
-      subItems: [
-        { href: '/admin/partnerships', label: 'nav.partner_institutions', also: ['/admin/network'] },
-        { href: '/admin/partners', label: 'nav.sponsor_portal' },
-        { href: '/admin/impact-reports', label: 'Impact reports', also: ['/admin/impact-reports/shifts', '/admin/impact-reports/volunteering', '/impact-rooms', '/impact-league'] },
-        { href: '/admin/certifications', label: 'Certifications' },
-        { href: '/admin/credentials', label: 'Credential Verification' },
-      ]
-    },
-    // Management was 15 entries; now three short groups.
-    {
-      label: 'People', icon: Users,
-      subItems: [
-        { href: '/admin/users', label: 'nav.users', also: ['/admin/staff', '/admin/admissions', '/admin/roles', '/admin/import'] },
-        { href: '/admin/approvals', label: 'Approvals' },
-        { href: '/admin/early-warning', label: 'Early warning' },
-        { href: '/admin/safety', label: 'Safety reports' },
-        { href: '/admin/audit', label: 'Activity Log' },
-      ]
-    },
-    {
-      label: 'Academics', icon: GraduationCap,
-      subItems: [
-        { href: '/admin/courses', label: 'nav.courses' },
-        { href: '/marketplace', label: 'Course Marketplace' },
-        { href: '/admin/attendance', label: 'nav.attendance' },
-        { href: '/admin/quizzes', label: 'nav.quizzes' },
-        { href: '/admin/timetable', label: 'nav.timetable_management' },
-        { href: '/admin/knowledge-hub', label: 'nav.knowledge_hub' },
-        { href: '/admin/library', label: 'Library', also: ['/library'] },
-      ]
-    },
-    {
-      label: 'Operations', icon: Settings,
-      subItems: [
-        { href: '/admin/administrative', label: 'nav.administrative' },
-        { href: '/admin/finances', label: 'nav.finances', also: ['/admin/fees'] },
-        { href: '/admin/internships', label: 'nav.internships' },
-        { href: '/admin/student-life', label: 'nav.student_life' },
-        { href: '/admin/registers', label: 'Registers' },
-        { href: '/admin/integrations/lti', label: 'LMS integration' },
-      ]
-    },
-    { href: '/trace', label: 'Trace', icon: ScanLine, also: ['/trace/print'] },
-    { href: '/admin/insights', label: 'Insights', icon: BarChart3, also: ['/admin/analytics', '/admin/reports', '/admin/impact-metrics', '/admin/insights/warehouse'] },
-    {
-      label: 'nav.campus_monitoring', icon: Shield,
-      subItems: [
-        { href: '/admin/monitoring/rooms', label: 'nav.room_bookings', also: ['/campus-map'] },
-        { href: '/admin/monitoring/associations', label: 'nav.associations', also: ['/admin/monitoring/events', '/admin/monitoring/lost-found'] },
-      ]
-    },
-    { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications', '/admin/announcements'] },
-    { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
-    { href: '/admin/billing', label: 'Billing & plans', icon: Crown },
-    { href: '/admin/settings', label: 'nav.settings', icon: Settings },
-  ],
-};
+/** The business app's menu (src/lib/business.ts): the same for every role, Messages and Settings at each role's own address. */
+const businessNav = (role: string): NavItem[] => [
+  { href: '/trace', label: 'Console', icon: ScanLine, also: ['/trace/print'] },
+  { href: '/trace/map', label: 'Market map', icon: Globe2 },
+  { href: '/trace/tracking', label: 'Tracking', icon: Truck },
+  { href: '/trace/campaigns', label: 'Campaigns', icon: Megaphone },
+  { href: '/trace/wallet', label: 'Wallet', icon: Wallet },
+  { href: inboxFor(role), label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications', ...(role === 'ADMIN' ? ['/admin/announcements'] : [])] },
+  { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
+  { href: settingsFor(role), label: 'nav.settings', icon: Settings },
+];
+
+export const navByRole: Record<string, NavItem[]> = { STUDENT: businessNav('STUDENT'), TEACHER: businessNav('TEACHER'), ADMIN: businessNav('ADMIN') };
 
 function NavItemComponent({ 
   item, 
@@ -385,8 +179,8 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   if (!user) return null;
 
   // The owner console link exists only for the owner (the console itself answers "not found" to anyone else).
-  const base = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }, ...(user.role === 'ADMIN' ? [] : [{ href: '/trace', label: 'Trace', icon: ScanLine, also: ['/trace/print'] }]), ...(navByRole[user.role] ?? []).filter((i) => i.href !== '/trace')] : navByRole[user.role] ?? [];
-  const nav = user.role === 'TEACHER' ? withOffice(base, user) : base;
+  const own = navByRole[user.role] ?? businessNav(user.role);
+  const nav: NavItem[] = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }, ...own.slice(0, 5), { href: '/trace/brands', label: 'All brands', icon: Building2 }, ...own.slice(5)] : own;
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const handleLogout = async () => {
@@ -425,7 +219,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
         <UniverseLogo size="md" animated={false} withGlow={false} />
         <div className="min-w-0">
           <div className="font-bold text-[17px] leading-tight tracking-tight text-zinc-900 dark:text-white">UniVerse</div>
-          <div className="text-[12px] text-zinc-500 dark:text-zinc-400 font-medium">{user.owner ? 'Owner' : user.role === 'ADMIN' ? 'Admin' : user.role === 'TEACHER' ? 'Teacher' : 'Student'}</div>
+          <div className="text-[12px] text-zinc-500 dark:text-zinc-400 font-medium">{user.owner ? 'Owner' : user.role === 'ADMIN' ? 'Admin' : 'UniVerse Trace'}</div>
         </div>
       </div>
 

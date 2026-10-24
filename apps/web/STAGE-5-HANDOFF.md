@@ -1525,3 +1525,39 @@ Progress table (row D6).
 - Landing: the hero is now "Every product gets a passport." with an animated passport phone
   (`components/landing/PassportCard.tsx`) and a Trace section; the school sections follow.
 
+## M20 · Trace network, live maps and business mode
+
+- The owner chose all four ideas ("do all 4 of them… make the live map in detail like very detail with
+  animations, transitions… ultra smooth"), then a "2d real time product tracking map", then "remove the
+  school related features and change it into the new one" (keep Collaborate, Messages, owner console).
+- Data: migration 0178 (`trace_brands`, `trace_brand_members`, `trace_points`, `trace_cashouts`,
+  `trace_campaigns`, `trace_pings`; `brandId` on every trace table; `sample` on products; scans keep
+  `productId`, `category`, `geoLat/geoLng` from Cloudflare; batches get `status`, a destination and a
+  `carrierKey`). Next migration: 0179.
+- Server: `trace.ts` (brands, plans: FREE 10,000 units, PRO a million and the category market;
+  the owner counts as PRO), `trace-wallet.ts` (points per brand, hash chain, cash-outs; a refused one
+  refunds), `trace-campaigns.ts` (area = country or circle; fee 5 cents a campaign scan), `trace-map.ts`
+  (market map, live scans, tracking with a simulated glide for sample shipments, the driver link
+  `/carry/<key>`: public ping every ≥5 s and stops), `trace-demo.ts` (sample brand data: 3 shipments,
+  ~870 scans in 28 cities, a Paris campaign; all hangs off the `sample` product, so deleting it
+  removes everything).
+- Pages: `/trace` (start a brand free, or the console with plan, settings, products, scans, copies),
+  `/trace/map` (market map), `/trace/tracking` (live tracking), `/trace/campaigns` (campaigns and
+  cash-out requests), `/trace/wallet` (everyone), `/trace/brands` (owner: plans), `/carry/[key]`
+  (driver, built as `/carry/open`). Tabs: `components/trace/TraceTabs.tsx`.
+- Maps: `components/trace/map/engine.ts` (projection, fit, zoom, glow sprites), `WorldCanvas.tsx`
+  (the engine class: drag with inertia, wheel and pinch zoom easing to a target, fly-to with a lift,
+  keyboard, 110m → 50m outlines when zoomed in, country and city names, scale bar, `interactive=false`
+  for the landing), `MarketMap.tsx` (glows, 11 km squares close in, flows, replay timeline, live and
+  sample ripples, city panel, PRO tiles and "where you're missing"), `TrackingMap.tsx` (roads done,
+  live trail, dashed road ahead, gliding markers with heading, destination picked on the map, QR
+  driver link). City names: `map/cities.ts`.
+- Business mode: `src/lib/business.ts` (+ tests): one menu (`Sidebar.tsx`), phone tabs (`app-tabs.ts`),
+  tour, quick create and search actions; `homeFor` → `/trace`; the dashboard layout redirects school
+  pages; sign-up without roles (role STUDENT, account INDEPENDENT: no approval); landing sections
+  `components/landing/Business.tsx` with the live map showcase; the removed landing sections (Proof,
+  Glue, Bento, Statement) were school-only. The school code stays in the repo, unreachable.
+- Checked: unit tests, `pnpm check`, live API runs on the dev server (brand, sample, maps, tracking
+  pings, scan + claim with a campaign bonus, wallet chain, cash-out and refusal with refund, 403 for a
+  non-owner), screenshots of both maps in light and dark, the driver page and the landing.
+

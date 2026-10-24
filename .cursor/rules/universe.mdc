@@ -78,8 +78,20 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
   anyone scans at `/t/<code>` (public; `/t/demo` is a built-in sample); a label seen far from its first
   scan (GPS if the browser already allows it, otherwise the country) or too often is a likely copy
   (`src/lib/trace.ts`); signed-in shops earn the product's points in the Impact Credits ledger. Never
-  send a batch's `secret` to a browser. Keep the school product and Collaborate as they are: the owner
-  likes Collaborate.
+  send a batch's `secret` to a browser. Collaborate stays: the owner likes it.
+- **Business mode (the owner, 24 Oct 2026: "you have not remove the school related features and change
+  it into the new one")**: UniVerse is now UniVerse Trace. Every role gets the same business app
+  (`src/lib/business.ts`: Console `/trace`, Market map, Tracking, Campaigns, Wallet, Messages,
+  Collaborate, Settings; the owner adds the owner console and All brands); the dashboard layout sends
+  any school page to `/trace` (`businessRedirect`); sign-up has no role picker (everyone joins as an
+  open individual account); the landing has no school sections. The school code is dormant, not
+  deleted: don't add links to school pages, and don't delete it without asking the owner. Anyone can
+  start a brand (one per account, `trace_brands`, membership checked by `brandOf`, never the school
+  role); points live per brand in `trace_points` (hash-chained); campaigns pay per verified scan with
+  a budget taken by a guarded update; the market map snaps to 0.1° (and 0.5° with at least
+  `MARKET_MIN` scans for the PRO category layer) so no shop or person can be found. The maps draw
+  with `src/components/trace/map` (d3-geo + topojson, no tile service, `public/geo`): one canvas,
+  land cached until the view moves, frames only while something moves; keep it that way.
 - **Numbers and charts (the owner's "Instrumental" reference, 24 Oct 2026)**: analytics, dashboards
   and the owner console use `InstrumentBoard` (`src/components/instruments/Board.tsx`): a framed board
   with a Live light, cells each a mono number and its own instrument from `parts.tsx` (`Spark` line with

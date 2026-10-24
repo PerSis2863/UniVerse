@@ -77,3 +77,25 @@ export function verdictFor(code: { scanCount: number; firstLat: number | null; f
 export const STAGES = ['MADE', 'SHIPPED', 'WAREHOUSE', 'DISTRIBUTOR', 'SHOP'] as const;
 export type Stage = (typeof STAGES)[number];
 export const STAGE_LABEL: Record<Stage, string> = { MADE: 'Made', SHIPPED: 'Shipped', WAREHOUSE: 'At the warehouse', DISTRIBUTOR: 'With the distributor', SHOP: 'In the shop' };
+
+/** Free brands get this many units with a passport; PRO brands far more. */
+export const PLAN_UNITS: Record<string, number> = { FREE: 10_000, PRO: 1_000_000 };
+
+/**
+ * Whether a scan counts for a campaign's area: a country (ISO code), a circle (centre + km), or
+ * everywhere when neither is set. A circle needs a position (GPS, or Cloudflare's city estimate).
+ */
+export function inArea(c: { country: string | null; lat: number | null; lng: number | null; radiusKm: number | null }, here: { lat: number; lng: number } | null, country: string | null): boolean {
+  if (c.country && c.country.toUpperCase() !== (country ?? '').toUpperCase()) return false;
+  if (c.lat !== null && c.lng !== null && c.radiusKm) return !!here && distanceM(here, { lat: c.lat, lng: c.lng }) <= c.radiusKm * 1000;
+  return true;
+}
+
+/**
+ * The live map never shows a scan where it happened: positions are snapped to a grid (0.1° ≈ 11 km
+ * for a brand's own scans, 0.5° ≈ 55 km for the market layer), so a shop or a person can't be found.
+ */
+export const cellOf = (lat: number, lng: number, step: number) => [Math.round(lat / step) * step, Math.round(lng / step) * step].map((v) => Math.round(v * 100) / 100) as [number, number];
+
+/** The market layer only shows a grid cell once this many scans fall in it (nobody stands out). */
+export const MARKET_MIN = 5;
