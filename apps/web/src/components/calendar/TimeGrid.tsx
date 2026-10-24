@@ -464,7 +464,7 @@ export function TimeGrid<T>({ entries, loading, onOpen, onMove, onCreate, label,
                         <span className={cn('text-[11px] font-semibold uppercase tracking-wide', isToday ? 'text-tint-text' : weekdayOf(d) > 4 ? 'text-zinc-400' : 'text-zinc-500')}>
                           {format(d, view === 'day' ? 'EEEE' : 'EEE')}
                         </span>{' '}
-                        <span className={cn('w-8 h-8 rounded-full flex items-center justify-center text-[17px] font-semibold tabular-nums', isToday ? 'text-white bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shadow-[0_4px_12px_-4px_rgba(83,81,94,0.75)]' : 'text-zinc-900 dark:text-white')}>
+                        <span className={cn('w-8 h-8 rounded-full flex items-center justify-center text-[17px] font-semibold tabular-nums', isToday ? 'text-white bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shadow-[0_4px_12px_-4px_rgba(74,92,106,0.75)]' : 'text-zinc-900 dark:text-white')}>
                           {format(d, 'd')}
                         </span>
                         {view === 'day' && <span className="text-[13px] font-medium text-zinc-500">{format(d, 'MMMM')}</span>}

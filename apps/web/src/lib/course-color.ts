@@ -5,10 +5,10 @@
 const TAILWIND: Record<string, string> = {
   slate: '#64748b', gray: '#5a6a73', zinc: '#5a6a73', red: '#ef4444', orange: '#f97316', amber: '#f59e0b',
   yellow: '#eab308', lime: '#84cc16', green: '#22c55e', emerald: '#10b981', teal: '#14b8a6', cyan: '#06b6d4',
-  sky: '#0ea5e9', blue: '#3b82f6', indigo: '#253745', violet: '#53515e', purple: '#9e8189', fuchsia: '#6b5560',
-  pink: '#6b5560', rose: '#f43f5e',
+  sky: '#0ea5e9', blue: '#3b82f6', indigo: '#253745', violet: '#4a5c6a', purple: '#ec4899', fuchsia: '#db2777',
+  pink: '#db2777', rose: '#f43f5e',
 };
-const PALETTE = ['#253745', '#0ea5e9', '#10b981', '#f59e0b', '#6b5560', '#53515e', '#14b8a6', '#f43f5e'];
+const PALETTE = ['#253745', '#0ea5e9', '#10b981', '#f59e0b', '#db2777', '#4a5c6a', '#14b8a6', '#f43f5e'];
 
 export function courseColor(color: string | null | undefined, key = ''): string {
   const c = color?.trim();

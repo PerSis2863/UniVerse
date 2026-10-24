@@ -44,7 +44,7 @@ const COLOURS: { value: string; name: string }[] = [
   { value: '#be123c', name: 'Red' },
   { value: '#b45309', name: 'Amber' },
   { value: '#0369a1', name: 'Blue' },
-  { value: '#484652', name: 'Violet' },
+  { value: '#253745', name: 'Violet' },
   { value: '#27325a', name: 'Navy' },
   { value: '#4a5c6a', name: 'Grey' },
 ];

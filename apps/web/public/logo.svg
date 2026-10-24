@@ -5,15 +5,15 @@
 >
   <defs>
     <linearGradient id="universe-u-grad" x1="15%" y1="10%" x2="60%" y2="80%">
-      <stop offset="0%" stop-color="#c7a9a3" />
-      <stop offset="50%" stop-color="#9e8189" />
-      <stop offset="100%" stop-color="#6b5560" />
+      <stop offset="0%" stop-color="#f472b6" />
+      <stop offset="50%" stop-color="#ec4899" />
+      <stop offset="100%" stop-color="#db2777" />
     </linearGradient>
 
     <linearGradient id="universe-n-grad" x1="40%" y1="30%" x2="90%" y2="80%">
-      <stop offset="0%" stop-color="#9e8189" />
-      <stop offset="45%" stop-color="#c7a9a3" />
-      <stop offset="100%" stop-color="#e8d2c4" />
+      <stop offset="0%" stop-color="#ec4899" />
+      <stop offset="45%" stop-color="#f472b6" />
+      <stop offset="100%" stop-color="#fbcfe8" />
     </linearGradient>
   </defs>
 
@@ -55,14 +55,14 @@
       cy="34"
       r="4"
       fill="#11212d"
-      stroke="#c7a9a3"
+      stroke="#f472b6"
       stroke-width="2"
     />
     <circle
       cx="42"
       cy="34"
       r="1.8"
-      fill="#c7a9a3"
+      fill="#f472b6"
     />
   </g>
 
@@ -73,7 +73,7 @@
     height="7"
     rx="1.5"
     fill="#11212d"
-    stroke="#e8d2c4"
+    stroke="#fbcfe8"
     stroke-width="2"
   />
 
@@ -83,8 +83,8 @@
     width="7"
     height="7"
     rx="1.5"
-    fill="#e8d2c4"
-    stroke="#f7efe7"
+    fill="#fbcfe8"
+    stroke="#f2f4f4"
     stroke-width="1.5"
   />
 </svg>

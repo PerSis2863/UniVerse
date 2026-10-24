@@ -58,7 +58,7 @@ export function MarketingNav() {
           </Link>
           <Link
             href="/register"
-            className="group inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-white text-sm font-bold bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_6px_24px_-8px_rgba(107,85,96,0.8)] hover:brightness-110 transition"
+            className="group inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-white text-sm font-bold bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_6px_24px_-8px_rgba(236,72,153,0.8)] hover:brightness-110 transition"
           >
             Get started <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>

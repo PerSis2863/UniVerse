@@ -55,22 +55,30 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
   through), stays brief on things people do often (tab switches ~0.4 s), and Reduce Motion (the
   device's or Settings → Appearance) leaves only fades. Transform, opacity and short filters only;
   never animate what sits under frosted glass across the whole screen (each frame redoes the blur).
-- **The colours (the owner, 23 Oct 2026)**: two palettes of six, steel-navy `#06141B #11212D #253745 #4A5C6A #9BA8AB #CCD0CF` and mauve-rose `#3E3239 #6B5560 #9E8189 #C7A9A3 #E8D2C4 #F7EFE7`. The two tones
-  are the **dark blue #253745** and the **dark pink #6B5560**, and the owner wants plenty of both ("pink
-  a little dark #6b5560 more and dark blue also more"; a greyer first try was "so dull"): the side menu is
-  dark navy in both themes, selected items (menu pill, tabs, the Messages pills, your own chat bubbles)
-  are dark pink or the dark blue → dark pink gradient with white text, the dark-mode surfaces are navy
-  (page #06141B, cards #11212D), the light-mode page is cream #F7EFE7. They live in `@theme` in
-  `globals.css` on Tailwind's names, so classes keep working: `indigo-600` = #253745, `fuchsia-600` /
-  `pink-600` = #6B5560, `violet-*` / `purple-*` = blends of the two, `zinc-*` = the palette's greys. Use those
-  classes (or these hex values), never new hues; green, amber and red only for states (online,
-  success, warning, error).
-- **The look (M4, "Cadra", with UniVerse's two tones)**: solid white (navy) cards with a
-  hairline edge, on the two tones: a dark-pink glow top left and a dark-blue glow behind every page
-  (`.ambient-bg`, root layout), a dark-navy side menu, the dark blue → dark pink gradient on
-  `.btn-primary`, the selected tab, `TabPill` and the Messages pills, and the pink and blue light river. Don't turn
+- **The colours (the owner, 24 Oct 2026)**: **dark blue is the normal UI colour, hot pink with a
+  little purple is the light.** Dark blue (`#06141B #11212D #253745 #4A5C6A #9BA8AB #CCD0CF`): the
+  dark-mode page #11212D with cards #1B2C39 (dark mode is the default), the navy side menu in both
+  themes, buttons, selected tabs and pills (dark-blue gradients, white text). Hot pink and fuchsia
+  (Tailwind's own `pink-*` and `fuchsia-*`): the light river's lines, the glows behind pages, the
+  rings, edges and other animations, and the icon's U. In `globals.css` `@theme`: `indigo-*` /
+  `violet-*` / `purple-*` = the dark blues (`indigo-600` = #253745), `fuchsia-*` / `pink-*` =
+  Tailwind's own, `zinc-*` = the blue greys. (History: a mauve #6B5560 version on 23 Oct was "so
+  dull"; the owner then asked for dark blue as normal and pink in the light lines.) Use those classes
+  or hex values, never new hues; green, amber and red only for states (online, success, warning, error).
+- **The look (M4, "Cadra", with UniVerse's two tones)**: solid white (dark-blue) cards with a
+  hairline edge: a hot-pink glow top left and a dark-blue glow behind every page (`.ambient-bg`, root
+  layout), a dark-navy side menu, dark-blue `.btn-primary`, selected tabs and Messages pills with pink
+  glows, and the hot-pink light river. Don't turn
   the two tones into black and white again. Use `.panel` / `.card` / `.btn-primary` / `TabPill`, not
   frosted cards; a row of headline numbers gets `kpi-row` (first card the gradient, second soft blue).
+- **Numbers and charts (the owner's "Instrumental" reference, 24 Oct 2026)**: analytics, dashboards
+  and the owner console use `InstrumentBoard` (`src/components/instruments/Board.tsx`): a framed board
+  with a Live light, cells each a mono number and its own instrument from `parts.tsx` (`Spark` line with
+  a glowing end, `Histo` with a p95 marker, `HeatStrip`, `Dial`, `Stack`, `Hourglass`, `Ring`, `Mirror`,
+  `Meter`, `Facts`), and cells with a `detail` open in place (stats, period chips, a draggable limit,
+  a crosshair; ↑ ↓ and Esc). Instruments draw in the text colour with hot pink (`--ins-hot`) only for
+  what matters. New charts: use these (or `DetailChart`), not recharts' defaults. Maths in
+  `src/lib/instruments.ts` (tested). The console's live board reads `GET /owner/pulse` (`src/server/pulse.ts`).
 - **Folders** (`FolderCard`): always colourful (UniVerse palettes; pass `index` in a list so
   neighbours differ); no `filter`/`backdrop-filter`/`aspect-ratio` in them (Safari blurs or
   mis-sizes them). Check new screens in Safari too.
@@ -151,8 +159,8 @@ and access checks, security headers or accessibility (labels, contrast, keyboard
 ## Design and motion (after Impeccable and Emil Kowalski's skills)
 
 Adapted, in our own words, from github.com/pbakaus/impeccable (Apache-2.0) and
-github.com/emilkowalski/skills (MIT). The owner's look comes first: the two tones (dark blue #253745 into
-dark pink #6B5560, the owner's palettes since 23 Oct 2026), the glow, the light river and the italic
+github.com/emilkowalski/skills (MIT). The owner's look comes first: the two tones (dark blue with
+hot pink, the owner's colours since 24 Oct 2026), the glow, the light river and the italic
 accent word are the brand, even where those guides call them "AI-looking". Never swap them for
 another palette.
 

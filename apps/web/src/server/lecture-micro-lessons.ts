@@ -72,7 +72,7 @@ const GRADIENTS = [
   'linear-gradient(135deg, #06141b 0%, #0b1a24 40%, #1b2c39 100%)',
   'linear-gradient(135deg, #022c22 0%, #064e3b 40%, #047857 100%)',
   'linear-gradient(135deg, #450a0a 0%, #7f1d1d 40%, #b91c1c 100%)',
-  'linear-gradient(135deg, #181a21 0%, #2d2a32 40%, #443e48 100%)',
+  'linear-gradient(135deg, #181a21 0%, #2d2a32 40%, #1b2c39 100%)',
   'linear-gradient(135deg, #0c4a6e 0%, #0369a1 40%, #0284c7 100%)',
   'linear-gradient(135deg, #1c1917 0%, #44403c 40%, #d97706 100%)',
 ];
@@ -186,7 +186,7 @@ export function buildLectureMindMap(
       label: ch.title,
       summary: `Chapter ${idx + 1} timestamp ${Math.floor(ch.t / 60)}m`,
       icon: idx === 0 ? '🎯' : idx === 1 ? '💡' : idx === 2 ? '⚡' : '🔍',
-      color: idx % 2 === 0 ? '#253745' : '#6b5560',
+      color: idx % 2 === 0 ? '#253745' : '#db2777',
       takeaways: [note1],
       children: [
         {
@@ -208,7 +208,7 @@ export function buildLectureMindMap(
     label: topic,
     summary,
     icon: '🧠',
-    color: '#53515e',
+    color: '#4a5c6a',
     takeaways: notes.slice(0, 3),
     children: branches.length > 0 ? branches : [
       {

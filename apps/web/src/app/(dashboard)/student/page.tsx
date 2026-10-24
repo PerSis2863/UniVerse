@@ -91,7 +91,7 @@ function LevelRing({ progress }: { progress: number }) {
       <defs>
         <linearGradient id="lvl" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#253745" />
-          <stop offset="100%" stopColor="#6b5560" />
+          <stop offset="100%" stopColor="#db2777" />
         </linearGradient>
       </defs>
       <circle cx="50" cy="50" r={r} fill="none" strokeWidth="8" className="stroke-zinc-200 dark:stroke-white/[0.07]" />

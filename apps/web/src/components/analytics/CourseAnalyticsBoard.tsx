@@ -5,8 +5,8 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import {
-  AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, BookOpen, CalendarCheck, ClipboardCheck, GraduationCap,
-  HandHelping, Info, Loader2, Mail, MessageSquare, Minus, TrendingDown, Trophy, UserX, Users,
+  AlertTriangle, BarChart3, BookOpen, ClipboardCheck, GraduationCap,
+  HandHelping, Info, Loader2, Mail, MessageSquare, TrendingDown, Trophy, UserX, Users,
 } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils';
 import type { BehindReason, CourseAnalytics } from '@/server/course-analytics';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { photoSrcSet } from '@/lib/image-sizes';
+import { InstrumentBoard, type InstrumentCell } from '@/components/instruments/Board';
+import { Dial, Meter, Ring, Spark } from '@/components/instruments/parts';
 
 interface Response { courses: { id: string; code: string; name: string }[]; analytics: CourseAnalytics | null }
 
@@ -93,39 +95,35 @@ export function CourseAnalyticsBoard({ base }: { base: string }) {
 
 function Kpis({ a }: { a: CourseAnalytics }) {
   const change = a.averageChange;
-  const ChangeIcon = change === null || Math.abs(change) < 1 ? Minus : change > 0 ? ArrowUpRight : ArrowDownRight;
   const tiles = [
     {
-      label: 'Class average', value: pct(a.average), icon: Trophy,
+      label: 'Class average', value: pct(a.average),
       note: change === null ? 'Not enough recent marks for a trend' : Math.abs(change) < 1 ? 'Steady over the last 4 weeks' : `${change > 0 ? 'Up' : 'Down'} ${Math.abs(Math.round(change))} pts vs the 4 weeks before`,
-      noteIcon: ChangeIcon, noteCls: change === null || Math.abs(change) < 1 ? 'text-zinc-500' : change > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400',
     },
     {
-      label: 'Attendance', value: pct(a.attendance.rate), icon: CalendarCheck,
+      label: 'Attendance', value: pct(a.attendance.rate),
       note: a.attendance.sessions ? `${pct(a.attendance.recentRate)} in the last 30 days · ${a.attendance.sessions} class days` : 'No attendance taken yet',
     },
     {
-      label: 'Work completed', value: pct(a.completion.rate), icon: ClipboardCheck,
+      label: 'Work completed', value: pct(a.completion.rate),
       note: a.completion.expected ? `${a.completion.done} of ${a.completion.expected} quizzes and assignments` : 'Nothing due yet',
     },
     {
-      label: 'Falling behind', value: String(a.behind.length), icon: AlertTriangle,
+      label: 'Falling behind', value: String(a.behind.length),
       note: `of ${a.students} student${a.students === 1 ? '' : 's'} enrolled`,
     },
   ];
-  return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      {tiles.map((t, i) => (
-        <div key={t.label} className={cn('rounded-2xl border border-zinc-200 dark:border-white/10 p-4 min-w-0', i === 0 ? 'tone-panel' : 'bg-white dark:bg-white/[0.03]')}>
-          <p className="text-xs text-zinc-500 flex items-center gap-1.5"><t.icon className="w-4 h-4 text-indigo-500" /> {t.label}</p>
-          <p className="mt-1 text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white">{t.value}</p>
-          <p className={cn('mt-1 text-[11px] leading-snug flex items-start gap-1', t.noteCls ?? 'text-zinc-500')}>
-            {t.noteIcon && <t.noteIcon className="w-3.5 h-3.5 shrink-0" />} <span>{t.note}</span>
-          </p>
-        </div>
-      ))}
-    </div>
-  );
+  // The owner's instrument look (components/instruments): each number with its own small instrument.
+  const weeks = a.trend.map((w) => new Date(`${w.week}T00:00:00Z`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' }));
+  const series = a.trend.reduce<number[]>((out, w) => [...out, w.average ?? out[out.length - 1] ?? 0], []);
+  const cells: InstrumentCell[] = [
+    { id: 'average', label: tiles[0].label, value: Math.round(a.average ?? 0), unit: '%', note: tiles[0].note, body: <Spark values={series} />,
+      detail: { title: 'Class average by week', description: 'Average of every mark and scored quiz each week (weeks without marks keep the last value).', series, labels: weeks, threshold: 50 } },
+    { id: 'attendance', label: tiles[1].label, value: Math.round(a.attendance.rate ?? 0), unit: '%', note: tiles[1].note, body: <span className="flex justify-center"><Ring pct={Math.round(a.attendance.rate ?? 0)} label="present" size={104} /></span> },
+    { id: 'completion', label: tiles[2].label, value: Math.round(a.completion.rate ?? 0), unit: '%', note: tiles[2].note, body: <Meter pct={a.completion.rate ?? 0} /> },
+    { id: 'behind', label: tiles[3].label, value: a.behind.length, unit: 'students', note: tiles[3].note, warn: a.behind.length > 0, body: <Dial value={a.behind.length} max={Math.max(1, a.students)} danger={0.25} /> },
+  ];
+  return <InstrumentBoard icon={Trophy} title={`${a.course.code} · ${a.course.name}`} subtitle={`${a.students} student${a.students === 1 ? '' : 's'} · class at a glance`} live={false} cells={cells} storageKey={`course-${a.course.id}`} />;
 }
 
 /** Weekly class average, one line on a 0–100% scale, with a tooltip per week. */
@@ -161,11 +159,11 @@ function TrendCard({ a }: { a: CourseAnalytics }) {
                 <defs>
                   <linearGradient id="trend-fill" x1="0" x2="0" y1="0" y2="1">
                     <stop offset="0%" stopColor="#253745" stopOpacity="0.22" />
-                    <stop offset="100%" stopColor="#6b5560" stopOpacity="0" />
+                    <stop offset="100%" stopColor="#db2777" stopOpacity="0" />
                   </linearGradient>
                   <linearGradient id="trend-line" x1="0" x2="1" y1="0" y2="0">
                     <stop offset="0%" stopColor="#253745" />
-                    <stop offset="100%" stopColor="#6b5560" />
+                    <stop offset="100%" stopColor="#db2777" />
                   </linearGradient>
                 </defs>
                 {marked.length > 1 && <path d={`${line} L${x(marked[marked.length - 1].i)} 100 L${x(marked[0].i)} 100 Z`} fill="url(#trend-fill)" />}

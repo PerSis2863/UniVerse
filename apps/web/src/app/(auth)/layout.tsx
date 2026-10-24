@@ -17,7 +17,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
         <LightTrail tone="dark" strength={0.85} className="opacity-60 lg:opacity-90" />
         <div className="mkt-drift-a absolute top-[-20%] start-[-25%] w-[max(60vw,600px)] h-[max(60vw,600px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(37,55,69,0.18), transparent)' }} />
-        <div className="mkt-drift-b absolute bottom-[-25%] end-[-30%] w-[max(60vw,600px)] h-[max(60vw,600px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(107,85,96,0.14), transparent)' }} />
+        <div className="mkt-drift-b absolute bottom-[-25%] end-[-30%] w-[max(60vw,600px)] h-[max(60vw,600px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(236,72,153,0.14), transparent)' }} />
       </div>
 
       {/* ── Left: what UniVerse does (wide screens) ── */}

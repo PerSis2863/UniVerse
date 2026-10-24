@@ -22,6 +22,7 @@ import { CloudflareAdminError, emailCode, rollback } from '../cloudflare-admin';
 import { oneOf } from '../body';
 import { latestCspReports } from '../csp-reports';
 import { healthNumbers } from '../health-numbers';
+import { PULSE_RANGES, pulse, type PulseRange } from '../pulse';
 
 // The owner console (hidden; see RouteOptions.owner): everything about every account, the
 // sign-in and activity history, private conversations, and a record editor for any table in the
@@ -156,6 +157,8 @@ export default function ownerModule(router: Router) {
 
   // ── Health numbers: failing and slow routes, problem pages, AI, push, calls (src/server/health-numbers.ts) ──
   r.get('health-numbers', () => healthNumbers());
+  // The live board at the top of the console (src/server/pulse.ts): last hour, day or week.
+  r.get('pulse', ({ query }) => pulse(oneOf(Object.keys(PULSE_RANGES) as PulseRange[], query.range) ? query.range : '24h'));
 
   // ── What browsers blocked under the Content-Security-Policy (src/server/csp-reports.ts) ──
   r.get('csp-reports', () => latestCspReports());

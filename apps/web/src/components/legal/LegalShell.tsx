@@ -10,7 +10,7 @@ export function LegalShell({ eyebrow = 'Legal', title, intro, updated, children 
     <div className="dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#06141b', color: '#ffffff' }}>
       <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
         <div className="aurora-a absolute top-[-20%] start-[-35%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(37,55,69,0.22), transparent)' }} />
-        <div className="aurora-b absolute bottom-[-25%] end-[-40%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(107,85,96,0.14), transparent)' }} />
+        <div className="aurora-b absolute bottom-[-25%] end-[-40%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(236,72,153,0.14), transparent)' }} />
       </div>
       <MarketingNav />
       <main className="relative z-10 px-4 sm:px-6 pt-32 md:pt-40 pb-20">

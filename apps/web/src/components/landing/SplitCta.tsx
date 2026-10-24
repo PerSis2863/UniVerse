@@ -24,7 +24,7 @@ export function SplitCta() {
           </div>
           <p className="mt-10 text-3xl sm:text-4xl font-bold tracking-tight text-white leading-tight">School software for the work that lives between classes.</p>
         </div>
-        <div className="relative p-8 sm:p-12" style={{ background: 'linear-gradient(135deg, #b1a8a7 0%, #c7a9a3 60%, #e8d2c4 100%)' }}>
+        <div className="relative p-8 sm:p-12" style={{ background: 'linear-gradient(135deg, #9ba8ab 0%, #f472b6 60%, #fbcfe8 100%)' }}>
           <p className="text-3xl sm:text-4xl font-bold tracking-tight text-[#11212d] leading-tight">Pick the task you hate most.</p>
           <p className="mt-3 text-[#1e1d23]">Start free and hand it to UniVerse. No card needed.</p>
           <form className="mt-8 flex flex-col sm:flex-row gap-2.5" onSubmit={(e) => { e.preventDefault(); router.push(`/register${email ? `?email=${encodeURIComponent(email)}` : ''}`); }}>

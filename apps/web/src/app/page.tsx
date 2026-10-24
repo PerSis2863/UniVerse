@@ -111,7 +111,7 @@ export default function ShowcasePage() {
               bends in the gap between the hero's words and its card. */}
           <LightTrail tone="dark" hero className="opacity-70 lg:opacity-100" />
           <div className="mkt-drift-a absolute top-[30%] start-[-30%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(37,55,69,0.16), transparent)' }} />
-          <div className="mkt-drift-b absolute bottom-[-25%] end-[-35%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(107,85,96,0.12), transparent)' }} />
+          <div className="mkt-drift-b absolute bottom-[-25%] end-[-35%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(236,72,153,0.12), transparent)' }} />
         </div>
 
         <MarketingNav />

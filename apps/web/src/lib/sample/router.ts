@@ -476,7 +476,7 @@ const SAMPLE_MICRO_LESSON = {
     label: 'Graph Theory & Network Traversal',
     summary: 'Core data structures, traversal algorithms, and shortest path proofs.',
     icon: '🧠',
-    color: '#53515e',
+    color: '#4a5c6a',
     takeaways: [
       'Graphs model relational networks with vertices and edges',
       'BFS computes shortest path in unweighted networks in O(V + E)',
@@ -498,7 +498,7 @@ const SAMPLE_MICRO_LESSON = {
         id: 'b2',
         label: 'Traversal Algorithms',
         icon: '💡',
-        color: '#6b5560',
+        color: '#db2777',
         takeaways: ['BFS: Queue-driven; DFS: Stack/Recursion-driven'],
         children: [
           { id: 'l2_1', label: 'Breadth-First Search', takeaways: ['Guaranteed unweighted shortest path'] },
@@ -1649,7 +1649,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
         { id: 'sample-b-cs', name: 'Computer Science Block', code: 'CS', x: 60, y: 60, w: 240, h: 150, floors: 5, color: '#253745' },
         { id: 'sample-b-main', name: 'Main Hall', code: 'MH', x: 380, y: 60, w: 260, h: 140, floors: 2, color: '#0ea5e9' },
         { id: 'sample-b-lib', name: 'Library', code: 'LIB', x: 720, y: 60, w: 220, h: 200, floors: 3, color: '#10b981' },
-        { id: 'sample-b-arts', name: 'Arts Centre', code: 'ART', x: 80, y: 340, w: 220, h: 160, floors: 2, color: '#6b5560' },
+        { id: 'sample-b-arts', name: 'Arts Centre', code: 'ART', x: 80, y: 340, w: 220, h: 160, floors: 2, color: '#db2777' },
         { id: 'sample-b-sci', name: 'Science Labs', code: 'SCI', x: 420, y: 320, w: 280, h: 180, floors: 3, color: '#f59e0b' },
       ],
       rooms,
@@ -1936,7 +1936,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   }],
   [/^\/dashboard\/admin$/, ({ db: d }) => ok({
     totalStudents: 1240, totalTeachers: 86, totalCourses: 142, revenue: 18400,
-    departments: [{ name: 'Computer Science', students: 420, teachers: 28, color: '#253745' }, { name: 'Environmental Studies', students: 260, teachers: 17, color: '#10b981' }, { name: 'Design', students: 180, teachers: 12, color: '#6b5560' }, { name: 'Business', students: 380, teachers: 29, color: '#f59e0b' }],
+    departments: [{ name: 'Computer Science', students: 420, teachers: 28, color: '#253745' }, { name: 'Environmental Studies', students: 260, teachers: 17, color: '#10b981' }, { name: 'Design', students: 180, teachers: 12, color: '#db2777' }, { name: 'Business', students: 380, teachers: 29, color: '#f59e0b' }],
     recentPayments: [{ name: d.people.aarav.name, type: 'TUITION', amount: 1200, status: 'completed' }, { name: d.people.zoya.name, type: 'HOSTEL', amount: 450, status: 'pending' }, { name: d.people.liam.name, type: 'EXAM_FEE', amount: 60, status: 'completed' }],
     pendingUsers: [{ id: 'sample-pu-1', name: 'Rohan Das', role: 'STUDENT', dept: 'Computer Science', applied: new Date().toLocaleDateString() }, { id: 'sample-pu-2', name: 'Dr. Leena Joseph', role: 'TEACHER', dept: 'Design', applied: new Date().toLocaleDateString() }],
   })],
@@ -2130,7 +2130,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/chat\/communities$/, () => ok([])],
   [/^\/api\/chat\/communities\/discover$/, () => ok([
     { id: 'sample-open-1', name: 'Climate Action Network', description: 'Students across campuses working on climate projects', color: '#059669', members: 214, campus: 'Lakeside University' },
-    { id: 'sample-open-2', name: 'Women in Tech', description: 'Mentoring, events and job tips', color: '#484652', members: 98, campus: null },
+    { id: 'sample-open-2', name: 'Women in Tech', description: 'Mentoring, events and job tips', color: '#253745', members: 98, campus: null },
   ])],
   [/^\/api\/network$/, () => ok(sampleNetwork())],
   [/^\/api\/network\/courses$/, ({ db: d }) => ok(d.courses.slice(0, 4).map((c, i) => ({ id: c.id, code: c.code, name: c.name, status: 'PUBLISHED', teacher: c.teacher.name, students: 24 + i * 7, home: { id: 'sample-campus-1', name: 'Riverside University' }, sharedWith: i === 0 ? [{ id: 'sample-campus-2', name: 'Lakeside University' }] : [] })))],
@@ -2139,7 +2139,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   ])],
   [/^\/api\/network\/joint$/, () => ok({ courses: [
     { id: 'sample-joint-1', code: 'LAK210', name: 'Urban Water Systems', description: 'How cities manage water, with field data from both campuses.', credits: 4, color: '#0891b2', teacher: 'Dr. Hana Sato', campus: 'Lakeside University', viaExchange: false, enrolled: false, students: 31 },
-    { id: 'sample-joint-2', code: 'MTN105', name: 'Data Ethics', description: null, credits: 3, color: '#484652', teacher: 'Prof. Omar Haddad', campus: 'Mountain Institute', viaExchange: false, enrolled: true, students: 58 },
+    { id: 'sample-joint-2', code: 'MTN105', name: 'Data Ethics', description: null, credits: 3, color: '#253745', teacher: 'Prof. Omar Haddad', campus: 'Mountain Institute', viaExchange: false, enrolled: true, students: 58 },
   ], exchange: null })],
   [/^\/api\/calls\/favorites$/, () => ok([])],
   [/^\/api\/me\/presence$/, () => ok({ presence: 'auto', statusText: null, statusEmoji: null, statusUntil: null, effective: { presence: 'auto', hidden: false } })],

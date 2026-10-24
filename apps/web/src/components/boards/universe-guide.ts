@@ -239,7 +239,7 @@ function howItWasBuilt() {
   ];
   events.forEach(([when, what], i) => {
     const x = 100 + i * 380;
-    s.raw({ type: 'ellipse', x: x - 14, y: 366, width: 28, height: 28, backgroundColor: '#484652', fillStyle: 'solid' } as El);
+    s.raw({ type: 'ellipse', x: x - 14, y: 366, width: 28, height: 28, backgroundColor: '#253745', fillStyle: 'solid' } as El);
     s.note(x - 170, i % 2 ? 430 : 90, 340, 250, `${when}\n\n${what}`, [C.student, C.teacher, C.admin, C.parent, C.owner, C.tech][i], 17);
     s.note(x - 170, i % 2 ? 90 : 430, 340, 250, why[i], C.white, 16);
   });
@@ -798,7 +798,7 @@ const collaborateArea = () => cards('collab', 'Collaborate', 'Collaborate: every
 ], 4);
 
 const designArea = () => cards('look', 'The look', 'The look and the motion: the rules every page follows', C.owner, [
-  ['Two tones', 'Dark blue #253745 into dark pink #6B5560, from the owner’s twelve colours: the brand'], ['The light river', 'Fine strands of light down every page, answering the pointer'],
+  ['Colours', 'Dark blue for everything you use; hot pink with a little purple for the light lines, glows and animations'], ['The light river', 'Fine strands of light down every page, answering the pointer'],
   ['Cards', 'Dark, slightly see-through, a two-tone edge glow on hover'], ['Type', 'Text that means something is 11 px or more; lines near 75 characters'],
   ['Entering', 'Ease-out, never ease-in; nothing grows from nothing (start at 0.9)'], ['Speed', 'Presses 100–160 ms, menus 150–250, sheets up to 500; exits faster'],
   ['Lists', 'Items arrive one after another, 30–80 ms apart'], ['Every day things', 'What you use many times a day barely moves'],

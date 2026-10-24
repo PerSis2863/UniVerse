@@ -117,7 +117,7 @@ export class DashboardService {
     const pct = (g: { score: number; maxScore: number }) => (g.maxScore > 0 ? (g.score / g.maxScore) * 100 : 0);
     const avgClassScore = grades.length ? Math.round(grades.reduce((sum, g) => sum + pct(g), 0) / grades.length) : 0;
 
-    const palette = ['#253745', '#06b6d4', '#10b981', '#f59e0b', '#6b5560'];
+    const palette = ['#253745', '#06b6d4', '#10b981', '#f59e0b', '#db2777'];
     // "completion" = share of enrolled students who have at least one grade in the course.
     const myCourses = myCoursesRaw.map((c, i) => {
       const graded = new Set(grades.filter((g) => g.courseId === c.id).map((g) => g.studentId));
@@ -215,7 +215,7 @@ export class DashboardService {
 
     // Departments
 
-    const colors = ['#253745', '#06b6d4', '#10b981', '#f59e0b', '#6b5560', '#53515e'];
+    const colors = ['#253745', '#06b6d4', '#10b981', '#f59e0b', '#db2777', '#4a5c6a'];
     const departmentsMap = new Map();
     studentsByDept.forEach((s) => {
       if (s.department) departmentsMap.set(s.department, { name: s.department, students: s._count.userId, teachers: 0 });

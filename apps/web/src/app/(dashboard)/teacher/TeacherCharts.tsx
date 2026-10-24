@@ -1,36 +1,32 @@
 'use client';
 
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { DetailChart } from '@/components/instruments/Board';
+import { niceTicks } from '@/lib/instruments';
+import { cn } from '@/lib/utils';
 
-export function GradeDistributionChart({ data: gradeDistributionData }: { data: { grade: string; count: number }[] }) {
+// The teacher dashboard's two charts in the instrument look (components/instruments): columns in
+// the text colour with the biggest group in hot pink, and the line you can read point by point.
+
+export function GradeDistributionChart({ data }: { data: { grade: string; count: number }[] }) {
+  const max = Math.max(1, ...data.map((d) => d.count));
+  const top = data.findIndex((d) => d.count === max);
   return (
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={gradeDistributionData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="opacity-10 dark:opacity-20 text-zinc-300 dark:text-zinc-700" />
-          <XAxis dataKey="grade" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} className="text-zinc-500" />
-          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} className="text-zinc-500" />
-          <Tooltip 
-            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
-            cursor={{ fill: 'var(--tw-colors-zinc-100)', opacity: 0.5 }}
-          />
-          <Bar dataKey="count" fill="#253745" radius={[4, 4, 0, 0]} barSize={40} />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="h-full flex flex-col text-zinc-800 dark:text-zinc-100" role="img" aria-label={data.map((d) => `${d.grade}: ${d.count}`).join(', ')}>
+      <div className="flex-1 flex items-end gap-2">
+        {data.map((d, i) => (
+          <div key={d.grade} className="flex-1 h-full flex flex-col justify-end items-center gap-1" title={`${d.grade}: ${d.count}`}>
+            <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400 tabular-nums">{d.count}</span>
+            <div className={cn('w-full max-w-12 rounded-md ins-rise', i === top ? 'bg-[var(--ins-hot)]' : 'bg-current')}
+              style={{ height: `${Math.max(d.count ? 6 : 2, (d.count / max) * 85)}%`, opacity: i === top ? 1 : d.count ? 0.8 : 0.15, animationDelay: `${i * 60}ms` }} />
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5 flex gap-2">{data.map((d) => <span key={d.grade} className="flex-1 text-center font-mono text-[11px] text-zinc-500 dark:text-zinc-400">{d.grade}</span>)}</div>
+    </div>
   );
 }
 
-export function PerformanceTrendChart({ data: performanceTrendData }: { data: { month: string; avgScore: number }[] }) {
-  return (
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={performanceTrendData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="opacity-10 dark:opacity-20 text-zinc-300 dark:text-zinc-700" />
-          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} className="text-zinc-500" />
-          <YAxis domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{ fontSize: 12 }} className="text-zinc-500" />
-          <Tooltip 
-            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
-          />
-          <Line type="monotone" dataKey="avgScore" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
-        </LineChart>
-      </ResponsiveContainer>
-  );
+export function PerformanceTrendChart({ data }: { data: { month: string; avgScore: number }[] }) {
+  const ticks = niceTicks(Math.max(100, ...data.map((d) => d.avgScore)));
+  return <DetailChart series={data.map((d) => d.avgScore)} labels={data.map((d) => d.month)} unit="%" top={ticks[ticks.length - 1]} ticks={ticks} height={240} />;
 }

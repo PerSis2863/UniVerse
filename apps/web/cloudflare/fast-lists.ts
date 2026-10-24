@@ -95,7 +95,7 @@ export async function docsList(me: Caller, db: D1Database) {
   }, 200, NO_STORE);
 }
 
-const DEPT_COLORS = ['#2c4050', '#06b6d4', '#10b981', '#f59e0b', '#7a626d', '#53515e'];
+const DEPT_COLORS = ['#2c4050', '#06b6d4', '#10b981', '#f59e0b', '#db2777', '#4a5c6a'];
 
 /** GET /api/core/dashboard/admin (src/server/services/dashboard.service.ts getAdminDashboard): the admin overview. */
 export async function adminDashboard(db: D1Database) {
@@ -135,7 +135,7 @@ export async function adminDashboard(db: D1Database) {
   }, 200, NO_STORE);
 }
 
-const COURSE_COLORS = ['#2c4050', '#06b6d4', '#10b981', '#f59e0b', '#7a626d'];
+const COURSE_COLORS = ['#2c4050', '#06b6d4', '#10b981', '#f59e0b', '#db2777'];
 const percent = (g: { score: number; maxScore: number }) => (g.maxScore > 0 ? (g.score / g.maxScore) * 100 : 0);
 const letter = (p: number) => (p >= 90 ? 'A' : p >= 80 ? 'B' : p >= 70 ? 'C' : p >= 60 ? 'D' : 'F');
 

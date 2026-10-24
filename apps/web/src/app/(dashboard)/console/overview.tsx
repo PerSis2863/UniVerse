@@ -3,15 +3,15 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, ArrowUpRight, Ban, Bug, Clock, LogIn, MessageSquare, ShieldCheck, Trash2, UserPlus, Users, GraduationCap, School, UserCog, Loader2 } from 'lucide-react';
+import { Activity, Ban, Bug, Clock, LogIn, ShieldCheck, Trash2, UserPlus, Users, GraduationCap, School, UserCog, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useActivePoll } from '@/lib/realtime-client';
 import { ConsoleSkeleton, SearchBox, card, fetcher, heavy, matches, useDebounced } from './shared';
 import { type PlanUsage, PlanUsageCard } from './server';
-import { AttentionCard } from './insights';
 import { type Tab, Ticker } from './deck';
+import { LiveBoard } from './live';
 
-// The console's first section (M13): what needs the owner, four big live numbers, the rest as
+// The console's first section (M13): what needs the owner, the live instrument board (live.tsx), the rest as
 // small tiles (amber when something waits), new accounts drawn as a line, where and on what people
 // sign in, who is online, and the latest sign-ins and actions on a lit timeline.
 
@@ -38,8 +38,8 @@ function Trend({ days }: { days: { day: string; count: number }[] }) {
     <div className="relative h-32">
       <svg aria-hidden className="deck-draw absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
         <defs>
-          <linearGradient id="trend-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#746e7a" stopOpacity="0.35" /><stop offset="1" stopColor="#746e7a" stopOpacity="0" /></linearGradient>
-          <linearGradient id="trend-line" x1="0" x2="1"><stop offset="0" stopColor="#253745" /><stop offset="1" stopColor="#6b5560" /></linearGradient>
+          <linearGradient id="trend-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#4a5c6a" stopOpacity="0.35" /><stop offset="1" stopColor="#4a5c6a" stopOpacity="0" /></linearGradient>
+          <linearGradient id="trend-line" x1="0" x2="1"><stop offset="0" stopColor="#253745" /><stop offset="1" stopColor="#db2777" /></linearGradient>
         </defs>
         {pts.length > 1 && <>
           <path d={`${line} L100 100 L0 100 Z`} fill="url(#trend-fill)" />
@@ -86,15 +86,8 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
   const dq = useDebounced(q.trim());
   const { data: found } = useSWR<Found>(dq ? `/owner/people?q=${encodeURIComponent(dq)}` : null, fetcher);
   if (!data) return <ConsoleSkeleton />;
-  const total = Object.values(data.roles).reduce((a, b) => a + b, 0);
   const signUps = data.signUps ?? [];
   const go = (to: string) => { const [t, status] = to.split(':'); onTab(t as Tab, status); };
-  const big: [string, number, string, typeof Users, string][] = [
-    ['People', total, 'people', Users, `${data.newUsers} new this week`],
-    ['Online now', data.online.length, 'activity', Activity, data.online.length ? 'live' : 'nobody right now'],
-    ['Sign-ins today', data.signInsToday, 'activity', LogIn, 'since midnight'],
-    ['Messages today', data.messagesToday, 'activity', MessageSquare, 'in every chat'],
-  ];
   const small: [string, number, string, typeof Users, boolean][] = [
     ['Students', data.roles.STUDENT ?? 0, 'people', GraduationCap, false], ['Teachers', data.roles.TEACHER ?? 0, 'people', School, false],
     ['Admins', data.roles.ADMIN ?? 0, 'people', UserCog, false], ['New this week', data.newUsers, 'people', UserPlus, false],
@@ -104,29 +97,10 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
   const online = data.online.filter((u) => matches(q, u.name, u.role));
   const signIns = data.recentSignIns.filter((x) => matches(q, x.user.name, x.user.email, x.user.role, x.device, x.city, x.country, x.ip, x.method));
   const actions = data.recentActions.filter((a) => matches(q, a.actorName, a.summary));
-  const dot = 'absolute -start-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-400 shadow-[0_0_10px_rgba(107,85,96,0.55)]';
+  const dot = 'absolute -start-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-400 shadow-[0_0_10px_rgba(236,72,153,0.55)]';
   return (
     <div className="space-y-6">
-      <AttentionCard onGo={(t, status) => onTab(t as Tab, status)} />
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {big.map(([label, n, to, Icon, hint], i) => (
-          <button key={label} type="button" onClick={() => go(to)} className={cn(card, 'group relative overflow-hidden p-4 sm:p-5 text-start transition-transform hover:-translate-y-0.5')}>
-            <span aria-hidden className="deck-glow absolute -top-12 -end-10 w-32 h-32 rounded-full" style={{ animationDelay: `${i * -1.5}s` }} />
-            <span className="relative flex items-center justify-between">
-              <span className="deck-orbit w-9 h-9 rounded-xl grid place-items-center bg-gradient-to-br from-indigo-500/15 to-fuchsia-500/15 dark:from-indigo-500/25 dark:to-fuchsia-500/20">
-                <Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-200" aria-hidden />
-              </span>
-              <ArrowUpRight className="w-4 h-4 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden />
-            </span>
-            <span className="relative block mt-4 text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white"><Ticker value={n} /></span>
-            <span className="relative block text-sm font-medium text-zinc-700 dark:text-zinc-200">{label}</span>
-            <span className="relative flex items-center gap-1.5 mt-1 font-mono text-[11px] text-zinc-500">
-              {label === 'Online now' && n > 0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 deck-ping" />}{hint}
-            </span>
-          </button>
-        ))}
-      </div>
+      <LiveBoard />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {small.map(([label, n, to, Icon, warn]) => {

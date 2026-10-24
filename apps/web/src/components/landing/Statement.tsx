@@ -37,7 +37,7 @@ export function Statement() {
   return (
     <section className="px-3 sm:px-6 py-16">
       <div ref={ref} className="relative max-w-7xl mx-auto overflow-hidden rounded-[2rem] px-6 py-20 sm:py-28 text-center"
-        style={{ background: 'linear-gradient(120deg, #b1a8a7 0%, #dfd1c8 35%, #e8d2c4 65%, #e8d2c4 100%)' }}>
+        style={{ background: 'linear-gradient(120deg, #9ba8ab 0%, #ccd0cf 35%, #fbcfe8 65%, #fbcfe8 100%)' }}>
         <div aria-hidden className="absolute inset-0 opacity-50" style={{ backgroundImage: 'radial-gradient(rgba(24,26,33,0.25) 1px, transparent 1.2px)', backgroundSize: '22px 22px' }} />
         <div className="relative">
           <p className="font-mono text-xs text-[#1e1d23]">| what UniVerse is</p>

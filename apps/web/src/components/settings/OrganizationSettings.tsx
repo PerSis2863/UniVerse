@@ -52,7 +52,7 @@ const PRESET_COLORS = [
   { name: "Crimson", hex: "#e11d48" },
   { name: "Emerald", hex: "#059669" },
   { name: "Amber", hex: "#d97706" },
-  { name: "Violet", hex: "#484652" },
+  { name: "Violet", hex: "#253745" },
   { name: "Sky", hex: "#0284c7" },
   { name: "Slate", hex: "#253745" },
 ];

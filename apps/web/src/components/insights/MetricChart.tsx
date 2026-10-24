@@ -1,6 +1,9 @@
 'use client';
 
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { DetailChart } from '@/components/instruments/Board';
+import { Spark } from '@/components/instruments/parts';
+import { niceTicks } from '@/lib/instruments';
 import { formatValue, type MetricResult, type MetricRow } from '@/lib/school-metrics';
 
 // The chart for one school-analytics answer, in one hue: bars for courses, departments and people,
@@ -71,26 +74,14 @@ export default function MetricChart({ result, compact = false }: { result: Metri
     );
   }
 
-  // Line: rates zoom to their range (a line needn't start at zero); counts start at zero.
-  const last = rows.length - 1;
-  const endDot = (p: { cx?: number; cy?: number; index?: number }) =>
-    p.index === last && p.cx !== undefined && p.cy !== undefined
-      ? <circle key="end" cx={p.cx} cy={p.cy} r={4} fill={INK} strokeWidth={2} className="stroke-white dark:stroke-zinc-900" />
-      : <g key={`dot-${p.index}`} />;
+  // Line: the instrument look (components/instruments): the line you can read point by point, a
+  // glowing end; rates zoom to their range, counts start at zero.
+  const values = rows.map((r) => Number(r.value) || 0);
+  if (compact) return <div role="img" aria-label={label} className="text-zinc-800 dark:text-zinc-100"><Spark values={values} height={height - 10} /></div>;
+  const ticks = pct ? [0, 25, 50, 75, 100] : niceTicks(Math.max(...values, 1));
   return (
-    <div role="img" aria-label={label} className="text-zinc-500 dark:text-zinc-400" style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={rows} margin={{ left: compact ? -24 : -12, right: 12, top: 8, bottom: 0 }}>
-          <CartesianGrid vertical={false} stroke="currentColor" strokeOpacity={0.12} />
-          <XAxis dataKey="label" interval="preserveStartEnd" minTickGap={24} {...axis} />
-          <YAxis
-            domain={pct ? [(min: number) => Math.max(0, Math.floor(min - 5)), (max: number) => Math.min(100, Math.ceil(max + 5))] : [0, 'auto']}
-            allowDecimals={false} tickFormatter={tick} width={44} hide={compact} {...axis}
-          />
-          <Tooltip content={<Tip result={result} />} cursor={{ stroke: INK, strokeOpacity: 0.35 }} />
-          <Line type="monotone" dataKey="value" stroke={INK} strokeWidth={2} dot={endDot} activeDot={{ r: 5, strokeWidth: 2, className: 'stroke-white dark:stroke-zinc-900' }} animationDuration={700} />
-        </LineChart>
-      </ResponsiveContainer>
+    <div role="img" aria-label={label}>
+      <DetailChart series={values} labels={rows.map((r) => String(r.label))} unit={result.unit === '%' ? '%' : undefined} top={ticks[ticks.length - 1]} ticks={ticks} height={height} />
     </div>
   );
 }

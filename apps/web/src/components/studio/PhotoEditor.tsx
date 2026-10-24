@@ -36,7 +36,7 @@ const TOOLS: { id: Tool; label: string; icon: typeof Brush; keys: string }[] = [
 ];
 const HISTORY = 20;
 const MODE_KEY = 'studio-photo-mode';
-const swatches = ['#000000', '#ffffff', '#ef4444', '#f59e0b', '#22c55e', '#0ea5e9', '#253745', '#6b5560', '#6b5560'];
+const swatches = ['#000000', '#ffffff', '#ef4444', '#f59e0b', '#22c55e', '#0ea5e9', '#253745', '#db2777', '#db2777'];
 
 export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () => void }) {
   const [doc, setDoc] = useState<Doc>(initial);
@@ -513,7 +513,7 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
 
   if (simple) {
     return (
-      <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#06141b]">
+      <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#11212d]">
         <div className="flex items-center gap-1 px-2 sm:px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#11212d]">
           {close}
           <p className="min-w-0 truncate text-sm font-semibold text-zinc-900 dark:text-white px-1">{doc.name}</p>
@@ -532,7 +532,7 @@ export function PhotoEditor({ initial, onClose }: { initial: Doc; onClose: () =>
   }
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#06141b]">
+    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#11212d]">
       {/* Top bar */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#11212d] overflow-x-auto">
         {close}

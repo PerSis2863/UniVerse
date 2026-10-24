@@ -44,7 +44,7 @@ interface DocInfo { id: string; kind?: string; title: string; parentId: string |
 
 const call = (url: string, method: string, body?: unknown) => authedJson(url, { method, body: body === undefined ? undefined : JSON.stringify(body) });
 
-const PRINT_CSS = 'body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.6;color:#11212d;max-width:46rem;margin:2rem auto;padding:0 1.5rem}h1{font-size:2rem}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccd0cf;padding:.4em .6em;text-align:left}pre{background:#f2ece6;padding:1em;border-radius:.5em;white-space:pre-wrap}img{max-width:100%}blockquote{border-left:3px solid #4a5c6a;margin-left:0;padding-left:1em;color:#4a5c6a}';
+const PRINT_CSS = 'body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.6;color:#11212d;max-width:46rem;margin:2rem auto;padding:0 1.5rem}h1{font-size:2rem}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccd0cf;padding:.4em .6em;text-align:left}pre{background:#eef1f2;padding:1em;border-radius:.5em;white-space:pre-wrap}img{max-width:100%}blockquote{border-left:3px solid #4a5c6a;margin-left:0;padding-left:1em;color:#4a5c6a}';
 
 function exportPdf(title: string, html: string, page?: PageSetup) {
   const frame = document.createElement('iframe');
@@ -53,7 +53,7 @@ function exportPdf(title: string, html: string, page?: PageSetup) {
   const d = frame.contentDocument!;
   d.open();
   // Page setup (paper, margins, header, footer, page numbers) and page breaks (Office suite · O3).
-  const extra = `${page ? pageCss(page) : ''}.doc-page-break{break-after:page;border:0;height:0;margin:0}.doc-page-break span{display:none}.doc-toc{border:1px solid #e4ddd7;border-radius:.6em;padding:.6em 1em}.doc-toc ol{list-style:none;padding-left:0}.doc-toc-title{font-weight:700}`;
+  const extra = `${page ? pageCss(page) : ''}.doc-page-break{break-after:page;border:0;height:0;margin:0}.doc-page-break span{display:none}.doc-toc{border:1px solid #e2e6e6;border-radius:.6em;padding:.6em 1em}.doc-toc ol{list-style:none;padding-left:0}.doc-toc-title{font-weight:700}`;
   d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/</g, '&lt;')}</title><style>${PRINT_CSS}${extra}</style></head><body><h1>${title.replace(/</g, '&lt;')}</h1>${html}</body></html>`);
   d.close();
   setTimeout(() => { frame.contentWindow?.print(); setTimeout(() => frame.remove(), 1000); }, 300);
@@ -161,7 +161,7 @@ function DocPage({ id }: { id: string }) {
         {data.canManage && !data.course && !data.chat && <button type="button" onClick={() => setSheet('share')} className="hidden sm:inline-flex px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] text-xs font-semibold items-center gap-1"><Share2 className="w-3.5 h-3.5" />Share</button>}
         {data.canManage && <button type="button" aria-label="Delete document" onClick={async () => { if (await confirmDialog({ title: 'Delete this document?', message: data.children.length ? 'Its text, versions and comments go for everyone. The pages inside it move to the top.' : 'Its text, versions and comments go for everyone.', destructive: true })) { await call(`/api/docs/${id}`, 'DELETE').catch((e) => toast.error((e as Error).message)); router.push('/docs'); } }} className="p-2 rounded-full text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>}
       </header>
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#06141b]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center pe-2"><div className="flex-1 min-w-0"><WordToolbar editor={editor} disabled={!editable} onFind={() => setFinding((f) => !f)} /></div><SuggestToggle editor={editor} disabled={!editable} /><DocAiButton editor={editor} canEdit={editable} docId={id} /><EmbedMenu editor={editor} disabled={!editable} />{!data.chat && <PageLinkButton editor={editor} disabled={!editable} currentId={id} />}</div>
+      <div className="sticky top-0 z-10 bg-white/80 dark:bg-[#11212d]/80 backdrop-blur border-b border-zinc-200/70 dark:border-white/[0.06] flex items-center pe-2"><div className="flex-1 min-w-0"><WordToolbar editor={editor} disabled={!editable} onFind={() => setFinding((f) => !f)} /></div><SuggestToggle editor={editor} disabled={!editable} /><DocAiButton editor={editor} canEdit={editable} docId={id} /><EmbedMenu editor={editor} disabled={!editable} />{!data.chat && <PageLinkButton editor={editor} disabled={!editable} currentId={id} />}</div>
       {finding && editor && <FindBar editor={editor} canEdit={editable} onClose={() => { setFinding(false); editor.commands.focus(); }} />}
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 overflow-y-auto">
@@ -173,13 +173,13 @@ function DocPage({ id }: { id: string }) {
         <AnimatePresence>
           {panel === 'comments' && (
             <motion.aside key="comments" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={spring.smooth}
-              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#0b1a24] border-s border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
+              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#1b2c39] border-s border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
               <Comments docId={id} me={data.me.id} canEdit={data.canEdit} onClose={() => setPanel(null)} pick={() => pickText(editor)} go={(q) => goToQuote(editor, q)} />
             </motion.aside>
           )}
           {panel === 'suggestions' && (
             <motion.aside key="suggestions" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={spring.smooth}
-              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#0b1a24] border-s border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
+              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#1b2c39] border-s border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
               <SuggestionsPanel editor={editor} canEdit={editable} onClose={() => setPanel(null)} />
             </motion.aside>
           )}

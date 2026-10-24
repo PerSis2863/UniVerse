@@ -134,7 +134,7 @@ function EditorSheet({ courseId, itemId, title: firstTitle, initial, onClose, on
           <span className="label">Page title</span>
           <input value={title} maxLength={200} onChange={(e) => { setTitle(e.target.value); dirty.current = true; }} className="input" />
         </label>
-        <div className="sticky -top-5 z-10 -mx-5 px-3 bg-white/90 dark:bg-[#0b1a24]/90 backdrop-blur border-y border-zinc-200/70 dark:border-white/[0.07] flex items-center">
+        <div className="sticky -top-5 z-10 -mx-5 px-3 bg-white/90 dark:bg-[#1b2c39]/90 backdrop-blur border-y border-zinc-200/70 dark:border-white/[0.07] flex items-center">
           <div className="flex-1 min-w-0"><DocToolbar editor={editor} disabled={!editable} /></div>
           <EmbedMenu editor={editor} disabled={!editable} kinds={['video', 'pdf', 'code', 'math']} extra={blocks} />
         </div>

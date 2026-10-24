@@ -186,10 +186,10 @@ export default function BoardsPage() {
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {list.map((b) => (
-                <div key={b.id} className="group relative rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white dark:bg-[#06141b]/80 overflow-hidden shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-indigo-400/50 hover:shadow-[0_24px_60px_-28px_rgba(72,70,82,0.55)]">
+                <div key={b.id} className="group relative rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white dark:bg-[#11212d]/80 overflow-hidden shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-indigo-400/50 hover:shadow-[0_24px_60px_-28px_rgba(37,55,69,0.55)]">
                   <Link href={b.mine && b.title === GUIDE_TITLE ? guideHref(b.id) : `/boards/${b.id}`} className="block">
                     {/* The preview on a canvas of dots; in dark mode it's inverted like the board itself, so it isn't a white box. */}
-                    <div className="relative aspect-[16/10] overflow-hidden bg-zinc-50 dark:bg-[#06141b] bg-[radial-gradient(circle_at_1px_1px,rgb(99_102_241/0.18)_1px,transparent_0)] [background-size:18px_18px]">
+                    <div className="relative aspect-[16/10] overflow-hidden bg-zinc-50 dark:bg-[#11212d] bg-[radial-gradient(circle_at_1px_1px,rgb(99_102_241/0.18)_1px,transparent_0)] [background-size:18px_18px]">
                       {b.thumbnail
                         ? <img loading="lazy" decoding="async" src={b.thumbnail} alt="" className="w-full h-full object-contain p-3 transition-transform duration-500 ease-out group-hover:scale-[1.04] dark:invert dark:hue-rotate-180 dark:opacity-90" />
                         : <div className="w-full h-full grid place-items-center"><span className="w-14 h-14 rounded-2xl grid place-items-center bg-gradient-to-br from-indigo-500/15 to-fuchsia-500/15 text-indigo-500 dark:text-indigo-300"><PenTool className="w-7 h-7" /></span></div>}

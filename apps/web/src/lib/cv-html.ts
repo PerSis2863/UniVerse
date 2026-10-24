@@ -53,7 +53,7 @@ export function cvHtml(c: CvInput): string {
 .cv .cv-small{font-size:8.5pt;color:#4a5c6a;word-break:break-all}
 .cv-classic .cv-head{text-align:center;border-bottom:1.5pt solid #11212d;padding-bottom:8pt}.cv-classic h1{font-family:Georgia,'Times New Roman',serif}.cv-classic h2{color:#11212d;border-bottom:.75pt solid #ccd0cf;padding-bottom:2pt}
 .cv-modern .cv-head{border-left:6pt solid ${accent};padding:2pt 0 2pt 10pt;margin-bottom:6pt}.cv-modern h1{color:${accent}}
-.cv-compact{font-size:9.5pt}.cv-compact .cv-grid{display:grid;grid-template-columns:34% 1fr;gap:14pt}.cv-compact .cv-side{background:#f2ece6;padding:8pt;border-radius:4pt}.cv-compact h1{font-size:19pt}.cv-compact .cv-head{margin-bottom:8pt}`;
+.cv-compact{font-size:9.5pt}.cv-compact .cv-grid{display:grid;grid-template-columns:34% 1fr;gap:14pt}.cv-compact .cv-side{background:#eef1f2;padding:8pt;border-radius:4pt}.cv-compact h1{font-size:19pt}.cv-compact .cv-head{margin-bottom:8pt}`;
   const header = `<header class="cv-head"><h1>${esc(c.name)}</h1>${head.map((h) => `<p>${h}</p>`).join('')}</header>`;
   if (c.template === 'compact') {
     const side = parts.filter((s) => s.id === 'skills' || s.id === 'impact' || s.id === 'courses');

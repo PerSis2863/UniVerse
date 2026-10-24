@@ -25,7 +25,7 @@ const REACTIONS = ['❤️', '😂', '😮', '😢', '👏', '🔥'];
 const firstName = (name: string) => name.split(' ').find((w) => w && !w.endsWith('.')) ?? name;
 interface Person { user: { id: string; name: string; avatar: string | null }; mine: boolean; items: Item[]; unseen: number }
 
-const COLORS = ['#253745', '#484652', '#6b5560', '#e11d48', '#ea580c', '#059669', '#0891b2', '#11212d'];
+const COLORS = ['#253745', '#253745', '#db2777', '#e11d48', '#ea580c', '#059669', '#0891b2', '#11212d'];
 const SHOW_MS = 5000;
 
 export function StatusBar() {

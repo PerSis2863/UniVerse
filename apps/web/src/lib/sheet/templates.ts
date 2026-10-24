@@ -107,7 +107,7 @@ export const SHEET_TEMPLATES: SheetTemplate[] = [
       const cells: Record<string, CellJSON> = {
         A1: { v: 'My timetable', s: TITLE },
         ...rows([2, 0], [['Time', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']], () => ({ ...HEAD, align: 'center' })),
-        ...rows([3, 0], times.map((t, i) => [t, ...(i === 4 ? ['Lunch', 'Lunch', 'Lunch', 'Lunch', 'Lunch'] : ['', '', '', '', ''])]), (r, c) => (c === 0 ? { b: true, fmt: 'time' } : r === 4 ? { align: 'center', i: true, bg: '#f2ece6' } : { align: 'center', wrap: true })),
+        ...rows([3, 0], times.map((t, i) => [t, ...(i === 4 ? ['Lunch', 'Lunch', 'Lunch', 'Lunch', 'Lunch'] : ['', '', '', '', ''])]), (r, c) => (c === 0 ? { b: true, fmt: 'time' } : r === 4 ? { align: 'center', i: true, bg: '#eef1f2' } : { align: 'center', wrap: true })),
       };
       return { sheets: [{ id: 's1', name: 'Week', cells, cols: { 0: 70, 1: 120, 2: 120, 3: 120, 4: 120, 5: 120 }, rows: Object.fromEntries(times.map((_, i) => [3 + i, 44])), freeze: { r: 3, c: 1 } }] };
     },

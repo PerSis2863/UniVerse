@@ -65,16 +65,16 @@ export function UniverseLogo({
           <defs>
             {/* Linear gradient for the U curve */}
             <linearGradient id="universe-u-grad" x1="15%" y1="10%" x2="60%" y2="80%">
-              <stop offset="0%" stopColor="#c7a9a3" />
-              <stop offset="50%" stopColor="#9e8189" />
-              <stop offset="100%" stopColor="#6b5560" />
+              <stop offset="0%" stopColor="#f472b6" />
+              <stop offset="50%" stopColor="#ec4899" />
+              <stop offset="100%" stopColor="#db2777" />
             </linearGradient>
 
             {/* Linear gradient for the N connector */}
             <linearGradient id="universe-n-grad" x1="40%" y1="30%" x2="90%" y2="80%">
-              <stop offset="0%" stopColor="#9e8189" />
-              <stop offset="45%" stopColor="#c7a9a3" />
-              <stop offset="100%" stopColor="#e8d2c4" />
+              <stop offset="0%" stopColor="#ec4899" />
+              <stop offset="45%" stopColor="#f472b6" />
+              <stop offset="100%" stopColor="#fbcfe8" />
             </linearGradient>
 
             {/* Glow filter */}
@@ -138,7 +138,7 @@ export function UniverseLogo({
           {animated && (
             <path
               d="M 42 34 L 86 33 L 50 80"
-              stroke="#f7efe7"
+              stroke="#f2f4f4"
               strokeWidth="4.5"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -155,14 +155,14 @@ export function UniverseLogo({
               cy="34"
               r="4"
               fill="var(--background)"
-              stroke="#c7a9a3"
+              stroke="#f472b6"
               strokeWidth="2"
             />
             <circle
               cx="42"
               cy="34"
               r="1.8"
-              fill="#c7a9a3"
+              fill="#f472b6"
               className={cn(animated && 'universe-ping')}
               style={{ transformOrigin: '42px 34px' }}
             />
@@ -176,7 +176,7 @@ export function UniverseLogo({
             height="7"
             rx="1.5"
             fill="var(--background)"
-            stroke="#e8d2c4"
+            stroke="#fbcfe8"
             strokeWidth="2"
             className={cn(animated && "transition-transform duration-300 group-hover:rotate-45")}
             style={{ transformOrigin: '86px 33px' }}
@@ -190,8 +190,8 @@ export function UniverseLogo({
               width="7"
               height="7"
               rx="1.5"
-              fill="#e8d2c4"
-              stroke="#f7efe7"
+              fill="#fbcfe8"
+              stroke="#f2f4f4"
               strokeWidth="1.5"
               style={{
                 filter: 'drop-shadow(0 0 6px rgba(249,115,22,0.8))'
@@ -205,7 +205,7 @@ export function UniverseLogo({
                 height="11"
                 rx="2"
                 fill="none"
-                stroke="#e8d2c4"
+                stroke="#fbcfe8"
                 strokeWidth="1"
                 opacity="0.5"
                 className="universe-ping"

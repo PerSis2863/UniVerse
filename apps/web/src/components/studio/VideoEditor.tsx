@@ -25,7 +25,7 @@ type Snapshot = { clips: Clip[]; overlays: Overlay[] };
 const MAX_CLIPS = 40;
 const MAX_SECONDS = 15 * 60;
 const SIZES = [{ id: 's', label: 'Small', v: 0.045 }, { id: 'm', label: 'Medium', v: 0.065 }, { id: 'l', label: 'Large', v: 0.1 }] as const;
-const COLORS = ['#ffffff', '#facc15', '#22d3ee', '#9e8189', '#11212d'];
+const COLORS = ['#ffffff', '#facc15', '#22d3ee', '#ec4899', '#11212d'];
 let seq = 0;
 const nid = () => `v${Date.now().toString(36)}${(seq++).toString(36)}`;
 /** Moves a video or sound to a time (media elements are outside React). */
@@ -469,7 +469,7 @@ export function VideoEditor({ files, onClose }: { files: File[]; onClose: () => 
   const tabs: { value: Panel; label: string }[] = [{ value: 'clip', label: 'Clip' }, { value: 'text', label: 'Text' }, { value: 'music', label: 'Music' }, { value: 'video', label: 'Video' }];
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#06141b]" onKeyDown={onKey}>
+    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#11212d]" onKeyDown={onKey}>
       <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#11212d] overflow-x-auto">
         <button type="button" onClick={() => void close()} aria-label="Close the video editor" className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
         <input value={name} onChange={(e) => setName(e.target.value.replace(/[\\/:*?"<>|]/g, '').slice(0, 60))} aria-label="Video name" className="text-sm font-semibold bg-transparent text-zinc-900 dark:text-white rounded-md px-1.5 py-1 w-40 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
