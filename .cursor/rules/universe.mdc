@@ -79,19 +79,38 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
   scan (GPS if the browser already allows it, otherwise the country) or too often is a likely copy
   (`src/lib/trace.ts`); signed-in shops earn the product's points in the Impact Credits ledger. Never
   send a batch's `secret` to a browser. Collaborate stays: the owner likes it.
-- **Business mode (the owner, 24 Oct 2026: "you have not remove the school related features and change
-  it into the new one")**: UniVerse is now UniVerse Trace. Every role gets the same business app
-  (`src/lib/business.ts`: Console `/trace`, Market map, Tracking, Campaigns, Wallet, Messages,
-  Collaborate, Settings; the owner adds the owner console and All brands); the dashboard layout sends
-  any school page to `/trace` (`businessRedirect`); sign-up has no role picker (everyone joins as an
-  open individual account); the landing has no school sections. The school code is dormant, not
-  deleted: don't add links to school pages, and don't delete it without asking the owner. Anyone can
+- **UniVerse Impact: one account, many apps (the owner, 24 Oct 2026: "a lot of different mini software
+  or website in the main website like my old website for school… and the universe trace… and add more
+  other types… where they create a impact"; replaces business mode)**: the apps are listed once in
+  `src/lib/apps.ts` (`APPS`: UniVersity = the school platform, back in full; Trace; Relief; Green;
+  `appFor(path)`, `appHome(app, role)`). Each app has its own menu (`Sidebar.tsx` `navFor`, the app
+  switcher under the brand), phone tabs (`app-tabs.ts`), landing tab and sign-in / sign-up tab
+  (`?app=`, remembered in sessionStorage `uv-app`, `useChosenApp`). `homeFor(user, app)` sends a
+  person to their chosen app, otherwise to the hub `/hub` (owner: `/console`). Messages, Collaborate
+  and Settings are shared. A new app: an `APPS` entry, its nav and tabs, a landing tab section, a
+  card on `/hub` (`GET /hub`, `src/server/hub.ts`) and sample answers (`src/lib/sample/impact.ts`).
+  Relief (`src/server/relief.ts`) rounds every position to about 500 m when saved and shows nothing
+  older than 30 days; Green (`src/server/green.ts`) rounds to 0.1° and takes its CO₂ factors only from
+  `src/lib/green.ts`. Trace: anyone can
   start a brand (one per account, `trace_brands`, membership checked by `brandOf`, never the school
   role); points live per brand in `trace_points` (hash-chained); campaigns pay per verified scan with
   a budget taken by a guarded update; the market map snaps to 0.1° (and 0.5° with at least
   `MARKET_MIN` scans for the PRO category layer) so no shop or person can be found. The maps draw
   with `src/components/trace/map` (d3-geo + topojson, no tile service, `public/geo`): one canvas,
   land cached until the view moves, frames only while something moves; keep it that way.
+- **Trace, second wave (migration 0179, `src/server/trace-plus.ts`)**: recalls, blocked batches and
+  grey-market countries are the brand's (on a batch in the console; the Radar `/trace/radar` lists
+  them); a unit's instant win is decided by the batch secret (`wins`), never by chance at scan time,
+  and its claim code is shown once; warranty, review and owner rows are one per unit (unique
+  `codeId`), refused on a label that may be a copy. Shops earn more by tier (`TIERS` in
+  `src/lib/trace.ts`). The public brand page `/b/<slug>` shows only non-sample products.
+- **Sample data, two kinds**: the owner's "Fill with sample data" on the console Overview writes a
+  made-up world into the real database in steps (`src/server/sample-world.ts`), marked so "Remove"
+  takes out exactly that (emails `@sample.universe.test`, ids `smp…`, slugs `sample-`); a visitor's
+  "Try the live demo" (and a signed-in "Explore with sample data") never touch the server: requests are
+  answered in the browser (`src/lib/sample/router.ts`, `impact.ts`), the made-up person lives in this
+  tab only (`startVisitorDemo`). A new page with data needs a sample answer, or the demo shows it
+  empty.
 - **Numbers and charts (the owner's "Instrumental" reference, 24 Oct 2026)**: analytics, dashboards
   and the owner console use `InstrumentBoard` (`src/components/instruments/Board.tsx`): a framed board
   with a Live light, cells each a mono number and its own instrument from `parts.tsx` (`Spark` line with
@@ -238,8 +257,13 @@ Rules for using it here:
   `/check`; its build fixer is `/fix-checks`; its planner and reviewers are `/plan-item` and the two
   reviewers). One piece is worth having: the "strategic compact" reminder (counts tool calls and,
   after about 60, suggests `/compact` or `/clear` once an item is finished, so long histories aren't
-  re-sent). It runs only on this computer, but changing `.claude/settings.json` needs the owner's
-  own approval in Claude Code, so it's not turned on yet.
+  re-sent). **Turned on 24 Oct 2026** (the owner: "add … all the things which are necessary… i give
+  you all the permission"): `.claude/hooks/suggest-compact.mjs` (a PostToolUse hook; ECC's script
+  never counted past 1, ours counts per session) and the `strategic-compact` skill. Also taken then:
+  the `security-review` checklist skill, with a section on how it maps to this project. Still left
+  out: its agents and commands (duplicates of the ones above), memory / learning hooks, eval harness,
+  ClickHouse, and the generic `coding-standards`, `frontend-patterns`, `backend-patterns` and
+  `tdd-workflow` skills (other stacks; 80% coverage and E2E for everything clash with "Keep it lean").
 - **22 Oct 2026: the current pack (github.com/affaan-m/ecc, 311 skills) checked for smoothness.**
   Its motion skills (`motion-foundations`, `motion-patterns`, `motion-advanced`) describe what the
   M1 motion layer already does (word reveals, count-ups, path drawing, cursor light, pausing when

@@ -12,6 +12,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/suggest-compact.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }
