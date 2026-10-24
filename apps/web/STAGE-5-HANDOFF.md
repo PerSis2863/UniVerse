@@ -1561,3 +1561,49 @@ Progress table (row D6).
   pings, scan + claim with a campaign bonus, wallet chain, cash-out and refusal with refund, 403 for a
   non-owner), screenshots of both maps in light and dark, the driver page and the landing.
 
+
+## M21 · UniVerse Impact: the hub, Relief and Green, Trace's second wave, sample data
+
+- The owner asked for "at least 10 more unique features… add back the sample data mode… a lot of
+  [fake] data in the owner console", then "a lot of different mini software or website in the main
+  website like my old website for school… and the universe trace… and add more other types… where
+  they create a impact", then "on a main website put the uni-versity and universe trace tab where user
+  can switch to where they want to login". This replaces M20's business mode: the school platform is
+  back in full as the **UniVersity** app.
+- **The hub:** `src/lib/apps.ts` (APPS, `appFor`, `appHome`, `inboxFor`, + tests), `Sidebar.tsx`
+  (`navFor`, the app switcher, remembered in localStorage `uv-last-app`), `app-tabs.ts`
+  (`tabsForRole(role, path)`), `/hub` (`GET /hub`, `src/server/hub.ts`), `homeFor(user, app)` and
+  `chosenApp()` in `role-home.ts`, `useChosenApp` / `setChosenApp` (`src/lib/chosen-app.ts`). Landing:
+  app tabs in the hero (`components/landing/AppTabs.tsx`), a hero and sections per app
+  (`ImpactApps.tsx` for Relief and Green), the Proof/Glue/Bento/Statement school sections back; sign-in
+  and sign-up carry the tab (`?app=`); sign-up shows the role picker only for UniVersity.
+  `src/lib/business.ts` is gone.
+- **Relief** (migration 0180, `relief_posts`; `src/server/relief.ts`, `components/relief/ReliefApp.tsx`,
+  `/relief`, `/relief/mine`): needs and offers on one live map, "I can help", give back, delivered;
+  positions rounded to ~500 m; 30 days shown. **Green** (`green_teams`, `green_members`,
+  `green_actions`; `src/server/green.ts`, `components/green/GreenApp.tsx`, `/green`, `/green/teams`):
+  actions with their CO₂ (`src/lib/green.ts` factors), streak, badges, the weekly challenge, teams by
+  code, leaderboards, a 0.1° map. Next migration: **0181**.
+- **Trace, second wave** (migration 0179, `src/server/trace-plus.ts` + tests): recalls (red on every
+  passport of the batch), blocked (stolen) batches, grey-market countries per batch (`diverted` on the
+  scan), instant wins decided by the batch secret (claim code shown once; handed over on the Radar),
+  warranty registration, one review per unit, an ownership vault with transfer codes (`/trace/vault`),
+  shop tiers (Bronze/Silver ×1.25/Gold ×1.5 on claim), cold chain (`maxTempC`, the driver types the
+  temperature on `/carry/<key>`, tracking and the Radar show warm readings). Pages: `/trace/radar`,
+  `/trace/insights` (14-day forecast, busiest hours, CO₂ per shipment, reviews, best shops, trust
+  score), `/trace/vault`, public brand page `/b/<slug>` (built as `/b/open`). Console: a settings
+  panel per product (prize odds, temperature, weight) and a shield per batch (markets, block, recall).
+- **Sample data:** the owner console Overview has **Fill with sample data / Remove sample data**
+  (`src/server/sample-world.ts`, `POST /owner/sample-world/step/:n`, `/clear`; 22 steps, a few queries
+  each; ~300 people, 13,000 activity rows, 1,200 messages, 20 brands, ~6,200 scans with copies and grey
+  market, reviews, prizes, warranties, 420 points, 320 Relief posts, 1,800 Green actions). Visitors get
+  **Try the live demo** on the landing hero and the sign-in page (`startVisitorDemo` in
+  `components/SampleMode.tsx`): a made-up person in this tab, every page answered from
+  `src/lib/sample/router.ts` + `impact.ts`, nothing sent to the server, Exit clears it.
+- Also: `trace-owner.ts` had two `countries` keys (the count is now `countryCount`).
+- Tools the owner asked for: Impeccable and Ponytail skills in `.claude/skills/` (no hooks), REA with
+  Ghidra set up on the machine (`tools/setup-rea.sh`); see `AGENT-TOOLKIT.md`.
+- Checked: `pnpm check` (1,292 tests, lint 0 errors, lean clean), the sample fill and removal against
+  the local database, live API runs (Relief, Green, hub, scan + review + warranty + duplicate refusals,
+  an instant win and a recall on a real code), screenshots of the hub, every app, Radar, Insights, the
+  vault, the passport and the brand page, and the visitor demo end to end.

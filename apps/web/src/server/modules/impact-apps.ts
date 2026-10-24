@@ -1,0 +1,28 @@
+import type { Router } from '../router';
+import { hubStats } from '../hub';
+import { createReliefPost, reliefAction, reliefMap, reliefMine } from '../relief';
+import { createGreenTeam, deleteGreenAction, greenMap, greenMe, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction } from '../green';
+
+// UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*) and
+// UniVerse Green (/green/*). Everything here needs a signed-in account; nobody's exact position is
+// ever returned (src/server/relief.ts, green.ts).
+
+export default function impactAppsModule(router: Router) {
+  router.controller('hub').get('', ({ user }) => hubStats(user));
+
+  const relief = router.controller('relief');
+  relief.get('map', ({ user }) => reliefMap(user));
+  relief.get('mine', ({ user }) => reliefMine(user));
+  relief.post('posts', ({ user, body }) => createReliefPost(user, body ?? {}));
+  relief.post<{ id: string; action: string }>('posts/:id/:action', { status: 200 }, ({ user, params }) => reliefAction(user, params.id, params.action));
+
+  const green = router.controller('green');
+  green.get('me', ({ user }) => greenMe(user));
+  green.get('map', () => greenMap());
+  green.post('actions', ({ user, body }) => logGreenAction(user, body ?? {}));
+  green.delete<{ id: string }>('actions/:id', ({ user, params }) => deleteGreenAction(user, params.id));
+  green.get('teams', ({ user }) => greenTeams(user));
+  green.post('teams', ({ user, body }) => createGreenTeam(user, body ?? {}));
+  green.post('teams/join', { status: 200 }, ({ user, body }) => joinGreenTeam(user, body ?? {}));
+  green.post<{ id: string }>('teams/:id/leave', { status: 200 }, ({ user, params }) => leaveGreenTeam(user, params.id));
+}

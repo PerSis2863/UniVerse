@@ -3,8 +3,7 @@ import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { ApiWarmup } from '@/components/ApiWarmup';
 import { MaintenanceGate } from '@/components/MaintenanceGate';
 import { LightTrail } from '@/components/LightTrail';
-import { PassportCard } from '@/components/landing/PassportCard';
-import { Accent, Tag } from '@/components/landing/bits';
+import { AuthShowcase } from '@/components/landing/AuthShowcase';
 
 // Sign in and sign up, in the landing page's look (src/app/page.tsx): the dark page with its river
 // of light, the same headline and flow card on the left, the form in a glass card on the right.
@@ -26,15 +25,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <UniverseLogo size="lg" animated={true} withGlow={true} showText={true} />
         </Link>
         <div className="hero-in my-auto py-10">
-          <Tag>UniVerse Trace / free to start</Tag>
-          <h2 className="mt-6 text-5xl xl:text-6xl font-bold tracking-[-0.035em] leading-[1.04] text-white">
-            Every product gets a <Accent>passport.</Accent>
-          </h2>
-          <p className="mt-5 text-zinc-300 text-base leading-relaxed max-w-md">
-            Genuine checks for buyers, points for shops, and a live map of where every product sells and every shipment is.
-          </p>
-          <div className="mt-9 max-w-sm"><PassportCard /></div>
-          <p className="mt-6 font-mono text-xs text-zinc-400">10,000 passports free / 13 languages / no card</p>
+          <AuthShowcase />
         </div>
         <div className="font-mono text-xs text-zinc-500 flex items-center justify-between gap-4">
           <span>© 2026 UniVerse Impact Network</span>

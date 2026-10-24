@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { User } from '@/types';
 import { api } from '@/lib/api';
 import { endViewAs, viewAsToken } from '@/lib/view-as';
+import { isSampleVisitor } from '@/lib/sample-mode';
 
 interface AuthStore {
   user: User | null;
@@ -67,8 +68,9 @@ export const useAuthStore = create<AuthStore>()(
     {
       name: 'universe-auth',
       partialize: (s) => ({ user: s.user }),
-      // A "view as" tab keeps that person's account to itself (src/lib/view-as.ts).
-      storage: createJSONStorage(() => (viewAsToken() ? sessionStorage : localStorage)),
+      // A "view as" tab keeps that person's account to itself (src/lib/view-as.ts), and so does a
+      // visitor's live demo (its made-up person never outlives the tab: src/components/SampleMode.tsx).
+      storage: createJSONStorage(() => (viewAsToken() || isSampleVisitor() ? sessionStorage : localStorage)),
     }
   )
 );

@@ -14,6 +14,7 @@ import { logMod } from '../community-moderation';
 import { serverControl } from './owner';
 import { schoolHealth } from '@/lib/owner-console';
 import type { SessionUser } from '@/lib/server-auth';
+import { clearSample, sampleStatus, sampleSteps } from '../sample-world';
 
 // Stage 5 · Q19 Owner console: every school at a glance (plan, seats, use, health), growth from
 // payments and Stripe's subscription changes, safety reports from all schools in one queue, and a
@@ -201,5 +202,21 @@ export default function ownerConsoleModule(router: Router) {
     if (target.status === 'SUSPENDED') throw new BadRequestException('This account is suspended, so it can’t open the app.');
     audit(user, { action: 'support.view_as', summary: `Owner viewed the app as ${target.name} (read-only, 30 minutes)`, targetType: 'user', targetId: target.id }, req);
     return { token: issueSessionToken(target.id, VIEW_AS_SRC, VIEW_AS_TTL_SEC), name: target.name, minutes: VIEW_AS_TTL_SEC / 60 };
+  });
+
+  /** Sample data (src/server/sample-world.ts): how much is in, fill one step at a time, remove it all. */
+  r.get('sample-world', () => sampleStatus());
+  r.post<{ n: string }>('sample-world/step/:n', async ({ params, user, req }) => {
+    const steps = sampleSteps(), n = Number(params.n);
+    const step = Number.isInteger(n) ? steps[n] : undefined;
+    if (!step) throw new BadRequestException('Unknown step.');
+    const rows = await step.run();
+    if (n === steps.length - 1) audit(user, { action: 'owner.sample_filled', summary: 'Owner filled the app with sample data' }, req);
+    return { step: n, of: steps.length, label: step.label, rows };
+  });
+  r.post('sample-world/clear', async ({ user, req }) => {
+    const res = await clearSample();
+    audit(user, { action: 'owner.sample_removed', summary: `Owner removed the sample data (${res.removed} sample people)` }, req);
+    return res;
   });
 }

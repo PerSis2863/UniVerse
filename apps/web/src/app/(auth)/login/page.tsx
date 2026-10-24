@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Loader2, Eye, EyeOff, Building2, Fingerprint, Phone } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff, Building2, Fingerprint, Phone, Play } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Accent, Tag } from '@/components/landing/bits';
 import { useAuthStore } from '@/store/auth';
@@ -15,7 +15,11 @@ import { passkeyError, signInWithPasskey, usePasskeysSupported } from '@/lib/pas
 import { EmailVerifyPanel } from '@/components/auth/EmailVerifyPanel';
 import { TwoStepPanel } from '@/components/auth/TwoStepPanel';
 import dynamic from 'next/dynamic';
-import { homeFor } from '@/lib/role-home';
+import { chosenApp, homeFor } from '@/lib/role-home';
+import { AppTabs } from '@/components/landing/AppTabs';
+import { startVisitorDemo } from '@/components/SampleMode';
+import { appById, appHome } from '@/lib/apps';
+import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { PHONE_SIGN_IN } from '@/lib/sign-in-options';
 
 // Phone sign-in carries a phone-number library (about 50 KB): it loads when someone chooses it
@@ -25,6 +29,7 @@ const preloadPhoneFlow = () => { loadPhoneFlow().catch(() => {}); };
 const PhoneAuthFlow = dynamic(() => loadPhoneFlow().then((m) => m.PhoneAuthFlow), { ssr: false, loading: () => <div className="h-56 rounded-2xl skeleton" /> });
 
 export default function LoginPage() {
+  const app = useChosenApp();
   const router = useRouter();
   const { setUser, setTokens } = useAuthStore();
 
@@ -103,7 +108,7 @@ export default function LoginPage() {
         return;
       }
       const next = new URLSearchParams(location.search).get('next');
-      router.push(next && /^\/[a-z]/.test(next) ? next : homeFor(user));
+      router.push(next && /^\/[a-z]/.test(next) ? next : homeFor(user, chosenApp()));
     } catch (err) {
       console.error('Failed to sync user data', err);
       setError('Login successful, but failed to retrieve user data. Please contact support.');
@@ -243,7 +248,8 @@ export default function LoginPage() {
         <div className="mb-8">
           <Tag>welcome back</Tag>
           <h1 className="mt-5 text-4xl font-bold tracking-[-0.03em] text-white mb-2">Welcome <Accent>back.</Accent></h1>
-          <p className="text-zinc-300 text-sm">Sign in to pick up where you left off.</p>
+          <p className="text-zinc-300 text-sm">Sign in to {appById(app).name}. One account opens every app.</p>
+          <div className="mt-5"><AppTabs small value={app} onChange={setChosenApp} label="Sign in to" layoutId="login-app" /></div>
         </div>
 
         <div className="rounded-3xl border border-white/[0.08] bg-[#0b1a24]/75 backdrop-blur-md shadow-[0_40px_120px_-40px_rgba(37,55,69,0.55)] p-6 sm:p-8">
@@ -433,6 +439,9 @@ export default function LoginPage() {
                     Sign up
                   </Link>
                 </p>
+                <button type="button" onClick={() => startVisitorDemo(appHome(app, 'STUDENT'))} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-zinc-700 px-4 py-1.5 text-sm text-zinc-300 transition-[transform,background-color] duration-150 hover:bg-zinc-800 active:scale-[0.97]">
+                  <Play className="w-3.5 h-3.5" /> Just looking? Try the live demo
+                </button>
               </div>
             </>
           )}

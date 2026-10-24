@@ -2,20 +2,23 @@
 
 import { usePathname } from 'next/navigation';
 import { m as motion } from 'framer-motion';
-import { Building2, Globe2, Megaphone, ScanLine, Truck, Wallet } from 'lucide-react';
+import { Building2, Globe2, KeyRound, Megaphone, Radar, ScanLine, Sparkles, Truck, Wallet } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 
-// The tab row across the UniVerse Trace pages: the brand's console, its two live maps, campaigns,
-// everyone's wallet and (for the platform owner) every brand.
+// The tab row across the UniVerse Trace pages: the brand's console, its two live maps, the Radar and
+// Insights, campaigns, everyone's wallet and vault, and (for the platform owner) every brand.
 
 const TABS = [
   { href: '/trace', label: 'Console', icon: ScanLine },
   { href: '/trace/map', label: 'Market map', icon: Globe2 },
   { href: '/trace/tracking', label: 'Tracking', icon: Truck },
+  { href: '/trace/radar', label: 'Radar', icon: Radar },
+  { href: '/trace/insights', label: 'Insights', icon: Sparkles },
   { href: '/trace/campaigns', label: 'Campaigns', icon: Megaphone },
   { href: '/trace/wallet', label: 'Wallet', icon: Wallet },
+  { href: '/trace/vault', label: 'Vault', icon: KeyRound },
 ];
 
 export function TraceTabs() {

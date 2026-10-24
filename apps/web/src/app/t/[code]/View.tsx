@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Clock, Gift, Loader2, MapPin, Package, SearchX, ShieldAlert, ShieldCheck, Sparkles } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, Ban, ChevronRight, Clock, Gift, KeyRound, Loader2, MapPin, Package, PartyPopper, SearchX, ShieldAlert, ShieldCheck, Sparkles, Star, Vault } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { usePathParams } from '@/hooks/usePathParams';
@@ -20,12 +20,18 @@ import { cn } from '@/lib/utils';
 interface Passport {
   result: Verdict;
   code: string; serial: number;
-  brand: { name: string; logoUrl: string | null };
+  brand: { name: string; logoUrl: string | null; slug?: string | null };
   product: { name: string; category: string | null; description: string | null; story: string | null; imageUrl: string | null; warrantyMonths: number; rewardPoints: number };
   batch: { label: string; origin: string | null; madeAt: string | null; quantity: number };
   journey: { stage: string; place: string | null; createdAt: string }[];
   scans: number; firstScanAt: string | null; firstPlace: string | null;
   claimed: boolean; claimedByYou: boolean; canClaim: boolean;
+  recall: { reason: string; advice: string | null; severity: string; createdAt: string } | null;
+  blocked: boolean;
+  win: { prize: string; claimCode: string | null; redeemed: boolean } | null;
+  warranty: { months: number; registered: boolean; endsAt: string | null } | null;
+  reviews: { avg: number | null; count: number; mine: { stars: number; text: string | null } | null; recent: { stars: number; text: string | null; place: string | null; createdAt: string }[] };
+  owner: { owners: number; since: string; you: boolean } | null;
 }
 type Answer = Passport | { result: 'UNKNOWN' };
 
@@ -51,7 +57,7 @@ export default function View() {
   const [data, setData] = useState<Answer | null>(null);
   const [failed, setFailed] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  const [earned, setEarned] = useState<{ points: number; balance: number } | null>(null);
+  const [earned, setEarned] = useState<{ points: number; balance: number; tier?: { label: string; multiplier: number; next: { label: string; need: number } | null } } | null>(null);
 
   useEffect(() => {
     if (!code) return;
@@ -64,8 +70,17 @@ export default function View() {
       try {
         const res = await api.post<Answer>(`/trace/scan/${encodeURIComponent(code)}`, { ...pos, again });
         if (cancelled) return;
-        setData(res.data);
-        if (res.data.result !== 'UNKNOWN') { try { localStorage.setItem(key, '1'); } catch { /* private mode */ } }
+        // A prize's claim code is shown once, on the winning check: this browser keeps it for later visits.
+        const d = res.data;
+        if (d.result !== 'UNKNOWN' && d.win) {
+          try {
+            const wkey = `trace-win:${code.toUpperCase().replace(/-/g, '')}`;
+            if (d.win.claimCode) localStorage.setItem(wkey, d.win.claimCode);
+            else d.win = { ...d.win, claimCode: localStorage.getItem(wkey) };
+          } catch { /* private mode */ }
+        }
+        setData(d);
+        if (d.result !== 'UNKNOWN') { try { localStorage.setItem(key, '1'); } catch { /* private mode */ } }
       } catch { if (!cancelled) setFailed(true); }
     })();
     return () => { cancelled = true; };
@@ -75,7 +90,7 @@ export default function View() {
     if (!code) return;
     setClaiming(true);
     try {
-      const res = await api.post<{ points: number; balance: number }>(`/trace/scan/${encodeURIComponent(code)}/claim`);
+      const res = await api.post<NonNullable<typeof earned>>(`/trace/scan/${encodeURIComponent(code)}/claim`);
       setEarned(res.data);
       toast.success(`+${res.data.points} points`);
     } catch (e) { toast.error(errorMessage(e, 'Could not add the points.')); } finally { setClaiming(false); }
@@ -104,10 +119,18 @@ export default function View() {
         )}
         {failed && <p className="mt-24 text-center text-zinc-300">We couldn’t check the code just now. Check your connection and open the page again.</p>}
 
+        {data && 'recall' in data && data.recall && <RecallBanner recall={data.recall} brand={data.brand.name} />}
+        {data && 'blocked' in data && data.blocked && (
+          <section className="passport-card passport-alert mt-6 p-5 pp-rise" role="alert">
+            <p className="font-bold flex items-center gap-2 text-amber-200"><Ban className="w-5 h-5" aria-hidden />This batch was reported stolen</p>
+            <p className="mt-1 text-sm text-zinc-200">{data.brand.name} blocked it. The product is real, but it shouldn’t be on sale: please tell the brand where you found it.</p>
+          </section>
+        )}
         {data && <Seal data={data} />}
 
         {data && 'product' in data && (
           <>
+            {data.win && <WinCard win={data.win} brand={data.brand.name} />}
             <section className="passport-card mt-6 p-5 pp-rise" style={{ animationDelay: '120ms' }}>
               <div className="flex gap-4">
                 {data.product.imageUrl
@@ -155,7 +178,10 @@ export default function View() {
                 {data.code === 'DEMO' ? (
                   <p className="mt-2 text-sm text-zinc-200">On a real product, the shop that sells it scans this code and earns <b className="text-white">{data.product.rewardPoints} points</b> from the brand, once per unit.</p>
                 ) : earned ? (
-                  <p className="mt-2 text-sm text-zinc-200"><b className="text-white">+{earned.points} points</b> added. You have {earned.balance.toLocaleString()} points.</p>
+                  <p className="mt-2 text-sm text-zinc-200">
+                    <b className="text-white">+{earned.points} points</b> added. You have {earned.balance.toLocaleString()} points.
+                    {earned.tier && <span className="block mt-1 text-xs text-zinc-300">{earned.tier.label} shop{earned.tier.multiplier > 1 ? ` (×${earned.tier.multiplier} points)` : ''}{earned.tier.next ? ` · ${earned.tier.next.need} more sales to ${earned.tier.next.label}` : ''}</span>}
+                  </p>
                 ) : data.claimedByYou ? (
                   <p className="mt-2 text-sm text-zinc-200">You already earned the points for this unit.</p>
                 ) : data.claimed ? (
@@ -168,6 +194,15 @@ export default function View() {
                   <Link href={`/login?next=${encodeURIComponent(`/t/${code}`)}`} className="mt-3 btn-primary w-full justify-center">Sign in to earn {data.product.rewardPoints} points</Link>
                 ) : null}
               </section>
+            )}
+
+            {data.code !== 'DEMO' && data.warranty && <WarrantyCard code={code!} warranty={data.warranty} suspect={data.result === 'SUSPECT'} />}
+            <ReviewsCard code={code!} data={data} />
+            {data.code !== 'DEMO' && data.result !== 'SUSPECT' && <OwnerCard code={code!} owner={data.owner} signedIn={signedIn} />}
+            {data.brand.slug && (
+              <Link href={`/b/${data.brand.slug}`} className="passport-card mt-4 p-4 flex items-center gap-3 pp-rise hover:bg-white/[0.07] transition-colors">
+                <BadgeCheck className="w-5 h-5 text-pink-300" aria-hidden /><span className="flex-1 text-sm">See {data.brand.name}’s trust score and other products</span><ChevronRight className="w-4 h-4 text-zinc-400" aria-hidden />
+              </Link>
             )}
           </>
         )}
@@ -204,3 +239,135 @@ function Seal({ data }: { data: Answer }) {
 const Fact = ({ k, v }: { k: string; v: string }) => (
   <div className="rounded-xl bg-white/[0.04] px-3 py-2 min-w-0"><dt className="text-zinc-400">{k}</dt><dd className="text-zinc-100 truncate">{v}</dd></div>
 );
+
+function RecallBanner({ recall, brand }: { recall: NonNullable<Passport['recall']>; brand: string }) {
+  return (
+    <section className="passport-card passport-alert mt-6 p-5 pp-rise" role="alert">
+      <p className="font-bold flex items-center gap-2 text-rose-200"><AlertTriangle className="w-5 h-5" aria-hidden />Recall{recall.severity === 'CRITICAL' ? ': stop using it now' : ''}</p>
+      <p className="mt-1 text-[15px] text-white">{recall.reason}</p>
+      {recall.advice && <p className="mt-2 text-sm text-zinc-200"><b>What to do:</b> {recall.advice}</p>}
+      <p className="mt-2 font-mono text-[11px] text-zinc-400">Issued by {brand} on {day(recall.createdAt)}</p>
+    </section>
+  );
+}
+
+function WinCard({ win, brand }: { win: NonNullable<Passport['win']>; brand: string }) {
+  return (
+    <section className="passport-card passport-win mt-6 p-5 pp-rise text-center" aria-live="polite">
+      <PartyPopper className="w-9 h-9 mx-auto text-amber-300 pp-pop" aria-hidden />
+      {win.claimCode ? (
+        <>
+          <p className="mt-2 text-xl font-black">You won: {win.prize}</p>
+          <p className="mt-1 text-sm text-zinc-300">Show this code at the shop or send it to {brand}. Keep it: it’s shown only on this phone.</p>
+          <p className="mt-3 inline-block rounded-xl bg-white/10 px-4 py-2 font-mono text-lg tracking-[0.2em]">{win.claimCode}</p>
+          {win.redeemed && <p className="mt-2 text-xs text-zinc-400">Already handed over.</p>}
+        </>
+      ) : (
+        <p className="mt-2 text-sm text-zinc-300">This unit’s prize ({win.prize}) was already won by the first person who checked it.</p>
+      )}
+    </section>
+  );
+}
+
+function WarrantyCard({ code, warranty, suspect }: { code: string; warranty: NonNullable<Passport['warranty']>; suspect: boolean }) {
+  const [f, setF] = useState({ name: '', email: '' });
+  const [done, setDone] = useState<string | null>(warranty.endsAt);
+  const [busy, setBusy] = useState(false);
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try { const r = await api.post<{ endsAt: string }>(`/trace/scan/${encodeURIComponent(code)}/warranty`, f); setDone(r.data.endsAt); toast.success('Warranty registered'); }
+    catch (err) { toast.error(errorMessage(err, 'Could not register it.')); } finally { setBusy(false); }
+  };
+  return (
+    <section className="passport-card mt-4 p-5 pp-rise" aria-labelledby="warranty-h">
+      <h2 id="warranty-h" className="font-bold flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-pink-300" aria-hidden />{warranty.months}-month warranty</h2>
+      {done || warranty.registered ? (
+        <p className="mt-2 text-sm text-zinc-200">Registered{done ? `, covered until ${day(done)}` : ''}. Scan this code again any time to see it.</p>
+      ) : suspect ? (
+        <p className="mt-2 text-sm text-zinc-300">The warranty can’t be registered while the label may be a copy.</p>
+      ) : (
+        <form onSubmit={(e) => void save(e)} className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <input required maxLength={80} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Your name" aria-label="Your name" className="h-11 rounded-xl bg-white/10 px-3 text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-pink-400" />
+          <input required type="email" maxLength={160} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="Email" aria-label="Email" className="h-11 rounded-xl bg-white/10 px-3 text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-pink-400" />
+          <button type="submit" disabled={busy} className="btn-primary h-11 justify-center">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Register'}</button>
+        </form>
+      )}
+    </section>
+  );
+}
+
+function Stars({ n, size = 'w-4 h-4' }: { n: number; size?: string }) {
+  return <span className="inline-flex" aria-label={`${n} of 5 stars`}>{[1, 2, 3, 4, 5].map((i) => <Star key={i} className={cn(size, i <= Math.round(n) ? 'fill-amber-300 text-amber-300' : 'text-zinc-600')} aria-hidden />)}</span>;
+}
+
+function ReviewsCard({ code, data }: { code: string; data: Passport }) {
+  const [stars, setStars] = useState(0);
+  const [text, setText] = useState('');
+  const [mine, setMine] = useState(data.reviews.mine);
+  const [busy, setBusy] = useState(false);
+  const canReview = data.code !== 'DEMO' && data.result !== 'SUSPECT' && !mine;
+  const save = async () => {
+    setBusy(true);
+    try { const r = await api.post<{ stars: number; text: string | null }>(`/trace/scan/${encodeURIComponent(code)}/review`, { stars, text }); setMine(r.data); toast.success('Thanks for rating it'); }
+    catch (err) { toast.error(errorMessage(err, 'Could not save it.')); } finally { setBusy(false); }
+  };
+  if (!data.reviews.count && !canReview && !mine) return null;
+  return (
+    <section className="passport-card mt-4 p-5 pp-rise" aria-labelledby="reviews-h">
+      <h2 id="reviews-h" className="font-bold flex items-center gap-2"><Star className="w-4 h-4 text-pink-300" aria-hidden />What owners say</h2>
+      {data.reviews.avg !== null && (
+        <p className="mt-2 flex items-center gap-2"><span className="text-3xl font-black tabular-nums">{data.reviews.avg}</span><Stars n={data.reviews.avg} /><span className="text-xs text-zinc-400">{data.reviews.count.toLocaleString()} verified reviews</span></p>
+      )}
+      <p className="mt-1 text-xs text-zinc-400">Only someone holding a genuine unit can review it, once per unit.</p>
+      <ul className="mt-3 space-y-2">
+        {data.reviews.recent.map((r, i) => (
+          <li key={i} className="rounded-xl bg-white/[0.04] px-3 py-2"><Stars n={r.stars} size="w-3 h-3" /><p className="mt-1 text-sm text-zinc-200">{r.text}</p><p className="font-mono text-[10px] text-zinc-500">{[r.place, day(r.createdAt)].filter(Boolean).join(' · ')}</p></li>
+        ))}
+      </ul>
+      {mine ? (
+        <p className="mt-3 text-sm text-zinc-300">You rated this unit <Stars n={mine.stars} size="w-3 h-3" />.</p>
+      ) : canReview && (
+        <div className="mt-4">
+          <div className="flex gap-1" role="radiogroup" aria-label="Your rating">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <button key={i} type="button" role="radio" aria-checked={stars === i} aria-label={`${i} star${i > 1 ? 's' : ''}`} onClick={() => setStars(i)} className="p-1 transition-transform active:scale-90">
+                <Star className={cn('w-7 h-7 transition-colors', i <= stars ? 'fill-amber-300 text-amber-300' : 'text-zinc-500')} aria-hidden />
+              </button>
+            ))}
+          </div>
+          {stars > 0 && (
+            <div className="mt-2 flex gap-2">
+              <input maxLength={500} value={text} onChange={(e) => setText(e.target.value)} placeholder="A few words (optional)" aria-label="Your review" className="flex-1 h-11 rounded-xl bg-white/10 px-3 text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-pink-400" />
+              <button type="button" onClick={() => void save()} disabled={busy} className="btn-primary h-11">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Post'}</button>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function OwnerCard({ code, owner, signedIn }: { code: string; owner: Passport['owner']; signedIn: boolean }) {
+  const [mine, setMine] = useState(!!owner?.you);
+  const [busy, setBusy] = useState(false);
+  const own = async () => {
+    setBusy(true);
+    try { await api.post(`/trace/scan/${encodeURIComponent(code)}/own`); setMine(true); toast.success('Added to your vault'); }
+    catch (err) { toast.error(errorMessage(err, 'Could not add it.')); } finally { setBusy(false); }
+  };
+  return (
+    <section className="passport-card mt-4 p-5 pp-rise" aria-labelledby="owner-h">
+      <h2 id="owner-h" className="font-bold flex items-center gap-2"><Vault className="w-4 h-4 text-pink-300" aria-hidden />Proof of ownership</h2>
+      {mine ? (
+        <p className="mt-2 text-sm text-zinc-200">It’s in your vault{owner && owner.owners > 1 ? ` (owner number ${owner.owners})` : ''}. Selling it? <Link href="/trace/vault" className="underline">Transfer it</Link> to the buyer.</p>
+      ) : owner ? (
+        <p className="mt-2 text-sm text-zinc-300">Registered to someone since {day(owner.since)}{owner.owners > 1 ? `, after ${owner.owners - 1} earlier owner${owner.owners > 2 ? 's' : ''}` : ''}. Buying it second-hand? Ask the seller for its transfer code.</p>
+      ) : signedIn ? (
+        <button type="button" onClick={() => void own()} disabled={busy} className="mt-3 btn-primary w-full justify-center">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}Add to my vault</button>
+      ) : (
+        <Link href={`/login?next=${encodeURIComponent(`/t/${code}`)}`} className="mt-3 btn-secondary w-full justify-center">Sign in to prove it’s yours</Link>
+      )}
+    </section>
+  );
+}

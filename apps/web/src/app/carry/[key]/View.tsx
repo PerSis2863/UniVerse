@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Check, Loader2, MapPin, Navigation, PackageCheck, Radio, SearchX, Square, Store, Warehouse } from 'lucide-react';
+import { Check, Loader2, MapPin, Navigation, PackageCheck, Radio, SearchX, Square, Store, Thermometer, Warehouse } from 'lucide-react';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { usePathParams } from '@/hooks/usePathParams';
 import { api, errorMessage } from '@/lib/api';
@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 // (the screen is kept awake when the phone allows it). At each stop, one tap says where you are;
 // "In the shop" marks the batch delivered. No sign-in; the link works only for this one batch.
 
-interface Info { label: string; product: string; status: string; destPlace: string | null; brand: string; color: string | null; lastPingAt: string | null }
+interface Info { label: string; product: string; status: string; destPlace: string | null; brand: string; color: string | null; lastPingAt: string | null; maxTempC: number | null }
 interface Fix { lat: number; lng: number; speed: number | null; heading: number | null; accuracy: number; at: number }
 
 const EVERY_MS = 10_000;
@@ -40,6 +40,8 @@ export default function View() {
   const lock = useRef<{ release: () => Promise<void> } | null>(null);
   const lastSent = useRef(0);
   const latest = useRef<Fix | null>(null);
+  const [temp, setTemp] = useState('');
+  const tempRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (!key) return;
@@ -54,7 +56,7 @@ export default function View() {
     if (!key) return;
     lastSent.current = Date.now();
     try {
-      await api.post(`/trace/carry/${key}/ping`, { lat: f.lat, lng: f.lng, speedKmh: f.speed !== null ? Math.round(f.speed * 3.6 * 10) / 10 : undefined, heading: f.heading ?? undefined, accuracyM: Math.round(f.accuracy) });
+      await api.post(`/trace/carry/${key}/ping`, { lat: f.lat, lng: f.lng, speedKmh: f.speed !== null ? Math.round(f.speed * 3.6 * 10) / 10 : undefined, heading: f.heading ?? undefined, accuracyM: Math.round(f.accuracy), tempC: tempRef.current });
       setSent((s) => ({ count: s.count + 1, at: Date.now(), error: null }));
     } catch (e) { setSent((s) => ({ ...s, error: errorMessage(e, 'No connection. It tries again in a moment.') })); }
   }, [key]);
@@ -171,6 +173,14 @@ export default function View() {
                 ? <button type="button" onClick={stop} className="w-full h-14 rounded-2xl bg-white/10 hover:bg-white/15 font-bold inline-flex items-center justify-center gap-2 active:scale-[0.98] transition"><Square className="w-4 h-4" />Stop sharing</button>
                 : <button type="button" onClick={() => void start()} className="w-full h-14 rounded-2xl bg-pink-500 hover:bg-pink-400 font-bold text-white inline-flex items-center justify-center gap-2 shadow-[0_16px_40px_-14px_rgba(236,72,153,0.9)] active:scale-[0.98] transition"><Navigation className="w-5 h-5" />Start sharing</button>}
             </div>
+
+            {info.maxTempC !== null && (
+              <label className="mt-4 block rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-4">
+                <span className="flex items-center gap-2 text-sm font-semibold"><Thermometer className="w-4 h-4 text-sky-300" aria-hidden />Temperature in the truck (°C)</span>
+                <span className="mt-0.5 block text-xs text-zinc-400">Keep it at {info.maxTempC} °C or colder. Update it when it changes; it goes with your position.</span>
+                <input inputMode="decimal" value={temp} onChange={(e) => { setTemp(e.target.value); const n = Number(e.target.value.replace(',', '.')); tempRef.current = e.target.value.trim() && Number.isFinite(n) ? n : undefined; }} placeholder={`${info.maxTempC - 2}`} className={cn('mt-2 w-full h-11 rounded-xl bg-white/10 px-3 text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-pink-400', Number(temp.replace(',', '.')) > info.maxTempC && 'ring-2 ring-amber-400')} />
+              </label>
+            )}
 
             <section className="mt-8 rounded-3xl bg-white/[0.05] ring-1 ring-white/10 p-5" aria-labelledby="stop-h">
               <h2 id="stop-h" className="font-bold flex items-center gap-2"><MapPin className="w-4 h-4 text-pink-300" aria-hidden />Arrived somewhere?</h2>

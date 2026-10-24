@@ -9,6 +9,8 @@ import { DEFAULT_PREFS, GROUP_OF_TYPE, NOTE_GROUPS } from '@/lib/notify-prefs';
 import { builtInQuestions, countFillers, lengthAdvice, starParts, wordCount } from '@/lib/careers';
 import { carbonSummary, kgFor, activityOf } from '@/lib/carbon';
 import { budgetSummary, dishesOf, prepList, tally } from '@/lib/student-life';
+import { isSampleVisitor } from '@/lib/sample-mode';
+import * as impact from './impact';
 
 // Answers the app's API requests from example data while sample mode is on.
 // GETs without a sample answer fall through to the real server (read-only);
@@ -1009,6 +1011,25 @@ const SAMPLE_MARKETPLACE_PACKS: SampleMarketplacePack[] = [
 ];
 
 const GET: [RegExp, (c: Ctx) => Result][] = [
+  // The impact apps (src/lib/sample/impact.ts)
+  [/^\/hub$/, ({ db: d }) => ok(impact.sampleHub(d.me))],
+  [/^\/relief\/map$/, ({ db: d }) => ok(impact.sampleReliefMap(d.me))],
+  [/^\/relief\/mine$/, ({ db: d }) => ok(impact.sampleReliefMine(d.me))],
+  [/^\/green\/me$/, ({ db: d }) => ok(impact.sampleGreenMe(d.me))],
+  [/^\/green\/teams$/, ({ db: d }) => ok(impact.sampleGreenTeams(d.me))],
+  [/^\/green\/map$/, () => ok(impact.sampleGreenMap())],
+  [/^\/trace\/brand$/, () => ok(impact.sampleTraceBrand())],
+  [/^\/trace\/products$/, () => ok(impact.sampleTraceProducts())],
+  [/^\/trace\/overview$/, ({ q }) => ok(impact.sampleTraceOverview(Math.min(90, Math.max(7, Number(q.get('days')) || 30))))],
+  [/^\/trace\/map\/market$/, ({ q }) => ok(impact.sampleTraceMarket(Number(q.get('days')) || 30, q.get('product')))],
+  [/^\/trace\/map\/live$/, () => ok(impact.sampleTraceLive())],
+  [/^\/trace\/map\/tracking$/, () => ok(impact.sampleTraceTracking())],
+  [/^\/trace\/campaigns$/, () => ok(impact.sampleTraceCampaigns())],
+  [/^\/trace\/cashouts$/, () => ok(impact.sampleTraceCashouts())],
+  [/^\/trace\/wallet$/, () => ok(impact.sampleTraceWallet())],
+  [/^\/trace\/radar$/, () => ok(impact.sampleTraceRadar())],
+  [/^\/trace\/insights$/, () => ok(impact.sampleTraceInsights())],
+  [/^\/trace\/vault$/, () => ok(impact.sampleTraceVault())],
   // Multi-school SaaS branding and admin settings (Stage 5 · C2)
   [/^\/api\/org\/branding$/, () => ok({
     isSchool: true,
@@ -2975,14 +2996,18 @@ export function resolveSample(method: string, rawUrl: string, body: unknown): Re
   const url = new URL(rawUrl, 'http://sample.local');
   let path = url.pathname.replace(/\/+$/, '') || '/';
   if (/^https?:/.test(rawUrl) && !rawUrl.startsWith(window.location.origin)) path = path.replace(/^\/api(?=\/)/, ''); // absolute API_URL → Nest path
-  if (PASSTHROUGH.some((r) => r.test(path))) return null;
+  // A visitor trying the demo has no account: nothing reaches the server, and pages the demo has no
+  // example for answer as they would for anyone signed out.
+  const visitor = isSampleVisitor();
+  if (visitor && path === '/users/me') return ok(useAuthStore.getState().user);
+  if (!visitor && PASSTHROUGH.some((r) => r.test(path))) return null;
 
   const d = getDb();
   const parsed = typeof body === 'string' ? (() => { try { return JSON.parse(body); } catch { return {}; } })() : (body ?? {});
   const verb = method.toUpperCase();
   if (verb === 'GET') {
     for (const [re, h] of GET) { const m = path.match(re); if (m) return h({ db: d, m, q: url.searchParams, body: parsed }); }
-    return null;
+    return visitor ? ok({ message: 'Create a free account to see this part.' }, 401) : null;
   }
   for (const [v, re, h] of WRITE) {
     const m = path.match(re);

@@ -84,7 +84,9 @@ class MapEngine {
   }
 
   private size() {
-    const r = this.el.getBoundingClientRect();
+    // The layout size, not getBoundingClientRect: a page's entrance animation scales it for a moment,
+    // and a map measured then stayed too small and zoomed in.
+    const r = { width: this.el.clientWidth, height: this.el.clientHeight };
     if (!r.width || !r.height) return;
     const prev = { w: this.w, h: this.h };
     this.w = r.width; this.h = r.height; this.dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -244,7 +246,7 @@ class MapEngine {
     const el = this.el, pts = new Map<number, { x: number; y: number }>();
     let start: { x: number; y: number } | null = null, moved = false, pinch = 0;
     let lastMove = { x: 0, y: 0, t: 0, vx: 0, vy: 0 };
-    const local = (e: { clientX: number; clientY: number }) => { const r = el.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    const local = (e: { clientX: number; clientY: number }) => { const r = el.getBoundingClientRect(), sx = el.clientWidth / (r.width || 1), sy = el.clientHeight / (r.height || 1); return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy }; };
     const on = <K extends keyof HTMLElementEventMap>(type: K, fn: (e: HTMLElementEventMap[K]) => void, opts?: AddEventListenerOptions) => {
       el.addEventListener(type, fn, opts);
       this.off.push(() => el.removeEventListener(type, fn));

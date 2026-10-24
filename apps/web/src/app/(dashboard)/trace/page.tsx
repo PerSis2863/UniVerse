@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { ArrowRight, Ban, Crown, ExternalLink, Globe2, Loader2, MapPin, Megaphone, Package, Plus, Printer, Rocket, ScanLine, Settings2, ShieldCheck, Sparkles, Trash2, Truck, Wallet, Wand2 } from 'lucide-react';
+import { ArrowRight, Ban, Crown, ExternalLink, Globe2, Loader2, MapPin, Megaphone, Package, Plus, Printer, Rocket, ScanLine, Settings2, ShieldAlert, ShieldCheck, Sparkles, Trash2, Truck, Wallet, Wand2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { InstrumentBoard, type InstrumentCell } from '@/components/instruments/Board';
@@ -27,8 +27,8 @@ import { cn } from '@/lib/utils';
 
 interface Brand { id: string; name: string; slug: string; category: string | null; color: string | null; logoUrl: string | null; plan: string; pointValue: number; currency: string; minCashout: number }
 interface BrandInfo { brand: Brand | null; pro?: boolean; units?: number; unitLimit?: number }
-interface Batch { id: string; label: string; quantity: number; origin: string | null; madeAt: string | null; createdAt: string; status: string; destPlace: string | null; carrierKey: string | null }
-interface Product { id: string; name: string; sku: string | null; category: string | null; description: string | null; story: string | null; rewardPoints: number; warrantyMonths: number; sample: boolean; batches: Batch[]; _count: { codes: number } }
+interface Batch { id: string; label: string; quantity: number; origin: string | null; madeAt: string | null; createdAt: string; status: string; destPlace: string | null; carrierKey: string | null; allowedCountries?: string | null; blockedAt?: string | null; recall?: { id: string; reason: string; severity: string } | null }
+interface Product { id: string; name: string; sku: string | null; category: string | null; description: string | null; story: string | null; rewardPoints: number; warrantyMonths: number; sample: boolean; batches: Batch[]; _count: { codes: number }; winOdds?: number | null; winPrize?: string | null; maxTempC?: number | null; weightKg?: number }
 interface Overview {
   days: number; products: number; batches: number; units: number; scanned: number; claimed: number; points: number;
   scans: number[]; suspect: number[]; first: number; seen: number; suspects: number;
@@ -367,6 +367,7 @@ function ProductForm({ onDone }: { onDone: () => void }) {
 
 function ProductCard({ p, onChange }: { p: Product; onChange: () => void }) {
   const [batchOpen, setBatchOpen] = useState(false);
+  const [extrasOpen, setExtrasOpen] = useState(false);
   const [b, setB] = useState({ quantity: '100', label: '', origin: '' });
   const [saving, setSaving] = useState(false);
   const make = async (e: React.FormEvent) => {
@@ -389,11 +390,13 @@ function ProductCard({ p, onChange }: { p: Product; onChange: () => void }) {
         <span className="w-11 h-11 shrink-0 rounded-2xl grid place-items-center bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"><Package className="w-5 h-5" /></span>
         <div className="min-w-0 flex-1">
           <h3 className="font-bold text-zinc-900 dark:text-white truncate flex items-center gap-2">{p.name}{p.sample && <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-semibold text-pink-700 dark:text-pink-200"><Sparkles className="w-3 h-3" aria-hidden />sample</span>}</h3>
-          <p className="text-xs text-zinc-500">{[p.category, `${p.rewardPoints} points per unit`, p.warrantyMonths ? `${p.warrantyMonths}-month warranty` : null].filter(Boolean).join(' · ')}</p>
+          <p className="text-xs text-zinc-500">{[p.category, `${p.rewardPoints} points per unit`, p.warrantyMonths ? `${p.warrantyMonths}-month warranty` : null, p.winOdds && p.winPrize ? `1 in ${p.winOdds.toLocaleString()} wins ${p.winPrize}` : null, p.maxTempC != null ? `kept at ${p.maxTempC} °C or colder` : null].filter(Boolean).join(' · ')}</p>
         </div>
         <span className="shrink-0 font-mono text-[11px] text-zinc-500">{p._count.codes.toLocaleString()} scanned</span>
+        <button type="button" onClick={() => setExtrasOpen((v) => !v)} aria-expanded={extrasOpen} aria-label={`Settings for ${p.name}`} title="Prize, cold chain and weight" className="shrink-0 w-8 h-8 grid place-items-center rounded-full text-zinc-400 hover:text-pink-600 hover:bg-pink-500/10 transition-colors"><Settings2 className="w-4 h-4" /></button>
         <button type="button" onClick={() => void remove()} aria-label={`Delete ${p.name}`} title="Delete" className="shrink-0 w-8 h-8 grid place-items-center rounded-full text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors"><Trash2 className="w-4 h-4" /></button>
       </div>
+      {extrasOpen && <ProductExtras p={p} onDone={() => { setExtrasOpen(false); onChange(); }} />}
       <ul className="mt-4 space-y-2">
         {p.batches.map((x) => <BatchRow key={x.id} batch={x} onChange={onChange} />)}
         {p.batches.length === 0 && <li className="text-sm text-zinc-500">No batches yet. Make one to get printable codes.</li>}
@@ -414,6 +417,7 @@ function ProductCard({ p, onChange }: { p: Product; onChange: () => void }) {
 
 function BatchRow({ batch, onChange }: { batch: Batch; onChange: () => void }) {
   const [open, setOpen] = useState(false);
+  const [guard, setGuard] = useState(false);
   const [stage, setStage] = useState<Stage>('SHIPPED');
   const [place, setPlace] = useState('');
   const sample = async () => {
@@ -437,8 +441,17 @@ function BatchRow({ batch, onChange }: { batch: Batch; onChange: () => void }) {
         <Link href={`/trace/print?batch=${batch.id}`} className="btn-secondary btn-sm"><Printer className="w-3.5 h-3.5" />Print codes</Link>
         <button type="button" onClick={() => setOpen((v) => !v)} className="btn-secondary btn-sm" aria-expanded={open}><MapPin className="w-3.5 h-3.5" />Record a stop</button>
         {batch.status === 'IN_TRANSIT' && <Link href="/trace/tracking" className="btn-secondary btn-sm" aria-label={`Track ${batch.label}`} title="Track it"><Truck className="w-3.5 h-3.5" /></Link>}
+        <button type="button" onClick={() => setGuard((v) => !v)} className={cn('btn-secondary btn-sm', (batch.recall || batch.blockedAt) && 'text-rose-600 dark:text-rose-300')} aria-expanded={guard} aria-label={`Protect ${batch.label}`} title="Markets, block, recall"><ShieldAlert className="w-3.5 h-3.5" /></button>
         <button type="button" onClick={() => void sample()} className="btn-secondary btn-sm" aria-label={`Open a passport from ${batch.label}`} title="Open a passport"><ExternalLink className="w-3.5 h-3.5" /></button>
       </div>
+      {(batch.recall || batch.blockedAt || batch.allowedCountries) && (
+        <p className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+          {batch.recall && <span className="rounded-full bg-rose-500/12 px-2 py-0.5 font-semibold text-rose-700 dark:text-rose-200">Recalled: {batch.recall.reason}</span>}
+          {batch.blockedAt && <span className="rounded-full bg-zinc-500/15 px-2 py-0.5 font-semibold text-zinc-700 dark:text-zinc-200">Blocked</span>}
+          {batch.allowedCountries && <span className="rounded-full bg-fuchsia-500/10 px-2 py-0.5 font-mono text-fuchsia-700 dark:text-fuchsia-200">sold in {batch.allowedCountries.split(',').join(' ')}</span>}
+        </p>
+      )}
+      {guard && <BatchGuard batch={batch} onChange={onChange} />}
       {open && (
         <form onSubmit={(e) => void record(e)} className="mt-3 flex flex-wrap items-end gap-2">
           <label className="block"><span className="text-xs text-zinc-600 dark:text-zinc-300">Stage</span>
@@ -449,5 +462,62 @@ function BatchRow({ batch, onChange }: { batch: Batch; onChange: () => void }) {
         </form>
       )}
     </li>
+  );
+}
+
+/** A product's extras: an instant win on the first check, cold chain and weight (for each shipment's CO₂). */
+function ProductExtras({ p, onDone }: { p: Product; onDone: () => void }) {
+  const [f, setF] = useState({ winOdds: p.winOdds ? String(p.winOdds) : '', winPrize: p.winPrize ?? '', maxTempC: p.maxTempC != null ? String(p.maxTempC) : '', weightKg: String(p.weightKg ?? 1) });
+  const [saving, setSaving] = useState(false);
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try { await api.patch(`/trace/products/${p.id}`, f); toast.success('Saved'); onDone(); }
+    catch (err) { toast.error(errorMessage(err, 'Could not save.')); } finally { setSaving(false); }
+  };
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  return (
+    <form onSubmit={(e) => void save(e)} className="mt-4 rounded-2xl bg-pink-500/[0.05] ring-1 ring-pink-500/15 p-4 grid sm:grid-cols-2 gap-3">
+      <p className="sm:col-span-2 text-xs text-zinc-600 dark:text-zinc-300"><b>Instant win:</b> the first person to check a winning unit sees a prize and a code to claim it. Which units win is fixed when they’re made, so rescanning can’t cheat it.</p>
+      <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">One in how many units wins (empty for none)</span><input type="number" min={2} max={1000000} value={f.winOdds} onChange={set('winOdds')} className="input mt-1" placeholder="50" /></label>
+      <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">The prize</span><input maxLength={120} value={f.winPrize} onChange={set('winPrize')} className="input mt-1" placeholder="A free bottle" /></label>
+      <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Keep at or below (°C, empty if it doesn’t matter)</span><input type="number" step="0.1" min={-80} max={80} value={f.maxTempC} onChange={set('maxTempC')} className="input mt-1" placeholder="8" /></label>
+      <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Weight of one unit (kg)</span><input type="number" step="0.001" min={0.001} value={f.weightKg} onChange={set('weightKg')} className="input mt-1" /></label>
+      <div className="sm:col-span-2 flex justify-end gap-2"><button type="button" onClick={onDone} className="btn-secondary btn-sm">Cancel</button><button type="submit" disabled={saving} className="btn-primary btn-sm">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}</button></div>
+    </form>
+  );
+}
+
+/** Protecting a batch: the countries it's sold to (checks elsewhere show on the Radar), blocking it, recalling it. */
+function BatchGuard({ batch, onChange }: { batch: Batch; onChange: () => void }) {
+  const [countries, setCountries] = useState(batch.allowedCountries?.split(',').join(' ') ?? '');
+  const [recall, setRecall] = useState({ reason: '', advice: '', severity: 'HIGH' });
+  const [busy, setBusy] = useState<string | null>(null);
+  const run = async (what: string, call: () => Promise<unknown>, done: string) => {
+    setBusy(what);
+    try { await call(); toast.success(done); onChange(); } catch (err) { toast.error(errorMessage(err, 'Could not save.')); } finally { setBusy(null); }
+  };
+  return (
+    <div className="mt-3 grid gap-3 lg:grid-cols-2">
+      <div className="rounded-2xl bg-white dark:bg-white/[0.04] p-3 space-y-3">
+        <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Sold only in (country codes, e.g. FR DE BE; empty for anywhere)</span>
+          <span className="mt-1 flex gap-2"><input value={countries} onChange={(e) => setCountries(e.target.value.toUpperCase())} className="input flex-1 font-mono" placeholder="FR DE BE" />
+          <button type="button" disabled={busy !== null} onClick={() => void run('c', () => api.patch(`/trace/batches/${batch.id}`, { allowedCountries: countries }), 'Markets saved: checks elsewhere show on the Radar')} className="btn-secondary btn-sm">{busy === 'c' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save'}</button></span>
+        </label>
+        <div className="flex items-center gap-3">
+          <p className="flex-1 text-xs text-zinc-600 dark:text-zinc-300">{batch.blockedAt ? 'Blocked: passports warn it was reported stolen and it earns no points.' : 'Stolen or lost? Block it: passports warn buyers and it earns no points.'}</p>
+          <button type="button" disabled={busy !== null} onClick={() => void run('b', () => api.patch(`/trace/batches/${batch.id}`, { blocked: !batch.blockedAt }), batch.blockedAt ? 'Batch unblocked' : 'Batch blocked')} className={cn('btn-sm', batch.blockedAt ? 'btn-secondary' : 'btn-primary')}>{busy === 'b' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : batch.blockedAt ? 'Unblock' : 'Block batch'}</button>
+        </div>
+      </div>
+      <form onSubmit={(e) => { e.preventDefault(); void run('r', () => api.post(`/trace/batches/${batch.id}/recall`, recall), 'Recall started: every passport of this batch shows it'); }} className="rounded-2xl bg-white dark:bg-white/[0.04] p-3 space-y-2">
+        <p className="text-xs font-semibold text-rose-600 dark:text-rose-300">{batch.recall ? `Recalled: ${batch.recall.reason} (end it on the Radar)` : 'Recall this batch'}</p>
+        <input required maxLength={300} value={recall.reason} onChange={(e) => setRecall({ ...recall, reason: e.target.value })} className="input" placeholder="Why, in words a buyer understands" aria-label="Reason" />
+        <input maxLength={500} value={recall.advice} onChange={(e) => setRecall({ ...recall, advice: e.target.value })} className="input" placeholder="What to do (return it for a refund…)" aria-label="Advice" />
+        <div className="flex gap-2">
+          <select value={recall.severity} onChange={(e) => setRecall({ ...recall, severity: e.target.value })} className="input flex-1" aria-label="How serious"><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical: stop using it</option></select>
+          <button type="submit" disabled={busy !== null || !recall.reason.trim()} className="btn-primary btn-sm">{busy === 'r' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Start recall'}</button>
+        </div>
+      </form>
+    </div>
   );
 }

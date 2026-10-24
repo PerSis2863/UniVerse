@@ -1,20 +1,23 @@
 'use client';
 
 import Link from '@/components/ui/Link';
+import type { AppId } from '@/lib/apps';
+import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { ArrowRight, Menu, X } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { cn } from '@/lib/utils';
 
-const LINKS = [
-  { href: '/#product', label: 'Product' },
-  { href: '/#how', label: 'How it works' },
-  { href: '/#pricing', label: 'Pricing' },
+const LINKS: { href: string; label: string; app?: AppId }[] = [
+  { href: '/#apps', label: 'Apps' },
+  { href: '/?app=campus', label: 'UniVersity', app: 'campus' as const },
+  { href: '/?app=trace', label: 'Trace', app: 'trace' as const },
   { href: '/#faq', label: 'FAQ' },
 ];
 
 export function MarketingNav() {
+  const app = useChosenApp();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -41,23 +44,23 @@ export function MarketingNav() {
       >
         <Link href="/" className="flex items-center gap-2.5 shrink-0">
           <UniverseLogo size="sm" animated withGlow />
-          <span className="font-black tracking-tight text-white text-lg">UniVerse</span>
+          <span className="font-black tracking-tight text-white text-lg">UniVerse <span className="font-medium text-zinc-400">Impact</span></span>
         </Link>
 
         <div className="hidden md:flex items-center gap-1">
           {LINKS.map((l) => (
-            <Link key={l.href} href={l.href} className="relative px-3.5 py-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-white/[0.05]">
+            <Link key={l.href} href={l.href} onClick={() => l.app && setChosenApp(l.app)} className="relative px-3.5 py-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-white/[0.05]">
               {l.label}
             </Link>
           ))}
         </div>
 
         <div className="flex items-center gap-2">
-          <Link href="/login" className="hidden sm:inline-flex px-4 py-2 text-sm font-semibold text-zinc-300 hover:text-white transition-colors">
+          <Link href={`/login?app=${app}`} className="hidden sm:inline-flex px-4 py-2 text-sm font-semibold text-zinc-300 hover:text-white transition-colors">
             Sign in
           </Link>
           <Link
-            href="/register"
+            href={`/register?app=${app}`}
             className="group inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-white text-sm font-bold bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_6px_24px_-8px_rgba(236,72,153,0.8)] hover:brightness-110 transition"
           >
             Get started <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />

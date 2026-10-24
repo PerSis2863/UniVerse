@@ -4,32 +4,66 @@ import Link from '@/components/ui/Link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, MotionConfig, m as motion, useScroll, useSpring } from 'framer-motion';
-import { ArrowRight, ChevronDown, Smartphone, Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronDown, Play, Smartphone, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { LightTrail } from '@/components/LightTrail';
 import { PassportCard } from '@/components/landing/PassportCard';
+import { FlowCard } from '@/components/landing/FlowCard';
 import { TraceSection } from '@/components/landing/TraceSection';
 import { CampaignsSection, HowSection, MapsSection, PricingSection } from '@/components/landing/Business';
+import { Proof } from '@/components/landing/Proof';
+import { Glue } from '@/components/landing/Glue';
+import { Bento } from '@/components/landing/Bento';
+import { Statement } from '@/components/landing/Statement';
+import { AppTabs } from '@/components/landing/AppTabs';
+import { AppsGrid, GreenCard, GreenSection, ReliefCard, ReliefSection } from '@/components/landing/ImpactApps';
 import { SplitCta } from '@/components/landing/SplitCta';
+import { startVisitorDemo } from '@/components/SampleMode';
 import { Accent, EASE, Reveal, Tag, ghost, primary } from '@/components/landing/bits';
+import { appById, appHome, type AppId } from '@/lib/apps';
+import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
+import { homeFor } from '@/lib/role-home';
 
 // The public landing page, in the style of the owner's Relay video (a dark page, one river of light
 // from top to bottom, a live flow card, numbers that draw themselves as you scroll) and in
 // UniVerse's two tones: dark blue and hot pink. Every claim on it is about what the product does; no
-// invented usage numbers or quotes. Business mode (src/lib/business.ts): UniVerse Trace for brands,
-// shops, drivers and buyers. Sections: src/components/landing/.
+// invented usage numbers or quotes. UniVerse Impact is a home for several apps (src/lib/apps.ts): the
+// tabs at the top pick one (the owner: "put the uni-versity and universe trace tab where user can
+// switch to where they want to login"); the hero, the sections below and the sign-in buttons follow
+// it. Sections: src/components/landing/.
 
-const FAQ = [
-  { q: 'What is UniVerse Trace?', a: 'A passport for every product. Each unit gets its own signed code (printed as a QR code). Buyers scan it to see it’s genuine and where it has been; shops and installers scan it to earn the brand’s points; the brand sees every scan live on a map, every shipment on the road and every likely copy. Try the sample: universeimpact.com/t/demo.' },
-  { q: 'How does it catch fake products?', a: 'Codes are signed, so nobody can make up a valid one. A copied label is caught when the same code is scanned far from where it was first checked, or far too often; the brand can then block it with one tap.' },
-  { q: 'What does it cost?', a: 'Starting is free: 10,000 passports, the live maps, tracking, shop rewards and the wallet. Campaigns cost 5 cents per verified sale, nothing per view or click. PRO adds a million passports and your whole category on the map.' },
-  { q: 'How does live tracking work without a tracker?', a: 'The brand sends the driver a link. The driver opens it on their phone and taps Start sharing: the batch’s position goes to the brand’s map every few seconds while the page is open, with its speed and arrival time. No app, no sign-in, no hardware.' },
-  { q: 'Is the market data private?', a: 'A brand’s own map shows its scans snapped to areas of about 11 km, so no shop or person can be picked out. The category view on PRO is coarser still (about 55 km) and only shows an area once at least five scans fall in it.' },
-  { q: 'Does it work on phones and in other languages?', a: 'Yes. It installs as an app on iOS, Android and desktop, works on a patchy connection, and speaks 13 languages, including Arabic and Urdu, which read right to left.' },
-];
+const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
+  all: [
+    { q: 'What is UniVerse Impact?', a: 'One account for several apps that each make a difference somewhere: UniVersity for schools and universities, UniVerse Trace for products, UniVerse Relief for getting help to people, and UniVerse Green for climate action. Messages, files, calls and the AI assistant work across all of them.' },
+    { q: 'Does it work on phones and in other languages?', a: 'Yes. It installs as an app on iOS, Android and desktop, works on a patchy connection, and speaks 13 languages, including Arabic and Urdu, which read right to left.' },
+  ],
+  campus: [
+    { q: 'Is UniVersity free to use?', a: 'Yes for students: they never pay. A school, university or NGO sets it up for its people, and everyone in it gets the student, teacher and admin portals, messaging, the NGO marketplace and verified credentials.' },
+    { q: 'Who sets it up?', a: 'An admin at the school or organization signs up and invites teachers and students. Each school only ever sees its own people and data.' },
+    { q: 'How are credentials verified?', a: 'Each certificate is fingerprinted and anchored on the Polygon blockchain. Anyone can open its public verification link to confirm it is genuine and unaltered.' },
+  ],
+  trace: [
+    { q: 'What is UniVerse Trace?', a: 'A passport for every product. Each unit gets its own signed code. Buyers scan it to see it’s genuine; shops scan it to earn the brand’s points; the brand sees every scan on a live map, every shipment on the road and every likely copy. Try the sample: universeimpact.com/t/demo.' },
+    { q: 'What does it cost?', a: 'Starting is free: 10,000 passports, the live maps, tracking, shop rewards and the wallet. Campaigns cost 5 cents per verified sale. PRO adds a million passports and your whole category on the map.' },
+  ],
+  relief: [
+    { q: 'Who can use Relief?', a: 'Anyone with an account: people who need help, neighbours who can give it, and NGOs coordinating it. Requests show an area, never an exact address.' },
+  ],
+  green: [
+    { q: 'How is the CO₂ saved worked out?', a: 'Each action uses a published average factor (for example, a young tree takes up about 22 kg of CO₂ a year; a kilometre by bike instead of by car saves about 0.2 kg). It’s an honest estimate, shown with the factor used.' },
+  ],
+};
+
+type Hero = { tag: string; words: string[]; accent: string; text: string; note: string; card: React.ReactNode; extra?: React.ReactNode };
+const HERO: Record<AppId, Hero> = {
+  campus: { tag: 'UniVersity / schools and universities / 13 languages', words: ['The', 'school', 'day', 'runs'], accent: 'itself.', text: 'Courses, grades, attendance, parents, internships and volunteering in one place. UniVersity runs the steps between classes and only asks a person when it matters.', note: 'free for students / a school sets it up / no card', card: <FlowCard /> },
+  trace: { tag: 'UniVerse Trace / product passports / live maps', words: ['Every', 'product', 'gets', 'a'], accent: 'passport.', text: 'One code on every unit. Buyers see it’s genuine, shops earn points for every sale, and you watch every product move on a live map, and catch every copy the day it appears.', note: 'for brands, shops, drivers and buyers / free to start', card: <PassportCard />, extra: <Link href="/t/demo" className={ghost}>Scan a sample</Link> },
+  relief: { tag: 'UniVerse Relief / needs and offers / live map', words: ['Help', 'that', 'reaches', 'people'], accent: 'fast.', text: 'People post what they need, neighbours and NGOs offer what they have, and a live map matches them: food, water, shelter, medicine or a lift to the clinic.', note: 'for people in need, volunteers and NGOs / free', card: <ReliefCard /> },
+  green: { tag: 'UniVerse Green / climate actions / teams', words: ['Climate', 'action', 'you', 'can'], accent: 'prove.', text: 'Log trees planted, kilometres cycled and waste recycled, see the CO₂ saved, and beat a weekly challenge with your class, office or club.', note: 'for schools, companies and clubs / free', card: <GreenCard /> },
+};
 
 function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
   const [open, setOpen] = useState(i === 0);
@@ -59,6 +93,9 @@ type InstallPromptEvent = Event & { prompt(): Promise<void>; userChoice: Promise
 
 export default function ShowcasePage() {
   const { user } = useAuthStore();
+  const app = useChosenApp();
+  const hero = HERO[app], meta = appById(app);
+  const pick = (id: AppId) => { setChosenApp(id); window.history.replaceState(null, '', id === 'campus' ? '/' : `/?app=${id}`); };
   const router = useRouter();
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
@@ -66,7 +103,7 @@ export default function ShowcasePage() {
   const progress = useSpring(scrollYProgress, { stiffness: 140, damping: 30 });
 
   useEffect(() => {
-    if (user) router.replace(user.owner ? '/console' : `/${user.role.toLowerCase() || 'student'}`);
+    if (user) router.replace(homeFor(user));
   }, [user, router]);
 
   useEffect(() => {
@@ -124,48 +161,61 @@ export default function ShowcasePage() {
           <section data-no-motion className="relative min-h-[100svh] px-6 pt-32 md:pt-36 pb-20 overflow-hidden">
             <div className="relative max-w-6xl mx-auto grid lg:grid-cols-[1.05fr_1fr] gap-12 items-center">
               <div>
-                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }}>
-                  <span className="inline-flex items-center gap-2 h-8 px-3 rounded-full border border-white/10 bg-black/30 backdrop-blur font-mono text-xs text-zinc-200">
-                    <Sparkles className="w-3.5 h-3.5 text-fuchsia-300" /> UniVerse Trace / product passports / 13 languages
-                  </span>
-                </motion.div>
-                <h1 className="mt-7 text-5xl sm:text-6xl lg:text-7xl font-bold tracking-[-0.035em] leading-[1.02] text-white">
-                  {['Every', 'product', 'gets', 'a'].map((w, i) => (
-                    <motion.span key={w} className="inline-block me-[0.25em]" initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.8, delay: 0.1 + i * 0.07, ease: EASE }}>{w}</motion.span>
-                  ))}
-                  <motion.span className="inline-block" initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.9, delay: 0.42, ease: EASE }}><Accent>passport.</Accent></motion.span>
-                </h1>
-                <motion.p initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.55, ease: EASE }} className="mt-6 text-lg text-zinc-300 max-w-md leading-relaxed">
-                  One code on every unit. Buyers see it’s genuine, shops earn points for every sale, and you watch every product move on a live map: where it sells, where each shipment is, and every copy the day it appears.
+                <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }} className="font-mono text-xs text-zinc-300">
+                  <Sparkles className="inline w-3.5 h-3.5 me-1.5 text-fuchsia-300" aria-hidden />UniVerse Impact · one account, apps that change something
                 </motion.p>
-                <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.65, ease: EASE }} className="mt-9 flex flex-wrap items-center gap-3">
-                  <Link href="/register" className={primary}>Start free <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
-                  <Link href="/t/demo" className={ghost}>Scan a sample</Link>
-                  <button type="button" onClick={handleInstallClick} className={ghost}><Smartphone className="w-4 h-4" /> {installed ? 'Open the app' : 'Get the app'}</button>
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.08, ease: EASE }} className="mt-4">
+                  <AppTabs value={app} onChange={pick} label="Choose an app" />
                 </motion.div>
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.8 }} className="mt-5 font-mono text-xs text-zinc-400">for brands, shops, drivers and buyers / free to start / no card</motion.p>
+                <AnimatePresence mode="wait">
+                  <motion.div key={app} initial={{ opacity: 0, y: 16, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -10, filter: 'blur(6px)', transition: { duration: 0.2 } }} transition={{ duration: 0.55, ease: EASE }}>
+                    <span className="mt-7 inline-flex items-center gap-2 h-8 px-3 rounded-full border border-white/10 bg-black/30 backdrop-blur font-mono text-xs text-zinc-200">{hero.tag}</span>
+                    <h1 className="mt-6 text-5xl sm:text-6xl lg:text-7xl font-bold tracking-[-0.035em] leading-[1.02] text-white">
+                      {hero.words.map((w, i) => (
+                        <motion.span key={w + i} className="inline-block me-[0.25em]" initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, delay: 0.05 + i * 0.06, ease: EASE }}>{w}</motion.span>
+                      ))}
+                      <motion.span className="inline-block" initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.8, delay: 0.32, ease: EASE }}><Accent>{hero.accent}</Accent></motion.span>
+                    </h1>
+                    <p className="mt-6 text-lg text-zinc-300 max-w-md leading-relaxed">{hero.text}</p>
+                    <div className="mt-9 flex flex-wrap items-center gap-3">
+                      <Link href={`/register?app=${app}`} className={primary}>Get started with {meta.name.replace('UniVerse ', '')} <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
+                      <Link href={`/login?app=${app}`} className={ghost}>Sign in</Link>
+                      <button type="button" onClick={() => startVisitorDemo(appHome(app, 'STUDENT'))} className={ghost}><Play className="w-4 h-4" /> Try the live demo</button>
+                      {hero.extra}
+                      <button type="button" onClick={handleInstallClick} className={ghost}><Smartphone className="w-4 h-4" /> {installed ? 'Open the app' : 'Get the app'}</button>
+                    </div>
+                    <p className="mt-5 font-mono text-xs text-zinc-400">{hero.note}</p>
+                  </motion.div>
+                </AnimatePresence>
               </div>
-              <motion.div initial={{ opacity: 0, y: 40, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 1.1, delay: 0.35, ease: EASE }} style={{ transformPerspective: 1200 }} className="flex justify-center lg:justify-end">
-                <PassportCard />
-              </motion.div>
+              <AnimatePresence mode="wait">
+                <motion.div key={app} initial={{ opacity: 0, y: 40, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }} transition={{ duration: 0.9, ease: EASE }} style={{ transformPerspective: 1200 }} className="flex justify-center lg:justify-end">
+                  {hero.card}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </section>
 
-          <TraceSection />
-          <MapsSection />
-          <HowSection />
-          <CampaignsSection />
-          <PricingSection />
+          <AnimatePresence mode="wait">
+            <motion.div key={app} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }} transition={{ duration: 0.4 }}>
+              {app === 'campus' && <><Proof /><Glue /><Bento /><Statement /></>}
+              {app === 'trace' && <><TraceSection /><MapsSection /><HowSection /><CampaignsSection /><PricingSection /></>}
+              {app === 'relief' && <ReliefSection />}
+              {app === 'green' && <GreenSection />}
+            </motion.div>
+          </AnimatePresence>
+
+          <AppsGrid onPick={pick} />
 
           <section id="faq" className="px-6 py-24 scroll-mt-24">
             <div className="max-w-3xl mx-auto">
               <Reveal><Tag>faq</Tag></Reveal>
               <Reveal delay={0.05}><h2 className="mt-5 mb-8 text-4xl md:text-5xl font-bold tracking-tight text-white">Questions, <Accent>answered.</Accent></h2></Reveal>
-              {FAQ.map((f, i) => <FaqItem key={f.q} {...f} i={i} />)}
+              {[...FAQ.all, ...FAQ[app]].map((f, i) => <FaqItem key={f.q} {...f} i={i} />)}
             </div>
           </section>
 
-          <SplitCta />
+          <SplitCta app={app} />
         </main>
 
         <MarketingFooter />

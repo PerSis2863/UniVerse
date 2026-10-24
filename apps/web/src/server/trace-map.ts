@@ -154,7 +154,7 @@ export async function tracking(u: SessionUser) {
   const brand = await brandOf(u);
   const batches = await prisma.traceBatch.findMany({
     where: { brandId: brand.id }, orderBy: { createdAt: 'desc' }, take: 60,
-    select: { id: true, label: true, status: true, quantity: true, destPlace: true, destLat: true, destLng: true, carrierKey: true, createdAt: true, product: { select: { id: true, name: true, sample: true } }, events: { orderBy: { createdAt: 'asc' }, select: { stage: true, place: true, lat: true, lng: true, createdAt: true } } },
+    select: { id: true, label: true, status: true, quantity: true, destPlace: true, destLat: true, destLng: true, carrierKey: true, createdAt: true, product: { select: { id: true, name: true, sample: true, maxTempC: true } }, events: { orderBy: { createdAt: 'asc' }, select: { stage: true, place: true, lat: true, lng: true, createdAt: true } } },
   });
   const moving = batches.filter((b) => b.status === 'IN_TRANSIT').map((b) => b.id);
   const pings = moving.length ? await prisma.tracePing.findMany({ where: { batchId: { in: moving }, createdAt: { gt: new Date(Date.now() - STALE_MS) } }, orderBy: { createdAt: 'asc' }, take: 3000 }) : [];
@@ -164,7 +164,7 @@ export async function tracking(u: SessionUser) {
     shipments: batches.map((b) => {
       const stops = b.events.filter((e) => e.lat !== null && e.lng !== null).map((e) => ({ stage: e.stage, place: e.place, lat: e.lat!, lng: e.lng!, at: e.createdAt }));
       const dest = b.destLat !== null && b.destLng !== null ? { lat: b.destLat, lng: b.destLng, place: b.destPlace } : null;
-      let trail = pings.filter((p) => p.batchId === b.id).slice(-80).map((p) => ({ lat: p.lat, lng: p.lng, at: p.createdAt, speed: p.speedKmh }));
+      let trail: { lat: number; lng: number; at: Date; speed: number | null; tempC?: number | null }[] = pings.filter((p) => p.batchId === b.id).slice(-80).map((p) => ({ lat: p.lat, lng: p.lng, at: p.createdAt, speed: p.speedKmh, tempC: p.tempC }));
       let simulated = false;
       // A sample shipment with nobody carrying it moves on its own along its route (the demo stays alive).
       if (b.status === 'IN_TRANSIT' && !trail.length && b.product.sample && stops.length && dest) {
@@ -172,7 +172,9 @@ export async function tracking(u: SessionUser) {
         const route = [stops[stops.length - 1], dest], period = 40 * 60_000;
         trail = Array.from({ length: 30 }, (_, i) => {
           const at = nowMs - (29 - i) * 20_000, t = ((at - b.createdAt.getTime()) % period) / period;
-          return { ...along(route, t), at: new Date(at), speed: 78 + 6 * Math.sin(at / 60_000) };
+          // A cold-chain sample reports a temperature too (a short warm spell to show an alert).
+          const tempC = b.product.maxTempC !== null ? Math.round((b.product.maxTempC - 2.5 + 3.2 * Math.max(0, Math.sin(at / 300_000))) * 10) / 10 : null;
+          return { ...along(route, t), at: new Date(at), speed: 78 + 6 * Math.sin(at / 60_000), tempC };
         });
       }
       const last = trail[trail.length - 1] ?? null;
@@ -186,6 +188,9 @@ export async function tracking(u: SessionUser) {
         heading: trail.length >= 2 ? bearing(trail[trail.length - 2], trail[trail.length - 1]) : null,
         speedKmh: last?.speed ?? null, lastPingAt: last?.at ?? null, carrierPath: b.carrierKey ? `/carry/${b.carrierKey}` : null,
         kmLeft: left !== null ? Math.round(left / 100) / 10 : null,
+        // Cold chain (migration 0179): the latest reading and the product's limit.
+        tempC: [...trail].reverse().find((p) => p.tempC !== null && p.tempC !== undefined)?.tempC ?? null, maxTempC: b.product.maxTempC,
+        breaches: b.product.maxTempC === null ? 0 : trail.filter((p) => p.tempC !== null && p.tempC !== undefined && p.tempC > b.product.maxTempC!).length,
         etaMinutes: left !== null && avgSpeed && avgSpeed > 5 ? Math.round((left / 1000 / avgSpeed) * 60) : null,
       };
     }),
@@ -210,7 +215,7 @@ export async function carrierLink(u: SessionUser, batchId: string, body: Body) {
 }
 
 async function byKey(key: string) {
-  const b = key && /^[0-9A-Z]{24}$/.test(key) ? await prisma.traceBatch.findUnique({ where: { carrierKey: key }, select: { id: true, label: true, status: true, brandId: true, destPlace: true, destLat: true, destLng: true, product: { select: { name: true } } } }) : null;
+  const b = key && /^[0-9A-Z]{24}$/.test(key) ? await prisma.traceBatch.findUnique({ where: { carrierKey: key }, select: { id: true, label: true, status: true, brandId: true, destPlace: true, destLat: true, destLng: true, product: { select: { name: true, maxTempC: true } } } }) : null;
   if (!b) throw new NotFoundException('This sharing link no longer works. Ask the brand for a new one.');
   return b;
 }
@@ -222,17 +227,17 @@ export async function carryInfo(key: string) {
     b.brandId ? prisma.traceBrand.findUnique({ where: { id: b.brandId }, select: { name: true, color: true } }) : null,
     prisma.tracePing.findFirst({ where: { batchId: b.id }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } }),
   ]);
-  return { label: b.label, product: b.product.name, status: b.status, destPlace: b.destPlace, brand: brand?.name ?? 'UniVerse', color: brand?.color ?? null, lastPingAt: last?.createdAt ?? null };
+  return { label: b.label, product: b.product.name, status: b.status, destPlace: b.destPlace, brand: brand?.name ?? 'UniVerse', color: brand?.color ?? null, lastPingAt: last?.createdAt ?? null, maxTempC: b.product.maxTempC };
 }
 
-/** POST /trace/carry/:key/ping { lat, lng, speedKmh?, heading?, accuracyM? }: one live position (at most one per 5 s). */
+/** POST /trace/carry/:key/ping { lat, lng, speedKmh?, heading?, accuracyM?, tempC? }: one live position (at most one per 5 s). */
 export async function carryPing(key: string, body: Body) {
   const b = await byKey(key);
   const lat = num(body.lat, -90, 90), lng = num(body.lng, -180, 180);
   if (lat === null || lng === null) throw new BadRequestException('No position.');
   const last = await prisma.tracePing.findFirst({ where: { batchId: b.id }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
   if (last && Date.now() - last.createdAt.getTime() < 5000) return { ok: true, skipped: true };
-  await prisma.tracePing.create({ data: { batchId: b.id, brandId: b.brandId, lat, lng, speedKmh: num(body.speedKmh, 0, 1200), heading: num(body.heading, 0, 360), accuracyM: num(body.accuracyM, 0, 100_000) } });
+  await prisma.tracePing.create({ data: { batchId: b.id, brandId: b.brandId, lat, lng, speedKmh: num(body.speedKmh, 0, 1200), heading: num(body.heading, 0, 360), accuracyM: num(body.accuracyM, 0, 100_000), tempC: num(body.tempC, -80, 80) } });
   if (b.status !== 'IN_TRANSIT') await prisma.traceBatch.update({ where: { id: b.id }, data: { status: 'IN_TRANSIT' } });
   return { ok: true };
 }
