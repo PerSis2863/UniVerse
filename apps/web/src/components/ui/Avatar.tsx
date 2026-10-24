@@ -6,7 +6,7 @@ import { photoSrcSet } from '@/lib/image-sizes';
 
 // A person's photo, or their initials on a colour that's always the same for the same name.
 
-// The owner's dark blue and dark pink (23 Oct 2026), mixed eight ways, deep enough for white initials.
+// The owner's dark blue and pink (24 Oct 2026), mixed eight ways, deep enough for white initials.
 const AVATAR_GRADIENTS = [
   'from-indigo-500 to-indigo-700', 'from-fuchsia-500 to-fuchsia-700', 'from-indigo-600 to-fuchsia-600', 'from-fuchsia-600 to-indigo-700',
   'from-indigo-400 to-indigo-600', 'from-fuchsia-400 to-fuchsia-600', 'from-indigo-700 to-fuchsia-500', 'from-fuchsia-700 to-fuchsia-900',

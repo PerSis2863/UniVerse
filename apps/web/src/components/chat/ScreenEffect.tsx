@@ -7,7 +7,7 @@ import type { MessageEffect } from '@/lib/message-effects';
 // chat for about three seconds when a message sent with one arrives. One canvas, drawn by
 // requestAnimationFrame and removed after; nothing plays with Reduce Motion.
 
-// The owner's palettes: dark pink, rose, and the blues.
+// The owner's colours: hot pinks and the blues.
 const COLORS = ['#db2777', '#f472b6', '#fbcfe8', '#ec4899', '#f2f4f4', '#4a5c6a', '#9ba8ab'];
 const DURATION = 3000;
 type P = { x: number; y: number; vx: number; vy: number; r: number; spin: number; a: number; c: string; s: number; t0: number };

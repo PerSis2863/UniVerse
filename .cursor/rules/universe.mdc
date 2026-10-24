@@ -71,6 +71,14 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
   glows, and the hot-pink light river. Don't turn
   the two tones into black and white again. Use `.panel` / `.card` / `.btn-primary` / `TabPill`, not
   frosted cards; a row of headline numbers gets `kpi-row` (first card the gradient, second soft blue).
+- **Numbers and charts (the owner's "Instrumental" reference, 24 Oct 2026)**: analytics, dashboards
+  and the owner console use `InstrumentBoard` (`src/components/instruments/Board.tsx`): a framed board
+  with a Live light, cells each a mono number and its own instrument from `parts.tsx` (`Spark` line with
+  a glowing end, `Histo` with a p95 marker, `HeatStrip`, `Dial`, `Stack`, `Hourglass`, `Ring`, `Mirror`,
+  `Meter`, `Facts`), and cells with a `detail` open in place (stats, period chips, a draggable limit,
+  a crosshair; ↑ ↓ and Esc). Instruments draw in the text colour with hot pink (`--ins-hot`) only for
+  what matters. New charts: use these (or `DetailChart`), not recharts' defaults. Maths in
+  `src/lib/instruments.ts` (tested). The console's live board reads `GET /owner/pulse` (`src/server/pulse.ts`).
 - **Folders** (`FolderCard`): always colourful (UniVerse palettes; pass `index` in a list so
   neighbours differ); no `filter`/`backdrop-filter`/`aspect-ratio` in them (Safari blurs or
   mis-sizes them). Check new screens in Safari too.

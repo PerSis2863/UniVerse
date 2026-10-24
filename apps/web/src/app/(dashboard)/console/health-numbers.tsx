@@ -6,6 +6,8 @@ import { AlertTriangle, Bell, Bot, CheckCircle2, FileWarning, Gauge, Package, Ph
 import { cn } from '@/lib/utils';
 import type { HealthNumbers } from '@/server/health-numbers';
 import { card, fetcher } from './shared';
+import { InstrumentBoard, type InstrumentCell } from '@/components/instruments/Board';
+import { Dial, Facts, Histo, Meter, Ring, Stack } from '@/components/instruments/parts';
 
 // Health numbers (Stage 5 · A9): the last 7 days in numbers, from what the app records anyway:
 // which API routes fail and which are slow (the Worker's 1-in-20 sample plus every server error),
@@ -58,8 +60,26 @@ export function HealthNumbersPanel() {
   const push = data.push;
   const sent = push.ok + push.failed + push.expired;
   const aiPeak = Math.max(1, ...data.ai.perDay.map((d) => d.calls));
+  const failedWeek = data.failing.reduce((a, r) => a + r.failed, 0);
+  const slow = data.slowest.slice(0, 12);
+  const cells: InstrumentCell[] = [
+    { id: 'failed', label: 'Server errors · 7 days', value: failedWeek, unit: 'failed', warn: data.failedYesterday.length > 0, note: `${data.failedYesterday.reduce((a, r) => a + r.failedYesterday, 0)} yesterday`,
+      body: <Facts rows={(data.failing.length ? data.failing : []).slice(0, 4).map((r) => [routeName(r), `${r.failed}×`] as [string, string])} /> },
+    { id: 'slow', label: 'Slowest route', value: slow[0]?.avgMs ?? 0, unit: 'ms', note: slow[0] ? routeName(slow[0]) : 'Not enough requests yet',
+      body: <Histo bins={slow.map((r) => r.avgMs ?? 0)} marker={slow.findIndex((r) => (r.avgMs ?? 0) <= 1000)} label="1 s" /> },
+    { id: 'ai', label: 'AI · 7 days', value: data.ai.perDay.reduce((a, d) => a + d.calls, 0), unit: 'requests', note: `peak ${aiPeak} in a day`,
+      body: <Stack a={data.ai.perDay.map((d) => d.calls)} b={[]} />,
+      detail: { title: 'AI requests per day', description: 'Requests for the whole site, each day.', series: data.ai.perDay.map((d) => d.calls), labels: data.ai.perDay.map((d) => weekday(d.day)) } },
+    { id: 'push', label: 'Push delivered', value: sent ? Math.round((push.ok / sent) * 1000) / 10 : 0, unit: '%', note: `${push.ok.toLocaleString()} of ${sent.toLocaleString()} this week`,
+      body: <span className="flex justify-center"><Ring pct={sent ? Math.round((push.ok / sent) * 1000) / 10 : 100} label="delivered" size={104} /></span> },
+    { id: 'calls', label: 'Call packet loss', value: Math.round((data.calls?.avgLoss ?? 0) * 1000) / 10, unit: '%', note: data.calls ? `${data.calls.calls} calls · worst ${pct(data.calls.worstLoss)}` : 'No calls this week',
+      warn: (data.calls?.avgLoss ?? 0) > 0.05, body: <Dial value={(data.calls?.avgLoss ?? 0) * 100} max={10} danger={0.5} /> },
+    { id: 'size', label: 'App size', value: size ? Math.round(size.shared / 1024) : 0, unit: 'KB shared', note: size ? `${size.over} of ${size.pages} pages over target` : 'Written by each build',
+      warn: !!size && size.over > 0, body: <Meter pct={size ? (size.shared / (200 * 1024)) * 100 : 0} /> },
+  ];
   return (
     <div className="space-y-4">
+      <InstrumentBoard icon={Gauge} title="Health at a glance" subtitle="last 7 days · 1 request in 20 sampled" live={false} cells={cells} storageKey="console-health" />
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         The last 7 days. API numbers come from 1 request in 20 (and every server error){data.since ? `, recorded since ${formatDistanceToNow(new Date(data.since), { addSuffix: true })}` : ': nothing recorded yet'}.
       </p>

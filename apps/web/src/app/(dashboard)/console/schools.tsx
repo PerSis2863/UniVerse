@@ -172,11 +172,11 @@ function GrowthCharts({ growth, error, retry }: { growth?: Growth; error: boolea
       <div className="grid lg:grid-cols-2 gap-6">
         <section className={cn(card, 'p-4 sm:p-6')}>
           <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Money received per month · 12 months</h2>
-          <Bars tone="from-emerald-600/70 to-lime-300/80" values={growth.revenue.map((r) => r.total)} labels={labels} title={(i) => `${labels[i]}: ${money(growth.revenue[i].total)}`} />
+          <Bars values={growth.revenue.map((r) => r.total)} labels={labels} title={(i) => `${labels[i]}: ${money(growth.revenue[i].total)}`} />
         </section>
         <section className={cn(card, 'p-4 sm:p-6')}>
           <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Schools cancelling per month (churn)</h2>
-          <Bars tone="from-rose-600/70 to-orange-300/80" values={growth.churn.map((c) => c.ended)} labels={labels}
+          <Bars values={growth.churn.map((c) => c.ended)} labels={labels}
             title={(i) => `${labels[i]}: ${growth.churn[i].ended} cancelled, ${growth.churn[i].started} new${growth.churn[i].rate != null ? ` (${growth.churn[i].rate} %)` : ''}`} />
           <p className="text-xs text-zinc-500 mt-2">Counted from Stripe’s subscription changes since this chart was added.</p>
         </section>

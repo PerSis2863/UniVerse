@@ -2,9 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import dynamic from 'next/dynamic';
-import { m as motion } from 'framer-motion';
-import { Users, UserCheck, BookOpen, Sparkles, Trophy, GraduationCap, ShieldCheck, Presentation, Download } from 'lucide-react';
+import { Activity, Trophy, GraduationCap, ShieldCheck, Presentation, Download } from 'lucide-react';
 import { downloadCsv } from '@/lib/csv-download';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs';
@@ -12,6 +10,8 @@ import { PremiumGate } from '@/components/billing/PremiumGate';
 import { authedJson } from '@/lib/authed-fetch';
 import { AdminSearch, PersonCell, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
 import { TabPill } from '@/components/ui/Glide';
+import { InstrumentBoard, type InstrumentCell } from '@/components/instruments/Board';
+import { Dial, Facts, Hourglass, Ring, Spark, Stack } from '@/components/instruments/parts';
 
 interface Analytics {
   totals: { members: number; activeMembers: number; courses: number; enrollments: number; impactPoints: number };
@@ -31,56 +31,7 @@ type Person = PersonInfo & { id: string; createdAt?: string };
 const ROLE_LABEL: Record<string, string> = { STUDENT: 'Students', TEACHER: 'Teachers', ADMIN: 'Admins', INDUSTRY_MENTOR: 'Industry mentors', GUARDIAN: 'Parents and guardians' };
 const nf = new Intl.NumberFormat('en-US');
 
-// Charts load on their own (recharts is large); the box keeps its height meanwhile.
-const TrendChartBody = dynamic(() => import('./TrendChartBody'), { ssr: false, loading: () => <div className="h-full rounded-2xl skeleton" /> });
-
 const card = 'rounded-3xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-6';
-
-function TrendChart({ title, data, unit, kind }: { title: string; data: { month: string; value: number }[]; unit: string; kind: 'area' | 'bar' }) {
-  const total = data.reduce((n, d) => n + d.value, 0);
-  return (
-    <div className={card}>
-      <div className="flex items-baseline justify-between mb-6">
-        <h3 className="font-bold text-zinc-900 dark:text-white">{title}</h3>
-        <span className="text-xs text-zinc-500">{nf.format(total)} {unit} · last 12 months</span>
-      </div>
-      <div className="h-64 text-zinc-400 dark:text-zinc-500">
-        <TrendChartBody data={data} unit={unit} kind={kind} />
-      </div>
-    </div>
-  );
-}
-
-function BarList({ title, rows }: { title: string; rows: { label: string; count: number }[] }) {
-  const max = Math.max(1, ...rows.map((r) => r.count));
-  return (
-    <div className={card}>
-      <h3 className="font-bold text-zinc-900 dark:text-white mb-5">{title}</h3>
-      {rows.length === 0 ? (
-        <p className="text-sm text-zinc-500">No data yet.</p>
-      ) : (
-        <ul className="space-y-4">
-          {rows.map((r, i) => (
-            <li key={r.label}>
-              <div className="flex justify-between text-sm mb-1.5">
-                <span className="text-zinc-600 dark:text-zinc-300">{r.label}</span>
-                <span className="font-bold text-zinc-900 dark:text-white tabular-nums">{nf.format(r.count)}</span>
-              </div>
-              <div className="h-2 rounded-full bg-zinc-100 dark:bg-white/[0.05] overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(r.count / max) * 100}%` }}
-                  transition={{ delay: 0.1 + i * 0.06, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                  className="h-full rounded-full bg-indigo-500"
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
 
 const STATUS_COLS = ['ACTIVE', 'PENDING', 'SUSPENDED'] as const;
 
@@ -210,39 +161,34 @@ function AnalyticsDashboard() {
     );
   }
 
-  const kpis = [
-    { label: 'Total members', value: data.totals.members, icon: Users },
-    { label: 'Active members', value: data.totals.activeMembers, icon: UserCheck },
-    { label: 'Course enrollments', value: data.totals.enrollments, icon: BookOpen, sub: `${nf.format(data.totals.courses)} courses` },
-    { label: 'Impact points awarded', value: data.totals.impactPoints, icon: Sparkles },
+  const months = data.signupsByMonth.map((m) => m.month);
+  const signups = data.signupsByMonth.map((m) => m.value);
+  const impact = data.impactByMonth.map((m) => m.value);
+  const t = data.totals;
+  const activePct = t.members ? (t.activeMembers / t.members) * 100 : 0;
+  const pendingApps = data.applications.find((x) => x.status === 'PENDING')?.count ?? 0;
+  const allApps = data.applications.reduce((n, x) => n + x.count, 0);
+  const cells: InstrumentCell[] = [
+    { id: 'members', label: 'Members', value: t.members, unit: 'people', note: `${nf.format(signups.at(-1) ?? 0)} joined this month`, body: <Spark values={signups} />,
+      detail: { title: 'New members', description: 'People who joined each month, over the last 12 months.', series: signups, labels: months } },
+    { id: 'active', label: 'Active members', value: t.activeMembers, unit: 'active', body: (
+      <span className="flex items-center gap-4"><span className="flex-1"><Facts rows={[['Active', nf.format(t.activeMembers)], ['Not active', nf.format(Math.max(0, t.members - t.activeMembers))], ['Share', `${Math.round(activePct)} %`]]} /></span><Ring pct={Math.round(activePct * 10) / 10} label="active" size={104} /></span>
+    ) },
+    { id: 'enrollments', label: 'Course enrollments', value: t.enrollments, unit: 'enrollments', note: `${nf.format(t.courses)} courses · ${t.members ? (t.enrollments / t.members).toFixed(1) : 0} per member`,
+      body: <Dial value={t.members ? t.enrollments / t.members : 0} max={8} /> },
+    { id: 'impact', label: 'Impact points awarded', value: t.impactPoints, unit: 'points', note: `${nf.format(impact.at(-1) ?? 0)} this month`, body: <Stack a={impact} b={[]} />,
+      detail: { title: 'Impact points', description: 'Impact points awarded each month, over the last 12 months.', series: impact, labels: data.impactByMonth.map((m) => m.month) } },
+    { id: 'roles', label: 'Members by role', value: data.roles.length, unit: 'roles', body: <Facts rows={[...data.roles].sort((x, y) => y.count - x.count).slice(0, 5).map((r) => [ROLE_LABEL[r.role] ?? r.role, nf.format(r.count)] as [string, string])} /> },
+    { id: 'ngo', label: 'NGO applications', value: pendingApps, unit: 'waiting', warn: pendingApps > 0, body: (
+      <span className="flex items-center gap-4"><Hourglass fill={allApps ? pendingApps / allApps : 0} running={pendingApps > 0} /><Facts rows={data.applications.map((x) => [x.status.charAt(0) + x.status.slice(1).toLowerCase(), nf.format(x.count)] as [string, string])} /></span>
+    ) },
   ];
 
   return (
     <div className="flex-1 p-4 md:p-8 overflow-y-auto space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((k, i) => (
-          <motion.div
-            key={k.label}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: Math.min(i, 6) * 0.03 }}
-            className={card}
-          >
-            <k.icon className="w-5 h-5 text-indigo-500 mb-4" />
-            <div className="text-3xl font-black tracking-tight text-zinc-900 dark:text-white tabular-nums">{nf.format(k.value)}</div>
-            <div className="text-xs text-zinc-500 mt-1">{k.label}{k.sub ? ` · ${k.sub}` : ''}</div>
-          </motion.div>
-        ))}
-      </div>
+      <InstrumentBoard icon={Activity} title="Your school, live" subtitle={`${nf.format(t.members)} members · ${nf.format(t.courses)} courses · last 12 months`} cells={cells} storageKey="admin-analytics" />
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <TrendChart title="New members" data={data.signupsByMonth} unit="members" kind="area" />
-        <TrendChart title="Impact points awarded" data={data.impactByMonth} unit="points" kind="bar" />
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-6">
-        <BarList title="Members by role" rows={data.roles.map((r) => ({ label: ROLE_LABEL[r.role] ?? r.role, count: r.count })).sort((a, b) => b.count - a.count)} />
-        <BarList title="NGO applications by status" rows={data.applications.map((a) => ({ label: a.status.charAt(0) + a.status.slice(1).toLowerCase(), count: a.count })).sort((a, b) => b.count - a.count)} />
+      <div>
         <div className={card}>
           <h3 className="font-bold text-zinc-900 dark:text-white mb-5 flex items-center gap-2"><Trophy className="w-4 h-4 text-amber-500" /> Top impact contributors</h3>
           {data.topContributors.length === 0 ? (

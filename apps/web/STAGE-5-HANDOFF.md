@@ -1485,3 +1485,24 @@ Progress table (row D6).
 - Collaborate pins live in `users.collabPins` (JSON list, migration 0176); the next migration is 0177.
 - The board's text needs its fonts loaded before converting (`fontsFor()` in `BoardCanvas.tsx`);
   anything that converts Excalidraw shapes should go through it.
+
+## M18 · Instrument boards (the owner's "Instrumental" video), owner console live board
+
+- The owner sent a screen recording of a monitoring board (moxen.studio "Instrumental") and asked
+  for that look wherever there are analytics, above all in the owner console. Kit:
+  `src/components/instruments/{Board,parts}.tsx`, maths `src/lib/instruments.ts` (+ tests), styles
+  `.ins-*` at the end of `globals.css` (Reduce Motion stops them).
+- Where it is: owner console Overview (`console/live.tsx`, "UniVerse live", nine cells from
+  `GET /owner/pulse?range=1h|24h|7d`, refreshed every 30 s), console Analytics (board with 7/30/90
+  days), Speed (dials per Web Vital), Health numbers ("Health at a glance"), the shared `Tiles` and
+  `Bars` (Money, Schools), Admin → Analytics ("Your school, live"), the course analytics page,
+  the teacher dashboard's two charts and school analytics' line charts (`MetricChart`).
+- `pulse.ts` adds everything up in SQL from `api_timings` (1-in-20 sample, weight 20; every 5xx with
+  weight 1), `messages`, `ui_events`, `login_events`, `error_reports`, `ai_usage` and the usage guard.
+  Text dates are bucketed with `strftime('%s', …)` (Prisma stores D1 dates as ISO text).
+- The owner asked to remove "Needs your attention" from the console Overview (the header's "needs
+  you" badge and the tab counts stay); `AttentionCard` was deleted.
+- Also fixed: the side menu's icons were dark blue on navy in light mode (`--color-tint-text`
+  resolved once on `<html>`; `.dark, .on-dark` now re-resolve the theme colours), and the sign-in
+  pages' blocked Google ping (`apis.google.com` in `connect-src`).
+

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { format, formatDistanceToNow } from 'date-fns';
-import { AlertTriangle, ArrowRight, Bug, CheckCircle2, CreditCard, Download, History, Loader2, MessageSquare, MessagesSquare, Pencil, Search, Trash2, Users, X } from 'lucide-react';
+import { Activity, Bug, CreditCard, Download, History, Loader2, MessageSquare, MessagesSquare, Pencil, Search, Timer, Trash2, Users, X } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
@@ -13,6 +13,8 @@ import { card, downloadCsv, errorMessage, fetcher, field, refreshConsole, toastW
 import { ConsoleSkeleton } from './shared';
 import { useActivePoll } from '@/lib/realtime-client';
 import { TabPill } from '@/components/ui/Glide';
+import { InstrumentBoard, type InstrumentCell } from '@/components/instruments/Board';
+import { Dial, Facts, Histo, Ring, Roll, Spark, Stack } from '@/components/instruments/parts';
 
 // Owner console pieces that read across the app (server side: src/server/modules/owner-insights.ts):
 // the "Needs your attention" card, the console-wide search, Analytics and Money.
@@ -22,7 +24,7 @@ export type Attention = {
   badges: Record<string, number>;
 };
 
-/** What needs the owner now, shared by the Overview card and the counts on the tabs. */
+/** What needs the owner now: the counts on the tabs and the header's "needs you" badge. */
 export const useAttention = () =>
   useSWR<Attention>('/owner/attention', fetcher, {
     refreshInterval: useActivePoll(60_000),
@@ -30,44 +32,6 @@ export const useAttention = () =>
     dedupingInterval: 30_000,
     errorRetryCount: 2,
   });
-
-const LEVEL = {
-  high: 'bg-rose-500',
-  medium: 'bg-amber-500',
-  low: 'bg-zinc-400',
-};
-
-export function AttentionCard({ onGo }: { onGo: (tab: string, filter?: string) => void }) {
-  const { data } = useAttention();
-  if (!data) return null;
-  return (
-    <div className={cn(card, 'p-5')}>
-      <h2 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2 mb-3">
-        {data.items.length ? <AlertTriangle className="w-4 h-4 text-amber-500" /> : <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-        {data.items.length ? 'Needs your attention' : 'All clear: nothing needs you right now'}
-      </h2>
-      {data.items.length > 0 && (
-        <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
-          {data.items.map((x) => {
-            const inner = (
-              <>
-                <span className={cn('w-2 h-2 rounded-full shrink-0', LEVEL[x.level])} />
-                <span className="flex-1 text-sm text-zinc-700 dark:text-zinc-200">{x.text}</span>
-                <ArrowRight className="w-4 h-4 text-zinc-300 shrink-0" />
-              </>
-            );
-            const cls = 'w-full flex items-center gap-3 py-2.5 text-start hover:text-indigo-500';
-            return (
-              <li key={x.id}>
-                {x.href ? <a href={x.href} className={cls}>{inner}</a> : <button onClick={() => onGo(x.tab!, x.filter)} className={cls}>{inner}</button>}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-}
 
 // ─── Search everything ─────────────────────────────────────────────────────────────────────────
 
@@ -151,33 +115,36 @@ export function ConsoleSearch({ tables, onGo }: { tables: { name: string; title:
 
 // ─── Small charts ──────────────────────────────────────────────────────────────────────────────
 
-export function Bars({ values, labels, tone = 'from-indigo-600/70 to-fuchsia-400/80', height = 'h-32', title }: { values: number[]; labels: string[]; tone?: string; height?: string; title: (i: number) => string }) {
+/** Columns in the instrument style (components/instruments): the text colour, the newest in hot pink, rising in turn. */
+export function Bars({ values, labels, height = 'h-32', title }: { values: number[]; labels: string[]; height?: string; title: (i: number) => string }) {
   const peak = Math.max(1, ...values);
   return (
     <div>
-      <div className={cn('flex items-end gap-[3px]', height)} role="img" aria-label={labels.length ? `${labels[0]} to ${labels[labels.length - 1]}` : 'chart'}>
+      <div className={cn('flex items-end gap-[3px] text-zinc-800 dark:text-zinc-100', height)} role="img" aria-label={labels.length ? `${labels[0]} to ${labels[labels.length - 1]}` : 'chart'}>
         {values.map((v, i) => (
           <div key={i} className="flex-1 flex flex-col justify-end h-full" title={title(i)}>
-            <div className={cn('w-full rounded-t bg-gradient-to-t', tone)} style={{ height: `${Math.max(v ? 6 : 2, (v / peak) * 100)}%`, opacity: v ? 1 : 0.25 }} />
+            <div className={cn('w-full rounded-[3px] ins-rise', i === values.length - 1 && v ? 'bg-[var(--ins-hot)]' : 'bg-current')}
+              style={{ height: `${Math.max(v ? 6 : 2, (v / peak) * 100)}%`, opacity: i === values.length - 1 && v ? 1 : v ? 0.8 : 0.15, animationDelay: `${Math.min(i, 60) * 12}ms` }} />
           </div>
         ))}
       </div>
-      {labels.length > 1 && <div className="mt-1 flex justify-between text-[10px] text-zinc-400"><span>{labels[0]}</span><span>{labels[labels.length - 1]}</span></div>}
+      {labels.length > 1 && <div className="mt-1 flex justify-between font-mono text-[10px] text-zinc-400"><span>{labels[0]}</span><span>{labels[labels.length - 1]}</span></div>}
     </div>
   );
 }
 
+/** Headline numbers as instrument cells on a framed board. */
 export function Tiles({ tiles }: { tiles: [string, string | number, string?][] }) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="ins-board"><div className="ins-board-inner grid grid-cols-2 lg:grid-cols-4 gap-3">
       {tiles.map(([label, value, hint]) => (
-        <div key={label} className={cn(card, 'p-4')}>
-          <p className="text-2xl font-bold text-zinc-900 dark:text-white tabular-nums">{value}</p>
-          <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">{label}</p>
-          {hint && <p className="text-[11px] text-zinc-400 mt-0.5">{hint}</p>}
+        <div key={label} className="ins-cell p-4">
+          <p className="text-xs font-medium text-zinc-600 dark:text-zinc-300">{label}</p>
+          <p className="mt-0.5 font-mono text-[26px] leading-tight font-light tracking-tight text-zinc-900 dark:text-white tabular-nums">{typeof value === 'number' ? <Roll value={value} /> : value}</p>
+          {hint && <p className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">{hint}</p>}
         </div>
       ))}
-    </div>
+    </div></div>
   );
 }
 
@@ -230,57 +197,35 @@ export function AnalyticsPanel({ onPerson }: { onPerson: (id: string) => void })
   const hours = Array.from({ length: 24 }, (_, h) => data.hours[(((h - shift) % 24) + 24) % 24] ?? 0);
   const busiestHour = hours.indexOf(Math.max(...hours));
   const sum = (k: 'active' | 'joined' | 'messages') => data.perDay.reduce((s, d) => s + d[k], 0);
+  const per = `last ${days} days`;
+  const activePct = t.people ? (t.activeMonth / t.people) * 100 : 0;
+  const cells: InstrumentCell[] = [
+    { id: 'active', label: 'Active today', value: t.activeDay, unit: 'people', note: `${pct(t.activeDay, t.people)} of ${t.people} people`, body: <Spark values={data.perDay.map((d) => d.active)} />,
+      detail: { title: 'People active per day', description: 'People who opened at least one page that day.', series: data.perDay.map((d) => d.active), labels } },
+    { id: 'share', label: 'Active this month', value: t.activeMonth, unit: 'people', body: (
+      <span className="flex items-center gap-4"><span className="flex-1"><Facts rows={[['Today', String(t.activeDay)], ['This week', String(t.activeWeek)], ['This month', String(t.activeMonth)], ['Sign-ins and opens', String(t.signIns)]]} /></span><Ring pct={Math.round(activePct * 10) / 10} label="active" size={104} /></span>
+    ) },
+    { id: 'joined', label: 'New accounts', value: sum('joined'), unit: per, body: <Stack a={data.perDay.map((d) => d.joined)} b={[]} />,
+      detail: { title: 'New accounts per day', description: 'Accounts made each day.', series: data.perDay.map((d) => d.joined), labels } },
+    { id: 'messages', label: 'Messages sent', value: sum('messages'), unit: per, body: <Spark values={data.perDay.map((d) => d.messages)} />,
+      detail: { title: 'Messages per day', description: 'Chat messages sent each day, in every chat.', series: data.perDay.map((d) => d.messages), labels } },
+    { id: 'hours', label: 'Busiest hours', value: busiestHour, unit: ':00 your time', note: Math.max(...hours) ? `${Math.max(...hours)} actions at the peak` : 'No activity yet',
+      body: <Histo bins={hours} marker={Math.max(...hours) ? busiestHour : -1} label={`${String(busiestHour).padStart(2, '0')}:00`} /> },
+    { id: 'never', label: 'Never opened the app', value: t.neverActive, unit: 'people', note: `${t.unfinished} didn't finish signing up`, warn: t.unfinished > 0, body: <Dial value={t.neverActive} max={Math.max(1, t.people)} danger={0.5} /> },
+    { id: 'pages', label: 'Pages opened', value: t.views, unit: per, body: <Facts rows={data.pages.slice(0, 4).map((x) => [x.path, String(x.views)] as [string, string])} /> },
+    { id: 'buttons', label: 'Buttons pressed', value: t.clicks, unit: per, body: <Facts rows={data.buttons.slice(0, 4).map((x) => [`“${x.label}”`, String(x.clicks)] as [string, string])} /> },
+    { id: 'roles', label: `Who is active · ${days} days`, value: Object.values(data.activeByRole).reduce((a, b) => a + b, 0), unit: 'people',
+      body: Object.keys(data.activeByRole).length ? <Facts rows={Object.entries(data.activeByRole).sort((x, y) => y[1] - x[1]).map(([role, n]) => [ROLE_NAMES[role] ?? role, String(n)] as [string, string])} /> : <p className="text-sm text-zinc-500">Nobody yet.</p> },
+  ];
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <p className="text-sm text-zinc-500">Real use of UniVerse, from page views, button presses, sign-ins and messages.</p>
-        <div className="flex gap-1">
-          {[7, 30, 90].map((d) => (
-            <button key={d} onClick={() => setDays(d)} className={cn('relative isolate px-3 py-1.5 rounded-full text-xs font-semibold', days === d ? 'text-white' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{days === d && <TabPill id="p-dashboard-console-insights-0" />}{d} days</button>
-          ))}
-          <button onClick={() => downloadCsv(`universe-analytics-${days}d`, ['Day', 'Active people', 'New accounts', 'Messages'], data.perDay.map((d) => [d.day, d.active, d.joined, d.messages]))}
-            className="btn-secondary inline-flex items-center gap-1.5 ms-1"><Download className="w-4 h-4" /> CSV</button>
-        </div>
+        <button onClick={() => downloadCsv(`universe-analytics-${days}d`, ['Day', 'Active people', 'New accounts', 'Messages'], data.perDay.map((d) => [d.day, d.active, d.joined, d.messages]))}
+          className="btn-secondary inline-flex items-center gap-1.5"><Download className="w-4 h-4" /> CSV</button>
       </div>
-      <Tiles tiles={[
-        ['Active today', t.activeDay, `${pct(t.activeDay, t.people)} of ${t.people} people`],
-        ['Active this week', t.activeWeek, pct(t.activeWeek, t.people)],
-        ['Active this month', t.activeMonth, pct(t.activeMonth, t.people)],
-        ['Never opened the app', t.neverActive, `${t.unfinished} didn't finish signing up`],
-        ['Pages opened', t.views, `last ${days} days`],
-        ['Buttons pressed', t.clicks, `last ${days} days`],
-        ['Sign-ins and app opens', t.signIns, `last ${days} days`],
-        ['Messages sent', sum('messages'), `last ${days} days`],
-      ]} />
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className={cn(card, 'p-5 lg:col-span-2')}>
-          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">People active per day</h2>
-          <Bars values={data.perDay.map((d) => d.active)} labels={labels} title={(i) => `${labels[i]}: ${data.perDay[i].active} people`} />
-        </div>
-        <div className={cn(card, 'p-5')}>
-          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Who is active · {days} days</h2>
-          {Object.keys(data.activeByRole).length === 0 ? <p className="text-sm text-zinc-500">Nobody yet.</p> : (
-            <ul className="space-y-2 text-sm">{Object.entries(data.activeByRole).sort((a, b) => b[1] - a[1]).map(([role, n]) => (
-              <li key={role} className="flex justify-between"><span className="text-zinc-700 dark:text-zinc-200">{ROLE_NAMES[role] ?? role}</span><span className="text-zinc-500 tabular-nums">{n}</span></li>
-            ))}</ul>
-          )}
-        </div>
-        <div className={cn(card, 'p-5')}>
-          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">New accounts per day</h2>
-          <Bars height="h-24" tone="from-emerald-600/70 to-teal-300/80" values={data.perDay.map((d) => d.joined)} labels={labels} title={(i) => `${labels[i]}: ${data.perDay[i].joined} new`} />
-          <p className="mt-2 text-xs text-zinc-500">{sum('joined')} in {days} days</p>
-        </div>
-        <div className={cn(card, 'p-5')}>
-          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Messages per day</h2>
-          <Bars height="h-24" tone="from-sky-600/70 to-cyan-300/80" values={data.perDay.map((d) => d.messages)} labels={labels} title={(i) => `${labels[i]}: ${data.perDay[i].messages} messages`} />
-          <p className="mt-2 text-xs text-zinc-500">{sum('messages')} in {days} days</p>
-        </div>
-        <div className={cn(card, 'p-5')}>
-          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Busiest hours (your time)</h2>
-          <Bars height="h-24" tone="from-amber-600/70 to-yellow-300/80" values={hours} labels={['00:00', '23:00']} title={(h) => `${String(h).padStart(2, '0')}:00: ${hours[h]} actions`} />
-          <p className="mt-2 text-xs text-zinc-500">{Math.max(...hours) ? `Busiest around ${String(busiestHour).padStart(2, '0')}:00` : 'No activity yet'}</p>
-        </div>
-      </div>
+      <InstrumentBoard icon={Activity} title="How UniVerse is used" subtitle={`${t.people} people · ${per}`} cells={cells} storageKey="console-analytics"
+        ranges={[{ id: '7', label: '7 days' }, { id: '30', label: '30 days' }, { id: '90', label: '90 days' }]} range={String(days) as '7' | '30' | '90'} onRange={(r) => setDays(Number(r))} />
       <div className="grid lg:grid-cols-3 gap-6">
         <Ranked title="Most opened pages" empty="No page views yet." rows={data.pages.map((p) => ({ key: p.path, label: p.path, sub: `${p.people} ${p.people === 1 ? 'person' : 'people'}`, value: p.views }))} />
         <Ranked title="Most pressed buttons" empty="No button presses yet." rows={data.buttons.map((b) => ({ key: `${b.label}${b.path}`, label: `“${b.label}”`, sub: b.path, value: b.clicks }))} />
@@ -324,17 +269,14 @@ function SpeedPanel() {
       <p className="text-sm text-zinc-500 mb-4">From 10% of page loads, anonymous. 3 in 4 visits were at least this fast (75th percentile). Green is good, amber needs work, red is poor. Targets: main content under 2.5 s, response to taps under 200 ms.</p>
       {!data ? <div className="h-24 rounded-xl skeleton" /> : !data.pages.length ? <p className="text-sm text-zinc-500">No measurements yet. They arrive as people use the app.</p> : (
         <>
-          <div className="grid sm:grid-cols-2 gap-3 mb-5">
-            {(['phone', 'desktop'] as const).map((dev) => (
-              <div key={dev} className="rounded-xl bg-zinc-50 dark:bg-white/[0.04] p-3">
-                <p className="text-xs font-semibold text-zinc-500 mb-2">{dev === 'phone' ? 'Phones and tablets' : 'Computers'}</p>
-                <dl className="grid grid-cols-3 gap-2 text-sm">
-                  {(['LCP', 'INP', 'CLS'] as const).map((k) => (
-                    <div key={k}><dt className="text-[11px] text-zinc-500">{VITAL_INFO[k].name}</dt><dd>{cell(k, data.devices[dev]?.[k])}</dd></div>
-                  ))}
-                </dl>
-              </div>
-            ))}
+          <div className="mb-5">
+            <InstrumentBoard icon={Timer} title="Speed" subtitle="75th percentile · phones and tablets (computers below each)" live={false} storageKey="console-speed"
+              cells={(['LCP', 'INP', 'CLS', 'FCP', 'TTFB'] as const).map((k) => {
+                const ph = data.devices.phone?.[k], pc = data.devices.desktop?.[k], info = VITAL_INFO[k], v = ph?.p75 ?? pc?.p75 ?? 0;
+                return { id: k, label: info.name, value: info.ms ? Math.round(v) : Math.round(v * 100) / 100, digits: info.ms ? 0 : 2, unit: info.ms ? 'ms' : '',
+                  note: `computers ${pc ? vitalText(k, pc.p75) : '–'} · good under ${info.ms ? `${info.good} ms` : info.good}`, warn: v >= info.poor,
+                  body: <Dial value={v} max={info.poor * 1.25} danger={info.good / (info.poor * 1.25)} labels={false} /> };
+              })} />
           </div>
           <div className="overflow-x-auto -mx-1">
             <table className="w-full text-sm">
@@ -402,7 +344,7 @@ export function MoneyPanel({ onPerson }: { onPerson: (id: string) => void }) {
       <div className="grid lg:grid-cols-3 gap-6">
         <div className={cn(card, 'p-5 lg:col-span-2')}>
           <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Money received per day · 30 days</h2>
-          <Bars tone="from-emerald-600/70 to-lime-300/80" values={data.perDay.map((d) => d.total)} labels={labels} title={(i) => `${labels[i]}: ${money(data.perDay[i].total)}`} />
+          <Bars values={data.perDay.map((d) => d.total)} labels={labels} title={(i) => `${labels[i]}: ${money(data.perDay[i].total)}`} />
           {failedNote(of('FAILED'), money)}
         </div>
         <Ranked title="What people paid for" empty="No paid payments yet." rows={data.byType.filter((x) => x.currency === data.currency).map((x) => ({ key: x.type, label: nice(x.type), value: Math.round(x.total) }))} />

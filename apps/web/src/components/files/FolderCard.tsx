@@ -18,7 +18,7 @@ export type FolderPeek = { name: string; meta?: string; image?: string; kind?: '
 const BACK = 'M0,0.27 Q0,0.17 0.055,0.17 L0.43,0.17 C0.49,0.17 0.5,0 0.57,0 L0.945,0 Q1,0 1,0.09 L1,0.91 Q1,1 0.945,1 L0.055,1 Q0,1 0,0.91 Z';
 const FRONT = 'M0,0.11 Q0,0 0.055,0 L0.36,0 C0.43,0 0.44,0.15 0.52,0.15 L0.945,0.15 Q1,0.15 1,0.26 L1,0.89 Q1,1 0.945,1 L0.055,1 Q0,1 0,0.89 Z';
 
-// Streaks of colour for the back panel, from the owner's palettes (dark blue and dark pink, 23 Oct
+// Streaks of colour for the back panel, in the owner's colours (dark blue and pink, 24 Oct
 // 2026), mixed six ways. A list gives each folder the next set, so folders side by side differ.
 const PALETTES = [
   ['#11212d', '#db2777', '#fbcfe8', '#253745'],
