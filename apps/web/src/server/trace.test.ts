@@ -5,8 +5,10 @@ import { claim, codeFor, createBatch, scan } from './trace';
 
 vi.mock('@/lib/db', () => ({
   default: {
-    traceBatch: { findUnique: vi.fn(), create: vi.fn() },
+    traceBatch: { findUnique: vi.fn(), create: vi.fn(), aggregate: vi.fn() },
     traceProduct: { findUnique: vi.fn() },
+    traceBrand: { findUnique: vi.fn() },
+    traceBrandMember: { findFirst: vi.fn() },
     traceCode: { upsert: vi.fn(), update: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn() },
     traceScan: { create: vi.fn(), count: vi.fn() },
     traceEvent: { findMany: vi.fn(), create: vi.fn() },
@@ -14,9 +16,10 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 vi.mock('./request-cf', () => ({ requestCf: () => ({ city: 'Paris', country: 'FR' }) }));
-vi.mock('./impact-scholarships', () => ({ mintImpactCredits: vi.fn(), getImpactCreditBalance: vi.fn().mockResolvedValue(40) }));
+vi.mock('./trace-wallet', () => ({ award: vi.fn(), brandBalance: vi.fn().mockResolvedValue(40) }));
+vi.mock('./trace-campaigns', () => ({ applyCampaigns: vi.fn().mockResolvedValue([]) }));
 
-const batch = { id: 'b1', productId: 'p1', organizationId: null, codeKey: 'ABC123', secret: 's3cret', quantity: 10, label: 'Batch', origin: 'Jaén', madeAt: null, product: { name: 'Oil', category: null, description: null, story: null, imageUrl: null, warrantyMonths: 0, rewardPoints: 25 } };
+const batch = { id: 'b1', productId: 'p1', organizationId: null, brandId: 'br1', codeKey: 'ABC123', secret: 's3cret', quantity: 10, label: 'Batch', origin: 'Jaén', madeAt: null, product: { name: 'Oil', category: null, description: null, story: null, imageUrl: null, warrantyMonths: 0, rewardPoints: 25 } };
 const req = new Request('https://x.test', { headers: { 'user-agent': 'iPhone' } });
 const fresh = { id: '', scanCount: 0, firstLat: null, firstLng: null, firstCountry: null, firstPlace: null, firstScanAt: null, claimedById: null, status: 'ACTIVE' };
 const user = { id: 'u1', name: 'Shop', email: 's@x.test', role: 'STUDENT' } as SessionUser;
@@ -27,6 +30,9 @@ beforeEach(() => {
   vi.mocked(prisma.traceCode.upsert).mockResolvedValue(fresh as never);
   vi.mocked(prisma.traceCode.update).mockResolvedValue({ ...fresh, scanCount: 1 } as never);
   vi.mocked(prisma.traceEvent.findMany).mockResolvedValue([] as never);
+  vi.mocked(prisma.traceBrand.findUnique).mockResolvedValue({ name: 'Aurora', logoUrl: null } as never);
+  vi.mocked(prisma.traceBrandMember.findFirst).mockResolvedValue({ brand: { id: 'br1', plan: 'FREE', category: 'food' } } as never);
+  vi.mocked(prisma.traceBatch.aggregate).mockResolvedValue({ _sum: { quantity: 0 } } as never);
 });
 
 describe('trace scans', () => {
@@ -65,23 +71,23 @@ describe('trace scans', () => {
 describe('trace points', () => {
   it('pays the first claimer once and refuses likely copies', async () => {
     const code = codeFor(batch, 2);
-    vi.mocked(prisma.traceCode.findUnique).mockResolvedValue({ ...fresh, id: code, organizationId: null, product: { name: 'Oil', rewardPoints: 25 } } as never);
+    vi.mocked(prisma.traceCode.findUnique).mockResolvedValue({ ...fresh, id: code, brandId: 'br1', product: { id: 'p1', name: 'Oil', rewardPoints: 25 } } as never);
     vi.mocked(prisma.traceScan.count).mockResolvedValue(0);
     vi.mocked(prisma.traceCode.updateMany).mockResolvedValue({ count: 1 });
-    await expect(claim(code, user)).resolves.toEqual({ points: 25, balance: 40 });
+    await expect(claim(code, user, {}, req)).resolves.toEqual({ points: 25, base: 25, bonuses: [], balance: 40 });
 
     vi.mocked(prisma.traceCode.updateMany).mockResolvedValue({ count: 0 });
-    await expect(claim(code, user)).rejects.toThrow(/already earned/);
+    await expect(claim(code, user, {}, req)).rejects.toThrow(/already earned/);
 
     vi.mocked(prisma.traceScan.count).mockResolvedValue(1);
-    await expect(claim(code, user)).rejects.toThrow(/may be a copy/);
+    await expect(claim(code, user, {}, req)).rejects.toThrow(/may be a copy/);
   });
 });
 
 describe('trace batches', () => {
-  const admin = { ...user, role: 'ADMIN', organizationId: null } as SessionUser;
+  const admin = { ...user, role: 'STUDENT', organizationId: null } as SessionUser;
   it('makes a batch with its own key and secret, and records where it was made', async () => {
-    vi.mocked(prisma.traceProduct.findUnique).mockResolvedValue({ id: 'p1', organizationId: null } as never);
+    vi.mocked(prisma.traceProduct.findUnique).mockResolvedValue({ id: 'p1', brandId: 'br1' } as never);
     vi.mocked(prisma.traceBatch.create).mockImplementation((async ({ data }: { data: Record<string, unknown> }) => ({ id: 'b9', ...data })) as never);
     const res = await createBatch(admin, 'p1', { quantity: 500, origin: 'Jaén', label: 'Press 3' });
     const data = vi.mocked(prisma.traceBatch.create).mock.calls[0][0].data as unknown as Record<string, string>;
@@ -92,10 +98,16 @@ describe('trace batches', () => {
     expect(prisma.traceEvent.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ stage: 'MADE', place: 'Jaén' }) }));
   });
 
+  it('keeps the free plan to its units', async () => {
+    vi.mocked(prisma.traceProduct.findUnique).mockResolvedValue({ id: 'p1', brandId: 'br1' } as never);
+    vi.mocked(prisma.traceBatch.aggregate).mockResolvedValue({ _sum: { quantity: 9_990 } } as never);
+    await expect(createBatch(admin, 'p1', { quantity: 50 })).rejects.toThrow(/free plan covers 10,000 units/);
+  });
+
   it('refuses another brand’s product and silly quantities', async () => {
-    vi.mocked(prisma.traceProduct.findUnique).mockResolvedValue({ id: 'p1', organizationId: 'other' } as never);
+    vi.mocked(prisma.traceProduct.findUnique).mockResolvedValue({ id: 'p1', brandId: 'other' } as never);
     await expect(createBatch(admin, 'p1', { quantity: 5 })).rejects.toThrow(/not found/);
-    vi.mocked(prisma.traceProduct.findUnique).mockResolvedValue({ id: 'p1', organizationId: null } as never);
+    vi.mocked(prisma.traceProduct.findUnique).mockResolvedValue({ id: 'p1', brandId: 'br1' } as never);
     await expect(createBatch(admin, 'p1', { quantity: 0 })).rejects.toThrow(/How many/);
     await expect(createBatch(admin, 'p1', { quantity: 2.5 })).rejects.toThrow(/How many/);
   });

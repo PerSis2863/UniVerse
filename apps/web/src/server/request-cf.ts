@@ -1,6 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
-export type RequestCf = { timezone?: string; city?: string; country?: string };
+export type RequestCf = { timezone?: string; city?: string; country?: string; region?: string; latitude?: string; longitude?: string };
 
 /**
  * Cloudflare's guess of where a request comes from (time zone, city, country). Next.js routes get a

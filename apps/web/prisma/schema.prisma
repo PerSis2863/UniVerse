@@ -6583,6 +6583,8 @@ model MealOrder {
 model TraceProduct {
   id             String       @id @default(cuid())
   organizationId String?
+  brandId        String?
+  sample         Boolean      @default(false)
   name           String
   sku            String?
   category       String?
@@ -6606,6 +6608,14 @@ model TraceBatch {
   productId      String
   product        TraceProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
   organizationId String?
+  brandId        String?
+  /// MADE, IN_TRANSIT (a phone is sharing its position) or DELIVERED.
+  status         String       @default("MADE")
+  destPlace      String?
+  destLat        Float?
+  destLng        Float?
+  /// The secret in a driver's sharing link (/carry/<key>); null until the brand makes one.
+  carrierKey     String?      @unique
   label          String
   /// Codes are codeKey + serial + a signature made with `secret` (src/server/trace.ts).
   codeKey        String       @unique
@@ -6619,6 +6629,7 @@ model TraceBatch {
   createdAt      DateTime     @default(now())
   codes          TraceCode[]
   events         TraceEvent[]
+  pings          TracePing[]
 
   @@index([productId])
   @@index([organizationId])
@@ -6632,6 +6643,7 @@ model TraceCode {
   productId      String
   product        TraceProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
   organizationId String?
+  brandId        String?
   serial         Int
   scanCount      Int          @default(0)
   firstScanAt    DateTime?
@@ -6656,6 +6668,11 @@ model TraceScan {
   codeId         String
   code           TraceCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
   organizationId String?
+  brandId        String?
+  productId      String?
+  category       String?
+  geoLat         Float?
+  geoLng         Float?
   userId         String?
   verdict        String
   lat            Float?
@@ -6675,6 +6692,7 @@ model TraceEvent {
   batchId        String
   batch          TraceBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
   organizationId String?
+  brandId        String?
   stage          String
   place          String?
   lat            Float?
@@ -6686,3 +6704,122 @@ model TraceEvent {
   @@index([batchId, createdAt])
   @@map("trace_events")
 }
+
+// ─── The Trace network (migration 0178): free brands, one wallet, campaigns ───
+
+model TraceBrand {
+  id          String             @id @default(cuid())
+  name        String
+  slug        String             @unique
+  category    String?
+  color       String?
+  logoUrl     String?
+  /// FREE: 10,000 units and the brand's own map; PRO: more units and the anonymised market layer.
+  plan        String             @default("FREE")
+  /// What one point is worth when cashed out, in `currency`.
+  pointValue  Float              @default(0.01)
+  currency    String             @default("EUR")
+  minCashout  Int                @default(500)
+  createdById String?
+  createdAt   DateTime           @default(now())
+  members     TraceBrandMember[]
+
+  @@map("trace_brands")
+}
+
+model TraceBrandMember {
+  brandId   String
+  brand     TraceBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  userId    String
+  role      String     @default("OWNER")
+  createdAt DateTime   @default(now())
+
+  @@id([brandId, userId])
+  @@index([userId])
+  @@map("trace_brand_members")
+}
+
+/// One person's points with one brand, hash-chained per person (like the Impact Credits ledger).
+model TracePoint {
+  id           String   @id @default(cuid())
+  userId       String
+  brandId      String
+  kind         String
+  points       Int
+  balanceAfter Int
+  codeId       String?
+  campaignId   String?
+  cashoutId    String?
+  note         String?
+  previousHash String
+  hash         String
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([brandId, createdAt])
+  @@map("trace_points")
+}
+
+model TraceCashout {
+  id          String    @id @default(cuid())
+  userId      String
+  brandId     String
+  points      Int
+  amount      Float
+  currency    String
+  payTo       String
+  status      String    @default("PENDING")
+  note        String?
+  decidedById String?
+  decidedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([brandId, status])
+  @@index([userId])
+  @@map("trace_cashouts")
+}
+
+model TraceCampaign {
+  id           String    @id @default(cuid())
+  brandId      String
+  productId    String?
+  title        String
+  bonusPoints  Int
+  budgetPoints Int
+  spentPoints  Int       @default(0)
+  scans        Int       @default(0)
+  /// UniVerse's fee per verified campaign scan, in cents of the brand's currency.
+  feeCents     Int       @default(5)
+  country      String?
+  lat          Float?
+  lng          Float?
+  radiusKm     Float?
+  place        String?
+  status       String    @default("ACTIVE")
+  startsAt     DateTime?
+  endsAt       DateTime?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+
+  @@index([brandId, status])
+  @@map("trace_campaigns")
+}
+
+/// A live position from a phone carrying a batch (the real-time tracking map).
+model TracePing {
+  id        String     @id @default(cuid())
+  batchId   String
+  batch     TraceBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  brandId   String?
+  lat       Float
+  lng       Float
+  speedKmh  Float?
+  heading   Float?
+  accuracyM Float?
+  createdAt DateTime   @default(now())
+
+  @@index([batchId, createdAt])
+  @@index([brandId, createdAt])
+  @@map("trace_pings")
+}
+

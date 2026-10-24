@@ -1,14 +1,20 @@
 # Start here
 
-UniVerse is a school and university platform (students, teachers, admins, parents) with a
-social-impact side. The whole app is in **`apps/web`**: a Next.js 16 site that runs on Cloudflare
+UniVerse is now **UniVerse Trace** (business mode since 24 Oct 2026): every product gets a passport,
+with live market and tracking maps, shop rewards, a wallet and pay-per-sale campaigns. The old school
+and university platform is still in the code but no longer reachable (see `src/lib/business.ts`). The whole app is in **`apps/web`**: a Next.js 16 site that runs on Cloudflare
 Workers, with its database on Cloudflare D1 and uploads on R2. This page says where the work stands,
 how to run it on your computer, and how to carry on (for the owner and for any AI agent, such as
 Cursor's).
 
 ## Where things stand (23 October 2026)
 
-- **Newest (24 Oct): UniVerse Trace (M19)**, on branch `claude/youthful-fermi-sbdtcp`: UniVerse becomes
+- **Newest (24 Oct): M20, the Trace network and business mode**, on branch `claude/youthful-fermi-sbdtcp`:
+  anyone starts a brand free at `/trace`; live market map `/trace/map`, real-time tracking
+  `/trace/tracking` (drivers share from `/carry/<key>`), campaigns, one wallet for everyone, the owner's
+  All brands page; every role gets the same business menu and school pages forward to `/trace`. Notes:
+  M20 in `STAGE-5-HANDOFF.md`.
+- **Before that (24 Oct): UniVerse Trace (M19)**, on branch `claude/youthful-fermi-sbdtcp`: UniVerse becomes
   a supply chain and marketing product too. Every product gets a passport: brands print signed codes,
   buyers scan them at `/t/<code>` to see they're genuine, shops earn points, and the brand watches every
   scan and every likely copy at `/trace`. Try `/t/demo`. Notes: M19 in `STAGE-5-HANDOFF.md`.
@@ -32,7 +38,7 @@ Cursor's).
   for each item.
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: start with its "Next steps" and the
   S2, Q26, S1 and Q24/Q25 notes.
-- **Next database update number: `0178`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0179`** (files in `apps/web/prisma/migrations/`).
 
 **Moving to the $5 Cloudflare plan (Workers Paid)**, in this order:
 1. In Cloudflare: Workers & Pages → Plans → Workers Paid ($5 a month, plus any local tax).

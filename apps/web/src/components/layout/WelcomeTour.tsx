@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { authedJson } from '@/lib/authed-fetch';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
+import { inboxFor, settingsFor } from '@/lib/business';
 
 // The guided tour (Stage 5 · Q18): a few stops for each role that point at the real buttons: the
 // menu item, the phone's tab bar, the search field, the bell. Each stop finds its button on screen
@@ -18,38 +19,20 @@ import { cn } from '@/lib/utils';
 
 type Stop = { title: string; text: string; href?: string; target?: 'search' | 'notifications' };
 
-const STOPS: Record<string, Stop[]> = {
-  STUDENT: [
-    { title: 'Your home', text: 'Your day at a glance: classes, what’s due and the latest from your university.', href: '/student' },
-    { title: 'Courses', text: 'Every course you take, with its materials, live classes and courses saved for offline.', href: '/student/courses' },
-    { title: 'Blackboard', text: 'Announcements and materials for each course, and the AI tutor that answers from them.', href: '/student/blackboard' },
-    { title: 'Messages', text: 'Chats with classmates, teachers and groups, and your calls.', href: '/student/inbox' },
-    { title: 'Global Impact', text: 'Projects and volunteering to join, your verified credentials and your skills passport.', href: '/student/impact/ngo-marketplace' },
-    { title: 'Student life', text: 'Clubs, events and tickets, the campus board, rooms and the dining menu.', href: '/student/life/associations' },
-    { title: 'Search', text: 'Find any page, person, course or setting from here (or press Ctrl+K).', target: 'search' },
-    { title: 'Notifications', text: 'New grades, messages and reminders arrive here. Choose what you’re told about in Settings.', target: 'notifications' },
-    { title: 'Settings', text: 'Your profile (photo, cover, pronouns, links), the language, notifications and accessibility.', href: '/student/settings' },
-  ],
-  TEACHER: [
-    { title: 'Your home', text: 'Your classes and what needs your attention today.', href: '/teacher' },
-    { title: 'Courses', text: 'Your courses: materials, modules, live classes and the gradebook.', href: '/teacher/courses' },
-    { title: 'Blackboard', text: 'Post announcements and materials; the AI tutor answers your students from them.', href: '/teacher/blackboard' },
-    { title: 'Students', text: 'Your students, early warnings, mastery and meetings with parents.', href: '/teacher/students' },
-    { title: 'Grades', text: 'Mark work, give feedback and see the gradebook.', href: '/teacher/grades' },
-    { title: 'Messages', text: 'Chat with students, colleagues and parents, and your calls.', href: '/teacher/inbox' },
-    { title: 'Search', text: 'Find any page, person, course or setting from here (or press Ctrl+K).', target: 'search' },
-    { title: 'Settings', text: 'Your profile, notifications, the hours parents can message you and accessibility.', href: '/teacher/settings' },
-  ],
-  ADMIN: [
-    { title: 'Overview', text: 'How your school is doing today: people, courses, activity and anything that needs you.', href: '/admin' },
-    { title: 'Users', text: 'Invite staff and students, change roles, import from a spreadsheet.', href: '/admin/users' },
-    { title: 'Verify credentials', text: 'Approve the credentials students request, signed so employers can check them.', href: '/admin/credentials' },
-    { title: 'Student life', text: 'Events, ticket prices, menus and campus services.', href: '/admin/student-life' },
-    { title: 'Messages', text: 'Chats, calls and announcements to everyone.', href: '/admin/inbox' },
-    { title: 'Search', text: 'Find any page, person, course or setting from here (or press Ctrl+K).', target: 'search' },
-    { title: 'Settings', text: 'Your profile and your school’s settings.', href: '/admin/settings' },
-  ],
-};
+/** The business app's tour (src/lib/business.ts), the same for every role. */
+const businessStops = (role: string): Stop[] => [
+  { title: 'Console', text: 'Your brand: products, batches of printable codes, every scan live and the likely copies caught.', href: '/trace' },
+  { title: 'Market map', text: 'Where your products are scanned, city by city, live, with a replay of the month.', href: '/trace/map' },
+  { title: 'Tracking', text: 'Every shipment on the map: where it is now, its speed and when it arrives.', href: '/trace/tracking' },
+  { title: 'Campaigns', text: 'Give shops bonus points for genuine sales in a city. You pay only for verified scans.', href: '/trace/campaigns' },
+  { title: 'Wallet', text: 'The points you earn from every brand for genuine products you scan, and cash-outs.', href: '/trace/wallet' },
+  { title: 'Messages', text: 'Chats, groups and calls with your team and partners.', href: inboxFor(role) },
+  { title: 'Collaborate', text: 'Documents, sheets, slides, boards and tasks you work on together.', href: '/collab' },
+  { title: 'Search', text: 'Find any page, person or document from here (or press Ctrl+K).', target: 'search' },
+  { title: 'Notifications', text: 'New scans, messages and reminders arrive here.', target: 'notifications' },
+  { title: 'Settings', text: 'Your profile, the language, notifications and accessibility.', href: settingsFor(role) },
+];
+const STOPS: Record<string, Stop[]> = { STUDENT: businessStops('STUDENT'), TEACHER: businessStops('TEACHER'), ADMIN: businessStops('ADMIN') };
 
 const doneKey = (userId: string) => `universe-tour-done:${userId}`;
 const visible = (el: Element | null): el is HTMLElement => {

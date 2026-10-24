@@ -2035,6 +2035,10 @@ html.reduce-motion .ins-draw { stroke-dasharray: none; }
 html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .pp-node) { animation: none !important; }
 
 /* UniVerse Trace: the brand console's hero and the print sheet (only the labels go to paper). */
+/* The driver's radar on /carry: rings that widen and fade while a position is being shared. */
+@keyframes carry-wave { from { transform: scale(0.45); opacity: 0.9; } to { transform: scale(1.15); opacity: 0; } }
+.carry-wave { animation: carry-wave 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+@media (prefers-reduced-motion: reduce) { .carry-wave { animation: none; opacity: 0.5; } }
 .trace-hero { background: radial-gradient(120% 90% at 0% 0%, #1b2c39 0%, #0b1a24 60%, #06141b 100%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 30px 60px -36px rgb(236 72 153 / 0.6); }
 @media print {
   body * { visibility: hidden !important; }

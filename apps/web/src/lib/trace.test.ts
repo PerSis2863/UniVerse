@@ -52,3 +52,25 @@ describe('scan verdicts', () => {
     expect(verdictFor(seen, { lat: 48.86, lng: 2.35 }, { first: 'FR', now: 'BE' })).toBe('SEEN');
   });
 });
+
+describe('campaign areas and map cells', () => {
+  const paris = { lat: 48.8566, lng: 2.3522 };
+  it('matches a country, a circle, or everywhere', async () => {
+    const { inArea } = await import('./trace');
+    const none = { country: null, lat: null, lng: null, radiusKm: null };
+    expect(inArea(none, null, null)).toBe(true);
+    expect(inArea({ ...none, country: 'FR' }, null, 'fr')).toBe(true);
+    expect(inArea({ ...none, country: 'FR' }, null, 'ES')).toBe(false);
+    const circle = { ...none, lat: paris.lat, lng: paris.lng, radiusKm: 30 };
+    expect(inArea(circle, { lat: 48.9, lng: 2.4 }, 'FR')).toBe(true);
+    expect(inArea(circle, { lat: 45.76, lng: 4.84 }, 'FR')).toBe(false);
+    expect(inArea(circle, null, 'FR')).toBe(false);
+  });
+
+  it('snaps positions to a coarse grid', async () => {
+    const { cellOf } = await import('./trace');
+    expect(cellOf(48.8566, 2.3522, 0.1)).toEqual([48.9, 2.4]);
+    expect(cellOf(48.8566, 2.3522, 0.5)).toEqual([49, 2.5]);
+    expect(cellOf(-33.87, 151.21, 0.5)).toEqual([-34, 151]);
+  });
+});
