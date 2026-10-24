@@ -13,12 +13,15 @@ import { toast } from 'sonner';
 import { navByRole, searchOnlyPages } from '@/components/layout/Sidebar';
 import { useLanguageStore } from '@/store/language';
 import { authedJson } from '@/lib/authed-fetch';
+import { fetcher } from '@/lib/fetcher';
 import { applyTheme } from '@/lib/theme';
 import { spring } from '@/lib/motion';
 
 type Item = { id: string; label: string; hint?: string; icon: LucideIcon; group: string; keywords?: string; run: () => void | Promise<void>; /** Kept in Recent with its address (search results). */ href?: string };
 type Person = { id: string; name: string; role: string; online?: boolean };
 type SearchResult = { type: keyof typeof RESULT_KIND; id: string; title: string; subtitle?: string; snippet?: string; href: string };
+/** /courses/my: a teacher's own courses, or a student's enrolments (each holds its course). */
+type MyCourse = { id: string; name: string; code?: string; course?: MyCourse };
 
 // How platform search results (/api/search) are shown.
 const RESULT_KIND = {
@@ -83,6 +86,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
   const base = ROLE_BASE[role] ?? '/student';
 
   // Live data only while open.
+  const { data: myCourses } = useSWR<MyCourse[]>(open && role !== 'ADMIN' ? '/courses/my' : null, fetcher);
   const peopleKey = open && debounced.length >= 2 ? `/api/chat/users?q=${encodeURIComponent(debounced)}` : null;
   const { data: people, isLoading: peopleLoading } = useSWR<Person[]>(peopleKey, authedJson);
   const searchKey = open && debounced.length >= 2 ? `/api/search?q=${encodeURIComponent(debounced)}` : null;
@@ -140,9 +144,15 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
       { id: 'act:slides', label: 'New presentation', hint: 'Docs', icon: Presentation, group: 'Actions', keywords: 'powerpoint slides deck create', run: go('/docs?new=slides') },
       { id: 'act:board', label: 'New task board', hint: 'Tasks', icon: KanbanSquare, group: 'Actions', keywords: 'tasks kanban project todo create', run: go('/tasks?new=1') },
       { id: 'act:call', label: 'Schedule a call', hint: 'Calls', icon: CalendarPlus, group: 'Actions', keywords: 'meeting video class call book plan', run: go('/calls?schedule=1') },
-      // UniVerse Trace (business mode, src/lib/business.ts).
+      // The other apps (src/lib/apps.ts).
+      { id: 'act:hub', label: 'Switch app', hint: 'All apps', icon: Compass, group: 'Actions', keywords: 'apps hub trace relief green university switch', run: go('/hub') },
       { id: 'act:product', label: 'New product passport', hint: 'Trace', icon: FilePlus2, group: 'Actions', keywords: 'product passport code batch print label brand', run: go('/trace') },
-      { id: 'act:campaign', label: 'New campaign', hint: 'Campaigns', icon: CalendarPlus, group: 'Actions', keywords: 'campaign bonus points city pay per scan', run: go('/trace/campaigns') },
+      { id: 'act:relief', label: 'Ask for or offer help', hint: 'Relief', icon: MessageSquarePlus, group: 'Actions', keywords: 'help need food water shelter medical volunteer aid', run: go('/relief') },
+      { id: 'act:green', label: 'Log a climate action', hint: 'Green', icon: CalendarPlus, group: 'Actions', keywords: 'green co2 tree recycle cycle climate', run: go('/green') },
+      ...(role === 'TEACHER' ? [
+        { id: 'act:assignment', label: 'New assignment', hint: 'Assignments', icon: ClipboardList, group: 'Actions', keywords: 'homework essay task create set', run: go('/teacher/assignments') },
+        { id: 'act:quiz', label: 'New quiz', hint: 'Quizzes', icon: SquareCheck, group: 'Actions', keywords: 'test exam create', run: go('/teacher/quizzes') },
+      ] : []),
       {
         id: 'act:theme', label: dark ? 'Switch to light mode' : 'Switch to dark mode', icon: dark ? Sun : Moon, group: 'Actions', keywords: 'theme appearance dark light night',
         run: () => { applyTheme(dark ? 'light' : 'dark'); window.dispatchEvent(new Event('universe:theme')); },
@@ -160,6 +170,14 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
         : { id: 'act:sample-on', label: 'Explore with sample data', hint: 'Try every feature with example data — nothing is saved', icon: FlaskConical, group: 'Actions', keywords: 'demo example sample data try tour', run: startSampleMode },
     ];
   }, [base, go, open, role]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const courses: Item[] = useMemo(() => {
+    const list = Array.isArray(myCourses) ? myCourses.map((c) => (role === 'STUDENT' ? c.course : c)).filter((c): c is MyCourse => !!c) : [];
+    return list.map((c) => ({
+      id: `course:${c.id}`, label: c.name, hint: c.code, icon: BookOpen, group: 'Courses', keywords: c.code,
+      run: go(`${base}/blackboard?course=${c.id}`),
+    }));
+  }, [myCourses, role, base, go]);
 
   const peopleItems: Item[] = useMemo(() => (people ?? []).slice(0, 5).flatMap((p) => {
     const chatWith = async () => (await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: p.id }) })).id;
@@ -180,14 +198,16 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
   }), [people, base, router]);
 
   const foundItems: Item[] = useMemo(() => {
+    const mine = new Set(courses.map((c) => c.id));
     return (found?.results ?? [])
+      .filter((r) => !(r.type === 'course' && mine.has(`course:${r.id}`)))
       .filter((r) => r.type in RESULT_KIND)
       .map((r) => ({ id: `${r.type}:${r.id}`, label: r.title, hint: r.snippet ? `${r.subtitle ? `${r.subtitle} · ` : ''}${r.snippet}` : r.subtitle, icon: RESULT_KIND[r.type].icon, group: RESULT_KIND[r.type].group, run: go(r.href), href: r.href }));
-  }, [found, go]);
+  }, [found, courses, go]);
 
   const results = useMemo(() => {
     const q = debounced.toLowerCase();
-    const all = [...pages, ...actions];
+    const all = [...pages, ...courses, ...actions];
     // Find-a-page shortcuts (student directory, internship history, apps & links) before typing.
     const quickIds = new Set((searchOnlyPages[role] ?? []).filter((p) => p.quick).map((p) => `page:${p.href}`));
     const quick = pages.filter((i) => quickIds.has(i.id)).map((i) => ({ ...i, group: 'Find' }));
@@ -198,6 +218,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
       const seen = new Set(recent.map((i) => i.id));
       return [
         ...recent.slice(0, 5).map((i) => ({ ...i, group: 'Recent' })),
+        ...courses.slice(0, 4).filter((i) => !seen.has(i.id)),
         ...quick.filter((i) => !seen.has(i.id)),
         ...actions,
         ...pages.filter((i) => !seen.has(i.id) && !quickIds.has(i.id)).slice(0, 6),
@@ -211,7 +232,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
     // Group in a fixed order so the list doesn't jump around while typing.
     const order = ['Documents', 'Tasks', 'Assignments', 'Courses', 'Materials', 'Pages', 'People', 'Events', 'Groups', 'NGO projects', 'Internships', 'Resources', 'Actions'];
     return [...ranked, ...peopleItems, ...foundItems].sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
-  }, [debounced, pages, actions, peopleItems, foundItems, recents, recentFound, role, go]);
+  }, [debounced, pages, courses, actions, peopleItems, foundItems, recents, recentFound, role, go]);
 
   // A new search starts at the top.
   const [indexedFor, setIndexedFor] = useState(debounced);
@@ -263,7 +284,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={onKeyDown}
-                  placeholder="Search pages, documents, tasks, people…"
+                  placeholder="Search documents, tasks, courses, people…"
                   aria-controls="palette-list"
                   className="flex-1 bg-transparent text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none text-[20px] font-normal tracking-tight"
                 />

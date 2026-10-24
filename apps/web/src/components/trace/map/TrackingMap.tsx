@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { toast } from 'sonner';
-import { Check, Copy, Crosshair, Flag, Gauge, Globe2, Link2, Loader2, MapPin, Maximize2, Minimize2, Minus, Navigation, Package, Plus, Route, Sparkles, Timer, Truck, X } from 'lucide-react';
+import { Check, Copy, Crosshair, Flag, Gauge, Globe2, Link2, Loader2, MapPin, Maximize2, Minimize2, Minus, Navigation, Package, Plus, Route, Sparkles, Thermometer, Timer, Truck, X } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { QrCode } from '@/components/ui/QrCode';
 import { api, errorMessage } from '@/lib/api';
@@ -32,6 +32,7 @@ interface Ship {
   trail: { lat: number; lng: number; at: string; speed: number | null }[];
   position: { lat: number; lng: number } | null; heading: number | null; speedKmh: number | null; lastPingAt: string | null;
   carrierPath: string | null; kmLeft: number | null; etaMinutes: number | null;
+  tempC?: number | null; maxTempC?: number | null; breaches?: number;
 }
 
 const WORLD: Box = [-168, -56, 190, 76];
@@ -389,6 +390,11 @@ function LiveStrip({ s }: { s: Ship }) {
           <div key={k}><dt className="text-[10px] uppercase tracking-wider text-zinc-500">{k}</dt><dd className="font-mono text-base tabular-nums text-zinc-900 dark:text-white leading-tight">{v}</dd><dd className="text-[10px] text-zinc-500 truncate">{u}</dd></div>
         ))}
       </dl>
+      {s.tempC != null && s.maxTempC != null && (
+        <p className={cn('mt-2 flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 font-mono text-[11px]', s.tempC > s.maxTempC ? 'bg-amber-500/12 text-amber-700 dark:text-amber-200' : 'bg-sky-500/10 text-sky-700 dark:text-sky-200')}>
+          <Thermometer className="w-3.5 h-3.5" aria-hidden />{s.tempC} °C now · keep at {s.maxTempC} °C or colder{s.breaches ? ` · ${s.breaches} warm reading${s.breaches === 1 ? '' : 's'}` : ''}
+        </p>
+      )}
     </div>
   );
 }
@@ -439,6 +445,7 @@ function ShipCard({ s, index, open, onOpen, onFind, onPick, onChange, onHover }:
             {s.speedKmh !== null && <span className="inline-flex items-center gap-1"><Gauge className="w-3 h-3" aria-hidden />{Math.round(s.speedKmh)} km/h</span>}
             {s.kmLeft !== null && <span className="inline-flex items-center gap-1"><Route className="w-3 h-3" aria-hidden />{Math.round(s.kmLeft).toLocaleString()} km left</span>}
             {s.etaMinutes !== null && now > 0 && <span className="inline-flex items-center gap-1"><Timer className="w-3 h-3" aria-hidden />arrives {new Date(now + s.etaMinutes * 60_000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>}
+            {s.tempC != null && <span className={cn('inline-flex items-center gap-1', s.maxTempC != null && s.tempC > s.maxTempC && 'text-amber-600 dark:text-amber-300')}><Thermometer className="w-3 h-3" aria-hidden />{s.tempC} °C</span>}
             {!s.position && <span>no live position yet</span>}
           </p>
         )}

@@ -6,10 +6,13 @@ import { claim, codeFor, createBatch, scan } from './trace';
 vi.mock('@/lib/db', () => ({
   default: {
     traceBatch: { findUnique: vi.fn(), create: vi.fn(), aggregate: vi.fn() },
+    traceRecall: { findFirst: vi.fn() }, traceWarranty: { findUnique: vi.fn() }, traceOwner: { findUnique: vi.fn() },
+    traceReview: { findUnique: vi.fn(), findMany: vi.fn() }, traceWin: { findUnique: vi.fn(), create: vi.fn() },
+    $queryRawUnsafe: vi.fn(),
     traceProduct: { findUnique: vi.fn() },
     traceBrand: { findUnique: vi.fn() },
     traceBrandMember: { findFirst: vi.fn() },
-    traceCode: { upsert: vi.fn(), update: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn() },
+    traceCode: { upsert: vi.fn(), update: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn(), count: vi.fn() },
     traceScan: { create: vi.fn(), count: vi.fn() },
     traceEvent: { findMany: vi.fn(), create: vi.fn() },
     organization: { findUnique: vi.fn() },
@@ -33,6 +36,9 @@ beforeEach(() => {
   vi.mocked(prisma.traceBrand.findUnique).mockResolvedValue({ name: 'Aurora', logoUrl: null } as never);
   vi.mocked(prisma.traceBrandMember.findFirst).mockResolvedValue({ brand: { id: 'br1', plan: 'FREE', category: 'food' } } as never);
   vi.mocked(prisma.traceBatch.aggregate).mockResolvedValue({ _sum: { quantity: 0 } } as never);
+  vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([] as never);
+  vi.mocked(prisma.traceReview.findMany).mockResolvedValue([] as never);
+  vi.mocked(prisma.traceCode.count).mockResolvedValue(1);
 });
 
 describe('trace scans', () => {
@@ -74,7 +80,11 @@ describe('trace points', () => {
     vi.mocked(prisma.traceCode.findUnique).mockResolvedValue({ ...fresh, id: code, brandId: 'br1', product: { id: 'p1', name: 'Oil', rewardPoints: 25 } } as never);
     vi.mocked(prisma.traceScan.count).mockResolvedValue(0);
     vi.mocked(prisma.traceCode.updateMany).mockResolvedValue({ count: 1 });
-    await expect(claim(code, user, {}, req)).resolves.toEqual({ points: 25, base: 25, bonuses: [], balance: 40 });
+    await expect(claim(code, user, {}, req)).resolves.toEqual({ points: 25, base: 25, bonuses: [], tier: { label: 'Bronze', multiplier: 1, next: { label: 'Silver', need: 19 } }, balance: 40 });
+
+    // A Gold shop (100+ sales in 90 days) earns ×1.5.
+    vi.mocked(prisma.traceCode.count).mockResolvedValueOnce(120);
+    await expect(claim(code, user, {}, req)).resolves.toMatchObject({ points: 38, base: 38, tier: { label: 'Gold' } });
 
     vi.mocked(prisma.traceCode.updateMany).mockResolvedValue({ count: 0 });
     await expect(claim(code, user, {}, req)).rejects.toThrow(/already earned/);

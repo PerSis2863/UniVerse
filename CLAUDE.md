@@ -25,5 +25,25 @@ installed (see the ECC section in `.cursor/rules/universe.mdc` for why, and befo
   `universe-security` (access, input, secrets, money, files).
 - **Skills** (copied from github.com/emilkowalski/skills, MIT): `emil-design-eng`, `review-animations`,
   `animation-performance`, `mobile-native` in `.claude/skills/`.
+  And `impeccable` (github.com/pbakaus/impeccable, Apache-2.0, without its hooks): `/impeccable` for
+  design and motion choices (`generate`, `live`, `animate`, `bolder`, `critique`, …); see its `SOURCE.md`.
+  And Ponytail's six skills (github.com/DietrichGebert/ponytail, MIT, without its hooks): `/ponytail`,
+  `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`. REA (reverse engineering, Ghidra engine) is set up on
+  the machine, not in the repo: `sh tools/setup-rea.sh` in a new cloud session (see `AGENT-TOOLKIT.md` §5b).
 - **Hook:** `.claude/hooks/protect-secrets.mjs` blocks any tool call that reads or writes the local
   secret files (`.dev.vars`, `.env*`; `*.example` is fine). Turned on in `.claude/settings.json`.
+  And `.claude/hooks/suggest-compact.mjs` (after ECC): at 60 tool calls, and every 30 after, a hint to
+  suggest `/clear` or `/compact` at the next finished item. From ECC also the `security-review` and
+  `strategic-compact` skills.
+
+## Use these by default (the owner, 24 Oct 2026: "from now on start using all these skills… efficiently")
+
+- Any coding task: Ponytail's rules (`ponytail`, level full) inside "Keep it lean"; `/ponytail-review`
+  before finishing a bigger change.
+- Any screen, style or motion work: `impeccable` (and its `generate` / `live` for choices to pick
+  from) plus Emil Kowalski's skills; the brand rule in universe.mdc wins.
+- Sign-in, input, secrets, money, files, public routes: the `security-review` checklist, and the
+  `universe-security` reviewer for a big change.
+- Analysing an app or binary: REA (`reverse-engineer-anything`, Ghidra engine; run
+  `sh tools/setup-rea.sh` first in a new cloud session). Lawful use only.
+- Efficiently: load a skill only when the task needs it, and follow the token rules above.

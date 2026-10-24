@@ -2,7 +2,7 @@
 
 For any AI agent working here (Claude Code, Cursor or another). It lists everything from outside
 this project that the owner asked to use: what it is, where it lives in the repo, how it's used,
-how to install the full version, and what was left out and why. Last updated 23 Oct 2026.
+how to install the full version, and what was left out and why. Last updated 24 Oct 2026.
 
 **Order of authority.** The owner's rules come first: `CLAUDE.md`, `.cursor/rules/universe.mdc` and
 `START-HERE.md`. Every tool below serves those rules and never overrides them. If a tool's advice
@@ -12,11 +12,12 @@ clashes with them (for example "purple gradients look AI-made"), the owner's rul
 
 | What | From | What it gives UniVerse | Where it lives here | State |
 | --- | --- | --- | --- | --- |
-| Project commands, reviewers, hook | made for this repo (from ECC) | `/plan-item`, `/check`, `/fix-checks`, `/finish-item`, `/council`, `/polish`; 2 reviewers; the secrets guard | `.claude/commands/`, `.claude/agents/`, `.claude/hooks/` | in use |
+| Project commands, reviewers, hooks | made for this repo (from ECC) | `/plan-item`, `/check`, `/fix-checks`, `/finish-item`, `/council`, `/polish`; 2 reviewers; the secrets guard; the compact reminder; `security-review` and `strategic-compact` skills | `.claude/commands/`, `.claude/agents/`, `.claude/hooks/` | in use |
 | Everything Claude Code (ECC) | github.com/affaan-m/everything-claude-code | the pieces above, adapted | see §2 | partly adopted on purpose |
-| Ponytail | github.com/DietrichGebert/ponytail | lean-code rules, `pnpm lean` | `.cursor/rules/universe.mdc` "Keep it lean", `apps/web/scripts/lean.mjs` | rules in use; plugin optional |
-| Impeccable | github.com/pbakaus/impeccable (Apache-2.0) | design rules, a page checker | universe.mdc "Design and motion", `/polish` | rules in use; full install optional |
+| Ponytail | github.com/DietrichGebert/ponytail (MIT) | lean-code mode, reviews and audits, `pnpm lean` | `.claude/skills/ponytail*` (`/ponytail`), universe.mdc "Keep it lean", `apps/web/scripts/lean.mjs` | 6 skills installed 24 Oct 2026 (no hooks) |
+| Impeccable | github.com/pbakaus/impeccable (Apache-2.0) | design rules, a page checker, design choices to pick from | `.claude/skills/impeccable` (`/impeccable`), universe.mdc "Design and motion", `/polish` | skill installed 24 Oct 2026 (no hooks) |
 | Emil Kowalski's skills | github.com/emilkowalski/skills (MIT) | motion and phone-polish rules | `.claude/skills/` (4 copied), universe.mdc "Design and motion" | 4 skills in the repo; the rest optional |
+| REA (Reverse Engineer Anything) | github.com/morluto/rea (MIT) | an MCP server (227 tools) to analyse apps and binaries, with Ghidra as its engine | `tools/setup-rea.sh` (installs it on the machine, outside the project) | set up 24 Oct 2026; rerun the script in a new cloud session |
 | AgentGPT | github.com/reworkd/AgentGPT | how pages load and arrive smoothly | `apps/web/STAGE-5-HANDOFF.md` S1–S3 | studied, built in our code |
 | The owner's design references | the Relay video, the "Cadra" reel | the landing page, the light river, the card look | `apps/web/STAGE-5-HANDOFF.md` M3, M4, M8 | built in our code |
 
@@ -67,8 +68,13 @@ that reads or writes the local secret files (`.dev.vars`, `.env*`; `*.example` i
   AI session after every change); its MCP servers (they need keys and send data to other services);
   memory and learning hooks; skills written for other stacks (Supabase, Redis, older Next.js); its
   motion skills (the motion layer already does what they describe, and two of their rules clash with
-  ours). One idea is waiting for the owner: the "strategic compact" reminder (suggests `/compact`
-  after about 60 tool calls); turning it on means changing `.claude/settings.json`.
+  ours).
+- **Added 24 Oct 2026 (the owner gave permission), from the worldflowai copy (MIT, commit 432485b):**
+  the strategic compact reminder (`.claude/hooks/suggest-compact.mjs`, on in `.claude/settings.json`;
+  at 60 tool calls and every 30 after, it reminds Claude to suggest `/clear` or `/compact` at the next
+  finished item) with its skill `strategic-compact`, and the `security-review` checklist skill (with
+  an "In UniVerse" section: body.ts, D1 placeholders, access, secrets). Everything else in that copy
+  is a duplicate or for another stack (see universe.mdc, "Optional: Everything Claude Code").
 - **Installing more:** only with the owner's say-so. Install single pieces or a minimal profile,
   never the whole pack; read every hook before turning it on, and never turn on anything that sends
   code or data to another service. Details: universe.mdc, "Optional: Everything Claude Code".
@@ -83,8 +89,13 @@ that reads or writes the local secret files (`.dev.vars`, `.env*`; `*.example` i
   accessibility. Delete instead of commenting out. A known shortcut gets a `shortcut:` comment.
   Summaries to the owner say what was left out.
 - **Tool:** `pnpm lean` (`apps/web/scripts/lean.mjs`, part of `pnpm check`). Keep it at zero.
-- **The plugin itself:** in Claude Code, `/plugin marketplace add DietrichGebert/ponytail`, then
-  install it from the marketplace list. Optional: the rules above already cover it.
+- **Installed (24 Oct 2026, the owner asked for it):** its six skills are in `.claude/skills/`
+  (`ponytail`, `ponytail-review`, `ponytail-audit`, `ponytail-debt`, `ponytail-gain`,
+  `ponytail-help`; where they came from: `.claude/skills/ponytail/SOURCE.md`). In Claude Code:
+  `/ponytail` (or `/ponytail lite|ultra`) for the lean mode, `/ponytail-review` for a change,
+  `/ponytail-audit` for the whole repo, `/ponytail-debt` lists the `shortcut:` comments.
+- **Not installed:** its hooks (they switch the mode on in every session). The full plugin:
+  `/plugin marketplace add DietrichGebert/ponytail`, then `/plugin install ponytail@ponytail`.
 
 ## 4. Impeccable (design)
 
@@ -103,9 +114,15 @@ that reads or writes the local secret files (`.dev.vars`, `.env*`; `*.example` i
   italic accent (the owner's brand).
 - **Running the checker again:** `npx impeccable detect <folder or url>` (downloads its engine the
   first time), or load the in-page file into a browser test as above.
-- **Full install (owner's choice):** `npx impeccable install` from the repo root, then
-  `/impeccable init` in Claude Code. It adds its own skill and **hooks that run on edits** into
-  `.claude/`, so the owner approves it first. Judge every finding against the brand rule.
+- **Installed (24 Oct 2026, the owner asked for it):** the skill is in `.claude/skills/impeccable`
+  (version 4.7.1; where it came from and how to update it: its `SOURCE.md`) and its four helper agents
+  in `.claude/agents/impeccable-*.md`. Type `/impeccable` in Claude Code for its menu, or a command:
+  `/impeccable generate 3 variants hero` (choices to pick from in the browser), `/impeccable live`,
+  `/impeccable animate <page>`, `bolder`, `quieter`, `colorize`, `typeset`, `layout`, `critique`,
+  `audit`, `polish`. Its launcher downloads the Impeccable engine on first use (into
+  `~/.impeccable/bin/`); `/impeccable init` writes PRODUCT.md for it.
+- **Not installed:** its hooks, which run the engine after every edit. `npx impeccable install`
+  adds them if the owner wants them. Judge every finding against the brand rule.
 
 ## 5. Emil Kowalski's skills (motion and polish)
 
@@ -124,6 +141,23 @@ that reads or writes the local secret files (`.dev.vars`, `.env*`; `*.example` i
   `animation-vocabulary`, `apple-design`, `pick-ui-library`, `prototype`, `break-ui`, `ask-sonner`;
   `animate-expo` and `write-swift` are for native apps): `npx skills@latest add emilkowalski/skills`.
   `ask-sonner` is useful here: UniVerse's toasts use Sonner, his library.
+
+## 5b. REA: Reverse Engineer Anything (analysing apps and binaries)
+
+- **Repository:** github.com/morluto/rea (MIT), npm package `rea-agents`. One MCP server for
+  reverse engineering: native binaries (with Ghidra, Hopper or IDA as the engine), JavaScript and
+  Electron apps, .NET assemblies, Android apps and websites. Results come with their evidence.
+  **Lawful use only** (its `DISCLAIMER.md`): software you own or may examine, security research,
+  interoperability. Never for cracking licences, DRM, anti-cheat or copying someone's code.
+- **On this machine (24 Oct 2026):** Node 24.22.1 in `/opt/node24` (REA needs 22.23.4 or newer;
+  the project keeps the machine's Node), Ghidra 12.1.4 in `/opt/ghidra_12.1.4_PUBLIC` with the
+  machine's JDK 21, REA 6.7.0 built in `~/rea`, registered with Claude Code as the `rea` MCP server
+  (Node 24 pinned) plus its `reverse-engineer-anything` skill. `rea doctor --provider ghidra` is
+  healthy, and a real Ghidra decompile of a small program worked.
+- **In a new cloud session:** the machine starts fresh, so run `sh tools/setup-rea.sh` from the repo
+  root (about 10 minutes; checks every download against its SHA-256), then restart Claude Code.
+- **Not set up:** Hopper (macOS/Linux app, needs approval), IDA, JADX and Kuna (REA never downloads
+  these; each needs its own path, see `~/rea/docs/installation.md`).
 
 ## 6. Design references the owner gave
 

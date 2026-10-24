@@ -7,9 +7,16 @@ Workers, with its database on Cloudflare D1 and uploads on R2. This page says wh
 how to run it on your computer, and how to carry on (for the owner and for any AI agent, such as
 Cursor's).
 
-## Where things stand (23 October 2026)
+## Where things stand (24 October 2026)
 
-- **Newest (24 Oct): M20, the Trace network and business mode**, on branch `claude/youthful-fermi-sbdtcp`:
+- **Newest (24 Oct): M21, UniVerse Impact**, on branch `claude/youthful-fermi-sbdtcp`: one account,
+  many apps. The hub `/hub` and an app switcher in the menu: **UniVersity** (the school platform, back
+  in full), **Trace** (now with recalls, prizes, warranties, reviews, an ownership vault, the Radar,
+  Insights and public brand pages), **Relief** (help on a live map, `/relief`) and **Green** (climate
+  actions and teams, `/green`). The landing and the sign-in page have a tab per app. The owner console's
+  Overview can fill everything with sample data (and remove it), and visitors can press **Try the live
+  demo**. Notes: M21 in `STAGE-5-HANDOFF.md`.
+- **Before that (24 Oct): M20, the Trace network and business mode** (its business mode is replaced by the hub in M21), on branch `claude/youthful-fermi-sbdtcp`:
   anyone starts a brand free at `/trace`; live market map `/trace/map`, real-time tracking
   `/trace/tracking` (drivers share from `/carry/<key>`), campaigns, one wallet for everyone, the owner's
   All brands page; every role gets the same business menu and school pages forward to `/trace`. Notes:
@@ -38,7 +45,7 @@ Cursor's).
   for each item.
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: start with its "Next steps" and the
   S2, Q26, S1 and Q24/Q25 notes.
-- **Next database update number: `0179`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0181`** (files in `apps/web/prisma/migrations/`).
 
 **Moving to the $5 Cloudflare plan (Workers Paid)**, in this order:
 1. In Cloudflare: Workers & Pages → Plans → Workers Paid ($5 a month, plus any local tax).

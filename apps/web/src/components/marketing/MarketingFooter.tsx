@@ -4,8 +4,8 @@ import { COMPANY, LEGAL_LINKS } from '@/lib/company';
 import { CookieNotice } from './CookieNotice';
 
 const COLUMNS = [
-  { title: 'Product', links: [{ href: '/#product', label: 'Platform' }, { href: '/#how', label: 'How it works' }, { href: '/#faq', label: 'FAQ' }] },
-  { title: 'For', links: [{ href: '/register', label: 'Brands' }, { href: '/#campaigns', label: 'Shops & installers' }, { href: '/t/demo', label: 'Buyers' }] },
+  { title: 'Product', links: [{ href: '/#apps', label: 'All apps' }, { href: '/#how', label: 'How it works' }, { href: '/#faq', label: 'FAQ' }] },
+  { title: 'Apps', links: [{ href: '/?app=campus', label: 'UniVersity' }, { href: '/?app=trace', label: 'UniVerse Trace' }, { href: '/?app=relief', label: 'UniVerse Relief' }, { href: '/?app=green', label: 'UniVerse Green' }] },
   { title: 'Company', links: [{ href: '/blog', label: 'Blog' }, { href: '/trust', label: 'Status & trust' }, { href: '/contact#sales', label: 'Talk to sales' }] },
 ];
 

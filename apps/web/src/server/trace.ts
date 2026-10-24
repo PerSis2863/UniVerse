@@ -7,6 +7,7 @@ import { oneOf, str, type Body } from './body';
 import { requestCf } from './request-cf';
 import { award, brandBalance } from './trace-wallet';
 import { applyCampaigns } from './trace-campaigns';
+import { divertedScan, passportExtras, shopTier } from './trace-plus';
 
 // UniVerse Trace: every product gets a passport (migrations 0177, 0178). Anyone can start a brand
 // for free (trace_brands; no school needed) and add its products and batches; every unit carries a
@@ -128,17 +129,32 @@ export async function ownBatch(b: Brand, id: string) {
 
 export async function listProducts(u: SessionUser) {
   const b = await brandOf(u);
-  return prisma.traceProduct.findMany({
-    where: { brandId: b.id },
-    orderBy: { createdAt: 'desc' },
-    include: { batches: { orderBy: { createdAt: 'desc' }, select: { id: true, label: true, quantity: true, origin: true, madeAt: true, createdAt: true, status: true, destPlace: true, carrierKey: true } }, _count: { select: { codes: true } } },
-  });
+  const [products, recalls] = await Promise.all([
+    prisma.traceProduct.findMany({
+      where: { brandId: b.id },
+      orderBy: { createdAt: 'desc' },
+      include: { batches: { orderBy: { createdAt: 'desc' }, select: { id: true, label: true, quantity: true, origin: true, madeAt: true, createdAt: true, status: true, destPlace: true, carrierKey: true, allowedCountries: true, blockedAt: true } }, _count: { select: { codes: true } } },
+    }),
+    prisma.traceRecall.findMany({ where: { brandId: b.id, status: 'ACTIVE' }, select: { id: true, batchId: true, reason: true, severity: true } }),
+  ]);
+  return products.map((p) => ({ ...p, batches: p.batches.map((x) => ({ ...x, recall: recalls.find((r) => r.batchId === x.id) ?? null })) }));
 }
 
 function productData(b: Body) {
   return {
     sku: short(b.sku, 60), category: short(b.category, 60)?.toLowerCase() ?? null, description: short(b.description, 2000), story: short(b.story, 4000), imageUrl: httpsUrl(b.imageUrl),
     rewardPoints: num(b.rewardPoints, 0, 10_000) ?? 10, warrantyMonths: num(b.warrantyMonths, 0, 120) ?? 0,
+    ...extrasData(b),
+  };
+}
+/** The product's extras (migration 0179), only those sent: an instant win (1 in `winOdds` units), cold chain and weight. */
+function extrasData(b: Body) {
+  const odds = num(b.winOdds, 2, 1_000_000);
+  return {
+    ...('winOdds' in b && { winOdds: odds === null ? null : Math.round(odds) }),
+    ...('winPrize' in b && { winPrize: short(b.winPrize, 120) }),
+    ...('maxTempC' in b && { maxTempC: num(b.maxTempC, -80, 80) }),
+    ...('weightKg' in b && { weightKg: num(b.weightKg, 0.001, 100_000) ?? 1 }),
   };
 }
 
@@ -153,7 +169,9 @@ export async function createProduct(u: SessionUser, body: Body, extra: { sample?
 export async function updateProduct(u: SessionUser, id: string, body: Body) {
   await ownProduct(await brandOf(u), id);
   const name = short(body.name, 120);
-  return prisma.traceProduct.update({ where: { id }, data: { ...(name && { name }), ...productData(body) } });
+  // Only the extras (the product's settings panel), or the whole product.
+  const onlyExtras = Object.keys(body).every((k) => ['winOdds', 'winPrize', 'maxTempC', 'weightKg'].includes(k));
+  return prisma.traceProduct.update({ where: { id }, data: onlyExtras ? extrasData(body) : { ...(name && { name }), ...productData(body) } });
 }
 
 export async function deleteProduct(u: SessionUser, id: string) {
@@ -301,25 +319,27 @@ export async function scan(raw: string, b: Body, user: SessionUser | null, req: 
         data: { scanCount: { increment: 1 }, ...(first && { firstScanAt: new Date(), firstLat: here?.lat ?? null, firstLng: here?.lng ?? null, firstPlace: place, firstCountry: cf?.country ?? null }) },
       }),
       prisma.traceScan.create({
-        data: { codeId: id, brandId: batch.brandId, productId: batch.productId, category: batch.product.category, userId: user?.id ?? null, verdict, lat: here?.lat, lng: here?.lng, geoLat: geo?.lat, geoLng: geo?.lng, place, country: cf?.country ?? null, device: deviceOf(req) },
+        data: { codeId: id, brandId: batch.brandId, productId: batch.productId, category: batch.product.category, userId: user?.id ?? null, verdict, lat: here?.lat, lng: here?.lng, geoLat: geo?.lat, geoLng: geo?.lng, place, country: cf?.country ?? null, device: deviceOf(req), diverted: divertedScan(batch, cf?.country) },
       }),
     ]);
   }
-  const [events, brand] = await Promise.all([
+  const [events, brand, extras] = await Promise.all([
     prisma.traceEvent.findMany({ where: { batchId: batch.id }, orderBy: { createdAt: 'asc' }, select: { stage: true, place: true, createdAt: true } }),
-    batch.brandId ? prisma.traceBrand.findUnique({ where: { id: batch.brandId }, select: { name: true, logoUrl: true } }) : null,
+    batch.brandId ? prisma.traceBrand.findUnique({ where: { id: batch.brandId }, select: { name: true, logoUrl: true, slug: true } }) : null,
+    passportExtras(batch, id, { first: !again && existing.scanCount === 0, genuine: verdict === 'FIRST', place: code.firstPlace, user }),
   ]);
   const p = batch.product;
   return {
     result: verdict,
     code: formatCode(id), serial: parts.serial + 1,
-    brand: { name: brand?.name ?? 'UniVerse', logoUrl: brand?.logoUrl ?? null },
+    brand: { name: brand?.name ?? 'UniVerse', logoUrl: brand?.logoUrl ?? null, slug: brand?.slug ?? null },
     product: { name: p.name, category: p.category, description: p.description, story: p.story, imageUrl: p.imageUrl, warrantyMonths: p.warrantyMonths, rewardPoints: p.rewardPoints },
     batch: { label: batch.label, origin: batch.origin, madeAt: batch.madeAt, quantity: batch.quantity },
     journey: events,
     scans: code.scanCount, firstScanAt: code.firstScanAt, firstPlace: code.firstPlace,
     claimed: !!code.claimedById, claimedByYou: !!user && code.claimedById === user.id,
-    canClaim: !!user && !code.claimedById && verdict !== 'SUSPECT' && p.rewardPoints > 0,
+    canClaim: !!user && !code.claimedById && verdict !== 'SUSPECT' && !extras.blocked && p.rewardPoints > 0,
+    ...extras,
   };
 }
 
@@ -336,6 +356,12 @@ function demoPassport() {
     batch: { label: 'Harvest 2026 · press 3', origin: 'Jaén, Spain', madeAt: ago(20), quantity: 5000 },
     journey: [{ stage: 'MADE', place: 'Jaén, Spain', createdAt: ago(20) }, { stage: 'SHIPPED', place: 'Port of Valencia', createdAt: ago(9) }, { stage: 'WAREHOUSE', place: 'Lyon', createdAt: ago(6) }, { stage: 'DISTRIBUTOR', place: 'Paris, Rungis', createdAt: ago(3) }, { stage: 'SHOP', place: 'Paris 11e', createdAt: ago(1) }],
     scans: 1, firstScanAt: new Date().toISOString(), firstPlace: null, claimed: false, claimedByYou: false, canClaim: false,
+    recall: null, blocked: false, win: null, warranty: null, owner: null,
+    reviews: { avg: 4.8, count: 312, mine: null, recent: [
+      { stars: 5, text: 'You can taste the difference. Good to know it’s the real one.', place: 'Lyon, FR', createdAt: ago(2) },
+      { stars: 5, text: 'Bought it as a gift, the story on the passport was a nice touch.', place: 'Paris, FR', createdAt: ago(5) },
+      { stars: 4, text: 'Great oil, the bottle could pour better.', place: 'Brussels, BE', createdAt: ago(8) },
+    ] },
   };
 }
 
@@ -348,12 +374,16 @@ export async function claim(raw: string, user: SessionUser, body: Body, req: Req
   const code = id ? await prisma.traceCode.findUnique({ where: { id }, include: { product: { select: { id: true, name: true, rewardPoints: true } } } }) : null;
   if (!code || !code.brandId) throw new NotFoundException('Scan the code first.');
   if (code.status === 'FLAGGED') throw new ForbiddenException('This code was reported as a copy, so it can’t earn points.');
+  if ((await prisma.traceBatch.findUnique({ where: { id: code.batchId }, select: { blockedAt: true } }))?.blockedAt) throw new ForbiddenException('The brand blocked this batch (reported stolen), so it can’t earn points. Please tell the brand where you got it.');
   if (await prisma.traceScan.count({ where: { codeId: code.id, verdict: 'SUSPECT' } })) throw new ForbiddenException('This code was also scanned far from here, so it may be a copy. Points are paused until the brand checks it.');
   const won = await prisma.traceCode.updateMany({ where: { id: code.id, claimedById: null }, data: { claimedById: user.id, claimedAt: new Date() } });
   if (!won.count) throw new BadRequestException(code.claimedById === user.id ? 'You already earned the points for this one.' : 'Someone already earned the points for this one.');
-  if (code.product.rewardPoints > 0) await award(user.id, code.brandId, 'SCAN', code.product.rewardPoints, { codeId: code.id, note: `Scanned ${code.product.name}` });
+  // Shops that sell more of the brand earn more per unit (Bronze, Silver ×1.25, Gold ×1.5; src/lib/trace.ts TIERS).
+  const tier = await shopTier(user.id, code.brandId);
+  const base = Math.round(code.product.rewardPoints * tier.multiplier);
+  if (base > 0) await award(user.id, code.brandId, 'SCAN', base, { codeId: code.id, note: `Scanned ${code.product.name}${tier.multiplier > 1 ? ` (${tier.label} ×${tier.multiplier})` : ''}` });
   const { cf, geo } = cfPosition(req);
   const bonuses = await applyCampaigns({ brandId: code.brandId, productId: code.product.id, userId: user.id, codeId: code.id, here: position(body) ?? geo, country: cf?.country ?? null });
   const extra = bonuses.reduce((a, x) => a + x.points, 0);
-  return { points: code.product.rewardPoints + extra, base: code.product.rewardPoints, bonuses, balance: await brandBalance(user.id, code.brandId) };
+  return { points: base + extra, base, bonuses, tier: { label: tier.label, multiplier: tier.multiplier, next: tier.next }, balance: await brandBalance(user.id, code.brandId) };
 }

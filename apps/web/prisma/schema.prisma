@@ -6599,6 +6599,10 @@ model TraceProduct {
   batches        TraceBatch[]
   codes          TraceCode[]
 
+  winOdds   Int?
+  winPrize  String?
+  maxTempC  Float?
+  weightKg  Float   @default(1)
   @@index([organizationId])
   @@map("trace_products")
 }
@@ -6631,6 +6635,8 @@ model TraceBatch {
   events         TraceEvent[]
   pings          TracePing[]
 
+  allowedCountries String?
+  blockedAt        DateTime?
   @@index([productId])
   @@index([organizationId])
   @@map("trace_batches")
@@ -6682,6 +6688,7 @@ model TraceScan {
   device         String?
   createdAt      DateTime  @default(now())
 
+  diverted  Boolean @default(false)
   @@index([codeId, createdAt])
   @@index([organizationId, createdAt])
   @@map("trace_scans")
@@ -6818,8 +6825,149 @@ model TracePing {
   accuracyM Float?
   createdAt DateTime   @default(now())
 
+  tempC     Float?
   @@index([batchId, createdAt])
   @@index([brandId, createdAt])
   @@map("trace_pings")
 }
 
+model TraceRecall {
+  id          String    @id @default(cuid())
+  brandId     String
+  batchId     String
+  reason      String
+  advice      String?
+  severity    String    @default("HIGH")
+  status      String    @default("ACTIVE")
+  createdById String?
+  createdAt   DateTime  @default(now())
+  endedAt     DateTime?
+
+  @@index([batchId, status])
+  @@index([brandId, createdAt])
+  @@map("trace_recalls")
+}
+
+model TraceWarranty {
+  id        String   @id @default(cuid())
+  codeId    String   @unique
+  brandId   String
+  productId String
+  userId    String?
+  name      String?
+  email     String?
+  country   String?
+  endsAt    DateTime
+  createdAt DateTime @default(now())
+
+  @@index([brandId, createdAt])
+  @@map("trace_warranties")
+}
+
+model TraceOwner {
+  id            String    @id @default(cuid())
+  codeId        String    @unique
+  brandId       String
+  productId     String
+  userId        String
+  owners        Int       @default(1)
+  transferCode  String?   @unique
+  transferUntil DateTime?
+  since         DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@map("trace_owners")
+}
+
+model TraceReview {
+  id        String   @id @default(cuid())
+  codeId    String   @unique
+  brandId   String
+  productId String
+  userId    String?
+  stars     Int
+  text      String?
+  place     String?
+  country   String?
+  createdAt DateTime @default(now())
+
+  @@index([brandId, createdAt])
+  @@map("trace_reviews")
+}
+
+model TraceWin {
+  id         String    @id @default(cuid())
+  codeId     String    @unique
+  brandId    String
+  productId  String
+  prize      String
+  claimCode  String    @unique
+  place      String?
+  redeemedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([brandId, createdAt])
+  @@map("trace_wins")
+}
+
+model ReliefPost {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  kind      String
+  title     String
+  details   String?
+  people    Int       @default(1)
+  urgency   String    @default("MEDIUM")
+  lat       Float
+  lng       Float
+  place     String?
+  status    String    @default("OPEN")
+  helperId  String?
+  takenAt   DateTime?
+  doneAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([helperId])
+  @@map("relief_posts")
+}
+
+model GreenTeam {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  ownerId   String?
+  createdAt DateTime @default(now())
+
+  @@map("green_teams")
+}
+
+model GreenMember {
+  teamId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@id([teamId, userId])
+  @@index([userId])
+  @@map("green_members")
+}
+
+model GreenAction {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String
+  amount    Float
+  co2Kg     Float
+  note      String?
+  lat       Float?
+  lng       Float?
+  place     String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("green_actions")
+}

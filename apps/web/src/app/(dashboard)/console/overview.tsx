@@ -10,6 +10,7 @@ import { ConsoleSkeleton, SearchBox, card, fetcher, heavy, matches, useDebounced
 import { type PlanUsage, PlanUsageCard } from './server';
 import { type Tab, Ticker } from './deck';
 import { LiveBoard } from './live';
+import { SampleWorldCard } from './sample-world';
 
 // The console's first section (M13): what needs the owner, the live instrument board (live.tsx), the rest as
 // small tiles (amber when something waits), new accounts drawn as a line, where and on what people
@@ -100,6 +101,7 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
   const dot = 'absolute -start-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-400 shadow-[0_0_10px_rgba(236,72,153,0.55)]';
   return (
     <div className="space-y-6">
+      <SampleWorldCard />
       <LiveBoard />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

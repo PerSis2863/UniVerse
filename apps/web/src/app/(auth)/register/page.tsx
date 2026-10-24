@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Loader2, User } from 'lucide-react';
+import { Mail, Lock, Loader2, User, ArrowRight, ArrowLeft, GraduationCap, Building2, Globe, Check, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Accent, Tag } from '@/components/landing/bits';
 import { useAuthStore } from '@/store/auth';
@@ -14,8 +14,12 @@ import { awaitingApproval } from '@/types';
 import { reportSession } from '@/lib/sign-in-history';
 import { EmailVerifyPanel } from '@/components/auth/EmailVerifyPanel';
 import { TERMS_VERSION } from '@/lib/terms-version';
+import { TabPill } from '@/components/ui/Glide';
 import dynamic from 'next/dynamic';
-import { homeFor } from '@/lib/role-home';
+import { chosenApp, homeFor } from '@/lib/role-home';
+import { AppTabs } from '@/components/landing/AppTabs';
+import { appById } from '@/lib/apps';
+import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 
 // Phone sign-in carries a phone-number library (about 50 KB): it loads when someone chooses it
 // (or points at the button), not with the page.
@@ -25,22 +29,66 @@ const loadPhoneFlow = () => import('@/components/auth/PhoneAuthFlow');
 const preloadPhoneFlow = () => { loadPhoneFlow().catch(() => {}); };
 const PhoneAuthFlow = dynamic(() => loadPhoneFlow().then((m) => m.PhoneAuthFlow), { ssr: false, loading: () => <div className="h-56 rounded-2xl skeleton" /> });
 
-// Business mode (src/lib/business.ts): one kind of account for everyone (brands, shops, drivers,
-// buyers), open straight away; what someone does on UniVerse Trace decides the rest.
-const ROLE = 'STUDENT';
+const ROLES = [
+  {
+    id: 'STUDENT',
+    label: 'Individual',
+    description: 'Students and anyone who wants to learn, join projects and earn verified credentials.',
+    icon: GraduationCap,
+    color: 'indigo',
+    gradient: 'from-indigo-500/20 to-purple-500/20',
+    border: 'border-indigo-500',
+    glow: 'shadow-indigo-500/20',
+  },
+  {
+    id: 'GUARDIAN',
+    label: 'Parent or guardian',
+    description: 'Follow your child’s grades, attendance, deadlines and report cards. Your child gives you a code to link your accounts.',
+    icon: Users,
+    color: 'teal',
+    gradient: 'from-teal-500/20 to-cyan-500/20',
+    border: 'border-teal-500',
+    glow: 'shadow-teal-500/20',
+  },
+  {
+    id: 'TEACHER',
+    label: 'Staff / Mentor',
+    description: 'Teachers, university staff and mentors: manage courses, students and content. An admin approves staff accounts.',
+    icon: Building2,
+    color: 'emerald',
+    gradient: 'from-emerald-500/20 to-teal-500/20',
+    border: 'border-emerald-500',
+    glow: 'shadow-emerald-500/20',
+  },
+  {
+    id: 'ADMIN',
+    label: 'Organisation',
+    description: 'NGOs, companies and institutions: post projects and partner with universities. An admin approves organizations.',
+    icon: Globe,
+    color: 'amber',
+    gradient: 'from-amber-500/20 to-orange-500/20',
+    border: 'border-amber-500',
+    glow: 'shadow-amber-500/20',
+  },
+] as const;
 
 export default function RegisterPage() {
   const router = useRouter();
   const { setUser, setTokens } = useAuthStore();
 
-  const [step, setStep] = useState<'credentials' | 'verify'>('credentials');
+  // UniVersity asks how you'll use it (student, parent, staff, organization); the other apps
+  // (src/lib/apps.ts) open straight away as an individual account.
+  const app = useChosenApp();
+  const campus = app === 'campus';
+  const [step, setStep] = useState<'role' | 'credentials' | 'verify'>(() => (campus ? 'role' : 'credentials'));
   // "Finish registration": signed in with Google / Apple / phone on the sign-in page, but never
-  // registered. They give their name here; no second sign-in needed.
+  // registered. They pick a role and name here; no second sign-in needed.
   const [finishing, setFinishing] = useState<{ email: string; name: string; method: 'google' | 'phone' | 'apple' | 'password' } | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string>(() => (campus ? '' : 'STUDENT'));
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  // From the landing page's closing card: ?email=… fills the email in.
+  // From the landing page's "Pick the task you hate most" card: ?email=… fills the email in.
   useEffect(() => {
     const given = new URLSearchParams(window.location.search).get('email');
     if (given) queueMicrotask(() => setEmail(given.slice(0, 200)));
@@ -48,7 +96,10 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
+  const [individual, setIndividual] = useState<'STUDENT' | 'INDEPENDENT' | null>(() => (campus ? null : 'INDEPENDENT')); // for Individual sign-ups
   const [agreed, setAgreed] = useState(false); // Terms and Privacy Policy, required to create the account
+
+  const selectedRoleData = ROLES.find(r => r.id === selectedRole);
 
   // Ready the Google/Apple window now, so a tap opens it straight away (not blocked).
   useEffect(() => { warmUpPopupSignIn(); }, []);
@@ -89,13 +140,13 @@ export default function RegisterPage() {
     try {
       localStorage.setItem('accessToken', token);
       setTokens(token);
-      const { data: user } = await api.post('/auth/register', { name: displayName, role: ROLE, accountType: 'INDEPENDENT', acceptTerms: agreed ? TERMS_VERSION : undefined });
+      const { data: user } = await api.post('/auth/register', { name: displayName, role: selectedRole, accountType: selectedRole === 'STUDENT' ? individual : undefined, acceptTerms: agreed ? TERMS_VERSION : undefined });
       const me = { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status || 'ACTIVE', createdAt: user.createdAt || new Date().toISOString(), application: user.application ?? null };
       setUser(me);
       reportSession('SIGN_UP', method);
       // Teacher / NGO accounts wait for an admin: they continue on the application form.
       if (awaitingApproval(me)) router.push('/application');
-      else router.push(homeFor(user));
+      else router.push(homeFor(user, chosenApp()));
     } catch (err) {
       console.error('Failed to sync user data', err);
       setError('Registration successful, but failed to setup profile. Please try logging in.');
@@ -163,14 +214,94 @@ export default function RegisterPage() {
     <div className="w-full">
       {/* Header */}
       <div className="mb-8">
-        <Tag>join the network</Tag>
+        <Tag>join UniVerse Impact</Tag>
         <h1 className="mt-5 text-4xl font-bold tracking-[-0.03em] text-white mb-2">Create an <Accent>account.</Accent></h1>
-        <p className="text-zinc-400 text-sm">{finishing ? 'You’re signed in: add your name to finish creating your account.' : 'Free for brands, shops, drivers and buyers. Start your brand or your wallet in a minute.'}</p>
+        <p className="text-zinc-400 text-sm">{campus ? (finishing ? 'You’re signed in — choose how you’ll use UniVersity to finish creating your account.' : 'Join UniVersity as an individual, a parent, a staff member or an organization.') : `Join ${appById(app).name}. The same account opens every app.`}</p>
+        <div className="mt-5"><AppTabs small value={app} onChange={(id) => { setChosenApp(id); if (id !== 'campus') { setSelectedRole('STUDENT'); setIndividual('INDEPENDENT'); setStep((s) => (s === 'role' ? 'credentials' : s)); } else setStep((s) => (s === 'credentials' && !finishing ? 'role' : s)); }} label="Join" layoutId="register-app" /></div>
       </div>
+
+      {/* Step indicator */}
+      {campus && <div className="flex items-center gap-3 mb-6">
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${step === 'role' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+          {step !== 'role' ? <Check className="w-3 h-3" /> : <span>1</span>}
+          Choose Role
+        </div>
+        <div className="flex-1 h-px bg-zinc-800" />
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${step !== 'role' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+          <span>2</span>
+          {finishing ? 'Your details' : 'Create Account'}
+        </div>
+      </div>}
 
       <div className="rounded-3xl border border-white/[0.08] bg-[#0b1a24]/75 backdrop-blur-md shadow-[0_40px_120px_-40px_rgba(37,55,69,0.55)] p-6 sm:p-8">
         {error && !showPhoneFlow && (
           <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">{error}</div>
+        )}
+
+        {/* STEP 1: Role Selection */}
+        {step === 'role' && (
+          <div>
+            <p className="text-zinc-400 text-sm mb-5 font-medium">I am joining as a...</p>
+            <div className="space-y-3 mb-6">
+              {ROLES.map((role) => {
+                const Icon = role.icon;
+                const isSelected = selectedRole === role.id;
+                return (
+                  <button
+                    key={role.id}
+                    type="button"
+                    onClick={() => setSelectedRole(role.id)}
+                    className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-start group ${
+                      isSelected
+                        ? `${role.border} bg-gradient-to-r ${role.gradient} shadow-lg ${role.glow}`
+                        : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-600 hover:bg-zinc-900/60'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
+                      isSelected ? 'bg-white/10' : 'bg-zinc-800 group-hover:bg-zinc-700'
+                    }`}>
+                      <Icon className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-zinc-400'}`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className={`font-semibold text-sm ${isSelected ? 'text-white' : 'text-zinc-300'}`}>{role.label}</div>
+                      <div className={`text-xs mt-0.5 ${isSelected ? 'text-white/70' : 'text-zinc-500'}`}>{role.description}</div>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                      isSelected ? 'border-white bg-white/20' : 'border-zinc-700'
+                    }`}>
+                      {isSelected && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {selectedRole === 'STUDENT' && (
+              <fieldset className="mb-6 -mt-2">
+                <legend className="text-zinc-400 text-sm mb-3 font-medium">Which describes you?</legend>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {([
+                    ['STUDENT', 'I’m a student', 'At a university or school. You’ll add your details and your student card or enrolment certificate; an admin verifies it before your account opens.'],
+                    ['INDEPENDENT', 'I’m independent', 'Freelancer, professional or lifelong learner, not enrolled anywhere. No documents needed: start straight away.'],
+                  ] as const).map(([id, title, text]) => (
+                    <button key={id} type="button" onClick={() => setIndividual(id)} aria-pressed={individual === id}
+                      className={`relative isolate text-start p-3.5 rounded-xl border-2 transition-all ${individual === id ? 'border-indigo-500' : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-600'}`}>{individual === id && <TabPill id="app-auth-register-page-0" variant="soft" />}
+                      <span className="flex items-center gap-2 font-semibold text-sm text-white">{individual === id && <Check className="w-4 h-4 text-indigo-400" />}{title}</span>
+                      <span className="block text-xs text-zinc-400 mt-1 leading-relaxed">{text}</span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+            <button
+              type="button"
+              disabled={!selectedRole || (selectedRole === 'STUDENT' && !individual)}
+              onClick={() => setStep('credentials')}
+              className="btn-primary btn-lg w-full"
+            >
+              Continue as {selectedRole === 'STUDENT' && individual ? (individual === 'STUDENT' ? 'a student' : 'an independent') : selectedRoleData?.label || '...'}
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         )}
 
         {/* Email verification (email + password sign-up) */}
@@ -181,6 +312,13 @@ export default function RegisterPage() {
         {/* STEP 2 for people already signed in: just their name */}
         {step === 'credentials' && finishing && (
           <form onSubmit={finishRegistration} className="space-y-4">
+            {campus && selectedRoleData && (
+              <div className={`flex items-center gap-2 p-3 rounded-xl border bg-gradient-to-r ${selectedRoleData.gradient} ${selectedRoleData.border}`}>
+                <selectedRoleData.icon className="w-4 h-4 text-white" />
+                <span className="text-white text-sm font-semibold">Joining as {selectedRoleData.label}</span>
+                <button type="button" onClick={() => setStep('role')} className="ms-auto text-white/60 hover:text-white text-xs underline">Change</button>
+              </div>
+            )}
             <p className="text-sm text-zinc-400">Signed in as <span className="text-white font-medium">{finishing.email}</span></p>
             <div>
               <label className="block text-zinc-400 text-sm font-medium mb-1.5">Full Name</label>
@@ -208,6 +346,16 @@ export default function RegisterPage() {
               <PhoneAuthFlow isRegister={true} onSuccess={(token, n) => handleRegisterSuccess(token, n ?? '', 'phone')} onCancel={() => setShowPhoneFlow(false)} />
             ) : (
               <>
+                {/* Role badge */}
+                {campus && selectedRoleData && (
+                  <div className={`flex items-center gap-2 p-3 rounded-xl border bg-gradient-to-r ${selectedRoleData.gradient} ${selectedRoleData.border} mb-5`}>
+                    <selectedRoleData.icon className="w-4 h-4 text-white" />
+                    <span className="text-white text-sm font-semibold">Signing up as {selectedRoleData.label}</span>
+                    <button onClick={() => setStep('role')} className="ms-auto text-white/60 hover:text-white text-xs underline">Change</button>
+                  </div>
+                )}
+
+
                 <div className={`grid grid-cols-1 ${PHONE_SIGN_IN ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-2.5 mb-6`}>
                   <button
                     type="button"
@@ -295,6 +443,10 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="flex gap-3 pt-2">
+                    {campus && <button type="button" onClick={() => setStep('role')}
+                      className="flex items-center justify-center gap-2 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 rounded-xl py-2.5 px-4 font-semibold text-sm transition-colors">
+                      <ArrowLeft className="w-4 h-4" /> Back
+                    </button>}
                     <button type="submit" disabled={isLoading || !agreed}
                       className="btn-primary flex-1">
                       {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Account'}

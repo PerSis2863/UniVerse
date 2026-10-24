@@ -19,7 +19,6 @@ import { authedJson } from '@/lib/authed-fetch';
 import { isSampleMode } from '@/lib/sample-mode';
 import { viewAsToken } from '@/lib/view-as';
 import ViewAsBanner from '@/components/layout/ViewAsBanner';
-import { businessRedirect } from '@/lib/business';
 
 type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null; owner?: boolean; onboardedAt?: string | null; permissions?: string[] };
 
@@ -144,12 +143,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (waiting && pathname !== '/application') router.replace('/application');
   }, [waiting, pathname, router]);
 
-  // Business mode (src/lib/business.ts): the school pages aren't part of the app any more.
-  const away = !guardian && !waiting ? businessRedirect(pathname) : null;
-  useEffect(() => {
-    if (away) router.replace(away);
-  }, [away, router]);
-
   // Show the app skeleton while the session is restored (static markup, so no hydration mismatch)
   if (!mounted || ((!isLoaded || !isSignedIn) && !demoUser)) return <AppSkeleton />;
 
@@ -180,7 +173,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <ActivityTracker />
         <SelectionHelp />
         <ViewAsBanner />
-        {away ? null : children}
+        {children}
       </DashboardShell>
     </DataConfig>
   );

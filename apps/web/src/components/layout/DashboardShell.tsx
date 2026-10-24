@@ -24,6 +24,7 @@ import { PendingPage } from './PendingPage';
 import { AppSkeleton } from './AppSkeleton';
 import { entrancePending, playAppEntrance } from '@/lib/app-entrance';
 import { isTabRoot, tabsForRole, type TabItem } from '@/lib/app-tabs';
+import { inboxFor } from '@/lib/apps';
 import { goBack } from '@/lib/app-nav';
 import { useSectionRoot } from '@/lib/chrome';
 import { useRouter } from 'next/navigation';
@@ -48,7 +49,7 @@ interface DashboardShellProps {
 function MobileTabBar({ role, onMore, moreOpen, onCreate, createOpen }: { role: string; onMore: () => void; moreOpen: boolean; onCreate?: () => void; createOpen: boolean }) {
   // The tapped tab lights up at once, not when its page has downloaded.
   const pathname = useOptimisticPath(usePathname());
-  const { base, items } = tabsForRole(role);
+  const { base, items } = tabsForRole(role, pathname);
 
   const isActive = (item: TabItem) => {
     if (item.href === base) return pathname === base || !!item.match?.includes(pathname);
@@ -120,7 +121,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
   // Inner pages get a back button (and, in the installed iPhone app, the edge swipe): an installed
   // web app has no browser back button, so without it you could get stuck on an inner page.
   const sectionRoot = useSectionRoot();
-  const home = tabsForRole(user?.role ?? 'STUDENT').base;
+  const home = tabsForRole(user?.role ?? 'STUDENT', pathname).base;
   const canGoBack = !!user && !isTabRoot(pathname, user.role) && sectionRoot !== pathname;
   const back = () => goBack(router, home);
   // The unread count from the notifications list the page's Topbar already loaded (no extra request).
@@ -151,7 +152,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
     if (saveData || document.documentElement.classList.contains('low-data')) return;
     const run = () => {
       tabsPrefetched = true;
-      for (const t of tabsForRole(role).items) if (t.href !== window.location.pathname) router.prefetch(t.href);
+      for (const t of tabsForRole(role, window.location.pathname).items) if (t.href !== window.location.pathname) router.prefetch(t.href);
     };
     const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
     if (w.requestIdleCallback) { const id = w.requestIdleCallback(run, { timeout: 4000 }); return () => w.cancelIdleCallback?.(id); }
@@ -217,7 +218,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
       <PullToRefresh />
       <MiniPlayer />
       <InstallBanner />
-      {user && <IncomingCall inboxPath={`${tabsForRole(user.role).base}/inbox`} />}
+      {user && <IncomingCall inboxPath={inboxFor(user.role)} />}
     </div>
   );
 }

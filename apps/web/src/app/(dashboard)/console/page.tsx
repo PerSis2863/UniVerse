@@ -25,6 +25,7 @@ import { DatabasePanel } from './database';
 import { HealthPanel } from './health';
 import { HealthNumbersPanel } from './health-numbers';
 import { ModerationPanel, SchoolsPanel } from './schools';
+import { BusinessPanel } from './business';
 import { LanguagesPanel } from './languages';
 import { BlogPanel } from './blog';
 import { CallsPanel } from './calls';
@@ -109,6 +110,8 @@ export default function OwnerConsole() {
         <TabPanel k={`${tab}-${person ?? ''}`}>
         {tab === 'overview' ? (
           <Overview onPerson={openPerson} onTab={(t, status) => show(t, { status })} />
+        ) : tab === 'business' ? (
+          <BusinessPanel />
         ) : tab === 'schools' ? (
           <SchoolsPanel onPerson={openPerson} />
         ) : tab === 'moderation' ? (

@@ -14,12 +14,12 @@ import { Accent, EASE } from '@/components/landing/bits';
 // groups (one row of groups, then that group's sections), and numbers that roll to new values.
 // The look of every section's cards comes from `card` (shared.tsx) and globals.css "M13".
 
-export type Tab = 'overview' | 'schools' | 'moderation' | 'languages' | 'health' | 'numbers' | 'calls' | 'analytics' | 'server' | 'activity' | 'chats' | 'announce' | 'blog' | 'people' | 'database' | 'data' | 'money' | 'changes' | 'errors' | 'deletions' | 'guide' | 'flows';
+export type Tab = 'overview' | 'business' | 'schools' | 'moderation' | 'languages' | 'health' | 'numbers' | 'calls' | 'analytics' | 'server' | 'activity' | 'chats' | 'announce' | 'blog' | 'people' | 'database' | 'data' | 'money' | 'changes' | 'errors' | 'deletions' | 'guide' | 'flows';
 
 type Icon = typeof Users;
 const T: Record<Tab, [string, Icon]> = {
   overview: ['Overview', LayoutDashboard],
-  people: ['People', Users], schools: ['Schools', Building2], moderation: ['Moderation', ShieldAlert], deletions: ['Deletion requests', Trash2],
+  business: ['Apps & business', Building2], people: ['People', Users], schools: ['Schools', Building2], moderation: ['Moderation', ShieldAlert], deletions: ['Deletion requests', Trash2],
   activity: ['Live activity', Activity], chats: ['Live chats', MessagesSquare], calls: ['Calls', PhoneCall], announce: ['Announce', Megaphone],
   health: ['Health check', ShieldCheck], numbers: ['Health numbers', Gauge], errors: ['Errors', Bug], server: ['Server', Server], database: ['Database', HardDrive],
   data: ['All data', Database], changes: ['Changes & undo', History], analytics: ['Analytics', BarChart3], money: ['Money', Wallet],
@@ -28,7 +28,7 @@ const T: Record<Tab, [string, Icon]> = {
 export const TABS = (Object.keys(T) as Tab[]).map((id) => ({ id, label: T[id][0], icon: T[id][1] }));
 
 const GROUPS: { id: string; label: string; icon: Icon; tabs: Tab[] }[] = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard, tabs: ['overview'] },
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard, tabs: ['overview', 'business'] },
   { id: 'people', label: 'People', icon: Users, tabs: ['people', 'schools', 'moderation', 'deletions'] },
   { id: 'live', label: 'Live', icon: Radio, tabs: ['activity', 'chats', 'calls', 'announce'] },
   { id: 'health', label: 'Health', icon: ShieldCheck, tabs: ['health', 'numbers', 'errors', 'server', 'database'] },
