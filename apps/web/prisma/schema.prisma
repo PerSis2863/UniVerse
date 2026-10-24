@@ -6575,3 +6575,114 @@ model MealOrder {
   @@index([userId])
   @@map("meal_orders")
 }
+
+// ─── UniVerse Trace (migration 0177): every product gets a passport ───
+// A brand's products, batches, one unguessable code per unit (printed as a QR code), every scan and
+// each batch's journey. organizationId / userId columns are plain ids (foreign keys in SQL).
+
+model TraceProduct {
+  id             String       @id @default(cuid())
+  organizationId String?
+  name           String
+  sku            String?
+  category       String?
+  description    String?
+  story          String?
+  imageUrl       String?
+  rewardPoints   Int          @default(10)
+  warrantyMonths Int          @default(0)
+  createdById    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  batches        TraceBatch[]
+  codes          TraceCode[]
+
+  @@index([organizationId])
+  @@map("trace_products")
+}
+
+model TraceBatch {
+  id             String       @id @default(cuid())
+  productId      String
+  product        TraceProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  organizationId String?
+  label          String
+  /// Codes are codeKey + serial + a signature made with `secret` (src/server/trace.ts).
+  codeKey        String       @unique
+  secret         String
+  quantity       Int
+  origin         String?
+  lat            Float?
+  lng            Float?
+  madeAt         DateTime?
+  createdById    String?
+  createdAt      DateTime     @default(now())
+  codes          TraceCode[]
+  events         TraceEvent[]
+
+  @@index([productId])
+  @@index([organizationId])
+  @@map("trace_batches")
+}
+
+model TraceCode {
+  id             String       @id
+  batchId        String
+  batch          TraceBatch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  productId      String
+  product        TraceProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  organizationId String?
+  serial         Int
+  scanCount      Int          @default(0)
+  firstScanAt    DateTime?
+  firstLat       Float?
+  firstLng       Float?
+  firstPlace     String?
+  firstCountry   String?
+  claimedById    String?
+  claimedAt      DateTime?
+  status         String       @default("ACTIVE")
+  createdAt      DateTime     @default(now())
+  scans          TraceScan[]
+
+  @@index([batchId, serial])
+  @@index([organizationId])
+  @@index([claimedById])
+  @@map("trace_codes")
+}
+
+model TraceScan {
+  id             String    @id @default(cuid())
+  codeId         String
+  code           TraceCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  organizationId String?
+  userId         String?
+  verdict        String
+  lat            Float?
+  lng            Float?
+  place          String?
+  country        String?
+  device         String?
+  createdAt      DateTime  @default(now())
+
+  @@index([codeId, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("trace_scans")
+}
+
+model TraceEvent {
+  id             String     @id @default(cuid())
+  batchId        String
+  batch          TraceBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  organizationId String?
+  stage          String
+  place          String?
+  lat            Float?
+  lng            Float?
+  note           String?
+  actorId        String?
+  createdAt      DateTime   @default(now())
+
+  @@index([batchId, createdAt])
+  @@map("trace_events")
+}

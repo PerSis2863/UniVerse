@@ -71,6 +71,15 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
   glows, and the hot-pink light river. Don't turn
   the two tones into black and white again. Use `.panel` / `.card` / `.btn-primary` / `TabPill`, not
   frosted cards; a row of headline numbers gets `kpi-row` (first card the gradient, second soft blue).
+- **UniVerse Trace (the owner, 24 Oct 2026: "make this project something unique and different and
+  bold")**: the product side of UniVerse: every product gets a passport. Brands (admins) add products
+  and batches at `/trace`; every unit's code is `codeKey + serial + HMAC signature` with the batch's own
+  secret (`src/server/trace.ts`), so codes can't be guessed or forged and rows exist only once scanned;
+  anyone scans at `/t/<code>` (public; `/t/demo` is a built-in sample); a label seen far from its first
+  scan (GPS if the browser already allows it, otherwise the country) or too often is a likely copy
+  (`src/lib/trace.ts`); signed-in shops earn the product's points in the Impact Credits ledger. Never
+  send a batch's `secret` to a browser. Keep the school product and Collaborate as they are: the owner
+  likes Collaborate.
 - **Numbers and charts (the owner's "Instrumental" reference, 24 Oct 2026)**: analytics, dashboards
   and the owner console use `InstrumentBoard` (`src/components/instruments/Board.tsx`): a framed board
   with a Live light, cells each a mono number and its own instrument from `parts.tsx` (`Spark` line with

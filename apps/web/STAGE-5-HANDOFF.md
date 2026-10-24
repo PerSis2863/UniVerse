@@ -1506,3 +1506,22 @@ Progress table (row D6).
   resolved once on `<html>`; `.dark, .on-dark` now re-resolve the theme colours), and the sign-in
   pages' blocked Google ping (`apis.google.com` in `connect-src`).
 
+## M19 · UniVerse Trace: every product gets a passport
+
+- The owner asked to turn the project into "something unique and different and bold" in supply chain
+  and marketing, using the existing features. Trace reuses them: signed codes and public check pages
+  (like credentials), the hash-chained Impact Credits ledger for shop points, GPS/country checks (like
+  shift check-ins), the instrument boards for the brand's live view, the landing and the menus.
+- Data: migration 0177 (`trace_products`, `trace_batches` with `codeKey` + `secret`, `trace_codes`
+  created on first scan, `trace_scans`, `trace_events`). Next migration: 0178.
+- API (`src/server/modules/trace.ts`, `/api/core/trace/*`): `POST scan/:code` (public; `again: true`
+  from a browser that already scanned it records nothing), `POST scan/:code/claim`, `GET me`; admins:
+  `overview`, `products`, `products/:id/batches`, `batches/:id`, `batches/:id/codes` (computed, 1,000
+  a page), `batches/:id/events`, `codes/:code/flag`, `demo`.
+- Pages: `/trace` (brand console for admins and the owner; "Scan & earn" with points for everyone
+  else), `/trace/print?batch=` (labels and a CSV for label printers), `/t/[code]` (the passport; built
+  as `/t/open`, like `/verify/[id]`). `/p/[handle]` is the skills passport, not this.
+- The demo admin is read-only (`demoWriteBlocked`), so creating products needs a real admin.
+- Landing: the hero is now "Every product gets a passport." with an animated passport phone
+  (`components/landing/PassportCard.tsx`) and a Trace section; the school sections follow.
+

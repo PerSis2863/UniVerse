@@ -12,7 +12,7 @@ import { recordXApiStatement } from './analytics-warehouse';
 export interface MintCreditsInput {
   userId: string;
   organizationId?: string;
-  actionType: 'VOLUNTEER_HOURS' | 'CREDENTIAL_ISSUED' | 'PROJECT_MILESTONE' | 'REDEEMED_SCHOLARSHIP' | 'SCHOLARSHIP_REFUND' | 'COMMUNITY_SERVICE';
+  actionType: 'VOLUNTEER_HOURS' | 'CREDENTIAL_ISSUED' | 'PROJECT_MILESTONE' | 'REDEEMED_SCHOLARSHIP' | 'SCHOLARSHIP_REFUND' | 'COMMUNITY_SERVICE' | 'PRODUCT_SCAN';
   credits: number;
   description: string;
   sourceReferenceId?: string;
