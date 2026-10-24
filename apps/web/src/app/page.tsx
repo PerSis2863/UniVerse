@@ -10,7 +10,8 @@ import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { LightTrail } from '@/components/LightTrail';
-import { FlowCard } from '@/components/landing/FlowCard';
+import { PassportCard } from '@/components/landing/PassportCard';
+import { TraceSection } from '@/components/landing/TraceSection';
 import { Proof } from '@/components/landing/Proof';
 import { Glue } from '@/components/landing/Glue';
 import { Bento } from '@/components/landing/Bento';
@@ -24,6 +25,8 @@ import { Accent, EASE, Reveal, Tag, ghost, primary } from '@/components/landing/
 // product does; no invented usage numbers or quotes. Sections: src/components/landing/.
 
 const FAQ = [
+  { q: 'What is UniVerse Trace?', a: 'A passport for every product. Each unit gets its own signed code (printed as a QR code). Buyers scan it to see it’s genuine and where it has been; shops and installers scan it to earn the brand’s points; the brand sees every scan live and every likely copy. Try the sample: universeimpact.com/t/demo.' },
+  { q: 'How does it catch fake products?', a: 'Codes are signed, so nobody can make up a valid one. A copied label is caught when the same code is scanned far from where it was first checked, or far too often; the brand can then block it with one tap.' },
   { q: 'Is UniVerse free to use?', a: 'Yes for students: they never pay. A school, university or NGO sets UniVerse up for its people, and everyone in it gets the student, teacher and admin portals, messaging, the NGO marketplace and verified credentials.' },
   { q: 'Who sets it up?', a: 'An admin at the school or organization signs up and invites teachers and students. Each school only ever sees its own people and data.' },
   { q: 'Does it work on phones and in other languages?', a: 'Yes. It installs as an app on iOS, Android and desktop, works on a patchy connection, and speaks 13 languages, including Arabic and Urdu, which read right to left.' },
@@ -125,30 +128,31 @@ export default function ShowcasePage() {
               <div>
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }}>
                   <span className="inline-flex items-center gap-2 h-8 px-3 rounded-full border border-white/10 bg-black/30 backdrop-blur font-mono text-xs text-zinc-200">
-                    <Sparkles className="w-3.5 h-3.5 text-fuchsia-300" /> free for students / 13 languages
+                    <Sparkles className="w-3.5 h-3.5 text-fuchsia-300" /> UniVerse Trace / product passports / 13 languages
                   </span>
                 </motion.div>
                 <h1 className="mt-7 text-5xl sm:text-6xl lg:text-7xl font-bold tracking-[-0.035em] leading-[1.02] text-white">
-                  {['The', 'school', 'day', 'runs'].map((w, i) => (
+                  {['Every', 'product', 'gets', 'a'].map((w, i) => (
                     <motion.span key={w} className="inline-block me-[0.25em]" initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.8, delay: 0.1 + i * 0.07, ease: EASE }}>{w}</motion.span>
                   ))}
-                  <motion.span className="inline-block" initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.9, delay: 0.42, ease: EASE }}><Accent>itself.</Accent></motion.span>
+                  <motion.span className="inline-block" initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.9, delay: 0.42, ease: EASE }}><Accent>passport.</Accent></motion.span>
                 </h1>
                 <motion.p initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.55, ease: EASE }} className="mt-6 text-lg text-zinc-300 max-w-md leading-relaxed">
-                  UniVerse runs the steps between classes, grades and parents, and only asks a person when it matters.
+                  One code on every unit. Buyers see it’s genuine, shops earn points for every sale, and you see where every product really goes, and catch copies the day they appear.
                 </motion.p>
                 <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.65, ease: EASE }} className="mt-9 flex flex-wrap items-center gap-3">
-                  <Link href="/register" className={primary}>Start free <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
+                  <Link href="/t/demo" className={primary}>Scan a sample <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
                   <button type="button" onClick={handleInstallClick} className={ghost}><Smartphone className="w-4 h-4" /> {installed ? 'Open the app' : 'Get the app'}</button>
                 </motion.div>
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.8 }} className="mt-5 font-mono text-xs text-zinc-400">free for students / no card / every role in one app</motion.p>
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.8 }} className="mt-5 font-mono text-xs text-zinc-400">for brands, shops and buyers / no card / schools still run on UniVerse too</motion.p>
               </div>
               <motion.div initial={{ opacity: 0, y: 40, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} transition={{ duration: 1.1, delay: 0.35, ease: EASE }} style={{ transformPerspective: 1200 }} className="flex justify-center lg:justify-end">
-                <FlowCard />
+                <PassportCard />
               </motion.div>
             </div>
           </section>
 
+          <TraceSection />
           <Proof />
           <Glue />
           <Bento />

@@ -8,7 +8,11 @@ Cursor's).
 
 ## Where things stand (23 October 2026)
 
-- **Latest (24 Oct): `main` has everything through M17** (PR #88): the motion and look items M1–M17
+- **Newest (24 Oct): UniVerse Trace (M19)**, on branch `claude/youthful-fermi-sbdtcp`: UniVerse becomes
+  a supply chain and marketing product too. Every product gets a passport: brands print signed codes,
+  buyers scan them at `/t/<code>` to see they're genuine, shops earn points, and the brand watches every
+  scan and every likely copy at `/trace`. Try `/t/demo`. Notes: M19 in `STAGE-5-HANDOFF.md`.
+- **Latest (24 Oct): `main` has everything through M18** (PRs #88, #89): the motion and look items M1–M17
   (the Relay light river, the "Cadra" card look, the owner console deck, the "UniVerse explained"
   board, lean code, design skills, a simpler sign-in, the redesigned Messages, Calls, Notifications
   and Announcements, Collaborate Home). Each has a Progress row (`STAGE-5-PLAN.md`) and a note at the
@@ -28,7 +32,7 @@ Cursor's).
   for each item.
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: start with its "Next steps" and the
   S2, Q26, S1 and Q24/Q25 notes.
-- **Next database update number: `0177`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0178`** (files in `apps/web/prisma/migrations/`).
 
 **Moving to the $5 Cloudflare plan (Workers Paid)**, in this order:
 1. In Cloudflare: Workers & Pages → Plans → Workers Paid ($5 a month, plus any local tax).

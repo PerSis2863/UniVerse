@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { BarChart3, Briefcase, PenTool, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { BarChart3, Briefcase, PenTool, ScanLine, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { userCan } from '@/lib/permissions';
 import {
   LayoutDashboard, Users,
@@ -125,6 +125,7 @@ export const navByRole: Record<string, NavItem[]> = {
     { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard, also: ['/student/calendar', '/student/planner', '/student/information'] },
     // Messages and calls are one entry: the Calls list is a tab inside Messages.
     { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare, also: ['/calls', '/notifications'] },
+    { href: '/trace', label: 'Scan & earn', icon: ScanLine },
     {
       label: 'nav.schooling', icon: GraduationCap,
       subItems: [
@@ -245,6 +246,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/admin/integrations/lti', label: 'LMS integration' },
       ]
     },
+    { href: '/trace', label: 'Trace', icon: ScanLine, also: ['/trace/print'] },
     { href: '/admin/insights', label: 'Insights', icon: BarChart3, also: ['/admin/analytics', '/admin/reports', '/admin/impact-metrics', '/admin/insights/warehouse'] },
     {
       label: 'nav.campus_monitoring', icon: Shield,
@@ -383,7 +385,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   if (!user) return null;
 
   // The owner console link exists only for the owner (the console itself answers "not found" to anyone else).
-  const base = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }, ...(navByRole[user.role] ?? [])] : navByRole[user.role] ?? [];
+  const base = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }, ...(user.role === 'ADMIN' ? [] : [{ href: '/trace', label: 'Trace', icon: ScanLine, also: ['/trace/print'] }]), ...(navByRole[user.role] ?? []).filter((i) => i.href !== '/trace')] : navByRole[user.role] ?? [];
   const nav = user.role === 'TEACHER' ? withOffice(base, user) : base;
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
