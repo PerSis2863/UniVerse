@@ -79,7 +79,7 @@ export default function NGOMarketplacePage() {
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
                   <Heart className="w-3.5 h-3.5" /> Direct Impact
                 </div>
-                <h1 className="text-3xl font-black text-white">Partner with <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">Global NGOs</span></h1>
+                <h1 className="text-3xl font-black text-white">Partner with <span className="bg-gradient-to-r from-indigo-400 to-indigo-600 bg-clip-text text-transparent">Global NGOs</span></h1>
                 <p className="text-zinc-400 text-sm max-w-xl">Apply your skills where they matter most. Gain real-world experience, help communities in need, and build your social impact portfolio.</p>
               </div>
             </div>
@@ -124,7 +124,7 @@ export default function NGOMarketplacePage() {
                     <div className="space-y-4">
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3">
-                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white`}>
+                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white`}>
                             <Building className="w-6 h-6" />
                           </div>
                           <div>

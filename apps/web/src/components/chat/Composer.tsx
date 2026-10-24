@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, CircleDot, Sticker, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, MessageSquareText, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X } from 'lucide-react';
+import { BarChart3, CircleDot, Sticker, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, MessageSquareText, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X, Wand2, PartyPopper, BellOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type ChatMessage, chatJson } from './chat-client';
 import { LanguagePicker } from './LanguagePicker';
@@ -11,6 +11,8 @@ import { languageName } from '@/lib/languages';
 import { haptic } from '@/lib/haptics';
 import { keepDraft, localDraft, pickDraft, saveDraft } from '@/lib/chat-drafts';
 import { ScheduleSheet } from './ScheduledMessages';
+import { QuickReaction, RewriteMenu, SendWithMenu, type SendChoice } from './SendExtras';
+import { EFFECTS, type MessageEffect } from '@/lib/message-effects';
 import { SnippetsSheet, fillSnippet, useSnippets } from './Snippets';
 import dynamic from 'next/dynamic';
 const StickerPicker = dynamic(() => import('./Stickers').then((m) => m.StickerPicker));
@@ -29,6 +31,9 @@ export interface SendPayload {
   viewOnce?: boolean;
   /** A sticker from a pack (Stage 5 · B7.2). */
   sticker?: { url: string; label: string };
+  /** M17: played as it arrives (iMessage), or sent without notifying anyone (Telegram). */
+  effect?: MessageEffect;
+  silent?: boolean;
 }
 
 export type ComposerExtra = 'poll' | 'location' | 'contact';
@@ -93,9 +98,11 @@ interface Props {
   onSchedule?: (body: string, sendAt: string) => Promise<void>;
   /** Who a saved reply's {name} becomes (a direct chat's other person; "everyone" in groups). */
   recipientName?: string;
+  /** Magic Compose (M17): the draft rewritten in a tone by AI (absent in private chats). */
+  onRewrite?: (text: string, tone: string) => Promise<string>;
 }
 
-export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, appCommands = [], onSuggest, slowModeSec, canMentionAll, customEmoji, draftKey, serverDraft, onSchedule, recipientName }: Props) {
+export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelReply, onCancelEdit, onSend, onSaveEdit, onTyping, onExtra, mentionables = [], draftLanguages = [], disabledReason, onCommand, appCommands = [], onSuggest, slowModeSec, canMentionAll, customEmoji, draftKey, serverDraft, onSchedule, recipientName, onRewrite }: Props) {
   const [formatting, setFormatting] = useState(false);
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [suggesting, setSuggesting] = useState(false);
@@ -120,6 +127,11 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
   const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const held = useRef(false);
   const [busy, setBusy] = useState(false);
+  // M17: "Send with…" (an effect, silently), Magic Compose, and the text before a rewrite.
+  const [choice, setChoice] = useState<SendChoice>({ effect: null, silent: false });
+  const [sendMenu, setSendMenu] = useState(false);
+  const [rewriteOpen, setRewriteOpen] = useState(false);
+  const [beforeRewrite, setBeforeRewrite] = useState<string | null>(null);
   // View once for the next photo, video or voice message (a ref too: the recorder's callback reads it).
   const [once, setOnceState] = useState(false);
   const onceRef = useRef(false);
@@ -274,10 +286,13 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
         if (cmd && onCommand && [...SLASH_COMMANDS, ...appCommands].some((c) => c.name === cmd[1].toLowerCase())) {
           if (cmd[1].toLowerCase() === 'shrug') await onSend({ text: `${cmd[2] ? cmd[2] + ' ' : ''}¯\\_(ツ)_/¯` });
           else if (!(await onCommand(cmd[1].toLowerCase(), cmd[2].trim()))) return;
-        } else await onSend({ text: value });
+        } else await onSend({ text: value, ...(choice.effect ? { effect: choice.effect } : {}), ...(choice.silent ? { silent: true } : {}) });
       }
       setText('');
       setSuggestions(null);
+      setChoice({ effect: null, silent: false });
+      setSendMenu(false);
+      setBeforeRewrite(null);
     } finally {
       setBusy(false);
     }
@@ -496,7 +511,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                 <Paperclip className="w-5 h-5" />
               </button>
               {attach && (
-                <div className="absolute bottom-full mb-2 start-0 z-30 w-52 p-1.5 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
+                <div className="absolute bottom-full mb-2 start-0 z-30 w-52 p-1.5 rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
                   <button onClick={() => mediaRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-sky-500/15 text-sky-500 flex items-center justify-center"><ImageIcon className="w-4 h-4" /></span> Photos & videos
                   </button>
@@ -540,7 +555,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
 
           <div className="sm:relative flex-1 min-w-0 flex">
           {(slash.length > 0 || slashSnips.length > 0) && (
-            <div className="absolute bottom-full mb-2 start-0 z-30 w-80 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl" role="listbox" aria-label="Commands">
+            <div className="absolute bottom-full mb-2 start-0 z-30 w-80 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl" role="listbox" aria-label="Commands">
               {slashSnips.map((x) => (
                 <button key={x.id} role="option" aria-selected={false} onMouseDown={(e) => { e.preventDefault(); insertSnippet(fillSnippet(x.body, recipientName)); }} className="w-full text-start px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
                   <span className="text-sm font-semibold text-zinc-900 dark:text-white">/{x.shortcut} <span className="font-normal text-zinc-500">· {x.title}</span></span>
@@ -555,15 +570,21 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               ))}
             </div>
           )}
+          {beforeRewrite !== null && (
+            <div className="absolute bottom-full mb-2 start-0 z-20 menu-pop inline-flex items-center gap-2 ps-3 pe-1 py-1 rounded-full bg-white dark:bg-[#11212d] border border-fuchsia-300/60 dark:border-fuchsia-400/30 text-xs font-semibold text-zinc-700 dark:text-zinc-200 shadow-lg">
+              <Wand2 className="w-3.5 h-3.5 text-fuchsia-500" /> Rewritten
+              <button type="button" onClick={() => { setText(beforeRewrite); setBeforeRewrite(null); }} className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/10 hover:text-fuchsia-500">Undo</button>
+            </div>
+          )}
           {suggestions && suggestions.length > 0 && !text && (
             <div className="absolute bottom-full mb-2 start-0 end-0 z-20 flex gap-1.5 overflow-x-auto scrollbar-none">
               {suggestions.map((sug) => (
-                <button key={sug} type="button" onClick={() => { setText(sug); setSuggestions(null); areaRef.current?.focus(); }} className="shrink-0 px-3 py-1.5 rounded-full bg-white dark:bg-[#121830] border border-indigo-300/60 dark:border-indigo-400/30 text-xs font-medium text-indigo-700 dark:text-indigo-200 shadow-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10">{sug}</button>
+                <button key={sug} type="button" onClick={() => { setText(sug); setSuggestions(null); areaRef.current?.focus(); }} className="shrink-0 px-3 py-1.5 rounded-full bg-white dark:bg-[#11212d] border border-indigo-300/60 dark:border-indigo-400/30 text-xs font-medium text-indigo-700 dark:text-indigo-200 shadow-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10">{sug}</button>
               ))}
             </div>
           )}
           {mentionList.length > 0 && (
-            <div className="absolute bottom-full mb-2 start-0 z-30 w-64 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl">
+            <div className="absolute bottom-full mb-2 start-0 z-30 w-64 max-w-[calc(100vw-1.5rem)] py-1 rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl">
               {mentionList.map((u) => (
                 <button key={u.id} onMouseDown={(e) => { e.preventDefault(); pickMention(u); }} className="w-full text-start px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-800 dark:text-zinc-100">
                   @{u.name}{u.hint && <span className="ms-2 text-xs text-zinc-500">{u.hint}</span>}
@@ -598,19 +619,33 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               if (e.key === 'Escape' && editing) { onCancelEdit(); setText(beforeEdit()); }
             }}
             placeholder={editing ? 'Edit your message' : onCommand ? 'Type a message, or / for commands' : 'Type a message'}
-            className="flex-1 min-w-0 resize-none max-h-40 px-4 py-2.5 rounded-3xl bg-zinc-100 dark:bg-white/[0.06] border border-transparent focus:border-indigo-500/40 focus:outline-none text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500"
+            className="msg-search flex-1 min-w-0 resize-none max-h-40 px-4 py-2.5 rounded-3xl bg-zinc-100 dark:bg-white/[0.06] border border-transparent focus:border-indigo-500/40 focus:outline-none transition-shadow duration-200 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500"
           />
           </div>
 
           {text.trim() || editing ? (
+            <div className="relative flex items-center gap-1 shrink-0">
+            {onRewrite && !editing && text.trim().length >= 3 && (
+              <button type="button" onClick={() => { setRewriteOpen((o) => !o); setSendMenu(false); }} aria-expanded={rewriteOpen} aria-label="Rewrite with AI" title="Rewrite: friendlier, formal, shorter… (AI)" className="p-2.5 rounded-full text-zinc-500 hover:text-fuchsia-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><Wand2 className="w-5 h-5" /></button>
+            )}
+            {!editing && (
+              <button type="button" onClick={() => { setSendMenu((o) => !o); setRewriteOpen(false); }} aria-expanded={sendMenu} aria-label="Send with an effect, silently or later" title="Send with an effect, silently or later"
+                className={cn('relative p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06]', choice.effect || choice.silent ? 'text-fuchsia-500' : 'text-zinc-500 hover:text-indigo-500')}>
+                {choice.effect ? <span className="block w-5 h-5 text-lg leading-5" aria-hidden>{EFFECTS.find((e) => e.id === choice.effect)?.emoji}</span> : <PartyPopper className="w-5 h-5" />}
+                {choice.silent && <BellOff className="absolute -top-0.5 -end-0.5 w-3.5 h-3.5 p-0.5 rounded-full bg-indigo-600 text-white" aria-hidden />}
+              </button>
+            )}
+            {sendMenu && <SendWithMenu choice={choice} onChange={setChoice} onSend={() => void submit()} onSchedule={canSchedule ? () => { setSendMenu(false); openSchedule(); } : undefined} onClose={() => setSendMenu(false)} />}
+            {rewriteOpen && onRewrite && <RewriteMenu text={text.trim()} onRewrite={onRewrite} onApply={(t) => { setBeforeRewrite(text); setText(t); }} onClose={() => setRewriteOpen(false)} />}
             <button onClick={() => { if (held.current) { held.current = false; return; } void submit(); }}
               onPointerDown={() => { held.current = false; if (canSchedule) holdTimer.current = setTimeout(() => { haptic('tap'); openSchedule(); }, 450); }}
               onPointerUp={() => clearTimeout(holdTimer.current)} onPointerLeave={() => clearTimeout(holdTimer.current)} onPointerCancel={() => clearTimeout(holdTimer.current)}
               onContextMenu={(e) => { if (canSchedule) { e.preventDefault(); openSchedule(); } }}
               title={canSchedule ? 'Send · hold or right-click to schedule' : undefined}
-              disabled={busy || !text.trim()} aria-label={editing ? 'Save' : 'Send'} className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25 disabled:opacity-50 active:scale-95 transition-transform">
+              disabled={busy || !text.trim()} aria-label={editing ? 'Save' : 'Send'} className="send-in w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg shadow-fuchsia-500/30 disabled:opacity-50 active:scale-95 transition-transform">
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
+            </div>
           ) : (
             <>
             {onSuggest && !editing && (
@@ -618,6 +653,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                 {suggesting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
               </button>
             )}
+            {!editing && <QuickReaction chat={draftKey} disabled={busy} onSend={(e) => void onSend({ text: e })} />}
             <button onClick={startRecording} aria-busy={busy || undefined} disabled={busy} aria-label="Record voice message" className={cn('w-11 h-11 shrink-0 rounded-full flex items-center justify-center transition-colors disabled:opacity-50', 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300 hover:text-indigo-500')}>
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-5 h-5" />}
             </button>

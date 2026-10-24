@@ -154,7 +154,7 @@ function RequestCredentialModal({ onClose, onRequested, initial }: { onClose: ()
               className={`${inputCls} resize-none`} />
           </div>
           <button type="submit" aria-busy={loading || undefined} disabled={loading}
-            className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-bold rounded-xl py-3 text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20">
+            className="w-full bg-gradient-to-r from-indigo-400 to-indigo-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-bold rounded-xl py-3 text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
             {loading ? 'Submitting…' : 'Submit for Verification'}
           </button>

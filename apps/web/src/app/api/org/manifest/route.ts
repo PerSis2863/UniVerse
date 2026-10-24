@@ -10,7 +10,7 @@ export async function GET(req: Request) {
 
   const name = branding.appTitle || (branding.isSchool ? `${branding.name} UniVerse` : "UniVerse Impact");
   const shortName = branding.slug ? branding.slug.toUpperCase() : (branding.isSchool ? branding.name.slice(0, 12) : "UniVerse");
-  const themeColor = branding.brandColor || "#6366f1";
+  const themeColor = branding.brandColor || "#253745";
 
   const manifest = {
     name,

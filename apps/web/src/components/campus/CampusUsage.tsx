@@ -56,7 +56,7 @@ export function CampusUsage({ date, campus, buildings }: { date: string; campus:
                   <tr key={d}>
                     <th scope="row" className="text-start font-semibold text-zinc-700 dark:text-zinc-300 pe-1">{DAY_SHORT[d]}</th>
                     {row.map((v, i) => (
-                      <td key={i} title={`${DAY_SHORT[d]} ${HOURS[i]}:00: ${Math.round(v * 100)}% of rooms in use`} className="h-7 min-w-[1.4rem] rounded-md border border-zinc-200/70 dark:border-white/5" style={{ background: v > 0 ? `rgba(99, 102, 241, ${0.12 + v * 0.88})` : undefined }}>
+                      <td key={i} title={`${DAY_SHORT[d]} ${HOURS[i]}:00: ${Math.round(v * 100)}% of rooms in use`} className="h-7 min-w-[1.4rem] rounded-md border border-zinc-200/70 dark:border-white/5" style={{ background: v > 0 ? `rgba(37, 55, 69, ${0.12 + v * 0.88})` : undefined }}>
                         <span className="sr-only">{Math.round(v * 100)}%</span>
                       </td>
                     ))}
@@ -65,7 +65,7 @@ export function CampusUsage({ date, campus, buildings }: { date: string; campus:
               </tbody>
             </table>
             <p className="mt-2 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400" aria-hidden>
-              <span>None</span><span className="h-2.5 w-24 rounded-full" style={{ background: 'linear-gradient(to right, rgba(99,102,241,.12), rgba(99,102,241,1))' }} /><span>Every room</span>
+              <span>None</span><span className="h-2.5 w-24 rounded-full" style={{ background: 'linear-gradient(to right, rgba(37,55,69,.12), rgba(37,55,69,1))' }} /><span>Every room</span>
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-4">

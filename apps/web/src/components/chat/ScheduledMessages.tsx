@@ -71,7 +71,7 @@ export function ScheduleSheet({ now, title, initialText, initialAt, onSave, onCl
     <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-[2px]" onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}
       onKeyDown={(e) => { if (e.key === 'Escape' && !busy) onClose(); }}>
       <motion.div role="dialog" aria-modal="true" aria-label={title} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-        className="w-full sm:max-w-md max-h-[88vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#121830] p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-4 space-y-3 shadow-2xl">
+        className="w-full sm:max-w-md max-h-[88vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#11212d] p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-4 space-y-3 shadow-2xl">
         <div className="flex items-center justify-between">
           <p className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><CalendarClock className="w-4 h-4 text-indigo-500" />{title}</p>
           <button type="button" onClick={onClose} disabled={busy} aria-label="Close" className="p-1.5 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>

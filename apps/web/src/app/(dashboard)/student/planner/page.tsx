@@ -210,7 +210,7 @@ export default function StudyPlannerPage() {
                           <ul className="space-y-2">
                             {day.blocks.map((b, i) => {
                               const c = byCode.get(b.course.toLowerCase());
-                              const color = c ? courseColor(c.color, c.code) : '#a855f7';
+                              const color = c ? courseColor(c.color, c.code) : '#6b5560';
                               return (
                                 <li key={i} className="flex gap-3 p-3 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">
                                   <span className="w-1 rounded-full shrink-0" style={{ backgroundColor: color }} aria-hidden />

@@ -41,12 +41,12 @@ interface LeaderboardEntry {
 
 const LEVEL_GRADIENTS: Record<number, string> = {
   1: 'from-zinc-400 to-zinc-600',
-  2: 'from-emerald-400 to-teal-600',
-  3: 'from-blue-400 to-indigo-600',
+  2: 'from-indigo-400 to-indigo-600',
+  3: 'from-indigo-600 to-fuchsia-600',
   4: 'from-purple-500 to-violet-600',
-  5: 'from-amber-400 to-orange-500',
+  5: 'from-fuchsia-400 to-fuchsia-600',
   6: 'from-red-500 to-rose-600',
-  7: 'from-amber-300 via-orange-400 to-pink-500',
+  7: 'from-fuchsia-400 to-fuchsia-600',
 };
 
 const LEVELS = [
@@ -228,7 +228,7 @@ export default function LeaderboardPage() {
               title="The leaderboard fills up as students make an impact"
               description="Every NGO project, summit and venture you contribute to earns impact XP. The students with the most XP on your campus appear here."
               steps={['Apply to an NGO project from the marketplace', 'Get accepted and complete the work', 'Earn XP, level up and climb the leaderboard']}
-              example={<div><ExampleRow title="1. Aanya K." meta="🌍 Global Catalyst" right="1,240 XP" accent="from-amber-400 to-orange-500" /><ExampleRow title="2. You" meta="⚡ Social Innovator" right="340 XP" /></div>}
+              example={<div><ExampleRow title="1. Aanya K." meta="🌍 Global Catalyst" right="1,240 XP" accent="from-fuchsia-400 to-fuchsia-600" /><ExampleRow title="2. You" meta="⚡ Social Innovator" right="340 XP" /></div>}
               action={{ label: 'Find a project', href: '/student/impact/ngo-marketplace' }}
             />
           )}

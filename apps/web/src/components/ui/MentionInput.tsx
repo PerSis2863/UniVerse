@@ -67,7 +67,7 @@ export function MentionInput({ kind, id, value, onChange, onSubmit, className, .
       <AnimatePresence>
         {list.length > 0 && (
           <motion.ul id={listId} role="listbox" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={spring.snappy}
-            className="absolute bottom-full mb-1 start-0 z-50 w-64 max-w-full py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl">
+            className="absolute bottom-full mb-1 start-0 z-50 w-64 max-w-full py-1 rounded-xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl">
             {list.map((p, i) => (
               <li key={p.id} role="option" aria-selected={i === active}>
                 <button type="button" onMouseDown={(e) => { e.preventDefault(); pick(p); }} className={cn('w-full flex items-center gap-2 px-2.5 py-1.5 text-start text-sm', i === active ? 'bg-indigo-500/10' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>

@@ -3,17 +3,20 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { Loader2, Search, Shapes } from 'lucide-react';
+import { Loader2, Network, Search, Shapes } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { authedJson } from '@/lib/authed-fetch';
 import type { BoardControls } from './BoardCanvas';
 import { LIBRARIES, place, STAMPS, stamp } from './library';
 import { TEMPLATES, templateElements } from './templates';
+import { drawMindMap } from './board-ai-draw';
+import { outlineToMap } from '@/lib/outline-map';
 
 // Add to a whiteboard (Stage 5 · B9.11): a template beside what's there, ready-made science /
-// maths / geography shapes, stamps, and pictures from the files hub (My files, classes, groups).
+// maths / geography shapes, stamps, pictures from the files hub (My files, classes, groups), and
+// (M17) a mind map drawn from an outline typed or pasted in.
 
-type Tab = 'templates' | 'shapes' | 'stamps' | 'files';
+type Tab = 'templates' | 'shapes' | 'stamps' | 'files' | 'text';
 interface HubFile { id: string; name: string; url: string; mime: string; space: { label: string } }
 
 export function BoardInsert({ controls, disabled, className }: { controls: React.RefObject<BoardControls | null>; disabled: boolean; className: string }) {
@@ -21,6 +24,8 @@ export function BoardInsert({ controls, disabled, className }: { controls: React
   const [tab, setTab] = useState<Tab>('templates');
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+  const [outline, setOutline] = useState('');
+  const map = outlineToMap(outline);
   const query = q.trim().length >= 2 ? `q=${encodeURIComponent(q.trim())}` : 'view=recent';
   const { data: files } = useSWR<{ files: HubFile[] }>(open && tab === 'files' ? `/api/files-hub?${query}` : null, authedJson);
   const pictures = files?.files.filter((f) => f.mime.startsWith('image/') && !/svg/.test(f.mime)) ?? [];
@@ -45,8 +50,8 @@ export function BoardInsert({ controls, disabled, className }: { controls: React
         <Shapes className="w-4 h-4" /><span className="hidden md:inline">Add</span>
       </button>
       {open && (
-        <div role="dialog" aria-label="Add to the board" className="absolute end-0 top-11 z-40 w-[22rem] max-sm:fixed max-sm:inset-x-4 max-sm:top-16 max-sm:w-auto rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl p-2 space-y-2" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>
-          <Segmented<Tab> segments={[{ value: 'templates', label: 'Templates' }, { value: 'shapes', label: 'Shapes' }, { value: 'stamps', label: 'Stamps' }, { value: 'files', label: 'Pictures' }]} value={tab} onChange={setTab} label="Add" className="w-full" />
+        <div role="dialog" aria-label="Add to the board" className="absolute end-0 top-11 z-40 w-[22rem] max-sm:fixed max-sm:inset-x-4 max-sm:top-16 max-sm:w-auto rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl p-2 space-y-2" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>
+          <Segmented<Tab> segments={[{ value: 'templates', label: 'Templates' }, { value: 'shapes', label: 'Shapes' }, { value: 'stamps', label: 'Stamps' }, { value: 'files', label: 'Pictures' }, { value: 'text', label: 'From text' }]} value={tab} onChange={setTab} label="Add" className="w-full" />
           <div className="max-h-[60vh] overflow-y-auto">
             {tab === 'templates' && (
               <ul className="grid grid-cols-2 gap-1">
@@ -67,6 +72,16 @@ export function BoardInsert({ controls, disabled, className }: { controls: React
               <ul className="grid grid-cols-5 gap-1 p-1">
                 {STAMPS.map((s) => <li key={s}><button type="button" onClick={() => add((o) => place(stamp(s), o))} aria-label={`Stamp ${s}`} className="w-full aspect-square rounded-xl text-2xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]">{s}</button></li>)}
               </ul>
+            )}
+            {tab === 'text' && (
+              <div className="space-y-2 p-1">
+                <label className="block text-xs text-zinc-600 dark:text-zinc-400" htmlFor="outline-in">Type or paste an outline: the first line is the centre, indented or “-” lines are its branches, deeper lines their ideas.</label>
+                <textarea id="outline-in" value={outline} onChange={(e) => setOutline(e.target.value.slice(0, 4000))} rows={8} placeholder={'Photosynthesis\n  Inputs\n    Light\n    Water\n  Outputs\n    Oxygen'}
+                  className="input font-mono text-xs leading-relaxed resize-y" />
+                <button type="button" disabled={!map?.branches.length} onClick={() => map && add((o) => drawMindMap(map)(o))} className="btn-primary w-full justify-center">
+                  <Network className="w-4 h-4" /> Draw the mind map{map?.branches.length ? ` (${map.branches.length} branch${map.branches.length === 1 ? '' : 'es'})` : ''}
+                </button>
+              </div>
             )}
             {tab === 'files' && (
               <div className="space-y-2 p-1">

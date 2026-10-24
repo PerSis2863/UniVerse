@@ -11,9 +11,10 @@ import { haptic } from '@/lib/haptics';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
+import { auraOf } from '@/components/chat/chat-client';
 
-// Favourites at the top of Calls (like the iPhone's): one-tap voice or video calls; favourites
-// also still ring you in Focus. Plus a call link (like a FaceTime link) to share with anyone.
+// Favourites at the top of Calls (like the iPhone's): one-tap voice or video calls, shown as contact
+// posters (M17); favourites also still ring you in Focus. Plus a call link (like a FaceTime link) to share with anyone.
 
 interface Fav { id: string; name: string; avatar: string | null; online: boolean }
 
@@ -59,28 +60,36 @@ export function Favorites() {
           <button type="button" onClick={() => void newLink()} className="px-3 py-1.5 rounded-full text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/10 inline-flex items-center gap-1"><Link2 className="w-3.5 h-3.5" /> New call link</button>
         </div>
       </div>
-      <div className="flex gap-4 overflow-x-auto scrollbar-none pb-1">
-        {(data ?? []).map((f) => (
-          <motion.div key={f.id} layout transition={spring.smooth} className="relative shrink-0 w-[4.5rem] flex flex-col items-center gap-1.5">
-            <Avatar name={f.name} src={f.avatar} online={f.online} size={56} />
-            <span className="text-[11px] text-zinc-600 dark:text-zinc-300 truncate w-full text-center">{f.name.split(' ')[0]}</span>
-            {editing ? (
-              <button type="button" onClick={() => void remove(f)} aria-label={`Remove ${f.name} from favourites`} className="absolute -top-1 end-1 w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center shadow"><X className="w-3.5 h-3.5" /></button>
-            ) : (
-              <div className="flex gap-1">
-                {(['audio', 'video'] as const).map((k) => (
-                  <motion.button key={k} whileTap={{ scale: 0.88 }} type="button" disabled={!!busy} onClick={() => void call(f, k)} aria-label={`${k === 'video' ? 'Video' : 'Voice'} call ${f.name}`} className="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 flex items-center justify-center">
-                    {busy === f.id + k ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : k === 'video' ? <Video className="w-3.5 h-3.5" /> : <Phone className="w-3.5 h-3.5" />}
-                  </motion.button>
-                ))}
-              </div>
+      {/* Contact posters (M17, after the iPhone's): a tall card each, in their colour; tap a button to call. */}
+      <div className="flex gap-3 overflow-x-auto scrollbar-none pb-2 -mx-1 px-1 snap-x">
+        {(data ?? []).map((f, i) => (
+          <motion.div key={f.id} layout transition={spring.smooth} className="poster group relative shrink-0 snap-start w-36 h-48 rounded-3xl overflow-hidden text-white" style={{ ['--aura' as string]: auraOf(f.id), ['--i' as string]: i }}>
+            <div aria-hidden className="poster-bg absolute inset-0" />
+            {f.avatar
+              ? <div aria-hidden className="absolute inset-0 bg-cover bg-center opacity-70 mix-blend-luminosity transition-transform duration-500 group-hover:scale-105" style={{ backgroundImage: `url(${f.avatar})` }} />
+              : <span aria-hidden className="absolute -top-3 -end-2 text-[5.5rem] font-black leading-none opacity-20 select-none">{f.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}</span>}
+            <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/60 via-black/25 to-transparent">
+              <p className="text-lg font-black leading-tight line-clamp-2" translate="no">{f.name.split(' ')[0]}<span className="block text-xs font-semibold opacity-80 truncate">{f.name.split(' ').slice(1).join(' ') || '\u00a0'}</span></p>
+              {editing ? null : (
+                <div className="mt-2 flex gap-1.5">
+                  {(['audio', 'video'] as const).map((k) => (
+                    <motion.button key={k} whileTap={{ scale: 0.88 }} type="button" disabled={!!busy} onClick={() => void call(f, k)} aria-label={`${k === 'video' ? 'Video' : 'Voice'} call ${f.name}`} className="flex-1 h-8 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur flex items-center justify-center">
+                      {busy === f.id + k ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : k === 'video' ? <Video className="w-3.5 h-3.5" /> : <Phone className="w-3.5 h-3.5" />}
+                    </motion.button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {f.online && <span className="absolute top-3 start-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/30 text-[11px] font-semibold"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />Online</span>}
+            {editing && (
+              <button type="button" onClick={() => void remove(f)} aria-label={`Remove ${f.name} from favourites`} className="absolute top-2 end-2 w-7 h-7 rounded-full bg-rose-500 text-white flex items-center justify-center shadow"><X className="w-4 h-4" /></button>
             )}
           </motion.div>
         ))}
         {(data?.length ?? 0) < 12 && (
-          <button type="button" onClick={() => setAdding(true)} className="shrink-0 w-[4.5rem] flex flex-col items-center gap-1.5">
-            <span className="w-14 h-14 rounded-full border-2 border-dashed border-zinc-300 dark:border-zinc-600 flex items-center justify-center text-zinc-400"><Plus className="w-5 h-5" /></span>
-            <span className="text-[11px] text-zinc-500">Add</span>
+          <button type="button" onClick={() => setAdding(true)} className="shrink-0 snap-start w-36 h-48 rounded-3xl border-2 border-dashed border-zinc-300 dark:border-white/15 text-zinc-500 dark:text-zinc-400 hover:text-indigo-500 hover:border-indigo-400/60 flex flex-col items-center justify-center gap-2 transition-colors">
+            <span className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center"><Plus className="w-5 h-5" /></span>
+            <span className="text-sm font-semibold">Add a favourite</span>
           </button>
         )}
       </div>

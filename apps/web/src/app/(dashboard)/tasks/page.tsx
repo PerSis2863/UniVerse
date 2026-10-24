@@ -8,7 +8,7 @@ import { m as motion } from 'framer-motion';
 import { CalendarClock, ChevronRight, KanbanSquare, Loader2, Plus } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
-import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
+import { CollabTabs } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { spring } from '@/lib/motion';
@@ -58,7 +58,7 @@ export default function TasksPage() {
   return (
     <>
       <Topbar title="Tasks" subtitle="Boards of cards for projects and classes: who does what, by when" />
-      <SectionTabs tabs={COLLAB_TABS} />
+      <CollabTabs />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex justify-end">

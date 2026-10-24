@@ -6,9 +6,10 @@ import { photoSrcSet } from '@/lib/image-sizes';
 
 // A person's photo, or their initials on a colour that's always the same for the same name.
 
+// The owner's dark blue and dark pink (23 Oct 2026), mixed eight ways, deep enough for white initials.
 const AVATAR_GRADIENTS = [
-  'from-indigo-500 to-violet-500', 'from-sky-500 to-cyan-500', 'from-emerald-500 to-teal-500', 'from-amber-500 to-orange-500',
-  'from-rose-500 to-pink-500', 'from-fuchsia-500 to-purple-500', 'from-blue-500 to-indigo-500', 'from-lime-500 to-emerald-500',
+  'from-indigo-500 to-indigo-700', 'from-fuchsia-500 to-fuchsia-700', 'from-indigo-600 to-fuchsia-600', 'from-fuchsia-600 to-indigo-700',
+  'from-indigo-400 to-indigo-600', 'from-fuchsia-400 to-fuchsia-600', 'from-indigo-700 to-fuchsia-500', 'from-fuchsia-700 to-fuchsia-900',
 ];
 
 /** The initials' background for a name (stable: the same person always gets the same colour). */
@@ -31,7 +32,7 @@ export function Avatar({ name, src, size = 40, online }: { name: string; src?: s
         // Initials drawn by CSS: decoration, so they don't become a button's or link's name.
         <div aria-hidden data-initials={letters} className={cn('w-full h-full rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold before:content-[attr(data-initials)]', avatarGradient(name))} style={{ fontSize: size * 0.36 }} />
       )}
-      {online && <span className="absolute bottom-0 end-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#121830]" />}
+      {online && <span className="absolute bottom-0 end-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#11212d]" />}
     </div>
   );
 }
@@ -43,12 +44,12 @@ export function AvatarStack({ people, max = 4, size = 28 }: { people: { name: st
   return (
     <div className="flex items-center -space-x-2" aria-label={people.map((p) => p.name).join(', ')}>
       {shown.map((p, i) => (
-        <div key={`${p.name}-${i}`} className="rounded-full ring-2 ring-white dark:ring-[#0b1020]">
+        <div key={`${p.name}-${i}`} className="rounded-full ring-2 ring-white dark:ring-[#06141b]">
           <Avatar name={p.name} src={p.avatar} size={size} />
         </div>
       ))}
       {rest > 0 && (
-        <span className="rounded-full ring-2 ring-white dark:ring-[#0b1020] bg-zinc-200 dark:bg-white/10 text-zinc-700 dark:text-zinc-200 font-semibold flex items-center justify-center" style={{ width: size, height: size, fontSize: size * 0.36 }}>
+        <span className="rounded-full ring-2 ring-white dark:ring-[#06141b] bg-zinc-200 dark:bg-white/10 text-zinc-700 dark:text-zinc-200 font-semibold flex items-center justify-center" style={{ width: size, height: size, fontSize: size * 0.36 }}>
           +{rest}
         </span>
       )}

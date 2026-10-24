@@ -67,7 +67,7 @@ export function ThemeToggle() {
                     onClick={(e) => handleSet(t, e)}
                     className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all"
                     style={{
-                      background: theme === t ? 'rgba(99,102,241,0.12)' : 'transparent',
+                      background: theme === t ? 'rgba(37,55,69,0.12)' : 'transparent',
                       color: theme === t ? 'var(--sidebar-item-active-color)' : 'var(--text-secondary)',
                       fontWeight: theme === t ? 600 : 400,
                     }}

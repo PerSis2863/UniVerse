@@ -109,6 +109,30 @@ function blobToDataURL(blob: Blob): Promise<string> {
   });
 }
 
+/**
+ * Loads the fonts these shapes' text uses before Excalidraw measures it. Excalidraw only loads a
+ * font once something on the board uses it, and keeps the size it measured: text measured with the
+ * stand-in font was cut off on the right once the real font arrived (the owner: "not showing all
+ * the data"). Waits at most a few seconds, then goes ahead anyway.
+ */
+async function fontsFor(els: readonly ExcalidrawElementSkeleton[]) {
+  if (typeof document === 'undefined' || !document.fonts) return;
+  const chars = new Map<string, Set<string>>(); // CSS family → characters it must draw
+  const add = (t: string | undefined, family?: number) => {
+    if (!t) return;
+    const name = family === 6 ? 'Nunito' : 'Excalifont';
+    const set = chars.get(name) ?? new Set<string>();
+    for (const c of t) set.add(c);
+    chars.set(name, set);
+  };
+  for (const e of els as readonly { text?: string; fontFamily?: number; label?: { text?: string; fontFamily?: number } }[]) {
+    add(e.text, e.fontFamily);
+    add(e.label?.text, e.label?.fontFamily);
+  }
+  const loads = [...chars].map(([family, set]) => document.fonts.load(`20px ${family}`, [...set].join('')).catch(() => []));
+  await Promise.race([Promise.all(loads), new Promise((done) => setTimeout(done, 4000))]);
+}
+
 /** Shrinks a photo so it uploads quickly (and fits the 4 MB upload limit). */
 async function preparePhoto(file: File, maxSide: number) {
   if (!file.type.startsWith('image/')) throw new Error('Please choose a picture (JPG, PNG, GIF or WebP).');
@@ -424,14 +448,16 @@ export default function BoardCanvas({
               framed.current = true;
               if (template === 'guide' && editable.current && msg.elements.some((e) => e.id.startsWith(GUIDE_ID_PREFIX))) {
                 // The guide board, part-filled (someone left while it was being sent): add what's missing.
-                void templateFor(template).then((els) => {
+                void templateFor(template).then(async (els) => {
+                  await fontsFor(els);
                   const scene = guideTopUp(api.getSceneElementsIncludingDeleted(), convertToExcalidrawElements(els, { regenerateIds: false }));
                   if (scene) api.updateScene({ elements: scene, captureUpdate: CaptureUpdateAction.NEVER });
                 });
                 api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.9, animate: false });
               } else if (template && template !== 'blank' && editable.current && msg.elements.length === 0 && !api.getSceneElements().length) {
                 // Added once it's loaded (the guide comes in its own file), unless someone drew meanwhile.
-                void templateFor(template).then((els) => {
+                void templateFor(template).then(async (els) => {
+                  await fontsFor(els);
                   if (api.getSceneElements().length) return;
                   // The guide keeps its own ids, so a part-filled board can be topped up later.
                   api.updateScene({ elements: convertToExcalidrawElements(els, { regenerateIds: template !== 'guide' }), captureUpdate: CaptureUpdateAction.IMMEDIATELY });
@@ -614,11 +640,13 @@ export default function BoardCanvas({
         .map((e) => (e as unknown as { text: string }).text.replace(/\s+/g, ' ').trim())
         .filter(Boolean)
         .slice(0, 150),
-      addElements: (build) => {
+      addElements: async (build) => {
         const current = api.getSceneElements().filter((e) => !isBackground(e));
         const right = current.length ? Math.max(...current.map((e) => e.x + e.width)) + 160 : 0;
         const top = current.length ? Math.min(...current.map((e) => e.y)) : 0;
-        const added = convertToExcalidrawElements(build({ x: right, y: top }), { regenerateIds: false });
+        const skeleton = build({ x: right, y: top });
+        await fontsFor(skeleton);
+        const added = convertToExcalidrawElements(skeleton, { regenerateIds: false });
         api.updateScene({ elements: [...api.getSceneElementsIncludingDeleted(), ...added], captureUpdate: CaptureUpdateAction.IMMEDIATELY });
         api.scrollToContent(added, { fitToContent: true, animate: true });
       },

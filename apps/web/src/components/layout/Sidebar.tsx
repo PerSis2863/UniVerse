@@ -135,7 +135,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/internships', label: 'nav.internships' },
         { href: '/student/choices', label: 'nav.my_choices' },
         { href: '/student/assignments', label: 'Assignments & grades', also: ['/student/grades', '/student/attendance', '/student/quizzes', '/student/mastery'] },
-        { href: '/boards', label: 'Collaborate', also: ['/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
+        { href: '/collab', label: 'Collaborate', also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
         { href: '/student/skills', label: 'Learning resources', also: ['/student/knowledge-hub', '/library'] },
       ]
     },
@@ -185,7 +185,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/quizzes', label: 'nav.quizzes' },
         { href: '/teacher/assignments', label: 'Assignments' },
         { href: '/teacher/live', label: 'Live class' },
-        { href: '/boards', label: 'Collaborate', also: ['/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
+        { href: '/collab', label: 'Collaborate', also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
         { href: '/teacher/calendar', label: 'nav.timetable', also: ['/teacher/staff'] },
       ]
     },
@@ -254,7 +254,7 @@ export const navByRole: Record<string, NavItem[]> = {
       ]
     },
     { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications', '/admin/announcements'] },
-    { href: '/boards', label: 'Collaborate', icon: PenTool, also: ['/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
+    { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
     { href: '/admin/billing', label: 'Billing & plans', icon: Crown },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },
   ],
@@ -413,7 +413,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       <aside
         aria-label="Navigation"
         className={cn(
-          "fixed start-0 top-0 bottom-0 w-[min(84vw,320px)] lg:w-64 glass-sidebar border-e border-[var(--sidebar-border)] flex flex-col z-[100] lg:z-50 sheet-safe-top lg:pt-0 rounded-e-[28px] lg:rounded-none",
+          "dark fixed start-0 top-0 bottom-0 w-[min(84vw,320px)] lg:w-64 glass-sidebar border-e border-[var(--sidebar-border)] flex flex-col z-[100] lg:z-50 sheet-safe-top lg:pt-0 rounded-e-[28px] lg:rounded-none",
           "transition-transform duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform lg:translate-x-0",
           isOpen ? "translate-x-0 shadow-2xl lg:shadow-none" : "-translate-x-full rtl:translate-x-full"
         )}

@@ -224,7 +224,7 @@ export function WatchStage({ watch, skew, mod, status, held = false, onSend }: {
         <AnimatePresence>
           {listOpen && (
             <motion.aside key="list" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={spring.smooth}
-              className="absolute top-3 end-3 bottom-3 w-64 max-w-[80%] rounded-2xl bg-[#121830]/95 backdrop-blur-xl border border-white/10 p-3 flex flex-col gap-2" aria-label="Comments on the video">
+              className="absolute top-3 end-3 bottom-3 w-64 max-w-[80%] rounded-2xl bg-[#11212d]/95 backdrop-blur-xl border border-white/10 p-3 flex flex-col gap-2" aria-label="Comments on the video">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">Comments · {notes.length}</p>
                 <button type="button" onClick={() => setListOpen(false)} aria-label="Close" className="p-1 rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
@@ -311,7 +311,7 @@ export function WatchStage({ watch, skew, mod, status, held = false, onSend }: {
   );
 }
 
-const sheet = 'pointer-events-auto w-full max-w-md max-h-[72vh] overflow-y-auto rounded-3xl bg-[#121830]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-4 space-y-4';
+const sheet = 'pointer-events-auto w-full max-w-md max-h-[72vh] overflow-y-auto rounded-3xl bg-[#11212d]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-4 space-y-4';
 
 interface CourseVideo { id: string; title: string; url: string; createdAt: string }
 

@@ -8,7 +8,7 @@ import { m as motion } from 'framer-motion';
 import { ChevronRight, CornerDownRight, FileSpreadsheet, FileText, FileUp, Loader2, Presentation, Repeat2 } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
-import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
+import { CollabTabs } from '@/components/layout/SectionTabs';
 import { authedJson } from '@/lib/authed-fetch';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { spring } from '@/lib/motion';
@@ -28,8 +28,8 @@ import { useOnceParam } from '@/lib/use-once-param';
 type Kind = 'doc' | 'sheet' | 'slides';
 const KINDS: Record<Kind, { label: string; one: string; icon: typeof FileText; tone: string; path: string; placeholder: string }> = {
   doc: { label: 'Documents', one: 'document', icon: FileText, tone: 'from-indigo-500 to-fuchsia-500', path: '/docs', placeholder: 'Lab report' },
-  sheet: { label: 'Spreadsheets', one: 'spreadsheet', icon: FileSpreadsheet, tone: 'from-emerald-500 to-teal-600', path: '/sheets', placeholder: 'Science marks' },
-  slides: { label: 'Presentations', one: 'presentation', icon: Presentation, tone: 'from-orange-500 to-rose-500', path: '/slides', placeholder: 'Project pitch' },
+  sheet: { label: 'Spreadsheets', one: 'spreadsheet', icon: FileSpreadsheet, tone: 'from-indigo-400 to-indigo-600', path: '/sheets', placeholder: 'Science marks' },
+  slides: { label: 'Presentations', one: 'presentation', icon: Presentation, tone: 'from-fuchsia-400 to-fuchsia-600', path: '/slides', placeholder: 'Project pitch' },
 };
 const kindOf = (k: string | undefined): Kind => (k === 'sheet' || k === 'slides' ? k : 'doc');
 
@@ -89,7 +89,7 @@ export default function DocsPage() {
   return (
     <>
       <Topbar title="Docs" subtitle="Write together: notes, reports and plans, with comments and history" />
-      <SectionTabs tabs={COLLAB_TABS} />
+      <CollabTabs />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex flex-wrap justify-end gap-2">

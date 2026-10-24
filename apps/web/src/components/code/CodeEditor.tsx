@@ -20,7 +20,7 @@ import { authedJson } from '@/lib/authed-fetch';
 // (awareness), 2 = "someone joined, send your cursor".
 
 const DOC = 0, AWARENESS = 1, ANNOUNCE = 2;
-const COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#0ea5e9', '#ef4444', '#8b5cf6', '#14b8a6'];
+const COLORS = ['#253745', '#6b5560', '#f59e0b', '#10b981', '#0ea5e9', '#ef4444', '#53515e', '#14b8a6'];
 
 export type Status = 'connecting' | 'live' | 'offline' | 'unavailable';
 
@@ -97,7 +97,7 @@ export function CodeEditor({ roomId, lang, me, dark, onStatus, onPeers, onReady,
     const peers = () => {
       const others = [...awareness.getStates().entries()].filter(([id]) => id !== doc.clientID).map(([, s]) => (s as { user?: { name?: string; color?: string } }).user ?? {});
       callbacks.current.onPeers(others.map((u) => u.name ?? 'Someone'));
-      callbacks.current.onPresence?.(others.map((u) => ({ name: u.name ?? 'Someone', color: u.color ?? '#6366f1' })));
+      callbacks.current.onPresence?.(others.map((u) => ({ name: u.name ?? 'Someone', color: u.color ?? '#253745' })));
     };
     const send = (data: Uint8Array) => { if (ws?.readyState === WebSocket.OPEN) ws.send(data); };
 

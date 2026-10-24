@@ -7,11 +7,12 @@ import { toast } from 'sonner';
 import { Clock, Copy, Globe2, Loader2, LogOut, MoreHorizontal, PenLine, PenTool, Plus, Search, Trash2, Users } from 'lucide-react';
 import { m as motion } from 'framer-motion';
 import { Topbar } from '@/components/layout/Topbar';
-import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
+import { CollabTabs } from '@/components/layout/SectionTabs';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { NewBoardDialog } from '@/components/boards/NewBoardDialog';
+import { useOnceParam } from '@/lib/use-once-param';
 import type { TemplateId } from '@/components/boards/templates';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
@@ -74,6 +75,7 @@ export default function BoardsPage() {
   const [menu, setMenu] = useState<string | null>(null);
 
   const [newOpen, setNewOpen] = useState(false);
+  useOnceParam('new', () => setNewOpen(true)); // Collaborate → Home's "New whiteboard" (and its b shortcut)
   const create = () => setNewOpen(true);
   const createBoard = async (title: string, template: TemplateId) => {
     setCreating(true);
@@ -142,7 +144,7 @@ export default function BoardsPage() {
   return (
     <>
       <Topbar title="Whiteboards" subtitle="Draw, add photos and work on a canvas together, live" />
-      <SectionTabs tabs={COLLAB_TABS} />
+      <CollabTabs />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto" onClick={() => setMenu(null)}>
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -184,14 +186,14 @@ export default function BoardsPage() {
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {list.map((b) => (
-                <div key={b.id} className="group relative rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white dark:bg-[#0c0e1b]/80 overflow-hidden shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-indigo-400/50 hover:shadow-[0_24px_60px_-28px_rgba(124,58,237,0.55)]">
+                <div key={b.id} className="group relative rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white dark:bg-[#06141b]/80 overflow-hidden shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-indigo-400/50 hover:shadow-[0_24px_60px_-28px_rgba(72,70,82,0.55)]">
                   <Link href={b.mine && b.title === GUIDE_TITLE ? guideHref(b.id) : `/boards/${b.id}`} className="block">
                     {/* The preview on a canvas of dots; in dark mode it's inverted like the board itself, so it isn't a white box. */}
-                    <div className="relative aspect-[16/10] overflow-hidden bg-zinc-50 dark:bg-[#0a0b14] bg-[radial-gradient(circle_at_1px_1px,rgb(99_102_241/0.18)_1px,transparent_0)] [background-size:18px_18px]">
+                    <div className="relative aspect-[16/10] overflow-hidden bg-zinc-50 dark:bg-[#06141b] bg-[radial-gradient(circle_at_1px_1px,rgb(99_102_241/0.18)_1px,transparent_0)] [background-size:18px_18px]">
                       {b.thumbnail
                         ? <img loading="lazy" decoding="async" src={b.thumbnail} alt="" className="w-full h-full object-contain p-3 transition-transform duration-500 ease-out group-hover:scale-[1.04] dark:invert dark:hue-rotate-180 dark:opacity-90" />
                         : <div className="w-full h-full grid place-items-center"><span className="w-14 h-14 rounded-2xl grid place-items-center bg-gradient-to-br from-indigo-500/15 to-fuchsia-500/15 text-indigo-500 dark:text-indigo-300"><PenTool className="w-7 h-7" /></span></div>}
-                      <span aria-hidden className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white dark:from-[#0c0e1b] to-transparent" />
+                      <span aria-hidden className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white dark:from-[#06141b] to-transparent" />
                     </div>
                     <div className="px-4 pb-4 pt-1">
                       <p className="font-semibold text-zinc-900 dark:text-white truncate">{b.title}</p>
@@ -201,7 +203,7 @@ export default function BoardsPage() {
                       <div className="mt-3 flex items-center gap-2">
                         <div className="flex -space-x-2">
                           {[b.owner, ...b.people].slice(0, 4).map((p) => (
-                            <div key={p.id} className="rounded-full ring-2 ring-white dark:ring-[#0c0e1b]"><Avatar name={p.name} src={p.avatar} size={24} /></div>
+                            <div key={p.id} className="rounded-full ring-2 ring-white dark:ring-[#06141b]"><Avatar name={p.name} src={p.avatar} size={24} /></div>
                           ))}
                         </div>
                         {b.memberCount > 0 && <span className="text-[11px] font-medium text-zinc-600 dark:text-zinc-300 inline-flex items-center gap-1 h-6 px-2 rounded-full border border-zinc-200 dark:border-white/10"><Users className="w-3.5 h-3.5" aria-hidden /> {b.memberCount + 1}</span>}

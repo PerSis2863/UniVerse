@@ -77,10 +77,10 @@ const typeColors: Record<string, string> = {
 };
 
 const gradientColors: Record<string, string> = {
-  Study: 'from-blue-500 to-indigo-600',
+  Study: 'from-indigo-600 to-fuchsia-600',
   Project: 'from-fuchsia-500 to-pink-600',
-  Impact: 'from-emerald-500 to-teal-600',
-  Research: 'from-amber-500 to-orange-600',
+  Impact: 'from-indigo-400 to-indigo-600',
+  Research: 'from-fuchsia-400 to-fuchsia-600',
 };
 
 

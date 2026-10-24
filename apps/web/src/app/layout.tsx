@@ -58,8 +58,8 @@ export const viewport: Viewport = {
   // Lets the app draw under the iPhone notch / home indicator; the shell pads with safe-area insets.
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f5f6fb' },
-    { media: '(prefers-color-scheme: dark)', color: '#0a0d16' },
+    { media: '(prefers-color-scheme: light)', color: '#f7efe7' },
+    { media: '(prefers-color-scheme: dark)', color: '#06141b' },
   ],
 };
 
@@ -73,7 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: DISPLAY_PREFS_SCRIPT }} />
         {/* The saved language's direction (Arabic and Urdu read right to left) before paint */}
         <script dangerouslySetInnerHTML={{ __html: LANGUAGE_SCRIPT }} />
-        <style dangerouslySetInnerHTML={{ __html: 'html{background:#f5f6fb}html.dark{background:#0a0d16;color-scheme:dark}' }} />
+        <style dangerouslySetInnerHTML={{ __html: 'html{background:#f7efe7}html.dark{background:#06141b;color-scheme:dark}' }} />
         {/* An old tab after a deploy can ask for page files that no longer exist: load the new
             version (once), or show a Reload screen, never a blank or unstyled page. */}
         <script dangerouslySetInnerHTML={{ __html: recoveryScript }} />

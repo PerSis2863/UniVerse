@@ -24,15 +24,15 @@ export default function TrendChartBody({ data, unit, kind }: { data: { month: st
         <AreaChart data={data} margin={{ left: -20, right: 8, top: 4 }}>
           <defs>
             <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+              <stop offset="0%" stopColor="#253745" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="#253745" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} stroke="currentColor" strokeOpacity={0.12} />
           <XAxis dataKey="month" {...axis} />
           <YAxis allowDecimals={false} {...axis} />
-          <Tooltip content={<ChartTooltip unit={unit} />} cursor={{ stroke: '#6366f1', strokeOpacity: 0.4 }} />
-          <Area type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2} fill="url(#areaFill)" activeDot={{ r: 5, strokeWidth: 2, stroke: 'var(--background, #fff)' }} animationDuration={900} />
+          <Tooltip content={<ChartTooltip unit={unit} />} cursor={{ stroke: '#253745', strokeOpacity: 0.4 }} />
+          <Area type="monotone" dataKey="value" stroke="#253745" strokeWidth={2} fill="url(#areaFill)" activeDot={{ r: 5, strokeWidth: 2, stroke: 'var(--background, #fff)' }} animationDuration={900} />
         </AreaChart>
       ) : (
         <BarChart data={data} margin={{ left: -20, right: 8, top: 4 }}>

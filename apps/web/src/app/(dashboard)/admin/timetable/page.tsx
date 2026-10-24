@@ -133,7 +133,7 @@ export default function TimetableManagementPage() {
               title="Build your weekly timetable"
               description={data?.courses.length ? 'Schedule each course’s lectures, labs and tutorials. Students see their classes on their dashboard and timetable automatically.' : 'First create courses (Management → Courses), then schedule their classes here.'}
               steps={['Create your courses', 'Add each class with day, time and room', 'Students and teachers see it on their timetable and dashboard']}
-              example={<div><ExampleRow title="CS301 · Operating Systems" meta="Monday 09:00–10:30 · Room B-204" right="Lecture" /><ExampleRow title="CS301 · Operating Systems" meta="Wednesday 14:00–16:00 · Lab 3" right="Lab" accent="from-emerald-500 to-teal-500" /></div>}
+              example={<div><ExampleRow title="CS301 · Operating Systems" meta="Monday 09:00–10:30 · Room B-204" right="Lecture" /><ExampleRow title="CS301 · Operating Systems" meta="Wednesday 14:00–16:00 · Lab 3" right="Lab" accent="from-indigo-400 to-indigo-600" /></div>}
               action={data?.courses.length ? { label: 'Add class', onClick: open } : { label: 'Create a course', href: '/admin/courses' }}
             />
           ) : (

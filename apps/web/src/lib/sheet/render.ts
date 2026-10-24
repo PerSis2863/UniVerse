@@ -83,4 +83,4 @@ export function bookPreview(book: BookJSON, valueOf: (sheet: string, key: string
   return words.join(' · ').slice(0, 300);
 }
 
-export const PRINT_SHEET_CSS = 'body{font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#18181b;margin:1.5rem}h1{font-size:1.4rem}h2{font-size:1.1rem;margin:1.2rem 0 .4rem}table{border-collapse:collapse;font-size:10pt}td,th{border:1px solid #d4d4d8;padding:.2em .45em;vertical-align:bottom;white-space:nowrap}th{background:#f4f4f5;color:#52525b;font-weight:600}@page{margin:12mm}';
+export const PRINT_SHEET_CSS = 'body{font-family:Inter,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#11212d;margin:1.5rem}h1{font-size:1.4rem}h2{font-size:1.1rem;margin:1.2rem 0 .4rem}table{border-collapse:collapse;font-size:10pt}td,th{border:1px solid #ccd0cf;padding:.2em .45em;vertical-align:bottom;white-space:nowrap}th{background:#f2ece6;color:#4a5c6a;font-weight:600}@page{margin:12mm}';

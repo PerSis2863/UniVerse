@@ -34,7 +34,7 @@ export function MarketingNav() {
         className={cn(
           'mx-auto mt-3 flex items-center justify-between gap-4 rounded-full px-4 sm:px-5 h-14 transition-all duration-500',
           scrolled
-            ? 'max-w-5xl bg-[#0e1427]/75 backdrop-blur-xl border border-white/[0.08] shadow-2xl shadow-black/40'
+            ? 'max-w-5xl bg-[#0b1a24]/75 backdrop-blur-xl border border-white/[0.08] shadow-2xl shadow-black/40'
             : 'max-w-7xl bg-transparent border border-transparent',
         )}
         style={{ width: 'calc(100% - 24px)' }}
@@ -58,7 +58,7 @@ export function MarketingNav() {
           </Link>
           <Link
             href="/register"
-            className="group inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-white text-sm font-bold bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_6px_24px_-8px_rgba(192,38,211,0.8)] hover:brightness-110 transition"
+            className="group inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-white text-sm font-bold bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_6px_24px_-8px_rgba(107,85,96,0.8)] hover:brightness-110 transition"
           >
             Get started <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
@@ -75,7 +75,7 @@ export function MarketingNav() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden mx-3 mt-2 rounded-3xl bg-[#0e1427]/95 backdrop-blur-xl border border-white/[0.08] p-3 shadow-2xl"
+            className="md:hidden mx-3 mt-2 rounded-3xl bg-[#0b1a24]/95 backdrop-blur-xl border border-white/[0.08] p-3 shadow-2xl"
           >
             {[...LINKS, { href: '/login', label: 'Sign in' }].map((l) => (
               <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="block px-4 py-3 rounded-2xl text-zinc-200 font-medium hover:bg-white/[0.06]">

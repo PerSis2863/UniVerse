@@ -182,7 +182,7 @@ function EvidenceSection({ groups, onHide }: { groups: EvidenceGroup[]; onHide?:
             return (
               <li key={g.skill} className={cn('rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] overflow-hidden', g.count === 0 && 'opacity-60')}>
                 <button type="button" onClick={() => setOpen(isOpen ? null : g.skill)} aria-expanded={isOpen} className="w-full text-start p-3.5 flex items-center gap-3">
-                  <span className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white text-sm font-black flex items-center justify-center tabular-nums">{g.count}</span>
+                  <span className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 text-white text-sm font-black flex items-center justify-center tabular-nums">{g.count}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate">{g.label}</span>
                     <span className="block text-[11px] text-zinc-500">{g.count} piece{g.count === 1 ? '' : 's'} of evidence · latest {fmtDate(g.last)}</span>

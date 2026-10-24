@@ -83,7 +83,7 @@ function SlidesPage({ id }: { id: string }) {
     <div className="flex-1 flex flex-col min-h-0">
       <header className="px-3 sm:px-6 pt-3 pb-2 flex items-center gap-1.5 border-b border-zinc-200/70 dark:border-white/[0.06]">
         <Link href="/docs" aria-label="Docs" className="p-2 rounded-full text-zinc-600 dark:text-zinc-400 hover:text-indigo-600 hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-4 h-4" /></Link>
-        <span aria-hidden className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-rose-500 text-white hidden sm:flex items-center justify-center shrink-0"><Presentation className="w-4 h-4" /></span>
+        <span aria-hidden className="w-8 h-8 rounded-lg bg-gradient-to-br from-fuchsia-400 to-fuchsia-600 text-white hidden sm:flex items-center justify-center shrink-0"><Presentation className="w-4 h-4" /></span>
         <div className="flex-1 min-w-0">
           <DocBreadcrumb path={data.path} />
           <input data-shared={`doc:${id}`} value={shownTitle} readOnly={!data.canEdit} maxLength={120} onChange={(e) => setTitle(e.target.value)} onBlur={() => void saveTitle()} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
@@ -114,7 +114,7 @@ function SlidesPage({ id }: { id: string }) {
         <AnimatePresence>
           {panel && (
             <motion.aside key="comments" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={spring.smooth}
-              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#0f1322] border-s border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
+              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#0b1a24] border-s border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
               <Comments docId={id} me={data.me.id} canEdit={data.canEdit} onClose={() => setPanel(false)}
                 pick={() => api?.pickRef() ?? null} go={(q) => { if (!api?.goTo(q)) toast('That slide has gone since the comment.'); }}
                 aboutLabel="About this slide" empty="No open comments. Comment on a slide, or on the whole presentation." />

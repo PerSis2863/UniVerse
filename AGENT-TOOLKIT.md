@@ -99,7 +99,7 @@ that reads or writes the local secret files (`.dev.vars`, `.env*`; `*.example` i
   home (the in-page version, `crates/live/assets/detect-antipatterns-browser.js` in their repository,
   called with `window.impeccableDetectAsync()`). Fixed from it: text under 11 px, lines of about 110
   characters on the legal pages, low contrast on the student home's first card, single words left on
-  the last line. Kept on purpose: the purple-to-fuchsia gradients, glow, gradient words and the
+  the last line. Kept on purpose: the two-tone gradients (then purple to fuchsia; dark blue #253745 to dark pink #6B5560 since 23 Oct), glow, gradient words and the
   italic accent (the owner's brand).
 - **Running the checker again:** `npx impeccable detect <folder or url>` (downloads its engine the
   first time), or load the in-page file into a browser test as above.
@@ -132,7 +132,7 @@ that reads or writes the local secret files (`.dev.vars`, `.env*`; `*.example` i
 - **The Relay video:** the landing page (M8), the river of light down every page
   (`src/components/LightTrail.tsx`), the flow card (`src/components/landing/FlowCard.tsx`).
 - **The "Cadra" reel:** the card look and the motion of M3 and M4 (`src/app/globals.css`).
-- **The owner's colours:** indigo into fuchsia, the "two tones". Never green, never another palette.
+- **The owner's colours (since 23 Oct 2026):** steel-navy `#06141B #11212D #253745 #4A5C6A #9BA8AB #CCD0CF` and mauve-rose `#3E3239 #6B5560 #9E8189 #C7A9A3 #E8D2C4 #F7EFE7`; the dark blue #253745 and the dark pink #6B5560 are the "two tones", and the owner wants lots of both (navy side menu, dark-pink selections, blue → pink gradients). Mapped onto Tailwind's indigo / fuchsia / pink / violet / purple / zinc in `globals.css`. Never another palette; green, amber and red only for states.
 
 ## 7. Services and accounts (all set up by the owner)
 

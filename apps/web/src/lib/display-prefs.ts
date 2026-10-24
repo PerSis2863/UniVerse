@@ -71,10 +71,10 @@ export const setMirrorSelf = (on: boolean) => set('uv-mirror', on ? null : 'off'
 export const hapticsOn = () => get('uv-haptics') !== 'off';
 export const setHaptics = (on: boolean) => set('uv-haptics', on ? null : 'off');
 
-/** The accent colour (Phase E): buttons, highlights, links and focus rings; indigo is the default. */
+/** The accent colour (Phase E): buttons, highlights, links and focus rings; UniVerse's dark blue and pink is the default. */
 export const ACCENTS = [
-  { id: 'indigo', name: 'Indigo', swatch: '#4f46e5' },
-  { id: 'violet', name: 'Violet', swatch: '#6d28d9' },
+  { id: 'indigo', name: 'Blue & pink', swatch: '#253745' },
+  { id: 'violet', name: 'Dusk', swatch: '#3a3a44' },
   { id: 'blue', name: 'Blue', swatch: '#1d4ed8' },
   { id: 'teal', name: 'Teal', swatch: '#0f766e' },
   { id: 'rose', name: 'Rose', swatch: '#be123c' },

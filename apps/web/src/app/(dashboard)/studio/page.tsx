@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { m as motion } from 'framer-motion';
 import { ArrowLeft, AudioWaveform, Clapperboard, FileText, History, ImagePlus, Loader2, Mic, Minimize2, Music, Palette, Repeat2, type LucideIcon } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
-import { SectionTabs, COLLAB_TABS } from '@/components/layout/SectionTabs';
+import { CollabTabs } from '@/components/layout/SectionTabs';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { SIZES } from '@/lib/studio';
 import { fadeUp, list } from '@/lib/motion';
@@ -32,16 +32,16 @@ const PANELS: Panel[] = ['convert', 'compress', 'photo', 'audio'];
 interface Tool { id: Panel | 'pdf' | 'video'; name: string; what: string; icon: LucideIcon; tint: string }
 const TOOLS: Tool[] = [
   { id: 'convert', name: 'Convert files', what: 'Word to PDF, PDF to pictures, Excel to CSV and more', icon: Repeat2, tint: 'from-indigo-500 to-sky-500' },
-  { id: 'compress', name: 'Compress files', what: 'Make PDFs, photos, videos and documents smaller', icon: Minimize2, tint: 'from-emerald-500 to-teal-500' },
+  { id: 'compress', name: 'Compress files', what: 'Make PDFs, photos, videos and documents smaller', icon: Minimize2, tint: 'from-indigo-400 to-indigo-600' },
   { id: 'pdf', name: 'Edit a PDF', what: 'Sign, fill in, reorder or remove pages', icon: FileText, tint: 'from-rose-500 to-amber-500' },
   { id: 'photo', name: 'Edit a photo', what: 'Crop, adjust, add text, remove a background', icon: Palette, tint: 'from-indigo-500 to-fuchsia-500' },
   { id: 'video', name: 'Edit a video', what: 'Trim, join clips, add text and music', icon: Clapperboard, tint: 'from-violet-500 to-sky-500' },
-  { id: 'audio', name: 'Edit sound', what: 'Record, trim and clean up audio', icon: AudioWaveform, tint: 'from-emerald-500 to-sky-500' },
+  { id: 'audio', name: 'Edit sound', what: 'Record, trim and clean up audio', icon: AudioWaveform, tint: 'from-indigo-400 to-indigo-600' },
 ];
 
 export default function ToolsPage() {
   return (
-    <Suspense fallback={<><Topbar title="Tools" /><SectionTabs tabs={COLLAB_TABS} /><div className="flex-1 p-8"><ContentSkeleton variant="grid" /></div></>}>
+    <Suspense fallback={<><Topbar title="Tools" /><CollabTabs /><div className="flex-1 p-8"><ContentSkeleton variant="grid" /></div></>}>
       <Tools />
     </Suspense>
   );
@@ -71,7 +71,7 @@ function Tools() {
   return (
     <>
       <Topbar title="Tools" subtitle="Convert, compress and edit files: PDFs, photos, video and sound" />
-      <SectionTabs tabs={COLLAB_TABS} />
+      <CollabTabs />
       <input ref={pdfRef} type="file" accept="application/pdf" className="hidden" aria-label="Choose a PDF to edit" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPdf(f); e.target.value = ''; }} />
       <input ref={videoRef} type="file" accept="video/*,image/*" multiple className="hidden" aria-label="Choose videos to edit" onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; if (fs.length) setVideo(fs); }} />
       {editor ?? (

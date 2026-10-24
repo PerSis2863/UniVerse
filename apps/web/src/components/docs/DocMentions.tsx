@@ -86,7 +86,7 @@ export function MentionMenu({ store }: { store: MentionStore }) {
       {show && s.rect && (
         <motion.ul key="mentions" role="listbox" aria-label="Mention someone" initial={{ opacity: 0, y: -4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={spring.snappy}
           style={{ position: 'fixed', left: Math.min(s.rect.left, (typeof window === 'undefined' ? 9999 : window.innerWidth) - 272), top: s.rect.bottom + 6 }}
-          className="z-[200] w-64 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl">
+          className="z-[200] w-64 py-1 rounded-xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl">
           {s.items.map((p, i) => (
             <li key={p.id} role="option" aria-selected={i === s.index}>
               <button type="button" onMouseDown={(e) => { e.preventDefault(); s.pick?.(p); }} onMouseEnter={() => store.set({ index: i })}

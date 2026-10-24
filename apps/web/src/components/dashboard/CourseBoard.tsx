@@ -154,7 +154,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
             steps={role === 'teacher'
               ? ['Ask your campus admin to assign you a course', 'Post a welcome announcement', 'Upload the first week’s materials']
               : ['Get enrolled in a course by your teacher or admin', 'Open it here to see materials and announcements', 'Check grades and review quiz results']}
-            example={<div><ExampleRow title="Week 3 · Process Scheduling slides" meta="Operating Systems · PDF" right="New" /><ExampleRow title="Midterm on Friday, 10:00" meta="Operating Systems · Exam" right="3 days" accent="from-amber-500 to-orange-500" /></div>}
+            example={<div><ExampleRow title="Week 3 · Process Scheduling slides" meta="Operating Systems · PDF" right="New" /><ExampleRow title="Midterm on Friday, 10:00" meta="Operating Systems · Exam" right="3 days" accent="from-fuchsia-400 to-fuchsia-600" /></div>}
             action={{ label: 'Go to my courses', href: role === 'teacher' ? '/teacher/courses' : '/student/courses' }}
           />
         </div>
@@ -333,7 +333,7 @@ function LatestPack({ board, onOpen }: { board: Board; onOpen: (id: string) => v
   return (
     <motion.button type="button" onClick={() => onOpen(s.id)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth}
       className="w-full mb-5 text-start rounded-2xl p-4 flex items-center gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/25 lift">
-      <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center"><NotebookPen className="w-5 h-5" /></div>
+      <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-fuchsia-400 to-fuchsia-600 text-white flex items-center justify-center"><NotebookPen className="w-5 h-5" /></div>
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-zinc-900 dark:text-white text-sm">Study pack from {new Date(s.startedAt).toLocaleDateString(undefined, { weekday: 'long' })}’s class</p>
         <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-1">{s.summary}</p>

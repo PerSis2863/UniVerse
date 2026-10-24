@@ -97,7 +97,7 @@ export function ChildView({ data, eyebrow, note }: { data: ChildData; eyebrow: s
                     </div>
                     <div>
                       <div className="flex justify-between text-[11px] mb-1"><span className="text-zinc-500">Attendance</span><span className="font-semibold text-zinc-900 dark:text-white tabular-nums">{c.attendance === null ? '—' : `${c.attendance}%`}</span></div>
-                      <Bar value={c.attendance ?? 0} className="bg-gradient-to-r from-emerald-500 to-teal-400" />
+                      <Bar value={c.attendance ?? 0} className="bg-gradient-to-r from-indigo-400 to-indigo-600" />
                     </div>
                   </div>
                 </li>

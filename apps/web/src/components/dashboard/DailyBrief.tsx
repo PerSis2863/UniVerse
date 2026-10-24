@@ -102,7 +102,7 @@ export function DailyBrief() {
   return (
     <motion.section variants={fadeUp} initial="hidden" animate="show" className={`${card} p-4 sm:p-5 space-y-4`} aria-label="Your day">
       <div className="flex items-start gap-3">
-        <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-fuchsia-500 flex items-center justify-center text-white shadow-lg shadow-fuchsia-500/20 shrink-0"><Sun className="w-5 h-5" /></span>
+        <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-fuchsia-400 to-fuchsia-600 flex items-center justify-center text-white shadow-lg shadow-fuchsia-500/20 shrink-0"><Sun className="w-5 h-5" /></span>
         <div className="flex-1 min-w-0">
           <h2 className="font-bold text-zinc-900 dark:text-white">Your day</h2>
           <p className="text-xs text-zinc-500">{format(new Date(`${data.day}T12:00:00`), 'EEEE d MMMM')}</p>

@@ -24,7 +24,7 @@ const TOOLS: { id: Tool; label: string; icon: typeof PenLine }[] = [
   { id: 'pen', label: 'Pen', icon: PenLine }, { id: 'highlight', label: 'Highlighter', icon: Highlighter }, { id: 'text', label: 'Text', icon: Type },
   { id: 'sign', label: 'Signature', icon: Signature }, { id: 'whiteout', label: 'White-out', icon: Square }, { id: 'erase', label: 'Remove a mark', icon: Eraser },
 ];
-const COLORS = ['#111827', '#2563eb', '#dc2626', '#16a34a', '#facc15'];
+const COLORS = ['#11212d', '#2563eb', '#dc2626', '#16a34a', '#facc15'];
 let seq = 0;
 const nid = () => `m${Date.now().toString(36)}${(seq++).toString(36)}`;
 
@@ -315,8 +315,8 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
   };
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#0b0f1e]">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#121830] overflow-x-auto">
+    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#06141b]">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#11212d] overflow-x-auto">
         <button type="button" onClick={async () => { if (await confirmDialog({ title: 'Close the PDF editor?', message: 'Unsaved changes are lost: save the PDF first to keep them.', confirmLabel: 'Close' })) onClose(); }} aria-label="Close the PDF editor" className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
         <span className="text-sm font-semibold text-zinc-900 dark:text-white truncate max-w-[12rem]">{file.name}</span>
         <span className="text-[11px] text-zinc-500 shrink-0">{pages.length} page{pages.length === 1 ? '' : 's'}</span>
@@ -330,7 +330,7 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
       </div>
       <div className="flex-1 min-h-0 flex flex-col md:flex-row">
         {/* Pages */}
-        <ol aria-label="Pages" className="order-2 md:order-1 flex md:flex-col gap-2 p-2 overflow-auto md:w-44 shrink-0 bg-white dark:bg-[#121830] border-t md:border-t-0 md:border-e border-zinc-200 dark:border-white/10">
+        <ol aria-label="Pages" className="order-2 md:order-1 flex md:flex-col gap-2 p-2 overflow-auto md:w-44 shrink-0 bg-white dark:bg-[#11212d] border-t md:border-t-0 md:border-e border-zinc-200 dark:border-white/10">
           {pages.map((p, i) => (
             <li key={p.id} className={cn('relative shrink-0 rounded-lg border-2 p-1 bg-white', i === current ? 'border-indigo-500' : 'border-transparent')}>
               <button type="button" onClick={() => setCurrent(i)} aria-label={`Page ${i + 1}`} aria-current={i === current ? 'page' : undefined} className="block">
@@ -351,7 +351,7 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
         </ol>
         {/* The page */}
         <div ref={stageRef} className="order-1 md:order-2 flex-1 min-w-0 min-h-[50vh] overflow-auto p-4 flex flex-col items-center gap-3">
-          <div role="toolbar" aria-label="Marks" className="flex flex-wrap items-center gap-1 rounded-2xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 p-1 shadow-sm">
+          <div role="toolbar" aria-label="Marks" className="flex flex-wrap items-center gap-1 rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 p-1 shadow-sm">
             {TOOLS.map((t) => (
               <button key={t.id} type="button" onClick={() => { setTool(t.id); if (t.id === 'sign' && !signature) setSigning(true); }} aria-pressed={tool === t.id} aria-label={t.label} title={t.label}
                 className={cn('w-10 h-10 rounded-xl grid place-items-center', tool === t.id ? 'bg-indigo-500 text-white' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10')}><t.icon className="w-4 h-4" /></button>
@@ -385,11 +385,11 @@ function SignaturePad({ onClose, onDone }: { onClose: () => void; onDone: (dataU
   const pos = (e: React.PointerEvent) => { const r = ref.current!.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * ref.current!.width, y: ((e.clientY - r.top) / r.height) * ref.current!.height }; };
   return (
     <div className="fixed inset-0 z-[90] bg-black/50 flex items-end sm:items-center justify-center sm:p-6" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-labelledby="sign-title" className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#121830] p-5 space-y-3">
+      <div role="dialog" aria-modal="true" aria-labelledby="sign-title" className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#11212d] p-5 space-y-3">
         <div className="flex items-center justify-between"><h2 id="sign-title" className="font-bold text-zinc-900 dark:text-white">Your signature</h2><button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button></div>
         <canvas ref={ref} width={600} height={220} className="w-full h-40 rounded-xl border border-zinc-300 bg-white touch-none cursor-crosshair" aria-label="Draw your signature here"
           onPointerDown={(e) => { try { (e.target as HTMLElement).setPointerCapture(e.pointerId); } catch { /* gone */ } last.current = pos(e); }}
-          onPointerMove={(e) => { if (!last.current) return; const p = pos(e); const g = ref.current!.getContext('2d')!; g.strokeStyle = '#111827'; g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); g.moveTo(last.current.x, last.current.y); g.lineTo(p.x, p.y); g.stroke(); last.current = p; setEmpty(false); }}
+          onPointerMove={(e) => { if (!last.current) return; const p = pos(e); const g = ref.current!.getContext('2d')!; g.strokeStyle = '#11212d'; g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); g.moveTo(last.current.x, last.current.y); g.lineTo(p.x, p.y); g.stroke(); last.current = p; setEmpty(false); }}
           onPointerUp={() => { last.current = null; }} />
         <div className="flex justify-between">
           <button type="button" onClick={() => { ref.current!.getContext('2d')!.clearRect(0, 0, 600, 220); setEmpty(true); }} className="btn-secondary btn-sm">Clear</button>

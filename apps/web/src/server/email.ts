@@ -38,14 +38,14 @@ export async function sendEmail(to: string, subject: string, html: string, text:
 
 function layout(title: string, body: string, link?: string) {
   const url = link ? `${APP_URL()}${link.startsWith('/') ? link : `/${link}`}` : APP_URL();
-  const html = `<!doctype html><html><body style="margin:0;background:#f4f4f5;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  const html = `<!doctype html><html><body style="margin:0;background:#f2ece6;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px"><tr><td align="center">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border-radius:16px;padding:32px">
-<tr><td><table cellpadding="0" cellspacing="0"><tr><td style="padding-right:10px"><img src="${APP_URL()}/icon-192x192.png" width="36" height="36" alt="UniVerse Impact" style="display:block;border-radius:10px"></td><td style="font-size:17px;font-weight:700;color:#18181b">UniVerse <span style="color:#6366f1">Impact</span></td></tr></table></td></tr>
-<tr><td style="padding-top:16px;font-size:20px;font-weight:700;color:#18181b">${escapeHtml(title)}</td></tr>
-<tr><td style="padding-top:8px;font-size:15px;line-height:1.5;color:#3f3f46;white-space:pre-wrap">${escapeHtml(body)}</td></tr>
-<tr><td style="padding-top:24px"><a href="${escapeHtml(url)}" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 20px;border-radius:10px">Open UniVerse Impact</a></td></tr>
-<tr><td style="padding-top:24px;font-size:12px;color:#a1a1aa">You get these emails because email notifications are on. You can turn them off in UniVerse under Settings → Notifications.</td></tr>
+<tr><td><table cellpadding="0" cellspacing="0"><tr><td style="padding-right:10px"><img src="${APP_URL()}/icon-192x192.png" width="36" height="36" alt="UniVerse Impact" style="display:block;border-radius:10px"></td><td style="font-size:17px;font-weight:700;color:#11212d">UniVerse <span style="color:#253745">Impact</span></td></tr></table></td></tr>
+<tr><td style="padding-top:16px;font-size:20px;font-weight:700;color:#11212d">${escapeHtml(title)}</td></tr>
+<tr><td style="padding-top:8px;font-size:15px;line-height:1.5;color:#33434f;white-space:pre-wrap">${escapeHtml(body)}</td></tr>
+<tr><td style="padding-top:24px"><a href="${escapeHtml(url)}" style="display:inline-block;background:#253745;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 20px;border-radius:10px">Open UniVerse Impact</a></td></tr>
+<tr><td style="padding-top:24px;font-size:12px;color:#9ba8ab">You get these emails because email notifications are on. You can turn them off in UniVerse under Settings → Notifications.</td></tr>
 </table></td></tr></table></body></html>`;
   const text = `UniVerse Impact\n\n${title}\n\n${body}\n\nOpen UniVerse Impact: ${url}\n\nTurn these emails off in Settings → Notifications.`;
   return { html, text };

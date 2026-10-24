@@ -37,15 +37,15 @@ export function Statement() {
   return (
     <section className="px-3 sm:px-6 py-16">
       <div ref={ref} className="relative max-w-7xl mx-auto overflow-hidden rounded-[2rem] px-6 py-20 sm:py-28 text-center"
-        style={{ background: 'linear-gradient(120deg, #c4b5fd 0%, #e9d5ff 35%, #f5d0fe 65%, #fbcfe8 100%)' }}>
-        <div aria-hidden className="absolute inset-0 opacity-50" style={{ backgroundImage: 'radial-gradient(rgba(46,16,101,0.25) 1px, transparent 1.2px)', backgroundSize: '22px 22px' }} />
+        style={{ background: 'linear-gradient(120deg, #b1a8a7 0%, #dfd1c8 35%, #e8d2c4 65%, #e8d2c4 100%)' }}>
+        <div aria-hidden className="absolute inset-0 opacity-50" style={{ backgroundImage: 'radial-gradient(rgba(24,26,33,0.25) 1px, transparent 1.2px)', backgroundSize: '22px 22px' }} />
         <div className="relative">
-          <p className="font-mono text-xs text-[#3b0764]">| what UniVerse is</p>
-          <p className="relative mt-6 min-h-[1.2em] text-4xl sm:text-6xl font-bold tracking-tight text-[#1e1033]">
+          <p className="font-mono text-xs text-[#1e1d23]">| what UniVerse is</p>
+          <p className="relative mt-6 min-h-[1.2em] text-4xl sm:text-6xl font-bold tracking-tight text-[#11212d]">
             <span className="sr-only">{LINES.join(' ')}</span>
-            <span aria-hidden>{text}</span><span aria-hidden className="inline-block w-[3px] h-[0.9em] -mb-[0.1em] ms-1 bg-[#4c1d95] animate-pulse" />
+            <span aria-hidden>{text}</span><span aria-hidden className="inline-block w-[3px] h-[0.9em] -mb-[0.1em] ms-1 bg-[#24262e] animate-pulse" />
           </p>
-          <div className="mt-12 inline-flex w-20 h-20 rounded-3xl bg-[#0d0f1d] items-center justify-center shadow-[0_20px_50px_-15px_rgba(76,29,149,0.7)]">
+          <div className="mt-12 inline-flex w-20 h-20 rounded-3xl bg-[#0b1a24] items-center justify-center shadow-[0_20px_50px_-15px_rgba(36,38,46,0.7)]">
             <UniverseLogo size="sm" animated />
           </div>
         </div>

@@ -7,7 +7,7 @@ export interface ChannelRules { view: string[]; post: string[] }
 export interface MemberLike { role: string; roleIds: string[] }
 export interface ChannelLike { channelKind: string | null; channelPrivate: boolean; rules: ChannelRules }
 
-export const ROLE_COLORS = ['#e11d48', '#ea580c', '#ca8a04', '#16a34a', '#0d9488', '#0284c7', '#4f46e5', '#9333ea', '#db2777', '#64748b'];
+export const ROLE_COLORS = ['#e11d48', '#ea580c', '#ca8a04', '#16a34a', '#0d9488', '#0284c7', '#253745', '#544b57', '#6b5560', '#64748b'];
 export const MAX_ROLES = 20;
 
 /** A JSON list of ids from the database: strings only, at most 50. */

@@ -168,11 +168,11 @@ export async function emailSecurityReport(now = new Date()): Promise<string> {
   const color = { high: '#e11d48', medium: '#d97706', low: '#0284c7' } as const;
   const label = { high: 'Fix now', medium: 'Soon', low: 'When you can' } as const;
   const items = r.findings.slice(0, 12);
-  const html = `<div style="font-family:system-ui,sans-serif;max-width:560px;color:#18181b">
-<h2 style="margin:0 0 4px">Weekly security check: ${r.score}/100</h2><p style="margin:0 0 16px;color:#52525b">${escapeHtml(r.summary)}</p>
-${items.length ? items.map((f) => `<div style="border:1px solid #e4e4e7;border-radius:12px;padding:12px 14px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:${color[f.severity] ?? '#52525b'}">${label[f.severity] ?? ''} · ${escapeHtml(f.area)}</span><div style="font-weight:600;margin:2px 0">${escapeHtml(f.title)}</div><div style="color:#52525b;font-size:14px">${escapeHtml(f.detail)}</div><div style="font-size:14px;margin-top:6px"><b>What to do:</b> ${escapeHtml(f.fix)}</div></div>`).join('') : '<p>Nothing needs you this week.</p>'}
+  const html = `<div style="font-family:system-ui,sans-serif;max-width:560px;color:#11212d">
+<h2 style="margin:0 0 4px">Weekly security check: ${r.score}/100</h2><p style="margin:0 0 16px;color:#4a5c6a">${escapeHtml(r.summary)}</p>
+${items.length ? items.map((f) => `<div style="border:1px solid #e4ddd7;border-radius:12px;padding:12px 14px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:${color[f.severity] ?? '#4a5c6a'}">${label[f.severity] ?? ''} · ${escapeHtml(f.area)}</span><div style="font-weight:600;margin:2px 0">${escapeHtml(f.title)}</div><div style="color:#4a5c6a;font-size:14px">${escapeHtml(f.detail)}</div><div style="font-size:14px;margin-top:6px"><b>What to do:</b> ${escapeHtml(f.fix)}</div></div>`).join('') : '<p>Nothing needs you this week.</p>'}
 <p style="margin-top:16px"><a href="${link}">Open the Health check →</a></p>
-<p style="color:#a1a1aa;font-size:12px">${r.passed.length} checks passed. Get it weekly, monthly or not at all: owner console → Server → Your emails.</p></div>`;
+<p style="color:#9ba8ab;font-size:12px">${r.passed.length} checks passed. Get it weekly, monthly or not at all: owner console → Server → Your emails.</p></div>`;
   const text = `Weekly security check: ${r.score}/100\n\n${r.summary}\n\n${items.map((f) => `- [${label[f.severity] ?? f.severity}] ${f.title}: ${f.fix}`).join('\n') || 'Nothing needs you this week.'}\n\n${link}`;
   const owners = ownerEmails();
   const sent = await Promise.all(owners.map((to) => sendEmail(to, `UniVerse security: ${r.score}/100${items.length ? `, ${items.length} to look at` : ''}`, html, text)));

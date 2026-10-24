@@ -14,10 +14,10 @@ import { pushService } from './push.service';
 
 // ── Impact level thresholds ──────────────────────────────────────────────────
 const LEVELS = [
-  { level: 1, title: 'Changemaker Seed',  minXP: 0,    color: '#6b7280', emoji: '🌱' },
+  { level: 1, title: 'Changemaker Seed',  minXP: 0,    color: '#5a6a73', emoji: '🌱' },
   { level: 2, title: 'Impact Explorer',   minXP: 100,  color: '#10b981', emoji: '🌿' },
   { level: 3, title: 'Social Innovator',  minXP: 300,  color: '#3b82f6', emoji: '⚡' },
-  { level: 4, title: 'SDG Champion',      minXP: 600,  color: '#8b5cf6', emoji: '🏅' },
+  { level: 4, title: 'SDG Champion',      minXP: 600,  color: '#53515e', emoji: '🏅' },
   { level: 5, title: 'Global Catalyst',   minXP: 1000, color: '#f59e0b', emoji: '🌍' },
   { level: 6, title: 'Visionary Leader',  minXP: 1500, color: '#ef4444', emoji: '🚀' },
   { level: 7, title: 'UniVerse Legend',   minXP: 2500, color: '#f97316', emoji: '🌟' },
@@ -115,7 +115,7 @@ export class ImpactService {
     const sdgBadges = ngoApps
       .filter(a => a.status === 'ACCEPTED' && a.project.sdgNumber)
       .map(a => {
-        const colors = ['from-cyan-500 to-blue-600', 'from-rose-500 to-red-600', 'from-emerald-500 to-teal-600', 'from-amber-500 to-orange-600', 'from-purple-500 to-indigo-600'];
+        const colors = ['from-indigo-400 to-indigo-600', 'from-rose-500 to-red-600', 'from-indigo-400 to-indigo-600', 'from-fuchsia-400 to-fuchsia-600', 'from-purple-500 to-indigo-600'];
         return {
           num: a.project.sdgNumber,
           name: `SDG ${a.project.sdgNumber} Objective`,

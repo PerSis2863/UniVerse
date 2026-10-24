@@ -27,7 +27,7 @@ const TYPE_LABEL: Record<string, string> = {
   GOVERNMENT: 'Government',
 };
 const FILTERS = ['ALL', 'ACADEMIC', 'NGO', 'CORPORATE'] as const;
-const GRADIENTS = ['from-indigo-500 to-violet-500', 'from-fuchsia-500 to-pink-500', 'from-cyan-500 to-blue-500', 'from-emerald-500 to-teal-500'];
+const GRADIENTS = ['from-indigo-500 to-violet-500', 'from-fuchsia-500 to-pink-500', 'from-indigo-400 to-indigo-600', 'from-indigo-400 to-indigo-600'];
 
 export default function GlobalPartnersPage() {
   const { data, error, isLoading } = useSWR<Partner[]>('/partners', fetcher);

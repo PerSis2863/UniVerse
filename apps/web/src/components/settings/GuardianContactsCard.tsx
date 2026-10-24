@@ -63,7 +63,7 @@ export function GuardianContactsCard() {
   return (
     <div className="rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-5 sm:p-6 space-y-5">
       <div className="flex items-start gap-4">
-        <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+        <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
           <Mail className="w-6 h-6 text-white" />
         </span>
         <div>

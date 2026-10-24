@@ -63,7 +63,7 @@ export function SmartWeek({ today, tz }: { today: string; tz: string }) {
   return (
     <section className="rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl p-4 sm:p-6">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shrink-0"><CalendarClock className="w-5 h-5" /></span>
+        <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 text-white flex items-center justify-center shrink-0"><CalendarClock className="w-5 h-5" /></span>
         <div className="min-w-0 flex-1">
           <h2 className="font-bold text-zinc-900 dark:text-white">Your week, scheduled</h2>
           <p className="text-xs text-zinc-500">Study sessions in your free time, around your classes and events{data ? ` · up to ${data.prefs.capMin} min a day · ${doneCount}/${total} done` : ''}</p>

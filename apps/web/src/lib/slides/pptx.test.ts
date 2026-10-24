@@ -38,7 +38,7 @@ describe('writePptx', () => {
     expect(b).toMatchObject({ bg: '#ffeedd', hidden: true });
     const [title, body, shape, pic] = a.items;
     expect(title).toMatchObject({ kind: 'text', x: 90, y: 290, w: 1420, h: 180, size: 84 });
-    expect(title.paras?.[0].runs).toEqual([{ t: 'Volcanoes & ', b: true, color: '#f1f5f9' }, { t: '<lava>', i: true, color: '#ff0000' }]);
+    expect(title.paras?.[0].runs).toEqual([{ t: 'Volcanoes & ', b: true, color: '#f2ece6' }, { t: '<lava>', i: true, color: '#ff0000' }]);
     expect(body.paras?.map((p) => [plainText([p]), p.bullet, p.align])).toEqual([['Heat', 'dot', undefined], ['Pressure', 'num', 'right']]);
     expect(body.paras?.[1].runs[0]).toMatchObject({ u: true, link: 'https://example.org/p' });
     expect(shape).toMatchObject({ kind: 'shape', shape: 'ellipse', rot: 45, fill: '#22c55e', line: '#000000' });

@@ -6,13 +6,13 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useChatLock, watchRelock } from '@/lib/chat-lock';
-import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock, Hash, Sparkles, MessagesSquare, UserRound, type LucideIcon } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar } from '@/components/ui/Avatar';
-import { type ConversationSummary, chatJson, plainText, previewText, timeLabel } from './chat-client';
+import { type ConversationSummary, auraOf, chatJson, plainText, previewText, timeLabel } from './chat-client';
 import { pickDraft, useLocalDrafts } from '@/lib/chat-drafts';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { TabPill } from '@/components/ui/Glide';
@@ -186,26 +186,80 @@ export function MessagingHub() {
   const totalUnread = (data?.conversations ?? []).filter((c) => !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
   const archivedCount = (data?.conversations ?? []).filter((c) => c.archived).length;
   const archivedUnread = (data?.conversations ?? []).filter((c) => c.archived && c.unread > 0).length;
+  // Chat streaks (M17, Snapchat): days in a row we've both written, on one-to-one chats.
+  const { data: streakData } = useSWR<{ streaks: Record<string, number> }>('/api/chat/streaks', authedJson, { revalidateOnFocus: false });
+  const streaks = streakData?.streaks ?? {};
+  // Pinned chats float as big pictures at the top (iMessage) when the whole list is showing.
+  const showPins = space === 'chats' && view === 'chats' && filter === 'all' && !search.trim();
+  const pinnedChats = showPins ? conversations.filter((c) => c.pinned).slice(0, 8) : [];
+  const listed = pinnedChats.length ? conversations.filter((c) => !pinnedChats.includes(c)) : conversations;
+  // Where the chosen row was, so the chat opens out from it (the portal, M17).
+  const chatSide = useRef<HTMLElement>(null);
+  const [portalY, setPortalY] = useState(50);
+  const openFrom = (id: string, e: React.MouseEvent) => {
+    const top = chatSide.current?.getBoundingClientRect().top ?? 0;
+    setPortalY(Math.max(0, e.clientY - top));
+    select(id);
+  };
+  // The folder rail (Telegram desktop): the built-in views, then my folders.
+  const go = (to: { space?: 'chats' | 'communities'; view?: 'chats' | 'archived'; filter?: Filter }) => { setSpace(to.space ?? 'chats'); setView(to.view ?? 'chats'); setFilter(to.filter ?? 'all'); };
+  const rail: { id: string; label: string; icon: LucideIcon | string; on: boolean; count?: number; run: () => void }[] = [
+    { id: 'all', label: 'All chats', icon: MessagesSquare, on: space === 'chats' && view === 'chats' && filter === 'all', count: totalUnread, run: () => go({}) },
+    { id: 'unread', label: 'Unread', icon: MailOpen, on: space === 'chats' && view === 'chats' && filter === 'unread', run: () => go({ filter: 'unread' }) },
+    { id: 'direct', label: 'Direct', icon: UserRound, on: space === 'chats' && view === 'chats' && filter === 'direct', run: () => go({ filter: 'direct' }) },
+    { id: 'groups', label: 'Groups', icon: Users, on: space === 'chats' && view === 'chats' && filter === 'groups', run: () => go({ filter: 'groups' }) },
+    { id: 'communities', label: 'Communities', icon: Hash, on: space === 'communities', run: () => go({ space: 'communities' }) },
+    { id: 'archived', label: 'Archived', icon: Archive, on: space === 'chats' && view === 'archived', count: archivedUnread, run: () => go({ view: 'archived' }) },
+    ...folders.map((f) => ({ id: `folder:${f.id}`, label: f.name, icon: f.emoji || '📁', on: space === 'chats' && view === 'chats' && filter === `folder:${f.id}`, run: () => go({ filter: `folder:${f.id}` as Filter }) })),
+  ];
+
+  // The empty chat side offers the latest few chats to jump back into.
+  const recent = useMemo(() => (data?.conversations ?? []).filter((c) => !c.archived && c.lastMessage).slice(0, 4), [data]);
 
   return (
-    <div className="flex-1 flex min-h-0 md:p-5 lg:p-6 md:gap-5">
+    <div className="flex-1 flex min-h-0 md:p-5 lg:p-6 md:gap-4">
+      {/* The folder rail (wide screens). */}
+      <nav aria-label="Chat folders" className="msg-panel hidden md:flex flex-col items-center gap-1 w-16 shrink-0 py-3 rounded-3xl bg-white/60 dark:bg-white/[0.03] backdrop-blur-xl overflow-y-auto [scrollbar-width:none]">
+        {rail.map((r, i) => (
+          <div key={r.id} className="contents">
+            {i === 6 && <span aria-hidden className="my-1 h-px w-7 shrink-0 bg-zinc-200 dark:bg-white/10" />}
+            <button type="button" onClick={r.run} aria-label={r.count ? `${r.label}, ${r.count} unread` : r.label} aria-current={r.on ? 'true' : undefined} title={r.label}
+              className={cn('group relative isolate shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center transition-colors duration-200', r.on ? 'text-white' : 'text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>
+              {r.on && <>
+                <motion.span layoutId="rail-pill" transition={spring.snappy} className="rail-pill absolute inset-0 -z-10 rounded-2xl" aria-hidden />
+                <motion.span layoutId="rail-edge" transition={spring.smooth} className="rail-edge absolute -start-[10px] top-2 bottom-2 w-1 rounded-full" aria-hidden />
+              </>}
+              {typeof r.icon === 'string' ? <span className="text-lg leading-none" aria-hidden>{r.icon}</span> : <r.icon className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" aria-hidden />}
+              {!!r.count && <span key={r.count} className="badge-bump absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white text-[10px] font-bold leading-[18px] text-center ring-2 ring-white dark:ring-[#06141b]">{r.count > 99 ? '99+' : r.count}</span>}
+            </button>
+          </div>
+        ))}
+        {folders.length < 10 && (
+          <button type="button" onClick={() => setFolderEdit('new')} aria-label="New folder" title="New folder" className="shrink-0 w-11 h-11 rounded-2xl border border-dashed border-zinc-300 dark:border-white/15 text-zinc-400 hover:text-indigo-500 flex items-center justify-center"><Plus className="w-4 h-4" /></button>
+        )}
+        {activeFolder && <button type="button" onClick={() => setFolderEdit(activeFolder)} aria-label={`Edit ${activeFolder.name}`} title={`Edit ${activeFolder.name}`} className="shrink-0 w-11 h-11 rounded-2xl text-zinc-400 hover:text-indigo-500 flex items-center justify-center"><Pencil className="w-4 h-4" /></button>}
+        <button type="button" onClick={() => setSavedOpen(true)} aria-label={dueCount ? `Saved: ${dueCount} reminder${dueCount === 1 ? '' : 's'} due` : 'Saved: later and starred'} title="Saved" className="relative mt-auto shrink-0 w-11 h-11 rounded-2xl text-zinc-500 dark:text-zinc-400 hover:text-amber-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06] flex items-center justify-center">
+          <Star className="w-5 h-5" />
+          {dueCount > 0 && <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-[18px] text-center">{dueCount > 9 ? '9+' : dueCount}</span>}
+        </button>
+      </nav>
       {/* Conversation list */}
       <section className={cn(
-        'w-full md:w-[360px] lg:w-[380px] shrink-0 flex flex-col min-h-0 md:rounded-3xl md:border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl overflow-hidden',
+        'msg-panel w-full md:w-[340px] lg:w-[360px] shrink-0 flex flex-col min-h-0 md:rounded-3xl bg-white/70 dark:bg-white/[0.035] max-md:dark:bg-[#06141b]/85 backdrop-blur-xl overflow-hidden md:shadow-[0_24px_60px_-30px_rgb(79_70_229/0.45)]',
         activeId ? 'hidden md:flex' : 'flex',
       )}>
         <div className="p-4 pb-3 space-y-3 border-b border-zinc-200/80 dark:border-white/[0.06]">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-black text-zinc-900 dark:text-white flex items-center gap-2">
+            <h2 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
               {view === 'archived' ? (
                 <><button onClick={() => setView('chats')} aria-label="Back to chats" className="p-1 -ms-1 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button> Archived</>
               ) : (
-                <>Chats {totalUnread > 0 && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">{totalUnread}</span>}</>
+                <>{space === 'communities' ? 'Communities' : filter === 'all' ? 'Chats' : rail.find((r) => r.on)?.label ?? 'Chats'} {totalUnread > 0 && <span key={totalUnread} className="badge-bump text-xs font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white shadow-[0_0_14px_-2px_rgb(217_70_239/0.7)]">{totalUnread}</span>}</>
               )}
             </h2>
             <div className="flex gap-1 items-center">
               <PresencePicker />
-              <button onClick={() => setSavedOpen(true)} aria-label={dueCount ? `Saved: ${dueCount} reminder${dueCount === 1 ? '' : 's'} due` : 'Saved: later and starred'} title="Later and starred" className="relative p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-amber-500 hover:bg-zinc-100 dark:hover:bg-white/10">
+              <button onClick={() => setSavedOpen(true)} aria-label={dueCount ? `Saved: ${dueCount} reminder${dueCount === 1 ? '' : 's'} due` : 'Saved: later and starred'} title="Later and starred" className="md:hidden relative p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-amber-500 hover:bg-zinc-100 dark:hover:bg-white/10">
                 <Star className="w-5 h-5" />
                 {dueCount > 0 && <span className="absolute top-0.5 end-0.5 min-w-[1rem] h-4 px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-4 text-center">{dueCount > 9 ? '9+' : dueCount}</span>}
               </button>
@@ -213,7 +267,7 @@ export function MessagingHub() {
               <button onClick={() => setDialog('chat')} aria-label="New chat" title="New chat" className="p-2 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><MessageSquarePlus className="w-5 h-5" /></button>
             </div>
           </div>
-          <div className="flex p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.05]" role="tablist" aria-label="Chats or communities">
+          <div className="md:hidden flex p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.05]" role="tablist" aria-label="Chats or communities">
             {(['chats', 'communities'] as const).map((sp) => (
               <button key={sp} role="tab" aria-selected={space === sp} onClick={() => setSpace(sp)} className={cn('relative flex-1 py-1.5 rounded-xl text-xs font-semibold transition-colors', space === sp ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200')}>
                 {space === sp && <motion.span layoutId="hub-space" className="absolute inset-0 rounded-xl bg-white dark:bg-white/10 shadow-sm" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />}
@@ -224,7 +278,7 @@ export function MessagingHub() {
           {space === 'chats' && <>
           <div className="relative">
             <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search chats and messages" aria-label="Search chats and messages" title="Filters: from:name, in:chat, has:file, has:link, has:photo, has:voice, before:2026-10-01, after:2026-09-01" className="w-full ps-10 pe-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-indigo-500/40" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search chats and messages" aria-label="Search chats and messages" title="Filters: from:name, in:chat, has:file, has:link, has:photo, has:voice, before:2026-10-01, after:2026-09-01" className="msg-search w-full ps-10 pe-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none transition-shadow duration-200" />
           </div>
           {/* Message search filters (1.14): each chip adds or removes its filter in the search box. */}
           <AnimatePresence initial={false}>
@@ -243,7 +297,7 @@ export function MessagingHub() {
               </motion.div>
             )}
           </AnimatePresence>
-          <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] -mx-1 px-1 pb-0.5">
+          <div className="md:hidden flex gap-2 overflow-x-auto [scrollbar-width:none] -mx-1 px-1 pb-0.5">
             {([['all', 'All'], ['unread', 'Unread'], ['direct', 'Direct'], ['groups', 'Groups'], ...folders.map((f) => [`folder:${f.id}`, `${f.emoji} ${f.name}`.trim()])] as [Filter, string][]).map(([f, label]) => (
               <button key={f} onClick={() => setFilter(f)} className={cn('relative isolate shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap', filter === f ? 'text-white' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-white/10')}>{filter === f && <TabPill id="components-chat-messaginghub-0" />}
                 {label}
@@ -293,8 +347,23 @@ export function MessagingHub() {
           )}
           {/* The CSS cascade, not a JS animation per row (that restyled every row each frame while
               the tab drew on a slow phone). */}
+          {pinnedChats.length > 0 && (
+            <div className="px-1 pt-1 pb-2 grid grid-cols-4 gap-1" aria-label="Pinned chats" role="list">
+              {pinnedChats.map((c, i) => (
+                <button key={c.id} role="listitem" type="button" onClick={(e) => openFrom(c.id, e)} aria-label={`${c.title}${c.unread ? `, ${c.unread} unread` : ''}${c.typing.length ? ', typing' : ''}`}
+                  className={cn('group relative flex flex-col items-center gap-1.5 pt-3 pb-2 rounded-2xl transition-colors', c.id === activeId ? 'bg-indigo-500/10' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}>
+                  {c.typing.length > 0 && <span className="pin-typing absolute top-0 end-2 z-10 px-1.5 py-1 rounded-full bg-white dark:bg-[#253745] shadow-md text-emerald-500"><span className="typing-dots" aria-hidden><i /><i /><i /></span></span>}
+                  <span className="pin-float row-aura on" style={{ ['--i' as string]: i, ['--aura' as string]: auraOf(c.otherUserId ?? c.id) }}>
+                    <span className={cn('block rounded-full', c.unread > 0 && !c.muted && 'msg-ring')}><Avatar name={c.title} src={c.avatarUrl} online={c.online} size={52} /></span>
+                  </span>
+                  {c.unread > 0 && <span key={c.unread} className="badge-bump absolute top-1.5 start-2 min-w-5 h-5 px-1.5 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white text-[11px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-[#06141b]">{c.unread > 99 ? '99+' : c.unread}</span>}
+                  <span className="max-w-full px-1 truncate text-xs font-semibold text-zinc-800 dark:text-zinc-100" translate="no">{c.isGroup ? c.title : c.title.split(' ')[0]}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="stagger">
-          {conversations.map((c) => {
+          {listed.map((c) => {
             const active = c.id === activeId;
             const typing = c.typing.length > 0;
             // What I was writing there (this device's or my account's, whichever is newer).
@@ -302,44 +371,51 @@ export function MessagingHub() {
             return (
               <div key={c.id} className="group relative">
               <button
-                onClick={() => { if (menuFor) return setMenuFor(null); select(c.id); }}
+                onClick={(e) => { if (menuFor) return setMenuFor(null); openFrom(c.id, e); }}
                 onContextMenu={(e) => { e.preventDefault(); setMenuFor(c.id); }}
                 onPointerDown={(e) => { if (e.pointerType === 'touch') press.current = setTimeout(() => { haptic('tap'); setMenuFor(c.id); }, 480); }}
                 onPointerUp={() => press.current && clearTimeout(press.current)}
                 // Only the finger: a "mouse left" right after a touch starts would cancel the press.
                 onPointerLeave={(e) => e.pointerType === 'touch' && press.current && clearTimeout(press.current)}
-                className={cn('relative isolate w-full flex items-center gap-3 p-3 rounded-2xl text-start transition-colors', active ? '' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}
+                className={cn('relative isolate w-full flex items-center gap-3 p-3 rounded-2xl text-start transition-colors', active ? '' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.045]', c.unread > 0 && !c.muted && !active && 'msg-unread-edge')}
               >{active && <TabPill id="components-chat-messaginghub-1" variant="soft" />}
-                <Avatar name={c.title} src={c.avatarUrl} online={c.online} size={48} />
+                <span className={cn('row-aura shrink-0', c.unread > 0 && !c.muted && 'on')} style={{ ['--aura' as string]: auraOf(c.otherUserId ?? c.id) }}>
+                {c.unread > 0 && !c.muted
+                  ? <span key={`${c.id}:ring`} className="msg-ring msg-ring-new block"><Avatar name={c.title} src={c.avatarUrl} online={c.online} size={44} /></span>
+                  : <Avatar name={c.title} src={c.avatarUrl} online={c.online} size={48} />}
+                </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold text-zinc-900 dark:text-white truncate flex items-center gap-1">
                       {c.private && <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-label="Private chat" />}{c.title} {c.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />}{c.status?.statusEmoji && <span className="shrink-0 text-sm" title={c.status.statusText ?? undefined}>{c.status.statusEmoji}</span>}
                     </p>
-                    {c.lastMessage && <span className={cn('text-[11px] shrink-0', c.unread && !c.muted ? 'text-indigo-500 font-semibold' : 'text-zinc-400')}>{timeLabel(c.lastMessage.createdAt)}</span>}
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      {!c.isGroup && streaks[c.id] && <span className="streak" title={`${streaks[c.id]}-day streak: you've both written every day`} aria-label={`${streaks[c.id]}-day streak`}><i aria-hidden>🔥</i>{streaks[c.id]}</span>}
+                      {c.lastMessage && <span className={cn('text-[11px]', c.unread && !c.muted ? 'text-indigo-500 font-semibold' : 'text-zinc-400')}>{timeLabel(c.lastMessage.createdAt)}</span>}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between gap-2 mt-0.5">
                     <p className={cn('text-sm truncate', typing ? 'text-emerald-500 font-medium' : c.unread && !draft ? 'text-zinc-800 dark:text-zinc-200 font-medium' : 'text-zinc-500')}>
-                      {!lockOpen && lockedChats.includes(c.id) ? <span className="inline-flex items-center gap-1"><Lock className="w-3.5 h-3.5" />Locked chat</span> : typing ? `${c.isGroup ? c.typing[0] + ' is ' : ''}typing…` : draft
+                      {!lockOpen && lockedChats.includes(c.id) ? <span className="inline-flex items-center gap-1"><Lock className="w-3.5 h-3.5" />Locked chat</span> : typing ? <span className="inline-flex items-center gap-1.5"><span className="typing-dots" aria-hidden><i /><i /><i /></span>{`${c.isGroup ? c.typing[0] + ' is ' : ''}typing`}</span> : draft
                         ? <><span className="font-medium text-fuchsia-600 dark:text-fuchsia-400">Draft: </span>{plainText(draft)}</>
                         : `${c.lastMessage?.mine ? 'You: ' : ''}${previewText(c.lastMessage)}`}
                     </p>
                     <span className="flex items-center gap-1 shrink-0 text-zinc-400">
                       {c.muted && <BellOff className="w-3.5 h-3.5" />}
                       {c.pinned && <Pin className="w-3.5 h-3.5 rotate-45" />}
-                      {c.unread > 0 && <span className={cn('min-w-5 h-5 px-1.5 rounded-full text-white text-[11px] font-bold flex items-center justify-center', c.muted ? 'bg-zinc-400 dark:bg-zinc-600' : 'bg-gradient-to-br from-indigo-600 to-fuchsia-600')}>{c.markedUnread && c.unread === 1 ? '' : c.unread > 99 ? '99+' : c.unread}</span>}
+                      {c.unread > 0 && <span key={c.unread} className={cn('badge-bump min-w-5 h-5 px-1.5 rounded-full text-white text-[11px] font-bold flex items-center justify-center', c.muted ? 'bg-zinc-400 dark:bg-zinc-600' : 'bg-gradient-to-br from-indigo-600 to-fuchsia-600 shadow-[0_0_12px_-2px_rgb(217_70_239/0.8)]')}>{c.markedUnread && c.unread === 1 ? '' : c.unread > 99 ? '99+' : c.unread}</span>}
                     </span>
                   </div>
                 </div>
               </button>
               {(
                 <button onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === c.id ? null : c.id); }} aria-label="Chat options"
-                  className={cn('absolute end-2 top-2 p-1 rounded-full bg-white/90 dark:bg-[#121830]/90 text-zinc-500 shadow-sm transition-opacity hidden md:block', menuFor === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
+                  className={cn('absolute end-2 top-2 p-1 rounded-full bg-white/90 dark:bg-[#11212d]/90 text-zinc-500 shadow-sm transition-opacity hidden md:block', menuFor === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
               )}
               {menuFor === c.id && (
-                <div className="absolute end-2 top-9 z-30 w-52 py-1 rounded-xl bg-white dark:bg-[#121830] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm" onMouseLeave={() => setMenuFor(null)}>
+                <div className="menu-pop absolute end-2 top-9 z-30 w-52 py-1 rounded-xl bg-white/95 dark:bg-[#11212d]/95 backdrop-blur-xl border border-zinc-200 dark:border-white/10 shadow-2xl shadow-indigo-950/40 text-sm" onMouseLeave={() => setMenuFor(null)}>
                   {!c.archived && <ListItem icon={c.pinned ? PinOff : Pin} label={c.pinned ? 'Unpin chat' : 'Pin chat'} onClick={() => setPref(c, { pinned: !c.pinned })} />}
                   {c.muted
                     ? <ListItem icon={Bell} label={mutedLabel(c)} onClick={() => setPref(c, { muted: false }, 'Unmuted')} />
@@ -381,24 +457,55 @@ export function MessagingHub() {
       </section>
 
       {/* Active chat */}
-      <section className={cn(
-        'relative flex-1 min-w-0 min-h-0 md:rounded-3xl md:border border-zinc-200/80 dark:border-white/[0.07] bg-white/50 dark:bg-white/[0.02] backdrop-blur-xl overflow-hidden',
+      <section ref={chatSide} className={cn(
+        'msg-panel relative flex-1 min-w-0 min-h-0 md:rounded-3xl bg-white/50 dark:bg-white/[0.02] backdrop-blur-xl overflow-hidden md:shadow-[0_24px_60px_-30px_rgb(192_38_211/0.35)]',
         activeId ? 'flex' : 'hidden md:flex',
       )}>
         {activeId ? (
-          <ChatWindow key={activeId} conversationId={activeId} jumpTo={jumpTo} onBack={() => select(null)} onChanged={() => mutate()} onOpenChat={(id) => { mutate(); select(id); }} />
+          <div key={activeId} className="chat-glide flex-1 flex min-w-0 min-h-0" style={{ ['--py' as string]: `${portalY}px` }}>
+            <ChatWindow conversationId={activeId} jumpTo={jumpTo} onBack={() => select(null)} onChanged={() => mutate()} onOpenChat={(id) => { mutate(); select(id); }} />
+          </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-xl shadow-indigo-500/20 mb-5">
-              <MessageSquarePlus className="w-9 h-9 text-white" />
+          <div className="relative flex-1 flex flex-col items-center justify-center text-center p-8 overflow-hidden">
+            {/* A slow orbit of light round the mark (CSS: transform only, still with Reduce Motion). */}
+            <div aria-hidden className="relative w-52 h-52 flex items-center justify-center">
+              <div className="msg-halo absolute inset-0 rounded-full" />
+              <div className="msg-orbit inset-1"><i /></div>
+              <div className="msg-orbit msg-orbit-2 inset-9"><i /></div>
+              <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-xl shadow-fuchsia-500/30">
+                <MessageSquarePlus className="w-9 h-9 text-white" />
+              </div>
             </div>
-            <h3 className="text-2xl font-black text-zinc-900 dark:text-white">UniVerse Messages</h3>
-            <p className="text-sm text-zinc-500 mt-2 max-w-sm">Chat one-to-one or in groups, share photos, files and voice messages, and start voice or video calls with anyone on your campus.</p>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setDialog('chat')} className="btn-primary rounded-full px-5">New chat</button>
-              <button onClick={() => setDialog('group')} className="btn-secondary rounded-full px-5">New group</button>
+            <h3 className="text-2xl font-black text-zinc-900 dark:text-white">UniVerse <span className="font-serif italic font-normal bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500 dark:from-indigo-200 dark:via-fuchsia-200 dark:to-pink-200 bg-clip-text text-transparent pe-1">Messages</span></h3>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-2 max-w-sm">Chat one-to-one or in groups, share photos, files and voice messages, and start voice or video calls with anyone on your campus.</p>
+            <div className="stagger grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-6 w-full max-w-lg">
+              {([
+                [MessageSquarePlus, 'New chat', () => setDialog('chat')],
+                [Users, 'New group', () => setDialog('group')],
+                [Hash, 'Communities', () => setSpace('communities')],
+                [Star, 'Saved', () => setSavedOpen(true)],
+              ] as const).map(([Icon, label, go]) => (
+                <button key={label} type="button" onClick={go} className="group flex flex-col items-center gap-2 py-4 rounded-2xl bg-white/70 dark:bg-white/[0.04] border border-zinc-200/80 dark:border-white/[0.07] text-sm font-semibold text-zinc-800 dark:text-zinc-100 transition-[transform,background-color,border-color] duration-200 hover:-translate-y-0.5 hover:border-fuchsia-400/40 hover:bg-white dark:hover:bg-white/[0.07] active:scale-[0.97]">
+                  <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/15 to-fuchsia-500/15 text-indigo-600 dark:text-fuchsia-200 flex items-center justify-center transition-transform duration-200 group-hover:scale-110"><Icon className="w-5 h-5" /></span>
+                  {label}
+                </button>
+              ))}
             </div>
-            <p className="mt-8 text-[11px] text-zinc-400 inline-flex items-center gap-1.5"><Lock className="w-3 h-3" /> Only people in a chat can see its messages</p>
+            {recent.length > 0 && (
+              <div className="mt-6 w-full max-w-lg">
+                <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-2 inline-flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-fuchsia-500" /> Jump back in</p>
+                <div className="stagger flex flex-wrap justify-center gap-2">
+                  {recent.map((c) => (
+                    <button key={c.id} type="button" onClick={() => select(c.id)} className="inline-flex items-center gap-2 ps-1 pe-3 py-1 rounded-full bg-white/70 dark:bg-white/[0.05] border border-zinc-200/80 dark:border-white/[0.08] text-sm text-zinc-800 dark:text-zinc-100 transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-white dark:hover:bg-white/[0.09]">
+                      <Avatar name={c.title} src={c.avatarUrl} size={26} />
+                      <span className="max-w-[9rem] truncate">{c.title}</span>
+                      {c.unread > 0 && <span className="min-w-5 h-5 px-1.5 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white text-[11px] font-bold flex items-center justify-center">{c.unread > 99 ? '99+' : c.unread}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <p className="mt-8 text-xs text-zinc-500 dark:text-zinc-400 inline-flex items-center gap-1.5"><Lock className="w-3 h-3" /> Only people in a chat can see its messages</p>
           </div>
         )}
       </section>

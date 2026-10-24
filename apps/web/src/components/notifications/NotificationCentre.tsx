@@ -21,7 +21,9 @@ import { cn } from '@/lib/utils';
 
 // The notification centre (Stage 5 · Q9): every notification, by kind, newest first, with mark
 // read, snooze (back as unread later) and remove; swipe on phones (left: read, right: snooze an
-// hour); more load as you scroll.
+// hour); more load as you scroll. M17: in All, notifications sit in stacks by kind that fan out
+// when tapped (iOS), under Priority (unread mentions, grades and calls first, like iOS 18) and a
+// recap of today; Stacks or List, remembered on this device.
 
 interface Item { id: string; title: string; body: string; type: string; read: boolean; link: string | null; createdAt: string; group: NoteGroupId; course: string | null }
 interface Page { items: Item[]; next: string | null; unread: Partial<Record<NoteGroupId, number>>; snoozed: number }
@@ -54,6 +56,9 @@ export function NotificationCentre() {
   const role = useAuthStore((st) => st.user?.role);
   const settings = `/${role === 'ADMIN' ? 'admin' : role === 'TEACHER' ? 'teacher' : 'student'}/settings?section=notifications`;
   const [group, setGroup] = useState<NoteGroupId | 'all' | 'unread'>('all');
+  const [mode, setModeState] = useState<'stack' | 'list'>(() => { try { return localStorage.getItem('uv-note-mode') === 'list' ? 'list' : 'stack'; } catch { return 'stack'; } });
+  const setMode = (m: 'stack' | 'list') => { setModeState(m); try { localStorage.setItem('uv-note-mode', m); } catch { /* private mode */ } };
+  const [openStack, setOpenStack] = useState<NoteGroupId | null>(null);
   const poll = useLiveInterval(120_000, 0);
   const keyOf = (i: number, prev: Page | null) => {
     if (prev && !prev.next) return null;
@@ -136,6 +141,19 @@ export function NotificationCentre() {
         ))}
       </div>
 
+      {group === 'all' && items.length > 0 && (
+        <div className="flex items-start justify-between gap-3">
+          <Recap items={items} />
+          <div role="radiogroup" aria-label="Show as" className="shrink-0 inline-flex p-1 rounded-xl bg-zinc-100 dark:bg-white/[0.05] text-xs font-semibold">
+            {(['stack', 'list'] as const).map((m) => (
+              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={cn('relative isolate px-3 py-1 rounded-lg transition-colors', mode === m ? 'text-zinc-900 dark:text-white' : 'text-zinc-500')}>
+                {mode === m && <motion.span layoutId="note-mode" transition={spring.snappy} className="absolute inset-0 -z-10 rounded-lg bg-white dark:bg-white/10 shadow-sm" />}
+                {m === 'stack' ? 'Stacks' : 'List'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {isLoading && !data ? (
         <div className="space-y-2">{Array.from({ length: 5 }, (_, i) => <div key={i} className="h-16 rounded-2xl skeleton" />)}</div>
       ) : !items.length ? (
@@ -143,6 +161,8 @@ export function NotificationCentre() {
           <BellOff className="w-10 h-10 mx-auto mb-3 opacity-50" />
           <p className="text-sm">Nothing here.</p>
         </div>
+      ) : group === 'all' && mode === 'stack' ? (
+        <Stacks items={items} open={openStack} onToggle={(g) => setOpenStack((o) => (o === g ? null : g))} onOpen={open} onAct={act} />
       ) : (
         <ul className="space-y-1.5">
           <AnimatePresence initial={false}>
@@ -183,7 +203,7 @@ function Row({ n, onOpen, onAct }: { n: Item; onOpen: () => void; onAct: (a: 're
         <span className="text-indigo-700 dark:text-indigo-300 inline-flex items-center gap-1">{n.read ? 'Unread' : 'Read'}<Check className="w-4 h-4" /></span>
       </div>
       <motion.div drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.5} dragSnapToOrigin onDragEnd={onDragEnd}
-        className={cn('relative flex items-start gap-3 p-3 rounded-2xl border bg-white dark:bg-[#11131f] touch-pan-y', n.read ? 'border-zinc-200/70 dark:border-white/[0.06]' : 'border-indigo-500/30')}>
+        className={cn('relative flex items-start gap-3 p-3 rounded-2xl border bg-white dark:bg-[#11212d] touch-pan-y', n.read ? 'border-zinc-200/70 dark:border-white/[0.06]' : 'border-indigo-500/30')}>
         <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', TONE[n.group])}><Icon className="w-4 h-4" /></span>
         <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-start">
           <span className="flex items-baseline gap-2">
@@ -199,6 +219,72 @@ function Row({ n, onOpen, onAct }: { n: Item; onOpen: () => void; onAct: (a: 're
           <button type="button" onClick={() => void onAct('delete', [n.id])} aria-label={`Remove “${n.title}”`} title="Remove" className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300"><Trash2 className="w-4 h-4" /></button>
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+const PRIORITY = new Set<NoteGroupId>(['mentions', 'grades', 'calls']);
+
+/** Today in numbers, by kind. */
+function Recap({ items }: { items: Item[] }) {
+  const today = items.filter((n) => isToday(new Date(n.createdAt)));
+  const by = NOTE_GROUPS.map((g) => ({ g, n: today.filter((x) => x.group === g.id).length })).filter((x) => x.n);
+  if (!by.length) return <p className="text-sm text-zinc-600 dark:text-zinc-400">Nothing new today.</p>;
+  return (
+    <div className="stagger flex flex-wrap gap-1.5" aria-label="Today">
+      {by.map(({ g, n }) => { const Icon = ICON[g.id]; return <span key={g.id} className="inline-flex items-center gap-1.5 ps-1 pe-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-100"><span className={cn('w-5 h-5 rounded-full flex items-center justify-center', TONE[g.id])}><Icon className="w-3 h-3" /></span>{g.label} · {n}</span>; })}
+    </div>
+  );
+}
+
+/**
+ * Priority first, then a stack per kind: the newest on top with the next two peeking out behind it.
+ * Tapped, a stack fans out into every notification of that kind.
+ */
+function Stacks({ items, open, onToggle, onOpen, onAct }: { items: Item[]; open: NoteGroupId | null; onToggle: (g: NoteGroupId) => void; onOpen: (n: Item) => void; onAct: (a: 'read' | 'unread' | 'snooze' | 'delete', ids: string[], until?: Date) => Promise<void> }) {
+  const priority = items.filter((n) => !n.read && PRIORITY.has(n.group)).slice(0, 3);
+  const rest = items.filter((n) => !priority.includes(n));
+  const stacks: [NoteGroupId, Item[]][] = [];
+  for (const n of rest) { const s = stacks.find(([g]) => g === n.group); if (s) s[1].push(n); else stacks.push([n.group, [n]]); }
+  return (
+    <div className="space-y-5">
+      {priority.length > 0 && (
+        <section aria-labelledby="prio-h" className="note-priority rounded-3xl p-3">
+          <h3 id="prio-h" className="px-1 pb-2 text-xs font-bold uppercase tracking-wide text-fuchsia-700 dark:text-fuchsia-300 inline-flex items-center gap-1.5"><AtSign className="w-3.5 h-3.5" /> Priority</h3>
+          <ul className="space-y-1.5">{priority.map((n) => <li key={n.id}><Row n={n} onOpen={() => onOpen(n)} onAct={onAct} /></li>)}</ul>
+        </section>
+      )}
+      {stacks.map(([g, list]) => {
+        const label = NOTE_GROUPS.find((x) => x.id === g)?.label ?? 'Other';
+        const Icon = ICON[g];
+        const expanded = open === g || list.length === 1;
+        const unread = list.filter((n) => !n.read).length;
+        return (
+          <section key={g} aria-label={label}>
+            <div className="flex items-center justify-between px-1 pb-1.5">
+              <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-100 inline-flex items-center gap-1.5"><span className={cn('w-6 h-6 rounded-lg flex items-center justify-center', TONE[g])}><Icon className="w-3.5 h-3.5" /></span>{label}<span className="text-xs font-semibold text-zinc-500">{list.length}{unread ? ` · ${unread} new` : ''}</span></h3>
+              {list.length > 1 && <button type="button" onClick={() => onToggle(g)} aria-expanded={expanded} className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:underline">{expanded ? 'Show less' : `Show all ${list.length}`}</button>}
+            </div>
+            {expanded ? (
+              <ul className="space-y-1.5">
+                <AnimatePresence initial={false}>
+                  {list.map((n, i) => (
+                    <motion.li key={n.id} layout initial={{ opacity: 0, y: -18 * Math.min(i, 3), scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, height: 0 }} transition={{ ...spring.smooth, delay: Math.min(i, 8) * 0.035 }}>
+                      <Row n={n} onOpen={() => onOpen(n)} onAct={onAct} />
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
+              </ul>
+            ) : (
+              <motion.div layout transition={spring.smooth} className="note-stack relative pb-6">
+                <span aria-hidden className="note-peek note-peek-2" />
+                <span aria-hidden className="note-peek note-peek-1" />
+                <div className="relative z-10"><Row n={list[0]} onOpen={() => onToggle(g)} onAct={onAct} /></div>
+              </motion.div>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }
