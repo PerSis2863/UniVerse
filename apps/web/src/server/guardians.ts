@@ -22,7 +22,7 @@ const PUBLIC = { id: true, email: true, name: true, confirmedAt: true, weeklyDig
 
 function frame(title: string, body: string, token: string, button?: { href: string; label: string }) {
   const manage = `${APP_URL()}/guardian/updates/${token}`;
-  const html = `<!doctype html><html><body style="margin:0;background:#f2ece6;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  const html = `<!doctype html><html><body style="margin:0;background:#eef1f2;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px"><tr><td align="center">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:16px;padding:32px">
 <tr><td style="font-size:17px;font-weight:700;color:#11212d">UniVerse <span style="color:#253745">Impact</span></td></tr>

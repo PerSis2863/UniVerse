@@ -39,7 +39,7 @@ function Avatar({ p, me, heard }: { p: Spot & { name: string }; me?: boolean; he
       {!!heard && heard > 0 && <circle r={26} fill="none" stroke="#9ba8ab" strokeOpacity={0.25 + heard * 0.6} strokeWidth={3} />}
       <circle r={20} fill="url(#hall-avatar)" stroke={me ? '#fff' : 'rgba(255,255,255,0.25)'} strokeWidth={me ? 3 : 1.5} />
       <text textAnchor="middle" dy={5} fontSize={13} fontWeight={700} fill="#fff">{initials(p.name)}</text>
-      <text textAnchor="middle" y={38} fontSize={12} fill="#e4ddd7" style={{ paintOrder: 'stroke', stroke: '#06141b', strokeWidth: 4 }}>{me ? 'You' : p.name.split(' ')[0]}</text>
+      <text textAnchor="middle" y={38} fontSize={12} fill="#e2e6e6" style={{ paintOrder: 'stroke', stroke: '#06141b', strokeWidth: 4 }}>{me ? 'You' : p.name.split(' ')[0]}</text>
     </g>
   );
 }
@@ -459,7 +459,7 @@ export function HallView({ hallId }: { hallId: string }) {
           <svg ref={svgRef} viewBox={`${vx} ${vy} ${view.w} ${view.h}`} preserveAspectRatio="xMidYMid meet" className="w-full h-full touch-none select-none cursor-pointer" onPointerDown={walkTo}
             role="application" aria-label="Study Hall map. Tap or click to walk there, tap a table to sit at it, or use the arrow keys.">
             <defs>
-              <linearGradient id="hall-avatar" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#253745" /><stop offset="1" stopColor="#6b5560" /></linearGradient>
+              <linearGradient id="hall-avatar" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#253745" /><stop offset="1" stopColor="#db2777" /></linearGradient>
             </defs>
             <rect width={HALL_W} height={HALL_H} fill="#06141b" />
             {ZONES.map((z) => (

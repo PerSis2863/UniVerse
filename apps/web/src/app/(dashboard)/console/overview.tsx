@@ -38,8 +38,8 @@ function Trend({ days }: { days: { day: string; count: number }[] }) {
     <div className="relative h-32">
       <svg aria-hidden className="deck-draw absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
         <defs>
-          <linearGradient id="trend-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#746e7a" stopOpacity="0.35" /><stop offset="1" stopColor="#746e7a" stopOpacity="0" /></linearGradient>
-          <linearGradient id="trend-line" x1="0" x2="1"><stop offset="0" stopColor="#253745" /><stop offset="1" stopColor="#6b5560" /></linearGradient>
+          <linearGradient id="trend-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#4a5c6a" stopOpacity="0.35" /><stop offset="1" stopColor="#4a5c6a" stopOpacity="0" /></linearGradient>
+          <linearGradient id="trend-line" x1="0" x2="1"><stop offset="0" stopColor="#253745" /><stop offset="1" stopColor="#db2777" /></linearGradient>
         </defs>
         {pts.length > 1 && <>
           <path d={`${line} L100 100 L0 100 Z`} fill="url(#trend-fill)" />
@@ -104,7 +104,7 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
   const online = data.online.filter((u) => matches(q, u.name, u.role));
   const signIns = data.recentSignIns.filter((x) => matches(q, x.user.name, x.user.email, x.user.role, x.device, x.city, x.country, x.ip, x.method));
   const actions = data.recentActions.filter((a) => matches(q, a.actorName, a.summary));
-  const dot = 'absolute -start-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-400 shadow-[0_0_10px_rgba(107,85,96,0.55)]';
+  const dot = 'absolute -start-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-400 shadow-[0_0_10px_rgba(236,72,153,0.55)]';
   return (
     <div className="space-y-6">
       <AttentionCard onGo={(t, status) => onTab(t as Tab, status)} />

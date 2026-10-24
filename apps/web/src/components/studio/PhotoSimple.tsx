@@ -20,7 +20,7 @@ export const TASKS: { id: Task; label: string; icon: typeof Crop }[] = [
   { id: 'draw', label: 'Draw', icon: Pencil },
   { id: 'background', label: 'Background', icon: Scissors },
 ];
-const SWATCHES = ['#000000', '#ffffff', '#ef4444', '#f59e0b', '#22c55e', '#0ea5e9', '#253745', '#6b5560'];
+const SWATCHES = ['#000000', '#ffffff', '#ef4444', '#f59e0b', '#22c55e', '#0ea5e9', '#253745', '#db2777'];
 
 export function SimpleBar({ onTask, onAddPhoto, busy }: { onTask: (t: Task) => void; onAddPhoto: () => void; busy: boolean }) {
   return (

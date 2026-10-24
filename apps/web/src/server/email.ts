@@ -38,7 +38,7 @@ export async function sendEmail(to: string, subject: string, html: string, text:
 
 function layout(title: string, body: string, link?: string) {
   const url = link ? `${APP_URL()}${link.startsWith('/') ? link : `/${link}`}` : APP_URL();
-  const html = `<!doctype html><html><body style="margin:0;background:#f2ece6;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  const html = `<!doctype html><html><body style="margin:0;background:#eef1f2;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px"><tr><td align="center">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border-radius:16px;padding:32px">
 <tr><td><table cellpadding="0" cellspacing="0"><tr><td style="padding-right:10px"><img src="${APP_URL()}/icon-192x192.png" width="36" height="36" alt="UniVerse Impact" style="display:block;border-radius:10px"></td><td style="font-size:17px;font-weight:700;color:#11212d">UniVerse <span style="color:#253745">Impact</span></td></tr></table></td></tr>

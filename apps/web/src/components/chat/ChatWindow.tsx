@@ -948,7 +948,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
             onClose={() => setEditScheduled(null)} />
         )}
         {picked && (
-          <div role="region" aria-label="Chosen messages" className="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-zinc-200 dark:border-white/10 bg-white dark:bg-[#0b1a24]">
+          <div role="region" aria-label="Chosen messages" className="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1b2c39]">
             <span className="text-sm font-semibold text-zinc-900 dark:text-white me-auto">{picked.size} selected</span>
             <button type="button" onClick={() => void copyPicked()} className="btn-secondary btn-sm"><Copy className="w-4 h-4" />Copy</button>
             <button type="button" onClick={forwardPicked} className="btn-secondary btn-sm"><CornerUpRight className="w-4 h-4" />Forward</button>

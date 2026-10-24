@@ -19,9 +19,9 @@ import { cn } from '@/lib/utils';
 // drawn; 60 frames a second on computers, 30 on phones (and it goes lighter by itself if frames come
 // late); still for Reduce Motion and low-memory phones; nothing while the tab is hidden.
 
-// The owner's palettes (23 Oct 2026): dark pink and blue strands, rose and silver highlights.
-const DARK = { strands: ['#c7a9a3', '#9e8189', '#e8d2c4', '#9ba8ab', '#f7efe7', '#b08e8e'], bands: ['#6b5560', '#253745', '#3e3239', '#4a5c6a', '#594750'], pulse: '#f7efe7', spark: '#e8d2c4' };
-const LIGHT = { strands: ['#253745', '#6b5560', '#11212d', '#594750', '#3e3239', '#4a5c6a'], bands: ['#c7a9a3', '#9ba8ab', '#e8d2c4', '#9e8189', '#ccd0cf'], pulse: '#3e3239', spark: '#6b5560' };
+// The owner (24 Oct 2026): the light lines are hot pink with a little purple, on dark-blue bands.
+const DARK = { strands: ['#ff2d95', '#ec4899', '#d946ef', '#f472b6', '#e879f9', '#ff6fb5'], bands: ['#253745', '#be185d', '#11212d', '#86198f', '#4a5c6a'], pulse: '#fdf2f8', spark: '#f0abfc' };
+const LIGHT = { strands: ['#db2777', '#c026d3', '#ec4899', '#a21caf', '#253745', '#be185d'], bands: ['#f9a8d4', '#ccd0cf', '#f0abfc', '#9ba8ab', '#fbcfe8'], pulse: '#be185d', spark: '#d946ef' };
 
 const OWN_RIVER = new Set(['/', '/login', '/register']);
 
@@ -147,7 +147,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
         // A glow where the pointer touches the river.
         if (near && Math.abs(px - centre(sy + py)) < spread(sy + py) + 220) {
           const g = sctx.createRadialGradient(px, py, 0, px, py, 180);
-          g.addColorStop(0, dark ? 'rgba(199,169,163,0.35)' : 'rgba(107,85,96,0.14)');
+          g.addColorStop(0, dark ? 'rgba(249,168,212,0.35)' : 'rgba(236,72,153,0.14)');
           g.addColorStop(1, 'rgba(37,55,69,0)');
           sctx.globalAlpha = pv * k;
           sctx.fillStyle = g;
@@ -159,8 +159,8 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
           if (yb > y1 + 300) break;
           const bx = centre(yb), by = yb - sy, r = Math.min(W, H) * 0.3;
           const g = sctx.createRadialGradient(bx, by, 0, bx, by, r);
-          g.addColorStop(0, dark ? 'rgba(255,255,255,0.55)' : 'rgba(107,85,96,0.18)');
-          g.addColorStop(0.25, dark ? 'rgba(158,129,137,0.28)' : 'rgba(116,110,122,0.12)');
+          g.addColorStop(0, dark ? 'rgba(255,255,255,0.55)' : 'rgba(236,72,153,0.18)');
+          g.addColorStop(0.25, dark ? 'rgba(244,114,182,0.28)' : 'rgba(116,110,122,0.12)');
           g.addColorStop(1, 'rgba(37,55,69,0)');
           sctx.globalAlpha = k;
           sctx.fillStyle = g;

@@ -15,7 +15,7 @@ import type { V } from '@/lib/sheet/values';
 // charts). Like Excel: series go along the shorter side of the data; a first row of text names the
 // series (or the points, when series run along rows) and a first column of text names the points.
 
-const COLORS = ['#253745', '#0891b2', '#16a34a', '#ea580c', '#6b5560', '#484652', '#ca8a04', '#475569'];
+const COLORS = ['#253745', '#0891b2', '#16a34a', '#ea580c', '#db2777', '#253745', '#ca8a04', '#475569'];
 
 export interface ChartData { labels: string[]; series: { name: string; values: (number | null)[] }[] }
 

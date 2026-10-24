@@ -22,7 +22,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
             <button onClick={() => reset()} style={{ ...button, background: '#253745', color: '#fff' }}>Try again</button>
-            <button onClick={() => window.location.reload()} style={{ ...button, background: 'transparent', color: '#e4ddd7', border: '1px solid rgba(255,255,255,0.15)' }}>Reload</button>
+            <button onClick={() => window.location.reload()} style={{ ...button, background: 'transparent', color: '#e2e6e6', border: '1px solid rgba(255,255,255,0.15)' }}>Reload</button>
           </div>
           {error.digest && <p style={{ marginTop: 16, fontSize: 11, color: '#5a6a73' }}>Reference: {error.digest}</p>}
         </div>

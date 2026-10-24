@@ -27,7 +27,7 @@ import { groupChannels } from '@/lib/community-roles';
 type Kind = 'TEXT' | 'ANNOUNCE' | 'VOICE';
 interface Channel { id: string; name: string; kind: Kind; slowModeSec: number; unread: number; category?: string | null; private?: boolean }
 interface Community { id: string; name: string; description: string | null; color: string; members: number; role: 'OWNER' | 'MOD' | 'MEMBER'; channels: Channel[] }
-const COLORS = ['#253745', '#484652', '#6b5560', '#e11d48', '#ea580c', '#059669', '#0891b2', '#253745'];
+const COLORS = ['#253745', '#253745', '#db2777', '#e11d48', '#ea580c', '#059669', '#0891b2', '#253745'];
 
 export function CommunitiesPanel({ activeId, onOpen }: { activeId: string | null; onOpen: (channelId: string) => void }) {
   const { data, isLoading, mutate } = useSWR<Community[]>('/api/chat/communities', authedJson, { revalidateOnFocus: true });

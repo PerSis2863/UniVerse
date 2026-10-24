@@ -663,10 +663,10 @@ export function SheetEditor({ docId, me, canEdit: mayEdit, title, onStatus, onPr
 
   return (
     <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-      <div className="border-b border-zinc-200/70 dark:border-white/[0.06] bg-white/80 dark:bg-[#06141b]/80">
+      <div className="border-b border-zinc-200/70 dark:border-white/[0.06] bg-white/80 dark:bg-[#11212d]/80">
         <SheetToolbar s={activeStyle} on={actions} canEdit={editable} canUndo={stacks.undo > 0} canRedo={stacks.redo > 0} frozen={view.freeze} filterOn={!!view.filter} merged={!!mergeHere} sel={sel} />
       </div>
-      <div className="flex items-stretch gap-0 border-b border-zinc-200/70 dark:border-white/[0.06] bg-white dark:bg-[#0b1a24] text-sm">
+      <div className="flex items-stretch gap-0 border-b border-zinc-200/70 dark:border-white/[0.06] bg-white dark:bg-[#1b2c39] text-sm">
         <NameBox value={areaText(area)} onGo={(t) => { if (!goTo(t)) toast.error('That isn’t a cell or range, like B3 or A1:C10.'); }} />
         <span aria-hidden className="px-2 flex items-center text-zinc-500 dark:text-zinc-400 italic font-serif border-e border-zinc-200 dark:border-white/[0.07]">fx</span>
         <div className="relative flex-1 min-w-0">
@@ -687,7 +687,7 @@ export function SheetEditor({ docId, me, canEdit: mayEdit, title, onStatus, onPr
         onFilterMenu={(c, el) => { const b = el.getBoundingClientRect(); setFilterFor({ c, x: b.left, y: b.bottom }); }}
         keyHandlers={{ onKeyDown, onCopy: (e) => { if (edit || (e.target as HTMLElement).closest('input, textarea')) return; e.preventDefault(); copy(false, e.clipboardData); }, onCut: (e) => { if (edit || !editable || (e.target as HTMLElement).closest('input, textarea')) return; e.preventDefault(); copy(true, e.clipboardData); }, onPaste: (e) => { if (edit || (e.target as HTMLElement).closest('input, textarea')) return; e.preventDefault(); paste(e.clipboardData.getData('text/plain')); } }} />
       {sheetCharts.length > 0 && (
-        <div className="border-t border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-[#06141b]">
+        <div className="border-t border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-[#11212d]">
           <button type="button" onClick={() => setCharts((x) => !x)} aria-expanded={charts} className="w-full text-start px-3 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">Charts ({sheetCharts.length}) {charts ? '▾' : '▸'}</button>
           {charts && <SheetCharts doc={ydoc} sheet={sheet} calc={calc} version={version} canEdit={editable} />}
         </div>

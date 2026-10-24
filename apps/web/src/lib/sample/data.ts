@@ -17,7 +17,7 @@ export const LEVELS = [
   { level: 1, title: 'Changemaker Seed', minXP: 0, color: '#5a6a73', emoji: '🌱' },
   { level: 2, title: 'Impact Explorer', minXP: 100, color: '#10b981', emoji: '🌿' },
   { level: 3, title: 'Social Innovator', minXP: 300, color: '#3b82f6', emoji: '⚡' },
-  { level: 4, title: 'SDG Champion', minXP: 600, color: '#53515e', emoji: '🏅' },
+  { level: 4, title: 'SDG Champion', minXP: 600, color: '#4a5c6a', emoji: '🏅' },
   { level: 5, title: 'Global Catalyst', minXP: 1000, color: '#f59e0b', emoji: '🌍' },
   { level: 6, title: 'Visionary Leader', minXP: 1500, color: '#ef4444', emoji: '🚀' },
   { level: 7, title: 'UniVerse Legend', minXP: 2500, color: '#f97316', emoji: '🌟' },
@@ -55,7 +55,7 @@ export function buildSampleDb(me: Me) {
     { id: 'sample-c-os', code: 'CS301', name: 'Operating Systems', credits: 4, department: 'Computer Science', color: '#253745', teacher: teacherView ? meCard : people.meera, description: 'Processes, threads, scheduling, memory and file systems.' },
     { id: 'sample-c-env', code: 'ENV210', name: 'Sustainable Development', credits: 3, department: 'Environmental Studies', color: '#10b981', teacher: people.arjun, description: 'The UN SDGs, climate policy and community-led change.' },
     { id: 'sample-c-ds', code: 'CS220', name: 'Data Structures', credits: 4, department: 'Computer Science', color: '#f59e0b', teacher: teacherView ? meCard : people.kavya, description: 'Lists, trees, graphs, hashing and complexity analysis.' },
-    { id: 'sample-c-des', code: 'DES150', name: 'Design Thinking', credits: 2, department: 'Design', color: '#6b5560', teacher: people.sam, description: 'Human-centred design, prototyping and critique.' },
+    { id: 'sample-c-des', code: 'DES150', name: 'Design Thinking', credits: 2, department: 'Design', color: '#db2777', teacher: people.sam, description: 'Human-centred design, prototyping and critique.' },
   ].map((c) => ({ ...c, status: 'PUBLISHED', emoji: null, teacherId: c.teacher.id }));
   const taught = teacherView ? courses.filter((c) => c.teacher.id === me.id) : [];
 

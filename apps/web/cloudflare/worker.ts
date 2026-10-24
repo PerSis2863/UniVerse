@@ -394,7 +394,7 @@ const MAX_ELEMENTS = 20_000;
 const MAX_ELEMENT_BYTES = 256 * 1024; // one shape (a long freehand stroke is the biggest)
 const MAX_FILES = 300;
 const MAX_BOARD_SOCKETS = 60;
-const PEER_COLORS = ['#2c4050', '#7a626d', '#f59e0b', '#10b981', '#0ea5e9', '#ef4444', '#53515e', '#14b8a6', '#f97316', '#84cc16'];
+const PEER_COLORS = ['#2c4050', '#db2777', '#f59e0b', '#10b981', '#0ea5e9', '#ef4444', '#4a5c6a', '#14b8a6', '#f97316', '#84cc16'];
 
 /**
  * One per whiteboard: holds the board's shapes and pictures and everyone who has it open.

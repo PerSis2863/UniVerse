@@ -1471,14 +1471,14 @@ Progress table (row D6).
 
 ## M17 · Bigger board, Messages redesign, Collaborate Home, the owner's colours
 
-- **Colours:** the owner's two palettes are mapped onto Tailwind's names in `@theme` (`globals.css`),
-  so every `indigo-*` / `violet-*` / `purple-*` / `fuchsia-*` / `pink-*` / `zinc-*` class follows.
-  The owner wants a lot of the dark blue #253745 and the dark pink #6B5560 (a greyer first version
-  was "so dull"): keep the navy side menu (`dark` class on the `<aside>` in `Sidebar.tsx`), the
-  dark-pink menu pill and the blue → pink gradients. Hard-coded colours in new code: use the palette
-  hex values only (lower case; some tests compare hex strings).
-- Text colours in light mode are pinned for contrast (`:where(html:not(.dark)) … .text-fuchsia-500 {
-  color: #6b5560 }` and friends near the top of `globals.css`); in dark mode the 400 shades are
+- **Colours (final, 24 Oct):** dark blue is the normal UI colour (dark-mode page #11212D, cards
+  #1B2C39, the navy side menu in both themes via the `dark` class on the `<aside>` in `Sidebar.tsx`,
+  dark-blue buttons and selections); hot pink with a little purple (Tailwind's own `pink-*` /
+  `fuchsia-*`) only for light: the light river (`LightTrail.tsx`), glows, rings and animations.
+  `indigo/violet/purple-*` are the dark blues in `@theme`. A mauve (#6B5560) version before it was
+  rejected as dull. Hard-coded colours in new code: lower-case hex (some tests compare strings).
+- Text colours in light mode are pinned for contrast (`:where(html:not(.dark)) … .text-pink-500 {
+  color: #be185d }` and friends near the top of `globals.css`); in dark mode the 400 shades are
   lifted. Check new screens with axe in both themes.
 - Send effects travel in a message's `metadata.effect`, silent sends in `metadata.silent` (the
   messages route reads them with `effectOf`; `chat-notify.ts` skips pushes for silent ones).

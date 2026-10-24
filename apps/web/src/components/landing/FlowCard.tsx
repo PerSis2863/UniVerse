@@ -63,14 +63,14 @@ export function FlowCard({ flow: which = 'late', compact = false, className }: {
           </div>
         </div>
         <span className="shrink-0 inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full bg-fuchsia-500/15 text-fuchsia-200 font-mono text-[11px]">
-          <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_8px_#9e8189]" /> running
+          <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_8px_#ec4899]" /> running
         </span>
       </div>
 
       <div ref={box} className="relative h-[150px] sm:h-[170px] mt-4 border-t border-white/[0.06]" role="img"
         aria-label={`${flow.start[0]}, then: ${flow.check[0]} If yes: ${flow.yes[0]}. If no: ${flow.no[0]}.`}>
         <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${size.w} ${size.h}`} aria-hidden>
-          <defs><linearGradient id={`fl-${id}`} x1="0" x2="1"><stop offset="0" stopColor="#9ba8ab" /><stop offset="1" stopColor="#c7a9a3" /></linearGradient></defs>
+          <defs><linearGradient id={`fl-${id}`} x1="0" x2="1"><stop offset="0" stopColor="#9ba8ab" /><stop offset="1" stopColor="#f472b6" /></linearGradient></defs>
           {lines.map(([d, phase]) => (
             <g key={d}>
               <path d={px(d)} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />

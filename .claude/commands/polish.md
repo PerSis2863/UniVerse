@@ -5,7 +5,7 @@ argument-hint: "<page, component or folder>"
 
 Review `$ARGUMENTS` against the "Design and motion" rules in `.cursor/rules/universe.mdc` (adapted
 from github.com/pbakaus/impeccable and github.com/emilkowalski/skills). The owner's two-tone look
-(dark blue #253745 into dark pink #6B5560 since 23 Oct 2026, the glow, the light river, the italic accent word) is the brand: never report
+(dark blue with hot-pink light lines and glows since 24 Oct 2026, the glow, the light river, the italic accent word) is the brand: never report
 it as a problem or replace it.
 
 1. Read the code for the target (only the files it uses).

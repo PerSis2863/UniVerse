@@ -100,7 +100,7 @@ export function NavProgress() {
   if (state === 'idle') return null;
   return (
     <div aria-hidden className="fixed top-0 inset-x-0 z-[200] h-[2px] pointer-events-none">
-      <div className={`${state === 'loading' ? 'nav-progress-run' : 'nav-progress-done'} nav-comet relative h-full rounded-e-full bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-[0_0_10px_rgba(107,85,96,0.6)]`} />
+      <div className={`${state === 'loading' ? 'nav-progress-run' : 'nav-progress-done'} nav-comet relative h-full rounded-e-full bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-[0_0_10px_rgba(236,72,153,0.6)]`} />
     </div>
   );
 }

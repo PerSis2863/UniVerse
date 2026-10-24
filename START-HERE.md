@@ -15,7 +15,7 @@ Cursor's).
   (below). M16: the explainer board always fills in full. **M17** (on branch
   `claude/youthful-fermi-sbdtcp`, not merged yet): a much bigger explainer board, Messages, Calls,
   Notifications and Announcements redesigned with features from other apps, Collaborate Home with 14
-  features, liquid tabs, and the owner's colours (dark blue #253745 and dark pink #6B5560).
+  features, liquid tabs, and the owner's colours (dark blue for the UI, hot pink with a little purple for the light lines and glows).
 - **`main` has everything through Q26** (merged 21 Oct): the full review, the phone smoothness second
   pass, the accessibility sweep, Phase E (Q23–Q26: undo, drag-and-drop and paste on file fields, bulk
   actions on Admin → Users, choosing several chat messages, accent colour, ringtone, course colours,

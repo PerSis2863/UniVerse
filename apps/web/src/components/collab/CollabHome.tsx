@@ -301,7 +301,7 @@ function Activity({ at, now }: { at: string[]; now: number }) {
       </div>
       <div className="grid grid-cols-7 gap-1.5" role="img" aria-label={`Changes to your shared work in the last four weeks: ${days.reduce((a, b) => a + b, 0)} in all, on ${days.filter(Boolean).length} days`}>
         {days.map((n, i) => (
-          <span key={i} className="activity-cell aspect-square rounded-md" style={{ ['--i' as string]: i, background: n ? `rgb(107 85 96 / ${0.25 + (0.75 * n) / max})` : undefined }} />
+          <span key={i} className="activity-cell aspect-square rounded-md" style={{ ['--i' as string]: i, background: n ? `rgb(236 72 153 / ${0.25 + (0.75 * n) / max})` : undefined }} />
         ))}
       </div>
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Each square is a day; brighter means more of your shared work changed.</p>

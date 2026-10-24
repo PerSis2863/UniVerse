@@ -294,7 +294,7 @@ export function AudioEditor({ file, onClose }: { file: File | null; onClose: () 
   const recording = recSince !== null;
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#06141b]">
+    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#11212d]">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#11212d] overflow-x-auto">
         <button type="button" onClick={() => void close()} aria-label="Close the audio editor" className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
         <input value={name} onChange={(e) => setName(e.target.value.replace(/[\\/:*?"<>|]/g, '').slice(0, 60))} aria-label="Sound name" className="text-sm font-semibold bg-transparent text-zinc-900 dark:text-white rounded-md px-1.5 py-1 w-40 focus:outline-none focus:ring-2 focus:ring-indigo-500" />

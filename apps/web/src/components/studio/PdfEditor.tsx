@@ -315,7 +315,7 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
   };
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#06141b]">
+    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#11212d]">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#11212d] overflow-x-auto">
         <button type="button" onClick={async () => { if (await confirmDialog({ title: 'Close the PDF editor?', message: 'Unsaved changes are lost: save the PDF first to keep them.', confirmLabel: 'Close' })) onClose(); }} aria-label="Close the PDF editor" className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
         <span className="text-sm font-semibold text-zinc-900 dark:text-white truncate max-w-[12rem]">{file.name}</span>

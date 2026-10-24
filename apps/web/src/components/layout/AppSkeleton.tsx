@@ -16,7 +16,7 @@ export function AppSkeleton() {
     <div className="flex min-h-[100dvh]" aria-busy="true" aria-label="Loading">
       <LaunchSplash />
       {/* Desktop: sidebar */}
-      <aside className="hidden lg:flex fixed inset-y-0 start-0 w-64 flex-col gap-3 border-e border-zinc-200 dark:border-white/[0.06] bg-white/70 dark:bg-[#06141b]/70 p-4">
+      <aside className="hidden lg:flex fixed inset-y-0 start-0 w-64 flex-col gap-3 border-e border-zinc-200 dark:border-white/[0.06] bg-white/70 dark:bg-[#11212d]/70 p-4">
         <p className="h-10 flex items-center gap-2 mb-4 px-1 font-black text-lg text-zinc-900 dark:text-white"><LogoMark className="w-8 h-8" />UniVerse</p>
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="skeleton h-9 rounded-xl" />

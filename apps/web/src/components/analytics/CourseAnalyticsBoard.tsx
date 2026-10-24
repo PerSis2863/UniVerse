@@ -161,11 +161,11 @@ function TrendCard({ a }: { a: CourseAnalytics }) {
                 <defs>
                   <linearGradient id="trend-fill" x1="0" x2="0" y1="0" y2="1">
                     <stop offset="0%" stopColor="#253745" stopOpacity="0.22" />
-                    <stop offset="100%" stopColor="#6b5560" stopOpacity="0" />
+                    <stop offset="100%" stopColor="#db2777" stopOpacity="0" />
                   </linearGradient>
                   <linearGradient id="trend-line" x1="0" x2="1" y1="0" y2="0">
                     <stop offset="0%" stopColor="#253745" />
-                    <stop offset="100%" stopColor="#6b5560" />
+                    <stop offset="100%" stopColor="#db2777" />
                   </linearGradient>
                 </defs>
                 {marked.length > 1 && <path d={`${line} L${x(marked[marked.length - 1].i)} 100 L${x(marked[0].i)} 100 Z`} fill="url(#trend-fill)" />}

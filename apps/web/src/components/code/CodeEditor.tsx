@@ -20,7 +20,7 @@ import { authedJson } from '@/lib/authed-fetch';
 // (awareness), 2 = "someone joined, send your cursor".
 
 const DOC = 0, AWARENESS = 1, ANNOUNCE = 2;
-const COLORS = ['#253745', '#6b5560', '#f59e0b', '#10b981', '#0ea5e9', '#ef4444', '#53515e', '#14b8a6'];
+const COLORS = ['#253745', '#db2777', '#f59e0b', '#10b981', '#0ea5e9', '#ef4444', '#4a5c6a', '#14b8a6'];
 
 export type Status = 'connecting' | 'live' | 'offline' | 'unavailable';
 

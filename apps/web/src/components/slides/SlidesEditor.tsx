@@ -360,13 +360,13 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
 
   return (
     <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-      <div className="border-b border-zinc-200/70 dark:border-white/[0.06] bg-white/80 dark:bg-[#06141b]/80">
+      <div className="border-b border-zinc-200/70 dark:border-white/[0.06] bg-white/80 dark:bg-[#11212d]/80">
         <SlidesToolbar on={actions} canEdit={editable} canUndo={stacks.undo > 0} canRedo={stacks.redo > 0} deck={deck} slide={slide ?? null} selected={selected} editing={!!editing}
           bold={allHave('b')} italic={allHave('i')} underline={allHave('u')} strike={allHave('s')} />
       </div>
       <input ref={fileRef} type="file" accept="image/*" className="hidden" aria-label="Picture to add" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; void onImage(f, pictureFor.current); }} />
       <div className="flex-1 min-h-0 flex flex-col-reverse md:flex-row">
-        <nav aria-label="Slides" className="shrink-0 md:w-52 border-t md:border-t-0 md:border-e border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-[#06141b] overflow-x-auto md:overflow-y-auto md:overflow-x-hidden">
+        <nav aria-label="Slides" className="shrink-0 md:w-52 border-t md:border-t-0 md:border-e border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-[#11212d] overflow-x-auto md:overflow-y-auto md:overflow-x-hidden">
           <ol className="flex md:flex-col gap-2 p-2">
             {deck.slides.map((s, i) => {
               const people = where.get(s.id) ?? [];
@@ -394,7 +394,7 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
           </ol>
         </nav>
         <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-          <div ref={canvasBox} className="flex-1 min-h-0 flex items-center justify-center bg-zinc-100 dark:bg-[#06141b] p-3 overflow-hidden">
+          <div ref={canvasBox} className="flex-1 min-h-0 flex items-center justify-center bg-zinc-100 dark:bg-[#11212d] p-3 overflow-hidden">
             {slide && (
               <div ref={canvas} tabIndex={0} role="region" aria-roledescription="slide" aria-label={`Slide ${slideIndex + 1} of ${deck.slides.length}. Click to select, drag to move, double-click to type.`}
                 onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onDoubleClick={onDoubleClick} onKeyDown={onKeyDown}
@@ -425,7 +425,7 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
               </div>
             )}
           </div>
-          <label className="block border-t border-zinc-200/70 dark:border-white/[0.06] bg-white dark:bg-[#0b1a24]">
+          <label className="block border-t border-zinc-200/70 dark:border-white/[0.06] bg-white dark:bg-[#1b2c39]">
             <span className="sr-only">Speaker notes</span>
             <textarea key={slide?.id} defaultValue={notes} readOnly={!editable} placeholder={editable ? 'Speaker notes: what to say on this slide (only you see them while presenting)' : 'No notes'}
               onBlur={(e) => { if (slide && e.target.value !== notes) setSlide(ydoc, slide.id, { notes: e.target.value.slice(0, 10_000) }); }}
