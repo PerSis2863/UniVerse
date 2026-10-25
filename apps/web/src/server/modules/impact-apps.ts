@@ -1,6 +1,7 @@
 import type { Router } from '../router';
 import { hubStats } from '../hub';
 import { impactWallet } from '../impact-wallet';
+import { askUniverse } from '../ask';
 import { clearReliefWatch, createReliefPost, reliefAction, reliefMap, reliefMine, reliefWatch, setReliefWatch } from '../relief';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction } from '../green';
 
@@ -12,6 +13,8 @@ export default function impactAppsModule(router: Router) {
   const hub = router.controller('hub');
   hub.get('', ({ user }) => hubStats(user));
   hub.get('wallet', ({ user }) => impactWallet(user));
+  // Ask UniVerse (M30): proposes one action; the box confirms it through the app's own routes.
+  router.controller('ask').post('', { status: 200 }, ({ user, body }) => askUniverse(user, body ?? {}));
 
   const relief = router.controller('relief');
   relief.get('map', ({ user }) => reliefMap(user));

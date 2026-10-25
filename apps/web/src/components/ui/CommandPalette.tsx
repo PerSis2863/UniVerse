@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
-import { BookOpen, Briefcase, CalendarDays, CalendarPlus, ChevronRight, ClipboardList, Command, Compass, CornerDownLeft, FilePlus2, FileSearch, FileSpreadsheet, FileText, FlaskConical, HeartHandshake, KanbanSquare, Library, Loader2, MessageSquarePlus, Moon, Paperclip, Presentation, Search, SquareCheck, Sun, User, Users, Video, type LucideIcon, Gauge, SignalLow } from 'lucide-react';
+import { BookOpen, Briefcase, CalendarDays, CalendarPlus, ChevronRight, ClipboardList, Command, Compass, CornerDownLeft, FilePlus2, FileSearch, FileSpreadsheet, FileText, FlaskConical, HeartHandshake, KanbanSquare, Library, Loader2, MessageSquarePlus, Moon, Paperclip, Presentation, Search, SquareCheck, Sun, User, Users, Video, type LucideIcon, Gauge, SignalLow, Sparkles } from 'lucide-react';
 import { isSampleMode } from '@/lib/sample-mode';
 import { startSampleMode, stopSampleMode } from '@/components/SampleMode';
 import { cn } from '@/lib/utils';
@@ -236,8 +236,11 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
       .map((x) => x.i);
     // Group in a fixed order so the list doesn't jump around while typing.
     const order = ['Documents', 'Tasks', 'Assignments', 'Courses', 'Materials', 'Pages', 'People', 'Events', 'Groups', 'NGO projects', 'Internships', 'Resources', 'Actions'];
-    return [...ranked, ...peopleItems, ...foundItems].sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
-  }, [debounced, pages, courses, actions, peopleItems, foundItems, recents, recentFound, role, go]);
+    const sorted = [...ranked, ...peopleItems, ...foundItems].sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
+    // Ask UniVerse (M30): a sentence can be done, not only found (first when it reads like a request).
+    const ask: Item = { id: 'ask', label: `Ask UniVerse: “${debounced}”`, hint: 'Log, post, check or open it for you', icon: Sparkles, group: 'Ask', run: () => { try { sessionStorage.setItem('uv-ask', debounced); } catch { /* storage unavailable */ } router.push('/hub'); } };
+    return debounced.split(/\s+/).length >= 3 ? [ask, ...sorted] : [...sorted, ask];
+  }, [debounced, pages, courses, actions, peopleItems, foundItems, recents, recentFound, role, go, router]);
 
   // A new search starts at the top.
   const [indexedFor, setIndexedFor] = useState(debounced);

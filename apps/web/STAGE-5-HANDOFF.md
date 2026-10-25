@@ -1817,3 +1817,23 @@ Progress table (row D6).
   - **Group ripple**: a menu group's rows rise in 35 ms apart as it opens (a fade with Reduce Motion).
 - Transform and opacity only, under 300 ms, nothing on scroll. Checked in the browser (the
   highlight caught mid-glide between rows; rows' opacity staggered right after opening); axe clean.
+
+## M30 · Ask UniVerse (small: one confirmed action)
+
+- From the council and the owner's seven ideas ("an Ask UniVerse assistant that acts in every app").
+- **How it works:** a box on `/hub` (`src/components/hub/AskUniverse.tsx`), also from search: a
+  sentence typed in ⌘K offers "Ask UniVerse: …" (first when it has 3+ words) and hands it over via
+  sessionStorage `uv-ask`. `POST /ask` (`src/server/ask.ts`) turns the request into ONE proposed
+  action: log a Green action, post a Relief need or offer, check a Trace code, open a page
+  (`ASK_PAGES`), or a short answer. The box shows it as a card; **nothing happens until the person
+  taps Confirm**, which calls the app's own route (`POST /green/actions`, `POST /relief/posts` with
+  the browser's location, `/t/<code>`, a page) with all its usual checks. The route itself never
+  writes anything.
+- AI: `spendAi` (daily allowance), `featureOff('ai')`, `geminiJson` with a schema, `MATH_RULE`,
+  answers shown with `MathText`; every field AI returns is checked again by `cleanPlan`
+  (`src/lib/ask.ts`, + tests). Without AI (off, used up, failing) and in the demo, `localPlan` (a
+  small matcher for common sentences) answers. The route is in the Worker's costly rate limit.
+- Checked in the browser: "I cycled 8 km to school" → card "Log 8 km… 1.6 kg CO₂", nothing saved
+  before the tap, saved after; search offers Ask UniVerse first for a sentence; axe clean on `/hub`.
+- Next steps if the owner wants more: more actions (enrol, book a room, start a chat), answers about
+  the person's own data, several steps in one request.

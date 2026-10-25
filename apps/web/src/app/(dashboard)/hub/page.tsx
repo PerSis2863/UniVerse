@@ -7,6 +7,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { ImpactWallet } from '@/components/hub/ImpactWallet';
+import { AskUniverse } from '@/components/hub/AskUniverse';
 import { InviteButton } from '@/components/apps/InviteButton';
 import { APPS, appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
 import { fetcher } from '@/lib/fetcher';
@@ -59,6 +60,8 @@ export default function HubPage() {
               </dl>
             </div>
           </section>
+
+          <AskUniverse role={role} />
 
           <section aria-labelledby="apps-h">
             <h2 id="apps-h" className="text-lg font-bold text-zinc-900 dark:text-white">Your apps</h2>

@@ -11,6 +11,7 @@ import { carbonSummary, kgFor, activityOf } from '@/lib/carbon';
 import { budgetSummary, dishesOf, prepList, tally } from '@/lib/student-life';
 import { isSampleVisitor } from '@/lib/sample-mode';
 import * as impact from './impact';
+import { localPlan } from '@/lib/ask';
 
 // Answers the app's API requests from example data while sample mode is on.
 // GETs without a sample answer fall through to the real server (read-only);
@@ -2356,6 +2357,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
+  // Ask UniVerse (M30) in the demo: the simple matcher, no AI.
+  ['POST', /^\/ask$/, ({ body }) => ok({ ...localPlan(String((body as { text?: unknown })?.text ?? '')), ai: false })],
   ['POST', /^\/api\/campus\/events\/[^/]+\/buy$/, () => fail('Sample mode: no money is taken. Exit sample mode to buy a real ticket.', 400)],
   ['POST', /^\/api\/campus\/elections\/[^/]+\/vote$/, () => { notice(); return ok({ receipt: 'SAMP-LE00-RCPT' }); }],
   ['POST', /^\/api\/campus\/board\/[^/]+\/contact$/, () => ok({ conversationId: 'sample-conv-aarav' })],

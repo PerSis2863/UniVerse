@@ -85,12 +85,12 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   proof for Green actions (M25). Every item has a note in the handoff file and a Progress row in the plan.
 - **On the branch, not merged:** M26a (sample errors tagged, not counted), M26 (launch board, invites),
   M27 (simpler UniVersity menus), M28 (500 people a month on the $5 plan: live events only to people
-  online, migration 0184), M29 (pointer glides). **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
+  online, migration 0184), M29 (pointer glides), M30 (Ask UniVerse on /hub and ⌘K). **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **Next database update number: `0185`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
   challenges (done, M25); organisation accounts for Relief (NGOs, supplies, volunteer shifts; SMS/WhatsApp requests behind a
-  switch); an "Ask UniVerse" assistant that acts in every app; the EU Digital Product Passport for
+  switch); an "Ask UniVerse" assistant that acts in every app (small version done, M30); the EU Digital Product Passport for
   Trace (GS1 codes, supplier portal); self-serve payments for Trace PRO, campaigns and schools (off
   until the owner's Stripe keys); store apps for Android and iPhone (the owner's store accounts).
 - **Waiting on the owner** (only they can provide it): Google / Microsoft calendar sync apps; Google
