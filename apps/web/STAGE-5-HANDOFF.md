@@ -1888,3 +1888,33 @@ Progress table (row D6).
   (join by code, host switches game, live board, podium for both, back to the lobby).
 - Next if the owner wants more: more question packs (per course, from teachers), a weekly
   tournament, rooms open to a whole class, sounds.
+
+## M32 · Four bigger games (UniVerse Play has eight)
+
+- The owner (25 Oct): "please add more unique games in the system and it should feel really good
+  and big games". Now two games per app; the arcade shows **Big games** above **Quick games**
+  (`GameInfo.big`).
+- **Type Race** (UniVersity, `src/lib/play/typing.ts`): type 24 true facts in a seeded order;
+  only the right letter moves you on (a wrong one shakes and costs 5). Cars race to a 600-letter
+  flag: in a room the others' cars come from the live scores (`GameProps.rivals`, their `step` is
+  letters typed), alone a pace car (30–44 wpm from the seed). Words a minute, accuracy, facts done.
+- **World Pin** (Trace, `pin.ts`): 15 cities a round (Trace's city list, rank 1–2), 8 s each; tap
+  the real world map (`WorldCanvas`, city names hidden, drag/zoom work). Your pin drops, the real
+  one rises with a pulse, a dashed line draws, the map glides to show both and back out. Up to
+  1,000 by distance (nothing past 3,000 km) + 200 for speed. Keyboard: arrows move, Enter pins
+  the centre cross.
+- **Flood Rescue** (Relief, `rescue.ts`): a canvas storm (rain, lightning, spotlight); the flood
+  rises from 0.92 to 0.70 of the screen; people appear on seven rooftops with a waiting ring and
+  are never placed on a roof that floods before they could be reached (tested). Hover low and slow
+  to winch (0.55 s each, 4 aboard), land on the hospital's H to drop off; 100 + up to 50 for a
+  short wait, −30 for someone lost.
+- **Ocean Cleanup** (Green, `ocean.ts`): a canvas sea (swell, glitter, wake); plastic and ghost
+  nets drift down on the seed's schedule; pick-ups within 1.6 s build a combo up to ×2; bumping
+  sea life costs 100 and spins the boat out.
+- **Engine** (`src/components/play/canvas.ts`): `useGameCanvas` (requestAnimationFrame, retina,
+  resizes, paused in hidden tabs), `useSteer` + `steerBody` (mouse, finger, arrows/WASD),
+  sparks and floating scores. Game state lives outside React; only score changes reach it.
+- **Full screen** button on every game's stage (Fullscreen API where the browser has it).
+- Caps: each game's `maxScore` is proven above a perfect round in `big-games.test.ts`.
+- Checked: all four played in the browser at 390/1280, light and dark; axe clean. Rooms use the
+  same GameRoom as M31 (no server change).

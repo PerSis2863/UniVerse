@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { Bike, Brain, Check, Droplets, Gamepad2, HandHeart, Home, Leaf, MapPin, Recycle, ScanLine, Stethoscope, Sun, TreePine, Trophy, Truck, Utensils, Users } from 'lucide-react';
+import { Bike, Brain, Check, Droplets, Gamepad2, Globe2, HandHeart, Home, Keyboard, Leaf, LifeBuoy, MapPin, Recycle, ScanLine, Ship, Stethoscope, Sun, TreePine, Trophy, Truck, Users, Utensils } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { APPS, type AppId } from '@/lib/apps';
@@ -161,13 +161,17 @@ export function PlaySection() {
       <div className="max-w-6xl mx-auto">
         <Reveal><Tag>UniVerse Play</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Games that teach <Accent>something.</Accent></h2></Reveal>
-        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Four quick games, one from each app. Play alone to beat your best, or open a room, share the code and race your friends on the same rounds, with a live scoreboard.</p></Reveal>
+        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Eight games, two from each app: four quick ones and four big ones. Play alone to beat your best, or open a room, share the code and race your friends on the same rounds, with a live scoreboard.</p></Reveal>
         <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {([
             [Brain, 'Quiz Clash', 'Fast questions from science to geography. Quick answers and streaks score more.', '#a5b4fc'],
             [ScanLine, 'Spot the Fake', 'Four product passports, one copy. Learn the signs a label was faked.', '#f9a8d4'],
             [Truck, 'Supply Run', 'Needs pop up on the map: send the right supplies before time runs out.', '#fdba74'],
             [Recycle, 'Recycle Rush', 'Sort every item into the right bin and watch the CO₂ you save add up.', '#6ee7b7'],
+            [Keyboard, 'Type Race', 'Type true facts as fast as you can while your friends race beside you as cars.', '#c4b5fd'],
+            [Globe2, 'World Pin', 'A parcel is heading to a city: pin it on the real world map. Closer means more points.', '#f9a8d4'],
+            [LifeBuoy, 'Flood Rescue', 'Fly a helicopter over a rising flood, winch people off rooftops and land them at the hospital.', '#fdba74'],
+            [Ship, 'Ocean Cleanup', 'Steer a boat through drifting plastic, build combos and steer round the turtles.', '#67e8f9'],
           ] as const).map(([icon, t, d, c], i) => <Reveal key={t} delay={0.1 + i * 0.06}><Feature icon={icon} title={t} text={d} color={c} /></Reveal>)}
         </div>
         <Reveal delay={0.2}><div className="mt-10 flex flex-wrap gap-3"><Link href="/register?app=play" className={primary}><Gamepad2 className="w-4 h-4" aria-hidden />Play free</Link><Link href="/login?app=play" className={ghost}>Sign in to Play</Link></div></Reveal>

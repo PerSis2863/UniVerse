@@ -4,7 +4,7 @@
 // at the same time, and the room (cloudflare/worker.ts GameRoom) keeps the live scoreboard.
 // No imports: the Worker uses this file too.
 
-export const GAME_IDS = ['quiz', 'fakes', 'supply', 'sort'] as const;
+export const GAME_IDS = ['quiz', 'fakes', 'supply', 'sort', 'type', 'pin', 'rescue', 'ocean'] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
 export interface GameInfo {
@@ -19,13 +19,19 @@ export interface GameInfo {
   /** The highest score a round can reach (scores above it are refused as impossible). */
   maxScore: number;
   color: string;
+  /** The bigger games (M32): a full-size stage, longer rounds. */
+  big?: boolean;
 }
 
 export const GAMES: Record<GameId, GameInfo> = {
   quiz: { id: 'quiz', app: 'campus', name: 'Quiz Clash', tagline: 'Fast questions, faster fingers', how: 'Pick the right answer before the ring runs out. Quick answers and streaks score more.', seconds: 75, maxScore: 12_000, color: '#6366f1' },
   fakes: { id: 'fakes', app: 'trace', name: 'Spot the Fake', tagline: 'One passport is a copy. Which?', how: 'Read the four product passports and tap the copy: impossible journeys, too many scans or a broken seal.', seconds: 75, maxScore: 9_000, color: '#ec4899' },
-  supply: { id: 'supply', app: 'relief', name: 'Supply Run', tagline: 'Get help where it’s needed', how: 'Tap a need on the map, then the supply it asks for. Urgent ones first: people are waiting.', seconds: 90, maxScore: 15_000, color: '#f97316' },
+  supply: { id: 'supply', app: 'relief', name: 'Supply Run', tagline: 'Get help where it’s needed', how: 'Pick a supply (keys 1–4), then tap a need that asks for it. Urgent ones first: people are waiting.', seconds: 90, maxScore: 15_000, color: '#f97316' },
   sort: { id: 'sort', app: 'green', name: 'Recycle Rush', tagline: 'Every item in the right bin', how: 'Sort each item into its bin before it reaches the end. Streaks multiply the CO₂ you save.', seconds: 75, maxScore: 20_000, color: '#10b981' },
+  type: { id: 'type', app: 'campus', name: 'Type Race', tagline: 'Race your friends, one true fact at a time', how: 'Type each fact exactly as shown. Every right letter moves your car; a finished fact gives a bonus.', seconds: 75, maxScore: 20_000, color: '#8b5cf6', big: true },
+  pin: { id: 'pin', app: 'trace', name: 'World Pin', tagline: 'Where in the world is that parcel going?', how: 'A city appears: tap where it is on the world map. The closer your pin, the more points. 15 cities.', seconds: 135, maxScore: 18_000, color: '#f472b6', big: true },
+  rescue: { id: 'rescue', app: 'relief', name: 'Flood Rescue', tagline: 'Fly the helicopter, beat the rising water', how: 'Steer with the mouse, a finger or the arrow keys. Hover low over a roof to winch people up (4 at a time), then land them at the hospital (H).', seconds: 120, maxScore: 10_000, color: '#fb923c', big: true },
+  ocean: { id: 'ocean', app: 'green', name: 'Ocean Cleanup', tagline: 'Clear the plastic, spare the sea life', how: 'Steer the boat with the mouse, a finger or the arrow keys. Scoop up plastic for combos; bumping into sea life costs points.', seconds: 90, maxScore: 16_000, color: '#22d3ee', big: true },
 };
 
 export const isGame = (v: unknown): v is GameId => typeof v === 'string' && (GAME_IDS as readonly string[]).includes(v);

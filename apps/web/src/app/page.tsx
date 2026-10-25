@@ -53,7 +53,7 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
   ],
   play: [
     { q: 'Do I need friends online to play?', a: 'No. Every game has a solo mode against the clock and your own best. With friends, one person opens a room and shares its code or link; everyone plays the same rounds at the same time.' },
-    { q: 'Is it free?', a: 'Yes. All four games, rooms of up to 8 and the leaderboards are free with a UniVerse account.' },
+    { q: 'Is it free?', a: 'Yes. All eight games, rooms of up to 8 and the leaderboards are free with a UniVerse account.' },
   ],
   green: [
     { q: 'How is the CO₂ saved worked out?', a: 'Each action uses a published average factor (for example, a young tree takes up about 22 kg of CO₂ a year; a kilometre by bike instead of by car saves about 0.2 kg). It’s an honest estimate, shown with the factor used.' },
@@ -65,7 +65,7 @@ const HERO: Record<AppId, Hero> = {
   campus: { tag: 'UniVersity / schools and universities / 13 languages', words: ['The', 'school', 'day', 'runs'], accent: 'itself.', text: 'Courses, grades, attendance, parents, internships and volunteering in one place. UniVersity runs the steps between classes and only asks a person when it matters.', note: 'free for students / a school sets it up / no card', card: <FlowCard /> },
   trace: { tag: 'UniVerse Trace / product passports / live maps', words: ['Every', 'product', 'gets', 'a'], accent: 'passport.', text: 'One code on every unit. Buyers see it’s genuine, shops earn points for every sale, and you watch every product move on a live map, and catch every copy the day it appears.', note: 'for brands, shops, drivers and buyers / free to start', card: <PassportCard />, extra: <Link href="/t/demo" className={ghost}>Scan a sample</Link> },
   relief: { tag: 'UniVerse Relief / needs and offers / live map', words: ['Help', 'that', 'reaches', 'people'], accent: 'fast.', text: 'People post what they need, neighbours and NGOs offer what they have, and a live map matches them: food, water, shelter, medicine or a lift to the clinic.', note: 'for people in need, volunteers and NGOs / free', card: <ReliefCard /> },
-  play: { tag: 'UniVerse Play / four games / solo or a room of 8', words: ['Games', 'that', 'teach'], accent: 'something.', text: 'A quiz battle, spotting fake products, getting help where it’s needed and sorting waste right. Beat your best alone, or share a room code and race your friends live.', note: 'free / up to 8 in a room / phones and computers', card: <PlayCard /> },
+  play: { tag: 'UniVerse Play / eight games / solo or a room of 8', words: ['Games', 'that', 'teach'], accent: 'something.', text: 'Quiz battles and type races, spotting fakes and pinning the world map, flood rescues by helicopter and cleaning the ocean. Beat your best alone, or share a room code and race your friends live.', note: 'free / up to 8 in a room / phones and computers', card: <PlayCard /> },
   green: { tag: 'UniVerse Green / climate actions / teams', words: ['Climate', 'action', 'you', 'can'], accent: 'prove.', text: 'Log trees planted, kilometres cycled and waste recycled, see the CO₂ saved, and beat a weekly challenge with your class, office or club.', note: 'for schools, companies and clubs / free', card: <GreenCard /> },
 };
 

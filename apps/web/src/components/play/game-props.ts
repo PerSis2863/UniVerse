@@ -9,4 +9,6 @@ export interface GameProps {
   onProgress: (score: number, step: number) => void;
   /** The game ended itself early (out of lives). */
   onDone: (score: number, step: number) => void;
+  /** The others in the room, as they go (Type Race draws them as cars). */
+  rivals?: { id: string; name: string; score: number; step: number }[];
 }

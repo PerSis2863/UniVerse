@@ -248,7 +248,7 @@ function Room({ code, onLeave }: { code: string; onLeave: (to?: GameId) => void 
               {board}
             </div>
           ) : (
-            <GameStage game={state.game} seed={state.seed} startsAt={state.startsAt} endsAt={state.endsAt} clock={clock} onProgress={report} onFinish={onFinish} aside={board} />
+            <GameStage game={state.game} seed={state.seed} startsAt={state.startsAt} endsAt={state.endsAt} clock={clock} onProgress={report} onFinish={onFinish} aside={board} rivals={state.players.filter((p) => p.id !== me)} />
           ))}
         </motion.div>
       </AnimatePresence>

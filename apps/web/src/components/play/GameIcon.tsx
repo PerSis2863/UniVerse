@@ -1,9 +1,9 @@
-import { Brain, Recycle, ScanSearch, Truck } from 'lucide-react';
+import { Brain, Globe2, Keyboard, LifeBuoy, Recycle, ScanSearch, Ship, Truck } from 'lucide-react';
 import { GAMES, type GameId } from '@/lib/play';
 import { cn } from '@/lib/utils';
 
 // Each UniVerse Play game's mark: its icon on a tile in the game's colour, with a soft glow.
-export const GAME_ICON: Record<GameId, typeof Brain> = { quiz: Brain, fakes: ScanSearch, supply: Truck, sort: Recycle };
+export const GAME_ICON: Record<GameId, typeof Brain> = { quiz: Brain, fakes: ScanSearch, supply: Truck, sort: Recycle, type: Keyboard, pin: Globe2, rescue: LifeBuoy, ocean: Ship };
 
 export function GameIcon({ game, size = 'md', className }: { game: GameId; size?: 'sm' | 'md' | 'lg'; className?: string }) {
   const Icon = GAME_ICON[game], color = GAMES[game].color;

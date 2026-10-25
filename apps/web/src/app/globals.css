@@ -2064,6 +2064,8 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
 @keyframes play-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 .play-drain { animation: play-drain linear forwards; transform-origin: left; }
 [dir="rtl"] .play-drain { transform-origin: right; }
+[dir="rtl"] { --play-dir: -1; }
+.play-stage:fullscreen { overflow-y: auto; padding: clamp(1rem, 3vw, 2.5rem); }
 @keyframes play-shake { 20%, 60% { transform: translate3d(-6px, 0, 0); } 40%, 80% { transform: translate3d(6px, 0, 0); } }
 .play-shake { animation: play-shake 320ms var(--ease-out-soft); }
 @keyframes play-ripple { from { transform: scale(1); opacity: 0.55; } to { transform: scale(2.1); opacity: 0; } }
@@ -2087,3 +2089,8 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
   .play-shake, .play-tick { animation: none; }
   .play-sorted, .play-dropped, .play-float { animation-name: rm-fade; animation-direction: reverse; }
 }
+@keyframes play-car { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(10px, 0, 0); } }
+.play-scene-car { animation: play-car 2.4s var(--ease-glide) infinite; }
+@keyframes play-heli { 0%, 100% { transform: translate3d(0, 0, 0) rotate(-4deg); } 50% { transform: translate3d(24px, 6px, 0) rotate(3deg); } }
+.play-scene-heli { animation: play-heli 3.6s var(--ease-glide) infinite; }
+@media (prefers-reduced-motion: reduce) { .play-scene-car, .play-scene-heli { animation: none; } }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { Loader2, Timer } from 'lucide-react';
+import { Loader2, Maximize2, Minimize2, Timer } from 'lucide-react';
 import { GAMES, type GameId } from '@/lib/play';
 import { Rolling } from '@/components/ui/Rolling';
 import { cn } from '@/lib/utils';
@@ -19,20 +19,28 @@ const VIEWS: Record<GameId, React.ComponentType<GameProps>> = {
   fakes: dynamic(() => import('./SpotTheFake').then((m) => m.SpotTheFake), { ssr: false, loading }),
   supply: dynamic(() => import('./SupplyRun').then((m) => m.SupplyRun), { ssr: false, loading }),
   sort: dynamic(() => import('./RecycleRush').then((m) => m.RecycleRush), { ssr: false, loading }),
+  type: dynamic(() => import('./TypeRace').then((m) => m.TypeRace), { ssr: false, loading }),
+  pin: dynamic(() => import('./WorldPin').then((m) => m.WorldPin), { ssr: false, loading }),
+  rescue: dynamic(() => import('./FloodRescue').then((m) => m.FloodRescue), { ssr: false, loading }),
+  ocean: dynamic(() => import('./OceanCleanup').then((m) => m.OceanCleanup), { ssr: false, loading }),
 };
 
 /** Warm a game's code while the lobby or countdown shows. */
 export function preloadGame(game: GameId) {
-  const mod = { quiz: () => import('./QuizClash'), fakes: () => import('./SpotTheFake'), supply: () => import('./SupplyRun'), sort: () => import('./RecycleRush') }[game];
+  const mod = {
+    quiz: () => import('./QuizClash'), fakes: () => import('./SpotTheFake'), supply: () => import('./SupplyRun'), sort: () => import('./RecycleRush'),
+    type: () => import('./TypeRace'), pin: () => import('./WorldPin'), rescue: () => import('./FloodRescue'), ocean: () => import('./OceanCleanup'),
+  }[game];
   void mod();
 }
 
-export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onFinish, aside }: {
+export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onFinish, aside, rivals }: {
   game: GameId; seed: number; startsAt: number; endsAt: number; clock: () => number;
   onProgress?: (score: number, step: number) => void;
   onFinish: (score: number, step: number) => void;
   /** The room's live scoreboard, beside the game. */
   aside?: React.ReactNode;
+  rivals?: GameProps['rivals'];
 }) {
   const info = GAMES[game];
   const [count, setCount] = useState<number | null>(null);
@@ -43,6 +51,19 @@ export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onF
   const last = useRef({ score: 0, step: 0 });
   const ended = useRef(false);
   const calm = useReducedMotion();
+  const stage = useRef<HTMLElement>(null);
+  const [full, setFull] = useState(false);
+  const [canFull, setCanFull] = useState(false);
+  useEffect(() => {
+    const el = stage.current;
+    const id = setTimeout(() => setCanFull(!!document.fullscreenEnabled), 0);
+    const change = () => setFull(!!el && document.fullscreenElement === el);
+    document.addEventListener('fullscreenchange', change);
+    return () => { clearTimeout(id); document.removeEventListener('fullscreenchange', change); if (el && document.fullscreenElement === el) void document.exitFullscreen().catch(() => {}); };
+  }, []);
+  const toggleFull = async () => {
+    try { if (document.fullscreenElement) await document.exitFullscreen(); else await stage.current?.requestFullscreen(); } catch { /* not allowed here */ }
+  };
 
   const onFinishNow = useRef(onFinish);
   useEffect(() => { onFinishNow.current = onFinish; }, [onFinish]);
@@ -81,9 +102,14 @@ export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onF
 
   return (
     <div className={cn('grid gap-5', aside && 'lg:grid-cols-[1fr_17rem]')}>
-      <section className="panel relative min-h-[28rem] overflow-hidden p-4 sm:p-6" aria-label={info.name}>
+      <section ref={stage} className="play-stage panel relative min-h-[28rem] overflow-hidden p-4 sm:p-6" aria-label={info.name}>
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold text-zinc-900 dark:text-white">{info.name}</span>
+          {canFull && (
+            <button type="button" onClick={() => void toggleFull()} className="btn-ghost btn-sm !px-2" aria-label={full ? 'Leave full screen' : 'Full screen'} title={full ? 'Leave full screen' : 'Full screen'}>
+              {full ? <Minimize2 className="w-4 h-4" aria-hidden /> : <Maximize2 className="w-4 h-4" aria-hidden />}
+            </button>
+          )}
           <span className={cn('ms-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums transition-colors', low ? 'bg-pink-600 text-white' : 'bg-zinc-100 text-zinc-700 dark:bg-white/10 dark:text-zinc-200')}>
             <Timer className="w-4 h-4" aria-hidden /><span key={low ? left : 'n'} className={low ? 'play-tick' : ''}>{left}s</span>
           </span>
@@ -93,7 +119,7 @@ export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onF
           {playing && <div className="play-drain h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500" style={{ animationDuration: `${endsAt - startsAt}ms`, animationDelay: `${-elapsed}ms` }} />}
         </div>
         <div className="mt-5">
-          {playing ? <View seed={seed} startsAt={startsAt} endsAt={endsAt} clock={clock} onProgress={progress} onDone={finish} /> : (
+          {playing ? <View seed={seed} startsAt={startsAt} endsAt={endsAt} clock={clock} onProgress={progress} onDone={finish} rivals={rivals} /> : (
             <div className="grid h-72 place-items-center text-center">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-pink-600 dark:text-pink-300">Get ready</p>
