@@ -2094,3 +2094,28 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
 @keyframes play-heli { 0%, 100% { transform: translate3d(0, 0, 0) rotate(-4deg); } 50% { transform: translate3d(24px, 6px, 0) rotate(3deg); } }
 .play-scene-heli { animation: play-heli 3.6s var(--ease-glide) infinite; }
 @media (prefers-reduced-motion: reduce) { .play-scene-car, .play-scene-heli { animation: none; } }
+
+/* M33 · The folded menu (the owner's video: "Fold the sidebar. Get a column back."). On a computer
+   the side menu folds to a strip of icons (<html data-sidebar="folded">, src/lib/sidebar-fold.ts)
+   and the page takes the room. The menu's width and the page's margin glide together (a layout
+   change by design: that's the point of folding); labels fade out first and back in last, the
+   names show as tooltips. Phones keep the slide-in sheet. */
+:root { --side-w: 16rem; }
+@media (min-width: 1024px) {
+  html[data-sidebar="folded"] { --side-w: 4.5rem; }
+  .side-shell { transition-property: width, transform; transition-duration: 320ms; transition-timing-function: var(--ease-glide); }
+  .side-main { transition: margin-inline-start 320ms var(--ease-glide); }
+  .side-label { white-space: nowrap; transition: opacity 200ms var(--ease-out-soft) 110ms; }
+  html[data-sidebar="folded"] .side-label { opacity: 0; pointer-events: none; transition-delay: 0ms; transition-duration: 90ms; }
+  html[data-sidebar="folded"] .side-hide { display: none; }
+  html[data-sidebar="folded"] .side-shell nav { padding-inline: 0.9375rem; overflow-x: hidden; }
+  html[data-sidebar="folded"] .side-shell nav .sidebar-item { overflow: hidden; }
+  html[data-sidebar="folded"] .side-brand { padding-inline: 1.0625rem; }
+  html[data-sidebar="folded"] .side-switch { padding-inline: 0.4rem; }
+  html[data-sidebar="folded"] .side-menu { left: auto; right: auto; inset-inline-start: calc(100% + 0.5rem); top: 0; width: 16rem; }
+  html[data-sidebar="folded"] .side-foot > div:first-child { padding-inline: 0.375rem; }
+  html[data-sidebar="folded"] .side-foot button { padding-inline: 0.9rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .side-shell, .side-main, .side-label { transition-duration: 0ms !important; transition-delay: 0ms !important; }
+}

@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M32 is the latest).
+  builds on it). The newest notes are at the end (M33 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -90,7 +90,8 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   M27 (simpler UniVersity menus), M28 (500 people a month on the $5 plan: live events only to people
   online, migration 0184), M29 (pointer glides), M30 (Ask UniVerse on /hub and ⌘K), M31 (UniVerse
   Play: four games, solo and rooms; migration 0185, wrangler migration `v5` for `GameRoom`), M32
-  (four bigger games: Type Race, World Pin, Flood Rescue, Ocean Cleanup).
+  (four bigger games: Type Race, World Pin, Flood Rescue, Ocean Cleanup), M33 (the side menu folds
+  to icons on computers).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **Next database update number: `0186`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each

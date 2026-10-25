@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { BarChart3, Briefcase, Check, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
+import { BarChart3, Briefcase, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
 import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { userCan } from '@/lib/permissions';
@@ -21,6 +21,7 @@ import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useLanguageStore } from '@/store/language';
 import { useOptimisticPath } from '@/lib/nav-pending';
+import { setSidebarFolded, useSidebarFolded } from '@/lib/sidebar-fold';
 
 export type NavItem = {
   href?: string;
@@ -315,18 +316,18 @@ function AppSwitcher({ app, role, onPick }: { app: AppId | null; role: string; o
   return (
     <div className="relative px-3 pb-2">
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="menu"
-        className="w-full flex items-center gap-3 rounded-2xl px-2.5 py-2 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.07] transition-colors text-start">
+        className="side-switch w-full flex items-center gap-3 overflow-hidden rounded-2xl px-2.5 py-2 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.07] transition-colors text-start">
         <AppIcon id={app ?? 'hub'} size={32} />
-        <span className="min-w-0 flex-1">
+        <span className="side-label min-w-0 flex-1">
           <span className="block text-[13px] font-semibold text-white truncate">{current?.name ?? 'UniVerse Impact'}</span>
           <span className="block text-[11px] text-zinc-400 truncate">{current?.tagline ?? 'All your apps'}</span>
         </span>
-        <ChevronsUpDown className="w-4 h-4 text-zinc-400" aria-hidden />
+        <ChevronsUpDown className="side-label w-4 h-4 text-zinc-400" aria-hidden />
       </button>
       <AnimatePresence>
         {open && (
           <motion.div role="menu" initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={spring.snappy}
-            className="absolute left-3 right-3 top-full z-20 mt-1 rounded-2xl border border-white/10 bg-[#0b1a24] p-1.5 shadow-2xl">
+            className="side-menu absolute left-3 right-3 top-full z-20 mt-1 rounded-2xl border border-white/10 bg-[#0b1a24] p-1.5 shadow-2xl">
             {APPS.map((a) => (
               <Link key={a.id} role="menuitem" href={appHome(a.id, role)} onClick={() => { setOpen(false); onPick?.(); }} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]">
                 <AppIcon id={a.id} size={28} />
@@ -353,6 +354,8 @@ function NavItemComponent({
   glide,
   hovered,
   onHover,
+  folded,
+  onTip,
 }: { 
   item: NavItem; 
   pathname: string; 
@@ -364,6 +367,9 @@ function NavItemComponent({
   /** The row under the pointer (M29: a soft highlight glides to it), and who to tell. */
   hovered: string | null;
   onHover: (key: string | null) => void;
+  /** M33: folded to icons (labels as tooltips; a group unfolds the menu when tapped). */
+  folded: boolean;
+  onTip: (label: string, el: HTMLElement) => void;
 }) {
   const calm = useReducedMotion();
   // The pointer's highlight: glides between rows, or just appears with Reduce Motion.
@@ -372,12 +378,16 @@ function NavItemComponent({
   const hasActiveChild = item.subItems?.some(sub => isOn(pathname, sub.href, sub.also) || pathname.startsWith(sub.href + '/'));
   const active = pathname === item.href || (item.href && item.href !== '/' && pathname.startsWith(item.href)) || hasActiveChild;
 
+  const tip = (el: HTMLElement) => onTip(t(item.label), el);
   if (item.subItems) {
+    if (folded) isOpen = false;
     return (
       <div className="space-y-1">
         <button
           onClick={onToggle}
-          onPointerEnter={() => onHover(item.label)}
+          onPointerEnter={(e) => { onHover(item.label); tip(e.currentTarget); }}
+          onFocus={(e) => tip(e.currentTarget)}
+          aria-label={folded ? t(item.label) : undefined}
           aria-expanded={isOpen}
           data-tour-hrefs={item.subItems.map((s) => s.href.split('?')[0]).join(' ')}
           className={cn('sidebar-item glide-host relative w-full justify-between', active && !isOpen && 'active')}
@@ -385,9 +395,9 @@ function NavItemComponent({
           {hoverPill(item.label, !!(active && !isOpen))}
           <div className="relative flex items-center gap-3">
             <item.icon className="w-[18px] h-[18px] flex-shrink-0 text-tint-text" strokeWidth={2} />
-            <span>{t(item.label)}</span>
+            <span className="side-label">{t(item.label)}</span>
           </div>
-          <ChevronDown className={cn('relative w-3.5 h-3.5 text-zinc-400 transition-transform duration-300', !isOpen && '-rotate-90')} strokeWidth={2.5} />
+          <ChevronDown className={cn('side-label relative w-3.5 h-3.5 text-zinc-400 transition-transform duration-300', !isOpen && '-rotate-90')} strokeWidth={2.5} />
         </button>
         <AnimatePresence initial={false}>
           {isOpen && (
@@ -434,13 +444,13 @@ function NavItemComponent({
   if (item.href) {
     const on = isOn(pathname, item.href, item.also);
     return (
-      <Link href={item.href} data-vt="fade" data-tour-href={item.href.split('?')[0]} onClick={onClose} onPointerEnter={() => onHover(item.href!)} aria-current={on ? 'page' : undefined}
+      <Link href={item.href} data-vt="fade" data-tour-href={item.href.split('?')[0]} onClick={onClose} onPointerEnter={(e) => { onHover(item.href!); tip(e.currentTarget); }} onFocus={(e) => tip(e.currentTarget)} aria-current={on ? 'page' : undefined}
         className={cn('sidebar-item pill-host glide-host relative block', on && 'active')}>
         {on && <motion.span layoutId={glide ? 'sidebar-pill' : undefined} transition={spring.snappy} className="sidebar-pill" />}
         {hoverPill(item.href, on)}
         <div className="relative flex items-center gap-3">
           <item.icon className="w-[18px] h-[18px] flex-shrink-0 text-tint-text" strokeWidth={2} />
-          <span>{t(item.label)}</span>
+          <span className="side-label">{t(item.label)}</span>
         </div>
       </Link>
     );
@@ -469,6 +479,19 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   // framer-motion measure the page on each frame of the tab switch.
   const wide = useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE).matches, () => true);
   const app = useCurrentApp(pathname);
+  // M33: folded to a strip of icons on a computer (never on a phone, where the menu is a sheet).
+  const folded = useSidebarFolded() && wide;
+  const [tip, setTip] = useState<{ label: string; y: number } | null>(null);
+  const showTip = (label: string, el: HTMLElement) => { if (!folded) return; const r = el.getBoundingClientRect(); setTip({ label, y: r.top + r.height / 2 }); };
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (e.key !== '[' || e.metaKey || e.ctrlKey || e.altKey || el?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el?.tagName ?? '')) return;
+      setSidebarFolded(document.documentElement.dataset.sidebar !== 'folded');
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, []);
 
   // Escape closes the mobile navigation sheet. The page behind doesn't scroll while it's open
   // because the backdrop and the sheet's fixed parts take no finger scrolling (touch-none) and its
@@ -513,15 +536,21 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       <aside
         aria-label="Navigation"
         className={cn(
-          "dark fixed start-0 top-0 bottom-0 w-[min(84vw,320px)] lg:w-64 glass-sidebar border-e border-[var(--sidebar-border)] flex flex-col z-[100] lg:z-50 sheet-safe-top lg:pt-0 rounded-e-[28px] lg:rounded-none",
+          "side-shell dark fixed start-0 top-0 bottom-0 w-[min(84vw,320px)] lg:w-[var(--side-w)] glass-sidebar border-e border-[var(--sidebar-border)] flex flex-col z-[100] lg:z-50 sheet-safe-top lg:pt-0 rounded-e-[28px] lg:rounded-none",
           "transition-transform duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform lg:translate-x-0",
           isOpen ? "translate-x-0 shadow-2xl lg:shadow-none" : "-translate-x-full rtl:translate-x-full"
         )}
       >
+        {/* M33: fold the menu to icons (and back): a round button on its edge, or the [ key. */}
+        <button type="button" onClick={() => { setTip(null); setSidebarFolded(!folded); }} aria-expanded={!folded} aria-controls="side-nav"
+          aria-label={folded ? 'Unfold the menu' : 'Fold the menu'} title={`${folded ? 'Unfold' : 'Fold'} the menu ( [ )`}
+          className="side-toggle hidden lg:grid absolute -end-3 top-[1.375rem] z-10 h-6 w-6 place-items-center rounded-full border border-white/15 bg-[#11212D] text-zinc-300 shadow-[0_4px_14px_rgba(0,0,0,0.35)] transition-[color,border-color,transform] duration-200 hover:text-white hover:border-pink-400/70 active:scale-90">
+          <ChevronLeft className={cn('w-3.5 h-3.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] rtl:-scale-x-100', folded && 'rotate-180')} aria-hidden />
+        </button>
         {/* Brand */}
-      <div className="flex items-center gap-3 px-5 h-16 touch-none lg:touch-manipulation">
+      <div className="side-brand flex items-center gap-3 px-5 h-16 overflow-hidden touch-none lg:touch-manipulation">
         <UniverseLogo size="md" animated={false} withGlow={false} />
-        <div className="min-w-0">
+        <div className="side-label min-w-0">
           <div className="font-bold text-[17px] leading-tight tracking-tight text-zinc-900 dark:text-white">UniVerse Impact</div>
           <div className="text-[12px] text-zinc-500 dark:text-zinc-400 font-medium">{user.owner ? 'Owner' : user.role === 'ADMIN' ? 'Admin' : user.role === 'TEACHER' ? 'Teacher' : 'Member'}</div>
         </div>
@@ -529,7 +558,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       <AppSwitcher app={app} role={user.role} onPick={onClose} />
 
       {/* Nav */}
-      <nav onPointerLeave={() => setHovered(null)} className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
+      <nav id="side-nav" onPointerLeave={() => { setHovered(null); setTip(null); }} onBlur={() => setTip(null)} className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
         {nav.map((item, i) => (
           <NavItemComponent 
             key={i} 
@@ -537,21 +566,33 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
             pathname={pathname} 
             onClose={onClose}
             isOpen={openIndex === i || (item.subItems?.some(sub => isOn(pathname, sub.href, sub.also) || pathname.startsWith(sub.href + '/')) && openIndex === null) ? true : false}
-            onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+            onToggle={() => { if (folded) { setSidebarFolded(false); setTip(null); setOpenIndex(i); } else setOpenIndex(openIndex === i ? null : i); }}
             glide={isOpen || wide}
             hovered={hovered}
             onHover={setHovered}
+            folded={folded}
+            onTip={showTip}
           />
         ))}
       </nav>
 
+      {/* The label of the icon under the pointer, beside the folded menu. */}
+      <AnimatePresence>
+        {folded && tip && (
+          <motion.div key={tip.label} role="tooltip" initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, transition: { duration: 0.08 } }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+            className="pointer-events-none fixed start-[calc(var(--side-w)+10px)] z-[120] -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[#0b1a24] px-2.5 py-1.5 text-[13px] font-semibold text-white shadow-xl" style={{ top: tip.y }}>
+            {tip.label}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* User */}
-      <div className="px-3 pt-3 sheet-safe-bottom lg:pb-4 touch-none lg:touch-manipulation" style={{ boxShadow: 'inset 0 0.5px 0 var(--separator)' }}>
+      <div className="side-foot overflow-hidden px-3 pt-3 sheet-safe-bottom lg:pb-4 touch-none lg:touch-manipulation" style={{ boxShadow: 'inset 0 0.5px 0 var(--separator)' }}>
         <div className="flex items-center gap-3 px-2 py-2 rounded-xl">
           <div className="w-9 h-9 rounded-full bg-gradient-to-b from-[#a5abb8] to-[#848993] flex items-center justify-center text-[13px] font-semibold text-white flex-shrink-0">
             {initials}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="side-label flex-1 min-w-0">
             <div className="text-[15px] font-semibold text-zinc-900 dark:text-white truncate">{user.name}</div>
             <div className="text-[12px] text-zinc-500 truncate">{user.email}</div>
           </div>
@@ -560,10 +601,10 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
         <LanguageMenu row className="lg:hidden mt-1" />
         <button onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-[15px] text-red-700 dark:text-[var(--ios-red)] hover:bg-[var(--fill)] transition-colors">
-          <LogOut className="w-[18px] h-[18px]" />
-          <span>{t('nav.logout')}</span>
+          <LogOut className="w-[18px] h-[18px] flex-shrink-0" aria-hidden />
+          <span className="side-label">{t('nav.logout')}</span>
         </button>
-        <div className="px-3 pt-2 pb-1 flex gap-3 text-[12px] text-zinc-400 dark:text-zinc-500">
+        <div className="side-hide px-3 pt-2 pb-1 flex gap-3 text-[12px] text-zinc-400 dark:text-zinc-500">
           <Link href="/terms" target="_blank" className="hover:text-tint-text">Terms</Link>
           <Link href="/privacy" target="_blank" className="hover:text-tint-text">Privacy</Link>
           <Link href="/policies" target="_blank" className="hover:text-tint-text">Policies</Link>

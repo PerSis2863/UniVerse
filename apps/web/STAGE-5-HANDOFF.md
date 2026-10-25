@@ -1918,3 +1918,20 @@ Progress table (row D6).
 - Caps: each game's `maxScore` is proven above a perfect round in `big-games.test.ts`.
 - Checked: all four played in the browser at 390/1280, light and dark; axe clean. Rooms use the
   same GameRoom as M31 (no server change).
+
+## M33 · The folding side menu
+
+- From the owner's screen recording (25 Oct, a "Fold the sidebar. Get a column back." dashboard).
+- On a computer the side menu folds to a 72 px strip of icons: the round arrow button on its edge,
+  or the `[` key (not while typing). The page takes the room; the choice is kept on the device
+  (`localStorage uv-sidebar`) and set on `<html data-sidebar="folded">` by the head script in
+  `src/app/layout.tsx` before the first paint, so nothing jumps on load (`src/lib/sidebar-fold.ts`).
+- CSS does the sizing: `--side-w` (16rem / 4.5rem) sets the menu's width and the page's start
+  margin (`side-main` in `DashboardShell` and `AppSkeleton`); both glide together in 320 ms (a
+  layout change on purpose, the point of folding); labels (`.side-label`) fade out first and back
+  in last; the legal links hide. Reduce Motion: it just switches.
+- Folded: names show as a tooltip beside the icon under the pointer or keyboard focus; the app
+  switcher's list opens to the side; tapping a group (one with sub-pages) unfolds the menu and
+  opens it. Phones keep the slide-in sheet (never folded).
+- Checked: student, admin and Play pages in light and dark; widths 256 → 72 px and back, kept
+  after a reload, `[` works, tooltips; axe clean.

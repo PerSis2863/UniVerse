@@ -31,7 +31,7 @@ export function AppSkeleton() {
 
       {/* The same placeholder the page itself shows while it loads (shaped like this page), so
           opening the app goes from one to the other with nothing in between. */}
-      <div className="mobile-main flex-1 lg:ms-64 min-w-0 flex flex-col">
+      <div className="mobile-main flex-1 side-main lg:ms-[var(--side-w)] min-w-0 flex flex-col">
         <PageSkeleton variant={skeletonFor(pathname)} />
       </div>
 
