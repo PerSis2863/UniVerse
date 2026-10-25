@@ -2129,3 +2129,39 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
 @media (prefers-reduced-motion: reduce) {
   .side-shell, .side-main, .side-label { transition-duration: 0ms !important; transition-delay: 0ms !important; }
 }
+
+/* M35 · The arena: a round takes the whole screen, lit in the game's colour (--arena), with grain. */
+.arena { animation: arena-fade 220ms var(--ease-out-soft) both; }
+@keyframes arena-fade { from { opacity: 0; } }
+.arena-glow {
+  background:
+    radial-gradient(70% 55% at 50% -12%, color-mix(in srgb, var(--arena, #ec4899) 32%, transparent), transparent 70%),
+    radial-gradient(55% 45% at 102% 104%, rgba(236, 72, 153, 0.14), transparent 70%),
+    radial-gradient(45% 45% at -2% 104%, rgba(196, 132, 48, 0.12), transparent 70%);
+}
+.arena-glow::after {
+  content: ''; position: absolute; inset: 0; opacity: 0.09; mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@keyframes arena-in { from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.985); } }
+.arena-in { animation: arena-in 420ms var(--ease-glide) both; }
+@keyframes play-ring { from { stroke-dashoffset: 0; } to { stroke-dashoffset: var(--ring-len, 126); } }
+.play-ring { animation: play-ring linear forwards; }
+@media (prefers-reduced-motion: reduce) { .arena-in { animation-name: rm-fade; } }
+@keyframes play-burst { from { transform: translate3d(0, 0, 0) scale(1); opacity: 1; } to { transform: translate3d(var(--dx), var(--dy), 0) scale(0.3); opacity: 0; } }
+.play-burst > i { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px; border-radius: 9999px; animation: play-burst 700ms var(--ease-out-soft) forwards; }
+@keyframes play-pulse-ring { 0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.35), 0 0 40px rgba(251, 191, 36, 0.15); } 50% { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.12), 0 0 70px rgba(251, 191, 36, 0.3); } }
+.play-lightning { animation: play-pulse-ring 1.2s ease-in-out infinite; }
+@keyframes play-spin { to { transform: rotate(360deg); } }
+.play-spin { animation: play-spin 0.6s linear infinite; }
+@keyframes play-rain { to { transform: translate3d(-40px, 120px, 0); } }
+.play-rain { background-image: repeating-linear-gradient(105deg, transparent 0 14px, rgba(186, 230, 253, 0.35) 14px 15px); animation: play-rain 0.5s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .play-burst, .play-lightning, .play-spin, .play-rain { animation: none !important; } .play-burst { display: none; } }
+@keyframes play-scanline { 0% { transform: translate3d(0, -110%, 0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate3d(0, 1600%, 0); opacity: 0; } }
+.play-scanline { animation: play-scanline 1.4s var(--ease-out-soft) both; }
+@media (prefers-reduced-motion: reduce) { .play-scanline { display: none; } }
+@keyframes play-lid { 0% { transform: rotate(0deg); } 35% { transform: rotate(-38deg); } 70% { transform: rotate(6deg); } 100% { transform: rotate(0deg); } }
+.play-lid { animation: play-lid 520ms var(--ease-out-soft); }
+@keyframes play-smoke { 0% { transform: translate3d(-50%, 0, 0) scale(0.8); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate3d(-50%, -40px, 0) scale(1.4); opacity: 0; } }
+.play-smoke { animation: play-smoke 900ms ease-out forwards; }
+@media (prefers-reduced-motion: reduce) { .play-lid, .play-smoke { animation: none; } .play-smoke { display: none; } }

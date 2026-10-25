@@ -2,20 +2,26 @@
 
 import { useEffect, useMemo, useReducer, useRef } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { Leaf, Zap } from 'lucide-react';
-import { BINS, BIN_COLOR, BIN_LABEL, ITEMS, SORT_MISSED, SORT_WRONG, sortMultiplier, sortPoints, sortSequence, type BeltItem, type Bin } from '@/lib/play/sort';
+import { Leaf, Sparkles, Zap } from 'lucide-react';
+import { BINS, BIN_COLOR, BIN_LABEL, ITEMS, SORT_MISSED, SORT_WAVES, SORT_WRONG, sortMultiplier, sortPoints, sortSequence, sortWave, type BeltItem, type Bin } from '@/lib/play/sort';
 import { GAMES } from '@/lib/play';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { useArena } from './arena';
+import { Burst } from './fx';
 import type { GameProps } from './game-props';
 
 // Recycle Rush (src/lib/play/sort.ts): things ride the belt; sort the one at the front into its bin
-// (tap a bin, or keys 1–4) before it drops off the end. Streaks raise the multiplier, and each right
-// sort adds the CO₂ it saves. The belt moves on the GPU (one animation per item, nothing per frame).
+// (tap a bin, or keys 1–4) before it drops off the end. A right sort flies in an arc into the bin
+// and its lid pops; golden items count triple; e-waste in the wrong bin starts a little fire. The
+// belt speeds up in waves. It moves on the GPU (one animation per item, nothing per frame).
 
-const EXIT_MS = 450;
+const EXIT_MS = 520;
 type Done = 'ok' | 'wrong' | 'missed';
-interface S { t: number; done: Record<number, Done>; score: number; streak: number; co2: number; step: number; last: { bin: Bin; ok: boolean; n: number; gained: number } | null }
+interface S {
+  t: number; done: Record<number, Done>; bins: Record<number, Bin>; score: number; streak: number; best: number; co2: number; step: number; right: number; wrong: number;
+  last: { bin: Bin; ok: boolean; n: number; gained: number; golden: boolean; hazard: boolean } | null;
+}
 type A = { t: 'tick'; at: number } | { t: 'sort'; bin: Bin; at: number };
 
 function reducer(start: number, belt: BeltItem[]) {
@@ -30,19 +36,25 @@ function reducer(start: number, belt: BeltItem[]) {
     const [, , bin, kg] = ITEMS[front.item];
     const ok = bin === a.bin;
     done[front.id] = ok ? 'ok' : 'wrong';
-    const gained = ok ? sortPoints(streak) : 0;
+    const gained = ok ? sortPoints(streak, front.golden) : 0;
+    const next = ok ? streak + 1 : 0;
     return {
-      ...s, t: a.at, done, step: s.step + 1, streak: ok ? streak + 1 : 0, co2: s.co2 + (ok ? kg : 0),
-      score: ok ? score + gained : Math.max(0, score - SORT_WRONG), last: { bin: a.bin, ok, n: (s.last?.n ?? 0) + 1, gained },
+      ...s, t: a.at, done, bins: { ...s.bins, [front.id]: a.bin }, step: s.step + 1, streak: next, best: Math.max(s.best, next), co2: s.co2 + (ok ? kg : 0),
+      right: s.right + (ok ? 1 : 0), wrong: s.wrong + (ok ? 0 : 1),
+      score: ok ? score + gained : Math.max(0, score - SORT_WRONG),
+      last: { bin: a.bin, ok, n: (s.last?.n ?? 0) + 1, gained, golden: front.golden, hazard: !ok && bin === 'ewaste' },
     };
   };
 }
 
-export function RecycleRush({ seed, startsAt, clock, onProgress }: GameProps) {
+export function RecycleRush({ seed, startsAt, clock, onProgress, onStats }: GameProps) {
   const belt = useMemo(() => sortSequence(seed, GAMES.sort.seconds), [seed]);
   const run = useMemo(() => reducer(startsAt, belt), [startsAt, belt]);
-  const [s, dispatch] = useReducer(run, startsAt, (t): S => ({ t, done: {}, score: 0, streak: 0, co2: 0, step: 0, last: null }));
+  const [s, dispatch] = useReducer(run, startsAt, (t): S => ({ t, done: {}, bins: {}, score: 0, streak: 0, best: 0, co2: 0, step: 0, right: 0, wrong: 0, last: null }));
+  const { announce, shake, sfx } = useArena();
   const calm = useReducedMotion();
+  const box = useRef<HTMLDivElement>(null);
+  const wave = sortWave(s.t - startsAt, GAMES.sort.seconds);
 
   // Wake when an item comes on, drops off, or has finished leaving.
   useEffect(() => {
@@ -54,13 +66,33 @@ export function RecycleRush({ seed, startsAt, clock, onProgress }: GameProps) {
       else if (!s.done[b.id] && end > now) next = Math.min(next, end);
       else if (end + EXIT_MS > now) next = Math.min(next, end + EXIT_MS);
     }
+    const waveAt = (Math.floor(((now / (GAMES.sort.seconds * 1000)) * 4)) + 1) * GAMES.sort.seconds * 250;
+    if (waveAt < GAMES.sort.seconds * 1000) next = Math.min(next, waveAt);
     if (next === Infinity) return;
     const id = setTimeout(() => dispatch({ t: 'tick', at: clock() }), Math.max(0, startsAt + next - clock()));
     return () => clearTimeout(id);
   }, [s.t, s.done, belt, startsAt, clock]);
 
+  useEffect(() => { if (wave > 0) { announce(SORT_WAVES[wave], 'pink'); sfx('whoosh'); } }, [wave, announce, sfx]);
   useEffect(() => { onProgress(s.score, s.step); }, [s.score, s.step, onProgress]);
-  useEffect(() => { if (s.last) navigator.vibrate?.(s.last.ok ? 10 : [30, 40, 30]); }, [s.last]);
+  useEffect(() => {
+    onStats?.([
+      { label: 'Sorted right', value: String(s.right) }, { label: 'Accuracy', value: `${s.step ? Math.round((100 * s.right) / s.step) : 0}%` },
+      { label: 'Best streak', value: String(s.best) }, { label: 'CO₂ saved', value: `${s.co2.toFixed(2)} kg` },
+    ]);
+  }, [s.right, s.step, s.best, s.co2, onStats]);
+  useEffect(() => {
+    if (!s.last) return;
+    if (s.last.ok) {
+      sfx('pick', s.streak);
+      if (s.last.golden) { announce('Golden! ×3', 'gold'); sfx('power'); }
+      else if (s.streak > 0 && s.streak % 5 === 0) { announce(`Combo ×${sortMultiplier(s.streak)}!`, 'pink'); sfx('combo', s.streak / 5); }
+    } else {
+      sfx('wrong'); shake(s.last.hazard ? 1.4 : 0.6);
+      if (s.last.hazard) announce('Fire hazard! E-waste goes to e-waste', 'bad');
+      navigator.vibrate?.([30, 40, 30]);
+    }
+  }, [s.last, s.streak, sfx, announce, shake]);
 
   const sort = (bin: Bin) => dispatch({ t: 'sort', bin, at: clock() });
   useEffect(() => {
@@ -78,24 +110,28 @@ export function RecycleRush({ seed, startsAt, clock, onProgress }: GameProps) {
   const mult = sortMultiplier(s.streak);
 
   return (
-    <div className="mx-auto w-full max-w-4xl">
-      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-        <p className="font-medium text-zinc-500 dark:text-zinc-400"><Leaf className="inline w-4 h-4 me-1 -mt-0.5 text-emerald-500" aria-hidden /><span className="tabular-nums text-zinc-900 dark:text-zinc-100">{s.co2.toFixed(2)}</span> kg CO₂ saved</p>
-        <motion.span key={mult} initial={{ scale: calm ? 1 : 1.2 }} animate={{ scale: 1 }} transition={spring.bouncy}
-          className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-bold tabular-nums', mult > 1 ? 'bg-pink-600 text-white shadow-[0_0_24px_rgba(236,72,153,0.45)]' : 'bg-zinc-200 text-zinc-600 dark:bg-white/10 dark:text-zinc-300')}>
-          <Zap className="w-4 h-4" aria-hidden />×{mult}
-          <span className="font-medium opacity-80">· {s.streak} in a row</span>
+    <div ref={box} className="mx-auto w-full max-w-5xl">
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <p className="font-medium text-zinc-300"><Leaf className="inline w-4 h-4 me-1 -mt-0.5 text-emerald-400" aria-hidden /><span className="tabular-nums text-white">{s.co2.toFixed(2)}</span> kg CO₂ saved</p>
+        <span className="text-zinc-500">·</span>
+        <p className="text-zinc-300">{SORT_WAVES[wave]}</p>
+        <motion.span key={mult} initial={{ scale: calm ? 1 : 1.25 }} animate={{ scale: 1 }} transition={spring.bouncy}
+          className={cn('ms-auto inline-flex items-center gap-1 rounded-full px-3 py-1 font-bold tabular-nums', mult > 1 ? 'bg-pink-600 text-white shadow-[0_0_28px_rgba(236,72,153,0.55)]' : 'bg-white/10 text-zinc-200')}>
+          <Zap className="w-4 h-4" aria-hidden />×{mult}<span className="font-medium opacity-80">· {s.streak} in a row</span>
         </motion.span>
       </div>
 
-      {/* The belt */}
-      <div className="relative mt-4 h-32 overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 dark:border-white/10 dark:bg-[#101012]">
-        <div className="absolute inset-x-0 bottom-5 h-3 overflow-hidden bg-zinc-300 dark:bg-white/10" aria-hidden>
-          <div className="play-stripes h-full w-[calc(100%+48px)] bg-[repeating-linear-gradient(90deg,transparent_0_20px,rgba(0,0,0,0.12)_20px_24px)] dark:bg-[repeating-linear-gradient(90deg,transparent_0_20px,rgba(255,255,255,0.12)_20px_24px)]" />
+      {/* The belt: rails, a moving surface, rollers below; the drop-off glows red. */}
+      <div className="relative mt-4 h-40 overflow-hidden rounded-[1.75rem] bg-[#101012] ring-1 ring-white/10">
+        <div className="absolute inset-x-0 bottom-9 h-5 overflow-hidden bg-[#26262b] shadow-[inset_0_2px_0_rgba(255,255,255,0.08),inset_0_-2px_0_rgba(0,0,0,0.5)]" aria-hidden>
+          <div className="play-stripes h-full w-[calc(100%+48px)] bg-[repeating-linear-gradient(90deg,transparent_0_20px,rgba(255,255,255,0.1)_20px_24px)]" />
         </div>
-        <div className="absolute inset-y-0 end-0 w-16 bg-gradient-to-l from-red-500/20 to-transparent rtl:bg-gradient-to-r" aria-hidden />
-        <div className="absolute inset-x-3 top-3 bottom-8 [container-type:inline-size]">
-          {onBelt.map((b) => <OnBelt key={b.id} b={b} start={startsAt} clock={clock} front={b === front} done={s.done[b.id]} />)}
+        <div className="absolute inset-x-3 bottom-2 flex justify-between" aria-hidden>
+          {Array.from({ length: 14 }, (_, i) => <span key={i} className="play-spin grid h-5 w-5 place-items-center rounded-full bg-[#2e2e34] ring-1 ring-white/10"><span className="h-3 w-px bg-white/30" /></span>)}
+        </div>
+        <div className="absolute inset-y-0 end-0 w-20 bg-gradient-to-l from-red-500/25 to-transparent rtl:bg-gradient-to-r" aria-hidden />
+        <div className="absolute inset-x-3 top-3 bottom-12 [container-type:inline-size]">
+          {onBelt.map((b) => <OnBelt key={b.id} b={b} start={startsAt} clock={clock} front={b === front} done={s.done[b.id]} bin={s.bins[b.id]} box={box} calm={!!calm} />)}
         </div>
       </div>
 
@@ -103,10 +139,10 @@ export function RecycleRush({ seed, startsAt, clock, onProgress }: GameProps) {
       <div className="mt-3 flex min-h-12 items-center justify-center gap-3 text-center" aria-live="polite">
         <AnimatePresence mode="popLayout" initial={false}>
           {front ? (
-            <motion.p key={front.id} initial={{ opacity: 0, y: calm ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: calm ? 0 : -8 }} transition={spring.smooth} className="text-sm text-zinc-600 dark:text-zinc-300">
-              Sort: <span className="text-base font-semibold text-zinc-900 dark:text-white">{ITEMS[front.item][0]}</span>
+            <motion.p key={front.id} initial={{ opacity: 0, y: calm ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: calm ? 0 : -10 }} transition={spring.smooth} className="text-base text-zinc-300">
+              Sort: <span className="text-xl font-semibold text-white">{ITEMS[front.item][0]}</span>{front.golden && <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-amber-300 px-2 py-0.5 text-xs font-bold text-amber-950"><Sparkles className="w-3 h-3" aria-hidden />×3</span>}
             </motion.p>
-          ) : <motion.p key="none" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-zinc-500 dark:text-zinc-400">Next one coming…</motion.p>}
+          ) : <motion.p key="none" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-zinc-400">Next one coming…</motion.p>}
         </AnimatePresence>
       </div>
 
@@ -114,40 +150,44 @@ export function RecycleRush({ seed, startsAt, clock, onProgress }: GameProps) {
         {BINS.map((bin, i) => {
           const hit = s.last?.bin === bin ? s.last : null;
           return (
-            <button key={bin} type="button" onClick={() => sort(bin)}
-              className="group relative flex flex-col items-center gap-1.5 rounded-2xl border border-zinc-200 bg-white px-1 pb-2.5 pt-3 text-xs font-semibold text-zinc-800 transition-[border-color,transform] duration-150 hover:border-zinc-300 active:scale-[0.97] dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-100">
-              <span key={hit?.n ?? 0} className={cn('relative grid h-12 w-12 place-items-center rounded-xl text-white shadow-md', hit && (hit.ok ? 'play-tick' : 'play-shake'))} style={{ background: BIN_COLOR[bin] }} aria-hidden>
-                <BinIcon bin={bin} />
-                {hit?.ok && <span className="play-float absolute left-1/2 -top-3 whitespace-nowrap rounded-full bg-emerald-700 px-1.5 py-0.5 text-[11px] font-bold">+{hit.gained}</span>}
-              </span>
+            <button key={bin} type="button" data-bin={bin} onClick={() => sort(bin)}
+              className="group relative flex flex-col items-center gap-1.5 rounded-[1.5rem] bg-white/[0.04] px-1 pb-3 pt-4 text-xs font-semibold text-zinc-100 ring-1 ring-white/10 transition-[background-color,transform] duration-150 hover:bg-white/[0.08] active:scale-[0.97]">
+              <BinArt bin={bin} hit={hit?.n ?? 0} ok={!!hit?.ok} />
+              {hit?.ok && <span key={`b${hit.n}`} className="pointer-events-none absolute left-1/2 top-6 h-0 w-0" aria-hidden><Burst color={hit.golden ? '#fbbf24' : BIN_COLOR[bin]} spread={56} /></span>}
+              {hit?.ok && <span key={`f${hit.n}`} className="play-float pointer-events-none absolute left-1/2 top-0 whitespace-nowrap rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-bold" aria-hidden>+{hit.gained}</span>}
+              {hit?.hazard && <span key={`h${hit.n}`} className="play-smoke pointer-events-none absolute left-1/2 top-2 text-2xl" aria-hidden>🔥</span>}
               <span className="leading-tight">{BIN_LABEL[bin]}</span>
-              <span className="hidden text-[11px] font-normal text-zinc-500 dark:text-zinc-400 sm:block" aria-hidden>key {i + 1}</span>
+              <span className="hidden text-[11px] font-normal text-zinc-400 sm:block" aria-hidden>key {i + 1}</span>
             </button>
           );
         })}
       </div>
-      <p className="mt-3 text-center text-xs text-zinc-500 dark:text-zinc-400">
-        {s.last && !s.last.ok ? 'Wrong bin. Batteries, phones and chargers go to e-waste; food scraps to compost.' : 'Right bin: points and CO₂ saved. Wrong bin or dropped: points lost.'}
-      </p>
     </div>
   );
 }
 
-function BinIcon({ bin }: { bin: Bin }) {
-  // Simple drawn bins: a lid and a body, the recycling one with arrows.
+/** A drawn bin: a body in the bin's colour and a lid that pops open when something lands in it. */
+function BinArt({ bin, hit, ok }: { bin: Bin; hit: number; ok: boolean }) {
+  const c = BIN_COLOR[bin];
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M4 6h16M9 6V4h6v2M6 6l1 14h10l1-14" />
-      {bin === 'recycle' && <path d="M10 12l2-2 2 2M12 10v6" />}
-      {bin === 'compost' && <path d="M9 15c0-3 3-5 6-5-0 3-2 6-6 5z" />}
-      {bin === 'ewaste' && <path d="M13 9l-3 4h4l-3 4" />}
-      {bin === 'landfill' && <path d="M10 10v7M14 10v7" />}
+    <svg key={hit} viewBox="0 0 48 52" className={cn('h-14 w-14', hit && !ok && 'play-shake')} aria-hidden>
+      <path d="M8 14h32l-3 34a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3z" fill={c} />
+      <path d="M14 20v24M24 20v24M34 20v24" stroke="rgba(0,0,0,0.25)" strokeWidth="2" strokeLinecap="round" />
+      {bin === 'recycle' && <path d="M19 33l5-6 5 6M24 27v12" stroke="#fff" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />}
+      {bin === 'compost' && <path d="M18 38c0-7 5-11 12-11-1 7-5 12-12 11z" fill="#fff" opacity="0.9" />}
+      {bin === 'ewaste' && <path d="M26 25l-6 9h6l-4 9" stroke="#fff" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />}
+      {bin === 'landfill' && <path d="M18 30h12M18 36h12" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />}
+      <g className={hit && ok ? 'play-lid' : ''} style={{ transformOrigin: '6px 12px' }}>
+        <rect x="5" y="8" width="38" height="6" rx="2" fill={c} />
+        <rect x="20" y="4" width="8" height="5" rx="1.5" fill={c} />
+      </g>
     </svg>
   );
 }
 
-function OnBelt({ b, start, clock, front, done }: { b: BeltItem; start: number; clock: () => number; front: boolean; done?: Done }) {
+function OnBelt({ b, start, clock, front, done, bin, box, calm }: { b: BeltItem; start: number; clock: () => number; front: boolean; done?: Done; bin?: Bin; box: React.RefObject<HTMLDivElement | null>; calm: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
   const anim = useRef<Animation | null>(null);
   const [name, emoji] = ITEMS[b.item];
   // Start to end of the belt, picked up wherever it should be now.
@@ -160,13 +200,29 @@ function OnBelt({ b, start, clock, front, done }: { b: BeltItem; start: number; 
     anim.current = a;
     return () => a.cancel();
   }, [b, start, clock]);
-  useEffect(() => { if (done && done !== 'missed') anim.current?.pause(); }, [done]);
+  // Sorted: stop on the belt and fly in an arc into the chosen bin.
+  useEffect(() => {
+    if (!done || done === 'missed') return;
+    anim.current?.pause();
+    const el = inner.current, target = bin && box.current?.querySelector(`[data-bin="${bin}"]`);
+    if (!el?.animate || !target || calm) return;
+    const from = el.getBoundingClientRect(), to = target.getBoundingClientRect();
+    const dx = to.left + to.width / 2 - (from.left + from.width / 2), dy = to.top + 28 - (from.top + from.height / 2);
+    el.animate([
+      { transform: 'translate3d(0,0,0) scale(1) rotate(0deg)', opacity: 1 },
+      { transform: `translate3d(${dx * 0.5}px, ${Math.min(dy * 0.5, dy * 0.5 - 70)}px, 0) scale(0.9) rotate(${dx > 0 ? 160 : -160}deg)`, opacity: 1, offset: 0.5 },
+      { transform: `translate3d(${dx}px, ${dy}px, 0) scale(0.35) rotate(${dx > 0 ? 320 : -320}deg)`, opacity: done === 'ok' ? 0.9 : 0 },
+    ], { duration: 480, easing: 'cubic-bezier(0.33,0,0.25,1)', fill: 'forwards' });
+  }, [done, bin, box, calm]);
   return (
-    <div ref={ref} className="absolute start-0 top-0 flex w-16 flex-col items-center">
-      <div className={cn('flex flex-col items-center', done === 'ok' ? 'play-sorted' : done === 'wrong' || done === 'missed' ? 'play-dropped' : '')}>
-        <span className={cn('grid h-14 w-14 place-items-center rounded-2xl bg-white text-3xl shadow-md transition-[box-shadow,transform] duration-200 dark:bg-[#1B1B1E]',
-          front ? 'scale-110 shadow-[0_0_0_3px_#ec4899,0_8px_24px_rgba(236,72,153,0.35)]' : '')} aria-hidden>{emoji}</span>
-        <span className="mt-1 w-20 truncate text-center text-[11px] font-medium text-zinc-600 dark:text-zinc-300">{name}</span>
+    <div ref={ref} className="absolute start-0 top-0 flex w-20 flex-col items-center">
+      <div ref={inner} className={cn('flex flex-col items-center', done === 'missed' ? 'play-dropped' : calm && done ? 'play-sorted' : '')}>
+        <span className={cn('relative grid h-16 w-16 place-items-center rounded-2xl text-4xl shadow-lg transition-[box-shadow,transform] duration-200',
+          b.golden ? 'bg-gradient-to-br from-amber-200 to-amber-500' : 'bg-[#1e1e22]', front ? 'scale-110 shadow-[0_0_0_3px_#ec4899,0_10px_28px_rgba(236,72,153,0.45)]' : 'ring-1 ring-white/10')} aria-hidden>
+          {emoji}
+          {b.golden && <Sparkles className="absolute -end-1.5 -top-1.5 w-4 h-4 text-amber-200" />}
+        </span>
+        <span className="mt-1 w-24 truncate text-center text-[11px] font-medium text-zinc-300">{name}</span>
       </div>
     </div>
   );

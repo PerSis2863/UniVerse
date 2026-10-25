@@ -18,7 +18,7 @@ import { useNow } from '@/lib/use-now';
 import { useAuthStore } from '@/store/auth';
 import { InviteButton } from '@/components/apps/InviteButton';
 import { cn } from '@/lib/utils';
-import { fromBase, glow, toBase } from '@/components/trace/map/engine';
+import { glow, toBase } from '@/components/trace/map/engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
 
 // UniVerse Relief (src/lib/apps.ts): every open need and offer of help on one live map (the same map
@@ -105,8 +105,8 @@ export function ReliefApp() {
 
   const draw = (f: Frame) => {
     frameRef.current = f;
-    const { ctx, view, t } = f, k = view.k;
-    const sx = (b: number) => view.x + b * k, sy = (b: number) => view.y + b * k;
+    const { ctx, t } = f;
+    const { sx, sy } = f;
     const zf = Math.min(2.2, Math.max(1, Math.pow(f.zoom, 0.3)));
     // Delivered in the last 30 days: soft green.
     ctx.save(); ctx.globalCompositeOperation = f.dark ? 'lighter' : 'source-over';
@@ -142,13 +142,13 @@ export function ReliefApp() {
     const f = frameRef.current;
     if (!f || !pt || kind !== 'click') return;
     if (picking) {
-      const [lng, lat] = fromBase((pt.x - f.view.x) / f.view.k, (pt.y - f.view.y) / f.view.k);
+      const [lng, lat] = f.lngLat(pt.x, pt.y);
       setPicked({ lat, lng }); setPicking(false); setPosting(true);
       return;
     }
     let best: { id: string; d: number } | null = null;
     for (const { p, bx, by } of model.posts) {
-      const d = Math.hypot(pt.x - (f.view.x + bx * f.view.k), pt.y - (f.view.y + by * f.view.k));
+      const d = Math.hypot(pt.x - f.sx(bx), pt.y - f.sy(by));
       if (d < 16 && (!best || d < best.d)) best = { id: p.id, d };
     }
     setSelected(best ? (best as { id: string }).id : null);

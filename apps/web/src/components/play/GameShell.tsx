@@ -18,7 +18,9 @@ import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { GameIcon } from './GameIcon';
 import { GameStage, preloadGame } from './GameStage';
-import { LiveBoard, Lobby, Podium } from './RoomViews';
+import { LiveBoard, LiveStrip, Lobby, Podium } from './RoomViews';
+import { Arena, useArena } from './arena';
+import type { GameStat } from './game-props';
 import { useGameRoom } from './useGameRoom';
 
 // /play/game (UniVerse Play, M31): ?g=<game> picks the game (solo, start a room, or join one by
@@ -139,7 +141,7 @@ function GameMenu({ game }: { game: GameId }) {
 }
 
 interface Round { seed: number; startsAt: number; endsAt: number; n: number }
-interface Result { score: number; best: number; newBest: boolean; saving: boolean }
+interface Result { score: number; best: number; newBest: boolean; saving: boolean; stats: GameStat[] }
 
 function Solo({ game, best, onExit, onChallenge }: { game: GameId; best: number; onExit: () => void; onChallenge: () => void }) {
   const [round, setRound] = useState<Round | null>(null);
@@ -152,50 +154,69 @@ function Solo({ game, best, onExit, onChallenge }: { game: GameId; best: number;
   }, [game]);
   useEffect(() => { const id = setTimeout(start, 0); return () => clearTimeout(id); }, [start]);
 
-  const finish = useCallback((score: number) => {
-    setResult({ score, best: Math.max(best, score), newBest: score > best, saving: true });
+  const finish = useCallback((score: number, _step: number, stats: GameStat[]) => {
+    setResult({ score, best: Math.max(best, score), newBest: score > best, saving: true, stats });
     api.post<{ score: number; best: number; newBest: boolean }>('/play/scores', { game, score })
-      .then(({ data }) => setResult({ ...data, saving: false }))
+      .then(({ data }) => setResult((r) => ({ ...data, saving: false, stats: r?.stats ?? stats })))
       .catch((e) => { setResult((r) => r && { ...r, saving: false }); toast.error(errorMessage(e, 'Your score couldn’t be saved.')); });
   }, [game, best]);
 
-  if (result) return <SoloResult game={game} result={result} onAgain={start} onExit={onExit} onChallenge={onChallenge} />;
-  if (!round) return null;
   return (
-    <div className="space-y-3">
-      <button type="button" onClick={onExit} className="btn-ghost btn-sm"><ArrowLeft className="w-4 h-4 rtl:-scale-x-100" aria-hidden />Stop</button>
-      <GameStage key={round.n} game={game} seed={round.seed} startsAt={round.startsAt} endsAt={round.endsAt} clock={clock} onFinish={finish} />
-    </div>
+    <Arena game={game} onExit={onExit}>
+      {result ? <SoloResult game={game} result={result} onAgain={start} onExit={onExit} onChallenge={onChallenge} />
+        : round && <GameStage key={round.n} game={game} seed={round.seed} startsAt={round.startsAt} endsAt={round.endsAt} clock={clock} onFinish={finish} />}
+    </Arena>
+  );
+}
+
+/** The game's own numbers after a round, rising in one after another. */
+function StatTiles({ stats }: { stats: GameStat[] }) {
+  const calm = useReducedMotion();
+  if (!stats.length) return null;
+  return (
+    <ul className="mx-auto mt-8 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
+      {stats.slice(0, 4).map((s, i) => (
+        <motion.li key={s.label} initial={{ opacity: 0, y: calm ? 0 : 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.smooth, delay: calm ? 0 : 0.5 + i * 0.07 }}
+          className="rounded-2xl bg-white/[0.05] px-3 py-3 text-center ring-1 ring-white/10">
+          <p className="text-2xl font-semibold tracking-tight text-white tabular-nums">{s.value}</p>
+          <p className="mt-0.5 text-xs text-zinc-400">{s.label}</p>
+        </motion.li>
+      ))}
+    </ul>
   );
 }
 
 function SoloResult({ game, result, onAgain, onExit, onChallenge }: { game: GameId; result: Result; onAgain: () => void; onExit: () => void; onChallenge: () => void }) {
   const calm = useReducedMotion();
+  const { sfx } = useArena();
   const [party, setParty] = useState(result.newBest && result.score > 0);
+  useEffect(() => { if (result.newBest && result.score > 0) sfx('win'); }, [result.newBest, result.score, sfx]);
   const info = GAMES[game];
   return (
-    <section className="panel relative overflow-hidden p-6 text-center sm:p-10">
+    <section className="relative grid min-h-[70vh] place-items-center py-8 text-center">
       {party && <ScreenEffect effect="confetti" onDone={() => setParty(false)} />}
-      <div className="pointer-events-none absolute left-1/2 top-0 h-64 w-[36rem] max-w-full -translate-x-1/2 rounded-full opacity-25 blur-3xl" style={{ background: info.color }} aria-hidden />
-      <div className="relative mx-auto w-fit"><GameIcon game={game} size="lg" /></div>
-      <p className="relative mt-5 text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">{info.name} · your score</p>
-      <p className="relative mt-2 text-6xl font-black tabular-nums text-zinc-900 dark:text-white sm:text-7xl"><Rolling value={result.score} duration={1.4} /></p>
-      <AnimatePresence>
-        {result.newBest && result.score > 0 && (
-          <motion.p initial={{ opacity: 0, scale: calm ? 1 : 0.9, y: calm ? 0 : 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ ...spring.bouncy, delay: calm ? 0 : 0.9 }}
-            className="relative mx-auto mt-3 inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-3 py-1 text-sm font-bold text-white shadow-[0_0_30px_rgba(236,72,153,0.5)]">
-            <Trophy className="w-4 h-4" aria-hidden />New best!
-          </motion.p>
-        )}
-      </AnimatePresence>
-      <p className="relative mt-3 text-sm text-zinc-600 dark:text-zinc-300" aria-live="polite">
-        {result.saving ? 'Saving…' : result.newBest ? 'That’s your best yet.' : <>Your best: <span className="font-semibold tabular-nums">{result.best.toLocaleString()}</span></>}
-      </p>
-      <div className="relative mt-7 flex flex-wrap justify-center gap-2">
-        <button type="button" onClick={onAgain} className="btn-primary"><RotateCcw className="w-4 h-4" aria-hidden />Play again</button>
-        <button type="button" onClick={onChallenge} className="btn-secondary"><Users className="w-4 h-4" aria-hidden />Challenge friends</button>
-        <Link href={`/play/leaderboard?g=${game}`} className="btn-secondary"><Trophy className="w-4 h-4" aria-hidden />Leaderboard</Link>
-        <button type="button" onClick={onExit} className="btn-ghost">Back</button>
+      <div className="w-full">
+        <motion.div initial={{ opacity: 0, scale: calm ? 1 : 0.9, rotate: calm ? 0 : -6 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} transition={spring.bouncy} className="mx-auto w-fit"><GameIcon game={game} size="lg" /></motion.div>
+        <p className="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">{info.name} · your score</p>
+        <p className="mt-2 text-7xl font-semibold tracking-tight text-white tabular-nums sm:text-8xl"><Rolling value={result.score} duration={1.4} /></p>
+        <AnimatePresence>
+          {result.newBest && result.score > 0 && (
+            <motion.p initial={{ opacity: 0, scale: calm ? 1 : 0.9, y: calm ? 0 : 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ ...spring.bouncy, delay: calm ? 0 : 0.9 }}
+              className="mx-auto mt-3 inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-3 py-1 text-sm font-bold text-white shadow-[0_0_30px_rgba(236,72,153,0.5)]">
+              <Trophy className="w-4 h-4" aria-hidden />New best!
+            </motion.p>
+          )}
+        </AnimatePresence>
+        <p className="mt-3 text-sm text-zinc-300" aria-live="polite">
+          {result.saving ? 'Saving…' : result.newBest ? 'That’s your best yet.' : <>Your best: <span className="font-semibold tabular-nums">{result.best.toLocaleString()}</span> · {(result.best - result.score).toLocaleString()} to beat it</>}
+        </p>
+        <StatTiles stats={result.stats} />
+        <div className="mt-8 flex flex-wrap justify-center gap-2">
+          <button type="button" autoFocus onClick={onAgain} className="btn-primary btn-lg"><RotateCcw className="w-5 h-5" aria-hidden />Play again</button>
+          <button type="button" onClick={onChallenge} className="btn-secondary btn-lg"><Users className="w-5 h-5" aria-hidden />Challenge friends</button>
+          <Link href={`/play/leaderboard?g=${game}`} className="btn-secondary btn-lg"><Trophy className="w-5 h-5" aria-hidden />Leaderboard</Link>
+          <button type="button" onClick={onExit} className="btn-ghost btn-lg">Back</button>
+        </div>
       </div>
     </section>
   );
@@ -205,10 +226,12 @@ function Room({ code, onLeave }: { code: string; onLeave: (to?: GameId) => void 
   const me = useAuthStore((s) => s.user?.id);
   const { state, status, error, send, clock, report, finish } = useGameRoom(code);
   const [finishedRound, setFinishedRound] = useState<number | null>(null);
+  const [myStats, setMyStats] = useState<GameStat[]>([]);
   const roomGame = state?.game;
   useEffect(() => { if (roomGame) preloadGame(roomGame); }, [roomGame]);
-  const onFinish = useCallback((score: number, step: number) => {
+  const onFinish = useCallback((score: number, step: number, stats: GameStat[]) => {
     finish(score, step);
+    setMyStats(stats);
     setFinishedRound(state?.round ?? null);
   }, [finish, state?.round]);
 
@@ -228,30 +251,32 @@ function Room({ code, onLeave }: { code: string; onLeave: (to?: GameId) => void 
 
   const mine = state.players.find((p) => p.id === me);
   const leave = () => onLeave(state.game);
+  const reconnecting = status === 'reconnecting' && <p className="mb-3 rounded-xl bg-amber-500/15 px-3 py-2 text-sm text-amber-800 dark:text-amber-200" role="status">Connection lost. Reconnecting…</p>;
+  if (state.phase === 'lobby') {
+    return <div>{reconnecting}<Lobby state={state} me={me} onStart={() => send({ t: 'start' })} onGame={(g) => send({ t: 'game', game: g })} onLeave={leave} /></div>;
+  }
   const board = <LiveBoard players={state.players} me={me} max={GAMES[state.game].maxScore} />;
   return (
-    <div className="space-y-3">
-      {status === 'reconnecting' && <p className="rounded-xl bg-amber-500/15 px-3 py-2 text-sm text-amber-800 dark:text-amber-200" role="status">Connection lost. Reconnecting…</p>}
+    <Arena game={state.game} onExit={leave} side={board}>
+      {reconnecting}
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={`${state.phase}-${state.round}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}>
-          {state.phase === 'lobby' && <Lobby state={state} me={me} onStart={() => send({ t: 'start' })} onGame={(g) => send({ t: 'game', game: g })} onLeave={leave} />}
-          {state.phase === 'results' && <Podium state={state} me={me} onAgain={() => send({ t: 'again' })} onLeave={leave} />}
+          {state.phase === 'results' && <Podium state={state} me={me} onAgain={() => send({ t: 'again' })} onLeave={leave}>{myStats.length > 0 && <StatTiles stats={myStats} />}</Podium>}
           {state.phase === 'playing' && (finishedRound === state.round || mine?.done ? (
-            <div className="grid gap-5 lg:grid-cols-[1fr_17rem]">
-              <section className="panel grid min-h-72 place-items-center p-8 text-center">
-                <div>
-                  {finishedRound === state.round ? <Hourglass className="mx-auto w-8 h-8 text-pink-500" aria-hidden /> : <Eye className="mx-auto w-8 h-8 text-pink-500" aria-hidden />}
-                  <p className="mt-3 font-semibold text-zinc-900 dark:text-white">{finishedRound === state.round ? 'Done! Waiting for the others…' : 'A round is on'}</p>
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{finishedRound === state.round ? 'The results show the moment everyone finishes or time runs out.' : 'You’ll play in the next one. Watch the scores until then.'}</p>
-                </div>
-              </section>
-              {board}
-            </div>
+            <section className="grid min-h-[60vh] place-items-center p-8 text-center">
+              <div>
+                {finishedRound === state.round ? <Hourglass className="mx-auto w-9 h-9 text-pink-400" aria-hidden /> : <Eye className="mx-auto w-9 h-9 text-pink-400" aria-hidden />}
+                <p className="mt-3 text-xl font-semibold text-white">{finishedRound === state.round ? 'Done! Waiting for the others…' : 'A round is on'}</p>
+                <p className="mt-1 text-sm text-zinc-300">{finishedRound === state.round ? 'The results show the moment everyone finishes or time runs out.' : 'You’ll play in the next one. Watch the scores until then.'}</p>
+                <div className="mx-auto mt-6 max-w-sm lg:hidden">{board}</div>
+              </div>
+            </section>
           ) : (
-            <GameStage game={state.game} seed={state.seed} startsAt={state.startsAt} endsAt={state.endsAt} clock={clock} onProgress={report} onFinish={onFinish} aside={board} rivals={state.players.filter((p) => p.id !== me)} />
+            <GameStage game={state.game} seed={state.seed} startsAt={state.startsAt} endsAt={state.endsAt} clock={clock} onProgress={report} onFinish={onFinish}
+              strip={<LiveStrip players={state.players} me={me} />} rivals={state.players.filter((p) => p.id !== me)} />
           ))}
         </motion.div>
       </AnimatePresence>
-    </div>
+    </Arena>
   );
 }

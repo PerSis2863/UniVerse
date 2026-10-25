@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { MapPin, Package } from 'lucide-react';
 import { CITIES } from '@/components/trace/map/cities';
-import { fromBase, type View } from '@/components/trace/map/engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
 import { PIN_SECONDS_PER, PIN_TARGETS, kmBetween, pinPoints, pinTarget, pinVerdict } from '@/lib/play/pin';
 import { useDarkMode } from '@/lib/use-dark';
@@ -39,14 +38,13 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
   const dark = useDarkMode();
   const calm = useReducedMotion();
   const map = useRef<MapHandle>(null);
-  const seen = useRef<{ view: View; w: number; h: number } | null>(null);
+  const seen = useRef<{ lngLat: Frame['lngLat']; w: number; h: number } | null>(null);
   const answered = !!s.pick || s.timedOut;
   const last = s.i >= PIN_TARGETS - 1;
 
   const pinAt = useCallback((x: number, y: number) => {
-    const v = seen.current?.view;
-    if (!v || answered) return;
-    const [lng, lat] = fromBase((x - v.x) / v.k, (y - v.y) / v.k);
+    if (!seen.current || answered) return;
+    const [lng, lat] = seen.current.lngLat(x, y);
     const km = kmBetween({ lat, lng }, target);
     dispatch({ t: 'pick', pick: { lat, lng, km, pts: pinPoints(km, s.shownAt + PER - clock()) }, at: clock() });
     navigator.vibrate?.(km < 500 ? 15 : [20, 30, 20]);
@@ -83,7 +81,7 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
   }, [pinAt]);
 
   const draw = useCallback((f: Frame) => {
-    seen.current = { view: f.view, w: f.w, h: f.h };
+    seen.current = { lngLat: f.lngLat, w: f.w, h: f.h };
     const { ctx } = f;
     if (!answered) {
       ctx.strokeStyle = dark ? 'rgba(249,168,212,0.55)' : 'rgba(219,39,119,0.5)'; ctx.lineWidth = 1.5;

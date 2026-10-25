@@ -213,7 +213,7 @@ export function MarketMap() {
     frameRef.current = f;
     if (!model || !data) return;
     const { ctx, view, t, zoom } = f, a = anim.current, k = view.k;
-    const sx = (bx: number) => view.x + bx * k, sy = (by: number) => view.y + by * k;
+    const { sx, sy } = f;
     const add = f.dark ? 'lighter' : 'source-over';
     const zf = Math.min(3.2, Math.max(1, Math.pow(zoom, 0.32)));
     const still = reduced();
@@ -272,7 +272,7 @@ export function MarketMap() {
       ctx.save();
       ctx.globalCompositeOperation = add;
       for (const fl of model.flows) {
-        const c = arcPoints([sx(fl.o.bx), sy(fl.o.by)], [sx(fl.c.bx), sy(fl.c.by)], 0.22);
+        const cx = sx(fl.c.bx), c = arcPoints([f.near(fl.o.bx, cx), sy(fl.o.by)], [cx, sy(fl.c.by)], 0.22);
         const grad = ctx.createLinearGradient(c[0], c[1], c[4], c[5]);
         grad.addColorStop(0, f.dark ? 'rgba(214,211,206,0.10)' : 'rgba(42,41,39,0.10)');
         grad.addColorStop(1, f.dark ? 'rgba(236,72,153,0.38)' : 'rgba(219,39,119,0.34)');
@@ -427,12 +427,12 @@ export function MarketMap() {
     const zf = Math.min(3.2, Math.max(1, Math.pow(f.zoom, 0.32)));
     let best: { kind: 'cell' | 'market'; i: number; d: number } | null = null;
     if (layers.scans) model.cells.forEach((c, i) => {
-      const tile = tileOf(f.view.k), x = f.view.x + c.bx * f.view.k, y = f.view.y + c.by * f.view.k, r = tile >= 14 ? tile * 0.5 : dotR(c.scans, zf, tile) + 7;
+      const tile = tileOf(f.view.k), x = f.sx(c.bx), y = f.sy(c.by), r = tile >= 14 ? tile * 0.5 : dotR(c.scans, zf, tile) + 7;
       const d = Math.hypot(p.x - x, p.y - y);
       if (d < r && (!best || d < best.d)) best = { kind: 'cell', i, d };
     });
     if (!best && layers.market) model.mk.forEach((c, i) => {
-      const x0 = f.view.x + c.x0 * f.view.k, x1 = f.view.x + c.x1 * f.view.k, y0 = f.view.y + c.y0 * f.view.k, y1 = f.view.y + c.y1 * f.view.k;
+      const x0 = f.sx(c.x0), x1 = x0 + (c.x1 - c.x0) * f.view.k, y0 = f.view.y + c.y0 * f.view.k, y1 = f.view.y + c.y1 * f.view.k;
       const pad = Math.max(0, (7 - (x1 - x0)) / 2);
       if (p.x >= x0 - pad && p.x <= x1 + pad && p.y >= y0 - pad && p.y <= y1 + pad) best = { kind: 'market', i, d: 0 };
     });

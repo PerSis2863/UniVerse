@@ -16,7 +16,7 @@ import { STAGE_LABEL, type Stage } from '@/lib/trace';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow, useTick } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
-import { fromBase, glow, toBase } from './engine';
+import { glow, toBase } from './engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from './WorldCanvas';
 
 // The live tracking map (UniVerse Trace; the owner, 24 Oct 2026: "add 2d real time product tracking
@@ -213,7 +213,7 @@ export function TrackingMap() {
     const f = frameRef.current;
     if (!f) return;
     if (kind === 'click' && picking && p) {
-      const [lng, lat] = fromBase((p.x - f.view.x) / f.view.k, (p.y - f.view.y) / f.view.k);
+      const [lng, lat] = f.lngLat(p.x, p.y);
       setDest({ id: picking, lat: Math.round(lat * 1e4) / 1e4, lng: Math.round(lng * 1e4) / 1e4, place: '' });
       setPicking(null);
       return;
@@ -221,7 +221,7 @@ export function TrackingMap() {
     let best: { id: string; d: number } | null = null;
     if (p) for (const s of shown) {
       const m = s.status === 'IN_TRANSIT' ? markerAt(s, f.t) : null;
-      const at = m ? [f.view.x + m.x * f.view.k, f.view.y + m.y * f.view.k] : s.stops.length ? f.at(s.stops[s.stops.length - 1].lng, s.stops[s.stops.length - 1].lat) : null;
+      const at = m ? [f.sx(m.x), f.sy(m.y)] : s.stops.length ? f.at(s.stops[s.stops.length - 1].lng, s.stops[s.stops.length - 1].lat) : null;
       if (!at) continue;
       const d = Math.hypot(p.x - at[0], p.y - at[1]);
       if (d < 18 && (!best || d < best.d)) best = { id: s.id, d };

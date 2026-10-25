@@ -136,10 +136,24 @@ export function LiveBoard({ players, me, max }: { players: RoomPlayer[]; me?: st
   );
 }
 
+/** The room's players as a strip of chips (phones, above the game), leader first. */
+export function LiveStrip({ players, me }: { players: RoomPlayer[]; me?: string }) {
+  return (
+    <ol className="flex max-w-[60vw] gap-1.5 overflow-x-auto" aria-label="Live scores">
+      {players.map((p, i) => (
+        <motion.li key={p.id} layout transition={spring.smooth} className={cn('flex shrink-0 items-center gap-1.5 rounded-full py-1 ps-1 pe-2.5 text-xs ring-1', p.id === me ? 'bg-pink-500/15 ring-pink-400/40' : 'bg-white/[0.05] ring-white/10')}>
+          <Avatar name={p.name} src={p.avatar} size={20} />
+          <span className="font-semibold text-white tabular-nums">{i + 1}. {p.score.toLocaleString()}</span>
+        </motion.li>
+      ))}
+    </ol>
+  );
+}
+
 const PODIUM = [1, 0, 2]; // second, first, third from the start side
 const HEIGHT = ['h-40', 'h-28', 'h-20'];
 
-export function Podium({ state, me, onAgain, onLeave }: { state: RoomState; me?: string; onAgain: () => void; onLeave: () => void }) {
+export function Podium({ state, me, onAgain, onLeave, children }: { state: RoomState; me?: string; onAgain: () => void; onLeave: () => void; children?: React.ReactNode }) {
   const calm = useReducedMotion();
   const players = state.players;
   const myRank = players.findIndex((p) => p.id === me);
@@ -191,6 +205,7 @@ export function Podium({ state, me, onAgain, onLeave }: { state: RoomState; me?:
         </ol>
       )}
 
+      {children}
       <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
         {iHost ? <button type="button" onClick={onAgain} className="btn-primary"><RotateCcw className="w-4 h-4" aria-hidden />Play again</button>
           : <p className="text-sm text-zinc-600 dark:text-zinc-300">Waiting for <span translate="no" className="font-semibold">{host?.name ?? 'the host'}</span> to start the next round…</p>}

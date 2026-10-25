@@ -30,5 +30,8 @@ export function pinPoints(km: number, msLeft: number): number {
   const near = km < 50 ? 1 : 1 - km / 3000;
   return Math.round(1000 * near) + Math.round(200 * Math.max(0, Math.min(1, msLeft / (PIN_SECONDS_PER * 1000))));
 }
+/** Pins in a row within 500 km earn a streak bonus: 60 a pin in the streak, up to 300. */
+export const pinStreakBonus = (streak: number) => Math.min(streak, 5) * 60;
+
 /** A word for how close it was. */
 export const pinVerdict = (km: number) => (km < 100 ? 'Bullseye!' : km < 500 ? 'So close' : km < 1500 ? 'Not bad' : km < 3000 ? 'Same part of the world' : 'Far off');
