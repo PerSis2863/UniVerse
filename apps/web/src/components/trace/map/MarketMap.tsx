@@ -40,7 +40,7 @@ interface Place { key: string; place: string | null; country: string | null; sca
 interface LiveScan { id: string; lat: number; lng: number; verdict: string; productId: string; place: string | null; at: string; sample?: boolean }
 
 const RANGES = [{ days: 1, label: '24 h' }, { days: 7, label: '7 days' }, { days: 30, label: '30 days' }, { days: 90, label: '90 days' }];
-const WORLD: Box = [-168, -56, 190, 76];
+const WORLD: Box = [-170, -56, 180, 76];
 const PINK = '#ec4899', PINK_SOFT = '#f472b6', AMBER = '#f59e0b';
 const REPLAY_SECONDS = 14;
 

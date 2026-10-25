@@ -18,7 +18,7 @@ import type { GameProps } from './game-props';
 
 const PER = PIN_SECONDS_PER * 1000;
 const REVEAL_MS = 2200;
-const WORLD: Box = [-168, -56, 190, 76];
+const WORLD: Box = [-170, -56, 180, 76];
 const HIDE = new Set(CITIES.map((c) => c[0]));
 
 interface Pick { lat: number; lng: number; km: number; pts: number }

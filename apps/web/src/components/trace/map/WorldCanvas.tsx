@@ -282,6 +282,8 @@ class MapEngine {
     return { k, x: this.w / 2 - cx * k, y: this.h / 2 - cy * k };
   }
   goTo(v: View, smooth = true) {
+    // Not measured yet (a page asking before the first layout): size() places the home view itself.
+    if (!this.w || !this.h || !v.k) return;
     const k = Math.max(this.kMin, Math.min(K_MAX, v.k));
     let to = clampView({ k, x: this.w / 2 - ((this.w / 2 - v.x) / v.k) * k, y: this.h / 2 - ((this.h / 2 - v.y) / v.k) * k }, this.w, this.h);
     if (this.wrap) {

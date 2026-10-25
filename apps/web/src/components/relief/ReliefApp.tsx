@@ -37,7 +37,7 @@ interface ReliefMap {
 
 export const KIND_ICON: Record<ReliefKind, typeof Utensils> = { FOOD: Utensils, WATER: Droplets, SHELTER: Home, MEDICAL: Stethoscope, TRANSPORT: Car, CLOTHES: Shirt, OTHER: Package };
 const OFFER = '#14b8a6', DONE = '#22c55e';
-const WORLD: Box = [-168, -56, 190, 76];
+const WORLD: Box = [-170, -56, 180, 76];
 
 /** The actions a person can take on a post. */
 export function PostActions({ p, onChange, small }: { p: ReliefPost; onChange: () => void; small?: boolean }) {

@@ -35,7 +35,7 @@ interface Ship {
   tempC?: number | null; maxTempC?: number | null; breaches?: number; tempAt?: string | null; sensor?: string | null; temps?: number[];
 }
 
-const WORLD: Box = [-168, -56, 190, 76];
+const WORLD: Box = [-170, -56, 180, 76];
 const PINK = '#ec4899', PINK_SOFT = '#f472b6';
 const STATUS: Record<string, { label: string; cls: string }> = {
   IN_TRANSIT: { label: 'On the move', cls: 'bg-pink-500/12 text-pink-700 dark:text-pink-200' },
