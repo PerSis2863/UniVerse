@@ -10,7 +10,7 @@ pass it to subagents. Without them, type `/ponytail` (or `/ponytail ultra`) to s
 full plugin with hooks: `/plugin marketplace add DietrichGebert/ponytail`, then
 `/plugin install ponytail@ponytail` (two separate prompts).
 
-Project rules still win where they differ: `.cursor/rules/universe.mdc` "Keep it lean" and the
+Project rules still win where they differ: `AGENTS.md` "Keep it lean" and the
 owner's summary rule in CLAUDE.md (end every task with what changed, what they can do, what they
 need to do, in plain words). `pnpm lean` stays the project's checker.
 

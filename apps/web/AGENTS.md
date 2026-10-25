@@ -8,13 +8,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-# Checks before every commit
-
-- `pnpm typecheck` (both tsconfigs). It's the only type check: the deploy build skips it
-  (`typescript.ignoreBuildErrors` in next.config.ts) to fit Cloudflare's build machine.
-- `pnpm lint` must report **0 errors** (it did from October 2026; keep warnings under 50). For a
-  quick check, lint only the files you changed: `npx eslint <files>`.
-- Fix lint errors properly (real types, no setState inside effects, no `Date.now()` while
-  rendering: see `src/lib/use-now.ts`); don't silence rules with disable comments.
-- Request data on the server is untrusted: read `ctx.body` / `ctx.query` through `src/server/body.ts`
-  (`oneOf`, `str`, `text`, `strings`, `first`) and pass Prisma only `pick<Prisma.XInput>(body, keys)`.
+Everything else (the checks before every commit, the rules, how to work): `AGENTS.md` at the repository root.

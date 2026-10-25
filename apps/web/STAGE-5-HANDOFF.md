@@ -1,7 +1,9 @@
-# Stage 5 handoff (for the next agent)
+# Stage 5 handoff: notes per finished piece of work
 
-Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
-done, where the code is and what's left for each item. Keep that table up to date as you go.
+The guide for every agent is `AGENTS.md` at the repository root: read that first. This file is the
+history, one note per item (traps, rules for code that builds on it). Read only the note a task
+needs; the newest are at the end (M22 is the latest). The "Next steps" just below date from 21 Oct
+2026 and are done.
 
 ## Next steps (written 21 Oct 2026 for whoever continues; do them in this order)
 

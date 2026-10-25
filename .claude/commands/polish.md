@@ -3,7 +3,7 @@ description: Design and motion review of a screen, after Impeccable and Emil Kow
 argument-hint: "<page, component or folder>"
 ---
 
-Review `$ARGUMENTS` against the "Design and motion" rules in `.cursor/rules/universe.mdc` (adapted
+Review `$ARGUMENTS` against the "Design and motion" rules in `AGENTS.md` (section 8) (adapted
 from github.com/pbakaus/impeccable and github.com/emilkowalski/skills). The owner's two-tone look
 (dark blue with hot-pink light lines and glows since 24 Oct 2026, the glow, the light river, the italic accent word) is the brand: never report
 it as a problem or replace it.

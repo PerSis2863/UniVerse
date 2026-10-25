@@ -13,7 +13,7 @@ The launcher `scripts/impeccable` downloads the Impeccable engine (a self-contai
 `~/.impeccable/bin/` the first time it runs; nothing of it is kept in this repository. Where the
 launcher can't run, the skill says to read PRODUCT.md / DESIGN.md directly and carry on.
 
-Project rules still win: `.cursor/rules/universe.mdc` "Design and motion" (the brand's two-tone
+Project rules still win: `AGENTS.md` "Design and motion" (the brand's two-tone
 gradients, glow and italic accent are kept on purpose; judge every finding against them).
 
 To update: copy `plugin/skills/impeccable` again from a newer commit and change the line above.

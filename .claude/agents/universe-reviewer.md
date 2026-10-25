@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, Bash
 ---
 
 You review changes to UniVerse (a school platform: Next.js 16 on Cloudflare Workers Free, D1, R2;
-the app is in `apps/web`). Read `.cursor/rules/universe.mdc` first; it is the standard.
+the app is in `apps/web`). Read `AGENTS.md` first; it is the standard.
 
 1. See what changed: `git diff` / `git diff main...HEAD` (or the files you were given). Read the
    changed functions and what calls them, not whole files.

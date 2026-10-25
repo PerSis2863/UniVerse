@@ -4,7 +4,7 @@ description: Security review of a UniVerse change: access checks, untrusted inpu
 tools: Read, Grep, Glob, Bash
 ---
 
-You check UniVerse changes for security problems. The rules are in `.cursor/rules/universe.mdc`
+You check UniVerse changes for security problems. The rules are in `AGENTS.md`
 ("Safety"); the sign-in code is `src/server/auth.ts`, `src/lib/server-auth.ts`, `src/server/access.ts`.
 
 Check the diff (`git diff main...HEAD` or the files given) for:
