@@ -1707,3 +1707,17 @@ Progress table (row D6).
   photo addresses refused). Checked in the browser: a teammate's photo confirmed, the owner refused,
   an outsider refused; axe clean on `/green` and `/green/teams` at 390 and 1280, light and dark.
   Next migration: **0184**.
+
+## M26a · Sample errors no longer look like real ones
+
+- The owner (26 Oct 2026): "there are errors in the owner console please fix it" (screenshots of
+  ~24 problems: "Cannot read properties of undefined (reading 'map')", "ChunkLoadError", "Invalid time
+  value", "ResizeObserver is not defined"…). Production `error_reports`: every one of them was made up
+  by the console's "Fill with sample data" (ids `smpe…`, fingerprint `sample:N`,
+  `src/server/sample-world.ts` step for errors). The only real open ones were the two sign-in reports
+  fixed in M22 / M23.
+- Now `REAL_ERRORS` / `REAL_ERRORS_SQL` (`src/server/errors.ts`) keep sample problems out of the AI
+  diagnosis, the "problem(s) need a look" email, every open-errors count (Overview tiles, the live
+  board `pulse.ts`, health numbers, insights, the daily digest) and the Errors tab's summary. The list
+  still shows them, tagged "Sample, not real", with a line saying how many and that "Remove sample
+  data" takes them out.

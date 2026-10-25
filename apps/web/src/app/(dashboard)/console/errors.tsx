@@ -35,6 +35,8 @@ interface ErrorReport {
   repairAgent: string | null;
   repairUrl: string | null;
   repairAt: string | null;
+  /** Made up by the console's "Fill with sample data": not a real problem, never counted as open. */
+  sample?: boolean;
 }
 
 interface AiSetup {
@@ -129,7 +131,7 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
   const [source, setSource] = useState<'ALL' | 'SERVER' | 'CLIENT'>('ALL');
   const [sort, setSort] = useState<(typeof SORTS)[number]['id']>('latest');
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const { data, mutate, isLoading } = useSWR<{ items: ErrorReport[]; counts: Record<string, number>; summary?: Summary }>(`/owner/errors?status=${filter}`, fetcher, { refreshInterval: useActivePoll(60_000) });
+  const { data, mutate, isLoading } = useSWR<{ items: ErrorReport[]; counts: Record<string, number>; summary?: Summary; sampleOpen?: number }>(`/owner/errors?status=${filter}`, fetcher, { refreshInterval: useActivePoll(60_000) });
   const openCount = (data?.counts.NEW ?? 0) + (data?.counts.DIAGNOSED ?? 0);
   const items = (data?.items ?? [])
     .filter((e) => (source === 'ALL' || e.source === source) && matches(q, e.message, e.path, e.kind, e.source, e.diagnosis, e.userAgent, e.severity, e.lastUser?.name, e.lastUser?.email))
@@ -206,6 +208,7 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
           <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">Error monitoring</p>
           <p className="font-semibold text-zinc-900 dark:text-white">{openCount ? `${openCount} open problem${openCount === 1 ? '' : 's'} to look at` : 'Nothing open: everything people ran into has been dealt with'}</p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">Crashes in browsers and on the server are collected and grouped. Each day AI diagnoses the new ones; outdated browsers and bots are filed as ignored by themselves.</p>
+          {!!data?.sampleOpen && <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">{data.sampleOpen} more in the list are made up by “Fill with sample data” (tagged “Sample, not real”). They aren’t counted, diagnosed or emailed; “Remove sample data” on the Overview takes them out.</p>}
         </div>
         <button onClick={() => diagnose()} disabled={!!busy} className="btn-primary shrink-0">
           {busy === 'all' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Diagnose new
@@ -310,7 +313,7 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
                           <span className="truncate max-w-[10rem]">{e.path ?? 'unknown page'}</span>
                           <span className="tabular-nums">{e.count}× · {e.users} {e.users === 1 ? 'person' : 'people'}</span>
                           <span>{formatDistanceToNow(new Date(e.lastSeen), { addSuffix: true })}</span>
-                          {e.status === 'NEW' && <span className={cn(chip, STATUS.NEW.cls)}>New</span>}
+                          {e.sample ? <span className={cn(chip, 'bg-amber-500/15 text-amber-800 dark:text-amber-200')}>Sample, not real</span> : e.status === 'NEW' && <span className={cn(chip, STATUS.NEW.cls)}>New</span>}
                           {bot && <span className={cn(chip, 'bg-zinc-500/10 text-zinc-500')}>Old browser or bot</span>}
                         </span>
                       </span>

@@ -160,11 +160,16 @@ const SCHEMA = {
   required: ['severity', 'summary', 'cause', 'where', 'fix'],
 };
 
+/** Made-up problems from the console's "Fill with sample data" (src/server/sample-world.ts): shown in
+ * the list with a Sample tag, never counted as open, diagnosed or emailed. */
+export const REAL_ERRORS = { NOT: { fingerprint: { startsWith: 'sample:' } } };
+export const REAL_ERRORS_SQL = `fingerprint NOT LIKE 'sample:%'`;
+
 /** Asks AI to diagnose error groups (the given ids, or up to `limit` new ones). Returns how many. */
 export async function diagnoseErrors(opts: { ids?: string[]; limit?: number; model?: string } = {}): Promise<number> {
   await ignoreUnsupported();
   const rows = await prisma.errorReport.findMany({
-    where: opts.ids ? { id: { in: opts.ids } } : { status: 'NEW', diagnosedAt: null },
+    where: opts.ids ? { id: { in: opts.ids }, ...REAL_ERRORS } : { status: 'NEW', diagnosedAt: null, ...REAL_ERRORS },
     orderBy: [{ count: 'desc' }, { lastSeen: 'desc' }],
     take: opts.ids ? 10 : opts.limit ?? 8,
   });
@@ -199,7 +204,7 @@ export async function emailErrorDigest(since: Date): Promise<number> {
   const owners = ownerEmailList(process.env.SUPER_ADMIN_EMAILS);
   if (!owners.length) return 0;
   const rows = await prisma.errorReport.findMany({
-    where: { status: { in: ['NEW', 'DIAGNOSED'] }, lastSeen: { gte: since } },
+    where: { status: { in: ['NEW', 'DIAGNOSED'] }, lastSeen: { gte: since }, ...REAL_ERRORS },
     orderBy: [{ count: 'desc' }],
     take: 15,
   });

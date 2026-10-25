@@ -1,5 +1,5 @@
 import type { Router } from '../router';
-import { diagnoseErrors, ignoreUnsupported } from '../errors';
+import { REAL_ERRORS, diagnoseErrors, ignoreUnsupported } from '../errors';
 import prisma from '@/lib/db';
 import { BadRequestException, ForbiddenException, NotFoundException } from '../http';
 import { forgetUser, isOwnerEmail } from '../auth';
@@ -170,29 +170,32 @@ export default function ownerModule(router: Router) {
     const day = new Date(Date.now() - 86_400_000);
     const [items, counts, recent] = await Promise.all([
       prisma.errorReport.findMany({ where, orderBy: [{ lastSeen: 'desc' }], take: 200 }),
-      prisma.errorReport.groupBy({ by: ['status'], _count: { _all: true } }),
+      prisma.errorReport.groupBy({ by: ['status'], where: REAL_ERRORS, _count: { _all: true } }),
       // For the summary and the 14-day chart (one row per problem, so this stays small).
-      prisma.errorReport.findMany({ where: { lastSeen: { gt: new Date(Date.now() - 14 * 86_400_000) } }, select: { firstSeen: true, lastSeen: true, source: true, count: true, users: true, severity: true, status: true } }),
+      prisma.errorReport.findMany({ where: { lastSeen: { gt: new Date(Date.now() - 14 * 86_400_000) } }, select: { firstSeen: true, lastSeen: true, source: true, count: true, users: true, severity: true, status: true, fingerprint: true } }),
     ]);
     // Who ran into each problem last (name and role, to see if it's one person or many).
     const userIds = [...new Set(items.map((e) => e.lastUserId).filter((x): x is string => !!x))];
     const people = userIds.length ? await prisma.user.findMany({ where: { id: { in: userIds.slice(0, 90) } }, select: { id: true, name: true, email: true, role: true } }) : [];
     const byId = new Map(people.map((u) => [u.id, u]));
-    const open = recent.filter((e) => e.status === 'NEW' || e.status === 'DIAGNOSED');
+    const isOpen = (e: { status: string }) => e.status === 'NEW' || e.status === 'DIAGNOSED';
+    const isSample = (e: { fingerprint: string }) => e.fingerprint.startsWith('sample:');
+    const open = recent.filter((e) => isOpen(e) && !isSample(e));
     const days = Array.from({ length: 14 }, (_, i) => new Date(Date.now() - (13 - i) * 86_400_000).toISOString().slice(0, 10));
     return {
-      items: items.map((e) => ({ ...e, lastUser: e.lastUserId ? byId.get(e.lastUserId) ?? null : null })),
+      items: items.map((e) => ({ ...e, sample: isSample(e), lastUser: e.lastUserId ? byId.get(e.lastUserId) ?? null : null })),
+      sampleOpen: recent.filter((e) => isOpen(e) && isSample(e)).length,
       counts: Object.fromEntries(counts.map((c) => [c.status, c._count._all])),
       summary: {
-        seenToday: recent.filter((e) => e.lastSeen > day).length,
-        newToday: recent.filter((e) => e.firstSeen > day).length,
+        seenToday: recent.filter((e) => e.lastSeen > day && !isSample(e)).length,
+        newToday: recent.filter((e) => e.firstSeen > day && !isSample(e)).length,
         openServer: open.filter((e) => e.source === 'SERVER').length,
         openBrowser: open.filter((e) => e.source !== 'SERVER').length,
         openHigh: open.filter((e) => e.severity === 'high').length,
         peopleAffected: open.reduce((n, e) => n + e.users, 0),
         timesSeen: open.reduce((n, e) => n + e.count, 0),
         // New problems per day, and problems still happening per day (by last time seen).
-        perDay: days.map((d) => ({ day: d, new: recent.filter((e) => e.firstSeen.toISOString().slice(0, 10) === d).length, seen: recent.filter((e) => e.lastSeen.toISOString().slice(0, 10) === d).length })),
+        perDay: days.map((d) => ({ day: d, new: recent.filter((e) => !isSample(e) && e.firstSeen.toISOString().slice(0, 10) === d).length, seen: recent.filter((e) => !isSample(e) && e.lastSeen.toISOString().slice(0, 10) === d).length })),
       },
     };
   });
@@ -253,7 +256,7 @@ export default function ownerModule(router: Router) {
       prisma.roleApplication.count({ where: { status: 'PENDING' } }),
       prisma.loginEvent.findMany({ orderBy: { createdAt: 'desc' }, take: 15, include: { user: { select: { id: true, name: true, role: true, email: true } } } }),
       prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 15 }),
-      prisma.errorReport.count({ where: { status: { in: ['NEW', 'DIAGNOSED'] } } }),
+      prisma.errorReport.count({ where: { status: { in: ['NEW', 'DIAGNOSED'] }, ...REAL_ERRORS } }),
       prisma.accountDeletionRequest.count({ where: { status: 'PENDING' } }),
       prisma.user.findMany({ where: { createdAt: { gt: new Date(now - 14 * 86_400_000) } }, select: { createdAt: true, role: true } }),
       prisma.loginEvent.groupBy({ by: ['country'], where: { createdAt: { gt: month } }, _count: { _all: true } }),
@@ -302,7 +305,7 @@ export default function ownerModule(router: Router) {
       prisma.user.count({ where: { lastSeenAt: { gt: day } } }),
       prisma.loginEvent.count({ where: { createdAt: { gt: day } } }),
       prisma.message.count({ where: { createdAt: { gt: day } } }),
-      prisma.errorReport.count({ where: { status: { in: ['NEW', 'DIAGNOSED'] } } }),
+      prisma.errorReport.count({ where: { status: { in: ['NEW', 'DIAGNOSED'] }, ...REAL_ERRORS } }),
       prisma.errorReport.count({ where: { lastSeen: { gt: day } } }),
       prisma.accountDeletionRequest.count({ where: { status: 'PENDING' } }),
       prisma.user.count({ where: { status: 'SUSPENDED' } }),

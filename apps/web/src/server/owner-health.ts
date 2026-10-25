@@ -7,6 +7,7 @@ import { APP_URL, escapeHtml, sendEmail } from './email';
 import { serverSettings } from './server-settings';
 import { cloudflareAccount } from './cloudflare-account';
 import { selectColumns } from './table-stats';
+import { REAL_ERRORS, REAL_ERRORS_SQL } from './errors';
 
 // The owner console's "Health check": looks over errors, sign-ins, accounts, settings and
 // Cloudflare for security and reliability problems, then asks AI to rank them and explain each
@@ -28,11 +29,11 @@ export async function healthCheck(fresh = false): Promise<HealthReport> {
 
   const [c, topErrors, control, cf] = await Promise.all([
     selectColumns([
-      ['openErrors', `(SELECT COUNT(*) FROM error_reports WHERE status IN ('NEW','DIAGNOSED'))`],
-      ['newErrors', `(SELECT COUNT(*) FROM error_reports WHERE firstSeen > '${day}')`],
-      ['highErrors', `(SELECT COUNT(*) FROM error_reports WHERE status IN ('NEW','DIAGNOSED') AND severity = 'high')`],
-      ['serverErrors', `(SELECT COUNT(*) FROM error_reports WHERE source = 'SERVER' AND lastSeen > '${day}' AND status IN ('NEW','DIAGNOSED'))`],
-      ['errorHits', `(SELECT COALESCE(SUM(count), 0) FROM error_reports WHERE lastSeen > '${day}' AND status IN ('NEW','DIAGNOSED'))`],
+      ['openErrors', `(SELECT COUNT(*) FROM error_reports WHERE status IN ('NEW','DIAGNOSED') AND ${REAL_ERRORS_SQL})`],
+      ['newErrors', `(SELECT COUNT(*) FROM error_reports WHERE firstSeen > '${day}' AND ${REAL_ERRORS_SQL})`],
+      ['highErrors', `(SELECT COUNT(*) FROM error_reports WHERE status IN ('NEW','DIAGNOSED') AND ${REAL_ERRORS_SQL} AND severity = 'high')`],
+      ['serverErrors', `(SELECT COUNT(*) FROM error_reports WHERE source = 'SERVER' AND lastSeen > '${day}' AND status IN ('NEW','DIAGNOSED') AND ${REAL_ERRORS_SQL})`],
+      ['errorHits', `(SELECT COALESCE(SUM(count), 0) FROM error_reports WHERE lastSeen > '${day}' AND status IN ('NEW','DIAGNOSED') AND ${REAL_ERRORS_SQL})`],
       ['signIns', `(SELECT COUNT(*) FROM login_events WHERE createdAt > '${day}' AND kind = 'SIGN_IN')`],
       ['signUps', `(SELECT COUNT(*) FROM login_events WHERE createdAt > '${day}' AND kind = 'SIGN_UP')`],
       ['signUpBursts', `(SELECT COUNT(*) FROM (SELECT ip FROM login_events WHERE kind = 'SIGN_UP' AND createdAt > '${day}' AND ip IS NOT NULL GROUP BY ip HAVING COUNT(*) >= 5))`],
@@ -50,7 +51,7 @@ export async function healthCheck(fresh = false): Promise<HealthReport> {
       ['ownerChanges', `(SELECT COUNT(*) FROM owner_changes WHERE createdAt > '${day}')`],
     ]).catch(() => ({} as Record<string, unknown>)),
     prisma.errorReport.findMany({
-      where: { status: { in: ['NEW', 'DIAGNOSED'] } },
+      where: { status: { in: ['NEW', 'DIAGNOSED'] }, ...REAL_ERRORS },
       orderBy: [{ lastSeen: 'desc' }],
       take: 8,
       select: { source: true, kind: true, message: true, path: true, count: true, users: true, severity: true },
