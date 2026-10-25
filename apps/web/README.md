@@ -1,6 +1,6 @@
 # UniVerse web app
 
-Start with [`START-HERE.md`](../../START-HERE.md) at the top of the project: where the work stands,
+Start with [`AGENTS.md`](../../AGENTS.md) at the top of the project: where the work stands,
 how to set it up and run it (`pnpm local:setup`, `local:dev`, `local:build`, `local:serve`,
 `check`), and how it's published. The plan is [`STAGE-5-PLAN.md`](./STAGE-5-PLAN.md); notes for
 whoever continues are in [`STAGE-5-HANDOFF.md`](./STAGE-5-HANDOFF.md).

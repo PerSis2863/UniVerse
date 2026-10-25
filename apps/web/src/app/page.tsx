@@ -4,7 +4,7 @@ import Link from '@/components/ui/Link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, MotionConfig, m as motion, useScroll, useSpring } from 'framer-motion';
-import { ArrowRight, ChevronDown, Play, Smartphone, Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronDown, Smartphone, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
@@ -21,9 +21,8 @@ import { Statement } from '@/components/landing/Statement';
 import { AppTabs } from '@/components/landing/AppTabs';
 import { AppsGrid, GreenCard, GreenSection, ReliefCard, ReliefSection } from '@/components/landing/ImpactApps';
 import { SplitCta } from '@/components/landing/SplitCta';
-import { startVisitorDemo } from '@/components/SampleMode';
 import { Accent, EASE, Reveal, Tag, ghost, primary } from '@/components/landing/bits';
-import { appById, appHome, type AppId } from '@/lib/apps';
+import { appById, type AppId } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { homeFor } from '@/lib/role-home';
 
@@ -180,7 +179,6 @@ export default function ShowcasePage() {
                     <div className="mt-9 flex flex-wrap items-center gap-3">
                       <Link href={`/register?app=${app}`} className={primary}>Get started with {meta.name.replace('UniVerse ', '')} <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
                       <Link href={`/login?app=${app}`} className={ghost}>Sign in</Link>
-                      <button type="button" onClick={() => startVisitorDemo(appHome(app, 'STUDENT'))} className={ghost}><Play className="w-4 h-4" /> Try the live demo</button>
                       {hero.extra}
                       <button type="button" onClick={handleInstallClick} className={ghost}><Smartphone className="w-4 h-4" /> {installed ? 'Open the app' : 'Get the app'}</button>
                     </div>

@@ -1,5 +1,5 @@
 ---
-description: Finish a queue item: Progress row, handoff note, START-HERE, owner summary, commit and push (no merge)
+description: Finish a queue item: Progress row, handoff note, "Where things stand", owner summary, commit and push (no merge)
 argument-hint: "[Qn]"
 ---
 
@@ -12,7 +12,7 @@ Wrap up item **$ARGUMENTS** the way every item is finished in this project:
    number, how it was tested, **Not done:** what's left), and mark its heading ✅.
 3. `apps/web/STAGE-5-HANDOFF.md`: a short note (traps, rules for code that builds on it, the next
    migration number, how to re-run its test).
-4. `START-HERE.md` "Where things stand" and the "next" line in `.cursor/rules/universe.mdc`.
+4. `AGENTS.md` section 4 "Where things stand" (including the next database number).
 5. One commit for the item (a clear message, no AI model names or ids), then push the branch.
    **Don't merge and don't open a pull request**: only when the owner says "merge".
 6. Tell the owner in plain words: what changed, what they can now do (and where to tap), what they

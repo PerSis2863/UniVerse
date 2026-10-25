@@ -1,7 +1,9 @@
-# Stage 5 handoff (for the next agent)
+# Stage 5 handoff: notes per finished piece of work
 
-Read this first, then `STAGE-5-PLAN.md`: the plan has every item, and its **Progress** table says what's
-done, where the code is and what's left for each item. Keep that table up to date as you go.
+The guide for every agent is `AGENTS.md` at the repository root: read that first. This file is the
+history, one note per item (traps, rules for code that builds on it). Read only the note a task
+needs; the newest are at the end (M22 is the latest). The "Next steps" just below date from 21 Oct
+2026 and are done.
 
 ## Next steps (written 21 Oct 2026 for whoever continues; do them in this order)
 
@@ -1641,3 +1643,67 @@ Progress table (row D6).
     says "Opening the call…", asks a signed-out person to sign in, and after 12 s offers Try again.
 - These three reports are still marked DIAGNOSED in production: mark them resolved in the owner
   console once this is live.
+
+## M23 · Google sign-in after the demo; the demo off the main page
+
+- The owner (25 Oct 2026): "i am not able to sign in through google" (the sign-in page said "Login
+  successful, but failed to retrieve user data"), and "remove try the live demo from the website main
+  page".
+- **Cause:** a tab that ran "Try the live demo" keeps the demo on (sessionStorage
+  `universe:sample-mode` and `universe:sample-visitor`), so after a real Google sign-in `GET /auth/me`
+  was answered by the demo (`src/lib/sample/router.ts`: "Create a free account to see this part.",
+  401) and never reached the server. The account store also stays on the demo's sessionStorage for the
+  life of the page (`src/store/auth.ts` picks its storage once). Nothing reached `error_reports`: the
+  page caught it.
+- **Fix:** `endDemoForSignIn()` (`src/lib/sample-mode.ts`) runs first in `handleLoginSuccess`
+  (`(auth)/login/page.tsx`) and `handleRegisterSuccess` (`(auth)/register/page.tsx`); when a demo was
+  on, the next page opens with a full load. A failed account load now shows the server's reason and
+  reports it to the owner's error list ("Account didn't load after sign-in: …"), so the next cause is
+  visible. Checked in the browser: demo → sign-in → real account (before the fix: the error).
+- The main page (`src/app/page.tsx`) has no "Try the live demo" button any more; the sign-in page's
+  "Just looking? Try the live demo" stays (the owner asked only for the main page).
+- Also: `school-scope-campus.test.ts` failed now and then: random new ids could contain "b1"; it now
+  looks for "b1" as a whole word.
+
+## M24 · The Impact Wallet
+
+- The owner picked all seven offered ideas (25 Oct 2026: "work on all 7 of them"); this is the first.
+- **What:** on `/hub`, under the apps, an instrument board with what the person holds in every app,
+  each in its own unit (never added into one made-up score): UniVersity impact points
+  (`impact_points`, the volunteering and project points students already see; not the scholarship
+  `impact_credits`) and courses, Trace points per brand with their worth per currency, people helped
+  through Relief (deliveries, own needs met), Green CO₂ with streak and badges; a 12-week strip per
+  app; one history across apps (newest 30, each opening its app).
+- Server `GET /hub/wallet` (`src/server/impact-wallet.ts`, 8 queries, only the asker's rows); maths
+  in `src/lib/impact-wallet.ts` (`weekly`, `newest`, `worth`, + tests); screen
+  `src/components/hub/ImpactWallet.tsx`; sample answer `sampleWallet` (`src/lib/sample/impact.ts`);
+  findable in search as "Impact Wallet".
+- Fixed on the way: `InstrumentBoard`'s cells had an `aria-label` that didn't match their visible
+  text (axe label-content-name-mismatch on every board); they now say "Open the detail" in
+  `sr-only` text. The hub cards' coloured taglines failed contrast; they're grey now.
+- Checked: types, lint, tests, lean; the route against the local database; axe at 390 and 1280 px,
+  light and dark, no sideways scrolling.
+
+## M25 · Proof for Green actions; the Green page without gaps
+
+- Second of the seven ideas. The owner also said of `/green`: "this design is not good because there
+  is space left" (the short 30-day chart beside a 30-row "What you did").
+- **Proof** (migration **0183** `green_actions.photoUrl`, `verifiedBy`, `verifiedAt`): a photo with an
+  action when it's logged ("Add a photo as proof", shrunk in the browser, `/api/upload`), or later
+  from "What you did" ("Add proof", `POST /green/actions/:id/proof`, own and unconfirmed only, only our
+  own `/api/files/` addresses via `isAppFileUrl`). A teammate (someone sharing a team, never the
+  person) confirms it: "Confirm your teammates' actions" (`GET /green/proofs`, 30 days, photos only;
+  `POST /green/actions/:id/confirm`, claimed with a conditional update). The person is told in the app
+  and by push, no email. Rows show Confirmed / Waiting / Add proof.
+- **What counts:** the weekly challenge (mine and my teams') and both leaderboards count confirmed
+  actions only (`verifiedAt IS NOT NULL` in `green.ts`); the challenge says how much waits for a
+  teammate. The person's own totals, streak, badges, map and the Impact Wallet still count everything
+  logged.
+- **Layout:** on wide screens each row of `/green` ends level: beside the form, the challenge and the
+  teammates' photos (that box fills the rest and scrolls inside); below, the 30 days and the badges,
+  beside "What you did", which is exactly as tall and scrolls inside (the `lg:absolute lg:inset-5`
+  wrapper keeps the long list from setting the row's height). Phones show 6 actions and "Show all".
+- Test: `src/server/green.test.ts` (own action refused, outsider refused, no photo refused, outside
+  photo addresses refused). Checked in the browser: a teammate's photo confirmed, the owner refused,
+  an outsider refused; axe clean on `/green` and `/green/teams` at 390 and 1280, light and dark.
+  Next migration: **0184**.

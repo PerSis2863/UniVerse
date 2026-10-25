@@ -96,7 +96,7 @@ function CellFace({ cell, onOpen }: { cell: InstrumentCell; onOpen?: () => void 
     </>
   );
   return onOpen
-    ? <button type="button" onClick={onOpen} className="flex flex-col justify-start w-full h-full text-start p-4 rounded-[inherit] focus-visible:outline-2" aria-label={`${cell.label}: ${fmt(cell.value, cell.digits)}${cell.unit ? ` ${cell.unit}` : ''}. Open the detail`}>{inner}</button>
+    ? <button type="button" onClick={onOpen} className="flex flex-col justify-start w-full h-full text-start p-4 rounded-[inherit] focus-visible:outline-2">{inner}<span className="sr-only">Open the detail</span></button>
     : <div className="p-4">{inner}</div>;
 }
 

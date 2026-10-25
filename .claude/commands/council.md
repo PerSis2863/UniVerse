@@ -14,5 +14,5 @@ us). Read what's needed to judge it first (targeted reads), then answer as five 
 - **[Chairman Synthesis]:** the verdict, the single biggest risk, and the change to make now.
 
 Keep each block tight. Weigh UniVerse's limits (Cloudflare Workers Free and D1, no paid services
-without the owner's yes, the safety rules in `.cursor/rules/universe.mdc`). End with one plain-words
+without the owner's yes, the safety rules in `AGENTS.md`). End with one plain-words
 line for the owner.

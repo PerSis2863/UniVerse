@@ -1013,11 +1013,13 @@ const SAMPLE_MARKETPLACE_PACKS: SampleMarketplacePack[] = [
 const GET: [RegExp, (c: Ctx) => Result][] = [
   // The impact apps (src/lib/sample/impact.ts)
   [/^\/hub$/, ({ db: d }) => ok(impact.sampleHub(d.me))],
+  [/^\/hub\/wallet$/, ({ db: d }) => ok(impact.sampleWallet(d.me))],
   [/^\/relief\/map$/, ({ db: d }) => ok(impact.sampleReliefMap(d.me))],
   [/^\/relief\/mine$/, ({ db: d }) => ok(impact.sampleReliefMine(d.me))],
   [/^\/green\/me$/, ({ db: d }) => ok(impact.sampleGreenMe(d.me))],
   [/^\/green\/teams$/, ({ db: d }) => ok(impact.sampleGreenTeams(d.me))],
   [/^\/green\/map$/, () => ok(impact.sampleGreenMap())],
+  [/^\/green\/proofs$/, () => ok(impact.sampleGreenProofs())],
   [/^\/trace\/brand$/, () => ok(impact.sampleTraceBrand())],
   [/^\/trace\/products$/, () => ok(impact.sampleTraceProducts())],
   [/^\/trace\/overview$/, ({ q }) => ok(impact.sampleTraceOverview(Math.min(90, Math.max(7, Number(q.get('days')) || 30))))],

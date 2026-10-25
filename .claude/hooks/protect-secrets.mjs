@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // UniVerse safety hook (Claude Code PreToolUse): never read, write or touch secret files.
 // Real keys live only in the Cloudflare dashboard; local runs use placeholders on the command line
-// (see .cursor/rules/universe.mdc, "Safety"). Blocks any tool call that names .dev.vars or a .env
+// (see AGENTS.md, "Safety"). Blocks any tool call that names .dev.vars or a .env
 // file (.env.example and other *.example files are fine). Exit 2 = blocked, with the reason.
 // No network, no other side effects.
 

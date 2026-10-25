@@ -20,6 +20,7 @@ import { chosenApp, homeFor } from '@/lib/role-home';
 import { AppTabs } from '@/components/landing/AppTabs';
 import { appById } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
+import { endDemoForSignIn } from '@/lib/sample-mode';
 
 // Phone sign-in carries a phone-number library (about 50 KB): it loads when someone chooses it
 // (or points at the button), not with the page.
@@ -137,6 +138,8 @@ export default function RegisterPage() {
   };
 
   const handleRegisterSuccess = async (token: string, displayName: string, method?: 'google' | 'password' | 'phone' | 'microsoft') => {
+    const fresh = endDemoForSignIn();
+    const go = (path: string) => (fresh ? window.location.assign(path) : router.push(path));
     try {
       localStorage.setItem('accessToken', token);
       setTokens(token);
@@ -145,8 +148,8 @@ export default function RegisterPage() {
       setUser(me);
       reportSession('SIGN_UP', method);
       // Teacher / NGO accounts wait for an admin: they continue on the application form.
-      if (awaitingApproval(me)) router.push('/application');
-      else router.push(homeFor(user, chosenApp()));
+      if (awaitingApproval(me)) go('/application');
+      else go(homeFor(user, chosenApp()));
     } catch (err) {
       console.error('Failed to sync user data', err);
       setError('Registration successful, but failed to setup profile. Please try logging in.');

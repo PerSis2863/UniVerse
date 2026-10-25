@@ -1,5 +1,6 @@
 import { CITIES } from '@/components/trace/map/cities';
-import { BADGES, GREEN_KINDS, co2For, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
+import { BADGES, GREEN_FACTORS, GREEN_KINDS, co2For, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
+import { newest, weekly, type WalletEvent } from '@/lib/impact-wallet';
 import { URGENCIES, snap, type ReliefKind } from '@/lib/relief';
 
 // Sample answers for the impact apps (the hub, Trace, Relief and Green) while sample mode is on, so a
@@ -33,6 +34,31 @@ export function sampleHub(me: { id: string }) {
       green: { value: 182_450, label: 'kg CO₂ saved', mine: { value: 312, label: 'kg CO₂ saved' } },
     },
     total: { people: 12_480 },
+  };
+}
+
+/** GET /hub/wallet */
+export function sampleWallet(me: { id: string }) {
+  const now = Date.now(), r = rng(21), actions = myActions(me);
+  const brands = ['Aurora Foods', 'TerraBrew Coffee', 'Kaveri Spices'];
+  const at = (i: number, step: number) => now - (i * step + r()) * DAY;
+  const credits = Array.from({ length: 8 }, (_, i) => ({ at: at(i, 9), v: [20, 15, 30, 10][i % 4], text: ['Volunteered at the food bank', 'Tutored first-years', 'Beach clean-up with the eco club', 'Peer mentoring'][i % 4] }));
+  const pts = Array.from({ length: 20 }, (_, i) => ({ at: at(i, 3), v: 25 + Math.floor(r() * 40), brand: brands[i % 3] }));
+  const helped = Array.from({ length: 7 }, (_, i) => ({ at: at(i, 11), v: 1 + Math.floor(r() * 5), text: ['Hot meals for a family', 'A lift to the clinic', 'Drinking water for 4', 'Warm clothes for 2'][i % 4] }));
+  const kg = actions.reduce((s, a) => s + a.co2Kg, 0);
+  const totals = { actions: actions.length, kg, byKind: {}, streak: 6 };
+  const events: WalletEvent[] = [
+    ...credits.map((c) => ({ app: 'campus' as const, at: iso(c.at), text: c.text, amount: `+${c.v} impact pts` })),
+    ...pts.map((p) => ({ app: 'trace' as const, at: iso(p.at), text: `Scanned · ${p.brand}`, amount: `+${p.v} pts` })),
+    ...helped.map((h) => ({ app: 'relief' as const, at: iso(h.at), text: `Delivered: ${h.text}`, amount: `${h.v} helped` })),
+    ...actions.slice(0, 30).map((a) => ({ app: 'green' as const, at: a.createdAt, text: GREEN_FACTORS[a.kind].label, amount: `${Math.round(a.co2Kg * 10) / 10} kg CO₂` })),
+  ];
+  return {
+    campus: { points: 145, courses: 5, weeks: weekly(credits, now) },
+    trace: { points: 1860, brands: 3, worth: [{ currency: 'EUR', amount: 18.29 }], weeks: weekly(pts, now) },
+    relief: { people: 23, deliveries: 9, received: 1, weeks: weekly(helped, now) },
+    green: { kg: Math.round(kg * 10) / 10, actions: actions.length, streak: 6, badges: BADGES.filter((b) => b.earned(totals)).length, badgesOf: BADGES.length, weeks: weekly(actions.map((a) => ({ at: Date.parse(a.createdAt), v: a.co2Kg })), now) },
+    events: newest(events),
   };
 }
 
@@ -90,7 +116,9 @@ function myActions(me: { id: string }) {
     const kind = pick(r, GREEN_KINDS), [lo, hi] = AMT[kind], amount = Math.round((lo + r() * (hi - lo)) * 10) / 10;
     // Every one of the last six days has one, so the streak shows.
     const at = i < 6 ? now - i * DAY - 3_600_000 * (1 + r() * 6) : now - (6 + r() * 54) * DAY;
-    return { id: `sample-green-${i}`, userId: me.id, kind, amount, co2Kg: co2For(kind, amount), note: r() < 0.2 ? 'With the team' : null, lat: Math.round(home[1] * 10) / 10, lng: Math.round(home[2] * 10) / 10, place: home[0], createdAt: iso(at) };
+    // Most older actions were confirmed by a teammate; a few recent ones wait with their photo.
+    const photoUrl = i % 5 === 1 ? '/og.jpg' : null, verifiedAt = i > 3 && i % 4 !== 0 ? iso(at + 3_600_000) : null;
+    return { id: `sample-green-${i}`, userId: me.id, kind, amount, co2Kg: co2For(kind, amount), note: r() < 0.2 ? 'With the team' : null, lat: Math.round(home[1] * 10) / 10, lng: Math.round(home[2] * 10) / 10, place: home[0], photoUrl: photoUrl ?? (verifiedAt ? '/og.jpg' : null), verifiedAt, createdAt: iso(at) };
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -102,11 +130,14 @@ export function sampleGreenMe(me: { id: string }) {
   const kg = actions.reduce((s, a) => s + a.co2Kg, 0);
   const totals = { actions: actions.length, kg, byKind, streak: streak(actions.map((a) => a.createdAt.slice(0, 10)), iso(now).slice(0, 10)) };
   const week = Date.parse(challenge.starts);
-  const mine = actions.filter((a) => a.kind === challenge.kind && Date.parse(a.createdAt) >= week).reduce((s, a) => s + a.amount, 0);
+  const thisWeek = actions.filter((a) => a.kind === challenge.kind && Date.parse(a.createdAt) >= week);
+  const mine = thisWeek.filter((a) => a.verifiedAt).reduce((s, a) => s + a.amount, 0), waiting = thisWeek.filter((a) => !a.verifiedAt).reduce((s, a) => s + a.amount, 0);
+  const proven = actions.filter((a) => a.verifiedAt);
   return {
     totals: { ...totals, kg: Math.round(kg * 10) / 10, kgByKind },
     badges: BADGES.map((b) => ({ id: b.id, label: b.label, text: b.text, earned: b.earned(totals) })),
-    challenge: { ...challenge, mine: Math.round(mine * 10) / 10, team: Math.round((mine * 7.4 + 12) * 10) / 10 },
+    challenge: { ...challenge, mine: Math.round(mine * 10) / 10, waiting: Math.round(waiting * 10) / 10, team: Math.round((mine * 7.4 + 12) * 10) / 10 },
+    verified: { actions: proven.length, kg: Math.round(proven.reduce((s, a) => s + a.co2Kg, 0) * 10) / 10 },
     perDay: Array.from({ length: 30 }, (_, i) => {
       const d = iso(now - (29 - i) * DAY).slice(0, 10);
       return { day: d, kg: Math.round(actions.filter((a) => a.createdAt.startsWith(d)).reduce((s, a) => s + a.co2Kg, 0) * 10) / 10 };
@@ -136,6 +167,18 @@ export function sampleGreenTeams(me: { id: string; name: string }) {
 }
 
 /** GET /green/map */
+/** GET /green/proofs */
+export function sampleGreenProofs() {
+  const now = Date.now(), r = rng(33);
+  return {
+    teams: 2,
+    proofs: (['TREE', 'CLEANUP', 'CYCLE'] as const).map((kind, i) => {
+      const amount = [3, 4.5, 18][i];
+      return { id: `sample-proof-${i}`, kind, amount, co2Kg: co2For(kind, amount), note: ['Behind the school', 'Riverbank, 6 bags', null][i], photoUrl: '/og.jpg', place: null, createdAt: iso(now - (i + r()) * 5 * 3_600_000), by: NAMES[i * 3] };
+    }),
+  };
+}
+
 export function sampleGreenMap() {
   const r = rng(11);
   return { cells: BIG.flatMap((c) => Array.from({ length: 1 + Math.floor(r() * 4) }, () => ({ lat: Math.round((c[1] + (r() - 0.5) * 0.6) * 10) / 10, lng: Math.round((c[2] + (r() - 0.5) * 0.6) * 10) / 10, kg: Math.round(20 + r() * 900), actions: 3 + Math.floor(r() * 120), place: c[0] }))) };

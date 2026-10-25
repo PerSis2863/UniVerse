@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
+import Image from 'next/image';
 import { AnimatePresence, animate, m as motion, useReducedMotion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Award, Bike, Bus, Flame, Footprints, Leaf, Loader2, Lock, MapPin, Recycle, Sparkles, Sun, Trash2, TreePine, Trophy, Utensils } from 'lucide-react';
+import { Award, Bike, Bus, Camera, Clock, Flame, Footprints, Leaf, Loader2, Lock, MapPin, Recycle, ShieldCheck, Sparkles, Sun, Trash2, TreePine, Trophy, Utensils } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { api, errorMessage } from '@/lib/api';
+import { authedJson } from '@/lib/authed-fetch';
+import { shrinkImage } from '@/lib/shrink-image';
 import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
 import { GREEN_FACTORS, GREEN_KINDS, co2For, type GreenKind } from '@/lib/green';
@@ -20,19 +23,29 @@ import { WorldCanvas, type Box, type Frame } from '@/components/trace/map/WorldC
 // UniVerse Green (src/lib/apps.ts): my CO₂ saved and what it equals, logging an action (CO₂ worked
 // out with the factor shown), this week's challenge for me and my teams, badges, the last 30 days,
 // what I did, and everyone's actions on the map. Server: src/server/green.ts.
+// Proof (migration 0183): a photo with an action, confirmed by a teammate; only confirmed actions
+// count for the challenge and the leaderboards (TeamProofs lists what my teammates wait on).
 
 interface GreenMe {
   totals: { actions: number; kg: number; streak: number; byKind: Partial<Record<GreenKind, number>>; kgByKind: Partial<Record<GreenKind, number>> };
   badges: { id: string; label: string; text: string; earned: boolean }[];
-  challenge: { kind: GreenKind; goal: number; title: string; unit: string; starts: string; ends: string; mine: number; team: number | null };
+  challenge: { kind: GreenKind; goal: number; title: string; unit: string; starts: string; ends: string; mine: number; waiting: number; team: number | null };
+  verified: { actions: number; kg: number };
   perDay: { day: string; kg: number }[];
-  recent: { id: string; kind: GreenKind; amount: number; co2Kg: number; note: string | null; place: string | null; createdAt: string }[];
+  recent: { id: string; kind: GreenKind; amount: number; co2Kg: number; note: string | null; place: string | null; photoUrl: string | null; verifiedAt: string | null; createdAt: string }[];
   teams: number;
   community: { kg: number; actions: number; people: number };
 }
 
 export const GREEN_ICON: Record<GreenKind, typeof Leaf> = { TREE: TreePine, CYCLE: Bike, TRANSIT: Bus, WALK: Footprints, RECYCLE: Recycle, SOLAR: Sun, MEATFREE: Utensils, CLEANUP: Trash2 };
 const EMERALD = '#10b981';
+const RECENT = 6;
+
+/** Makes a photo smaller and uploads it; its address goes with the action as proof. */
+async function uploadProof(file: File) {
+  const f = await shrinkImage(file);
+  return (await authedJson<{ url: string }>(`/api/upload?filename=${encodeURIComponent(f.name || 'proof.jpg')}`, { method: 'POST', body: f, headers: { 'Content-Type': f.type || 'image/jpeg' } })).url;
+}
 const WORLD: Box = [-168, -56, 190, 76];
 
 function Rolling({ value, digits = 1 }: { value: number; digits?: number }) {
@@ -58,6 +71,8 @@ export function GreenApp() {
   const [share, setShare] = useState(true);
   const [saving, setSaving] = useState(false);
   const [burst, setBurst] = useState(0);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [allRecent, setAllRecent] = useState(false);
   const f = GREEN_FACTORS[kind];
   const preview = co2For(kind, Number(amount) || 0);
 
@@ -66,11 +81,16 @@ export function GreenApp() {
     setSaving(true);
     const pos = share ? await new Promise<{ lat: number; lng: number } | null>((done) => navigator.geolocation ? navigator.geolocation.getCurrentPosition((g) => done({ lat: g.coords.latitude, lng: g.coords.longitude }), () => done(null), { timeout: 5000, maximumAge: 600_000 }) : done(null)) : null;
     try {
-      await api.post('/green/actions', { kind, amount: Number(amount), note, ...(pos ?? {}) });
-      toast.success(`Logged: ${preview} kg of CO₂ saved`);
-      setNote(''); setBurst((b) => b + 1);
+      const photoUrl = photo ? await uploadProof(photo) : undefined;
+      await api.post('/green/actions', { kind, amount: Number(amount), note, photoUrl, ...(pos ?? {}) });
+      toast.success(`Logged: ${preview} kg of CO₂ saved${photoUrl ? '. A teammate can confirm it now.' : ''}`);
+      setNote(''); setPhoto(null); setBurst((b) => b + 1);
       void mutate();
     } catch (err) { toast.error(errorMessage(err, 'Could not log it.')); } finally { setSaving(false); }
+  };
+  const addPhoto = async (id: string, file: File | undefined) => {
+    if (!file) return;
+    try { await api.post(`/green/actions/${id}/proof`, { photoUrl: await uploadProof(file) }); toast.success('Photo added. A teammate can confirm it now.'); void mutate(); } catch (err) { toast.error(errorMessage(err, 'Could not add the photo.')); }
   };
   const remove = async (id: string) => {
     try { await api.delete(`/green/actions/${id}`); void mutate(); } catch (err) { toast.error(errorMessage(err, 'Could not delete it.')); }
@@ -101,7 +121,8 @@ export function GreenApp() {
         {data && <p className="relative mt-6 text-xs text-emerald-100/60">Everyone on UniVerse Green: {fmt(data.community.kg)} kg CO₂ saved by {fmt(data.community.people)} people in {fmt(data.community.actions)} actions.</p>}
       </section>
 
-      <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6 items-start">
+      {/* Wide screens: the right column ends with the form; teammates' photos scroll inside it. */}
+      <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6">
         <form onSubmit={(e) => void log(e)} className="panel p-5 relative overflow-hidden" aria-labelledby="log-h">
           <h2 id="log-h" className="font-bold text-zinc-900 dark:text-white">Log an action</h2>
           <div className="mt-3 grid grid-cols-4 gap-2" role="radiogroup" aria-label="What you did">
@@ -117,12 +138,17 @@ export function GreenApp() {
           </div>
           <p className="mt-1 text-[11px] text-zinc-500">{f.how}.</p>
           <label className="mt-3 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Note (optional)</span><input maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} className="input mt-1" placeholder="To work and back" /></label>
+          <label className="mt-3 flex items-center gap-3 rounded-2xl border border-dashed border-zinc-300 dark:border-white/15 px-3 py-2.5 cursor-pointer hover:border-emerald-500/60 transition-colors">
+            <Camera className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            <span className="min-w-0 flex-1 text-xs text-zinc-600 dark:text-zinc-300"><span className="block font-semibold text-zinc-800 dark:text-zinc-100">{photo ? photo.name : 'Add a photo as proof'}</span>A teammate confirms it, then it counts for the challenge and the leaderboards.</span>
+            <input type="file" accept="image/*" className="sr-only" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
+          </label>
           <label className="mt-3 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300"><input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} className="w-4 h-4 accent-emerald-500" /><MapPin className="w-3.5 h-3.5" aria-hidden />Put it on the shared map (about 11 km away from where I am)</label>
           <button type="submit" disabled={saving} className="mt-4 w-full h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold inline-flex items-center justify-center gap-2 active:scale-[0.98] transition">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Leaf className="w-4 h-4" />}Log it</button>
           <AnimatePresence>{burst > 0 && <Burst key={burst} />}</AnimatePresence>
         </form>
 
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           {c && (
             <section className="panel p-5" aria-labelledby="ch-h">
               <h2 id="ch-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Trophy className="w-4 h-4 text-amber-500" aria-hidden />This week’s challenge</h2>
@@ -133,9 +159,31 @@ export function GreenApp() {
                   <div className="mt-1 h-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400" initial={{ width: 0 }} animate={{ width: `${Math.min(100, ((v as number) / c.goal) * 100)}%` }} transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }} /></div>
                 </div>
               ))}
+              <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">Confirmed actions only.{c.waiting > 0 ? ` ${fmt(c.waiting)} ${c.unit} more wait for a teammate to confirm.` : ''}</p>
               {c.team === null && <Link href="/green/teams" className="btn-secondary btn-sm mt-4 inline-flex">Join or start a team</Link>}
             </section>
           )}
+          <TeamProofs onDone={() => void mutate()} />
+        </div>
+      </div>
+
+      {/* Wide screens: "What you did" is exactly as tall as the 30 days and badges beside it and scrolls inside. */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <section className="panel p-5" aria-labelledby="days-h">
+            <h2 id="days-h" className="font-bold text-zinc-900 dark:text-white">The last 30 days</h2>
+            <div className="mt-4 flex items-end gap-1 h-32" aria-hidden>
+              {(data?.perDay ?? Array.from({ length: 30 }, () => ({ day: '', kg: 0 }))).map((d, i) => (
+                <motion.span key={i} className="flex-1 rounded-t bg-gradient-to-t from-emerald-600 to-lime-400" initial={{ height: 0 }} animate={{ height: `${Math.max(2, (d.kg / maxDay) * 100)}%` }} transition={{ duration: 0.6, delay: i * 0.012 }} title={`${d.day}: ${d.kg} kg`} />
+              ))}
+            </div>
+            <ul className="mt-5 space-y-2">
+              {GREEN_KINDS.filter((k) => t?.kgByKind[k]).sort((a, b) => (t!.kgByKind[b] ?? 0) - (t!.kgByKind[a] ?? 0)).map((k) => { const I = GREEN_ICON[k]; const kg = t!.kgByKind[k] ?? 0; return (
+                <li key={k} className="text-sm"><div className="flex items-center gap-2"><I className="w-4 h-4 text-emerald-600 dark:text-emerald-400" aria-hidden /><span className="flex-1 text-zinc-700 dark:text-zinc-200">{GREEN_FACTORS[k].label}</span><span className="font-mono text-xs text-zinc-500">{fmt(t!.byKind[k] ?? 0)} {GREEN_FACTORS[k].units}</span><span className="font-mono text-xs w-16 text-right text-emerald-600 dark:text-emerald-400">{kg.toFixed(1)} kg</span></div>
+                  <div className="mt-1 ml-6 h-1 rounded-full bg-zinc-100 dark:bg-white/[0.06]"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${(kg / (t!.kg || 1)) * 100}%` }} /></div></li>
+              ); })}
+            </ul>
+          </section>
           <section className="panel p-5" aria-labelledby="badges-h">
             <h2 id="badges-h" className="font-bold text-zinc-900 dark:text-white">Badges</h2>
             <ul className="mt-3 grid grid-cols-4 gap-2">
@@ -149,42 +197,68 @@ export function GreenApp() {
             </ul>
           </section>
         </div>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6 items-start">
-        <section className="panel p-5" aria-labelledby="days-h">
-          <h2 id="days-h" className="font-bold text-zinc-900 dark:text-white">The last 30 days</h2>
-          <div className="mt-4 flex items-end gap-1 h-32" aria-hidden>
-            {(data?.perDay ?? Array.from({ length: 30 }, () => ({ day: '', kg: 0 }))).map((d, i) => (
-              <motion.span key={i} className="flex-1 rounded-t bg-gradient-to-t from-emerald-600 to-lime-400" initial={{ height: 0 }} animate={{ height: `${Math.max(2, (d.kg / maxDay) * 100)}%` }} transition={{ duration: 0.6, delay: i * 0.012 }} title={`${d.day}: ${d.kg} kg`} />
-            ))}
+        <section className="panel p-5 relative lg:min-h-[360px]" aria-labelledby="recent-h">
+          <div className="lg:absolute lg:inset-5 flex flex-col">
+            <h2 id="recent-h" className="font-bold text-zinc-900 dark:text-white">What you did</h2>
+            {!data ? <div className="mt-3 h-40 skeleton rounded-xl" /> : data.recent.length === 0 ? <p className="mt-3 text-sm text-zinc-500">Nothing yet. Your first action shows here.</p> : (
+              <ul className="mt-3 divide-y divide-zinc-100 dark:divide-white/[0.06] lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pe-1">
+                {data.recent.map((a, i) => { const I = GREEN_ICON[a.kind] ?? Leaf; return (
+                  <li key={a.id} className={cn('py-2.5 flex items-center gap-3 text-sm group', i >= RECENT && !allRecent && 'max-lg:hidden')}>
+                    <span className="w-8 h-8 rounded-xl grid place-items-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"><I className="w-4 h-4" aria-hidden /></span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-zinc-800 dark:text-zinc-100">{fmt(a.amount)} {GREEN_FACTORS[a.kind]?.units} · {GREEN_FACTORS[a.kind]?.label.toLowerCase()}</span><span className="block text-[11px] text-zinc-500 truncate">{[a.note, formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })].filter(Boolean).join(' · ')}</span></span>
+                    {a.verifiedAt ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300"><ShieldCheck className="w-3.5 h-3.5" aria-hidden />Confirmed</span>
+                      : a.photoUrl ? <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300"><Clock className="w-3.5 h-3.5" aria-hidden />Waiting</span>
+                      : <label className="inline-flex items-center gap-1 rounded-full border border-zinc-200 dark:border-white/10 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 cursor-pointer hover:border-emerald-500/60"><Camera className="w-3.5 h-3.5" aria-hidden />Add proof<input type="file" accept="image/*" className="sr-only" onChange={(e) => void addPhoto(a.id, e.target.files?.[0])} /></label>}
+                    <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400">−{a.co2Kg} kg</span>
+                    <button type="button" onClick={() => void remove(a.id)} aria-label="Delete this action" className="w-7 h-7 grid place-items-center rounded-full text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition"><Trash2 className="w-3.5 h-3.5" /></button>
+                  </li>
+                ); })}
+              </ul>
+            )}
+            {data && data.recent.length > RECENT && <button type="button" onClick={() => setAllRecent((v) => !v)} className="btn-secondary btn-sm mt-3 lg:hidden">{allRecent ? 'Show less' : `Show all ${data.recent.length}`}</button>}
           </div>
-          <ul className="mt-5 space-y-2">
-            {GREEN_KINDS.filter((k) => t?.kgByKind[k]).sort((a, b) => (t!.kgByKind[b] ?? 0) - (t!.kgByKind[a] ?? 0)).map((k) => { const I = GREEN_ICON[k]; const kg = t!.kgByKind[k] ?? 0; return (
-              <li key={k} className="text-sm"><div className="flex items-center gap-2"><I className="w-4 h-4 text-emerald-600 dark:text-emerald-400" aria-hidden /><span className="flex-1 text-zinc-700 dark:text-zinc-200">{GREEN_FACTORS[k].label}</span><span className="font-mono text-xs text-zinc-500">{fmt(t!.byKind[k] ?? 0)} {GREEN_FACTORS[k].units}</span><span className="font-mono text-xs w-16 text-right text-emerald-600 dark:text-emerald-400">{kg.toFixed(1)} kg</span></div>
-                <div className="mt-1 ml-6 h-1 rounded-full bg-zinc-100 dark:bg-white/[0.06]"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${(kg / (t!.kg || 1)) * 100}%` }} /></div></li>
-            ); })}
-          </ul>
-        </section>
-        <section className="panel p-5" aria-labelledby="recent-h">
-          <h2 id="recent-h" className="font-bold text-zinc-900 dark:text-white">What you did</h2>
-          {!data ? <div className="mt-3 h-40 skeleton rounded-xl" /> : data.recent.length === 0 ? <p className="mt-3 text-sm text-zinc-500">Nothing yet. Your first action shows here.</p> : (
-            <ul className="mt-3 divide-y divide-zinc-100 dark:divide-white/[0.06]">
-              {data.recent.map((a) => { const I = GREEN_ICON[a.kind] ?? Leaf; return (
-                <li key={a.id} className="py-2.5 flex items-center gap-3 text-sm group">
-                  <span className="w-8 h-8 rounded-xl grid place-items-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"><I className="w-4 h-4" aria-hidden /></span>
-                  <span className="min-w-0 flex-1"><span className="block truncate text-zinc-800 dark:text-zinc-100">{fmt(a.amount)} {GREEN_FACTORS[a.kind]?.units} · {GREEN_FACTORS[a.kind]?.label.toLowerCase()}</span><span className="block text-[11px] text-zinc-500 truncate">{[a.note, formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })].filter(Boolean).join(' · ')}</span></span>
-                  <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400">−{a.co2Kg} kg</span>
-                  <button type="button" onClick={() => void remove(a.id)} aria-label="Delete this action" className="w-7 h-7 grid place-items-center rounded-full text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition"><Trash2 className="w-3.5 h-3.5" /></button>
-                </li>
-              ); })}
-            </ul>
-          )}
         </section>
       </div>
 
       <GreenMap />
     </div>
+  );
+}
+
+interface Proof { id: string; kind: GreenKind; amount: number; co2Kg: number; note: string | null; photoUrl: string; place: string | null; createdAt: string; by: string }
+
+/** My teammates' actions with a photo, waiting for someone to confirm them (GET /green/proofs). */
+function TeamProofs({ onDone }: { onDone: () => void }) {
+  const { data, mutate } = useSWR<{ proofs: Proof[]; teams: number }>('/green/proofs', fetcher);
+  const [busy, setBusy] = useState<string | null>(null);
+  const confirm = async (id: string) => {
+    setBusy(id);
+    try { await api.post(`/green/actions/${id}/confirm`); toast.success('Confirmed. It counts for their challenge now.'); void mutate(); onDone(); } catch (err) { toast.error(errorMessage(err, 'Could not confirm it.')); } finally { setBusy(null); }
+  };
+  return (
+    <section className="panel p-5 relative lg:flex-1 lg:min-h-[240px]" aria-labelledby="proofs-h">
+      <div className="lg:absolute lg:inset-5 flex flex-col">
+        <h2 id="proofs-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" aria-hidden />Confirm your teammates’ actions</h2>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Look at the photo. If it shows what they logged, confirm it: only confirmed actions count for challenges and leaderboards.</p>
+        {!data ? <div className="mt-3 h-24 skeleton rounded-xl" /> : data.teams === 0 ? (
+          <Link href="/green/teams" className="btn-secondary btn-sm mt-3 inline-flex">Join or start a team</Link>
+        ) : data.proofs.length === 0 ? <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">Nothing waiting. New photos from your teams show here.</p> : (
+          <ul className="mt-3 space-y-3 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pe-1">
+            {data.proofs.map((p) => { const f = GREEN_FACTORS[p.kind]; return (
+              <li key={p.id} className="flex gap-3 items-center">
+                <a href={p.photoUrl} target="_blank" rel="noreferrer" className="shrink-0"><Image src={p.photoUrl} alt={`Photo from ${p.by}: ${f?.label ?? 'climate action'}`} width={64} height={64} unoptimized className="w-16 h-16 rounded-xl object-cover bg-zinc-100 dark:bg-white/[0.05]" /></a>
+                <span className="min-w-0 flex-1 text-sm">
+                  <span className="block font-semibold text-zinc-900 dark:text-white truncate" translate="no">{p.by}</span>
+                  <span className="block text-zinc-700 dark:text-zinc-200 truncate">{fmt(p.amount)} {f?.units} · {f?.label.toLowerCase()}</span>
+                  <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 truncate" translate="no">{[p.note, formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })].filter(Boolean).join(' · ')}</span>
+                </span>
+                <button type="button" disabled={busy === p.id} onClick={() => void confirm(p.id)} className="btn-primary btn-sm shrink-0">{busy === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}Confirm</button>
+              </li>
+            ); })}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }
 

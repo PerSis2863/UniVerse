@@ -60,7 +60,7 @@ describe('bulk import, for one school', () => {
     const writes = db.$executeRawUnsafe.mock.calls;
     const enrol = writes.find(([sql]) => String(sql).includes('INSERT INTO enrollments'));
     expect(JSON.parse(enrol![1] as string).map((e: { studentId: string }) => e.studentId)).toEqual(['a2']);
-    for (const call of writes) expect(JSON.stringify(call)).not.toContain('b1');
+    for (const call of writes) expect(JSON.stringify(call)).not.toMatch(/\bb1\b/); // whole word: random new ids can hold "b1"
   });
 
   it('doesn’t match another school’s course by its code', async () => {

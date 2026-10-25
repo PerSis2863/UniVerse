@@ -1,4 +1,4 @@
-// pnpm lean: keeps the project small (the Ponytail rules in .cursor/rules/universe.mdc).
+// pnpm lean: keeps the project small (the Ponytail rules in AGENTS.md, "Keep it lean").
 //   · files under src/ that nothing imports (Next.js entry files, tests and the two files used only
 //     by config, the test setup and the service worker, don't count);
 //   · links in the code ("/…" in href, push, replace, redirect) that match no page in src/app.

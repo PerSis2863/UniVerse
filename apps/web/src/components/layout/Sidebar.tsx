@@ -126,6 +126,7 @@ const campusSearch: Record<string, SearchPage[]> = {
 /** The other apps' pages, findable from every role's search. */
 const APP_SEARCH: SearchPage[] = [
   { href: '/hub', label: 'All apps', keywords: 'apps switch universe impact hub home' },
+  { href: '/hub', label: 'Impact Wallet', keywords: 'wallet balance credits points co2 people helped history all apps' },
   { href: '/trace', label: 'Trace console', keywords: 'trace brand products passport codes batch' },
   { href: '/trace/map', label: 'Market map', keywords: 'where it sells map scans cities live' },
   { href: '/trace/tracking', label: 'Track a shipment', keywords: 'shipment truck delivery driver eta live position' },
