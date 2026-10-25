@@ -6,11 +6,11 @@ import { hash, seeded } from '../seeded-shuffle';
 // same things drifting in at the same moments for everyone. Quick pick-ups build a combo (up to ×2).
 
 export const SEA = {
-  bottle: { emoji: '🧴', label: 'Plastic bottle', pts: 50 },
-  cup: { emoji: '🥤', label: 'Plastic cup', pts: 40 },
-  bag: { emoji: '🛍️', label: 'Plastic bag', pts: 60 },
-  can: { emoji: '🥫', label: 'Can', pts: 40 },
-  net: { emoji: '🕸️', label: 'Ghost net', pts: 150 },
+  bottle: { emoji: '🧴', label: 'Plastic bottle', pts: 50, kg: 0.03 },
+  cup: { emoji: '🥤', label: 'Plastic cup', pts: 40, kg: 0.01 },
+  bag: { emoji: '🛍️', label: 'Plastic bag', pts: 60, kg: 0.01 },
+  can: { emoji: '🥫', label: 'Can', pts: 40, kg: 0.015 },
+  net: { emoji: '🕸️', label: 'Ghost net', pts: 150, kg: 2 },
   turtle: { emoji: '🐢', label: 'Turtle', pts: 0 },
   fish: { emoji: '🐟', label: 'Fish', pts: 0 },
   octopus: { emoji: '🐙', label: 'Octopus', pts: 0 },
@@ -25,6 +25,10 @@ export const isPower = (k: SeaKind) => k === 'magnet' || k === 'shield' || k ===
 export const isTrash = (k: SeaKind) => !isLife(k) && !isPower(k) && k !== 'oil';
 /** How long the magnet and the boost last (ms). */
 export const POWER_MS = 6_000;
+/** The magnet's reach (px), the boost's speed-up, how much oil slows the boat. */
+export const MAGNET_PX = 170, BOOST_SPEED = 1.35, OIL_SLOW = 0.45;
+/** Kilograms of plastic a pick-up takes out of the sea (rough, for the results). */
+export const kgOf = (k: SeaKind) => ('kg' in SEA[k] ? (SEA[k] as { kg: number }).kg : 0);
 /** The sea's stages: calm, choppy from 35%, a storm from 68% (more sea life, faster). */
 export const oceanPhase = (ms: number, seconds: number) => { const p = ms / (seconds * 1000); return p < 0.35 ? 0 : p < 0.68 ? 1 : 2; };
 export const OCEAN_PHASES = ['Calm sea', 'Choppy water', 'Storm!'] as const;

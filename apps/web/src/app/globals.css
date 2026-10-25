@@ -2173,3 +2173,6 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
 @keyframes play-static { 0% { background-position: 0 0; } 100% { background-position: 60px 40px; } }
 .play-static { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); animation: play-static 0.25s steps(4) infinite; }
 @media (prefers-reduced-motion: reduce) { .play-scare { animation-name: rm-fade; animation-direction: reverse; } .play-static { animation: none; } }
+@keyframes play-flame { 0%, 100% { transform: scaleX(1); opacity: 1; } 50% { transform: scaleX(1.45); opacity: 0.75; } }
+.play-flame { animation: play-flame 120ms linear infinite; }
+@media (prefers-reduced-motion: reduce) { .play-flame { animation: none; } }
