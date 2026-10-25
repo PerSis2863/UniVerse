@@ -1802,3 +1802,18 @@ Progress table (row D6).
 - **[owner]** Cloudflare dashboard → the universeimpact.com zone → Security → Bots → turn on **Bot
   Fight Mode** (free): bad bots are stopped before they reach the Worker and stop counting as requests.
   AI answers use the owner's own AI key and the daily allowance (owner console), not the $5 plan.
+
+## M29 · Glides that follow the pointer
+
+- The owner (26 Oct 2026): "add more animations and transitions and glides which should be ultra
+  smooth". The motion layer already covered pages, titles, counts, charts, the menu's selected pill
+  and the tabs' liquid thumb, so this adds motion where people point:
+  - **Menu hover glide** (`Sidebar.tsx`, `.nav-hover` in `globals.css`): a soft highlight slides
+    under the pointer from row to row (shared `layoutId`, `spring.snappy`); the rows' own hover fill
+    steps aside (`.glide-host`). Mouse and trackpad only; touch keeps the plain `:hover`; with
+    Reduce Motion it just appears; off-screen phone menus don't glide.
+  - **Tab hover glide** (`SectionTabs`, `.ios-segment-hover`): the same along every section tab bar,
+    one `layoutId` per bar.
+  - **Group ripple**: a menu group's rows rise in 35 ms apart as it opens (a fade with Reduce Motion).
+- Transform and opacity only, under 300 ms, nothing on scroll. Checked in the browser (the
+  highlight caught mid-glide between rows; rows' opacity staggered right after opening); axe clean.

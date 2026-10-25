@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { LanguageMenu } from './LanguageMenu';
-import { AnimatePresence, m as motion } from 'framer-motion';
+import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useLanguageStore } from '@/store/language';
 import { useOptimisticPath } from '@/lib/nav-pending';
@@ -345,6 +345,8 @@ function NavItemComponent({
   isOpen,
   onToggle,
   glide,
+  hovered,
+  onHover,
 }: { 
   item: NavItem; 
   pathname: string; 
@@ -353,7 +355,13 @@ function NavItemComponent({
   onToggle: () => void;
   /** The highlight slides to the new entry (on screen); otherwise it just moves. */
   glide: boolean;
+  /** The row under the pointer (M29: a soft highlight glides to it), and who to tell. */
+  hovered: string | null;
+  onHover: (key: string | null) => void;
 }) {
+  const calm = useReducedMotion();
+  // The pointer's highlight: glides between rows, or just appears with Reduce Motion.
+  const hoverPill = (key: string, on: boolean) => hovered === key && !on && <motion.span layoutId={calm || !glide ? undefined : 'nav-hover'} transition={spring.snappy} className="nav-hover" aria-hidden />;
   const { t } = useLanguageStore();
   const hasActiveChild = item.subItems?.some(sub => isOn(pathname, sub.href, sub.also) || pathname.startsWith(sub.href + '/'));
   const active = pathname === item.href || (item.href && item.href !== '/' && pathname.startsWith(item.href)) || hasActiveChild;
@@ -363,15 +371,17 @@ function NavItemComponent({
       <div className="space-y-1">
         <button
           onClick={onToggle}
+          onPointerEnter={() => onHover(item.label)}
           aria-expanded={isOpen}
           data-tour-hrefs={item.subItems.map((s) => s.href.split('?')[0]).join(' ')}
-          className={cn('sidebar-item w-full justify-between', active && !isOpen && 'active')}
+          className={cn('sidebar-item glide-host relative w-full justify-between', active && !isOpen && 'active')}
         >
-          <div className="flex items-center gap-3">
+          {hoverPill(item.label, !!(active && !isOpen))}
+          <div className="relative flex items-center gap-3">
             <item.icon className="w-[18px] h-[18px] flex-shrink-0 text-tint-text" strokeWidth={2} />
             <span>{t(item.label)}</span>
           </div>
-          <ChevronDown className={cn('w-3.5 h-3.5 text-zinc-400 transition-transform duration-300', !isOpen && '-rotate-90')} strokeWidth={2.5} />
+          <ChevronDown className={cn('relative w-3.5 h-3.5 text-zinc-400 transition-transform duration-300', !isOpen && '-rotate-90')} strokeWidth={2.5} />
         </button>
         <AnimatePresence initial={false}>
           {isOpen && (
@@ -384,14 +394,18 @@ function NavItemComponent({
               className="overflow-hidden"
             >
               <div className="ps-[1.875rem] space-y-0.5 pt-0.5">
-                {item.subItems.map(sub => {
+                {item.subItems.map((sub, i) => {
                   const on = isOn(pathname, sub.href, sub.also);
                   return (
-                    <Link key={sub.href} href={sub.href} data-vt="fade" data-tour-href={sub.href.split('?')[0]} onClick={onClose} aria-current={on ? 'page' : undefined}
-                      className={cn('sidebar-item pill-host relative block text-[15px] py-1.5', on && 'active')}>
-                      {on && <motion.span layoutId={glide ? 'sidebar-pill' : undefined} transition={spring.snappy} className="sidebar-pill" />}
-                      <span className="relative block truncate">{t(sub.label)}</span>
-                    </Link>
+                    // M29: the rows ripple in as the group opens (35 ms apart; a fade only with Reduce Motion).
+                    <motion.div key={sub.href} initial={{ opacity: 0, y: calm ? 0 : -4 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.snappy, delay: i * 0.035 }}>
+                      <Link href={sub.href} data-vt="fade" data-tour-href={sub.href.split('?')[0]} onClick={onClose} onPointerEnter={() => onHover(sub.href)} aria-current={on ? 'page' : undefined}
+                        className={cn('sidebar-item pill-host glide-host relative block text-[15px] py-1.5', on && 'active')}>
+                        {on && <motion.span layoutId={glide ? 'sidebar-pill' : undefined} transition={spring.snappy} className="sidebar-pill" />}
+                        {hoverPill(sub.href, on)}
+                        <span className="relative block truncate">{t(sub.label)}</span>
+                      </Link>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -414,9 +428,10 @@ function NavItemComponent({
   if (item.href) {
     const on = isOn(pathname, item.href, item.also);
     return (
-      <Link href={item.href} data-vt="fade" data-tour-href={item.href.split('?')[0]} onClick={onClose} aria-current={on ? 'page' : undefined}
-        className={cn('sidebar-item pill-host relative block', on && 'active')}>
+      <Link href={item.href} data-vt="fade" data-tour-href={item.href.split('?')[0]} onClick={onClose} onPointerEnter={() => onHover(item.href!)} aria-current={on ? 'page' : undefined}
+        className={cn('sidebar-item pill-host glide-host relative block', on && 'active')}>
         {on && <motion.span layoutId={glide ? 'sidebar-pill' : undefined} transition={spring.snappy} className="sidebar-pill" />}
+        {hoverPill(item.href, on)}
         <div className="relative flex items-center gap-3">
           <item.icon className="w-[18px] h-[18px] flex-shrink-0 text-tint-text" strokeWidth={2} />
           <span>{t(item.label)}</span>
@@ -442,6 +457,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   const pathname = useOptimisticPath(usePathname());
   const router = useRouter();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   const { t } = useLanguageStore();
   // On a phone the closed menu is off screen: sliding its highlight there on every page change made
   // framer-motion measure the page on each frame of the tab switch.
@@ -507,7 +523,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       <AppSwitcher app={app} role={user.role} onPick={onClose} />
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
+      <nav onPointerLeave={() => setHovered(null)} className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
         {nav.map((item, i) => (
           <NavItemComponent 
             key={i} 
@@ -517,6 +533,8 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
             isOpen={openIndex === i || (item.subItems?.some(sub => isOn(pathname, sub.href, sub.also) || pathname.startsWith(sub.href + '/')) && openIndex === null) ? true : false}
             onToggle={() => setOpenIndex(openIndex === i ? null : i)}
             glide={isOpen || wide}
+            hovered={hovered}
+            onHover={setHovered}
           />
         ))}
       </nav>

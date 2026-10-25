@@ -1,9 +1,9 @@
 'use client';
 
-import { useLayoutEffect } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
-import { m as motion } from 'framer-motion';
+import { m as motion, useReducedMotion } from 'framer-motion';
 import { useAuthStore } from '@/store/auth';
 import Link from '@/components/ui/Link';
 import { useOptimisticPath } from '@/lib/nav-pending';
@@ -303,6 +303,9 @@ export function SectionTabs({ tabs, small, label = 'Sections', end }: { tabs: Se
   const here = usePathname();
   const pathname = useOptimisticPath(here);
   const group = tabs.map((t) => t.href).join('|');
+  // M29: a faint fill follows the pointer along the bar (mouse only; it just appears with Reduce Motion).
+  const [hover, setHover] = useState<string | null>(null);
+  const calm = useReducedMotion();
   // Tabs next to one of the tab bar's pages (Timetable next to Overview…) make this a top-level
   // screen: the phone's top bar shows no back button here. Before paint, so it never flickers.
   const role = useAuthStore((st) => st.user?.role);
@@ -317,11 +320,12 @@ export function SectionTabs({ tabs, small, label = 'Sections', end }: { tabs: Se
   if (shown.length < 2) return null;
   return (
     <nav aria-label={label} data-steady className={cn(small ? 'px-4 sm:px-8 pt-3' : 'px-4 sm:px-8 pt-4', end && 'flex flex-wrap items-center gap-3')}>
-      <div className={cn('ios-segmented', !small && 'large')}>
+      <div className={cn('ios-segmented', !small && 'large')} onPointerLeave={() => setHover(null)}>
         {shown.map((t) => {
           const on = pathname === t.href || !!t.also?.includes(pathname);
           return (
-            <Link key={t.href} href={t.href} data-vt="tab" aria-current={on ? 'page' : undefined} className="ios-segment">
+            <Link key={t.href} href={t.href} data-vt="tab" aria-current={on ? 'page' : undefined} className="ios-segment" onPointerEnter={() => setHover(t.href)}>
+              {hover === t.href && !on && <motion.span layoutId={calm ? undefined : `tabs-hover-${group}`} transition={spring.snappy} className="ios-segment-hover" aria-hidden />}
               {/* M17: a softer tail follows the highlight a moment later, so it moves like liquid. */}
               {on && <motion.span layoutId={`tabs-tail-${group}`} transition={{ type: 'spring', stiffness: 170, damping: 24 }} className="ios-segment-tail" aria-hidden />}
               {on && <motion.span layoutId={`tabs-${group}`} transition={spring.snappy} className="ios-segment-thumb" aria-hidden />}

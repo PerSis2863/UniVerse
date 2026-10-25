@@ -85,7 +85,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   proof for Green actions (M25). Every item has a note in the handoff file and a Progress row in the plan.
 - **On the branch, not merged:** M26a (sample errors tagged, not counted), M26 (launch board, invites),
   M27 (simpler UniVersity menus), M28 (500 people a month on the $5 plan: live events only to people
-  online, migration 0184). **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
+  online, migration 0184), M29 (pointer glides). **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **Next database update number: `0185`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
