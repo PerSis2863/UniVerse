@@ -1033,6 +1033,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/trace\/radar$/, () => ok(impact.sampleTraceRadar())],
   [/^\/trace\/insights$/, () => ok(impact.sampleTraceInsights())],
   [/^\/trace\/vault$/, () => ok(impact.sampleTraceVault())],
+  [/^\/play\/me$/, () => ok(impact.samplePlayMe())],
+  [/^\/play\/leaderboard$/, ({ db: d, q }) => ok(impact.samplePlayBoard(d.me, q.get('game'), q.get('range')))],
+  [/^\/play\/rooms\/[^/]+$/, () => fail('Playing with others needs the real app. Exit sample mode to open or join a room.', 404)],
   // Multi-school SaaS branding and admin settings (Stage 5 · C2)
   [/^\/api\/org\/branding$/, () => ok({
     isSchool: true,
@@ -2358,6 +2361,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   // Ask UniVerse (M30) in the demo: the simple matcher, no AI.
+  // UniVerse Play (M31): solo rounds play fully in the demo; rooms need the real app.
+  ['POST', /^\/play\/scores$/, ({ body }) => { notice(); const score = Math.max(0, Math.round(Number((body as { score?: unknown })?.score) || 0)); return ok({ score, best: score, newBest: score > 0 }); }],
+  ['POST', /^\/play\/rooms(\/[^/]+\/ticket)?$/, () => fail('Playing with others needs the real app. Exit sample mode to open or join a room.', 400)],
   ['POST', /^\/ask$/, ({ body }) => ok({ ...localPlan(String((body as { text?: unknown })?.text ?? '')), ai: false })],
   ['POST', /^\/api\/campus\/events\/[^/]+\/buy$/, () => fail('Sample mode: no money is taken. Exit sample mode to buy a real ticket.', 400)],
   ['POST', /^\/api\/campus\/elections\/[^/]+\/vote$/, () => { notice(); return ok({ receipt: 'SAMP-LE00-RCPT' }); }],

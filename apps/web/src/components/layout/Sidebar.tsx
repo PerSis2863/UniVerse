@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { BarChart3, Briefcase, Check, ChevronsUpDown, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
+import { BarChart3, Briefcase, Check, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
 import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { userCan } from '@/lib/permissions';
@@ -134,6 +134,8 @@ const APP_SEARCH: SearchPage[] = [
   { href: '/trace/vault', label: 'My vault', keywords: 'own ownership transfer warranty proof second hand' },
   { href: '/relief', label: 'Relief map', keywords: 'help need food water shelter medical volunteer aid disaster' },
   { href: '/green', label: 'Log a climate action', keywords: 'green climate co2 tree recycle cycle carbon' },
+  { href: '/play', label: 'Play a game', keywords: 'play games arcade quiz fun friends multiplayer room code' },
+  { href: '/play/leaderboard', label: 'Game leaderboards', keywords: 'games scores best rank leaderboard' },
 ];
 export const searchOnlyPages: Record<string, SearchPage[]> = Object.fromEntries(Object.entries(campusSearch).map(([role, list]) => [role, [...list, ...APP_SEARCH]]));
 
@@ -272,13 +274,17 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
     { href: '/green', label: 'My impact', icon: Leaf },
     { href: '/green/teams', label: 'Teams & leaderboard', icon: Trophy },
   ],
+  play: [
+    { href: '/play', label: 'Arcade', icon: Gamepad2, also: ['/play/game'] },
+    { href: '/play/leaderboard', label: 'Leaderboards', icon: Trophy },
+  ],
 };
 
 /** The menu for the app someone is in. */
 function navFor(app: AppId | null, user: { role: string; owner?: boolean; permissions?: string[] }): NavItem[] {
   const owner: NavItem[] = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }] : [];
   const hub: NavItem = { href: '/hub', label: 'All apps', icon: LayoutGrid };
-  if (!app) return [...owner, hub, ...APPS.map((a): NavItem => ({ href: appHome(a.id, user.role), label: a.name, icon: { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf }[a.id] })), ...sharedNav(user.role)];
+  if (!app) return [...owner, hub, ...APPS.map((a): NavItem => ({ href: appHome(a.id, user.role), label: a.name, icon: { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, play: Gamepad2 }[a.id] })), ...sharedNav(user.role)];
   if (app === 'campus') {
     const base = [...owner, ...(navByRole[user.role] ?? navByRole.STUDENT)];
     return user.role === 'TEACHER' ? withOffice(base, user) : base;

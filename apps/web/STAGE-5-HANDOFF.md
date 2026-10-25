@@ -1837,3 +1837,54 @@ Progress table (row D6).
   before the tap, saved after; search offers Ask UniVerse first for a sentence; axe clean on `/hub`.
 - Next steps if the owner wants more: more actions (enrol, book a room, start a chat), answers about
   the person's own data, several steps in one request.
+
+## M31 · UniVerse Play: four games, solo and with friends
+
+- The owner (25 Oct): "make in like 4 of them you have made the university, trace, relief, green
+  like that and also add single multiplayer games also … very detailed and ultra smooth animations".
+  After the antics.gg study (rooms over WebSockets, a code to join): our own, nothing copied.
+- **A fifth app, UniVerse Play** (`src/lib/apps.ts` `play`, colour fuchsia): menu Arcade and
+  Leaderboards (`Sidebar.tsx`, `app-tabs.ts`), its landing tab (`PlaySection`, an animated live
+  scoreboard card), sign-in side, FAQ, hub card ("games played"), launch board row.
+- **Four games, one per app** (`src/lib/play.ts` `GAMES`; rules in `src/lib/play/*.ts` + tests):
+  - **Quiz Clash** (UniVersity, `quiz.ts`): 50 bank questions plus made-up maths every third
+    question; 10 s each, speed and streak bonus; the right answer always lights up.
+  - **Spot the Fake** (Trace, `fakes.ts`): four passports, one copy; the tells are Trace's own
+    (too fast a journey, far too many scans, a seal that doesn't match, a misspelt brand); three
+    lives; the reveal says why.
+  - **Supply Run** (Relief, `supply.ts`): needs pop up across a 6×4 town with a draining ring; pick
+    a supply (keys 1–4), tap the need, a truck drives it from the depot; faster as the round goes.
+  - **Recycle Rush** (Green, `sort.ts`): items ride a belt; sort the front one into one of four bins
+    before it drops; streak multiplier ×1 → ×3 and a CO₂ counter (game-only averages, Green's real
+    factors stay in `src/lib/green.ts`).
+  Every game is made from a **seed**: the same seed gives the same round, which is how a room
+  races fairly. Points are capped per game (`maxScore`, `cleanScore`), and tests prove a perfect
+  round stays under the cap.
+- **Solo:** `/play/game?g=<game>` → Play solo → 3-2-1 → round → score saved (`POST /play/scores`,
+  200 a day), new best with confetti. **With friends:** Play with friends opens a room
+  (`POST /play/rooms`) with a 6-character code (no 0/O/1/I), link and QR; friends join by code on
+  `/play` or the game page (`GET /play/rooms/:code` checks it first). Up to 8; the host picks the
+  game and starts; everyone counts down to the same moment; a live scoreboard reorders as scores
+  come in; podium at the end; Play again goes back to the lobby.
+- **Rooms** are the `GameRoom` Durable Object (`cloudflare/game-room.ts`, binding `GAMES`,
+  wrangler migration `v5`): the app hands a one-time ticket (`POST /play/rooms/:code/ticket`, 60 s)
+  and the browser connects to `/play-live` (Worker → room). Sockets hibernate (pings answered
+  without waking the room), scores go up at most twice a second (`useGameRoom`), the room keeps
+  the clock (`startsAt`/`endsAt`, each device corrects its clock from the room's messages), ends
+  the round when all are done or at the alarm, and writes `game_scores` (mode `multi`).
+  Migration **0185** `game_scores`. Someone arriving mid-round (or reconnecting mid-round)
+  watches and plays the next round.
+- **Cost:** a 75 s room round of 8 is about 8 × 150 progress messages = 1,200 incoming messages,
+  i.e. about 60 Durable Object requests at the 20:1 rate; idle rooms cost nothing (hibernation).
+- **Motion:** each game's timer drains and the belt runs as one GPU animation (`play-drain`, Web
+  Animations for the belt, nothing per frame), React re-renders only when something happens
+  (games are reducers woken at the next event), cards and answers arrive on springs, wrong answers
+  shake, points float up, the scoreboard glides rows into place, the podium rises. Reduce Motion:
+  loops stop, hits fade. `Rolling` (moved out of `GreenApp`) rolls numbers.
+- **Demo:** sample answers for `/play/me` and `/play/leaderboard`; solo rounds play fully; rooms say
+  they need the real app.
+- Checked: unit tests; solo rounds of all four games in the browser at 390/1280, light/dark, axe
+  clean; a full Quiz Clash round with its result; two browsers in one room on the local build
+  (join by code, host switches game, live board, podium for both, back to the lobby).
+- Next if the owner wants more: more question packs (per course, from teachers), a weekly
+  tournament, rooms open to a whole class, sounds.

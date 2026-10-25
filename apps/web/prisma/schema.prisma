@@ -7012,3 +7012,18 @@ model GreenAction {
   @@index([verifiedAt])
   @@map("green_actions")
 }
+
+/// UniVerse Play (M31, migration 0185): a finished round's score, solo or multiplayer.
+model GameScore {
+  id        String   @id @default(cuid())
+  userId    String
+  game      String
+  mode      String
+  score     Int
+  roomCode  String?
+  createdAt DateTime @default(now())
+
+  @@index([game, score])
+  @@index([userId, createdAt])
+  @@map("game_scores")
+}

@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import Image from 'next/image';
-import { AnimatePresence, animate, m as motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Award, Bike, Bus, Camera, Clock, Flame, Footprints, Leaf, Loader2, Lock, MapPin, Recycle, ShieldCheck, Sparkles, Sun, Trash2, TreePine, Trophy, Utensils } from 'lucide-react';
 import Link from '@/components/ui/Link';
+import { Rolling } from '@/components/ui/Rolling';
 import { api, errorMessage } from '@/lib/api';
 import { authedJson } from '@/lib/authed-fetch';
 import { shrinkImage } from '@/lib/shrink-image';
@@ -48,20 +49,6 @@ async function uploadProof(file: File) {
   return (await authedJson<{ url: string }>(`/api/upload?filename=${encodeURIComponent(f.name || 'proof.jpg')}`, { method: 'POST', body: f, headers: { 'Content-Type': f.type || 'image/jpeg' } })).url;
 }
 const WORLD: Box = [-168, -56, 190, 76];
-
-function Rolling({ value, digits = 1 }: { value: number; digits?: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const calm = useReducedMotion();
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (calm) { el.textContent = value.toFixed(digits); return; }
-    const from = Number(el.textContent) || 0;
-    const c = animate(from, value, { duration: 1.1, ease: [0.22, 1, 0.36, 1], onUpdate: (v) => { el.textContent = v.toFixed(digits); } });
-    return () => c.stop();
-  }, [value, digits, calm]);
-  return <span ref={ref} className="tabular-nums">0</span>;
-}
 
 export function GreenApp() {
   const { data, mutate } = useSWR<GreenMe>('/green/me', fetcher);
@@ -109,7 +96,7 @@ export function GreenApp() {
         <div className="relative grid lg:grid-cols-[1fr_auto] gap-6 items-end">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-200 ring-1 ring-emerald-300/30"><Leaf className="w-3.5 h-3.5" aria-hidden />Your impact</span>
-            <p className="mt-4 font-mono text-6xl sm:text-7xl font-light text-emerald-300"><Rolling value={t?.kg ?? 0} /><span className="ml-3 text-xl text-emerald-100/70">kg CO₂ saved</span></p>
+            <p className="mt-4 font-mono text-6xl sm:text-7xl font-light text-emerald-300"><Rolling value={t?.kg ?? 0} digits={1} /><span className="ml-3 text-xl text-emerald-100/70">kg CO₂ saved</span></p>
             <p className="mt-3 text-emerald-50/80">{t ? `That’s like ${fmt(Math.round(t.kg / 22))} trees growing for a year, or ${fmt(Math.round(t.kg / 0.2))} km not driven.` : '…'}</p>
           </div>
           <dl className="grid grid-cols-3 gap-3 text-center">

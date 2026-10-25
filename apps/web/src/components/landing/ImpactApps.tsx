@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { Bike, Check, Droplets, HandHeart, Home, Leaf, MapPin, Recycle, Stethoscope, Sun, TreePine, Trophy, Truck, Utensils, Users } from 'lucide-react';
+import { Bike, Brain, Check, Droplets, Gamepad2, HandHeart, Home, Leaf, MapPin, Recycle, ScanLine, Stethoscope, Sun, TreePine, Trophy, Truck, Utensils, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { APPS, type AppId } from '@/lib/apps';
 import { Accent, CountUp, Reveal, Tag, ghost, glass, primary } from './bits';
 
 // The website's parts for UniVerse Impact's newer apps (src/lib/apps.ts): a live-looking card for the
-// hero and a section each for Relief and Green, and the grid of every app. Illustrations only: no
+// hero and a section each for Relief, Green and Play, and the grid of every app. Illustrations only: no
 // invented customers or numbers about real people.
 
 const REQUESTS = [
@@ -75,6 +75,35 @@ export function GreenCard() {
   );
 }
 
+const RACERS = [{ name: 'Maya', color: '#6366f1' }, { name: 'Omar', color: '#ec4899' }, { name: 'Yuki', color: '#f97316' }, { name: 'Leo', color: '#10b981' }];
+
+/** The hero's Play card: a room's live scoreboard, the leader changing as the race goes on. */
+export function PlayCard() {
+  const [t, setT] = useState(0);
+  useEffect(() => { const id = setInterval(() => setT((x) => (x + 1) % 40), 900); return () => clearInterval(id); }, []);
+  // Made-up but steady: each racer gains at their own rhythm, so the order changes now and then.
+  const rows = RACERS.map((r, i) => ({ ...r, score: Math.round(t * (180 + i * 23) + 400 * Math.sin((t + i * 3) / 2.2) + 600) })).sort((a, b) => b.score - a.score);
+  const top = Math.max(...rows.map((r) => r.score), 1);
+  return (
+    <div className={`${glass} w-full max-w-md p-5`}>
+      <div className="flex items-center gap-3"><AppIcon id="play" size={36} /><div><p className="font-bold text-white">Room K7Q2MX · Quiz Clash</p><p className="text-xs text-zinc-400">4 friends, the same questions, one scoreboard</p></div></div>
+      <ol className="mt-5 space-y-2.5">
+        {rows.map((r, i) => (
+          <motion.li key={r.name} layout transition={{ type: 'spring', stiffness: 420, damping: 34 }} className="flex items-center gap-3 rounded-2xl bg-white/[0.05] ring-1 ring-white/[0.07] px-4 py-2.5">
+            <span className="w-5 font-mono text-sm text-zinc-400">{i + 1}</span>
+            <span className="w-8 h-8 rounded-full grid place-items-center text-xs font-bold text-white" style={{ background: r.color }}>{r.name[0]}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-white">{r.name}</span>
+              <span className="mt-1 block h-1.5 rounded-full bg-white/[0.08] overflow-hidden"><motion.span className="block h-full rounded-full" style={{ background: r.color }} animate={{ width: `${(r.score / top) * 100}%` }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} /></span>
+            </span>
+            <span className="font-mono text-sm tabular-nums text-white">{r.score.toLocaleString()}</span>
+          </motion.li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function Feature({ icon: Icon, title, text, color }: { icon: typeof Leaf; title: string; text: string; color: string }) {
   return (
     <div className="h-full rounded-3xl p-6 bg-white/[0.04] ring-1 ring-white/[0.08] hover:ring-white/20 transition-shadow">
@@ -120,6 +149,27 @@ export function GreenSection() {
           ] as const).map(([icon, t, d], i) => <Reveal key={t} delay={0.1 + i * 0.06}><Feature icon={icon} title={t} text={d} color="#6ee7b7" /></Reveal>)}
         </div>
         <Reveal delay={0.2}><div className="mt-10 flex flex-wrap gap-3"><Link href="/register?app=green" className={primary}>Join Green</Link><Link href="/login?app=green" className={ghost}>Sign in to Green</Link></div></Reveal>
+      </div>
+    </section>
+  );
+}
+
+export function PlaySection() {
+  return (
+    <section id="play" className="px-6 py-24 scroll-mt-24">
+      <div className="max-w-6xl mx-auto">
+        <Reveal><Tag>UniVerse Play</Tag></Reveal>
+        <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Games that teach <Accent>something.</Accent></h2></Reveal>
+        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Four quick games, one from each app. Play alone to beat your best, or open a room, share the code and race your friends on the same rounds, with a live scoreboard.</p></Reveal>
+        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {([
+            [Brain, 'Quiz Clash', 'Fast questions from science to geography. Quick answers and streaks score more.', '#a5b4fc'],
+            [ScanLine, 'Spot the Fake', 'Four product passports, one copy. Learn the signs a label was faked.', '#f9a8d4'],
+            [Truck, 'Supply Run', 'Needs pop up on the map: send the right supplies before time runs out.', '#fdba74'],
+            [Recycle, 'Recycle Rush', 'Sort every item into the right bin and watch the CO₂ you save add up.', '#6ee7b7'],
+          ] as const).map(([icon, t, d, c], i) => <Reveal key={t} delay={0.1 + i * 0.06}><Feature icon={icon} title={t} text={d} color={c} /></Reveal>)}
+        </div>
+        <Reveal delay={0.2}><div className="mt-10 flex flex-wrap gap-3"><Link href="/register?app=play" className={primary}><Gamepad2 className="w-4 h-4" aria-hidden />Play free</Link><Link href="/login?app=play" className={ghost}>Sign in to Play</Link></div></Reveal>
       </div>
     </section>
   );

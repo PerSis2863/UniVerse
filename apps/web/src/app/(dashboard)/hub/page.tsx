@@ -50,7 +50,7 @@ export default function HubPage() {
                 {hello}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}.
               </motion.h2>
               <p className="mt-3 text-lg text-zinc-300 max-w-2xl">Pick where you want to make a difference today. Every app uses the same account, messages and files.</p>
-              <dl className="mt-7 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <dl className="mt-7 grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {APPS.map((a, i) => (
                   <motion.div key={a.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.06, duration: 0.6, ease: EASE }} className="rounded-2xl bg-white/[0.06] ring-1 ring-white/10 px-4 py-3">
                     <dt className="text-[11px] uppercase tracking-wider text-zinc-400">{data?.apps[a.id]?.label ?? a.tagline}</dt>

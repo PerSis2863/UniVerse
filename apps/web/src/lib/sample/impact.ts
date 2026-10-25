@@ -2,6 +2,7 @@ import { CITIES } from '@/components/trace/map/cities';
 import { BADGES, GREEN_FACTORS, GREEN_KINDS, co2For, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
 import { newest, weekly, type WalletEvent } from '@/lib/impact-wallet';
 import { URGENCIES, snap, type ReliefKind } from '@/lib/relief';
+import { GAMES, GAME_IDS, isGame, type GameId } from '@/lib/play';
 
 // Sample answers for the impact apps (the hub, Trace, Relief and Green) while sample mode is on, so a
 // visitor's "Try the live demo" and a signed-in person's "Explore with sample data" both open full
@@ -32,6 +33,7 @@ export function sampleHub(me: { id: string }) {
       trace: { value: 48_210, label: 'products checked', mine: { value: 1860, label: 'points earned' } },
       relief: { value: 3_904, label: 'people helped', mine: { value: 23, label: 'people helped' } },
       green: { value: 182_450, label: 'kg CO₂ saved', mine: { value: 312, label: 'kg CO₂ saved' } },
+      play: { value: 26_380, label: 'games played', mine: { value: 41, label: 'games played' } },
     },
     total: { people: 12_480 },
   };
@@ -409,3 +411,26 @@ export function sampleTraceVault() {
     { id: 'sample-v2', code: 'ZENITH0911PQ4M', since: iso(now - 120 * DAY), owners: 2, product: { id: 'sample-w', name: 'Zenith Diver 300', imageUrl: null, category: 'watches' }, brand: { id: 'sample-zenith', name: 'Zenith Watches', color: '#94a3b8', slug: 'zenith-watches' }, warrantyEnds: iso(now + 600 * DAY), transfer: { code: 'K7Q2XM4P', until: iso(now + 5 * DAY) } },
   ];
 }
+
+/** GET /play/me */
+export function samplePlayMe() {
+  const r = rng(31), now = Date.now();
+  const games = Object.fromEntries(GAME_IDS.map((g) => [g, { best: Math.round(GAMES[g].maxScore * (0.18 + r() * 0.2)), solo: 3 + Math.floor(r() * 9), multi: Math.floor(r() * 5) }])) as Record<GameId, { best: number; solo: number; multi: number }>;
+  const recent = Array.from({ length: 8 }, (_, i) => {
+    const game = pick(r, GAME_IDS);
+    return { game, mode: r() < 0.35 ? 'multi' : 'solo', score: Math.round(games[game].best * (0.55 + r() * 0.45)), createdAt: iso(now - (i * 5 + r() * 4) * 3_600_000) };
+  });
+  return { games, played: GAME_IDS.reduce((n, g) => n + games[g].solo + games[g].multi, 0), recent };
+}
+
+/** GET /play/leaderboard */
+export function samplePlayBoard(me: { id: string; name: string }, gameRaw: unknown, rangeRaw: unknown) {
+  const game: GameId = isGame(gameRaw) ? gameRaw : 'quiz', range = rangeRaw === 'all' ? 'all' : 'week';
+  const r = rng(game.length * 7 + (range === 'all' ? 3 : 0)), max = GAMES[game].maxScore;
+  const mine = Math.round(max * (range === 'all' ? 0.36 : 0.31));
+  const rows = [...NAMES.slice(0, 14).map((name) => ({ name, score: Math.round(max * (0.2 + r() * 0.35)), me: false })), { name: me.name, score: mine, me: true }]
+    .sort((a, b) => b.score - a.score)
+    .map((x, i) => ({ rank: i + 1, name: x.name, avatar: null, score: x.score, rounds: 1 + Math.floor(r() * 12), me: x.me }));
+  return { game, range, maxScore: max, rows, mine };
+}
+

@@ -1,0 +1,144 @@
+'use client';
+
+import useSWR from 'swr';
+import { m as motion, useReducedMotion } from 'framer-motion';
+import { formatDistanceToNow } from 'date-fns';
+import { ArrowRight, Gamepad2, Trophy, User, Users } from 'lucide-react';
+import Link from '@/components/ui/Link';
+import { Rolling } from '@/components/ui/Rolling';
+import { fetcher } from '@/lib/fetcher';
+import { appById } from '@/lib/apps';
+import { GAMES, GAME_IDS, type GameId } from '@/lib/play';
+import { ITEMS } from '@/lib/play/sort';
+import { spring } from '@/lib/motion';
+import { GameIcon } from './GameIcon';
+import { JoinRoom, type PlayMe } from './GameShell';
+
+// UniVerse Play's home (/play): the four games, one for each app, each card with a small live scene
+// of how it plays; join a room by code; my numbers and last rounds. Scenes are CSS only and stop
+// with Reduce Motion.
+
+function Scene({ game }: { game: GameId }) {
+  if (game === 'quiz') {
+    return (
+      <div className="play-scene grid grid-cols-2 gap-1.5" aria-hidden>
+        {['Pacific', 'Atlantic', 'Indian', 'Arctic'].map((o, i) => (
+          <span key={o} className={`rounded-lg px-2 py-1.5 text-[11px] font-medium ${i === 0 ? 'bg-emerald-500/20 text-emerald-700 ring-1 ring-emerald-500/50 dark:text-emerald-200' : 'bg-white/70 text-zinc-600 dark:bg-white/10 dark:text-zinc-300'}`}>{o}</span>
+        ))}
+      </div>
+    );
+  }
+  if (game === 'fakes') {
+    return (
+      <div className="play-scene grid grid-cols-4 gap-1.5" aria-hidden>
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className="relative h-14 rounded-lg bg-white/80 p-1.5 dark:bg-white/10">
+            <span className="block h-1.5 w-3/4 rounded bg-zinc-300 dark:bg-white/20" /><span className="mt-1 block h-1.5 w-1/2 rounded bg-zinc-200 dark:bg-white/10" />
+            {i === 2 && <span className="absolute inset-x-1 bottom-1.5 -rotate-12 rounded border-2 border-red-500 text-center text-[11px] font-black leading-tight text-red-500">COPY</span>}
+          </span>
+        ))}
+      </div>
+    );
+  }
+  if (game === 'supply') {
+    return (
+      <div className="relative grid h-16 grid-cols-6 gap-1" aria-hidden>
+        {Array.from({ length: 12 }, (_, i) => <span key={i} className="rounded bg-white/60 dark:bg-white/[0.06]" />)}
+        {[[18, 30, '#38bdf8'], [62, 70, '#f97316'], [85, 25, '#ef4444']].map(([x, y, c], i) => (
+          <span key={i} className="absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2" style={{ left: `${x}%`, top: `${y}%` }}>
+            <span className="play-ripple absolute inset-0 rounded-full" style={{ background: c as string, animationDelay: `${i * -0.5}s` }} />
+            <span className="relative block h-3.5 w-3.5 rounded-full ring-2 ring-white dark:ring-[#1B2C39]" style={{ background: c as string }} />
+          </span>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="relative h-16 overflow-hidden rounded-xl bg-white/50 dark:bg-white/[0.05]" aria-hidden>
+      <div className="absolute inset-x-0 bottom-2 h-1.5 overflow-hidden bg-zinc-300 dark:bg-white/10"><div className="play-stripes h-full w-[calc(100%+48px)] bg-[repeating-linear-gradient(90deg,transparent_0_20px,rgba(0,0,0,0.15)_20px_24px)]" /></div>
+      <div className="play-scene absolute inset-x-3 top-2 flex justify-between">
+        {[0, 8, 22, 26].map((k) => <span key={k} className="grid h-9 w-9 place-items-center rounded-xl bg-white text-xl shadow-sm dark:bg-[#11212D]">{ITEMS[k][1]}</span>)}
+      </div>
+    </div>
+  );
+}
+
+export function Arcade() {
+  const { data: me } = useSWR<PlayMe>('/play/me', fetcher);
+  const calm = useReducedMotion();
+  const bestTotal = me ? GAME_IDS.reduce((n, g) => n + (me.games[g]?.best ?? 0), 0) : 0;
+  const withFriends = me ? GAME_IDS.reduce((n, g) => n + (me.games[g]?.multi ?? 0), 0) : 0;
+
+  return (
+    <div className="space-y-6">
+      <section className="panel relative overflow-hidden p-5 sm:p-8">
+        <div className="pointer-events-none absolute -start-20 -top-24 h-72 w-72 rounded-full bg-fuchsia-500/25 blur-3xl" aria-hidden />
+        <div className="relative grid gap-6 lg:grid-cols-[1fr_22rem] lg:items-end">
+          <div>
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-2.5 py-1 text-xs font-semibold text-fuchsia-700 dark:text-fuchsia-300"><Gamepad2 className="w-3.5 h-3.5" aria-hidden />UniVerse Play</p>
+            <h1 className="mt-3 text-3xl font-semibold text-zinc-900 dark:text-white sm:text-4xl">Games that <em className="font-serif text-pink-600 dark:text-pink-300">teach</em> something.</h1>
+            <p className="mt-2 max-w-xl text-zinc-600 dark:text-zinc-300">One game for each app: learn, catch fakes, deliver help and sort waste. Play alone against your best, or open a room and race friends live.</p>
+            <dl className="mt-6 grid max-w-md grid-cols-3 gap-4">
+              <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">Rounds played</dt><dd className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={me?.played ?? 0} /></dd></div>
+              <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">With friends</dt><dd className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={withFriends} /></dd></div>
+              <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">Best, all games</dt><dd className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={bestTotal} /></dd></div>
+            </dl>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+            <p className="mb-2 text-sm font-semibold text-zinc-900 dark:text-white">Got a room code?</p>
+            <JoinRoom compact />
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {GAME_IDS.map((g, i) => {
+          const info = GAMES[g], mine = me?.games[g];
+          return (
+            <motion.div key={g} initial={{ opacity: 0, y: calm ? 0 : 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.smooth, delay: 0.05 * i }}>
+              <Link href={`/play/game?g=${g}`} className="sheen panel group relative flex h-full flex-col overflow-hidden p-5 transition-transform duration-200 active:scale-[0.99]">
+                <span className="pointer-events-none absolute -end-16 -top-16 h-48 w-48 rounded-full opacity-25 blur-3xl transition-opacity duration-300 group-hover:opacity-40" style={{ background: info.color }} aria-hidden />
+                <span className="relative flex items-start gap-3">
+                  <GameIcon game={g} />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300"><span className="h-1.5 w-1.5 rounded-full" style={{ background: info.color }} aria-hidden />{appById(info.app).name}</span>
+                    <span className="block text-lg font-semibold text-zinc-900 dark:text-white">{info.name}</span>
+                  </span>
+                  {mine && mine.best > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-zinc-700 dark:bg-white/10 dark:text-zinc-200"><Trophy className="w-3 h-3" aria-hidden />{mine.best.toLocaleString()}</span>}
+                </span>
+                <span className="relative mt-4 block rounded-2xl bg-zinc-100/80 p-3 dark:bg-white/[0.04]"><Scene game={g} /></span>
+                <span className="relative mt-4 block text-sm text-zinc-600 dark:text-zinc-300">{info.tagline}</span>
+                <span className="relative mt-4 flex items-center gap-3 text-sm">
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-zinc-900 dark:text-white">Play<ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5 rtl:-scale-x-100 rtl:group-hover:-translate-x-0.5" aria-hidden /></span>
+                  <span className="ms-auto text-xs text-zinc-500 dark:text-zinc-400">{info.seconds} s · solo or up to 8</span>
+                </span>
+              </Link>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <section className="panel p-5">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-zinc-900 dark:text-white">Your last rounds</h2>
+          <Link href="/play/leaderboard" className="inline-flex items-center gap-1.5 text-sm font-semibold text-pink-600 dark:text-pink-300"><Trophy className="w-4 h-4" aria-hidden />Leaderboards</Link>
+        </div>
+        {me && me.recent.length === 0 && <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">No rounds yet. Pick a game above: a solo round takes about a minute.</p>}
+        <ul className="mt-3 divide-y divide-zinc-200 dark:divide-white/10">
+          {me?.recent.map((r, i) => {
+            const Mode = r.mode === 'multi' ? Users : User;
+            return (
+              <li key={`${r.createdAt}-${i}`} className="flex items-center gap-3 py-2.5 text-sm">
+                <GameIcon game={r.game} size="sm" />
+                <span className="min-w-0 flex-1 truncate font-medium text-zinc-800 dark:text-zinc-100">{GAMES[r.game]?.name ?? r.game}</span>
+                <span className="hidden items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400 sm:inline-flex"><Mode className="w-3.5 h-3.5" aria-hidden />{r.mode === 'multi' ? 'With friends' : 'Solo'}</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">{formatDistanceToNow(new Date(r.createdAt), { addSuffix: true })}</span>
+                <span className="w-16 text-end font-semibold tabular-nums text-zinc-900 dark:text-white">{r.score.toLocaleString()}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    </div>
+  );
+}

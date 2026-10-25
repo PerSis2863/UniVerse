@@ -2058,3 +2058,32 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
   .print-sheet { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4mm; padding: 6mm; }
   .trace-label { break-inside: avoid; border-color: #ccc !important; }
 }
+
+/* UniVerse Play (M31): timers drain, belts run and ripples spread as one CSS animation each, on the
+   GPU, with nothing to work out per frame. With Reduce Motion the loops stop and the hits fade. */
+@keyframes play-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.play-drain { animation: play-drain linear forwards; transform-origin: left; }
+[dir="rtl"] .play-drain { transform-origin: right; }
+@keyframes play-shake { 20%, 60% { transform: translate3d(-6px, 0, 0); } 40%, 80% { transform: translate3d(6px, 0, 0); } }
+.play-shake { animation: play-shake 320ms var(--ease-out-soft); }
+@keyframes play-ripple { from { transform: scale(1); opacity: 0.55; } to { transform: scale(2.1); opacity: 0; } }
+.play-ripple { animation: play-ripple 1.6s var(--ease-out-soft) infinite; }
+@keyframes play-stripes { to { transform: translate3d(-48px, 0, 0); } }
+.play-stripes { animation: play-stripes 1.2s linear infinite; }
+[dir="rtl"] .play-stripes { animation-direction: reverse; }
+@keyframes play-sorted { to { transform: translate3d(0, 72px, 0) scale(0.5); opacity: 0; } }
+.play-sorted { animation: play-sorted 340ms var(--ease-out-soft) forwards; }
+@keyframes play-dropped { to { transform: translate3d(14px, 64px, 0) rotate(40deg); opacity: 0; } }
+.play-dropped { animation: play-dropped 420ms ease-in forwards; }
+@keyframes play-float { 0% { transform: translate3d(-50%, 4px, 0) scale(0.9); opacity: 0; } 18% { transform: translate3d(-50%, -8px, 0) scale(1); opacity: 1; } 100% { transform: translate3d(-50%, -44px, 0); opacity: 0; } }
+.play-float { animation: play-float 900ms var(--ease-out-soft) forwards; }
+@keyframes play-tick { from { transform: scale(1.18); } }
+.play-tick { animation: play-tick 260ms var(--ease-out-soft); }
+@keyframes play-scene { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -4px, 0); } }
+.play-scene > * { animation: play-scene 3.2s var(--ease-glide) infinite; }
+.play-scene > *:nth-child(2) { animation-delay: -0.8s; } .play-scene > *:nth-child(3) { animation-delay: -1.6s; } .play-scene > *:nth-child(4) { animation-delay: -2.4s; }
+@media (prefers-reduced-motion: reduce) {
+  .play-ripple, .play-stripes, .play-scene > * { animation: none; }
+  .play-shake, .play-tick { animation: none; }
+  .play-sorted, .play-dropped, .play-float { animation-name: rm-fade; animation-direction: reverse; }
+}

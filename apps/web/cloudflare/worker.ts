@@ -14,6 +14,10 @@ import { callerOrg, fastApi } from './fast-api';
 import { apiDirect } from './api-direct';
 import { isBuiltPage, pageFor } from './page-match';
 import { fanOut, readRelay } from '../src/lib/fanout';
+import { cleanRoomCode } from '../src/lib/play';
+import { GameRoom } from './game-room';
+
+export { GameRoom };
 import { routeOf } from '../src/lib/route-label';
 import { callsDue, dailyPending } from './due-check';
 import { dbDate } from './fast-db';
@@ -30,6 +34,7 @@ interface Env {
   BOARDS?: DurableObjectNamespace<BoardRoom>;
   CODE?: DurableObjectNamespace<CodeRoom>;
   CALLS?: DurableObjectNamespace<CallRoom>;
+  GAMES?: DurableObjectNamespace<GameRoom>;
   API_RATE_LIMITER?: RateLimit; // per signed-in user (or per IP when signed out)
   IP_RATE_LIMITER?: RateLimit; // per IP, generous: stops floods from one address
   COSTLY_RATE_LIMITER?: RateLimit; // per user, for AI, email and uploads
@@ -58,7 +63,7 @@ async function rateLimited(request: Request, url: URL, env: Env): Promise<boolea
   const token = request.headers.get('authorization')?.slice(-40);
   // Live connections can't send headers: they carry the user (and a one-time ticket) in the
   // address, so count them per user too, not per shared campus address.
-  const live = url.pathname === '/realtime' ? url.searchParams.get('user') : url.pathname === '/board-live' || url.pathname === '/code-live' || url.pathname === '/call-live' ? url.searchParams.get('ticket') : null;
+  const live = url.pathname === '/realtime' ? url.searchParams.get('user') : url.pathname === '/board-live' || url.pathname === '/code-live' || url.pathname === '/call-live' || url.pathname === '/play-live' ? url.searchParams.get('ticket') : null;
   const who = token ? `u:${token}` : live ? `live:${live.slice(0, 80)}` : `ip:${ip}`;
   const checks: Promise<{ success: boolean }>[] = [];
   if (env.IP_RATE_LIMITER) checks.push(env.IP_RATE_LIMITER.limit({ key: ip }));
@@ -181,7 +186,7 @@ export default {
     const gate = serverGate(request, url, env, ctx);
     if (gate) return gate;
     // Stripe's webhook is signed and comes from Stripe's servers, so it's never rate limited.
-    if ((url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/webhooks/')) || url.pathname === '/realtime' || url.pathname === '/board-live' || url.pathname === '/code-live' || url.pathname === '/call-live') {
+    if ((url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/webhooks/')) || url.pathname === '/realtime' || url.pathname === '/board-live' || url.pathname === '/code-live' || url.pathname === '/call-live' || url.pathname === '/play-live') {
       if (await rateLimited(request, url, env)) return tooMany();
     }
     if (url.pathname === '/realtime') {
@@ -207,6 +212,13 @@ export default {
       const callId = url.searchParams.get('call');
       if (!callId || !url.searchParams.get('ticket') || !env.CALLS) return new Response('Forbidden', { status: 403 });
       return env.CALLS.get(env.CALLS.idFromName(callId)).fetch(request);
+    }
+    // UniVerse Play rooms (cloudflare/game-room.ts): only the socket upgrade reaches the room.
+    if (url.pathname === '/play-live') {
+      if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('Expected a WebSocket', { status: 426 });
+      const room = cleanRoomCode(url.searchParams.get('room'));
+      if (!room || !url.searchParams.get('ticket') || !env.GAMES) return new Response('Forbidden', { status: 403 });
+      return env.GAMES.get(env.GAMES.idFromName(room)).fetch(request);
     }
     // A feature switched off for one school: changes to it from that school's people are refused
     // (owner console → Server). Only requests a switch covers look up the person's school.
