@@ -67,3 +67,12 @@ describe('UniVerse Play', () => {
     expect(s.reduce((a, _, k) => a + Math.round(100 * sortMultiplier(k)), 0)).toBeLessThanOrEqual(GAMES.sort.maxScore);
   });
 });
+
+describe('scoreboard names', () => {
+  it('skips titles', async () => {
+    const { shortName } = await import('@/server/play');
+    expect(shortName('Dr. Tom Hale')).toBe('Tom');
+    expect(shortName('Maya Rossi')).toBe('Maya');
+    expect(shortName('')).toBe('Player');
+  });
+});

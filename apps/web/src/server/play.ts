@@ -54,12 +54,18 @@ export async function roomInfo(rawCode: string) {
   return res.json();
 }
 
+/** A first name for the scoreboard ("Dr. Tom Hale" → "Tom"). */
+export function shortName(name: string | null | undefined) {
+  const words = (name || '').split(/\s+/).filter(Boolean);
+  return words.find((w) => !/^(dr|mr|mrs|ms|miss|prof|sir)\.?$/i.test(w)) ?? words[0] ?? 'Player';
+}
+
 /** POST /play/rooms/:code/ticket: the address for this person's seat in the room (one use, 60 s). */
 export async function roomTicket(u: SessionUser, rawCode: string) {
   const code = cleanRoomCode(rawCode);
   if (!code) throw new NotFoundException('Room codes have 6 letters and numbers.');
   const me = await prisma.user.findUnique({ where: { id: u.id }, select: { avatar: true } });
-  const res = await roomCall(code, '/ticket', { userId: u.id, name: (u.name || 'Player').split(' ')[0], avatar: me?.avatar ?? null });
+  const res = await roomCall(code, '/ticket', { userId: u.id, name: shortName(u.name), avatar: me?.avatar ?? null });
   if (!res) throw new BadRequestException(OFFLINE);
   if (res.status === 409) throw new BadRequestException('That room is full (8 players).');
   if (!res.ok) throw new NotFoundException('No room has that code. Check it, or ask for a new link.');
@@ -70,6 +76,8 @@ export async function roomTicket(u: SessionUser, rawCode: string) {
 const DAY = 86_400_000;
 
 /** POST /play/scores { game, score }: a finished solo round (at most 200 a day per person). */
+// shortcut: scores come from the player's browser, capped at what a perfect round can reach
+// (cleanScore), not replayed here; fine for friendly leaderboards, not for prizes.
 export async function saveSoloScore(u: SessionUser, b: Body) {
   if (!isGame(b.game)) throw new BadRequestException('Pick a game.');
   const score = cleanScore(b.game, b.score);

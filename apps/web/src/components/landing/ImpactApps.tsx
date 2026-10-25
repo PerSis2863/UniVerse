@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AnimatePresence, m as motion } from 'framer-motion';
+import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { Bike, Brain, Check, Droplets, Gamepad2, HandHeart, Home, Leaf, MapPin, Recycle, ScanLine, Stethoscope, Sun, TreePine, Trophy, Truck, Utensils, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
@@ -79,8 +79,9 @@ const RACERS = [{ name: 'Maya', color: '#6366f1' }, { name: 'Omar', color: '#ec4
 
 /** The hero's Play card: a room's live scoreboard, the leader changing as the race goes on. */
 export function PlayCard() {
-  const [t, setT] = useState(0);
-  useEffect(() => { const id = setInterval(() => setT((x) => (x + 1) % 40), 900); return () => clearInterval(id); }, []);
+  const [t, setT] = useState(12);
+  const calm = useReducedMotion();
+  useEffect(() => { if (calm) return; const id = setInterval(() => setT((x) => (x + 1) % 40), 900); return () => clearInterval(id); }, [calm]);
   // Made-up but steady: each racer gains at their own rhythm, so the order changes now and then.
   const rows = RACERS.map((r, i) => ({ ...r, score: Math.round(t * (180 + i * 23) + 400 * Math.sin((t + i * 3) / 2.2) + 600) })).sort((a, b) => b.score - a.score);
   const top = Math.max(...rows.map((r) => r.score), 1);
@@ -94,7 +95,7 @@ export function PlayCard() {
             <span className="w-8 h-8 rounded-full grid place-items-center text-xs font-bold text-white" style={{ background: r.color }}>{r.name[0]}</span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold text-white">{r.name}</span>
-              <span className="mt-1 block h-1.5 rounded-full bg-white/[0.08] overflow-hidden"><motion.span className="block h-full rounded-full" style={{ background: r.color }} animate={{ width: `${(r.score / top) * 100}%` }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} /></span>
+              <span className="mt-1 block h-1.5 rounded-full bg-white/[0.08] overflow-hidden"><motion.span className="block h-full w-full origin-left rounded-full rtl:origin-right" style={{ background: r.color }} initial={false} animate={{ scaleX: r.score / top }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} /></span>
             </span>
             <span className="font-mono text-sm tabular-nums text-white">{r.score.toLocaleString()}</span>
           </motion.li>

@@ -44,11 +44,13 @@ export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onF
   const ended = useRef(false);
   const calm = useReducedMotion();
 
+  const onFinishNow = useRef(onFinish);
+  useEffect(() => { onFinishNow.current = onFinish; }, [onFinish]);
   const finish = useCallback((sc: number, step: number) => {
     if (ended.current) return;
     ended.current = true;
-    onFinish(sc, step);
-  }, [onFinish]);
+    onFinishNow.current(sc, step);
+  }, []);
 
   // 3, 2, 1, go: on the room's clock, so everyone starts together.
   useEffect(() => {
