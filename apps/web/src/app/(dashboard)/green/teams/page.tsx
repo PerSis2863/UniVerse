@@ -10,6 +10,7 @@ import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
 import { cn } from '@/lib/utils';
+import { InviteButton } from '@/components/apps/InviteButton';
 
 // UniVerse Green → teams: start a team or join one with its code, see each member's CO₂ saved, the
 // team leaderboard and the top people of the last 30 days, confirmed actions only (src/server/green.ts).
@@ -59,6 +60,7 @@ export default function GreenTeamsPage() {
                 <button type="button" onClick={() => { void navigator.clipboard.writeText(t.code).then(() => { setCopied(t.id); setTimeout(() => setCopied(null), 1500); }); }} className="btn-secondary btn-sm font-mono">{copied === t.id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}{t.code}</button>
                 <button type="button" onClick={() => void run(`leave-${t.id}`, () => api.post(`/green/teams/${t.id}/leave`), 'You left the team.')} className="btn-secondary btn-sm"><LogOut className="w-3.5 h-3.5" />Leave</button>
               </div>
+              <InviteButton app="green" text={`Join my team “${t.name}” on UniVerse Green: sign up, open Teams and type the code ${t.code}.`} label="Invite to the team" className="mt-3 flex-wrap" />
               <ol className="mt-4 space-y-2">
                 {t.members.map((m, i) => (
                   <li key={m.id} className={cn('flex items-center gap-3 rounded-xl px-3 py-2 text-sm', m.me && 'bg-emerald-500/[0.07]')}>

@@ -7,6 +7,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { ImpactWallet } from '@/components/hub/ImpactWallet';
+import { InviteButton } from '@/components/apps/InviteButton';
 import { APPS, appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
 import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
@@ -88,7 +89,10 @@ export default function HubPage() {
           <ImpactWallet role={role} />
 
           <section aria-labelledby="tools-h">
-            <h2 id="tools-h" className="text-lg font-bold text-zinc-900 dark:text-white">Shared by every app</h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 id="tools-h" className="text-lg font-bold text-zinc-900 dark:text-white me-auto">Shared by every app</h2>
+              <InviteButton text="I’m using UniVerse Impact: one account for school, product checks, helping neighbours and climate action. Join me:" />
+            </div>
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {tools.map((t) => (
                 <Link key={t.label} href={t.href} className="panel p-4 flex items-center gap-3 hover:-translate-y-0.5 transition-transform">

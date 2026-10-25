@@ -9,12 +9,14 @@ import { useActivePoll } from '@/lib/realtime-client';
 import { ConsoleSkeleton, SearchBox, card, fetcher, heavy, matches, useDebounced } from './shared';
 import { type PlanUsage, PlanUsageCard } from './server';
 import { type Tab, Ticker } from './deck';
+import { LaunchBoard } from './launch';
 import { LiveBoard } from './live';
 import { SampleWorldCard } from './sample-world';
 
-// The console's first section (M13): what needs the owner, the live instrument board (live.tsx), the rest as
-// small tiles (amber when something waits), new accounts drawn as a line, where and on what people
-// sign in, who is online, and the latest sign-ins and actions on a lit timeline.
+// The console's first section (M13): what needs the owner, who really uses each app (launch.tsx), the
+// live instrument board (live.tsx), the rest as small tiles (amber when something waits), new accounts
+// drawn as a line, where and on what people sign in, who is online, and the latest sign-ins and
+// actions on a lit timeline.
 
 interface OverviewData {
   roles: Record<string, number>; statuses: Record<string, number>; online: { id: string; name: string; role: string; lastSeenAt: string }[];
@@ -102,6 +104,7 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
   return (
     <div className="space-y-6">
       <SampleWorldCard />
+      <LaunchBoard />
       <LiveBoard />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

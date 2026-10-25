@@ -1,3 +1,4 @@
+import { ownerLaunch } from '../owner-launch';
 import type { Router } from '../router';
 import { REAL_ERRORS, diagnoseErrors, ignoreUnsupported } from '../errors';
 import prisma from '@/lib/db';
@@ -238,6 +239,8 @@ export default function ownerModule(router: Router) {
     if (typeof status !== 'string' || !['NEW', 'RESOLVED', 'IGNORED'].includes(status)) throw new BadRequestException('Invalid status.');
     return prisma.errorReport.update({ where: { id: params.id }, data: { status, resolvedAt: status === 'RESOLVED' ? new Date() : null } });
   });
+
+  r.get('launch', () => ownerLaunch());
 
   r.get('overview', async ({ query }) => {
     if (cachedOverview && Date.now() - cachedOverview.at < 60_000 && query.fresh !== '1') {

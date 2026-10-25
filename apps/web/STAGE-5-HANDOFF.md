@@ -1721,3 +1721,19 @@ Progress table (row D6).
   board `pulse.ts`, health numbers, insights, the daily digest) and the Errors tab's summary. The list
   still shows them, tagged "Sample, not real", with a line saying how many and that "Remove sample
   data" takes them out.
+
+## M26 · The launch step: who really uses each app, inviting empty screens, invite links
+
+- From the council (26 Oct 2026): 14 accounts, 2 sign-ins in 7 days, no real Relief, Green or Trace
+  use (the 869 scans are the built-in sample product). The owner: "please do the changes according
+  to this".
+- **Launch board** on the console Overview (`console/launch.tsx`, `GET /owner/launch` owner only,
+  `src/server/owner-launch.ts`, maths `src/lib/launch.ts` + tests): per app, real people in 30 days
+  (UniVersity enrolments and hand-ins; Trace scans by signed-in people outside the sample product,
+  brands joined; Relief posts and help; Green actions), new this week, came back on another day,
+  last real action; and the goal "10 real people who came back". Sample-world people are left out.
+- **Invites** (`src/components/apps/InviteButton.tsx`): the phone's share sheet, else WhatsApp's free
+  share link (`wa.me`, no paid messaging), plus Copy link; the link is `/register?app=<app>`. On the
+  empty Relief list ("Be the first… invite your neighbours"), on the empty Green map (an overlay),
+  per Green team (the code in the message) and on the hub.
+- Relief's numbers and the selected filter now pass contrast in light mode.

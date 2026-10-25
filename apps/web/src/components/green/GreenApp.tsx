@@ -11,6 +11,7 @@ import Link from '@/components/ui/Link';
 import { api, errorMessage } from '@/lib/api';
 import { authedJson } from '@/lib/authed-fetch';
 import { shrinkImage } from '@/lib/shrink-image';
+import { InviteButton } from '@/components/apps/InviteButton';
 import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
 import { GREEN_FACTORS, GREEN_KINDS, co2For, type GreenKind } from '@/lib/green';
@@ -306,7 +307,14 @@ export function GreenMap() {
         <h2 id="gmap-h" className="font-bold text-zinc-900 dark:text-white flex-1">Everyone’s actions</h2>
         <span className="text-xs text-zinc-500">{fmt(cells.reduce((a, c) => a + c.kg, 0))} kg CO₂ in the last 90 days</span>
       </div>
-      <WorldCanvas label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={!calm && cells.length > 0} draw={draw} className="w-full h-[46vh] min-h-[320px]" />
+      <WorldCanvas label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={!calm && cells.length > 0} draw={draw} className="w-full h-[46vh] min-h-[320px]">
+        {data && cells.length === 0 && (
+          <div className="absolute inset-x-3 bottom-3 sm:inset-x-auto sm:start-3 sm:w-[420px] rounded-2xl bg-white dark:bg-[#06141b] p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
+            <p className="text-sm text-zinc-700 dark:text-zinc-200">No actions on the map yet. Log one with “Put it on the shared map” and yours is the first light. It glows brighter as friends join.</p>
+            <InviteButton app="green" text="I’m logging my climate actions on UniVerse Green and seeing the CO₂ I save. Join me:" label="Invite friends" className="mt-3 flex-wrap" />
+          </div>
+        )}
+      </WorldCanvas>
     </section>
   );
 }
