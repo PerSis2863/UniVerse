@@ -2046,3 +2046,30 @@ automatically in Chromium (`pageerror` / console) with none either. Bugs found i
   `GET /play/me` returns `xp` (from each game's summed scores, no new table); `PlayerCard` on the
   arcade (level bar, colours and hats unlocked by level, kept in localStorage `uv-look`), "+XP" on
   the results; the 3D character wears the look (`Avatar` `hat`, `readLook`/`lookHex`).
+
+## M38 · Live players in 3D rooms, a skill per world, the big-game layer (25 Oct 2026, on the branch)
+
+The owner: "do what [was] left on purpose… unique features… ultra smooth with unique animations like
+big game companies".
+- **Live players:** a 3D game in a room sends `{t:'pos'}` (x, y, z, facing, in the air, which
+  world/floor/station, colour, hat) at most every 100 ms (`useGameRoom.sendPos`); `GameRoom` checks it
+  with `cleanPos` (`src/lib/play.ts`, tested), drops anything faster than 70 ms per socket, only
+  while a world game is playing, and passes it to the other sockets without storing it. The browser
+  keeps peers in a ref (no re-renders); `Crowd` (`world/crowd.ts`) draws each as an `Avatar` with a
+  name tag, gliding toward the last position, only for the same `part`. Cost: each incoming socket
+  message is a Durable Object request at 20:1, so a full 8-player, 8-minute room is ~2,000 requests.
+  Checked end to end with two browsers on `local:serve` (obby, night, orbit).
+- **Skills** (`Controls` button `skill`, Q or R; a phone button; `SkillRing` in each HUD):
+  Obby **Rewind** (hold: walk back along the last 3 s of positions, refills over 9 s), Strike
+  **Bullet time** (tags charge it, a boss fills it; drones, bolts and debris run at 0.28×), Night
+  **Echo** (walls' merged edges and the thing drawn through everything for 2.6 s; it rushes ×1.6 for
+  4 s), Orbit **Grapple** (the deck nearest the aim within 60 m pulls you on a cable, no gravity).
+- **Big-game layer in `World`:** bloom (`glow` option, computers only, half size; the first thing
+  `tune` turns off on a slow device, and very slow frames now count), camera `shake` (trauma,
+  offset only for the drawn frame), `fovBy` (eased; wider at speed), `freeze` (hit-stop), `burst`
+  (a pooled `Points` system, drawn only while something flies), `say` (floating words, textures
+  cached per word), `flyIn` at the start, `WorldFrame` `curtain` title cards between worlds, floors
+  and stations, and an "N here with you" badge. Rooms with a rated game let people straight in
+  when their age is known or already confirmed (`useAgeGate().clear`).
+- Trap: `local:build` was killed (SIGKILL) while a dev server (4 GB) and an old `local:serve` were
+  still running; stop them by PID first.

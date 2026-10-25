@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GAMES, LOOK_COLORS, LOOK_HATS, ageOn, levelOf, tooYoung, xpFor } from '../play';
+import { GAMES, LOOK_COLORS, LOOK_HATS, ageOn, cleanPos, levelOf, tooYoung, xpFor } from '../play';
 import {
   NIGHT_ESCAPE, NIGHT_FLOOR, NIGHT_FLOORS, NIGHT_KEY, NIGHT_KEYS, NIGHT_PER_SECOND, NIGHT_STUN, NIGHT_STUN_COOLDOWN_S, NIGHT_STUN_S, OBBY_CHECK, OBBY_FINISH, OBBY_GEM, OBBY_PER_SECOND, OBBY_STAGES,
   ORBIT_ESCAPE, ORBIT_PER_SECOND, ORBIT_REACTOR, ORBIT_SECTOR, ORBIT_SECTORS, ORBIT_TANK, ORBIT_TANK_EVERY_S, STRIKE_BOSS, STRIKE_BOT_HP, STRIKE_COMBO_MAX, STRIKE_FIRE_S, STRIKE_HIT, STRIKE_TAG, STRIKE_WAVE,
@@ -76,5 +76,14 @@ describe('3D worlds (M36)', () => {
     expect(levelOf(399).level).toBe(1);
     expect(LOOK_COLORS.filter((c) => c.level === 1).length).toBeGreaterThan(0);
     expect(LOOK_HATS[0]).toMatchObject({ id: 'none', level: 1 });
+  });
+
+  it('passes on only tidy positions between players in a room', () => {
+    expect(cleanPos({ x: 1.234, y: 2, z: -3, ry: 1, a: 1, w: 2, c: 0xec4899, h: 'crown' })).toEqual({ x: 1.23, y: 2, z: -3, ry: 1, a: 1, w: 2, c: 0xec4899, h: 'crown' });
+    expect(cleanPos({ x: 'a', y: 0, z: 0, ry: 0 })).toBeNull();
+    expect(cleanPos({ x: Infinity, y: 0, z: 0, ry: 0 })).toBeNull();
+    expect(cleanPos({ x: 1e9, y: 0, z: 0, ry: 0 })!.x).toBe(3000);
+    expect(cleanPos({ x: 0, y: 0, z: 0, ry: 0, h: '<script>' })!.h).toBe('none');
+    expect(cleanPos(null)).toBeNull();
   });
 });

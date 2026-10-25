@@ -59,13 +59,14 @@ const CONTROLS: Record<GameId, { icon: typeof Keyboard; text: string }[]> = {
   orbit: [{ icon: Keyboard, text: 'WASD move · Space jump (again to boost)' }, { icon: MousePointer2, text: 'Click, then the mouse turns' }, { icon: Pointer, text: 'Phone: joystick, Jump' }],
 };
 
-export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onFinish, strip, rivals }: {
+export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onFinish, strip, rivals, net }: {
   game: GameId; seed: number; startsAt: number; endsAt: number; clock: () => number;
   onProgress?: (score: number, step: number) => void;
   onFinish: (score: number, step: number, stats: GameStat[]) => void;
   /** The room's players, as a strip under the bar (phones; computers have the side board). */
   strip?: React.ReactNode;
   rivals?: GameProps['rivals'];
+  net?: GameProps['net'];
 }) {
   const info = GAMES[game];
   const { announce, sfx } = useArena();
@@ -145,7 +146,7 @@ export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onF
       </div>
 
       <div className="mt-4">
-        {playing && !over ? <View seed={seed} startsAt={startsAt} endsAt={endsAt} clock={clock} onProgress={progress} onDone={finish} onStats={keepStats} rivals={rivals} /> : playing ? (
+        {playing && !over ? <View seed={seed} startsAt={startsAt} endsAt={endsAt} clock={clock} onProgress={progress} onDone={finish} onStats={keepStats} rivals={rivals} net={net} /> : playing ? (
           <div className="grid h-72 place-items-center"><p className="text-sm text-zinc-400">Adding it up…</p></div>
         ) : (
           // The intro, while the countdown runs.

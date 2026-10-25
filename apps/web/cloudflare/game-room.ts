@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { COUNTDOWN_MS, GAMES, MAX_PLAYERS, cleanScore, isGame, ranked, type GameId, type RoomPhase, type RoomPlayer, type RoomState } from '../src/lib/play';
+import { COUNTDOWN_MS, GAMES, MAX_PLAYERS, cleanPos, cleanScore, isGame, ranked, type GameId, type RoomPhase, type RoomPlayer, type RoomState } from '../src/lib/play';
 
 // UniVerse Play (M31): one room per code (src/lib/play.ts). The app creates it (POST /create), hands
 // each player a one-time ticket (POST /ticket, only from the app: the Worker forwards nothing but
@@ -20,8 +20,13 @@ const IDLE_MS = 2 * 3_600_000; // a room nobody uses for 2 hours is forgotten
 const GRACE_MS = 1_500; // late scores from slow connections still count
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
+/** 3D worlds (M38): a player's position goes on to the others at most this often (ms). */
+const POS_EVERY_MS = 70;
 
 export class GameRoom extends DurableObject<Env> {
+  /** When each socket last sent a position (in memory: forgetting it on hibernation is harmless). */
+  private posAt = new Map<string, number>();
+
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     // Keep-alive pings are answered without waking the room.
@@ -135,6 +140,17 @@ export class GameRoom extends DurableObject<Env> {
     const now = Date.now();
     const host = seat.userId === r.hostId;
 
+    // A position in a 3D world: passed straight on to everyone else, never stored.
+    if (m.t === 'pos') {
+      if (r.phase !== 'playing' || !GAMES[r.game].world || now - (this.posAt.get(seat.sid) ?? 0) < POS_EVERY_MS) return;
+      const p = cleanPos(m);
+      if (!p) return;
+      this.posAt.set(seat.sid, now);
+      const msg = JSON.stringify({ t: 'pos', id: seat.sid, name: seat.name, ...p });
+      for (const { ws: other } of this.seats()) if (other !== ws) { try { other.send(msg); } catch { /* closing */ } }
+      return;
+    }
+
     if (m.t === 'start' && host && r.phase !== 'playing') {
       r.phase = 'playing';
       r.seed = crypto.getRandomValues(new Uint32Array(1))[0];
@@ -172,6 +188,7 @@ export class GameRoom extends DurableObject<Env> {
   async webSocketClose(ws: WebSocket, code: number) {
     try { ws.close(code === 1005 || code === 1006 ? 1000 : code); } catch { /* already closed */ }
     const seat = ws.deserializeAttachment() as Seat | null;
+    if (seat) this.posAt.delete(seat.sid);
     const r = await this.room();
     if (!r || !seat) return;
     if (!this.seats().some(({ s }) => s.userId === seat.userId)) this.rehost(r, seat.userId);

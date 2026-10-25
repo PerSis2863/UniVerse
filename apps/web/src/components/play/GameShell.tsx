@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
@@ -229,10 +229,12 @@ function SoloResult({ game, result, onAgain, onExit, onChallenge }: { game: Game
 
 function Room({ code, onLeave }: { code: string; onLeave: (to?: GameId) => void }) {
   const me = useAuthStore((s) => s.user?.id);
-  const { state, status, error, send, clock, report, finish } = useGameRoom(code);
+  const { state, status, error, send, clock, report, finish, peers, sendPos } = useGameRoom(code);
+  const net = useMemo(() => ({ peers, sendPos }), [peers, sendPos]);
   const [finishedRound, setFinishedRound] = useState<number | null>(null);
   const [myStats, setMyStats] = useState<GameStat[]>([]);
   const [ageOk, setAgeOk] = useState(false);
+  const okAge = useCallback(() => setAgeOk(true), []);
   const roomGame = state?.game;
   useEffect(() => { if (roomGame) preloadGame(roomGame); }, [roomGame]);
   const onFinish = useCallback((score: number, step: number, stats: GameStat[]) => {
@@ -258,7 +260,7 @@ function Room({ code, onLeave }: { code: string; onLeave: (to?: GameId) => void 
   const mine = state.players.find((p) => p.id === me);
   const leave = () => onLeave(state.game);
   const reconnecting = status === 'reconnecting' && <p className="mb-3 rounded-xl bg-amber-500/15 px-3 py-2 text-sm text-amber-800 dark:text-amber-200" role="status">Connection lost. Reconnecting…</p>;
-  if (GAMES[state.game].age && !ageOk) return <RoomAgeCheck game={state.game} onOk={() => setAgeOk(true)} onLeave={leave} />;
+  if (GAMES[state.game].age && !ageOk) return <RoomAgeCheck game={state.game} onOk={okAge} onLeave={leave} />;
   if (state.phase === 'lobby') {
     return <div>{reconnecting}<Lobby state={state} me={me} onStart={() => send({ t: 'start' })} onGame={(g) => send({ t: 'game', game: g })} onLeave={leave} /></div>;
   }
@@ -280,7 +282,7 @@ function Room({ code, onLeave }: { code: string; onLeave: (to?: GameId) => void 
             </section>
           ) : (
             <GameStage game={state.game} seed={state.seed} startsAt={state.startsAt} endsAt={state.endsAt} clock={clock} onProgress={report} onFinish={onFinish}
-              strip={<LiveStrip players={state.players} me={me} />} rivals={state.players.filter((p) => p.id !== me)} />
+              strip={<LiveStrip players={state.players} me={me} />} rivals={state.players.filter((p) => p.id !== me)} net={net} />
           ))}
         </motion.div>
       </AnimatePresence>
@@ -293,6 +295,9 @@ function RoomAgeCheck({ game, onOk, onLeave }: { game: GameId; onOk: () => void;
   const { data: me } = useSWR<PlayMe>('/play/me', fetcher);
   const gate = useAgeGate(game, me?.age);
   const info = GAMES[game];
+  // Already fine (an adult birth date, or confirmed on this device): straight in.
+  const clear = !!me && gate.clear;
+  useEffect(() => { if (clear) onOk(); }, [clear, onOk]);
   return (
     <section className="panel mx-auto max-w-md p-8 text-center">
       {gate.dialog}

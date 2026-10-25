@@ -29,7 +29,9 @@ export function useAgeGate(game: GameId, age: number | null | undefined) {
     </AnimatePresence>,
     document.body,
   );
-  return { guard, dialog, rating, blocked };
+  /** True when the game can start without asking (no rating, or an age known or confirmed). */
+  const clear = !rating || (!blocked && (age != null || (typeof window !== 'undefined' && confirmed(rating))));
+  return { guard, dialog, rating, blocked, clear };
 }
 
 /** The rating as a small badge (cards, the game's page). */

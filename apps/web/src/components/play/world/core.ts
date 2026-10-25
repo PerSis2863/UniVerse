@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
 // The 3D worlds of UniVerse Play (M36, the owner: "Roblox games… shooting, horror, science fiction…
 // big games"): one renderer, scene and camera per round, a frame loop that pauses in a hidden tab,
@@ -9,6 +13,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 export { THREE };
 
 const PHONE = () => matchMedia('(pointer: coarse)').matches;
+/** The buttons a game reads: jump, fire, act (E/F), and its special skill (Q/R). */
+export type Button = 'jump' | 'fire' | 'act' | 'skill';
 
 /** The renderer, scene and camera, sized to the canvas's box; `loop` runs once per frame. */
 export class World {
@@ -32,7 +38,23 @@ export class World {
   private loop: ((dt: number, t: number) => void) | null = null;
   private vis = () => { if (document.hidden) this.pause(); else this.resume(); };
 
-  constructor(public canvas: HTMLCanvasElement, { fov = 70, bg = 0x0b0b10, fog }: { fov?: number; bg?: number; fog?: [number, number, number] } = {}) {
+  // The big-game layer (M38): glow (bloom) on computers, camera shake ("trauma"), a field of view
+  // that eases (wider at speed), hit-stop, sparks, floating numbers and a fly-in at the start.
+  private composer: EffectComposer | null = null;
+  private bloom: UnrealBloomPass | null = null;
+  private trauma = 0;
+  private freezeUntil = 0;
+  private fovBase = 70;
+  private fovWant = 70;
+  private intro: { from: THREE.Vector3; start: number; dur: number } | null = null;
+  /** Where the camera should look during the fly-in (the game keeps it on the player). */
+  focus = new THREE.Vector3();
+  private sparks: Sparks;
+  private texts: { s: THREE.Sprite; life: number; v: number }[] = [];
+  /** Floating words' pictures, made once per word and colour. */
+  private words = new Map<string, THREE.CanvasTexture>();
+
+  constructor(public canvas: HTMLCanvasElement, { fov = 70, bg = 0x0b0b10, fog, glow }: { fov?: number; bg?: number; fog?: [number, number, number]; glow?: { strength: number; radius: number; threshold: number } } = {}) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !this.phone, powerPreference: 'high-performance' });
     // Phones draw fewer pixels and no shadows, so the frame rate holds.
     this.maxRatio = this.ratio = Math.min(window.devicePixelRatio || 1, this.phone ? 1.5 : 2);
@@ -44,6 +66,15 @@ export class World {
     this.scene.background = new THREE.Color(bg);
     if (fog) this.scene.fog = new THREE.Fog(fog[0], fog[1], fog[2]);
     this.camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 400);
+    this.fovBase = this.fovWant = fov;
+    if (glow && !this.phone) {
+      this.composer = new EffectComposer(this.renderer);
+      this.composer.addPass(new RenderPass(this.scene, this.camera));
+      this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), glow.strength, glow.radius, glow.threshold);
+      this.composer.addPass(this.bloom);
+      this.composer.addPass(new OutputPass());
+    }
+    this.sparks = new Sparks(this.scene);
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(canvas);
     this.resize();
@@ -54,6 +85,8 @@ export class World {
     const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
     if (!w || !h) return;
     this.renderer.setSize(w, h, false);
+    // The glow works at half size: it's soft anyway, and costs a quarter.
+    if (this.composer) { this.composer.setPixelRatio(this.ratio); this.composer.setSize(w, h); this.bloom?.resolution.set(w / 2, h / 2); }
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
   }
@@ -67,19 +100,79 @@ export class World {
     const dt = Math.min(0.05, raw);
     this.last = t;
     this.tune(raw);
-    this.loop?.(dt, t / 1000);
-    this.renderer.render(this.scene, this.camera);
+    // Hit-stop: a few frames almost still, so a big hit lands.
+    const frozen = t < this.freezeUntil;
+    this.loop?.(frozen ? dt * 0.06 : dt, t / 1000);
+    this.sparks.update(dt);
+    for (let i = this.texts.length - 1; i >= 0; i--) {
+      const f = this.texts[i];
+      f.life -= dt; f.s.position.y += f.v * dt; f.v *= Math.pow(0.15, dt);
+      (f.s.material as THREE.SpriteMaterial).opacity = Math.min(1, f.life * 2.5);
+      if (f.life <= 0) { this.scene.remove(f.s); f.s.material.dispose(); this.texts.splice(i, 1); }
+    }
+    // The fly-in: from high above down to where the game put the camera.
+    if (this.intro) {
+      const k = Math.min(1, (t / 1000 - this.intro.start) / this.intro.dur), e = 1 - Math.pow(1 - k, 3);
+      this.camera.position.lerpVectors(this.intro.from, this.camera.position, e);
+      this.camera.lookAt(this.focus.x, this.focus.y + 1.4, this.focus.z);
+      if (k >= 1) this.intro = null;
+    }
+    // Field of view eases toward what the game asked for.
+    if (Math.abs(this.camera.fov - this.fovWant) > 0.05) { this.camera.fov += (this.fovWant - this.camera.fov) * (1 - Math.exp(-6 * dt)); this.camera.updateProjectionMatrix(); }
+    // Shake: offset the camera only for this frame's picture.
+    const shake = this.trauma * this.trauma;
+    const ox = shake ? (Math.sin(t * 0.091) + Math.sin(t * 0.037)) * 0.18 * shake : 0, oy = shake ? (Math.sin(t * 0.083 + 1) + Math.sin(t * 0.029)) * 0.18 * shake : 0, rz = shake ? Math.sin(t * 0.071) * 0.03 * shake : 0;
+    if (shake) { this.camera.position.x += ox; this.camera.position.y += oy; this.camera.rotation.z += rz; }
+    if (this.composer && this.bloom?.enabled) this.composer.render(); else this.renderer.render(this.scene, this.camera);
+    if (shake) { this.camera.position.x -= ox; this.camera.position.y -= oy; this.camera.rotation.z -= rz; }
+    this.trauma = Math.max(0, this.trauma - dt * 1.4);
     this.raf = requestAnimationFrame(this.frame);
   };
 
   /** Half a second of late frames (under ~45 fps) lowers the resolution a step; two seconds of quick
    *  ones (over ~80 fps) raise it back. Never below 0.6× or above the starting ratio. */
   private tune(raw: number) {
-    if (raw > 0.2) return; // a hidden tab or a stall, not a slow device
+    if (raw > 1) return; // a hidden tab or a long stall, not a slow device
     if (raw > 1 / 45) { this.slow += raw; this.fast = 0; } else if (raw < 1 / 80) { this.fast += raw; this.slow = 0; } else { this.slow = Math.max(0, this.slow - raw); }
-    const set = (r: number) => { this.ratio = r; this.renderer.setPixelRatio(r); this.resize(); this.slow = this.fast = 0; };
-    if (this.slow > 0.5 && this.ratio > 0.6) set(Math.max(0.6, this.ratio - 0.25));
+    const set = (r: number) => {
+      this.ratio = r; this.renderer.setPixelRatio(r);
+      this.resize(); this.slow = this.fast = 0;
+    };
+    // The glow goes first (it costs the most); then the resolution steps down.
+    if (this.slow > 0.5 && this.bloom?.enabled) { this.bloom.enabled = false; this.slow = 0; }
+    else if (this.slow > 0.5 && this.ratio > 0.6) set(Math.max(0.6, this.ratio - 0.25));
     else if (this.fast > 2 && this.ratio < this.maxRatio) set(Math.min(this.maxRatio, this.ratio + 0.25));
+  }
+
+  /** Shakes the camera (0–1; it adds up and calms down by itself). */
+  shake(power: number) { if (!matchMedia('(prefers-reduced-motion: reduce)').matches) this.trauma = Math.min(1, this.trauma + power); }
+  /** Holds the action almost still for a moment (a big hit). */
+  freeze(ms: number) { this.freezeUntil = performance.now() + ms; }
+  /** Widens or narrows the view by some degrees from the start (eased). */
+  fovBy(deg: number) { this.fovWant = this.fovBase + deg; }
+  /** The camera flies in from a point over `dur` seconds, looking at `focus`. */
+  flyIn(from: THREE.Vector3, dur = 1.6) { if (!matchMedia('(prefers-reduced-motion: reduce)').matches) this.intro = { from: from.clone(), start: performance.now() / 1000, dur }; }
+  /** Sparks or dust from a point. */
+  burst(at: THREE.Vector3, color: number, n = 16, speed = 6, gravity = 12) { this.sparks.emit(at, color, n, speed, gravity); }
+  /** A number or word that rises and fades where something happened ("+100"). */
+  say(text: string, at: THREE.Vector3, color = '#ffffff', size = 1) {
+    const key = `${text}|${color}`;
+    let tex = this.words.get(key);
+    if (!tex) {
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 96;
+      const g = c.getContext('2d')!;
+      g.font = '900 64px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineWidth = 10; g.strokeStyle = 'rgba(0,0,0,0.6)'; g.strokeText(text, 128, 50);
+      g.fillStyle = color; g.fillText(text, 128, 50);
+      tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+      if (this.words.size > 48) { const [k0, t0] = this.words.entries().next().value!; t0.dispose(); this.words.delete(k0); }
+      this.words.set(key, tex);
+    }
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+    s.scale.set(2.4 * size, 0.9 * size, 1); s.position.copy(at); s.renderOrder = 10;
+    this.scene.add(s);
+    this.texts.push({ s, life: 0.9, v: 2.6 });
   }
 
   /** Keeps the sun (and its shadow box) over a point. */
@@ -128,6 +221,8 @@ export class World {
 
   dispose() {
     this.pause();
+    this.composer?.dispose();
+    this.words.forEach((t) => t.dispose());
     this.loop = null;
     this.ro.disconnect();
     document.removeEventListener('visibilitychange', this.vis);
@@ -141,6 +236,62 @@ export class World {
   }
 }
 
+/** Sparks and dust: one Points object of recycled particles, each with its own colour and fall. */
+class Sparks {
+  private max = 400;
+  private alive = 0;
+  private pts: THREE.Points;
+  private pos = new Float32Array(this.max * 3);
+  private col = new Float32Array(this.max * 3);
+  private vel = new Float32Array(this.max * 3);
+  private life = new Float32Array(this.max);
+  private grav = new Float32Array(this.max);
+  private next = 0;
+  private geo = new THREE.BufferGeometry();
+  private color = new THREE.Color();
+  constructor(scene: THREE.Scene) {
+    for (let i = 0; i < this.max; i++) this.pos[i * 3 + 1] = -9999; // unused ones out of sight
+    this.geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
+    this.geo.setAttribute('color', new THREE.BufferAttribute(this.col, 3));
+    const pts = new THREE.Points(this.geo, new THREE.PointsMaterial({ size: 0.24, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, map: glowSprite(0xffffff).material.map }));
+    pts.frustumCulled = false; pts.visible = false;
+    scene.add(pts);
+    this.pts = pts;
+  }
+  emit(at: THREE.Vector3, color: number, n: number, speed: number, gravity: number) {
+    this.color.set(color);
+    for (let k = 0; k < n; k++) {
+      const i = this.next; this.next = (this.next + 1) % this.max;
+      const a = Math.random() * Math.PI * 2, u = Math.random() * 2 - 1, r = Math.sqrt(1 - u * u), v = speed * (0.4 + Math.random() * 0.8);
+      this.pos.set([at.x, at.y, at.z], i * 3);
+      this.vel.set([Math.cos(a) * r * v, Math.abs(u) * v * 0.9 + speed * 0.2, Math.sin(a) * r * v], i * 3);
+      this.col.set([this.color.r, this.color.g, this.color.b], i * 3);
+      this.life[i] = 0.5 + Math.random() * 0.5; this.grav[i] = gravity;
+    }
+    this.alive = Math.min(this.max, this.alive + n);
+  }
+  update(dt: number) {
+    // Nothing flying: nothing to move or draw.
+    if (!this.alive) { this.pts.visible = false; return; }
+    this.pts.visible = true;
+    let alive = 0;
+    for (let i = 0; i < this.max; i++) {
+      if (this.life[i] <= 0) continue;
+      this.life[i] -= dt;
+      alive++;
+      const j = i * 3;
+      this.vel[j + 1] -= this.grav[i] * dt;
+      this.pos[j] += this.vel[j] * dt; this.pos[j + 1] += this.vel[j + 1] * dt; this.pos[j + 2] += this.vel[j + 2] * dt;
+      const fade = Math.max(0, Math.min(1, this.life[i] * 2));
+      if (this.life[i] <= 0) { this.pos[j + 1] = -9999; }
+      this.col[j] *= 0.985 + 0.015 * fade; this.col[j + 1] *= 0.985 + 0.015 * fade; this.col[j + 2] *= 0.985 + 0.015 * fade;
+    }
+    this.alive = alive;
+    this.geo.attributes.position.needsUpdate = true;
+    this.geo.attributes.color.needsUpdate = true;
+  }
+}
+
 /** Keys, mouse look (the pointer locks on a click) and, on phones, a joystick and a look pad. */
 export class Controls {
   keys = new Set<string>();
@@ -148,8 +299,8 @@ export class Controls {
   /** The joystick's push, -1…1 each way (phones). */
   stick = { x: 0, y: 0 };
   /** Buttons pressed since the game last read them. */
-  pressed = new Set<'jump' | 'fire' | 'act'>();
-  held = new Set<'fire' | 'act'>();
+  pressed = new Set<Button>();
+  held = new Set<Exclude<Button, 'jump'>>();
   private off: (() => void)[] = [];
 
   constructor(private el: HTMLElement, { lock = true, sensitivity = 0.0024 } = {}) {
@@ -164,10 +315,11 @@ export class Controls {
       if (!e.repeat) {
         if (k === ' ') this.pressed.add('jump');
         if (k === 'e' || k === 'f') { this.pressed.add('act'); this.held.add('act'); }
+        if (k === 'q' || k === 'r') { this.pressed.add('skill'); this.held.add('skill'); }
       }
       this.keys.add(k);
     });
-    on(window, 'keyup', (e) => { const k = e.key.toLowerCase(); this.keys.delete(k); if (k === 'e' || k === 'f') this.held.delete('act'); });
+    on(window, 'keyup', (e) => { const k = e.key.toLowerCase(); this.keys.delete(k); if (k === 'e' || k === 'f') this.held.delete('act'); if (k === 'q' || k === 'r') this.held.delete('skill'); });
     on(window, 'blur', () => { this.keys.clear(); this.held.clear(); });
     // Mouse: click locks the pointer (Esc unlocks), then moving the mouse turns; holding fires.
     on(el, 'mousedown', (e) => {
@@ -182,8 +334,8 @@ export class Controls {
   }
 
   setStick(x: number, y: number) { this.stick = { x, y }; }
-  press(b: 'jump' | 'fire' | 'act') { this.pressed.add(b); if (b !== 'jump') this.held.add(b); }
-  release(b: 'jump' | 'fire' | 'act') { if (b !== 'jump') this.held.delete(b); }
+  press(b: Button) { this.pressed.add(b); if (b !== 'jump') this.held.add(b); }
+  release(b: Button) { if (b !== 'jump') this.held.delete(b); }
 
   turn(dx: number, dy: number) {
     this.yaw -= dx;
@@ -203,7 +355,7 @@ export class Controls {
     return new THREE.Vector2(v.x * c - v.y * s, -v.x * s - v.y * c);
   }
 
-  take(b: 'jump' | 'fire' | 'act') { const had = this.pressed.has(b); this.pressed.delete(b); return had; }
+  take(b: Button) { const had = this.pressed.has(b); this.pressed.delete(b); return had; }
   get running() { return this.keys.has('shift'); }
 
   dispose() { this.off.forEach((f) => f()); if (document.pointerLockElement === this.el) document.exitPointerLock(); }

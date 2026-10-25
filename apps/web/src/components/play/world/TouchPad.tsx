@@ -1,12 +1,12 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import type { Controls } from './core';
+import type { Button, Controls } from './core';
 
 // On a phone: a joystick under the left thumb, the rest of the screen turns the camera, and big
 // buttons under the right thumb. Hidden on computers (keys and the mouse there).
 
-export function TouchPad({ controls, buttons }: { controls: React.RefObject<Controls | null>; buttons: { id: 'jump' | 'fire' | 'act'; label: string }[] }) {
+export function TouchPad({ controls, buttons }: { controls: React.RefObject<Controls | null>; buttons: { id: Button; label: string }[] }) {
   const [knob, setKnob] = useState<{ x: number; y: number } | null>(null);
   const stick = useRef<{ id: number; x: number; y: number } | null>(null);
   const look = useRef<{ id: number; x: number; y: number } | null>(null);

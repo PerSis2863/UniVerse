@@ -75,6 +75,20 @@ export const tooYoung = (game: GameId, age: number | null) => !!GAMES[game].age 
 
 export const isGame = (v: unknown): v is GameId => typeof v === 'string' && (GAME_IDS as readonly string[]).includes(v);
 
+/** Where a player is in a 3D world (M38), sent about ten times a second while playing and passed
+ *  on to the others in the room so they see each other. Nothing about it is kept. */
+export interface PeerPos { x: number; y: number; z: number; ry: number; a: number; w: number; c: number; h: string }
+/** A position message tidied: finite, inside the worlds, a known hat; or null. */
+export function cleanPos(m: unknown): PeerPos | null {
+  if (!m || typeof m !== 'object') return null;
+  const o = m as Record<string, unknown>;
+  const n = (v: unknown, lim: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(-lim, Math.min(lim, Math.round(v * 100) / 100)) : null);
+  const x = n(o.x, 3000), y = n(o.y, 3000), z = n(o.z, 3000), ry = n(o.ry, 10), a = n(o.a, 3), w = n(o.w, 9), c = n(o.c, 0xffffff);
+  if (x === null || y === null || z === null || ry === null) return null;
+  const h = typeof o.h === 'string' && LOOK_HATS.some((k) => k.id === o.h) ? o.h : 'none';
+  return { x, y, z, ry, a: Math.max(0, a ?? 0), w: Math.max(0, Math.round(w ?? 0)), c: Math.max(0, Math.round(c ?? 0xec4899)), h };
+}
+
 /** Room codes: 6 letters and digits without look-alikes (no O/0, I/1/L). */
 export const ROOM_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const ROOM_CODE_LEN = 6;

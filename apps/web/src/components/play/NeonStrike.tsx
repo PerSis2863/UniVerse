@@ -9,7 +9,8 @@ import { useArena } from './arena';
 import { lookHex, readLook } from './PlayerCard';
 import type { GameProps } from './game-props';
 import { Avatar, Body, Controls, THREE, World, approach, glowSprite, walk } from './world/core';
-import { HudChip, WorldFrame } from './world/Stage';
+import { Crowd } from './world/crowd';
+import { HudChip, SkillRing, WorldFrame } from './world/Stage';
 
 // Neon Strike (16+, src/lib/play/worlds.ts): laser tag in a neon arena against waves of sentinel
 // drones. Over-the-shoulder camera and a crosshair; hold to fire (a beam, sparks, the drone bursts
@@ -23,18 +24,23 @@ const UP = new THREE.Vector3(0, 1, 0);
 type Drop = { m: THREE.Mesh; kind: 'health' | 'rapid' | 'shield'; until: number };
 const DROP_COLOR = { health: 0x34d399, rapid: 0xfbbf24, shield: 0x60a5fa } as const;
 
-export function NeonStrike({ seed, endsAt, clock, onProgress, onStats }: GameProps) {
+/** Bullet time (M38): every tag charges it (a boss fills it); Q slows the drones and their bolts. */
+const SLOW_S = 5, SLOW_SCALE = 0.28;
+
+export function NeonStrike({ seed, endsAt, clock, onProgress, onStats, net }: GameProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const controls = useRef<Controls | null>(null);
   const arena = useArena();
   const [hud, setHud] = useState({ boss: 0, hp: 100, wave: 1, left: 0, combo: 0, shield: 0, rapid: false, hurt: 0, down: false, hitmark: 0 });
-  const out = useRef({ arena, onProgress, onStats, clock, endsAt });
-  useEffect(() => { out.current = { arena, onProgress, onStats, clock, endsAt }; });
+  const [skill, setSkill] = useState({ charge: 0, active: false, others: 0 });
+  const out = useRef({ arena, onProgress, onStats, clock, endsAt, net });
+  useEffect(() => { out.current = { arena, onProgress, onStats, clock, endsAt, net }; });
 
   useEffect(() => {
     const el = canvas.current;
     if (!el) return;
-    const w = new World(el, { fov: 72, bg: 0x120a22, fog: [0x1a0f2e, 30, 110] });
+    const w = new World(el, { fov: 72, bg: 0x120a22, fog: [0x1a0f2e, 30, 110], glow: { strength: 0.85, radius: 0.55, threshold: 0.55 } });
+    const crowd = new Crowd(w, out.current.net);
     const c = new Controls(el);
     controls.current = c;
     const say = (t: string, tone: 'pink' | 'good' | 'bad' | 'gold' = 'pink') => out.current.arena.announce(t, tone);
@@ -122,9 +128,17 @@ export function NeonStrike({ seed, endsAt, clock, onProgress, onStats }: GamePro
     const flash = glowSprite(0x67e8f9, 1.4); flash.visible = false; w.scene.add(flash);
 
     w.camera.position.set(0, 3, 6);
+    w.flyIn(new THREE.Vector3(0, 34, 40), 1.8);
+    let slowMeter = 0, slowUntil = 0, skillAt = 0;
     w.start((dt, t) => {
       now = t;
       const down = downUntil > t;
+      // Bullet time: the drones' world runs slow; you don't.
+      if (c.take('skill') && slowMeter >= 1 && !down) { slowMeter = 0; slowUntil = t + SLOW_S; say('Bullet time!', 'gold'); out.current.arena.sfx('whoosh'); w.fovBy(-7); }
+      const slow = t < slowUntil;
+      if (!slow && slowUntil && t - slowUntil < 0.1) w.fovBy(0);
+      const dtw = dt * (slow ? SLOW_SCALE : 1);
+      if (t - skillAt > 0.15) { skillAt = t; setSkill((p) => (Math.abs(p.charge - slowMeter) < 0.02 && p.active === slow && p.others === crowd.count ? p : { charge: slowMeter, active: slow, others: crowd.count })); }
       if (wave === 0 || (!bots.length && t > nextWaveAt)) { if (wave > 0) { score += STRIKE_WAVE; say(`Wave ${wave} cleared! +${STRIKE_WAVE}`, 'good'); out.current.arena.sfx('win'); } spawnWave(); }
       // Moving and aiming.
       if (!down) walk(body, c, dt, { speed: 8, jump: 9.5 }); else { body.vel.x = 0; body.vel.z = 0; }
@@ -163,11 +177,16 @@ export function NeonStrike({ seed, endsAt, clock, onProgress, onStats }: GamePro
         out.current.arena.sfx('laser', combo);
         if (target) {
           hits++; target.hp--; target.flash = 0.12; score += STRIKE_HIT; out.current.arena.sfx('hit');
+          w.burst(end, 0x67e8f9, 6, 4, 6);
           setHud((h) => ({ ...h, hitmark: h.hitmark + 1 }));
           if (target.hp <= 0) {
             combo = t - lastTag < STRIKE_COMBO_S ? combo + 1 : 1; lastTag = t; best = Math.max(best, combo);
             const mult = strikeMultiplier(combo); score += STRIKE_TAG * mult + (target.boss ? STRIKE_BOSS : 0); tags++;
-            if (target.boss) { say(`Boss down! +${STRIKE_BOSS}`, 'gold'); out.current.arena.shake(1.2); }
+            if (target.boss) { say(`Boss down! +${STRIKE_BOSS}`, 'gold'); w.shake(0.9); }
+            slowMeter = Math.min(1, slowMeter + (target.boss ? 1 : 0.2));
+            w.freeze(target.boss ? 240 : 55);
+            w.burst(target.g.position, 0xec4899, target.boss ? 90 : 30, target.boss ? 14 : 9, 8);
+            w.say(`+${STRIKE_TAG * mult}`, target.g.position.clone().setY(target.g.position.y + 1.2), mult > 1 ? '#fde68a' : '#f9a8d4');
             for (let i = 0; i < (target.boss ? 40 : 14); i++) {
               const m = new THREE.Mesh(bitGeo, new THREE.MeshBasicMaterial({ color: i % 2 ? 0xec4899 : 0xa855f7 }));
               m.position.copy(target.g.position);
@@ -175,7 +194,7 @@ export function NeonStrike({ seed, endsAt, clock, onProgress, onStats }: GamePro
               bits.push({ m, v: new THREE.Vector3((Math.random() - 0.5) * 12, Math.random() * 9, (Math.random() - 0.5) * 12), life: 1.2 });
             }
             w.scene.remove(target.g); bots.splice(bots.indexOf(target), 1);
-            out.current.arena.sfx('boom'); out.current.arena.shake(0.4);
+            out.current.arena.sfx('boom'); w.shake(0.25);
             if (mult > 1) say(`Combo ×${mult}!`, 'gold');
             if (!bots.length) nextWaveAt = t + 3;
             if (r() < 0.3) { const kind = (['health', 'rapid', 'shield'] as const)[Math.floor(r() * 3)]; const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.5), new THREE.MeshBasicMaterial({ color: DROP_COLOR[kind] })); m.position.set(target.g.position.x, 1, target.g.position.z); m.add(glowSprite(DROP_COLOR[kind], 2.4)); w.scene.add(m); drops.push({ m, kind, until: t + 12 }); }
@@ -191,13 +210,13 @@ export function NeonStrike({ seed, endsAt, clock, onProgress, onStats }: GamePro
         const toMe = body.pos.clone().add(new THREE.Vector3(0, 1.2, 0)).sub(b.g.position);
         const dist = toMe.length();
         if (b.g.position.distanceTo(b.to) < 1 || r() < dt * 0.15) b.to = spot();
-        const step = b.to.clone().sub(b.g.position).setLength(b.speed * dt);
+        const step = b.to.clone().sub(b.g.position).setLength(b.speed * dtw);
         b.g.position.add(step);
         b.g.position.y += Math.sin(t * 3 + b.speed) * 0.01;
         b.g.lookAt(body.pos.x, body.pos.y + 1.2, body.pos.z);
         b.flash = Math.max(0, b.flash - dt);
         (b.eye.material as THREE.MeshBasicMaterial).color.set(b.flash ? 0xffffff : 0xff2d55);
-        b.next -= dt;
+        b.next -= dtw;
         if (b.next <= 0 && dist < 34 && !down) {
           b.next = b.boss ? 1.3 : Math.max(0.7, 2.2 - wave * 0.12) + r();
           const sight = new THREE.Ray(b.g.position, toMe.clone().normalize());
@@ -213,11 +232,11 @@ export function NeonStrike({ seed, endsAt, clock, onProgress, onStats }: GamePro
       }
       // Bolts.
       for (const bo of bolts) {
-        bo.m.position.addScaledVector(bo.v, dt); bo.life -= dt;
+        bo.m.position.addScaledVector(bo.v, dtw); bo.life -= dtw;
         if (solidsNoFloor.some((s) => s.containsPoint(bo.m.position)) || bo.m.position.y < 0) bo.life = 0;
         else if (!down && t > safeUntil && bo.m.position.distanceTo(body.pos.clone().add(new THREE.Vector3(0, 1.1, 0))) < 0.9) {
           bo.life = 0;
-          if (shield > 0) { shield--; out.current.arena.sfx('hit'); } else { hp -= 12; hurtAt = t; out.current.arena.sfx('hurt'); out.current.arena.shake(0.35); }
+          if (shield > 0) { shield--; out.current.arena.sfx('hit'); w.burst(bo.m.position, 0x60a5fa, 14, 5, 2); } else { hp -= 12; hurtAt = t; out.current.arena.sfx('hurt'); w.shake(0.35); }
           if (hp <= 0) {
             downUntil = t + 1.5; safeUntil = t + 3.5; score = Math.max(0, score - STRIKE_DOWN); combo = 0;
             say(`Tagged out! −${STRIKE_DOWN}`, 'bad');
@@ -230,7 +249,7 @@ export function NeonStrike({ seed, endsAt, clock, onProgress, onStats }: GamePro
       if (downUntil && t > downUntil && hp <= 0) { hp = 100; body.pos.set(0, 0.05, 0); report(); }
       if (t - hurtAt > 4 && hp < 100 && hp > 0) { hp = Math.min(100, approach(hp, 101, 0.5, dt)); if (Math.round(hp) % 10 === 0) report(); }
       // Debris and drops.
-      for (const b of bits) { b.v.y -= 22 * dt; b.m.position.addScaledVector(b.v, dt); b.m.rotation.x += dt * 8; b.life -= dt; if (b.m.position.y < 0.12) { b.m.position.y = 0.12; b.v.multiplyScalar(0.5); b.v.y *= -0.4; } if (b.life <= 0) w.scene.remove(b.m); }
+      for (const b of bits) { b.v.y -= 22 * dtw; b.m.position.addScaledVector(b.v, dtw); b.m.rotation.x += dtw * 8; b.life -= dtw; if (b.m.position.y < 0.12) { b.m.position.y = 0.12; b.v.multiplyScalar(0.5); b.v.y *= -0.4; } if (b.life <= 0) w.scene.remove(b.m); }
       for (let i = bits.length - 1; i >= 0; i--) if (bits[i].life <= 0) bits.splice(i, 1);
       for (const dr of drops) {
         dr.m.rotation.y = t * 2; dr.m.position.y = 1 + Math.sin(t * 3) * 0.2;
@@ -244,13 +263,16 @@ export function NeonStrike({ seed, endsAt, clock, onProgress, onStats }: GamePro
         if (t > dr.until) w.scene.remove(dr.m);
       }
       for (let i = drops.length - 1; i >= 0; i--) if (t > drops[i].until) drops.splice(i, 1);
+      w.focus.copy(body.pos);
+      crowd.update(dt, { pos: body.pos, ry: c.yaw + Math.PI, air: !body.ground, part: 0, color: lookHex(look), hat: look.hat });
     });
     return () => { c.dispose(); controls.current = null; w.dispose(); };
   }, [seed]);
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <WorldFrame canvas={canvas} controls={controls} buttons={[{ id: 'fire', label: 'Fire' }, { id: 'jump', label: 'Jump' }]} keys="WASD move · hold the mouse to fire · Space jump" label="Neon Strike: a 3D laser tag arena">
+      <WorldFrame canvas={canvas} controls={controls} buttons={[{ id: 'skill', label: 'Slow' }, { id: 'fire', label: 'Fire' }, { id: 'jump', label: 'Jump' }]} keys="WASD move · hold the mouse to fire · Space jump · Q bullet time" label="Neon Strike: a 3D laser tag arena" others={skill.others}>
+        {skill.active && <div className="play-slowmo pointer-events-none absolute inset-0" aria-hidden />}
         {/* The crosshair, a hit tick, and a red edge when hurt */}
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2" aria-hidden>
           <span className="absolute left-1/2 top-0 h-2 w-0.5 -translate-x-1/2 bg-white" /><span className="absolute bottom-0 left-1/2 h-2 w-0.5 -translate-x-1/2 bg-white" />
@@ -270,6 +292,7 @@ export function NeonStrike({ seed, endsAt, clock, onProgress, onStats }: GamePro
             <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-300"><Heart className="h-3.5 w-3.5 text-red-400" aria-hidden />Health {hud.shield > 0 && <span className="ms-auto inline-flex items-center gap-0.5 text-sky-300"><Shield className="h-3.5 w-3.5" aria-hidden />{hud.shield}</span>}</p>
             <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-white/10"><div className={cn('h-full w-full origin-left rounded-full transition-transform duration-200 rtl:origin-right', hud.hp > 35 ? 'bg-emerald-400' : 'bg-red-500')} style={{ transform: `scaleX(${hud.hp / 100})` }} /></div>
           </div>
+          <SkillRing label="Bullet time" keyName="Q" charge={skill.charge} active={skill.active} />
           <HudChip label="Wave" value={hud.wave} />
           <HudChip label="Drones left" value={hud.left} tone="bad" />
           {hud.combo > 1 && <HudChip label="Combo" value={`×${strikeMultiplier(hud.combo)}`} tone="gold" />}

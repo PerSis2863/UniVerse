@@ -8,7 +8,9 @@ import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import type { GameProps } from './game-props';
 import { Body, Controls, THREE, World, eyes, glowSprite, walk } from './world/core';
-import { WorldFrame } from './world/Stage';
+import { lookHex, readLook } from './PlayerCard';
+import { Crowd } from './world/crowd';
+import { SkillRing, WorldFrame } from './world/Stage';
 
 // Night Shift (18+, src/lib/play/worlds.ts): first person in a dark school after hours, three
 // floors deep. Keys lie in the dead ends of the halls; the stairs (the last floor: the exit) open
@@ -43,18 +45,25 @@ function tiles() {
   return t;
 }
 
-export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats }: GameProps) {
+/** Echo (M38): a sound pulse shows every wall and the thing through walls for a moment, but it hears you. */
+const ECHO_SHOW_S = 2.6, ECHO_REFILL_S = 14, ECHO_RUSH_S = 4;
+
+export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, net }: GameProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const controls = useRef<Controls | null>(null);
   const arena = useArena();
   const [hud, setHud] = useState({ keys: 0, need: nightKeys(0), floor: 0, lives: NIGHT_LIVES, battery: 100, stamina: 100, near: 0, scare: 0, open: false });
-  const out = useRef({ arena, onProgress, onDone, onStats, clock, endsAt });
-  useEffect(() => { out.current = { arena, onProgress, onDone, onStats, clock, endsAt }; });
+  const [skill, setSkill] = useState({ charge: 1, active: false, others: 0, pulse: 0 });
+  const [curtain, setCurtain] = useState<{ key: number; title: string; sub?: string } | null>(null);
+  const out = useRef({ arena, onProgress, onDone, onStats, clock, endsAt, net });
+  useEffect(() => { out.current = { arena, onProgress, onDone, onStats, clock, endsAt, net }; });
 
   useEffect(() => {
     const el = canvas.current;
     if (!el) return;
-    const w = new World(el, { fov: 75, bg: 0x000000, fog: [0x000000, 1.5, 20] });
+    const w = new World(el, { fov: 75, bg: 0x000000, fog: [0x000000, 1.5, 20], glow: { strength: 0.75, radius: 0.6, threshold: 0.55 } });
+    const crowd = new Crowd(w, out.current.net), look = readLook();
+    let echoLines: THREE.LineSegments | null = null;
     w.renderer.shadowMap.enabled = false;
     const c = new Controls(el, { sensitivity: 0.0022 });
     controls.current = c;
@@ -109,7 +118,10 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats }:
         if (!(cell % n < n - 1 && m.east[cell])) list.push({ at: [p.x + S / 2, H / 2, p.z], size: [0.4, H, S + 0.4] });
         if (!(cell < n * (n - 1) && m.south[cell])) list.push({ at: [p.x, H / 2, p.z + S / 2], size: [S + 0.4, H, 0.4] });
       }
-      w.boxes(list, wallMat, true, group);
+      const wallMesh = w.boxes(list, wallMat, true, group);
+      // The outline Echo lights up (drawn through everything while it shows).
+      echoLines = wallMesh ? new THREE.LineSegments(new THREE.EdgesGeometry(wallMesh.geometry, 30), new THREE.LineBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 0, depthTest: false, fog: false })) : null;
+      if (echoLines) { echoLines.renderOrder = 5; echoLines.visible = false; group.add(echoLines); }
       walls = w.solids.slice(1);
       flicker = [];
       for (let i = 0; i < 6 + f; i++) {
@@ -145,6 +157,7 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats }:
     };
     report();
 
+    let echo = 1, echoAt = -99, rushUntil = 0, skillAt = 0;
     w.start((dt, t) => {
       if (done) return;
       const need = nightKeys(floor);
@@ -179,8 +192,9 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats }:
       if (keysGot === need && cellAt(body.pos) === m.exit) {
         if (floor < NIGHT_FLOORS - 1) {
           score += NIGHT_FLOOR; keysGot = 0; battery = Math.min(100, battery + 30);
-          out.current.arena.announce(`Floor ${floor + 2} of ${NIGHT_FLOORS}… it’s darker down here`, 'pink'); out.current.arena.sfx('check');
+          out.current.arena.sfx('check');
           build(floor + 1); safeUntil = t + 3; report();
+          setCurtain({ key: floor, title: `Floor ${floor + 1}`, sub: 'it’s darker down here' });
           return;
         }
         done = true;
@@ -193,7 +207,14 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats }:
       }
       // The thing: walks the halls toward you (faster with every key and floor); the torch drives it back.
       const myCell = cellAt(body.pos);
-      const speed = retreatUntil > t ? 3.2 : 1.9 + floor * 0.35 + keysGot * 0.3;
+      // Echo: a pulse reveals the halls and the thing through the walls… and it hears it.
+      if (c.take('skill') && echo >= 1) { echo = 0; echoAt = t; rushUntil = t + ECHO_RUSH_S; out.current.arena.sfx('zap'); out.current.arena.sfx('heart'); setSkill((p) => ({ ...p, pulse: p.pulse + 1 })); }
+      echo = Math.min(1, echo + dt / ECHO_REFILL_S);
+      const showing = t - echoAt < ECHO_SHOW_S, fade = showing ? Math.max(0, 1 - (t - echoAt) / ECHO_SHOW_S) : 0;
+      if (echoLines) { echoLines.visible = showing; (echoLines.material as THREE.LineBasicMaterial).opacity = fade * 0.9; }
+      for (const part of [robe, headG]) { const mt = part.material as THREE.MeshLambertMaterial; mt.depthTest = !showing; part.renderOrder = showing ? 6 : 0; }
+      if (t - skillAt > 0.15) { skillAt = t; setSkill((p) => (Math.abs(p.charge - echo) < 0.02 && p.active === showing && p.others === crowd.count ? p : { ...p, charge: echo, active: showing, others: crowd.count })); }
+      const speed = retreatUntil > t ? 3.2 : (1.9 + floor * 0.35 + keysGot * 0.3) * (t < rushUntil ? 1.6 : 1);
       const target = center(gTo, V.toT);
       target.sub(ghost.position).setY(0);
       if (target.length() < 0.15) {
@@ -210,7 +231,7 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats }:
       const gl = toG.length();
       let lit = battery > 0 && dist < 15 && fwd.angleTo(toG) < 0.26;
       if (lit) { V.ray.set(w.camera.position, V.q.copy(toG).normalize()); const hit = new THREE.Vector3(); lit = !walls.some((s) => V.ray.intersectBox(s, hit) && hit.distanceTo(w.camera.position) < gl - 0.5); }
-      (robe.material as THREE.MeshLambertMaterial).emissive.setHex(lit ? 0x8a8f99 : 0x2a2d33);
+      (robe.material as THREE.MeshLambertMaterial).emissive.setHex(showing ? 0xb91c1c : lit ? 0x8a8f99 : 0x2a2d33);
       if (lit && t > coolUntil) {
         stun += dt;
         if (stun >= NIGHT_STUN_S) { stun = 0; stuns++; score += NIGHT_STUN; coolUntil = t + NIGHT_STUN_COOLDOWN_S; retreatUntil = t + 5; out.current.arena.sfx('zap'); out.current.arena.announce('It backed away', 'good'); report(); }
@@ -221,7 +242,7 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats }:
       // Caught.
       if (dist < 1.15 && t > safeUntil) {
         caught++; lives--; score = Math.max(0, score - NIGHT_CAUGHT);
-        out.current.arena.sfx('scream'); out.current.arena.shake(2.2);
+        out.current.arena.sfx('scream'); out.current.arena.shake(1.6); w.shake(1);
         setHud((h) => ({ ...h, scare: h.scare + 1 }));
         body.pos.set(S / 2, 0.02, S / 2); body.vel.set(0, 0, 0); c.yaw = Math.PI;
         gCell = gTo = (n * n - 1) - Math.floor(n * 1.5); center(gCell, ghost.position);
@@ -229,6 +250,7 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats }:
         report();
         if (lives <= 0) { done = true; out.current.arena.announce('It got you', 'bad'); setTimeout(() => out.current.onDone(score, allKeys), 1800); }
       }
+      crowd.update(dt, { pos: body.pos, ry: c.yaw + Math.PI, air: false, part: floor, color: lookHex(look), hat: look.hat });
       if (t - lastHud > 0.2) {
         lastHud = t;
         setHud((h) => ({ ...h, keys: keysGot, need, floor, lives, battery: Math.round(battery), stamina: Math.round(stamina), near: Math.max(0, Math.min(1, 1 - dist / 14)), open: keysGot === need }));
@@ -239,12 +261,14 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats }:
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <WorldFrame canvas={canvas} controls={controls} buttons={[]} keys="WASD walk · Shift run · the mouse looks" label="Night Shift: a dark 3D school maze">
+      <WorldFrame canvas={canvas} controls={controls} buttons={[{ id: 'skill', label: 'Echo' }]} keys="WASD walk · Shift run · the mouse looks · Q echo" label="Night Shift: a dark 3D school maze" curtain={curtain} others={skill.others}>
+        {skill.pulse > 0 && <span key={skill.pulse} className="play-echo pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full" aria-hidden />}
         {/* Dread: the edges darken and the picture crawls with static as it nears */}
         <div className="pointer-events-none absolute inset-0 transition-opacity duration-300" style={{ opacity: hud.near, boxShadow: 'inset 0 0 180px 60px rgba(0,0,0,0.95)' }} aria-hidden />
         <div className="play-static pointer-events-none absolute inset-0 mix-blend-screen transition-opacity duration-300" style={{ opacity: hud.near * 0.25 }} aria-hidden />
         {hud.scare > 0 && <Scare key={hud.scare} />}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-start gap-2">
+          <SkillRing label="Echo" keyName="Q" charge={skill.charge} active={skill.active} />
           <div className="rounded-2xl bg-black/60 px-3 py-2 ring-1 ring-white/10"><p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-300">Floor</p><p className="text-lg font-black leading-tight text-white tabular-nums">{hud.floor + 1}/{NIGHT_FLOORS}</p></div>
           <div className="flex items-center gap-1 rounded-2xl bg-black/60 px-3 py-2 ring-1 ring-white/10" aria-label={`${hud.keys} of ${hud.need} keys`}>
             {Array.from({ length: hud.need }, (_, i) => <KeyRound key={i} className={cn('h-5 w-5', i < hud.keys ? 'text-amber-300' : 'text-zinc-600')} aria-hidden />)}

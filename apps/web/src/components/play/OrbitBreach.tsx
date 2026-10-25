@@ -9,25 +9,32 @@ import { useArena } from './arena';
 import { lookHex, readLook } from './PlayerCard';
 import type { GameProps } from './game-props';
 import { Avatar, Body, Controls, THREE, World, follow, glowSprite, walk } from './world/core';
-import { HudChip, WorldFrame } from './world/Stage';
+import { Crowd } from './world/crowd';
+import { HudChip, SkillRing, WorldFrame } from './world/Stage';
 
 // Orbit Breach (12+, src/lib/play/worlds.ts): three broken space stations, each above its own
 // planet. Low gravity, and a boost when you jump again in the air. Stand at each broken reactor to
 // repair it, grab oxygen tanks, dodge meteors (a red ring warns where each lands), then take the
 // pod to the next station (the last one: home).
 
-export function OrbitBreach({ seed, endsAt, clock, onProgress, onDone, onStats }: GameProps) {
+/** Grapple (M38): aim at a deck within reach and a cable pulls you across space. */
+const GRAPPLE_RANGE = 60, GRAPPLE_REFILL_S = 4, GRAPPLE_SPEED = 24;
+
+export function OrbitBreach({ seed, endsAt, clock, onProgress, onDone, onStats, net }: GameProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const controls = useRef<Controls | null>(null);
   const arena = useArena();
   const [hud, setHud] = useState({ air: 100, fixed: 0, need: orbitReactors(0), sector: 0, repair: 0, boost: 1, podOpen: false });
-  const out = useRef({ arena, onProgress, onDone, onStats, clock, endsAt });
-  useEffect(() => { out.current = { arena, onProgress, onDone, onStats, clock, endsAt }; });
+  const [skill, setSkill] = useState({ charge: 1, active: false, others: 0 });
+  const [curtain, setCurtain] = useState<{ key: number; title: string; sub?: string } | null>(null);
+  const out = useRef({ arena, onProgress, onDone, onStats, clock, endsAt, net });
+  useEffect(() => { out.current = { arena, onProgress, onDone, onStats, clock, endsAt, net }; });
 
   useEffect(() => {
     const el = canvas.current;
     if (!el) return;
-    const w = new World(el, { fov: 70, bg: 0x02030a });
+    const w = new World(el, { fov: 70, bg: 0x02030a, glow: { strength: 0.8, radius: 0.6, threshold: 0.6 } });
+    const crowd = new Crowd(w, out.current.net);
     const c = new Controls(el);
     controls.current = c;
     const say = out.current.arena.announce;
@@ -130,10 +137,16 @@ export function OrbitBreach({ seed, endsAt, clock, onProgress, onDone, onStats }
       out.current.onProgress(score, fixedAll);
       out.current.onStats?.([{ label: 'Stations', value: `${sector + (done ? 1 : 0)} of ${ORBIT_SECTORS}` }, { label: 'Reactors fixed', value: String(fixedAll) }, { label: 'Oxygen tanks', value: String(tanksGot) }, { label: 'Meteor hits', value: String(hits) }]);
     };
-    const hurt = (lose: number, why: string) => { air = Math.max(0, air - lose); score = Math.max(0, score - ORBIT_HIT); hits++; say(why, 'bad'); out.current.arena.sfx('hurt'); out.current.arena.shake(0.9); report(); };
+    const hurt = (lose: number, why: string) => { air = Math.max(0, air - lose); score = Math.max(0, score - ORBIT_HIT); hits++; say(why, 'bad'); out.current.arena.sfx('hurt'); w.shake(0.6); report(); };
     report();
 
     w.camera.position.set(0, 5, 12);
+    w.flyIn(new THREE.Vector3(-40, 50, 70), 2);
+    // The grapple: its cable, where it pulls to, and its charge.
+    const cable = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0x67e8f9 }));
+    cable.visible = false; w.scene.add(cable);
+    let grab = 1, pull: { to: THREE.Vector3; until: number } | null = null, skillAt = 0;
+    const aim = new THREE.Vector3(), toDeck = new THREE.Vector3();
     w.start((dt, t) => {
       if (t0 < 0) t0 = t;
       const T = t - t0;
@@ -142,13 +155,40 @@ export function OrbitBreach({ seed, endsAt, clock, onProgress, onDone, onStats }
       if (launching >= 0) {
         podG.position.y += dt * 12; podG.rotation.y += dt * 1.5;
         follow(w.camera, podG.position, c, dt, { dist: 14, height: 2 });
-        if (T - launching > 1.8) { launching = -1; fixed = 0; buildStation(sector + 1); me.group.visible = true; air = Math.min(100, air + 40); say(`Station ${sector + 1}: ${ORBIT_NAMES[sector]}`, 'gold'); out.current.arena.sfx('check'); report(); }
+        if (T - launching > 1.8) { launching = -1; fixed = 0; buildStation(sector + 1); me.group.visible = true; air = Math.min(100, air + 40); setCurtain({ key: sector, title: `Station ${sector + 1}`, sub: ORBIT_NAMES[sector] }); out.current.arena.sfx('check'); w.flyIn(new THREE.Vector3(-40, 50, 70), 2); report(); }
         return;
       }
       // Low gravity, a boost in the air.
-      walk(body, c, dt, { speed: 7, jump: 8.5, air: 0.6 });
-      if (!body.ground && c.take('jump') && boost > 0) { boost = 0; body.vel.y = 9.5; const f = c.wish(); body.vel.x += f.x * 5; body.vel.z += f.y * 5; out.current.arena.sfx('boost'); }
-      body.step(dt, w.solids, 14);
+      // Grapple (Q): the deck nearest where you aim, within reach, pulls you in on a cable.
+      grab = Math.min(1, grab + dt / GRAPPLE_REFILL_S);
+      if (c.take('skill') && grab >= 1 && !pull) {
+        aim.set(0, 0, -1).applyQuaternion(w.camera.quaternion);
+        let best: THREE.Vector3 | null = null, bestA = 0.4;
+        for (const d of decks) {
+          toDeck.set(d.x, d.y + 0.6, d.z).sub(body.pos);
+          const dist = toDeck.length();
+          if (dist < 6 || dist > GRAPPLE_RANGE) continue;
+          const a = aim.angleTo(toDeck);
+          if (a < bestA) { bestA = a; best = new THREE.Vector3(d.x, d.y + 0.8, d.z); }
+        }
+        if (best) { grab = 0; pull = { to: best, until: T + 2.4 }; out.current.arena.sfx('zap'); w.fovBy(10); w.burst(body.pos.clone().setY(body.pos.y + 1.2), 0x67e8f9, 12, 4, 0); }
+        else say('Nothing to grab there', 'pink');
+      }
+      if (pull) {
+        toDeck.subVectors(pull.to, body.pos);
+        if (toDeck.length() < 2.4 || T > pull.until) { pull = null; cable.visible = false; w.fovBy(0); body.vel.multiplyScalar(0.35); }
+        else {
+          body.vel.copy(toDeck.normalize().multiplyScalar(GRAPPLE_SPEED));
+          cable.visible = true;
+          const pts = cable.geometry.attributes.position as THREE.BufferAttribute;
+          pts.setXYZ(0, body.pos.x, body.pos.y + 1.3, body.pos.z); pts.setXYZ(1, pull.to.x, pull.to.y, pull.to.z); pts.needsUpdate = true;
+          if (Math.random() < dt * 20) w.burst(body.pos.clone().setY(body.pos.y + 1), 0x67e8f9, 2, 1, 0);
+        }
+      }
+      if (!pull) walk(body, c, dt, { speed: 7, jump: 8.5, air: 0.6 });
+      if (!body.ground && !pull && c.take('jump') && boost > 0) { boost = 0; body.vel.y = 9.5; const f = c.wish(); body.vel.x += f.x * 5; body.vel.z += f.y * 5; out.current.arena.sfx('boost'); w.burst(body.pos, 0xfbbf24, 16, 3, -2); w.fovBy(6); setTimeout(() => { if (!pull) w.fovBy(0); }, 450); }
+      body.step(dt, w.solids, pull ? 0 : 14);
+      if (t - skillAt > 0.15) { skillAt = t; setSkill((p) => (Math.abs(p.charge - grab) < 0.02 && p.active === !!pull && p.others === crowd.count ? p : { charge: grab, active: !!pull, others: crowd.count })); }
       if (body.ground) boost = 1;
       me.group.position.copy(body.pos);
       me.update(dt, body.vel, body.ground);
@@ -170,6 +210,7 @@ export function OrbitBreach({ seed, endsAt, clock, onProgress, onDone, onStats }
           if (Math.floor(f.p * 12) !== Math.floor((f.p - dt / ORBIT_REPAIR_S) * 12)) out.current.arena.sfx('repair', Math.floor(f.p * 12));
           if (f.p >= 1) {
             f.done = true; fixed++; score += ORBIT_REACTOR;
+            w.burst(f.g.position.clone().setY(f.g.position.y + 1.6), 0x22d3ee, 50, 9, 4); w.say(`+${ORBIT_REACTOR}`, f.g.position.clone().setY(f.g.position.y + 3.4), '#67e8f9'); w.shake(0.2);
             (f.core.material as THREE.MeshLambertMaterial).emissive.setHex(0x0891b2);
             (f.ring.material as THREE.MeshBasicMaterial).color.setHex(0x22d3ee); (f.zone.material as THREE.MeshBasicMaterial).color.setHex(0x22d3ee);
             (f.glow.material as THREE.SpriteMaterial).color.setHex(0x22d3ee);
@@ -213,7 +254,8 @@ export function OrbitBreach({ seed, endsAt, clock, onProgress, onDone, onStats }
           const b = glowSprite(0xfb923c, 9); b.position.set(m.x, m.y + 1, m.z); w.scene.add(b); booms.push({ s: b, life: 0.6 });
           const d = Math.hypot(body.pos.x - m.x, body.pos.z - m.z);
           if (d < 3 && Math.abs(body.pos.y - m.y) < 2.5) { hurt(15, 'Meteor hit! −15 air'); body.vel.set((body.pos.x - m.x) * 3, 7, (body.pos.z - m.z) * 3); }
-          if (d < 14) { out.current.arena.sfx('boom'); out.current.arena.shake(Math.max(0.2, 1 - d / 14)); }
+          w.burst(new THREE.Vector3(m.x, m.y + 0.4, m.z), 0xfb923c, 30, 9, 14);
+          if (d < 14) { out.current.arena.sfx('boom'); w.shake(Math.max(0.15, 0.8 - d / 18)); }
         }
       }
       for (let i = live.length - 1; i >= 0; i--) if (live[i].hit) live.splice(i, 1);
@@ -228,9 +270,11 @@ export function OrbitBreach({ seed, endsAt, clock, onProgress, onDone, onStats }
       }
       for (const tk of tanks) {
         tk.rotation.y += dt * 2;
-        if (tk.visible && tk.position.distanceTo(body.pos.clone().setY(body.pos.y + 0.9)) < 1.4) { tk.visible = false; w.scene.remove(tk); air = Math.min(100, air + 25); score += ORBIT_TANK; tanksGot++; out.current.arena.sfx('coin', tanksGot % 6); report(); }
+        if (tk.visible && tk.position.distanceTo(body.pos.clone().setY(body.pos.y + 0.9)) < 1.4) { tk.visible = false; w.scene.remove(tk); air = Math.min(100, air + 25); score += ORBIT_TANK; tanksGot++; out.current.arena.sfx('coin', tanksGot % 6); w.burst(tk.position, 0x4ade80, 16, 4, 2); w.say(`+${ORBIT_TANK}`, tk.position.clone().setY(tk.position.y + 1), '#86efac', 0.8); report(); }
       }
       w.sunOver(body.pos);
+      w.focus.copy(body.pos);
+      crowd.update(dt, { pos: body.pos, ry: me.group.rotation.y, air: !body.ground, part: sector, color: lookHex(look), hat: look.hat });
       if (t - lastHud > 0.15) { lastHud = t; setHud({ air: Math.round(air), fixed, need, sector, repair: repairing, boost, podOpen: fixed === need }); }
     });
     return () => { c.dispose(); controls.current = null; w.dispose(); };
@@ -238,7 +282,7 @@ export function OrbitBreach({ seed, endsAt, clock, onProgress, onDone, onStats }
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <WorldFrame canvas={canvas} controls={controls} buttons={[{ id: 'jump', label: 'Jump' }]} keys="WASD move · Space jump, again to boost" label="Orbit Breach: a 3D space station">
+      <WorldFrame canvas={canvas} controls={controls} buttons={[{ id: 'skill', label: 'Grab' }, { id: 'jump', label: 'Jump' }]} keys="WASD move · Space jump, again to boost · aim and Q to grapple" label="Orbit Breach: a 3D space station" curtain={curtain} others={skill.others}>
         <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-start gap-2">
           <div className="w-44 rounded-2xl bg-black/55 px-3.5 py-2 ring-1 ring-white/15">
             <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-300"><Wind className="h-3.5 w-3.5 text-sky-300" aria-hidden />Oxygen {hud.air}%</p>
@@ -246,6 +290,7 @@ export function OrbitBreach({ seed, endsAt, clock, onProgress, onDone, onStats }
           </div>
           <HudChip label={ORBIT_NAMES[hud.sector]} value={`Reactors ${hud.fixed}/${hud.need}`} tone="good" />
           <HudChip label="Boost" value={hud.boost ? 'Ready' : '…'} tone={hud.boost ? 'gold' : 'white'} />
+          <SkillRing label="Grapple" keyName="Q" charge={skill.charge} active={skill.active} />
           {hud.podOpen && <span className="self-center rounded-full bg-cyan-400 px-3 py-1 text-xs font-black uppercase tracking-wider text-cyan-950">Escape pod open</span>}
         </div>
         {hud.repair > 0 && hud.repair < 1 && (
