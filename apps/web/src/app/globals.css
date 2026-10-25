@@ -546,6 +546,13 @@
     background: linear-gradient(100deg, #253745, #4a5c6a);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 3px 0 0 #ec4899, 0 8px 22px -10px rgba(236, 72, 153, 0.75);
   }
+  /* M29: a soft highlight that glides under the pointer from row to row (mouse and trackpad only;
+     touch screens keep the plain :hover). The rows' own hover fill steps aside for it. */
+  .nav-hover { display: none; position: absolute; inset: 0; z-index: 0; border-radius: inherit; background-color: var(--sidebar-item-hover-bg); pointer-events: none; }
+  @media (hover: hover) and (pointer: fine) {
+    .nav-hover { display: block; }
+    .sidebar-item.glide-host:hover { background-color: transparent; }
+  }
   .sidebar-item.active {
     background-color: var(--sidebar-item-active-bg);
     color: var(--sidebar-item-active-color);
@@ -1222,6 +1229,9 @@ html[data-collapsed] .nav-brand-text { opacity: 0; }
   box-shadow: 0 6px 16px -6px rgba(236, 72, 153, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 .ios-segment[aria-current="page"], .ios-segment[aria-selected="true"], .ios-segment[aria-pressed="true"] { color: #ffffff; }
+/* M29: the segment under the pointer gets a faint fill that glides along the bar (mouse only). */
+.ios-segment-hover { display: none; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--fill-strong); pointer-events: none; }
+@media (hover: hover) and (pointer: fine) { .ios-segment-hover { display: block; } }
 /* Separators between unselected segments, like UISegmentedControl. */
 .ios-segment + .ios-segment::before {
   content: ''; position: absolute; left: 0; top: 25%; bottom: 25%; width: 1px;
@@ -2047,4 +2057,65 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
   .print-sheet, .print-sheet * { visibility: visible !important; }
   .print-sheet { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4mm; padding: 6mm; }
   .trace-label { break-inside: avoid; border-color: #ccc !important; }
+}
+
+/* UniVerse Play (M31): timers drain, belts run and ripples spread as one CSS animation each, on the
+   GPU, with nothing to work out per frame. With Reduce Motion the loops stop and the hits fade. */
+@keyframes play-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.play-drain { animation: play-drain linear forwards; transform-origin: left; }
+[dir="rtl"] .play-drain { transform-origin: right; }
+[dir="rtl"] { --play-dir: -1; }
+.play-stage:fullscreen { overflow-y: auto; padding: clamp(1rem, 3vw, 2.5rem); }
+@keyframes play-shake { 20%, 60% { transform: translate3d(-6px, 0, 0); } 40%, 80% { transform: translate3d(6px, 0, 0); } }
+.play-shake { animation: play-shake 320ms var(--ease-out-soft); }
+@keyframes play-ripple { from { transform: scale(1); opacity: 0.55; } to { transform: scale(2.1); opacity: 0; } }
+.play-ripple { animation: play-ripple 1.6s var(--ease-out-soft) infinite; }
+@keyframes play-stripes { to { transform: translate3d(-48px, 0, 0); } }
+.play-stripes { animation: play-stripes 1.2s linear infinite; }
+[dir="rtl"] .play-stripes { animation-direction: reverse; }
+@keyframes play-sorted { to { transform: translate3d(0, 72px, 0) scale(0.5); opacity: 0; } }
+.play-sorted { animation: play-sorted 340ms var(--ease-out-soft) forwards; }
+@keyframes play-dropped { to { transform: translate3d(14px, 64px, 0) rotate(40deg); opacity: 0; } }
+.play-dropped { animation: play-dropped 420ms ease-in forwards; }
+@keyframes play-float { 0% { transform: translate3d(-50%, 4px, 0) scale(0.9); opacity: 0; } 18% { transform: translate3d(-50%, -8px, 0) scale(1); opacity: 1; } 100% { transform: translate3d(-50%, -44px, 0); opacity: 0; } }
+.play-float { animation: play-float 900ms var(--ease-out-soft) forwards; }
+@keyframes play-tick { from { transform: scale(1.18); } }
+.play-tick { animation: play-tick 260ms var(--ease-out-soft); }
+@keyframes play-scene { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -4px, 0); } }
+.play-scene > * { animation: play-scene 3.2s var(--ease-glide) infinite; }
+.play-scene > *:nth-child(2) { animation-delay: -0.8s; } .play-scene > *:nth-child(3) { animation-delay: -1.6s; } .play-scene > *:nth-child(4) { animation-delay: -2.4s; }
+@media (prefers-reduced-motion: reduce) {
+  .play-ripple, .play-stripes, .play-scene > * { animation: none; }
+  .play-shake, .play-tick { animation: none; }
+  .play-sorted, .play-dropped, .play-float { animation-name: rm-fade; animation-direction: reverse; }
+}
+@keyframes play-car { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(10px, 0, 0); } }
+.play-scene-car { animation: play-car 2.4s var(--ease-glide) infinite; }
+@keyframes play-heli { 0%, 100% { transform: translate3d(0, 0, 0) rotate(-4deg); } 50% { transform: translate3d(24px, 6px, 0) rotate(3deg); } }
+.play-scene-heli { animation: play-heli 3.6s var(--ease-glide) infinite; }
+@media (prefers-reduced-motion: reduce) { .play-scene-car, .play-scene-heli { animation: none; } }
+
+/* M33 · The folded menu (the owner's video: "Fold the sidebar. Get a column back."). On a computer
+   the side menu folds to a strip of icons (<html data-sidebar="folded">, src/lib/sidebar-fold.ts)
+   and the page takes the room. The menu's width and the page's margin glide together (a layout
+   change by design: that's the point of folding); labels fade out first and back in last, the
+   names show as tooltips. Phones keep the slide-in sheet. */
+:root { --side-w: 16rem; }
+@media (min-width: 1024px) {
+  html[data-sidebar="folded"] { --side-w: 4.5rem; }
+  .side-shell { transition-property: width, transform; transition-duration: 320ms; transition-timing-function: var(--ease-glide); }
+  .side-main { transition: margin-inline-start 320ms var(--ease-glide); }
+  .side-label { white-space: nowrap; transition: opacity 200ms var(--ease-out-soft) 110ms; }
+  html[data-sidebar="folded"] .side-label { opacity: 0; pointer-events: none; transition-delay: 0ms; transition-duration: 90ms; }
+  html[data-sidebar="folded"] .side-hide { display: none; }
+  html[data-sidebar="folded"] .side-shell nav { padding-inline: 0.9375rem; overflow-x: hidden; }
+  html[data-sidebar="folded"] .side-shell nav .sidebar-item { overflow: hidden; }
+  html[data-sidebar="folded"] .side-brand { padding-inline: 1.0625rem; }
+  html[data-sidebar="folded"] .side-switch { padding-inline: 0.4rem; }
+  html[data-sidebar="folded"] .side-menu { left: auto; right: auto; inset-inline-start: calc(100% + 0.5rem); top: 0; width: 16rem; }
+  html[data-sidebar="folded"] .side-foot > div:first-child { padding-inline: 0.375rem; }
+  html[data-sidebar="folded"] .side-foot button { padding-inline: 0.9rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .side-shell, .side-main, .side-label { transition-duration: 0ms !important; transition-delay: 0ms !important; }
 }

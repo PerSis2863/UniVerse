@@ -12,6 +12,7 @@ import { api, fetcher } from '@/lib/fetcher';
 import { safeHref } from '@/lib/safe-href';
 import { AdminSearch, PersonCell, RoleBadge, matchesQuery, personText, type PersonInfo } from '@/components/admin/AdminPeople';
 import { TabPill } from '@/components/ui/Glide';
+import { SectionTabs, ADMIN_LEARN_TABS } from '@/components/layout/SectionTabs';
 
 interface Resource {
   id: string; title: string; description?: string | null; category?: string | null; url?: string | null; isPublic: boolean;
@@ -87,6 +88,7 @@ export default function AdminKnowledgeHubPage() {
         subtitle="Every resource on the platform and who added it"
         rightNode={<button onClick={() => setAdding(true)} className="btn-primary"><Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add</span> Resource</button>}
       />
+      <SectionTabs tabs={ADMIN_LEARN_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M22 is the latest).
+  builds on it). The newest notes are at the end (M33 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -68,6 +68,9 @@ software or website in the main website… where they create a impact"). Each ap
   alerts for helpers.
 - **Green** (`/green`): climate actions with the CO₂ they save, streaks, badges, a weekly challenge,
   teams and a map.
+- **Play** (`/play`): eight games, two per app (quick: Quiz Clash, Spot the Fake, Supply Run,
+  Recycle Rush; big: Type Race, World Pin, Flood Rescue, Ocean Cleanup), solo or up to 8 friends in
+  a room with a code (the `GameRoom` Durable Object), leaderboards.
 
 Shared by all apps: the hub `/hub`, Messages, Collaborate (the owner likes it: keep it), Settings,
 and the owner console `/console`. Each app has its own menu (`Sidebar.tsx` `navFor`, the app
@@ -80,16 +83,21 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 
 ## 4. Where things stand (25 October 2026)
 
-- **`main` has everything through M22** (PR #93, 25 Oct): the impact apps (M21), Relief
-  notifications and nearby alerts, real temperature sensors, and the live site's sign-in and call
-  errors fixed (M22). Every item has a note in the handoff file and a Progress row in the plan.
-- **Next database update number: `0184`** (files in `apps/web/prisma/migrations/`).
-- **On the branch, not merged:** M23 (Google sign-in after the demo; no demo button on the main page),
-  M24 (the Impact Wallet on `/hub`), M25 (proof for Green actions, migration 0183).
+- **`main` has everything through M25** (PR #94, 25 Oct): the impact apps (M21), Relief alerts and
+  real temperature sensors (M22), Google sign-in after the demo fixed (M23), the Impact Wallet (M24),
+  proof for Green actions (M25). Every item has a note in the handoff file and a Progress row in the plan.
+- **On the branch, not merged:** M26a (sample errors tagged, not counted), M26 (launch board, invites),
+  M27 (simpler UniVersity menus), M28 (500 people a month on the $5 plan: live events only to people
+  online, migration 0184), M29 (pointer glides), M30 (Ask UniVerse on /hub and ⌘K), M31 (UniVerse
+  Play: four games, solo and rooms; migration 0185, wrangler migration `v5` for `GameRoom`), M32
+  (four bigger games: Type Race, World Pin, Flood Rescue, Ocean Cleanup), M33 (the side menu folds
+  to icons on computers).
+  **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
+- **Next database update number: `0186`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
-  in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and challenges (done, M25);
-  organisation accounts for Relief (NGOs, supplies, volunteer shifts; SMS/WhatsApp requests behind a
-  switch); an "Ask UniVerse" assistant that acts in every app; the EU Digital Product Passport for
+  in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
+  challenges (done, M25); organisation accounts for Relief (NGOs, supplies, volunteer shifts; SMS/WhatsApp requests behind a
+  switch); an "Ask UniVerse" assistant that acts in every app (small version done, M30); the EU Digital Product Passport for
   Trace (GS1 codes, supplier portal); self-serve payments for Trace PRO, campaigns and schools (off
   until the owner's Stripe keys); store apps for Android and iPhone (the owner's store accounts).
 - **Waiting on the owner** (only they can provide it): Google / Microsoft calendar sync apps; Google

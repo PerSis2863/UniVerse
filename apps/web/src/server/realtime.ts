@@ -1,5 +1,5 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { fanOut } from '@/lib/fanout';
+import { TYPING_PEERS, fanOut, liveAmong } from '@/lib/fanout';
 import { planLimits } from '@/lib/plan-limits';
 
 // Live updates: each signed-in user has a RealtimeHub Durable Object (cloudflare/worker.ts) holding
@@ -41,8 +41,12 @@ export async function deliver(userIds: Iterable<string>, event: RealtimeEvent): 
   const ids = [...new Set(userIds)];
   if (!ids.length) return new Set();
   if (!hub(ids[0])) return null;
+  // Only people with UniVerse open (M28); if the check fails, everyone, as before.
+  const { default: prisma } = await import('@/lib/db');
+  const live = await liveAmong(ids, (sql, part) => prisma.$queryRawUnsafe<{ id: string }[]>(sql, ...part).then((r) => r.map((x) => x.id))).catch(() => ids);
+  if (!live.length) return new Set();
   // Big lists are relayed hub to hub (src/lib/fanout.ts), so every member is reached on Workers Free.
-  return fanOut(ids, JSON.stringify(event), (id) => hub(id)!);
+  return fanOut(live, JSON.stringify(event), (id) => hub(id)!);
 }
 
 /** Sends an event to every open tab of these users, after the response. Never throws. */
@@ -91,7 +95,7 @@ export function publishTyping(conversationId: string, userId: string, name: stri
     const members = await prisma.conversationParticipant.findMany({ where: { conversationId, userId: { not: userId } }, select: { userId: true } });
     // In big groups "someone is typing" isn't shown: it would cost one live request per member
     // every few seconds while anyone types (cloudflare/fast-api.ts typing does the same).
-    if (members.length > planLimits().livePushes) return;
+    if (members.length > Math.min(TYPING_PEERS, planLimits().livePushes)) return;
     publish(members.map((m) => m.userId), { type: 'typing', conversationId, name });
   })().catch((e) => console.error('realtime publishTyping failed:', e));
   try {

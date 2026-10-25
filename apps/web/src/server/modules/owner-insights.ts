@@ -7,6 +7,7 @@ import { parseSwitches, parseWatchWords } from '@/lib/feature-switches';
 import { selectColumns } from '../table-stats';
 import { watchedUsage } from '../plan-usage';
 import { oneOf } from '../body';
+import { REAL_ERRORS_SQL } from '../errors';
 
 // Owner console extras that read across the app:
 //   attention  what needs the owner now (the Overview card and the counts on the console tabs)
@@ -32,9 +33,9 @@ export default function ownerInsightsModule(router: Router) {
     const now = Date.now();
     const day = iso(now - DAY);
     const c = await selectColumns([
-      ['openErrors', `(SELECT COUNT(*) FROM error_reports WHERE status IN ('NEW','DIAGNOSED'))`],
-      ['newErrors', `(SELECT COUNT(*) FROM error_reports WHERE firstSeen > '${day}')`],
-      ['highErrors', `(SELECT COUNT(*) FROM error_reports WHERE status IN ('NEW','DIAGNOSED') AND severity = 'high')`],
+      ['openErrors', `(SELECT COUNT(*) FROM error_reports WHERE status IN ('NEW','DIAGNOSED') AND ${REAL_ERRORS_SQL})`],
+      ['newErrors', `(SELECT COUNT(*) FROM error_reports WHERE firstSeen > '${day}' AND ${REAL_ERRORS_SQL})`],
+      ['highErrors', `(SELECT COUNT(*) FROM error_reports WHERE status IN ('NEW','DIAGNOSED') AND ${REAL_ERRORS_SQL} AND severity = 'high')`],
       ['deletions', `(SELECT COUNT(*) FROM account_deletion_requests WHERE status = 'PENDING')`],
       ['applications', `(SELECT COUNT(*) FROM role_applications WHERE status = 'PENDING')`],
       ['waiting', `(SELECT COUNT(*) FROM users WHERE status = 'PENDING' AND onboardedAt IS NOT NULL)`],

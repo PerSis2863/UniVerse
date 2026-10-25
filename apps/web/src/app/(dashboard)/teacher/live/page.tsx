@@ -12,6 +12,7 @@ import { fetcher } from '@/lib/fetcher';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { PollResults } from '@/components/live/PollResults';
 import dynamic from 'next/dynamic';
+import { SectionTabs, TEACHER_COURSE_TABS } from '@/components/layout/SectionTabs';
 
 // In-person class (Stage 5 · D7): loads with the page's course picked.
 const ClassroomPanel = dynamic(() => import('@/components/live/ClassroomPanel').then((m) => m.ClassroomPanel), { ssr: false, loading: () => <div className="h-28 rounded-2xl skeleton" /> });
@@ -38,6 +39,7 @@ export default function TeacherLivePage() {
   return (
     <>
       <Topbar title="Live class" subtitle="In-person classes, quick polls and questions: students answer on their phones" />
+      <SectionTabs tabs={TEACHER_COURSE_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6 stagger">
           <div className="flex flex-wrap items-end gap-3">

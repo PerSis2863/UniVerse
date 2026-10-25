@@ -9,6 +9,7 @@ import { fetcher } from '@/lib/fetcher';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { TabPill } from '@/components/ui/Glide';
+import { SectionTabs, STUDENT_RECORDS_TABS } from '@/components/layout/SectionTabs';
 
 interface ElectiveCourse { id: string; code?: string; name?: string; credits?: number | null }
 interface MyElective { id: string; courseId: string; status: string; course?: ElectiveCourse | null }
@@ -98,6 +99,7 @@ export default function StudentChoices() {
   return (
     <>
       <Topbar title="My Choices" subtitle="Manage your academic path and electives" />
+      <SectionTabs tabs={STUDENT_RECORDS_TABS} />
       
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-8">

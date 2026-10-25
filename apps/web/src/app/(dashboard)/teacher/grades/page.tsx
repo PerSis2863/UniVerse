@@ -13,6 +13,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { api, fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
+import { SectionTabs, TEACHER_MARKING_TABS } from '@/components/layout/SectionTabs';
 
 type Student = { id: string; name: string; email: string };
 type Grade = { id: string; studentId: string; assignmentName: string; score: number; maxScore: number; feedback: string | null; gradedAt: string };
@@ -107,6 +108,7 @@ export default function TeacherGradesPage() {
     return (
       <>
         <Topbar title="Grade Book" subtitle="Record and review student results" />
+        <SectionTabs tabs={TEACHER_MARKING_TABS} />
         <div className="flex-1 p-4 md:p-8 overflow-y-auto">
           <FeatureGuide icon={GraduationCap} title="Your gradebook will appear here"
             description="Once a course is assigned to you, you can record marks for each student here. Students see them instantly on their Grades page."
@@ -121,6 +123,7 @@ export default function TeacherGradesPage() {
   return (
     <>
       <Topbar title="Grade Book" subtitle="Record and review student results" />
+      <SectionTabs tabs={TEACHER_MARKING_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto space-y-5">
         <div className="flex flex-col md:flex-row gap-3 md:items-center justify-between">
           <select aria-label="Course" className={cn('input', 'md:w-80')} value={courseId} onChange={(e) => { setCourseId(e.target.value); setAdding(null); }}>

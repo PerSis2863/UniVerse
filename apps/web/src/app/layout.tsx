@@ -68,7 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Blocking script: applies .dark class before paint to prevent theme flash */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');}catch(e){}})();` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');if(localStorage.getItem('uv-sidebar')==='folded')document.documentElement.dataset.sidebar='folded';}catch(e){}})();` }} />
         {/* The page colour before the stylesheet arrives: a refresh in dark mode never flashes white */}
         <script dangerouslySetInnerHTML={{ __html: DISPLAY_PREFS_SCRIPT }} />
         {/* The saved language's direction (Arabic and Urdu read right to left) before paint */}

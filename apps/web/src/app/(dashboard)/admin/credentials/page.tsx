@@ -9,6 +9,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { api, errorMessage } from '@/lib/api';
 import { safeHref } from '@/lib/safe-href';
 import { SearchBox, matchesQuery, RoleChip, StatusChip, fmtDate, fmtAgo, shownSummary } from '@/components/impact/AdminPeople';
+import { SectionTabs, ADMIN_CREDENTIAL_TABS } from '@/components/layout/SectionTabs';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
 
@@ -123,6 +124,7 @@ export default function AdminCredentialVerificationPage() {
   return (
     <>
       <Topbar title="Credential Verification" subtitle="Verify student impact before a credential is signed and made shareable." />
+      <SectionTabs tabs={ADMIN_CREDENTIAL_TABS} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-6">
           <div className="flex items-start justify-between gap-4 flex-wrap">

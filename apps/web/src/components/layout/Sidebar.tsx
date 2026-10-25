@@ -2,25 +2,26 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { BarChart3, Briefcase, Check, ChevronsUpDown, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
+import { BarChart3, Briefcase, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
 import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { userCan } from '@/lib/permissions';
 import {
   LayoutDashboard, Users,
   MessageSquare, Settings, LogOut,
-  GraduationCap, Brain,
-  AlertTriangle, Folder, ChevronDown,
-  Coffee, Shield, Map, Globe2, Crown
+  GraduationCap,
+  Folder, ChevronDown,
+  Coffee, Globe2, Map
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { LanguageMenu } from './LanguageMenu';
-import { AnimatePresence, m as motion } from 'framer-motion';
+import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useLanguageStore } from '@/store/language';
 import { useOptimisticPath } from '@/lib/nav-pending';
+import { setSidebarFolded, useSidebarFolded } from '@/lib/sidebar-fold';
 
 export type NavItem = {
   href?: string;
@@ -134,145 +135,115 @@ const APP_SEARCH: SearchPage[] = [
   { href: '/trace/vault', label: 'My vault', keywords: 'own ownership transfer warranty proof second hand' },
   { href: '/relief', label: 'Relief map', keywords: 'help need food water shelter medical volunteer aid disaster' },
   { href: '/green', label: 'Log a climate action', keywords: 'green climate co2 tree recycle cycle carbon' },
+  { href: '/play', label: 'Play a game', keywords: 'play games arcade quiz fun friends multiplayer room code' },
+  { href: '/play/leaderboard', label: 'Game leaderboards', keywords: 'games scores best rank leaderboard' },
 ];
 export const searchOnlyPages: Record<string, SearchPage[]> = Object.fromEntries(Object.entries(campusSearch).map(([role, list]) => [role, [...list, ...APP_SEARCH]]));
 
+// M27 (the owner, 26 Oct 2026: "the university is too much big… people will get confuse… merge few
+// of them together"): a few plainly named groups per role. Pages that were their own entries are now
+// tabs of the section they belong to (src/components/layout/SectionTabs.tsx), so every link,
+// bookmark and notification still works, and search (CommandPalette) finds every tab.
 export const navByRole: Record<string, NavItem[]> = {
   STUDENT: [
-    { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard, also: ['/student/calendar', '/student/planner', '/student/information'] },
+    { href: '/student', label: 'Home', icon: LayoutDashboard, also: ['/student/calendar', '/student/planner', '/student/information'] },
     // Messages and calls are one entry: the Calls list is a tab inside Messages.
     { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare, also: ['/calls', '/notifications'] },
     {
-      label: 'nav.schooling', icon: GraduationCap,
+      label: 'Learn', icon: GraduationCap,
       subItems: [
-        { href: '/student/courses', label: 'nav.courses', also: ['/student/live', '/student/offline'] },
-        { href: '/marketplace', label: 'Course Marketplace' },
-        { href: '/student/groups', label: 'nav.groups' },
-        { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor', '/student/voice-tutor', '/student/tutoring', '/student/reels'] },
-        { href: '/student/internships', label: 'nav.internships' },
-        { href: '/student/choices', label: 'nav.my_choices' },
+        { href: '/student/courses', label: 'Courses', also: ['/student/live', '/student/offline', '/student/groups', '/marketplace'] },
         { href: '/student/assignments', label: 'Assignments & grades', also: ['/student/grades', '/student/attendance', '/student/quizzes', '/student/mastery'] },
-        { href: '/collab', label: 'Collaborate', also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
-        { href: '/student/skills', label: 'Learning resources', also: ['/student/knowledge-hub', '/library'] },
+        { href: '/student/blackboard', label: 'Course board & AI tutor', also: ['/student/tutor', '/student/voice-tutor', '/student/oral-practice', '/student/semester', '/student/tutoring', '/student/reels'] },
+        { href: '/student/skills', label: 'Resources & library', also: ['/student/knowledge-hub', '/library'] },
+      ]
+    },
+    { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
+    {
+      label: 'Careers & impact', icon: Briefcase,
+      subItems: [
+        { href: '/student/internships', label: 'Internships & careers', also: ['/student/internships/match', '/student/internships/applications', '/student/internships/interview', '/student/internships/mentors'] },
+        { href: '/student/impact/ngo-marketplace', label: 'Projects & volunteering', also: ['/student/impact/ai-match', '/student/impact/startups', '/student/impact/companies', '/student/impact/shifts', '/impact-rooms', '/impact-league'] },
+        { href: '/student/credentials', label: 'Credentials & passport', also: ['/student/passport', '/student/impact/leaderboard', '/student/impact/edu-society'] },
       ]
     },
     {
-      label: 'nav.administrative_data', icon: Folder,
+      label: 'Campus', icon: Coffee,
       subItems: [
-        { href: '/student/administrative/personal', label: 'nav.personal_data' },
-        { href: '/student/administrative/documents', label: 'nav.school_documents' },
-        { href: '/student/administrative/accounting', label: 'nav.accounting' },
-        { href: '/student/administrative/scholarships', label: 'nav.scholarships' },
+        { href: '/student/life/associations', label: 'nav.student_life', also: ['/student/life/board', '/student/life/rooms', '/student/life/medical', '/student/life/everyday', '/student/life/events', '/student/life/lost-found', '/campus-map'] },
+        { href: '/student/community', label: 'nav.community' },
+        { href: '/student/support', label: 'Help & safety', also: ['/student/wellbeing', '/student/beesafe'] },
       ]
     },
-    {
-      label: 'nav.global_impact', icon: Globe2,
-      subItems: [
-        { href: '/student/impact/ai-match', label: 'AI project match' },
-        { href: '/student/impact/ngo-marketplace', label: 'Opportunities', also: ['/student/impact/startups', '/student/impact/companies', '/student/impact/shifts', '/impact-rooms', '/impact-league'] },
-        { href: '/student/impact/edu-society', label: 'nav.edu_society' },
-        { href: '/student/credentials', label: 'Credentials & passport', also: ['/student/passport'] },
-        { href: '/student/impact/leaderboard', label: 'Leaderboard' },
-      ]
-    },
-    { href: '/student/life/associations', label: 'nav.student_life', icon: Coffee, also: ['/student/life/rooms', '/student/life/medical', '/student/life/everyday', '/student/life/events', '/student/life/lost-found', '/campus-map'] },
-    { href: '/student/community', label: 'nav.community', icon: Users },
-    { href: '/student/support', label: 'Support & BeeSafe', icon: AlertTriangle, also: ['/student/beesafe'] },
+    { href: '/student/administrative/personal', label: 'My records', icon: Folder, also: ['/student/administrative/documents', '/student/administrative/accounting', '/student/administrative/scholarships', '/student/choices'] },
     { href: '/student/settings?section=language', label: 'nav.settings', icon: Settings },
   ],
   TEACHER: [
-    { href: '/teacher', label: 'nav.dashboard', icon: LayoutDashboard },
+    { href: '/teacher', label: 'Home', icon: LayoutDashboard },
+    { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications'] },
     {
-      label: 'nav.global_collab', icon: Globe2,
+      label: 'Teach', icon: GraduationCap,
       subItems: [
-        { href: '/teacher/collaborations', label: 'nav.inter_uni_research', also: ['/teacher/network'] },
-        { href: '/teacher/collaborations/projects', label: 'nav.ngo_mentorship', also: ['/impact-rooms', '/impact-league'] },
-        { href: '/teacher/mentorship', label: 'nav.volunteer_mentor' },
-      ]
-    },
-    {
-      label: 'nav.schooling', icon: GraduationCap,
-      subItems: [
-        { href: '/teacher/courses', label: 'nav.my_courses' },
-        { href: '/marketplace', label: 'Curriculum Marketplace' },
-        { href: '/teacher/blackboard', label: 'nav.blackboard', also: ['/teacher/tutor', '/teacher/reels'] },
+        { href: '/teacher/courses', label: 'Courses & live class', also: ['/teacher/live', '/marketplace'] },
+        { href: '/teacher/assignments', label: 'Marking & attendance', also: ['/teacher/quizzes', '/teacher/grades', '/teacher/attendance'] },
         { href: '/teacher/students', label: 'nav.students', also: ['/teacher/early-warning', '/teacher/analytics', '/teacher/mastery', '/teacher/meetings', '/teacher/forms'] },
-        { href: '/teacher/attendance', label: 'nav.attendance' },
-        { href: '/teacher/grades', label: 'nav.grades' },
-        { href: '/teacher/quizzes', label: 'nav.quizzes' },
-        { href: '/teacher/assignments', label: 'Assignments' },
-        { href: '/teacher/live', label: 'Live class' },
-        { href: '/collab', label: 'Collaborate', also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
+        { href: '/teacher/blackboard', label: 'Course board & AI tutor', also: ['/teacher/tutor', '/teacher/reels'] },
         { href: '/teacher/calendar', label: 'nav.timetable', also: ['/teacher/staff'] },
       ]
     },
+    { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
     {
-      label: 'nav.campus_services', icon: Map,
+      label: 'Campus & research', icon: Globe2,
       subItems: [
+        { href: '/teacher/collaborations', label: 'Research & NGO work', also: ['/teacher/network', '/teacher/collaborations/projects', '/teacher/mentorship', '/impact-rooms', '/impact-league'] },
         { href: '/teacher/services/rooms', label: 'nav.room_reservation', also: ['/campus-map'] },
+        { href: '/teacher/knowledge', label: 'Knowledge & library', also: ['/library'] },
       ]
     },
-    { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain, also: ['/library'] },
-    { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications'] },
     { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },
   ],
   ADMIN: [
     { href: '/admin', label: 'nav.overview', icon: LayoutDashboard },
-    {
-      label: 'nav.global_impact', icon: Globe2,
-      subItems: [
-        { href: '/admin/partnerships', label: 'nav.partner_institutions', also: ['/admin/network'] },
-        { href: '/admin/partners', label: 'nav.sponsor_portal' },
-        { href: '/admin/impact-reports', label: 'Impact reports', also: ['/admin/impact-reports/shifts', '/admin/impact-reports/volunteering', '/impact-rooms', '/impact-league'] },
-        { href: '/admin/certifications', label: 'Certifications' },
-        { href: '/admin/credentials', label: 'Credential Verification' },
-      ]
-    },
-    // Management was 15 entries; now three short groups.
+    { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications', '/admin/announcements'] },
     {
       label: 'People', icon: Users,
       subItems: [
-        { href: '/admin/users', label: 'nav.users', also: ['/admin/staff', '/admin/admissions', '/admin/roles', '/admin/import'] },
+        { href: '/admin/users', label: 'nav.users', also: ['/admin/staff', '/admin/admissions', '/admin/roles', '/admin/import', '/admin/integrations/oneroster', '/admin/integrations/developer', '/admin/integrations/chat-apps', '/admin/integrations/lti'] },
         { href: '/admin/approvals', label: 'Approvals' },
-        { href: '/admin/early-warning', label: 'Early warning' },
-        { href: '/admin/safety', label: 'Safety reports' },
+        { href: '/admin/safety', label: 'Safety & wellbeing', also: ['/admin/safety/chats', '/admin/safety/policy', '/admin/wellbeing'] },
         { href: '/admin/audit', label: 'Activity Log' },
       ]
     },
     {
       label: 'Academics', icon: GraduationCap,
       subItems: [
-        { href: '/admin/courses', label: 'nav.courses' },
-        { href: '/marketplace', label: 'Course Marketplace' },
+        { href: '/admin/courses', label: 'nav.courses', also: ['/marketplace'] },
         { href: '/admin/attendance', label: 'nav.attendance' },
         { href: '/admin/quizzes', label: 'nav.quizzes' },
         { href: '/admin/timetable', label: 'nav.timetable_management' },
-        { href: '/admin/knowledge-hub', label: 'nav.knowledge_hub' },
-        { href: '/admin/library', label: 'Library', also: ['/library'] },
+        { href: '/admin/knowledge-hub', label: 'Knowledge & library', also: ['/admin/library', '/library'] },
       ]
     },
     {
       label: 'Operations', icon: Settings,
       subItems: [
         { href: '/admin/administrative', label: 'nav.administrative' },
-        { href: '/admin/finances', label: 'nav.finances', also: ['/admin/fees'] },
+        { href: '/admin/finances', label: 'Money & billing', also: ['/admin/fees', '/admin/finances/reconciliation', '/admin/billing'] },
         { href: '/admin/internships', label: 'nav.internships' },
-        { href: '/admin/student-life', label: 'nav.student_life' },
+        { href: '/admin/student-life', label: 'Campus & student life', also: ['/admin/monitoring/rooms', '/admin/monitoring/associations', '/admin/monitoring/events', '/admin/monitoring/lost-found', '/admin/monitoring/board', '/admin/monitoring/meals', '/campus-map'] },
         { href: '/admin/registers', label: 'Registers' },
-        { href: '/admin/integrations/lti', label: 'LMS integration' },
       ]
     },
-    { href: '/admin/insights', label: 'Insights', icon: BarChart3, also: ['/admin/analytics', '/admin/reports', '/admin/impact-metrics', '/admin/insights/warehouse'] },
     {
-      label: 'nav.campus_monitoring', icon: Shield,
+      label: 'Impact', icon: Globe2,
       subItems: [
-        { href: '/admin/monitoring/rooms', label: 'nav.room_bookings', also: ['/campus-map'] },
-        { href: '/admin/monitoring/associations', label: 'nav.associations', also: ['/admin/monitoring/events', '/admin/monitoring/lost-found'] },
+        { href: '/admin/partnerships', label: 'Partners & sponsors', also: ['/admin/network', '/admin/partners'] },
+        { href: '/admin/impact-reports', label: 'Impact reports', also: ['/admin/impact-reports/shifts', '/admin/impact-reports/volunteering', '/admin/impact-reports/donations', '/impact-rooms', '/impact-league'] },
+        { href: '/admin/credentials', label: 'Credentials', also: ['/admin/certifications'] },
       ]
     },
-    { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications', '/admin/announcements'] },
+    { href: '/admin/insights', label: 'Insights', icon: BarChart3, also: ['/admin/early-warning', '/admin/analytics', '/admin/reports', '/admin/reports/report-cards', '/admin/reports/grading-scale', '/admin/impact-metrics', '/admin/insights/warehouse'] },
     { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
-    { href: '/admin/billing', label: 'Billing & plans', icon: Crown },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },
   ],
 };
@@ -304,13 +275,17 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
     { href: '/green', label: 'My impact', icon: Leaf },
     { href: '/green/teams', label: 'Teams & leaderboard', icon: Trophy },
   ],
+  play: [
+    { href: '/play', label: 'Arcade', icon: Gamepad2, also: ['/play/game'] },
+    { href: '/play/leaderboard', label: 'Leaderboards', icon: Trophy },
+  ],
 };
 
 /** The menu for the app someone is in. */
 function navFor(app: AppId | null, user: { role: string; owner?: boolean; permissions?: string[] }): NavItem[] {
   const owner: NavItem[] = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }] : [];
   const hub: NavItem = { href: '/hub', label: 'All apps', icon: LayoutGrid };
-  if (!app) return [...owner, hub, ...APPS.map((a): NavItem => ({ href: appHome(a.id, user.role), label: a.name, icon: { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf }[a.id] })), ...sharedNav(user.role)];
+  if (!app) return [...owner, hub, ...APPS.map((a): NavItem => ({ href: appHome(a.id, user.role), label: a.name, icon: { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, play: Gamepad2 }[a.id] })), ...sharedNav(user.role)];
   if (app === 'campus') {
     const base = [...owner, ...(navByRole[user.role] ?? navByRole.STUDENT)];
     return user.role === 'TEACHER' ? withOffice(base, user) : base;
@@ -341,18 +316,18 @@ function AppSwitcher({ app, role, onPick }: { app: AppId | null; role: string; o
   return (
     <div className="relative px-3 pb-2">
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="menu"
-        className="w-full flex items-center gap-3 rounded-2xl px-2.5 py-2 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.07] transition-colors text-start">
+        className="side-switch w-full flex items-center gap-3 overflow-hidden rounded-2xl px-2.5 py-2 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.07] transition-colors text-start">
         <AppIcon id={app ?? 'hub'} size={32} />
-        <span className="min-w-0 flex-1">
+        <span className="side-label min-w-0 flex-1">
           <span className="block text-[13px] font-semibold text-white truncate">{current?.name ?? 'UniVerse Impact'}</span>
           <span className="block text-[11px] text-zinc-400 truncate">{current?.tagline ?? 'All your apps'}</span>
         </span>
-        <ChevronsUpDown className="w-4 h-4 text-zinc-400" aria-hidden />
+        <ChevronsUpDown className="side-label w-4 h-4 text-zinc-400" aria-hidden />
       </button>
       <AnimatePresence>
         {open && (
           <motion.div role="menu" initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={spring.snappy}
-            className="absolute left-3 right-3 top-full z-20 mt-1 rounded-2xl border border-white/10 bg-[#0b1a24] p-1.5 shadow-2xl">
+            className="side-menu absolute left-3 right-3 top-full z-20 mt-1 rounded-2xl border border-white/10 bg-[#0b1a24] p-1.5 shadow-2xl">
             {APPS.map((a) => (
               <Link key={a.id} role="menuitem" href={appHome(a.id, role)} onClick={() => { setOpen(false); onPick?.(); }} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]">
                 <AppIcon id={a.id} size={28} />
@@ -377,6 +352,10 @@ function NavItemComponent({
   isOpen,
   onToggle,
   glide,
+  hovered,
+  onHover,
+  folded,
+  onTip,
 }: { 
   item: NavItem; 
   pathname: string; 
@@ -385,25 +364,40 @@ function NavItemComponent({
   onToggle: () => void;
   /** The highlight slides to the new entry (on screen); otherwise it just moves. */
   glide: boolean;
+  /** The row under the pointer (M29: a soft highlight glides to it), and who to tell. */
+  hovered: string | null;
+  onHover: (key: string | null) => void;
+  /** M33: folded to icons (labels as tooltips; a group unfolds the menu when tapped). */
+  folded: boolean;
+  onTip: (label: string, el: HTMLElement) => void;
 }) {
+  const calm = useReducedMotion();
+  // The pointer's highlight: glides between rows, or just appears with Reduce Motion.
+  const hoverPill = (key: string, on: boolean) => hovered === key && !on && <motion.span layoutId={calm || !glide ? undefined : 'nav-hover'} transition={spring.snappy} className="nav-hover" aria-hidden />;
   const { t } = useLanguageStore();
   const hasActiveChild = item.subItems?.some(sub => isOn(pathname, sub.href, sub.also) || pathname.startsWith(sub.href + '/'));
   const active = pathname === item.href || (item.href && item.href !== '/' && pathname.startsWith(item.href)) || hasActiveChild;
 
+  const tip = (el: HTMLElement) => onTip(t(item.label), el);
   if (item.subItems) {
+    if (folded) isOpen = false;
     return (
       <div className="space-y-1">
         <button
           onClick={onToggle}
+          onPointerEnter={(e) => { onHover(item.label); tip(e.currentTarget); }}
+          onFocus={(e) => tip(e.currentTarget)}
+          aria-label={folded ? t(item.label) : undefined}
           aria-expanded={isOpen}
           data-tour-hrefs={item.subItems.map((s) => s.href.split('?')[0]).join(' ')}
-          className={cn('sidebar-item w-full justify-between', active && !isOpen && 'active')}
+          className={cn('sidebar-item glide-host relative w-full justify-between', active && !isOpen && 'active')}
         >
-          <div className="flex items-center gap-3">
+          {hoverPill(item.label, !!(active && !isOpen))}
+          <div className="relative flex items-center gap-3">
             <item.icon className="w-[18px] h-[18px] flex-shrink-0 text-tint-text" strokeWidth={2} />
-            <span>{t(item.label)}</span>
+            <span className="side-label">{t(item.label)}</span>
           </div>
-          <ChevronDown className={cn('w-3.5 h-3.5 text-zinc-400 transition-transform duration-300', !isOpen && '-rotate-90')} strokeWidth={2.5} />
+          <ChevronDown className={cn('side-label relative w-3.5 h-3.5 text-zinc-400 transition-transform duration-300', !isOpen && '-rotate-90')} strokeWidth={2.5} />
         </button>
         <AnimatePresence initial={false}>
           {isOpen && (
@@ -416,14 +410,18 @@ function NavItemComponent({
               className="overflow-hidden"
             >
               <div className="ps-[1.875rem] space-y-0.5 pt-0.5">
-                {item.subItems.map(sub => {
+                {item.subItems.map((sub, i) => {
                   const on = isOn(pathname, sub.href, sub.also);
                   return (
-                    <Link key={sub.href} href={sub.href} data-vt="fade" data-tour-href={sub.href.split('?')[0]} onClick={onClose} aria-current={on ? 'page' : undefined}
-                      className={cn('sidebar-item pill-host relative block text-[15px] py-1.5', on && 'active')}>
-                      {on && <motion.span layoutId={glide ? 'sidebar-pill' : undefined} transition={spring.snappy} className="sidebar-pill" />}
-                      <span className="relative block truncate">{t(sub.label)}</span>
-                    </Link>
+                    // M29: the rows ripple in as the group opens (35 ms apart; a fade only with Reduce Motion).
+                    <motion.div key={sub.href} initial={{ opacity: 0, y: calm ? 0 : -4 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.snappy, delay: i * 0.035 }}>
+                      <Link href={sub.href} data-vt="fade" data-tour-href={sub.href.split('?')[0]} onClick={onClose} onPointerEnter={() => onHover(sub.href)} aria-current={on ? 'page' : undefined}
+                        className={cn('sidebar-item pill-host glide-host relative block text-[15px] py-1.5', on && 'active')}>
+                        {on && <motion.span layoutId={glide ? 'sidebar-pill' : undefined} transition={spring.snappy} className="sidebar-pill" />}
+                        {hoverPill(sub.href, on)}
+                        <span className="relative block truncate">{t(sub.label)}</span>
+                      </Link>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -446,12 +444,13 @@ function NavItemComponent({
   if (item.href) {
     const on = isOn(pathname, item.href, item.also);
     return (
-      <Link href={item.href} data-vt="fade" data-tour-href={item.href.split('?')[0]} onClick={onClose} aria-current={on ? 'page' : undefined}
-        className={cn('sidebar-item pill-host relative block', on && 'active')}>
+      <Link href={item.href} data-vt="fade" data-tour-href={item.href.split('?')[0]} onClick={onClose} onPointerEnter={(e) => { onHover(item.href!); tip(e.currentTarget); }} onFocus={(e) => tip(e.currentTarget)} aria-current={on ? 'page' : undefined}
+        className={cn('sidebar-item pill-host glide-host relative block', on && 'active')}>
         {on && <motion.span layoutId={glide ? 'sidebar-pill' : undefined} transition={spring.snappy} className="sidebar-pill" />}
+        {hoverPill(item.href, on)}
         <div className="relative flex items-center gap-3">
           <item.icon className="w-[18px] h-[18px] flex-shrink-0 text-tint-text" strokeWidth={2} />
-          <span>{t(item.label)}</span>
+          <span className="side-label">{t(item.label)}</span>
         </div>
       </Link>
     );
@@ -474,11 +473,25 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   const pathname = useOptimisticPath(usePathname());
   const router = useRouter();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   const { t } = useLanguageStore();
   // On a phone the closed menu is off screen: sliding its highlight there on every page change made
   // framer-motion measure the page on each frame of the tab switch.
   const wide = useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE).matches, () => true);
   const app = useCurrentApp(pathname);
+  // M33: folded to a strip of icons on a computer (never on a phone, where the menu is a sheet).
+  const folded = useSidebarFolded() && wide;
+  const [tip, setTip] = useState<{ label: string; y: number } | null>(null);
+  const showTip = (label: string, el: HTMLElement) => { if (!folded) return; const r = el.getBoundingClientRect(); setTip({ label, y: r.top + r.height / 2 }); };
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (e.key !== '[' || e.metaKey || e.ctrlKey || e.altKey || el?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el?.tagName ?? '')) return;
+      setSidebarFolded(document.documentElement.dataset.sidebar !== 'folded');
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, []);
 
   // Escape closes the mobile navigation sheet. The page behind doesn't scroll while it's open
   // because the backdrop and the sheet's fixed parts take no finger scrolling (touch-none) and its
@@ -523,15 +536,21 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       <aside
         aria-label="Navigation"
         className={cn(
-          "dark fixed start-0 top-0 bottom-0 w-[min(84vw,320px)] lg:w-64 glass-sidebar border-e border-[var(--sidebar-border)] flex flex-col z-[100] lg:z-50 sheet-safe-top lg:pt-0 rounded-e-[28px] lg:rounded-none",
+          "side-shell dark fixed start-0 top-0 bottom-0 w-[min(84vw,320px)] lg:w-[var(--side-w)] glass-sidebar border-e border-[var(--sidebar-border)] flex flex-col z-[100] lg:z-50 sheet-safe-top lg:pt-0 rounded-e-[28px] lg:rounded-none",
           "transition-transform duration-[420ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-transform lg:translate-x-0",
           isOpen ? "translate-x-0 shadow-2xl lg:shadow-none" : "-translate-x-full rtl:translate-x-full"
         )}
       >
+        {/* M33: fold the menu to icons (and back): a round button on its edge, or the [ key. */}
+        <button type="button" onClick={() => { setTip(null); setSidebarFolded(!folded); }} aria-expanded={!folded} aria-controls="side-nav"
+          aria-label={folded ? 'Unfold the menu' : 'Fold the menu'} title={`${folded ? 'Unfold' : 'Fold'} the menu ( [ )`}
+          className="side-toggle hidden lg:grid absolute -end-3 top-[1.375rem] z-10 h-6 w-6 place-items-center rounded-full border border-white/15 bg-[#11212D] text-zinc-300 shadow-[0_4px_14px_rgba(0,0,0,0.35)] transition-[color,border-color,transform] duration-200 hover:text-white hover:border-pink-400/70 active:scale-90">
+          <ChevronLeft className={cn('w-3.5 h-3.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] rtl:-scale-x-100', folded && 'rotate-180')} aria-hidden />
+        </button>
         {/* Brand */}
-      <div className="flex items-center gap-3 px-5 h-16 touch-none lg:touch-manipulation">
+      <div className="side-brand flex items-center gap-3 px-5 h-16 overflow-hidden touch-none lg:touch-manipulation">
         <UniverseLogo size="md" animated={false} withGlow={false} />
-        <div className="min-w-0">
+        <div className="side-label min-w-0">
           <div className="font-bold text-[17px] leading-tight tracking-tight text-zinc-900 dark:text-white">UniVerse Impact</div>
           <div className="text-[12px] text-zinc-500 dark:text-zinc-400 font-medium">{user.owner ? 'Owner' : user.role === 'ADMIN' ? 'Admin' : user.role === 'TEACHER' ? 'Teacher' : 'Member'}</div>
         </div>
@@ -539,7 +558,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       <AppSwitcher app={app} role={user.role} onPick={onClose} />
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
+      <nav id="side-nav" onPointerLeave={() => { setHovered(null); setTip(null); }} onBlur={() => setTip(null)} className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
         {nav.map((item, i) => (
           <NavItemComponent 
             key={i} 
@@ -547,19 +566,33 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
             pathname={pathname} 
             onClose={onClose}
             isOpen={openIndex === i || (item.subItems?.some(sub => isOn(pathname, sub.href, sub.also) || pathname.startsWith(sub.href + '/')) && openIndex === null) ? true : false}
-            onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+            onToggle={() => { if (folded) { setSidebarFolded(false); setTip(null); setOpenIndex(i); } else setOpenIndex(openIndex === i ? null : i); }}
             glide={isOpen || wide}
+            hovered={hovered}
+            onHover={setHovered}
+            folded={folded}
+            onTip={showTip}
           />
         ))}
       </nav>
 
+      {/* The label of the icon under the pointer, beside the folded menu. */}
+      <AnimatePresence>
+        {folded && tip && (
+          <motion.div key={tip.label} role="tooltip" initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, transition: { duration: 0.08 } }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+            className="pointer-events-none fixed start-[calc(var(--side-w)+10px)] z-[120] -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[#0b1a24] px-2.5 py-1.5 text-[13px] font-semibold text-white shadow-xl" style={{ top: tip.y }}>
+            {tip.label}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* User */}
-      <div className="px-3 pt-3 sheet-safe-bottom lg:pb-4 touch-none lg:touch-manipulation" style={{ boxShadow: 'inset 0 0.5px 0 var(--separator)' }}>
+      <div className="side-foot overflow-hidden px-3 pt-3 sheet-safe-bottom lg:pb-4 touch-none lg:touch-manipulation" style={{ boxShadow: 'inset 0 0.5px 0 var(--separator)' }}>
         <div className="flex items-center gap-3 px-2 py-2 rounded-xl">
           <div className="w-9 h-9 rounded-full bg-gradient-to-b from-[#a5abb8] to-[#848993] flex items-center justify-center text-[13px] font-semibold text-white flex-shrink-0">
             {initials}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="side-label flex-1 min-w-0">
             <div className="text-[15px] font-semibold text-zinc-900 dark:text-white truncate">{user.name}</div>
             <div className="text-[12px] text-zinc-500 truncate">{user.email}</div>
           </div>
@@ -568,10 +601,10 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
         <LanguageMenu row className="lg:hidden mt-1" />
         <button onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-xl text-[15px] text-red-700 dark:text-[var(--ios-red)] hover:bg-[var(--fill)] transition-colors">
-          <LogOut className="w-[18px] h-[18px]" />
-          <span>{t('nav.logout')}</span>
+          <LogOut className="w-[18px] h-[18px] flex-shrink-0" aria-hidden />
+          <span className="side-label">{t('nav.logout')}</span>
         </button>
-        <div className="px-3 pt-2 pb-1 flex gap-3 text-[12px] text-zinc-400 dark:text-zinc-500">
+        <div className="side-hide px-3 pt-2 pb-1 flex gap-3 text-[12px] text-zinc-400 dark:text-zinc-500">
           <Link href="/terms" target="_blank" className="hover:text-tint-text">Terms</Link>
           <Link href="/privacy" target="_blank" className="hover:text-tint-text">Privacy</Link>
           <Link href="/policies" target="_blank" className="hover:text-tint-text">Policies</Link>

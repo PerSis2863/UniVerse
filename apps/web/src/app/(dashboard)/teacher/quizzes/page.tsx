@@ -12,6 +12,7 @@ import { QuizManager } from '@/components/quizzes/QuizManager';
 import { OfflineQuizReview } from '@/components/quizzes/OfflineQuizReview';
 import { Segmented } from '@/components/ui/Segmented';
 import dynamic from 'next/dynamic';
+import { SectionTabs, TEACHER_MARKING_TABS } from '@/components/layout/SectionTabs';
 
 const QuestionBank = dynamic(() => import('@/components/quizzes/QuestionBank').then((m) => m.QuestionBank), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 
@@ -76,6 +77,7 @@ export default function TeacherQuizzes() {
   return (
     <>
       <Topbar title="Quizzes & Assessments" subtitle="Manage course evaluations" />
+      <SectionTabs tabs={TEACHER_MARKING_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto space-y-6">
         <Segmented<'quizzes' | 'bank'> label="Show" value={view} onChange={setView} segments={[{ value: 'quizzes', label: 'Quizzes' }, { value: 'bank', label: 'Question bank' }]} className="max-w-xs" />
         {view === 'bank' ? (

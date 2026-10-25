@@ -4,6 +4,7 @@ import { emailDue, parseEmailSchedule } from '@/lib/feature-switches';
 import { ownerEmails } from './auth';
 import { APP_URL, escapeHtml, sendEmail } from './email';
 import { selectColumns } from './table-stats';
+import { REAL_ERRORS_SQL } from './errors';
 
 // The owner's morning summary email: the last 24 hours on UniVerse in numbers, and what needs a
 // look. Sent by its own daily cron (cloudflare/worker.ts) so it has its own query allowance.
@@ -27,8 +28,8 @@ export async function emailOwnerDigest(now = Date.now()): Promise<string> {
     ['activeWeek', `(SELECT COUNT(*) FROM users WHERE lastSeenAt > '${week}')`],
     ['messages', `(SELECT COUNT(*) FROM messages WHERE createdAt > '${day}' AND type != 'SYSTEM')`],
     ['views', `(SELECT COUNT(*) FROM ui_events WHERE createdAt > '${day}' AND kind = 'VIEW')`],
-    ['newErrors', `(SELECT COUNT(*) FROM error_reports WHERE firstSeen > '${day}')`],
-    ['openErrors', `(SELECT COUNT(*) FROM error_reports WHERE status IN ('NEW','DIAGNOSED'))`],
+    ['newErrors', `(SELECT COUNT(*) FROM error_reports WHERE firstSeen > '${day}' AND ${REAL_ERRORS_SQL})`],
+    ['openErrors', `(SELECT COUNT(*) FROM error_reports WHERE status IN ('NEW','DIAGNOSED') AND ${REAL_ERRORS_SQL})`],
     ['paid', `(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'COMPLETED' AND createdAt > '${day}')`],
     ['failed', `(SELECT COUNT(*) FROM payments WHERE status = 'FAILED' AND createdAt > '${day}')`],
     ['deletions', `(SELECT COUNT(*) FROM account_deletion_requests WHERE status = 'PENDING')`],

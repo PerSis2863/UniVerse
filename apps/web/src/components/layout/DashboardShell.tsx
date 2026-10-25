@@ -173,7 +173,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
       <a href="#main" className="skip-link">Skip to content</a>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 lg:ms-64 flex flex-col min-w-0">
+      <div className="flex-1 side-main lg:ms-[var(--side-w)] flex flex-col min-w-0">
         {/* Mobile navigation bar (iOS): clear at the top, frosted once content scrolls under it; the
             brand gives way to the page's title when its large title has scrolled away. */}
         <header className="mobile-header nav-edge lg:hidden fixed top-0 inset-x-0 z-[35] flex items-center justify-between">

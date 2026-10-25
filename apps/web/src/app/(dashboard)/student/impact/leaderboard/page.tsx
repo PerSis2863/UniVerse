@@ -18,6 +18,7 @@ import { LoadError } from '@/components/ui/LoadError';
 import { fetcher } from '@/lib/fetcher';
 import { toast } from 'sonner';
 import { TabPill, TabPanel } from '@/components/ui/Glide';
+import { SectionTabs, CREDENTIAL_TABS } from '@/components/layout/SectionTabs';
 
 interface LevelInfo {
   current: { level: number; title: string; color: string; emoji: string; minXP: number };
@@ -168,6 +169,7 @@ export default function LeaderboardPage() {
   return (
     <>
       <Topbar title="🏆 Impact Leaderboard" subtitle="Compete, climb levels, and drive real-world change." />
+      <SectionTabs tabs={CREDENTIAL_TABS} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-6">
 

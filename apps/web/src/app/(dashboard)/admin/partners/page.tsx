@@ -12,6 +12,7 @@ import { api } from '@/lib/api';
 import { safeHref } from '@/lib/safe-href';
 import { SearchBox, matchesQuery, fmtDate, shownSummary } from '@/components/impact/AdminPeople';
 import { TabPill } from '@/components/ui/Glide';
+import { SectionTabs, PARTNER_TABS } from '@/components/layout/SectionTabs';
 
 type Partner = { id: string; name: string; type: string; country?: string | null; websiteUrl?: string | null };
 type Partnership = {
@@ -62,6 +63,7 @@ export default function SponsorPortalPage() {
     <>
       <Topbar title="Sponsor & Partner Portal" subtitle="Sponsorships and agreements with your partner organizations"
         rightNode={<button onClick={() => setForm({ partnerId: partners?.[0]?.id ?? '', title: '', description: '', startDate: '', endDate: '' })} className="btn-primary btn-sm"><Plus className="w-4 h-4" /> New partnership</button>} />
+      <SectionTabs tabs={PARTNER_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-6">
           {form && (

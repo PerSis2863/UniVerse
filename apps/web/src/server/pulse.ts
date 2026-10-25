@@ -1,5 +1,6 @@
 import prisma from '@/lib/db';
 import { aiUsageToday } from './ai-budget';
+import { REAL_ERRORS } from './errors';
 
 // The owner console's live board (the owner's "Instrumental" reference, 24 Oct 2026): requests,
 // response times, errors, people online, activity, what waits, AI and the plan, for the last hour,
@@ -65,7 +66,7 @@ export async function pulse(range: PulseRange, now = Date.now()) {
     Promise.all([
       prisma.roleApplication.count({ where: { status: 'PENDING' } }),
       prisma.accountDeletionRequest.count({ where: { status: 'PENDING' } }),
-      prisma.errorReport.count({ where: { status: { in: ['NEW', 'DIAGNOSED'] } } }),
+      prisma.errorReport.count({ where: { status: { in: ['NEW', 'DIAGNOSED'] }, ...REAL_ERRORS } }),
     ]).catch(() => [0, 0, 0]),
     prisma.errorReport.count({ where: { resolvedAt: { gt: day } } }).catch(() => 0),
     aiUsageToday().catch(() => null),

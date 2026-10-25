@@ -9,6 +9,7 @@ import { fetcher } from '@/lib/fetcher';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { openPrivateFile } from '@/lib/private-file';
+import { SectionTabs, STUDENT_RECORDS_TABS } from '@/components/layout/SectionTabs';
 
 type Doc = {
   id: string;
@@ -94,6 +95,7 @@ export default function DocumentsPage() {
     return (
       <>
         <Topbar title="School Documents" subtitle="Manage your official academic and administrative files." />
+        <SectionTabs tabs={STUDENT_RECORDS_TABS} />
         <div className="flex-1 flex items-center justify-center">
           <ContentSkeleton variant="grid" />
         </div>
@@ -108,6 +110,7 @@ export default function DocumentsPage() {
         subtitle="Manage your official academic and administrative files." 
         action={{ label: 'Upload Document', onClick: () => setActiveModal('upload') }}
       />
+      <SectionTabs tabs={STUDENT_RECORDS_TABS} />
       <div className="flex-1 p-8 space-y-8 overflow-y-auto">
         
         {/* Upload Banner */}

@@ -18,6 +18,7 @@ import { GroupDetailBody } from '@/components/groups/GroupDetailBody';
 import { useInitialSearch } from '@/hooks/useInitialSearch';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { TabPill } from '@/components/ui/Glide';
+import { SectionTabs, STUDENT_COURSE_TABS } from '@/components/layout/SectionTabs';
 
 type GroupItem = {
   id: string | number;
@@ -169,6 +170,7 @@ export default function GroupsPage() {
         subtitle="Collaborate on projects, study together, and join impact initiatives."
         action={{ label: 'New Group', onClick: () => setShowNewGroup(true) }}
       />
+      <SectionTabs tabs={STUDENT_COURSE_TABS} />
 
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="flex flex-col xl:flex-row gap-6 max-w-7xl mx-auto">

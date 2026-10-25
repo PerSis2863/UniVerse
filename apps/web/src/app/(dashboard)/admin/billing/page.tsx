@@ -13,6 +13,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { authedJson } from '@/lib/authed-fetch';
 import { PLANS, isPaidPlan, type BillingInterval, type PlanId } from '@/lib/plans';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { SectionTabs, ADMIN_FINANCE_TABS } from '@/components/layout/SectionTabs';
 
 const STATUS_LABEL: Record<string, { label: string; tone: string }> = {
   active: { label: 'Active', tone: 'bg-emerald-500/10 text-emerald-500' },
@@ -176,6 +177,7 @@ export default function BillingPage() {
   return (
     <>
       <Topbar title="Billing & Plans" subtitle="Manage your organization's subscription" />
+      <SectionTabs tabs={ADMIN_FINANCE_TABS} />
       <Suspense fallback={<div className="flex-1 p-8 min-w-0"><ContentSkeleton variant="dashboard" /></div>}>
         <BillingContent />
       </Suspense>

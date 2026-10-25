@@ -2,6 +2,7 @@
 
 import { Topbar } from '@/components/layout/Topbar';
 import { MarketplaceCatalog } from '@/components/marketplace/MarketplaceCatalog';
+import { MarketplaceTabs } from '@/components/layout/SectionTabs';
 
 export default function MarketplacePage() {
   return (
@@ -10,6 +11,7 @@ export default function MarketplacePage() {
         title="Curriculum Marketplace"
         subtitle="Discover, peer-review, and import accredited syllabi, lesson bundles, and interactive problem sets."
       />
+      <MarketplaceTabs />
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         <MarketplaceCatalog />
       </main>

@@ -16,6 +16,7 @@ import { RELIEF_KINDS, RELIEF_KIND_LABEL, URGENCIES, URGENCY_COLOR, URGENCY_LABE
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { useAuthStore } from '@/store/auth';
+import { InviteButton } from '@/components/apps/InviteButton';
 import { cn } from '@/lib/utils';
 import { fromBase, glow, toBase } from '@/components/trace/map/engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
@@ -158,12 +159,13 @@ export function ReliefApp() {
     <div className="space-y-4">
       <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         {[
-          ['Open needs', s?.openNeeds, '#f97316'], ['People waiting', s?.peopleWaiting, '#ef4444'], ['Being helped', s?.inProgress, '#22c55e'],
-          ['Offers', s?.offers, OFFER], ['Helped · 30 days', s?.helped, '#22c55e'], ['Average response', s ? (s.avgMinutes === null ? '–' : s.avgMinutes < 120 ? `${s.avgMinutes} min` : `${Math.round(s.avgMinutes / 60)} h`) : undefined, '#38bdf8'],
+          // Darker shades on the light page so the numbers keep 4.5:1.
+          ['Open needs', s?.openNeeds, 'text-orange-700 dark:text-orange-400'], ['People waiting', s?.peopleWaiting, 'text-red-700 dark:text-red-400'], ['Being helped', s?.inProgress, 'text-green-700 dark:text-green-400'],
+          ['Offers', s?.offers, 'text-teal-700 dark:text-teal-300'], ['Helped · 30 days', s?.helped, 'text-green-700 dark:text-green-400'], ['Average response', s ? (s.avgMinutes === null ? '–' : s.avgMinutes < 120 ? `${s.avgMinutes} min` : `${Math.round(s.avgMinutes / 60)} h`) : undefined, 'text-sky-700 dark:text-sky-400'],
         ].map(([k, v, c], i) => (
           <motion.div key={k as string} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="panel px-4 py-3">
             <dt className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{k as string}</dt>
-            <dd className="mt-0.5 font-mono text-xl tabular-nums" style={{ color: c as string }}>{v ?? '…'}</dd>
+            <dd className={cn('mt-0.5 font-mono text-xl tabular-nums', c as string)}>{v ?? '…'}</dd>
           </motion.div>
         ))}
       </dl>
@@ -172,7 +174,7 @@ export function ReliefApp() {
         <div role="radiogroup" aria-label="Show" className="flex rounded-full bg-zinc-100 dark:bg-white/[0.06] p-1">
           {([['ALL', 'Everything'], ['NEED', 'Needs'], ['OFFER', 'Offers']] as const).map(([id, label]) => (
             <button key={id} type="button" role="radio" aria-checked={type === id} onClick={() => setType(id)} className={cn('relative rounded-full px-3 py-1.5 text-xs font-semibold transition-colors', type === id ? 'text-white' : 'text-zinc-600 dark:text-zinc-300')}>
-              {type === id && <motion.span layoutId="relief-type" className="absolute inset-0 rounded-full bg-orange-500" transition={{ type: 'spring', stiffness: 460, damping: 36 }} />}
+              {type === id && <motion.span layoutId="relief-type" className="absolute inset-0 rounded-full bg-orange-700" transition={{ type: 'spring', stiffness: 460, damping: 36 }} />}
               <span className="relative">{label}</span>
             </button>
           ))}
@@ -224,7 +226,7 @@ export function ReliefApp() {
 
         <section aria-label="Needs and offers" className="space-y-2 xl:max-h-[calc(62vh+4px)] xl:overflow-y-auto xl:pr-1">
           {!data && Array.from({ length: 4 }, (_, i) => <div key={i} className="panel h-24 skeleton" />)}
-          {data && ordered.length === 0 && <div className="panel p-6 text-center text-sm text-zinc-500"><HandHeart className="w-6 h-6 mx-auto text-orange-400" aria-hidden /><p className="mt-2">Nothing here right now. Ask for help or offer it: it shows on the map at once.</p></div>}
+          {data && ordered.length === 0 && <div className="panel p-6 text-center text-sm text-zinc-500"><HandHeart className="w-6 h-6 mx-auto text-orange-400" aria-hidden /><p className="mt-2">Nothing here right now. Be the first: ask for help or offer it, and it shows on the map at once. Helpers nearby make the map useful, so invite your neighbours.</p><InviteButton app="relief" text="I’m on UniVerse Relief: neighbours asking for and offering help on one map. Join so we can help each other:" label="Invite neighbours" className="mt-4 flex-wrap justify-center" /></div>}
           {ordered.slice(0, 60).map((p, i) => {
             const I = KIND_ICON[p.kind];
             return (

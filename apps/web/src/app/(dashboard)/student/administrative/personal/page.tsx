@@ -10,6 +10,7 @@ import { HeartHandshake, Loader2, Mail, Pencil, Phone, Plus, Trash2, User, X, Bu
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { authedJson } from '@/lib/authed-fetch';
+import { SectionTabs, STUDENT_RECORDS_TABS } from '@/components/layout/SectionTabs';
 
 type Contact = { name: string; relation: string; phone: string; email: string };
 interface Me {
@@ -86,6 +87,7 @@ export default function PersonalDataPage() {
   return (
     <>
       <Topbar title="Personal Data" subtitle="Your contact details and emergency contacts" />
+      <SectionTabs tabs={STUDENT_RECORDS_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6">
           {error && <p className="text-sm text-rose-500">{(error as Error).message}</p>}

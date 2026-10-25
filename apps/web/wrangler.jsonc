@@ -82,6 +82,11 @@
         // Voice and video calls: passes WebRTC connection details between the people in a call.
         "name": "CALLS",
         "class_name": "CallRoom"
+      },
+      {
+        // UniVerse Play: one room per game code (cloudflare/game-room.ts).
+        "name": "GAMES",
+        "class_name": "GameRoom"
       }
     ]
   },
@@ -89,7 +94,8 @@
     { "tag": "v1", "new_sqlite_classes": ["RealtimeHub"] },
     { "tag": "v2", "new_sqlite_classes": ["BoardRoom"] },
     { "tag": "v3", "new_sqlite_classes": ["CodeRoom"] },
-    { "tag": "v4", "new_sqlite_classes": ["CallRoom"] }
+    { "tag": "v4", "new_sqlite_classes": ["CallRoom"] },
+    { "tag": "v5", "new_sqlite_classes": ["GameRoom"] }
   ],
   "triggers": {
     // Daily at 08:00 UTC (13:30 in India): reminders for quizzes due in the next 24 hours.

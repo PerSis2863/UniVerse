@@ -14,6 +14,7 @@ import {
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { cn } from '@/lib/utils';
+import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
 
 interface MatchedProject {
   rank: number;
@@ -177,6 +178,7 @@ export default function AIMatchPage() {
   return (
     <>
       <Topbar title="🤖 AI Project Matching" subtitle="Personalized project recommendations based on your skills and interests" />
+      <SectionTabs tabs={OPPORTUNITY_TABS} />
       <div className="flex-1 overflow-y-auto p-4 sm:p-8">
         <div className="max-w-3xl mx-auto space-y-6">
 

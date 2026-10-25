@@ -5,12 +5,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
-import { BookOpen, Briefcase, CalendarDays, CalendarPlus, ChevronRight, ClipboardList, Command, Compass, CornerDownLeft, FilePlus2, FileSearch, FileSpreadsheet, FileText, FlaskConical, HeartHandshake, KanbanSquare, Library, Loader2, MessageSquarePlus, Moon, Paperclip, Presentation, Search, SquareCheck, Sun, User, Users, Video, type LucideIcon, Gauge, SignalLow } from 'lucide-react';
+import { BookOpen, Briefcase, CalendarDays, CalendarPlus, ChevronRight, ClipboardList, Command, Compass, CornerDownLeft, FilePlus2, FileSearch, FileSpreadsheet, FileText, FlaskConical, HeartHandshake, KanbanSquare, Library, Loader2, MessageSquarePlus, Moon, Paperclip, Presentation, Search, SquareCheck, Sun, User, Users, Video, type LucideIcon, Gauge, SignalLow, Sparkles } from 'lucide-react';
 import { isSampleMode } from '@/lib/sample-mode';
 import { startSampleMode, stopSampleMode } from '@/components/SampleMode';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { navByRole, searchOnlyPages } from '@/components/layout/Sidebar';
+import { TABS_BY_ROLE } from '@/components/layout/SectionTabs';
 import { useLanguageStore } from '@/store/language';
 import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
@@ -130,6 +131,10 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
     for (const p of searchOnlyPages[role] ?? []) {
       if (!out.some((o) => o.id === `page:${p.href}`)) out.push({ id: `page:${p.href}`, label: p.label, icon: FileSearch, group: 'Pages', keywords: p.keywords, run: go(p.href) });
     }
+    // Pages that are tabs of a section (M27) are found too, with the section's first tab as the hint.
+    for (const tabs of TABS_BY_ROLE[role] ?? []) {
+      for (const tab of tabs) if (!out.some((o) => o.id === `page:${tab.href}`)) out.push({ id: `page:${tab.href}`, label: tab.label, hint: tabs[0].label, icon: FileSearch, group: 'Pages', run: go(tab.href) });
+    }
     return out;
   }, [role, t, go]);
 
@@ -231,8 +236,11 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
       .map((x) => x.i);
     // Group in a fixed order so the list doesn't jump around while typing.
     const order = ['Documents', 'Tasks', 'Assignments', 'Courses', 'Materials', 'Pages', 'People', 'Events', 'Groups', 'NGO projects', 'Internships', 'Resources', 'Actions'];
-    return [...ranked, ...peopleItems, ...foundItems].sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
-  }, [debounced, pages, courses, actions, peopleItems, foundItems, recents, recentFound, role, go]);
+    const sorted = [...ranked, ...peopleItems, ...foundItems].sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
+    // Ask UniVerse (M30): a sentence can be done, not only found (first when it reads like a request).
+    const ask: Item = { id: 'ask', label: `Ask UniVerse: “${debounced}”`, hint: 'Log, post, check or open it for you', icon: Sparkles, group: 'Ask', run: () => { try { sessionStorage.setItem('uv-ask', debounced); } catch { /* storage unavailable */ } router.push('/hub'); } };
+    return debounced.split(/\s+/).length >= 3 ? [ask, ...sorted] : [...sorted, ask];
+  }, [debounced, pages, courses, actions, peopleItems, foundItems, recents, recentFound, role, go, router]);
 
   // A new search starts at the top.
   const [indexedFor, setIndexedFor] = useState(debounced);

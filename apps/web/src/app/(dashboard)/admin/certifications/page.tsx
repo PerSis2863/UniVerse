@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { promptDialog } from '@/components/ui/Dialogs';
 import { SearchBox, matchesQuery, RoleChip, StatusChip, fmtDate, fmtAgo, shownSummary } from '@/components/impact/AdminPeople';
+import { SectionTabs, ADMIN_CREDENTIAL_TABS } from '@/components/layout/SectionTabs';
 
 const fetcher = (url: string) => api.get(url).then(res => res.data);
 
@@ -82,6 +83,7 @@ export default function AdminCertificationsPage() {
         title="Pending Certifications"
         subtitle="Review and approve student requests for Social Impact Certificates."
       />
+      <SectionTabs tabs={ADMIN_CREDENTIAL_TABS} />
 
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-6">

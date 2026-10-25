@@ -1,4 +1,4 @@
-import { LayoutDashboard, BookOpen, MessageSquare, Globe2, Users, ShieldCheck, ScanLine, Wallet, Map, HandHeart, Leaf, Trophy } from 'lucide-react';
+import { LayoutDashboard, BookOpen, MessageSquare, Globe2, Users, ShieldCheck, ScanLine, Wallet, Map, HandHeart, Leaf, Trophy, Gamepad2 } from 'lucide-react';
 import { appFor, inboxFor } from './apps';
 
 // The phone's tab bar for each app (src/lib/apps.ts; UniVersity's by role), and which pages count as top-level screens (no back button:
@@ -54,6 +54,7 @@ export function tabsForRole(role: string, path?: string): { base: string; items:
   ] };
   if (app === 'relief') return { base: '/relief', items: [{ href: '/relief', label: 'Map', icon: Map }, { href: '/relief/mine', label: 'Mine', icon: HandHeart }, messages] };
   if (app === 'green') return { base: '/green', items: [{ href: '/green', label: 'Impact', icon: Leaf }, { href: '/green/teams', label: 'Teams', icon: Trophy }, messages] };
+  if (app === 'play') return { base: '/play', items: [{ href: '/play', label: 'Arcade', icon: Gamepad2, match: ['/play/game'] }, { href: '/play/leaderboard', label: 'Leaders', icon: Trophy }, messages] };
   return campusTabs(role);
 }
 

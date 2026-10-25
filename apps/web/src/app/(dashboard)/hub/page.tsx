@@ -7,6 +7,8 @@ import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { ImpactWallet } from '@/components/hub/ImpactWallet';
+import { AskUniverse } from '@/components/hub/AskUniverse';
+import { InviteButton } from '@/components/apps/InviteButton';
 import { APPS, appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
 import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
@@ -48,7 +50,7 @@ export default function HubPage() {
                 {hello}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}.
               </motion.h2>
               <p className="mt-3 text-lg text-zinc-300 max-w-2xl">Pick where you want to make a difference today. Every app uses the same account, messages and files.</p>
-              <dl className="mt-7 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <dl className="mt-7 grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {APPS.map((a, i) => (
                   <motion.div key={a.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.06, duration: 0.6, ease: EASE }} className="rounded-2xl bg-white/[0.06] ring-1 ring-white/10 px-4 py-3">
                     <dt className="text-[11px] uppercase tracking-wider text-zinc-400">{data?.apps[a.id]?.label ?? a.tagline}</dt>
@@ -58,6 +60,8 @@ export default function HubPage() {
               </dl>
             </div>
           </section>
+
+          <AskUniverse role={role} />
 
           <section aria-labelledby="apps-h">
             <h2 id="apps-h" className="text-lg font-bold text-zinc-900 dark:text-white">Your apps</h2>
@@ -88,7 +92,10 @@ export default function HubPage() {
           <ImpactWallet role={role} />
 
           <section aria-labelledby="tools-h">
-            <h2 id="tools-h" className="text-lg font-bold text-zinc-900 dark:text-white">Shared by every app</h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 id="tools-h" className="text-lg font-bold text-zinc-900 dark:text-white me-auto">Shared by every app</h2>
+              <InviteButton text="I’m using UniVerse Impact: one account for school, product checks, helping neighbours and climate action. Join me:" />
+            </div>
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {tools.map((t) => (
                 <Link key={t.label} href={t.href} className="panel p-4 flex items-center gap-3 hover:-translate-y-0.5 transition-transform">

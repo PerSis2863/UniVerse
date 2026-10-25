@@ -11,6 +11,7 @@ import { SUBMIT_KINDS, SUBMIT_LABEL, type SubmitKind } from '@/lib/submit-kinds'
 import { AI_POLICIES, type AiPolicy } from '@/lib/ai-receipt';
 import { fetcher } from '@/lib/fetcher';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
+import { SectionTabs, TEACHER_MARKING_TABS } from '@/components/layout/SectionTabs';
 
 interface Row {
   id: string;
@@ -31,6 +32,7 @@ export default function TeacherAssignmentsPage() {
   return (
     <>
       <Topbar title="Assignments" subtitle="Written work graded against your rubric, with AI-drafted feedback you review" />
+      <SectionTabs tabs={TEACHER_MARKING_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-6">
           <div className="flex items-center justify-between gap-3">

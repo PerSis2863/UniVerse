@@ -1707,3 +1707,231 @@ Progress table (row D6).
   photo addresses refused). Checked in the browser: a teammate's photo confirmed, the owner refused,
   an outsider refused; axe clean on `/green` and `/green/teams` at 390 and 1280, light and dark.
   Next migration: **0184**.
+
+## M26a · Sample errors no longer look like real ones
+
+- The owner (26 Oct 2026): "there are errors in the owner console please fix it" (screenshots of
+  ~24 problems: "Cannot read properties of undefined (reading 'map')", "ChunkLoadError", "Invalid time
+  value", "ResizeObserver is not defined"…). Production `error_reports`: every one of them was made up
+  by the console's "Fill with sample data" (ids `smpe…`, fingerprint `sample:N`,
+  `src/server/sample-world.ts` step for errors). The only real open ones were the two sign-in reports
+  fixed in M22 / M23.
+- Now `REAL_ERRORS` / `REAL_ERRORS_SQL` (`src/server/errors.ts`) keep sample problems out of the AI
+  diagnosis, the "problem(s) need a look" email, every open-errors count (Overview tiles, the live
+  board `pulse.ts`, health numbers, insights, the daily digest) and the Errors tab's summary. The list
+  still shows them, tagged "Sample, not real", with a line saying how many and that "Remove sample
+  data" takes them out.
+
+## M26 · The launch step: who really uses each app, inviting empty screens, invite links
+
+- From the council (26 Oct 2026): 14 accounts, 2 sign-ins in 7 days, no real Relief, Green or Trace
+  use (the 869 scans are the built-in sample product). The owner: "please do the changes according
+  to this".
+- **Launch board** on the console Overview (`console/launch.tsx`, `GET /owner/launch` owner only,
+  `src/server/owner-launch.ts`, maths `src/lib/launch.ts` + tests): per app, real people in 30 days
+  (UniVersity enrolments and hand-ins; Trace scans by signed-in people outside the sample product,
+  brands joined; Relief posts and help; Green actions), new this week, came back on another day,
+  last real action; and the goal "10 real people who came back". Sample-world people are left out.
+- **Invites** (`src/components/apps/InviteButton.tsx`): the phone's share sheet, else WhatsApp's free
+  share link (`wa.me`, no paid messaging), plus Copy link; the link is `/register?app=<app>`. On the
+  empty Relief list ("Be the first… invite your neighbours"), on the empty Green map (an overlay),
+  per Green team (the code in the message) and on the hub.
+- Relief's numbers and the selected filter now pass contrast in light mode.
+
+## M27 · Simpler UniVersity menus
+
+- The owner (26 Oct 2026): "the university is too much big like people will get confuse on how to
+  work on this and how to navigate… merge few of them together so that it becomes less complex".
+- **Menus** (`navByRole` in `Sidebar.tsx`), before → after: students 9 entries with 3 groups of 18
+  pages → Home, Messages, Learn (4), Collaborate, Careers & impact (3), Campus (3), My records,
+  Settings; teachers 7 entries with 15 pages in groups → Home, Messages, Teach (5), Collaborate,
+  Campus & research (3), Settings; admins 11 entries with 25 pages in groups → Overview, Messages,
+  People (4), Academics (5), Operations (5), Impact (3), Insights, Collaborate, Settings. Plain names
+  replace "Schooling", "Administrative data", "Global impact", "Campus monitoring".
+- **Merged as tabs** (`SectionTabs.tsx`; each merged page renders its section's tabs right under its
+  Topbar, so links, bookmarks and notifications keep working): `STUDENT_RECORDS_TABS` (personal,
+  documents, fees, scholarships, course choices); courses + groups + marketplace; AI match in
+  Opportunities; leaderboard and educational society in Credentials; `TEACHER_COURSE_TABS`;
+  `TEACHER_MARKING_TABS` (assignments, quizzes, grades, attendance); research + NGO mentorship +
+  impact rooms + League + volunteer mentor in one `RESEARCH_TABS` (`TEACHER_IMPACT_TABS` is the same
+  list); LMS integration in People; early warning in Insights; `ADMIN_COURSE_TABS`,
+  `ADMIN_LEARN_TABS`, billing in Money, student life in the campus tabs, the sponsor portal in
+  Partners, `ADMIN_CREDENTIAL_TABS`. The marketplace shows the looker's course tabs
+  (`MarketplaceTabs`, `courseTabs(role)`).
+- **Search** (`CommandPalette`) also lists every tab of the role (`TABS_BY_ROLE`), so a page that left
+  the menu is still found. The welcome tour's stops point at the new groups.
+- A new merged page: add it to its tab list, render that list under its Topbar, add its address to
+  the menu entry's `also`, and to `TABS_BY_ROLE` if the list is new.
+- Checked: types, lint, tests, lean; the three menus and tab bars in the browser; axe clean on a
+  merged page per role at 390 and 1280, light and dark.
+
+## M28 · 500 people for a month on the $5 plan
+
+- The owner (26 Oct 2026): "make user 500 people can login at once and do their work and it should
+  not hit the 5$ plan limit… 500 people should be able to work for 1 month".
+- **The plan's monthly allowances** (Cloudflare docs, read 26 Oct): Worker requests 10 M, CPU 30 M
+  ms, Durable Object requests 1 M (incoming WebSocket messages count 1 per 20), DO duration 400,000
+  GB-s (none while hibernating), D1 25 B rows read / 50 M written, static assets free. For 500 people
+  every day that is ~666 requests, ~2 s CPU and ~66 live requests per person-day.
+- **Measured:** a session on the local server: ~9 Worker requests per page view, almost nothing
+  while idle; production's average CPU 3.8 ms per request. Production this month before the change:
+  1.41 M requests and 5.4 M CPU ms with about 7 real people (API calls from people are only a few
+  thousand: the rest are page requests, most likely bots and scanners).
+- **The model** (30 page views and ~2 visible hours a person-day): requests ~4.5 M (+ bots), CPU
+  ~17 M ms (+ bots), live requests ~0.6 M (it was ~2.2 M: over), DO duration ~0, D1 a few %.
+- **Changes:**
+  - `users.liveAt` (migration **0184**): the RealtimeHub sets it when a tab connects (the user id is
+    kept on the socket with `serializeAttachment`) and clears it when the last tab closes;
+    `liveAmong` (`src/lib/fanout.ts`, + tests) narrows live events to people online, in `deliver`
+    (`src/server/realtime.ts`) and the light path's typing (`cloudflare/fast-api.ts`); lists over
+    450 are sent as before (5 queries at most); a failed check sends to everyone.
+  - "Is typing" only in chats of up to 10 people (`TYPING_PEERS`), sent every 5 s instead of 3.
+  - The socket pings every 50 s (was 25; under the edge's 100 s idle limit) and closes after 5
+    minutes in a background tab (the hub marks the person offline; coming back reconnects and the
+    "hello" catches up) (`src/lib/realtime-client.ts`).
+  - Scanner addresses (WordPress, PHP, leaked config files) get a plain cached 404 without starting
+    Next.js (`JUNK` in `cloudflare/worker.ts`).
+  - Pages are sampled too (1 in 50, route `page:…`, method `BOT` for crawlers) into `api_timings`,
+    so the owner console's Health numbers show where the month's requests go.
+  - `recordError` no longer fails when many requests meet the same new problem at once (found by the
+    500-at-once test; `src/server/errors.test.ts`).
+- **500 at once:** 500 people (1,500 requests at the same instant) on the production build
+  (`local:serve`): all answered correctly, none failed (one local CPU makes them queue; Cloudflare
+  runs many copies, the database is the only shared queue). Live delivery to an online person and
+  liveAt set/cleared were checked in the browser on the build.
+- **[owner]** Cloudflare dashboard → the universeimpact.com zone → Security → Bots → turn on **Bot
+  Fight Mode** (free): bad bots are stopped before they reach the Worker and stop counting as requests.
+  AI answers use the owner's own AI key and the daily allowance (owner console), not the $5 plan.
+
+## M29 · Glides that follow the pointer
+
+- The owner (26 Oct 2026): "add more animations and transitions and glides which should be ultra
+  smooth". The motion layer already covered pages, titles, counts, charts, the menu's selected pill
+  and the tabs' liquid thumb, so this adds motion where people point:
+  - **Menu hover glide** (`Sidebar.tsx`, `.nav-hover` in `globals.css`): a soft highlight slides
+    under the pointer from row to row (shared `layoutId`, `spring.snappy`); the rows' own hover fill
+    steps aside (`.glide-host`). Mouse and trackpad only; touch keeps the plain `:hover`; with
+    Reduce Motion it just appears; off-screen phone menus don't glide.
+  - **Tab hover glide** (`SectionTabs`, `.ios-segment-hover`): the same along every section tab bar,
+    one `layoutId` per bar.
+  - **Group ripple**: a menu group's rows rise in 35 ms apart as it opens (a fade with Reduce Motion).
+- Transform and opacity only, under 300 ms, nothing on scroll. Checked in the browser (the
+  highlight caught mid-glide between rows; rows' opacity staggered right after opening); axe clean.
+
+## M30 · Ask UniVerse (small: one confirmed action)
+
+- From the council and the owner's seven ideas ("an Ask UniVerse assistant that acts in every app").
+- **How it works:** a box on `/hub` (`src/components/hub/AskUniverse.tsx`), also from search: a
+  sentence typed in ⌘K offers "Ask UniVerse: …" (first when it has 3+ words) and hands it over via
+  sessionStorage `uv-ask`. `POST /ask` (`src/server/ask.ts`) turns the request into ONE proposed
+  action: log a Green action, post a Relief need or offer, check a Trace code, open a page
+  (`ASK_PAGES`), or a short answer. The box shows it as a card; **nothing happens until the person
+  taps Confirm**, which calls the app's own route (`POST /green/actions`, `POST /relief/posts` with
+  the browser's location, `/t/<code>`, a page) with all its usual checks. The route itself never
+  writes anything.
+- AI: `spendAi` (daily allowance), `featureOff('ai')`, `geminiJson` with a schema, `MATH_RULE`,
+  answers shown with `MathText`; every field AI returns is checked again by `cleanPlan`
+  (`src/lib/ask.ts`, + tests). Without AI (off, used up, failing) and in the demo, `localPlan` (a
+  small matcher for common sentences) answers. The route is in the Worker's costly rate limit.
+- Checked in the browser: "I cycled 8 km to school" → card "Log 8 km… 1.6 kg CO₂", nothing saved
+  before the tap, saved after; search offers Ask UniVerse first for a sentence; axe clean on `/hub`.
+- Next steps if the owner wants more: more actions (enrol, book a room, start a chat), answers about
+  the person's own data, several steps in one request.
+
+## M31 · UniVerse Play: four games, solo and with friends
+
+- The owner (25 Oct): "make in like 4 of them you have made the university, trace, relief, green
+  like that and also add single multiplayer games also … very detailed and ultra smooth animations".
+  After the antics.gg study (rooms over WebSockets, a code to join): our own, nothing copied.
+- **A fifth app, UniVerse Play** (`src/lib/apps.ts` `play`, colour fuchsia): menu Arcade and
+  Leaderboards (`Sidebar.tsx`, `app-tabs.ts`), its landing tab (`PlaySection`, an animated live
+  scoreboard card), sign-in side, FAQ, hub card ("games played"), launch board row.
+- **Four games, one per app** (`src/lib/play.ts` `GAMES`; rules in `src/lib/play/*.ts` + tests):
+  - **Quiz Clash** (UniVersity, `quiz.ts`): 50 bank questions plus made-up maths every third
+    question; 10 s each, speed and streak bonus; the right answer always lights up.
+  - **Spot the Fake** (Trace, `fakes.ts`): four passports, one copy; the tells are Trace's own
+    (too fast a journey, far too many scans, a seal that doesn't match, a misspelt brand); three
+    lives; the reveal says why.
+  - **Supply Run** (Relief, `supply.ts`): needs pop up across a 6×4 town with a draining ring; pick
+    a supply (keys 1–4), tap the need, a truck drives it from the depot; faster as the round goes.
+  - **Recycle Rush** (Green, `sort.ts`): items ride a belt; sort the front one into one of four bins
+    before it drops; streak multiplier ×1 → ×3 and a CO₂ counter (game-only averages, Green's real
+    factors stay in `src/lib/green.ts`).
+  Every game is made from a **seed**: the same seed gives the same round, which is how a room
+  races fairly. Points are capped per game (`maxScore`, `cleanScore`), and tests prove a perfect
+  round stays under the cap.
+- **Solo:** `/play/game?g=<game>` → Play solo → 3-2-1 → round → score saved (`POST /play/scores`,
+  200 a day), new best with confetti. **With friends:** Play with friends opens a room
+  (`POST /play/rooms`) with a 6-character code (no 0/O/1/I), link and QR; friends join by code on
+  `/play` or the game page (`GET /play/rooms/:code` checks it first). Up to 8; the host picks the
+  game and starts; everyone counts down to the same moment; a live scoreboard reorders as scores
+  come in; podium at the end; Play again goes back to the lobby.
+- **Rooms** are the `GameRoom` Durable Object (`cloudflare/game-room.ts`, binding `GAMES`,
+  wrangler migration `v5`): the app hands a one-time ticket (`POST /play/rooms/:code/ticket`, 60 s)
+  and the browser connects to `/play-live` (Worker → room). Sockets hibernate (pings answered
+  without waking the room), scores go up at most twice a second (`useGameRoom`), the room keeps
+  the clock (`startsAt`/`endsAt`, each device corrects its clock from the room's messages), ends
+  the round when all are done or at the alarm, and writes `game_scores` (mode `multi`).
+  Migration **0185** `game_scores`. Someone arriving mid-round (or reconnecting mid-round)
+  watches and plays the next round.
+- **Cost:** a 75 s room round of 8 is about 8 × 150 progress messages = 1,200 incoming messages,
+  i.e. about 60 Durable Object requests at the 20:1 rate; idle rooms cost nothing (hibernation).
+- **Motion:** each game's timer drains and the belt runs as one GPU animation (`play-drain`, Web
+  Animations for the belt, nothing per frame), React re-renders only when something happens
+  (games are reducers woken at the next event), cards and answers arrive on springs, wrong answers
+  shake, points float up, the scoreboard glides rows into place, the podium rises. Reduce Motion:
+  loops stop, hits fade. `Rolling` (moved out of `GreenApp`) rolls numbers.
+- **Demo:** sample answers for `/play/me` and `/play/leaderboard`; solo rounds play fully; rooms say
+  they need the real app.
+- Checked: unit tests; solo rounds of all four games in the browser at 390/1280, light/dark, axe
+  clean; a full Quiz Clash round with its result; two browsers in one room on the local build
+  (join by code, host switches game, live board, podium for both, back to the lobby).
+- Next if the owner wants more: more question packs (per course, from teachers), a weekly
+  tournament, rooms open to a whole class, sounds.
+
+## M32 · Four bigger games (UniVerse Play has eight)
+
+- The owner (25 Oct): "please add more unique games in the system and it should feel really good
+  and big games". Now two games per app; the arcade shows **Big games** above **Quick games**
+  (`GameInfo.big`).
+- **Type Race** (UniVersity, `src/lib/play/typing.ts`): type 24 true facts in a seeded order;
+  only the right letter moves you on (a wrong one shakes and costs 5). Cars race to a 600-letter
+  flag: in a room the others' cars come from the live scores (`GameProps.rivals`, their `step` is
+  letters typed), alone a pace car (30–44 wpm from the seed). Words a minute, accuracy, facts done.
+- **World Pin** (Trace, `pin.ts`): 15 cities a round (Trace's city list, rank 1–2), 8 s each; tap
+  the real world map (`WorldCanvas`, city names hidden, drag/zoom work). Your pin drops, the real
+  one rises with a pulse, a dashed line draws, the map glides to show both and back out. Up to
+  1,000 by distance (nothing past 3,000 km) + 200 for speed. Keyboard: arrows move, Enter pins
+  the centre cross.
+- **Flood Rescue** (Relief, `rescue.ts`): a canvas storm (rain, lightning, spotlight); the flood
+  rises from 0.92 to 0.70 of the screen; people appear on seven rooftops with a waiting ring and
+  are never placed on a roof that floods before they could be reached (tested). Hover low and slow
+  to winch (0.55 s each, 4 aboard), land on the hospital's H to drop off; 100 + up to 50 for a
+  short wait, −30 for someone lost.
+- **Ocean Cleanup** (Green, `ocean.ts`): a canvas sea (swell, glitter, wake); plastic and ghost
+  nets drift down on the seed's schedule; pick-ups within 1.6 s build a combo up to ×2; bumping
+  sea life costs 100 and spins the boat out.
+- **Engine** (`src/components/play/canvas.ts`): `useGameCanvas` (requestAnimationFrame, retina,
+  resizes, paused in hidden tabs), `useSteer` + `steerBody` (mouse, finger, arrows/WASD),
+  sparks and floating scores. Game state lives outside React; only score changes reach it.
+- **Full screen** button on every game's stage (Fullscreen API where the browser has it).
+- Caps: each game's `maxScore` is proven above a perfect round in `big-games.test.ts`.
+- Checked: all four played in the browser at 390/1280, light and dark; axe clean. Rooms use the
+  same GameRoom as M31 (no server change).
+
+## M33 · The folding side menu
+
+- From the owner's screen recording (25 Oct, a "Fold the sidebar. Get a column back." dashboard).
+- On a computer the side menu folds to a 72 px strip of icons: the round arrow button on its edge,
+  or the `[` key (not while typing). The page takes the room; the choice is kept on the device
+  (`localStorage uv-sidebar`) and set on `<html data-sidebar="folded">` by the head script in
+  `src/app/layout.tsx` before the first paint, so nothing jumps on load (`src/lib/sidebar-fold.ts`).
+- CSS does the sizing: `--side-w` (16rem / 4.5rem) sets the menu's width and the page's start
+  margin (`side-main` in `DashboardShell` and `AppSkeleton`); both glide together in 320 ms (a
+  layout change on purpose, the point of folding); labels (`.side-label`) fade out first and back
+  in last; the legal links hide. Reduce Motion: it just switches.
+- Folded: names show as a tooltip beside the icon under the pointer or keyboard focus; the app
+  switcher's list opens to the side; tapping a group (one with sub-pages) unfolds the menu and
+  opens it. Phones keep the slide-in sheet (never folded).
+- Checked: student, admin and Play pages in light and dark; widths 256 → 72 px and back, kept
+  after a reload, `[` works, tooltips; axe clean.
