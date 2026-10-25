@@ -8,6 +8,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { fetcher } from '@/lib/fetcher';
 import { Register, useRegister } from '@/components/attendance/Register';
 import { ExcuseRequests, SeatingChart } from '@/components/attendance/SeatingAndExcuses';
+import { SectionTabs, TEACHER_MARKING_TABS } from '@/components/layout/SectionTabs';
 
 // Attendance for a class (Stage 5 · Q11): the register (keyboard, everyone at once, from the class
 // call), the seating chart, and excuse requests. ?course=<id>&tab=excuses opens a course's requests.
@@ -28,6 +29,7 @@ export default function TeacherAttendance() {
   return (
     <>
       <Topbar title="Attendance" subtitle="Take the register, keep a seating chart and answer excuse requests" />
+      <SectionTabs tabs={TEACHER_MARKING_TABS} />
       <div className="flex-1 p-4 md:p-8">
         <div className="max-w-5xl mx-auto space-y-5">
           <div className="flex flex-wrap items-end gap-3">

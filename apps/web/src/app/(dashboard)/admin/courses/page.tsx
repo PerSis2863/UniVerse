@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { courseColor } from '@/lib/course-color';
 import { cn } from '@/lib/utils';
 import { TabPill, TabPanel } from '@/components/ui/Glide';
+import { SectionTabs, ADMIN_COURSE_TABS } from '@/components/layout/SectionTabs';
 
 interface AdminCourse {
   id: string; code: string; name: string; description: string | null; credits: number; department: string | null;
@@ -117,6 +118,7 @@ export default function AdminCoursesPage() {
           </button>
         }
       />
+      <SectionTabs tabs={ADMIN_COURSE_TABS} />
       
       {/* Modal */}
       {isModalOpen && (

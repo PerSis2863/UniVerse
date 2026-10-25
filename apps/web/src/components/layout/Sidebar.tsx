@@ -9,9 +9,9 @@ import { userCan } from '@/lib/permissions';
 import {
   LayoutDashboard, Users,
   MessageSquare, Settings, LogOut,
-  GraduationCap, Brain,
-  AlertTriangle, Folder, ChevronDown,
-  Coffee, Shield, Map, Globe2, Crown
+  GraduationCap,
+  Folder, ChevronDown,
+  Coffee, Globe2, Map
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useSyncExternalStore } from 'react';
@@ -137,142 +137,110 @@ const APP_SEARCH: SearchPage[] = [
 ];
 export const searchOnlyPages: Record<string, SearchPage[]> = Object.fromEntries(Object.entries(campusSearch).map(([role, list]) => [role, [...list, ...APP_SEARCH]]));
 
+// M27 (the owner, 26 Oct 2026: "the university is too much big… people will get confuse… merge few
+// of them together"): a few plainly named groups per role. Pages that were their own entries are now
+// tabs of the section they belong to (src/components/layout/SectionTabs.tsx), so every link,
+// bookmark and notification still works, and search (CommandPalette) finds every tab.
 export const navByRole: Record<string, NavItem[]> = {
   STUDENT: [
-    { href: '/student', label: 'nav.dashboard', icon: LayoutDashboard, also: ['/student/calendar', '/student/planner', '/student/information'] },
+    { href: '/student', label: 'Home', icon: LayoutDashboard, also: ['/student/calendar', '/student/planner', '/student/information'] },
     // Messages and calls are one entry: the Calls list is a tab inside Messages.
     { href: '/student/inbox', label: 'nav.inbox', icon: MessageSquare, also: ['/calls', '/notifications'] },
     {
-      label: 'nav.schooling', icon: GraduationCap,
+      label: 'Learn', icon: GraduationCap,
       subItems: [
-        { href: '/student/courses', label: 'nav.courses', also: ['/student/live', '/student/offline'] },
-        { href: '/marketplace', label: 'Course Marketplace' },
-        { href: '/student/groups', label: 'nav.groups' },
-        { href: '/student/blackboard', label: 'nav.blackboard', also: ['/student/tutor', '/student/voice-tutor', '/student/tutoring', '/student/reels'] },
-        { href: '/student/internships', label: 'nav.internships' },
-        { href: '/student/choices', label: 'nav.my_choices' },
+        { href: '/student/courses', label: 'Courses', also: ['/student/live', '/student/offline', '/student/groups', '/marketplace'] },
         { href: '/student/assignments', label: 'Assignments & grades', also: ['/student/grades', '/student/attendance', '/student/quizzes', '/student/mastery'] },
-        { href: '/collab', label: 'Collaborate', also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
-        { href: '/student/skills', label: 'Learning resources', also: ['/student/knowledge-hub', '/library'] },
+        { href: '/student/blackboard', label: 'Course board & AI tutor', also: ['/student/tutor', '/student/voice-tutor', '/student/oral-practice', '/student/semester', '/student/tutoring', '/student/reels'] },
+        { href: '/student/skills', label: 'Resources & library', also: ['/student/knowledge-hub', '/library'] },
+      ]
+    },
+    { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
+    {
+      label: 'Careers & impact', icon: Briefcase,
+      subItems: [
+        { href: '/student/internships', label: 'Internships & careers', also: ['/student/internships/match', '/student/internships/applications', '/student/internships/interview', '/student/internships/mentors'] },
+        { href: '/student/impact/ngo-marketplace', label: 'Projects & volunteering', also: ['/student/impact/ai-match', '/student/impact/startups', '/student/impact/companies', '/student/impact/shifts', '/impact-rooms', '/impact-league'] },
+        { href: '/student/credentials', label: 'Credentials & passport', also: ['/student/passport', '/student/impact/leaderboard', '/student/impact/edu-society'] },
       ]
     },
     {
-      label: 'nav.administrative_data', icon: Folder,
+      label: 'Campus', icon: Coffee,
       subItems: [
-        { href: '/student/administrative/personal', label: 'nav.personal_data' },
-        { href: '/student/administrative/documents', label: 'nav.school_documents' },
-        { href: '/student/administrative/accounting', label: 'nav.accounting' },
-        { href: '/student/administrative/scholarships', label: 'nav.scholarships' },
+        { href: '/student/life/associations', label: 'nav.student_life', also: ['/student/life/board', '/student/life/rooms', '/student/life/medical', '/student/life/everyday', '/student/life/events', '/student/life/lost-found', '/campus-map'] },
+        { href: '/student/community', label: 'nav.community' },
+        { href: '/student/support', label: 'Help & safety', also: ['/student/wellbeing', '/student/beesafe'] },
       ]
     },
-    {
-      label: 'nav.global_impact', icon: Globe2,
-      subItems: [
-        { href: '/student/impact/ai-match', label: 'AI project match' },
-        { href: '/student/impact/ngo-marketplace', label: 'Opportunities', also: ['/student/impact/startups', '/student/impact/companies', '/student/impact/shifts', '/impact-rooms', '/impact-league'] },
-        { href: '/student/impact/edu-society', label: 'nav.edu_society' },
-        { href: '/student/credentials', label: 'Credentials & passport', also: ['/student/passport'] },
-        { href: '/student/impact/leaderboard', label: 'Leaderboard' },
-      ]
-    },
-    { href: '/student/life/associations', label: 'nav.student_life', icon: Coffee, also: ['/student/life/rooms', '/student/life/medical', '/student/life/everyday', '/student/life/events', '/student/life/lost-found', '/campus-map'] },
-    { href: '/student/community', label: 'nav.community', icon: Users },
-    { href: '/student/support', label: 'Support & BeeSafe', icon: AlertTriangle, also: ['/student/beesafe'] },
+    { href: '/student/administrative/personal', label: 'My records', icon: Folder, also: ['/student/administrative/documents', '/student/administrative/accounting', '/student/administrative/scholarships', '/student/choices'] },
     { href: '/student/settings?section=language', label: 'nav.settings', icon: Settings },
   ],
   TEACHER: [
-    { href: '/teacher', label: 'nav.dashboard', icon: LayoutDashboard },
+    { href: '/teacher', label: 'Home', icon: LayoutDashboard },
+    { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications'] },
     {
-      label: 'nav.global_collab', icon: Globe2,
+      label: 'Teach', icon: GraduationCap,
       subItems: [
-        { href: '/teacher/collaborations', label: 'nav.inter_uni_research', also: ['/teacher/network'] },
-        { href: '/teacher/collaborations/projects', label: 'nav.ngo_mentorship', also: ['/impact-rooms', '/impact-league'] },
-        { href: '/teacher/mentorship', label: 'nav.volunteer_mentor' },
-      ]
-    },
-    {
-      label: 'nav.schooling', icon: GraduationCap,
-      subItems: [
-        { href: '/teacher/courses', label: 'nav.my_courses' },
-        { href: '/marketplace', label: 'Curriculum Marketplace' },
-        { href: '/teacher/blackboard', label: 'nav.blackboard', also: ['/teacher/tutor', '/teacher/reels'] },
+        { href: '/teacher/courses', label: 'Courses & live class', also: ['/teacher/live', '/marketplace'] },
+        { href: '/teacher/assignments', label: 'Marking & attendance', also: ['/teacher/quizzes', '/teacher/grades', '/teacher/attendance'] },
         { href: '/teacher/students', label: 'nav.students', also: ['/teacher/early-warning', '/teacher/analytics', '/teacher/mastery', '/teacher/meetings', '/teacher/forms'] },
-        { href: '/teacher/attendance', label: 'nav.attendance' },
-        { href: '/teacher/grades', label: 'nav.grades' },
-        { href: '/teacher/quizzes', label: 'nav.quizzes' },
-        { href: '/teacher/assignments', label: 'Assignments' },
-        { href: '/teacher/live', label: 'Live class' },
-        { href: '/collab', label: 'Collaborate', also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
+        { href: '/teacher/blackboard', label: 'Course board & AI tutor', also: ['/teacher/tutor', '/teacher/reels'] },
         { href: '/teacher/calendar', label: 'nav.timetable', also: ['/teacher/staff'] },
       ]
     },
+    { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
     {
-      label: 'nav.campus_services', icon: Map,
+      label: 'Campus & research', icon: Globe2,
       subItems: [
+        { href: '/teacher/collaborations', label: 'Research & NGO work', also: ['/teacher/network', '/teacher/collaborations/projects', '/teacher/mentorship', '/impact-rooms', '/impact-league'] },
         { href: '/teacher/services/rooms', label: 'nav.room_reservation', also: ['/campus-map'] },
+        { href: '/teacher/knowledge', label: 'Knowledge & library', also: ['/library'] },
       ]
     },
-    { href: '/teacher/knowledge', label: 'nav.knowledge_hub', icon: Brain, also: ['/library'] },
-    { href: '/teacher/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications'] },
     { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },
   ],
   ADMIN: [
     { href: '/admin', label: 'nav.overview', icon: LayoutDashboard },
-    {
-      label: 'nav.global_impact', icon: Globe2,
-      subItems: [
-        { href: '/admin/partnerships', label: 'nav.partner_institutions', also: ['/admin/network'] },
-        { href: '/admin/partners', label: 'nav.sponsor_portal' },
-        { href: '/admin/impact-reports', label: 'Impact reports', also: ['/admin/impact-reports/shifts', '/admin/impact-reports/volunteering', '/impact-rooms', '/impact-league'] },
-        { href: '/admin/certifications', label: 'Certifications' },
-        { href: '/admin/credentials', label: 'Credential Verification' },
-      ]
-    },
-    // Management was 15 entries; now three short groups.
+    { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications', '/admin/announcements'] },
     {
       label: 'People', icon: Users,
       subItems: [
-        { href: '/admin/users', label: 'nav.users', also: ['/admin/staff', '/admin/admissions', '/admin/roles', '/admin/import'] },
+        { href: '/admin/users', label: 'nav.users', also: ['/admin/staff', '/admin/admissions', '/admin/roles', '/admin/import', '/admin/integrations/oneroster', '/admin/integrations/developer', '/admin/integrations/chat-apps', '/admin/integrations/lti'] },
         { href: '/admin/approvals', label: 'Approvals' },
-        { href: '/admin/early-warning', label: 'Early warning' },
-        { href: '/admin/safety', label: 'Safety reports' },
+        { href: '/admin/safety', label: 'Safety & wellbeing', also: ['/admin/safety/chats', '/admin/safety/policy', '/admin/wellbeing'] },
         { href: '/admin/audit', label: 'Activity Log' },
       ]
     },
     {
       label: 'Academics', icon: GraduationCap,
       subItems: [
-        { href: '/admin/courses', label: 'nav.courses' },
-        { href: '/marketplace', label: 'Course Marketplace' },
+        { href: '/admin/courses', label: 'nav.courses', also: ['/marketplace'] },
         { href: '/admin/attendance', label: 'nav.attendance' },
         { href: '/admin/quizzes', label: 'nav.quizzes' },
         { href: '/admin/timetable', label: 'nav.timetable_management' },
-        { href: '/admin/knowledge-hub', label: 'nav.knowledge_hub' },
-        { href: '/admin/library', label: 'Library', also: ['/library'] },
+        { href: '/admin/knowledge-hub', label: 'Knowledge & library', also: ['/admin/library', '/library'] },
       ]
     },
     {
       label: 'Operations', icon: Settings,
       subItems: [
         { href: '/admin/administrative', label: 'nav.administrative' },
-        { href: '/admin/finances', label: 'nav.finances', also: ['/admin/fees'] },
+        { href: '/admin/finances', label: 'Money & billing', also: ['/admin/fees', '/admin/finances/reconciliation', '/admin/billing'] },
         { href: '/admin/internships', label: 'nav.internships' },
-        { href: '/admin/student-life', label: 'nav.student_life' },
+        { href: '/admin/student-life', label: 'Campus & student life', also: ['/admin/monitoring/rooms', '/admin/monitoring/associations', '/admin/monitoring/events', '/admin/monitoring/lost-found', '/admin/monitoring/board', '/admin/monitoring/meals', '/campus-map'] },
         { href: '/admin/registers', label: 'Registers' },
-        { href: '/admin/integrations/lti', label: 'LMS integration' },
       ]
     },
-    { href: '/admin/insights', label: 'Insights', icon: BarChart3, also: ['/admin/analytics', '/admin/reports', '/admin/impact-metrics', '/admin/insights/warehouse'] },
     {
-      label: 'nav.campus_monitoring', icon: Shield,
+      label: 'Impact', icon: Globe2,
       subItems: [
-        { href: '/admin/monitoring/rooms', label: 'nav.room_bookings', also: ['/campus-map'] },
-        { href: '/admin/monitoring/associations', label: 'nav.associations', also: ['/admin/monitoring/events', '/admin/monitoring/lost-found'] },
+        { href: '/admin/partnerships', label: 'Partners & sponsors', also: ['/admin/network', '/admin/partners'] },
+        { href: '/admin/impact-reports', label: 'Impact reports', also: ['/admin/impact-reports/shifts', '/admin/impact-reports/volunteering', '/admin/impact-reports/donations', '/impact-rooms', '/impact-league'] },
+        { href: '/admin/credentials', label: 'Credentials', also: ['/admin/certifications'] },
       ]
     },
-    { href: '/admin/inbox', label: 'nav.messages', icon: MessageSquare, also: ['/calls', '/notifications', '/admin/announcements'] },
+    { href: '/admin/insights', label: 'Insights', icon: BarChart3, also: ['/admin/early-warning', '/admin/analytics', '/admin/reports', '/admin/reports/report-cards', '/admin/reports/grading-scale', '/admin/impact-metrics', '/admin/insights/warehouse'] },
     { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
-    { href: '/admin/billing', label: 'Billing & plans', icon: Crown },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },
   ],
 };

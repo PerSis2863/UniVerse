@@ -27,6 +27,7 @@ export const SUPPORT_TABS: SectionTab[] = [
 
 export const OPPORTUNITY_TABS: SectionTab[] = [
   { href: '/student/impact/ngo-marketplace', label: 'NGO projects' },
+  { href: '/student/impact/ai-match', label: 'AI match' },
   { href: '/student/impact/shifts', label: 'Volunteer shifts' },
   { href: '/impact-rooms', label: 'Impact rooms' },
   { href: '/impact-league', label: 'Impact League' },
@@ -69,6 +70,16 @@ export const TEACHER_BOARD_TABS: SectionTab[] = [
 export const CREDENTIAL_TABS: SectionTab[] = [
   { href: '/student/credentials', label: 'My credentials' },
   { href: '/student/passport', label: 'Skills passport' },
+  { href: '/student/impact/leaderboard', label: 'Leaderboard' },
+  { href: '/student/impact/edu-society', label: 'Educational society' },
+];
+/** M27: a student's own records, once five menu entries. */
+export const STUDENT_RECORDS_TABS: SectionTab[] = [
+  { href: '/student/administrative/personal', label: 'Personal data' },
+  { href: '/student/administrative/documents', label: 'Documents' },
+  { href: '/student/administrative/accounting', label: 'Fees & payments' },
+  { href: '/student/administrative/scholarships', label: 'Scholarships' },
+  { href: '/student/choices', label: 'Course choices' },
 ];
 
 export const HOME_TABS: SectionTab[] = [
@@ -101,7 +112,37 @@ export const COLLAB_TABS: SectionTab[] = [
 export const STUDENT_COURSE_TABS: SectionTab[] = [
   { href: '/student/courses', label: 'My courses' },
   { href: '/student/live', label: 'Live class' },
+  { href: '/student/groups', label: 'Groups' },
+  { href: '/marketplace', label: 'Marketplace' },
   { href: '/student/offline', label: 'Offline' },
+];
+/** M27: a teacher's courses, the live class and the curriculum marketplace. */
+export const TEACHER_COURSE_TABS: SectionTab[] = [
+  { href: '/teacher/courses', label: 'My courses' },
+  { href: '/teacher/live', label: 'Live class' },
+  { href: '/marketplace', label: 'Marketplace' },
+];
+/** M27: marking and the register, once four menu entries. */
+export const TEACHER_MARKING_TABS: SectionTab[] = [
+  { href: '/teacher/assignments', label: 'Assignments' },
+  { href: '/teacher/quizzes', label: 'Quizzes' },
+  { href: '/teacher/grades', label: 'Grades' },
+  { href: '/teacher/attendance', label: 'Attendance' },
+];
+/** M27: an admin's courses and the marketplace. */
+export const ADMIN_COURSE_TABS: SectionTab[] = [
+  { href: '/admin/courses', label: 'Courses' },
+  { href: '/marketplace', label: 'Marketplace' },
+];
+/** M27: the knowledge hub and the library desk. */
+export const ADMIN_LEARN_TABS: SectionTab[] = [
+  { href: '/admin/knowledge-hub', label: 'Knowledge hub' },
+  { href: '/admin/library', label: 'Library desk', need: 'library.manage' },
+];
+/** M27: verifying what students ask to have signed, and signed certifications. */
+export const ADMIN_CREDENTIAL_TABS: SectionTab[] = [
+  { href: '/admin/credentials', label: 'Verify credentials' },
+  { href: '/admin/certifications', label: 'Certifications' },
 ];
 
 export const STUDENT_LEARN_TABS: SectionTab[] = [
@@ -148,6 +189,7 @@ export const ADMIN_PEOPLE_TABS: SectionTab[] = [
   { href: '/admin/integrations/oneroster', label: 'OneRoster SIS', need: 'admin' },
   { href: '/admin/integrations/developer', label: 'Developer API', need: 'admin' },
   { href: '/admin/integrations/chat-apps', label: 'Chat apps', need: 'admin' },
+  { href: '/admin/integrations/lti', label: 'LMS integration', need: 'admin' },
 ];
 
 /** Admin → Finances: the platform's money, and school fees (Stage 5 · B15.2). */
@@ -155,10 +197,12 @@ export const ADMIN_FINANCE_TABS: SectionTab[] = [
   { href: '/admin/finances', label: 'Overview', need: 'admin' },
   { href: '/admin/fees', label: 'School fees', need: 'fees.view' },
   { href: '/admin/finances/reconciliation', label: 'Payments & Gateways', need: 'fees.view' },
+  { href: '/admin/billing', label: 'Billing & plans', need: 'admin' },
 ];
 
 export const ADMIN_INSIGHT_TABS: SectionTab[] = [
   { href: '/admin/insights', label: 'School insights' },
+  { href: '/admin/early-warning', label: 'Early warning' },
   { href: '/admin/analytics', label: 'Analytics' },
   { href: '/admin/reports', label: 'Reports' },
   { href: '/admin/reports/report-cards', label: 'Report cards' },
@@ -171,12 +215,18 @@ export const ADMIN_INSIGHT_TABS: SectionTab[] = [
 export const PARTNER_TABS: SectionTab[] = [
   { href: '/admin/partnerships', label: 'Partner institutions' },
   { href: '/admin/network', label: 'Campus network' },
+  { href: '/admin/partners', label: 'Sponsor portal' },
 ];
 
 // Global collaboration → Inter-university research (teacher), with the campus network (upgrade 9)
+// M27: with NGO mentorship, impact rooms, the Impact League and volunteer mentoring (once three entries).
 export const RESEARCH_TABS: SectionTab[] = [
   { href: '/teacher/collaborations', label: 'Research' },
   { href: '/teacher/network', label: 'Campus network' },
+  { href: '/teacher/collaborations/projects', label: 'NGO mentorship' },
+  { href: '/impact-rooms', label: 'Impact rooms' },
+  { href: '/impact-league', label: 'Impact League' },
+  { href: '/teacher/mentorship', label: 'Volunteer mentor' },
 ];
 
 export const LIFE_TABS: SectionTab[] = [
@@ -201,12 +251,8 @@ export const IMPACT_REPORT_TABS: SectionTab[] = [
 ];
 
 // NGO work (teacher): mentoring NGO projects, their impact rooms (Stage 4 · 4.12) and the Impact
-// League's challenges between universities (Stage 5 · D14)
-export const TEACHER_IMPACT_TABS: SectionTab[] = [
-  { href: '/teacher/collaborations/projects', label: 'NGO mentorship' },
-  { href: '/impact-rooms', label: 'Impact rooms' },
-  { href: '/impact-league', label: 'Impact League' },
-];
+// League's challenges between universities (Stage 5 · D14); one section with research since M27.
+export const TEACHER_IMPACT_TABS = RESEARCH_TABS;
 
 // Campus services (teacher): booking a room and the live campus map (Stage 5 · D15)
 export const CAMPUS_SERVICE_TABS: SectionTab[] = [
@@ -223,6 +269,7 @@ export const impactTabs = (role: string | undefined) => (role === 'ADMIN' ? IMPA
 // Campus Monitoring (admin): rooms, the live campus map (Stage 5 · D15), clubs, and the campus
 // super-app's events and lost & found (upgrade 7)
 export const MONITORING_TABS: SectionTab[] = [
+  { href: '/admin/student-life', label: 'Student life' },
   { href: '/admin/monitoring/rooms', label: 'Room bookings' },
   { href: '/campus-map', label: 'Campus map' },
   { href: '/admin/monitoring/associations', label: 'Clubs' },
@@ -231,6 +278,22 @@ export const MONITORING_TABS: SectionTab[] = [
   { href: '/admin/monitoring/board', label: 'Campus board' },
   { href: '/admin/monitoring/meals', label: 'Pre-orders' },
 ];
+
+/** The marketplace sits in each role's courses section. */
+export const courseTabs = (role: string | undefined) => (role === 'ADMIN' ? ADMIN_COURSE_TABS : role === 'TEACHER' ? TEACHER_COURSE_TABS : STUDENT_COURSE_TABS);
+
+/** Every role's tab bars, so search (CommandPalette) finds pages that are tabs, not menu entries. */
+export const TABS_BY_ROLE: Record<string, SectionTab[][]> = {
+  STUDENT: [HOME_TABS, STUDENT_COURSE_TABS, PROGRESS_TABS, STUDENT_BOARD_TABS, STUDENT_TUTOR_MODES, STUDENT_LEARN_TABS, INTERNSHIP_TABS, OPPORTUNITY_TABS, CREDENTIAL_TABS, LIFE_TABS, SUPPORT_TABS, STUDENT_RECORDS_TABS, COLLAB_TABS],
+  TEACHER: [TEACHER_COURSE_TABS, TEACHER_MARKING_TABS, TEACHER_STUDENT_TABS, TEACHER_BOARD_TABS, TEACHER_TIME_TABS, RESEARCH_TABS, CAMPUS_SERVICE_TABS, TEACHER_LEARN_TABS, COLLAB_TABS],
+  ADMIN: [ADMIN_PEOPLE_TABS, SAFETY_TABS, ADMIN_COURSE_TABS, ADMIN_LEARN_TABS, ADMIN_FINANCE_TABS, MONITORING_TABS, PARTNER_TABS, IMPACT_REPORT_TABS, ADMIN_CREDENTIAL_TABS, ADMIN_INSIGHT_TABS, COLLAB_TABS],
+};
+
+/** The marketplace's tabs: the courses section of whoever is looking. */
+export function MarketplaceTabs() {
+  const role = useAuthStore((st) => st.user?.role);
+  return <SectionTabs tabs={courseTabs(role)} />;
+}
 
 /**
  * The tabs as an iOS segmented control. The tapped segment's thumb slides over at once (before its

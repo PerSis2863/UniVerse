@@ -11,6 +11,7 @@ import { startSampleMode, stopSampleMode } from '@/components/SampleMode';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { navByRole, searchOnlyPages } from '@/components/layout/Sidebar';
+import { TABS_BY_ROLE } from '@/components/layout/SectionTabs';
 import { useLanguageStore } from '@/store/language';
 import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
@@ -129,6 +130,10 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
     }
     for (const p of searchOnlyPages[role] ?? []) {
       if (!out.some((o) => o.id === `page:${p.href}`)) out.push({ id: `page:${p.href}`, label: p.label, icon: FileSearch, group: 'Pages', keywords: p.keywords, run: go(p.href) });
+    }
+    // Pages that are tabs of a section (M27) are found too, with the section's first tab as the hint.
+    for (const tabs of TABS_BY_ROLE[role] ?? []) {
+      for (const tab of tabs) if (!out.some((o) => o.id === `page:${tab.href}`)) out.push({ id: `page:${tab.href}`, label: tab.label, hint: tabs[0].label, icon: FileSearch, group: 'Pages', run: go(tab.href) });
     }
     return out;
   }, [role, t, go]);

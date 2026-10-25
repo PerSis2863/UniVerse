@@ -13,6 +13,7 @@ import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { Avatar } from '@/components/ui/Avatar';
 import { MentorSetup } from '@/components/careers/MentorSetup';
+import { SectionTabs, RESEARCH_TABS } from '@/components/layout/SectionTabs';
 
 // Mentors (industry volunteers, alumni and staff) who help students, and your own mentor profile:
 // students book the times you offer from Internships → Mentors (Stage 5 · Q15).
@@ -65,6 +66,7 @@ export default function MentorshipPage() {
         title="Volunteer & Mentor Portal"
         subtitle="Mentors who help your students, and your own mentoring."
       />
+      <SectionTabs tabs={RESEARCH_TABS} />
 
       <main className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
 

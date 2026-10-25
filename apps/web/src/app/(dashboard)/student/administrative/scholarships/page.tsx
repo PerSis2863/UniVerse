@@ -11,6 +11,7 @@ import { m as motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
+import { SectionTabs, STUDENT_RECORDS_TABS } from '@/components/layout/SectionTabs';
 
 interface Scholarship { id: string; name: string; description?: string | null; amount?: number | null; provider?: string | null; deadline?: string | null; requirements?: string | null }
 interface Application { id: string; scholarshipId: string; status: string; appliedAt: string; scholarship?: Scholarship | null }
@@ -79,6 +80,7 @@ export default function Scholarships() {
     return (
       <>
         <Topbar title="Scholarships" subtitle="View and apply for financial aid and scholarships" />
+        <SectionTabs tabs={STUDENT_RECORDS_TABS} />
         <div className="flex-1 flex items-center justify-center">
           <ContentSkeleton variant="grid" />
         </div>
@@ -89,6 +91,7 @@ export default function Scholarships() {
   return (
     <>
       <Topbar title="Scholarships" subtitle="View and apply for financial aid and scholarships" />
+      <SectionTabs tabs={STUDENT_RECORDS_TABS} />
       
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto space-y-8">

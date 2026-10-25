@@ -6,6 +6,7 @@ import { ArrowRight, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { CampusItemManager } from '@/components/campus/CampusItems';
 import { AdminSearch } from '@/components/admin/AdminPeople';
+import { SectionTabs, MONITORING_TABS } from '@/components/layout/SectionTabs';
 
 export default function AdminStudentLifePage() {
   const [q, setQ] = useState('');
@@ -14,6 +15,7 @@ export default function AdminStudentLifePage() {
   return (
     <>
       <Topbar title="Student Life Management" subtitle="Campus events, services and useful links, and who added each one" />
+      <SectionTabs tabs={MONITORING_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">

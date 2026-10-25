@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
 import { courseColor } from '@/lib/course-color';
+import { SectionTabs, TEACHER_COURSE_TABS } from '@/components/layout/SectionTabs';
 
 interface TeacherCourse { id: string; name: string; code: string; description?: string | null; color?: string | null; emoji?: string | null; _count?: { enrollments?: number; materials?: number } }
 
@@ -68,6 +69,7 @@ export default function TeacherCourses() {
   return (
     <>
       <Topbar title="My Courses" subtitle="Manage your created courses" />
+      <SectionTabs tabs={TEACHER_COURSE_TABS} />
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="flex justify-end mb-6">
           <button 

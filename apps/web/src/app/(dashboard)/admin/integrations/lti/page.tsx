@@ -9,6 +9,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { cn } from '@/lib/utils';
 import { TabPill } from '@/components/ui/Glide';
+import { SectionTabs, ADMIN_PEOPLE_TABS } from '@/components/layout/SectionTabs';
 
 interface Platform { id: string; name: string; issuer: string; clientId: string; deploymentIds: string[]; authLoginUrl: string; jwksUrl: string; trustEmails: boolean; isActive: boolean; courses: number; users: number; createdAt: string }
 interface Resp { platforms: Platform[]; tool: { loginUrl: string; launchUrl: string; redirectUris: string[]; jwksUrl: string; domain: string }; ready: boolean; canvasConfig: object }
@@ -57,6 +58,7 @@ export default function LtiPage() {
   return (
     <>
       <Topbar title="LMS integration (LTI 1.3)" subtitle="Open UniVerse from Moodle, Canvas, Blackboard or Brightspace with single sign-on and linked courses" />
+      <SectionTabs tabs={ADMIN_PEOPLE_TABS} />
       <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-5 min-w-0 w-full">
         {data && !data.ready && (
           <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.08] p-4 text-sm text-amber-800 dark:text-amber-200 flex gap-3"><AlertTriangle className="w-5 h-5 shrink-0" /><p>Before launches can sign people in, add a <b>SESSION_SECRET</b> secret (a random string of 32+ characters) in Cloudflare → your Worker → Settings → Variables and Secrets.</p></div>

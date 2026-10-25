@@ -3,6 +3,7 @@
 import { GraduationCap } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { NgoProjectBoard, type NgoProject } from '@/components/impact/NgoProjectBoard';
+import { SectionTabs, CREDENTIAL_TABS } from '@/components/layout/SectionTabs';
 
 // Education-focused volunteering: NGO projects in the education sector or tied to UN SDG 4.
 const isEducation = (p: NgoProject) => p.sdgNumber === 4 || /educat|school|teach|tutor|literacy/i.test(`${p.ngo.sector ?? ''} ${p.name}`);
@@ -11,6 +12,7 @@ export default function EduSocietyPage() {
   return (
     <>
       <Topbar title="📚 Educational Society" subtitle="Teach, tutor and mentor with education NGOs" />
+      <SectionTabs tabs={CREDENTIAL_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
           <NgoProjectBoard

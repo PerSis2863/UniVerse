@@ -1737,3 +1737,30 @@ Progress table (row D6).
   empty Relief list ("Be the first… invite your neighbours"), on the empty Green map (an overlay),
   per Green team (the code in the message) and on the hub.
 - Relief's numbers and the selected filter now pass contrast in light mode.
+
+## M27 · Simpler UniVersity menus
+
+- The owner (26 Oct 2026): "the university is too much big like people will get confuse on how to
+  work on this and how to navigate… merge few of them together so that it becomes less complex".
+- **Menus** (`navByRole` in `Sidebar.tsx`), before → after: students 9 entries with 3 groups of 18
+  pages → Home, Messages, Learn (4), Collaborate, Careers & impact (3), Campus (3), My records,
+  Settings; teachers 7 entries with 15 pages in groups → Home, Messages, Teach (5), Collaborate,
+  Campus & research (3), Settings; admins 11 entries with 25 pages in groups → Overview, Messages,
+  People (4), Academics (5), Operations (5), Impact (3), Insights, Collaborate, Settings. Plain names
+  replace "Schooling", "Administrative data", "Global impact", "Campus monitoring".
+- **Merged as tabs** (`SectionTabs.tsx`; each merged page renders its section's tabs right under its
+  Topbar, so links, bookmarks and notifications keep working): `STUDENT_RECORDS_TABS` (personal,
+  documents, fees, scholarships, course choices); courses + groups + marketplace; AI match in
+  Opportunities; leaderboard and educational society in Credentials; `TEACHER_COURSE_TABS`;
+  `TEACHER_MARKING_TABS` (assignments, quizzes, grades, attendance); research + NGO mentorship +
+  impact rooms + League + volunteer mentor in one `RESEARCH_TABS` (`TEACHER_IMPACT_TABS` is the same
+  list); LMS integration in People; early warning in Insights; `ADMIN_COURSE_TABS`,
+  `ADMIN_LEARN_TABS`, billing in Money, student life in the campus tabs, the sponsor portal in
+  Partners, `ADMIN_CREDENTIAL_TABS`. The marketplace shows the looker's course tabs
+  (`MarketplaceTabs`, `courseTabs(role)`).
+- **Search** (`CommandPalette`) also lists every tab of the role (`TABS_BY_ROLE`), so a page that left
+  the menu is still found. The welcome tour's stops point at the new groups.
+- A new merged page: add it to its tab list, render that list under its Topbar, add its address to
+  the menu entry's `also`, and to `TABS_BY_ROLE` if the list is new.
+- Checked: types, lint, tests, lean; the three menus and tab bars in the browser; axe clean on a
+  merged page per role at 390 and 1280, light and dark.
