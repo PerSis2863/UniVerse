@@ -6,7 +6,7 @@ import { dayIn } from './study-days';
 // pushes wait for the summary); and the summary's time. Pure, so the push service, the settings
 // page and the notification centre agree.
 
-export type NoteGroupId = 'mentions' | 'messages' | 'grades' | 'calls' | 'tasks' | 'school' | 'other';
+export type NoteGroupId = 'mentions' | 'messages' | 'grades' | 'calls' | 'tasks' | 'school' | 'impact' | 'other';
 export type PushMode = 'push' | 'digest' | 'off';
 
 export interface NoteGroup { id: NoteGroupId; label: string; hint: string; /** Notification `type`s in the group. */ types: string[]; /** Push tags (or their start) in the group. */ tags: string[] }
@@ -18,6 +18,7 @@ export const NOTE_GROUPS: NoteGroup[] = [
   { id: 'calls', label: 'Calls and meetings', hint: 'Scheduled calls starting, office hours and meetings. A call ringing for you always rings.', types: ['live', 'meeting', 'call'], tags: ['scheduled-', 'office-', 'meeting-', 'call-'] },
   { id: 'tasks', label: 'Tasks and reminders', hint: 'Reminders you set, tasks and deadlines.', types: ['reminder', 'task'], tags: ['remind-', 'task-', 'offline-work'] },
   { id: 'school', label: 'School', hint: 'Announcements, events, fees, forms, the library, staff news and job openings.', types: ['event', 'announcement', 'consent', 'library', 'registers', 'staff', 'admissions', 'application', 'guardian', 'warning', 'fees', 'job'], tags: ['consent-', 'fees-', 'pack-', 'cover-', 'campus-network', 'parent-week', 'safety-', 'job-'] },
+  { id: 'impact', label: 'Relief, Green and Trace', hint: 'Someone coming to help, a request delivered, urgent needs near you, recalls and alerts from your brand.', types: ['relief', 'green', 'trace'], tags: ['relief-', 'green-', 'trace-'] },
   { id: 'other', label: 'Everything else', hint: 'Anything not in the groups above.', types: [], tags: [] },
 ];
 
@@ -41,7 +42,7 @@ export interface NotifyPrefs {
 }
 
 export const DEFAULT_PREFS: NotifyPrefs = {
-  push: { mentions: 'push', messages: 'push', grades: 'push', calls: 'push', tasks: 'push', school: 'push', other: 'push' },
+  push: { mentions: 'push', messages: 'push', grades: 'push', calls: 'push', tasks: 'push', school: 'push', impact: 'push', other: 'push' },
   muted: [],
   digest: true,
   digestHour: 18,
@@ -80,7 +81,7 @@ export function digestText(counts: Partial<Record<NoteGroupId, number>>): { titl
   if (!total) return null;
   const names: Record<NoteGroupId, [string, string]> = {
     mentions: ['mention', 'mentions'], messages: ['message', 'messages'], grades: ['grade or feedback', 'grades and feedback'], calls: ['call or meeting', 'calls and meetings'],
-    tasks: ['reminder', 'reminders'], school: ['school update', 'school updates'], other: ['other', 'others'],
+    tasks: ['reminder', 'reminders'], school: ['school update', 'school updates'], impact: ['Relief, Green or Trace update', 'Relief, Green and Trace updates'], other: ['other', 'others'],
   };
   const parts = (Object.entries(counts) as [NoteGroupId, number][]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])
     .map(([g, n]) => `${n} ${names[g][n === 1 ? 0 : 1]}`);

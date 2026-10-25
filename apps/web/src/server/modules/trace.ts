@@ -5,7 +5,7 @@ import { audit } from '../audit';
 import { addEvent, allBrands, batchCodes, batchDetail, brandInfo, brandOf, claim, createBatch, createBrand, createProduct, deleteProduct, flagCode, listProducts, overview, scan, setPlan, updateBrand, updateProduct } from '../trace';
 import { brandCashouts, decideCashout, requestCashout, wallet } from '../trace-wallet';
 import { createCampaign, listCampaigns, setCampaignStatus } from '../trace-campaigns';
-import { carrierLink, carryArrive, carryInfo, carryPing, liveScans, marketMap, tracking } from '../trace-map';
+import { carrierLink, carryArrive, carryInfo, carryPing, carryReading, liveScans, marketMap, tracking } from '../trace-map';
 import { demo } from '../trace-demo';
 import { ownerTrace } from '../trace-owner';
 import { endRecall, insights, ownUnit, protectBatch, publicBrand, radar, recallBatch, receiveTransfer, redeemWin, registerWarranty, reviewUnit, startTransfer, vault } from '../trace-plus';
@@ -24,6 +24,8 @@ export default function traceModule(router: Router) {
   r.get<{ key: string }>('carry/:key', { public: true }, ({ params }) => carryInfo(params.key));
   r.post<{ key: string }>('carry/:key/ping', { public: true, status: 200 }, ({ params, body }) => carryPing(params.key, body ?? {}));
   r.post<{ key: string }>('carry/:key/arrive', { public: true, status: 200 }, ({ params, body }) => carryArrive(params.key, body ?? {}));
+  // A connected thermometer or logger (or the one paired on the driver's page) posts its readings here.
+  r.post<{ key: string }>('carry/:key/reading', { public: true, status: 200 }, ({ params, body }) => carryReading(params.key, body ?? {}));
   // Whoever holds the unit (src/server/trace-plus.ts): its warranty and one review per unit.
   r.post<{ code: string }>('scan/:code/warranty', { public: true, status: 200 }, async ({ params, body, req }) => registerWarranty(params.code, body ?? {}, await getSessionUser(req).catch(() => null), req));
   r.post<{ code: string }>('scan/:code/review', { public: true, status: 200 }, async ({ params, body, req }) => reviewUnit(params.code, body ?? {}, await getSessionUser(req).catch(() => null), req));

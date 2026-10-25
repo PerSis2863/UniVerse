@@ -7,8 +7,12 @@ Workers, with its database on Cloudflare D1 and uploads on R2. This page says wh
 how to run it on your computer, and how to carry on (for the owner and for any AI agent, such as
 Cursor's).
 
-## Where things stand (24 October 2026)
+## Where things stand (25 October 2026)
 
+- **Newest (25 Oct): M22**: Relief tells people when help is coming and alerts helpers about urgent
+  needs near them; Trace takes real temperature sensors (a Bluetooth thermometer on the driver's
+  phone, or a connected logger) and warns the brand about warm shipments; the sign-in errors from
+  the live site are fixed. Notes: M22 in `STAGE-5-HANDOFF.md`.
 - **Newest (24 Oct): M21, UniVerse Impact**, on branch `claude/youthful-fermi-sbdtcp`: one account,
   many apps. The hub `/hub` and an app switcher in the menu: **UniVersity** (the school platform, back
   in full), **Trace** (now with recalls, prizes, warranties, reviews, an ownership vault, the Radar,
@@ -45,7 +49,7 @@ Cursor's).
   for each item.
 - **Notes for whoever continues:** `apps/web/STAGE-5-HANDOFF.md`: start with its "Next steps" and the
   S2, Q26, S1 and Q24/Q25 notes.
-- **Next database update number: `0181`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0183`** (files in `apps/web/prisma/migrations/`).
 
 **Moving to the $5 Cloudflare plan (Workers Paid)**, in this order:
 1. In Cloudflare: Workers & Pages → Plans → Workers Paid ($5 a month, plus any local tax).

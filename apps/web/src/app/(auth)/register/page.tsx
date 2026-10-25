@@ -7,8 +7,8 @@ import { Mail, Lock, Loader2, User, ArrowRight, ArrowLeft, GraduationCap, Buildi
 import Link from '@/components/ui/Link';
 import { Accent, Tag } from '@/components/landing/bits';
 import { useAuthStore } from '@/store/auth';
-import { auth, warmUpPopupSignIn } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithPopup, updateProfile } from 'firebase/auth';
+import { auth, popupSignIn, warmUpPopupSignIn } from '@/lib/firebase';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, updateProfile } from 'firebase/auth';
 import { api } from '@/lib/api';
 import { awaitingApproval } from '@/types';
 import { reportSession } from '@/lib/sign-in-history';
@@ -183,7 +183,7 @@ export default function RegisterPage() {
     setError('');
     try {
       const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
+      const userCredential = await popupSignIn(provider);
       const token = await userCredential.user.getIdToken();
       await handleRegisterSuccess(token, userCredential.user.displayName || '', 'google');
     } catch (err) {
@@ -200,7 +200,7 @@ export default function RegisterPage() {
     try {
       const provider = new OAuthProvider('microsoft.com');
       provider.setCustomParameters({ prompt: 'select_account' });
-      const userCredential = await signInWithPopup(auth, provider);
+      const userCredential = await popupSignIn(provider);
       const token = await userCredential.user.getIdToken();
       await handleRegisterSuccess(token, userCredential.user.displayName || '', 'microsoft');
     } catch (err) {

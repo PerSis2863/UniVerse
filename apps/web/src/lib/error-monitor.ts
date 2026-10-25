@@ -163,6 +163,8 @@ export function installErrorMonitor(): void {
   }, true);
 
   window.addEventListener('unhandledrejection', (event) => {
+    // Firebase's pop-up glitch is handled where the sign-in runs (popupSignIn in src/lib/firebase.ts).
+    if (/INTERNAL ASSERTION FAILED: Pending promise was never set/i.test(String(event.reason?.message ?? event.reason))) return;
     captureError(event.reason, 'promise');
   });
 

@@ -6635,6 +6635,7 @@ model TraceBatch {
   events         TraceEvent[]
   pings          TracePing[]
 
+  coldAlertAt      DateTime?
   allowedCountries String?
   blockedAt        DateTime?
   @@index([productId])
@@ -6813,6 +6814,23 @@ model TraceCampaign {
 }
 
 /// A live position from a phone carrying a batch (the real-time tracking map).
+/// Cold chain readings (migration 0182): a Bluetooth thermometer on the driver's page (BLE), a connected
+/// logger posting to the shipment's link (DEVICE), or the driver typing it (MANUAL).
+model TraceReading {
+  id        String   @id @default(cuid())
+  batchId   String
+  brandId   String?
+  tempC     Float
+  humidity  Float?
+  source    String   @default("DEVICE")
+  device    String?
+  createdAt DateTime @default(now())
+
+  @@index([batchId, createdAt])
+  @@index([brandId, createdAt])
+  @@map("trace_readings")
+}
+
 model TracePing {
   id        String     @id @default(cuid())
   batchId   String
@@ -6909,6 +6927,21 @@ model TraceWin {
 
   @@index([brandId, createdAt])
   @@map("trace_wins")
+}
+
+/// Relief alerts (migration 0181): new needs near this place, within radiusKm, urgent only by default.
+model ReliefWatch {
+  userId     String   @id
+  lat        Float
+  lng        Float
+  radiusKm   Float    @default(5)
+  urgentOnly Boolean  @default(true)
+  /// Comma-separated RELIEF_KINDS, or null for every kind.
+  kinds      String?
+  createdAt  DateTime @default(now())
+
+  @@index([lat, lng])
+  @@map("relief_watches")
 }
 
 model ReliefPost {

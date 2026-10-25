@@ -76,7 +76,8 @@ export function ReliefApp() {
   const [type, setType] = useState<'ALL' | 'NEED' | 'OFFER'>('ALL');
   const [kinds, setKinds] = useState<Set<ReliefKind>>(new Set());
   const [here, setHere] = useState<{ lat: number; lng: number } | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+  // An alert's link (/relief?post=<id>) opens with that post chosen.
+  const [selected, setSelected] = useState<string | null>(() => (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('post')));
   const [posting, setPosting] = useState(false);
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(null);

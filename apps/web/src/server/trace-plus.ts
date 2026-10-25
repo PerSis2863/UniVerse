@@ -199,10 +199,10 @@ export async function radar(u: SessionUser) {
     prisma.traceBatch.findMany({ where: { brandId: brand.id, blockedAt: { not: null } }, select: { id: true, label: true, blockedAt: true, product: { select: { name: true } } } }),
     prisma.traceRecall.findMany({ where: { brandId: brand.id }, orderBy: { createdAt: 'desc' }, take: 30 }),
     prisma.traceCode.count({ where: { brandId: brand.id, status: 'FLAGGED' } }),
-    q(`SELECT p.batchId AS batchId, MAX(p.tempC) AS maxT, COUNT(*) AS n, MAX(p.createdAt) AS last, pr.maxTempC AS limitT, b.label AS label, pr.name AS product
-       FROM trace_pings p JOIN trace_batches b ON b.id = p.batchId JOIN trace_products pr ON pr.id = b.productId
-       WHERE p.brandId = ? AND p.tempC IS NOT NULL AND pr.maxTempC IS NOT NULL AND p.tempC > pr.maxTempC AND p.createdAt > ?
-       GROUP BY p.batchId ORDER BY last DESC LIMIT 30`, brand.id, iso(since.getTime())),
+    q(`SELECT r.batchId AS batchId, MAX(r.tempC) AS maxT, COUNT(*) AS n, MAX(r.createdAt) AS last, pr.maxTempC AS limitT, b.label AS label, pr.name AS product
+       FROM trace_readings r JOIN trace_batches b ON b.id = r.batchId JOIN trace_products pr ON pr.id = b.productId
+       WHERE r.brandId = ? AND pr.maxTempC IS NOT NULL AND r.tempC > pr.maxTempC AND r.createdAt > ?
+       GROUP BY r.batchId ORDER BY last DESC LIMIT 30`, brand.id, iso(since.getTime())),
   ]);
   const productIds = [...new Set([...suspect, ...diverted].map((s) => s.productId).filter((x): x is string => !!x))];
   const batchIds = [...new Set(recalls.map((r) => r.batchId))];

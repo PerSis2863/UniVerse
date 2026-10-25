@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { removeWithUndo } from '@/lib/undo';
 import { AnimatePresence, m as motion, type PanInfo } from 'framer-motion';
 import { formatDistanceToNowStrict, isToday, isYesterday } from 'date-fns';
-import { AtSign, Bell, BellOff, CalendarClock, Check, CheckCheck, Clock, GraduationCap, Loader2, MessageSquare, School, Settings2, Trash2, type LucideIcon } from 'lucide-react';
+import { AtSign, Bell, BellOff, CalendarClock, Check, CheckCheck, Clock, GraduationCap, HandHeart, Loader2, MessageSquare, School, Settings2, Trash2, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Menu } from '@/components/ui/Menu';
 import { authedJson } from '@/lib/authed-fetch';
@@ -28,10 +28,10 @@ import { cn } from '@/lib/utils';
 interface Item { id: string; title: string; body: string; type: string; read: boolean; link: string | null; createdAt: string; group: NoteGroupId; course: string | null }
 interface Page { items: Item[]; next: string | null; unread: Partial<Record<NoteGroupId, number>>; snoozed: number }
 
-const ICON: Record<NoteGroupId, LucideIcon> = { mentions: AtSign, messages: MessageSquare, grades: GraduationCap, calls: CalendarClock, tasks: Check, school: School, other: Bell };
+const ICON: Record<NoteGroupId, LucideIcon> = { mentions: AtSign, messages: MessageSquare, grades: GraduationCap, calls: CalendarClock, tasks: Check, school: School, impact: HandHeart, other: Bell };
 const TONE: Record<NoteGroupId, string> = {
   mentions: 'bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300', messages: 'bg-sky-500/10 text-sky-700 dark:text-sky-300', grades: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-  calls: 'bg-rose-500/10 text-rose-700 dark:text-rose-300', tasks: 'bg-amber-500/10 text-amber-700 dark:text-amber-300', school: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300', other: 'bg-zinc-500/10 text-zinc-700 dark:text-zinc-300',
+  calls: 'bg-rose-500/10 text-rose-700 dark:text-rose-300', tasks: 'bg-amber-500/10 text-amber-700 dark:text-amber-300', school: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300', impact: 'bg-orange-500/10 text-orange-700 dark:text-orange-300', other: 'bg-zinc-500/10 text-zinc-700 dark:text-zinc-300',
 };
 
 /** Snooze choices: an hour, this evening, tomorrow morning, next week. */
