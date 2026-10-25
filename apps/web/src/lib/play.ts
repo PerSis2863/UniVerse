@@ -4,13 +4,13 @@
 // at the same time, and the room (cloudflare/worker.ts GameRoom) keeps the live scoreboard.
 // No imports: the Worker uses this file too.
 
-export const GAME_IDS = ['quiz', 'fakes', 'supply', 'sort', 'type', 'pin', 'rescue', 'ocean'] as const;
+export const GAME_IDS = ['quiz', 'fakes', 'supply', 'sort', 'type', 'pin', 'rescue', 'ocean', 'obby', 'strike', 'night', 'orbit'] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
 export interface GameInfo {
   id: GameId;
   /** The app it belongs to (src/lib/apps.ts), for its colour and icon. */
-  app: 'campus' | 'trace' | 'relief' | 'green';
+  app: 'campus' | 'trace' | 'relief' | 'green' | 'play';
   name: string;
   tagline: string;
   /** How to play, in two short lines. */
@@ -21,6 +21,12 @@ export interface GameInfo {
   color: string;
   /** The bigger games (M32): a full-size stage, longer rounds. */
   big?: boolean;
+  /** The 3D worlds (M36): walk, run and jump in a 3D world. */
+  world?: boolean;
+  /** The age rating (M36): asked before playing; refused when the account's birth date is younger. */
+  age?: 12 | 16 | 18;
+  /** What earns the rating, in a few words. */
+  rated?: string;
 }
 
 export const GAMES: Record<GameId, GameInfo> = {
@@ -31,8 +37,22 @@ export const GAMES: Record<GameId, GameInfo> = {
   type: { id: 'type', app: 'campus', name: 'Type Race', tagline: 'Race your friends, one true fact at a time', how: 'Type each fact exactly as shown. Every right letter moves your car; twenty in a row lights the nitro (double points).', seconds: 75, maxScore: 36_000, color: '#8b5cf6', big: true },
   pin: { id: 'pin', app: 'trace', name: 'World Pin', tagline: 'Where in the world is that parcel going?', how: 'A city appears: tap where it is on the world map. The closer your pin, the more points; pins in a row within 500 km build a streak. 15 cities.', seconds: 135, maxScore: 24_000, color: '#f472b6', big: true },
   rescue: { id: 'rescue', app: 'relief', name: 'Flood Rescue', tagline: 'Fly the helicopter, beat the rising water', how: 'Hover low over a roof to winch people up (4 at a time), then land on the hospital’s H to drop them off and refuel. Watch for lightning and gusts.', seconds: 120, maxScore: 11_000, color: '#fb923c', big: true },
+  obby: { id: 'obby', app: 'play', name: 'Skyline Obby', tagline: 'Jump the sky course to the golden finish', how: 'Run and jump across floating pads: moving ones, crumbling ones, bounce pads and spinning lasers. Checkpoints save you; gems and finishing early score more.', seconds: 180, maxScore: 16_000, color: '#38bdf8', big: true, world: true },
+  strike: { id: 'strike', app: 'play', name: 'Neon Strike', tagline: 'Laser tag against sentinel drones', how: 'Clear wave after wave of drones in a neon arena. Tags in a row multiply your points; take cover from their bolts, grab health and rapid fire.', seconds: 150, maxScore: 300_000, color: '#a855f7', big: true, world: true, age: 16, rated: 'shooting' },
+  night: { id: 'night', app: 'play', name: 'Night Shift', tagline: 'Find five keys in a dark school. Something else is looking too.', how: 'Explore the dark halls with your torch, find the five keys and reach the exit. Shine the torch on it to drive it back; don’t let it reach you.', seconds: 210, maxScore: 17_000, color: '#64748b', big: true, world: true, age: 18, rated: 'horror, jump scares' },
+  orbit: { id: 'orbit', app: 'play', name: 'Orbit Breach', tagline: 'Fix the station before the meteors win', how: 'Jump between decks in low gravity (jump again in the air to boost), repair five reactors, grab oxygen and dodge the meteors, then reach the escape pod.', seconds: 180, maxScore: 15_000, color: '#22d3ee', big: true, world: true, age: 12, rated: 'sci-fi peril' },
   ocean: { id: 'ocean', app: 'green', name: 'Ocean Cleanup', tagline: 'Clear the plastic, spare the sea life', how: 'Scoop up plastic for combos and grab the power-ups (magnet, boost, shield). Bumping into sea life costs points; oil slows you down.', seconds: 90, maxScore: 28_000, color: '#22d3ee', big: true },
 };
+
+/** Whole years since a birth date (null when unknown). */
+export function ageOn(birth: Date | string | null | undefined, now = new Date()): number | null {
+  if (!birth) return null;
+  const b = new Date(birth);
+  if (Number.isNaN(b.getTime())) return null;
+  return now.getUTCFullYear() - b.getUTCFullYear() - (now.getUTCMonth() < b.getUTCMonth() || (now.getUTCMonth() === b.getUTCMonth() && now.getUTCDate() < b.getUTCDate()) ? 1 : 0);
+}
+/** A rated game refused for a known younger age (an unknown age is asked on the device). */
+export const tooYoung = (game: GameId, age: number | null) => !!GAMES[game].age && age !== null && age < GAMES[game].age!;
 
 export const isGame = (v: unknown): v is GameId => typeof v === 'string' && (GAME_IDS as readonly string[]).includes(v);
 

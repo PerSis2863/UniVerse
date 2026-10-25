@@ -16,6 +16,7 @@ import { COUNTDOWN_MS, GAMES, GAME_IDS, cleanRoomCode, isGame, type GameId } fro
 import { useAuthStore } from '@/store/auth';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { AgeBadge, useAgeGate } from './AgeGate';
 import { GameIcon } from './GameIcon';
 import { GameStage, preloadGame } from './GameStage';
 import { LiveBoard, LiveStrip, Lobby, Podium } from './RoomViews';
@@ -26,7 +27,7 @@ import { useGameRoom } from './useGameRoom';
 // /play/game (UniVerse Play, M31): ?g=<game> picks the game (solo, start a room, or join one by
 // code); ?room=<code> is a room, so a room's link or QR brings friends straight in.
 
-export interface PlayMe { games: Record<GameId, { best: number; solo: number; multi: number }>; played: number; recent: { game: GameId; mode: string; score: number; createdAt: string }[] }
+export interface PlayMe { games: Record<GameId, { best: number; solo: number; multi: number }>; played: number; recent: { game: GameId; mode: string; score: number; createdAt: string }[]; age?: number | null }
 
 export function GameShell() {
   const params = useSearchParams();
@@ -75,6 +76,7 @@ function GameMenu({ game }: { game: GameId }) {
   const [busy, setBusy] = useState(false);
   const info = GAMES[game];
   const calm = useReducedMotion();
+  const gate = useAgeGate(game, me?.age);
   useEffect(() => { preloadGame(game); }, [game]);
 
   const createRoom = async () => {
@@ -83,10 +85,11 @@ function GameMenu({ game }: { game: GameId }) {
     catch (e) { toast.error(errorMessage(e, 'Couldn’t open a room.')); setBusy(false); }
   };
 
-  if (mode === 'solo') return <Solo game={game} best={me?.games[game]?.best ?? 0} onExit={() => { setMode('menu'); void mutate(); }} onChallenge={() => void createRoom()} />;
+  if (mode === 'solo' && !gate.blocked) return <Solo game={game} best={me?.games[game]?.best ?? 0} onExit={() => { setMode('menu'); void mutate(); }} onChallenge={() => void createRoom()} />;
 
   return (
     <div className="space-y-5">
+      {gate.dialog}
       <section className="panel relative overflow-hidden p-5 sm:p-8">
         <div className="pointer-events-none absolute -end-24 -top-24 h-72 w-72 rounded-full opacity-30 blur-3xl" style={{ background: info.color }} aria-hidden />
         <Link href="/play" className="relative inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"><ArrowLeft className="w-4 h-4 rtl:-scale-x-100" aria-hidden />All games</Link>
@@ -94,7 +97,7 @@ function GameMenu({ game }: { game: GameId }) {
           <motion.div initial={{ opacity: 0, scale: calm ? 1 : 0.9, rotate: calm ? 0 : -6 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} transition={spring.bouncy}><GameIcon game={game} size="lg" /></motion.div>
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-zinc-600 dark:text-zinc-300"><span className="h-2 w-2 rounded-full" style={{ background: info.color }} aria-hidden />For {appById(info.app).name}</p>
-            <h1 className="mt-1 text-3xl font-semibold text-zinc-900 dark:text-white">{info.name}</h1>
+            <h1 className="mt-1 flex items-center gap-2 text-3xl font-semibold text-zinc-900 dark:text-white">{info.name}<AgeBadge game={game} /></h1>
             <p className="mt-1 text-zinc-600 dark:text-zinc-300">{info.tagline}</p>
           </div>
           <div className="sm:ms-auto flex gap-6 text-sm">
@@ -106,14 +109,14 @@ function GameMenu({ game }: { game: GameId }) {
       </section>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <motion.button type="button" onClick={() => setMode('solo')} initial={{ opacity: 0, y: calm ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth}
+        <motion.button type="button" onClick={() => gate.guard(() => setMode('solo'))} initial={{ opacity: 0, y: calm ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth}
           className="sheen panel group flex flex-col items-start gap-3 p-5 text-start transition-transform duration-150 active:scale-[0.99]">
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-pink-500 text-white shadow-[0_6px_20px_rgba(236,72,153,0.4)]"><User className="w-5 h-5" aria-hidden /></span>
           <span className="text-lg font-semibold text-zinc-900 dark:text-white">Play solo</span>
           <span className="text-sm text-zinc-600 dark:text-zinc-300">{info.seconds} seconds against your best score.</span>
           <span className="mt-auto inline-flex items-center gap-1.5 text-sm font-semibold text-pink-600 dark:text-pink-300"><Play className="w-4 h-4" aria-hidden />Start</span>
         </motion.button>
-        <motion.button type="button" disabled={busy} onClick={() => void createRoom()} initial={{ opacity: 0, y: calm ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.smooth, delay: 0.05 }}
+        <motion.button type="button" disabled={busy} onClick={() => gate.guard(() => void createRoom())} initial={{ opacity: 0, y: calm ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.smooth, delay: 0.05 }}
           className="sheen panel group flex flex-col items-start gap-3 p-5 text-start transition-transform duration-150 active:scale-[0.99] disabled:opacity-60">
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#2a2927] text-white">{busy ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden /> : <Users className="w-5 h-5" aria-hidden />}</span>
           <span className="text-lg font-semibold text-zinc-900 dark:text-white">Play with friends</span>
@@ -227,6 +230,7 @@ function Room({ code, onLeave }: { code: string; onLeave: (to?: GameId) => void 
   const { state, status, error, send, clock, report, finish } = useGameRoom(code);
   const [finishedRound, setFinishedRound] = useState<number | null>(null);
   const [myStats, setMyStats] = useState<GameStat[]>([]);
+  const [ageOk, setAgeOk] = useState(false);
   const roomGame = state?.game;
   useEffect(() => { if (roomGame) preloadGame(roomGame); }, [roomGame]);
   const onFinish = useCallback((score: number, step: number, stats: GameStat[]) => {
@@ -252,6 +256,7 @@ function Room({ code, onLeave }: { code: string; onLeave: (to?: GameId) => void 
   const mine = state.players.find((p) => p.id === me);
   const leave = () => onLeave(state.game);
   const reconnecting = status === 'reconnecting' && <p className="mb-3 rounded-xl bg-amber-500/15 px-3 py-2 text-sm text-amber-800 dark:text-amber-200" role="status">Connection lost. Reconnecting…</p>;
+  if (GAMES[state.game].age && !ageOk) return <RoomAgeCheck game={state.game} onOk={() => setAgeOk(true)} onLeave={leave} />;
   if (state.phase === 'lobby') {
     return <div>{reconnecting}<Lobby state={state} me={me} onStart={() => send({ t: 'start' })} onGame={(g) => send({ t: 'game', game: g })} onLeave={leave} /></div>;
   }
@@ -278,5 +283,24 @@ function Room({ code, onLeave }: { code: string; onLeave: (to?: GameId) => void 
         </motion.div>
       </AnimatePresence>
     </Arena>
+  );
+}
+
+/** Joining a room that plays a rated game: the age check first (or straight in when it's fine). */
+function RoomAgeCheck({ game, onOk, onLeave }: { game: GameId; onOk: () => void; onLeave: () => void }) {
+  const { data: me } = useSWR<PlayMe>('/play/me', fetcher);
+  const gate = useAgeGate(game, me?.age);
+  const info = GAMES[game];
+  return (
+    <section className="panel mx-auto max-w-md p-8 text-center">
+      {gate.dialog}
+      <span className="mx-auto grid w-fit"><GameIcon game={game} size="lg" /></span>
+      <h1 className="mt-4 flex items-center justify-center gap-2 text-xl font-semibold text-zinc-900 dark:text-white">{info.name}<AgeBadge game={game} /></h1>
+      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">This room plays a game rated {info.age}+ ({info.rated}).</p>
+      <div className="mt-5 flex justify-center gap-2">
+        <button type="button" onClick={() => gate.guard(onOk)} disabled={!me} className="btn-primary">Join the room</button>
+        <button type="button" onClick={onLeave} className="btn-secondary">Leave</button>
+      </div>
+    </section>
   );
 }

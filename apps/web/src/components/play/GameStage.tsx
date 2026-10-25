@@ -27,6 +27,10 @@ const VIEWS: Record<GameId, React.ComponentType<GameProps>> = {
   pin: dynamic(() => import('./WorldPin').then((m) => m.WorldPin), { ssr: false, loading }),
   rescue: dynamic(() => import('./FloodRescue').then((m) => m.FloodRescue), { ssr: false, loading }),
   ocean: dynamic(() => import('./OceanCleanup').then((m) => m.OceanCleanup), { ssr: false, loading }),
+  obby: dynamic(() => import('./SkylineObby').then((m) => m.SkylineObby), { ssr: false, loading }),
+  strike: dynamic(() => import('./NeonStrike').then((m) => m.NeonStrike), { ssr: false, loading }),
+  night: dynamic(() => import('./NightShift').then((m) => m.NightShift), { ssr: false, loading }),
+  orbit: dynamic(() => import('./OrbitBreach').then((m) => m.OrbitBreach), { ssr: false, loading }),
 };
 
 /** Warm a game's code while the lobby or countdown shows. */
@@ -34,6 +38,7 @@ export function preloadGame(game: GameId) {
   const mod = {
     quiz: () => import('./QuizClash'), fakes: () => import('./SpotTheFake'), supply: () => import('./SupplyRun'), sort: () => import('./RecycleRush'),
     type: () => import('./TypeRace'), pin: () => import('./WorldPin'), rescue: () => import('./FloodRescue'), ocean: () => import('./OceanCleanup'),
+    obby: () => import('./SkylineObby'), strike: () => import('./NeonStrike'), night: () => import('./NightShift'), orbit: () => import('./OrbitBreach'),
   }[game];
   void mod();
 }
@@ -48,6 +53,10 @@ const CONTROLS: Record<GameId, { icon: typeof Keyboard; text: string }[]> = {
   pin: [{ icon: MousePointer2, text: 'Click or tap the map · drag and pinch to look' }, { icon: Keyboard, text: 'Arrows move · Enter pins the cross' }],
   rescue: [{ icon: MousePointer2, text: 'Steer with the mouse or a finger' }, { icon: Keyboard, text: 'Arrow keys or WASD' }],
   ocean: [{ icon: MousePointer2, text: 'Steer with the mouse or a finger' }, { icon: Keyboard, text: 'Arrow keys or WASD' }],
+  obby: [{ icon: Keyboard, text: 'WASD move · Space jump · Shift run' }, { icon: MousePointer2, text: 'Click, then the mouse turns' }, { icon: Pointer, text: 'Phone: joystick and Jump' }],
+  strike: [{ icon: Keyboard, text: 'WASD move · Space jump' }, { icon: MousePointer2, text: 'Click to aim · hold to fire' }, { icon: Pointer, text: 'Phone: joystick, drag to aim, Fire' }],
+  night: [{ icon: Keyboard, text: 'WASD walk · Shift run' }, { icon: MousePointer2, text: 'Click, then look with the mouse' }, { icon: Pointer, text: 'Phone: joystick, drag to look' }],
+  orbit: [{ icon: Keyboard, text: 'WASD move · Space jump (again to boost)' }, { icon: MousePointer2, text: 'Click, then the mouse turns' }, { icon: Pointer, text: 'Phone: joystick, Jump' }],
 };
 
 export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onFinish, strip, rivals }: {

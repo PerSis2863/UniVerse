@@ -1964,3 +1964,53 @@ Progress table (row D6).
   Still for Reduce Motion and low-end phones; lighter by itself when frames come late.
 - Checked: hub, UniVersity dashboard, Play, Trace, Relief, Green, messages, settings, teacher and
   admin pages, landing and sign-in at 390 and 1280 px, light and dark; axe clean.
+
+## M35a + M35 · Maps pan and wrap; the game arena; landing pictures (25 Oct 2026, merged in PR #96 / on the branch)
+
+- **Maps** (`src/components/trace/map/WorldCanvas.tsx`): wrap round sideways (copies side by side;
+  `Frame.sx/sy/near/lngLat` put every point on the copy nearest the middle), trackpad swipes pan
+  and a pinch (ctrlKey) zooms, mouse-wheel notches zoom, the 50m coastline comes in once the world
+  is big enough on screen. Traps found in the browser: `goTo`/`home` called before the first
+  measurement divided by zero and turned the view into NaN (an empty map in World Pin) — it now
+  waits for `size()`; every map's `WORLD` box crossed 180° (`[-168,…,190,…]`), which projects to
+  the Pacific — boxes must stay inside ±180. World Pin reads taps with `f.lngLat`.
+- **Arena** (`src/components/play/arena.tsx`): every round full-screen with sounds (`sound.ts`,
+  Web Audio, no files), announcements, shake, a timer ring, intro and results with `GameStat`s.
+  Escape frees the mouse in a 3D world first; only a second press asks to leave.
+- Rebuilt so far: Quiz Clash, Spot the Fake, Supply Run, Recycle Rush. The owner found them still
+  flat ("like web forms"); the 3D worlds (M36) are the answer; Type Race, Flood Rescue and Ocean
+  Cleanup keep their M32 look for now, Ocean Cleanup still counts power-ups and oil as rubbish.
+- **Landing** (`src/components/landing/HeroScenes.tsx`): one picture style per app, no phones (the
+  owner): UniVersity a live flow diagram, Trace a holographic label over a dotted world, Relief a
+  radar, Green a growing landscape, Play neon 3D cards over a room scoreboard. The grey tag line
+  above each headline is gone; UniVersity's text is the owner's sentence.
+
+## M36 · 3D worlds (25 Oct 2026, on the branch)
+
+The owner: "use the concept of roblox games… shooting, horror, science fiction… big games", rated
+"16+ and 18+… age consent before playing". three.js 0.180 added (the owner said yes; loaded only by
+these four games through `GameStage`'s dynamic imports).
+
+- **Engine** (`src/components/play/world/core.ts`): `World` (renderer, scene, camera; phones get
+  1.5× pixels and no shadows; pauses in a hidden tab; a long frame counts as one 50 ms step),
+  `Controls` (WASD/arrows, Space, E/F, Shift; a click locks the pointer and the mouse turns; phones:
+  `TouchPad` joystick, look-drag, buttons via `press/release/setStick` — React's compiler lint
+  refuses property writes on objects from refs, so use methods), `Body` (upright box resolved one
+  axis at a time against `World.solids`, climbs steps under 0.45), `walk`, `follow` (camera pulled
+  in front of walls), `eyes` (first person), `Avatar` (Roblox-style blocks; the face is on +z, so a
+  fresh avatar faces the camera: set `rotation.y = π` to face the way ahead; `facing` pins it for
+  shooters), `glowSprite` (cheap glow instead of bloom). `WorldFrame` / `HudChip` in `Stage.tsx`.
+- **Games** (rules and seeded levels in `src/lib/play/worlds.ts` + `worlds.test.ts`; all four
+  report score, stats and end early through `GameProps`, so rooms work as score races):
+  Skyline Obby (all ages: 10 stages of moving, crumbling, bounce and laser pads, checkpoints, gems,
+  golden finish), Neon Strike (16+: waves of drones, hitscan beam, bolts to dodge, combos, drops),
+  Night Shift (18+: first-person maze, torch with battery, five keys, a pursuer that walks the
+  halls by BFS and backs off from the torch, jump scare and lives), Orbit Breach (12+: low gravity
+  with an air boost, five reactors to repair, meteors with warning rings, oxygen, escape pod).
+- **Ratings:** `GameInfo.age` / `rated`; `ageOn(dateOfBirth)` and `tooYoung` in `src/lib/play.ts`;
+  `GET /play/me` returns `age`; the server refuses solo scores and new rooms for a known younger
+  age; `useAgeGate` (`AgeGate.tsx`) asks once per device when the age is unknown
+  (`uv-age-ok-<age>`), and a room playing a rated game shows `RoomAgeCheck` before the lobby.
+  shortcut: joining someone's rated room is checked on the device only.
+- Checked in Chromium with SwiftShader: all four render and play at 1280 and 390 (touch), the
+  arcade's new "3D worlds" section and the age dialog axe-clean in light and dark.

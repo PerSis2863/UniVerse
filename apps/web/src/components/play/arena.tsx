@@ -68,9 +68,16 @@ export function Arena({ game, onExit, side, children }: {
     };
   }, []);
   useEffect(() => {
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); setAsking((a) => !a); } };
+    // In a 3D world Escape first frees the mouse (the browser does that); only a second press asks.
+    let freed = 0;
+    const lock = () => { if (!document.pointerLockElement) freed = performance.now(); };
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || document.pointerLockElement || performance.now() - freed < 300) return;
+      e.preventDefault(); setAsking((a) => !a);
+    };
     window.addEventListener('keydown', key);
-    return () => window.removeEventListener('keydown', key);
+    document.addEventListener('pointerlockchange', lock);
+    return () => { window.removeEventListener('keydown', key); document.removeEventListener('pointerlockchange', lock); };
   }, []);
 
   const announce = useCallback((text: string, tone: Tone = 'pink') => {

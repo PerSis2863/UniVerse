@@ -161,7 +161,7 @@ export function PlaySection() {
       <div className="max-w-6xl mx-auto">
         <Reveal><Tag>UniVerse Play</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Games that teach <Accent>something.</Accent></h2></Reveal>
-        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Eight games, two from each app: four quick ones and four big ones. Play alone to beat your best, or open a room, share the code and race your friends on the same rounds, with a live scoreboard.</p></Reveal>
+        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Twelve games: two from each app, and four 3D worlds (an obby, laser tag, a horror school and a space station, rated by age). Play alone to beat your best, or open a room, share the code and race your friends on the same rounds, with a live scoreboard.</p></Reveal>
         <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {([
             [Brain, 'Quiz Clash', 'Fast questions from science to geography. Quick answers and streaks score more.', '#a5b4fc'],

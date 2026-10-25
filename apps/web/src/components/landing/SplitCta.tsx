@@ -13,7 +13,7 @@ const COPY: Record<AppId, { parts: typeof ScanLine[]; left: string; right: strin
   campus: { parts: [GraduationCap, CalendarDays, MessagesSquare, BookOpen, Wallet, Bell], left: 'School software for the work that lives between classes.', right: 'Pick the task you hate most.', sub: 'Start free and hand it to UniVersity. No card needed.', placeholder: 'you@school.edu' },
   trace: { parts: [ScanLine, Globe2, Truck, Megaphone, Wallet, Gift], left: 'Supply chain and marketing, in one code on every product.', right: 'Give your products passports.', sub: 'Start free with 10,000 of them. No card needed.', placeholder: 'you@yourbrand.com' },
   relief: { parts: [HandHeart, MapPin, Truck, Users, MessagesSquare, Bell], left: 'Every need and every offer on one live map.', right: 'Be the help that arrives.', sub: 'Join as a volunteer, an NGO or a neighbour. Free.', placeholder: 'you@example.org' },
-  play: { parts: [Gamepad2, Brain, ScanLine, Truck, Recycle, Trophy], left: 'Eight games, one account, any device.', right: 'Open a room, share the code.', sub: 'Free. Solo or up to 8 friends.', placeholder: 'you@example.com' },
+  play: { parts: [Gamepad2, Brain, ScanLine, Truck, Recycle, Trophy], left: 'Twelve games, 3D worlds included, any device.', right: 'Open a room, share the code.', sub: 'Free. Solo or up to 8 friends.', placeholder: 'you@example.com' },
   green: { parts: [Leaf, TreePine, Recycle, Trophy, Users, Globe2], left: 'Small actions, counted honestly, add up.', right: 'Start your team’s challenge.', sub: 'Free for schools, companies and clubs.', placeholder: 'you@example.com' },
 };
 

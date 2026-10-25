@@ -1,0 +1,261 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { Heart, Shield, Zap } from 'lucide-react';
+import { GAMES } from '@/lib/play';
+import { STRIKE_BOT_HP, STRIKE_COMBO_S, STRIKE_DOWN, STRIKE_FIRE_S, STRIKE_HIT, STRIKE_SIZE, STRIKE_TAG, STRIKE_WAVE, strikeArena, strikeMultiplier, strikeWave } from '@/lib/play/worlds';
+import { cn } from '@/lib/utils';
+import { useArena } from './arena';
+import type { GameProps } from './game-props';
+import { Avatar, Body, Controls, THREE, World, approach, glowSprite, walk } from './world/core';
+import { HudChip, WorldFrame } from './world/Stage';
+
+// Neon Strike (16+, src/lib/play/worlds.ts): laser tag in a neon arena against waves of sentinel
+// drones. Over-the-shoulder camera and a crosshair; hold to fire (a beam, sparks, the drone bursts
+// into cubes). Drones roam, then strafe and shoot slow bolts you can dodge or hide from. Tags in a
+// row multiply; health, rapid fire and shields drop in. Out of health: tagged out, back in 1.5 s.
+
+interface Bot { g: THREE.Group; eye: THREE.Mesh; hp: number; to: THREE.Vector3; next: number; speed: number; flash: number }
+interface Bolt { m: THREE.Mesh; v: THREE.Vector3; life: number }
+interface Bit { m: THREE.Mesh; v: THREE.Vector3; life: number }
+type Drop = { m: THREE.Mesh; kind: 'health' | 'rapid' | 'shield'; until: number };
+const DROP_COLOR = { health: 0x34d399, rapid: 0xfbbf24, shield: 0x60a5fa } as const;
+
+export function NeonStrike({ seed, endsAt, clock, onProgress, onStats }: GameProps) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const controls = useRef<Controls | null>(null);
+  const arena = useArena();
+  const [hud, setHud] = useState({ hp: 100, wave: 1, left: 0, combo: 0, shield: 0, rapid: false, hurt: 0, down: false, hitmark: 0 });
+  const out = useRef({ arena, onProgress, onStats, clock, endsAt });
+  useEffect(() => { out.current = { arena, onProgress, onStats, clock, endsAt }; });
+
+  useEffect(() => {
+    const el = canvas.current;
+    if (!el) return;
+    const w = new World(el, { fov: 72, bg: 0x120a22, fog: [0x1a0f2e, 30, 110] });
+    const c = new Controls(el);
+    controls.current = c;
+    const say = (t: string, tone: 'pink' | 'good' | 'bad' | 'gold' = 'pink') => out.current.arena.announce(t, tone);
+
+    // The arena: a glowing grid floor, neon walls, cover blocks with lit edges, light pillars.
+    w.lights({ sky: 0xc4b5fd, ground: 0x3b1d5e, sun: 0xf5d0fe, power: 2, at: [20, 40, 10], ambient: 1.6 });
+    const grid = document.createElement('canvas');
+    grid.width = grid.height = 256;
+    const g2 = grid.getContext('2d')!;
+    g2.fillStyle = '#1a1030'; g2.fillRect(0, 0, 256, 256);
+    g2.strokeStyle = 'rgba(192,132,252,0.9)'; g2.lineWidth = 4; g2.strokeRect(0, 0, 256, 256);
+    g2.strokeStyle = 'rgba(236,72,153,0.18)'; g2.lineWidth = 1; g2.beginPath(); g2.moveTo(128, 0); g2.lineTo(128, 256); g2.moveTo(0, 128); g2.lineTo(256, 128); g2.stroke();
+    const tex = new THREE.CanvasTexture(grid);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(STRIKE_SIZE / 4, STRIKE_SIZE / 4); tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    w.box([0, -0.5, 0], [STRIKE_SIZE, 1, STRIKE_SIZE], new THREE.MeshLambertMaterial({ map: tex }));
+    const half = STRIKE_SIZE / 2;
+    const wallMat = new THREE.MeshLambertMaterial({ color: 0x2e1a4f, emissive: 0x4c1d95, emissiveIntensity: 0.55 });
+    for (const [x, z, sx, sz] of [[0, -half, STRIKE_SIZE, 1], [0, half, STRIKE_SIZE, 1], [-half, 0, 1, STRIKE_SIZE], [half, 0, 1, STRIKE_SIZE]] as const) {
+      const m = w.box([x, 3, z], [sx, 6, sz], wallMat);
+      m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: 0xd946ef })));
+    }
+    const coverMat = new THREE.MeshLambertMaterial({ color: 0x3b2a63, emissive: 0x1e1040, emissiveIntensity: 0.6 });
+    const edgeA = new THREE.LineBasicMaterial({ color: 0xa855f7 }), edgeB = new THREE.LineBasicMaterial({ color: 0x22d3ee });
+    strikeArena(seed).forEach((k, i) => {
+      const m = w.box([k.x, k.h / 2, k.z], [k.w, k.h, k.d], coverMat);
+      m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), i % 2 ? edgeA : edgeB));
+    });
+    for (const [x, z] of [[-half + 3, -half + 3], [half - 3, -half + 3], [-half + 3, half - 3], [half - 3, half - 3]]) {
+      const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 10), new THREE.MeshBasicMaterial({ color: 0xf0abfc }));
+      pil.position.set(x, 5, z); w.scene.add(pil);
+      const l = new THREE.PointLight(0xd946ef, 120, 45); l.position.set(x, 6, z); w.scene.add(l);
+    }
+    const solidsNoFloor = w.solids.slice(1);
+
+    // The player.
+    const me = new Avatar(0x7c3aed, { legs: 0x111827 });
+    w.scene.add(me.group);
+    const gun = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.2, 0.8), new THREE.MeshLambertMaterial({ color: 0x0f172a, emissive: 0x22d3ee, emissiveIntensity: 0.4 }));
+    gun.position.set(0.62, 1.2, 0.45); me.group.add(gun);
+    const body = new Body([0, 0.05, 0]);
+    let hp = 100, shield = 0, rapidUntil = 0, cool = 0, downUntil = 0, safeUntil = 0, score = 0, tags = 0, shots = 0, hits = 0, combo = 0, lastTag = -99, best = 0, wave = 0, nextWaveAt = 1, hurtAt = -9;
+
+    // Drones, bolts, debris, drops.
+    const bots: Bot[] = [], bolts: Bolt[] = [], bits: Bit[] = [], drops: Drop[] = [];
+    const botBody = new THREE.SphereGeometry(0.7, 20, 14), ringGeo = new THREE.TorusGeometry(1.05, 0.08, 8, 32), eyeGeo = new THREE.SphereGeometry(0.26, 12, 10);
+    const boltGeo = new THREE.SphereGeometry(0.2, 10, 8), boltMat = new THREE.MeshBasicMaterial({ color: 0xff3b6b });
+    const bitGeo = new THREE.BoxGeometry(0.25, 0.25, 0.25);
+    const r = (() => { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })();
+    const spot = () => new THREE.Vector3((r() - 0.5) * (STRIKE_SIZE - 10), 1.6 + r() * 2.5, (r() - 0.5) * (STRIKE_SIZE - 10));
+    const spawnWave = () => {
+      wave++;
+      for (let i = 0; i < strikeWave(wave - 1); i++) {
+        const g = new THREE.Group();
+        const shell = new THREE.Mesh(botBody, new THREE.MeshLambertMaterial({ color: 0x1f1530, emissive: 0x3b0764 }));
+        const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xec4899 })); ring.rotation.x = Math.PI / 2;
+        const eye = new THREE.Mesh(eyeGeo, new THREE.MeshBasicMaterial({ color: 0xff2d55 })); eye.position.z = 0.55;
+        g.add(shell, ring, eye, glowSprite(0xec4899, 2.6));
+        const at = spot(); if (at.length() < 14) at.setLength(18);
+        g.position.copy(at);
+        w.scene.add(g);
+        bots.push({ g, eye, hp: STRIKE_BOT_HP, to: spot(), next: 1.5 + r() * 2, speed: 3 + wave * 0.35, flash: 0 });
+      }
+      say(`Wave ${wave}`, 'pink'); out.current.arena.sfx('alarm');
+      report();
+    };
+    const report = () => {
+      setHud((h) => ({ ...h, hp: Math.max(0, Math.round(hp)), wave, left: bots.length, combo, shield, rapid: rapidUntil > now, down: downUntil > now }));
+      out.current.onProgress(score, tags);
+      out.current.onStats?.([{ label: 'Tags', value: String(tags) }, { label: 'Accuracy', value: `${shots ? Math.round((100 * hits) / shots) : 0}%` }, { label: 'Best combo', value: `×${strikeMultiplier(best)}` }, { label: 'Waves cleared', value: String(Math.max(0, wave - (bots.length ? 1 : 0))) }]);
+    };
+    let now = 0;
+    const ray = new THREE.Raycaster();
+    const beamMat = new THREE.LineBasicMaterial({ color: 0x67e8f9, transparent: true });
+    const beams: { l: THREE.Line; life: number }[] = [];
+    const flash = glowSprite(0x67e8f9, 1.4); flash.visible = false; w.scene.add(flash);
+
+    w.camera.position.set(0, 3, 6);
+    w.start((dt, t) => {
+      now = t;
+      const down = downUntil > t;
+      if (wave === 0 || (!bots.length && t > nextWaveAt)) { if (wave > 0) { score += STRIKE_WAVE; say(`Wave ${wave} cleared! +${STRIKE_WAVE}`, 'good'); out.current.arena.sfx('win'); } spawnWave(); }
+      // Moving and aiming.
+      if (!down) walk(body, c, dt, { speed: 8, jump: 9.5 }); else { body.vel.x = 0; body.vel.z = 0; }
+      body.step(dt, w.solids);
+      me.facing = c.yaw + Math.PI;
+      me.group.position.copy(body.pos);
+      me.update(dt, body.vel, body.ground);
+      me.group.visible = !down;
+      const dir = new THREE.Vector3(Math.sin(c.yaw) * Math.cos(c.pitch), -Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch));
+      const right = new THREE.Vector3(Math.cos(c.yaw), 0, -Math.sin(c.yaw));
+      const head = body.pos.clone().add(new THREE.Vector3(0, 2.1, 0));
+      let d = 4.6;
+      const back = new THREE.Ray(head, dir), hitP = new THREE.Vector3();
+      for (const s of solidsNoFloor) if (back.intersectBox(s, hitP)) d = Math.min(d, Math.max(1, hitP.distanceTo(head) - 0.3));
+      w.camera.position.lerp(head.clone().addScaledVector(dir, d).addScaledVector(right, 1.1), 1 - Math.exp(-22 * dt));
+      w.camera.lookAt(head.clone().addScaledVector(dir, -20).addScaledVector(right, 1.1));
+      // Firing: a beam from the gun to whatever the crosshair is on.
+      cool -= dt;
+      const firing = c.held.has('fire') || c.take('fire');
+      if (firing && cool <= 0 && !down) {
+        cool = STRIKE_FIRE_S / (rapidUntil > t ? 2 : 1);
+        shots++;
+        ray.setFromCamera(new THREE.Vector2(0, 0), w.camera);
+        let best2 = 80, target: Bot | null = null;
+        const p = new THREE.Vector3();
+        for (const s of solidsNoFloor) if (ray.ray.intersectBox(s, p)) best2 = Math.min(best2, p.distanceTo(ray.ray.origin));
+        for (const b of bots) {
+          const sph = new THREE.Sphere(b.g.position, 1.0);
+          if (ray.ray.intersectSphere(sph, p)) { const dd = p.distanceTo(ray.ray.origin); if (dd < best2) { best2 = dd; target = b; } }
+        }
+        const end = ray.ray.at(best2, new THREE.Vector3());
+        const from = gun.getWorldPosition(new THREE.Vector3()).add(dir.clone().multiplyScalar(-0.5));
+        const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([from, end]), beamMat.clone());
+        w.scene.add(l); beams.push({ l, life: 0.09 });
+        flash.position.copy(end); flash.visible = true;
+        out.current.arena.sfx('laser', combo);
+        if (target) {
+          hits++; target.hp--; target.flash = 0.12; score += STRIKE_HIT; out.current.arena.sfx('hit');
+          setHud((h) => ({ ...h, hitmark: h.hitmark + 1 }));
+          if (target.hp <= 0) {
+            combo = t - lastTag < STRIKE_COMBO_S ? combo + 1 : 1; lastTag = t; best = Math.max(best, combo);
+            const mult = strikeMultiplier(combo); score += STRIKE_TAG * mult; tags++;
+            for (let i = 0; i < 14; i++) {
+              const m = new THREE.Mesh(bitGeo, new THREE.MeshBasicMaterial({ color: i % 2 ? 0xec4899 : 0xa855f7 }));
+              m.position.copy(target.g.position);
+              w.scene.add(m);
+              bits.push({ m, v: new THREE.Vector3((Math.random() - 0.5) * 12, Math.random() * 9, (Math.random() - 0.5) * 12), life: 1.2 });
+            }
+            w.scene.remove(target.g); bots.splice(bots.indexOf(target), 1);
+            out.current.arena.sfx('boom'); out.current.arena.shake(0.4);
+            if (mult > 1) say(`Combo ×${mult}!`, 'gold');
+            if (!bots.length) nextWaveAt = t + 3;
+            if (r() < 0.3) { const kind = (['health', 'rapid', 'shield'] as const)[Math.floor(r() * 3)]; const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.5), new THREE.MeshBasicMaterial({ color: DROP_COLOR[kind] })); m.position.set(target.g.position.x, 1, target.g.position.z); m.add(glowSprite(DROP_COLOR[kind], 2.4)); w.scene.add(m); drops.push({ m, kind, until: t + 12 }); }
+          }
+          report();
+        }
+      }
+      for (const bm of beams) { bm.life -= dt; (bm.l.material as THREE.LineBasicMaterial).opacity = Math.max(0, bm.life / 0.09); if (bm.life <= 0) { w.scene.remove(bm.l); bm.l.geometry.dispose(); } }
+      for (let i = beams.length - 1; i >= 0; i--) if (beams[i].life <= 0) beams.splice(i, 1);
+      if (flash.visible && cool < STRIKE_FIRE_S * 0.4) flash.visible = false;
+      // Drones: roam, then face you and fire when they can see you.
+      for (const b of bots) {
+        const toMe = body.pos.clone().add(new THREE.Vector3(0, 1.2, 0)).sub(b.g.position);
+        const dist = toMe.length();
+        if (b.g.position.distanceTo(b.to) < 1 || r() < dt * 0.15) b.to = spot();
+        const step = b.to.clone().sub(b.g.position).setLength(b.speed * dt);
+        b.g.position.add(step);
+        b.g.position.y += Math.sin(t * 3 + b.speed) * 0.01;
+        b.g.lookAt(body.pos.x, body.pos.y + 1.2, body.pos.z);
+        b.flash = Math.max(0, b.flash - dt);
+        (b.eye.material as THREE.MeshBasicMaterial).color.set(b.flash ? 0xffffff : 0xff2d55);
+        b.next -= dt;
+        if (b.next <= 0 && dist < 34 && !down) {
+          b.next = Math.max(0.7, 2.2 - wave * 0.12) + r();
+          const sight = new THREE.Ray(b.g.position, toMe.clone().normalize());
+          if (!solidsNoFloor.some((s) => { const q = new THREE.Vector3(); return sight.intersectBox(s, q) && q.distanceTo(b.g.position) < dist; })) {
+            const m = new THREE.Mesh(boltGeo, boltMat); m.position.copy(b.g.position); m.add(glowSprite(0xff3b6b, 1.3)); w.scene.add(m);
+            bolts.push({ m, v: toMe.normalize().multiplyScalar(17 + wave), life: 4 });
+            out.current.arena.sfx('zap');
+          }
+        }
+      }
+      // Bolts.
+      for (const bo of bolts) {
+        bo.m.position.addScaledVector(bo.v, dt); bo.life -= dt;
+        if (solidsNoFloor.some((s) => s.containsPoint(bo.m.position)) || bo.m.position.y < 0) bo.life = 0;
+        else if (!down && t > safeUntil && bo.m.position.distanceTo(body.pos.clone().add(new THREE.Vector3(0, 1.1, 0))) < 0.9) {
+          bo.life = 0;
+          if (shield > 0) { shield--; out.current.arena.sfx('hit'); } else { hp -= 12; hurtAt = t; out.current.arena.sfx('hurt'); out.current.arena.shake(0.35); }
+          if (hp <= 0) {
+            downUntil = t + 1.5; safeUntil = t + 3.5; score = Math.max(0, score - STRIKE_DOWN); combo = 0;
+            say(`Tagged out! −${STRIKE_DOWN}`, 'bad');
+          }
+          setHud((h) => ({ ...h, hurt: h.hurt + 1 })); report();
+        }
+        if (bo.life <= 0) w.scene.remove(bo.m);
+      }
+      for (let i = bolts.length - 1; i >= 0; i--) if (bolts[i].life <= 0) bolts.splice(i, 1);
+      if (downUntil && t > downUntil && hp <= 0) { hp = 100; body.pos.set(0, 0.05, 0); report(); }
+      if (t - hurtAt > 4 && hp < 100 && hp > 0) { hp = Math.min(100, approach(hp, 101, 0.5, dt)); if (Math.round(hp) % 10 === 0) report(); }
+      // Debris and drops.
+      for (const b of bits) { b.v.y -= 22 * dt; b.m.position.addScaledVector(b.v, dt); b.m.rotation.x += dt * 8; b.life -= dt; if (b.m.position.y < 0.12) { b.m.position.y = 0.12; b.v.multiplyScalar(0.5); b.v.y *= -0.4; } if (b.life <= 0) w.scene.remove(b.m); }
+      for (let i = bits.length - 1; i >= 0; i--) if (bits[i].life <= 0) bits.splice(i, 1);
+      for (const dr of drops) {
+        dr.m.rotation.y = t * 2; dr.m.position.y = 1 + Math.sin(t * 3) * 0.2;
+        if (dr.m.position.distanceTo(body.pos.clone().add(new THREE.Vector3(0, 1, 0))) < 1.4) {
+          dr.until = 0;
+          if (dr.kind === 'health') { hp = Math.min(100, hp + 40); say('+40 health', 'good'); }
+          if (dr.kind === 'rapid') { rapidUntil = t + 6; say('Rapid fire!', 'gold'); }
+          if (dr.kind === 'shield') { shield = 3; say('Shield ×3', 'good'); }
+          out.current.arena.sfx('power'); report();
+        }
+        if (t > dr.until) w.scene.remove(dr.m);
+      }
+      for (let i = drops.length - 1; i >= 0; i--) if (t > drops[i].until) drops.splice(i, 1);
+    });
+    return () => { c.dispose(); controls.current = null; w.dispose(); };
+  }, [seed]);
+
+  return (
+    <div className="mx-auto w-full max-w-6xl">
+      <WorldFrame canvas={canvas} controls={controls} buttons={[{ id: 'fire', label: 'Fire' }, { id: 'jump', label: 'Jump' }]} keys="WASD move · hold the mouse to fire · Space jump" label="Neon Strike: a 3D laser tag arena">
+        {/* The crosshair, a hit tick, and a red edge when hurt */}
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2" aria-hidden>
+          <span className="absolute left-1/2 top-0 h-2 w-0.5 -translate-x-1/2 bg-white" /><span className="absolute bottom-0 left-1/2 h-2 w-0.5 -translate-x-1/2 bg-white" />
+          <span className="absolute left-0 top-1/2 h-0.5 w-2 -translate-y-1/2 bg-white" /><span className="absolute right-0 top-1/2 h-0.5 w-2 -translate-y-1/2 bg-white" />
+          {hud.hitmark > 0 && <span key={hud.hitmark} className="play-float absolute -top-6 left-1/2 text-sm font-black text-pink-300">✕</span>}
+        </div>
+        {hud.hurt > 0 && <span key={hud.hurt} className="pointer-events-none absolute inset-0 animate-[rm-fade_500ms_reverse_forwards] shadow-[inset_0_0_120px_rgba(239,68,68,0.7)]" aria-hidden />}
+        {hud.down && <div className="pointer-events-none absolute inset-0 grid place-items-center bg-red-950/50"><p className="text-4xl font-black text-white">Tagged out</p></div>}
+        <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-start gap-2">
+          <div className="w-44 rounded-2xl bg-black/55 px-3.5 py-2 ring-1 ring-white/15">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-300"><Heart className="h-3.5 w-3.5 text-red-400" aria-hidden />Health {hud.shield > 0 && <span className="ms-auto inline-flex items-center gap-0.5 text-sky-300"><Shield className="h-3.5 w-3.5" aria-hidden />{hud.shield}</span>}</p>
+            <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-white/10"><div className={cn('h-full w-full origin-left rounded-full transition-transform duration-200 rtl:origin-right', hud.hp > 35 ? 'bg-emerald-400' : 'bg-red-500')} style={{ transform: `scaleX(${hud.hp / 100})` }} /></div>
+          </div>
+          <HudChip label="Wave" value={hud.wave} />
+          <HudChip label="Drones left" value={hud.left} tone="bad" />
+          {hud.combo > 1 && <HudChip label="Combo" value={`×${strikeMultiplier(hud.combo)}`} tone="gold" />}
+          {hud.rapid && <span className="inline-flex items-center gap-1 self-center rounded-full bg-amber-300 px-3 py-1 text-xs font-black text-amber-950"><Zap className="h-3.5 w-3.5" aria-hidden />RAPID</span>}
+        </div>
+      </WorldFrame>
+      <p className="mt-2 text-center text-xs text-zinc-400">{GAMES.strike.how}</p>
+    </div>
+  );
+}
