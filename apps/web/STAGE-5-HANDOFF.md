@@ -1764,3 +1764,41 @@ Progress table (row D6).
   the menu entry's `also`, and to `TABS_BY_ROLE` if the list is new.
 - Checked: types, lint, tests, lean; the three menus and tab bars in the browser; axe clean on a
   merged page per role at 390 and 1280, light and dark.
+
+## M28 · 500 people for a month on the $5 plan
+
+- The owner (26 Oct 2026): "make user 500 people can login at once and do their work and it should
+  not hit the 5$ plan limit… 500 people should be able to work for 1 month".
+- **The plan's monthly allowances** (Cloudflare docs, read 26 Oct): Worker requests 10 M, CPU 30 M
+  ms, Durable Object requests 1 M (incoming WebSocket messages count 1 per 20), DO duration 400,000
+  GB-s (none while hibernating), D1 25 B rows read / 50 M written, static assets free. For 500 people
+  every day that is ~666 requests, ~2 s CPU and ~66 live requests per person-day.
+- **Measured:** a session on the local server: ~9 Worker requests per page view, almost nothing
+  while idle; production's average CPU 3.8 ms per request. Production this month before the change:
+  1.41 M requests and 5.4 M CPU ms with about 7 real people (API calls from people are only a few
+  thousand: the rest are page requests, most likely bots and scanners).
+- **The model** (30 page views and ~2 visible hours a person-day): requests ~4.5 M (+ bots), CPU
+  ~17 M ms (+ bots), live requests ~0.6 M (it was ~2.2 M: over), DO duration ~0, D1 a few %.
+- **Changes:**
+  - `users.liveAt` (migration **0184**): the RealtimeHub sets it when a tab connects (the user id is
+    kept on the socket with `serializeAttachment`) and clears it when the last tab closes;
+    `liveAmong` (`src/lib/fanout.ts`, + tests) narrows live events to people online, in `deliver`
+    (`src/server/realtime.ts`) and the light path's typing (`cloudflare/fast-api.ts`); lists over
+    450 are sent as before (5 queries at most); a failed check sends to everyone.
+  - "Is typing" only in chats of up to 10 people (`TYPING_PEERS`), sent every 5 s instead of 3.
+  - The socket pings every 50 s (was 25; under the edge's 100 s idle limit) and closes after 5
+    minutes in a background tab (the hub marks the person offline; coming back reconnects and the
+    "hello" catches up) (`src/lib/realtime-client.ts`).
+  - Scanner addresses (WordPress, PHP, leaked config files) get a plain cached 404 without starting
+    Next.js (`JUNK` in `cloudflare/worker.ts`).
+  - Pages are sampled too (1 in 50, route `page:…`, method `BOT` for crawlers) into `api_timings`,
+    so the owner console's Health numbers show where the month's requests go.
+  - `recordError` no longer fails when many requests meet the same new problem at once (found by the
+    500-at-once test; `src/server/errors.test.ts`).
+- **500 at once:** 500 people (1,500 requests at the same instant) on the production build
+  (`local:serve`): all answered correctly, none failed (one local CPU makes them queue; Cloudflare
+  runs many copies, the database is the only shared queue). Live delivery to an online person and
+  liveAt set/cleared were checked in the browser on the build.
+- **[owner]** Cloudflare dashboard → the universeimpact.com zone → Security → Bots → turn on **Bot
+  Fight Mode** (free): bad bots are stopped before they reach the Worker and stop counting as requests.
+  AI answers use the owner's own AI key and the daily allowance (owner console), not the $5 plan.

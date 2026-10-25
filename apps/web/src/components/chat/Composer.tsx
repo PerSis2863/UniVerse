@@ -599,7 +599,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             maxLength={4000}
             onChange={(e) => {
               setText(e.target.value);
-              if (Date.now() - lastTyping.current > 3000) { lastTyping.current = Date.now(); onTyping(); }
+              if (Date.now() - lastTyping.current > 5000) { lastTyping.current = Date.now(); onTyping(); }
               const upto = e.target.value.slice(0, e.target.selectionStart ?? e.target.value.length);
               const at = /(?:^|\s)@([\w.-]*)$/.exec(upto);
               setMentionQuery(mentionables.length && at ? at[1].toLowerCase() : null);

@@ -9,7 +9,7 @@
 import { jwtVerify, type JWTPayload } from 'jose';
 import { presenceOf } from '../src/lib/presence';
 import { ownerEmailList } from '../src/lib/owner-emails';
-import { workersPaid } from '../src/lib/plan-limits';
+import { TYPING_PEERS, liveAmong } from '../src/lib/fanout';
 import { jwksFor, keysMayHaveRotated } from '../src/server/jwks-cache';
 import { isSessionToken, isViewAsToken, verifySessionToken, viewAsRefused } from '../src/server/session-token';
 import { hasPass, needsTwoStep } from '../src/server/two-step';
@@ -172,11 +172,13 @@ async function typing(me: Caller, conversationId: string, db: D1Database, env: E
   const hubs = env.REALTIME;
   if (hubs) {
     const body = JSON.stringify({ type: 'typing', conversationId, name: (me.name || 'Someone').split(' ')[0] });
-    const others = results.filter((p) => p.userId !== me.id);
-    // Not in big groups: one live request per member every few seconds while anyone types
-    // (planLimits().livePushes, src/server/realtime.ts publishTyping).
-    const cap = workersPaid(env as Record<string, unknown>) ? 500 : 40;
-    if (others.length <= cap) ctx.waitUntil(Promise.all(others.map((p) => hubs.get(hubs.idFromName(p.userId)).fetch('https://realtime/publish', { method: 'POST', body }).catch(() => {}))));
+    const others = results.filter((p) => p.userId !== me.id).map((p) => p.userId);
+    // Not in big groups, and only to members who are online: one live request per member every few
+    // seconds while anyone types (src/server/realtime.ts publishTyping does the same).
+    if (others.length <= TYPING_PEERS) ctx.waitUntil((async () => {
+      const live = await liveAmong(others, async (sql, part) => (await db.prepare(sql).bind(...part).all<{ id: string }>()).results.map((r) => r.id)).catch(() => others);
+      await Promise.all(live.map((id) => hubs.get(hubs.idFromName(id)).fetch('https://realtime/publish', { method: 'POST', body }).catch(() => {})));
+    })());
   }
   return json({ ok: true });
 }

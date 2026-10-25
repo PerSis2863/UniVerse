@@ -113,6 +113,11 @@ export async function recordError(input: ErrorInput): Promise<void> {
         userAgent: input.userAgent?.slice(0, 200) ?? null,
         lastUserId: input.userId ?? null,
       },
+    }).catch(async (e: unknown) => {
+      // Many requests met the same new problem at once (M28's 500-at-once test): another one created
+      // the row a moment earlier, so this one counts as another occurrence.
+      if (!/unique constraint/i.test(String((e as Error)?.message))) throw e;
+      await prisma.errorReport.update({ where: { fingerprint }, data: { count: { increment: 1 }, lastSeen: now } });
     });
   } catch (e) {
     console.error('recordError failed:', e);

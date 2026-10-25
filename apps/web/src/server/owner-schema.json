@@ -469,6 +469,17 @@
      "updatedAt": false
     },
     {
+     "name": "liveAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "homeLayout",
      "type": "String",
      "kind": "scalar",

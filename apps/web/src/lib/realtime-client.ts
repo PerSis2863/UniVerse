@@ -229,7 +229,8 @@ export function startRealtime(): () => void {
       openedAt = Date.now();
       setConnected(true);
       clearInterval(ping);
-      ping = setInterval(() => socket.readyState === WebSocket.OPEN && socket.send('ping'), 25_000);
+      // Every 50 s (under the edge's 100 s idle limit): each ping is a billed live request (M28).
+      ping = setInterval(() => socket.readyState === WebSocket.OPEN && socket.send('ping'), 50_000);
     };
     socket.onmessage = (e) => {
       if (e.data === 'pong') return;
@@ -249,9 +250,17 @@ export function startRealtime(): () => void {
     };
   }
 
-  // Phones suspend background tabs: reconnect as soon as the tab is visible again.
+  // A tab left in the background for 5 minutes lets go of its socket (no pings all day, and the hub
+  // marks the person offline so events skip them, M28); coming back reconnects and the "hello"
+  // catches up. Phones suspend background tabs anyway: reconnect as soon as the tab is visible again.
+  let hiddenTimer: ReturnType<typeof setTimeout> | undefined;
   const onVisible = () => {
-    if (document.visibilityState === 'visible' && !ws) {
+    clearTimeout(hiddenTimer);
+    if (document.visibilityState === 'hidden') {
+      hiddenTimer = setTimeout(() => { if (document.visibilityState === 'hidden') ws?.close(1000, 'hidden'); }, 5 * 60_000);
+      return;
+    }
+    if (!ws) {
       attempt = Math.min(attempt, 3); // someone is here: try again, without restarting the backoff
       schedule(500);
     }
@@ -264,6 +273,7 @@ export function startRealtime(): () => void {
   return () => {
     stopped = true;
     clearTimeout(retry);
+    clearTimeout(hiddenTimer);
     clearInterval(ping);
     document.removeEventListener('visibilitychange', onVisible);
     window.removeEventListener('online', onOnline);

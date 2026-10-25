@@ -151,6 +151,21 @@ function sampleTiming(env: Env, ctx: ExecutionContext, method: string, path: str
   );
 }
 
+/** Pages too, 1 in 50 (M28): which addresses use the month's requests, and whether bots ask for them. */
+const BOT = /bot|crawl|spider|slurp|curl|wget|python|go-http|httpclient|headless|scan|monitor|preview|fetch|java\//i;
+function samplePage(env: Env, ctx: ExecutionContext, request: Request, path: string, status: number, ms: number) {
+  if (!env.DB || Math.random() >= 0.02) return;
+  ctx.waitUntil(
+    env.DB.prepare('INSERT INTO api_timings (route, method, status, ms, weight, at) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(`page:${routeOf(path)}`, BOT.test(request.headers.get('user-agent') ?? '') ? 'BOT' : request.method, status, Math.min(ms, 600_000), 50, Math.floor(Date.now() / 1000))
+      .run()
+      .catch(() => {}),
+  );
+}
+
+/** Scanners looking for WordPress, PHP or leaked config files (M28): answered without starting Next.js. */
+const JUNK = /\.(php\d?|aspx?|jsp|cgi|en[v]|ini|sql|bak|ya?ml)$|^\/(wp-|wordpress|\.git|\.en[v]|\.aws|xmlrpc|phpmyadmin|cgi-bin|vendor\/)/i;
+
 const DAILY_CRON = '0 8 * * *'; // wrangler.jsonc "triggers"; the */15 one is the spending guard
 const DIGEST_CRON = '30 7 * * *'; // the owner's morning summary email (src/server/owner-digest.ts)
 
@@ -228,6 +243,7 @@ export default {
     // Rendering it per address started the whole Next.js server on a fresh Worker (~1 s of CPU;
     // Workers Free allows 10 ms), and "Meet" showed Cloudflare's error 1101 page. The built page
     // comes from the cache without starting Next.js.
+    if (JUNK.test(url.pathname)) return new Response('Not found', { status: 404, headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'public, max-age=86400' } });
     const known = request.method === 'GET' ? pageFor(url.pathname, url.search) : null;
     if (known && 'redirect' in known) return Response.redirect(`${url.origin}${known.redirect}`, 302);
     // Link prefetches to such a page, or from one, get nothing. Next.js's router knows the page as
@@ -238,7 +254,10 @@ export default {
     }
     const page = known && 'rewrite' in known ? new Request(`${url.origin}${known.rewrite}${url.search}`, request) : request;
     const pageUrl = page === request ? url : new URL(page.url);
-    return withNotice(await edgeCachedPage(page, pageUrl, env, ctx, () => nextApp.fetch(page, env, ctx)), pageNotice());
+    const started = Date.now();
+    const res = withNotice(await edgeCachedPage(page, pageUrl, env, ctx, () => nextApp.fetch(page, env, ctx)), pageNotice());
+    samplePage(env, ctx, request, url.pathname, res.status, Date.now() - started);
+    return res;
   },
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
@@ -342,6 +361,13 @@ export class RealtimeHub extends DurableObject<Env> {
       if (open.length >= MAX_SOCKETS) open[0].close(4000, 'Too many connections');
       const { 0: client, 1: server } = new WebSocketPair();
       this.ctx.acceptWebSocket(server);
+      // Whose hub this is, kept on the socket (it survives hibernation): "online" goes in users.liveAt
+      // so live events skip people who aren't here (M28, src/lib/fanout.ts liveAmong).
+      const user = url.searchParams.get('user');
+      if (user) {
+        server.serializeAttachment({ user });
+        this.markLive(user, true);
+      }
       server.send(JSON.stringify({ type: 'hello' }));
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -359,6 +385,15 @@ export class RealtimeHub extends DurableObject<Env> {
     } catch {
       /* already closed */
     }
+    // The last tab went away: not online any more (another tab still open keeps it).
+    const user = (ws.deserializeAttachment() as { user?: string } | null)?.user;
+    if (user && !this.ctx.getWebSockets().some((s) => s !== ws && s.readyState === WebSocket.OPEN)) this.markLive(user, false);
+  }
+
+  /** users.liveAt: set while a tab is connected. A failure only means an event reaches a hub for nothing. */
+  private markLive(user: string, on: boolean) {
+    if (!this.env.DB) return;
+    this.ctx.waitUntil(this.env.DB.prepare('UPDATE users SET liveAt = ? WHERE id = ?').bind(on ? new Date().toISOString().replace('Z', '+00:00') : null, user).run().catch(() => {}));
   }
 }
 

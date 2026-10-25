@@ -10,6 +10,26 @@
 //
 // No imports: the Worker uses this file too.
 
+/** Lists up to this long are first narrowed to the people online (5 database queries at most). */
+export const LIVE_CHECK_MAX = 450;
+/** "Someone is typing" goes to groups up to this size (one live request per member every few seconds). */
+export const TYPING_PEERS = 10;
+
+/**
+ * The people in `ids` who have UniVerse open (users.liveAt, set by their live hub), so events skip
+ * everyone else: waking a hub just to find no tab is still a billed request (M28). Longer lists are
+ * returned as they are; `query(sql, ids)` runs one `IN` query of at most 90 ids and returns the ids found.
+ */
+export async function liveAmong(ids: string[], query: (sql: string, ids: string[]) => Promise<string[]>): Promise<string[]> {
+  if (ids.length > LIVE_CHECK_MAX) return ids;
+  const out: string[] = [];
+  for (let i = 0; i < ids.length; i += 90) {
+    const part = ids.slice(i, i + 90);
+    out.push(...(await query(`SELECT id FROM users WHERE liveAt IS NOT NULL AND id IN (${part.map(() => '?').join(',')})`, part)));
+  }
+  return out;
+}
+
 /** The most hubs one request tells directly (under Workers Free's 50 subrequests, with room to spare). */
 export const FANOUT = 40;
 

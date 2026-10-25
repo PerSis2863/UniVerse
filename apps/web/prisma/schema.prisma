@@ -129,6 +129,8 @@ model User {
   onboardedAt        DateTime? // finished registration (picked a role / name); null = signed in but never registered
   accountType        String? // STUDENT | INDEPENDENT | STAFF | ORGANIZATION | GUARDIAN (what they chose at sign-up)
   lastSeenAt         DateTime?
+  /// M28: a tab is connected to live updates (set and cleared by the RealtimeHub; migration 0184).
+  liveAt             DateTime?
   /// Stage 5 · Q8: my home page's cards (order, hidden ones, daily goal), JSON (src/lib/home-layout.ts).
   homeLayout         String?
   /// M17: pinned items on Collaborate → Home (JSON, src/lib/collab-pins.ts).

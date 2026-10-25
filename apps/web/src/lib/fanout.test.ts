@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FANOUT, fanOut, planFanout, readRelay, type HubStub } from './fanout';
+import { FANOUT, LIVE_CHECK_MAX, fanOut, liveAmong, planFanout, readRelay, type HubStub } from './fanout';
 
 /**
  * A pretend set of live hubs that enforces Workers Free's rule: one request (the sender, or a hub
@@ -75,5 +75,22 @@ describe('live updates to many people (fan-out)', () => {
     expect(readRelay({ ids: 'a', message: '{}' })).toBeNull();
     expect(readRelay({ ids: [], message: 'x'.repeat(70_000) })).toBeNull();
     expect(readRelay(null)).toBeNull();
+  });
+});
+
+describe('liveAmong', () => {
+  it('keeps only the people online, 90 ids a query', async () => {
+    const online = new Set(['u3', 'u150']);
+    const sizes: number[] = [];
+    const ids = Array.from({ length: 200 }, (_, i) => `u${i}`);
+    const live = await liveAmong(ids, async (sql, part) => { sizes.push(part.length); expect(sql.match(/\?/g)?.length).toBe(part.length); return part.filter((id) => online.has(id)); });
+    expect(live).toEqual(['u3', 'u150']);
+    expect(sizes).toEqual([90, 90, 20]);
+  });
+  it('leaves long lists alone (no query)', async () => {
+    const ids = Array.from({ length: LIVE_CHECK_MAX + 1 }, (_, i) => `u${i}`);
+    let asked = false;
+    expect(await liveAmong(ids, async () => { asked = true; return []; })).toBe(ids);
+    expect(asked).toBe(false);
   });
 });
