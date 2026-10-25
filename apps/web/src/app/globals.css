@@ -2165,3 +2165,5 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
 @keyframes play-smoke { 0% { transform: translate3d(-50%, 0, 0) scale(0.8); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate3d(-50%, -40px, 0) scale(1.4); opacity: 0; } }
 .play-smoke { animation: play-smoke 900ms ease-out forwards; }
 @media (prefers-reduced-motion: reduce) { .play-lid, .play-smoke { animation: none; } .play-smoke { display: none; } }
+@keyframes holo { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { [class*="animation:holo"] { animation: none !important; } }

@@ -10,8 +10,7 @@ import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { LightTrail } from '@/components/LightTrail';
-import { PassportCard } from '@/components/landing/PassportCard';
-import { CampusPhone, GreenPhone, PlayPhone, ReliefPhone } from '@/components/landing/PhoneScenes';
+import { CampusScene, GreenScene, PlayScene, ReliefScene, TraceScene } from '@/components/landing/HeroScenes';
 import { TraceSection } from '@/components/landing/TraceSection';
 import { CampaignsSection, HowSection, MapsSection, PricingSection } from '@/components/landing/Business';
 import { Proof } from '@/components/landing/Proof';
@@ -62,11 +61,11 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
 
 type Hero = { words: string[]; accent: string; text: string; note: string; card: React.ReactNode; extra?: React.ReactNode };
 const HERO: Record<AppId, Hero> = {
-  campus: { words: ['The', 'school', 'day', 'runs'], accent: 'itself.', text: 'UniVerse unifies academics, collaboration and social impact, connecting students, universities and NGOs on one secure, AI-powered platform.', note: 'free for students / a school sets it up / no card', card: <CampusPhone /> },
-  trace: { words: ['Every', 'product', 'gets', 'a'], accent: 'passport.', text: 'One code on every unit. Buyers see it’s genuine, shops earn points for every sale, and you watch every product move on a live map, and catch every copy the day it appears.', note: 'for brands, shops, drivers and buyers / free to start', card: <PassportCard />, extra: <Link href="/t/demo" className={ghost}>Scan a sample</Link> },
-  relief: { words: ['Help', 'that', 'reaches', 'people'], accent: 'fast.', text: 'People post what they need, neighbours and NGOs offer what they have, and a live map matches them: food, water, shelter, medicine or a lift to the clinic.', note: 'for people in need, volunteers and NGOs / free', card: <ReliefPhone /> },
-  play: { words: ['Games', 'that', 'teach'], accent: 'something.', text: 'Quiz battles and type races, spotting fakes and pinning the world map, flood rescues by helicopter and cleaning the ocean. Beat your best alone, or share a room code and race your friends live.', note: 'free / up to 8 in a room / phones and computers', card: <PlayPhone /> },
-  green: { words: ['Climate', 'action', 'you', 'can'], accent: 'prove.', text: 'Log trees planted, kilometres cycled and waste recycled, see the CO₂ saved, and beat a weekly challenge with your class, office or club.', note: 'for schools, companies and clubs / free', card: <GreenPhone /> },
+  campus: { words: ['The', 'school', 'day', 'runs'], accent: 'itself.', text: 'UniVerse unifies academics, collaboration and social impact, connecting students, universities and NGOs on one secure, AI-powered platform.', note: 'free for students / a school sets it up / no card', card: <CampusScene /> },
+  trace: { words: ['Every', 'product', 'gets', 'a'], accent: 'passport.', text: 'One code on every unit. Buyers see it’s genuine, shops earn points for every sale, and you watch every product move on a live map, and catch every copy the day it appears.', note: 'for brands, shops, drivers and buyers / free to start', card: <TraceScene />, extra: <Link href="/t/demo" className={ghost}>Scan a sample</Link> },
+  relief: { words: ['Help', 'that', 'reaches', 'people'], accent: 'fast.', text: 'People post what they need, neighbours and NGOs offer what they have, and a live map matches them: food, water, shelter, medicine or a lift to the clinic.', note: 'for people in need, volunteers and NGOs / free', card: <ReliefScene /> },
+  play: { words: ['Games', 'that', 'teach'], accent: 'something.', text: 'Quiz battles and type races, spotting fakes and pinning the world map, flood rescues by helicopter and cleaning the ocean. Beat your best alone, or share a room code and race your friends live.', note: 'free / up to 8 in a room / phones and computers', card: <PlayScene /> },
+  green: { words: ['Climate', 'action', 'you', 'can'], accent: 'prove.', text: 'Log trees planted, kilometres cycled and waste recycled, see the CO₂ saved, and beat a weekly challenge with your class, office or club.', note: 'for schools, companies and clubs / free', card: <GreenScene /> },
 };
 
 function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
