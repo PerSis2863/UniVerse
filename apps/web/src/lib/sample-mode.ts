@@ -49,3 +49,15 @@ export function useSampleMode() {
 export function clearVisitorStorage() {
   try { for (const k of [KEY, VISITOR, 'universe-auth']) sessionStorage.removeItem(k); } catch { /* storage unavailable */ }
 }
+/**
+ * A real sign-in or sign-up in a tab that ran the demo (sign-in and sign-up pages): the demo ends
+ * first, or its made-up answers stand in for the real account (the owner's "Login successful, but
+ * failed to retrieve user data", 25 Oct 2026). True when one was on: the page then opens afresh, so
+ * the account store leaves the demo's storage too.
+ */
+export function endDemoForSignIn(): boolean {
+  if (!isSampleMode() && !isSampleVisitor()) return false;
+  clearVisitorStorage();
+  exitSampleMode();
+  return true;
+}

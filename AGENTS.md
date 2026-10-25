@@ -84,11 +84,13 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   notifications and nearby alerts, real temperature sensors, and the live site's sign-in and call
   errors fixed (M22). Every item has a note in the handoff file and a Progress row in the plan.
 - **Next database update number: `0183`** (files in `apps/web/prisma/migrations/`).
-- **Ideas offered to the owner, not started** (25 Oct): one Impact Wallet across all apps;
-  self-serve payments for Trace PRO, campaigns and schools; organisation accounts for Relief (NGOs,
-  supplies, volunteer shifts, SMS/WhatsApp requests); proof for Green actions and challenges; the EU
-  Digital Product Passport for Trace (GS1 codes, supplier portal); an "Ask UniVerse" assistant that
-  acts in every app; store apps for Android and iPhone. Build only what the owner picks.
+- **On the branch, not merged:** M23 (Google sign-in after the demo; no demo button on the main page).
+- **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
+  in this order: one Impact Wallet across all apps; proof for Green actions and challenges;
+  organisation accounts for Relief (NGOs, supplies, volunteer shifts; SMS/WhatsApp requests behind a
+  switch); an "Ask UniVerse" assistant that acts in every app; the EU Digital Product Passport for
+  Trace (GS1 codes, supplier portal); self-serve payments for Trace PRO, campaigns and schools (off
+  until the owner's Stripe keys); store apps for Android and iPhone (the owner's store accounts).
 - **Waiting on the owner** (only they can provide it): Google / Microsoft calendar sync apps; Google
   Classroom import; a real LMS for grade passback; Razorpay (UPI) and anything that costs money;
   Stripe webhook events for donations (`checkout.session.completed` and

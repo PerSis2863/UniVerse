@@ -1643,3 +1643,24 @@ Progress table (row D6).
     says "Opening the call…", asks a signed-out person to sign in, and after 12 s offers Try again.
 - These three reports are still marked DIAGNOSED in production: mark them resolved in the owner
   console once this is live.
+
+## M23 · Google sign-in after the demo; the demo off the main page
+
+- The owner (25 Oct 2026): "i am not able to sign in through google" (the sign-in page said "Login
+  successful, but failed to retrieve user data"), and "remove try the live demo from the website main
+  page".
+- **Cause:** a tab that ran "Try the live demo" keeps the demo on (sessionStorage
+  `universe:sample-mode` and `universe:sample-visitor`), so after a real Google sign-in `GET /auth/me`
+  was answered by the demo (`src/lib/sample/router.ts`: "Create a free account to see this part.",
+  401) and never reached the server. The account store also stays on the demo's sessionStorage for the
+  life of the page (`src/store/auth.ts` picks its storage once). Nothing reached `error_reports`: the
+  page caught it.
+- **Fix:** `endDemoForSignIn()` (`src/lib/sample-mode.ts`) runs first in `handleLoginSuccess`
+  (`(auth)/login/page.tsx`) and `handleRegisterSuccess` (`(auth)/register/page.tsx`); when a demo was
+  on, the next page opens with a full load. A failed account load now shows the server's reason and
+  reports it to the owner's error list ("Account didn't load after sign-in: …"), so the next cause is
+  visible. Checked in the browser: demo → sign-in → real account (before the fix: the error).
+- The main page (`src/app/page.tsx`) has no "Try the live demo" button any more; the sign-in page's
+  "Just looking? Try the live demo" stays (the owner asked only for the main page).
+- Also: `school-scope-campus.test.ts` failed now and then: random new ids could contain "b1"; it now
+  looks for "b1" as a whole word.

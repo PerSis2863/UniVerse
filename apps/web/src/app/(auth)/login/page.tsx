@@ -9,7 +9,8 @@ import { useAuthStore } from '@/store/auth';
 import { auth, popupSignIn, warmUpPopupSignIn } from '@/lib/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
 import { authErrorMessage } from '@/lib/auth-errors';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import { captureError } from '@/lib/error-monitor';
 import { claimSessionReport, reportSession } from '@/lib/sign-in-history';
 import { passkeyError, signInWithPasskey, usePasskeysSupported } from '@/lib/passkey-client';
 import { EmailVerifyPanel } from '@/components/auth/EmailVerifyPanel';
@@ -18,6 +19,7 @@ import dynamic from 'next/dynamic';
 import { chosenApp, homeFor } from '@/lib/role-home';
 import { AppTabs } from '@/components/landing/AppTabs';
 import { startVisitorDemo } from '@/components/SampleMode';
+import { endDemoForSignIn } from '@/lib/sample-mode';
 import { appById, appHome } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { PHONE_SIGN_IN } from '@/lib/sign-in-options';
@@ -68,6 +70,8 @@ export default function LoginPage() {
   }, []);
 
   const handleLoginSuccess = async (token: string, method?: 'google' | 'password' | 'phone' | 'apple' | 'microsoft' | 'sso' | 'passkey') => {
+    const fresh = endDemoForSignIn();
+    const go = (path: string) => (fresh ? window.location.assign(path) : router.push(path));
     try {
       localStorage.setItem('accessToken', token);
       setTokens(token);
@@ -104,14 +108,15 @@ export default function LoginPage() {
       // First time here (signed in with Google / Apple / phone but never registered): finish
       // registration — choose Individual / Staff / Organization and a name — before anything else.
       if (!user.onboardedAt && !user.owner) {
-        router.push('/register?continue=1');
+        go('/register?continue=1');
         return;
       }
       const next = new URLSearchParams(location.search).get('next');
-      router.push(next && /^\/[a-z]/.test(next) ? next : homeFor(user, chosenApp()));
+      go(next && /^\/[a-z]/.test(next) ? next : homeFor(user, chosenApp()));
     } catch (err) {
-      console.error('Failed to sync user data', err);
-      setError('Login successful, but failed to retrieve user data. Please contact support.');
+      // The server's reason, here and in the owner's error list, so a failed account load can be fixed.
+      captureError(new Error(`Account didn't load after sign-in: ${errorMessage(err, String(err))}`), 'manual');
+      setError(`You're signed in, but your account didn't load: ${errorMessage(err, 'please try again')}.`);
     }
   };
 
