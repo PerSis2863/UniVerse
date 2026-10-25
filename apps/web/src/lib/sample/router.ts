@@ -1013,6 +1013,7 @@ const SAMPLE_MARKETPLACE_PACKS: SampleMarketplacePack[] = [
 const GET: [RegExp, (c: Ctx) => Result][] = [
   // The impact apps (src/lib/sample/impact.ts)
   [/^\/hub$/, ({ db: d }) => ok(impact.sampleHub(d.me))],
+  [/^\/hub\/wallet$/, ({ db: d }) => ok(impact.sampleWallet(d.me))],
   [/^\/relief\/map$/, ({ db: d }) => ok(impact.sampleReliefMap(d.me))],
   [/^\/relief\/mine$/, ({ db: d }) => ok(impact.sampleReliefMine(d.me))],
   [/^\/green\/me$/, ({ db: d }) => ok(impact.sampleGreenMe(d.me))],

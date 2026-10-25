@@ -6,6 +6,7 @@ import { ArrowRight, MessageSquare, PenTool, Phone, Settings, Sparkles } from 'l
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
+import { ImpactWallet } from '@/components/hub/ImpactWallet';
 import { APPS, appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
 import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
@@ -14,7 +15,8 @@ import { useAuthStore } from '@/store/auth';
 
 // The hub of UniVerse Impact (src/lib/apps.ts): every app with what it has changed so far, from
 // GET /hub (src/server/hub.ts), and the tools they share. Where people land after signing in when
-// they didn't pick an app on the website.
+// they didn't pick an app on the website. The Impact Wallet (src/components/hub/ImpactWallet.tsx) sits
+// under the apps.
 
 interface HubStats { apps: Record<AppId, { value: number; label: string; mine?: { value: number; label: string } | null }>; total: { people: number } }
 
@@ -70,7 +72,7 @@ export default function HubPage() {
                         <AppIcon id={a.id} size={52} />
                         <div className="min-w-0 flex-1">
                           <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{a.name}</h3>
-                          <p className="text-sm font-medium" style={{ color: a.color }}>{a.tagline}</p>
+                          <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300">{a.tagline}</p>
                         </div>
                         <ArrowRight className="w-5 h-5 text-zinc-400 group-hover:translate-x-1 transition-transform" aria-hidden />
                       </div>
@@ -82,6 +84,8 @@ export default function HubPage() {
               })}
             </div>
           </section>
+
+          <ImpactWallet role={role} />
 
           <section aria-labelledby="tools-h">
             <h2 id="tools-h" className="text-lg font-bold text-zinc-900 dark:text-white">Shared by every app</h2>

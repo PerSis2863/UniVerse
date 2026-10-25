@@ -84,9 +84,10 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   notifications and nearby alerts, real temperature sensors, and the live site's sign-in and call
   errors fixed (M22). Every item has a note in the handoff file and a Progress row in the plan.
 - **Next database update number: `0183`** (files in `apps/web/prisma/migrations/`).
-- **On the branch, not merged:** M23 (Google sign-in after the demo; no demo button on the main page).
+- **On the branch, not merged:** M23 (Google sign-in after the demo; no demo button on the main page),
+  M24 (the Impact Wallet on `/hub`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
-  in this order: one Impact Wallet across all apps; proof for Green actions and challenges;
+  in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and challenges;
   organisation accounts for Relief (NGOs, supplies, volunteer shifts; SMS/WhatsApp requests behind a
   switch); an "Ask UniVerse" assistant that acts in every app; the EU Digital Product Passport for
   Trace (GS1 codes, supplier portal); self-serve payments for Trace PRO, campaigns and schools (off

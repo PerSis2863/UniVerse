@@ -1,5 +1,6 @@
 import { CITIES } from '@/components/trace/map/cities';
-import { BADGES, GREEN_KINDS, co2For, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
+import { BADGES, GREEN_FACTORS, GREEN_KINDS, co2For, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
+import { newest, weekly, type WalletEvent } from '@/lib/impact-wallet';
 import { URGENCIES, snap, type ReliefKind } from '@/lib/relief';
 
 // Sample answers for the impact apps (the hub, Trace, Relief and Green) while sample mode is on, so a
@@ -33,6 +34,31 @@ export function sampleHub(me: { id: string }) {
       green: { value: 182_450, label: 'kg CO₂ saved', mine: { value: 312, label: 'kg CO₂ saved' } },
     },
     total: { people: 12_480 },
+  };
+}
+
+/** GET /hub/wallet */
+export function sampleWallet(me: { id: string }) {
+  const now = Date.now(), r = rng(21), actions = myActions(me);
+  const brands = ['Aurora Foods', 'TerraBrew Coffee', 'Kaveri Spices'];
+  const at = (i: number, step: number) => now - (i * step + r()) * DAY;
+  const credits = Array.from({ length: 8 }, (_, i) => ({ at: at(i, 9), v: [20, 15, 30, 10][i % 4], text: ['Volunteered at the food bank', 'Tutored first-years', 'Beach clean-up with the eco club', 'Peer mentoring'][i % 4] }));
+  const pts = Array.from({ length: 20 }, (_, i) => ({ at: at(i, 3), v: 25 + Math.floor(r() * 40), brand: brands[i % 3] }));
+  const helped = Array.from({ length: 7 }, (_, i) => ({ at: at(i, 11), v: 1 + Math.floor(r() * 5), text: ['Hot meals for a family', 'A lift to the clinic', 'Drinking water for 4', 'Warm clothes for 2'][i % 4] }));
+  const kg = actions.reduce((s, a) => s + a.co2Kg, 0);
+  const totals = { actions: actions.length, kg, byKind: {}, streak: 6 };
+  const events: WalletEvent[] = [
+    ...credits.map((c) => ({ app: 'campus' as const, at: iso(c.at), text: c.text, amount: `+${c.v} impact pts` })),
+    ...pts.map((p) => ({ app: 'trace' as const, at: iso(p.at), text: `Scanned · ${p.brand}`, amount: `+${p.v} pts` })),
+    ...helped.map((h) => ({ app: 'relief' as const, at: iso(h.at), text: `Delivered: ${h.text}`, amount: `${h.v} helped` })),
+    ...actions.slice(0, 30).map((a) => ({ app: 'green' as const, at: a.createdAt, text: GREEN_FACTORS[a.kind].label, amount: `${Math.round(a.co2Kg * 10) / 10} kg CO₂` })),
+  ];
+  return {
+    campus: { points: 145, courses: 5, weeks: weekly(credits, now) },
+    trace: { points: 1860, brands: 3, worth: [{ currency: 'EUR', amount: 18.29 }], weeks: weekly(pts, now) },
+    relief: { people: 23, deliveries: 9, received: 1, weeks: weekly(helped, now) },
+    green: { kg: Math.round(kg * 10) / 10, actions: actions.length, streak: 6, badges: BADGES.filter((b) => b.earned(totals)).length, badgesOf: BADGES.length, weeks: weekly(actions.map((a) => ({ at: Date.parse(a.createdAt), v: a.co2Kg })), now) },
+    events: newest(events),
   };
 }
 

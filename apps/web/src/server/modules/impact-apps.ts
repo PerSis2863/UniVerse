@@ -1,5 +1,6 @@
 import type { Router } from '../router';
 import { hubStats } from '../hub';
+import { impactWallet } from '../impact-wallet';
 import { clearReliefWatch, createReliefPost, reliefAction, reliefMap, reliefMine, reliefWatch, setReliefWatch } from '../relief';
 import { createGreenTeam, deleteGreenAction, greenMap, greenMe, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction } from '../green';
 
@@ -8,7 +9,9 @@ import { createGreenTeam, deleteGreenAction, greenMap, greenMe, greenTeams, join
 // ever returned (src/server/relief.ts, green.ts).
 
 export default function impactAppsModule(router: Router) {
-  router.controller('hub').get('', ({ user }) => hubStats(user));
+  const hub = router.controller('hub');
+  hub.get('', ({ user }) => hubStats(user));
+  hub.get('wallet', ({ user }) => impactWallet(user));
 
   const relief = router.controller('relief');
   relief.get('map', ({ user }) => reliefMap(user));

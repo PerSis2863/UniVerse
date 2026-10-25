@@ -1664,3 +1664,22 @@ Progress table (row D6).
   "Just looking? Try the live demo" stays (the owner asked only for the main page).
 - Also: `school-scope-campus.test.ts` failed now and then: random new ids could contain "b1"; it now
   looks for "b1" as a whole word.
+
+## M24 · The Impact Wallet
+
+- The owner picked all seven offered ideas (25 Oct 2026: "work on all 7 of them"); this is the first.
+- **What:** on `/hub`, under the apps, an instrument board with what the person holds in every app,
+  each in its own unit (never added into one made-up score): UniVersity impact points
+  (`impact_points`, the volunteering and project points students already see; not the scholarship
+  `impact_credits`) and courses, Trace points per brand with their worth per currency, people helped
+  through Relief (deliveries, own needs met), Green CO₂ with streak and badges; a 12-week strip per
+  app; one history across apps (newest 30, each opening its app).
+- Server `GET /hub/wallet` (`src/server/impact-wallet.ts`, 8 queries, only the asker's rows); maths
+  in `src/lib/impact-wallet.ts` (`weekly`, `newest`, `worth`, + tests); screen
+  `src/components/hub/ImpactWallet.tsx`; sample answer `sampleWallet` (`src/lib/sample/impact.ts`);
+  findable in search as "Impact Wallet".
+- Fixed on the way: `InstrumentBoard`'s cells had an `aria-label` that didn't match their visible
+  text (axe label-content-name-mismatch on every board); they now say "Open the detail" in
+  `sr-only` text. The hub cards' coloured taglines failed contrast; they're grey now.
+- Checked: types, lint, tests, lean; the route against the local database; axe at 390 and 1280 px,
+  light and dark, no sideways scrolling.
