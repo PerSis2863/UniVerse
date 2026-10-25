@@ -1935,3 +1935,32 @@ Progress table (row D6).
   opens it. Phones keep the slide-in sheet (never folded).
 - Checked: student, admin and Play pages in light and dark; widths 256 → 72 px and back, kept
   after a reload, `[` works, tooltips; axe clean.
+
+## M34 · The "Karma" look; a denser, sharper river
+
+- The owner (25 Oct, 11 screenshots of Rondesignlab's CreditKarma): "using all this way of colours
+  and design in my current project for dark and light colour but keep the backend pink line
+  animation… make it more denser and animated and… really sharp and attractive". Replaces the dark
+  blue (M21–M33); AGENTS.md §8 describes the new rules.
+- **Tokens** (`globals.css`, the M34 section replaces the old "Cadra" one): light page #EBEAE6,
+  white cards, black ink pills; dark page #0B0B0C, cards #151517, white pills; `--hairline`,
+  `--radius-card` (1.75rem; `corner-shape: squircle` where supported), `--pill-on-bg/-color`,
+  the frosts `--karma-dusk`, `--karma-olive`, `--karma-gold`. Text greys keep 4.5:1 on both pages.
+- **Every old navy shade swapped** for its warm graphite match across 200 files by one mapping
+  (hex and rgb; e.g. #11212D → #141416, #253745 → #2A2927, rgb 37 55 69 → 42 41 39). People's
+  saved colour choices (course colours, community role colours) were left as they were, so stored
+  values still match.
+- **Parts:** `.btn-primary` ink pill (white in dark), `.btn-secondary` outlined; `.ios-segmented`
+  separate outlined pills, the chosen one filled with ink (the fill still glides); `.panel` /
+  `.card` squircles with a warm shadow; side menu near-black, the chosen entry a white pill with a
+  pink edge; `kpi-row` dusk + gold; `.karma-icon` (thin-line icon in a circle, used by `StatTile`
+  and `KpiCard`), `.karma-go`, `.karma-frost(-olive)`.
+- **Page glows:** `.ambient-bg` is one still layer of amber, gold, blue-grey, warm and olive glows
+  with film grain (dim in dark mode); the old grid is gone.
+- **Type:** Urbanist (OFL, `public/fonts/urbanist`, preloaded; latin + latin-ext), body weight 450.
+- **The river** (`LightTrail.tsx`): 120 strands on computers (60 on phones, 40 when still), thinner
+  and brighter in the app, pulses on every other strand at 220 px/s with a soft glow round each
+  head (computers), 150 sparks, a livelier sway; pink-only palettes; light mode at 85% strength.
+  Still for Reduce Motion and low-end phones; lighter by itself when frames come late.
+- Checked: hub, UniVersity dashboard, Play, Trace, Relief, Green, messages, settings, teacher and
+  admin pages, landing and sign-in at 390 and 1280 px, light and dark; axe clean.

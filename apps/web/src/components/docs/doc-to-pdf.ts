@@ -19,12 +19,12 @@ const MAX_WORDS_PER_PAGE = 6000;
 export type PdfProgress = (done: number, total: number) => void;
 
 const BASIC_PAGE_CSS = `
-.uvpage{box-sizing:border-box;width:210mm;min-height:297mm;padding:22mm 20mm;display:flex;flex-direction:column;position:relative;overflow:hidden;background:#fff;color:#11212d;font:11pt/1.5 Arial,Helvetica,sans-serif;overflow-wrap:break-word}
+.uvpage{box-sizing:border-box;width:210mm;min-height:297mm;padding:22mm 20mm;display:flex;flex-direction:column;position:relative;overflow:hidden;background:#fff;color:#141416;font:11pt/1.5 Arial,Helvetica,sans-serif;overflow-wrap:break-word}
 .uvpage h1{font-size:20pt;line-height:1.25;margin:0 0 10pt}.uvpage h2{font-size:16pt;line-height:1.3;margin:12pt 0 8pt}.uvpage h3{font-size:13pt;margin:10pt 0 6pt}
 .uvpage h4,.uvpage h5,.uvpage h6{font-size:11pt;margin:8pt 0 4pt}.uvpage p{margin:0 0 8pt}.uvpage ul,.uvpage ol{margin:0 0 8pt;padding-left:18pt}
-.uvpage table{border-collapse:collapse;margin:0 0 8pt;max-width:100%}.uvpage td,.uvpage th{border:1px solid #9ba8ab;padding:3pt 6pt;vertical-align:top;text-align:left}
-.uvpage img{max-width:100%;height:auto}.uvpage pre{white-space:pre-wrap;font:9.5pt/1.4 ui-monospace,Menlo,Consolas,monospace;background:#eef1f2;padding:6pt;margin:0 0 8pt}
-.uvpage blockquote{border-left:3px solid #ccd0cf;margin:0 0 8pt;padding-left:10pt;color:#33434f}.uvpage a{color:#1d4ed8}.uvpage hr{border:0;border-top:1px solid #ccd0cf;margin:10pt 0}`;
+.uvpage table{border-collapse:collapse;margin:0 0 8pt;max-width:100%}.uvpage td,.uvpage th{border:1px solid #a8a59f;padding:3pt 6pt;vertical-align:top;text-align:left}
+.uvpage img{max-width:100%;height:auto}.uvpage pre{white-space:pre-wrap;font:9.5pt/1.4 ui-monospace,Menlo,Consolas,monospace;background:#efeeeb;padding:6pt;margin:0 0 8pt}
+.uvpage blockquote{border-left:3px solid #d6d3ce;margin:0 0 8pt;padding-left:10pt;color:#3a3834}.uvpage a{color:#1d4ed8}.uvpage hr{border:0;border-top:1px solid #d6d3ce;margin:10pt 0}`;
 
 /** A hidden frame to lay the pages out in. */
 async function makeFrame(): Promise<{ win: Window; doc: Document; remove: () => void }> {

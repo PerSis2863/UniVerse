@@ -60,16 +60,16 @@ export default function AdminCoursesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
-    name: '', code: '', teacherId: '', emoji: '📚', color: '#253745', description: ''
+    name: '', code: '', teacherId: '', emoji: '📚', color: '#2a2927', description: ''
   });
 
   const handleOpenModal = (id: string | null = null) => {
     if (id) {
       const item = courses.find((c) => c.id === id);
-      if (item) setFormData({ name: item.name, code: item.code, teacherId: item.teacherId, emoji: item.emoji || '📚', color: item.color || '#253745', description: item.description || '' });
+      if (item) setFormData({ name: item.name, code: item.code, teacherId: item.teacherId, emoji: item.emoji || '📚', color: item.color || '#2a2927', description: item.description || '' });
       setEditingId(id);
     } else {
-      setFormData({ name: '', code: '', teacherId: '', emoji: '📚', color: '#253745', description: '' });
+      setFormData({ name: '', code: '', teacherId: '', emoji: '📚', color: '#2a2927', description: '' });
       setEditingId(null);
     }
     setIsModalOpen(true);

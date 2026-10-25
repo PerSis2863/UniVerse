@@ -23,7 +23,7 @@ export function CookieNotice() {
   if (!show) return null;
   const choose = (c: CookieChoice) => { setCookieChoice(c); setShow(false); };
   return (
-    <div role="region" aria-label="Cookies" className="fixed z-[70] bottom-4 inset-x-4 sm:inset-x-auto sm:start-6 sm:max-w-sm rounded-2xl border border-white/10 bg-[#0b1a24]/95 backdrop-blur-md p-4 shadow-2xl shadow-black/50 text-sm text-zinc-200 rise-in">
+    <div role="region" aria-label="Cookies" className="fixed z-[70] bottom-4 inset-x-4 sm:inset-x-auto sm:start-6 sm:max-w-sm rounded-2xl border border-white/10 bg-[#111112]/95 backdrop-blur-md p-4 shadow-2xl shadow-black/50 text-sm text-zinc-200 rise-in">
       <p className="flex gap-2.5"><Cookie className="w-4 h-4 mt-0.5 shrink-0 text-fuchsia-300" aria-hidden />
         <span>We use the cookies UniVerse needs to work, like keeping you signed in. May we also use optional ones? <Link href="/privacy-choices" className="underline underline-offset-2 text-white">Details</Link></span></p>
       <div className="mt-3 flex flex-wrap items-center justify-end gap-2">

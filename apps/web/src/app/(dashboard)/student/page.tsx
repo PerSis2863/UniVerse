@@ -65,10 +65,10 @@ function StatTile({ label, value, sub, icon: Icon, gradient, delay }: {
   return (
     <div className={cn(card, 'group overflow-hidden rise-in lift')} style={{ animationDelay: `${delay}s` }}>
       <div aria-hidden className={cn('absolute -top-20 -end-20 w-48 h-48 rounded-full opacity-[0.12] group-hover:opacity-25 transition-opacity bg-gradient-to-br', gradient)} style={{ maskImage: 'radial-gradient(closest-side, black, transparent)', WebkitMaskImage: 'radial-gradient(closest-side, black, transparent)' }} />
-      <div className={cn('relative w-11 h-11 rounded-2xl bg-gradient-to-br flex items-center justify-center shadow-lg mb-5', gradient)}>
-        <Icon className="w-5 h-5 text-white" />
+      <div className="karma-icon relative mb-5">
+        <Icon className="w-5 h-5" strokeWidth={1.6} aria-hidden />
       </div>
-      <div className="relative text-3xl font-black tracking-tight text-zinc-900 dark:text-white tabular-nums">{value}</div>
+      <div className="relative text-4xl font-semibold tracking-tight text-zinc-900 dark:text-white tabular-nums">{value}</div>
       <div className="relative text-sm font-medium text-zinc-600 dark:text-zinc-300 mt-1">{label}</div>
       <div className="relative text-xs text-zinc-500 mt-0.5">{sub}</div>
     </div>
@@ -90,7 +90,7 @@ function LevelRing({ progress }: { progress: number }) {
     <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
       <defs>
         <linearGradient id="lvl" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#253745" />
+          <stop offset="0%" stopColor="#2a2927" />
           <stop offset="100%" stopColor="#db2777" />
         </linearGradient>
       </defs>

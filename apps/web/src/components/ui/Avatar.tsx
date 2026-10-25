@@ -32,7 +32,7 @@ export function Avatar({ name, src, size = 40, online }: { name: string; src?: s
         // Initials drawn by CSS: decoration, so they don't become a button's or link's name.
         <div aria-hidden data-initials={letters} className={cn('w-full h-full rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold before:content-[attr(data-initials)]', avatarGradient(name))} style={{ fontSize: size * 0.36 }} />
       )}
-      {online && <span className="absolute bottom-0 end-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#11212d]" />}
+      {online && <span className="absolute bottom-0 end-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#141416]" />}
     </div>
   );
 }
@@ -44,12 +44,12 @@ export function AvatarStack({ people, max = 4, size = 28 }: { people: { name: st
   return (
     <div className="flex items-center -space-x-2" aria-label={people.map((p) => p.name).join(', ')}>
       {shown.map((p, i) => (
-        <div key={`${p.name}-${i}`} className="rounded-full ring-2 ring-white dark:ring-[#06141b]">
+        <div key={`${p.name}-${i}`} className="rounded-full ring-2 ring-white dark:ring-[#0b0b0c]">
           <Avatar name={p.name} src={p.avatar} size={size} />
         </div>
       ))}
       {rest > 0 && (
-        <span className="rounded-full ring-2 ring-white dark:ring-[#06141b] bg-zinc-200 dark:bg-white/10 text-zinc-700 dark:text-zinc-200 font-semibold flex items-center justify-center" style={{ width: size, height: size, fontSize: size * 0.36 }}>
+        <span className="rounded-full ring-2 ring-white dark:ring-[#0b0b0c] bg-zinc-200 dark:bg-white/10 text-zinc-700 dark:text-zinc-200 font-semibold flex items-center justify-center" style={{ width: size, height: size, fontSize: size * 0.36 }}>
           +{rest}
         </span>
       )}

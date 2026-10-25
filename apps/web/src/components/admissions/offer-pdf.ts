@@ -11,7 +11,7 @@ export async function offerLetterPdf(o: { school: string; student: string; lette
   const day = (d: Date) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
   const paras = o.letter.replace(/\r\n?/g, '\n').split(/\n{2,}/).map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
   const html = `<h1 style="font-size:20pt;margin:0 0 4pt">${esc(o.school)}</h1>`
-    + `<p style="color:#4a5c6a;margin:0 0 18pt">Offer of a place${o.ref ? ` · Reference ${esc(o.ref)}` : ''} · ${esc(day(o.date ?? new Date()))}</p>`
+    + `<p style="color:#5f5c57;margin:0 0 18pt">Offer of a place${o.ref ? ` · Reference ${esc(o.ref)}` : ''} · ${esc(day(o.date ?? new Date()))}</p>`
     + paras
     + (o.expiresAt ? `<p style="margin-top:18pt"><strong>Please answer by ${esc(day(new Date(o.expiresAt)))}.</strong></p>` : '');
   const { documentToPdf } = await import('@/components/docs/doc-to-pdf');

@@ -115,7 +115,7 @@ export function PageLinkButton({ editor, disabled, currentId }: { editor: Editor
         <FileSymlink className="w-4 h-4" /><span className="max-sm:sr-only">Link a page</span>
       </button>
       {open && (
-        <div className="absolute end-0 top-10 z-40 w-72 rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl p-2 space-y-1.5" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>
+        <div className="absolute end-0 top-10 z-40 w-72 rounded-2xl bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 shadow-2xl p-2 space-y-1.5" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>
           <label className="relative block">
             <span className="sr-only">Find a page</span>
             <Search className="w-3.5 h-3.5 text-zinc-400 absolute start-2.5 top-1/2 -translate-y-1/2" aria-hidden />

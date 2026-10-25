@@ -120,7 +120,7 @@ export default function CallsPage() {
                 return (
                   <motion.li key={c.key} variants={fadeUp} className="relative flex items-start gap-3">
                     <div className="relative flex items-start gap-3 flex-1 min-w-0 text-start">
-                      <span className={cn('call-node relative z-10 w-11 h-11 rounded-full flex items-center justify-center shrink-0 ring-4 ring-[var(--surface,#fff)] dark:ring-[#06141b]', c.missed ? 'bg-rose-500/10 text-rose-500' : c.live ? 'bg-emerald-500/15 text-emerald-500 animate-pulse' : 'bg-indigo-500/10 text-indigo-500')}><Icon className="w-5 h-5" /></span>
+                      <span className={cn('call-node relative z-10 w-11 h-11 rounded-full flex items-center justify-center shrink-0 ring-4 ring-[var(--surface,#fff)] dark:ring-[#0b0b0c]', c.missed ? 'bg-rose-500/10 text-rose-500' : c.live ? 'bg-emerald-500/15 text-emerald-500 animate-pulse' : 'bg-indigo-500/10 text-indigo-500')}><Icon className="w-5 h-5" /></span>
                       <span className="call-card relative min-w-0 flex-1 panel px-4 py-3">
                         {/* The whole card opens the chat; the note, recording and study links sit above it. */}
                         {c.conversationId

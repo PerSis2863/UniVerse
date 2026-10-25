@@ -58,7 +58,7 @@ function shuffleInto(ids: string[], rooms: number, seed: number): Record<string,
 
 const TIMERS = [0, 5, 10, 15, 20, 30];
 const initials = (name: string) => name.split(/\s+/).map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '?';
-const panel = 'absolute z-40 inset-x-0 bottom-0 max-h-[82vh] rounded-t-3xl sm:inset-x-auto sm:end-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:w-[24rem] sm:max-h-none sm:rounded-3xl bg-[#11212d]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0';
+const panel = 'absolute z-40 inset-x-0 bottom-0 max-h-[82vh] rounded-t-3xl sm:inset-x-auto sm:end-4 sm:top-[calc(env(safe-area-inset-top)+4.75rem)] sm:bottom-[calc(env(safe-area-inset-bottom)+6.75rem)] sm:w-[24rem] sm:max-h-none sm:rounded-3xl bg-[#141416]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0';
 const pill = 'relative isolate px-3 py-1.5 rounded-full text-xs font-semibold transition-colors';
 
 export function BreakoutPanel({ open, onClose, bo, people, room, onSend, onJoin }: {
@@ -339,7 +339,7 @@ export function BreakoutBar({ bo, room, mod, onHelp, onMain, onPick, onManage }:
     <AnimatePresence>
       {show && bo && (
         <motion.div key="bo-bar" role="status" initial={{ opacity: 0, y: -14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -14, scale: 0.96 }} transition={spring.smooth}
-          className={cn('pointer-events-auto w-full max-w-lg rounded-2xl border backdrop-blur-xl shadow-2xl px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2', bo.closing ? 'bg-[#2a1f12]/90 border-amber-400/30' : 'bg-[#11212d]/90 border-fuchsia-400/25')}>
+          className={cn('pointer-events-auto w-full max-w-lg rounded-2xl border backdrop-blur-xl shadow-2xl px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2', bo.closing ? 'bg-[#2a1f12]/90 border-amber-400/30' : 'bg-[#141416]/90 border-fuchsia-400/25')}>
           <DoorOpen className={cn('w-4 h-4 shrink-0', bo.closing ? 'text-amber-300' : 'text-fuchsia-300')} />
           <p className="text-sm flex-1 min-w-[10rem]">
             {bo.closing ? (
@@ -374,7 +374,7 @@ export function RoomPicker({ open, onClose, bo, onPick }: { open: boolean; onClo
           <motion.div key="pick-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40" aria-hidden />
           <div key="pick" className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-40 px-3 flex justify-center pointer-events-none">
             <motion.div role="dialog" aria-label="Choose a breakout room" initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.96 }} transition={spring.smooth}
-              className="pointer-events-auto w-full max-w-sm rounded-3xl bg-[#11212d]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-2">
+              className="pointer-events-auto w-full max-w-sm rounded-3xl bg-[#141416]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-2">
               <p className="px-3 pt-2 pb-1 text-sm font-semibold">Choose a room</p>
               <ul className="max-h-[50vh] overflow-y-auto">
                 {bo.rooms.map((r) => (

@@ -72,7 +72,7 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress }: GameProps) {
     ctx.save();
     if (s.shake > 0) { s.shake -= dt; ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10); }
     const sky = ctx.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, '#0e3a4f'); sky.addColorStop(0.55, '#0a2534'); sky.addColorStop(1, '#06141B');
+    sky.addColorStop(0, '#0e3a4f'); sky.addColorStop(0.55, '#0a2534'); sky.addColorStop(1, '#0B0B0C');
     ctx.fillStyle = sky; ctx.fillRect(-10, -10, w + 20, h + 20);
     const time = t / 1000;
     for (let row = 0; row < 14; row++) {
@@ -124,7 +124,7 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress }: GameProps) {
     ctx.beginPath(); ctx.moveTo(0, -26); ctx.quadraticCurveTo(17, -8, 15, 18); ctx.lineTo(-15, 18); ctx.quadraticCurveTo(-17, -8, 0, -26); ctx.fill();
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#ec4899'; ctx.fillRect(-15, 10, 30, 8);
-    ctx.fillStyle = '#11212D'; ctx.beginPath(); ctx.roundRect(-7, -8, 14, 14, 4); ctx.fill();
+    ctx.fillStyle = '#141416'; ctx.beginPath(); ctx.roundRect(-7, -8, 14, 14, 4); ctx.fill();
     // The scoop net at the bow.
     ctx.strokeStyle = 'rgba(244,114,182,0.9)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(0, -26, 12, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
@@ -135,7 +135,7 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress }: GameProps) {
     // Combo meter.
     const left = Math.max(0, 1 - (t - s.lastPick) / OCEAN_COMBO_MS);
     if (s.combo > 0 && left > 0) {
-      ctx.fillStyle = 'rgba(17,33,45,0.75)'; ctx.beginPath(); ctx.roundRect(12, 12, 132, 34, 10); ctx.fill();
+      ctx.fillStyle = 'rgba(20,20,22,0.75)'; ctx.beginPath(); ctx.roundRect(12, 12, 132, 34, 10); ctx.fill();
       ctx.fillStyle = '#f9a8d4'; ctx.font = '700 14px Inter, system-ui, sans-serif'; ctx.textAlign = 'left';
       ctx.fillText(`Combo ×${oceanMultiplier(s.combo).toFixed(1)}`, 22, 26);
       ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(22, 36, 112, 4);

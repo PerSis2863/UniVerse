@@ -114,7 +114,7 @@ function SlidesPage({ id }: { id: string }) {
         <AnimatePresence>
           {panel && (
             <motion.aside key="comments" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={spring.smooth}
-              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#1b2c39] border-s border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
+              className="fixed inset-x-0 bottom-0 top-1/3 z-40 rounded-t-3xl md:static md:rounded-none md:w-80 md:shrink-0 bg-white dark:bg-[#1b1b1e] border-s border-zinc-200/70 dark:border-white/[0.06] shadow-2xl md:shadow-none flex flex-col">
               <Comments docId={id} me={data.me.id} canEdit={data.canEdit} onClose={() => setPanel(false)}
                 pick={() => api?.pickRef() ?? null} go={(q) => { if (!api?.goTo(q)) toast('That slide has gone since the comment.'); }}
                 aboutLabel="About this slide" empty="No open comments. Comment on a slide, or on the whole presentation." />

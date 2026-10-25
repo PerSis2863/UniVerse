@@ -92,7 +92,7 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone }: GameP
               transition={{ ...spring.smooth, delay: answered ? 0 : 0.05 * k }}
               className={cn('relative overflow-hidden rounded-2xl border p-3.5 pb-8 text-start transition-[border-color,box-shadow,transform] duration-150 active:scale-[0.98]',
                 isFake ? 'border-red-500 shadow-[0_0_0_3px_rgba(239,68,68,0.25)]' : wrongPick ? 'play-shake border-amber-500' : answered ? 'border-emerald-500/50' : 'border-zinc-200 hover:border-pink-400 dark:border-white/10',
-                'bg-white dark:bg-[#1B2C39]')}>
+                'bg-white dark:bg-[#1B1B1E]')}>
               <span className="flex items-start justify-between gap-2">
                 <span className="min-w-0">
                   <span className="sr-only">Passport {k + 1}: </span>
@@ -121,7 +121,7 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone }: GameP
               <AnimatePresence>
                 {isFake && (
                   <motion.span initial={{ opacity: 0, scale: calm ? 1 : 1.3, rotate: -14 }} animate={{ opacity: 1, scale: 1, rotate: -14 }} transition={spring.bouncy}
-                    className="pointer-events-none absolute left-1/2 top-1/2 -ml-11 -mt-5 w-22 rounded-lg border-[3px] border-red-500 bg-white/90 py-1 text-center text-lg font-black tracking-widest text-red-600 shadow-lg dark:bg-[#1B2C39]/90 dark:text-red-400" aria-hidden>COPY</motion.span>
+                    className="pointer-events-none absolute left-1/2 top-1/2 -ml-11 -mt-5 w-22 rounded-lg border-[3px] border-red-500 bg-white/90 py-1 text-center text-lg font-black tracking-widest text-red-600 shadow-lg dark:bg-[#1B1B1E]/90 dark:text-red-400" aria-hidden>COPY</motion.span>
                 )}
                 {answered && !isFake && (
                   <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute end-2 bottom-2 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400" aria-hidden>

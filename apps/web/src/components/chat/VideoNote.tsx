@@ -79,7 +79,7 @@ export function VideoNoteRecorder({ onSend, onClose }: { onSend: (file: File, du
         <svg className="absolute -inset-3 w-[17.5rem] h-[17.5rem] -rotate-90" viewBox="0 0 248 248" aria-hidden>
           <circle cx="124" cy="124" r="118" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="6" />
           <circle cx="124" cy="124" r="118" fill="none" stroke="url(#vn)" strokeWidth="6" strokeLinecap="round" strokeDasharray={ring} strokeDashoffset={ring * (1 - done)} />
-          <defs><linearGradient id="vn" x1="0" x2="1"><stop offset="0" stopColor="#253745" /><stop offset="1" stopColor="#db2777" /></linearGradient></defs>
+          <defs><linearGradient id="vn" x1="0" x2="1"><stop offset="0" stopColor="#2a2927" /><stop offset="1" stopColor="#db2777" /></linearGradient></defs>
         </svg>
         <video ref={preview} muted playsInline className={cn('absolute inset-0 w-full h-full rounded-full object-cover -scale-x-100 bg-zinc-900', phase === 'review' || phase === 'sending' ? 'hidden' : '')} />
         {result && (phase === 'review' || phase === 'sending') && <video src={result.url} autoPlay loop playsInline className="absolute inset-0 w-full h-full rounded-full object-cover -scale-x-100 bg-zinc-900" />}

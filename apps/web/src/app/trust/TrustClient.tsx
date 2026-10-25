@@ -69,12 +69,12 @@ export function TrustClient() {
   const uptime = statusData?.uptimePercent ?? '99.98%';
 
   return (
-    <div className="dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#06141b', color: '#ffffff' }}>
+    <div className="dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#0b0b0c', color: '#ffffff' }}>
       {/* Ambient background glows */}
       <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
         <div
           className="absolute top-[-20%] start-[-25%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full"
-          style={{ background: 'radial-gradient(closest-side, rgba(37,55,69,0.18), transparent)' }}
+          style={{ background: 'radial-gradient(closest-side, rgba(42,41,39,0.18), transparent)' }}
         />
         <div
           className="absolute top-[40%] end-[-30%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full"

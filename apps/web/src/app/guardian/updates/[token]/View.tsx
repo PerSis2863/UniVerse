@@ -38,7 +38,7 @@ function GuardianUpdatesPage({ token }: { token: string }) {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-zinc-50 dark:bg-[#11212d]">
+    <main className="min-h-screen flex items-center justify-center p-4 bg-zinc-50 dark:bg-[#141416]">
       <div className="w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 p-6 space-y-5 shadow-xl">
         <p className="text-base font-bold text-zinc-900 dark:text-white">UniVerse <span className="text-indigo-500">Impact</span></p>
         {error ? (

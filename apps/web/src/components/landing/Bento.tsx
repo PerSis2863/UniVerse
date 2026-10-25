@@ -58,7 +58,7 @@ function Languages() {
 function Approval() {
   const [done, setDone] = useState<null | 'excused' | 'asked'>(null);
   return (
-    <div className="mt-6 rounded-2xl border border-white/10 bg-[#11212d] p-4 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)]">
+    <div className="mt-6 rounded-2xl border border-white/10 bg-[#141416] p-4 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)]">
       <div className="flex items-center gap-2 text-xs text-zinc-400">
         <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center"><Bell className="w-3.5 h-3.5 text-white" /></span>
         <span className="font-semibold text-zinc-200">UniVerse</span><span>· attendance · now</span>

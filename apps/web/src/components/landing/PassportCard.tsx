@@ -38,7 +38,7 @@ export function PassportCard() {
               <div className="flex flex-col items-center text-center">
                 <motion.span initial={{ scale: 0.6, rotate: -120, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ duration: 0.8, ease: EASE }} className="relative w-24 h-24 grid place-items-center">
                   <span className="passport-seal-ring" style={{ animation: 'none' }} />
-                  <span className="w-[76px] h-[76px] rounded-full grid place-items-center bg-[radial-gradient(circle_at_30%_25%,#4a5c6a,#253745_55%,#11212d)] shadow-[0_0_40px_-4px_rgba(236,72,153,0.7)]"><ShieldCheck className="w-9 h-9 text-white" strokeWidth={1.6} /></span>
+                  <span className="w-[76px] h-[76px] rounded-full grid place-items-center bg-[radial-gradient(circle_at_30%_25%,#5f5c57,#2a2927_55%,#141416)] shadow-[0_0_40px_-4px_rgba(236,72,153,0.7)]"><ShieldCheck className="w-9 h-9 text-white" strokeWidth={1.6} /></span>
                 </motion.span>
                 <p className="mt-3 text-3xl font-black text-white tracking-tight">Genuine</p>
                 <p className="text-xs text-zinc-300">Aurora olive oil · unit 1,204 of 5,000</p>

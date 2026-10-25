@@ -136,7 +136,7 @@ export default function ShowcasePage() {
         ? 'Tap the Share icon at the bottom of Safari, then scroll down and tap "Add to Home Screen".'
         : 'Look for the install icon (usually a computer with a down arrow) in your address bar to install the app.',
       duration: 10000,
-      style: { background: '#253745', color: 'white', border: 'none' },
+      style: { background: '#2a2927', color: 'white', border: 'none' },
     });
   };
 
@@ -145,14 +145,14 @@ export default function ShowcasePage() {
       {/* Opened as the installed app (an older install whose start address is still "/"): go to
           the app's start (sign in, or your dashboard) instead of the website's landing page. */}
       <script dangerouslySetInnerHTML={{ __html: "if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone){location.replace('/app')}" }} />
-      <div className="mkt-smooth dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#06141b', color: '#ffffff' }}>
+      <div className="mkt-smooth dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#0b0b0c', color: '#ffffff' }}>
         <motion.div style={{ scaleX: progress }} className="fixed top-0 inset-x-0 h-[2px] origin-left z-[60] bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500" />
         {/* The page's two-tone glow and the river of light, behind everything below the hero. */}
         <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
           {/* One river of light from the top of the page to the bottom: it pours in on arrival and
               bends in the gap between the hero's words and its card. */}
           <LightTrail tone="dark" hero className="opacity-70 lg:opacity-100" />
-          <div className="mkt-drift-a absolute top-[30%] start-[-30%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(37,55,69,0.16), transparent)' }} />
+          <div className="mkt-drift-a absolute top-[30%] start-[-30%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(42,41,39,0.16), transparent)' }} />
           <div className="mkt-drift-b absolute bottom-[-25%] end-[-35%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(236,72,153,0.12), transparent)' }} />
         </div>
 

@@ -8,7 +8,7 @@ export interface Zone { id: string; name: string; x: number; y: number; w: numbe
 
 export const ZONES: Zone[] = [
   { id: 'cafe', name: 'Café', x: 30, y: 30, w: 540, h: 340, voice: 'normal', tint: '#f59e0b', hint: 'Talk freely: people nearby hear you, louder the closer they are.' },
-  { id: 'lab', name: 'Lab', x: 630, y: 30, w: 540, h: 340, voice: 'normal', tint: '#253745', hint: 'Sit at a table to work together and share its whiteboard.' },
+  { id: 'lab', name: 'Lab', x: 630, y: 30, w: 540, h: 340, voice: 'normal', tint: '#2a2927', hint: 'Sit at a table to work together and share its whiteboard.' },
   { id: 'library', name: 'Library', x: 30, y: 430, w: 540, h: 340, voice: 'whisper', tint: '#10b981', hint: 'Whisper: only people right next to you hear you.' },
   { id: 'quiet', name: 'Quiet zone', x: 630, y: 430, w: 540, h: 340, voice: 'none', tint: '#db2777', hint: 'No voices here. Just focus.' },
 ];

@@ -16,8 +16,8 @@ function Wave() {
   return (
     <svg ref={ref} viewBox="0 0 360 64" className="w-full h-auto" aria-hidden>
       <defs>
-        <linearGradient id="wave-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#4a5c6a" stopOpacity="0.35" /><stop offset="1" stopColor="#4a5c6a" stopOpacity="0" /></linearGradient>
-        <linearGradient id="wave-line" x1="0" x2="1"><stop offset="0" stopColor="#4a5c6a" /><stop offset="1" stopColor="#f472b6" /></linearGradient>
+        <linearGradient id="wave-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#5f5c57" stopOpacity="0.35" /><stop offset="1" stopColor="#5f5c57" stopOpacity="0" /></linearGradient>
+        <linearGradient id="wave-line" x1="0" x2="1"><stop offset="0" stopColor="#5f5c57" /><stop offset="1" stopColor="#f472b6" /></linearGradient>
       </defs>
       <motion.path d={`${d} L360 64 L0 64 Z`} fill="url(#wave-fill)" initial={{ opacity: 0 }} animate={{ opacity: seen ? 1 : 0 }} transition={{ duration: 1, delay: 0.8 }} />
       <motion.path d={d} fill="none" stroke="url(#wave-line)" strokeWidth="2" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: seen ? 1 : 0 }} transition={{ duration: 1.6, ease: EASE }} />
@@ -43,7 +43,7 @@ function Gauge() {
   const seen = useInView(ref, { once: true, margin: '-60px' });
   return (
     <div ref={ref} className="h-3 rounded-full bg-white/[0.06] overflow-hidden mt-10" aria-hidden>
-      <motion.div className="h-full rounded-full bg-gradient-to-r from-indigo-400 via-violet-400 to-fuchsia-300 shadow-[0_0_20px_#4a5c6a]" initial={{ width: '0%' }} animate={{ width: seen ? '100%' : '0%' }} transition={{ duration: 1.8, ease: EASE }} />
+      <motion.div className="h-full rounded-full bg-gradient-to-r from-indigo-400 via-violet-400 to-fuchsia-300 shadow-[0_0_20px_#5f5c57]" initial={{ width: '0%' }} animate={{ width: seen ? '100%' : '0%' }} transition={{ duration: 1.8, ease: EASE }} />
     </div>
   );
 }

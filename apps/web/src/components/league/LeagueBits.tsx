@@ -11,12 +11,12 @@ const luminance = (hex: string) => {
 };
 const inkFor = (hex: string) => {
   const l = luminance(hex);
-  return (l + 0.05) / 0.05 >= 1.05 / (l + 0.05) ? '#11212d' : '#ffffff';
+  return (l + 0.05) / 0.05 >= 1.05 / (l + 0.05) ? '#141416' : '#ffffff';
 };
 
 export function SdgBadge({ sdg, name, size = 'md' }: { sdg: number | null; name?: string | null; size?: 'sm' | 'md' | 'lg' }) {
   if (!sdg) return null;
-  const bg = SDG_COLORS[sdg - 1] ?? '#253745';
+  const bg = SDG_COLORS[sdg - 1] ?? '#2a2927';
   const box = size === 'lg' ? 'w-14 h-14 text-xl rounded-2xl' : size === 'sm' ? 'w-8 h-8 text-xs rounded-lg' : 'w-11 h-11 text-base rounded-xl';
   return (
     <span className={cn('shrink-0 inline-flex flex-col items-center justify-center font-black leading-none', box)} style={{ backgroundColor: bg, color: inkFor(bg) }} title={name ? `UN goal ${sdg}: ${name}` : `UN goal ${sdg}`}>

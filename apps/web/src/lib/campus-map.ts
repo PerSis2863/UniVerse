@@ -5,7 +5,7 @@
 /** The map's size in map units; buildings are drawn as rectangles inside it. */
 export const MAP_W = 1000, MAP_H = 640;
 const MIN_SIDE = 60;
-export const BUILDING_COLORS = ['#253745', '#0ea5e9', '#10b981', '#f59e0b', '#db2777', '#4a5c6a', '#14b8a6', '#ef4444'];
+export const BUILDING_COLORS = ['#2a2927', '#0ea5e9', '#10b981', '#f59e0b', '#db2777', '#5f5c57', '#14b8a6', '#ef4444'];
 export const MAX_BUILDINGS = 40;
 export const MAX_FLOORS = 30;
 

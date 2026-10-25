@@ -72,7 +72,7 @@ export function EmojiPicker({ onPick, custom = [], onClose, className }: {
   );
 
   return (
-    <div role="dialog" aria-label="Emoji" className={cn('w-[20.5rem] max-w-[calc(100vw-1.5rem)] h-[23rem] flex flex-col rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl overflow-hidden', className)}
+    <div role="dialog" aria-label="Emoji" className={cn('w-[20.5rem] max-w-[calc(100vw-1.5rem)] h-[23rem] flex flex-col rounded-2xl bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 shadow-2xl overflow-hidden', className)}
       onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); onClose?.(); } }}>
       <div className="p-2 flex items-center gap-1.5">
         <label className="flex-1 flex items-center gap-2 h-9 px-3 rounded-xl bg-zinc-100 dark:bg-white/[0.06]">
@@ -96,7 +96,7 @@ export function EmojiPicker({ onPick, custom = [], onClose, className }: {
         ) : (
           sections.map((s) => (
             <section key={s.id} data-section={s.id} className="scroll-mt-1">
-              <p className="sticky top-0 z-[1] px-1.5 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 bg-white/95 dark:bg-[#11212d]/95 backdrop-blur">{s.label}</p>
+              <p className="sticky top-0 z-[1] px-1.5 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 bg-white/95 dark:bg-[#141416]/95 backdrop-blur">{s.label}</p>
               <div className="grid grid-cols-8 gap-0.5">{s.items.map(cell)}</div>
             </section>
           ))

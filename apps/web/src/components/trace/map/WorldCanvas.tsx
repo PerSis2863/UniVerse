@@ -25,8 +25,8 @@ export interface MapHandle {
 }
 
 const PAL = {
-  light: { sea: '#e9eef1', deep: '#dfe6ea', land: '#fbfcfc', edge: '#c3cdd3', grat: 'rgba(37,55,69,0.07)', name: 'rgba(37,55,69,0.42)', city: 'rgba(37,55,69,0.6)' },
-  dark: { sea: '#0a1721', deep: '#07111a', land: '#172a38', edge: '#2a4153', grat: 'rgba(204,208,207,0.05)', name: 'rgba(204,208,207,0.36)', city: 'rgba(204,208,207,0.55)' },
+  light: { sea: '#e9eef1', deep: '#dfe6ea', land: '#fbfcfc', edge: '#c3cdd3', grat: 'rgba(42,41,39,0.07)', name: 'rgba(42,41,39,0.42)', city: 'rgba(42,41,39,0.6)' },
+  dark: { sea: '#0a1721', deep: '#07111a', land: '#172a38', edge: '#2a4153', grat: 'rgba(214,211,206,0.05)', name: 'rgba(214,211,206,0.36)', city: 'rgba(214,211,206,0.55)' },
 };
 const K_MAX = 180; // about street-block level (0.1° ≈ 50 px)
 let cityPts: { name: string; bx: number; by: number; rank: number }[] | null = null;
@@ -150,7 +150,7 @@ class MapEngine {
     const x0 = -view.x / view.k, y0 = -view.y / view.k, x1 = (w - view.x) / view.k, y1 = (h - view.y) / view.k;
     const shown = this.world.filter((c) => c.box[2] >= x0 && c.box[0] <= x1 && c.box[3] >= y0 && c.box[1] <= y1);
     g.fillStyle = pal.land;
-    g.shadowColor = dark ? 'rgba(0,0,0,0.35)' : 'rgba(37,55,69,0.10)';
+    g.shadowColor = dark ? 'rgba(0,0,0,0.35)' : 'rgba(42,41,39,0.10)';
     g.shadowBlur = 6 * dpr; g.shadowOffsetY = 1.5 * dpr;
     for (const c of shown) g.fill(c.path);
     g.shadowColor = 'transparent';
@@ -212,7 +212,7 @@ class MapEngine {
     const raw = mpp * 90, p10 = 10 ** Math.floor(Math.log10(raw)), nice = [5, 2, 1].map((m) => m * p10).find((v) => v <= raw) ?? p10;
     const px = nice / mpp, x = Math.round(w / 2 - px / 2), y = 20;
     ctx.save();
-    ctx.strokeStyle = dark ? 'rgba(242,244,244,0.75)' : 'rgba(6,20,27,0.7)'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+    ctx.strokeStyle = dark ? 'rgba(243,242,239,0.75)' : 'rgba(11,11,12,0.7)'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(x, y - 4); ctx.lineTo(x, y); ctx.lineTo(x + px, y); ctx.lineTo(x + px, y - 4); ctx.stroke();
     ctx.font = '600 10px ui-monospace, SFMono-Regular, monospace'; ctx.textAlign = 'center'; ctx.fillStyle = ctx.strokeStyle;
     ctx.fillText(nice >= 1000 ? `${nice / 1000} km` : `${nice} m`, x + px / 2, y - 7);

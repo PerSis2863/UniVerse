@@ -89,7 +89,7 @@ export function RecycleRush({ seed, startsAt, clock, onProgress }: GameProps) {
       </div>
 
       {/* The belt */}
-      <div className="relative mt-4 h-32 overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 dark:border-white/10 dark:bg-[#0d1b24]">
+      <div className="relative mt-4 h-32 overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 dark:border-white/10 dark:bg-[#101012]">
         <div className="absolute inset-x-0 bottom-5 h-3 overflow-hidden bg-zinc-300 dark:bg-white/10" aria-hidden>
           <div className="play-stripes h-full w-[calc(100%+48px)] bg-[repeating-linear-gradient(90deg,transparent_0_20px,rgba(0,0,0,0.12)_20px_24px)] dark:bg-[repeating-linear-gradient(90deg,transparent_0_20px,rgba(255,255,255,0.12)_20px_24px)]" />
         </div>
@@ -164,7 +164,7 @@ function OnBelt({ b, start, clock, front, done }: { b: BeltItem; start: number; 
   return (
     <div ref={ref} className="absolute start-0 top-0 flex w-16 flex-col items-center">
       <div className={cn('flex flex-col items-center', done === 'ok' ? 'play-sorted' : done === 'wrong' || done === 'missed' ? 'play-dropped' : '')}>
-        <span className={cn('grid h-14 w-14 place-items-center rounded-2xl bg-white text-3xl shadow-md transition-[box-shadow,transform] duration-200 dark:bg-[#1B2C39]',
+        <span className={cn('grid h-14 w-14 place-items-center rounded-2xl bg-white text-3xl shadow-md transition-[box-shadow,transform] duration-200 dark:bg-[#1B1B1E]',
           front ? 'scale-110 shadow-[0_0_0_3px_#ec4899,0_8px_24px_rgba(236,72,153,0.35)]' : '')} aria-hidden>{emoji}</span>
         <span className="mt-1 w-20 truncate text-center text-[11px] font-medium text-zinc-600 dark:text-zinc-300">{name}</span>
       </div>

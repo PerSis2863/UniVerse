@@ -38,14 +38,14 @@ export const widthOf = (ratio: DeckJSON['ratio']) => (ratio === '4:3' ? 1200 : 1
 export type ThemeId = 'classic' | 'midnight' | 'sunrise' | 'forest' | 'ocean' | 'berry' | 'slate' | 'bold';
 export interface Theme { id: ThemeId; name: string; bg: string; text: string; muted: string; accent: string; title: string; body: string; band: 'none' | 'left' | 'top' | 'bottom' }
 export const THEMES: Theme[] = [
-  { id: 'classic', name: 'Classic', bg: '#ffffff', text: '#253745', muted: '#4b5563', accent: '#253745', title: 'Inter', body: 'Inter', band: 'bottom' },
-  { id: 'midnight', name: 'Midnight', bg: '#0f172a', text: '#eef1f2', muted: '#cbd5e1', accent: '#38bdf8', title: 'Inter', body: 'Inter', band: 'left' },
+  { id: 'classic', name: 'Classic', bg: '#ffffff', text: '#2a2927', muted: '#4b5563', accent: '#2a2927', title: 'Inter', body: 'Inter', band: 'bottom' },
+  { id: 'midnight', name: 'Midnight', bg: '#0f172a', text: '#efeeeb', muted: '#cbd5e1', accent: '#38bdf8', title: 'Inter', body: 'Inter', band: 'left' },
   { id: 'sunrise', name: 'Sunrise', bg: '#fff7ed', text: '#431407', muted: '#7c2d12', accent: '#ea580c', title: 'Georgia', body: 'Inter', band: 'top' },
   { id: 'forest', name: 'Forest', bg: '#f0fdf4', text: '#14532d', muted: '#166534', accent: '#16a34a', title: 'Georgia', body: 'Verdana', band: 'left' },
   { id: 'ocean', name: 'Ocean', bg: '#ecfeff', text: '#164e63', muted: '#155e75', accent: '#0891b2', title: 'Trebuchet MS', body: 'Trebuchet MS', band: 'bottom' },
-  { id: 'berry', name: 'Berry', bg: '#f2f4f4', text: '#500724', muted: '#831843', accent: '#db2777', title: 'Georgia', body: 'Inter', band: 'top' },
-  { id: 'slate', name: 'Slate', bg: '#f8fafc', text: '#0f172a', muted: '#253745', accent: '#475569', title: 'Times New Roman', body: 'Arial', band: 'none' },
-  { id: 'bold', name: 'Bold', bg: '#11212d', text: '#f9fafb', muted: '#d1d5db', accent: '#f59e0b', title: 'Trebuchet MS', body: 'Verdana', band: 'bottom' },
+  { id: 'berry', name: 'Berry', bg: '#f3f2ef', text: '#500724', muted: '#831843', accent: '#db2777', title: 'Georgia', body: 'Inter', band: 'top' },
+  { id: 'slate', name: 'Slate', bg: '#f8fafc', text: '#0f172a', muted: '#2a2927', accent: '#475569', title: 'Times New Roman', body: 'Arial', band: 'none' },
+  { id: 'bold', name: 'Bold', bg: '#141416', text: '#f9fafb', muted: '#d1d5db', accent: '#f59e0b', title: 'Trebuchet MS', body: 'Verdana', band: 'bottom' },
 ];
 export const themeOf = (id: string | undefined) => THEMES.find((t) => t.id === id) ?? THEMES[0];
 export const FONTS = ['Inter', 'Arial', 'Georgia', 'Times New Roman', 'Trebuchet MS', 'Verdana', 'Courier New'] as const;

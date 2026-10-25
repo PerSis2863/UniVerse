@@ -113,7 +113,7 @@ export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onF
           <span className={cn('ms-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums transition-colors', low ? 'bg-pink-600 text-white' : 'bg-zinc-100 text-zinc-700 dark:bg-white/10 dark:text-zinc-200')}>
             <Timer className="w-4 h-4" aria-hidden /><span key={low ? left : 'n'} className={low ? 'play-tick' : ''}>{left}s</span>
           </span>
-          <span className="rounded-full bg-[#11212D] px-3 py-1 text-sm font-bold text-white tabular-nums"><Rolling value={score} duration={0.5} /><span className="sr-only"> points</span></span>
+          <span className="rounded-full bg-[#141416] px-3 py-1 text-sm font-bold text-white tabular-nums"><Rolling value={score} duration={0.5} /><span className="sr-only"> points</span></span>
         </div>
         <div className="mt-3 h-1 overflow-hidden rounded-full bg-zinc-200 dark:bg-white/10" aria-hidden>
           {playing && <div className="play-drain h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500" style={{ animationDuration: `${endsAt - startsAt}ms`, animationDelay: `${-elapsed}ms` }} />}
@@ -130,7 +130,7 @@ export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onF
         </div>
         <AnimatePresence>
           {count !== null && (
-            <motion.div key="count" className="pointer-events-none absolute inset-0 grid place-items-center bg-white/60 dark:bg-[#11212D]/60"
+            <motion.div key="count" className="pointer-events-none absolute inset-0 grid place-items-center bg-white/60 dark:bg-[#141416]/60"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} aria-live="assertive">
               <AnimatePresence mode="popLayout">
                 <motion.span key={count} initial={{ scale: calm ? 1 : 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: calm ? 1 : 1.15, opacity: 0 }}

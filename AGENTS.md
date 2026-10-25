@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M33 is the latest).
+  builds on it). The newest notes are at the end (M34 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -89,6 +89,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   (M27), 500 people a month on the $5 plan (M28, migration 0184), pointer glides (M29), Ask
   UniVerse (M30), UniVerse Play with eight games and rooms (M31, M32; migration 0185, `GameRoom`),
   the folding side menu (M33). Every item has a note in the handoff file and a Progress row.
+- **On the branch, not merged:** M34 (the "Karma" look, see §8; the river denser and sharper).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **Next database update number: `0186`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
@@ -233,16 +234,21 @@ file used only from config goes in its `BY_CONFIG` list).
 
 ## 8. Design and motion
 
-**The colours (the owner, 24 Oct 2026): dark blue is the normal UI colour, hot pink with a little
-purple is the light.** Dark blue `#06141B #11212D #253745 #4A5C6A #9BA8AB #CCD0CF`: the dark page
-#11212D with cards #1B2C39 (dark mode is the default), the navy side menu in both themes, buttons,
-selected tabs and pills. Hot pink and fuchsia (Tailwind's `pink-*`, `fuchsia-*`): the light river's
-lines, glows, rings and animations, and the icon's U. In `globals.css`: `indigo-*` / `violet-*` /
-`purple-*` = the dark blues, `zinc-*` = the blue greys. Never new hues; green, amber and red only for
-states. **The look ("Cadra"):** solid cards with a hairline edge, a pink glow top left and a blue
-glow behind every page (`.ambient-bg`), `.panel` / `.card` / `.btn-primary` / `TabPill`, no frosted
-cards; a row of headline numbers gets `kpi-row`. The glow, the light river and the italic accent
-word are the brand, even where design guides call them "AI-looking".
+**The look: "Karma" (the owner, 25 Oct 2026, after Rondesignlab's CreditKarma; replaced the dark
+blue).** Light mode: a warm off-white page (#EBEAE6) lit by soft amber, gold and blue-grey glows with
+grain (`.ambient-bg`), crisp white squircle cards (`--radius-card`, `corner-shape: squircle` where the
+browser has it), black pill buttons and black selected pills. Dark mode (the default): near-black
+(#0B0B0C), graphite cards (#151517) with a hairline, white pill buttons and pills. The side menu is
+near-black in both themes, the chosen entry a white pill with a pink edge. Neutrals are warm
+graphite: `indigo-*` / `violet-*` / `purple-*` = the graphite scale (indigo-600 = #2A2927), `zinc-*` =
+warm greys. Headline cards wear the design's frosts (`--karma-dusk`, `--karma-olive`,
+`--karma-gold`; `kpi-row` uses the first two, `.karma-frost` for any card); thin-line icons sit in
+circles (`.karma-icon`), round ink arrow buttons (`.karma-go`). Type: Urbanist, served from
+`/fonts/urbanist` (no outside service). **Hot pink with a little purple stays the light**: the light
+river (`LightTrail`: dense, thin, sharp strands with glowing pulses), focus, live states and the
+icon's U. No other new hues; green, amber and red only for states. `.panel` / `.card` /
+`.btn-primary` / `.ios-segmented` carry the look, so new screens get it by using them. The river and
+the italic accent word are the brand, even where design guides call them "AI-looking".
 
 **The motion layer works on every page by itself**: pages assemble out of a blur
 (`src/lib/page-transition.ts`), titles sweep in, a light trail runs down the page (`LightTrail`),

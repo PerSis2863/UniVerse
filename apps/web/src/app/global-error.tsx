@@ -13,18 +13,18 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   const button: React.CSSProperties = { height: 40, padding: '0 20px', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', border: 'none' };
   return (
     <html lang="en">
-      <body style={{ margin: 0, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#06141b', color: '#fff', fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif' }}>
-        <div style={{ maxWidth: 420, width: '100%', textAlign: 'center', background: '#0b1a24', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, padding: 32 }}>
+      <body style={{ margin: 0, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#0b0b0c', color: '#fff', fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif' }}>
+        <div style={{ maxWidth: 420, width: '100%', textAlign: 'center', background: '#111112', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, padding: 32 }}>
           <div style={{ fontSize: 40 }} aria-hidden>🛠️</div>
           <h1 style={{ fontSize: 22, margin: '12px 0 8px' }}>UniVerse couldn’t load</h1>
-          <p style={{ color: '#9ba8ab', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+          <p style={{ color: '#a8a59f', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
             Something went wrong on our side and we’ve been told about it automatically. Please try again in a moment.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
-            <button onClick={() => reset()} style={{ ...button, background: '#253745', color: '#fff' }}>Try again</button>
-            <button onClick={() => window.location.reload()} style={{ ...button, background: 'transparent', color: '#e2e6e6', border: '1px solid rgba(255,255,255,0.15)' }}>Reload</button>
+            <button onClick={() => reset()} style={{ ...button, background: '#2a2927', color: '#fff' }}>Try again</button>
+            <button onClick={() => window.location.reload()} style={{ ...button, background: 'transparent', color: '#e6e4e0', border: '1px solid rgba(255,255,255,0.15)' }}>Reload</button>
           </div>
-          {error.digest && <p style={{ marginTop: 16, fontSize: 11, color: '#5a6a73' }}>Reference: {error.digest}</p>}
+          {error.digest && <p style={{ marginTop: 16, fontSize: 11, color: '#66635d' }}>Reference: {error.digest}</p>}
         </div>
       </body>
     </html>

@@ -95,7 +95,7 @@ export async function docsList(me: Caller, db: D1Database) {
   }, 200, NO_STORE);
 }
 
-const DEPT_COLORS = ['#2c4050', '#06b6d4', '#10b981', '#f59e0b', '#db2777', '#4a5c6a'];
+const DEPT_COLORS = ['#34322f', '#06b6d4', '#10b981', '#f59e0b', '#db2777', '#5f5c57'];
 
 /** GET /api/core/dashboard/admin (src/server/services/dashboard.service.ts getAdminDashboard): the admin overview. */
 export async function adminDashboard(db: D1Database) {
@@ -119,7 +119,7 @@ export async function adminDashboard(db: D1Database) {
     if (d) d.teachers = Number(t.n); else departments.set(t.department as string, { name: t.department as string, students: 0, teachers: Number(t.n) });
   }
   const list = [...departments.values()].map((d, i) => ({ ...d, color: DEPT_COLORS[i % DEPT_COLORS.length] }));
-  if (!list.length) list.push({ name: 'General', students: totalStudents, teachers: totalTeachers, color: '#2c4050' });
+  if (!list.length) list.push({ name: 'General', students: totalStudents, teachers: totalTeachers, color: '#34322f' });
   return json({
     totalStudents,
     totalTeachers,
@@ -135,7 +135,7 @@ export async function adminDashboard(db: D1Database) {
   }, 200, NO_STORE);
 }
 
-const COURSE_COLORS = ['#2c4050', '#06b6d4', '#10b981', '#f59e0b', '#db2777'];
+const COURSE_COLORS = ['#34322f', '#06b6d4', '#10b981', '#f59e0b', '#db2777'];
 const percent = (g: { score: number; maxScore: number }) => (g.maxScore > 0 ? (g.score / g.maxScore) * 100 : 0);
 const letter = (p: number) => (p >= 90 ? 'A' : p >= 80 ? 'B' : p >= 70 ? 'C' : p >= 60 ? 'D' : 'F');
 

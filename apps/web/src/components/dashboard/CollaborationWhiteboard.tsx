@@ -13,7 +13,7 @@ type Shape =
   | { kind: 'text'; x: number; y: number; text: string; color: string; size: number };
 type Tool = 'pen' | 'rect' | 'ellipse' | 'text' | 'eraser';
 
-const COLORS = ['#11212d', '#253745', '#db2777', '#059669', '#d97706', '#dc2626'];
+const COLORS = ['#141416', '#2a2927', '#db2777', '#059669', '#d97706', '#dc2626'];
 const TOOLS: { id: Tool; icon: typeof PenTool; label: string; key: string }[] = [
   { id: 'pen', icon: PenTool, label: 'Pen', key: 'p' },
   { id: 'rect', icon: Square, label: 'Rectangle', key: 'r' },

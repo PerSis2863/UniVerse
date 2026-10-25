@@ -55,7 +55,7 @@ export function CallRecordingSheet({ id, onClose }: { id: string; onClose: () =>
   return createPortal(
     <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-[2px]" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
       <motion.div role="dialog" aria-modal="true" aria-label="Call recording" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth}
-        className="w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#11212d] p-4 sm:p-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-5 space-y-3 shadow-2xl text-zinc-900 dark:text-white">
+        className="w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#141416] p-4 sm:p-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-5 space-y-3 shadow-2xl text-zinc-900 dark:text-white">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="font-semibold flex items-center gap-2"><Clapperboard className="w-4 h-4 text-fuchsia-500 shrink-0" /><span className="truncate">{data?.title ?? 'Call recording'}</span></p>

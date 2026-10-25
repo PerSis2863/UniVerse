@@ -22,7 +22,7 @@ export function SheetTabs({ tabs, active, canEdit, onPick, onAdd, onRename, onCo
   const index = tabs.findIndex((t) => t.id === active);
   const current = tabs[index];
   return (
-    <div className="flex items-center gap-1 px-2 py-1 border-t border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/80 dark:bg-[#11212d]/80 min-h-10">
+    <div className="flex items-center gap-1 px-2 py-1 border-t border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/80 dark:bg-[#141416]/80 min-h-10">
       {canEdit && <button type="button" onClick={onAdd} aria-label="Add a sheet" title="Add a sheet" className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200/60 dark:hover:bg-white/10"><Plus className="w-4 h-4" /></button>}
       <div role="tablist" aria-label="Sheets" className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] flex-1 min-w-0">
         {tabs.map((t) => renaming?.id === t.id ? (
@@ -30,7 +30,7 @@ export function SheetTabs({ tabs, active, canEdit, onPick, onAdd, onRename, onCo
             onKeyDown={(e) => { if (e.key === 'Enter') done(); if (e.key === 'Escape') setRenaming(null); }} className="h-8 w-32 px-2 rounded-lg border border-indigo-400 bg-white dark:bg-zinc-900 text-sm" />
         ) : (
           <button key={t.id} type="button" role="tab" aria-selected={t.id === active} onClick={() => onPick(t.id)} onDoubleClick={() => canEdit && setRenaming({ id: t.id, name: t.name })}
-            className={cn('h-8 px-3 shrink-0 rounded-lg border-b-2 text-sm whitespace-nowrap', t.id === active ? 'bg-white dark:bg-[#11212d] shadow-sm font-semibold text-indigo-700 dark:text-indigo-200' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/60 dark:hover:bg-white/[0.06]')} style={{ borderBottomColor: t.color ?? 'transparent' }}>{t.name}</button>
+            className={cn('h-8 px-3 shrink-0 rounded-lg border-b-2 text-sm whitespace-nowrap', t.id === active ? 'bg-white dark:bg-[#141416] shadow-sm font-semibold text-indigo-700 dark:text-indigo-200' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/60 dark:hover:bg-white/[0.06]')} style={{ borderBottomColor: t.color ?? 'transparent' }}>{t.name}</button>
         ))}
       </div>
       {canEdit && current && (

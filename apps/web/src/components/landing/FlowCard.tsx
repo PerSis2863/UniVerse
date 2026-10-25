@@ -18,7 +18,7 @@ const PHASE = 2; // seconds per step; four steps a round
 function Node({ title, className, phase, person }: { title: string; className: string; phase: number; person?: boolean }) {
   return (
     <div style={{ animationDelay: `${phase * PHASE}s` }}
-      className={cn('flow-on absolute -translate-y-1/2 rounded-xl border border-white/10 bg-[#11212d]/95 px-2.5 py-2 text-center shadow-[0_10px_30px_-12px_rgba(0,0,0,0.8)]', person && 'border-fuchsia-400/35 bg-[#11212d]/95', className)}>
+      className={cn('flow-on absolute -translate-y-1/2 rounded-xl border border-white/10 bg-[#141416]/95 px-2.5 py-2 text-center shadow-[0_10px_30px_-12px_rgba(0,0,0,0.8)]', person && 'border-fuchsia-400/35 bg-[#141416]/95', className)}>
       <p className="text-[12px] sm:text-[13px] font-semibold text-white leading-tight">
         {person && <UserRound className="inline w-3 h-3 me-1 -mt-0.5 text-fuchsia-300" aria-hidden />}{title}
       </p>
@@ -51,7 +51,7 @@ export function FlowCard({ flow: which = 'late', compact = false, className }: {
   // The lines: each comet leaves in the step before the box it points to, and arrives as it lights.
   const lines: [string, number][] = [['M30 50 L 40 50', 0], ['M60 50 C 65 50, 64 24, 69 24', 1], ['M60 50 C 65 50, 64 76, 69 76', 2]];
   return (
-    <div className={cn(glass, 'dark bg-[#0b1a24]/95 relative w-full max-w-[520px] p-5 text-start shadow-[0_40px_120px_-40px_rgba(37,55,69,0.55)]', className)}>
+    <div className={cn(glass, 'dark bg-[#111112]/95 relative w-full max-w-[520px] p-5 text-start shadow-[0_40px_120px_-40px_rgba(42,41,39,0.55)]', className)}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <span className="shrink-0 w-9 h-9 rounded-xl grid place-items-center bg-gradient-to-br from-indigo-500/25 to-fuchsia-500/25 border border-white/10">
@@ -70,7 +70,7 @@ export function FlowCard({ flow: which = 'late', compact = false, className }: {
       <div ref={box} className="relative h-[150px] sm:h-[170px] mt-4 border-t border-white/[0.06]" role="img"
         aria-label={`${flow.start[0]}, then: ${flow.check[0]} If yes: ${flow.yes[0]}. If no: ${flow.no[0]}.`}>
         <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${size.w} ${size.h}`} aria-hidden>
-          <defs><linearGradient id={`fl-${id}`} x1="0" x2="1"><stop offset="0" stopColor="#9ba8ab" /><stop offset="1" stopColor="#f472b6" /></linearGradient></defs>
+          <defs><linearGradient id={`fl-${id}`} x1="0" x2="1"><stop offset="0" stopColor="#a8a59f" /><stop offset="1" stopColor="#f472b6" /></linearGradient></defs>
           {lines.map(([d, phase]) => (
             <g key={d}>
               <path d={px(d)} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />

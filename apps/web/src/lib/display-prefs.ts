@@ -73,8 +73,8 @@ export const setHaptics = (on: boolean) => set('uv-haptics', on ? null : 'off');
 
 /** The accent colour (Phase E): buttons, highlights, links and focus rings; UniVerse's dark blue and pink is the default. */
 export const ACCENTS = [
-  { id: 'indigo', name: 'Blue & pink', swatch: '#253745' },
-  { id: 'violet', name: 'Dusk', swatch: '#253745' },
+  { id: 'indigo', name: 'Ink & pink', swatch: '#0e0d0c' },
+  { id: 'violet', name: 'Dusk', swatch: '#2a2927' },
   { id: 'blue', name: 'Blue', swatch: '#1d4ed8' },
   { id: 'teal', name: 'Teal', swatch: '#0f766e' },
   { id: 'rose', name: 'Rose', swatch: '#be123c' },

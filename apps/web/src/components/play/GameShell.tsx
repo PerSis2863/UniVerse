@@ -53,7 +53,7 @@ export function JoinRoom({ compact }: { compact?: boolean }) {
   };
   return (
     <form onSubmit={(e) => void join(e)} className={cn('flex flex-col gap-3', compact && 'sm:flex-row sm:items-start')}>
-      {!compact && <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#253745] text-white"><LogIn className="w-5 h-5 rtl:-scale-x-100" aria-hidden /></span>}
+      {!compact && <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#2a2927] text-white"><LogIn className="w-5 h-5 rtl:-scale-x-100" aria-hidden /></span>}
       <label htmlFor={compact ? 'room-code-top' : 'room-code'} className={compact ? 'sr-only' : 'text-lg font-semibold text-zinc-900 dark:text-white'}>Join a room</label>
       <div className="min-w-0 flex-1">
         <input id={compact ? 'room-code-top' : 'room-code'} value={code} onChange={(e) => { setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)); setError(''); }}
@@ -113,7 +113,7 @@ function GameMenu({ game }: { game: GameId }) {
         </motion.button>
         <motion.button type="button" disabled={busy} onClick={() => void createRoom()} initial={{ opacity: 0, y: calm ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.smooth, delay: 0.05 }}
           className="sheen panel group flex flex-col items-start gap-3 p-5 text-start transition-transform duration-150 active:scale-[0.99] disabled:opacity-60">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#253745] text-white">{busy ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden /> : <Users className="w-5 h-5" aria-hidden />}</span>
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#2a2927] text-white">{busy ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden /> : <Users className="w-5 h-5" aria-hidden />}</span>
           <span className="text-lg font-semibold text-zinc-900 dark:text-white">Play with friends</span>
           <span className="text-sm text-zinc-600 dark:text-zinc-300">Open a room, share its code or QR, and race up to 7 others live.</span>
           <span className="mt-auto inline-flex items-center gap-1.5 text-sm font-semibold text-zinc-800 dark:text-zinc-100">Open a room</span>

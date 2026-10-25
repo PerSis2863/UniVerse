@@ -92,7 +92,7 @@ export function SupplyRun({ seed, startsAt, clock, onProgress }: GameProps) {
         <p className="text-zinc-500 dark:text-zinc-400"><span className="tabular-nums text-zinc-900 dark:text-zinc-100">{open.length}</span> waiting</p>
       </div>
 
-      <div className="relative mt-3 aspect-[3/2] w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 p-1.5 dark:border-white/10 dark:bg-[#0d1b24]">
+      <div className="relative mt-3 aspect-[3/2] w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 p-1.5 dark:border-white/10 dark:bg-[#101012]">
         <div className="grid h-full w-full gap-1.5" style={{ gridTemplateColumns: `repeat(${GRID.cols}, 1fr)`, gridTemplateRows: `repeat(${GRID.rows}, 1fr)` }} aria-hidden>
           {DISTRICTS.map((d, k) => (
             <div key={d} className={cn('rounded-xl p-1.5 text-[11px] leading-tight text-zinc-500 dark:text-zinc-400', (k + Math.floor(k / GRID.cols)) % 2 ? 'bg-white dark:bg-white/[0.05]' : 'bg-white/70 dark:bg-white/[0.03]')}>
@@ -101,7 +101,7 @@ export function SupplyRun({ seed, startsAt, clock, onProgress }: GameProps) {
           ))}
         </div>
         {/* The depot, in the middle of town */}
-        <div className="pointer-events-none absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-2xl bg-[#11212D] text-white shadow-lg ring-4 ring-white dark:ring-[#0d1b24]" aria-hidden>
+        <div className="pointer-events-none absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-2xl bg-[#141416] text-white shadow-lg ring-4 ring-white dark:ring-[#101012]" aria-hidden>
           <Truck className="w-5 h-5" />
         </div>
 
@@ -135,7 +135,7 @@ export function SupplyRun({ seed, startsAt, clock, onProgress }: GameProps) {
             <button key={k} type="button" role="radio" aria-checked={on} onClick={() => setKind(k)}
               className={cn('relative flex flex-col items-center gap-1 rounded-2xl border px-2 py-2.5 text-xs font-semibold transition-[border-color,color,transform] duration-150 active:scale-[0.97]',
                 on ? 'border-transparent text-white' : 'border-zinc-200 text-zinc-700 dark:border-white/10 dark:text-zinc-200')}>
-              {on && <motion.span layoutId="supply-pick" className="absolute inset-0 rounded-2xl bg-[#11212D] dark:bg-[#253745]" style={{ boxShadow: `0 0 0 2px ${KIND_COLOR[k]}, 0 6px 20px ${KIND_COLOR[k]}55` }} transition={spring.snappy} aria-hidden />}
+              {on && <motion.span layoutId="supply-pick" className="absolute inset-0 rounded-2xl bg-[#141416] dark:bg-[#2a2927]" style={{ boxShadow: `0 0 0 2px ${KIND_COLOR[k]}, 0 6px 20px ${KIND_COLOR[k]}55` }} transition={spring.snappy} aria-hidden />}
               <Icon className="relative w-5 h-5" style={{ color: KIND_COLOR[k] }} aria-hidden />
               <span className="relative">{SUPPLY_LABEL[k]}</span>
               <span className={cn('relative hidden text-[11px] font-normal sm:block', on ? 'text-white/80' : 'text-zinc-500 dark:text-zinc-400')} aria-hidden>key {i + 1}</span>
@@ -162,9 +162,9 @@ function NeedPin({ need, at, appearedAgo, state, shake, calm, onPick, children }
         className="relative flex flex-col items-center rounded-full outline-offset-4">
         <span className="sr-only">{where} needs {SUPPLY_LABEL[need.kind].toLowerCase()} for {need.people} {need.people === 1 ? 'person' : 'people'}</span>
         {!state && <span className="play-ripple absolute inset-x-0 top-0 mx-auto h-11 w-11 rounded-full" style={{ background: color }} aria-hidden />}
-        <span key={shake} className={cn('relative grid h-11 w-11 place-items-center rounded-full text-white shadow-lg ring-2 ring-white dark:ring-[#0d1b24]', shake ? 'play-shake' : '')} style={{ background: color }} aria-hidden>
+        <span key={shake} className={cn('relative grid h-11 w-11 place-items-center rounded-full text-white shadow-lg ring-2 ring-white dark:ring-[#101012]', shake ? 'play-shake' : '')} style={{ background: color }} aria-hidden>
           {children}
-          <span className="absolute -end-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#11212D] px-1 text-[11px] font-bold tabular-nums text-white">{need.people}</span>
+          <span className="absolute -end-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#141416] px-1 text-[11px] font-bold tabular-nums text-white">{need.people}</span>
         </span>
         <span className="relative mt-1 h-1 w-9 overflow-hidden rounded-full bg-black/10 dark:bg-white/15" aria-hidden>
           <span className="play-drain absolute inset-0 rounded-full" style={{ background: color, animationDuration: `${need.ttl}ms`, animationDelay: `${-ago}ms`, animationPlayState: state ? 'paused' : 'running' }} />
