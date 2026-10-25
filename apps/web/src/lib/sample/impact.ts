@@ -268,6 +268,8 @@ export function sampleTraceTracking() {
       heading: prev && last ? (Math.atan2(last.lng - prev.lng, last.lat - prev.lat) * 180) / Math.PI : null,
       speedKmh: last?.speed ?? null, lastPingAt: last?.at ?? null, carrierPath: dest ? '/carry/SAMPLE' : null,
       kmLeft, etaMinutes: kmLeft !== null ? Math.round((kmLeft / 80) * 60) : null,
+      // The olive oil rides in a cooled truck with a Bluetooth thermometer: a warm spell an hour ago.
+      ...(pi === 0 ? { maxTempC: 8, sensor: 'BLE', temps: Array.from({ length: 48 }, (_, i) => Math.round((5.2 + Math.sin(i / 5) * 0.8 + (i > 30 && i < 36 ? 3.4 : 0)) * 10) / 10), tempC: 5.6, tempAt: iso(now - 60_000), breaches: 4 } : {}),
     };
   }));
   return { now: iso(now), shipments };

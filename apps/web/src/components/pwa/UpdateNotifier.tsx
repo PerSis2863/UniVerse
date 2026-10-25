@@ -50,11 +50,18 @@ export function UpdateNotifier() {
     const check = () => { reg?.update().catch(() => {}); };
     const onVisible = () => { if (document.visibilityState === 'visible') check(); };
 
-    sw.getRegistration().then((r) => { if (r) { reg = r; watch(r); } }).catch(() => {});
+    // Registers the offline worker once the page has loaded (production builds only: none exists in
+    // development). A browser that refuses service workers resolves with nothing: nothing to watch.
+    const start = () => {
+      const got: Promise<ServiceWorkerRegistration | undefined> = process.env.NODE_ENV === 'production' ? sw.register('/sw.js', { scope: '/' }) : sw.getRegistration();
+      got.then((r) => { if (r) { reg = r; watch(r); } }).catch(() => {});
+    };
+    if (document.readyState === 'complete') start(); else window.addEventListener('load', start, { once: true });
     sw.addEventListener('controllerchange', onControllerChange);
     document.addEventListener('visibilitychange', onVisible);
     const timer = setInterval(check, CHECK_EVERY_MS);
     return () => {
+      window.removeEventListener('load', start);
       sw.removeEventListener('controllerchange', onControllerChange);
       document.removeEventListener('visibilitychange', onVisible);
       clearInterval(timer);

@@ -1,6 +1,6 @@
 import type { Router } from '../router';
 import { hubStats } from '../hub';
-import { createReliefPost, reliefAction, reliefMap, reliefMine } from '../relief';
+import { clearReliefWatch, createReliefPost, reliefAction, reliefMap, reliefMine, reliefWatch, setReliefWatch } from '../relief';
 import { createGreenTeam, deleteGreenAction, greenMap, greenMe, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*) and
@@ -13,6 +13,9 @@ export default function impactAppsModule(router: Router) {
   const relief = router.controller('relief');
   relief.get('map', ({ user }) => reliefMap(user));
   relief.get('mine', ({ user }) => reliefMine(user));
+  relief.get('watch', ({ user }) => reliefWatch(user));
+  relief.put('watch', ({ user, body }) => setReliefWatch(user, body ?? {}));
+  relief.delete('watch', ({ user }) => clearReliefWatch(user));
   relief.post('posts', ({ user, body }) => createReliefPost(user, body ?? {}));
   relief.post<{ id: string; action: string }>('posts/:id/:action', { status: 200 }, ({ user, params }) => reliefAction(user, params.id, params.action));
 

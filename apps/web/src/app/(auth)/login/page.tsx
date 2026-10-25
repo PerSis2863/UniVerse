@@ -6,8 +6,8 @@ import { Mail, Lock, Loader2, Eye, EyeOff, Building2, Fingerprint, Phone, Play }
 import Link from '@/components/ui/Link';
 import { Accent, Tag } from '@/components/landing/bits';
 import { useAuthStore } from '@/store/auth';
-import { auth, warmUpPopupSignIn } from '@/lib/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, OAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
+import { auth, popupSignIn, warmUpPopupSignIn } from '@/lib/firebase';
+import { signInWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { api } from '@/lib/api';
 import { claimSessionReport, reportSession } from '@/lib/sign-in-history';
@@ -173,7 +173,7 @@ export default function LoginPage() {
     setError('');
     try {
       const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
+      const userCredential = await popupSignIn(provider);
       const token = await userCredential.user.getIdToken();
       await handleLoginSuccess(token, 'google');
     } catch (err) {
@@ -189,7 +189,7 @@ export default function LoginPage() {
     setError('');
     try {
       const provider = new OAuthProvider('apple.com');
-      const userCredential = await signInWithPopup(auth, provider);
+      const userCredential = await popupSignIn(provider);
       const token = await userCredential.user.getIdToken();
       await handleLoginSuccess(token, 'apple');
     } catch (err) {
@@ -209,7 +209,7 @@ export default function LoginPage() {
         prompt: 'select_account',
         ...(tenantId ? { tenant: tenantId } : {}),
       });
-      const userCredential = await signInWithPopup(auth, provider);
+      const userCredential = await popupSignIn(provider);
       const token = await userCredential.user.getIdToken();
       await handleLoginSuccess(token, 'microsoft');
     } catch (err) {

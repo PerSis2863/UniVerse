@@ -32,7 +32,7 @@ interface Ship {
   trail: { lat: number; lng: number; at: string; speed: number | null }[];
   position: { lat: number; lng: number } | null; heading: number | null; speedKmh: number | null; lastPingAt: string | null;
   carrierPath: string | null; kmLeft: number | null; etaMinutes: number | null;
-  tempC?: number | null; maxTempC?: number | null; breaches?: number;
+  tempC?: number | null; maxTempC?: number | null; breaches?: number; tempAt?: string | null; sensor?: string | null; temps?: number[];
 }
 
 const WORLD: Box = [-168, -56, 190, 76];
@@ -392,7 +392,8 @@ function LiveStrip({ s }: { s: Ship }) {
       </dl>
       {s.tempC != null && s.maxTempC != null && (
         <p className={cn('mt-2 flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 font-mono text-[11px]', s.tempC > s.maxTempC ? 'bg-amber-500/12 text-amber-700 dark:text-amber-200' : 'bg-sky-500/10 text-sky-700 dark:text-sky-200')}>
-          <Thermometer className="w-3.5 h-3.5" aria-hidden />{s.tempC} °C now · keep at {s.maxTempC} °C or colder{s.breaches ? ` · ${s.breaches} warm reading${s.breaches === 1 ? '' : 's'}` : ''}
+          <Thermometer className="w-3.5 h-3.5" aria-hidden />{s.tempC} °C{s.sensor === 'BLE' ? ' from the Bluetooth thermometer' : s.sensor === 'DEVICE' ? ' from the logger' : ''} · keep at {s.maxTempC} °C or colder{s.breaches ? ` · ${s.breaches} warm reading${s.breaches === 1 ? '' : 's'}` : ''}
+          {s.temps && s.temps.length > 2 && <TempSpark temps={s.temps} limit={s.maxTempC} />}
         </p>
       )}
     </div>
@@ -495,10 +496,32 @@ function ShipCard({ s, index, open, onOpen, onFind, onPick, onChange, onHover }:
                   </div>
                 </div>
               )}
+              {link && s.status !== 'DELIVERED' && s.maxTempC != null && (
+                <details className="mt-2 rounded-2xl bg-zinc-50 dark:bg-white/[0.04] p-3 text-[11px] text-zinc-600 dark:text-zinc-300">
+                  <summary className="cursor-pointer font-semibold text-zinc-900 dark:text-white">Connect a temperature sensor</summary>
+                  <p className="mt-1.5">A Bluetooth thermometer: the driver pairs it on the driver page. A connected logger or gateway: have it send its readings (every 30 s or more) to this address:</p>
+                  <code className="mt-1.5 block break-all rounded-lg bg-white dark:bg-black/30 px-2 py-1.5 font-mono">POST {link.replace(/\/carry\//, '/api/core/trace/carry/')}/reading</code>
+                  <code className="mt-1 block break-all rounded-lg bg-white dark:bg-black/30 px-2 py-1.5 font-mono">{'{ "tempC": 4.2, "humidity": 61 }'}</code>
+                  <p className="mt-1.5">Keep the address private, like the driver link. A warm reading tells your team at once (at most once an hour per shipment).</p>
+                </details>
+              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
     </motion.article>
+  );
+}
+
+/** The last day's temperatures as a tiny line, with the limit dashed. */
+function TempSpark({ temps, limit }: { temps: number[]; limit: number | null }) {
+  const W = 120, H = 22, lo = Math.min(...temps, limit ?? Infinity) - 0.5, hi = Math.max(...temps, limit ?? -Infinity) + 0.5;
+  const y = (t: number) => H - ((t - lo) / (hi - lo || 1)) * H;
+  const d = temps.map((t, i) => `${i ? 'L' : 'M'}${((i / (temps.length - 1)) * W).toFixed(1)},${y(t).toFixed(1)}`).join('');
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="ms-auto w-28 h-5 shrink-0" role="img" aria-label={`Temperatures from ${Math.min(...temps)} to ${Math.max(...temps)} °C`}>
+      {limit !== null && <line x1={0} x2={W} y1={y(limit)} y2={y(limit)} stroke="currentColor" strokeOpacity={0.5} strokeDasharray="3 3" />}
+      <path d={d} fill="none" stroke="currentColor" strokeWidth={1.5} />
+    </svg>
   );
 }

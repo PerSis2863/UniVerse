@@ -104,6 +104,8 @@ end); notes per item are in `apps/web/STAGE-5-HANDOFF.md`. The app is all in `ap
   and its claim code is shown once; warranty, review and owner rows are one per unit (unique
   `codeId`), refused on a label that may be a copy. Shops earn more by tier (`TIERS` in
   `src/lib/trace.ts`). The public brand page `/b/<slug>` shows only non-sample products.
+  Temperatures go in `trace_readings` only (`recordReading`); the shipment's carrier key is the
+  only key a sensor needs, so treat it like a password (never show it to buyers).
 - **Sample data, two kinds**: the owner's "Fill with sample data" on the console Overview writes a
   made-up world into the real database in steps (`src/server/sample-world.ts`), marked so "Remove"
   takes out exactly that (emails `@sample.universe.test`, ids `smp…`, slugs `sample-`); a visitor's

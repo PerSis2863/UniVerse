@@ -103,7 +103,7 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.render().then((widgetId: number) => {
           window.grecaptcha?.reset(widgetId);
-        });
+        }).catch(() => {});
       }
       setError(authErrorMessage(err, 'The SMS code couldn’t be sent. Check the number and the country code, then try again.'));
     } finally {
@@ -208,8 +208,6 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
             `}</style>
           </div>
 
-          <div id="recaptcha-container"></div>
-
           <div className="flex gap-3 mt-6">
             <button
               type="button"
@@ -261,6 +259,9 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
           </div>
         </form>
       )}
+      {/* Outside the steps: Google's invisible check keeps using this box after the code is sent, and
+          crashed ("reading 'style'" of null) when it went away with the phone step. */}
+      <div id="recaptcha-container" />
     </div>
   );
 }

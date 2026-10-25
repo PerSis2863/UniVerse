@@ -6,6 +6,8 @@ import { MARKET_MIN, cellOf, toBase32 } from '@/lib/trace';
 import { BadRequestException, NotFoundException } from './http';
 import { oneOf, type Body } from './body';
 import { brandOf, isPro, num, ownBatch, short } from './trace';
+import { notifyMany } from './email';
+import { pushService } from './services/push.service';
 
 // The UniVerse Trace live maps (the owner, 24 Oct 2026: "make the live map in detail like very
 // detail… ultra smooth", "add 2d real time product tracking map").
@@ -158,6 +160,9 @@ export async function tracking(u: SessionUser) {
   });
   const moving = batches.filter((b) => b.status === 'IN_TRANSIT').map((b) => b.id);
   const pings = moving.length ? await prisma.tracePing.findMany({ where: { batchId: { in: moving }, createdAt: { gt: new Date(Date.now() - STALE_MS) } }, orderBy: { createdAt: 'asc' }, take: 3000 }) : [];
+  // Cold chain: the last day of readings for shipments that have a temperature limit.
+  const cold = batches.filter((b) => b.product.maxTempC !== null).map((b) => b.id);
+  const readings = cold.length ? await prisma.traceReading.findMany({ where: { batchId: { in: cold }, createdAt: { gt: new Date(Date.now() - 24 * 3_600_000) } }, orderBy: { createdAt: 'asc' }, take: 4000, select: { batchId: true, tempC: true, source: true, createdAt: true } }) : [];
   const nowMs = Date.now();
   return {
     now: new Date(nowMs).toISOString(),
@@ -189,11 +194,21 @@ export async function tracking(u: SessionUser) {
         speedKmh: last?.speed ?? null, lastPingAt: last?.at ?? null, carrierPath: b.carrierKey ? `/carry/${b.carrierKey}` : null,
         kmLeft: left !== null ? Math.round(left / 100) / 10 : null,
         // Cold chain (migration 0179): the latest reading and the product's limit.
-        tempC: [...trail].reverse().find((p) => p.tempC !== null && p.tempC !== undefined)?.tempC ?? null, maxTempC: b.product.maxTempC,
-        breaches: b.product.maxTempC === null ? 0 : trail.filter((p) => p.tempC !== null && p.tempC !== undefined && p.tempC > b.product.maxTempC!).length,
+        ...coldOf(b.product.maxTempC, readings.filter((r) => r.batchId === b.id), trail),
         etaMinutes: left !== null && avgSpeed && avgSpeed > 5 ? Math.round((left / 1000 / avgSpeed) * 60) : null,
       };
     }),
+  };
+}
+
+/** A shipment's temperature: sensor readings when there are any, else what came with the positions (the sample's glide). */
+function coldOf(limit: number | null, rs: { tempC: number; source: string; createdAt: Date }[], trail: { tempC?: number | null; at: Date }[]) {
+  const series = rs.length ? rs.map((r) => ({ t: r.tempC, at: r.createdAt })) : trail.filter((p) => p.tempC != null).map((p) => ({ t: p.tempC!, at: p.at }));
+  const last = series[series.length - 1] ?? null;
+  return {
+    tempC: last?.t ?? null, tempAt: last?.at ?? null, maxTempC: limit, sensor: rs.length ? rs[rs.length - 1].source : null,
+    breaches: limit === null ? 0 : series.filter((x) => x.t > limit).length,
+    temps: series.slice(-48).map((x) => Math.round(x.t * 10) / 10),
   };
 }
 
@@ -237,9 +252,45 @@ export async function carryPing(key: string, body: Body) {
   if (lat === null || lng === null) throw new BadRequestException('No position.');
   const last = await prisma.tracePing.findFirst({ where: { batchId: b.id }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
   if (last && Date.now() - last.createdAt.getTime() < 5000) return { ok: true, skipped: true };
-  await prisma.tracePing.create({ data: { batchId: b.id, brandId: b.brandId, lat, lng, speedKmh: num(body.speedKmh, 0, 1200), heading: num(body.heading, 0, 360), accuracyM: num(body.accuracyM, 0, 100_000), tempC: num(body.tempC, -80, 80) } });
+  const tempC = num(body.tempC, -80, 80);
+  await prisma.tracePing.create({ data: { batchId: b.id, brandId: b.brandId, lat, lng, speedKmh: num(body.speedKmh, 0, 1200), heading: num(body.heading, 0, 360), accuracyM: num(body.accuracyM, 0, 100_000), tempC } });
+  // A temperature sent with the position (typed by the driver, or from the paired thermometer).
+  if (tempC !== null) await recordReading(b, { tempC, humidity: num(body.humidity, 0, 100), source: oneOf(SOURCES, body.source) ? body.source : 'MANUAL', device: short(body.device, 60) });
   if (b.status !== 'IN_TRANSIT') await prisma.traceBatch.update({ where: { id: b.id }, data: { status: 'IN_TRANSIT' } });
   return { ok: true };
+}
+
+const SOURCES = ['BLE', 'DEVICE', 'MANUAL'] as const;
+const HOUR = 3_600_000;
+
+/** Stores one reading; a warm one tells the brand's team, at most once an hour per shipment. */
+async function recordReading(b: { id: string; brandId: string | null; label: string; product: { name: string; maxTempC: number | null } }, r: { tempC: number; humidity: number | null; source: string; device: string | null }) {
+  await prisma.traceReading.create({ data: { batchId: b.id, brandId: b.brandId, tempC: r.tempC, humidity: r.humidity, source: r.source, device: r.device } });
+  const limit = b.product.maxTempC;
+  if (limit === null || r.tempC <= limit || !b.brandId) return { warm: false };
+  const claimed = await prisma.traceBatch.updateMany({ where: { id: b.id, OR: [{ coldAlertAt: null }, { coldAlertAt: { lt: new Date(Date.now() - HOUR) } }] }, data: { coldAlertAt: new Date() } });
+  if (claimed.count) {
+    const team = (await prisma.traceBrandMember.findMany({ where: { brandId: b.brandId }, select: { userId: true } })).map((m) => m.userId);
+    const title = `Too warm: ${b.product.name}`, body = `${b.label} is at ${r.tempC} °C (keep at ${limit} °C or colder). See it on Tracking.`;
+    await notifyMany(team, { type: 'trace', title, body, link: '/trace/tracking' });
+    await pushService.sendToMany(team, { title, body, url: '/trace/tracking', tag: `trace-cold-${b.id}` }).catch(() => 0);
+  }
+  return { warm: true };
+}
+
+/**
+ * POST /trace/carry/:key/reading { tempC, humidity?, source?, device? } (no sign-in; the shipment's
+ * private link is the key): a temperature from a connected logger or gateway, or from the Bluetooth
+ * thermometer paired on the driver's page. At most one every 20 seconds per shipment.
+ */
+export async function carryReading(key: string, body: Body) {
+  const b = await byKey(key);
+  const tempC = num(body.tempC, -80, 80);
+  if (tempC === null) throw new BadRequestException('Send tempC in °C (from -80 to 80).');
+  const last = await prisma.traceReading.findFirst({ where: { batchId: b.id }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
+  if (last && Date.now() - last.createdAt.getTime() < 20_000) return { ok: true, skipped: true };
+  const res = await recordReading(b, { tempC, humidity: num(body.humidity, 0, 100), source: oneOf(SOURCES, body.source) ? body.source : 'DEVICE', device: short(body.device, 60) });
+  return { ok: true, warm: res.warm, limit: b.product.maxTempC };
 }
 
 /** POST /trace/carry/:key/arrive { stage, place?, lat?, lng? }: the driver marks a stop (SHOP = delivered). */

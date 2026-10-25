@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Check, Loader2, MapPin, Navigation, PackageCheck, Radio, SearchX, Square, Store, Thermometer, Warehouse } from 'lucide-react';
+import { Bluetooth, BluetoothOff, Check, Loader2, MapPin, Navigation, PackageCheck, Radio, SearchX, Square, Store, Thermometer, Warehouse } from 'lucide-react';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { usePathParams } from '@/hooks/usePathParams';
 import { api, errorMessage } from '@/lib/api';
 import { useTick } from '@/lib/use-now';
+import { bluetoothAvailable, connectThermometer, type Reading } from '@/lib/ble-thermometer';
 import { cn } from '@/lib/utils';
 
 // The driver's page (UniVerse Trace tracking): open the link the brand sent, tap Start sharing, and
@@ -174,12 +175,8 @@ export default function View() {
                 : <button type="button" onClick={() => void start()} className="w-full h-14 rounded-2xl bg-pink-500 hover:bg-pink-400 font-bold text-white inline-flex items-center justify-center gap-2 shadow-[0_16px_40px_-14px_rgba(236,72,153,0.9)] active:scale-[0.98] transition"><Navigation className="w-5 h-5" />Start sharing</button>}
             </div>
 
-            {info.maxTempC !== null && (
-              <label className="mt-4 block rounded-2xl bg-white/[0.05] ring-1 ring-white/10 p-4">
-                <span className="flex items-center gap-2 text-sm font-semibold"><Thermometer className="w-4 h-4 text-sky-300" aria-hidden />Temperature in the truck (°C)</span>
-                <span className="mt-0.5 block text-xs text-zinc-400">Keep it at {info.maxTempC} °C or colder. Update it when it changes; it goes with your position.</span>
-                <input inputMode="decimal" value={temp} onChange={(e) => { setTemp(e.target.value); const n = Number(e.target.value.replace(',', '.')); tempRef.current = e.target.value.trim() && Number.isFinite(n) ? n : undefined; }} placeholder={`${info.maxTempC - 2}`} className={cn('mt-2 w-full h-11 rounded-xl bg-white/10 px-3 text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-pink-400', Number(temp.replace(',', '.')) > info.maxTempC && 'ring-2 ring-amber-400')} />
-              </label>
+            {info.maxTempC !== null && key && (
+              <ColdChain shipKey={key} limit={info.maxTempC} temp={temp} onTemp={(v) => { setTemp(v); const n = Number(v.replace(',', '.')); tempRef.current = v.trim() && Number.isFinite(n) ? n : undefined; }} />
             )}
 
             <section className="mt-8 rounded-3xl bg-white/[0.05] ring-1 ring-white/10 p-5" aria-labelledby="stop-h">
@@ -212,5 +209,62 @@ function Shell({ children }: { children: React.ReactNode }) {
         {children}
       </div>
     </main>
+  );
+}
+
+/**
+ * The cold chain on the driver's page: pair a Bluetooth thermometer (its readings go straight to the
+ * brand, at most one every 30 seconds, through /trace/carry/<key>/reading), or type the temperature
+ * (it goes with each position).
+ */
+function ColdChain({ shipKey, limit, temp, onTemp }: { shipKey: string; limit: number; temp: string; onTemp: (v: string) => void }) {
+  const [sensor, setSensor] = useState<{ name: string; stop: () => void } | null>(null);
+  const [live, setLive] = useState<Reading | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [canPair] = useState(bluetoothAvailable);
+  const lastSent = useRef(0);
+  useEffect(() => () => sensor?.stop(), [sensor]);
+
+  const pair = async () => {
+    setConnecting(true);
+    try {
+      const s = await connectThermometer((r) => {
+        setLive(r);
+        if (Date.now() - lastSent.current < 30_000) return;
+        lastSent.current = Date.now();
+        void api.post(`/trace/carry/${shipKey}/reading`, { tempC: r.tempC, humidity: r.humidity ?? undefined, source: 'BLE', device: s.name }).catch(() => {});
+      }, () => { setSensor(null); toast('The thermometer disconnected. Pair it again when it’s back in range.'); });
+      setSensor(s);
+      toast.success(`Connected to ${s.name}`);
+    } catch (e) {
+      // Closing the browser's chooser isn't an error worth showing.
+      if ((e as { name?: string }).name !== 'NotFoundError') toast.error(errorMessage(e, 'Couldn’t connect to the thermometer.'));
+    } finally { setConnecting(false); }
+  };
+
+  const warm = (live ? live.tempC : Number(temp.replace(',', '.'))) > limit;
+  return (
+    <section className={cn('mt-4 rounded-2xl bg-white/[0.05] ring-1 p-4', warm ? 'ring-amber-400/70' : 'ring-white/10')} aria-labelledby="cold-h">
+      <h2 id="cold-h" className="flex items-center gap-2 text-sm font-semibold"><Thermometer className="w-4 h-4 text-sky-300" aria-hidden />Temperature in the truck</h2>
+      <p className="mt-0.5 text-xs text-zinc-400">Keep it at {limit} °C or colder. {warm ? 'It’s too warm: the brand has been told.' : ''}</p>
+      {sensor && live ? (
+        <p className="mt-3 flex items-baseline gap-2" aria-live="polite">
+          <span className={cn('font-mono text-4xl tabular-nums', warm ? 'text-amber-300' : 'text-white')}>{live.tempC.toFixed(1)}°</span>
+          {live.humidity !== null && <span className="font-mono text-sm text-zinc-400">{Math.round(live.humidity)}% humidity</span>}
+          <span className="ms-auto text-[11px] text-zinc-400">from {sensor.name}</span>
+        </p>
+      ) : (
+        <input inputMode="decimal" value={temp} onChange={(e) => onTemp(e.target.value)} aria-label="Temperature in °C" placeholder={`${limit - 2}`} className={cn('mt-2 w-full h-11 rounded-xl bg-white/10 px-3 text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-pink-400', warm && 'ring-2 ring-amber-400')} />
+      )}
+      {canPair ? (
+        sensor ? (
+          <button type="button" onClick={() => { sensor.stop(); setSensor(null); setLive(null); }} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/15 px-3 py-2 text-sm font-semibold"><BluetoothOff className="w-4 h-4" />Disconnect the thermometer</button>
+        ) : (
+          <button type="button" onClick={() => void pair()} disabled={connecting} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 px-3 py-2 text-sm font-semibold text-sky-100 disabled:opacity-60">{connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bluetooth className="w-4 h-4" />}Connect a Bluetooth thermometer</button>
+        )
+      ) : (
+        <p className="mt-2 text-[11px] text-zinc-500">A Bluetooth thermometer can send readings by itself from Chrome on Android or a computer.</p>
+      )}
+    </section>
   );
 }

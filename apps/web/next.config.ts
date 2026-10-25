@@ -10,7 +10,9 @@ if (process.env.NODE_ENV === 'development') initOpenNextCloudflareForDev();
 const withPWA = withPWAInit({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
-  register: true,
+  // Registered by UpdateNotifier (src/components/pwa/UpdateNotifier.tsx), which handles a browser that
+  // refuses service workers: Workbox's own register() crashed there ("reading 'waiting'" of undefined).
+  register: false,
   // Off: these fetched every page a second time in the background, just to store it for offline
   // use, doubling the Worker requests of each click. Pages are still cached as they load.
   cacheOnFrontEndNav: false,

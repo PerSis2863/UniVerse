@@ -1607,3 +1607,37 @@ Progress table (row D6).
   the local database, live API runs (Relief, Green, hub, scan + review + warranty + duplicate refusals,
   an instant win and a recall on a real code), screenshots of the hub, every app, Radar, Insights, the
   vault, the passport and the brand page, and the visitor demo end to end.
+
+## M22 · Relief alerts, real temperature sensors, the live errors fixed
+
+- The owner (25 Oct 2026): "notifications for Relief helpers, and real temperature sensors… there is a
+  error [the Firebase email]… check if there are more bugs".
+- **Relief notifications** (`src/server/relief.ts`, type `relief`, a new "Relief, Green and Trace"
+  group in `src/lib/notify-prefs.ts`): the person who asked hears when a helper takes, gives back or
+  delivers their request (in the app, email if on, push); the helper hears when the person marks it
+  delivered. **Nearby alerts**: migration 0181 `relief_watches` (one per person: a place rounded to
+  500 m, 1–25 km, urgent only by default, kinds); `alertWatchers` runs after a new need (box query,
+  then exact distance; at most 80 people, push + in-app, no email). Card "Tell me about needs near
+  me" on `/relief/mine`; alert links open `/relief?post=<id>` with the post chosen. Test:
+  `src/server/relief.test.ts`.
+- **Temperature sensors** (migration 0182 `trace_readings`, `trace_batches.coldAlertAt`): a
+  Bluetooth thermometer paired on the driver page (`src/lib/ble-thermometer.ts`: Environmental
+  Sensing 0x181A and Health Thermometer 0x1809, decoders tested; Chrome on Android/desktop only), or a
+  logger/gateway posting `POST /api/core/trace/carry/<key>/reading { tempC, humidity? }` (the
+  shipment's private link is the key; one per 20 s), or the driver typing it (stored as MANUAL with
+  the position). A warm reading tells the brand's team at most once an hour per shipment
+  (`recordReading` in `trace-map.ts`, claimed with a conditional update). Tracking shows the source
+  and a 24-hour line; the Radar's "warm shipments" read `trace_readings`. The sensor address is under
+  "Connect a temperature sensor" next to the driver link. Next migration: **0183**.
+- **Live errors fixed** (from the production `error_reports`):
+  - "INTERNAL ASSERTION FAILED: Pending promise was never set" (iPhone Safari, /login): Firebase's own
+    pop-up glitch. All pop-up sign-ins go through `popupSignIn` (`src/lib/firebase.ts`): one window
+    at a time (a double tap reuses it), and on the glitch it waits up to 5 s for the sign-in to land
+    instead of spinning forever. The error monitor no longer reports it.
+  - "Cannot read properties of null (reading 'style')" in Google's reCAPTCHA (phone sign-in): the
+    invisible check's box lived in the phone step and vanished with it; it's now outside the steps
+    (`PhoneAuthFlow.tsx`), and a failed reset no longer leaves an unhandled rejection.
+  - "Blank page" on `/call/<id>`: the page was a black backdrop until the call screen loaded; it now
+    says "Opening the call…", asks a signed-out person to sign in, and after 12 s offers Try again.
+- These three reports are still marked DIAGNOSED in production: mark them resolved in the owner
+  console once this is live.
