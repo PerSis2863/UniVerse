@@ -83,15 +83,12 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 
 ## 4. Where things stand (25 October 2026)
 
-- **`main` has everything through M25** (PR #94, 25 Oct): the impact apps (M21), Relief alerts and
-  real temperature sensors (M22), Google sign-in after the demo fixed (M23), the Impact Wallet (M24),
-  proof for Green actions (M25). Every item has a note in the handoff file and a Progress row in the plan.
-- **On the branch, not merged:** M26a (sample errors tagged, not counted), M26 (launch board, invites),
-  M27 (simpler UniVersity menus), M28 (500 people a month on the $5 plan: live events only to people
-  online, migration 0184), M29 (pointer glides), M30 (Ask UniVerse on /hub and ⌘K), M31 (UniVerse
-  Play: four games, solo and rooms; migration 0185, wrangler migration `v5` for `GameRoom`), M32
-  (four bigger games: Type Race, World Pin, Flood Rescue, Ocean Cleanup), M33 (the side menu folds
-  to icons on computers).
+- **`main` has everything through M33** (PR #95, 25 Oct): the impact apps (M21), Relief alerts and
+  sensors (M22), Google sign-in fixed (M23), the Impact Wallet (M24), proof for Green actions
+  (M25), sample errors not counted (M26a), launch board and invites (M26), simpler UniVersity menus
+  (M27), 500 people a month on the $5 plan (M28, migration 0184), pointer glides (M29), Ask
+  UniVerse (M30), UniVerse Play with eight games and rooms (M31, M32; migration 0185, `GameRoom`),
+  the folding side menu (M33). Every item has a note in the handoff file and a Progress row.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **Next database update number: `0186`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
