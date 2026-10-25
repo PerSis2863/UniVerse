@@ -37,12 +37,31 @@ export const GAMES: Record<GameId, GameInfo> = {
   type: { id: 'type', app: 'campus', name: 'Type Race', tagline: 'Race your friends, one true fact at a time', how: 'Type each fact exactly as shown. Every right letter moves your car; twenty in a row lights the nitro (double points).', seconds: 120, maxScore: 58_000, color: '#8b5cf6', big: true },
   pin: { id: 'pin', app: 'trace', name: 'World Pin', tagline: 'Where in the world is that parcel going?', how: 'A city appears: tap where it is on the world map. The closer your pin, the more points; pins in a row within 500 km build a streak. 15 cities.', seconds: 135, maxScore: 24_000, color: '#f472b6', big: true },
   rescue: { id: 'rescue', app: 'relief', name: 'Flood Rescue', tagline: 'Fly the helicopter, beat the rising water', how: 'Hover low over a roof to winch people up (4 at a time), then land on the hospital’s H to drop them off and refuel. Watch for lightning and gusts.', seconds: 180, maxScore: 17_000, color: '#fb923c', big: true },
-  obby: { id: 'obby', app: 'play', name: 'Skyline Obby', tagline: 'Jump the sky course to the golden finish', how: 'Run and jump across floating pads: moving ones, crumbling ones, bounce pads and spinning lasers. Checkpoints save you; gems and finishing early score more.', seconds: 180, maxScore: 16_000, color: '#38bdf8', big: true, world: true },
-  strike: { id: 'strike', app: 'play', name: 'Neon Strike', tagline: 'Laser tag against sentinel drones', how: 'Clear wave after wave of drones in a neon arena. Tags in a row multiply your points; take cover from their bolts, grab health and rapid fire.', seconds: 150, maxScore: 300_000, color: '#a855f7', big: true, world: true, age: 16, rated: 'shooting' },
-  night: { id: 'night', app: 'play', name: 'Night Shift', tagline: 'Find five keys in a dark school. Something else is looking too.', how: 'Explore the dark halls with your torch, find the five keys and reach the exit. Shine the torch on it to drive it back; don’t let it reach you.', seconds: 210, maxScore: 17_000, color: '#64748b', big: true, world: true, age: 18, rated: 'horror, jump scares' },
-  orbit: { id: 'orbit', app: 'play', name: 'Orbit Breach', tagline: 'Fix the station before the meteors win', how: 'Jump between decks in low gravity (jump again in the air to boost), repair five reactors, grab oxygen and dodge the meteors, then reach the escape pod.', seconds: 180, maxScore: 15_000, color: '#22d3ee', big: true, world: true, age: 12, rated: 'sci-fi peril' },
+  obby: { id: 'obby', app: 'play', name: 'Skyline Obby', tagline: 'Jump the sky course to the golden finish', how: 'Thirty stages in three worlds (Sky Islands, Lava Peaks, Neon Void): moving, crumbling, blinking and bounce pads, spinning lasers. Checkpoints save you; gems and finishing early score more.', seconds: 480, maxScore: 36_000, color: '#38bdf8', big: true, world: true },
+  strike: { id: 'strike', app: 'play', name: 'Neon Strike', tagline: 'Laser tag against sentinel drones', how: 'Clear wave after wave of drones in a neon arena; every fifth wave a boss drone fires spreads. Tags in a row multiply your points; take cover, grab health, shields and rapid fire.', seconds: 360, maxScore: 900_000, color: '#a855f7', big: true, world: true, age: 16, rated: 'shooting' },
+  night: { id: 'night', app: 'play', name: 'Night Shift', tagline: 'Three floors of a dark school. Something else is looking too.', how: 'Three floors of dark halls: find the keys on each (3, then 4, then 5) to open the stairs, then the exit. Shine your torch on it to drive it back; don’t let it reach you.', seconds: 480, maxScore: 36_000, color: '#64748b', big: true, world: true, age: 18, rated: 'horror, jump scares' },
+  orbit: { id: 'orbit', app: 'play', name: 'Orbit Breach', tagline: 'Fix the station before the meteors win', how: 'Three stations: jump between decks in low gravity (jump again in the air to boost), repair the reactors (3, then 4, then 5), grab oxygen, dodge meteors, and take the pod to the next.', seconds: 420, maxScore: 34_000, color: '#22d3ee', big: true, world: true, age: 12, rated: 'sci-fi peril' },
   ocean: { id: 'ocean', app: 'green', name: 'Ocean Cleanup', tagline: 'Clear the plastic, spare the sea life', how: 'Scoop up plastic for combos and grab the power-ups (magnet, boost, shield). Bumping into sea life costs points; oil slows you down.', seconds: 150, maxScore: 48_000, color: '#22d3ee', big: true },
 };
+
+/** Experience (M37): every round earns up to 1,000 XP, its score's share of the game's best possible,
+ *  so all games count the same. Levels need a little more XP each time. */
+export const xpFor = (game: GameId, score: number) => Math.round((Math.max(0, Math.min(score, GAMES[game].maxScore)) / GAMES[game].maxScore) * 1000);
+export function levelOf(xp: number): { level: number; into: number; need: number } {
+  let level = 1, left = Math.max(0, Math.floor(xp)), need = 400;
+  while (left >= need && level < 99) { left -= need; level++; need = 400 + (level - 1) * 150; }
+  return { level, into: left, need };
+}
+/** The 3D character's looks, unlocked by level (kept on the device; just for fun). */
+export const LOOK_COLORS = [
+  { id: 'pink', hex: '#ec4899', level: 1 }, { id: 'sky', hex: '#38bdf8', level: 1 }, { id: 'lime', hex: '#84cc16', level: 2 }, { id: 'gold', hex: '#f59e0b', level: 3 },
+  { id: 'violet', hex: '#8b5cf6', level: 4 }, { id: 'red', hex: '#ef4444', level: 5 }, { id: 'snow', hex: '#f1f5f9', level: 7 }, { id: 'ink', hex: '#1f2937', level: 9 },
+] as const;
+export const LOOK_HATS = [
+  { id: 'none', name: 'No hat', level: 1 }, { id: 'cap', name: 'Cap', level: 2 }, { id: 'antenna', name: 'Antenna', level: 4 }, { id: 'tophat', name: 'Top hat', level: 6 },
+  { id: 'crown', name: 'Crown', level: 8 }, { id: 'halo', name: 'Halo', level: 10 }, { id: 'horns', name: 'Horns', level: 12 },
+] as const;
+export type LookHat = (typeof LOOK_HATS)[number]['id'];
 
 /** Whole years since a birth date (null when unknown). */
 export function ageOn(birth: Date | string | null | undefined, now = new Date()): number | null {

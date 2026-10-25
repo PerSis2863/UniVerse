@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // The 3D worlds of UniVerse Play (M36, the owner: "Roblox games… shooting, horror, science fiction…
 // big games"): one renderer, scene and camera per round, a frame loop that pauses in a hidden tab,
@@ -17,8 +18,16 @@ export class World {
   /** Everything solid: the player stands on and bumps into these. */
   solids: THREE.Box3[] = [];
   phone = PHONE();
+  /** The sun from lights(): it follows a point (the player) so shadows go everywhere. */
+  sun: THREE.DirectionalLight | null = null;
+  private sunAt = new THREE.Vector3(30, 50, 20);
   private raf = 0;
   private last = 0;
+  // Automatic quality: the pixel ratio steps down when frames come late, back up when there's room.
+  private maxRatio = 1;
+  private ratio = 1;
+  private slow = 0;
+  private fast = 0;
   private ro: ResizeObserver;
   private loop: ((dt: number, t: number) => void) | null = null;
   private vis = () => { if (document.hidden) this.pause(); else this.resume(); };
@@ -26,7 +35,8 @@ export class World {
   constructor(public canvas: HTMLCanvasElement, { fov = 70, bg = 0x0b0b10, fog }: { fov?: number; bg?: number; fog?: [number, number, number] } = {}) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !this.phone, powerPreference: 'high-performance' });
     // Phones draw fewer pixels and no shadows, so the frame rate holds.
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.phone ? 1.5 : 2));
+    this.maxRatio = this.ratio = Math.min(window.devicePixelRatio || 1, this.phone ? 1.5 : 2);
+    this.renderer.setPixelRatio(this.ratio);
     this.renderer.shadowMap.enabled = !this.phone;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -53,12 +63,43 @@ export class World {
   resume() { if (!this.raf && this.loop) this.raf = requestAnimationFrame(this.frame); }
   private frame = (t: number) => {
     // A long gap (a stall, a slow phone) counts as one short step, so nothing jumps through walls.
-    const dt = this.last ? Math.min(0.05, (t - this.last) / 1000) : 1 / 60;
+    const raw = this.last ? (t - this.last) / 1000 : 1 / 60;
+    const dt = Math.min(0.05, raw);
     this.last = t;
+    this.tune(raw);
     this.loop?.(dt, t / 1000);
     this.renderer.render(this.scene, this.camera);
     this.raf = requestAnimationFrame(this.frame);
   };
+
+  /** Half a second of late frames (under ~45 fps) lowers the resolution a step; two seconds of quick
+   *  ones (over ~80 fps) raise it back. Never below 0.6× or above the starting ratio. */
+  private tune(raw: number) {
+    if (raw > 0.2) return; // a hidden tab or a stall, not a slow device
+    if (raw > 1 / 45) { this.slow += raw; this.fast = 0; } else if (raw < 1 / 80) { this.fast += raw; this.slow = 0; } else { this.slow = Math.max(0, this.slow - raw); }
+    const set = (r: number) => { this.ratio = r; this.renderer.setPixelRatio(r); this.resize(); this.slow = this.fast = 0; };
+    if (this.slow > 0.5 && this.ratio > 0.6) set(Math.max(0.6, this.ratio - 0.25));
+    else if (this.fast > 2 && this.ratio < this.maxRatio) set(Math.min(this.maxRatio, this.ratio + 0.25));
+  }
+
+  /** Keeps the sun (and its shadow box) over a point. */
+  sunOver(at: THREE.Vector3) {
+    if (!this.sun) return;
+    this.sun.position.set(at.x + this.sunAt.x, at.y + this.sunAt.y, at.z + this.sunAt.z);
+    this.sun.target.position.copy(at);
+  }
+
+  /** Many static boxes with one material as a single mesh (one draw call); their boxes stay solid. */
+  boxes(list: { at: [number, number, number]; size: [number, number, number] }[], material: THREE.Material, solid = true, parent: THREE.Object3D = this.scene) {
+    if (!list.length) return null;
+    const geos = list.map(({ at, size }) => new THREE.BoxGeometry(...size).translate(...at));
+    const mesh = new THREE.Mesh(mergeGeometries(geos), material);
+    geos.forEach((g) => g.dispose());
+    mesh.castShadow = mesh.receiveShadow = !this.phone;
+    parent.add(mesh);
+    if (solid) for (const { at, size } of list) this.solids.push(new THREE.Box3(new THREE.Vector3(at[0] - size[0] / 2, at[1] - size[1] / 2, at[2] - size[2] / 2), new THREE.Vector3(at[0] + size[0] / 2, at[1] + size[1] / 2, at[2] + size[2] / 2)));
+    return mesh;
+  }
 
   /** A box in the world; solid ones also block the player. */
   box(at: [number, number, number], size: [number, number, number], material: THREE.Material, solid = true) {
@@ -75,6 +116,9 @@ export class World {
     this.scene.add(new THREE.HemisphereLight(sky, ground, ambient));
     const d = new THREE.DirectionalLight(sun, power);
     d.position.set(...at);
+    this.sunAt.set(...at);
+    this.sun = d;
+    this.scene.add(d.target);
     d.castShadow = !this.phone;
     d.shadow.mapSize.set(1024, 1024);
     Object.assign(d.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 140 });
@@ -91,7 +135,7 @@ export class World {
       const m = o as THREE.Mesh;
       m.geometry?.dispose();
       const mats = Array.isArray(m.material) ? m.material : m.material ? [m.material] : [];
-      for (const x of mats) { (x as THREE.MeshStandardMaterial).map?.dispose(); x.dispose(); }
+      for (const x of mats) { const map = (x as THREE.MeshStandardMaterial).map; if (map && ![...glows.values()].includes(map as THREE.CanvasTexture)) map.dispose(); x.dispose(); }
     });
     this.renderer.dispose();
   }
@@ -219,7 +263,7 @@ export class Avatar {
   group = new THREE.Group();
   private limbs: THREE.Mesh[] = [];
   private swing = 0;
-  constructor(color = 0xec4899, { skin = 0xf5c9a0, legs = 0x1f2937, face = true } = {}) {
+  constructor(color = 0xec4899, { skin = 0xf5c9a0, legs = 0x1f2937, face = true, hat = 'none' as string } = {}) {
     const mat = (c: number) => new THREE.MeshLambertMaterial({ color: c });
     const part = (size: [number, number, number], at: [number, number, number], m: THREE.Material, pivotTop = false) => {
       const g = new THREE.BoxGeometry(...size);
@@ -233,11 +277,27 @@ export class Avatar {
     part([0.9, 0.9, 0.45], [0, 1.25, 0], mat(color));
     const head = part([0.55, 0.55, 0.55], [0, 1.98, 0], face ? [mat(skin), mat(skin), mat(skin), mat(skin), new THREE.MeshLambertMaterial({ map: faceTexture() }), mat(skin)] as unknown as THREE.Material : mat(skin));
     head.castShadow = true;
+    this.hat(hat, head.position.y + 0.28);
     this.limbs = [
       part([0.32, 0.85, 0.32], [-0.62, 1.68, 0], mat(skin), true), part([0.32, 0.85, 0.32], [0.62, 1.68, 0], mat(skin), true),
       part([0.42, 0.85, 0.42], [-0.23, 0.85, 0], mat(legs), true), part([0.42, 0.85, 0.42], [0.23, 0.85, 0], mat(legs), true),
     ];
   }
+  /** A hat on the head (the looks unlocked by level, PlayerCard.tsx). */
+  private hat(kind: string, top: number) {
+    const add = (g: THREE.BufferGeometry, color: number, at: [number, number, number], glow = false) => {
+      const m = new THREE.Mesh(g, glow ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshLambertMaterial({ color }));
+      m.position.set(...at); m.castShadow = true; this.group.add(m); return m;
+    };
+    if (kind === 'cap') { add(new THREE.BoxGeometry(0.6, 0.16, 0.6), 0xec4899, [0, top + 0.06, 0]); add(new THREE.BoxGeometry(0.5, 0.05, 0.3), 0xbe185d, [0, top, 0.4]); }
+    if (kind === 'antenna') { add(new THREE.CylinderGeometry(0.02, 0.02, 0.4), 0x94a3b8, [0, top + 0.2, 0]); add(new THREE.SphereGeometry(0.08, 10, 8), 0x22d3ee, [0, top + 0.42, 0], true); }
+    if (kind === 'tophat') { add(new THREE.CylinderGeometry(0.42, 0.42, 0.05, 20), 0x111827, [0, top + 0.03, 0]); add(new THREE.CylinderGeometry(0.27, 0.27, 0.42, 20), 0x111827, [0, top + 0.25, 0]); add(new THREE.CylinderGeometry(0.275, 0.275, 0.07, 20), 0xec4899, [0, top + 0.09, 0]); }
+    if (kind === 'crown') for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; add(new THREE.ConeGeometry(0.08, 0.24, 6), 0xfacc15, [Math.cos(a) * 0.22, top + 0.12, Math.sin(a) * 0.22]); }
+    if (kind === 'crown') add(new THREE.CylinderGeometry(0.29, 0.29, 0.08, 20, 1, true), 0xfacc15, [0, top + 0.03, 0]);
+    if (kind === 'halo') { const h = add(new THREE.TorusGeometry(0.3, 0.04, 8, 32), 0xfde68a, [0, top + 0.28, 0], true); h.rotation.x = Math.PI / 2; }
+    if (kind === 'horns') for (const x of [-0.2, 0.2]) { const h = add(new THREE.ConeGeometry(0.07, 0.3, 8), 0xdc2626, [x, top + 0.1, 0]); h.rotation.z = x > 0 ? -0.4 : 0.4; }
+  }
+
   /** Faces a fixed direction (an angle about y) instead of where it moves (shooters aim). */
   facing: number | null = null;
   /** Turns toward where it moves and swings its limbs by its speed. */
@@ -273,16 +333,19 @@ function faceTexture() {
   return faceTex;
 }
 
-/** The camera behind and above a point, looking where the controls face; pulled in front of walls. */
+/** The camera behind and above a point, looking where the controls face; pulled in front of walls.
+ *  (Reuses its vectors: nothing new is made each frame.) */
+const F = { dir: new THREE.Vector3(), head: new THREE.Vector3(), want: new THREE.Vector3(), hit: new THREE.Vector3(), ray: new THREE.Ray() };
 export function follow(cam: THREE.Camera, at: THREE.Vector3, c: Controls, dt: number, { dist = 7, height = 2.4, solids = [] as THREE.Box3[] } = {}) {
-  const dir = new THREE.Vector3(Math.sin(c.yaw) * Math.cos(c.pitch), -Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch));
-  const head = at.clone().add(new THREE.Vector3(0, height, 0));
+  const { dir, head, want, hit, ray } = F;
+  dir.set(Math.sin(c.yaw) * Math.cos(c.pitch), -Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch));
+  head.set(at.x, at.y + height, at.z);
   let d = dist;
   if (solids.length) {
-    const ray = new THREE.Ray(head, dir), hit = new THREE.Vector3();
+    ray.set(head, dir);
     for (const s of solids) if (ray.intersectBox(s, hit)) d = Math.min(d, Math.max(1.2, hit.distanceTo(head) - 0.3));
   }
-  const want = head.clone().addScaledVector(dir, d);
+  want.copy(head).addScaledVector(dir, d);
   cam.position.lerp(want, 1 - Math.exp(-18 * dt));
   cam.lookAt(head.x - dir.x * 4, head.y - dir.y * 4, head.z - dir.z * 4);
 }
@@ -293,16 +356,22 @@ export function eyes(cam: THREE.Camera, at: THREE.Vector3, c: Controls, height =
   cam.rotation.set(c.pitch, c.yaw, 0, 'YXZ');
 }
 
-/** A soft round glow sprite in a colour (cheap stand-in for bloom). */
+/** A soft round glow sprite in a colour (cheap stand-in for bloom). The glow image is made once per
+ *  colour and shared (a new texture per bolt or spark made the GPU stutter). */
+const glows = new Map<number, THREE.CanvasTexture>();
 export function glowSprite(color: number, size = 2) {
-  const c = document.createElement('canvas');
-  c.width = c.height = 64;
-  const g = c.getContext('2d')!, grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  const col = new THREE.Color(color);
-  grad.addColorStop(0, `rgba(${col.r * 255},${col.g * 255},${col.b * 255},1)`);
-  grad.addColorStop(1, 'rgba(0,0,0,0)');
-  g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
-  const tex = new THREE.CanvasTexture(c);
+  let tex = glows.get(color);
+  if (!tex) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d')!, grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    const col = new THREE.Color(color);
+    grad.addColorStop(0, `rgba(${col.r * 255},${col.g * 255},${col.b * 255},1)`);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+    tex = new THREE.CanvasTexture(c);
+    glows.set(color, tex);
+  }
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   s.scale.set(size, size, 1);
   return s;

@@ -4,12 +4,18 @@ import { hash, seeded } from '../seeded-shuffle';
 // so everyone in a room plays the same world. Scores and their caps live here too (the tests prove a
 // perfect round stays under each game's maxScore in src/lib/play.ts).
 
-/* ── Skyline Obby: jump across floating pads to the golden finish ── */
-export type PadKind = 'pad' | 'move' | 'fall' | 'bounce' | 'spin' | 'check' | 'finish';
+/* ── Skyline Obby: three worlds of floating pads to the golden finish ── */
+export type PadKind = 'pad' | 'move' | 'fall' | 'bounce' | 'spin' | 'blink' | 'check' | 'finish';
 export interface Pad { x: number; y: number; z: number; w: number; d: number; kind: PadKind; stage: number; phase: number }
 export interface Gem { x: number; y: number; z: number }
-export const OBBY_STAGES = 10;
+/** Thirty stages in three worlds of ten: Sky Islands, Lava Peaks, Neon Void. */
+export const OBBY_STAGES = 30, OBBY_PER_WORLD = 10;
+export const OBBY_WORLDS = ['Sky Islands', 'Lava Peaks', 'Neon Void'] as const;
+export const obbyWorld = (stage: number) => Math.min(2, Math.floor(Math.max(0, stage - 1) / OBBY_PER_WORLD));
 export const OBBY_CHECK = 500, OBBY_GEM = 50, OBBY_FALL = 100, OBBY_FINISH = 2_000, OBBY_PER_SECOND = 20;
+/** Blinking pads: on for 2.2 s, off for 1.2 s (they flicker for the last half second before). */
+export const BLINK_ON = 2.2, BLINK_OFF = 1.2;
+export const blinkOn = (t: number, phase: number) => ((t + phase) % (BLINK_ON + BLINK_OFF)) < BLINK_ON;
 
 export function obbyCourse(seed: number): { pads: Pad[]; gems: Gem[] } {
   const r = seeded(hash(`${seed}:obby`));
@@ -17,10 +23,13 @@ export function obbyCourse(seed: number): { pads: Pad[]; gems: Gem[] } {
   const gems: Gem[] = [];
   let x = 0, y = 0, z = 0;
   for (let stage = 1; stage <= OBBY_STAGES; stage++) {
-    const hard = stage / OBBY_STAGES, n = 5 + Math.floor(r() * 3);
+    // Difficulty climbs within each world and a little from world to world.
+    const world = obbyWorld(stage), inWorld = ((stage - 1) % OBBY_PER_WORLD + 1) / OBBY_PER_WORLD, hard = Math.min(1, inWorld * 0.8 + world * 0.15);
+    const n = 5 + Math.floor(r() * 3) + world;
     for (let i = 0; i < n; i++) {
       const roll = r();
-      const kind: PadKind = stage > 1 && roll < 0.12 + hard * 0.12 ? 'move' : stage > 2 && roll < 0.3 + hard * 0.1 ? 'fall' : stage > 3 && roll < 0.42 ? 'spin' : stage > 1 && roll < 0.5 ? 'bounce' : 'pad';
+      const kind: PadKind = world >= 1 && roll < 0.1 + world * 0.08 ? 'blink'
+        : stage > 1 && roll < 0.24 + hard * 0.1 ? 'move' : stage > 2 && roll < 0.38 + hard * 0.08 ? 'fall' : stage > 3 && roll < 0.5 + world * 0.04 ? 'spin' : stage > 1 && roll < 0.58 ? 'bounce' : 'pad';
       const size = kind === 'spin' ? 5.5 : 3.4 - hard * 1.1 + r() * 0.8;
       const gap = 2.2 + hard * 1.1 + r() * 0.7;
       const prev = pads[pads.length - 1];
@@ -35,7 +44,8 @@ export function obbyCourse(seed: number): { pads: Pad[]; gems: Gem[] } {
     const prev = pads[pads.length - 1];
     z -= prev.d / 2 + 2.6 + 3;
     y += -0.4 + r();
-    pads.push({ x, y, z, w: stage === OBBY_STAGES ? 10 : 6, d: stage === OBBY_STAGES ? 10 : 6, kind: stage === OBBY_STAGES ? 'finish' : 'check', stage, phase: 0 });
+    const last = stage === OBBY_STAGES;
+    pads.push({ x, y, z, w: last ? 10 : 6, d: last ? 10 : 6, kind: last ? 'finish' : 'check', stage, phase: 0 });
   }
   return { pads, gems };
 }
@@ -44,6 +54,10 @@ export function obbyCourse(seed: number): { pads: Pad[]; gems: Gem[] } {
 export const STRIKE_HIT = 10, STRIKE_TAG = 100, STRIKE_WAVE = 500, STRIKE_DOWN = 300;
 export const STRIKE_FIRE_S = 0.16, STRIKE_BOT_HP = 3, STRIKE_COMBO_S = 3, STRIKE_COMBO_MAX = 4;
 export const strikeWave = (n: number) => 3 + n * 2;
+/** Every fifth wave brings a boss drone (big, tough, fires spreads) with half the usual escort. */
+export const STRIKE_BOSS = 1_000;
+export const isBossWave = (wave: number) => wave > 0 && wave % 5 === 0;
+export const strikeBossHp = (wave: number) => 36 + wave * 2;
 /** Tags in a row (within 3 s of each other) multiply: ×1, ×2… up to ×4. */
 export const strikeMultiplier = (combo: number) => Math.min(STRIKE_COMBO_MAX, 1 + Math.floor(combo / 2));
 export interface Cover { x: number; z: number; w: number; d: number; h: number }
@@ -60,12 +74,22 @@ export function strikeArena(seed: number): Cover[] {
 }
 
 /* ── Night Shift: a dark school maze, five keys, the thing in the halls ── */
-export const NIGHT_N = 13;
-export const NIGHT_KEY = 1_000, NIGHT_ESCAPE = 3_000, NIGHT_PER_SECOND = 15, NIGHT_STUN = 150, NIGHT_CAUGHT = 500;
-export const NIGHT_KEYS = 5, NIGHT_LIVES = 3, NIGHT_STUN_S = 1.4, NIGHT_STUN_COOLDOWN_S = 7;
+/** Three floors, each bigger with more keys: 11×11 halls and 3 keys, 13×13 and 4, 15×15 and 5. */
+export const NIGHT_FLOORS = 3;
+export const nightSize = (floor: number) => 11 + floor * 2;
+export const nightKeys = (floor: number) => 3 + floor;
+export const NIGHT_KEY = 1_000, NIGHT_FLOOR = 1_500, NIGHT_ESCAPE = 3_000, NIGHT_PER_SECOND = 15, NIGHT_STUN = 150, NIGHT_CAUGHT = 500;
+export const NIGHT_KEYS = nightKeys(NIGHT_FLOORS - 1), NIGHT_LIVES = 3, NIGHT_STUN_S = 1.4, NIGHT_STUN_COOLDOWN_S = 7;
+/** A shuffle from the seeded numbers that every browser does the same way (sort(() => r() - 0.5)
+ *  doesn't: engines sort differently, so rooms would get different worlds). */
+function mix<T>(xs: T[], r: () => number): T[] {
+  const out = [...xs];
+  for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+  return out;
+}
 /** The maze as open walls: cell (x,y) has `east` / `south` passages; plus where keys and the exit are. */
-export function nightMaze(seed: number) {
-  const n = NIGHT_N, r = seeded(hash(`${seed}:night`));
+export function nightMaze(seed: number, floor = NIGHT_FLOORS - 1) {
+  const n = nightSize(floor), want = nightKeys(floor), r = seeded(hash(`${seed}:night:${floor}`));
   const east = Array.from({ length: n * n }, () => false), south = Array.from({ length: n * n }, () => false), seen = new Set<number>([0]);
   const stack = [0];
   while (stack.length) {
@@ -79,10 +103,10 @@ export function nightMaze(seed: number) {
   // A few loops, so the thing can't corner you in every hall.
   for (let i = 0; i < n * 2; i++) { const c = Math.floor(r() * n * n); if (c % n < n - 1) east[c] = true; else if (c < n * (n - 1)) south[c] = true; }
   const open = (c: number) => [c % n < n - 1 && east[c], c % n > 0 && east[c - 1], c < n * (n - 1) && south[c], c >= n && south[c - n]].filter(Boolean).length;
-  const ends = Array.from({ length: n * n }, (_, c) => c).filter((c) => c > n * 2 && open(c) === 1);
+  const ends = Array.from({ length: n * n }, (_, c) => c).filter((c) => c > n * 2 && c !== n * n - 1 && open(c) === 1);
   const keys: number[] = [];
-  for (const c of ends.sort(() => r() - 0.5)) { if (keys.length >= NIGHT_KEYS) break; if (keys.every((k) => Math.abs((k % n) - (c % n)) + Math.abs(Math.floor(k / n) - Math.floor(c / n)) > 3)) keys.push(c); }
-  while (keys.length < NIGHT_KEYS) keys.push(Math.floor(n * n * (0.3 + r() * 0.69)));
+  for (const c of mix(ends, r)) { if (keys.length >= want) break; if (keys.every((k) => Math.abs((k % n) - (c % n)) + Math.abs(Math.floor(k / n) - Math.floor(c / n)) > 3)) keys.push(c); }
+  while (keys.length < want) { const c = Math.floor(n * n * (0.3 + r() * 0.69)); if (!keys.includes(c) && c !== n * n - 1) keys.push(c); }
   return { n, east, south, keys, exit: n * n - 1, batteries: Array.from({ length: 6 }, () => Math.floor(r() * n * n)) };
 }
 /** Neighbouring cells through open walls. */
@@ -110,18 +134,29 @@ export function mazeStep(m: { n: number; east: boolean[]; south: boolean[] }, fr
 }
 
 /* ── Orbit Breach: repair the station's reactors under meteor fire, then reach the escape pod ── */
-export const ORBIT_REACTOR = 1_200, ORBIT_TANK = 100, ORBIT_ESCAPE = 3_000, ORBIT_PER_SECOND = 15, ORBIT_HIT = 150;
-export const ORBIT_REACTORS = 5, ORBIT_REPAIR_S = 3, ORBIT_TANK_EVERY_S = 8;
+export const ORBIT_REACTOR = 1_200, ORBIT_TANK = 100, ORBIT_SECTOR = 1_500, ORBIT_ESCAPE = 3_000, ORBIT_PER_SECOND = 15, ORBIT_HIT = 150;
+/** Three stations, each bigger with more reactors to fix: 3, then 4, then 5. */
+export const ORBIT_SECTORS = 3;
+export const orbitReactors = (sector: number) => 3 + sector;
+export const ORBIT_REACTORS = orbitReactors(ORBIT_SECTORS - 1), ORBIT_REPAIR_S = 3, ORBIT_TANK_EVERY_S = 8;
+export const ORBIT_NAMES = ['Station Helios', 'Red Moon Outpost', 'Ring Giant Dock'] as const;
 export interface Deck { x: number; z: number; y: number; r: number }
-export function orbitStation(seed: number) {
-  const r = seeded(hash(`${seed}:orbit`));
+export function orbitStation(seed: number, sector = 0) {
+  const r = seeded(hash(`${seed}:orbit:${sector}`));
   const decks: Deck[] = [{ x: 0, z: 0, y: 0, r: 13 }];
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2 + r() * 0.4, d = 26 + r() * 6;
     decks.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, y: -1 + r() * 5, r: 6 + r() * 3 });
   }
-  const order = [1, 2, 3, 4, 5, 6].sort(() => r() - 0.5);
-  return { decks, reactors: order.slice(0, ORBIT_REACTORS), pod: order[ORBIT_REACTORS] };
+  // Later stations reach further: an outer ring of smaller, higher decks.
+  for (let i = 0; i < sector * 3; i++) {
+    const a = (i / (sector * 3)) * Math.PI * 2 + 0.5 + r() * 0.3, d = 47 + r() * 6;
+    decks.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, y: 1 + r() * 6, r: 5 + r() * 2 });
+  }
+  // The pod on the farthest deck; reactors on others.
+  const rest = mix(decks.map((_, i) => i).slice(1), r);
+  const pod = rest.reduce((a, b) => (Math.hypot(decks[b].x, decks[b].z) > Math.hypot(decks[a].x, decks[a].z) ? b : a));
+  return { decks, reactors: rest.filter((i) => i !== pod).slice(0, orbitReactors(sector)), pod };
 }
 /** Meteors: when and where (x, z) each lands, warned 1.6 s before. */
 export function orbitMeteors(seed: number, seconds: number) {

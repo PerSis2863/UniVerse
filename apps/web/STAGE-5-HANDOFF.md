@@ -2014,3 +2014,35 @@ these four games through `GameStage`'s dynamic imports).
   shortcut: joining someone's rated room is checked on the device only.
 - Checked in Chromium with SwiftShader: all four render and play at 1280 and 390 (touch), the
   arcade's new "3D worlds" section and the age dialog axe-clean in light and dark.
+
+## M37 · Games: bug sweep, longer play, levels, smoother 3D (25 Oct 2026, on the branch)
+
+The owner: "upgrade the games… big games with a lot play time… ultra smooth… see if any errors or
+bugs are there". The live site's `error_reports` had no game errors; every game was played
+automatically in Chromium (`pageerror` / console) with none either. Bugs found in the code:
+- **Ocean Cleanup** counted power-ups and oil as plastic: now `isTrash`/`isPower`; magnet pulls
+  plastic within `MAGNET_PX`, shield takes one bump, boost ×1.35 speed and ×2 points, oil
+  slows (`OIL_SLOW`), calm → choppy → storm (rain, lightning). `kgOf` for the results.
+- **Flood Rescue** promised lightning and gusts: now `rescueStorm` strikes (⚡ warning, then
+  `STRIKE_TAKES` of the waiting time, kept per person in `cut`), gusts push, fuel burns and the H
+  refuels, pets add 50.
+- **Type Race** promised nitro: now `NITRO_STREAK` right letters light `NITRO_MS` of ×2.
+- **Seeded shuffles** used `sort(() => r() - 0.5)` (Night Shift keys, Orbit Breach reactors);
+  engines sort differently, so a room on Safari and Chrome could get different worlds. Use `mix`
+  (seeded Fisher–Yates) in `worlds.ts` for anything a room must share.
+- A Night Shift key could sit on the exit square; excluded (and tested).
+- **3D stutter:** `glowSprite` made a new canvas texture per bolt/spark; now one per colour,
+  shared (and not disposed with a world). Walls and cover blocks are merged meshes
+  (`World.boxes`, `mergeGeometries`): Night Shift ~2×, Neon Strike ~3× faster in the software test.
+  `World` lowers the pixel ratio by itself after half a second of late frames and raises it back
+  (`tune`), and the sun's shadow box follows the player (`sunOver`); `follow()` reuses vectors.
+- **Longer play:** Skyline Obby 30 stages in three worlds (`OBBY_WORLDS`, the sky dome follows the
+  camera, lava sea and embers, a neon grid and stars, `blink` pads), 8 min; Neon Strike boss drone
+  every fifth wave (`isBossWave`, spreads, a boss bar), 6 min; Night Shift three floors
+  (`nightMaze(seed, floor)`, 11/13/15 halls, 3/4/5 keys, the floor rebuilt in place), 8 min; Orbit
+  Breach three stations (`orbitStation(seed, sector)`, outer decks, a different planet each), 7 min;
+  Type Race 2, Ocean Cleanup 2.5, Flood Rescue 3. Caps in `src/lib/play.ts`, proved by the tests.
+- **Levels:** `xpFor(game, score)` (≤1,000 a round, the score's share of the cap), `levelOf(xp)`;
+  `GET /play/me` returns `xp` (from each game's summed scores, no new table); `PlayerCard` on the
+  arcade (level bar, colours and hats unlocked by level, kept in localStorage `uv-look`), "+XP" on
+  the results; the 3D character wears the look (`Avatar` `hat`, `readLook`/`lookHex`).

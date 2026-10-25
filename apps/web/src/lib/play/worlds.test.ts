@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { GAMES, ageOn, tooYoung } from '../play';
+import { GAMES, LOOK_COLORS, LOOK_HATS, ageOn, levelOf, tooYoung, xpFor } from '../play';
 import {
-  NIGHT_ESCAPE, NIGHT_KEY, NIGHT_KEYS, NIGHT_PER_SECOND, NIGHT_STUN, NIGHT_STUN_COOLDOWN_S, NIGHT_STUN_S, OBBY_CHECK, OBBY_FINISH, OBBY_GEM, OBBY_PER_SECOND, OBBY_STAGES,
-  ORBIT_ESCAPE, ORBIT_PER_SECOND, ORBIT_REACTOR, ORBIT_REACTORS, ORBIT_TANK, ORBIT_TANK_EVERY_S, STRIKE_BOT_HP, STRIKE_COMBO_MAX, STRIKE_FIRE_S, STRIKE_HIT, STRIKE_TAG, STRIKE_WAVE,
-  mazeNext, mazeStep, nightMaze, obbyCourse, orbitMeteors, orbitStation, strikeArena, strikeMultiplier,
+  NIGHT_ESCAPE, NIGHT_FLOOR, NIGHT_FLOORS, NIGHT_KEY, NIGHT_KEYS, NIGHT_PER_SECOND, NIGHT_STUN, NIGHT_STUN_COOLDOWN_S, NIGHT_STUN_S, OBBY_CHECK, OBBY_FINISH, OBBY_GEM, OBBY_PER_SECOND, OBBY_STAGES,
+  ORBIT_ESCAPE, ORBIT_PER_SECOND, ORBIT_REACTOR, ORBIT_SECTOR, ORBIT_SECTORS, ORBIT_TANK, ORBIT_TANK_EVERY_S, STRIKE_BOSS, STRIKE_BOT_HP, STRIKE_COMBO_MAX, STRIKE_FIRE_S, STRIKE_HIT, STRIKE_TAG, STRIKE_WAVE,
+  isBossWave, mazeNext, mazeStep, nightKeys, nightMaze, nightSize, obbyCourse, orbitMeteors, orbitReactors, orbitStation, strikeArena, strikeMultiplier,
 } from './worlds';
 
 describe('3D worlds (M36)', () => {
@@ -28,7 +28,8 @@ describe('3D worlds (M36)', () => {
     const tags = shots / STRIKE_BOT_HP;
     let waves = 0;
     for (let bots = 0; bots < tags; waves++) bots += 3 + waves * 2; // waves only come once the last is cleared
-    expect(shots * STRIKE_HIT + tags * STRIKE_TAG * STRIKE_COMBO_MAX + waves * STRIKE_WAVE).toBeLessThanOrEqual(GAMES.strike.maxScore);
+    expect(shots * STRIKE_HIT + tags * STRIKE_TAG * STRIKE_COMBO_MAX + waves * STRIKE_WAVE + Math.ceil(waves / 5) * STRIKE_BOSS).toBeLessThanOrEqual(GAMES.strike.maxScore);
+    expect([isBossWave(4), isBossWave(5), isBossWave(10)]).toEqual([false, true, true]);
     expect(strikeMultiplier(0)).toBe(1);
     expect(strikeMultiplier(99)).toBe(STRIKE_COMBO_MAX);
     expect(strikeArena(3).every((c) => Math.hypot(c.x, c.z) >= 7)).toBe(true);
@@ -42,15 +43,17 @@ describe('3D worlds (M36)', () => {
     const step = mazeStep(m, m.exit, 0);
     expect(mazeNext(m, m.exit)).toContain(step);
     const stuns = GAMES.night.seconds / (NIGHT_STUN_S + NIGHT_STUN_COOLDOWN_S);
-    expect(NIGHT_KEYS * NIGHT_KEY + NIGHT_ESCAPE + GAMES.night.seconds * NIGHT_PER_SECOND + stuns * NIGHT_STUN).toBeLessThanOrEqual(GAMES.night.maxScore);
+    const keys = Array.from({ length: NIGHT_FLOORS }, (_, f) => nightKeys(f)).reduce((a, b) => a + b, 0);
+    expect(keys * NIGHT_KEY + (NIGHT_FLOORS - 1) * NIGHT_FLOOR + NIGHT_ESCAPE + GAMES.night.seconds * NIGHT_PER_SECOND + stuns * NIGHT_STUN).toBeLessThanOrEqual(GAMES.night.maxScore);
+    for (let f = 0; f < NIGHT_FLOORS; f++) { const fl = nightMaze(11, f); expect(fl.n).toBe(nightSize(f)); expect(new Set(fl.keys).size).toBe(nightKeys(f)); expect(fl.keys).not.toContain(fl.exit); }
   });
 
   it('places five reactors and a pod on different decks, meteors in time order, under the cap', () => {
-    const s = orbitStation(5);
-    expect(new Set([...s.reactors, s.pod]).size).toBe(ORBIT_REACTORS + 1);
+    for (let k = 0; k < ORBIT_SECTORS; k++) { const st = orbitStation(5, k); expect(new Set([...st.reactors, st.pod]).size).toBe(orbitReactors(k) + 1); expect(st.reactors).not.toContain(0); }
     const ms = orbitMeteors(5, GAMES.orbit.seconds);
     expect(ms.every((x, i) => i === 0 || x.at > ms[i - 1].at)).toBe(true);
-    expect(ORBIT_REACTORS * ORBIT_REACTOR + (GAMES.orbit.seconds / ORBIT_TANK_EVERY_S + 1) * ORBIT_TANK + ORBIT_ESCAPE + GAMES.orbit.seconds * ORBIT_PER_SECOND).toBeLessThanOrEqual(GAMES.orbit.maxScore);
+    const reactors = Array.from({ length: ORBIT_SECTORS }, (_, k) => orbitReactors(k)).reduce((a, b) => a + b, 0);
+    expect(reactors * ORBIT_REACTOR + (GAMES.orbit.seconds / ORBIT_TANK_EVERY_S + 1) * ORBIT_TANK + (ORBIT_SECTORS - 1) * ORBIT_SECTOR + ORBIT_ESCAPE + GAMES.orbit.seconds * ORBIT_PER_SECOND).toBeLessThanOrEqual(GAMES.orbit.maxScore);
   });
 
   it('works out ages and refuses rated games only for a known younger age', () => {
@@ -62,5 +65,16 @@ describe('3D worlds (M36)', () => {
     expect(tooYoung('night', 18)).toBe(false);
     expect(tooYoung('night', null)).toBe(false); // asked on the device instead
     expect(tooYoung('obby', 8)).toBe(false);
+  });
+
+  it('turns scores into XP and XP into levels, and unlocks looks along the way', () => {
+    expect(xpFor('quiz', GAMES.quiz.maxScore)).toBe(1000);
+    expect(xpFor('strike', GAMES.strike.maxScore * 5)).toBe(1000); // capped
+    expect(xpFor('obby', -5)).toBe(0);
+    expect(levelOf(0)).toEqual({ level: 1, into: 0, need: 400 });
+    expect(levelOf(400)).toEqual({ level: 2, into: 0, need: 550 });
+    expect(levelOf(399).level).toBe(1);
+    expect(LOOK_COLORS.filter((c) => c.level === 1).length).toBeGreaterThan(0);
+    expect(LOOK_HATS[0]).toMatchObject({ id: 'none', level: 1 });
   });
 });

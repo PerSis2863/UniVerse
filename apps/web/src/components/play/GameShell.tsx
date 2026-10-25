@@ -12,7 +12,7 @@ import { ScreenEffect } from '@/components/chat/ScreenEffect';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { appById } from '@/lib/apps';
-import { COUNTDOWN_MS, GAMES, GAME_IDS, cleanRoomCode, isGame, type GameId } from '@/lib/play';
+import { COUNTDOWN_MS, GAMES, GAME_IDS, cleanRoomCode, isGame, xpFor, type GameId } from '@/lib/play';
 import { useAuthStore } from '@/store/auth';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -27,7 +27,7 @@ import { useGameRoom } from './useGameRoom';
 // /play/game (UniVerse Play, M31): ?g=<game> picks the game (solo, start a room, or join one by
 // code); ?room=<code> is a room, so a room's link or QR brings friends straight in.
 
-export interface PlayMe { games: Record<GameId, { best: number; solo: number; multi: number }>; played: number; recent: { game: GameId; mode: string; score: number; createdAt: string }[]; age?: number | null }
+export interface PlayMe { games: Record<GameId, { best: number; solo: number; multi: number }>; played: number; recent: { game: GameId; mode: string; score: number; createdAt: string }[]; age?: number | null; xp?: number }
 
 export function GameShell() {
   const params = useSearchParams();
@@ -213,6 +213,8 @@ function SoloResult({ game, result, onAgain, onExit, onChallenge }: { game: Game
         <p className="mt-3 text-sm text-zinc-300" aria-live="polite">
           {result.saving ? 'Saving…' : result.newBest ? 'That’s your best yet.' : <>Your best: <span className="font-semibold tabular-nums">{result.best.toLocaleString()}</span> · {(result.best - result.score).toLocaleString()} to beat it</>}
         </p>
+        <motion.p initial={{ opacity: 0, y: calm ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.smooth, delay: calm ? 0 : 1.2 }}
+          className="mx-auto mt-3 w-fit rounded-full bg-white/10 px-3 py-1 text-sm font-bold text-fuchsia-200 ring-1 ring-fuchsia-400/30">+{xpFor(game, result.score).toLocaleString('en')} XP</motion.p>
         <StatTiles stats={result.stats} />
         <div className="mt-8 flex flex-wrap justify-center gap-2">
           <button type="button" autoFocus onClick={onAgain} className="btn-primary btn-lg"><RotateCcw className="w-5 h-5" aria-hidden />Play again</button>

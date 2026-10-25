@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { GAMES } from '@/lib/play';
-import { OBBY_CHECK, OBBY_FALL, OBBY_FINISH, OBBY_GEM, OBBY_PER_SECOND, OBBY_STAGES, obbyCourse, type Pad } from '@/lib/play/worlds';
+import { BLINK_ON, BLINK_OFF, OBBY_CHECK, OBBY_FALL, OBBY_FINISH, OBBY_GEM, OBBY_PER_SECOND, OBBY_PER_WORLD, OBBY_STAGES, OBBY_WORLDS, blinkOn, obbyCourse, obbyWorld, type Pad } from '@/lib/play/worlds';
 import { useArena } from './arena';
+import { lookHex, readLook } from './PlayerCard';
 import type { GameProps } from './game-props';
 import { Avatar, Body, Controls, THREE, World, follow, glowSprite, walk } from './world/core';
 import { HudChip, WorldFrame } from './world/Stage';
@@ -12,15 +13,21 @@ import { HudChip, WorldFrame } from './world/Stage';
 // pad to pad (moving, crumbling, bouncy, and wide ones with a spinning laser), checkpoints save
 // where you start again, gems add points, and the golden finish ends the round early with a bonus.
 
-const HUES = [0x38bdf8, 0xa78bfa, 0xf472b6, 0xfbbf24, 0x34d399];
+const HUES = [[0x38bdf8, 0xa78bfa, 0xf472b6, 0xfbbf24, 0x34d399], [0xf97316, 0xef4444, 0xfbbf24, 0xa16207, 0xf43f5e], [0xd946ef, 0x22d3ee, 0xa855f7, 0x818cf8, 0xf0abfc]];
+/** Each world's sky (top, middle, low), fog and light. */
+const SKIES = [
+  { top: 0x2b59ff, mid: 0x9b8cff, low: 0xffb3d9, fog: 0xc9b6ff, sky: 0xdfe8ff, ground: 0x6b4f8f },
+  { top: 0x2a0a0a, mid: 0xb4381f, low: 0xff8a3d, fog: 0x8a2c18, sky: 0xffc9a3, ground: 0x5a1a0a },
+  { top: 0x05010f, mid: 0x2a0b4a, low: 0x7c1d8f, fog: 0x1b0933, sky: 0xc4b5fd, ground: 0x2a0b4a },
+];
 
-interface Live { pad: Pad; mesh: THREE.Mesh; box: THREE.Box3; base: THREE.Vector3; touched: number; drop: number; bar?: THREE.Mesh; flag?: THREE.Mesh }
+interface Live { pad: Pad; mesh: THREE.Mesh; box: THREE.Box3; base: THREE.Vector3; touched: number; drop: number; on?: boolean; bar?: THREE.Mesh; flag?: THREE.Mesh }
 
 export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone, onStats }: GameProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const controls = useRef<Controls | null>(null);
   const arena = useArena();
-  const [hud, setHud] = useState({ stage: 0, gems: 0, falls: 0, score: 0 });
+  const [hud, setHud] = useState({ stage: 0, gems: 0, falls: 0, score: 0, world: 0 });
   const out = useRef({ arena, onProgress, onDone, onStats, clock, endsAt, startsAt });
   useEffect(() => { out.current = { arena, onProgress, onDone, onStats, clock, endsAt, startsAt }; });
 
@@ -41,6 +48,23 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
     }));
     w.scene.add(sky);
     w.lights({ sky: 0xdfe8ff, ground: 0x6b4f8f, power: 2.4, at: [40, 70, 30], ambient: 1.1 });
+    const hemi = w.scene.children.find((o) => o instanceof THREE.HemisphereLight) as THREE.HemisphereLight;
+    const skyU = (sky.material as THREE.ShaderMaterial).uniforms;
+    // Where each world starts and ends along the course (its first and last checkpoints).
+    const zOf = (stage: number) => pads.find((p) => p.stage === stage && (p.kind === 'check' || p.kind === 'finish'))!.z;
+    const worldZ = [0, 1, 2].map((k) => [k === 0 ? 30 : zOf(k * OBBY_PER_WORLD), zOf(Math.min(OBBY_STAGES, (k + 1) * OBBY_PER_WORLD))]);
+    const worldY = [0, 1, 2].map((k) => Math.min(...pads.filter((p) => obbyWorld(Math.max(1, p.stage)) === k).map((p) => p.y)));
+    // Lava Peaks: a glowing sea far below and embers rising. Neon Void: stars and a grid.
+    const lava = new THREE.Mesh(new THREE.PlaneGeometry(260, Math.abs(worldZ[1][1] - worldZ[1][0]) + 120), new THREE.MeshBasicMaterial({ color: 0xff5a1f, fog: false }));
+    lava.rotation.x = -Math.PI / 2; lava.position.set(0, worldY[1] - 26, (worldZ[1][0] + worldZ[1][1]) / 2); w.scene.add(lava);
+    const embers: THREE.Sprite[] = [];
+    for (let i = 0; i < 30; i++) { const e = glowSprite(i % 2 ? 0xff7a1a : 0xfbbf24, 1.2); e.position.set((Math.sin(i * 7.1) * 0.5) * 70, worldY[1] - 20 + (i * 1.7) % 30, worldZ[1][0] - ((i * 37) % 100) / 100 * Math.abs(worldZ[1][1] - worldZ[1][0])); w.scene.add(e); embers.push(e); }
+    const starPos = new Float32Array(900 * 3);
+    for (let i = 0; i < 900; i++) starPos.set([(Math.sin(i * 12.9) * 0.5) * 300, worldY[2] - 40 + ((i * 7.31) % 1) * 160 + Math.cos(i) * 60, worldZ[2][0] - ((i * 0.618) % 1) * (Math.abs(worldZ[2][1] - worldZ[2][0]) + 80)], i * 3);
+    w.scene.add(new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(starPos, 3)), new THREE.PointsMaterial({ color: 0xffffff, size: 0.6, fog: false })));
+    const grid = new THREE.GridHelper(400, 80, 0xd946ef, 0x6d28d9);
+    grid.position.set(0, worldY[2] - 30, (worldZ[2][0] + worldZ[2][1]) / 2); w.scene.add(grid);
+    const want = { top: new THREE.Color(), mid: new THREE.Color(), low: new THREE.Color(), fog: new THREE.Color(), sky: new THREE.Color(), ground: new THREE.Color() };
     const sun = glowSprite(0xfff1b8, 70); sun.position.set(80, 90, -220); w.scene.add(sun);
     const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
     const clouds: THREE.Group[] = [];
@@ -48,13 +72,13 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
     for (let i = 0; i < 26; i++) {
       const g = new THREE.Group();
       for (let j = 0; j < 4; j++) { const m = new THREE.Mesh(new THREE.BoxGeometry(4 + rand(i * 9 + j) * 6, 2 + rand(i * 7 + j) * 2, 4 + rand(i * 5 + j) * 5), cloudMat); m.position.set(j * 3 - 4, rand(i + j) * 1.5, rand(i * 3 + j) * 3); g.add(m); }
-      g.position.set((rand(i) - 0.5) * 160, -14 - rand(i * 2) * 30, 20 - rand(i * 4) * 300);
+      g.position.set((rand(i) - 0.5) * 160, -14 - rand(i * 2) * 30, 20 - rand(i * 4) * (Math.abs(worldZ[0][1]) + 30));
       w.scene.add(g); clouds.push(g);
     }
 
     // The pads.
     const live: Live[] = pads.map((p) => {
-      const hue = p.kind === 'check' ? 0x22c55e : p.kind === 'finish' ? 0xfbbf24 : p.kind === 'bounce' ? 0xf472b6 : p.kind === 'fall' ? 0xfb923c : HUES[p.stage % HUES.length];
+      const hue = p.kind === 'check' ? 0x22c55e : p.kind === 'finish' ? 0xfbbf24 : p.kind === 'bounce' ? 0xf472b6 : p.kind === 'fall' ? 0xfb923c : p.kind === 'blink' ? 0x22d3ee : HUES[obbyWorld(Math.max(1, p.stage))][p.stage % 5];
       const mat = new THREE.MeshLambertMaterial({ color: hue, emissive: hue, emissiveIntensity: p.kind === 'finish' ? 0.5 : 0.18 });
       const h = p.kind === 'bounce' ? 0.6 : 0.9;
       const mesh = w.box([p.x, p.y - h / 2, p.z], [p.w, h, p.d], mat, false);
@@ -87,14 +111,14 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
     const gemLive = gems.map((g) => { const m = new THREE.Mesh(gemGeo, gemMat); m.position.set(g.x, g.y, g.z); m.add(glowSprite(0x22d3ee, 1.6)); w.scene.add(m); return { m, got: false, pop: 0 }; });
 
     // The player.
-    const me = new Avatar(0xec4899);
+    const look = readLook(), me = new Avatar(lookHex(look), { hat: look.hat });
     me.group.rotation.y = Math.PI; // facing the way ahead
     w.scene.add(me.group);
     const body = new Body([0, 0.1, 1.5]);
     let spawn = new THREE.Vector3(0, 0.1, 1.5), score = 0, stage = 0, gemsGot = 0, falls = 0, done = false, wasGround = true, squash = 0;
     const lowest = Math.min(...pads.map((p) => p.y)) - 22;
     const report = () => {
-      setHud({ stage, gems: gemsGot, falls, score });
+      setHud({ stage, gems: gemsGot, falls, score, world: obbyWorld(Math.min(OBBY_STAGES, stage + 1)) });
       out.current.onProgress(score, stage);
       out.current.onStats?.([{ label: 'Checkpoints', value: `${stage} of ${OBBY_STAGES}` }, { label: 'Gems', value: String(gemsGot) }, { label: 'Falls', value: String(falls) }, { label: 'Finished', value: done ? 'Yes' : 'Not yet' }]);
     };
@@ -124,6 +148,11 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
           else if (since < 3.2) { l.drop += dt * 18; l.mesh.position.y -= l.drop * dt; l.box.makeEmpty(); }
           else { l.touched = 0; l.drop = 0; l.mesh.position.copy(l.base); l.box.setFromObject(l.mesh); }
         }
+        if (p.kind === 'blink') {
+          const on = blinkOn(t, p.phase), late = ((t + p.phase) % (BLINK_ON + BLINK_OFF)) > BLINK_ON - 0.5;
+          l.mesh.visible = on && !(late && Math.sin(t * 60) > 0);
+          if (on !== l.on) { l.on = on; if (on) l.box.setFromObject(l.mesh); else l.box.makeEmpty(); }
+        }
         if (l.bar) {
           l.bar.rotation.y = t * (1.6 + p.stage * 0.08) + p.phase;
           const rel = body.pos.clone().sub(l.bar.position), a = l.bar.rotation.y;
@@ -148,11 +177,21 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
             score += OBBY_FINISH + left * OBBY_PER_SECOND;
             out.current.arena.announce('You made it!', 'gold'); out.current.arena.sfx('win');
             setTimeout(() => out.current.onDone(score, stage), 1800);
-          } else { out.current.arena.announce(`Checkpoint ${stage}!`, 'good'); out.current.arena.sfx('check'); }
+          } else if (stage % OBBY_PER_WORLD === 0) { out.current.arena.announce(`World ${stage / OBBY_PER_WORLD + 1}: ${OBBY_WORLDS[stage / OBBY_PER_WORLD]}!`, 'gold'); out.current.arena.sfx('win'); }
+          else { out.current.arena.announce(`Checkpoint ${stage}!`, 'good'); out.current.arena.sfx('check'); }
           report();
         }
       }
-      if (body.pos.y < lowest && !done) respawn('Oof! Back to the checkpoint');
+      if ((body.pos.y < lowest || body.pos.y < spawn.y - 30) && !done) respawn('Oof! Back to the checkpoint');
+      // The sky turns as you cross into the next world.
+      const sk = SKIES[obbyWorld(Math.min(OBBY_STAGES, stage + 1))], k = 1 - Math.exp(-1.6 * dt);
+      want.top.set(sk.top); want.mid.set(sk.mid); want.low.set(sk.low); want.fog.set(sk.fog); want.sky.set(sk.sky); want.ground.set(sk.ground);
+      skyU.top.value.lerp(want.top, k); skyU.mid.value.lerp(want.mid, k); skyU.low.value.lerp(want.low, k);
+      (w.scene.fog as THREE.Fog).color.lerp(want.fog, k); hemi.color.lerp(want.sky, k); hemi.groundColor.lerp(want.ground, k);
+      for (const e of embers) { e.position.y += dt * 2.5; if (e.position.y > worldY[1] + 6) e.position.y = worldY[1] - 22; }
+      w.sunOver(body.pos);
+      sky.position.copy(w.camera.position);
+      sun.position.set(w.camera.position.x + 80, w.camera.position.y + 90, w.camera.position.z - 220);
       // Gems.
       for (const g of gemLive) {
         if (g.got) { if (g.pop < 1) { g.pop += dt * 3; g.m.scale.setScalar(1 + g.pop); (g.m.material as THREE.Material).opacity = 1 - g.pop; if (g.pop >= 1) g.m.visible = false; } continue; }
@@ -178,7 +217,7 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
     <div className="mx-auto w-full max-w-6xl">
       <WorldFrame canvas={canvas} controls={controls} buttons={[{ id: 'jump', label: 'Jump' }]} keys="WASD move · Space jump · Shift run" label="Skyline Obby: a 3D obstacle course in the sky">
         <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap gap-2">
-          <HudChip label="Checkpoint" value={`${hud.stage}/${OBBY_STAGES}`} tone="good" />
+          <HudChip label={OBBY_WORLDS[hud.world]} value={`Stage ${hud.stage}/${OBBY_STAGES}`} tone="good" />
           <HudChip label="Gems" value={hud.gems} tone="gold" />
           <HudChip label="Falls" value={hud.falls} tone={hud.falls ? 'bad' : 'white'} />
         </div>

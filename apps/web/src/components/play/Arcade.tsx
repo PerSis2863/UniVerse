@@ -12,6 +12,7 @@ import { GAMES, GAME_IDS, type GameId } from '@/lib/play';
 import { ITEMS } from '@/lib/play/sort';
 import { spring } from '@/lib/motion';
 import { AgeBadge } from './AgeGate';
+import { PlayerCard } from './PlayerCard';
 import { GameIcon } from './GameIcon';
 import { JoinRoom, type PlayMe } from './GameShell';
 
@@ -135,7 +136,7 @@ export function Arcade() {
           <div>
             <p className="inline-flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-2.5 py-1 text-xs font-semibold text-fuchsia-800 dark:text-fuchsia-300"><Gamepad2 className="w-3.5 h-3.5" aria-hidden />UniVerse Play</p>
             <h1 className="mt-3 text-3xl font-semibold text-zinc-900 dark:text-white sm:text-4xl">Games that <em className="font-serif text-pink-600 dark:text-pink-300">teach</em> something.</h1>
-            <p className="mt-2 max-w-xl text-zinc-600 dark:text-zinc-300">Two games for each app, from a quick quiz to flying a rescue helicopter. Play alone against your best, or open a room and race friends live.</p>
+            <p className="mt-2 max-w-xl text-zinc-600 dark:text-zinc-300">3D worlds to run, jump and survive in, plus two games for each app. Every round earns XP: level up to unlock new looks. Play alone or race friends live in a room.</p>
             <dl className="mt-6 grid max-w-md grid-cols-3 gap-4">
               <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">Rounds played</dt><dd className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={me?.played ?? 0} /></dd></div>
               <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">With friends</dt><dd className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={withFriends} /></dd></div>
@@ -148,6 +149,8 @@ export function Arcade() {
           </div>
         </div>
       </section>
+
+      {me && <PlayerCard xp={me.xp ?? 0} />}
 
       {(['worlds', 'big', 'quick'] as const).map((kind) => (
         <section key={kind} aria-labelledby={`games-${kind}`}>

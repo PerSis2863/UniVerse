@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M34 is the latest).
+  builds on it). The newest notes are at the end (M37 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -94,8 +94,10 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 - **Merged since (PR #96):** M34 (the "Karma" look, see §8), M35a (maps wrap and pan) and the
   M35 game arena with four rebuilt games.
 - **On the branch, not merged:** the World Pin map fix and maps opening on Europe, the landing's
-  one-picture-per-app (`HeroScenes.tsx`), and **M36 3D worlds** (three.js; Skyline Obby, Neon
-  Strike 16+, Night Shift 18+, Orbit Breach 12+; age ratings, `src/components/play/world`).
+  one-picture-per-app (`HeroScenes.tsx`), **M36 3D worlds** (three.js; Skyline Obby, Neon
+  Strike 16+, Night Shift 18+, Orbit Breach 12+; age ratings, `src/components/play/world`) and
+  **M37** (game bug sweep, longer rounds with worlds/floors/stations/bosses, player levels and
+  looks, smoother 3D).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **Next database update number: `0186`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each

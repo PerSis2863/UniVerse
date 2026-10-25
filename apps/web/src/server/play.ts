@@ -102,7 +102,7 @@ async function checkAge(u: SessionUser, game: GameId) {
 /** GET /play/me: my best, rounds played and last scores, per game, and my age (for rated games). */
 export async function playMe(u: SessionUser) {
   const [best, counts, recent, age] = await Promise.all([
-    prisma.gameScore.groupBy({ by: ['game'], where: { userId: u.id }, _max: { score: true } }),
+    prisma.gameScore.groupBy({ by: ['game'], where: { userId: u.id }, _max: { score: true }, _sum: { score: true } }),
     prisma.gameScore.groupBy({ by: ['game', 'mode'], where: { userId: u.id }, _count: { _all: true } }),
     prisma.gameScore.findMany({ where: { userId: u.id }, orderBy: { createdAt: 'desc' }, take: 12, select: { game: true, mode: true, score: true, createdAt: true } }),
     myAge(u),
@@ -112,7 +112,9 @@ export async function playMe(u: SessionUser) {
     solo: counts.find((c) => c.game === g && c.mode === 'solo')?._count._all ?? 0,
     multi: counts.find((c) => c.game === g && c.mode === 'multi')?._count._all ?? 0,
   }])) as Record<GameId, { best: number; solo: number; multi: number }>;
-  return { games, played: counts.reduce((n, c) => n + c._count._all, 0), recent, age };
+  // Experience: each game's total score as a share of its best possible round, ×1000.
+  const xp = best.reduce((n, b) => n + (isGame(b.game) ? Math.round(((b._sum.score ?? 0) / GAMES[b.game].maxScore) * 1000) : 0), 0);
+  return { games, played: counts.reduce((n, c) => n + c._count._all, 0), recent, age, xp };
 }
 
 /** GET /play/leaderboard?game=&range=week|all: the best score of each person, top 20, and mine. */
