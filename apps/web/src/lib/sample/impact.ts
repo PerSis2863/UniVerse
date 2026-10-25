@@ -116,7 +116,9 @@ function myActions(me: { id: string }) {
     const kind = pick(r, GREEN_KINDS), [lo, hi] = AMT[kind], amount = Math.round((lo + r() * (hi - lo)) * 10) / 10;
     // Every one of the last six days has one, so the streak shows.
     const at = i < 6 ? now - i * DAY - 3_600_000 * (1 + r() * 6) : now - (6 + r() * 54) * DAY;
-    return { id: `sample-green-${i}`, userId: me.id, kind, amount, co2Kg: co2For(kind, amount), note: r() < 0.2 ? 'With the team' : null, lat: Math.round(home[1] * 10) / 10, lng: Math.round(home[2] * 10) / 10, place: home[0], createdAt: iso(at) };
+    // Most older actions were confirmed by a teammate; a few recent ones wait with their photo.
+    const photoUrl = i % 5 === 1 ? '/og.jpg' : null, verifiedAt = i > 3 && i % 4 !== 0 ? iso(at + 3_600_000) : null;
+    return { id: `sample-green-${i}`, userId: me.id, kind, amount, co2Kg: co2For(kind, amount), note: r() < 0.2 ? 'With the team' : null, lat: Math.round(home[1] * 10) / 10, lng: Math.round(home[2] * 10) / 10, place: home[0], photoUrl: photoUrl ?? (verifiedAt ? '/og.jpg' : null), verifiedAt, createdAt: iso(at) };
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -128,11 +130,14 @@ export function sampleGreenMe(me: { id: string }) {
   const kg = actions.reduce((s, a) => s + a.co2Kg, 0);
   const totals = { actions: actions.length, kg, byKind, streak: streak(actions.map((a) => a.createdAt.slice(0, 10)), iso(now).slice(0, 10)) };
   const week = Date.parse(challenge.starts);
-  const mine = actions.filter((a) => a.kind === challenge.kind && Date.parse(a.createdAt) >= week).reduce((s, a) => s + a.amount, 0);
+  const thisWeek = actions.filter((a) => a.kind === challenge.kind && Date.parse(a.createdAt) >= week);
+  const mine = thisWeek.filter((a) => a.verifiedAt).reduce((s, a) => s + a.amount, 0), waiting = thisWeek.filter((a) => !a.verifiedAt).reduce((s, a) => s + a.amount, 0);
+  const proven = actions.filter((a) => a.verifiedAt);
   return {
     totals: { ...totals, kg: Math.round(kg * 10) / 10, kgByKind },
     badges: BADGES.map((b) => ({ id: b.id, label: b.label, text: b.text, earned: b.earned(totals) })),
-    challenge: { ...challenge, mine: Math.round(mine * 10) / 10, team: Math.round((mine * 7.4 + 12) * 10) / 10 },
+    challenge: { ...challenge, mine: Math.round(mine * 10) / 10, waiting: Math.round(waiting * 10) / 10, team: Math.round((mine * 7.4 + 12) * 10) / 10 },
+    verified: { actions: proven.length, kg: Math.round(proven.reduce((s, a) => s + a.co2Kg, 0) * 10) / 10 },
     perDay: Array.from({ length: 30 }, (_, i) => {
       const d = iso(now - (29 - i) * DAY).slice(0, 10);
       return { day: d, kg: Math.round(actions.filter((a) => a.createdAt.startsWith(d)).reduce((s, a) => s + a.co2Kg, 0) * 10) / 10 };
@@ -162,6 +167,18 @@ export function sampleGreenTeams(me: { id: string; name: string }) {
 }
 
 /** GET /green/map */
+/** GET /green/proofs */
+export function sampleGreenProofs() {
+  const now = Date.now(), r = rng(33);
+  return {
+    teams: 2,
+    proofs: (['TREE', 'CLEANUP', 'CYCLE'] as const).map((kind, i) => {
+      const amount = [3, 4.5, 18][i];
+      return { id: `sample-proof-${i}`, kind, amount, co2Kg: co2For(kind, amount), note: ['Behind the school', 'Riverbank, 6 bags', null][i], photoUrl: '/og.jpg', place: null, createdAt: iso(now - (i + r()) * 5 * 3_600_000), by: NAMES[i * 3] };
+    }),
+  };
+}
+
 export function sampleGreenMap() {
   const r = rng(11);
   return { cells: BIG.flatMap((c) => Array.from({ length: 1 + Math.floor(r() * 4) }, () => ({ lat: Math.round((c[1] + (r() - 0.5) * 0.6) * 10) / 10, lng: Math.round((c[2] + (r() - 0.5) * 0.6) * 10) / 10, kg: Math.round(20 + r() * 900), actions: 3 + Math.floor(r() * 120), place: c[0] }))) };

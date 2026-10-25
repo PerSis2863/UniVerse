@@ -1683,3 +1683,27 @@ Progress table (row D6).
   `sr-only` text. The hub cards' coloured taglines failed contrast; they're grey now.
 - Checked: types, lint, tests, lean; the route against the local database; axe at 390 and 1280 px,
   light and dark, no sideways scrolling.
+
+## M25 · Proof for Green actions; the Green page without gaps
+
+- Second of the seven ideas. The owner also said of `/green`: "this design is not good because there
+  is space left" (the short 30-day chart beside a 30-row "What you did").
+- **Proof** (migration **0183** `green_actions.photoUrl`, `verifiedBy`, `verifiedAt`): a photo with an
+  action when it's logged ("Add a photo as proof", shrunk in the browser, `/api/upload`), or later
+  from "What you did" ("Add proof", `POST /green/actions/:id/proof`, own and unconfirmed only, only our
+  own `/api/files/` addresses via `isAppFileUrl`). A teammate (someone sharing a team, never the
+  person) confirms it: "Confirm your teammates' actions" (`GET /green/proofs`, 30 days, photos only;
+  `POST /green/actions/:id/confirm`, claimed with a conditional update). The person is told in the app
+  and by push, no email. Rows show Confirmed / Waiting / Add proof.
+- **What counts:** the weekly challenge (mine and my teams') and both leaderboards count confirmed
+  actions only (`verifiedAt IS NOT NULL` in `green.ts`); the challenge says how much waits for a
+  teammate. The person's own totals, streak, badges, map and the Impact Wallet still count everything
+  logged.
+- **Layout:** on wide screens each row of `/green` ends level: beside the form, the challenge and the
+  teammates' photos (that box fills the rest and scrolls inside); below, the 30 days and the badges,
+  beside "What you did", which is exactly as tall and scrolls inside (the `lg:absolute lg:inset-5`
+  wrapper keeps the long list from setting the row's height). Phones show 6 actions and "Show all".
+- Test: `src/server/green.test.ts` (own action refused, outsider refused, no photo refused, outside
+  photo addresses refused). Checked in the browser: a teammate's photo confirmed, the owner refused,
+  an outsider refused; axe clean on `/green` and `/green/teams` at 390 and 1280, light and dark.
+  Next migration: **0184**.

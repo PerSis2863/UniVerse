@@ -6998,9 +6998,15 @@ model GreenAction {
   lat       Float?
   lng       Float?
   place     String?
+  /// Proof (migration 0183): a photo, and the teammate who confirmed the action. Only confirmed
+  /// actions count for the weekly challenge and the leaderboards.
+  photoUrl   String?
+  verifiedBy String?
+  verifiedAt DateTime?
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([createdAt])
+  @@index([verifiedAt])
   @@map("green_actions")
 }

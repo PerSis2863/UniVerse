@@ -1019,6 +1019,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/green\/me$/, ({ db: d }) => ok(impact.sampleGreenMe(d.me))],
   [/^\/green\/teams$/, ({ db: d }) => ok(impact.sampleGreenTeams(d.me))],
   [/^\/green\/map$/, () => ok(impact.sampleGreenMap())],
+  [/^\/green\/proofs$/, () => ok(impact.sampleGreenProofs())],
   [/^\/trace\/brand$/, () => ok(impact.sampleTraceBrand())],
   [/^\/trace\/products$/, () => ok(impact.sampleTraceProducts())],
   [/^\/trace\/overview$/, ({ q }) => ok(impact.sampleTraceOverview(Math.min(90, Math.max(7, Number(q.get('days')) || 30))))],

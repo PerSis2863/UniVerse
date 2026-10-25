@@ -12,7 +12,7 @@ import { fmt } from '@/lib/instruments';
 import { cn } from '@/lib/utils';
 
 // UniVerse Green → teams: start a team or join one with its code, see each member's CO₂ saved, the
-// team leaderboard and the top people of the last 30 days (src/server/green.ts).
+// team leaderboard and the top people of the last 30 days, confirmed actions only (src/server/green.ts).
 
 interface Teams {
   mine: { id: string; name: string; code: string; owner: boolean; kg: number; members: { id: string; name: string; kg: number; me: boolean }[] }[];
@@ -74,6 +74,7 @@ export default function GreenTeamsPage() {
           <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
             <section className="panel p-5" aria-labelledby="lb-h">
               <h2 id="lb-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Trophy className="w-4 h-4 text-amber-500" aria-hidden />Team leaderboard · 30 days</h2>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Only actions a teammate confirmed from a photo count, so nobody can top it by typing big numbers.</p>
               {!data ? <div className="mt-3 h-48 skeleton rounded-xl" /> : data.leaderboard.length === 0 ? <p className="mt-3 text-sm text-zinc-500">No teams yet. Start the first.</p> : (
                 <ol className="mt-4 space-y-3">
                   {data.leaderboard.map((t, i) => (

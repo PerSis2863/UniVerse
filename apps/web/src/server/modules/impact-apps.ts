@@ -2,7 +2,7 @@ import type { Router } from '../router';
 import { hubStats } from '../hub';
 import { impactWallet } from '../impact-wallet';
 import { clearReliefWatch, createReliefPost, reliefAction, reliefMap, reliefMine, reliefWatch, setReliefWatch } from '../relief';
-import { createGreenTeam, deleteGreenAction, greenMap, greenMe, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction } from '../green';
+import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*) and
 // UniVerse Green (/green/*). Everything here needs a signed-in account; nobody's exact position is
@@ -27,6 +27,9 @@ export default function impactAppsModule(router: Router) {
   green.get('map', () => greenMap());
   green.post('actions', ({ user, body }) => logGreenAction(user, body ?? {}));
   green.delete<{ id: string }>('actions/:id', ({ user, params }) => deleteGreenAction(user, params.id));
+  green.post<{ id: string }>('actions/:id/proof', { status: 200 }, ({ user, params, body }) => addGreenProof(user, params.id, body ?? {}));
+  green.post<{ id: string }>('actions/:id/confirm', { status: 200 }, ({ user, params }) => confirmGreenAction(user, params.id));
+  green.get('proofs', ({ user }) => greenProofs(user));
   green.get('teams', ({ user }) => greenTeams(user));
   green.post('teams', ({ user, body }) => createGreenTeam(user, body ?? {}));
   green.post('teams/join', { status: 200 }, ({ user, body }) => joinGreenTeam(user, body ?? {}));
