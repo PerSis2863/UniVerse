@@ -60,7 +60,7 @@ export function PresencePicker() {
       <AnimatePresence>
         {open && draft && (
           <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy}
-            className="absolute end-0 top-10 z-40 w-72 p-3 rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl space-y-3" role="dialog" aria-label="Set your status">
+            className="absolute end-0 top-10 z-40 w-72 p-3 rounded-2xl bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 shadow-2xl space-y-3" role="dialog" aria-label="Set your status">
             <ul className="space-y-0.5" role="radiogroup" aria-label="Availability">{ORDER.map((p) => (
               <li key={p}>
                 <button type="button" role="radio" aria-checked={draft.presence === p} onClick={() => setDraft({ ...draft, presence: p })} className={cn('relative isolate w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-start text-sm transition-colors', draft.presence === p ? 'text-indigo-700 dark:text-indigo-200' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200')}>{draft.presence === p && <TabPill id="mponents-chat-presencepicker-0" variant="soft" />}

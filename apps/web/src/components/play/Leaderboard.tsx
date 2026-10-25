@@ -62,7 +62,7 @@ export function Leaderboard() {
                 className={cn('relative overflow-hidden rounded-xl px-3 py-2.5', r.me ? 'bg-pink-500/10 ring-1 ring-pink-500/40' : 'bg-zinc-50 dark:bg-white/[0.04]')}>
                 <span className="bar-grow absolute inset-y-0 start-0 w-full bg-gradient-to-r from-fuchsia-500/15 to-pink-500/5 rtl:bg-gradient-to-l" style={{ transform: `scaleX(${r.score / top})`, animationDelay: `${Math.min(i, 10) * 30}ms` }} aria-hidden />
                 <span className="relative flex items-center gap-3 text-sm">
-                  <span className={cn('grid h-7 w-7 place-items-center rounded-full text-xs font-bold tabular-nums', r.rank === 1 ? 'bg-amber-400 text-amber-950' : r.rank <= 3 ? 'bg-[#253745] text-white' : 'text-zinc-500 dark:text-zinc-400')}>
+                  <span className={cn('grid h-7 w-7 place-items-center rounded-full text-xs font-bold tabular-nums', r.rank === 1 ? 'bg-amber-400 text-amber-950' : r.rank <= 3 ? 'bg-[#2a2927] text-white' : 'text-zinc-500 dark:text-zinc-400')}>
                     {r.rank === 1 ? <Crown className="w-4 h-4" aria-label="First" /> : r.rank}
                   </span>
                   <Avatar name={r.name} src={r.avatar} size={28} />

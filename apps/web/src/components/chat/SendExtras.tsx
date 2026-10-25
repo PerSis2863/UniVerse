@@ -39,7 +39,7 @@ export function SendWithMenu({ choice, onChange, onSend, onSchedule, onClose }: 
   const [undo, setUndo] = useState(undoSendOn);
   const toggleUndo = () => { const v = !undo; setUndo(v); try { localStorage.setItem(UNDO_KEY, v ? '1' : '0'); } catch { /* private mode */ } };
   return (
-    <div role="dialog" aria-label="Send with" className="menu-pop absolute bottom-full mb-2 end-0 z-40 w-[19rem] max-w-[calc(100vw-1.5rem)] p-3 rounded-3xl bg-white/95 dark:bg-[#11212d]/95 backdrop-blur-xl border border-zinc-200 dark:border-white/10 shadow-2xl shadow-fuchsia-950/30" onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
+    <div role="dialog" aria-label="Send with" className="menu-pop absolute bottom-full mb-2 end-0 z-40 w-[19rem] max-w-[calc(100vw-1.5rem)] p-3 rounded-3xl bg-white/95 dark:bg-[#141416]/95 backdrop-blur-xl border border-zinc-200 dark:border-white/10 shadow-2xl shadow-fuchsia-950/30" onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm font-bold text-zinc-900 dark:text-white">Send with an effect</p>
         <button type="button" onClick={onClose} aria-label="Close" className="p-1 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
@@ -85,7 +85,7 @@ export function RewriteMenu({ text, onRewrite, onApply, onClose }: { text: strin
     finally { setBusy(null); }
   };
   return (
-    <div role="dialog" aria-label="Rewrite" className="menu-pop absolute bottom-full mb-2 start-0 z-40 w-72 max-w-[calc(100vw-1.5rem)] p-3 rounded-3xl bg-white/95 dark:bg-[#11212d]/95 backdrop-blur-xl border border-zinc-200 dark:border-white/10 shadow-2xl shadow-indigo-950/30" onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
+    <div role="dialog" aria-label="Rewrite" className="menu-pop absolute bottom-full mb-2 start-0 z-40 w-72 max-w-[calc(100vw-1.5rem)] p-3 rounded-3xl bg-white/95 dark:bg-[#141416]/95 backdrop-blur-xl border border-zinc-200 dark:border-white/10 shadow-2xl shadow-indigo-950/30" onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
       <p className="text-sm font-bold text-zinc-900 dark:text-white inline-flex items-center gap-1.5"><Wand2 className="w-4 h-4 text-fuchsia-500" /> Rewrite my message</p>
       <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 mb-2">AI rewrites it; nothing is sent until you press Send.</p>
       <div className="grid grid-cols-2 gap-1.5">
@@ -121,7 +121,7 @@ export function QuickReaction({ chat, onSend, disabled }: { chat?: string; onSen
         <span key={pop} className={cn(pop > 0 && 'quick-pop')} aria-hidden>{emoji}</span>
       </button>
       {picking && (
-        <div role="radiogroup" aria-label="This chat's quick reaction" className="menu-pop absolute bottom-full mb-2 end-0 z-40 flex gap-1 p-1.5 rounded-full bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl">
+        <div role="radiogroup" aria-label="This chat's quick reaction" className="menu-pop absolute bottom-full mb-2 end-0 z-40 flex gap-1 p-1.5 rounded-full bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 shadow-2xl">
           {QUICK_EMOJI.map((e) => (
             <button key={e} type="button" role="radio" aria-checked={emoji === e} onClick={() => choose(e)} className={cn('w-9 h-9 rounded-full text-xl transition-transform hover:scale-125', emoji === e && 'bg-indigo-500/15')}>{e}</button>
           ))}

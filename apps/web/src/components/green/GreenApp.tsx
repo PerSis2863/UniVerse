@@ -91,7 +91,7 @@ export function GreenApp() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white" style={{ background: 'radial-gradient(120% 90% at 0% 0%, #0f3b2e 0%, #0b2620 55%, #06141b 100%)' }}>
+      <section className="relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white" style={{ background: 'radial-gradient(120% 90% at 0% 0%, #0f3b2e 0%, #0b2620 55%, #0b0b0c 100%)' }}>
         <span aria-hidden className="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-emerald-400/20 blur-3xl" />
         <div className="relative grid lg:grid-cols-[1fr_auto] gap-6 items-end">
           <div>
@@ -272,18 +272,18 @@ export function GreenMap() {
   const cells = useMemo(() => (data?.cells ?? []).map((c) => { const [bx, by] = toBase(c.lng, c.lat); return { ...c, bx, by }; }), [data]);
   const max = Math.max(1, ...cells.map((c) => c.kg));
   const draw = (f: Frame) => {
-    const { ctx, view, t } = f, g = glow(EMERALD);
+    const { ctx, t } = f, g = glow(EMERALD);
     const zf = Math.min(2.4, Math.max(1, Math.pow(f.zoom, 0.3)));
     ctx.save(); ctx.globalCompositeOperation = f.dark ? 'lighter' : 'source-over';
     cells.forEach((c, i) => {
-      const x = view.x + c.bx * view.k, y = view.y + c.by * view.k;
+      const x = f.sx(c.bx), y = f.sy(c.by);
       if (x < -40 || x > f.w + 40 || y < -40 || y > f.h + 40) return;
       const n = Math.sqrt(c.kg / max), r = (8 + n * 26) * zf * (calm ? 1 : 1 + 0.06 * Math.sin(t / 900 + i));
       ctx.globalAlpha = f.dark ? 0.3 + n * 0.5 : 0.2 + n * 0.35; ctx.drawImage(g, x - r, y - r, r * 2, r * 2);
     });
     ctx.restore();
     for (const c of cells) {
-      const x = view.x + c.bx * view.k, y = view.y + c.by * view.k;
+      const x = f.sx(c.bx), y = f.sy(c.by);
       if (x < 0 || x > f.w || y < 0 || y > f.h) continue;
       ctx.fillStyle = f.dark ? '#6ee7b7' : '#059669'; ctx.beginPath(); ctx.arc(x, y, 2 + Math.sqrt(c.kg / max) * 4, 0, Math.PI * 2); ctx.fill();
     }
@@ -296,7 +296,7 @@ export function GreenMap() {
       </div>
       <WorldCanvas label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={!calm && cells.length > 0} draw={draw} className="w-full h-[46vh] min-h-[320px]">
         {data && cells.length === 0 && (
-          <div className="absolute inset-x-3 bottom-3 sm:inset-x-auto sm:start-3 sm:w-[420px] rounded-2xl bg-white dark:bg-[#06141b] p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
+          <div className="absolute inset-x-3 bottom-3 sm:inset-x-auto sm:start-3 sm:w-[420px] rounded-2xl bg-white dark:bg-[#0b0b0c] p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
             <p className="text-sm text-zinc-700 dark:text-zinc-200">No actions on the map yet. Log one with “Put it on the shared map” and yours is the first light. It glows brighter as friends join.</p>
             <InviteButton app="green" text="I’m logging my climate actions on UniVerse Green and seeing the CO₂ I save. Join me:" label="Invite friends" className="mt-3 flex-wrap" />
           </div>

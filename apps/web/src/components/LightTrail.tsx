@@ -19,9 +19,10 @@ import { cn } from '@/lib/utils';
 // drawn; 60 frames a second on computers, 30 on phones (and it goes lighter by itself if frames come
 // late); still for Reduce Motion and low-memory phones; nothing while the tab is hidden.
 
-// The owner (24 Oct 2026): the light lines are hot pink with a little purple, on dark-blue bands.
-const DARK = { strands: ['#ff2d95', '#ec4899', '#d946ef', '#f472b6', '#e879f9', '#ff6fb5'], bands: ['#253745', '#be185d', '#11212d', '#86198f', '#4a5c6a'], pulse: '#fdf2f8', spark: '#f0abfc' };
-const LIGHT = { strands: ['#db2777', '#c026d3', '#ec4899', '#a21caf', '#253745', '#be185d'], bands: ['#f9a8d4', '#ccd0cf', '#f0abfc', '#9ba8ab', '#fbcfe8'], pulse: '#be185d', spark: '#d946ef' };
+// The owner (24 Oct 2026): the light lines are hot pink with a little purple. M34 (25 Oct, the
+// Karma look): kept, denser, thinner and sharper, with faster pulses that glow at their heads.
+const DARK = { strands: ['#ff2d95', '#ec4899', '#d946ef', '#f472b6', '#e879f9', '#ff6fb5'], bands: ['#4a1530', '#be185d', '#2a0f1f', '#86198f', '#701a75'], pulse: '#fdf2f8', spark: '#f0abfc' };
+const LIGHT = { strands: ['#db2777', '#c026d3', '#ec4899', '#a21caf', '#be185d', '#f472b6'], bands: ['#f9a8d4', '#fbcfe8', '#f0abfc', '#f5d0fe', '#fce7f3'], pulse: '#9d174d', spark: '#c026d3' };
 
 const OWN_RIVER = new Set(['/', '/login', '/register']);
 
@@ -47,15 +48,15 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
     if (!cv || !ctx || !sctx) return;
     const still = reducedMotion() || lowEndDevice();
     const phone = window.innerWidth < 640;
-    const N = still ? 24 : phone ? 32 : 60;
+    const N = still ? 40 : phone ? 60 : 120;
     // Denser in the middle of the bundle, like fibres.
     const strands = Array.from({ length: N }, (_, i) => {
       const u = (i / (N - 1)) * 2 - 1;
       const o = Math.sign(u) * Math.pow(Math.abs(u), 1.5) * 0.5;
-      return { o, colour: i % 6, alpha: 0.12 + 0.45 * (1 - Math.abs(o) * 1.6), width: 0.45 + ((i * 13) % 9) / 10, speed: 0.4 + ((i * 37) % 10) / 14, phase: i * 1.37, wob: 140 + ((i * 29) % 60), pulse: i % 3 === 0 };
+      return { o, colour: i % 6, alpha: 0.18 + 0.55 * (1 - Math.abs(o) * 1.6), width: 0.35 + ((i * 13) % 9) / 14, speed: 0.5 + ((i * 37) % 10) / 10, phase: i * 1.37, wob: 120 + ((i * 29) % 70), pulse: i % 2 === 0 };
     });
     const bands = [-0.9, -0.35, 0.1, 0.55, 1.0].map((o, i) => ({ o, width: [150, 90, 200, 70, 120][i], alpha: [0.1, 0.14, 0.08, 0.16, 0.1][i], colour: i, phase: i * 2.1, speed: 0.18 + i * 0.05 }));
-    const sparks = Array.from({ length: phone ? 26 : 60 }, (_, i) => ({ s: (i * 7) % N, base: (i * 137) % 1000, v: 26 + ((i * 29) % 40), r: 0.5 + ((i * 17) % 10) / 10 }));
+    const sparks = Array.from({ length: phone ? 60 : 150 }, (_, i) => ({ s: (i * 7) % N, base: (i * 137) % 1000, v: 34 + ((i * 29) % 60), r: 0.6 + ((i * 17) % 14) / 10 }));
     let W = 0, H = 0, frame = 0, last = 0, scroller: Element | null = null, sy = 0;
     // Lighter when the device struggles: half the strands and 30 frames a second (see loop).
     let lite = false, slow = 0;
@@ -83,7 +84,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
       const t = still ? 8 : ms / 1000;
       const dark = tone === 'dark' || document.documentElement.classList.contains('dark');
       const pal = dark ? DARK : LIGHT;
-      const k = (dark ? 1 : 0.55) * strength;
+      const k = (dark ? 1 : 0.85) * strength;
       const P = Math.max(1100, H * 1.55); // one full swing, left to right and back
       const wide = W >= 1024;
       // The path, in page coordinates. On the landing page the first bend sits in the hero's gap
@@ -96,7 +97,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
         const r = ramp(y);
         const c = hero && wide ? 0.63 - 0.13 * r : 0.5;
         const A = hero && wide ? 0.15 + 0.2 * r : W < 640 ? 0.3 : 0.36;
-        return W * (c + A * Math.sin(theta(y)) + 0.012 * Math.sin(t * 0.3 + y / 700));
+        return W * (c + A * Math.sin(theta(y)) + 0.018 * Math.sin(t * 0.35 + y / 650) + 0.008 * Math.sin(t * 0.9 + y / 260));
       };
       const spread = (y: number) => W * (0.01 + 0.08 * Math.abs(Math.cos(theta(y))));
       // On arrival (landing page), the river pours in from the top over ~1.8 s.
@@ -124,7 +125,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
         return pv * 70 * Math.exp(-(dy * dy) / 45000) * (dx / 130) * Math.exp(-(dx * dx) / 33800);
       };
       const strandX = (st: (typeof strands)[number]) => (y: number) => {
-        const x = centre(y) + st.o * 2 * spread(y) + Math.sin(y / st.wob + t * st.speed + st.phase) * (3 + 7 * Math.abs(st.o));
+        const x = centre(y) + st.o * 2 * spread(y) + Math.sin(y / st.wob + t * st.speed + st.phase) * (4 + 10 * Math.abs(st.o));
         return x + part(x, y);
       };
 
@@ -140,7 +141,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
         sctx.lineJoin = 'round';
         for (const b of bands) {
           sctx.strokeStyle = pal.bands[b.colour];
-          sctx.globalAlpha = b.alpha * k * (0.4 + 0.6 * eased);
+          sctx.globalAlpha = b.alpha * k * (0.4 + 0.6 * eased) * (hero ? 1 : 0.7);
           sctx.lineWidth = b.width * (phone ? 0.6 : 1);
           trace(sctx, (y) => centre(y) + b.o * spread(y) * 1.3 + Math.sin(t * b.speed + b.phase + y / 520) * 46);
         }
@@ -148,7 +149,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
         if (near && Math.abs(px - centre(sy + py)) < spread(sy + py) + 220) {
           const g = sctx.createRadialGradient(px, py, 0, px, py, 180);
           g.addColorStop(0, dark ? 'rgba(249,168,212,0.35)' : 'rgba(236,72,153,0.14)');
-          g.addColorStop(1, 'rgba(37,55,69,0)');
+          g.addColorStop(1, 'rgba(42,41,39,0)');
           sctx.globalAlpha = pv * k;
           sctx.fillStyle = g;
           sctx.fillRect(px - 180, py - 180, 360, 360);
@@ -161,7 +162,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
           const g = sctx.createRadialGradient(bx, by, 0, bx, by, r);
           g.addColorStop(0, dark ? 'rgba(255,255,255,0.55)' : 'rgba(236,72,153,0.18)');
           g.addColorStop(0.25, dark ? 'rgba(244,114,182,0.28)' : 'rgba(116,110,122,0.12)');
-          g.addColorStop(1, 'rgba(37,55,69,0)');
+          g.addColorStop(1, 'rgba(42,41,39,0)');
           sctx.globalAlpha = k;
           sctx.fillStyle = g;
           sctx.fillRect(bx - r, by - r, r * 2, r * 2);
@@ -174,7 +175,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
 
       // 2 · The fine strands, coloured along the river (indigo → violet → fuchsia → pink). Bright in
       // the hero; further down (and in the app) mostly the soft glow, so text in front stays easy to read.
-      const sharp = hero ? 1 - 0.62 * ramp(sy + H * 0.5) : phone ? 0.42 : 0.6;
+      const sharp = hero ? 1 - 0.5 * ramp(sy + H * 0.5) : phone ? 0.7 : 0.85;
       ctx.globalCompositeOperation = dark ? 'lighter' : 'source-over';
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -185,17 +186,24 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
         ctx.lineWidth = st.width;
         trace(ctx, strandX(st));
       }
-      // 3 · Pulses: short bright dashes running down every third strand.
+      // 3 · Pulses: short bright dashes running down every other strand, each with a soft glow
+      // round its head (a wide faint pass, then the bright core).
       if (!still) {
         ctx.strokeStyle = pal.pulse;
-        for (const st of strands) {
-          if (!st.pulse) continue;
-          ctx.setLineDash([26 + (st.phase % 20), 260 + (st.wob % 120)]);
+        for (const [i, st] of strands.entries()) {
+          if (!st.pulse || (lite && i % 4)) continue;
+          ctx.setLineDash([18 + (st.phase % 16), 150 + (st.wob % 90)]);
           // Anchored to the page (the path starts at the top of the screen), so pulses don't slide when you scroll.
-          ctx.lineDashOffset = -(t * 150 * st.speed + st.phase * 40) + y0 * 1.1;
-          ctx.globalAlpha = 0.55 * k * sharp;
-          ctx.lineWidth = st.width + 0.5;
-          trace(ctx, strandX(st));
+          ctx.lineDashOffset = -(t * 220 * st.speed + st.phase * 40) + y0 * 1.1;
+          const x = strandX(st);
+          if (!phone) {
+            ctx.globalAlpha = 0.16 * k * sharp;
+            ctx.lineWidth = st.width + 3.5;
+            trace(ctx, x);
+          }
+          ctx.globalAlpha = 0.8 * k * sharp;
+          ctx.lineWidth = st.width + 0.6;
+          trace(ctx, x);
         }
         ctx.setLineDash([]);
       }
@@ -206,7 +214,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
         const y = sy + ys;
         if (y < y0 || y > y1) continue;
         const x = strandX(strands[sp.s])(y);
-        ctx.globalAlpha = (0.3 + 0.7 * Math.abs(Math.sin(t * 1.7 + sp.s))) * k;
+        ctx.globalAlpha = (0.3 + 0.7 * Math.abs(Math.sin(t * 2.3 + sp.s))) * k;
         ctx.beginPath();
         ctx.arc(x, ys, sp.r, 0, Math.PI * 2);
         ctx.fill();

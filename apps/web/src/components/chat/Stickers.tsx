@@ -29,7 +29,7 @@ export function StickerPicker({ onPick, onClose }: { onPick: (s: { url: string; 
   return (
     <>
       <div className="fixed inset-0 z-20" onClick={onClose} aria-hidden />
-      <div role="dialog" aria-label="Stickers" className="relative z-30 w-[min(92vw,20rem)] rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl overflow-hidden">
+      <div role="dialog" aria-label="Stickers" className="relative z-30 w-[min(92vw,20rem)] rounded-2xl bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 shadow-2xl overflow-hidden">
         <div className="flex items-center gap-1 px-2 pt-2">
           <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto" role="tablist" aria-label="Sticker packs">
           {packs.map((p) => (

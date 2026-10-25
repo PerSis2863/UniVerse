@@ -22,7 +22,8 @@ export const ITEMS: [string, string, Bin, number][] = [
   ['Light bulb (LED)', '💡', 'ewaste', 0.2], ['Charger', '🔌', 'ewaste', 0.25], ['Remote control', '🎛️', 'ewaste', 0.3], ['Watch', '⌚', 'ewaste', 0.2],
 ];
 
-export interface BeltItem { id: number; item: number; at: number; travel: number }
+/** A thing on the belt; golden ones (about one in twelve) score triple. */
+export interface BeltItem { id: number; item: number; at: number; travel: number; golden: boolean }
 
 /** Every item of a round: when it appears (ms) and how long it takes to reach the end. */
 export function sortSequence(seed: number, seconds: number): BeltItem[] {
@@ -31,14 +32,19 @@ export function sortSequence(seed: number, seconds: number): BeltItem[] {
   let at = 500, id = 0;
   while (at < seconds * 1000 - 1500) {
     const progress = at / (seconds * 1000);
-    out.push({ id: id++, item: Math.floor(rand() * ITEMS.length), at: Math.round(at), travel: Math.round(4_800 - progress * 2_400) });
+    const item = Math.floor(rand() * ITEMS.length);
+    out.push({ id: id++, item, at: Math.round(at), travel: Math.round(4_800 - progress * 2_400), golden: id > 3 && rand() < 0.08 });
     at += 1_500 - progress * 850 + rand() * 300;
   }
   return out;
 }
 
+/** The round's stage, for the banners: warm-up, then faster at a quarter, half and three quarters. */
+export const SORT_WAVES = ['Warm-up', 'Picking up speed', 'Rush hour!', 'Final rush!'] as const;
+export const sortWave = (ms: number, seconds: number) => Math.min(3, Math.floor((ms / (seconds * 1000)) * 4));
+
 /** The streak's multiplier: ×1, then ×1.5 at 5 in a row, ×2 at 10… up to ×3. */
 export const sortMultiplier = (streak: number) => Math.min(3, 1 + Math.floor(streak / 5) * 0.5);
-export const sortPoints = (streak: number) => Math.round(100 * sortMultiplier(streak));
+export const sortPoints = (streak: number, golden = false) => Math.round(100 * sortMultiplier(streak)) * (golden ? 3 : 1);
 export const SORT_WRONG = 50;
 export const SORT_MISSED = 25;

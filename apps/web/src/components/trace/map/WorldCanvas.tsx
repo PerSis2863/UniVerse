@@ -5,16 +5,25 @@ import { BASE, clampView, easeInOut, fitView, fromBase, graticule, loadWorld, to
 import { CITIES } from './cities';
 
 // One canvas world map for the Trace maps: draws the land (cached until the view moves), then hands
-// the frame to the page to draw its own layer on top. Drag, wheel, pinch, double-click and the
-// keyboard move it; zooming eases toward its target and fly-tos glide (zooming out a little on long
-// trips), so it never jumps. Frames run only while something moves, unless the page asks for `live`
+// the frame to the page to draw its own layer on top. Drag, pinch, double-click and the keyboard
+// move it; on a trackpad two fingers pan and a pinch zooms, a mouse wheel zooms. The world wraps
+// round sideways without end (M35a: copies side by side, each point drawn on the copy nearest the
+// middle via Frame.sx / Frame.at). Zooming eases toward its target and fly-tos glide the short way
+// round, so it never jumps. Frames run only while something moves, unless the page asks for `live`
 // frames (its pulses); a hidden tab gets none.
 
 export type Box = [number, number, number, number]; // west, south, east, north
 export interface Frame {
   ctx: CanvasRenderingContext2D; w: number; h: number; view: View; t: number; dark: boolean; zoom: number;
-  /** Longitude/latitude to screen pixels. */
+  /** Longitude/latitude to screen pixels (on the world copy nearest the middle). */
   at: (lng: number, lat: number) => [number, number];
+  /** Base x / y to screen pixels (x on the copy nearest the middle). */
+  sx: (bx: number) => number;
+  sy: (by: number) => number;
+  /** Base x to screen x on the copy nearest a given screen x (both ends of a line on one copy). */
+  near: (bx: number, refX: number) => number;
+  /** Screen pixels back to longitude/latitude. */
+  lngLat: (x: number, y: number) => [number, number];
 }
 export interface MapHandle {
   flyTo: (box: Box, opts?: { pad?: number; maxZoom?: number }) => void;
@@ -25,8 +34,8 @@ export interface MapHandle {
 }
 
 const PAL = {
-  light: { sea: '#e9eef1', deep: '#dfe6ea', land: '#fbfcfc', edge: '#c3cdd3', grat: 'rgba(37,55,69,0.07)', name: 'rgba(37,55,69,0.42)', city: 'rgba(37,55,69,0.6)' },
-  dark: { sea: '#0a1721', deep: '#07111a', land: '#172a38', edge: '#2a4153', grat: 'rgba(204,208,207,0.05)', name: 'rgba(204,208,207,0.36)', city: 'rgba(204,208,207,0.55)' },
+  light: { sea: '#e9eef1', deep: '#dfe6ea', land: '#fbfcfc', edge: '#c3cdd3', grat: 'rgba(42,41,39,0.07)', name: 'rgba(42,41,39,0.42)', city: 'rgba(42,41,39,0.6)' },
+  dark: { sea: '#0a1721', deep: '#07111a', land: '#172a38', edge: '#2a4153', grat: 'rgba(214,211,206,0.05)', name: 'rgba(214,211,206,0.36)', city: 'rgba(214,211,206,0.55)' },
 };
 const K_MAX = 180; // about street-block level (0.1° ≈ 50 px)
 let cityPts: { name: string; bx: number; by: number; rank: number }[] | null = null;
@@ -64,7 +73,10 @@ class MapEngine {
   world: Country[] = []; detail: '110m' | '50m' = '110m';
   private off: (() => void)[] = [];
 
+  /** Interactive maps wrap round sideways; the landing page's picture stays one world. */
+  private wrap: boolean;
   constructor(private el: HTMLDivElement, private canvas: HTMLCanvasElement, private p: { current: Live }, interactive: boolean) {
+    this.wrap = interactive;
     const ro = new ResizeObserver(() => this.size());
     ro.observe(el);
     const io = new IntersectionObserver(([e]) => { this.visible = e.isIntersecting && !document.hidden; this.kick(); });
@@ -91,9 +103,10 @@ class MapEngine {
     const prev = { w: this.w, h: this.h };
     this.w = r.width; this.h = r.height; this.dpr = Math.min(2, window.devicePixelRatio || 1);
     this.canvas.width = Math.round(this.w * this.dpr); this.canvas.height = Math.round(this.h * this.dpr);
-    this.kMin = Math.max(this.w / BASE, (Math.min(this.w, this.h) / BASE) * 0.9) * 0.98;
-    if (!this.placed) { this.view = clampView(fitView(this.w, this.h, this.p.current.homeBox, 24), this.w, this.h); this.placed = true; }
-    else this.view = clampView({ ...this.view, x: this.view.x + (this.w - prev.w) / 2, y: this.view.y + (this.h - prev.h) / 2 }, this.w, this.h);
+    // Wrapping maps can zoom out until the whole world fits top to bottom (copies side by side).
+    this.kMin = this.wrap ? (Math.min(this.w, this.h) / BASE) * 0.92 : Math.max(this.w / BASE, (Math.min(this.w, this.h) / BASE) * 0.9) * 0.98;
+    if (!this.placed) { this.view = this.clamp(this.homeView()); this.placed = true; }
+    else this.view = this.clamp({ ...this.view, x: this.view.x + (this.w - prev.w) / 2, y: this.view.y + (this.h - prev.h) / 2 });
     this.landKey = '';
     this.kick();
   }
@@ -114,18 +127,21 @@ class MapEngine {
       const k = Math.exp(Math.log(from.k) + (Math.log(to.k) - Math.log(from.k)) * e) / (1 + Math.min(1.6, dist * 0.9) * Math.sin(Math.PI * e));
       const cx = c0[0] + (c1[0] - c0[0]) * e, cy = c0[1] + (c1[1] - c0[1]) * e;
       this.view = { k, x: this.w / 2 - cx * k, y: this.h / 2 - cy * k };
-      if (p >= 1) { this.fly = null; this.view = to; }
+      if (p >= 1) { this.fly = null; this.view = this.clamp(to); }
     } else if (this.target) {
       const a = 1 - Math.exp(-dt / 70), v = this.view, g = this.target;
       this.view = { k: v.k + (g.k - v.k) * a, x: v.x + (g.x - v.x) * a, y: v.y + (g.y - v.y) * a };
       if (Math.abs(g.k - v.k) / g.k < 0.0015 && Math.abs(g.x - v.x) < 0.3 && Math.abs(g.y - v.y) < 0.3) { this.view = g; this.target = null; }
+      this.rewrap();
     } else if (Math.abs(this.drift.vx) + Math.abs(this.drift.vy) > 0.02) {
-      this.view = clampView({ ...this.view, x: this.view.x + this.drift.vx * dt, y: this.view.y + this.drift.vy * dt }, this.w, this.h);
+      this.view = this.clamp({ ...this.view, x: this.view.x + this.drift.vx * dt, y: this.view.y + this.drift.vy * dt });
       const f = Math.exp(-dt / 260);
       this.drift.vx *= f; this.drift.vy *= f;
     } else moving = false;
-    if (this.view.k > 3.2 && this.detail === '110m') this.useWorld('50m');
-    if (this.view.k < 2.4 && this.detail === '50m') this.useWorld('110m');
+    // Sharper outlines once the world is drawn big enough on screen (in real pixels) to show them.
+    const px = this.view.k * this.dpr;
+    if (px > 2.3 && this.detail === '110m') this.useWorld('50m');
+    if (px < 1.8 && this.detail === '50m') this.useWorld('110m');
     this.paint(t);
     if ((moving || this.p.current.live) && this.visible) this.raf = requestAnimationFrame(this.frame);
     else this.last = 0;
@@ -143,52 +159,57 @@ class MapEngine {
     const sea = g.createRadialGradient(w / 2, h * 0.45, 0, w / 2, h * 0.45, Math.max(w, h) * 0.75);
     sea.addColorStop(0, pal.sea); sea.addColorStop(1, pal.deep);
     g.fillStyle = sea; g.fillRect(0, 0, w, h);
-    g.setTransform(dpr * view.k, 0, 0, dpr * view.k, dpr * view.x, dpr * view.y);
-    g.strokeStyle = pal.grat; g.lineWidth = 1 / view.k;
-    g.stroke(graticule());
-    // Only the countries on screen.
-    const x0 = -view.x / view.k, y0 = -view.y / view.k, x1 = (w - view.x) / view.k, y1 = (h - view.y) / view.k;
-    const shown = this.world.filter((c) => c.box[2] >= x0 && c.box[0] <= x1 && c.box[3] >= y0 && c.box[1] <= y1);
-    g.fillStyle = pal.land;
-    g.shadowColor = dark ? 'rgba(0,0,0,0.35)' : 'rgba(37,55,69,0.10)';
-    g.shadowBlur = 6 * dpr; g.shadowOffsetY = 1.5 * dpr;
-    for (const c of shown) g.fill(c.path);
-    g.shadowColor = 'transparent';
-    g.strokeStyle = pal.edge; g.lineWidth = 0.7 / view.k; g.lineJoin = 'round';
-    for (const c of shown) g.stroke(c.path);
-    // Country names once there's room for them, biggest first, never overlapping.
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.fillStyle = pal.name; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.letterSpacing = '1.2px';
+    // Each world copy on screen (one, unless the map wraps and is zoomed out or panned to the seam).
+    const size = BASE * view.k, offsets = this.copies();
     const taken: [number, number, number, number][] = [[w / 2 - 70, 0, w / 2 + 70, 30]]; // the scale bar
-    for (const c of [...shown].sort((a, b) => b.area - a.area)) {
-      const px = c.area * view.k * view.k;
-      if (px < 2200 || !c.name) continue;
-      const size = Math.min(13, 8 + Math.log10(px) * 0.9);
-      g.font = `600 ${size}px ui-sans-serif, system-ui, sans-serif`;
-      const text = c.name.toUpperCase(), tw = g.measureText(text).width;
-      const lx = view.x + c.label[0] * view.k, ly = view.y + c.label[1] * view.k;
-      const r: [number, number, number, number] = [lx - tw / 2 - 4, ly - size, lx + tw / 2 + 4, ly + size];
-      if (taken.some((o) => r[0] < o[2] && r[2] > o[0] && r[1] < o[3] && r[3] > o[1])) continue;
-      taken.push(r);
-      g.fillText(text, lx, ly);
-    }
-    g.letterSpacing = '0px';
-    // Cities for orientation, the biggest first as you zoom in.
     const zoom = view.k / this.kMin;
-    g.textAlign = 'left';
-    g.font = '500 10px ui-sans-serif, system-ui, sans-serif';
-    for (const c of cities()) {
-      if (zoom < CITY_ZOOM[c.rank] || skip?.has(c.name)) continue;
-      const x = view.x + c.bx * view.k, y = view.y + c.by * view.k;
-      if (x < -40 || x > w + 40 || y < -10 || y > h + 10) continue;
-      const tw = g.measureText(c.name).width;
-      const r: [number, number, number, number] = [x - 3, y - 7, x + 6 + tw, y + 7];
-      if (taken.some((o) => r[0] < o[2] && r[2] > o[0] && r[1] < o[3] && r[3] > o[1])) continue;
-      taken.push(r);
-      g.fillStyle = pal.city;
-      g.beginPath(); g.arc(x, y, 1.8, 0, Math.PI * 2); g.fill();
-      g.fillText(c.name, x + 5, y + 0.5);
+    for (const n of offsets) {
+      const vx = view.x + n * size;
+      g.setTransform(dpr * view.k, 0, 0, dpr * view.k, dpr * vx, dpr * view.y);
+      g.strokeStyle = pal.grat; g.lineWidth = 1 / view.k;
+      g.stroke(graticule());
+      // Only the countries on screen.
+      const x0 = -vx / view.k, y0 = -view.y / view.k, x1 = (w - vx) / view.k, y1 = (h - view.y) / view.k;
+      const shown = this.world.filter((c) => c.box[2] >= x0 && c.box[0] <= x1 && c.box[3] >= y0 && c.box[1] <= y1);
+      g.fillStyle = pal.land;
+      g.shadowColor = dark ? 'rgba(0,0,0,0.35)' : 'rgba(42,41,39,0.10)';
+      g.shadowBlur = 6 * dpr; g.shadowOffsetY = 1.5 * dpr;
+      for (const c of shown) g.fill(c.path);
+      g.shadowColor = 'transparent';
+      g.strokeStyle = pal.edge; g.lineWidth = 0.7 / view.k; g.lineJoin = 'round';
+      for (const c of shown) g.stroke(c.path);
+      // Country names once there's room for them, biggest first, never overlapping.
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.fillStyle = pal.name; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.letterSpacing = '1.2px';
+      for (const c of [...shown].sort((a, b) => b.area - a.area)) {
+        const px = c.area * view.k * view.k;
+        if (px < 2200 || !c.name) continue;
+        const size = Math.min(13, 8 + Math.log10(px) * 0.9);
+        g.font = `600 ${size}px ui-sans-serif, system-ui, sans-serif`;
+        const text = c.name.toUpperCase(), tw = g.measureText(text).width;
+        const lx = vx + c.label[0] * view.k, ly = view.y + c.label[1] * view.k;
+        const r: [number, number, number, number] = [lx - tw / 2 - 4, ly - size, lx + tw / 2 + 4, ly + size];
+        if (taken.some((o) => r[0] < o[2] && r[2] > o[0] && r[1] < o[3] && r[3] > o[1])) continue;
+        taken.push(r);
+        g.fillText(text, lx, ly);
+      }
+      g.letterSpacing = '0px';
+      // Cities for orientation, the biggest first as you zoom in.
+      g.textAlign = 'left';
+      g.font = '500 10px ui-sans-serif, system-ui, sans-serif';
+      for (const c of cities()) {
+        if (zoom < CITY_ZOOM[c.rank] || skip?.has(c.name)) continue;
+        const x = vx + c.bx * view.k, y = view.y + c.by * view.k;
+        if (x < -40 || x > w + 40 || y < -10 || y > h + 10) continue;
+        const tw = g.measureText(c.name).width;
+        const r: [number, number, number, number] = [x - 3, y - 7, x + 6 + tw, y + 7];
+        if (taken.some((o) => r[0] < o[2] && r[2] > o[0] && r[1] < o[3] && r[3] > o[1])) continue;
+        taken.push(r);
+        g.fillStyle = pal.city;
+        g.beginPath(); g.arc(x, y, 1.8, 0, Math.PI * 2); g.fill();
+        g.fillText(c.name, x + 5, y + 0.5);
+      }
     }
     this.land = land; this.landKey = key;
     return land;
@@ -199,8 +220,17 @@ class MapEngine {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(this.paintLand(), 0, 0);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const at = (lng: number, lat: number): [number, number] => { const [bx, by] = toBase(lng, lat); return [view.x + bx * view.k, view.y + by * view.k]; };
-    this.p.current.draw({ ctx, w, h, view, t, dark: this.p.current.dark, zoom: view.k / this.kMin, at });
+    const size = BASE * view.k, wrap = this.wrap;
+    // The copy of a base x nearest a screen x (the middle by default): one dot per place, and both
+    // ends of a line on the same copy.
+    const near = (bx: number, ref: number) => { const x = view.x + bx * view.k; return wrap ? x + Math.round((ref - x) / size) * size : x; };
+    const sx = (bx: number) => near(bx, w / 2), sy = (by: number) => view.y + by * view.k;
+    const at = (lng: number, lat: number): [number, number] => { const [bx, by] = toBase(lng, lat); return [sx(bx), sy(by)]; };
+    const lngLat = (x: number, y: number): [number, number] => {
+      const bx = (x - view.x) / view.k;
+      return fromBase(wrap ? ((bx % BASE) + BASE) % BASE : bx, (y - view.y) / view.k);
+    };
+    this.p.current.draw({ ctx, w, h, view, t, dark: this.p.current.dark, zoom: view.k / this.kMin, at, sx, sy, near, lngLat });
     if (view.k / this.kMin >= 3) this.scaleBar(ctx);
   }
 
@@ -212,7 +242,7 @@ class MapEngine {
     const raw = mpp * 90, p10 = 10 ** Math.floor(Math.log10(raw)), nice = [5, 2, 1].map((m) => m * p10).find((v) => v <= raw) ?? p10;
     const px = nice / mpp, x = Math.round(w / 2 - px / 2), y = 20;
     ctx.save();
-    ctx.strokeStyle = dark ? 'rgba(242,244,244,0.75)' : 'rgba(6,20,27,0.7)'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+    ctx.strokeStyle = dark ? 'rgba(243,242,239,0.75)' : 'rgba(11,11,12,0.7)'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(x, y - 4); ctx.lineTo(x, y); ctx.lineTo(x + px, y); ctx.lineTo(x + px, y - 4); ctx.stroke();
     ctx.font = '600 10px ui-monospace, SFMono-Regular, monospace'; ctx.textAlign = 'center'; ctx.fillStyle = ctx.strokeStyle;
     ctx.fillText(nice >= 1000 ? `${nice / 1000} km` : `${nice} m`, x + px / 2, y - 7);
@@ -220,19 +250,62 @@ class MapEngine {
   }
 
   // ─── Moving it ───
+  /** Keeps some of the world on screen (top to bottom); sideways a wrapping map just wraps. */
+  clamp(v: View): View {
+    const c = clampView(v, this.w, this.h);
+    if (!this.wrap) return c;
+    const size = BASE * v.k;
+    // The x for the copy that covers the middle of the screen (the same picture, other copy).
+    const m = (((this.w / 2 - v.x) % size) + size) % size;
+    return { k: v.k, x: this.w / 2 - m, y: c.y };
+  }
+  /** After the view slid onto another copy, slide its target with it (no swoop back across). */
+  private rewrap() {
+    if (!this.wrap) return;
+    const v = this.clamp(this.view), dx = v.x - this.view.x;
+    if (!dx) return;
+    this.view = v;
+    if (this.target) this.target = { ...this.target, x: this.target.x + dx };
+  }
+  /** The world copies that show on screen, as offsets in world widths. */
+  private copies(): number[] {
+    if (!this.wrap) return [0];
+    const size = BASE * this.view.k, out: number[] = [];
+    for (let n = Math.floor(-this.view.x / size); n * size + this.view.x < this.w; n++) out.push(n);
+    return out;
+  }
+  /** Home: the page's box, and at least the whole width of the world on a wrapping map. */
+  private homeView(): View {
+    const v = fitView(this.w, this.h, this.p.current.homeBox, 24);
+    if (!this.wrap || v.k * BASE >= this.w) return v;
+    const k = this.w / BASE, cx = (this.w / 2 - v.x) / v.k, cy = (this.h / 2 - v.y) / v.k;
+    return { k, x: this.w / 2 - cx * k, y: this.h / 2 - cy * k };
+  }
   goTo(v: View, smooth = true) {
     const k = Math.max(this.kMin, Math.min(K_MAX, v.k));
-    const to = clampView({ k, x: this.w / 2 - ((this.w / 2 - v.x) / v.k) * k, y: this.h / 2 - ((this.h / 2 - v.y) / v.k) * k }, this.w, this.h);
+    let to = clampView({ k, x: this.w / 2 - ((this.w / 2 - v.x) / v.k) * k, y: this.h / 2 - ((this.h / 2 - v.y) / v.k) * k }, this.w, this.h);
+    if (this.wrap) {
+      // The short way round: aim for the copy of the target nearest where the map is now.
+      const from = (this.w / 2 - this.view.x) / this.view.k, c = (this.w / 2 - v.x) / v.k;
+      to = { ...to, x: this.w / 2 - (c + Math.round((from - c) / BASE) * BASE) * k };
+    }
     this.drift = { vx: 0, vy: 0 }; this.target = null;
     if (smooth && !reduced()) {
       const far = Math.abs(Math.log(to.k / this.view.k)) + Math.hypot(to.x - this.view.x, to.y - this.view.y) / Math.max(this.w, this.h);
       this.fly = { from: this.view, to, start: performance.now(), dur: Math.min(1600, 650 + far * 260) };
-    } else { this.fly = null; this.view = to; }
+    } else { this.fly = null; this.view = this.clamp(to); }
     this.kick();
   }
   zoomAt(f: number, px: number, py: number) {
     this.fly = null; this.drift = { vx: 0, vy: 0 };
-    this.target = clampView(zoomAbout(this.target ?? this.view, f, px, py, this.kMin, K_MAX), this.w, this.h);
+    const t = zoomAbout(this.target ?? this.view, f, px, py, this.kMin, K_MAX);
+    this.target = { ...t, y: clampView(t, this.w, this.h).y, x: this.wrap ? t.x : clampView(t, this.w, this.h).x };
+    this.kick();
+  }
+  /** Moves the map by a number of screen pixels (trackpad swipes, keys). */
+  panBy(dx: number, dy: number) {
+    this.fly = null; this.target = null; this.drift = { vx: 0, vy: 0 };
+    this.view = this.clamp({ ...this.view, x: this.view.x + dx, y: this.view.y + dy });
     this.kick();
   }
   flyTo(box: Box, opts?: { pad?: number; maxZoom?: number }) {
@@ -240,7 +313,7 @@ class MapEngine {
     const k = Math.min(v.k, opts?.maxZoom ? this.kMin * opts.maxZoom : K_MAX);
     this.goTo({ k, x: this.w / 2 - ((this.w / 2 - v.x) / v.k) * k, y: this.h / 2 - ((this.h / 2 - v.y) / v.k) * k });
   }
-  home() { this.goTo(fitView(this.w, this.h, this.p.current.homeBox, 24)); }
+  home() { this.goTo(this.homeView()); }
 
   private listen() {
     const el = this.el, pts = new Map<number, { x: number; y: number }>();
@@ -252,10 +325,18 @@ class MapEngine {
       this.off.push(() => el.removeEventListener(type, fn));
     };
 
+    // Trackpads send small pixel steps (and sideways ones); mouse wheels send notches (wheelDelta in
+    // 120s, or lines). Two fingers pan, a pinch (ctrlKey) zooms, a mouse wheel zooms.
+    let padUntil = 0;
     on('wheel', (e) => {
       e.preventDefault();
-      const p = local(e), d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
-      this.zoomAt(Math.exp(-d * (e.ctrlKey ? 0.01 : 0.0022)), p.x, p.y);
+      const p = local(e), now = performance.now(), wd = (e as WheelEvent & { wheelDeltaY?: number }).wheelDeltaY;
+      if (e.ctrlKey) { this.zoomAt(Math.exp(-e.deltaY * 0.01), p.x, p.y); return; }
+      if (e.deltaX !== 0) padUntil = now + 400;
+      const notch = e.deltaMode !== 0 || (!!wd && Math.abs(wd) % 120 === 0) || Math.abs(e.deltaY) >= 100;
+      if (now < padUntil || !notch) { this.panBy(-e.deltaX, -e.deltaY); return; }
+      const d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      this.zoomAt(Math.exp(-d * 0.0022), p.x, p.y);
     }, { passive: false });
     on('pointerdown', (e) => {
       if (e.button !== 0 && e.pointerType === 'mouse') return;
@@ -274,14 +355,14 @@ class MapEngine {
       if (pts.size === 2) {
         const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
         const v = zoomAbout(this.view, pinch ? d / pinch : 1, mid.x, mid.y, this.kMin, K_MAX);
-        this.view = clampView({ ...v, x: v.x + (p.x - prev.x) / 2, y: v.y + (p.y - prev.y) / 2 }, this.w, this.h);
+        this.view = this.clamp({ ...v, x: v.x + (p.x - prev.x) / 2, y: v.y + (p.y - prev.y) / 2 });
         pinch = d;
         this.kick();
         return;
       }
       if (start && Math.hypot(p.x - start.x, p.y - start.y) > 4) moved = true;
       if (!moved) return;
-      this.view = clampView({ ...this.view, x: this.view.x + p.x - prev.x, y: this.view.y + p.y - prev.y }, this.w, this.h);
+      this.view = this.clamp({ ...this.view, x: this.view.x + p.x - prev.x, y: this.view.y + p.y - prev.y });
       const now = performance.now(), dt = Math.max(1, now - lastMove.t);
       lastMove = { x: p.x, y: p.y, t: now, vx: 0.8 * ((p.x - lastMove.x) / dt) + 0.2 * lastMove.vx, vy: 0.8 * ((p.y - lastMove.y) / dt) + 0.2 * lastMove.vy };
       el.style.cursor = 'grabbing';
@@ -303,7 +384,7 @@ class MapEngine {
     on('pointerleave', () => { if (!pts.size) this.p.current.onPoint?.(null, 'hover'); });
     on('dblclick', (e) => { const p = local(e); this.zoomAt(2.2, p.x, p.y); });
     on('keydown', (e) => {
-      const pan = (dx: number, dy: number) => { const v = this.target ?? this.view; this.fly = null; this.target = clampView({ ...v, x: v.x + dx, y: v.y + dy }, this.w, this.h); this.kick(); };
+      const pan = (dx: number, dy: number) => { const v = this.target ?? this.view; this.fly = null; this.target = { ...v, x: v.x + dx, y: clampView({ ...v, y: v.y + dy }, this.w, this.h).y }; if (!this.wrap) this.target = clampView(this.target, this.w, this.h); this.kick(); };
       const acts: Record<string, () => void> = {
         '+': () => this.zoomAt(1.6, this.w / 2, this.h / 2), '=': () => this.zoomAt(1.6, this.w / 2, this.h / 2), '-': () => this.zoomAt(1 / 1.6, this.w / 2, this.h / 2),
         ArrowLeft: () => pan(80, 0), ArrowRight: () => pan(-80, 0), ArrowUp: () => pan(0, 80), ArrowDown: () => pan(0, -80), '0': () => this.home(),

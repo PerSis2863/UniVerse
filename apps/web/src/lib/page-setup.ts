@@ -19,6 +19,6 @@ export function pageCss(p: PageSetup): string {
   const [w, h] = PAPER[p.size];
   const [pw, ph] = p.orientation === 'landscape' ? [h, w] : [w, h];
   const q = (s: string) => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ')}"`;
-  const box = (where: string, content: string) => `@${where}{content:${content};font:9pt -apple-system,Segoe UI,Arial,sans-serif;color:#4a5c6a}`;
+  const box = (where: string, content: string) => `@${where}{content:${content};font:9pt -apple-system,Segoe UI,Arial,sans-serif;color:#5f5c57}`;
   return `@page{size:${pw}mm ${ph}mm;margin:${MARGIN_MM[p.margins]}mm;${p.header ? box('top-center', q(p.header)) : ''}${p.footer ? box('bottom-left', q(p.footer)) : ''}${p.numbers ? box('bottom-right', `"Page " counter(page) " of " counter(pages)`) : ''}}`;
 }

@@ -192,17 +192,17 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
                 margin-right: 12px;
               }
               .phone-input-container .PhoneInputCountrySelectArrow {
-                color: #5a6a73; /* text-zinc-500 */
+                color: #66635d; /* text-zinc-500 */
               }
               .phone-input-container .PhoneInputCountryIcon--border {
-                border-color: #253745; /* border-zinc-800 */
+                border-color: #2a2927; /* border-zinc-800 */
               }
               .phone-input-container .PhoneInputCountrySelect {
-                background-color: #06141b;
+                background-color: #0b0b0c;
                 color: white;
               }
               .phone-input-container .PhoneInputCountrySelect option {
-                background-color: #06141b;
+                background-color: #0b0b0c;
                 color: white;
               }
             `}</style>

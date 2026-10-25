@@ -36,10 +36,10 @@ const nowSecond = () => Math.floor(Date.now() / 1000);
 function Avatar({ p, me, heard }: { p: Spot & { name: string }; me?: boolean; heard?: number }) {
   return (
     <g style={{ transform: `translate(${p.x}px, ${p.y}px)`, transition: me ? undefined : 'transform 160ms linear' }}>
-      {!!heard && heard > 0 && <circle r={26} fill="none" stroke="#9ba8ab" strokeOpacity={0.25 + heard * 0.6} strokeWidth={3} />}
+      {!!heard && heard > 0 && <circle r={26} fill="none" stroke="#a8a59f" strokeOpacity={0.25 + heard * 0.6} strokeWidth={3} />}
       <circle r={20} fill="url(#hall-avatar)" stroke={me ? '#fff' : 'rgba(255,255,255,0.25)'} strokeWidth={me ? 3 : 1.5} />
       <text textAnchor="middle" dy={5} fontSize={13} fontWeight={700} fill="#fff">{initials(p.name)}</text>
-      <text textAnchor="middle" y={38} fontSize={12} fill="#e2e6e6" style={{ paintOrder: 'stroke', stroke: '#06141b', strokeWidth: 4 }}>{me ? 'You' : p.name.split(' ')[0]}</text>
+      <text textAnchor="middle" y={38} fontSize={12} fill="#e6e4e0" style={{ paintOrder: 'stroke', stroke: '#0b0b0c', strokeWidth: 4 }}>{me ? 'You' : p.name.split(' ')[0]}</text>
     </g>
   );
 }
@@ -417,7 +417,7 @@ export function HallView({ hallId }: { hallId: string }) {
   const count = Object.keys(people).length + 1;
 
   return (
-    <div ref={boxRef} className="relative flex-1 min-h-0 flex flex-col bg-[#06141b] text-white overflow-hidden">
+    <div ref={boxRef} className="relative flex-1 min-h-0 flex flex-col bg-[#0b0b0c] text-white overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-2.5 border-b border-white/10">
         <p className="font-semibold truncate min-w-0 flex-1">{title}</p>
         <span className="inline-flex items-center gap-1 text-xs text-zinc-400"><Users className="w-3.5 h-3.5" />{count}</span>
@@ -431,7 +431,7 @@ export function HallView({ hallId }: { hallId: string }) {
             <button type="button" onClick={() => setTimerMenu((v) => !v)} aria-expanded={timerMenu} className="inline-flex items-center gap-1.5 rounded-full px-3 h-9 text-xs font-semibold bg-white/10 hover:bg-white/15"><Timer className="w-3.5 h-3.5" />Focus timer</button>
           )}
           {timerMenu && !tv && (
-            <div className="absolute end-0 top-full mt-2 z-30 w-52 rounded-2xl bg-[#11212d] border border-white/10 shadow-2xl p-1.5">
+            <div className="absolute end-0 top-full mt-2 z-30 w-52 rounded-2xl bg-[#141416] border border-white/10 shadow-2xl p-1.5">
               {[[25, 5], [50, 10]].map(([f, b]) => (
                 <button key={f} type="button" onClick={() => { setTimerMenu(false); send({ type: 'hall-timer', on: true, focus: f, brk: b }); }} className="w-full text-start rounded-xl px-3 py-2 text-sm hover:bg-white/10">{f} min focus · {b} min break</button>
               ))}
@@ -459,9 +459,9 @@ export function HallView({ hallId }: { hallId: string }) {
           <svg ref={svgRef} viewBox={`${vx} ${vy} ${view.w} ${view.h}`} preserveAspectRatio="xMidYMid meet" className="w-full h-full touch-none select-none cursor-pointer" onPointerDown={walkTo}
             role="application" aria-label="Study Hall map. Tap or click to walk there, tap a table to sit at it, or use the arrow keys.">
             <defs>
-              <linearGradient id="hall-avatar" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#253745" /><stop offset="1" stopColor="#db2777" /></linearGradient>
+              <linearGradient id="hall-avatar" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#2a2927" /><stop offset="1" stopColor="#db2777" /></linearGradient>
             </defs>
-            <rect width={HALL_W} height={HALL_H} fill="#06141b" />
+            <rect width={HALL_W} height={HALL_H} fill="#0b0b0c" />
             {ZONES.map((z) => (
               <g key={z.id}>
                 <rect x={z.x} y={z.y} width={z.w} height={z.h} rx={28} fill={z.tint} fillOpacity={0.07} stroke={z.tint} strokeOpacity={0.35} strokeWidth={2} />
@@ -472,10 +472,10 @@ export function HallView({ hallId }: { hallId: string }) {
               <g key={t.n}>
                 {[0, 1, 2, 3].map((i) => <circle key={i} cx={t.x + Math.cos((i * Math.PI) / 2) * 46} cy={t.y + Math.sin((i * Math.PI) / 2) * 46} r={8} fill="#252c4d" />)}
                 <circle cx={t.x} cy={t.y} r={32} fill="#1b2140" stroke="rgba(255,255,255,0.14)" strokeWidth={2} />
-                <text x={t.x} y={t.y + 5} textAnchor="middle" fontSize={14} fill="#9ba8ab">{t.n}</text>
+                <text x={t.x} y={t.y + 5} textAnchor="middle" fontSize={14} fill="#a8a59f">{t.n}</text>
               </g>
             ))}
-            {voice && radius > 0 && <circle cx={me.x} cy={me.y} r={radius} fill="#4a5c6a" fillOpacity={0.04} stroke="#4a5c6a" strokeOpacity={0.25} strokeDasharray="6 8" />}
+            {voice && radius > 0 && <circle cx={me.x} cy={me.y} r={radius} fill="#5f5c57" fillOpacity={0.04} stroke="#5f5c57" strokeOpacity={0.25} strokeDasharray="6 8" />}
             {Object.entries(people).map(([id, p]) => <Avatar key={id} p={p} heard={voice ? hearing(me, p).gain : 0} />)}
             <Avatar p={{ ...me, name: 'You' }} me />
           </svg>

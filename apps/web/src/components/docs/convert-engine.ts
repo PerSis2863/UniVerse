@@ -85,7 +85,7 @@ async function zip(files: { name: string; data: Uint8Array }[]): Promise<Blob> {
   return new Blob([zipSync(entries, { level: 6 }) as BlobPart], { type: 'application/zip' });
 }
 
-const page = (title: string, body: string) => `<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/</g, '&lt;')}</title><style>body{font:16px/1.6 system-ui,sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem;color:#11212d}table{border-collapse:collapse}td,th{border:1px solid #ccd0cf;padding:4px 8px}img{max-width:100%}</style></head><body>${body}</body></html>`;
+const page = (title: string, body: string) => `<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/</g, '&lt;')}</title><style>body{font:16px/1.6 system-ui,sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem;color:#141416}table{border-collapse:collapse}td,th{border:1px solid #d6d3ce;padding:4px 8px}img{max-width:100%}</style></head><body>${body}</body></html>`;
 
 /** HTML made safe to show or put in a doc: no scripts, frames, styles or event handlers. */
 function cleanHtml(html: string) {

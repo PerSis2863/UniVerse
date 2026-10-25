@@ -115,7 +115,7 @@ export function AudioEditor({ file, onClose }: { file: File | null; onClose: () 
     g.clearRect(0, 0, c.width, c.height);
     g.fillStyle = 'rgba(148,163,184,0.35)';
     g.fillRect(0, Math.floor(mid), c.width, 1);
-    g.fillStyle = '#253745';
+    g.fillStyle = '#2a2927';
     for (let x = 0; x < levels.length; x++) { const h = Math.max(0.5, levels[x] * (mid - 2)); g.fillRect(x, mid - h, 1, h * 2); }
   }, [levels, cols, dpr]);
 
@@ -294,8 +294,8 @@ export function AudioEditor({ file, onClose }: { file: File | null; onClose: () 
   const recording = recSince !== null;
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#11212d]">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#11212d] overflow-x-auto">
+    <div className="flex-1 min-h-0 flex flex-col bg-zinc-100 dark:bg-[#141416]">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#141416] overflow-x-auto">
         <button type="button" onClick={() => void close()} aria-label="Close the audio editor" className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
         <input value={name} onChange={(e) => setName(e.target.value.replace(/[\\/:*?"<>|]/g, '').slice(0, 60))} aria-label="Sound name" className="text-sm font-semibold bg-transparent text-zinc-900 dark:text-white rounded-md px-1.5 py-1 w-40 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         {!!length && <span className="text-[11px] text-zinc-500 tabular-nums shrink-0">{clock(secs(length))} · {ch!.length === 1 ? 'mono' : 'stereo'}</span>}
@@ -324,7 +324,7 @@ export function AudioEditor({ file, onClose }: { file: File | null; onClose: () 
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-6">
           <div className="max-w-5xl mx-auto space-y-3">
-            <div role="toolbar" aria-label="Edits" className="flex flex-wrap items-center gap-1 rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 p-1 shadow-sm">
+            <div role="toolbar" aria-label="Edits" className="flex flex-wrap items-center gap-1 rounded-2xl bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 p-1 shadow-sm">
               <button type="button" onClick={() => void play()} aria-label={playing ? 'Pause' : hasSel ? 'Play the selection' : 'Play'} className="w-10 h-10 rounded-xl grid place-items-center bg-indigo-600 text-white">{playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}</button>
               <span className="w-px h-6 bg-zinc-200 dark:bg-white/10 mx-1" aria-hidden />
               <Tool label="Keep only this" icon={Crop} disabled={!hasSel} onClick={() => apply((c) => trim(c, sel!), { sel: null, cursor: 0 })} />
@@ -342,7 +342,7 @@ export function AudioEditor({ file, onClose }: { file: File | null; onClose: () 
               <Tool label="Redo" icon={Redo2} disabled={!redo.length} onClick={() => back(redo, setUndo, setRedo)} />
             </div>
 
-            <div className="rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 p-3 shadow-sm">
+            <div className="rounded-2xl bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 p-3 shadow-sm">
               <div ref={boxRef} tabIndex={0} role="slider" aria-label="Sound position: arrows move, Shift and arrows select, Space plays"
                 aria-valuemin={0} aria-valuemax={Math.round(secs(length) * 10) / 10} aria-valuenow={Math.round(secs(cursor) * 10) / 10}
                 aria-valuetext={hasSel ? `${clock(secs(sel!.start))} to ${clock(secs(sel!.end))} selected` : clock(secs(cursor))}

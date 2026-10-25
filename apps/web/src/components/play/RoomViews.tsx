@@ -35,7 +35,7 @@ export function Lobby({ state, me, onStart, onGame, onLeave }: { state: RoomStat
         <div className="mt-3 flex flex-wrap gap-2" role="img" aria-label={`Room code ${state.code.split('').join(' ')}`}>
           {state.code.split('').map((ch, i) => (
             <motion.span key={`${state.code}-${i}`} initial={{ opacity: 0, y: calm ? 0 : 10, scale: calm ? 1 : 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ ...spring.bouncy, delay: 0.04 * i }}
-              className="grid h-14 w-11 place-items-center rounded-xl border border-zinc-200 bg-white font-mono text-3xl font-bold text-zinc-900 shadow-sm sm:h-16 sm:w-12 dark:border-white/10 dark:bg-[#1B2C39] dark:text-white" aria-hidden>{ch}</motion.span>
+              className="grid h-14 w-11 place-items-center rounded-xl border border-zinc-200 bg-white font-mono text-3xl font-bold text-zinc-900 shadow-sm sm:h-16 sm:w-12 dark:border-white/10 dark:bg-[#1B1B1E] dark:text-white" aria-hidden>{ch}</motion.span>
           ))}
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -136,10 +136,24 @@ export function LiveBoard({ players, me, max }: { players: RoomPlayer[]; me?: st
   );
 }
 
+/** The room's players as a strip of chips (phones, above the game), leader first. */
+export function LiveStrip({ players, me }: { players: RoomPlayer[]; me?: string }) {
+  return (
+    <ol className="flex max-w-[60vw] gap-1.5 overflow-x-auto" aria-label="Live scores">
+      {players.map((p, i) => (
+        <motion.li key={p.id} layout transition={spring.smooth} className={cn('flex shrink-0 items-center gap-1.5 rounded-full py-1 ps-1 pe-2.5 text-xs ring-1', p.id === me ? 'bg-pink-500/15 ring-pink-400/40' : 'bg-white/[0.05] ring-white/10')}>
+          <Avatar name={p.name} src={p.avatar} size={20} />
+          <span className="font-semibold text-white tabular-nums">{i + 1}. {p.score.toLocaleString()}</span>
+        </motion.li>
+      ))}
+    </ol>
+  );
+}
+
 const PODIUM = [1, 0, 2]; // second, first, third from the start side
 const HEIGHT = ['h-40', 'h-28', 'h-20'];
 
-export function Podium({ state, me, onAgain, onLeave }: { state: RoomState; me?: string; onAgain: () => void; onLeave: () => void }) {
+export function Podium({ state, me, onAgain, onLeave, children }: { state: RoomState; me?: string; onAgain: () => void; onLeave: () => void; children?: React.ReactNode }) {
   const calm = useReducedMotion();
   const players = state.players;
   const myRank = players.findIndex((p) => p.id === me);
@@ -170,7 +184,7 @@ export function Podium({ state, me, onAgain, onLeave }: { state: RoomState; me?:
                 <span className="text-sm font-bold tabular-nums text-zinc-700 dark:text-zinc-200"><Rolling value={p.score} /></span>
               </motion.div>
               <motion.div initial={{ scaleY: calm ? 1 : 0, opacity: calm ? 0 : 1 }} animate={{ scaleY: 1, opacity: 1 }} transition={{ ...spring.gentle, delay: calm ? 0 : 0.1 * col }}
-                className={cn('mt-2 w-full origin-bottom rounded-t-2xl', HEIGHT[rank], rank === 0 ? 'bg-gradient-to-b from-pink-500 to-fuchsia-700 shadow-[0_0_40px_rgba(236,72,153,0.35)]' : 'bg-[#253745]')}>
+                className={cn('mt-2 w-full origin-bottom rounded-t-2xl', HEIGHT[rank], rank === 0 ? 'bg-gradient-to-b from-pink-500 to-fuchsia-700 shadow-[0_0_40px_rgba(236,72,153,0.35)]' : 'bg-[#2a2927]')}>
                 <span className="block pt-2 text-2xl font-black text-white/90" aria-hidden>{rank + 1}</span>
               </motion.div>
             </div>
@@ -191,6 +205,7 @@ export function Podium({ state, me, onAgain, onLeave }: { state: RoomState; me?:
         </ol>
       )}
 
+      {children}
       <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
         {iHost ? <button type="button" onClick={onAgain} className="btn-primary"><RotateCcw className="w-4 h-4" aria-hidden />Play again</button>
           : <p className="text-sm text-zinc-600 dark:text-zinc-300">Waiting for <span translate="no" className="font-semibold">{host?.name ?? 'the host'}</span> to start the next round…</p>}

@@ -48,7 +48,7 @@ export function LowDataSync() {
   // A 2G connection is offered 2G mode (voice-only calls); anything else slow, low-data mode.
   const is2G = connectionIs2G();
   return (
-    <div role="dialog" aria-label="Low-data mode" className="fixed start-3 end-3 sm:start-auto sm:end-4 sm:w-96 bottom-[calc(var(--mobile-tabbar-h,3.5rem)+env(safe-area-inset-bottom)+12px)] md:bottom-4 z-[120] rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#11212d] shadow-2xl p-4">
+    <div role="dialog" aria-label="Low-data mode" className="fixed start-3 end-3 sm:start-auto sm:end-4 sm:w-96 bottom-[calc(var(--mobile-tabbar-h,3.5rem)+env(safe-area-inset-bottom)+12px)] md:bottom-4 z-[120] rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#141416] shadow-2xl p-4">
       <div className="flex items-start gap-3">
         <Gauge className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
         <div className="flex-1">

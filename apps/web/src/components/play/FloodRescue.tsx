@@ -81,19 +81,19 @@ export function FloodRescue({ seed, startsAt, clock, onProgress }: GameProps) {
 
     // Sky, storm and the distant city.
     const sky = ctx.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, '#0b1620'); sky.addColorStop(0.6, '#1b2c39'); sky.addColorStop(1, '#253745');
+    sky.addColorStop(0, '#0b1620'); sky.addColorStop(0.6, '#1b1b1e'); sky.addColorStop(1, '#2a2927');
     ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
     s.nextBolt -= dt;
     if (s.nextBolt <= 0 && !s.calm) { s.flash = 0.35; s.nextBolt = 8 + Math.random() * 9; }
     if (s.flash > 0) { s.flash -= dt; ctx.fillStyle = `rgba(226,232,240,${Math.max(0, s.flash) * 0.5})`; ctx.fillRect(0, 0, w, h); }
-    ctx.fillStyle = 'rgba(74,92,106,0.35)';
+    ctx.fillStyle = 'rgba(95,92,87,0.35)';
     for (let k = 0; k < 14; k++) { const bw = w / 14; const bh = 40 + ((k * 53) % 70); ctx.fillRect(k * bw, h * 0.62 - bh, bw - 4, bh + h); }
 
     // Houses and the people waiting on them.
     roofs.forEach((r, k) => {
       const p = roofPx[k], mid = (p.x0 + p.x1) / 2;
-      ctx.fillStyle = k % 2 ? '#4A5C6A' : '#3b4d5a'; ctx.fillRect(p.x0, p.top, p.x1 - p.x0, h - p.top);
-      ctx.fillStyle = '#9BA8AB'; ctx.beginPath(); ctx.moveTo(p.x0 - 6, p.top + 2); ctx.lineTo(mid, p.top - 16); ctx.lineTo(p.x1 + 6, p.top + 2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = k % 2 ? '#5F5C57' : '#3b4d5a'; ctx.fillRect(p.x0, p.top, p.x1 - p.x0, h - p.top);
+      ctx.fillStyle = '#A8A59F'; ctx.beginPath(); ctx.moveTo(p.x0 - 6, p.top + 2); ctx.lineTo(mid, p.top - 16); ctx.lineTo(p.x1 + 6, p.top + 2); ctx.closePath(); ctx.fill();
       ctx.fillStyle = 'rgba(253,224,71,0.5)';
       for (let wy = p.top + 14; wy < water - 10; wy += 26) { ctx.fillRect(p.x0 + 8, wy, 9, 11); ctx.fillRect(p.x1 - 17, wy, 9, 11); }
       const on = waiting.filter((x) => x.roof === k && !s.gone.has(x.id));
@@ -171,7 +171,7 @@ export function FloodRescue({ seed, startsAt, clock, onProgress }: GameProps) {
     }
     ctx.stroke();
     drawEffects(ctx, s.parts, s.floats, dt);
-    ctx.fillStyle = 'rgba(17,33,45,0.75)'; ctx.beginPath(); ctx.roundRect(12, 12, 210, 32, 10); ctx.fill();
+    ctx.fillStyle = 'rgba(20,20,22,0.75)'; ctx.beginPath(); ctx.roundRect(12, 12, 210, 32, 10); ctx.fill();
     ctx.font = '600 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#f9a8d4'; ctx.fillText(`Aboard ${s.aboard.length}/${CAPACITY}`, 22, 28);
     ctx.fillStyle = '#86efac'; ctx.fillText(`Saved ${s.saved}`, 112, 28);

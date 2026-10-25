@@ -43,7 +43,7 @@ describe("cleanCustomDomain", () => {
 
 describe("cleanBrandColor", () => {
   it("accepts valid hex colors", () => {
-    expect(cleanBrandColor("#253745")).toBe("#253745");
+    expect(cleanBrandColor("#2a2927")).toBe("#2a2927");
     expect(cleanBrandColor("#E11D48")).toBe("#e11d48");
     expect(cleanBrandColor("#fff")).toBe("#fff");
   });

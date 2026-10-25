@@ -56,15 +56,15 @@ export function TypeRace({ seed, startsAt, clock, onProgress, rivals }: GameProp
   return (
     <div className="mx-auto w-full max-w-4xl" onClick={() => input.current?.focus()}>
       {/* The track */}
-      <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-3 dark:border-white/10 dark:bg-[#0d1b24]" aria-label="Race track">
+      <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-3 dark:border-white/10 dark:bg-[#101012]" aria-label="Race track">
         {lanes.map((l, k) => {
           const pct = Math.min(1, l.chars / FINISH);
           return (
             <div key={l.id} className={cn('relative h-11', k && 'border-t border-dashed border-zinc-300 dark:border-white/10')}>
-              <div className="absolute inset-y-0 end-0 w-1 bg-[repeating-linear-gradient(0deg,#11212D_0_6px,#f8fafc_6px_12px)] opacity-70" aria-hidden />
+              <div className="absolute inset-y-0 end-0 w-1 bg-[repeating-linear-gradient(0deg,#141416_0_6px,#f8fafc_6px_12px)] opacity-70" aria-hidden />
               <div className="absolute inset-y-0 start-0 end-24 transition-transform duration-500 ease-out" style={{ transform: `translateX(calc(${pct * 100}% * var(--play-dir, 1)))` }}>
                 <span className={cn('absolute top-1/2 -translate-y-1/2 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold shadow-md',
-                  l.me ? 'bg-pink-600 text-white shadow-[0_4px_20px_rgba(236,72,153,0.45)]' : l.id === 'pace' ? 'bg-zinc-300 text-zinc-800 dark:bg-white/15 dark:text-zinc-100' : 'bg-[#253745] text-white')} translate="no">
+                  l.me ? 'bg-pink-600 text-white shadow-[0_4px_20px_rgba(236,72,153,0.45)]' : l.id === 'pace' ? 'bg-zinc-300 text-zinc-800 dark:bg-white/15 dark:text-zinc-100' : 'bg-[#2a2927] text-white')} translate="no">
                   🏎️ {l.name}{pct >= 1 && <Flag className="w-3.5 h-3.5" aria-hidden />}
                 </span>
               </div>
@@ -82,7 +82,7 @@ export function TypeRace({ seed, startsAt, clock, onProgress, rivals }: GameProp
       {/* The fact to type */}
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={s.i} initial={{ opacity: 0, y: calm ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: calm ? 0 : -8, transition: { duration: 0.14 } }} transition={spring.smooth}
-          className="mt-4 rounded-3xl border border-zinc-200 bg-white p-5 dark:border-white/10 dark:bg-[#1B2C39] sm:p-6">
+          className="mt-4 rounded-3xl border border-zinc-200 bg-white p-5 dark:border-white/10 dark:bg-[#1B1B1E] sm:p-6">
           <p key={s.miss} className={cn('font-mono text-lg leading-relaxed sm:text-xl', s.missAt === s.at && 'play-shake')} aria-hidden>
             <span className="text-zinc-900 dark:text-white">{text.slice(0, s.at)}</span>
             <span className={cn('rounded-[4px] px-[1px] transition-colors duration-150', s.missAt === s.at ? 'bg-red-500/30 text-red-700 dark:text-red-200' : 'bg-pink-500/25 text-pink-700 underline decoration-2 underline-offset-4 dark:text-pink-200')}>{text[s.at] === ' ' ? ' ' : text[s.at]}</span>

@@ -73,7 +73,7 @@ export function BoardComments({ boardId, controls, onClose, meId }: { boardId: s
 
   return (
     <motion.aside initial={{ x: 24, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 24, opacity: 0 }} transition={spring.smooth}
-      className="absolute end-3 top-3 bottom-3 z-30 w-[min(22rem,calc(100%-1.5rem))] flex flex-col rounded-2xl bg-white/95 dark:bg-[#11212d]/95 border border-zinc-200 dark:border-white/10 shadow-2xl backdrop-blur">
+      className="absolute end-3 top-3 bottom-3 z-30 w-[min(22rem,calc(100%-1.5rem))] flex flex-col rounded-2xl bg-white/95 dark:bg-[#141416]/95 border border-zinc-200 dark:border-white/10 shadow-2xl backdrop-blur">
       <div className="flex items-center gap-2 px-4 h-12 border-b border-zinc-200/70 dark:border-white/[0.07]">
         <p className="font-semibold text-sm text-zinc-900 dark:text-white flex-1">Comments</p>
         <button type="button" onClick={() => setShowResolved((v) => !v)} className="text-xs text-zinc-500 hover:text-indigo-500">{showResolved ? 'Hide resolved' : 'Show resolved'}</button>

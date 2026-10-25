@@ -87,11 +87,11 @@ export function LiveMapShowcase({ className }: { className?: string }) {
     // Factories.
     for (const [bx, by] of model.factories) {
       ctx.save(); ctx.translate(sx(bx), sy(by)); ctx.rotate(Math.PI / 4);
-      ctx.fillStyle = '#ccd0cf'; ctx.strokeStyle = '#0a1721'; ctx.lineWidth = 2; ctx.fillRect(-3.5, -3.5, 7, 7); ctx.strokeRect(-3.5, -3.5, 7, 7); ctx.restore();
+      ctx.fillStyle = '#d6d3ce'; ctx.strokeStyle = '#0a1721'; ctx.lineWidth = 2; ctx.fillRect(-3.5, -3.5, 7, 7); ctx.strokeRect(-3.5, -3.5, 7, 7); ctx.restore();
     }
     // One shipment on the road (Jaén to Paris), round and round.
     const pts = model.route.map(([bx, by]) => [sx(bx), sy(by)] as [number, number]);
-    ctx.strokeStyle = 'rgba(204,208,207,0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]); ctx.lineDashOffset = still ? 0 : -t / 50;
+    ctx.strokeStyle = 'rgba(214,211,206,0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]); ctx.lineDashOffset = still ? 0 : -t / 50;
     ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); ctx.setLineDash([]);
     const lens = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1])), total = lens.reduce((a, b) => a + b, 0);
     let goal = ((t / 16000) % 1) * total, seg = 0;

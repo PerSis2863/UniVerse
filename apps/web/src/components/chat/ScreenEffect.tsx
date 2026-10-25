@@ -8,7 +8,7 @@ import type { MessageEffect } from '@/lib/message-effects';
 // requestAnimationFrame and removed after; nothing plays with Reduce Motion.
 
 // The owner's colours: hot pinks and the blues.
-const COLORS = ['#db2777', '#f472b6', '#fbcfe8', '#ec4899', '#f2f4f4', '#4a5c6a', '#9ba8ab'];
+const COLORS = ['#db2777', '#f472b6', '#fbcfe8', '#ec4899', '#f3f2ef', '#5f5c57', '#a8a59f'];
 const DURATION = 3000;
 type P = { x: number; y: number; vx: number; vy: number; r: number; spin: number; a: number; c: string; s: number; t0: number };
 
@@ -60,7 +60,7 @@ export function ScreenEffect({ effect, onDone }: { effect: MessageEffect; onDone
       const fade = t > DURATION - 600 ? Math.max(0, (DURATION - t) / 600) : 1;
       if (effect === 'lasers') {
         // Beams sweeping from the bottom corners over a dimmed chat.
-        ctx.fillStyle = `rgba(6, 20, 27, ${0.45 * fade})`;
+        ctx.fillStyle = `rgba(11, 11, 12, ${0.45 * fade})`;
         ctx.fillRect(0, 0, w, h);
         ctx.globalCompositeOperation = 'lighter';
         for (let i = 0; i < 6; i++) {

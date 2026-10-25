@@ -11,7 +11,7 @@ export interface CalEvent { id: string; userId?: string; title: string; descript
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const TYPE: Record<string, string> = { LECTURE: 'Lecture', LAB: 'Lab', TUTORIAL: 'Tutorial', SEMINAR: 'Seminar', EXAM: 'Exam', DEADLINE: 'Deadline', MEETING: 'Meeting', PERSONAL: 'Personal', FOCUS: 'Study time', OFFICE_HOURS: 'Office hours' };
 /** Events without a colour of their own, by kind (Stage 5 · Q12). */
-const KIND_COLOR: Record<string, string> = { FOCUS: '#0f766e', DEADLINE: '#be123c', OFFICE_HOURS: '#4a5c6a', EXAM: '#b45309' };
+const KIND_COLOR: Record<string, string> = { FOCUS: '#0f766e', DEADLINE: '#be123c', OFFICE_HOURS: '#5f5c57', EXAM: '#b45309' };
 const minutes = (t: string) => { const [h, m] = String(t).split(':').map(Number); return (h || 0) * 60 + (m || 0); };
 const hhmm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 

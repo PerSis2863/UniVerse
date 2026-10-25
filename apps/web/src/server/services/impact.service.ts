@@ -14,10 +14,10 @@ import { pushService } from './push.service';
 
 // ── Impact level thresholds ──────────────────────────────────────────────────
 const LEVELS = [
-  { level: 1, title: 'Changemaker Seed',  minXP: 0,    color: '#5a6a73', emoji: '🌱' },
+  { level: 1, title: 'Changemaker Seed',  minXP: 0,    color: '#66635d', emoji: '🌱' },
   { level: 2, title: 'Impact Explorer',   minXP: 100,  color: '#10b981', emoji: '🌿' },
   { level: 3, title: 'Social Innovator',  minXP: 300,  color: '#3b82f6', emoji: '⚡' },
-  { level: 4, title: 'SDG Champion',      minXP: 600,  color: '#4a5c6a', emoji: '🏅' },
+  { level: 4, title: 'SDG Champion',      minXP: 600,  color: '#5f5c57', emoji: '🏅' },
   { level: 5, title: 'Global Catalyst',   minXP: 1000, color: '#f59e0b', emoji: '🌍' },
   { level: 6, title: 'Visionary Leader',  minXP: 1500, color: '#ef4444', emoji: '🚀' },
   { level: 7, title: 'UniVerse Legend',   minXP: 2500, color: '#f97316', emoji: '🌟' },

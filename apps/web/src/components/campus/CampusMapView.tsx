@@ -54,7 +54,7 @@ export function CampusMapView({ buildings, stats, editing, focus, onOpen, onMove
       {buildings.map((b) => {
         const s = stats[b.id] ?? { total: 0, inUse: 0, live: false, events: 0, next: false };
         const box = drag?.id === b.id ? drag.box : b;
-        const color = b.color ?? '#253745';
+        const color = b.color ?? '#2a2927';
         const level = loadLevel(s.inUse, s.total);
         const label = `${b.name}: ${s.total ? `${s.inUse} of ${s.total} room${s.total === 1 ? '' : 's'} in use` : 'no rooms placed yet'}${s.live ? ', a class live now' : ''}${s.events ? `, ${s.events} event${s.events === 1 ? '' : 's'} now or soon` : ''}${s.next ? ', your next class' : ''}`;
         // The spoken name starts with the short name shown on the map (people using voice control say what they see).
@@ -106,7 +106,7 @@ export function MapLegend() {
   const items: [string, string][] = [['22', 'Nothing on'], ['4d', 'A few rooms in use'], ['8c', 'Most rooms in use'], ['d9', 'Every room in use']];
   return (
     <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-zinc-700 dark:text-zinc-300" aria-label="Map key">
-      {items.map(([a, label]) => <li key={a} className="flex items-center gap-1.5"><span aria-hidden className="w-4 h-3 rounded border-2 border-indigo-500" style={{ background: `#253745${a}` }} />{label}</li>)}
+      {items.map(([a, label]) => <li key={a} className="flex items-center gap-1.5"><span aria-hidden className="w-4 h-3 rounded border-2 border-indigo-500" style={{ background: `#2a2927${a}` }} />{label}</li>)}
       <li className="flex items-center gap-1.5"><span aria-hidden className="w-2.5 h-2.5 rounded-full bg-rose-500" />Class live now</li>
       <li className="flex items-center gap-1.5"><MapPin aria-hidden className="w-3.5 h-3.5 text-amber-500" />Your next class</li>
       <li className="flex items-center gap-1.5"><CalendarDays aria-hidden className="w-3.5 h-3.5 text-fuchsia-600 dark:text-fuchsia-400" />Event now or soon</li>

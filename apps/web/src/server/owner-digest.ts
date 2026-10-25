@@ -56,12 +56,12 @@ export async function emailOwnerDigest(now = Date.now()): Promise<string> {
     n('failed') && `${n('failed')} payment(s) failed.`,
   ].filter(Boolean) as string[];
   const link = `${APP_URL()}/console`;
-  const html = `<div style="font-family:system-ui,sans-serif;max-width:560px;color:#11212d">
-<h2 style="margin:0 0 4px">UniVerse ${span}</h2><p style="margin:0 0 16px;color:#5a6a73">The last ${days === 1 ? '24 hours' : `${days} days`}, from your live database.</p>
-<table style="border-collapse:collapse;width:100%">${rows.map(([k, v]) => `<tr><td style="padding:6px 0;color:#5a6a73">${escapeHtml(k)}</td><td style="padding:6px 0;text-align:right;font-weight:600">${escapeHtml(v)}</td></tr>`).join('')}</table>
+  const html = `<div style="font-family:system-ui,sans-serif;max-width:560px;color:#141416">
+<h2 style="margin:0 0 4px">UniVerse ${span}</h2><p style="margin:0 0 16px;color:#66635d">The last ${days === 1 ? '24 hours' : `${days} days`}, from your live database.</p>
+<table style="border-collapse:collapse;width:100%">${rows.map(([k, v]) => `<tr><td style="padding:6px 0;color:#66635d">${escapeHtml(k)}</td><td style="padding:6px 0;text-align:right;font-weight:600">${escapeHtml(v)}</td></tr>`).join('')}</table>
 ${todo.length ? `<h3 style="margin:20px 0 6px">Needs a look</h3><ul style="padding-left:18px;margin:0">${todo.map((t) => `<li style="margin-bottom:4px">${escapeHtml(t)}</li>`).join('')}</ul>` : '<p style="margin-top:20px">Nothing needs you right now.</p>'}
 <p style="margin-top:20px"><a href="${link}">Open the owner console →</a></p>
-<p style="color:#9ba8ab;font-size:12px">Get it daily, weekly, monthly or not at all: owner console → Server → Your emails.</p></div>`;
+<p style="color:#a8a59f;font-size:12px">Get it daily, weekly, monthly or not at all: owner console → Server → Your emails.</p></div>`;
   const text = `UniVerse ${span}\n\n${rows.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\n${todo.length ? `Needs a look:\n${todo.map((t) => `- ${t}`).join('\n')}` : 'Nothing needs you right now.'}\n\n${link}`;
   const owners = ownerEmails();
   const sent = await Promise.all(owners.map((to) => sendEmail(to, `UniVerse: ${n('active')} active, ${n('joined')} new${todo.length ? `, ${todo.length} to look at` : ''}`, html, text)));

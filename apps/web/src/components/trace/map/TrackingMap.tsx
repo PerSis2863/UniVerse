@@ -16,7 +16,7 @@ import { STAGE_LABEL, type Stage } from '@/lib/trace';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow, useTick } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
-import { fromBase, glow, toBase } from './engine';
+import { glow, toBase } from './engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from './WorldCanvas';
 
 // The live tracking map (UniVerse Trace; the owner, 24 Oct 2026: "add 2d real time product tracking
@@ -127,7 +127,7 @@ export function TrackingMap() {
     const { ctx, view, t, zoom } = f, k = view.k, still = reduced();
     const sx = (lng: number, lat: number): [number, number] => f.at(lng, lat);
     const bs = (b: [number, number]): [number, number] => [view.x + b[0] * k, view.y + b[1] * k];
-    const ink = f.dark ? '#ccd0cf' : '#253745', paper = f.dark ? '#0a1721' : '#ffffff';
+    const ink = f.dark ? '#d6d3ce' : '#2a2927', paper = f.dark ? '#0a1721' : '#ffffff';
     const order = [...shown].sort((a, b) => (a.id === selected ? 1 : 0) - (b.id === selected ? 1 : 0));
 
     for (const s of order) {
@@ -213,7 +213,7 @@ export function TrackingMap() {
     const f = frameRef.current;
     if (!f) return;
     if (kind === 'click' && picking && p) {
-      const [lng, lat] = fromBase((p.x - f.view.x) / f.view.k, (p.y - f.view.y) / f.view.k);
+      const [lng, lat] = f.lngLat(p.x, p.y);
       setDest({ id: picking, lat: Math.round(lat * 1e4) / 1e4, lng: Math.round(lng * 1e4) / 1e4, place: '' });
       setPicking(null);
       return;
@@ -221,7 +221,7 @@ export function TrackingMap() {
     let best: { id: string; d: number } | null = null;
     if (p) for (const s of shown) {
       const m = s.status === 'IN_TRANSIT' ? markerAt(s, f.t) : null;
-      const at = m ? [f.view.x + m.x * f.view.k, f.view.y + m.y * f.view.k] : s.stops.length ? f.at(s.stops[s.stops.length - 1].lng, s.stops[s.stops.length - 1].lat) : null;
+      const at = m ? [f.sx(m.x), f.sy(m.y)] : s.stops.length ? f.at(s.stops[s.stops.length - 1].lng, s.stops[s.stops.length - 1].lat) : null;
       if (!at) continue;
       const d = Math.hypot(p.x - at[0], p.y - at[1]);
       if (d < 18 && (!best || d < best.d)) best = { id: s.id, d };
@@ -301,7 +301,7 @@ export function TrackingMap() {
             {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-pink-500" aria-label="Loading the map" /></div>}
             <div className="absolute right-3 top-3 flex flex-col gap-1.5">
               {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See every shipment'], ['full', full ? Minimize2 : Maximize2, full ? 'Leave full screen' : 'Full screen']] as const).map(([id, Icon, label]) => (
-                <button key={id} type="button" onClick={() => control(id)} aria-label={label} title={label} className="w-9 h-9 grid place-items-center rounded-xl bg-white/90 dark:bg-[#06141b]/85 backdrop-blur text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-200/70 dark:border-white/10 hover:text-pink-600 dark:hover:text-pink-300 active:scale-95 transition">
+                <button key={id} type="button" onClick={() => control(id)} aria-label={label} title={label} className="w-9 h-9 grid place-items-center rounded-xl bg-white/90 dark:bg-[#0b0b0c]/85 backdrop-blur text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-200/70 dark:border-white/10 hover:text-pink-600 dark:hover:text-pink-300 active:scale-95 transition">
                   <Icon className="w-4 h-4" aria-hidden />
                 </button>
               ))}
@@ -317,7 +317,7 @@ export function TrackingMap() {
             <AnimatePresence>
               {dest && (
                 <motion.form onSubmit={(e) => void saveDest(e)} initial={{ opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }} transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                  className="absolute left-1/2 -translate-x-1/2 top-3 w-[min(92%,360px)] rounded-2xl bg-white dark:bg-[#06141b] p-3 shadow-xl border border-zinc-200 dark:border-white/10">
+                  className="absolute left-1/2 -translate-x-1/2 top-3 w-[min(92%,360px)] rounded-2xl bg-white dark:bg-[#0b0b0c] p-3 shadow-xl border border-zinc-200 dark:border-white/10">
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-200">What is this place called?
                     <input autoFocus value={dest.place} maxLength={160} onChange={(e) => setDest({ ...dest, place: e.target.value })} className="input mt-1" placeholder="Milan distribution centre" />
                   </label>
@@ -330,12 +330,12 @@ export function TrackingMap() {
             <AnimatePresence>
               {sel && sel.status === 'IN_TRANSIT' && (
                 <motion.div key={sel.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                  className="absolute left-3 bottom-3 right-3 sm:right-auto sm:w-[420px] rounded-2xl bg-white/94 dark:bg-[#06141b]/90 backdrop-blur px-4 py-3 shadow-xl border border-zinc-200/70 dark:border-white/10">
+                  className="absolute left-3 bottom-3 right-3 sm:right-auto sm:w-[420px] rounded-2xl bg-white/94 dark:bg-[#0b0b0c]/90 backdrop-blur px-4 py-3 shadow-xl border border-zinc-200/70 dark:border-white/10">
                   <LiveStrip s={sel} />
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="absolute left-3 top-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#06141b]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
+            <div className="absolute left-3 top-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#0b0b0c]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
               <span className="flex items-center gap-2"><span className="w-4 h-0.5 bg-zinc-600 dark:bg-zinc-300 rounded" />Done</span>
               <span className="flex items-center gap-2"><span className="w-4 h-0.5 bg-pink-500 rounded shadow-[0_0_6px_#ec4899]" />Live trail</span>
               <span className="flex items-center gap-2"><span className="w-4 border-t-2 border-dashed border-pink-500" />Still to go</span>
@@ -355,10 +355,10 @@ function label(ctx: CanvasRenderingContext2D, f: Frame, x: number, y: number, te
   const w = ctx.measureText(text).width + 14;
   x = Math.max(8 + w / 2, Math.min(f.w - 56 - w / 2, x)); // clear of the edges and the zoom buttons
   ctx.globalAlpha = Math.min(1, ctx.globalAlpha + 0.1);
-  ctx.fillStyle = f.dark ? 'rgba(6,20,27,0.9)' : 'rgba(255,255,255,0.95)';
+  ctx.fillStyle = f.dark ? 'rgba(11,11,12,0.9)' : 'rgba(255,255,255,0.95)';
   ctx.beginPath(); ctx.roundRect(x - w / 2, y - 10, w, 20, 10); ctx.fill();
   if (strong) { ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke(); }
-  ctx.fillStyle = f.dark ? '#f2f4f4' : '#06141b';
+  ctx.fillStyle = f.dark ? '#f3f2ef' : '#0b0b0c';
   ctx.fillText(text, x, y + 0.5);
   ctx.restore();
 }

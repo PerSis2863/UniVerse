@@ -38,7 +38,7 @@ export function FocusTimer() {
       <div className="relative w-40 h-40">
         <svg viewBox="0 0 128 128" className="w-full h-full -rotate-90" aria-hidden>
           <defs>
-            <linearGradient id="focus-ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={brk ? '#14b8a6' : '#253745'} /><stop offset="1" stopColor={brk ? '#22d3ee' : '#db2777'} /></linearGradient>
+            <linearGradient id="focus-ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={brk ? '#14b8a6' : '#2a2927'} /><stop offset="1" stopColor={brk ? '#22d3ee' : '#db2777'} /></linearGradient>
           </defs>
           <circle cx="64" cy="64" r={R} fill="none" strokeWidth="9" className="stroke-zinc-200 dark:stroke-white/[0.07]" />
           <circle cx="64" cy="64" r={R} fill="none" strokeWidth="9" strokeLinecap="round" stroke="url(#focus-ring)" strokeDasharray={C} strokeDashoffset={C * (1 - done)}

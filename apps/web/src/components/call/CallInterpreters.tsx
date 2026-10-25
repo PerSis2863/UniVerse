@@ -25,7 +25,7 @@ export function InterpretersSheet({ open, onClose, people, interp, canManage, li
         <>
           <motion.div key="scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-30 bg-black/40" aria-hidden />
           <motion.div key="interp" role="dialog" aria-label="Interpretation" initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 28 }} transition={spring.smooth}
-            className="absolute z-40 inset-x-0 bottom-0 max-h-[85vh] rounded-t-3xl sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-auto sm:top-[calc(env(safe-area-inset-top)+4.5rem)] sm:w-[26rem] sm:max-h-[calc(100%-11rem)] sm:rounded-3xl bg-[#11212d]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0">
+            className="absolute z-40 inset-x-0 bottom-0 max-h-[85vh] rounded-t-3xl sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-auto sm:top-[calc(env(safe-area-inset-top)+4.5rem)] sm:w-[26rem] sm:max-h-[calc(100%-11rem)] sm:rounded-3xl bg-[#141416]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)] sm:pb-0">
             <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2">
               <p className="font-semibold flex items-center gap-1.5"><Ear className="w-4 h-4 text-sky-300" aria-hidden />Interpretation</p>
               <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>

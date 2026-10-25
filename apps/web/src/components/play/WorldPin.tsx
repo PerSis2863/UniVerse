@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { MapPin, Package } from 'lucide-react';
 import { CITIES } from '@/components/trace/map/cities';
-import { fromBase, type View } from '@/components/trace/map/engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
 import { PIN_SECONDS_PER, PIN_TARGETS, kmBetween, pinPoints, pinTarget, pinVerdict } from '@/lib/play/pin';
 import { useDarkMode } from '@/lib/use-dark';
@@ -39,14 +38,13 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
   const dark = useDarkMode();
   const calm = useReducedMotion();
   const map = useRef<MapHandle>(null);
-  const seen = useRef<{ view: View; w: number; h: number } | null>(null);
+  const seen = useRef<{ lngLat: Frame['lngLat']; w: number; h: number } | null>(null);
   const answered = !!s.pick || s.timedOut;
   const last = s.i >= PIN_TARGETS - 1;
 
   const pinAt = useCallback((x: number, y: number) => {
-    const v = seen.current?.view;
-    if (!v || answered) return;
-    const [lng, lat] = fromBase((x - v.x) / v.k, (y - v.y) / v.k);
+    if (!seen.current || answered) return;
+    const [lng, lat] = seen.current.lngLat(x, y);
     const km = kmBetween({ lat, lng }, target);
     dispatch({ t: 'pick', pick: { lat, lng, km, pts: pinPoints(km, s.shownAt + PER - clock()) }, at: clock() });
     navigator.vibrate?.(km < 500 ? 15 : [20, 30, 20]);
@@ -83,7 +81,7 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
   }, [pinAt]);
 
   const draw = useCallback((f: Frame) => {
-    seen.current = { view: f.view, w: f.w, h: f.h };
+    seen.current = { lngLat: f.lngLat, w: f.w, h: f.h };
     const { ctx } = f;
     if (!answered) {
       ctx.strokeStyle = dark ? 'rgba(249,168,212,0.55)' : 'rgba(219,39,119,0.5)'; ctx.lineWidth = 1.5;
@@ -102,7 +100,7 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
         const label = `${Math.round(s.pick.km).toLocaleString()} km`;
         ctx.font = '700 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
         const mx = (px + tx) / 2, my = (py + ty) / 2 - 10, tw = ctx.measureText(label).width + 16;
-        ctx.fillStyle = dark ? 'rgba(17,33,45,0.9)' : 'rgba(255,255,255,0.95)'; ctx.beginPath(); ctx.roundRect(mx - tw / 2, my - 13, tw, 22, 11); ctx.fill();
+        ctx.fillStyle = dark ? 'rgba(20,20,22,0.9)' : 'rgba(255,255,255,0.95)'; ctx.beginPath(); ctx.roundRect(mx - tw / 2, my - 13, tw, 22, 11); ctx.fill();
         ctx.fillStyle = dark ? '#f9a8d4' : '#be185d'; ctx.fillText(label, mx, my + 2);
       }
     }
@@ -125,7 +123,7 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
         <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-3">
           <AnimatePresence mode="wait">
             <motion.div key={s.i} initial={{ opacity: 0, y: calm ? 0 : -10, scale: calm ? 1 : 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={spring.bouncy}
-              className="w-full max-w-sm overflow-hidden rounded-2xl bg-white/95 shadow-xl ring-1 ring-black/5 dark:bg-[#11212D]/95 dark:ring-white/10">
+              className="w-full max-w-sm overflow-hidden rounded-2xl bg-white/95 shadow-xl ring-1 ring-black/5 dark:bg-[#141416]/95 dark:ring-white/10">
               <div className="flex items-center gap-3 px-4 py-3">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-pink-600 text-white"><Package className="w-5 h-5" aria-hidden /></span>
                 <div className="min-w-0 flex-1">
@@ -142,7 +140,7 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
           {answered && (
             <motion.div key={`r${s.i}`} initial={{ opacity: 0, y: calm ? 0 : 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={spring.bouncy}
               className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-3">
-              <p className={cn('inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-xl', s.pick && s.pick.pts > 0 ? 'bg-emerald-700 text-white' : 'bg-[#11212D] text-white')} aria-live="polite">
+              <p className={cn('inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-xl', s.pick && s.pick.pts > 0 ? 'bg-emerald-700 text-white' : 'bg-[#141416] text-white')} aria-live="polite">
                 <MapPin className="w-4 h-4" aria-hidden />{verdict}{s.pick ? ` · +${s.pick.pts}` : ''}
               </p>
             </motion.div>

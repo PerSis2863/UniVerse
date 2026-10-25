@@ -29,20 +29,20 @@ export const backgroundsSupported = () => typeof window !== 'undefined' && typeo
 /** Pictures drawn here (nothing to download): soft scenes in the app's colours. css: their thumbnail. */
 export const SCENES: { id: string; label: string; css: string; paint: (g: CanvasRenderingContext2D, w: number, h: number) => void }[] = [
   {
-    id: 'aurora', label: 'Aurora', css: 'radial-gradient(circle at 20% 20%, #db2777 0%, transparent 55%), radial-gradient(circle at 80% 70%, #253745 0%, transparent 55%), #0b1a24',
-    paint: (g, w, h) => { g.fillStyle = '#0b1a24'; g.fillRect(0, 0, w, h); glow(g, w * 0.2, h * 0.2, w * 0.6, '#db2777'); glow(g, w * 0.8, h * 0.7, w * 0.6, '#253745'); },
+    id: 'aurora', label: 'Aurora', css: 'radial-gradient(circle at 20% 20%, #db2777 0%, transparent 55%), radial-gradient(circle at 80% 70%, #2a2927 0%, transparent 55%), #111112',
+    paint: (g, w, h) => { g.fillStyle = '#111112'; g.fillRect(0, 0, w, h); glow(g, w * 0.2, h * 0.2, w * 0.6, '#db2777'); glow(g, w * 0.8, h * 0.7, w * 0.6, '#2a2927'); },
   },
   {
-    id: 'sunset', label: 'Sunset', css: 'linear-gradient(180deg, #0b1a24 0%, #be185d 55%, #f59e0b 100%)',
-    paint: (g, w, h) => { const l = g.createLinearGradient(0, 0, 0, h); l.addColorStop(0, '#0b1a24'); l.addColorStop(0.55, '#be185d'); l.addColorStop(1, '#f59e0b'); g.fillStyle = l; g.fillRect(0, 0, w, h); glow(g, w * 0.5, h * 0.95, w * 0.35, '#fde68a'); },
+    id: 'sunset', label: 'Sunset', css: 'linear-gradient(180deg, #111112 0%, #be185d 55%, #f59e0b 100%)',
+    paint: (g, w, h) => { const l = g.createLinearGradient(0, 0, 0, h); l.addColorStop(0, '#111112'); l.addColorStop(0.55, '#be185d'); l.addColorStop(1, '#f59e0b'); g.fillStyle = l; g.fillRect(0, 0, w, h); glow(g, w * 0.5, h * 0.95, w * 0.35, '#fde68a'); },
   },
   {
-    id: 'ocean', label: 'Ocean', css: 'linear-gradient(160deg, #0ea5e9 0%, #1e3a8a 60%, #0b1a24 100%)',
-    paint: (g, w, h) => { const l = g.createLinearGradient(0, 0, w, h); l.addColorStop(0, '#0ea5e9'); l.addColorStop(0.6, '#1e3a8a'); l.addColorStop(1, '#0b1a24'); g.fillStyle = l; g.fillRect(0, 0, w, h); glow(g, w * 0.15, h * 0.1, w * 0.4, '#67e8f9'); },
+    id: 'ocean', label: 'Ocean', css: 'linear-gradient(160deg, #0ea5e9 0%, #1e3a8a 60%, #111112 100%)',
+    paint: (g, w, h) => { const l = g.createLinearGradient(0, 0, w, h); l.addColorStop(0, '#0ea5e9'); l.addColorStop(0.6, '#1e3a8a'); l.addColorStop(1, '#111112'); g.fillStyle = l; g.fillRect(0, 0, w, h); glow(g, w * 0.15, h * 0.1, w * 0.4, '#67e8f9'); },
   },
   {
-    id: 'calm', label: 'Calm', css: 'linear-gradient(135deg, #e2e6e6 0%, #f4f2ee 50%, #fce7f3 100%)',
-    paint: (g, w, h) => { const l = g.createLinearGradient(0, 0, w, h); l.addColorStop(0, '#e2e6e6'); l.addColorStop(0.5, '#f4f2ee'); l.addColorStop(1, '#fce7f3'); g.fillStyle = l; g.fillRect(0, 0, w, h); },
+    id: 'calm', label: 'Calm', css: 'linear-gradient(135deg, #e6e4e0 0%, #f4f2ee 50%, #fce7f3 100%)',
+    paint: (g, w, h) => { const l = g.createLinearGradient(0, 0, w, h); l.addColorStop(0, '#e6e4e0'); l.addColorStop(0.5, '#f4f2ee'); l.addColorStop(1, '#fce7f3'); g.fillStyle = l; g.fillRect(0, 0, w, h); },
   },
 ];
 

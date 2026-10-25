@@ -296,7 +296,7 @@ export function EmbedMenu({ editor, disabled, kinds, extra = [] }: {
         <Plus className="w-4 h-4" /><span className="max-sm:sr-only">Insert</span>
       </button>
       {step && (
-        <div className="absolute end-0 top-10 z-40 w-72 rounded-2xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl p-2" onKeyDown={(e) => { if (e.key === 'Escape') close(); }}>
+        <div className="absolute end-0 top-10 z-40 w-72 rounded-2xl bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 shadow-2xl p-2" onKeyDown={(e) => { if (e.key === 'Escape') close(); }}>
           {step === 'menu' && (
             <ul>
               {items.map((it) => (

@@ -70,7 +70,7 @@ export function Popover({ label, button, children, disabled, className, title, w
             // Placed by `place` above (a plain box, so nothing re-renders it back).
             <div key="panel" ref={panel} id={id} data-popover style={{ position: 'fixed', top: -9999, left: -9999 }} className="z-[70]">
               <motion.div initial={{ opacity: 0, y: -4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={spring.snappy}
-                className={cn('rounded-xl bg-white dark:bg-[#11212d] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm text-zinc-800 dark:text-zinc-100 max-h-[70vh] overflow-y-auto', wide ? 'w-80' : 'min-w-52 max-w-72')}>
+                className={cn('rounded-xl bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm text-zinc-800 dark:text-zinc-100 max-h-[70vh] overflow-y-auto', wide ? 'w-80' : 'min-w-52 max-w-72')}>
                 {children(close)}
               </motion.div>
             </div>
@@ -130,7 +130,7 @@ export function ColorGrid({ label, value, onPick, none = 'No colour' }: { label:
       <div role="group" aria-label={label} className="grid grid-cols-6 gap-1.5">
         {PALETTE.map((c) => (
           <button key={c} type="button" aria-label={c} aria-pressed={value === c} title={c} onClick={() => onPick(c)} style={{ background: c }}
-            className={cn('w-7 h-7 rounded-md border border-zinc-300 dark:border-white/20', value === c && 'ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-[#11212d]')} />
+            className={cn('w-7 h-7 rounded-md border border-zinc-300 dark:border-white/20', value === c && 'ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-[#141416]')} />
         ))}
       </div>
       <div className="flex items-center gap-2">

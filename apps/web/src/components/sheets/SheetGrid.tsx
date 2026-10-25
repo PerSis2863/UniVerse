@@ -264,7 +264,7 @@ export const SheetGrid = memo(function SheetGrid(p: Props) {
     const bg = look?.bg ?? s?.bg;
     // Chosen colours stay readable on what's behind them (a fill, or the light or dark sheet).
     const chosen = look?.color ?? s?.color ?? (isErr(v) ? '#b91c1c' : undefined);
-    const ink = chosen ? readable(chosen, bg ?? (dark ? '#0b1a24' : '#ffffff')) : bg ? textOn(bg) : undefined;
+    const ink = chosen ? readable(chosen, bg ?? (dark ? '#111112' : '#ffffff')) : bg ? textOn(bg) : undefined;
     // Text runs on into empty cells to its right (left-aligned, not wrapped).
     let span = merge ? cols.span(merge.c1, merge.c2) : w;
     const spanH = merge ? rows.span(merge.r1, merge.r2) : h;
@@ -285,10 +285,10 @@ export const SheetGrid = memo(function SheetGrid(p: Props) {
     return (
       <div key={k} id={active ? `${p.gridId}-active` : undefined} role="gridcell" aria-colindex={c + 2} aria-selected={selected || undefined}
         aria-label={active ? `${colName(c)}${r + 1}${text ? `, ${text}` : ''}` : undefined}
-        className={cn('relative shrink-0 border-e border-b border-zinc-200 dark:border-white/[0.07] select-none', sticky && 'sticky z-[2] bg-white dark:bg-[#1b2c39]', covered && 'border-transparent dark:border-transparent')}
+        className={cn('relative shrink-0 border-e border-b border-zinc-200 dark:border-white/[0.07] select-none', sticky && 'sticky z-[2] bg-white dark:bg-[#1b1b1e]', covered && 'border-transparent dark:border-transparent')}
         style={{ width: w, height: h, ...(sticky ? { left } : {}), ...(bg && !covered ? { background: bg } : {}) }}>
         {!covered && (
-          <div className={cn('absolute top-0 start-0 px-1 flex overflow-hidden', s?.wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre', (span > w || merge) && 'z-[1]', (span > w || merge) && !bg && 'bg-white dark:bg-[#1b2c39]')}
+          <div className={cn('absolute top-0 start-0 px-1 flex overflow-hidden', s?.wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre', (span > w || merge) && 'z-[1]', (span > w || merge) && !bg && 'bg-white dark:bg-[#1b1b1e]')}
             style={{ width: span - 1, height: spanH - 1, alignItems: s?.va === 'top' ? 'flex-start' : s?.va === 'middle' ? 'center' : 'flex-end', justifyContent: align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start',
               fontWeight: s?.b ? 700 : undefined, fontStyle: s?.i ? 'italic' : undefined, textDecoration: [s?.u && 'underline', s?.st && 'line-through'].filter(Boolean).join(' ') || undefined,
               color: ink, fontSize: fontPx(s), fontFamily: s?.font ? `"${s.font}"` : undefined, ...(merge && bg ? { background: bg } : {}) }}>
@@ -334,7 +334,7 @@ export const SheetGrid = memo(function SheetGrid(p: Props) {
     for (let c = c0; c <= c1; c++) cells.push(cellEl(r, c, null));
     return (
       <div key={r} role="row" aria-rowindex={r + 2} className="flex" style={{ height: h, width: totalW }}>
-        <div role="rowheader" className={cn('sticky start-0 z-[4] shrink-0 flex items-center justify-center text-[11px] tabular-nums border-e border-b border-zinc-200 dark:border-white/[0.07] relative', rowInSel(r) ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/25 dark:text-indigo-100 font-semibold' : 'bg-zinc-50 text-zinc-600 dark:bg-[#11212d] dark:text-zinc-400')} style={{ width: ROWHEAD_W, height: h }}>
+        <div role="rowheader" className={cn('sticky start-0 z-[4] shrink-0 flex items-center justify-center text-[11px] tabular-nums border-e border-b border-zinc-200 dark:border-white/[0.07] relative', rowInSel(r) ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/25 dark:text-indigo-100 font-semibold' : 'bg-zinc-50 text-zinc-600 dark:bg-[#141416] dark:text-zinc-400')} style={{ width: ROWHEAD_W, height: h }}>
           {r + 1}
           <span data-own-pointer data-axis="row" data-i={r} onPointerDown={startResize} onDoubleClick={autofit} aria-hidden className="absolute start-0 end-0 -bottom-1 h-2 cursor-row-resize z-[5] touch-none" />
         </div>
@@ -349,7 +349,7 @@ export const SheetGrid = memo(function SheetGrid(p: Props) {
     const w = cols.size(c);
     if (!w) return null;
     return (
-      <div key={c} role="columnheader" aria-colindex={c + 2} className={cn('relative shrink-0 flex items-center justify-center text-[11px] border-e border-b border-zinc-200 dark:border-white/[0.07]', left != null && 'sticky z-[4]', colInSel(c) ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/25 dark:text-indigo-100 font-semibold' : 'bg-zinc-50 text-zinc-600 dark:bg-[#11212d] dark:text-zinc-400')} style={{ width: w, height: HEADER_H, ...(left != null ? { left } : {}) }}>
+      <div key={c} role="columnheader" aria-colindex={c + 2} className={cn('relative shrink-0 flex items-center justify-center text-[11px] border-e border-b border-zinc-200 dark:border-white/[0.07]', left != null && 'sticky z-[4]', colInSel(c) ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-500/25 dark:text-indigo-100 font-semibold' : 'bg-zinc-50 text-zinc-600 dark:bg-[#141416] dark:text-zinc-400')} style={{ width: w, height: HEADER_H, ...(left != null ? { left } : {}) }}>
         {colName(c)}
         <span data-own-pointer data-axis="col" data-i={c} onPointerDown={startResize} onDoubleClick={autofit} aria-hidden className="absolute top-0 bottom-0 -end-1 w-2 cursor-col-resize z-[5] touch-none" />
       </div>
@@ -370,16 +370,16 @@ export const SheetGrid = memo(function SheetGrid(p: Props) {
       onDoubleClick={(e) => { if (!(e.target as HTMLElement).closest('[data-own-pointer], [role="columnheader"], [role="rowheader"]')) p.onEditCell(); }}
       onContextMenu={(e) => { e.preventDefault(); const { r, c } = hit(e.clientX, e.clientY); if (r >= 0 && c >= 0 && !inSel(r, c)) p.onPointerCell(r, c, { shift: false, drag: false, kind: 'cell' }); p.onContext(e.clientX, e.clientY); }}
       {...p.keyHandlers}
-      className="relative flex-1 min-h-0 overflow-auto outline-none bg-white dark:bg-[#1b2c39] text-zinc-900 dark:text-zinc-100 font-[Inter,system-ui,sans-serif] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/40 overscroll-contain">
+      className="relative flex-1 min-h-0 overflow-auto outline-none bg-white dark:bg-[#1b1b1e] text-zinc-900 dark:text-zinc-100 font-[Inter,system-ui,sans-serif] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/40 overscroll-contain">
       <div style={{ width: totalW, height: totalH }} className="relative">
         <div className="sticky top-0 z-[6]" style={{ width: totalW }}>
           <div role="row" aria-rowindex={1} className="flex" style={{ height: HEADER_H }}>
-            <div role="columnheader" aria-label="Select all" className="sticky start-0 z-[7] shrink-0 bg-zinc-100 dark:bg-[#1b2c39] border-e border-b border-zinc-200 dark:border-white/[0.07]" style={{ width: ROWHEAD_W, height: HEADER_H }} />
+            <div role="columnheader" aria-label="Select all" className="sticky start-0 z-[7] shrink-0 bg-zinc-100 dark:bg-[#1b1b1e] border-e border-b border-zinc-200 dark:border-white/[0.07]" style={{ width: ROWHEAD_W, height: HEADER_H }} />
             {headCells}
             <div aria-hidden className="shrink-0" style={{ width: cols.pos(c0) - cols.pos(fc) }} />
             {headRest}
           </div>
-          {frozenRows.length > 0 && <div className="bg-white dark:bg-[#1b2c39] shadow-[0_2px_0_0_rgba(37,55,69,0.35)]">{frozenRows}</div>}
+          {frozenRows.length > 0 && <div className="bg-white dark:bg-[#1b1b1e] shadow-[0_2px_0_0_rgba(42,41,39,0.35)]">{frozenRows}</div>}
         </div>
         <div aria-hidden style={{ height: rows.pos(r0) - rows.pos(fr) }} />
         {body}

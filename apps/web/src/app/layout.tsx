@@ -58,8 +58,8 @@ export const viewport: Viewport = {
   // Lets the app draw under the iPhone notch / home indicator; the shell pads with safe-area insets.
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f2f4f4' },
-    { media: '(prefers-color-scheme: dark)', color: '#11212d' },
+    { media: '(prefers-color-scheme: light)', color: '#ebeae6' },
+    { media: '(prefers-color-scheme: dark)', color: '#0b0b0c' },
   ],
 };
 
@@ -73,12 +73,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: DISPLAY_PREFS_SCRIPT }} />
         {/* The saved language's direction (Arabic and Urdu read right to left) before paint */}
         <script dangerouslySetInnerHTML={{ __html: LANGUAGE_SCRIPT }} />
-        <style dangerouslySetInnerHTML={{ __html: 'html{background:#f2f4f4}html.dark{background:#11212d;color-scheme:dark}' }} />
+        <style dangerouslySetInnerHTML={{ __html: 'html{background:#ebeae6}html.dark{background:#0b0b0c;color-scheme:dark}' }} />
         {/* An old tab after a deploy can ask for page files that no longer exist: load the new
             version (once), or show a Reload screen, never a blank or unstyled page. */}
         <script dangerouslySetInnerHTML={{ __html: recoveryScript }} />
         {/* Dashboards: start loading the first screen's data now, in parallel with the app's code */}
         <script dangerouslySetInnerHTML={{ __html: bootstrapPrefetchScript }} />
+        {/* The Karma look's face, before the stylesheet asks for it */}
+        <link rel="preload" href="/fonts/urbanist/urbanist-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
         {/* PWA: iOS touch icon */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
       </head>
@@ -86,8 +88,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ErrorMonitorBootstrap />
           <UpdateNotifier />
           <UiTranslatorGate />
-          {/* UniVerse's two tones behind every page: indigo light from the top left, fuchsia from the bottom right. */}
-          <div aria-hidden className="ambient-bg"><div className="ambient-bg__grid" /></div>
+          {/* The Karma glows behind every page: amber and gold from the top left, blue-grey from the right, grain. */}
+          <div aria-hidden className="ambient-bg" />
           <LightTrail />
           <MotionProvider>{children}<CallHost /><ScrollMotion /></MotionProvider>
           <Suspense fallback={null}><NavProgress /></Suspense>
