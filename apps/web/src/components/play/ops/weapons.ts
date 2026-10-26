@@ -29,6 +29,8 @@ export interface BulletHooks {
   /** A bullet passing near the player's head (`supersonic` cracks). */
   whiz(at: THREE.Vector3, supersonic: boolean): void;
   surface(at: THREE.Vector3): 'dirt' | 'stone' | 'metal' | 'wood';
+  /** One of your bullets glancing off metal (its whine). */
+  ricochet?(at: THREE.Vector3): void;
   playerHead(): THREE.Vector3;
 }
 
@@ -80,7 +82,7 @@ export class Bullets {
         at.copy(b.pos).addScaledVector(dir, best);
         const dmg = damageAt(b.stats, b.flown + best);
         if (hitT) this.hooks.hit(hitT, part, dmg, b.armour, at, dir, b.from, b.owner);
-        else this.fx.impact(at, n.lengthSq() ? n : n.set(0, 1, 0), this.hooks.surface(at));
+        else { const kind = this.hooks.surface(at); this.fx.impact(at, n.lengthSq() ? n : n.set(0, 1, 0), kind); if (kind === 'metal' && b.owner === 'me') this.hooks.ricochet?.(at); }
         b.alive = false;
         continue;
       }

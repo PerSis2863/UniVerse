@@ -16,7 +16,7 @@ export interface HudState {
   prompt: string; objective: string;
   extract: { left: number; state: 'none' | 'called' | 'landing' | 'boarding' } | null;
   vehicle: { speed: number; fuel: number; hp: number; flat: number; kind: string } | null;
-  uav: number; hour: number; rain: boolean; detect: number; busy: string;
+  uav: number; hour: number; rain: boolean; detect: number;
   aiming: boolean; scope: boolean; reloading: boolean; selfRevive: boolean;
 }
 export interface FeedLine { id: number; kind: 'radio' | 'kill' | 'loot' | 'info' | 'bad'; text: string; color?: string }

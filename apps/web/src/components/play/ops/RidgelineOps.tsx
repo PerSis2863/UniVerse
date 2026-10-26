@@ -100,9 +100,9 @@ export function RidgelineOps({ seed, endsAt, clock, onProgress, onStats, net }: 
             <div ref={card} className="pointer-events-none absolute left-0 top-0 opacity-0 transition-opacity duration-150" aria-hidden>
               <div ref={cardText} className="ops-loot whitespace-nowrap rounded-lg bg-black/80 px-3 py-1.5 text-xs font-bold text-white ring-1 ring-white/20" />
             </div>
-            {(hud.prompt || hud.busy) && (
+            {hud.prompt && (
               <p className="pointer-events-none absolute left-1/2 top-[60%] -translate-x-1/2 whitespace-nowrap [@media(pointer:coarse)]:top-[54%] rounded-md bg-black/65 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white ring-1 ring-white/15">
-                {hud.busy ? <span className="inline-flex items-center gap-2"><span className="ops-spin h-3 w-3 rounded-full border-2 border-white/30 border-t-white" />{hud.busy}…</span> : hud.prompt}
+                {hud.prompt}
               </p>
             )}
 

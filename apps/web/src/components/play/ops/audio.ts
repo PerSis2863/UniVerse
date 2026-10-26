@@ -127,6 +127,26 @@ export class OpsAudio {
     if (part === 'rack' || part === 'bolt') { this.burst(t, 0.06, { from: 3000, to: 1500, vol: 0.12, q: 2 }); this.tone(t + 0.12, 900, 0.04, { type: 'square', vol: 0.06 }); }
     if (part === 'pump') { this.burst(t, 0.09, { from: 1500, to: 700, vol: 0.16, q: 1.4 }); this.burst(t + 0.18, 0.08, { from: 1800, to: 900, vol: 0.16, q: 1.4 }); }
   }
+  /** Handling sounds for the animations' moments: magazine release and clack, bolt back and slam,
+   *  a round pushed in, velcro on the plate carrier, the grenade's pin, a syringe, cloth; brass
+   *  tinkling on the ground, a magazine landing, a ricochet's whine. */
+  foley(kind: 'grab' | 'magOut' | 'magIn' | 'boltBack' | 'boltSlam' | 'shell' | 'velcro' | 'pin' | 'inject' | 'cloth' | 'tink' | 'magLand' | 'ricochet', pan = 0, loud = 1) {
+    if (!this.ok()) return;
+    const t = this.ctx!.currentTime, v = loud;
+    if (kind === 'grab') this.burst(t, 0.05, { from: 1400, to: 700, vol: 0.05 * v, q: 1.2 });
+    if (kind === 'magOut') { this.tone(t, 2100, 0.02, { type: 'square', vol: 0.05 * v }); this.burst(t + 0.015, 0.11, { from: 2800, to: 1100, vol: 0.1 * v, q: 2.2 }); }
+    if (kind === 'magIn') { this.burst(t, 0.035, { type: 'lowpass', from: 2600, to: 500, vol: 0.32 * v, q: 0.8 }); this.tone(t, 1250, 0.05, { type: 'square', vol: 0.07 * v, to: 900 }); this.tone(t + 0.005, 180, 0.07, { vol: 0.18 * v, to: 90 }); }
+    if (kind === 'boltBack') { this.burst(t, 0.08, { from: 3200, to: 1400, vol: 0.12 * v, q: 2.5 }); this.tone(t, 700, 0.04, { type: 'triangle', vol: 0.04 * v, to: 500 }); }
+    if (kind === 'boltSlam') { this.burst(t, 0.05, { type: 'lowpass', from: 3500, to: 700, vol: 0.3 * v, q: 0.9 }); this.tone(t, 1600, 0.06, { type: 'square', vol: 0.06 * v, to: 1100 }); this.tone(t, 220, 0.08, { vol: 0.14 * v, to: 110 }); }
+    if (kind === 'shell') { this.burst(t, 0.05, { from: 1800, to: 900, vol: 0.12 * v, q: 1.8 }); this.tone(t + 0.03, 1400, 0.03, { type: 'square', vol: 0.04 * v }); }
+    if (kind === 'velcro') for (let i = 0; i < 7; i++) this.burst(t + i * 0.022, 0.03, { from: 4200 - i * 200, to: 2400, vol: 0.09 * v, q: 0.7 });
+    if (kind === 'pin') { this.tone(t, 3100, 0.12, { type: 'triangle', vol: 0.06 * v, to: 2700 }); this.burst(t, 0.03, { from: 5000, to: 3000, vol: 0.05 * v, q: 3 }); }
+    if (kind === 'inject') { this.burst(t, 0.12, { from: 900, to: 300, vol: 0.12 * v, q: 1 }); this.tone(t + 0.05, 600, 0.08, { vol: 0.04 * v, to: 300 }); }
+    if (kind === 'cloth') this.burst(t, 0.18, { type: 'lowpass', from: 1600, to: 400, vol: 0.05 * v, q: 0.6 });
+    if (kind === 'tink') { const f = 4200 + Math.random() * 1800; this.tone(t, f, 0.09, { type: 'triangle', vol: 0.035 * v, pan }); this.tone(t + 0.07, f * 1.06, 0.06, { type: 'triangle', vol: 0.018 * v, pan }); }
+    if (kind === 'magLand') { this.burst(t, 0.07, { type: 'lowpass', from: 1800, to: 400, vol: 0.14 * v, pan }); this.tone(t, 900, 0.05, { type: 'triangle', vol: 0.04 * v, pan, to: 600 }); }
+    if (kind === 'ricochet') { const f = 2600 + Math.random() * 1600; this.tone(t, f, 0.28, { type: 'sine', vol: 0.06 * v, to: f * 0.45, pan }); this.burst(t, 0.04, { from: 6000, to: 3000, vol: 0.08 * v, pan, q: 2 }); }
+  }
   boom(dist: number, pan: number, big = 1) {
     if (!this.ok()) return;
     const at = this.ctx!.currentTime + Math.min(1.5, dist / 343), near = Math.max(0.08, 1 - dist / 600);

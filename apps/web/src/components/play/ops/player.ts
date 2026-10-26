@@ -13,9 +13,9 @@ import type { SolidGrid } from './grid';
 export type Stance = 'stand' | 'crouch' | 'prone';
 export type Surface = 'grass' | 'gravel' | 'asphalt' | 'metal' | 'wood' | 'concrete' | 'water' | 'sand';
 /** One-shot actions from this game's keys and phone buttons. */
-export type Act = 'reload' | 'use' | 'mode' | 'plate' | 'firstaid' | 'bandage' | 'splint' | 'adrenaline' | 'frag' | 'flash' | 'nvg' | 'map' | 'inventory' | 'weather' | 'slot1' | 'slot2' | 'slot3' | 'swap' | 'crouch' | 'prone' | 'jump' | 'extract';
+export type Act = 'reload' | 'inspect' | 'support' | 'use' | 'mode' | 'plate' | 'firstaid' | 'bandage' | 'splint' | 'adrenaline' | 'frag' | 'flash' | 'nvg' | 'map' | 'inventory' | 'weather' | 'slot1' | 'slot2' | 'slot3' | 'swap' | 'crouch' | 'prone' | 'jump' | 'extract';
 
-const KEYMAP: Record<string, Act> = { r: 'reload', f: 'use', b: 'mode', '4': 'plate', h: 'firstaid', '5': 'bandage', '6': 'splint', '7': 'adrenaline', g: 'frag', v: 'flash', n: 'nvg', m: 'map', tab: 'inventory', i: 'inventory', y: 'weather', '1': 'slot1', '2': 'slot2', '3': 'slot3', x: 'swap', c: 'crouch', z: 'prone', ' ': 'jump' };
+const KEYMAP: Record<string, Act> = { r: 'reload', f: 'use', b: 'mode', '4': 'plate', h: 'firstaid', '5': 'support', '6': 'splint', '7': 'adrenaline', '8': 'bandage', g: 'frag', v: 'flash', n: 'nvg', m: 'map', tab: 'inventory', i: 'inspect', y: 'weather', '1': 'slot1', '2': 'slot2', '3': 'slot3', x: 'swap', c: 'crouch', z: 'prone', ' ': 'jump' };
 const PHONE: Partial<Record<Button, Act>> = { jump: 'jump', act: 'use', skill: 'reload', swap: 'swap', heal: 'firstaid', throw: 'frag', crouch: 'crouch', plate: 'plate', inv: 'inventory', nvg: 'nvg' };
 
 export class Input {
@@ -82,7 +82,10 @@ export class Player {
   swimming = false;
   /** Seconds of breath held (steady scope), reset when let go. */
   holding = false;
-  private stepAcc = 0;
+  private stepAcc = 0; private stride = 1.8;
+  /** Footsteps so far: the gun's bob is timed to it, so its low point lands on each step. */
+  steps = 0;
+  get gait() { return this.steps + Math.min(1, this.stepAcc / this.stride); }
   private fallV = 0;
   private near: THREE.Box3[] = [];
   private v = new THREE.Vector3(); private w = new THREE.Vector3();
@@ -182,7 +185,8 @@ export class Player {
     if (b.ground || this.swimming) {
       this.stepAcc += this.speed * dt;
       const stride = this.sprinting ? 2.4 : this.stance === 'crouch' ? 1.1 : this.stance === 'prone' ? 1.4 : 1.8;
-      if (this.stepAcc > stride && this.speed > 0.8) { this.stepAcc = 0; ev.step = this.surface(); }
+      if (this.stepAcc > stride && this.speed > 0.8) { this.stepAcc = 0; this.steps++; ev.step = this.surface(); }
+      this.stride = stride;
     }
     return ev;
   }

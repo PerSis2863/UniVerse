@@ -161,6 +161,27 @@ const SURFACES = {
     const fissure = Math.abs(Math.sin(x * 0.18 + Math.sin(y * 0.03) * 2 + n * 3));
     return { rgb: dim(mix([54, 40, 30], [96, 74, 56], n), 0.55 + fissure * 0.45), h: fissure, r: 0.95 };
   }, 3.4),
+  /** Anodised gunmetal, brushed along its length (fine streaks, a few worn edges); light, tinted by the material. */
+  gunmetal: () => make('gunmetal', 512, 211, (x, y, n) => {
+    const row = Math.sin(y * 91.7 + Math.floor(x / 96) * 13.1) * 43758.5453, streak = row - Math.floor(row), wear = n > 0.7 ? (n - 0.7) * 2.2 : 0;
+    return { rgb: mix(mix([196, 200, 206], [238, 240, 244], streak * 0.55 + n * 0.3), [255, 255, 255], wear), h: streak * 0.25 + n * 0.15, r: 0.82 + streak * 0.18 - wear * 0.35 };
+  }, 1.4),
+  /** Moulded polymer: a fine stipple that catches the light (light, tinted by the material). */
+  polymer: () => make('polymer', 512, 223, (x, y, n) => {
+    const k = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453, dot = k - Math.floor(k) > 0.72 ? 1 : 0;
+    return { rgb: mix([150, 152, 156], [205, 207, 212], n * 0.5 + dot * 0.35), h: dot * 0.5 + n * 0.2, r: 0.85 + dot * 0.15 };
+  }, 2.4),
+  /** Ripstop camouflage cloth (the sleeves): three tones and the raised reinforcement grid. */
+  ripstop: () => make('ripstop', 512, 233, (x, y, n) => {
+    const grid = x % 24 < 2 || y % 24 < 2, weave = (x + y) % 2 === 0;
+    const tone: RGB = n > 0.62 ? [60, 64, 44] : n > 0.42 ? [96, 100, 66] : [128, 118, 88];
+    return { rgb: dim(tone, (grid ? 1.12 : 1) * (weave ? 1 : 0.94)), h: (grid ? 0.6 : 0) + (weave ? 0.15 : 0) + n * 0.2, r: 0.95 };
+  }, 2),
+  /** Synthetic glove leather: a fine grain and stitched seams (light, tinted by the material). */
+  glove: () => make('glove', 512, 241, (x, y, n) => {
+    const seam = y % 128 < 3 || x % 160 < 3, k = Math.sin(x * 4.1 + y * 7.3) * 0.5 + 0.5;
+    return { rgb: dim(mix([150, 150, 144], [210, 206, 196], n * 0.6 + k * 0.15), seam ? 0.7 : 1), h: seam ? -0.5 : n * 0.3 + k * 0.1, r: 0.75 + n * 0.2 };
+  }, 2.2),
 };
 export type Surface = keyof typeof SURFACES;
 /** A surface's colour, bump and roughness pictures (for custom shaders, like the blended terrain). */

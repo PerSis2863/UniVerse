@@ -54,7 +54,7 @@ export class OpsGame {
   private kiosks: THREE.Object3D[] = []; private cullAt = -1;
   vehicles: Vehicle[] = []; boxes: Box[] = []; ground: Ground[] = []; hostages: Hostage[] = [];
   flags: Map<number, THREE.MeshStandardMaterial>; bulbs: THREE.MeshStandardMaterial; lamps: { x: number; y: number; z: number }[]; smokes: { x: number; y: number; z: number; big: boolean }[];
-  lampLights: THREE.PointLight[] = []; muzzleLight = new THREE.PointLight(0xffb060, 0, 18); flareLight = new THREE.PointLight(0xff3020, 0, 60);
+  lampLights: THREE.PointLight[] = []; muzzleLight = new THREE.PointLight(0xffaa33, 0, 8); flareLight = new THREE.PointLight(0xff3020, 0, 60);
   headlights: THREE.SpotLight;
   heli = new Heli(); enemyHelis: EnemyHeli[] = []; plane = new Plane(); trucks: Truck[] = [];
   safe: Safehouse; loadout: Loadout;
@@ -75,6 +75,11 @@ export class OpsGame {
   private v = { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), d: new THREE.Vector3(), q: new THREE.Quaternion(), e: new THREE.Euler(0, 0, 0, 'YXZ') };
   private look = new THREE.Vector3(); private right = new THREE.Vector3(); private camPos = new THREE.Vector3();
   private lookDX = 0; private lookDY = 0; private lastYaw = 0; private lastPitch = 0;
+  private recoverPitch = 0; private recoverYaw = 0; private heat = 0; private muzzleUntil = 0;
+  /** A grenade on its way out of the hand (thrown at the animation's release). */
+  private pendingNade: 'frag' | 'flash' | 'smoke' | null = null;
+  /** Looking through the binoculars to mark an airstrike. */
+  supportAim = false;
   private crowd: Crowd;
   private range: { group: THREE.Group; targets: { at: THREE.Vector3; mesh: THREE.Mesh; dist: number }[] } | null = null;
   private shake = 0; private flashUntil = 0; private desatAt = -9; private detect = 0;
@@ -116,10 +121,22 @@ export class OpsGame {
     this.input = new Input(this.c, canvas);
     this.player = new Player(this.grid, this.m);
     this.vm = new Viewmodel(this.r.vm.scene, this.r.quality === 'low' ? null : this.r.scope.target.texture);
+    // The animations' moments: handling sounds, the grenade leaving the hand, a magazine dropped into the world.
+    this.vm.onCue = (cue) => {
+      if (cue === 'throw') { this.releaseNade(); return; }
+      if (cue === 'pump') { this.audio.reload('pump'); return; }
+      this.audio.foley(cue === 'magDrop' ? 'magOut' : cue);
+    };
+    this.vm.onMagDrop = (mag, at, q) => {
+      const cam = this.r.camera, p = at.applyMatrix4(cam.matrixWorld), wq = cam.quaternion.clone().multiply(q);
+      this.fx.drop(mag, p, wq, this.v.a.copy(this.player.body.vel).multiplyScalar(0.8).addScaledVector(this.right, -0.3).add(this.v.b.set(0, -0.6, 0)));
+    };
+    this.fx.onBounce = (what, at) => { const d = at.distanceTo(this.r.camera.position); if (d < 25) this.audio.foley(what === 'shell' ? 'tink' : 'magLand', this.panOf(at), Math.max(0.2, 1 - d / 25)); };
     this.bullets = new Bullets(this.grid, this.fx, {
       targets: () => this.targets(),
       hit: (tg, part, dmg, armour, at, dir, from, owner) => this.onHit(tg, part, dmg, armour, at, dir, from, owner),
       whiz: (at, sup) => { this.audio.whiz(this.panOf(at), sup); this.desatAt = this.t; this.shake = Math.min(1, this.shake + 0.08); },
+      ricochet: (at) => { if (Math.random() < 0.45) this.audio.foley('ricochet', this.panOf(at), 0.8); },
       surface: (at) => { const k = this.grid.around(at.x, at.z, 0.5, []).find((b) => b.distanceToPoint(at) < 0.05); return k ? ((this.grid.kind(k) === 'metal' ? 'metal' : this.grid.kind(k) === 'wood' ? 'wood' : 'stone')) : 'dirt'; },
       playerHead: () => this.player.head,
     });
@@ -211,7 +228,15 @@ export class OpsGame {
       this.lampLights.forEach((l, i) => { const p = near[i]; if (p) l.position.set(p.x, p.y, p.z); l.intensity = dark * 26; });
     }
     if (this.vehicle && dark > 0.2) { this.vehicle.seat(this.headlights.position).add(this.v.a.set(-Math.sin(this.vehicle.yaw) * 2, -0.4, -Math.cos(this.vehicle.yaw) * 2)); this.headlights.target.position.copy(this.headlights.position).add(this.v.a.set(-Math.sin(this.vehicle.yaw) * 20, -3, -Math.cos(this.vehicle.yaw) * 20)); this.headlights.intensity = 260; } else this.headlights.intensity = 0;
-    this.muzzleLight.intensity = Math.max(0, this.muzzleLight.intensity - dt * 900);
+    // The muzzle's light stays on for 35 ms a shot; a hot barrel smokes.
+    if (t > this.muzzleUntil) this.muzzleLight.intensity = 0;
+    this.heat = Math.max(0, this.heat - dt * 0.9);
+    if (this.heat > 0.45 && this.phase === 'raid' && Math.random() < dt * 14 * Math.min(1, this.heat - 0.3) && t - this.lastShot > 0.08) this.fx.barrelSmoke(this.v.a.copy(this.vm.muzzleAt(this.v.a)).applyMatrix4(cam.matrixWorld));
+    // Recoil recovery.
+    if (t - this.lastShot > 0.12 && (Math.abs(this.recoverPitch) > 1e-5 || Math.abs(this.recoverYaw) > 1e-5)) {
+      const f = 1 - Math.exp(-7 * dt), dp = this.recoverPitch * f, dy = this.recoverYaw * f;
+      this.c.turn(dy, dp); this.recoverPitch -= dp; this.recoverYaw -= dy;
+    }
     this.fx.update(dt);
     this.crowd.update(dt, { pos: P.body.pos, ry: this.c.yaw + Math.PI, air: !P.body.ground, part: 0, color: 0x4c5a6e, hat: 'none' });
     // Effects on the picture: flashbang white, hurt desaturation, night vision.
@@ -220,6 +245,8 @@ export class OpsGame {
     this.r.finish.desat = Math.max(0, 1 - (t - this.desatAt) / 0.6) * 0.5 + (this.hp < 30 ? 0.35 : 0);
     this.r.finish.nvg = this.nvg ? 1 : 0;
     this.shake = Math.max(0, this.shake - dt * 1.6);
+    // The gun's handling bumps the view a little (a magazine seated, the bolt slamming home, each shot).
+    if (this.vm.group.visible) { cam.rotation.x += this.vm.camKick.pos.x; cam.rotation.z += this.vm.camKick.pos.z; }
     if (this.shake > 0 && !matchMedia('(prefers-reduced-motion: reduce)').matches) { const s = this.shake * this.shake; cam.rotation.x += (Math.sin(t * 61) + Math.sin(t * 23)) * 0.006 * s; cam.rotation.y += (Math.sin(t * 53 + 1) + Math.sin(t * 19)) * 0.006 * s; }
     this.audio.update({ height: cam.position.y, rain: w.wet, night: w.night, engine: this.vehicle ? Math.min(1, Math.abs(this.vehicle.speed) / this.vehicle.spec.top) : 0, rotor: this.rotorLoud(), breath: P.stamina < 25 || P.holding ? 1 : 0, time: t });
     this.r.update(this.phase === 'raid' ? P.body.pos : cam.position);
@@ -272,7 +299,7 @@ export class OpsGame {
       P.body.pos.y = this.grid.ground(P.body.pos.x, P.body.pos.z) + 0.1; P.body.vel.set(0, 0, 0);
       P.setStance('stand');
       this.phase = 'raid'; this.phaseAt = this.t; this.raidStart = this.t; this.raidKills = 0; this.raidHeads = 0; this.raidCleared = 0;
-      this.vm.group.visible = true;
+      this.vm.group.visible = true; this.vm.raise();
       this.insertFlight = { from: this.heli.group.position.clone(), to: this.heli.group.position.clone().add(new THREE.Vector3(0, 80, 0)).addScaledVector(this.v.b.set(-Math.sin(this.heli.group.rotation.y), 0, -Math.cos(this.heli.group.rotation.y)), 300), t0: this.t, dur: 12 };
       this.heliLeaving = true;
     }
@@ -302,7 +329,7 @@ export class OpsGame {
     cam.rotation.z += (0.6 - cam.rotation.z) * Math.min(1, dt * 2);
     this.vm.group.visible = false;
     if (this.selfRevive && this.input.take('use')) {
-      this.selfRevive = false; this.hp = 35; this.phase = 'raid'; this.cb.menu(null); this.vm.group.visible = true;
+      this.selfRevive = false; this.hp = 35; this.phase = 'raid'; this.cb.menu(null); this.vm.group.visible = true; this.vm.raise();
       this.cb.banner({ title: 'Back on your feet', tone: 'good' }); this.audio.ui('heal');
     } else if (this.t - this.phaseAt > 6) this.toSafehouse();
   }
@@ -335,9 +362,13 @@ export class OpsGame {
       if (stats) this.shoot(dt, gun!, stats);
       // Holding your breath with a scope (Shift while aiming).
       P.holding = this.aiming && !!stats && stats.zoom >= 4 && this.c.keys.has('shift') && P.stamina > 1;
-      const fovBase = 74, zoom = this.aiming && stats ? stats.zoom : 1;
-      const wantFov = (this.aiming ? fovBase / (1 + (zoom - 1) * (zoom >= 4 && this.r.quality !== 'low' ? 0.22 : 0.6)) : P.tac ? fovBase + 8 : P.sprinting ? fovBase + 4 : fovBase) + (P.slideT > 0 ? 6 : 0);
-      if (Math.abs(cam.fov - wantFov) > 0.05) { cam.fov += (wantFov - cam.fov) * (1 - Math.exp(-14 * dt)); cam.updateProjectionMatrix(); }
+      // The view narrows with the gun as it comes up: 75° at the hip, 55° on irons and dots, 40° on a
+      // 3× and 25° behind a sniper scope (whose lens shows its own magnified picture); wider sprinting.
+      const fovBase = 75, zoom = stats ? stats.zoom : 1;
+      const adsFov = zoom >= 4 ? (this.r.quality === 'low' ? fovBase / (1 + (zoom - 1) * 0.6) : 25) : zoom >= 2.5 ? 40 : 55;
+      const ads = this.vm.ads * this.vm.ads * (3 - 2 * this.vm.ads);
+      const wantFov = this.supportAim ? 22 : fovBase + (adsFov - fovBase) * ads + (P.tac ? 8 : P.sprinting ? 4 : 0) + (P.slideT > 0 ? 6 : 0);
+      if (Math.abs(cam.fov - wantFov) > 0.05) { cam.fov += (wantFov - cam.fov) * (1 - Math.exp(-22 * dt)); cam.updateProjectionMatrix(); }
       // The scope's own picture for magnified optics.
       const scoped = this.aiming && zoom >= 4 && this.vm.ads > 0.85;
       this.r.scope.on = scoped && this.r.quality !== 'low';
@@ -346,7 +377,7 @@ export class OpsGame {
       // Scope sway unless holding breath.
       if (scoped && !P.holding) this.c.turn(Math.sin(t * 0.9) * 0.00012 * zoom, Math.sin(t * 1.3) * 0.0001 * zoom);
       this.vm.group.visible = !P.swimming;
-      this.vm.update(dt, { ads: this.aiming, speed: P.speed, sprint: P.sprinting, tac: P.tac, slide: P.slideT > 0, lookDX: this.lookDX, lookDY: this.lookDY, crouch: P.stance !== 'stand', lean: P.lean, breath: P.holding ? 0.1 : 1, time: t, adsTime: stats?.adsTime ?? 0.25 });
+      this.vm.update(dt, { ads: this.aiming, speed: P.speed, sprint: P.sprinting, tac: P.tac, slide: P.slideT > 0, lookDX: this.lookDX, lookDY: this.lookDY, crouch: P.stance !== 'stand', lean: P.lean, breath: P.holding ? 0.1 : 1, time: t, adsTime: stats?.adsTime ?? 0.25, gait: P.gait });
     }
     // Statuses: bleeding, adrenaline, kit being used.
     if (this.bleeding) { this.hp -= BLEED_HP_S * dt; if (Math.random() < dt * 2) this.fx.impact(this.v.a.set(P.body.pos.x, P.body.pos.y + 0.05, P.body.pos.z), UP, 'flesh', false); }
@@ -374,6 +405,7 @@ export class OpsGame {
     if (I.take('nvg')) { if (l.helmet && HELMETS[l.helmet].nvg) { this.nvg = !this.nvg; this.audio.click(); } else this.cb.feed({ kind: 'bad', text: 'Night vision needs a tier 2 helmet or better' }); }
     if (this.vehicle) return;
     if (I.take('reload')) this.startReload();
+    if (I.take('inspect')) this.vm.inspect();
     if (I.take('mode')) { const g = this.currentGun(); if (g && WEAPONS[g.base].modes.length > 1) { g.mode = nextMode(g); this.audio.click(); this.cb.feed({ kind: 'info', text: `${g.mode === 'auto' ? 'Full auto' : g.mode === 'burst' ? '3-round burst' : 'Semi-auto'}` }); } }
     for (const [k, s] of [['slot1', 0], ['slot2', 1], ['slot3', 2]] as const) if (I.take(k)) this.swapTo(s);
     if (I.take('swap')) this.swapTo(this.slot === 2 ? (l.primary[0] ? 0 : 1) : this.slot === 0 ? (l.primary[1] ? 1 : 2) : 2);
@@ -391,7 +423,7 @@ export class OpsGame {
   private swapTo(s: number) {
     const g = s === 2 ? this.loadout.sidearm : this.loadout.primary[s];
     if (!g || s === this.slot) return;
-    this.slot = s; this.reloadUntil = 0; this.vm.cancelReload(); this.vm.setGun(g); this.cool = 0.5; this.audio.ui('pick');
+    this.slot = s; this.reloadUntil = 0; this.vm.cancelReload(); this.vm.setGun(g); this.cool = 0.8; this.audio.foley('cloth');
   }
   private busy(name: string, dur: number, done: () => void) { this.actionUntil = this.t + dur; this.action = done; this.actionName = name; this.reloadUntil = 0; this.vm.cancelReload(); }
   private usePlate() {
@@ -428,9 +460,16 @@ export class OpsGame {
   private throwNade(kind: 'frag' | 'flash') {
     if (this.actionUntil > this.t) return;
     if (!bagTake(this.loadout, (it) => it.kind === 'nade' && it.nade === kind, 1)) { this.cb.feed({ kind: 'bad', text: kind === 'frag' ? 'No frag grenades' : 'No flashbangs' }); return; }
-    const from = this.v.a.copy(this.r.camera.position).addScaledVector(this.look, 0.6);
+    // The hand takes it out, pulls the pin and throws; it leaves the hand at the release.
+    this.pendingNade = kind; this.vm.toss(kind);
+    this.busy('', 0.85, () => {});
+  }
+  private releaseNade() {
+    const kind = this.pendingNade; this.pendingNade = null;
+    if (!kind) return;
+    const from = this.v.a.copy(this.r.camera.position).addScaledVector(this.look, 0.6).addScaledVector(this.right, -0.15);
     this.nades.toss(kind, from, this.v.b.copy(this.look).multiplyScalar(17).add(this.v.c.set(0, 4, 0)).add(this.player.body.vel), 'me');
-    this.audio.step('concrete', 0.2);
+    this.audio.foley('cloth');
   }
 
   /* ── Shooting ── */
@@ -464,9 +503,12 @@ export class OpsGame {
     // Kick: the view climbs and drifts; the gun jumps; brass flies; the muzzle flashes; it's heard.
     const k = recoilFor(s, this.shotN, Math.random()), steady = (this.aiming ? 0.85 : 1.15) * (P.stance === 'prone' ? 0.6 : P.stance === 'crouch' ? 0.85 : 1);
     this.c.turn(-k.side * steady, -k.up * steady);
-    this.vm.fire(s.kick * 1.4, s.bolt ?? 0);
+    // Part of the climb comes back once you stop firing.
+    this.recoverYaw += k.side * steady * 0.55; this.recoverPitch += k.up * steady * 0.55;
+    this.vm.fire(s.kick / 0.01, s.bolt ?? 0, gun.mag === 0);
+    this.heat = Math.min(3, this.heat + 0.12 * (s.cls === 'lmg' ? 1.4 : 1));
     if (s.bolt) { this.boltUntil = t + s.bolt; setTimeout(() => this.audio.reload(s.cls === 'shotgun' ? 'pump' : 'bolt'), 200); }
-    if (s.mods.flash) { this.fx.muzzle(muzzle, this.look); this.muzzleLight.position.copy(muzzle); this.muzzleLight.intensity = 34; } else this.vm.hideFlash();
+    if (s.mods.flash) { this.fx.muzzle(muzzle, this.look); this.muzzleLight.position.copy(muzzle); this.muzzleLight.intensity = 30; this.muzzleUntil = t + 0.035; } else this.vm.hideFlash();
     if (s.cls !== 'shotgun' && !s.bolt) this.fx.eject(this.v.c.copy(this.vm.portAt(this.v.c)).applyMatrix4(cam.matrixWorld), this.right, UP);
     this.audio.gun(0, 0, { heavy: s.cls === 'marksman' ? 1.5 : s.cls === 'lmg' ? 1.15 : s.cls === 'pistol' ? 0.7 : s.cls === 'smg' ? 0.8 : s.cls === 'shotgun' ? 1.4 : 1, suppressed: s.mods.noise < 0.3, mine: true });
     this.squads.noise(P.body.pos, 190 * s.mods.noise, s.mods.noise > 0.5);
@@ -480,8 +522,7 @@ export class OpsGame {
     if (ammoIn(this.loadout, s.pool) <= 0) { this.cb.feed({ kind: 'bad', text: `No ${AMMO[s.pool].name.toLowerCase()}` }); this.audio.click(); return; }
     this.reloadEmpty = g.mag === 0;
     const dur = this.reloadEmpty ? s.reloadEmpty : s.reload;
-    this.reloadUntil = this.t + dur; this.vm.reload(dur, this.reloadEmpty);
-    this.audio.reload('out'); setTimeout(() => this.audio.reload('in'), dur * 650); if (this.reloadEmpty) setTimeout(() => this.audio.reload('rack'), dur * 850);
+    this.reloadUntil = this.t + dur; this.vm.reload(dur, this.reloadEmpty, Math.min(s.mag - g.mag, ammoIn(this.loadout, s.pool)));
   }
   private finishReload(g: Gun, s: GunStats) {
     this.reloadUntil = 0;
@@ -823,7 +864,7 @@ export class OpsGame {
     v.driver = null; this.vehicle = null;
     const at = v.side(this.v.a);
     this.player.body.pos.set(at.x, this.grid.ground(at.x, at.z) + 0.2, at.z); this.player.body.vel.set(0, 0, 0);
-    this.vm.group.visible = true;
+    this.vm.group.visible = true; this.vm.raise();
   }
   private drive(dt: number) {
     const v = this.vehicle!, c = this.c, k = c.keys;
@@ -1079,7 +1120,7 @@ export class OpsGame {
     this.player.body.pos.set(560, 2.05, 2); this.player.body.vel.set(0, 0, 0);
     this.c.yaw = 0; this.c.pitch = 0;
     this.phase = 'range'; this.hp = 100;
-    this.vm.group.visible = true;
+    this.vm.group.visible = true; this.vm.raise();
     this.cb.menu(null);
     this.cb.banner({ title: 'Offshore range', sub: 'Steel at 10–200 m · F at the start to leave', tone: 'info' });
   }
@@ -1179,7 +1220,7 @@ export class OpsGame {
       prompt: this.phase === 'raid' || this.phase === 'range' ? this.prompt : '', objective: this.objective(),
       extract: this.extract.state !== 'none' ? { left: Math.max(0, Math.ceil(EXTRACT_WAIT_S - (t - this.extract.t0))), state: this.extract.state } : null,
       vehicle: this.vehicle ? { speed: Math.round(Math.abs(this.vehicle.speed) * 3.6), fuel: this.vehicle.fuel, hp: this.vehicle.hp / this.vehicle.spec.hp, flat: this.vehicle.flat, kind: this.vehicle.kind } : null,
-      uav: Math.max(0, Math.ceil(this.uavUntil - t)), hour: this.sky.hour, rain: this.sky.rainWant > 0.5, detect: Math.round(this.detect * 20) / 20, busy: this.actionUntil > t ? this.actionName : this.reloadUntil > t ? 'Reloading' : '',
+      uav: Math.max(0, Math.ceil(this.uavUntil - t)), hour: this.sky.hour, rain: this.sky.rainWant > 0.5, detect: Math.round(this.detect * 20) / 20,
       aiming: this.aiming, scope: this.aiming && !!s && s.zoom >= 4, reloading: this.reloadUntil > t, selfRevive: this.selfRevive,
     };
     const key = JSON.stringify(h);

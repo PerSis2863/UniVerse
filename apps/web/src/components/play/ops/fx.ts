@@ -72,7 +72,11 @@ export class Fx {
   // Bullet holes: a ring of small dark quads laid on what was hit.
   private holes: THREE.InstancedMesh; private holeNext = 0;
   // Casings: tumbling brass.
-  private shells: THREE.InstancedMesh; private shell: { p: THREE.Vector3; v: THREE.Vector3; r: THREE.Euler; s: THREE.Vector3; life: number }[] = [];
+  private shells: THREE.InstancedMesh; private shell: { p: THREE.Vector3; v: THREE.Vector3; r: THREE.Euler; s: THREE.Vector3; life: number; hits: number }[] = [];
+  /** Things that fall and bounce (dropped magazines): a few at a time, the oldest taken away. */
+  private props: { o: THREE.Object3D; v: THREE.Vector3; w: THREE.Vector3; life: number; hits: number }[] = [];
+  /** A casing or a magazine landing (for its sound). */
+  onBounce: ((what: 'shell' | 'mag', at: THREE.Vector3) => void) | null = null;
   private shellNext = 0;
   // Tracers: short bright streaks drawn where bullets are this frame.
   private tracerPos: Float32Array; private tracerCol: Float32Array; private tracers: THREE.LineSegments; private tracerN = 0; private tracerWas = 0;
@@ -88,7 +92,7 @@ export class Fx {
     this.holes.count = 0; this.holes.frustumCulled = false;
     this.shells = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.006, 0.006, 0.045, 6), new THREE.MeshStandardMaterial({ color: 0xc9a34a, metalness: 1, roughness: 0.3 }), 40);
     this.shells.count = 0; this.shells.frustumCulled = false;
-    for (let i = 0; i < 40; i++) this.shell.push({ p: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Euler(), s: new THREE.Vector3(), life: 0 });
+    for (let i = 0; i < 40; i++) this.shell.push({ p: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Euler(), s: new THREE.Vector3(), life: 0, hits: 0 });
     this.tracerPos = new Float32Array(128 * 6); this.tracerCol = new Float32Array(128 * 6);
     const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(this.tracerPos, 3)); tg.setAttribute('color', new THREE.BufferAttribute(this.tracerCol, 3));
     this.tracers = new THREE.LineSegments(tg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -118,7 +122,28 @@ export class Fx {
       this.v.copy(normal).multiplyScalar(3 + Math.random() * 4).add(this.p.set((Math.random() - 0.5) * 4, Math.random() * 3, (Math.random() - 0.5) * 4));
       this.glow.emit(at, this.v, this.c.set(kind === 'armour' ? 0x9ed0ff : 0xffc46b), 0.05, -0.04, 0.25 + Math.random() * 0.2, 1, 12, 1);
     }
+    // Blood mist off people; a cloud of dust off the ground and stone.
+    if (kind === 'flesh') for (let i = 0; i < 5; i++) {
+      this.v.copy(normal).multiplyScalar(0.6 + Math.random()).add(this.p.set((Math.random() - 0.5) * 0.8, Math.random() * 0.5, (Math.random() - 0.5) * 0.8));
+      this.soft.emit(at, this.v, this.c.setRGB(0.42 + Math.random() * 0.1, 0.03, 0.03), 0.22 + Math.random() * 0.12, 0.9, 0.45 + Math.random() * 0.3, 0.6, 0.6, 2.5);
+    }
+    if (kind === 'dirt' || kind === 'stone') for (let i = 0; i < 3; i++) {
+      this.v.copy(normal).multiplyScalar(0.8 + Math.random() * 0.8).add(this.p.set((Math.random() - 0.5) * 0.6, 0.4 + Math.random() * 0.5, (Math.random() - 0.5) * 0.6));
+      this.soft.emit(at, this.v, this.c.set(base).multiplyScalar(1.1), 0.35 + Math.random() * 0.25, 1.4, 1.1 + Math.random() * 0.7, 0.45, 0.15, 1.6);
+    }
     if (hole && kind !== 'flesh' && kind !== 'armour') this.hole(at, normal);
+  }
+  /** Smoke curling up off a hot barrel after a burst. */
+  barrelSmoke(at: THREE.Vector3) {
+    this.v.set((Math.random() - 0.5) * 0.15, 0.35 + Math.random() * 0.3, (Math.random() - 0.5) * 0.15);
+    this.soft.emit(at, this.v, this.c.setRGB(0.7, 0.7, 0.72), 0.06, 0.35, 1.2 + Math.random() * 0.6, 0.22, -0.15, 1.2);
+  }
+  /** A thing falling from the hands (a magazine): it tumbles, bounces on the ground and lies there a while. */
+  drop(o: THREE.Object3D, at: THREE.Vector3, q: THREE.Quaternion, v: THREE.Vector3) {
+    if (this.props.length >= 8) { const old = this.props.shift()!; this.group.remove(old.o); }
+    o.position.copy(at); o.quaternion.copy(q); o.visible = true;
+    this.group.add(o);
+    this.props.push({ o, v: v.clone(), w: new THREE.Vector3((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 6), life: 20, hits: 0 });
   }
   private hole(at: THREE.Vector3, normal: THREE.Vector3) {
     this.q.setFromUnitVectors(this.v.set(0, 0, 1), normal);
@@ -144,7 +169,7 @@ export class Fx {
   /** A brass casing kicked out to the right of the gun. */
   eject(at: THREE.Vector3, right: THREE.Vector3, up: THREE.Vector3) {
     const s = this.shell[this.shellNext]; this.shellNext = (this.shellNext + 1) % this.shell.length;
-    s.p.copy(at); s.v.copy(right).multiplyScalar(2.4 + Math.random()).addScaledVector(up, 1.6 + Math.random()); s.r.set(Math.random() * 6, Math.random() * 6, 0); s.s.set(12 + Math.random() * 10, 8, 4); s.life = 2.5;
+    s.p.copy(at); s.v.copy(right).multiplyScalar(2.4 + Math.random()).addScaledVector(up, 1.6 + Math.random()); s.r.set(Math.random() * 6, Math.random() * 6, 0); s.s.set(12 + Math.random() * 10, 8, 4); s.life = 2.5; s.hits = 0;
     this.shells.count = this.shell.length;
   }
   /** A tracer streak this frame, from `a` to `b`. */
@@ -166,10 +191,27 @@ export class Fx {
       s.life -= dt; s.v.y -= 9.8 * dt; s.p.addScaledVector(s.v, dt);
       s.r.x += s.s.x * dt; s.r.y += s.s.y * dt;
       const g = this.grid.ground(s.p.x, s.p.z);
-      if (s.p.y < g + 0.006) { s.p.y = g + 0.006; s.v.multiplyScalar(0.35); s.v.y = Math.abs(s.v.y) * 0.4; s.s.multiplyScalar(0.5); }
+      if (s.p.y < g + 0.006) {
+        if (s.hits++ < 2 && Math.abs(s.v.y) > 0.6) this.onBounce?.('shell', s.p);
+        s.p.y = g + 0.006; s.v.multiplyScalar(0.35); s.v.y = Math.abs(s.v.y) * 0.4; s.s.multiplyScalar(0.5);
+      }
       this.shells.setMatrixAt(i, this.m4.compose(s.p, this.q.setFromEuler(s.r), this.one));
     }
     if (live || this.shells.count) this.shells.instanceMatrix.needsUpdate = true;
+    for (let i = this.props.length - 1; i >= 0; i--) {
+      const p = this.props[i], o = p.o;
+      p.life -= dt;
+      if (p.life <= 0) { this.group.remove(o); this.props.splice(i, 1); continue; }
+      if (p.hits > 4 && p.v.lengthSq() < 0.01) continue;
+      p.v.y -= 9.8 * dt; o.position.addScaledVector(p.v, dt);
+      o.rotation.x += p.w.x * dt; o.rotation.y += p.w.y * dt; o.rotation.z += p.w.z * dt;
+      const g = this.grid.ground(o.position.x, o.position.z) + 0.03;
+      if (o.position.y < g) {
+        if (p.hits++ === 0) this.onBounce?.('mag', o.position);
+        o.position.y = g; p.v.y = Math.abs(p.v.y) * 0.3; p.v.x *= 0.5; p.v.z *= 0.5; p.w.multiplyScalar(0.4);
+        if (p.hits > 3) { p.v.set(0, 0, 0); p.w.set(0, 0, 0); o.rotation.x = Math.round(o.rotation.x / (Math.PI / 2)) * (Math.PI / 2); o.rotation.z = Math.round(o.rotation.z / (Math.PI / 2)) * (Math.PI / 2); }
+      }
+    }
     // Tracers are redrawn every frame from what the bullets report; clear what's left over.
     if (this.tracerN || this.tracerWas) {
       if (this.tracerWas > this.tracerN) this.tracerCol.fill(0, this.tracerN * 6, this.tracerWas * 6);
