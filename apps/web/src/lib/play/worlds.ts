@@ -55,31 +55,6 @@ export function obbyCourse(seed: number): { pads: Pad[]; gems: Gem[] } {
   return { pads, gems };
 }
 
-/* ── Neon Strike: laser tag against waves of sentinel drones ── */
-export const STRIKE_HIT = 10, STRIKE_TAG = 100, STRIKE_WAVE = 500, STRIKE_DOWN = 300;
-export const STRIKE_FIRE_S = 0.16, STRIKE_BOT_HP = 3, STRIKE_COMBO_S = 3, STRIKE_COMBO_MAX = 4;
-export const strikeWave = (n: number) => 3 + n * 2;
-/** Every fifth wave brings a boss drone (big, tough, fires spreads) with half the usual escort. */
-export const STRIKE_BOSS = 1_000;
-/** Pulse grenades (M39): three to start, one more each cleared wave; hurts every drone near the blast. */
-export const STRIKE_GRENADES = 3, STRIKE_BLAST_R = 6, STRIKE_BLAST_DMG = 4;
-export const isBossWave = (wave: number) => wave > 0 && wave % 5 === 0;
-export const strikeBossHp = (wave: number) => 36 + wave * 2;
-/** Tags in a row (within 3 s of each other) multiply: ×1, ×2… up to ×4. */
-export const strikeMultiplier = (combo: number) => Math.min(STRIKE_COMBO_MAX, 1 + Math.floor(combo / 2));
-export interface Cover { x: number; z: number; w: number; d: number; h: number }
-export const STRIKE_SIZE = 64;
-export function strikeArena(seed: number): Cover[] {
-  const r = seeded(hash(`${seed}:strike`)), out: Cover[] = [];
-  for (let i = 0; i < 26; i++) {
-    const x = (r() - 0.5) * (STRIKE_SIZE - 12), z = (r() - 0.5) * (STRIKE_SIZE - 12);
-    if (Math.hypot(x, z) < 7) continue; // the spawn stays open
-    const tall = r() < 0.3;
-    out.push({ x, z, w: 2 + r() * 5, d: 2 + r() * 5, h: tall ? 4 + r() * 3 : 1.4 + r() * 0.8 });
-  }
-  return out;
-}
-
 /* ── Night Shift: a dark school maze, five keys, the thing in the halls ── */
 /** Three floors, each bigger with more keys: 11×11 halls and 3 keys, 13×13 and 4, 15×15 and 5. */
 export const NIGHT_FLOORS = 3;

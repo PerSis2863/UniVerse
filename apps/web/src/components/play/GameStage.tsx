@@ -28,7 +28,7 @@ const VIEWS: Record<GameId, React.ComponentType<GameProps>> = {
   rescue: dynamic(() => import('./FloodRescue').then((m) => m.FloodRescue), { ssr: false, loading }),
   ocean: dynamic(() => import('./OceanCleanup').then((m) => m.OceanCleanup), { ssr: false, loading }),
   obby: dynamic(() => import('./SkylineObby').then((m) => m.SkylineObby), { ssr: false, loading }),
-  strike: dynamic(() => import('./NeonStrike').then((m) => m.NeonStrike), { ssr: false, loading }),
+  ops: dynamic(() => import('./RidgelineOps').then((m) => m.RidgelineOps), { ssr: false, loading }),
   night: dynamic(() => import('./NightShift').then((m) => m.NightShift), { ssr: false, loading }),
   orbit: dynamic(() => import('./OrbitBreach').then((m) => m.OrbitBreach), { ssr: false, loading }),
 };
@@ -38,7 +38,7 @@ export function preloadGame(game: GameId) {
   const mod = {
     quiz: () => import('./QuizClash'), fakes: () => import('./SpotTheFake'), supply: () => import('./SupplyRun'), sort: () => import('./RecycleRush'),
     type: () => import('./TypeRace'), pin: () => import('./WorldPin'), rescue: () => import('./FloodRescue'), ocean: () => import('./OceanCleanup'),
-    obby: () => import('./SkylineObby'), strike: () => import('./NeonStrike'), night: () => import('./NightShift'), orbit: () => import('./OrbitBreach'),
+    obby: () => import('./SkylineObby'), ops: () => import('./RidgelineOps'), night: () => import('./NightShift'), orbit: () => import('./OrbitBreach'),
   }[game];
   void mod();
 }
@@ -54,7 +54,7 @@ const CONTROLS: Record<GameId, { icon: typeof Keyboard; text: string }[]> = {
   rescue: [{ icon: MousePointer2, text: 'Steer with the mouse or a finger' }, { icon: Keyboard, text: 'Arrow keys or WASD' }],
   ocean: [{ icon: MousePointer2, text: 'Steer with the mouse or a finger' }, { icon: Keyboard, text: 'Arrow keys or WASD' }],
   obby: [{ icon: Keyboard, text: 'WASD move · Space jump · Shift run' }, { icon: MousePointer2, text: 'Click, then the mouse turns' }, { icon: Pointer, text: 'Phone: joystick and Jump' }],
-  strike: [{ icon: Keyboard, text: 'WASD move · Space jump' }, { icon: MousePointer2, text: 'Click to aim · hold to fire' }, { icon: Pointer, text: 'Phone: joystick, drag to aim, Fire' }],
+  ops: [{ icon: Keyboard, text: 'WASD move · Shift sprint · C crouch · E use · Q/R reload · G grenade · H medkit · M map' }, { icon: MousePointer2, text: 'Click, then aim with the mouse · hold to fire · right button aims' }, { icon: Pointer, text: 'Phone: joystick, drag to look, Aim and Fire' }],
   night: [{ icon: Keyboard, text: 'WASD walk · Shift run' }, { icon: MousePointer2, text: 'Click, then look with the mouse' }, { icon: Pointer, text: 'Phone: joystick, drag to look' }],
   orbit: [{ icon: Keyboard, text: 'WASD move · Space jump (again to boost)' }, { icon: MousePointer2, text: 'Click, then the mouse turns' }, { icon: Pointer, text: 'Phone: joystick, Jump' }],
 };

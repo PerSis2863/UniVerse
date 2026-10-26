@@ -85,6 +85,11 @@ const SURFACES = {
     const crack = Math.abs(Math.sin((x * 0.11 + n * 9) * 1.3)) < 0.04 ? 0.35 : 0;
     return { rgb: dim(mix([150, 146, 140], [230, 226, 218], n), 1 - crack), h: n - crack, r: 0.72 + n * 0.2 };
   }, 3.5),
+  /** Soil and grass grain, near white so the terrain's own colours show through (Ridgeline Ops). */
+  ground: () => make('ground', 256, 91, (x, y, n) => {
+    const blade = Math.sin(x * 2.1 + n * 20) * Math.sin(y * 1.7 - n * 14) * 0.08;
+    return { rgb: mix([196, 196, 190], [255, 255, 250], n + blade), h: n + blade * 2, r: 0.8 + n * 0.2 };
+  }, 2.2),
   /** Polished concrete with soft mottling (arenas, ceilings). */
   concrete: () => make('concrete', 256, 21, (_x, _y, n) => ({ rgb: mix([150, 152, 158], [215, 217, 222], n), h: n * 0.4, r: 0.3 + n * 0.45 }), 1.2),
   /** Brushed metal panels with seams and rivets (the station, cover blocks). */

@@ -19,7 +19,7 @@ export type Tone = 'pink' | 'good' | 'bad' | 'gold';
 interface ArenaApi {
   announce: (text: string, tone?: Tone) => void;
   shake: (power?: number) => void;
-  sfx: (name: Sfx, level?: number) => void;
+  sfx: (name: Sfx, level?: number, loud?: number) => void;
 }
 const ArenaCtx = createContext<ArenaApi>({ announce: () => {}, shake: () => {}, sfx });
 export const useArena = () => useContext(ArenaCtx);

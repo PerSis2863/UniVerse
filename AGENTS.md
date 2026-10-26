@@ -70,7 +70,7 @@ software or website in the main website… where they create a impact"). Each ap
   teams and a map.
 - **Play** (`/play`): twelve games: two per app (quick: Quiz Clash, Spot the Fake, Supply Run,
   Recycle Rush; big: Type Race, World Pin, Flood Rescue, Ocean Cleanup) and four 3D worlds
-  (three.js: Skyline Obby, Neon Strike 16+, Night Shift 18+, Orbit Breach 12+; rated games check
+  (three.js: Skyline Obby, Ridgeline Ops 16+ (open-world extraction shooter, `src/lib/play/ops.ts`), Night Shift 18+, Orbit Breach 12+; rated games check
   the birth date or ask), solo or up to 8 friends in a room with a code (the `GameRoom` Durable
   Object), leaderboards.
 

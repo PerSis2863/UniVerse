@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { GAMES, LOOK_COLORS, LOOK_HATS, ageOn, cleanPos, levelOf, tooYoung, xpFor } from '../play';
 import {
   NIGHT_ESCAPE, NIGHT_FLOOR, NIGHT_FLOORS, NIGHT_KEY, NIGHT_KEYS, NIGHT_PER_SECOND, NIGHT_STUN, NIGHT_STUN_COOLDOWN_S, NIGHT_STUN_S, OBBY_CHECK, OBBY_FINISH, OBBY_GEM, OBBY_PER_SECOND, OBBY_STAGES,
-  ORBIT_ESCAPE, ORBIT_PER_SECOND, ORBIT_REACTOR, ORBIT_SECTOR, ORBIT_SECTORS, ORBIT_TANK, ORBIT_TANK_EVERY_S, STRIKE_BOSS, STRIKE_BOT_HP, STRIKE_COMBO_MAX, STRIKE_FIRE_S, STRIKE_HIT, STRIKE_TAG, STRIKE_WAVE,
+  ORBIT_ESCAPE, ORBIT_PER_SECOND, ORBIT_REACTOR, ORBIT_SECTOR, ORBIT_SECTORS, ORBIT_TANK, ORBIT_TANK_EVERY_S,
   ORBIT_FLARE_EVERY_S, ORBIT_FLARE_S, ORBIT_FLARE_WARN_S, beltDir, orbitFlare,
-  isBossWave, mazeNext, mazeStep, nightKeys, nightMaze, nightSize, obbyCourse, orbitMeteors, orbitReactors, orbitStation, strikeArena, strikeMultiplier,
+  mazeNext, mazeStep, nightKeys, nightMaze, nightSize, obbyCourse, orbitMeteors, orbitReactors, orbitStation,
 } from './worlds';
 
 describe('3D worlds (M36)', () => {
@@ -22,18 +22,6 @@ describe('3D worlds (M36)', () => {
     const perfect = OBBY_STAGES * OBBY_CHECK + a.gems.length * OBBY_GEM + OBBY_FINISH + GAMES.obby.seconds * OBBY_PER_SECOND;
     for (const s of [1, 2, 3, 99]) expect(OBBY_STAGES * OBBY_CHECK + obbyCourse(s).gems.length * OBBY_GEM + OBBY_FINISH + GAMES.obby.seconds * OBBY_PER_SECOND).toBeLessThanOrEqual(GAMES.obby.maxScore);
     expect(perfect).toBeLessThanOrEqual(GAMES.obby.maxScore);
-  });
-
-  it('keeps Neon Strike under its cap even firing nonstop and tagging everything at the top combo', () => {
-    const shots = GAMES.strike.seconds / (STRIKE_FIRE_S / 2); // rapid fire the whole round
-    const tags = shots / STRIKE_BOT_HP;
-    let waves = 0;
-    for (let bots = 0; bots < tags; waves++) bots += 3 + waves * 2; // waves only come once the last is cleared
-    expect(shots * STRIKE_HIT + tags * STRIKE_TAG * STRIKE_COMBO_MAX + waves * STRIKE_WAVE + Math.ceil(waves / 5) * STRIKE_BOSS).toBeLessThanOrEqual(GAMES.strike.maxScore);
-    expect([isBossWave(4), isBossWave(5), isBossWave(10)]).toEqual([false, true, true]);
-    expect(strikeMultiplier(0)).toBe(1);
-    expect(strikeMultiplier(99)).toBe(STRIKE_COMBO_MAX);
-    expect(strikeArena(3).every((c) => Math.hypot(c.x, c.z) >= 7)).toBe(true);
   });
 
   it('makes a Night Shift maze where every hall connects, with five keys, and the thing finds its way', () => {
@@ -70,7 +58,7 @@ describe('3D worlds (M36)', () => {
 
   it('turns scores into XP and XP into levels, and unlocks looks along the way', () => {
     expect(xpFor('quiz', GAMES.quiz.maxScore)).toBe(1000);
-    expect(xpFor('strike', GAMES.strike.maxScore * 5)).toBe(1000); // capped
+    expect(xpFor('ops', GAMES.ops.maxScore * 5)).toBe(1000); // capped
     expect(xpFor('obby', -5)).toBe(0);
     expect(levelOf(0)).toEqual({ level: 1, into: 0, need: 400 });
     expect(levelOf(400)).toEqual({ level: 2, into: 0, need: 550 });

@@ -34,8 +34,9 @@ const GradeShader = {
 };
 
 const PHONE = () => matchMedia('(pointer: coarse)').matches;
-/** The buttons a game reads: jump, fire, act (E/F), and its special skill (Q/R). */
-export type Button = 'jump' | 'fire' | 'act' | 'skill';
+/** The buttons a game reads: jump, fire, act (E/F), and its special skill (Q/R); Ridgeline Ops also
+ *  aims (right mouse), swaps guns, heals and throws (its own keys, and phone buttons). */
+export type Button = 'jump' | 'fire' | 'act' | 'skill' | 'aim' | 'swap' | 'heal' | 'throw';
 
 /** The renderer, scene and camera, sized to the canvas's box; `loop` runs once per frame. */
 /** A box, with rounded edges when `round` is set (kept under half its thinnest side). */
@@ -492,7 +493,8 @@ export function walk(b: Body, c: Controls, dt: number, { speed = 7, run = 1.45, 
 /** A Roblox-style blocky character: head with a face, body, arms and legs that swing as it walks. */
 export class Avatar {
   group = new THREE.Group();
-  private limbs: THREE.Mesh[] = [];
+  /** Arms (0, 1) then legs (2, 3); shooters pose the arms after `update`. */
+  limbs: THREE.Mesh[] = [];
   private swing = 0;
   constructor(color = 0xec4899, { skin = 0xf5c9a0, legs = 0x1f2937, face = true, hat = 'none' as string } = {}) {
     const mat = (c: number, rough = 0.8) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: 0 });
