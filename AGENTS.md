@@ -83,7 +83,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 **A new app needs:** an `APPS` entry, its nav and tabs, a landing tab section, a card on `/hub`
 (`GET /hub`, `src/server/hub.ts`) and sample answers (`src/lib/sample/impact.ts`).
 
-## 4. Where things stand (25 October 2026)
+## 4. Where things stand (26 October 2026)
 
 - **`main` has everything through M33** (PR #95, 25 Oct): the impact apps (M21), Relief alerts and
   sensors (M22), Google sign-in fixed (M23), the Impact Wallet (M24), proof for Green actions
@@ -91,15 +91,14 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   (M27), 500 people a month on the $5 plan (M28, migration 0184), pointer glides (M29), Ask
   UniVerse (M30), UniVerse Play with eight games and rooms (M31, M32; migration 0185, `GameRoom`),
   the folding side menu (M33). Every item has a note in the handoff file and a Progress row.
-- **Merged since (PR #96):** M34 (the "Karma" look, see §8), M35a (maps wrap and pan) and the
-  M35 game arena with four rebuilt games.
-- **On the branch, not merged:** the World Pin map fix and maps opening on Europe, the landing's
-  one-picture-per-app (`HeroScenes.tsx`), **M36 3D worlds** (three.js; Skyline Obby, Neon
-  Strike 16+, Night Shift 18+, Orbit Breach 12+; age ratings, `src/components/play/world`) and
-  **M37** (game bug sweep, longer rounds with worlds/floors/stations/bosses, player levels and
-  looks, smoother 3D), **M38** (other players live in 3D rooms, a skill per world, bloom, shake,
-  hit-stop, sparks, fly-ins, title cards) and **M39** (text chat and 13+ proximity voice in 3D
-  rooms, realistic lit surfaces, a jump bug fixed, a new feature in each of the 12 games).
+- **Merged since:** PR #96 (M34, the "Karma" look, see §8; M35a, maps wrap and pan; the M35 game
+  arena with four rebuilt games) and **PR #97** (26 Oct): the landing's one-picture-per-app
+  (`HeroScenes.tsx`), the World Pin map fix and maps opening on Europe, **M36 3D worlds** (three.js;
+  Skyline Obby, Neon Strike 16+, Night Shift 18+, Orbit Breach 12+; age ratings,
+  `src/components/play/world`), **M37** (game bug sweep, longer rounds, player levels and looks),
+  **M38** (other players live in 3D rooms, a skill per world, big-game effects) and **M39** (text
+  chat and 13+ proximity voice in 3D rooms, realistic lit surfaces, a jump bug fixed, a new feature
+  in each of the 12 games). Nothing is waiting on the branch.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **Next database update number: `0186`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
