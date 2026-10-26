@@ -56,3 +56,6 @@ export const STRIKE_TAKES = 0.4;
 export const STRIKE_WARN_MS = 1600;
 /** A full tank lasts this long in the air; landing on the H fills it up again. */
 export const FUEL_SECONDS = 34;
+/** Supply crates (M39): three a trip (refilled on the pad); one landing on a roof gives each person
+ *  there six more seconds, and a few points. */
+export const CRATES = 3, CRATE_MS = 6_000, CRATE_PTS = 15;

@@ -1964,3 +1964,160 @@ Progress table (row D6).
   Still for Reduce Motion and low-end phones; lighter by itself when frames come late.
 - Checked: hub, UniVersity dashboard, Play, Trace, Relief, Green, messages, settings, teacher and
   admin pages, landing and sign-in at 390 and 1280 px, light and dark; axe clean.
+
+## M35a + M35 · Maps pan and wrap; the game arena; landing pictures (25 Oct 2026, merged in PR #96 / on the branch)
+
+- **Maps** (`src/components/trace/map/WorldCanvas.tsx`): wrap round sideways (copies side by side;
+  `Frame.sx/sy/near/lngLat` put every point on the copy nearest the middle), trackpad swipes pan
+  and a pinch (ctrlKey) zooms, mouse-wheel notches zoom, the 50m coastline comes in once the world
+  is big enough on screen. Traps found in the browser: `goTo`/`home` called before the first
+  measurement divided by zero and turned the view into NaN (an empty map in World Pin) — it now
+  waits for `size()`; every map's `WORLD` box crossed 180° (`[-168,…,190,…]`), which projects to
+  the Pacific — boxes must stay inside ±180. World Pin reads taps with `f.lngLat`.
+- **Arena** (`src/components/play/arena.tsx`): every round full-screen with sounds (`sound.ts`,
+  Web Audio, no files), announcements, shake, a timer ring, intro and results with `GameStat`s.
+  Escape frees the mouse in a 3D world first; only a second press asks to leave.
+- Rebuilt so far: Quiz Clash, Spot the Fake, Supply Run, Recycle Rush. The owner found them still
+  flat ("like web forms"); the 3D worlds (M36) are the answer; Type Race, Flood Rescue and Ocean
+  Cleanup keep their M32 look for now, Ocean Cleanup still counts power-ups and oil as rubbish.
+- **Landing** (`src/components/landing/HeroScenes.tsx`): one picture style per app, no phones (the
+  owner): UniVersity a live flow diagram, Trace a holographic label over a dotted world, Relief a
+  radar, Green a growing landscape, Play neon 3D cards over a room scoreboard. The grey tag line
+  above each headline is gone; UniVersity's text is the owner's sentence.
+
+## M36 · 3D worlds (25 Oct 2026, on the branch)
+
+The owner: "use the concept of roblox games… shooting, horror, science fiction… big games", rated
+"16+ and 18+… age consent before playing". three.js 0.180 added (the owner said yes; loaded only by
+these four games through `GameStage`'s dynamic imports).
+
+- **Engine** (`src/components/play/world/core.ts`): `World` (renderer, scene, camera; phones get
+  1.5× pixels and no shadows; pauses in a hidden tab; a long frame counts as one 50 ms step),
+  `Controls` (WASD/arrows, Space, E/F, Shift; a click locks the pointer and the mouse turns; phones:
+  `TouchPad` joystick, look-drag, buttons via `press/release/setStick` — React's compiler lint
+  refuses property writes on objects from refs, so use methods), `Body` (upright box resolved one
+  axis at a time against `World.solids`, climbs steps under 0.45), `walk`, `follow` (camera pulled
+  in front of walls), `eyes` (first person), `Avatar` (Roblox-style blocks; the face is on +z, so a
+  fresh avatar faces the camera: set `rotation.y = π` to face the way ahead; `facing` pins it for
+  shooters), `glowSprite` (cheap glow instead of bloom). `WorldFrame` / `HudChip` in `Stage.tsx`.
+- **Games** (rules and seeded levels in `src/lib/play/worlds.ts` + `worlds.test.ts`; all four
+  report score, stats and end early through `GameProps`, so rooms work as score races):
+  Skyline Obby (all ages: 10 stages of moving, crumbling, bounce and laser pads, checkpoints, gems,
+  golden finish), Neon Strike (16+: waves of drones, hitscan beam, bolts to dodge, combos, drops),
+  Night Shift (18+: first-person maze, torch with battery, five keys, a pursuer that walks the
+  halls by BFS and backs off from the torch, jump scare and lives), Orbit Breach (12+: low gravity
+  with an air boost, five reactors to repair, meteors with warning rings, oxygen, escape pod).
+- **Ratings:** `GameInfo.age` / `rated`; `ageOn(dateOfBirth)` and `tooYoung` in `src/lib/play.ts`;
+  `GET /play/me` returns `age`; the server refuses solo scores and new rooms for a known younger
+  age; `useAgeGate` (`AgeGate.tsx`) asks once per device when the age is unknown
+  (`uv-age-ok-<age>`), and a room playing a rated game shows `RoomAgeCheck` before the lobby.
+  shortcut: joining someone's rated room is checked on the device only.
+- Checked in Chromium with SwiftShader: all four render and play at 1280 and 390 (touch), the
+  arcade's new "3D worlds" section and the age dialog axe-clean in light and dark.
+
+## M37 · Games: bug sweep, longer play, levels, smoother 3D (25 Oct 2026, on the branch)
+
+The owner: "upgrade the games… big games with a lot play time… ultra smooth… see if any errors or
+bugs are there". The live site's `error_reports` had no game errors; every game was played
+automatically in Chromium (`pageerror` / console) with none either. Bugs found in the code:
+- **Ocean Cleanup** counted power-ups and oil as plastic: now `isTrash`/`isPower`; magnet pulls
+  plastic within `MAGNET_PX`, shield takes one bump, boost ×1.35 speed and ×2 points, oil
+  slows (`OIL_SLOW`), calm → choppy → storm (rain, lightning). `kgOf` for the results.
+- **Flood Rescue** promised lightning and gusts: now `rescueStorm` strikes (⚡ warning, then
+  `STRIKE_TAKES` of the waiting time, kept per person in `cut`), gusts push, fuel burns and the H
+  refuels, pets add 50.
+- **Type Race** promised nitro: now `NITRO_STREAK` right letters light `NITRO_MS` of ×2.
+- **Seeded shuffles** used `sort(() => r() - 0.5)` (Night Shift keys, Orbit Breach reactors);
+  engines sort differently, so a room on Safari and Chrome could get different worlds. Use `mix`
+  (seeded Fisher–Yates) in `worlds.ts` for anything a room must share.
+- A Night Shift key could sit on the exit square; excluded (and tested).
+- **3D stutter:** `glowSprite` made a new canvas texture per bolt/spark; now one per colour,
+  shared (and not disposed with a world). Walls and cover blocks are merged meshes
+  (`World.boxes`, `mergeGeometries`): Night Shift ~2×, Neon Strike ~3× faster in the software test.
+  `World` lowers the pixel ratio by itself after half a second of late frames and raises it back
+  (`tune`), and the sun's shadow box follows the player (`sunOver`); `follow()` reuses vectors.
+- **Longer play:** Skyline Obby 30 stages in three worlds (`OBBY_WORLDS`, the sky dome follows the
+  camera, lava sea and embers, a neon grid and stars, `blink` pads), 8 min; Neon Strike boss drone
+  every fifth wave (`isBossWave`, spreads, a boss bar), 6 min; Night Shift three floors
+  (`nightMaze(seed, floor)`, 11/13/15 halls, 3/4/5 keys, the floor rebuilt in place), 8 min; Orbit
+  Breach three stations (`orbitStation(seed, sector)`, outer decks, a different planet each), 7 min;
+  Type Race 2, Ocean Cleanup 2.5, Flood Rescue 3. Caps in `src/lib/play.ts`, proved by the tests.
+- **Levels:** `xpFor(game, score)` (≤1,000 a round, the score's share of the cap), `levelOf(xp)`;
+  `GET /play/me` returns `xp` (from each game's summed scores, no new table); `PlayerCard` on the
+  arcade (level bar, colours and hats unlocked by level, kept in localStorage `uv-look`), "+XP" on
+  the results; the 3D character wears the look (`Avatar` `hat`, `readLook`/`lookHex`).
+
+## M38 · Live players in 3D rooms, a skill per world, the big-game layer (25 Oct 2026, on the branch)
+
+The owner: "do what [was] left on purpose… unique features… ultra smooth with unique animations like
+big game companies".
+- **Live players:** a 3D game in a room sends `{t:'pos'}` (x, y, z, facing, in the air, which
+  world/floor/station, colour, hat) at most every 100 ms (`useGameRoom.sendPos`); `GameRoom` checks it
+  with `cleanPos` (`src/lib/play.ts`, tested), drops anything faster than 70 ms per socket, only
+  while a world game is playing, and passes it to the other sockets without storing it. The browser
+  keeps peers in a ref (no re-renders); `Crowd` (`world/crowd.ts`) draws each as an `Avatar` with a
+  name tag, gliding toward the last position, only for the same `part`. Cost: each incoming socket
+  message is a Durable Object request at 20:1, so a full 8-player, 8-minute room is ~2,000 requests.
+  Checked end to end with two browsers on `local:serve` (obby, night, orbit).
+- **Skills** (`Controls` button `skill`, Q or R; a phone button; `SkillRing` in each HUD):
+  Obby **Rewind** (hold: walk back along the last 3 s of positions, refills over 9 s), Strike
+  **Bullet time** (tags charge it, a boss fills it; drones, bolts and debris run at 0.28×), Night
+  **Echo** (walls' merged edges and the thing drawn through everything for 2.6 s; it rushes ×1.6 for
+  4 s), Orbit **Grapple** (the deck nearest the aim within 60 m pulls you on a cable, no gravity).
+- **Big-game layer in `World`:** bloom (`glow` option, computers only, half size; the first thing
+  `tune` turns off on a slow device, and very slow frames now count), camera `shake` (trauma,
+  offset only for the drawn frame), `fovBy` (eased; wider at speed), `freeze` (hit-stop), `burst`
+  (a pooled `Points` system, drawn only while something flies), `say` (floating words, textures
+  cached per word), `flyIn` at the start, `WorldFrame` `curtain` title cards between worlds, floors
+  and stations, and an "N here with you" badge. Rooms with a rated game let people straight in
+  when their age is known or already confirmed (`useAgeGate().clear`).
+- Trap: `local:build` was killed (SIGKILL) while a dev server (4 GB) and an old `local:serve` were
+  still running; stop them by PID first.
+
+## M39 · Chat and voice in 3D rooms, realistic graphics, a new feature in every game (26 Oct 2026, on the branch)
+
+The owner: "voice or text chat inside the 3D worlds… upgrade the graphics… realistic… add more
+features in all the games… make them big enough".
+- **Text chat** (rooms, 3D worlds): `RoomChat` (`world/RoomChat.tsx`, rendered by `WorldFrame` when
+  `net` is passed): Enter or T opens the box (frees the mouse), lines float bottom-left and fade
+  after 9 s, one-tap phrases (`QUICK_CHAT`), and what someone says shows as a bubble over their
+  character for 5 s (`Crowd`). `GameRoom` passes `{t:'chat'}` only after `cleanChat`
+  (`src/lib/play-chat.ts`, tested): the school chats' quick safety patterns (moved to
+  `src/lib/safety-patterns.ts`, no imports, re-exported by `src/server/safety.ts`) refuse the
+  message (`chat-no` back to the sender only); links, e-mails and long numbers become `[link]`,
+  `[email]`, `[number]`; at most one message per 800 ms per seat; nothing is stored.
+- **Voice** (13+, `VOICE_MIN_AGE`; unknown ages allowed): the ticket says whether a seat may talk
+  (`roomTicket` from the birth date) and carries the ICE servers (`iceServers()` from `calls.ts`:
+  STUN, plus TURN when Calls is set up). `voice.ts` `RoomVoice`: a direct audio link (WebRTC mesh;
+  the lower id makes the offer) to each other voice seat; `GameRoom` relays `voice`/`rtc` only
+  between voice seats (`rtc` up to 8,000 characters, at most 40 voice messages per 10 s a seat). Each voice plays through an HRTF `PannerNode`
+  at that player's character (heard from the camera), so near is loud and far fades; a green ring
+  at their feet while they talk (an `AnalyserNode`). Mic button: Voice → Voice on / Muted, plus
+  leave. Audio never goes through Cloudflare (only the handshakes, a few messages).
+- **Graphics** (`world/core.ts`, `world/textures.ts`): image-based light (`RoomEnvironment` through
+  PMREM, `env` per world: 0.9 obby, 0.45 strike, 0.08 night, 0.7 orbit), every material physically
+  lit (`MeshStandardMaterial`), surfaces made in the browser with colour, bump (normal) and
+  roughness maps (`surface('stone' | 'concrete' | 'panels' | 'tiles' | 'lockers')`, `lava()`,
+  `planet()`, soft sprite `cloud()`), UVs in world units (`worldUv`, `box`/`boxes` `{ tile, round }`
+  with rounded edges), a 4× smoothed-edge render target, a film finish (`GradeShader`: vignette,
+  saturation, contrast, grain), a planet atmosphere (`atmosphere()`), a bigger face texture. `tune`
+  now also turns off the sun's shadows and then the whole effects chain on a slow device.
+- **Bug found and fixed:** `Body.step` pushed a jumping body sideways to the edge of what it stood
+  on (rising, it "hit" the floor it was touching). In Neon Strike a jump threw you outside the
+  arena. Now a box under your feet (or touching overhead) never blocks sideways (`core.test.ts`).
+- **A new feature in every game** (rules in `src/lib/play/*`, tested; how-to texts updated):
+  Skyline Obby ice pads (slippery, `OBBY_ICE_GRIP`) and conveyor belts (`OBBY_BELT`, arrows scroll);
+  Neon Strike pulse grenades (E / Pulse button, 3 + 1 a wave, hurt every drone within 6 m);
+  Night Shift hide in a locker (E facing a wall, up to 6 s, then 12 s wait; it wanders off, and it
+  "saw you" within 2.4 m); Orbit Breach solar flares (`orbitFlare` on the round clock: warning, then
+  air drains ×13 outside a shield; each repaired reactor and the hub get a dome); Quiz Clash boss
+  question every fifth (×3; cap raised to 26,000); Spot the Fake UV lamp (U: clears one genuine
+  passport; 1 + 1 per 3 caught); Supply Run airdrop (H: under a second, no truck, rain-proof, every
+  40 s); Recycle Rush sort bot (B: every 10 right sorts, sorts the next 3); Type Race perfect bonus
+  (+150 for a fact with no mistakes); World Pin hints (2 a round, region and zoom, half points) and
+  the close-pin streak bonus (`pinStreakBonus` existed but was never used); Flood Rescue supply
+  crates (D: 3 a trip, +6 s for everyone on that roof); Ocean Cleanup sweep (15 pieces charge it,
+  Space collects all plastic within reach).
+- Cost: chat is one tiny socket message per line; voice adds a few handshake messages per pair.
+  Trap: the React compiler lint refuses changes to a ref's contents after a `useEffect` that uses
+  the same ref; put such effects after `useGameCanvas`.

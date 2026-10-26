@@ -420,7 +420,7 @@ export function samplePlayMe() {
     const game = pick(r, GAME_IDS);
     return { game, mode: r() < 0.35 ? 'multi' : 'solo', score: Math.round(games[game].best * (0.55 + r() * 0.45)), createdAt: iso(now - (i * 5 + r() * 4) * 3_600_000) };
   });
-  return { games, played: GAME_IDS.reduce((n, g) => n + games[g].solo + games[g].multi, 0), recent };
+  return { games, played: GAME_IDS.reduce((n, g) => n + games[g].solo + games[g].multi, 0), recent, age: null, xp: 6_420 };
 }
 
 /** GET /play/leaderboard */

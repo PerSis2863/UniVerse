@@ -2152,6 +2152,13 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
 .play-burst > i { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px; border-radius: 9999px; animation: play-burst 700ms var(--ease-out-soft) forwards; }
 @keyframes play-pulse-ring { 0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.35), 0 0 40px rgba(251, 191, 36, 0.15); } 50% { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.12), 0 0 70px rgba(251, 191, 36, 0.3); } }
 .play-lightning { animation: play-pulse-ring 1.2s ease-in-out infinite; }
+/* A boss question (Quiz Clash, M39): a warm gold light sweeps across the card once. */
+.play-boss { box-shadow: 0 0 50px rgba(252, 211, 77, 0.22); }
+.play-boss::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 35%, rgba(252, 211, 77, 0.22) 50%, transparent 65%); transform: translateX(-100%); animation: play-boss-sweep 1.1s var(--ease-out-soft) 0.15s forwards; }
+@keyframes play-boss-sweep { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .play-boss::after { display: none; } }
+/* A passport cleared by the UV lamp (Spot the Fake, M39): a violet wash that sweeps down once. */
+.play-uv { background: linear-gradient(180deg, rgba(139, 92, 246, 0.35), rgba(139, 92, 246, 0.12)); box-shadow: inset 0 0 0 2px rgba(167, 139, 250, 0.7); animation: rm-fade 220ms var(--ease-out-soft) both; }
 @keyframes play-spin { to { transform: rotate(360deg); } }
 .play-spin { animation: play-spin 0.6s linear infinite; }
 @keyframes play-rain { to { transform: translate3d(-40px, 120px, 0); } }
@@ -2165,3 +2172,31 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
 @keyframes play-smoke { 0% { transform: translate3d(-50%, 0, 0) scale(0.8); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate3d(-50%, -40px, 0) scale(1.4); opacity: 0; } }
 .play-smoke { animation: play-smoke 900ms ease-out forwards; }
 @media (prefers-reduced-motion: reduce) { .play-lid, .play-smoke { animation: none; } .play-smoke { display: none; } }
+@keyframes holo { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { [class*="animation:holo"] { animation: none !important; } }
+/* M36 · The 3D worlds: Night Shift's jump scare and static. */
+@keyframes play-scare { 0% { opacity: 0; transform: scale(0.6); } 12% { opacity: 1; transform: scale(1.15); } 70% { opacity: 1; transform: scale(1.3); } 100% { opacity: 0; transform: scale(1.4); } }
+.play-scare { animation: play-scare 950ms cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
+@keyframes play-static { 0% { background-position: 0 0; } 100% { background-position: 60px 40px; } }
+.play-static { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); animation: play-static 0.25s steps(4) infinite; }
+@media (prefers-reduced-motion: reduce) { .play-scare { animation-name: rm-fade; animation-direction: reverse; } .play-static { animation: none; } }
+@keyframes play-flame { 0%, 100% { transform: scaleX(1); opacity: 1; } 50% { transform: scaleX(1.45); opacity: 0.75; } }
+.play-flame { animation: play-flame 120ms linear infinite; }
+@media (prefers-reduced-motion: reduce) { .play-flame { animation: none; } }
+/* M38 · Rewind: a cool tint with drifting scanlines while time runs backwards. */
+.play-rewind { background: repeating-linear-gradient(0deg, rgba(103, 232, 249, 0.07) 0 2px, transparent 2px 5px), radial-gradient(ellipse at center, transparent 45%, rgba(8, 145, 178, 0.35)); animation: play-rewind 0.4s linear infinite; mix-blend-mode: screen; }
+@keyframes play-rewind { to { background-position: 0 5px, 0 0; } }
+@media (prefers-reduced-motion: reduce) { .play-rewind { animation: none; } }
+/* M38 · Bullet time: the edges go deep blue and a slow pulse breathes in from them. */
+.play-slowmo { box-shadow: inset 0 0 160px 40px rgba(30, 64, 175, 0.55); background: radial-gradient(ellipse at center, transparent 55%, rgba(56, 189, 248, 0.12)); animation: play-slowmo 1.6s ease-in-out infinite; }
+@keyframes play-slowmo { 50% { opacity: 0.7; } }
+@media (prefers-reduced-motion: reduce) { .play-slowmo { animation: none; } }
+/* M38 · Echo: a sound ring rushing out from the middle of the screen. */
+.play-echo { box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.8), 0 0 40px rgba(103, 232, 249, 0.6); animation: play-echo 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes play-echo { from { transform: translate(-50%, -50%) scale(0.85); opacity: 1; } to { transform: translate(-50%, -50%) scale(14); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .play-echo { animation-name: rm-fade; animation-direction: reverse; } }
+/* Inside a locker (Night Shift, M39): black with thin bright vent slits; it fades in as the door shuts. */
+.play-locker {
+  background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.96) 0 22px, rgba(255, 244, 214, 0.1) 22px 26px), radial-gradient(ellipse at center, transparent 30%, rgba(0, 0, 0, 0.9) 75%);
+  animation: rm-fade 240ms var(--ease-out-soft) both;
+}

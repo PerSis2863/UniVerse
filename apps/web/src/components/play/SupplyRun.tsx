@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import { m as motion, useReducedMotion } from 'framer-motion';
-import { CloudRain, Droplets, HeartPulse, Package, Tent, Truck, Users, Wheat } from 'lucide-react';
+import { CloudRain, Droplets, HeartPulse, Package, Plane, Tent, Truck, Users, Wheat } from 'lucide-react';
 import {
-  DISTRICTS, DONATION, GRID, STOCK_MAX, STOCK_REFILL_MS, STOCK_START, SUPPLY_KINDS, SUPPLY_LABEL, SUPPLY_MISSED, SUPPLY_WRONG, TRUCKS,
+  AIRDROP_EVERY_MS, AIRDROP_FIRST_MS, AIRDROP_MS, DISTRICTS, DONATION, GRID, STOCK_MAX, STOCK_REFILL_MS, STOCK_START, SUPPLY_KINDS, SUPPLY_LABEL, SUPPLY_MISSED, SUPPLY_WRONG, TRUCKS,
   supplyEvents, supplyPoints, supplySchedule, travelMs, type Need, type SupplyKind,
 } from '@/lib/play/supply';
 import { GAMES } from '@/lib/play';
@@ -24,14 +24,17 @@ export const KIND_COLOR: Record<SupplyKind, string> = { food: '#f97316', water: 
 const EXIT_MS = 400;
 const full = () => Object.fromEntries(SUPPLY_KINDS.map((k) => [k, STOCK_START])) as Record<SupplyKind, number>;
 
-interface Trip { id: number; need: Need; kind: SupplyKind; depart: number; arrive: number; back: number; done: boolean }
+interface Trip { id: number; need: Need; kind: SupplyKind; depart: number; arrive: number; back: number; done: boolean; air?: boolean }
+const trucksOut = (trips: Trip[]) => trips.filter((x) => !x.air).length;
 interface S {
   t: number; done: Record<number, 'ok' | 'missed'>; score: number; helped: number; deliveries: number; critical: number; missed: number;
   stock: Record<SupplyKind, number>; trips: Trip[]; seq: number; flash: { id: number; ok: boolean; n: number } | null;
+  /** When the airdrop is ready again (clock time). */
+  airAt: number;
 }
 type A =
   | { t: 'tick'; at: number }
-  | { t: 'send'; need: Need; kind: SupplyKind; at: number; rain: boolean }
+  | { t: 'send'; need: Need; kind: SupplyKind; at: number; rain: boolean; air?: boolean }
   | { t: 'arrive'; id: number; at: number }
   | { t: 'back'; id: number }
   | { t: 'refill' }
@@ -49,10 +52,10 @@ function reducer(start: number, needs: Need[]) {
     if (a.t === 'donation') return { ...base, stock: Object.fromEntries(SUPPLY_KINDS.map((k) => [k, s.stock[k] + DONATION])) as Record<SupplyKind, number> };
     if (a.t === 'back') return { ...base, trips: s.trips.filter((x) => x.id !== a.id) };
     if (a.t === 'send') {
-      if (done[a.need.id] || s.trips.length >= TRUCKS || s.stock[a.kind] <= 0 || s.trips.some((x) => x.need.id === a.need.id && !x.done)) return base;
-      const go = travelMs(a.need.x, a.need.y, a.rain);
-      const trip: Trip = { id: s.seq, need: a.need, kind: a.kind, depart: a.at, arrive: a.at + go, back: a.at + go * 2 + 200, done: false };
-      return { ...base, seq: s.seq + 1, trips: [...s.trips, trip], stock: { ...s.stock, [a.kind]: s.stock[a.kind] - 1 } };
+      if (done[a.need.id] || (a.air ? s.airAt > a.at : trucksOut(s.trips) >= TRUCKS) || s.stock[a.kind] <= 0 || s.trips.some((x) => x.need.id === a.need.id && !x.done)) return base;
+      const go = a.air ? AIRDROP_MS : travelMs(a.need.x, a.need.y, a.rain);
+      const trip: Trip = { id: s.seq, need: a.need, kind: a.kind, depart: a.at, arrive: a.at + go, back: a.air ? a.at + go + 350 : a.at + go * 2 + 200, done: false, air: a.air };
+      return { ...base, seq: s.seq + 1, trips: [...s.trips, trip], stock: { ...s.stock, [a.kind]: s.stock[a.kind] - 1 }, airAt: a.air ? a.at + AIRDROP_EVERY_MS : s.airAt };
     }
     // A truck reached its district.
     const trip = s.trips.find((x) => x.id === a.id);
@@ -106,7 +109,8 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
   const needs = useMemo(() => supplySchedule(seed, GAMES.supply.seconds), [seed]);
   const events = useMemo(() => supplyEvents(seed, GAMES.supply.seconds), [seed]);
   const run = useMemo(() => reducer(startsAt, needs), [startsAt, needs]);
-  const [s, dispatch] = useReducer(run, startsAt, (t): S => ({ t, done: {}, score: 0, helped: 0, deliveries: 0, critical: 0, missed: 0, stock: full(), trips: [], seq: 0, flash: null }));
+  const [s, dispatch] = useReducer(run, startsAt, (t): S => ({ t, done: {}, score: 0, helped: 0, deliveries: 0, critical: 0, missed: 0, stock: full(), trips: [], seq: 0, flash: null, airAt: t + AIRDROP_FIRST_MS }));
+  const [armed, setArmed] = useState(false);
   const [kind, setKind] = useState<SupplyKind>('food');
   const [rain, setRain] = useState(false);
   const { announce, shake, sfx } = useArena();
@@ -153,8 +157,21 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
     else { sfx('wrong'); shake(0.6); announce('Wrong supply', 'bad'); }
   }, [s.flash, needs, s.deliveries, s.helped, sfx, announce, shake]);
 
+  const airReady = s.t >= s.airAt;
+  // Wake when the airdrop is ready again (so its button lights up).
+  useEffect(() => {
+    if (airReady) return;
+    const id = setTimeout(() => { dispatch({ t: 'tick', at: clock() }); sfx('power'); }, Math.max(0, s.airAt - clock()));
+    return () => clearTimeout(id);
+  }, [airReady, s.airAt, clock, sfx]);
   const send = (n: Need) => {
-    if (s.trips.length >= TRUCKS) { announce('All trucks are out', 'bad'); sfx('wrong'); return; }
+    if (armed && airReady) {
+      if (s.stock[kind] <= 0) { announce(`Out of ${SUPPLY_LABEL[kind].toLowerCase()}`, 'bad'); sfx('wrong'); return; }
+      dispatch({ t: 'send', need: n, kind, at: clock(), rain, air: true });
+      setArmed(false); sfx('boost'); announce('Airdrop!', 'gold');
+      return;
+    }
+    if (trucksOut(s.trips) >= TRUCKS) { announce('All trucks are out', 'bad'); sfx('wrong'); return; }
     if (s.stock[kind] <= 0) { announce(`Out of ${SUPPLY_LABEL[kind].toLowerCase()}`, 'bad'); sfx('wrong'); return; }
     if (s.trips.some((x) => x.need.id === n.id && !x.done)) { announce('A truck is on its way', 'pink'); return; }
     dispatch({ t: 'send', need: n, kind, at: clock(), rain });
@@ -165,6 +182,7 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
     const key = (e: KeyboardEvent) => {
       const k = ['1', '2', '3', '4'].indexOf(e.key);
       if (k >= 0 && !e.metaKey && !e.ctrlKey) setKind(SUPPLY_KINDS[k]);
+      if (e.key.toLowerCase() === 'h') document.getElementById('supply-air')?.click();
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
@@ -180,8 +198,13 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
         <p className="font-medium text-zinc-300"><Users className="inline w-4 h-4 me-1 -mt-0.5 text-pink-300" aria-hidden /><span className="tabular-nums text-white">{s.helped}</span> people helped</p>
         <p className="text-zinc-400"><span className="tabular-nums text-white">{open.length}</span> waiting</p>
-        <p className="ms-auto flex items-center gap-1.5 text-zinc-400" aria-label={`${TRUCKS - s.trips.length} of ${TRUCKS} trucks free`}>
-          {Array.from({ length: TRUCKS }, (_, i) => <Truck key={i} className={cn('w-5 h-5 transition-colors', i < TRUCKS - s.trips.length ? 'text-white' : 'text-zinc-600')} aria-hidden />)}
+        <button id="supply-air" type="button" onClick={() => setArmed((a) => airReady && !a)} disabled={!airReady} aria-pressed={armed}
+          className={cn('ms-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition-[background-color,opacity,transform] duration-150 active:scale-95 disabled:opacity-40',
+            armed ? 'bg-amber-300 text-amber-950 ring-amber-200' : 'bg-white/[0.06] text-zinc-100 ring-white/15 hover:bg-white/[0.12]')}>
+          <Plane className="w-3.5 h-3.5" aria-hidden />{armed ? 'Tap a need' : airReady ? 'Airdrop' : 'Airdrop soon'}<kbd className="hidden rounded bg-black/30 px-1 text-[11px] font-medium sm:inline">H</kbd>
+        </button>
+        <p className="flex items-center gap-1.5 text-zinc-400" aria-label={`${TRUCKS - trucksOut(s.trips)} of ${TRUCKS} trucks free`}>
+          {Array.from({ length: TRUCKS }, (_, i) => <Truck key={i} className={cn('w-5 h-5 transition-colors', i < TRUCKS - trucksOut(s.trips) ? 'text-white' : 'text-zinc-600')} aria-hidden />)}
         </p>
         {rain && <p className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2.5 py-1 text-sky-200 ring-1 ring-sky-400/30"><CloudRain className="w-4 h-4" aria-hidden />Rain</p>}
       </div>
@@ -209,6 +232,16 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
         {/* Trucks: a full-size layer slid by a share of the map, so each truck crosses town on the GPU and comes back. */}
         {s.trips.map((t) => {
           const p = spot(t.need), total = t.back - t.depart, outShare = (t.arrive - t.depart) / total;
+          if (t.air) return (
+            // The helicopter flies straight over the rooftops, drops, and is gone.
+            <motion.div key={t.id} className="pointer-events-none absolute inset-0" initial={{ x: '0%', y: '0%', opacity: 1 }}
+              animate={{ x: `${(p.x - 0.5) * 100}%`, y: `${(p.y - 0.5) * 100}%`, opacity: [1, 1, 0] }}
+              transition={calm ? { duration: 0 } : { duration: total / 1000, times: [0, outShare, 1], ease: 'easeOut' }} aria-hidden>
+              <span className="absolute left-1/2 top-1/2 grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-amber-300 text-amber-950 shadow-[0_0_24px_rgba(252,211,77,0.6)] ring-2 ring-[#0b0b0c]">
+                <Plane className="w-5 h-5" />
+              </span>
+            </motion.div>
+          );
           return (
             <motion.div key={t.id} className="pointer-events-none absolute inset-0" initial={{ x: '0%', y: '0%' }}
               animate={{ x: ['0%', `${(p.x - 0.5) * 100}%`, `${(p.x - 0.5) * 100}%`, '0%'], y: ['0%', `${(p.y - 0.5) * 100}%`, `${(p.y - 0.5) * 100}%`, '0%'] }}

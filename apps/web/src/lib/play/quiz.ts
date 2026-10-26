@@ -168,6 +168,10 @@ export function quizHalf(seed: number, i: number, q: QuizQuestion): number[] {
 
 /** Points for an answer: 100 if right, up to 50 more for speed, a streak bonus from the third in a
  *  row, times `mult` (double points, the lightning round). */
+/** Every fifth question is a boss question worth triple (M39). */
+export const QUIZ_BOSS_MULT = 3;
+export const quizBoss = (i: number) => i % 5 === 4;
+
 export function quizPoints(right: boolean, msLeft: number, streak: number, mult = 1): number {
   if (!right) return 0;
   const speed = Math.round(50 * Math.max(0, Math.min(1, msLeft / (QUIZ_SECONDS_PER_QUESTION * 1000))));

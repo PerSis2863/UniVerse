@@ -52,6 +52,8 @@ export function typingPassage(seed: number, i: number): string {
 export const TYPE_CHAR = 10;
 export const TYPE_DONE = 250;
 export const TYPE_MISS = 5;
+/** A fact typed with no mistakes earns a bonus (M39). */
+export const TYPE_PERFECT = 150;
 /** This many right letters in a row lights the nitro: letters count double for a few seconds. */
 export const NITRO_STREAK = 20;
 export const NITRO_MS = 4_000;

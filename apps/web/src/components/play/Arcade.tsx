@@ -11,14 +11,31 @@ import { appById } from '@/lib/apps';
 import { GAMES, GAME_IDS, type GameId } from '@/lib/play';
 import { ITEMS } from '@/lib/play/sort';
 import { spring } from '@/lib/motion';
+import { AgeBadge } from './AgeGate';
+import { PlayerCard } from './PlayerCard';
 import { GameIcon } from './GameIcon';
 import { JoinRoom, type PlayMe } from './GameShell';
 
-// UniVerse Play's home (/play): eight games, two for each app (four quick, four big), each card
+// UniVerse Play's home (/play): twelve games, two for each app (four quick, four big) and four 3D worlds, each card
 // with a small live scene of how it plays; join a room by code; my numbers and last rounds. Scenes are CSS only and stop
 // with Reduce Motion.
 
+const WORLD_ART: Partial<Record<GameId, { bg: string; tags: string[] }>> = {
+  obby: { bg: 'linear-gradient(160deg,#2b59ff,#9b8cff 55%,#ffb3d9)', tags: ['10 stages', 'bounce pads', 'lasers'] },
+  strike: { bg: 'linear-gradient(160deg,#1a1030,#4c1d95 60%,#a855f7)', tags: ['waves', 'combos', 'power-ups'] },
+  night: { bg: 'radial-gradient(60% 60% at 50% 55%,#e5e7eb 0%,#3f3f46 18%,#09090b 60%)', tags: ['torch', '5 keys', 'don’t get caught'] },
+  orbit: { bg: 'radial-gradient(80% 80% at 20% 110%,#1d4ed8,#02030a 60%)', tags: ['low gravity', 'reactors', 'meteors'] },
+};
+
 function Scene({ game }: { game: GameId }) {
+  const art = WORLD_ART[game];
+  if (art) {
+    return (
+      <div className="play-scene relative flex h-[76px] items-end gap-1.5 overflow-hidden rounded-xl p-2.5" style={{ background: art.bg }} aria-hidden>
+        {art.tags.map((t) => <span key={t} className="rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white">{t}</span>)}
+      </div>
+    );
+  }
   if (game === 'quiz') {
     return (
       <div className="play-scene grid grid-cols-2 gap-1.5" aria-hidden>
@@ -119,7 +136,7 @@ export function Arcade() {
           <div>
             <p className="inline-flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-2.5 py-1 text-xs font-semibold text-fuchsia-800 dark:text-fuchsia-300"><Gamepad2 className="w-3.5 h-3.5" aria-hidden />UniVerse Play</p>
             <h1 className="mt-3 text-3xl font-semibold text-zinc-900 dark:text-white sm:text-4xl">Games that <em className="font-serif text-pink-600 dark:text-pink-300">teach</em> something.</h1>
-            <p className="mt-2 max-w-xl text-zinc-600 dark:text-zinc-300">Two games for each app, from a quick quiz to flying a rescue helicopter. Play alone against your best, or open a room and race friends live.</p>
+            <p className="mt-2 max-w-xl text-zinc-600 dark:text-zinc-300">3D worlds to run, jump and survive in, plus two games for each app. Every round earns XP: level up to unlock new looks. Play alone or race friends live in a room.</p>
             <dl className="mt-6 grid max-w-md grid-cols-3 gap-4">
               <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">Rounds played</dt><dd className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={me?.played ?? 0} /></dd></div>
               <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">With friends</dt><dd className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={withFriends} /></dd></div>
@@ -133,14 +150,16 @@ export function Arcade() {
         </div>
       </section>
 
-      {(['big', 'quick'] as const).map((kind) => (
+      {me && <PlayerCard xp={me.xp ?? 0} />}
+
+      {(['worlds', 'big', 'quick'] as const).map((kind) => (
         <section key={kind} aria-labelledby={`games-${kind}`}>
           <div className="mb-3 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
-            <h2 id={`games-${kind}`} className="text-lg font-semibold text-zinc-900 dark:text-white">{kind === 'big' ? 'Big games' : 'Quick games'}</h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{kind === 'big' ? 'Full-screen, longer rounds: fly, steer, type and explore.' : 'A minute each, perfect between classes.'}</p>
+            <h2 id={`games-${kind}`} className="text-lg font-semibold text-zinc-900 dark:text-white">{kind === 'worlds' ? '3D worlds' : kind === 'big' ? 'Big games' : 'Quick games'}</h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{kind === 'worlds' ? 'Run, jump, explore and survive in 3D: an obby, laser tag, horror and space.' : kind === 'big' ? 'Full-screen, longer rounds: fly, steer, type and explore.' : 'A minute each, perfect between classes.'}</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            {GAME_IDS.filter((g) => !!GAMES[g].big === (kind === 'big')).map((g, i) => {
+            {GAME_IDS.filter((g) => (kind === 'worlds' ? !!GAMES[g].world : !GAMES[g].world && !!GAMES[g].big === (kind === 'big'))).map((g, i) => {
           const info = GAMES[g], mine = me?.games[g];
           return (
             <motion.div key={g} initial={{ opacity: 0, y: calm ? 0 : 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.smooth, delay: 0.05 * i }}>
@@ -150,7 +169,7 @@ export function Arcade() {
                   <GameIcon game={g} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300"><span className="h-1.5 w-1.5 rounded-full" style={{ background: info.color }} aria-hidden />{appById(info.app).name}</span>
-                    <span className="block text-lg font-semibold text-zinc-900 dark:text-white">{info.name}</span>
+                    <span className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white">{info.name}<AgeBadge game={g} /></span>
                   </span>
                   {mine && mine.best > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-zinc-700 dark:bg-white/10 dark:text-zinc-200"><Trophy className="w-3 h-3" aria-hidden />{mine.best.toLocaleString()}</span>}
                 </span>
@@ -158,7 +177,7 @@ export function Arcade() {
                 <span className="relative mt-4 block text-sm text-zinc-600 dark:text-zinc-300">{info.tagline}</span>
                 <span className="relative mt-4 flex items-center gap-3 text-sm">
                   <span className="inline-flex items-center gap-1.5 font-semibold text-zinc-900 dark:text-white">Play<ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5 rtl:-scale-x-100 rtl:group-hover:-translate-x-0.5" aria-hidden /></span>
-                  {info.big && <span className="rounded-full bg-fuchsia-500/15 px-2 py-0.5 text-[11px] font-bold text-fuchsia-800 dark:text-fuchsia-300">New</span>}
+                  {info.world && <span className="rounded-full bg-fuchsia-500/15 px-2 py-0.5 text-[11px] font-bold text-fuchsia-800 dark:text-fuchsia-300">New · 3D</span>}
                   <span className="ms-auto text-xs text-zinc-500 dark:text-zinc-400">{Math.round(info.seconds / 6) / 10} min · solo or up to 8</span>
                 </span>
               </Link>

@@ -1,7 +1,8 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { GAMES, GAME_IDS, cleanRoomCode, cleanScore, isGame, newRoomCode, type GameId } from '@/lib/play';
+import { iceServers } from './calls';
+import { GAMES, GAME_IDS, VOICE_MIN_AGE, ageOn, cleanRoomCode, cleanScore, isGame, newRoomCode, tooYoung, type GameId } from '@/lib/play';
 import { BadRequestException, NotFoundException } from './http';
 import type { Body } from './body';
 
@@ -35,6 +36,7 @@ const OFFLINE = 'Playing with others isn’t available right now. Solo games sti
 /** POST /play/rooms { game }: a new room with a fresh code; the creator hosts it. */
 export async function createRoom(u: SessionUser, b: Body) {
   if (!isGame(b.game)) throw new BadRequestException('Pick a game.');
+  await checkAge(u, b.game);
   for (let i = 0; i < 5; i++) {
     const code = newRoomCode(() => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32);
     const res = await roomCall(code, '/create', { code, game: b.game, hostId: u.id });
@@ -64,13 +66,15 @@ export function shortName(name: string | null | undefined) {
 export async function roomTicket(u: SessionUser, rawCode: string) {
   const code = cleanRoomCode(rawCode);
   if (!code) throw new NotFoundException('Room codes have 6 letters and numbers.');
-  const me = await prisma.user.findUnique({ where: { id: u.id }, select: { avatar: true } });
-  const res = await roomCall(code, '/ticket', { userId: u.id, name: shortName(u.name), avatar: me?.avatar ?? null });
+  const me = await prisma.user.findUnique({ where: { id: u.id }, select: { avatar: true, dateOfBirth: true } });
+  // Voice in rooms (M39) is for 13 and over: an account whose birth date says younger gets text only.
+  const age = ageOn(me?.dateOfBirth), voice = age === null || age >= VOICE_MIN_AGE;
+  const res = await roomCall(code, '/ticket', { userId: u.id, name: shortName(u.name), avatar: me?.avatar ?? null, voice });
   if (!res) throw new BadRequestException(OFFLINE);
   if (res.status === 409) throw new BadRequestException('That room is full (8 players).');
   if (!res.ok) throw new NotFoundException('No room has that code. Check it, or ask for a new link.');
   const { ticket } = (await res.json()) as { ticket: string };
-  return { path: `/play-live?room=${code}&ticket=${encodeURIComponent(ticket)}` };
+  return { path: `/play-live?room=${code}&ticket=${encodeURIComponent(ticket)}`, voice, ice: voice ? await iceServers() : [] };
 }
 
 const DAY = 86_400_000;
@@ -80,6 +84,7 @@ const DAY = 86_400_000;
 // (cleanScore), not replayed here; fine for friendly leaderboards, not for prizes.
 export async function saveSoloScore(u: SessionUser, b: Body) {
   if (!isGame(b.game)) throw new BadRequestException('Pick a game.');
+  await checkAge(u, b.game);
   const score = cleanScore(b.game, b.score);
   const today = await prisma.gameScore.count({ where: { userId: u.id, createdAt: { gt: new Date(Date.now() - DAY) } } });
   if (today >= 200) throw new BadRequestException('That’s 200 rounds today. Your scores are saved; play again tomorrow.');
@@ -88,19 +93,31 @@ export async function saveSoloScore(u: SessionUser, b: Body) {
   return { score, best: Math.max(score, best._max.score ?? 0), newBest: score > (best._max.score ?? 0) };
 }
 
-/** GET /play/me: my best, rounds played and last scores, per game. */
+/** Rated games (M36) are refused when the account's birth date says younger. */
+async function myAge(u: SessionUser) {
+  const row = await prisma.user.findUnique({ where: { id: u.id }, select: { dateOfBirth: true } });
+  return ageOn(row?.dateOfBirth);
+}
+async function checkAge(u: SessionUser, game: GameId) {
+  if (GAMES[game].age && tooYoung(game, await myAge(u))) throw new BadRequestException(`${GAMES[game].name} is for ${GAMES[game].age}+.`);
+}
+
+/** GET /play/me: my best, rounds played and last scores, per game, and my age (for rated games). */
 export async function playMe(u: SessionUser) {
-  const [best, counts, recent] = await Promise.all([
-    prisma.gameScore.groupBy({ by: ['game'], where: { userId: u.id }, _max: { score: true } }),
+  const [best, counts, recent, age] = await Promise.all([
+    prisma.gameScore.groupBy({ by: ['game'], where: { userId: u.id }, _max: { score: true }, _sum: { score: true } }),
     prisma.gameScore.groupBy({ by: ['game', 'mode'], where: { userId: u.id }, _count: { _all: true } }),
     prisma.gameScore.findMany({ where: { userId: u.id }, orderBy: { createdAt: 'desc' }, take: 12, select: { game: true, mode: true, score: true, createdAt: true } }),
+    myAge(u),
   ]);
   const games = Object.fromEntries(GAME_IDS.map((g) => [g, {
     best: best.find((b) => b.game === g)?._max.score ?? 0,
     solo: counts.find((c) => c.game === g && c.mode === 'solo')?._count._all ?? 0,
     multi: counts.find((c) => c.game === g && c.mode === 'multi')?._count._all ?? 0,
   }])) as Record<GameId, { best: number; solo: number; multi: number }>;
-  return { games, played: counts.reduce((n, c) => n + c._count._all, 0), recent };
+  // Experience: each game's total score as a share of its best possible round, ×1000.
+  const xp = best.reduce((n, b) => n + (isGame(b.game) ? Math.round(((b._sum.score ?? 0) / GAMES[b.game].maxScore) * 1000) : 0), 0);
+  return { games, played: counts.reduce((n, c) => n + c._count._all, 0), recent, age, xp };
 }
 
 /** GET /play/leaderboard?game=&range=week|all: the best score of each person, top 20, and mine. */

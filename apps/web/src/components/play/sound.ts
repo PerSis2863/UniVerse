@@ -5,7 +5,8 @@
 // arena's speaker button (kept on the device). The audio starts on the first tap (Play), as
 // browsers require.
 
-export type Sfx = 'tick' | 'go' | 'right' | 'wrong' | 'combo' | 'pick' | 'drop' | 'splash' | 'boost' | 'power' | 'end' | 'win' | 'whoosh' | 'key' | 'alarm' | 'thunder';
+export type Sfx = 'tick' | 'go' | 'right' | 'wrong' | 'combo' | 'pick' | 'drop' | 'splash' | 'boost' | 'power' | 'end' | 'win' | 'whoosh' | 'key' | 'alarm' | 'thunder'
+  | 'laser' | 'hit' | 'boom' | 'jump' | 'land' | 'coin' | 'check' | 'scream' | 'heart' | 'hurt' | 'repair' | 'zap';
 
 const KEY = 'uv-play-sound';
 let ac: AudioContext | null = null;
@@ -78,5 +79,18 @@ export function sfx(name: Sfx, level = 0) {
     case 'key': tone(1500 + Math.random() * 300, t, 0.025, { type: 'square', vol: 0.025 }); break;
     case 'alarm': tone(880, t, 0.12, { type: 'square', vol: 0.05 }); tone(660, t + 0.14, 0.12, { type: 'square', vol: 0.05 }); break;
     case 'thunder': hiss(t, 1.1, { vol: 0.16, from: 900, to: 80, q: 0.4 }); break;
+    // The 3D worlds (M36)
+    case 'laser': tone(1400 * up, t, 0.12, { type: 'sawtooth', vol: 0.045, to: 260 }); break;
+    case 'hit': tone(520, t, 0.06, { type: 'square', vol: 0.05, to: 900 }); break;
+    case 'boom': hiss(t, 0.55, { vol: 0.2, from: 1600, to: 60, q: 0.5 }); tone(90, t, 0.4, { type: 'sine', vol: 0.18, to: 40 }); break;
+    case 'jump': tone(320, t, 0.14, { type: 'triangle', vol: 0.07, to: 640 }); break;
+    case 'land': tone(140, t, 0.08, { vol: 0.08, to: 80 }); break;
+    case 'coin': tone(988 * up, t, 0.07, { type: 'square', vol: 0.05 }); tone(1319 * up, t + 0.06, 0.14, { type: 'square', vol: 0.05 }); break;
+    case 'check': [392, 523, 659, 784].forEach((f, i) => tone(f, t + i * 0.07, 0.2, { type: 'triangle', vol: 0.1 })); break;
+    case 'scream': tone(1200, t, 0.9, { type: 'sawtooth', vol: 0.2, to: 380 }); hiss(t, 0.9, { vol: 0.22, from: 3000, to: 900, q: 0.6 }); break;
+    case 'heart': tone(60, t, 0.12, { vol: 0.22 }); tone(56, t + 0.22, 0.14, { vol: 0.18 }); break;
+    case 'hurt': tone(300, t, 0.2, { type: 'sawtooth', vol: 0.08, to: 110 }); break;
+    case 'repair': tone(440 * up, t, 0.05, { type: 'square', vol: 0.03 }); break;
+    case 'zap': hiss(t, 0.2, { vol: 0.08, from: 5000, to: 1500, q: 2 }); break;
   }
 }

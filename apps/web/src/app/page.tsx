@@ -10,8 +10,7 @@ import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { LightTrail } from '@/components/LightTrail';
-import { PassportCard } from '@/components/landing/PassportCard';
-import { FlowCard } from '@/components/landing/FlowCard';
+import { CampusScene, GreenScene, PlayScene, ReliefScene, TraceScene } from '@/components/landing/HeroScenes';
 import { TraceSection } from '@/components/landing/TraceSection';
 import { CampaignsSection, HowSection, MapsSection, PricingSection } from '@/components/landing/Business';
 import { Proof } from '@/components/landing/Proof';
@@ -19,7 +18,7 @@ import { Glue } from '@/components/landing/Glue';
 import { Bento } from '@/components/landing/Bento';
 import { Statement } from '@/components/landing/Statement';
 import { AppTabs } from '@/components/landing/AppTabs';
-import { AppsGrid, GreenCard, GreenSection, ReliefCard, ReliefSection, PlayCard, PlaySection } from '@/components/landing/ImpactApps';
+import { AppsGrid, GreenSection, ReliefSection, PlaySection } from '@/components/landing/ImpactApps';
 import { SplitCta } from '@/components/landing/SplitCta';
 import { Accent, EASE, Reveal, Tag, ghost, primary } from '@/components/landing/bits';
 import { appById, type AppId } from '@/lib/apps';
@@ -53,20 +52,20 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
   ],
   play: [
     { q: 'Do I need friends online to play?', a: 'No. Every game has a solo mode against the clock and your own best. With friends, one person opens a room and shares its code or link; everyone plays the same rounds at the same time.' },
-    { q: 'Is it free?', a: 'Yes. All eight games, rooms of up to 8 and the leaderboards are free with a UniVerse account.' },
+    { q: 'Is it free?', a: 'Yes. All twelve games, rooms of up to 8 and the leaderboards are free with a UniVerse account.' },
   ],
   green: [
     { q: 'How is the CO₂ saved worked out?', a: 'Each action uses a published average factor (for example, a young tree takes up about 22 kg of CO₂ a year; a kilometre by bike instead of by car saves about 0.2 kg). It’s an honest estimate, shown with the factor used.' },
   ],
 };
 
-type Hero = { tag: string; words: string[]; accent: string; text: string; note: string; card: React.ReactNode; extra?: React.ReactNode };
+type Hero = { words: string[]; accent: string; text: string; note: string; card: React.ReactNode; extra?: React.ReactNode };
 const HERO: Record<AppId, Hero> = {
-  campus: { tag: 'UniVersity / schools and universities / 13 languages', words: ['The', 'school', 'day', 'runs'], accent: 'itself.', text: 'Courses, grades, attendance, parents, internships and volunteering in one place. UniVersity runs the steps between classes and only asks a person when it matters.', note: 'free for students / a school sets it up / no card', card: <FlowCard /> },
-  trace: { tag: 'UniVerse Trace / product passports / live maps', words: ['Every', 'product', 'gets', 'a'], accent: 'passport.', text: 'One code on every unit. Buyers see it’s genuine, shops earn points for every sale, and you watch every product move on a live map, and catch every copy the day it appears.', note: 'for brands, shops, drivers and buyers / free to start', card: <PassportCard />, extra: <Link href="/t/demo" className={ghost}>Scan a sample</Link> },
-  relief: { tag: 'UniVerse Relief / needs and offers / live map', words: ['Help', 'that', 'reaches', 'people'], accent: 'fast.', text: 'People post what they need, neighbours and NGOs offer what they have, and a live map matches them: food, water, shelter, medicine or a lift to the clinic.', note: 'for people in need, volunteers and NGOs / free', card: <ReliefCard /> },
-  play: { tag: 'UniVerse Play / eight games / solo or a room of 8', words: ['Games', 'that', 'teach'], accent: 'something.', text: 'Quiz battles and type races, spotting fakes and pinning the world map, flood rescues by helicopter and cleaning the ocean. Beat your best alone, or share a room code and race your friends live.', note: 'free / up to 8 in a room / phones and computers', card: <PlayCard /> },
-  green: { tag: 'UniVerse Green / climate actions / teams', words: ['Climate', 'action', 'you', 'can'], accent: 'prove.', text: 'Log trees planted, kilometres cycled and waste recycled, see the CO₂ saved, and beat a weekly challenge with your class, office or club.', note: 'for schools, companies and clubs / free', card: <GreenCard /> },
+  campus: { words: ['The', 'school', 'day', 'runs'], accent: 'itself.', text: 'UniVerse unifies academics, collaboration and social impact, connecting students, universities and NGOs on one secure, AI-powered platform.', note: 'free for students / a school sets it up / no card', card: <CampusScene /> },
+  trace: { words: ['Every', 'product', 'gets', 'a'], accent: 'passport.', text: 'One code on every unit. Buyers see it’s genuine, shops earn points for every sale, and you watch every product move on a live map, and catch every copy the day it appears.', note: 'for brands, shops, drivers and buyers / free to start', card: <TraceScene />, extra: <Link href="/t/demo" className={ghost}>Scan a sample</Link> },
+  relief: { words: ['Help', 'that', 'reaches', 'people'], accent: 'fast.', text: 'People post what they need, neighbours and NGOs offer what they have, and a live map matches them: food, water, shelter, medicine or a lift to the clinic.', note: 'for people in need, volunteers and NGOs / free', card: <ReliefScene /> },
+  play: { words: ['Games', 'that', 'teach'], accent: 'something.', text: 'Quiz battles and type races, spotting fakes and pinning the world map, flood rescues by helicopter and cleaning the ocean. Beat your best alone, or share a room code and race your friends live.', note: 'free / up to 8 in a room / phones and computers', card: <PlayScene /> },
+  green: { words: ['Climate', 'action', 'you', 'can'], accent: 'prove.', text: 'Log trees planted, kilometres cycled and waste recycled, see the CO₂ saved, and beat a weekly challenge with your class, office or club.', note: 'for schools, companies and clubs / free', card: <GreenScene /> },
 };
 
 function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
@@ -173,8 +172,7 @@ export default function ShowcasePage() {
                 </motion.div>
                 <AnimatePresence mode="wait">
                   <motion.div key={app} initial={{ opacity: 0, y: 16, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -10, filter: 'blur(6px)', transition: { duration: 0.2 } }} transition={{ duration: 0.55, ease: EASE }}>
-                    <span className="mt-7 inline-flex items-center gap-2 h-8 px-3 rounded-full border border-white/10 bg-black/30 backdrop-blur font-mono text-xs text-zinc-200">{hero.tag}</span>
-                    <h1 className="mt-6 text-5xl sm:text-6xl lg:text-7xl font-bold tracking-[-0.035em] leading-[1.02] text-white">
+                    <h1 className="mt-8 text-5xl sm:text-6xl lg:text-7xl font-bold tracking-[-0.035em] leading-[1.02] text-white">
                       {hero.words.map((w, i) => (
                         <motion.span key={w + i} className="inline-block me-[0.25em]" initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, delay: 0.05 + i * 0.06, ease: EASE }}>{w}</motion.span>
                       ))}

@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { GAMES, GAME_IDS } from '../play';
 import { SEA, isLife, isPower, isTrash, oceanMultiplier, oceanPhase, oceanSchedule } from './ocean';
 import { CAPACITY, rescuePoints, rescueSchedule, rescueStorm, rescueTown, waterLevel } from './rescue';
-import { PIN_TARGETS, kmBetween, pinPoints, pinStreakBonus, pinTarget } from './pin';
+import { PIN_TARGETS, kmBetween, pinPoints, pinRegion, pinStreakBonus, pinTarget } from './pin';
+import { QUIZ_BOSS_MULT, quizBoss, quizPoints } from './quiz';
 import { NITRO_STREAK, PASSAGES, TYPE_CHAR, TYPE_DONE, typingPassage, wpm } from './typing';
 
 describe('UniVerse Play, the bigger games', () => {
-  it('lists eight games, two per app', () => {
-    expect(GAME_IDS.length).toBe(8);
+  it('lists twelve games: two per app and four 3D worlds', () => {
+    expect(GAME_IDS.length).toBe(12);
     for (const app of ['campus', 'trace', 'relief', 'green']) expect(GAME_IDS.filter((g) => GAMES[g].app === app).length).toBe(2);
+    expect(GAME_IDS.filter((g) => GAMES[g].world).length).toBe(4);
   });
   it('drifts the same sea for everyone, and a perfect cleanup stays under the cap', () => {
     const s = oceanSchedule(3, GAMES.ocean.seconds);
@@ -58,5 +60,22 @@ describe('UniVerse Play, the bigger games', () => {
     // Nitro doubles letters typed after each streak: count them all double.
     expect(chars * TYPE_CHAR * 2 + Math.ceil(chars / 60) * TYPE_DONE).toBeLessThanOrEqual(GAMES.type.maxScore);
     expect(NITRO_STREAK).toBeGreaterThan(5);
+  });
+});
+
+describe('M39 game features', () => {
+  it('names the region for a hint', () => {
+    expect(pinRegion(48.85, 2.35)).toBe('Europe');
+    expect(pinRegion(40.71, -74)).toBe('North America');
+    expect(pinRegion(-23.55, -46.63)).toBe('South America');
+    expect(pinRegion(-1.29, 36.82)).toBe('Africa');
+    expect(pinRegion(25.2, 55.27)).toBe('the Middle East');
+    expect(pinRegion(35.68, 139.69)).toBe('Asia');
+    expect(pinRegion(-33.87, 151.21)).toBe('Oceania');
+  });
+  it('every fifth quiz question is a boss worth triple', () => {
+    expect([0, 1, 2, 3, 4, 9].map(quizBoss)).toEqual([false, false, false, false, true, true]);
+    // The most one question can give: a boss, doubled, in the lightning round.
+    expect(quizPoints(true, 10_000, 6, 2 * 2 * QUIZ_BOSS_MULT)).toBe(3000);
   });
 });

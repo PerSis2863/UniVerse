@@ -27,6 +27,10 @@ const VIEWS: Record<GameId, React.ComponentType<GameProps>> = {
   pin: dynamic(() => import('./WorldPin').then((m) => m.WorldPin), { ssr: false, loading }),
   rescue: dynamic(() => import('./FloodRescue').then((m) => m.FloodRescue), { ssr: false, loading }),
   ocean: dynamic(() => import('./OceanCleanup').then((m) => m.OceanCleanup), { ssr: false, loading }),
+  obby: dynamic(() => import('./SkylineObby').then((m) => m.SkylineObby), { ssr: false, loading }),
+  strike: dynamic(() => import('./NeonStrike').then((m) => m.NeonStrike), { ssr: false, loading }),
+  night: dynamic(() => import('./NightShift').then((m) => m.NightShift), { ssr: false, loading }),
+  orbit: dynamic(() => import('./OrbitBreach').then((m) => m.OrbitBreach), { ssr: false, loading }),
 };
 
 /** Warm a game's code while the lobby or countdown shows. */
@@ -34,6 +38,7 @@ export function preloadGame(game: GameId) {
   const mod = {
     quiz: () => import('./QuizClash'), fakes: () => import('./SpotTheFake'), supply: () => import('./SupplyRun'), sort: () => import('./RecycleRush'),
     type: () => import('./TypeRace'), pin: () => import('./WorldPin'), rescue: () => import('./FloodRescue'), ocean: () => import('./OceanCleanup'),
+    obby: () => import('./SkylineObby'), strike: () => import('./NeonStrike'), night: () => import('./NightShift'), orbit: () => import('./OrbitBreach'),
   }[game];
   void mod();
 }
@@ -48,15 +53,20 @@ const CONTROLS: Record<GameId, { icon: typeof Keyboard; text: string }[]> = {
   pin: [{ icon: MousePointer2, text: 'Click or tap the map · drag and pinch to look' }, { icon: Keyboard, text: 'Arrows move · Enter pins the cross' }],
   rescue: [{ icon: MousePointer2, text: 'Steer with the mouse or a finger' }, { icon: Keyboard, text: 'Arrow keys or WASD' }],
   ocean: [{ icon: MousePointer2, text: 'Steer with the mouse or a finger' }, { icon: Keyboard, text: 'Arrow keys or WASD' }],
+  obby: [{ icon: Keyboard, text: 'WASD move · Space jump · Shift run' }, { icon: MousePointer2, text: 'Click, then the mouse turns' }, { icon: Pointer, text: 'Phone: joystick and Jump' }],
+  strike: [{ icon: Keyboard, text: 'WASD move · Space jump' }, { icon: MousePointer2, text: 'Click to aim · hold to fire' }, { icon: Pointer, text: 'Phone: joystick, drag to aim, Fire' }],
+  night: [{ icon: Keyboard, text: 'WASD walk · Shift run' }, { icon: MousePointer2, text: 'Click, then look with the mouse' }, { icon: Pointer, text: 'Phone: joystick, drag to look' }],
+  orbit: [{ icon: Keyboard, text: 'WASD move · Space jump (again to boost)' }, { icon: MousePointer2, text: 'Click, then the mouse turns' }, { icon: Pointer, text: 'Phone: joystick, Jump' }],
 };
 
-export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onFinish, strip, rivals }: {
+export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onFinish, strip, rivals, net }: {
   game: GameId; seed: number; startsAt: number; endsAt: number; clock: () => number;
   onProgress?: (score: number, step: number) => void;
   onFinish: (score: number, step: number, stats: GameStat[]) => void;
   /** The room's players, as a strip under the bar (phones; computers have the side board). */
   strip?: React.ReactNode;
   rivals?: GameProps['rivals'];
+  net?: GameProps['net'];
 }) {
   const info = GAMES[game];
   const { announce, sfx } = useArena();
@@ -136,7 +146,7 @@ export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onF
       </div>
 
       <div className="mt-4">
-        {playing && !over ? <View seed={seed} startsAt={startsAt} endsAt={endsAt} clock={clock} onProgress={progress} onDone={finish} onStats={keepStats} rivals={rivals} /> : playing ? (
+        {playing && !over ? <View seed={seed} startsAt={startsAt} endsAt={endsAt} clock={clock} onProgress={progress} onDone={finish} onStats={keepStats} rivals={rivals} net={net} /> : playing ? (
           <div className="grid h-72 place-items-center"><p className="text-sm text-zinc-400">Adding it up…</p></div>
         ) : (
           // The intro, while the countdown runs.

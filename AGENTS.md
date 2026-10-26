@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M34 is the latest).
+  builds on it). The newest notes are at the end (M39 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -68,9 +68,11 @@ software or website in the main website… where they create a impact"). Each ap
   alerts for helpers.
 - **Green** (`/green`): climate actions with the CO₂ they save, streaks, badges, a weekly challenge,
   teams and a map.
-- **Play** (`/play`): eight games, two per app (quick: Quiz Clash, Spot the Fake, Supply Run,
-  Recycle Rush; big: Type Race, World Pin, Flood Rescue, Ocean Cleanup), solo or up to 8 friends in
-  a room with a code (the `GameRoom` Durable Object), leaderboards.
+- **Play** (`/play`): twelve games: two per app (quick: Quiz Clash, Spot the Fake, Supply Run,
+  Recycle Rush; big: Type Race, World Pin, Flood Rescue, Ocean Cleanup) and four 3D worlds
+  (three.js: Skyline Obby, Neon Strike 16+, Night Shift 18+, Orbit Breach 12+; rated games check
+  the birth date or ask), solo or up to 8 friends in a room with a code (the `GameRoom` Durable
+  Object), leaderboards.
 
 Shared by all apps: the hub `/hub`, Messages, Collaborate (the owner likes it: keep it), Settings,
 and the owner console `/console`. Each app has its own menu (`Sidebar.tsx` `navFor`, the app
@@ -89,7 +91,15 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   (M27), 500 people a month on the $5 plan (M28, migration 0184), pointer glides (M29), Ask
   UniVerse (M30), UniVerse Play with eight games and rooms (M31, M32; migration 0185, `GameRoom`),
   the folding side menu (M33). Every item has a note in the handoff file and a Progress row.
-- **On the branch, not merged:** M34 (the "Karma" look, see §8; the river denser and sharper).
+- **Merged since (PR #96):** M34 (the "Karma" look, see §8), M35a (maps wrap and pan) and the
+  M35 game arena with four rebuilt games.
+- **On the branch, not merged:** the World Pin map fix and maps opening on Europe, the landing's
+  one-picture-per-app (`HeroScenes.tsx`), **M36 3D worlds** (three.js; Skyline Obby, Neon
+  Strike 16+, Night Shift 18+, Orbit Breach 12+; age ratings, `src/components/play/world`) and
+  **M37** (game bug sweep, longer rounds with worlds/floors/stations/bosses, player levels and
+  looks, smoother 3D), **M38** (other players live in 3D rooms, a skill per world, bloom, shake,
+  hit-stop, sparks, fly-ins, title cards) and **M39** (text chat and 13+ proximity voice in 3D
+  rooms, realistic lit surfaces, a jump bug fixed, a new feature in each of the 12 games).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **Next database update number: `0186`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each

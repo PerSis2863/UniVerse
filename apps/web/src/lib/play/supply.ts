@@ -54,6 +54,9 @@ export function supplyEvents(seed: number, seconds: number): SupplyEvent[] {
 }
 
 export const TRUCKS = 3;
+/** The airdrop (M39): a helicopter that gets there in under a second, ignores rain and needs no truck;
+ *  ready 12 s in, then every 40 s. */
+export const AIRDROP_MS = 900, AIRDROP_FIRST_MS = 12_000, AIRDROP_EVERY_MS = 40_000;
 export const STOCK_START = 5;
 export const STOCK_MAX = 7;
 /** One more of each supply this often (ms). */

@@ -48,7 +48,7 @@ async function uploadProof(file: File) {
   const f = await shrinkImage(file);
   return (await authedJson<{ url: string }>(`/api/upload?filename=${encodeURIComponent(f.name || 'proof.jpg')}`, { method: 'POST', body: f, headers: { 'Content-Type': f.type || 'image/jpeg' } })).url;
 }
-const WORLD: Box = [-168, -56, 190, 76];
+const WORLD: Box = [-170, -56, 180, 76];
 
 export function GreenApp() {
   const { data, mutate } = useSWR<GreenMe>('/green/me', fetcher);

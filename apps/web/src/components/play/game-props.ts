@@ -18,4 +18,6 @@ export interface GameProps {
   onStats?: (stats: GameStat[]) => void;
   /** The others in the room, as they go (Type Race draws them as cars). */
   rivals?: { id: string; name: string; score: number; step: number }[];
+  /** In a room, the 3D worlds share where everyone is (useGameRoom's Net), to draw the others. */
+  net?: import('./useGameRoom').Net;
 }
