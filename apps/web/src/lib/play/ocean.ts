@@ -27,6 +27,8 @@ export const isTrash = (k: SeaKind) => !isLife(k) && !isPower(k) && k !== 'oil';
 export const POWER_MS = 6_000;
 /** The magnet's reach (px), the boost's speed-up, how much oil slows the boat. */
 export const MAGNET_PX = 170, BOOST_SPEED = 1.35, OIL_SLOW = 0.45;
+/** The cleanup sweep (M39): every 15 pieces charge it; it collects every bit of plastic within reach. */
+export const SWEEP_CHARGE = 15, SWEEP_PX = 190;
 /** Kilograms of plastic a pick-up takes out of the sea (rough, for the results). */
 export const kgOf = (k: SeaKind) => ('kg' in SEA[k] ? (SEA[k] as { kg: number }).kg : 0);
 /** The sea's stages: calm, choppy from 35%, a storm from 68% (more sea life, faster). */

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { Atom, Calculator, Check, Clock3, Cpu, Divide, Flame, Globe2, Leaf, Palette, Sparkles, X, Zap, type LucideIcon } from 'lucide-react';
-import { QUIZ_LIGHTNING_MS, QUIZ_SECONDS_PER_QUESTION, quizHalf, quizPoints, quizQuestion, type QuizPower } from '@/lib/play/quiz';
+import { QUIZ_BOSS_MULT, QUIZ_LIGHTNING_MS, QUIZ_SECONDS_PER_QUESTION, quizBoss, quizHalf, quizPoints, quizQuestion, type QuizPower } from '@/lib/play/quiz';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useArena } from './arena';
@@ -46,7 +46,7 @@ function reducer(s: S, a: A): S {
   if (s.hidden.includes(a.choice)) return s;
   const ok = a.choice === a.answer;
   const streak = ok ? s.streak + 1 : 0;
-  const gained = quizPoints(ok, s.shownAt + PER_Q + s.extra - a.at, streak, (s.doubled ? 2 : 1) * (a.lightning ? 2 : 1));
+  const gained = quizPoints(ok, s.shownAt + PER_Q + s.extra - a.at, streak, (s.doubled ? 2 : 1) * (a.lightning ? 2 : 1) * (quizBoss(s.i) ? QUIZ_BOSS_MULT : 1));
   return { ...s, picked: a.choice, streak, best: Math.max(s.best, streak), score: s.score + gained, right: s.right + (ok ? 1 : 0), gained, answerMs: [...s.answerMs, a.at - s.shownAt] };
 }
 
@@ -61,6 +61,9 @@ export function QuizClash({ seed, startsAt, endsAt, clock, onProgress, onStats }
   const answered = s.picked !== null || s.timedOut;
   const topic = TOPIC[q.topic] ?? TOPIC.Science;
   const lightningRef = useRef(false);
+  const boss = quizBoss(s.i);
+  // A boss question: the card turns gold and it's worth triple.
+  useEffect(() => { if (boss) { announce(`Boss question! ×${QUIZ_BOSS_MULT}`, 'gold'); sfx('power'); } }, [boss, s.i, announce, sfx]);
 
   // The question's clock, then the pause to read the answer.
   useEffect(() => {
@@ -159,11 +162,12 @@ export function QuizClash({ seed, startsAt, endsAt, clock, onProgress, onStats }
 
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={s.i} initial={{ opacity: 0, x: calm ? 0 : 40, rotate: calm ? 0 : 1.5 }} animate={{ opacity: 1, x: 0, rotate: 0 }} exit={{ opacity: 0, x: calm ? 0 : -30, transition: { duration: 0.14, ease: 'easeIn' } }} transition={spring.smooth} className="mt-6">
-          <div className={cn('relative overflow-hidden rounded-[2rem] p-6 ring-1 ring-white/10 sm:p-8', lightning && 'play-lightning')}
+          <div className={cn('relative overflow-hidden rounded-[2rem] p-6 ring-1 sm:p-8', boss ? 'play-boss ring-amber-300/70' : 'ring-white/10', lightning && 'play-lightning')}
             style={{ background: `radial-gradient(120% 120% at 0% 0%, ${topic.tint}26, transparent 55%), #121214` }}>
             <div className="flex items-center gap-3">
               <span className="karma-icon" style={{ color: topic.tint }}><Icon className="w-5 h-5" strokeWidth={1.6} aria-hidden /></span>
               <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: topic.tint }}>{q.topic}</p>
+              {boss && <span className="ms-auto rounded-full bg-amber-300 px-2.5 py-1 text-xs font-black uppercase tracking-wider text-amber-950">Boss ×{QUIZ_BOSS_MULT}</span>}
             </div>
             <h2 className="mt-4 text-2xl font-semibold leading-snug text-white text-balance sm:text-4xl">{q.q}</h2>
           </div>

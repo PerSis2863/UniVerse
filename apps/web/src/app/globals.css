@@ -2152,6 +2152,13 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
 .play-burst > i { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px; border-radius: 9999px; animation: play-burst 700ms var(--ease-out-soft) forwards; }
 @keyframes play-pulse-ring { 0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.35), 0 0 40px rgba(251, 191, 36, 0.15); } 50% { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.12), 0 0 70px rgba(251, 191, 36, 0.3); } }
 .play-lightning { animation: play-pulse-ring 1.2s ease-in-out infinite; }
+/* A boss question (Quiz Clash, M39): a warm gold light sweeps across the card once. */
+.play-boss { box-shadow: 0 0 50px rgba(252, 211, 77, 0.22); }
+.play-boss::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 35%, rgba(252, 211, 77, 0.22) 50%, transparent 65%); transform: translateX(-100%); animation: play-boss-sweep 1.1s var(--ease-out-soft) 0.15s forwards; }
+@keyframes play-boss-sweep { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .play-boss::after { display: none; } }
+/* A passport cleared by the UV lamp (Spot the Fake, M39): a violet wash that sweeps down once. */
+.play-uv { background: linear-gradient(180deg, rgba(139, 92, 246, 0.35), rgba(139, 92, 246, 0.12)); box-shadow: inset 0 0 0 2px rgba(167, 139, 250, 0.7); animation: rm-fade 220ms var(--ease-out-soft) both; }
 @keyframes play-spin { to { transform: rotate(360deg); } }
 .play-spin { animation: play-spin 0.6s linear infinite; }
 @keyframes play-rain { to { transform: translate3d(-40px, 120px, 0); } }
@@ -2188,3 +2195,8 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
 .play-echo { box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.8), 0 0 40px rgba(103, 232, 249, 0.6); animation: play-echo 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 @keyframes play-echo { from { transform: translate(-50%, -50%) scale(0.85); opacity: 1; } to { transform: translate(-50%, -50%) scale(14); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .play-echo { animation-name: rm-fade; animation-direction: reverse; } }
+/* Inside a locker (Night Shift, M39): black with thin bright vent slits; it fades in as the door shuts. */
+.play-locker {
+  background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.96) 0 22px, rgba(255, 244, 214, 0.1) 22px 26px), radial-gradient(ellipse at center, transparent 30%, rgba(0, 0, 0, 0.9) 75%);
+  animation: rm-fade 240ms var(--ease-out-soft) both;
+}

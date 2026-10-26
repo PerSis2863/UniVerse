@@ -4,7 +4,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { Flag, Flame, Target } from 'lucide-react';
 import { GAMES } from '@/lib/play';
-import { NITRO_MS, NITRO_STREAK, TYPE_CHAR, TYPE_DONE, TYPE_MISS, pace, typingPassage, wpm } from '@/lib/play/typing';
+import { NITRO_MS, NITRO_STREAK, TYPE_CHAR, TYPE_DONE, TYPE_MISS, TYPE_PERFECT, pace, typingPassage, wpm } from '@/lib/play/typing';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useArena } from './arena';
@@ -18,11 +18,11 @@ import type { GameProps } from './game-props';
 const LAP = 600;
 const COLORS = ['#ec4899', '#38bdf8', '#f59e0b', '#a78bfa', '#34d399', '#f87171', '#e2e8f0', '#facc15'];
 
-interface S { i: number; at: number; chars: number; misses: number; score: number; done: number; miss: number; missAt: number; streak: number; best: number; charge: number; nitroUntil: number; nitros: number; last: number }
+interface S { i: number; at: number; chars: number; misses: number; score: number; done: number; miss: number; missAt: number; streak: number; best: number; charge: number; nitroUntil: number; nitros: number; last: number; factMiss: number; perfects: number }
 type A = { t: 'key'; ch: string; text: string; now: number } | { t: 'next' };
 
 function reducer(s: S, a: A): S {
-  if (a.t === 'next') return { ...s, i: s.i + 1, at: 0, missAt: -1, done: s.done + 1, score: s.score + TYPE_DONE };
+  if (a.t === 'next') { const perfect = s.factMiss === 0; return { ...s, i: s.i + 1, at: 0, missAt: -1, done: s.done + 1, score: s.score + TYPE_DONE + (perfect ? TYPE_PERFECT : 0), factMiss: 0, perfects: s.perfects + (perfect ? 1 : 0) }; }
   if (s.at >= a.text.length) return s;
   if (a.ch === a.text[s.at]) {
     const nitro = a.now < s.nitroUntil, charge = nitro ? 0 : s.charge + 1, lit = !nitro && charge >= NITRO_STREAK;
@@ -31,11 +31,11 @@ function reducer(s: S, a: A): S {
       charge: lit ? 0 : charge, nitroUntil: lit ? a.now + NITRO_MS : s.nitroUntil, nitros: s.nitros + (lit ? 1 : 0), last: a.now,
     };
   }
-  return { ...s, misses: s.misses + 1, score: Math.max(0, s.score - TYPE_MISS), miss: s.miss + 1, missAt: s.at, streak: 0, charge: 0 };
+  return { ...s, misses: s.misses + 1, score: Math.max(0, s.score - TYPE_MISS), miss: s.miss + 1, missAt: s.at, streak: 0, charge: 0, factMiss: s.factMiss + 1 };
 }
 
 export function TypeRace({ seed, startsAt, clock, onProgress, onStats, rivals }: GameProps) {
-  const [s, dispatch] = useReducer(reducer, { i: 0, at: 0, chars: 0, misses: 0, score: 0, done: 0, miss: 0, missAt: -1, streak: 0, best: 0, charge: 0, nitroUntil: 0, nitros: 0, last: 0 });
+  const [s, dispatch] = useReducer(reducer, { i: 0, at: 0, chars: 0, misses: 0, score: 0, done: 0, miss: 0, missAt: -1, streak: 0, best: 0, charge: 0, nitroUntil: 0, nitros: 0, last: 0, factMiss: 0, perfects: 0 });
   const text = useMemo(() => typingPassage(seed, s.i), [seed, s.i]);
   const input = useRef<HTMLInputElement>(null);
   const calm = useReducedMotion();
@@ -56,10 +56,11 @@ export function TypeRace({ seed, startsAt, clock, onProgress, onStats, rivals }:
     onStats?.([
       { label: 'Words a minute', value: String(wpm(s.chars, Math.max(1, s.last - startsAt))) },
       { label: 'Accuracy', value: `${s.chars + s.misses ? Math.round((100 * s.chars) / (s.chars + s.misses)) : 100}%` },
-      { label: 'Best streak', value: String(s.best) }, { label: 'Facts done', value: String(s.done) },
+      { label: 'Best streak', value: String(s.best) }, { label: 'Facts done', value: String(s.done) }, { label: 'Perfect facts', value: String(s.perfects) },
     ]);
-  }, [s.chars, s.misses, s.best, s.done, s.last, startsAt, onStats]);
+  }, [s.chars, s.misses, s.best, s.done, s.perfects, s.last, startsAt, onStats]);
   useEffect(() => { if (s.nitros) { announce('NITRO! ×2', 'gold'); sfx('boost'); } }, [s.nitros, announce, sfx]);
+  useEffect(() => { if (s.perfects) { announce(`Perfect! +${TYPE_PERFECT}`, 'gold'); sfx('combo', Math.min(6, s.perfects)); } }, [s.perfects, announce, sfx]);
   useEffect(() => { if (s.miss) { sfx('wrong'); shake(0.25); } }, [s.miss, sfx, shake]);
   const lap = Math.floor(s.chars / LAP);
   useEffect(() => { if (lap > 0) { announce(`Lap ${lap + 1}!`, 'good'); sfx('check'); } }, [lap, announce, sfx]);
@@ -130,7 +131,8 @@ export function TypeRace({ seed, startsAt, clock, onProgress, onStats, rivals }:
             <span className={cn('rounded-[4px] px-[1px] transition-colors duration-150', s.missAt === s.at ? 'bg-red-500/30 text-red-200' : 'bg-pink-500/30 text-pink-100 underline decoration-2 underline-offset-4')}>{text[s.at] === ' ' ? ' ' : text[s.at]}</span>
             <span className="text-zinc-400">{text.slice(s.at + 1)}</span>
           </p>
-          <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden>
+          <p className={cn('mt-3 text-xs font-semibold transition-colors duration-200', s.factMiss ? 'text-zinc-400' : 'text-amber-300')} aria-hidden>{s.factMiss ? 'Missed a letter: no perfect bonus this time' : `Perfect so far: +${TYPE_PERFECT} if you finish with no mistakes`}</p>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden>
             <div className="h-full origin-left rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500 transition-transform duration-200 ease-out rtl:origin-right" style={{ transform: `scaleX(${s.at / text.length})` }} />
           </div>
         </motion.div>

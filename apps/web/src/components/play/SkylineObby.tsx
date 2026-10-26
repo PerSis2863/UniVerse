@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { GAMES } from '@/lib/play';
-import { BLINK_ON, BLINK_OFF, OBBY_CHECK, OBBY_FALL, OBBY_FINISH, OBBY_GEM, OBBY_PER_SECOND, OBBY_PER_WORLD, OBBY_STAGES, OBBY_WORLDS, blinkOn, obbyCourse, obbyWorld, type Pad } from '@/lib/play/worlds';
+import { BLINK_ON, BLINK_OFF, OBBY_BELT, OBBY_CHECK, OBBY_ICE_GRIP, OBBY_FALL, OBBY_FINISH, OBBY_GEM, OBBY_PER_SECOND, OBBY_PER_WORLD, OBBY_STAGES, OBBY_WORLDS, beltDir, blinkOn, obbyCourse, obbyWorld, type Pad } from '@/lib/play/worlds';
 import { useArena } from './arena';
 import { lookHex, readLook } from './PlayerCard';
 import type { GameProps } from './game-props';
 import { Avatar, Body, Controls, THREE, World, follow, glowSprite, walk } from './world/core';
 import { Crowd } from './world/crowd';
+import { cloud, lava, surface } from './world/textures';
 import { HudChip, SkillRing, WorldFrame } from './world/Stage';
 
 // Skyline Obby (src/lib/play/worlds.ts): a Roblox-style obstacle course in the sky. Run and jump
@@ -28,6 +29,20 @@ interface Live { pad: Pad; mesh: THREE.Mesh; box: THREE.Box3; base: THREE.Vector
 
 const REWIND_S = 3, REWIND_REFILL_S = 9;
 
+/** A belt's rubber with arrows pointing the way it carries you (`dir` 1 = +x). Its offset scrolls. */
+function belt(dir: number) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#1f2028'; g.fillRect(0, 0, 128, 128);
+  g.fillStyle = '#2a2c36'; for (let y = 0; y < 128; y += 8) g.fillRect(0, y, 128, 3);
+  g.strokeStyle = '#facc15'; g.lineWidth = 10; g.lineJoin = 'round';
+  for (const cx of [36, 100]) { g.beginPath(); g.moveTo(cx - 12 * dir, 34); g.lineTo(cx + 12 * dir, 64); g.lineTo(cx - 12 * dir, 94); g.stroke(); }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  return { tex, mat: new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, emissive: 0xfacc15, emissiveMap: tex, emissiveIntensity: 0.25 }) };
+}
+
 export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone, onStats, net }: GameProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const controls = useRef<Controls | null>(null);
@@ -41,8 +56,8 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
   useEffect(() => {
     const el = canvas.current;
     if (!el) return;
-    const w = new World(el, { fov: 68, bg: 0x6aa8ff, fog: [0xc9b6ff, 60, 190], glow: { strength: 0.35, radius: 0.4, threshold: 0.9 } });
-    const crowd = new Crowd(w, out.current.net);
+    const w = new World(el, { fov: 68, bg: 0x6aa8ff, fog: [0xc9b6ff, 60, 190], glow: { strength: 0.35, radius: 0.4, threshold: 0.9 }, env: 0.9 });
+    const crowd = new Crowd(w, () => out.current.net);
     const c = new Controls(el);
     controls.current = c;
     const { pads, gems } = obbyCourse(seed);
@@ -63,8 +78,9 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
     const worldZ = [0, 1, 2].map((k) => [k === 0 ? 30 : zOf(k * OBBY_PER_WORLD), zOf(Math.min(OBBY_STAGES, (k + 1) * OBBY_PER_WORLD))]);
     const worldY = [0, 1, 2].map((k) => Math.min(...pads.filter((p) => obbyWorld(Math.max(1, p.stage)) === k).map((p) => p.y)));
     // Lava Peaks: a glowing sea far below and embers rising. Neon Void: stars and a grid.
-    const lava = new THREE.Mesh(new THREE.PlaneGeometry(260, Math.abs(worldZ[1][1] - worldZ[1][0]) + 120), new THREE.MeshBasicMaterial({ color: 0xff5a1f, fog: false }));
-    lava.rotation.x = -Math.PI / 2; lava.position.set(0, worldY[1] - 26, (worldZ[1][0] + worldZ[1][1]) / 2); w.scene.add(lava);
+    const lavaMap = lava().clone(); lavaMap.repeat.set(10, 10); lavaMap.needsUpdate = true;
+    const lavaSea = new THREE.Mesh(new THREE.PlaneGeometry(260, Math.abs(worldZ[1][1] - worldZ[1][0]) + 120), new THREE.MeshBasicMaterial({ map: lavaMap, color: 0xffffff, fog: false }));
+    lavaSea.rotation.x = -Math.PI / 2; lavaSea.position.set(0, worldY[1] - 26, (worldZ[1][0] + worldZ[1][1]) / 2); w.scene.add(lavaSea);
     const embers: THREE.Sprite[] = [];
     for (let i = 0; i < 30; i++) { const e = glowSprite(i % 2 ? 0xff7a1a : 0xfbbf24, 1.2); e.position.set((Math.sin(i * 7.1) * 0.5) * 70, worldY[1] - 20 + (i * 1.7) % 30, worldZ[1][0] - ((i * 37) % 100) / 100 * Math.abs(worldZ[1][1] - worldZ[1][0])); w.scene.add(e); embers.push(e); }
     const starPos = new Float32Array(900 * 3);
@@ -74,24 +90,24 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
     grid.position.set(0, worldY[2] - 30, (worldZ[2][0] + worldZ[2][1]) / 2); w.scene.add(grid);
     const want = { top: new THREE.Color(), mid: new THREE.Color(), low: new THREE.Color(), fog: new THREE.Color(), sky: new THREE.Color(), ground: new THREE.Color() };
     const sun = glowSprite(0xfff1b8, 70); sun.position.set(80, 90, -220); w.scene.add(sun);
-    const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
-    const clouds: THREE.Group[] = [];
+    const clouds: THREE.Sprite[] = [];
     const rand = (k: number) => { const x = Math.sin(seed * 0.001 + k * 12.9898) * 43758.5453; return x - Math.floor(x); };
-    for (let i = 0; i < 26; i++) {
-      const g = new THREE.Group();
-      for (let j = 0; j < 4; j++) { const m = new THREE.Mesh(new THREE.BoxGeometry(4 + rand(i * 9 + j) * 6, 2 + rand(i * 7 + j) * 2, 4 + rand(i * 5 + j) * 5), cloudMat); m.position.set(j * 3 - 4, rand(i + j) * 1.5, rand(i * 3 + j) * 3); g.add(m); }
-      g.position.set((rand(i) - 0.5) * 160, -14 - rand(i * 2) * 30, 20 - rand(i * 4) * (Math.abs(worldZ[0][1]) + 30));
+    for (let i = 0; i < 34; i++) {
+      const g = cloud(14 + rand(i * 9) * 22, 0.55 + rand(i * 7) * 0.4);
+      g.position.set((rand(i) - 0.5) * 170, -10 - rand(i * 2) * 34, 20 - rand(i * 4) * (Math.abs(worldZ[0][1]) + 40));
       w.scene.add(g); clouds.push(g);
     }
 
     // The pads.
+    const iceMat = new THREE.MeshStandardMaterial({ color: 0xcdefff, roughness: 0.04, metalness: 0.1, emissive: 0x7dd3fc, emissiveIntensity: 0.18, transparent: true, opacity: 0.9 });
+    const beltR = belt(1), beltL = belt(-1);
     const live: Live[] = pads.map((p) => {
       const hue = p.kind === 'check' ? 0x22c55e : p.kind === 'finish' ? 0xfbbf24 : p.kind === 'bounce' ? 0xf472b6 : p.kind === 'fall' ? 0xfb923c : p.kind === 'blink' ? 0x22d3ee : HUES[obbyWorld(Math.max(1, p.stage))][p.stage % 5];
-      const mat = new THREE.MeshLambertMaterial({ color: hue, emissive: hue, emissiveIntensity: p.kind === 'finish' ? 0.5 : 0.18 });
+      // Weathered stone tinted in the pad's colour, with rounded edges that catch the sun; clear
+      // glossy ice; belts of dark rubber with arrows that run the way they carry you.
+      const mat = p.kind === 'ice' ? iceMat : p.kind === 'belt' ? (beltDir(p) > 0 ? beltR.mat : beltL.mat) : surface('stone', { color: hue, emissive: hue, glow: p.kind === 'finish' ? 0.45 : p.kind === 'blink' || p.kind === 'bounce' ? 0.3 : 0.08 });
       const h = p.kind === 'bounce' ? 0.6 : 0.9;
-      const mesh = w.box([p.x, p.y - h / 2, p.z], [p.w, h, p.d], mat, false);
-      const edge = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }));
-      mesh.add(edge);
+      const mesh = w.box([p.x, p.y - h / 2, p.z], [p.w, h, p.d], mat, false, { tile: p.kind === 'belt' ? 2 : 3, round: p.kind === 'belt' ? 0.05 : 0.18 });
       const box = new THREE.Box3().setFromObject(mesh);
       w.solids.push(box);
       const l: Live = { pad: p, mesh, box, base: mesh.position.clone(), touched: 0, drop: 0 };
@@ -102,9 +118,9 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
         w.scene.add(bar); l.bar = bar;
       }
       if (p.kind === 'check' && p.stage > 0) {
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3), new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.8, roughness: 0.25 }));
         pole.position.set(p.x + p.w / 2 - 0.6, p.y + 1.5, p.z);
-        const flag = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 0.05), new THREE.MeshLambertMaterial({ color: 0x9ca3af, emissive: 0x111111 }));
+        const flag = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.7, 0.05), new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.7, side: THREE.DoubleSide }));
         flag.position.set(-0.6, 1.1, 0); pole.add(flag); w.scene.add(pole); l.flag = flag;
       }
       return l;
@@ -115,7 +131,8 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
 
     // Gems.
     const gemGeo = new THREE.OctahedronGeometry(0.42);
-    const gemMat = new THREE.MeshLambertMaterial({ color: 0x67e8f9, emissive: 0x22d3ee, emissiveIntensity: 0.8 });
+    const gemMat = new THREE.MeshStandardMaterial({ color: 0x67e8f9, emissive: 0x22d3ee, emissiveIntensity: 0.6, metalness: 0.9, roughness: 0.08, flatShading: true });
+    const chest = new THREE.Vector3();
     const gemLive = gems.map((g) => { const m = new THREE.Mesh(gemGeo, gemMat); m.position.set(g.x, g.y, g.z); m.add(glowSprite(0x22d3ee, 1.6)); w.scene.add(m); return { m, got: false, pop: 0 }; });
 
     // The player.
@@ -132,7 +149,7 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
     };
     // Rewind: where you were each frame for the last few seconds.
     const trail: THREE.Vector3[] = [];
-    let charge = 1, rewinding = false, skillAt = 0, lastRun = 0;
+    let charge = 1, rewinding = false, skillAt = 0, lastRun = 0, onKind: Pad['kind'] | null = null;
     const respawn = (why: string) => {
       falls++; score = Math.max(0, score - OBBY_FALL);
       w.burst(body.pos.clone().setY(body.pos.y + 1), 0xff2d55, 26, 7);
@@ -185,7 +202,7 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
         charge = Math.max(0, charge - dt / REWIND_S);
         if (Math.random() < dt * 30) w.burst(body.pos.clone().setY(body.pos.y + 1), 0x67e8f9, 2, 1.5, 0);
       } else {
-        if (done) { body.vel.x *= 0.9; body.vel.z *= 0.9; } else if (walk(body, c, dt, { speed: 7.5, jump: 10.8 })) { out.current.arena.sfx('jump'); w.burst(body.pos, 0xffffff, 6, 2, 4); }
+        if (done) { body.vel.x *= 0.9; body.vel.z *= 0.9; } else if (walk(body, c, dt, { speed: 7.5, jump: 10.8, grip: onKind === 'ice' ? OBBY_ICE_GRIP : 14 })) { out.current.arena.sfx('jump'); w.burst(body.pos, 0xffffff, 6, 2, 4); }
         floor = body.step(dt, w.solids);
         trail.push(body.pos.clone());
         if (trail.length > REWIND_S * 60) trail.shift();
@@ -199,14 +216,16 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
       wasGround = body.ground;
       if (t - skillAt > 0.15) { skillAt = t; setSkill((p) => (Math.abs(p.charge - charge) < 0.02 && p.active === rewinding && p.others === crowd.count ? p : { charge, active: rewinding, others: crowd.count })); }
       const on = floor ? live.find((l) => l.box === floor) : undefined;
+      onKind = on?.pad.kind ?? (body.ground ? onKind : null);
       if (on) {
+        if (on.pad.kind === 'belt') body.pos.x += beltDir(on.pad) * OBBY_BELT * dt;
         if (on.pad.kind === 'fall' && !on.touched) on.touched = t;
         if (on.pad.kind === 'bounce') { body.vel.y = 19; body.ground = false; squash = 1.4; out.current.arena.sfx('boost'); w.burst(body.pos, 0xf472b6, 20, 6, 6); w.shake(0.15); }
         if ((on.pad.kind === 'check' || on.pad.kind === 'finish') && on.pad.stage > stage) {
           stage = on.pad.stage; score += OBBY_CHECK; spawn = new THREE.Vector3(on.pad.x, on.pad.y + 0.1, on.pad.z);
           w.burst(spawn.clone().setY(spawn.y + 0.5), on.pad.kind === 'finish' ? 0xfbbf24 : 0x4ade80, 40, 8, 6);
           w.say(`+${OBBY_CHECK}`, spawn.clone().setY(spawn.y + 2.5), '#86efac');
-          if (on.flag) (on.flag.material as THREE.MeshLambertMaterial).color.set(0x22c55e);
+          if (on.flag) (on.flag.material as THREE.MeshStandardMaterial).color.set(0x22c55e);
           if (on.pad.kind === 'finish') {
             done = true;
             const left = Math.max(0, Math.round((out.current.endsAt - out.current.clock()) / 1000));
@@ -230,16 +249,19 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
       sky.position.copy(w.camera.position);
       sun.position.set(w.camera.position.x + 80, w.camera.position.y + 90, w.camera.position.z - 220);
       // Gems.
+      chest.set(body.pos.x, body.pos.y + 1, body.pos.z);
       for (const g of gemLive) {
         if (g.got) { if (g.pop < 1) { g.pop += dt * 3; g.m.scale.setScalar(1 + g.pop); (g.m.material as THREE.Material).opacity = 1 - g.pop; if (g.pop >= 1) g.m.visible = false; } continue; }
         g.m.rotation.y = t * 2; g.m.position.y += Math.sin(t * 3 + g.m.position.x) * 0.004;
-        if (g.m.position.distanceTo(body.pos.clone().add(new THREE.Vector3(0, 1, 0))) < 1.3) {
+        if (g.m.position.distanceTo(chest) < 1.3) {
           g.got = true; gemsGot++; score += OBBY_GEM; g.m.material = gemMat.clone(); (g.m.material as THREE.Material).transparent = true;
           w.burst(g.m.position, 0x67e8f9, 18, 5, 2); w.say(`+${OBBY_GEM}`, g.m.position.clone().setY(g.m.position.y + 0.8), '#a5f3fc', 0.8);
           out.current.arena.sfx('coin', gemsGot % 8); report();
         }
       }
       for (const cl of clouds) { cl.position.x += dt * 0.8; if (cl.position.x > 90) cl.position.x = -90; }
+      beltR.tex.offset.x -= dt * OBBY_BELT / 2; beltL.tex.offset.x += dt * OBBY_BELT / 2;
+      lavaMap.offset.y += dt * 0.012; lavaMap.offset.x = Math.sin(t * 0.1) * 0.05;
       confetti.forEach((s, i) => { s.position.y = finish.pad.y + 3 + Math.sin(t * 2 + i) * 0.8; });
       // The character and the camera.
       me.group.position.copy(body.pos);
@@ -255,7 +277,7 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <WorldFrame canvas={canvas} controls={controls} buttons={[{ id: 'skill', label: 'Rewind' }, { id: 'jump', label: 'Jump' }]} keys="WASD move · Space jump · Shift run · hold R to rewind" label="Skyline Obby: a 3D obstacle course in the sky" curtain={curtain} others={skill.others}>
+      <WorldFrame net={net} canvas={canvas} controls={controls} buttons={[{ id: 'skill', label: 'Rewind' }, { id: 'jump', label: 'Jump' }]} keys="WASD move · Space jump · Shift run · hold R to rewind" label="Skyline Obby: a 3D obstacle course in the sky" curtain={curtain} others={skill.others}>
         {skill.active && <div className="play-rewind pointer-events-none absolute inset-0" aria-hidden />}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap gap-2">
           <SkillRing label="Rewind" keyName="R" charge={skill.charge} active={skill.active} />

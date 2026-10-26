@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { MapPin, Package } from 'lucide-react';
+import { Lightbulb, MapPin, Package } from 'lucide-react';
 import { CITIES } from '@/components/trace/map/cities';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
-import { PIN_SECONDS_PER, PIN_TARGETS, kmBetween, pinPoints, pinTarget, pinVerdict } from '@/lib/play/pin';
+import { PIN_HINTS, PIN_SECONDS_PER, PIN_TARGETS, kmBetween, pinPoints, pinRegion, pinStreakBonus, pinTarget, pinVerdict } from '@/lib/play/pin';
 import { useDarkMode } from '@/lib/use-dark';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -22,18 +22,22 @@ const WORLD: Box = [-170, -56, 180, 76];
 const HIDE = new Set(CITIES.map((c) => c[0]));
 
 interface Pick { lat: number; lng: number; km: number; pts: number }
-interface S { i: number; shownAt: number; pick: Pick | null; timedOut: boolean; revealAt: number; score: number; best: number }
-type A = { t: 'pick'; pick: Pick; at: number } | { t: 'timeout'; at: number } | { t: 'next'; at: number };
+interface S { i: number; shownAt: number; pick: Pick | null; timedOut: boolean; revealAt: number; score: number; best: number; streak: number; hints: number; hinted: boolean }
+type A = { t: 'pick'; pick: Pick; at: number } | { t: 'timeout'; at: number } | { t: 'next'; at: number } | { t: 'hint' };
 
 function reducer(s: S, a: A): S {
-  if (a.t === 'next') return { ...s, i: s.i + 1, shownAt: a.at, pick: null, timedOut: false };
+  if (a.t === 'next') return { ...s, i: s.i + 1, shownAt: a.at, pick: null, timedOut: false, hinted: false };
   if (s.pick || s.timedOut) return s;
-  if (a.t === 'timeout') return { ...s, timedOut: true, revealAt: a.at };
-  return { ...s, pick: a.pick, revealAt: a.at, score: s.score + a.pick.pts, best: Math.max(s.best, a.pick.pts) };
+  if (a.t === 'hint') return s.hints > 0 && !s.hinted ? { ...s, hints: s.hints - 1, hinted: true } : s;
+  if (a.t === 'timeout') return { ...s, timedOut: true, revealAt: a.at, streak: 0 };
+  // Close pins in a row (within 500 km) build a streak bonus; a hint halves the city's points.
+  const streak = a.pick.km < 500 ? s.streak + 1 : 0;
+  const pts = Math.round(a.pick.pts * (s.hinted ? 0.5 : 1)) + (streak ? pinStreakBonus(streak) : 0);
+  return { ...s, pick: { ...a.pick, pts }, revealAt: a.at, score: s.score + pts, best: Math.max(s.best, pts), streak };
 }
 
 export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProps) {
-  const [s, dispatch] = useReducer(reducer, startsAt, (at): S => ({ i: 0, shownAt: at, pick: null, timedOut: false, revealAt: 0, score: 0, best: 0 }));
+  const [s, dispatch] = useReducer(reducer, startsAt, (at): S => ({ i: 0, shownAt: at, pick: null, timedOut: false, revealAt: 0, score: 0, best: 0, streak: 0, hints: PIN_HINTS, hinted: false }));
   const target = useMemo(() => pinTarget(seed, s.i), [seed, s.i]);
   const dark = useDarkMode();
   const calm = useReducedMotion();
@@ -41,6 +45,9 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
   const seen = useRef<{ lngLat: Frame['lngLat']; w: number; h: number } | null>(null);
   const answered = !!s.pick || s.timedOut;
   const last = s.i >= PIN_TARGETS - 1;
+  // The hint's view is a little off-centre (the same for everyone in a room), so it doesn't give the city away.
+  const hintShift = useMemo(() => ({ x: Math.sin(seed * 0.37 + s.i * 2.1) * 9, y: Math.cos(seed * 0.21 + s.i * 1.7) * 6 }), [seed, s.i]);
+  const hint = () => dispatch({ t: 'hint' });
 
   const pinAt = useCallback((x: number, y: number) => {
     if (!seen.current || answered) return;
@@ -60,13 +67,14 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
     return () => clearTimeout(id);
   }, [answered, last, s.shownAt, s.score, s.i, clock, onDone]);
 
-  // Glide to show both pins, and back out for the next city.
+  // Glide to show both pins, and back out for the next city (or, with a hint, to the region).
   useEffect(() => {
+    if (!answered && s.hinted) { map.current?.flyTo([target.lng - 22 + hintShift.x, target.lat - 14 + hintShift.y, target.lng + 22 + hintShift.x, target.lat + 14 + hintShift.y], { pad: 30, maxZoom: 3 }); return; }
     if (!answered) { map.current?.home(); return; }
     const p = s.pick ?? target;
     const box: Box = [Math.min(p.lng, target.lng), Math.min(p.lat, target.lat), Math.max(p.lng, target.lng), Math.max(p.lat, target.lat)];
     map.current?.flyTo(box, { pad: 90, maxZoom: 5 });
-  }, [answered, s.pick, target]);
+  }, [answered, s.pick, s.hinted, target, hintShift]);
 
   useEffect(() => { onProgress(s.score, s.i); }, [s.score, s.i, onProgress]);
   useEffect(() => {
@@ -129,7 +137,12 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Parcel {s.i + 1} of {PIN_TARGETS} · deliver to</p>
                   <p className="truncate text-lg font-bold text-zinc-900 dark:text-white" aria-live="polite">{target.name}</p>
+                  {s.hinted && <p className="text-xs font-semibold text-pink-700 dark:text-pink-300" aria-live="polite">Hint: somewhere in {pinRegion(target.lat, target.lng)} (half points)</p>}
                 </div>
+                <button type="button" onClick={hint} disabled={answered || s.hinted || s.hints <= 0}
+                  className="pointer-events-auto inline-flex items-center gap-1 rounded-full bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold text-white transition-[opacity,transform] duration-150 active:scale-95 disabled:opacity-40 dark:bg-white dark:text-zinc-900">
+                  <Lightbulb className="w-3.5 h-3.5" aria-hidden />Hint ×{s.hints}
+                </button>
                 <span className="text-end text-xs text-zinc-500 dark:text-zinc-400">Best<span className="block text-sm font-bold tabular-nums text-zinc-900 dark:text-white">{s.best}</span></span>
               </div>
               <div className="h-1 bg-zinc-200 dark:bg-white/10"><div key={s.i} className="play-drain h-full bg-gradient-to-r from-fuchsia-500 to-pink-500" style={{ animationDuration: `${PER}ms`, animationPlayState: answered ? 'paused' : 'running' }} /></div>
@@ -141,7 +154,7 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
             <motion.div key={`r${s.i}`} initial={{ opacity: 0, y: calm ? 0 : 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={spring.bouncy}
               className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-3">
               <p className={cn('inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-xl', s.pick && s.pick.pts > 0 ? 'bg-emerald-700 text-white' : 'bg-[#141416] text-white')} aria-live="polite">
-                <MapPin className="w-4 h-4" aria-hidden />{verdict}{s.pick ? ` · +${s.pick.pts}` : ''}
+                <MapPin className="w-4 h-4" aria-hidden />{verdict}{s.pick ? ` · +${s.pick.pts}` : ''}{s.streak > 1 ? ` · ${s.streak} close in a row` : ''}
               </p>
             </motion.div>
           )}

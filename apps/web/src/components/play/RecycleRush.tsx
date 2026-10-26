@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useReducer, useRef } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { Leaf, Sparkles, Zap } from 'lucide-react';
+import { Bot, Leaf, Sparkles, Zap } from 'lucide-react';
 import { BINS, BIN_COLOR, BIN_LABEL, ITEMS, SORT_MISSED, SORT_WAVES, SORT_WRONG, sortMultiplier, sortPoints, sortSequence, sortWave, type BeltItem, type Bin } from '@/lib/play/sort';
 import { GAMES } from '@/lib/play';
 import { spring } from '@/lib/motion';
@@ -17,6 +17,8 @@ import type { GameProps } from './game-props';
 // belt speeds up in waves. It moves on the GPU (one animation per item, nothing per frame).
 
 const EXIT_MS = 520;
+/** The sort bot (M39): every 10 right sorts earns one (up to 2 waiting); it sorts the next 3 for you. */
+const BOT_EVERY = 10, BOT_MAX = 2, BOT_SORTS = 3, BOT_MS = 260;
 type Done = 'ok' | 'wrong' | 'missed';
 interface S {
   t: number; done: Record<number, Done>; bins: Record<number, Bin>; score: number; streak: number; best: number; co2: number; step: number; right: number; wrong: number;
@@ -95,10 +97,15 @@ export function RecycleRush({ seed, startsAt, clock, onProgress, onStats }: Game
   }, [s.last, s.streak, sfx, announce, shake]);
 
   const sort = (bin: Bin) => dispatch({ t: 'sort', bin, at: clock() });
+  const [botsUsed, setBotsUsed] = useState(0);
+  const [auto, setAuto] = useState(0);
+  const bots = Math.max(0, Math.min(BOT_MAX, Math.floor(s.right / BOT_EVERY) - botsUsed));
+  const startBot = () => { if (!bots || auto) return; setBotsUsed((u) => u + 1); setAuto(BOT_SORTS); announce('Sort bot on!', 'gold'); sfx('power'); };
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const k = ['1', '2', '3', '4'].indexOf(e.key);
       if (k >= 0 && !e.metaKey && !e.ctrlKey) dispatch({ t: 'sort', bin: BINS[k], at: clock() });
+      if (e.key.toLowerCase() === 'b') document.getElementById('sort-bot')?.click();
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
@@ -108,6 +115,13 @@ export function RecycleRush({ seed, startsAt, clock, onProgress, onStats }: Game
   const onBelt = belt.filter((b) => b.at <= now && now < b.at + b.travel + (s.done[b.id] ? EXIT_MS : 0));
   const front = onBelt.find((b) => !s.done[b.id]);
   const mult = sortMultiplier(s.streak);
+  // The bot: sorts the item at the front into the right bin, a beat after it arrives.
+  const frontId = front?.id ?? -1, frontBin = front ? ITEMS[front.item][2] : null;
+  useEffect(() => {
+    if (!auto || !frontBin) return;
+    const id = setTimeout(() => { dispatch({ t: 'sort', bin: frontBin, at: clock() }); setAuto((n) => n - 1); }, BOT_MS);
+    return () => clearTimeout(id);
+  }, [auto, frontId, frontBin, clock]);
 
   return (
     <div ref={box} className="mx-auto w-full max-w-5xl">
@@ -115,8 +129,13 @@ export function RecycleRush({ seed, startsAt, clock, onProgress, onStats }: Game
         <p className="font-medium text-zinc-300"><Leaf className="inline w-4 h-4 me-1 -mt-0.5 text-emerald-400" aria-hidden /><span className="tabular-nums text-white">{s.co2.toFixed(2)}</span> kg CO₂ saved</p>
         <span className="text-zinc-500">·</span>
         <p className="text-zinc-300">{SORT_WAVES[wave]}</p>
+        <button id="sort-bot" type="button" onClick={startBot} disabled={!bots || !!auto}
+          className={cn('ms-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition-[background-color,opacity,transform] duration-150 active:scale-95 disabled:opacity-40',
+            auto ? 'bg-cyan-300 text-cyan-950 ring-cyan-200' : 'bg-white/[0.06] text-zinc-100 ring-white/15 hover:bg-white/[0.12]')}>
+          <Bot className="w-3.5 h-3.5" aria-hidden />{auto ? `Bot sorting… ${auto}` : `Sort bot ×${bots}`}<kbd className="hidden rounded bg-black/30 px-1 text-[11px] font-medium sm:inline">B</kbd>
+        </button>
         <motion.span key={mult} initial={{ scale: calm ? 1 : 1.25 }} animate={{ scale: 1 }} transition={spring.bouncy}
-          className={cn('ms-auto inline-flex items-center gap-1 rounded-full px-3 py-1 font-bold tabular-nums', mult > 1 ? 'bg-pink-600 text-white shadow-[0_0_28px_rgba(236,72,153,0.55)]' : 'bg-white/10 text-zinc-200')}>
+          className={cn('inline-flex items-center gap-1 rounded-full px-3 py-1 font-bold tabular-nums', mult > 1 ? 'bg-pink-600 text-white shadow-[0_0_28px_rgba(236,72,153,0.55)]' : 'bg-white/10 text-zinc-200')}>
           <Zap className="w-4 h-4" aria-hidden />×{mult}<span className="font-medium opacity-80">· {s.streak} in a row</span>
         </motion.span>
       </div>

@@ -2073,3 +2073,51 @@ big game companies".
   when their age is known or already confirmed (`useAgeGate().clear`).
 - Trap: `local:build` was killed (SIGKILL) while a dev server (4 GB) and an old `local:serve` were
   still running; stop them by PID first.
+
+## M39 · Chat and voice in 3D rooms, realistic graphics, a new feature in every game (26 Oct 2026, on the branch)
+
+The owner: "voice or text chat inside the 3D worlds… upgrade the graphics… realistic… add more
+features in all the games… make them big enough".
+- **Text chat** (rooms, 3D worlds): `RoomChat` (`world/RoomChat.tsx`, rendered by `WorldFrame` when
+  `net` is passed): Enter or T opens the box (frees the mouse), lines float bottom-left and fade
+  after 9 s, one-tap phrases (`QUICK_CHAT`), and what someone says shows as a bubble over their
+  character for 5 s (`Crowd`). `GameRoom` passes `{t:'chat'}` only after `cleanChat`
+  (`src/lib/play-chat.ts`, tested): the school chats' quick safety patterns (moved to
+  `src/lib/safety-patterns.ts`, no imports, re-exported by `src/server/safety.ts`) refuse the
+  message (`chat-no` back to the sender only); links, e-mails and long numbers become `[link]`,
+  `[email]`, `[number]`; at most one message per 800 ms per seat; nothing is stored.
+- **Voice** (13+, `VOICE_MIN_AGE`; unknown ages allowed): the ticket says whether a seat may talk
+  (`roomTicket` from the birth date) and carries the ICE servers (`iceServers()` from `calls.ts`:
+  STUN, plus TURN when Calls is set up). `voice.ts` `RoomVoice`: a direct audio link (WebRTC mesh;
+  the lower id makes the offer) to each other voice seat; `GameRoom` relays `voice`/`rtc` only
+  between voice seats (`rtc` up to 8,000 characters, at most 40 voice messages per 10 s a seat). Each voice plays through an HRTF `PannerNode`
+  at that player's character (heard from the camera), so near is loud and far fades; a green ring
+  at their feet while they talk (an `AnalyserNode`). Mic button: Voice → Voice on / Muted, plus
+  leave. Audio never goes through Cloudflare (only the handshakes, a few messages).
+- **Graphics** (`world/core.ts`, `world/textures.ts`): image-based light (`RoomEnvironment` through
+  PMREM, `env` per world: 0.9 obby, 0.45 strike, 0.08 night, 0.7 orbit), every material physically
+  lit (`MeshStandardMaterial`), surfaces made in the browser with colour, bump (normal) and
+  roughness maps (`surface('stone' | 'concrete' | 'panels' | 'tiles' | 'lockers')`, `lava()`,
+  `planet()`, soft sprite `cloud()`), UVs in world units (`worldUv`, `box`/`boxes` `{ tile, round }`
+  with rounded edges), a 4× smoothed-edge render target, a film finish (`GradeShader`: vignette,
+  saturation, contrast, grain), a planet atmosphere (`atmosphere()`), a bigger face texture. `tune`
+  now also turns off the sun's shadows and then the whole effects chain on a slow device.
+- **Bug found and fixed:** `Body.step` pushed a jumping body sideways to the edge of what it stood
+  on (rising, it "hit" the floor it was touching). In Neon Strike a jump threw you outside the
+  arena. Now a box under your feet (or touching overhead) never blocks sideways (`core.test.ts`).
+- **A new feature in every game** (rules in `src/lib/play/*`, tested; how-to texts updated):
+  Skyline Obby ice pads (slippery, `OBBY_ICE_GRIP`) and conveyor belts (`OBBY_BELT`, arrows scroll);
+  Neon Strike pulse grenades (E / Pulse button, 3 + 1 a wave, hurt every drone within 6 m);
+  Night Shift hide in a locker (E facing a wall, up to 6 s, then 12 s wait; it wanders off, and it
+  "saw you" within 2.4 m); Orbit Breach solar flares (`orbitFlare` on the round clock: warning, then
+  air drains ×13 outside a shield; each repaired reactor and the hub get a dome); Quiz Clash boss
+  question every fifth (×3; cap raised to 26,000); Spot the Fake UV lamp (U: clears one genuine
+  passport; 1 + 1 per 3 caught); Supply Run airdrop (H: under a second, no truck, rain-proof, every
+  40 s); Recycle Rush sort bot (B: every 10 right sorts, sorts the next 3); Type Race perfect bonus
+  (+150 for a fact with no mistakes); World Pin hints (2 a round, region and zoom, half points) and
+  the close-pin streak bonus (`pinStreakBonus` existed but was never used); Flood Rescue supply
+  crates (D: 3 a trip, +6 s for everyone on that roof); Ocean Cleanup sweep (15 pieces charge it,
+  Space collects all plastic within reach).
+- Cost: chat is one tiny socket message per line; voice adds a few handshake messages per pair.
+  Trap: the React compiler lint refuses changes to a ref's contents after a `useEffect` that uses
+  the same ref; put such effects after `useGameCanvas`.

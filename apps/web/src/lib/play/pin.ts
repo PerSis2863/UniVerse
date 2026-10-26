@@ -33,5 +33,17 @@ export function pinPoints(km: number, msLeft: number): number {
 /** Pins in a row within 500 km earn a streak bonus: 60 a pin in the streak, up to 300. */
 export const pinStreakBonus = (streak: number) => Math.min(streak, 5) * 60;
 
+/** Hints (M39): two a round; a hint names the region and zooms there, and halves that city's points. */
+export const PIN_HINTS = 2;
+/** The part of the world a place is in (roughly; for hints). */
+export function pinRegion(lat: number, lng: number): string {
+  if (lng < -30) return lat >= 13 ? 'North America' : 'South America';
+  if (lat > 35 && lng < 40) return 'Europe';
+  if (lng >= 34 && lng < 60 && lat >= 12 && lat <= 42) return 'the Middle East';
+  if (lng < 52 && lat < 37) return 'Africa';
+  if (lat < -10 && lng > 110) return 'Oceania';
+  return 'Asia';
+}
+
 /** A word for how close it was. */
 export const pinVerdict = (km: number) => (km < 100 ? 'Bullseye!' : km < 500 ? 'So close' : km < 1500 ? 'Not bad' : km < 3000 ? 'Same part of the world' : 'Far off');

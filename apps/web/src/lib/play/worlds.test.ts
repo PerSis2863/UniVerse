@@ -3,6 +3,7 @@ import { GAMES, LOOK_COLORS, LOOK_HATS, ageOn, cleanPos, levelOf, tooYoung, xpFo
 import {
   NIGHT_ESCAPE, NIGHT_FLOOR, NIGHT_FLOORS, NIGHT_KEY, NIGHT_KEYS, NIGHT_PER_SECOND, NIGHT_STUN, NIGHT_STUN_COOLDOWN_S, NIGHT_STUN_S, OBBY_CHECK, OBBY_FINISH, OBBY_GEM, OBBY_PER_SECOND, OBBY_STAGES,
   ORBIT_ESCAPE, ORBIT_PER_SECOND, ORBIT_REACTOR, ORBIT_SECTOR, ORBIT_SECTORS, ORBIT_TANK, ORBIT_TANK_EVERY_S, STRIKE_BOSS, STRIKE_BOT_HP, STRIKE_COMBO_MAX, STRIKE_FIRE_S, STRIKE_HIT, STRIKE_TAG, STRIKE_WAVE,
+  ORBIT_FLARE_EVERY_S, ORBIT_FLARE_S, ORBIT_FLARE_WARN_S, beltDir, orbitFlare,
   isBossWave, mazeNext, mazeStep, nightKeys, nightMaze, nightSize, obbyCourse, orbitMeteors, orbitReactors, orbitStation, strikeArena, strikeMultiplier,
 } from './worlds';
 
@@ -85,5 +86,24 @@ describe('3D worlds (M36)', () => {
     expect(cleanPos({ x: 1e9, y: 0, z: 0, ry: 0 })!.x).toBe(3000);
     expect(cleanPos({ x: 0, y: 0, z: 0, ry: 0, h: '<script>' })!.h).toBe('none');
     expect(cleanPos(null)).toBeNull();
+  });
+});
+
+describe('M39 world features', () => {
+  it('the obby course has ice and belt pads, never at the start', () => {
+    const { pads } = obbyCourse(42);
+    const kinds = new Set(pads.map((p) => p.kind));
+    expect(kinds.has('ice')).toBe(true);
+    expect(kinds.has('belt')).toBe(true);
+    expect(pads.filter((p) => p.kind === 'ice' || p.kind === 'belt').every((p) => p.stage > 3)).toBe(true);
+    expect(new Set(pads.filter((p) => p.kind === 'belt').map(beltDir))).toEqual(new Set([1, -1]));
+  });
+  it('solar flares warn, burn, then calm, on the round clock', () => {
+    expect(orbitFlare(10).phase).toBe('calm');
+    expect(orbitFlare(52).phase).toBe('warn');
+    expect(orbitFlare(50 + ORBIT_FLARE_WARN_S + 1).phase).toBe('flare');
+    expect(orbitFlare(50 + ORBIT_FLARE_WARN_S + ORBIT_FLARE_S + 1).phase).toBe('calm');
+    expect(orbitFlare(50 + ORBIT_FLARE_EVERY_S + 1).phase).toBe('warn');
+    expect(orbitFlare(52).left).toBeCloseTo(ORBIT_FLARE_WARN_S - 2);
   });
 });

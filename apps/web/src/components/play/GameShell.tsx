@@ -229,8 +229,8 @@ function SoloResult({ game, result, onAgain, onExit, onChallenge }: { game: Game
 
 function Room({ code, onLeave }: { code: string; onLeave: (to?: GameId) => void }) {
   const me = useAuthStore((s) => s.user?.id);
-  const { state, status, error, send, clock, report, finish, peers, sendPos } = useGameRoom(code);
-  const net = useMemo(() => ({ peers, sendPos }), [peers, sendPos]);
+  const { state, status, error, send, clock, report, finish, peers, sendPos, chat, sendChat, chatNotice, said, voice } = useGameRoom(code);
+  const net = useMemo(() => ({ peers, sendPos, chat, sendChat, chatNotice, said, voice }), [peers, sendPos, chat, sendChat, chatNotice, said, voice]);
   const [finishedRound, setFinishedRound] = useState<number | null>(null);
   const [myStats, setMyStats] = useState<GameStat[]>([]);
   const [ageOk, setAgeOk] = useState(false);

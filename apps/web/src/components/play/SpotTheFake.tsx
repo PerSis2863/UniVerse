@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useReducer } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, BadgeCheck, CalendarClock, Flame, Heart, MapPin, ScanLine, ShieldAlert, ShieldCheck, Tag, Type } from 'lucide-react';
+import { ArrowRight, BadgeCheck, CalendarClock, Flame, Heart, Lightbulb, MapPin, ScanLine, ShieldAlert, ShieldCheck, Tag, Type } from 'lucide-react';
 import { FAKE_LIVES, fakePoints, fakeRound, monthName, rankFor, type FakeReason, type Passport } from '@/lib/play/fakes';
 import { hash } from '@/lib/seeded-shuffle';
 import { spring } from '@/lib/motion';
@@ -22,17 +22,21 @@ const REASON: Record<FakeReason, { label: string; icon: typeof Tag }> = {
   brand: { label: 'Misspelt brand', icon: Type }, dates: { label: 'Dates don’t add up', icon: CalendarClock }, price: { label: 'Far too cheap', icon: Tag },
 };
 
-interface S { i: number; shownAt: number; picked: number | null; timedOut: boolean; lives: number; score: number; streak: number; best: number; gained: number; caught: number; picks: number }
-type A = { t: 'pick'; choice: number; fake: number; at: number; seconds: number; cards: number } | { t: 'timeout' } | { t: 'next'; at: number };
+/** The UV lamp (M39): clears one genuine passport. One to start, one more every 3 copies caught (up to 3). */
+const UV_MAX = 3, UV_EVERY = 3;
+interface S { i: number; shownAt: number; picked: number | null; timedOut: boolean; lives: number; score: number; streak: number; best: number; gained: number; caught: number; picks: number; uv: number; cleared: number[] }
+type A = { t: 'pick'; choice: number; fake: number; at: number; seconds: number; cards: number } | { t: 'timeout' } | { t: 'next'; at: number } | { t: 'uv'; card: number };
 
 function reducer(s: S, a: A): S {
-  if (a.t === 'next') return s.lives <= 0 ? s : { ...s, i: s.i + 1, shownAt: a.at, picked: null, timedOut: false, gained: 0 };
+  if (a.t === 'next') return s.lives <= 0 ? s : { ...s, i: s.i + 1, shownAt: a.at, picked: null, timedOut: false, gained: 0, cleared: [] };
   if (s.picked !== null || s.timedOut) return s;
+  if (a.t === 'uv') return s.uv > 0 && a.card >= 0 && !s.cleared.includes(a.card) ? { ...s, uv: s.uv - 1, cleared: [...s.cleared, a.card] } : s;
   if (a.t === 'timeout') return { ...s, timedOut: true, lives: s.lives - 1, streak: 0, gained: 0, picks: s.picks + 1 };
+  if (s.cleared.includes(a.choice)) return s;
   const ok = a.choice === a.fake;
   const streak = ok ? s.streak + 1 : 0;
   const gained = fakePoints(ok, s.shownAt + a.seconds * 1000 - a.at, streak, a.seconds, a.cards);
-  return { ...s, picked: a.choice, lives: ok ? s.lives : s.lives - 1, streak, best: Math.max(s.best, streak), score: s.score + gained, gained, caught: s.caught + (ok ? 1 : 0), picks: s.picks + 1 };
+  return { ...s, picked: a.choice, lives: ok ? s.lives : s.lives - 1, streak, best: Math.max(s.best, streak), score: s.score + gained, gained, caught: s.caught + (ok ? 1 : 0), picks: s.picks + 1, uv: ok && (s.caught + 1) % UV_EVERY === 0 ? Math.min(UV_MAX, s.uv + 1) : s.uv };
 }
 
 /** A small code drawn from the serial (looks like a real passport's QR; same for the same serial). */
@@ -88,7 +92,7 @@ function Front({ c, k, answered }: { c: Passport; k: number; answered: boolean }
 }
 
 export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats }: GameProps) {
-  const [s, dispatch] = useReducer(reducer, startsAt, (at): S => ({ i: 0, shownAt: at, picked: null, timedOut: false, lives: FAKE_LIVES, score: 0, streak: 0, best: 0, gained: 0, caught: 0, picks: 0 }));
+  const [s, dispatch] = useReducer(reducer, startsAt, (at): S => ({ i: 0, shownAt: at, picked: null, timedOut: false, lives: FAKE_LIVES, score: 0, streak: 0, best: 0, gained: 0, caught: 0, picks: 0, uv: 1, cleared: [] }));
   const round = useMemo(() => fakeRound(seed, s.i), [seed, s.i]);
   const { announce, shake, sfx } = useArena();
   const calm = useReducedMotion();
@@ -134,6 +138,15 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
   // Round 5: the table grows to six passports.
   useEffect(() => { if (s.i === 4) { announce('Six passports now!', 'pink'); sfx('whoosh'); } }, [s.i, announce, sfx]);
 
+  // The lamp lights a genuine passport that isn't cleared yet (which one comes from the round, so
+  // it's the same for everyone in a room).
+  const lamp = () => {
+    if (answered || s.uv <= 0) return;
+    const free = round.cards.map((_, k) => k).filter((k) => k !== round.fake && !s.cleared.includes(k));
+    if (!free.length) return;
+    dispatch({ t: 'uv', card: free[(seed + s.i * 7 + s.cleared.length) % free.length] });
+    sfx('zap'); announce('UV lamp: one is genuine', 'pink');
+  };
   const pick = (k: number) => dispatch({ t: 'pick', choice: k, fake: round.fake, at: clock(), seconds: round.seconds, cards: n });
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -141,6 +154,7 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
       const k = ['1', '2', '3', '4', '5', '6'].indexOf(e.key);
       if (k >= 0 && k < n) dispatch({ t: 'pick', choice: k, fake: round.fake, at: clock(), seconds: round.seconds, cards: n });
       if (e.key === 'Enter' && answered && !over) dispatch({ t: 'next', at: clock() });
+      if (e.key.toLowerCase() === 'u') document.getElementById('fake-uv')?.click();
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
@@ -153,6 +167,10 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <p className="font-medium text-zinc-400">Round <span className="tabular-nums text-white">{s.i + 1}</span> · <span className="text-white">{round.cards[0].product}</span> · <span className="text-pink-200">{rankFor(s.caught)}</span></p>
         <div className="flex items-center gap-3">
+          <button id="fake-uv" type="button" onClick={lamp} disabled={answered || s.uv <= 0}
+            className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/15 px-3 py-1.5 text-xs font-semibold text-violet-100 ring-1 ring-violet-400/40 transition-[background-color,opacity,transform] duration-150 hover:bg-violet-500/25 active:scale-95 disabled:opacity-40">
+            <Lightbulb className="w-3.5 h-3.5" aria-hidden />UV lamp <span className="tabular-nums">×{s.uv}</span><kbd className="hidden rounded bg-black/30 px-1 text-[11px] font-medium sm:inline">U</kbd>
+          </button>
           {s.streak >= 2 && <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/15 px-2.5 py-1 font-semibold text-pink-200 ring-1 ring-pink-400/30"><Flame className="w-4 h-4 text-orange-300" aria-hidden /><span key={s.streak} className="play-tick">{s.streak}</span> in a row</span>}
           <span className="flex items-center gap-1" role="img" aria-label={`${s.lives} of ${FAKE_LIVES} lives left`}>
             {Array.from({ length: FAKE_LIVES }, (_, k) => (
@@ -172,9 +190,10 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
         {round.cards.map((c, k) => {
           const isFake = answered && k === round.fake;
           const wrongPick = answered && s.picked === k && k !== round.fake;
+          const cleared = s.cleared.includes(k);
           return (
-            <motion.button key={`${s.i}-${k}`} type="button" disabled={answered} onClick={() => pick(k)}
-              initial={{ opacity: 0, y: calm ? 0 : 30, rotate: calm ? 0 : (k % 2 ? 3 : -3), scale: calm ? 1 : 0.94 }} animate={{ opacity: answered && !isFake && !wrongPick ? 0.75 : 1, y: 0, rotate: 0, scale: 1 }}
+            <motion.button key={`${s.i}-${k}`} type="button" disabled={answered || cleared} onClick={() => pick(k)}
+              initial={{ opacity: 0, y: calm ? 0 : 30, rotate: calm ? 0 : (k % 2 ? 3 : -3), scale: calm ? 1 : 0.94 }} animate={{ opacity: cleared && !answered ? 0.45 : answered && !isFake && !wrongPick ? 0.75 : 1, y: 0, rotate: 0, scale: 1 }}
               transition={{ ...spring.smooth, delay: answered ? 0 : 0.06 * k }}
               className={cn('group relative min-h-[15.5rem] rounded-[1.5rem] text-start outline-offset-4 transition-shadow duration-150', !answered && 'hover:shadow-[0_18px_40px_-18px_rgba(236,72,153,0.55)]')}>
               <motion.span className="absolute inset-0 block" style={{ transformStyle: 'preserve-3d' }} animate={{ rotateY: isFake && !calm ? 180 : 0 }} transition={{ type: 'spring', visualDuration: 0.6, bounce: 0.18 }}>
@@ -182,6 +201,7 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
                   wrongPick ? 'play-shake ring-amber-400' : answered ? 'ring-emerald-400/40' : 'ring-white/10 group-hover:ring-pink-400/60')}>
                   <span className="play-scanline pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-pink-400/15 to-transparent" aria-hidden />
                   <Front c={c} k={k} answered={answered} />
+                  {cleared && !answered && <span className="play-uv pointer-events-none absolute inset-0 grid place-items-center rounded-[1.5rem]"><span className="inline-flex items-center gap-1 rounded-full bg-violet-600 px-2.5 py-1 text-xs font-bold text-white"><Lightbulb className="w-3.5 h-3.5" aria-hidden />Genuine (UV)</span></span>}
                   <AnimatePresence>
                     {answered && !isFake && (
                       <motion.span initial={{ opacity: 0, scale: calm ? 1 : 0.6 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...spring.bouncy, delay: 0.15 }}

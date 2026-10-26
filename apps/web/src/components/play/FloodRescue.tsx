@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Fuel, Wind } from 'lucide-react';
+import { Fuel, Package, Wind } from 'lucide-react';
 import { GAMES } from '@/lib/play';
-import { CAPACITY, FUEL_SECONDS, HELIPAD, RESCUE_LOST, STRIKE_TAKES, STRIKE_WARN_MS, rescuePoints, rescueSchedule, rescueStorm, rescueTown, waterLevel, type Stranded } from '@/lib/play/rescue';
+import { CAPACITY, CRATE_MS, CRATE_PTS, CRATES, FUEL_SECONDS, HELIPAD, RESCUE_LOST, STRIKE_TAKES, STRIKE_WARN_MS, rescuePoints, rescueSchedule, rescueStorm, rescueTown, waterLevel, type Stranded } from '@/lib/play/rescue';
 import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { burst, calmMotion, drawEffects, steerBody, useGameCanvas, useSteer, type Float, type Particle } from './canvas';
@@ -26,13 +26,14 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
   const box = useRef<HTMLDivElement>(null);
   const steer = useSteer(box);
   const arena = useArena();
-  const [hud, setHud] = useState({ fuel: 1, gust: 0 });
+  const [hud, setHud] = useState({ fuel: 1, gust: 0, crates: CRATES });
   const stats = useRef(onStats);
   useEffect(() => { stats.current = onStats; });
   const g = useRef({
     heli: { x: -1, y: 0, vx: 0, vy: 0 }, aboard: [] as (Stranded & { pickedAt: number })[], gone: new Set<number>(), cut: new Map<number, number>(), winch: 0, unload: 0,
     score: 0, saved: 0, pets: 0, trips: 0, lost: 0, reported: -1, parts: [] as Particle[], floats: [] as Float[], rain: [] as { x: number; y: number; s: number }[],
     fuel: FUEL_SECONDS, lowSaid: false, emptySaid: false, flash: 0, bolt: null as null | { x: number; y: number; t: number }, nextStrike: 0, nextGust: 0, gust: null as null | { dir: number; until: number }, hudAt: 0, calm: calmMotion(),
+    crates: CRATES, dropAsk: false, drops: [] as { x: number; y: number; vy: number; roof: number }[], helped: 0,
   });
   const deadline = (p: Stranded) => p.at + p.ttl - (g.current.cut.get(p.id) ?? 0);
 
@@ -47,6 +48,7 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
     const speed0 = Math.hypot(hl.vx, hl.vy);
     const onPad = hl.x > pad.x0 && hl.x < pad.x1 && hl.y > pad.top - 110 && hl.y < pad.top - 15 && speed0 < SLOW;
     s.fuel = onPad ? Math.min(FUEL_SECONDS, s.fuel + dt * 14) : Math.max(0, s.fuel - dt);
+    if (onPad && s.crates < CRATES) s.crates = CRATES;
     if (s.fuel / FUEL_SECONDS < 0.25 && !s.lowSaid) { s.lowSaid = true; arena.announce('Low fuel! Land on the H', 'bad'); arena.sfx('alarm'); }
     if (s.fuel <= 0 && !s.emptySaid) { s.emptySaid = true; arena.announce('Out of fuel!', 'bad'); }
     if (s.fuel / FUEL_SECONDS > 0.6) { s.lowSaid = false; s.emptySaid = false; }
@@ -101,6 +103,27 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
       }
     } else s.winch = Math.max(0, s.winch - dt * 2);
 
+    // Supply crates: fall from the helicopter; on a roof they buy everyone there more time.
+    if (s.dropAsk) {
+      s.dropAsk = false;
+      if (s.crates > 0) { s.crates--; s.drops.push({ x: hl.x, y: hl.y + 16, vy: hl.vy * 0.3, roof: -1 }); arena.sfx('whoosh'); }
+      else arena.announce('No crates: refill on the H', 'pink');
+    }
+    for (let k = s.drops.length - 1; k >= 0; k--) {
+      const d = s.drops[k];
+      d.vy += 900 * dt; d.y += d.vy * dt;
+      const ri = roofPx.findIndex((r) => d.x > r.x0 && d.x < r.x1 && d.y >= r.top - 6 && d.y - d.vy * dt < r.top);
+      if (ri >= 0) {
+        const there = people.filter((p) => p.roof === ri && p.at <= t && !s.gone.has(p.id));
+        for (const p of there) s.cut.set(p.id, (s.cut.get(p.id) ?? 0) - CRATE_MS);
+        s.score += CRATE_PTS * there.length; s.helped += there.length;
+        s.floats.push({ x: d.x, y: roofPx[ri].top - 30, text: there.length ? `+${CRATE_MS / 1000}s ×${there.length}` : 'No one here', color: there.length ? '#fde68a' : '#cbd5e1', life: 0 });
+        burst(s.parts, d.x, roofPx[ri].top - 4, '#f59e0b', s.calm ? 3 : 10, 110);
+        arena.sfx(there.length ? 'coin' : 'land', there.length);
+        s.drops.splice(k, 1);
+      } else if (d.y > water) { burst(s.parts, d.x, water, '#7dd3fc', s.calm ? 3 : 10, 120); arena.sfx('splash'); s.drops.splice(k, 1); }
+    }
+
     // Land at the hospital: everyone aboard gets off, one by one.
     if (onPad && s.aboard.length) {
       s.unload += dt;
@@ -119,9 +142,9 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
     } else s.unload = 0;
     if (s.score !== s.reported) {
       s.reported = s.score; onProgress(s.score, s.saved);
-      stats.current?.([{ label: 'Rescued', value: String(s.saved) }, { label: 'Lost', value: String(s.lost) }, { label: 'Pets saved', value: String(s.pets) }, { label: 'Trips', value: String(s.trips) }]);
+      stats.current?.([{ label: 'Rescued', value: String(s.saved) }, { label: 'Lost', value: String(s.lost) }, { label: 'Pets saved', value: String(s.pets) }, { label: 'Trips', value: String(s.trips) }, { label: 'Helped by crates', value: String(s.helped) }]);
     }
-    if (t - s.hudAt > 200) { s.hudAt = t; const next = { fuel: Math.round((s.fuel / FUEL_SECONDS) * 50) / 50, gust: s.gust ? s.gust.dir : 0 }; setHud((p) => (p.fuel === next.fuel && p.gust === next.gust ? p : next)); }
+    if (t - s.hudAt > 200) { s.hudAt = t; const next = { fuel: Math.round((s.fuel / FUEL_SECONDS) * 50) / 50, gust: s.gust ? s.gust.dir : 0, crates: s.crates }; setHud((p) => (p.fuel === next.fuel && p.gust === next.gust && p.crates === next.crates ? p : next)); }
 
     // Sky, two layers of skyline that drift with the helicopter.
     const sky = ctx.createLinearGradient(0, 0, 0, h);
@@ -224,6 +247,13 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
     for (let k = 0; k < CAPACITY; k++) { ctx.fillStyle = k < s.aboard.length ? '#86efac' : 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.arc(-9 + k * 6, 22, 2.2, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
 
+    // Falling crates, with a little parachute.
+    for (const d of s.drops) {
+      ctx.fillStyle = 'rgba(248,250,252,0.85)'; ctx.beginPath(); ctx.arc(d.x, d.y - 18, 9, Math.PI, 0); ctx.fill();
+      ctx.strokeStyle = 'rgba(248,250,252,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(d.x - 9, d.y - 18); ctx.lineTo(d.x - 4, d.y - 5); ctx.moveTo(d.x + 9, d.y - 18); ctx.lineTo(d.x + 4, d.y - 5); ctx.stroke();
+      ctx.fillStyle = '#b45309'; ctx.fillRect(d.x - 6, d.y - 6, 12, 12); ctx.strokeStyle = '#fbbf24'; ctx.strokeRect(d.x - 6, d.y - 6, 12, 12);
+    }
+
     // Rain (slanted harder in a gust), effects, and the counters.
     if (s.rain.length === 0) for (let k = 0; k < (s.calm ? 40 : 160); k++) s.rain.push({ x: Math.random() * w, y: Math.random() * h, s: 0.6 + Math.random() * 0.6 });
     const slant = s.gust ? s.gust.dir * 420 : -140;
@@ -244,10 +274,21 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
     ctx.fillStyle = '#fde68a'; ctx.fillText(`🐕 ${s.pets}`, 222, 28);
   });
 
+  // D (or the Drop button) lets a crate go.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if (e.key.toLowerCase() === 'd' && !e.metaKey && !e.ctrlKey) g.current.dropAsk = true; };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, []);
+
   return (
     <div className="mx-auto w-full max-w-6xl">
       <div ref={box} className="relative h-[min(72vh,700px)] min-h-80 w-full touch-none select-none overflow-hidden rounded-[1.75rem] ring-1 ring-white/10">
         <canvas ref={canvas} className="absolute inset-0 h-full w-full" role="img" aria-label="Flood Rescue: a flooded town with people on rooftops and a hospital on a hill. Steer the helicopter with the mouse, a finger or the arrow keys." />
+        <button type="button" onClick={() => { g.current.dropAsk = true; }} disabled={!hud.crates}
+          className="absolute bottom-4 end-4 z-10 inline-flex h-12 items-center gap-1.5 rounded-full bg-amber-300 px-4 text-sm font-black text-amber-950 shadow-[0_5px_0_rgba(0,0,0,0.35)] active:translate-y-1 active:shadow-none disabled:opacity-40">
+          <Package className="h-4 w-4" aria-hidden />Drop ×{hud.crates}<kbd className="hidden rounded bg-black/15 px-1 text-[11px] font-medium [@media(pointer:fine)]:inline">D</kbd>
+        </button>
         <div className="pointer-events-none absolute end-3 top-3 flex items-center gap-2">
           {hud.gust !== 0 && <span className="inline-flex items-center gap-1 rounded-full bg-sky-300 px-3 py-1 text-xs font-black text-sky-950"><Wind className="h-3.5 w-3.5" aria-hidden />Gust</span>}
           <div className="w-36 rounded-2xl bg-black/60 px-3 py-2 ring-1 ring-white/15">
@@ -256,7 +297,7 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
           </div>
         </div>
       </div>
-      <p className="mt-3 text-center text-xs text-zinc-400">Hover low and slow over a roof to winch people up · land on the H to drop them off and refuel · ⚡ marks where lightning will strike.</p>
+      <p className="mt-3 text-center text-xs text-zinc-400">Hover low and slow over a roof to winch people up · land on the H to drop them off, refuel and reload · D drops a crate on a roof (+6 s for everyone there) · ⚡ marks where lightning will strike.</p>
     </div>
   );
 }

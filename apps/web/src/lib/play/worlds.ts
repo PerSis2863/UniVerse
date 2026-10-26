@@ -5,7 +5,7 @@ import { hash, seeded } from '../seeded-shuffle';
 // perfect round stays under each game's maxScore in src/lib/play.ts).
 
 /* ── Skyline Obby: three worlds of floating pads to the golden finish ── */
-export type PadKind = 'pad' | 'move' | 'fall' | 'bounce' | 'spin' | 'blink' | 'check' | 'finish';
+export type PadKind = 'pad' | 'move' | 'fall' | 'bounce' | 'spin' | 'blink' | 'ice' | 'belt' | 'check' | 'finish';
 export interface Pad { x: number; y: number; z: number; w: number; d: number; kind: PadKind; stage: number; phase: number }
 export interface Gem { x: number; y: number; z: number }
 /** Thirty stages in three worlds of ten: Sky Islands, Lava Peaks, Neon Void. */
@@ -15,6 +15,9 @@ export const obbyWorld = (stage: number) => Math.min(2, Math.floor(Math.max(0, s
 export const OBBY_CHECK = 500, OBBY_GEM = 50, OBBY_FALL = 100, OBBY_FINISH = 2_000, OBBY_PER_SECOND = 20;
 /** Blinking pads: on for 2.2 s, off for 1.2 s (they flicker for the last half second before). */
 export const BLINK_ON = 2.2, BLINK_OFF = 1.2;
+/** Ice pads are slippery; belts carry you sideways (M39). */
+export const OBBY_ICE_GRIP = 1.6, OBBY_BELT = 3.2;
+export const beltDir = (p: Pad) => (p.phase > Math.PI ? 1 : -1);
 export const blinkOn = (t: number, phase: number) => ((t + phase) % (BLINK_ON + BLINK_OFF)) < BLINK_ON;
 
 export function obbyCourse(seed: number): { pads: Pad[]; gems: Gem[] } {
@@ -28,8 +31,10 @@ export function obbyCourse(seed: number): { pads: Pad[]; gems: Gem[] } {
     const n = 5 + Math.floor(r() * 3) + world;
     for (let i = 0; i < n; i++) {
       const roll = r();
-      const kind: PadKind = world >= 1 && roll < 0.1 + world * 0.08 ? 'blink'
+      let kind: PadKind = world >= 1 && roll < 0.1 + world * 0.08 ? 'blink'
         : stage > 1 && roll < 0.24 + hard * 0.1 ? 'move' : stage > 2 && roll < 0.38 + hard * 0.08 ? 'fall' : stage > 3 && roll < 0.5 + world * 0.04 ? 'spin' : stage > 1 && roll < 0.58 ? 'bounce' : 'pad';
+      // Some plain pads become ice (slippery) or belts (they carry you sideways).
+      if (kind === 'pad' && stage > 3) { const k = r(); kind = k < 0.22 ? 'ice' : stage > 6 && k < 0.42 ? 'belt' : 'pad'; }
       const size = kind === 'spin' ? 5.5 : 3.4 - hard * 1.1 + r() * 0.8;
       const gap = 2.2 + hard * 1.1 + r() * 0.7;
       const prev = pads[pads.length - 1];
@@ -56,6 +61,8 @@ export const STRIKE_FIRE_S = 0.16, STRIKE_BOT_HP = 3, STRIKE_COMBO_S = 3, STRIKE
 export const strikeWave = (n: number) => 3 + n * 2;
 /** Every fifth wave brings a boss drone (big, tough, fires spreads) with half the usual escort. */
 export const STRIKE_BOSS = 1_000;
+/** Pulse grenades (M39): three to start, one more each cleared wave; hurts every drone near the blast. */
+export const STRIKE_GRENADES = 3, STRIKE_BLAST_R = 6, STRIKE_BLAST_DMG = 4;
 export const isBossWave = (wave: number) => wave > 0 && wave % 5 === 0;
 export const strikeBossHp = (wave: number) => 36 + wave * 2;
 /** Tags in a row (within 3 s of each other) multiply: ×1, ×2… up to ×4. */
@@ -80,6 +87,8 @@ export const nightSize = (floor: number) => 11 + floor * 2;
 export const nightKeys = (floor: number) => 3 + floor;
 export const NIGHT_KEY = 1_000, NIGHT_FLOOR = 1_500, NIGHT_ESCAPE = 3_000, NIGHT_PER_SECOND = 15, NIGHT_STUN = 150, NIGHT_CAUGHT = 500;
 export const NIGHT_KEYS = nightKeys(NIGHT_FLOORS - 1), NIGHT_LIVES = 3, NIGHT_STUN_S = 1.4, NIGHT_STUN_COOLDOWN_S = 7;
+/** Hiding in a locker (M39): up to six seconds, then a wait; useless if it's already on top of you. */
+export const NIGHT_HIDE_S = 6, NIGHT_HIDE_COOLDOWN_S = 12, NIGHT_SEEN_M = 2.4;
 /** A shuffle from the seeded numbers that every browser does the same way (sort(() => r() - 0.5)
  *  doesn't: engines sort differently, so rooms would get different worlds). */
 function mix<T>(xs: T[], r: () => number): T[] {
@@ -139,6 +148,17 @@ export const ORBIT_REACTOR = 1_200, ORBIT_TANK = 100, ORBIT_SECTOR = 1_500, ORBI
 export const ORBIT_SECTORS = 3;
 export const orbitReactors = (sector: number) => 3 + sector;
 export const ORBIT_REACTORS = orbitReactors(ORBIT_SECTORS - 1), ORBIT_REPAIR_S = 3, ORBIT_TANK_EVERY_S = 8;
+/** Solar flares (M39): every 75 s from 50 s in, 8 s of warning, then 9 s of flare that drains air
+ *  fast unless you shelter under a repaired reactor's shield (or the hub's). The same for everyone
+ *  in a room, because it runs on the round's clock. */
+export const ORBIT_FLARE_EVERY_S = 75, ORBIT_FLARE_WARN_S = 8, ORBIT_FLARE_S = 9, ORBIT_FLARE_DRAIN = 6, ORBIT_SHIELD_R = 3.2;
+export function orbitFlare(t: number): { phase: 'calm' | 'warn' | 'flare'; left: number } {
+  if (t < 50) return { phase: 'calm', left: 50 - t };
+  const k = (t - 50) % ORBIT_FLARE_EVERY_S;
+  if (k < ORBIT_FLARE_WARN_S) return { phase: 'warn', left: ORBIT_FLARE_WARN_S - k };
+  if (k < ORBIT_FLARE_WARN_S + ORBIT_FLARE_S) return { phase: 'flare', left: ORBIT_FLARE_WARN_S + ORBIT_FLARE_S - k };
+  return { phase: 'calm', left: ORBIT_FLARE_EVERY_S - k };
+}
 export const ORBIT_NAMES = ['Station Helios', 'Red Moon Outpost', 'Ring Giant Dock'] as const;
 export interface Deck { x: number; z: number; y: number; r: number }
 export function orbitStation(seed: number, sector = 0) {

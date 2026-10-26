@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Magnet, Shield, Zap } from 'lucide-react';
+import { Magnet, Shield, Waves, Zap } from 'lucide-react';
 import { GAMES } from '@/lib/play';
-import { BOOST_SPEED, MAGNET_PX, OCEAN_COMBO_MS, OCEAN_HIT, OCEAN_PHASES, OIL_SLOW, POWER_MS, SEA, isLife, isPower, isTrash, kgOf, oceanMultiplier, oceanPhase, oceanSchedule, type Drift } from '@/lib/play/ocean';
+import { BOOST_SPEED, MAGNET_PX, OCEAN_COMBO_MS, OCEAN_HIT, OCEAN_PHASES, OIL_SLOW, POWER_MS, SEA, SWEEP_CHARGE, SWEEP_PX, isLife, isPower, isTrash, kgOf, oceanMultiplier, oceanPhase, oceanSchedule, type Drift } from '@/lib/play/ocean';
 import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { burst, calmMotion, drawEffects, steerBody, useGameCanvas, useSteer, type Float, type Particle } from './canvas';
@@ -22,13 +22,14 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
   const box = useRef<HTMLDivElement>(null);
   const steer = useSteer(box);
   const arena = useArena();
-  const [hud, setHud] = useState({ magnet: 0, boost: 0, shield: false, oily: false, phase: 0 });
+  const [hud, setHud] = useState({ magnet: 0, boost: 0, shield: false, oily: false, phase: 0, sweep: 0 });
   const g = useRef({
     boat: { x: -1, y: 0, vx: 0, vy: 0 }, next: 0, live: [] as Live[], score: 0, combo: 0, best: 0, lastPick: -1e9, stunUntil: 0, picked: 0, kg: 0, hits: 0,
     magnetUntil: 0, boostUntil: 0, shield: false, oilUntil: 0, phase: -1, flash: 0, nextBolt: 0,
     wake: [] as { x: number; y: number }[], parts: [] as Particle[], floats: [] as Float[], shake: 0, reported: -1, hudAt: 0, calm: calmMotion(),
     fish: Array.from({ length: 7 }, (_, i) => ({ x: (i * 0.143 + 0.05) % 1, y: (i * 0.37) % 1, s: 0.6 + (i % 3) * 0.25, v: 0.02 + (i % 4) * 0.01 })),
     rain: Array.from({ length: 90 }, (_, i) => ({ x: (i * 0.618) % 1, y: (i * 0.271) % 1 })),
+    sweep: 0, sweepAsk: false, sweepT: -1, swept: 0,
   });
   // The results' numbers, whenever they change.
   const stats = useRef(onStats);
@@ -54,6 +55,34 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
     const stunned = t < s.stunUntil, boosted = t < s.boostUntil, magnet = t < s.magnetUntil, oily = t < s.oilUntil;
     const top = (stunned ? 120 : 560) * (boosted ? BOOST_SPEED : 1) * (oily ? OIL_SLOW : 1);
     steerBody(b, steer.current, dt, top, { x0: 30, x1: w - 30, y0: h * 0.3, y1: h - 36 });
+
+    // Scooping a piece: points with the combo (and the boost); it also charges the sweep.
+    const take = (o: Live, charge: boolean) => {
+      const k = o.d.kind;
+      o.state = 'got';
+      s.combo = t - s.lastPick < OCEAN_COMBO_MS ? s.combo + 1 : 0;
+      s.best = Math.max(s.best, s.combo);
+      s.lastPick = t;
+      const pts = Math.round(SEA[k].pts * oceanMultiplier(s.combo)) * (boosted ? 2 : 1);
+      s.score += pts; s.picked++; s.kg += kgOf(k);
+      if (charge) s.sweep = Math.min(SWEEP_CHARGE, s.sweep + 1);
+      s.floats.push({ x: o.x, y: o.y - 10, text: s.combo ? `+${pts} ×${oceanMultiplier(s.combo).toFixed(1)}` : `+${pts}`, color: k === 'net' ? '#f9a8d4' : '#a5f3fc', life: 0 });
+      burst(s.parts, o.x, o.y, k === 'net' ? '#f472b6' : '#67e8f9', s.calm ? 5 : 18);
+      arena.sfx(k === 'net' ? 'coin' : 'pick', s.combo);
+      if (s.combo === 5 || s.combo === 10) arena.announce(s.combo === 10 ? 'Max combo!' : 'Combo ×1.5!', 'pink');
+      navigator.vibrate?.(8);
+    };
+    // The sweep: a ring of bubbles from the boat collects all the plastic in reach.
+    if (s.sweepAsk) {
+      s.sweepAsk = false;
+      if (s.sweep >= SWEEP_CHARGE) {
+        s.sweep = 0; s.sweepT = 0;
+        let n = 0;
+        for (const o of s.live) if (!o.state && isTrash(o.d.kind) && Math.hypot(o.x - b.x, o.y - b.y) < SWEEP_PX) { take(o, false); n++; }
+        s.swept += n;
+        arena.announce(n ? `Sweep! ${n} pieces` : 'Sweep! (nothing in reach)', 'gold'); arena.sfx('boost'); arena.shake(0.3);
+      }
+    }
 
     // Move, pull, collide, drop what's gone.
     let inOil = false;
@@ -91,30 +120,18 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
         arena.announce(k === 'magnet' ? 'Magnet!' : k === 'boost' ? 'Boost! ×2 points' : 'Shield up', 'gold');
         arena.sfx('power');
         burst(s.parts, o.x, o.y, '#fde68a', s.calm ? 5 : 22);
-      } else {
-        o.state = 'got';
-        s.combo = t - s.lastPick < OCEAN_COMBO_MS ? s.combo + 1 : 0;
-        s.best = Math.max(s.best, s.combo);
-        s.lastPick = t;
-        const pts = Math.round(SEA[k].pts * oceanMultiplier(s.combo)) * (boosted ? 2 : 1);
-        s.score += pts; s.picked++; s.kg += kgOf(k);
-        s.floats.push({ x: o.x, y: o.y - 10, text: s.combo ? `+${pts} ×${oceanMultiplier(s.combo).toFixed(1)}` : `+${pts}`, color: k === 'net' ? '#f9a8d4' : '#a5f3fc', life: 0 });
-        burst(s.parts, o.x, o.y, k === 'net' ? '#f472b6' : '#67e8f9', s.calm ? 5 : 18);
-        arena.sfx(k === 'net' ? 'coin' : 'pick', s.combo);
-        if (s.combo === 5 || s.combo === 10) arena.announce(s.combo === 10 ? 'Max combo!' : 'Combo ×1.5!', 'pink');
-        navigator.vibrate?.(8);
-      }
+      } else take(o, true);
     }
     if (inOil) { if (!oily) arena.sfx('splash'); s.oilUntil = t + 900; }
     if (s.score !== s.reported) {
       s.reported = s.score;
       onProgress(s.score, s.picked);
-      stats.current?.([{ label: 'Pieces cleared', value: String(s.picked) }, { label: 'Plastic out', value: `${s.kg.toFixed(2)} kg` }, { label: 'Best combo', value: `×${oceanMultiplier(s.best).toFixed(1)}` }, { label: 'Bumps', value: String(s.hits) }]);
+      stats.current?.([{ label: 'Pieces cleared', value: String(s.picked) }, { label: 'Plastic out', value: `${s.kg.toFixed(2)} kg` }, { label: 'Best combo', value: `×${oceanMultiplier(s.best).toFixed(1)}` }, { label: 'Swept up', value: String(s.swept) }, { label: 'Bumps', value: String(s.hits) }]);
     }
     if (t - s.hudAt > 150) {
       s.hudAt = t;
-      const next = { magnet: magnet ? Math.ceil((s.magnetUntil - t) / 1000) : 0, boost: boosted ? Math.ceil((s.boostUntil - t) / 1000) : 0, shield: s.shield, oily, phase };
-      setHud((p) => (p.magnet === next.magnet && p.boost === next.boost && p.shield === next.shield && p.oily === next.oily && p.phase === next.phase ? p : next));
+      const next = { magnet: magnet ? Math.ceil((s.magnetUntil - t) / 1000) : 0, boost: boosted ? Math.ceil((s.boostUntil - t) / 1000) : 0, shield: s.shield, oily, phase, sweep: s.sweep / SWEEP_CHARGE };
+      setHud((p) => (p.magnet === next.magnet && p.boost === next.boost && p.shield === next.shield && p.oily === next.oily && p.phase === next.phase && p.sweep === next.sweep ? p : next));
     }
 
     // Draw: the sea (darker and rougher in the storm).
@@ -188,6 +205,15 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
     }
     ctx.globalAlpha = 1;
 
+    // The sweep's ring of bubbles, racing out from the boat.
+    if (s.sweepT >= 0) {
+      s.sweepT += dt;
+      const k = Math.min(1, s.sweepT / 0.5), r = SWEEP_PX * (1 - (1 - k) ** 3);
+      ctx.strokeStyle = `rgba(165,243,252,${0.8 * (1 - k)})`; ctx.lineWidth = 6 * (1 - k) + 1.5;
+      ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.stroke();
+      if (!s.calm) for (let q = 0; q < 14; q++) { const a = q / 14 * Math.PI * 2 + time; ctx.fillStyle = `rgba(224,242,254,${0.7 * (1 - k)})`; ctx.beginPath(); ctx.arc(b.x + Math.cos(a) * r, b.y + Math.sin(a) * r, 3, 0, Math.PI * 2); ctx.fill(); }
+      if (s.sweepT > 0.6) s.sweepT = -1;
+    }
     // The magnet's reach.
     if (magnet) { ctx.strokeStyle = `rgba(253,230,138,${0.25 + Math.sin(time * 8) * 0.1})`; ctx.setLineDash([6, 8]); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(b.x, b.y, MAGNET_PX, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
     // The wake (longer and brighter with the boost), foam at the bow.
@@ -242,10 +268,22 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
     ctx.restore();
   });
 
+  // Space (or E) fires the sweep.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if ((e.key === ' ' || e.key.toLowerCase() === 'e') && !e.metaKey && !e.ctrlKey) { e.preventDefault(); g.current.sweepAsk = true; } };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, []);
+
   return (
     <div className="mx-auto w-full max-w-6xl">
       <div ref={box} className="relative h-[min(72vh,700px)] min-h-80 w-full touch-none select-none overflow-hidden rounded-[1.75rem] ring-1 ring-white/10">
         <canvas ref={canvas} className="absolute inset-0 h-full w-full" role="img" aria-label="Ocean Cleanup: a boat on the sea. Steer with the mouse, a finger or the arrow keys to scoop up plastic and avoid sea life." />
+        <button type="button" onClick={() => { g.current.sweepAsk = true; }} disabled={hud.sweep < 1}
+          className="absolute bottom-14 end-4 z-10 inline-flex h-12 items-center gap-2 overflow-hidden rounded-full bg-cyan-300 px-4 text-sm font-black text-cyan-950 shadow-[0_5px_0_rgba(0,0,0,0.35)] active:translate-y-1 active:shadow-none disabled:bg-zinc-800 disabled:text-zinc-300">
+          <span className="absolute inset-y-0 start-0 bg-cyan-200/60 transition-[width] duration-200" style={{ width: `${hud.sweep * 100}%` }} aria-hidden />
+          <Waves className="relative h-4 w-4" aria-hidden /><span className="relative">{hud.sweep >= 1 ? 'Sweep!' : `Sweep ${Math.round(hud.sweep * 100)}%`}</span><kbd className="relative hidden rounded bg-black/15 px-1 text-[11px] font-medium [@media(pointer:fine)]:inline">Space</kbd>
+        </button>
         <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap justify-center gap-2">
           <span className="rounded-full bg-black/55 px-3 py-1 text-xs font-semibold text-sky-100 ring-1 ring-white/15">{OCEAN_PHASES[hud.phase]}</span>
           {hud.magnet > 0 && <Power icon={Magnet} text={`Magnet ${hud.magnet}s`} />}
@@ -254,7 +292,7 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
           {hud.oily && <span className="rounded-full bg-zinc-900/85 px-3 py-1 text-xs font-bold text-zinc-200 ring-1 ring-white/20">Oil! Slowed down</span>}
         </div>
       </div>
-      <p className="mt-3 text-center text-xs text-zinc-400">Steer: move the mouse or drag · arrow keys or WASD. Pink circles are ghost nets (150); gold rings are power-ups; dark slicks are oil.</p>
+      <p className="mt-3 text-center text-xs text-zinc-400">Steer: move the mouse or drag · arrow keys or WASD. Pink circles are ghost nets (150); gold rings are power-ups; dark slicks are oil. Every 15 pieces charge the sweep: Space collects all plastic near the boat.</p>
     </div>
   );
 }

@@ -196,7 +196,7 @@ export async function callAccess(callId: string, user: SessionUser, wantKind?: u
 }
 
 /** STUN always; TURN credentials (valid a few hours) when Cloudflare Realtime TURN is set up. */
-async function iceServers(): Promise<RTCIceServer[]> {
+export async function iceServers(): Promise<RTCIceServer[]> {
   const stun: RTCIceServer[] = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }];
   const keyId = process.env.TURN_KEY_ID, token = process.env.TURN_KEY_API_TOKEN;
   if (!keyId || !token) return stun;

@@ -4,18 +4,22 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { MousePointer2, Users } from 'lucide-react';
 import type { Button, Controls } from './core';
+import type { Net } from '../useGameRoom';
+import { RoomChat } from './RoomChat';
 import { TouchPad } from './TouchPad';
 
 // The frame every 3D world plays in: the canvas, the game's own overlays (its HUD), the phone
 // controls, and on a computer a hint to click (the mouse then turns the camera; Esc frees it).
 
-export function WorldFrame({ canvas, controls, buttons, keys, children, label, curtain, others = 0 }: {
+export function WorldFrame({ canvas, controls, buttons, keys, children, label, curtain, others = 0, net }: {
   canvas: React.RefObject<HTMLCanvasElement | null>; controls: React.RefObject<Controls | null>;
   buttons: { id: Button; label: string }[]; keys: string; label: string; children?: React.ReactNode;
   /** A title card between floors, worlds or stations (a new key shows it again). */
   curtain?: { key: number; title: string; sub?: string } | null;
   /** Other players in sight (rooms). */
   others?: number;
+  /** In a room: chat and voice (M39). */
+  net?: Net;
 }) {
   const calm = useReducedMotion();
   const [locked, setLocked] = useState(false);
@@ -40,9 +44,10 @@ export function WorldFrame({ canvas, controls, buttons, keys, children, label, c
         )}
       </AnimatePresence>
       <TouchPad controls={controls} buttons={buttons} />
+      {net && <RoomChat net={net} frame={canvas} />}
       {!locked && (
         <p className="pointer-events-none absolute inset-x-0 bottom-4 mx-auto hidden w-fit items-center gap-2 rounded-full bg-black/65 px-4 py-2 text-xs font-medium text-white ring-1 ring-white/15 [@media(pointer:fine)]:flex">
-          <MousePointer2 className="h-3.5 w-3.5" aria-hidden />Click to look around · {keys} · Esc frees the mouse
+          <MousePointer2 className="h-3.5 w-3.5" aria-hidden />Click to look around · {keys}{net ? ' · Enter chat' : ''} · Esc frees the mouse
         </p>
       )}
     </div>

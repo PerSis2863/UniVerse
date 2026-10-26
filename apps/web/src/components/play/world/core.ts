@@ -4,19 +4,71 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 // The 3D worlds of UniVerse Play (M36, the owner: "Roblox games… shooting, horror, science fiction…
 // big games"): one renderer, scene and camera per round, a frame loop that pauses in a hidden tab,
 // solid boxes to stand on and bump into, the player's controls (keys and mouse, or a joystick and
 // a look pad on a phone), and a blocky character. three.js loads only with these games.
 
-export { THREE };
+export { THREE, RoundedBoxGeometry };
+
+/** The film finish (M39): a soft vignette, a touch of contrast and saturation, fine grain. */
+const GradeShader = {
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, vignette: { value: 0.35 }, grain: { value: 0.035 }, saturation: { value: 1.08 }, contrast: { value: 1.06 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float time, vignette, grain, saturation, contrast; varying vec2 vUv;
+    float rand(vec2 c){ return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }
+    void main(){
+      vec4 c = texture2D(tDiffuse, vUv);
+      float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+      c.rgb = mix(vec3(l), c.rgb, saturation);
+      c.rgb = (c.rgb - 0.5) * contrast + 0.5;
+      float d = distance(vUv, vec2(0.5));
+      c.rgb *= 1.0 - vignette * smoothstep(0.35, 0.85, d);
+      c.rgb += (rand(vUv * 731.0 + time) - 0.5) * grain;
+      gl_FragColor = c;
+    }`,
+};
 
 const PHONE = () => matchMedia('(pointer: coarse)').matches;
 /** The buttons a game reads: jump, fire, act (E/F), and its special skill (Q/R). */
 export type Button = 'jump' | 'fire' | 'act' | 'skill';
 
 /** The renderer, scene and camera, sized to the canvas's box; `loop` runs once per frame. */
+/** A box, with rounded edges when `round` is set (kept under half its thinnest side). */
+function shape(size: [number, number, number], round: number): THREE.BufferGeometry {
+  const r = Math.min(round, Math.min(...size) / 2 - 0.01);
+  return r > 0.01 ? new RoundedBoxGeometry(size[0], size[1], size[2], 2, r) : new THREE.BoxGeometry(...size);
+}
+
+/** UVs from where each face sits in the world (one texture tile every `tile` units), so stone,
+ *  metal and tiles have the same grain on a small step and a long wall. */
+export function worldUv(geo: THREE.BufferGeometry, tile: number, at: readonly number[] = [0, 0, 0]) {
+  const p = geo.attributes.position, n = geo.attributes.normal, uv = geo.attributes.uv;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) + at[0], y = p.getY(i) + at[1], z = p.getZ(i) + at[2];
+    const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i)), az = Math.abs(n.getZ(i));
+    if (ay >= ax && ay >= az) uv.setXY(i, x / tile, z / tile);
+    else if (ax >= az) uv.setXY(i, z / tile, y / tile);
+    else uv.setXY(i, x / tile, y / tile);
+  }
+  uv.needsUpdate = true;
+  return geo;
+}
+
+/** A glowing shell around a planet: bright where it meets the planet's edge, fading out into space. */
+export function atmosphere(radius: number, color: number, power = 1) {
+  return new THREE.Mesh(new THREE.SphereGeometry(radius * 1.15, 48, 32), new THREE.ShaderMaterial({
+    side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+    uniforms: { glow: { value: new THREE.Color(color) }, power: { value: power } },
+    vertexShader: 'varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+    fragmentShader: 'uniform vec3 glow; uniform float power; varying vec3 vN; varying vec3 vV; void main(){ float r = pow(clamp(-dot(vN, vV) * 2.0, 0.0, 1.0), 2.5) * power; gl_FragColor = vec4(glow * r, r); }',
+  }));
+}
+
 export class World {
   renderer: THREE.WebGLRenderer;
   scene = new THREE.Scene();
@@ -54,7 +106,9 @@ export class World {
   /** Floating words' pictures, made once per word and colour. */
   private words = new Map<string, THREE.CanvasTexture>();
 
-  constructor(public canvas: HTMLCanvasElement, { fov = 70, bg = 0x0b0b10, fog, glow }: { fov?: number; bg?: number; fog?: [number, number, number]; glow?: { strength: number; radius: number; threshold: number } } = {}) {
+  private grade: ShaderPass | null = null;
+
+  constructor(public canvas: HTMLCanvasElement, { fov = 70, bg = 0x0b0b10, fog, glow, env = 0.6 }: { fov?: number; bg?: number; fog?: [number, number, number]; glow?: { strength: number; radius: number; threshold: number }; env?: number } = {}) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !this.phone, powerPreference: 'high-performance' });
     // Phones draw fewer pixels and no shadows, so the frame rate holds.
     this.maxRatio = this.ratio = Math.min(window.devicePixelRatio || 1, this.phone ? 1.5 : 2);
@@ -63,16 +117,27 @@ export class World {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
     this.scene.background = new THREE.Color(bg);
     if (fog) this.scene.fog = new THREE.Fog(fog[0], fog[1], fog[2]);
     this.camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 400);
     this.fovBase = this.fovWant = fov;
-    if (glow && !this.phone) {
-      this.composer = new EffectComposer(this.renderer);
+    // Light from all around (image-based): what makes metal, plastic and polished floors look real.
+    if (env > 0) {
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      this.scene.environmentIntensity = env;
+      pmrem.dispose();
+    }
+    // Computers draw through the effects chain: smoothed edges (4× samples), the glow, the film finish.
+    if (!this.phone) {
+      const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+      this.composer = new EffectComposer(this.renderer, target);
       this.composer.addPass(new RenderPass(this.scene, this.camera));
-      this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), glow.strength, glow.radius, glow.threshold);
-      this.composer.addPass(this.bloom);
+      if (glow) { this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), glow.strength, glow.radius, glow.threshold); this.composer.addPass(this.bloom); }
       this.composer.addPass(new OutputPass());
+      this.grade = new ShaderPass(GradeShader);
+      this.composer.addPass(this.grade);
     }
     this.sparks = new Sparks(this.scene);
     this.ro = new ResizeObserver(() => this.resize());
@@ -123,7 +188,8 @@ export class World {
     const shake = this.trauma * this.trauma;
     const ox = shake ? (Math.sin(t * 0.091) + Math.sin(t * 0.037)) * 0.18 * shake : 0, oy = shake ? (Math.sin(t * 0.083 + 1) + Math.sin(t * 0.029)) * 0.18 * shake : 0, rz = shake ? Math.sin(t * 0.071) * 0.03 * shake : 0;
     if (shake) { this.camera.position.x += ox; this.camera.position.y += oy; this.camera.rotation.z += rz; }
-    if (this.composer && this.bloom?.enabled) this.composer.render(); else this.renderer.render(this.scene, this.camera);
+    if (this.grade) this.grade.uniforms.time.value = (t / 1000) % 100;
+    if (this.composer) this.composer.render(); else this.renderer.render(this.scene, this.camera);
     if (shake) { this.camera.position.x -= ox; this.camera.position.y -= oy; this.camera.rotation.z -= rz; }
     this.trauma = Math.max(0, this.trauma - dt * 1.4);
     this.raf = requestAnimationFrame(this.frame);
@@ -138,9 +204,12 @@ export class World {
       this.ratio = r; this.renderer.setPixelRatio(r);
       this.resize(); this.slow = this.fast = 0;
     };
-    // The glow goes first (it costs the most); then the resolution steps down.
+    // The glow goes first (it costs the most); then the resolution steps down; then the sun's
+    // shadows; last the smoothed edges and film finish (the picture is drawn straight to the screen).
     if (this.slow > 0.5 && this.bloom?.enabled) { this.bloom.enabled = false; this.slow = 0; }
     else if (this.slow > 0.5 && this.ratio > 0.6) set(Math.max(0.6, this.ratio - 0.25));
+    else if (this.slow > 1 && this.sun?.castShadow) { this.sun.castShadow = false; this.slow = 0; }
+    else if (this.slow > 1 && this.composer) { this.composer.dispose(); this.composer = null; this.grade = null; this.bloom = null; this.slow = 0; }
     else if (this.fast > 2 && this.ratio < this.maxRatio) set(Math.min(this.maxRatio, this.ratio + 0.25));
   }
 
@@ -182,10 +251,14 @@ export class World {
     this.sun.target.position.copy(at);
   }
 
-  /** Many static boxes with one material as a single mesh (one draw call); their boxes stay solid. */
-  boxes(list: { at: [number, number, number]; size: [number, number, number] }[], material: THREE.Material, solid = true, parent: THREE.Object3D = this.scene) {
+  /** Many static boxes with one material as a single mesh (one draw call); their boxes stay solid.
+   *  `tile` gives textures a fixed size in world units; `round` bevels the edges (they catch light). */
+  boxes(list: { at: [number, number, number]; size: [number, number, number] }[], material: THREE.Material, solid = true, parent: THREE.Object3D = this.scene, { tile = 0, round = 0 } = {}) {
     if (!list.length) return null;
-    const geos = list.map(({ at, size }) => new THREE.BoxGeometry(...size).translate(...at));
+    const geos = list.map(({ at, size }) => {
+      const g = shape(size, round).translate(...at);
+      return tile ? worldUv(g, tile) : g;
+    });
     const mesh = new THREE.Mesh(mergeGeometries(geos), material);
     geos.forEach((g) => g.dispose());
     mesh.castShadow = mesh.receiveShadow = !this.phone;
@@ -195,8 +268,9 @@ export class World {
   }
 
   /** A box in the world; solid ones also block the player. */
-  box(at: [number, number, number], size: [number, number, number], material: THREE.Material, solid = true) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
+  box(at: [number, number, number], size: [number, number, number], material: THREE.Material, solid = true, { tile = 0, round = 0 } = {}) {
+    const geo = shape(size, round);
+    const mesh = new THREE.Mesh(tile ? worldUv(geo, tile, at) : geo, material);
     mesh.position.set(...at);
     mesh.castShadow = mesh.receiveShadow = !this.phone;
     this.scene.add(mesh);
@@ -213,8 +287,9 @@ export class World {
     this.sun = d;
     this.scene.add(d.target);
     d.castShadow = !this.phone;
-    d.shadow.mapSize.set(1024, 1024);
-    Object.assign(d.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 140 });
+    d.shadow.mapSize.set(2048, 2048);
+    d.shadow.bias = -0.0004; d.shadow.normalBias = 0.03;
+    Object.assign(d.shadow.camera, { left: -36, right: 36, top: 36, bottom: -36, near: 1, far: 160 });
     this.scene.add(d);
     return d;
   }
@@ -309,7 +384,7 @@ export class Controls {
       this.off.push(() => t.removeEventListener(k, f as EventListener, o));
     };
     on(window, 'keydown', (e) => {
-      if (e.metaKey || e.ctrlKey) return;
+      if (e.metaKey || e.ctrlKey || (e.target as HTMLElement)?.tagName === 'INPUT') return;
       const k = e.key.toLowerCase();
       if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
       if (!e.repeat) {
@@ -385,6 +460,9 @@ export class Body {
           if (this.vel.y <= 0) { this.pos.y = s.max.y; this.ground = true; floor = s; } else this.pos.y = s.min.y - this.half.y * 2;
           this.vel.y = 0;
         } else {
+          // Standing on it (or touching it overhead) isn't walking into it: without this, a jump
+          // (rising, so not on the ground) pushed you out sideways to the edge of what you stood on.
+          if (s.max.y <= this.pos.y + 1e-3 || s.min.y >= this.pos.y + this.half.y * 2 - 1e-3) continue;
           // A low step (under 0.45) is climbed instead of blocking.
           if (s.max.y - this.pos.y < 0.45 && this.vel.y <= 0) { this.pos.y = s.max.y; continue; }
           this.pos[axis] = this.vel[axis] > 0 ? s.min[axis] - this.half[axis] - 0.001 : s.max[axis] + this.half[axis] + 0.001;
@@ -400,9 +478,10 @@ export class Body {
 /** Eases a value toward a target, the same at any frame rate. */
 export const approach = (v: number, to: number, rate: number, dt: number) => v + (to - v) * (1 - Math.exp(-rate * dt));
 
-/** Walking and jumping from the controls: speeds up and slows down smoothly, faces where it goes. */
-export function walk(b: Body, c: Controls, dt: number, { speed = 7, run = 1.45, jump = 10.5, air = 0.35 } = {}) {
-  const w = c.wish(), top = speed * (c.running ? run : 1), grip = b.ground ? 14 : 14 * air;
+/** Walking and jumping from the controls: speeds up and slows down smoothly, faces where it goes.
+ *  `grip` is how fast you change speed on the ground (low on ice, so you slide). */
+export function walk(b: Body, c: Controls, dt: number, { speed = 7, run = 1.45, jump = 10.5, air = 0.35, grip: hold = 14 } = {}) {
+  const w = c.wish(), top = speed * (c.running ? run : 1), grip = b.ground ? hold : 14 * air;
   b.vel.x = approach(b.vel.x, w.x * top, grip, dt);
   b.vel.z = approach(b.vel.z, w.y * top, grip, dt);
   const jumped = c.take('jump') && b.ground;
@@ -416,9 +495,10 @@ export class Avatar {
   private limbs: THREE.Mesh[] = [];
   private swing = 0;
   constructor(color = 0xec4899, { skin = 0xf5c9a0, legs = 0x1f2937, face = true, hat = 'none' as string } = {}) {
-    const mat = (c: number) => new THREE.MeshLambertMaterial({ color: c });
+    const mat = (c: number, rough = 0.8) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: 0 });
     const part = (size: [number, number, number], at: [number, number, number], m: THREE.Material, pivotTop = false) => {
-      const g = new THREE.BoxGeometry(...size);
+      // Softly rounded blocks catch highlights along their edges, like a real toy figure.
+      const g = new RoundedBoxGeometry(size[0], size[1], size[2], 3, Math.min(...size) * 0.18);
       if (pivotTop) g.translate(0, -size[1] / 2, 0);
       const mesh = new THREE.Mesh(g, m);
       mesh.position.set(...at);
@@ -426,19 +506,24 @@ export class Avatar {
       this.group.add(mesh);
       return mesh;
     };
-    part([0.9, 0.9, 0.45], [0, 1.25, 0], mat(color));
-    const head = part([0.55, 0.55, 0.55], [0, 1.98, 0], face ? [mat(skin), mat(skin), mat(skin), mat(skin), new THREE.MeshLambertMaterial({ map: faceTexture() }), mat(skin)] as unknown as THREE.Material : mat(skin));
+    part([0.9, 0.9, 0.45], [0, 1.25, 0], mat(color, 0.85));
+    const head = part([0.55, 0.55, 0.55], [0, 1.98, 0], mat(skin, 0.55));
+    if (face) {
+      // The face as a thin plate on the front, so the rounded head keeps its shape.
+      const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.46), new THREE.MeshStandardMaterial({ map: faceTexture(), transparent: true, roughness: 0.5 }));
+      plate.position.set(0, 1.98, 0.279); this.group.add(plate);
+    }
     head.castShadow = true;
     this.hat(hat, head.position.y + 0.28);
     this.limbs = [
-      part([0.32, 0.85, 0.32], [-0.62, 1.68, 0], mat(skin), true), part([0.32, 0.85, 0.32], [0.62, 1.68, 0], mat(skin), true),
-      part([0.42, 0.85, 0.42], [-0.23, 0.85, 0], mat(legs), true), part([0.42, 0.85, 0.42], [0.23, 0.85, 0], mat(legs), true),
+      part([0.32, 0.85, 0.32], [-0.62, 1.68, 0], mat(skin, 0.55), true), part([0.32, 0.85, 0.32], [0.62, 1.68, 0], mat(skin, 0.55), true),
+      part([0.42, 0.85, 0.42], [-0.23, 0.85, 0], mat(legs, 0.9), true), part([0.42, 0.85, 0.42], [0.23, 0.85, 0], mat(legs, 0.9), true),
     ];
   }
   /** A hat on the head (the looks unlocked by level, PlayerCard.tsx). */
   private hat(kind: string, top: number) {
     const add = (g: THREE.BufferGeometry, color: number, at: [number, number, number], glow = false) => {
-      const m = new THREE.Mesh(g, glow ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshLambertMaterial({ color }));
+      const m = new THREE.Mesh(g, glow ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.1 }));
       m.position.set(...at); m.castShadow = true; this.group.add(m); return m;
     };
     if (kind === 'cap') { add(new THREE.BoxGeometry(0.6, 0.16, 0.6), 0xec4899, [0, top + 0.06, 0]); add(new THREE.BoxGeometry(0.5, 0.05, 0.3), 0xbe185d, [0, top, 0.4]); }
@@ -474,14 +559,20 @@ let faceTex: THREE.CanvasTexture | null = null;
 function faceTexture() {
   if (faceTex) return faceTex;
   const c = document.createElement('canvas');
-  c.width = c.height = 64;
+  c.width = c.height = 256;
   const g = c.getContext('2d')!;
-  g.fillStyle = '#f5c9a0'; g.fillRect(0, 0, 64, 64);
-  g.fillStyle = '#111'; g.fillRect(18, 20, 7, 11); g.fillRect(39, 20, 7, 11);
-  g.strokeStyle = '#111'; g.lineWidth = 4; g.beginPath(); g.arc(32, 36, 13, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke();
+  // Eyes: white, a dark iris, a highlight; brows; a smile; a little blush.
+  for (const x of [84, 172]) {
+    g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(x, 104, 26, 32, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#1f2937'; g.beginPath(); g.ellipse(x + 2, 110, 15, 19, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#ffffff'; g.beginPath(); g.arc(x + 8, 100, 6, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#3b2a1e'; g.lineWidth = 9; g.lineCap = 'round'; g.beginPath(); g.moveTo(x - 24, 62); g.quadraticCurveTo(x, 50, x + 24, 60); g.stroke();
+  }
+  g.fillStyle = 'rgba(244,114,182,0.28)'; g.beginPath(); g.ellipse(58, 160, 22, 12, 0, 0, Math.PI * 2); g.ellipse(198, 160, 22, 12, 0, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#3b2a1e'; g.lineWidth = 10; g.lineCap = 'round'; g.beginPath(); g.arc(128, 150, 40, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke();
   faceTex = new THREE.CanvasTexture(c);
   faceTex.colorSpace = THREE.SRGBColorSpace;
-  faceTex.magFilter = THREE.NearestFilter;
+  faceTex.anisotropy = 4;
   return faceTex;
 }
 

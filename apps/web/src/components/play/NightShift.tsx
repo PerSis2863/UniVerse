@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Battery, Heart, KeyRound } from 'lucide-react';
 import { GAMES } from '@/lib/play';
-import { NIGHT_CAUGHT, NIGHT_ESCAPE, NIGHT_FLOOR, NIGHT_FLOORS, NIGHT_KEY, NIGHT_LIVES, NIGHT_PER_SECOND, NIGHT_STUN, NIGHT_STUN_COOLDOWN_S, NIGHT_STUN_S, mazeNext, mazeStep, nightKeys, nightMaze } from '@/lib/play/worlds';
+import { NIGHT_CAUGHT, NIGHT_ESCAPE, NIGHT_FLOOR, NIGHT_FLOORS, NIGHT_KEY, NIGHT_HIDE_COOLDOWN_S, NIGHT_HIDE_S, NIGHT_LIVES, NIGHT_PER_SECOND, NIGHT_SEEN_M, NIGHT_STUN, NIGHT_STUN_COOLDOWN_S, NIGHT_STUN_S, mazeNext, mazeStep, nightKeys, nightMaze } from '@/lib/play/worlds';
 import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import type { GameProps } from './game-props';
 import { Body, Controls, THREE, World, eyes, glowSprite, walk } from './world/core';
 import { lookHex, readLook } from './PlayerCard';
 import { Crowd } from './world/crowd';
+import { surface } from './world/textures';
 import { SkillRing, WorldFrame } from './world/Stage';
 
 // Night Shift (18+, src/lib/play/worlds.ts): first person in a dark school after hours, three
@@ -22,29 +23,6 @@ import { SkillRing, WorldFrame } from './world/Stage';
 const S = 5; // metres per maze cell
 const H = 3.4;
 
-function lockers() {
-  const c = document.createElement('canvas');
-  c.width = 256; c.height = 128;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#3d4a45'; g.fillRect(0, 0, 256, 128);
-  for (let i = 0; i < 4; i++) {
-    g.fillStyle = i % 2 ? '#45534d' : '#41504a'; g.fillRect(i * 64 + 3, 6, 58, 112);
-    g.fillStyle = '#26302c'; for (let v = 0; v < 4; v++) g.fillRect(i * 64 + 16, 16 + v * 6, 32, 2);
-    g.fillStyle = '#9aa5a0'; g.fillRect(i * 64 + 50, 60, 4, 12);
-  }
-  g.fillStyle = 'rgba(80,20,20,0.35)'; g.fillRect(40, 90, 30, 28); // a stain
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping;
-  return t;
-}
-function tiles() {
-  const c = document.createElement('canvas');
-  c.width = c.height = 128;
-  const g = c.getContext('2d')!;
-  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { g.fillStyle = (x + y) % 2 ? '#2b2a27' : '#4a4740'; g.fillRect(x * 32, y * 32, 32, 32); }
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return t;
-}
-
 /** Echo (M38): a sound pulse shows every wall and the thing through walls for a moment, but it hears you. */
 const ECHO_SHOW_S = 2.6, ECHO_REFILL_S = 14, ECHO_RUSH_S = 4;
 
@@ -52,7 +30,7 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
   const canvas = useRef<HTMLCanvasElement>(null);
   const controls = useRef<Controls | null>(null);
   const arena = useArena();
-  const [hud, setHud] = useState({ keys: 0, need: nightKeys(0), floor: 0, lives: NIGHT_LIVES, battery: 100, stamina: 100, near: 0, scare: 0, open: false });
+  const [hud, setHud] = useState({ keys: 0, need: nightKeys(0), floor: 0, lives: NIGHT_LIVES, battery: 100, stamina: 100, near: 0, scare: 0, open: false, hidden: false, hideLeft: 0, canHide: false });
   const [skill, setSkill] = useState({ charge: 1, active: false, others: 0, pulse: 0 });
   const [curtain, setCurtain] = useState<{ key: number; title: string; sub?: string } | null>(null);
   const out = useRef({ arena, onProgress, onDone, onStats, clock, endsAt, net });
@@ -61,25 +39,24 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
   useEffect(() => {
     const el = canvas.current;
     if (!el) return;
-    const w = new World(el, { fov: 75, bg: 0x000000, fog: [0x000000, 1.5, 20], glow: { strength: 0.75, radius: 0.6, threshold: 0.55 } });
-    const crowd = new Crowd(w, out.current.net), look = readLook();
+    const w = new World(el, { fov: 75, bg: 0x000000, fog: [0x000000, 1.5, 20], glow: { strength: 0.75, radius: 0.6, threshold: 0.55 }, env: 0.08 });
+    const crowd = new Crowd(w, () => out.current.net), look = readLook();
     let echoLines: THREE.LineSegments | null = null;
     w.renderer.shadowMap.enabled = false;
     const c = new Controls(el, { sensitivity: 0.0022 });
     controls.current = c;
     w.scene.add(new THREE.HemisphereLight(0x223344, 0x000000, 0.12));
-    const wallT = lockers(); wallT.repeat.set(2, 1);
-    const wallMat = new THREE.MeshLambertMaterial({ map: wallT });
-    const floorT = tiles();
-    const floorMat = new THREE.MeshLambertMaterial({ map: floorT }), ceilMat = new THREE.MeshLambertMaterial({ color: 0x14130f });
+    // Painted metal lockers, scuffed checkered tiles that shine in the torch, a stained ceiling.
+    const wallMat = surface('lockers', { metal: 0.35, rough: 0.9 });
+    const floorMat = surface('tiles', { rough: 0.85, bump: 0.8 }), ceilMat = surface('concrete', { color: 0x3a3832, rough: 1 });
     const keyMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
     const V = { me: new THREE.Vector3(), toT: new THREE.Vector3(), fwd: new THREE.Vector3(), toG: new THREE.Vector3(), q: new THREE.Vector3(), ray: new THREE.Ray(), flat: new THREE.Vector3() };
 
     // The thing in the halls: pale, tall, faceless but for two holes.
     const ghost = new THREE.Group();
-    const robe = new THREE.Mesh(new THREE.ConeGeometry(0.55, 2.3, 16, 1, true), new THREE.MeshLambertMaterial({ color: 0xd9dde3, emissive: 0x2a2d33, transparent: true, opacity: 0.92, side: THREE.DoubleSide }));
+    const robe = new THREE.Mesh(new THREE.ConeGeometry(0.55, 2.3, 16, 1, true), new THREE.MeshStandardMaterial({ color: 0xd9dde3, emissive: 0x2a2d33, roughness: 0.95, transparent: true, opacity: 0.92, side: THREE.DoubleSide }));
     robe.position.y = 1.15;
-    const headG = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12), new THREE.MeshLambertMaterial({ color: 0xe5e7eb, emissive: 0x1f2125 }));
+    const headG = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12), new THREE.MeshStandardMaterial({ color: 0xe5e7eb, emissive: 0x1f2125, roughness: 0.6 }));
     headG.position.y = 2.35;
     const holeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
     for (const x of [-0.1, 0.1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), holeMat); e.position.set(x, 2.38, 0.26); ghost.add(e); }
@@ -106,9 +83,8 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
       group.traverse((o) => { const mm = o as THREE.Mesh; if (mm.geometry && mm.geometry !== robe.geometry) mm.geometry.dispose(); });
       floor = f; m = nightMaze(seed, f); n = m.n; group = new THREE.Group(); w.scene.add(group);
       w.solids = [];
-      floorT.repeat.set(n * 2, n * 2);
-      w.boxes([{ at: [n * S / 2, -0.25, n * S / 2], size: [n * S, 0.5, n * S] }], floorMat, true, group);
-      w.boxes([{ at: [n * S / 2, H + 0.25, n * S / 2], size: [n * S, 0.5, n * S] }], ceilMat, false, group);
+      w.boxes([{ at: [n * S / 2, -0.25, n * S / 2], size: [n * S, 0.5, n * S] }], floorMat, true, group, { tile: 4 });
+      w.boxes([{ at: [n * S / 2, H + 0.25, n * S / 2], size: [n * S, 0.5, n * S] }], ceilMat, false, group, { tile: 5 });
       const list: { at: [number, number, number]; size: [number, number, number] }[] = [
         { at: [n * S / 2, H / 2, 0], size: [n * S, H, 0.4] }, { at: [0, H / 2, n * S / 2], size: [0.4, H, n * S] },
       ];
@@ -118,7 +94,7 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
         if (!(cell % n < n - 1 && m.east[cell])) list.push({ at: [p.x + S / 2, H / 2, p.z], size: [0.4, H, S + 0.4] });
         if (!(cell < n * (n - 1) && m.south[cell])) list.push({ at: [p.x, H / 2, p.z + S / 2], size: [S + 0.4, H, 0.4] });
       }
-      const wallMesh = w.boxes(list, wallMat, true, group);
+      const wallMesh = w.boxes(list, wallMat, true, group, { tile: H });
       // The outline Echo lights up (drawn through everything while it shows).
       echoLines = wallMesh ? new THREE.LineSegments(new THREE.EdgesGeometry(wallMesh.geometry, 30), new THREE.LineBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 0, depthTest: false, fog: false })) : null;
       if (echoLines) { echoLines.renderOrder = 5; echoLines.visible = false; group.add(echoLines); }
@@ -151,6 +127,9 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
     build(0);
 
     let keysGot = 0, allKeys = 0, lives = NIGHT_LIVES, battery = 100, stamina = 100, score = 0, stun = 0, stuns = 0, coolUntil = 0, retreatUntil = 0, safeUntil = 2, beat = 0, bob = 0, done = false, caught = 0, lastHud = 0;
+    // Hiding: in a locker the torch is off and it loses you (it wanders to a random hall).
+    let hidden = false, hideUntil = 0, hideCool = 0, lostUntil = 0, wander = 0, canHide = false;
+    const hideRay = new THREE.Ray(), hideHit = new THREE.Vector3(), flatFwd = new THREE.Vector3();
     const report = () => {
       out.current.onProgress(score, allKeys);
       out.current.onStats?.([{ label: 'Floors', value: `${Math.min(NIGHT_FLOORS, floor + (done && lives > 0 ? 1 : 0))} of ${NIGHT_FLOORS}` }, { label: 'Keys', value: String(allKeys) }, { label: 'Times caught', value: String(caught) }, { label: 'Drove it back', value: String(stuns) }]);
@@ -165,14 +144,26 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
       const running = c.running && stamina > 2;
       stamina = Math.max(0, Math.min(100, stamina + (running && body.vel.lengthSq() > 1 ? -22 : 12) * dt));
       if (!running && c.keys.has('shift')) c.keys.delete('shift');
-      walk(body, c, dt, { speed: 4.3, run: 1.55, jump: 0 });
+      // A locker is right in front of you when a wall is within reach of where you look.
+      flatFwd.set(0, 0, -1).applyQuaternion(w.camera.quaternion).setY(0).normalize();
+      hideRay.set(w.camera.position, flatFwd);
+      canHide = !hidden && t > hideCool && walls.some((s) => hideRay.intersectBox(s, hideHit) && hideHit.distanceTo(w.camera.position) < 1.4);
+      if (c.take('act')) {
+        if (hidden) { hidden = false; hideCool = t + NIGHT_HIDE_COOLDOWN_S; lostUntil = t + 3; out.current.arena.sfx('land'); }
+        else if (canHide) {
+          if (ghost.position.distanceTo(V.flat.copy(body.pos).setY(ghost.position.y)) < NIGHT_SEEN_M) out.current.arena.announce('It saw you!', 'bad');
+          else { hidden = true; hideUntil = t + NIGHT_HIDE_S; wander = Math.floor(Math.random() * n * n); out.current.arena.sfx('land'); }
+        }
+      }
+      if (hidden && t > hideUntil) { hidden = false; hideCool = t + NIGHT_HIDE_COOLDOWN_S; lostUntil = t + 3; }
+      if (hidden) body.vel.set(0, body.vel.y, 0); else walk(body, c, dt, { speed: 4.3, run: 1.55, jump: 0 });
       body.step(dt, w.solids);
       const sp = Math.hypot(body.vel.x, body.vel.z);
       bob += dt * sp * 2.1;
       eyes(w.camera, body.pos, c, 1.6, Math.sin(bob) * 0.05 * Math.min(1, sp / 4));
       // The torch: drains, flickers when low.
-      battery = Math.max(0, battery - dt * (0.45 + (stun > 0 ? 2.2 : 0)));
-      torch.intensity = battery <= 0 ? 4 : battery < 15 ? (Math.sin(t * 40) > 0.2 ? 30 : 6) : 40;
+      if (!hidden) battery = Math.max(0, battery - dt * (0.45 + (stun > 0 ? 2.2 : 0)));
+      torch.intensity = hidden ? 0 : battery <= 0 ? 4 : battery < 15 ? (Math.sin(t * 40) > 0.2 ? 30 : 6) : 40;
       for (const f of flicker) f.l.intensity = Math.sin(t * 7 + f.seedV) + Math.sin(t * 23 + f.seedV * 2) > 1.6 ? 0.4 : 6;
       // Keys and batteries.
       const me = V.me.copy(body.pos).setY(1.1);
@@ -212,7 +203,7 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
       echo = Math.min(1, echo + dt / ECHO_REFILL_S);
       const showing = t - echoAt < ECHO_SHOW_S, fade = showing ? Math.max(0, 1 - (t - echoAt) / ECHO_SHOW_S) : 0;
       if (echoLines) { echoLines.visible = showing; (echoLines.material as THREE.LineBasicMaterial).opacity = fade * 0.9; }
-      for (const part of [robe, headG]) { const mt = part.material as THREE.MeshLambertMaterial; mt.depthTest = !showing; part.renderOrder = showing ? 6 : 0; }
+      for (const part of [robe, headG]) { const mt = part.material as THREE.MeshStandardMaterial; mt.depthTest = !showing; part.renderOrder = showing ? 6 : 0; }
       if (t - skillAt > 0.15) { skillAt = t; setSkill((p) => (Math.abs(p.charge - echo) < 0.02 && p.active === showing && p.others === crowd.count ? p : { ...p, charge: echo, active: showing, others: crowd.count })); }
       const speed = retreatUntil > t ? 3.2 : (1.9 + floor * 0.35 + keysGot * 0.3) * (t < rushUntil ? 1.6 : 1);
       const target = center(gTo, V.toT);
@@ -220,7 +211,7 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
       if (target.length() < 0.15) {
         gCell = gTo;
         if (retreatUntil > t) { const away = mazeNext(m, gCell).sort((a, b) => center(b, V.q).distanceTo(body.pos) - center(a, V.flat).distanceTo(body.pos)); gTo = away[0] ?? gCell; }
-        else gTo = mazeStep(m, gCell, myCell);
+        else gTo = mazeStep(m, gCell, hidden || lostUntil > t ? wander : myCell);
       } else { const len = target.length(); ghost.position.addScaledVector(target.normalize(), Math.min(len, speed * dt)); }
       ghost.position.y = Math.sin(t * 2) * 0.08;
       ghost.lookAt(body.pos.x, ghost.position.y, body.pos.z);
@@ -229,9 +220,9 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
       const fwd = V.fwd.set(0, 0, -1).applyQuaternion(w.camera.quaternion);
       const toG = V.toG.copy(ghost.position).setY(1.6).sub(w.camera.position);
       const gl = toG.length();
-      let lit = battery > 0 && dist < 15 && fwd.angleTo(toG) < 0.26;
+      let lit = !hidden && battery > 0 && dist < 15 && fwd.angleTo(toG) < 0.26;
       if (lit) { V.ray.set(w.camera.position, V.q.copy(toG).normalize()); const hit = new THREE.Vector3(); lit = !walls.some((s) => V.ray.intersectBox(s, hit) && hit.distanceTo(w.camera.position) < gl - 0.5); }
-      (robe.material as THREE.MeshLambertMaterial).emissive.setHex(showing ? 0xb91c1c : lit ? 0x8a8f99 : 0x2a2d33);
+      (robe.material as THREE.MeshStandardMaterial).emissive.setHex(showing ? 0xb91c1c : lit ? 0x8a8f99 : 0x2a2d33);
       if (lit && t > coolUntil) {
         stun += dt;
         if (stun >= NIGHT_STUN_S) { stun = 0; stuns++; score += NIGHT_STUN; coolUntil = t + NIGHT_STUN_COOLDOWN_S; retreatUntil = t + 5; out.current.arena.sfx('zap'); out.current.arena.announce('It backed away', 'good'); report(); }
@@ -240,7 +231,7 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
       beat -= dt;
       if (dist < 16 && beat <= 0) { out.current.arena.sfx('heart'); beat = Math.max(0.35, dist / 11); }
       // Caught.
-      if (dist < 1.15 && t > safeUntil) {
+      if (dist < 1.15 && t > safeUntil && !hidden) {
         caught++; lives--; score = Math.max(0, score - NIGHT_CAUGHT);
         out.current.arena.sfx('scream'); out.current.arena.shake(1.6); w.shake(1);
         setHud((h) => ({ ...h, scare: h.scare + 1 }));
@@ -253,7 +244,7 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
       crowd.update(dt, { pos: body.pos, ry: c.yaw + Math.PI, air: false, part: floor, color: lookHex(look), hat: look.hat });
       if (t - lastHud > 0.2) {
         lastHud = t;
-        setHud((h) => ({ ...h, keys: keysGot, need, floor, lives, battery: Math.round(battery), stamina: Math.round(stamina), near: Math.max(0, Math.min(1, 1 - dist / 14)), open: keysGot === need }));
+        setHud((h) => ({ ...h, keys: keysGot, need, floor, lives, battery: Math.round(battery), stamina: Math.round(stamina), near: Math.max(0, Math.min(1, 1 - dist / 14)), open: keysGot === need, hidden, hideLeft: hidden ? Math.max(0, (hideUntil - t) / NIGHT_HIDE_S) : 0, canHide }));
       }
     });
     return () => { c.dispose(); controls.current = null; w.dispose(); };
@@ -261,12 +252,22 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <WorldFrame canvas={canvas} controls={controls} buttons={[{ id: 'skill', label: 'Echo' }]} keys="WASD walk · Shift run · the mouse looks · Q echo" label="Night Shift: a dark 3D school maze" curtain={curtain} others={skill.others}>
+      <WorldFrame net={net} canvas={canvas} controls={controls} buttons={[{ id: 'skill', label: 'Echo' }, { id: 'act', label: 'Hide' }]} keys="WASD walk · Shift run · the mouse looks · E hide in a locker · Q echo" label="Night Shift: a dark 3D school maze" curtain={curtain} others={skill.others}>
         {skill.pulse > 0 && <span key={skill.pulse} className="play-echo pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full" aria-hidden />}
         {/* Dread: the edges darken and the picture crawls with static as it nears */}
         <div className="pointer-events-none absolute inset-0 transition-opacity duration-300" style={{ opacity: hud.near, boxShadow: 'inset 0 0 180px 60px rgba(0,0,0,0.95)' }} aria-hidden />
         <div className="play-static pointer-events-none absolute inset-0 mix-blend-screen transition-opacity duration-300" style={{ opacity: hud.near * 0.25 }} aria-hidden />
         {hud.scare > 0 && <Scare key={hud.scare} />}
+        {/* Inside a locker: dark, light through the vent slits, a bar for how long you can stay */}
+        {hud.hidden && (
+          <div className="play-locker pointer-events-none absolute inset-0 grid place-items-center" aria-live="polite">
+            <div className="rounded-2xl bg-black/70 px-4 py-2 text-center ring-1 ring-white/10">
+              <p className="text-sm font-bold text-white">Hiding… <span className="text-zinc-300">E to come out</span></p>
+              <div className="mx-auto mt-1.5 h-1.5 w-40 overflow-hidden rounded-full bg-white/10"><div className="h-full w-full origin-left rounded-full bg-emerald-400 transition-transform duration-200 rtl:origin-right" style={{ transform: `scaleX(${hud.hideLeft})` }} /></div>
+            </div>
+          </div>
+        )}
+        {hud.canHide && !hud.hidden && <p className="pointer-events-none absolute bottom-24 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/15">E · hide in the locker</p>}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-start gap-2">
           <SkillRing label="Echo" keyName="Q" charge={skill.charge} active={skill.active} />
           <div className="rounded-2xl bg-black/60 px-3 py-2 ring-1 ring-white/10"><p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-300">Floor</p><p className="text-lg font-black leading-tight text-white tabular-nums">{hud.floor + 1}/{NIGHT_FLOORS}</p></div>

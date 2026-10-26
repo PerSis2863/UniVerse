@@ -1,7 +1,8 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { GAMES, GAME_IDS, ageOn, cleanRoomCode, cleanScore, isGame, newRoomCode, tooYoung, type GameId } from '@/lib/play';
+import { iceServers } from './calls';
+import { GAMES, GAME_IDS, VOICE_MIN_AGE, ageOn, cleanRoomCode, cleanScore, isGame, newRoomCode, tooYoung, type GameId } from '@/lib/play';
 import { BadRequestException, NotFoundException } from './http';
 import type { Body } from './body';
 
@@ -65,13 +66,15 @@ export function shortName(name: string | null | undefined) {
 export async function roomTicket(u: SessionUser, rawCode: string) {
   const code = cleanRoomCode(rawCode);
   if (!code) throw new NotFoundException('Room codes have 6 letters and numbers.');
-  const me = await prisma.user.findUnique({ where: { id: u.id }, select: { avatar: true } });
-  const res = await roomCall(code, '/ticket', { userId: u.id, name: shortName(u.name), avatar: me?.avatar ?? null });
+  const me = await prisma.user.findUnique({ where: { id: u.id }, select: { avatar: true, dateOfBirth: true } });
+  // Voice in rooms (M39) is for 13 and over: an account whose birth date says younger gets text only.
+  const age = ageOn(me?.dateOfBirth), voice = age === null || age >= VOICE_MIN_AGE;
+  const res = await roomCall(code, '/ticket', { userId: u.id, name: shortName(u.name), avatar: me?.avatar ?? null, voice });
   if (!res) throw new BadRequestException(OFFLINE);
   if (res.status === 409) throw new BadRequestException('That room is full (8 players).');
   if (!res.ok) throw new NotFoundException('No room has that code. Check it, or ask for a new link.');
   const { ticket } = (await res.json()) as { ticket: string };
-  return { path: `/play-live?room=${code}&ticket=${encodeURIComponent(ticket)}` };
+  return { path: `/play-live?room=${code}&ticket=${encodeURIComponent(ticket)}`, voice, ice: voice ? await iceServers() : [] };
 }
 
 const DAY = 86_400_000;

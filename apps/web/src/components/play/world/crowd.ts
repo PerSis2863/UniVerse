@@ -7,7 +7,26 @@ import { Avatar, THREE, type World } from './core';
 // fades out when its player leaves. Only players in the same part of the world (the same obby
 // world, school floor or station) are shown. This player's own position goes up the same way.
 
-interface Other { av: Avatar; tag: THREE.Sprite; at: THREE.Vector3; prev: THREE.Vector3; vel: THREE.Vector3; ry: number; c: number; h: string; seen: number }
+interface Other { av: Avatar; tag: THREE.Sprite; bubble: THREE.Sprite | null; bubbleText: string; ring: THREE.Mesh; at: THREE.Vector3; prev: THREE.Vector3; vel: THREE.Vector3; ry: number; c: number; h: string; seen: number }
+
+/** What a player said, as a white speech bubble (M39). */
+function bubbleOf(text: string) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 128;
+  const g = c.getContext('2d')!;
+  g.font = '600 34px system-ui, sans-serif';
+  const shown = text.length > 34 ? `${text.slice(0, 33)}…` : text;
+  const w = Math.min(500, g.measureText(shown).width + 48);
+  g.fillStyle = 'rgba(255,255,255,0.95)';
+  g.beginPath(); g.roundRect(256 - w / 2, 10, w, 80, 28); g.fill();
+  g.beginPath(); g.moveTo(240, 88); g.lineTo(256, 116); g.lineTo(272, 88); g.fill();
+  g.fillStyle = '#111827'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(shown, 256, 51);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true }));
+  s.scale.set(4, 1, 1);
+  return s;
+}
 
 function nameTag(name: string, color: number) {
   const c = document.createElement('canvas');
@@ -31,7 +50,12 @@ function nameTag(name: string, color: number) {
 export class Crowd {
   private others = new Map<string, Other>();
   private target = new THREE.Vector3();
-  constructor(private w: World, private net?: Net) {}
+  private fwd = new THREE.Vector3();
+  private talk = new Set<string>();
+  private talkAt = 0;
+  /** `net` is read fresh each frame (the room's chat and voice change while the round runs). */
+  constructor(private w: World, private getNet: () => Net | undefined) {}
+  private get net() { return this.getNet(); }
 
   /** Each frame: send where I am, move everyone else toward where they were last seen. */
   update(dt: number, me: { pos: THREE.Vector3; ry: number; air: boolean; part: number; color: number; hat: string }) {
@@ -39,6 +63,7 @@ export class Crowd {
     if (!net) return;
     net.sendPos({ x: me.pos.x, y: me.pos.y, z: me.pos.z, ry: me.ry, a: me.air ? 1 : 0, w: me.part, c: me.color, h: me.hat });
     const now = performance.now(), peers = net.peers.current;
+    const live = net.voice.live.current, talking = live && now - this.talkAt > 100 ? (this.talkAt = now, this.talk = live.talking().ids) : this.talk;
     for (const [id, p] of peers) {
       let o = this.others.get(id);
       const gone = now - p.at > 3000;
@@ -49,9 +74,12 @@ export class Crowd {
         const av = new Avatar(p.c, { hat: p.h });
         const tag = nameTag(p.name, p.c);
         tag.position.y = 2.75; av.group.add(tag);
+        // A green ring at their feet while they talk.
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.7, 32), new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 0.05; av.group.add(ring);
         av.group.position.copy(this.target);
         this.w.scene.add(av.group);
-        o = { av, tag, at: this.target.clone(), prev: this.target.clone(), vel: new THREE.Vector3(), ry: p.ry, c: p.c, h: p.h, seen: now };
+        o = { av, tag, bubble: null, bubbleText: '', ring, at: this.target.clone(), prev: this.target.clone(), vel: new THREE.Vector3(), ry: p.ry, c: p.c, h: p.h, seen: now };
         this.others.set(id, o);
       }
       o.seen = now;
@@ -64,8 +92,23 @@ export class Crowd {
       o.ry += d * (1 - Math.exp(-14 * dt));
       o.av.facing = o.ry;
       o.av.update(dt, o.vel, p.a < 0.5);
+      // What they said last, for five seconds, over their head.
+      const line = net.said.current.get(id), showLine = line && now - line.at < 5000 ? line.text : '';
+      if (showLine !== o.bubbleText) {
+        if (o.bubble) { o.av.group.remove(o.bubble); (o.bubble.material as THREE.SpriteMaterial).map?.dispose(); o.bubble = null; }
+        if (showLine) { o.bubble = bubbleOf(showLine); o.bubble.position.y = 3.55; o.av.group.add(o.bubble); }
+        o.bubbleText = showLine;
+      }
+      const ringMat = o.ring.material as THREE.MeshBasicMaterial;
+      ringMat.opacity += ((talking.has(id) ? 0.9 : 0) - ringMat.opacity) * Math.min(1, dt * 12);
     }
     for (const id of this.others.keys()) if (!peers.has(id)) this.drop(id);
+    // Voices come from where each player stands, heard from the camera.
+    if (live) {
+      const cam = this.w.camera;
+      cam.getWorldDirection(this.fwd);
+      live.place({ x: cam.position.x, y: cam.position.y, z: cam.position.z, fx: this.fwd.x, fy: this.fwd.y, fz: this.fwd.z }, (id) => this.others.get(id)?.av.group.position ?? null);
+    }
   }
 
   /** How many others are in sight (for the HUD). */
@@ -76,6 +119,7 @@ export class Crowd {
     if (!o) return;
     this.w.scene.remove(o.av.group);
     (o.tag.material as THREE.SpriteMaterial).map?.dispose();
+    if (o.bubble) (o.bubble.material as THREE.SpriteMaterial).map?.dispose();
     this.others.delete(id);
   }
 }

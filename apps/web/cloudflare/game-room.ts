@@ -1,4 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
+import { cleanChat } from '../src/lib/play-chat';
 import { COUNTDOWN_MS, GAMES, MAX_PLAYERS, cleanPos, cleanScore, isGame, ranked, type GameId, type RoomPhase, type RoomPlayer, type RoomState } from '../src/lib/play';
 
 // UniVerse Play (M31): one room per code (src/lib/play.ts). The app creates it (POST /create), hands
@@ -11,7 +12,7 @@ import { COUNTDOWN_MS, GAMES, MAX_PLAYERS, cleanPos, cleanScore, isGame, ranked,
 interface Env { DB?: D1Database }
 
 /** One connected socket (kept on it, so it survives hibernation). */
-interface Seat { sid: string; userId: string; name: string; avatar: string | null; score: number; step: number; done: boolean }
+interface Seat { sid: string; userId: string; name: string; avatar: string | null; score: number; step: number; done: boolean; voice?: boolean }
 
 interface Room { code: string; game: GameId; phase: RoomPhase; seed: number; startsAt: number; endsAt: number; hostId: string | null; round: number; touched: number }
 
@@ -22,10 +23,17 @@ const GRACE_MS = 1_500; // late scores from slow connections still count
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 /** 3D worlds (M38): a player's position goes on to the others at most this often (ms). */
 const POS_EVERY_MS = 70;
+/** Chat (M39): one message per this long per person; voice handshakes may be bigger than the rest. */
+const CHAT_EVERY_MS = 800;
+const RTC_MAX = 8_000;
+/** Voice messages per person per 10 s (a handshake needs about 10–20). */
+const RTC_PER_10S = 40;
 
 export class GameRoom extends DurableObject<Env> {
   /** When each socket last sent a position (in memory: forgetting it on hibernation is harmless). */
   private posAt = new Map<string, number>();
+  private chatAt = new Map<string, number>();
+  private rtcWin = new Map<string, { at: number; n: number }>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -96,7 +104,7 @@ export class GameRoom extends DurableObject<Env> {
 
     // From the app: a one-time ticket for a signed-in person.
     if (url.pathname === '/ticket' && request.method === 'POST') {
-      const who = (await request.json().catch(() => null)) as { userId?: string; name?: string; avatar?: string | null } | null;
+      const who = (await request.json().catch(() => null)) as { userId?: string; name?: string; avatar?: string | null; voice?: boolean } | null;
       if (!who?.userId) return json({ error: 'bad request' }, 400);
       const r = await this.room();
       if (!r || now - r.touched > IDLE_MS) return json({ error: 'not found' }, 404);
@@ -105,13 +113,13 @@ export class GameRoom extends DurableObject<Env> {
       const stale = [...(await this.ctx.storage.list<{ exp: number }>({ prefix: 'ticket:' }))].filter(([, t]) => t.exp < now).map(([k]) => k);
       if (stale.length) await this.ctx.storage.delete(stale.slice(0, 128));
       const ticket = crypto.randomUUID();
-      await this.ctx.storage.put(`ticket:${ticket}`, { userId: who.userId, name: (who.name || 'Player').slice(0, 40), avatar: who.avatar ?? null, exp: now + TICKET_TTL_MS });
+      await this.ctx.storage.put(`ticket:${ticket}`, { userId: who.userId, name: (who.name || 'Player').slice(0, 40), avatar: who.avatar ?? null, voice: who.voice === true, exp: now + TICKET_TTL_MS });
       return json({ ticket });
     }
 
     if (url.pathname === '/play-live') {
       const key = `ticket:${url.searchParams.get('ticket')}`;
-      const t = await this.ctx.storage.get<{ userId: string; name: string; avatar: string | null; exp: number }>(key);
+      const t = await this.ctx.storage.get<{ userId: string; name: string; avatar: string | null; voice?: boolean; exp: number }>(key);
       if (!t) return new Response('Forbidden', { status: 403 });
       await this.ctx.storage.delete(key); // single use
       const r = await this.room();
@@ -119,8 +127,10 @@ export class GameRoom extends DurableObject<Env> {
       const { 0: client, 1: server } = new WebSocketPair();
       this.ctx.acceptWebSocket(server);
       // Someone arriving mid-round watches it and plays the next one.
-      const seat: Seat = { sid: crypto.randomUUID(), userId: t.userId, name: t.name, avatar: t.avatar, score: 0, step: 0, done: r.phase === 'playing' };
+      const seat: Seat = { sid: crypto.randomUUID(), userId: t.userId, name: t.name, avatar: t.avatar, score: 0, step: 0, done: r.phase === 'playing', voice: t.voice === true };
       server.serializeAttachment(seat);
+      // Who this socket is (for voice handshakes) and whether it may use voice.
+      server.send(JSON.stringify({ t: 'hello', id: seat.sid, voice: seat.voice }));
       this.rehost(r);
       await this.save(r);
       this.broadcast(r);
@@ -131,8 +141,8 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
-    if (typeof raw !== 'string' || raw.length > 2_000) return;
-    let m: { t?: string; score?: unknown; step?: unknown; game?: unknown };
+    if (typeof raw !== 'string' || raw.length > RTC_MAX) return;
+    let m: { t?: string; score?: unknown; step?: unknown; game?: unknown; text?: unknown; on?: unknown; to?: unknown; sdp?: unknown; ice?: unknown };
     try { m = JSON.parse(raw); } catch { return; }
     const seat = ws.deserializeAttachment() as Seat | null;
     const r = await this.room();
@@ -140,6 +150,33 @@ export class GameRoom extends DurableObject<Env> {
     const now = Date.now();
     const host = seat.userId === r.hostId;
 
+    if (raw.length > 2_000 && m.t !== 'rtc') return;
+    // Chat: checked (cleanChat: the safety check, no links or numbers), then shared with everyone.
+    if (m.t === 'chat') {
+      if (now - (this.chatAt.get(seat.sid) ?? 0) < CHAT_EVERY_MS) return;
+      this.chatAt.set(seat.sid, now);
+      const c = cleanChat(m.text);
+      if ('blocked' in c) { try { ws.send(JSON.stringify({ t: 'chat-no', reason: c.blocked })); } catch { /* closing */ } return; }
+      const msg = JSON.stringify({ t: 'chat', id: seat.sid, name: seat.name, text: c.text, at: now });
+      for (const { ws: other } of this.seats()) { try { other.send(msg); } catch { /* closing */ } }
+      return;
+    }
+    // Voice: on/off and the WebRTC handshakes, only between people allowed to use it.
+    if (m.t === 'voice' || m.t === 'rtc') {
+      if (!seat.voice) return;
+      const win = this.rtcWin.get(seat.sid);
+      if (!win || now - win.at > 10_000) this.rtcWin.set(seat.sid, { at: now, n: 1 });
+      else if (++win.n > RTC_PER_10S) return;
+      const to = typeof m.to === 'string' ? m.to : null;
+      const msg = m.t === 'voice'
+        ? JSON.stringify({ t: 'voice', id: seat.sid, name: seat.name, on: m.on === true, reply: !!to })
+        : JSON.stringify({ t: 'rtc', from: seat.sid, sdp: m.sdp ?? null, ice: m.ice ?? null });
+      for (const { ws: other, s: o } of this.seats()) {
+        if (other === ws || !o.voice || (to && o.sid !== to) || (m.t === 'rtc' && !to)) continue;
+        try { other.send(msg); } catch { /* closing */ }
+      }
+      return;
+    }
     // A position in a 3D world: passed straight on to everyone else, never stored.
     if (m.t === 'pos') {
       if (r.phase !== 'playing' || !GAMES[r.game].world || now - (this.posAt.get(seat.sid) ?? 0) < POS_EVERY_MS) return;
@@ -188,7 +225,9 @@ export class GameRoom extends DurableObject<Env> {
   async webSocketClose(ws: WebSocket, code: number) {
     try { ws.close(code === 1005 || code === 1006 ? 1000 : code); } catch { /* already closed */ }
     const seat = ws.deserializeAttachment() as Seat | null;
-    if (seat) this.posAt.delete(seat.sid);
+    if (seat) { this.posAt.delete(seat.sid); this.chatAt.delete(seat.sid); this.rtcWin.delete(seat.sid); }
+    // Their voice stops for everyone else.
+    if (seat?.voice) for (const { ws: other } of this.seats()) { try { other.send(JSON.stringify({ t: 'voice', id: seat.sid, name: seat.name, on: false })); } catch { /* closing */ } }
     const r = await this.room();
     if (!r || !seat) return;
     if (!this.seats().some(({ s }) => s.userId === seat.userId)) this.rehost(r, seat.userId);
