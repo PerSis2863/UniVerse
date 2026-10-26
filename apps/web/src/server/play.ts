@@ -2,7 +2,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { iceServers } from './calls';
-import { GAMES, GAME_IDS, VOICE_MIN_AGE, ageOn, cleanRoomCode, cleanScore, isGame, newRoomCode, tooYoung, type GameId } from '@/lib/play';
+import { GAMES, GAME_IDS, VOICE_MIN_AGE, ageOn, cleanRoomCode, cleanScore, isGame, newRoomCode, tooYoung, xpPar, type GameId } from '@/lib/play';
 import { BadRequestException, NotFoundException } from './http';
 import type { Body } from './body';
 
@@ -116,7 +116,7 @@ export async function playMe(u: SessionUser) {
     multi: counts.find((c) => c.game === g && c.mode === 'multi')?._count._all ?? 0,
   }])) as Record<GameId, { best: number; solo: number; multi: number }>;
   // Experience: each game's total score as a share of its best possible round, ×1000.
-  const xp = best.reduce((n, b) => n + (isGame(b.game) ? Math.round(((b._sum.score ?? 0) / GAMES[b.game].maxScore) * 1000) : 0), 0);
+  const xp = best.reduce((n, b) => n + (isGame(b.game) ? Math.round(((b._sum.score ?? 0) / xpPar(b.game)) * 1000) : 0), 0);
   return { games, played: counts.reduce((n, c) => n + c._count._all, 0), recent, age, xp };
 }
 

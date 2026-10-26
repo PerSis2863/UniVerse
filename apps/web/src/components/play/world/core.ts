@@ -34,8 +34,9 @@ const GradeShader = {
 };
 
 const PHONE = () => matchMedia('(pointer: coarse)').matches;
-/** The buttons a game reads: jump, fire, act (E/F), and its special skill (Q/R). */
-export type Button = 'jump' | 'fire' | 'act' | 'skill';
+/** The buttons a game reads: jump, fire, act (E/F), and its special skill (Q/R); Ridgeline Ops also
+ *  aims (right mouse), swaps guns, heals and throws (its own keys, and phone buttons). */
+export type Button = 'jump' | 'fire' | 'act' | 'skill' | 'aim' | 'swap' | 'heal' | 'throw' | 'crouch' | 'plate' | 'inv' | 'nvg';
 
 /** The renderer, scene and camera, sized to the canvas's box; `loop` runs once per frame. */
 /** A box, with rounded edges when `round` is set (kept under half its thinnest side). */
@@ -378,7 +379,10 @@ export class Controls {
   held = new Set<Exclude<Button, 'jump'>>();
   private off: (() => void)[] = [];
 
-  constructor(private el: HTMLElement, { lock = true, sensitivity = 0.0024 } = {}) {
+  /** How far down and up the view can tilt (first person needs more than the chase camera). */
+  private pitchRange: [number, number];
+  constructor(private el: HTMLElement, { lock = true, sensitivity = 0.0024, pitch = [-1.2, 0.9] as [number, number] } = {}) {
+    this.pitchRange = pitch;
     const on = <K extends keyof WindowEventMap>(t: EventTarget, k: K, f: (e: WindowEventMap[K]) => void, o?: AddEventListenerOptions) => {
       t.addEventListener(k, f as EventListener, o);
       this.off.push(() => t.removeEventListener(k, f as EventListener, o));
@@ -404,6 +408,8 @@ export class Controls {
     on(window, 'mouseup', () => this.held.delete('fire'));
     on(window, 'mousemove', (e) => {
       if (document.pointerLockElement !== el) return;
+      // Browsers sometimes report one huge jump just after the pointer locks: skip it, or the view spins.
+      if (Math.abs(e.movementX) > 250 || Math.abs(e.movementY) > 250) return;
       this.turn(e.movementX * sensitivity, e.movementY * sensitivity);
     });
   }
@@ -414,7 +420,7 @@ export class Controls {
 
   turn(dx: number, dy: number) {
     this.yaw -= dx;
-    this.pitch = Math.max(-1.2, Math.min(0.9, this.pitch - dy));
+    this.pitch = Math.max(this.pitchRange[0], Math.min(this.pitchRange[1], this.pitch - dy));
   }
 
   /** Where the player wants to go this frame, relative to where the camera faces (length ≤ 1). */
@@ -492,7 +498,8 @@ export function walk(b: Body, c: Controls, dt: number, { speed = 7, run = 1.45, 
 /** A Roblox-style blocky character: head with a face, body, arms and legs that swing as it walks. */
 export class Avatar {
   group = new THREE.Group();
-  private limbs: THREE.Mesh[] = [];
+  /** Arms (0, 1) then legs (2, 3); shooters pose the arms after `update`. */
+  limbs: THREE.Mesh[] = [];
   private swing = 0;
   constructor(color = 0xec4899, { skin = 0xf5c9a0, legs = 0x1f2937, face = true, hat = 'none' as string } = {}) {
     const mat = (c: number, rough = 0.8) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: 0 });

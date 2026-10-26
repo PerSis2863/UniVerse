@@ -11,7 +11,7 @@ import { TouchPad } from './TouchPad';
 // The frame every 3D world plays in: the canvas, the game's own overlays (its HUD), the phone
 // controls, and on a computer a hint to click (the mouse then turns the camera; Esc frees it).
 
-export function WorldFrame({ canvas, controls, buttons, keys, children, label, curtain, others = 0, net }: {
+export function WorldFrame({ canvas, controls, buttons, keys, children, label, curtain, others = 0, net, className = 'h-[min(76vh,760px)]' }: {
   canvas: React.RefObject<HTMLCanvasElement | null>; controls: React.RefObject<Controls | null>;
   buttons: { id: Button; label: string }[]; keys: string; label: string; children?: React.ReactNode;
   /** A title card between floors, worlds or stations (a new key shows it again). */
@@ -20,6 +20,8 @@ export function WorldFrame({ canvas, controls, buttons, keys, children, label, c
   others?: number;
   /** In a room: chat and voice (M39). */
   net?: Net;
+  /** The frame's height (Ridgeline Ops plays taller). */
+  className?: string;
 }) {
   const calm = useReducedMotion();
   const [locked, setLocked] = useState(false);
@@ -29,7 +31,7 @@ export function WorldFrame({ canvas, controls, buttons, keys, children, label, c
     return () => document.removeEventListener('pointerlockchange', on);
   }, [canvas]);
   return (
-    <div className="relative h-[min(76vh,760px)] min-h-[420px] w-full select-none overflow-hidden rounded-[1.75rem] bg-black ring-1 ring-white/10">
+    <div className={`relative ${className} min-h-[420px] w-full select-none overflow-hidden rounded-[1.75rem] bg-black ring-1 ring-white/10`}>
       <canvas ref={canvas} className="absolute inset-0 h-full w-full cursor-crosshair outline-none" tabIndex={0} aria-label={label} />
       {children}
       {others > 0 && <span className="pointer-events-none absolute bottom-16 end-4 inline-flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white ring-1 ring-white/15 [@media(pointer:coarse)]:bottom-auto [@media(pointer:coarse)]:top-[7.5rem]"><Users className="h-3.5 w-3.5" aria-hidden />{others} here with you</span>}

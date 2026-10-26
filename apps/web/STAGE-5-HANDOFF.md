@@ -2121,3 +2121,55 @@ features in all the games… make them big enough".
 - Cost: chat is one tiny socket message per line; voice adds a few handshake messages per pair.
   Trap: the React compiler lint refuses changes to a ref's contents after a `useEffect` that uses
   the same ref; put such effects after `useGameCanvas`.
+
+## M40 · Ridgeline Ops: the open-world extraction shooter (26 Oct 2026, merged, PR #98)
+
+The owner: "replace this game with neon strike… open world tactical shooter… inspired by" a Roblox
+rescue game, then a full overhaul "inspired by Call of Duty: DMZ and Escape from Tarkov". Only
+ideas are borrowed: every name, model, sound and rule is our own (made-up gun names, no copied
+assets, nothing taken apart). Neon Strike is gone; the game id is `ops` (the live database had no
+`strike` scores). 16+, 15-minute rounds.
+
+- **Rules, all tested** (`src/lib/play/ops/`, `ops.test.ts`): `arsenal.ts` (21 guns in 6 classes,
+  fire modes, 5 rarities with legendary names, 15 attachments in 5 slots, damage falloff, recoil),
+  `items.ts` (valuables, meds, grenades, plates, helmets and vests T1–3, packs 8/12/16 slots, ammo
+  pools, the 4-slot secure container, weights, containers and soldier loot), `map.ts` (the seeded
+  800 m island: six places, a village, four landing zones, two SAM sites, roads, keys carried by
+  officers, drops at 200/520 s, the convoy at 330 s), `rules.ts` (armour and plates, bleeding,
+  fractures, adrenaline, stamina, buy station, contracts, score). **Score** is only what you
+  *extract* that you looted this raid, plus kills, places and hostages; `opsCeiling` proves the
+  cap (`maxScore` 500,000; XP uses `par` 40,000 through `xpPar`).
+- **Game** (`src/components/play/ops/`): `game.ts` runs it all (phases safehouse → insert → raid
+  → exfil / down, the range); `render.ts` (tone mapping, height fog, cascaded shadows + ambient
+  occlusion + bloom on high, a second scene for the hands, the 8× scope picture, quality tiers);
+  `sky.ts` (16:00 → 23:00, rain and lightning); `terrain.ts` (five blended surfaces); `foliage.ts`;
+  `structures.ts`; `operator.ts` (skinned soldiers); `guns.ts` + `viewmodel.ts` (first-person gun
+  and hands, aiming down the sights, recoil, reload/plate/med animations); `player.ts` (sprint,
+  tactical sprint, slide, crouch, prone, vault, lean, swim); `weapons.ts` (bullets with drop and
+  travel time, grenades); `ai.ts` (squads: perception, cover, flanking, medics, snipers with laser
+  glint, radio); `vehicles.ts`, `events.ts` (helicopters, plane, drops, mortar), `audio.ts`,
+  `stash.ts` (the safehouse, saved on the device: `uv-ops-safehouse-v1`), `menus.tsx`,
+  `RidgelineOps.tsx` (HUD).
+- **Quality:** phones and `uv-ops-quality` = `low`; strong computers `high`. To try another on
+  one device: `localStorage.setItem('uv-ops-quality', 'medium')`. `uv-ops-debug` = `1` puts the
+  game on `window.__ops` (tests and tuning only).
+- **Speed work in this item** (measured, not guessed): sandbags and boxes with fewer rounded
+  segments (one mesh had 189k triangles), far trees as one cone/ball, bigger tree tiles off high,
+  others' guns and vehicles merged into one mesh per material (`merge.ts`), small props and
+  soldiers far from the camera not drawn (soldiers keep thinking), the ground on low uses every
+  other vertex, ground textures not sampled where their weight is zero. The headless test browser
+  draws in software (SwiftShader), so its frame rate (2–4) says nothing about a real phone; there,
+  the ground's pixels and the skinned soldiers are the costs that matter.
+- **Bugs fixed on the way:** the first mouse move after the pointer locks could jump hundreds of
+  pixels and spin the view (now ignored, `world/core.ts`, all 3D worlds); Esc in the bag, map or
+  buy station opened "Leave the game?" instead of closing it; the phone HUD overlapped (weapon
+  panel under the minimap, buttons in three columns).
+- **Tested:** unit tests; play-throughs at 1280 and 390 (safehouse, landing, walk, fire, aim,
+  reload, bag, map; no console errors); a fast-forward test of buying, driving, the whole
+  extraction (call, waves, landing, boarding, bank) and the range; axe clean at 390/1280, light
+  and dark.
+- **Traps:** `three` checks `object.visible === false`, so `visible = undefined` *shows* an object.
+  Others' guns come from `liteGun` (cached and merged): don't look for named parts on them. A
+  material patched for fog/shadows must go through `r.patch` / `r.prep` (they compose
+  `onBeforeCompile` and set the cache key). Test against the dev server in one command
+  (start, test, stop) rather than leaving it running.

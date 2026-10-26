@@ -3,7 +3,7 @@ import { GAMES, type GameId } from '@/lib/play';
 import { cn } from '@/lib/utils';
 
 // Each UniVerse Play game's mark: its icon on a tile in the game's colour, with a soft glow.
-export const GAME_ICON: Record<GameId, typeof Brain> = { quiz: Brain, fakes: ScanSearch, supply: Truck, sort: Recycle, type: Keyboard, pin: Globe2, rescue: LifeBuoy, ocean: Ship, obby: Footprints, strike: Crosshair, night: Ghost, orbit: Rocket };
+export const GAME_ICON: Record<GameId, typeof Brain> = { quiz: Brain, fakes: ScanSearch, supply: Truck, sort: Recycle, type: Keyboard, pin: Globe2, rescue: LifeBuoy, ocean: Ship, obby: Footprints, ops: Crosshair, night: Ghost, orbit: Rocket };
 
 export function GameIcon({ game, size = 'md', className }: { game: GameId; size?: 'sm' | 'md' | 'lg'; className?: string }) {
   const Icon = GAME_ICON[game], color = GAMES[game].color;

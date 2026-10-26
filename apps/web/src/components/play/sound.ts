@@ -6,7 +6,8 @@
 // browsers require.
 
 export type Sfx = 'tick' | 'go' | 'right' | 'wrong' | 'combo' | 'pick' | 'drop' | 'splash' | 'boost' | 'power' | 'end' | 'win' | 'whoosh' | 'key' | 'alarm' | 'thunder'
-  | 'laser' | 'hit' | 'boom' | 'jump' | 'land' | 'coin' | 'check' | 'scream' | 'heart' | 'hurt' | 'repair' | 'zap';
+  | 'laser' | 'hit' | 'boom' | 'jump' | 'land' | 'coin' | 'check' | 'scream' | 'heart' | 'hurt' | 'repair' | 'zap'
+  | 'gun' | 'shot' | 'reload' | 'chop' | 'ding' | 'heal' | 'crate' | 'legend';
 
 const KEY = 'uv-play-sound';
 let ac: AudioContext | null = null;
@@ -14,6 +15,9 @@ let noise: AudioBuffer | null = null;
 
 export const soundOn = () => { try { return localStorage.getItem(KEY) !== 'off'; } catch { return true; } };
 export function setSoundOn(on: boolean) { try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch { /* private mode */ } }
+
+/** The shared audio context, once a tap has started it (Ridgeline Ops builds its own mix on it). */
+export const audioContext = () => ac;
 
 /** Starts the audio (call from a tap). */
 export function unlockAudio() {
@@ -24,6 +28,9 @@ export function unlockAudio() {
   if (ac.state === 'suspended') void ac.resume();
 }
 
+/** Loudness for the sound being played (sfx's `loud`: far-off shots are quieter). */
+let loudness = 1;
+
 function tone(freq: number, at: number, dur: number, { type = 'sine', vol = 0.12, to }: { type?: OscillatorType; vol?: number; to?: number } = {}) {
   if (!ac) return;
   const o = ac.createOscillator(), g = ac.createGain();
@@ -31,7 +38,7 @@ function tone(freq: number, at: number, dur: number, { type = 'sine', vol = 0.12
   o.frequency.setValueAtTime(freq, at);
   if (to) o.frequency.exponentialRampToValueAtTime(to, at + dur);
   g.gain.setValueAtTime(0.0001, at);
-  g.gain.exponentialRampToValueAtTime(vol, at + 0.012);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol * loudness), at + 0.012);
   g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
   o.connect(g).connect(ac.destination);
   o.start(at);
@@ -51,16 +58,17 @@ function hiss(at: number, dur: number, { vol = 0.1, from = 800, to = 3000, q = 0
   f.frequency.setValueAtTime(from, at);
   f.frequency.exponentialRampToValueAtTime(to, at + dur);
   g.gain.setValueAtTime(0.0001, at);
-  g.gain.exponentialRampToValueAtTime(vol, at + 0.02);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol * loudness), at + 0.02);
   g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
   src.connect(f).connect(g).connect(ac.destination);
   src.start(at);
   src.stop(at + dur + 0.02);
 }
 
-/** Plays a sound; `level` raises the pitch (combos, streaks). */
-export function sfx(name: Sfx, level = 0) {
-  if (!ac || ac.state !== 'running' || !soundOn()) return;
+/** Plays a sound; `level` raises the pitch (combos, streaks), `loud` (0–1) turns it down. */
+export function sfx(name: Sfx, level = 0, loud = 1) {
+  if (!ac || ac.state !== 'running' || !soundOn() || loud < 0.02) return;
+  loudness = Math.min(1, loud);
   const t = ac.currentTime, up = Math.pow(1.06, Math.min(level, 14));
   switch (name) {
     case 'tick': tone(880, t, 0.06, { type: 'square', vol: 0.04 }); break;
@@ -92,5 +100,15 @@ export function sfx(name: Sfx, level = 0) {
     case 'hurt': tone(300, t, 0.2, { type: 'sawtooth', vol: 0.08, to: 110 }); break;
     case 'repair': tone(440 * up, t, 0.05, { type: 'square', vol: 0.03 }); break;
     case 'zap': hiss(t, 0.2, { vol: 0.08, from: 5000, to: 1500, q: 2 }); break;
+    // Ridgeline Ops: a sharp crack with a thump under it, a far-off pop, a magazine out and in,
+    // the rotor's beat, the headshot ding, a medkit, a crate's lid, a legendary find.
+    case 'gun': hiss(t, 0.16, { vol: 0.16, from: 3800 * up, to: 240, q: 0.7 }); tone(130, t, 0.11, { vol: 0.14, to: 45 }); break;
+    case 'shot': hiss(t, 0.22, { vol: 0.09, from: 1600, to: 180, q: 0.6 }); break;
+    case 'reload': tone(1900, t, 0.025, { type: 'square', vol: 0.04 }); hiss(t + 0.05, 0.08, { vol: 0.05, from: 2500, to: 1200, q: 2 }); tone(1400, t + 0.42, 0.03, { type: 'square', vol: 0.05 }); tone(900, t + 0.5, 0.04, { type: 'square', vol: 0.04 }); break;
+    case 'chop': tone(64, t, 0.09, { vol: 0.16, to: 44 }); hiss(t, 0.07, { vol: 0.05, from: 600, to: 160, q: 0.6 }); break;
+    case 'ding': tone(1760, t, 0.16, { type: 'triangle', vol: 0.09 }); tone(2640, t + 0.02, 0.12, { type: 'sine', vol: 0.04 }); break;
+    case 'heal': [392, 494, 587, 784].forEach((f, i) => tone(f, t + i * 0.1, 0.22, { type: 'sine', vol: 0.07 })); break;
+    case 'crate': hiss(t, 0.3, { vol: 0.08, from: 700, to: 2400, q: 0.8 }); tone(180, t, 0.12, { type: 'triangle', vol: 0.08, to: 120 }); break;
+    case 'legend': [784, 988, 1175, 1568, 1976].forEach((f, i) => tone(f, t + i * 0.07, 0.4, { type: 'triangle', vol: 0.08 })); hiss(t, 0.6, { vol: 0.04, from: 4000, to: 9000, q: 1 }); break;
   }
 }
