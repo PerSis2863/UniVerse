@@ -2122,7 +2122,7 @@ features in all the games… make them big enough".
   Trap: the React compiler lint refuses changes to a ref's contents after a `useEffect` that uses
   the same ref; put such effects after `useGameCanvas`.
 
-## M40 · Ridgeline Ops: the open-world extraction shooter (26 Oct 2026, on the branch)
+## M40 · Ridgeline Ops: the open-world extraction shooter (26 Oct 2026, merged, PR #98)
 
 The owner: "replace this game with neon strike… open world tactical shooter… inspired by" a Roblox
 rescue game, then a full overhaul "inspired by Call of Duty: DMZ and Escape from Tarkov". Only
