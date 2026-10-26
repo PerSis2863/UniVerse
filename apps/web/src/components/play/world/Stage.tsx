@@ -13,7 +13,9 @@ import { TouchPad } from './TouchPad';
 
 export function WorldFrame({ canvas, controls, buttons, keys, children, label, curtain, others = 0, net, className = 'h-[min(76vh,760px)]' }: {
   canvas: React.RefObject<HTMLCanvasElement | null>; controls: React.RefObject<Controls | null>;
-  buttons: { id: Button; label: string }[]; keys: string; label: string; children?: React.ReactNode;
+  buttons: { id: Button; label: string }[];
+  /** The keys hint along the bottom (empty: the game shows its own controls). */
+  keys: string; label: string; children?: React.ReactNode;
   /** A title card between floors, worlds or stations (a new key shows it again). */
   curtain?: { key: number; title: string; sub?: string } | null;
   /** Other players in sight (rooms). */
@@ -47,7 +49,7 @@ export function WorldFrame({ canvas, controls, buttons, keys, children, label, c
       </AnimatePresence>
       <TouchPad controls={controls} buttons={buttons} />
       {net && <RoomChat net={net} frame={canvas} />}
-      {!locked && (
+      {!locked && keys && (
         <p className="pointer-events-none absolute inset-x-0 bottom-4 mx-auto hidden w-fit items-center gap-2 rounded-full bg-black/65 px-4 py-2 text-xs font-medium text-white ring-1 ring-white/15 [@media(pointer:fine)]:flex">
           <MousePointer2 className="h-3.5 w-3.5" aria-hidden />Click to look around · {keys}{net ? ' · Enter chat' : ''} · Esc frees the mouse
         </p>

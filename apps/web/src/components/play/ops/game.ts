@@ -21,7 +21,7 @@ import { Sky } from './sky';
 import { loadSafehouse, saveSafehouse, kitFor, type Safehouse } from './stash';
 import { ContainerMesh, buildPlaces, kiosk } from './structures';
 import { U, Water, roads, terrain } from './terrain';
-import type { Callbacks, HudRefs, HudState, Menu, Phase } from './types';
+import type { Callbacks, HudRefs, HudState, Menu, Phase, SupportKind } from './types';
 import { Vehicle } from './vehicles';
 import { Viewmodel } from './viewmodel';
 import { Bullets, Throwables, type Hit, type Target } from './weapons';
@@ -80,6 +80,8 @@ export class OpsGame {
   private pendingNade: 'frag' | 'flash' | 'smoke' | null = null;
   /** Looking through the binoculars to mark an airstrike. */
   supportAim = false;
+  /** Kills in a row (since going down) and the killstreak rewards waiting to be used. */
+  streak = 0; supportHave: SupportKind[] = [];
   private crowd: Crowd;
   private range: { group: THREE.Group; targets: { at: THREE.Vector3; mesh: THREE.Mesh; dist: number }[] } | null = null;
   private shake = 0; private flashUntil = 0; private desatAt = -9; private detect = 0;
@@ -244,9 +246,10 @@ export class OpsGame {
     this.r.finish.flash = Math.min(1, flash * 1.2);
     this.r.finish.desat = Math.max(0, 1 - (t - this.desatAt) / 0.6) * 0.5 + (this.hp < 30 ? 0.35 : 0);
     this.r.finish.nvg = this.nvg ? 1 : 0;
+    this.r.finish.ads = this.vm.group.visible ? this.vm.ads * this.vm.ads * (3 - 2 * this.vm.ads) : 0;
     this.shake = Math.max(0, this.shake - dt * 1.6);
     // The gun's handling bumps the view a little (a magazine seated, the bolt slamming home, each shot).
-    if (this.vm.group.visible) { cam.rotation.x += this.vm.camKick.pos.x; cam.rotation.z += this.vm.camKick.pos.z; }
+    if (this.vm.group.visible) { cam.rotation.x += this.vm.camKick.pos.x; cam.rotation.y += this.vm.camKick.pos.y; cam.rotation.z += this.vm.camKick.pos.z; }
     if (this.shake > 0 && !matchMedia('(prefers-reduced-motion: reduce)').matches) { const s = this.shake * this.shake; cam.rotation.x += (Math.sin(t * 61) + Math.sin(t * 23)) * 0.006 * s; cam.rotation.y += (Math.sin(t * 53 + 1) + Math.sin(t * 19)) * 0.006 * s; }
     this.audio.update({ height: cam.position.y, rain: w.wet, night: w.night, engine: this.vehicle ? Math.min(1, Math.abs(this.vehicle.speed) / this.vehicle.spec.top) : 0, rotor: this.rotorLoud(), breath: P.stamina < 25 || P.holding ? 1 : 0, time: t });
     this.r.update(this.phase === 'raid' ? P.body.pos : cam.position);
@@ -415,7 +418,8 @@ export class OpsGame {
     if (I.take('splint')) this.useMed('splint');
     if (I.take('adrenaline')) this.useMed('adrenaline');
     if (I.take('frag')) this.throwNade('frag');
-    if (I.take('flash')) this.throwNade('flash');
+    // V: your tactical grenade, a flashbang if you have one, otherwise smoke.
+    if (I.take('flash')) this.throwNade(bagCount(l, (it) => it.kind === 'nade' && it.nade === 'flash') ? 'flash' : 'smoke');
     if (I.take('extract')) this.tryExtract();
     void stats;
   }
@@ -457,9 +461,9 @@ export class OpsGame {
       this.audio.ui('heal');
     });
   }
-  private throwNade(kind: 'frag' | 'flash') {
+  private throwNade(kind: 'frag' | 'flash' | 'smoke') {
     if (this.actionUntil > this.t) return;
-    if (!bagTake(this.loadout, (it) => it.kind === 'nade' && it.nade === kind, 1)) { this.cb.feed({ kind: 'bad', text: kind === 'frag' ? 'No frag grenades' : 'No flashbangs' }); return; }
+    if (!bagTake(this.loadout, (it) => it.kind === 'nade' && it.nade === kind, 1)) { this.cb.feed({ kind: 'bad', text: kind === 'frag' ? 'No frag grenades' : 'No flashbangs or smoke' }); return; }
     // The hand takes it out, pulls the pin and throws; it leaves the hand at the release.
     this.pendingNade = kind; this.vm.toss(kind);
     this.busy('', 0.85, () => {});
@@ -509,7 +513,7 @@ export class OpsGame {
     this.heat = Math.min(3, this.heat + 0.12 * (s.cls === 'lmg' ? 1.4 : 1));
     if (s.bolt) { this.boltUntil = t + s.bolt; setTimeout(() => this.audio.reload(s.cls === 'shotgun' ? 'pump' : 'bolt'), 200); }
     if (s.mods.flash) { this.fx.muzzle(muzzle, this.look); this.muzzleLight.position.copy(muzzle); this.muzzleLight.intensity = 30; this.muzzleUntil = t + 0.035; } else this.vm.hideFlash();
-    if (s.cls !== 'shotgun' && !s.bolt) this.fx.eject(this.v.c.copy(this.vm.portAt(this.v.c)).applyMatrix4(cam.matrixWorld), this.right, UP);
+    if (s.cls !== 'shotgun' && !s.bolt) this.fx.eject(this.v.c.copy(this.vm.portAt(this.v.c)).applyMatrix4(cam.matrixWorld), this.right, UP, 0.3);
     this.audio.gun(0, 0, { heavy: s.cls === 'marksman' ? 1.5 : s.cls === 'lmg' ? 1.15 : s.cls === 'pistol' ? 0.7 : s.cls === 'smg' ? 0.8 : s.cls === 'shotgun' ? 1.4 : 1, suppressed: s.mods.noise < 0.3, mine: true });
     this.squads.noise(P.body.pos, 190 * s.mods.noise, s.mods.noise > 0.5);
     if (gun.mag === 0 && ammoIn(this.loadout, s.pool) > 0) setTimeout(() => this.startReload(), 160);
@@ -1214,7 +1218,7 @@ export class OpsGame {
       heavy: loadoutWeight(l) > carryLimit(l), hidden: this.foliage.inBush(P.body.pos.x, P.body.pos.z) && P.stance !== 'stand', swimming: P.swimming, stamina: Math.round(P.stamina),
       gun: g && s ? { name: s.name, rarity: g.rarity, cls: s.cls, mag: g.mag, magMax: s.mag, reserve: ammoIn(l, s.pool), mode: g.mode, modes: [...WEAPONS[g.base].modes], att: Object.values(g.att).filter(Boolean) as string[] } : null,
       slot: this.slot, slots: [l.primary[0], l.primary[1], l.sidearm].map((x) => ({ name: x ? WEAPONS[x.base].name : '—', rarity: x?.rarity ?? 0 })),
-      frags: bagCount(l, (it) => it.kind === 'nade' && it.nade === 'frag'), flashes: bagCount(l, (it) => it.kind === 'nade' && it.nade === 'flash'), spares: bagCount(l, (it) => it.kind === 'plate'),
+      frags: bagCount(l, (it) => it.kind === 'nade' && it.nade === 'frag'), flashes: bagCount(l, (it) => it.kind === 'nade' && it.nade === 'flash'), smokes: bagCount(l, (it) => it.kind === 'nade' && it.nade === 'smoke'), support: { have: [...this.supportHave], streak: this.streak }, spares: bagCount(l, (it) => it.kind === 'plate'),
       meds: { bandage: bagCount(l, (it) => it.kind === 'med' && it.med === 'bandage'), firstaid: bagCount(l, (it) => it.kind === 'med' && it.med === 'firstaid'), adrenaline: bagCount(l, (it) => it.kind === 'med' && it.med === 'adrenaline'), splint: bagCount(l, (it) => it.kind === 'med' && it.med === 'splint') },
       cash: l.cash, fresh: freshValue(l), banked: this.banked + this.combat, kills: this.kills,
       prompt: this.phase === 'raid' || this.phase === 'range' ? this.prompt : '', objective: this.objective(),

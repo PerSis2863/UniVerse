@@ -65,52 +65,64 @@ function flashTextures() {
   return flashTex;
 }
 
-/** One arm: upper arm (ripstop sleeve), elbow, forearm with the sleeve rolled and a watch on the
- *  left wrist, and a gloved hand whose fingers (two joints each) and thumb curl. */
-const UPPER = 0.31, FORE = 0.3, Y = new THREE.Vector3(0, 1, 0);
+/** One arm: upper arm and forearm in a baggy camouflage shirt (the sleeve rolled toward the wrist),
+ *  a GPS watch on the left wrist, and a tactical glove (padded knuckle guards, a velcro wrist strap)
+ *  whose five fingers each have three joints. */
+const UPPER = 0.36, FORE = 0.34, Y = new THREE.Vector3(0, 1, 0);
+type Finger = { a: THREE.Group; b: THREE.Group; c: THREE.Group };
 class Arm {
   group = new THREE.Group();
   hand = new THREE.Group();
   private upper: THREE.Mesh; private fore: THREE.Mesh; private elbow: THREE.Mesh; private roll: THREE.Mesh;
-  private fingers: { a: THREE.Group; b: THREE.Group }[] = [];
-  private thumb: { a: THREE.Group; b: THREE.Group };
+  private fingers: Finger[] = [];
+  private thumb: Finger;
   private e = new THREE.Vector3(); private w = new THREE.Vector3(); private d = new THREE.Vector3(); private p = new THREE.Vector3(); private q = new THREE.Quaternion();
-  constructor(private side: 1 | -1, m: { sleeve: THREE.Material; base: THREE.Material; glove: THREE.Material; pad: THREE.Material; steel: THREE.Material }) {
-    const limb = (r0: number, r1: number, mat: THREE.Material) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, 1, 12, 1).translate(0, 0.5, 0), mat);
-    this.upper = limb(0.052, 0.046, m.sleeve); this.fore = limb(0.041, 0.034, m.base);
-    this.elbow = new THREE.Mesh(new THREE.SphereGeometry(0.047, 12, 8), m.sleeve);
-    // The sleeve rolled up just under the elbow.
-    this.roll = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.07, 12).translate(0, 0.07, 0), m.sleeve);
+  constructor(private side: 1 | -1, m: { sleeve: THREE.Material; glove: THREE.Material; pad: THREE.Material; strap: THREE.Material; steel: THREE.Material; screen: THREE.Material }) {
+    const limb = (r0: number, r1: number, mat: THREE.Material) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, 1, 16, 1).translate(0, 0.5, 0), mat);
+    this.upper = limb(0.066, 0.06, m.sleeve); this.fore = limb(0.055, 0.042, m.sleeve);
+    this.elbow = new THREE.Mesh(new THREE.SphereGeometry(0.061, 16, 10), m.sleeve);
+    // The rolled cuff, thick and folded, most of the way down the forearm.
+    this.roll = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.014, 8, 18).rotateX(Math.PI / 2), m.sleeve);
     this.group.add(this.upper, this.elbow, this.fore, this.roll, this.hand);
-    // The hand (x across the knuckles, y the back of the hand, fingers toward −z).
-    const palm = new THREE.Mesh(new RoundedBoxGeometry(0.082, 0.032, 0.088, 2, 0.012), m.glove);
-    const pad = new THREE.Mesh(new RoundedBoxGeometry(0.074, 0.012, 0.028, 2, 0.005), m.pad); pad.position.set(0, 0.019, -0.03);
-    const shell = new THREE.Mesh(new RoundedBoxGeometry(0.05, 0.008, 0.04, 2, 0.003), m.pad); shell.position.set(0, 0.018, 0.012);
-    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.043, 0.04, 0.045, 12).rotateX(Math.PI / 2), m.glove); cuff.position.set(0, 0, 0.058);
-    this.hand.add(palm, pad, shell, cuff);
-    const seg = (len: number, r: number) => new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 3, 8).rotateX(Math.PI / 2).translate(0, 0, -len / 2 - r * 0.5), m.glove);
+    // The glove (x across the knuckles, y the back of the hand, fingers toward −z).
+    const rb = (w: number, h: number, d: number, r: number) => new RoundedBoxGeometry(w, h, d, 2, r);
+    const palm = new THREE.Mesh(rb(0.088, 0.036, 0.092, 0.014), m.glove);
+    const back = new THREE.Mesh(rb(0.066, 0.01, 0.05, 0.004), m.pad); back.position.set(0, 0.02, 0.008);
+    this.hand.add(palm, back);
+    for (let i = 0; i < 4; i++) { const k = new THREE.Mesh(rb(0.017, 0.011, 0.015, 0.004), m.pad); k.position.set((-0.03 + i * 0.02) * side, 0.02, -0.037); this.hand.add(k); }
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.047, 0.044, 0.05, 16).rotateX(Math.PI / 2), m.glove); cuff.position.set(0, 0, 0.066);
+    const strap = new THREE.Mesh(rb(0.056, 0.014, 0.026, 0.004), m.strap); strap.position.set(0.004 * side, 0.044, 0.066);
+    this.hand.add(cuff, strap);
+    const seg = (len: number, r: number) => new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 3, 10).rotateX(Math.PI / 2).translate(0, 0, -len / 2 - r * 0.4), m.glove);
+    const finger = (lens: readonly number[], r: number) => {
+      const a = new THREE.Group(), b = new THREE.Group(), c = new THREE.Group();
+      a.add(seg(lens[0], r)); b.position.set(0, 0, -lens[0] - r * 0.9); b.add(seg(lens[1], r * 0.93)); a.add(b);
+      c.position.set(0, 0, -lens[1] - r * 0.85); c.add(seg(lens[2], r * 0.86)); b.add(c);
+      return { a, b, c };
+    };
     for (let i = 0; i < 4; i++) {
-      // Index on the thumb's side, little finger outside; the little finger shorter.
-      const a = new THREE.Group(), b = new THREE.Group(), x = (-0.03 + i * 0.02) * side, l = i === 3 ? 0.022 : 0.03;
-      a.position.set(x, -0.003, -0.044); a.add(seg(l, 0.0095)); b.position.set(0, 0, -l - 0.009); b.add(seg(l * 0.75, 0.0088)); a.add(b);
-      this.hand.add(a); this.fingers.push({ a, b });
+      // Index on the thumb's side, the little finger shorter.
+      const f = finger(i === 3 ? [0.019, 0.014, 0.012] : i === 2 ? [0.024, 0.018, 0.015] : [0.026, 0.019, 0.015], i === 3 ? 0.0088 : 0.0098);
+      f.a.position.set((-0.03 + i * 0.02) * side, -0.002, -0.046); this.hand.add(f.a); this.fingers.push(f);
     }
-    const ta = new THREE.Group(), tb = new THREE.Group();
-    ta.position.set(-0.04 * side, -0.008, -0.004); ta.add(seg(0.028, 0.0105)); tb.position.set(0, 0, -0.037); tb.add(seg(0.022, 0.0098)); ta.add(tb);
-    this.hand.add(ta); this.thumb = { a: ta, b: tb };
+    this.thumb = finger([0.024, 0.02, 0.016], 0.0112);
+    this.thumb.a.position.set(-0.043 * side, -0.01, -0.006); this.hand.add(this.thumb.a);
     if (side < 0) {
-      // A watch on the left wrist.
-      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.037, 0.037, 0.022, 14).rotateX(Math.PI / 2), m.pad), face = new THREE.Mesh(new RoundedBoxGeometry(0.03, 0.012, 0.032, 2, 0.004), m.steel);
-      band.position.set(0, 0, 0.1); face.position.set(0, 0.036, 0.1); this.hand.add(band, face);
+      // A GPS watch on the left wrist: band, a chunky case with a bezel, a lit screen.
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.046, 0.024, 18).rotateX(Math.PI / 2), m.strap);
+      const face = new THREE.Mesh(rb(0.04, 0.016, 0.044, 0.006), m.pad), bezel = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.0028, 6, 20).rotateX(Math.PI / 2), m.steel);
+      const screen = new THREE.Mesh(new THREE.CircleGeometry(0.0135, 20).rotateX(-Math.PI / 2), m.screen);
+      band.position.set(0, 0, 0.11); face.position.set(0, 0.05, 0.11); bezel.position.set(0, 0.058, 0.11); screen.position.set(0, 0.0585, 0.11);
+      this.hand.add(band, face, bezel, screen);
     }
   }
   /** Places the hand and bends the arm to it: `pole` is the way the elbow points. `curl` 0 open … 1 a fist; `trigger` the index finger's own curl. */
   pose(shoulder: THREE.Vector3, at: THREE.Vector3, q: THREE.Quaternion, curl: number, pole: THREE.Vector3, trigger = curl) {
     this.hand.position.copy(at); this.hand.quaternion.copy(q);
-    this.fingers.forEach((f, i) => { const c = i === 0 ? trigger : curl + i * 0.04; f.a.rotation.x = -c * 1.3; f.b.rotation.x = -c * 1.45; });
-    this.thumb.a.rotation.set(-curl * 0.3, this.side * (0.55 + curl * 0.45), 0); this.thumb.b.rotation.y = this.side * curl * 0.6;
+    this.fingers.forEach((f, i) => { const c = i === 0 ? trigger : curl + i * 0.03; f.a.rotation.x = -c * 1.05; f.b.rotation.x = -c * 1.3; f.c.rotation.x = -c * 0.95; });
+    const t = this.thumb; t.a.rotation.set(-curl * 0.25, this.side * (0.6 + curl * 0.4), 0); t.b.rotation.set(0, this.side * curl * 0.5, 0); t.c.rotation.set(0, this.side * curl * 0.45, 0);
     // Two-bone IK from the shoulder to the wrist (stretching a little if it's out of reach; the shoulders are off screen).
-    const W = this.w.set(0, 0, 0.075).applyQuaternion(q).add(at), d = this.d.subVectors(W, shoulder), dist = d.length();
+    const W = this.w.set(0, 0, 0.09).applyQuaternion(q).add(at), d = this.d.subVectors(W, shoulder), dist = d.length();
     const k = Math.max(1, dist / ((UPPER + FORE) * 0.985)), a = UPPER * k, b = FORE * k, L = Math.max(Math.abs(a - b) + 1e-4, dist);
     const cosA = (a * a + L * L - b * b) / (2 * a * L), sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
     d.normalize();
@@ -122,7 +134,7 @@ class Arm {
     };
     place(this.upper, shoulder, E); place(this.fore, E, W);
     this.elbow.position.copy(E);
-    this.roll.position.copy(E); this.roll.quaternion.copy(this.fore.quaternion);
+    this.roll.position.copy(E).lerp(W, 0.62); this.roll.quaternion.copy(this.fore.quaternion);
   }
 }
 
@@ -151,14 +163,18 @@ export class Viewmodel {
   private next: Gun | null = null;
   private scopeTex: THREE.Texture | null;
   private v = { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), q: new THREE.Quaternion(), r: new THREE.Quaternion(), e: new THREE.Euler(), m: new THREE.Matrix4() };
-  private shoulderL = new THREE.Vector3(-0.23, -0.34, 0.27); private shoulderR = new THREE.Vector3(0.25, -0.36, 0.24);
-  private poleL = new THREE.Vector3(-0.9, -1, 0.25); private poleR = new THREE.Vector3(0.9, -1, 0.25);
+  private shoulderL = new THREE.Vector3(-0.2, -0.3, -0.04); private shoulderR = new THREE.Vector3(0.3, -0.34, 0.06);
+  private poleL = new THREE.Vector3(-0.8, -1, 0.3); private poleR = new THREE.Vector3(0.9, -1, 0.3);
+  private casings: { m: THREE.Mesh; v: THREE.Vector3; w: THREE.Vector3; life: number }[] = []; private casingNext = 0;
+  private ring: THREE.Mesh | null = null;
   constructor(scene: THREE.Scene, scopeTex: THREE.Texture | null) {
     this.scopeTex = scopeTex;
     const mats = {
-      sleeve: surface('ripstop', { rough: 1, bump: 1.1 }), base: surface('fabric', { color: 0x3a3c36, rough: 1, bump: 0.8 }),
-      glove: surface('glove', { color: 0x34342f, rough: 0.8, bump: 0.9 }), pad: new THREE.MeshStandardMaterial({ color: 0x2a2b27, roughness: 0.55, metalness: 0.1 }),
+      sleeve: surface('ripstop', { rough: 1, bump: 1.2 }),
+      glove: surface('glove', { color: 0x3a3a34, rough: 0.8, bump: 1 }), pad: surface('polymer', { color: 0x2c2d2a, rough: 0.6, bump: 0.8 }),
+      strap: surface('fabric', { color: 0x2a2a26, rough: 1, bump: 1.4 }),
       steel: new THREE.MeshStandardMaterial({ color: 0x8a9099, metalness: 1, roughness: 0.25 }),
+      screen: new THREE.MeshBasicMaterial({ color: 0x2f6b46 }),
     };
     this.left = new Arm(-1, mats); this.right = new Arm(1, mats);
     this.group.add(this.gunHolder, this.left.group, this.right.group, this.kit);
@@ -171,33 +187,48 @@ export class Viewmodel {
     this.flash.visible = false;
     // The flash's light on the hands and gun (always in the scene, so turning it on doesn't rebuild shaders).
     this.flashLight = new THREE.PointLight(0xffaa33, 0, 8, 2); this.group.add(this.flashLight);
+    // A rim light from behind and above the gun, so its metal edges, rail ridges and bolts catch highlights.
+    const rim = new THREE.DirectionalLight(0xdfe8ff, 2.6); rim.position.set(0.7, 1, -1.6); this.group.add(rim, rim.target);
+    // Brass in the view: a few casings that spin out of the port over the gun before the world's own take over.
+    for (let i = 0; i < 6; i++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.0045, 0.0045, 0.045, 10), new THREE.MeshStandardMaterial({ color: 0xd2a645, metalness: 1, roughness: 0.25 })); c.visible = false; this.group.add(c); this.casings.push({ m: c, v: new THREE.Vector3(), w: new THREE.Vector3(), life: 0 }); }
     // Kit for the left hand: a curved blue plate, a medkit, a bandage roll, a syringe, a splint; grenades; binoculars.
     const mk = (build: (g: THREE.Group) => void) => { const g = new THREE.Group(); build(g); g.visible = false; this.kit.add(g); return g; };
     const mat = (color: number, rough = 0.6, metal = 0.1) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
     let pin: THREE.Object3D = new THREE.Object3D();
     this.kitParts = {
       plate: mk((g) => {
-        // A curved plate (bent across its width), its cover blue, a white label.
-        const geo = new THREE.BoxGeometry(0.2, 0.25, 0.018, 10, 1, 1), pos = geo.attributes.position as THREE.BufferAttribute;
-        for (let i = 0; i < pos.count; i++) pos.setZ(i, pos.getZ(i) - (pos.getX(i) / 0.1) ** 2 * 0.025);
+        // A 22 × 28 cm curved ceramic plate with bevelled top corners and STRIKE FACE stencilled on.
+        const sh = new THREE.Shape([new THREE.Vector2(-0.11, -0.14), new THREE.Vector2(0.11, -0.14), new THREE.Vector2(0.11, 0.105), new THREE.Vector2(0.075, 0.14), new THREE.Vector2(-0.075, 0.14), new THREE.Vector2(-0.11, 0.105)]);
+        const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.016, bevelEnabled: true, bevelSize: 0.003, bevelThickness: 0.003, bevelSegments: 2, curveSegments: 1 });
+        const pos = geo.attributes.position as THREE.BufferAttribute;
+        for (let i = 0; i < pos.count; i++) pos.setZ(i, pos.getZ(i) - (pos.getX(i) / 0.11) ** 2 * 0.022);
         geo.computeVertexNormals();
-        g.add(new THREE.Mesh(geo, surface('fabric', { color: 0x3b6fc4, rough: 0.85, bump: 0.6 })));
-        const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.025), new THREE.MeshBasicMaterial({ color: 0xe8e2cf })); tag.position.set(0, 0.07, 0.011); g.add(tag);
+        g.add(new THREE.Mesh(geo, surface('polymer', { color: 0x3f4d61, rough: 0.7, bump: 0.6 })));
+        const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+        const x = c.getContext('2d')!; x.fillStyle = 'rgba(235,235,230,0.92)'; x.font = 'bold 34px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('STRIKE FACE', 128, 34);
+        const label = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.0375), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+        label.position.set(0, 0.03, 0.0205); g.add(label);
       }),
       firstaid: mk((g) => { g.add(new THREE.Mesh(new RoundedBoxGeometry(0.16, 0.11, 0.06, 2, 0.01), mat(0xe8e8e2))); const r = new THREE.MeshBasicMaterial({ color: 0xc81e1e }); const a = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.02), r), b = new THREE.Mesh(new THREE.PlaneGeometry(0.02, 0.06), r); a.position.z = b.position.z = 0.031; g.add(a, b); }),
       bandage: mk((g) => g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.07, 14).rotateZ(Math.PI / 2), mat(0xe9e4d6, 0.95)))),
       adrenaline: mk((g) => { g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.12, 10).rotateX(Math.PI / 2), mat(0xf2c744, 0.4))); const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.03, 10).rotateX(Math.PI / 2), mat(0xe2541c, 0.5)); cap.position.z = 0.07; const n = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, 0.03).rotateX(Math.PI / 2), mats.steel); n.position.z = -0.075; g.add(cap, n); }),
       splint: mk((g) => g.add(new THREE.Mesh(new RoundedBoxGeometry(0.03, 0.02, 0.26, 2, 0.006), mat(0x2f6b3a)))),
       frag: mk((g) => {
-        g.add(new THREE.Mesh(new THREE.SphereGeometry(0.03, 14, 10), mat(0x4a5233, 0.7)));
-        const spoon = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.05, 0.006), mats.steel); spoon.position.set(0.024, 0.02, 0); g.add(spoon);
-        pin = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.0025, 6, 14), mats.steel); pin.position.set(-0.012, 0.04, 0); g.add(pin);
+        // A fragmentation grenade: olive body, the metal fuse on top, the spoon down its side, the pin and its pull ring.
+        g.add(new THREE.Mesh(new THREE.SphereGeometry(0.032, 20, 14), surface('polymer', { color: 0x4e5636, rough: 0.75, bump: 0.8 })));
+        const fuse = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.012, 0.022, 14), mats.steel); fuse.position.y = 0.036; g.add(fuse);
+        const spoon = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.062, 0.004), mats.steel); spoon.position.set(0, 0.018, 0.031); spoon.rotation.x = -0.18; g.add(spoon);
+        pin = new THREE.Group();
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.0016, 0.0016, 0.03).rotateZ(Math.PI / 2), mats.steel); shaft.position.set(-0.012, 0.038, 0);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.0022, 8, 18), mats.steel); ring.position.set(-0.034, 0.038, 0);
+        pin.add(shaft, ring); g.add(pin);
       }),
       flash: mk((g) => g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.09, 12), mat(0x9aa0a6, 0.4, 0.5)))),
       smoke: mk((g) => g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.1, 12), mat(0x4b6b44, 0.6, 0.2)))),
       binoculars: mk((g) => { for (const x of [-0.034, 0.034]) { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.027, 0.11, 14).rotateX(Math.PI / 2), mat(0x2a2c28, 0.8)); t.position.x = x; g.add(t); } const br = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.02, 0.05), mat(0x1c1d1b)); g.add(br); }),
     };
     this.pin = pin;
+    this.ring = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.0022, 8, 18), mats.steel); this.ring.visible = false; this.group.add(this.ring);
     scene.add(this.group);
   }
 
@@ -230,7 +261,12 @@ export class Viewmodel {
     const k = Math.min(3.5, kick) * (1 - this.ads * 0.45), r = () => Math.random() - 0.5;
     this.posSpring.kick(r() * 0.25 * k, 0.15 * k, 2.8 * k);
     this.rotSpring.kick(1.4 * k, r() * 0.6 * k, r() * 1.2 * k);
-    this.camKick.kick(0.15 * k, 0, r() * 0.12 * k);
+    this.camKick.kick(0.28 * k, r() * 0.1 * k, r() * 0.22 * k);
+    if (this.rig && !this.rig.tube && !this.rig.bolt) {
+      const c = this.casings[this.casingNext]; this.casingNext = (this.casingNext + 1) % this.casings.length;
+      this.rig.port.getWorldPosition(c.m.position); c.m.visible = true; c.life = 0.35;
+      c.v.set(1.6 + Math.random() * 0.6, 1 + Math.random() * 0.5, 0.35); c.w.set(18 + Math.random() * 10, 6, 14);
+    }
     this.boltT = 0; this.boltLocked = empty && !!this.rig && this.rig.handle === 'slide'; this.triggerT = 0;
     this.flashT = 0.035; this.flash.rotation.z = Math.random() * Math.PI; this.flash.scale.setScalar(0.75 + Math.random() * 0.6);
     this.flashLight.intensity = 3.2;
@@ -284,7 +320,7 @@ export class Viewmodel {
     const breathX = Math.sin(s.time * 0.9) * 0.0016 * br, breathY = Math.sin(s.time * 1.8) * 0.0011 * br;
 
     // 1. The stance.
-    const P = V.a.set(0.115, -0.115, -0.3), R = V.e.set(0, 0.06, 0);
+    const P = V.a.set(0.22, -0.2, -0.48), R = V.e.set(0, 0.04, 0);
     if (rig && ads > 0.001) {
       const e = rig.eye.position, relief = rig.zoom > 3 ? 0.07 : 0.11;
       P.lerp(V.b.set(-e.x, -e.y, -relief - e.z), ads);
@@ -297,7 +333,9 @@ export class Viewmodel {
     if (s.slide) { R.z += 0.25; P.x -= 0.03; }
 
     // 2. The clip.
-    let leftW = 0; const leftAt = V.c.set(0, 0, 0), leftQ = V.r.identity(); let leftCurl = 0.8, leftInGun = true;
+    let leftW = 0; const leftAt = new THREE.Vector3(), leftQ = V.r.identity(); let leftCurl = 0.8, leftInGun = true;
+    let rightAt: THREE.Vector3 | null = null, rightQ: THREE.Quaternion | null = null, rightCurl = 0.9;
+    if (this.ring && this.clip?.kind !== 'throw') this.ring.visible = false;
     let kitPart: THREE.Group | null = null; const kitAt = new THREE.Vector3(), kitRot = new THREE.Euler();
     let magY = 0, magZ = 0, magRx = 0, magShow = true, handlePull = 0;
     const c = this.clip;
@@ -306,18 +344,20 @@ export class Viewmodel {
       const T = c.t, cue = (name: Cue, at: number, key: string = name) => { if (T >= at && !c.fired.has(key)) { c.fired.add(key); this.onCueInternal(name); } };
       if (c.kind === 'reload' && rig && !rig.tube) {
         const E = c.empty;
-        // Tilted about 25° with the magazine well turned toward you, lifted toward the middle.
-        const w = keys(T, E ? [[0, 0], [0.4, 1], [1.5, 1], [1.7, 0.55], [2.3, 0.55], [2.7, 0]] : [[0, 0], [0.4, 1], [1.5, 1], [2.1, 0]]);
-        R.z -= 0.45 * w; R.x -= 0.18 * w; R.y += 0.15 * w; P.x -= 0.04 * w; P.y += 0.035 * w;
+        // Pushed up and forward to the middle of the screen, rolled and lifted so the magazine well faces you.
+        const w = keys(T, E ? [[0, 0], [0.4, 1], [1.5, 1], [1.7, 0.85], [2.3, 0.85], [2.7, 0]] : [[0, 0], [0.4, 1], [1.5, 1], [2.1, 0]]);
+        P.lerp(V.b.set(0.08, -0.1, -0.58), w);
+        R.x += (0.35 - R.x) * w; R.y += (0.25 - R.y) * w; R.z += (0.55 - R.z) * w;
         // The magazine: out and down (0.4–0.9), a fresh one up and in (0.9–1.5).
-        magY = keys(T, [[0.4, 0], [0.9, -0.35], [1.5, 0]]); magZ = keys(T, [[0.4, 0], [0.9, 0.03], [1.5, 0]]); magRx = keys(T, [[0.4, 0], [0.9, 0.35], [1.4, 0.06], [1.5, 0]]);
+        magY = keys(T, [[0.4, 0], [0.9, -0.3], [1.5, 0]]); magZ = keys(T, [[0.4, 0], [0.9, 0.03], [1.5, 0]]); magRx = keys(T, [[0.4, 0], [0.9, 0.35], [1.4, 0.06], [1.5, 0]]);
         if (E && T >= 0.45 && T < 0.9) magShow = false;
         // The left hand: to the magazine, with it down and up, then (empty) to the charging handle.
         leftW = keys(T, E ? [[0, 0], [0.3, 1], [1.5, 1], [1.62, 0]] : [[0, 0], [0.3, 1], [1.55, 1], [2.0, 0]]);
         leftCurl = keys(T, [[0, 0.8], [0.22, 0.35], [0.32, 0.95], [1.5, 0.95], [1.6, 0.6]]);
         const magPos = V.b.copy(rig.magHome).add(new THREE.Vector3(0, magY, magZ));
-        leftAt.copy(magPos).add(new THREE.Vector3(-0.036, -0.06, 0.005));
-        leftQ.setFromEuler(new THREE.Euler(0.35, 0, Math.PI / 2));
+        // The hand round the magazine's left side, fingers across its front.
+        leftAt.copy(magPos).add(new THREE.Vector3(-0.026, -0.07, 0.004));
+        leftQ.setFromEuler(new THREE.Euler(0.15, 0, Math.PI / 2));
         cue('grab', 0.3); cue('magOut', 0.42);
         if (E) cue('magDrop', 0.45);
         cue('magIn', 1.5);
@@ -347,7 +387,7 @@ export class Viewmodel {
       }
       if (c.kind === 'inspect') {
         const w = keys(T, [[0, 0], [0.5, 1], [3, 1], [3.5, 0]]);
-        P.x -= 0.07 * w; P.y += 0.035 * w; P.z += 0.05 * w;
+        P.x -= 0.12 * w; P.y += 0.08 * w; P.z -= 0.02 * w;
         R.z += keys(T, [[0, 0], [0.6, -0.7], [1.5, -0.7], [2.2, 0.7], [2.9, 0.7], [3.5, 0]]);
         R.y += keys(T, [[0, 0], [0.6, 0.45], [1.5, 0.4], [2.2, -0.55], [2.9, -0.5], [3.5, 0]]);
         R.x += 0.1 * w;
@@ -355,19 +395,23 @@ export class Viewmodel {
       }
       if (c.kind === 'kit' || c.kind === 'throw') {
         const L = c.len, w = keys(T, [[0, 0], [0.22, 1], [L - 0.22, 1], [L, 0]]);
-        P.x += 0.08 * w; P.y -= 0.2 * w; P.z += 0.02 * w; R.x -= 0.35 * w; R.y -= 0.25 * w; R.z -= 0.45 * w;
+        if (c.kind === 'throw') { P.y -= 0.5 * w; R.x -= 0.8 * w; }
+        else { P.x += 0.06 * w; P.y -= 0.12 * w; P.z += 0.06 * w; R.x -= 0.25 * w; R.y -= 0.4 * w; R.z -= 0.7 * w; }
         leftW = 1; leftInGun = false;
         kitPart = this.kitParts[c.kind === 'throw' ? c.nade : c.kit];
         if (c.kind === 'throw') {
-          keys3(T, [[0, -0.2, -0.4, -0.3], [0.22, -0.08, -0.08, -0.3], [0.38, -0.12, -0.02, -0.2], [0.5, -0.02, 0.0, -0.75], [0.85, -0.2, -0.45, -0.3]], kitAt);
-          kitRot.set(0.3, 0.4, 0.2);
+          // In the right hand: up into view, the left hand hooks the ring and pulls the pin, wound back, thrown.
+          keys3(T, [[0, 0.16, -0.4, -0.36], [0.2, 0.05, -0.08, -0.36], [0.32, 0.06, -0.07, -0.35], [0.42, 0.12, -0.01, -0.24], [0.5, 0.03, 0.04, -0.8], [0.85, 0.16, -0.45, -0.36]], kitAt);
+          kitRot.set(0.2, -0.3, -0.2);
           if (T > 0.5) kitPart = null;
           this.pin.visible = T < 0.24;
+          rightAt = kitAt.clone().add(V.b.set(0.012, -0.035, 0.038)); rightQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.5, -0.3, 0.4)); rightCurl = 0.75;
           if (c.nade === 'frag') cue('pin', 0.24);
           cue('throw', 0.5);
         } else if (c.kit === 'plate') {
-          keys3(T, [[0, -0.2, -0.45, -0.4], [0.45, -0.04, -0.1, -0.42], [0.75, -0.02, -0.12, -0.4], [1.1, 0, -0.42, -0.3], [1.5, -0.2, -0.5, -0.35]], kitAt);
-          kitRot.set(keys(T, [[0, -0.6], [0.45, -0.2], [0.75, -0.3], [1.1, -1.1]]), 0.2, 0.1);
+          // Up from the left, shown, then slid down into the carrier at the bottom middle.
+          keys3(T, [[0, -0.25, -0.38, -0.45], [0.45, -0.06, -0.06, -0.42], [0.75, -0.03, -0.09, -0.4], [1.1, 0, -0.36, -0.33], [1.5, -0.2, -0.46, -0.36]], kitAt);
+          kitRot.set(keys(T, [[0, -0.5], [0.45, -0.25], [0.75, -0.3], [1.1, -0.9]]), 0.15, keys(T, [[0, 0.3], [0.45, 0.05]]));
           cue('velcro', 0.85);
         } else if (c.kit === 'adrenaline') {
           keys3(T, [[0, -0.15, -0.45, -0.3], [0.35, -0.05, -0.08, -0.3], [0.6, -0.05, -0.08, -0.29], [0.7, -0.05, -0.45, -0.25], [1.1, -0.15, -0.5, -0.3]], kitAt);
@@ -380,7 +424,13 @@ export class Viewmodel {
           keys3(T, [[0, -0.15, -0.45, -0.3], [0.4, -0.05, -0.09, -0.3], [1.1, -0.05, -0.11, -0.3], [1.5, -0.15, -0.45, -0.3]], kitAt);
           kitRot.set(0.25, 0.4, 0); cue(c.kit === 'splint' ? 'velcro' : 'cloth', 0.7);
         }
-        leftAt.copy(kitAt).add(V.b.set(0.02, -0.04, 0.035)); leftQ.setFromEuler(new THREE.Euler(0.5, 0.3, -0.5)); leftCurl = 0.7;
+        if (c.kind === 'throw') {
+          const pull = keys(T, [[0.12, 0], [0.24, 0.0001], [0.34, 1]]);
+          leftAt.copy(kitAt).add(V.b.set(-0.05, 0.03, 0.02)).lerp(V.c.set(-0.22, -0.1, -0.32), pull);
+          if (T > 0.55) leftAt.lerp(V.c.set(-0.3, -0.45, -0.3), keys(T, [[0.55, 0], [0.75, 1]]));
+          leftQ.setFromEuler(new THREE.Euler(0.3, 0.6, -0.4)); leftCurl = keys(T, [[0.15, 0.3], [0.24, 0.8]]);
+          if (this.ring) { this.ring.visible = T > 0.24 && T < 0.6; this.ring.position.copy(leftAt).add(V.b.set(0.03, 0.01, -0.03)); }
+        } else { leftAt.copy(kitAt).add(V.b.set(0.02, -0.04, 0.035)); leftQ.setFromEuler(new THREE.Euler(0.5, 0.3, -0.5)); leftCurl = 0.7; }
       }
       if (c.kind === 'swapOut') {
         const w = keys(T, [[0, 0], [0.3, 1]]); P.x += 0.02 * w; P.y -= 0.45 * w; P.z += 0.05 * w; R.x -= 0.9 * w; R.y += 0.2 * w; R.z += 0.3 * w;
@@ -441,12 +491,15 @@ export class Viewmodel {
         this.right.pose(this.shoulderR, grip.clone().lerp(new THREE.Vector3(0.05, -0.07 - (1 - this.binoc) * 0.4, -0.16), smooth(this.binoc)), rq.clone().slerp(bq, smooth(this.binoc)), 0.8, this.poleR);
         this.left.pose(this.shoulderL, new THREE.Vector3(-0.05, -0.07 - (1 - this.binoc) * 0.4, -0.16), bq, 0.8, this.poleL);
       } else {
-        this.right.pose(this.shoulderR, grip, rq, 0.92, this.poleR, 0.35 + 0.3 * Math.sin(Math.min(1, this.triggerT) * Math.PI));
+        if (rightAt && rightQ) this.right.pose(this.shoulderR, rightAt, rightQ, rightCurl, this.poleR);
+        else this.right.pose(this.shoulderR, grip, rq, 0.92, this.poleR, 0.35 + 0.3 * Math.sin(Math.min(1, this.triggerT) * Math.PI));
         // Left hand: on the handguard (underneath, fingers round the far side), or wherever the clip wants it, or pumping in a tactical sprint.
-        const fore = this.toView(V.b.copy(rig.fore.position).add(new THREE.Vector3(-0.03, -0.02, 0)), new THREE.Vector3());
-        const fq = gq.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -0.35))).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0))).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, 0)));
+        // On a vertical foregrip the hand wraps it from the left (the arm locked to the grip's socket); otherwise under the handguard.
+        const fore = this.toView(V.b.copy(rig.fore.position).add(rig.foregrip ? new THREE.Vector3(-0.024, 0, 0.004) : new THREE.Vector3(-0.03, -0.02, 0)), new THREE.Vector3());
+        const fq = rig.foregrip ? gq.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2 - 0.1)))
+          : gq.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -0.35))).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0))).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, 0)));
         const at = fore.clone(), q = fq.clone();
-        let curl = 0.75;
+        let curl = rig.foregrip ? 0.9 : 0.75;
         if (leftW > 0) {
           const target = leftInGun ? this.toView(leftAt, new THREE.Vector3()) : leftAt.clone();
           const tq = leftInGun ? gq.clone().multiply(leftQ) : leftQ.clone();
@@ -460,6 +513,12 @@ export class Viewmodel {
         this.left.pose(this.shoulderL, at, q, curl, this.poleL);
       }
       if (kitPart) { kitPart.visible = true; kitPart.position.copy(kitAt); kitPart.rotation.copy(kitRot); }
+    }
+    for (const c of this.casings) {
+      if (c.life <= 0) continue;
+      c.life -= dt; c.v.y -= 9.8 * dt; c.m.position.addScaledVector(c.v, dt);
+      c.m.rotation.x += c.w.x * dt; c.m.rotation.y += c.w.y * dt; c.m.rotation.z += c.w.z * dt;
+      if (c.life <= 0) c.m.visible = false;
     }
     // The flash lasts 35 ms; its light fades with it.
     this.flashT -= dt;

@@ -29,6 +29,8 @@ export interface GunRig {
   zoom: number;
   /** Loaded a round at a time (pump shotguns), not by magazine. */
   tube: boolean;
+  /** The left hand holds a vertical foregrip (`fore` is its socket) rather than the handguard. */
+  foregrip: boolean;
 }
 
 let mats: Record<string, THREE.Material> | null = null;
@@ -82,6 +84,7 @@ export function scopeLensMat(tex: THREE.Texture, mil: boolean) {
 }
 
 export function buildGun(gun: Gun, { lite = false, scopeTex = null as THREE.Texture | null } = {}): GunRig {
+  if (!lite && WEAPONS[gun.base].model.body === 'ar') return buildRifle(gun, scopeTex);
   const b = WEAPONS[gun.base], s = gunStats(gun), md: GunModel = b.model, m = M();
   const g = new THREE.Group();
   const receiver = new THREE.Group(), barrel = new THREE.Group();
@@ -225,7 +228,161 @@ export function buildGun(gun: Gun, { lite = false, scopeTex = null as THREE.Text
   const fore = new THREE.Object3D(); fore.position.set(0, foreY, foreZ); g.add(fore);
   const grip = new THREE.Object3D(); grip.position.copy(gripMesh.position).add(new THREE.Vector3(0, -0.01, 0)); g.add(grip);
   const port = new THREE.Object3D(); port.position.set(rw / 2, 0.01, portZ); g.add(port);
-  return { group: g, receiver, barrel, optic: opticGroup, muzzle, eye, port, mag, magHome: mag.position.clone(), fore, grip, boltCarrier, boltTravel, chargingHandle, handle, lens, pump, bolt, laser, zoom: s.zoom, tube: md.mag === 'tube' };
+  return { group: g, receiver, barrel, optic: opticGroup, muzzle, eye, port, mag, magHome: mag.position.clone(), fore, grip, boltCarrier, boltTravel, chargingHandle, handle, lens, pump, bolt, laser, zoom: s.zoom, tube: md.mag === 'tube', foregrip: gun.att.under === 'vgrip' && !pistol };
+}
+
+/* ── The detailed carbine (M4-pattern) for the first-person view ── */
+let rifleMats: Record<string, THREE.Material> | null = null;
+function RM(tint: number) {
+  const base = rifleMats ?? (rifleMats = {
+    steel: surface('gunmetal', { color: 0x6a6e74, metal: 0.9, rough: 0.28, bump: 0.4 }),
+    dark: surface('gunmetal', { color: 0x2e3135, metal: 0.85, rough: 0.35, bump: 0.35 }),
+    polymer: surface('polymer', { color: 0x2a2b2e, metal: 0.05, rough: 0.72, bump: 0.7 }),
+    rubber: new THREE.MeshStandardMaterial({ color: 0x18191a, roughness: 0.95 }),
+    tan: surface('polymer', { color: 0xa48a64, metal: 0.05, rough: 0.7, bump: 0.6 }),
+    brass: new THREE.MeshStandardMaterial({ color: 0xd2a645, metalness: 1, roughness: 0.25 }),
+    copper: new THREE.MeshStandardMaterial({ color: 0xb8673a, metalness: 1, roughness: 0.3 }),
+    hole: new THREE.MeshBasicMaterial({ color: 0x050505 }),
+    glass: new THREE.MeshStandardMaterial({ color: 0x9fc6d8, metalness: 0.2, roughness: 0.05, transparent: true, opacity: 0.12, depthWrite: false }),
+    lensDark: new THREE.MeshStandardMaterial({ color: 0x0c1a22, metalness: 0.9, roughness: 0.1 }),
+    red: new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 0.25, 0.18), toneMapped: false }),
+    beam: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 0.05, 0.05), transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+  });
+  // The receiver and handguard: anodised aluminium in the gun's own colour (flat dark earth on the carbine).
+  const ano = surface('gunmetal', { color: tint, metal: 0.55, rough: 0.45, bump: 0.45 });
+  return { ...base, ano } as Record<string, THREE.Material>;
+}
+
+function buildRifle(gun: Gun, scopeTex: THREE.Texture | null): GunRig {
+  const s = gunStats(gun), md = WEAPONS[gun.base].model, mt = RM(new THREE.Color(md.color).multiplyScalar(1.5).getHex());
+  const g = new THREE.Group(), receiver = new THREE.Group(), barrel = new THREE.Group();
+  receiver.name = 'Receiver'; barrel.name = 'Barrel'; g.add(receiver, barrel);
+  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, at: [number, number, number], rot?: [number, number, number], parent: THREE.Object3D = receiver) => {
+    const mesh = new THREE.Mesh(geo, mat); mesh.position.set(...at); if (rot) mesh.rotation.set(...rot); parent.add(mesh); return mesh;
+  };
+  const rb = (w: number, h: number, d: number, r = 0.003) => new RoundedBoxGeometry(w, h, d, 2, Math.min(r, Math.min(w, h, d) / 2 - 0.0005));
+  const cyl = (r0: number, r1: number, len: number, seg = 16) => new THREE.CylinderGeometry(r1, r0, len, seg).rotateX(Math.PI / 2);
+  // Upper receiver (the bore runs along y = 0, the muzzle toward −z), its top rail with ridges.
+  add(rb(0.034, 0.034, 0.23, 0.004), mt.ano, [0, 0.013, 0]);
+  add(rb(0.022, 0.007, 0.23, 0.0015), mt.ano, [0, 0.0335, 0]);
+  for (let i = 0; i < 14; i++) add(new THREE.BoxGeometry(0.024, 0.004, 0.0075), mt.ano, [0, 0.039, -0.108 + i * 0.0165]);
+  // Lower receiver, the flared magazine well, trigger guard and trigger, selector, magazine release.
+  add(rb(0.03, 0.034, 0.18, 0.004), mt.ano, [0, -0.02, 0.015]);
+  const well = new THREE.BoxGeometry(0.036, 0.05, 0.058, 2, 2, 2), wp = well.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < wp.count; i++) if (wp.getY(i) < 0) wp.setX(i, wp.getX(i) * 1.12);
+  well.computeVertexNormals();
+  add(well, mt.ano, [0, -0.03, -0.052]);
+  add(new THREE.BoxGeometry(0.004, 0.004, 0.055), mt.ano, [0, -0.052, 0.025]); // guard
+  add(new THREE.BoxGeometry(0.004, 0.016, 0.004), mt.ano, [0, -0.045, -0.002]);
+  add(new THREE.BoxGeometry(0.003, 0.016, 0.004), mt.steel, [0, -0.043, 0.022], [0.35, 0, 0]); // trigger
+  add(cyl(0.005, 0.005, 0.004, 12).rotateY(Math.PI / 2), mt.steel, [-0.0165, -0.016, 0.05]); // selector
+  add(new THREE.BoxGeometry(0.003, 0.004, 0.016), mt.steel, [-0.0185, -0.016, 0.045], [0.5, 0, 0]);
+  add(cyl(0.004, 0.004, 0.004, 10).rotateY(Math.PI / 2), mt.steel, [0.0165, -0.018, -0.03]); // magazine release
+  // The ejection port (its bolt carrier showing), the dust cover hanging open, the brass deflector, the forward assist.
+  add(new THREE.BoxGeometry(0.0012, 0.017, 0.062), mt.hole, [0.0172, 0.012, -0.005]);
+  const boltCarrier = new THREE.Group(); boltCarrier.name = 'BoltCarrier'; boltCarrier.position.set(0.0158, 0.012, -0.005); receiver.add(boltCarrier);
+  add(new THREE.BoxGeometry(0.004, 0.012, 0.05), mt.steel, [0, 0, 0], undefined, boltCarrier);
+  add(cyl(0.003, 0.003, 0.006, 10), mt.steel, [0, 0, -0.027], undefined, boltCarrier);
+  add(new THREE.BoxGeometry(0.0015, 0.02, 0.064), mt.ano, [0.0205, -0.006, -0.005], [0, 0, -1.15]);
+  add(rb(0.006, 0.012, 0.012, 0.002), mt.ano, [0.019, 0.022, 0.034]);
+  add(cyl(0.0055, 0.0055, 0.026, 12), mt.ano, [0.0185, 0.022, 0.07], [0, 0.12, 0]);
+  add(cyl(0.0058, 0.0058, 0.004, 12), mt.steel, [0.0195, 0.022, 0.085], [0, 0.12, 0]);
+  // The T-shaped charging handle at the back of the upper.
+  const chargingHandle = new THREE.Group(); chargingHandle.name = 'ChargingHandle'; chargingHandle.position.set(0, 0.026, 0.118); receiver.add(chargingHandle);
+  add(new THREE.BoxGeometry(0.01, 0.006, 0.03), mt.dark, [0, 0, -0.008], undefined, chargingHandle);
+  add(rb(0.048, 0.007, 0.012, 0.002), mt.dark, [0, 0, 0.008], undefined, chargingHandle);
+  // Buffer tube, the stock with its cheek rest and rubber butt pad, the pistol grip.
+  add(cyl(0.0135, 0.0135, 0.16, 18), mt.dark, [0, 0.004, 0.195]);
+  add(rb(0.04, 0.058, 0.11, 0.008), mt.polymer, [0, -0.006, 0.255]);
+  add(rb(0.03, 0.016, 0.08, 0.005), mt.polymer, [0, 0.028, 0.25]);
+  add(rb(0.043, 0.082, 0.014, 0.004), mt.rubber, [0, -0.012, 0.316]);
+  add(rb(0.028, 0.092, 0.04, 0.007), mt.polymer, [0, -0.07, 0.07], [0.32, 0, 0]);
+  // The octagonal M-LOK handguard, built face by face so its slots are real gaps you see the barrel and gas tube through.
+  const HG0 = -0.115, HGL = 0.36, ap = 0.028, face = 2 * ap * Math.tan(Math.PI / 8) + 0.0006, cy = 0.004;
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4, nx = Math.cos(a), ny = Math.sin(a), slotted = i === 0 || i === 4 || i === 6 || i === 7 || i === 5;
+    const piece = (z0: number, len: number) => add(new THREE.BoxGeometry(0.0028, face, len), mt.ano, [nx * ap, cy + ny * ap, z0 - len / 2], [0, 0, a], barrel);
+    if (!slotted) { piece(HG0, HGL); continue; }
+    // Solid rings at both ends, a row of slots between.
+    piece(HG0, 0.03); piece(HG0 - HGL + 0.03, 0.03);
+    const n = 7, span = HGL - 0.06, cell = span / n;
+    for (let k = 0; k < n; k++) piece(HG0 - 0.03 - k * cell, cell * 0.55);
+  }
+  add(rb(0.02, 0.006, HGL, 0.0015), mt.ano, [0, cy + ap + 0.004, HG0 - HGL / 2], undefined, barrel);
+  for (let i = 0; i < 22; i++) add(new THREE.BoxGeometry(0.022, 0.004, 0.0075), mt.ano, [0, cy + ap + 0.009, HG0 - 0.008 - i * (HGL / 22)], undefined, barrel);
+  // Barrel, gas block and the silver gas tube inside the handguard; the three-prong flash hider (or another muzzle device).
+  add(cyl(0.0095, 0.0095, 0.5, 18), mt.dark, [0, 0, -0.35], undefined, barrel);
+  add(rb(0.02, 0.022, 0.024, 0.003), mt.dark, [0, 0.004, -0.39], undefined, barrel);
+  add(cyl(0.0028, 0.0028, 0.27, 8), mt.steel, [0, 0.0145, -0.255], undefined, barrel);
+  let muzzleZ = -0.6;
+  if (gun.att.muzzle === 'suppressor') { add(cyl(0.019, 0.019, 0.17, 20), mt.dark, [0, 0, muzzleZ - 0.085], undefined, barrel); for (let i = 0; i < 3; i++) add(cyl(0.0195, 0.0195, 0.006, 20), mt.steel, [0, 0, muzzleZ - 0.03 - i * 0.055], undefined, barrel); muzzleZ -= 0.17; }
+  else if (gun.att.muzzle === 'comp') { add(rb(0.03, 0.026, 0.05, 0.004), mt.dark, [0, 0, muzzleZ - 0.025], undefined, barrel); for (const x of [-1, 1]) add(new THREE.BoxGeometry(0.002, 0.012, 0.03), mt.hole, [x * 0.0152, 0.004, muzzleZ - 0.025], undefined, barrel); muzzleZ -= 0.05; }
+  else {
+    add(cyl(0.011, 0.011, 0.018, 16), mt.dark, [0, 0, muzzleZ - 0.009], undefined, barrel);
+    for (let i = 0; i < 3; i++) { const a = (i / 3) * Math.PI * 2 + Math.PI / 2; add(new THREE.BoxGeometry(0.004, 0.004, 0.036), mt.dark, [Math.cos(a) * 0.0085, Math.sin(a) * 0.0085, muzzleZ - 0.036], undefined, barrel); }
+    muzzleZ -= 0.054;
+  }
+  const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0, muzzleZ - 0.004); g.add(muzzle);
+  // The PEQ laser box on the front of the top rail at one o'clock, its faint beam.
+  add(rb(0.034, 0.026, 0.062, 0.004), mt.tan, [0.012, cy + ap + 0.024, -0.42], undefined, barrel);
+  for (const [x, y] of [[0.004, 0.006], [0.02, 0.004]] as const) add(new THREE.CircleGeometry(0.005, 14), mt.lensDark, [0.012 + x - 0.012, cy + ap + 0.024 + y - 0.004, -0.4515], [0, Math.PI, 0], barrel);
+  add(rb(0.01, 0.006, 0.016, 0.002), mt.dark, [0.012, cy + ap + 0.039, -0.41], undefined, barrel);
+  const laser = new THREE.Object3D(); laser.position.set(0.016, cy + ap + 0.026, -0.452); g.add(laser);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.0007, 0.0012, 40, 6).rotateX(Math.PI / 2).translate(0, 0, -20), mt.beam); beam.name = 'Beam'; laser.add(beam);
+  // The vertical foregrip.
+  const foreZ = -0.27, gripTop = cy - ap - 0.002;
+  add(cyl(0.0125, 0.0125, 0.012, 16).rotateX(-Math.PI / 2), mt.polymer, [0, gripTop - 0.006, foreZ], undefined, barrel);
+  add(new THREE.CylinderGeometry(0.0125, 0.0115, 0.075, 16), mt.polymer, [0, gripTop - 0.045, foreZ], undefined, barrel);
+  for (let i = 0; i < 4; i++) add(new THREE.CylinderGeometry(0.0131, 0.0131, 0.003, 16), mt.polymer, [0, gripTop - 0.02 - i * 0.016, foreZ], undefined, barrel);
+  // The curved 30-round magazine: three angled segments, ribbed sides, a tan base plate, the brass top round.
+  const mag = new THREE.Group(); mag.name = 'Magazine';
+  const segs: [number, number, number, number][] = [[0, -0.032, 0.002, 0], [0, -0.092, -0.006, 0.13], [0, -0.148, -0.021, 0.27]];
+  for (const [x, y, z, rx] of segs) {
+    add(rb(0.023, 0.062, 0.062, 0.004), mt.polymer, [x, y, z], [rx, 0, 0], mag);
+    for (const side of [-1, 1]) for (let r = 0; r < 3; r++) add(new THREE.BoxGeometry(0.0016, 0.006, 0.042), mt.polymer, [side * 0.0122, y + 0.018 - r * 0.018, z], [rx, 0, 0], mag);
+  }
+  add(rb(0.027, 0.012, 0.07, 0.004), mt.tan, [0, -0.182, -0.032], [0.27, 0, 0], mag);
+  add(cyl(0.0045, 0.0045, 0.042, 12), mt.brass, [0, 0.0045, 0.002], undefined, mag);
+  add(new THREE.ConeGeometry(0.0045, 0.014, 12).rotateX(-Math.PI / 2), mt.copper, [0, 0.0045, -0.026], undefined, mag);
+  mag.position.set(0, -0.03, -0.052); g.add(mag);
+  // The sight: a thin holographic frame round clear glass with a glowing ring-and-dot (or a red dot, a magnified optic, or thin flip-up irons).
+  const optic = s.optic, opticGroup = new THREE.Group(); opticGroup.name = 'Optic'; receiver.add(opticGroup);
+  const top = 0.0425;
+  let eyeY = 0.052, eyeZ = 0.16, lens: THREE.Mesh | null = null, zoomEye = false;
+  if (optic === 'holo' || optic === 'reddot') {
+    const W = optic === 'holo' ? 0.046 : 0.032, H = optic === 'holo' ? 0.042 : 0.03, wy = top + 0.012 + H / 2;
+    add(rb(0.022, 0.007, 0.07, 0.002), mt.dark, [0, top + 0.004, -0.025], undefined, opticGroup); // a slim base on the rail
+    for (const x of [-1, 1]) add(new THREE.BoxGeometry(0.004, H, 0.05), mt.dark, [x * (W / 2), wy, -0.03], undefined, opticGroup);
+    add(new THREE.BoxGeometry(W + 0.004, 0.004, 0.05), mt.dark, [0, wy + H / 2, -0.03], undefined, opticGroup);
+    add(rb(0.012, 0.01, 0.012, 0.002), mt.dark, [W / 2 + 0.006, wy, -0.03], undefined, opticGroup); // the brightness buttons
+    add(new THREE.PlaneGeometry(W - 0.002, H - 0.002), mt.glass, [0, wy, -0.054], undefined, opticGroup);
+    lens = add(new THREE.RingGeometry(optic === 'holo' ? 0.0085 : 0.0001, optic === 'holo' ? 0.0098 : 0.0002, 40), mt.red, [0, wy, -0.0545], undefined, opticGroup);
+    add(new THREE.CircleGeometry(0.0013, 14), mt.red, [0, wy, -0.0546], undefined, opticGroup);
+    eyeY = wy; eyeZ = 0.05;
+  } else if (optic === 'acog' || optic === 'scope8') {
+    const big = optic === 'scope8', len = big ? 0.3 : 0.16, r = big ? 0.02 : 0.017, y = top + (big ? 0.045 : 0.035), oz = -0.02;
+    add(cyl(r, r, len, 24), mt.dark, [0, y, oz], undefined, opticGroup);
+    add(new THREE.CylinderGeometry(big ? 0.03 : 0.022, r, big ? 0.07 : 0.03, 24).rotateX(-Math.PI / 2), mt.dark, [0, y, oz - len / 2 - (big ? 0.03 : 0.012)], undefined, opticGroup);
+    add(new THREE.CylinderGeometry(0.024, r, 0.03, 24).rotateX(Math.PI / 2), mt.dark, [0, y, oz + len / 2 + 0.012], undefined, opticGroup);
+    for (const k of [-0.25, 0.25]) add(rb(0.02, y - top, 0.03), mt.dark, [0, top + (y - top) / 2, oz + len * k], undefined, opticGroup);
+    lens = add(new THREE.CircleGeometry(r * 0.92, 32), scopeTex ? scopeLensMat(scopeTex, big) : mt.glass, [0, y, oz + len / 2 + 0.026], undefined, opticGroup);
+    eyeY = y; eyeZ = oz + len / 2 + 0.09; zoomEye = true;
+  } else {
+    // Flip-up irons: a thin front post with protective ears, a rear aperture ring.
+    add(rb(0.016, 0.008, 0.02, 0.002), mt.dark, [0, cy + ap + 0.012, -0.455], undefined, barrel);
+    add(new THREE.BoxGeometry(0.0018, 0.016, 0.0018), mt.dark, [0, cy + ap + 0.022, -0.455], undefined, barrel);
+    for (const x of [-1, 1]) add(new THREE.BoxGeometry(0.002, 0.018, 0.008), mt.dark, [x * 0.007, cy + ap + 0.021, -0.455], undefined, barrel);
+    add(rb(0.018, 0.008, 0.02, 0.002), mt.dark, [0, top + 0.004, 0.09], undefined, opticGroup);
+    add(new THREE.TorusGeometry(0.0045, 0.0013, 8, 20), mt.dark, [0, top + 0.016, 0.092], undefined, opticGroup);
+    add(new THREE.BoxGeometry(0.0016, 0.008, 0.002), mt.dark, [0, top + 0.009, 0.092], undefined, opticGroup);
+    eyeY = top + 0.016; eyeZ = 0.2;
+  }
+  void zoomEye;
+  const eye = new THREE.Object3D(); eye.position.set(0, eyeY, eyeZ); g.add(eye);
+  const fore = new THREE.Object3D(); fore.name = 'ForegripSocket'; fore.position.set(0, gripTop - 0.045, foreZ); g.add(fore);
+  const grip = new THREE.Object3D(); grip.position.set(0, -0.07, 0.07); g.add(grip);
+  const port = new THREE.Object3D(); port.position.set(0.019, 0.012, -0.005); g.add(port);
+  return { group: g, receiver, barrel, optic: opticGroup, muzzle, eye, port, mag, magHome: mag.position.clone(), fore, grip, boltCarrier, boltTravel: 0.022, chargingHandle, handle: 'top', lens, pump: null, bolt: null, laser, zoom: s.zoom, tube: false, foregrip: true };
 }
 
 /** A small, cheap copy of a gun for soldiers to carry and for loot on the ground. */

@@ -212,7 +212,8 @@ export function bankAll(l: Loadout) {
 export function starterLoadout(): Loadout {
   const r = () => 0.5;
   return {
-    primary: [makeGun('mcr4', 0, r), null], sidearm: makeGun('striker19', 0, r),
+    // The carbine starts kitted out: a holographic sight, a flash hider and a vertical foregrip.
+    primary: [{ ...makeGun('mcr4', 0, r), att: { optic: 'holo', muzzle: 'flashhider', under: 'vgrip' } }, null], sidearm: makeGun('striker19', 0, r),
     helmet: 1, vest: 1, pack: 'small', plates: [PLATES.ceramic.hp],
     bag: [{ kind: 'ammo', pool: 'rifle', n: 150 }, { kind: 'ammo', pool: 'pistol', n: 60 }, { kind: 'med', med: 'bandage', n: 2 }, { kind: 'med', med: 'firstaid', n: 1 }, { kind: 'plate', plate: 'ceramic', n: 2 }, { kind: 'nade', nade: 'frag', n: 1 }],
     secure: [], cash: 500, freshCash: 0,

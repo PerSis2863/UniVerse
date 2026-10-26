@@ -11,7 +11,9 @@ export interface HudState {
   stamina: number;
   gun: { name: string; rarity: Rarity; cls: WeaponClass; mag: number; magMax: number; reserve: number; mode: FireMode; modes: FireMode[]; att: string[] } | null;
   slot: number; slots: { name: string; rarity: Rarity }[];
-  frags: number; flashes: number; spares: number; meds: { bandage: number; firstaid: number; adrenaline: number; splint: number };
+  frags: number; flashes: number; smokes: number; spares: number;
+  /** Killstreak rewards earned this raid (5 uses the first) and kills in a row since the last time you went down. */
+  support: { have: SupportKind[]; streak: number }; meds: { bandage: number; firstaid: number; adrenaline: number; splint: number };
   cash: number; fresh: number; banked: number; kills: number;
   prompt: string; objective: string;
   extract: { left: number; state: 'none' | 'called' | 'landing' | 'boarding' } | null;
@@ -39,3 +41,6 @@ export interface Callbacks {
 }
 export interface HudRefs { compass: HTMLDivElement | null; mini: HTMLCanvasElement | null; big: HTMLCanvasElement | null; reticle: HTMLDivElement | null; card: HTMLDivElement | null; cardText: HTMLDivElement | null }
 export type { BuyId };
+
+/** Killstreak rewards: a UAV sweep (3 kills in a row), a precision airstrike (5). */
+export type SupportKind = 'uav' | 'airstrike';

@@ -22,11 +22,11 @@ export type Quality = 'high' | 'medium' | 'low';
 
 const FINISH = {
   uniforms: {
-    tDiffuse: { value: null }, time: { value: 0 }, vignette: { value: 0.42 }, grain: { value: 0.03 }, saturation: { value: 0.92 }, contrast: { value: 1.08 },
-    nvg: { value: 0 }, flash: { value: 0 }, desat: { value: 0 }, lift: { value: new THREE.Vector3(0.0, 0.004, 0.012) },
+    tDiffuse: { value: null }, time: { value: 0 }, vignette: { value: 0.42 }, grain: { value: 0.03 }, saturation: { value: 0.92 }, contrast: { value: 1.12 },
+    nvg: { value: 0 }, ads: { value: 0 }, flash: { value: 0 }, desat: { value: 0 }, lift: { value: new THREE.Vector3(0.0, 0.004, 0.012) },
   },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float time, vignette, grain, saturation, contrast, nvg, flash, desat; uniform vec3 lift; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float time, vignette, grain, saturation, contrast, nvg, flash, desat, ads; uniform vec3 lift; varying vec2 vUv;
     float rand(vec2 c){ return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }
     void main(){
       vec4 c = texture2D(tDiffuse, vUv);
@@ -41,7 +41,8 @@ const FINISH = {
         float tube = smoothstep(0.52, 0.42, distance(vUv * vec2(1.0, 0.75), vec2(0.5, 0.375)));
         c.rgb = g * tube;
       } else {
-        c.rgb *= 1.0 - vignette * smoothstep(0.3, 0.85, d);
+        // Aiming darkens the edges more (the eye on the sight).
+        c.rgb *= 1.0 - (vignette + ads * 0.35) * smoothstep(0.3 - ads * 0.1, 0.85 - ads * 0.2, d);
         c.rgb += (rand(vUv * 731.0 + time) - 0.5) * grain;
       }
       c.rgb = mix(c.rgb, vec3(1.0), flash);
@@ -84,7 +85,7 @@ export class OpsRenderer {
   hemi: THREE.HemisphereLight;
   csm: CSM | null = null;
   /** The finish pass's settings (night vision, flash, desaturation). */
-  finish = { nvg: 0, flash: 0, desat: 0 };
+  finish = { nvg: 0, flash: 0, desat: 0, ads: 0 };
   /** The 8× scope's picture: the world from a narrow camera into a small texture. */
   scope = { target: new THREE.WebGLRenderTarget(512, 512, { type: THREE.HalfFloatType }), camera: new THREE.PerspectiveCamera(5, 1, 0.5, 1100), on: false };
   private composer: EffectComposer | null = null;
@@ -238,7 +239,7 @@ export class OpsRenderer {
     }
     if (this.composer && this.post) {
       const u = this.post.uniforms;
-      u.time.value = t % 100; u.nvg.value = this.finish.nvg; u.flash.value = this.finish.flash; u.desat.value = this.finish.desat;
+      u.time.value = t % 100; u.ads.value = this.finish.ads; u.nvg.value = this.finish.nvg; u.flash.value = this.finish.flash; u.desat.value = this.finish.desat;
       this.composer.render();
     } else {
       this.renderer.toneMappingExposure = this.finish.nvg ? 3.2 : 1;

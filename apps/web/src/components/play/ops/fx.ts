@@ -72,7 +72,7 @@ export class Fx {
   // Bullet holes: a ring of small dark quads laid on what was hit.
   private holes: THREE.InstancedMesh; private holeNext = 0;
   // Casings: tumbling brass.
-  private shells: THREE.InstancedMesh; private shell: { p: THREE.Vector3; v: THREE.Vector3; r: THREE.Euler; s: THREE.Vector3; life: number; hits: number }[] = [];
+  private shells: THREE.InstancedMesh; private shell: { p: THREE.Vector3; v: THREE.Vector3; r: THREE.Euler; s: THREE.Vector3; life: number; hits: number; wait: number }[] = [];
   /** Things that fall and bounce (dropped magazines): a few at a time, the oldest taken away. */
   private props: { o: THREE.Object3D; v: THREE.Vector3; w: THREE.Vector3; life: number; hits: number }[] = [];
   /** A casing or a magazine landing (for its sound). */
@@ -92,7 +92,7 @@ export class Fx {
     this.holes.count = 0; this.holes.frustumCulled = false;
     this.shells = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.006, 0.006, 0.045, 6), new THREE.MeshStandardMaterial({ color: 0xc9a34a, metalness: 1, roughness: 0.3 }), 40);
     this.shells.count = 0; this.shells.frustumCulled = false;
-    for (let i = 0; i < 40; i++) this.shell.push({ p: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Euler(), s: new THREE.Vector3(), life: 0, hits: 0 });
+    for (let i = 0; i < 40; i++) this.shell.push({ p: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Euler(), s: new THREE.Vector3(), life: 0, hits: 0, wait: 0 });
     this.tracerPos = new Float32Array(128 * 6); this.tracerCol = new Float32Array(128 * 6);
     const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(this.tracerPos, 3)); tg.setAttribute('color', new THREE.BufferAttribute(this.tracerCol, 3));
     this.tracers = new THREE.LineSegments(tg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -166,10 +166,10 @@ export class Fx {
     this.v.copy(dir).multiplyScalar(1.2).add(this.p.set(0, 0.4, 0));
     this.soft.emit(at, this.v, this.c.setRGB(0.55, 0.55, 0.55), 0.18, 0.9, 0.7, 0.25, -0.2, 2);
   }
-  /** A brass casing kicked out to the right of the gun. */
-  eject(at: THREE.Vector3, right: THREE.Vector3, up: THREE.Vector3) {
+  /** A brass casing kicked out to the right of the gun (`wait`: seconds before it shows, while the view's own casing is in the air). */
+  eject(at: THREE.Vector3, right: THREE.Vector3, up: THREE.Vector3, wait = 0) {
     const s = this.shell[this.shellNext]; this.shellNext = (this.shellNext + 1) % this.shell.length;
-    s.p.copy(at); s.v.copy(right).multiplyScalar(2.4 + Math.random()).addScaledVector(up, 1.6 + Math.random()); s.r.set(Math.random() * 6, Math.random() * 6, 0); s.s.set(12 + Math.random() * 10, 8, 4); s.life = 2.5; s.hits = 0;
+    s.p.copy(at); s.v.copy(right).multiplyScalar(2.4 + Math.random()).addScaledVector(up, 1.6 + Math.random()); s.r.set(Math.random() * 6, Math.random() * 6, 0); s.s.set(12 + Math.random() * 10, 8, 4); s.life = 2.5; s.hits = 0; s.wait = wait;
     this.shells.count = this.shell.length;
   }
   /** A tracer streak this frame, from `a` to `b`. */
@@ -195,6 +195,7 @@ export class Fx {
         if (s.hits++ < 2 && Math.abs(s.v.y) > 0.6) this.onBounce?.('shell', s.p);
         s.p.y = g + 0.006; s.v.multiplyScalar(0.35); s.v.y = Math.abs(s.v.y) * 0.4; s.s.multiplyScalar(0.5);
       }
+      if (s.wait > 0) { s.wait -= dt; this.shells.setMatrixAt(i, this.m4.makeScale(0, 0, 0)); continue; }
       this.shells.setMatrixAt(i, this.m4.compose(s.p, this.q.setFromEuler(s.r), this.one));
     }
     if (live || this.shells.count) this.shells.instanceMatrix.needsUpdate = true;
