@@ -112,8 +112,59 @@ const SURFACES = {
     const paint = dim(mix([62, 84, 76], [86, 108, 96], n), gap ? 0.3 : vent ? 0.4 : 1);
     return { rgb: handle ? [180, 185, 190] : [paint[0] + chip, paint[1] + chip, paint[2] + chip], h: gap ? -0.6 : vent ? -0.3 : handle ? 0.4 : n * 0.08, r: handle ? 0.2 : 0.45 + n * 0.3 };
   }, 3),
+  /* Ridgeline Ops' ground and building surfaces (the terrain blends the first five). */
+  /** Wet meadow grass: blades in two greens over dark soil. */
+  grass: () => make('grass', 256, 101, (x, y, n) => {
+    const blade = Math.abs(Math.sin(x * 1.9 + n * 25) * Math.cos(y * 2.3 - n * 17));
+    return { rgb: mix(mix([52, 66, 30], [96, 112, 48], n), [128, 140, 70], blade * 0.35), h: n * 0.6 + blade * 0.4, r: 0.85 - blade * 0.15 };
+  }, 2.6),
+  /** Mud and packed dirt with puddle-smooth patches and pebbles. */
+  mud: () => make('mud', 256, 113, (x, y, n) => {
+    const pebble = Math.hypot((x * 7) % 23 - 11, (y * 5) % 19 - 9) < 2.5 && n > 0.55;
+    const wet = n < 0.38;
+    return { rgb: pebble ? [120, 112, 98] : mix([62, 48, 34], [112, 92, 66], n), h: pebble ? 0.9 : n * 0.5, r: wet ? 0.35 : 0.9 };
+  }, 2.4),
+  /** Rock cliffs: layered strata, cracks and lichen. */
+  rock: () => make('rock', 256, 127, (x, y, n) => {
+    const strata = Math.sin(y * 0.18 + n * 8) * 0.5 + 0.5, crack = Math.abs(Math.sin((x * 0.07 + n * 6) * 2.1)) < 0.05;
+    const lichen = n > 0.68 ? 0.3 : 0;
+    const base = mix([92, 88, 82], [150, 144, 134], strata * 0.6 + n * 0.4);
+    return { rgb: dim(mix(base, [96, 110, 62], lichen), crack ? 0.55 : 1), h: strata * 0.5 + n * 0.5 - (crack ? 0.6 : 0), r: 0.75 + n * 0.2 };
+  }, 3.2),
+  /** Beach sand with ripples. */
+  sand: () => make('sand', 256, 139, (x, y, n) => {
+    const ripple = Math.sin(x * 0.25 + Math.sin(y * 0.05) * 3 + n * 4) * 0.5 + 0.5;
+    return { rgb: mix([176, 158, 116], [214, 196, 152], n * 0.6 + ripple * 0.4), h: ripple * 0.5 + n * 0.3, r: 0.92 };
+  }, 1.6),
+  /** Worn asphalt: aggregate grain, cracks, tar patches. */
+  asphalt: () => make('asphalt', 256, 151, (x, y, n) => {
+    const grit = ((x * 73 + y * 151) % 7) / 7, crack = Math.abs(Math.sin(x * 0.05 + n * 9) + Math.cos(y * 0.04 - n * 7)) < 0.04;
+    return { rgb: dim(mix([44, 44, 46], [78, 78, 80], n * 0.5 + grit * 0.5), crack ? 0.6 : 1), h: grit * 0.4 + n * 0.2 - (crack ? 0.5 : 0), r: 0.72 + grit * 0.2 };
+  }, 2),
+  /** Weathered wooden planks. */
+  wood: () => make('wood', 256, 163, (x, y, n) => {
+    const plank = Math.floor(y / 32), seam = y % 32 < 2, grain = Math.sin(x * 0.12 + Math.sin(y * 0.3 + plank) * 2 + n * 6) * 0.5 + 0.5;
+    return { rgb: dim(mix([88, 64, 42], [140, 106, 72], grain * 0.6 + n * 0.4), seam ? 0.45 : 1 - (plank % 3) * 0.06), h: seam ? -0.6 : grain * 0.3, r: 0.85 };
+  }, 2.6),
+  /** Corrugated sheet metal with rust streaks. */
+  corrugated: () => make('corrugated', 256, 175, (x, y, n) => {
+    const rib = Math.sin(x * 0.4) * 0.5 + 0.5, rust = n > 0.62 ? (n - 0.62) * 2.4 : 0;
+    return { rgb: mix(mix([150, 156, 160], [190, 196, 200], rib), [134, 74, 40], Math.min(1, rust + (y / 256) * rust)), h: rib, r: 0.45 + rust * 0.5 };
+  }, 3),
+  /** Woven sandbag fabric. */
+  fabric: () => make('fabric', 256, 187, (x, y, n) => {
+    const weave = (x % 4 < 2) !== (y % 4 < 2) ? 1 : 0;
+    return { rgb: mix([150, 132, 96], [186, 168, 126], n * 0.7 + weave * 0.3), h: weave * 0.4 + n * 0.3, r: 0.95 };
+  }, 1.8),
+  /** Pine bark: deep vertical fissures. */
+  bark: () => make('bark', 256, 199, (x, y, n) => {
+    const fissure = Math.abs(Math.sin(x * 0.18 + Math.sin(y * 0.03) * 2 + n * 3));
+    return { rgb: dim(mix([54, 40, 30], [96, 74, 56], n), 0.55 + fissure * 0.45), h: fissure, r: 0.95 };
+  }, 3.4),
 };
 export type Surface = keyof typeof SURFACES;
+/** A surface's colour, bump and roughness pictures (for custom shaders, like the blended terrain). */
+export const surfaceMaps = (kind: Surface) => SURFACES[kind]();
 
 /** A physically lit material wearing one of the surfaces, tinted by `color`. */
 export function surface(kind: Surface, { color = 0xffffff, metal = 0, rough = 1, bump = 1, emissive = 0x000000, glow = 0, emissiveMap }: { color?: number; metal?: number; rough?: number; bump?: number; emissive?: number; glow?: number; emissiveMap?: THREE.Texture } = {}) {

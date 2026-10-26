@@ -2222,3 +2222,13 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
 .ops-map-in { animation: ops-map-in 420ms var(--ease-glide) both; }
 @keyframes ops-map-in { from { opacity: 0; scale: 0.94; translate: 0 14px; } }
 @media (prefers-reduced-motion: reduce) { .ops-hit, .ops-kill, .ops-feed, .ops-map-in, .ops-dir { animation-name: rm-fade; } .ops-low { animation: none; } }
+/* Ridgeline Ops (overhaul): night vision on phones, the plate-break crack, a busy spinner, loot cards, banners. */
+.ops-nvg { background: radial-gradient(ellipse at center, rgba(60, 255, 110, 0.18), rgba(0, 30, 10, 0.85) 75%); mix-blend-mode: screen; }
+.ops-crack::before, .ops-crack::after { content: ''; position: absolute; left: 50%; top: 50%; width: 140%; height: 2px; background: #7dd3fc; translate: -50% -50%; rotate: 20deg; }
+.ops-crack::after { rotate: -55deg; width: 90%; }
+.ops-spin { animation: ops-spin 700ms linear infinite; }
+@keyframes ops-spin { to { rotate: 360deg; } }
+.ops-loot[data-rarity='1'] { box-shadow: inset 3px 0 0 #4ade80; } .ops-loot[data-rarity='2'] { box-shadow: inset 3px 0 0 #60a5fa; } .ops-loot[data-rarity='3'] { box-shadow: inset 3px 0 0 #c084fc; } .ops-loot[data-rarity='4'] { box-shadow: inset 3px 0 0 #f59e0b, 0 0 18px rgba(245, 158, 11, 0.45); }
+.ops-banner { animation: ops-banner 3.6s var(--ease-glide) both; }
+@keyframes ops-banner { 0% { opacity: 0; translate: 0 10px; letter-spacing: 0.3em; } 10% { opacity: 1; translate: 0 0; letter-spacing: 0.12em; } 85% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ops-banner { animation-name: rm-fade; } .ops-spin { animation: none; } }

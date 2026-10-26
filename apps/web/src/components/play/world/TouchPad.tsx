@@ -46,7 +46,7 @@ export function TouchPad({ controls, buttons }: { controls: React.RefObject<Cont
       <div className="pointer-events-none absolute bottom-6 start-6 grid h-28 w-28 place-items-center rounded-full bg-white/10 ring-1 ring-white/25">
         <span className="h-12 w-12 rounded-full bg-white/70 shadow-lg" style={{ transform: `translate(${knob?.x ?? 0}px, ${knob?.y ?? 0}px)` }} />
       </div>
-      <div className={many ? 'absolute bottom-5 end-4 grid grid-cols-2 gap-2.5' : 'absolute bottom-6 end-6 flex flex-col items-end gap-3'}>
+      <div className={many ? `absolute bottom-5 end-4 grid gap-2 ${buttons.length > 8 ? 'grid-cols-3' : 'grid-cols-2'}` : 'absolute bottom-6 end-6 flex flex-col items-end gap-3'}>
         {buttons.map((b) => (
           <button key={b.id} type="button" className={`grid place-items-center rounded-full bg-white/85 font-black uppercase text-zinc-900 shadow-[0_5px_0_rgba(0,0,0,0.35)] active:translate-y-1 active:shadow-none ${many ? 'h-14 w-14 text-[10px]' : 'h-16 w-16 text-xs'}`}
             onPointerDown={(e) => { e.stopPropagation(); controls.current?.press(b.id); }}

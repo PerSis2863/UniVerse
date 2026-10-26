@@ -18,6 +18,8 @@ export interface GameInfo {
   seconds: number;
   /** The highest score a round can reach (scores above it are refused as impossible). */
   maxScore: number;
+  /** A great round's score, for experience (full XP), when it's far under the cap (Ridgeline Ops). */
+  par?: number;
   color: string;
   /** The bigger games (M32): a full-size stage, longer rounds. */
   big?: boolean;
@@ -38,7 +40,7 @@ export const GAMES: Record<GameId, GameInfo> = {
   pin: { id: 'pin', app: 'trace', name: 'World Pin', tagline: 'Where in the world is that parcel going?', how: 'A city appears: tap where it is on the world map. The closer your pin, the more points; pins in a row within 500 km build a streak. Two hints a round show the region (half points). 15 cities.', seconds: 135, maxScore: 24_000, color: '#f472b6', big: true },
   rescue: { id: 'rescue', app: 'relief', name: 'Flood Rescue', tagline: 'Fly the helicopter, beat the rising water', how: 'Hover low over a roof to winch people up (4 at a time), then land on the hospital’s H to drop them off and refuel. Drop supply crates (D) on roofs to give people more time. Watch for lightning and gusts.', seconds: 180, maxScore: 17_000, color: '#fb923c', big: true },
   obby: { id: 'obby', app: 'play', name: 'Skyline Obby', tagline: 'Jump the sky course to the golden finish', how: 'Thirty stages in three worlds (Sky Islands, Lava Peaks, Neon Void): moving, crumbling, blinking, bounce, slippery ice and conveyor pads, spinning lasers. Checkpoints save you; gems and finishing early score more.', seconds: 480, maxScore: 36_000, color: '#38bdf8', big: true, world: true },
-  ops: { id: 'ops', app: 'play', name: 'Ridgeline Ops', tagline: 'Fly in, loot the island, get out alive', how: 'An open island of hills, forests and enemy outposts. Pick a landing zone, raid outposts and search crates and soldiers for loot (five rarities), free the hostages, then call the helicopter at a landing zone (E) and hold on until it lands: only what you get out counts. Go down and your backpack stays where you fell.', seconds: 600, maxScore: 60_000, color: '#84cc16', big: true, world: true, age: 16, rated: 'military shooting' },
+  ops: { id: 'ops', app: 'play', name: 'Ridgeline Ops', tagline: 'Drop in, loot the island, get out alive', how: 'A first-person extraction shooter on an 800 m island: six named places, soldiers in squads, vehicles, supply drops and a day turning to night. Loot guns, attachments, armour and valuables; free hostages; then call the helicopter at a landing zone and hold it for 60 seconds. Only what you get out counts, and your backpack stays where you fall.', seconds: 900, maxScore: 500_000, par: 40_000, color: '#84cc16', big: true, world: true, age: 16, rated: 'realistic military shooting' },
   night: { id: 'night', app: 'play', name: 'Night Shift', tagline: 'Three floors of a dark school. Something else is looking too.', how: 'Three floors of dark halls: find the keys on each (3, then 4, then 5) to open the stairs, then the exit. Shine your torch on it to drive it back, or hide in a locker (E) so it loses you; don’t let it reach you.', seconds: 480, maxScore: 36_000, color: '#64748b', big: true, world: true, age: 18, rated: 'horror, jump scares' },
   orbit: { id: 'orbit', app: 'play', name: 'Orbit Breach', tagline: 'Fix the station before the meteors win', how: 'Three stations: jump between decks in low gravity (jump again in the air to boost), repair the reactors (3, then 4, then 5), grab oxygen, dodge meteors, shelter under a shield from solar flares, and take the pod to the next.', seconds: 420, maxScore: 34_000, color: '#22d3ee', big: true, world: true, age: 12, rated: 'sci-fi peril' },
   ocean: { id: 'ocean', app: 'green', name: 'Ocean Cleanup', tagline: 'Clear the plastic, spare the sea life', how: 'Scoop up plastic for combos and grab the power-ups (magnet, boost, shield). Every 15 pieces charge a sweep (Space) that collects all plastic nearby. Bumping into sea life costs points; oil slows you down.', seconds: 150, maxScore: 48_000, color: '#22d3ee', big: true },
@@ -46,7 +48,8 @@ export const GAMES: Record<GameId, GameInfo> = {
 
 /** Experience (M37): every round earns up to 1,000 XP, its score's share of the game's best possible,
  *  so all games count the same. Levels need a little more XP each time. */
-export const xpFor = (game: GameId, score: number) => Math.round((Math.max(0, Math.min(score, GAMES[game].maxScore)) / GAMES[game].maxScore) * 1000);
+export const xpPar = (game: GameId) => GAMES[game].par ?? GAMES[game].maxScore;
+export const xpFor = (game: GameId, score: number) => Math.round((Math.max(0, Math.min(score, xpPar(game))) / xpPar(game)) * 1000);
 export function levelOf(xp: number): { level: number; into: number; need: number } {
   let level = 1, left = Math.max(0, Math.floor(xp)), need = 400;
   while (left >= need && level < 99) { left -= need; level++; need = 400 + (level - 1) * 150; }

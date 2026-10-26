@@ -1,13 +1,16 @@
 import type { Net } from '../useGameRoom';
 import { Avatar, THREE, type World } from './core';
 
+/** What a figure for another player needs (Ridgeline Ops draws soldiers instead of blocks). */
+export interface Figure { group: THREE.Object3D; facing: number | null; update(dt: number, vel: THREE.Vector3, ground: boolean): void }
+
 // The other players in a 3D room (M38): each one's position comes from the room about ten times a
 // second (useGameRoom's Net); here each becomes a blocky character with a name tag that glides
 // between those updates (so it moves smoothly, not in hops), walks or jumps by how it moves, and
 // fades out when its player leaves. Only players in the same part of the world (the same obby
 // world, school floor or station) are shown. This player's own position goes up the same way.
 
-interface Other { av: Avatar; tag: THREE.Sprite; bubble: THREE.Sprite | null; bubbleText: string; ring: THREE.Mesh; at: THREE.Vector3; prev: THREE.Vector3; vel: THREE.Vector3; ry: number; c: number; h: string; seen: number }
+interface Other { av: Figure; tag: THREE.Sprite; bubble: THREE.Sprite | null; bubbleText: string; ring: THREE.Mesh; at: THREE.Vector3; prev: THREE.Vector3; vel: THREE.Vector3; ry: number; c: number; h: string; seen: number }
 
 /** What a player said, as a white speech bubble (M39). */
 function bubbleOf(text: string) {
@@ -54,7 +57,7 @@ export class Crowd {
   private talk = new Set<string>();
   private talkAt = 0;
   /** `net` is read fresh each frame (the room's chat and voice change while the round runs). */
-  constructor(private w: World, private getNet: () => Net | undefined) {}
+  constructor(private w: Pick<World, 'scene' | 'camera'>, private getNet: () => Net | undefined, private make: (color: number, hat: string) => Figure = (c, h) => new Avatar(c, { hat: h })) {}
   private get net() { return this.getNet(); }
 
   /** Each frame: send where I am, move everyone else toward where they were last seen. */
@@ -71,7 +74,7 @@ export class Crowd {
       this.target.set(p.x, p.y, p.z);
       if (!o || o.c !== p.c || o.h !== p.h) {
         if (o) this.drop(id);
-        const av = new Avatar(p.c, { hat: p.h });
+        const av = this.make(p.c, p.h);
         const tag = nameTag(p.name, p.c);
         tag.position.y = 2.75; av.group.add(tag);
         // A green ring at their feet while they talk.

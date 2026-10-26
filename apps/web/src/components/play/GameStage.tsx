@@ -28,7 +28,7 @@ const VIEWS: Record<GameId, React.ComponentType<GameProps>> = {
   rescue: dynamic(() => import('./FloodRescue').then((m) => m.FloodRescue), { ssr: false, loading }),
   ocean: dynamic(() => import('./OceanCleanup').then((m) => m.OceanCleanup), { ssr: false, loading }),
   obby: dynamic(() => import('./SkylineObby').then((m) => m.SkylineObby), { ssr: false, loading }),
-  ops: dynamic(() => import('./RidgelineOps').then((m) => m.RidgelineOps), { ssr: false, loading }),
+  ops: dynamic(() => import('./ops/RidgelineOps').then((m) => m.RidgelineOps), { ssr: false, loading }),
   night: dynamic(() => import('./NightShift').then((m) => m.NightShift), { ssr: false, loading }),
   orbit: dynamic(() => import('./OrbitBreach').then((m) => m.OrbitBreach), { ssr: false, loading }),
 };
@@ -38,7 +38,7 @@ export function preloadGame(game: GameId) {
   const mod = {
     quiz: () => import('./QuizClash'), fakes: () => import('./SpotTheFake'), supply: () => import('./SupplyRun'), sort: () => import('./RecycleRush'),
     type: () => import('./TypeRace'), pin: () => import('./WorldPin'), rescue: () => import('./FloodRescue'), ocean: () => import('./OceanCleanup'),
-    obby: () => import('./SkylineObby'), ops: () => import('./RidgelineOps'), night: () => import('./NightShift'), orbit: () => import('./OrbitBreach'),
+    obby: () => import('./SkylineObby'), ops: () => import('./ops/RidgelineOps'), night: () => import('./NightShift'), orbit: () => import('./OrbitBreach'),
   }[game];
   void mod();
 }

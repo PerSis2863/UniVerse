@@ -16,6 +16,9 @@ let noise: AudioBuffer | null = null;
 export const soundOn = () => { try { return localStorage.getItem(KEY) !== 'off'; } catch { return true; } };
 export function setSoundOn(on: boolean) { try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch { /* private mode */ } }
 
+/** The shared audio context, once a tap has started it (Ridgeline Ops builds its own mix on it). */
+export const audioContext = () => ac;
+
 /** Starts the audio (call from a tap). */
 export function unlockAudio() {
   if (typeof window === 'undefined') return;
