@@ -26,24 +26,28 @@ function useStep(steps: number, ms = 900) {
 
 const pop = { initial: { opacity: 0, y: 10, scale: 0.92 }, animate: { opacity: 1, y: 0, scale: 1 }, exit: { opacity: 0, scale: 0.96, transition: { duration: 0.2 } }, transition: { duration: 0.45, ease: EASE } };
 
-/* ── UniVersity: the late hand-in flow, a light travelling through it ── */
+/* ── UniVersity: the late hand-in flow, a light gliding through it ──
+   A comet with a soft glow runs the real curve (pathOffset, not jumps), each line draws itself in pink
+   once the light has passed, idle lines keep a faint flow of dashes, a lit box sends out a ripple, and a
+   pink glow drifts behind the card. Reduce Motion: the finished picture, still. */
 const NODES = { start: [92, 120], check: [246, 120], yes: [400, 48], no: [400, 192] } as const;
+const STRAIGHT = 'M 152 120 L 196 120';
 const curve = (to: 'yes' | 'no') => { const [x, y] = NODES[to]; return `M 296 120 C 330 120, 326 ${y}, ${x - 72} ${y}`; };
-/** Points along the comet's way, for the travelling light. */
-function way(to: 'yes' | 'no') {
-  const [, ty] = NODES[to], out: [number, number][] = [];
-  for (let i = 0; i <= 10; i++) out.push([152 + (196 - 152) * (i / 10), 120]);
-  for (let i = 1; i <= 16; i++) {
-    const t = i / 16, u = 1 - t, x = u ** 3 * 296 + 3 * u * u * t * 330 + 3 * u * t * t * 326 + t ** 3 * 328, y = u ** 3 * 120 + 3 * u * u * t * 120 + 3 * u * t * t * ty + t ** 3 * ty;
-    out.push([x, y]);
-  }
-  return out;
+
+/** The light running one line: a blurred glow and a bright head, start to end. */
+function Comet({ d, run }: { d: string; run: string }) {
+  const go = { initial: { pathLength: 0.22, pathOffset: -0.22 }, animate: { pathOffset: 1.02 }, transition: { duration: 0.85, ease: EASE } };
+  return (
+    <g key={run}>
+      <motion.path d={d} fill="none" stroke="#ec4899" strokeWidth={9} strokeLinecap="round" opacity={0.45} style={{ filter: 'blur(5px)' }} {...go} />
+      <motion.path d={d} fill="none" stroke="#fdf2f8" strokeWidth={2.5} strokeLinecap="round" {...go} />
+    </g>
+  );
 }
 
 export function CampusScene() {
   const { s, loop, calm } = useStep(8);
   const to: 'yes' | 'no' = loop % 2 ? 'no' : 'yes';
-  const pts = way(to);
   const lit = (n: keyof typeof NODES) => (n === 'start' ? s >= 0 && s < 2 : n === 'check' ? s >= 2 && s < 4 : n === to && s >= 4);
   const rows = [
     ['Hand-in arrives', 'Maths essay, sent at 9:42', 'when'],
@@ -51,50 +55,76 @@ export function CampusScene() {
     to === 'yes' ? ['Ask the teacher', 'Accept it or give an extension', 'asks a person'] : ['Into the gradebook', 'Marked on time, the student sees it', 'by itself'],
   ];
   const row = s < 2 ? 0 : s < 4 ? 1 : 2;
+  const drawn = (d: string, on: boolean, k: string) => (
+    <motion.path key={k} d={d} fill="none" stroke="#ec4899" strokeWidth={2} strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 4px rgba(236,72,153,0.7))' }}
+      initial={false} animate={{ pathLength: on || calm ? 1 : 0, opacity: on || calm ? 1 : 0 }} transition={{ duration: on ? 0.5 : 0.35, ease: EASE }} />
+  );
   return (
-    <div className="dark relative w-full max-w-[520px] rounded-[2rem] bg-[#111112]/95 p-5 text-start ring-1 ring-white/10 shadow-[0_40px_120px_-40px_rgba(236,72,153,0.45)]" role="img" aria-label="A late hand-in flowing to the teacher or into the gradebook">
-      <div className="flex items-center gap-3">
+    <div className="dark relative w-full max-w-[520px] overflow-hidden rounded-[2rem] bg-[#111112]/95 p-5 text-start ring-1 ring-white/10 shadow-[0_40px_120px_-40px_rgba(236,72,153,0.45)]" role="img" aria-label="A late hand-in flowing to the teacher or into the gradebook">
+      {!calm && (
+        <motion.span aria-hidden className="pointer-events-none absolute -top-24 -end-24 h-72 w-72 rounded-full bg-[radial-gradient(closest-side,rgba(236,72,153,0.22),transparent)]"
+          animate={{ x: [0, -60, 0], y: [0, 50, 0] }} transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }} />
+      )}
+      <div className="relative flex items-center gap-3">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-500/25 to-fuchsia-500/25 ring-1 ring-white/10"><ClipboardCheck className="h-5 w-5 text-fuchsia-200" aria-hidden /></span>
         <div><p className="font-semibold text-white">Late hand-ins</p><p className="font-mono text-xs text-zinc-400">assignments</p></div>
-        <span className="ms-auto inline-flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-3 py-1 font-mono text-xs text-fuchsia-200"><span className="h-2 w-2 animate-pulse rounded-full bg-fuchsia-400" />running</span>
+        <span className="ms-auto inline-flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-3 py-1 font-mono text-xs text-fuchsia-200">
+          <span className="relative flex h-2 w-2"><span className="absolute inset-0 animate-ping rounded-full bg-fuchsia-400/70" /><span className="relative h-2 w-2 rounded-full bg-fuchsia-400" /></span>running
+        </span>
       </div>
       <div className="relative mt-4 aspect-[480/240] w-full border-y border-white/10">
         <svg viewBox="0 0 480 240" className="absolute inset-0 h-full w-full" aria-hidden>
-          <path d="M 152 120 L 196 120" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
-          {(['yes', 'no'] as const).map((k) => <path key={k} d={curve(k)} stroke={k === to && s >= 3 ? '#ec4899' : 'rgba(255,255,255,0.18)'} strokeWidth={k === to && s >= 3 ? 2 : 1.5} fill="none" style={{ transition: 'stroke 400ms' }} />)}
+          {/* the waiting lines: faint, with dashes flowing toward the answer */}
+          {[STRAIGHT, curve('yes'), curve('no')].map((d) => (
+            <g key={d}>
+              <path d={d} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1.5" />
+              {!calm && <motion.path d={d} fill="none" stroke="rgba(244,114,182,0.35)" strokeWidth="1.5" strokeDasharray="3 9"
+                animate={{ strokeDashoffset: [0, -24] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'linear' }} />}
+            </g>
+          ))}
+          {drawn(STRAIGHT, s >= 2, 'a')}
+          {drawn(curve(to), s >= 4, `b-${to}`)}
           <text x="300" y="84" className="fill-zinc-400 font-mono text-[11px]">yes</text>
           <text x="300" y="166" className="fill-zinc-400 font-mono text-[11px]">no</text>
-          {!calm && (s === 1 || s === 3) && (
-            <motion.circle key={`${loop}-${s}`} r="5" fill="#f9a8d4" style={{ filter: 'drop-shadow(0 0 8px #ec4899)' }}
-              initial={{ cx: s === 1 ? pts[0][0] : pts[10][0], cy: s === 1 ? pts[0][1] : pts[10][1] }}
-              animate={s === 1 ? { cx: pts.slice(0, 11).map((p) => p[0]), cy: pts.slice(0, 11).map((p) => p[1]) } : { cx: pts.slice(10).map((p) => p[0]), cy: pts.slice(10).map((p) => p[1]) }}
-              transition={{ duration: 0.85, ease: 'easeInOut' }} />
-          )}
+          {!calm && s === 1 && <Comet d={STRAIGHT} run={`s${loop}`} />}
+          {!calm && s === 3 && <Comet d={curve(to)} run={`c${loop}`} />}
         </svg>
         {([['start', 'Hand-in arrives'], ['check', 'Late?'], ['yes', 'Ask the teacher'], ['no', 'Into the gradebook']] as const).map(([k, label]) => {
           const [x, y] = NODES[k], on = lit(k);
           return (
-            <motion.div key={k} animate={{ scale: on ? 1.06 : 1 }} transition={{ type: 'spring', stiffness: 400, damping: 22 }}
-              className={cn('absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-2xl border px-3 py-2 text-[12px] font-semibold text-white transition-[border-color,box-shadow,background-color] duration-300 sm:px-4 sm:text-sm',
-                on ? 'border-pink-400/80 bg-[#1d1418] shadow-[0_0_30px_rgba(236,72,153,0.55)]' : 'border-white/10 bg-[#161618]', k === 'yes' && 'border-fuchsia-400/40')}
-              style={{ left: `${(x / 480) * 100}%`, top: `${(y / 240) * 100}%` }}>
-              {k === 'yes' && <UserRound className="me-1 inline h-3.5 w-3.5 -mt-0.5 text-fuchsia-300" aria-hidden />}{label}
-            </motion.div>
+            <div key={k} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${(x / 480) * 100}%`, top: `${(y / 240) * 100}%` }}>
+              <AnimatePresence>
+                {on && !calm && (
+                  <motion.span key={`r${loop}`} aria-hidden className="pointer-events-none absolute inset-0 rounded-2xl border border-pink-400/70"
+                    initial={{ opacity: 0.7, scale: 1 }} animate={{ opacity: 0, scale: 1.35 }} exit={{ opacity: 0 }} transition={{ duration: 0.9, ease: EASE }} />
+                )}
+              </AnimatePresence>
+              <motion.div animate={{ scale: on ? 1.06 : 1, y: on ? -2 : 0 }} transition={{ type: 'spring', stiffness: 380, damping: 24 }}
+                className={cn('whitespace-nowrap rounded-2xl border px-3 py-2 text-[12px] font-semibold text-white transition-[border-color,box-shadow,background-color] duration-500 sm:px-4 sm:text-sm',
+                  on ? 'border-pink-400/80 bg-[#1d1418] shadow-[0_0_34px_rgba(236,72,153,0.55)]' : 'border-white/10 bg-[#161618]', k === 'yes' && !on && 'border-fuchsia-400/40')}>
+                {k === 'yes' && <UserRound className="me-1 inline h-3.5 w-3.5 -mt-0.5 text-fuchsia-300" aria-hidden />}{label}
+              </motion.div>
+            </div>
           );
         })}
       </div>
-      <ol className="mt-3 space-y-1">
+      <ol className="relative mt-3 space-y-1">
         {rows.map(([title, sub, tag], i) => (
-          <motion.li key={`${i}-${title}`} layout className={cn('flex items-start gap-3 rounded-2xl px-3 py-2.5 transition-colors duration-300', row === i && 'bg-white/[0.06]')}>
-            <span className="mt-0.5 font-mono text-xs text-zinc-400">0{i + 1}</span>
-            <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-white">{title}</span><span className="block text-xs text-zinc-300">{sub}</span></span>
-            <span className="flex items-center gap-1.5 font-mono text-xs text-zinc-400">
-              {tag}{i < row || (i === row && s >= 5) ? <motion.span initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="grid h-4 w-4 place-items-center rounded-full bg-emerald-400 text-emerald-950"><Check className="h-3 w-3" strokeWidth={3} aria-hidden /></motion.span> : null}
+          <li key={i} className={cn('relative flex items-start gap-3 overflow-hidden rounded-2xl px-3 py-2.5')}>
+            {row === i && <motion.span layoutId="campus-row" aria-hidden className="absolute inset-0 rounded-2xl bg-white/[0.06]" transition={{ type: 'spring', stiffness: 320, damping: 32 }} />}
+            <span className="relative mt-0.5 font-mono text-xs text-zinc-400">0{i + 1}</span>
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span key={title} className="relative min-w-0 flex-1" initial={{ opacity: 0, y: 8, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -8, filter: 'blur(4px)' }} transition={{ duration: 0.4, ease: EASE }}>
+                <span className="block text-sm font-semibold text-white">{title}</span><span className="block text-xs text-zinc-300">{sub}</span>
+              </motion.span>
+            </AnimatePresence>
+            <span className="relative flex items-center gap-1.5 font-mono text-xs text-zinc-400">
+              {tag}{i < row || (i === row && s >= 5) ? <motion.span initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 20 }} className="grid h-4 w-4 place-items-center rounded-full bg-emerald-400 text-emerald-950"><Check className="h-3 w-3" strokeWidth={3} aria-hidden /></motion.span> : null}
             </span>
-          </motion.li>
+          </li>
         ))}
       </ol>
-      <p className="mt-2 font-mono text-xs text-zinc-400">Runs on every hand-in, in every course</p>
+      <p className="relative mt-2 font-mono text-xs text-zinc-400">Runs on every hand-in, in every course</p>
     </div>
   );
 }
