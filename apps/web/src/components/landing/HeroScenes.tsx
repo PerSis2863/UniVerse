@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { Check, ClipboardCheck, Crown, Droplets, Home, Leaf, ScanLine, ShieldCheck, Sparkles, Stethoscope, UserRound, Utensils } from 'lucide-react';
+import { CalendarCheck, Check, ClipboardCheck, Crown, GraduationCap, ListChecks, Mail, Droplets, Home, Leaf, ScanLine, ShieldCheck, Sparkles, Stethoscope, Utensils } from 'lucide-react';
 import { GameIcon } from '@/components/play/GameIcon';
 import { cn } from '@/lib/utils';
 import { EASE } from './bits';
@@ -26,105 +26,93 @@ function useStep(steps: number, ms = 900) {
 
 const pop = { initial: { opacity: 0, y: 10, scale: 0.92 }, animate: { opacity: 1, y: 0, scale: 1 }, exit: { opacity: 0, scale: 0.96, transition: { duration: 0.2 } }, transition: { duration: 0.45, ease: EASE } };
 
-/* ── UniVersity: the late hand-in flow, a light gliding through it ──
-   A comet with a soft glow runs the real curve (pathOffset, not jumps), each line draws itself in pink
-   once the light has passed, idle lines keep a faint flow of dashes, a lit box sends out a ripple, and a
-   pink glow drifts behind the card. Reduce Motion: the finished picture, still. */
-const NODES = { start: [92, 120], check: [246, 120], yes: [400, 48], no: [400, 192] } as const;
-const STRAIGHT = 'M 152 120 L 196 120';
-const curve = (to: 'yes' | 'no') => { const [x, y] = NODES[to]; return `M 296 120 C 330 120, 326 ${y}, ${x - 72} ${y}`; };
-
-/** The light running one line: a blurred glow and a bright head, start to end. */
-function Comet({ d, run }: { d: string; run: string }) {
-  const go = { initial: { pathLength: 0.22, pathOffset: -0.22 }, animate: { pathOffset: 1.02 }, transition: { duration: 0.85, ease: EASE } };
-  return (
-    <g key={run}>
-      <motion.path d={d} fill="none" stroke="#ec4899" strokeWidth={9} strokeLinecap="round" opacity={0.45} style={{ filter: 'blur(5px)' }} {...go} />
-      <motion.path d={d} fill="none" stroke="#fdf2f8" strokeWidth={2.5} strokeLinecap="round" {...go} />
-    </g>
-  );
-}
+/* ── UniVersity: the school day running itself ──
+   Five jobs circle a glowing core on a slow orbit (each stays upright); every beat a beam of light
+   reaches the next one, it lights up and lifts, and its result slides into the live feed below while
+   the older ones glide down. The core breathes and counts what it handled. Transform and opacity only;
+   Reduce Motion shows the finished picture, still. */
+const DAY = [
+  { icon: CalendarCheck, title: 'Register filled itself', sub: 'From the 9:00 class call: 28 present' },
+  { icon: ListChecks, title: 'Quiz marked', sub: 'Physics, 31 answers, in two seconds' },
+  { icon: ClipboardCheck, title: 'Late hand-in sent to the teacher', sub: 'Maths essay, 42 minutes late' },
+  { icon: GraduationCap, title: 'Grades into the gradebook', sub: 'Feedback reaches every student' },
+  { icon: Mail, title: 'Parent digest sent', sub: 'One short summary at 18:00' },
+] as const;
+const ORBIT = 118; // px, the jobs' circle
 
 export function CampusScene() {
-  const { s, loop, calm } = useStep(8);
-  const to: 'yes' | 'no' = loop % 2 ? 'no' : 'yes';
-  const lit = (n: keyof typeof NODES) => (n === 'start' ? s >= 0 && s < 2 : n === 'check' ? s >= 2 && s < 4 : n === to && s >= 4);
-  const rows = [
-    ['Hand-in arrives', 'Maths essay, sent at 9:42', 'when'],
-    ['Late?', 'It was due at 9:00', 'check'],
-    to === 'yes' ? ['Ask the teacher', 'Accept it or give an extension', 'asks a person'] : ['Into the gradebook', 'Marked on time, the student sees it', 'by itself'],
-  ];
-  const row = s < 2 ? 0 : s < 4 ? 1 : 2;
-  const drawn = (d: string, on: boolean, k: string) => (
-    <motion.path key={k} d={d} fill="none" stroke="#ec4899" strokeWidth={2} strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 4px rgba(236,72,153,0.7))' }}
-      initial={false} animate={{ pathLength: on || calm ? 1 : 0, opacity: on || calm ? 1 : 0 }} transition={{ duration: on ? 0.5 : 0.35, ease: EASE }} />
-  );
+  const { s, loop, calm } = useStep(DAY.length, 1800);
+  const n = loop * DAY.length + s; // how many jobs done, for the counter and the feed
+  const feed = [0, 1, 2].map((k) => n - k).filter((i) => i >= 0);
+  const spin = calm ? undefined : { rotate: 360 };
+  const turn = { duration: 60, repeat: Infinity, ease: 'linear' } as const;
   return (
-    <div className="dark relative w-full max-w-[520px] overflow-hidden rounded-[2rem] bg-[#111112]/95 p-5 text-start ring-1 ring-white/10 shadow-[0_40px_120px_-40px_rgba(236,72,153,0.45)]" role="img" aria-label="A late hand-in flowing to the teacher or into the gradebook">
-      {!calm && (
-        <motion.span aria-hidden className="pointer-events-none absolute -top-24 -end-24 h-72 w-72 rounded-full bg-[radial-gradient(closest-side,rgba(236,72,153,0.22),transparent)]"
-          animate={{ x: [0, -60, 0], y: [0, 50, 0] }} transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }} />
-      )}
-      <div className="relative flex items-center gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-500/25 to-fuchsia-500/25 ring-1 ring-white/10"><ClipboardCheck className="h-5 w-5 text-fuchsia-200" aria-hidden /></span>
-        <div><p className="font-semibold text-white">Late hand-ins</p><p className="font-mono text-xs text-zinc-400">assignments</p></div>
-        <span className="ms-auto inline-flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-3 py-1 font-mono text-xs text-fuchsia-200">
-          <span className="relative flex h-2 w-2"><span className="absolute inset-0 animate-ping rounded-full bg-fuchsia-400/70" /><span className="relative h-2 w-2 rounded-full bg-fuchsia-400" /></span>running
-        </span>
-      </div>
-      <div className="relative mt-4 aspect-[480/240] w-full border-y border-white/10">
-        <svg viewBox="0 0 480 240" className="absolute inset-0 h-full w-full" aria-hidden>
-          {/* the waiting lines: faint, with dashes flowing toward the answer */}
-          {[STRAIGHT, curve('yes'), curve('no')].map((d) => (
-            <g key={d}>
-              <path d={d} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1.5" />
-              {!calm && <motion.path d={d} fill="none" stroke="rgba(244,114,182,0.35)" strokeWidth="1.5" strokeDasharray="3 9"
-                animate={{ strokeDashoffset: [0, -24] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'linear' }} />}
-            </g>
-          ))}
-          {drawn(STRAIGHT, s >= 2, 'a')}
-          {drawn(curve(to), s >= 4, `b-${to}`)}
-          <text x="300" y="84" className="fill-zinc-400 font-mono text-[11px]">yes</text>
-          <text x="300" y="166" className="fill-zinc-400 font-mono text-[11px]">no</text>
-          {!calm && s === 1 && <Comet d={STRAIGHT} run={`s${loop}`} />}
-          {!calm && s === 3 && <Comet d={curve(to)} run={`c${loop}`} />}
-        </svg>
-        {([['start', 'Hand-in arrives'], ['check', 'Late?'], ['yes', 'Ask the teacher'], ['no', 'Into the gradebook']] as const).map(([k, label]) => {
-          const [x, y] = NODES[k], on = lit(k);
-          return (
-            <div key={k} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${(x / 480) * 100}%`, top: `${(y / 240) * 100}%` }}>
-              <AnimatePresence>
-                {on && !calm && (
-                  <motion.span key={`r${loop}`} aria-hidden className="pointer-events-none absolute inset-0 rounded-2xl border border-pink-400/70"
-                    initial={{ opacity: 0.7, scale: 1 }} animate={{ opacity: 0, scale: 1.35 }} exit={{ opacity: 0 }} transition={{ duration: 0.9, ease: EASE }} />
-                )}
-              </AnimatePresence>
-              <motion.div animate={{ scale: on ? 1.06 : 1, y: on ? -2 : 0 }} transition={{ type: 'spring', stiffness: 380, damping: 24 }}
-                className={cn('whitespace-nowrap rounded-2xl border px-3 py-2 text-[12px] font-semibold text-white transition-[border-color,box-shadow,background-color] duration-500 sm:px-4 sm:text-sm',
-                  on ? 'border-pink-400/80 bg-[#1d1418] shadow-[0_0_34px_rgba(236,72,153,0.55)]' : 'border-white/10 bg-[#161618]', k === 'yes' && !on && 'border-fuchsia-400/40')}>
-                {k === 'yes' && <UserRound className="me-1 inline h-3.5 w-3.5 -mt-0.5 text-fuchsia-300" aria-hidden />}{label}
-              </motion.div>
-            </div>
-          );
-        })}
-      </div>
-      <ol className="relative mt-3 space-y-1">
-        {rows.map(([title, sub, tag], i) => (
-          <li key={i} className={cn('relative flex items-start gap-3 overflow-hidden rounded-2xl px-3 py-2.5')}>
-            {row === i && <motion.span layoutId="campus-row" aria-hidden className="absolute inset-0 rounded-2xl bg-white/[0.06]" transition={{ type: 'spring', stiffness: 320, damping: 32 }} />}
-            <span className="relative mt-0.5 font-mono text-xs text-zinc-400">0{i + 1}</span>
-            <AnimatePresence mode="popLayout" initial={false}>
-              <motion.span key={title} className="relative min-w-0 flex-1" initial={{ opacity: 0, y: 8, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -8, filter: 'blur(4px)' }} transition={{ duration: 0.4, ease: EASE }}>
-                <span className="block text-sm font-semibold text-white">{title}</span><span className="block text-xs text-zinc-300">{sub}</span>
-              </motion.span>
-            </AnimatePresence>
-            <span className="relative flex items-center gap-1.5 font-mono text-xs text-zinc-400">
-              {tag}{i < row || (i === row && s >= 5) ? <motion.span initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 20 }} className="grid h-4 w-4 place-items-center rounded-full bg-emerald-400 text-emerald-950"><Check className="h-3 w-3" strokeWidth={3} aria-hidden /></motion.span> : null}
-            </span>
-          </li>
+    <div className="dark relative flex h-[480px] w-full max-w-[520px] flex-col items-center" role="img" aria-label="A school day: the register, quiz marking, late hand-ins, grades and the parent digest done by themselves">
+      <div className="relative grid h-[310px] w-[310px] shrink-0 place-items-center">
+        {/* the track, a faint dotted circle */}
+        <span aria-hidden className="absolute rounded-full border border-dashed border-white/15" style={{ width: ORBIT * 2, height: ORBIT * 2 }} />
+        <span aria-hidden className="absolute rounded-full border border-white/[0.06]" style={{ width: ORBIT * 2 + 70, height: ORBIT * 2 + 70 }} />
+        {/* the core: breathing glow, waves going out, the day's count */}
+        {!calm && [0, 1, 2].map((i) => (
+          <motion.span key={i} aria-hidden className="absolute h-24 w-24 rounded-full border border-pink-400/40"
+            initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: [0.9, 2.6], opacity: [0.55, 0] }} transition={{ duration: 3.6, delay: i * 1.2, repeat: Infinity, ease: 'easeOut' }} />
         ))}
+        <motion.div className="relative grid h-24 w-24 place-items-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#3a1a2c,#121014_70%)] ring-1 ring-pink-400/40 shadow-[0_0_60px_rgba(236,72,153,0.45)]"
+          animate={calm ? undefined : { scale: [1, 1.04, 1] }} transition={{ duration: 3.6, repeat: Infinity, ease: 'easeInOut' }}>
+          <span className="text-center">
+            <span className="relative block h-7 overflow-hidden">
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span key={n} className="block font-mono text-2xl font-bold tabular-nums text-white" initial={{ y: 18, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -18, opacity: 0 }} transition={{ duration: 0.45, ease: EASE }}>{1204 + n}</motion.span>
+              </AnimatePresence>
+            </span>
+            <span className="block font-mono text-[11px] text-pink-200/80">done today</span>
+          </span>
+        </motion.div>
+        {/* the orbit: jobs ride round, each kept upright; the beam lives in the same turning frame */}
+        <motion.div className="absolute inset-0" animate={spin} transition={turn}>
+          <svg className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 310 310" aria-hidden>
+            {DAY.map((_, i) => {
+              const a = (i / DAY.length) * Math.PI * 2 - Math.PI / 2, x = 155 + Math.cos(a) * ORBIT, y = 155 + Math.sin(a) * ORBIT;
+              return i === s ? (
+                <motion.line key={`${n}`} x1="155" y1="155" x2={x} y2={y} stroke="#f472b6" strokeWidth="2" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 6px #ec4899)' }}
+                  initial={{ pathLength: calm ? 1 : 0, opacity: 1 }} animate={{ pathLength: 1, opacity: [1, 1, 0.35] }} transition={{ duration: 1.2, ease: EASE }} />
+              ) : null;
+            })}
+          </svg>
+          {DAY.map((d, i) => {
+            const a = (i / DAY.length) * Math.PI * 2 - Math.PI / 2, on = i === s, done = calm || i < s;
+            return (
+              <div key={d.title} className="absolute left-1/2 top-1/2" style={{ transform: `translate(${Math.cos(a) * ORBIT}px, ${Math.sin(a) * ORBIT}px)` }}>
+                <motion.div className="-ms-6 -mt-6" animate={calm ? undefined : { rotate: -360 }} transition={turn}>
+                  <motion.span animate={{ scale: on ? 1.18 : 1, y: on ? -3 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                    className={cn('relative grid h-12 w-12 place-items-center rounded-2xl ring-1 transition-[background-color,box-shadow] duration-500',
+                      on ? 'bg-pink-500 ring-pink-300 shadow-[0_0_34px_rgba(236,72,153,0.8)]' : done ? 'bg-[#1d1418] ring-pink-400/40' : 'bg-[#18181a] ring-white/10')}>
+                    {on && !calm && <motion.span key={n} aria-hidden className="absolute inset-0 rounded-2xl ring-2 ring-pink-300" initial={{ scale: 1, opacity: 0.8 }} animate={{ scale: 1.6, opacity: 0 }} transition={{ duration: 1, ease: EASE }} />}
+                    <d.icon className={cn('h-5 w-5', on ? 'text-white' : 'text-pink-200/80')} aria-hidden />
+                  </motion.span>
+                </motion.div>
+              </div>
+            );
+          })}
+        </motion.div>
+      </div>
+      {/* the feed: the newest result slides in on top, older ones glide down */}
+      <ol className="relative mt-1 w-full space-y-2" aria-label="Done today">
+        <AnimatePresence initial={false} mode="popLayout">
+          {feed.map((i, k) => {
+            const d = DAY[i % DAY.length];
+            return (
+              <motion.li key={i} layout initial={{ opacity: 0, y: -18, scale: 0.96, filter: 'blur(6px)' }} animate={{ opacity: 1 - k * 0.28, y: 0, scale: 1 - k * 0.02, filter: 'blur(0px)' }} exit={{ opacity: 0, y: 14, transition: { duration: 0.25 } }}
+                transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+                className={cn('flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ring-1', k === 0 ? 'bg-[#1b1519] ring-pink-400/30 shadow-[0_10px_40px_-18px_rgba(236,72,153,0.7)]' : 'bg-[#151517] ring-white/10')}>
+                <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-xl', k === 0 ? 'bg-pink-500/20' : 'bg-white/5')}><d.icon className="h-4 w-4 text-pink-200" aria-hidden /></span>
+                <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{d.title}</span><span className="block truncate text-xs text-zinc-300">{d.sub}</span></span>
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-400 text-emerald-950"><Check className="h-3 w-3" strokeWidth={3} aria-hidden /></span>
+              </motion.li>
+            );
+          })}
+        </AnimatePresence>
       </ol>
-      <p className="relative mt-2 font-mono text-xs text-zinc-400">Runs on every hand-in, in every course</p>
     </div>
   );
 }
