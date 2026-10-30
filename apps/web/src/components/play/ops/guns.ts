@@ -237,6 +237,8 @@ function RM(tint: number) {
   const base = rifleMats ?? (rifleMats = {
     steel: surface('gunmetal', { color: 0x6a6e74, metal: 0.9, rough: 0.28, bump: 0.4 }),
     dark: surface('gunmetal', { color: 0x2e3135, metal: 0.85, rough: 0.35, bump: 0.35 }),
+    // The sight's hood: matte anodised (shiny metal there mirrored the sky white and the ground black).
+    optic: surface('gunmetal', { color: 0x3a3d42, metal: 0.4, rough: 0.62, bump: 0.3 }),
     polymer: surface('polymer', { color: 0x2a2b2e, metal: 0.05, rough: 0.72, bump: 0.7 }),
     rubber: new THREE.MeshStandardMaterial({ color: 0x18191a, roughness: 0.95 }),
     tan: surface('polymer', { color: 0xa48a64, metal: 0.05, rough: 0.7, bump: 0.6 }),
@@ -352,8 +354,8 @@ function buildRifle(gun: Gun, scopeTex: THREE.Texture | null): GunRig {
   if (optic === 'holo' || optic === 'reddot') {
     const W = optic === 'holo' ? 0.046 : 0.032, H = optic === 'holo' ? 0.042 : 0.03, wy = top + 0.012 + H / 2;
     add(rb(0.022, 0.007, 0.07, 0.002), mt.dark, [0, top + 0.004, -0.025], undefined, opticGroup); // a slim base on the rail
-    for (const x of [-1, 1]) add(new THREE.BoxGeometry(0.004, H, 0.05), mt.dark, [x * (W / 2), wy, -0.03], undefined, opticGroup);
-    add(new THREE.BoxGeometry(W + 0.004, 0.004, 0.05), mt.dark, [0, wy + H / 2, -0.03], undefined, opticGroup);
+    for (const x of [-1, 1]) add(new THREE.BoxGeometry(0.004, H, 0.034), mt.optic, [x * (W / 2), wy, -0.038], undefined, opticGroup);
+    add(new THREE.BoxGeometry(W + 0.004, 0.004, 0.034), mt.optic, [0, wy + H / 2, -0.038], undefined, opticGroup);
     add(rb(0.012, 0.01, 0.012, 0.002), mt.dark, [W / 2 + 0.006, wy, -0.03], undefined, opticGroup); // the brightness buttons
     add(new THREE.PlaneGeometry(W - 0.002, H - 0.002), mt.glass, [0, wy, -0.054], undefined, opticGroup);
     lens = add(new THREE.RingGeometry(optic === 'holo' ? 0.0085 : 0.0001, optic === 'holo' ? 0.0098 : 0.0002, 40), mt.red, [0, wy, -0.0545], undefined, opticGroup);

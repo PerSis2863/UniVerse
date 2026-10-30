@@ -149,6 +149,10 @@ export class Sky {
     const light = moon ? a.set(0x8fa3d6) : sun;
     const skyPower = (this.night ? 0.22 : 0.55 + 0.6 * Math.max(0, this.sunDir.y)) * (1 - wet * 0.3) + flicker * 1.5;
     this.r.light(dir, light, power, top, b.set(0x3a3326).multiplyScalar(this.night ? 0.3 : 1), skyPower);
+    // Sun rays and flare: strongest with the sun clear of the horizon, gone in rain and at night.
+    const rs = this.r.sky;
+    rs.dir.copy(this.sunDir); rs.color.copy(sun).lerp(b.set(0xffe2b0), 0.4);
+    rs.k = this.night ? 0 : Math.min(1, Math.max(0, (this.sunDir.y + 0.01) / 0.08)) * (1 - wet);
     return { wet, night: this.night, fog };
   }
 }

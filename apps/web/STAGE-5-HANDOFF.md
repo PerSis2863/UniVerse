@@ -2173,3 +2173,39 @@ assets, nothing taken apart). Neon Strike is gone; the game id is `ops` (the liv
   material patched for fog/shadows must go through `r.patch` / `r.prep` (they compose
   `onBeforeCompile` and set the cache key). Test against the dev server in one command
   (start, test, stop) rather than leaving it running.
+
+## M41a, M41b · Ridgeline Ops weapon rig, hands, HUD (26 Oct 2026, another session, on the branch)
+
+Written up afterwards from the commit messages (that session lost access before its notes).
+- **M41a:** the first-person gun is built from moving parts (receiver, barrel, magazine, bolt or
+  slide, charging handle, optic); two jointed arms reach it with two-bone IK; an animator with eased
+  keyframes plays tactical and empty reloads, pump shells, inspect (I), swaps, plates, meds and
+  grenades; damped springs (`spring.ts`, tested) drive recoil, sway and a camera bump; the bob is a
+  figure 8 timed to footsteps; aiming narrows the view to 55° (40° on a 3x, 25° behind a scope);
+  muzzle flash with a 35 ms light, casings, ricochets, blood mist, dust. Keys: I inspect, 5 support,
+  8 bandage.
+- **M41b:** HUD cleanup (controls on F1; an operator panel with plates and health; a weapon card with
+  outline, rarity, ammo, fire modes, grenades, killstreak slot); a detailed carbine and padded arms;
+  V throws a flashbang or smoke; on a phone or tablet the game says it needs a computer.
+
+## M41c · Ridgeline Ops scenery: real trees, mossy rocks, curved grass, sun rays and flare (30 Oct 2026, on the branch)
+
+The owner asked to carry on the other session's work where it stopped (its screenshot: "replacing
+the stacked cones with branched, textured pines… sun rays and lens flare").
+- `ops/trees.ts`: one atlas painted on a canvas (bark, a pine branch, a leaf cluster, two far-tree
+  pictures) shared by every tree kind, so each kind is still one mesh and one material per tile.
+  Pines: a tapering barked trunk with eight whorls of drooping branches (crossed needle cards bent in
+  two); broadleaf trees: a forked trunk with leaf clusters; bushes: leaf clusters; far trees: two
+  crossed pictures; rocks: smooth lumpy balls (`mergeVertices`, then noise), stone texture laid on by
+  facing side, moss where they face up (they now turn only round the upright); grass: twelve thin
+  curved blades a clump, some dry. Leaves keep their crown's normal on both sides (`keepNormals`).
+  Materials use `alphaTest` (not alpha-to-coverage: the screen has no smoothing once `tune` drops
+  the effects chain, and the cards would draw as solid squares).
+- `render.ts` `RAYS` pass (medium and high, before the hands): 36 steps toward the sun over the
+  bright sky, so trees and hills cut the light into shafts; a halo, ghosts and a streak only while
+  the sun is in sight, fading as it's covered; off at night, in rain, with night vision or the 8×
+  scope. `sky.ts` sets `r.sky` (direction, strength, colour). `tune` drops it right after GTAO.
+- The holographic sight's hood is matte and shorter (`mt.optic`): shiny metal there mirrored the sky
+  white and the ground black, so it read as a solid black box.
+- Nothing was taken apart from another game: REA/Ghidra are for software the owner owns or may
+  examine, and wasn't connected in this session anyway.

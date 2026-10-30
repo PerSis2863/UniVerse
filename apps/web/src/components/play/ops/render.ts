@@ -12,7 +12,7 @@ import { THREE } from '../world/core';
 // vignette, ACES filmic tone mapping… volumetric ground fog… night vision"): the world and, on top
 // with its own depth, the first-person hands and gun (their own scene and camera, so they never
 // clip into walls). On a computer the picture goes through an effects chain: ambient occlusion
-// (GTAO), the hands, bloom, tone mapping, then a finish pass (vignette, grain, the flashbang's white,
+// (GTAO), sun rays and lens flare, the hands, bloom, tone mapping, then a finish pass (vignette, grain, the flashbang's white,
 // damage desaturation, night vision). Shadows: three cascades on high quality, one following
 // shadow below that, none on phones. Quality steps down by itself when frames come late. Ground fog
 // is the scene's FogExp2 plus a haze that thickens toward the valleys (patched into three's fog
@@ -46,6 +46,48 @@ const FINISH = {
         c.rgb += (rand(vUv * 731.0 + time) - 0.5) * grain;
       }
       c.rgb = mix(c.rgb, vec3(1.0), flash);
+      gl_FragColor = c;
+    }`,
+};
+
+/** Sun rays and lens flare (M41c), on the world before the hands are drawn, in linear light: rays
+ *  gather the bright sky on the way to the sun, so trees and hills in front of it cut them into
+ *  shafts; the flare (a halo, ghosts along the line through the middle and a wide streak) shows
+ *  only while the sun itself is in sight, and fades as something covers it. */
+const RAYS = {
+  uniforms: { tDiffuse: { value: null }, sun: { value: new THREE.Vector2(0.5, 0.5) }, on: { value: 0 }, flare: { value: 0 }, aspect: { value: 1 }, tint: { value: new THREE.Color(1, 0.85, 0.6) } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 sun; uniform float on, flare, aspect; uniform vec3 tint; varying vec2 vUv;
+    float lum(vec3 c){ return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+    float sky(vec2 p){ return smoothstep(0.7, 2.2, lum(texture2D(tDiffuse, clamp(p, 0.001, 0.999)).rgb)); }
+    void main(){
+      vec4 c = texture2D(tDiffuse, vUv);
+      if (on < 0.002) { gl_FragColor = c; return; }
+      vec2 toSun = sun - vUv;
+      float far = length(toSun * vec2(aspect, 1.0));
+      // Rays: 36 steps toward the sun, each brighter the closer to it, weaker as they go.
+      vec2 step = toSun / 36.0 * 0.92; vec2 p = vUv; float decay = 1.0, sum = 0.0;
+      for (int i = 0; i < 36; i++) { p += step; sum += sky(p) * decay; decay *= 0.955; }
+      float rays = sum / 36.0 * exp(-far * 1.4) * 3.6;
+      c.rgb += tint * rays * on;
+      // Flare: how much of the sun shows (a few taps round it), then the halo, ghosts and streak.
+      if (flare > 0.002) {
+        vec2 o = vec2(0.004 / aspect, 0.004);
+        float vis = (sky(sun) + sky(sun + o) + sky(sun - o) + sky(sun + vec2(o.x, -o.y)) + sky(sun - vec2(o.x, -o.y))) / 5.0 * flare;
+        vec2 q = vUv - sun; q.x *= aspect;
+        float d = length(q);
+        vec3 f = tint * (exp(-d * 9.0) * 0.5 + smoothstep(0.24, 0.22, d) * smoothstep(0.205, 0.22, d) * 0.08);
+        f += tint * exp(-abs(q.y) * 140.0) * exp(-abs(q.x) * 2.2) * 0.35;
+        vec2 axis = vec2(0.5) - sun;
+        for (int i = 0; i < 5; i++) {
+          float k = float(i), at = 0.35 + k * 0.38;
+          vec2 g = sun + axis * at * 2.0 - vUv; g.x *= aspect;
+          float r = 0.025 + 0.022 * mod(k * 1.7, 3.0);
+          vec3 col = mix(vec3(0.5, 0.75, 1.0), vec3(1.0, 0.7, 0.4), mod(k, 2.0));
+          f += col * smoothstep(r, r * 0.55, length(g)) * 0.06;
+        }
+        c.rgb += f * vis;
+      }
       gl_FragColor = c;
     }`,
 };
@@ -92,6 +134,11 @@ export class OpsRenderer {
   private gtao: GTAOPass | null = null;
   private bloom: UnrealBloomPass | null = null;
   private post: ShaderPass | null = null;
+  private rays: ShaderPass | null = null;
+  /** The sun for the rays and flare: its direction, how strongly it shows (0 at night, in rain), its colour. */
+  sky = { dir: new THREE.Vector3(0, 1, 0), k: 0, color: new THREE.Color(1, 0.85, 0.6) };
+  private sunAt = new THREE.Vector3();
+  private fwd = new THREE.Vector3();
   private vmLight: THREE.DirectionalLight;
   private vmHemi: THREE.HemisphereLight;
   private ratio = 1;
@@ -168,6 +215,8 @@ export class OpsRenderer {
       this.gtao.blendIntensity = 0.85;
       c.addPass(this.gtao);
     }
+    this.rays = new ShaderPass(RAYS);
+    c.addPass(this.rays);
     const vmPass = new RenderPass(this.vm.scene, this.vm.camera);
     vmPass.clear = false; vmPass.clearDepth = true;
     c.addPass(vmPass);
@@ -240,6 +289,7 @@ export class OpsRenderer {
     if (this.composer && this.post) {
       const u = this.post.uniforms;
       u.time.value = t % 100; u.ads.value = this.finish.ads; u.nvg.value = this.finish.nvg; u.flash.value = this.finish.flash; u.desat.value = this.finish.desat;
+      if (this.rays) this.aimRays(this.rays.uniforms);
       this.composer.render();
     } else {
       this.renderer.toneMappingExposure = this.finish.nvg ? 3.2 : 1;
@@ -252,7 +302,22 @@ export class OpsRenderer {
     }
   }
 
-  /** Late frames (under ~45 fps for half a second) step quality down: ambient occlusion, then the
+  /** Where the sun is on screen, and how much rays and flare it gives this frame. */
+  private aimRays(u: Record<string, THREE.IUniform>) {
+    this.camera.getWorldDirection(this.fwd);
+    const ahead = this.fwd.dot(this.sky.dir), k = this.finish.nvg || this.scope.on ? 0 : this.sky.k;
+    this.sunAt.copy(this.camera.position).addScaledVector(this.sky.dir, 500).project(this.camera);
+    const x = this.sunAt.x * 0.5 + 0.5, y = this.sunAt.y * 0.5 + 0.5;
+    // Rays reach in from a sun just off the screen; the flare needs the sun itself in view.
+    const edge = Math.min(x, y, 1 - x, 1 - y);
+    (u.sun.value as THREE.Vector2).set(x, y);
+    u.on.value = ahead > 0.05 ? k * Math.min(1, Math.max(0, (edge + 0.35) / 0.35)) * Math.min(1, (ahead - 0.05) * 4) : 0;
+    u.flare.value = ahead > 0.2 && edge > 0 ? k * Math.min(1, edge / 0.08) * (1 - this.finish.ads * 0.6) : 0;
+    u.aspect.value = this.camera.aspect;
+    (u.tint.value as THREE.Color).copy(this.sky.color);
+  }
+
+  /** Late frames (under ~45 fps for half a second) step quality down: ambient occlusion, the sun rays, then the
    *  cascades for one shadow, then resolution, then the effects chain; quick frames raise the resolution back. */
   tune(raw: number) {
     if (raw > 1) return;
@@ -261,9 +326,10 @@ export class OpsRenderer {
     if (this.slow >= 0.6) {
       this.slow = 0;
       if (this.gtao?.enabled) { this.gtao.enabled = false; return; }
+      if (this.rays?.enabled) { this.rays.enabled = false; return; }
       if (this.bloom?.enabled && this.ratio <= 1) { this.bloom.enabled = false; return; }
       if (this.ratio > 0.7) { this.setRatio(Math.max(0.7, this.ratio - 0.2)); return; }
-      if (this.composer) { this.composer.dispose(); this.composer = null; this.post = null; this.bloom = null; this.gtao = null; return; }
+      if (this.composer) { this.composer.dispose(); this.composer = null; this.post = null; this.bloom = null; this.gtao = null; this.rays = null; return; }
     } else if (this.fast >= 3) { this.fast = 0; if (this.ratio < this.maxRatio) this.setRatio(Math.min(this.maxRatio, this.ratio + 0.15)); }
   }
   private setRatio(r: number) { this.ratio = r; this.renderer.setPixelRatio(r); this.resize(); }

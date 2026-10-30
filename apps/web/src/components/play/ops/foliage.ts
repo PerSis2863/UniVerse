@@ -3,10 +3,12 @@ import { THREE } from '../world/core';
 import type { OpsRenderer } from './render';
 import { U } from './terrain';
 import type { SolidGrid } from './grid';
+import { broadleaf, bush, farLeafy, farPine, foliageAtlas, grassClump, keepNormals, pine, rock } from './trees';
+import { surfaceMaps } from '../world/textures';
 
 // Trees, bushes and tall grass (the owner: "dense foliage (wind-swaying trees, bushes for stealth,
-// tall grass)"). Each kind is one instanced mesh with its colours baked into the vertices, so 1,500
-// trees are two draws. The wind bends crowns and grass tips in the vertex shader (stronger in rain).
+// tall grass)"). Each kind is one instanced mesh (shapes and the painted atlas in `trees.ts`), so
+// 1,500 trees are two draws per tile. The wind bends crowns and grass tips in the vertex shader (stronger in rain).
 // Grass is a field of clumps laid out round the player and re-laid as they move; it shrinks away
 // with distance so it never pops. Trunks and rocks are solid; bushes aren't, but soldiers see you
 // less inside one.
@@ -16,70 +18,6 @@ const WIND = (strength: number) => `
   float windK = max(0.0, position.y - ${strength.toFixed(2)}) * uWind;
   transformed.x += (sin(uTime * 1.6 + windW.x * 0.11 + windW.z * 0.07) * 0.6 + sin(uTime * 3.7 + windW.z * 0.31) * 0.18) * windK * 0.05;
   transformed.z += (cos(uTime * 1.3 + windW.z * 0.09) * 0.4) * windK * 0.04;`;
-
-function jitter(g: THREE.BufferGeometry, amount: number, seed: number) {
-  const p = g.attributes.position as THREE.BufferAttribute;
-  for (let i = 0; i < p.count; i++) {
-    const k = Math.sin(i * 12.9898 + seed) * 43758.5453, r = k - Math.floor(k);
-    p.setX(i, p.getX(i) * (1 + (r - 0.5) * amount)); p.setZ(i, p.getZ(i) * (1 + (r - 0.5) * amount));
-  }
-  g.computeVertexNormals();
-  return g;
-}
-/** Paints a geometry one colour (vertex colours), darker toward its bottom (shade under leaves). */
-function paint(g: THREE.BufferGeometry, color: number, shade = 0.35) {
-  const geo = g.index ? g.toNonIndexed() : g, p = geo.attributes.position as THREE.BufferAttribute, c = new THREE.Color(color), out = new Float32Array(p.count * 3);
-  geo.computeBoundingBox();
-  const lo = geo.boundingBox!.min.y, hi = geo.boundingBox!.max.y;
-  for (let i = 0; i < p.count; i++) { const k = 1 - shade + shade * ((p.getY(i) - lo) / (hi - lo || 1)); out.set([c.r * k, c.g * k, c.b * k], i * 3); }
-  geo.setAttribute('color', new THREE.BufferAttribute(out, 3));
-  geo.deleteAttribute('uv');
-  return geo;
-}
-function merge(parts: THREE.BufferGeometry[]) {
-  const n = parts.reduce((k, g) => k + g.attributes.position.count, 0), pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3);
-  let o = 0;
-  for (const g of parts) { pos.set(g.attributes.position.array as Float32Array, o * 3); nor.set(g.attributes.normal.array as Float32Array, o * 3); col.set(g.attributes.color.array as Float32Array, o * 3); o += g.attributes.position.count; }
-  const out = new THREE.BufferGeometry();
-  out.setAttribute('position', new THREE.BufferAttribute(pos, 3)); out.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); out.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  return out;
-}
-function pine() {
-  const parts = [paint(new THREE.CylinderGeometry(0.16, 0.3, 5, 5, 1, true).translate(0, 2.5, 0), 0x4a3526, 0.4)];
-  const tiers = [[2.4, 3.6, 2.5], [1.85, 3, 4.6], [1.25, 2.6, 6.4], [0.7, 1.9, 8]];
-  tiers.forEach(([r, h, y], i) => parts.push(paint(jitter(new THREE.ConeGeometry(r, h, 8, 1, true).translate(0, y, 0), 0.3, i), [0x1f3a22, 0x26452b, 0x2c4e2e, 0x35593a][i], 0.55)));
-  return merge(parts);
-}
-function broadleaf() {
-  const parts = [paint(new THREE.CylinderGeometry(0.18, 0.32, 4.2, 5, 1, true).translate(0, 2.1, 0), 0x4f3b2a, 0.4)];
-  for (const [x, y, z, r] of [[0, 5.2, 0, 2.3], [1.3, 4.6, 0.6, 1.6], [-1.2, 4.8, -0.5, 1.7], [0.3, 6.3, -0.8, 1.5], [-0.4, 4.2, 1.2, 1.4]]) parts.push(paint(jitter(new THREE.IcosahedronGeometry(r, 0).translate(x, y, z), 0.25, x * 7), 0x3f5a2a, 0.5));
-  return merge(parts);
-}
-function bush() {
-  const parts: THREE.BufferGeometry[] = [];
-  for (const [x, y, z, r] of [[0, 0.5, 0, 0.8], [0.6, 0.45, 0.3, 0.6], [-0.5, 0.42, -0.3, 0.65], [0.1, 0.8, -0.4, 0.5]]) parts.push(paint(jitter(new THREE.IcosahedronGeometry(r, 0).translate(x, y, z), 0.3, z * 9), 0x3b5226, 0.55));
-  return merge(parts);
-}
-/** Far versions: one cone or ball each, no trunk (a few triangles instead of dozens). */
-const farPine = () => merge([paint(new THREE.ConeGeometry(2.3, 7.2, 6, 1, true).translate(0, 4.6, 0), 0x26452b, 0.5)]);
-const farLeafy = () => merge([paint(new THREE.IcosahedronGeometry(2.6, 0).translate(0, 5.2, 0), 0x3f5a2a, 0.5)]);
-/** A grass clump: a handful of thin blades leaning out, dark at the root, light at the tip. */
-function clump() {
-  const pos: number[] = [], col: number[] = [];
-  for (let b = 0; b < 7; b++) {
-    const a = (b / 7) * Math.PI * 2 + b, r = 0.08 + (b % 3) * 0.07, h = 0.5 + ((b * 37) % 10) / 22, w = 0.045, lean = 0.18;
-    const x = Math.cos(a) * r, z = Math.sin(a) * r, px = -Math.sin(a) * w, pz = Math.cos(a) * w, tx = x + Math.cos(a) * lean, tz = z + Math.sin(a) * lean;
-    pos.push(x - px, 0, z - pz, x + px, 0, z + pz, tx, h, tz);
-    col.push(0.1, 0.15, 0.05, 0.1, 0.15, 0.05, 0.42, 0.5, 0.2);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  g.computeVertexNormals();
-  // Grass is lit from above, not by its blades' sides.
-  const n = g.attributes.normal as THREE.BufferAttribute;
-  for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);
-  return g;
-}
 
 /** Instances split into square tiles (100–160 m), each its own mesh: the camera's view leaves out the tiles it
  *  can't see, far tiles swap to a few-triangle shape (or hide), and tiles past the fog are hidden. */
@@ -111,8 +49,8 @@ export class Foliage {
   constructor(private r: OpsRenderer, private m: OpsMap, grid: SolidGrid) {
     const mat4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color(), up = new THREE.Vector3(0, 1, 0);
     const leafMat = (key: string, base: number) => {
-      const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 });
-      r.patch(mat, (sh) => { sh.uniforms.uTime = U.time; sh.uniforms.uWind = U.wind; sh.vertexShader = 'uniform float uTime; uniform float uWind;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>' + WIND(base)); }, key);
+      const mat = new THREE.MeshStandardMaterial({ vertexColors: true, map: foliageAtlas(), alphaTest: 0.42, side: THREE.DoubleSide, roughness: 0.85, metalness: 0 });
+      r.patch(mat, (sh) => { sh.uniforms.uTime = U.time; sh.uniforms.uWind = U.wind; sh.vertexShader = 'uniform float uTime; uniform float uWind;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>' + WIND(base)); keepNormals(sh); }, key);
       return mat;
     };
     const pines = m.trees.filter((_, i) => i % 4 !== 0), leafy = m.trees.filter((_, i) => i % 4 === 0);
@@ -137,16 +75,17 @@ export class Foliage {
       mm.compose(p.set(x, groundAt(m.heights, x, z) - 0.15, z), q, s.set(k * 1.2, k, k * 1.2));
       cc.setRGB(0.8 + (Math.abs(x) % 1) * 0.4, 0.9 + (Math.abs(z) % 1) * 0.2, 0.8, THREE.SRGBColorSpace);
     }, !r.phone, T), null);
-    // Rocks: grey boulders, flat-shaded, solid.
-    const rockMat = new THREE.MeshStandardMaterial({ color: 0x8a857c, roughness: 0.95, flatShading: true });
-    const rockGeo = jitter(new THREE.DodecahedronGeometry(1, 0), 0.4, 3);
-    add(tiled(m.rocks, rockGeo, rockMat, ([x, z, k], mm, cc) => {
+    // Rocks: lumpy boulders in stone with moss on top, solid (they turn only round the upright, so
+    // the moss stays on top).
+    const stone = surfaceMaps('stone');
+    const rockMat = new THREE.MeshStandardMaterial({ vertexColors: true, map: stone.map, normalMap: stone.normal, normalScale: new THREE.Vector2(1.3, 1.3), roughness: 0.95 });
+    add(tiled(m.rocks, rock(2), rockMat, ([x, z, k], mm, cc) => {
       const y = groundAt(m.heights, x, z);
-      q.setFromEuler(new THREE.Euler(k, x, z));
+      q.setFromEuler(new THREE.Euler((k % 0.3) - 0.15, x, (z % 0.3) - 0.15));
       mm.compose(p.set(x, y + k * 0.2, z), q, s.set(k * 1.3, k * 0.75, k));
       cc.setRGB(0.75 + (k % 0.3), 0.73 + (k % 0.3), 0.7 + (k % 0.3), THREE.SRGBColorSpace);
       grid.add(new THREE.Box3(new THREE.Vector3(x - k, y - 1, z - k * 0.8), new THREE.Vector3(x + k, y + k * 0.9, z + k * 0.8)), 'concrete');
-    }, !r.phone, T), rockGeo);
+    }, !r.phone, T), rock(1));
     for (const t of this.tiles) this.group.add(t.im);
     void c; void mat4;
 
@@ -162,8 +101,9 @@ export class Foliage {
         float gk = position.y * uWind;
         transformed.x += sin(uTime * 2.2 + gw.x * 0.35 + gw.z * 0.2) * gk * 0.16;
         transformed.z += cos(uTime * 1.9 + gw.z * 0.3) * gk * 0.1;`);
+      keepNormals(sh);
     }, 'ops-grass');
-    this.grass = new THREE.InstancedMesh(clump(), gm, this.grassN);
+    this.grass = new THREE.InstancedMesh(grassClump(), gm, this.grassN);
     this.grass.frustumCulled = false; this.grass.receiveShadow = !r.phone;
     this.group.add(this.grass);
   }
