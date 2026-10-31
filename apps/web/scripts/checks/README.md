@@ -92,3 +92,4 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `team-api.mjs` | (helper: tidies up or prepares test data) |
 | `tutor-test.mjs` | Q13 on the built Worker (run with a throwaway GEMINI_API_KEY so "AI on" checks pass; real AI calls fail, so a homework photo's reading is put in the AI cache first, exactly where the tutor keeps it). API: the… |
 | `word-ui.mjs` | Word features in a document: style, font size, colour, alignment, superscript, a page break, a table of contents, find and replace, word count, page setup, and the Word copy carrying them. |
+| `stormfall-ui.mjs` | M41 STORMFALL on the built Worker: on a computer the /play card, the 16+ question, the Unity download and start with no Content-Security-Policy blocks or page errors (a screenshot of the game goes to the temp folder); on a phone no card, a notice instead, nothing downloaded. Ridgeline Ops gone. Axe light/dark. |

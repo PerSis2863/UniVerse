@@ -17,6 +17,13 @@ re-run it at any time to regenerate everything.
 > Active Input Handling is set to **Both**. If you change it, Unity asks for an editor
 > restart, which is needed once.
 
+## Web version
+
+**Tools → Build Stormfall for Web (WebGL)** writes a browser build to `Builds/WebGL` (about 12 MB,
+Brotli-packed, lighter graphics in the browser: shorter shadows, no SSAO). The UniVerse site serves
+it at `/play/stormfall` on computers only; copy a new build in with
+`node apps/web/scripts/stormfall-web.mjs <build folder>` from the UniVerse repo.
+
 ## What's in the match
 
 | System | Highlights |

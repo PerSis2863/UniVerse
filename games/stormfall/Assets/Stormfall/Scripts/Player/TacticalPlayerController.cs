@@ -118,8 +118,11 @@ namespace Stormfall
 
         void Start()
         {
+#if !UNITY_WEBGL || UNITY_EDITOR
+            // Browsers only lock the pointer after a click (GameInput.UpdateCursor does it then).
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
+#endif
         }
 
         // Trigger hitboxes so bot bullets register on the player (the capsule itself is skipped by ballistics).

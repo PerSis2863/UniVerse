@@ -43,7 +43,7 @@ export const APPS: ImpactApp[] = [
   },
   {
     id: 'play', name: 'UniVerse Play', tagline: 'Games that teach something', color: '#d946ef',
-    impact: 'Twelve games: four 3D worlds and two from each app: quiz battles and type races, spotting fakes and pinning cities on the world map, delivering supplies and flying flood rescues, sorting waste and cleaning the ocean. Play alone or race your friends in a room.',
+    impact: 'Eleven games: three 3D worlds and two from each app: quiz battles and type races, spotting fakes and pinning cities on the world map, delivering supplies and flying flood rescues, sorting waste and cleaning the ocean. Play alone or race your friends in a room; on a computer, STORMFALL too.',
     paths: ['/play'],
   },
 ];

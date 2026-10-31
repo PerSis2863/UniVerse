@@ -2174,7 +2174,7 @@ assets, nothing taken apart). Neon Strike is gone; the game id is `ops` (the liv
   `onBeforeCompile` and set the cache key). Test against the dev server in one command
   (start, test, stop) rather than leaving it running.
 
-## M41 · STORMFALL: a Unity battle royale beside the site (31 Oct 2026, branch `claude/stormfall-unity`)
+## M41 · STORMFALL on the site, Ridgeline Ops removed (31 Oct 2026, branch `claude/stormfall-unity`)
 
 The owner asked for a Unity 6.6 tactical battle royale ("Warzone & tactical FPS in Unity 6.6 URP")
 and to add it to this repo. It is an **original** game (no copied names, maps, perks or HUD) and a
@@ -2193,3 +2193,20 @@ and to add it to this repo. It is an **original** game (no copied names, maps, p
 - **Traps:** a public `[Serializable]` class array on a MonoBehaviour gets filled with empty
   objects by Unity, never null: runtime-only fields are `[System.NonSerialized]`. Every MonoBehaviour
   needs its own file named after the class. Keep the `.meta` files: the scene finds scripts by them.
+- **On the site** (the owner: "add it", then "i dont want this game to be on mobile… you can remove
+  the ridgeline ops"): `/play/stormfall` (`src/components/play/Stormfall.tsx`) loads the Unity web
+  build from `public/games/stormfall/` (about 12 MB: data 4.7, code 6.9, both Brotli; each file
+  under Cloudflare's 25 MB). Computers only: `useDesktop()` = hover + fine pointer + 1024 px wide;
+  the card on /play (3D worlds) isn't drawn elsewhere and the page explains instead of loading. 16+
+  through `useRatingGate` (the age gate, now usable for any rated game). Scores stay inside the game
+  (no `GameScore`, no rooms).
+- **Content-Security-Policy unchanged:** Unity's loader runs the game's main script from a `blob:`
+  address, which `script-src` refuses. `scripts/stormfall-web.mjs <unity build>` unpacks that script
+  to `stormfall.framework.js` and patches the loader to load it as a normal file (it stops with an
+  error if a new Unity loader no longer matches). The data/code files unpack in a worker
+  (`worker-src blob:` was already allowed) and compile under the existing `'wasm-unsafe-eval'`.
+  New build: Unity **Tools → Build Stormfall for Web**, then that script.
+- **Ridgeline Ops removed:** `src/lib/play/ops/`, `src/components/play/ops/`, its entry in `GAMES`,
+  its sounds and `.ops-*` styles. Old `ops` scores stay in the database; the "last rounds" list skips
+  games that no longer exist, the leaderboard falls back to Quiz Clash, XP skips them.
+

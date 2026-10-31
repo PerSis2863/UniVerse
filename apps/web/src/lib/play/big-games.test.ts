@@ -7,10 +7,10 @@ import { QUIZ_BOSS_MULT, quizBoss, quizPoints } from './quiz';
 import { NITRO_STREAK, PASSAGES, TYPE_CHAR, TYPE_DONE, typingPassage, wpm } from './typing';
 
 describe('UniVerse Play, the bigger games', () => {
-  it('lists twelve games: two per app and four 3D worlds', () => {
-    expect(GAME_IDS.length).toBe(12);
+  it('lists eleven games: two per app and three 3D worlds', () => {
+    expect(GAME_IDS.length).toBe(11);
     for (const app of ['campus', 'trace', 'relief', 'green']) expect(GAME_IDS.filter((g) => GAMES[g].app === app).length).toBe(2);
-    expect(GAME_IDS.filter((g) => GAMES[g].world).length).toBe(4);
+    expect(GAME_IDS.filter((g) => GAMES[g].world).length).toBe(3);
   });
   it('drifts the same sea for everyone, and a perfect cleanup stays under the cap', () => {
     const s = oceanSchedule(3, GAMES.ocean.seconds);

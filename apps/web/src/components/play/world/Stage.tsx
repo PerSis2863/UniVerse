@@ -20,7 +20,7 @@ export function WorldFrame({ canvas, controls, buttons, keys, children, label, c
   others?: number;
   /** In a room: chat and voice (M39). */
   net?: Net;
-  /** The frame's height (Ridgeline Ops plays taller). */
+  /** The frame's height (a game can play taller). */
   className?: string;
 }) {
   const calm = useReducedMotion();

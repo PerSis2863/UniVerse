@@ -58,7 +58,7 @@ describe('3D worlds (M36)', () => {
 
   it('turns scores into XP and XP into levels, and unlocks looks along the way', () => {
     expect(xpFor('quiz', GAMES.quiz.maxScore)).toBe(1000);
-    expect(xpFor('ops', GAMES.ops.maxScore * 5)).toBe(1000); // capped
+    expect(xpFor('obby', GAMES.obby.maxScore * 5)).toBe(1000); // capped
     expect(xpFor('obby', -5)).toBe(0);
     expect(levelOf(0)).toEqual({ level: 1, into: 0, need: 400 });
     expect(levelOf(400)).toEqual({ level: 2, into: 0, need: 550 });

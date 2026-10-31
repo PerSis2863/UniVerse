@@ -1,7 +1,7 @@
 import type { Net } from '../useGameRoom';
 import { Avatar, THREE, type World } from './core';
 
-/** What a figure for another player needs (Ridgeline Ops draws soldiers instead of blocks). */
+/** What a figure for another player needs. */
 export interface Figure { group: THREE.Object3D; facing: number | null; update(dt: number, vel: THREE.Vector3, ground: boolean): void }
 
 // The other players in a 3D room (M38): each one's position comes from the room about ten times a

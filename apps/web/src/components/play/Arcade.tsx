@@ -8,21 +8,22 @@ import Link from '@/components/ui/Link';
 import { Rolling } from '@/components/ui/Rolling';
 import { fetcher } from '@/lib/fetcher';
 import { appById } from '@/lib/apps';
-import { GAMES, GAME_IDS, type GameId } from '@/lib/play';
+import { GAMES, GAME_IDS, isGame, type GameId } from '@/lib/play';
 import { ITEMS } from '@/lib/play/sort';
 import { spring } from '@/lib/motion';
 import { AgeBadge } from './AgeGate';
 import { PlayerCard } from './PlayerCard';
+import { StormfallCard } from './Stormfall';
 import { GameIcon } from './GameIcon';
 import { JoinRoom, type PlayMe } from './GameShell';
 
-// UniVerse Play's home (/play): twelve games, two for each app (four quick, four big) and four 3D worlds, each card
+// UniVerse Play's home (/play): eleven games, two for each app (four quick, four big) and three 3D worlds, plus STORMFALL on
+// computers (M41), each card
 // with a small live scene of how it plays; join a room by code; my numbers and last rounds. Scenes are CSS only and stop
 // with Reduce Motion.
 
 const WORLD_ART: Partial<Record<GameId, { bg: string; tags: string[] }>> = {
   obby: { bg: 'linear-gradient(160deg,#2b59ff,#9b8cff 55%,#ffb3d9)', tags: ['10 stages', 'bounce pads', 'lasers'] },
-  ops: { bg: 'linear-gradient(160deg,#1c2a17,#3f5a2a 55%,#c9a45c)', tags: ['open world', 'loot', 'extract'] },
   night: { bg: 'radial-gradient(60% 60% at 50% 55%,#e5e7eb 0%,#3f3f46 18%,#09090b 60%)', tags: ['torch', '5 keys', 'don’t get caught'] },
   orbit: { bg: 'radial-gradient(80% 80% at 20% 110%,#1d4ed8,#02030a 60%)', tags: ['low gravity', 'reactors', 'meteors'] },
 };
@@ -156,7 +157,7 @@ export function Arcade() {
         <section key={kind} aria-labelledby={`games-${kind}`}>
           <div className="mb-3 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
             <h2 id={`games-${kind}`} className="text-lg font-semibold text-zinc-900 dark:text-white">{kind === 'worlds' ? '3D worlds' : kind === 'big' ? 'Big games' : 'Quick games'}</h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{kind === 'worlds' ? 'Run, jump, explore and survive in 3D: an obby, laser tag, horror and space.' : kind === 'big' ? 'Full-screen, longer rounds: fly, steer, type and explore.' : 'A minute each, perfect between classes.'}</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{kind === 'worlds' ? 'Run, jump, explore and survive in 3D: an obby, horror, space and, on computers, a battle royale.' : kind === 'big' ? 'Full-screen, longer rounds: fly, steer, type and explore.' : 'A minute each, perfect between classes.'}</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {GAME_IDS.filter((g) => (kind === 'worlds' ? !!GAMES[g].world : !GAMES[g].world && !!GAMES[g].big === (kind === 'big'))).map((g, i) => {
@@ -184,6 +185,7 @@ export function Arcade() {
             </motion.div>
           );
             })}
+            {kind === 'worlds' && <StormfallCard />}
           </div>
         </section>
       ))}
@@ -195,7 +197,7 @@ export function Arcade() {
         </div>
         {me && me.recent.length === 0 && <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">No rounds yet. Pick a game above: a solo round takes about a minute.</p>}
         <ul className="mt-3 divide-y divide-zinc-200 dark:divide-white/10">
-          {me?.recent.map((r, i) => {
+          {me?.recent.filter((r) => isGame(r.game)).map((r, i) => {
             const Mode = r.mode === 'multi' ? Users : User;
             return (
               <li key={`${r.createdAt}-${i}`} className="flex items-center gap-3 py-2.5 text-sm">

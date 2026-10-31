@@ -68,11 +68,13 @@ software or website in the main website… where they create a impact"). Each ap
   alerts for helpers.
 - **Green** (`/green`): climate actions with the CO₂ they save, streaks, badges, a weekly challenge,
   teams and a map.
-- **Play** (`/play`): twelve games: two per app (quick: Quiz Clash, Spot the Fake, Supply Run,
-  Recycle Rush; big: Type Race, World Pin, Flood Rescue, Ocean Cleanup) and four 3D worlds
-  (three.js: Skyline Obby, Ridgeline Ops 16+ (open-world extraction shooter: rules `src/lib/play/ops/`, game `src/components/play/ops/`), Night Shift 18+, Orbit Breach 12+; rated games check
+- **Play** (`/play`): eleven games: two per app (quick: Quiz Clash, Spot the Fake, Supply Run,
+  Recycle Rush; big: Type Race, World Pin, Flood Rescue, Ocean Cleanup) and three 3D worlds
+  (three.js: Skyline Obby, Night Shift 18+, Orbit Breach 12+; rated games check
   the birth date or ask), solo or up to 8 friends in a room with a code (the `GameRoom` Durable
-  Object), leaderboards.
+  Object), leaderboards. Plus **STORMFALL** 16+ (`/play/stormfall`, computers only): a Unity battle
+  royale, source in `games/stormfall/`, web build in `public/games/stormfall` (M41). Ridgeline Ops
+  was removed (M41).
 
 Shared by all apps: the hub `/hub`, Messages, Collaborate (the owner likes it: keep it), Settings,
 and the owner console `/console`. Each app has its own menu (`Sidebar.tsx` `navFor`, the app
@@ -99,8 +101,8 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   3D rooms, realistic lit surfaces, a new feature in every game) (PR #97); **M40** (Ridgeline Ops
   replaces Neon Strike: a first-person extraction shooter on a seeded island) (PR #98, 26 Oct).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
-- **M41** (branch `claude/stormfall-unity`): STORMFALL, a separate Unity 6.6 game in
-  `games/stormfall/`; not part of the site build (see its `README.md`).
+- **M41** (branch `claude/stormfall-unity`): STORMFALL, a Unity 6.6 game (source in
+  `games/stormfall/`), playable at `/play/stormfall` on computers only; Ridgeline Ops removed.
 - **Next database update number: `0186`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and

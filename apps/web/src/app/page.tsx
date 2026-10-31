@@ -52,7 +52,7 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
   ],
   play: [
     { q: 'Do I need friends online to play?', a: 'No. Every game has a solo mode against the clock and your own best. With friends, one person opens a room and shares its code or link; everyone plays the same rounds at the same time.' },
-    { q: 'Is it free?', a: 'Yes. All twelve games, rooms of up to 8 and the leaderboards are free with a UniVerse account.' },
+    { q: 'Is it free?', a: 'Yes. Every game (STORMFALL included), rooms of up to 8 and the leaderboards are free with a UniVerse account.' },
   ],
   green: [
     { q: 'How is the CO₂ saved worked out?', a: 'Each action uses a published average factor (for example, a young tree takes up about 22 kg of CO₂ a year; a kilometre by bike instead of by car saves about 0.2 kg). It’s an honest estimate, shown with the factor used.' },

@@ -111,6 +111,8 @@ namespace Stormfall
             go.AddComponent<MeshFilter>().sharedMesh = b.ToMesh("BlightWall");
             var mr = go.AddComponent<MeshRenderer>();
             m_WallMat = new Material(MaterialLibrary.Get(Mat.BlightWall));
+            // A thin, faint veil: seen from outside (the infil flight) it must not wash out the view.
+            m_WallMat.SetColor("_EmissionColor", new Color(0.45f, 0.62f, 0.05f) * 0.45f);
             mr.sharedMaterial = m_WallMat;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             m_Wall = go.transform;
@@ -241,7 +243,7 @@ namespace Stormfall
             if (m_WallMat != null)
             {
                 m_WallMat.SetTextureOffset("_BaseMap", new Vector2(Time.time * 0.004f, Time.time * 0.03f));
-                float pulse = 0.36f + 0.08f * Mathf.Sin(Time.time * 1.3f);
+                float pulse = 0.16f + 0.04f * Mathf.Sin(Time.time * 1.3f);
                 var c = m_WallMat.GetColor("_BaseColor");
                 c.a = pulse;
                 m_WallMat.SetColor("_BaseColor", c);
