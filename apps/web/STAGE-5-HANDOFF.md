@@ -2769,3 +2769,23 @@ smoothness… just now it happened to me for no reason".
 - **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); the river alone in a
   browser with every frame faked as very slow keeps moving.
 
+## M57 · Darker navy with Aqua Jade glows; no line under the landing's hero (31 Oct 2026)
+
+The owner sent the landing between the hero and "One account. One planet.": a hard line there, and
+"the blue colour is really light… use more dark blue colour with aqua jade colour for the project".
+
+- **The line:** `.horizon` (the hero's foot and the sign-in pages) centred its aqua glow below the
+  section's bottom, so the section cut it off at full strength. Its glows now end inside it
+  (`transparent 100%` at the ellipse's edge, above the bottom). Rule: a glow on a section that
+  scrolls must fade to nothing before the section's edge.
+- **Darker, dark mode only** (`globals.css`): the page (`.dark .ambient-bg`) is deep navy top to
+  bottom (#0f1536 → #0f2f47) with Aqua Jade glows at the foot, replacing M55's pale ocean blue;
+  `--background` #11173a; cards `rgba(22,30,66,0.82)`; `--karma-dusk` / `--karma-gold` and
+  `.trace-hero` (the hub's and Trace's big cards) deep navy with an aqua glow; the landing's
+  `.world::before` deep navy into dark teal with the aqua as a horizon glow; the landing and sign-in
+  base `#0f1536` (`page.tsx`, `(auth)/layout.tsx`), `.text-pool` to match. Midnight Abyss #171F44
+  stays for cards, menus and text on pink.
+- **Tested:** `pnpm check` (1,362 unit tests, lean); `world-ui` (landing and sign-in axe-clean at 390
+  and 1280); axe on the hub, student home, Green and Trace in dark mode at 1280 and 390: no serious
+  problems. Looked at the hero-to-planet join, the planet section and the hub.
+

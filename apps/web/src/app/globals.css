@@ -1094,15 +1094,15 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
     radial-gradient(36vmax 28vmax at 0% -6%, rgba(255, 255, 255, 0.9), transparent 70%);
 }
 .dark .ambient-bg {
-  /* M55: the "Globynk" page itself, fixed behind every page: Midnight Abyss at the top sinking through
-     ocean blue into deep Aqua Jade at the bottom, a brighter aqua bloom below the middle. The lightest
-     point stays dark enough that white text over it reads at 4.5:1 (the picture's own bottom is
-     lighter: text on it couldn't be read). */
+  /* M55: the "Globynk" page itself, fixed behind every page. M57 (the owner: "the blue colour is
+     really light… use more dark blue with aqua jade"): deep navy all the way down, darker than
+     Midnight Abyss, with Aqua Jade only as light glowing up from the bottom (no pale ocean blue). */
   background:
-    radial-gradient(60vmax 22vmax at 50% 110%, rgba(116, 255, 237, 0.14), transparent 70%),
-    radial-gradient(40vmax 26vmax at 100% 100%, rgba(116, 255, 237, 0.08), transparent 70%),
+    radial-gradient(70vmax 26vmax at 50% 112%, rgba(116, 255, 237, 0.2), transparent 70%),
+    radial-gradient(40vmax 26vmax at 0% 106%, rgba(116, 255, 237, 0.09), transparent 70%),
+    radial-gradient(40vmax 26vmax at 100% 104%, rgba(116, 255, 237, 0.1), transparent 70%),
     radial-gradient(38vmax 30vmax at 102% 2%, rgba(254, 129, 209, 0.06), transparent 70%),
-    linear-gradient(180deg, #171d41 0%, #1b2449 30%, #213a5f 52%, #26566e 74%, #2f7680 100%);
+    linear-gradient(180deg, #0f1536 0%, #111a3e 40%, #112246 72%, #0f2f47 100%);
 }
 /* Film grain over the glows, like a printed poster. */
 .ambient-bg::after {
@@ -1573,12 +1573,12 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 .dark {
   --ink: #eef2fb; --ink-contrast: #171f44; --ink-soft: #2b3568;
   --tint: #2b3568; --tint-rgb: 116 255 237; --tint-text: #e8edf8;
-  --background: #171f44;
+  --background: #11173a;
   --surface: #1d2650; --surface-2: #26305f;
   --fill: rgba(255, 255, 255, 0.06); --fill-strong: rgba(255, 255, 255, 0.11);
   --separator: rgba(255, 255, 255, 0.08); --hairline: rgba(255, 255, 255, 0.18);
   --material: rgba(23, 31, 68, 0.86); --material-thick: rgba(23, 31, 68, 0.96); --material-highlight: rgba(255, 255, 255, 0.06);
-  --card-bg: rgba(27, 37, 80, 0.8); --card-border: rgba(255, 255, 255, 0.1); --card-hover-bg: rgba(31, 42, 88, 0.84); --card-hover-border: rgba(116, 255, 237, 0.3);
+  --card-bg: rgba(22, 30, 66, 0.82); --card-border: rgba(255, 255, 255, 0.1); --card-hover-bg: rgba(27, 37, 80, 0.86); --card-hover-border: rgba(116, 255, 237, 0.3);
   --card-shadow: inset 0 1px 0 rgba(116, 255, 237, 0.07), 0 24px 48px -30px rgba(4, 8, 28, 0.9);
   --sidebar-bg: #10163a; --sidebar-border: rgba(255, 255, 255, 0.06);
   --sidebar-item-color: #cbd2e6; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.06); --sidebar-item-hover-color: #ffffff;
@@ -1588,8 +1588,9 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
   --input-bg: rgba(255, 255, 255, 0.05); --input-border: rgba(255, 255, 255, 0.12); --input-placeholder: #8f98bf;
   --text-primary: #f3f6fc; --text-secondary: #c2c9e3; --text-muted: #b0b8d8;
   --pill-on-bg: #74ffed; --pill-on-color: #171f44;
-  --karma-gold: radial-gradient(90% 110% at 0% 0%, #1d6a72 0%, transparent 60%), linear-gradient(135deg, #123a4c, #11505a);
-  --karma-dusk: radial-gradient(90% 120% at 100% 0%, #4a2f6e 0%, transparent 60%), radial-gradient(110% 120% at 30% 120%, #12707a 0%, transparent 65%), linear-gradient(165deg, #1d2650, #1f3a66 55%, #175868);
+  /* M57: deeper navy, Aqua Jade as a glow rather than a pale teal fill. */
+  --karma-gold: radial-gradient(90% 110% at 0% 0%, rgba(116, 255, 237, 0.2) 0%, transparent 60%), linear-gradient(135deg, #0f2a44, #0e3c4e);
+  --karma-dusk: radial-gradient(90% 120% at 100% 0%, #43286a 0%, transparent 60%), radial-gradient(90% 70% at 30% 118%, rgba(116, 255, 237, 0.28) 0%, transparent 65%), linear-gradient(165deg, #141b42, #132550 55%, #0f344b);
   --karma-olive: radial-gradient(100% 120% at 100% 100%, #7a2d6c 0%, transparent 60%), linear-gradient(135deg, #171f44, #2b3568 60%, #4a2d6a);
 }
 body { font-weight: 450; letter-spacing: 0; }
@@ -2107,7 +2108,8 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
 @keyframes carry-wave { from { transform: scale(0.45); opacity: 0.9; } to { transform: scale(1.15); opacity: 0; } }
 .carry-wave { animation: carry-wave 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
 @media (prefers-reduced-motion: reduce) { .carry-wave { animation: none; opacity: 0.5; } }
-.trace-hero { background: radial-gradient(90% 55% at 50% 118%, rgb(116 255 237 / 0.42), transparent 70%), radial-gradient(120% 60% at 50% 110%, rgb(34 160 170 / 0.35), transparent 72%), radial-gradient(80% 60% at 0% 0%, rgb(110 125 255 / 0.16), transparent 70%), linear-gradient(180deg, #1d2650 0%, #171f44 50%, #173a5c 100%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 30px 60px -36px rgb(116 255 237 / 0.45); }
+/* M57: deep navy, the Aqua Jade a glow at the foot (it was a pale teal wash). */
+.trace-hero { background: radial-gradient(70% 38% at 50% 116%, rgb(116 255 237 / 0.36), transparent 70%), radial-gradient(110% 50% at 50% 112%, rgb(18 112 122 / 0.32), transparent 72%), radial-gradient(80% 60% at 0% 0%, rgb(110 125 255 / 0.14), transparent 70%), linear-gradient(180deg, #161d47 0%, #11173a 55%, #0f2744 100%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 30px 60px -36px rgb(116 255 237 / 0.45); }
 /* Light mode (M53): violet-black with the picture's band glowing up from below (pink into violet). */
 html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, rgb(236 116 206 / 0.5), transparent 70%), radial-gradient(80% 60% at 90% 118%, rgb(83 63 246 / 0.6), transparent 72%), radial-gradient(80% 60% at 100% 0%, rgb(169 157 255 / 0.14), transparent 70%), linear-gradient(180deg, #1b1733 0%, #17142b 50%, #261c50 100%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 30px 60px -36px rgb(83 63 246 / 0.55); }
 @media print {
@@ -2362,17 +2364,20 @@ html:not(.dark) .live-card {
 /* M52 · The landing's planet section (src/components/landing/WorldSection.tsx): Midnight Abyss sinking
    into Aqua Jade, like the owner's "Globynk" picture. M56 (the owner: "make it look seamless"): the
    aqua horizon dissolves back into the page over the section's last quarter, and thins out toward the
-   sides, so there's no edge where it ends and the river flows on out of it. */
+   sides, so there's no edge where it ends and the river flows on out of it. M57: deep navy sinking into a
+   dark teal, the Aqua Jade a glow at the horizon instead of a pale blue fill. */
 .world { isolation: isolate; }
 .world::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background:
-  radial-gradient(46% 22% at 50% 74%, rgb(146 226 215 / 0.55), transparent 70%),
-  linear-gradient(180deg, transparent 0%, #1c2649 16%, #243e61 32%, #3a6880 48%, #5ca3a7 62%, #7ccfc5 73%, rgb(92 163 167 / 0.8) 81%, rgb(58 104 128 / 0.42) 90%, rgb(36 62 97 / 0.12) 96%, transparent 100%);
+  radial-gradient(44% 18% at 50% 74%, rgb(116 255 237 / 0.42), transparent 72%),
+  radial-gradient(70% 26% at 50% 76%, rgb(116 255 237 / 0.14), transparent 72%),
+  linear-gradient(180deg, transparent 0%, #111a3e 16%, #112246 34%, #0f2f4b 52%, #0d4255 66%, #0e4f5e 74%, rgb(13 66 85 / 0.8) 82%, rgb(15 40 70 / 0.4) 91%, rgb(15 21 54 / 0.1) 96%, transparent 100%);
   -webkit-mask-image: radial-gradient(130% 100% at 50% 40%, #000 62%, transparent 100%);
   mask-image: radial-gradient(130% 100% at 50% 40%, #000 62%, transparent 100%); }
 /* Notes on the bright aqua: navy glass, dark enough that white text reads at 4.5:1 on the brightest part. */
 .world-glass { border-radius: 1.5rem; border: 1px solid rgb(255 255 255 / 0.18); background: rgb(16 28 58 / 0.58); -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 18px 40px -24px rgb(4 8 28 / 0.6); }
-/* M55 · The aqua horizon at the foot of the landing's first screen and the sign-in pages. */
-.horizon { background: radial-gradient(70% 34% at 50% 112%, rgb(116 255 237 / 0.2), transparent 70%), radial-gradient(90% 40% at 50% 116%, rgb(34 160 170 / 0.22), transparent 72%); }
+/* M55 · The aqua horizon at the foot of the landing's first screen and the sign-in pages. M57: it fades
+   out completely before the bottom edge (it was cut there, a hard line under the landing's first screen). */
+.horizon { background: radial-gradient(60% 20% at 50% 80%, rgb(116 255 237 / 0.13), transparent 100%), radial-gradient(85% 28% at 50% 72%, rgb(34 160 170 / 0.12), transparent 100%); }
 
 /* M54 · More Aqua Jade in dark mode (the owner: "there is way less aqua jade colour"). Pink stays the
    action (the main button, the river, live dots); Aqua Jade is now everything chosen, pointed at or
@@ -2429,4 +2434,4 @@ html.dark .glass-sidebar { -webkit-backdrop-filter: blur(22px) saturate(150%); b
 /* M56 · A pool of the page's navy behind words the river passes under (the landing's scroll story):
    the light dims there and the words stay crisp. */
 .text-pool { position: relative; isolation: isolate; }
-.text-pool::before { content: ''; position: absolute; inset: -20% -18%; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgb(23 31 68 / 0.86), rgb(23 31 68 / 0.6) 55%, transparent); }
+.text-pool::before { content: ''; position: absolute; inset: -20% -18%; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgb(15 21 54 / 0.86), rgb(15 21 54 / 0.6) 55%, transparent); }
