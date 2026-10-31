@@ -2939,3 +2939,19 @@ The owner: "in owner console every pro feature should be free". The code already
 `src/server/router.ts` now sets `owner = true` on the owner's own user object (only when
 `isOwner(user)`: a verified Google sign-in with the owner's email). **Rule:** handlers may trust
 `user.owner`; never set it anywhere else.
+
+## M63 · The landing: no repeated scroll story; each section arrives its own way (31 Oct 2026)
+
+The owner (screenshot of the scroll story showing Relief's words beside UniVersity's picture): "remove
+this part… in the start it is same, and below this all the details need ultra smooth animations which
+are unique". The scroll story (M44, `ScrollStory.tsx`) repeated the hero's five pictures and
+headlines, and mid-scroll could pair one app's words with another's picture: **removed** (file deleted).
+
+Every section below used the same fade-up (`Reveal`). Now `bits.tsx` has `Motion kind="…"` around a
+section and every `Reveal` inside follows it: `tilt` (tips up like a card set on a table), `sweep`
+(glides in from the reading side; mirrored in RTL), `fan` (alternate sides with a slight turn), `depth`
+(settles forward), `mask` (rises out of a clipped line), `scrub` (tied to the scroll through a spring),
+`up` (default). Transform and opacity only; Reduce Motion keeps the fades (MotionConfig "user", and
+`scrub` reads Reduce Motion itself). Assignments are in `src/app/page.tsx`, one kind per section and
+no two neighbours alike. **Rule:** a new landing section picks a kind its neighbours don't use.
+Tested: scrolled the whole page at 1440 and 390: nothing left invisible, no sideways scroll, no errors.
