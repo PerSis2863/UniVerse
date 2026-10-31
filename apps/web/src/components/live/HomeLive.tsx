@@ -4,6 +4,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { useNow } from '@/lib/use-now';
 import { Constellation } from './Constellation';
 import { Countdown, LiveCard } from './LiveCard';
+import { Schedule } from './Schedule';
 
 // The homes' live cards (M48): the same two moving pictures, fed with what each home already loads
 // (no new requests, so sample mode needs nothing new).
@@ -79,4 +80,14 @@ export function AdminLive({ departments, students, teachers, courses }: { depart
         : <p className="py-16 text-center text-sm text-white/70">Departments appear here once courses have one.</p>}
     </LiveCard>
   );
+}
+
+/** M50: today's classes as a timetable with a line for now (classes over turn grey). */
+export function TodayLine({ classes }: { classes: { id: string; start: string; end: string; room: string | null; course: { code: string } }[] }) {
+  const now = useNow();
+  if (!now || !classes.length) return null;
+  const at = (hm: string) => { const [h, m] = hm.split(':').map(Number); const d = new Date(now); d.setHours(h, m, 0, 0); return d.getTime(); };
+  const slots = classes.map((c) => { const start = at(c.start), end = Math.max(at(c.end), start + 60_000); return { id: c.id, label: c.course.code, start, end, state: end < now ? 'done' as const : 'moving' as const, note: c.room ?? `${c.start}–${c.end}` }; });
+  const from = Math.min(...slots.map((x) => x.start)) - 30 * 60_000, to = Math.max(...slots.map((x) => x.end)) + 30 * 60_000;
+  return <Schedule className="mb-5" slots={slots} from={from} to={to} />;
 }

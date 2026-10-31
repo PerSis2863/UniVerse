@@ -2528,3 +2528,35 @@ you apply all these in the owners portal" (they weren't: M48 covered the homes o
   Overview draws, and saves a picture of each), axe-clean with no sideways scroll on desktop and phone,
   light and dark; the cascade seen on Calls (cards rising after a tab click); typecheck, lint, unit
   tests, lean.
+
+## M50 · Trace in motion: a night city, journey lines, level gauges and a timetable (31 Oct 2026)
+
+The owner sent a second video ("Waypoint", a fleet and warehouse dashboard by buildindex.dev):
+"add these animations in the system… specially in the trace section you can add with more features…
+ultra smooth", and "add all these where ever you think can fit".
+
+- **New pieces** (`src/components/live/`): `CityView.tsx` (a night city seen from above at an angle:
+  blocks with lit windows drawn once per size, the warehouse hub glowing with rings, every batch a van
+  going from a factory at the edge through the hub to its shop; the way done glows pink, light streams
+  ahead to where it's going; names on vans on the move, any van's name when pointed at; pills step
+  aside instead of covering each other), `Journey.tsx` (a wave through the steps that draws itself in;
+  each step ticks over as the line reaches it, the current one pulses, a light runs along what's done;
+  step names and times in an ordered list; follows the theme or `dark`), `Tank.tsx` (a half bowl
+  whose liquid rises to the level with a sliding wavy top; plain boxes and a transform: an SVG clip
+  version didn't draw reliably), `Schedule.tsx` (bars from start to end growing in one after another,
+  hours or days along the top, at most about seven marks, a pink line for now). `STAGE_SHORT` in
+  `src/lib/trace.ts`: one word per stage for narrow places.
+- **Trace:** Tracking opens with "Fleet in motion" (the city, on the move / delivered / next arrival,
+  a ticker) and ends with "Journeys" (the timetable); an opened shipment shows its journey stage by
+  stage and how far along it is as a gauge. The product passport (`/t/<code>`) draws its journey
+  ending with "You". Radar gets "On the radar" (recalls and copies in the middle, grey market and warm
+  shipments next, blocks outside). The wallet gets "Your points, live" (brands as a constellation, the
+  total over time as a heartbeat). Each campaign shows its budget left as a gauge.
+- **Elsewhere:** a student's assignment shows Set → Handed in → Marked as a journey; Relief requests
+  show Asked → Someone's on it → Helped; Green's weekly challenge has a gauge; the student home's
+  "Today's classes" gets the timetable with now (only on days with classes).
+- All from data the pages already load: no new requests or database changes.
+- **Tested:** `scripts/checks/live-ui.mjs` (now also Trace tracking, radar and wallet in sample mode;
+  each card draws, axe at 390/1280, light and dark, no sideways scroll); looked at in the browser
+  (the city, the journey and gauge on a shipment, the timetable, the passport, Green); typecheck,
+  lint, unit tests, lean. Not run through a full build this time (no server changes).

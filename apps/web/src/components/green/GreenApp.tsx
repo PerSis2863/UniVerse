@@ -20,6 +20,7 @@ import { GREEN_FACTORS, GREEN_KINDS, co2For, type GreenKind } from '@/lib/green'
 import { LiveCard } from '@/components/live/LiveCard';
 import { Constellation } from '@/components/live/Constellation';
 import { Heartbeat } from '@/components/live/Heartbeat';
+import { Tank } from '@/components/live/Tank';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
@@ -146,7 +147,11 @@ export function GreenApp() {
         <div className="flex flex-col gap-6">
           {c && (
             <section className="panel p-5" aria-labelledby="ch-h">
-              <h2 id="ch-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Trophy className="w-4 h-4 text-amber-500" aria-hidden />This week’s challenge</h2>
+              <div className="flex items-start gap-3">
+                <h2 id="ch-h" className="font-bold text-zinc-900 dark:text-white flex flex-1 items-center gap-2"><Trophy className="w-4 h-4 text-amber-500" aria-hidden />This week’s challenge</h2>
+                {/* M50: how full the week's goal is, as a level. */}
+                <Tank pct={c.goal ? (c.mine / c.goal) * 100 : 0} tone="green" label="Your share of the goal" />
+              </div>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{c.title}{daysLeft !== null ? ` · ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left` : ''}</p>
               {[['You', c.mine], ...(c.team !== null ? [['Your teams', c.team] as const] : [])].map(([who, v]) => (
                 <div key={who as string} className="mt-3">

@@ -24,6 +24,7 @@ import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/
 import { LiveCard } from '@/components/live/LiveCard';
 import { Funnel } from '@/components/live/Funnel';
 import { Radar } from '@/components/live/Radar';
+import { Journey } from '@/components/live/Journey';
 
 // UniVerse Relief (src/lib/apps.ts): every open need and offer of help on one live map (the same map
 // engine as Trace), the most urgent and nearest needs first, "I can help", messages, and delivered.
@@ -288,6 +289,14 @@ export function PostCard({ p, now, here, onChange }: { p: ReliefPost; now: numbe
         {p.status === 'TAKEN' && <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{p.helping ? 'You’re helping' : `${p.helper?.name ?? 'Someone'} is helping`}</span>}
         {p.status === 'DONE' && <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Delivered</span>}
       </p>
+      {p.type === 'NEED' && (
+        // M50: where this request is, as a journey.
+        <Journey className="mt-3" label="Where this request is" steps={[
+          { label: 'Asked', at: new Date(p.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), done: true },
+          { label: 'Someone’s on it', at: p.takenAt ? new Date(p.takenAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : null, done: p.status === 'TAKEN' || p.status === 'DONE' },
+          { label: 'Helped', at: p.doneAt ? new Date(p.doneAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : null, done: p.status === 'DONE' },
+        ]} />
+      )}
       <div className="mt-3"><PostActions p={p} onChange={onChange} small /></div>
     </div>
   );

@@ -13,6 +13,9 @@ import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { cleanCode } from '@/lib/trace';
 import { cn } from '@/lib/utils';
+import { LiveCard } from '@/components/live/LiveCard';
+import { Constellation } from '@/components/live/Constellation';
+import { Heartbeat } from '@/components/live/Heartbeat';
 
 // One wallet for everyone (UniVerse Trace): the points a shop, installer or buyer earns from every
 // brand by scanning genuine products, what they're worth, the brands' live offers, cash-outs, and a
@@ -105,6 +108,8 @@ function Wallet() {
           </form>
         </div>
       </section>
+
+      {data && data.balances.length > 0 && <WalletLive data={data} />}
 
       <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
         <div className="space-y-6">
@@ -214,5 +219,20 @@ function CashoutForm({ brand, max, onDone }: { brand: WalletBrand; max: number; 
       <label className="block"><span className="text-xs text-zinc-600 dark:text-zinc-300">Pay to (bank, UPI or PayPal)</span><input required maxLength={200} value={payTo} onChange={(e) => setPayTo(e.target.value)} className="input mt-1" placeholder="name@upi, IBAN or PayPal email" /></label>
       <button type="submit" disabled={saving} className="btn-primary btn-sm justify-center">{saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Banknote className="w-3.5 h-3.5" />}Ask for {money(n * brand.pointValue, brand.currency)}</button>
     </form>
+  );
+}
+
+/** M50: the brands you hold points with, around you, and your points over time as a heartbeat. */
+function WalletLive({ data }: { data: WalletData }) {
+  const ordered = [...data.history].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const running = ordered.reduce<number[]>((acc, h) => [...acc, (acc.at(-1) ?? 0) + h.points], []);
+  return (
+    <LiveCard title="Your points, live" sub="Each brand you hold points with, and how your total grew"
+      stats={[{ label: 'Points', value: data.total.toLocaleString() }, { label: 'Brands', value: String(data.balances.length) }]}
+      ticker={data.history.slice(0, 6).map((h) => `${h.brand}: ${h.points > 0 ? '+' : ''}${h.points.toLocaleString()} · ${KIND[h.kind]?.label ?? h.kind}`)}>
+      <Constellation className="h-[240px]" label="The brands you hold points with" center="★"
+        groups={data.balances.map((b) => ({ label: b.brand.name, n: Math.max(6, Math.round(Math.sqrt(b.points))), value: `${b.points.toLocaleString()} pts` }))} />
+      {running.length > 1 && <div className="mt-3 h-[80px]"><Heartbeat values={running} label="Your total points over time" /></div>}
+    </LiveCard>
   );
 }

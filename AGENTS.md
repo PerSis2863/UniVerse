@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M49 is the latest).
+  builds on it). The newest notes are at the end (M50 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -107,8 +107,9 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   iPhone launch screen, bar colours per theme, the river holds still on a struggling phone) and
   **M47** (the landing's demos run only on screen; light and sideways iPad launch screens),
   **M48** (live cards after the owner's "Crew" video: 3D constellations and funnels of light on every
-  home, `src/components/live`) and **M49** (heartbeat, radar and pulse-grid pictures, tabs that
-  cascade their cards in, the owner console's live cards) (branch `claude/funny-galileo-y4mz9r`, not merged yet).
+  home, `src/components/live`), **M49** (heartbeat, radar and pulse-grid pictures, tabs that
+  cascade their cards in, the owner console's live cards) and **M50** (Trace in motion after the
+  "Waypoint" video: a night city of vans, journey lines, level gauges, a timetable with now) (branch `claude/funny-galileo-y4mz9r`, not merged yet).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
   done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts

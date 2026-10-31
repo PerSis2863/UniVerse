@@ -2273,3 +2273,7 @@ html.reduce-motion .press-ripple, html.reduce-motion [data-cursor-light]::before
 @keyframes live-dot { 0% { box-shadow: 0 0 0 0 rgb(236 72 153 / 0.55); } 70%, 100% { box-shadow: 0 0 0 7px rgb(236 72 153 / 0); } }
 @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
 @supports (corner-shape: squircle) { .live-card { corner-shape: squircle; border-radius: calc(var(--radius-card) * 1.6); } }
+/* M50 · The level gauge's liquid (src/components/live/Tank.tsx) sways slowly. */
+.tank-wave { animation: tank-wave 6s linear infinite; }
+@keyframes tank-wave { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .tank-wave { animation: none; } }

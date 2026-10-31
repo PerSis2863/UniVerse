@@ -12,12 +12,17 @@ import { api, errorMessage } from '@/lib/api';
 import { distanceM } from '@/lib/attendance-rules';
 import { fetcher } from '@/lib/fetcher';
 import { useActivePoll } from '@/lib/realtime-client';
-import { STAGE_LABEL, type Stage } from '@/lib/trace';
+import { STAGES, STAGE_LABEL, STAGE_SHORT, type Stage } from '@/lib/trace';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow, useTick } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
 import { glow, toBase } from './engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from './WorldCanvas';
+import { LiveCard } from '@/components/live/LiveCard';
+import { CityView } from '@/components/live/CityView';
+import { Journey } from '@/components/live/Journey';
+import { Tank } from '@/components/live/Tank';
+import { Schedule } from '@/components/live/Schedule';
 
 // The live tracking map (UniVerse Trace; the owner, 24 Oct 2026: "add 2d real time product tracking
 // map also in and it should be in detailed"). Every batch's journey: the stops behind it drawn solid,
@@ -264,6 +269,7 @@ export function TrackingMap() {
 
   return (
     <div className="space-y-4">
+      {ships.length > 0 && <FleetInMotion ships={ships} />}
       <div className="flex flex-wrap items-center gap-2">
         <div role="radiogroup" aria-label="Show" className="flex rounded-full bg-zinc-100 dark:bg-white/[0.06] p-1">
           {([['all', `All · ${ships.length}`], ['moving', `On the move · ${moving}`], ['done', 'Delivered']] as const).map(([id, label]) => (
@@ -343,7 +349,46 @@ export function TrackingMap() {
           </WorldCanvas>
         </div>
       </div>
+      {ships.length > 0 && <JourneysToday ships={ships} />}
     </div>
+  );
+}
+
+/** M50: every shipment as a van in a night city, from its factory through the hub to its shop. */
+function FleetInMotion({ ships }: { ships: Ship[] }) {
+  const moving = ships.filter((s) => s.status === 'IN_TRANSIT');
+  const etas = moving.map((s) => s.etaMinutes).filter((x): x is number => x !== null);
+  return (
+    <LiveCard title="Fleet in motion" sub="Every batch from its factory, through the warehouse, to its shop"
+      stats={[{ label: 'On the move', value: String(moving.length) }, { label: 'Delivered', value: String(ships.filter((s) => s.status === 'DELIVERED').length) }, { label: 'Next arrival', value: etas.length ? duration(Math.min(...etas)) : '—' }]}
+      ticker={ships.slice(0, 8).map((s) => `${s.label} · ${s.product} · ${STATUS[s.status]?.label ?? s.status}${s.etaMinutes !== null && s.status === 'IN_TRANSIT' ? ` · ${duration(s.etaMinutes)} to go` : ''}`)}>
+      <CityView className="h-[300px] sm:h-[380px]" label="Your shipments on their way, as vans in a city"
+        vans={ships.map((s) => ({ id: s.id, label: s.label, progress: progress(s), state: s.status === 'DELIVERED' ? 'done' : s.status === 'IN_TRANSIT' ? 'moving' : 'parked',
+          note: s.status === 'DELIVERED' ? 'delivered' : s.status === 'IN_TRANSIT' && s.etaMinutes !== null ? duration(s.etaMinutes) : undefined }))} />
+    </LiveCard>
+  );
+}
+
+/** M50: when each journey started and ends (or is expected to), with a line for now. */
+function JourneysToday({ ships }: { ships: Ship[] }) {
+  const now = useNow();
+  if (!now) return null;
+  const slots = ships.filter((s) => s.stops.length).slice(0, 12).map((s) => {
+    const start = new Date(s.stops[0].at).getTime();
+    const end = s.status === 'DELIVERED' ? new Date(s.stops[s.stops.length - 1].at).getTime() : s.etaMinutes !== null ? now + s.etaMinutes * 60_000 : now + 3600_000;
+    const moving = s.status === 'IN_TRANSIT';
+    return { id: s.id, label: s.label, start, end: Math.max(moving || s.status === 'DELIVERED' ? end : start, start + 60_000), state: moving ? 'moving' as const : 'done' as const,
+      note: s.status === 'DELIVERED' ? 'Delivered' : moving ? (s.dest?.place ? `→ ${city(s.dest.place)}` : 'On the move') : 'Waiting' };
+  });
+  if (!slots.length) return null;
+  const from = Math.max(Math.min(...slots.map((x) => x.start), now - 6 * 3600_000), now - 7 * 86_400_000);
+  const to = Math.min(Math.max(...slots.map((x) => x.end), now + 3 * 3600_000), now + 7 * 86_400_000);
+  return (
+    <section className="panel p-5" aria-labelledby="journeys-h">
+      <h2 id="journeys-h" className="font-bold text-zinc-900 dark:text-white">Journeys</h2>
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">When each one left and when it arrives, with now in pink</p>
+      <Schedule className="mt-4" slots={slots} from={from} to={to} />
+    </section>
   );
 }
 
@@ -457,6 +502,12 @@ function ShipCard({ s, index, open, onOpen, onFind, onPick, onChange, onHover }:
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
             <div className="px-4 pb-4 border-t border-zinc-100 dark:border-white/[0.06] pt-3">
               {s.simulated && <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-pink-500/10 px-2.5 py-1 text-[11px] font-semibold text-pink-700 dark:text-pink-200"><Sparkles className="w-3 h-3" aria-hidden />Sample: it moves by itself until a real phone shares its position</p>}
+              {/* M50: the journey so far, stage by stage, and how far along it is. */}
+              <div className="mb-4 flex items-center gap-3">
+                <Journey className="flex-1" label={`${s.label}'s journey, stage by stage`}
+                  steps={STAGES.map((st) => { const stop = s.stops.find((p) => p.stage === st); return { label: STAGE_SHORT[st], at: stop ? new Date(stop.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : null, done: !!stop || s.status === 'DELIVERED' }; })} />
+                <Tank pct={pct * 100} tone={s.status === 'DELIVERED' ? 'green' : 'pink'} label="Of the way" />
+              </div>
               <ol className="relative ml-1.5 border-l-2 border-zinc-200 dark:border-white/10 space-y-3">
                 {s.stops.map((p, i) => (
                   <li key={i} className="pl-4 relative">

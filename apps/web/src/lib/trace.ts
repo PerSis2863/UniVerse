@@ -77,6 +77,8 @@ export function verdictFor(code: { scanCount: number; firstLat: number | null; f
 export const STAGES = ['MADE', 'SHIPPED', 'WAREHOUSE', 'DISTRIBUTOR', 'SHOP'] as const;
 export type Stage = (typeof STAGES)[number];
 export const STAGE_LABEL: Record<Stage, string> = { MADE: 'Made', SHIPPED: 'Shipped', WAREHOUSE: 'At the warehouse', DISTRIBUTOR: 'With the distributor', SHOP: 'In the shop' };
+/** One word per stage, for journey lines in narrow places (M50). */
+export const STAGE_SHORT: Record<Stage, string> = { MADE: 'Made', SHIPPED: 'Shipped', WAREHOUSE: 'Warehouse', DISTRIBUTOR: 'Distributor', SHOP: 'Shop' };
 
 /** Free brands get this many units with a passport; PRO brands far more. */
 export const PLAN_UNITS: Record<string, number> = { FREE: 10_000, PRO: 1_000_000 };

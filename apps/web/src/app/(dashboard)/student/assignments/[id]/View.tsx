@@ -21,6 +21,7 @@ import { SubmissionNotes } from '@/components/assignments/SubmissionNotes';
 import { useWritingReplay } from '@/lib/use-writing-replay';
 import type { Replay } from '@/lib/writing-replay';
 import { HandInReceipt, RegradeBox, RubricHelpButton, RubricHelpText, type Regrade, type RubricHelpItem } from '@/components/assignments/StudentExtras';
+import { Journey } from '@/components/live/Journey';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Detail {
@@ -150,6 +151,12 @@ function StudentAssignmentPage({ id }: { id: string }) {
           ) : (
             <>
               <section className={`panel p-5 space-y-4`}>
+                {/* M50: where this piece of work is, as a journey. */}
+                <Journey label="Where this assignment is" steps={[
+                  { label: 'Set', done: true },
+                  { label: 'Handed in', at: data.mine ? new Date(data.mine.submittedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : null, done: !!data.mine },
+                  { label: 'Marked', at: data.mine?.returnedAt ? new Date(data.mine.returnedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : null, done: returned },
+                ]} />
                 {due && <p className="text-sm text-zinc-600 dark:text-zinc-400">Due {new Date(due).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}{data.extended ? ' (your own date)' : ''}{data.status === 'CLOSED' && !openForMe ? ' · closed' : ''}</p>}
                 {rulesSentence(data).length > 0 && <p className="text-sm text-zinc-600 dark:text-zinc-400">{rulesSentence(data).join(' ')}{left !== null && data.mine && !returned ? ` ${left} left.` : ''}</p>}
                 {data.groupMode && (

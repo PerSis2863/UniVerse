@@ -25,7 +25,7 @@ import { UpNextCard } from '@/components/home/UpNext';
 import { GoalCard } from '@/components/home/RoleCards';
 import { useHome } from '@/components/home/use-home';
 import { useMyCourseColors } from '@/lib/my-course-colors';
-import { StudentLive } from '@/components/live/HomeLive';
+import { StudentLive, TodayLine } from '@/components/live/HomeLive';
 
 interface Overview {
   name: string;
@@ -204,6 +204,8 @@ export default function StudentDashboard() {
             </div>
           </div>
         ) : (
+          <>
+          <TodayLine classes={data.schedule} />
           <ol className="space-y-3">
             {data.schedule.map((c) => (
               <li key={c.id} className="flex items-center gap-4">
@@ -222,6 +224,7 @@ export default function StudentDashboard() {
               </li>
             ))}
           </ol>
+          </>
         )}
       </Panel>
     ) : null,

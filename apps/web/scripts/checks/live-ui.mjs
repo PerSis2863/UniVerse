@@ -1,6 +1,5 @@
-// M48: the live cards (src/components/live) on every home: the student's, teacher's and admin's
-// constellations, the hub's, Relief's and Trace's funnels, Green's and Play's constellations (where the
-// account has something to show). Each draws (its canvas has lit pixels), the page doesn't scroll
+// M48–M50: the live cards (src/components/live): the student's, teacher's and admin's constellations,
+// the hub's, Relief's funnel and radar, and Trace's fleet city, radar and wallet (in sample mode). Each draws (its canvas has lit pixels), the page doesn't scroll
 // sideways, and axe finds nothing serious, at 390 and 1280 px, light and dark.
 //   node scripts/checks/live-ui.mjs [http://localhost:3000]
 import { createRequire } from 'node:module';
@@ -17,16 +16,21 @@ const PAGES = [
   ['demo@admin.com', '/admin', '.live-card'],
   ['demo@student.com', '/hub', '.trace-hero'],
   ['demo@student.com', '/relief', '.live-card'],
+  // M50, in "Explore with sample data" (the demo account has no brand): the fleet city, the radar,
+  // the wallet's constellation.
+  ['demo@student.com', '/trace/tracking', '.live-card', true],
+  ['demo@student.com', '/trace/radar', '.live-card', true],
+  ['demo@student.com', '/trace/wallet', '.live-card', true],
 ];
 
 const browser = await launch();
 try {
-  for (const [who, path, sel] of PAGES) {
+  for (const [who, path, sel, sample] of PAGES) {
     for (const scheme of ['light', 'dark']) {
       for (const width of [390, 1280]) {
         const what = `${path} ${scheme} ${width}`;
         const ctx = await signedIn(browser, base, who, { width, height: 900 }, width < 600 ? { isMobile: true, hasTouch: true, colorScheme: scheme } : { colorScheme: scheme });
-        await ctx.addInitScript((s) => { try { localStorage.setItem('theme', s); } catch { /* a locked frame */ } }, scheme);
+        await ctx.addInitScript(([s, demo]) => { try { localStorage.setItem('theme', s); if (demo) sessionStorage.setItem('universe:sample-mode', '1'); } catch { /* a locked frame */ } }, [scheme, !!sample]);
         const page = await ctx.newPage();
         await page.goto(base + path, { waitUntil: 'load', timeout: 240_000 });
         await page.evaluate(() => { const id = JSON.parse(localStorage.getItem('universe-auth') || '{}')?.state?.user?.id; if (id) localStorage.setItem(`universe-tour-done:${id}`, '1'); });
