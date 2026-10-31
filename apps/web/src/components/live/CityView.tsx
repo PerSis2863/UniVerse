@@ -291,11 +291,11 @@ function build(key: string, w: number, h: number, dpr: number, G: number, s: num
   const [ground, gg] = make();
   const [hx, hy] = iso(H, H);
   const base = gg.createRadialGradient(hx, hy, 0, hx, hy, s * G * 0.9);
-  base.addColorStop(0, '#16151a'); base.addColorStop(1, '#09090b');
+  base.addColorStop(0, '#151b3d'); base.addColorStop(1, '#0b1028');
   quad(gg, [iso(-0.2, -0.2), iso(G + 0.2, -0.2), iso(G + 0.2, G + 0.2), iso(-0.2, G + 0.2)], base);
   for (let i = 0; i <= G; i++) {
-    quad(gg, [iso(i - 0.14, -0.2), iso(i + 0.14, -0.2), iso(i + 0.14, G + 0.2), iso(i - 0.14, G + 0.2)], '#121216');
-    quad(gg, [iso(-0.2, i - 0.14), iso(G + 0.2, i - 0.14), iso(G + 0.2, i + 0.14), iso(-0.2, i + 0.14)], '#121216');
+    quad(gg, [iso(i - 0.14, -0.2), iso(i + 0.14, -0.2), iso(i + 0.14, G + 0.2), iso(i - 0.14, G + 0.2)], '#121838');
+    quad(gg, [iso(-0.2, i - 0.14), iso(G + 0.2, i - 0.14), iso(G + 0.2, i + 0.14), iso(-0.2, i + 0.14)], '#121838');
   }
   gg.setLineDash([3, 5]); gg.strokeStyle = 'rgba(255,255,255,0.07)'; gg.lineWidth = 1;
   for (let i = 0; i <= G; i++) {
@@ -346,7 +346,7 @@ function build(key: string, w: number, h: number, dpr: number, G: number, s: num
     const shade = (light: number) => { const g = cg.createLinearGradient(0, bottom, 0, top); g.addColorStop(0, `rgb(${10 + light},${10 + light},${13 + light})`); g.addColorStop(1, `rgb(${22 + light},${21 + light},${26 + light})`); return g; };
     quad(cg, [iso(x0, y1), iso(x1, y1), iso(x1, y1, z), iso(x0, y1, z)], shade(4));
     quad(cg, [iso(x1, y0), iso(x1, y1), iso(x1, y1, z), iso(x1, y0, z)], shade(-2));
-    quad(cg, [iso(x0, y0, z), iso(x1, y0, z), iso(x1, y1, z), iso(x0, y1, z)], '#24232a');
+    quad(cg, [iso(x0, y0, z), iso(x1, y0, z), iso(x1, y1, z), iso(x0, y1, z)], '#222a4f');
     // A thin bright edge on the roof, catching the light.
     cg.strokeStyle = 'rgba(255,255,255,0.07)'; cg.lineWidth = 1;
     cg.beginPath(); cg.moveTo(...iso(x0, y1, z)); cg.lineTo(...iso(x1, y1, z)); cg.lineTo(...iso(x1, y0, z)); cg.stroke();

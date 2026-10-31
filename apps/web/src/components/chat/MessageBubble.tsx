@@ -213,7 +213,7 @@ export function MessageBubble(p: Props) {
     sticker ? 'bg-transparent text-zinc-900 dark:text-white'
       : mine
       ? 'bubble-mine bg-tint text-white rounded-ee-[6px]'
-      : 'bubble-theirs bg-[#e9e9eb] dark:bg-[#26252a] text-zinc-900 dark:text-white rounded-es-[6px]',
+      : 'bubble-theirs bg-[#e9e9eb] dark:bg-[#262f5c] text-zinc-900 dark:text-white rounded-es-[6px]',
     m.pending && 'opacity-60',
     highlight && 'ring-4 ring-amber-400/70',
   );

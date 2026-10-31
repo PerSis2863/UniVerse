@@ -86,7 +86,7 @@ export function TypeRace({ seed, startsAt, clock, onProgress, onStats, rivals }:
   return (
     <div className="mx-auto w-full max-w-5xl" onClick={() => input.current?.focus()}>
       {/* The track: asphalt lanes, moving lane lines, a chequered line at the end of each lap */}
-      <div className="relative overflow-hidden rounded-[1.75rem] bg-[#1a1a1d] p-2 ring-1 ring-white/10" aria-label="Race track">
+      <div className="relative overflow-hidden rounded-[1.75rem] bg-[#1b2349] p-2 ring-1 ring-white/10" aria-label="Race track">
         {racers.map((r, k) => {
           const pct = (r.chars % LAP) / LAP, rLap = Math.floor(r.chars / LAP);
           return (
@@ -125,7 +125,7 @@ export function TypeRace({ seed, startsAt, clock, onProgress, onStats, rivals }:
       {/* The fact to type */}
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={s.i} initial={{ opacity: 0, y: calm ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: calm ? 0 : -8, transition: { duration: 0.14 } }} transition={spring.smooth}
-          className={cn('mt-4 rounded-[1.75rem] bg-[#18181b] p-5 ring-1 transition-shadow duration-300 sm:p-7', nitro ? 'ring-amber-300/60 shadow-[0_0_50px_-10px_rgba(251,191,36,0.6)]' : 'ring-white/10')}>
+          className={cn('mt-4 rounded-[1.75rem] bg-[#1a2147] p-5 ring-1 transition-shadow duration-300 sm:p-7', nitro ? 'ring-amber-300/60 shadow-[0_0_50px_-10px_rgba(251,191,36,0.6)]' : 'ring-white/10')}>
           <p key={s.miss} className={cn('font-mono text-xl leading-relaxed sm:text-2xl', s.missAt === s.at && 'play-shake')} aria-hidden>
             <span className="text-white">{text.slice(0, s.at)}</span>
             <span className={cn('rounded-[4px] px-[1px] transition-colors duration-150', s.missAt === s.at ? 'bg-red-500/30 text-red-200' : 'bg-pink-500/30 text-pink-100 underline decoration-2 underline-offset-4')}>{text[s.at] === ' ' ? ' ' : text[s.at]}</span>

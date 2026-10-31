@@ -7,9 +7,10 @@ import { TONES, easeOut, glow, hash, seeded, useLiveCanvas, type Frame, type Ton
 // The planet (M52, after the owner's "Orbit" video and the "Globynk" picture): a globe of a few
 // thousand dots on a jittered Fibonacci lattice (even, with no visible spiral), brighter where there is
 // land (Natural Earth, the Trace maps' outlines, loaded after the page), lit from the top left with an
-// Aqua Jade atmosphere and a glint on its rim, the far side faintly showing through. A thin mesh joins
-// neighbouring dots; Baby Pink arcs rise between the places, light running along them; small ripples
-// land on it now and then. It turns slowly; the pointer leans it. Labels are pills on the canvas, the
+// Aqua Jade atmosphere, a teal light inside and a glint on its rim, the far side faintly showing
+// through. A net of fine triangles covers it (M55, like the "Globynk" globe) with pink sparks at a few
+// knots; Baby Pink arcs rise between the places, light running along them; small ripples land on it
+// now and then. It turns slowly; the pointer leans it. Labels are pills on the canvas, the
 // places are also a list for screen readers. Draws only while on screen (useLiveCanvas).
 
 export interface Place { label: string; lat: number; lon: number; tone?: Tone; value?: string }
@@ -20,7 +21,7 @@ const toV = (lat: number, lon: number): V3 => [Math.cos(lat * RAD) * Math.sin(lo
 const LIGHT: V3 = (() => { const v: V3 = [-0.55, 0.6, 0.62]; const n = Math.hypot(...v); return [v[0] / n, v[1] / n, v[2] / n]; })();
 const FONT = '600 11px Urbanist, system-ui, sans-serif';
 
-interface Dot { v: V3; land: boolean; tone: 0 | 1 | 2; seed: number; delay: number }
+interface Dot { v: V3; land: boolean; tone: 0 | 1 | 2; seed: number; delay: number; node: boolean; spark: boolean }
 interface Model { dots: Dot[]; mesh: [number, number][]; proj: Float32Array }
 
 /** The lattice for a globe of radius r (px). Land needs many points to show its shape, so the lattice
@@ -38,14 +39,16 @@ function lattice(r: number, land: ((lat: number, lon: number) => boolean) | null
     const isLand = land ? land(Math.asin(v[1]) / RAD, Math.atan2(v[0], v[2]) / RAD) : false;
     if (!isLand && i % 3) continue;
     const s = seeded(i + 3.7);
-    dots.push({ v, land: isLand, tone: s < 0.06 ? 2 : s < 0.32 ? 1 : 0, seed: i, delay: seeded(i + 9) * 0.35 });
+    // About one lattice point in nine is a node of the net (even over land and sea), a few of them pink.
+    const node = i % 3 === 0 && seeded(i + 0.77) < 0.34;
+    dots.push({ v, land: isLand, tone: s < 0.06 ? 2 : s < 0.32 ? 1 : 0, seed: i, delay: seeded(i + 9) * 0.35, node, spark: node && seeded(i + 5.1) < 0.06 });
   }
-  // The mesh: a net over the whole globe (about one lattice point in 15, picked at random so it
-  // doesn't line up), each joined to its two nearest.
-  const STEP = 15;
-  const nodes = dots.map((d, i) => (seeded(d.seed + 0.77) < 1 / STEP ? i : -1)).filter((i) => i >= 0);
-  const reach = (1.9 * Math.sqrt((4 * Math.PI * STEP) / n)) ** 2 / 2;
+  // The net (M55, like the "Globynk" globe): every node joined to its four nearest, so the whole
+  // globe is woven with fine triangles.
+  const nodes = dots.map((d, i) => (d.node ? i : -1)).filter((i) => i >= 0);
+  const reach = (2.3 * Math.sqrt((4 * Math.PI * 9) / n)) ** 2 / 2;
   const mesh: [number, number][] = [];
+  const seen = new Set<string>();
   for (const a of nodes) {
     const near: [number, number][] = [];
     const va = dots[a].v;
@@ -55,7 +58,10 @@ function lattice(r: number, land: ((lat: number, lon: number) => boolean) | null
       if (d < reach) near.push([d, b]);
     }
     near.sort((p, q) => p[0] - q[0]);
-    for (const [, b] of near.slice(0, 2)) if (a < b) mesh.push([a, b]);
+    for (const [, b] of near.slice(0, 4)) {
+      const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+      if (!seen.has(key)) { seen.add(key); mesh.push([a, b]); }
+    }
   }
   return { dots, mesh, proj: new Float32Array(dots.length * 3) };
 }
@@ -109,19 +115,20 @@ function bodySprite(r: number) {
   g.scale(dpr, dpr);
   const m = size / 2;
   // The atmosphere: Aqua Jade just outside the rim, fading out.
-  const atm = g.createRadialGradient(m, m, r * 0.9, m, m, r * 1.42);
+  const atm = g.createRadialGradient(m, m, r * 0.9, m, m, r * 1.45);
   atm.addColorStop(0, 'rgba(116,255,237,0)');
-  atm.addColorStop(0.16, 'rgba(116,255,237,0.34)');
-  atm.addColorStop(0.32, 'rgba(60,200,220,0.14)');
+  atm.addColorStop(0.14, 'rgba(116,255,237,0.4)');
+  atm.addColorStop(0.34, 'rgba(60,200,220,0.16)');
   atm.addColorStop(1, 'rgba(60,200,220,0)');
   g.fillStyle = atm;
   g.fillRect(0, 0, size, size);
-  // The body: deep navy, lit from the top left, darkest at the far rim.
-  const body = g.createRadialGradient(m - r * 0.4, m - r * 0.45, r * 0.05, m, m, r);
-  body.addColorStop(0, 'rgba(116,230,240,0.3)');
-  body.addColorStop(0.4, 'rgba(46,80,150,0.36)');
-  body.addColorStop(0.82, 'rgba(18,28,70,0.62)');
-  body.addColorStop(1, 'rgba(10,14,40,0.78)');
+  // The body: glassy, a teal light glowing inside it (the "Globynk" globe), lit from the top left,
+  // darker at the far rim.
+  const body = g.createRadialGradient(m - r * 0.3, m - r * 0.35, r * 0.05, m, m + r * 0.1, r);
+  body.addColorStop(0, 'rgba(160,255,242,0.4)');
+  body.addColorStop(0.35, 'rgba(70,200,205,0.32)');
+  body.addColorStop(0.75, 'rgba(24,70,110,0.4)');
+  body.addColorStop(1, 'rgba(12,22,56,0.6)');
   g.fillStyle = body;
   g.beginPath(); g.arc(m, m, r, 0, Math.PI * 2); g.fill();
   // A thin bright rim on the lit side.
@@ -205,29 +212,46 @@ export function Planet({ places, arcs, label, className, pings = true }: {
       const show = (still ? 1 : easeOut((t * 1.3 - (1 - q[2]) * 0.45 - d.delay) / 0.5)) * (d.land ? landIn : 1);
       if (show <= 0.01) continue;
       if (q[2] < 0) {
-        if (!d.land || i % 2) continue;
-        ctx.globalAlpha = 0.16 * (1 + q[2] * 0.8) * show;
-        ctx.fillRect(proj[i * 3] - 0.5, proj[i * 3 + 1] - 0.5, 1, 1);
+        // The far side shows through: its nodes and some land, faintly.
+        if (!d.node && (!d.land || i % 2)) continue;
+        ctx.globalAlpha = (d.node ? 0.32 : 0.14) * (1 + q[2] * 0.8) * show;
+        ctx.fillRect(proj[i * 3] - 0.6, proj[i * 3 + 1] - 0.6, d.node ? 1.4 : 1, d.node ? 1.4 : 1);
         continue;
       }
       const L = lit(q), depth = 0.4 + 0.6 * q[2];
       const tw = 0.82 + 0.18 * Math.sin(t * 2.1 + d.seed);
-      const sz = (d.land ? 1.15 + 0.6 * L : 0.95 + 0.35 * L) * (0.65 + 0.35 * q[2]) * scale * 2;
-      ctx.globalAlpha = Math.min(1, (d.land ? 0.62 + 0.45 * L : 0.3 + 0.32 * L) * depth * tw * show);
-      ctx.drawImage(d.land ? LAND[d.tone] : SEA[d.tone === 2 ? 1 : 0], proj[i * 3] - sz / 2, proj[i * 3 + 1] - sz / 2, sz, sz);
+      const sz = (d.node ? 1.6 + 0.6 * L : d.land ? 1.05 + 0.5 * L : 0.9 + 0.3 * L) * (0.65 + 0.35 * q[2]) * scale * 2;
+      ctx.globalAlpha = Math.min(1, (d.node ? 0.85 + 0.3 * L : d.land ? 0.34 + 0.32 * L : 0.14 + 0.18 * L) * depth * tw * show);
+      ctx.drawImage(d.node ? LAND[0] : d.land ? LAND[d.tone] : SEA[d.tone === 2 ? 1 : 0], proj[i * 3] - sz / 2, proj[i * 3 + 1] - sz / 2, sz, sz);
     }
     ctx.globalAlpha = 1;
 
-    // The mesh between near-side dots.
-    ctx.lineWidth = 0.6;
-    ctx.beginPath();
-    for (const [a, b] of mesh) {
-      const za = proj[a * 3 + 2], zb = proj[b * 3 + 2];
-      if (za < 0.1 || zb < 0.1) continue;
-      ctx.moveTo(proj[a * 3], proj[a * 3 + 1]); ctx.lineTo(proj[b * 3], proj[b * 3 + 1]);
+    // The net: faint through the far side, brighter toward you; pink sparks glow at a few of its knots.
+    const net = (lo: number, hi: number, alpha: number, width: number) => {
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      for (const [a, b] of mesh) {
+        const z = Math.min(proj[a * 3 + 2], proj[b * 3 + 2]);
+        if (z < lo || z >= hi) continue;
+        ctx.moveTo(proj[a * 3], proj[a * 3 + 1]); ctx.lineTo(proj[b * 3], proj[b * 3 + 1]);
+      }
+      ctx.strokeStyle = `rgba(170,255,244,${alpha * grow})`;
+      ctx.stroke();
+    };
+    net(-1.01, 0, 0.07, 0.5);
+    net(0, 0.45, 0.22, 0.6);
+    net(0.45, 1.01, 0.4, 0.75);
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < dots.length; i++) {
+      if (!dots[i].spark) continue;
+      const z = proj[i * 3 + 2];
+      if (z < 0.05) continue;
+      const pulse = 0.7 + 0.3 * Math.sin(t * 1.8 + dots[i].seed);
+      ctx.globalAlpha = z * pulse * grow;
+      ctx.drawImage(glow('pink'), proj[i * 3] - 9, proj[i * 3 + 1] - 9, 18, 18);
     }
-    ctx.strokeStyle = `rgba(116,255,237,${0.13 * grow})`;
-    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
 
     // The glint on the lit rim, like light catching the atmosphere.
     const gx = cx - r * 0.56, gy = cy - r * 0.62, gp = 0.75 + 0.25 * Math.sin(t * 1.3);

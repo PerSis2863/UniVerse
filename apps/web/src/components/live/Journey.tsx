@@ -67,7 +67,7 @@ export function Journey({ steps, label, dark = false, className }: { steps: Step
         ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
       }
       const r = 8 * (on ? 0.85 + 0.15 * pop : 0.85);
-      ctx.fillStyle = on ? (i === n - 1 ? '#74ffed' : '#fe81d1') : dk ? '#1c1c1f' : '#ffffff';
+      ctx.fillStyle = on ? (i === n - 1 ? '#74ffed' : '#fe81d1') : dk ? '#1c2450' : '#ffffff';
       ctx.strokeStyle = on ? 'transparent' : dk ? 'rgba(255,255,255,0.3)' : 'rgba(43,53,104,0.3)';
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); if (!on) ctx.stroke();

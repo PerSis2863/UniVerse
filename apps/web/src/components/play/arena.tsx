@@ -101,7 +101,7 @@ export function Arena({ game, onExit, side, children }: {
   if (!mounted) return null;
   return createPortal(
     <div ref={root} tabIndex={-1} role="dialog" aria-modal="true" aria-label={info.name}
-      className="arena dark fixed inset-0 z-[160] flex flex-col overflow-hidden bg-[#08080a] text-zinc-100 outline-none"
+      className="arena dark fixed inset-0 z-[160] flex flex-col overflow-hidden bg-[#0b1028] text-zinc-100 outline-none"
       style={{ '--arena': info.color } as React.CSSProperties}>
       <div className="arena-glow pointer-events-none absolute inset-0" aria-hidden />
       <header className="relative z-10 flex h-14 shrink-0 items-center gap-3 px-3 sm:px-5">

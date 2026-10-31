@@ -4,11 +4,12 @@ import { ArrowRight } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Planet, type Place } from '@/components/live/Planet';
 import type { AppId } from '@/lib/apps';
-import { Accent, Reveal, glass, primary } from './bits';
+import { Accent, Reveal, primary } from './bits';
 
-// The landing's planet (M52, after the owner's "Globynk" picture and "Orbit" video): Midnight Abyss
-// sinking into Aqua Jade, the five apps as places on one dotted planet joined by Baby Pink arcs, and
-// two frosted notes beside it. Only what the product does: no invented places or numbers.
+// The landing's planet (M52, after the owner's "Globynk" picture and "Orbit" video; M55 its exact
+// colours): Midnight Abyss sinking into a bright Aqua Jade horizon, the five apps as places on one
+// dotted planet joined by Baby Pink arcs, and two frosted notes beside it. Only what the product does:
+// no invented places or numbers.
 
 const PLACES: Place[] = [
   { label: 'UniVersity', lat: 50, lon: 4, tone: 'pink' },
@@ -31,15 +32,15 @@ export function WorldSection({ app }: { app: AppId }) {
         <Planet places={PLACES} arcs={ARCS} label="The five UniVerse apps on one turning planet" className="h-[380px] sm:h-[520px] md:h-[600px]" />
         <div className="relative grid gap-4 sm:grid-cols-2 md:block">
           <Reveal className="md:absolute md:start-0 md:bottom-[30%] md:w-[300px]">
-            <div className={`${glass} p-5 text-start`}>
+            <div className="world-glass p-5 text-start">
               <p className="font-semibold text-white">One wallet</p>
-              <p className="mt-1 text-sm text-zinc-300 leading-relaxed">Points, people helped and CO₂ saved collect in one place, whichever app they came from.</p>
+              <p className="mt-1 text-sm text-[#eef2fb] leading-relaxed">Points, people helped and CO₂ saved collect in one place, whichever app they came from.</p>
             </div>
           </Reveal>
           <Reveal delay={0.08} className="md:absolute md:end-0 md:bottom-[12%] md:w-[300px]">
-            <div className={`${glass} p-5 text-start`}>
+            <div className="world-glass p-5 text-start">
               <p className="font-semibold text-white">Live everywhere</p>
-              <p className="mt-1 text-sm text-zinc-300 leading-relaxed">Installs on any phone or computer, keeps today readable offline and updates the moment something changes.</p>
+              <p className="mt-1 text-sm text-[#eef2fb] leading-relaxed">Installs on any phone or computer, keeps today readable offline and updates the moment something changes.</p>
             </div>
           </Reveal>
         </div>

@@ -142,12 +142,12 @@ export function RecycleRush({ seed, startsAt, clock, onProgress, onStats }: Game
       </div>
 
       {/* The belt: rails, a moving surface, rollers below; the drop-off glows red. */}
-      <div className="relative mt-4 h-40 overflow-hidden rounded-[1.75rem] bg-[#101012] ring-1 ring-white/10">
-        <div className="absolute inset-x-0 bottom-9 h-5 overflow-hidden bg-[#26262b] shadow-[inset_0_2px_0_rgba(255,255,255,0.08),inset_0_-2px_0_rgba(0,0,0,0.5)]" aria-hidden>
+      <div className="relative mt-4 h-40 overflow-hidden rounded-[1.75rem] bg-[#10163a] ring-1 ring-white/10">
+        <div className="absolute inset-x-0 bottom-9 h-5 overflow-hidden bg-[#262f5c] shadow-[inset_0_2px_0_rgba(255,255,255,0.08),inset_0_-2px_0_rgba(0,0,0,0.5)]" aria-hidden>
           <div className="play-stripes h-full w-[calc(100%+48px)] bg-[repeating-linear-gradient(90deg,transparent_0_20px,rgba(255,255,255,0.1)_20px_24px)]" />
         </div>
         <div className="absolute inset-x-3 bottom-2 flex justify-between" aria-hidden>
-          {Array.from({ length: 14 }, (_, i) => <span key={i} className="play-spin grid h-5 w-5 place-items-center rounded-full bg-[#2e2e34] ring-1 ring-white/10"><span className="h-3 w-px bg-white/30" /></span>)}
+          {Array.from({ length: 14 }, (_, i) => <span key={i} className="play-spin grid h-5 w-5 place-items-center rounded-full bg-[#2b3466] ring-1 ring-white/10"><span className="h-3 w-px bg-white/30" /></span>)}
         </div>
         <div className="absolute inset-y-0 end-0 w-20 bg-gradient-to-l from-red-500/25 to-transparent rtl:bg-gradient-to-r" aria-hidden />
         <div className="absolute inset-x-3 top-3 bottom-12 [container-type:inline-size]">
@@ -238,7 +238,7 @@ function OnBelt({ b, start, clock, front, done, bin, box, calm }: { b: BeltItem;
     <div ref={ref} className="absolute start-0 top-0 flex w-20 flex-col items-center">
       <div ref={inner} className={cn('flex flex-col items-center', done === 'missed' ? 'play-dropped' : calm && done ? 'play-sorted' : '')}>
         <span className={cn('relative grid h-16 w-16 place-items-center rounded-2xl text-4xl shadow-lg transition-[box-shadow,transform] duration-200',
-          b.golden ? 'bg-gradient-to-br from-amber-200 to-amber-500' : 'bg-[#1e1e22]', front ? 'scale-110 shadow-[0_0_0_3px_#fe81d1,0_10px_28px_rgba(254,129,209,0.45)]' : 'ring-1 ring-white/10')} aria-hidden>
+          b.golden ? 'bg-gradient-to-br from-amber-200 to-amber-500' : 'bg-[#1e2650]', front ? 'scale-110 shadow-[0_0_0_3px_#fe81d1,0_10px_28px_rgba(254,129,209,0.45)]' : 'ring-1 ring-white/10')} aria-hidden>
           {emoji}
           {b.golden && <Sparkles className="absolute -end-1.5 -top-1.5 w-4 h-4 text-amber-200" />}
         </span>

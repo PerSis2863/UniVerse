@@ -2686,3 +2686,32 @@ only the faint glow.
 - **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); whole-page axe in dark mode
   on the student, teacher and admin homes, hub, Green, Relief, Play and Trace at 1280, and four of them
   at 390: no serious problems. Looked at the student home and hub.
+
+## M55 · The "Globynk" picture everywhere in dark mode (31 Oct 2026)
+
+The owner sent the "Globynk" hero again: "make it like this exactly all over the project", then
+"push and merge once done".
+
+- **The page** (`.dark .ambient-bg`): fixed behind every page, Midnight Abyss at the top sinking
+  through ocean blue into deep Aqua Jade at the bottom (`#171d41 → #1b2449 → #213a5f → #26566e →
+  #2f7680`, an aqua bloom below the middle). The picture's own bottom is lighter, but text over it
+  couldn't be read: the lightest point here keeps white text at 4.5:1. Dark grey text is a step lighter
+  (`zinc-400/500/600` #c2c9e3 / #b0b8d8 / #a1aacd) so it holds lower down the fade.
+- **Glass:** dark cards are 80% navy (`--card-bg`) so the fade shows through; on big screens they also
+  blur what's behind them (`backdrop-filter`, only `(min-width: 1024px) and (hover: hover)`, plain on
+  phones for speed). The side menu is see-through navy glass over the same fade.
+- **The planet** (`Planet.tsx`) is now the picture's network globe: about one lattice point in nine is
+  a knot of a net, each joined to its four nearest (deduplicated), drawn faint through the far side and
+  brighter toward you, with pink sparks at a few knots, a glowing teal inside and a stronger
+  atmosphere; the land is a soft texture underneath.
+- **Website:** the "One account. One planet." section uses the picture's exact colours down to a
+  bright aqua horizon, then fades back to navy; its notes are navy glass (`.world-glass`) dark enough
+  for white text on the brightest part. The first screen and the sign-in pages have an aqua horizon at
+  the foot (`.horizon`). The landing's scene tiles and a few game and chat darks that were still warm
+  graphite are navy now.
+- Light mode is unchanged (M53, the owner's choice).
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); `scripts/checks/world-ui.mjs`
+  (the landing's planet draws; landing and sign-in axe-clean at 390 / 1280); whole-page axe in dark mode
+  on the student, teacher and admin homes, hub, Green, Relief, Play and Trace at 1280 and four of them at
+  390, and light mode on two: no serious problems. Looked at the hub's globe, the landing section, the
+  student home and the sign-in page.

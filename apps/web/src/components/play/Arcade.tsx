@@ -25,7 +25,7 @@ import { Constellation } from '@/components/live/Constellation';
 const WORLD_ART: Partial<Record<GameId, { bg: string; tags: string[] }>> = {
   obby: { bg: 'linear-gradient(160deg,#2b59ff,#9b8cff 55%,#ffb3d9)', tags: ['10 stages', 'bounce pads', 'lasers'] },
   ops: { bg: 'linear-gradient(160deg,#1c2a17,#3f5a2a 55%,#c9a45c)', tags: ['open world', 'loot', 'extract'] },
-  night: { bg: 'radial-gradient(60% 60% at 50% 55%,#e5e7eb 0%,#3f3f46 18%,#09090b 60%)', tags: ['torch', '5 keys', 'don’t get caught'] },
+  night: { bg: 'radial-gradient(60% 60% at 50% 55%,#e5e7eb 0%,#3f3f46 18%,#0b1028 60%)', tags: ['torch', '5 keys', 'don’t get caught'] },
   orbit: { bg: 'radial-gradient(80% 80% at 20% 110%,#1d4ed8,#02030a 60%)', tags: ['low gravity', 'reactors', 'meteors'] },
 };
 

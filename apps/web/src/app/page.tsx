@@ -165,7 +165,7 @@ export default function ShowcasePage() {
             sections, and the typing and ticking parts would keep waking them). */}
         <main data-no-motion className="relative z-10">
           {/* ── Hero: the light pours through behind the words and the flow card ── */}
-          <section data-no-motion className="relative min-h-[100svh] px-6 pt-32 md:pt-36 pb-20 overflow-hidden">
+          <section data-no-motion className="horizon relative min-h-[100svh] px-6 pt-32 md:pt-36 pb-20 overflow-hidden">
             <div className="relative max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 items-center">
               <div>
                 <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }} className="hidden sm:block font-mono text-xs text-zinc-300">

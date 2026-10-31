@@ -164,7 +164,7 @@ export function QuizClash({ seed, startsAt, endsAt, clock, onProgress, onStats }
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={s.i} initial={{ opacity: 0, x: calm ? 0 : 40, rotate: calm ? 0 : 1.5 }} animate={{ opacity: 1, x: 0, rotate: 0 }} exit={{ opacity: 0, x: calm ? 0 : -30, transition: { duration: 0.14, ease: 'easeIn' } }} transition={spring.smooth} className="mt-6">
           <div className={cn('relative overflow-hidden rounded-[2rem] p-6 ring-1 sm:p-8', boss ? 'play-boss ring-amber-300/70' : 'ring-white/10', lightning && 'play-lightning')}
-            style={{ background: `radial-gradient(120% 120% at 0% 0%, ${topic.tint}26, transparent 55%), #121214` }}>
+            style={{ background: `radial-gradient(120% 120% at 0% 0%, ${topic.tint}26, transparent 55%), #131a3d` }}>
             <div className="flex items-center gap-3">
               <span className="karma-icon" style={{ color: topic.tint }}><Icon className="w-5 h-5" strokeWidth={1.6} aria-hidden /></span>
               <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: topic.tint }}>{q.topic}</p>

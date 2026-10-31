@@ -34,7 +34,7 @@ export function SplitCta({ app = 'campus' }: { app?: AppId }) {
         </div>
         <div className="relative p-8 sm:p-12" style={{ background: 'linear-gradient(135deg, #a0a9cc 0%, #ff9fdc 60%, #ffd6f0 100%)' }}>
           <p className="text-3xl sm:text-4xl font-bold tracking-tight text-[#1d2650] leading-tight">{c.right}</p>
-          <p className="mt-3 text-[#1e1d23]">{c.sub}</p>
+          <p className="mt-3 text-[#1e2752]">{c.sub}</p>
           <form className="mt-8 flex flex-col sm:flex-row gap-2.5" onSubmit={(e) => { e.preventDefault(); router.push(`/register?app=${app}${email ? `&email=${encodeURIComponent(email)}` : ''}`); }}>
             <label htmlFor="cta-email" className="sr-only">Your work email</label>
             <input id="cta-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={c.placeholder}

@@ -60,7 +60,7 @@ function Campus() {
           <motion.span key={i} aria-hidden className="absolute h-24 w-24 rounded-full border border-pink-400/40"
             initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: [0.9, 2.6], opacity: [0.55, 0] }} transition={{ duration: 3.6, delay: i * 1.2, repeat: Infinity, ease: 'easeOut' }} />
         ))}
-        <motion.div className="relative grid h-24 w-24 place-items-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#3a1a2c,#121014_70%)] ring-1 ring-pink-400/40 shadow-[0_0_60px_rgba(254,129,209,0.45)]"
+        <motion.div className="relative grid h-24 w-24 place-items-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#3a2a5c,#121014_70%)] ring-1 ring-pink-400/40 shadow-[0_0_60px_rgba(254,129,209,0.45)]"
           animate={calm ? undefined : { scale: [1, 1.04, 1] }} transition={{ duration: 3.6, repeat: Infinity, ease: 'easeInOut' }}>
           <span className="text-center">
             <span className="relative block h-7 overflow-hidden">
@@ -89,7 +89,7 @@ function Campus() {
                 <motion.div className="-ms-6 -mt-6" animate={calm ? undefined : { rotate: -360 }} transition={turn}>
                   <motion.span animate={{ scale: on ? 1.18 : 1, y: on ? -3 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 22 }}
                     className={cn('relative grid h-12 w-12 place-items-center rounded-2xl ring-1 transition-[background-color,box-shadow] duration-500',
-                      on ? 'bg-pink-500 ring-pink-300 shadow-[0_0_34px_rgba(254,129,209,0.8)]' : done ? 'bg-[#1d1418] ring-pink-400/40' : 'bg-[#18181a] ring-white/10')}>
+                      on ? 'bg-pink-500 ring-pink-300 shadow-[0_0_34px_rgba(254,129,209,0.8)]' : done ? 'bg-[#163a52] ring-aqua-300/40' : 'bg-[#1d2650] ring-white/10')}>
                     {on && !calm && <motion.span key={n} aria-hidden className="absolute inset-0 rounded-2xl ring-2 ring-pink-300" initial={{ scale: 1, opacity: 0.8 }} animate={{ scale: 1.6, opacity: 0 }} transition={{ duration: 1, ease: EASE }} />}
                     <d.icon className={cn('h-5 w-5', on ? 'text-white' : 'text-pink-200/80')} aria-hidden />
                   </motion.span>
@@ -107,7 +107,7 @@ function Campus() {
             return (
               <motion.li key={i} layout initial={{ opacity: 0, y: -18, scale: 0.96, filter: 'blur(6px)' }} animate={{ opacity: 1 - k * 0.28, y: 0, scale: 1 - k * 0.02, filter: 'blur(0px)' }} exit={{ opacity: 0, y: 14, transition: { duration: 0.25 } }}
                 transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-                className={cn('flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ring-1', k === 0 ? 'bg-[#1b1519] ring-pink-400/30 shadow-[0_10px_40px_-18px_rgba(254,129,209,0.7)]' : 'bg-[#1d2650] ring-white/10')}>
+                className={cn('flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ring-1', k === 0 ? 'bg-[#1f2a58] ring-pink-400/30 shadow-[0_10px_40px_-18px_rgba(254,129,209,0.7)]' : 'bg-[#1d2650] ring-white/10')}>
                 <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-xl', k === 0 ? 'bg-pink-500/20' : 'bg-white/5')}><d.icon className="h-4 w-4 text-pink-200" aria-hidden /></span>
                 <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{d.title}</span><span className="block truncate text-xs text-zinc-300">{d.sub}</span></span>
                 <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-400 text-emerald-950"><Check className="h-3 w-3" strokeWidth={3} aria-hidden /></span>
@@ -154,7 +154,7 @@ function Trace() {
       </svg>
       {/* The label, tilting slowly, a beam passing over its code */}
       <motion.div className="absolute left-1/2 top-[150px] w-[260px] -translate-x-1/2 [transform-style:preserve-3d]" animate={calm ? undefined : { rotateY: [-14, 14, -14], rotateX: [8, -4, 8] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }} style={{ transformPerspective: 900 }}>
-        <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#1c1b1f,#121214)] p-5 ring-1 ring-white/15 shadow-[0_30px_80px_-20px_rgba(254,129,209,0.55)]">
+        <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#1c2450,#131a3d)] p-5 ring-1 ring-white/15 shadow-[0_30px_80px_-20px_rgba(254,129,209,0.55)]">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_30%,rgba(254,129,209,0.18)_45%,rgba(167,139,250,0.16)_52%,transparent_65%)] bg-[length:250%_100%] [animation:holo_5s_linear_infinite]" aria-hidden />
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-400">Product passport</p>
           <p className="mt-1 text-xl font-bold text-white">Aurora olive oil</p>

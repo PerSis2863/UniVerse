@@ -214,7 +214,7 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
                   </AnimatePresence>
                 </span>
                 {/* The back: what gave the copy away. */}
-                <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-red-950 to-[#1a0b10] p-5 text-center ring-2 ring-red-500 [backface-visibility:hidden] [transform:rotateY(180deg)]" aria-hidden>
+                <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-red-950 to-[#161033] p-5 text-center ring-2 ring-red-500 [backface-visibility:hidden] [transform:rotateY(180deg)]" aria-hidden>
                   {isFake && <Burst color="#f87171" />}
                   <span className="-rotate-12 rounded-lg border-[3px] border-red-400 px-3 py-1 text-2xl font-black tracking-[0.25em] text-red-300 shadow-[0_0_30px_rgba(248,113,113,0.35)]">COPY</span>
                   <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-100"><reason.icon className="w-4 h-4" />{reason.label}</span>

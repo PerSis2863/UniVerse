@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M54 is the latest).
+  builds on it). The newest notes are at the end (M55 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -112,9 +112,9 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   "Waypoint" video: a night city of vans, journey lines, level gauges, a timetable with now) and
   **M51** (the night city much richer: traffic, neon, beams, depth) and **M52** (the "Globynk" colours
   everywhere: navy, aqua, Baby Pink; the dotted planet on the landing and hub; 3D cards on the Impact
-  Wallet), **M53** (light mode in Marshmallow White, Galactic Violet and Bubblegum Pink) and **M54** (more
-  Aqua Jade in dark mode) (branch
-  `claude/funny-galileo-y4mz9r`, not merged yet).
+  Wallet), **M53** (light mode in Marshmallow White, Galactic Violet and Bubblegum Pink), **M54** (more
+  Aqua Jade in dark mode) and **M55** (the "Globynk" picture everywhere in dark mode: navy-to-aqua
+  pages, glass cards, the network globe) (merged into `main`, 31 Oct).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
   done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts
@@ -272,8 +272,10 @@ zinc = neutral greys) and `.dark` parts get the navy ones back. Use `violet-*` w
 **The look: "Globynk" (M52, the owner, 31 Oct 2026; replaced M34's warm graphite "Karma").** Three
 colours: **Midnight Abyss #171F44** (navy: the page in dark mode, the ink, the side menu), **Aqua Jade
 #74FFED** (the glow rising from the bottom of every page, focus in dark mode, the planet) and **Baby
-Pink #FE81D1** (the light: the main button, the river, live states, arcs). Dark mode (the default): a
-#171f44 page with aqua glowing up from the bottom, navy cards (#1d2650) with a hairline. **In dark mode
+Pink #FE81D1** (the light: the main button, the river, live states, arcs). Dark mode (the default): every
+page fades from Midnight Abyss at the top into deep Aqua Jade at the bottom (M55, `.ambient-bg`; its
+lightest point keeps white text at 4.5:1), cards are 80% navy glass (blurred on big screens), the side
+menu see-through navy glass, the planet a glowing network globe. **In dark mode
 pink is the action, Aqua Jade is everything chosen or highlighted (M54)**: selected pills, accent text
 and icons (`dark:text-indigo-300` is aqua there), outlines, chart lines, links.
 Light mode: an ice-white page (#e9eef8) with the same glows, white squircle cards (`--radius-card`,

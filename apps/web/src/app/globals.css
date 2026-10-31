@@ -115,9 +115,9 @@ html:not(.dark) {
      re-resolves the ones that change with the theme, or its icons stay dark blue on navy. */
   --color-tint: var(--tint); --color-tint-text: var(--tint-text); --color-primary: var(--tint);
   --color-background: var(--background); --color-foreground: var(--foreground); --color-surface: var(--surface); --color-surface-2: var(--surface-2);
-  --color-zinc-400: #b6bedb; --color-zinc-500: #a0a9cc; --color-zinc-600: #8f98bf;
-  --color-slate-400: #b6bedb; --color-slate-500: #a0a9cc; --color-slate-600: #8f98bf;
-  --color-gray-400: #b6bedb; --color-gray-500: #a0a9cc; --color-gray-600: #8f98bf;
+  --color-zinc-400: #c2c9e3; --color-zinc-500: #b0b8d8; --color-zinc-600: #a1aacd;
+  --color-slate-400: #c2c9e3; --color-slate-500: #b0b8d8; --color-slate-600: #a1aacd;
+  --color-gray-400: #c2c9e3; --color-gray-500: #b0b8d8; --color-gray-600: #a1aacd;
   /* The mid accent shades, lifted so text in them reads on the navy (dark:text-indigo-400…). */
   --color-indigo-400: #9ea7cb; --color-violet-400: #9ea7cb; --color-purple-400: #9ea7cb;
   /* M53: the dark scales back inside a dark part of a light page (light mode re-points them on <html>). */
@@ -1092,14 +1092,15 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
     radial-gradient(36vmax 28vmax at 0% -6%, rgba(255, 255, 255, 0.9), transparent 70%);
 }
 .dark .ambient-bg {
+  /* M55: the "Globynk" page itself, fixed behind every page: Midnight Abyss at the top sinking through
+     ocean blue into deep Aqua Jade at the bottom, a brighter aqua bloom below the middle. The lightest
+     point stays dark enough that white text over it reads at 4.5:1 (the picture's own bottom is
+     lighter: text on it couldn't be read). */
   background:
-    radial-gradient(70vmax 30vmax at 50% 116%, rgba(116, 255, 237, 0.16), transparent 70%),
-    radial-gradient(44vmax 26vmax at 50% 108%, rgba(34, 160, 170, 0.14), transparent 70%),
-    radial-gradient(36vmax 24vmax at 100% 104%, rgba(116, 255, 237, 0.14), transparent 70%),
-    radial-gradient(30vmax 22vmax at 0% 104%, rgba(116, 255, 237, 0.1), transparent 70%),
-    radial-gradient(38vmax 30vmax at 102% 4%, rgba(254, 129, 209, 0.09), transparent 70%),
-    radial-gradient(42vmax 32vmax at -2% -6%, rgba(110, 125, 255, 0.12), transparent 70%),
-    linear-gradient(180deg, #141b3e, #171f44 55%, #182348);
+    radial-gradient(60vmax 22vmax at 50% 110%, rgba(116, 255, 237, 0.14), transparent 70%),
+    radial-gradient(40vmax 26vmax at 100% 100%, rgba(116, 255, 237, 0.08), transparent 70%),
+    radial-gradient(38vmax 30vmax at 102% 2%, rgba(254, 129, 209, 0.06), transparent 70%),
+    linear-gradient(180deg, #171d41 0%, #1b2449 30%, #213a5f 52%, #26566e 74%, #2f7680 100%);
 }
 /* Film grain over the glows, like a printed poster. */
 .ambient-bg::after {
@@ -1575,7 +1576,7 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
   --fill: rgba(255, 255, 255, 0.06); --fill-strong: rgba(255, 255, 255, 0.11);
   --separator: rgba(255, 255, 255, 0.08); --hairline: rgba(255, 255, 255, 0.18);
   --material: rgba(23, 31, 68, 0.86); --material-thick: rgba(23, 31, 68, 0.96); --material-highlight: rgba(255, 255, 255, 0.06);
-  --card-bg: #1d2650; --card-border: rgba(255, 255, 255, 0.08); --card-hover-bg: #212b58; --card-hover-border: rgba(116, 255, 237, 0.3);
+  --card-bg: rgba(27, 37, 80, 0.8); --card-border: rgba(255, 255, 255, 0.1); --card-hover-bg: rgba(31, 42, 88, 0.84); --card-hover-border: rgba(116, 255, 237, 0.3);
   --card-shadow: inset 0 1px 0 rgba(116, 255, 237, 0.07), 0 24px 48px -30px rgba(4, 8, 28, 0.9);
   --sidebar-bg: #10163a; --sidebar-border: rgba(255, 255, 255, 0.06);
   --sidebar-item-color: #cbd2e6; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.06); --sidebar-item-hover-color: #ffffff;
@@ -1583,7 +1584,7 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
   --topbar-bg: rgba(23, 31, 68, 0.8); --topbar-border: rgba(255, 255, 255, 0.06);
   --toast-bg: rgba(34, 44, 90, 0.96);
   --input-bg: rgba(255, 255, 255, 0.05); --input-border: rgba(255, 255, 255, 0.12); --input-placeholder: #8f98bf;
-  --text-primary: #f3f6fc; --text-secondary: #b6bedb; --text-muted: #a0a9cc;
+  --text-primary: #f3f6fc; --text-secondary: #c2c9e3; --text-muted: #b0b8d8;
   --pill-on-bg: #74ffed; --pill-on-color: #171f44;
   --karma-gold: radial-gradient(90% 110% at 0% 0%, #1d6a72 0%, transparent 60%), linear-gradient(135deg, #123a4c, #11505a);
   --karma-dusk: radial-gradient(90% 120% at 100% 0%, #4a2f6e 0%, transparent 60%), radial-gradient(110% 120% at 30% 120%, #12707a 0%, transparent 65%), linear-gradient(165deg, #1d2650, #1f3a66 55%, #175868);
@@ -2014,7 +2015,7 @@ html.reduce-motion :is(.poster, .insight-bar) { animation: none; }
 @media (hover: hover) { .note-stack:hover .note-peek-1 { transform: translate3d(0, 13px, 0) scale(0.95); } .note-stack:hover .note-peek-2 { transform: translate3d(0, 26px, 0) scale(0.9); } }
 
 /* ═══ M17 · Announcements: the broadcast studio's phone and waves ═══════════════════════════════ */
-.phone { background: linear-gradient(160deg, #2b3568, #09090b); box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.08), 0 30px 60px -30px rgb(43 53 104 / 0.7), 0 0 0 1px rgb(0 0 0 / 0.4); }
+.phone { background: linear-gradient(160deg, #2b3568, #0b1028); box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.08), 0 30px 60px -30px rgb(43 53 104 / 0.7), 0 0 0 1px rgb(0 0 0 / 0.4); }
 .phone-screen { background: radial-gradient(120% 80% at 20% 0%, #2b3568, transparent 60%), radial-gradient(110% 80% at 90% 100%, #c13a92, transparent 60%), #171f44; }
 .push-card { animation: push-in 600ms var(--ease-glide) 200ms backwards; }
 @keyframes push-in { from { opacity: 0; transform: translate3d(0, -28px, 0) scale(0.92); } }
@@ -2358,7 +2359,13 @@ html:not(.dark) .live-card {
 .wcard-thumb.is-on { opacity: 1; transform: translateY(-2px); box-shadow: 0 0 0 2px var(--background), 0 0 0 4px #fe81d1; }
 /* M52 · The landing's planet section (src/components/landing/WorldSection.tsx): Midnight Abyss sinking
    into Aqua Jade, like the owner's "Globynk" picture. */
-.world { background: radial-gradient(70% 45% at 50% 100%, rgb(116 255 237 / 0.4), transparent 72%), radial-gradient(90% 55% at 50% 100%, rgb(34 160 170 / 0.3), transparent 75%), linear-gradient(180deg, transparent, rgb(23 31 68 / 0.6) 30%, rgb(22 52 84 / 0.9) 100%); }
+.world { background:
+  radial-gradient(46% 26% at 50% 86%, rgb(146 226 215 / 0.6), transparent 70%),
+  linear-gradient(180deg, transparent 0%, #1c2649 20%, #243e61 40%, #3a6880 58%, #5ca3a7 74%, #7ccfc5 86%, #3a6880 95%, #171f44 100%); }
+/* Notes on the bright aqua: navy glass, dark enough that white text reads at 4.5:1 on the brightest part. */
+.world-glass { border-radius: 1.5rem; border: 1px solid rgb(255 255 255 / 0.18); background: rgb(16 28 58 / 0.58); -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 18px 40px -24px rgb(4 8 28 / 0.6); }
+/* M55 · The aqua horizon at the foot of the landing's first screen and the sign-in pages. */
+.horizon { background: radial-gradient(70% 34% at 50% 112%, rgb(116 255 237 / 0.2), transparent 70%), radial-gradient(90% 40% at 50% 116%, rgb(34 160 170 / 0.22), transparent 72%); }
 
 /* M54 · More Aqua Jade in dark mode (the owner: "there is way less aqua jade colour"). Pink stays the
    action (the main button, the river, live dots); Aqua Jade is now everything chosen, pointed at or
@@ -2390,3 +2397,14 @@ html.dark[dir="rtl"] .sidebar-pill { box-shadow: inset -3px 0 0 #74ffed, 0 10px 
 html.dark .ios-segment-thumb { box-shadow: 0 10px 26px -12px rgba(116, 255, 237, 0.55); }
 /* Chart lines and bars in Aqua Jade (pink stays for what matters, --ins-hot). */
 html.dark .ins-cell :is(svg, .ins-pop) { color: #74ffed; }
+
+/* M55 · The "Globynk" picture everywhere in dark mode (the owner: "make it like this exactly all over the
+   project"): the page fades from Midnight Abyss into Aqua Jade (.ambient-bg above), cards are frosted
+   glass the colour shows through (--card-bg is 80% navy; on big screens the glass also blurs what's
+   behind it, on phones it stays plain for speed), and the side menu is see-through navy glass over the
+   same fade. Light mode keeps M53. */
+@media (min-width: 1024px) and (hover: hover) {
+  html.dark .panel { -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); }
+}
+html.dark .glass-sidebar { -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%);
+  background: radial-gradient(130% 30% at 0% 0%, rgba(254, 129, 209, 0.1), transparent 70%), radial-gradient(140% 36% at 50% 106%, rgba(116, 255, 237, 0.22), transparent 70%), linear-gradient(180deg, rgba(16, 22, 58, 0.9), rgba(17, 30, 64, 0.82) 60%, rgba(18, 48, 72, 0.78)); }

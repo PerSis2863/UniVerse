@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     description: branding.tagline || "The Campus Operating System",
     start_url: "/",
     display: "standalone",
-    background_color: "#09090b",
+    background_color: "#0b1028",
     theme_color: themeColor,
     icons: [
       {
