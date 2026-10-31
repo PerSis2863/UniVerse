@@ -10,6 +10,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { GameProps } from './game-props';
+import { haptic } from '@/lib/haptics';
 
 // World Pin (src/lib/play/pin.ts): a parcel is heading to a city; tap where it is on the world map
 // (Trace's own map: drag and zoom work, city names are hidden). Your pin drops, the real one rises,
@@ -54,7 +55,7 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
     const [lng, lat] = seen.current.lngLat(x, y);
     const km = kmBetween({ lat, lng }, target);
     dispatch({ t: 'pick', pick: { lat, lng, km, pts: pinPoints(km, s.shownAt + PER - clock()) }, at: clock() });
-    navigator.vibrate?.(km < 500 ? 15 : [20, 30, 20]);
+    haptic(km < 500 ? 'tap' : 'warning', false);
   }, [answered, target, s.shownAt, clock]);
 
   // The per-city clock, then the reveal, then the next city (or the end after fifteen).

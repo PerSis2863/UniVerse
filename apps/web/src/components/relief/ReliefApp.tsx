@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Car, Check, Crosshair, Droplets, Globe2, HandHeart, Home, Loader2, LocateFixed, MapPin, MessageSquare, Minus, Package, Plus, Shirt, Stethoscope, Undo2, Users, Utensils, X } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
+import { celebrate } from '@/lib/celebrate';
 import { authedJson } from '@/lib/authed-fetch';
 import { inboxFor } from '@/lib/apps';
 import { fetcher } from '@/lib/fetcher';
@@ -44,9 +45,9 @@ export function PostActions({ p, onChange, small }: { p: ReliefPost; onChange: (
   const router = useRouter();
   const role = useAuthStore((s) => s.user?.role);
   const [busy, setBusy] = useState<string | null>(null);
-  const act = async (action: string, msg: string) => {
+  const act = async (action: string, msg: string, at?: Element) => {
     setBusy(action);
-    try { await api.post(`/relief/posts/${p.id}/${action}`); toast.success(msg); onChange(); }
+    try { await api.post(`/relief/posts/${p.id}/${action}`); toast.success(msg); if (action === 'done') celebrate(at); onChange(); }
     catch (e) { toast.error(errorMessage(e, 'Could not do that.')); } finally { setBusy(null); }
   };
   const message = async () => {
@@ -62,7 +63,7 @@ export function PostActions({ p, onChange, small }: { p: ReliefPost; onChange: (
     <div className="flex flex-wrap gap-2">
       {!done && p.type === 'NEED' && !p.mine && p.status === 'OPEN' && <button type="button" disabled={!!busy} onClick={() => void act('take', 'Thank you! They can see you’re on the way.')} className={cn('btn-primary', btn)}>{busy === 'take' ? <Loader2 className="w-4 h-4 animate-spin" /> : <HandHeart className="w-4 h-4" />}I can help</button>}
       {!p.mine && p.by && <button type="button" onClick={() => void message()} className={cn('btn-secondary', btn)}><MessageSquare className="w-4 h-4" />Message</button>}
-      {!done && (p.mine || p.helping) && p.status === 'TAKEN' && <button type="button" disabled={!!busy} onClick={() => void act('done', 'Marked as delivered.')} className={cn('btn-primary', btn)}><Check className="w-4 h-4" />Delivered</button>}
+      {!done && (p.mine || p.helping) && p.status === 'TAKEN' && <button type="button" disabled={!!busy} onClick={(e) => void act('done', 'Marked as delivered.', e.currentTarget)} className={cn('btn-primary', btn)}><Check className="w-4 h-4" />Delivered</button>}
       {!done && p.helping && p.status === 'TAKEN' && <button type="button" disabled={!!busy} onClick={() => void act('release', 'Given back: someone else can take it.')} className={cn('btn-secondary', btn)}><Undo2 className="w-4 h-4" />I can’t after all</button>}
       {!done && p.mine && <button type="button" disabled={!!busy} onClick={() => void act('close', 'Closed.')} className={cn('btn-secondary', btn)}><X className="w-4 h-4" />Close</button>}
     </div>

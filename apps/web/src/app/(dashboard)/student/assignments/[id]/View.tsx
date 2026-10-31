@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, CheckCircle2, Loader2, Send } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { authedJson } from '@/lib/authed-fetch';
+import { celebrate } from '@/lib/celebrate';
 import { enqueue, getDraft, isOfflineError, newClientId, saveDraft } from '@/lib/outbox';
 import { Translatable } from '@/components/shared/Translatable';
 import { AiPolicyNote, AiReceiptChoice, AiReceiptView, startChoice, type ReceiptChoice } from '@/components/assignments/AiReceipt';
@@ -109,12 +110,14 @@ function StudentAssignmentPage({ id }: { id: string }) {
   const choice = receipt ?? startChoice(policy);
   const choiceOk = policy !== 'NONE' || choice.attach || choice.declaredNone;
 
-  const submit = async () => {
+  const submit = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    const at = e.currentTarget, first = !data?.mine;
     setSending(true);
     const writing = kind === 'TEXT' ? replayFor(answer) : null;
     const replay = writing ? { replay: writing } : {};
     try {
       const r = await authedJson<{ late: boolean; latePenalty?: number }>(`/api/assignments/${id}/submission`, { method: 'PUT', body: JSON.stringify({ text: answer, aiReceipt: choice, ...handIn, ...replay }) });
+      if (first && !r.late) celebrate(at);
       toast.success(r.late ? `Handed in after the due date${r.latePenalty ? `: ${r.latePenalty}% comes off the grade` : ''}.` : 'Handed in. You can change it until it’s graded.');
       setText(null);
       setReceipt(null);
@@ -224,7 +227,7 @@ function StudentAssignmentPage({ id }: { id: string }) {
                     <AiReceiptChoice previewUrl={`/api/assignments/${data.id}/ai-receipt`} policy={policy} value={choice} onChange={setReceipt} />
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs text-zinc-500">{words} words · {answer.length.toLocaleString()}/{MAX.toLocaleString()} characters</span>
-                      <button type="button" className="btn-primary" onClick={submit} disabled={sending || !handInReady || (!changed && !!data.mine) || !choiceOk} aria-busy={sending || undefined}>
+                      <button type="button" className="btn-primary" onClick={(e) => void submit(e)} disabled={sending || !handInReady || (!changed && !!data.mine) || !choiceOk} aria-busy={sending || undefined}>
                         {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} {data.mine ? 'Hand in new version' : 'Hand in'}
                       </button>
                     </div>

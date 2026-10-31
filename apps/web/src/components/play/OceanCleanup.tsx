@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { burst, calmMotion, drawEffects, steerBody, useGameCanvas, useSteer, type Float, type Particle } from './canvas';
 import type { GameProps } from './game-props';
+import { haptic } from '@/lib/haptics';
 
 // Ocean Cleanup (src/lib/play/ocean.ts): a boat on a living sea that turns from calm to a storm.
 // Plastic drifts down; scoop it up for points and combos. Sea life costs points (unless a shield is
@@ -70,7 +71,7 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
       burst(s.parts, o.x, o.y, k === 'net' ? '#f472b6' : '#67e8f9', s.calm ? 5 : 18);
       arena.sfx(k === 'net' ? 'coin' : 'pick', s.combo);
       if (s.combo === 5 || s.combo === 10) arena.announce(s.combo === 10 ? 'Max combo!' : 'Combo ×1.5!', 'pink');
-      navigator.vibrate?.(8);
+      haptic('tap', false);
     };
     // The sweep: a ring of bubbles from the boat collects all the plastic in reach.
     if (s.sweepAsk) {
@@ -111,7 +112,7 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
         s.floats.push({ x: o.x, y: o.y - 10, text: `−${OCEAN_HIT}`, color: '#f87171', life: 0 });
         burst(s.parts, o.x, o.y, '#fca5a5', s.calm ? 4 : 14);
         arena.sfx('hurt'); arena.shake(0.4);
-        navigator.vibrate?.([40, 30, 40]);
+        haptic('warning', false);
       } else if (isPower(k)) {
         o.state = 'used';
         if (k === 'magnet') s.magnetUntil = t + POWER_MS;

@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M40 is the latest).
+  builds on it). The newest notes are at the end (M45 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -101,15 +101,13 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   (new Green and Play pictures, also on sign-in; a press ripple, magnetic buttons, tilt and a
   cursor light), **M42** (link previews, icon count, install guide, Share to UniVerse, much less
   text), **M42a** (no "Try the live demo" on sign-in), **M43** (more Relief, Green and Play
-  sections with "try it here" demos; photos shared in) and **M44** (the landing's scroll story and
-  live totals, migration 0186) (branch `claude/funny-galileo-y4mz9r`, not merged yet).
+  sections with "try it here" demos; photos shared in), **M44** (the landing's scroll story and
+  live totals, migration 0186) and **M45** (glides, celebrations, optional sounds, swipes, bottom
+  sheets, one vibration) (branch `claude/funny-galileo-y4mz9r`, not merged yet).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **Next, the owner's pick (31 Oct: "do all of them", store apps left out, no funds)**, one item each,
   with very little text on screen (the owner: "too much information for the first time user"):
-  **M43** and **M44** done; **M45** in the app: screens that
-  glide into each other (view transitions), short celebrations at milestones, optional sounds (off
-  by default), swipe and long-press on rows, bottom sheets, the same vibration everywhere, empty
-  screens with one next step; **M46** today's timetable, courses and recent messages readable
+  **M43**, **M44** and **M45** done; **M46** today's timetable, courses and recent messages readable
   offline, an iPhone launch screen, bar colours per theme, and a speed check on a low-end phone.
 - **Next database update number: `0187`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each

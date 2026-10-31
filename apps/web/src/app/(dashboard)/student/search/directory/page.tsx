@@ -102,7 +102,7 @@ export default function StudentDirectory() {
           {error && !directoryData ? <LoadError onRetry={() => mutate()} message="Couldn’t load the student directory." /> : !directoryData && <ContentSkeleton variant="grid" />}
           {directoryData && filteredStudents.length === 0 && (
             <div className="panel">
-              <EmptyState icon={Users} title="No students found" hint="Try another name, or clear the year filter." />
+              <EmptyState icon={Users} title="No students found" hint="Try another name, or clear the filters." action={searchTerm || filterYear || filterLocation ? { label: 'Clear search and filters', onClick: () => { setSearchTerm(''); setFilterYear(''); setFilterLocation(''); } } : undefined} />
             </div>
           )}
 

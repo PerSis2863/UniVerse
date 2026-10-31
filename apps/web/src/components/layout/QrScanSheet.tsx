@@ -6,6 +6,7 @@ import jsQR from 'jsqr';
 import { toast } from 'sonner';
 import { Copy, ExternalLink } from 'lucide-react';
 import { Sheet } from '@/components/ui/Sheet';
+import { haptic } from '@/lib/haptics';
 
 // Scan a QR code from the phone's "+" menu (Stage 5 · Q8): a class check-in, a board, a document,
 // a passport or any UniVerse link opens here in the app; anything else is shown to copy (never
@@ -68,7 +69,7 @@ export default function QrScanSheet({ onClose }: { onClose: () => void }) {
         const text = v.readyState >= 2 ? await read(v, detector) : null;
         if (text) {
           const path = inAppPath(text, window.location.origin);
-          navigator.vibrate?.(30);
+          haptic('success');
           if (path) { stopped = true; go.current(path); return; }
           setOther(text.slice(0, 500));
         }

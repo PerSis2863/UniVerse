@@ -34,6 +34,7 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `enrol-api.mjs` | (helper: tidies up or prepares test data) |
 | `exam-api.mjs` | One-way exams and the hard stop, through the API. |
 | `exam-ui.mjs` | One-way exams in the browser: answer, reload (goes on from the next question), hand in; the teacher's switches. Axe at 390/1280, light/dark. |
+| `feel-ui.mjs` | M45 as a phone with a finger: swipes on chats, long press and menus as bottom sheets, the Sounds switch; the small menu stays at 1280. Axe, light and dark. |
 | `game-api.mjs` | The live quiz game through the API. |
 | `game-ui.mjs` | The live quiz game in two browsers at once: the teacher's class screen and a student's phone. Run twice: light (teacher 1280, phone 390) and dark (teacher 390, phone 1280). Axe at each step. |
 | `gradebook-ui.mjs` | Post grades, grade history and the grading scale page in the browser. |

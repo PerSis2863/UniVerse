@@ -18,6 +18,10 @@ import { clearPhotos, clearShare, givePhotos, pendingShare } from '@/lib/share-i
 import { useLiveInterval } from '@/lib/realtime-client';
 import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { Sheet } from '@/components/ui/Sheet';
+import { SwipeRow } from '@/components/ui/SwipeRow';
+import { glide } from '@/lib/page-transition';
+import { useMedia } from '@/lib/use-media';
 import type { ChatFolder } from './ChatFolders';
 import type { LaterData } from './ChatDialogs';
 import { useOnceParam } from '@/lib/use-once-param';
@@ -204,6 +208,36 @@ export function MessagingHub() {
   // Where the chosen row was, so the chat opens out from it (the portal, M17).
   const chatSide = useRef<HTMLElement>(null);
   const [portalY, setPortalY] = useState(50);
+  // Phones: back from a chat, the list glides in from the start (opening one is the portal below).
+  const listSide = useRef<HTMLElement>(null);
+  const wasOpen = useRef(activeId);
+  useEffect(() => {
+    if (wasOpen.current && !activeId && window.matchMedia('(max-width: 767px)').matches) glide(listSide.current, 'pop');
+    wasOpen.current = activeId;
+  }, [activeId]);
+  // Phones: a chat's options open as a sheet from the bottom; computers keep the small menu.
+  const phone = useMedia('(max-width: 767px)');
+  const menuChat = phone && menuFor ? (data?.conversations ?? []).find((x) => x.id === menuFor) ?? null : null;
+  /** A chat's options: the small menu on computers, a sheet from the bottom on phones. */
+  const rowMenu = (c: ConversationSummary) => (
+    <>
+      {!c.archived && <ListItem icon={c.pinned ? PinOff : Pin} label={c.pinned ? 'Unpin chat' : 'Pin chat'} onClick={() => setPref(c, { pinned: !c.pinned })} />}
+      {c.muted
+        ? <ListItem icon={Bell} label={mutedLabel(c)} onClick={() => setPref(c, { muted: false }, 'Unmuted')} />
+        : <>
+            <ListItem icon={BellOff} label="Mute for 1 hour" onClick={() => setPref(c, { muted: '1h' }, 'Muted for 1 hour')} />
+            <ListItem icon={BellOff} label="Mute for 8 hours" onClick={() => setPref(c, { muted: '8h' }, 'Muted for 8 hours')} />
+            <ListItem icon={BellOff} label="Mute for 1 week" onClick={() => setPref(c, { muted: '1w' }, 'Muted for 1 week')} />
+            <ListItem icon={Clock} label="Mute until…" onClick={() => { setMenuFor(null); setMuteFor(c); }} />
+            <ListItem icon={BellOff} label="Mute always" onClick={() => setPref(c, { muted: 'always' }, 'Muted')} />
+          </>}
+      {folders.map((f) => (
+        <ListItem key={f.id} icon={f.chatIds.includes(c.id) ? FolderMinus : FolderPlus} label={f.chatIds.includes(c.id) ? `Remove from ${f.name}` : `Add to ${f.name}`} onClick={() => toggleInFolder(f, c.id)} />
+      ))}
+      <ListItem icon={c.archived ? ArchiveRestore : Archive} label={c.archived ? 'Unarchive' : 'Archive chat'} onClick={() => setPref(c, { archived: !c.archived }, c.archived ? 'Moved back to Chats' : 'Chat archived')} />
+      <ListItem icon={MailOpen} label={c.unread > 0 ? 'Mark as read' : 'Mark as unread'} onClick={() => setPref(c, { unread: !(c.unread > 0) })} />
+    </>
+  );
   const openFrom = (id: string, e: React.MouseEvent) => {
     const top = chatSide.current?.getBoundingClientRect().top ?? 0;
     setPortalY(Math.max(0, e.clientY - top));
@@ -252,7 +286,7 @@ export function MessagingHub() {
         </button>
       </nav>
       {/* Conversation list */}
-      <section className={cn(
+      <section ref={listSide} className={cn(
         'msg-panel w-full md:w-[340px] lg:w-[360px] shrink-0 flex flex-col min-h-0 md:rounded-3xl bg-white/70 dark:bg-white/[0.035] max-md:dark:bg-[#141416]/85 backdrop-blur-xl overflow-hidden md:shadow-[0_24px_60px_-30px_rgb(79_70_229/0.45)]',
         activeId ? 'hidden md:flex' : 'flex',
       )}>
@@ -388,6 +422,9 @@ export function MessagingHub() {
             const draft = active ? '' : pickDraft(drafts[c.id] ?? null, { text: c.draft, at: c.draftAt }).trim();
             return (
               <div key={c.id} className="group relative">
+              <SwipeRow clip={false} onSwipeStart={() => press.current && clearTimeout(press.current)}
+                start={{ label: c.unread > 0 ? 'Read' : 'Unread', icon: MailOpen, tone: 'text-indigo-700 dark:text-indigo-300', run: () => void setPref(c, { unread: !(c.unread > 0) }) }}
+                end={{ label: c.archived ? 'Unarchive' : 'Archive', icon: c.archived ? ArchiveRestore : Archive, tone: 'text-amber-700 dark:text-amber-300', run: () => void setPref(c, { archived: !c.archived }, c.archived ? 'Moved back to Chats' : 'Chat archived') }}>
               <button
                 onClick={(e) => { if (menuFor) return setMenuFor(null); openFrom(c.id, e); }}
                 onContextMenu={(e) => { e.preventDefault(); setMenuFor(c.id); }}
@@ -426,29 +463,16 @@ export function MessagingHub() {
                   </div>
                 </div>
               </button>
+              </SwipeRow>
               {(
                 <button onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === c.id ? null : c.id); }} aria-label="Chat options"
                   className={cn('absolute end-2 top-2 p-1 rounded-full bg-white/90 dark:bg-[#141416]/90 text-zinc-500 shadow-sm transition-opacity hidden md:block', menuFor === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
               )}
-              {menuFor === c.id && (
+              {menuFor === c.id && !phone && (
                 <div className="menu-pop absolute end-2 top-9 z-30 w-52 py-1 rounded-xl bg-white/95 dark:bg-[#141416]/95 backdrop-blur-xl border border-zinc-200 dark:border-white/10 shadow-2xl shadow-indigo-950/40 text-sm" onMouseLeave={() => setMenuFor(null)}>
-                  {!c.archived && <ListItem icon={c.pinned ? PinOff : Pin} label={c.pinned ? 'Unpin chat' : 'Pin chat'} onClick={() => setPref(c, { pinned: !c.pinned })} />}
-                  {c.muted
-                    ? <ListItem icon={Bell} label={mutedLabel(c)} onClick={() => setPref(c, { muted: false }, 'Unmuted')} />
-                    : <>
-                        <ListItem icon={BellOff} label="Mute for 1 hour" onClick={() => setPref(c, { muted: '1h' }, 'Muted for 1 hour')} />
-                        <ListItem icon={BellOff} label="Mute for 8 hours" onClick={() => setPref(c, { muted: '8h' }, 'Muted for 8 hours')} />
-                        <ListItem icon={BellOff} label="Mute for 1 week" onClick={() => setPref(c, { muted: '1w' }, 'Muted for 1 week')} />
-                        <ListItem icon={Clock} label="Mute until…" onClick={() => { setMenuFor(null); setMuteFor(c); }} />
-                        <ListItem icon={BellOff} label="Mute always" onClick={() => setPref(c, { muted: 'always' }, 'Muted')} />
-                      </>}
-                  {folders.map((f) => (
-                    <ListItem key={f.id} icon={f.chatIds.includes(c.id) ? FolderMinus : FolderPlus} label={f.chatIds.includes(c.id) ? `Remove from ${f.name}` : `Add to ${f.name}`} onClick={() => toggleInFolder(f, c.id)} />
-                  ))}
-                  <ListItem icon={c.archived ? ArchiveRestore : Archive} label={c.archived ? 'Unarchive' : 'Archive chat'} onClick={() => setPref(c, { archived: !c.archived }, c.archived ? 'Moved back to Chats' : 'Chat archived')} />
-                  <ListItem icon={MailOpen} label={c.unread > 0 ? 'Mark as read' : 'Mark as unread'} onClick={() => setPref(c, { unread: !(c.unread > 0) })} />
+                  {rowMenu(c)}
                 </div>
               )}
               </div>
@@ -534,6 +558,7 @@ export function MessagingHub() {
           onDelete={folderEdit === 'new' ? undefined : async () => { const id = folderEdit.id; await saveFolders(folders.filter((x) => x.id !== id)); setFilter('all'); }} />
       )}
       {muteFor && <MuteUntilSheet title={muteFor.title} onClose={() => setMuteFor(null)} onMute={(until) => setPref(muteFor, { muted: { until: until.toISOString() } }, `Muted until ${until.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`)} />}
+      {phone && menuChat && <Sheet title={menuChat.title} onClose={() => setMenuFor(null)}><div className="-mx-2 pb-2">{rowMenu(menuChat)}</div></Sheet>}
       {savedOpen && <SavedPanel onClose={() => setSavedOpen(false)} onOpen={(cid, mid) => { setSavedOpen(false); select(cid); setJumpTo(mid); }} />}
 
       <AnimatePresence>
@@ -551,7 +576,7 @@ export function MessagingHub() {
 
 function ListItem({ icon: Icon, label, onClick }: { icon: typeof Pin; label: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+    <button onClick={onClick} className="w-full flex items-center gap-2.5 px-3 py-2 max-md:py-3 max-md:rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
       <Icon className="w-4 h-4" /> {label}
     </button>
   );

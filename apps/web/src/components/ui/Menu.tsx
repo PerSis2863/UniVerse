@@ -5,11 +5,16 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 import { spring } from '@/lib/motion';
+import { haptic } from '@/lib/haptics';
+import { useMedia } from '@/lib/use-media';
+import { Sheet } from './Sheet';
 import { cn } from '@/lib/utils';
 
 // A button that opens a small panel (Office suite toolbars): drawn over the page, so a toolbar that
 // scrolls sideways doesn't cut it off. Escape or a click outside closes it; focus goes back to the
 // button. Menu: a list of actions, moved through with the arrow keys.
+
+const TRIGGER = 'h-8 min-w-8 px-1.5 rounded-lg inline-flex items-center justify-center gap-1 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-40';
 
 export function Popover({ label, button, children, disabled, className, title, wide }: {
   /** The button's name for screen readers (and its tooltip unless `title`). */
@@ -61,7 +66,7 @@ export function Popover({ label, button, children, disabled, className, title, w
     <>
       <button ref={btn} type="button" disabled={disabled} aria-label={label} title={title ?? label} aria-haspopup="true" aria-expanded={open} aria-controls={open ? id : undefined}
         onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)}
-        className={cn('h-8 min-w-8 px-1.5 rounded-lg inline-flex items-center justify-center gap-1 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-40', open && 'bg-zinc-100 dark:bg-white/10', className)}>
+        className={cn(TRIGGER, open && 'bg-zinc-100 dark:bg-white/10', className)}>
         {button}
       </button>
       {typeof document !== 'undefined' && createPortal(
@@ -86,6 +91,15 @@ export type MenuItem = { label: string; onSelect: () => void; icon?: React.React
 
 /** A list of actions in a Popover. */
 export function Menu({ label, button, items, disabled, className, title }: { label: string; button: React.ReactNode; items: MenuItem[]; disabled?: boolean; className?: string; title?: string }) {
+  // Phones (M45): the same list as a sheet from the bottom, with room for a thumb.
+  const phone = useMedia('(max-width: 767px)');
+  const [sheet, setSheet] = useState(false);
+  if (phone) return (
+    <>
+      <button type="button" disabled={disabled} aria-label={label} title={title ?? label} aria-haspopup="dialog" onClick={() => { haptic('tap'); setSheet(true); }} className={cn(TRIGGER, className)}>{button}</button>
+      {sheet && <Sheet title={label} onClose={() => setSheet(false)}><div className="-mx-2"><MenuList items={items} label={label} onDone={() => setSheet(false)} /></div></Sheet>}
+    </>
+  );
   return (
     <Popover label={label} button={button} disabled={disabled} className={className} title={title}>
       {(close) => <MenuList items={items} label={label} onDone={close} />}
@@ -110,7 +124,7 @@ export function MenuList({ items, label, onDone }: { items: MenuItem[]; label: s
         return (
           <button key={i} type="button" role={it.checked === undefined ? 'menuitem' : 'menuitemcheckbox'} aria-checked={it.checked} disabled={it.disabled}
             onClick={() => { onDone(); it.onSelect(); }}
-            className="w-full text-start px-3 py-2 flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] focus:bg-zinc-100 dark:focus:bg-white/[0.06] outline-none disabled:opacity-40">
+            className="w-full text-start px-3 py-2 max-md:py-3 max-md:rounded-xl flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] focus:bg-zinc-100 dark:focus:bg-white/[0.06] outline-none disabled:opacity-40">
             <span className="w-4 h-4 shrink-0 flex items-center justify-center text-zinc-500 dark:text-zinc-400">{it.checked ? <Check className="w-4 h-4" /> : it.icon}</span>
             <span className="flex-1">{it.label}</span>
             {it.hint && <kbd className="text-[11px] text-zinc-500 dark:text-zinc-400 font-sans">{it.hint}</kbd>}

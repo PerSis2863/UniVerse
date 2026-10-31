@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { Burst } from './fx';
 import type { GameProps } from './game-props';
+import { haptic } from '@/lib/haptics';
 
 // Recycle Rush (src/lib/play/sort.ts): things ride the belt; sort the one at the front into its bin
 // (tap a bin, or keys 1–4) before it drops off the end. A right sort flies in an arc into the bin
@@ -92,7 +93,7 @@ export function RecycleRush({ seed, startsAt, clock, onProgress, onStats }: Game
     } else {
       sfx('wrong'); shake(s.last.hazard ? 1.4 : 0.6);
       if (s.last.hazard) announce('Fire hazard! E-waste goes to e-waste', 'bad');
-      navigator.vibrate?.([30, 40, 30]);
+      haptic('warning', false);
     }
   }, [s.last, s.streak, sfx, announce, shake]);
 

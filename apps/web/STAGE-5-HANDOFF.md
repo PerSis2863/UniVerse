@@ -2324,3 +2324,49 @@ findable)".
   390/1280); unit tests for the rounding; typecheck, lint, lean.
 - **Traps:** after adding a table, a running dev server keeps the old Prisma client (`siteTotal` is
   undefined) until it's restarted.
+
+## M45 · How the app feels: glides, celebrations, sounds, swipes, sheets, one vibration (31 Oct 2026)
+
+The owner's pick (M45 in AGENTS.md §4): "screens that glide into each other, short celebrations at
+milestones, optional sounds (off by default), swipe and long-press on rows, bottom sheets, the same
+vibration everywhere, empty screens with one next step".
+
+- **Glides:** pages already glide (push, back, tab, shared title: `src/lib/page-transition.ts`, built
+  without View Transitions on purpose, see its header). What was missing was swaps inside a page:
+  `glide(el, 'push' | 'pop')` there; Messages on phones now glides the list back in from a chat
+  (opening one already has the portal, `.chat-glide`). Settings already slid on phones.
+- **Celebrations** (`src/lib/celebrate.ts`, `celebrate(fromElement)`): a burst of sparks from the
+  button, under a second, plus the success vibration; transform and opacity only; nothing with Reduce
+  Motion; fewer sparks on low-end phones. Used when a Green badge is earned by the action just logged,
+  a Relief request is marked Delivered, and a first, on-time hand-in of an assignment. Play's new best
+  keeps its own confetti (`ScreenEffect`).
+- **Sounds** (`src/lib/sounds.ts`): off until Settings → Appearance → Sounds (`uv-sounds`). A soft
+  two-note chime for success, a low note for warning, made with Web Audio. They play from `haptic()`,
+  so the sound always matches the vibration; taps are silent; games pass `haptic(kind, false)`
+  (they have their own sounds and switch).
+- **One vibration:** `haptic('tap' | 'success' | 'warning')` everywhere (it follows Settings →
+  Vibration and gives iPhones their system tap). The scanners and the games used raw
+  `navigator.vibrate` (ignoring the switch); now they don't. Only the ringtones keep their own
+  patterns (an incoming call, the ringtone preview in Settings).
+- **Swipe and long press** (`src/components/ui/SwipeRow.tsx`): a finger drags the row; past 90 px
+  toward the end runs `start`, toward the start runs `end` (mirrored right-to-left), with the success
+  vibration. Mouse and keyboard keep the row's buttons. Notifications use it (snooze / read, as
+  before); Messages rows now swipe too (toward the end: read / unread; toward the start: archive). A
+  long press on a chat (or Android's held finger) opens its options.
+- **Bottom sheets on phones:** a chat's options and every `Menu` (the shared small menu, e.g.
+  Notifications' snooze) open as a `Sheet` from the bottom under 768 px (`useMedia`,
+  `src/lib/use-media.ts`), with taller rows; computers keep the small menus. `Popover` (toolbars,
+  colour grids) stays as it is.
+- **Empty screens:** most already had their next step beside them; added one where there was none:
+  the student directory and mentors search ("Clear search and filters", "Show everyone") and the
+  admin meals day ("Add menus").
+- **Also:** Settings → Appearance's choice buttons are now the house style (a black pill in light, a
+  white one in dark), not the old indigo-to-pink gradient (too faint behind white text).
+- **Tested:** `scripts/checks/feel-ui.mjs` as a phone with a finger (swipe flips read / unread and
+  back; a long press and the snooze menu open sheets; Sounds off by default, on and off; axe on the
+  sheets and Settings, light and dark) and at 1280 (the small menu stays); unit tests for sounds;
+  typecheck, lint, lean.
+- **Traps:** with a sheet open, run axe on the sheet only (the page behind is dimmed on purpose, so its
+  colours fail). In Settings on a phone, axe content scrolled under the see-through top bar also
+  "fails". CDP touch long-presses also send a tap (real Android doesn't): test long press with a
+  `contextmenu` event.

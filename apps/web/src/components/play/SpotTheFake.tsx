@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { Burst } from './fx';
 import type { GameProps } from './game-props';
+import { haptic } from '@/lib/haptics';
 
 // Spot the Fake (src/lib/play/fakes.ts): product passports for one product, one is a copy. Read the
 // journey, scans, seal, brand, dates and price, then tap the copy (keys 1–6). Cards are dealt onto
@@ -131,7 +132,7 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
       else if (s.streak >= 3 && s.streak % 2 === 1) announce(`${s.streak} in a row!`, 'pink');
     } else {
       sfx('wrong'); shake(0.8);
-      navigator.vibrate?.([30, 40, 30]);
+      haptic('warning', false);
       if (s.lives === 1) announce('Last life!', 'bad');
     }
   }, [answered, s.gained, s.streak, s.caught, s.lives, sfx, announce, shake]);

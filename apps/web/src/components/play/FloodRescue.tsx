@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { burst, calmMotion, drawEffects, steerBody, useGameCanvas, useSteer, type Float, type Particle } from './canvas';
 import type { GameProps } from './game-props';
+import { haptic } from '@/lib/haptics';
 
 // Flood Rescue (src/lib/play/rescue.ts): a storm, a town going under, people (some with pets)
 // waving from rooftops. Fly low and slow over a roof to winch them up, four at a time, then set
@@ -99,7 +100,7 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
         burst(s.parts, hl.x, hl.y + 20, '#f9a8d4', s.calm ? 3 : 8, 90);
         arena.sfx('pick', s.aboard.length * 2);
         if (s.aboard.length === CAPACITY) arena.announce('Full! Fly to the hospital', 'gold');
-        navigator.vibrate?.(10);
+        haptic('tap', false);
       }
     } else s.winch = Math.max(0, s.winch - dt * 2);
 
@@ -137,7 +138,7 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
         burst(s.parts, hl.x, pad.top, '#86efac', s.calm ? 4 : 12);
         arena.sfx('right', s.saved % 10);
         if (s.saved % 10 === 0) arena.announce(`${s.saved} people rescued!`, 'good');
-        navigator.vibrate?.(14);
+        haptic('tap', false);
       }
     } else s.unload = 0;
     if (s.score !== s.reported) {

@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { Burst } from './fx';
 import type { GameProps } from './game-props';
+import { haptic } from '@/lib/haptics';
 
 // Supply Run (src/lib/play/supply.ts): a town drawn as a little map (river, roads, houses, parks),
 // needs popping up with a ring that runs out, red ones critical. Pick a supply (tap, or keys 1–4),
@@ -176,7 +177,7 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
     if (s.trips.some((x) => x.need.id === n.id && !x.done)) { announce('A truck is on its way', 'pink'); return; }
     dispatch({ t: 'send', need: n, kind, at: clock(), rain });
     sfx('whoosh');
-    navigator.vibrate?.(8);
+    haptic('tap', false);
   };
   useEffect(() => {
     const key = (e: KeyboardEvent) => {

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { Burst } from './fx';
 import type { GameProps } from './game-props';
+import { haptic } from '@/lib/haptics';
 
 // Quiz Clash (src/lib/play/quiz.ts): ten seconds a question, four answers (tap, or keys 1–4 / A–D).
 // Three power-ups once a round (Q 50:50, W +5 seconds, E double points), the last 15 seconds are the
@@ -94,11 +95,11 @@ export function QuizClash({ seed, startsAt, endsAt, clock, onProgress, onStats }
     if (!answered) return;
     if (s.gained) {
       sfx('right', s.streak);
-      navigator.vibrate?.(12);
+      haptic('tap', false);
       if (CALLS[s.streak]) { announce(CALLS[s.streak], 'pink'); sfx('combo', s.streak); }
     } else {
       sfx('wrong'); shake(0.5);
-      navigator.vibrate?.([30, 40, 30]);
+      haptic('warning', false);
     }
   }, [answered, s.gained, s.streak, sfx, announce, shake]);
 

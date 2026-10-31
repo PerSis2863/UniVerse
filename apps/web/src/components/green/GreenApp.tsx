@@ -10,6 +10,7 @@ import { Award, Bike, Bus, Camera, Clock, Flame, Footprints, Leaf, Loader2, Lock
 import Link from '@/components/ui/Link';
 import { Rolling } from '@/components/ui/Rolling';
 import { api, errorMessage } from '@/lib/api';
+import { celebrate } from '@/lib/celebrate';
 import { authedJson } from '@/lib/authed-fetch';
 import { shrinkImage } from '@/lib/shrink-image';
 import { InviteButton } from '@/components/apps/InviteButton';
@@ -66,6 +67,7 @@ export function GreenApp() {
 
   const log = async (e: React.FormEvent) => {
     e.preventDefault();
+    const at = (e.nativeEvent as SubmitEvent).submitter, had = new Set(data?.badges.filter((b) => b.earned).map((b) => b.id));
     setSaving(true);
     const pos = share ? await new Promise<{ lat: number; lng: number } | null>((done) => navigator.geolocation ? navigator.geolocation.getCurrentPosition((g) => done({ lat: g.coords.latitude, lng: g.coords.longitude }), () => done(null), { timeout: 5000, maximumAge: 600_000 }) : done(null)) : null;
     try {
@@ -73,7 +75,9 @@ export function GreenApp() {
       await api.post('/green/actions', { kind, amount: Number(amount), note, photoUrl, ...(pos ?? {}) });
       toast.success(`Logged: ${preview} kg of CO₂ saved${photoUrl ? '. A teammate can confirm it now.' : ''}`);
       setNote(''); setPhoto(null); setBurst((b) => b + 1);
-      void mutate();
+      // A badge earned just now: a short celebration (src/lib/celebrate.ts).
+      const won = (await mutate())?.badges.find((b) => b.earned && !had.has(b.id));
+      if (won) { celebrate(at); toast.success(`New badge: ${won.label}`); }
     } catch (err) { toast.error(errorMessage(err, 'Could not log it.')); } finally { setSaving(false); }
   };
   const addPhoto = async (id: string, file: File | undefined) => {
