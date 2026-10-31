@@ -42,7 +42,7 @@ export function Live({ children, away = false, className }: { children: React.Re
 export function Tag({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <span className={cn('inline-flex items-center gap-2 h-7 px-3 rounded-full border border-white/[0.08] bg-white/[0.04] font-mono text-xs text-zinc-300', className)}>
-      <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_8px_#fe81d1]" /> {children}
+      <span className="w-1.5 h-1.5 rounded-full bg-aqua-300 shadow-[0_0_8px_#74ffed]" /> {children}
     </span>
   );
 }

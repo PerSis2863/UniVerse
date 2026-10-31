@@ -136,7 +136,7 @@ export function Arcade() {
         <div className="pointer-events-none absolute -start-20 -top-24 h-72 w-72 rounded-full bg-fuchsia-500/25 blur-3xl" aria-hidden />
         <div className="relative grid gap-6 lg:grid-cols-[1fr_22rem] lg:items-end">
           <div>
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-2.5 py-1 text-xs font-semibold text-fuchsia-800 dark:text-fuchsia-300"><Gamepad2 className="w-3.5 h-3.5" aria-hidden />UniVerse Play</p>
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-2.5 py-1 text-xs font-semibold text-fuchsia-800 dark:text-fuchsia-200"><Gamepad2 className="w-3.5 h-3.5" aria-hidden />UniVerse Play</p>
             <h1 className="mt-3 text-3xl font-semibold text-zinc-900 dark:text-white sm:text-4xl">Games that <em className="font-serif text-pink-600 dark:text-pink-300">teach</em> something.</h1>
             <p className="mt-2 max-w-xl text-zinc-600 dark:text-zinc-300">3D worlds to run, jump and survive in, plus two games for each app. Every round earns XP: level up to unlock new looks. Play alone or race friends live in a room.</p>
             <dl className="mt-6 grid max-w-md grid-cols-3 gap-4">

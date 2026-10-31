@@ -1093,8 +1093,10 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 }
 .dark .ambient-bg {
   background:
-    radial-gradient(70vmax 30vmax at 50% 116%, rgba(116, 255, 237, 0.14), transparent 70%),
+    radial-gradient(70vmax 30vmax at 50% 116%, rgba(116, 255, 237, 0.16), transparent 70%),
     radial-gradient(44vmax 26vmax at 50% 108%, rgba(34, 160, 170, 0.14), transparent 70%),
+    radial-gradient(36vmax 24vmax at 100% 104%, rgba(116, 255, 237, 0.14), transparent 70%),
+    radial-gradient(30vmax 22vmax at 0% 104%, rgba(116, 255, 237, 0.1), transparent 70%),
     radial-gradient(38vmax 30vmax at 102% 4%, rgba(254, 129, 209, 0.09), transparent 70%),
     radial-gradient(42vmax 32vmax at -2% -6%, rgba(110, 125, 255, 0.12), transparent 70%),
     linear-gradient(180deg, #141b3e, #171f44 55%, #182348);
@@ -1573,8 +1575,8 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
   --fill: rgba(255, 255, 255, 0.06); --fill-strong: rgba(255, 255, 255, 0.11);
   --separator: rgba(255, 255, 255, 0.08); --hairline: rgba(255, 255, 255, 0.18);
   --material: rgba(23, 31, 68, 0.86); --material-thick: rgba(23, 31, 68, 0.96); --material-highlight: rgba(255, 255, 255, 0.06);
-  --card-bg: #1d2650; --card-border: rgba(255, 255, 255, 0.08); --card-hover-bg: #212b58; --card-hover-border: rgba(255, 255, 255, 0.16);
-  --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 24px 48px -30px rgba(4, 8, 28, 0.9);
+  --card-bg: #1d2650; --card-border: rgba(255, 255, 255, 0.08); --card-hover-bg: #212b58; --card-hover-border: rgba(116, 255, 237, 0.3);
+  --card-shadow: inset 0 1px 0 rgba(116, 255, 237, 0.07), 0 24px 48px -30px rgba(4, 8, 28, 0.9);
   --sidebar-bg: #10163a; --sidebar-border: rgba(255, 255, 255, 0.06);
   --sidebar-item-color: #cbd2e6; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.06); --sidebar-item-hover-color: #ffffff;
   --sidebar-item-active-bg: #eef2fb; --sidebar-item-active-color: #171f44;
@@ -1582,7 +1584,7 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
   --toast-bg: rgba(34, 44, 90, 0.96);
   --input-bg: rgba(255, 255, 255, 0.05); --input-border: rgba(255, 255, 255, 0.12); --input-placeholder: #8f98bf;
   --text-primary: #f3f6fc; --text-secondary: #b6bedb; --text-muted: #a0a9cc;
-  --pill-on-bg: #eef2fb; --pill-on-color: #171f44;
+  --pill-on-bg: #74ffed; --pill-on-color: #171f44;
   --karma-gold: radial-gradient(90% 110% at 0% 0%, #1d6a72 0%, transparent 60%), linear-gradient(135deg, #123a4c, #11505a);
   --karma-dusk: radial-gradient(90% 120% at 100% 0%, #4a2f6e 0%, transparent 60%), radial-gradient(110% 120% at 30% 120%, #12707a 0%, transparent 65%), linear-gradient(165deg, #1d2650, #1f3a66 55%, #175868);
   --karma-olive: radial-gradient(100% 120% at 100% 100%, #7a2d6c 0%, transparent 60%), linear-gradient(135deg, #171f44, #2b3568 60%, #4a2d6a);
@@ -2357,3 +2359,34 @@ html:not(.dark) .live-card {
 /* M52 · The landing's planet section (src/components/landing/WorldSection.tsx): Midnight Abyss sinking
    into Aqua Jade, like the owner's "Globynk" picture. */
 .world { background: radial-gradient(70% 45% at 50% 100%, rgb(116 255 237 / 0.4), transparent 72%), radial-gradient(90% 55% at 50% 100%, rgb(34 160 170 / 0.3), transparent 75%), linear-gradient(180deg, transparent, rgb(23 31 68 / 0.6) 30%, rgb(22 52 84 / 0.9) 100%); }
+
+/* M54 · More Aqua Jade in dark mode (the owner: "there is way less aqua jade colour"). Pink stays the
+   action (the main button, the river, live dots); Aqua Jade is now everything chosen, pointed at or
+   highlighted: selected pills and the round arrow buttons (--pill-on-bg above), the accent text and
+   icons (indigo / violet / purple 200 and 300 are aqua in dark mode only, so `dark:text-indigo-300`
+   reads Aqua Jade), the icon tiles' tints, outlined buttons, the side menu's chosen entry, chart lines,
+   links and hovered cards. Light mode (M53) keeps violet and pink; dark parts of a light page keep navy. */
+html.dark, html.dark :is(.dark, .on-dark) {
+  --color-indigo-200: #c4fff8; --color-indigo-300: #74ffed;
+  --color-violet-200: #c4fff8; --color-violet-300: #74ffed;
+  --color-purple-200: #c4fff8; --color-purple-300: #74ffed;
+  --tint-text: #a6fff3;
+  --badge-blue-bg: rgba(116, 255, 237, 0.14); --badge-blue-color: #a6fff3;
+}
+/* Accent text written for light backgrounds (no dark: colour of its own) is Aqua Jade, not grey. */
+html.dark .text-indigo-500:not([class*="dark:text-"]) { color: #74ffed; }
+html.dark :is(.text-indigo-600, .text-violet-600, .text-purple-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #a6fff3; }
+/* The accent tints behind icons and chips (bg-indigo-500/10…): aqua instead of navy on navy. */
+html.dark :is(.bg-indigo-500\/5, .bg-violet-500\/5):not([class*="dark:bg-"]) { background-color: rgb(116 255 237 / 0.05); }
+html.dark :is(.bg-indigo-500\/10, .bg-violet-500\/10, .bg-purple-500\/10):not([class*="dark:bg-"]), html.dark .dark\:bg-indigo-500\/10 { background-color: rgb(116 255 237 / 0.1); }
+html.dark :is(.bg-indigo-500\/15, .bg-violet-500\/15):not([class*="dark:bg-"]), html.dark .dark\:bg-indigo-500\/15 { background-color: rgb(116 255 237 / 0.13); }
+html.dark :is(.bg-indigo-500\/20, .bg-violet-500\/20, .bg-purple-500\/20):not([class*="dark:bg-"]), html.dark :is(.dark\:bg-indigo-500\/20, .dark\:bg-indigo-500\/25) { background-color: rgb(116 255 237 / 0.16); }
+/* Outlined buttons: an aqua edge, like the design's "Book a Demo". */
+html.dark:not([data-accent]) .btn-secondary { color: #c4fff8; box-shadow: inset 0 0 0 1px rgb(116 255 237 / 0.42); }
+html.dark:not([data-accent]) .btn-secondary:not(:disabled):hover { background-color: rgb(116 255 237 / 0.1); box-shadow: inset 0 0 0 1px rgb(116 255 237 / 0.75); }
+/* The side menu's chosen entry: an Aqua Jade edge and glow. */
+html.dark .sidebar-pill { box-shadow: inset 3px 0 0 #74ffed, 0 10px 26px -12px rgba(116, 255, 237, 0.6); }
+html.dark[dir="rtl"] .sidebar-pill { box-shadow: inset -3px 0 0 #74ffed, 0 10px 26px -12px rgba(116, 255, 237, 0.6); }
+html.dark .ios-segment-thumb { box-shadow: 0 10px 26px -12px rgba(116, 255, 237, 0.55); }
+/* Chart lines and bars in Aqua Jade (pink stays for what matters, --ins-hot). */
+html.dark .ins-cell :is(svg, .ins-pop) { color: #74ffed; }

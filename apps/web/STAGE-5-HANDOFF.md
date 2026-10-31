@@ -2662,3 +2662,27 @@ colours actually shown were measured and used: **violet #533FF6, pink #EC74CE**,
   (every live card and the wallet cards, 390 / 1280, light and dark: all pass); whole-page axe in light
   mode on the student, teacher and admin homes, hub, Green, Relief, Play and Trace at 1280 and four of
   them at 390: no serious problems. Looked at the student home and hub in light and dark.
+
+## M54 · More Aqua Jade in dark mode (31 Oct 2026)
+
+The owner, on M52: "there is way less aqua jade colour in there". Pink had been every accent; aqua was
+only the faint glow.
+
+- **Now (dark mode only; light mode keeps M53's violet and pink):** pink is the action (the main
+  button, live dots, arcs); **Aqua Jade is everything chosen, pointed at or highlighted.** Selected pills
+  and the round arrow buttons are Aqua Jade with navy text (`--pill-on-bg`); `indigo / violet / purple`
+  200 and 300 are aqua in `html.dark` (so the ~350 `dark:text-indigo-300` accents and the side menu's
+  icons read aqua); accent text with no dark colour of its own and the `bg-indigo-500/10…` icon tints
+  are aqua; outlined buttons have an aqua edge; the side menu's chosen entry an aqua edge and glow; the
+  tab thumb glows aqua; chart lines and bars are aqua (`.ins-cell`), pink stays for what matters;
+  hovered cards get an aqua edge and every card a faint aqua top line; links (`--tint-text`) and
+  badges are aqua; the river is half aqua; more aqua rises in the page's bottom corners; the landing's
+  section labels have aqua dots. All in the "M54" part at the end of `globals.css` (scoped to
+  `html.dark`, so dark parts of a light page keep navy).
+- **Rules for code that builds on it:** in dark mode, an accent is aqua (`dark:text-indigo-300` or
+  `aqua-*`), an action is pink (`.btn-primary`). Don't put white text on `indigo-500` in dark mode
+  expecting aqua: 500 and deeper stay navy so white text keeps reading.
+- Also fixed: Play's "UniVerse Play" label in dark mode was 4.4:1 (`dark:text-fuchsia-200` now).
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); whole-page axe in dark mode
+  on the student, teacher and admin homes, hub, Green, Relief, Play and Trace at 1280, and four of them
+  at 390: no serious problems. Looked at the student home and hub.

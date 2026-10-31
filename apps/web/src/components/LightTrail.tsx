@@ -23,8 +23,8 @@ import { cn } from '@/lib/utils';
 
 // The owner (24 Oct 2026): the light lines are hot pink with a little purple. M34 (25 Oct, the
 // Karma look): kept, denser, thinner and sharper, with faster pulses that glow at their heads. M52
-// (31 Oct, the "Globynk" palette): Baby Pink strands with a few Aqua Jade ones and aqua sparks.
-const DARK = { strands: ['#fe81d1', '#ff9fdc', '#74ffed', '#ffc0e6', '#ef88e3', '#a6fff3'], bands: ['#3a1f5c', '#a32c7b', '#14506a', '#762d72', '#126a72'], pulse: '#ffffff', spark: '#a6fff3' };
+// (31 Oct, the "Globynk" palette): Baby Pink and Aqua Jade strands, half and half (M54), aqua sparks.
+const DARK = { strands: ['#fe81d1', '#74ffed', '#ff9fdc', '#a6fff3', '#ef88e3', '#4beedb'], bands: ['#3a1f5c', '#126a72', '#a32c7b', '#14506a', '#0f7a74'], pulse: '#ffffff', spark: '#a6fff3' };
 // M53: light mode in Bubblegum Pink and Galactic Violet.
 const LIGHT = { strands: ['#c23d98', '#8f45d9', '#ec74ce', '#533ff6', '#a52d80', '#8270fb'], bands: ['#f7b3e6', '#e6e2ff', '#e8cdfc', '#cdc6ff', '#fde6f6'], pulse: '#3f2bd6', spark: '#8f45d9' };
 
@@ -166,7 +166,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
           const bx = centre(yb), by = yb - sy, r = Math.min(W, H) * 0.3;
           const g = sctx.createRadialGradient(bx, by, 0, bx, by, r);
           g.addColorStop(0, dark ? 'rgba(255,255,255,0.55)' : 'rgba(236,116,206,0.18)');
-          g.addColorStop(0.25, dark ? 'rgba(255,159,220,0.28)' : 'rgba(83,63,246,0.1)');
+          g.addColorStop(0.25, dark ? 'rgba(116,255,237,0.24)' : 'rgba(83,63,246,0.1)');
           g.addColorStop(1, 'rgba(43,53,104,0)');
           sctx.globalAlpha = k;
           sctx.fillStyle = g;
