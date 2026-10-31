@@ -102,6 +102,16 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   cursor light) and **M42** (link previews, icon count, install guide, Share to UniVerse, much less
   text; branch `claude/funny-galileo-y4mz9r`, not merged yet).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
+- **Next, the owner's pick (31 Oct: "do all of them", store apps left out, no funds)**, one item each,
+  with very little text on screen (the owner: "too much information for the first time user"):
+  **M43** two or three more sections for the Relief, Green and Play landing tabs plus "try it here"
+  demos on sample data in the browser (a quiz round, log a green action, the help map); **M44** a
+  scroll story at the top of the landing (the five pictures turning into each other) and a strip of
+  live totals (rounded, counted once a day, no person findable); **M45** in the app: screens that
+  glide into each other (view transitions), short celebrations at milestones, optional sounds (off
+  by default), swipe and long-press on rows, bottom sheets, the same vibration everywhere, empty
+  screens with one next step; **M46** today's timetable, courses and recent messages readable
+  offline, an iPhone launch screen, bar colours per theme, and a speed check on a low-end phone.
 - **Next database update number: `0186`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
