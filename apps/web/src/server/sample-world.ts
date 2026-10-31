@@ -60,9 +60,9 @@ const DEVICES = ['Chrome on Android', 'Safari on iPhone', 'Chrome on Windows', '
 const PATHS = ['/hub', '/trace', '/trace/map', '/trace/tracking', '/trace/wallet', '/relief', '/relief/mine', '/green', '/green/teams', '/student', '/student/courses', '/teacher', '/admin', '/student/inbox', '/collab', '/docs'];
 const CLICKS = ['Log it', 'I can help', 'New product', 'Print codes', 'Start a campaign here', 'Send', 'Join', 'Open', 'Replay the period', 'Share with the driver'];
 const BRANDS: [string, string, string][] = [
-  ['Aurora Foods', 'food', '#ec4899'], ['Nordlys Skincare', 'cosmetics', '#d946ef'], ['Kaveri Spices', 'food', '#f59e0b'], ['Velo Parts', 'auto parts', '#60a5fa'],
-  ['Maison Lumière', 'cosmetics', '#f472b6'], ['TerraBrew Coffee', 'drinks', '#a16207'], ['Pulse Pharma', 'pharma', '#34d399'], ['Atlas Footwear', 'fashion', '#818cf8'],
-  ['Sakura Tea Co.', 'drinks', '#fb7185'], ['Andes Wool', 'fashion', '#c084fc'], ['Bolt Electronics', 'electronics', '#38bdf8'], ['Olivo Verde', 'food', '#84cc16'],
+  ['Aurora Foods', 'food', '#fe81d1'], ['Nordlys Skincare', 'cosmetics', '#e46bdb'], ['Kaveri Spices', 'food', '#f59e0b'], ['Velo Parts', 'auto parts', '#60a5fa'],
+  ['Maison Lumière', 'cosmetics', '#ff9fdc'], ['TerraBrew Coffee', 'drinks', '#a16207'], ['Pulse Pharma', 'pharma', '#34d399'], ['Atlas Footwear', 'fashion', '#818cf8'],
+  ['Sakura Tea Co.', 'drinks', '#fb7185'], ['Andes Wool', 'fashion', '#a9b4ff'], ['Bolt Electronics', 'electronics', '#38bdf8'], ['Olivo Verde', 'food', '#84cc16'],
   ['Saffron & Co.', 'food', '#f97316'], ['Kinetic Toys', 'toys', '#facc15'], ['Harbor Wines', 'drinks', '#be123c'], ['Lumen Home', 'home', '#22d3ee'],
   ['Zenith Watches', 'fashion', '#94a3b8'], ['Masala Mills', 'food', '#ea580c'], ['Purely Organic', 'agriculture', '#16a34a'], ['Drivetrain Pro', 'auto parts', '#2563eb'],
 ];

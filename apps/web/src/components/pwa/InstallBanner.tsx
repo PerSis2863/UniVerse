@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { Download, Share, X, Smartphone } from 'lucide-react';
 import { LogoMark } from '@/components/ui/LogoMark';
+import { InstallGuide } from './InstallGuide';
 
 export function InstallBanner() {
   const { canInstall, isInstalled, isIOS, install } = usePWAInstall();
   const [show, setShow] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [guide, setGuide] = useState(false);
 
   useEffect(() => {
     const wasDismissed = localStorage.getItem('pwa-banner-dismissed') === 'true';
@@ -48,6 +50,7 @@ export function InstallBanner() {
   };
 
   if (!show || dismissed || isInstalled) return null;
+  if (guide) return <InstallGuide onClose={() => setGuide(false)} />;
 
   return (
     <div
@@ -55,7 +58,7 @@ export function InstallBanner() {
       role="dialog"
       aria-label="Install UniVerse app"
     >
-      <div className="relative bg-[#141416] border border-indigo-500/30 rounded-2xl p-4 shadow-2xl shadow-indigo-500/10 overflow-hidden">
+      <div className="relative bg-[#1d2650] border border-indigo-500/30 rounded-2xl p-4 shadow-2xl shadow-indigo-500/10 overflow-hidden">
         {/* Gradient accent */}
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 pointer-events-none" />
         
@@ -83,10 +86,9 @@ export function InstallBanner() {
             </p>
 
             {isIOS ? (
-              <div className="mt-3 flex items-center gap-1.5 text-xs text-indigo-400 font-medium">
-                <Share className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Tap Share, then “Add to Home Screen”</span>
-              </div>
+              <button type="button" onClick={() => setGuide(true)} className="btn-primary btn-sm mt-3">
+                <Share className="w-3.5 h-3.5" aria-hidden /> Show me how
+              </button>
             ) : (
               <button
                 onClick={handleInstall}

@@ -321,7 +321,7 @@ function BoardPage({ id }: { id: string }) {
           <button onClick={() => setTimerOpen((o) => !o)} disabled={status !== 'live' || !canEdit} className={btn} title="Workshop timer for everyone" aria-expanded={timerOpen}><TimerIcon className="w-4 h-4" /></button>
           <AnimatePresence>
             {timerOpen && (
-              <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy} className="absolute end-0 top-11 z-40 w-44 rounded-2xl bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
+              <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy} className="absolute end-0 top-11 z-40 w-44 rounded-2xl bg-white dark:bg-[#1d2650] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
                 {[1, 3, 5, 10, 15].map((m) => <button key={m} type="button" onClick={() => { controls.current?.setTimer(m); setTimerOpen(false); }} className="w-full text-start px-3 py-1.5 rounded-xl text-sm hover:bg-zinc-100 dark:hover:bg-white/[0.06]">{m} {m === 1 ? 'minute' : 'minutes'}</button>)}
                 {timer && <button type="button" onClick={() => { controls.current?.setTimer(null); setTimerOpen(false); }} className="w-full text-start px-3 py-1.5 rounded-xl text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-500/10">Stop the timer</button>}
               </motion.div>
@@ -335,7 +335,7 @@ function BoardPage({ id }: { id: string }) {
           <AnimatePresence>
             {aiOpen && (
               <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={spring.snappy}
-                className="absolute end-0 top-11 z-40 w-64 rounded-2xl bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
+                className="absolute end-0 top-11 z-40 w-64 rounded-2xl bg-white dark:bg-[#1d2650] border border-zinc-200 dark:border-white/10 shadow-2xl p-1.5">
                 {canEdit && <button type="button" onClick={() => void runAi('themes')} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Group notes into themes</span><span className="block text-xs text-zinc-500">Adds the sticky notes again, sorted into columns</span></button>}
                 {canEdit && <button type="button" onClick={() => void tidySketch()} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Tidy a sketch into a diagram</span><span className="block text-xs text-zinc-500">Select your drawing (or nothing, for the whole board): AI redraws it cleanly beside it</span></button>}
                 {canEdit && <button type="button" onClick={() => void runAi('mindmap')} className="w-full text-start px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Mind map from a topic…</span><span className="block text-xs text-zinc-500">Draws a mind map beside your board</span></button>}
@@ -385,7 +385,7 @@ function BoardPage({ id }: { id: string }) {
               </motion.div>
             )}
             {votesOpen && votes.length > 0 && (
-              <motion.div key="votes" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="pointer-events-auto w-full max-w-sm rounded-2xl bg-white/95 dark:bg-[#141416]/95 border border-zinc-200 dark:border-white/10 shadow-2xl p-3 backdrop-blur">
+              <motion.div key="votes" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={spring.smooth} className="pointer-events-auto w-full max-w-sm rounded-2xl bg-white/95 dark:bg-[#1d2650]/95 border border-zinc-200 dark:border-white/10 shadow-2xl p-3 backdrop-blur">
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">Votes</p>
                 <ul className="space-y-1.5 max-h-60 overflow-y-auto">
                   {votes.map((v) => (

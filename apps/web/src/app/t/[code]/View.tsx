@@ -7,9 +7,10 @@ import Link from '@/components/ui/Link';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { usePathParams } from '@/hooks/usePathParams';
 import { api, errorMessage } from '@/lib/api';
-import { STAGE_LABEL, type Stage, type Verdict } from '@/lib/trace';
+import { STAGE_LABEL, STAGE_SHORT, type Stage, type Verdict } from '@/lib/trace';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
+import { Journey } from '@/components/live/Journey';
 
 // The product passport (UniVerse Trace): what anyone sees after scanning the code on a product. A
 // big seal says whether it's genuine, then the product's story, where it has been, and (for shops
@@ -156,6 +157,9 @@ export default function View() {
 
             <section className="passport-card mt-4 p-5 pp-rise" style={{ animationDelay: '220ms' }} aria-labelledby="journey-h">
               <h2 id="journey-h" className="font-bold flex items-center gap-2"><MapPin className="w-4 h-4 text-pink-300" aria-hidden />Its journey</h2>
+              {/* M50: the journey as a line that draws itself, ending with this check. */}
+              <Journey dark className="mt-4" label="This product's journey, ending with your check"
+                steps={[...data.journey.slice(-4).map((e) => ({ label: STAGE_SHORT[e.stage as Stage] ?? e.stage, at: new Date(e.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), done: true })), { label: 'You', at: 'now', done: true }]} />
               <ol className="mt-4 relative ms-2 border-s border-white/15 space-y-4">
                 {data.journey.map((e, i) => (
                   <li key={i} className="relative ps-5">

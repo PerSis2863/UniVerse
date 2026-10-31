@@ -327,7 +327,7 @@ function AppSwitcher({ app, role, onPick }: { app: AppId | null; role: string; o
       <AnimatePresence>
         {open && (
           <motion.div role="menu" initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={spring.snappy}
-            className="side-menu absolute left-3 right-3 top-full z-20 mt-1 rounded-2xl border border-white/10 bg-[#111112] p-1.5 shadow-2xl">
+            className="side-menu absolute left-3 right-3 top-full z-20 mt-1 rounded-2xl border border-white/10 bg-[#131a3d] p-1.5 shadow-2xl">
             {APPS.map((a) => (
               <Link key={a.id} role="menuitem" href={appHome(a.id, role)} onClick={() => { setOpen(false); onPick?.(); }} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]">
                 <AppIcon id={a.id} size={28} />
@@ -544,7 +544,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
         {/* M33: fold the menu to icons (and back): a round button on its edge, or the [ key. */}
         <button type="button" onClick={() => { setTip(null); setSidebarFolded(!folded); }} aria-expanded={!folded} aria-controls="side-nav"
           aria-label={folded ? 'Unfold the menu' : 'Fold the menu'} title={`${folded ? 'Unfold' : 'Fold'} the menu ( [ )`}
-          className="side-toggle hidden lg:grid absolute -end-3 top-[1.375rem] z-10 h-6 w-6 place-items-center rounded-full border border-white/15 bg-[#141416] text-zinc-300 shadow-[0_4px_14px_rgba(0,0,0,0.35)] transition-[color,border-color,transform] duration-200 hover:text-white hover:border-pink-400/70 active:scale-90">
+          className="side-toggle hidden lg:grid absolute -end-3 top-[1.375rem] z-10 h-6 w-6 place-items-center rounded-full border border-white/15 bg-[#1d2650] text-zinc-300 shadow-[0_4px_14px_rgba(0,0,0,0.35)] transition-[color,border-color,transform] duration-200 hover:text-white hover:border-pink-400/70 active:scale-90">
           <ChevronLeft className={cn('w-3.5 h-3.5 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] rtl:-scale-x-100', folded && 'rotate-180')} aria-hidden />
         </button>
         {/* Brand */}
@@ -580,7 +580,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       <AnimatePresence>
         {folded && tip && (
           <motion.div key={tip.label} role="tooltip" initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, transition: { duration: 0.08 } }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="pointer-events-none fixed start-[calc(var(--side-w)+10px)] z-[120] -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[#111112] px-2.5 py-1.5 text-[13px] font-semibold text-white shadow-xl" style={{ top: tip.y }}>
+            className="pointer-events-none fixed start-[calc(var(--side-w)+10px)] z-[120] -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[#131a3d] px-2.5 py-1.5 text-[13px] font-semibold text-white shadow-xl" style={{ top: tip.y }}>
             {tip.label}
           </motion.div>
         )}

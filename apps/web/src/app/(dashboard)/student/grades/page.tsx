@@ -64,8 +64,8 @@ function GpaSparkline({ data }: { data: { sem: string; gpa: number }[] }) {
       <svg ref={svgRef} width="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
         <defs>
           <linearGradient id="gpaGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2a2927" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#2a2927" stopOpacity="0" />
+            <stop offset="0%" stopColor="#2b3568" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#2b3568" stopOpacity="0" />
           </linearGradient>
           <clipPath id="sparkClip">
             <motion.rect
@@ -84,7 +84,7 @@ function GpaSparkline({ data }: { data: { sem: string; gpa: number }[] }) {
         <path
           d={pathD}
           fill="none"
-          stroke="#2a2927"
+          stroke="#2b3568"
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -99,7 +99,7 @@ function GpaSparkline({ data }: { data: { sem: string; gpa: number }[] }) {
               animate={{ r: 4, opacity: 1 }}
               transition={{ delay: 0.9 + i * 0.1 }}
               cx={p.x} cy={p.y}
-              fill="white" stroke="#2a2927" strokeWidth="2"
+              fill="white" stroke="#2b3568" strokeWidth="2"
             />
             <motion.text
               initial={{ opacity: 0, y: -5 }}
@@ -109,7 +109,7 @@ function GpaSparkline({ data }: { data: { sem: string; gpa: number }[] }) {
               textAnchor="middle"
               fontSize="10"
               fontWeight="700"
-              fill="#2a2927"
+              fill="#2b3568"
             >
               {data[i].gpa.toFixed(2)}
             </motion.text>
@@ -120,7 +120,7 @@ function GpaSparkline({ data }: { data: { sem: string; gpa: number }[] }) {
               x={p.x} y={height - 2}
               textAnchor="middle"
               fontSize="8"
-              fill="#66635d"
+              fill="#5d6585"
             >
               {data[i].sem.split(' ')[0].slice(0, 3)} {data[i].sem.split(' ')[1]}
             </motion.text>
@@ -147,7 +147,7 @@ function GradeDonut({ grades, avg }: { grades: { grade: string; percentage: numb
 
   const slices = [
     { label: 'A grades', count: counts.A, color: '#10b981', pct: (counts.A / total) * 100 },
-    { label: 'B grades', count: counts.B, color: '#2a2927', pct: (counts.B / total) * 100 },
+    { label: 'B grades', count: counts.B, color: '#2b3568', pct: (counts.B / total) * 100 },
     { label: 'C grades', count: counts.C, color: '#f59e0b', pct: (counts.C / total) * 100 },
     { label: 'D/F grades', count: counts.D + counts.F, color: '#ef4444', pct: ((counts.D + counts.F) / total) * 100 },
   ].filter(s => s.count > 0);

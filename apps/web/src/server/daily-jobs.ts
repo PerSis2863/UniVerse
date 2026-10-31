@@ -12,6 +12,7 @@ import { wellbeingNudges } from './wellbeing';
 import { applyLateFees } from './fees';
 import { dueReportExports } from './report-schedules';
 import { sealOldSecrets } from './secret-box';
+import { countSiteTotals } from './site-totals';
 
 // The daily jobs, in steps (Stage 5 · bug review). D1 answers at most 50 queries in one run on
 // Workers Free (a cron run is one run), and the daily jobs need far more once a school is real:
@@ -135,6 +136,7 @@ async function inSlices(cost: number, slice: (n: number) => Promise<{ more: bool
 /** The steps, in the order they run each day. */
 export const STEPS: Step[] = [
   { job: 'quiz-reminders', run: () => quizReminders() },
+  { job: 'site-totals', run: async () => ({ done: true, info: await countSiteTotals() }) },
   { job: 'late-fees', run: async () => ({ done: true, info: await applyLateFees() }) },
   // Schools' payment keys saved before they were encrypted (secret-box.ts).
   { job: 'seal-secrets', run: () => sealOldSecrets() },

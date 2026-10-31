@@ -15,6 +15,7 @@ import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
 import { cn } from '@/lib/utils';
+import { Tank } from '@/components/live/Tank';
 
 // Pay per verified scan (UniVerse Trace campaigns): a brand offers shops bonus points for every
 // genuine claim of its products in an area, up to a budget; UniVerse's fee is 5 cents per campaign
@@ -210,6 +211,8 @@ function CampaignCard({ c, index, product, currency, pointValue, onChange }: { c
           <h3 className="font-bold text-zinc-900 dark:text-white">{c.title}</h3>
           <p className="text-xs text-zinc-500">{[c.place ?? c.country ?? 'Everywhere', product ?? 'every product', `+${c.bonusPoints} points per sale`, c.endsAt ? `ends ${new Date(c.endsAt).toLocaleDateString()}` : null].filter(Boolean).join(' · ')}</p>
         </div>
+        {/* M50: the budget left, as a level that sways while the campaign runs. */}
+        <Tank pct={100 - used} tone={c.status === 'ACTIVE' ? 'pink' : 'aqua'} label="Budget left" className="shrink-0" />
         <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold', STATUS[c.status])}>{c.status === 'ACTIVE' ? 'Running' : c.status === 'PAUSED' ? 'Paused' : 'Ended'}</span>
       </div>
       <div className="relative mt-4">

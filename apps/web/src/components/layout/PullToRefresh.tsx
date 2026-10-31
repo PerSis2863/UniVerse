@@ -88,7 +88,7 @@ export function PullToRefresh() {
       style={{ top: 'calc(var(--safe-top, 0px) + 0.5rem)', transform: `translate3d(-50%, ${pull - 44}px, 0)`, opacity: busy ? 1 : progress, transition: busy || pull === 0 ? 'transform 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease' : 'none' }}>
       <span className="ptr-ring block w-9 h-9 rounded-full p-[3px] shadow-lg shadow-fuchsia-500/20"
         style={{ transform: busy ? undefined : `rotate(${progress * 300}deg)`, animation: busy ? 'btn-spin 800ms linear infinite' : 'none' }}>
-        <span className="block w-full h-full rounded-full bg-white dark:bg-[#141416]" />
+        <span className="block w-full h-full rounded-full bg-white dark:bg-[#1d2650]" />
       </span>
     </div>
   );

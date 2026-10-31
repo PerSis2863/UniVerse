@@ -6,9 +6,9 @@ import { Accent, Reveal, Tag, ghost, primary } from './bits';
 // platform underneath (chat, training, rewards, live boards) that makes it more than a sticker.
 
 const SIDES = [
-  { icon: Factory, who: 'Brands', what: 'Give every unit a signed code. See where your products really end up, catch copied labels the day they appear, and reward the shops that sell you.' },
-  { icon: Store, who: 'Shops & installers', what: 'Scan what you sell or fit and earn the brand’s points. Train, chat with the brand and climb the leaderboard, all in one app.' },
-  { icon: UserCheck, who: 'Buyers', what: 'Point your camera at the label: genuine or not in a second, with the product’s story, where it has been and its warranty.' },
+  { icon: Factory, who: 'Brands', what: 'See where products go. Catch copies early.' },
+  { icon: Store, who: 'Shops & installers', what: 'Scan what you sell. Earn points.' },
+  { icon: UserCheck, who: 'Buyers', what: 'Point your camera. Real or not, in a second.' },
 ];
 const UNDER = [
   [ScanLine, 'Signed codes nobody can guess or forge'],
@@ -22,7 +22,7 @@ export function TraceSection() {
       <div className="max-w-6xl mx-auto">
         <Reveal><Tag>UniVerse Trace</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">One code. Supply chain <Accent>and</Accent> marketing.</h2></Reveal>
-        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Every scan is two things at once: a record of where the product really is, and a moment with the person holding it. Most tools only see one of them.</p></Reveal>
+        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">One scan tells you where it is and who holds it.</p></Reveal>
         <div className="mt-12 grid md:grid-cols-3 gap-4">
           {SIDES.map((s, i) => (
             <Reveal key={s.who} delay={0.1 + i * 0.06}>

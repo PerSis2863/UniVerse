@@ -14,7 +14,7 @@ export interface ViewCard { id: string; listId: string; title: string; dueAt: st
 interface Props { cards: ViewCard[]; lists: { id: string; title: string }[]; canEdit: boolean; onOpen: (id: string) => void; onMove: (id: string, dueAt: string) => void }
 
 // Fixed colours, dark enough for white text (WCAG AA); the theme's named colours are brighter.
-const TONES = ['#2a2927', '#b45309', '#047857', '#0369a1', '#be185d', '#be123c', '#0f766e', '#2a2927'];
+const TONES = ['#2b3568', '#b45309', '#047857', '#0369a1', '#a32c7b', '#be123c', '#0f766e', '#2b3568'];
 const toneOf = (lists: { id: string }[], id: string) => ({ background: TONES[Math.max(0, lists.findIndex((l) => l.id === id)) % TONES.length] });
 
 function Legend({ lists }: { lists: { id: string; title: string }[] }) {

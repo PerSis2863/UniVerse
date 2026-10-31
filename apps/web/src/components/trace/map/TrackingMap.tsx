@@ -12,12 +12,17 @@ import { api, errorMessage } from '@/lib/api';
 import { distanceM } from '@/lib/attendance-rules';
 import { fetcher } from '@/lib/fetcher';
 import { useActivePoll } from '@/lib/realtime-client';
-import { STAGE_LABEL, type Stage } from '@/lib/trace';
+import { STAGES, STAGE_LABEL, STAGE_SHORT, type Stage } from '@/lib/trace';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow, useTick } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
 import { glow, toBase } from './engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from './WorldCanvas';
+import { LiveCard } from '@/components/live/LiveCard';
+import { CityView } from '@/components/live/CityView';
+import { Journey } from '@/components/live/Journey';
+import { Tank } from '@/components/live/Tank';
+import { Schedule } from '@/components/live/Schedule';
 
 // The live tracking map (UniVerse Trace; the owner, 24 Oct 2026: "add 2d real time product tracking
 // map also in and it should be in detailed"). Every batch's journey: the stops behind it drawn solid,
@@ -36,7 +41,7 @@ interface Ship {
 }
 
 const WORLD: Box = [-170, -56, 180, 76];
-const PINK = '#ec4899', PINK_SOFT = '#f472b6';
+const PINK = '#fe81d1', PINK_SOFT = '#ff9fdc';
 const STATUS: Record<string, { label: string; cls: string }> = {
   IN_TRANSIT: { label: 'On the move', cls: 'bg-pink-500/12 text-pink-700 dark:text-pink-200' },
   DELIVERED: { label: 'Delivered', cls: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300' },
@@ -127,7 +132,7 @@ export function TrackingMap() {
     const { ctx, view, t, zoom } = f, k = view.k, still = reduced();
     const sx = (lng: number, lat: number): [number, number] => f.at(lng, lat);
     const bs = (b: [number, number]): [number, number] => [view.x + b[0] * k, view.y + b[1] * k];
-    const ink = f.dark ? '#d6d3ce' : '#2a2927', paper = f.dark ? '#0a1721' : '#ffffff';
+    const ink = f.dark ? '#cbd2e6' : '#2b3568', paper = f.dark ? '#0a1721' : '#ffffff';
     const order = [...shown].sort((a, b) => (a.id === selected ? 1 : 0) - (b.id === selected ? 1 : 0));
 
     for (const s of order) {
@@ -162,7 +167,7 @@ export function TrackingMap() {
         if (from) {
           const d = sx(s.dest.lng, s.dest.lat);
           ctx.save(); ctx.setLineDash([7, 6]); ctx.lineDashOffset = still ? 0 : -t / 45;
-          ctx.strokeStyle = f.dark ? 'rgba(244,114,182,0.7)' : 'rgba(219,39,119,0.6)'; ctx.lineWidth = 2;
+          ctx.strokeStyle = f.dark ? 'rgba(255,159,220,0.7)' : 'rgba(193,58,146,0.6)'; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.moveTo(...from); ctx.lineTo(...d); ctx.stroke(); ctx.restore();
           // The destination: a flag in a slow pulse.
           const p = still ? 0 : (t % 2200) / 2200;
@@ -264,6 +269,7 @@ export function TrackingMap() {
 
   return (
     <div className="space-y-4">
+      {ships.length > 0 && <FleetInMotion ships={ships} />}
       <div className="flex flex-wrap items-center gap-2">
         <div role="radiogroup" aria-label="Show" className="flex rounded-full bg-zinc-100 dark:bg-white/[0.06] p-1">
           {([['all', `All · ${ships.length}`], ['moving', `On the move · ${moving}`], ['done', 'Delivered']] as const).map(([id, label]) => (
@@ -301,7 +307,7 @@ export function TrackingMap() {
             {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-pink-500" aria-label="Loading the map" /></div>}
             <div className="absolute right-3 top-3 flex flex-col gap-1.5">
               {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See every shipment'], ['full', full ? Minimize2 : Maximize2, full ? 'Leave full screen' : 'Full screen']] as const).map(([id, Icon, label]) => (
-                <button key={id} type="button" onClick={() => control(id)} aria-label={label} title={label} className="w-9 h-9 grid place-items-center rounded-xl bg-white/90 dark:bg-[#0b0b0c]/85 backdrop-blur text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-200/70 dark:border-white/10 hover:text-pink-600 dark:hover:text-pink-300 active:scale-95 transition">
+                <button key={id} type="button" onClick={() => control(id)} aria-label={label} title={label} className="w-9 h-9 grid place-items-center rounded-xl bg-white/90 dark:bg-[#171f44]/85 backdrop-blur text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-200/70 dark:border-white/10 hover:text-pink-600 dark:hover:text-pink-300 active:scale-95 transition">
                   <Icon className="w-4 h-4" aria-hidden />
                 </button>
               ))}
@@ -317,7 +323,7 @@ export function TrackingMap() {
             <AnimatePresence>
               {dest && (
                 <motion.form onSubmit={(e) => void saveDest(e)} initial={{ opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }} transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                  className="absolute left-1/2 -translate-x-1/2 top-3 w-[min(92%,360px)] rounded-2xl bg-white dark:bg-[#0b0b0c] p-3 shadow-xl border border-zinc-200 dark:border-white/10">
+                  className="absolute left-1/2 -translate-x-1/2 top-3 w-[min(92%,360px)] rounded-2xl bg-white dark:bg-[#171f44] p-3 shadow-xl border border-zinc-200 dark:border-white/10">
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-200">What is this place called?
                     <input autoFocus value={dest.place} maxLength={160} onChange={(e) => setDest({ ...dest, place: e.target.value })} className="input mt-1" placeholder="Milan distribution centre" />
                   </label>
@@ -330,20 +336,59 @@ export function TrackingMap() {
             <AnimatePresence>
               {sel && sel.status === 'IN_TRANSIT' && (
                 <motion.div key={sel.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                  className="absolute left-3 bottom-3 right-3 sm:right-auto sm:w-[420px] rounded-2xl bg-white/94 dark:bg-[#0b0b0c]/90 backdrop-blur px-4 py-3 shadow-xl border border-zinc-200/70 dark:border-white/10">
+                  className="absolute left-3 bottom-3 right-3 sm:right-auto sm:w-[420px] rounded-2xl bg-white/94 dark:bg-[#171f44]/90 backdrop-blur px-4 py-3 shadow-xl border border-zinc-200/70 dark:border-white/10">
                   <LiveStrip s={sel} />
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="absolute left-3 top-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#0b0b0c]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
+            <div className="absolute left-3 top-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#171f44]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
               <span className="flex items-center gap-2"><span className="w-4 h-0.5 bg-zinc-600 dark:bg-zinc-300 rounded" />Done</span>
-              <span className="flex items-center gap-2"><span className="w-4 h-0.5 bg-pink-500 rounded shadow-[0_0_6px_#ec4899]" />Live trail</span>
+              <span className="flex items-center gap-2"><span className="w-4 h-0.5 bg-pink-500 rounded shadow-[0_0_6px_#fe81d1]" />Live trail</span>
               <span className="flex items-center gap-2"><span className="w-4 border-t-2 border-dashed border-pink-500" />Still to go</span>
             </div>
           </WorldCanvas>
         </div>
       </div>
+      {ships.length > 0 && <JourneysToday ships={ships} />}
     </div>
+  );
+}
+
+/** M50: every shipment as a van in a night city, from its factory through the hub to its shop. */
+function FleetInMotion({ ships }: { ships: Ship[] }) {
+  const moving = ships.filter((s) => s.status === 'IN_TRANSIT');
+  const etas = moving.map((s) => s.etaMinutes).filter((x): x is number => x !== null);
+  return (
+    <LiveCard title="Fleet in motion" sub="Every batch from its factory, through the warehouse, to its shop"
+      stats={[{ label: 'On the move', value: String(moving.length) }, { label: 'Delivered', value: String(ships.filter((s) => s.status === 'DELIVERED').length) }, { label: 'Next arrival', value: etas.length ? duration(Math.min(...etas)) : '—' }]}
+      ticker={ships.slice(0, 8).map((s) => `${s.label} · ${s.product} · ${STATUS[s.status]?.label ?? s.status}${s.etaMinutes !== null && s.status === 'IN_TRANSIT' ? ` · ${duration(s.etaMinutes)} to go` : ''}`)}>
+      <CityView className="h-[340px] sm:h-[460px]" label="Your shipments on their way, as vans in a city"
+        vans={ships.map((s) => ({ id: s.id, label: s.label, progress: progress(s), state: s.status === 'DELIVERED' ? 'done' : s.status === 'IN_TRANSIT' ? 'moving' : 'parked',
+          note: s.status === 'DELIVERED' ? 'delivered' : s.status === 'IN_TRANSIT' && s.etaMinutes !== null ? duration(s.etaMinutes) : undefined }))} />
+    </LiveCard>
+  );
+}
+
+/** M50: when each journey started and ends (or is expected to), with a line for now. */
+function JourneysToday({ ships }: { ships: Ship[] }) {
+  const now = useNow();
+  if (!now) return null;
+  const slots = ships.filter((s) => s.stops.length).slice(0, 12).map((s) => {
+    const start = new Date(s.stops[0].at).getTime();
+    const end = s.status === 'DELIVERED' ? new Date(s.stops[s.stops.length - 1].at).getTime() : s.etaMinutes !== null ? now + s.etaMinutes * 60_000 : now + 3600_000;
+    const moving = s.status === 'IN_TRANSIT';
+    return { id: s.id, label: s.label, start, end: Math.max(moving || s.status === 'DELIVERED' ? end : start, start + 60_000), state: moving ? 'moving' as const : 'done' as const,
+      note: s.status === 'DELIVERED' ? 'Delivered' : moving ? (s.dest?.place ? `→ ${city(s.dest.place)}` : 'On the move') : 'Waiting' };
+  });
+  if (!slots.length) return null;
+  const from = Math.max(Math.min(...slots.map((x) => x.start), now - 6 * 3600_000), now - 7 * 86_400_000);
+  const to = Math.min(Math.max(...slots.map((x) => x.end), now + 3 * 3600_000), now + 7 * 86_400_000);
+  return (
+    <section className="panel p-5" aria-labelledby="journeys-h">
+      <h2 id="journeys-h" className="font-bold text-zinc-900 dark:text-white">Journeys</h2>
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">When each one left and when it arrives, with now in pink</p>
+      <Schedule className="mt-4" slots={slots} from={from} to={to} />
+    </section>
   );
 }
 
@@ -355,10 +400,10 @@ function label(ctx: CanvasRenderingContext2D, f: Frame, x: number, y: number, te
   const w = ctx.measureText(text).width + 14;
   x = Math.max(8 + w / 2, Math.min(f.w - 56 - w / 2, x)); // clear of the edges and the zoom buttons
   ctx.globalAlpha = Math.min(1, ctx.globalAlpha + 0.1);
-  ctx.fillStyle = f.dark ? 'rgba(11,11,12,0.9)' : 'rgba(255,255,255,0.95)';
+  ctx.fillStyle = f.dark ? 'rgba(23,31,68,0.9)' : 'rgba(255,255,255,0.95)';
   ctx.beginPath(); ctx.roundRect(x - w / 2, y - 10, w, 20, 10); ctx.fill();
   if (strong) { ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke(); }
-  ctx.fillStyle = f.dark ? '#f3f2ef' : '#0b0b0c';
+  ctx.fillStyle = f.dark ? '#eef2fb' : '#171f44';
   ctx.fillText(text, x, y + 0.5);
   ctx.restore();
 }
@@ -422,7 +467,7 @@ function ShipCard({ s, index, open, onOpen, onFind, onPick, onChange, onHover }:
   return (
     <motion.article layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 8) * 0.03, type: 'spring', stiffness: 380, damping: 34 }}
       onMouseEnter={() => onHover(true)} onMouseLeave={() => onHover(false)}
-      className={cn('panel overflow-hidden transition-shadow', open && 'ring-2 ring-pink-500/50 shadow-[0_12px_40px_-16px_rgba(236,72,153,0.55)]')}>
+      className={cn('panel overflow-hidden transition-shadow', open && 'ring-2 ring-pink-500/50 shadow-[0_12px_40px_-16px_rgba(254,129,209,0.55)]')}>
       <button type="button" onClick={onOpen} aria-expanded={open} className="w-full text-left p-4">
         <div className="flex items-start gap-3">
           <span className={cn('w-10 h-10 shrink-0 rounded-2xl grid place-items-center', s.status === 'IN_TRANSIT' ? 'bg-pink-500/12 text-pink-600 dark:text-pink-300' : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300')}>
@@ -457,6 +502,12 @@ function ShipCard({ s, index, open, onOpen, onFind, onPick, onChange, onHover }:
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
             <div className="px-4 pb-4 border-t border-zinc-100 dark:border-white/[0.06] pt-3">
               {s.simulated && <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-pink-500/10 px-2.5 py-1 text-[11px] font-semibold text-pink-700 dark:text-pink-200"><Sparkles className="w-3 h-3" aria-hidden />Sample: it moves by itself until a real phone shares its position</p>}
+              {/* M50: the journey so far, stage by stage, and how far along it is. */}
+              <div className="mb-4 flex items-center gap-3">
+                <Journey className="flex-1" label={`${s.label}'s journey, stage by stage`}
+                  steps={STAGES.map((st) => { const stop = s.stops.find((p) => p.stage === st); return { label: STAGE_SHORT[st], at: stop ? new Date(stop.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : null, done: !!stop || s.status === 'DELIVERED' }; })} />
+                <Tank pct={pct * 100} tone={s.status === 'DELIVERED' ? 'green' : 'pink'} label="Of the way" />
+              </div>
               <ol className="relative ml-1.5 border-l-2 border-zinc-200 dark:border-white/10 space-y-3">
                 {s.stops.map((p, i) => (
                   <li key={i} className="pl-4 relative">

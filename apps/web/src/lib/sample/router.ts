@@ -9,7 +9,6 @@ import { DEFAULT_PREFS, GROUP_OF_TYPE, NOTE_GROUPS } from '@/lib/notify-prefs';
 import { builtInQuestions, countFillers, lengthAdvice, starParts, wordCount } from '@/lib/careers';
 import { carbonSummary, kgFor, activityOf } from '@/lib/carbon';
 import { budgetSummary, dishesOf, prepList, tally } from '@/lib/student-life';
-import { isSampleVisitor } from '@/lib/sample-mode';
 import * as impact from './impact';
 import { localPlan } from '@/lib/ask';
 
@@ -479,7 +478,7 @@ const SAMPLE_MICRO_LESSON = {
     label: 'Graph Theory & Network Traversal',
     summary: 'Core data structures, traversal algorithms, and shortest path proofs.',
     icon: '🧠',
-    color: '#5f5c57',
+    color: '#58617f',
     takeaways: [
       'Graphs model relational networks with vertices and edges',
       'BFS computes shortest path in unweighted networks in O(V + E)',
@@ -490,7 +489,7 @@ const SAMPLE_MICRO_LESSON = {
         id: 'b1',
         label: 'Graph Representations',
         icon: '🎯',
-        color: '#2a2927',
+        color: '#2b3568',
         takeaways: ['Adjacency Matrix: O(1) edge lookup, O(V^2) space'],
         children: [
           { id: 'l1_1', label: 'Adjacency Matrix', takeaways: ['Dense graph optimal'] },
@@ -501,7 +500,7 @@ const SAMPLE_MICRO_LESSON = {
         id: 'b2',
         label: 'Traversal Algorithms',
         icon: '💡',
-        color: '#db2777',
+        color: '#c13a92',
         takeaways: ['BFS: Queue-driven; DFS: Stack/Recursion-driven'],
         children: [
           { id: 'l2_1', label: 'Breadth-First Search', takeaways: ['Guaranteed unweighted shortest path'] },
@@ -529,7 +528,7 @@ const SAMPLE_MICRO_LESSON = {
       timestampSec: 0,
       durationSec: 52,
       keyTakeaway: 'Choose adjacency lists for sparse real-world graphs to conserve memory.',
-      gradient: 'linear-gradient(135deg, #0b0b0c 0%, #111112 40%, #1b1b1e 100%)',
+      gradient: 'linear-gradient(135deg, #171f44 0%, #131a3d 40%, #222c5a 100%)',
       hashtags: ['#cs101', '#graphs', '#datastructures', '#examprep'],
       captions: [
         { start: 0, end: 4, text: 'Why do we care about graph representations?' },
@@ -1043,7 +1042,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     name: "Riverside University",
     slug: "riverside",
     customDomain: null,
-    brandColor: "#2a2927",
+    brandColor: "#2b3568",
     logoUrl: null,
     appTitle: "Riverside UniVerse",
     tagline: "The Campus Operating System",
@@ -1054,7 +1053,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
       name: "Riverside University",
       slug: "riverside",
       customDomain: null,
-      brandColor: "#2a2927",
+      brandColor: "#2b3568",
       logoUrl: null,
       appTitle: "Riverside UniVerse",
       tagline: "The Campus Operating System",
@@ -1673,10 +1672,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     return ok({
       campus: { id: null, name: 'Our campus' }, campuses: [{ id: null, name: 'Our campus' }],
       buildings: [
-        { id: 'sample-b-cs', name: 'Computer Science Block', code: 'CS', x: 60, y: 60, w: 240, h: 150, floors: 5, color: '#2a2927' },
+        { id: 'sample-b-cs', name: 'Computer Science Block', code: 'CS', x: 60, y: 60, w: 240, h: 150, floors: 5, color: '#2b3568' },
         { id: 'sample-b-main', name: 'Main Hall', code: 'MH', x: 380, y: 60, w: 260, h: 140, floors: 2, color: '#0ea5e9' },
         { id: 'sample-b-lib', name: 'Library', code: 'LIB', x: 720, y: 60, w: 220, h: 200, floors: 3, color: '#10b981' },
-        { id: 'sample-b-arts', name: 'Arts Centre', code: 'ART', x: 80, y: 340, w: 220, h: 160, floors: 2, color: '#db2777' },
+        { id: 'sample-b-arts', name: 'Arts Centre', code: 'ART', x: 80, y: 340, w: 220, h: 160, floors: 2, color: '#c13a92' },
         { id: 'sample-b-sci', name: 'Science Labs', code: 'SCI', x: 420, y: 320, w: 280, h: 180, floors: 3, color: '#f59e0b' },
       ],
       rooms,
@@ -1963,7 +1962,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   }],
   [/^\/dashboard\/admin$/, ({ db: d }) => ok({
     totalStudents: 1240, totalTeachers: 86, totalCourses: 142, revenue: 18400,
-    departments: [{ name: 'Computer Science', students: 420, teachers: 28, color: '#2a2927' }, { name: 'Environmental Studies', students: 260, teachers: 17, color: '#10b981' }, { name: 'Design', students: 180, teachers: 12, color: '#db2777' }, { name: 'Business', students: 380, teachers: 29, color: '#f59e0b' }],
+    departments: [{ name: 'Computer Science', students: 420, teachers: 28, color: '#2b3568' }, { name: 'Environmental Studies', students: 260, teachers: 17, color: '#10b981' }, { name: 'Design', students: 180, teachers: 12, color: '#c13a92' }, { name: 'Business', students: 380, teachers: 29, color: '#f59e0b' }],
     recentPayments: [{ name: d.people.aarav.name, type: 'TUITION', amount: 1200, status: 'completed' }, { name: d.people.zoya.name, type: 'HOSTEL', amount: 450, status: 'pending' }, { name: d.people.liam.name, type: 'EXAM_FEE', amount: 60, status: 'completed' }],
     pendingUsers: [{ id: 'sample-pu-1', name: 'Rohan Das', role: 'STUDENT', dept: 'Computer Science', applied: new Date().toLocaleDateString() }, { id: 'sample-pu-2', name: 'Dr. Leena Joseph', role: 'TEACHER', dept: 'Design', applied: new Date().toLocaleDateString() }],
   })],
@@ -2157,7 +2156,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/chat\/communities$/, () => ok([])],
   [/^\/api\/chat\/communities\/discover$/, () => ok([
     { id: 'sample-open-1', name: 'Climate Action Network', description: 'Students across campuses working on climate projects', color: '#059669', members: 214, campus: 'Lakeside University' },
-    { id: 'sample-open-2', name: 'Women in Tech', description: 'Mentoring, events and job tips', color: '#2a2927', members: 98, campus: null },
+    { id: 'sample-open-2', name: 'Women in Tech', description: 'Mentoring, events and job tips', color: '#2b3568', members: 98, campus: null },
   ])],
   [/^\/api\/network$/, () => ok(sampleNetwork())],
   [/^\/api\/network\/courses$/, ({ db: d }) => ok(d.courses.slice(0, 4).map((c, i) => ({ id: c.id, code: c.code, name: c.name, status: 'PUBLISHED', teacher: c.teacher.name, students: 24 + i * 7, home: { id: 'sample-campus-1', name: 'Riverside University' }, sharedWith: i === 0 ? [{ id: 'sample-campus-2', name: 'Lakeside University' }] : [] })))],
@@ -2166,7 +2165,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   ])],
   [/^\/api\/network\/joint$/, () => ok({ courses: [
     { id: 'sample-joint-1', code: 'LAK210', name: 'Urban Water Systems', description: 'How cities manage water, with field data from both campuses.', credits: 4, color: '#0891b2', teacher: 'Dr. Hana Sato', campus: 'Lakeside University', viaExchange: false, enrolled: false, students: 31 },
-    { id: 'sample-joint-2', code: 'MTN105', name: 'Data Ethics', description: null, credits: 3, color: '#2a2927', teacher: 'Prof. Omar Haddad', campus: 'Mountain Institute', viaExchange: false, enrolled: true, students: 58 },
+    { id: 'sample-joint-2', code: 'MTN105', name: 'Data Ethics', description: null, credits: 3, color: '#2b3568', teacher: 'Prof. Omar Haddad', campus: 'Mountain Institute', viaExchange: false, enrolled: true, students: 58 },
   ], exchange: null })],
   [/^\/api\/calls\/favorites$/, () => ok([])],
   [/^\/api\/me\/presence$/, () => ok({ presence: 'auto', statusText: null, statusEmoji: null, statusUntil: null, effective: { presence: 'auto', hidden: false } })],
@@ -3007,18 +3006,14 @@ export function resolveSample(method: string, rawUrl: string, body: unknown): Re
   const url = new URL(rawUrl, 'http://sample.local');
   let path = url.pathname.replace(/\/+$/, '') || '/';
   if (/^https?:/.test(rawUrl) && !rawUrl.startsWith(window.location.origin)) path = path.replace(/^\/api(?=\/)/, ''); // absolute API_URL → Nest path
-  // A visitor trying the demo has no account: nothing reaches the server, and pages the demo has no
-  // example for answer as they would for anyone signed out.
-  const visitor = isSampleVisitor();
-  if (visitor && path === '/users/me') return ok(useAuthStore.getState().user);
-  if (!visitor && PASSTHROUGH.some((r) => r.test(path))) return null;
+  if (PASSTHROUGH.some((r) => r.test(path))) return null;
 
   const d = getDb();
   const parsed = typeof body === 'string' ? (() => { try { return JSON.parse(body); } catch { return {}; } })() : (body ?? {});
   const verb = method.toUpperCase();
   if (verb === 'GET') {
     for (const [re, h] of GET) { const m = path.match(re); if (m) return h({ db: d, m, q: url.searchParams, body: parsed }); }
-    return visitor ? ok({ message: 'Create a free account to see this part.' }, 401) : null;
+    return null;
   }
   for (const [v, re, h] of WRITE) {
     const m = path.match(re);

@@ -6,17 +6,22 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useChatLock, watchRelock } from '@/lib/chat-lock';
-import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock, Hash, Sparkles, MessagesSquare, UserRound, type LucideIcon } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock, Hash, Sparkles, MessagesSquare, UserRound, Share2, ImageIcon, type LucideIcon } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar } from '@/components/ui/Avatar';
 import { type ConversationSummary, auraOf, chatJson, plainText, previewText, timeLabel } from './chat-client';
-import { pickDraft, useLocalDrafts } from '@/lib/chat-drafts';
+import { keepDraft, pickDraft, useLocalDrafts } from '@/lib/chat-drafts';
+import { clearPhotos, clearShare, givePhotos, pendingShare } from '@/lib/share-in';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
+import { Sheet } from '@/components/ui/Sheet';
+import { SwipeRow } from '@/components/ui/SwipeRow';
+import { glide } from '@/lib/page-transition';
+import { useMedia } from '@/lib/use-media';
 import type { ChatFolder } from './ChatFolders';
 import type { LaterData } from './ChatDialogs';
 import { useOnceParam } from '@/lib/use-once-param';
@@ -164,7 +169,14 @@ export function MessagingHub() {
     }
   }, []);
 
+  // Something shared from another app (src/lib/share-in.ts): the chat picked next gets the text as
+  // its draft and the photos waiting above its box.
+  const [shared, setShared] = useState(() => pendingShare());
   const select = useCallback((id: string | null) => {
+    const pending = pendingShare();
+    if (id && pending.text) { keepDraft(id, pending.text); clearShare(); }
+    if (id && pending.photos) givePhotos(id);
+    if (id && (pending.text || pending.photos)) setShared({ text: null, photos: 0 });
     setJumpTo(null);
     setActiveId(id);
     const url = new URL(window.location.href);
@@ -196,6 +208,36 @@ export function MessagingHub() {
   // Where the chosen row was, so the chat opens out from it (the portal, M17).
   const chatSide = useRef<HTMLElement>(null);
   const [portalY, setPortalY] = useState(50);
+  // Phones: back from a chat, the list glides in from the start (opening one is the portal below).
+  const listSide = useRef<HTMLElement>(null);
+  const wasOpen = useRef(activeId);
+  useEffect(() => {
+    if (wasOpen.current && !activeId && window.matchMedia('(max-width: 767px)').matches) glide(listSide.current, 'pop');
+    wasOpen.current = activeId;
+  }, [activeId]);
+  // Phones: a chat's options open as a sheet from the bottom; computers keep the small menu.
+  const phone = useMedia('(max-width: 767px)');
+  const menuChat = phone && menuFor ? (data?.conversations ?? []).find((x) => x.id === menuFor) ?? null : null;
+  /** A chat's options: the small menu on computers, a sheet from the bottom on phones. */
+  const rowMenu = (c: ConversationSummary) => (
+    <>
+      {!c.archived && <ListItem icon={c.pinned ? PinOff : Pin} label={c.pinned ? 'Unpin chat' : 'Pin chat'} onClick={() => setPref(c, { pinned: !c.pinned })} />}
+      {c.muted
+        ? <ListItem icon={Bell} label={mutedLabel(c)} onClick={() => setPref(c, { muted: false }, 'Unmuted')} />
+        : <>
+            <ListItem icon={BellOff} label="Mute for 1 hour" onClick={() => setPref(c, { muted: '1h' }, 'Muted for 1 hour')} />
+            <ListItem icon={BellOff} label="Mute for 8 hours" onClick={() => setPref(c, { muted: '8h' }, 'Muted for 8 hours')} />
+            <ListItem icon={BellOff} label="Mute for 1 week" onClick={() => setPref(c, { muted: '1w' }, 'Muted for 1 week')} />
+            <ListItem icon={Clock} label="Mute until…" onClick={() => { setMenuFor(null); setMuteFor(c); }} />
+            <ListItem icon={BellOff} label="Mute always" onClick={() => setPref(c, { muted: 'always' }, 'Muted')} />
+          </>}
+      {folders.map((f) => (
+        <ListItem key={f.id} icon={f.chatIds.includes(c.id) ? FolderMinus : FolderPlus} label={f.chatIds.includes(c.id) ? `Remove from ${f.name}` : `Add to ${f.name}`} onClick={() => toggleInFolder(f, c.id)} />
+      ))}
+      <ListItem icon={c.archived ? ArchiveRestore : Archive} label={c.archived ? 'Unarchive' : 'Archive chat'} onClick={() => setPref(c, { archived: !c.archived }, c.archived ? 'Moved back to Chats' : 'Chat archived')} />
+      <ListItem icon={MailOpen} label={c.unread > 0 ? 'Mark as read' : 'Mark as unread'} onClick={() => setPref(c, { unread: !(c.unread > 0) })} />
+    </>
+  );
   const openFrom = (id: string, e: React.MouseEvent) => {
     const top = chatSide.current?.getBoundingClientRect().top ?? 0;
     setPortalY(Math.max(0, e.clientY - top));
@@ -230,7 +272,7 @@ export function MessagingHub() {
                 <motion.span layoutId="rail-edge" transition={spring.smooth} className="rail-edge absolute -start-[10px] top-2 bottom-2 w-1 rounded-full" aria-hidden />
               </>}
               {typeof r.icon === 'string' ? <span className="text-lg leading-none" aria-hidden>{r.icon}</span> : <r.icon className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" aria-hidden />}
-              {!!r.count && <span key={r.count} className="badge-bump absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white text-[10px] font-bold leading-[18px] text-center ring-2 ring-white dark:ring-[#0b0b0c]">{r.count > 99 ? '99+' : r.count}</span>}
+              {!!r.count && <span key={r.count} className="badge-bump absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white text-[10px] font-bold leading-[18px] text-center ring-2 ring-white dark:ring-[#171f44]">{r.count > 99 ? '99+' : r.count}</span>}
             </button>
           </div>
         ))}
@@ -244,8 +286,8 @@ export function MessagingHub() {
         </button>
       </nav>
       {/* Conversation list */}
-      <section className={cn(
-        'msg-panel w-full md:w-[340px] lg:w-[360px] shrink-0 flex flex-col min-h-0 md:rounded-3xl bg-white/70 dark:bg-white/[0.035] max-md:dark:bg-[#141416]/85 backdrop-blur-xl overflow-hidden md:shadow-[0_24px_60px_-30px_rgb(79_70_229/0.45)]',
+      <section ref={listSide} className={cn(
+        'msg-panel w-full md:w-[340px] lg:w-[360px] shrink-0 flex flex-col min-h-0 md:rounded-3xl bg-white/70 dark:bg-white/[0.035] max-md:dark:bg-[#1d2650]/85 backdrop-blur-xl overflow-hidden md:shadow-[0_24px_60px_-30px_rgb(79_70_229/0.45)]',
         activeId ? 'hidden md:flex' : 'flex',
       )}>
         <div className="p-4 pb-3 space-y-3 border-b border-zinc-200/80 dark:border-white/[0.06]">
@@ -276,6 +318,16 @@ export function MessagingHub() {
             ))}
           </div>
           {space === 'chats' && <>
+          {(shared.text || shared.photos > 0) && (
+            <div role="status" className="rise-in flex items-center gap-3 rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/[0.07] px-3.5 py-2.5">
+              {shared.photos ? <ImageIcon className="w-4 h-4 shrink-0 text-fuchsia-500 dark:text-fuchsia-300" aria-hidden /> : <Share2 className="w-4 h-4 shrink-0 text-fuchsia-500 dark:text-fuchsia-300" aria-hidden />}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Pick a chat to send {shared.photos ? (shared.photos === 1 ? 'the photo' : `${shared.photos} photos`) : 'it'} to</p>
+                {shared.text && <p className="text-xs text-zinc-600 dark:text-zinc-400 truncate" translate="no">{shared.text}</p>}
+              </div>
+              <button type="button" onClick={() => { clearShare(); clearPhotos(); setShared({ text: null, photos: 0 }); }} className="btn-ghost btn-sm shrink-0">Cancel</button>
+            </div>
+          )}
           <div className="relative">
             <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search chats and messages" aria-label="Search chats and messages" title="Filters: from:name, in:chat, has:file, has:link, has:photo, has:voice, before:2026-10-01, after:2026-09-01" className="msg-search w-full ps-10 pe-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none transition-shadow duration-200" />
@@ -352,11 +404,11 @@ export function MessagingHub() {
               {pinnedChats.map((c, i) => (
                 <button key={c.id} role="listitem" type="button" onClick={(e) => openFrom(c.id, e)} aria-label={`${c.title}${c.unread ? `, ${c.unread} unread` : ''}${c.typing.length ? ', typing' : ''}`}
                   className={cn('group relative flex flex-col items-center gap-1.5 pt-3 pb-2 rounded-2xl transition-colors', c.id === activeId ? 'bg-indigo-500/10' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}>
-                  {c.typing.length > 0 && <span className="pin-typing absolute top-0 end-2 z-10 px-1.5 py-1 rounded-full bg-white dark:bg-[#2a2927] shadow-md text-emerald-500"><span className="typing-dots" aria-hidden><i /><i /><i /></span></span>}
+                  {c.typing.length > 0 && <span className="pin-typing absolute top-0 end-2 z-10 px-1.5 py-1 rounded-full bg-white dark:bg-[#2b3568] shadow-md text-emerald-500"><span className="typing-dots" aria-hidden><i /><i /><i /></span></span>}
                   <span className="pin-float row-aura on" style={{ ['--i' as string]: i, ['--aura' as string]: auraOf(c.otherUserId ?? c.id) }}>
                     <span className={cn('block rounded-full', c.unread > 0 && !c.muted && 'msg-ring')}><Avatar name={c.title} src={c.avatarUrl} online={c.online} size={52} /></span>
                   </span>
-                  {c.unread > 0 && <span key={c.unread} className="badge-bump absolute top-1.5 start-2 min-w-5 h-5 px-1.5 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white text-[11px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-[#0b0b0c]">{c.unread > 99 ? '99+' : c.unread}</span>}
+                  {c.unread > 0 && <span key={c.unread} className="badge-bump absolute top-1.5 start-2 min-w-5 h-5 px-1.5 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white text-[11px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-[#171f44]">{c.unread > 99 ? '99+' : c.unread}</span>}
                   <span className="max-w-full px-1 truncate text-xs font-semibold text-zinc-800 dark:text-zinc-100" translate="no">{c.isGroup ? c.title : c.title.split(' ')[0]}</span>
                 </button>
               ))}
@@ -370,6 +422,9 @@ export function MessagingHub() {
             const draft = active ? '' : pickDraft(drafts[c.id] ?? null, { text: c.draft, at: c.draftAt }).trim();
             return (
               <div key={c.id} className="group relative">
+              <SwipeRow clip={false} onSwipeStart={() => press.current && clearTimeout(press.current)}
+                start={{ label: c.unread > 0 ? 'Read' : 'Unread', icon: MailOpen, tone: 'text-indigo-700 dark:text-indigo-300', run: () => void setPref(c, { unread: !(c.unread > 0) }) }}
+                end={{ label: c.archived ? 'Unarchive' : 'Archive', icon: c.archived ? ArchiveRestore : Archive, tone: 'text-amber-700 dark:text-amber-300', run: () => void setPref(c, { archived: !c.archived }, c.archived ? 'Moved back to Chats' : 'Chat archived') }}>
               <button
                 onClick={(e) => { if (menuFor) return setMenuFor(null); openFrom(c.id, e); }}
                 onContextMenu={(e) => { e.preventDefault(); setMenuFor(c.id); }}
@@ -408,29 +463,16 @@ export function MessagingHub() {
                   </div>
                 </div>
               </button>
+              </SwipeRow>
               {(
                 <button onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === c.id ? null : c.id); }} aria-label="Chat options"
-                  className={cn('absolute end-2 top-2 p-1 rounded-full bg-white/90 dark:bg-[#141416]/90 text-zinc-500 shadow-sm transition-opacity hidden md:block', menuFor === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
+                  className={cn('absolute end-2 top-2 p-1 rounded-full bg-white/90 dark:bg-[#1d2650]/90 text-zinc-500 shadow-sm transition-opacity hidden md:block', menuFor === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
               )}
-              {menuFor === c.id && (
-                <div className="menu-pop absolute end-2 top-9 z-30 w-52 py-1 rounded-xl bg-white/95 dark:bg-[#141416]/95 backdrop-blur-xl border border-zinc-200 dark:border-white/10 shadow-2xl shadow-indigo-950/40 text-sm" onMouseLeave={() => setMenuFor(null)}>
-                  {!c.archived && <ListItem icon={c.pinned ? PinOff : Pin} label={c.pinned ? 'Unpin chat' : 'Pin chat'} onClick={() => setPref(c, { pinned: !c.pinned })} />}
-                  {c.muted
-                    ? <ListItem icon={Bell} label={mutedLabel(c)} onClick={() => setPref(c, { muted: false }, 'Unmuted')} />
-                    : <>
-                        <ListItem icon={BellOff} label="Mute for 1 hour" onClick={() => setPref(c, { muted: '1h' }, 'Muted for 1 hour')} />
-                        <ListItem icon={BellOff} label="Mute for 8 hours" onClick={() => setPref(c, { muted: '8h' }, 'Muted for 8 hours')} />
-                        <ListItem icon={BellOff} label="Mute for 1 week" onClick={() => setPref(c, { muted: '1w' }, 'Muted for 1 week')} />
-                        <ListItem icon={Clock} label="Mute until…" onClick={() => { setMenuFor(null); setMuteFor(c); }} />
-                        <ListItem icon={BellOff} label="Mute always" onClick={() => setPref(c, { muted: 'always' }, 'Muted')} />
-                      </>}
-                  {folders.map((f) => (
-                    <ListItem key={f.id} icon={f.chatIds.includes(c.id) ? FolderMinus : FolderPlus} label={f.chatIds.includes(c.id) ? `Remove from ${f.name}` : `Add to ${f.name}`} onClick={() => toggleInFolder(f, c.id)} />
-                  ))}
-                  <ListItem icon={c.archived ? ArchiveRestore : Archive} label={c.archived ? 'Unarchive' : 'Archive chat'} onClick={() => setPref(c, { archived: !c.archived }, c.archived ? 'Moved back to Chats' : 'Chat archived')} />
-                  <ListItem icon={MailOpen} label={c.unread > 0 ? 'Mark as read' : 'Mark as unread'} onClick={() => setPref(c, { unread: !(c.unread > 0) })} />
+              {menuFor === c.id && !phone && (
+                <div className="menu-pop absolute end-2 top-9 z-30 w-52 py-1 rounded-xl bg-white/95 dark:bg-[#1d2650]/95 backdrop-blur-xl border border-zinc-200 dark:border-white/10 shadow-2xl shadow-indigo-950/40 text-sm" onMouseLeave={() => setMenuFor(null)}>
+                  {rowMenu(c)}
                 </div>
               )}
               </div>
@@ -516,6 +558,7 @@ export function MessagingHub() {
           onDelete={folderEdit === 'new' ? undefined : async () => { const id = folderEdit.id; await saveFolders(folders.filter((x) => x.id !== id)); setFilter('all'); }} />
       )}
       {muteFor && <MuteUntilSheet title={muteFor.title} onClose={() => setMuteFor(null)} onMute={(until) => setPref(muteFor, { muted: { until: until.toISOString() } }, `Muted until ${until.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`)} />}
+      {phone && menuChat && <Sheet title={menuChat.title} onClose={() => setMenuFor(null)}><div className="-mx-2 pb-2">{rowMenu(menuChat)}</div></Sheet>}
       {savedOpen && <SavedPanel onClose={() => setSavedOpen(false)} onOpen={(cid, mid) => { setSavedOpen(false); select(cid); setJumpTo(mid); }} />}
 
       <AnimatePresence>
@@ -533,7 +576,7 @@ export function MessagingHub() {
 
 function ListItem({ icon: Icon, label, onClick }: { icon: typeof Pin; label: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+    <button onClick={onClick} className="w-full flex items-center gap-2.5 px-3 py-2 max-md:py-3 max-md:rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
       <Icon className="w-4 h-4" /> {label}
     </button>
   );

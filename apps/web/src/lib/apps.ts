@@ -23,27 +23,27 @@ export interface ImpactApp {
 export const APPS: ImpactApp[] = [
   {
     id: 'campus', name: 'UniVersity', tagline: 'Schools and universities', color: '#6366f1',
-    impact: 'Courses, grades, attendance, parents, internships and volunteering, run in one place so teachers teach and students learn.',
+    impact: 'Courses, grades and parents, in one place.',
     paths: ['/student', '/teacher', '/admin', '/parent', '/library', '/marketplace', '/campus-map', '/donations', '/hall', '/impact-league', '/impact-rooms', '/application'],
   },
   {
-    id: 'trace', name: 'UniVerse Trace', tagline: 'Every product gets a passport', color: '#ec4899',
-    impact: 'Genuine checks for buyers, points for shops, live maps of where products sell and where every shipment is, and fakes caught early.',
+    id: 'trace', name: 'UniVerse Trace', tagline: 'Every product gets a passport', color: '#fe81d1',
+    impact: 'Real or fake, in one scan.',
     paths: ['/trace', '/carry', '/t', '/b'],
   },
   {
     id: 'relief', name: 'UniVerse Relief', tagline: 'Help that reaches people fast', color: '#f97316',
-    impact: 'People post what they need, neighbours and NGOs offer what they have, and a live map matches them, from food and water to a lift to the clinic.',
+    impact: 'Needs and offers, matched on a live map.',
     paths: ['/relief'],
   },
   {
     id: 'green', name: 'UniVerse Green', tagline: 'Climate action you can prove', color: '#10b981',
-    impact: 'Log trees planted, kilometres cycled and waste recycled, see the CO₂ saved, and take on weekly challenges with your team.',
+    impact: 'Log an action, see the CO₂ saved.',
     paths: ['/green'],
   },
   {
-    id: 'play', name: 'UniVerse Play', tagline: 'Games that teach something', color: '#d946ef',
-    impact: 'Twelve games: four 3D worlds and two from each app: quiz battles and type races, spotting fakes and pinning cities on the world map, delivering supplies and flying flood rescues, sorting waste and cleaning the ocean. Play alone or race your friends in a room.',
+    id: 'play', name: 'UniVerse Play', tagline: 'Games that teach something', color: '#e46bdb',
+    impact: 'Twelve games, solo or with friends.',
     paths: ['/play'],
   },
 ];

@@ -7,7 +7,7 @@ import { keyOf } from './refs';
 
 export interface SheetTemplate { id: string; name: string; hint: string; book: () => BookJSON }
 
-const HEAD: Style = { b: true, bg: '#e6e4e0', bd: { b: 1 } };
+const HEAD: Style = { b: true, bg: '#e1e6f2', bd: { b: 1 } };
 const TITLE: Style = { b: true, size: 16 };
 
 /** Rows of values from (r0, c0), with optional styles per row. */
@@ -82,7 +82,7 @@ export const SHEET_TEMPLATES: SheetTemplate[] = [
       const days = Array.from({ length: 10 }, (_, i) => `Day ${i + 1}`);
       const cells: Record<string, CellJSON> = {
         A1: { v: 'Attendance', s: TITLE },
-        A2: { v: 'P = present, A = absent, L = late', s: { i: true, color: '#5f5c57' } },
+        A2: { v: 'P = present, A = absent, L = late', s: { i: true, color: '#58617f' } },
         ...rows([3, 0], [['Student', ...days, 'Present', 'Absent', 'Late', '%']], () => ({ ...HEAD, align: 'center' })),
         ...rows([4, 0], names.map((n) => [n, ...days.map(() => 'P')]), (_, c) => (c > 0 ? { align: 'center' } : undefined)),
       };
@@ -107,7 +107,7 @@ export const SHEET_TEMPLATES: SheetTemplate[] = [
       const cells: Record<string, CellJSON> = {
         A1: { v: 'My timetable', s: TITLE },
         ...rows([2, 0], [['Time', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']], () => ({ ...HEAD, align: 'center' })),
-        ...rows([3, 0], times.map((t, i) => [t, ...(i === 4 ? ['Lunch', 'Lunch', 'Lunch', 'Lunch', 'Lunch'] : ['', '', '', '', ''])]), (r, c) => (c === 0 ? { b: true, fmt: 'time' } : r === 4 ? { align: 'center', i: true, bg: '#efeeeb' } : { align: 'center', wrap: true })),
+        ...rows([3, 0], times.map((t, i) => [t, ...(i === 4 ? ['Lunch', 'Lunch', 'Lunch', 'Lunch', 'Lunch'] : ['', '', '', '', ''])]), (r, c) => (c === 0 ? { b: true, fmt: 'time' } : r === 4 ? { align: 'center', i: true, bg: '#eceff7' } : { align: 'center', wrap: true })),
       };
       return { sheets: [{ id: 's1', name: 'Week', cells, cols: { 0: 70, 1: 120, 2: 120, 3: 120, 4: 120, 5: 120 }, rows: Object.fromEntries(times.map((_, i) => [3 + i, 44])), freeze: { r: 3, c: 1 } }] };
     },

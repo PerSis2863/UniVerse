@@ -36,6 +36,7 @@ import { removeWithUndo } from '@/lib/undo';
 import { isScreenEffect, type MessageEffect } from '@/lib/message-effects';
 import { undoSendOn, undoWindow } from './SendExtras';
 import { ScreenEffect } from './ScreenEffect';
+import { SharedPhotos } from './SharedPhotos';
 
 const ThreadPanel = dynamic(() => import('./ThreadPanel').then((m) => m.ThreadPanel));
 
@@ -704,7 +705,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           <button onClick={onBack} aria-label="Back" className="md:hidden p-2 -ms-1 rounded-full text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button>
           <button onClick={() => setInfoOpen((v) => !v)} className="flex items-center gap-3 min-w-0 flex-1 text-start">
             {channel
-              ? <span className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0" style={{ background: channel.color ?? '#2a2927' }}>{channel.kind === 'ANNOUNCE' ? <Megaphone className="w-5 h-5" /> : <Hash className="w-5 h-5" />}</span>
+              ? <span className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0" style={{ background: channel.color ?? '#2b3568' }}>{channel.kind === 'ANNOUNCE' ? <Megaphone className="w-5 h-5" /> : <Hash className="w-5 h-5" />}</span>
               : <Avatar name={convo.title} src={convo.avatarUrl} online={!convo.isGroup && other?.online} size={40} />}
             <div className="min-w-0">
               <p className="font-bold text-zinc-900 dark:text-white truncate flex items-center gap-1">
@@ -857,7 +858,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           {byDay(messages).map((day) => (
             <section key={day[0].m.id}>
               <div className="flex justify-center py-2 sticky top-0 z-10">
-                <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white/90 dark:bg-[#141416]/90 backdrop-blur border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 shadow-sm">{dayLabel(day[0].m.createdAt)}</span>
+                <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white/90 dark:bg-[#1d2650]/90 backdrop-blur border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 shadow-sm">{dayLabel(day[0].m.createdAt)}</span>
               </div>
               {day.map(({ m, i }, n) => {
                 const prev = messages[i - 1];
@@ -928,7 +929,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           {(showJump || unseen > 0) && (
             <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
               onClick={() => { setUnseen(0); scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }}
-              className={cn('absolute bottom-28 end-6 md:end-10 z-20 h-10 rounded-full border shadow-lg flex items-center justify-center gap-1.5', unseen > 0 ? 'px-3.5 bg-indigo-600 border-indigo-600 text-white text-sm font-semibold' : 'w-10 bg-white dark:bg-[#141416] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
+              className={cn('absolute bottom-28 end-6 md:end-10 z-20 h-10 rounded-full border shadow-lg flex items-center justify-center gap-1.5', unseen > 0 ? 'px-3.5 bg-indigo-600 border-indigo-600 text-white text-sm font-semibold' : 'w-10 bg-white dark:bg-[#1d2650] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
               <ArrowDown className="w-4 h-4" aria-hidden />
               {unseen > 0 ? <span>{unseen > 99 ? '99+' : unseen} new</span> : <span className="sr-only">Go to the newest message</span>}
             </motion.button>
@@ -948,7 +949,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
             onClose={() => setEditScheduled(null)} />
         )}
         {picked && (
-          <div role="region" aria-label="Chosen messages" className="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-zinc-200 dark:border-white/10 bg-white dark:bg-[#1b1b1e]">
+          <div role="region" aria-label="Chosen messages" className="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-zinc-200 dark:border-white/10 bg-white dark:bg-[#222c5a]">
             <span className="text-sm font-semibold text-zinc-900 dark:text-white me-auto">{picked.size} selected</span>
             <button type="button" onClick={() => void copyPicked()} className="btn-secondary btn-sm"><Copy className="w-4 h-4" />Copy</button>
             <button type="button" onClick={forwardPicked} className="btn-secondary btn-sm"><CornerUpRight className="w-4 h-4" />Forward</button>
@@ -956,6 +957,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
             <button type="button" onClick={() => setPicked(null)} className="btn-ghost btn-sm">Cancel</button>
           </div>
         )}
+        {!picked && <SharedPhotos key={conversationId} chat={conversationId} onSend={send}
+          blocked={isPrivate ? 'Private chats take text only for now' : convo.isOfficial ? 'This chat can’t take photos' : undefined} />}
         {!picked && <Composer
           draftKey={conversationId}
           serverDraft={{ text: convo.draft, at: convo.draftAt }}
@@ -1070,7 +1073,7 @@ function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onCha
   return (
     <motion.aside
       initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 40, opacity: 0 }}
-      className="absolute md:relative inset-0 md:inset-auto z-30 md:z-auto w-full md:w-80 shrink-0 flex flex-col border-s border-zinc-200/80 dark:border-white/[0.06] bg-white dark:bg-[#141416] md:bg-white/60 md:dark:bg-white/[0.02] backdrop-blur-xl overflow-y-auto"
+      className="absolute md:relative inset-0 md:inset-auto z-30 md:z-auto w-full md:w-80 shrink-0 flex flex-col border-s border-zinc-200/80 dark:border-white/[0.06] bg-white dark:bg-[#1d2650] md:bg-white/60 md:dark:bg-white/[0.02] backdrop-blur-xl overflow-y-auto"
     >
       <div className="flex items-center justify-between px-5 h-16 shrink-0 border-b border-zinc-200/80 dark:border-white/[0.06]">
         <h3 className="font-bold text-zinc-900 dark:text-white">{convo.isGroup ? 'Group info' : 'Contact info'}</h3>
@@ -1111,7 +1114,7 @@ function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onCha
             <div className="grid grid-cols-6 gap-1.5">
               {WALLPAPERS.map((w) => (
                 <button key={w.id} onClick={() => { setWallpaper(w.id); setWp(w.id); }} aria-label={w.label} title={w.label}
-                  className={cn('aspect-square rounded-lg border-2 bg-white dark:bg-[#141416]', wp === w.id ? 'border-indigo-500' : 'border-zinc-200 dark:border-white/10')}
+                  className={cn('aspect-square rounded-lg border-2 bg-white dark:bg-[#1d2650]', wp === w.id ? 'border-indigo-500' : 'border-zinc-200 dark:border-white/10')}
                   style={w.style} />
               ))}
             </div>

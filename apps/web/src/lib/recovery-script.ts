@@ -46,12 +46,12 @@ function screen(to){
   if(document.getElementById('universe-reload-screen')||!document.body)return;
   var dark=document.documentElement.classList.contains('dark')||!window.matchMedia||matchMedia('(prefers-color-scheme: dark)').matches;
   var d=document.createElement('div');d.id='universe-reload-screen';d.setAttribute('role','alertdialog');
-  d.style.cssText='position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:'+(dark?'#0b0b0c':'#f7f7fb');
-  d.innerHTML='<div style="max-width:380px;width:100%;text-align:center;border-radius:24px;padding:32px;box-shadow:0 20px 50px rgba(0,0,0,.25);background:'+(dark?'#111112;border:1px solid rgba(255,255,255,.08)':'#fff;border:1px solid rgba(0,0,0,.08)')+'">'
+  d.style.cssText='position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:'+(dark?'#171f44':'#f0f0f0');
+  d.innerHTML='<div style="max-width:380px;width:100%;text-align:center;border-radius:24px;padding:32px;box-shadow:0 20px 50px rgba(0,0,0,.25);background:'+(dark?'#131a3d;border:1px solid rgba(255,255,255,.08)':'#fff;border:1px solid rgba(0,0,0,.08)')+'">'
     +'<div style="font-size:36px" aria-hidden="true">&#10024;</div>'
     +'<h1 style="margin:12px 0 8px;font-size:20px;color:'+(dark?'#fff':'#111')+'">This page needs a reload</h1>'
     +'<p style="margin:0;font-size:14px;line-height:1.6;color:#8b8b95">It didn&#39;t finish loading, or UniVerse was just updated. Reload to continue.</p>'
-    +'<button type="button" style="margin-top:22px;height:42px;padding:0 22px;border:0;border-radius:12px;background:#2a2927;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Reload</button></div>';
+    +'<button type="button" style="margin-top:22px;height:42px;padding:0 22px;border:0;border-radius:12px;background:#2b3568;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Reload</button></div>';
   d.querySelector('button').addEventListener('click',function(){try{sessionStorage.removeItem(KEY);}catch(x){}purge(function(){location.assign(fresh(to));});});
   document.body.appendChild(d);
 }

@@ -104,6 +104,15 @@ export function revealFrames(i: number, tall = false): Keyframe[] {
 export const REVEAL_MS = 880;
 export const REVEAL_GAP_MS = 95;
 
+/** One part of a page swapping in place on phones (M45: the chat list ↔ a chat, the settings list ↔ a
+ *  section): deeper slides in from the end, back from the start, as pages do. */
+export function glide(el: Element | null | undefined, m: 'push' | 'pop') {
+  if (!el || typeof el.animate !== 'function') return;
+  const dx = (m === 'push' ? 56 : -56) * (document.documentElement.dir === 'rtl' ? -1 : 1);
+  const frames = [{ opacity: 0.3, transform: `translate3d(${dx}px, 0, 0)` }, { opacity: 1, transform: 'none' }];
+  el.animate(reducedMotion() ? calmFrames(frames) : frames, { duration: enterMs(m), easing: EASE_GLIDE });
+}
+
 /** A page's title sweeping into view along its reading direction, out of a blur (M1). */
 export function titleFrames(rtl: boolean): Keyframe[] {
   const hidden = rtl ? 'inset(-20% 0 -30% 100%)' : 'inset(-20% 100% -30% 0)';

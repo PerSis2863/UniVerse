@@ -74,7 +74,7 @@ export default function KitchenPage() {
                   </motion.section>
                 ))}
               </motion.div>
-            ) : <div className="panel"><EmptyState icon={ShoppingBasket} title="No menus for this day" hint="Add menus in Student Life management; students can pre-order today’s and tomorrow’s." /></div>}
+            ) : <div className="panel"><EmptyState icon={ShoppingBasket} title="No menus for this day" hint="Students can pre-order today’s and tomorrow’s." action={{ label: 'Add menus', href: '/admin/student-life' }} /></div>}
         </div>
       </div>
     </>

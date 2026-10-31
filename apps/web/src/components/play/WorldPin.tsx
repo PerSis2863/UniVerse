@@ -10,6 +10,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { GameProps } from './game-props';
+import { haptic } from '@/lib/haptics';
 
 // World Pin (src/lib/play/pin.ts): a parcel is heading to a city; tap where it is on the world map
 // (Trace's own map: drag and zoom work, city names are hidden). Your pin drops, the real one rises,
@@ -54,7 +55,7 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
     const [lng, lat] = seen.current.lngLat(x, y);
     const km = kmBetween({ lat, lng }, target);
     dispatch({ t: 'pick', pick: { lat, lng, km, pts: pinPoints(km, s.shownAt + PER - clock()) }, at: clock() });
-    navigator.vibrate?.(km < 500 ? 15 : [20, 30, 20]);
+    haptic(km < 500 ? 'tap' : 'warning', false);
   }, [answered, target, s.shownAt, clock]);
 
   // The per-city clock, then the reveal, then the next city (or the end after fifteen).
@@ -92,7 +93,7 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
     seen.current = { lngLat: f.lngLat, w: f.w, h: f.h };
     const { ctx } = f;
     if (!answered) {
-      ctx.strokeStyle = dark ? 'rgba(249,168,212,0.55)' : 'rgba(219,39,119,0.5)'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = dark ? 'rgba(255,192,230,0.55)' : 'rgba(193,58,146,0.5)'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(f.w / 2 - 8, f.h / 2); ctx.lineTo(f.w / 2 + 8, f.h / 2); ctx.moveTo(f.w / 2, f.h / 2 - 8); ctx.lineTo(f.w / 2, f.h / 2 + 8); ctx.stroke();
       return;
     }
@@ -101,15 +102,15 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
     const [tx, ty] = f.at(target.lng, target.lat);
     if (s.pick) {
       const [px, py] = f.at(s.pick.lng, s.pick.lat);
-      ctx.strokeStyle = '#f472b6'; ctx.lineWidth = 2; ctx.setLineDash([6, 5]);
+      ctx.strokeStyle = '#ff9fdc'; ctx.lineWidth = 2; ctx.setLineDash([6, 5]);
       ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + (tx - px) * ease, py + (ty - py) * ease); ctx.stroke(); ctx.setLineDash([]);
-      pin(ctx, px, py - (1 - ease) * 30, '#ec4899');
+      pin(ctx, px, py - (1 - ease) * 30, '#fe81d1');
       if (since >= 1) {
         const label = `${Math.round(s.pick.km).toLocaleString()} km`;
         ctx.font = '700 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
         const mx = (px + tx) / 2, my = (py + ty) / 2 - 10, tw = ctx.measureText(label).width + 16;
-        ctx.fillStyle = dark ? 'rgba(20,20,22,0.9)' : 'rgba(255,255,255,0.95)'; ctx.beginPath(); ctx.roundRect(mx - tw / 2, my - 13, tw, 22, 11); ctx.fill();
-        ctx.fillStyle = dark ? '#f9a8d4' : '#be185d'; ctx.fillText(label, mx, my + 2);
+        ctx.fillStyle = dark ? 'rgba(29,38,80,0.9)' : 'rgba(255,255,255,0.95)'; ctx.beginPath(); ctx.roundRect(mx - tw / 2, my - 13, tw, 22, 11); ctx.fill();
+        ctx.fillStyle = dark ? '#ffc0e6' : '#a32c7b'; ctx.fillText(label, mx, my + 2);
       }
     }
     // The real place: a pulse and a green pin.
@@ -131,7 +132,7 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
         <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-3">
           <AnimatePresence mode="wait">
             <motion.div key={s.i} initial={{ opacity: 0, y: calm ? 0 : -10, scale: calm ? 1 : 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={spring.bouncy}
-              className="w-full max-w-sm overflow-hidden rounded-2xl bg-white/95 shadow-xl ring-1 ring-black/5 dark:bg-[#141416]/95 dark:ring-white/10">
+              className="w-full max-w-sm overflow-hidden rounded-2xl bg-white/95 shadow-xl ring-1 ring-black/5 dark:bg-[#1d2650]/95 dark:ring-white/10">
               <div className="flex items-center gap-3 px-4 py-3">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-pink-600 text-white"><Package className="w-5 h-5" aria-hidden /></span>
                 <div className="min-w-0 flex-1">
@@ -153,7 +154,7 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
           {answered && (
             <motion.div key={`r${s.i}`} initial={{ opacity: 0, y: calm ? 0 : 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={spring.bouncy}
               className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-3">
-              <p className={cn('inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-xl', s.pick && s.pick.pts > 0 ? 'bg-emerald-700 text-white' : 'bg-[#141416] text-white')} aria-live="polite">
+              <p className={cn('inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold shadow-xl', s.pick && s.pick.pts > 0 ? 'bg-emerald-700 text-white' : 'bg-[#1d2650] text-white')} aria-live="polite">
                 <MapPin className="w-4 h-4" aria-hidden />{verdict}{s.pick ? ` · +${s.pick.pts}` : ''}{s.streak > 1 ? ` · ${s.streak} close in a row` : ''}
               </p>
             </motion.div>

@@ -158,12 +158,12 @@ function TrendCard({ a }: { a: CourseAnalytics }) {
                 {[0, 50, 100].map((g) => <line key={g} x1="0" x2="100" y1={g} y2={g} stroke="currentColor" className="text-zinc-200 dark:text-white/10" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
                 <defs>
                   <linearGradient id="trend-fill" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#2a2927" stopOpacity="0.22" />
-                    <stop offset="100%" stopColor="#db2777" stopOpacity="0" />
+                    <stop offset="0%" stopColor="#2b3568" stopOpacity="0.22" />
+                    <stop offset="100%" stopColor="#c13a92" stopOpacity="0" />
                   </linearGradient>
                   <linearGradient id="trend-line" x1="0" x2="1" y1="0" y2="0">
-                    <stop offset="0%" stopColor="#2a2927" />
-                    <stop offset="100%" stopColor="#db2777" />
+                    <stop offset="0%" stopColor="#2b3568" />
+                    <stop offset="100%" stopColor="#c13a92" />
                   </linearGradient>
                 </defs>
                 {marked.length > 1 && <path d={`${line} L${x(marked[marked.length - 1].i)} 100 L${x(marked[0].i)} 100 Z`} fill="url(#trend-fill)" />}

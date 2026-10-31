@@ -54,7 +54,7 @@ function Body({ d }: { d: Brand }) {
         {d.brand.logoUrl
           // eslint-disable-next-line @next/next/no-img-element -- the brand's own logo address
           ? <img src={d.brand.logoUrl} alt="" className="w-20 h-20 rounded-3xl object-cover" />
-          : <span className="w-20 h-20 rounded-3xl grid place-items-center text-3xl font-black" style={{ background: d.brand.color ?? '#ec4899' }}>{d.brand.name[0]}</span>}
+          : <span className="w-20 h-20 rounded-3xl grid place-items-center text-3xl font-black" style={{ background: d.brand.color ?? '#fe81d1' }}>{d.brand.name[0]}</span>}
         <div className="flex-1 min-w-0">
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight flex items-center justify-center sm:justify-start gap-2">{d.brand.name}{d.brand.pro && <BadgeCheck className="w-6 h-6 text-pink-300" aria-label="Verified brand" />}</h1>
           <p className="mt-1 text-zinc-300">{[d.brand.category, `on Trace since ${day(d.brand.since)}`].filter(Boolean).join(' · ')}</p>

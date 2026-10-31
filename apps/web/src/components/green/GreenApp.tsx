@@ -10,12 +10,17 @@ import { Award, Bike, Bus, Camera, Clock, Flame, Footprints, Leaf, Loader2, Lock
 import Link from '@/components/ui/Link';
 import { Rolling } from '@/components/ui/Rolling';
 import { api, errorMessage } from '@/lib/api';
+import { celebrate } from '@/lib/celebrate';
 import { authedJson } from '@/lib/authed-fetch';
 import { shrinkImage } from '@/lib/shrink-image';
 import { InviteButton } from '@/components/apps/InviteButton';
 import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
 import { GREEN_FACTORS, GREEN_KINDS, co2For, type GreenKind } from '@/lib/green';
+import { LiveCard } from '@/components/live/LiveCard';
+import { Constellation } from '@/components/live/Constellation';
+import { Heartbeat } from '@/components/live/Heartbeat';
+import { Tank } from '@/components/live/Tank';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
@@ -66,6 +71,7 @@ export function GreenApp() {
 
   const log = async (e: React.FormEvent) => {
     e.preventDefault();
+    const at = (e.nativeEvent as SubmitEvent).submitter, had = new Set(data?.badges.filter((b) => b.earned).map((b) => b.id));
     setSaving(true);
     const pos = share ? await new Promise<{ lat: number; lng: number } | null>((done) => navigator.geolocation ? navigator.geolocation.getCurrentPosition((g) => done({ lat: g.coords.latitude, lng: g.coords.longitude }), () => done(null), { timeout: 5000, maximumAge: 600_000 }) : done(null)) : null;
     try {
@@ -73,7 +79,9 @@ export function GreenApp() {
       await api.post('/green/actions', { kind, amount: Number(amount), note, photoUrl, ...(pos ?? {}) });
       toast.success(`Logged: ${preview} kg of CO₂ saved${photoUrl ? '. A teammate can confirm it now.' : ''}`);
       setNote(''); setPhoto(null); setBurst((b) => b + 1);
-      void mutate();
+      // A badge earned just now: a short celebration (src/lib/celebrate.ts).
+      const won = (await mutate())?.badges.find((b) => b.earned && !had.has(b.id));
+      if (won) { celebrate(at); toast.success(`New badge: ${won.label}`); }
     } catch (err) { toast.error(errorMessage(err, 'Could not log it.')); } finally { setSaving(false); }
   };
   const addPhoto = async (id: string, file: File | undefined) => {
@@ -91,7 +99,7 @@ export function GreenApp() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white" style={{ background: 'radial-gradient(120% 90% at 0% 0%, #0f3b2e 0%, #0b2620 55%, #0b0b0c 100%)' }}>
+      <section className="relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white" style={{ background: 'radial-gradient(120% 90% at 0% 0%, #0f3b2e 0%, #0b2620 55%, #171f44 100%)' }}>
         <span aria-hidden className="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-emerald-400/20 blur-3xl" />
         <div className="relative grid lg:grid-cols-[1fr_auto] gap-6 items-end">
           <div>
@@ -139,7 +147,11 @@ export function GreenApp() {
         <div className="flex flex-col gap-6">
           {c && (
             <section className="panel p-5" aria-labelledby="ch-h">
-              <h2 id="ch-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Trophy className="w-4 h-4 text-amber-500" aria-hidden />This week’s challenge</h2>
+              <div className="flex items-start gap-3">
+                <h2 id="ch-h" className="font-bold text-zinc-900 dark:text-white flex flex-1 items-center gap-2"><Trophy className="w-4 h-4 text-amber-500" aria-hidden />This week’s challenge</h2>
+                {/* M50: how full the week's goal is, as a level. */}
+                <Tank pct={c.goal ? (c.mine / c.goal) * 100 : 0} tone="green" label="Your share of the goal" />
+              </div>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{c.title}{daysLeft !== null ? ` · ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left` : ''}</p>
               {[['You', c.mine], ...(c.team !== null ? [['Your teams', c.team] as const] : [])].map(([who, v]) => (
                 <div key={who as string} className="mt-3">
@@ -154,6 +166,18 @@ export function GreenApp() {
           <TeamProofs onDone={() => void mutate()} />
         </div>
       </div>
+
+      {t && t.actions > 0 && (
+        // M48: what you did, by kind, around you; the community's total underneath.
+        <LiveCard title="Your climate constellation" sub="Each point is an action you logged"
+          stats={[{ label: 'Actions', value: fmt(t.actions) }, { label: 'CO₂ saved', value: `${fmt(t.kg)} kg` }, { label: 'Everyone', value: `${fmt(data!.community.kg)} kg` }]}
+          ticker={data!.recent.slice(0, 6).map((a) => `${GREEN_FACTORS[a.kind]?.label ?? a.kind}: −${fmt(a.co2Kg)} kg CO₂${a.place ? ` · ${a.place}` : ''}`)}>
+          <Constellation className="h-[260px] md:h-[300px]" label="Your climate actions by kind"
+            groups={GREEN_KINDS.filter((k) => t.byKind[k]).map((k) => ({ label: GREEN_FACTORS[k].label, n: t.byKind[k] ?? 0, value: `${fmt(t.kgByKind[k] ?? 0)} kg` }))} />
+          {/* M49: CO₂ saved per day, as a heartbeat. */}
+          <div className="mt-3 h-[90px]"><Heartbeat values={data!.perDay.map((d) => d.kg)} label="CO₂ saved per day, last 30 days" /></div>
+        </LiveCard>
+      )}
 
       {/* Wide screens: "What you did" is exactly as tall as the 30 days and badges beside it and scrolls inside. */}
       <div className="grid lg:grid-cols-2 gap-6">
@@ -296,7 +320,7 @@ export function GreenMap() {
       </div>
       <WorldCanvas label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={!calm && cells.length > 0} draw={draw} className="w-full h-[46vh] min-h-[320px]">
         {data && cells.length === 0 && (
-          <div className="absolute inset-x-3 bottom-3 sm:inset-x-auto sm:start-3 sm:w-[420px] rounded-2xl bg-white dark:bg-[#0b0b0c] p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
+          <div className="absolute inset-x-3 bottom-3 sm:inset-x-auto sm:start-3 sm:w-[420px] rounded-2xl bg-white dark:bg-[#171f44] p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
             <p className="text-sm text-zinc-700 dark:text-zinc-200">No actions on the map yet. Log one with “Put it on the shared map” and yours is the first light. It glows brighter as friends join.</p>
             <InviteButton app="green" text="I’m logging my climate actions on UniVerse Green and seeing the CO₂ I save. Join me:" label="Invite friends" className="mt-3 flex-wrap" />
           </div>

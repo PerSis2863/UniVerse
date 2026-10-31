@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { Camera, ScanLine } from 'lucide-react';
 import { Sheet } from '@/components/ui/Sheet';
+import { haptic } from '@/lib/haptics';
 
 // A barcode field for the library (Stage 5 · B15.4): type it, use a USB scanner (it types the code
 // and presses Enter), or scan with the camera where the browser can read barcodes (BarcodeDetector:
@@ -56,7 +57,7 @@ function CameraScan({ onClose, onCode }: { onClose: () => void; onCode: (code: s
         if (!video.current || video.current.readyState < 2) return;
         const codes = await detector.detect(video.current).catch(() => []);
         const code = codes[0]?.rawValue?.trim();
-        if (code && !stopped) { stopped = true; navigator.vibrate?.(40); found.current(code); }
+        if (code && !stopped) { stopped = true; haptic('success'); found.current(code); }
       }, 250);
     }).catch(() => setProblem('The camera isn’t available. Allow it in the browser, or type the barcode.'));
     return () => { stopped = true; clearInterval(timer); stream?.getTracks().forEach((t) => t.stop()); };

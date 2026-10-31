@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Loader2, Eye, EyeOff, Building2, Fingerprint, Phone, Play } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff, Building2, Fingerprint, Phone } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Accent, Tag } from '@/components/landing/bits';
 import { useAuthStore } from '@/store/auth';
@@ -18,9 +18,8 @@ import { TwoStepPanel } from '@/components/auth/TwoStepPanel';
 import dynamic from 'next/dynamic';
 import { chosenApp, homeFor } from '@/lib/role-home';
 import { AppTabs } from '@/components/landing/AppTabs';
-import { startVisitorDemo } from '@/components/SampleMode';
 import { endDemoForSignIn } from '@/lib/sample-mode';
-import { appById, appHome } from '@/lib/apps';
+import { appById } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { PHONE_SIGN_IN } from '@/lib/sign-in-options';
 
@@ -257,7 +256,7 @@ export default function LoginPage() {
           <div className="mt-5"><AppTabs small value={app} onChange={setChosenApp} label="Sign in to" layoutId="login-app" /></div>
         </div>
 
-        <div className="rounded-3xl border border-white/[0.08] bg-[#111112]/75 backdrop-blur-md shadow-[0_40px_120px_-40px_rgba(42,41,39,0.55)] p-6 sm:p-8">
+        <div className="rounded-3xl border border-white/[0.08] bg-[#131a3d]/75 backdrop-blur-md shadow-[0_40px_120px_-40px_rgba(43,53,104,0.55)] p-6 sm:p-8">
           {twoStep ? (
             <TwoStepPanel
               onDone={() => { const t = twoStep; setTwoStep(null); void handleLoginSuccess(t.token, t.method); }}
@@ -444,9 +443,6 @@ export default function LoginPage() {
                     Sign up
                   </Link>
                 </p>
-                <button type="button" onClick={() => startVisitorDemo(appHome(app, 'STUDENT'))} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-zinc-700 px-4 py-1.5 text-sm text-zinc-300 transition-[transform,background-color] duration-150 hover:bg-zinc-800 active:scale-[0.97]">
-                  <Play className="w-3.5 h-3.5" /> Just looking? Try the live demo
-                </button>
               </div>
             </>
           )}
@@ -461,7 +457,7 @@ export default function LoginPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => handleLoginSuccess('mock-token-demo@student.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#141416] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#1d2650] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Student</div>
               <div className="text-zinc-500 text-xs mt-1">Full access to student dashboard</div>
@@ -469,7 +465,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => handleLoginSuccess('mock-token-demo@teacher.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#141416] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#1d2650] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Teacher</div>
               <div className="text-zinc-500 text-xs mt-1">Manage classes &amp; grades</div>
@@ -477,7 +473,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => handleLoginSuccess('mock-token-demo@admin.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#141416] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#1d2650] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Admin</div>
               <div className="text-zinc-500 text-xs mt-1">System configuration</div>
@@ -485,7 +481,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => handleLoginSuccess('mock-token-it-support@universe.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#141416] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#1d2650] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">IT Support</div>
               <div className="text-zinc-500 text-xs mt-1">Helpdesk access</div>

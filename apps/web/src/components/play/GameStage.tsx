@@ -132,9 +132,9 @@ export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onF
         <div className="relative grid h-14 w-14 shrink-0 place-items-center" role="timer" aria-label={`${left} seconds left`}>
           <svg viewBox="0 0 48 48" className="absolute inset-0 -rotate-90" aria-hidden>
             <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
-            {playing && <circle cx="24" cy="24" r="20" fill="none" stroke={low ? '#f472b6' : 'url(#ring)'} strokeWidth="4" strokeLinecap="round" strokeDasharray="126" className="play-ring"
+            {playing && <circle cx="24" cy="24" r="20" fill="none" stroke={low ? '#ff9fdc' : 'url(#ring)'} strokeWidth="4" strokeLinecap="round" strokeDasharray="126" className="play-ring"
               style={{ animationDuration: `${total}ms`, animationDelay: `${-elapsed}ms` }} />}
-            <defs><linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#e879f9" /><stop offset="100%" stopColor="#ec4899" /></linearGradient></defs>
+            <defs><linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#ef88e3" /><stop offset="100%" stopColor="#fe81d1" /></linearGradient></defs>
           </svg>
           <span key={low ? left : 'n'} className={cn('relative text-base font-bold tabular-nums', low ? 'play-tick text-pink-300' : 'text-white')}>{left}</span>
         </div>
@@ -172,7 +172,7 @@ export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onF
             <AnimatePresence mode="popLayout">
               <motion.span key={count} initial={{ scale: calm ? 1 : 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: calm ? 1 : 1.25, opacity: 0 }}
                 transition={{ type: 'spring', visualDuration: 0.32, bounce: calm ? 0 : 0.35 }}
-                className="bg-gradient-to-br from-fuchsia-300 via-pink-400 to-pink-600 bg-clip-text text-[9rem] font-black leading-none text-transparent drop-shadow-[0_10px_50px_rgba(236,72,153,0.5)]">
+                className="bg-gradient-to-br from-fuchsia-300 via-pink-400 to-pink-600 bg-clip-text text-[9rem] font-black leading-none text-transparent drop-shadow-[0_10px_50px_rgba(254,129,209,0.5)]">
                 {count === 0 ? 'Go!' : count}
               </motion.span>
             </AnimatePresence>

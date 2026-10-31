@@ -122,7 +122,7 @@ export default function MentorsPage() {
               {shown.map((m) => <MentorCard key={m.id} m={m} onPick={(slot) => setPick({ m, slot })} />)}
             </motion.ul>
           ) : (
-            <div className="panel"><EmptyState icon={Users} title={mentors.length ? 'No one matches' : 'No mentors yet'} hint={mentors.length ? 'Try another word, or show everyone.' : 'Teachers and alumni who offer times appear here.'} /></div>
+            <div className="panel"><EmptyState icon={Users} title={mentors.length ? 'No one matches' : 'No mentors yet'} hint={mentors.length ? 'Try another word, or show everyone.' : 'Teachers and alumni who offer times appear here.'} action={mentors.length ? { label: 'Show everyone', onClick: () => { setQ(''); setAlumni(false); } } : undefined} /></div>
           )}
 
           <motion.section variants={fadeUp} className="panel" aria-labelledby="be-mentor-h">

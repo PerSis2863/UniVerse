@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { useReducedMotion } from 'framer-motion';
 import { CITIES } from '@/components/trace/map/cities';
 import { arcPoints, glow, quad, toBase } from '@/components/trace/map/engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
+import { useCalm } from './bits';
 
 // The landing page's live map: the same engine as the brand's market map (src/components/trace/map),
 // drawing an illustration, not anyone's data: scans glowing in big cities, flows from three made-up
@@ -14,14 +14,14 @@ import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/
 const TOURS: Box[] = [[-12, 34, 32, 60], [64, 5, 94, 33], [-126, 14, -62, 54], [-20, -40, 150, 62]];
 const FACTORIES: [number, number][] = [[37.78, -3.78], [18.52, 73.86], [22.54, 114.06]];
 const ROUTE: [number, number][] = [[37.78, -3.78], [39.45, -0.32], [45.76, 4.84], [48.86, 2.35]];
-const PINK = '#ec4899', AMBER = '#f59e0b';
+const PINK = '#fe81d1', AMBER = '#f59e0b';
 
 /** A stable pseudo-random number for an index. */
 const noise = (i: number) => { const x = Math.sin(i * 12.9898) * 43758.5453; return x - Math.floor(x); };
 
 export function LiveMapShowcase({ className }: { className?: string }) {
   const map = useRef<MapHandle>(null);
-  const calm = useReducedMotion();
+  const calm = useCalm();
   const ripples = useRef<{ bx: number; by: number; born: number; amber: boolean }[]>([]);
   const model = useMemo(() => {
     const cities = CITIES.filter((c) => c[3] < 3).map(([name, lat, lng, rank], i) => { const [bx, by] = toBase(lng, lat); return { name, bx, by, w: (rank === 1 ? 0.6 : 0.25) + noise(i) * 0.4 }; });
@@ -55,14 +55,14 @@ export function LiveMapShowcase({ className }: { className?: string }) {
     // Flows and their comets.
     for (const fl of model.flows) {
       const c = arcPoints([sx(fl.f[0]), sy(fl.f[1])], [sx(fl.c.bx), sy(fl.c.by)], 0.2);
-      ctx.strokeStyle = 'rgba(236,72,153,0.22)'; ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(254,129,209,0.22)'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(c[0], c[1]); ctx.quadraticCurveTo(c[2], c[3], c[4], c[5]); ctx.stroke();
       if (!still) {
         const p = (t / 4200 + fl.phase) % 1;
         for (let j = 0; j < 5; j++) {
           const q = p - j * 0.02; if (q < 0) continue;
           const [px, py] = quad(c, q);
-          ctx.globalAlpha = (1 - j / 5) * 0.9; ctx.fillStyle = j ? '#f472b6' : '#fff';
+          ctx.globalAlpha = (1 - j / 5) * 0.9; ctx.fillStyle = j ? '#ff9fdc' : '#fff';
           ctx.beginPath(); ctx.arc(px, py, 1.8 - j * 0.25, 0, Math.PI * 2); ctx.fill();
         }
         ctx.globalAlpha = 1;
@@ -81,17 +81,17 @@ export function LiveMapShowcase({ className }: { className?: string }) {
     model.cities.forEach((c) => {
       const x = sx(c.bx), y = sy(c.by);
       if (x < -10 || x > f.w + 10 || y < -10 || y > f.h + 10) return;
-      ctx.fillStyle = '#f472b6'; ctx.strokeStyle = 'rgba(10,23,33,0.9)'; ctx.lineWidth = 1.2;
+      ctx.fillStyle = '#ff9fdc'; ctx.strokeStyle = 'rgba(10,23,33,0.9)'; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.arc(x, y, 1.5 + c.w * 3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     });
     // Factories.
     for (const [bx, by] of model.factories) {
       ctx.save(); ctx.translate(sx(bx), sy(by)); ctx.rotate(Math.PI / 4);
-      ctx.fillStyle = '#d6d3ce'; ctx.strokeStyle = '#0a1721'; ctx.lineWidth = 2; ctx.fillRect(-3.5, -3.5, 7, 7); ctx.strokeRect(-3.5, -3.5, 7, 7); ctx.restore();
+      ctx.fillStyle = '#cbd2e6'; ctx.strokeStyle = '#0a1721'; ctx.lineWidth = 2; ctx.fillRect(-3.5, -3.5, 7, 7); ctx.strokeRect(-3.5, -3.5, 7, 7); ctx.restore();
     }
     // One shipment on the road (Jaén to Paris), round and round.
     const pts = model.route.map(([bx, by]) => [sx(bx), sy(by)] as [number, number]);
-    ctx.strokeStyle = 'rgba(214,211,206,0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]); ctx.lineDashOffset = still ? 0 : -t / 50;
+    ctx.strokeStyle = 'rgba(203,210,230,0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]); ctx.lineDashOffset = still ? 0 : -t / 50;
     ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); ctx.setLineDash([]);
     const lens = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1])), total = lens.reduce((a, b) => a + b, 0);
     let goal = ((t / 16000) % 1) * total, seg = 0;

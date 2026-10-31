@@ -18,6 +18,9 @@ import { useActivePoll } from '@/lib/realtime-client';
 import { useNow } from '@/lib/use-now';
 import { STAGES, STAGE_LABEL, type Stage } from '@/lib/trace';
 import { cn } from '@/lib/utils';
+import { LiveCard } from '@/components/live/LiveCard';
+import { Funnel } from '@/components/live/Funnel';
+import { Heartbeat } from '@/components/live/Heartbeat';
 
 // UniVerse Trace, the brand's console (the owner, 24 Oct 2026: "something unique and different and
 // bold"; then "do all 4 of them"). Anyone signed in can start a brand for free: every product gets a
@@ -178,7 +181,7 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
     <>
       {/* The brand */}
       <section className="panel p-5 flex flex-wrap items-center gap-4">
-        <span className="w-12 h-12 rounded-2xl grid place-items-center text-white font-black text-lg shadow-lg" style={{ background: brand.color ?? '#ec4899' }} aria-hidden>{brand.name.slice(0, 1).toUpperCase()}</span>
+        <span className="w-12 h-12 rounded-2xl grid place-items-center text-white font-black text-lg shadow-lg" style={{ background: brand.color ?? '#fe81d1' }} aria-hidden>{brand.name.slice(0, 1).toUpperCase()}</span>
         <div className="min-w-0 flex-1">
           <h2 className="font-bold text-lg text-zinc-900 dark:text-white flex items-center gap-2 flex-wrap">{brand.name}
             <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider', info.pro ? 'bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-200' : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300')}>{info.pro ? 'PRO' : 'FREE'}</span>
@@ -202,6 +205,15 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
       </AnimatePresence>
 
       <InstrumentBoard icon={ScanLine} title="Trace live" subtitle={`${ov.products} products · ${ov.batches} batches · last 30 days`} cells={cells} storageKey="trace-live" />
+
+      {/* M48: from a printed code to an owner, as a stream of light. */}
+      <LiveCard title="From label to owner" sub="Codes printed, checked by someone, and claimed by an owner"
+        ticker={ov.recent.slice(0, 6).map((r) => `${r.code.product.name}${r.place ? ` · ${r.place}` : ''} · ${VERDICT[r.verdict]?.label ?? r.verdict}`)}>
+        <Funnel className="h-[200px]" label="Codes printed, scanned and claimed"
+          stages={[{ label: 'Printed', value: ov.units }, { label: 'Scanned', value: ov.scanned }, { label: 'Claimed', value: ov.claimed }]} />
+        {/* M49: scans per day as a heartbeat, likely copies as red sparks. */}
+        <div className="mt-3 h-[90px]"><Heartbeat values={ov.scans} marks={ov.suspect} label="Scans per day, likely copies marked" /></div>
+      </LiveCard>
 
       <div className="grid sm:grid-cols-3 gap-3">
         {([['/trace/map', Globe2, 'Market map', 'Where it sells, city by city, live'], ['/trace/tracking', Truck, 'Tracking', 'Every shipment, where it is now'], ['/trace/campaigns', Megaphone, 'Campaigns', 'Pay per verified sale']] as const).map(([href, Icon, t, d]) => (
@@ -292,7 +304,7 @@ function PlanCard({ pro }: { pro: boolean }) {
 }
 
 function BrandSettings({ brand, pro, onDone }: { brand: Brand; pro: boolean; onDone: () => void }) {
-  const [f, setF] = useState({ name: brand.name, category: brand.category ?? '', color: brand.color ?? '#ec4899', logoUrl: brand.logoUrl ?? '', pointValue: String(brand.pointValue), currency: brand.currency, minCashout: String(brand.minCashout) });
+  const [f, setF] = useState({ name: brand.name, category: brand.category ?? '', color: brand.color ?? '#fe81d1', logoUrl: brand.logoUrl ?? '', pointValue: String(brand.pointValue), currency: brand.currency, minCashout: String(brand.minCashout) });
   const [saving, setSaving] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
   const save = async (e: React.FormEvent) => {

@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { Burst } from './fx';
 import type { GameProps } from './game-props';
+import { haptic } from '@/lib/haptics';
 
 // Recycle Rush (src/lib/play/sort.ts): things ride the belt; sort the one at the front into its bin
 // (tap a bin, or keys 1–4) before it drops off the end. A right sort flies in an arc into the bin
@@ -92,7 +93,7 @@ export function RecycleRush({ seed, startsAt, clock, onProgress, onStats }: Game
     } else {
       sfx('wrong'); shake(s.last.hazard ? 1.4 : 0.6);
       if (s.last.hazard) announce('Fire hazard! E-waste goes to e-waste', 'bad');
-      navigator.vibrate?.([30, 40, 30]);
+      haptic('warning', false);
     }
   }, [s.last, s.streak, sfx, announce, shake]);
 
@@ -135,18 +136,18 @@ export function RecycleRush({ seed, startsAt, clock, onProgress, onStats }: Game
           <Bot className="w-3.5 h-3.5" aria-hidden />{auto ? `Bot sorting… ${auto}` : `Sort bot ×${bots}`}<kbd className="hidden rounded bg-black/30 px-1 text-[11px] font-medium sm:inline">B</kbd>
         </button>
         <motion.span key={mult} initial={{ scale: calm ? 1 : 1.25 }} animate={{ scale: 1 }} transition={spring.bouncy}
-          className={cn('inline-flex items-center gap-1 rounded-full px-3 py-1 font-bold tabular-nums', mult > 1 ? 'bg-pink-600 text-white shadow-[0_0_28px_rgba(236,72,153,0.55)]' : 'bg-white/10 text-zinc-200')}>
+          className={cn('inline-flex items-center gap-1 rounded-full px-3 py-1 font-bold tabular-nums', mult > 1 ? 'bg-pink-600 text-white shadow-[0_0_28px_rgba(254,129,209,0.55)]' : 'bg-white/10 text-zinc-200')}>
           <Zap className="w-4 h-4" aria-hidden />×{mult}<span className="font-medium opacity-80">· {s.streak} in a row</span>
         </motion.span>
       </div>
 
       {/* The belt: rails, a moving surface, rollers below; the drop-off glows red. */}
-      <div className="relative mt-4 h-40 overflow-hidden rounded-[1.75rem] bg-[#101012] ring-1 ring-white/10">
-        <div className="absolute inset-x-0 bottom-9 h-5 overflow-hidden bg-[#26262b] shadow-[inset_0_2px_0_rgba(255,255,255,0.08),inset_0_-2px_0_rgba(0,0,0,0.5)]" aria-hidden>
+      <div className="relative mt-4 h-40 overflow-hidden rounded-[1.75rem] bg-[#10163a] ring-1 ring-white/10">
+        <div className="absolute inset-x-0 bottom-9 h-5 overflow-hidden bg-[#262f5c] shadow-[inset_0_2px_0_rgba(255,255,255,0.08),inset_0_-2px_0_rgba(0,0,0,0.5)]" aria-hidden>
           <div className="play-stripes h-full w-[calc(100%+48px)] bg-[repeating-linear-gradient(90deg,transparent_0_20px,rgba(255,255,255,0.1)_20px_24px)]" />
         </div>
         <div className="absolute inset-x-3 bottom-2 flex justify-between" aria-hidden>
-          {Array.from({ length: 14 }, (_, i) => <span key={i} className="play-spin grid h-5 w-5 place-items-center rounded-full bg-[#2e2e34] ring-1 ring-white/10"><span className="h-3 w-px bg-white/30" /></span>)}
+          {Array.from({ length: 14 }, (_, i) => <span key={i} className="play-spin grid h-5 w-5 place-items-center rounded-full bg-[#2b3466] ring-1 ring-white/10"><span className="h-3 w-px bg-white/30" /></span>)}
         </div>
         <div className="absolute inset-y-0 end-0 w-20 bg-gradient-to-l from-red-500/25 to-transparent rtl:bg-gradient-to-r" aria-hidden />
         <div className="absolute inset-x-3 top-3 bottom-12 [container-type:inline-size]">
@@ -237,7 +238,7 @@ function OnBelt({ b, start, clock, front, done, bin, box, calm }: { b: BeltItem;
     <div ref={ref} className="absolute start-0 top-0 flex w-20 flex-col items-center">
       <div ref={inner} className={cn('flex flex-col items-center', done === 'missed' ? 'play-dropped' : calm && done ? 'play-sorted' : '')}>
         <span className={cn('relative grid h-16 w-16 place-items-center rounded-2xl text-4xl shadow-lg transition-[box-shadow,transform] duration-200',
-          b.golden ? 'bg-gradient-to-br from-amber-200 to-amber-500' : 'bg-[#1e1e22]', front ? 'scale-110 shadow-[0_0_0_3px_#ec4899,0_10px_28px_rgba(236,72,153,0.45)]' : 'ring-1 ring-white/10')} aria-hidden>
+          b.golden ? 'bg-gradient-to-br from-amber-200 to-amber-500' : 'bg-[#1e2650]', front ? 'scale-110 shadow-[0_0_0_3px_#fe81d1,0_10px_28px_rgba(254,129,209,0.45)]' : 'ring-1 ring-white/10')} aria-hidden>
           {emoji}
           {b.golden && <Sparkles className="absolute -end-1.5 -top-1.5 w-4 h-4 text-amber-200" />}
         </span>

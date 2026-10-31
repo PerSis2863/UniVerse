@@ -104,7 +104,7 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
       for (const [id, st] of awareness.getStates()) {
         if (id === ydoc.clientID) continue;
         const s = st as { user?: { name?: string; color?: string }; slide?: string };
-        if (s.slide) m.set(s.slide, [...(m.get(s.slide) ?? []), { name: s.user?.name ?? 'Someone', color: s.user?.color ?? '#2a2927' }]);
+        if (s.slide) m.set(s.slide, [...(m.get(s.slide) ?? []), { name: s.user?.name ?? 'Someone', color: s.user?.color ?? '#2b3568' }]);
       }
       setWhere(m);
     };
@@ -360,13 +360,13 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
 
   return (
     <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-      <div className="border-b border-zinc-200/70 dark:border-white/[0.06] bg-white/80 dark:bg-[#141416]/80">
+      <div className="border-b border-zinc-200/70 dark:border-white/[0.06] bg-white/80 dark:bg-[#1d2650]/80">
         <SlidesToolbar on={actions} canEdit={editable} canUndo={stacks.undo > 0} canRedo={stacks.redo > 0} deck={deck} slide={slide ?? null} selected={selected} editing={!!editing}
           bold={allHave('b')} italic={allHave('i')} underline={allHave('u')} strike={allHave('s')} />
       </div>
       <input ref={fileRef} type="file" accept="image/*" className="hidden" aria-label="Picture to add" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; void onImage(f, pictureFor.current); }} />
       <div className="flex-1 min-h-0 flex flex-col-reverse md:flex-row">
-        <nav aria-label="Slides" className="shrink-0 md:w-52 border-t md:border-t-0 md:border-e border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-[#141416] overflow-x-auto md:overflow-y-auto md:overflow-x-hidden">
+        <nav aria-label="Slides" className="shrink-0 md:w-52 border-t md:border-t-0 md:border-e border-zinc-200/70 dark:border-white/[0.06] bg-zinc-50/70 dark:bg-[#1d2650] overflow-x-auto md:overflow-y-auto md:overflow-x-hidden">
           <ol className="flex md:flex-col gap-2 p-2">
             {deck.slides.map((s, i) => {
               const people = where.get(s.id) ?? [];
@@ -379,7 +379,7 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
                       if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); go(i - 1); (e.currentTarget.closest('ol')?.children[i - 1]?.querySelector('button') as HTMLButtonElement | null)?.focus(); }
                       if ((e.key === 'Delete' || e.key === 'Backspace') && editable && deck.slides.length > 1) { e.preventDefault(); deleteSlides(ydoc, [s.id]); go(i - 1); }
                     }}
-                    className={cn('relative rounded-lg overflow-hidden ring-offset-2 ring-offset-zinc-50 dark:ring-offset-[#0b0b0c] transition-shadow', s.id === slide?.id ? 'ring-2 ring-indigo-600 dark:ring-indigo-400' : 'ring-1 ring-zinc-300 dark:ring-white/15 hover:ring-indigo-400', s.hidden && 'opacity-50')}>
+                    className={cn('relative rounded-lg overflow-hidden ring-offset-2 ring-offset-zinc-50 dark:ring-offset-[#171f44] transition-shadow', s.id === slide?.id ? 'ring-2 ring-indigo-600 dark:ring-indigo-400' : 'ring-1 ring-zinc-300 dark:ring-white/15 hover:ring-indigo-400', s.hidden && 'opacity-50')}>
                     {/* Named by its words, not by the picture of the slide (whose text isn't the name). */}
                     <span className="sr-only">{`Slide ${i + 1}${plainText(s.items.find((x) => x.role === 'title')?.paras) ? `: ${plainText(s.items.find((x) => x.role === 'title')?.paras)}` : ''}${s.hidden ? ' (hidden)' : ''}`}</span>
                     <div aria-hidden="true"><SlideView slide={s} theme={theme} W={W} scale={thumbW / W} mode="thumb" /></div>
@@ -394,7 +394,7 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
           </ol>
         </nav>
         <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-          <div ref={canvasBox} className="flex-1 min-h-0 flex items-center justify-center bg-zinc-100 dark:bg-[#141416] p-3 overflow-hidden">
+          <div ref={canvasBox} className="flex-1 min-h-0 flex items-center justify-center bg-zinc-100 dark:bg-[#1d2650] p-3 overflow-hidden">
             {slide && (
               <div ref={canvas} tabIndex={0} role="region" aria-roledescription="slide" aria-label={`Slide ${slideIndex + 1} of ${deck.slides.length}. Click to select, drag to move, double-click to type.`}
                 onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onDoubleClick={onDoubleClick} onKeyDown={onKeyDown}
@@ -407,7 +407,7 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
                     const on = sel.includes(it.id);
                     const style: React.CSSProperties = { left: it.x, top: it.y, width: it.w, height: it.h, transform: it.rot ? `rotate(${it.rot}deg)` : undefined };
                     return (
-                      <div key={it.id} data-item={it.id} className={cn('absolute pointer-events-auto', editable && 'cursor-move', !on && 'hover:outline hover:outline-1 hover:outline-indigo-400/70')} style={{ ...style, outline: on ? `${2 / fit}px solid #2a2927` : undefined }}>
+                      <div key={it.id} data-item={it.id} className={cn('absolute pointer-events-auto', editable && 'cursor-move', !on && 'hover:outline hover:outline-1 hover:outline-indigo-400/70')} style={{ ...style, outline: on ? `${2 / fit}px solid #2b3568` : undefined }}>
                         {it.id === editing && (
                           <div ref={editBox} data-editbox contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" aria-label="Text box"
                             onBlur={stopEditing} onPaste={(e) => { e.preventDefault(); document.execCommand('insertText', false, e.clipboardData.getData('text/plain')); }}
@@ -425,7 +425,7 @@ export function SlidesEditor({ docId, me, canEdit: mayEdit, onStatus, onPresence
               </div>
             )}
           </div>
-          <label className="block border-t border-zinc-200/70 dark:border-white/[0.06] bg-white dark:bg-[#1b1b1e]">
+          <label className="block border-t border-zinc-200/70 dark:border-white/[0.06] bg-white dark:bg-[#222c5a]">
             <span className="sr-only">Speaker notes</span>
             <textarea key={slide?.id} defaultValue={notes} readOnly={!editable} placeholder={editable ? 'Speaker notes: what to say on this slide (only you see them while presenting)' : 'No notes'}
               onBlur={(e) => { if (slide && e.target.value !== notes) setSlide(ydoc, slide.id, { notes: e.target.value.slice(0, 10_000) }); }}
@@ -477,5 +477,5 @@ function SlideMenu({ x, y, onClose, children }: { x: number; y: number; onClose:
     document.addEventListener('keydown', key, true);
     return () => { document.removeEventListener('pointerdown', down, true); document.removeEventListener('keydown', key, true); };
   }, [x, y]);
-  return <div ref={box} style={{ position: 'fixed', left: -9999, top: -9999 }} className="z-[70] min-w-56 max-h-[70vh] overflow-y-auto rounded-xl bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm text-zinc-800 dark:text-zinc-100">{children}</div>;
+  return <div ref={box} style={{ position: 'fixed', left: -9999, top: -9999 }} className="z-[70] min-w-56 max-h-[70vh] overflow-y-auto rounded-xl bg-white dark:bg-[#1d2650] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm text-zinc-800 dark:text-zinc-100">{children}</div>;
 }

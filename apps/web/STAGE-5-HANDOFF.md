@@ -2173,3 +2173,545 @@ assets, nothing taken apart). Neon Strike is gone; the game id is `ops` (the liv
   material patched for fog/shadows must go through `r.patch` / `r.prep` (they compose
   `onBeforeCompile` and set the cache key). Test against the dev server in one command
   (start, test, stop) rather than leaving it running.
+
+## M41 · New hero pictures and motion that answers the pointer everywhere (31 Oct 2026)
+
+The owner: "make much better design and animation… when I go in sign in page it still shows the old
+one… don't just put the box design… add more animation and motion… for whole project not just main
+page".
+
+- **Hero pictures** (`src/components/landing/HeroScenes.tsx`, one per app, used by the landing and
+  by sign-in through `AuthShowcase.tsx`): UniVersity is "the school day running itself" (jobs
+  orbiting a counter, a feed under it); Green is a living planet (rotating dot band, actions riding
+  an orbit with CSS `offset-path`, a ticker pill); Play is a neon race track (SMIL `animateMotion`
+  comets, a leaderboard that re-orders with `layout`). Green and Play have no box round them: they
+  float in the page. `PassportCard.tsx` was deleted (nothing used it).
+- **Motion that answers the pointer** (`src/lib/light-motion.ts`, started for every page with the
+  scroll motion): a ripple of light spreads from the finger in every button and tab
+  (`.btn-*`, `[role="tab"]`, `.mkt-cta`, `[data-ripple]`); `[data-magnetic]` and the landing's
+  buttons lean toward the pointer; `[data-tilt]` tilts a picture in 3D (the landing's hero);
+  `[data-cursor-light]` puts a soft pink light under the pointer (landing and sign-in). CSS in
+  `globals.css` "M41": clickable cards (`a.card`, `a.panel`, `button.card`, `.card-hover`) lift
+  with a pink shadow on hover, fields glow when focused, buttons rise 1 px on hover. The landing's
+  hero picture also drifts up as the page scrolls (parallax, a spring on `scrollY`).
+- **Rules for code that builds on it:** follow, tilt and cursor light only on a fine pointer with
+  hover (touch screens get the ripple); none of it runs with Reduce Motion. `data-no-motion` opts
+  out of the scroll reveals and the sparks, *not* the ripple; `data-no-motion-follow` opts out of
+  the ripple, magnetic and tilt. Each effect writes only `transform` or two CSS variables, frames
+  only while something moves.
+- **Tested:** browser check on the dev server (magnetic offset, ripple element, tilt angles, cursor
+  light variables, no page errors); unit tests, typecheck, lint, lean.
+
+## M42 · Link previews, icon count, install guide, Share to UniVerse, and much less text (31 Oct 2026)
+
+The owner: "do all of them" (the plan's steps 1–5; store apps left out, no funds), then, seeing the
+phone landing: "it like to much information for the first time user to read… everywhere there is
+text that is not good".
+
+- **Link previews:** `public/og.jpg` (the whole site: "One account. Many apps. Real impact.") and
+  `public/og/<app>.jpg`, 1200 × 630, made from the landing's own hero (a scratch Playwright script,
+  device scale 1200/1440, nav links and buttons hidden). `src/lib/share-meta.ts` (`shareMeta(app,
+  description)`, `SITE_SHARE`; bump `V` when a picture changes) is used by new server layouts in
+  `(dashboard)/trace|relief|green|play`, `join`, and by `t/` and `b/` (Trace). Play room invites
+  (`/play/game?room=`) now show the Play picture. A server layout under the client `(dashboard)`
+  layout is fine: the router composes them.
+- **Icon count:** `Topbar` sets `navigator.setAppBadge(unread)` from the bell's count; the service
+  worker (`src/worker/index.ts`, `iconCount`) sets it to the notifications waiting in the tray after a
+  push and after a tap. Works on iPhone home-screen apps, Windows and Mac; Android shows its own dot.
+- **Install:** `src/components/pwa/InstallGuide.tsx` (a `Sheet`): perks, then the taps for iPhone /
+  iPad (no install button there), Android or a computer; the browser's own install when it offers
+  one. Used by the landing's "Get the app" (replaces the old toast) and the in-app banner's "Show me
+  how" on iPhone. `manifest.json` has seven screenshots (`public/screenshots/`, 5 phone, 2 wide) so
+  Android's install sheet shows a gallery.
+- **Share to UniVerse** (Android only; iPhone has no share target for web apps): manifest
+  `share_target` → `/app?title=&text=&url=`; `/app` keeps it (`src/lib/share-in.ts`,
+  sessionStorage, 2000 characters) and opens Messages; the chat list shows "Pick a chat to send it
+  to"; the chat picked gets it as its draft (`keepDraft`), nothing is sent by itself. Files are not
+  accepted (that needs a POST share handled in the service worker).
+- **Less text:** every hero is a headline plus one short line, two buttons, and quiet links ("Get
+  the app", "Scan a sample") with the note; the mono eyebrow shows from `sm` up. Every section's
+  paragraph, card, FAQ answer, CTA and the sign-in side were cut to one short line; `APPS[].impact`
+  too (the hub shows it). Footer: Play added, new line.
+- **Phone fixes found on the way:** the hero grid had no `grid-cols-1`, so the app tab row (wider
+  than a phone) stretched the column and the text and buttons ran off the right edge; the nav's
+  "Get started" broke onto two lines and the bar overflowed at 320–360 px (now nowrap, "Impact" from
+  400 px, the wordmark from 360 px, the link has an `aria-label`). Trace's four steps: the reveal
+  wrapper is now the list item (`Reveal role="listitem"`), so axe's list rules pass.
+- **Tested:** browser run on the dev server (install guide opens; icon count set to the demo
+  student's 30 unread; shared text reaches Messages, the banner shows, the picked chat's box holds
+  it); share tags read from the HTML of `/`, `/play/game?room=…`, `/t/demo`, `/green`, `/join`;
+  axe clean at 390/1280 (landing, guide, sign-in, the share banner light and dark); no element wider
+  than the screen at 320/360/390; unit tests (a new one for `sharedText`), typecheck, lint, lean.
+- **Traps:** the local database must have every migration (`npx wrangler d1 migrations apply
+  universe-db --local`), or demo sign-in fails with "no such column". In tests, the first
+  `role="listitem"` in Messages is the status bubble, not a chat.
+
+## M42a · "Try the live demo" taken off the sign-in page (31 Oct 2026)
+
+The owner: "remove try the demo option from the project I don't like it", then picked only the
+sign-in page's "Just looking? Try the live demo" (signed-in "Explore with sample data" and M43's
+"try it here" demos stay). M23 had already taken it off the landing.
+
+- Gone with it, all the code only the visitor demo used: `startVisitorDemo` (SampleMode.tsx), the
+  visitor flag (`isSampleVisitor`, `setVisitor`, `clearVisitorStorage` in `sample-mode.ts`), the
+  "Live demo" banner and its "Create a free account", the auth store keeping a made-up person in
+  sessionStorage (`store/auth.ts`), and the sample router's visitor answers (`/users/me`, the 401 for
+  pages without an example).
+- `endDemoForSignIn` stays (sign-in and sign-up): it now only ends sample mode before a real sign-in.
+- **Rule:** there is no way into the app without an account; sample mode is for signed-in people.
+
+## M43 · More of Relief, Green and Play on the landing, "try it here" demos, and photos shared in (31 Oct 2026)
+
+The owner's pick (M43 in AGENTS.md §4), plus "Sharing photos into UniVerse… please do this also"
+(left out of M42).
+
+- **Landing** (`src/components/landing/ImpactMore.tsx`, after each tab's first section in
+  `src/app/page.tsx`): three short sections per tab, a headline and a picture each. Relief: try the
+  help map, Ask → Matched → Delivered, "your area, never your door" (500 m, 30 days, never a
+  helper's location). Green: log one, streak / this week's challenge (`weeklyChallenge`) / badges
+  (`BADGES`), photo proof confirmed by a teammate. Play: a five-question round, rooms (a code, 8
+  seats), the four 3D worlds with their age ratings (`GAMES`).
+- **"Try it here"** (`src/components/landing/TryIt.tsx`, loaded with `dynamic()` only when its tab is
+  open): `QuizTry` (Quiz Clash's own `quizQuestion` and `quizPoints`), `GreenTry` (`co2For` and
+  `GREEN_FACTORS`' "how" line, nothing else invented), `ReliefTry` (the Relief map engine,
+  `WorldCanvas` with `interactive={false}` so it doesn't take the page's scroll; the list beside it is
+  how you pick, so it works by keyboard and screen reader). All in the browser; nothing is sent.
+- **Photos shared in** (Android): the manifest's `share_target` is now `POST /api/share-in`,
+  multipart, with `photos` (`image/*`). The service worker (`src/worker/index.ts`, `takeShare`)
+  answers it on the device: up to 10 photos (40 MB each) go into the cache `universe-share` as
+  `/__share/<i>` (name in `x-name`), and it redirects to `/app?title=&text=&url=&photos=<n>`. Without a
+  service worker yet, `src/app/api/share-in/route.ts` passes the text on (photos can't wait there).
+  `share-in.ts`: `pendingShare`, `givePhotos(chat)` when a chat is picked, `photosFor(chat)`,
+  `clearPhotos`. In the chat, `SharedPhotos.tsx` shows them above the box with Send (several go as
+  one album) and Not now; private and official chats say they can't take photos. Nothing is sent by
+  itself.
+- **Fixed on the way:** with Reduce Motion on, the landing's hero pictures drew differently on the
+  server and in the browser (React's hydration error). `useCalm()` (`landing/bits.tsx`) reads Reduce
+  Motion as off until the page has woken, then the real setting; `HeroScenes` uses it.
+- **Tested:** `scripts/checks/landing-try-ui.mjs` (each tab's demo, the share route's fallback, two
+  photos in the cache reaching a chat's box and "Not now" emptying it; axe and no sideways scroll at
+  390/1280, the chat light and dark); unit tests for the shared photos, typecheck, lint, lean.
+- **Traps:** the service worker's catch only works once it controls the installed app (a first share
+  right after installing may lose photos, the text still arrives). The landing tabs' sections only
+  exist while their tab is open: a test has to pick the tab (and the first tap can land before the
+  page is ready).
+
+## M44 · The landing's scroll story and live totals (31 Oct 2026)
+
+The owner's pick (M44 in AGENTS.md §4): "a scroll story at the top of the landing (the five pictures
+turning into each other) and a strip of live totals (rounded, counted once a day, no person
+findable)".
+
+- **Scroll story** (`src/components/landing/ScrollStory.tsx`, under the hero): one screen of scrolling
+  per app; the picture stays put (sticky) while the five `HeroScenes` pictures fade, shrink and slide
+  into each other (`useScroll` → `at` 0…4, transform and opacity only). Only the picture on screen and
+  its neighbours are mounted, and only while the story is near the screen (`useInView`). The dots jump
+  to an app; "Open <app>" picks that tab and goes back to the top. Reduce Motion (`useCalm`): fades
+  only.
+- **Live totals** (`LiveTotals.tsx`, between the hero and the story): `GET /api/impact/totals`
+  (public, cached an hour) → `siteTotals()` (`src/server/site-totals.ts`). Counted once a day by the
+  daily jobs' new `site-totals` step (one query for the five numbers, one upsert) into the new table
+  `site_totals` (migration **0186**), already rounded down (`roundDown` in `src/lib/site-totals.ts`:
+  two figures, tens at least); anything under 10 isn't sent, and with nothing to show the strip is
+  hidden. The owner's sample world never counts (emails `@sample.universe.test`, ids and brands
+  `smp…`). If the table is empty (before the first daily run) the first visit counts once.
+- **Rules for code that builds on it:** new totals go in `TOTAL_KEYS`, the query in
+  `countSiteTotals` (keep it one query) and a label in `LiveTotals`. Only whole-site sums, never
+  per place or per school. The landing asks with plain `fetch`, so sample mode doesn't need an answer
+  for it.
+- **Tested:** `scripts/checks/landing-story-ui.mjs` (the route's numbers are rounded and 10 or more;
+  the strip shows them; each dot brings its app's headline and picture; axe and no sideways scroll at
+  390/1280); unit tests for the rounding; typecheck, lint, lean.
+- **Traps:** after adding a table, a running dev server keeps the old Prisma client (`siteTotal` is
+  undefined) until it's restarted.
+
+## M45 · How the app feels: glides, celebrations, sounds, swipes, sheets, one vibration (31 Oct 2026)
+
+The owner's pick (M45 in AGENTS.md §4): "screens that glide into each other, short celebrations at
+milestones, optional sounds (off by default), swipe and long-press on rows, bottom sheets, the same
+vibration everywhere, empty screens with one next step".
+
+- **Glides:** pages already glide (push, back, tab, shared title: `src/lib/page-transition.ts`, built
+  without View Transitions on purpose, see its header). What was missing was swaps inside a page:
+  `glide(el, 'push' | 'pop')` there; Messages on phones now glides the list back in from a chat
+  (opening one already has the portal, `.chat-glide`). Settings already slid on phones.
+- **Celebrations** (`src/lib/celebrate.ts`, `celebrate(fromElement)`): a burst of sparks from the
+  button, under a second, plus the success vibration; transform and opacity only; nothing with Reduce
+  Motion; fewer sparks on low-end phones. Used when a Green badge is earned by the action just logged,
+  a Relief request is marked Delivered, and a first, on-time hand-in of an assignment. Play's new best
+  keeps its own confetti (`ScreenEffect`).
+- **Sounds** (`src/lib/sounds.ts`): off until Settings → Appearance → Sounds (`uv-sounds`). A soft
+  two-note chime for success, a low note for warning, made with Web Audio. They play from `haptic()`,
+  so the sound always matches the vibration; taps are silent; games pass `haptic(kind, false)`
+  (they have their own sounds and switch).
+- **One vibration:** `haptic('tap' | 'success' | 'warning')` everywhere (it follows Settings →
+  Vibration and gives iPhones their system tap). The scanners and the games used raw
+  `navigator.vibrate` (ignoring the switch); now they don't. Only the ringtones keep their own
+  patterns (an incoming call, the ringtone preview in Settings).
+- **Swipe and long press** (`src/components/ui/SwipeRow.tsx`): a finger drags the row; past 90 px
+  toward the end runs `start`, toward the start runs `end` (mirrored right-to-left), with the success
+  vibration. Mouse and keyboard keep the row's buttons. Notifications use it (snooze / read, as
+  before); Messages rows now swipe too (toward the end: read / unread; toward the start: archive). A
+  long press on a chat (or Android's held finger) opens its options.
+- **Bottom sheets on phones:** a chat's options and every `Menu` (the shared small menu, e.g.
+  Notifications' snooze) open as a `Sheet` from the bottom under 768 px (`useMedia`,
+  `src/lib/use-media.ts`), with taller rows; computers keep the small menus. `Popover` (toolbars,
+  colour grids) stays as it is.
+- **Empty screens:** most already had their next step beside them; added one where there was none:
+  the student directory and mentors search ("Clear search and filters", "Show everyone") and the
+  admin meals day ("Add menus").
+- **Also:** Settings → Appearance's choice buttons are now the house style (a black pill in light, a
+  white one in dark), not the old indigo-to-pink gradient (too faint behind white text).
+- **Tested:** `scripts/checks/feel-ui.mjs` as a phone with a finger (swipe flips read / unread and
+  back; a long press and the snooze menu open sheets; Sounds off by default, on and off; axe on the
+  sheets and Settings, light and dark) and at 1280 (the small menu stays); unit tests for sounds;
+  typecheck, lint, lean.
+- **Traps:** with a sheet open, run axe on the sheet only (the page behind is dimmed on purpose, so its
+  colours fail). In Settings on a phone, axe content scrolled under the see-through top bar also
+  "fails". CDP touch long-presses also send a tap (real Android doesn't): test long press with a
+  `contextmenu` event.
+
+## M46 · Offline reading, an iPhone launch screen, bar colours per theme, a low-end phone speed check (31 Oct 2026)
+
+The owner's pick (M46 in AGENTS.md §4): "today's timetable, courses and recent messages readable
+offline, an iPhone launch screen, bar colours per theme, and a speed check on a low-end phone".
+
+- **Offline reading** (`src/lib/offline-reads.ts`): API answers are never in the service worker's
+  cache (per person), so the last answer of a few reads is kept in the offline database
+  (`src/lib/outbox.ts`, new `reads` store, database version 4, wiped at sign-out with the rest):
+  `/api/core/timetable/my`, `/api/core/courses/my`, `/api/chat/conversations`, the student home's
+  overview (one per weekday, its key holds the day), the teacher dashboard, and the home cards
+  (`/api/home`, only on the day saved: it holds today's classes at their times). `api.get` and
+  `authedJson` save them on success and, when the request fails for want of a connection
+  (`isOfflineError`), answer with the copy instead: only the same signed-in person's, at most 14 days
+  old; never in sample mode or "view as". Once a day, when the app is idle (with the tab prefetch, not
+  in low-data mode), students and teachers refresh the three copies the offline page needs (at most
+  three small reads a day). Chats themselves were already kept (last 50 messages of 20 chats).
+- **The offline page** (`public/offline.html`, plain HTML, precached as the fallback): shown for any
+  page not saved on the device; now in the Karma look, following the app's theme, with **Today**
+  (classes for today's weekday from the saved timetable), **Messages** (latest 6 chats, unread dot,
+  private chats say only "Private chat") and **Courses**, each with "saved … ago"; everything written
+  with `textContent`. The offline bar says "You're offline · showing what's saved on this device".
+- **Bar colours per theme:** the browser bar (`theme-color`) followed the *device's* light/dark, not
+  the app's (dark by default), so a light phone showed a light bar over the dark app. Now one
+  `<meta name="theme-color">` in the root layout's `<head>`, set before paint by the theme script
+  (`BARS_SCRIPT` in `src/lib/theme.ts`) and on every change (`applyTheme`). On iPhone home-screen apps
+  the status bar style follows too: `black-translucent` (white text over the page) in dark, `default`
+  (black text) in light, where white text was unreadable over the light header. iOS may read this only
+  when the app starts: untested on a real iPhone.
+- **iPhone launch screen:** `scripts/gen-launch-screens.mjs` draws the icon on the dark page colour
+  for 13 iPhone sizes (SE to 17 Pro Max) and 9 iPad sizes, portrait, into `public/splash/` (~0.5 MB,
+  excluded from the service worker's install: iOS fetches them once, when the app is added) and writes
+  the links to `src/lib/launch-screens.gen.ts` (root layout). Dark only (the app's default).
+- **Speed check** (`scripts/speed.mjs`: 390 × 844 touch, CPU 4× slower, "Slow 4G", built site):
+  first paint 1.1–1.5 s on a first visit and 0.3–0.6 s on a return visit (good); the main content
+  (LCP) 3.9–5.8 s on a first visit to an app page (mostly ~400 kB of scripts at 1.6 Mb/s, then
+  starting React) and 1.7–2.1 s on a return visit. **Found and fixed:** the light river kept a budget
+  phone's processor 100% busy after every page had loaded (hiding it: 81% free). Its "go lighter"
+  step changed nothing on phones (already 30 frames a second) and its test for a struggling device
+  (frames over 52 ms apart) never fired: a saturated phone still managed one every ~42 ms. Now it
+  judges the average time between frames every 60 frames: over 24 ms lighter, over 34 ms (or 28 ms
+  once lighter) it holds still at that moment, redrawn only on scroll, like Reduce Motion; and in the
+  app it starts moving once the page has loaded (the landing's opening still pours in at once).
+  After: app pages leave the processor 74–78% free 8 s after opening (was 0%); fast devices keep the
+  moving river. **Not fixed (next ideas):** the landing page stays busy (15–20% free even with its
+  river still and CSS animations paused): its looping demos run in code while off screen (pause them
+  outside the viewport); first visits download ~400 kB of scripts before an app page can start.
+- **Rules for code that builds on it:** another read kept offline = one line in `KEPT`; if the offline
+  page should show it, add it to the page's list and to `refreshOfflineCopies` (keep that list small:
+  each is a request a day per person). Never keep a read that holds other people's private data
+  beyond what the person already sees. A new theme colour = `BAR` in `theme.ts`. New iPhone sizes: add
+  to `SCREENS` and run the script.
+- **Tested:** `scripts/checks/offline-ui.mjs` on the built site (copies kept after a visit; offline,
+  the home shows its saved data and a page never opened shows today, chats and courses; axe at
+  390/1280, light and dark; one bar colour per theme, changed by the theme button; launch screens
+  linked and served); unit tests for when a copy may be shown; typecheck, lint, lean.
+- **Traps:** the offline page and service worker exist only in a build (`pnpm local:build`), not in
+  `local:dev`. A page is saved for offline use only once the service worker controls it (the second
+  load after install). A test browser's "offline" (`setOffline`, `route`) doesn't reach the service
+  worker's own requests unless `PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1` (set in the check):
+  without it an "offline" test quietly passes online. A `<meta>` written in React and changed by a
+  script before the page wakes up is added a second time by React: tags a script changes are made
+  by the script.
+
+## M47 · The landing's demos pause off screen; light and sideways launch screens (31 Oct 2026)
+
+The owner, on M46's two leftovers: "do both of these"; then "don't build for the slow phone", so the
+part that held the whole landing still on a struggling phone was taken out again before committing
+(M46's own river rule stays).
+
+- **Off screen, still** (`Live` in `src/components/landing/bits.tsx`): wraps a landing part whose
+  demos loop (the hero picture, the scroll story, Bento's languages, the typing statement, the Trace
+  map section, Relief's "try it" map). An IntersectionObserver (200 px ahead) gives the part an
+  "away" context; `useCalm()` = Reduce Motion **or** away, so every loop that already honoured Reduce
+  Motion now also stops off screen; the scroll story's layers that aren't shown are away too. CSS
+  loops inside pause (`[data-away] *` in globals.css). Starts "on screen" so the server's HTML and the
+  first render agree.
+- **Trap (framer-motion):** taking a running `repeat: Infinity` animation's `animate` away does
+  **not** stop it (the hero ring kept spinning off screen). `still()` in `HeroScenes.tsx` gives each
+  scene a new `key` when it turns calm, so a fresh still copy replaces it. Use the same trick for any
+  new looping framer animation that must stop.
+- Removed on the way: `ReliefCard`, `GreenCard`, `PlayCard` (ImpactApps.tsx), unused since M43;
+  LiveMapShowcase and TryIt now use `useCalm` instead of framer's `useReducedMotion`.
+- **Launch screens:** `scripts/gen-launch-screens.mjs` now draws both themes (dark #0b0b0c, light
+  #ebeae6) and the iPads sideways too: 62 pictures (`public/splash/<theme>-<w>x<h>.png`, 1.4 MB, not
+  precached). `src/lib/launch-screens.gen.ts` holds only the size list; the head script (`BARS_SCRIPT`
+  in `theme.ts`) adds the 31 links in the chosen theme (no longer React-rendered: they change with the
+  theme, and React would disagree with its copy of the head), and `syncBars` swaps them when the theme
+  changes (`setAttribute`, so the hrefs stay short). iOS reads them when the app is added: someone who
+  changes theme later sees the old one until they add the app again. Untested on a real iPhone/iPad.
+- **Tested:** `scripts/checks/landing-pause-ui.mjs` (built site: the hero moves at the top, holds
+  still lower down with nothing off screen animating, moves again back at the top),
+  `scripts/checks/offline-ui.mjs` (launch links follow the theme and the theme button; three served),
+  typecheck, lint, unit tests, lean.
+- **Measured, not acted on (the owner said not to build for slow phones):** with the CPU 4× slower
+  the landing still keeps the processor busy at the top (the visible hero) and the page's always-on
+  CSS glows keep frames coming in the test browser (no graphics chip there; real phones move them on
+  the GPU). The other speed idea from M46 stays open: ~400 kB of scripts on a first visit.
+
+## M48 · Live cards: constellations and funnels of light on every home (31 Oct 2026)
+
+The owner sent a video of "Crew" (a staff dashboard by buildindex.dev): "add those animations and
+design in the system in all the places… professional and ultra smooth". Asked: keep UniVerse's own
+colours (Karma: pink, a little purple, white, warm gold) and add the video's moving pieces.
+
+- **The kit** (`src/components/live/`): `canvas.ts` (`useLiveCanvas`: one canvas in device pixels,
+  frames only while on screen and the tab is open, one settled frame with Reduce Motion, time starts
+  when first seen; `glow()` sprites drawn once and stamped, so no shadows or blur per frame;
+  `TONES`), `Constellation.tsx` (groups of glowing points in 3D around you, two orbits for depth, a
+  haze per group, lines with light pulses running out, labels in small pills, points fly out on
+  arrival, the pointer tilts the view and lights the nearest group), `Funnel.tsx` (a stream of 220
+  points through stages as wide as their counts, those that don't go on drift out and fade, a warm
+  light at the end; an even calm stream when every count is 0), `LiveCard.tsx` (the deep card,
+  near-black in both themes with the river's glows: live dot, title, picture, small numbers, a
+  `Ticker` line that changes every 3.8 s; `Countdown` with rolling digits), `HomeLive.tsx`.
+- **Where:** student home "Your constellation" (courses, work due; countdown to the next class),
+  teacher "Your classes, live" (students per class), admin "School constellation" (departments) as a
+  new home card `orbit` (`src/lib/home-layout.ts`; it can be hidden or moved like the others); the hub's
+  hero (every app around you); Relief "Help, moving" (open → being helped → helped); Trace "From label
+  to owner" (printed → scanned → claimed); Green and Play constellations (shown once the person has
+  actions or rounds). Everything is fed with data the page already loads: no new requests, so sample
+  mode needs nothing new.
+- **Rules for code that builds on it:** a new moving picture = a `draw(frame)` for `useLiveCanvas`;
+  stamp `glow(tone)` with `globalCompositeOperation = 'lighter'` rather than shadows; keep text in the
+  DOM where it matters (numbers, screen-reader lists) and only labels on the canvas. Colours only from
+  `TONES`.
+- **Tested:** `scripts/checks/live-ui.mjs` (each card draws, no sideways scroll, axe at 390/1280,
+  light and dark; student, teacher, admin, hub, Relief), typecheck, lint, unit tests, lean. Looked at
+  in the browser on a phone and a desktop.
+
+## M49 · More kinds of live pictures, a cascade between tabs, and the owner console gets them (31 Oct 2026)
+
+The owner: "add more of these animations and transitions like different kind in the system and did
+you apply all these in the owners portal" (they weren't: M48 covered the homes only).
+
+- **Three new pictures** (`src/components/live/`, same loop and glow sprites as M48):
+  `Heartbeat.tsx` (a live line that draws itself in, glides to new values over 700 ms when a refresh
+  brings them, a pulse of light runs along it every 3.5 s, a breathing light on the latest value, red
+  sparks for failures via `marks`); `Radar.tsx` (a beam sweeps every 4.2 s, blips light up as it
+  passes and fade, names show while bright; `ring` 0–2 from the middle); `PulseGrid.tsx` (rows of
+  small squares lit by value, popping in from the left, a band of light passing over; after the
+  video's "engagement pulse").
+- **Cascade between tabs** (`TabPanel` / `useCascade` in `src/components/ui/Glide.tsx`): a new tab's
+  cards rise in one after another (280 ms each, 45 ms apart, transform and opacity only, nothing with
+  Reduce Motion); cards that arrive in the next 1.5 s (data replacing a skeleton) join in. Every
+  `TabPanel` gets it: the owner console's sections, Calls, admin courses, analytics, early warning,
+  leaderboard, events. `useCascade(ref, key)` for any other section that swaps content.
+- **Owner console** (`console/live-cards.tsx`): Overview opens with "Who's here now" (the people
+  online on a radar, admins in the middle, teachers next; recent sign-ins in the ticker) and
+  "Everyone" (accounts by role as a constellation); the live board starts with "The app's heartbeat"
+  (requests per second with server failures as red sparks, and a pulse grid of views, messages and
+  sign-ins), following the board's 1 h / 1 day / 7 days choice.
+- **Elsewhere:** Trace's live card adds scans per day as a heartbeat (likely copies as red sparks),
+  Green's adds CO₂ per day, Relief's adds open needs on a radar (critical in the middle).
+- **Tested:** `scripts/checks/console-deck-ui.mjs` on the built site (now also: every live card on
+  Overview draws, and saves a picture of each), axe-clean with no sideways scroll on desktop and phone,
+  light and dark; the cascade seen on Calls (cards rising after a tab click); typecheck, lint, unit
+  tests, lean.
+
+## M50 · Trace in motion: a night city, journey lines, level gauges and a timetable (31 Oct 2026)
+
+The owner sent a second video ("Waypoint", a fleet and warehouse dashboard by buildindex.dev):
+"add these animations in the system… specially in the trace section you can add with more features…
+ultra smooth", and "add all these where ever you think can fit".
+
+- **New pieces** (`src/components/live/`): `CityView.tsx` (a night city seen from above at an angle:
+  blocks with lit windows drawn once per size, the warehouse hub glowing with rings, every batch a van
+  going from a factory at the edge through the hub to its shop; the way done glows pink, light streams
+  ahead to where it's going; names on vans on the move, any van's name when pointed at; pills step
+  aside instead of covering each other), `Journey.tsx` (a wave through the steps that draws itself in;
+  each step ticks over as the line reaches it, the current one pulses, a light runs along what's done;
+  step names and times in an ordered list; follows the theme or `dark`), `Tank.tsx` (a half bowl
+  whose liquid rises to the level with a sliding wavy top; plain boxes and a transform: an SVG clip
+  version didn't draw reliably), `Schedule.tsx` (bars from start to end growing in one after another,
+  hours or days along the top, at most about seven marks, a pink line for now). `STAGE_SHORT` in
+  `src/lib/trace.ts`: one word per stage for narrow places.
+- **Trace:** Tracking opens with "Fleet in motion" (the city, on the move / delivered / next arrival,
+  a ticker) and ends with "Journeys" (the timetable); an opened shipment shows its journey stage by
+  stage and how far along it is as a gauge. The product passport (`/t/<code>`) draws its journey
+  ending with "You". Radar gets "On the radar" (recalls and copies in the middle, grey market and warm
+  shipments next, blocks outside). The wallet gets "Your points, live" (brands as a constellation, the
+  total over time as a heartbeat). Each campaign shows its budget left as a gauge.
+- **Elsewhere:** a student's assignment shows Set → Handed in → Marked as a journey; Relief requests
+  show Asked → Someone's on it → Helped; Green's weekly challenge has a gauge; the student home's
+  "Today's classes" gets the timetable with now (only on days with classes).
+- All from data the pages already load: no new requests or database changes.
+- **Tested:** `scripts/checks/live-ui.mjs` (now also Trace tracking, radar and wallet in sample mode;
+  each card draws, axe at 390/1280, light and dark, no sideways scroll); looked at in the browser
+  (the city, the journey and gauge on a shipment, the timetable, the passport, Green); typecheck,
+  lint, unit tests, lean. Not run through a full build this time (no server changes).
+
+## M51 · A richer night city (31 Oct 2026)
+
+The owner, on M50's "Fleet in motion": "needs to be more detailed and graphics and animated and
+ultra smooth".
+
+- `src/components/live/CityView.tsx` rebuilt: two pictures drawn once per size (the ground: a
+  darker edge, streets with dashed lanes, a lamp at every crossing; the buildings: towers taller
+  toward the middle, clusters of four, pairs and low squares, shaded faces, a bright roof edge,
+  windows per floor in warm gold and a few cool, antennas, pink neon strips), and between and over
+  them each frame: cars' head and tail lights along every street (hidden behind buildings in front),
+  each van as a small lit box facing its way with headlights and tail lights, a glowing trail behind
+  and dashes running ahead, then the buildings, then a faint see-through line and light for every
+  van (so none is lost behind a tower), windows breathing, rooftop lights blinking, neon pulsing, the
+  hub's hexagon, turning ring, rings going out and beam, beams over the shops (violet on the way, gold
+  delivered, with a gold tick), and name pills with a leader line for vans on the move. The city
+  lights up outward from the hub when first seen. 10 blocks a side (8 on phones); on narrow screens
+  the far corners run off the sides so the city fills the card.
+- **Tested:** `scripts/checks/live-ui.mjs` on Trace tracking (draws, axe, no sideways scroll, 390 and
+  1280, light and dark); looked at on a phone and a desktop; typecheck, lint, unit tests, lean.
+
+## M52 · The "Globynk" colours everywhere, a dotted planet and 3D wallet cards (31 Oct 2026)
+
+The owner sent two videos ("Orbit": a dotted planet, cohort cubes, a light funnel; "Ledgerline": a
+3D bank card that sways and tilts) and the "Globynk" picture (Aqua Jade #74FFED, Midnight Abyss
+#171F44, Baby Pink #FE81D1): "put the animation where you think will be suited… ultra realistic and
+make website colour like this… for whole app and website".
+
+- **Colours** (replaces M34's warm graphite; the squircle cards and pills stay): a one-off script
+  mapped every hard-coded Karma colour in `src` (hex and rgb, ~1,500 places) to its navy / pink /
+  aqua twin; then by hand in `globals.css`: indigo / violet / purple are a navy scale (600 = #2b3568,
+  900 = #171f44), zinc cool greys, pink is Baby Pink at 500 (600 #c13a92 and deeper hold white text),
+  fuchsia an orchid, and a new `aqua-*` scale (300 = Aqua Jade, 700 reads on white). Tokens in the
+  "M34 → M52" part: dark page #171f44 with Aqua Jade rising from the bottom (`.ambient-bg`, kept low
+  enough for grey text to read at 4.5:1), cards #1d2650; light page #e9eef8 with the same glows; the
+  side menu deep navy with pink at the top and aqua at the bottom; **`.btn-primary` is a Baby Pink
+  pill with navy text in both themes** (7:1); the landing's `primary` and the top bar's "Get started"
+  too. Focus rings are aqua in dark mode. The frosted headline cards: dusk is navy sinking into deep
+  aqua, gold (name kept) a pale aqua. The live cards, the hub / Trace hero, the river of light (pink
+  with a few aqua strands), the app icon (navy, Baby Pink U), the launch screens (re-made with
+  `scripts/gen-launch-screens.mjs`), the bar colours, `manifest.json`, `offline.html` and the logo.
+- **Picture tones renamed** (`src/components/live/canvas.ts`): `TONES` is now pink, blue (periwinkle),
+  aqua, white; old `violet` → `blue`, old `gold` → `aqua` (Tank's `gold` too).
+- **The planet** (`src/components/live/Planet.tsx`, canvas, `useLiveCanvas`): a jittered Fibonacci
+  lattice of 5,000–14,000 points, all land points kept and every third sea point, land read from the
+  Trace maps' Natural Earth outlines (`engine.ts`, loaded lazily, drawn once into a 512 px Mercator
+  mask); lit from the top left, the far side faintly through, an aqua atmosphere and body drawn once
+  per size, a random net, a glint, ripples landing every 0.9 s, Baby Pink arcs (great circles lifted
+  by distance, hidden behind the globe, a light running along) between labelled places (pills on
+  the canvas, a list for screen readers). The pointer leans it. **Where:** the landing's new
+  "One account. One planet." section after the hero (`src/components/landing/WorldSection.tsx`:
+  navy into aqua like the picture, a pink "Start free", two frosted notes) and the hub's hero (the
+  five apps with their totals; replaced the M48 constellation there).
+- **The wallet cards** (`src/components/hub/WalletCards.tsx`, at the top of the Impact Wallet on
+  /hub): four cards (Impact with the four apps' numbers as embossed groups, Trace points, CO₂ saved,
+  people helped) in navy, pink, aqua and periwinkle finishes with a metal chip, a hologram that turns
+  colour as the card turns, a light that slides over it and a shadow that moves the other way; the
+  stack sways slowly (the video's `-10 + sin(t/2300)·9`, `8 + cos(t/3100)·4`) and leans to the pointer
+  or a finger; thumbnails bring a card to the front; the panel beside it says the same in text. Time
+  runs only while on screen; Reduce Motion holds it at an angle. Styles: `.wcard*` in `globals.css`.
+- `useLiveCanvas(draw, wake)`: a changed `wake` draws one more frame even when still (the planet's
+  land arriving with Reduce Motion on).
+- **Rules for code that builds on it:** no new hard-coded graphite or hot pink: navy from the
+  indigo / zinc classes or `#171f44`, pink from `pink-*` (text on Baby Pink is navy, never white;
+  white text needs pink-600 or deeper), aqua from `aqua-*` (as text on light backgrounds only
+  `aqua-700`). Picture colours only from `TONES`.
+- Left out on purpose: the cohort cubes and the funnel's glass bars from the "Orbit" video (the M48
+  funnel already streams light through stages); the link-preview pictures (`public/og*`) keep their
+  old colours (they're photos of the screens).
+- **Tested:** `pnpm check` (types, lint, 1,362 unit tests, lean); `scripts/checks/live-ui.mjs` (now
+  also the wallet cards; every live card draws, axe-clean, no sideways scroll, 390 / 1280, light and
+  dark); the new `scripts/checks/world-ui.mjs` (the landing's planet draws; the landing and sign-in
+  pages axe-clean as whole pages at 390 / 1280). Looked at in the browser: the landing, the hub's
+  planet and cards (phone and desktop, light and dark), student home, Trace's city. Not run through a
+  full build (no server changes).
+
+## M53 · Light mode in the owner's second palette (31 Oct 2026)
+
+The owner sent a second palette picture ("Visualize your mind in motion": Marshmallow White, Galactic
+Violet, Bubblegum Pink): "for the light mode use this colours". Dark mode keeps M52 (navy, aqua, Baby
+Pink). The video's labels didn't match its swatches (#105BFF is a blue, #FE8500 an orange); the
+colours actually shown were measured and used: **violet #533FF6, pink #EC74CE**, white #F0F0F0.
+
+- **How:** `html:not(.dark)` in `globals.css` re-points the Tailwind scales for light mode only:
+  indigo / violet / purple → a Galactic Violet scale (600 = #533ff6, 700 = #3f2bd6 for text), pink →
+  Bubblegum (500 = #ec74ce; 600 #c23d98 and deeper hold white text), fuchsia → an orchid between them,
+  zinc / slate / gray → neutral greys. `.dark, .on-dark` puts the navy scales back for dark parts of a
+  light page (the side menu, live cards, the landing). The light tokens (`:root` in the "M34 → M52"
+  part): page #f0f0f0 with pink low on the left and violet low on the right (`.ambient-bg`), white
+  cards with a violet-tinted shadow, ink #141320, black selected pills (like the picture's "Let's
+  Connect"), violet focus ring and tint. **`.btn-primary` in light mode is Bubblegum Pink with ink
+  text** (white text on that pink would be 2.6:1). Frosts: dusk is the picture's pink-into-violet
+  band (deep enough for white text), gold a lavender frost. The side menu, the hub / Trace hero and
+  the live cards are violet-black with pink and violet glowing up from below in light mode. The light
+  river is pink and violet. Bar colour, launch screens, offline page and recovery screen use #f0f0f0.
+- **Rules for code that builds on it:** a light-only colour goes in `html:not(.dark)` (or a plain
+  class with a `dark:` partner); `aqua-*` is dark mode's colour: in light mode use `violet-*` (e.g.
+  `to-violet-500 dark:to-aqua-400`). Text on Bubblegum or Baby Pink is ink or navy, never white.
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); `scripts/checks/live-ui.mjs`
+  (every live card and the wallet cards, 390 / 1280, light and dark: all pass); whole-page axe in light
+  mode on the student, teacher and admin homes, hub, Green, Relief, Play and Trace at 1280 and four of
+  them at 390: no serious problems. Looked at the student home and hub in light and dark.
+
+## M54 · More Aqua Jade in dark mode (31 Oct 2026)
+
+The owner, on M52: "there is way less aqua jade colour in there". Pink had been every accent; aqua was
+only the faint glow.
+
+- **Now (dark mode only; light mode keeps M53's violet and pink):** pink is the action (the main
+  button, live dots, arcs); **Aqua Jade is everything chosen, pointed at or highlighted.** Selected pills
+  and the round arrow buttons are Aqua Jade with navy text (`--pill-on-bg`); `indigo / violet / purple`
+  200 and 300 are aqua in `html.dark` (so the ~350 `dark:text-indigo-300` accents and the side menu's
+  icons read aqua); accent text with no dark colour of its own and the `bg-indigo-500/10…` icon tints
+  are aqua; outlined buttons have an aqua edge; the side menu's chosen entry an aqua edge and glow; the
+  tab thumb glows aqua; chart lines and bars are aqua (`.ins-cell`), pink stays for what matters;
+  hovered cards get an aqua edge and every card a faint aqua top line; links (`--tint-text`) and
+  badges are aqua; the river is half aqua; more aqua rises in the page's bottom corners; the landing's
+  section labels have aqua dots. All in the "M54" part at the end of `globals.css` (scoped to
+  `html.dark`, so dark parts of a light page keep navy).
+- **Rules for code that builds on it:** in dark mode, an accent is aqua (`dark:text-indigo-300` or
+  `aqua-*`), an action is pink (`.btn-primary`). Don't put white text on `indigo-500` in dark mode
+  expecting aqua: 500 and deeper stay navy so white text keeps reading.
+- Also fixed: Play's "UniVerse Play" label in dark mode was 4.4:1 (`dark:text-fuchsia-200` now).
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); whole-page axe in dark mode
+  on the student, teacher and admin homes, hub, Green, Relief, Play and Trace at 1280, and four of them
+  at 390: no serious problems. Looked at the student home and hub.
+
+## M55 · The "Globynk" picture everywhere in dark mode (31 Oct 2026)
+
+The owner sent the "Globynk" hero again: "make it like this exactly all over the project", then
+"push and merge once done".
+
+- **The page** (`.dark .ambient-bg`): fixed behind every page, Midnight Abyss at the top sinking
+  through ocean blue into deep Aqua Jade at the bottom (`#171d41 → #1b2449 → #213a5f → #26566e →
+  #2f7680`, an aqua bloom below the middle). The picture's own bottom is lighter, but text over it
+  couldn't be read: the lightest point here keeps white text at 4.5:1. Dark grey text is a step lighter
+  (`zinc-400/500/600` #c2c9e3 / #b0b8d8 / #a1aacd) so it holds lower down the fade.
+- **Glass:** dark cards are 80% navy (`--card-bg`) so the fade shows through; on big screens they also
+  blur what's behind them (`backdrop-filter`, only `(min-width: 1024px) and (hover: hover)`, plain on
+  phones for speed). The side menu is see-through navy glass over the same fade.
+- **The planet** (`Planet.tsx`) is now the picture's network globe: about one lattice point in nine is
+  a knot of a net, each joined to its four nearest (deduplicated), drawn faint through the far side and
+  brighter toward you, with pink sparks at a few knots, a glowing teal inside and a stronger
+  atmosphere; the land is a soft texture underneath.
+- **Website:** the "One account. One planet." section uses the picture's exact colours down to a
+  bright aqua horizon, then fades back to navy; its notes are navy glass (`.world-glass`) dark enough
+  for white text on the brightest part. The first screen and the sign-in pages have an aqua horizon at
+  the foot (`.horizon`). The landing's scene tiles and a few game and chat darks that were still warm
+  graphite are navy now.
+- Light mode is unchanged (M53, the owner's choice).
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); `scripts/checks/world-ui.mjs`
+  (the landing's planet draws; landing and sign-in axe-clean at 390 / 1280); whole-page axe in dark mode
+  on the student, teacher and admin homes, hub, Green, Relief, Play and Trace at 1280 and four of them at
+  390, and light mode on two: no serious problems. Looked at the hub's globe, the landing section, the
+  student home and the sign-in page.

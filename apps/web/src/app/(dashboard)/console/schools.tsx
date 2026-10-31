@@ -196,7 +196,7 @@ function GrowthCharts({ growth, error, retry }: { growth?: Growth; error: boolea
                   {growth.cohorts.map((_, k) => (
                     <td key={k} className="p-0.5">
                       {k < c.kept.length && c.size > 0 ? (
-                        <span className="block rounded px-1 py-1 text-center text-zinc-900 dark:text-white" style={{ background: `rgba(42,41,39,${0.08 + (c.kept[k] / 100) * 0.6})` }}>{c.kept[k]} %</span>
+                        <span className="block rounded px-1 py-1 text-center text-zinc-900 dark:text-white" style={{ background: `rgba(43,53,104,${0.08 + (c.kept[k] / 100) * 0.6})` }}>{c.kept[k]} %</span>
                       ) : null}
                     </td>
                   ))}

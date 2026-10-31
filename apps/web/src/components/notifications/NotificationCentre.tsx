@@ -6,11 +6,12 @@ import useSWRInfinite from 'swr/infinite';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { removeWithUndo } from '@/lib/undo';
-import { AnimatePresence, m as motion, type PanInfo } from 'framer-motion';
+import { AnimatePresence, m as motion } from 'framer-motion';
 import { formatDistanceToNowStrict, isToday, isYesterday } from 'date-fns';
 import { AtSign, Bell, BellOff, CalendarClock, Check, CheckCheck, Clock, GraduationCap, HandHeart, Loader2, MessageSquare, School, Settings2, Trash2, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Menu } from '@/components/ui/Menu';
+import { SwipeRow } from '@/components/ui/SwipeRow';
 import { authedJson } from '@/lib/authed-fetch';
 import { useAuthStore } from '@/store/auth';
 import { NOTE_GROUPS, type NoteGroupId } from '@/lib/notify-prefs';
@@ -191,19 +192,12 @@ export function NotificationCentre() {
 
 function Row({ n, onOpen, onAct }: { n: Item; onOpen: () => void; onAct: (a: 'read' | 'unread' | 'snooze' | 'delete', ids: string[], until?: Date) => Promise<void> }) {
   const Icon = ICON[n.group];
-  // Swipe on phones: left marks it read, right snoozes it for an hour.
-  const onDragEnd = (_: unknown, info: PanInfo) => {
-    if (info.offset.x < -90) { haptic('success'); void onAct(n.read ? 'unread' : 'read', [n.id]); }
-    else if (info.offset.x > 90) { haptic('success'); void onAct('snooze', [n.id], new Date(Date.now() + 3_600_000)); }
-  };
+  // Swipe on phones: toward the start marks it read, toward the end snoozes it for an hour.
   return (
-    <div className="relative rounded-2xl overflow-hidden">
-      <div aria-hidden className="absolute inset-0 flex items-center justify-between px-4 text-xs font-semibold">
-        <span className="text-amber-700 dark:text-amber-300 inline-flex items-center gap-1"><Clock className="w-4 h-4" />Snooze</span>
-        <span className="text-indigo-700 dark:text-indigo-300 inline-flex items-center gap-1">{n.read ? 'Unread' : 'Read'}<Check className="w-4 h-4" /></span>
-      </div>
-      <motion.div drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.5} dragSnapToOrigin onDragEnd={onDragEnd}
-        className={cn('relative flex items-start gap-3 p-3 rounded-2xl border bg-white dark:bg-[#141416] touch-pan-y', n.read ? 'border-zinc-200/70 dark:border-white/[0.06]' : 'border-indigo-500/30')}>
+    <SwipeRow
+      start={{ label: 'Snooze', icon: Clock, tone: 'text-amber-700 dark:text-amber-300', run: () => void onAct('snooze', [n.id], new Date(Date.now() + 3_600_000)) }}
+      end={{ label: n.read ? 'Unread' : 'Read', icon: Check, tone: 'text-indigo-700 dark:text-indigo-300', run: () => void onAct(n.read ? 'unread' : 'read', [n.id]) }}
+      className={cn('flex items-start gap-3 p-3 rounded-2xl border bg-white dark:bg-[#1d2650]', n.read ? 'border-zinc-200/70 dark:border-white/[0.06]' : 'border-indigo-500/30')}>
         <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', TONE[n.group])}><Icon className="w-4 h-4" /></span>
         <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-start">
           <span className="flex items-baseline gap-2">
@@ -218,8 +212,7 @@ function Row({ n, onOpen, onAct }: { n: Item; onOpen: () => void; onAct: (a: 're
           <Menu label={`Snooze “${n.title}”`} title="Snooze" button={<Clock className="w-4 h-4" />} items={snoozeTimes().map((s) => ({ label: s.label, onSelect: () => void onAct('snooze', [n.id], s.until) }))} />
           <button type="button" onClick={() => void onAct('delete', [n.id])} aria-label={`Remove “${n.title}”`} title="Remove" className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300"><Trash2 className="w-4 h-4" /></button>
         </div>
-      </motion.div>
-    </div>
+    </SwipeRow>
   );
 }
 

@@ -46,7 +46,7 @@ function AgeDialog({ game, blocked, onYes, onNo }: { game: GameId; blocked: bool
   return (
     <motion.div className="fixed inset-0 z-[170] grid place-items-center bg-black/70 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onNo}>
       <motion.div role="alertdialog" aria-modal="true" aria-labelledby="age-title" aria-describedby="age-text" initial={{ opacity: 0, scale: 0.94, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }} transition={spring.snappy}
-        onClick={(e) => e.stopPropagation()} className="dark w-full max-w-sm rounded-3xl bg-[#151517] p-6 text-center ring-1 ring-white/10">
+        onClick={(e) => e.stopPropagation()} className="dark w-full max-w-sm rounded-3xl bg-[#1d2650] p-6 text-center ring-1 ring-white/10">
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-red-600 text-xl font-black text-white">{info.age}+</span>
         <h2 id="age-title" className="mt-4 text-xl font-bold text-white">{info.name} is rated {info.age}+</h2>
         <p id="age-text" className="mt-2 text-sm text-zinc-300">

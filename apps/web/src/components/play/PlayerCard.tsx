@@ -49,7 +49,7 @@ export function PlayerCard({ xp }: { xp: number }) {
               const locked = c.level > level, on = look.color === c.id;
               return (
                 <button key={c.id} type="button" role="radio" aria-checked={on} disabled={locked} onClick={() => pick({ ...look, color: c.id })} title={locked ? `Unlocks at level ${c.level}` : c.id}
-                  className={cn('relative grid h-9 w-9 place-items-center rounded-full ring-2 transition-transform duration-150 active:scale-95', on ? 'ring-pink-500 ring-offset-2 ring-offset-white dark:ring-offset-[#151517]' : 'ring-black/10 dark:ring-white/15', locked && 'opacity-45')}
+                  className={cn('relative grid h-9 w-9 place-items-center rounded-full ring-2 transition-transform duration-150 active:scale-95', on ? 'ring-pink-500 ring-offset-2 ring-offset-white dark:ring-offset-[#1d2650]' : 'ring-black/10 dark:ring-white/15', locked && 'opacity-45')}
                   style={{ background: c.hex }}>
                   <span className="sr-only">{c.id}{locked ? `, unlocks at level ${c.level}` : ''}</span>
                   {locked && <Lock className="h-3.5 w-3.5 text-white drop-shadow" aria-hidden />}
@@ -84,9 +84,9 @@ function Blocky({ color, hat }: { color: string; hat: LookHat }) {
       <rect x="27" y="12" width="26" height="26" rx="4" fill="#f5c9a0" />
       <rect x="33" y="20" width="4" height="6" fill="#111" /><rect x="43" y="20" width="4" height="6" fill="#111" />
       <path d="M34 30 Q40 34 46 30" stroke="#111" strokeWidth="2" fill="none" strokeLinecap="round" />
-      {hat === 'cap' && <><rect x="25" y="6" width="30" height="9" rx="3" fill="#ec4899" /><rect x="45" y="12" width="16" height="4" rx="2" fill="#be185d" /></>}
+      {hat === 'cap' && <><rect x="25" y="6" width="30" height="9" rx="3" fill="#fe81d1" /><rect x="45" y="12" width="16" height="4" rx="2" fill="#a32c7b" /></>}
       {hat === 'antenna' && <><line x1="40" y1="12" x2="40" y2="1" stroke="#94a3b8" strokeWidth="2" /><circle cx="40" cy="2" r="3" fill="#22d3ee" /></>}
-      {hat === 'tophat' && <><rect x="29" y="-6" width="22" height="16" fill="#111827" /><rect x="24" y="9" width="32" height="4" fill="#111827" /><rect x="29" y="5" width="22" height="3" fill="#ec4899" /></>}
+      {hat === 'tophat' && <><rect x="29" y="-6" width="22" height="16" fill="#111827" /><rect x="24" y="9" width="32" height="4" fill="#111827" /><rect x="29" y="5" width="22" height="3" fill="#fe81d1" /></>}
       {hat === 'crown' && <path d="M27 12 L27 2 L33 8 L40 0 L47 8 L53 2 L53 12 Z" fill="#facc15" />}
       {hat === 'halo' && <ellipse cx="40" cy="4" rx="14" ry="3.5" fill="none" stroke="#fde68a" strokeWidth="3" />}
       {hat === 'horns' && <><path d="M29 13 Q22 4 26 0 Q28 8 33 11 Z" fill="#dc2626" /><path d="M51 13 Q58 4 54 0 Q52 8 47 11 Z" fill="#dc2626" /></>}

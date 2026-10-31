@@ -71,10 +71,10 @@ export function HudChip({ label, value, tone = 'white' }: { label: string; value
 export function SkillRing({ label, keyName, charge, active }: { label: string; keyName: string; charge: number; active?: boolean }) {
   const C = 2 * Math.PI * 20, ready = charge >= 1;
   return (
-    <div className={`flex items-center gap-2 rounded-2xl bg-black/55 px-3 py-2 ring-1 transition-shadow duration-300 ${ready || active ? 'ring-pink-400/70 shadow-[0_0_24px_rgba(236,72,153,0.5)]' : 'ring-white/15'}`}>
+    <div className={`flex items-center gap-2 rounded-2xl bg-black/55 px-3 py-2 ring-1 transition-shadow duration-300 ${ready || active ? 'ring-pink-400/70 shadow-[0_0_24px_rgba(254,129,209,0.5)]' : 'ring-white/15'}`}>
       <svg viewBox="0 0 48 48" className="h-10 w-10 -rotate-90" aria-hidden>
         <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="5" />
-        <circle cx="24" cy="24" r="20" fill="none" stroke={active ? '#fbbf24' : '#ec4899'} strokeWidth="5" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - Math.min(1, charge))} />
+        <circle cx="24" cy="24" r="20" fill="none" stroke={active ? '#fbbf24' : '#fe81d1'} strokeWidth="5" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - Math.min(1, charge))} />
       </svg>
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-300">{label}</p>

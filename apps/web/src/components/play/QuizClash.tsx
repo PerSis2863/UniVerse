@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { Burst } from './fx';
 import type { GameProps } from './game-props';
+import { haptic } from '@/lib/haptics';
 
 // Quiz Clash (src/lib/play/quiz.ts): ten seconds a question, four answers (tap, or keys 1–4 / A–D).
 // Three power-ups once a round (Q 50:50, W +5 seconds, E double points), the last 15 seconds are the
@@ -19,8 +20,8 @@ const PER_Q = QUIZ_SECONDS_PER_QUESTION * 1000;
 const REVEAL_MS = 1050;
 const TOPIC: Record<string, { icon: LucideIcon; tint: string }> = {
   Science: { icon: Atom, tint: '#38bdf8' }, Geography: { icon: Globe2, tint: '#34d399' }, Climate: { icon: Leaf, tint: '#a3e635' },
-  Technology: { icon: Cpu, tint: '#c084fc' }, Culture: { icon: Palette, tint: '#fbbf24' }, Maths: { icon: Calculator, tint: '#f472b6' },
-  'Quick maths': { icon: Divide, tint: '#f472b6' },
+  Technology: { icon: Cpu, tint: '#a9b4ff' }, Culture: { icon: Palette, tint: '#fbbf24' }, Maths: { icon: Calculator, tint: '#ff9fdc' },
+  'Quick maths': { icon: Divide, tint: '#ff9fdc' },
 };
 const POWERS: { id: QuizPower; key: string; label: string; icon: LucideIcon }[] = [
   { id: 'half', key: 'Q', label: '50:50', icon: Divide }, { id: 'time', key: 'W', label: '+5 s', icon: Clock3 }, { id: 'double', key: 'E', label: 'Double', icon: Sparkles },
@@ -94,11 +95,11 @@ export function QuizClash({ seed, startsAt, endsAt, clock, onProgress, onStats }
     if (!answered) return;
     if (s.gained) {
       sfx('right', s.streak);
-      navigator.vibrate?.(12);
+      haptic('tap', false);
       if (CALLS[s.streak]) { announce(CALLS[s.streak], 'pink'); sfx('combo', s.streak); }
     } else {
       sfx('wrong'); shake(0.5);
-      navigator.vibrate?.([30, 40, 30]);
+      haptic('warning', false);
     }
   }, [answered, s.gained, s.streak, sfx, announce, shake]);
 
@@ -163,7 +164,7 @@ export function QuizClash({ seed, startsAt, endsAt, clock, onProgress, onStats }
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={s.i} initial={{ opacity: 0, x: calm ? 0 : 40, rotate: calm ? 0 : 1.5 }} animate={{ opacity: 1, x: 0, rotate: 0 }} exit={{ opacity: 0, x: calm ? 0 : -30, transition: { duration: 0.14, ease: 'easeIn' } }} transition={spring.smooth} className="mt-6">
           <div className={cn('relative overflow-hidden rounded-[2rem] p-6 ring-1 sm:p-8', boss ? 'play-boss ring-amber-300/70' : 'ring-white/10', lightning && 'play-lightning')}
-            style={{ background: `radial-gradient(120% 120% at 0% 0%, ${topic.tint}26, transparent 55%), #121214` }}>
+            style={{ background: `radial-gradient(120% 120% at 0% 0%, ${topic.tint}26, transparent 55%), #131a3d` }}>
             <div className="flex items-center gap-3">
               <span className="karma-icon" style={{ color: topic.tint }}><Icon className="w-5 h-5" strokeWidth={1.6} aria-hidden /></span>
               <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: topic.tint }}>{q.topic}</p>

@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { Burst } from './fx';
 import type { GameProps } from './game-props';
+import { haptic } from '@/lib/haptics';
 
 // Spot the Fake (src/lib/play/fakes.ts): product passports for one product, one is a copy. Read the
 // journey, scans, seal, brand, dates and price, then tap the copy (keys 1–6). Cards are dealt onto
@@ -50,8 +51,8 @@ function MiniCode({ serial }: { serial: string }) {
   }
   return (
     <svg viewBox="0 0 7 7" className="h-9 w-9 shrink-0 rounded-[3px] bg-white p-[2px]" aria-hidden>
-      {[[0, 0], [5, 0], [0, 5]].map(([x, y]) => <rect key={`${x}${y}`} x={x} y={y} width="2" height="2" fill="#0b0b0c" />)}
-      {cells.map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="#0b0b0c" />)}
+      {[[0, 0], [5, 0], [0, 5]].map(([x, y]) => <rect key={`${x}${y}`} x={x} y={y} width="2" height="2" fill="#171f44" />)}
+      {cells.map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="#171f44" />)}
     </svg>
   );
 }
@@ -131,7 +132,7 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
       else if (s.streak >= 3 && s.streak % 2 === 1) announce(`${s.streak} in a row!`, 'pink');
     } else {
       sfx('wrong'); shake(0.8);
-      navigator.vibrate?.([30, 40, 30]);
+      haptic('warning', false);
       if (s.lives === 1) announce('Last life!', 'bad');
     }
   }, [answered, s.gained, s.streak, s.caught, s.lives, sfx, announce, shake]);
@@ -175,7 +176,7 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
           <span className="flex items-center gap-1" role="img" aria-label={`${s.lives} of ${FAKE_LIVES} lives left`}>
             {Array.from({ length: FAKE_LIVES }, (_, k) => (
               <motion.span key={k} animate={k < s.lives ? { scale: 1, opacity: 1, rotate: 0, y: 0 } : { scale: 0.8, opacity: 0.25, rotate: calm ? 0 : -25, y: calm ? 0 : 4 }} transition={spring.bouncy}>
-                <Heart className={cn('w-6 h-6', k < s.lives ? 'fill-pink-500 text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]' : 'text-zinc-500')} aria-hidden />
+                <Heart className={cn('w-6 h-6', k < s.lives ? 'fill-pink-500 text-pink-500 drop-shadow-[0_0_8px_rgba(254,129,209,0.6)]' : 'text-zinc-500')} aria-hidden />
               </motion.span>
             ))}
           </span>
@@ -195,9 +196,9 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
             <motion.button key={`${s.i}-${k}`} type="button" disabled={answered || cleared} onClick={() => pick(k)}
               initial={{ opacity: 0, y: calm ? 0 : 30, rotate: calm ? 0 : (k % 2 ? 3 : -3), scale: calm ? 1 : 0.94 }} animate={{ opacity: cleared && !answered ? 0.45 : answered && !isFake && !wrongPick ? 0.75 : 1, y: 0, rotate: 0, scale: 1 }}
               transition={{ ...spring.smooth, delay: answered ? 0 : 0.06 * k }}
-              className={cn('group relative min-h-[15.5rem] rounded-[1.5rem] text-start outline-offset-4 transition-shadow duration-150', !answered && 'hover:shadow-[0_18px_40px_-18px_rgba(236,72,153,0.55)]')}>
+              className={cn('group relative min-h-[15.5rem] rounded-[1.5rem] text-start outline-offset-4 transition-shadow duration-150', !answered && 'hover:shadow-[0_18px_40px_-18px_rgba(254,129,209,0.55)]')}>
               <motion.span className="absolute inset-0 block" style={{ transformStyle: 'preserve-3d' }} animate={{ rotateY: isFake && !calm ? 180 : 0 }} transition={{ type: 'spring', visualDuration: 0.6, bounce: 0.18 }}>
-                <span className={cn('absolute inset-0 block overflow-hidden rounded-[1.5rem] bg-[#141416] p-4 ring-1 [backface-visibility:hidden]',
+                <span className={cn('absolute inset-0 block overflow-hidden rounded-[1.5rem] bg-[#1d2650] p-4 ring-1 [backface-visibility:hidden]',
                   wrongPick ? 'play-shake ring-amber-400' : answered ? 'ring-emerald-400/40' : 'ring-white/10 group-hover:ring-pink-400/60')}>
                   <span className="play-scanline pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-pink-400/15 to-transparent" aria-hidden />
                   <Front c={c} k={k} answered={answered} />
@@ -213,7 +214,7 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
                   </AnimatePresence>
                 </span>
                 {/* The back: what gave the copy away. */}
-                <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-red-950 to-[#1a0b10] p-5 text-center ring-2 ring-red-500 [backface-visibility:hidden] [transform:rotateY(180deg)]" aria-hidden>
+                <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-red-950 to-[#161033] p-5 text-center ring-2 ring-red-500 [backface-visibility:hidden] [transform:rotateY(180deg)]" aria-hidden>
                   {isFake && <Burst color="#f87171" />}
                   <span className="-rotate-12 rounded-lg border-[3px] border-red-400 px-3 py-1 text-2xl font-black tracking-[0.25em] text-red-300 shadow-[0_0_30px_rgba(248,113,113,0.35)]">COPY</span>
                   <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-100"><reason.icon className="w-4 h-4" />{reason.label}</span>

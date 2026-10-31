@@ -15,7 +15,7 @@ import type { V } from '@/lib/sheet/values';
 // charts). Like Excel: series go along the shorter side of the data; a first row of text names the
 // series (or the points, when series run along rows) and a first column of text names the points.
 
-const COLORS = ['#2a2927', '#0891b2', '#16a34a', '#ea580c', '#db2777', '#2a2927', '#ca8a04', '#475569'];
+const COLORS = ['#2b3568', '#0891b2', '#16a34a', '#ea580c', '#c13a92', '#2b3568', '#ca8a04', '#475569'];
 
 export interface ChartData { labels: string[]; series: { name: string; values: (number | null)[] }[] }
 
@@ -80,7 +80,7 @@ function ChartCard({ ch, doc, sheet, calc, version, canEdit, onChange, onRemove 
     </BarChart>;
   };
   return (
-    <figure className="shrink-0 w-[min(28rem,85vw)] rounded-2xl bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 p-3 text-zinc-700 dark:text-zinc-300">
+    <figure className="shrink-0 w-[min(28rem,85vw)] rounded-2xl bg-white dark:bg-[#1d2650] border border-zinc-200 dark:border-white/10 p-3 text-zinc-700 dark:text-zinc-300">
       <figcaption className="flex items-center gap-2 mb-2">
         <input aria-label="Chart title" value={ch.title} readOnly={!canEdit} maxLength={120} onChange={(e) => onChange({ title: e.target.value })} placeholder="Chart title" className="flex-1 min-w-0 bg-transparent font-semibold text-sm text-zinc-900 dark:text-white outline-none" />
         <select aria-label="Kind of chart" disabled={!canEdit} value={ch.type} onChange={(e) => onChange({ type: e.target.value as ChartType })} className="text-xs rounded-lg border border-zinc-200 dark:border-white/10 bg-transparent px-1 py-1">{CHART_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select>

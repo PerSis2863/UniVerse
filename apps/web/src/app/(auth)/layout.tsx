@@ -11,12 +11,12 @@ import { AuthShowcase } from '@/components/landing/AuthShowcase';
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     // Dark-only; the "dark" class makes dark: variants (logo text etc.) apply here in light mode too.
-    <div className="dark relative min-h-[100dvh] flex overflow-x-clip" style={{ backgroundColor: '#0b0b0c', color: '#ffffff' }}>
+    <div data-cursor-light className="dark relative min-h-[100dvh] flex overflow-x-clip" style={{ backgroundColor: '#171f44', color: '#ffffff' }}>
       <ApiWarmup />
-      <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
+      <div aria-hidden className="horizon fixed inset-0 pointer-events-none z-0">
         <LightTrail tone="dark" strength={0.85} className="opacity-60 lg:opacity-90" />
-        <div className="mkt-drift-a absolute top-[-20%] start-[-25%] w-[max(60vw,600px)] h-[max(60vw,600px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(42,41,39,0.18), transparent)' }} />
-        <div className="mkt-drift-b absolute bottom-[-25%] end-[-30%] w-[max(60vw,600px)] h-[max(60vw,600px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(236,72,153,0.14), transparent)' }} />
+        <div className="mkt-drift-a absolute top-[-20%] start-[-25%] w-[max(60vw,600px)] h-[max(60vw,600px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(140,155,255,0.14), transparent)' }} />
+        <div className="mkt-drift-b absolute bottom-[-25%] end-[-30%] w-[max(60vw,600px)] h-[max(60vw,600px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(116,255,237,0.12), transparent)' }} />
       </div>
 
       {/* ── Left: what UniVerse does (wide screens) ── */}

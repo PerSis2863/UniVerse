@@ -22370,6 +22370,46 @@
    ]
   },
   {
+   "name": "SiteTotal",
+   "delegate": "siteTotal",
+   "table": "site_totals",
+   "fields": [
+    {
+     "name": "key",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "value",
+     "type": "Float",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "day",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
    "name": "AiCache",
    "delegate": "aiCache",
    "table": "ai_cache",
