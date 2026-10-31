@@ -2259,3 +2259,39 @@ sign-in page's "Just looking? Try the live demo" (signed-in "Explore with sample
   pages without an example).
 - `endDemoForSignIn` stays (sign-in and sign-up): it now only ends sample mode before a real sign-in.
 - **Rule:** there is no way into the app without an account; sample mode is for signed-in people.
+
+## M43 · More of Relief, Green and Play on the landing, "try it here" demos, and photos shared in (31 Oct 2026)
+
+The owner's pick (M43 in AGENTS.md §4), plus "Sharing photos into UniVerse… please do this also"
+(left out of M42).
+
+- **Landing** (`src/components/landing/ImpactMore.tsx`, after each tab's first section in
+  `src/app/page.tsx`): three short sections per tab, a headline and a picture each. Relief: try the
+  help map, Ask → Matched → Delivered, "your area, never your door" (500 m, 30 days, never a
+  helper's location). Green: log one, streak / this week's challenge (`weeklyChallenge`) / badges
+  (`BADGES`), photo proof confirmed by a teammate. Play: a five-question round, rooms (a code, 8
+  seats), the four 3D worlds with their age ratings (`GAMES`).
+- **"Try it here"** (`src/components/landing/TryIt.tsx`, loaded with `dynamic()` only when its tab is
+  open): `QuizTry` (Quiz Clash's own `quizQuestion` and `quizPoints`), `GreenTry` (`co2For` and
+  `GREEN_FACTORS`' "how" line, nothing else invented), `ReliefTry` (the Relief map engine,
+  `WorldCanvas` with `interactive={false}` so it doesn't take the page's scroll; the list beside it is
+  how you pick, so it works by keyboard and screen reader). All in the browser; nothing is sent.
+- **Photos shared in** (Android): the manifest's `share_target` is now `POST /api/share-in`,
+  multipart, with `photos` (`image/*`). The service worker (`src/worker/index.ts`, `takeShare`)
+  answers it on the device: up to 10 photos (40 MB each) go into the cache `universe-share` as
+  `/__share/<i>` (name in `x-name`), and it redirects to `/app?title=&text=&url=&photos=<n>`. Without a
+  service worker yet, `src/app/api/share-in/route.ts` passes the text on (photos can't wait there).
+  `share-in.ts`: `pendingShare`, `givePhotos(chat)` when a chat is picked, `photosFor(chat)`,
+  `clearPhotos`. In the chat, `SharedPhotos.tsx` shows them above the box with Send (several go as
+  one album) and Not now; private and official chats say they can't take photos. Nothing is sent by
+  itself.
+- **Fixed on the way:** with Reduce Motion on, the landing's hero pictures drew differently on the
+  server and in the browser (React's hydration error). `useCalm()` (`landing/bits.tsx`) reads Reduce
+  Motion as off until the page has woken, then the real setting; `HeroScenes` uses it.
+- **Tested:** `scripts/checks/landing-try-ui.mjs` (each tab's demo, the share route's fallback, two
+  photos in the cache reaching a chat's box and "Not now" emptying it; axe and no sideways scroll at
+  390/1280, the chat light and dark); unit tests for the shared photos, typecheck, lint, lean.
+- **Traps:** the service worker's catch only works once it controls the installed app (a first share
+  right after installing may lose photos, the text still arrives). The landing tabs' sections only
+  exist while their tab is open: a test has to pick the tab (and the first tap can land before the
+  page is ready).

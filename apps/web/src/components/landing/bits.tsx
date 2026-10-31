@@ -1,12 +1,18 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { animate, m as motion, useInView } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 // Small parts shared by the landing page's sections (src/app/page.tsx).
 
 export const EASE = [0.22, 1, 0.36, 1] as const;
+
+const calmQuery = () => window.matchMedia('(prefers-reduced-motion: reduce)');
+const onCalm = (cb: () => void) => { const q = calmQuery(); q.addEventListener('change', cb); return () => q.removeEventListener('change', cb); };
+/** Reduce Motion, false on the server and while the page wakes up (so a picture that draws differently
+ *  without motion doesn't disagree with the server's HTML), then the real setting. */
+export const useCalm = () => useSyncExternalStore(onCalm, () => calmQuery().matches, () => false);
 
 /** "● pricing": the small label above a section. */
 export function Tag({ children, className }: { children: React.ReactNode; className?: string }) {

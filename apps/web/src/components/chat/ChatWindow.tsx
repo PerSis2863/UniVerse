@@ -36,6 +36,7 @@ import { removeWithUndo } from '@/lib/undo';
 import { isScreenEffect, type MessageEffect } from '@/lib/message-effects';
 import { undoSendOn, undoWindow } from './SendExtras';
 import { ScreenEffect } from './ScreenEffect';
+import { SharedPhotos } from './SharedPhotos';
 
 const ThreadPanel = dynamic(() => import('./ThreadPanel').then((m) => m.ThreadPanel));
 
@@ -956,6 +957,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
             <button type="button" onClick={() => setPicked(null)} className="btn-ghost btn-sm">Cancel</button>
           </div>
         )}
+        {!picked && <SharedPhotos key={conversationId} chat={conversationId} onSend={send}
+          blocked={isPrivate ? 'Private chats take text only for now' : convo.isOfficial ? 'This chat can’t take photos' : undefined} />}
         {!picked && <Composer
           draftKey={conversationId}
           serverDraft={{ text: convo.draft, at: convo.draftAt }}

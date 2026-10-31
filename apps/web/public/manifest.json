@@ -79,9 +79,10 @@
     { "src": "/screenshots/phone-play.jpg", "sizes": "780x1688", "type": "image/jpeg", "form_factor": "narrow", "label": "UniVerse Play: games that teach something" }
   ],
   "share_target": {
-    "action": "/app",
-    "method": "GET",
-    "params": { "title": "title", "text": "text", "url": "url" }
+    "action": "/api/share-in",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": { "title": "title", "text": "text", "url": "url", "files": [{ "name": "photos", "accept": ["image/*"] }] }
   },
   "prefer_related_applications": false
 }

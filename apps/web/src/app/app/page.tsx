@@ -11,9 +11,9 @@ import { stashShare } from '@/lib/share-in';
 // in on this device, otherwise to sign in, like an app. The website's landing page is for
 // browsers. The inline script decides before anything is drawn; the effect is the fallback.
 
-// Something shared to UniVerse from another app (manifest share_target, ?title=&text=&url=) is left
-// to the effect, which keeps it and opens Messages (src/lib/share-in.ts).
-const DECIDE = `(function(){if(/[?&](title|text|url)=/.test(location.search))return;try{var d='/login',r=localStorage.getItem('universe-auth'),u=r&&JSON.parse(r).state&&JSON.parse(r).state.user;if(u&&u.role){d=u.role==='GUARDIAN'?'/parent':u.owner?'/console':'/hub';}location.replace(d);}catch(e){location.replace('/login');}})();`;
+// Something shared to UniVerse from another app (manifest share_target, ?title=&text=&url=&photos=)
+// is left to the effect, which keeps it and opens Messages (src/lib/share-in.ts).
+const DECIDE = `(function(){if(/[?&](title|text|url|photos)=/.test(location.search))return;try{var d='/login',r=localStorage.getItem('universe-auth'),u=r&&JSON.parse(r).state&&JSON.parse(r).state.user;if(u&&u.role){d=u.role==='GUARDIAN'?'/parent':u.owner?'/console':'/hub';}location.replace(d);}catch(e){location.replace('/login');}})();`;
 
 function destination() {
   const shared = stashShare(window.location.search);

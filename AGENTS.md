@@ -99,13 +99,14 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   3D rooms, realistic lit surfaces, a new feature in every game) (PR #97); **M40** (Ridgeline Ops
   replaces Neon Strike: a first-person extraction shooter on a seeded island) (PR #98, 26 Oct). **M41**
   (new Green and Play pictures, also on sign-in; a press ripple, magnetic buttons, tilt and a
-  cursor light) and **M42** (link previews, icon count, install guide, Share to UniVerse, much less
-  text; branch `claude/funny-galileo-y4mz9r`, not merged yet).
+  cursor light), **M42** (link previews, icon count, install guide, Share to UniVerse, much less
+  text), **M42a** (no "Try the live demo" on sign-in) and **M43** (more Relief, Green and Play
+  sections with "try it here" demos; photos shared in) (branch `claude/funny-galileo-y4mz9r`, not
+  merged yet).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **Next, the owner's pick (31 Oct: "do all of them", store apps left out, no funds)**, one item each,
   with very little text on screen (the owner: "too much information for the first time user"):
-  **M43** two or three more sections for the Relief, Green and Play landing tabs plus "try it here"
-  demos on sample data in the browser (a quiz round, log a green action, the help map); **M44** a
+  **M43** done; **M44** a
   scroll story at the top of the landing (the five pictures turning into each other) and a strip of
   live totals (rounded, counted once a day, no person findable); **M45** in the app: screens that
   glide into each other (view transitions), short celebrations at milestones, optional sounds (off

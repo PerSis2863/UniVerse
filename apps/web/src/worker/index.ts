@@ -71,3 +71,35 @@ self.addEventListener('notificationclick', (event) => {
     await self.clients.openWindow(url);
   })());
 });
+
+// "Share to UniVerse" (manifest share_target, M43): Android posts what was shared to /api/share-in.
+// Answered here on the device: photos wait in this cache (the same names as src/lib/share-in.ts)
+// until a chat is picked, and the app opens with the text in its address. Never sent by itself.
+const SHARE_PATH = '/api/share-in';
+const SHARE_CACHE = 'universe-share';
+const SHARE_MAX = 40 * 1024 * 1024; // before the chat makes it smaller for sending
+
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'POST' || url.origin !== self.location.origin || url.pathname !== SHARE_PATH) return;
+  event.respondWith(takeShare(event.request));
+});
+
+async function takeShare(req: Request): Promise<Response> {
+  const q = new URLSearchParams();
+  try {
+    const form = await req.formData();
+    for (const k of ['title', 'text', 'url']) {
+      const v = form.get(k);
+      if (typeof v === 'string' && v.trim()) q.set(k, v.trim().slice(0, 2000));
+    }
+    const photos = form.getAll('photos').filter((f): f is File => f instanceof File && f.type.startsWith('image/') && f.size > 0 && f.size <= SHARE_MAX).slice(0, 10);
+    await caches.delete(SHARE_CACHE);
+    if (photos.length) {
+      const cache = await caches.open(SHARE_CACHE);
+      await Promise.all(photos.map((f, i) => cache.put(`/__share/${i}`, new Response(f, { headers: { 'content-type': f.type, 'x-name': encodeURIComponent(f.name || `photo-${i + 1}.jpg`) } }))));
+      q.set('photos', String(photos.length));
+    }
+  } catch { /* unreadable: the app still opens */ }
+  return Response.redirect(new URL(`/app?${q}`, self.location.origin).href, 303);
+}

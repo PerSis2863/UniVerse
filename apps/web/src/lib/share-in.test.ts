@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { sharedText } from './share-in';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { givePhotos, pendingShare, sharedText, stashShare } from './share-in';
 
 describe('sharedText', () => {
   it('joins title, text and link without repeats', () => {
@@ -9,5 +9,23 @@ describe('sharedText', () => {
   });
   it('keeps it to 2000 characters', () => {
     expect(sharedText({ text: 'a'.repeat(3000) })).toHaveLength(2000);
+  });
+});
+
+describe('shared photos', () => {
+  beforeEach(() => {
+    const m = new Map<string, string>();
+    vi.stubGlobal('sessionStorage', { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) });
+  });
+  it('wait for a chat, then belong to the one picked', () => {
+    expect(stashShare('?photos=3')).toBe(true);
+    expect(pendingShare()).toEqual({ text: null, photos: 3 });
+    givePhotos('c1');
+    expect(pendingShare().photos).toBe(0);
+  });
+  it('are at most 10, and nothing shared keeps nothing', () => {
+    expect(stashShare('?photos=99&text=hi')).toBe(true);
+    expect(pendingShare()).toEqual({ text: 'hi', photos: 10 });
+    expect(stashShare('?photos=abc')).toBe(false);
   });
 });

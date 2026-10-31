@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, m as motion } from 'framer-motion';
 import { Bike, CalendarCheck, Check, ClipboardCheck, Crown, GraduationCap, ListChecks, Mail, Droplets, Home, Leaf, Recycle, ScanLine, ShieldCheck, Sparkles, Stethoscope, TreePine, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { EASE } from './bits';
+import { EASE, useCalm } from './bits';
 
 // The landing hero's pictures, one style per app (the owner: "different style animation" for each):
 // UniVersity a live workflow diagram, Trace a holographic label over a dotted world, Relief a radar,
@@ -13,7 +13,7 @@ import { EASE } from './bits';
 
 /** The story's step, 0…steps-1, every `ms`; the last step with Reduce Motion. */
 function useStep(steps: number, ms = 900) {
-  const calm = useReducedMotion();
+  const calm = useCalm();
   const [s, set] = useState(0);
   useEffect(() => {
     if (calm) return;
@@ -307,7 +307,7 @@ const RACERS = [
 ];
 
 export function PlayScene() {
-  const calm = !!useReducedMotion();
+  const calm = useCalm();
   const [t, setT] = useState(0); // seconds since the race started, for the board
   useEffect(() => {
     if (calm) return;
