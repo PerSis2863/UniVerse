@@ -12,6 +12,10 @@ import { EASE, useCalm } from './bits';
 // Reduce Motion each shows its finished picture and stays still.
 
 /** The story's step, 0…steps-1, every `ms`; the last step with Reduce Motion. */
+/** Off screen or with Reduce Motion a scene is drawn afresh, still (M47): framer-motion keeps a
+ *  running loop going when its `animate` is taken away, so a new copy is what stops them all. */
+const still = (Scene: () => React.ReactNode) => function Still() { const calm = useCalm(); return <Scene key={calm ? 'still' : 'live'} />; };
+
 function useStep(steps: number, ms = 900) {
   const calm = useCalm();
   const [s, set] = useState(0);
@@ -39,7 +43,7 @@ const DAY = [
 ] as const;
 const ORBIT = 118; // px, the jobs' circle
 
-export function CampusScene() {
+function Campus() {
   const { s, loop, calm } = useStep(DAY.length, 1800);
   const n = loop * DAY.length + s; // how many jobs done, for the counter and the feed
   const feed = [0, 1, 2].map((k) => n - k).filter((i) => i >= 0);
@@ -130,7 +134,7 @@ const DOTS: [number, number][] = (() => {
 })();
 const ARCS = [[[210, 90], [330, 110]], [[330, 110], [415, 150]], [[90, 80], [210, 90]], [[130, 160], [330, 110]]] as const;
 
-export function TraceScene() {
+function Trace() {
   const { s, calm } = useStep(9);
   const scanned = s >= 2;
   return (
@@ -177,7 +181,7 @@ const BLIPS = [
   { x: 72, y: 70, icon: Stethoscope, what: 'Lift to the clinic', at: 5 }, { x: 40, y: 24, icon: Home, what: 'Shelter, 2 nights', at: 6 },
 ];
 
-export function ReliefScene() {
+function Relief() {
   const { s, calm } = useStep(10);
   const helped = BLIPS.filter((b) => s >= b.at + 2).length;
   return (
@@ -229,7 +233,7 @@ const ACTS = [
 const BLOOMS = [[18, 38, 26], [42, 62, 34], [64, 30, 22], [80, 58, 30], [30, 74, 20], [56, 46, 18]] as const; // % across the band, % down, size px
 const RING = 'M 20 150 A 160 52 0 1 0 340 150 A 160 52 0 1 0 20 150';
 
-export function GreenScene() {
+function Green() {
   const { s, loop, calm } = useStep(ACTS.length, 1700);
   const n = loop * ACTS.length + s;
   const kg = 412 + Array.from({ length: n + 1 }, (_, i) => ACTS[i % ACTS.length].kg).reduce((a, b) => a + b, 0);
@@ -306,7 +310,7 @@ const RACERS = [
   { n: 'Maya', c: '#818cf8', lap: 6.9, at: 0.36 },
 ];
 
-export function PlayScene() {
+function Play() {
   const calm = useCalm();
   const [t, setT] = useState(0); // seconds since the race started, for the board
   useEffect(() => {
@@ -355,3 +359,9 @@ export function PlayScene() {
     </div>
   );
 }
+
+export const CampusScene = still(Campus);
+export const TraceScene = still(Trace);
+export const ReliefScene = still(Relief);
+export const GreenScene = still(Green);
+export const PlayScene = still(Play);

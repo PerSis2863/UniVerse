@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, m as motion } from 'framer-motion';
 import { Bike, Bus, Car, Check, Droplets, Footprints, HandHeart, Home, Minus, Plus, Recycle, RotateCcw, Stethoscope, Sun, Trash2, TreePine, Utensils, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { glow, toBase } from '@/components/trace/map/engine';
@@ -11,7 +11,7 @@ import { quizPoints, quizQuestion, QUIZ_SECONDS_PER_QUESTION } from '@/lib/play/
 import { URGENCY_COLOR, URGENCY_LABEL, type Urgency } from '@/lib/relief';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
-import { glass, ghost, primary } from './bits';
+import { glass, ghost, primary, useCalm } from './bits';
 
 // "Try it here" on the landing's Relief, Green and Play tabs (M43): a quiz round, logging a green
 // action and the help map, played in the browser on made-up data. Nothing is sent or saved.
@@ -188,7 +188,7 @@ const TRIP_MS = 1400;
 const HELPED = '#34d399';
 
 export function ReliefTry() {
-  const calm = useReducedMotion();
+  const calm = useCalm();
   const [selected, setSelected] = useState(NEEDS[0].id);
   const [helped, setHelped] = useState<Record<string, number>>({});
   const pts = useMemo(() => NEEDS.map((n) => { const [bx, by] = toBase(CENTER.lng + n.dlng, CENTER.lat + n.dlat); return { ...n, bx, by }; }), []);

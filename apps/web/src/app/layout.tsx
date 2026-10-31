@@ -17,7 +17,6 @@ import { recoveryScript } from '@/lib/recovery-script';
 import { bootstrapPrefetchScript } from '@/lib/bootstrap';
 import { DISPLAY_PREFS_SCRIPT } from '@/lib/display-prefs';
 import { BARS_SCRIPT } from '@/lib/theme';
-import { LAUNCH_SCREENS } from '@/lib/launch-screens.gen';
 
 // Fonts: the device's own system font (San Francisco on Apple devices), set in globals.css, so no
 // web font is downloaded and text matches the rest of the phone.
@@ -88,8 +87,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preload" href="/fonts/urbanist/urbanist-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
         {/* PWA: iOS touch icon */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
-        {/* iPhone / iPad launch screens, one per screen size (scripts/gen-launch-screens.mjs) */}
-        {LAUNCH_SCREENS.map((l) => <link key={l.href} rel="apple-touch-startup-image" media={l.media} href={l.href} />)}
       </head>
       <body className="min-h-screen antialiased" style={{ color: 'var(--text-primary)' }}>
           <ErrorMonitorBootstrap />

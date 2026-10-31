@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { animate, m as motion, useInView } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -12,7 +12,31 @@ const calmQuery = () => window.matchMedia('(prefers-reduced-motion: reduce)');
 const onCalm = (cb: () => void) => { const q = calmQuery(); q.addEventListener('change', cb); return () => q.removeEventListener('change', cb); };
 /** Reduce Motion, false on the server and while the page wakes up (so a picture that draws differently
  *  without motion doesn't disagree with the server's HTML), then the real setting. */
-export const useCalm = () => useSyncExternalStore(onCalm, () => calmQuery().matches, () => false);
+const useReduce = () => useSyncExternalStore(onCalm, () => calmQuery().matches, () => false);
+
+/** True while the part is off screen (M47): its looping demo holds still, like Reduce Motion. */
+const Away = createContext(false);
+export const useAway = () => useContext(Away);
+/** Reduce Motion, or off screen (see `Live`): draw the still picture, run no loops. */
+export const useCalm = () => { const r = useReduce(); return useAway() || r; };
+
+/** Wraps a landing part whose demos loop: they run only while it is on screen (or about to be), so a
+ *  slow phone isn't kept busy by pictures it can't see. CSS animations inside pause too. `away`
+ *  holds it still regardless (a scroll story layer that isn't shown). */
+export function Live({ children, away = false, className }: { children: React.ReactNode; away?: boolean; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const outer = useAway();
+  const [seen, setSeen] = useState(true);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setSeen(e.isIntersecting), { rootMargin: '200px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  const off = outer || away || !seen;
+  return <div ref={ref} className={className} data-away={off || undefined}><Away.Provider value={off}>{children}</Away.Provider></div>;
+}
 
 /** "● pricing": the small label above a section. */
 export function Tag({ children, className }: { children: React.ReactNode; className?: string }) {

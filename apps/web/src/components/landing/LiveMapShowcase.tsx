@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { useReducedMotion } from 'framer-motion';
 import { CITIES } from '@/components/trace/map/cities';
 import { arcPoints, glow, quad, toBase } from '@/components/trace/map/engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
+import { useCalm } from './bits';
 
 // The landing page's live map: the same engine as the brand's market map (src/components/trace/map),
 // drawing an illustration, not anyone's data: scans glowing in big cities, flows from three made-up
@@ -21,7 +21,7 @@ const noise = (i: number) => { const x = Math.sin(i * 12.9898) * 43758.5453; ret
 
 export function LiveMapShowcase({ className }: { className?: string }) {
   const map = useRef<MapHandle>(null);
-  const calm = useReducedMotion();
+  const calm = useCalm();
   const ripples = useRef<{ bx: number; by: number; born: number; amber: boolean }[]>([]);
   const model = useMemo(() => {
     const cities = CITIES.filter((c) => c[3] < 3).map(([name, lat, lng, rank], i) => { const [bx, by] = toBase(lng, lat); return { name, bx, by, w: (rank === 1 ? 0.6 : 0.25) + noise(i) * 0.4 }; });

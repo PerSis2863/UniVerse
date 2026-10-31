@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { Bell, Check, KeyRound, Lock, School, ShieldCheck } from 'lucide-react';
-import { reducedMotion } from '@/lib/page-transition';
-import { Accent, EASE, Reveal, Tag, glass } from './bits';
+import { Accent, EASE, Reveal, Tag, glass, useCalm } from './bits';
 
 // "Boring in the ways that matter": four cards on how UniVerse is built (one place for every role,
 // every language both ways, approvals on the phone, safe by default), each with a small live part.
@@ -33,11 +32,12 @@ function Roles() {
 
 function Languages() {
   const [i, setI] = useState(0);
+  const calm = useCalm();
   useEffect(() => {
-    if (reducedMotion()) return;
+    if (calm) return;
     const t = setInterval(() => setI((n) => (n + 1) % HELLO.length), 1600);
     return () => clearInterval(t);
-  }, []);
+  }, [calm]);
   const [word, name, dir] = HELLO[i];
   return (
     <div className="mt-6">

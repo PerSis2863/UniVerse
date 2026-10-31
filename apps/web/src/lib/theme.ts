@@ -1,15 +1,20 @@
+import { LAUNCH } from './launch-screens.gen';
+
 export type Theme = 'dark' | 'light' | 'system';
 
 /** The phone's bar colours per theme (M46): the Karma page colours. */
 export const BAR = { dark: '#0b0b0c', light: '#ebeae6' } as const;
 const IOS_BAR = { dark: 'black-translucent', light: 'default' } as const;
-/** For the head script (before paint), with `d` = dark: adds the browser bar's colour and the iPhone
- *  home-screen app's status bar (white text drawn over the page in dark, black text in light). */
-export const BARS_SCRIPT = `var bar=function(n,c){var m=document.querySelector('meta[name="'+n+'"]');if(!m){m=document.createElement('meta');m.name=n;document.head.appendChild(m);}m.content=c;};bar('theme-color',d?'${BAR.dark}':'${BAR.light}');bar('apple-mobile-web-app-status-bar-style',d?'${IOS_BAR.dark}':'${IOS_BAR.light}');`;
+/** For the head script (before paint), with `d` = dark: adds the browser bar's colour, the iPhone
+ *  home-screen app's status bar (white text drawn over the page in dark, black text in light) and the
+ *  launch screens in the chosen theme (M47; scripts/gen-launch-screens.mjs; added here, not by React,
+ *  so changing them never disagrees with React's copy of the head). */
+export const BARS_SCRIPT = `var bar=function(n,c){var m=document.querySelector('meta[name="'+n+'"]');if(!m){m=document.createElement('meta');m.name=n;document.head.appendChild(m);}m.content=c;};bar('theme-color',d?'${BAR.dark}':'${BAR.light}');bar('apple-mobile-web-app-status-bar-style',d?'${IOS_BAR.dark}':'${IOS_BAR.light}');${JSON.stringify(LAUNCH)}.forEach(function(s){var w=s[0]*s[2],h=s[1]*s[2];for(var o=0;o<=s[3];o++){var l=document.createElement('link');l.rel='apple-touch-startup-image';l.media='screen and (device-width: '+s[0]+'px) and (device-height: '+s[1]+'px) and (-webkit-device-pixel-ratio: '+s[2]+') and (orientation: '+(o?'landscape':'portrait')+')';l.setAttribute('href','/splash/'+(d?'dark':'light')+'-'+(o?h+'x'+w:w+'x'+h)+'.png');document.head.appendChild(l);}});`;
 
 function syncBars(dark: boolean) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? BAR.dark : BAR.light);
   document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute('content', dark ? IOS_BAR.dark : IOS_BAR.light);
+  document.querySelectorAll('link[rel="apple-touch-startup-image"]').forEach((l) => l.setAttribute('href', (l.getAttribute('href') ?? '').replace(/\/(dark|light)-/, dark ? '/dark-' : '/light-')));
 }
 
 export const getSystemTheme = (): 'dark' | 'light' =>

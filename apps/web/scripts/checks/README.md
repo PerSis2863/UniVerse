@@ -45,6 +45,7 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `kind-api.mjs` | File and link hand-ins on the local Worker. |
 | `kind-group-ui.mjs` | File and link hand-ins and group work in the browser on the built Worker. |
 | `landing-story-ui.mjs` | M44 in the browser: the landing's live totals (rounded, none under 10) and the scroll story. 390 and 1280 px, axe. |
+| `landing-pause-ui.mjs` | M47: the landing's looping demos run only on screen (the hero moves at the top; scrolled down it holds still and nothing off screen animates). |
 | `landing-try-ui.mjs` | M43 in the browser: the landing's Relief, Green and Play demos, and photos shared into a chat. 390 and 1280 px, axe. |
 | `lesson-ui.mjs` | Rich lesson pages on the built Worker: read (callout, quick check, flashcards), edit, add blocks, save, preview; a new page opens the editor; students read without editing. 390 and 1280 px, light and dark, axe. |
 | `make-cc.mjs` | A small Canvas-style cartridge for the browser test. |

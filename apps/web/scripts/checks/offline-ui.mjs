@@ -2,8 +2,8 @@
 // student's phone: online, the app keeps copies of the timetable, courses and chats on the device;
 // offline, the home still shows today's classes and a page never opened shows the offline page with
 // today's classes, the latest chats and the courses (axe at 390 and 1280, light and dark). Also: the
-// bar colour follows the app's theme (one theme-color, changed by the theme button), and the
-// iPhone launch screens are linked and served.
+// bar colour and the iPhone launch screens follow the app's theme (one theme-color, changed by the
+// theme button; 22 sizes upright plus 9 iPads sideways), and the launch screens are served.
 //   node scripts/checks/offline-ui.mjs [http://localhost:8787]
 import { createRequire } from 'node:module';
 import { baseUrl, launch, signedIn } from '../browser-session.mjs';
@@ -91,17 +91,22 @@ try {
       await ctx.setOffline(false);
 
       if (width === 1280 && scheme === 'light') {
-        // The theme button changes the bar colour straight away.
+        // The theme button changes the bar colour and the launch screens straight away.
         await page.goto(`${base}/student`, { waitUntil: 'load' });
+        const launch = () => page.evaluate(() => [...document.querySelectorAll('link[rel="apple-touch-startup-image"]')].map((l) => l.getAttribute('href')));
+        const before = await launch();
+        check(before.length === 31 && before.every((h) => h.startsWith('/splash/light-')), `launch screens follow the light theme: ${before.length} ${before[0]}`);
         await page.getByRole('button', { name: 'Toggle theme' }).first().click();
         await page.getByRole('button', { name: /^dark$/i }).click();
         await page.waitForTimeout(800);
         const after = await bars(page);
         check(after.colours[0] === '#0b0b0c' && after.ios === 'black-translucent', `theme button: bars ${JSON.stringify(after)}`);
-        const links = await page.evaluate(() => [...document.querySelectorAll('link[rel="apple-touch-startup-image"]')].map((l) => l.getAttribute('href')));
-        check(links.length >= 20, `launch screens linked: ${links.length}`);
-        const res = await page.request.get(base + links[0]);
-        check(res.ok() && res.headers()['content-type'] === 'image/png', `launch screen served: ${res.status()}`);
+        const links = await launch();
+        check(links.length === 31 && links.every((h) => h.startsWith('/splash/dark-')), `launch screens follow the theme button: ${links[0]}`);
+        for (const h of [links[0], links.at(-1), before.at(-1)].filter(Boolean)) {
+          const res = await page.request.get(base + h);
+          check(res.ok() && res.headers()['content-type'] === 'image/png', `launch screen ${h} served: ${res.status()}`);
+        }
       }
       await ctx.close();
     }

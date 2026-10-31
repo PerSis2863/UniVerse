@@ -2252,3 +2252,6 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, 
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visible, textarea:focus-visible, select:focus-visible { box-shadow: 0 0 0 3px rgb(236 72 153 / 0.18), 0 0 24px -6px rgb(236 72 153 / 0.45); }
 @media (prefers-reduced-motion: reduce) { .press-ripple { display: none; } [data-cursor-light]::before { display: none; } a.card:hover, a.panel:hover, button.card:hover, button.panel:hover, .card-hover:hover { transform: none; } }
 html.reduce-motion .press-ripple, html.reduce-motion [data-cursor-light]::before { display: none; }
+
+/* A landing part off screen (`Live` in src/components/landing/bits.tsx): its CSS loops hold still. */
+[data-away] * { animation-play-state: paused !important; }

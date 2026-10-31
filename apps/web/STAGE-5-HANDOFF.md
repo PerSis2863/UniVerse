@@ -2433,3 +2433,38 @@ offline, an iPhone launch screen, bar colours per theme, and a speed check on a 
   without it an "offline" test quietly passes online. A `<meta>` written in React and changed by a
   script before the page wakes up is added a second time by React: tags a script changes are made
   by the script.
+
+## M47 · The landing's demos pause off screen; light and sideways launch screens (31 Oct 2026)
+
+The owner, on M46's two leftovers: "do both of these"; then "don't build for the slow phone", so the
+part that held the whole landing still on a struggling phone was taken out again before committing
+(M46's own river rule stays).
+
+- **Off screen, still** (`Live` in `src/components/landing/bits.tsx`): wraps a landing part whose
+  demos loop (the hero picture, the scroll story, Bento's languages, the typing statement, the Trace
+  map section, Relief's "try it" map). An IntersectionObserver (200 px ahead) gives the part an
+  "away" context; `useCalm()` = Reduce Motion **or** away, so every loop that already honoured Reduce
+  Motion now also stops off screen; the scroll story's layers that aren't shown are away too. CSS
+  loops inside pause (`[data-away] *` in globals.css). Starts "on screen" so the server's HTML and the
+  first render agree.
+- **Trap (framer-motion):** taking a running `repeat: Infinity` animation's `animate` away does
+  **not** stop it (the hero ring kept spinning off screen). `still()` in `HeroScenes.tsx` gives each
+  scene a new `key` when it turns calm, so a fresh still copy replaces it. Use the same trick for any
+  new looping framer animation that must stop.
+- Removed on the way: `ReliefCard`, `GreenCard`, `PlayCard` (ImpactApps.tsx), unused since M43;
+  LiveMapShowcase and TryIt now use `useCalm` instead of framer's `useReducedMotion`.
+- **Launch screens:** `scripts/gen-launch-screens.mjs` now draws both themes (dark #0b0b0c, light
+  #ebeae6) and the iPads sideways too: 62 pictures (`public/splash/<theme>-<w>x<h>.png`, 1.4 MB, not
+  precached). `src/lib/launch-screens.gen.ts` holds only the size list; the head script (`BARS_SCRIPT`
+  in `theme.ts`) adds the 31 links in the chosen theme (no longer React-rendered: they change with the
+  theme, and React would disagree with its copy of the head), and `syncBars` swaps them when the theme
+  changes (`setAttribute`, so the hrefs stay short). iOS reads them when the app is added: someone who
+  changes theme later sees the old one until they add the app again. Untested on a real iPhone/iPad.
+- **Tested:** `scripts/checks/landing-pause-ui.mjs` (built site: the hero moves at the top, holds
+  still lower down with nothing off screen animating, moves again back at the top),
+  `scripts/checks/offline-ui.mjs` (launch links follow the theme and the theme button; three served),
+  typecheck, lint, unit tests, lean.
+- **Measured, not acted on (the owner said not to build for slow phones):** with the CPU 4× slower
+  the landing still keeps the processor busy at the top (the visible hero) and the page's always-on
+  CSS glows keep frames coming in the test browser (no graphics chip there; real phones move them on
+  the GPU). The other speed idea from M46 stays open: ~400 kB of scripts on a first visit.

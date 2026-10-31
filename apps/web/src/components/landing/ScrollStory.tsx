@@ -7,7 +7,7 @@ import { AppIcon } from '@/components/apps/AppIcon';
 import { APPS, type AppId } from '@/lib/apps';
 import { cn } from '@/lib/utils';
 import { CampusScene, GreenScene, PlayScene, ReliefScene, TraceScene } from './HeroScenes';
-import { Accent, EASE, Tag, useCalm } from './bits';
+import { Accent, EASE, Live, Tag, useCalm } from './bits';
 
 // The scroll story under the landing's hero (M44): the five apps' pictures turning into each other as
 // the page scrolls, one screen each, while the picture stays put (sticky). Only the picture on screen
@@ -73,7 +73,7 @@ export function ScrollStory({ onPick }: { onPick?: (id: AppId) => void }) {
             {APPS.map((a, i) => {
               if (!near || Math.abs(i - now) > 1) return null;
               const Scene = SCENE[a.id];
-              return <Layer key={a.id} i={i} at={at} calm={calm} shown={i === now}><Scene /></Layer>;
+              return <Layer key={a.id} i={i} at={at} calm={calm} shown={i === now}><Live away={i !== now}><Scene /></Live></Layer>;
             })}
           </div>
         </div>

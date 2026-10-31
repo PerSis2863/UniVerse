@@ -24,7 +24,7 @@ import { SplitCta } from '@/components/landing/SplitCta';
 import { GreenMore, PlayMore, ReliefMore } from '@/components/landing/ImpactMore';
 import { LiveTotals } from '@/components/landing/LiveTotals';
 import { ScrollStory } from '@/components/landing/ScrollStory';
-import { Accent, EASE, Reveal, Tag, ghost, primary } from '@/components/landing/bits';
+import { Accent, EASE, Live, Reveal, Tag, ghost, primary } from '@/components/landing/bits';
 import type { AppId } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { homeFor } from '@/lib/role-home';
@@ -194,24 +194,25 @@ export default function ShowcasePage() {
                   </motion.div>
                 </AnimatePresence>
               </div>
-              <motion.div style={{ y: sceneY }}>
+              <Live><motion.div style={{ y: sceneY }}>
               <AnimatePresence mode="wait">
                 <motion.div key={app} initial={{ opacity: 0, y: 40, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }} transition={{ duration: 0.9, ease: EASE }} style={{ transformPerspective: 1200 }} className="flex justify-center lg:justify-end">
                   <div data-tilt className="w-full flex justify-center lg:justify-end">{hero.card}</div>
                 </motion.div>
               </AnimatePresence>
-              </motion.div>
+              </motion.div></Live>
             </div>
           </section>
 
           <LiveTotals />
-          <ScrollStory onPick={pick} />
+          <Live><ScrollStory onPick={pick} /></Live>
 
           <AnimatePresence mode="wait">
             <motion.div key={app} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }} transition={{ duration: 0.4 }}>
-              {app === 'campus' && <><Proof /><Glue /><Bento /><Statement /></>}
-              {app === 'trace' && <><TraceSection /><MapsSection /><HowSection /><CampaignsSection /><PricingSection /></>}
-              {app === 'relief' && <><ReliefSection /><ReliefMore /></>}
+              {/* Each part's looping demos run only while it is on screen (Live). */}
+              {app === 'campus' && <><Proof /><Glue /><Live><Bento /></Live><Live><Statement /></Live></>}
+              {app === 'trace' && <><TraceSection /><Live><MapsSection /></Live><HowSection /><CampaignsSection /><PricingSection /></>}
+              {app === 'relief' && <><ReliefSection /><Live><ReliefMore /></Live></>}
               {app === 'green' && <><GreenSection /><GreenMore /></>}
               {app === 'play' && <><PlaySection /><PlayMore /></>}
             </motion.div>

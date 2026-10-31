@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M46 is the latest).
+  builds on it). The newest notes are at the end (M47 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -103,12 +103,14 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   text), **M42a** (no "Try the live demo" on sign-in), **M43** (more Relief, Green and Play
   sections with "try it here" demos; photos shared in), **M44** (the landing's scroll story and
   live totals, migration 0186), **M45** (glides, celebrations, optional sounds, swipes, bottom
-  sheets, one vibration) and **M46** (today's classes, courses and chats readable offline, the
-  iPhone launch screen, bar colours per theme, the river holds still on a struggling phone)
-  (branch `claude/funny-galileo-y4mz9r`, not merged yet).
+  sheets, one vibration), **M46** (today's classes, courses and chats readable offline, the
+  iPhone launch screen, bar colours per theme, the river holds still on a struggling phone) and
+  **M47** (the landing's demos run only on screen and hold still on a struggling phone; light and
+  sideways iPad launch screens) (branch `claude/funny-galileo-y4mz9r`, not merged yet).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
-  done. Next: ask the owner (speed ideas from M46's check are in its handoff note).
+  done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts
+  on a first visit, is in M47's handoff note).
 - **Next database update number: `0187`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
