@@ -2499,3 +2499,32 @@ colours (Karma: pink, a little purple, white, warm gold) and add the video's mov
 - **Tested:** `scripts/checks/live-ui.mjs` (each card draws, no sideways scroll, axe at 390/1280,
   light and dark; student, teacher, admin, hub, Relief), typecheck, lint, unit tests, lean. Looked at
   in the browser on a phone and a desktop.
+
+## M49 · More kinds of live pictures, a cascade between tabs, and the owner console gets them (31 Oct 2026)
+
+The owner: "add more of these animations and transitions like different kind in the system and did
+you apply all these in the owners portal" (they weren't: M48 covered the homes only).
+
+- **Three new pictures** (`src/components/live/`, same loop and glow sprites as M48):
+  `Heartbeat.tsx` (a live line that draws itself in, glides to new values over 700 ms when a refresh
+  brings them, a pulse of light runs along it every 3.5 s, a breathing light on the latest value, red
+  sparks for failures via `marks`); `Radar.tsx` (a beam sweeps every 4.2 s, blips light up as it
+  passes and fade, names show while bright; `ring` 0–2 from the middle); `PulseGrid.tsx` (rows of
+  small squares lit by value, popping in from the left, a band of light passing over; after the
+  video's "engagement pulse").
+- **Cascade between tabs** (`TabPanel` / `useCascade` in `src/components/ui/Glide.tsx`): a new tab's
+  cards rise in one after another (280 ms each, 45 ms apart, transform and opacity only, nothing with
+  Reduce Motion); cards that arrive in the next 1.5 s (data replacing a skeleton) join in. Every
+  `TabPanel` gets it: the owner console's sections, Calls, admin courses, analytics, early warning,
+  leaderboard, events. `useCascade(ref, key)` for any other section that swaps content.
+- **Owner console** (`console/live-cards.tsx`): Overview opens with "Who's here now" (the people
+  online on a radar, admins in the middle, teachers next; recent sign-ins in the ticker) and
+  "Everyone" (accounts by role as a constellation); the live board starts with "The app's heartbeat"
+  (requests per second with server failures as red sparks, and a pulse grid of views, messages and
+  sign-ins), following the board's 1 h / 1 day / 7 days choice.
+- **Elsewhere:** Trace's live card adds scans per day as a heartbeat (likely copies as red sparks),
+  Green's adds CO₂ per day, Relief's adds open needs on a radar (critical in the middle).
+- **Tested:** `scripts/checks/console-deck-ui.mjs` on the built site (now also: every live card on
+  Overview draws, and saves a picture of each), axe-clean with no sideways scroll on desktop and phone,
+  light and dark; the cascade seen on Calls (cards rising after a tab click); typecheck, lint, unit
+  tests, lean.

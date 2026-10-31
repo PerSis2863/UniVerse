@@ -20,6 +20,7 @@ import { STAGES, STAGE_LABEL, type Stage } from '@/lib/trace';
 import { cn } from '@/lib/utils';
 import { LiveCard } from '@/components/live/LiveCard';
 import { Funnel } from '@/components/live/Funnel';
+import { Heartbeat } from '@/components/live/Heartbeat';
 
 // UniVerse Trace, the brand's console (the owner, 24 Oct 2026: "something unique and different and
 // bold"; then "do all 4 of them"). Anyone signed in can start a brand for free: every product gets a
@@ -210,6 +211,8 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
         ticker={ov.recent.slice(0, 6).map((r) => `${r.code.product.name}${r.place ? ` · ${r.place}` : ''} · ${VERDICT[r.verdict]?.label ?? r.verdict}`)}>
         <Funnel className="h-[200px]" label="Codes printed, scanned and claimed"
           stages={[{ label: 'Printed', value: ov.units }, { label: 'Scanned', value: ov.scanned }, { label: 'Claimed', value: ov.claimed }]} />
+        {/* M49: scans per day as a heartbeat, likely copies as red sparks. */}
+        <div className="mt-3 h-[90px]"><Heartbeat values={ov.scans} marks={ov.suspect} label="Scans per day, likely copies marked" /></div>
       </LiveCard>
 
       <div className="grid sm:grid-cols-3 gap-3">

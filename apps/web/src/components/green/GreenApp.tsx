@@ -19,6 +19,7 @@ import { fmt } from '@/lib/instruments';
 import { GREEN_FACTORS, GREEN_KINDS, co2For, type GreenKind } from '@/lib/green';
 import { LiveCard } from '@/components/live/LiveCard';
 import { Constellation } from '@/components/live/Constellation';
+import { Heartbeat } from '@/components/live/Heartbeat';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
@@ -168,6 +169,8 @@ export function GreenApp() {
           ticker={data!.recent.slice(0, 6).map((a) => `${GREEN_FACTORS[a.kind]?.label ?? a.kind}: −${fmt(a.co2Kg)} kg CO₂${a.place ? ` · ${a.place}` : ''}`)}>
           <Constellation className="h-[260px] md:h-[300px]" label="Your climate actions by kind"
             groups={GREEN_KINDS.filter((k) => t.byKind[k]).map((k) => ({ label: GREEN_FACTORS[k].label, n: t.byKind[k] ?? 0, value: `${fmt(t.kgByKind[k] ?? 0)} kg` }))} />
+          {/* M49: CO₂ saved per day, as a heartbeat. */}
+          <div className="mt-3 h-[90px]"><Heartbeat values={data!.perDay.map((d) => d.kg)} label="CO₂ saved per day, last 30 days" /></div>
         </LiveCard>
       )}
 

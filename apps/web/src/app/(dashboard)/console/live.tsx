@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
+import { Heartbeats } from './live-cards';
 import { format } from 'date-fns';
 import { Gauge } from 'lucide-react';
 import { useActivePoll } from '@/lib/realtime-client';
@@ -112,5 +113,10 @@ export function LiveBoard() {
       body: <Meter pct={planPct} />,
     },
   ];
-  return <InstrumentBoard icon={Gauge} title="UniVerse live" subtitle={`production · ${fmt(p.online.people)} accounts · updated ${format(new Date(p.at), 'HH:mm:ss')}`} cells={cells} ranges={RANGES} range={range} onRange={pick} storageKey="console-live" />;
+  return (
+    <div className="space-y-6">
+      <Heartbeats p={p} per={per} />
+      <InstrumentBoard icon={Gauge} title="UniVerse live" subtitle={`production · ${fmt(p.online.people)} accounts · updated ${format(new Date(p.at), 'HH:mm:ss')}`} cells={cells} ranges={RANGES} range={range} onRange={pick} storageKey="console-live" />
+    </div>
+  );
 }

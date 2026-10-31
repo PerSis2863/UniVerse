@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
+import { Everyone, PeopleNow } from './live-cards';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Activity, Ban, Bug, Clock, LogIn, ShieldCheck, Trash2, UserPlus, Users, GraduationCap, School, UserCog, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -105,6 +106,10 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
     <div className="space-y-6">
       <SampleWorldCard />
       <LaunchBoard />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <PeopleNow online={data.online} signIns={data.signInsToday} newUsers={data.newUsers} recent={data.recentSignIns} />
+        <Everyone roles={data.roles} />
+      </div>
       <LiveBoard />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
