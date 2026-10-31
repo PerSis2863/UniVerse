@@ -2798,3 +2798,24 @@ section and `.text-pool`; the landing and sign-in base #0a0f2b; the website's me
 card #0d1233. Aqua Jade glows and the pink river unchanged. **Tested:** `pnpm check`; `world-ui` and
 axe on the hub, student home, Green and Trace at 1280 and 390: no serious problems.
 
+## M58 · Less AI-looking website; People list fixed (31 Oct 2026)
+
+The owner: "make this website… look much less ai but don't change any animations or transitions
+and also see if any errors or bugs are there".
+
+- **Live errors** (production `error_reports`): one real one, `GET /api/core/owner/people` "too many
+  SQL variables" (the console's People tab, after the sample world added many people). Prisma's D1
+  adapter batches relation lookups at 98 ids, and a lookup with its own filters (the last sign-in:
+  `orderBy` + `take: 1`) adds bound values on top: over D1's 100. Fix (`modules/owner.ts`): the page's
+  200 ids first, then their details 90 at a time, put back in order. Same shape in `calls.ts`' call
+  history (`participants: { where, take: 1 }` per conversation): `take` 100 → 90. **Rule:** a
+  `findMany` of more than ~90 rows that selects a relation with its own `where`/`take`/`orderBy`
+  must chunk its ids by 90. The other open rows (ids `smp…`) are the sample world's made-up errors.
+- **Less AI-looking** (impeccable's craft floor: no eyebrows, no gradient text, mono only for data):
+  every `Tag` eyebrow above a heading removed (landing sections, scroll story, sign-in, sign-up,
+  `AuthShowcase`; the helper is deleted from `bits.tsx`), the hero's sparkle line and Statement's
+  "| what UniVerse is" gone; word labels and notes in Urbanist instead of mono (numbers, wpm, scores
+  stay mono); `Accent` is solid `text-pink-200` italic serif (still the brand's italic word, no
+  gradient); the `primary` button lost its pink glow (inset highlight kept). No motion touched.
+- **Tested:** `pnpm check` (1,362 unit tests, lean); looked at the landing hero, story and FAQ.
+

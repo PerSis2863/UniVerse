@@ -68,7 +68,7 @@ function Campus() {
                 <motion.span key={n} className="block font-mono text-2xl font-bold tabular-nums text-white" initial={{ y: 18, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -18, opacity: 0 }} transition={{ duration: 0.45, ease: EASE }}>{1204 + n}</motion.span>
               </AnimatePresence>
             </span>
-            <span className="block font-mono text-[11px] text-pink-200/80">done today</span>
+            <span className="block text-[11px] text-pink-200/80">done today</span>
           </span>
         </motion.div>
         {/* the orbit: jobs ride round, each kept upright; the beam lives in the same turning frame */}
@@ -156,7 +156,7 @@ function Trace() {
       <motion.div className="absolute left-1/2 top-[150px] w-[260px] -translate-x-1/2 [transform-style:preserve-3d]" animate={calm ? undefined : { rotateY: [-14, 14, -14], rotateX: [8, -4, 8] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }} style={{ transformPerspective: 900 }}>
         <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#1c2450,#131a3d)] p-5 ring-1 ring-white/15 shadow-[0_30px_80px_-20px_rgba(254,129,209,0.55)]">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_30%,rgba(254,129,209,0.18)_45%,rgba(167,139,250,0.16)_52%,transparent_65%)] bg-[length:250%_100%] [animation:holo_5s_linear_infinite]" aria-hidden />
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-400">Product passport</p>
+          <p className="text-[11px] text-zinc-400">Product passport</p>
           <p className="mt-1 text-xl font-bold text-white">Aurora olive oil</p>
           <p className="text-xs text-zinc-300">unit 1,204 of 5,000</p>
           <div className="relative mt-4 grid grid-cols-7 gap-1 rounded-xl bg-white p-2.5">
@@ -212,11 +212,11 @@ function Relief() {
         })}
       </div>
       <div className="absolute bottom-0 start-0 rounded-2xl bg-[#1d2650]/95 px-4 py-3 ring-1 ring-white/10">
-        <p className="font-mono text-xs text-zinc-400">people helped today</p>
+        <p className="text-xs text-zinc-400">people helped today</p>
         {/* The count rolls like a meter inside its own line (the old number never shows under the new). */}
         <div className="overflow-hidden"><AnimatePresence mode="popLayout" initial={false}><motion.p key={helped} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="font-mono text-3xl font-bold tabular-nums text-white">{128 + helped * 5}</motion.p></AnimatePresence></div>
       </div>
-      <div className="absolute end-0 top-4 rounded-full bg-orange-500/15 px-3 py-1 font-mono text-xs text-orange-200 ring-1 ring-orange-400/30 whitespace-nowrap">areas only, never a door</div>
+      <div className="absolute end-0 top-4 rounded-full bg-orange-500/15 px-3 py-1 text-xs text-orange-200 ring-1 ring-orange-400/30 whitespace-nowrap">areas only, never a door</div>
     </div>
   );
 }
@@ -255,7 +255,7 @@ function Green() {
       ))}
       {/* the counter */}
       <div className="absolute inset-x-0 top-6 text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-emerald-200/80">CO₂ saved by Class 9B</p>
+        <p className="text-xs text-emerald-200/80">CO₂ saved by Class 9B</p>
         <div className="relative mx-auto mt-1 h-14 overflow-hidden">
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.p key={kg} className="font-mono text-5xl font-bold tabular-nums text-white" initial={{ y: 40, opacity: 0, filter: 'blur(6px)' }} animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }} exit={{ y: -40, opacity: 0 }} transition={{ duration: 0.5, ease: EASE }}>

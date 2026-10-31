@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { Bell, Check, KeyRound, Lock, School, ShieldCheck } from 'lucide-react';
-import { Accent, EASE, Reveal, Tag, glass, useCalm } from './bits';
+import { Accent, EASE, Reveal, glass, useCalm } from './bits';
 
 // "Boring in the ways that matter": four cards on how UniVerse is built (one place for every role,
 // every language both ways, approvals on the phone, safe by default), each with a small live part.
@@ -20,7 +20,7 @@ function Roles() {
     <div className="mt-6 flex flex-wrap items-center gap-2" aria-hidden>
       {steps.map((s, i) => (
         <span key={s} className="inline-flex items-center gap-2">
-          <span className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-xl border font-mono text-xs ${s === 'UniVerse' ? 'border-fuchsia-400/40 bg-fuchsia-500/15 text-white' : 'border-white/10 bg-white/[0.04] text-zinc-300'}`}>
+          <span className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-xl border text-xs ${s === 'UniVerse' ? 'border-fuchsia-400/40 bg-fuchsia-500/15 text-white' : 'border-white/10 bg-white/[0.04] text-zinc-300'}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 bento-step" style={{ animationDelay: `${i * 0.4}s` }} />{s}
           </span>
           {i < steps.length - 1 && <span className="w-4 h-px bg-gradient-to-r from-indigo-400 to-fuchsia-400" />}
@@ -47,7 +47,7 @@ function Languages() {
             className="text-5xl font-bold text-white" lang="und" translate="no">{word}</motion.p>
         </AnimatePresence>
       </div>
-      <p className="font-mono text-xs text-zinc-400"><span lang="und" translate="no">{name}</span> · {dir === 'rtl' ? 'right to left' : 'left to right'}</p>
+      <p className="text-xs text-zinc-400"><span lang="und" translate="no">{name}</span> · {dir === 'rtl' ? 'right to left' : 'left to right'}</p>
       <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Languages">
         {HELLO.map(([, n, d], k) => <span key={n} lang="und" translate="no" className={`h-6 px-2 rounded-md text-[11px] leading-6 border ${k === i ? 'border-fuchsia-400/50 text-white bg-fuchsia-500/15' : 'border-white/[0.07] text-zinc-400'}`} dir={d}>{n}</span>)}
       </div>
@@ -92,7 +92,6 @@ export function Bento() {
   return (
     <section id="product" data-no-motion className="relative px-6 py-28 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
-        <Reveal><Tag>product</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-5xl font-bold tracking-tight leading-[1.08] text-white max-w-2xl">Boring in the ways <Accent>that matter.</Accent></h2></Reveal>
         <div className="mt-12 grid md:grid-cols-3 gap-4">
           <Reveal className="md:col-span-2"><div className={`${card} h-full`}>

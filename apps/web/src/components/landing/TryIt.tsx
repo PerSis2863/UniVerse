@@ -73,7 +73,7 @@ export function QuizTry() {
           </motion.div>
         ) : (
           <motion.div key={`${seed}-${i}`} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16, transition: { duration: 0.15 } }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}>
-            <p className="mt-6 font-mono text-xs text-fuchsia-300">{q.topic}</p>
+            <p className="mt-6 text-xs text-fuchsia-300">{q.topic}</p>
             <p className="mt-2 text-xl sm:text-2xl font-bold text-white min-h-[3.5rem]">{q.q}</p>
             <div className="mt-5 grid sm:grid-cols-2 gap-2.5">
               {q.options.map((o, k) => {
@@ -239,7 +239,7 @@ export function ReliefTry() {
     <div className={`${glass} overflow-hidden grid lg:grid-cols-[1.4fr_1fr]`}>
       <div className="relative">
         <WorldCanvas label="A sample map of needs around you" homeBox={HOME} dark live={!calm} draw={draw} interactive={false} className="w-full h-[300px] sm:h-[380px] lg:h-full lg:min-h-[440px]" />
-        <span className="absolute top-3 start-3 rounded-full bg-black/60 px-2.5 py-1 font-mono text-[11px] text-zinc-200">sample</span>
+        <span className="absolute top-3 start-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] text-zinc-200">sample</span>
         <span className="absolute bottom-3 start-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-xs text-zinc-200"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-2 ring-white" />you</span>
       </div>
       <div className="p-5 sm:p-6 flex flex-col">

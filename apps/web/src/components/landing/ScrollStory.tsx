@@ -7,7 +7,7 @@ import { AppIcon } from '@/components/apps/AppIcon';
 import { APPS, type AppId } from '@/lib/apps';
 import { cn } from '@/lib/utils';
 import { CampusScene, GreenScene, PlayScene, ReliefScene, TraceScene } from './HeroScenes';
-import { Accent, EASE, Live, Tag, useCalm } from './bits';
+import { Accent, EASE, Live, useCalm } from './bits';
 
 // The scroll story under the landing's hero (M44): the five apps' pictures turning into each other as
 // the page scrolls, one screen each, while the picture stays put (sticky). Each picture's box is full
@@ -49,7 +49,6 @@ export function ScrollStory({ onPick }: { onPick?: (id: AppId) => void }) {
       <div className="sticky top-0 h-svh flex items-center">
         <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-6 lg:gap-12 items-center">
           <div className="text-pool pt-16 sm:pt-20 lg:pt-0">
-            <Tag className="hidden sm:inline-flex">one account · {N} apps</Tag>
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={app.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }} transition={{ duration: 0.3, ease: EASE }}>
                 <div className="mt-6 flex items-center gap-3"><AppIcon id={app.id} size={44} /><p className="text-lg font-bold text-white">{app.name}</p></div>

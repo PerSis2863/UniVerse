@@ -5,7 +5,7 @@ import { authErrorMessage } from '@/lib/auth-errors';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Loader2, User, ArrowRight, ArrowLeft, GraduationCap, Building2, Globe, Check, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
-import { Accent, Tag } from '@/components/landing/bits';
+import { Accent } from '@/components/landing/bits';
 import { useAuthStore } from '@/store/auth';
 import { auth, popupSignIn, warmUpPopupSignIn } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, updateProfile } from 'firebase/auth';
@@ -217,8 +217,7 @@ export default function RegisterPage() {
     <div className="w-full">
       {/* Header */}
       <div className="mb-8">
-        <Tag>join UniVerse Impact</Tag>
-        <h1 className="mt-5 text-4xl font-bold tracking-[-0.03em] text-white mb-2">Create an <Accent>account.</Accent></h1>
+        <h1 className="text-4xl font-bold tracking-[-0.03em] text-white mb-2">Create an <Accent>account.</Accent></h1>
         <p className="text-zinc-400 text-sm">{campus ? (finishing ? 'You’re signed in — choose how you’ll use UniVersity to finish creating your account.' : 'Join UniVersity as an individual, a parent, a staff member or an organization.') : `Join ${appById(app).name}. The same account opens every app.`}</p>
         <div className="mt-5"><AppTabs small value={app} onChange={(id) => { setChosenApp(id); if (id !== 'campus') { setSelectedRole('STUDENT'); setIndividual('INDEPENDENT'); setStep((s) => (s === 'role' ? 'credentials' : s)); } else setStep((s) => (s === 'credentials' && !finishing ? 'role' : s)); }} label="Join" layoutId="register-app" /></div>
       </div>

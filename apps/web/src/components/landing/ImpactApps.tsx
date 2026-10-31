@@ -4,7 +4,7 @@ import { Brain, Gamepad2, Globe2, HandHeart, Keyboard, Leaf, LifeBuoy, MapPin, R
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { APPS, type AppId } from '@/lib/apps';
-import { Accent, CountUp, Reveal, Tag, ghost, primary } from './bits';
+import { Accent, CountUp, Reveal, ghost, primary } from './bits';
 
 // The website's parts for UniVerse Impact's newer apps (src/lib/apps.ts): a section each for Relief,
 // Green and Play, and the grid of every app. Illustrations only: no invented customers or numbers
@@ -24,7 +24,6 @@ export function ReliefSection() {
   return (
     <section id="relief" className="px-6 py-24 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
-        <Reveal><Tag>UniVerse Relief</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Help that reaches people <Accent>fast.</Accent></h2></Reveal>
         <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Every need and every offer on one live map.</p></Reveal>
         <div className="mt-12 grid md:grid-cols-3 gap-4">
@@ -44,7 +43,6 @@ export function GreenSection() {
   return (
     <section id="green" className="px-6 py-24 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
-        <Reveal><Tag>UniVerse Green</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Climate action you can <Accent>prove.</Accent></h2></Reveal>
         <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Small actions add up when you can see them.</p></Reveal>
         <div className="mt-12 grid md:grid-cols-3 gap-4">
@@ -64,7 +62,6 @@ export function PlaySection() {
   return (
     <section id="play" className="px-6 py-24 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
-        <Reveal><Tag>UniVerse Play</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Games that teach <Accent>something.</Accent></h2></Reveal>
         <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Twelve games and four 3D worlds. Solo or with friends.</p></Reveal>
         <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -90,7 +87,6 @@ export function AppsGrid({ onPick }: { onPick?: (id: AppId) => void }) {
   return (
     <section id="apps" className="px-6 py-24 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
-        <Reveal><Tag>one account, every app</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Apps that change <Accent>something.</Accent></h2></Reveal>
         <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl"><CountUp to={APPS.length} /> apps, one sign-in.</p></Reveal>
         <div className="mt-12 grid md:grid-cols-2 gap-4">

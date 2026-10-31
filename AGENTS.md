@@ -119,6 +119,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   story's pictures full size; the planet section fades into the page; sign-in fits one laptop screen.
   **M56a**: nothing slows or stops the river by itself any more (only Reduce Motion stills it).
   **M57** (on the branch): dark mode deep navy with Aqua Jade glows (no pale blue); no line under the hero. **M57a**: a step deeper again (page #0a0f2b).
+  **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
   done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts
@@ -295,7 +296,8 @@ the first two, `.karma-frost` for any card); thin-line icons sit in circles (`.k
 arrow buttons (`.karma-go`). Type: Urbanist, served from `/fonts/urbanist` (no outside service). No
 other new hues; green, amber and red only for states. `.panel` / `.card` / `.btn-primary` /
 `.ios-segmented` carry the look, so new screens get it by using them. The river and the italic accent
-word are the brand, even where design guides call them "AI-looking".
+word are the brand, even where design guides call them "AI-looking" (M58: the word is solid pink, no
+gradient; no eyebrow labels above headings; mono only for numbers and data).
 
 **The motion layer works on every page by itself**: pages assemble out of a blur
 (`src/lib/page-transition.ts`), titles sweep in, a light trail runs down the page (`LightTrail`),

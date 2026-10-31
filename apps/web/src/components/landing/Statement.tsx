@@ -40,8 +40,7 @@ export function Statement() {
         style={{ background: 'linear-gradient(120deg, #a0a9cc 0%, #cbd2e6 35%, #ffd6f0 65%, #ffd6f0 100%)' }}>
         <div aria-hidden className="absolute inset-0 opacity-50" style={{ backgroundImage: 'radial-gradient(rgba(24,26,33,0.25) 1px, transparent 1.2px)', backgroundSize: '22px 22px' }} />
         <div className="relative">
-          <p className="font-mono text-xs text-[#1e2752]">| what UniVerse is</p>
-          <p className="relative mt-6 min-h-[1.2em] text-4xl sm:text-6xl font-bold tracking-tight text-[#1d2650]">
+          <p className="relative min-h-[1.2em] text-4xl sm:text-6xl font-bold tracking-tight text-[#1d2650]">
             <span className="sr-only">{LINES.join(' ')}</span>
             <span aria-hidden>{text}</span><span aria-hidden className="inline-block w-[3px] h-[0.9em] -mb-[0.1em] ms-1 bg-[#24262e] animate-pulse" />
           </p>

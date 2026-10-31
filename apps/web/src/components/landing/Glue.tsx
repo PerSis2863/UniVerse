@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { m as motion, useInView } from 'framer-motion';
-import { Accent, EASE, Reveal, Tag, glass } from './bits';
+import { Accent, EASE, Reveal, glass } from './bits';
 
 // "Most of a school day is glue": what UniVerse connects to, and one job laid out step by step
 // with its timings (an example run, so people see what "the steps in between" means).
@@ -51,7 +51,6 @@ export function Glue() {
   return (
     <section id="how" data-no-motion className="relative px-6 py-28 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
-        <Reveal><Tag>connect</Tag></Reveal>
         <Reveal delay={0.05}>
           <ul className="mt-6 flex flex-wrap gap-2.5" aria-label="Works with">
             {APPS.map(([mono, name]) => (

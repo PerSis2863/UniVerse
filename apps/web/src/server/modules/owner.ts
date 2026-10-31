@@ -572,17 +572,22 @@ export default function ownerModule(router: Router) {
     if (oneOf(['STUDENT', 'TEACHER', 'ADMIN', 'INDUSTRY_MENTOR', 'GUARDIAN'] as const, query.role)) where.role = query.role;
     if (oneOf(['PENDING', 'ACTIVE', 'SUSPENDED'] as const, query.status)) where.status = query.status;
     if (q) where.OR = [{ name: { contains: q } }, { email: { contains: q } }, { phone: { contains: q } }];
-    const people = await prisma.user.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-      skip: Math.max(0, Number(query.skip) || 0),
-      select: {
-        id: true, name: true, email: true, phone: true, role: true, status: true, avatar: true, accountType: true, onboardedAt: true, createdAt: true, lastSeenAt: true,
-        loginEvents: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true, device: true, country: true, city: true } },
-        _count: { select: { loginEvents: true, enrollments: true, taughtCourses: true, sentMessages: true } },
-      },
-    });
+    // A page of 200 ids first, then their details 90 at a time: the last sign-in and counts are read
+    // with every id on the page in one list, over D1's 100 bound values (M58: "too many SQL variables").
+    const ids = (await prisma.user.findMany({ where, orderBy: { createdAt: 'desc' }, take: 200, skip: Math.max(0, Number(query.skip) || 0), select: { id: true } })).map((u) => u.id);
+    const parts = [];
+    for (let i = 0; i < ids.length; i += 90) {
+      parts.push(await prisma.user.findMany({
+        where: { id: { in: ids.slice(i, i + 90) } },
+        select: {
+          id: true, name: true, email: true, phone: true, role: true, status: true, avatar: true, accountType: true, onboardedAt: true, createdAt: true, lastSeenAt: true,
+          loginEvents: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true, device: true, country: true, city: true } },
+          _count: { select: { loginEvents: true, enrollments: true, taughtCourses: true, sentMessages: true } },
+        },
+      }));
+    }
+    const byId = new Map(parts.flat().map((u) => [u.id, u]));
+    const people = ids.flatMap((id) => byId.get(id) ?? []);
     const total = await prisma.user.count({ where });
     return {
       total,

@@ -29,7 +29,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="hero-in my-auto py-10 short:py-4">
           <AuthShowcase />
         </div>
-        <div className="font-mono text-xs text-zinc-500 flex items-center justify-between gap-4">
+        <div className="text-xs text-zinc-500 flex items-center justify-between gap-4">
           <span>© 2026 UniVerse Impact Network</span>
           <span>Made with <span className="text-fuchsia-400">♥</span> by Aditya Bhatt</span>
         </div>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Loader2, Eye, EyeOff, Building2, Fingerprint, Phone } from 'lucide-react';
 import Link from '@/components/ui/Link';
-import { Accent, Tag } from '@/components/landing/bits';
+import { Accent } from '@/components/landing/bits';
 import { useAuthStore } from '@/store/auth';
 import { auth, popupSignIn, warmUpPopupSignIn } from '@/lib/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
@@ -250,8 +250,7 @@ export default function LoginPage() {
       <div className="w-full">
         {/* Header */}
         <div className="mb-8 short:mb-5">
-          <Tag className="short:hidden">welcome back</Tag>
-          <h1 className="mt-5 short:mt-0 text-4xl font-bold tracking-[-0.03em] text-white mb-2">Welcome <Accent>back.</Accent></h1>
+          <h1 className="text-4xl font-bold tracking-[-0.03em] text-white mb-2">Welcome <Accent>back.</Accent></h1>
           <p className="text-zinc-300 text-sm">Sign in to {appById(app).name}. One account opens every app.</p>
           <div className="mt-5 short:mt-4"><AppTabs small value={app} onChange={setChosenApp} label="Sign in to" layoutId="login-app" /></div>
         </div>

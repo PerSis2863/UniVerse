@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { m as motion, useInView } from 'framer-motion';
-import { Accent, CountUp, EASE, Reveal, Tag } from './bits';
+import { Accent, CountUp, EASE, Reveal } from './bits';
 
 // "Numbers we did not have to make up": facts about UniVerse itself (languages, question types, what
 // students pay), each drawn as it scrolls in, and below them what each role gets. No invented
@@ -60,28 +60,27 @@ export function Proof() {
       <div className="max-w-6xl mx-auto">
         <div className="grid md:grid-cols-2 gap-8 items-end">
           <Reveal>
-            <Tag>the facts</Tag>
-            <h2 className="mt-5 text-4xl md:text-5xl font-bold tracking-tight leading-[1.08] text-white">Numbers we did <Accent>not</Accent> have to make up.</h2>
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.08] text-white">Numbers we did <Accent>not</Accent> have to make up.</h2>
           </Reveal>
           <Reveal delay={0.1}><p className="text-zinc-400 md:max-w-md md:ms-auto">Counted from the product itself.</p></Reveal>
         </div>
         <div className="mt-14 grid md:grid-cols-3 gap-10 border-t border-white/[0.06] pt-10">
           <Reveal>
-            <p className="font-mono text-xs text-zinc-400">languages</p>
+            <p className="text-xs text-zinc-400">languages</p>
             <p className="mt-2 text-6xl font-bold tracking-tight text-white"><CountUp to={13} /></p>
-            <p className="mt-2 font-mono text-xs text-zinc-400">including two that read right to left</p>
+            <p className="mt-2 text-xs text-zinc-400">including two that read right to left</p>
             <div className="mt-6"><Wave /></div>
           </Reveal>
           <Reveal delay={0.08}>
-            <p className="font-mono text-xs text-zinc-400">question types</p>
+            <p className="text-xs text-zinc-400">question types</p>
             <p className="mt-2 text-6xl font-bold tracking-tight text-white"><CountUp to={8} /></p>
-            <p className="mt-2 font-mono text-xs text-zinc-400">marked for the teacher, automatically</p>
+            <p className="mt-2 text-xs text-zinc-400">marked for the teacher, automatically</p>
             <div className="mt-6"><Bars lit={8} total={11} /></div>
           </Reveal>
           <Reveal delay={0.16}>
-            <p className="font-mono text-xs text-zinc-400">what students pay</p>
+            <p className="text-xs text-zinc-400">what students pay</p>
             <p className="mt-2 text-6xl font-bold tracking-tight text-white"><CountUp to={0} prefix="$" /></p>
-            <p className="mt-2 font-mono text-xs text-zinc-400">students never pay to use UniVerse</p>
+            <p className="mt-2 text-xs text-zinc-400">students never pay to use UniVerse</p>
             <Gauge />
           </Reveal>
         </div>
@@ -91,7 +90,7 @@ export function Proof() {
               <span className="block w-6 h-px bg-white/30 mb-6" />
               <p className="text-zinc-200 leading-relaxed">{r.line}</p>
               <p className="mt-6 text-sm font-semibold text-white">{r.who}</p>
-              <p className="font-mono text-xs text-zinc-400">{r.what}</p>
+              <p className="text-xs text-zinc-400">{r.what}</p>
             </Reveal>
           ))}
         </div>
