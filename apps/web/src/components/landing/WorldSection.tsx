@@ -22,7 +22,7 @@ const ARCS: [number, number][] = [[0, 1], [0, 2], [0, 4], [1, 2], [2, 3], [3, 4]
 
 export function WorldSection({ app }: { app: AppId }) {
   return (
-    <section aria-labelledby="world-h" className="world relative overflow-hidden px-6 pt-24 pb-10 md:pt-28">
+    <section aria-labelledby="world-h" className="world relative overflow-hidden px-6 pt-24 pb-28 md:pt-28 md:pb-40">
       <div className="relative max-w-6xl mx-auto text-center">
         <Reveal><h2 id="world-h" className="text-4xl md:text-6xl font-bold tracking-[-0.03em] leading-[1.05] text-white">One account. <Accent>One planet.</Accent></h2></Reveal>
         <Reveal delay={0.06}><p className="mt-5 mx-auto max-w-xl text-lg text-zinc-300 leading-relaxed">School, products, help, climate and games share one sign-in, one wallet and one inbox, on any phone, in 13 languages.</p></Reveal>

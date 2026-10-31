@@ -2715,3 +2715,57 @@ The owner sent the "Globynk" hero again: "make it like this exactly all over the
   on the student, teacher and admin homes, hub, Green, Relief, Play and Trace at 1280 and four of them at
   390, and light mode on two: no serious problems. Looked at the hub's globe, the landing section, the
   student home and the sign-in page.
+
+## M56 · A smoother landing, a pink river, a seamless planet, sign-in on one screen (31 Oct 2026)
+
+The owner: the site lags on scroll and "the background line stop the animation and get stuck"; make
+the line pink; the planet section's background ends in a line ("make it look seamless"); the scroll
+story's Relief step "is not looking good"; and sign-in needs scrolling on their laptop.
+
+- **The river froze for good** (`LightTrail.tsx` `loop`): M46's check held it still once frames came
+  more than 28–34 ms apart, and never let go. A busy scroll, or a browser held at 30 frames a second
+  to save battery (Chrome's Energy Saver, Safari's Low Power Mode), tripped it. Now: lighter (half the
+  strands, 30 a second) when frames are late or the river's own drawing (`cost`, timed round `draw`)
+  is over 6 ms, back to full after 15 s with room again; held still only for the river's own cost
+  (over 10 ms when lighter, M46's budget phone) and only for 10 s, then 20, 40…
+- **A third cheaper a frame** (measured alone, drawing and painting: 31 → 21 ms in the cloud's
+  software browser): 84 strands, not 120 (a little brighter each); square ends and corners on the thin
+  strands; the river's middle and width worked out once a frame for all strands (`ys`/`cs`/`ss`);
+  pulses drawn as short dashes in one path instead of dashing every whole strand twice; sparks in three
+  fills. Batching strands into fewer strokes didn't help (it's the painted area), so don't.
+- **Pink:** `DARK` is all Baby Pink, blush to orchid, with pink sparks and pink-white bends (M54's
+  aqua half is gone from the river only; aqua stays everywhere else). Light mode unchanged.
+- **Scroll story** (`ScrollStory.tsx`): each picture's `Live` box is full width; bare, it shrank to
+  its widest label inside the flex layer, so Relief's radar (sized in %) vanished and its chip wrapped
+  word by word. The words sit in a `.text-pool` (a navy pool behind them, `isolation: isolate`). The
+  Relief radar is navy, not near-black; its count rolls inside its own line; the chip doesn't wrap.
+- **Planet section** (`.world::before` in `globals.css`, `WorldSection.tsx`): the background moved to
+  a pseudo-element (so a mask can soften it without fading the planet), the aqua fades to transparent
+  over the last quarter and toward the sides, with more room below the notes (`pb-28 md:pb-40`). The
+  river shows below it instead of starting at a hard line.
+- **Sign in on one screen** (`(auth)/layout.tsx`, `AuthShowcase.tsx`, `login/page.tsx`): the left side
+  is sticky at screen height and never sets the page's height; its picture shrinks with the screen
+  (`.auth-scene`: 0.8 under 960 px tall, 0.65 under 860, 0.55 under 760, hidden under 700); the new
+  `short:` variant (`@custom-variant`, max-height 860 px) tightens the spacing and hides the "welcome
+  back" tag. Fits at 1280×720, 1440×745 and up (the local-only demo buttons aside). Sign up is
+  longer and still scrolls on short screens.
+- **Rules for code that builds on it:** don't bring back a permanent freeze in a canvas loop; judge by
+  the drawing's own cost. A scene in a flex parent needs a full-width box.
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); `world-ui`,
+  `landing-story-ui` and `landing-pause-ui` (axe-clean at 390 and 1280, nothing sideways); timed the old
+  and new river alone; looked at the story's Relief step, the planet section and sign-in at four sizes.
+
+## M56a · Nothing slows or stops the river by itself (31 Oct 2026)
+
+The owner, after M56: "remove whatever you made here to slow down the lines or website or
+smoothness… just now it happened to me for no reason".
+
+- `LightTrail.tsx`: the busy check is gone (no `lite`, `calm`, `avg`, `cost`, timers: M46's "lighter,
+  then still" and M56's softer version), and so is the low-memory check (`lowEndDevice()`) for the
+  river. It always draws every strand: 60 frames a second on computers, 30 on phones (a fixed rate,
+  kept), nothing while the tab is hidden, still only for Reduce Motion. M56's cheaper drawing stays.
+- **Rule:** don't add any automatic slow-down, thinning or freeze to the river again without the
+  owner's yes. If a budget phone struggles, make the drawing cheaper instead.
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); the river alone in a
+  browser with every frame faked as very slow keeps moving.
+

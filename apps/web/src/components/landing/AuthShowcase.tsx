@@ -24,10 +24,10 @@ export function AuthShowcase() {
     <AnimatePresence mode="wait">
       <motion.div key={app} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10, transition: { duration: 0.18 } }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
         <Tag>{s.tag}</Tag>
-        <h2 className="mt-6 text-5xl xl:text-6xl font-bold tracking-[-0.035em] leading-[1.04] text-white">{s.head} <Accent>{s.accent}</Accent></h2>
-        <p className="mt-5 text-zinc-300 text-base leading-relaxed max-w-md">{s.text}</p>
-        <div className="mt-9">{s.card}</div>
-        <p className="mt-6 font-mono text-xs text-zinc-400">{s.foot}</p>
+        <h2 className="mt-6 short:mt-4 text-5xl xl:text-6xl short:xl:text-5xl font-bold tracking-[-0.035em] leading-[1.04] text-white">{s.head} <Accent>{s.accent}</Accent></h2>
+        <p className="mt-5 short:mt-3 text-zinc-300 text-base leading-relaxed max-w-md">{s.text}</p>
+        <div className="auth-scene mt-9 short:mt-6">{s.card}</div>
+        <p className="mt-6 short:mt-4 font-mono text-xs text-zinc-400">{s.foot}</p>
       </motion.div>
     </AnimatePresence>
   );

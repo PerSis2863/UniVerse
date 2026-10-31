@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @variant dark (&:where(.dark, .dark *));
+/* `short:` a laptop-height screen or less: sign in tightens so it fits without scrolling. */
+@custom-variant short (@media (max-height: 860px));
 @config "../../tailwind.config.ts";
 
 /* ─── Design tokens ─────────────────────────────── */
@@ -2358,10 +2360,15 @@ html:not(.dark) .live-card {
 .wcard-thumb:hover { opacity: 0.9; }
 .wcard-thumb.is-on { opacity: 1; transform: translateY(-2px); box-shadow: 0 0 0 2px var(--background), 0 0 0 4px #fe81d1; }
 /* M52 · The landing's planet section (src/components/landing/WorldSection.tsx): Midnight Abyss sinking
-   into Aqua Jade, like the owner's "Globynk" picture. */
-.world { background:
-  radial-gradient(46% 26% at 50% 86%, rgb(146 226 215 / 0.6), transparent 70%),
-  linear-gradient(180deg, transparent 0%, #1c2649 20%, #243e61 40%, #3a6880 58%, #5ca3a7 74%, #7ccfc5 86%, #3a6880 95%, #171f44 100%); }
+   into Aqua Jade, like the owner's "Globynk" picture. M56 (the owner: "make it look seamless"): the
+   aqua horizon dissolves back into the page over the section's last quarter, and thins out toward the
+   sides, so there's no edge where it ends and the river flows on out of it. */
+.world { isolation: isolate; }
+.world::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background:
+  radial-gradient(46% 22% at 50% 74%, rgb(146 226 215 / 0.55), transparent 70%),
+  linear-gradient(180deg, transparent 0%, #1c2649 16%, #243e61 32%, #3a6880 48%, #5ca3a7 62%, #7ccfc5 73%, rgb(92 163 167 / 0.8) 81%, rgb(58 104 128 / 0.42) 90%, rgb(36 62 97 / 0.12) 96%, transparent 100%);
+  -webkit-mask-image: radial-gradient(130% 100% at 50% 40%, #000 62%, transparent 100%);
+  mask-image: radial-gradient(130% 100% at 50% 40%, #000 62%, transparent 100%); }
 /* Notes on the bright aqua: navy glass, dark enough that white text reads at 4.5:1 on the brightest part. */
 .world-glass { border-radius: 1.5rem; border: 1px solid rgb(255 255 255 / 0.18); background: rgb(16 28 58 / 0.58); -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 18px 40px -24px rgb(4 8 28 / 0.6); }
 /* M55 · The aqua horizon at the foot of the landing's first screen and the sign-in pages. */
@@ -2408,3 +2415,18 @@ html.dark .ins-cell :is(svg, .ins-pop) { color: #74ffed; }
 }
 html.dark .glass-sidebar { -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%);
   background: radial-gradient(130% 30% at 0% 0%, rgba(254, 129, 209, 0.1), transparent 70%), radial-gradient(140% 36% at 50% 106%, rgba(116, 255, 237, 0.22), transparent 70%), linear-gradient(180deg, rgba(16, 22, 58, 0.9), rgba(17, 30, 64, 0.82) 60%, rgba(18, 48, 72, 0.78)); }
+
+/* Sign in and sign up's picture (AuthShowcase): the 480 px scenes shrink on shorter screens so the
+   page fits without scrolling, and go on the shortest. */
+.auth-scene { height: 480px; }
+.auth-scene > * { transform-origin: top left; }
+[dir="rtl"] .auth-scene > * { transform-origin: top right; }
+@media (max-height: 960px) { .auth-scene { height: 384px; } .auth-scene > * { scale: 0.8; } }
+@media (max-height: 860px) { .auth-scene { height: 312px; } .auth-scene > * { scale: 0.65; } }
+@media (max-height: 760px) { .auth-scene { height: 264px; } .auth-scene > * { scale: 0.55; } }
+@media (max-height: 700px) { .auth-scene { display: none; } }
+
+/* M56 · A pool of the page's navy behind words the river passes under (the landing's scroll story):
+   the light dims there and the words stay crisp. */
+.text-pool { position: relative; isolation: isolate; }
+.text-pool::before { content: ''; position: absolute; inset: -20% -18%; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgb(23 31 68 / 0.86), rgb(23 31 68 / 0.6) 55%, transparent); }

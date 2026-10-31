@@ -104,7 +104,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   sections with "try it here" demos; photos shared in), **M44** (the landing's scroll story and
   live totals, migration 0186), **M45** (glides, celebrations, optional sounds, swipes, bottom
   sheets, one vibration), **M46** (today's classes, courses and chats readable offline, the
-  iPhone launch screen, bar colours per theme, the river holds still on a struggling phone) and
+  iPhone launch screen, bar colours per theme; its river check was removed in M56a) and
   **M47** (the landing's demos run only on screen; light and sideways iPad launch screens),
   **M48** (live cards after the owner's "Crew" video: 3D constellations and funnels of light on every
   home, `src/components/live`), **M49** (heartbeat, radar and pulse-grid pictures, tabs that
@@ -115,6 +115,9 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   Wallet), **M53** (light mode in Marshmallow White, Galactic Violet and Bubblegum Pink), **M54** (more
   Aqua Jade in dark mode) and **M55** (the "Globynk" picture everywhere in dark mode: navy-to-aqua
   pages, glass cards, the network globe) (merged into `main`, 31 Oct).
+  **M56** (31 Oct, on the branch): the river pink again and never stuck, a third cheaper; the scroll
+  story's pictures full size; the planet section fades into the page; sign-in fits one laptop screen.
+  **M56a**: nothing slows or stops the river by itself any more (only Reduce Motion stills it).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
   done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts
