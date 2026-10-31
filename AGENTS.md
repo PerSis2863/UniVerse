@@ -115,6 +115,8 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   Wallet), **M53** (light mode in Marshmallow White, Galactic Violet and Bubblegum Pink), **M54** (more
   Aqua Jade in dark mode) and **M55** (the "Globynk" picture everywhere in dark mode: navy-to-aqua
   pages, glass cards, the network globe) (merged into `main`, 31 Oct).
+  **M56** (31 Oct, on the branch): the river pink again and never stuck, a third cheaper; the scroll
+  story's pictures full size; the planet section fades into the page; sign-in fits one laptop screen.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
   done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts

@@ -10,7 +10,9 @@ import { CampusScene, GreenScene, PlayScene, ReliefScene, TraceScene } from './H
 import { Accent, EASE, Live, Tag, useCalm } from './bits';
 
 // The scroll story under the landing's hero (M44): the five apps' pictures turning into each other as
-// the page scrolls, one screen each, while the picture stays put (sticky). Only the picture on screen
+// the page scrolls, one screen each, while the picture stays put (sticky). Each picture's box is full
+// width (M56: a bare one shrank to its widest label, so Relief's radar vanished); the words sit in a
+// pool of navy so the river passing behind them doesn't cut through. Only the picture on screen
 // and its neighbours are drawn, and only while the story is near the screen. With Reduce Motion they
 // only cross-fade.
 
@@ -46,7 +48,7 @@ export function ScrollStory({ onPick }: { onPick?: (id: AppId) => void }) {
     <section ref={ref} id="story" aria-label="Every app, one after another" className="relative px-6" style={{ height: `${N * 100}svh` }}>
       <div className="sticky top-0 h-svh flex items-center">
         <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-6 lg:gap-12 items-center">
-          <div className="pt-16 sm:pt-20 lg:pt-0">
+          <div className="text-pool pt-16 sm:pt-20 lg:pt-0">
             <Tag className="hidden sm:inline-flex">one account · {N} apps</Tag>
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={app.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }} transition={{ duration: 0.3, ease: EASE }}>
@@ -73,7 +75,7 @@ export function ScrollStory({ onPick }: { onPick?: (id: AppId) => void }) {
             {APPS.map((a, i) => {
               if (!near || Math.abs(i - now) > 1) return null;
               const Scene = SCENE[a.id];
-              return <Layer key={a.id} i={i} at={at} calm={calm} shown={i === now}><Live away={i !== now}><Scene /></Live></Layer>;
+              return <Layer key={a.id} i={i} at={at} calm={calm} shown={i === now}><Live away={i !== now} className="flex w-full justify-center"><Scene /></Live></Layer>;
             })}
           </div>
         </div>
