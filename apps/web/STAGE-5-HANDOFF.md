@@ -2929,3 +2929,13 @@ admin sign-in code's 5-tries lockout lives in one server's memory; the certifica
 token in the address. **[owner]:** check `STRIPE_WEBHOOK_SECRET` is set in Cloudflare; add the
 "Private files" rule (DEPLOY-CLOUDFLARE.md); keep `SESSION_SECRET` until the LMS fix is live (done
 now); turn on Bot Fight Mode.
+
+## M64 · Every PRO feature free for the owner (31 Oct 2026)
+
+The owner: "in owner console every pro feature should be free". The code already meant it
+(`isPro = plan === 'PRO' || u.owner`, billing's `user.owner ? 'ENTERPRISE'`, school admin tools'
+`user.owner`), but router handlers get the resolved `User`, which never had `owner` set (only
+`getSessionUser` sets it), so the owner saw "FREE · YOUR PLAN" and "Talk to us about PRO".
+`src/server/router.ts` now sets `owner = true` on the owner's own user object (only when
+`isOwner(user)`: a verified Google sign-in with the owner's email). **Rule:** handlers may trust
+`user.owner`; never set it anywhere else.

@@ -102,6 +102,9 @@ export class Router {
         if (!isOwner(owner)) throw new NotFoundException(`Cannot ${req.method} /api/${path}`);
       }
       const user = route.public ? null : await resolveUser(token);
+      // Handlers read `user.owner` (SessionUser) but get the resolved User: mark the owner's own
+      // object (M64: the owner's PRO features were locked because this was never set).
+      if (user && isOwner(user)) (user as User & { owner?: boolean }).owner = true;
       if (route.roles && (!user || !route.roles.includes(user.role))) throw new ForbiddenException('Forbidden resource');
       if (user && demoWriteBlocked(req, user, token)) throw new ForbiddenException('The demo admin account is read-only.');
       if (viewAsBlocked(req, token)) throw new ForbiddenException({ message: 'This is a read-only view: changes and private messages are not available.', code: 'VIEW_AS_READ_ONLY', error: 'Forbidden' });
