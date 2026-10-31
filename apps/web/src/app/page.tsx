@@ -22,6 +22,8 @@ import { AppTabs } from '@/components/landing/AppTabs';
 import { AppsGrid, GreenSection, ReliefSection, PlaySection } from '@/components/landing/ImpactApps';
 import { SplitCta } from '@/components/landing/SplitCta';
 import { GreenMore, PlayMore, ReliefMore } from '@/components/landing/ImpactMore';
+import { LiveTotals } from '@/components/landing/LiveTotals';
+import { ScrollStory } from '@/components/landing/ScrollStory';
 import { Accent, EASE, Reveal, Tag, ghost, primary } from '@/components/landing/bits';
 import type { AppId } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
@@ -201,6 +203,9 @@ export default function ShowcasePage() {
               </motion.div>
             </div>
           </section>
+
+          <LiveTotals />
+          <ScrollStory onPick={pick} />
 
           <AnimatePresence mode="wait">
             <motion.div key={app} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }} transition={{ duration: 0.4 }}>

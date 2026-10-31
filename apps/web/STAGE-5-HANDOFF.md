@@ -2295,3 +2295,32 @@ The owner's pick (M43 in AGENTS.md §4), plus "Sharing photos into UniVerse… p
   right after installing may lose photos, the text still arrives). The landing tabs' sections only
   exist while their tab is open: a test has to pick the tab (and the first tap can land before the
   page is ready).
+
+## M44 · The landing's scroll story and live totals (31 Oct 2026)
+
+The owner's pick (M44 in AGENTS.md §4): "a scroll story at the top of the landing (the five pictures
+turning into each other) and a strip of live totals (rounded, counted once a day, no person
+findable)".
+
+- **Scroll story** (`src/components/landing/ScrollStory.tsx`, under the hero): one screen of scrolling
+  per app; the picture stays put (sticky) while the five `HeroScenes` pictures fade, shrink and slide
+  into each other (`useScroll` → `at` 0…4, transform and opacity only). Only the picture on screen and
+  its neighbours are mounted, and only while the story is near the screen (`useInView`). The dots jump
+  to an app; "Open <app>" picks that tab and goes back to the top. Reduce Motion (`useCalm`): fades
+  only.
+- **Live totals** (`LiveTotals.tsx`, between the hero and the story): `GET /api/impact/totals`
+  (public, cached an hour) → `siteTotals()` (`src/server/site-totals.ts`). Counted once a day by the
+  daily jobs' new `site-totals` step (one query for the five numbers, one upsert) into the new table
+  `site_totals` (migration **0186**), already rounded down (`roundDown` in `src/lib/site-totals.ts`:
+  two figures, tens at least); anything under 10 isn't sent, and with nothing to show the strip is
+  hidden. The owner's sample world never counts (emails `@sample.universe.test`, ids and brands
+  `smp…`). If the table is empty (before the first daily run) the first visit counts once.
+- **Rules for code that builds on it:** new totals go in `TOTAL_KEYS`, the query in
+  `countSiteTotals` (keep it one query) and a label in `LiveTotals`. Only whole-site sums, never
+  per place or per school. The landing asks with plain `fetch`, so sample mode doesn't need an answer
+  for it.
+- **Tested:** `scripts/checks/landing-story-ui.mjs` (the route's numbers are rounded and 10 or more;
+  the strip shows them; each dot brings its app's headline and picture; axe and no sideways scroll at
+  390/1280); unit tests for the rounding; typecheck, lint, lean.
+- **Traps:** after adding a table, a running dev server keeps the old Prisma client (`siteTotal` is
+  undefined) until it's restarted.

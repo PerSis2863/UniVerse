@@ -3225,6 +3225,15 @@ model AiUsage {
   @@map("ai_usage")
 }
 
+/// The landing's live totals (M44), counted once a day and already rounded down (src/server/site-totals.ts).
+model SiteTotal {
+  key   String @id
+  value Float
+  day   String
+
+  @@map("site_totals")
+}
+
 /// Saved AI answers, handed out again for the same question instead of asking AI (src/server/ai-budget.ts).
 model AiCache {
   key       String   @id

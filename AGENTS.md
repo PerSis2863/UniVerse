@@ -100,20 +100,18 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   replaces Neon Strike: a first-person extraction shooter on a seeded island) (PR #98, 26 Oct). **M41**
   (new Green and Play pictures, also on sign-in; a press ripple, magnetic buttons, tilt and a
   cursor light), **M42** (link previews, icon count, install guide, Share to UniVerse, much less
-  text), **M42a** (no "Try the live demo" on sign-in) and **M43** (more Relief, Green and Play
-  sections with "try it here" demos; photos shared in) (branch `claude/funny-galileo-y4mz9r`, not
-  merged yet).
+  text), **M42a** (no "Try the live demo" on sign-in), **M43** (more Relief, Green and Play
+  sections with "try it here" demos; photos shared in) and **M44** (the landing's scroll story and
+  live totals, migration 0186) (branch `claude/funny-galileo-y4mz9r`, not merged yet).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **Next, the owner's pick (31 Oct: "do all of them", store apps left out, no funds)**, one item each,
   with very little text on screen (the owner: "too much information for the first time user"):
-  **M43** done; **M44** a
-  scroll story at the top of the landing (the five pictures turning into each other) and a strip of
-  live totals (rounded, counted once a day, no person findable); **M45** in the app: screens that
+  **M43** and **M44** done; **M45** in the app: screens that
   glide into each other (view transitions), short celebrations at milestones, optional sounds (off
   by default), swipe and long-press on rows, bottom sheets, the same vibration everywhere, empty
   screens with one next step; **M46** today's timetable, courses and recent messages readable
   offline, an iPhone launch screen, bar colours per theme, and a speed check on a low-end phone.
-- **Next database update number: `0186`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0187`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
   challenges (done, M25); organisation accounts for Relief (NGOs, supplies, volunteer shifts; SMS/WhatsApp requests behind a

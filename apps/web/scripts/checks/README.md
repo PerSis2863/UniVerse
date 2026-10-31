@@ -43,6 +43,7 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `home-ui.mjs` | Q8 home pages: Up next changing as the time passes (a class call 12 min away → Join at 10 min → "Now"), Edit home (hide, move, remembered after a reload), the daily goal, the teacher's needs attention and create… |
 | `kind-api.mjs` | File and link hand-ins on the local Worker. |
 | `kind-group-ui.mjs` | File and link hand-ins and group work in the browser on the built Worker. |
+| `landing-story-ui.mjs` | M44 in the browser: the landing's live totals (rounded, none under 10) and the scroll story. 390 and 1280 px, axe. |
 | `landing-try-ui.mjs` | M43 in the browser: the landing's Relief, Green and Play demos, and photos shared into a chat. 390 and 1280 px, axe. |
 | `lesson-ui.mjs` | Rich lesson pages on the built Worker: read (callout, quick check, flashcards), edit, add blocks, save, preview; a new page opens the editor; students read without editing. 390 and 1280 px, light and dark, axe. |
 | `make-cc.mjs` | A small Canvas-style cartridge for the browser test. |
