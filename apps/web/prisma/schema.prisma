@@ -7014,6 +7014,8 @@ model GreenAction {
   photoUrl   String?
   verifiedBy String?
   verifiedAt DateTime?
+  /// "How did it go?" (migration 0187): EASY, OK or HARD, set only by the person.
+  feeling    String?
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])

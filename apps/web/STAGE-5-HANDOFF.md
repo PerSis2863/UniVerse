@@ -2848,3 +2848,32 @@ and built a Trace-native version from parts already here — no new dependency, 
 - **Tested:** `pnpm check` (1,364 tests, lean); `/trace/globe` axe-clean at 1280, no console errors;
   looked at it in sample mode (shipments plotted and labelled on the globe).
 
+
+## M60 · Green Pass and "how did it go?"; the live-aircraft demo (31 Oct 2026)
+
+The owner's remaining two picks from the batch ("please do this").
+
+- **Green Pass** (`PassSection` in `src/components/green/GreenApp.tsx`, under the hero on `/green`): a
+  collectable card. Tier from the CO₂ saved (`PASS_TIERS`: Seedling 0, Sprout 25, Sapling 100, Grove
+  500, Forest 2,000 kg), a stamp per kind of action ever logged (8 to collect), a member number
+  hashed from the account id (never the id itself). Pure logic `greenPass()` in `src/lib/green.ts`
+  (unit test). Leans toward the mouse (transform only; not on touch, not with Reduce Motion). No new
+  route: it reads `GET /green/me`.
+- **"How did it go?"**: after logging, Easy / Okay / Hard / Skip under the Log button. Migration
+  **0187** `green_actions.feeling`; `POST /green/actions/:id/feeling` (only on your own action,
+  `oneOf(FEELINGS)`). `GET /green/me` adds `easiest` (`easiestKind()`: the kind with the most "easy",
+  at least two), shown on the Pass with "Log it again" (picks that kind in the form). Each action in
+  "What you did" shows "felt easy" etc. Sample mode: `sampleGreenMe` has feelings and `easiest`; the
+  POST falls through to the sample write catch-all.
+- **Live-aircraft demo (not in the app):** a private page, https://claude.ai/artifact/GTsMpvx63QWjGrLNi2i4Ac
+  (also sent to the owner as `live-sky-globe.html`). Planes as pink dots with 10-minute streaks on a
+  dotted globe in the Globynk look; land from a 0.5° bit mask made from `public/geo/world-110m.json`.
+  Data: OpenSky Network `GET /api/states/all` (no key; anonymous ~400 credits a day, 4 per call, so
+  every 2 minutes, planes moved along their course in between). Where outside data is blocked (the
+  Claude viewer, this cloud container) it shows clearly labelled made-up flights between 40 real
+  airports. **Before it could ship:** OpenSky allows non-commercial use only; the fit is Trace (air
+  freight) near the brand's own shipments, via a server route with caching, never the browser
+  hitting OpenSky per visitor.
+- **Tested:** `pnpm check`; the feeling route by hand (own action ok, bad value 400, someone else's
+  404); `/green` in the browser at 390 and 1280, light and dark: log → prompt → Easy → saved, axe
+  clean, no sideways scroll, no page errors. Test rows removed.

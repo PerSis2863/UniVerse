@@ -121,12 +121,13 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   **M57** (on the branch): dark mode deep navy with Aqua Jade glows (no pale blue); no line under the hero. **M57a**: a step deeper again (page #0a0f2b).
   **M58**: less AI-looking website; People list fixed. **M58a**: teacher-home duplicate-key fix.
   **M59**: a Live globe in Trace (the brand's shipments on the 3D globe).
+  **M60**: the Green Pass (collectable card) and "how did it go?" after logging in Green; a live-aircraft demo kept off the site for the owner to judge.
   **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
   done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts
   on a first visit, is in M47's handoff note).
-- **Next database update number: `0187`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0188`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
   challenges (done, M25); organisation accounts for Relief (NGOs, supplies, volunteer shifts; SMS/WhatsApp requests behind a

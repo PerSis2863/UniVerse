@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { BADGES, GREEN_FACTORS, GREEN_KINDS, co2For, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
+import { BADGES, FEELINGS, GREEN_FACTORS, GREEN_KINDS, co2For, easiestKind, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
 import { toBase32 } from '@/lib/trace';
 import { isAppFileUrl } from '@/lib/storage';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
@@ -26,7 +26,7 @@ const N = (v: unknown) => Number(v ?? 0) || 0;
 export async function greenMe(u: SessionUser) {
   const now = Date.now(), challenge = weeklyChallenge(now);
   const [actions, recent, teams, community] = await Promise.all([
-    prisma.greenAction.findMany({ where: { userId: u.id }, select: { kind: true, amount: true, co2Kg: true, createdAt: true, verifiedAt: true }, orderBy: { createdAt: 'desc' }, take: 5000 }),
+    prisma.greenAction.findMany({ where: { userId: u.id }, select: { kind: true, amount: true, co2Kg: true, createdAt: true, verifiedAt: true, feeling: true }, orderBy: { createdAt: 'desc' }, take: 5000 }),
     prisma.greenAction.findMany({ where: { userId: u.id }, orderBy: { createdAt: 'desc' }, take: 30 }),
     prisma.greenMember.findMany({ where: { userId: u.id }, select: { teamId: true } }),
     prisma.$queryRawUnsafe<Row[]>(`SELECT COALESCE(SUM(co2Kg), 0) AS kg, COUNT(*) AS n, COUNT(DISTINCT userId) AS people FROM green_actions`).catch(() => [] as Row[]),
@@ -54,7 +54,7 @@ export async function greenMe(u: SessionUser) {
     badges: BADGES.map((b) => ({ id: b.id, label: b.label, text: b.text, earned: b.earned(totals) })),
     challenge: { ...challenge, mine: Math.round(mineWeek * 10) / 10, waiting: Math.round(waitingWeek * 10) / 10, team: teamIds.length ? Math.round(N(teamWeek[0]?.n) * 10) / 10 : null },
     verified: { actions: actions.filter((a) => a.verifiedAt).length, kg: Math.round(actions.filter((a) => a.verifiedAt).reduce((s, a) => s + a.co2Kg, 0) * 10) / 10 },
-    perDay, recent, teams: teamIds.length,
+    perDay, recent, teams: teamIds.length, easiest: easiestKind(actions),
     community: { kg: Math.round(N(community[0]?.kg)), actions: N(community[0]?.n), people: N(community[0]?.people) },
   };
 }
@@ -143,6 +143,14 @@ export async function addGreenProof(u: SessionUser, id: string, b: Body) {
   if (!isAppFileUrl(b.photoUrl)) throw new BadRequestException('Add a photo first.');
   const done = await prisma.greenAction.updateMany({ where: { id, userId: u.id, verifiedAt: null }, data: { photoUrl: b.photoUrl } });
   if (!done.count) throw new NotFoundException('Action not found, or it’s already confirmed.');
+  return { ok: true };
+}
+
+/** POST /green/actions/:id/feeling { feeling }: "how did it go?" on my own action. */
+export async function setGreenFeeling(u: SessionUser, id: string, b: Body) {
+  if (!oneOf(FEELINGS, b.feeling)) throw new BadRequestException('Pick easy, okay or hard.');
+  const done = await prisma.greenAction.updateMany({ where: { id, userId: u.id }, data: { feeling: b.feeling } });
+  if (!done.count) throw new NotFoundException('Action not found');
   return { ok: true };
 }
 
