@@ -2901,3 +2901,31 @@ to share, a reward for leaving feedback, reminders to come back, insights for th
   390 light: Hard → note → saved; Easy → share step → copied; axe clean, no sideways scroll. The
   console panel's SQL was run on the local database; the panel itself was not opened in a browser
   (owner sign-in needs the full build).
+
+## M62 · Security review and the first fixes (31 Oct 2026)
+
+The owner: "check if the security of the system is good or not or if anyone can hack my website".
+A read-only review (the `universe-security` checklist) found the basics solid (sign-in checks, demo
+tokens off in production, central access rules, `?` placeholders everywhere, upload and CSP
+hardening, no committed keys) and these holes. Fixed here:
+
+- **Stripe webhook** (`src/app/api/webhooks/stripe/route.ts`): Stripe's library accepts an event
+  signed with an *empty* secret, so with `STRIPE_WEBHOOK_SECRET` unset anyone could fake a payment or
+  a subscription. Now 503 without a secret (like Razorpay). The old `transactionId` branch (student
+  accounting) now completes a payment only if the session is `paid` with the same amount and
+  currency.
+- **LMS (LTI) linking by email** could let any admin (or approved NGO rep) register a fake LMS and
+  sign in as any non-admin account. Turning `trustEmails` on is now owner-only (POST and PATCH in
+  `src/app/api/lti/platforms`).
+- **Public receipt** (`/api/receipts/[id]`) no longer returns the payer's email (page updated).
+- **Student documents** (`privateLink`, `src/server/private-files.ts`): only their owner or an admin
+  of *that person's school* (`schoolsOf` / `inSchools`), not any school's admin.
+
+**Still open (next):** the Next.js update (critical advisories, needs a full build test);
+`pdfjs-dist` 5 → 6 and `zod` 3 → 4 (major versions: own item with testing); rate limits keyed on any
+made-up `Authorization` header (`cloudflare/worker.ts` `rateLimited`); approved organisation reps
+become admins with no school (`applications.ts`), so they cover everyone without a school; the
+admin sign-in code's 5-tries lockout lives in one server's memory; the certificate PDF takes the
+token in the address. **[owner]:** check `STRIPE_WEBHOOK_SECRET` is set in Cloudflare; add the
+"Private files" rule (DEPLOY-CLOUDFLARE.md); keep `SESSION_SECRET` until the LMS fix is live (done
+now); turn on Bot Fight Mode.

@@ -11,6 +11,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const b = await req.json().catch(() => ({}));
   const data: { isActive?: boolean; trustEmails?: boolean; deploymentIds?: string[] } = {};
   if (typeof b.isActive === 'boolean') data.isActive = b.isActive;
+  // Turning on linking by email: the owner only (see POST in ../route.ts). Anyone may turn it off.
+  if (b.trustEmails === true && !user.owner) return NextResponse.json({ error: 'Only the UniVerse owner can allow linking accounts by email.' }, { status: 403 });
   if (typeof b.trustEmails === 'boolean') data.trustEmails = b.trustEmails;
   if (typeof b.deploymentIds === 'string') data.deploymentIds = b.deploymentIds.split(/[\s,]+/).map((d: string) => d.trim()).filter(Boolean).slice(0, 20);
   const p = await prisma.ltiPlatform.update({ where: { id }, data }).catch(() => null);

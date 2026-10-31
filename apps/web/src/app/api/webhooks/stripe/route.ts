@@ -8,6 +8,10 @@ import { confirmFromGateway } from '@/server/payments/provider';
 const stripeClient = () => getStripe() ?? new Stripe('sk_unset', { apiVersion: '2024-06-20' as unknown as Stripe.LatestApiVersion, httpClient: Stripe.createFetchHttpClient() });
 
 export async function POST(req: Request) {
+  // No secret, no webhook: Stripe's library accepts an event signed with an empty secret, so anyone
+  // could fake one (M62 security review). The Razorpay webhook does the same.
+  const secret = (process.env.STRIPE_WEBHOOK_SECRET ?? '').trim();
+  if (!secret) return NextResponse.json({ error: 'Stripe webhooks aren’t set up.' }, { status: 503 });
   const payload = await req.text();
   const signature = req.headers.get('stripe-signature') as string;
 
@@ -16,7 +20,7 @@ export async function POST(req: Request) {
   try {
     // The async variant uses Web Crypto, which is what Cloudflare Workers provide.
     // Trimmed: a pasted secret often carries a trailing space or line break.
-    event = await stripeClient().webhooks.constructEventAsync(payload, signature, (process.env.STRIPE_WEBHOOK_SECRET ?? '').trim());
+    event = await stripeClient().webhooks.constructEventAsync(payload, signature, secret);
   } catch (err) {
     console.error(`Webhook Error: ${(err as Error).message}`);
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });
@@ -86,6 +90,11 @@ export async function POST(req: Request) {
 
         if (existingTx.status === 'COMPLETED') {
           console.log(`Transaction ${transactionId} already processed (idempotency).`);
+          return NextResponse.json({ received: true });
+        }
+        // Only a paid session for exactly this amount and currency completes it.
+        if (session.payment_status !== 'paid' || session.amount_total !== Math.round(existingTx.amount * 100) || (session.currency ?? '').toLowerCase() !== (existingTx.currency || 'USD').toLowerCase()) {
+          console.error(`Stripe session ${session.id} does not match transaction ${transactionId} (not paid, or another amount).`);
           return NextResponse.json({ received: true });
         }
 

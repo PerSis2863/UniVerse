@@ -123,6 +123,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   **M59**: a Live globe in Trace (the brand's shipments on the 3D globe).
   **M60**: the Green Pass (collectable card) and "how did it go?" after logging in Green; a live-aircraft demo kept off the site for the owner to judge.
   **M61**: more of Candour in Green (a private "what made it hard?", a share nudge, an Honest badge, a streak reminder, "How Green feels" in the console).
+  **M62**: security review; fake Stripe events, LMS account takeover, emails on receipts and other schools' documents fixed (open items in its handoff note).
   **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all

@@ -39,6 +39,9 @@ export async function POST(req: Request) {
   const issuer = String(b.issuer ?? '').trim().replace(/\/+$/, '').slice(0, 300);
   const clientId = String(b.clientId ?? '').trim().slice(0, 200);
   const authLoginUrl = url(b.authLoginUrl), jwksUrl = url(b.jwksUrl), authTokenUrl = b.authTokenUrl ? url(b.authTokenUrl) : null;
+  // Linking LMS sign-ins to existing accounts by email lets that LMS sign in as anyone without an
+  // admin role on the whole platform, so only the owner may switch it on (M62 security review).
+  if (b.trustEmails === true && !user.owner) return NextResponse.json({ error: 'Only the UniVerse owner can allow linking accounts by email.' }, { status: 403 });
   const deploymentIds = String(b.deploymentIds ?? '').split(/[\s,]+/).map((d) => d.trim()).filter(Boolean).slice(0, 20);
   if (!name || !issuer || !clientId || !authLoginUrl || !jwksUrl) return NextResponse.json({ error: 'Fill in the name, issuer, client ID, authorisation URL and keyset URL (https).' }, { status: 400 });
   try {
