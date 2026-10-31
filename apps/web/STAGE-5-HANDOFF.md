@@ -2173,3 +2173,23 @@ assets, nothing taken apart). Neon Strike is gone; the game id is `ops` (the liv
   material patched for fog/shadows must go through `r.patch` / `r.prep` (they compose
   `onBeforeCompile` and set the cache key). Test against the dev server in one command
   (start, test, stop) rather than leaving it running.
+
+## M41 · STORMFALL: a Unity battle royale beside the site (31 Oct 2026, branch `claude/stormfall-unity`)
+
+The owner asked for a Unity 6.6 tactical battle royale ("Warzone & tactical FPS in Unity 6.6 URP")
+and to add it to this repo. It is an **original** game (no copied names, maps, perks or HUD) and a
+**separate Unity project**, not part of the website.
+
+- **Where:** `games/stormfall/` (its own `README.md`, `Docs/TECHNICAL_SPEC.md`,
+  `Docs/GUNPLAY_MATH.md`). Open that folder in Unity `6000.6.7f1`, run **Tools → Build Complete
+  Stormfall Game**, press Play. Everything (meshes, sounds, materials, island, HUD, bots) is made by
+  code; the builder writes `Assets/Stormfall/Generated/` and `Assets/Stormfall/Scenes/`.
+- **Not in the site build:** `pnpm-workspace.yaml` only lists `apps/*` and `packages/*`,
+  `pnpm lean` and the checks only look at `apps/web`, and Cloudflare builds `apps/web` only. Unity's
+  `Library/`, `Temp/`, `Logs/`, `UserSettings/` are ignored by `games/stormfall/.gitignore`.
+- **Tested:** compiled with Unity's compiler (0 errors, 0 warnings); the builder and a scripted
+  play-through ran headless with 0 exceptions (drop, fight, caches, buying, contracts, kit pod,
+  Reboot Trial win and redeploy, ring stages). Not looked at on screen.
+- **Traps:** a public `[Serializable]` class array on a MonoBehaviour gets filled with empty
+  objects by Unity, never null: runtime-only fields are `[System.NonSerialized]`. Every MonoBehaviour
+  needs its own file named after the class. Keep the `.meta` files: the scene finds scripts by them.

@@ -99,6 +99,8 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   3D rooms, realistic lit surfaces, a new feature in every game) (PR #97); **M40** (Ridgeline Ops
   replaces Neon Strike: a first-person extraction shooter on a seeded island) (PR #98, 26 Oct).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
+- **M41** (branch `claude/stormfall-unity`): STORMFALL, a separate Unity 6.6 game in
+  `games/stormfall/`; not part of the site build (see its `README.md`).
 - **Next database update number: `0186`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
