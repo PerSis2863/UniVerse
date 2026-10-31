@@ -2877,3 +2877,27 @@ The owner's remaining two picks from the batch ("please do this").
 - **Tested:** `pnpm check`; the feeling route by hand (own action ok, bad value 400, someone else's
   404); `/green` in the browser at 390 and 1280, light and dark: log → prompt → Easy → saved, axe
   clean, no sideways scroll, no page errors. Test rows removed.
+
+## M61 · More of Candour in Green: honest feedback, a share nudge, a streak reminder (31 Oct 2026)
+
+The owner: "add more features of candour, I really want those". Candour (candour.app) is a café tool:
+loyalty stamps, private feedback that reaches the owner before a bad review, happy customers nudged
+to share, a reward for leaving feedback, reminders to come back, insights for the owner. Adapted:
+
+- **"What made it hard?"**: answering "Hard" saves at once, then asks for a short private note
+  (migration **0188** `green_actions.feelingNote`, ≤300 characters, only with HARD; same route
+  `POST /green/actions/:id/feeling { feeling, note }`). Nobody sees it except the owner console.
+- **Share nudge**: "Easy" offers "Share your Green Pass?" (Web Share, else copy text + `/green` link;
+  no public page, so no names leave the app).
+- **Feedback earns a badge** (Candour's free stamp): `honest` in `BADGES`, 5 answers
+  (`GreenTotals.feedback`, counted in `greenMe`).
+- **Streak reminder** (Candour's "come back"): daily job `green-streaks` (`greenStreakNudges`): people
+  who logged yesterday but not yet today get one in-app notification (`email: false`, at most 450, ~11
+  queries). No push yet (would be a query per person).
+- **Owner console → Analytics → "How Green feels"** (`GET /owner/green-feel?days=`, owner only): Easy /
+  Okay / Hard per kind (hardest first), answer rate, the latest 30 notes. No names, emails or places.
+- **Not done (needs accounts/money, [owner]):** Apple / Google Wallet passes (Candour's lock-screen card).
+- **Tested:** `pnpm check` (1,367 tests; new server test for the note rules); `/green` at 1280 dark and
+  390 light: Hard → note → saved; Easy → share step → copied; axe clean, no sideways scroll. The
+  console panel's SQL was run on the local database; the panel itself was not opened in a browser
+  (owner sign-in needs the full build).

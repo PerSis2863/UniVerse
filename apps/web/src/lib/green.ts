@@ -28,7 +28,7 @@ export function streak(days: string[], today: string) {
   return n;
 }
 
-export interface GreenTotals { actions: number; kg: number; byKind: Partial<Record<GreenKind, number>>; streak: number }
+export interface GreenTotals { actions: number; kg: number; byKind: Partial<Record<GreenKind, number>>; streak: number; feedback?: number }
 export const BADGES: { id: string; label: string; text: string; earned: (t: GreenTotals) => boolean }[] = [
   { id: 'first', label: 'First step', text: 'Logged a first action', earned: (t) => t.actions >= 1 },
   { id: 'ten', label: 'Habit', text: '10 actions', earned: (t) => t.actions >= 10 },
@@ -38,6 +38,8 @@ export const BADGES: { id: string; label: string; text: string; earned: (t: Gree
   { id: 'trees', label: 'Tree planter', text: '5 trees planted', earned: (t) => (t.byKind.TREE ?? 0) >= 5 },
   { id: 'cyclist', label: 'Cyclist', text: '100 km by bike', earned: (t) => (t.byKind.CYCLE ?? 0) >= 100 },
   { id: 'recycler', label: 'Recycler', text: '50 kg recycled', earned: (t) => (t.byKind.RECYCLE ?? 0) >= 50 },
+  // Like Candour's free stamp for feedback (M61): saying how actions went earns a badge.
+  { id: 'honest', label: 'Honest', text: 'Said how 5 actions went', earned: (t) => (t.feedback ?? 0) >= 5 },
 ];
 
 /** This week's challenge (changes every Monday, the same for everyone). */

@@ -13,6 +13,7 @@ import { applyLateFees } from './fees';
 import { dueReportExports } from './report-schedules';
 import { sealOldSecrets } from './secret-box';
 import { countSiteTotals } from './site-totals';
+import { greenStreakNudges } from './green';
 
 // The daily jobs, in steps (Stage 5 · bug review). D1 answers at most 50 queries in one run on
 // Workers Free (a cron run is one run), and the daily jobs need far more once a school is real:
@@ -147,6 +148,8 @@ export const STEPS: Step[] = [
   { job: 'autopilot', run: () => inSlices(12, async (n) => { const r = await weeklyAutopilotReports({ limit: n }); return { more: r.more > 0, count: r.made }; }) },
   // Scheduled report exports (Phase E): a CSV in each admin's My files when it's due.
   { job: 'report-exports', run: () => dueReportExports(left) },
+  // UniVerse Green: a nudge for people whose streak ends today unless they log something (M61).
+  { job: 'green-streaks', run: async () => (left() < 14 ? { done: false } : { done: true, info: await greenStreakNudges() }) },
   { job: 'wellbeing', run: () => inSlices(14, async (n) => { const r = await wellbeingNudges(n); return { more: r.checked === n, count: r.sent }; }) },
   // AI explains the day's new problems (a few a run), then the owner's problems email when it's due.
   // At most 8 a day, as before (the cursor counts today's).

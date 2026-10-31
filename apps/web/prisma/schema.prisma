@@ -7016,6 +7016,8 @@ model GreenAction {
   verifiedAt DateTime?
   /// "How did it go?" (migration 0187): EASY, OK or HARD, set only by the person.
   feeling    String?
+  /// "What made it hard?" (migration 0188): private, read only in the owner console, without names.
+  feelingNote String?
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])

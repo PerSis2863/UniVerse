@@ -46,3 +46,16 @@ describe('green proof', () => {
     expect(vi.mocked(prisma.greenAction.updateMany).mock.calls[0][0].where).toEqual({ id: 'a1', userId: 'mate', verifiedAt: null });
   });
 });
+
+describe('green feelings', () => {
+  it('keeps a note only with "Hard", and only on my own action', async () => {
+    const { setGreenFeeling } = await import('./green');
+    await setGreenFeeling(me, 'a1', { feeling: 'HARD', note: '  No bike lane  ' });
+    expect(prisma.greenAction.updateMany).toHaveBeenLastCalledWith({ where: { id: 'a1', userId: 'mate' }, data: { feeling: 'HARD', feelingNote: 'No bike lane' } });
+    await setGreenFeeling(me, 'a1', { feeling: 'EASY', note: 'ignored' });
+    expect(prisma.greenAction.updateMany).toHaveBeenLastCalledWith({ where: { id: 'a1', userId: 'mate' }, data: { feeling: 'EASY' } });
+    await expect(setGreenFeeling(me, 'a1', { feeling: 'MEH' })).rejects.toThrow(/easy, okay or hard/);
+    vi.mocked(prisma.greenAction.updateMany).mockResolvedValue({ count: 0 });
+    await expect(setGreenFeeling(me, 'a1', { feeling: 'OK' })).rejects.toThrow(/not found/);
+  });
+});
