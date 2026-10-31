@@ -2819,3 +2819,13 @@ and also see if any errors or bugs are there".
   gradient); the `primary` button lost its pink glow (inset highlight kept). No motion touched.
 - **Tested:** `pnpm check` (1,362 unit tests, lean); looked at the landing hero, story and FAQ.
 
+## M58a · Teacher home duplicate-key warning (31 Oct 2026)
+
+A crawl of every page (student, teacher, admin) found one real bug: `/teacher` logged React's
+"two children with the same key" when two live-ticker lines were identical (e.g. two recent
+submissions both "Alice Johnson · Introduction to Computer Science · 60%"). The `Ticker`'s hidden
+screen-reader list keyed each `<li>` by its own text (`LiveCard.tsx`). Keyed by position instead.
+The rest of the crawl was clean (the Trace insights/tracking 403s are the no-brand message by design;
+the other "did not load" lines were the local dev server running low on memory, not app faults).
+**Tested:** the warning is gone; `pnpm check` (1,362 tests, lean); `landing-story-ui` green.
+
