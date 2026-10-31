@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { lowEndDevice, reducedMotion } from '@/lib/page-transition';
+import { reducedMotion } from '@/lib/page-transition';
 import { cn } from '@/lib/utils';
 
 // The river of light behind every page, website and app (M9/M10, the owner's Relay video in
@@ -16,9 +16,10 @@ import { cn } from '@/lib/utils';
 // the hero's words and its card, and carries on down the page. It belongs to the page: it moves with
 // whatever scrolls (the window, or the app's own panel; not menus or dialogs).
 // Cheap on purpose: one canvas the size of the screen (≤2.2 M pixels), only the visible stretch is
-// drawn; 60 frames a second on computers, 30 on phones (lighter by itself when the device is busy,
-// and still for a while only if its own drawing is too slow; see `loop`); in the app it starts moving once the page has loaded; still for Reduce
-// Motion and low-memory phones; nothing while the tab is hidden.
+// drawn; 60 frames a second on computers, 30 on phones; in the app it starts moving once the page
+// has loaded; still only for Reduce Motion (the person's own setting); nothing while the tab is
+// hidden. The owner (M56a, 31 Oct): nothing may slow or stop it by itself (M46's "lighter, then
+// still" when frames came late, and the low-memory check, froze it on a fast laptop), so don't add one.
 
 // The owner (24 Oct 2026): the light lines are hot pink with a little purple. M34 (25 Oct, the
 // Karma look): kept, denser, thinner and sharper, with faster pulses that glow at their heads. M54
@@ -50,7 +51,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
     const soft = document.createElement('canvas');
     const sctx = soft.getContext('2d');
     if (!cv || !ctx || !sctx) return;
-    const still = reducedMotion() || lowEndDevice();
+    const still = reducedMotion();
     const phone = window.innerWidth < 640;
     const N = still ? 40 : phone ? 44 : 84; // the fewer the strands, the less to paint each frame (M56: 120 → 84)
     // Denser in the middle of the bundle, like fibres.
@@ -63,9 +64,6 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
     const bands = [-0.9, -0.35, 0.1, 0.55, 1.0].map((o, i) => ({ o, width: [150, 90, 200, 70, 120][i], alpha: [0.1, 0.14, 0.08, 0.16, 0.1][i], colour: i, phase: i * 2.1, speed: 0.18 + i * 0.05 }));
     const sparks = Array.from({ length: phone ? 60 : 150 }, (_, i) => ({ s: (i * 7) % N, base: (i * 137) % 1000, v: 34 + ((i * 29) % 60), r: 0.6 + ((i * 17) % 14) / 10 }));
     let W = 0, H = 0, frame = 0, last = 0, scroller: Element | null = null, sy = 0;
-    // Lighter when the device struggles: half the strands and 30 frames a second; then `calm`: held
-    // still at that moment, drawn once per scroll like Reduce Motion (see loop).
-    let lite = false, calm = false, calmT = 0;
     // The soft bands move slowly: repaint them every third frame (or after a scroll) and reuse them.
     let softFrame = 0, softAt = NaN;
     // The pointer (or finger): the strands part round it and it glows (M11). `pv` eases in and out.
@@ -90,7 +88,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
 
     const draw = (ms: number) => {
       readScroll();
-      const t = still ? 8 : calm ? calmT : ms / 1000;
+      const t = still ? 8 : ms / 1000;
       const dark = tone === 'dark' || document.documentElement.classList.contains('dark');
       const pal = dark ? DARK : LIGHT;
       const k = (dark ? 1 : 0.85) * strength;
@@ -198,8 +196,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
       // Square ends and corners: the same look on lines this thin, and cheaper to paint.
       ctx.lineCap = 'butt';
       ctx.lineJoin = 'bevel';
-      for (const [i, st] of strands.entries()) {
-        if (lite && i % 2) continue;
+      for (const st of strands) {
         ctx.strokeStyle = pal.strands[st.colour];
         ctx.globalAlpha = st.alpha * k * sharp;
         ctx.lineWidth = st.width;
@@ -211,8 +208,8 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
       // don't slide when you scroll.
       if (!still) {
         const dashes = new Path2D();
-        for (const [i, st] of strands.entries()) {
-          if (!st.pulse || (lite && i % 4)) continue;
+        for (const st of strands) {
+          if (!st.pulse) continue;
           const len = 18 + (st.phase % 16), period = len + 150 + (st.wob % 90);
           const run = (t * 220 * st.speed + st.phase * 40) % period;
           for (let head = Math.floor((y0 - run) / period) * period + run; head - len < y1; head += period) {
@@ -253,41 +250,15 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
     };
 
     // Moving on its own: 60 frames a second on computers, 30 on phones. Still: one per scroll.
-    const fast = phone ? 32 : 15;
-    let gap = fast;
-    // How the device copes, judged every 60 frames: `avg` the time between the browser's frames,
-    // `cost` the time the river's own drawing takes. Busy (frames over 24 ms apart, or drawing over
-    // 6 ms): lighter, half the strands at 30 frames a second, and back to full after 15 s if there's
-    // room again. Only the river's own cost holds it still (still over 10 ms when lighter: M46's
-    // budget phone), and only for a while (10 s, then 20 s, 40 s…): a slow scroll, or a browser held
-    // at 30 frames a second to save battery, used to freeze it for good.
-    let prev = 0, avg = 16, cost = 2, seen = 0, liteAt = 0, rest = 10_000, wake = 0;
+    const gap = phone ? 32 : 15;
     const loop = (ms: number) => {
       frame = 0;
-      if (document.hidden) { prev = 0; return; }
-      if (prev) avg = avg * 0.95 + Math.min(200, ms - prev) * 0.05;
-      prev = ms;
-      if (++seen > 60) {
-        seen = 0;
-        if (lite && cost > 10) {
-          calm = true; calmT = ms / 1000; draw(ms);
-          wake = window.setTimeout(() => { calm = false; prev = 0; seen = 0; kick(); }, rest);
-          rest *= 2;
-          return;
-        }
-        if (!lite && (avg > 24 || cost > 6)) { lite = true; liteAt = ms; gap = 32; }
-        else if (lite && ms - liteAt > 15_000 && avg < 19 && cost < 2.5) { lite = false; gap = fast; }
-      }
-      if (ms - last >= gap) {
-        last = ms;
-        const a = performance.now();
-        draw(ms);
-        cost = cost * 0.8 + (performance.now() - a) * 0.2;
-      }
+      if (document.hidden) return;
+      if (ms - last >= gap) { last = ms; draw(ms); }
       frame = requestAnimationFrame(loop);
     };
     const kick = () => {
-      if (still || calm) { if (!frame) frame = requestAnimationFrame((ms) => { frame = 0; draw(ms); }); return; }
+      if (still) { if (!frame) frame = requestAnimationFrame((ms) => { frame = 0; draw(ms); }); return; }
       if (!frame) frame = requestAnimationFrame(loop);
     };
     // Whatever scrolls the page (the window, or the app's panel: scroll events don't bubble, so
@@ -298,7 +269,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
       // Not the side menu, a dialog or a sheet: only the page itself moves the river.
       else if (el instanceof Element && el.clientHeight > window.innerHeight * 0.5 && !el.closest('aside, nav, [role="dialog"], [aria-modal="true"]')) scroller = el;
       else return;
-      if (still || calm) kick();
+      if (still) kick();
     };
     const onPointer = (e: PointerEvent) => { px = e.clientX; py = e.clientY; pAt = performance.now(); };
     const onLeave = () => { pAt = -1e9; };
@@ -323,7 +294,6 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
     themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => {
       cancelAnimationFrame(frame);
-      window.clearTimeout(wake);
       cancelAnimationFrame(first);
       if (w.cancelIdleCallback) w.cancelIdleCallback(idle); else window.clearTimeout(idle);
       document.removeEventListener('scroll', onScroll, { capture: true });

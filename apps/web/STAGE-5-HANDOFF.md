@@ -2755,3 +2755,17 @@ story's Relief step "is not looking good"; and sign-in needs scrolling on their 
   `landing-story-ui` and `landing-pause-ui` (axe-clean at 390 and 1280, nothing sideways); timed the old
   and new river alone; looked at the story's Relief step, the planet section and sign-in at four sizes.
 
+## M56a · Nothing slows or stops the river by itself (31 Oct 2026)
+
+The owner, after M56: "remove whatever you made here to slow down the lines or website or
+smoothness… just now it happened to me for no reason".
+
+- `LightTrail.tsx`: the busy check is gone (no `lite`, `calm`, `avg`, `cost`, timers: M46's "lighter,
+  then still" and M56's softer version), and so is the low-memory check (`lowEndDevice()`) for the
+  river. It always draws every strand: 60 frames a second on computers, 30 on phones (a fixed rate,
+  kept), nothing while the tab is hidden, still only for Reduce Motion. M56's cheaper drawing stays.
+- **Rule:** don't add any automatic slow-down, thinning or freeze to the river again without the
+  owner's yes. If a budget phone struggles, make the drawing cheaper instead.
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); the river alone in a
+  browser with every frame faked as very slow keeps moving.
+
