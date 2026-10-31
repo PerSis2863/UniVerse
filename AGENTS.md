@@ -119,6 +119,8 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   story's pictures full size; the planet section fades into the page; sign-in fits one laptop screen.
   **M56a**: nothing slows or stops the river by itself any more (only Reduce Motion stills it).
   **M57** (on the branch): dark mode deep navy with Aqua Jade glows (no pale blue); no line under the hero. **M57a**: a step deeper again (page #0a0f2b).
+  **M58**: less AI-looking website; People list fixed. **M58a**: teacher-home duplicate-key fix.
+  **M59**: a Live globe in Trace (the brand's shipments on the 3D globe).
   **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all

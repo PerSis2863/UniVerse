@@ -2829,3 +2829,22 @@ The rest of the crawl was clean (the Trace insights/tracking 403s are the no-bra
 the other "did not load" lines were the local dev server running low on memory, not app faults).
 **Tested:** the warning is gone; `pnpm check` (1,362 tests, lean); `landing-story-ui` green.
 
+## M59 · Trace Live globe (31 Oct 2026)
+
+The owner asked to bring in the open-source "God's Eye View" 3D globe. That app is a heavy
+surveillance-style globe (Cesium/Google keys, metered; tracks planes, ships, number-plate cameras)
+that doesn't fit Trace (product passports) or a platform with children, so we took the *idea* only
+and built a Trace-native version from parts already here — no new dependency, no keys, no cost.
+
+- **New tab `/trace/globe`** (`GlobeView.tsx`, page, `TraceTabs` entry): the brand's shipments on the
+  existing `Planet` (`src/components/live/Planet.tsx`), reusing `GET /trace/map/tracking` (so the
+  sample answer already exists — no new sample route). Polled with `useActivePoll` while active.
+- **Mapping** is a pure function, `globeFromShipments` (`src/lib/trace-globe.ts`, one unit test):
+  each shipment's current position → a point (pink on the move, aqua at rest), its destination → an
+  aqua point, an arc between them; a cold-chain shipment over its limit is flagged in its label.
+- **Rule:** reuse `Planet` for any "points on a 3D globe" need; feed it `Place[]` + index-pair arcs.
+- **Not done here (owner asked to see it first):** a separate off-site demo of live aircraft dots
+  from a free no-key source. And the Candour-style "Green Pass" in UniVerse Green.
+- **Tested:** `pnpm check` (1,364 tests, lean); `/trace/globe` axe-clean at 1280, no console errors;
+  looked at it in sample mode (shipments plotted and labelled on the globe).
+

@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { m as motion } from 'framer-motion';
-import { Building2, Globe2, KeyRound, Megaphone, Radar, ScanLine, Sparkles, Truck, Wallet } from 'lucide-react';
+import { Building2, Globe, Globe2, KeyRound, Megaphone, Radar, ScanLine, Sparkles, Truck, Wallet } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ const TABS = [
   { href: '/trace', label: 'Console', icon: ScanLine },
   { href: '/trace/map', label: 'Market map', icon: Globe2 },
   { href: '/trace/tracking', label: 'Tracking', icon: Truck },
+  { href: '/trace/globe', label: 'Live globe', icon: Globe },
   { href: '/trace/radar', label: 'Radar', icon: Radar },
   { href: '/trace/insights', label: 'Insights', icon: Sparkles },
   { href: '/trace/campaigns', label: 'Campaigns', icon: Megaphone },
