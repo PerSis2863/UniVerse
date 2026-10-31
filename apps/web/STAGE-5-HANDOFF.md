@@ -2468,3 +2468,34 @@ part that held the whole landing still on a struggling phone was taken out again
   the landing still keeps the processor busy at the top (the visible hero) and the page's always-on
   CSS glows keep frames coming in the test browser (no graphics chip there; real phones move them on
   the GPU). The other speed idea from M46 stays open: ~400 kB of scripts on a first visit.
+
+## M48 · Live cards: constellations and funnels of light on every home (31 Oct 2026)
+
+The owner sent a video of "Crew" (a staff dashboard by buildindex.dev): "add those animations and
+design in the system in all the places… professional and ultra smooth". Asked: keep UniVerse's own
+colours (Karma: pink, a little purple, white, warm gold) and add the video's moving pieces.
+
+- **The kit** (`src/components/live/`): `canvas.ts` (`useLiveCanvas`: one canvas in device pixels,
+  frames only while on screen and the tab is open, one settled frame with Reduce Motion, time starts
+  when first seen; `glow()` sprites drawn once and stamped, so no shadows or blur per frame;
+  `TONES`), `Constellation.tsx` (groups of glowing points in 3D around you, two orbits for depth, a
+  haze per group, lines with light pulses running out, labels in small pills, points fly out on
+  arrival, the pointer tilts the view and lights the nearest group), `Funnel.tsx` (a stream of 220
+  points through stages as wide as their counts, those that don't go on drift out and fade, a warm
+  light at the end; an even calm stream when every count is 0), `LiveCard.tsx` (the deep card,
+  near-black in both themes with the river's glows: live dot, title, picture, small numbers, a
+  `Ticker` line that changes every 3.8 s; `Countdown` with rolling digits), `HomeLive.tsx`.
+- **Where:** student home "Your constellation" (courses, work due; countdown to the next class),
+  teacher "Your classes, live" (students per class), admin "School constellation" (departments) as a
+  new home card `orbit` (`src/lib/home-layout.ts`; it can be hidden or moved like the others); the hub's
+  hero (every app around you); Relief "Help, moving" (open → being helped → helped); Trace "From label
+  to owner" (printed → scanned → claimed); Green and Play constellations (shown once the person has
+  actions or rounds). Everything is fed with data the page already loads: no new requests, so sample
+  mode needs nothing new.
+- **Rules for code that builds on it:** a new moving picture = a `draw(frame)` for `useLiveCanvas`;
+  stamp `glow(tone)` with `globalCompositeOperation = 'lighter'` rather than shadows; keep text in the
+  DOM where it matters (numbers, screen-reader lists) and only labels on the canvas. Colours only from
+  `TONES`.
+- **Tested:** `scripts/checks/live-ui.mjs` (each card draws, no sideways scroll, axe at 390/1280,
+  light and dark; student, teacher, admin, hub, Relief), typecheck, lint, unit tests, lean. Looked at
+  in the browser on a phone and a desktop.

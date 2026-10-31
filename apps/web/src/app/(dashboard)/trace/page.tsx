@@ -18,6 +18,8 @@ import { useActivePoll } from '@/lib/realtime-client';
 import { useNow } from '@/lib/use-now';
 import { STAGES, STAGE_LABEL, type Stage } from '@/lib/trace';
 import { cn } from '@/lib/utils';
+import { LiveCard } from '@/components/live/LiveCard';
+import { Funnel } from '@/components/live/Funnel';
 
 // UniVerse Trace, the brand's console (the owner, 24 Oct 2026: "something unique and different and
 // bold"; then "do all 4 of them"). Anyone signed in can start a brand for free: every product gets a
@@ -202,6 +204,13 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
       </AnimatePresence>
 
       <InstrumentBoard icon={ScanLine} title="Trace live" subtitle={`${ov.products} products · ${ov.batches} batches · last 30 days`} cells={cells} storageKey="trace-live" />
+
+      {/* M48: from a printed code to an owner, as a stream of light. */}
+      <LiveCard title="From label to owner" sub="Codes printed, checked by someone, and claimed by an owner"
+        ticker={ov.recent.slice(0, 6).map((r) => `${r.code.product.name}${r.place ? ` · ${r.place}` : ''} · ${VERDICT[r.verdict]?.label ?? r.verdict}`)}>
+        <Funnel className="h-[200px]" label="Codes printed, scanned and claimed"
+          stages={[{ label: 'Printed', value: ov.units }, { label: 'Scanned', value: ov.scanned }, { label: 'Claimed', value: ov.claimed }]} />
+      </LiveCard>
 
       <div className="grid sm:grid-cols-3 gap-3">
         {([['/trace/map', Globe2, 'Market map', 'Where it sells, city by city, live'], ['/trace/tracking', Truck, 'Tracking', 'Every shipment, where it is now'], ['/trace/campaigns', Megaphone, 'Campaigns', 'Pay per verified sale']] as const).map(([href, Icon, t, d]) => (

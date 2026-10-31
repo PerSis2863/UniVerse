@@ -21,6 +21,8 @@ import { InviteButton } from '@/components/apps/InviteButton';
 import { cn } from '@/lib/utils';
 import { glow, toBase } from '@/components/trace/map/engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
+import { LiveCard } from '@/components/live/LiveCard';
+import { Funnel } from '@/components/live/Funnel';
 
 // UniVerse Relief (src/lib/apps.ts): every open need and offer of help on one live map (the same map
 // engine as Trace), the most urgent and nearest needs first, "I can help", messages, and delivered.
@@ -170,6 +172,15 @@ export function ReliefApp() {
           </motion.div>
         ))}
       </dl>
+
+      {s && (
+        // M48: how requests move from asked to helped, as a stream of light.
+        <LiveCard title="Help, moving" sub="Needs on the map, people on the way, and help given in 30 days"
+          ticker={(data?.recent ?? []).slice(0, 6).map((p) => `${p.type === 'OFFER' ? 'Offer' : 'Need'}: ${p.title}`)}>
+          <Funnel className="h-[200px]" label="Needs open, being helped, and helped in the last 30 days"
+            stages={[{ label: 'Open needs', value: s.openNeeds }, { label: 'Being helped', value: s.inProgress }, { label: 'Helped', value: s.helped }]} />
+        </LiveCard>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <div role="radiogroup" aria-label="Show" className="flex rounded-full bg-zinc-100 dark:bg-white/[0.06] p-1">

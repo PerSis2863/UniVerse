@@ -13,6 +13,7 @@ export const HOME_CARDS: Record<HomeRole, CardDef[]> = {
     { id: 'brief', title: 'Daily brief', zone: 'top' },
     { id: 'impact', title: 'Impact network', zone: 'top' },
     { id: 'stats', title: 'Key numbers', zone: 'top' },
+    { id: 'orbit', title: 'Your constellation', zone: 'main' },
     { id: 'schedule', title: 'Today’s classes', zone: 'main' },
     { id: 'courses', title: 'My courses', zone: 'main' },
     { id: 'quick', title: 'Quick actions', zone: 'main' },
@@ -26,6 +27,7 @@ export const HOME_CARDS: Record<HomeRole, CardDef[]> = {
     { id: 'upnext', title: 'Up next', zone: 'top' },
     { id: 'kpis', title: 'Key numbers', zone: 'top' },
     { id: 'brief', title: 'Daily brief', zone: 'top' },
+    { id: 'orbit', title: 'Your classes, live', zone: 'main' },
     { id: 'attention', title: 'Needs attention', zone: 'main' },
     { id: 'courses', title: 'My courses', zone: 'main' },
     { id: 'charts', title: 'Grades and trends', zone: 'main' },
@@ -35,6 +37,7 @@ export const HOME_CARDS: Record<HomeRole, CardDef[]> = {
   admin: [
     { id: 'live', title: 'Today, live', zone: 'top' },
     { id: 'kpis', title: 'Key numbers', zone: 'top' },
+    { id: 'orbit', title: 'School constellation', zone: 'main' },
     { id: 'departments', title: 'Departments', zone: 'main' },
     { id: 'approvals', title: 'Waiting for approval', zone: 'main' },
     { id: 'payments', title: 'Recent payments', zone: 'side' },

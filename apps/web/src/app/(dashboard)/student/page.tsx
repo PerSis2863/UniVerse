@@ -25,6 +25,7 @@ import { UpNextCard } from '@/components/home/UpNext';
 import { GoalCard } from '@/components/home/RoleCards';
 import { useHome } from '@/components/home/use-home';
 import { useMyCourseColors } from '@/lib/my-course-colors';
+import { StudentLive } from '@/components/live/HomeLive';
 
 interface Overview {
   name: string;
@@ -189,6 +190,7 @@ export default function StudentDashboard() {
         )}
       </div>
     ),
+    orbit: data ? <StudentLive data={data} name={user?.name} /> : null,
     schedule: data ? (
       <Panel title={t('dashboard.schedule')} icon={CalendarClock} delay={0.1}
         action={<span className="text-xs text-zinc-500">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>}

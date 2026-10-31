@@ -14,6 +14,7 @@ import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
 import { useNow } from '@/lib/use-now';
 import { useAuthStore } from '@/store/auth';
+import { Constellation } from '@/components/live/Constellation';
 
 // The hub of UniVerse Impact (src/lib/apps.ts): every app with what it has changed so far, from
 // GET /hub (src/server/hub.ts), and the tools they share. Where people land after signing in when
@@ -58,6 +59,9 @@ export default function HubPage() {
                   </motion.div>
                 ))}
               </dl>
+              {/* Every app around you, each point a little of what it has changed (M48). */}
+              <Constellation className="mt-6 h-[240px] sm:h-[300px]" center={user?.name?.split(/\s+/).map((w) => w[0]).join('') || 'U'} label="Every app around you"
+                groups={APPS.map((a) => ({ label: a.name, n: 6 + Math.round(Math.log10(1 + (data?.apps[a.id]?.value ?? 0)) * 6), value: data ? fmt(data.apps[a.id]?.value ?? 0) : '' }))} />
             </div>
           </section>
 

@@ -15,6 +15,8 @@ import { AgeBadge } from './AgeGate';
 import { PlayerCard } from './PlayerCard';
 import { GameIcon } from './GameIcon';
 import { JoinRoom, type PlayMe } from './GameShell';
+import { LiveCard } from '@/components/live/LiveCard';
+import { Constellation } from '@/components/live/Constellation';
 
 // UniVerse Play's home (/play): twelve games, two for each app (four quick, four big) and four 3D worlds, each card
 // with a small live scene of how it plays; join a room by code; my numbers and last rounds. Scenes are CSS only and stop
@@ -151,6 +153,16 @@ export function Arcade() {
       </section>
 
       {me && <PlayerCard xp={me.xp ?? 0} />}
+
+      {me && me.played > 0 && (
+        // M48: the games you play, around you; each point a round.
+        <LiveCard title="Your game constellation" sub="Each point is a round you played"
+          stats={[{ label: 'Rounds', value: me.played.toLocaleString() }, { label: 'With friends', value: withFriends.toLocaleString() }]}
+          ticker={me.recent.slice(0, 6).map((r) => `${GAMES[r.game]?.name ?? r.game}: ${r.score.toLocaleString()} points${r.mode === 'multi' ? ' with friends' : ''}`)}>
+          <Constellation className="h-[260px] md:h-[300px]" label="The games you play"
+            groups={GAME_IDS.filter((g) => (me.games[g]?.solo ?? 0) + (me.games[g]?.multi ?? 0) > 0).map((g) => ({ label: GAMES[g].name, n: (me.games[g]?.solo ?? 0) + (me.games[g]?.multi ?? 0), value: `best ${(me.games[g]?.best ?? 0).toLocaleString()}` }))} />
+        </LiveCard>
+      )}
 
       {(['worlds', 'big', 'quick'] as const).map((kind) => (
         <section key={kind} aria-labelledby={`games-${kind}`}>
