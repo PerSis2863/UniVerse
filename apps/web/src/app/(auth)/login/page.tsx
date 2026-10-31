@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Loader2, Eye, EyeOff, Building2, Fingerprint, Phone, Play } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff, Building2, Fingerprint, Phone } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Accent, Tag } from '@/components/landing/bits';
 import { useAuthStore } from '@/store/auth';
@@ -18,9 +18,8 @@ import { TwoStepPanel } from '@/components/auth/TwoStepPanel';
 import dynamic from 'next/dynamic';
 import { chosenApp, homeFor } from '@/lib/role-home';
 import { AppTabs } from '@/components/landing/AppTabs';
-import { startVisitorDemo } from '@/components/SampleMode';
 import { endDemoForSignIn } from '@/lib/sample-mode';
-import { appById, appHome } from '@/lib/apps';
+import { appById } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { PHONE_SIGN_IN } from '@/lib/sign-in-options';
 
@@ -444,9 +443,6 @@ export default function LoginPage() {
                     Sign up
                   </Link>
                 </p>
-                <button type="button" onClick={() => startVisitorDemo(appHome(app, 'STUDENT'))} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-zinc-700 px-4 py-1.5 text-sm text-zinc-300 transition-[transform,background-color] duration-150 hover:bg-zinc-800 active:scale-[0.97]">
-                  <Play className="w-3.5 h-3.5" /> Just looking? Try the live demo
-                </button>
               </div>
             </>
           )}

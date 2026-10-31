@@ -5,8 +5,7 @@ import { URGENCIES, snap, type ReliefKind } from '@/lib/relief';
 import { GAMES, GAME_IDS, isGame, type GameId } from '@/lib/play';
 
 // Sample answers for the impact apps (the hub, Trace, Relief and Green) while sample mode is on, so a
-// visitor's "Try the live demo" and a signed-in person's "Explore with sample data" both open full
-// pages. Made up on the device from a fixed seed (the same world each time), with times relative to
+// signed-in person's "Explore with sample data" opens full pages. Made up on the device from a fixed seed (the same world each time), with times relative to
 // now so it always looks live. Answers have the same shape as the real routes (src/server/hub.ts,
 // trace*.ts, relief.ts, green.ts).
 

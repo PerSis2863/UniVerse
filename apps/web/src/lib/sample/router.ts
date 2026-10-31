@@ -9,7 +9,6 @@ import { DEFAULT_PREFS, GROUP_OF_TYPE, NOTE_GROUPS } from '@/lib/notify-prefs';
 import { builtInQuestions, countFillers, lengthAdvice, starParts, wordCount } from '@/lib/careers';
 import { carbonSummary, kgFor, activityOf } from '@/lib/carbon';
 import { budgetSummary, dishesOf, prepList, tally } from '@/lib/student-life';
-import { isSampleVisitor } from '@/lib/sample-mode';
 import * as impact from './impact';
 import { localPlan } from '@/lib/ask';
 
@@ -3007,18 +3006,14 @@ export function resolveSample(method: string, rawUrl: string, body: unknown): Re
   const url = new URL(rawUrl, 'http://sample.local');
   let path = url.pathname.replace(/\/+$/, '') || '/';
   if (/^https?:/.test(rawUrl) && !rawUrl.startsWith(window.location.origin)) path = path.replace(/^\/api(?=\/)/, ''); // absolute API_URL → Nest path
-  // A visitor trying the demo has no account: nothing reaches the server, and pages the demo has no
-  // example for answer as they would for anyone signed out.
-  const visitor = isSampleVisitor();
-  if (visitor && path === '/users/me') return ok(useAuthStore.getState().user);
-  if (!visitor && PASSTHROUGH.some((r) => r.test(path))) return null;
+  if (PASSTHROUGH.some((r) => r.test(path))) return null;
 
   const d = getDb();
   const parsed = typeof body === 'string' ? (() => { try { return JSON.parse(body); } catch { return {}; } })() : (body ?? {});
   const verb = method.toUpperCase();
   if (verb === 'GET') {
     for (const [re, h] of GET) { const m = path.match(re); if (m) return h({ db: d, m, q: url.searchParams, body: parsed }); }
-    return visitor ? ok({ message: 'Create a free account to see this part.' }, 401) : null;
+    return null;
   }
   for (const [v, re, h] of WRITE) {
     const m = path.match(re);

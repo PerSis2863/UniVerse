@@ -208,8 +208,8 @@ page with a `[param]` is built once as `/x/open` and answered for every value). 
 - **Green** (`src/server/green.ts`): positions rounded to 0.1°; CO₂ factors only from `src/lib/green.ts`.
 - **Sample data, two kinds:** the owner's "Fill with sample data" on the console Overview writes a
   made-up world in steps (`src/server/sample-world.ts`), marked so "Remove" takes out exactly that
-  (emails `@sample.universe.test`, ids `smp…`, slugs `sample-`). A visitor's "Try the live demo"
-  and a signed-in "Explore with sample data" never touch the server: answers come from
+  (emails `@sample.universe.test`, ids `smp…`, slugs `sample-`). A signed-in "Explore with sample
+  data" never touches the server: answers come from
   `src/lib/sample/router.ts` and `impact.ts` in the browser. **Every new GET route needs a sample
   answer there**, or the demo shows it empty; writes call `notice()`.
 

@@ -2245,3 +2245,17 @@ text that is not good".
 - **Traps:** the local database must have every migration (`npx wrangler d1 migrations apply
   universe-db --local`), or demo sign-in fails with "no such column". In tests, the first
   `role="listitem"` in Messages is the status bubble, not a chat.
+
+## M42a · "Try the live demo" taken off the sign-in page (31 Oct 2026)
+
+The owner: "remove try the demo option from the project I don't like it", then picked only the
+sign-in page's "Just looking? Try the live demo" (signed-in "Explore with sample data" and M43's
+"try it here" demos stay). M23 had already taken it off the landing.
+
+- Gone with it, all the code only the visitor demo used: `startVisitorDemo` (SampleMode.tsx), the
+  visitor flag (`isSampleVisitor`, `setVisitor`, `clearVisitorStorage` in `sample-mode.ts`), the
+  "Live demo" banner and its "Create a free account", the auth store keeping a made-up person in
+  sessionStorage (`store/auth.ts`), and the sample router's visitor answers (`/users/me`, the 401 for
+  pages without an example).
+- `endDemoForSignIn` stays (sign-in and sign-up): it now only ends sample mode before a real sign-in.
+- **Rule:** there is no way into the app without an account; sample mode is for signed-in people.
