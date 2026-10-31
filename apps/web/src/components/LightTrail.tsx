@@ -25,7 +25,8 @@ import { cn } from '@/lib/utils';
 // Karma look): kept, denser, thinner and sharper, with faster pulses that glow at their heads. M52
 // (31 Oct, the "Globynk" palette): Baby Pink strands with a few Aqua Jade ones and aqua sparks.
 const DARK = { strands: ['#fe81d1', '#ff9fdc', '#74ffed', '#ffc0e6', '#ef88e3', '#a6fff3'], bands: ['#3a1f5c', '#a32c7b', '#14506a', '#762d72', '#126a72'], pulse: '#ffffff', spark: '#a6fff3' };
-const LIGHT = { strands: ['#c13a92', '#b447ae', '#fe81d1', '#0fa89c', '#a32c7b', '#22d3c2'], bands: ['#ffc0e6', '#cffff8', '#f4a6ea', '#a6fff3', '#ffe6f6'], pulse: '#82245f', spark: '#0fa89c' };
+// M53: light mode in Bubblegum Pink and Galactic Violet.
+const LIGHT = { strands: ['#c23d98', '#8f45d9', '#ec74ce', '#533ff6', '#a52d80', '#8270fb'], bands: ['#f7b3e6', '#e6e2ff', '#e8cdfc', '#cdc6ff', '#fde6f6'], pulse: '#3f2bd6', spark: '#8f45d9' };
 
 const OWN_RIVER = new Set(['/', '/login', '/register']);
 
@@ -152,7 +153,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
         // A glow where the pointer touches the river.
         if (near && Math.abs(px - centre(sy + py)) < spread(sy + py) + 220) {
           const g = sctx.createRadialGradient(px, py, 0, px, py, 180);
-          g.addColorStop(0, dark ? 'rgba(255,192,230,0.35)' : 'rgba(254,129,209,0.14)');
+          g.addColorStop(0, dark ? 'rgba(255,192,230,0.35)' : 'rgba(236,116,206,0.14)');
           g.addColorStop(1, 'rgba(43,53,104,0)');
           sctx.globalAlpha = pv * k;
           sctx.fillStyle = g;
@@ -164,8 +165,8 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
           if (yb > y1 + 300) break;
           const bx = centre(yb), by = yb - sy, r = Math.min(W, H) * 0.3;
           const g = sctx.createRadialGradient(bx, by, 0, bx, by, r);
-          g.addColorStop(0, dark ? 'rgba(255,255,255,0.55)' : 'rgba(254,129,209,0.18)');
-          g.addColorStop(0.25, dark ? 'rgba(255,159,220,0.28)' : 'rgba(116,255,237,0.14)');
+          g.addColorStop(0, dark ? 'rgba(255,255,255,0.55)' : 'rgba(236,116,206,0.18)');
+          g.addColorStop(0.25, dark ? 'rgba(255,159,220,0.28)' : 'rgba(83,63,246,0.1)');
           g.addColorStop(1, 'rgba(43,53,104,0)');
           sctx.globalAlpha = k;
           sctx.fillStyle = g;

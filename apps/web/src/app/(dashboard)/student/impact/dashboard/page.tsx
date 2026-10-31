@@ -77,7 +77,7 @@ export default function MySocialImpactPage() {
                 </div>
                 <h1 className="text-3xl font-black text-zinc-900 dark:text-white leading-tight">
                   {data?.userName}’s Impact Score:{' '}
-                  <span className="bg-gradient-to-r from-pink-700 via-pink-600 to-aqua-700 dark:from-pink-300 dark:via-pink-400 dark:to-aqua-300 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-pink-700 via-pink-600 to-violet-700 dark:from-pink-300 dark:via-pink-400 dark:to-aqua-300 bg-clip-text text-transparent">
                     {(level?.xp ?? data?.totalPoints ?? 0).toLocaleString()} XP
                   </span>
                 </h1>
@@ -88,7 +88,7 @@ export default function MySocialImpactPage() {
                 </p>
                 <div className="flex items-center gap-3 pt-2">
                   <div className="w-48 bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-gradient-to-r from-pink-500 via-fuchsia-400 to-aqua-400 h-full rounded-full" style={{ width: `${level?.progress ?? 0}%` }} />
+                    <div className="bg-gradient-to-r from-pink-500 via-fuchsia-400 to-violet-500 dark:to-aqua-400 h-full rounded-full" style={{ width: `${level?.progress ?? 0}%` }} />
                   </div>
                   <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">
                     {level && level.next.level !== level.current.level ? `${level.progress}% to ${level.next.title}` : 'Top level reached'}

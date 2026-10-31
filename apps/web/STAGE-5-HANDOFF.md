@@ -2635,3 +2635,30 @@ make website colour like this… for whole app and website".
   pages axe-clean as whole pages at 390 / 1280). Looked at in the browser: the landing, the hub's
   planet and cards (phone and desktop, light and dark), student home, Trace's city. Not run through a
   full build (no server changes).
+
+## M53 · Light mode in the owner's second palette (31 Oct 2026)
+
+The owner sent a second palette picture ("Visualize your mind in motion": Marshmallow White, Galactic
+Violet, Bubblegum Pink): "for the light mode use this colours". Dark mode keeps M52 (navy, aqua, Baby
+Pink). The video's labels didn't match its swatches (#105BFF is a blue, #FE8500 an orange); the
+colours actually shown were measured and used: **violet #533FF6, pink #EC74CE**, white #F0F0F0.
+
+- **How:** `html:not(.dark)` in `globals.css` re-points the Tailwind scales for light mode only:
+  indigo / violet / purple → a Galactic Violet scale (600 = #533ff6, 700 = #3f2bd6 for text), pink →
+  Bubblegum (500 = #ec74ce; 600 #c23d98 and deeper hold white text), fuchsia → an orchid between them,
+  zinc / slate / gray → neutral greys. `.dark, .on-dark` puts the navy scales back for dark parts of a
+  light page (the side menu, live cards, the landing). The light tokens (`:root` in the "M34 → M52"
+  part): page #f0f0f0 with pink low on the left and violet low on the right (`.ambient-bg`), white
+  cards with a violet-tinted shadow, ink #141320, black selected pills (like the picture's "Let's
+  Connect"), violet focus ring and tint. **`.btn-primary` in light mode is Bubblegum Pink with ink
+  text** (white text on that pink would be 2.6:1). Frosts: dusk is the picture's pink-into-violet
+  band (deep enough for white text), gold a lavender frost. The side menu, the hub / Trace hero and
+  the live cards are violet-black with pink and violet glowing up from below in light mode. The light
+  river is pink and violet. Bar colour, launch screens, offline page and recovery screen use #f0f0f0.
+- **Rules for code that builds on it:** a light-only colour goes in `html:not(.dark)` (or a plain
+  class with a `dark:` partner); `aqua-*` is dark mode's colour: in light mode use `violet-*` (e.g.
+  `to-violet-500 dark:to-aqua-400`). Text on Bubblegum or Baby Pink is ink or navy, never white.
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); `scripts/checks/live-ui.mjs`
+  (every live card and the wallet cards, 390 / 1280, light and dark: all pass); whole-page axe in light
+  mode on the student, teacher and admin homes, hub, Green, Relief, Play and Trace at 1280 and four of
+  them at 390: no serious problems. Looked at the student home and hub in light and dark.

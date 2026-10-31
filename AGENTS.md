@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M52 is the latest).
+  builds on it). The newest notes are at the end (M53 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -112,7 +112,8 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   "Waypoint" video: a night city of vans, journey lines, level gauges, a timetable with now) and
   **M51** (the night city much richer: traffic, neon, beams, depth) and **M52** (the "Globynk" colours
   everywhere: navy, aqua, Baby Pink; the dotted planet on the landing and hub; 3D cards on the Impact
-  Wallet) (branch `claude/funny-galileo-y4mz9r`, not merged yet).
+  Wallet) and **M53** (light mode in Marshmallow White, Galactic Violet and Bubblegum Pink) (branch
+  `claude/funny-galileo-y4mz9r`, not merged yet).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
   done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts
@@ -259,6 +260,13 @@ code, remove the old code in the same change. A known shortcut gets a `shortcut:
 file used only from config goes in its `BY_CONFIG` list).
 
 ## 8. Design and motion
+
+**Light mode (M53, the owner, 31 Oct 2026): Marshmallow White #F0F0F0, Galactic Violet #533FF6, Bubblegum
+Pink #EC74CE.** An off-white page with pink and violet light low down, white cards, ink #141320, black
+selected pills, violet accents and focus, the main button Bubblegum Pink with ink text; light mode
+re-points the Tailwind scales (`html:not(.dark)`: indigo / violet / purple = violet, pink = Bubblegum,
+zinc = neutral greys) and `.dark` parts get the navy ones back. Use `violet-*` where dark mode uses
+`aqua-*`. Everything below is dark mode, the default.
 
 **The look: "Globynk" (M52, the owner, 31 Oct 2026; replaced M34's warm graphite "Karma").** Three
 colours: **Midnight Abyss #171F44** (navy: the page in dark mode, the ink, the side menu), **Aqua Jade

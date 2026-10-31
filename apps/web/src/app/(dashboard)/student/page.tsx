@@ -141,7 +141,7 @@ export default function StudentDashboard() {
     upnext: <UpNextCard items={home.data?.upNext} loading={home.isLoading} empty="Nothing coming up today. A good time to review flashcards or pick up an impact project." />,
     brief: <DailyBrief />,
     impact: (
-      <div className="relative rounded-2xl bg-gradient-to-r from-indigo-50 via-pink-50 to-aqua-50 dark:from-indigo-950/60 dark:via-indigo-900/40 dark:to-aqua-950/30 border border-[var(--separator)] dark:border-white/10 p-4 md:p-6 overflow-hidden shadow-xl shadow-indigo-500/5 dark:shadow-black/20">
+      <div className="relative rounded-2xl bg-gradient-to-r from-indigo-50 via-pink-50 to-violet-50 dark:from-indigo-950/60 dark:via-indigo-900/40 dark:to-aqua-950/30 border border-[var(--separator)] dark:border-white/10 p-4 md:p-6 overflow-hidden shadow-xl shadow-indigo-500/5 dark:shadow-black/20">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
           <div className="flex items-start gap-3">
             <UniverseLogo size="lg" animated={true} withGlow={true} />
@@ -151,7 +151,7 @@ export default function StudentDashboard() {
                 {t('dashboard.network')}
               </div>
               <h2 className="text-lg md:text-xl font-black text-zinc-900 dark:text-white leading-tight">
-                {t('dashboard.collab')} <span className="bg-gradient-to-r from-pink-700 via-pink-600 to-aqua-700 dark:from-pink-300 dark:via-pink-400 dark:to-aqua-300 bg-clip-text text-transparent">NGOs &amp; changemakers</span>
+                {t('dashboard.collab')} <span className="bg-gradient-to-r from-pink-700 via-pink-600 to-violet-700 dark:from-pink-300 dark:via-pink-400 dark:to-aqua-300 bg-clip-text text-transparent">NGOs &amp; changemakers</span>
               </h2>
               <p className="text-zinc-600 dark:text-zinc-400 text-xs mt-1 max-w-xl">
                 {s && s.impactPoints > 0 ? `${s.impactPoints.toLocaleString()} impact points earned. ` : ''}{t('dashboard.impact_desc')}

@@ -87,14 +87,29 @@
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-emerald-500, .text-emerald-600, .text-green-500, .text-green-600, .text-teal-500, .text-teal-600) { color: #1a6b30; }
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-amber-500, .text-amber-600, .text-orange-500, .text-orange-600, .text-yellow-500, .text-yellow-600) { color: #9a4a00; }
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-rose-500, .text-rose-600, .text-red-500, .text-red-600) { color: #c10007; }
-:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-500, .text-indigo-600) { color: #2b3568; }
-:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-400, .text-violet-400, .text-purple-400) { color: #58617f; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-500, .text-indigo-600) { color: #3f2bd6; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-400, .text-violet-400, .text-purple-400) { color: #524f63; }
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-blue-500, .text-blue-600) { color: #1447e6; }
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-sky-500, .text-sky-600, .text-cyan-500, .text-cyan-600) { color: #0369a1; }
-:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600) { color: #2b3568; }
-:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-fuchsia-500, .text-fuchsia-600, .text-pink-500, .text-pink-600, .text-fuchsia-400, .text-pink-400) { color: #a32c7b; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600) { color: #3f2bd6; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-fuchsia-500, .text-fuchsia-600, .text-pink-500, .text-pink-600, .text-fuchsia-400, .text-pink-400) { color: #a52d80; }
 /* Dark mode keeps the lighter text greys (the darker light-mode ones would dim text on navy); so do
    areas that are dark in both modes (.on-dark: calls, the study rooms search). */
+/* M53 · Light mode in the owner's second palette (31 Oct 2026, the "Visualize your mind" picture):
+   Marshmallow White (#F0F0F0) page, Galactic Violet (#533FF6, the colour shown; the video's label said
+   #105BFF) as the accent, Bubblegum Pink (#EC74CE, shown; labelled #FE8500) as the light, black pills.
+   The Tailwind scales are re-pointed for light mode only; dark parts of a light page (.dark, .on-dark:
+   the side menu, live cards) get the dark mode's navy scales back just below. */
+html:not(.dark) {
+  --color-indigo-50: #f2f0ff; --color-indigo-100: #e6e2ff; --color-indigo-200: #cdc6ff; --color-indigo-300: #a99dff; --color-indigo-400: #8270fb; --color-indigo-500: #6a55f8; --color-indigo-600: #533ff6; --color-indigo-700: #3f2bd6; --color-indigo-800: #3224a8; --color-indigo-900: #261d7d; --color-indigo-950: #170f52;
+  --color-violet-50: #f2f0ff; --color-violet-100: #e6e2ff; --color-violet-200: #cdc6ff; --color-violet-300: #a99dff; --color-violet-400: #8270fb; --color-violet-500: #6a55f8; --color-violet-600: #533ff6; --color-violet-700: #3f2bd6; --color-violet-800: #3224a8; --color-violet-900: #261d7d; --color-violet-950: #170f52;
+  --color-purple-50: #f2f0ff; --color-purple-100: #e6e2ff; --color-purple-200: #cdc6ff; --color-purple-300: #a99dff; --color-purple-400: #8270fb; --color-purple-500: #6a55f8; --color-purple-600: #533ff6; --color-purple-700: #3f2bd6; --color-purple-800: #3224a8; --color-purple-900: #261d7d; --color-purple-950: #170f52;
+  --color-pink-50: #fff2fb; --color-pink-100: #fde6f6; --color-pink-200: #fbd2ef; --color-pink-300: #f7b3e6; --color-pink-400: #f28fd9; --color-pink-500: #ec74ce; --color-pink-600: #c23d98; --color-pink-700: #a52d80; --color-pink-800: #84256a; --color-pink-900: #6c2258; --color-pink-950: #430c35;
+  --color-fuchsia-50: #faf4ff; --color-fuchsia-100: #f3e6fe; --color-fuchsia-200: #e8cdfc; --color-fuchsia-300: #d6a6fa; --color-fuchsia-400: #c07cf6; --color-fuchsia-500: #a95cf2; --color-fuchsia-600: #8f45d9; --color-fuchsia-700: #7535b4; --color-fuchsia-800: #5f2d90; --color-fuchsia-900: #4e2775; --color-fuchsia-950: #300f4f;
+  --color-zinc-50: #f7f7f8; --color-zinc-100: #efeff1; --color-zinc-200: #e4e4e8; --color-zinc-300: #d1d1d8; --color-zinc-400: #57556a; --color-zinc-500: #524f63; --color-zinc-600: #403e4c; --color-zinc-700: #34323d; --color-zinc-800: #26242e; --color-zinc-900: #18171e; --color-zinc-950: #0f0e14;
+  --color-slate-400: #57556a; --color-slate-500: #524f63; --color-slate-600: #403e4c;
+  --color-gray-400: #57556a; --color-gray-500: #524f63; --color-gray-600: #403e4c;
+}
 .dark, .on-dark {
   /* @theme's colour variables resolve once on <html>; a dark part of a light page (the side menu)
      re-resolves the ones that change with the theme, or its icons stay dark blue on navy. */
@@ -104,7 +119,14 @@
   --color-slate-400: #b6bedb; --color-slate-500: #a0a9cc; --color-slate-600: #8f98bf;
   --color-gray-400: #b6bedb; --color-gray-500: #a0a9cc; --color-gray-600: #8f98bf;
   /* The mid accent shades, lifted so text in them reads on the navy (dark:text-indigo-400…). */
-  --color-indigo-400: #9ea7cb; --color-violet-400: #9ea7cb; --color-purple-400: #9ea7cb; }
+  --color-indigo-400: #9ea7cb; --color-violet-400: #9ea7cb; --color-purple-400: #9ea7cb;
+  /* M53: the dark scales back inside a dark part of a light page (light mode re-points them on <html>). */
+  --color-indigo-50: #eef2fb; --color-indigo-100: #e1e6f2; --color-indigo-200: #cbd2e6; --color-indigo-300: #a0a9cc; --color-indigo-500: #333d70; --color-indigo-600: #2b3568; --color-indigo-700: #222c5a; --color-indigo-800: #1d2650; --color-indigo-900: #171f44; --color-indigo-950: #10163a;
+  --color-violet-50: #eef2fb; --color-violet-100: #e1e6f2; --color-violet-200: #cbd2e6; --color-violet-300: #a0a9cc; --color-violet-500: #333d70; --color-violet-600: #2b3568; --color-violet-700: #222c5a; --color-violet-800: #1d2650; --color-violet-900: #171f44; --color-violet-950: #10163a;
+  --color-purple-50: #eef2fb; --color-purple-100: #e1e6f2; --color-purple-200: #cbd2e6; --color-purple-300: #a0a9cc; --color-purple-500: #333d70; --color-purple-600: #2b3568; --color-purple-700: #222c5a; --color-purple-800: #1d2650; --color-purple-900: #171f44; --color-purple-950: #10163a;
+  --color-pink-50: #fff1fa; --color-pink-100: #ffe6f6; --color-pink-200: #ffd6f0; --color-pink-300: #ffc0e6; --color-pink-400: #ff9fdc; --color-pink-500: #fe81d1; --color-pink-600: #c13a92; --color-pink-700: #a32c7b; --color-pink-800: #82245f; --color-pink-900: #6b1f50; --color-pink-950: #420a2f;
+  --color-fuchsia-50: #fdf2fc; --color-fuchsia-100: #fbe4f8; --color-fuchsia-200: #f8c8f1; --color-fuchsia-300: #f4a6ea; --color-fuchsia-400: #ef88e3; --color-fuchsia-500: #e46bdb; --color-fuchsia-600: #b447ae; --color-fuchsia-700: #93378e; --color-fuchsia-800: #762d72; --color-fuchsia-900: #5f275c; --color-fuchsia-950: #3d0d3a;
+  --color-zinc-50: #f5f7fc; --color-zinc-100: #eceff7; --color-zinc-200: #e1e6f2; --color-zinc-300: #cbd2e6; --color-zinc-700: #343c58; --color-zinc-800: #2b3568; --color-zinc-900: #1d2650; --color-zinc-950: #171f44; }
 /* Dark mode: blue and pink text without its own dark: colour is lifted so it reads on the navy. */
 .dark .text-indigo-500:not([class*="dark:text-"]) { color: #b6bedb; }
 .dark :is(.text-fuchsia-500, .text-pink-500):not([class*="dark:text-"]) { color: #ff9fdc; }
@@ -1053,8 +1075,9 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 @media (prefers-reduced-motion: reduce) { .mkt-drift-a, .mkt-drift-b { animation: none; } }
 
 /* ─── Background: the M52 glows ─── */
-/* Like the owner's "Globynk" design: Aqua Jade rising from the bottom of the screen, Baby Pink and a
-   periwinkle light at the top, and grain, behind every page. Dark mode keeps the glows low enough
+/* Dark mode, like the owner's "Globynk" design: Aqua Jade rising from the bottom of the screen, Baby
+   Pink and a periwinkle light at the top, and grain, behind every page. Light mode (M53): Marshmallow
+   White with Bubblegum Pink and Galactic Violet low down, like the "Visualize your mind" band. Dark mode keeps the glows low enough
    that grey text over them still reads at 4.5:1. One still layer: nothing to redraw while scrolling. */
 .ambient-bg {
   position: fixed;
@@ -1063,10 +1086,10 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
   pointer-events: none;
   overflow: hidden;
   background:
-    radial-gradient(70vmax 36vmax at 50% 112%, rgba(116, 255, 237, 0.5), transparent 70%),
-    radial-gradient(40vmax 30vmax at 100% 6%, rgba(254, 129, 209, 0.22), transparent 70%),
-    radial-gradient(44vmax 32vmax at 4% -4%, rgba(140, 155, 255, 0.26), transparent 70%),
-    radial-gradient(34vmax 28vmax at 0% 96%, rgba(116, 255, 237, 0.18), transparent 70%);
+    radial-gradient(56vmax 34vmax at 0% 112%, rgba(236, 116, 206, 0.2), transparent 70%),
+    radial-gradient(60vmax 36vmax at 100% 110%, rgba(83, 63, 246, 0.16), transparent 70%),
+    radial-gradient(40vmax 30vmax at 100% -4%, rgba(169, 157, 255, 0.2), transparent 70%),
+    radial-gradient(36vmax 28vmax at 0% -6%, rgba(255, 255, 255, 0.9), transparent 70%);
 }
 .dark .ambient-bg {
   background:
@@ -1089,7 +1112,7 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 /* ─── Materials: frosted, in the two tones ─── */
 /* Bars: translucent and blurred so content glides underneath them, tinted indigo → fuchsia. */
 .glass-bar {
-  background: linear-gradient(90deg, rgba(238, 242, 251, 0.85), rgba(255, 255, 255, 0.75) 50%, rgba(238, 242, 251, 0.85));
+  background: linear-gradient(90deg, rgba(240, 240, 240, 0.85), rgba(255, 255, 255, 0.75) 50%, rgba(240, 240, 240, 0.85));
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
 }
@@ -1105,8 +1128,8 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
    behind doesn't show through. */
 .tone-panel {
   background:
-    radial-gradient(120% 60% at 0% 0%, rgba(43, 53, 104, 0.10), transparent 70%),
-    radial-gradient(120% 60% at 100% 100%, rgba(254, 129, 209, 0.08), transparent 70%),
+    radial-gradient(120% 60% at 0% 0%, rgba(83, 63, 246, 0.07), transparent 70%),
+    radial-gradient(120% 60% at 100% 100%, rgba(236, 116, 206, 0.08), transparent 70%),
     #ffffff;
 }
 .dark .tone-panel {
@@ -1118,7 +1141,7 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 
 /* Liquid glass: floating controls (tab bar, call bar) — material with a light rim and a soft shadow. */
 .ios-glass {
-  background: linear-gradient(90deg, rgba(43, 53, 104, 0.12), transparent 50%, rgba(254, 129, 209, 0.1)), var(--material);
+  background: linear-gradient(90deg, rgba(83, 63, 246, 0.08), transparent 50%, rgba(236, 116, 206, 0.1)), var(--material);
   -webkit-backdrop-filter: blur(24px) saturate(190%);
   backdrop-filter: blur(24px) saturate(190%);
   box-shadow: inset 0 0.5px 0 var(--material-highlight), 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 10px 34px -10px rgba(0, 0, 0, 0.28);
@@ -1514,31 +1537,33 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
    over the older tokens above; an accent picked in Settings → Appearance (data-accent) still colours
    the buttons. */
 :root {
-  --ink: #171f44; --ink-contrast: #ffffff; --ink-soft: #2b3568;
-  --tint: #171f44; --tint-rgb: 23 31 68; --tint-text: #171f44;
+  /* Light mode (M53): Marshmallow White, white cards, black pills, Galactic Violet accents. */
+  --ink: #141320; --ink-contrast: #ffffff; --ink-soft: #2b2a38;
+  --tint: #533ff6; --tint-rgb: 83 63 246; --tint-text: #3f2bd6;
   --aqua: #74ffed; --aqua-rgb: 116 255 237; --baby-pink: #fe81d1; --baby-pink-rgb: 254 129 209; --abyss: #171f44;
-  --background: #e9eef8;
-  --surface: #ffffff; --surface-2: #f3f6fc;
-  --fill: rgba(23, 31, 68, 0.05); --fill-strong: rgba(23, 31, 68, 0.09);
-  --separator: rgba(23, 31, 68, 0.08); --hairline: rgba(23, 31, 68, 0.16);
+  --violet: #533ff6; --bubblegum: #ec74ce; --marshmallow: #f0f0f0;
+  --background: #f0f0f0;
+  --surface: #ffffff; --surface-2: #f7f7f8;
+  --fill: rgba(20, 19, 32, 0.05); --fill-strong: rgba(20, 19, 32, 0.09);
+  --separator: rgba(20, 19, 32, 0.08); --hairline: rgba(20, 19, 32, 0.16);
   --material: rgba(255, 255, 255, 0.84); --material-thick: rgba(255, 255, 255, 0.95); --material-highlight: rgba(255, 255, 255, 0.9);
-  --card-bg: #ffffff; --card-border: rgba(23, 31, 68, 0.07); --card-hover-bg: #ffffff; --card-hover-border: rgba(23, 31, 68, 0.15);
-  --card-shadow: 0 1px 2px rgba(23, 31, 68, 0.05), 0 22px 44px -28px rgba(23, 31, 68, 0.36);
+  --card-bg: #ffffff; --card-border: rgba(20, 19, 32, 0.07); --card-hover-bg: #ffffff; --card-hover-border: rgba(83, 63, 246, 0.22);
+  --card-shadow: 0 1px 2px rgba(20, 19, 32, 0.05), 0 22px 44px -28px rgba(83, 63, 246, 0.3);
   --radius-card: 1.75rem;
-  --sidebar-bg: #10163a; --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-item-color: #cbd2e6; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.06); --sidebar-item-hover-color: #ffffff;
-  --sidebar-item-active-bg: #eef2fb; --sidebar-item-active-color: #171f44;
-  --topbar-bg: rgba(233, 238, 248, 0.82); --topbar-border: rgba(23, 31, 68, 0.07);
+  --sidebar-bg: #15121f; --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-item-color: #d1d1d8; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.06); --sidebar-item-hover-color: #ffffff;
+  --sidebar-item-active-bg: #f7f7f8; --sidebar-item-active-color: #141320;
+  --topbar-bg: rgba(240, 240, 240, 0.82); --topbar-border: rgba(20, 19, 32, 0.07);
   --toast-bg: rgba(255, 255, 255, 0.95);
-  --input-bg: #ffffff; --input-border: rgba(23, 31, 68, 0.14); --input-placeholder: #6b7394;
-  --text-primary: #171f44; --text-secondary: #3f4763; --text-muted: #5d6585;
-  --pill-on-bg: #171f44; --pill-on-color: #ffffff;
-  /* Frosted headline cards. Dusk: Midnight Abyss sinking into deep aqua, a pink light at the top
-     (white text reads at 4.5:1 on every part). Gold (kept name): a pale Aqua Jade frost (dark text).
-     Olive (kept name): navy into deep orchid (white text). */
-  --karma-dusk: radial-gradient(90% 120% at 100% 0%, #4a2f6e 0%, transparent 60%), radial-gradient(110% 120% at 30% 120%, #12707a 0%, transparent 65%), linear-gradient(165deg, #1d2650, #1f3a66 55%, #175868);
-  --karma-olive: radial-gradient(100% 120% at 100% 100%, #7a2d6c 0%, transparent 60%), linear-gradient(135deg, #171f44, #2b3568 60%, #4a2d6a);
-  --karma-gold: radial-gradient(90% 110% at 0% 0%, #f4fffd 0%, transparent 60%), linear-gradient(135deg, #d9fbf6, #a9f3ea);
+  --input-bg: #ffffff; --input-border: rgba(20, 19, 32, 0.14); --input-placeholder: #6b6978;
+  --text-primary: #141320; --text-secondary: #403e4c; --text-muted: #57556a;
+  --pill-on-bg: #141320; --pill-on-color: #ffffff;
+  /* Frosted headline cards. Dusk: Bubblegum Pink sweeping into Galactic Violet, like the picture's band
+     (deep enough that white text reads at 4.5:1 on every part). Gold (kept name): a pale lavender frost
+     (dark text). Olive (kept name): ink into violet (white text). */
+  --karma-dusk: radial-gradient(80% 110% at 0% 100%, #b8338f 0%, transparent 60%), linear-gradient(120deg, #a6359a, #7a3fe0 55%, #4a36e0);
+  --karma-olive: linear-gradient(135deg, #141320, #2b2466 60%, #533ff6);
+  --karma-gold: radial-gradient(90% 110% at 0% 0%, #ffffff 0%, transparent 60%), linear-gradient(135deg, #f1edff, #ded7ff);
 }
 .dark {
   --ink: #eef2fb; --ink-contrast: #171f44; --ink-soft: #2b3568;
@@ -1559,6 +1584,8 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
   --text-primary: #f3f6fc; --text-secondary: #b6bedb; --text-muted: #a0a9cc;
   --pill-on-bg: #eef2fb; --pill-on-color: #171f44;
   --karma-gold: radial-gradient(90% 110% at 0% 0%, #1d6a72 0%, transparent 60%), linear-gradient(135deg, #123a4c, #11505a);
+  --karma-dusk: radial-gradient(90% 120% at 100% 0%, #4a2f6e 0%, transparent 60%), radial-gradient(110% 120% at 30% 120%, #12707a 0%, transparent 65%), linear-gradient(165deg, #1d2650, #1f3a66 55%, #175868);
+  --karma-olive: radial-gradient(100% 120% at 100% 100%, #7a2d6c 0%, transparent 60%), linear-gradient(135deg, #171f44, #2b3568 60%, #4a2d6a);
 }
 body { font-weight: 450; letter-spacing: 0; }
 
@@ -1566,9 +1593,12 @@ body { font-weight: 450; letter-spacing: 0; }
    pink; secondary pills are outlined; an accent chosen in Settings keeps its own colours. */
 :root:not([data-accent]) .btn-primary { color: #171f44; background: #fe81d1; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 26px -12px rgba(254, 129, 209, 0.75); }
 :root:not([data-accent]) .btn-primary:not(:disabled):hover { filter: none; background: #ff9bdb; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 14px 34px -12px rgba(254, 129, 209, 0.9); }
+/* Light mode (M53): Bubblegum Pink with ink text (7:1), a violet-pink glow. */
+:root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *) { color: #141320; background: #ec74ce; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 26px -12px rgba(236, 116, 206, 0.75); }
+:root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *):not(:disabled):hover { background: #f28fd9; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 14px 34px -12px rgba(140, 90, 240, 0.6); }
 :root:not([data-accent]) {
-  --btn-secondary-bg: transparent; --btn-secondary-color: #171f44;
-  --btn-ghost-color: #2b3568; --btn-ghost-hover-bg: rgba(23, 31, 68, 0.06); --btn-ghost-hover-color: #171f44;
+  --btn-secondary-bg: transparent; --btn-secondary-color: #141320;
+  --btn-ghost-color: #2b2a38; --btn-ghost-hover-bg: rgba(83, 63, 246, 0.07); --btn-ghost-hover-color: #141320;
 }
 :root:not([data-accent]) .dark, :root.dark:not([data-accent]) {
   --btn-secondary-bg: transparent; --btn-secondary-color: #eef2fb;
@@ -1590,6 +1620,8 @@ body { font-weight: 450; letter-spacing: 0; }
 /* The side menu: deep navy in both themes, a Baby Pink glow at the top and Aqua Jade rising from the
    bottom (like the design's page); the chosen entry is a white pill (navy text) with a pink edge. */
 .glass-sidebar, .dark .glass-sidebar { -webkit-backdrop-filter: none; backdrop-filter: none; background: radial-gradient(130% 34% at 0% 0%, rgba(254, 129, 209, 0.14), transparent 70%), radial-gradient(140% 40% at 50% 104%, rgba(116, 255, 237, 0.16), transparent 70%), linear-gradient(180deg, #10163a, #131b42 70%, #12233f); }
+/* Light mode (M53): the menu is violet-black, Bubblegum Pink at the top and Galactic Violet at the bottom. */
+html:not(.dark) .glass-sidebar { background: radial-gradient(130% 34% at 0% 0%, rgba(236, 116, 206, 0.16), transparent 70%), radial-gradient(140% 40% at 50% 104%, rgba(83, 63, 246, 0.32), transparent 70%), linear-gradient(180deg, #15121f, #181428 70%, #1d1638); }
 .sidebar-pill, .dark .sidebar-pill { background: #eef2fb; box-shadow: inset 3px 0 0 #fe81d1, 0 10px 26px -12px rgba(254, 129, 209, 0.6); }
 [dir="rtl"] .sidebar-pill { box-shadow: inset -3px 0 0 #fe81d1, 0 10px 26px -12px rgba(254, 129, 209, 0.6); }
 .sidebar-item.active, .sidebar-item.pill-host.active { color: var(--sidebar-item-active-color); }
@@ -1999,7 +2031,7 @@ html.reduce-motion .broadcast-icon::before, html.reduce-motion .broadcast-icon::
 /* ─── Instrument boards (the owner's "Instrumental" reference, 24 Oct 2026; components/instruments) ───
    A framed board, cells a shade lighter than it, instruments in the text colour with hot pink for
    what matters. Everything moves with transform and opacity; Reduce Motion stops it all. */
-:root { --ins-hot: #e05bb5; } /* Baby Pink deepened to 3:1 on white for chart marks */
+:root { --ins-hot: #d6449f; } /* Bubblegum Pink deepened to 3:1 on white for chart marks (light mode) */
 .dark { --ins-hot: #fe81d1; }
 .ins-board { position: relative; border-radius: 30px; padding: 6px; background: rgb(43 53 104 / 0.05); box-shadow: inset 0 0 0 1px rgb(43 53 104 / 0.08); }
 .dark .ins-board { background: rgb(255 255 255 / 0.025); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05), 0 30px 60px -40px rgb(0 0 0 / 0.8); }
@@ -2071,6 +2103,8 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
 .carry-wave { animation: carry-wave 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
 @media (prefers-reduced-motion: reduce) { .carry-wave { animation: none; opacity: 0.5; } }
 .trace-hero { background: radial-gradient(90% 55% at 50% 118%, rgb(116 255 237 / 0.42), transparent 70%), radial-gradient(120% 60% at 50% 110%, rgb(34 160 170 / 0.35), transparent 72%), radial-gradient(80% 60% at 0% 0%, rgb(110 125 255 / 0.16), transparent 70%), linear-gradient(180deg, #1d2650 0%, #171f44 50%, #173a5c 100%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 30px 60px -36px rgb(116 255 237 / 0.45); }
+/* Light mode (M53): violet-black with the picture's band glowing up from below (pink into violet). */
+html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, rgb(236 116 206 / 0.5), transparent 70%), radial-gradient(80% 60% at 90% 118%, rgb(83 63 246 / 0.6), transparent 72%), radial-gradient(80% 60% at 100% 0%, rgb(169 157 255 / 0.14), transparent 70%), linear-gradient(180deg, #1b1733 0%, #17142b 50%, #261c50 100%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 30px 60px -36px rgb(83 63 246 / 0.55); }
 @media print {
   body * { visibility: hidden !important; }
   .print-sheet, .print-sheet * { visibility: visible !important; }
@@ -2276,6 +2310,14 @@ html.reduce-motion .press-ripple, html.reduce-motion [data-cursor-light]::before
     radial-gradient(60% 50% at 0% 0%, rgb(110 125 255 / 0.12), transparent 70%),
     linear-gradient(180deg, #141b3e, #171f44 60%, #18264a);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 18px 40px -24px rgb(4 8 28 / 0.55);
+}
+/* Light mode (M53): violet-black, Bubblegum Pink and Galactic Violet glowing up from below. */
+html:not(.dark) .live-card {
+  background:
+    radial-gradient(90% 70% at 15% 120%, rgb(236 116 206 / 0.26), transparent 62%),
+    radial-gradient(90% 70% at 90% 118%, rgb(83 63 246 / 0.34), transparent 66%),
+    radial-gradient(60% 50% at 100% 0%, rgb(169 157 255 / 0.12), transparent 70%),
+    linear-gradient(180deg, #17142b, #19152f 60%, #221a45);
 }
 @media (min-width: 768px) { .live-card { padding: 1.5rem; } }
 .live-dot { width: 6px; height: 6px; border-radius: 9999px; background: #fe81d1; box-shadow: 0 0 0 0 rgb(254 129 209 / 0.6); animation: live-dot 2s var(--ease-out-soft, ease-out) infinite; }

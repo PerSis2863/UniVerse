@@ -150,7 +150,7 @@ export function WalletCards({ cards, holder }: { cards: WalletCard[]; holder: st
           {shown.bar && (
             <div className="mt-3">
               <div className="h-1.5 overflow-hidden rounded-full bg-zinc-900/[0.07] dark:bg-white/10">
-                <div className="h-full rounded-full bg-gradient-to-r from-pink-500 to-aqua-400 transition-[width] duration-700" style={{ width: `${Math.round(Math.max(0, Math.min(1, shown.bar.pct)) * 100)}%` }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-pink-500 to-violet-500 dark:to-aqua-400 transition-[width] duration-700" style={{ width: `${Math.round(Math.max(0, Math.min(1, shown.bar.pct)) * 100)}%` }} />
               </div>
               <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">{shown.bar.label}</p>
             </div>
