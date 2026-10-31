@@ -4,7 +4,7 @@ import { impactWallet } from '../impact-wallet';
 import { askUniverse } from '../ask';
 import { createRoom, playLeaderboard, playMe, roomInfo, roomTicket, saveSoloScore } from '../play';
 import { clearReliefWatch, createReliefPost, reliefAction, reliefMap, reliefMine, reliefWatch, setReliefWatch } from '../relief';
-import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction } from '../green';
+import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*),
 // UniVerse Green (/green/*) and UniVerse Play (/play/*). Everything here needs a signed-in account;
@@ -41,6 +41,7 @@ export default function impactAppsModule(router: Router) {
   green.post('actions', ({ user, body }) => logGreenAction(user, body ?? {}));
   green.delete<{ id: string }>('actions/:id', ({ user, params }) => deleteGreenAction(user, params.id));
   green.post<{ id: string }>('actions/:id/proof', { status: 200 }, ({ user, params, body }) => addGreenProof(user, params.id, body ?? {}));
+  green.post<{ id: string }>('actions/:id/feeling', { status: 200 }, ({ user, params, body }) => setGreenFeeling(user, params.id, body ?? {}));
   green.post<{ id: string }>('actions/:id/confirm', { status: 200 }, ({ user, params }) => confirmGreenAction(user, params.id));
   green.get('proofs', ({ user }) => greenProofs(user));
   green.get('teams', ({ user }) => greenTeams(user));

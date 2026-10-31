@@ -1,5 +1,5 @@
 import { CITIES } from '@/components/trace/map/cities';
-import { BADGES, GREEN_FACTORS, GREEN_KINDS, co2For, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
+import { BADGES, FEELINGS, GREEN_FACTORS, GREEN_KINDS, co2For, easiestKind, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
 import { newest, weekly, type WalletEvent } from '@/lib/impact-wallet';
 import { URGENCIES, snap, type ReliefKind } from '@/lib/relief';
 import { GAMES, GAME_IDS, isGame, type GameId } from '@/lib/play';
@@ -119,7 +119,7 @@ function myActions(me: { id: string }) {
     const at = i < 6 ? now - i * DAY - 3_600_000 * (1 + r() * 6) : now - (6 + r() * 54) * DAY;
     // Most older actions were confirmed by a teammate; a few recent ones wait with their photo.
     const photoUrl = i % 5 === 1 ? '/og.jpg' : null, verifiedAt = i > 3 && i % 4 !== 0 ? iso(at + 3_600_000) : null;
-    return { id: `sample-green-${i}`, userId: me.id, kind, amount, co2Kg: co2For(kind, amount), note: r() < 0.2 ? 'With the team' : null, lat: Math.round(home[1] * 10) / 10, lng: Math.round(home[2] * 10) / 10, place: home[0], photoUrl: photoUrl ?? (verifiedAt ? '/og.jpg' : null), verifiedAt, createdAt: iso(at) };
+    return { id: `sample-green-${i}`, userId: me.id, kind, amount, co2Kg: co2For(kind, amount), note: r() < 0.2 ? 'With the team' : null, lat: Math.round(home[1] * 10) / 10, lng: Math.round(home[2] * 10) / 10, place: home[0], photoUrl: photoUrl ?? (verifiedAt ? '/og.jpg' : null), verifiedAt, feeling: i % 3 ? (kind === 'CYCLE' || kind === 'WALK' ? 'EASY' : FEELINGS[i % 3]) : null, createdAt: iso(at) };
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -143,7 +143,7 @@ export function sampleGreenMe(me: { id: string }) {
       const d = iso(now - (29 - i) * DAY).slice(0, 10);
       return { day: d, kg: Math.round(actions.filter((a) => a.createdAt.startsWith(d)).reduce((s, a) => s + a.co2Kg, 0) * 10) / 10 };
     }),
-    recent: actions.slice(0, 30), teams: 2,
+    recent: actions.slice(0, 30), teams: 2, easiest: easiestKind(actions),
     community: { kg: 182_450, actions: 41_236, people: 2_904 },
   };
 }

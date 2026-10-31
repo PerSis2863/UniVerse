@@ -2769,3 +2769,111 @@ smoothness… just now it happened to me for no reason".
 - **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); the river alone in a
   browser with every frame faked as very slow keeps moving.
 
+## M57 · Darker navy with Aqua Jade glows; no line under the landing's hero (31 Oct 2026)
+
+The owner sent the landing between the hero and "One account. One planet.": a hard line there, and
+"the blue colour is really light… use more dark blue colour with aqua jade colour for the project".
+
+- **The line:** `.horizon` (the hero's foot and the sign-in pages) centred its aqua glow below the
+  section's bottom, so the section cut it off at full strength. Its glows now end inside it
+  (`transparent 100%` at the ellipse's edge, above the bottom). Rule: a glow on a section that
+  scrolls must fade to nothing before the section's edge.
+- **Darker, dark mode only** (`globals.css`): the page (`.dark .ambient-bg`) is deep navy top to
+  bottom (#0f1536 → #0f2f47) with Aqua Jade glows at the foot, replacing M55's pale ocean blue;
+  `--background` #11173a; cards `rgba(22,30,66,0.82)`; `--karma-dusk` / `--karma-gold` and
+  `.trace-hero` (the hub's and Trace's big cards) deep navy with an aqua glow; the landing's
+  `.world::before` deep navy into dark teal with the aqua as a horizon glow; the landing and sign-in
+  base `#0f1536` (`page.tsx`, `(auth)/layout.tsx`), `.text-pool` to match. Midnight Abyss #171F44
+  stays for cards, menus and text on pink.
+- **Tested:** `pnpm check` (1,362 unit tests, lean); `world-ui` (landing and sign-in axe-clean at 390
+  and 1280); axe on the hub, student home, Green and Trace in dark mode at 1280 and 390: no serious
+  problems. Looked at the hero-to-planet join, the planet section and the hub.
+
+## M57a · A deeper navy (31 Oct 2026)
+
+The owner: "need more dark blue". Every dark-mode navy from M57 a step deeper (`globals.css`): the
+page #0a0f2b → #0b2438 at the foot, `--background` #0b1030, cards `rgba(16,22,54,0.84)`, side menu
+#0a0f2b and its glass, top bar and `--material`, the frosts, `.trace-hero`, the landing's planet
+section and `.text-pool`; the landing and sign-in base #0a0f2b; the website's menu bar and the sign-in
+card #0d1233. Aqua Jade glows and the pink river unchanged. **Tested:** `pnpm check`; `world-ui` and
+axe on the hub, student home, Green and Trace at 1280 and 390: no serious problems.
+
+## M58 · Less AI-looking website; People list fixed (31 Oct 2026)
+
+The owner: "make this website… look much less ai but don't change any animations or transitions
+and also see if any errors or bugs are there".
+
+- **Live errors** (production `error_reports`): one real one, `GET /api/core/owner/people` "too many
+  SQL variables" (the console's People tab, after the sample world added many people). Prisma's D1
+  adapter batches relation lookups at 98 ids, and a lookup with its own filters (the last sign-in:
+  `orderBy` + `take: 1`) adds bound values on top: over D1's 100. Fix (`modules/owner.ts`): the page's
+  200 ids first, then their details 90 at a time, put back in order. Same shape in `calls.ts`' call
+  history (`participants: { where, take: 1 }` per conversation): `take` 100 → 90. **Rule:** a
+  `findMany` of more than ~90 rows that selects a relation with its own `where`/`take`/`orderBy`
+  must chunk its ids by 90. The other open rows (ids `smp…`) are the sample world's made-up errors.
+- **Less AI-looking** (impeccable's craft floor: no eyebrows, no gradient text, mono only for data):
+  every `Tag` eyebrow above a heading removed (landing sections, scroll story, sign-in, sign-up,
+  `AuthShowcase`; the helper is deleted from `bits.tsx`), the hero's sparkle line and Statement's
+  "| what UniVerse is" gone; word labels and notes in Urbanist instead of mono (numbers, wpm, scores
+  stay mono); `Accent` is solid `text-pink-200` italic serif (still the brand's italic word, no
+  gradient); the `primary` button lost its pink glow (inset highlight kept). No motion touched.
+- **Tested:** `pnpm check` (1,362 unit tests, lean); looked at the landing hero, story and FAQ.
+
+## M58a · Teacher home duplicate-key warning (31 Oct 2026)
+
+A crawl of every page (student, teacher, admin) found one real bug: `/teacher` logged React's
+"two children with the same key" when two live-ticker lines were identical (e.g. two recent
+submissions both "Alice Johnson · Introduction to Computer Science · 60%"). The `Ticker`'s hidden
+screen-reader list keyed each `<li>` by its own text (`LiveCard.tsx`). Keyed by position instead.
+The rest of the crawl was clean (the Trace insights/tracking 403s are the no-brand message by design;
+the other "did not load" lines were the local dev server running low on memory, not app faults).
+**Tested:** the warning is gone; `pnpm check` (1,362 tests, lean); `landing-story-ui` green.
+
+## M59 · Trace Live globe (31 Oct 2026)
+
+The owner asked to bring in the open-source "God's Eye View" 3D globe. That app is a heavy
+surveillance-style globe (Cesium/Google keys, metered; tracks planes, ships, number-plate cameras)
+that doesn't fit Trace (product passports) or a platform with children, so we took the *idea* only
+and built a Trace-native version from parts already here — no new dependency, no keys, no cost.
+
+- **New tab `/trace/globe`** (`GlobeView.tsx`, page, `TraceTabs` entry): the brand's shipments on the
+  existing `Planet` (`src/components/live/Planet.tsx`), reusing `GET /trace/map/tracking` (so the
+  sample answer already exists — no new sample route). Polled with `useActivePoll` while active.
+- **Mapping** is a pure function, `globeFromShipments` (`src/lib/trace-globe.ts`, one unit test):
+  each shipment's current position → a point (pink on the move, aqua at rest), its destination → an
+  aqua point, an arc between them; a cold-chain shipment over its limit is flagged in its label.
+- **Rule:** reuse `Planet` for any "points on a 3D globe" need; feed it `Place[]` + index-pair arcs.
+- **Not done here (owner asked to see it first):** a separate off-site demo of live aircraft dots
+  from a free no-key source. And the Candour-style "Green Pass" in UniVerse Green.
+- **Tested:** `pnpm check` (1,364 tests, lean); `/trace/globe` axe-clean at 1280, no console errors;
+  looked at it in sample mode (shipments plotted and labelled on the globe).
+
+
+## M60 · Green Pass and "how did it go?"; the live-aircraft demo (31 Oct 2026)
+
+The owner's remaining two picks from the batch ("please do this").
+
+- **Green Pass** (`PassSection` in `src/components/green/GreenApp.tsx`, under the hero on `/green`): a
+  collectable card. Tier from the CO₂ saved (`PASS_TIERS`: Seedling 0, Sprout 25, Sapling 100, Grove
+  500, Forest 2,000 kg), a stamp per kind of action ever logged (8 to collect), a member number
+  hashed from the account id (never the id itself). Pure logic `greenPass()` in `src/lib/green.ts`
+  (unit test). Leans toward the mouse (transform only; not on touch, not with Reduce Motion). No new
+  route: it reads `GET /green/me`.
+- **"How did it go?"**: after logging, Easy / Okay / Hard / Skip under the Log button. Migration
+  **0187** `green_actions.feeling`; `POST /green/actions/:id/feeling` (only on your own action,
+  `oneOf(FEELINGS)`). `GET /green/me` adds `easiest` (`easiestKind()`: the kind with the most "easy",
+  at least two), shown on the Pass with "Log it again" (picks that kind in the form). Each action in
+  "What you did" shows "felt easy" etc. Sample mode: `sampleGreenMe` has feelings and `easiest`; the
+  POST falls through to the sample write catch-all.
+- **Live-aircraft demo (not in the app):** a private page, https://claude.ai/artifact/GTsMpvx63QWjGrLNi2i4Ac
+  (also sent to the owner as `live-sky-globe.html`). Planes as pink dots with 10-minute streaks on a
+  dotted globe in the Globynk look; land from a 0.5° bit mask made from `public/geo/world-110m.json`.
+  Data: OpenSky Network `GET /api/states/all` (no key; anonymous ~400 credits a day, 4 per call, so
+  every 2 minutes, planes moved along their course in between). Where outside data is blocked (the
+  Claude viewer, this cloud container) it shows clearly labelled made-up flights between 40 real
+  airports. **Before it could ship:** OpenSky allows non-commercial use only; the fit is Trace (air
+  freight) near the brand's own shipments, via a server route with caching, never the browser
+  hitting OpenSky per visitor.
+- **Tested:** `pnpm check`; the feeling route by hand (own action ok, bad value 400, someone else's
+  404); `/green` in the browser at 390 and 1280, light and dark: log → prompt → Easy → saved, axe
+  clean, no sideways scroll, no page errors. Test rows removed.

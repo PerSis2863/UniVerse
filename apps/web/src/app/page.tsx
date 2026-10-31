@@ -5,7 +5,7 @@ import { InstallGuide } from '@/components/pwa/InstallGuide';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, MotionConfig, m as motion, useScroll, useSpring, useTransform } from 'framer-motion';
-import { ArrowRight, ChevronDown, Smartphone, Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronDown, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
@@ -25,7 +25,7 @@ import { GreenMore, PlayMore, ReliefMore } from '@/components/landing/ImpactMore
 import { LiveTotals } from '@/components/landing/LiveTotals';
 import { ScrollStory } from '@/components/landing/ScrollStory';
 import { WorldSection } from '@/components/landing/WorldSection';
-import { Accent, EASE, Live, Reveal, Tag, ghost, primary } from '@/components/landing/bits';
+import { Accent, EASE, Live, Reveal, ghost, primary } from '@/components/landing/bits';
 import type { AppId } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { homeFor } from '@/lib/role-home';
@@ -148,7 +148,7 @@ export default function ShowcasePage() {
       {/* Opened as the installed app (an older install whose start address is still "/"): go to
           the app's start (sign in, or your dashboard) instead of the website's landing page. */}
       <script dangerouslySetInnerHTML={{ __html: "if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone){location.replace('/app')}" }} />
-      <div data-cursor-light className="mkt-smooth dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#171f44', color: '#ffffff' }}>
+      <div data-cursor-light className="mkt-smooth dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#0a0f2b', color: '#ffffff' }}>
         <motion.div style={{ scaleX: progress }} className="fixed top-0 inset-x-0 h-[2px] origin-left z-[60] bg-gradient-to-r from-aqua-300 via-pink-400 to-pink-500" />
         {/* The page's two-tone glow and the river of light, behind everything below the hero. */}
         <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
@@ -168,10 +168,7 @@ export default function ShowcasePage() {
           <section data-no-motion className="horizon relative min-h-[100svh] px-6 pt-32 md:pt-36 pb-20 overflow-hidden">
             <div className="relative max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 items-center">
               <div>
-                <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }} className="hidden sm:block font-mono text-xs text-zinc-300">
-                  <Sparkles className="inline w-3.5 h-3.5 me-1.5 text-fuchsia-300" aria-hidden />UniVerse Impact · one account, apps that change something
-                </motion.p>
-                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.08, ease: EASE }} className="mt-4">
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.08, ease: EASE }}>
                   <AppTabs value={app} onChange={pick} label="Choose an app" />
                 </motion.div>
                 <AnimatePresence mode="wait">
@@ -190,7 +187,7 @@ export default function ShowcasePage() {
                     <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
                       <button type="button" onClick={handleInstallClick} className={SMALL}><Smartphone className="w-4 h-4" aria-hidden /> {installed ? 'Open the app' : 'Get the app'}</button>
                       {hero.extra}
-                      <span className="font-mono text-xs text-zinc-400">{hero.note}</span>
+                      <span className="text-xs text-zinc-400">{hero.note}</span>
                     </div>
                   </motion.div>
                 </AnimatePresence>
@@ -224,7 +221,6 @@ export default function ShowcasePage() {
 
           <section id="faq" className="px-6 py-24 scroll-mt-24">
             <div className="max-w-3xl mx-auto">
-              <Reveal><Tag>faq</Tag></Reveal>
               <Reveal delay={0.05}><h2 className="mt-5 mb-8 text-4xl md:text-5xl font-bold tracking-tight text-white">Questions, <Accent>answered.</Accent></h2></Reveal>
               {[...FAQ.all, ...FAQ[app]].map((f, i) => <FaqItem key={f.q} {...f} i={i} />)}
             </div>

@@ -59,10 +59,10 @@ export function FlowCard({ flow: which = 'late', compact = false, className }: {
           </span>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-white truncate">{flow.name}</p>
-            <p className="font-mono text-[11px] text-zinc-400 truncate">{flow.feature.toLowerCase()}</p>
+            <p className="text-[11px] text-zinc-400 truncate">{flow.feature.toLowerCase()}</p>
           </div>
         </div>
-        <span className="shrink-0 inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full bg-fuchsia-500/15 text-fuchsia-200 font-mono text-[11px]">
+        <span className="shrink-0 inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full bg-fuchsia-500/15 text-fuchsia-200 text-[11px]">
           <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_8px_#fe81d1]" /> running
         </span>
       </div>
@@ -102,7 +102,7 @@ export function FlowCard({ flow: which = 'late', compact = false, className }: {
           </li>
         ))}
       </ol>
-      <p className="mt-3 font-mono text-xs text-zinc-400">{flow.note}</p>
+      <p className="mt-3 text-xs text-zinc-400">{flow.note}</p>
       </>}
     </div>
   );

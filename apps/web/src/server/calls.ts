@@ -491,7 +491,9 @@ export async function recentCalls(user: SessionUser): Promise<CallHistoryRow[]> 
     prisma.message.findMany({
       where: { type: 'CALL', deletedAt: null, createdAt: { gte: since }, conversation: { participants: { some: { userId: user.id } } } },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      // 90, not 100: the conversations' filtered participant lookup adds bound values to each batch of
+      // ids, and D1 refuses more than 100 (M58).
+      take: 90,
       select: {
         id: true, metadata: true, createdAt: true, senderId: true,
         sender: { select: { name: true, avatar: true } },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import Image from 'next/image';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
@@ -16,7 +16,8 @@ import { shrinkImage } from '@/lib/shrink-image';
 import { InviteButton } from '@/components/apps/InviteButton';
 import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
-import { GREEN_FACTORS, GREEN_KINDS, co2For, type GreenKind } from '@/lib/green';
+import { GREEN_FACTORS, GREEN_KINDS, PASS_TIERS, co2For, greenPass, type Feeling, type GreenKind } from '@/lib/green';
+import { useAuthStore } from '@/store/auth';
 import { LiveCard } from '@/components/live/LiveCard';
 import { Constellation } from '@/components/live/Constellation';
 import { Heartbeat } from '@/components/live/Heartbeat';
@@ -39,14 +40,16 @@ interface GreenMe {
   challenge: { kind: GreenKind; goal: number; title: string; unit: string; starts: string; ends: string; mine: number; waiting: number; team: number | null };
   verified: { actions: number; kg: number };
   perDay: { day: string; kg: number }[];
-  recent: { id: string; kind: GreenKind; amount: number; co2Kg: number; note: string | null; place: string | null; photoUrl: string | null; verifiedAt: string | null; createdAt: string }[];
+  recent: { id: string; kind: GreenKind; amount: number; co2Kg: number; note: string | null; place: string | null; photoUrl: string | null; verifiedAt: string | null; feeling: Feeling | null; createdAt: string }[];
   teams: number;
+  easiest: GreenKind | null;
   community: { kg: number; actions: number; people: number };
 }
 
 export const GREEN_ICON: Record<GreenKind, typeof Leaf> = { TREE: TreePine, CYCLE: Bike, TRANSIT: Bus, WALK: Footprints, RECYCLE: Recycle, SOLAR: Sun, MEATFREE: Utensils, CLEANUP: Trash2 };
 const EMERALD = '#10b981';
 const RECENT = 6;
+const FELT: Record<Feeling, string> = { EASY: 'Easy', OK: 'Okay', HARD: 'Hard' };
 
 /** Makes a photo smaller and uploads it; its address goes with the action as proof. */
 async function uploadProof(file: File) {
@@ -66,6 +69,8 @@ export function GreenApp() {
   const [burst, setBurst] = useState(0);
   const [photo, setPhoto] = useState<File | null>(null);
   const [allRecent, setAllRecent] = useState(false);
+  const [ask, setAsk] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const f = GREEN_FACTORS[kind];
   const preview = co2For(kind, Number(amount) || 0);
 
@@ -76,9 +81,9 @@ export function GreenApp() {
     const pos = share ? await new Promise<{ lat: number; lng: number } | null>((done) => navigator.geolocation ? navigator.geolocation.getCurrentPosition((g) => done({ lat: g.coords.latitude, lng: g.coords.longitude }), () => done(null), { timeout: 5000, maximumAge: 600_000 }) : done(null)) : null;
     try {
       const photoUrl = photo ? await uploadProof(photo) : undefined;
-      await api.post('/green/actions', { kind, amount: Number(amount), note, photoUrl, ...(pos ?? {}) });
+      const made = await api.post<{ id?: string }>('/green/actions', { kind, amount: Number(amount), note, photoUrl, ...(pos ?? {}) });
       toast.success(`Logged: ${preview} kg of CO₂ saved${photoUrl ? '. A teammate can confirm it now.' : ''}`);
-      setNote(''); setPhoto(null); setBurst((b) => b + 1);
+      setNote(''); setPhoto(null); setBurst((b) => b + 1); setAsk(made.data?.id ?? null);
       // A badge earned just now: a short celebration (src/lib/celebrate.ts).
       const won = (await mutate())?.badges.find((b) => b.earned && !had.has(b.id));
       if (won) { celebrate(at); toast.success(`New badge: ${won.label}`); }
@@ -88,6 +93,13 @@ export function GreenApp() {
     if (!file) return;
     try { await api.post(`/green/actions/${id}/proof`, { photoUrl: await uploadProof(file) }); toast.success('Photo added. A teammate can confirm it now.'); void mutate(); } catch (err) { toast.error(errorMessage(err, 'Could not add the photo.')); }
   };
+  // "How did it go?" right after logging (M60): one tap, or skip.
+  const feel = async (feeling: Feeling) => {
+    const id = ask; setAsk(null);
+    if (!id) return;
+    try { await api.post(`/green/actions/${id}/feeling`, { feeling }); toast.success('Thanks, noted.'); void mutate(); } catch (err) { toast.error(errorMessage(err, 'Could not save that.')); }
+  };
+  const tryAgain = (k: GreenKind) => { setKind(k); formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
   const remove = async (id: string) => {
     try { await api.delete(`/green/actions/${id}`); void mutate(); } catch (err) { toast.error(errorMessage(err, 'Could not delete it.')); }
   };
@@ -117,9 +129,11 @@ export function GreenApp() {
         {data && <p className="relative mt-6 text-xs text-emerald-100/60">Everyone on UniVerse Green: {fmt(data.community.kg)} kg CO₂ saved by {fmt(data.community.people)} people in {fmt(data.community.actions)} actions.</p>}
       </section>
 
+      {data && <PassSection totals={data.totals} easiest={data.easiest} onTry={tryAgain} />}
+
       {/* Wide screens: the right column ends with the form; teammates' photos scroll inside it. */}
       <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6">
-        <form onSubmit={(e) => void log(e)} className="panel p-5 relative overflow-hidden" aria-labelledby="log-h">
+        <form ref={formRef} onSubmit={(e) => void log(e)} className="panel p-5 relative overflow-hidden" aria-labelledby="log-h">
           <h2 id="log-h" className="font-bold text-zinc-900 dark:text-white">Log an action</h2>
           <div className="mt-3 grid grid-cols-4 gap-2" role="radiogroup" aria-label="What you did">
             {GREEN_KINDS.map((k) => { const I = GREEN_ICON[k]; return (
@@ -141,6 +155,15 @@ export function GreenApp() {
           </label>
           <label className="mt-3 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300"><input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} className="w-4 h-4 accent-emerald-500" /><MapPin className="w-3.5 h-3.5" aria-hidden />Put it on the shared map (about 11 km away from where I am)</label>
           <button type="submit" disabled={saving} className="mt-4 w-full h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold inline-flex items-center justify-center gap-2 active:scale-[0.98] transition">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Leaf className="w-4 h-4" />}Log it</button>
+          <AnimatePresence>
+            {ask && (
+              <motion.div key={ask} role="group" aria-labelledby="felt-h" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-emerald-500/[0.08] px-3 py-2.5">
+                <span id="felt-h" className="me-auto text-sm font-semibold text-zinc-800 dark:text-zinc-100">How did it go?</span>
+                {(Object.keys(FELT) as Feeling[]).map((k) => <button key={k} type="button" onClick={() => void feel(k)} className="btn-secondary btn-sm">{FELT[k]}</button>)}
+                <button type="button" onClick={() => setAsk(null)} className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 underline-offset-2 hover:underline px-1">Skip</button>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <AnimatePresence>{burst > 0 && <Burst key={burst} />}</AnimatePresence>
         </form>
 
@@ -217,7 +240,7 @@ export function GreenApp() {
                 {data.recent.map((a, i) => { const I = GREEN_ICON[a.kind] ?? Leaf; return (
                   <li key={a.id} className={cn('py-2.5 flex items-center gap-3 text-sm group', i >= RECENT && !allRecent && 'max-lg:hidden')}>
                     <span className="w-8 h-8 rounded-xl grid place-items-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"><I className="w-4 h-4" aria-hidden /></span>
-                    <span className="min-w-0 flex-1"><span className="block truncate text-zinc-800 dark:text-zinc-100">{fmt(a.amount)} {GREEN_FACTORS[a.kind]?.units} · {GREEN_FACTORS[a.kind]?.label.toLowerCase()}</span><span className="block text-[11px] text-zinc-500 truncate">{[a.note, formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })].filter(Boolean).join(' · ')}</span></span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-zinc-800 dark:text-zinc-100">{fmt(a.amount)} {GREEN_FACTORS[a.kind]?.units} · {GREEN_FACTORS[a.kind]?.label.toLowerCase()}</span><span className="block text-[11px] text-zinc-500 truncate">{[a.note, a.feeling && `felt ${FELT[a.feeling].toLowerCase()}`, formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })].filter(Boolean).join(' · ')}</span></span>
                     {a.verifiedAt ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300"><ShieldCheck className="w-3.5 h-3.5" aria-hidden />Confirmed</span>
                       : a.photoUrl ? <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300"><Clock className="w-3.5 h-3.5" aria-hidden />Waiting</span>
                       : <label className="inline-flex items-center gap-1 rounded-full border border-zinc-200 dark:border-white/10 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 cursor-pointer hover:border-emerald-500/60"><Camera className="w-3.5 h-3.5" aria-hidden />Add proof<input type="file" accept="image/*" className="sr-only" onChange={(e) => void addPhoto(a.id, e.target.files?.[0])} /></label>}
@@ -268,6 +291,64 @@ function TeamProofs({ onDone }: { onDone: () => void }) {
               </li>
             ); })}
           </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** The Green Pass (M60, after the owner's "Candour" idea): a collectable card. Its tier grows with
+ *  the CO₂ saved; a stamp for each kind of action ever logged, eight to collect. Leans toward the
+ *  pointer on computers (transform only; still with Reduce Motion). */
+function PassSection({ totals, easiest, onTry }: { totals: GreenMe['totals']; easiest: GreenKind | null; onTry: (k: GreenKind) => void }) {
+  const name = useAuthStore((s) => s.user?.name) ?? 'You';
+  const id = useAuthStore((s) => s.user?.id) ?? '';
+  const reduce = useReducedMotion();
+  const p = greenPass(totals);
+  const missing = GREEN_KINDS.filter((k) => !p.stamps.includes(k));
+  // A stable member number from the account id (not the id itself).
+  const no = useMemo(() => { let h = 2166136261; for (const c of id) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return String(h >>> 0).padStart(10, '0').replace(/(\d{4})(\d{4})(\d{2})/, '$1 $2 $3'); }, [id]);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const lean = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (reduce || e.pointerType !== 'mouse') return;
+    const r = e.currentTarget.getBoundingClientRect();
+    setTilt({ x: ((e.clientY - r.top) / r.height - 0.5) * -8, y: ((e.clientX - r.left) / r.width - 0.5) * 10 });
+  };
+  return (
+    <section className="panel p-5 grid gap-6 sm:grid-cols-[minmax(0,340px)_1fr] items-center" aria-labelledby="pass-h">
+      <div style={{ perspective: 900 }}>
+        <div
+          onPointerMove={lean} onPointerLeave={() => setTilt({ x: 0, y: 0 })}
+          style={{ transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`, background: 'radial-gradient(90% 120% at 100% 0%, rgba(116,255,237,0.28), transparent 55%), linear-gradient(135deg, #171f44 0%, #0d3a33 70%, #0f5a45 100%)' }}
+          className="relative h-[212px] rounded-[22px] p-5 text-white shadow-[0_24px_50px_-24px_rgba(16,185,129,0.6)] ring-1 ring-white/10 overflow-hidden transition-transform duration-200 ease-out"
+        >
+          <span aria-hidden className="absolute -end-10 -bottom-16 w-48 h-48 rounded-full border border-white/10" />
+          <span aria-hidden className="absolute -end-2 -bottom-8 w-32 h-32 rounded-full border border-white/10" />
+          <div className="relative flex items-center gap-2 text-sm font-bold"><Leaf className="w-4 h-4 text-emerald-300" aria-hidden />Green Pass<span className="ms-auto text-xs font-semibold text-emerald-100/80">Level {p.level} of {PASS_TIERS.length}</span></div>
+          <p className="relative mt-3 text-3xl font-extrabold tracking-tight">{p.tier}</p>
+          <p className="relative text-sm text-emerald-50/80 truncate" translate="no">{name}</p>
+          <ul className="relative mt-4 flex gap-1.5" aria-label={`${p.stamps.length} of ${GREEN_KINDS.length} stamps`}>
+            {GREEN_KINDS.map((k) => { const I = GREEN_ICON[k], has = p.stamps.includes(k); return (
+              <li key={k} title={GREEN_FACTORS[k].label} className={cn('w-7 h-7 rounded-full grid place-items-center', has ? 'bg-emerald-300 text-[#0d3a33] shadow-[0_0_12px_rgba(110,231,183,0.6)]' : 'border border-dashed border-white/30 text-white/40')}>
+                <I className="w-3.5 h-3.5" aria-hidden /><span className="sr-only">{GREEN_FACTORS[k].label}: {has ? 'collected' : 'not yet'}</span>
+              </li>
+            ); })}
+          </ul>
+          <p className="absolute bottom-4 start-5 font-mono text-[11px] tracking-widest text-emerald-100/70" aria-hidden>GP {no}</p>
+        </div>
+      </div>
+      <div className="min-w-0">
+        <h2 id="pass-h" className="font-bold text-zinc-900 dark:text-white">Your Green Pass</h2>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{p.next ? <>{fmt(p.next.kgToGo)} kg of CO₂ to go until <b className="text-zinc-900 dark:text-white">{p.next.label}</b>.</> : 'Forest: the top level. Thank you.'}</p>
+        <div className="mt-2 h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" role="progressbar" aria-label={`Progress to ${p.next?.label ?? 'the top'}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(p.progress * 100)}>
+          <div className="h-full rounded-full bg-emerald-500 origin-left rtl:origin-right transition-transform duration-500 ease-out" style={{ transform: `scaleX(${p.progress})` }} />
+        </div>
+        <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-300"><b className="font-mono text-zinc-900 dark:text-white">{p.stamps.length}/{GREEN_KINDS.length}</b> stamps. {missing.length ? `Still to collect: ${missing.map((k) => GREEN_FACTORS[k].label.toLowerCase()).join(', ')}.` : 'Every stamp collected.'}</p>
+        {easiest && (
+          <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
+            {GREEN_FACTORS[easiest].label} felt easy for you.
+            <button type="button" onClick={() => onTry(easiest)} className="btn-secondary btn-sm">Log it again</button>
+          </p>
         )}
       </div>
     </section>

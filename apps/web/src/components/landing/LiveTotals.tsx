@@ -32,7 +32,7 @@ export function LiveTotals() {
             );
           })}
         </dl>
-        <p className="mt-3 text-center font-mono text-xs text-zinc-400"><span className="inline-block w-1.5 h-1.5 me-1.5 rounded-full bg-emerald-400 align-middle" aria-hidden />counted every day</p>
+        <p className="mt-3 text-center text-xs text-zinc-400"><span className="inline-block w-1.5 h-1.5 me-1.5 rounded-full bg-emerald-400 align-middle" aria-hidden />counted every day</p>
       </Reveal>
     </section>
   );

@@ -115,14 +115,19 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   Wallet), **M53** (light mode in Marshmallow White, Galactic Violet and Bubblegum Pink), **M54** (more
   Aqua Jade in dark mode) and **M55** (the "Globynk" picture everywhere in dark mode: navy-to-aqua
   pages, glass cards, the network globe) (merged into `main`, 31 Oct).
-  **M56** (31 Oct, on the branch): the river pink again and never stuck, a third cheaper; the scroll
+  **M56** (31 Oct, merged, PR #102): the river pink again and never stuck, a third cheaper; the scroll
   story's pictures full size; the planet section fades into the page; sign-in fits one laptop screen.
   **M56a**: nothing slows or stops the river by itself any more (only Reduce Motion stills it).
+  **M57** (on the branch): dark mode deep navy with Aqua Jade glows (no pale blue); no line under the hero. **M57a**: a step deeper again (page #0a0f2b).
+  **M58**: less AI-looking website; People list fixed. **M58a**: teacher-home duplicate-key fix.
+  **M59**: a Live globe in Trace (the brand's shipments on the 3D globe).
+  **M60**: the Green Pass (collectable card) and "how did it go?" after logging in Green; a live-aircraft demo kept off the site for the owner to judge.
+  **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
   done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts
   on a first visit, is in M47's handoff note).
-- **Next database update number: `0187`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0188`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
   challenges (done, M25); organisation accounts for Relief (NGOs, supplies, volunteer shifts; SMS/WhatsApp requests behind a
@@ -274,7 +279,8 @@ zinc = neutral greys) and `.dark` parts get the navy ones back. Use `violet-*` w
 
 **The look: "Globynk" (M52, the owner, 31 Oct 2026; replaced M34's warm graphite "Karma").** Three
 colours: **Midnight Abyss #171F44** (navy: the page in dark mode, the ink, the side menu), **Aqua Jade
-#74FFED** (the glow rising from the bottom of every page, focus in dark mode, the planet) and **Baby
+#74FFED** (the glow rising from the bottom of every page, focus in dark mode, the planet; M57: always
+a glow over deep navy #0a0f2b, never a pale blue fill) and **Baby
 Pink #FE81D1** (the light: the main button, the river, live states, arcs). Dark mode (the default): every
 page fades from Midnight Abyss at the top into deep Aqua Jade at the bottom (M55, `.ambient-bg`; its
 lightest point keeps white text at 4.5:1), cards are 80% navy glass (blurred on big screens), the side
@@ -293,7 +299,8 @@ the first two, `.karma-frost` for any card); thin-line icons sit in circles (`.k
 arrow buttons (`.karma-go`). Type: Urbanist, served from `/fonts/urbanist` (no outside service). No
 other new hues; green, amber and red only for states. `.panel` / `.card` / `.btn-primary` /
 `.ios-segmented` carry the look, so new screens get it by using them. The river and the italic accent
-word are the brand, even where design guides call them "AI-looking".
+word are the brand, even where design guides call them "AI-looking" (M58: the word is solid pink, no
+gradient; no eyebrow labels above headings; mono only for numbers and data).
 
 **The motion layer works on every page by itself**: pages assemble out of a blur
 (`src/lib/page-transition.ts`), titles sweep in, a light trail runs down the page (`LightTrail`),

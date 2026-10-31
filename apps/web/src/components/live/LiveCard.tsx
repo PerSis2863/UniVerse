@@ -82,7 +82,7 @@ export function Ticker({ items }: { items: string[] }) {
           </motion.p>
         </AnimatePresence>
       </div>
-      <ul className="sr-only">{items.map((x) => <li key={x}>{x}</li>)}</ul>
+      <ul className="sr-only">{items.map((x, n) => <li key={n}>{x}</li>)}</ul>
     </div>
   );
 }

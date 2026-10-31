@@ -7,7 +7,7 @@ import { GameIcon } from '@/components/play/GameIcon';
 import { BADGES, weeklyChallenge } from '@/lib/green';
 import { GAMES, type GameId } from '@/lib/play';
 import { useNow } from '@/lib/use-now';
-import { Accent, EASE, Reveal, Tag, glass } from './bits';
+import { Accent, EASE, Reveal, glass } from './bits';
 
 // More of the Relief, Green and Play tabs on the landing (M43): a "try it here" demo each
 // (./TryIt, loaded only when its tab is open) and two short picture sections. Illustrations only.
@@ -17,13 +17,8 @@ const QuizTry = dynamic(() => import('./TryIt').then((x) => x.QuizTry), { loadin
 const GreenTry = dynamic(() => import('./TryIt').then((x) => x.GreenTry), { loading: box('h-[520px] lg:h-[420px]') });
 const ReliefTry = dynamic(() => import('./TryIt').then((x) => x.ReliefTry), { loading: box('h-[640px] lg:h-[440px]') });
 
-function Head({ tag, title, accent }: { tag: string; title: string; accent: string }) {
-  return (
-    <>
-      <Reveal><Tag>{tag}</Tag></Reveal>
-      <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-5xl font-bold tracking-tight text-white max-w-3xl">{title} <Accent>{accent}</Accent></h2></Reveal>
-    </>
-  );
+function Head({ title, accent }: { title: string; accent: string }) {
+  return <Reveal delay={0.05}><h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white max-w-3xl">{title} <Accent>{accent}</Accent></h2></Reveal>;
 }
 
 function Section({ id, children }: { id: string; children: React.ReactNode }) {
@@ -33,7 +28,7 @@ function Section({ id, children }: { id: string; children: React.ReactNode }) {
 function TrySection({ id, title, accent, children }: { id: string; title: string; accent: string; children: React.ReactNode }) {
   return (
     <Section id={id}>
-      <Head tag="try it here" title={title} accent={accent} />
+      <Head title={title} accent={accent} />
       <Reveal delay={0.1} className="mt-10">{children}</Reveal>
     </Section>
   );
@@ -79,7 +74,7 @@ export function ReliefMore() {
         <ReliefTry />
       </TrySection>
       <Section id="relief-how">
-        <Head tag="how it works" title="Ask. Match." accent="Done." />
+        <Head title="Ask. Match." accent="Done." />
         <Steps color="#fdba74" steps={[
           [HandHeart, 'Ask', 'What, how urgent, roughly where.'],
           [Handshake, 'Matched', 'A helper nearby taps “I can help”.'],
@@ -87,7 +82,7 @@ export function ReliefMore() {
         ] as const} />
       </Section>
       <Section id="relief-safe">
-        <Head tag="safe by design" title="Your area," accent="never your door." />
+        <Head title="Your area," accent="never your door." />
         <Figures color="#fdba74" items={[
           ['500 m', 'Only the area shows, not an address'],
           ['30 days', 'Then a request leaves the map'],
@@ -111,7 +106,7 @@ export function GreenMore() {
         <GreenTry />
       </TrySection>
       <Section id="green-habit">
-        <Head tag="keep going" title="Streaks, badges," accent="a weekly goal." />
+        <Head title="Streaks, badges," accent="a weekly goal." />
         <div className="mt-12 grid lg:grid-cols-3 gap-4">
           <Reveal delay={0.1} className={`${glass} p-6`}>
             <p className="flex items-center gap-2 text-sm text-zinc-400"><Flame className="w-4 h-4 text-orange-300" aria-hidden />Streak</p>
@@ -145,7 +140,7 @@ export function GreenMore() {
         </div>
       </Section>
       <Section id="green-proof">
-        <Head tag="proof" title="A photo. A teammate." accent="It counts." />
+        <Head title="A photo. A teammate." accent="It counts." />
         <Steps color="#6ee7b7" steps={[
           [Camera, 'Add a photo', 'With the action, or later.'],
           [BadgeCheck, 'A teammate confirms', 'Never yourself.'],
@@ -169,7 +164,7 @@ export function PlayMore() {
         <QuizTry />
       </TrySection>
       <Section id="play-rooms">
-        <Head tag="rooms" title="Up to 8 friends." accent="One code." />
+        <Head title="Up to 8 friends." accent="One code." />
         <Reveal delay={0.1} className={`${glass} mt-12 p-6 sm:p-10 text-center`}>
           <div role="img" className="flex justify-center gap-1.5 sm:gap-2.5" aria-label={`Room code ${CODE.split('').join(' ')}`}>
             {CODE.split('').map((c, i) => (
@@ -187,7 +182,7 @@ export function PlayMore() {
         </Reveal>
       </Section>
       <Section id="play-worlds">
-        <Head tag="3D worlds" title="Four worlds" accent="to explore." />
+        <Head title="Four worlds" accent="to explore." />
         <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {WORLDS.map((id, i) => {
             const g = GAMES[id];
@@ -197,7 +192,7 @@ export function PlayMore() {
                   <span aria-hidden className="absolute -end-12 -top-12 w-40 h-40 rounded-full blur-3xl opacity-25" style={{ background: g.color }} />
                   <div className="relative flex items-start justify-between gap-3">
                     <GameIcon game={id} />
-                    <span className="rounded-full bg-white/[0.08] px-2.5 py-1 font-mono text-xs text-white">{g.age ? `${g.age}+` : 'all ages'}</span>
+                    <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-xs text-white">{g.age ? `${g.age}+` : 'all ages'}</span>
                   </div>
                   <h3 className="relative mt-5 text-lg font-bold text-white">{g.name}</h3>
                   <p className="relative mt-1.5 text-zinc-300">{g.tagline}</p>

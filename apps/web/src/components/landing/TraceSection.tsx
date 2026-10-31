@@ -1,6 +1,6 @@
 import { Factory, Gift, Radar, ScanLine, Store, UserCheck } from 'lucide-react';
 import Link from '@/components/ui/Link';
-import { Accent, Reveal, Tag, ghost, primary } from './bits';
+import { Accent, Reveal, ghost, primary } from './bits';
 
 // The landing's UniVerse Trace section: one code on every unit, three people it serves, and the
 // platform underneath (chat, training, rewards, live boards) that makes it more than a sticker.
@@ -20,7 +20,6 @@ export function TraceSection() {
   return (
     <section id="trace" className="px-6 py-24 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
-        <Reveal><Tag>UniVerse Trace</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">One code. Supply chain <Accent>and</Accent> marketing.</h2></Reveal>
         <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">One scan tells you where it is and who holds it.</p></Reveal>
         <div className="mt-12 grid md:grid-cols-3 gap-4">
@@ -35,7 +34,7 @@ export function TraceSection() {
           ))}
         </div>
         <Reveal delay={0.2}>
-          <ul className="mt-8 flex flex-wrap gap-x-8 gap-y-3 font-mono text-sm text-zinc-300">
+          <ul className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-sm text-zinc-300">
             {UNDER.map(([Icon, t]) => <li key={t} className="inline-flex items-center gap-2"><Icon className="w-4 h-4 text-pink-300" aria-hidden />{t}</li>)}
           </ul>
         </Reveal>
