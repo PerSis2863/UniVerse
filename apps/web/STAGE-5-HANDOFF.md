@@ -2560,3 +2560,23 @@ ultra smooth", and "add all these where ever you think can fit".
   each card draws, axe at 390/1280, light and dark, no sideways scroll); looked at in the browser
   (the city, the journey and gauge on a shipment, the timetable, the passport, Green); typecheck,
   lint, unit tests, lean. Not run through a full build this time (no server changes).
+
+## M51 · A richer night city (31 Oct 2026)
+
+The owner, on M50's "Fleet in motion": "needs to be more detailed and graphics and animated and
+ultra smooth".
+
+- `src/components/live/CityView.tsx` rebuilt: two pictures drawn once per size (the ground: a
+  darker edge, streets with dashed lanes, a lamp at every crossing; the buildings: towers taller
+  toward the middle, clusters of four, pairs and low squares, shaded faces, a bright roof edge,
+  windows per floor in warm gold and a few cool, antennas, pink neon strips), and between and over
+  them each frame: cars' head and tail lights along every street (hidden behind buildings in front),
+  each van as a small lit box facing its way with headlights and tail lights, a glowing trail behind
+  and dashes running ahead, then the buildings, then a faint see-through line and light for every
+  van (so none is lost behind a tower), windows breathing, rooftop lights blinking, neon pulsing, the
+  hub's hexagon, turning ring, rings going out and beam, beams over the shops (violet on the way, gold
+  delivered, with a gold tick), and name pills with a leader line for vans on the move. The city
+  lights up outward from the hub when first seen. 10 blocks a side (8 on phones); on narrow screens
+  the far corners run off the sides so the city fills the card.
+- **Tested:** `scripts/checks/live-ui.mjs` on Trace tracking (draws, axe, no sideways scroll, 390 and
+  1280, light and dark); looked at on a phone and a desktop; typecheck, lint, unit tests, lean.

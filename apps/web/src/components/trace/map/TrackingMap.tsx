@@ -362,7 +362,7 @@ function FleetInMotion({ ships }: { ships: Ship[] }) {
     <LiveCard title="Fleet in motion" sub="Every batch from its factory, through the warehouse, to its shop"
       stats={[{ label: 'On the move', value: String(moving.length) }, { label: 'Delivered', value: String(ships.filter((s) => s.status === 'DELIVERED').length) }, { label: 'Next arrival', value: etas.length ? duration(Math.min(...etas)) : '—' }]}
       ticker={ships.slice(0, 8).map((s) => `${s.label} · ${s.product} · ${STATUS[s.status]?.label ?? s.status}${s.etaMinutes !== null && s.status === 'IN_TRANSIT' ? ` · ${duration(s.etaMinutes)} to go` : ''}`)}>
-      <CityView className="h-[300px] sm:h-[380px]" label="Your shipments on their way, as vans in a city"
+      <CityView className="h-[340px] sm:h-[460px]" label="Your shipments on their way, as vans in a city"
         vans={ships.map((s) => ({ id: s.id, label: s.label, progress: progress(s), state: s.status === 'DELIVERED' ? 'done' : s.status === 'IN_TRANSIT' ? 'moving' : 'parked',
           note: s.status === 'DELIVERED' ? 'delivered' : s.status === 'IN_TRANSIT' && s.etaMinutes !== null ? duration(s.etaMinutes) : undefined }))} />
     </LiveCard>
