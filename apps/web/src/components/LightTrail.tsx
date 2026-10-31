@@ -17,7 +17,9 @@ import { cn } from '@/lib/utils';
 // whatever scrolls (the window, or the app's own panel; not menus or dialogs).
 // Cheap on purpose: one canvas the size of the screen (≤2.2 M pixels), only the visible stretch is
 // drawn; 60 frames a second on computers, 30 on phones (and it goes lighter by itself if frames come
-// late); still for Reduce Motion and low-memory phones; nothing while the tab is hidden.
+// late, then holds still if they still do: M46's low-end phone check found it kept a budget phone's
+// processor fully busy); in the app it starts moving once the page has loaded; still for Reduce
+// Motion and low-memory phones; nothing while the tab is hidden.
 
 // The owner (24 Oct 2026): the light lines are hot pink with a little purple. M34 (25 Oct, the
 // Karma look): kept, denser, thinner and sharper, with faster pulses that glow at their heads.
@@ -58,8 +60,9 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
     const bands = [-0.9, -0.35, 0.1, 0.55, 1.0].map((o, i) => ({ o, width: [150, 90, 200, 70, 120][i], alpha: [0.1, 0.14, 0.08, 0.16, 0.1][i], colour: i, phase: i * 2.1, speed: 0.18 + i * 0.05 }));
     const sparks = Array.from({ length: phone ? 60 : 150 }, (_, i) => ({ s: (i * 7) % N, base: (i * 137) % 1000, v: 34 + ((i * 29) % 60), r: 0.6 + ((i * 17) % 14) / 10 }));
     let W = 0, H = 0, frame = 0, last = 0, scroller: Element | null = null, sy = 0;
-    // Lighter when the device struggles: half the strands and 30 frames a second (see loop).
-    let lite = false, slow = 0;
+    // Lighter when the device struggles: half the strands and 30 frames a second; then `calm`: held
+    // still at that moment, drawn once per scroll like Reduce Motion (see loop).
+    let lite = false, calm = false, calmT = 0;
     // The soft bands move slowly: repaint them every third frame (or after a scroll) and reuse them.
     let softFrame = 0, softAt = NaN;
     // The pointer (or finger): the strands part round it and it glows (M11). `pv` eases in and out.
@@ -81,7 +84,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
 
     const draw = (ms: number) => {
       readScroll();
-      const t = still ? 8 : ms / 1000;
+      const t = still ? 8 : calm ? calmT : ms / 1000;
       const dark = tone === 'dark' || document.documentElement.classList.contains('dark');
       const pal = dark ? DARK : LIGHT;
       const k = (dark ? 1 : 0.85) * strength;
@@ -225,19 +228,26 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
 
     // Moving on its own: 60 frames a second on computers, 30 on phones. Still: one per scroll.
     let gap = phone ? 32 : 15;
+    // How busy the device is: the average time between animation frames (8–17 ms with time to spare;
+    // a budget phone kept fully busy by the river still managed one every ~42 ms, so lateness alone
+    // never caught it). Judged every 60 frames: over 24 ms, lighter; over 34 ms (or still over 28 ms
+    // when lighter), hold still.
+    let prev = 0, avg = 16, seen = 0;
     const loop = (ms: number) => {
       frame = 0;
-      if (document.hidden) return;
-      if (ms - last >= gap) {
-        // Frames keep coming late (a busy or slow device): go lighter, once.
-        if (!lite && last && ms - last > gap + 20) { if (++slow > 30) { lite = true; gap = 32; } } else if (slow) slow--;
-        last = ms;
-        draw(ms);
+      if (document.hidden) { prev = 0; return; }
+      if (prev) avg = avg * 0.95 + Math.min(200, ms - prev) * 0.05;
+      prev = ms;
+      if (++seen > 60) {
+        seen = 0;
+        if (avg > (lite ? 28 : 34)) { calm = true; calmT = ms / 1000; draw(ms); return; }
+        if (!lite && avg > 24) { lite = true; gap = 32; }
       }
+      if (ms - last >= gap) { last = ms; draw(ms); }
       frame = requestAnimationFrame(loop);
     };
     const kick = () => {
-      if (still) { if (!frame) frame = requestAnimationFrame((ms) => { frame = 0; draw(ms); }); return; }
+      if (still || calm) { if (!frame) frame = requestAnimationFrame((ms) => { frame = 0; draw(ms); }); return; }
       if (!frame) frame = requestAnimationFrame(loop);
     };
     // Whatever scrolls the page (the window, or the app's panel: scroll events don't bubble, so
@@ -248,7 +258,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
       // Not the side menu, a dialog or a sheet: only the page itself moves the river.
       else if (el instanceof Element && el.clientHeight > window.innerHeight * 0.5 && !el.closest('aside, nav, [role="dialog"], [aria-modal="true"]')) scroller = el;
       else return;
-      if (still) kick();
+      if (still || calm) kick();
     };
     const onPointer = (e: PointerEvent) => { px = e.clientX; py = e.clientY; pAt = performance.now(); };
     const onLeave = () => { pAt = -1e9; };
@@ -258,7 +268,11 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
       document.documentElement.addEventListener('pointerleave', onLeave);
     }
     resize();
-    kick();
+    // In the app: one frame now, moving once the page has loaded (on a slow phone the first seconds
+    // belong to the page). The landing's opening pours in straight away.
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    const first = requestAnimationFrame(draw);
+    const idle = hero || still ? (kick(), 0) : w.requestIdleCallback ? w.requestIdleCallback(kick, { timeout: 3000 }) : window.setTimeout(kick, 1500);
     const onResize = () => { resize(); kick(); };
     const onVisible = () => { if (!document.hidden) kick(); };
     document.addEventListener('scroll', onScroll, { capture: true, passive: true });
@@ -269,6 +283,8 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
     themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => {
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(first);
+      if (w.cancelIdleCallback) w.cancelIdleCallback(idle); else window.clearTimeout(idle);
       document.removeEventListener('scroll', onScroll, { capture: true });
       window.removeEventListener('resize', onResize);
       document.removeEventListener('visibilitychange', onVisible);

@@ -16,6 +16,8 @@ import { NavProgress } from '@/components/layout/NavProgress';
 import { recoveryScript } from '@/lib/recovery-script';
 import { bootstrapPrefetchScript } from '@/lib/bootstrap';
 import { DISPLAY_PREFS_SCRIPT } from '@/lib/display-prefs';
+import { BARS_SCRIPT } from '@/lib/theme';
+import { LAUNCH_SCREENS } from '@/lib/launch-screens.gen';
 
 // Fonts: the device's own system font (San Francisco on Apple devices), set in globals.css, so no
 // web font is downloaded and text matches the rest of the phone.
@@ -28,11 +30,8 @@ export const metadata: Metadata = {
   description: 'School, product passports, help nearby, climate action and games, with one sign-in.',
   keywords: ['university', 'education', 'NGO', 'social impact', 'volunteering', 'students'],
   manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'UniVerse',
-  },
+  // Home-screen app tags (iPhone status bar, title) are in <head> below: the status bar follows the
+  // theme (M46), and Next's appleWebApp would add a second, fixed one.
   formatDetection: {
     telephone: false,
   },
@@ -59,18 +58,22 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Lets the app draw under the iPhone notch / home indicator; the shell pads with safe-area insets.
   viewportFit: 'cover',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ebeae6' },
-    { media: '(prefers-color-scheme: dark)', color: '#0b0b0c' },
-  ],
+  // No themeColor here: the bar colour follows the app's own theme, not the device's (<head> below).
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* The phone's bars follow the app's theme (M46; dark by default): the browser bar's colour, and
+            on iPhone home-screen apps the status bar's text (white over dark, black over light). The
+            script below adds both tags before paint (written by React, they'd be added a second time
+            once the script changed them), src/lib/theme.ts updates them when the theme changes. */}
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="UniVerse" />
         {/* Blocking script: applies .dark class before paint to prevent theme flash */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');if(localStorage.getItem('uv-sidebar')==='folded')document.documentElement.dataset.sidebar='folded';}catch(e){}})();` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');${BARS_SCRIPT}if(localStorage.getItem('uv-sidebar')==='folded')document.documentElement.dataset.sidebar='folded';}catch(e){}})();` }} />
         {/* The page colour before the stylesheet arrives: a refresh in dark mode never flashes white */}
         <script dangerouslySetInnerHTML={{ __html: DISPLAY_PREFS_SCRIPT }} />
         {/* The saved language's direction (Arabic and Urdu read right to left) before paint */}
@@ -85,6 +88,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preload" href="/fonts/urbanist/urbanist-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
         {/* PWA: iOS touch icon */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
+        {/* iPhone / iPad launch screens, one per screen size (scripts/gen-launch-screens.mjs) */}
+        {LAUNCH_SCREENS.map((l) => <link key={l.href} rel="apple-touch-startup-image" media={l.media} href={l.href} />)}
       </head>
       <body className="min-h-screen antialiased" style={{ color: 'var(--text-primary)' }}>
           <ErrorMonitorBootstrap />

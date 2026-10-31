@@ -4,6 +4,7 @@ import { isSampleMode } from './sample-mode';
 import { fromBootstrap, inBootstrap } from './bootstrap';
 import { fetchWithRetry } from './authed-fetch';
 import { endViewAs, viewAsExpired, viewAsToken } from './view-as';
+import { withOfflineCopy } from './offline-reads';
 
 /** The platform API, served by this app on Cloudflare (src/app/api/core, src/server). */
 export const API_URL = '/api/core';
@@ -156,7 +157,9 @@ async function request<T>(method: string, url: string, body: unknown, config: Ap
 }
 
 export const api = {
-  get: <T = any>(url: string, config?: ApiConfig) => request<T>('GET', url, undefined, config),
+  // A few reads keep their last answer on the device for offline use (src/lib/offline-reads.ts).
+  get: <T = any>(url: string, config?: ApiConfig) =>
+    withOfflineCopy(buildUrl(url, config?.params), () => request<T>('GET', url, undefined, config), (r) => r.data, (d): ApiResponse<T> => ({ data: d as T, status: 200, headers: new Headers() })),
   delete: <T = any>(url: string, config?: ApiConfig) => request<T>('DELETE', url, undefined, config),
   post: <T = any>(url: string, data?: unknown, config?: ApiConfig) => request<T>('POST', url, data, config),
   put: <T = any>(url: string, data?: unknown, config?: ApiConfig) => request<T>('PUT', url, data, config),

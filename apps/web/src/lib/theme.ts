@@ -1,5 +1,17 @@
 export type Theme = 'dark' | 'light' | 'system';
 
+/** The phone's bar colours per theme (M46): the Karma page colours. */
+export const BAR = { dark: '#0b0b0c', light: '#ebeae6' } as const;
+const IOS_BAR = { dark: 'black-translucent', light: 'default' } as const;
+/** For the head script (before paint), with `d` = dark: adds the browser bar's colour and the iPhone
+ *  home-screen app's status bar (white text drawn over the page in dark, black text in light). */
+export const BARS_SCRIPT = `var bar=function(n,c){var m=document.querySelector('meta[name="'+n+'"]');if(!m){m=document.createElement('meta');m.name=n;document.head.appendChild(m);}m.content=c;};bar('theme-color',d?'${BAR.dark}':'${BAR.light}');bar('apple-mobile-web-app-status-bar-style',d?'${IOS_BAR.dark}':'${IOS_BAR.light}');`;
+
+function syncBars(dark: boolean) {
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? BAR.dark : BAR.light);
+  document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute('content', dark ? IOS_BAR.dark : IOS_BAR.light);
+}
+
 export const getSystemTheme = (): 'dark' | 'light' =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 
@@ -15,6 +27,7 @@ export function applyTheme(theme: Theme, { animate = true, from }: { animate?: b
   try { localStorage.setItem('theme', theme); } catch { /* private mode */ }
   const dark = (theme === 'system' ? getSystemTheme() : theme) === 'dark';
   const html = document.documentElement;
+  syncBars(dark);
   if (html.classList.contains('dark') === dark) return;
 
   const flip = () => html.classList.toggle('dark', dark);

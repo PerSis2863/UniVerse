@@ -1,6 +1,7 @@
 import { getAuthToken, twoStepPass } from './auth-token';
 import { isSampleMode } from './sample-mode';
 import { fromBootstrap, inBootstrap } from './bootstrap';
+import { withOfflineCopy } from './offline-reads';
 
 /** fetch() against this app's own /api routes with the signed-in user's bearer token attached. */
 export async function authedFetch(input: string, init: RequestInit = {}): Promise<Response> {
@@ -45,6 +46,11 @@ export async function fetchWithRetry(input: string, init: RequestInit): Promise<
 }
 
 export async function authedJson<T = unknown>(input: string, init?: RequestInit): Promise<T> {
+  // A few reads keep their last answer on the device for offline use (src/lib/offline-reads.ts).
+  return !init?.method || init.method === 'GET' ? withOfflineCopy(input, () => readJson<T>(input, init)) : readJson<T>(input, init);
+}
+
+async function readJson<T>(input: string, init?: RequestInit): Promise<T> {
   // Answered by the startup bundle already (see lib/bootstrap.ts)?
   if ((!init?.method || init.method === 'GET') && inBootstrap(input)) {
     const hit = await fromBootstrap<T>(input);

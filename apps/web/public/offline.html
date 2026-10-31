@@ -4,56 +4,148 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#0b0f1e">
+<meta name="theme-color" content="#0b0b0c">
 <title>You're offline · UniVerse</title>
 <link rel="icon" href="/icon-192x192.png">
 <!-- A plain static page (no app code), served for free by Cloudflare and shown by the service
-     worker when a page that isn't saved on this device is opened without a connection. -->
+     worker when a page that isn't saved on this device is opened without a connection. It shows the
+     copies the app keeps on the device (M46, src/lib/offline-reads.ts): today's classes, the courses
+     and the latest chats, only for the person signed in, read with textContent (never as HTML). -->
+<script>
+  (function () { try { var t = localStorage.getItem('theme'); var d = !t || t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches); document.documentElement.classList.toggle('dark', d); document.querySelector('meta[name=theme-color]').content = d ? '#0b0b0c' : '#ebeae6'; } catch (e) {} })();
+</script>
 <style>
-  :root { --bg: #0b0f1e; --card: rgba(255,255,255,.035); --line: rgba(255,255,255,.07); --text: #fff; --muted: #a1a1aa; --faint: #71717a; --ok: #34d399; --warn: #fb923c; --brand: #4f46e5; color-scheme: dark; }
-  @media (prefers-color-scheme: light) { :root { --bg: #f7f7fb; --card: #fff; --line: #e4e4e7; --text: #18181b; --muted: #52525b; --faint: #71717a; --ok: #059669; --warn: #ea580c; color-scheme: light; } }
+  @font-face { font-family: Urbanist; src: url(/fonts/urbanist/urbanist-latin.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
+  :root { --bg: #ebeae6; --card: #fff; --line: rgba(0,0,0,.06); --text: #1b1a18; --muted: #5c5a55; --hot: #e11d74; --warn: #c2410c; --btn: #111; --btn-text: #fff; color-scheme: light; }
+  .dark { --bg: #0b0b0c; --card: #151517; --line: rgba(255,255,255,.08); --text: #f4f4f5; --muted: #a1a1aa; --hot: #f472b6; --warn: #fb923c; --btn: #fff; --btn-text: #111; color-scheme: dark; }
   * { box-sizing: border-box; }
-  body { margin: 0; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 16px calc(48px + env(safe-area-inset-bottom)); background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center; }
-  .icon { position: relative; width: 96px; height: 96px; margin-bottom: 28px; }
-  .icon::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: color-mix(in srgb, var(--warn) 12%, transparent); animation: ping 2s cubic-bezier(0,0,.2,1) infinite; }
-  .icon div { position: relative; width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--warn) 10%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 25%, transparent); color: var(--warn); }
-  @keyframes ping { 75%, 100% { transform: scale(1.6); opacity: 0; } }
-  @media (prefers-reduced-motion: reduce) { .icon::before { animation: none; } }
-  h1 { margin: 0 0 6px; font-size: 24px; font-weight: 900; }
-  p { margin: 0; max-width: 24rem; color: var(--muted); font-size: 14px; }
-  .small { margin-top: 6px; color: var(--faint); font-size: 12px; }
-  ul { list-style: none; margin: 28px 0; padding: 0; width: 100%; max-width: 24rem; text-align: left; }
-  li.label { display: block; margin: 0 0 10px; padding: 0; border: 0; background: none; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
-  li { display: flex; align-items: center; gap: 12px; margin-top: 8px; padding: 12px 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); font-size: 14px; }
-  li span { margin-left: auto; font-size: 10px; font-weight: 600; color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); padding: 2px 8px; border-radius: 99px; }
-  button { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border: 0; border-radius: 14px; background: var(--brand); color: #fff; font: inherit; font-weight: 600; cursor: pointer; box-shadow: 0 10px 25px -10px rgba(79,70,229,.6); }
-  button:hover { background: #6366f1; }
-  button:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 3px; }
-  .brand { margin-top: 48px; display: flex; align-items: center; gap: 8px; color: var(--faint); font-size: 14px; font-weight: 600; }
-  .brand b { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; background: var(--brand); color: #fff; font-size: 12px; }
+  body { margin: 0; min-height: 100vh; min-height: 100dvh; padding: calc(40px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom)); background: var(--bg); color: var(--text); font: 15px/1.5 Urbanist, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 30rem; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 14px; }
+  .icon { flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+  h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.01em; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+  section { margin-top: 24px; }
+  h2 { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 8px 4px; font-size: 13px; font-weight: 700; color: var(--muted); }
+  h2 small { font-size: 12px; font-weight: 500; }
+  ul { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; }
+  li { display: flex; align-items: center; gap: 12px; padding: 12px 16px; min-width: 0; }
+  li + li { border-top: 1px solid var(--line); }
+  .time { flex: none; width: 5.5rem; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 14px; }
+  .main { min-width: 0; flex: 1; }
+  .main b, .main span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .main b { font-weight: 700; }
+  .main span { color: var(--muted); font-size: 13px; }
+  .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--hot); }
+  .when { flex: none; color: var(--muted); font-size: 12px; }
+  .empty { color: var(--muted); }
+  button { display: inline-flex; align-items: center; gap: 8px; margin-top: 28px; padding: 12px 22px; border: 0; border-radius: 999px; background: var(--btn); color: var(--btn-text); font: inherit; font-weight: 700; cursor: pointer; }
+  button:focus-visible { outline: 2px solid var(--hot); outline-offset: 3px; }
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
-  <div class="icon" aria-hidden="true"><div>
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/><path d="M5 12.86a10 10 0 0 1 5.17-2.69"/><path d="M19 12.86a10 10 0 0 0-2-1.4"/><path d="M2 8.82a15 15 0 0 1 4.18-2.65"/><path d="M22 8.82a15 15 0 0 0-11.29-3.76"/><path d="m2 2 20 20"/></svg>
-  </div></div>
-  <h1>You're offline</h1>
-  <p>This page isn't saved on this device yet, and there's no internet connection.</p>
-  <p class="small">It opens by itself as soon as you're back online.</p>
-  <ul aria-label="Works offline">
-    <li class="label">Works offline</li>
-    <li>Pages you've opened before<span>Available</span></li>
-    <li>Answers from the help assistant<span>Available</span></li>
-  </ul>
+<main>
+  <header>
+    <div class="icon" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/><path d="M5 12.86a10 10 0 0 1 5.17-2.69"/><path d="M19 12.86a10 10 0 0 0-2-1.4"/><path d="M2 8.82a15 15 0 0 1 4.18-2.65"/><path d="M22 8.82a15 15 0 0 0-11.29-3.76"/><path d="m2 2 20 20"/></svg>
+    </div>
+    <div>
+      <h1>You're offline</h1>
+      <p id="sub">This page opens by itself when you're back online.</p>
+    </div>
+  </header>
+
+  <section id="today" hidden aria-labelledby="today-h"><h2 id="today-h"><span>Today</span><small></small></h2><ul></ul></section>
+  <section id="chats" hidden aria-labelledby="chats-h"><h2 id="chats-h"><span>Messages</span><small></small></h2><ul translate="no"></ul></section>
+  <section id="courses" hidden aria-labelledby="courses-h"><h2 id="courses-h"><span>Courses</span><small></small></h2><ul></ul></section>
+
   <button id="retry" type="button">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
     <span>Try again</span>
   </button>
-  <div class="brand"><b>U</b>UniVerse</div>
-  <script>
-    var reload = function () { location.reload(); };
-    addEventListener('online', reload);
-    document.getElementById('retry').addEventListener('click', function () { this.lastElementChild.textContent = 'Trying…'; setTimeout(reload, 600); });
-  </script>
+</main>
+<script>
+  var reload = function () { location.reload(); };
+  addEventListener('online', reload);
+  document.getElementById('retry').addEventListener('click', function () { this.lastElementChild.textContent = 'Trying…'; setTimeout(reload, 600); });
+
+  (function () {
+    var uid = null;
+    try { uid = JSON.parse(localStorage.getItem('universe-auth') || 'null').state.user.id; } catch (e) {}
+    if (!uid || !window.indexedDB) return;
+    var MAX_AGE = 14 * 864e5;
+    var req = indexedDB.open('universe-offline');
+    req.onsuccess = function () {
+      var db = req.result;
+      if (!db.objectStoreNames.contains('reads')) return db.close();
+      var store = db.transaction('reads', 'readonly').objectStore('reads');
+      var got = {};
+      ['/api/core/timetable/my', '/api/core/courses/my', '/api/chat/conversations'].forEach(function (key) {
+        var r = store.get(key);
+        r.onsuccess = function () { var v = r.result; if (v && v.uid === uid && Date.now() - v.savedAt < MAX_AGE) got[key] = v; };
+      });
+      store.transaction.oncomplete = function () { db.close(); show(got); };
+    };
+
+    function el(tag, text, cls) { var e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; }
+    function row(list, parts) {
+      var li = el('li');
+      if (parts.time) li.appendChild(el('span', parts.time, 'time'));
+      var m = el('div', null, 'main'); m.appendChild(el('b', parts.title)); if (parts.sub) m.appendChild(el('span', parts.sub)); li.appendChild(m);
+      if (parts.when) li.appendChild(el('span', parts.when, 'when'));
+      if (parts.unread) { var d = el('span', null, 'dot'); d.setAttribute('role', 'img'); d.setAttribute('aria-label', 'Unread'); li.appendChild(d); }
+      list.appendChild(li);
+    }
+    function ago(t) {
+      var m = Math.round((Date.now() - t) / 6e4);
+      return m < 60 ? 'saved ' + Math.max(1, m) + ' min ago' : m < 1440 ? 'saved ' + Math.round(m / 60) + ' h ago' : 'saved ' + Math.round(m / 1440) + ' d ago';
+    }
+    function open(id, saved) { var s = document.getElementById(id); s.hidden = false; s.querySelector('small').textContent = ago(saved.savedAt); return s.querySelector('ul'); }
+    function preview(m) {
+      if (!m) return '';
+      if (m.deletedAt) return 'Message deleted';
+      var kinds = { IMAGE: 'Photo', VIDEO: 'Video', AUDIO: 'Voice message', FILE: m.attachmentName || 'File', LOCATION: 'Location' };
+      var text = kinds[m.type] || String(m.body || '').replace(/[*_~`>#]/g, '').split('\n').filter(function (l) { return l.trim(); })[0] || '';
+      return (m.mine ? 'You: ' : '') + text;
+    }
+
+    function show(got) {
+      var shown = false;
+      var tt = got['/api/core/timetable/my'];
+      if (tt && Array.isArray(tt.data)) {
+        var dow = (new Date().getDay() + 6) % 7; // 0 = Monday, as timetable slots are stored
+        var slots = tt.data.filter(function (s) { return s.dayOfWeek === dow; }).sort(function (a, b) { return String(a.startTime).localeCompare(String(b.startTime)); });
+        var list = open('today', tt);
+        document.querySelector('#today-h span').textContent = 'Today · ' + new Date().toLocaleDateString(undefined, { weekday: 'long' });
+        if (!slots.length) list.appendChild(el('li', 'No classes today', 'empty'));
+        slots.forEach(function (s) {
+          var c = s.course || {};
+          row(list, { time: s.startTime + '–' + s.endTime, title: (c.code ? c.code + ' · ' : '') + (c.name || ''), sub: [String(s.type || '').toLowerCase(), s.room && s.room.name].filter(Boolean).join(' · ') });
+        });
+        shown = true;
+      }
+      var ch = got['/api/chat/conversations'];
+      var convs = ch && ch.data && Array.isArray(ch.data.conversations) ? ch.data.conversations.filter(function (c) { return !c.archived; }).slice(0, 6) : [];
+      if (convs.length) {
+        var cl = open('chats', ch);
+        convs.forEach(function (c) {
+          var at = c.lastMessage ? new Date(c.lastMessage.createdAt) : null;
+          var when = at ? (at.toDateString() === new Date().toDateString() ? at.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : at.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })) : '';
+          row(cl, { title: c.title || 'Chat', sub: c.private ? 'Private chat' : preview(c.lastMessage), when: when, unread: c.unread > 0 });
+        });
+        shown = true;
+      }
+      var co = got['/api/core/courses/my'];
+      var courses = co && Array.isArray(co.data) ? co.data.map(function (x) { return x && x.course ? x.course : x; }).filter(function (c) { return c && c.name; }) : [];
+      if (courses.length) {
+        var ul = open('courses', co);
+        courses.slice(0, 12).forEach(function (c) { row(ul, { title: c.name, sub: [c.code, c.teacher && c.teacher.name].filter(Boolean).join(' · ') }); });
+        shown = true;
+      }
+      if (shown) document.getElementById('sub').textContent = 'Showing what’s saved on this device.';
+    }
+  })();
+</script>
 </body>
 </html>

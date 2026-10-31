@@ -2370,3 +2370,66 @@ vibration everywhere, empty screens with one next step".
   colours fail). In Settings on a phone, axe content scrolled under the see-through top bar also
   "fails". CDP touch long-presses also send a tap (real Android doesn't): test long press with a
   `contextmenu` event.
+
+## M46 · Offline reading, an iPhone launch screen, bar colours per theme, a low-end phone speed check (31 Oct 2026)
+
+The owner's pick (M46 in AGENTS.md §4): "today's timetable, courses and recent messages readable
+offline, an iPhone launch screen, bar colours per theme, and a speed check on a low-end phone".
+
+- **Offline reading** (`src/lib/offline-reads.ts`): API answers are never in the service worker's
+  cache (per person), so the last answer of a few reads is kept in the offline database
+  (`src/lib/outbox.ts`, new `reads` store, database version 4, wiped at sign-out with the rest):
+  `/api/core/timetable/my`, `/api/core/courses/my`, `/api/chat/conversations`, the student home's
+  overview (one per weekday, its key holds the day), the teacher dashboard, and the home cards
+  (`/api/home`, only on the day saved: it holds today's classes at their times). `api.get` and
+  `authedJson` save them on success and, when the request fails for want of a connection
+  (`isOfflineError`), answer with the copy instead: only the same signed-in person's, at most 14 days
+  old; never in sample mode or "view as". Once a day, when the app is idle (with the tab prefetch, not
+  in low-data mode), students and teachers refresh the three copies the offline page needs (at most
+  three small reads a day). Chats themselves were already kept (last 50 messages of 20 chats).
+- **The offline page** (`public/offline.html`, plain HTML, precached as the fallback): shown for any
+  page not saved on the device; now in the Karma look, following the app's theme, with **Today**
+  (classes for today's weekday from the saved timetable), **Messages** (latest 6 chats, unread dot,
+  private chats say only "Private chat") and **Courses**, each with "saved … ago"; everything written
+  with `textContent`. The offline bar says "You're offline · showing what's saved on this device".
+- **Bar colours per theme:** the browser bar (`theme-color`) followed the *device's* light/dark, not
+  the app's (dark by default), so a light phone showed a light bar over the dark app. Now one
+  `<meta name="theme-color">` in the root layout's `<head>`, set before paint by the theme script
+  (`BARS_SCRIPT` in `src/lib/theme.ts`) and on every change (`applyTheme`). On iPhone home-screen apps
+  the status bar style follows too: `black-translucent` (white text over the page) in dark, `default`
+  (black text) in light, where white text was unreadable over the light header. iOS may read this only
+  when the app starts: untested on a real iPhone.
+- **iPhone launch screen:** `scripts/gen-launch-screens.mjs` draws the icon on the dark page colour
+  for 13 iPhone sizes (SE to 17 Pro Max) and 9 iPad sizes, portrait, into `public/splash/` (~0.5 MB,
+  excluded from the service worker's install: iOS fetches them once, when the app is added) and writes
+  the links to `src/lib/launch-screens.gen.ts` (root layout). Dark only (the app's default).
+- **Speed check** (`scripts/speed.mjs`: 390 × 844 touch, CPU 4× slower, "Slow 4G", built site):
+  first paint 1.1–1.5 s on a first visit and 0.3–0.6 s on a return visit (good); the main content
+  (LCP) 3.9–5.8 s on a first visit to an app page (mostly ~400 kB of scripts at 1.6 Mb/s, then
+  starting React) and 1.7–2.1 s on a return visit. **Found and fixed:** the light river kept a budget
+  phone's processor 100% busy after every page had loaded (hiding it: 81% free). Its "go lighter"
+  step changed nothing on phones (already 30 frames a second) and its test for a struggling device
+  (frames over 52 ms apart) never fired: a saturated phone still managed one every ~42 ms. Now it
+  judges the average time between frames every 60 frames: over 24 ms lighter, over 34 ms (or 28 ms
+  once lighter) it holds still at that moment, redrawn only on scroll, like Reduce Motion; and in the
+  app it starts moving once the page has loaded (the landing's opening still pours in at once).
+  After: app pages leave the processor 74–78% free 8 s after opening (was 0%); fast devices keep the
+  moving river. **Not fixed (next ideas):** the landing page stays busy (15–20% free even with its
+  river still and CSS animations paused): its looping demos run in code while off screen (pause them
+  outside the viewport); first visits download ~400 kB of scripts before an app page can start.
+- **Rules for code that builds on it:** another read kept offline = one line in `KEPT`; if the offline
+  page should show it, add it to the page's list and to `refreshOfflineCopies` (keep that list small:
+  each is a request a day per person). Never keep a read that holds other people's private data
+  beyond what the person already sees. A new theme colour = `BAR` in `theme.ts`. New iPhone sizes: add
+  to `SCREENS` and run the script.
+- **Tested:** `scripts/checks/offline-ui.mjs` on the built site (copies kept after a visit; offline,
+  the home shows its saved data and a page never opened shows today, chats and courses; axe at
+  390/1280, light and dark; one bar colour per theme, changed by the theme button; launch screens
+  linked and served); unit tests for when a copy may be shown; typecheck, lint, lean.
+- **Traps:** the offline page and service worker exist only in a build (`pnpm local:build`), not in
+  `local:dev`. A page is saved for offline use only once the service worker controls it (the second
+  load after install). A test browser's "offline" (`setOffline`, `route`) doesn't reach the service
+  worker's own requests unless `PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1` (set in the check):
+  without it an "offline" test quietly passes online. A `<meta>` written in React and changed by a
+  script before the page wakes up is added a second time by React: tags a script changes are made
+  by the script.
