@@ -21,7 +21,7 @@ import { haptic } from '@/lib/haptics';
 // back. Each supply has a stock that refills slowly; donations top it up, rain slows the trucks.
 
 export const KIND_ICON: Record<SupplyKind, typeof Wheat> = { food: Wheat, water: Droplets, medical: HeartPulse, shelter: Tent };
-export const KIND_COLOR: Record<SupplyKind, string> = { food: '#f97316', water: '#38bdf8', medical: '#ef4444', shelter: '#e879f9' };
+export const KIND_COLOR: Record<SupplyKind, string> = { food: '#f97316', water: '#38bdf8', medical: '#ef4444', shelter: '#ef88e3' };
 const EXIT_MS = 400;
 const full = () => Object.fromEntries(SUPPLY_KINDS.map((k) => [k, STOCK_START])) as Record<SupplyKind, number>;
 
@@ -101,7 +101,7 @@ function Town() {
       {[100, 200, 300].map((y) => <line key={`d${y}`} x1="0" y1={y} x2="600" y2={y} stroke="#4b5058" strokeWidth="1" strokeDasharray="8 10" />)}
       {[100, 200, 300, 400, 500].map((x) => <line key={`e${x}`} x1={x} y1="0" x2={x} y2="400" stroke="#4b5058" strokeWidth="1" strokeDasharray="8 10" />)}
       {houses}
-      <rect x="262" y="176" width="76" height="48" rx="8" fill="#0b0b0c" stroke="#ec4899" strokeOpacity="0.6" />
+      <rect x="262" y="176" width="76" height="48" rx="8" fill="#171f44" stroke="#fe81d1" strokeOpacity="0.6" />
     </svg>
   );
 }
@@ -218,7 +218,7 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
         </div>
         {/* The depot */}
         <div className="pointer-events-none absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center" aria-hidden>
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-pink-600 text-white shadow-[0_0_30px_rgba(236,72,153,0.5)]"><Package className="w-6 h-6" /></span>
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-pink-600 text-white shadow-[0_0_30px_rgba(254,129,209,0.5)]"><Package className="w-6 h-6" /></span>
         </div>
 
         {shown.map((n) => {
@@ -238,7 +238,7 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
             <motion.div key={t.id} className="pointer-events-none absolute inset-0" initial={{ x: '0%', y: '0%', opacity: 1 }}
               animate={{ x: `${(p.x - 0.5) * 100}%`, y: `${(p.y - 0.5) * 100}%`, opacity: [1, 1, 0] }}
               transition={calm ? { duration: 0 } : { duration: total / 1000, times: [0, outShare, 1], ease: 'easeOut' }} aria-hidden>
-              <span className="absolute left-1/2 top-1/2 grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-amber-300 text-amber-950 shadow-[0_0_24px_rgba(252,211,77,0.6)] ring-2 ring-[#0b0b0c]">
+              <span className="absolute left-1/2 top-1/2 grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-amber-300 text-amber-950 shadow-[0_0_24px_rgba(252,211,77,0.6)] ring-2 ring-[#171f44]">
                 <Plane className="w-5 h-5" />
               </span>
             </motion.div>
@@ -247,7 +247,7 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
             <motion.div key={t.id} className="pointer-events-none absolute inset-0" initial={{ x: '0%', y: '0%' }}
               animate={{ x: ['0%', `${(p.x - 0.5) * 100}%`, `${(p.x - 0.5) * 100}%`, '0%'], y: ['0%', `${(p.y - 0.5) * 100}%`, `${(p.y - 0.5) * 100}%`, '0%'] }}
               transition={calm ? { duration: 0 } : { duration: total / 1000, times: [0, outShare, Math.min(0.99, outShare + 200 / total), 1], ease: 'easeInOut' }} aria-hidden>
-              <span className="absolute left-1/2 top-1/2 grid h-9 w-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-white shadow-lg ring-2 ring-[#0b0b0c]" style={{ background: KIND_COLOR[t.kind] }}>
+              <span className="absolute left-1/2 top-1/2 grid h-9 w-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-white shadow-lg ring-2 ring-[#171f44]" style={{ background: KIND_COLOR[t.kind] }}>
                 <Truck className="w-4 h-4" />
               </span>
             </motion.div>
@@ -262,7 +262,7 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
             <button key={k} type="button" role="radio" aria-checked={on} onClick={() => setKind(k)}
               className={cn('relative flex flex-col items-center gap-1 rounded-2xl px-2 py-2.5 text-xs font-semibold ring-1 transition-[box-shadow,color,transform] duration-150 active:scale-[0.97]',
                 on ? 'text-white ring-transparent' : 'text-zinc-200 ring-white/10')}>
-              {on && <motion.span layoutId="supply-pick" className="absolute inset-0 rounded-2xl bg-[#1e1e21]" style={{ boxShadow: `0 0 0 2px ${KIND_COLOR[k]}, 0 8px 24px ${KIND_COLOR[k]}55` }} transition={spring.snappy} aria-hidden />}
+              {on && <motion.span layoutId="supply-pick" className="absolute inset-0 rounded-2xl bg-[#26305f]" style={{ boxShadow: `0 0 0 2px ${KIND_COLOR[k]}, 0 8px 24px ${KIND_COLOR[k]}55` }} transition={spring.snappy} aria-hidden />}
               <Icon className="relative w-5 h-5" style={{ color: KIND_COLOR[k] }} aria-hidden />
               <span className="relative">{SUPPLY_LABEL[k]} <span className="tabular-nums text-zinc-400">{left}</span></span>
               <span className="relative flex gap-0.5" aria-hidden>
@@ -292,11 +292,11 @@ function NeedPin({ need, at, appearedAgo, state, serving, shake, calm, onPick, c
         className="relative flex flex-col items-center rounded-full outline-offset-4">
         <span className="sr-only">{where} needs {SUPPLY_LABEL[need.kind].toLowerCase()} for {need.people} {need.people === 1 ? 'person' : 'people'}{need.critical ? ', critical' : ''}</span>
         {!state && <span className={cn('play-ripple absolute inset-x-0 top-0 mx-auto h-12 w-12 rounded-full', need.critical && '[animation-duration:0.9s]')} style={{ background: need.critical ? '#ef4444' : color }} aria-hidden />}
-        <span key={shake} className={cn('relative grid h-12 w-12 place-items-center rounded-full text-white shadow-lg ring-2', need.critical ? 'ring-red-400' : 'ring-[#0b0b0c]', shake ? 'play-shake' : '')} style={{ background: color }} aria-hidden>
+        <span key={shake} className={cn('relative grid h-12 w-12 place-items-center rounded-full text-white shadow-lg ring-2', need.critical ? 'ring-red-400' : 'ring-[#171f44]', shake ? 'play-shake' : '')} style={{ background: color }} aria-hidden>
           {children}
-          <span className="absolute -end-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#0b0b0c] px-1 text-[11px] font-bold tabular-nums text-white ring-1 ring-white/20">{need.people}</span>
+          <span className="absolute -end-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#171f44] px-1 text-[11px] font-bold tabular-nums text-white ring-1 ring-white/20">{need.people}</span>
           {need.critical && <span className="absolute -start-2 -top-2 rounded-full bg-red-500 px-1.5 text-[11px] font-black text-white">×2</span>}
-          {serving && <span className="absolute -bottom-1.5 -end-2 grid h-5 w-5 place-items-center rounded-full bg-white text-[#0b0b0c]"><Truck className="w-3 h-3" /></span>}
+          {serving && <span className="absolute -bottom-1.5 -end-2 grid h-5 w-5 place-items-center rounded-full bg-white text-[#171f44]"><Truck className="w-3 h-3" /></span>}
         </span>
         <span className="relative mt-1 h-1.5 w-10 overflow-hidden rounded-full bg-white/15" aria-hidden>
           <span className="play-drain absolute inset-0 rounded-full" style={{ background: need.critical ? '#ef4444' : color, animationDuration: `${need.ttl}ms`, animationDelay: `${-ago}ms`, animationPlayState: state ? 'paused' : 'running' }} />

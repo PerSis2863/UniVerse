@@ -47,9 +47,9 @@ export function Funnel({ stages, label, className }: { stages: Stage[]; label: s
     for (let x = reachX; x >= x0; x -= 4) ctx.lineTo(x, cy + at(x));
     ctx.closePath();
     const fill = ctx.createLinearGradient(x0, 0, x1, 0);
-    fill.addColorStop(0, 'rgba(236,72,153,0.10)');
-    fill.addColorStop(0.6, 'rgba(168,85,247,0.08)');
-    fill.addColorStop(1, 'rgba(233,196,106,0.10)');
+    fill.addColorStop(0, 'rgba(254,129,209,0.10)');
+    fill.addColorStop(0.6, 'rgba(140,155,255,0.08)');
+    fill.addColorStop(1, 'rgba(116,255,237,0.10)');
     ctx.fillStyle = fill;
     ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.14)';
@@ -81,7 +81,7 @@ export function Funnel({ stages, label, className }: { stages: Stage[]; label: s
       const drop = goesOn ? 0 : easeOut(into);
       const y = cy + d.lane * at(x) * 0.86 + drop * Math.sign(d.lane || 1) * H * 0.7;
       const a = (goesOn ? 1 : 1 - drop) * (p < 0.04 ? p / 0.04 : 1);
-      const tone = p < 0.45 ? 'pink' : p < 0.8 ? 'violet' : 'gold';
+      const tone = p < 0.45 ? 'pink' : p < 0.8 ? 'blue' : 'aqua';
       const s = 11 + 6 * Math.abs(Math.sin(t * 2 + d.phase * 9));
       ctx.globalAlpha = a * 0.9;
       ctx.drawImage(glow(tone), x - s / 2, y - s / 2, s, s);
@@ -90,7 +90,7 @@ export function Funnel({ stages, label, className }: { stages: Stage[]; label: s
     if (open > 0.95) {
       const g = 46 + 8 * Math.sin(t * 2.2);
       ctx.globalAlpha = 0.95;
-      ctx.drawImage(glow('gold'), x1 - g / 2 - 2, cy - g / 2, g, g);
+      ctx.drawImage(glow('aqua'), x1 - g / 2 - 2, cy - g / 2, g, g);
     }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';

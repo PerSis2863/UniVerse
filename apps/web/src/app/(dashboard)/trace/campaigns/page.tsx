@@ -212,7 +212,7 @@ function CampaignCard({ c, index, product, currency, pointValue, onChange }: { c
           <p className="text-xs text-zinc-500">{[c.place ?? c.country ?? 'Everywhere', product ?? 'every product', `+${c.bonusPoints} points per sale`, c.endsAt ? `ends ${new Date(c.endsAt).toLocaleDateString()}` : null].filter(Boolean).join(' · ')}</p>
         </div>
         {/* M50: the budget left, as a level that sways while the campaign runs. */}
-        <Tank pct={100 - used} tone={c.status === 'ACTIVE' ? 'pink' : 'gold'} label="Budget left" className="shrink-0" />
+        <Tank pct={100 - used} tone={c.status === 'ACTIVE' ? 'pink' : 'aqua'} label="Budget left" className="shrink-0" />
         <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold', STATUS[c.status])}>{c.status === 'ACTIVE' ? 'Running' : c.status === 'PAUSED' ? 'Paused' : 'Ended'}</span>
       </div>
       <div className="relative mt-4">

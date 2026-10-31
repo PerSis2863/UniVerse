@@ -66,7 +66,7 @@ export default function MySocialImpactPage() {
         <div className="max-w-7xl mx-auto space-y-8">
 
           {/* Top Hero Card */}
-          <div className="relative rounded-3xl bg-gradient-to-br from-[#111112] via-[#141416] to-[#141416] border border-zinc-200 dark:border-white/10 p-8 overflow-hidden shadow-2xl">
+          <div className="relative rounded-3xl bg-gradient-to-br from-[#131a3d] via-[#1d2650] to-[#1d2650] border border-zinc-200 dark:border-white/10 p-8 overflow-hidden shadow-2xl">
             <div className="absolute -top-24 -end-24 w-96 h-96 bg-gradient-to-br from-indigo-500/20 to-pink-500/20 rounded-full blur-3xl pointer-events-none" />
             
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 relative z-10">
@@ -77,7 +77,7 @@ export default function MySocialImpactPage() {
                 </div>
                 <h1 className="text-3xl font-black text-zinc-900 dark:text-white leading-tight">
                   {data?.userName}’s Impact Score:{' '}
-                  <span className="bg-gradient-to-r from-indigo-400 via-pink-400 to-amber-400 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-pink-700 via-pink-600 to-aqua-700 dark:from-pink-300 dark:via-pink-400 dark:to-aqua-300 bg-clip-text text-transparent">
                     {(level?.xp ?? data?.totalPoints ?? 0).toLocaleString()} XP
                   </span>
                 </h1>
@@ -88,7 +88,7 @@ export default function MySocialImpactPage() {
                 </p>
                 <div className="flex items-center gap-3 pt-2">
                   <div className="w-48 bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-gradient-to-r from-indigo-500 via-pink-500 to-amber-400 h-full rounded-full" style={{ width: `${level?.progress ?? 0}%` }} />
+                    <div className="bg-gradient-to-r from-pink-500 via-fuchsia-400 to-aqua-400 h-full rounded-full" style={{ width: `${level?.progress ?? 0}%` }} />
                   </div>
                   <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">
                     {level && level.next.level !== level.current.level ? `${level.progress}% to ${level.next.title}` : 'Top level reached'}

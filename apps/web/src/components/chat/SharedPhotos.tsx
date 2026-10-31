@@ -36,7 +36,7 @@ export function SharedPhotos({ chat, onSend, blocked }: { chat: string; onSend: 
     <div role="region" aria-label="Shared photos" className="rise-in flex items-center gap-3 px-4 py-2.5 border-t border-zinc-200 dark:border-white/10 bg-fuchsia-500/[0.06]">
       <ul className="flex -space-x-3 rtl:space-x-reverse shrink-0">
         {shown.urls.slice(0, 4).map((u, i) => (
-          <li key={u}><img src={u} alt={`Shared photo ${i + 1}`} className="w-11 h-11 rounded-xl object-cover ring-2 ring-white dark:ring-[#151517]" /></li>
+          <li key={u}><img src={u} alt={`Shared photo ${i + 1}`} className="w-11 h-11 rounded-xl object-cover ring-2 ring-white dark:ring-[#1d2650]" /></li>
         ))}
       </ul>
       <p className="flex-1 min-w-0 text-sm font-semibold text-zinc-900 dark:text-white truncate">{blocked ?? (n === 1 ? '1 photo' : `${n} photos`)}</p>

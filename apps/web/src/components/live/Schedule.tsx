@@ -33,7 +33,7 @@ export function Schedule({ slots, from, to, className }: { slots: Slot[]; from: 
             <span className="relative h-7 flex-1 rounded-lg bg-zinc-900/[0.04] dark:bg-white/[0.04]">
               <motion.span
                 className={cn('absolute inset-y-1 flex origin-left items-center overflow-hidden rounded-md px-2 text-[11px] font-semibold rtl:origin-right',
-                  s.state === 'done' ? 'bg-zinc-900/10 text-zinc-700 dark:bg-white/10 dark:text-zinc-200' : s.state === 'late' ? 'bg-amber-500/90 text-zinc-950' : 'bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white shadow-[0_6px_16px_-8px_rgba(236,72,153,0.8)]')}
+                  s.state === 'done' ? 'bg-zinc-900/10 text-zinc-700 dark:bg-white/10 dark:text-zinc-200' : s.state === 'late' ? 'bg-amber-500/90 text-zinc-950' : 'bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white shadow-[0_6px_16px_-8px_rgba(254,129,209,0.8)]')}
                 style={{ insetInlineStart: pos(s.start), width: `calc(${pos(s.end)} - ${pos(s.start)})`, minWidth: 6 }}
                 initial={{ scaleX: 0.85, opacity: 0 }} animate={{ scaleX: 1, opacity: 1 }} transition={{ delay: 0.05 + Math.min(i, 10) * 0.05, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
                 <span className="truncate">{s.note ?? ''}</span>
@@ -43,8 +43,8 @@ export function Schedule({ slots, from, to, className }: { slots: Slot[]; from: 
         ))}
         {now >= from && now <= to && (
           <li aria-hidden className="pointer-events-none absolute inset-y-0 start-28 end-0">
-            <span className="absolute inset-y-[-4px] w-px bg-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.9)]" style={{ insetInlineStart: pos(now) }}>
-              <span className="absolute -bottom-5 -translate-x-1/2 rounded-full bg-pink-500 px-1.5 text-[11px] font-semibold text-white tabular-nums">now</span>
+            <span className="absolute inset-y-[-4px] w-px bg-pink-500 shadow-[0_0_10px_rgba(254,129,209,0.9)]" style={{ insetInlineStart: pos(now) }}>
+              <span className="absolute -bottom-5 -translate-x-1/2 rounded-full bg-pink-500 px-1.5 text-[11px] font-semibold text-[#171f44] tabular-nums">now</span>
             </span>
           </li>
         )}

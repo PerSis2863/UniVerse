@@ -136,7 +136,7 @@ export function RecycleRush({ seed, startsAt, clock, onProgress, onStats }: Game
           <Bot className="w-3.5 h-3.5" aria-hidden />{auto ? `Bot sorting… ${auto}` : `Sort bot ×${bots}`}<kbd className="hidden rounded bg-black/30 px-1 text-[11px] font-medium sm:inline">B</kbd>
         </button>
         <motion.span key={mult} initial={{ scale: calm ? 1 : 1.25 }} animate={{ scale: 1 }} transition={spring.bouncy}
-          className={cn('inline-flex items-center gap-1 rounded-full px-3 py-1 font-bold tabular-nums', mult > 1 ? 'bg-pink-600 text-white shadow-[0_0_28px_rgba(236,72,153,0.55)]' : 'bg-white/10 text-zinc-200')}>
+          className={cn('inline-flex items-center gap-1 rounded-full px-3 py-1 font-bold tabular-nums', mult > 1 ? 'bg-pink-600 text-white shadow-[0_0_28px_rgba(254,129,209,0.55)]' : 'bg-white/10 text-zinc-200')}>
           <Zap className="w-4 h-4" aria-hidden />×{mult}<span className="font-medium opacity-80">· {s.streak} in a row</span>
         </motion.span>
       </div>
@@ -238,7 +238,7 @@ function OnBelt({ b, start, clock, front, done, bin, box, calm }: { b: BeltItem;
     <div ref={ref} className="absolute start-0 top-0 flex w-20 flex-col items-center">
       <div ref={inner} className={cn('flex flex-col items-center', done === 'missed' ? 'play-dropped' : calm && done ? 'play-sorted' : '')}>
         <span className={cn('relative grid h-16 w-16 place-items-center rounded-2xl text-4xl shadow-lg transition-[box-shadow,transform] duration-200',
-          b.golden ? 'bg-gradient-to-br from-amber-200 to-amber-500' : 'bg-[#1e1e22]', front ? 'scale-110 shadow-[0_0_0_3px_#ec4899,0_10px_28px_rgba(236,72,153,0.45)]' : 'ring-1 ring-white/10')} aria-hidden>
+          b.golden ? 'bg-gradient-to-br from-amber-200 to-amber-500' : 'bg-[#1e1e22]', front ? 'scale-110 shadow-[0_0_0_3px_#fe81d1,0_10px_28px_rgba(254,129,209,0.45)]' : 'ring-1 ring-white/10')} aria-hidden>
           {emoji}
           {b.golden && <Sparkles className="absolute -end-1.5 -top-1.5 w-4 h-4 text-amber-200" />}
         </span>

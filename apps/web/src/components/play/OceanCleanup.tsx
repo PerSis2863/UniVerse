@@ -67,8 +67,8 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
       const pts = Math.round(SEA[k].pts * oceanMultiplier(s.combo)) * (boosted ? 2 : 1);
       s.score += pts; s.picked++; s.kg += kgOf(k);
       if (charge) s.sweep = Math.min(SWEEP_CHARGE, s.sweep + 1);
-      s.floats.push({ x: o.x, y: o.y - 10, text: s.combo ? `+${pts} ×${oceanMultiplier(s.combo).toFixed(1)}` : `+${pts}`, color: k === 'net' ? '#f9a8d4' : '#a5f3fc', life: 0 });
-      burst(s.parts, o.x, o.y, k === 'net' ? '#f472b6' : '#67e8f9', s.calm ? 5 : 18);
+      s.floats.push({ x: o.x, y: o.y - 10, text: s.combo ? `+${pts} ×${oceanMultiplier(s.combo).toFixed(1)}` : `+${pts}`, color: k === 'net' ? '#ffc0e6' : '#a5f3fc', life: 0 });
+      burst(s.parts, o.x, o.y, k === 'net' ? '#ff9fdc' : '#67e8f9', s.calm ? 5 : 18);
       arena.sfx(k === 'net' ? 'coin' : 'pick', s.combo);
       if (s.combo === 5 || s.combo === 10) arena.announce(s.combo === 10 ? 'Max combo!' : 'Combo ×1.5!', 'pink');
       haptic('tap', false);
@@ -140,7 +140,7 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
     if (s.shake > 0) { s.shake -= dt; ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10); }
     const sky = ctx.createLinearGradient(0, 0, 0, h);
     const tops = ['#0f4c66', '#0c3a52', '#0a1f2e'], mids = ['#0a2f42', '#0a2534', '#071520'];
-    sky.addColorStop(0, tops[phase]); sky.addColorStop(0.55, mids[phase]); sky.addColorStop(1, '#0B0B0C');
+    sky.addColorStop(0, tops[phase]); sky.addColorStop(0.55, mids[phase]); sky.addColorStop(1, '#171F44');
     ctx.fillStyle = sky; ctx.fillRect(-10, -10, w + 20, h + 20);
     // Light shafts in calm water.
     if (phase < 2) {
@@ -179,7 +179,7 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
     for (const o of s.live) {
       if (o.d.kind !== 'oil') continue;
       const gr = ctx.createRadialGradient(o.x - 10, o.y - 8, 4, o.x, o.y, 62);
-      gr.addColorStop(0, 'rgba(244,114,182,0.35)'); gr.addColorStop(0.35, 'rgba(96,165,250,0.3)'); gr.addColorStop(0.6, 'rgba(250,204,21,0.22)'); gr.addColorStop(1, 'rgba(10,10,12,0)');
+      gr.addColorStop(0, 'rgba(255,159,220,0.35)'); gr.addColorStop(0.35, 'rgba(96,165,250,0.3)'); gr.addColorStop(0.6, 'rgba(250,204,21,0.22)'); gr.addColorStop(1, 'rgba(10,10,12,0)');
       ctx.fillStyle = 'rgba(8,8,10,0.75)';
       ctx.beginPath(); ctx.ellipse(o.x, o.y, 58 + Math.sin(time * 2 + o.d.wobble) * 4, 38, Math.sin(o.d.wobble) * 0.6, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = gr;
@@ -192,7 +192,7 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
       if (k === 'oil') continue;
       const life = isLife(k), power = isPower(k);
       ctx.globalAlpha = o.state ? Math.max(0, 1 - o.t / 0.45) : 1;
-      if (k === 'net' && !o.state) { ctx.fillStyle = 'rgba(244,114,182,0.18)'; ctx.beginPath(); ctx.arc(o.x, o.y, 26, 0, Math.PI * 2); ctx.fill(); }
+      if (k === 'net' && !o.state) { ctx.fillStyle = 'rgba(255,159,220,0.18)'; ctx.beginPath(); ctx.arc(o.x, o.y, 26, 0, Math.PI * 2); ctx.fill(); }
       if (power && !o.state) {
         const pulse = 1 + Math.sin(time * 5) * 0.12;
         ctx.fillStyle = 'rgba(253,230,138,0.25)'; ctx.beginPath(); ctx.arc(o.x, o.y, 26 * pulse, 0, Math.PI * 2); ctx.fill();
@@ -232,14 +232,14 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
     ctx.translate(b.x, b.y);
     ctx.rotate(Math.max(-0.35, Math.min(0.35, b.vx / 1400)) + (stunned && !s.calm ? Math.sin(t / 40) * 0.4 : 0) + (phase === 2 && !s.calm ? Math.sin(time * 3) * 0.05 : 0));
     ctx.globalAlpha = stunned && Math.floor(t / 90) % 2 ? 0.5 : 1;
-    ctx.shadowColor = boosted ? 'rgba(253,230,138,0.7)' : 'rgba(236,72,153,0.55)'; ctx.shadowBlur = 18;
+    ctx.shadowColor = boosted ? 'rgba(253,230,138,0.7)' : 'rgba(254,129,209,0.55)'; ctx.shadowBlur = 18;
     ctx.fillStyle = oily ? '#9ca3af' : '#f8fafc';
     ctx.beginPath(); ctx.moveTo(0, -28); ctx.quadraticCurveTo(18, -8, 16, 20); ctx.lineTo(-16, 20); ctx.quadraticCurveTo(-18, -8, 0, -28); ctx.fill();
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#ec4899'; ctx.fillRect(-16, 11, 32, 9);
-    ctx.fillStyle = '#141416'; ctx.beginPath(); ctx.roundRect(-8, -9, 16, 15, 4); ctx.fill();
+    ctx.fillStyle = '#fe81d1'; ctx.fillRect(-16, 11, 32, 9);
+    ctx.fillStyle = '#1d2650'; ctx.beginPath(); ctx.roundRect(-8, -9, 16, 15, 4); ctx.fill();
     ctx.fillStyle = '#7dd3fc'; ctx.fillRect(-5, -6, 10, 4);
-    ctx.strokeStyle = 'rgba(244,114,182,0.9)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,159,220,0.9)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(0, -28, 13, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
     ctx.restore();
     if (s.shield) { ctx.strokeStyle = `rgba(147,197,253,${0.6 + Math.sin(time * 6) * 0.2})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(b.x, b.y, 40, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = 'rgba(147,197,253,0.08)'; ctx.fill(); }
@@ -258,11 +258,11 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
     // Combo meter.
     const left = Math.max(0, 1 - (t - s.lastPick) / OCEAN_COMBO_MS);
     if (s.combo > 0 && left > 0) {
-      ctx.fillStyle = 'rgba(20,20,22,0.75)'; ctx.beginPath(); ctx.roundRect(12, 12, 132, 34, 10); ctx.fill();
-      ctx.fillStyle = '#f9a8d4'; ctx.font = '700 14px Inter, system-ui, sans-serif'; ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(29,38,80,0.75)'; ctx.beginPath(); ctx.roundRect(12, 12, 132, 34, 10); ctx.fill();
+      ctx.fillStyle = '#ffc0e6'; ctx.font = '700 14px Inter, system-ui, sans-serif'; ctx.textAlign = 'left';
       ctx.fillText(`Combo ×${oceanMultiplier(s.combo).toFixed(1)}`, 22, 26);
       ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(22, 36, 112, 4);
-      ctx.fillStyle = '#ec4899'; ctx.fillRect(22, 36, 112 * left, 4);
+      ctx.fillStyle = '#fe81d1'; ctx.fillRect(22, 36, 112 * left, 4);
     }
     ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(224,242,254,0.85)'; ctx.font = '600 13px Inter, system-ui, sans-serif';
     ctx.fillText(`♻ ${s.picked} cleared · ${s.kg.toFixed(1)} kg`, w - 14, 24);

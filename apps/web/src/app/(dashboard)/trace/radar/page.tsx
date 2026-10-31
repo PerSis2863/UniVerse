@@ -75,10 +75,10 @@ function RadarBody() {
         ticker={[...data.suspect.map((x) => `Likely copy: ${x.product}${x.place ? ` · ${x.place}` : ''}`), ...data.diverted.map((x) => `Grey market: ${x.product}${x.country ? ` · ${x.country}` : ''}`), ...data.cold.map((x) => `Warm: ${x.label} reached ${x.maxT} °C`), ...data.recalls.map((x) => `Recall: ${x.product}`)].slice(0, 8)}>
         <RadarPicture className="mx-auto h-[260px] max-w-[320px]" label="Copies, grey market, warm shipments, recalls and blocks"
           blips={[
-            ...data.recalls.filter((x) => !x.endedAt).map((x) => ({ id: `r${x.id}`, label: x.product, ring: 0 as const, tone: 'gold' as const })),
+            ...data.recalls.filter((x) => !x.endedAt).map((x) => ({ id: `r${x.id}`, label: x.product, ring: 0 as const, tone: 'aqua' as const })),
             ...data.suspect.map((x) => ({ id: `s${x.id}`, label: x.product, ring: 0 as const })),
-            ...data.diverted.map((x) => ({ id: `d${x.id}`, label: x.product, ring: 1 as const, tone: 'violet' as const })),
-            ...data.cold.map((x) => ({ id: `c${x.batchId}`, label: x.label, ring: 1 as const, tone: 'gold' as const })),
+            ...data.diverted.map((x) => ({ id: `d${x.id}`, label: x.product, ring: 1 as const, tone: 'blue' as const })),
+            ...data.cold.map((x) => ({ id: `c${x.batchId}`, label: x.label, ring: 1 as const, tone: 'aqua' as const })),
             ...data.blocked.map((x) => ({ id: `b${x.id}`, label: x.product, ring: 2 as const, tone: 'white' as const })),
           ]} />
       </LiveCard>

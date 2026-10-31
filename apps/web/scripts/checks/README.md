@@ -47,7 +47,8 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `landing-story-ui.mjs` | M44 in the browser: the landing's live totals (rounded, none under 10) and the scroll story. 390 and 1280 px, axe. |
 | `landing-pause-ui.mjs` | M47: the landing's looping demos run only on screen (the hero moves at the top; scrolled down it holds still and nothing off screen animates). |
 | `landing-try-ui.mjs` | M43 in the browser: the landing's Relief, Green and Play demos, and photos shared into a chat. 390 and 1280 px, axe. |
-| `live-ui.mjs` | M48–M50: the live cards (constellations, funnels, radars, the fleet city) on the student, teacher, admin, hub, Relief and Trace pages draw, no sideways scroll, axe at 390 and 1280, light and dark. Runs against `local:dev` too. |
+| `live-ui.mjs` | M48–M52: the live cards (constellations, funnels, radars, the fleet city, the hub's planet and wallet cards) on the student, teacher, admin, hub, Relief and Trace pages draw, no sideways scroll, axe at 390 and 1280, light and dark. Runs against `local:dev` too. |
+| `world-ui.mjs` | M52: the landing's planet draws; the landing and sign-in pages have no sideways scroll and are axe-clean (whole page) at 390 and 1280. Runs against `local:dev` too. |
 | `lesson-ui.mjs` | Rich lesson pages on the built Worker: read (callout, quick check, flashcards), edit, add blocks, save, preview; a new page opens the editor; students read without editing. 390 and 1280 px, light and dark, axe. |
 | `make-cc.mjs` | A small Canvas-style cartridge for the browser test. |
 | `notes-api.mjs` | Notes on hand-ins on the local Worker. |

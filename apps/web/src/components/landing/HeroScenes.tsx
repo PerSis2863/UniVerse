@@ -60,7 +60,7 @@ function Campus() {
           <motion.span key={i} aria-hidden className="absolute h-24 w-24 rounded-full border border-pink-400/40"
             initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: [0.9, 2.6], opacity: [0.55, 0] }} transition={{ duration: 3.6, delay: i * 1.2, repeat: Infinity, ease: 'easeOut' }} />
         ))}
-        <motion.div className="relative grid h-24 w-24 place-items-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#3a1a2c,#121014_70%)] ring-1 ring-pink-400/40 shadow-[0_0_60px_rgba(236,72,153,0.45)]"
+        <motion.div className="relative grid h-24 w-24 place-items-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#3a1a2c,#121014_70%)] ring-1 ring-pink-400/40 shadow-[0_0_60px_rgba(254,129,209,0.45)]"
           animate={calm ? undefined : { scale: [1, 1.04, 1] }} transition={{ duration: 3.6, repeat: Infinity, ease: 'easeInOut' }}>
           <span className="text-center">
             <span className="relative block h-7 overflow-hidden">
@@ -77,7 +77,7 @@ function Campus() {
             {DAY.map((_, i) => {
               const a = (i / DAY.length) * Math.PI * 2 - Math.PI / 2, x = 155 + Math.cos(a) * ORBIT, y = 155 + Math.sin(a) * ORBIT;
               return i === s ? (
-                <motion.line key={`${n}`} x1="155" y1="155" x2={x} y2={y} stroke="#f472b6" strokeWidth="2" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 6px #ec4899)' }}
+                <motion.line key={`${n}`} x1="155" y1="155" x2={x} y2={y} stroke="#ff9fdc" strokeWidth="2" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 6px #fe81d1)' }}
                   initial={{ pathLength: calm ? 1 : 0, opacity: 1 }} animate={{ pathLength: 1, opacity: [1, 1, 0.35] }} transition={{ duration: 1.2, ease: EASE }} />
               ) : null;
             })}
@@ -89,7 +89,7 @@ function Campus() {
                 <motion.div className="-ms-6 -mt-6" animate={calm ? undefined : { rotate: -360 }} transition={turn}>
                   <motion.span animate={{ scale: on ? 1.18 : 1, y: on ? -3 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 22 }}
                     className={cn('relative grid h-12 w-12 place-items-center rounded-2xl ring-1 transition-[background-color,box-shadow] duration-500',
-                      on ? 'bg-pink-500 ring-pink-300 shadow-[0_0_34px_rgba(236,72,153,0.8)]' : done ? 'bg-[#1d1418] ring-pink-400/40' : 'bg-[#18181a] ring-white/10')}>
+                      on ? 'bg-pink-500 ring-pink-300 shadow-[0_0_34px_rgba(254,129,209,0.8)]' : done ? 'bg-[#1d1418] ring-pink-400/40' : 'bg-[#18181a] ring-white/10')}>
                     {on && !calm && <motion.span key={n} aria-hidden className="absolute inset-0 rounded-2xl ring-2 ring-pink-300" initial={{ scale: 1, opacity: 0.8 }} animate={{ scale: 1.6, opacity: 0 }} transition={{ duration: 1, ease: EASE }} />}
                     <d.icon className={cn('h-5 w-5', on ? 'text-white' : 'text-pink-200/80')} aria-hidden />
                   </motion.span>
@@ -107,7 +107,7 @@ function Campus() {
             return (
               <motion.li key={i} layout initial={{ opacity: 0, y: -18, scale: 0.96, filter: 'blur(6px)' }} animate={{ opacity: 1 - k * 0.28, y: 0, scale: 1 - k * 0.02, filter: 'blur(0px)' }} exit={{ opacity: 0, y: 14, transition: { duration: 0.25 } }}
                 transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-                className={cn('flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ring-1', k === 0 ? 'bg-[#1b1519] ring-pink-400/30 shadow-[0_10px_40px_-18px_rgba(236,72,153,0.7)]' : 'bg-[#151517] ring-white/10')}>
+                className={cn('flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ring-1', k === 0 ? 'bg-[#1b1519] ring-pink-400/30 shadow-[0_10px_40px_-18px_rgba(254,129,209,0.7)]' : 'bg-[#1d2650] ring-white/10')}>
                 <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-xl', k === 0 ? 'bg-pink-500/20' : 'bg-white/5')}><d.icon className="h-4 w-4 text-pink-200" aria-hidden /></span>
                 <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{d.title}</span><span className="block truncate text-xs text-zinc-300">{d.sub}</span></span>
                 <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-400 text-emerald-950"><Check className="h-3 w-3" strokeWidth={3} aria-hidden /></span>
@@ -140,36 +140,36 @@ function Trace() {
   return (
     <div className="relative h-[480px] w-full max-w-[520px]" role="img" aria-label="A product label scanned as genuine while its journey draws across a map">
       <svg viewBox="0 0 480 220" className="absolute inset-x-0 top-6 w-full opacity-80" aria-hidden>
-        {DOTS.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="1.8" fill="rgba(244,114,182,0.32)" />)}
+        {DOTS.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="1.8" fill="rgba(255,159,220,0.32)" />)}
         {ARCS.map(([a, b], i) => {
           const mx = (a[0] + b[0]) / 2, my = Math.min(a[1], b[1]) - 46, on = s >= 3 + i;
           return (
             <g key={i}>
-              <motion.path d={`M ${a[0]} ${a[1]} Q ${mx} ${my} ${b[0]} ${b[1]}`} fill="none" stroke="#ec4899" strokeWidth="1.6" strokeLinecap="round"
-                initial={false} animate={{ pathLength: on ? 1 : 0, opacity: on ? 1 : 0 }} transition={{ duration: calm ? 0 : 0.8, ease: EASE }} style={{ filter: 'drop-shadow(0 0 4px rgba(236,72,153,0.9))' }} />
-              <circle cx={b[0]} cy={b[1]} r={on ? 4 : 0} fill="#fbcfe8" style={{ transition: 'r 300ms' }} />
+              <motion.path d={`M ${a[0]} ${a[1]} Q ${mx} ${my} ${b[0]} ${b[1]}`} fill="none" stroke="#fe81d1" strokeWidth="1.6" strokeLinecap="round"
+                initial={false} animate={{ pathLength: on ? 1 : 0, opacity: on ? 1 : 0 }} transition={{ duration: calm ? 0 : 0.8, ease: EASE }} style={{ filter: 'drop-shadow(0 0 4px rgba(254,129,209,0.9))' }} />
+              <circle cx={b[0]} cy={b[1]} r={on ? 4 : 0} fill="#ffd6f0" style={{ transition: 'r 300ms' }} />
             </g>
           );
         })}
       </svg>
       {/* The label, tilting slowly, a beam passing over its code */}
       <motion.div className="absolute left-1/2 top-[150px] w-[260px] -translate-x-1/2 [transform-style:preserve-3d]" animate={calm ? undefined : { rotateY: [-14, 14, -14], rotateX: [8, -4, 8] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }} style={{ transformPerspective: 900 }}>
-        <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#1c1b1f,#121214)] p-5 ring-1 ring-white/15 shadow-[0_30px_80px_-20px_rgba(236,72,153,0.55)]">
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_30%,rgba(236,72,153,0.18)_45%,rgba(167,139,250,0.16)_52%,transparent_65%)] bg-[length:250%_100%] [animation:holo_5s_linear_infinite]" aria-hidden />
+        <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#1c1b1f,#121214)] p-5 ring-1 ring-white/15 shadow-[0_30px_80px_-20px_rgba(254,129,209,0.55)]">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_30%,rgba(254,129,209,0.18)_45%,rgba(167,139,250,0.16)_52%,transparent_65%)] bg-[length:250%_100%] [animation:holo_5s_linear_infinite]" aria-hidden />
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-400">Product passport</p>
           <p className="mt-1 text-xl font-bold text-white">Aurora olive oil</p>
           <p className="text-xs text-zinc-300">unit 1,204 of 5,000</p>
           <div className="relative mt-4 grid grid-cols-7 gap-1 rounded-xl bg-white p-2.5">
             {Array.from({ length: 49 }, (_, i) => <span key={i} className={cn('aspect-square rounded-[2px]', (i * 7 + (i % 5) * 3) % 3 === 0 || [0, 1, 7, 8, 5, 6, 12, 13, 35, 36, 42, 43].includes(i) ? 'bg-zinc-900' : 'bg-transparent')} />)}
-            {!calm && s < 2 && <motion.span className="absolute inset-x-1 h-0.5 bg-pink-500 shadow-[0_0_14px_3px_rgba(236,72,153,0.8)]" animate={{ top: ['8%', '92%', '8%'] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }} />}
+            {!calm && s < 2 && <motion.span className="absolute inset-x-1 h-0.5 bg-pink-500 shadow-[0_0_14px_3px_rgba(254,129,209,0.8)]" animate={{ top: ['8%', '92%', '8%'] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }} />}
           </div>
           <p className="mt-3 flex items-center gap-1.5 text-xs text-zinc-300"><ScanLine className="h-3.5 w-3.5 text-pink-300" aria-hidden />{scanned ? 'Scanned in Paris 11e' : 'Scanning…'}</p>
         </div>
       </motion.div>
       <AnimatePresence>
         {scanned && <motion.div key="g" {...pop} className="absolute end-2 top-[150px] flex items-center gap-2 rounded-2xl bg-emerald-400 px-3.5 py-2 text-sm font-bold text-emerald-950 shadow-[0_10px_40px_-8px_rgba(52,211,153,0.7)]"><ShieldCheck className="h-4 w-4" aria-hidden />Genuine</motion.div>}
-        {s >= 5 && <motion.div key="p" {...pop} className="absolute bottom-10 start-2 flex items-center gap-2 rounded-2xl bg-[#1b1b1e] px-3.5 py-2 text-sm text-white ring-1 ring-pink-400/40"><Sparkles className="h-4 w-4 text-pink-300" aria-hidden />The shop earned <b>25 points</b></motion.div>}
-        {s >= 7 && <motion.div key="r" {...pop} className="absolute bottom-24 end-0 rounded-2xl bg-[#1b1b1e] px-3.5 py-2 text-xs text-zinc-200 ring-1 ring-white/10">Made → shipped → shop · <b className="text-white">4 stops</b></motion.div>}
+        {s >= 5 && <motion.div key="p" {...pop} className="absolute bottom-10 start-2 flex items-center gap-2 rounded-2xl bg-[#222c5a] px-3.5 py-2 text-sm text-white ring-1 ring-pink-400/40"><Sparkles className="h-4 w-4 text-pink-300" aria-hidden />The shop earned <b>25 points</b></motion.div>}
+        {s >= 7 && <motion.div key="r" {...pop} className="absolute bottom-24 end-0 rounded-2xl bg-[#222c5a] px-3.5 py-2 text-xs text-zinc-200 ring-1 ring-white/10">Made → shipped → shop · <b className="text-white">4 stops</b></motion.div>}
       </AnimatePresence>
     </div>
   );
@@ -195,7 +195,7 @@ function Relief() {
           const on = s >= b.at, taken = s >= b.at + 1, done = s >= b.at + 2;
           return (
             <span key={b.what}>
-              {taken && <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" aria-hidden><motion.line x1="50" y1="50" x2={b.x} y2={b.y} stroke={done ? '#34d399' : '#ec4899'} strokeWidth="0.6" strokeDasharray="2 1.5" initial={{ pathLength: calm ? 1 : 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.6 }} /></svg>}
+              {taken && <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" aria-hidden><motion.line x1="50" y1="50" x2={b.x} y2={b.y} stroke={done ? '#34d399' : '#fe81d1'} strokeWidth="0.6" strokeDasharray="2 1.5" initial={{ pathLength: calm ? 1 : 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.6 }} /></svg>}
               <AnimatePresence>
                 {on && (
                   <motion.span key="b" initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 18 }} className="absolute -ms-4 -mt-4" style={{ left: `${b.x}%`, top: `${b.y}%` }}>
@@ -211,7 +211,7 @@ function Relief() {
           );
         })}
       </div>
-      <div className="absolute bottom-0 start-0 rounded-2xl bg-[#151517]/95 px-4 py-3 ring-1 ring-white/10">
+      <div className="absolute bottom-0 start-0 rounded-2xl bg-[#1d2650]/95 px-4 py-3 ring-1 ring-white/10">
         <p className="font-mono text-xs text-zinc-400">people helped today</p>
         <AnimatePresence mode="popLayout" initial={false}><motion.p key={helped} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="font-mono text-3xl font-bold tabular-nums text-white">{128 + helped * 5}</motion.p></AnimatePresence>
       </div>
@@ -304,7 +304,7 @@ function Green() {
    animateMotion: smooth and cheap); the board below re-orders as they overtake, with laps. */
 const TRACK = 'M 70 40 H 330 A 60 60 0 0 1 330 160 H 70 A 60 60 0 0 1 70 40 Z';
 const RACERS = [
-  { n: 'You', c: '#ec4899', lap: 6.2, at: 0 },
+  { n: 'You', c: '#fe81d1', lap: 6.2, at: 0 },
   { n: 'Leo', c: '#10b981', lap: 6.6, at: 0.12 },
   { n: 'Omar', c: '#f97316', lap: 7.1, at: 0.24 },
   { n: 'Maya', c: '#818cf8', lap: 6.9, at: 0.36 },
@@ -328,8 +328,8 @@ function Play() {
       </div>
       <svg viewBox="0 0 400 200" className="mx-auto mt-2 block w-[92%]" aria-hidden>
         <defs><filter id="race-glow"><feGaussianBlur stdDeviation="3" /></filter></defs>
-        <path d={TRACK} fill="none" stroke="#ec4899" strokeWidth="18" opacity="0.12" />
-        <path d={TRACK} fill="none" stroke="rgba(244,114,182,0.55)" strokeWidth="1.5" style={{ filter: 'drop-shadow(0 0 6px #ec4899)' }} />
+        <path d={TRACK} fill="none" stroke="#fe81d1" strokeWidth="18" opacity="0.12" />
+        <path d={TRACK} fill="none" stroke="rgba(255,159,220,0.55)" strokeWidth="1.5" style={{ filter: 'drop-shadow(0 0 6px #fe81d1)' }} />
         <path d={TRACK} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" strokeDasharray="4 8" />
         <line x1="200" y1="28" x2="200" y2="52" stroke="#fff" strokeWidth="2" strokeDasharray="3 3" />
         <text x="200" y="110" textAnchor="middle" className="fill-white font-mono text-[22px] font-bold">LAP {Math.floor(run[0].d) + 1}</text>
@@ -346,7 +346,7 @@ function Play() {
       </svg>
       <ol className="absolute inset-x-2 bottom-2 space-y-1">
         {run.map((r, i) => (
-          <motion.li key={r.n} layout transition={{ type: 'spring', stiffness: 380, damping: 32 }} className={cn('flex items-center gap-2.5 rounded-full px-3.5 py-1.5 bg-black/30 ring-1 ring-white/[0.07]', r.n === 'You' && 'bg-fuchsia-500/20 ring-fuchsia-400/50 shadow-[0_0_24px_-6px_rgba(236,72,153,0.7)]')}>
+          <motion.li key={r.n} layout transition={{ type: 'spring', stiffness: 380, damping: 32 }} className={cn('flex items-center gap-2.5 rounded-full px-3.5 py-1.5 bg-black/30 ring-1 ring-white/[0.07]', r.n === 'You' && 'bg-fuchsia-500/20 ring-fuchsia-400/50 shadow-[0_0_24px_-6px_rgba(254,129,209,0.7)]')}>
             <span className="w-4 font-mono text-xs text-zinc-300">{i + 1}</span>
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: r.c, boxShadow: `0 0 10px ${r.c}` }} />
             <span className="text-sm font-semibold text-white">{r.n}</span>

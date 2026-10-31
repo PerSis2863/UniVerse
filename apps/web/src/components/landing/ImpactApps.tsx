@@ -70,11 +70,11 @@ export function PlaySection() {
         <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {([
             [Brain, 'Quiz Clash', 'Fast questions, faster streaks.', '#a5b4fc'],
-            [ScanLine, 'Spot the Fake', 'Four labels. One is fake.', '#f9a8d4'],
+            [ScanLine, 'Spot the Fake', 'Four labels. One is fake.', '#ffc0e6'],
             [Truck, 'Supply Run', 'Send the right supplies, fast.', '#fdba74'],
             [Recycle, 'Recycle Rush', 'Right bin, more CO₂ saved.', '#6ee7b7'],
             [Keyboard, 'Type Race', 'Type fast, race your friends.', '#c4b5fd'],
-            [Globe2, 'World Pin', 'Pin the city on the map.', '#f9a8d4'],
+            [Globe2, 'World Pin', 'Pin the city on the map.', '#ffc0e6'],
             [LifeBuoy, 'Flood Rescue', 'Fly in, lift people to safety.', '#fdba74'],
             [Ship, 'Ocean Cleanup', 'Scoop the plastic, miss the turtles.', '#67e8f9'],
           ] as const).map(([icon, t, d, c], i) => <Reveal key={t} delay={0.1 + i * 0.06}><Feature icon={icon} title={t} text={d} color={c} /></Reveal>)}

@@ -34,9 +34,9 @@ export function Radar({ blips, label, className }: { blips: Blip[]; label: strin
       const wedge = 0.9;
       const g = ctx.createConicGradient ? ctx.createConicGradient(beam - wedge, cx, cy) : null;
       if (g) {
-        g.addColorStop(0, 'rgba(236,72,153,0)');
-        g.addColorStop(wedge / (Math.PI * 2), 'rgba(236,72,153,0.32)');
-        g.addColorStop(wedge / (Math.PI * 2) + 0.001, 'rgba(236,72,153,0)');
+        g.addColorStop(0, 'rgba(254,129,209,0)');
+        g.addColorStop(wedge / (Math.PI * 2), 'rgba(254,129,209,0.32)');
+        g.addColorStop(wedge / (Math.PI * 2) + 0.001, 'rgba(254,129,209,0)');
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, beam - wedge, beam); ctx.closePath(); ctx.fill();
       }

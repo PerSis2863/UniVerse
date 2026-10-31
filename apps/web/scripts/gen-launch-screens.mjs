@@ -18,7 +18,7 @@ const SCREENS = [
 ];
 
 const icon = `data:image/png;base64,${readFileSync('public/icon-512x512.png').toString('base64')}`;
-const THEMES = { dark: ['#0b0b0c', 'rgba(255,255,255,.08)'], light: ['#ebeae6', 'rgba(0,0,0,.08)'] };
+const THEMES = { dark: ['#171f44', 'rgba(255,255,255,.08)'], light: ['#e9eef8', 'rgba(0,0,0,.08)'] };
 const page = ([bg, line]) => `<!doctype html><body style="margin:0;height:100vh;display:grid;place-items:center;background:${bg}">
 <img src="${icon}" alt="" style="width:112px;height:112px;border-radius:26px;box-shadow:0 0 0 .5px ${line}"></body>`;
 

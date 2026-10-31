@@ -145,12 +145,12 @@ export function Constellation({ groups, center, label, className }: { groups: Gr
     const k0 = arrive(0);
     const halo = 54 + 6 * Math.sin(t * 1.6);
     ctx.globalAlpha = 0.9 * k0;
-    ctx.drawImage(glow('gold'), cx - halo / 2, cy - halo / 2, halo, halo);
+    ctx.drawImage(glow('aqua'), cx - halo / 2, cy - halo / 2, halo, halo);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = `rgba(255,248,235,${k0})`;
     ctx.beginPath(); ctx.arc(cx, cy, 13, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = `rgba(233,196,106,${0.9 * k0})`;
+    ctx.strokeStyle = `rgba(116,255,237,${0.9 * k0})`;
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(cx, cy, 17, 0, Math.PI * 2); ctx.stroke();
     if (center) {

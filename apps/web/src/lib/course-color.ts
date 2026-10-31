@@ -1,14 +1,14 @@
-// A course's colour as a CSS colour. Courses store either a hex colour (#2a2927, set in the course
+// A course's colour as a CSS colour. Courses store either a hex colour (#2b3568, set in the course
 // form) or, for older / sample courses, a Tailwind class ("bg-blue-500"), which isn't a CSS colour
 // and left their tiles blank. Courses without one get a stable colour from their code.
 
 const TAILWIND: Record<string, string> = {
-  slate: '#64748b', gray: '#66635d', zinc: '#66635d', red: '#ef4444', orange: '#f97316', amber: '#f59e0b',
+  slate: '#64748b', gray: '#5d6585', zinc: '#5d6585', red: '#ef4444', orange: '#f97316', amber: '#f59e0b',
   yellow: '#eab308', lime: '#84cc16', green: '#22c55e', emerald: '#10b981', teal: '#14b8a6', cyan: '#06b6d4',
-  sky: '#0ea5e9', blue: '#3b82f6', indigo: '#2a2927', violet: '#5f5c57', purple: '#ec4899', fuchsia: '#db2777',
-  pink: '#db2777', rose: '#f43f5e',
+  sky: '#0ea5e9', blue: '#3b82f6', indigo: '#2b3568', violet: '#58617f', purple: '#fe81d1', fuchsia: '#c13a92',
+  pink: '#c13a92', rose: '#f43f5e',
 };
-const PALETTE = ['#2a2927', '#0ea5e9', '#10b981', '#f59e0b', '#db2777', '#5f5c57', '#14b8a6', '#f43f5e'];
+const PALETTE = ['#2b3568', '#0ea5e9', '#10b981', '#f59e0b', '#c13a92', '#58617f', '#14b8a6', '#f43f5e'];
 
 export function courseColor(color: string | null | undefined, key = ''): string {
   const c = color?.trim();

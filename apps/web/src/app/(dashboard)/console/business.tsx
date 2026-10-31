@@ -59,7 +59,7 @@ export function BusinessPanel() {
             {b.topBrands.map((x, i) => (
               <li key={x.id} className="text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg grid place-items-center text-[11px] font-black text-white shrink-0" style={{ background: x.color ?? '#ec4899' }} aria-hidden>{x.name.slice(0, 1)}</span>
+                  <span className="w-6 h-6 rounded-lg grid place-items-center text-[11px] font-black text-white shrink-0" style={{ background: x.color ?? '#fe81d1' }} aria-hidden>{x.name.slice(0, 1)}</span>
                   <span className="min-w-0 flex-1 truncate text-zinc-800 dark:text-zinc-100">{x.name} <span className="text-zinc-500 text-xs">{x.category}</span></span>
                   {x.plan === 'PRO' && <Crown className="w-3.5 h-3.5 text-fuchsia-500" aria-label="PRO" />}
                   {x.suspect > 0 && <span className="font-mono text-[10px] text-amber-600 dark:text-amber-400">{x.suspect} copies</span>}
@@ -101,7 +101,7 @@ export function BusinessPanel() {
           <ul className="mt-3 divide-y divide-zinc-100 dark:divide-white/[0.06]">
             {b.newest.map((x) => (
               <li key={x.id} className="py-2 flex items-center gap-2 text-sm">
-                <span className="w-6 h-6 rounded-lg grid place-items-center text-[11px] font-black text-white shrink-0" style={{ background: x.color ?? '#ec4899' }} aria-hidden>{x.name.slice(0, 1)}</span>
+                <span className="w-6 h-6 rounded-lg grid place-items-center text-[11px] font-black text-white shrink-0" style={{ background: x.color ?? '#fe81d1' }} aria-hidden>{x.name.slice(0, 1)}</span>
                 <span className="flex-1 min-w-0 truncate text-zinc-800 dark:text-zinc-100">{x.name}</span>
                 <span className="text-[11px] text-zinc-500">{x.plan} · {formatDistanceToNow(new Date(x.createdAt), { addSuffix: true })}</span>
               </li>

@@ -272,7 +272,7 @@ export function MessagingHub() {
                 <motion.span layoutId="rail-edge" transition={spring.smooth} className="rail-edge absolute -start-[10px] top-2 bottom-2 w-1 rounded-full" aria-hidden />
               </>}
               {typeof r.icon === 'string' ? <span className="text-lg leading-none" aria-hidden>{r.icon}</span> : <r.icon className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" aria-hidden />}
-              {!!r.count && <span key={r.count} className="badge-bump absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white text-[10px] font-bold leading-[18px] text-center ring-2 ring-white dark:ring-[#0b0b0c]">{r.count > 99 ? '99+' : r.count}</span>}
+              {!!r.count && <span key={r.count} className="badge-bump absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white text-[10px] font-bold leading-[18px] text-center ring-2 ring-white dark:ring-[#171f44]">{r.count > 99 ? '99+' : r.count}</span>}
             </button>
           </div>
         ))}
@@ -287,7 +287,7 @@ export function MessagingHub() {
       </nav>
       {/* Conversation list */}
       <section ref={listSide} className={cn(
-        'msg-panel w-full md:w-[340px] lg:w-[360px] shrink-0 flex flex-col min-h-0 md:rounded-3xl bg-white/70 dark:bg-white/[0.035] max-md:dark:bg-[#141416]/85 backdrop-blur-xl overflow-hidden md:shadow-[0_24px_60px_-30px_rgb(79_70_229/0.45)]',
+        'msg-panel w-full md:w-[340px] lg:w-[360px] shrink-0 flex flex-col min-h-0 md:rounded-3xl bg-white/70 dark:bg-white/[0.035] max-md:dark:bg-[#1d2650]/85 backdrop-blur-xl overflow-hidden md:shadow-[0_24px_60px_-30px_rgb(79_70_229/0.45)]',
         activeId ? 'hidden md:flex' : 'flex',
       )}>
         <div className="p-4 pb-3 space-y-3 border-b border-zinc-200/80 dark:border-white/[0.06]">
@@ -404,11 +404,11 @@ export function MessagingHub() {
               {pinnedChats.map((c, i) => (
                 <button key={c.id} role="listitem" type="button" onClick={(e) => openFrom(c.id, e)} aria-label={`${c.title}${c.unread ? `, ${c.unread} unread` : ''}${c.typing.length ? ', typing' : ''}`}
                   className={cn('group relative flex flex-col items-center gap-1.5 pt-3 pb-2 rounded-2xl transition-colors', c.id === activeId ? 'bg-indigo-500/10' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}>
-                  {c.typing.length > 0 && <span className="pin-typing absolute top-0 end-2 z-10 px-1.5 py-1 rounded-full bg-white dark:bg-[#2a2927] shadow-md text-emerald-500"><span className="typing-dots" aria-hidden><i /><i /><i /></span></span>}
+                  {c.typing.length > 0 && <span className="pin-typing absolute top-0 end-2 z-10 px-1.5 py-1 rounded-full bg-white dark:bg-[#2b3568] shadow-md text-emerald-500"><span className="typing-dots" aria-hidden><i /><i /><i /></span></span>}
                   <span className="pin-float row-aura on" style={{ ['--i' as string]: i, ['--aura' as string]: auraOf(c.otherUserId ?? c.id) }}>
                     <span className={cn('block rounded-full', c.unread > 0 && !c.muted && 'msg-ring')}><Avatar name={c.title} src={c.avatarUrl} online={c.online} size={52} /></span>
                   </span>
-                  {c.unread > 0 && <span key={c.unread} className="badge-bump absolute top-1.5 start-2 min-w-5 h-5 px-1.5 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white text-[11px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-[#0b0b0c]">{c.unread > 99 ? '99+' : c.unread}</span>}
+                  {c.unread > 0 && <span key={c.unread} className="badge-bump absolute top-1.5 start-2 min-w-5 h-5 px-1.5 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white text-[11px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-[#171f44]">{c.unread > 99 ? '99+' : c.unread}</span>}
                   <span className="max-w-full px-1 truncate text-xs font-semibold text-zinc-800 dark:text-zinc-100" translate="no">{c.isGroup ? c.title : c.title.split(' ')[0]}</span>
                 </button>
               ))}
@@ -466,12 +466,12 @@ export function MessagingHub() {
               </SwipeRow>
               {(
                 <button onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === c.id ? null : c.id); }} aria-label="Chat options"
-                  className={cn('absolute end-2 top-2 p-1 rounded-full bg-white/90 dark:bg-[#141416]/90 text-zinc-500 shadow-sm transition-opacity hidden md:block', menuFor === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
+                  className={cn('absolute end-2 top-2 p-1 rounded-full bg-white/90 dark:bg-[#1d2650]/90 text-zinc-500 shadow-sm transition-opacity hidden md:block', menuFor === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
               )}
               {menuFor === c.id && !phone && (
-                <div className="menu-pop absolute end-2 top-9 z-30 w-52 py-1 rounded-xl bg-white/95 dark:bg-[#141416]/95 backdrop-blur-xl border border-zinc-200 dark:border-white/10 shadow-2xl shadow-indigo-950/40 text-sm" onMouseLeave={() => setMenuFor(null)}>
+                <div className="menu-pop absolute end-2 top-9 z-30 w-52 py-1 rounded-xl bg-white/95 dark:bg-[#1d2650]/95 backdrop-blur-xl border border-zinc-200 dark:border-white/10 shadow-2xl shadow-indigo-950/40 text-sm" onMouseLeave={() => setMenuFor(null)}>
                   {rowMenu(c)}
                 </div>
               )}

@@ -47,7 +47,7 @@ function Steps({ steps, color }: { steps: readonly (readonly [typeof HandHeart, 
         initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 1.2, ease: EASE }} />
       {steps.map(([Icon, t, d], i) => (
         <Reveal key={t} role="listitem" delay={0.1 + i * 0.08} className="relative text-center">
-          <span className="mx-auto w-20 h-20 grid place-items-center rounded-full bg-[#111112] ring-1 ring-white/10" style={{ boxShadow: `0 0 40px -10px ${color}` }}><Icon className="w-8 h-8" style={{ color }} aria-hidden /></span>
+          <span className="mx-auto w-20 h-20 grid place-items-center rounded-full bg-[#131a3d] ring-1 ring-white/10" style={{ boxShadow: `0 0 40px -10px ${color}` }}><Icon className="w-8 h-8" style={{ color }} aria-hidden /></span>
           <h3 className="mt-5 text-xl font-bold text-white">{t}</h3>
           <p className="mt-1.5 text-zinc-300">{d}</p>
         </Reveal>
@@ -159,7 +159,7 @@ export function GreenMore() {
 // ── Play ──
 
 const CODE = 'K7Q2MX';
-const SEATS = ['#6366f1', '#ec4899', '#f97316', '#10b981', '#eab308', '#22d3ee', '#a855f7', '#f43f5e'];
+const SEATS = ['#6366f1', '#fe81d1', '#f97316', '#10b981', '#eab308', '#22d3ee', '#8c9bff', '#f43f5e'];
 const WORLDS: GameId[] = ['obby', 'orbit', 'ops', 'night'];
 
 export function PlayMore() {
@@ -179,7 +179,7 @@ export function PlayMore() {
           </div>
           <div role="img" className="mt-8 flex justify-center -space-x-2 rtl:space-x-reverse" aria-label="8 players joined">
             {SEATS.map((c, i) => (
-              <motion.span key={c} aria-hidden className="w-10 h-10 sm:w-12 sm:h-12 rounded-full ring-4 ring-[#111112]" style={{ background: c }}
+              <motion.span key={c} aria-hidden className="w-10 h-10 sm:w-12 sm:h-12 rounded-full ring-4 ring-[#131a3d]" style={{ background: c }}
                 initial={{ opacity: 0, scale: 0.85, y: 8 }} whileInView={{ opacity: 1, scale: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.5 + i * 0.08, type: 'spring', stiffness: 380, damping: 22 }} />
             ))}
           </div>

@@ -50,14 +50,14 @@ export function Heartbeat({ values, marks, label, className }: { values: number[
     const last = path();
     ctx.lineTo(x(last), h); ctx.lineTo(x(0), h); ctx.closePath();
     const area = ctx.createLinearGradient(0, 0, 0, h);
-    area.addColorStop(0, 'rgba(236,72,153,0.28)');
-    area.addColorStop(1, 'rgba(236,72,153,0)');
+    area.addColorStop(0, 'rgba(254,129,209,0.28)');
+    area.addColorStop(1, 'rgba(254,129,209,0)');
     ctx.fillStyle = area;
     ctx.fill();
     path();
     const stroke = ctx.createLinearGradient(0, 0, w, 0);
-    stroke.addColorStop(0, 'rgba(168,85,247,0.9)');
-    stroke.addColorStop(0.7, 'rgba(236,72,153,1)');
+    stroke.addColorStop(0, 'rgba(140,155,255,0.9)');
+    stroke.addColorStop(0.7, 'rgba(254,129,209,1)');
     stroke.addColorStop(1, 'rgba(255,250,245,1)');
     ctx.strokeStyle = stroke;
     ctx.lineWidth = 2;

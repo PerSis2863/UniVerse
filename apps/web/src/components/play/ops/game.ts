@@ -717,7 +717,7 @@ export class OpsGame {
   }
   private found(it: Item) {
     const rar = itemRarity(it);
-    this.cb.feed({ kind: 'loot', text: `+ ${itemName(it)}`, color: ['#d4d4d8', '#4ade80', '#60a5fa', '#c084fc', '#f59e0b'][rar] });
+    this.cb.feed({ kind: 'loot', text: `+ ${itemName(it)}`, color: ['#d4d4d8', '#4ade80', '#60a5fa', '#a9b4ff', '#f59e0b'][rar] });
     this.audio.ui(rar >= 4 ? 'legend' : 'pick');
     if ('fresh' in it && it.fresh && (!this.bestFind || rar > this.bestFind.rarity)) this.bestFind = { name: itemName(it), rarity: rar };
     if (rar >= 4) this.cb.banner({ title: 'Legendary find', sub: itemName(it), tone: 'gold' });

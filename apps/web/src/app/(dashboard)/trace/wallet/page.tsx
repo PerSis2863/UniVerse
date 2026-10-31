@@ -120,9 +120,9 @@ function Wallet() {
                 <div className="mt-3 grid sm:grid-cols-2 gap-3">
                   {data.balances.map((b, i) => (
                     <motion.article key={b.brand.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04, type: 'spring', stiffness: 360, damping: 32 }} className="panel p-5 relative overflow-hidden">
-                      <span aria-hidden className="absolute -right-8 -top-8 w-28 h-28 rounded-full blur-2xl opacity-25" style={{ background: b.brand.color ?? '#ec4899' }} />
+                      <span aria-hidden className="absolute -right-8 -top-8 w-28 h-28 rounded-full blur-2xl opacity-25" style={{ background: b.brand.color ?? '#fe81d1' }} />
                       <div className="relative flex items-center gap-3">
-                        <span className="w-10 h-10 rounded-2xl grid place-items-center text-white font-black" style={{ background: b.brand.color ?? '#ec4899' }} aria-hidden>{b.brand.name.slice(0, 1)}</span>
+                        <span className="w-10 h-10 rounded-2xl grid place-items-center text-white font-black" style={{ background: b.brand.color ?? '#fe81d1' }} aria-hidden>{b.brand.name.slice(0, 1)}</span>
                         <span className="min-w-0 flex-1"><span className="block font-bold text-zinc-900 dark:text-white truncate">{b.brand.name}</span><span className="block text-xs text-zinc-500">1 point = {money(b.brand.pointValue, b.brand.currency)}</span></span>
                       </div>
                       <p className="relative mt-4 font-mono text-3xl tabular-nums text-zinc-900 dark:text-white">{b.points.toLocaleString()}<span className="ml-2 text-sm text-zinc-500">≈ {money(b.points * b.brand.pointValue, b.brand.currency)}</span></p>
@@ -171,7 +171,7 @@ function Wallet() {
               <ul className="mt-3 space-y-2">
                 {data.offers.map((o, i) => (
                   <motion.li key={o.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }} className="rounded-2xl bg-zinc-50 dark:bg-white/[0.04] p-3 flex gap-3">
-                    <span className="w-1 rounded-full shrink-0" style={{ background: o.color ?? '#ec4899' }} aria-hidden />
+                    <span className="w-1 rounded-full shrink-0" style={{ background: o.color ?? '#fe81d1' }} aria-hidden />
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold text-zinc-900 dark:text-white">{o.title}</span>
                       <span className="block text-[11px] text-zinc-500">{[o.brand, o.product, o.area, `${o.left.toLocaleString()} left`, o.endsAt ? `until ${new Date(o.endsAt).toLocaleDateString()}` : null].filter(Boolean).join(' · ')}</span>

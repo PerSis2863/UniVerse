@@ -51,8 +51,8 @@ function MiniCode({ serial }: { serial: string }) {
   }
   return (
     <svg viewBox="0 0 7 7" className="h-9 w-9 shrink-0 rounded-[3px] bg-white p-[2px]" aria-hidden>
-      {[[0, 0], [5, 0], [0, 5]].map(([x, y]) => <rect key={`${x}${y}`} x={x} y={y} width="2" height="2" fill="#0b0b0c" />)}
-      {cells.map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="#0b0b0c" />)}
+      {[[0, 0], [5, 0], [0, 5]].map(([x, y]) => <rect key={`${x}${y}`} x={x} y={y} width="2" height="2" fill="#171f44" />)}
+      {cells.map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="#171f44" />)}
     </svg>
   );
 }
@@ -176,7 +176,7 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
           <span className="flex items-center gap-1" role="img" aria-label={`${s.lives} of ${FAKE_LIVES} lives left`}>
             {Array.from({ length: FAKE_LIVES }, (_, k) => (
               <motion.span key={k} animate={k < s.lives ? { scale: 1, opacity: 1, rotate: 0, y: 0 } : { scale: 0.8, opacity: 0.25, rotate: calm ? 0 : -25, y: calm ? 0 : 4 }} transition={spring.bouncy}>
-                <Heart className={cn('w-6 h-6', k < s.lives ? 'fill-pink-500 text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]' : 'text-zinc-500')} aria-hidden />
+                <Heart className={cn('w-6 h-6', k < s.lives ? 'fill-pink-500 text-pink-500 drop-shadow-[0_0_8px_rgba(254,129,209,0.6)]' : 'text-zinc-500')} aria-hidden />
               </motion.span>
             ))}
           </span>
@@ -196,9 +196,9 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
             <motion.button key={`${s.i}-${k}`} type="button" disabled={answered || cleared} onClick={() => pick(k)}
               initial={{ opacity: 0, y: calm ? 0 : 30, rotate: calm ? 0 : (k % 2 ? 3 : -3), scale: calm ? 1 : 0.94 }} animate={{ opacity: cleared && !answered ? 0.45 : answered && !isFake && !wrongPick ? 0.75 : 1, y: 0, rotate: 0, scale: 1 }}
               transition={{ ...spring.smooth, delay: answered ? 0 : 0.06 * k }}
-              className={cn('group relative min-h-[15.5rem] rounded-[1.5rem] text-start outline-offset-4 transition-shadow duration-150', !answered && 'hover:shadow-[0_18px_40px_-18px_rgba(236,72,153,0.55)]')}>
+              className={cn('group relative min-h-[15.5rem] rounded-[1.5rem] text-start outline-offset-4 transition-shadow duration-150', !answered && 'hover:shadow-[0_18px_40px_-18px_rgba(254,129,209,0.55)]')}>
               <motion.span className="absolute inset-0 block" style={{ transformStyle: 'preserve-3d' }} animate={{ rotateY: isFake && !calm ? 180 : 0 }} transition={{ type: 'spring', visualDuration: 0.6, bounce: 0.18 }}>
-                <span className={cn('absolute inset-0 block overflow-hidden rounded-[1.5rem] bg-[#141416] p-4 ring-1 [backface-visibility:hidden]',
+                <span className={cn('absolute inset-0 block overflow-hidden rounded-[1.5rem] bg-[#1d2650] p-4 ring-1 [backface-visibility:hidden]',
                   wrongPick ? 'play-shake ring-amber-400' : answered ? 'ring-emerald-400/40' : 'ring-white/10 group-hover:ring-pink-400/60')}>
                   <span className="play-scanline pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-pink-400/15 to-transparent" aria-hidden />
                   <Front c={c} k={k} answered={answered} />

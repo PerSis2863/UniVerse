@@ -18,10 +18,14 @@ export interface Frame {
   still: boolean;
 }
 
-export function useLiveCanvas(draw: (f: Frame) => void) {
+/** `wake`: when it changes (data that arrived later, like the planet's land), one more frame is drawn
+ *  even when the picture holds still (Reduce Motion). */
+export function useLiveCanvas(draw: (f: Frame) => void, wake?: unknown) {
   const ref = useRef<HTMLCanvasElement>(null);
   const latest = useRef(draw);
+  const kicker = useRef<() => void>(() => {});
   useEffect(() => { latest.current = draw; });
+  useEffect(() => { kicker.current(); }, [wake]);
   useEffect(() => {
     const cv = ref.current;
     const ctx = cv?.getContext('2d');
@@ -45,6 +49,7 @@ export function useLiveCanvas(draw: (f: Frame) => void) {
       if (!still && seen && !document.hidden) raf = requestAnimationFrame(frame);
     };
     const kick = () => { if (!raf) raf = requestAnimationFrame(frame); };
+    kicker.current = kick;
     const ro = new ResizeObserver(() => { size(); kick(); });
     ro.observe(cv);
     const io = new IntersectionObserver(([e]) => { seen = e.isIntersecting; if (seen) kick(); });
@@ -66,10 +71,10 @@ export function useLiveCanvas(draw: (f: Frame) => void) {
   return ref;
 }
 
-/** The Karma light: hot pink with a little purple, white, and the warm gold of the headline cards. */
-export const TONES = { pink: '236,72,153', violet: '168,85,247', white: '255,250,245', gold: '233,196,106' } as const;
+/** The light (M52, the "Globynk" palette): Baby Pink, Aqua Jade, a periwinkle blue and a cool white. */
+export const TONES = { pink: '254,129,209', blue: '140,155,255', aqua: '116,255,237', white: '242,247,255' } as const;
 export type Tone = keyof typeof TONES;
-export const TONE_ORDER: Tone[] = ['pink', 'violet', 'gold', 'white'];
+export const TONE_ORDER: Tone[] = ['pink', 'blue', 'aqua', 'white'];
 
 const sprites = new Map<string, HTMLCanvasElement>();
 /** A soft round glow in one colour, drawn once and stamped many times (cheap: no shadows, no blur). */

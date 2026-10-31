@@ -77,7 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: DISPLAY_PREFS_SCRIPT }} />
         {/* The saved language's direction (Arabic and Urdu read right to left) before paint */}
         <script dangerouslySetInnerHTML={{ __html: LANGUAGE_SCRIPT }} />
-        <style dangerouslySetInnerHTML={{ __html: 'html{background:#ebeae6}html.dark{background:#0b0b0c;color-scheme:dark}' }} />
+        <style dangerouslySetInnerHTML={{ __html: 'html{background:#e9eef8}html.dark{background:#171f44;color-scheme:dark}' }} />
         {/* An old tab after a deploy can ask for page files that no longer exist: load the new
             version (once), or show a Reload screen, never a blank or unstyled page. */}
         <script dangerouslySetInnerHTML={{ __html: recoveryScript }} />

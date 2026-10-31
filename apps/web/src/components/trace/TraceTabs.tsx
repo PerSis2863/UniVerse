@@ -35,7 +35,7 @@ export function TraceTabs() {
               <Link href={t.href} aria-current={on ? 'page' : undefined} className={cn('relative z-10 flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold transition-colors', on ? 'text-white' : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white')}>
                 <t.icon className="w-4 h-4" aria-hidden />{t.label}
               </Link>
-              {on && <motion.span layoutId="trace-tab" className="absolute inset-0 rounded-full bg-indigo-600 shadow-[0_0_0_1px_rgba(236,72,153,0.35),0_8px_24px_-8px_rgba(236,72,153,0.55)]" transition={{ type: 'spring', stiffness: 420, damping: 36 }} />}
+              {on && <motion.span layoutId="trace-tab" className="absolute inset-0 rounded-full bg-indigo-600 shadow-[0_0_0_1px_rgba(254,129,209,0.35),0_8px_24px_-8px_rgba(254,129,209,0.55)]" transition={{ type: 'spring', stiffness: 420, damping: 36 }} />}
             </li>
           );
         })}

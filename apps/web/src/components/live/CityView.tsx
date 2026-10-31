@@ -47,7 +47,7 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
     // 2 · Traffic: head and tail lights moving along the streets (buildings in front hide them).
     ctx.globalCompositeOperation = 'lighter';
     ctx.lineWidth = 1.2;
-    ctx.strokeStyle = 'rgba(236,72,153,0.55)';
+    ctx.strokeStyle = 'rgba(254,129,209,0.55)';
     for (let i = 0; i < 46; i++) {
       const axis = i % 2, line = Math.floor(seeded(i * 3.1) * (G + 1)), dir = seeded(i * 7.7) < 0.5 ? 1 : -1;
       const lane = dir * 0.055, speed = 0.25 + seeded(i * 5.3) * 0.45;
@@ -99,9 +99,9 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
       if (r.v.state === 'parked') return;
       // Done: a wide soft glow under a bright line, brightest just behind the van (its trail).
       ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = `rgba(236,72,153,${lit ? 0.35 : 0.2})`; ctx.lineWidth = 7;
+      ctx.strokeStyle = `rgba(254,129,209,${lit ? 0.35 : 0.2})`; ctx.lineWidth = 7;
       path(r, 0, p); ctx.stroke();
-      ctx.strokeStyle = `rgba(244,114,182,${lit ? 1 : 0.8})`; ctx.lineWidth = 1.8;
+      ctx.strokeStyle = `rgba(255,159,220,${lit ? 1 : 0.8})`; ctx.lineWidth = 1.8;
       path(r, 0, p); ctx.stroke();
       if (moving) {
         ctx.strokeStyle = 'rgba(255,240,248,0.9)'; ctx.lineWidth = 2.4;
@@ -123,12 +123,12 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
     routes.forEach((r, i) => {
       const k = grow(i);
       if (k <= 0 || r.v.state === 'parked') return;
-      ctx.strokeStyle = `rgba(236,72,153,${i === near ? 0.4 : 0.16})`;
+      ctx.strokeStyle = `rgba(254,129,209,${i === near ? 0.4 : 0.16})`;
       path(r, 0, r.v.progress * k); ctx.stroke();
       // And the van, as a soft light, in case a tower stands in front of it.
       const v = at(r, r.v.progress * k), [x, y] = iso(v.x, v.y, 0.05);
       ctx.globalAlpha = 0.35;
-      ctx.drawImage(glow(r.v.state === 'done' ? 'gold' : 'pink'), x - 9, y - 9, 18, 18);
+      ctx.drawImage(glow(r.v.state === 'done' ? 'aqua' : 'pink'), x - 9, y - 9, 18, 18);
       ctx.globalAlpha = 1;
     });
 
@@ -136,7 +136,7 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
     for (let i = 0; i < 40 && L.twinkle.length; i++) {
       const [x, y] = L.twinkle[Math.floor(seeded(i + Math.floor(t / 2.5) * 13) * L.twinkle.length)];
       ctx.globalAlpha = 0.6 * Math.max(0, Math.sin((t / 2.5) * Math.PI * 2 + i)) * reveal;
-      ctx.drawImage(glow('gold'), x - 5, y - 5, 10, 10);
+      ctx.drawImage(glow('aqua'), x - 5, y - 5, 10, 10);
     }
     L.antennas.forEach(([x, y], i) => {
       ctx.globalAlpha = ((t * 0.9 + i * 0.37) % 1.6 < 0.18 ? 1 : 0.25) * reveal;
@@ -151,21 +151,21 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
     // 5 · The hub: a hexagon of light on the ground, a ring turning, rings going out, a beam.
     ctx.beginPath();
     for (let k = 0; k <= 6; k++) { const a = (k / 6) * Math.PI * 2 + Math.PI / 6; const [x, y] = iso(H + Math.cos(a) * 0.42, H + Math.sin(a) * 0.42, 0.02); if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
-    ctx.fillStyle = `rgba(233,196,106,${0.18 * reveal})`; ctx.fill();
-    ctx.strokeStyle = `rgba(233,196,106,${0.85 * reveal})`; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = `rgba(116,255,237,${0.18 * reveal})`; ctx.fill();
+    ctx.strokeStyle = `rgba(116,255,237,${0.85 * reveal})`; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.setLineDash([3, 5]); ctx.lineDashOffset = t * 10;
-    ctx.strokeStyle = `rgba(233,196,106,${0.5 * reveal})`; ctx.lineWidth = 1;
+    ctx.strokeStyle = `rgba(116,255,237,${0.5 * reveal})`; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.ellipse(hx, hy, s * 0.75, s * 0.375, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
     for (let r = 0; r < 3; r++) {
       const f = (t * 0.45 + r / 3) % 1;
-      ctx.strokeStyle = `rgba(233,196,106,${0.45 * (1 - f) * reveal})`;
+      ctx.strokeStyle = `rgba(116,255,237,${0.45 * (1 - f) * reveal})`;
       ctx.beginPath(); ctx.ellipse(hx, hy, s * (0.4 + f * 1.4), s * (0.4 + f * 1.4) * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
     }
-    beam(ctx, hx, hy, s * 2.6, '233,196,106', 0.55 * reveal, 5);
+    beam(ctx, hx, hy, s * 2.6, '116,255,237', 0.55 * reveal, 5);
     const hs = s * 1.4 + Math.sin(t * 2) * 3;
     ctx.globalAlpha = 0.9 * reveal;
-    ctx.drawImage(glow('gold'), hx - hs / 2, hy - hs / 2, hs, hs);
+    ctx.drawImage(glow('aqua'), hx - hs / 2, hy - hs / 2, hs, hs);
     ctx.globalAlpha = 1;
 
     // Beams over the shops: violet while on the way, gold once delivered.
@@ -173,7 +173,7 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
       const k = grow(i);
       if (k <= 0) return;
       const e = r.pts[r.pts.length - 1], [x, y] = iso(e[0], e[1]), done = r.v.state === 'done';
-      beam(ctx, x, y, s * (done ? 1.2 : 1.6), done ? '233,196,106' : '168,85,247', (done ? 0.5 : 0.35 + 0.15 * Math.sin(t * 2 + i)) * k, 3);
+      beam(ctx, x, y, s * (done ? 1.2 : 1.6), done ? '116,255,237' : '140,155,255', (done ? 0.5 : 0.35 + 0.15 * Math.sin(t * 2 + i)) * k, 3);
     });
     ctx.globalCompositeOperation = 'source-over';
 
@@ -188,7 +188,7 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
       if (r.v.state === 'done' && !lit) {
         const e = r.pts[r.pts.length - 1], [x, y] = iso(e[0], e[1]), by = y - s * 1.25;
         ctx.globalAlpha = k;
-        ctx.fillStyle = '#e9c46a'; ctx.beginPath(); ctx.arc(x, by, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#74ffed'; ctx.beginPath(); ctx.arc(x, by, 6, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#141210'; ctx.lineWidth = 1.6;
         ctx.beginPath(); ctx.moveTo(x - 2.6, by); ctx.lineTo(x - 0.6, by + 2); ctx.lineTo(x + 2.8, by - 2); ctx.stroke();
         ctx.globalAlpha = 1;
@@ -203,12 +203,12 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
       while (placed.some(([px, py, pw, ph]) => x < px + pw && x + bw > px && y < py + ph && y + bh > py)) y -= bh + 4;
       placed.push([x, y, bw, bh]);
       ctx.globalAlpha = k * (near < 0 || lit ? 1 : 0.6);
-      ctx.strokeStyle = 'rgba(244,114,182,0.6)'; ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,159,220,0.6)'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(vx, vy - 4); ctx.lineTo(vx, y + bh); ctx.stroke();
       ctx.fillStyle = 'rgba(12,12,14,0.9)';
       ctx.beginPath(); ctx.roundRect(x, y, bw, bh, 10); ctx.fill();
-      ctx.strokeStyle = r.v.state === 'done' ? 'rgba(233,196,106,0.6)' : 'rgba(236,72,153,0.6)'; ctx.stroke();
-      ctx.fillStyle = r.v.state === 'done' ? '#e9c46a' : '#ec4899';
+      ctx.strokeStyle = r.v.state === 'done' ? 'rgba(116,255,237,0.6)' : 'rgba(254,129,209,0.6)'; ctx.stroke();
+      ctx.fillStyle = r.v.state === 'done' ? '#74ffed' : '#fe81d1';
       ctx.beginPath(); ctx.arc(x + 9, y + bh / 2, 2.6, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff';
       ctx.fillText(text, x + 15, y + bh / 2 + 0.5);
@@ -260,7 +260,7 @@ function drawVan(ctx: CanvasRenderingContext2D, iso: Iso, p: { x: number; y: num
   ctx.globalCompositeOperation = 'lighter';
   const [gx, gy] = c(0, 0, 0.03), gs = lit ? 40 : 30;
   ctx.globalAlpha = (state === 'parked' ? 0.25 : 0.75) + (lit ? 0.2 : 0);
-  ctx.drawImage(glow(state === 'done' ? 'gold' : 'pink'), gx - gs / 2, gy - gs / 2, gs, gs);
+  ctx.drawImage(glow(state === 'done' ? 'aqua' : 'pink'), gx - gs / 2, gy - gs / 2, gs, gs);
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = state === 'parked' ? 0.45 : 1;
   face([c(-L, -W, 0), c(L, -W, 0), c(L, -W, Z), c(-L, -W, Z)], '#c9c4bd');
@@ -307,7 +307,7 @@ function build(key: string, w: number, h: number, dpr: number, G: number, s: num
   for (let i = 0; i <= G; i++) {
     for (let j = 0; j <= G; j++) {
       const [x, y] = iso(i + 0.17, j + 0.17);
-      gg.globalAlpha = 0.35; gg.drawImage(glow('gold'), x - 7, y - 4, 14, 8);
+      gg.globalAlpha = 0.35; gg.drawImage(glow('aqua'), x - 7, y - 4, 14, 8);
       gg.globalAlpha = 1; gg.fillStyle = 'rgba(255,236,200,0.9)'; gg.fillRect(x - 0.6, y - 0.6, 1.2, 1.2);
     }
   }
@@ -360,7 +360,7 @@ function build(key: string, w: number, h: number, dpr: number, G: number, s: num
         for (let c = 0; c < cols; c++) {
           const on = seeded(x0 * 97 + y0 * 31 + f * 7 + c * 3 + face) < lit;
           const u0 = (c + 0.2) / cols, u1 = (c + 0.75) / cols, z0 = ((f + 0.25) / floors) * z * 0.96, z1 = ((f + 0.7) / floors) * z * 0.96;
-          const tone = seeded(f * 13 + c + x0) < 0.2 ? '255,236,245' : '233,196,106';
+          const tone = seeded(f * 13 + c + x0) < 0.2 ? '255,236,245' : '116,255,237';
           quad(cg, [pt(u0, z0), pt(u1, z0), pt(u1, z1), pt(u0, z1)], on ? `rgba(${tone},${0.45 + seeded(c + f) * 0.5})` : 'rgba(255,255,255,0.03)');
           if (on && twinkle.length < 700 && seeded(f + c * 7 + y1) < 0.5) twinkle.push(pt((u0 + u1) / 2, (z0 + z1) / 2));
         }
@@ -374,7 +374,7 @@ function build(key: string, w: number, h: number, dpr: number, G: number, s: num
       antennas.push(iso(cx, cy, z + 0.3));
     }
     if (b.neon) {
-      quad(cg, [iso(x1 - 0.015, y1, z * 0.15), iso(x1, y1 - 0.015, z * 0.15), iso(x1, y1 - 0.015, z * 0.9), iso(x1 - 0.015, y1, z * 0.9)], 'rgba(244,114,182,0.95)');
+      quad(cg, [iso(x1 - 0.015, y1, z * 0.15), iso(x1, y1 - 0.015, z * 0.15), iso(x1, y1 - 0.015, z * 0.9), iso(x1 - 0.015, y1, z * 0.9)], 'rgba(255,159,220,0.95)');
       neon.push(iso(x1, y1, z * 0.55));
     }
   }

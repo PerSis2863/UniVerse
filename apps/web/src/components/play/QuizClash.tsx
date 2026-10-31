@@ -20,8 +20,8 @@ const PER_Q = QUIZ_SECONDS_PER_QUESTION * 1000;
 const REVEAL_MS = 1050;
 const TOPIC: Record<string, { icon: LucideIcon; tint: string }> = {
   Science: { icon: Atom, tint: '#38bdf8' }, Geography: { icon: Globe2, tint: '#34d399' }, Climate: { icon: Leaf, tint: '#a3e635' },
-  Technology: { icon: Cpu, tint: '#c084fc' }, Culture: { icon: Palette, tint: '#fbbf24' }, Maths: { icon: Calculator, tint: '#f472b6' },
-  'Quick maths': { icon: Divide, tint: '#f472b6' },
+  Technology: { icon: Cpu, tint: '#a9b4ff' }, Culture: { icon: Palette, tint: '#fbbf24' }, Maths: { icon: Calculator, tint: '#ff9fdc' },
+  'Quick maths': { icon: Divide, tint: '#ff9fdc' },
 };
 const POWERS: { id: QuizPower; key: string; label: string; icon: LucideIcon }[] = [
   { id: 'half', key: 'Q', label: '50:50', icon: Divide }, { id: 'time', key: 'W', label: '+5 s', icon: Clock3 }, { id: 'double', key: 'E', label: 'Double', icon: Sparkles },

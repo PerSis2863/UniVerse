@@ -27,7 +27,7 @@ export const APPS: ImpactApp[] = [
     paths: ['/student', '/teacher', '/admin', '/parent', '/library', '/marketplace', '/campus-map', '/donations', '/hall', '/impact-league', '/impact-rooms', '/application'],
   },
   {
-    id: 'trace', name: 'UniVerse Trace', tagline: 'Every product gets a passport', color: '#ec4899',
+    id: 'trace', name: 'UniVerse Trace', tagline: 'Every product gets a passport', color: '#fe81d1',
     impact: 'Real or fake, in one scan.',
     paths: ['/trace', '/carry', '/t', '/b'],
   },
@@ -42,7 +42,7 @@ export const APPS: ImpactApp[] = [
     paths: ['/green'],
   },
   {
-    id: 'play', name: 'UniVerse Play', tagline: 'Games that teach something', color: '#d946ef',
+    id: 'play', name: 'UniVerse Play', tagline: 'Games that teach something', color: '#e46bdb',
     impact: 'Twelve games, solo or with friends.',
     paths: ['/play'],
   },

@@ -187,7 +187,7 @@ export function sampleGreenMap() {
 
 // ---------- Trace ----------
 
-const BRAND = { id: 'sample-brand', name: 'Aurora Foods', slug: 'aurora-foods', category: 'food', color: '#ec4899', logoUrl: null, plan: 'PRO', pointValue: 0.01, currency: 'EUR', minCashout: 500 };
+const BRAND = { id: 'sample-brand', name: 'Aurora Foods', slug: 'aurora-foods', category: 'food', color: '#fe81d1', logoUrl: null, plan: 'PRO', pointValue: 0.01, currency: 'EUR', minCashout: 500 };
 const PRODUCTS = [
   { id: 'sample-p1', name: 'Aurora Olive Oil, 1 L', category: 'food', origin: BIG.find((c) => c[0] === 'Madrid') ?? BIG[0] },
   { id: 'sample-p2', name: 'Aurora Saffron, 2 g', category: 'food', origin: BIG.find((c) => c[0] === 'Mumbai') ?? BIG[1] },
@@ -344,7 +344,7 @@ export function sampleTraceCashouts() {
 export function sampleTraceWallet() {
   const now = Date.now(), r = rng(14);
   const brands = [
-    { id: 'sample-brand', name: 'Aurora Foods', color: '#ec4899', logoUrl: null, pointValue: 0.01, currency: 'EUR', minCashout: 500 },
+    { id: 'sample-brand', name: 'Aurora Foods', color: '#fe81d1', logoUrl: null, pointValue: 0.01, currency: 'EUR', minCashout: 500 },
     { id: 'sample-brand-2', name: 'TerraBrew Coffee', color: '#a16207', logoUrl: null, pointValue: 0.01, currency: 'EUR', minCashout: 500 },
     { id: 'sample-brand-3', name: 'Kaveri Spices', color: '#f59e0b', logoUrl: null, pointValue: 0.008, currency: 'EUR', minCashout: 400 },
   ];
@@ -354,7 +354,7 @@ export function sampleTraceWallet() {
     history: Array.from({ length: 24 }, (_, i) => { const b = pick(r, brands); return { id: `sample-pt-${i}`, brandId: b.id, kind: i % 9 === 4 ? 'BONUS' : 'SCAN', points: 25 + Math.floor(r() * 40), note: i % 9 === 4 ? 'Campaign bonus' : 'Sold and scanned', createdAt: iso(now - i * 0.7 * DAY), brand: b.name }; }),
     cashouts: [{ id: 'sample-wc1', points: 600, amount: 6, currency: 'EUR', status: 'PAID', note: null, createdAt: iso(now - 12 * DAY), brand: 'Aurora Foods' }],
     offers: [
-      { id: 'sample-o1', title: 'Paris launch: +40 points per sale', bonusPoints: 40, left: 20_160, area: 'Paris (30 km)', endsAt: iso(now + 12 * DAY), brand: 'Aurora Foods', color: '#ec4899', product: 'Aurora Olive Oil, 1 L' },
+      { id: 'sample-o1', title: 'Paris launch: +40 points per sale', bonusPoints: 40, left: 20_160, area: 'Paris (30 km)', endsAt: iso(now + 12 * DAY), brand: 'Aurora Foods', color: '#fe81d1', product: 'Aurora Olive Oil, 1 L' },
       { id: 'sample-o2', title: 'Double points on cold brew', bonusPoints: 30, left: 4_500, area: 'Everywhere', endsAt: null, brand: 'TerraBrew Coffee', color: '#a16207', product: null },
     ],
   };
@@ -406,7 +406,7 @@ export function sampleTraceInsights() {
 export function sampleTraceVault() {
   const now = Date.now();
   return [
-    { id: 'sample-v1', code: 'AURORA00042K7QX', since: iso(now - 40 * DAY), owners: 1, product: { id: 'sample-p1', name: 'Aurora Olive Oil, 1 L', imageUrl: null, category: 'food' }, brand: { id: 'sample-brand', name: 'Aurora Foods', color: '#ec4899', slug: 'aurora-foods' }, warrantyEnds: null, transfer: null },
+    { id: 'sample-v1', code: 'AURORA00042K7QX', since: iso(now - 40 * DAY), owners: 1, product: { id: 'sample-p1', name: 'Aurora Olive Oil, 1 L', imageUrl: null, category: 'food' }, brand: { id: 'sample-brand', name: 'Aurora Foods', color: '#fe81d1', slug: 'aurora-foods' }, warrantyEnds: null, transfer: null },
     { id: 'sample-v2', code: 'ZENITH0911PQ4M', since: iso(now - 120 * DAY), owners: 2, product: { id: 'sample-w', name: 'Zenith Diver 300', imageUrl: null, category: 'watches' }, brand: { id: 'sample-zenith', name: 'Zenith Watches', color: '#94a3b8', slug: 'zenith-watches' }, warrantyEnds: iso(now + 600 * DAY), transfer: { code: 'K7Q2XM4P', until: iso(now + 5 * DAY) } },
   ];
 }

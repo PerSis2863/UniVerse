@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M51 is the latest).
+  builds on it). The newest notes are at the end (M52 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -110,7 +110,9 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   home, `src/components/live`), **M49** (heartbeat, radar and pulse-grid pictures, tabs that
   cascade their cards in, the owner console's live cards), **M50** (Trace in motion after the
   "Waypoint" video: a night city of vans, journey lines, level gauges, a timetable with now) and
-  **M51** (the night city much richer: traffic, neon, beams, depth) (branch `claude/funny-galileo-y4mz9r`, not merged yet).
+  **M51** (the night city much richer: traffic, neon, beams, depth) and **M52** (the "Globynk" colours
+  everywhere: navy, aqua, Baby Pink; the dotted planet on the landing and hub; 3D cards on the Impact
+  Wallet) (branch `claude/funny-galileo-y4mz9r`, not merged yet).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
   done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts
@@ -258,21 +260,24 @@ file used only from config goes in its `BY_CONFIG` list).
 
 ## 8. Design and motion
 
-**The look: "Karma" (the owner, 25 Oct 2026, after Rondesignlab's CreditKarma; replaced the dark
-blue).** Light mode: a warm off-white page (#EBEAE6) lit by soft amber, gold and blue-grey glows with
-grain (`.ambient-bg`), crisp white squircle cards (`--radius-card`, `corner-shape: squircle` where the
-browser has it), black pill buttons and black selected pills. Dark mode (the default): near-black
-(#0B0B0C), graphite cards (#151517) with a hairline, white pill buttons and pills. The side menu is
-near-black in both themes, the chosen entry a white pill with a pink edge. Neutrals are warm
-graphite: `indigo-*` / `violet-*` / `purple-*` = the graphite scale (indigo-600 = #2A2927), `zinc-*` =
-warm greys. Headline cards wear the design's frosts (`--karma-dusk`, `--karma-olive`,
-`--karma-gold`; `kpi-row` uses the first two, `.karma-frost` for any card); thin-line icons sit in
-circles (`.karma-icon`), round ink arrow buttons (`.karma-go`). Type: Urbanist, served from
-`/fonts/urbanist` (no outside service). **Hot pink with a little purple stays the light**: the light
-river (`LightTrail`: dense, thin, sharp strands with glowing pulses), focus, live states and the
-icon's U. No other new hues; green, amber and red only for states. `.panel` / `.card` /
-`.btn-primary` / `.ios-segmented` carry the look, so new screens get it by using them. The river and
-the italic accent word are the brand, even where design guides call them "AI-looking".
+**The look: "Globynk" (M52, the owner, 31 Oct 2026; replaced M34's warm graphite "Karma").** Three
+colours: **Midnight Abyss #171F44** (navy: the page in dark mode, the ink, the side menu), **Aqua Jade
+#74FFED** (the glow rising from the bottom of every page, focus in dark mode, the planet) and **Baby
+Pink #FE81D1** (the light: the main button, the river, live states, arcs). Dark mode (the default): a
+#171f44 page with aqua glowing up from the bottom, navy cards (#1d2650) with a hairline, white pills.
+Light mode: an ice-white page (#e9eef8) with the same glows, white squircle cards (`--radius-card`,
+`corner-shape: squircle` where the browser has it), navy pills. **`.btn-primary` is a Baby Pink pill
+with navy text in both themes**; text on Baby Pink is always navy (white needs `pink-600` or deeper).
+The side menu is deep navy in both themes, the chosen entry a white pill with a pink edge. Tailwind
+names: `indigo-*` / `violet-*` / `purple-*` = the navy scale (indigo-600 = #2b3568, 900 = #171f44),
+`zinc-*` = cool greys, `pink-500` = Baby Pink, `fuchsia-*` an orchid beside it, `aqua-*` = Aqua Jade
+(300; only `aqua-700` as text on light backgrounds). Headline cards wear frosts (`--karma-dusk` navy
+into deep aqua, `--karma-gold` pale aqua, `--karma-olive` navy into orchid; names kept; `kpi-row` uses
+the first two, `.karma-frost` for any card); thin-line icons sit in circles (`.karma-icon`), round ink
+arrow buttons (`.karma-go`). Type: Urbanist, served from `/fonts/urbanist` (no outside service). No
+other new hues; green, amber and red only for states. `.panel` / `.card` / `.btn-primary` /
+`.ios-segmented` carry the look, so new screens get it by using them. The river and the italic accent
+word are the brand, even where design guides call them "AI-looking".
 
 **The motion layer works on every page by itself**: pages assemble out of a blur
 (`src/lib/page-transition.ts`), titles sweep in, a light trail runs down the page (`LightTrail`),

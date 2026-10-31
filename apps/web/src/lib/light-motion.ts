@@ -9,7 +9,7 @@ import { reducedMotion } from '@/lib/page-transition';
 // (.beam-once, scroll-motion.ts), the glint on filled bars (.bar-glint), the comet on the page bar.
 
 const SPARK_TARGET = '.btn-primary, [data-spark]';
-const COLOURS = ['#a8a59f', '#a8a59f', '#f472b6', '#ec4899', '#ffffff'];
+const COLOURS = ['#a0a9cc', '#a0a9cc', '#ff9fdc', '#fe81d1', '#ffffff'];
 
 function burst(x: number, y: number) {
   const host = document.createElement('div');

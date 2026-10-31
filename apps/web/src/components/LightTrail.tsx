@@ -22,9 +22,10 @@ import { cn } from '@/lib/utils';
 // Motion and low-memory phones; nothing while the tab is hidden.
 
 // The owner (24 Oct 2026): the light lines are hot pink with a little purple. M34 (25 Oct, the
-// Karma look): kept, denser, thinner and sharper, with faster pulses that glow at their heads.
-const DARK = { strands: ['#ff2d95', '#ec4899', '#d946ef', '#f472b6', '#e879f9', '#ff6fb5'], bands: ['#4a1530', '#be185d', '#2a0f1f', '#86198f', '#701a75'], pulse: '#fdf2f8', spark: '#f0abfc' };
-const LIGHT = { strands: ['#db2777', '#c026d3', '#ec4899', '#a21caf', '#be185d', '#f472b6'], bands: ['#f9a8d4', '#fbcfe8', '#f0abfc', '#f5d0fe', '#fce7f3'], pulse: '#9d174d', spark: '#c026d3' };
+// Karma look): kept, denser, thinner and sharper, with faster pulses that glow at their heads. M52
+// (31 Oct, the "Globynk" palette): Baby Pink strands with a few Aqua Jade ones and aqua sparks.
+const DARK = { strands: ['#fe81d1', '#ff9fdc', '#74ffed', '#ffc0e6', '#ef88e3', '#a6fff3'], bands: ['#3a1f5c', '#a32c7b', '#14506a', '#762d72', '#126a72'], pulse: '#ffffff', spark: '#a6fff3' };
+const LIGHT = { strands: ['#c13a92', '#b447ae', '#fe81d1', '#0fa89c', '#a32c7b', '#22d3c2'], bands: ['#ffc0e6', '#cffff8', '#f4a6ea', '#a6fff3', '#ffe6f6'], pulse: '#82245f', spark: '#0fa89c' };
 
 const OWN_RIVER = new Set(['/', '/login', '/register']);
 
@@ -151,8 +152,8 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
         // A glow where the pointer touches the river.
         if (near && Math.abs(px - centre(sy + py)) < spread(sy + py) + 220) {
           const g = sctx.createRadialGradient(px, py, 0, px, py, 180);
-          g.addColorStop(0, dark ? 'rgba(249,168,212,0.35)' : 'rgba(236,72,153,0.14)');
-          g.addColorStop(1, 'rgba(42,41,39,0)');
+          g.addColorStop(0, dark ? 'rgba(255,192,230,0.35)' : 'rgba(254,129,209,0.14)');
+          g.addColorStop(1, 'rgba(43,53,104,0)');
           sctx.globalAlpha = pv * k;
           sctx.fillStyle = g;
           sctx.fillRect(px - 180, py - 180, 360, 360);
@@ -163,9 +164,9 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
           if (yb > y1 + 300) break;
           const bx = centre(yb), by = yb - sy, r = Math.min(W, H) * 0.3;
           const g = sctx.createRadialGradient(bx, by, 0, bx, by, r);
-          g.addColorStop(0, dark ? 'rgba(255,255,255,0.55)' : 'rgba(236,72,153,0.18)');
-          g.addColorStop(0.25, dark ? 'rgba(244,114,182,0.28)' : 'rgba(116,110,122,0.12)');
-          g.addColorStop(1, 'rgba(42,41,39,0)');
+          g.addColorStop(0, dark ? 'rgba(255,255,255,0.55)' : 'rgba(254,129,209,0.18)');
+          g.addColorStop(0.25, dark ? 'rgba(255,159,220,0.28)' : 'rgba(116,255,237,0.14)');
+          g.addColorStop(1, 'rgba(43,53,104,0)');
           sctx.globalAlpha = k;
           sctx.fillStyle = g;
           sctx.fillRect(bx - r, by - r, r * 2, r * 2);
@@ -176,7 +177,7 @@ function River({ tone, hero, strength, className }: { tone: 'auto' | 'dark'; her
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(soft, 0, 0, W, H);
 
-      // 2 · The fine strands, coloured along the river (indigo → violet → fuchsia → pink). Bright in
+      // 2 · The fine strands, coloured along the river (pink, orchid and a few aqua). Bright in
       // the hero; further down (and in the app) mostly the soft glow, so text in front stays easy to read.
       const sharp = hero ? 1 - 0.5 * ramp(sy + H * 0.5) : phone ? 0.7 : 0.85;
       ctx.globalCompositeOperation = dark ? 'lighter' : 'source-over';

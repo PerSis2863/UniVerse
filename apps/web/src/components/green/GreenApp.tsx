@@ -99,7 +99,7 @@ export function GreenApp() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white" style={{ background: 'radial-gradient(120% 90% at 0% 0%, #0f3b2e 0%, #0b2620 55%, #0b0b0c 100%)' }}>
+      <section className="relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white" style={{ background: 'radial-gradient(120% 90% at 0% 0%, #0f3b2e 0%, #0b2620 55%, #171f44 100%)' }}>
         <span aria-hidden className="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-emerald-400/20 blur-3xl" />
         <div className="relative grid lg:grid-cols-[1fr_auto] gap-6 items-end">
           <div>
@@ -320,7 +320,7 @@ export function GreenMap() {
       </div>
       <WorldCanvas label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={!calm && cells.length > 0} draw={draw} className="w-full h-[46vh] min-h-[320px]">
         {data && cells.length === 0 && (
-          <div className="absolute inset-x-3 bottom-3 sm:inset-x-auto sm:start-3 sm:w-[420px] rounded-2xl bg-white dark:bg-[#0b0b0c] p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
+          <div className="absolute inset-x-3 bottom-3 sm:inset-x-auto sm:start-3 sm:w-[420px] rounded-2xl bg-white dark:bg-[#171f44] p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
             <p className="text-sm text-zinc-700 dark:text-zinc-200">No actions on the map yet. Log one with “Put it on the shared map” and yours is the first light. It glows brighter as friends join.</p>
             <InviteButton app="green" text="I’m logging my climate actions on UniVerse Green and seeing the CO₂ I save. Join me:" label="Invite friends" className="mt-3 flex-wrap" />
           </div>

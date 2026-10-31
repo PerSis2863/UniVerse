@@ -42,14 +42,14 @@ export function Live({ children, away = false, className }: { children: React.Re
 export function Tag({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <span className={cn('inline-flex items-center gap-2 h-7 px-3 rounded-full border border-white/[0.08] bg-white/[0.04] font-mono text-xs text-zinc-300', className)}>
-      <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_8px_#ec4899]" /> {children}
+      <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_8px_#fe81d1]" /> {children}
     </span>
   );
 }
 
 /** The italic word in a headline (“themselves.”, “not”). */
 export const Accent = ({ children }: { children: React.ReactNode }) => (
-  <em className="font-serif italic font-normal tracking-normal bg-gradient-to-r from-indigo-200 via-fuchsia-200 to-pink-200 bg-clip-text text-transparent pe-1">{children}</em>
+  <em className="font-serif italic font-normal tracking-normal bg-gradient-to-r from-aqua-200 via-pink-200 to-pink-300 bg-clip-text text-transparent pe-1">{children}</em>
 );
 
 /** Rises in once, when scrolled into view. */
@@ -75,7 +75,7 @@ export function CountUp({ to, prefix = '', suffix = '', className }: { to: numbe
 }
 
 /** The two-tone button (indigo into fuchsia), the page's one bright action. */
-export const primary = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-bold text-white bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_8px_30px_-8px_rgba(236,72,153,0.7)] hover:brightness-110 active:scale-[0.98] transition';
+export const primary = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-bold text-[#171f44] bg-pink-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_-8px_rgba(254,129,209,0.85)] hover:bg-pink-400 active:scale-[0.98] transition';
 export const ghost = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-semibold text-white border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] active:scale-[0.98] transition';
 /** A dark glass card. */
-export const glass = 'rounded-3xl border border-white/[0.08] bg-[#111112]/70 backdrop-blur-md';
+export const glass = 'rounded-3xl border border-white/[0.08] bg-[#131a3d]/70 backdrop-blur-md';

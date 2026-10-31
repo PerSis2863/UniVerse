@@ -42,8 +42,8 @@ function Trend({ days }: { days: { day: string; count: number }[] }) {
     <div className="relative h-32">
       <svg aria-hidden className="deck-draw absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
         <defs>
-          <linearGradient id="trend-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#5f5c57" stopOpacity="0.35" /><stop offset="1" stopColor="#5f5c57" stopOpacity="0" /></linearGradient>
-          <linearGradient id="trend-line" x1="0" x2="1"><stop offset="0" stopColor="#2a2927" /><stop offset="1" stopColor="#db2777" /></linearGradient>
+          <linearGradient id="trend-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#58617f" stopOpacity="0.35" /><stop offset="1" stopColor="#58617f" stopOpacity="0" /></linearGradient>
+          <linearGradient id="trend-line" x1="0" x2="1"><stop offset="0" stopColor="#2b3568" /><stop offset="1" stopColor="#c13a92" /></linearGradient>
         </defs>
         {pts.length > 1 && <>
           <path d={`${line} L100 100 L0 100 Z`} fill="url(#trend-fill)" />
@@ -101,7 +101,7 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
   const online = data.online.filter((u) => matches(q, u.name, u.role));
   const signIns = data.recentSignIns.filter((x) => matches(q, x.user.name, x.user.email, x.user.role, x.device, x.city, x.country, x.ip, x.method));
   const actions = data.recentActions.filter((a) => matches(q, a.actorName, a.summary));
-  const dot = 'absolute -start-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-400 shadow-[0_0_10px_rgba(236,72,153,0.55)]';
+  const dot = 'absolute -start-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-400 shadow-[0_0_10px_rgba(254,129,209,0.55)]';
   return (
     <div className="space-y-6">
       <SampleWorldCard />
@@ -168,7 +168,7 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
               <li key={u.id}>
                 <button type="button" onClick={() => onPerson(u.id)} className="w-full flex items-center gap-3 rounded-xl px-2 py-1.5 text-start hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
                   <span className="relative shrink-0 w-9 h-9 rounded-full grid place-items-center text-xs font-bold text-white bg-gradient-to-br from-indigo-500 to-fuchsia-600">
-                    {initials(u.name)}<span className="absolute -bottom-0.5 -end-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#0b0b0c]" />
+                    {initials(u.name)}<span className="absolute -bottom-0.5 -end-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#171f44]" />
                   </span>
                   <span className="min-w-0">
                     <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{u.name}</span>

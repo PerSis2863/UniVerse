@@ -39,12 +39,12 @@ export function cleanCustomDomain(raw: unknown): string | null {
   return d;
 }
 
-/** Validates brand color hex (e.g. "#2a2927" or "#2a2927"). */
+/** Validates brand color hex (e.g. "#2b3568" or "#2b3568"). */
 export function cleanBrandColor(raw: unknown): string | null {
   if (!raw) return null;
   const c = String(raw).trim().toLowerCase();
   if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/.test(c)) {
-    throw new BadRequestException("Brand color must be a valid hex code like #2a2927.");
+    throw new BadRequestException("Brand color must be a valid hex code like #2b3568.");
   }
   return c;
 }

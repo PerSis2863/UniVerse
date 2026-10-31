@@ -24,6 +24,7 @@ import { SplitCta } from '@/components/landing/SplitCta';
 import { GreenMore, PlayMore, ReliefMore } from '@/components/landing/ImpactMore';
 import { LiveTotals } from '@/components/landing/LiveTotals';
 import { ScrollStory } from '@/components/landing/ScrollStory';
+import { WorldSection } from '@/components/landing/WorldSection';
 import { Accent, EASE, Live, Reveal, Tag, ghost, primary } from '@/components/landing/bits';
 import type { AppId } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
@@ -31,7 +32,7 @@ import { homeFor } from '@/lib/role-home';
 
 // The public landing page, in the style of the owner's Relay video (a dark page, one river of light
 // from top to bottom, a live flow card, numbers that draw themselves as you scroll) and in
-// UniVerse's two tones: dark blue and hot pink. Every claim on it is about what the product does; no
+// UniVerse's colours (M52): Midnight Abyss, Aqua Jade and Baby Pink; the planet section after the hero. Every claim on it is about what the product does; no
 // invented usage numbers or quotes. UniVerse Impact is a home for several apps (src/lib/apps.ts): the
 // tabs at the top pick one (the owner: "put the uni-versity and universe trace tab where user can
 // switch to where they want to login"); the hero, the sections below and the sign-in buttons follow
@@ -147,15 +148,15 @@ export default function ShowcasePage() {
       {/* Opened as the installed app (an older install whose start address is still "/"): go to
           the app's start (sign in, or your dashboard) instead of the website's landing page. */}
       <script dangerouslySetInnerHTML={{ __html: "if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone){location.replace('/app')}" }} />
-      <div data-cursor-light className="mkt-smooth dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#0b0b0c', color: '#ffffff' }}>
-        <motion.div style={{ scaleX: progress }} className="fixed top-0 inset-x-0 h-[2px] origin-left z-[60] bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500" />
+      <div data-cursor-light className="mkt-smooth dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#171f44', color: '#ffffff' }}>
+        <motion.div style={{ scaleX: progress }} className="fixed top-0 inset-x-0 h-[2px] origin-left z-[60] bg-gradient-to-r from-aqua-300 via-pink-400 to-pink-500" />
         {/* The page's two-tone glow and the river of light, behind everything below the hero. */}
         <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
           {/* One river of light from the top of the page to the bottom: it pours in on arrival and
               bends in the gap between the hero's words and its card. */}
           <LightTrail tone="dark" hero className="opacity-70 lg:opacity-100" />
-          <div className="mkt-drift-a absolute top-[30%] start-[-30%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(42,41,39,0.16), transparent)' }} />
-          <div className="mkt-drift-b absolute bottom-[-25%] end-[-35%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(236,72,153,0.12), transparent)' }} />
+          <div className="mkt-drift-a absolute top-[30%] start-[-30%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(116,255,237,0.1), transparent)' }} />
+          <div className="mkt-drift-b absolute bottom-[-25%] end-[-35%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(254,129,209,0.12), transparent)' }} />
         </div>
 
         <MarketingNav />
@@ -204,6 +205,7 @@ export default function ShowcasePage() {
             </div>
           </section>
 
+          <WorldSection app={app} />
           <LiveTotals />
           <Live><ScrollStory onPick={pick} /></Live>
 

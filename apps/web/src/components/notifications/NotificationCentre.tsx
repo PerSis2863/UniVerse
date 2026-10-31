@@ -197,7 +197,7 @@ function Row({ n, onOpen, onAct }: { n: Item; onOpen: () => void; onAct: (a: 're
     <SwipeRow
       start={{ label: 'Snooze', icon: Clock, tone: 'text-amber-700 dark:text-amber-300', run: () => void onAct('snooze', [n.id], new Date(Date.now() + 3_600_000)) }}
       end={{ label: n.read ? 'Unread' : 'Read', icon: Check, tone: 'text-indigo-700 dark:text-indigo-300', run: () => void onAct(n.read ? 'unread' : 'read', [n.id]) }}
-      className={cn('flex items-start gap-3 p-3 rounded-2xl border bg-white dark:bg-[#141416]', n.read ? 'border-zinc-200/70 dark:border-white/[0.06]' : 'border-indigo-500/30')}>
+      className={cn('flex items-start gap-3 p-3 rounded-2xl border bg-white dark:bg-[#1d2650]', n.read ? 'border-zinc-200/70 dark:border-white/[0.06]' : 'border-indigo-500/30')}>
         <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', TONE[n.group])}><Icon className="w-4 h-4" /></span>
         <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-start">
           <span className="flex items-baseline gap-2">

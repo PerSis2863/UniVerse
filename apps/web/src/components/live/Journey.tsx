@@ -35,14 +35,14 @@ export function Journey({ steps, label, dark = false, className }: { steps: Step
 
     // The way still to go: faint dashes.
     ctx.setLineDash([3, 5]);
-    ctx.strokeStyle = dk ? 'rgba(255,255,255,0.18)' : 'rgba(42,41,39,0.22)';
+    ctx.strokeStyle = dk ? 'rgba(255,255,255,0.18)' : 'rgba(43,53,104,0.22)';
     ctx.lineWidth = 2;
     line(drawn, pts.length - 1); ctx.stroke();
     ctx.setLineDash([]);
     // The way done: a glowing gradient.
     if (drawn > 0) {
       const g = ctx.createLinearGradient(cx(0), 0, cx(n - 1), 0);
-      g.addColorStop(0, '#a855f7'); g.addColorStop(0.6, '#ec4899'); g.addColorStop(1, '#e9c46a');
+      g.addColorStop(0, '#8c9bff'); g.addColorStop(0.6, '#fe81d1'); g.addColorStop(1, '#74ffed');
       ctx.strokeStyle = g; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       line(0, drawn); ctx.stroke();
       // A light running along what's done, every 3 s.
@@ -63,12 +63,12 @@ export function Journey({ steps, label, dark = false, className }: { steps: Step
       const current = i === reached && !allDone;
       if (current && drawn >= goal) {
         const r = 12 + 6 * ((t * 0.8) % 1);
-        ctx.strokeStyle = `rgba(236,72,153,${0.5 * (1 - ((t * 0.8) % 1))})`;
+        ctx.strokeStyle = `rgba(254,129,209,${0.5 * (1 - ((t * 0.8) % 1))})`;
         ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
       }
       const r = 8 * (on ? 0.85 + 0.15 * pop : 0.85);
-      ctx.fillStyle = on ? (i === n - 1 ? '#e9c46a' : '#ec4899') : dk ? '#1c1c1f' : '#ffffff';
-      ctx.strokeStyle = on ? 'transparent' : dk ? 'rgba(255,255,255,0.3)' : 'rgba(42,41,39,0.3)';
+      ctx.fillStyle = on ? (i === n - 1 ? '#74ffed' : '#fe81d1') : dk ? '#1c1c1f' : '#ffffff';
+      ctx.strokeStyle = on ? 'transparent' : dk ? 'rgba(255,255,255,0.3)' : 'rgba(43,53,104,0.3)';
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); if (!on) ctx.stroke();
       if (on && pop > 0.2) {

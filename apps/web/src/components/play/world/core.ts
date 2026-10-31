@@ -575,7 +575,7 @@ function faceTexture() {
     g.fillStyle = '#ffffff'; g.beginPath(); g.arc(x + 8, 100, 6, 0, Math.PI * 2); g.fill();
     g.strokeStyle = '#3b2a1e'; g.lineWidth = 9; g.lineCap = 'round'; g.beginPath(); g.moveTo(x - 24, 62); g.quadraticCurveTo(x, 50, x + 24, 60); g.stroke();
   }
-  g.fillStyle = 'rgba(244,114,182,0.28)'; g.beginPath(); g.ellipse(58, 160, 22, 12, 0, 0, Math.PI * 2); g.ellipse(198, 160, 22, 12, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(255,159,220,0.28)'; g.beginPath(); g.ellipse(58, 160, 22, 12, 0, 0, Math.PI * 2); g.ellipse(198, 160, 22, 12, 0, 0, Math.PI * 2); g.fill();
   g.strokeStyle = '#3b2a1e'; g.lineWidth = 10; g.lineCap = 'round'; g.beginPath(); g.arc(128, 150, 40, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke();
   faceTex = new THREE.CanvasTexture(c);
   faceTex.colorSpace = THREE.SRGBColorSpace;

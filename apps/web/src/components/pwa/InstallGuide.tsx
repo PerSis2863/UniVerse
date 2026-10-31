@@ -61,7 +61,7 @@ export function InstallGuide({ onClose, onInstall }: {
             <li key={title} className="rise-in grid grid-cols-[2.25rem_1fr] gap-3 rounded-2xl border border-zinc-200 dark:border-white/10 p-3" style={{ animationDelay: `${150 + i * 60}ms` }}>
               <span className="relative w-9 h-9 rounded-xl grid place-items-center bg-zinc-900 text-white dark:bg-white dark:text-zinc-900">
                 <Icon className="w-4 h-4" aria-hidden />
-                <span className="absolute -top-1.5 -end-1.5 w-5 h-5 rounded-full grid place-items-center bg-fuchsia-500 text-white text-[11px] font-bold">{i + 1}</span>
+                <span className="absolute -top-1.5 -end-1.5 w-5 h-5 rounded-full grid place-items-center bg-fuchsia-500 text-[#171f44] text-[11px] font-bold">{i + 1}</span>
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-zinc-900 dark:text-white">{title}</p>

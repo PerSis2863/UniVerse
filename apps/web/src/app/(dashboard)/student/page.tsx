@@ -91,8 +91,8 @@ function LevelRing({ progress }: { progress: number }) {
     <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
       <defs>
         <linearGradient id="lvl" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#2a2927" />
-          <stop offset="100%" stopColor="#db2777" />
+          <stop offset="0%" stopColor="#2b3568" />
+          <stop offset="100%" stopColor="#c13a92" />
         </linearGradient>
       </defs>
       <circle cx="50" cy="50" r={r} fill="none" strokeWidth="8" className="stroke-zinc-200 dark:stroke-white/[0.07]" />
@@ -141,7 +141,7 @@ export default function StudentDashboard() {
     upnext: <UpNextCard items={home.data?.upNext} loading={home.isLoading} empty="Nothing coming up today. A good time to review flashcards or pick up an impact project." />,
     brief: <DailyBrief />,
     impact: (
-      <div className="relative rounded-2xl bg-gradient-to-r from-indigo-50 via-purple-50 to-amber-50 dark:from-indigo-950/60 dark:via-purple-950/40 dark:to-amber-950/30 border border-[var(--separator)] dark:border-white/10 p-4 md:p-6 overflow-hidden shadow-xl shadow-indigo-500/5 dark:shadow-black/20">
+      <div className="relative rounded-2xl bg-gradient-to-r from-indigo-50 via-pink-50 to-aqua-50 dark:from-indigo-950/60 dark:via-indigo-900/40 dark:to-aqua-950/30 border border-[var(--separator)] dark:border-white/10 p-4 md:p-6 overflow-hidden shadow-xl shadow-indigo-500/5 dark:shadow-black/20">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
           <div className="flex items-start gap-3">
             <UniverseLogo size="lg" animated={true} withGlow={true} />
@@ -151,7 +151,7 @@ export default function StudentDashboard() {
                 {t('dashboard.network')}
               </div>
               <h2 className="text-lg md:text-xl font-black text-zinc-900 dark:text-white leading-tight">
-                {t('dashboard.collab')} <span className="bg-gradient-to-r from-indigo-600 via-pink-600 to-amber-600 dark:from-indigo-400 dark:via-pink-400 dark:to-amber-400 bg-clip-text text-transparent">NGOs &amp; changemakers</span>
+                {t('dashboard.collab')} <span className="bg-gradient-to-r from-pink-700 via-pink-600 to-aqua-700 dark:from-pink-300 dark:via-pink-400 dark:to-aqua-300 bg-clip-text text-transparent">NGOs &amp; changemakers</span>
               </h2>
               <p className="text-zinc-600 dark:text-zinc-400 text-xs mt-1 max-w-xl">
                 {s && s.impactPoints > 0 ? `${s.impactPoints.toLocaleString()} impact points earned. ` : ''}{t('dashboard.impact_desc')}

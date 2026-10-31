@@ -22,7 +22,7 @@ export function PeopleNow({ online, signIns, newUsers, recent }: {
   newUsers: number;
   recent: { id: string; createdAt: string; city: string | null; device: string | null; user: { name: string } }[];
 }) {
-  const blips: Blip[] = online.map((u) => ({ id: u.id, label: u.name.split(' ')[0], ring: RING[u.role] ?? 2, tone: u.role === 'TEACHER' ? 'violet' : RING[u.role] === 0 ? 'gold' : 'pink' }));
+  const blips: Blip[] = online.map((u) => ({ id: u.id, label: u.name.split(' ')[0], ring: RING[u.role] ?? 2, tone: u.role === 'TEACHER' ? 'blue' : RING[u.role] === 0 ? 'aqua' : 'pink' }));
   return (
     <LiveCard title="Who’s here now" sub="Admins in the middle, teachers next, everyone else outside"
       stats={[{ label: 'Online', value: fmt(online.length) }, { label: 'Sign-ins today', value: fmt(signIns) }, { label: 'New this week', value: fmt(newUsers) }]}
@@ -52,7 +52,7 @@ export function Heartbeats({ p, per }: { p: Pulse; per: string }) {
       stats={[{ label: 'Now', value: `${fmt(now, 2)} req/s` }, { label: 'Online', value: fmt(p.online.now) }, { label: 'Failed', value: fmt(failed) }]}>
       <div className="h-[150px]"><Heartbeat values={p.requests} marks={p.errors.server} label={`Requests per second this ${per}`} /></div>
       <PulseGrid className="mt-4 h-[72px]" label={`Page views, messages and sign-ins this ${per}`}
-        rows={[{ label: 'Views', values: p.activity.views }, { label: 'Messages', values: p.activity.messages, tone: 'violet' }, { label: 'Sign-ins', values: p.signIns.signIns, tone: 'gold' }]} />
+        rows={[{ label: 'Views', values: p.activity.views }, { label: 'Messages', values: p.activity.messages, tone: 'blue' }, { label: 'Sign-ins', values: p.signIns.signIns, tone: 'aqua' }]} />
     </LiveCard>
   );
 }

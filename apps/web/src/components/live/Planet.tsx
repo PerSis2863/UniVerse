@@ -1,0 +1,346 @@
+'use client';
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { cn } from '@/lib/utils';
+import { TONES, easeOut, glow, hash, seeded, useLiveCanvas, type Frame, type Tone } from './canvas';
+
+// The planet (M52, after the owner's "Orbit" video and the "Globynk" picture): a globe of a few
+// thousand dots on a jittered Fibonacci lattice (even, with no visible spiral), brighter where there is
+// land (Natural Earth, the Trace maps' outlines, loaded after the page), lit from the top left with an
+// Aqua Jade atmosphere and a glint on its rim, the far side faintly showing through. A thin mesh joins
+// neighbouring dots; Baby Pink arcs rise between the places, light running along them; small ripples
+// land on it now and then. It turns slowly; the pointer leans it. Labels are pills on the canvas, the
+// places are also a list for screen readers. Draws only while on screen (useLiveCanvas).
+
+export interface Place { label: string; lat: number; lon: number; tone?: Tone; value?: string }
+
+type V3 = [number, number, number];
+const RAD = Math.PI / 180;
+const toV = (lat: number, lon: number): V3 => [Math.cos(lat * RAD) * Math.sin(lon * RAD), Math.sin(lat * RAD), Math.cos(lat * RAD) * Math.cos(lon * RAD)];
+const LIGHT: V3 = (() => { const v: V3 = [-0.55, 0.6, 0.62]; const n = Math.hypot(...v); return [v[0] / n, v[1] / n, v[2] / n]; })();
+const FONT = '600 11px Urbanist, system-ui, sans-serif';
+
+interface Dot { v: V3; land: boolean; tone: 0 | 1 | 2; seed: number; delay: number }
+interface Model { dots: Dot[]; mesh: [number, number][]; proj: Float32Array }
+
+/** The lattice for a globe of radius r (px). Land needs many points to show its shape, so the lattice
+ *  is fine (5,000 to 14,000 points) and every land point is kept but only every third sea point. */
+function lattice(r: number, land: ((lat: number, lon: number) => boolean) | null): Model {
+  const n = Math.max(5000, Math.min(14000, Math.round(r * r * 0.5)));
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  const dots: Dot[] = [];
+  for (let i = 0; i < n; i++) {
+    const y = 1 - (i / (n - 1)) * 2, rad = Math.sqrt(1 - y * y), th = golden * i;
+    // A little jitter breaks the visible Fibonacci spiral.
+    const x = Math.cos(th) * rad + (seeded(i) - 0.5) * 0.02, z = Math.sin(th) * rad + (seeded(i + 0.5) - 0.5) * 0.02, yy = y + (seeded(i + 0.25) - 0.5) * 0.02;
+    const l = Math.hypot(x, yy, z) || 1;
+    const v: V3 = [x / l, yy / l, z / l];
+    const isLand = land ? land(Math.asin(v[1]) / RAD, Math.atan2(v[0], v[2]) / RAD) : false;
+    if (!isLand && i % 3) continue;
+    const s = seeded(i + 3.7);
+    dots.push({ v, land: isLand, tone: s < 0.06 ? 2 : s < 0.32 ? 1 : 0, seed: i, delay: seeded(i + 9) * 0.35 });
+  }
+  // The mesh: a net over the whole globe (about one lattice point in 15, picked at random so it
+  // doesn't line up), each joined to its two nearest.
+  const STEP = 15;
+  const nodes = dots.map((d, i) => (seeded(d.seed + 0.77) < 1 / STEP ? i : -1)).filter((i) => i >= 0);
+  const reach = (1.9 * Math.sqrt((4 * Math.PI * STEP) / n)) ** 2 / 2;
+  const mesh: [number, number][] = [];
+  for (const a of nodes) {
+    const near: [number, number][] = [];
+    const va = dots[a].v;
+    for (const b of nodes) {
+      if (b === a) continue;
+      const vb = dots[b].v, d = 1 - (va[0] * vb[0] + va[1] * vb[1] + va[2] * vb[2]);
+      if (d < reach) near.push([d, b]);
+    }
+    near.sort((p, q) => p[0] - q[0]);
+    for (const [, b] of near.slice(0, 2)) if (a < b) mesh.push([a, b]);
+  }
+  return { dots, mesh, proj: new Float32Array(dots.length * 3) };
+}
+
+const dotSprites = new Map<string, HTMLCanvasElement>();
+/** A small round dot with a soft edge, drawn once per colour. */
+function dotSprite(rgb: string) {
+  let c = dotSprites.get(rgb);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = c.height = 16;
+  const g = c.getContext('2d')!;
+  const gr = g.createRadialGradient(8, 8, 0, 8, 8, 8);
+  gr.addColorStop(0, `rgba(${rgb},1)`);
+  gr.addColorStop(0.45, `rgba(${rgb},0.95)`);
+  gr.addColorStop(0.7, `rgba(${rgb},0.25)`);
+  gr.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 16, 16);
+  dotSprites.set(rgb, c);
+  return c;
+}
+
+/** Where the land is: the Trace maps' country outlines drawn once into a small picture, then looked up. */
+async function landMask(): Promise<(lat: number, lon: number) => boolean> {
+  const { loadWorld, toBase, BASE } = await import('@/components/trace/map/engine');
+  const world = await loadWorld('110m');
+  const S = 512, k = S / BASE;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const g = c.getContext('2d', { willReadFrequently: true })!;
+  g.scale(k, k);
+  g.fillStyle = '#fff';
+  for (const country of world) g.fill(country.path);
+  const px = g.getImageData(0, 0, S, S).data;
+  return (lat, lon) => {
+    if (Math.abs(lat) > 83) return false;
+    const [x, y] = toBase(lon, lat);
+    const i = (Math.min(S - 1, Math.max(0, Math.round(y * k))) * S + Math.min(S - 1, Math.max(0, Math.round(x * k)))) * 4;
+    return px[i + 3] > 100;
+  };
+}
+
+/** The atmosphere and the body's shading, drawn once per size. */
+function bodySprite(r: number) {
+  const pad = Math.ceil(r * 0.5), size = Math.ceil(r * 2 + pad * 2);
+  const c = document.createElement('canvas');
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  c.width = c.height = Math.ceil(size * dpr);
+  const g = c.getContext('2d')!;
+  g.scale(dpr, dpr);
+  const m = size / 2;
+  // The atmosphere: Aqua Jade just outside the rim, fading out.
+  const atm = g.createRadialGradient(m, m, r * 0.9, m, m, r * 1.42);
+  atm.addColorStop(0, 'rgba(116,255,237,0)');
+  atm.addColorStop(0.16, 'rgba(116,255,237,0.34)');
+  atm.addColorStop(0.32, 'rgba(60,200,220,0.14)');
+  atm.addColorStop(1, 'rgba(60,200,220,0)');
+  g.fillStyle = atm;
+  g.fillRect(0, 0, size, size);
+  // The body: deep navy, lit from the top left, darkest at the far rim.
+  const body = g.createRadialGradient(m - r * 0.4, m - r * 0.45, r * 0.05, m, m, r);
+  body.addColorStop(0, 'rgba(116,230,240,0.3)');
+  body.addColorStop(0.4, 'rgba(46,80,150,0.36)');
+  body.addColorStop(0.82, 'rgba(18,28,70,0.62)');
+  body.addColorStop(1, 'rgba(10,14,40,0.78)');
+  g.fillStyle = body;
+  g.beginPath(); g.arc(m, m, r, 0, Math.PI * 2); g.fill();
+  // A thin bright rim on the lit side.
+  const rim = g.createLinearGradient(m - r, m - r, m + r, m + r);
+  rim.addColorStop(0, 'rgba(166,255,243,0.75)');
+  rim.addColorStop(0.5, 'rgba(116,255,237,0.12)');
+  rim.addColorStop(1, 'rgba(116,255,237,0.02)');
+  g.strokeStyle = rim; g.lineWidth = 1.2;
+  g.beginPath(); g.arc(m, m, r - 0.6, 0, Math.PI * 2); g.stroke();
+  return { c, size };
+}
+
+export function Planet({ places, arcs, label, className, pings = true }: {
+  places: Place[];
+  /** Pairs of indexes into places joined by an arc (default: each place to the next, in a ring). */
+  arcs?: [number, number][];
+  label: string;
+  className?: string;
+  /** Small ripples landing now and then (events arriving). */
+  pings?: boolean;
+}) {
+  const [land, setLand] = useState<((lat: number, lon: number) => boolean) | null>(null);
+  useEffect(() => {
+    let live = true;
+    landMask().then((f) => { if (live) setLand(() => f); }).catch(() => { /* no land: an even planet */ });
+    return () => { live = false; };
+  }, []);
+  const pts = useMemo(() => places.map((p, i) => ({ ...p, v: toV(p.lat, p.lon), tone: p.tone ?? 'pink' as Tone, seed: hash(p.label) + i })), [places]);
+  const links = useMemo(() => arcs ?? (places.length > 1 ? places.map((_, i) => [i, (i + 1) % places.length] as [number, number]).slice(0, places.length === 2 ? 1 : undefined) : []), [arcs, places]);
+  const st = useRef<{ model: Model | null; land: unknown; landAt: number; body: ReturnType<typeof bodySprite> | null; r: number; yaw: number; pitch: number; widths: Map<string, number> }>({ model: null, land: null, landAt: 0, body: null, r: 0, yaw: 0, pitch: 0, widths: new Map() });
+
+  const ref = useLiveCanvas(({ ctx, w, h, t, pointer, still }: Frame) => {
+    const s = st.current;
+    const R = Math.max(40, Math.min(w * 0.4, h * 0.4));
+    if (!s.model || Math.abs(s.r - R) > 4 || s.land !== land) {
+      if (s.land !== land) s.landAt = t;
+      s.model = lattice(R, land); s.r = R; s.land = land; s.body = bodySprite(R);
+    }
+    const { dots, mesh } = s.model;
+    const model = s.model;
+    const cx = w / 2, cy = h / 2;
+    const grow = still ? 1 : easeOut(t / 1.4);
+    const r = R * (0.9 + 0.1 * grow);
+    const landIn = still ? 1 : easeOut((t - s.landAt) / 0.9);
+
+    // The pointer leans the planet a little; it settles back when the pointer leaves.
+    const tyaw = pointer ? (pointer.x / w - 0.5) * 0.9 : 0, tpitch = pointer ? (pointer.y / h - 0.5) * 0.35 : 0;
+    s.yaw += (tyaw - s.yaw) * 0.06; s.pitch += (tpitch - s.pitch) * 0.06;
+    const yaw = -0.6 + t * 0.07 + s.yaw, pitch = 0.38 + s.pitch;
+    const cY = Math.cos(yaw), sY = Math.sin(yaw), cP = Math.cos(pitch), sP = Math.sin(pitch);
+    const rot = (v: V3): V3 => {
+      const x1 = v[0] * cY - v[2] * sY, z1 = v[0] * sY + v[2] * cY;
+      return [x1, v[1] * cP - z1 * sP, v[1] * sP + z1 * cP];
+    };
+    const lit = (q: V3) => Math.max(0, q[0] * LIGHT[0] + q[1] * LIGHT[1] + q[2] * LIGHT[2]);
+
+    // Faint stars behind, twinkling.
+    for (let i = 0; i < 60; i++) {
+      ctx.fillStyle = `rgba(220,240,255,${(0.1 + 0.18 * (0.5 + 0.5 * Math.sin(t * 0.9 + i * 1.7))) * grow})`;
+      ctx.fillRect(seeded(i + 40) * w, seeded(i + 140) * h, 1, 1);
+    }
+
+    // The body and atmosphere.
+    if (s.body) {
+      const k = r / R, sz = s.body.size * k;
+      ctx.globalAlpha = grow;
+      ctx.drawImage(s.body.c, cx - sz / 2, cy - sz / 2, sz, sz);
+      ctx.globalAlpha = 1;
+    }
+
+    // The dots: the far side faint (land only, showing through), the near side lit; land brighter
+    // than sea, round and soft.
+    const proj = model.proj;
+    const LAND = [dotSprite('214,255,250'), dotSprite('116,255,237'), dotSprite(TONES.pink)], SEA = [dotSprite('140,165,255'), dotSprite('186,160,255')];
+    const scale = Math.max(0.85, r / 170);
+    ctx.fillStyle = 'rgb(140,155,255)';
+    for (let i = 0; i < dots.length; i++) {
+      const d = dots[i], q = rot(d.v);
+      proj[i * 3] = cx + q[0] * r; proj[i * 3 + 1] = cy - q[1] * r; proj[i * 3 + 2] = q[2];
+      // Each dot arrives from the lit side outward; land fades in when it has loaded.
+      const show = (still ? 1 : easeOut((t * 1.3 - (1 - q[2]) * 0.45 - d.delay) / 0.5)) * (d.land ? landIn : 1);
+      if (show <= 0.01) continue;
+      if (q[2] < 0) {
+        if (!d.land || i % 2) continue;
+        ctx.globalAlpha = 0.16 * (1 + q[2] * 0.8) * show;
+        ctx.fillRect(proj[i * 3] - 0.5, proj[i * 3 + 1] - 0.5, 1, 1);
+        continue;
+      }
+      const L = lit(q), depth = 0.4 + 0.6 * q[2];
+      const tw = 0.82 + 0.18 * Math.sin(t * 2.1 + d.seed);
+      const sz = (d.land ? 1.15 + 0.6 * L : 0.95 + 0.35 * L) * (0.65 + 0.35 * q[2]) * scale * 2;
+      ctx.globalAlpha = Math.min(1, (d.land ? 0.62 + 0.45 * L : 0.3 + 0.32 * L) * depth * tw * show);
+      ctx.drawImage(d.land ? LAND[d.tone] : SEA[d.tone === 2 ? 1 : 0], proj[i * 3] - sz / 2, proj[i * 3 + 1] - sz / 2, sz, sz);
+    }
+    ctx.globalAlpha = 1;
+
+    // The mesh between near-side dots.
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    for (const [a, b] of mesh) {
+      const za = proj[a * 3 + 2], zb = proj[b * 3 + 2];
+      if (za < 0.1 || zb < 0.1) continue;
+      ctx.moveTo(proj[a * 3], proj[a * 3 + 1]); ctx.lineTo(proj[b * 3], proj[b * 3 + 1]);
+    }
+    ctx.strokeStyle = `rgba(116,255,237,${0.13 * grow})`;
+    ctx.stroke();
+
+    // The glint on the lit rim, like light catching the atmosphere.
+    const gx = cx - r * 0.56, gy = cy - r * 0.62, gp = 0.75 + 0.25 * Math.sin(t * 1.3);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.55 * gp * grow;
+    ctx.drawImage(glow('white'), gx - 22, gy - 22, 44, 44);
+    ctx.globalAlpha = 0.35 * gp * grow;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(gx - 16, gy - 0.5, 32, 1); ctx.fillRect(gx - 0.5, gy - 12, 1, 24);
+    ctx.globalAlpha = 1;
+
+    // Events landing: a ripple at a land dot every 0.9 s.
+    if (pings && !still) {
+      const step = Math.floor(t / 0.9);
+      for (let k = step - 2; k <= step; k++) {
+        if (k < 1) continue;
+        const age = (t - k * 0.9) / 1.8;
+        if (age < 0 || age > 1) continue;
+        const i = Math.floor(seeded(k * 7.13) * dots.length);
+        const z = proj[i * 3 + 2];
+        if (z < 0.2) continue;
+        const x = proj[i * 3], y = proj[i * 3 + 1], tone = seeded(k) < 0.5 ? 'aqua' : 'pink';
+        ctx.globalAlpha = (1 - age) * z;
+        ctx.drawImage(glow(tone), x - 10, y - 10, 20, 20);
+        ctx.strokeStyle = `rgba(${TONES[tone]},${(1 - age) * 0.8 * z})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(x, y, 3 + age * 16, (3 + age * 16) * (0.35 + 0.65 * z), 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // The arcs: rising between places, hidden where they pass behind; a light runs along each.
+    const P = pts.map((p) => rot(p.v));
+    const hidden = (q: V3, x: number, y: number) => q[2] < 0 && Math.hypot(x - cx, y - cy) < r;
+    links.forEach(([ia, ib], li) => {
+      const a = pts[ia]?.v, b = pts[ib]?.v;
+      if (!a || !b) return;
+      const dot = Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])), om = Math.acos(dot), so = Math.sin(om) || 1;
+      const lift = 0.05 + 0.16 * (om / Math.PI);
+      const N = 48, path: { x: number; y: number; hid: boolean }[] = [];
+      for (let j = 0; j <= N; j++) {
+        const u = j / N, fa = Math.sin((1 - u) * om) / so, fb = Math.sin(u * om) / so, hgt = 1 + lift * Math.sin(Math.PI * u);
+        const q = rot([(a[0] * fa + b[0] * fb) * hgt, (a[1] * fa + b[1] * fb) * hgt, (a[2] * fa + b[2] * fb) * hgt]);
+        const x = cx + q[0] * r, y = cy - q[1] * r;
+        path.push({ x, y, hid: hidden(q, x, y) });
+      }
+      const drawn = still ? 1 : easeOut((t - 1 - li * 0.18) / 1.4);
+      const end = Math.floor(N * drawn);
+      ctx.lineWidth = 1.3;
+      ctx.strokeStyle = `rgba(${TONES.pink},0.6)`;
+      ctx.beginPath();
+      for (let j = 1; j <= end; j++) {
+        if (path[j].hid || path[j - 1].hid) continue;
+        ctx.moveTo(path[j - 1].x, path[j - 1].y); ctx.lineTo(path[j].x, path[j].y);
+      }
+      ctx.stroke();
+      if (still || drawn < 1) return;
+      // The light: a bright head with a fading tail.
+      const head = ((t / 2.6 + seeded(li + 1)) % 1) * N;
+      for (let j = Math.max(1, Math.floor(head) - 10); j <= Math.floor(head); j++) {
+        if (path[j].hid || path[j - 1].hid) continue;
+        const f = 1 - (head - j) / 10;
+        ctx.strokeStyle = `rgba(255,220,244,${0.9 * f})`;
+        ctx.lineWidth = 1 + 1.4 * f;
+        ctx.beginPath(); ctx.moveTo(path[j - 1].x, path[j - 1].y); ctx.lineTo(path[j].x, path[j].y); ctx.stroke();
+      }
+      const hp = path[Math.min(N, Math.floor(head))];
+      if (!hp.hid) ctx.drawImage(glow('pink'), hp.x - 9, hp.y - 9, 18, 18);
+    });
+    ctx.globalCompositeOperation = 'source-over';
+
+    // The places: a glowing node with a ripple, and a pill with the name.
+    ctx.font = FONT;
+    ctx.textBaseline = 'middle';
+    pts.forEach((p, i) => {
+      const q = P[i];
+      if (q[2] < 0.05) return;
+      const x = cx + q[0] * r, y = cy - q[1] * r, z = Math.min(1, q[2] * 1.6), show = still ? 1 : easeOut((t - 1.2 - i * 0.12) / 0.6);
+      if (show <= 0) return;
+      ctx.globalAlpha = z * show;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.drawImage(glow(p.tone), x - 13, y - 13, 26, 26);
+      const rp = still ? 0.4 : ((t + seeded(p.seed)) % 2.4) / 2.4;
+      ctx.strokeStyle = `rgba(${TONES[p.tone]},${(1 - rp) * 0.7})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x, y, 4 + rp * 12, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.fill();
+      // The pill, to the side away from the middle.
+      const text = p.value ? `${p.label} · ${p.value}` : p.label;
+      let tw = s.widths.get(text);
+      if (tw === undefined) { tw = ctx.measureText(text).width; s.widths.set(text, tw); }
+      const bw = tw + 24, bh = 20, left = x < cx;
+      const bx = Math.max(2, Math.min(w - bw - 2, left ? x - bw - 10 : x + 10)), by = Math.max(2, Math.min(h - bh - 2, y - bh - 4));
+      ctx.fillStyle = 'rgba(255,255,255,0.94)';
+      ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10); ctx.fill();
+      ctx.fillStyle = `rgb(${TONES[p.tone]})`;
+      ctx.beginPath(); ctx.arc(bx + 10, by + bh / 2, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#171f44';
+      ctx.fillText(text, bx + 17, by + bh / 2 + 0.5);
+      ctx.globalAlpha = 1;
+    });
+  }, land);
+
+  return (
+    <div className={cn('relative', className)}>
+      <canvas ref={ref} role="img" aria-label={label} className="absolute inset-0 h-full w-full touch-pan-y" />
+      {places.length > 0 && (
+        <ul className="sr-only">
+          {places.map((p) => <li key={p.label}>{p.value ? `${p.label}: ${p.value}` : p.label}</li>)}
+        </ul>
+      )}
+    </div>
+  );
+}

@@ -2580,3 +2580,58 @@ ultra smooth".
   the far corners run off the sides so the city fills the card.
 - **Tested:** `scripts/checks/live-ui.mjs` on Trace tracking (draws, axe, no sideways scroll, 390 and
   1280, light and dark); looked at on a phone and a desktop; typecheck, lint, unit tests, lean.
+
+## M52 · The "Globynk" colours everywhere, a dotted planet and 3D wallet cards (31 Oct 2026)
+
+The owner sent two videos ("Orbit": a dotted planet, cohort cubes, a light funnel; "Ledgerline": a
+3D bank card that sways and tilts) and the "Globynk" picture (Aqua Jade #74FFED, Midnight Abyss
+#171F44, Baby Pink #FE81D1): "put the animation where you think will be suited… ultra realistic and
+make website colour like this… for whole app and website".
+
+- **Colours** (replaces M34's warm graphite; the squircle cards and pills stay): a one-off script
+  mapped every hard-coded Karma colour in `src` (hex and rgb, ~1,500 places) to its navy / pink /
+  aqua twin; then by hand in `globals.css`: indigo / violet / purple are a navy scale (600 = #2b3568,
+  900 = #171f44), zinc cool greys, pink is Baby Pink at 500 (600 #c13a92 and deeper hold white text),
+  fuchsia an orchid, and a new `aqua-*` scale (300 = Aqua Jade, 700 reads on white). Tokens in the
+  "M34 → M52" part: dark page #171f44 with Aqua Jade rising from the bottom (`.ambient-bg`, kept low
+  enough for grey text to read at 4.5:1), cards #1d2650; light page #e9eef8 with the same glows; the
+  side menu deep navy with pink at the top and aqua at the bottom; **`.btn-primary` is a Baby Pink
+  pill with navy text in both themes** (7:1); the landing's `primary` and the top bar's "Get started"
+  too. Focus rings are aqua in dark mode. The frosted headline cards: dusk is navy sinking into deep
+  aqua, gold (name kept) a pale aqua. The live cards, the hub / Trace hero, the river of light (pink
+  with a few aqua strands), the app icon (navy, Baby Pink U), the launch screens (re-made with
+  `scripts/gen-launch-screens.mjs`), the bar colours, `manifest.json`, `offline.html` and the logo.
+- **Picture tones renamed** (`src/components/live/canvas.ts`): `TONES` is now pink, blue (periwinkle),
+  aqua, white; old `violet` → `blue`, old `gold` → `aqua` (Tank's `gold` too).
+- **The planet** (`src/components/live/Planet.tsx`, canvas, `useLiveCanvas`): a jittered Fibonacci
+  lattice of 5,000–14,000 points, all land points kept and every third sea point, land read from the
+  Trace maps' Natural Earth outlines (`engine.ts`, loaded lazily, drawn once into a 512 px Mercator
+  mask); lit from the top left, the far side faintly through, an aqua atmosphere and body drawn once
+  per size, a random net, a glint, ripples landing every 0.9 s, Baby Pink arcs (great circles lifted
+  by distance, hidden behind the globe, a light running along) between labelled places (pills on
+  the canvas, a list for screen readers). The pointer leans it. **Where:** the landing's new
+  "One account. One planet." section after the hero (`src/components/landing/WorldSection.tsx`:
+  navy into aqua like the picture, a pink "Start free", two frosted notes) and the hub's hero (the
+  five apps with their totals; replaced the M48 constellation there).
+- **The wallet cards** (`src/components/hub/WalletCards.tsx`, at the top of the Impact Wallet on
+  /hub): four cards (Impact with the four apps' numbers as embossed groups, Trace points, CO₂ saved,
+  people helped) in navy, pink, aqua and periwinkle finishes with a metal chip, a hologram that turns
+  colour as the card turns, a light that slides over it and a shadow that moves the other way; the
+  stack sways slowly (the video's `-10 + sin(t/2300)·9`, `8 + cos(t/3100)·4`) and leans to the pointer
+  or a finger; thumbnails bring a card to the front; the panel beside it says the same in text. Time
+  runs only while on screen; Reduce Motion holds it at an angle. Styles: `.wcard*` in `globals.css`.
+- `useLiveCanvas(draw, wake)`: a changed `wake` draws one more frame even when still (the planet's
+  land arriving with Reduce Motion on).
+- **Rules for code that builds on it:** no new hard-coded graphite or hot pink: navy from the
+  indigo / zinc classes or `#171f44`, pink from `pink-*` (text on Baby Pink is navy, never white;
+  white text needs pink-600 or deeper), aqua from `aqua-*` (as text on light backgrounds only
+  `aqua-700`). Picture colours only from `TONES`.
+- Left out on purpose: the cohort cubes and the funnel's glass bars from the "Orbit" video (the M48
+  funnel already streams light through stages); the link-preview pictures (`public/og*`) keep their
+  old colours (they're photos of the screens).
+- **Tested:** `pnpm check` (types, lint, 1,362 unit tests, lean); `scripts/checks/live-ui.mjs` (now
+  also the wallet cards; every live card draws, axe-clean, no sideways scroll, 390 / 1280, light and
+  dark); the new `scripts/checks/world-ui.mjs` (the landing's planet draws; the landing and sign-in
+  pages axe-clean as whole pages at 390 / 1280). Looked at in the browser: the landing, the hub's
+  planet and cards (phone and desktop, light and dark), student home, Trace's city. Not run through a
+  full build (no server changes).

@@ -239,7 +239,7 @@ function howItWasBuilt() {
   ];
   events.forEach(([when, what], i) => {
     const x = 100 + i * 380;
-    s.raw({ type: 'ellipse', x: x - 14, y: 366, width: 28, height: 28, backgroundColor: '#2a2927', fillStyle: 'solid' } as El);
+    s.raw({ type: 'ellipse', x: x - 14, y: 366, width: 28, height: 28, backgroundColor: '#2b3568', fillStyle: 'solid' } as El);
     s.note(x - 170, i % 2 ? 430 : 90, 340, 250, `${when}\n\n${what}`, [C.student, C.teacher, C.admin, C.parent, C.owner, C.tech][i], 17);
     s.note(x - 170, i % 2 ? 90 : 430, 340, 250, why[i], C.white, 16);
   });

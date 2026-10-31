@@ -4,7 +4,7 @@
 import { haptic } from './haptics';
 import { EASE_OUT, lowEndDevice, reducedMotion } from './page-transition';
 
-const COLORS = ['#ec4899', '#f472b6', '#c084fc', '#fbcfe8', '#ffffff'];
+const COLORS = ['#fe81d1', '#ff9fdc', '#a9b4ff', '#ffd6f0', '#ffffff'];
 
 export function celebrate(from?: Element | null) {
   haptic('success');

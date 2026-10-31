@@ -181,7 +181,7 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
     <>
       {/* The brand */}
       <section className="panel p-5 flex flex-wrap items-center gap-4">
-        <span className="w-12 h-12 rounded-2xl grid place-items-center text-white font-black text-lg shadow-lg" style={{ background: brand.color ?? '#ec4899' }} aria-hidden>{brand.name.slice(0, 1).toUpperCase()}</span>
+        <span className="w-12 h-12 rounded-2xl grid place-items-center text-white font-black text-lg shadow-lg" style={{ background: brand.color ?? '#fe81d1' }} aria-hidden>{brand.name.slice(0, 1).toUpperCase()}</span>
         <div className="min-w-0 flex-1">
           <h2 className="font-bold text-lg text-zinc-900 dark:text-white flex items-center gap-2 flex-wrap">{brand.name}
             <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider', info.pro ? 'bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-200' : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300')}>{info.pro ? 'PRO' : 'FREE'}</span>
@@ -304,7 +304,7 @@ function PlanCard({ pro }: { pro: boolean }) {
 }
 
 function BrandSettings({ brand, pro, onDone }: { brand: Brand; pro: boolean; onDone: () => void }) {
-  const [f, setF] = useState({ name: brand.name, category: brand.category ?? '', color: brand.color ?? '#ec4899', logoUrl: brand.logoUrl ?? '', pointValue: String(brand.pointValue), currency: brand.currency, minCashout: String(brand.minCashout) });
+  const [f, setF] = useState({ name: brand.name, category: brand.category ?? '', color: brand.color ?? '#fe81d1', logoUrl: brand.logoUrl ?? '', pointValue: String(brand.pointValue), currency: brand.currency, minCashout: String(brand.minCashout) });
   const [saving, setSaving] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
   const save = async (e: React.FormEvent) => {

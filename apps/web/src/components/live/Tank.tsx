@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 // the level on arrival (a transform), its wavy surface sliding slowly (CSS, `.tank-wave`; still with
 // Reduce Motion). For how far a shipment has come, a budget left, a week's goal.
 
-const FILL = { pink: '#ec4899', green: '#10b981', gold: '#e9c46a' } as const;
+const FILL = { pink: '#fe81d1', green: '#10b981', aqua: '#74ffed' } as const;
 
 export function Tank({ pct, tone = 'pink', label, className }: { pct: number; tone?: keyof typeof FILL; label: string; className?: string }) {
   const level = Math.max(0, Math.min(100, pct));
