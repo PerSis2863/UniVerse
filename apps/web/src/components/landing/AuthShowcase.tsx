@@ -1,22 +1,20 @@
 'use client';
 
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { FlowCard } from './FlowCard';
-import { PassportCard } from './PassportCard';
-import { GreenCard, ReliefCard, PlayCard } from './ImpactApps';
+import { CampusScene, GreenScene, PlayScene, ReliefScene, TraceScene } from './HeroScenes';
 import { Accent, Tag } from './bits';
 import { useChosenApp } from '@/lib/chosen-app';
 import type { AppId } from '@/lib/apps';
 
 // The left side of sign in and sign up: the app chosen on the tabs (src/lib/chosen-app.ts), its
-// headline and its live card, changing as the tabs change.
+// headline and its live picture (the same scenes as the landing page), changing as the tabs change.
 
 const SIDE: Record<AppId, { tag: string; head: string; accent: string; text: string; card: React.ReactNode; foot: string }> = {
-  campus: { tag: 'UniVersity / free for students', head: 'The school day runs', accent: 'itself.', text: 'Classes, grades, parents and volunteering in one place, and a person asked only when it matters.', card: <FlowCard compact />, foot: '13 languages / 8 question types / $0 for students' },
-  trace: { tag: 'UniVerse Trace / free to start', head: 'Every product gets a', accent: 'passport.', text: 'Genuine checks for buyers, points for shops, and a live map of where every product sells and every shipment is.', card: <div className="max-w-sm"><PassportCard /></div>, foot: '10,000 passports free / no card' },
-  relief: { tag: 'UniVerse Relief / free', head: 'Help that reaches people', accent: 'fast.', text: 'Every need and every offer on one live map, from food and water to a lift to the clinic.', card: <ReliefCard />, foot: 'for people in need, volunteers and NGOs' },
-  play: { tag: 'UniVerse Play / free', head: 'Games that teach', accent: 'something.', text: 'Twelve games: two from each app, plus 3D worlds to run, jump, tag and survive in. Beat your best alone or race your friends in a room.', card: <PlayCard />, foot: 'solo or up to 8 in a room' },
-  green: { tag: 'UniVerse Green / free', head: 'Climate action you can', accent: 'prove.', text: 'Log what you did, see the CO₂ saved, and beat the weekly challenge with your team.', card: <GreenCard />, foot: 'for schools, companies and clubs' },
+  campus: { tag: 'UniVersity / free for students', head: 'The school day runs', accent: 'itself.', text: 'Classes, grades, parents and volunteering in one place, and a person asked only when it matters.', card: <CampusScene />, foot: '13 languages / 8 question types / $0 for students' },
+  trace: { tag: 'UniVerse Trace / free to start', head: 'Every product gets a', accent: 'passport.', text: 'Genuine checks for buyers, points for shops, and a live map of where every product sells and every shipment is.', card: <TraceScene />, foot: '10,000 passports free / no card' },
+  relief: { tag: 'UniVerse Relief / free', head: 'Help that reaches people', accent: 'fast.', text: 'Every need and every offer on one live map, from food and water to a lift to the clinic.', card: <ReliefScene />, foot: 'for people in need, volunteers and NGOs' },
+  play: { tag: 'UniVerse Play / free', head: 'Games that teach', accent: 'something.', text: 'Twelve games: two from each app, plus 3D worlds to run, jump, tag and survive in. Beat your best alone or race your friends in a room.', card: <PlayScene />, foot: 'solo or up to 8 in a room' },
+  green: { tag: 'UniVerse Green / free', head: 'Climate action you can', accent: 'prove.', text: 'Log what you did, see the CO₂ saved, and beat the weekly challenge with your team.', card: <GreenScene />, foot: 'for schools, companies and clubs' },
 };
 
 export function AuthShowcase() {

@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { CalendarCheck, Check, ClipboardCheck, Crown, GraduationCap, ListChecks, Mail, Droplets, Home, Leaf, ScanLine, ShieldCheck, Sparkles, Stethoscope, Utensils } from 'lucide-react';
-import { GameIcon } from '@/components/play/GameIcon';
+import { Bike, CalendarCheck, Check, ClipboardCheck, Crown, GraduationCap, ListChecks, Mail, Droplets, Home, Leaf, Recycle, ScanLine, ShieldCheck, Sparkles, Stethoscope, TreePine, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EASE } from './bits';
 
@@ -217,85 +216,142 @@ export function ReliefScene() {
   );
 }
 
-/* ── Green: a landscape where trees grow and the CO₂ saved climbs ── */
-const TREES = [[70, 196, 1], [118, 206, 1.3], [170, 190, 0.9], [300, 200, 1.2], [352, 210, 1], [410, 194, 1.4]] as const;
+/* ── Green: a living planet ──
+   A globe turns slowly (a band of dots sliding under a shaded sphere); green patches bloom where
+   people act; a tree, a bike and a recycling badge orbit on a tilted ring; the CO₂ saved climbs and a
+   ticker shows each action. Transform, opacity and offset-distance only; Reduce Motion: still. */
+const ACTS = [
+  { icon: TreePine, who: 'Maya planted a tree', kg: 22 },
+  { icon: Bike, who: 'Leo cycled 12 km to school', kg: 2 },
+  { icon: Recycle, who: 'Class 9B recycled 8 kg', kg: 5 },
+  { icon: Leaf, who: 'Omar went meat-free today', kg: 3 },
+] as const;
+const BLOOMS = [[18, 38, 26], [42, 62, 34], [64, 30, 22], [80, 58, 30], [30, 74, 20], [56, 46, 18]] as const; // % across the band, % down, size px
+const RING = 'M 20 150 A 160 52 0 1 0 340 150 A 160 52 0 1 0 20 150';
 
 export function GreenScene() {
-  const { s, calm } = useStep(9);
-  const grown = Math.min(TREES.length, s);
-  const kg = 412 + grown * 22;
+  const { s, loop, calm } = useStep(ACTS.length, 1700);
+  const n = loop * ACTS.length + s;
+  const kg = 412 + Array.from({ length: n + 1 }, (_, i) => ACTS[i % ACTS.length].kg).reduce((a, b) => a + b, 0);
+  const act = ACTS[s];
+  const band = (
+    <div className="relative h-full w-1/2 shrink-0 bg-[radial-gradient(circle,rgba(167,243,208,0.35)_1.2px,transparent_1.6px)] [background-size:11px_11px]">
+      {BLOOMS.map(([x, y, r], i) => (
+        <motion.span key={i} className="absolute rounded-full bg-[radial-gradient(circle,rgba(52,211,153,0.85),rgba(16,185,129,0.25)_60%,transparent_72%)]" style={{ left: `${x}%`, top: `${y}%`, width: r * 2, height: r * 2, marginLeft: -r, marginTop: -r }}
+          initial={false} animate={{ scale: calm || i <= n ? 1 : 0.3, opacity: calm || i <= n ? 1 : 0.15 }} transition={{ type: 'spring', stiffness: 120, damping: 14 }} />
+      ))}
+    </div>
+  );
   return (
-    <div className="relative h-[480px] w-full max-w-[520px] overflow-hidden rounded-[2rem] bg-[linear-gradient(180deg,#0e1a16_0%,#0b1310_60%,#0a0f0d_100%)] ring-1 ring-emerald-300/15" role="img" aria-label="Trees growing on hills while the CO₂ saved climbs">
-      <motion.div className="absolute -top-24 end-10 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(253,224,71,0.5),rgba(253,224,71,0)_65%)]" animate={calm ? undefined : { scale: [1, 1.08, 1] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }} aria-hidden />
-      <svg viewBox="0 0 480 300" className="absolute inset-x-0 bottom-0 w-full" aria-hidden>
-        <path d="M0 210 C 90 170, 170 200, 250 186 S 400 160, 480 190 L 480 300 L 0 300 Z" fill="#11281f" />
-        <path d="M0 250 C 120 214, 220 246, 320 228 S 440 220, 480 236 L 480 300 L 0 300 Z" fill="#163526" />
-        {TREES.map(([x, y, k], i) => (
-          <motion.g key={i} initial={false} animate={{ scale: i < grown ? k : 0.25, opacity: i < grown ? 1 : 0.25 }} transition={{ type: 'spring', stiffness: 220, damping: 14 }} style={{ transformOrigin: `${x}px ${y}px`, transformBox: 'view-box' }}>
-            <rect x={x - 2.5} y={y - 22} width="5" height="22" rx="2" fill="#5b3b24" />
-            <circle cx={x} cy={y - 34} r="18" fill="#22c55e" /><circle cx={x - 11} cy={y - 26} r="12" fill="#16a34a" /><circle cx={x + 11} cy={y - 27} r="12" fill="#15803d" />
-          </motion.g>
-        ))}
-      </svg>
-      {/* Leaves drifting up from each new tree */}
-      <AnimatePresence>
-        {!calm && s >= 1 && s <= TREES.length && (
-          <motion.span key={s} initial={{ opacity: 0, y: 0 }} animate={{ opacity: [0, 1, 0], y: -90 }} transition={{ duration: 1.4, ease: 'easeOut' }} className="absolute text-emerald-300" style={{ left: `${(TREES[s - 1][0] / 480) * 100}%`, bottom: '38%' }} aria-hidden><Leaf className="h-5 w-5" /></motion.span>
-        )}
-      </AnimatePresence>
-      <div className="absolute inset-x-0 top-10 text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-emerald-200/80">Class 9B saved</p>
-        <div className="mt-1 flex items-baseline justify-center gap-2">
-          <AnimatePresence mode="popLayout" initial={false}><motion.span key={kg} initial={{ opacity: 0, y: 18, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -18 }} transition={{ duration: 0.4, ease: EASE }} className="font-mono text-6xl font-bold tabular-nums text-white">{kg}</motion.span></AnimatePresence>
-          <span className="text-lg text-emerald-200">kg CO₂</span>
+    <div className="relative h-[480px] w-full max-w-[520px]" role="img" aria-label="A planet turning while green patches bloom and the CO₂ saved climbs">
+      {/* stars */}
+      {[[8, 12], [22, 30], [86, 18], [74, 8], [92, 44], [12, 52], [60, 14]].map(([x, y], i) => (
+        <motion.span key={i} aria-hidden className="absolute h-1 w-1 rounded-full bg-white" style={{ left: `${x}%`, top: `${y}%` }} animate={calm ? undefined : { opacity: [0.2, 0.9, 0.2] }} transition={{ duration: 2.4 + (i % 3), delay: i * 0.3, repeat: Infinity, ease: 'easeInOut' }} />
+      ))}
+      {/* the counter */}
+      <div className="absolute inset-x-0 top-6 text-center">
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-emerald-200/80">CO₂ saved by Class 9B</p>
+        <div className="relative mx-auto mt-1 h-14 overflow-hidden">
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.p key={kg} className="font-mono text-5xl font-bold tabular-nums text-white" initial={{ y: 40, opacity: 0, filter: 'blur(6px)' }} animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }} exit={{ y: -40, opacity: 0 }} transition={{ duration: 0.5, ease: EASE }}>
+              {kg}<span className="ms-2 text-lg font-medium text-emerald-200">kg</span>
+            </motion.p>
+          </AnimatePresence>
         </div>
-        <AnimatePresence>{s >= 1 && s <= TREES.length && <motion.p key={`t${s}`} {...pop} className="mx-auto mt-3 w-fit rounded-full bg-emerald-400 px-3 py-1 text-sm font-bold text-emerald-950">+1 tree planted · photo checked</motion.p>}</AnimatePresence>
-        <AnimatePresence>{s >= 7 && <motion.p key="badge" {...pop} className="mx-auto mt-3 w-fit rounded-full bg-amber-300 px-3 py-1 text-sm font-bold text-amber-950">🏅 Weekly challenge won</motion.p>}</AnimatePresence>
+      </div>
+      {/* the planet and its ring */}
+      <div className="absolute left-1/2 top-[120px] h-[300px] w-[360px] -translate-x-1/2">
+        <svg aria-hidden className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 360 300">
+          <path d={RING} transform="translate(0 0)" fill="none" stroke="rgba(110,231,183,0.18)" strokeWidth="1.5" strokeDasharray="2 6" />
+        </svg>
+        <div className="absolute left-1/2 top-[25px] h-[250px] w-[250px] -translate-x-1/2 overflow-hidden rounded-full bg-[#0a2a1f] shadow-[0_0_80px_-10px_rgba(52,211,153,0.55),inset_0_0_40px_rgba(52,211,153,0.25)]">
+          <motion.div className="flex h-full w-[200%]" animate={calm ? undefined : { x: ['0%', '-50%'] }} transition={{ duration: 26, repeat: Infinity, ease: 'linear' }}>
+            {band}{band}
+          </motion.div>
+          {/* light and shade: lit top-left, night on the right */}
+          <span aria-hidden className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_32%_28%,rgba(255,255,255,0.22),transparent_38%),radial-gradient(circle_at_85%_70%,rgba(0,0,0,0.75),transparent_62%)]" />
+        </div>
+        <span aria-hidden className="absolute left-1/2 top-[13px] h-[274px] w-[274px] -translate-x-1/2 rounded-full ring-1 ring-emerald-300/25" />
+        {/* things on the ring (they ride the same ellipse) */}
+        {!calm && [TreePine, Bike, Recycle].map((Icon, i) => (
+          <motion.span key={i} aria-hidden className="absolute left-0 top-0 -ms-4 -mt-4 grid h-8 w-8 place-items-center rounded-full bg-emerald-400 text-emerald-950 shadow-[0_0_20px_rgba(52,211,153,0.8)]"
+            style={{ offsetPath: `path("${RING}")`, offsetRotate: '0deg' }} initial={{ offsetDistance: `${i * 33}%` }} animate={{ offsetDistance: [`${i * 33}%`, `${i * 33 + 100}%`] }} transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}>
+            <Icon className="h-4 w-4" />
+          </motion.span>
+        ))}
+      </div>
+      {/* the ticker */}
+      <div className="absolute inset-x-6 bottom-5 h-14">
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.div key={n} className="absolute inset-0 flex items-center gap-3 rounded-full bg-black/30 px-4 ring-1 ring-emerald-300/25 shadow-[0_0_30px_-8px_rgba(52,211,153,0.6)]"
+            initial={{ opacity: 0, y: 24, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -24, filter: 'blur(6px)' }} transition={{ duration: 0.5, ease: EASE }}>
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-emerald-400/20 text-emerald-200"><act.icon className="h-5 w-5" aria-hidden /></span>
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{act.who}</span>
+            <span className="font-mono text-sm font-bold text-emerald-300">−{act.kg} kg</span>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
 }
 
-/* ── Play: neon arcade cards in 3D, one comes forward each beat; a live scoreboard ── */
-const DECK = ['quiz', 'pin', 'rescue', 'ocean', 'type'] as const;
-const NAMES: Record<(typeof DECK)[number], string> = { quiz: 'Quiz Clash', pin: 'World Pin', rescue: 'Flood Rescue', ocean: 'Ocean Cleanup', type: 'Type Race' };
-const PLAYERS = [{ n: 'Maya', c: '#6366f1' }, { n: 'Omar', c: '#f97316' }, { n: 'You', c: '#ec4899' }, { n: 'Leo', c: '#10b981' }];
+/* ── Play: a neon race track ──
+   Four players race round a glowing oval at their own pace, each a light with a comet tail (SVG
+   animateMotion: smooth and cheap); the board below re-orders as they overtake, with laps. */
+const TRACK = 'M 70 40 H 330 A 60 60 0 0 1 330 160 H 70 A 60 60 0 0 1 70 40 Z';
+const RACERS = [
+  { n: 'You', c: '#ec4899', lap: 6.2, at: 0 },
+  { n: 'Leo', c: '#10b981', lap: 6.6, at: 0.12 },
+  { n: 'Omar', c: '#f97316', lap: 7.1, at: 0.24 },
+  { n: 'Maya', c: '#818cf8', lap: 6.9, at: 0.36 },
+];
 
 export function PlayScene() {
-  const { s, loop } = useStep(10, 1100);
-  const front = (loop * 2 + Math.floor(s / 5)) % DECK.length;
-  const score = (i: number) => 1200 + ((s + loop * 10) * (140 + i * 37)) % 2600 + (PLAYERS[i].n === 'You' ? s * 120 : 0);
-  const board = PLAYERS.map((p, i) => ({ ...p, v: score(i) })).sort((a, b) => b.v - a.v);
+  const calm = !!useReducedMotion();
+  const [t, setT] = useState(0); // seconds since the race started, for the board
+  useEffect(() => {
+    if (calm) return;
+    const start = performance.now();
+    const id = setInterval(() => setT((performance.now() - start) / 1000), 400);
+    return () => clearInterval(id);
+  }, [calm]);
+  const run = RACERS.map((r) => ({ ...r, d: r.at + t / r.lap })).sort((a, b) => b.d - a.d);
   return (
-    <div className="relative h-[480px] w-full max-w-[520px]" role="img" aria-label="Game cards spinning forward while a room's scoreboard changes">
-      <div className="absolute inset-x-0 top-0 h-[290px]" style={{ perspective: 1000 }}>
-        {DECK.map((g, i) => {
-          const d = (i - front + DECK.length) % DECK.length, rel = d > 2 ? d - DECK.length : d;
-          return (
-            <motion.div key={g} initial={false} animate={{ x: rel * 120, z: -Math.abs(rel) * 140, rotateY: rel * -28, opacity: Math.abs(rel) > 2 ? 0 : 1 - Math.abs(rel) * 0.25 }} transition={{ type: 'spring', stiffness: 160, damping: 22 }}
-              className="absolute left-1/2 top-6 -ms-[90px] h-[240px] w-[180px] rounded-[1.75rem] bg-[linear-gradient(160deg,#241a2b,#121214)] p-4 ring-1 ring-fuchsia-400/30 shadow-[0_0_40px_-6px_rgba(217,70,239,0.55)]" style={{ zIndex: 10 - Math.abs(rel) }}>
-              <GameIcon game={g} size="lg" />
-              <p className="mt-4 text-lg font-bold text-white">{NAMES[g]}</p>
-              <p className="font-mono text-xs text-fuchsia-200">solo or a room of 8</p>
-              <span className="absolute bottom-4 start-4 end-4 rounded-full bg-fuchsia-500 py-2 text-center text-sm font-bold text-white shadow-[0_5px_0_#86198f]">Play</span>
-            </motion.div>
-          );
-        })}
+    <div className="relative h-[480px] w-full max-w-[520px]" role="img" aria-label="Four players racing round a neon track while the room's board re-orders">
+      <div className="flex items-center justify-between px-5 pt-5 font-mono text-xs text-zinc-300">
+        <span>Type Race · room K7Q2MX</span>
+        <span className="inline-flex items-center gap-1.5"><span className="relative flex h-2 w-2"><span className="absolute inset-0 animate-ping rounded-full bg-fuchsia-400/70" /><span className="relative h-2 w-2 rounded-full bg-fuchsia-400" /></span>live</span>
       </div>
-      <div className="absolute inset-x-6 bottom-0 rounded-[1.5rem] bg-[#121214]/95 p-3 ring-1 ring-white/10">
-        <p className="mb-1.5 flex items-center justify-between px-1 font-mono text-xs text-zinc-400"><span>Room K7Q2MX · live</span><span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 animate-pulse rounded-full bg-fuchsia-400" />4 playing</span></p>
-        <ol className="space-y-1">
-          {board.map((p, i) => (
-            <motion.li key={p.n} layout transition={{ type: 'spring', stiffness: 380, damping: 32 }} className={cn('flex items-center gap-2.5 rounded-xl px-2.5 py-1.5', p.n === 'You' && 'bg-fuchsia-500/15 ring-1 ring-fuchsia-400/40')}>
-              <span className="w-4 font-mono text-xs text-zinc-400">{i + 1}</span>
-              <span className="grid h-6 w-6 place-items-center rounded-full text-[11px] font-bold text-white" style={{ background: p.c }}>{p.n[0]}</span>
-              <span className="text-sm font-semibold text-white">{p.n}</span>
-              {i === 0 && <Crown className="h-4 w-4 text-amber-300" aria-hidden />}
-              <span className="ms-auto font-mono text-sm tabular-nums text-white">{p.v.toLocaleString('en')}</span>
-            </motion.li>
-          ))}
-        </ol>
-      </div>
+      <svg viewBox="0 0 400 200" className="mx-auto mt-2 block w-[92%]" aria-hidden>
+        <defs><filter id="race-glow"><feGaussianBlur stdDeviation="3" /></filter></defs>
+        <path d={TRACK} fill="none" stroke="#ec4899" strokeWidth="18" opacity="0.12" />
+        <path d={TRACK} fill="none" stroke="rgba(244,114,182,0.55)" strokeWidth="1.5" style={{ filter: 'drop-shadow(0 0 6px #ec4899)' }} />
+        <path d={TRACK} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" strokeDasharray="4 8" />
+        <line x1="200" y1="28" x2="200" y2="52" stroke="#fff" strokeWidth="2" strokeDasharray="3 3" />
+        <text x="200" y="110" textAnchor="middle" className="fill-white font-mono text-[22px] font-bold">LAP {Math.floor(run[0].d) + 1}</text>
+        <text x="200" y="128" textAnchor="middle" className="fill-fuchsia-200 font-mono text-[11px]">first to 10 wins</text>
+        {RACERS.map((r) => (
+          <g key={r.n}>
+            {[0.3, 0.2, 0.1, 0].map((lag, k) => (
+              <circle key={k} r={k === 3 ? 6 : 5 - k} fill={r.c} opacity={k === 3 ? 1 : 0.2 + k * 0.15} filter={k === 3 ? undefined : 'url(#race-glow)'}>
+                {!calm && <animateMotion dur={`${r.lap}s`} repeatCount="indefinite" path={TRACK} begin={`${-(r.at * r.lap) - lag}s`} />}
+              </circle>
+            ))}
+          </g>
+        ))}
+      </svg>
+      <ol className="absolute inset-x-2 bottom-2 space-y-1">
+        {run.map((r, i) => (
+          <motion.li key={r.n} layout transition={{ type: 'spring', stiffness: 380, damping: 32 }} className={cn('flex items-center gap-2.5 rounded-full px-3.5 py-1.5 bg-black/30 ring-1 ring-white/[0.07]', r.n === 'You' && 'bg-fuchsia-500/20 ring-fuchsia-400/50 shadow-[0_0_24px_-6px_rgba(236,72,153,0.7)]')}>
+            <span className="w-4 font-mono text-xs text-zinc-300">{i + 1}</span>
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: r.c, boxShadow: `0 0 10px ${r.c}` }} />
+            <span className="text-sm font-semibold text-white">{r.n}</span>
+            {i === 0 && <Crown className="h-4 w-4 text-amber-300" aria-hidden />}
+            <span className="ms-auto font-mono text-xs tabular-nums text-zinc-300">lap {Math.floor(r.d) + 1}</span>
+            <span className="w-14 text-end font-mono text-sm tabular-nums text-white">{Math.round(60 + (r.d % 1) * 40 + Math.floor(r.d) * 3)} wpm</span>
+          </motion.li>
+        ))}
+      </ol>
     </div>
   );
 }

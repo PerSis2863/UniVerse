@@ -305,7 +305,7 @@
     user-select: none;
     cursor: pointer;
     transition: var(--transition);
-    transition-property: background-color, color, box-shadow, scale, opacity, filter;
+    transition-property: background-color, color, box-shadow, scale, translate, opacity, filter;
   }
   /* Primary: ink (black on the light page, white in dark mode; the M34 section sets the colours). */
   .btn-primary { color: #fff; background: #0e0d0c; }
@@ -923,6 +923,7 @@ html, body { overflow-x: clip; max-width: 100%; }
   }
   :is(button, [role="button"], summary):not(:disabled):active,
   .btn-primary:not(:disabled):active, .btn-secondary:not(:disabled):active { scale: 0.97; transition-duration: 70ms; }
+  @media (hover: hover) { .btn-primary:not(:disabled):hover, .btn-secondary:not(:disabled):hover { translate: 0 -1px; } }
   .sidebar-item:active, .card-hover:active { scale: 0.985; transition-duration: 70ms; }
 
   /* Every control looks pressable: pointer cursor (Tailwind 4 resets buttons to the arrow), no grey
