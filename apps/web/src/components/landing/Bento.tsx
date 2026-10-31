@@ -97,22 +97,22 @@ export function Bento() {
         <div className="mt-12 grid md:grid-cols-3 gap-4">
           <Reveal className="md:col-span-2"><div className={`${card} h-full`}>
             <h3 className="text-xl font-semibold text-white">One place, every role</h3>
-            <p className="mt-2 text-sm text-zinc-400 max-w-md">Students, teachers, parents and admins each get their own menu on the same school, so nothing is copied between apps.</p>
+            <p className="mt-2 text-sm text-zinc-400 max-w-md">Everyone gets their own menu.</p>
             <Roles />
           </div></Reveal>
           <Reveal delay={0.06}><div className={`${card} h-full`}>
             <h3 className="text-xl font-semibold text-white">Every language, both ways</h3>
-            <p className="mt-2 text-sm text-zinc-400">Thirteen languages; Arabic and Urdu mirror the whole screen.</p>
+            <p className="mt-2 text-sm text-zinc-400">Thirteen languages, right to left too.</p>
             <Languages />
           </div></Reveal>
           <Reveal delay={0.04}><div className={`${card} h-full`}>
             <h3 className="text-xl font-semibold text-white">Answers where people already are</h3>
-            <p className="mt-2 text-sm text-zinc-400">Parents and teachers answer from a notification on their phone. Try it:</p>
+            <p className="mt-2 text-sm text-zinc-400">Answer from the notification. Try it:</p>
             <Approval />
           </div></Reveal>
           <Reveal delay={0.1} className="md:col-span-2"><div className={`${card} h-full`}>
             <h3 className="text-xl font-semibold text-white">Safe by default</h3>
-            <p className="mt-2 text-sm text-zinc-400">Children’s data deserves the dull, careful kind of engineering.</p>
+            <p className="mt-2 text-sm text-zinc-400">Careful with children’s data.</p>
             <ul className="mt-6 grid sm:grid-cols-2 gap-3">
               {SAFE.map(({ icon: I, t }) => (
                 <li key={t} className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-3.5 text-sm text-zinc-200">

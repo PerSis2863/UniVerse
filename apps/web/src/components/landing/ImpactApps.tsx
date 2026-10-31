@@ -121,12 +121,12 @@ export function ReliefSection() {
       <div className="max-w-6xl mx-auto">
         <Reveal><Tag>UniVerse Relief</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Help that reaches people <Accent>fast.</Accent></h2></Reveal>
-        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">After a flood, a fire or just a hard week, the hardest part is knowing who needs what, and where. Relief puts every need and every offer on one live map, so help goes to the right door.</p></Reveal>
+        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Every need and every offer on one live map.</p></Reveal>
         <div className="mt-12 grid md:grid-cols-3 gap-4">
           {([
-            [HandHeart, 'Ask or offer in a minute', 'Food, water, shelter, medicine, a lift, a van: say what, how many people and how urgent. Your exact spot is never shown, only the area.'],
-            [MapPin, 'A live map of needs', 'Volunteers see the most urgent needs nearest to them first, take one with “I can help”, and mark it delivered.'],
-            [Users, 'NGOs see the whole picture', 'How many people were helped, how fast, and which areas are still waiting, updated as it happens.'],
+            [HandHeart, 'Ask or offer in a minute', 'Say what you need. Only your area shows.'],
+            [MapPin, 'A live map of needs', 'Volunteers see the closest, most urgent first.'],
+            [Users, 'NGOs see the whole picture', 'Who was helped, and where help is still needed.'],
           ] as const).map(([icon, t, d], i) => <Reveal key={t} delay={0.1 + i * 0.06}><Feature icon={icon} title={t} text={d} color="#fdba74" /></Reveal>)}
         </div>
         <Reveal delay={0.2}><div className="mt-10 flex flex-wrap gap-3"><Link href="/register?app=relief" className={primary}>Join Relief</Link><Link href="/login?app=relief" className={ghost}>Sign in to Relief</Link></div></Reveal>
@@ -141,12 +141,12 @@ export function GreenSection() {
       <div className="max-w-6xl mx-auto">
         <Reveal><Tag>UniVerse Green</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Climate action you can <Accent>prove.</Accent></h2></Reveal>
-        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Small actions add up when you can see them. Log what you did, see the CO₂ it saved with published factors, and take on a weekly challenge with your class, office or club.</p></Reveal>
+        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Small actions add up when you can see them.</p></Reveal>
         <div className="mt-12 grid md:grid-cols-3 gap-4">
           {([
-            [TreePine, 'Log it in seconds', 'Trees planted, kilometres cycled or on transit, waste recycled, solar days, meat-free meals and clean-ups, each turned into kilograms of CO₂.'],
-            [Trophy, 'Teams and a weekly challenge', 'Join with a code, climb the leaderboard and beat this week’s challenge together. Streaks and badges keep it going.'],
-            [Leaf, 'A map of what changed', 'Every action lands on a shared map, so a school, a company or a city can see its effect grow.'],
+            [TreePine, 'Log it in seconds', 'Trees, bikes, recycling: each turned into CO₂ saved.'],
+            [Trophy, 'Teams and a weekly challenge', 'Join with a code and beat the week together.'],
+            [Leaf, 'A map of what changed', 'Watch your school or city’s effect grow.'],
           ] as const).map(([icon, t, d], i) => <Reveal key={t} delay={0.1 + i * 0.06}><Feature icon={icon} title={t} text={d} color="#6ee7b7" /></Reveal>)}
         </div>
         <Reveal delay={0.2}><div className="mt-10 flex flex-wrap gap-3"><Link href="/register?app=green" className={primary}>Join Green</Link><Link href="/login?app=green" className={ghost}>Sign in to Green</Link></div></Reveal>
@@ -161,17 +161,17 @@ export function PlaySection() {
       <div className="max-w-6xl mx-auto">
         <Reveal><Tag>UniVerse Play</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Games that teach <Accent>something.</Accent></h2></Reveal>
-        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Twelve games: two from each app, and four 3D worlds (an obby, laser tag, a horror school and a space station, rated by age). Play alone to beat your best, or open a room, share the code and race your friends on the same rounds, with a live scoreboard.</p></Reveal>
+        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Twelve games and four 3D worlds. Solo or with friends.</p></Reveal>
         <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {([
-            [Brain, 'Quiz Clash', 'Fast questions from science to geography. Quick answers and streaks score more.', '#a5b4fc'],
-            [ScanLine, 'Spot the Fake', 'Four product passports, one copy. Learn the signs a label was faked.', '#f9a8d4'],
-            [Truck, 'Supply Run', 'Needs pop up on the map: send the right supplies before time runs out.', '#fdba74'],
-            [Recycle, 'Recycle Rush', 'Sort every item into the right bin and watch the CO₂ you save add up.', '#6ee7b7'],
-            [Keyboard, 'Type Race', 'Type true facts as fast as you can while your friends race beside you as cars.', '#c4b5fd'],
-            [Globe2, 'World Pin', 'A parcel is heading to a city: pin it on the real world map. Closer means more points.', '#f9a8d4'],
-            [LifeBuoy, 'Flood Rescue', 'Fly a helicopter over a rising flood, winch people off rooftops and land them at the hospital.', '#fdba74'],
-            [Ship, 'Ocean Cleanup', 'Steer a boat through drifting plastic, build combos and steer round the turtles.', '#67e8f9'],
+            [Brain, 'Quiz Clash', 'Fast questions, faster streaks.', '#a5b4fc'],
+            [ScanLine, 'Spot the Fake', 'Four labels. One is fake.', '#f9a8d4'],
+            [Truck, 'Supply Run', 'Send the right supplies, fast.', '#fdba74'],
+            [Recycle, 'Recycle Rush', 'Right bin, more CO₂ saved.', '#6ee7b7'],
+            [Keyboard, 'Type Race', 'Type fast, race your friends.', '#c4b5fd'],
+            [Globe2, 'World Pin', 'Pin the city on the map.', '#f9a8d4'],
+            [LifeBuoy, 'Flood Rescue', 'Fly in, lift people to safety.', '#fdba74'],
+            [Ship, 'Ocean Cleanup', 'Scoop the plastic, miss the turtles.', '#67e8f9'],
           ] as const).map(([icon, t, d, c], i) => <Reveal key={t} delay={0.1 + i * 0.06}><Feature icon={icon} title={t} text={d} color={c} /></Reveal>)}
         </div>
         <Reveal delay={0.2}><div className="mt-10 flex flex-wrap gap-3"><Link href="/register?app=play" className={primary}><Gamepad2 className="w-4 h-4" aria-hidden />Play free</Link><Link href="/login?app=play" className={ghost}>Sign in to Play</Link></div></Reveal>
@@ -187,7 +187,7 @@ export function AppsGrid({ onPick }: { onPick?: (id: AppId) => void }) {
       <div className="max-w-6xl mx-auto">
         <Reveal><Tag>one account, every app</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Apps that change <Accent>something.</Accent></h2></Reveal>
-        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl"><CountUp to={APPS.length} /> apps today, more on the way. Messages, files, calls and the AI assistant come with all of them.</p></Reveal>
+        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl"><CountUp to={APPS.length} /> apps, one sign-in.</p></Reveal>
         <div className="mt-12 grid md:grid-cols-2 gap-4">
           {APPS.map((a, i) => (
             <Reveal key={a.id} delay={0.08 + i * 0.06}>

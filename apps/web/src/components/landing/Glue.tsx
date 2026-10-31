@@ -65,7 +65,7 @@ export function Glue() {
         <div className="mt-16 grid lg:grid-cols-2 gap-12 items-center">
           <Reveal>
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.08] text-white">Most of a school day is <Accent>glue.</Accent></h2>
-            <p className="mt-5 text-zinc-400 leading-relaxed max-w-md">Taking the register, chasing late work, telling parents, filing the result. UniVerse does the steps in between, so a person only steps in when it matters.</p>
+            <p className="mt-5 text-zinc-400 leading-relaxed max-w-md">UniVerse does the steps in between. You step in when it matters.</p>
           </Reveal>
           <Reveal delay={0.1}><Waterfall /></Reveal>
         </div>

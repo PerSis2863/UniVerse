@@ -2201,3 +2201,47 @@ page".
   only while something moves.
 - **Tested:** browser check on the dev server (magnetic offset, ripple element, tilt angles, cursor
   light variables, no page errors); unit tests, typecheck, lint, lean.
+
+## M42 · Link previews, icon count, install guide, Share to UniVerse, and much less text (31 Oct 2026)
+
+The owner: "do all of them" (the plan's steps 1–5; store apps left out, no funds), then, seeing the
+phone landing: "it like to much information for the first time user to read… everywhere there is
+text that is not good".
+
+- **Link previews:** `public/og.jpg` (the whole site: "One account. Many apps. Real impact.") and
+  `public/og/<app>.jpg`, 1200 × 630, made from the landing's own hero (a scratch Playwright script,
+  device scale 1200/1440, nav links and buttons hidden). `src/lib/share-meta.ts` (`shareMeta(app,
+  description)`, `SITE_SHARE`; bump `V` when a picture changes) is used by new server layouts in
+  `(dashboard)/trace|relief|green|play`, `join`, and by `t/` and `b/` (Trace). Play room invites
+  (`/play/game?room=`) now show the Play picture. A server layout under the client `(dashboard)`
+  layout is fine: the router composes them.
+- **Icon count:** `Topbar` sets `navigator.setAppBadge(unread)` from the bell's count; the service
+  worker (`src/worker/index.ts`, `iconCount`) sets it to the notifications waiting in the tray after a
+  push and after a tap. Works on iPhone home-screen apps, Windows and Mac; Android shows its own dot.
+- **Install:** `src/components/pwa/InstallGuide.tsx` (a `Sheet`): perks, then the taps for iPhone /
+  iPad (no install button there), Android or a computer; the browser's own install when it offers
+  one. Used by the landing's "Get the app" (replaces the old toast) and the in-app banner's "Show me
+  how" on iPhone. `manifest.json` has seven screenshots (`public/screenshots/`, 5 phone, 2 wide) so
+  Android's install sheet shows a gallery.
+- **Share to UniVerse** (Android only; iPhone has no share target for web apps): manifest
+  `share_target` → `/app?title=&text=&url=`; `/app` keeps it (`src/lib/share-in.ts`,
+  sessionStorage, 2000 characters) and opens Messages; the chat list shows "Pick a chat to send it
+  to"; the chat picked gets it as its draft (`keepDraft`), nothing is sent by itself. Files are not
+  accepted (that needs a POST share handled in the service worker).
+- **Less text:** every hero is a headline plus one short line, two buttons, and quiet links ("Get
+  the app", "Scan a sample") with the note; the mono eyebrow shows from `sm` up. Every section's
+  paragraph, card, FAQ answer, CTA and the sign-in side were cut to one short line; `APPS[].impact`
+  too (the hub shows it). Footer: Play added, new line.
+- **Phone fixes found on the way:** the hero grid had no `grid-cols-1`, so the app tab row (wider
+  than a phone) stretched the column and the text and buttons ran off the right edge; the nav's
+  "Get started" broke onto two lines and the bar overflowed at 320–360 px (now nowrap, "Impact" from
+  400 px, the wordmark from 360 px, the link has an `aria-label`). Trace's four steps: the reveal
+  wrapper is now the list item (`Reveal role="listitem"`), so axe's list rules pass.
+- **Tested:** browser run on the dev server (install guide opens; icon count set to the demo
+  student's 30 unread; shared text reaches Messages, the banner shows, the picked chat's box holds
+  it); share tags read from the HTML of `/`, `/play/game?room=…`, `/t/demo`, `/green`, `/join`;
+  axe clean at 390/1280 (landing, guide, sign-in, the share banner light and dark); no element wider
+  than the screen at 320/360/390; unit tests (a new one for `sharedText`), typecheck, lint, lean.
+- **Traps:** the local database must have every migration (`npx wrangler d1 migrations apply
+  universe-db --local`), or demo sign-in fails with "no such column". In tests, the first
+  `role="listitem"` in Messages is the status bubble, not a chat.

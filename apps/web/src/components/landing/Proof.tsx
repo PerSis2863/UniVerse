@@ -49,9 +49,9 @@ function Gauge() {
 }
 
 const ROLES = [
-  { line: 'Hand-ins, grades, the timetable and an AI tutor, in one place.', who: 'Students', what: 'always free' },
-  { line: 'The register fills itself from the class call, and quizzes mark themselves.', who: 'Teachers', what: 'courses, quizzes, attendance' },
-  { line: 'Fees, admissions and reports, without the spreadsheets.', who: 'School admins', what: 'one school or many' },
+  { line: 'Homework, grades and a tutor, in one place.', who: 'Students', what: 'always free' },
+  { line: 'The register fills itself. Quizzes mark themselves.', who: 'Teachers', what: 'courses, quizzes, attendance' },
+  { line: 'Fees and reports, no spreadsheets.', who: 'School admins', what: 'one school or many' },
 ];
 
 export function Proof() {
@@ -63,7 +63,7 @@ export function Proof() {
             <Tag>the facts</Tag>
             <h2 className="mt-5 text-4xl md:text-5xl font-bold tracking-tight leading-[1.08] text-white">Numbers we did <Accent>not</Accent> have to make up.</h2>
           </Reveal>
-          <Reveal delay={0.1}><p className="text-zinc-400 md:max-w-md md:ms-auto">Things UniVerse does today, counted from the product itself. No usage claims, no best case.</p></Reveal>
+          <Reveal delay={0.1}><p className="text-zinc-400 md:max-w-md md:ms-auto">Counted from the product itself.</p></Reveal>
         </div>
         <div className="mt-14 grid md:grid-cols-3 gap-10 border-t border-white/[0.06] pt-10">
           <Reveal>

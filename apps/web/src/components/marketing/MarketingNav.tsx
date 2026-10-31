@@ -42,9 +42,9 @@ export function MarketingNav() {
         )}
         style={{ width: 'calc(100% - 24px)' }}
       >
-        <Link href="/" className="flex items-center gap-2.5 shrink-0">
+        <Link href="/" aria-label="UniVerse Impact" className="flex items-center gap-2.5 shrink-0">
           <UniverseLogo size="sm" animated withGlow />
-          <span className="font-black tracking-tight text-white text-lg">UniVerse <span className="font-medium text-zinc-400">Impact</span></span>
+          <span className="hidden min-[360px]:inline font-black tracking-tight text-white text-lg">UniVerse<span className="hidden min-[400px]:inline font-medium text-zinc-400"> Impact</span></span>
         </Link>
 
         <div className="hidden md:flex items-center gap-1">
@@ -61,7 +61,7 @@ export function MarketingNav() {
           </Link>
           <Link
             href={`/register?app=${app}`}
-            className="group inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-white text-sm font-bold bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_6px_24px_-8px_rgba(236,72,153,0.8)] hover:brightness-110 transition"
+            className="group shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-white text-sm font-bold bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_6px_24px_-8px_rgba(236,72,153,0.8)] hover:brightness-110 transition"
           >
             Get started <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>

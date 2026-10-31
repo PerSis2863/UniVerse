@@ -30,8 +30,16 @@ self.addEventListener('push', (event) => {
     // A chat locked on this device (Stage 4 · 1.10): nothing of it shows on the lock screen.
     if (locked) { options.body = 'New message'; return self.registration.showNotification('UniVerse', options); }
     return self.registration.showNotification(data.title ?? 'UniVerse', options);
-  }));
+  }).then(iconCount));
 });
+
+/** The count on the home-screen icon while the app is closed (M42): the notifications waiting in the
+ *  tray. When the app opens, the bell's real unread count replaces it (Topbar). */
+async function iconCount() {
+  if (!('setAppBadge' in self.navigator)) return;
+  const waiting = await self.registration.getNotifications().catch(() => []);
+  await self.navigator.setAppBadge(waiting.length).catch(() => {});
+}
 
 /** Whether a push's link opens a chat locked on this device (src/lib/chat-lock.ts keeps the list here). */
 async function lockedChat(url: string | undefined): Promise<boolean> {
@@ -46,6 +54,7 @@ async function lockedChat(url: string | undefined): Promise<boolean> {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  event.waitUntil(iconCount());
   if (event.action === 'decline') return; // the call simply stops ringing here
   const d = event.notification.data as { url?: string; actions?: Record<string, string> } | null;
   const url = new URL((event.action && d?.actions?.[event.action]) || d?.url || '/', self.location.origin).href;

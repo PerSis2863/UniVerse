@@ -1,6 +1,7 @@
 'use client';
 
 import Link from '@/components/ui/Link';
+import { InstallGuide } from '@/components/pwa/InstallGuide';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, MotionConfig, m as motion, useScroll, useSpring, useTransform } from 'framer-motion';
@@ -21,7 +22,7 @@ import { AppTabs } from '@/components/landing/AppTabs';
 import { AppsGrid, GreenSection, ReliefSection, PlaySection } from '@/components/landing/ImpactApps';
 import { SplitCta } from '@/components/landing/SplitCta';
 import { Accent, EASE, Reveal, Tag, ghost, primary } from '@/components/landing/bits';
-import { appById, type AppId } from '@/lib/apps';
+import type { AppId } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { homeFor } from '@/lib/role-home';
 
@@ -35,37 +36,40 @@ import { homeFor } from '@/lib/role-home';
 
 const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
   all: [
-    { q: 'What is UniVerse Impact?', a: 'One account for several apps that each make a difference somewhere: UniVersity for schools and universities, UniVerse Trace for products, UniVerse Relief for getting help to people, and UniVerse Green for climate action. Messages, files, calls and the AI assistant work across all of them.' },
-    { q: 'Does it work on phones and in other languages?', a: 'Yes. It installs as an app on iOS, Android and desktop, works on a patchy connection, and speaks 13 languages, including Arabic and Urdu, which read right to left.' },
+    { q: 'What is UniVerse Impact?', a: 'One account for five apps: school, products, help, climate and games. Messages and the assistant work in all of them.' },
+    { q: 'Does it work on phones and in other languages?', a: 'Yes. It installs on any phone or computer and speaks 13 languages.' },
   ],
   campus: [
-    { q: 'Is UniVersity free to use?', a: 'Yes for students: they never pay. A school, university or NGO sets it up for its people, and everyone in it gets the student, teacher and admin portals, messaging, the NGO marketplace and verified credentials.' },
-    { q: 'Who sets it up?', a: 'An admin at the school or organization signs up and invites teachers and students. Each school only ever sees its own people and data.' },
-    { q: 'How are credentials verified?', a: 'Each certificate is fingerprinted and anchored on the Polygon blockchain. Anyone can open its public verification link to confirm it is genuine and unaltered.' },
+    { q: 'Is UniVersity free to use?', a: 'Yes, students never pay. Their school sets it up.' },
+    { q: 'Who sets it up?', a: 'A school admin signs up and invites everyone. Each school sees only its own data.' },
+    { q: 'How are credentials verified?', a: 'Each certificate has a public link that proves it is real.' },
   ],
   trace: [
-    { q: 'What is UniVerse Trace?', a: 'A passport for every product. Each unit gets its own signed code. Buyers scan it to see it’s genuine; shops scan it to earn the brand’s points; the brand sees every scan on a live map, every shipment on the road and every likely copy. Try the sample: universeimpact.com/t/demo.' },
-    { q: 'What does it cost?', a: 'Starting is free: 10,000 passports, the live maps, tracking, shop rewards and the wallet. Campaigns cost 5 cents per verified sale. PRO adds a million passports and your whole category on the map.' },
+    { q: 'What is UniVerse Trace?', a: 'A signed code on every product. Scan it to see it’s real. Try the sample: universeimpact.com/t/demo.' },
+    { q: 'What does it cost?', a: 'Free for 10,000 products. Campaigns cost 5 cents per verified sale.' },
   ],
   relief: [
-    { q: 'Who can use Relief?', a: 'Anyone with an account: people who need help, neighbours who can give it, and NGOs coordinating it. Requests show an area, never an exact address.' },
+    { q: 'Who can use Relief?', a: 'Anyone. Requests show an area, never an address.' },
   ],
   play: [
-    { q: 'Do I need friends online to play?', a: 'No. Every game has a solo mode against the clock and your own best. With friends, one person opens a room and shares its code or link; everyone plays the same rounds at the same time.' },
-    { q: 'Is it free?', a: 'Yes. All twelve games, rooms of up to 8 and the leaderboards are free with a UniVerse account.' },
+    { q: 'Do I need friends online to play?', a: 'No. Every game works solo. For friends, share a room code.' },
+    { q: 'Is it free?', a: 'Yes, all twelve games are free.' },
   ],
   green: [
-    { q: 'How is the CO₂ saved worked out?', a: 'Each action uses a published average factor (for example, a young tree takes up about 22 kg of CO₂ a year; a kilometre by bike instead of by car saves about 0.2 kg). It’s an honest estimate, shown with the factor used.' },
+    { q: 'How is the CO₂ saved worked out?', a: 'From published averages: a young tree takes up about 22 kg a year.' },
   ],
 };
 
 type Hero = { words: string[]; accent: string; text: string; note: string; card: React.ReactNode; extra?: React.ReactNode };
+// The quiet links under the two main buttons (Get the app, Scan a sample).
+const SMALL = 'inline-flex items-center gap-1.5 text-sm font-medium text-zinc-300 hover:text-white underline-offset-4 hover:underline';
+
 const HERO: Record<AppId, Hero> = {
-  campus: { words: ['The', 'school', 'day', 'runs'], accent: 'itself.', text: 'UniVerse unifies academics, collaboration and social impact, connecting students, universities and NGOs on one secure, AI-powered platform.', note: 'free for students / a school sets it up / no card', card: <CampusScene /> },
-  trace: { words: ['Every', 'product', 'gets', 'a'], accent: 'passport.', text: 'One code on every unit. Buyers see it’s genuine, shops earn points for every sale, and you watch every product move on a live map, and catch every copy the day it appears.', note: 'for brands, shops, drivers and buyers / free to start', card: <TraceScene />, extra: <Link href="/t/demo" className={ghost}>Scan a sample</Link> },
-  relief: { words: ['Help', 'that', 'reaches', 'people'], accent: 'fast.', text: 'People post what they need, neighbours and NGOs offer what they have, and a live map matches them: food, water, shelter, medicine or a lift to the clinic.', note: 'for people in need, volunteers and NGOs / free', card: <ReliefScene /> },
-  play: { words: ['Games', 'that', 'teach'], accent: 'something.', text: 'Quiz battles and type races, spotting fakes and pinning the world map, flood rescues by helicopter and cleaning the ocean. Beat your best alone, or share a room code and race your friends live.', note: 'free / up to 8 in a room / phones and computers', card: <PlayScene /> },
-  green: { words: ['Climate', 'action', 'you', 'can'], accent: 'prove.', text: 'Log trees planted, kilometres cycled and waste recycled, see the CO₂ saved, and beat a weekly challenge with your class, office or club.', note: 'for schools, companies and clubs / free', card: <GreenScene /> },
+  campus: { words: ['The', 'school', 'day', 'runs'], accent: 'itself.', text: 'Classes, grades and messages in one calm place.', note: 'free for students', card: <CampusScene /> },
+  trace: { words: ['Every', 'product', 'gets', 'a'], accent: 'passport.', text: 'Scan the code. See if it’s real.', note: 'free to start', card: <TraceScene />, extra: <Link href="/t/demo" className={SMALL}>Scan a sample</Link> },
+  relief: { words: ['Help', 'that', 'reaches', 'people'], accent: 'fast.', text: 'Ask for help or offer it, on one live map.', note: 'free, always', card: <ReliefScene /> },
+  play: { words: ['Games', 'that', 'teach'], accent: 'something.', text: 'Quick games that teach. Solo or with friends.', note: 'free · up to 8 in a room', card: <PlayScene /> },
+  green: { words: ['Climate', 'action', 'you', 'can'], accent: 'prove.', text: 'Log what you do. See the CO₂ you save.', note: 'free for everyone', card: <GreenScene /> },
 };
 
 function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
@@ -97,11 +101,12 @@ type InstallPromptEvent = Event & { prompt(): Promise<void>; userChoice: Promise
 export default function ShowcasePage() {
   const { user } = useAuthStore();
   const app = useChosenApp();
-  const hero = HERO[app], meta = appById(app);
+  const hero = HERO[app];
   const pick = (id: AppId) => { setChosenApp(id); window.history.replaceState(null, '', id === 'campus' ? '/' : `/?app=${id}`); };
   const router = useRouter();
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
+  const [guide, setGuide] = useState(false);
   const { scrollYProgress, scrollY } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 140, damping: 30 });
   // The hero picture drifts up a little slower than the page as you scroll (parallax).
@@ -131,14 +136,7 @@ export default function ShowcasePage() {
       setInstallPrompt(null);
       return;
     }
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
-    toast(isIOS ? '📱 How to install on iOS' : '💻 How to install', {
-      description: isIOS
-        ? 'Tap the Share icon at the bottom of Safari, then scroll down and tap "Add to Home Screen".'
-        : 'Look for the install icon (usually a computer with a down arrow) in your address bar to install the app.',
-      duration: 10000,
-      style: { background: '#2a2927', color: 'white', border: 'none' },
-    });
+    setGuide(true);
   };
 
   return (
@@ -164,9 +162,9 @@ export default function ShowcasePage() {
         <main data-no-motion className="relative z-10">
           {/* ── Hero: the light pours through behind the words and the flow card ── */}
           <section data-no-motion className="relative min-h-[100svh] px-6 pt-32 md:pt-36 pb-20 overflow-hidden">
-            <div className="relative max-w-6xl mx-auto grid lg:grid-cols-[1.05fr_1fr] gap-12 items-center">
+            <div className="relative max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 items-center">
               <div>
-                <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }} className="font-mono text-xs text-zinc-300">
+                <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }} className="hidden sm:block font-mono text-xs text-zinc-300">
                   <Sparkles className="inline w-3.5 h-3.5 me-1.5 text-fuchsia-300" aria-hidden />UniVerse Impact · one account, apps that change something
                 </motion.p>
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.08, ease: EASE }} className="mt-4">
@@ -182,12 +180,14 @@ export default function ShowcasePage() {
                     </h1>
                     <p className="mt-6 text-lg text-zinc-300 max-w-md leading-relaxed">{hero.text}</p>
                     <div className="mt-9 flex flex-wrap items-center gap-3">
-                      <Link href={`/register?app=${app}`} data-magnetic className={primary}>Get started with {meta.name.replace('UniVerse ', '')} <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
+                      <Link href={`/register?app=${app}`} data-magnetic className={primary}>Get started <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
                       <Link href={`/login?app=${app}`} data-magnetic className={ghost}>Sign in</Link>
-                      {hero.extra}
-                      <button type="button" onClick={handleInstallClick} className={ghost}><Smartphone className="w-4 h-4" /> {installed ? 'Open the app' : 'Get the app'}</button>
                     </div>
-                    <p className="mt-5 font-mono text-xs text-zinc-400">{hero.note}</p>
+                    <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
+                      <button type="button" onClick={handleInstallClick} className={SMALL}><Smartphone className="w-4 h-4" aria-hidden /> {installed ? 'Open the app' : 'Get the app'}</button>
+                      {hero.extra}
+                      <span className="font-mono text-xs text-zinc-400">{hero.note}</span>
+                    </div>
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -226,6 +226,7 @@ export default function ShowcasePage() {
 
         <MarketingFooter />
       </div>
+      {guide && <InstallGuide onClose={() => setGuide(false)} />}
     </MotionConfig>
   );
 }

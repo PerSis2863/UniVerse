@@ -6,14 +6,15 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useChatLock, watchRelock } from '@/lib/chat-lock';
-import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock, Hash, Sparkles, MessagesSquare, UserRound, type LucideIcon } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock, Hash, Sparkles, MessagesSquare, UserRound, Share2, type LucideIcon } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar } from '@/components/ui/Avatar';
 import { type ConversationSummary, auraOf, chatJson, plainText, previewText, timeLabel } from './chat-client';
-import { pickDraft, useLocalDrafts } from '@/lib/chat-drafts';
+import { keepDraft, pickDraft, useLocalDrafts } from '@/lib/chat-drafts';
+import { clearShare, peekShare } from '@/lib/share-in';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
@@ -164,7 +165,11 @@ export function MessagingHub() {
     }
   }, []);
 
+  // Something shared from another app (src/lib/share-in.ts): the chat picked next gets it as its draft.
+  const [shared, setShared] = useState<string | null>(() => peekShare());
   const select = useCallback((id: string | null) => {
+    const pending = peekShare();
+    if (id && pending) { keepDraft(id, pending); clearShare(); setShared(null); }
     setJumpTo(null);
     setActiveId(id);
     const url = new URL(window.location.href);
@@ -276,6 +281,16 @@ export function MessagingHub() {
             ))}
           </div>
           {space === 'chats' && <>
+          {shared && (
+            <div role="status" className="rise-in flex items-center gap-3 rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/[0.07] px-3.5 py-2.5">
+              <Share2 className="w-4 h-4 shrink-0 text-fuchsia-500 dark:text-fuchsia-300" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-zinc-900 dark:text-white">Pick a chat to send it to</p>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 truncate" translate="no">{shared}</p>
+              </div>
+              <button type="button" onClick={() => { clearShare(); setShared(null); }} className="btn-ghost btn-sm shrink-0">Cancel</button>
+            </div>
+          )}
           <div className="relative">
             <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search chats and messages" aria-label="Search chats and messages" title="Filters: from:name, in:chat, has:file, has:link, has:photo, has:voice, before:2026-10-01, after:2026-09-01" className="msg-search w-full ps-10 pe-4 py-2.5 rounded-2xl bg-zinc-100 dark:bg-white/[0.06] text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none transition-shadow duration-200" />

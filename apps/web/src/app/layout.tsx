@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { SITE_SHARE } from '@/lib/share-meta';
 import { LANGUAGE_SCRIPT } from '@/lib/language-script';
 import UiTranslatorGate from '@/components/i18n/UiTranslatorGate';
 import './globals.css';
@@ -21,10 +22,10 @@ import { DISPLAY_PREFS_SCRIPT } from '@/lib/display-prefs';
 
 export const metadata: Metadata = {
   title: {
-    default: 'UniVerse Impact — Global Education & Social Impact Platform',
+    default: 'UniVerse Impact: one account, many apps, real impact',
     template: '%s | UniVerse Impact',
   },
-  description: 'Connecting students, universities, and NGOs to collaborate on real-world social impact projects.',
+  description: 'School, product passports, help nearby, climate action and games, with one sign-in.',
   keywords: ['university', 'education', 'NGO', 'social impact', 'volunteering', 'students'],
   manifest: '/manifest.json',
   appleWebApp: {
@@ -35,20 +36,21 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  // Links shared in chats and social apps show the picture (public/og.jpg, 1200 × 630).
+  // Links shared in chats and social apps show the picture (public/og.jpg, 1200 × 630; each app's
+  // pages have their own, src/lib/share-meta.ts).
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://universeimpact.com'),
   openGraph: {
     type: 'website',
-    title: 'UniVerse Impact',
-    description: 'The all-in-one university management platform.',
+    title: 'UniVerse Impact: one account, many apps, real impact',
+    description: 'School, product passports, help nearby, climate action and games, with one sign-in.',
     siteName: 'UniVerse Impact',
-    images: [{ url: '/og.jpg', width: 1200, height: 630, alt: 'UniVerse: one place for your whole campus' }],
+    images: [{ url: SITE_SHARE, width: 1200, height: 630, alt: 'UniVerse Impact: one account, many apps, real impact' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'UniVerse Impact',
-    description: 'The all-in-one university management platform.',
-    images: ['/og.jpg'],
+    title: 'UniVerse Impact: one account, many apps, real impact',
+    description: 'School, product passports, help nearby, climate action and games, with one sign-in.',
+    images: [SITE_SHARE],
   },
 };
 

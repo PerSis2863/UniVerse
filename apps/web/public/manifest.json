@@ -70,13 +70,18 @@
     }
   ],
   "screenshots": [
-    {
-      "src": "/icon-512x512.png?v=2",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "UniVerse Student Dashboard"
-    }
+    { "src": "/screenshots/wide-campus.jpg", "sizes": "1280x800", "type": "image/jpeg", "form_factor": "wide", "label": "UniVersity: the school day runs itself" },
+    { "src": "/screenshots/wide-trace.jpg", "sizes": "1280x800", "type": "image/jpeg", "form_factor": "wide", "label": "UniVerse Trace: every product gets a passport" },
+    { "src": "/screenshots/phone-campus.jpg", "sizes": "780x1688", "type": "image/jpeg", "form_factor": "narrow", "label": "UniVersity: the school day runs itself" },
+    { "src": "/screenshots/phone-trace.jpg", "sizes": "780x1688", "type": "image/jpeg", "form_factor": "narrow", "label": "UniVerse Trace: every product gets a passport" },
+    { "src": "/screenshots/phone-relief.jpg", "sizes": "780x1688", "type": "image/jpeg", "form_factor": "narrow", "label": "UniVerse Relief: help that reaches people fast" },
+    { "src": "/screenshots/phone-green.jpg", "sizes": "780x1688", "type": "image/jpeg", "form_factor": "narrow", "label": "UniVerse Green: climate action you can prove" },
+    { "src": "/screenshots/phone-play.jpg", "sizes": "780x1688", "type": "image/jpeg", "form_factor": "narrow", "label": "UniVerse Play: games that teach something" }
   ],
+  "share_target": {
+    "action": "/app",
+    "method": "GET",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  },
   "prefer_related_applications": false
 }
