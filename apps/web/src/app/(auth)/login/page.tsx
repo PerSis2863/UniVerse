@@ -256,7 +256,7 @@ export default function LoginPage() {
           <div className="mt-5 short:mt-4"><AppTabs small value={app} onChange={setChosenApp} label="Sign in to" layoutId="login-app" /></div>
         </div>
 
-        <div className="rounded-3xl border border-white/[0.08] bg-[#131a3d]/75 backdrop-blur-md shadow-[0_40px_120px_-40px_rgba(43,53,104,0.55)] p-6 sm:p-8 short:sm:p-6">
+        <div className="rounded-3xl border border-white/[0.08] bg-[#0d1233]/75 backdrop-blur-md shadow-[0_40px_120px_-40px_rgba(43,53,104,0.55)] p-6 sm:p-8 short:sm:p-6">
           {twoStep ? (
             <TwoStepPanel
               onDone={() => { const t = twoStep; setTwoStep(null); void handleLoginSuccess(t.token, t.method); }}

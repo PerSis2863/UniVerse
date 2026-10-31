@@ -118,7 +118,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   **M56** (31 Oct, merged, PR #102): the river pink again and never stuck, a third cheaper; the scroll
   story's pictures full size; the planet section fades into the page; sign-in fits one laptop screen.
   **M56a**: nothing slows or stops the river by itself any more (only Reduce Motion stills it).
-  **M57** (on the branch): dark mode deep navy with Aqua Jade glows (no pale blue); no line under the hero.
+  **M57** (on the branch): dark mode deep navy with Aqua Jade glows (no pale blue); no line under the hero. **M57a**: a step deeper again (page #0a0f2b).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
   done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts
@@ -276,7 +276,7 @@ zinc = neutral greys) and `.dark` parts get the navy ones back. Use `violet-*` w
 **The look: "Globynk" (M52, the owner, 31 Oct 2026; replaced M34's warm graphite "Karma").** Three
 colours: **Midnight Abyss #171F44** (navy: the page in dark mode, the ink, the side menu), **Aqua Jade
 #74FFED** (the glow rising from the bottom of every page, focus in dark mode, the planet; M57: always
-a glow over deep navy #0f1536, never a pale blue fill) and **Baby
+a glow over deep navy #0a0f2b, never a pale blue fill) and **Baby
 Pink #FE81D1** (the light: the main button, the river, live states, arcs). Dark mode (the default): every
 page fades from Midnight Abyss at the top into deep Aqua Jade at the bottom (M55, `.ambient-bg`; its
 lightest point keeps white text at 4.5:1), cards are 80% navy glass (blurred on big screens), the side

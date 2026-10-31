@@ -2789,3 +2789,12 @@ The owner sent the landing between the hero and "One account. One planet.": a ha
   and 1280); axe on the hub, student home, Green and Trace in dark mode at 1280 and 390: no serious
   problems. Looked at the hero-to-planet join, the planet section and the hub.
 
+## M57a · A deeper navy (31 Oct 2026)
+
+The owner: "need more dark blue". Every dark-mode navy from M57 a step deeper (`globals.css`): the
+page #0a0f2b → #0b2438 at the foot, `--background` #0b1030, cards `rgba(16,22,54,0.84)`, side menu
+#0a0f2b and its glass, top bar and `--material`, the frosts, `.trace-hero`, the landing's planet
+section and `.text-pool`; the landing and sign-in base #0a0f2b; the website's menu bar and the sign-in
+card #0d1233. Aqua Jade glows and the pink river unchanged. **Tested:** `pnpm check`; `world-ui` and
+axe on the hub, student home, Green and Trace at 1280 and 390: no serious problems.
+
