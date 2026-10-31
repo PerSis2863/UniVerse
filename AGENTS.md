@@ -97,7 +97,9 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   **M37** (game bug sweep, longer rounds, player levels and looks), **M38** (other players live in
   3D rooms, a skill per world, the big-game layer) and **M39** (text chat and 13+ proximity voice in
   3D rooms, realistic lit surfaces, a new feature in every game) (PR #97); **M40** (Ridgeline Ops
-  replaces Neon Strike: a first-person extraction shooter on a seeded island) (PR #98, 26 Oct).
+  replaces Neon Strike: a first-person extraction shooter on a seeded island) (PR #98, 26 Oct). **M41**
+  (new Green and Play pictures, also on sign-in; a press ripple, magnetic buttons, tilt and a
+  cursor light; branch `claude/funny-galileo-y4mz9r`, not merged yet).
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **Next database update number: `0186`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each

@@ -45,7 +45,7 @@ export function CountUp({ to, prefix = '', suffix = '', className }: { to: numbe
 }
 
 /** The two-tone button (indigo into fuchsia), the page's one bright action. */
-export const primary = 'group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-bold text-white bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_8px_30px_-8px_rgba(236,72,153,0.7)] hover:brightness-110 active:scale-[0.98] transition';
-export const ghost = 'group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-semibold text-white border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] active:scale-[0.98] transition';
+export const primary = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-bold text-white bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_8px_30px_-8px_rgba(236,72,153,0.7)] hover:brightness-110 active:scale-[0.98] transition';
+export const ghost = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-semibold text-white border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] active:scale-[0.98] transition';
 /** A dark glass card. */
 export const glass = 'rounded-3xl border border-white/[0.08] bg-[#111112]/70 backdrop-blur-md';

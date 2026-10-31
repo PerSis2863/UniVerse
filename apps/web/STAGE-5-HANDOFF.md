@@ -2173,3 +2173,31 @@ assets, nothing taken apart). Neon Strike is gone; the game id is `ops` (the liv
   material patched for fog/shadows must go through `r.patch` / `r.prep` (they compose
   `onBeforeCompile` and set the cache key). Test against the dev server in one command
   (start, test, stop) rather than leaving it running.
+
+## M41 · New hero pictures and motion that answers the pointer everywhere (31 Oct 2026)
+
+The owner: "make much better design and animation… when I go in sign in page it still shows the old
+one… don't just put the box design… add more animation and motion… for whole project not just main
+page".
+
+- **Hero pictures** (`src/components/landing/HeroScenes.tsx`, one per app, used by the landing and
+  by sign-in through `AuthShowcase.tsx`): UniVersity is "the school day running itself" (jobs
+  orbiting a counter, a feed under it); Green is a living planet (rotating dot band, actions riding
+  an orbit with CSS `offset-path`, a ticker pill); Play is a neon race track (SMIL `animateMotion`
+  comets, a leaderboard that re-orders with `layout`). Green and Play have no box round them: they
+  float in the page. `PassportCard.tsx` was deleted (nothing used it).
+- **Motion that answers the pointer** (`src/lib/light-motion.ts`, started for every page with the
+  scroll motion): a ripple of light spreads from the finger in every button and tab
+  (`.btn-*`, `[role="tab"]`, `.mkt-cta`, `[data-ripple]`); `[data-magnetic]` and the landing's
+  buttons lean toward the pointer; `[data-tilt]` tilts a picture in 3D (the landing's hero);
+  `[data-cursor-light]` puts a soft pink light under the pointer (landing and sign-in). CSS in
+  `globals.css` "M41": clickable cards (`a.card`, `a.panel`, `button.card`, `.card-hover`) lift
+  with a pink shadow on hover, fields glow when focused, buttons rise 1 px on hover. The landing's
+  hero picture also drifts up as the page scrolls (parallax, a spring on `scrollY`).
+- **Rules for code that builds on it:** follow, tilt and cursor light only on a fine pointer with
+  hover (touch screens get the ripple); none of it runs with Reduce Motion. `data-no-motion` opts
+  out of the scroll reveals and the sparks, *not* the ripple; `data-no-motion-follow` opts out of
+  the ripple, magnetic and tilt. Each effect writes only `transform` or two CSS variables, frames
+  only while something moves.
+- **Tested:** browser check on the dev server (magnetic offset, ripple element, tilt angles, cursor
+  light variables, no page errors); unit tests, typecheck, lint, lean.

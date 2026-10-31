@@ -2233,3 +2233,22 @@ html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .
 .ops-banner { animation: ops-banner 3.6s var(--ease-glide) both; }
 @keyframes ops-banner { 0% { opacity: 0; translate: 0 10px; letter-spacing: 0.3em; } 10% { opacity: 1; translate: 0 0; letter-spacing: 0.12em; } 85% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ops-banner { animation-name: rm-fade; } .ops-spin { animation: none; } }
+
+/* ═══ M41 · Motion everywhere (src/lib/light-motion.ts) ═══════════════════════════════════════════
+   The press ripple, the cursor light, clickable cards that lift, fields that glow as you type. Transform, opacity and box-shadow only; Reduce Motion: none. */
+.has-ripple { overflow: hidden; isolation: isolate; }
+.press-ripple { position: absolute; z-index: 0; pointer-events: none; border-radius: 9999px; background: radial-gradient(closest-side, rgb(236 72 153 / 0.35), rgb(236 72 153 / 0.12) 60%, transparent 72%); transform: scale(0); opacity: 1; animation: press-ripple 620ms var(--ease-out-soft, ease-out) forwards; }
+@keyframes press-ripple { to { transform: scale(1); opacity: 0; } }
+[data-cursor-light] { position: relative; }
+[data-cursor-light]::before { content: ''; position: absolute; z-index: 1; pointer-events: none; inset: 0; opacity: 0; transition: opacity 400ms ease;
+  background: radial-gradient(520px circle at var(--mx, -999px) var(--my, -999px), rgb(236 72 153 / 0.09), transparent 60%); }
+@media (hover: hover) and (pointer: fine) { [data-cursor-light]:hover::before { opacity: 1; } }
+[data-magnetic], [data-tilt] { will-change: transform; transform-style: preserve-3d; }
+@media (hover: hover) {
+  a.card, a.panel, button.card, button.panel, .card-hover { transition-property: transform, box-shadow, border-color, background-color; transition-duration: 260ms; transition-timing-function: var(--ease-glide); }
+  a.card:hover, a.panel:hover, button.card:hover, button.panel:hover, .card-hover:hover { transform: translateY(-3px); box-shadow: 0 18px 40px -22px rgb(236 72 153 / 0.45); }
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select { transition: border-color 200ms ease, box-shadow 260ms var(--ease-glide, ease-out); }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visible, textarea:focus-visible, select:focus-visible { box-shadow: 0 0 0 3px rgb(236 72 153 / 0.18), 0 0 24px -6px rgb(236 72 153 / 0.45); }
+@media (prefers-reduced-motion: reduce) { .press-ripple { display: none; } [data-cursor-light]::before { display: none; } a.card:hover, a.panel:hover, button.card:hover, button.panel:hover, .card-hover:hover { transform: none; } }
+html.reduce-motion .press-ripple, html.reduce-motion [data-cursor-light]::before { display: none; }

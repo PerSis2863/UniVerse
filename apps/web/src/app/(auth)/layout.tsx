@@ -11,7 +11,7 @@ import { AuthShowcase } from '@/components/landing/AuthShowcase';
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     // Dark-only; the "dark" class makes dark: variants (logo text etc.) apply here in light mode too.
-    <div className="dark relative min-h-[100dvh] flex overflow-x-clip" style={{ backgroundColor: '#0b0b0c', color: '#ffffff' }}>
+    <div data-cursor-light className="dark relative min-h-[100dvh] flex overflow-x-clip" style={{ backgroundColor: '#0b0b0c', color: '#ffffff' }}>
       <ApiWarmup />
       <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
         <LightTrail tone="dark" strength={0.85} className="opacity-60 lg:opacity-90" />

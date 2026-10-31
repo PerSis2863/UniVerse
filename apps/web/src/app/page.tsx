@@ -3,7 +3,7 @@
 import Link from '@/components/ui/Link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence, MotionConfig, m as motion, useScroll, useSpring } from 'framer-motion';
+import { AnimatePresence, MotionConfig, m as motion, useScroll, useSpring, useTransform } from 'framer-motion';
 import { ArrowRight, ChevronDown, Smartphone, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
@@ -102,8 +102,10 @@ export default function ShowcasePage() {
   const router = useRouter();
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
-  const { scrollYProgress } = useScroll();
+  const { scrollYProgress, scrollY } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 140, damping: 30 });
+  // The hero picture drifts up a little slower than the page as you scroll (parallax).
+  const sceneY = useSpring(useTransform(scrollY, [0, 800], [0, -90]), { stiffness: 120, damping: 26 });
 
   useEffect(() => {
     if (user) router.replace(homeFor(user));
@@ -144,7 +146,7 @@ export default function ShowcasePage() {
       {/* Opened as the installed app (an older install whose start address is still "/"): go to
           the app's start (sign in, or your dashboard) instead of the website's landing page. */}
       <script dangerouslySetInnerHTML={{ __html: "if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone){location.replace('/app')}" }} />
-      <div className="mkt-smooth dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#0b0b0c', color: '#ffffff' }}>
+      <div data-cursor-light className="mkt-smooth dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#0b0b0c', color: '#ffffff' }}>
         <motion.div style={{ scaleX: progress }} className="fixed top-0 inset-x-0 h-[2px] origin-left z-[60] bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500" />
         {/* The page's two-tone glow and the river of light, behind everything below the hero. */}
         <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
@@ -180,8 +182,8 @@ export default function ShowcasePage() {
                     </h1>
                     <p className="mt-6 text-lg text-zinc-300 max-w-md leading-relaxed">{hero.text}</p>
                     <div className="mt-9 flex flex-wrap items-center gap-3">
-                      <Link href={`/register?app=${app}`} className={primary}>Get started with {meta.name.replace('UniVerse ', '')} <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
-                      <Link href={`/login?app=${app}`} className={ghost}>Sign in</Link>
+                      <Link href={`/register?app=${app}`} data-magnetic className={primary}>Get started with {meta.name.replace('UniVerse ', '')} <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
+                      <Link href={`/login?app=${app}`} data-magnetic className={ghost}>Sign in</Link>
                       {hero.extra}
                       <button type="button" onClick={handleInstallClick} className={ghost}><Smartphone className="w-4 h-4" /> {installed ? 'Open the app' : 'Get the app'}</button>
                     </div>
@@ -189,11 +191,13 @@ export default function ShowcasePage() {
                   </motion.div>
                 </AnimatePresence>
               </div>
+              <motion.div style={{ y: sceneY }}>
               <AnimatePresence mode="wait">
                 <motion.div key={app} initial={{ opacity: 0, y: 40, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }} transition={{ duration: 0.9, ease: EASE }} style={{ transformPerspective: 1200 }} className="flex justify-center lg:justify-end">
-                  {hero.card}
+                  <div data-tilt className="w-full flex justify-center lg:justify-end">{hero.card}</div>
                 </motion.div>
               </AnimatePresence>
+              </motion.div>
             </div>
           </section>
 
