@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { Maximize2, Minus, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { easeOut, glow, hash, seeded, useLiveCanvas, type Frame } from './canvas';
 
@@ -21,19 +22,61 @@ type Iso = (x: number, y: number, z?: number) => P;
 interface Layer { key: string; ground: HTMLCanvasElement; city: HTMLCanvasElement; twinkle: P[]; antennas: P[]; neon: P[] }
 type Route = ReturnType<typeof plan>[number];
 
+// M66 (the owner: "needs to be zoom in, can't see anything… more realistic… animations of car"): a
+// camera. It opens zoomed in on the hub; drag to move, pinch or ctrl/⌘ + scroll to zoom, double-click
+// to zoom in there, + / − / fit buttons. The camera glides to where it's sent (eased each frame); the
+// pictures of the ground and buildings are redrawn sharper for the zoom once it rests. Cars are small
+// lit boxes driving their lanes (head lights ahead, tail lights behind), hidden behind buildings.
+
+interface Cam { z: number; tz: number; x: number; y: number; tx: number; ty: number; last: number; init: boolean; w: number; h: number }
+const Z_MIN = 1, Z_MAX = 3.4;
+const CARS = ['#e9edf7', '#9aa3bd', '#3c4670', '#2a3156', '#74ffed', '#fe81d1', '#f4d36b', '#c8ccd8'];
+
 export function CityView({ vans, label, className }: { vans: Van[]; label: string; className?: string }) {
   const layer = useRef<Layer | null>(null);
   const planned = useRef<{ vans: Van[]; G: number; routes: Route[] } | null>(null);
+  const cam = useRef<Cam>({ z: 1, tz: 1, x: 0, y: 0, tx: 0, ty: 0, last: 0, init: false, w: 0, h: 0 });
+  const [wake, setWake] = useState(0);
 
-  const ref = useLiveCanvas(({ ctx, w, h, t, pointer }: Frame) => {
-    const G = w < 520 ? 8 : 10, H = G / 2;
+  /** Keeps the camera's goal on the city (not lost off to a side). */
+  const clampGoal = (c: Cam) => {
+    const mx = (c.tz - 1) * c.w * 0.5 + c.w * 0.18, my = (c.tz - 1) * c.h * 0.5 + c.h * 0.18;
+    c.tx = Math.max(-mx, Math.min(mx, c.tx)); c.ty = Math.max(-my, Math.min(my, c.ty));
+  };
+  /** Zoom by f about a point on screen (that point stays put). */
+  const zoomAt = (f: number, px: number, py: number) => {
+    const c = cam.current, z = Math.max(Z_MIN, Math.min(Z_MAX, c.tz * f));
+    const wx = (px - c.w / 2 - c.tx) / c.tz, wy = (py - c.h / 2 - c.ty) / c.tz;
+    c.tz = z; c.tx = px - c.w / 2 - wx * z; c.ty = py - c.h / 2 - wy * z;
+    clampGoal(c); setWake((n) => n + 1);
+  };
+  const fit = () => { const c = cam.current; c.tz = 1; c.tx = 0; c.ty = 0; setWake((n) => n + 1); };
+
+  const ref = useLiveCanvas(({ ctx, w, h, t, pointer, still }: Frame) => {
+    const G = w < 520 ? 7 : 9, H = G / 2;
+    // The camera: opens zoomed in, then eases toward where it's sent.
+    const c = cam.current;
+    c.w = w; c.h = h;
+    if (!c.init) { c.init = true; c.z = c.tz = w < 520 ? 1.35 : 1.7; }
+    const dt = c.last ? Math.min(0.05, Math.max(0, t - c.last)) : 0.016;
+    c.last = t;
+    const ease = still ? 1 : 1 - Math.exp(-dt / 0.085);
+    c.z += (c.tz - c.z) * ease; c.x += (c.tx - c.x) * ease; c.y += (c.ty - c.y) * ease;
+    const settled = Math.abs(c.tz - c.z) < 0.004;
+    const toScreen = ([x, y]: P): P => [(x - w / 2) * c.z + w / 2 + c.x, (y - h / 2) * c.z + h / 2 + c.y];
+    const ptr = pointer ? { x: (pointer.x - w / 2 - c.x) / c.z + w / 2, y: (pointer.y - h / 2 - c.y) / c.z + h / 2 } : null;
     // Fill the height; on narrow screens the city's far corners may run off the sides (like a map).
     const s = Math.min(h * 0.94 / (G + 1.3), w * 1.35 / (2 * 0.866 * G));
     const ox = w / 2, oy = (h - s * G - 1.3 * s) / 2 + 1.3 * s;
     const iso: Iso = (x, y, z = 0) => [ox + (x - y) * s * 0.866, oy + (x + y) * s * 0.5 - z * s];
+    // Pictures drawn sharper when zoomed in (redrawn only once the zoom rests; capped for memory).
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const key = `${w}x${h}x${dpr}x${G}`;
-    if (layer.current?.key !== key) layer.current = build(key, w, h, dpr, G, s, iso);
+    const zq = settled ? Math.min(3, Math.max(1, Math.round(c.z * 2) / 2)) : Number(layer.current?.key.split('x')[3] ?? 1);
+    const res = Math.min(3, dpr * zq);
+    const key = `${w}x${h}x${G}x${zq}x${res}`;
+    if (layer.current?.key !== key && (settled || !layer.current)) layer.current = build(key, w, h, res, G, s, iso);
+    ctx.save();
+    ctx.translate(w / 2 + c.x, h / 2 + c.y); ctx.scale(c.z, c.z); ctx.translate(-w / 2, -h / 2);
     if (planned.current?.vans !== vans || planned.current.G !== G) planned.current = { vans, G, routes: plan(vans, G) };
     const L = layer.current, routes = planned.current.routes;
     const [hx, hy] = iso(H, H);
@@ -44,19 +87,27 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
     ctx.drawImage(L.ground, 0, 0, w, h);
     ctx.globalAlpha = 1;
 
-    // 2 · Traffic: head and tail lights moving along the streets (buildings in front hide them).
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.lineWidth = 1.2;
-    ctx.strokeStyle = 'rgba(254,129,209,0.55)';
-    for (let i = 0; i < 46; i++) {
+    // 2 · Traffic: cars driving their lanes, head lights ahead and tail lights behind (buildings in
+    // front hide them: they're drawn before the buildings).
+    for (let i = 0; i < 56; i++) {
       const axis = i % 2, line = Math.floor(seeded(i * 3.1) * (G + 1)), dir = seeded(i * 7.7) < 0.5 ? 1 : -1;
-      const lane = dir * 0.055, speed = 0.25 + seeded(i * 5.3) * 0.45;
+      const lane = dir * 0.07, speed = 0.18 + seeded(i * 5.3) * 0.32;
       const pos = (((seeded(i * 9.1) * G + t * speed * dir) % G) + G) % G;
-      const [x, y] = axis ? iso(line + lane, pos) : iso(pos, line + lane);
-      const [bx, by] = axis ? iso(line + lane, pos - dir * 0.22) : iso(pos - dir * 0.22, line + lane);
-      ctx.globalAlpha = 0.85 * reveal;
-      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(x, y); ctx.stroke();
-      ctx.drawImage(glow('white'), x - 4, y - 4, 8, 8);
+      // Along the street (u) and across it (v), in city units; a car is 0.24 long and 0.1 wide.
+      const pt = (u: number, v: number, z: number): P => (axis ? iso(line + lane + v, pos + u * dir, z) : iso(pos + u * dir, line + lane + v, z));
+      const L = 0.12, W = 0.05, Z = 0.06, body = CARS[Math.floor(seeded(i * 2.3) * CARS.length)];
+      ctx.globalAlpha = reveal;
+      const face = (q: P[], fill: string) => { ctx.beginPath(); q.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
+      face([pt(-L, W, 0), pt(L, W, 0), pt(L, W, Z), pt(-L, W, Z)], 'rgba(10,14,34,0.9)');
+      face([pt(L, -W, 0), pt(L, W, 0), pt(L, W, Z), pt(L, -W, Z)], 'rgba(10,14,34,0.75)');
+      face([pt(-L, -W, Z), pt(L, -W, Z), pt(L, W, Z), pt(-L, W, Z)], body);
+      // The cabin: a darker glass roof on the middle of the car.
+      face([pt(-L * 0.45, -W * 0.8, Z * 1.01), pt(L * 0.35, -W * 0.8, Z * 1.01), pt(L * 0.35, W * 0.8, Z * 1.01), pt(-L * 0.45, W * 0.8, Z * 1.01)], 'rgba(12,18,44,0.55)');
+      ctx.globalCompositeOperation = 'lighter';
+      const [fx, fy] = pt(L + 0.1, 0, 0.02), [bx, by] = pt(-L, 0, 0.025);
+      ctx.globalAlpha = 0.55 * reveal; ctx.drawImage(glow('white'), fx - 7, fy - 4, 14, 8);
+      ctx.globalAlpha = 0.85 * reveal; ctx.drawImage(glow('pink'), bx - 3, by - 2.5, 6, 5);
+      ctx.globalCompositeOperation = 'source-over';
     }
     ctx.globalAlpha = 1;
 
@@ -78,9 +129,9 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
       for (let q = 0; q <= 48; q++) { const p = at(r, a + (q / 48) * (b - a)); const [x, y] = iso(p.x, p.y, 0.01); if (q) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
     };
     let near = -1;
-    if (pointer) {
-      let best = 28;
-      routes.forEach((r, i) => { const p = at(r, r.v.progress); const [x, y] = iso(p.x, p.y); const d = Math.hypot(x - pointer.x, y - pointer.y); if (d < best) { best = d; near = i; } });
+    if (ptr) {
+      let best = 28 / c.z;
+      routes.forEach((r, i) => { const p = at(r, r.v.progress); const [x, y] = iso(p.x, p.y); const d = Math.hypot(x - ptr.x, y - ptr.y); if (d < best) { best = d; near = i; } });
     }
     const grow = (i: number) => easeOut((t - 0.9 - i * 0.07) / 0.9);
 
@@ -177,7 +228,9 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
     });
     ctx.globalCompositeOperation = 'source-over';
 
-    // 6 · Names: pills for vans on the move (any van when pointed at), a gold tick where one arrived.
+    ctx.restore();
+
+    // 6 · Names (on screen, the same size at any zoom): pills for vans on the move (any van when pointed at), a gold tick where one arrived.
     ctx.font = '600 11px Urbanist, system-ui, sans-serif';
     ctx.textBaseline = 'middle'; ctx.textAlign = 'start';
     const placed: [number, number, number, number][] = [];
@@ -186,7 +239,7 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
       if (k <= 0) return;
       const lit = i === near;
       if (r.v.state === 'done' && !lit) {
-        const e = r.pts[r.pts.length - 1], [x, y] = iso(e[0], e[1]), by = y - s * 1.25;
+        const e = r.pts[r.pts.length - 1], [x, by] = toScreen(iso(e[0], e[1], 1.25));
         ctx.globalAlpha = k;
         ctx.fillStyle = '#74ffed'; ctx.beginPath(); ctx.arc(x, by, 6, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#141210'; ctx.lineWidth = 1.6;
@@ -195,7 +248,8 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
         return;
       }
       if (r.v.state !== 'moving' && !lit) return;
-      const p = at(r, r.v.progress * k), [vx, vy] = iso(p.x, p.y, 0.1);
+      const p = at(r, r.v.progress * k), [vx, vy] = toScreen(iso(p.x, p.y, 0.1));
+      if (vx < -40 || vx > w + 40 || vy < -10 || vy > h + 60) return;
       const text = r.v.note ? `${r.v.label} · ${r.v.note}` : r.v.label;
       const bw = ctx.measureText(text).width + 22, bh = 20;
       const x = Math.min(w - bw - 4, Math.max(4, vx - bw / 2));
@@ -214,11 +268,48 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
       ctx.fillText(text, x + 15, y + bh / 2 + 0.5);
       ctx.globalAlpha = 1;
     });
-  });
+  }, wake);
+
+  // Moving the camera by hand: drag (a mouse in any direction; a finger sideways, so the page still
+  // scrolls), two fingers to pinch, ctrl/⌘ + scroll (a trackpad pinch) to zoom, double-click to zoom in.
+  const pts = useRef(new Map<number, { x: number; y: number }>());
+  const local = (e: { clientX: number; clientY: number; currentTarget: EventTarget }) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  const down = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    pts.current.set(e.pointerId, local(e));
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const move = (e: React.PointerEvent<HTMLDivElement>) => {
+    const prev = pts.current.get(e.pointerId);
+    if (!prev) return;
+    const p = local(e), c = cam.current;
+    if (pts.current.size === 2) {
+      const [a, b] = [...pts.current.values()], other = a === prev ? b : a;
+      const d0 = Math.hypot(prev.x - other.x, prev.y - other.y), d1 = Math.hypot(p.x - other.x, p.y - other.y);
+      pts.current.set(e.pointerId, p);
+      if (d0 > 0) zoomAt(d1 / d0, (p.x + other.x) / 2, (p.y + other.y) / 2);
+      return;
+    }
+    pts.current.set(e.pointerId, p);
+    c.tx += p.x - prev.x;
+    if (e.pointerType === 'mouse') c.ty += p.y - prev.y;
+    clampGoal(c);
+    // Following the hand exactly (no lag while dragging).
+    c.x = c.tx; c.y = c.ty;
+  };
+  const up = (e: React.PointerEvent<HTMLDivElement>) => { pts.current.delete(e.pointerId); setWake((n) => n + 1); };
 
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn('relative overflow-hidden select-none cursor-grab active:cursor-grabbing touch-pan-y', className)}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+      onDoubleClick={(e) => { const p = local(e); zoomAt(1.6, p.x, p.y); }}
+      onWheel={(e) => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); const p = local(e); zoomAt(Math.exp(-e.deltaY * 0.01), p.x, p.y); }}>
       <canvas ref={ref} role="img" aria-label={label} className="absolute inset-0 h-full w-full" />
+      <div className="absolute end-3 top-3 flex flex-col gap-1.5">
+        <button type="button" onClick={() => zoomAt(1.4, cam.current.w / 2, cam.current.h / 2)} className="karma-go w-9 h-9 grid place-items-center rounded-full bg-[#171f44]/85 text-white ring-1 ring-white/15 hover:bg-[#232d5c]" aria-label="Zoom in on the city"><Plus className="w-4 h-4" aria-hidden /></button>
+        <button type="button" onClick={() => zoomAt(1 / 1.4, cam.current.w / 2, cam.current.h / 2)} className="karma-go w-9 h-9 grid place-items-center rounded-full bg-[#171f44]/85 text-white ring-1 ring-white/15 hover:bg-[#232d5c]" aria-label="Zoom out of the city"><Minus className="w-4 h-4" aria-hidden /></button>
+        <button type="button" onClick={fit} className="karma-go w-9 h-9 grid place-items-center rounded-full bg-[#171f44]/85 text-white ring-1 ring-white/15 hover:bg-[#232d5c]" aria-label="See the whole city"><Maximize2 className="w-4 h-4" aria-hidden /></button>
+      </div>
       <ul className="sr-only">{vans.map((v) => <li key={v.id} translate="no">{v.label}: {v.state === 'done' ? 'delivered' : v.state === 'parked' ? 'not shipped yet' : `${Math.round(v.progress * 100)}% of the way${v.note ? `, ${v.note}` : ''}`}</li>)}</ul>
     </div>
   );

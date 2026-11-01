@@ -2974,3 +2974,20 @@ the maps are not smooth, make it ultra smooth in all the maps".
 - **Tested:** `pnpm check`; the market map in sample mode looks right (halos subtle, labels readable).
   Frame timing could not be judged here: this container's browser has no graphics card, so every
   full-screen canvas is slow regardless (old and new measured the same).
+
+## M66 · Fleet in motion: zoomed in, a camera, real cars, at the bottom of Tracking (1 Nov 2026)
+
+The owner (screenshot): "needs to be zoom in, can't see anything… more realistic and functional…
+animations of car… put this at bottom section of the tracking".
+
+- **Moved** to the end of `TrackingMap.tsx` (after "Journeys today"), taller (420 / 560 px).
+- **Camera** in `CityView.tsx`: opens zoomed in on the hub (1.7×; 1.35× on phones), fewer blocks (9 /
+  7) so buildings are bigger; drag to move (a finger only sideways so the page still scrolls), pinch,
+  ctrl/⌘ + scroll, double-click, and + / − / fit buttons. The camera eases to its goal each frame
+  (`cam`, `zoomAt`, `clampGoal`); the ground and building pictures are redrawn sharper for the zoom
+  (`res` = dpr × zoom step, capped at 3) only once the zoom rests. Labels are drawn after the camera,
+  on screen, so they stay the same size.
+- **Cars:** 56 small lit boxes (body colour, glass roof, a dark side) driving their lanes with head
+  lights ahead and pink tail lights; drawn before the buildings, so towers in front hide them.
+- **Tested:** `pnpm check`; `/trace/tracking` in sample mode at 1440 and 390: city last on the page,
+  zoom in and drag work, axe clean, no sideways scroll, no errors.

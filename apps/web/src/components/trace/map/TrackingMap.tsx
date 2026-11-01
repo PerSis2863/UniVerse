@@ -271,7 +271,6 @@ export function TrackingMap() {
 
   return (
     <div className="space-y-4">
-      {ships.length > 0 && <FleetInMotion ships={ships} />}
       <div className="flex flex-wrap items-center gap-2">
         <div role="radiogroup" aria-label="Show" className="flex rounded-full bg-zinc-100 dark:bg-white/[0.06] p-1">
           {([['all', `All · ${ships.length}`], ['moving', `On the move · ${moving}`], ['done', 'Delivered']] as const).map(([id, label]) => (
@@ -352,6 +351,8 @@ export function TrackingMap() {
         </div>
       </div>
       {ships.length > 0 && <JourneysToday ships={ships} />}
+      {/* The city at the bottom (M66, the owner: "put this at bottom section of the tracking"). */}
+      {ships.length > 0 && <FleetInMotion ships={ships} />}
     </div>
   );
 }
@@ -364,7 +365,7 @@ function FleetInMotion({ ships }: { ships: Ship[] }) {
     <LiveCard title="Fleet in motion" sub="Every batch from its factory, through the warehouse, to its shop"
       stats={[{ label: 'On the move', value: String(moving.length) }, { label: 'Delivered', value: String(ships.filter((s) => s.status === 'DELIVERED').length) }, { label: 'Next arrival', value: etas.length ? duration(Math.min(...etas)) : '—' }]}
       ticker={ships.slice(0, 8).map((s) => `${s.label} · ${s.product} · ${STATUS[s.status]?.label ?? s.status}${s.etaMinutes !== null && s.status === 'IN_TRANSIT' ? ` · ${duration(s.etaMinutes)} to go` : ''}`)}>
-      <CityView className="h-[340px] sm:h-[460px]" label="Your shipments on their way, as vans in a city"
+      <CityView className="h-[420px] sm:h-[560px]" label="Your shipments on their way, as vans in a city"
         vans={ships.map((s) => ({ id: s.id, label: s.label, progress: progress(s), state: s.status === 'DELIVERED' ? 'done' : s.status === 'IN_TRANSIT' ? 'moving' : 'parked',
           note: s.status === 'DELIVERED' ? 'delivered' : s.status === 'IN_TRANSIT' && s.etaMinutes !== null ? duration(s.etaMinutes) : undefined }))} />
     </LiveCard>
