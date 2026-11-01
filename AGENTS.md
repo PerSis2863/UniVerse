@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M74 is the latest).
+  builds on it). The newest notes are at the end (M75 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -136,12 +136,13 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   **M72**: Create smoother (search, stars, recent, load on hover, glides, Esc, scroll kept) and 30 bigger tools (81 in all, eight groups; `PlanTools`, `StudyTools`, `DataTools`, `MakerTools`, logic `src/lib/big-tools.ts`).
   **M73**: "too many SQL variables" fixed in the database layer for every list (pages of 90 when a related list has its own orderBy/take).
   **M74**: every Create tool upgraded (focus, previous/next, copy link, drop a file, text kept) and 56 more tools (137 in all; `WordTools`, `OrganiseTools`, `ClassTools`, `MoneyTools`, `MediaTools`, `DevTools`; logic `src/lib/more-tools.ts`, `elements.ts`).
+  **M75**: tools save to the account and share by link (migration 0189 `tool_saves`, `Saves.tsx`, `KeptScope`); 55 more tools (192 in all; `PenTools`, `LifeTools`, `ScienceTools`, `CalcTools`, `StageTools`, `ArtTools`, `WebTools`; logic `src/lib/tools-5.ts`).
   **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
   done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts
   on a first visit, is in M47's handoff note).
-- **Next database update number: `0189`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0190`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
   challenges (done, M25); organisation accounts for Relief (NGOs, supplies, volunteer shifts; SMS/WhatsApp requests behind a

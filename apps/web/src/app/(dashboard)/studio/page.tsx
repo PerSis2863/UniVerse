@@ -21,11 +21,22 @@ import type { ClassId } from '@/components/studio/ClassTools';
 import type { MoneyId } from '@/components/studio/MoneyTools';
 import type { MediaId } from '@/components/studio/MediaTools';
 import type { DevId } from '@/components/studio/DevTools';
+import type { PenId } from '@/components/studio/PenTools';
+import type { LifeId } from '@/components/studio/LifeTools';
+import type { ScienceId } from '@/components/studio/ScienceTools';
+import type { CalcId } from '@/components/studio/CalcTools';
+import type { StageId } from '@/components/studio/StageTools';
+import type { ArtId } from '@/components/studio/ArtTools';
+import type { WebId } from '@/components/studio/WebTools';
+import { PenLine, Lightbulb, Feather, AlignLeft, TextCursorInput, BookA, NotebookTabs, MessagesSquare, SquareKanban, PartyPopper, Plane, Repeat, Sun, Table, Moon, Goal, Gift, Asterisk, SpellCheck, AlarmClock, MoveHorizontal, Blend, Milestone, ChartBarBig, Radius, Triangle, Brackets, FlaskConical, Magnet, TrendingUp, UsersRound, Fuel, Banknote, CookingPot, BriefcaseBusiness, BadgePercent, Ticket, Gamepad2, Contact, Hand, Megaphone, CreditCard, Paintbrush, ALargeSmall, Droplets, Terminal, Music4, Piano, Columns3, Database, FileJson, Share2, Lock, AlignHorizontalSpaceAround, Router } from 'lucide-react';
 import { Check, ChevronLeft, ChevronRight, Expand, Aperture, Armchair, Atom, Binary, BookHeart, BookMarked, Brush, Cake, CalendarFold, CaseUpper, CircleHelp, Code, DatabaseZap, Dice5, Divide, Drum, Eye, Grid2x2, Guitar, HandCoins, Headphones, HeartPulse, Hourglass, Keyboard, Landmark, LayoutDashboard, Laugh, ListChecks, ListOrdered, ListTodo, Mail, PiggyBank, Pilcrow, Puzzle, Radio, ScanText, Server, Shapes, ShieldCheck, Smartphone, Split, SquareDashed, SquareFunction, Tag, Target, ThumbsUp, TimerReset, TrafficCone, Trophy, Type, Users, Variable, Vote, Watch, WholeWord, Zap } from 'lucide-react';
 import { Award, AudioLines, Barcode, CalendarCheck, CalendarClock, CalendarDays, ChartGantt, ChartSpline, ClipboardList, Cloud, CodeXml, Disc3, Earth, EyeOff, Film, GraduationCap, Grid3x3, IdCard, Layers, ListTree, Network, Receipt, Scale, ScrollText, Search, Sigma, Signature, Star, StickyNote, TableProperties, Wallet, Workflow, X } from 'lucide-react';
 import { AppWindow, BookOpenCheck, Calculator, CalendarRange, ChartColumn, CircleUser, Clock, Contrast, Crop, Droplet, FileCode2, Fingerprint, KeyRound, LayoutGrid, Link2, MessageSquareQuote, Mic as MicIcon, Omega, Percent, Pipette, Presentation, Quote, Replace, Ruler, Shuffle, Stamp, Timer, Volume2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { CollabTabs } from '@/components/layout/SectionTabs';
+import { KeptScope } from '@/components/studio/kept';
+import { keepShared, loadSave, loadShared, SaveButtons, SavedShelf, type Current, type Shared } from '@/components/studio/Saves';
+import { isToken } from '@/lib/tool-saves';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { SIZES } from '@/lib/studio';
 import { fadeUp, list, spring } from '@/lib/motion';
@@ -64,6 +75,13 @@ const LOAD = {
   money: () => import('@/components/studio/MoneyTools'),
   media: () => import('@/components/studio/MediaTools'),
   dev: () => import('@/components/studio/DevTools'),
+  pen: () => import('@/components/studio/PenTools'),
+  life: () => import('@/components/studio/LifeTools'),
+  science: () => import('@/components/studio/ScienceTools'),
+  calc: () => import('@/components/studio/CalcTools'),
+  stage: () => import('@/components/studio/StageTools'),
+  art: () => import('@/components/studio/ArtTools'),
+  web: () => import('@/components/studio/WebTools'),
 };
 const toolLoading = () => <div className="h-48 rounded-2xl skeleton" />;
 const QuickTool = dynamic(() => LOAD.quick().then((m) => m.QuickTool), { ssr: false, loading: toolLoading });
@@ -81,9 +99,16 @@ const ClassTool = dynamic(() => LOAD.class().then((m) => m.ClassTool), { ssr: fa
 const MoneyTool = dynamic(() => LOAD.money().then((m) => m.MoneyTool), { ssr: false, loading: toolLoading });
 const MediaTool = dynamic(() => LOAD.media().then((m) => m.MediaTool), { ssr: false, loading: toolLoading });
 const DevTool = dynamic(() => LOAD.dev().then((m) => m.DevTool), { ssr: false, loading: toolLoading });
+const WritingTool = dynamic(() => LOAD.pen().then((m) => m.PenTool), { ssr: false, loading: toolLoading });
+const LifeTool = dynamic(() => LOAD.life().then((m) => m.LifeTool), { ssr: false, loading: toolLoading });
+const ScienceTool = dynamic(() => LOAD.science().then((m) => m.ScienceTool), { ssr: false, loading: toolLoading });
+const CalcTool = dynamic(() => LOAD.calc().then((m) => m.CalcTool), { ssr: false, loading: toolLoading });
+const StageTool = dynamic(() => LOAD.stage().then((m) => m.StageTool), { ssr: false, loading: toolLoading });
+const ArtTool = dynamic(() => LOAD.art().then((m) => m.ArtTool), { ssr: false, loading: toolLoading });
+const WebTool = dynamic(() => LOAD.web().then((m) => m.WebTool), { ssr: false, loading: toolLoading });
 
 type Pdf3 = `pdf-${PdfId}`;
-type Panel = 'convert' | 'compress' | 'photo' | 'audio' | 'notes' | QuickId | Pdf3 | MoreId | `img-${ImageId}` | PlanId | StudyId | DataId | MakerId | WordId | OrganiseId | ClassId | MoneyId | MediaId | DevId;
+type Panel = 'convert' | 'compress' | 'photo' | 'audio' | 'notes' | QuickId | Pdf3 | MoreId | `img-${ImageId}` | PlanId | StudyId | DataId | MakerId | WordId | OrganiseId | ClassId | MoneyId | MediaId | DevId | PenId | LifeId | ScienceId | CalcId | StageId | ArtId | WebId;
 // M71: the second set (28 more tools).
 const MORE: MoreId[] = ['replace', 'read', 'cite', 'speak', 'dictate', 'symbols', 'calc', 'units', 'percent', 'picker', 'chart', 'dates', 'present', 'timer', 'contrast', 'colour', 'hash', 'uuid', 'password', 'time', 'url', 'jwt'];
 const IMAGES: ImageId[] = ['resize', 'quote', 'collage', 'avatar', 'beautify', 'codeimg', 'watermark'];
@@ -100,74 +125,138 @@ const CLASS: ClassId[] = ['drill', 'periodic', 'quiz', 'seating', 'dice', 'fract
 const MONEY: MoneyId[] = ['loan', 'savings', 'price', 'age', 'bmi', 'split'];
 const MEDIA: MediaId[] = ['booth', 'icon', 'meme', 'colourblind', 'pixel', 'cleanphoto', 'metronome', 'tuner', 'focus'];
 const DEV: DevId[] = ['base', 'names', 'shadow', 'cron', 'escape', 'chars', 'status', 'keys', 'mock'];
-const PANELS: Panel[] = ['convert', 'compress', 'photo', 'audio', 'notes', ...QUICK, 'pdf-merge', 'pdf-split', 'pdf-images', ...MORE, ...IMAGES.map((i) => `img-${i}` as const), ...PLAN, ...STUDY, ...DATA, ...MAKER, ...WORD, ...ORGANISE, ...CLASS, ...MONEY, ...MEDIA, ...DEV];
+// M75: 55 more, in seven sets.
+const PEN: PenId[] = ['essay', 'prompts', 'poem', 'acrostic', 'typing', 'glossary', 'cornell', 'interview'];
+const LIFE: LifeId[] = ['kanban', 'event', 'trip', 'routine', 'dayplan', 'raci', 'sleep', 'okr', 'birthdays'];
+const SCIENCE: ScienceId[] = ['times', 'spelling', 'clock', 'numberline', 'venn', 'history', 'probability', 'trig', 'triangle', 'matrices', 'molar', 'physics'];
+const CALC: CalcId[] = ['regression', 'samplesize', 'fuel', 'pay', 'recipe', 'timesheet', 'unitprice'];
+const STAGE: StageId[] = ['bingo', 'gameboard', 'nametags', 'queue'];
+const ART: ArtId[] = ['poster', 'bizcard', 'mixer', 'typescale', 'blob', 'ascii', 'drums', 'piano', 'gridsplit'];
+const WEB: WebId[] = ['sqlgen', 'jsonts', 'metatags', 'chmod', 'flexbox', 'subnet'];
+const PANELS: Panel[] = ['convert', 'compress', 'photo', 'audio', 'notes', ...QUICK, 'pdf-merge', 'pdf-split', 'pdf-images', ...MORE, ...IMAGES.map((i) => `img-${i}` as const), ...PLAN, ...STUDY, ...DATA, ...MAKER, ...WORD, ...ORGANISE, ...CLASS, ...MONEY, ...MEDIA, ...DEV, ...PEN, ...LIFE, ...SCIENCE, ...CALC, ...STAGE, ...ART, ...WEB];
 /** Tools that need the whole width (boards, timelines, editors with a preview). */
-const WIDE = new Set<string>(['mindmap', 'stickies', 'gantt', 'timetable', 'flow', 'cv', 'playground', 'explore', 'zones', 'wordsearch', 'rubric', 'graph', 'habits', 'periodic', 'week', 'matrix', 'swot', 'journal', 'seating', 'dice', 'meeting', 'goals', 'colourblind', 'shadow']);
+const WIDE = new Set<string>(['mindmap', 'stickies', 'gantt', 'timetable', 'flow', 'cv', 'playground', 'explore', 'zones', 'wordsearch', 'rubric', 'graph', 'habits', 'periodic', 'week', 'matrix', 'swot', 'journal', 'seating', 'dice', 'meeting', 'goals', 'colourblind', 'shadow', 'kanban', 'times', 'venn', 'history', 'regression', 'bingo', 'gameboard', 'poster', 'bizcard', 'drums', 'piano', 'sqlgen', 'jsonts', 'metatags', 'flexbox', 'essay', 'cornell', 'trip', 'dayplan', 'raci', 'queue']);
 const setOf = (id: string): keyof typeof LOAD | null =>
   id === 'notes' ? 'notes' : id.startsWith('pdf-') ? 'pdf' : id.startsWith('img-') ? 'image' : (MORE as string[]).includes(id) ? 'more' : (QUICK as string[]).includes(id) ? 'quick'
     : (PLAN as string[]).includes(id) ? 'plan' : (STUDY as string[]).includes(id) ? 'study' : (DATA as string[]).includes(id) ? 'data' : (MAKER as string[]).includes(id) ? 'maker'
     : (WORD as string[]).includes(id) ? 'word' : (ORGANISE as string[]).includes(id) ? 'organise' : (CLASS as string[]).includes(id) ? 'class'
-    : (MONEY as string[]).includes(id) ? 'money' : (MEDIA as string[]).includes(id) ? 'media' : (DEV as string[]).includes(id) ? 'dev' : null;
+    : (MONEY as string[]).includes(id) ? 'money' : (MEDIA as string[]).includes(id) ? 'media' : (DEV as string[]).includes(id) ? 'dev'
+    : (PEN as string[]).includes(id) ? 'pen' : (LIFE as string[]).includes(id) ? 'life' : (SCIENCE as string[]).includes(id) ? 'science' : (CALC as string[]).includes(id) ? 'calc' : (STAGE as string[]).includes(id) ? 'stage' : (ART as string[]).includes(id) ? 'art' : (WEB as string[]).includes(id) ? 'web' : null;
 const preload = (id: string) => { const k = setOf(id); if (k) void LOAD[k]().catch(() => {}); };
 
 interface Tool { id: Panel | 'pdf' | 'video'; name: string; what: string; icon: LucideIcon; tint: string; group: string; fresh?: boolean }
 const TOOLS: Tool[] = [
-  { group: 'Write', fresh: true, id: 'journal', name: 'Journal', what: 'A private page a day, with a mood and search', icon: BookHeart, tint: 'from-pink-500 to-violet-500' },
-  { group: 'Write', fresh: true, id: 'letters', name: 'Letter writer', what: 'Leave requests, thank-yous, complaints: fill the blanks', icon: Mail, tint: 'from-sky-500 to-indigo-500' },
-  { group: 'Write', fresh: true, id: 'fancy', name: 'Fancy letters', what: '𝐁𝐨𝐥𝐝, 𝘪𝘵𝘢𝘭𝘪𝘤, Ⓒⓘⓡⓒⓛⓔⓓ and more for bios and posts', icon: Type, tint: 'from-fuchsia-500 to-pink-500' },
-  { group: 'Write', fresh: true, id: 'lines', name: 'Line tools', what: 'Number, prefix, wrap, join, split and filter lines', icon: ListOrdered, tint: 'from-zinc-500 to-sky-500' },
-  { group: 'Write', fresh: true, id: 'numwords', name: 'Numbers in words', what: '1,250 → one thousand two hundred and fifty, for cheques', icon: WholeWord, tint: 'from-emerald-500 to-teal-500' },
-  { group: 'Write', fresh: true, id: 'roman', name: 'Roman numerals', what: '2026 ↔ MMXXVI, both ways', icon: Landmark, tint: 'from-amber-500 to-orange-500' },
-  { group: 'Write', fresh: true, id: 'morse', name: 'Morse code', what: 'Text ↔ dots and dashes, played as beeps', icon: Radio, tint: 'from-zinc-600 to-zinc-900' },
-  { group: 'Write', fresh: true, id: 'lorem', name: 'Placeholder text', what: 'Lorem ipsum paragraphs for layouts', icon: Pilcrow, tint: 'from-zinc-400 to-zinc-600' },
-  { group: 'Write', fresh: true, id: 'wordplay', name: 'Word play', what: 'Anagrams, palindromes and letter counts', icon: Puzzle, tint: 'from-violet-500 to-pink-500' },
-  { group: 'Plan and organise', fresh: true, id: 'matrix', name: 'Priority matrix', what: 'Urgent or important? Sort tasks into four boxes', icon: Grid2x2, tint: 'from-rose-500 to-indigo-500' },
-  { group: 'Plan and organise', fresh: true, id: 'week', name: 'Week planner', what: 'A column a day; drag tasks between days', icon: CalendarFold, tint: 'from-sky-500 to-teal-500' },
-  { group: 'Plan and organise', fresh: true, id: 'goals', name: 'Goals', what: 'Goals broken into steps, with progress rings', icon: Target, tint: 'from-pink-500 to-orange-500' },
-  { group: 'Plan and organise', fresh: true, id: 'checklists', name: 'Checklists', what: 'Exam day, packing, events: tick them off', icon: ListChecks, tint: 'from-emerald-500 to-lime-500' },
-  { group: 'Plan and organise', fresh: true, id: 'countdowns', name: 'Countdowns', what: 'Days, hours and minutes to what matters', icon: Hourglass, tint: 'from-violet-500 to-sky-500' },
-  { group: 'Plan and organise', fresh: true, id: 'meeting', name: 'Meeting notes', what: 'Who came, what was decided, who does what', icon: Users, tint: 'from-indigo-500 to-violet-500' },
-  { group: 'Plan and organise', fresh: true, id: 'swot', name: 'SWOT analysis', what: 'Strengths, weaknesses, opportunities, threats', icon: LayoutDashboard, tint: 'from-teal-500 to-amber-500' },
-  { group: 'Plan and organise', fresh: true, id: 'proscons', name: 'Pros and cons', what: 'For and against, weighed, with a leaning', icon: ThumbsUp, tint: 'from-emerald-500 to-rose-500' },
-  { group: 'Plan and organise', fresh: true, id: 'reading', name: 'Reading list', what: 'Books to read, reading and read, with pages', icon: BookMarked, tint: 'from-amber-500 to-pink-500' },
-  { group: 'Study and teach', fresh: true, id: 'periodic', name: 'Periodic table', what: 'All 118 elements: tap for facts, find families', icon: Atom, tint: 'from-sky-500 to-emerald-500' },
-  { group: 'Study and teach', fresh: true, id: 'quiz', name: 'Quiz maker', what: 'Write a quiz, take it here, or print it', icon: CircleHelp, tint: 'from-violet-500 to-pink-500' },
-  { group: 'Study and teach', fresh: true, id: 'drill', name: 'Maths drill', what: 'As many sums as you can in a minute', icon: Zap, tint: 'from-amber-500 to-rose-500' },
-  { group: 'Study and teach', fresh: true, id: 'equation', name: 'Equation solver', what: 'ax² + bx + c = 0, with the working shown', icon: Variable, tint: 'from-indigo-500 to-sky-500' },
-  { group: 'Study and teach', fresh: true, id: 'fractions', name: 'Fractions', what: 'Add, take away, times, divide; simplest form', icon: Divide, tint: 'from-teal-500 to-sky-500' },
-  { group: 'Study and teach', fresh: true, id: 'shapes', name: 'Shapes calculator', what: 'Area, perimeter, volume, with the formula', icon: Shapes, tint: 'from-pink-500 to-amber-500' },
-  { group: 'Study and teach', fresh: true, id: 'numfacts', name: 'Number facts', what: 'Prime or not, factors, HCF and LCM', icon: Binary, tint: 'from-zinc-600 to-indigo-500' },
-  { group: 'Study and teach', fresh: true, id: 'seating', name: 'Seating plan', what: 'Names into seats; tap two to swap; print', icon: Armchair, tint: 'from-emerald-500 to-sky-500' },
-  { group: 'Study and teach', fresh: true, id: 'dice', name: 'Dice and coins', what: 'Roll dice, flip a coin, pick a number, fairly', icon: Dice5, tint: 'from-rose-500 to-violet-500' },
-  { group: 'Study and teach', fresh: true, id: 'traffic', name: 'Traffic light', what: 'Red, amber, green for the kind of work, big', icon: TrafficCone, tint: 'from-rose-500 to-emerald-500' },
-  { group: 'Study and teach', fresh: true, id: 'scoreboard', name: 'Scoreboard', what: 'Team scores, big, with the leader on top', icon: Trophy, tint: 'from-amber-400 to-orange-500' },
-  { group: 'Sheets and data', fresh: true, id: 'loan', name: 'Loan and EMI', what: 'Monthly payment, interest and the schedule', icon: HandCoins, tint: 'from-indigo-500 to-emerald-500' },
-  { group: 'Sheets and data', fresh: true, id: 'savings', name: 'Savings growth', what: 'A deposit each month, with interest, over years', icon: PiggyBank, tint: 'from-pink-500 to-emerald-500' },
-  { group: 'Sheets and data', fresh: true, id: 'split', name: 'Split the bill', what: 'Who paid what, and who pays whom', icon: Split, tint: 'from-emerald-500 to-sky-500' },
-  { group: 'Sheets and data', fresh: true, id: 'price', name: 'Price calculator', what: 'Discount and tax (GST, VAT), in or on top', icon: Tag, tint: 'from-amber-500 to-lime-500' },
-  { group: 'Sheets and data', fresh: true, id: 'age', name: 'Age calculator', what: 'Exact age and days to the next birthday', icon: Cake, tint: 'from-pink-500 to-rose-500' },
-  { group: 'Sheets and data', fresh: true, id: 'bmi', name: 'BMI', what: 'Weight for height, a rough guide for adults', icon: HeartPulse, tint: 'from-rose-500 to-pink-500' },
-  { group: 'Present', fresh: true, id: 'stopwatch', name: 'Stopwatch', what: 'Laps, best and worst, smooth big digits', icon: Watch, tint: 'from-sky-500 to-indigo-500' },
-  { group: 'Present', fresh: true, id: 'poll', name: 'Room poll', what: 'Count hands, watch the bars, show it full screen', icon: Vote, tint: 'from-violet-500 to-pink-500' },
-  { group: 'Present', fresh: true, id: 'agenda', name: 'Agenda timer', what: 'Each part of a talk gets its minutes', icon: ListTodo, tint: 'from-teal-500 to-indigo-500' },
-  { group: 'Design and media', fresh: true, id: 'booth', name: 'Photo booth', what: 'The camera with filters and a 3-2-1 countdown', icon: Aperture, tint: 'from-pink-500 to-violet-500' },
-  { group: 'Design and media', fresh: true, id: 'pixel', name: 'Pixel art', what: 'Draw on a grid; fill, mirror, save sharp', icon: Brush, tint: 'from-amber-500 to-pink-500' },
-  { group: 'Design and media', fresh: true, id: 'meme', name: 'Meme maker', what: 'Words at the top and bottom of a picture', icon: Laugh, tint: 'from-orange-500 to-rose-500' },
-  { group: 'Design and media', fresh: true, id: 'icon', name: 'App icon maker', what: 'A letter or emoji on a colour, every size', icon: Smartphone, tint: 'from-indigo-500 to-pink-500' },
-  { group: 'Design and media', fresh: true, id: 'cleanphoto', name: 'Clean a photo', what: 'Remove hidden camera and location details', icon: ShieldCheck, tint: 'from-emerald-600 to-zinc-800' },
-  { group: 'Design and media', fresh: true, id: 'colourblind', name: 'Colour-blind view', what: 'See a picture as colour-blind people do', icon: Eye, tint: 'from-sky-500 to-rose-500' },
-  { group: 'Design and media', fresh: true, id: 'metronome', name: 'Metronome', what: 'Steady beats; tap the speed', icon: Drum, tint: 'from-zinc-600 to-pink-500' },
-  { group: 'Design and media', fresh: true, id: 'tuner', name: 'Tuner', what: 'Sing or play a note: how close is it?', icon: Guitar, tint: 'from-amber-600 to-rose-500' },
-  { group: 'Design and media', fresh: true, id: 'focus', name: 'Focus sounds', what: 'White, pink or brown noise, with a timer', icon: Headphones, tint: 'from-indigo-600 to-teal-500' },
-  { group: 'Code', fresh: true, id: 'base', name: 'Number bases', what: 'Binary, octal, decimal, hex; text as bytes', icon: SquareFunction, tint: 'from-sky-600 to-indigo-600' },
-  { group: 'Code', fresh: true, id: 'names', name: 'Name styles', what: 'camelCase, snake_case, kebab-case and more', icon: CaseUpper, tint: 'from-teal-500 to-sky-600' },
-  { group: 'Code', fresh: true, id: 'shadow', name: 'Shadow maker', what: 'CSS shadows and corners, seen live', icon: SquareDashed, tint: 'from-zinc-500 to-violet-600' },
-  { group: 'Code', fresh: true, id: 'cron', name: 'Cron reader', what: 'What a schedule means, and its next runs', icon: TimerReset, tint: 'from-violet-600 to-sky-600' },
-  { group: 'Code', fresh: true, id: 'escape', name: 'HTML escape', what: '< and & turned into safe text for web pages, and back', icon: Code, tint: 'from-orange-600 to-zinc-700' },
-  { group: 'Code', fresh: true, id: 'chars', name: 'Hidden characters', what: 'Find zero-width spaces and other invisibles', icon: ScanText, tint: 'from-amber-600 to-zinc-800' },
-  { group: 'Code', fresh: true, id: 'status', name: 'Status codes', what: '404, 503 and the rest in plain words', icon: Server, tint: 'from-rose-600 to-indigo-600' },
-  { group: 'Code', fresh: true, id: 'keys', name: 'Key tester', what: 'What the browser hears for each key', icon: Keyboard, tint: 'from-zinc-600 to-sky-600' },
-  { group: 'Code', fresh: true, id: 'mock', name: 'Sample data', what: 'Made-up people as CSV or JSON for testing', icon: DatabaseZap, tint: 'from-emerald-600 to-indigo-600' },
+  { group: 'Write', fresh: true, id: 'essay', name: 'Essay planner', what: 'Thesis, point–evidence–explain paragraphs, conclusion', icon: PenLine, tint: 'from-indigo-500 to-pink-500' },
+  { group: 'Write', fresh: true, id: 'prompts', name: 'Writing prompts', what: 'Story, opinion and poetry starters, with a timer', icon: Lightbulb, tint: 'from-amber-400 to-orange-500' },
+  { group: 'Write', fresh: true, id: 'poem', name: 'Poem helper', what: 'Syllables per line, haiku check, rhyming endings', icon: Feather, tint: 'from-violet-500 to-pink-500' },
+  { group: 'Write', fresh: true, id: 'acrostic', name: 'Acrostic', what: 'A word down the side, a line for each letter', icon: AlignLeft, tint: 'from-pink-500 to-rose-500' },
+  { group: 'Write', fresh: true, id: 'typing', name: 'Typing practice', what: 'Words a minute and accuracy, with your best', icon: TextCursorInput, tint: 'from-sky-500 to-indigo-500' },
+  { group: 'Write', fresh: true, id: 'glossary', name: 'Glossary', what: 'Terms and meanings A–Z; send them to Flashcards', icon: BookA, tint: 'from-emerald-500 to-teal-500' },
+  { group: 'Write', fresh: true, id: 'cornell', name: 'Cornell notes', what: 'Questions, notes and a summary, the proven way', icon: NotebookTabs, tint: 'from-zinc-500 to-indigo-500' },
+  { group: 'Write', fresh: true, id: 'interview', name: 'Interview practice', what: 'Questions read aloud, an answer timer and notes', icon: MessagesSquare, tint: 'from-teal-500 to-sky-500' },
+  { group: 'Plan and organise', fresh: true, id: 'kanban', name: 'Kanban board', what: 'Cards in columns; drag them along to Done', icon: SquareKanban, tint: 'from-indigo-500 to-violet-500' },
+  { group: 'Plan and organise', fresh: true, id: 'event', name: 'Event planner', what: 'Guests and replies, costs against a budget', icon: PartyPopper, tint: 'from-pink-500 to-amber-500' },
+  { group: 'Plan and organise', fresh: true, id: 'trip', name: 'Trip planner', what: 'Day-by-day stops with times and costs', icon: Plane, tint: 'from-sky-500 to-teal-500' },
+  { group: 'Plan and organise', fresh: true, id: 'routine', name: 'Routines', what: 'Steps with minutes, run as a guided timer', icon: Repeat, tint: 'from-emerald-500 to-sky-500' },
+  { group: 'Plan and organise', fresh: true, id: 'dayplan', name: 'Day planner', what: 'Half-hour blocks for the day, with now marked', icon: Sun, tint: 'from-amber-400 to-pink-500' },
+  { group: 'Plan and organise', fresh: true, id: 'raci', name: 'RACI chart', what: 'Who does, owns, is asked and is told', icon: Table, tint: 'from-violet-500 to-zinc-600' },
+  { group: 'Plan and organise', fresh: true, id: 'sleep', name: 'Sleep log', what: 'Bedtimes and wake-ups; hours against a goal', icon: Moon, tint: 'from-indigo-600 to-violet-500' },
+  { group: 'Plan and organise', fresh: true, id: 'okr', name: 'Goals with key results (OKRs)', what: 'An objective and the numbers that prove it', icon: Goal, tint: 'from-rose-500 to-orange-500' },
+  { group: 'Plan and organise', fresh: true, id: 'birthdays', name: 'Birthdays', what: 'Who’s next, and how old they’ll be', icon: Gift, tint: 'from-pink-500 to-fuchsia-500' },
+  { group: 'Study and teach', fresh: true, id: 'times', name: 'Times tables', what: 'The square to explore and a quiz on one table', icon: Asterisk, tint: 'from-amber-500 to-rose-500' },
+  { group: 'Study and teach', fresh: true, id: 'spelling', name: 'Spelling test', what: 'Words read aloud; type them; practise the misses', icon: SpellCheck, tint: 'from-emerald-500 to-sky-500' },
+  { group: 'Study and teach', fresh: true, id: 'clock', name: 'Telling the time', what: 'A clock to read, set and be quizzed on', icon: AlarmClock, tint: 'from-sky-500 to-indigo-500' },
+  { group: 'Study and teach', fresh: true, id: 'numberline', name: 'Number line', what: 'Fractions, decimals and negatives in order', icon: MoveHorizontal, tint: 'from-teal-500 to-emerald-500' },
+  { group: 'Study and teach', fresh: true, id: 'venn', name: 'Venn diagram', what: 'Two or three groups and what they share', icon: Blend, tint: 'from-pink-500 to-violet-500' },
+  { group: 'Study and teach', fresh: true, id: 'history', name: 'History timeline', what: 'Events by year, spaced by time; print it', icon: Milestone, tint: 'from-amber-600 to-orange-500' },
+  { group: 'Study and teach', fresh: true, id: 'probability', name: 'Probability', what: 'Thousands of coin flips and dice rolls vs theory', icon: ChartBarBig, tint: 'from-violet-500 to-sky-500' },
+  { group: 'Study and teach', fresh: true, id: 'trig', name: 'Trigonometry', what: 'Turn the angle; watch sin, cos and tan', icon: Radius, tint: 'from-indigo-500 to-pink-500' },
+  { group: 'Study and teach', fresh: true, id: 'triangle', name: 'Triangle solver', what: 'Any three sides and angles give the rest', icon: Triangle, tint: 'from-rose-500 to-amber-500' },
+  { group: 'Study and teach', fresh: true, id: 'matrices', name: 'Matrices', what: 'Add, multiply, determinant, inverse', icon: Brackets, tint: 'from-zinc-600 to-sky-600' },
+  { group: 'Study and teach', fresh: true, id: 'molar', name: 'Molar mass', what: 'Any chemical formula, in g/mol, element by element', icon: FlaskConical, tint: 'from-emerald-600 to-teal-500' },
+  { group: 'Study and teach', fresh: true, id: 'physics', name: 'Physics formulas', what: 'Speed, force, Ohm’s law and more, solved', icon: Magnet, tint: 'from-rose-600 to-indigo-500' },
+  { group: 'Sheets and data', fresh: true, id: 'regression', name: 'Line of best fit', what: 'Scatter chart, trend line, r² and predictions', icon: TrendingUp, tint: 'from-indigo-500 to-emerald-500' },
+  { group: 'Sheets and data', fresh: true, id: 'samplesize', name: 'Survey size', what: 'How many people to ask to trust the answer', icon: UsersRound, tint: 'from-sky-500 to-violet-500' },
+  { group: 'Sheets and data', fresh: true, id: 'fuel', name: 'Fuel cost', what: 'Distance, mileage and price; per person', icon: Fuel, tint: 'from-amber-500 to-rose-500' },
+  { group: 'Sheets and data', fresh: true, id: 'pay', name: 'Pay calculator', what: 'Hourly into weekly, monthly and yearly', icon: Banknote, tint: 'from-emerald-500 to-lime-500' },
+  { group: 'Sheets and data', fresh: true, id: 'recipe', name: 'Recipe scaler', what: 'Change the servings; every amount follows', icon: CookingPot, tint: 'from-orange-500 to-amber-500' },
+  { group: 'Sheets and data', fresh: true, id: 'timesheet', name: 'Timesheet', what: 'Shifts and breaks into hours and pay', icon: BriefcaseBusiness, tint: 'from-zinc-500 to-sky-500' },
+  { group: 'Sheets and data', fresh: true, id: 'unitprice', name: 'Best value', what: 'Which pack is cheapest per gram or piece', icon: BadgePercent, tint: 'from-lime-500 to-emerald-600' },
+  { group: 'Present', fresh: true, id: 'bingo', name: 'Bingo', what: 'Print cards and call numbers, big', icon: Ticket, tint: 'from-pink-500 to-violet-500' },
+  { group: 'Present', fresh: true, id: 'gameboard', name: 'Quiz game board', what: 'Categories and points for team quizzes', icon: Gamepad2, tint: 'from-indigo-600 to-amber-500' },
+  { group: 'Present', fresh: true, id: 'nametags', name: 'Name tags', what: 'A list of names into tags to print', icon: Contact, tint: 'from-sky-500 to-pink-500' },
+  { group: 'Present', fresh: true, id: 'queue', name: 'Speaking queue', what: 'Hands up in order, a timer for each speaker', icon: Hand, tint: 'from-teal-500 to-violet-500' },
+  { group: 'Design and media', fresh: true, id: 'poster', name: 'Event poster', what: 'Title, date and place on a theme, A4', icon: Megaphone, tint: 'from-fuchsia-500 to-orange-500' },
+  { group: 'Design and media', fresh: true, id: 'bizcard', name: 'Business cards', what: 'A card as a picture, or ten to print', icon: CreditCard, tint: 'from-indigo-600 to-sky-500' },
+  { group: 'Design and media', fresh: true, id: 'mixer', name: 'Colour mixer', what: 'Blend two colours; tints and shades', icon: Paintbrush, tint: 'from-violet-500 to-pink-500' },
+  { group: 'Design and media', fresh: true, id: 'typescale', name: 'Type scale', what: 'Text sizes that go together, as CSS', icon: ALargeSmall, tint: 'from-zinc-600 to-pink-500' },
+  { group: 'Design and media', fresh: true, id: 'blob', name: 'Blob shapes', what: 'Soft shapes for backgrounds, as SVG', icon: Droplets, tint: 'from-pink-500 to-indigo-500' },
+  { group: 'Design and media', fresh: true, id: 'ascii', name: 'ASCII art', what: 'A picture as letters and symbols', icon: Terminal, tint: 'from-zinc-700 to-emerald-600' },
+  { group: 'Design and media', fresh: true, id: 'drums', name: 'Drum machine', what: '16 steps of kick, snare, hi-hat and clap', icon: Music4, tint: 'from-rose-500 to-violet-600' },
+  { group: 'Design and media', fresh: true, id: 'piano', name: 'Piano', what: 'Two octaves to play and record a tune', icon: Piano, tint: 'from-zinc-800 to-zinc-500' },
+  { group: 'Design and media', fresh: true, id: 'gridsplit', name: 'Photo grid', what: 'Split a photo into tiles for a carousel', icon: Columns3, tint: 'from-amber-500 to-pink-500' },
+  { group: 'Code', fresh: true, id: 'sqlgen', name: 'CSV to SQL', what: 'A table into CREATE TABLE and INSERTs', icon: Database, tint: 'from-sky-600 to-indigo-600' },
+  { group: 'Code', fresh: true, id: 'jsonts', name: 'JSON to TypeScript', what: 'Types for any JSON sample', icon: FileJson, tint: 'from-indigo-600 to-sky-500' },
+  { group: 'Code', fresh: true, id: 'metatags', name: 'Link preview tags', what: 'Title, text and picture for shared links', icon: Share2, tint: 'from-pink-500 to-indigo-600' },
+  { group: 'Code', fresh: true, id: 'chmod', name: 'File permissions', what: '755 ↔ rwxr-xr-x with tick boxes', icon: Lock, tint: 'from-zinc-600 to-amber-600' },
+  { group: 'Code', fresh: true, id: 'flexbox', name: 'Flexbox playground', what: 'Line boxes up visually; copy the CSS', icon: AlignHorizontalSpaceAround, tint: 'from-teal-500 to-pink-500' },
+  { group: 'Code', fresh: true, id: 'subnet', name: 'Subnet calculator', what: 'An IP address and /bits into its range', icon: Router, tint: 'from-emerald-600 to-zinc-700' },
+  { group: 'Write', id: 'journal', name: 'Journal', what: 'A private page a day, with a mood and search', icon: BookHeart, tint: 'from-pink-500 to-violet-500' },
+  { group: 'Write', id: 'letters', name: 'Letter writer', what: 'Leave requests, thank-yous, complaints: fill the blanks', icon: Mail, tint: 'from-sky-500 to-indigo-500' },
+  { group: 'Write', id: 'fancy', name: 'Fancy letters', what: '𝐁𝐨𝐥𝐝, 𝘪𝘵𝘢𝘭𝘪𝘤, Ⓒⓘⓡⓒⓛⓔⓓ and more for bios and posts', icon: Type, tint: 'from-fuchsia-500 to-pink-500' },
+  { group: 'Write', id: 'lines', name: 'Line tools', what: 'Number, prefix, wrap, join, split and filter lines', icon: ListOrdered, tint: 'from-zinc-500 to-sky-500' },
+  { group: 'Write', id: 'numwords', name: 'Numbers in words', what: '1,250 → one thousand two hundred and fifty, for cheques', icon: WholeWord, tint: 'from-emerald-500 to-teal-500' },
+  { group: 'Write', id: 'roman', name: 'Roman numerals', what: '2026 ↔ MMXXVI, both ways', icon: Landmark, tint: 'from-amber-500 to-orange-500' },
+  { group: 'Write', id: 'morse', name: 'Morse code', what: 'Text ↔ dots and dashes, played as beeps', icon: Radio, tint: 'from-zinc-600 to-zinc-900' },
+  { group: 'Write', id: 'lorem', name: 'Placeholder text', what: 'Lorem ipsum paragraphs for layouts', icon: Pilcrow, tint: 'from-zinc-400 to-zinc-600' },
+  { group: 'Write', id: 'wordplay', name: 'Word play', what: 'Anagrams, palindromes and letter counts', icon: Puzzle, tint: 'from-violet-500 to-pink-500' },
+  { group: 'Plan and organise', id: 'matrix', name: 'Priority matrix', what: 'Urgent or important? Sort tasks into four boxes', icon: Grid2x2, tint: 'from-rose-500 to-indigo-500' },
+  { group: 'Plan and organise', id: 'week', name: 'Week planner', what: 'A column a day; drag tasks between days', icon: CalendarFold, tint: 'from-sky-500 to-teal-500' },
+  { group: 'Plan and organise', id: 'goals', name: 'Goals', what: 'Goals broken into steps, with progress rings', icon: Target, tint: 'from-pink-500 to-orange-500' },
+  { group: 'Plan and organise', id: 'checklists', name: 'Checklists', what: 'Exam day, packing, events: tick them off', icon: ListChecks, tint: 'from-emerald-500 to-lime-500' },
+  { group: 'Plan and organise', id: 'countdowns', name: 'Countdowns', what: 'Days, hours and minutes to what matters', icon: Hourglass, tint: 'from-violet-500 to-sky-500' },
+  { group: 'Plan and organise', id: 'meeting', name: 'Meeting notes', what: 'Who came, what was decided, who does what', icon: Users, tint: 'from-indigo-500 to-violet-500' },
+  { group: 'Plan and organise', id: 'swot', name: 'SWOT analysis', what: 'Strengths, weaknesses, opportunities, threats', icon: LayoutDashboard, tint: 'from-teal-500 to-amber-500' },
+  { group: 'Plan and organise', id: 'proscons', name: 'Pros and cons', what: 'For and against, weighed, with a leaning', icon: ThumbsUp, tint: 'from-emerald-500 to-rose-500' },
+  { group: 'Plan and organise', id: 'reading', name: 'Reading list', what: 'Books to read, reading and read, with pages', icon: BookMarked, tint: 'from-amber-500 to-pink-500' },
+  { group: 'Study and teach', id: 'periodic', name: 'Periodic table', what: 'All 118 elements: tap for facts, find families', icon: Atom, tint: 'from-sky-500 to-emerald-500' },
+  { group: 'Study and teach', id: 'quiz', name: 'Quiz maker', what: 'Write a quiz, take it here, or print it', icon: CircleHelp, tint: 'from-violet-500 to-pink-500' },
+  { group: 'Study and teach', id: 'drill', name: 'Maths drill', what: 'As many sums as you can in a minute', icon: Zap, tint: 'from-amber-500 to-rose-500' },
+  { group: 'Study and teach', id: 'equation', name: 'Equation solver', what: 'ax² + bx + c = 0, with the working shown', icon: Variable, tint: 'from-indigo-500 to-sky-500' },
+  { group: 'Study and teach', id: 'fractions', name: 'Fractions', what: 'Add, take away, times, divide; simplest form', icon: Divide, tint: 'from-teal-500 to-sky-500' },
+  { group: 'Study and teach', id: 'shapes', name: 'Shapes calculator', what: 'Area, perimeter, volume, with the formula', icon: Shapes, tint: 'from-pink-500 to-amber-500' },
+  { group: 'Study and teach', id: 'numfacts', name: 'Number facts', what: 'Prime or not, factors, HCF and LCM', icon: Binary, tint: 'from-zinc-600 to-indigo-500' },
+  { group: 'Study and teach', id: 'seating', name: 'Seating plan', what: 'Names into seats; tap two to swap; print', icon: Armchair, tint: 'from-emerald-500 to-sky-500' },
+  { group: 'Study and teach', id: 'dice', name: 'Dice and coins', what: 'Roll dice, flip a coin, pick a number, fairly', icon: Dice5, tint: 'from-rose-500 to-violet-500' },
+  { group: 'Study and teach', id: 'traffic', name: 'Traffic light', what: 'Red, amber, green for the kind of work, big', icon: TrafficCone, tint: 'from-rose-500 to-emerald-500' },
+  { group: 'Study and teach', id: 'scoreboard', name: 'Scoreboard', what: 'Team scores, big, with the leader on top', icon: Trophy, tint: 'from-amber-400 to-orange-500' },
+  { group: 'Sheets and data', id: 'loan', name: 'Loan and EMI', what: 'Monthly payment, interest and the schedule', icon: HandCoins, tint: 'from-indigo-500 to-emerald-500' },
+  { group: 'Sheets and data', id: 'savings', name: 'Savings growth', what: 'A deposit each month, with interest, over years', icon: PiggyBank, tint: 'from-pink-500 to-emerald-500' },
+  { group: 'Sheets and data', id: 'split', name: 'Split the bill', what: 'Who paid what, and who pays whom', icon: Split, tint: 'from-emerald-500 to-sky-500' },
+  { group: 'Sheets and data', id: 'price', name: 'Price calculator', what: 'Discount and tax (GST, VAT), in or on top', icon: Tag, tint: 'from-amber-500 to-lime-500' },
+  { group: 'Sheets and data', id: 'age', name: 'Age calculator', what: 'Exact age and days to the next birthday', icon: Cake, tint: 'from-pink-500 to-rose-500' },
+  { group: 'Sheets and data', id: 'bmi', name: 'BMI', what: 'Weight for height, a rough guide for adults', icon: HeartPulse, tint: 'from-rose-500 to-pink-500' },
+  { group: 'Present', id: 'stopwatch', name: 'Stopwatch', what: 'Laps, best and worst, smooth big digits', icon: Watch, tint: 'from-sky-500 to-indigo-500' },
+  { group: 'Present', id: 'poll', name: 'Room poll', what: 'Count hands, watch the bars, show it full screen', icon: Vote, tint: 'from-violet-500 to-pink-500' },
+  { group: 'Present', id: 'agenda', name: 'Agenda timer', what: 'Each part of a talk gets its minutes', icon: ListTodo, tint: 'from-teal-500 to-indigo-500' },
+  { group: 'Design and media', id: 'booth', name: 'Photo booth', what: 'The camera with filters and a 3-2-1 countdown', icon: Aperture, tint: 'from-pink-500 to-violet-500' },
+  { group: 'Design and media', id: 'pixel', name: 'Pixel art', what: 'Draw on a grid; fill, mirror, save sharp', icon: Brush, tint: 'from-amber-500 to-pink-500' },
+  { group: 'Design and media', id: 'meme', name: 'Meme maker', what: 'Words at the top and bottom of a picture', icon: Laugh, tint: 'from-orange-500 to-rose-500' },
+  { group: 'Design and media', id: 'icon', name: 'App icon maker', what: 'A letter or emoji on a colour, every size', icon: Smartphone, tint: 'from-indigo-500 to-pink-500' },
+  { group: 'Design and media', id: 'cleanphoto', name: 'Clean a photo', what: 'Remove hidden camera and location details', icon: ShieldCheck, tint: 'from-emerald-600 to-zinc-800' },
+  { group: 'Design and media', id: 'colourblind', name: 'Colour-blind view', what: 'See a picture as colour-blind people do', icon: Eye, tint: 'from-sky-500 to-rose-500' },
+  { group: 'Design and media', id: 'metronome', name: 'Metronome', what: 'Steady beats; tap the speed', icon: Drum, tint: 'from-zinc-600 to-pink-500' },
+  { group: 'Design and media', id: 'tuner', name: 'Tuner', what: 'Sing or play a note: how close is it?', icon: Guitar, tint: 'from-amber-600 to-rose-500' },
+  { group: 'Design and media', id: 'focus', name: 'Focus sounds', what: 'White, pink or brown noise, with a timer', icon: Headphones, tint: 'from-indigo-600 to-teal-500' },
+  { group: 'Code', id: 'base', name: 'Number bases', what: 'Binary, octal, decimal, hex; text as bytes', icon: SquareFunction, tint: 'from-sky-600 to-indigo-600' },
+  { group: 'Code', id: 'names', name: 'Name styles', what: 'camelCase, snake_case, kebab-case and more', icon: CaseUpper, tint: 'from-teal-500 to-sky-600' },
+  { group: 'Code', id: 'shadow', name: 'Shadow maker', what: 'CSS shadows and corners, seen live', icon: SquareDashed, tint: 'from-zinc-500 to-violet-600' },
+  { group: 'Code', id: 'cron', name: 'Cron reader', what: 'What a schedule means, and its next runs', icon: TimerReset, tint: 'from-violet-600 to-sky-600' },
+  { group: 'Code', id: 'escape', name: 'HTML escape', what: '< and & turned into safe text for web pages, and back', icon: Code, tint: 'from-orange-600 to-zinc-700' },
+  { group: 'Code', id: 'chars', name: 'Hidden characters', what: 'Find zero-width spaces and other invisibles', icon: ScanText, tint: 'from-amber-600 to-zinc-800' },
+  { group: 'Code', id: 'status', name: 'Status codes', what: '404, 503 and the rest in plain words', icon: Server, tint: 'from-rose-600 to-indigo-600' },
+  { group: 'Code', id: 'keys', name: 'Key tester', what: 'What the browser hears for each key', icon: Keyboard, tint: 'from-zinc-600 to-sky-600' },
+  { group: 'Code', id: 'mock', name: 'Sample data', what: 'Made-up people as CSV or JSON for testing', icon: DatabaseZap, tint: 'from-emerald-600 to-indigo-600' },
   { group: 'Plan and organise', id: 'mindmap', name: 'Mind map', what: 'Ideas branching out; keyboard-fast, save as a picture', icon: Network, tint: 'from-violet-500 to-pink-500' },
   { group: 'Plan and organise', id: 'outline', name: 'Outliner', what: 'Nested bullet points that fold, move and tick off', icon: ListTree, tint: 'from-indigo-500 to-violet-500' },
   { group: 'Plan and organise', id: 'stickies', name: 'Sticky-note wall', what: 'Brainstorm: drag notes around, colour and vote', icon: StickyNote, tint: 'from-amber-400 to-pink-500' },
@@ -285,7 +374,22 @@ function Tools() {
   const router = useRouter();
   const params = useSearchParams();
   const asked = params.get('tool');
-  const panel = PANELS.includes(asked as Panel) ? (asked as Panel) : null;
+  // M75: a shared link (/studio?shared=<token>) opens its tool with the shared work, in its own scope.
+  const sharedToken = params.get('shared');
+  const [sharedRes, setSharedRes] = useState<{ token: string; s?: Shared; err?: string } | null>(null);
+  useEffect(() => {
+    if (!sharedToken) return;
+    let alive = true;
+    if (!isToken(sharedToken)) { Promise.resolve().then(() => alive && setSharedRes({ token: sharedToken, err: 'This link isn’t complete. Ask for it again.' })); return () => { alive = false; }; }
+    loadShared(sharedToken).then((s) => alive && setSharedRes({ token: sharedToken, s }), (e) => alive && setSharedRes({ token: sharedToken, err: (e as Error).message }));
+    return () => { alive = false; };
+  }, [sharedToken]);
+  const shared = sharedToken && sharedRes?.token === sharedToken ? sharedRes : null;
+  const sharedTool = shared?.s && PANELS.includes(shared.s.tool as Panel) ? (shared.s.tool as Panel) : null;
+  const panel = sharedToken ? sharedTool : PANELS.includes(asked as Panel) ? (asked as Panel) : null;
+  // The save that's open (Save then saves over it), and a counter that reopens the tool after loading one.
+  const [current, setCurrent] = useState<Current | null>(null);
+  const [gen, setGen] = useState(0);
   const [doc, setDoc] = useState<Doc | null>(null);
   const [pdf, setPdf] = useState<File | null>(null);
   // The audio editor: a file to open, or 'record' to start empty.
@@ -304,6 +408,19 @@ function Tools() {
     router.push(p ? `/studio?tool=${p}` : '/studio', { scroll: false });
   };
   const pick = (t: Tool['id']) => (t === 'pdf' ? pdfRef.current?.click() : t === 'video' ? videoRef.current?.click() : open(t));
+  const openSave = async (id: string) => {
+    const c = await loadSave(id);
+    if (!c) return;
+    if (!PANELS.includes(c.tool as Panel)) { toast.error('That tool isn’t here any more.'); return; }
+    setCurrent(c); setGen((g) => g + 1); open(c.tool as Panel);
+    toast.success(`“${c.title}” opened`);
+  };
+  const keepCopy = () => {
+    if (!sharedToken || !panel) return;
+    keepShared(sharedToken); setCurrent(null); setGen((g) => g + 1);
+    router.push(`/studio?tool=${panel}`, { scroll: false });
+    toast.success('It’s yours now, on this device. Save it to your account to have it everywhere.');
+  };
   const star = (id: string) => setStars(stars.includes(id) ? stars.filter((s) => s !== id) : [id, ...stars]);
   // M74, for every tool: focus mode (the tool fills the window), the previous and next tool in its
   // group, a link to copy, more tools like it, and a text file dropped on it fills its text box.
@@ -378,7 +495,7 @@ function Tools() {
                   {focus ? <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Focus mode · Esc to leave</span>
                     : <button type="button" onClick={() => open(null)} className="group inline-flex items-center gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white min-h-11"><ArrowLeft className="w-4 h-4 rtl:rotate-180 transition-transform duration-200 group-hover:-translate-x-0.5 rtl:group-hover:translate-x-0.5" aria-hidden />Everything in Create</button>}
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {prev && next && !focus && (
+                    {prev && next && !focus && !sharedToken && (
                       <nav aria-label="Other tools in this group" className="flex items-center gap-1">
                         <button type="button" onClick={() => open(prev.id as Panel)} onPointerEnter={() => preload(prev.id)} title={`Previous: ${prev.name} ([)`} className="btn-ghost btn-icon"><ChevronLeft className="w-4 h-4 rtl:rotate-180" aria-hidden /><span className="sr-only">Previous tool: {prev.name}</span></button>
                         <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{at + 1}/{siblings.length}</span>
@@ -386,14 +503,21 @@ function Tools() {
                       </nav>
                     )}
                     {set && <button type="button" onClick={() => setFocusOn(focus ? null : panel)} aria-pressed={focus} className="btn-secondary btn-sm">{focus ? <Minimize2 className="w-3.5 h-3.5" aria-hidden /> : <Expand className="w-3.5 h-3.5" aria-hidden />}{focus ? 'Leave focus' : 'Focus'}</button>}
-                    {!focus && <button type="button" onClick={() => void copyLink()} className="btn-secondary btn-sm">{linked ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-300" aria-hidden /> : <Link2 className="w-3.5 h-3.5" aria-hidden />}<span aria-live="polite">{linked ? 'Link copied' : 'Copy link'}</span></button>}
-                    {info && <StarButton on={stars.includes(panel)} name={info.name} onClick={() => star(panel)} solid />}
+                    {!focus && !sharedToken && <button type="button" onClick={() => void copyLink()} className="btn-secondary btn-sm">{linked ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-300" aria-hidden /> : <Link2 className="w-3.5 h-3.5" aria-hidden />}<span aria-live="polite">{linked ? 'Link copied' : 'Copy link'}</span></button>}
+                    {set && !sharedToken && info && <SaveButtons tool={panel} toolName={info.name} current={current} onSaved={setCurrent} />}
+                    {info && !sharedToken && <StarButton on={stars.includes(panel)} name={info.name} onClick={() => star(panel)} solid />}
                   </div>
                 </div>
                 {panel === 'convert' && <Converter onClose={() => open(null)} />}
                 {panel === 'compress' && <Compressor onClose={() => open(null)} />}
                 {panel === 'photo' && <PhotoStart onOpen={setDoc} />}
                 {panel === 'audio' && <AudioStart onOpen={setAudio} />}
+                {shared?.s && (
+                  <div role="status" className="flex flex-wrap items-center gap-2 rounded-2xl bg-pink-500/10 ring-1 ring-pink-500/30 px-4 py-3 text-sm text-zinc-900 dark:text-white">
+                    <span className="flex-1 min-w-[200px]"><b translate="no">“{shared.s.title}”</b>, shared by <span translate="no">{shared.s.by}</span>. This is your own copy: changes stay on this device.</span>
+                    <button type="button" onClick={keepCopy} className="btn-primary btn-sm">Keep it as mine</button>
+                  </div>
+                )}
                 {set && (
                   <section className="panel relative p-5 space-y-4" aria-labelledby="tool-title"
                     onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDropping(true); } }} onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropping(false); }} onDrop={(e) => void drop(e)}>
@@ -402,6 +526,7 @@ function Tools() {
                       {info && <span className={`w-10 h-10 shrink-0 rounded-2xl bg-gradient-to-br ${info.tint} text-white grid place-items-center`}><info.icon className="w-5 h-5" aria-hidden /></span>}
                       <div className="min-w-0"><h2 id="tool-title" className="font-bold text-zinc-900 dark:text-white">{info?.name}</h2>{info && <p className="text-xs text-zinc-600 dark:text-zinc-300">{info.what}</p>}</div>
                     </div>
+                    <KeptScope value={sharedToken ? `shared:${sharedToken}:` : ''}><div key={`${gen}-${sharedToken ?? ''}`} className="space-y-4">
                     {set === 'notes' ? <QuickNotes />
                       : set === 'pdf' ? <PdfTool id={panel.slice(4) as PdfId} />
                       : set === 'image' ? <ImageTool id={panel.slice(4) as ImageId} />
@@ -416,19 +541,37 @@ function Tools() {
                       : set === 'money' ? <MoneyTool id={panel as MoneyId} />
                       : set === 'media' ? <MediaTool id={panel as MediaId} />
                       : set === 'dev' ? <DevTool id={panel as DevId} />
+                      : set === 'pen' ? <WritingTool id={panel as PenId} />
+                      : set === 'life' ? <LifeTool id={panel as LifeId} />
+                      : set === 'science' ? <ScienceTool id={panel as ScienceId} />
+                      : set === 'calc' ? <CalcTool id={panel as CalcId} />
+                      : set === 'stage' ? <StageTool id={panel as StageId} />
+                      : set === 'art' ? <ArtTool id={panel as ArtId} />
+                      : set === 'web' ? <WebTool id={panel as WebId} />
                       : <QuickTool id={panel as QuickId} />}
+                    </div></KeptScope>
                   </section>
                 )}
-                {!focus && more.length > 0 && (
+                {!focus && !sharedToken && more.length > 0 && (
                   <section aria-labelledby="more-h" className="pt-2">
                     <h2 id="more-h" className="mb-2 text-sm font-bold text-zinc-900 dark:text-white">More in {info?.group}</h2>
                     <ul className="grid grid-cols-2 lg:grid-cols-3 gap-3">{more.map((t) => <li key={t.id}><ToolCard t={t} starred={stars.includes(t.id)} onPick={pick} onStar={star} /></li>)}</ul>
                   </section>
                 )}
               </motion.div>
+            ) : sharedToken ? (
+              <motion.div key="shared" initial={enter} animate={{ opacity: 1, y: 0, scale: 1, transition: spring.smooth }} exit={leave} className="max-w-xl mx-auto">
+                {shared?.err || (shared?.s && !sharedTool) ? (
+                  <div className="panel p-6 space-y-3 text-center" role="alert">
+                    <p className="font-bold text-zinc-900 dark:text-white">This shared link doesn’t open</p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-300">{shared?.err ?? 'It was made with a tool that isn’t here any more.'}</p>
+                    <button type="button" onClick={() => open(null)} className="btn-secondary btn-sm">Everything in Create</button>
+                  </div>
+                ) : <div className="h-48 rounded-2xl skeleton" aria-label="Opening the shared work" />}
+              </motion.div>
             ) : (
               <motion.div key="grid" initial={enter} animate={{ opacity: 1, y: 0, scale: 1, transition: spring.smooth }} exit={leave} className="max-w-5xl mx-auto">
-                <Hub recent={recent} stars={stars} onPick={pick} onStar={star} onMount={() => { if (scroller.current) scroller.current.scrollTop = gridTop.current; }} calm={!!calm} />
+                <Hub recent={recent} stars={stars} onPick={pick} onStar={star} onOpenSave={(id) => void openSave(id)} onMount={() => { if (scroller.current) scroller.current.scrollTop = gridTop.current; }} calm={!!calm} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -466,7 +609,8 @@ function ToolCard({ t, starred, onPick, onStar }: { t: Tool; starred: boolean; o
 }
 
 /** The list of everything in Create: search, starred and recent tools, then every group. */
-function Hub({ recent, stars, onPick, onStar, onMount, calm }: { recent: string[]; stars: string[]; onPick: (id: Tool['id']) => void; onStar: (id: string) => void; onMount: () => void; calm: boolean }) {
+const NAMES = Object.fromEntries(TOOLS.map((t) => [t.id, t.name]));
+function Hub({ recent, stars, onPick, onStar, onOpenSave, onMount, calm }: { recent: string[]; stars: string[]; onPick: (id: Tool['id']) => void; onStar: (id: string) => void; onOpenSave: (id: string) => void; onMount: () => void; calm: boolean }) {
   const [q, setQ] = useState('');
   const search = useRef<HTMLInputElement>(null);
   const mounted = useRef(onMount);
@@ -528,6 +672,7 @@ function Hub({ recent, stars, onPick, onStar, onMount, calm }: { recent: string[
               ))}
             </ul>
           </section>
+          <SavedShelf onOpen={onOpenSave} names={NAMES} />
           {shelf('Starred', stars)}
           {shelf('Used lately', recent.filter((r) => !stars.includes(r)).slice(0, 3))}
           {GROUPS.map((g) => (

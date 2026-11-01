@@ -11,6 +11,12 @@ export const nf = (n: number, d = 2) => (Number.isFinite(n) ? n.toLocaleString(u
 export const ask = (msg: string, go: () => void) => { if (window.confirm(msg)) go(); };
 /** A crypto-random whole number in [0, n). */
 export const rnd = (n: number) => crypto.getRandomValues(new Uint32Array(1))[0] % n;
+/** Navy or white text, whichever reads better on this colour (#rrggbb). */
+export function inkOn(hex: string) {
+  const n = parseInt(hex.slice(1), 16), lin = (v: number) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  return (L + 0.05) / (0.0109 + 0.05) > 1.05 / (L + 0.05) ? '#171f44' : '#ffffff';
+}
 export const MONEY = ['₹', '$', '€', '£', '¥', '₦', 'R', 'KSh '];
 
 export const Stat = ({ k, v, big }: { k: string; v: React.ReactNode; big?: boolean }) => (

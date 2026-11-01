@@ -7040,3 +7040,19 @@ model GameScore {
   @@index([userId, createdAt])
   @@map("game_scores")
 }
+
+/// Collaborate → Create, saved work (M75, migration 0189): a tool's kept state on the account, shared
+/// read-only by link when shareToken is set.
+model ToolSave {
+  id         String   @id @default(cuid())
+  userId     String
+  tool       String
+  title      String
+  data       String
+  shareToken String?  @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+  @@map("tool_saves")
+}

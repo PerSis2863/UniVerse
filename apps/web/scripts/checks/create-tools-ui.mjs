@@ -2,7 +2,7 @@
 // list (search, star, recent, Esc back to the same scroll spot), every tool's bar (focus mode, next
 // tool, copy link, a dropped text file) and the 86 tools from M72 and M74, each opened by address with
 // a quick use of the main ones. Axe (serious/critical) inside the page at 1280 dark and 390 light, no
-// sideways scrolling, no page errors. `--new` runs only M74's 56, `--old` the rest (one run is long).
+// sideways scrolling, no page errors. `--m75` runs M75's 55, `--new` M74's 56, `--old` the rest (one run is long).
 //   node scripts/checks/create-tools-ui.mjs [http://localhost:3000] [--new | --old]
 import { createRequire } from 'node:module';
 import { baseUrl, launch, signedIn } from '../browser-session.mjs';
@@ -16,7 +16,8 @@ const M74 = ['lorem', 'morse', 'numwords', 'roman', 'letters', 'lines', 'fancy',
 const M72 = ['mindmap', 'outline', 'stickies', 'gantt', 'timetable', 'habits', 'decide', 'flow', 'cards', 'gpa', 'studyplan', 'rubric', 'wordsearch', 'certificate', 'wheel', 'noise', 'graph', 'stats', 'explore', 'budget', 'invoice', 'zones', 'cv', 'cloud', 'prompter', 'playground', 'barcode', 'redact', 'slideshow', 'signature'];
 // Older tools changed in M74 (text kept on the device, copy buttons that answer).
 const OLDER = ['words', 'clean', 'compare', 'table', 'json', 'markdown', 'replace', 'read', 'cite', 'calc', 'picker', 'chart', 'present'];
-const TOOLS = process.argv.includes('--new') ? M74 : process.argv.includes('--old') ? [...M72, ...OLDER] : [...M72, ...OLDER, ...M74];
+const M75 = ['essay', 'prompts', 'poem', 'acrostic', 'typing', 'glossary', 'cornell', 'interview', 'kanban', 'event', 'trip', 'routine', 'dayplan', 'raci', 'sleep', 'okr', 'birthdays', 'times', 'spelling', 'clock', 'numberline', 'venn', 'history', 'probability', 'trig', 'triangle', 'matrices', 'molar', 'physics', 'regression', 'samplesize', 'fuel', 'pay', 'recipe', 'timesheet', 'unitprice', 'bingo', 'gameboard', 'nametags', 'queue', 'poster', 'bizcard', 'mixer', 'typescale', 'blob', 'ascii', 'drums', 'piano', 'gridsplit', 'sqlgen', 'jsonts', 'metatags', 'chmod', 'flexbox', 'subnet'];
+const TOOLS = process.argv.includes('--m75') ? M75 : process.argv.includes('--new') ? M74 : process.argv.includes('--old') ? [...M72, ...OLDER] : [...M72, ...OLDER, ...M74];
 
 async function axe(page, what) {
   await page.addScriptTag({ path: AXE });
@@ -41,7 +42,7 @@ try {
     await search.waitFor({ timeout: 120_000 });
     await page.waitForTimeout(800);
     await axe(page, `${scheme} list`);
-    await search.fill('flash');
+    await search.fill('decks');
     await page.waitForTimeout(400);
     check((await page.getByRole('status').filter({ hasText: /1 tool/ }).count()) === 1, `${scheme}: search finds Flashcards alone`);
     await search.press('Enter');
@@ -98,6 +99,10 @@ try {
       if (id === 'barcode') check((await page.locator('svg[aria-label^="Barcode"] rect').count()) > 20, `${scheme}: a barcode draws`);
       if (id === 'words') { await page.locator('textarea').first().fill('kept text'); await page.waitForTimeout(400); await page.reload(); await page.locator('#tool-title').waitFor(); await page.waitForTimeout(600); check((await page.locator('textarea').first().inputValue()) === 'kept text', `${scheme}: text is kept after leaving`); }
       if (id === 'json') { await page.locator('textarea').first().fill('{"a":1}'); await page.getByRole('button', { name: /Tidy|Format/ }).first().click().catch(() => {}); }
+      if (id === 'molar') check(await page.getByText(/249\.6/).first().isVisible(), `${scheme}: molar mass of CuSO4·5H2O`);
+      if (id === 'subnet') check(await page.getByText('192.168.1.255').isVisible(), `${scheme}: subnet broadcast`);
+      if (id === 'triangle') check(await page.getByText('90°').first().isVisible(), `${scheme}: a 3-4-5 triangle has a right angle`);
+      if (id === 'kanban') check((await page.getByRole('region', { name: 'Board' }).locator('li').count()) === 3, `${scheme}: the Kanban board has its cards`);
       if (id === 'periodic') { await page.getByRole('button', { name: /^26\s*Fe\s*, Iron/ }).click(); await page.waitForTimeout(300); check(await page.getByText('Iron', { exact: true }).last().isVisible(), `${scheme}: the periodic table shows iron`); }
       if (id === 'numwords') check((await page.getByRole('status').first().textContent())?.includes('Twenty-Five Thousand') || (await page.getByRole('status').first().textContent())?.toLowerCase().includes('twenty-five thousand'), `${scheme}: numbers in words`);
       if (id === 'split') check((await page.getByLabel('Payments to settle up').locator('li').count()) >= 1, `${scheme}: the bill splits`);

@@ -2016,6 +2016,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/tasks$/, () => ok({ courses: [], boards: [], mine: [] })],
   [/^\/api\/docs$/, () => ok({ courses: [], docs: [] })],
   [/^\/api\/collab\/pins$/, () => ok({ pins: [] })],
+  // M75: saved work in Create (sample mode keeps nothing on the server).
+  [/^\/api\/collab\/saves$/, () => ok({ saves: [] })],
+  [/^\/api\/collab\/(saves|shared)\/[^/]+$/, () => fail('Not found.', 404)],
   [/^\/api\/spaces$/, () => ok({ courses: [], groups: [] })],
   [/^\/api\/docs\/([^/]+)$/, () => fail('Documents aren’t in the sample yet.', 404)],
   [/^\/api\/tasks\/([^/]+)$/, () => fail('Task boards aren’t in the sample yet.', 404)],
@@ -2362,6 +2365,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   // Ask UniVerse (M30) in the demo: the simple matcher, no AI.
   // UniVerse Play (M31): solo rounds play fully in the demo; rooms need the real app.
+  ['POST', /^\/api\/collab\/saves(\/[^/]+\/share)?$/, () => { notice(); return fail('Sample mode: nothing is saved. Exit sample mode to save your work.', 400); }],
   ['POST', /^\/play\/scores$/, ({ body }) => { notice(); const score = Math.max(0, Math.round(Number((body as { score?: unknown })?.score) || 0)); return ok({ score, best: score, newBest: score > 0 }); }],
   ['POST', /^\/play\/rooms(\/[^/]+\/ticket)?$/, () => fail('Playing with others needs the real app. Exit sample mode to open or join a room.', 400)],
   ['POST', /^\/ask$/, ({ body }) => ok({ ...localPlan(String((body as { text?: unknown })?.text ?? '')), ai: false })],

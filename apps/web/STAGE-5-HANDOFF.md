@@ -3244,3 +3244,46 @@ collaborate section". Create now has **137 tools** in eight groups.
   `--old` (M72's 30 plus 13 upgraded older tools) on the dev server at 1280 dark and 390 light: axe
   clean inside the page, no sideways scrolling, no page errors; focus mode, Esc, `]`, a dropped file
   and text kept after a reload all checked.
+
+## M75 · Saved work on the account, sharing by link, and 55 more tools (1 Nov 2026)
+
+The owner: "Add more than 50 plus more features in collaborate section and make bigger features and
+changes in the system". The bigger change: Create's tools stop being device-only.
+
+- **Saved work** (migration **0189** `tool_saves`, model `ToolSave`; routes `GET/POST
+  /api/collab/saves`, `GET/PUT/DELETE /api/collab/saves/[id]`, `POST/DELETE
+  /api/collab/saves/[id]/share`, public `GET /api/collab/shared/[token]`; checks in
+  `src/lib/tool-saves.ts`, tested). Every tool that keeps work (`useKept`, ~150 of them) gets **Save
+  to account** and **Share** in its bar with no change to the tool: `useKept` now lists itself while
+  mounted (`keptNow()` in `studio/kept.ts`), so Save collects the open tool's latest state (`uv-…`
+  keys only, 200 KB, 300 saves a person). Save again saves over the open save. Create's list shows
+  **Saved to your account** (open, rename, share / stop sharing, delete; `Saves.tsx`). Opening a save
+  writes it to the device and reopens the tool (a `gen` key). So work now follows the person to every
+  device.
+- **Sharing:** a 24-character unguessable token (`shareToken`); `/studio?shared=<token>` opens the tool
+  with the shared work in its **own scope** (`KeptScope`, keys `shared:<token>:uv-…`), so a viewer's own
+  work is never touched; a banner says who shared it (first name only) and **Keep it as mine** copies
+  it over. Stop sharing makes the link 404 at once. Only the owner can read, change, share or delete
+  a save (404 for anyone else). The shared answer has no email or id. Viewers need to be signed in
+  (Create is behind sign-in). Sample mode: the list is empty and saving says so.
+- **55 tools** (192 in all): Write (`PenTools.tsx`): essay planner, writing prompts with a timer, poem
+  helper (syllables, haiku, rhymes), acrostic, typing practice, glossary (→ Flashcards), Cornell
+  notes, interview practice. Plan (`LifeTools.tsx`): Kanban (drag, WIP limit), event planner, trip
+  planner, routines (guided timer), day planner, RACI (checks one A), sleep log, OKRs, birthdays.
+  Study (`ScienceTools.tsx`): times tables, spelling test (read aloud), telling the time, number line,
+  Venn, history timeline, probability simulator, trigonometry, triangle solver, matrices, molar mass
+  (from `elements.ts`), physics formulas. Data (`CalcTools.tsx`): line of best fit, survey size, fuel,
+  pay, recipe scaler, timesheet, best value. Present (`StageTools.tsx`): bingo (cards + caller), quiz
+  game board, name tags, speaking queue. Design (`ArtTools.tsx`): event poster, business cards, colour
+  mixer, type scale, blob shapes, ASCII art, drum machine, piano (keyboard keys, record), photo grid.
+  Code (`WebTools.tsx`): CSV to SQL (quoted safely), JSON to TypeScript, link preview tags, file
+  permissions, flexbox playground, subnet calculator. Logic in `src/lib/tools-5.ts` (10 tests).
+- **Traps:** a local named `X` shadows lucide's `X` icon (rename locals). Some mid colours can't reach
+  4.5:1 with navy or white text: put the label on a small white chip (`inkOn` in `bits.tsx` picks
+  navy or white otherwise).
+- **Not done:** live co-editing of one save by several people at once (a shared link is a copy; Docs,
+  Whiteboards and Code are the live ones); shares open only for signed-in people.
+- **Tested:** `pnpm check` (1,425 tests); `scripts/checks/create-saves-ui.mjs` (save, list, share,
+  another person opens and keeps it, stop sharing, delete; someone else gets 404; only `uv-` keys; no
+  email in the shared answer; axe) and `create-tools-ui.mjs --m75` and `--old` at 1280 dark and 390
+  light: axe clean, no sideways scrolling, no page errors.

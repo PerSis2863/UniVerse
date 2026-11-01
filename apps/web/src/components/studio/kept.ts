@@ -1,18 +1,39 @@
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+
+// M75: a tool can be opened inside a scope (a shared copy: "shared:<token>:"), so its kept state
+// lives apart from the person's own. Every mounted useKept is listed, so one Save button can collect
+// the open tool's work without each tool knowing about saving.
+const Scope = createContext('');
+export const KeptScope = Scope.Provider;
+const live = new Map<string, { base: string; value: () => unknown }>();
+
+/** The open tool's kept state, as { "uv-…": JSON } (only what's on screen now, latest values). */
+export function keptNow(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const { base, value } of live.values()) out[base] = JSON.stringify(value());
+  return out;
+}
 
 /** State kept on this device (localStorage), for the bigger Create tools. Loaded in the browser only. */
 export function useKept<T>(key: string, init: T | (() => T)) {
+  const scope = useContext(Scope), full = scope + key;
   const [v, setV] = useState<T>(() => {
-    try { const s = localStorage.getItem(key); if (s) return JSON.parse(s) as T; } catch { /* private window */ }
+    try { const s = localStorage.getItem(full); if (s) return JSON.parse(s) as T; } catch { /* private window */ }
     return typeof init === 'function' ? (init as () => T)() : init;
   });
-  const first = useRef(true);
+  const first = useRef(true), latest = useRef(v);
   useEffect(() => {
+    latest.current = v;
     if (first.current) { first.current = false; return; }
     // A short pause, so typing doesn't write on every key.
-    const t = setTimeout(() => { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* full or blocked */ } }, 250);
+    const t = setTimeout(() => { try { localStorage.setItem(full, JSON.stringify(v)); } catch { /* full or blocked */ } }, 250);
     return () => clearTimeout(t);
-  }, [key, v]);
+  }, [full, v]);
+  useEffect(() => {
+    const id = `${full}#${Math.random()}`;
+    live.set(id, { base: key, value: () => latest.current });
+    return () => { live.delete(id); };
+  }, [full, key]);
   return [v, setV] as const;
 }
 
