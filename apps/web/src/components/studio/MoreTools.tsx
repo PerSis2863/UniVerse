@@ -7,6 +7,7 @@ import { addDays, calc, cite, contrast, convertUnit, daysBetween, findReplace, g
 import { markdownToHtml } from '@/lib/convert-formats';
 import { cn } from '@/lib/utils';
 import { Btn, Field, Out, area, copy, save } from './QuickTools';
+import { useKept } from './kept';
 
 // Collaborate → Create's second set of tools (M71, the owner: "add at least 25 more features"): writing
 // (Word), sheets and numbers, presenting, colour and code helpers. All in the browser: nothing is sent
@@ -26,7 +27,7 @@ const nf = (n: number, d = 4) => (Number.isFinite(n) ? n.toLocaleString(undefine
 
 /** Find and replace (like Word's Ctrl+H). */
 function Replace() {
-  const [t, setT] = useState(''), [f, setF] = useState(''), [r, setR] = useState(''), [cs, setCs] = useState(false), [w, setW] = useState(false);
+  const [t, setT] = useKept('uv-draft-replace', ''), [f, setF] = useState(''), [r, setR] = useState(''), [cs, setCs] = useState(false), [w, setW] = useState(false);
   const found = useMemo(() => findReplace(t, f, r, { caseSensitive: cs, words: w }).count, [t, f, r, cs, w]);
   return (
     <div className="space-y-3">
@@ -45,7 +46,7 @@ function Replace() {
 
 /** How easy a text is to read (Flesch), like Word's readability statistics. */
 function Readability() {
-  const [t, setT] = useState('');
+  const [t, setT] = useKept('uv-draft-read', '');
   const r = useMemo(() => readability(t), [t]);
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
@@ -61,7 +62,7 @@ function Readability() {
 
 /** References in APA or MLA style. */
 function Cite() {
-  const [s, setS] = useState({ authors: '', title: '', site: '', year: '', url: '', accessed: '' });
+  const [s, setS] = useKept('uv-draft-cite', { authors: '', title: '', site: '', year: '', url: '', accessed: '' });
   const [style, setStyle] = useState<'apa' | 'mla'>('apa');
   const ref = s.title ? cite(s, style) : '';
   const set = (k: keyof typeof s) => (e: React.ChangeEvent<HTMLInputElement>) => setS({ ...s, [k]: e.target.value });
@@ -84,7 +85,7 @@ function Cite() {
 
 /** Read a text aloud (the device's own voices). */
 function Speak() {
-  const [t, setT] = useState(''), [rate, setRate] = useState(1), [voice, setVoice] = useState(''), [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]), [on, setOn] = useState(false);
+  const [t, setT] = useKept('uv-draft-speak', ''), [rate, setRate] = useState(1), [voice, setVoice] = useState(''), [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]), [on, setOn] = useState(false);
   useEffect(() => {
     if (!('speechSynthesis' in window)) return;
     const load = () => setVoices(speechSynthesis.getVoices());
@@ -150,7 +151,7 @@ function Symbols() {
 
 /** A calculator that keeps what you worked out. */
 function Calc() {
-  const [x, setX] = useState(''), [hist, setHist] = useState<[string, string][]>([]);
+  const [x, setX] = useState(''), [hist, setHist] = useKept<[string, string][]>('uv-calc-history', []);
   let preview = '', err = '';
   try { if (x.trim()) preview = nf(calc(x), 10); } catch (e) { err = (e as Error).message; }
   const run = () => { if (preview && !err) { setHist((h) => [[x, preview] as [string, string], ...h].slice(0, 20)); setX(preview.replace(/,/g, '')); } };
@@ -202,7 +203,7 @@ function Percent() {
 
 /** Pick someone at random, or split a class into groups. */
 function Picker() {
-  const [t, setT] = useState('Asha\nBo\nChen\nDara\nEli\nFatima'), [n, setN] = useState(2), [out, setOut] = useState<string[][] | null>(null), [one, setOne] = useState('');
+  const [t, setT] = useKept('uv-draft-picker', 'Asha\nBo\nChen\nDara\nEli\nFatima'), [n, setN] = useState(2), [out, setOut] = useState<string[][] | null>(null), [one, setOne] = useState('');
   const names = t.split('\n').map((x) => x.trim()).filter(Boolean);
   const rand = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
   return (
@@ -221,7 +222,7 @@ function Picker() {
 
 /** Numbers into a bar or line chart, saved as a picture. */
 function Chart() {
-  const [t, setT] = useState('Mon 12\nTue 18\nWed 9\nThu 22\nFri 15'), [kind, setKind] = useState<'bar' | 'line'>('bar'), [title, setTitle] = useState('This week');
+  const [t, setT] = useKept('uv-draft-chart', 'Mon 12\nTue 18\nWed 9\nThu 22\nFri 15'), [kind, setKind] = useState<'bar' | 'line'>('bar'), [title, setTitle] = useState('This week');
   const rows = t.split('\n').map((l) => { const m = l.trim().match(/^(.*?)[\s,;:\t]+(-?[\d.]+)$/); return m ? { k: m[1], v: Number(m[2]) } : null; }).filter((r): r is { k: string; v: number } => !!r && Number.isFinite(r.v));
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -266,7 +267,7 @@ function Dates() {
 
 /** Write slides as Markdown (--- between slides) and present them full screen. */
 function Present() {
-  const [t, setT] = useState('# Our project\nA short talk\n---\n## The problem\n- Point one\n- Point two\n---\n## Thank you');
+  const [t, setT] = useKept('uv-draft-present', '# Our project\nA short talk\n---\n## The problem\n- Point one\n- Point two\n---\n## Thank you');
   const slides = t.split(/\n-{3,}\n/), [i, setI] = useState(0), [full, setFull] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const at = Math.min(i, slides.length - 1);

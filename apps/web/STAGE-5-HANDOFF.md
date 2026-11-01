@@ -3186,3 +3186,61 @@ that night; the email came on 1 Nov because the diagnosis ran at 08:15 UTC).
   no take, skip 20 + take 100, a long `in` list with a related `take`, all correct (each failed
   before with "too many SQL variables").
 - **Owner:** mark the report resolved in the owner console (Errors).
+
+## M74 · Every Create tool upgraded, and 56 more (1 Nov 2026)
+
+The owner: "upgrade all the existing tools and add more than 50 new features and tools in the
+collaborate section". Create now has **137 tools** in eight groups.
+
+- **Upgrades for every tool** (`studio/page.tsx`): **Focus** fills the window with the tool (Esc
+  leaves it first, then goes back to the list); **‹ ›** and the `[` `]` keys go to the previous or next
+  tool in the same group (with "3/19"); **Copy link** (with a tick); **More in <group>** shows three
+  more cards under the tool; **drop a text file** (.txt, .md, .csv, .json, code…) on any tool and it
+  fills the tool's first text box (set through the native value setter plus an `input` event, so
+  React hears it as typing; 2 MB cap; pictures and PDFs keep their own buttons). Copy buttons
+  answer on themselves (`CopyBtn` in `QuickTools.tsx`: a tick and "Copied"), so every tool using `Out`
+  got it. **Text is kept** when you leave and come back for the older text tools (word count, clean
+  up, compare, table, JSON, Markdown, find and replace, readability, references, read aloud, picker,
+  chart, presenter) and the calculator's history (`useKept`, keys `uv-draft-<tool>`). The "New" badge
+  moved to the 56.
+- **56 tools** (`/studio?tool=<id>`, all on the device; work kept with `useKept`):
+  - Write (`WordTools.tsx`): journal (private, a mood a day, month view, search, download), letter
+    writer (6 templates; blanks found from `[…]`), fancy letters (Unicode styles), line tools, numbers
+    in words (with rupees/dollars/pounds/euros "… only"), Roman numerals, Morse (played as beeps),
+    placeholder text, word play.
+  - Plan and organise (`OrganiseTools.tsx`): priority matrix (drag between the four boxes), week
+    planner (drag between days), goals with steps and rings, checklists (5 templates), countdowns,
+    meeting notes (actions with who/when; Markdown), SWOT, pros and cons (weighted), reading list.
+    Present: stopwatch (digits drawn straight to the page per frame, no re-render; laps best/worst),
+    room poll (full screen), agenda timer (runs through the parts, overrun in red).
+  - Study and teach (`ClassTools.tsx`): periodic table (all 118 from `src/lib/elements.ts`, places
+    worked out from the atomic number; families, search, facts card), quiz maker (take it, score,
+    print with an answer key), maths drill (60 s, best kept), equation solver (working shown),
+    fractions, shapes (8, with formulas), number facts (HCF/LCM), seating plan (tap two to swap),
+    dice and coins (crypto-random), traffic light and scoreboard (both full screen).
+  - Sheets and data (`MoneyTools.tsx`): loan/EMI with a yearly schedule, savings growth (chart),
+    split the bill (fewest payments), price with discount and tax (in or on top), age, BMI (with a
+    "rough guide, ask a doctor" note).
+  - Design and media (`MediaTools.tsx`): photo booth (camera, 8 filters, 3-2-1), pixel art (fill,
+    mirror, pick, undo; 1024 px PNG), meme maker, app icon maker (5 sizes), clean a photo (finds
+    EXIF and GPS in a JPEG, `jpegDetails`; re-draws a clean copy), colour-blind view (Machado
+    matrices in linear light), metronome (Web Audio look-ahead scheduling, tap tempo), tuner
+    (autocorrelation pitch, cents needle), focus sounds (white/pink/brown noise, timer).
+  - Code (`DevTools.tsx`): number bases (BigInt; text as bytes), name styles, shadow maker, cron
+    reader (words and the next 5 runs, UTC), HTML escape, hidden characters (zero-width, no-break…),
+    status codes, key tester, sample data (example.com emails).
+- **Logic** in `src/lib/more-tools.ts` (14 tests): Morse, `numberToWords`, Roman, `fancy`, anagram /
+  palindrome, `lorem`, primes / factors / HCF / LCM, fractions, `solveQuadratic`, `loan`, `growth`,
+  `age`, `settle`, `convertBase`, `nameStyles`, `cron`, HTML (un)escape, `mockRows`, `noteOf` /
+  `detectPitch`, `COLOUR_BLIND` / `simulateColourBlind`, `jpegDetails`. Shared bits in
+  `studio/bits.tsx` (`useFull` + `FullBtn` for full screen, `Segments`, `Stat`, `rnd`).
+- **Traps:** a hook that returns an object holding a ref makes the React lint treat every field as a
+  ref: destructure it (`const { ref: fullRef, full: isFull, … } = useFull()`). An `aria-label` must
+  start with the button's visible text (axe): use `sr-only` text after it instead. Text on a pink
+  badge is `#171f44`, not `indigo-900` (light mode re-points indigo to violet).
+- **Not done:** sharing these tools' work between people (they're personal; Docs, Whiteboards and Code
+  are the shared ones); the photo booth and tuner need camera / microphone permission each visit.
+- **Tested:** `pnpm check` (1,413 tests); `scripts/checks/create-tools-ui.mjs --new` (the 56) and
+  `--old` (M72's 30 plus 13 upgraded older tools) on the dev server at 1280 dark and 390 light: axe
+  clean inside the page, no sideways scrolling, no page errors; focus mode, Esc, `]`, a dropped file
+  and text kept after a reload all checked.

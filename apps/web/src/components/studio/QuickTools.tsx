@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Copy, Download, Square, Video } from 'lucide-react';
+import { Check, Copy, Download, Square, Video } from 'lucide-react';
 import { cleanText, columnStats, diffLines, palette, parseTable, tableAs, textStats, type Clean, type Harmony } from '@/lib/quick-tools';
 import { markdownToHtml } from '@/lib/convert-formats';
 import { encodeQr, qrPath } from '@/lib/qr';
 import { cn } from '@/lib/utils';
+import { useKept } from './kept';
 
 // Collaborate → Create's small tools (M68, the owner: "15 more features… notes, word, pdf, sheets,
 // presentation, canva, editing… vs code… and some more small features"). Each runs in the browser:
@@ -15,14 +16,25 @@ import { cn } from '@/lib/utils';
 export type QuickId = 'words' | 'clean' | 'compare' | 'table' | 'colours' | 'gradient' | 'json' | 'regex' | 'markdown' | 'encode' | 'qr' | 'record';
 
 export const area = 'input w-full min-h-[180px] font-mono text-sm leading-relaxed resize-y';
-export const copy = async (t: string) => { try { await navigator.clipboard.writeText(t); toast.success('Copied'); } catch { toast.error('Copy didn’t work here: select the text instead.'); } };
+export const copy = async (t: string, quiet = false) => { try { await navigator.clipboard.writeText(t); if (!quiet) toast.success('Copied'); return true; } catch { toast.error('Copy didn’t work here: select the text instead.'); return false; } };
 export const save = (name: string, data: BlobPart, type: string) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
 export const Btn = ({ children, onClick, on }: { children: React.ReactNode; onClick: () => void; on?: boolean }) => (
   <button type="button" onClick={onClick} aria-pressed={on} className={cn('btn-secondary btn-sm', on && 'ring-2 ring-pink-500')}>{children}</button>
 );
 export const Field = ({ label, children }: { label: string; children: React.ReactNode }) => <label className="block"><span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">{label}</span><span className="mt-1 block">{children}</span></label>;
+/** Copy with an answer on the button itself: a tick and "Copied" for a moment (M74). */
+export function CopyBtn({ text, label = 'Copy' }: { text: string; label?: string }) {
+  const [done, setDone] = useState(false);
+  useEffect(() => { if (!done) return; const t = setTimeout(() => setDone(false), 1400); return () => clearTimeout(t); }, [done]);
+  return (
+    <Btn onClick={async () => { if (await copy(text, true)) setDone(true); }}>
+      {done ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-300 animate-[pop-in_.25s_var(--ease-out-soft)]" aria-hidden /> : <Copy className="w-3.5 h-3.5" aria-hidden />}
+      <span aria-live="polite">{done ? 'Copied' : label}</span>
+    </Btn>
+  );
+}
 export const Out = ({ text, name }: { text: string; name?: string }) => (
-  <div className="flex gap-2"><Btn onClick={() => void copy(text)}><Copy className="w-3.5 h-3.5" aria-hidden />Copy</Btn>{name && <Btn onClick={() => save(name, text, 'text/plain')}><Download className="w-3.5 h-3.5" aria-hidden />Download</Btn>}</div>
+  <div className="flex gap-2"><CopyBtn text={text} />{name && <Btn onClick={() => save(name, text, 'text/plain')}><Download className="w-3.5 h-3.5" aria-hidden />Download</Btn>}</div>
 );
 
 export function QuickTool({ id }: { id: QuickId }) {
@@ -44,7 +56,7 @@ export function QuickTool({ id }: { id: QuickId }) {
 
 /** Word count and reading time (like Word's word count). */
 function Words() {
-  const [t, setT] = useState('');
+  const [t, setT] = useKept('uv-draft-words', '');
   const s = useMemo(() => textStats(t), [t]);
   const mins = (m: number) => (m < 1 ? `${Math.max(0, Math.round(m * 60))} s` : `${Math.round(m)} min`);
   return (
@@ -64,7 +76,7 @@ function Words() {
 
 /** Change case, tidy spaces, sort or de-duplicate lines. */
 function CleanUp() {
-  const [t, setT] = useState('');
+  const [t, setT] = useKept('uv-draft-clean', '');
   const ops: [Clean, string][] = [['upper', 'UPPER'], ['lower', 'lower'], ['title', 'Title Case'], ['sentence', 'Sentence case'], ['spaces', 'Tidy spaces'], ['blank', 'Remove empty lines'], ['dedupe', 'Remove repeats'], ['sort', 'Sort lines'], ['reverse', 'Reverse lines']];
   return (
     <div className="space-y-3">
@@ -77,7 +89,7 @@ function CleanUp() {
 
 /** Compare two versions line by line. */
 function Compare() {
-  const [a, setA] = useState(''), [b, setB] = useState('');
+  const [a, setA] = useKept('uv-draft-compare-a', ''), [b, setB] = useKept('uv-draft-compare-b', '');
   const d = useMemo(() => (a || b ? diffLines(a, b) : []), [a, b]);
   const changed = d.filter((x) => x.op !== ' ').length;
   return (
@@ -98,7 +110,7 @@ function Compare() {
 
 /** Paste a table from a spreadsheet: totals per column, and CSV, JSON or Markdown. */
 function Table() {
-  const [t, setT] = useState('');
+  const [t, setT] = useKept('uv-draft-table', '');
   const [to, setTo] = useState<'csv' | 'json' | 'markdown'>('csv');
   const rows = useMemo(() => parseTable(t), [t]);
   const stats = useMemo(() => columnStats(rows), [rows]);
@@ -172,7 +184,7 @@ function Gradient() {
 
 /** Tidy and check JSON (like a code editor's formatter). */
 function Json() {
-  const [t, setT] = useState('');
+  const [t, setT] = useKept('uv-draft-json', '');
   let err = '';
   try { if (t.trim()) JSON.parse(t); } catch (e) { err = (e as Error).message; }
   return (
@@ -215,7 +227,7 @@ function Regex() {
 
 /** Write Markdown, see it as a page (in a sandbox: nothing in it can run). */
 function Markdown() {
-  const [t, setT] = useState('# A title\n\nSome **bold** words and a list:\n\n- one\n- two');
+  const [t, setT] = useKept('uv-draft-markdown', '# A title\n\nSome **bold** words and a list:\n\n- one\n- two');
   const html = useMemo(() => markdownToHtml(t), [t]);
   return (
     <div className="space-y-3">

@@ -28,7 +28,7 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `cal-ui.mjs` | Q12 in a browser on the built Worker (time zone Asia/Kolkata): a student taps empty time for a new event, drags it an hour later (Undo puts it back), drags its bottom edge, drags it to the next day, opens it, sees it… |
 | `cc-api.mjs` | Common Cartridge export data and import batches on the local Worker. |
 | `cc-ui.mjs` | Common Cartridge import and export in the browser on the built Worker. |
-| `create-tools-ui.mjs` | M72: Collaborate → Create in the browser (dev server or built Worker): search (Enter opens), a star, Esc back, the list keeps its scroll spot; the 30 bigger tools opened by address, the main ones used (mind map Tab, a flashcard, outline Enter, graph, playground console, barcode, flowchart). Axe at 1280 dark and 390 light. |
+| `create-tools-ui.mjs` | M72 + M74: Collaborate → Create in the browser (dev server or built Worker): search (Enter opens), a star, Esc back, the list keeps its scroll spot; the tool bar (focus mode, Esc, `]` next tool, a dropped text file); the bigger tools opened by address and the main ones used. `--new` (M74's 56) or `--old` (the rest). Axe at 1280 dark and 390 light. |
 | `clean-calls.mjs` | (helper: tidies up or prepares test data) |
 | `copy-run.mjs` | (helper: tidies up or prepares test data) |
 | `disc-api.mjs` | (helper: tidies up or prepares test data) |
