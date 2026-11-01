@@ -3055,3 +3055,28 @@ The owner: "also add aircraft globe in the app" (after the off-site demo, M60).
   ("did not answer"); sample mode shows the planes.
 - **Tested:** `pnpm check` (1,370 tests); `/trace/globe` at 1440 and 390: toggle on, 1,600 planes
   drawn, axe clean, no sideways scroll, no errors.
+
+## M68 · Collaborate simpler (8 tabs → 5) with 16 new tools (1 Nov 2026)
+
+The owner: "add more features in the collaborate section and merge few sections because it is becoming
+too complex… at least 15 more features… apple notes, word, pdf, sheets, presentation, canva, editing
+and coding apps like vs code… and some more small features".
+
+- **Tabs** (`COLLAB_TABS`): Home (also `/spaces`, linked from Home's intro), **Create** (`/studio`, also
+  `/docs`, `/boards`, `/sheets`, `/slides`), Files, Code, Tasks. Create opens with "Make something
+  new" (documents/sheets/slides, whiteboards, code), then the tools in groups.
+- **16 new tools**, all in the browser (nothing sent anywhere), opened as `/studio?tool=<id>`:
+  Write: Quick notes (`QuickNotes.tsx`, Apple Notes-like: pin, colour, search, `[ ]` tick boxes, kept
+  on the device, "Make it a document"), Word count (reading/speaking time, most-used words), Clean up
+  text (case, spaces, sort, de-duplicate), Compare texts (line diff), Markdown preview (sandboxed
+  iframe, copy HTML). PDF: Join PDFs, Take pages out (`1-3, 5, 8-`), Pictures to PDF (`PdfTools.tsx`,
+  pdf-lib loaded on use). Sheets: Table tools (paste from a spreadsheet or CSV → column totals and
+  CSV / JSON / Markdown). Design: Colour palettes (4 harmonies or from a photo), Gradients (CSS and a
+  1920×1080 slide background), QR codes (`encodeQr`), Record the screen (`getDisplayMedia` → .webm).
+  Code: JSON formatter, Regex tester, Encode/decode (Base64, URL). UI in `QuickTools.tsx`; logic in
+  `src/lib/quick-tools.ts` (tested).
+- **Not done:** notes syncing between devices (they live in the browser, by design; "Make it a document"
+  is the way to keep one), and a real-time co-edited notes app (Docs does that already).
+- **Tested:** `pnpm check` (1,375 tests); `/studio` at 1440 dark and 390 light: five tabs, Quick notes,
+  Word count, Compare, Table tools, Colours, QR, Regex and Join PDFs opened and used; axe clean on the
+  tools (the only flags left were page chrome under the moving background, varying run to run).

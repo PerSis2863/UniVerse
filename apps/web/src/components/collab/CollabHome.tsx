@@ -109,7 +109,7 @@ export function CollabHome() {
         {/* Search everything, and start something new. */}
         <section className="panel collab-hero relative overflow-hidden p-5 sm:p-7">
           <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white">Your work, <span className="font-serif italic font-normal bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500 dark:from-indigo-200 dark:via-fuchsia-200 dark:to-pink-200 bg-clip-text text-transparent pe-1">together</span></h2>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 max-w-[75ch]">Every board, document, task board, code room and file you share with others, in one place.</p>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 max-w-[75ch]">Every board, document, task board, code room and file you share with others, in one place. <Link href="/spaces" className="font-semibold text-indigo-700 dark:text-indigo-300 hover:underline">Your spaces</Link> group them by project; <Link href="/studio" className="font-semibold text-indigo-700 dark:text-indigo-300 hover:underline">Create</Link> has every tool.</p>
           <label className="relative mt-4 block">
             <Search className="w-5 h-5 absolute start-4 top-1/2 -translate-y-1/2 text-zinc-400" />
             <input ref={search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find anything: a board, a doc, a file…" aria-label="Find anything in Collaborate" aria-keyshortcuts="/"

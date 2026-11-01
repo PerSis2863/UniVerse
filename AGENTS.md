@@ -131,6 +131,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   **M67**: Trace's Live globe usable (turn, zoom, pick; list and detail card; `Planet interactive`).
   **M70**: the explainer board twice as wide without collisions; Excalidraw patched to zoom out to 2% (redo the patch when upgrading it).
   **M69**: live air traffic on Trace's Live globe (`/trace/aircraft`, OpenSky, cached 15 min; owner switch).
+  **M68**: Collaborate in five tabs (Home, Create, Files, Code, Tasks) with 16 new in-browser tools under Create.
   **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all

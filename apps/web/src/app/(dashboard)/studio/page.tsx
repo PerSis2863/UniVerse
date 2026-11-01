@@ -5,7 +5,10 @@ import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { m as motion } from 'framer-motion';
-import { ArrowLeft, AudioWaveform, Clapperboard, FileText, History, ImagePlus, Loader2, Mic, Minimize2, Music, Palette, Repeat2, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, AudioWaveform, Braces, CaseSensitive, Clapperboard, Code2, Combine, FileImage, FileStack, FileText, GitCompare, Hash, History, ImagePlus, Loader2, Mic, Minimize2, MonitorPlay, Music, NotebookPen, Palette, PenTool, QrCode, Regex, Repeat2, Rows3, Scissors, Sparkles, SwatchBook, Table2, type LucideIcon } from 'lucide-react';
+import Link from '@/components/ui/Link';
+import type { QuickId } from '@/components/studio/QuickTools';
+import type { PdfId } from '@/components/studio/PdfTools';
 import { Topbar } from '@/components/layout/Topbar';
 import { CollabTabs } from '@/components/layout/SectionTabs';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
@@ -13,7 +16,8 @@ import { SIZES } from '@/lib/studio';
 import { fadeUp, list } from '@/lib/motion';
 import type { Doc } from '@/components/studio/studio-canvas';
 
-// Collaborate → Tools (was Studio; Stage 5 · B9.14–B9.15): every file tool in one simple grid.
+// Collaborate → Create (was Tools, before that Studio; Stage 5 · B9.14–B9.15; M68 merged Docs, Whiteboards
+// and Tools under it and added 16 small tools: notes, writing, PDF, tables, design and code helpers).
 // Convert and Compress open here; the photo, PDF, video and audio editors open full screen.
 // The tool in use is in the address (?tool=…), so the back button returns to the grid.
 // Everything runs in the browser; files stay on this device until you save or share them.
@@ -26,22 +30,51 @@ const AudioEditor = dynamic(() => import('@/components/studio/AudioEditor').then
 const Converter = dynamic(() => import('@/components/docs/Converter').then((m) => m.Converter), { ssr: false, loading: () => <div className="h-48 rounded-2xl skeleton" /> });
 const Compressor = dynamic(() => import('@/components/docs/Compressor').then((m) => m.Compressor), { ssr: false, loading: () => <div className="h-48 rounded-2xl skeleton" /> });
 
-type Panel = 'convert' | 'compress' | 'photo' | 'audio';
-const PANELS: Panel[] = ['convert', 'compress', 'photo', 'audio'];
+const QuickTool = dynamic(() => import('@/components/studio/QuickTools').then((m) => m.QuickTool), { ssr: false, loading: () => <div className="h-48 rounded-2xl skeleton" /> });
+const PdfTool = dynamic(() => import('@/components/studio/PdfTools').then((m) => m.PdfTool), { ssr: false, loading: () => <div className="h-48 rounded-2xl skeleton" /> });
+const QuickNotes = dynamic(() => import('@/components/studio/QuickNotes').then((m) => m.QuickNotes), { ssr: false, loading: () => <div className="h-48 rounded-2xl skeleton" /> });
 
-interface Tool { id: Panel | 'pdf' | 'video'; name: string; what: string; icon: LucideIcon; tint: string }
+type Pdf3 = `pdf-${PdfId}`;
+type Panel = 'convert' | 'compress' | 'photo' | 'audio' | 'notes' | QuickId | Pdf3;
+const QUICK: QuickId[] = ['words', 'clean', 'compare', 'table', 'colours', 'gradient', 'json', 'regex', 'markdown', 'encode', 'qr', 'record'];
+const PANELS: Panel[] = ['convert', 'compress', 'photo', 'audio', 'notes', ...QUICK, 'pdf-merge', 'pdf-split', 'pdf-images'];
+
+interface Tool { id: Panel | 'pdf' | 'video'; name: string; what: string; icon: LucideIcon; tint: string; group: string }
 const TOOLS: Tool[] = [
-  { id: 'convert', name: 'Convert files', what: 'Word to PDF, PDF to pictures, Excel to CSV and more', icon: Repeat2, tint: 'from-indigo-500 to-sky-500' },
-  { id: 'compress', name: 'Compress files', what: 'Make PDFs, photos, videos and documents smaller', icon: Minimize2, tint: 'from-indigo-400 to-indigo-600' },
-  { id: 'pdf', name: 'Edit a PDF', what: 'Sign, fill in, reorder or remove pages', icon: FileText, tint: 'from-rose-500 to-amber-500' },
-  { id: 'photo', name: 'Edit a photo', what: 'Crop, adjust, add text, remove a background', icon: Palette, tint: 'from-indigo-500 to-fuchsia-500' },
-  { id: 'video', name: 'Edit a video', what: 'Trim, join clips, add text and music', icon: Clapperboard, tint: 'from-violet-500 to-sky-500' },
-  { id: 'audio', name: 'Edit sound', what: 'Record, trim and clean up audio', icon: AudioWaveform, tint: 'from-indigo-400 to-indigo-600' },
+  { group: 'Write', id: 'notes', name: 'Quick notes', what: 'Jot it down: pin, colour, tick boxes, search', icon: NotebookPen, tint: 'from-amber-400 to-orange-500' },
+  { group: 'Write', id: 'words', name: 'Word count', what: 'Words, sentences, reading and speaking time', icon: Hash, tint: 'from-indigo-500 to-sky-500' },
+  { group: 'Write', id: 'clean', name: 'Clean up text', what: 'Change case, tidy spaces, sort, remove repeats', icon: CaseSensitive, tint: 'from-sky-500 to-cyan-500' },
+  { group: 'Write', id: 'compare', name: 'Compare texts', what: 'See exactly what changed between two versions', icon: GitCompare, tint: 'from-emerald-500 to-teal-500' },
+  { group: 'Write', id: 'markdown', name: 'Markdown preview', what: 'Write Markdown, see the page, copy the HTML', icon: FileText, tint: 'from-zinc-500 to-zinc-700' },
+  { group: 'PDF and files', id: 'pdf', name: 'Edit a PDF', what: 'Sign, fill in, reorder or remove pages', icon: FileText, tint: 'from-rose-500 to-amber-500' },
+  { group: 'PDF and files', id: 'pdf-merge', name: 'Join PDFs', what: 'Put several PDFs together, in your order', icon: Combine, tint: 'from-rose-500 to-pink-500' },
+  { group: 'PDF and files', id: 'pdf-split', name: 'Take pages out', what: 'Keep only the pages you pick from a PDF', icon: Scissors, tint: 'from-amber-500 to-rose-500' },
+  { group: 'PDF and files', id: 'pdf-images', name: 'Pictures to PDF', what: 'Photos or scans into one PDF, a page each', icon: FileImage, tint: 'from-orange-500 to-amber-500' },
+  { group: 'PDF and files', id: 'convert', name: 'Convert files', what: 'Word to PDF, PDF to pictures, Excel to CSV and more', icon: Repeat2, tint: 'from-indigo-500 to-sky-500' },
+  { group: 'PDF and files', id: 'compress', name: 'Compress files', what: 'Make PDFs, photos, videos and documents smaller', icon: Minimize2, tint: 'from-indigo-400 to-indigo-600' },
+  { group: 'Sheets and data', id: 'table', name: 'Table tools', what: 'Totals per column; CSV, JSON or Markdown', icon: Table2, tint: 'from-emerald-500 to-lime-500' },
+  { group: 'Design and media', id: 'photo', name: 'Edit a photo', what: 'Crop, adjust, text, remove a background; posts and posters', icon: Palette, tint: 'from-indigo-500 to-fuchsia-500' },
+  { group: 'Design and media', id: 'colours', name: 'Colour palettes', what: 'Five colours that go together, or from a photo', icon: SwatchBook, tint: 'from-pink-500 to-fuchsia-500' },
+  { group: 'Design and media', id: 'gradient', name: 'Gradients', what: 'Backgrounds for slides and designs, with CSS', icon: Sparkles, tint: 'from-fuchsia-500 to-sky-500' },
+  { group: 'Design and media', id: 'qr', name: 'QR codes', what: 'A code for any link, ready to print', icon: QrCode, tint: 'from-zinc-600 to-zinc-900' },
+  { group: 'Design and media', id: 'video', name: 'Edit a video', what: 'Trim, join clips, add text and music', icon: Clapperboard, tint: 'from-violet-500 to-sky-500' },
+  { group: 'Design and media', id: 'record', name: 'Record the screen', what: 'A lesson, a demo or a bug, as a video', icon: MonitorPlay, tint: 'from-rose-500 to-violet-500' },
+  { group: 'Design and media', id: 'audio', name: 'Edit sound', what: 'Record, trim and clean up audio', icon: AudioWaveform, tint: 'from-indigo-400 to-indigo-600' },
+  { group: 'Code', id: 'json', name: 'JSON formatter', what: 'Check, tidy or squash JSON', icon: Braces, tint: 'from-sky-600 to-indigo-600' },
+  { group: 'Code', id: 'regex', name: 'Regex tester', what: 'Try a pattern and see every match', icon: Regex, tint: 'from-teal-500 to-sky-600' },
+  { group: 'Code', id: 'encode', name: 'Encode and decode', what: 'Base64 and web addresses, both ways', icon: Rows3, tint: 'from-zinc-500 to-sky-600' },
+];
+const GROUPS = [...new Set(TOOLS.map((t) => t.group))];
+/** Make something new (the old Docs and Whiteboards tabs, now here). */
+const MAKE: { href: string; name: string; what: string; icon: LucideIcon }[] = [
+  { href: '/docs', name: 'Documents, sheets and slides', what: 'Write, calculate and present, together', icon: FileStack },
+  { href: '/boards', name: 'Whiteboards', what: 'Draw and plan together', icon: PenTool },
+  { href: '/code', name: 'Code', what: 'Write and run code with others', icon: Code2 },
 ];
 
 export default function ToolsPage() {
   return (
-    <Suspense fallback={<><Topbar title="Tools" /><CollabTabs /><div className="flex-1 p-8"><ContentSkeleton variant="grid" /></div></>}>
+    <Suspense fallback={<><Topbar title="Create" /><CollabTabs /><div className="flex-1 p-8"><ContentSkeleton variant="grid" /></div></>}>
       <Tools />
     </Suspense>
   );
@@ -70,7 +103,7 @@ function Tools() {
 
   return (
     <>
-      <Topbar title="Tools" subtitle="Convert, compress and edit files: PDFs, photos, video and sound" />
+      <Topbar title="Create" subtitle="Documents, whiteboards and every tool: notes, PDFs, tables, design, media and code" />
       <CollabTabs />
       <input ref={pdfRef} type="file" accept="application/pdf" className="hidden" aria-label="Choose a PDF to edit" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPdf(f); e.target.value = ''; }} />
       <input ref={videoRef} type="file" accept="video/*,image/*" multiple className="hidden" aria-label="Choose videos to edit" onChange={(e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; if (fs.length) setVideo(fs); }} />
@@ -79,24 +112,48 @@ function Tools() {
           <div className="max-w-4xl mx-auto space-y-4">
             {panel ? (
               <>
-                <button type="button" onClick={() => open(null)} className="inline-flex items-center gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white min-h-11"><ArrowLeft className="w-4 h-4" aria-hidden />All tools</button>
+                <button type="button" onClick={() => open(null)} className="inline-flex items-center gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white min-h-11"><ArrowLeft className="w-4 h-4 rtl:rotate-180" aria-hidden />Everything in Create</button>
                 {panel === 'convert' && <Converter onClose={() => open(null)} />}
                 {panel === 'compress' && <Compressor onClose={() => open(null)} />}
                 {panel === 'photo' && <PhotoStart onOpen={setDoc} />}
                 {panel === 'audio' && <AudioStart onOpen={setAudio} />}
+                {panel !== 'convert' && panel !== 'compress' && panel !== 'photo' && panel !== 'audio' && (
+                  <section className="panel p-5 space-y-4" aria-labelledby="tool-title">
+                    <h2 id="tool-title" className="font-bold text-zinc-900 dark:text-white">{TOOLS.find((t) => t.id === panel)?.name}</h2>
+                    {panel === 'notes' ? <QuickNotes /> : panel.startsWith('pdf-') ? <PdfTool id={panel.slice(4) as PdfId} /> : <QuickTool id={panel as QuickId} />}
+                  </section>
+                )}
               </>
             ) : (
-              <motion.ul variants={list} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-3 gap-3" aria-label="Tools">
-                {TOOLS.map((t) => (
-                  <motion.li key={t.id} variants={fadeUp}>
-                    <button type="button" onClick={() => pick(t.id)} className="w-full h-full text-start rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-4 sm:p-5 hover:border-indigo-400/60 transition-colors">
-                      <span className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${t.tint} text-white grid place-items-center`}><t.icon className="w-5 h-5" aria-hidden /></span>
-                      <span className="block mt-3 font-bold text-zinc-900 dark:text-white">{t.name}</span>
-                      <span className="block mt-0.5 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">{t.what}</span>
-                    </button>
-                  </motion.li>
+              <>
+                <section aria-labelledby="make-h">
+                  <h2 id="make-h" className="mb-2 text-sm font-bold text-zinc-900 dark:text-white">Make something new</h2>
+                  <ul className="grid gap-3 sm:grid-cols-3">
+                    {MAKE.map((m) => (
+                      <li key={m.href}><Link href={m.href} className="flex items-center gap-3 rounded-3xl bg-pink-500/10 dark:bg-pink-500/15 border border-pink-500/25 p-4 hover:border-pink-500/60 transition-colors">
+                        <m.icon className="w-6 h-6 shrink-0 text-pink-600 dark:text-pink-300" aria-hidden />
+                        <span className="min-w-0"><span className="block font-bold text-zinc-900 dark:text-white">{m.name}</span><span className="block text-xs text-zinc-600 dark:text-zinc-300">{m.what}</span></span>
+                      </Link></li>
+                    ))}
+                  </ul>
+                </section>
+                {GROUPS.map((g) => (
+                  <section key={g} aria-labelledby={`g-${g}`}>
+                    <h2 id={`g-${g}`} className="mb-2 text-sm font-bold text-zinc-900 dark:text-white">{g}</h2>
+                    <motion.ul variants={list} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                      {TOOLS.filter((t) => t.group === g).map((t) => (
+                        <motion.li key={t.id} variants={fadeUp}>
+                          <button type="button" onClick={() => pick(t.id)} className="w-full h-full text-start rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-4 sm:p-5 hover:border-indigo-400/60 transition-colors">
+                            <span className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${t.tint} text-white grid place-items-center`}><t.icon className="w-5 h-5" aria-hidden /></span>
+                            <span className="block mt-3 font-bold text-zinc-900 dark:text-white">{t.name}</span>
+                            <span className="block mt-0.5 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">{t.what}</span>
+                          </button>
+                        </motion.li>
+                      ))}
+                    </motion.ul>
+                  </section>
                 ))}
-              </motion.ul>
+              </>
             )}
             {!panel && <p className="text-xs text-zinc-600 dark:text-zinc-400">Everything runs in your browser: your files stay on this device until you save or share them.</p>}
           </div>
