@@ -2991,3 +2991,23 @@ animations of car… put this at bottom section of the tracking".
   lights ahead and pink tail lights; drawn before the buildings, so towers in front hide them.
 - **Tested:** `pnpm check`; `/trace/tracking` in sample mode at 1440 and 390: city last on the page,
   zoom in and drag work, axe clean, no sideways scroll, no errors.
+
+## M67 · Trace's Live globe made useful (1 Nov 2026)
+
+The owner (screenshot of overlapping labels on a net-covered globe): "this globe doesn't feel useful at
+all… make it functional… more detailing… ultra smooth".
+
+- **`Planet` has an `interactive` mode** (other uses unchanged): drag to turn (a finger sideways only,
+  so the page scrolls), pinch / ctrl or ⌘ + scroll / + − buttons to zoom (1–3.2×, eased), `focus` turns
+  it the short way round to a place (eased, stops the idle spin), no net, sparks or pings, land dots
+  brighter (continents read clearly), names only on `selected` places and the one pointed at,
+  `onPick` on a click. Rotation is now stateful (`cy`/`cp`), not time-based, in that mode.
+- **`GlobeView`**: the globe beside the shipments list (click one, or its point on the globe) and the
+  chosen one's card: product, batch and units, from → to, time left, distance left, speed,
+  temperature against its limit (red when over), "Open in Tracking". Opens on the first shipment on
+  the move. `globeFromShipments` also returns `at` (each shipment's point) and ETAs read "3 h 26 min"
+  (`minutesText`, tested).
+- Fixed: duplicate React keys in `Planet`'s screen-reader list when two places share a name.
+- **Tested:** `pnpm check` (1,368 tests); `/trace/globe` in sample mode at 1440 dark and 390 light:
+  picking a shipment turns the globe and fills the card; axe clean, no sideways scroll, no console
+  errors.
