@@ -153,9 +153,11 @@ export function TrackingMap() {
       if (mp && stops.length) {
         const trail = s.trail.slice(0, -1).map((p) => sx(p.lng, p.lat));
         ctx.save();
-        if (f.dark) { ctx.shadowColor = PINK; ctx.shadowBlur = 10; }
-        ctx.strokeStyle = PINK; ctx.lineWidth = s.id === selected ? 3.4 : 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.beginPath(); ctx.moveTo(...stops[stops.length - 1]); for (const p of trail) ctx.lineTo(...p); ctx.lineTo(...mp); ctx.stroke();
+        // A faint wide line under a crisp one (M65: a blurred shadow here was redrawn every frame).
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(...stops[stops.length - 1]); for (const p of trail) ctx.lineTo(...p); ctx.lineTo(...mp);
+        if (f.dark) { ctx.strokeStyle = 'rgba(254,129,209,0.18)'; ctx.lineWidth = s.id === selected ? 8 : 6; ctx.stroke(); }
+        ctx.strokeStyle = PINK; ctx.lineWidth = s.id === selected ? 3 : 2.2; ctx.stroke();
         ctx.restore();
         // Older trail points fade out.
         trail.forEach(([x, y], i) => { ctx.globalAlpha = (focus ? 1 : 0.28) * (0.15 + (i / trail.length) * 0.6); ctx.fillStyle = PINK_SOFT; ctx.beginPath(); ctx.arc(x, y, 1.6, 0, Math.PI * 2); ctx.fill(); });

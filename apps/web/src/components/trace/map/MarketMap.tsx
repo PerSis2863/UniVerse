@@ -321,16 +321,17 @@ export function MarketMap() {
           ctx.lineWidth = layers.copies && sus ? 2 : 1; ctx.stroke();
         });
       }
+      // A soft halo per place, kept low (M65: added on top of each other, close places burned into one
+      // white blob; now plain blending, smaller and fainter, so the map stays sharp and readable).
       ctx.save();
-      ctx.globalCompositeOperation = add;
       model.cells.forEach((c, i) => {
         const n = counts ? counts.n[i] : c.scans;
         if (!n) return;
         const x = sx(c.bx), y = sy(c.by);
         if (x < -80 || x > f.w + 80 || y < -80 || y > f.h + 80) return;
-        const norm = Math.sqrt(n / model.max), breathe = still ? 1 : 1 + 0.07 * Math.sin(t / 820 + i * 1.7);
-        const g = (tiles ? tile * 0.7 : (10 + norm * 34) * Math.min(zf, 1.8)) * breathe;
-        ctx.globalAlpha = (f.dark ? 0.32 + norm * 0.5 : 0.18 + norm * 0.32) * (tiles ? 0.45 : 1);
+        const norm = Math.sqrt(n / model.max), breathe = still ? 1 : 1 + 0.04 * Math.sin(t / 900 + i * 1.7);
+        const g = (tiles ? tile * 0.6 : (7 + norm * 18) * Math.min(zf, 1.6)) * breathe;
+        ctx.globalAlpha = (f.dark ? 0.14 + norm * 0.22 : 0.1 + norm * 0.18) * (tiles ? 0.45 : 1);
         ctx.drawImage(sprite, x - g, y - g, g * 2, g * 2);
         const sus = counts ? counts.s[i] : c.suspect;
         if (layers.copies && sus) { ctx.globalAlpha = Math.min(0.8, 0.25 + sus / n); const ag = g * 0.6; ctx.drawImage(amber, x - ag, y - ag, ag * 2, ag * 2); }

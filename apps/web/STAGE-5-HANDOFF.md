@@ -2955,3 +2955,22 @@ section and every `Reveal` inside follows it: `tilt` (tips up like a card set on
 `scrub` reads Reduce Motion itself). Assignments are in `src/app/page.tsx`, one kind per section and
 no two neighbours alike. **Rule:** a new landing section picks a kind its neighbours don't use.
 Tested: scrolled the whole page at 1440 and 390: nothing left invisible, no sideways scroll, no errors.
+
+## M65 · Maps: sharp, not glowing, and smoother to move (1 Nov 2026)
+
+The owner (Market map screenshot): "the light here is too much, make it professional and sharp…
+the maps are not smooth, make it ultra smooth in all the maps".
+
+- **Glow:** scan halos were drawn with additive blending (`lighter`), so close places burned into one
+  white blob. Now plain blending, about half the size and a third of the strength (`MarketMap.tsx`).
+- **Smoothness (`WorldCanvas.tsx`, every map: Trace market and tracking, Relief, Green):** each frame of
+  a drag, pinch, wheel or glide used to redraw every country *with a blurred shadow*. Now the land
+  picture is drawn once and, while the map moves, only slid and scaled (`paint(t, busy)`); a quick
+  draft with a 35% margin is drawn when it no longer covers the screen, and the sharp one when the map
+  rests (`busyUntil`, `touch()` on every hand movement). The blurred shadow is replaced by a 1.6 px
+  offset fill (crisp edge, no blur). Tracking lines: a wide faint stroke under a crisp one instead of
+  `shadowBlur` every frame.
+- **Rule:** never `shadowBlur` or `filter` in a map's per-frame drawing; draw a second stroke instead.
+- **Tested:** `pnpm check`; the market map in sample mode looks right (halos subtle, labels readable).
+  Frame timing could not be judged here: this container's browser has no graphics card, so every
+  full-screen canvas is slow regardless (old and new measured the same).
