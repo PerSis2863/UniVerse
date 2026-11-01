@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countValues, mergeParts, partArgs, planSplit, sortRows } from './d1-split';
+import { countValues, mergeParts, partArgs, planPages, planSplit, readInPages, readsOrderedRelation, sortRows } from './d1-split';
 
 const ids = (n: number, p = 'u') => Array.from({ length: n }, (_, i) => `${p}${String(i).padStart(3, '0')}`);
 
@@ -59,5 +59,33 @@ describe('splitting queries with long lists for D1 (100 values a query)', () => 
     expect(mergeParts('findFirst', { orderBy: { at: 'asc' } }, [{ id: 'x', at: 5 }, null, { id: 'y', at: 2 }])).toEqual({ id: 'y', at: 2 });
     expect(mergeParts('findFirst', {}, [null, null])).toBeNull();
     expect(mergeParts('groupBy', {}, [[{ userId: 'a', _count: 1 }], [{ userId: 'b', _count: 2 }]])).toHaveLength(2);
+  });
+});
+
+describe('lists that read an ordered related list (read in pages)', () => {
+  const lastSignIn = { id: true, loginEvents: { orderBy: { createdAt: 'desc' }, take: 1 } };
+  it('spots a related list with its own orderBy or take, at any depth, but not counts or plain lists', () => {
+    expect(readsOrderedRelation(lastSignIn)).toBe(true);
+    expect(readsOrderedRelation({ conversation: { select: { participants: { take: 25 } } } })).toBe(true);
+    expect(readsOrderedRelation({ loginEvents: { where: { country: 'IN' } }, _count: { select: { loginEvents: true } } })).toBe(false);
+    expect(readsOrderedRelation({ name: true, user: { select: { id: true } } })).toBe(false);
+  });
+  it('pages a long or unlimited findMany only', () => {
+    expect(planPages('findMany', { take: 200, select: lastSignIn })).toBe(90);
+    expect(planPages('findMany', { include: { members: { take: 3 } } })).toBe(90);
+    expect(planPages('findMany', { take: 50, select: lastSignIn })).toBeNull();
+    expect(planPages('findMany', { take: 200, select: { id: true } })).toBeNull();
+    expect(planPages('findMany', { take: 200, distinct: ['role'], select: lastSignIn })).toBeNull();
+    expect(planPages('findFirst', { select: lastSignIn })).toBeNull();
+  });
+  it('reads page by page from the skip, up to take, stopping at a short page', async () => {
+    const all = ids(230);
+    const calls: { skip: number; take: number }[] = [];
+    const run = async (a: Record<string, unknown>) => { const s = a.skip as number, t = a.take as number; calls.push({ skip: s, take: t }); return all.slice(s, s + t); };
+    expect(await readInPages({ skip: 10, take: 200 }, 90, run)).toEqual(all.slice(10, 210));
+    expect(calls).toEqual([{ skip: 10, take: 90 }, { skip: 100, take: 90 }, { skip: 190, take: 20 }]);
+    calls.length = 0;
+    expect(await readInPages({}, 90, run)).toHaveLength(230);
+    expect(calls).toHaveLength(3);
   });
 });

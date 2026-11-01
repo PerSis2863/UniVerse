@@ -3164,3 +3164,25 @@ also add more 30 features in there like big features". Create now has 81 tools i
 - **Tested:** `pnpm check` (1,396 tests); `scripts/checks/create-tools-ui.mjs` on the dev server: the
   list (search, star, Esc, scroll kept) and all 30 tools at 1280 dark and 390 light: axe clean inside
   the page, no sideways scrolling, no page errors.
+
+## M73 · "Too many SQL variables" fixed for every list, not just People (1 Nov 2026)
+
+The owner forwarded the "1 problem(s) need a look" email: `GET /api/core/owner/people`, "D1_ERROR: too
+many SQL variables" (production `error_reports`, 1×, 31 Oct 19:10 UTC: before M58's fix went live
+that night; the email came on 1 Nov because the diagnosis ran at 08:15 UTC).
+
+- **The real cause (checked on local D1 with 150 people):** Prisma reads a related list for all the
+  rows it found in one query (`WHERE userId IN (…every id…)`). It cuts that list at 98 ids, **except**
+  when the related list has its own `orderBy`, `take`, `skip`, `cursor` or `distinct`: then every id
+  goes into one query, and past ~98 rows D1 refuses. A plain or `where`-only related list is cut
+  correctly. M58 fixed only People; the same shape is in chat conversations, chat search, boards,
+  collaborations, groups, internships, scholarships and more, waiting for a big enough school.
+- **Fix, once for every query** (`src/lib/d1-split.ts` `readsOrderedRelation` / `planPages` /
+  `readInPages`, run by `withListSplit` in `src/lib/db.ts`): a `findMany` with no `take` or a `take`
+  over 90 that reads such a related list (at any depth) runs in pages of 90 rows, one after another,
+  and the pages are joined: the same rows in the same order (skip respected, stops at a short page).
+  Also inside the long-`in`-list split. M58's hand-made chunking in the People route is removed.
+- **Tested:** 3 new unit tests (`d1-split.test.ts`); on local D1 with 150 people: take 140 ordered,
+  no take, skip 20 + take 100, a long `in` list with a related `take`, all correct (each failed
+  before with "too many SQL variables").
+- **Owner:** mark the report resolved in the owner console (Errors).

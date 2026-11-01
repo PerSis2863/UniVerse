@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaD1 } from '@prisma/adapter-d1';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import type { D1Database } from '@cloudflare/workers-types';
-import { mergeParts, partArgs, planSplit } from './d1-split';
+import { mergeParts, partArgs, planPages, planSplit, readInPages } from './d1-split';
 
 // The database is Cloudflare D1 (SQLite), reached through its `DB` binding (wrangler.jsonc).
 // In `next dev` the binding is a local D1 provided by wrangler (see initOpenNextCloudflareForDev
@@ -45,14 +45,20 @@ export function withListSplit(client: PrismaClient): PrismaClient {
   return client.$extends({
     query: {
       async $allOperations({ model, operation, args, query }) {
+        // A list that reads a related list with its own orderBy or take goes in pages of 90 rows
+        // (Prisma puts every row's id in that related query, unsplit: see d1-split.ts).
+        const run = async (a: Record<string, unknown>) => {
+          const size = model ? planPages(operation, a) : null;
+          if (!size) { counted(model, operation); return query(a as typeof args); }
+          return readInPages(a, size, async (page) => { counted(model, operation); return (await query(page as typeof args)) as unknown[]; });
+        };
         const plan = model ? planSplit(operation, args) : null;
-        if (!plan) { counted(model, operation); return query(args); }
+        if (!plan) return run(args as Record<string, unknown>);
         const { parts, added } = partArgs(operation, args as Record<string, unknown>, plan);
-        counted(model, operation, parts.length);
         // One after another: run together inside one extension call, every part comes back empty
         // (checked on D1, Oct 2026).
         const results: unknown[] = [];
-        for (const part of parts) results.push(await query(part as typeof args));
+        for (const part of parts) results.push(await run(part));
         return mergeParts(operation, args as Record<string, unknown>, results, added);
       },
     },

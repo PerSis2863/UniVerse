@@ -134,6 +134,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   **M68**: Collaborate in five tabs (Home, Create, Files, Code, Tasks) with 16 new in-browser tools under Create.
   **M71**: 29 more tools under Create (51 in all, in six groups; `MoreTools.tsx`, `ImageTools.tsx`).
   **M72**: Create smoother (search, stars, recent, load on hover, glides, Esc, scroll kept) and 30 bigger tools (81 in all, eight groups; `PlanTools`, `StudyTools`, `DataTools`, `MakerTools`, logic `src/lib/big-tools.ts`).
+  **M73**: "too many SQL variables" fixed in the database layer for every list (pages of 90 when a related list has its own orderBy/take).
   **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
