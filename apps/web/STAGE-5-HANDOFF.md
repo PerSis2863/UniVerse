@@ -3080,3 +3080,8 @@ and coding apps like vs code… and some more small features".
 - **Tested:** `pnpm check` (1,375 tests); `/studio` at 1440 dark and 390 light: five tabs, Quick notes,
   Word count, Compare, Table tools, Colours, QR, Regex and Join PDFs opened and used; axe clean on the
   tools (the only flags left were page chrome under the moving background, varying run to run).
+
+**Next.js update tried and undone (1 Nov 2026):** `next` 16.4.2 builds, but the built Worker answers
+500 on every page ("Unexpected loadManifest(/.next/server/preview-props.json)"): the Cloudflare
+adapter `@opennextjs/cloudflare` must be updated with it (latest 1.20.15). Reverted on the branch, so
+`main` stays on 16.3.8 until both are updated together and checked with `local:build` + `local:serve`.
