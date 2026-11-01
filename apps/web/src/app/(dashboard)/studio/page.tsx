@@ -9,6 +9,9 @@ import { ArrowLeft, AudioWaveform, Braces, CaseSensitive, Clapperboard, Code2, C
 import Link from '@/components/ui/Link';
 import type { QuickId } from '@/components/studio/QuickTools';
 import type { PdfId } from '@/components/studio/PdfTools';
+import type { MoreId } from '@/components/studio/MoreTools';
+import type { ImageId } from '@/components/studio/ImageTools';
+import { AppWindow, BookOpenCheck, Calculator, CalendarRange, ChartColumn, CircleUser, Clock, Contrast, Crop, Droplet, FileCode2, Fingerprint, KeyRound, LayoutGrid, Link2, MessageSquareQuote, Mic as MicIcon, Omega, Percent, Pipette, Presentation, Quote, Replace, Ruler, Shuffle, Stamp, Timer, Volume2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { CollabTabs } from '@/components/layout/SectionTabs';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
@@ -32,12 +35,17 @@ const Compressor = dynamic(() => import('@/components/docs/Compressor').then((m)
 
 const QuickTool = dynamic(() => import('@/components/studio/QuickTools').then((m) => m.QuickTool), { ssr: false, loading: () => <div className="h-48 rounded-2xl skeleton" /> });
 const PdfTool = dynamic(() => import('@/components/studio/PdfTools').then((m) => m.PdfTool), { ssr: false, loading: () => <div className="h-48 rounded-2xl skeleton" /> });
+const MoreTool = dynamic(() => import('@/components/studio/MoreTools').then((m) => m.MoreTool), { ssr: false, loading: () => <div className="h-48 rounded-2xl skeleton" /> });
+const ImageTool = dynamic(() => import('@/components/studio/ImageTools').then((m) => m.ImageTool), { ssr: false, loading: () => <div className="h-48 rounded-2xl skeleton" /> });
 const QuickNotes = dynamic(() => import('@/components/studio/QuickNotes').then((m) => m.QuickNotes), { ssr: false, loading: () => <div className="h-48 rounded-2xl skeleton" /> });
 
 type Pdf3 = `pdf-${PdfId}`;
-type Panel = 'convert' | 'compress' | 'photo' | 'audio' | 'notes' | QuickId | Pdf3;
+type Panel = 'convert' | 'compress' | 'photo' | 'audio' | 'notes' | QuickId | Pdf3 | MoreId | `img-${ImageId}`;
+// M71: the second set (28 more tools).
+const MORE: MoreId[] = ['replace', 'read', 'cite', 'speak', 'dictate', 'symbols', 'calc', 'units', 'percent', 'picker', 'chart', 'dates', 'present', 'timer', 'contrast', 'colour', 'hash', 'uuid', 'password', 'time', 'url', 'jwt'];
+const IMAGES: ImageId[] = ['resize', 'quote', 'collage', 'avatar', 'beautify', 'codeimg', 'watermark'];
 const QUICK: QuickId[] = ['words', 'clean', 'compare', 'table', 'colours', 'gradient', 'json', 'regex', 'markdown', 'encode', 'qr', 'record'];
-const PANELS: Panel[] = ['convert', 'compress', 'photo', 'audio', 'notes', ...QUICK, 'pdf-merge', 'pdf-split', 'pdf-images'];
+const PANELS: Panel[] = ['convert', 'compress', 'photo', 'audio', 'notes', ...QUICK, 'pdf-merge', 'pdf-split', 'pdf-images', ...MORE, ...IMAGES.map((i) => `img-${i}` as const)];
 
 interface Tool { id: Panel | 'pdf' | 'video'; name: string; what: string; icon: LucideIcon; tint: string; group: string }
 const TOOLS: Tool[] = [
@@ -45,6 +53,12 @@ const TOOLS: Tool[] = [
   { group: 'Write', id: 'words', name: 'Word count', what: 'Words, sentences, reading and speaking time', icon: Hash, tint: 'from-indigo-500 to-sky-500' },
   { group: 'Write', id: 'clean', name: 'Clean up text', what: 'Change case, tidy spaces, sort, remove repeats', icon: CaseSensitive, tint: 'from-sky-500 to-cyan-500' },
   { group: 'Write', id: 'compare', name: 'Compare texts', what: 'See exactly what changed between two versions', icon: GitCompare, tint: 'from-emerald-500 to-teal-500' },
+  { group: 'Write', id: 'replace', name: 'Find and replace', what: 'Change a word everywhere, matching case or whole words', icon: Replace, tint: 'from-sky-500 to-indigo-500' },
+  { group: 'Write', id: 'read', name: 'How easy to read', what: 'Reading ease, school grade, sentence length', icon: BookOpenCheck, tint: 'from-emerald-500 to-sky-500' },
+  { group: 'Write', id: 'cite', name: 'References', what: 'Sources in APA or MLA style', icon: Quote, tint: 'from-amber-500 to-orange-500' },
+  { group: 'Write', id: 'speak', name: 'Read aloud', what: 'Listen to any text, choose the voice and speed', icon: Volume2, tint: 'from-violet-500 to-indigo-500' },
+  { group: 'Write', id: 'dictate', name: 'Dictation', what: 'Speak and it is typed', icon: MicIcon, tint: 'from-pink-500 to-rose-500' },
+  { group: 'Write', id: 'symbols', name: 'Symbols', what: 'Maths, Greek, money and marks to copy', icon: Omega, tint: 'from-zinc-500 to-indigo-500' },
   { group: 'Write', id: 'markdown', name: 'Markdown preview', what: 'Write Markdown, see the page, copy the HTML', icon: FileText, tint: 'from-zinc-500 to-zinc-700' },
   { group: 'PDF and files', id: 'pdf', name: 'Edit a PDF', what: 'Sign, fill in, reorder or remove pages', icon: FileText, tint: 'from-rose-500 to-amber-500' },
   { group: 'PDF and files', id: 'pdf-merge', name: 'Join PDFs', what: 'Put several PDFs together, in your order', icon: Combine, tint: 'from-rose-500 to-pink-500' },
@@ -53,6 +67,22 @@ const TOOLS: Tool[] = [
   { group: 'PDF and files', id: 'convert', name: 'Convert files', what: 'Word to PDF, PDF to pictures, Excel to CSV and more', icon: Repeat2, tint: 'from-indigo-500 to-sky-500' },
   { group: 'PDF and files', id: 'compress', name: 'Compress files', what: 'Make PDFs, photos, videos and documents smaller', icon: Minimize2, tint: 'from-indigo-400 to-indigo-600' },
   { group: 'Sheets and data', id: 'table', name: 'Table tools', what: 'Totals per column; CSV, JSON or Markdown', icon: Table2, tint: 'from-emerald-500 to-lime-500' },
+  { group: 'Sheets and data', id: 'calc', name: 'Calculator', what: 'Sums with brackets, powers and %, kept in a list', icon: Calculator, tint: 'from-indigo-500 to-violet-500' },
+  { group: 'Sheets and data', id: 'chart', name: 'Chart maker', what: 'Numbers into a bar or line chart picture', icon: ChartColumn, tint: 'from-violet-500 to-pink-500' },
+  { group: 'Sheets and data', id: 'units', name: 'Unit converter', what: 'Length, weight, area, volume, speed, data, time, temperature', icon: Ruler, tint: 'from-teal-500 to-emerald-500' },
+  { group: 'Sheets and data', id: 'percent', name: 'Percentages', what: 'A% of B, what % is it, change between', icon: Percent, tint: 'from-lime-500 to-emerald-500' },
+  { group: 'Sheets and data', id: 'dates', name: 'Date calculator', what: 'Days and weekdays between dates, or days on', icon: CalendarRange, tint: 'from-sky-500 to-teal-500' },
+  { group: 'Sheets and data', id: 'picker', name: 'Random picker and groups', what: 'Pick someone, or split a class into groups', icon: Shuffle, tint: 'from-pink-500 to-amber-500' },
+  { group: 'Present', id: 'present', name: 'Quick presenter', what: 'Write slides as text, present full screen', icon: Presentation, tint: 'from-indigo-500 to-pink-500' },
+  { group: 'Present', id: 'timer', name: 'Countdown', what: 'A big timer for talks, tests and breaks', icon: Timer, tint: 'from-rose-500 to-orange-500' },
+  { group: 'Present', id: 'img-quote', name: 'Quote cards', what: 'Words on a colour, for posts and slides', icon: MessageSquareQuote, tint: 'from-fuchsia-500 to-pink-500' },
+  { group: 'Design and media', id: 'img-resize', name: 'Resize for social', what: 'Instagram, story, thumbnail, slide or A4', icon: Crop, tint: 'from-indigo-500 to-sky-500' },
+  { group: 'Design and media', id: 'img-collage', name: 'Collage', what: 'Two to six photos in one picture', icon: LayoutGrid, tint: 'from-amber-500 to-pink-500' },
+  { group: 'Design and media', id: 'img-avatar', name: 'Profile picture', what: 'A round photo with a coloured ring', icon: CircleUser, tint: 'from-pink-500 to-violet-500' },
+  { group: 'Design and media', id: 'img-beautify', name: 'Screenshot frame', what: 'A screenshot on a colour with a window and shadow', icon: AppWindow, tint: 'from-sky-500 to-violet-500' },
+  { group: 'Design and media', id: 'img-watermark', name: 'Watermark', what: 'Your name across a photo', icon: Stamp, tint: 'from-zinc-500 to-zinc-800' },
+  { group: 'Design and media', id: 'contrast', name: 'Contrast checker', what: 'Can people read this text on that colour?', icon: Contrast, tint: 'from-zinc-700 to-pink-500' },
+  { group: 'Design and media', id: 'colour', name: 'Colour codes', what: 'HEX, RGB and HSL of any colour', icon: Pipette, tint: 'from-teal-500 to-fuchsia-500' },
   { group: 'Design and media', id: 'photo', name: 'Edit a photo', what: 'Crop, adjust, text, remove a background; posts and posters', icon: Palette, tint: 'from-indigo-500 to-fuchsia-500' },
   { group: 'Design and media', id: 'colours', name: 'Colour palettes', what: 'Five colours that go together, or from a photo', icon: SwatchBook, tint: 'from-pink-500 to-fuchsia-500' },
   { group: 'Design and media', id: 'gradient', name: 'Gradients', what: 'Backgrounds for slides and designs, with CSS', icon: Sparkles, tint: 'from-fuchsia-500 to-sky-500' },
@@ -62,6 +92,13 @@ const TOOLS: Tool[] = [
   { group: 'Design and media', id: 'audio', name: 'Edit sound', what: 'Record, trim and clean up audio', icon: AudioWaveform, tint: 'from-indigo-400 to-indigo-600' },
   { group: 'Code', id: 'json', name: 'JSON formatter', what: 'Check, tidy or squash JSON', icon: Braces, tint: 'from-sky-600 to-indigo-600' },
   { group: 'Code', id: 'regex', name: 'Regex tester', what: 'Try a pattern and see every match', icon: Regex, tint: 'from-teal-500 to-sky-600' },
+  { group: 'Code', id: 'img-codeimg', name: 'Code picture', what: 'Code in an editor window, as an image', icon: FileCode2, tint: 'from-indigo-600 to-zinc-900' },
+  { group: 'Code', id: 'hash', name: 'Fingerprints (SHA)', what: 'Check a file or text is exactly the same', icon: Fingerprint, tint: 'from-emerald-600 to-zinc-800' },
+  { group: 'Code', id: 'uuid', name: 'Unique IDs', what: 'Random UUIDs, as many as you need', icon: Droplet, tint: 'from-sky-600 to-teal-600' },
+  { group: 'Code', id: 'password', name: 'Password maker', what: 'Strong passwords, made on this device', icon: KeyRound, tint: 'from-amber-600 to-rose-600' },
+  { group: 'Code', id: 'time', name: 'Timestamps', what: 'Unix time and dates, both ways', icon: Clock, tint: 'from-violet-600 to-sky-600' },
+  { group: 'Code', id: 'url', name: 'Web address parts', what: 'A link taken apart, its query as a table', icon: Link2, tint: 'from-teal-600 to-indigo-600' },
+  { group: 'Code', id: 'jwt', name: 'Token reader (JWT)', what: 'What a sign-in token says inside', icon: KeyRound, tint: 'from-zinc-600 to-violet-600' },
   { group: 'Code', id: 'encode', name: 'Encode and decode', what: 'Base64 and web addresses, both ways', icon: Rows3, tint: 'from-zinc-500 to-sky-600' },
 ];
 const GROUPS = [...new Set(TOOLS.map((t) => t.group))];
@@ -120,7 +157,7 @@ function Tools() {
                 {panel !== 'convert' && panel !== 'compress' && panel !== 'photo' && panel !== 'audio' && (
                   <section className="panel p-5 space-y-4" aria-labelledby="tool-title">
                     <h2 id="tool-title" className="font-bold text-zinc-900 dark:text-white">{TOOLS.find((t) => t.id === panel)?.name}</h2>
-                    {panel === 'notes' ? <QuickNotes /> : panel.startsWith('pdf-') ? <PdfTool id={panel.slice(4) as PdfId} /> : <QuickTool id={panel as QuickId} />}
+                    {panel === 'notes' ? <QuickNotes /> : panel.startsWith('pdf-') ? <PdfTool id={panel.slice(4) as PdfId} /> : panel.startsWith('img-') ? <ImageTool id={panel.slice(4) as ImageId} /> : (MORE as string[]).includes(panel) ? <MoreTool id={panel as MoreId} /> : <QuickTool id={panel as QuickId} />}
                   </section>
                 )}
               </>

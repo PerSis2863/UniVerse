@@ -3085,3 +3085,30 @@ and coding apps like vs code… and some more small features".
 500 on every page ("Unexpected loadManifest(/.next/server/preview-props.json)"): the Cloudflare
 adapter `@opennextjs/cloudflare` must be updated with it (latest 1.20.15). Reverted on the branch, so
 `main` stays on 16.3.8 until both are updated together and checked with `local:build` + `local:serve`.
+
+## M71 · 29 more tools in Collaborate → Create (1 Nov 2026)
+
+The owner: "just add more features in the collaborate section… at least 25 more". Create now has 51
+tools in six groups (Write, PDF and files, Sheets and data, Present, Design and media, Code), all in
+the browser; nothing is sent anywhere (except Dictation, which uses the browser's own speech service).
+
+- **Write:** Find and replace (case, whole words), How easy to read (Flesch ease, grade), References
+  (APA 7 / MLA 9), Read aloud (`speechSynthesis`, voice and speed), Dictation (`SpeechRecognition`
+  where the browser has it), Symbols to copy.
+- **Sheets and data:** Calculator (own parser, no `eval`, history), Chart maker (bar/line → PNG), Unit
+  converter (8 kinds), Percentages, Date calculator (days, weekdays, days on), Random picker and
+  groups (crypto-random shuffle).
+- **Present:** Quick presenter (Markdown slides split by `---`, full screen, arrow keys; slides in a
+  sandboxed iframe), Countdown, Quote cards.
+- **Design and media** (`ImageTools.tsx`, one canvas each, Save PNG): Resize for social (7 sizes, fill or
+  fit), Collage (2–6), Profile picture (round, ring), Screenshot frame, Watermark; Contrast checker
+  (WCAG AA/AAA), Colour codes (HEX/RGB/HSL).
+- **Code:** Code picture, Fingerprints (SHA-1/256/512 of text or a file), Unique IDs, Password maker
+  (crypto), Timestamps, Web address parts, Token reader (JWT, decoded locally only, with a warning).
+- **Files:** `src/components/studio/MoreTools.tsx`, `ImageTools.tsx`, logic `src/lib/quick-tools-2.ts`
+  (10 tests). `QuickTools.tsx` now exports its small parts (`Btn`, `Field`, `Out`, `area`, `copy`,
+  `save`). Panels: `/studio?tool=<id>` (`img-<id>` for the picture tools).
+- **Tested:** `pnpm check` (1,385 tests); all 29 opened by address at 1440 dark and 390 light: axe clean
+  inside the page, no sideways scroll, the calculator answers. The one page error seen
+  ("localStorage… sandboxed") comes from the test helper's init script running inside the sandboxed
+  previews, not from the app.

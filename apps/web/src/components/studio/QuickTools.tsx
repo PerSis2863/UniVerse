@@ -14,14 +14,14 @@ import { cn } from '@/lib/utils';
 
 export type QuickId = 'words' | 'clean' | 'compare' | 'table' | 'colours' | 'gradient' | 'json' | 'regex' | 'markdown' | 'encode' | 'qr' | 'record';
 
-const area = 'input w-full min-h-[180px] font-mono text-sm leading-relaxed resize-y';
-const copy = async (t: string) => { try { await navigator.clipboard.writeText(t); toast.success('Copied'); } catch { toast.error('Copy didn’t work here: select the text instead.'); } };
-const save = (name: string, data: BlobPart, type: string) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
-const Btn = ({ children, onClick, on }: { children: React.ReactNode; onClick: () => void; on?: boolean }) => (
+export const area = 'input w-full min-h-[180px] font-mono text-sm leading-relaxed resize-y';
+export const copy = async (t: string) => { try { await navigator.clipboard.writeText(t); toast.success('Copied'); } catch { toast.error('Copy didn’t work here: select the text instead.'); } };
+export const save = (name: string, data: BlobPart, type: string) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
+export const Btn = ({ children, onClick, on }: { children: React.ReactNode; onClick: () => void; on?: boolean }) => (
   <button type="button" onClick={onClick} aria-pressed={on} className={cn('btn-secondary btn-sm', on && 'ring-2 ring-pink-500')}>{children}</button>
 );
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => <label className="block"><span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">{label}</span><span className="mt-1 block">{children}</span></label>;
-const Out = ({ text, name }: { text: string; name?: string }) => (
+export const Field = ({ label, children }: { label: string; children: React.ReactNode }) => <label className="block"><span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">{label}</span><span className="mt-1 block">{children}</span></label>;
+export const Out = ({ text, name }: { text: string; name?: string }) => (
   <div className="flex gap-2"><Btn onClick={() => void copy(text)}><Copy className="w-3.5 h-3.5" aria-hidden />Copy</Btn>{name && <Btn onClick={() => save(name, text, 'text/plain')}><Download className="w-3.5 h-3.5" aria-hidden />Download</Btn>}</div>
 );
 
