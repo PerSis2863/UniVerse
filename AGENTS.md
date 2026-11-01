@@ -129,6 +129,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   **M65**: maps sharp (no additive glow) and smoother (land picture reused while moving, no per-frame blur).
   **M66**: Tracking's city at the bottom, zoomed in with a camera (drag, pinch, buttons) and real cars.
   **M67**: Trace's Live globe usable (turn, zoom, pick; list and detail card; `Planet interactive`).
+  **M70**: the explainer board twice as wide without collisions; Excalidraw patched to zoom out to 2% (redo the patch when upgrading it).
   **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all

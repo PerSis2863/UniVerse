@@ -3011,3 +3011,27 @@ all… make it functional… more detailing… ultra smooth".
 - **Tested:** `pnpm check` (1,368 tests); `/trace/globe` in sample mode at 1440 dark and 390 light:
   picking a shipment turns the globe and fills the card; axe clean, no sideways scroll, no console
   errors.
+
+## M70 · "UniVerse explained": twice as wide, nothing colliding, zoom out to see it all (1 Nov 2026)
+
+The owner: "the whiteboard of universe explain has glitched… some tables are colliding… make it
+like twice the size… add more zoom out… I should be able to see it fully".
+
+- **Zoom out to 2%**: Excalidraw stops at 10% (`MIN_ZOOM`). A pnpm patch
+  (`patches/@excalidraw__excalidraw@0.18.1.patch`, `patchedDependencies` in the root `package.json`)
+  sets it to 0.02 in both its dev and prod builds. **Upgrading Excalidraw: redo the patch** (`pnpm
+  patch @excalidraw/excalidraw@<v>`, change `MIN_ZOOM`, `pnpm patch-commit`), or the board can't be
+  seen whole again.
+- **Twice as wide** (`guideElements`): W = 2 × the banner (34,140); the hand-made bands sit side by
+  side in pairs and `packed(…, W)` makes half as many code bands, so the board is 34,140 × 22,901
+  (was 17,070 × 37,845) and fits a screen at about 3.5%.
+- **No colliding boxes**: wrapping assumed 0.6 em a letter, too little for the hand-drawn font, so
+  Excalidraw wrapped again and grew boxes into the ones below. Now 0.68 em (`EM`), and `fit()` lowers a
+  box's text size (down to 12) until it fits the box's height. Measured with a throwaway script: no
+  frame overlaps, no box whose text needs more height than it has (only arrow labels and the Venn's
+  intended overlap remain).
+- **To see it:** owner console → Explain UniVerse → **Make a fresh one** (an existing board keeps its
+  old positions; ids are unchanged so top-ups still work).
+- **Not checked in a browser here** (the board needs the owner's sign-in and the board server).
+  Excalidraw draws every shape each frame, so with ~1,300 shapes very low zoom is as smooth as
+  Excalidraw allows; nothing else was changed for speed.
