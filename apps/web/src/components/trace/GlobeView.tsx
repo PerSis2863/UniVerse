@@ -2,7 +2,8 @@
 
 import useSWR from 'swr';
 import { useMemo, useState } from 'react';
-import { Globe2, MapPin } from 'lucide-react';
+import { Globe2, MapPin, Plane as PlaneIcon } from 'lucide-react';
+import type { AirTraffic } from '@/lib/aircraft';
 import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
 import { errorMessage } from '@/lib/api';
@@ -52,6 +53,11 @@ function GlobeBody({ ships }: { ships: GlobeShipment[] }) {
   const p = chosen >= 0 && at[chosen] >= 0 ? places[at[chosen]] : null;
   const destIdx = chosen >= 0 ? arcs.find(([a]) => a === at[chosen])?.[1] : undefined;
   const onMove = ships.filter((s) => s.status === 'IN_TRANSIT' && s.position).length;
+  // Air traffic (M69): every plane in the sky, from the OpenSky Network (cached 15 min on the server).
+  const [air, setAir] = useState(false);
+  const airPoll = useActivePoll(15 * 60_000);
+  const { data: traffic } = useSWR<AirTraffic>(air ? '/trace/aircraft' : null, fetcher, { refreshInterval: airPoll, revalidateOnFocus: false });
+  const swarm = useMemo(() => (air && traffic?.planes.length ? { planes: traffic.planes, at: traffic.at ? Date.parse(traffic.at) : Number.NaN } : null), [air, traffic]);
   const hot = ships.filter((s) => s.tempC != null && s.maxTempC != null && s.tempC > s.maxTempC).length;
 
   if (!places.length) return (
@@ -64,7 +70,13 @@ function GlobeBody({ ships }: { ships: GlobeShipment[] }) {
           <h2 className="font-bold text-zinc-900 dark:text-white">Your shipments, live</h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">{onMove} on the move · {ships.filter((s) => s.position).length} on the globe{hot ? ` · ${hot} too warm` : ''}</p>
         </div>
-        <Planet interactive places={places} arcs={arcs} label="Your shipments on a globe you can turn"
+        <div className="flex flex-wrap items-center gap-2 px-5 pt-2">
+          <button type="button" aria-pressed={air} onClick={() => setAir((v) => !v)} className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 transition-colors', air ? 'bg-pink-500 text-[#171f44] ring-pink-500' : 'ring-zinc-300 dark:ring-white/15 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-900/[0.04] dark:hover:bg-white/[0.06]')}>
+            <PlaneIcon className="w-3.5 h-3.5" aria-hidden />Air traffic
+          </button>
+          {air && <span className="text-xs text-zinc-500 dark:text-zinc-400" role="status">{!traffic ? 'Loading planes…' : traffic.note ?? `${traffic.planes.length.toLocaleString()} planes in the air · ${traffic.source}${traffic.at ? ` · ${new Date(traffic.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`}</span>}
+        </div>
+        <Planet interactive swarm={swarm} places={places} arcs={arcs} label="Your shipments on a globe you can turn"
           focus={p ? { lat: p.lat, lon: p.lon } : null} selected={[...(chosen >= 0 && at[chosen] >= 0 ? [at[chosen]] : []), ...(destIdx !== undefined ? [destIdx] : [])]}
           onPick={(i) => { const k = at.indexOf(i); const d = arcs.find(([, b]) => b === i); setPick(k >= 0 ? k : d ? at.indexOf(d[0]) : pick); }}
           className="h-[420px] sm:h-[560px]" />

@@ -3035,3 +3035,23 @@ like twice the size… add more zoom out… I should be able to see it fully".
 - **Not checked in a browser here** (the board needs the owner's sign-in and the board server).
   Excalidraw draws every shape each frame, so with ~1,300 shapes very low zoom is as smooth as
   Excalidraw allows; nothing else was changed for speed.
+
+## M69 · Live air traffic on Trace's Live globe (1 Nov 2026)
+
+The owner: "also add aircraft globe in the app" (after the off-site demo, M60).
+
+- **`GET /trace/aircraft`** (`src/server/aircraft.ts`, signed in): OpenSky Network's `states/all`, no
+  key, kept 15 minutes in memory and in Cloudflare's cache (`caches.default`), so the whole site asks
+  at most ~96 times a day (anonymous allowance ~100). Trimmed to airborne planes with a position,
+  rounded to 0.01°, at most 4,000 (`planesFrom`, `src/lib/aircraft.ts`, tested): `[lat, lon, track,
+  speed m/s, altitude m]`, no call signs. On failure: the last planes (or none) and a note, retried
+  after 2 minutes. Sample mode: `sampleAircraft()` (1,600 made-up flights between 32 airports).
+- **Owner switch "Live air traffic"** (`aircraft` in `FEATURE_SWITCHES`) turns the route off.
+- **UI:** an "Air traffic" toggle on `/trace/globe`; `Planet`'s new `swarm` draws each plane as a dot
+  with a 90 km trail, moved along its track (`ahead`) every half second since the data's time.
+  Name pills on the globe no longer overlap (stacked).
+- **[owner]:** OpenSky's terms allow non-commercial use only; for a paid product ask them or move to a
+  paid feed. This container can't reach OpenSky, so the live feed was only seen failing gracefully
+  ("did not answer"); sample mode shows the planes.
+- **Tested:** `pnpm check` (1,370 tests); `/trace/globe` at 1440 and 390: toggle on, 1,600 planes
+  drawn, axe clean, no sideways scroll, no errors.

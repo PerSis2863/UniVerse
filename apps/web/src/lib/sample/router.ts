@@ -1026,6 +1026,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/trace\/map\/market$/, ({ q }) => ok(impact.sampleTraceMarket(Number(q.get('days')) || 30, q.get('product')))],
   [/^\/trace\/map\/live$/, () => ok(impact.sampleTraceLive())],
   [/^\/trace\/map\/tracking$/, () => ok(impact.sampleTraceTracking())],
+  [/^\/trace\/aircraft$/, () => ok(impact.sampleAircraft())],
   [/^\/trace\/campaigns$/, () => ok(impact.sampleTraceCampaigns())],
   [/^\/trace\/cashouts$/, () => ok(impact.sampleTraceCashouts())],
   [/^\/trace\/wallet$/, () => ok(impact.sampleTraceWallet())],

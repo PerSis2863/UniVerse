@@ -8,6 +8,7 @@ import { createCampaign, listCampaigns, setCampaignStatus } from '../trace-campa
 import { carrierLink, carryArrive, carryInfo, carryPing, carryReading, liveScans, marketMap, tracking } from '../trace-map';
 import { demo } from '../trace-demo';
 import { ownerTrace } from '../trace-owner';
+import { aircraft } from '../aircraft';
 import { endRecall, insights, ownUnit, protectBatch, publicBrand, radar, recallBatch, receiveTransfer, redeemWin, registerWarranty, reviewUnit, startTransfer, vault } from '../trace-plus';
 
 // UniVerse Trace (src/server/trace*.ts): every product gets a passport. Anyone can check a code or
@@ -79,6 +80,8 @@ export default function traceModule(router: Router) {
   r.get('map/market', ({ user, query }) => marketMap(user, Number(first(query.days)) || 30, first(query.product) || null));
   r.get('map/live', ({ user, query }) => liveScans(user, first(query.since)));
   r.get('map/tracking', ({ user }) => tracking(user));
+  // Live air traffic for the Live globe (M69): the same for everyone, cached 15 minutes.
+  r.get('aircraft', () => aircraft());
 
   // The platform owner: every brand and its plan
   r.get('owner', { owner: true }, () => ownerTrace());

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
+import { ahead, type Plane } from '@/lib/aircraft';
 import { cn } from '@/lib/utils';
 import { TONES, easeOut, glow, hash, seeded, useLiveCanvas, type Frame, type Tone } from './canvas';
 
@@ -142,8 +143,10 @@ function bodySprite(r: number) {
   return { c, size };
 }
 
-export function Planet({ places, arcs, label, className, pings = true, interactive = false, focus = null, selected, onPick }: {
+export function Planet({ places, arcs, label, className, pings = true, interactive = false, focus = null, selected, onPick, swarm }: {
   places: Place[];
+  /** M69: many small moving dots (planes), moved along their track at their speed from `at`. */
+  swarm?: { planes: Plane[]; at: number } | null;
   /** M67 (Trace's Live globe): a globe to use, not only look at. Drag to turn it, pinch / ctrl + scroll
    *  / buttons to zoom; it turns to `focus` (smoothly, the short way); no net or sparks over the land;
    *  only `selected` places (and the one pointed at) carry a name; `onPick` hears a click on a place. */
@@ -167,8 +170,8 @@ export function Planet({ places, arcs, label, className, pings = true, interacti
   const pts = useMemo(() => places.map((p, i) => ({ ...p, v: toV(p.lat, p.lon), tone: p.tone ?? 'pink' as Tone, seed: hash(p.label) + i })), [places]);
   const links = useMemo(() => arcs ?? (places.length > 1 ? places.map((_, i) => [i, (i + 1) % places.length] as [number, number]).slice(0, places.length === 2 ? 1 : undefined) : []), [arcs, places]);
   const st = useRef<{ model: Model | null; land: unknown; landAt: number; body: ReturnType<typeof bodySprite> | null; r: number; yaw: number; pitch: number; widths: Map<string, number>;
-    cy: number; cp: number; drag: boolean; idleAt: number; lastT: number; zoom: number; tz: number; xy: Float32Array; focusKey: string }>({
-    model: null, land: null, landAt: 0, body: null, r: 0, yaw: 0, pitch: 0, widths: new Map(), cy: -0.6, cp: 0.38, drag: false, idleAt: 0, lastT: 0, zoom: 1, tz: 1, xy: new Float32Array(0), focusKey: '' });
+    cy: number; cp: number; drag: boolean; idleAt: number; lastT: number; zoom: number; tz: number; xy: Float32Array; focusKey: string; sw: Float32Array; swAt: number; swOf: unknown }>({
+    model: null, land: null, landAt: 0, body: null, r: 0, yaw: 0, pitch: 0, widths: new Map(), cy: -0.6, cp: 0.38, drag: false, idleAt: 0, lastT: 0, zoom: 1, tz: 1, xy: new Float32Array(0), focusKey: '', sw: new Float32Array(0), swAt: -1, swOf: null });
   const [wake, setWake] = useState(0);
 
   const ref = useLiveCanvas(({ ctx, w, h, t, pointer, still }: Frame) => {
@@ -351,6 +354,33 @@ export function Planet({ places, arcs, label, className, pings = true, interacti
     });
     ctx.globalCompositeOperation = 'source-over';
 
+    // Planes (M69): where each is now (moved along its track since the data's time, every half
+    // second), a dot with a short trail behind; only the near side.
+    if (swarm?.planes.length) {
+      if (s.swOf !== swarm || t - s.swAt > 0.5) {
+        s.swOf = swarm; s.swAt = t;
+        const n = swarm.planes.length, el = Number.isFinite(swarm.at) ? Math.max(0, (Date.now() - swarm.at) / 1000) : 0;
+        if (s.sw.length !== n * 6) s.sw = new Float32Array(n * 6);
+        for (let i = 0; i < n; i++) {
+          const [la, lo, trk, v] = swarm.planes[i];
+          const [a1, o1] = v > 30 ? ahead(la, lo, trk, v * Math.min(el, 3 * 3600)) : [la, lo];
+          const [a0, o0] = v > 30 ? ahead(a1, o1, (trk + 180) % 360, 90_000) : [a1, o1];
+          s.sw.set(toV(a1, o1), i * 6); s.sw.set(toV(a0, o0), i * 6 + 3);
+        }
+      }
+      const dotS = Math.max(1.4, r / 190), sw = s.sw, head = new Path2D(), tail = new Path2D();
+      for (let i = 0; i < sw.length; i += 6) {
+        const q = rot([sw[i], sw[i + 1], sw[i + 2]]);
+        if (q[2] < 0.05) continue;
+        const x = cx + q[0] * r, y = cy - q[1] * r, b = rot([sw[i + 3], sw[i + 4], sw[i + 5]]);
+        tail.moveTo(cx + b[0] * r, cy - b[1] * r); tail.lineTo(x, y);
+        head.rect(x - dotS / 2, y - dotS / 2, dotS, dotS);
+      }
+      ctx.lineWidth = Math.max(0.6, r / 520);
+      ctx.strokeStyle = `rgba(${TONES.pink},0.35)`; ctx.stroke(tail);
+      ctx.fillStyle = 'rgba(255,214,240,0.95)'; ctx.fill(head);
+    }
+
     // The places: a glowing node with a ripple, and a pill with the name.
     ctx.font = FONT;
     ctx.textBaseline = 'middle';
@@ -361,6 +391,7 @@ export function Planet({ places, arcs, label, className, pings = true, interacti
       let best = 16;
       pts.forEach((_, i) => { const q = P[i]; if (q[2] < 0.05) return; const d = Math.hypot(cx + q[0] * r - pointer.x, cy - q[1] * r - pointer.y); if (d < best) { best = d; hover = i; } });
     }
+    const pills: [number, number, number][] = [];
     pts.forEach((p, i) => {
       const q = P[i];
       s.xy[i * 2] = q[2] < 0.05 ? -1e4 : cx + q[0] * r; s.xy[i * 2 + 1] = cy - q[1] * r;
@@ -383,7 +414,11 @@ export function Planet({ places, arcs, label, className, pings = true, interacti
       let tw = s.widths.get(text);
       if (tw === undefined) { tw = ctx.measureText(text).width; s.widths.set(text, tw); }
       const bw = tw + 24, bh = 20, left = x < cx;
-      const bx = Math.max(2, Math.min(w - bw - 2, left ? x - bw - 10 : x + 10)), by = Math.max(2, Math.min(h - bh - 2, y - bh - 4));
+      const bx = Math.max(2, Math.min(w - bw - 2, left ? x - bw - 10 : x + 10));
+      let by = Math.max(2, Math.min(h - bh - 2, y - bh - 4));
+      // Never on top of another name: step up until clear.
+      while (pills.some(([px, py, pw]) => bx < px + pw && bx + bw > px && by < py + bh + 3 && by + bh + 3 > py) && by > 2) by -= bh + 4;
+      pills.push([bx, by, bw]);
       ctx.fillStyle = 'rgba(255,255,255,0.94)';
       ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10); ctx.fill();
       ctx.fillStyle = `rgb(${TONES[p.tone]})`;
