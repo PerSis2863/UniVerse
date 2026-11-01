@@ -3112,3 +3112,55 @@ the browser; nothing is sent anywhere (except Dictation, which uses the browser'
   inside the page, no sideways scroll, the calculator answers. The one page error seen
   ("localStorage… sandboxed") comes from the test helper's init script running inside the sandboxed
   previews, not from the app.
+
+## M72 · Collaborate → Create smoother, with 30 big tools (1 Nov 2026)
+
+The owner: "upgrade the existing tools and features of the collaborate section with ultra smoothness and
+also add more 30 features in there like big features". Create now has 81 tools in eight groups.
+
+- **Smoother list (every tool benefits):** a search box (`/` focuses it, Enter opens the first match,
+  Esc clears); group chips that glide to their group; **Starred** and **Used lately** shelves (kept on
+  the device, `uv-create-stars` / `uv-create-recent`, read with `useSyncExternalStore` so the first
+  paint matches the server); a tool's code starts downloading when the pointer rests on its card
+  (`LOAD` / `preload` in `studio/page.tsx`), so it opens at once; the tool glides in and the list
+  glides back (AnimatePresence, `spring.smooth`, exits faster; Reduce Motion: fades only); Esc goes
+  back (not while typing or in a full-screen view); going back restores the list's scroll spot; cards
+  lift a little on hover and press in on tap; "New" badges on the 30.
+- **30 tools** (`/studio?tool=<id>`, all in the browser, their work kept on the device with `useKept`
+  in `studio/kept.ts`):
+  - Plan and organise (`PlanTools.tsx`): mind map (keyboard: Tab / Enter / arrows / Delete / F2; save
+    PNG; copy as a list), outliner (Tab in/out, Alt+arrows move a branch, fold, tick), sticky-note wall
+    (drag by the top strip, colours, votes, line up by votes), timeline/Gantt (today line, done %, PNG),
+    flowchart from `A -> B: label` text (loops curve back; left-right or top-down; PNG), timetable
+    (colour per subject, print), habit tracker (21 days, streaks), decision helper (weighted 1–5
+    scores, ranking).
+  - Study and teach (`StudyTools.tsx`): flashcards (decks, 3D flip, five Leitner boxes, paste many),
+    grades (weighted average, "what I need on the rest", 4.0 GPA), revision planner (exam dates and
+    hours → a day plan, warns when short, `.ics` for a calendar, print), rubric maker (click cells to
+    mark: total), word search (print or play: tap first and last letter), certificate (PNG / print),
+    spin the wheel (crypto-random pick, eases to a stop, optional "take the winner off"), noise meter
+    (microphone level on the `Dial`, a limit, seconds too loud; nothing recorded).
+  - Data (`DataTools.tsx`): graph plotter (up to six `y =` formulas, drag/scroll zoom, values under
+    the pointer; own compiler with implicit times, no eval), statistics (+ histogram), data explorer
+    (open a CSV, sort, filter, totals by group, save what's shown), budget (in/out by kind, Ring,
+    CSV), invoice (tax, discount, print or PDF), world clock with the hours that suit everyone.
+  - Make (`MakerTools.tsx`): CV builder (modern / classic, print to PDF), word cloud (spiral layout,
+    PNG), teleprompter (full screen, mirror, keys), code playground (HTML/CSS/JS in a
+    `sandbox="allow-scripts allow-modals"` iframe without same-origin, console shown via
+    `postMessage`; inline `onclick=` attributes are blocked by the site's `script-src-attr 'none'`,
+    which it says), Code 128 barcodes (SVG/PNG), hide parts of a picture (pixels / blur / black box,
+    saved as a new file), slideshow video (canvas + MediaRecorder: mp4 where the browser can, else
+    webm; the tab must stay open), signature pad (smooth, speed-weighted strokes; trimmed see-through PNG).
+- **Logic** in `src/lib/big-tools.ts` (11 tests): `compile`, `stats`, `histogram`, `flow`, `treeLayout`,
+  `wordSearch` + `seeded`, `code128` (the table is checked: 107 unique patterns, each 11 wide),
+  `studyPlan`, `weighted` / `needed`, `nextBox` / `isDue`, `decide`, `wordFreq`, `spiral`, `invoice`,
+  `streaks`.
+- **Trap:** an `sr-only` element inside a sideways-scrolling table escapes the scroll box unless the
+  box is `relative` (it made the whole page scroll sideways at 390). Paper-like sheets (white in both
+  themes) use `text-[#4b5068]` for grey text, not `zinc-600`, which dark mode re-points.
+- **Not done:** sharing or real-time co-editing of these tools' work (they're personal, on the device;
+  Docs, Whiteboards and Code are the shared ones). The other tabs (Home, Files, Code, Tasks) were
+  not changed.
+- **Tested:** `pnpm check` (1,396 tests); `scripts/checks/create-tools-ui.mjs` on the dev server: the
+  list (search, star, Esc, scroll kept) and all 30 tools at 1280 dark and 390 light: axe clean inside
+  the page, no sideways scrolling, no page errors.
