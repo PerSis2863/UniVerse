@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { cleanSave } from '@/lib/tool-saves';
+import { publish } from '@/server/realtime';
 
 // One saved piece of work (M75), only its owner's. GET: with its data. PUT { title?, data? }: rename
 // or save over it. DELETE: remove it (and its share link).
@@ -22,8 +23,8 @@ async function mine(req: Request, params: Ctx['params']) {
 export async function GET(req: Request, { params }: Ctx) {
   const r = await mine(req, params);
   if (r.error) return r.error;
-  const { id, tool, title, data, shareToken, updatedAt } = r.row;
-  return NextResponse.json({ save: { id, tool, title, data: JSON.parse(data) as Record<string, string>, shareToken, updatedAt } }, { headers: noStore });
+  const { id, tool, title, data, shareToken, editToken, updatedAt, version } = r.row;
+  return NextResponse.json({ save: { id, tool, title, data: JSON.parse(data) as Record<string, string>, shareToken, editToken, updatedAt, version } }, { headers: noStore });
 }
 
 export async function PUT(req: Request, { params }: Ctx) {
@@ -31,8 +32,14 @@ export async function PUT(req: Request, { params }: Ctx) {
   if (r.error) return r.error;
   const s = cleanSave(await req.json().catch(() => null), true);
   if (typeof s === 'string') return NextResponse.json({ error: s }, { status: 400 });
-  const row = await prisma.toolSave.update({ where: { id: r.row.id }, data: { ...(s.title ? { title: s.title } : {}), ...(s.data ? { data: JSON.stringify(s.data) } : {}) }, select: { id: true, tool: true, title: true, shareToken: true, updatedAt: true } });
-  return NextResponse.json({ save: { id: row.id, tool: row.tool, title: row.title, updatedAt: row.updatedAt, shared: !!row.shareToken } });
+  // Saving over it bumps the version, so people editing it live (and view links) pick the change up.
+  const row = await prisma.toolSave.update({ where: { id: r.row.id }, data: { ...(s.title ? { title: s.title } : {}), ...(s.data ? { data: JSON.stringify(s.data), version: { increment: 1 } } : {}) }, select: { id: true, tool: true, title: true, shareToken: true, editToken: true, editors: true, updatedAt: true } });
+  if (s.data && row.editToken) {
+    let ids: string[] = [];
+    try { ids = (JSON.parse(row.editors ?? '[]') as { id: string }[]).map((e) => e.id); } catch { /* none */ }
+    publish(ids, { type: 'refresh', keys: [`/api/collab/live/${row.editToken}`] });
+  }
+  return NextResponse.json({ save: { id: row.id, tool: row.tool, title: row.title, updatedAt: row.updatedAt, shared: !!row.shareToken, editing: !!row.editToken } });
 }
 
 export async function DELETE(req: Request, { params }: Ctx) {

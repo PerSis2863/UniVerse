@@ -33,3 +33,32 @@ export function shareToken(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => A[b % A.length]).join('');
 }
 export const isToken = (t: string) => /^[A-Za-z0-9]{24}$/.test(t);
+
+// ── Live editing (M76) ──
+const KEY_RE = /^uv-[\w:-]{1,80}$/;
+
+/** A save's data with one part changed (or removed when value is null), or an error message. */
+export function mergePart(dataJson: string, key: unknown, value: unknown): string | { error: string } {
+  if (typeof key !== 'string' || !KEY_RE.test(key)) return { error: 'Something in this work can’t be saved.' };
+  if (value !== null && typeof value !== 'string') return { error: 'Something in this work can’t be saved.' };
+  let data: Record<string, string>;
+  try { data = JSON.parse(dataJson) as Record<string, string>; } catch { data = {}; }
+  if (value === null) delete data[key]; else data[key] = value as string;
+  if (Object.keys(data).length > 40) return { error: 'Too many parts to save.' };
+  const out = JSON.stringify(data);
+  return out.length > MAX_SAVE_CHARS ? { error: 'This is too big to save (over 200 KB).' } : out;
+}
+
+export interface Editor { id: string; name: string; at: number }
+/** Who has the save open: this person marked as here now (written only when it changed or a minute passed). */
+export function touchEditors(json: string | null | undefined, me: { id: string; name: string }, now: number): { list: Editor[]; changed: boolean } {
+  let list: Editor[] = [];
+  try { list = JSON.parse(json ?? '[]') as Editor[]; } catch { /* start fresh */ }
+  if (!Array.isArray(list)) list = [];
+  const mine = list.find((e) => e.id === me.id);
+  if (mine && now - mine.at < 60_000) return { list, changed: false };
+  const next = [{ id: me.id, name: me.name.split(' ')[0] || 'Someone', at: now }, ...list.filter((e) => e.id !== me.id)].slice(0, 30);
+  return { list: next, changed: true };
+}
+/** First names of people who had it open in the last two minutes. */
+export const activeEditors = (list: Editor[], now: number, except?: string) => list.filter((e) => now - e.at < 120_000 && e.id !== except).map((e) => e.name);

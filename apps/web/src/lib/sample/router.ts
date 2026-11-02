@@ -2018,7 +2018,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/collab\/pins$/, () => ok({ pins: [] })],
   // M75: saved work in Create (sample mode keeps nothing on the server).
   [/^\/api\/collab\/saves$/, () => ok({ saves: [] })],
-  [/^\/api\/collab\/(saves|shared)\/[^/]+$/, () => fail('Not found.', 404)],
+  [/^\/api\/collab\/(saves|shared|live)\/[^/]+$/, () => fail('Not found.', 404)],
   [/^\/api\/spaces$/, () => ok({ courses: [], groups: [] })],
   [/^\/api\/docs\/([^/]+)$/, () => fail('Documents aren’t in the sample yet.', 404)],
   [/^\/api\/tasks\/([^/]+)$/, () => fail('Task boards aren’t in the sample yet.', 404)],

@@ -7,35 +7,15 @@ import { toast } from 'sonner';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, AudioWaveform, Braces, CaseSensitive, Clapperboard, Code2, Combine, FileImage, FileStack, FileText, GitCompare, Hash, History, ImagePlus, Loader2, Mic, Minimize2, MonitorPlay, Music, NotebookPen, Palette, PenTool, QrCode, Regex, Repeat2, Rows3, Scissors, Sparkles, SwatchBook, Table2, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
-import type { QuickId } from '@/components/studio/QuickTools';
-import type { PdfId } from '@/components/studio/PdfTools';
-import type { MoreId } from '@/components/studio/MoreTools';
-import type { ImageId } from '@/components/studio/ImageTools';
-import type { PlanId } from '@/components/studio/PlanTools';
-import type { StudyId } from '@/components/studio/StudyTools';
-import type { DataId } from '@/components/studio/DataTools';
-import type { MakerId } from '@/components/studio/MakerTools';
-import type { WordId } from '@/components/studio/WordTools';
-import type { OrganiseId } from '@/components/studio/OrganiseTools';
-import type { ClassId } from '@/components/studio/ClassTools';
-import type { MoneyId } from '@/components/studio/MoneyTools';
-import type { MediaId } from '@/components/studio/MediaTools';
-import type { DevId } from '@/components/studio/DevTools';
-import type { PenId } from '@/components/studio/PenTools';
-import type { LifeId } from '@/components/studio/LifeTools';
-import type { ScienceId } from '@/components/studio/ScienceTools';
-import type { CalcId } from '@/components/studio/CalcTools';
-import type { StageId } from '@/components/studio/StageTools';
-import type { ArtId } from '@/components/studio/ArtTools';
-import type { WebId } from '@/components/studio/WebTools';
 import { PenLine, Lightbulb, Feather, AlignLeft, TextCursorInput, BookA, NotebookTabs, MessagesSquare, SquareKanban, PartyPopper, Plane, Repeat, Sun, Table, Moon, Goal, Gift, Asterisk, SpellCheck, AlarmClock, MoveHorizontal, Blend, Milestone, ChartBarBig, Radius, Triangle, Brackets, FlaskConical, Magnet, TrendingUp, UsersRound, Fuel, Banknote, CookingPot, BriefcaseBusiness, BadgePercent, Ticket, Gamepad2, Contact, Hand, Megaphone, CreditCard, Paintbrush, ALargeSmall, Droplets, Terminal, Music4, Piano, Columns3, Database, FileJson, Share2, Lock, AlignHorizontalSpaceAround, Router } from 'lucide-react';
 import { Check, ChevronLeft, ChevronRight, Expand, Aperture, Armchair, Atom, Binary, BookHeart, BookMarked, Brush, Cake, CalendarFold, CaseUpper, CircleHelp, Code, DatabaseZap, Dice5, Divide, Drum, Eye, Grid2x2, Guitar, HandCoins, Headphones, HeartPulse, Hourglass, Keyboard, Landmark, LayoutDashboard, Laugh, ListChecks, ListOrdered, ListTodo, Mail, PiggyBank, Pilcrow, Puzzle, Radio, ScanText, Server, Shapes, ShieldCheck, Smartphone, Split, SquareDashed, SquareFunction, Tag, Target, ThumbsUp, TimerReset, TrafficCone, Trophy, Type, Users, Variable, Vote, Watch, WholeWord, Zap } from 'lucide-react';
 import { Award, AudioLines, Barcode, CalendarCheck, CalendarClock, CalendarDays, ChartGantt, ChartSpline, ClipboardList, Cloud, CodeXml, Disc3, Earth, EyeOff, Film, GraduationCap, Grid3x3, IdCard, Layers, ListTree, Network, Receipt, Scale, ScrollText, Search, Sigma, Signature, Star, StickyNote, TableProperties, Wallet, Workflow, X } from 'lucide-react';
 import { AppWindow, BookOpenCheck, Calculator, CalendarRange, ChartColumn, CircleUser, Clock, Contrast, Crop, Droplet, FileCode2, Fingerprint, KeyRound, LayoutGrid, Link2, MessageSquareQuote, Mic as MicIcon, Omega, Percent, Pipette, Presentation, Quote, Replace, Ruler, Shuffle, Stamp, Timer, Volume2 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { CollabTabs } from '@/components/layout/SectionTabs';
-import { KeptScope } from '@/components/studio/kept';
-import { keepShared, loadSave, loadShared, SaveButtons, SavedShelf, type Current, type Shared } from '@/components/studio/Saves';
+import { KeptScope, KeptSyncProvider } from '@/components/studio/kept';
+import { PANELS, preload, setOf, ToolBody, WIDE, type Panel } from '@/components/studio/registry';
+import { keepShared, loadSave, loadShared, SaveButtons, SavedShelf, useLive, type Current, type Shared } from '@/components/studio/Saves';
 import { isToken } from '@/lib/tool-saves';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { SIZES } from '@/lib/studio';
@@ -57,92 +37,6 @@ const AudioEditor = dynamic(() => import('@/components/studio/AudioEditor').then
 const Converter = dynamic(() => import('@/components/docs/Converter').then((m) => m.Converter), { ssr: false, loading: () => <div className="h-48 rounded-2xl skeleton" /> });
 const Compressor = dynamic(() => import('@/components/docs/Compressor').then((m) => m.Compressor), { ssr: false, loading: () => <div className="h-48 rounded-2xl skeleton" /> });
 
-// Each set of tools is its own download, fetched when a tool is opened, or a moment before: when the
-// pointer rests on its card (M72), so tools open at once.
-const LOAD = {
-  quick: () => import('@/components/studio/QuickTools'),
-  pdf: () => import('@/components/studio/PdfTools'),
-  more: () => import('@/components/studio/MoreTools'),
-  image: () => import('@/components/studio/ImageTools'),
-  notes: () => import('@/components/studio/QuickNotes'),
-  plan: () => import('@/components/studio/PlanTools'),
-  study: () => import('@/components/studio/StudyTools'),
-  data: () => import('@/components/studio/DataTools'),
-  maker: () => import('@/components/studio/MakerTools'),
-  word: () => import('@/components/studio/WordTools'),
-  organise: () => import('@/components/studio/OrganiseTools'),
-  class: () => import('@/components/studio/ClassTools'),
-  money: () => import('@/components/studio/MoneyTools'),
-  media: () => import('@/components/studio/MediaTools'),
-  dev: () => import('@/components/studio/DevTools'),
-  pen: () => import('@/components/studio/PenTools'),
-  life: () => import('@/components/studio/LifeTools'),
-  science: () => import('@/components/studio/ScienceTools'),
-  calc: () => import('@/components/studio/CalcTools'),
-  stage: () => import('@/components/studio/StageTools'),
-  art: () => import('@/components/studio/ArtTools'),
-  web: () => import('@/components/studio/WebTools'),
-};
-const toolLoading = () => <div className="h-48 rounded-2xl skeleton" />;
-const QuickTool = dynamic(() => LOAD.quick().then((m) => m.QuickTool), { ssr: false, loading: toolLoading });
-const PdfTool = dynamic(() => LOAD.pdf().then((m) => m.PdfTool), { ssr: false, loading: toolLoading });
-const MoreTool = dynamic(() => LOAD.more().then((m) => m.MoreTool), { ssr: false, loading: toolLoading });
-const ImageTool = dynamic(() => LOAD.image().then((m) => m.ImageTool), { ssr: false, loading: toolLoading });
-const QuickNotes = dynamic(() => LOAD.notes().then((m) => m.QuickNotes), { ssr: false, loading: toolLoading });
-const PlanTool = dynamic(() => LOAD.plan().then((m) => m.PlanTool), { ssr: false, loading: toolLoading });
-const StudyTool = dynamic(() => LOAD.study().then((m) => m.StudyTool), { ssr: false, loading: toolLoading });
-const DataTool = dynamic(() => LOAD.data().then((m) => m.DataTool), { ssr: false, loading: toolLoading });
-const MakerTool = dynamic(() => LOAD.maker().then((m) => m.MakerTool), { ssr: false, loading: toolLoading });
-const WordTool = dynamic(() => LOAD.word().then((m) => m.WordTool), { ssr: false, loading: toolLoading });
-const OrganiseTool = dynamic(() => LOAD.organise().then((m) => m.OrganiseTool), { ssr: false, loading: toolLoading });
-const ClassTool = dynamic(() => LOAD.class().then((m) => m.ClassTool), { ssr: false, loading: toolLoading });
-const MoneyTool = dynamic(() => LOAD.money().then((m) => m.MoneyTool), { ssr: false, loading: toolLoading });
-const MediaTool = dynamic(() => LOAD.media().then((m) => m.MediaTool), { ssr: false, loading: toolLoading });
-const DevTool = dynamic(() => LOAD.dev().then((m) => m.DevTool), { ssr: false, loading: toolLoading });
-const WritingTool = dynamic(() => LOAD.pen().then((m) => m.PenTool), { ssr: false, loading: toolLoading });
-const LifeTool = dynamic(() => LOAD.life().then((m) => m.LifeTool), { ssr: false, loading: toolLoading });
-const ScienceTool = dynamic(() => LOAD.science().then((m) => m.ScienceTool), { ssr: false, loading: toolLoading });
-const CalcTool = dynamic(() => LOAD.calc().then((m) => m.CalcTool), { ssr: false, loading: toolLoading });
-const StageTool = dynamic(() => LOAD.stage().then((m) => m.StageTool), { ssr: false, loading: toolLoading });
-const ArtTool = dynamic(() => LOAD.art().then((m) => m.ArtTool), { ssr: false, loading: toolLoading });
-const WebTool = dynamic(() => LOAD.web().then((m) => m.WebTool), { ssr: false, loading: toolLoading });
-
-type Pdf3 = `pdf-${PdfId}`;
-type Panel = 'convert' | 'compress' | 'photo' | 'audio' | 'notes' | QuickId | Pdf3 | MoreId | `img-${ImageId}` | PlanId | StudyId | DataId | MakerId | WordId | OrganiseId | ClassId | MoneyId | MediaId | DevId | PenId | LifeId | ScienceId | CalcId | StageId | ArtId | WebId;
-// M71: the second set (28 more tools).
-const MORE: MoreId[] = ['replace', 'read', 'cite', 'speak', 'dictate', 'symbols', 'calc', 'units', 'percent', 'picker', 'chart', 'dates', 'present', 'timer', 'contrast', 'colour', 'hash', 'uuid', 'password', 'time', 'url', 'jwt'];
-const IMAGES: ImageId[] = ['resize', 'quote', 'collage', 'avatar', 'beautify', 'codeimg', 'watermark'];
-const QUICK: QuickId[] = ['words', 'clean', 'compare', 'table', 'colours', 'gradient', 'json', 'regex', 'markdown', 'encode', 'qr', 'record'];
-// M72: thirty bigger tools, in four sets.
-const PLAN: PlanId[] = ['mindmap', 'outline', 'stickies', 'gantt', 'timetable', 'habits', 'decide', 'flow'];
-const STUDY: StudyId[] = ['cards', 'gpa', 'studyplan', 'rubric', 'wordsearch', 'certificate', 'wheel', 'noise'];
-const DATA: DataId[] = ['graph', 'stats', 'explore', 'budget', 'invoice', 'zones'];
-const MAKER: MakerId[] = ['cv', 'cloud', 'prompter', 'playground', 'barcode', 'redact', 'slideshow', 'signature'];
-// M74: 56 more, in six sets.
-const WORD: WordId[] = ['lorem', 'morse', 'numwords', 'roman', 'letters', 'lines', 'fancy', 'journal', 'wordplay'];
-const ORGANISE: OrganiseId[] = ['matrix', 'countdowns', 'meeting', 'checklists', 'goals', 'week', 'swot', 'proscons', 'reading', 'stopwatch', 'poll', 'agenda'];
-const CLASS: ClassId[] = ['drill', 'periodic', 'quiz', 'seating', 'dice', 'fractions', 'equation', 'shapes', 'numfacts', 'traffic', 'scoreboard'];
-const MONEY: MoneyId[] = ['loan', 'savings', 'price', 'age', 'bmi', 'split'];
-const MEDIA: MediaId[] = ['booth', 'icon', 'meme', 'colourblind', 'pixel', 'cleanphoto', 'metronome', 'tuner', 'focus'];
-const DEV: DevId[] = ['base', 'names', 'shadow', 'cron', 'escape', 'chars', 'status', 'keys', 'mock'];
-// M75: 55 more, in seven sets.
-const PEN: PenId[] = ['essay', 'prompts', 'poem', 'acrostic', 'typing', 'glossary', 'cornell', 'interview'];
-const LIFE: LifeId[] = ['kanban', 'event', 'trip', 'routine', 'dayplan', 'raci', 'sleep', 'okr', 'birthdays'];
-const SCIENCE: ScienceId[] = ['times', 'spelling', 'clock', 'numberline', 'venn', 'history', 'probability', 'trig', 'triangle', 'matrices', 'molar', 'physics'];
-const CALC: CalcId[] = ['regression', 'samplesize', 'fuel', 'pay', 'recipe', 'timesheet', 'unitprice'];
-const STAGE: StageId[] = ['bingo', 'gameboard', 'nametags', 'queue'];
-const ART: ArtId[] = ['poster', 'bizcard', 'mixer', 'typescale', 'blob', 'ascii', 'drums', 'piano', 'gridsplit'];
-const WEB: WebId[] = ['sqlgen', 'jsonts', 'metatags', 'chmod', 'flexbox', 'subnet'];
-const PANELS: Panel[] = ['convert', 'compress', 'photo', 'audio', 'notes', ...QUICK, 'pdf-merge', 'pdf-split', 'pdf-images', ...MORE, ...IMAGES.map((i) => `img-${i}` as const), ...PLAN, ...STUDY, ...DATA, ...MAKER, ...WORD, ...ORGANISE, ...CLASS, ...MONEY, ...MEDIA, ...DEV, ...PEN, ...LIFE, ...SCIENCE, ...CALC, ...STAGE, ...ART, ...WEB];
-/** Tools that need the whole width (boards, timelines, editors with a preview). */
-const WIDE = new Set<string>(['mindmap', 'stickies', 'gantt', 'timetable', 'flow', 'cv', 'playground', 'explore', 'zones', 'wordsearch', 'rubric', 'graph', 'habits', 'periodic', 'week', 'matrix', 'swot', 'journal', 'seating', 'dice', 'meeting', 'goals', 'colourblind', 'shadow', 'kanban', 'times', 'venn', 'history', 'regression', 'bingo', 'gameboard', 'poster', 'bizcard', 'drums', 'piano', 'sqlgen', 'jsonts', 'metatags', 'flexbox', 'essay', 'cornell', 'trip', 'dayplan', 'raci', 'queue']);
-const setOf = (id: string): keyof typeof LOAD | null =>
-  id === 'notes' ? 'notes' : id.startsWith('pdf-') ? 'pdf' : id.startsWith('img-') ? 'image' : (MORE as string[]).includes(id) ? 'more' : (QUICK as string[]).includes(id) ? 'quick'
-    : (PLAN as string[]).includes(id) ? 'plan' : (STUDY as string[]).includes(id) ? 'study' : (DATA as string[]).includes(id) ? 'data' : (MAKER as string[]).includes(id) ? 'maker'
-    : (WORD as string[]).includes(id) ? 'word' : (ORGANISE as string[]).includes(id) ? 'organise' : (CLASS as string[]).includes(id) ? 'class'
-    : (MONEY as string[]).includes(id) ? 'money' : (MEDIA as string[]).includes(id) ? 'media' : (DEV as string[]).includes(id) ? 'dev'
-    : (PEN as string[]).includes(id) ? 'pen' : (LIFE as string[]).includes(id) ? 'life' : (SCIENCE as string[]).includes(id) ? 'science' : (CALC as string[]).includes(id) ? 'calc' : (STAGE as string[]).includes(id) ? 'stage' : (ART as string[]).includes(id) ? 'art' : (WEB as string[]).includes(id) ? 'web' : null;
-const preload = (id: string) => { const k = setOf(id); if (k) void LOAD[k]().catch(() => {}); };
 
 interface Tool { id: Panel | 'pdf' | 'video'; name: string; what: string; icon: LucideIcon; tint: string; group: string; fresh?: boolean }
 const TOOLS: Tool[] = [
@@ -386,7 +280,13 @@ function Tools() {
   }, [sharedToken]);
   const shared = sharedToken && sharedRes?.token === sharedToken ? sharedRes : null;
   const sharedTool = shared?.s && PANELS.includes(shared.s.tool as Panel) ? (shared.s.tool as Panel) : null;
-  const panel = sharedToken ? sharedTool : PANELS.includes(asked as Panel) ? (asked as Panel) : null;
+  // M76: an edit link (/studio?edit=<token>) opens the work live: everyone's changes, as they happen.
+  const editToken = params.get('edit');
+  const liveS = useLive(editToken && isToken(editToken) ? editToken : null);
+  const liveTool = liveS.live && liveS.ready && PANELS.includes(liveS.live.tool as Panel) ? (liveS.live.tool as Panel) : null;
+  const special = !!(sharedToken || editToken);
+  const scope = sharedToken ? `shared:${sharedToken}:` : editToken ? liveS.scope : '';
+  const panel = sharedToken ? sharedTool : editToken ? liveTool : PANELS.includes(asked as Panel) ? (asked as Panel) : null;
   // The save that's open (Save then saves over it), and a counter that reopens the tool after loading one.
   const [current, setCurrent] = useState<Current | null>(null);
   const [gen, setGen] = useState(0);
@@ -412,6 +312,7 @@ function Tools() {
     const c = await loadSave(id);
     if (!c) return;
     if (!PANELS.includes(c.tool as Panel)) { toast.error('That tool isn’t here any more.'); return; }
+    if (c.editToken) { router.push(`/studio?edit=${c.editToken}`, { scroll: false }); toast.success(`“${c.title}” opened live: changes are saved for everyone`); return; }
     setCurrent(c); setGen((g) => g + 1); open(c.tool as Panel);
     toast.success(`“${c.title}” opened`);
   };
@@ -495,7 +396,7 @@ function Tools() {
                   {focus ? <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Focus mode · Esc to leave</span>
                     : <button type="button" onClick={() => open(null)} className="group inline-flex items-center gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white min-h-11"><ArrowLeft className="w-4 h-4 rtl:rotate-180 transition-transform duration-200 group-hover:-translate-x-0.5 rtl:group-hover:translate-x-0.5" aria-hidden />Everything in Create</button>}
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {prev && next && !focus && !sharedToken && (
+                    {prev && next && !focus && !special && (
                       <nav aria-label="Other tools in this group" className="flex items-center gap-1">
                         <button type="button" onClick={() => open(prev.id as Panel)} onPointerEnter={() => preload(prev.id)} title={`Previous: ${prev.name} ([)`} className="btn-ghost btn-icon"><ChevronLeft className="w-4 h-4 rtl:rotate-180" aria-hidden /><span className="sr-only">Previous tool: {prev.name}</span></button>
                         <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{at + 1}/{siblings.length}</span>
@@ -503,9 +404,9 @@ function Tools() {
                       </nav>
                     )}
                     {set && <button type="button" onClick={() => setFocusOn(focus ? null : panel)} aria-pressed={focus} className="btn-secondary btn-sm">{focus ? <Minimize2 className="w-3.5 h-3.5" aria-hidden /> : <Expand className="w-3.5 h-3.5" aria-hidden />}{focus ? 'Leave focus' : 'Focus'}</button>}
-                    {!focus && !sharedToken && <button type="button" onClick={() => void copyLink()} className="btn-secondary btn-sm">{linked ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-300" aria-hidden /> : <Link2 className="w-3.5 h-3.5" aria-hidden />}<span aria-live="polite">{linked ? 'Link copied' : 'Copy link'}</span></button>}
-                    {set && !sharedToken && info && <SaveButtons tool={panel} toolName={info.name} current={current} onSaved={setCurrent} />}
-                    {info && !sharedToken && <StarButton on={stars.includes(panel)} name={info.name} onClick={() => star(panel)} solid />}
+                    {!focus && !special && <button type="button" onClick={() => void copyLink()} className="btn-secondary btn-sm">{linked ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-300" aria-hidden /> : <Link2 className="w-3.5 h-3.5" aria-hidden />}<span aria-live="polite">{linked ? 'Link copied' : 'Copy link'}</span></button>}
+                    {set && !special && info && <SaveButtons tool={panel} toolName={info.name} current={current} onSaved={setCurrent} />}
+                    {info && !special && <StarButton on={stars.includes(panel)} name={info.name} onClick={() => star(panel)} solid />}
                   </div>
                 </div>
                 {panel === 'convert' && <Converter onClose={() => open(null)} />}
@@ -518,6 +419,12 @@ function Tools() {
                     <button type="button" onClick={keepCopy} className="btn-primary btn-sm">Keep it as mine</button>
                   </div>
                 )}
+                {editToken && liveS.live && (
+                  <div role="status" className="flex flex-wrap items-center gap-2 rounded-2xl bg-aqua-300/10 ring-1 ring-indigo-400/40 dark:ring-aqua-300/40 px-4 py-3 text-sm text-zinc-900 dark:text-white">
+                    <span className="relative flex w-2.5 h-2.5" aria-hidden><span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" /><span className="relative w-2.5 h-2.5 rounded-full bg-emerald-500" /></span>
+                    <span className="flex-1 min-w-[200px]"><b translate="no">“{liveS.live.title}”</b>, editing live{liveS.live.mine ? '' : <>, shared by <span translate="no">{liveS.live.by}</span></>}. {liveS.live.with.length ? <>Also here: <span translate="no">{liveS.live.with.join(', ')}</span>.</> : 'Changes are saved for everyone as you go.'}</span>
+                  </div>
+                )}
                 {set && (
                   <section className="panel relative p-5 space-y-4" aria-labelledby="tool-title"
                     onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDropping(true); } }} onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropping(false); }} onDrop={(e) => void drop(e)}>
@@ -526,45 +433,24 @@ function Tools() {
                       {info && <span className={`w-10 h-10 shrink-0 rounded-2xl bg-gradient-to-br ${info.tint} text-white grid place-items-center`}><info.icon className="w-5 h-5" aria-hidden /></span>}
                       <div className="min-w-0"><h2 id="tool-title" className="font-bold text-zinc-900 dark:text-white">{info?.name}</h2>{info && <p className="text-xs text-zinc-600 dark:text-zinc-300">{info.what}</p>}</div>
                     </div>
-                    <KeptScope value={sharedToken ? `shared:${sharedToken}:` : ''}><div key={`${gen}-${sharedToken ?? ''}`} className="space-y-4">
-                    {set === 'notes' ? <QuickNotes />
-                      : set === 'pdf' ? <PdfTool id={panel.slice(4) as PdfId} />
-                      : set === 'image' ? <ImageTool id={panel.slice(4) as ImageId} />
-                      : set === 'more' ? <MoreTool id={panel as MoreId} />
-                      : set === 'plan' ? <PlanTool id={panel as PlanId} />
-                      : set === 'study' ? <StudyTool id={panel as StudyId} />
-                      : set === 'data' ? <DataTool id={panel as DataId} />
-                      : set === 'maker' ? <MakerTool id={panel as MakerId} />
-                      : set === 'word' ? <WordTool id={panel as WordId} />
-                      : set === 'organise' ? <OrganiseTool id={panel as OrganiseId} />
-                      : set === 'class' ? <ClassTool id={panel as ClassId} />
-                      : set === 'money' ? <MoneyTool id={panel as MoneyId} />
-                      : set === 'media' ? <MediaTool id={panel as MediaId} />
-                      : set === 'dev' ? <DevTool id={panel as DevId} />
-                      : set === 'pen' ? <WritingTool id={panel as PenId} />
-                      : set === 'life' ? <LifeTool id={panel as LifeId} />
-                      : set === 'science' ? <ScienceTool id={panel as ScienceId} />
-                      : set === 'calc' ? <CalcTool id={panel as CalcId} />
-                      : set === 'stage' ? <StageTool id={panel as StageId} />
-                      : set === 'art' ? <ArtTool id={panel as ArtId} />
-                      : set === 'web' ? <WebTool id={panel as WebId} />
-                      : <QuickTool id={panel as QuickId} />}
-                    </div></KeptScope>
+                    <KeptScope value={scope}><KeptSyncProvider value={editToken ? liveS.sync : null}><div key={`${gen}-${sharedToken ?? editToken ?? ''}`} className="space-y-4">
+                    <ToolBody panel={panel} />
+                    </div></KeptSyncProvider></KeptScope>
                   </section>
                 )}
-                {!focus && !sharedToken && more.length > 0 && (
+                {!focus && !special && more.length > 0 && (
                   <section aria-labelledby="more-h" className="pt-2">
                     <h2 id="more-h" className="mb-2 text-sm font-bold text-zinc-900 dark:text-white">More in {info?.group}</h2>
                     <ul className="grid grid-cols-2 lg:grid-cols-3 gap-3">{more.map((t) => <li key={t.id}><ToolCard t={t} starred={stars.includes(t.id)} onPick={pick} onStar={star} /></li>)}</ul>
                   </section>
                 )}
               </motion.div>
-            ) : sharedToken ? (
+            ) : special ? (
               <motion.div key="shared" initial={enter} animate={{ opacity: 1, y: 0, scale: 1, transition: spring.smooth }} exit={leave} className="max-w-xl mx-auto">
-                {shared?.err || (shared?.s && !sharedTool) ? (
+                {(editToken && !isToken(editToken)) || liveS.error || shared?.err || (shared?.s && !sharedTool) || (liveS.live && liveS.ready && !liveTool) ? (
                   <div className="panel p-6 space-y-3 text-center" role="alert">
                     <p className="font-bold text-zinc-900 dark:text-white">This shared link doesn’t open</p>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-300">{shared?.err ?? 'It was made with a tool that isn’t here any more.'}</p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-300">{shared?.err ?? liveS.error ?? (editToken && !isToken(editToken) ? 'This link isn’t complete. Ask for it again.' : 'It was made with a tool that isn’t here any more.')}</p>
                     <button type="button" onClick={() => open(null)} className="btn-secondary btn-sm">Everything in Create</button>
                   </div>
                 ) : <div className="h-48 rounded-2xl skeleton" aria-label="Opening the shared work" />}

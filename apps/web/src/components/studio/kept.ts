@@ -5,6 +5,11 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react';
 // the open tool's work without each tool knowing about saving.
 const Scope = createContext('');
 export const KeptScope = Scope.Provider;
+// M76: live editing. With a sync in place, every local change is sent (push) and changes from other
+// people arrive (sub) and replace the state, without being sent back.
+export interface KeptSync { push(key: string, json: string): void; sub(key: string, cb: (json: string) => void): () => void }
+const Sync = createContext<KeptSync | null>(null);
+export const KeptSyncProvider = Sync.Provider;
 const live = new Map<string, { base: string; value: () => unknown }>();
 
 /** The open tool's kept state, as { "uv-…": JSON } (only what's on screen now, latest values). */
@@ -21,14 +26,26 @@ export function useKept<T>(key: string, init: T | (() => T)) {
     try { const s = localStorage.getItem(full); if (s) return JSON.parse(s) as T; } catch { /* private window */ }
     return typeof init === 'function' ? (init as () => T)() : init;
   });
-  const first = useRef(true), latest = useRef(v);
+  const sync = useContext(Sync);
+  // `synced`: the value as last known to everyone (what we opened with, or the last change in or out),
+  // so only a real change is sent: never the opening copy again, never an echo of someone else's.
+  const first = useRef(true), latest = useRef(v), synced = useRef<string | null>(null);
   useEffect(() => {
     latest.current = v;
-    if (first.current) { first.current = false; return; }
-    // A short pause, so typing doesn't write on every key.
-    const t = setTimeout(() => { try { localStorage.setItem(full, JSON.stringify(v)); } catch { /* full or blocked */ } }, 250);
+    if (first.current) { first.current = false; synced.current = JSON.stringify(v); return; }
+    // A short pause, so typing doesn't write (or send) on every key.
+    const t = setTimeout(() => {
+      const json = JSON.stringify(v);
+      try { localStorage.setItem(full, json); } catch { /* full or blocked */ }
+      if (sync && json !== synced.current) { synced.current = json; sync.push(key, json); }
+    }, 250);
     return () => clearTimeout(t);
-  }, [full, v]);
+  }, [full, key, v, sync]);
+  useEffect(() => sync?.sub(key, (json) => {
+    synced.current = json;
+    if (json === JSON.stringify(latest.current)) return;
+    try { setV(JSON.parse(json) as T); } catch { /* not ours */ }
+  }), [sync, key]);
   useEffect(() => {
     const id = `${full}#${Math.random()}`;
     live.set(id, { base: key, value: () => latest.current });

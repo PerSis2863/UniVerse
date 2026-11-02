@@ -11,8 +11,8 @@ const noStore = { 'Cache-Control': 'no-store' };
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
-  const saves = await prisma.toolSave.findMany({ where: { userId: user.id }, orderBy: { updatedAt: 'desc' }, take: MAX_SAVES, select: { id: true, tool: true, title: true, shareToken: true, updatedAt: true } });
-  return NextResponse.json({ saves: saves.map(({ shareToken, ...s }) => ({ ...s, shared: !!shareToken })) }, { headers: noStore });
+  const saves = await prisma.toolSave.findMany({ where: { userId: user.id }, orderBy: { updatedAt: 'desc' }, take: MAX_SAVES, select: { id: true, tool: true, title: true, shareToken: true, editToken: true, updatedAt: true } });
+  return NextResponse.json({ saves: saves.map(({ shareToken, editToken, ...s }) => ({ ...s, shared: !!shareToken, editing: !!editToken })) }, { headers: noStore });
 }
 
 export async function POST(req: Request) {

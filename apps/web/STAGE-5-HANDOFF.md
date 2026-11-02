@@ -3287,3 +3287,39 @@ changes in the system". The bigger change: Create's tools stop being device-only
   another person opens and keeps it, stop sharing, delete; someone else gets 404; only `uv-` keys; no
   email in the shared answer; axe) and `create-tools-ui.mjs --m75` and `--old` at 1280 dark and 390
   light: axe clean, no sideways scrolling, no page errors.
+
+## M76 · Live editing together, and view links without signing in (2 Nov 2026)
+
+The owner, on M75's two "left out" points ("a shared link gives a copy, not live editing together"
+and "people must be signed in to open a shared link"): "please do both of this and then merge".
+
+- **Two kinds of link** (Share in a tool's bar is now a small menu; the Saved list has a view-link
+  and an edit-link button each): **view link** `/s/<token>` (the `shareToken`) opens for anyone, no
+  sign-in (`src/app/s/[token]/View.tsx`, built once as `/s/open`, kept out of search, no referrer):
+  the work in its own scope (`view:<token>:`), read-only (changes aren't saved), re-checked every 20 s
+  while in use (`useActivePoll`) so it updates by itself; "Sign in to keep a copy" (or "Keep a copy"
+  when signed in) goes to the M75 copy flow. **Edit link** `/studio?edit=<token>` (new `editToken`,
+  migration **0190**, with `version` and `editors`) opens the work **live** for signed-in people.
+- **Live editing** (`GET/PUT /api/collab/live/[token]`, `useLive` in `Saves.tsx`, `KeptSyncProvider`
+  in `kept.ts`): every tool's `useKept` part sends its own changes (`push`, after the 250 ms pause)
+  and takes in others' (`sub`); nothing in the 190 tools changed. The server writes one part on top of
+  the version it just read (a conditional `updateMany` on `version`, retried 4 times), so two people
+  editing different parts never wipe each other; the same part: the last change wins. Everyone with
+  it open (seen in the last 10 minutes) and the owner get a realtime refresh of the live address
+  (every 3 s without live updates, 60 s with them, only while the tab is in use). A part changed here
+  in the last 2 s isn't overwritten by an older copy coming back. A banner shows "editing live" and
+  who else is there (first names, seen in the last 2 minutes; `touchEditors` writes at most once a
+  minute). The owner's own Open on a save with an edit link opens it live too; Save over it bumps the
+  version so everyone picks it up. Stop sharing ends both links (404 at once).
+- **Registry** (`src/components/studio/registry.tsx`): the tool sets, `PANELS`, `setOf`, `preload` and
+  `ToolBody` moved out of the Create page, so `/s/<token>` shows the same tools.
+- **Trap:** `useKept` must never send the value it opened with (React's dev double effect did, and on
+  a late join that overwrote a newer change): it keeps `synced` (the value everyone last saw) and
+  sends only when the value differs from it. In a one-browser test, only the page in front counts as
+  "in use" (no polling behind): bring the watching page to the front.
+- **Not done:** letters merged inside one text box (two people typing in the same box: the last one
+  wins, within a second); edit links need sign-in (anyone could change it otherwise).
+- **Tested:** `pnpm check` (1,427 tests, incl. `mergePart`, `touchEditors`); `create-saves-ui.mjs`
+  twice in a row: a view link opens signed out (axe), the copy link, an edit link needs sign-in (401),
+  two people edit one mind map and each sees the other's change, stop sharing 404s both links;
+  `create-tools-ui.mjs --old` (the tools after the `useKept` change).

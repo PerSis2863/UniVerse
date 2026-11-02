@@ -7050,6 +7050,11 @@ model ToolSave {
   title      String
   data       String
   shareToken String?  @unique
+  /// M76 (migration 0190): an edit link for live editing together, a version for safe merges, and who
+  /// has it open ([{id,name,at}]).
+  editToken  String?  @unique
+  editors    String?
+  version    Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
