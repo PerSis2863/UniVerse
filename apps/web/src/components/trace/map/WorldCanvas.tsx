@@ -70,6 +70,9 @@ class MapEngine {
   drift = { vx: 0, vy: 0 };
   raf = 0; last = 0; visible = true; placed = false;
   land: HTMLCanvasElement | null = null; landKey = '';
+  /** The view the land picture was drawn for, and the margin drawn round it (M65: while the map moves
+   *  the picture is moved and scaled instead of redrawn, then redrawn sharp once it rests). */
+  landView: View | null = null; landM = 0; busyUntil = 0;
   world: Country[] = []; detail: '110m' | '50m' = '110m';
   private off: (() => void)[] = [];
 
@@ -142,53 +145,64 @@ class MapEngine {
     const px = this.view.k * this.dpr;
     if (px > 2.3 && this.detail === '110m') this.useWorld('50m');
     if (px < 1.8 && this.detail === '50m') this.useWorld('110m');
-    this.paint(t);
-    if ((moving || this.p.current.live) && this.visible) this.raf = requestAnimationFrame(this.frame);
+    // Still being moved by hand (drag, pinch, trackpad): keep the cheap picture, then one sharp frame.
+    const busy = moving || t < this.busyUntil;
+    this.paint(t, busy);
+    if ((busy || this.p.current.live) && this.visible) this.raf = requestAnimationFrame(this.frame);
     else this.last = 0;
   };
 
-  private paintLand() {
-    const { w, h, dpr, view } = this, dark = this.p.current.dark, pal = dark ? PAL.dark : PAL.light;
+  /** Draws the land for the current view, with a margin of `m` px round the screen (so a moving map
+   *  has land to show at its edges). `res` is the pixel density (lower for a quick draft mid-move). */
+  private paintLand(m = 0, res = this.dpr) {
+    const { view } = this, dark = this.p.current.dark, pal = dark ? PAL.dark : PAL.light;
+    const w = this.w + 2 * m, h = this.h + 2 * m;
     const skip = this.p.current.skipCities;
-    const key = `${w}x${h}@${dpr}|${view.x.toFixed(2)},${view.y.toFixed(2)},${view.k.toFixed(5)}|${dark}|${this.world.length}|${skip?.size ?? 0}`;
+    const key = `${w}x${h}@${res}|${view.x.toFixed(2)},${view.y.toFixed(2)},${view.k.toFixed(5)}|${dark}|${this.world.length}|${skip?.size ?? 0}`;
     if (key === this.landKey && this.land) return this.land;
     const land = this.land ?? document.createElement('canvas');
-    land.width = Math.round(w * dpr); land.height = Math.round(h * dpr);
+    land.width = Math.round(w * res); land.height = Math.round(h * res);
     const g = land.getContext('2d')!;
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const sea = g.createRadialGradient(w / 2, h * 0.45, 0, w / 2, h * 0.45, Math.max(w, h) * 0.75);
+    g.setTransform(res, 0, 0, res, 0, 0);
+    // The sea's gradient sits on the screen, not the margin.
+    const sea = g.createRadialGradient(m + this.w / 2, m + this.h * 0.45, 0, m + this.w / 2, m + this.h * 0.45, Math.max(this.w, this.h) * 0.75);
     sea.addColorStop(0, pal.sea); sea.addColorStop(1, pal.deep);
     g.fillStyle = sea; g.fillRect(0, 0, w, h);
+    // Everything below is drawn for a view shifted by the margin.
+    const v0 = view;
+    const view2 = { ...v0, x: v0.x + m, y: v0.y + m };
     // Each world copy on screen (one, unless the map wraps and is zoomed out or panned to the seam).
-    const size = BASE * view.k, offsets = this.copies();
-    const taken: [number, number, number, number][] = [[w / 2 - 70, 0, w / 2 + 70, 30]]; // the scale bar
-    const zoom = view.k / this.kMin;
+    const size = BASE * view2.k, offsets = this.copies(m);
+    const taken: [number, number, number, number][] = [[w / 2 - 70, m, w / 2 + 70, m + 30]]; // the scale bar
+    const zoom = view2.k / this.kMin;
     for (const n of offsets) {
-      const vx = view.x + n * size;
-      g.setTransform(dpr * view.k, 0, 0, dpr * view.k, dpr * vx, dpr * view.y);
-      g.strokeStyle = pal.grat; g.lineWidth = 1 / view.k;
+      const vx = view2.x + n * size;
+      g.setTransform(res * view2.k, 0, 0, res * view2.k, res * vx, res * view2.y);
+      g.strokeStyle = pal.grat; g.lineWidth = 1 / view2.k;
       g.stroke(graticule());
       // Only the countries on screen.
-      const x0 = -vx / view.k, y0 = -view.y / view.k, x1 = (w - vx) / view.k, y1 = (h - view.y) / view.k;
+      const x0 = -vx / view2.k, y0 = -view2.y / view2.k, x1 = (w - vx) / view2.k, y1 = (h - view2.y) / view2.k;
       const shown = this.world.filter((c) => c.box[2] >= x0 && c.box[0] <= x1 && c.box[3] >= y0 && c.box[1] <= y1);
-      g.fillStyle = pal.land;
-      g.shadowColor = dark ? 'rgba(0,0,0,0.35)' : 'rgba(43,53,104,0.10)';
-      g.shadowBlur = 6 * dpr; g.shadowOffsetY = 1.5 * dpr;
+      // A crisp drop edge under the land (a blurred shadow per country cost most of every frame).
+      g.translate(0, 1.6 / view2.k);
+      g.fillStyle = dark ? 'rgba(0,0,0,0.45)' : 'rgba(43,53,104,0.12)';
       for (const c of shown) g.fill(c.path);
-      g.shadowColor = 'transparent';
-      g.strokeStyle = pal.edge; g.lineWidth = 0.7 / view.k; g.lineJoin = 'round';
+      g.translate(0, -1.6 / view2.k);
+      g.fillStyle = pal.land;
+      for (const c of shown) g.fill(c.path);
+      g.strokeStyle = pal.edge; g.lineWidth = 0.7 / view2.k; g.lineJoin = 'round';
       for (const c of shown) g.stroke(c.path);
       // Country names once there's room for them, biggest first, never overlapping.
-      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.setTransform(res, 0, 0, res, 0, 0);
       g.fillStyle = pal.name; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.letterSpacing = '1.2px';
       for (const c of [...shown].sort((a, b) => b.area - a.area)) {
-        const px = c.area * view.k * view.k;
+        const px = c.area * view2.k * view2.k;
         if (px < 2200 || !c.name) continue;
         const size = Math.min(13, 8 + Math.log10(px) * 0.9);
         g.font = `600 ${size}px ui-sans-serif, system-ui, sans-serif`;
         const text = c.name.toUpperCase(), tw = g.measureText(text).width;
-        const lx = vx + c.label[0] * view.k, ly = view.y + c.label[1] * view.k;
+        const lx = vx + c.label[0] * view2.k, ly = view2.y + c.label[1] * view2.k;
         const r: [number, number, number, number] = [lx - tw / 2 - 4, ly - size, lx + tw / 2 + 4, ly + size];
         if (taken.some((o) => r[0] < o[2] && r[2] > o[0] && r[1] < o[3] && r[3] > o[1])) continue;
         taken.push(r);
@@ -200,7 +214,7 @@ class MapEngine {
       g.font = '500 10px ui-sans-serif, system-ui, sans-serif';
       for (const c of cities()) {
         if (zoom < CITY_ZOOM[c.rank] || skip?.has(c.name)) continue;
-        const x = vx + c.bx * view.k, y = view.y + c.by * view.k;
+        const x = vx + c.bx * view2.k, y = view2.y + c.by * view2.k;
         if (x < -40 || x > w + 40 || y < -10 || y > h + 10) continue;
         const tw = g.measureText(c.name).width;
         const r: [number, number, number, number] = [x - 3, y - 7, x + 6 + tw, y + 7];
@@ -211,14 +225,30 @@ class MapEngine {
         g.fillText(c.name, x + 5, y + 0.5);
       }
     }
-    this.land = land; this.landKey = key;
+    this.land = land; this.landKey = key; this.landView = v0; this.landM = m;
     return land;
   }
 
-  private paint(t: number) {
+  private paint(t: number, busy = false) {
     const ctx = this.canvas.getContext('2d')!, { w, h, dpr, view } = this;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(this.paintLand(), 0, 0);
+    // Moving: slide and scale the land picture already drawn (cheap, smooth); draw a quick draft with
+    // a wide margin only when it no longer covers the screen, and the sharp one once the map rests.
+    const lv = this.landView, m = this.landM;
+    const s = lv && this.land ? view.k / lv.k : 0;
+    const dx = lv ? dpr * (view.x - (lv.x + m) * s) : 0, dy = lv ? dpr * (view.y - (lv.y + m) * s) : 0;
+    const dw = (w + 2 * m) * dpr * s, dh = (h + 2 * m) * dpr * s;
+    const covers = !!lv && s > 0.55 && s < 1.9 && dx <= 0.5 && dy <= 0.5 && dx + dw >= this.canvas.width - 0.5 && dy + dh >= this.canvas.height - 0.5;
+    if (busy && covers && this.land) {
+      ctx.fillStyle = (this.p.current.dark ? PAL.dark : PAL.light).deep; ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      ctx.drawImage(this.land, 0, 0, this.land.width, this.land.height, dx, dy, dw, dh);
+    } else if (busy) {
+      const land = this.paintLand(Math.round(Math.max(w, h) * 0.35), Math.min(1, dpr));
+      ctx.drawImage(land, 0, 0, land.width, land.height, -this.landM * dpr, -this.landM * dpr, (w + 2 * this.landM) * dpr, (h + 2 * this.landM) * dpr);
+    } else {
+      const land = this.paintLand(0, dpr);
+      ctx.drawImage(land, 0, 0);
+    }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const size = BASE * view.k, wrap = this.wrap;
     // The copy of a base x nearest a screen x (the middle by default): one dot per place, and both
@@ -268,10 +298,10 @@ class MapEngine {
     if (this.target) this.target = { ...this.target, x: this.target.x + dx };
   }
   /** The world copies that show on screen, as offsets in world widths. */
-  private copies(): number[] {
+  private copies(m = 0): number[] {
     if (!this.wrap) return [0];
-    const size = BASE * this.view.k, out: number[] = [];
-    for (let n = Math.floor(-this.view.x / size); n * size + this.view.x < this.w; n++) out.push(n);
+    const size = BASE * this.view.k, x = this.view.x + m, out: number[] = [];
+    for (let n = Math.floor(-x / size); n * size + x < this.w + 2 * m; n++) out.push(n);
     return out;
   }
   /** Home: the page's box, and at least the whole width of the world on a wrapping map. */
@@ -298,15 +328,17 @@ class MapEngine {
     } else { this.fly = null; this.view = this.clamp(to); }
     this.kick();
   }
+  /** A hand is moving the map: keep the quick picture a moment longer. */
+  private touch() { this.busyUntil = performance.now() + 140; }
   zoomAt(f: number, px: number, py: number) {
-    this.fly = null; this.drift = { vx: 0, vy: 0 };
+    this.fly = null; this.drift = { vx: 0, vy: 0 }; this.touch();
     const t = zoomAbout(this.target ?? this.view, f, px, py, this.kMin, K_MAX);
     this.target = { ...t, y: clampView(t, this.w, this.h).y, x: this.wrap ? t.x : clampView(t, this.w, this.h).x };
     this.kick();
   }
   /** Moves the map by a number of screen pixels (trackpad swipes, keys). */
   panBy(dx: number, dy: number) {
-    this.fly = null; this.target = null; this.drift = { vx: 0, vy: 0 };
+    this.fly = null; this.target = null; this.drift = { vx: 0, vy: 0 }; this.touch();
     this.view = this.clamp({ ...this.view, x: this.view.x + dx, y: this.view.y + dy });
     this.kick();
   }
@@ -358,13 +390,14 @@ class MapEngine {
         const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
         const v = zoomAbout(this.view, pinch ? d / pinch : 1, mid.x, mid.y, this.kMin, K_MAX);
         this.view = this.clamp({ ...v, x: v.x + (p.x - prev.x) / 2, y: v.y + (p.y - prev.y) / 2 });
-        pinch = d;
+        pinch = d; this.touch();
         this.kick();
         return;
       }
       if (start && Math.hypot(p.x - start.x, p.y - start.y) > 4) moved = true;
       if (!moved) return;
       this.view = this.clamp({ ...this.view, x: this.view.x + p.x - prev.x, y: this.view.y + p.y - prev.y });
+      this.touch();
       const now = performance.now(), dt = Math.max(1, now - lastMove.t);
       lastMove = { x: p.x, y: p.y, t: now, vx: 0.8 * ((p.x - lastMove.x) / dt) + 0.2 * lastMove.vx, vy: 0.8 * ((p.y - lastMove.y) / dt) + 0.2 * lastMove.vy };
       el.style.cursor = 'grabbing';

@@ -2877,3 +2877,449 @@ The owner's remaining two picks from the batch ("please do this").
 - **Tested:** `pnpm check`; the feeling route by hand (own action ok, bad value 400, someone else's
   404); `/green` in the browser at 390 and 1280, light and dark: log → prompt → Easy → saved, axe
   clean, no sideways scroll, no page errors. Test rows removed.
+
+## M61 · More of Candour in Green: honest feedback, a share nudge, a streak reminder (31 Oct 2026)
+
+The owner: "add more features of candour, I really want those". Candour (candour.app) is a café tool:
+loyalty stamps, private feedback that reaches the owner before a bad review, happy customers nudged
+to share, a reward for leaving feedback, reminders to come back, insights for the owner. Adapted:
+
+- **"What made it hard?"**: answering "Hard" saves at once, then asks for a short private note
+  (migration **0188** `green_actions.feelingNote`, ≤300 characters, only with HARD; same route
+  `POST /green/actions/:id/feeling { feeling, note }`). Nobody sees it except the owner console.
+- **Share nudge**: "Easy" offers "Share your Green Pass?" (Web Share, else copy text + `/green` link;
+  no public page, so no names leave the app).
+- **Feedback earns a badge** (Candour's free stamp): `honest` in `BADGES`, 5 answers
+  (`GreenTotals.feedback`, counted in `greenMe`).
+- **Streak reminder** (Candour's "come back"): daily job `green-streaks` (`greenStreakNudges`): people
+  who logged yesterday but not yet today get one in-app notification (`email: false`, at most 450, ~11
+  queries). No push yet (would be a query per person).
+- **Owner console → Analytics → "How Green feels"** (`GET /owner/green-feel?days=`, owner only): Easy /
+  Okay / Hard per kind (hardest first), answer rate, the latest 30 notes. No names, emails or places.
+- **Not done (needs accounts/money, [owner]):** Apple / Google Wallet passes (Candour's lock-screen card).
+- **Tested:** `pnpm check` (1,367 tests; new server test for the note rules); `/green` at 1280 dark and
+  390 light: Hard → note → saved; Easy → share step → copied; axe clean, no sideways scroll. The
+  console panel's SQL was run on the local database; the panel itself was not opened in a browser
+  (owner sign-in needs the full build).
+
+## M62 · Security review and the first fixes (31 Oct 2026)
+
+The owner: "check if the security of the system is good or not or if anyone can hack my website".
+A read-only review (the `universe-security` checklist) found the basics solid (sign-in checks, demo
+tokens off in production, central access rules, `?` placeholders everywhere, upload and CSP
+hardening, no committed keys) and these holes. Fixed here:
+
+- **Stripe webhook** (`src/app/api/webhooks/stripe/route.ts`): Stripe's library accepts an event
+  signed with an *empty* secret, so with `STRIPE_WEBHOOK_SECRET` unset anyone could fake a payment or
+  a subscription. Now 503 without a secret (like Razorpay). The old `transactionId` branch (student
+  accounting) now completes a payment only if the session is `paid` with the same amount and
+  currency.
+- **LMS (LTI) linking by email** could let any admin (or approved NGO rep) register a fake LMS and
+  sign in as any non-admin account. Turning `trustEmails` on is now owner-only (POST and PATCH in
+  `src/app/api/lti/platforms`).
+- **Public receipt** (`/api/receipts/[id]`) no longer returns the payer's email (page updated).
+- **Student documents** (`privateLink`, `src/server/private-files.ts`): only their owner or an admin
+  of *that person's school* (`schoolsOf` / `inSchools`), not any school's admin.
+
+**Still open (next):** the Next.js update (critical advisories, needs a full build test);
+`pdfjs-dist` 5 → 6 and `zod` 3 → 4 (major versions: own item with testing); rate limits keyed on any
+made-up `Authorization` header (`cloudflare/worker.ts` `rateLimited`); approved organisation reps
+become admins with no school (`applications.ts`), so they cover everyone without a school; the
+admin sign-in code's 5-tries lockout lives in one server's memory; the certificate PDF takes the
+token in the address. **[owner]:** check `STRIPE_WEBHOOK_SECRET` is set in Cloudflare; add the
+"Private files" rule (DEPLOY-CLOUDFLARE.md); keep `SESSION_SECRET` until the LMS fix is live (done
+now); turn on Bot Fight Mode.
+
+## M64 · Every PRO feature free for the owner (31 Oct 2026)
+
+The owner: "in owner console every pro feature should be free". The code already meant it
+(`isPro = plan === 'PRO' || u.owner`, billing's `user.owner ? 'ENTERPRISE'`, school admin tools'
+`user.owner`), but router handlers get the resolved `User`, which never had `owner` set (only
+`getSessionUser` sets it), so the owner saw "FREE · YOUR PLAN" and "Talk to us about PRO".
+`src/server/router.ts` now sets `owner = true` on the owner's own user object (only when
+`isOwner(user)`: a verified Google sign-in with the owner's email). **Rule:** handlers may trust
+`user.owner`; never set it anywhere else.
+
+## M63 · The landing: no repeated scroll story; each section arrives its own way (31 Oct 2026)
+
+The owner (screenshot of the scroll story showing Relief's words beside UniVersity's picture): "remove
+this part… in the start it is same, and below this all the details need ultra smooth animations which
+are unique". The scroll story (M44, `ScrollStory.tsx`) repeated the hero's five pictures and
+headlines, and mid-scroll could pair one app's words with another's picture: **removed** (file deleted).
+
+Every section below used the same fade-up (`Reveal`). Now `bits.tsx` has `Motion kind="…"` around a
+section and every `Reveal` inside follows it: `tilt` (tips up like a card set on a table), `sweep`
+(glides in from the reading side; mirrored in RTL), `fan` (alternate sides with a slight turn), `depth`
+(settles forward), `mask` (rises out of a clipped line), `scrub` (tied to the scroll through a spring),
+`up` (default). Transform and opacity only; Reduce Motion keeps the fades (MotionConfig "user", and
+`scrub` reads Reduce Motion itself). Assignments are in `src/app/page.tsx`, one kind per section and
+no two neighbours alike. **Rule:** a new landing section picks a kind its neighbours don't use.
+Tested: scrolled the whole page at 1440 and 390: nothing left invisible, no sideways scroll, no errors.
+
+## M65 · Maps: sharp, not glowing, and smoother to move (1 Nov 2026)
+
+The owner (Market map screenshot): "the light here is too much, make it professional and sharp…
+the maps are not smooth, make it ultra smooth in all the maps".
+
+- **Glow:** scan halos were drawn with additive blending (`lighter`), so close places burned into one
+  white blob. Now plain blending, about half the size and a third of the strength (`MarketMap.tsx`).
+- **Smoothness (`WorldCanvas.tsx`, every map: Trace market and tracking, Relief, Green):** each frame of
+  a drag, pinch, wheel or glide used to redraw every country *with a blurred shadow*. Now the land
+  picture is drawn once and, while the map moves, only slid and scaled (`paint(t, busy)`); a quick
+  draft with a 35% margin is drawn when it no longer covers the screen, and the sharp one when the map
+  rests (`busyUntil`, `touch()` on every hand movement). The blurred shadow is replaced by a 1.6 px
+  offset fill (crisp edge, no blur). Tracking lines: a wide faint stroke under a crisp one instead of
+  `shadowBlur` every frame.
+- **Rule:** never `shadowBlur` or `filter` in a map's per-frame drawing; draw a second stroke instead.
+- **Tested:** `pnpm check`; the market map in sample mode looks right (halos subtle, labels readable).
+  Frame timing could not be judged here: this container's browser has no graphics card, so every
+  full-screen canvas is slow regardless (old and new measured the same).
+
+## M66 · Fleet in motion: zoomed in, a camera, real cars, at the bottom of Tracking (1 Nov 2026)
+
+The owner (screenshot): "needs to be zoom in, can't see anything… more realistic and functional…
+animations of car… put this at bottom section of the tracking".
+
+- **Moved** to the end of `TrackingMap.tsx` (after "Journeys today"), taller (420 / 560 px).
+- **Camera** in `CityView.tsx`: opens zoomed in on the hub (1.7×; 1.35× on phones), fewer blocks (9 /
+  7) so buildings are bigger; drag to move (a finger only sideways so the page still scrolls), pinch,
+  ctrl/⌘ + scroll, double-click, and + / − / fit buttons. The camera eases to its goal each frame
+  (`cam`, `zoomAt`, `clampGoal`); the ground and building pictures are redrawn sharper for the zoom
+  (`res` = dpr × zoom step, capped at 3) only once the zoom rests. Labels are drawn after the camera,
+  on screen, so they stay the same size.
+- **Cars:** 56 small lit boxes (body colour, glass roof, a dark side) driving their lanes with head
+  lights ahead and pink tail lights; drawn before the buildings, so towers in front hide them.
+- **Tested:** `pnpm check`; `/trace/tracking` in sample mode at 1440 and 390: city last on the page,
+  zoom in and drag work, axe clean, no sideways scroll, no errors.
+
+## M67 · Trace's Live globe made useful (1 Nov 2026)
+
+The owner (screenshot of overlapping labels on a net-covered globe): "this globe doesn't feel useful at
+all… make it functional… more detailing… ultra smooth".
+
+- **`Planet` has an `interactive` mode** (other uses unchanged): drag to turn (a finger sideways only,
+  so the page scrolls), pinch / ctrl or ⌘ + scroll / + − buttons to zoom (1–3.2×, eased), `focus` turns
+  it the short way round to a place (eased, stops the idle spin), no net, sparks or pings, land dots
+  brighter (continents read clearly), names only on `selected` places and the one pointed at,
+  `onPick` on a click. Rotation is now stateful (`cy`/`cp`), not time-based, in that mode.
+- **`GlobeView`**: the globe beside the shipments list (click one, or its point on the globe) and the
+  chosen one's card: product, batch and units, from → to, time left, distance left, speed,
+  temperature against its limit (red when over), "Open in Tracking". Opens on the first shipment on
+  the move. `globeFromShipments` also returns `at` (each shipment's point) and ETAs read "3 h 26 min"
+  (`minutesText`, tested).
+- Fixed: duplicate React keys in `Planet`'s screen-reader list when two places share a name.
+- **Tested:** `pnpm check` (1,368 tests); `/trace/globe` in sample mode at 1440 dark and 390 light:
+  picking a shipment turns the globe and fills the card; axe clean, no sideways scroll, no console
+  errors.
+
+## M70 · "UniVerse explained": twice as wide, nothing colliding, zoom out to see it all (1 Nov 2026)
+
+The owner: "the whiteboard of universe explain has glitched… some tables are colliding… make it
+like twice the size… add more zoom out… I should be able to see it fully".
+
+- **Zoom out to 2%**: Excalidraw stops at 10% (`MIN_ZOOM`). A pnpm patch
+  (`patches/@excalidraw__excalidraw@0.18.1.patch`, `patchedDependencies` in the root `package.json`)
+  sets it to 0.02 in both its dev and prod builds. **Upgrading Excalidraw: redo the patch** (`pnpm
+  patch @excalidraw/excalidraw@<v>`, change `MIN_ZOOM`, `pnpm patch-commit`), or the board can't be
+  seen whole again.
+- **Twice as wide** (`guideElements`): W = 2 × the banner (34,140); the hand-made bands sit side by
+  side in pairs and `packed(…, W)` makes half as many code bands, so the board is 34,140 × 22,901
+  (was 17,070 × 37,845) and fits a screen at about 3.5%.
+- **No colliding boxes**: wrapping assumed 0.6 em a letter, too little for the hand-drawn font, so
+  Excalidraw wrapped again and grew boxes into the ones below. Now 0.68 em (`EM`), and `fit()` lowers a
+  box's text size (down to 12) until it fits the box's height. Measured with a throwaway script: no
+  frame overlaps, no box whose text needs more height than it has (only arrow labels and the Venn's
+  intended overlap remain).
+- **To see it:** owner console → Explain UniVerse → **Make a fresh one** (an existing board keeps its
+  old positions; ids are unchanged so top-ups still work).
+- **Not checked in a browser here** (the board needs the owner's sign-in and the board server).
+  Excalidraw draws every shape each frame, so with ~1,300 shapes very low zoom is as smooth as
+  Excalidraw allows; nothing else was changed for speed.
+
+## M69 · Live air traffic on Trace's Live globe (1 Nov 2026)
+
+The owner: "also add aircraft globe in the app" (after the off-site demo, M60).
+
+- **`GET /trace/aircraft`** (`src/server/aircraft.ts`, signed in): OpenSky Network's `states/all`, no
+  key, kept 15 minutes in memory and in Cloudflare's cache (`caches.default`), so the whole site asks
+  at most ~96 times a day (anonymous allowance ~100). Trimmed to airborne planes with a position,
+  rounded to 0.01°, at most 4,000 (`planesFrom`, `src/lib/aircraft.ts`, tested): `[lat, lon, track,
+  speed m/s, altitude m]`, no call signs. On failure: the last planes (or none) and a note, retried
+  after 2 minutes. Sample mode: `sampleAircraft()` (1,600 made-up flights between 32 airports).
+- **Owner switch "Live air traffic"** (`aircraft` in `FEATURE_SWITCHES`) turns the route off.
+- **UI:** an "Air traffic" toggle on `/trace/globe`; `Planet`'s new `swarm` draws each plane as a dot
+  with a 90 km trail, moved along its track (`ahead`) every half second since the data's time.
+  Name pills on the globe no longer overlap (stacked).
+- **[owner]:** OpenSky's terms allow non-commercial use only; for a paid product ask them or move to a
+  paid feed. This container can't reach OpenSky, so the live feed was only seen failing gracefully
+  ("did not answer"); sample mode shows the planes.
+- **Tested:** `pnpm check` (1,370 tests); `/trace/globe` at 1440 and 390: toggle on, 1,600 planes
+  drawn, axe clean, no sideways scroll, no errors.
+
+## M68 · Collaborate simpler (8 tabs → 5) with 16 new tools (1 Nov 2026)
+
+The owner: "add more features in the collaborate section and merge few sections because it is becoming
+too complex… at least 15 more features… apple notes, word, pdf, sheets, presentation, canva, editing
+and coding apps like vs code… and some more small features".
+
+- **Tabs** (`COLLAB_TABS`): Home (also `/spaces`, linked from Home's intro), **Create** (`/studio`, also
+  `/docs`, `/boards`, `/sheets`, `/slides`), Files, Code, Tasks. Create opens with "Make something
+  new" (documents/sheets/slides, whiteboards, code), then the tools in groups.
+- **16 new tools**, all in the browser (nothing sent anywhere), opened as `/studio?tool=<id>`:
+  Write: Quick notes (`QuickNotes.tsx`, Apple Notes-like: pin, colour, search, `[ ]` tick boxes, kept
+  on the device, "Make it a document"), Word count (reading/speaking time, most-used words), Clean up
+  text (case, spaces, sort, de-duplicate), Compare texts (line diff), Markdown preview (sandboxed
+  iframe, copy HTML). PDF: Join PDFs, Take pages out (`1-3, 5, 8-`), Pictures to PDF (`PdfTools.tsx`,
+  pdf-lib loaded on use). Sheets: Table tools (paste from a spreadsheet or CSV → column totals and
+  CSV / JSON / Markdown). Design: Colour palettes (4 harmonies or from a photo), Gradients (CSS and a
+  1920×1080 slide background), QR codes (`encodeQr`), Record the screen (`getDisplayMedia` → .webm).
+  Code: JSON formatter, Regex tester, Encode/decode (Base64, URL). UI in `QuickTools.tsx`; logic in
+  `src/lib/quick-tools.ts` (tested).
+- **Not done:** notes syncing between devices (they live in the browser, by design; "Make it a document"
+  is the way to keep one), and a real-time co-edited notes app (Docs does that already).
+- **Tested:** `pnpm check` (1,375 tests); `/studio` at 1440 dark and 390 light: five tabs, Quick notes,
+  Word count, Compare, Table tools, Colours, QR, Regex and Join PDFs opened and used; axe clean on the
+  tools (the only flags left were page chrome under the moving background, varying run to run).
+
+**Next.js update tried and undone (1 Nov 2026):** `next` 16.4.2 builds, but the built Worker answers
+500 on every page ("Unexpected loadManifest(/.next/server/preview-props.json)"): the Cloudflare
+adapter `@opennextjs/cloudflare` must be updated with it (latest 1.20.15). Reverted on the branch, so
+`main` stays on 16.3.8 until both are updated together and checked with `local:build` + `local:serve`.
+
+## M71 · 29 more tools in Collaborate → Create (1 Nov 2026)
+
+The owner: "just add more features in the collaborate section… at least 25 more". Create now has 51
+tools in six groups (Write, PDF and files, Sheets and data, Present, Design and media, Code), all in
+the browser; nothing is sent anywhere (except Dictation, which uses the browser's own speech service).
+
+- **Write:** Find and replace (case, whole words), How easy to read (Flesch ease, grade), References
+  (APA 7 / MLA 9), Read aloud (`speechSynthesis`, voice and speed), Dictation (`SpeechRecognition`
+  where the browser has it), Symbols to copy.
+- **Sheets and data:** Calculator (own parser, no `eval`, history), Chart maker (bar/line → PNG), Unit
+  converter (8 kinds), Percentages, Date calculator (days, weekdays, days on), Random picker and
+  groups (crypto-random shuffle).
+- **Present:** Quick presenter (Markdown slides split by `---`, full screen, arrow keys; slides in a
+  sandboxed iframe), Countdown, Quote cards.
+- **Design and media** (`ImageTools.tsx`, one canvas each, Save PNG): Resize for social (7 sizes, fill or
+  fit), Collage (2–6), Profile picture (round, ring), Screenshot frame, Watermark; Contrast checker
+  (WCAG AA/AAA), Colour codes (HEX/RGB/HSL).
+- **Code:** Code picture, Fingerprints (SHA-1/256/512 of text or a file), Unique IDs, Password maker
+  (crypto), Timestamps, Web address parts, Token reader (JWT, decoded locally only, with a warning).
+- **Files:** `src/components/studio/MoreTools.tsx`, `ImageTools.tsx`, logic `src/lib/quick-tools-2.ts`
+  (10 tests). `QuickTools.tsx` now exports its small parts (`Btn`, `Field`, `Out`, `area`, `copy`,
+  `save`). Panels: `/studio?tool=<id>` (`img-<id>` for the picture tools).
+- **Tested:** `pnpm check` (1,385 tests); all 29 opened by address at 1440 dark and 390 light: axe clean
+  inside the page, no sideways scroll, the calculator answers. The one page error seen
+  ("localStorage… sandboxed") comes from the test helper's init script running inside the sandboxed
+  previews, not from the app.
+
+## M72 · Collaborate → Create smoother, with 30 big tools (1 Nov 2026)
+
+The owner: "upgrade the existing tools and features of the collaborate section with ultra smoothness and
+also add more 30 features in there like big features". Create now has 81 tools in eight groups.
+
+- **Smoother list (every tool benefits):** a search box (`/` focuses it, Enter opens the first match,
+  Esc clears); group chips that glide to their group; **Starred** and **Used lately** shelves (kept on
+  the device, `uv-create-stars` / `uv-create-recent`, read with `useSyncExternalStore` so the first
+  paint matches the server); a tool's code starts downloading when the pointer rests on its card
+  (`LOAD` / `preload` in `studio/page.tsx`), so it opens at once; the tool glides in and the list
+  glides back (AnimatePresence, `spring.smooth`, exits faster; Reduce Motion: fades only); Esc goes
+  back (not while typing or in a full-screen view); going back restores the list's scroll spot; cards
+  lift a little on hover and press in on tap; "New" badges on the 30.
+- **30 tools** (`/studio?tool=<id>`, all in the browser, their work kept on the device with `useKept`
+  in `studio/kept.ts`):
+  - Plan and organise (`PlanTools.tsx`): mind map (keyboard: Tab / Enter / arrows / Delete / F2; save
+    PNG; copy as a list), outliner (Tab in/out, Alt+arrows move a branch, fold, tick), sticky-note wall
+    (drag by the top strip, colours, votes, line up by votes), timeline/Gantt (today line, done %, PNG),
+    flowchart from `A -> B: label` text (loops curve back; left-right or top-down; PNG), timetable
+    (colour per subject, print), habit tracker (21 days, streaks), decision helper (weighted 1–5
+    scores, ranking).
+  - Study and teach (`StudyTools.tsx`): flashcards (decks, 3D flip, five Leitner boxes, paste many),
+    grades (weighted average, "what I need on the rest", 4.0 GPA), revision planner (exam dates and
+    hours → a day plan, warns when short, `.ics` for a calendar, print), rubric maker (click cells to
+    mark: total), word search (print or play: tap first and last letter), certificate (PNG / print),
+    spin the wheel (crypto-random pick, eases to a stop, optional "take the winner off"), noise meter
+    (microphone level on the `Dial`, a limit, seconds too loud; nothing recorded).
+  - Data (`DataTools.tsx`): graph plotter (up to six `y =` formulas, drag/scroll zoom, values under
+    the pointer; own compiler with implicit times, no eval), statistics (+ histogram), data explorer
+    (open a CSV, sort, filter, totals by group, save what's shown), budget (in/out by kind, Ring,
+    CSV), invoice (tax, discount, print or PDF), world clock with the hours that suit everyone.
+  - Make (`MakerTools.tsx`): CV builder (modern / classic, print to PDF), word cloud (spiral layout,
+    PNG), teleprompter (full screen, mirror, keys), code playground (HTML/CSS/JS in a
+    `sandbox="allow-scripts allow-modals"` iframe without same-origin, console shown via
+    `postMessage`; inline `onclick=` attributes are blocked by the site's `script-src-attr 'none'`,
+    which it says), Code 128 barcodes (SVG/PNG), hide parts of a picture (pixels / blur / black box,
+    saved as a new file), slideshow video (canvas + MediaRecorder: mp4 where the browser can, else
+    webm; the tab must stay open), signature pad (smooth, speed-weighted strokes; trimmed see-through PNG).
+- **Logic** in `src/lib/big-tools.ts` (11 tests): `compile`, `stats`, `histogram`, `flow`, `treeLayout`,
+  `wordSearch` + `seeded`, `code128` (the table is checked: 107 unique patterns, each 11 wide),
+  `studyPlan`, `weighted` / `needed`, `nextBox` / `isDue`, `decide`, `wordFreq`, `spiral`, `invoice`,
+  `streaks`.
+- **Trap:** an `sr-only` element inside a sideways-scrolling table escapes the scroll box unless the
+  box is `relative` (it made the whole page scroll sideways at 390). Paper-like sheets (white in both
+  themes) use `text-[#4b5068]` for grey text, not `zinc-600`, which dark mode re-points.
+- **Not done:** sharing or real-time co-editing of these tools' work (they're personal, on the device;
+  Docs, Whiteboards and Code are the shared ones). The other tabs (Home, Files, Code, Tasks) were
+  not changed.
+- **Tested:** `pnpm check` (1,396 tests); `scripts/checks/create-tools-ui.mjs` on the dev server: the
+  list (search, star, Esc, scroll kept) and all 30 tools at 1280 dark and 390 light: axe clean inside
+  the page, no sideways scrolling, no page errors.
+
+## M73 · "Too many SQL variables" fixed for every list, not just People (1 Nov 2026)
+
+The owner forwarded the "1 problem(s) need a look" email: `GET /api/core/owner/people`, "D1_ERROR: too
+many SQL variables" (production `error_reports`, 1×, 31 Oct 19:10 UTC: before M58's fix went live
+that night; the email came on 1 Nov because the diagnosis ran at 08:15 UTC).
+
+- **The real cause (checked on local D1 with 150 people):** Prisma reads a related list for all the
+  rows it found in one query (`WHERE userId IN (…every id…)`). It cuts that list at 98 ids, **except**
+  when the related list has its own `orderBy`, `take`, `skip`, `cursor` or `distinct`: then every id
+  goes into one query, and past ~98 rows D1 refuses. A plain or `where`-only related list is cut
+  correctly. M58 fixed only People; the same shape is in chat conversations, chat search, boards,
+  collaborations, groups, internships, scholarships and more, waiting for a big enough school.
+- **Fix, once for every query** (`src/lib/d1-split.ts` `readsOrderedRelation` / `planPages` /
+  `readInPages`, run by `withListSplit` in `src/lib/db.ts`): a `findMany` with no `take` or a `take`
+  over 90 that reads such a related list (at any depth) runs in pages of 90 rows, one after another,
+  and the pages are joined: the same rows in the same order (skip respected, stops at a short page).
+  Also inside the long-`in`-list split. M58's hand-made chunking in the People route is removed.
+- **Tested:** 3 new unit tests (`d1-split.test.ts`); on local D1 with 150 people: take 140 ordered,
+  no take, skip 20 + take 100, a long `in` list with a related `take`, all correct (each failed
+  before with "too many SQL variables").
+- **Owner:** mark the report resolved in the owner console (Errors).
+
+## M74 · Every Create tool upgraded, and 56 more (1 Nov 2026)
+
+The owner: "upgrade all the existing tools and add more than 50 new features and tools in the
+collaborate section". Create now has **137 tools** in eight groups.
+
+- **Upgrades for every tool** (`studio/page.tsx`): **Focus** fills the window with the tool (Esc
+  leaves it first, then goes back to the list); **‹ ›** and the `[` `]` keys go to the previous or next
+  tool in the same group (with "3/19"); **Copy link** (with a tick); **More in <group>** shows three
+  more cards under the tool; **drop a text file** (.txt, .md, .csv, .json, code…) on any tool and it
+  fills the tool's first text box (set through the native value setter plus an `input` event, so
+  React hears it as typing; 2 MB cap; pictures and PDFs keep their own buttons). Copy buttons
+  answer on themselves (`CopyBtn` in `QuickTools.tsx`: a tick and "Copied"), so every tool using `Out`
+  got it. **Text is kept** when you leave and come back for the older text tools (word count, clean
+  up, compare, table, JSON, Markdown, find and replace, readability, references, read aloud, picker,
+  chart, presenter) and the calculator's history (`useKept`, keys `uv-draft-<tool>`). The "New" badge
+  moved to the 56.
+- **56 tools** (`/studio?tool=<id>`, all on the device; work kept with `useKept`):
+  - Write (`WordTools.tsx`): journal (private, a mood a day, month view, search, download), letter
+    writer (6 templates; blanks found from `[…]`), fancy letters (Unicode styles), line tools, numbers
+    in words (with rupees/dollars/pounds/euros "… only"), Roman numerals, Morse (played as beeps),
+    placeholder text, word play.
+  - Plan and organise (`OrganiseTools.tsx`): priority matrix (drag between the four boxes), week
+    planner (drag between days), goals with steps and rings, checklists (5 templates), countdowns,
+    meeting notes (actions with who/when; Markdown), SWOT, pros and cons (weighted), reading list.
+    Present: stopwatch (digits drawn straight to the page per frame, no re-render; laps best/worst),
+    room poll (full screen), agenda timer (runs through the parts, overrun in red).
+  - Study and teach (`ClassTools.tsx`): periodic table (all 118 from `src/lib/elements.ts`, places
+    worked out from the atomic number; families, search, facts card), quiz maker (take it, score,
+    print with an answer key), maths drill (60 s, best kept), equation solver (working shown),
+    fractions, shapes (8, with formulas), number facts (HCF/LCM), seating plan (tap two to swap),
+    dice and coins (crypto-random), traffic light and scoreboard (both full screen).
+  - Sheets and data (`MoneyTools.tsx`): loan/EMI with a yearly schedule, savings growth (chart),
+    split the bill (fewest payments), price with discount and tax (in or on top), age, BMI (with a
+    "rough guide, ask a doctor" note).
+  - Design and media (`MediaTools.tsx`): photo booth (camera, 8 filters, 3-2-1), pixel art (fill,
+    mirror, pick, undo; 1024 px PNG), meme maker, app icon maker (5 sizes), clean a photo (finds
+    EXIF and GPS in a JPEG, `jpegDetails`; re-draws a clean copy), colour-blind view (Machado
+    matrices in linear light), metronome (Web Audio look-ahead scheduling, tap tempo), tuner
+    (autocorrelation pitch, cents needle), focus sounds (white/pink/brown noise, timer).
+  - Code (`DevTools.tsx`): number bases (BigInt; text as bytes), name styles, shadow maker, cron
+    reader (words and the next 5 runs, UTC), HTML escape, hidden characters (zero-width, no-break…),
+    status codes, key tester, sample data (example.com emails).
+- **Logic** in `src/lib/more-tools.ts` (14 tests): Morse, `numberToWords`, Roman, `fancy`, anagram /
+  palindrome, `lorem`, primes / factors / HCF / LCM, fractions, `solveQuadratic`, `loan`, `growth`,
+  `age`, `settle`, `convertBase`, `nameStyles`, `cron`, HTML (un)escape, `mockRows`, `noteOf` /
+  `detectPitch`, `COLOUR_BLIND` / `simulateColourBlind`, `jpegDetails`. Shared bits in
+  `studio/bits.tsx` (`useFull` + `FullBtn` for full screen, `Segments`, `Stat`, `rnd`).
+- **Traps:** a hook that returns an object holding a ref makes the React lint treat every field as a
+  ref: destructure it (`const { ref: fullRef, full: isFull, … } = useFull()`). An `aria-label` must
+  start with the button's visible text (axe): use `sr-only` text after it instead. Text on a pink
+  badge is `#171f44`, not `indigo-900` (light mode re-points indigo to violet).
+- **Not done:** sharing these tools' work between people (they're personal; Docs, Whiteboards and Code
+  are the shared ones); the photo booth and tuner need camera / microphone permission each visit.
+- **Tested:** `pnpm check` (1,413 tests); `scripts/checks/create-tools-ui.mjs --new` (the 56) and
+  `--old` (M72's 30 plus 13 upgraded older tools) on the dev server at 1280 dark and 390 light: axe
+  clean inside the page, no sideways scrolling, no page errors; focus mode, Esc, `]`, a dropped file
+  and text kept after a reload all checked.
+
+## M75 · Saved work on the account, sharing by link, and 55 more tools (1 Nov 2026)
+
+The owner: "Add more than 50 plus more features in collaborate section and make bigger features and
+changes in the system". The bigger change: Create's tools stop being device-only.
+
+- **Saved work** (migration **0189** `tool_saves`, model `ToolSave`; routes `GET/POST
+  /api/collab/saves`, `GET/PUT/DELETE /api/collab/saves/[id]`, `POST/DELETE
+  /api/collab/saves/[id]/share`, public `GET /api/collab/shared/[token]`; checks in
+  `src/lib/tool-saves.ts`, tested). Every tool that keeps work (`useKept`, ~150 of them) gets **Save
+  to account** and **Share** in its bar with no change to the tool: `useKept` now lists itself while
+  mounted (`keptNow()` in `studio/kept.ts`), so Save collects the open tool's latest state (`uv-…`
+  keys only, 200 KB, 300 saves a person). Save again saves over the open save. Create's list shows
+  **Saved to your account** (open, rename, share / stop sharing, delete; `Saves.tsx`). Opening a save
+  writes it to the device and reopens the tool (a `gen` key). So work now follows the person to every
+  device.
+- **Sharing:** a 24-character unguessable token (`shareToken`); `/studio?shared=<token>` opens the tool
+  with the shared work in its **own scope** (`KeptScope`, keys `shared:<token>:uv-…`), so a viewer's own
+  work is never touched; a banner says who shared it (first name only) and **Keep it as mine** copies
+  it over. Stop sharing makes the link 404 at once. Only the owner can read, change, share or delete
+  a save (404 for anyone else). The shared answer has no email or id. Viewers need to be signed in
+  (Create is behind sign-in). Sample mode: the list is empty and saving says so.
+- **55 tools** (192 in all): Write (`PenTools.tsx`): essay planner, writing prompts with a timer, poem
+  helper (syllables, haiku, rhymes), acrostic, typing practice, glossary (→ Flashcards), Cornell
+  notes, interview practice. Plan (`LifeTools.tsx`): Kanban (drag, WIP limit), event planner, trip
+  planner, routines (guided timer), day planner, RACI (checks one A), sleep log, OKRs, birthdays.
+  Study (`ScienceTools.tsx`): times tables, spelling test (read aloud), telling the time, number line,
+  Venn, history timeline, probability simulator, trigonometry, triangle solver, matrices, molar mass
+  (from `elements.ts`), physics formulas. Data (`CalcTools.tsx`): line of best fit, survey size, fuel,
+  pay, recipe scaler, timesheet, best value. Present (`StageTools.tsx`): bingo (cards + caller), quiz
+  game board, name tags, speaking queue. Design (`ArtTools.tsx`): event poster, business cards, colour
+  mixer, type scale, blob shapes, ASCII art, drum machine, piano (keyboard keys, record), photo grid.
+  Code (`WebTools.tsx`): CSV to SQL (quoted safely), JSON to TypeScript, link preview tags, file
+  permissions, flexbox playground, subnet calculator. Logic in `src/lib/tools-5.ts` (10 tests).
+- **Traps:** a local named `X` shadows lucide's `X` icon (rename locals). Some mid colours can't reach
+  4.5:1 with navy or white text: put the label on a small white chip (`inkOn` in `bits.tsx` picks
+  navy or white otherwise).
+- **Not done:** live co-editing of one save by several people at once (a shared link is a copy; Docs,
+  Whiteboards and Code are the live ones); shares open only for signed-in people.
+- **Tested:** `pnpm check` (1,425 tests); `scripts/checks/create-saves-ui.mjs` (save, list, share,
+  another person opens and keeps it, stop sharing, delete; someone else gets 404; only `uv-` keys; no
+  email in the shared answer; axe) and `create-tools-ui.mjs --m75` and `--old` at 1280 dark and 390
+  light: axe clean, no sideways scrolling, no page errors.
+
+## M76 · Live editing together, and view links without signing in (2 Nov 2026)
+
+The owner, on M75's two "left out" points ("a shared link gives a copy, not live editing together"
+and "people must be signed in to open a shared link"): "please do both of this and then merge".
+
+- **Two kinds of link** (Share in a tool's bar is now a small menu; the Saved list has a view-link
+  and an edit-link button each): **view link** `/s/<token>` (the `shareToken`) opens for anyone, no
+  sign-in (`src/app/s/[token]/View.tsx`, built once as `/s/open`, kept out of search, no referrer):
+  the work in its own scope (`view:<token>:`), read-only (changes aren't saved), re-checked every 20 s
+  while in use (`useActivePoll`) so it updates by itself; "Sign in to keep a copy" (or "Keep a copy"
+  when signed in) goes to the M75 copy flow. **Edit link** `/studio?edit=<token>` (new `editToken`,
+  migration **0190**, with `version` and `editors`) opens the work **live** for signed-in people.
+- **Live editing** (`GET/PUT /api/collab/live/[token]`, `useLive` in `Saves.tsx`, `KeptSyncProvider`
+  in `kept.ts`): every tool's `useKept` part sends its own changes (`push`, after the 250 ms pause)
+  and takes in others' (`sub`); nothing in the 190 tools changed. The server writes one part on top of
+  the version it just read (a conditional `updateMany` on `version`, retried 4 times), so two people
+  editing different parts never wipe each other; the same part: the last change wins. Everyone with
+  it open (seen in the last 10 minutes) and the owner get a realtime refresh of the live address
+  (every 3 s without live updates, 60 s with them, only while the tab is in use). A part changed here
+  in the last 2 s isn't overwritten by an older copy coming back. A banner shows "editing live" and
+  who else is there (first names, seen in the last 2 minutes; `touchEditors` writes at most once a
+  minute). The owner's own Open on a save with an edit link opens it live too; Save over it bumps the
+  version so everyone picks it up. Stop sharing ends both links (404 at once).
+- **Registry** (`src/components/studio/registry.tsx`): the tool sets, `PANELS`, `setOf`, `preload` and
+  `ToolBody` moved out of the Create page, so `/s/<token>` shows the same tools.
+- **Trap:** `useKept` must never send the value it opened with (React's dev double effect did, and on
+  a late join that overwrote a newer change): it keeps `synced` (the value everyone last saw) and
+  sends only when the value differs from it. In a one-browser test, only the page in front counts as
+  "in use" (no polling behind): bring the watching page to the front.
+- **Not done:** letters merged inside one text box (two people typing in the same box: the last one
+  wins, within a second); edit links need sign-in (anyone could change it otherwise).
+- **Tested:** `pnpm check` (1,427 tests, incl. `mergePart`, `touchEditors`); `create-saves-ui.mjs`
+  twice in a row: a view link opens signed out (axe), the copy link, an edit link needs sign-in (401),
+  two people edit one mind map and each sees the other's change, stop sharing 404s both links;
+  `create-tools-ui.mjs --old` (the tools after the `useKept` change).

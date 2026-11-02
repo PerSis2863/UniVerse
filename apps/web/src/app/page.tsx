@@ -23,9 +23,8 @@ import { AppsGrid, GreenSection, ReliefSection, PlaySection } from '@/components
 import { SplitCta } from '@/components/landing/SplitCta';
 import { GreenMore, PlayMore, ReliefMore } from '@/components/landing/ImpactMore';
 import { LiveTotals } from '@/components/landing/LiveTotals';
-import { ScrollStory } from '@/components/landing/ScrollStory';
 import { WorldSection } from '@/components/landing/WorldSection';
-import { Accent, EASE, Live, Reveal, ghost, primary } from '@/components/landing/bits';
+import { Accent, EASE, Live, Motion, Reveal, ghost, primary } from '@/components/landing/bits';
 import type { AppId } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { homeFor } from '@/lib/role-home';
@@ -204,20 +203,20 @@ export default function ShowcasePage() {
 
           <WorldSection app={app} />
           <LiveTotals />
-          <Live><ScrollStory onPick={pick} /></Live>
 
           <AnimatePresence mode="wait">
             <motion.div key={app} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }} transition={{ duration: 0.4 }}>
               {/* Each part's looping demos run only while it is on screen (Live). */}
-              {app === 'campus' && <><Proof /><Glue /><Live><Bento /></Live><Live><Statement /></Live></>}
-              {app === 'trace' && <><TraceSection /><Live><MapsSection /></Live><HowSection /><CampaignsSection /><PricingSection /></>}
-              {app === 'relief' && <><ReliefSection /><Live><ReliefMore /></Live></>}
-              {app === 'green' && <><GreenSection /><GreenMore /></>}
-              {app === 'play' && <><PlaySection /><PlayMore /></>}
+              {/* Each section arrives its own way (M63, bits.tsx `Motion`). */}
+              {app === 'campus' && <><Motion kind="fan"><Proof /></Motion><Motion kind="sweep"><Glue /></Motion><Motion kind="tilt"><Live><Bento /></Live></Motion><Motion kind="mask"><Live><Statement /></Live></Motion></>}
+              {app === 'trace' && <><Motion kind="scrub"><TraceSection /></Motion><Motion kind="depth"><Live><MapsSection /></Live></Motion><Motion kind="sweep"><HowSection /></Motion><Motion kind="tilt"><CampaignsSection /></Motion><Motion kind="fan"><PricingSection /></Motion></>}
+              {app === 'relief' && <><Motion kind="scrub"><ReliefSection /></Motion><Motion kind="tilt"><Live><ReliefMore /></Live></Motion></>}
+              {app === 'green' && <><Motion kind="depth"><GreenSection /></Motion><Motion kind="fan"><GreenMore /></Motion></>}
+              {app === 'play' && <><Motion kind="tilt"><PlaySection /></Motion><Motion kind="scrub"><PlayMore /></Motion></>}
             </motion.div>
           </AnimatePresence>
 
-          <AppsGrid onPick={pick} />
+          <Motion kind="fan"><AppsGrid onPick={pick} /></Motion>
 
           <section id="faq" className="px-6 py-24 scroll-mt-24">
             <div className="max-w-3xl mx-auto">

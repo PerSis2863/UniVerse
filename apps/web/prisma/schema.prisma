@@ -7016,6 +7016,8 @@ model GreenAction {
   verifiedAt DateTime?
   /// "How did it go?" (migration 0187): EASY, OK or HARD, set only by the person.
   feeling    String?
+  /// "What made it hard?" (migration 0188): private, read only in the owner console, without names.
+  feelingNote String?
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
@@ -7037,4 +7039,25 @@ model GameScore {
   @@index([game, score])
   @@index([userId, createdAt])
   @@map("game_scores")
+}
+
+/// Collaborate → Create, saved work (M75, migration 0189): a tool's kept state on the account, shared
+/// read-only by link when shareToken is set.
+model ToolSave {
+  id         String   @id @default(cuid())
+  userId     String
+  tool       String
+  title      String
+  data       String
+  shareToken String?  @unique
+  /// M76 (migration 0190): an edit link for live editing together, a version for safe merges, and who
+  /// has it open ([{id,name,at}]).
+  editToken  String?  @unique
+  editors    String?
+  version    Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+  @@map("tool_saves")
 }

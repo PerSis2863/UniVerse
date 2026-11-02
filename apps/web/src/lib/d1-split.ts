@@ -131,3 +131,48 @@ export function mergeParts(operation: string, args: Obj, results: unknown[], add
   if (added.length) rows = rows.map((r) => { const c = { ...r }; for (const f of added) delete c[f]; return c; });
   return operation === 'findFirst' ? rows[0] ?? null : rows;
 }
+
+// ── Lists that read a related list with its own orderBy or take ──
+// Prisma reads a related list (a user's sign-ins, a chat's members) with one query for all the rows
+// it found: `WHERE userId IN (every id)`. It cuts that list at 98 ids, except when the related list
+// has its own orderBy, take, skip, cursor or distinct: then every id goes into one query, and past
+// ~98 rows D1 refuses ("too many SQL variables": the owner console's People list, 31 Oct 2026;
+// checked on local D1, Nov 2026). Such a findMany is read in pages of 90 rows instead, one after
+// another, and the pages joined: the same rows in the same order.
+
+/** Rows per page: 90 ids plus the related list's own values stay under D1's 100. */
+export const PAGE = 90;
+const OWN = ['orderBy', 'take', 'skip', 'cursor', 'distinct'];
+
+/** Whether a select or include reads a related list with its own orderBy, take and the like (at any depth). */
+export function readsOrderedRelation(sel: unknown): boolean {
+  if (!isObj(sel)) return false;
+  for (const [k, v] of Object.entries(sel)) {
+    if (k === '_count' || !isObj(v)) continue;
+    if (OWN.some((o) => v[o] !== undefined)) return true;
+    if (readsOrderedRelation(v.select) || readsOrderedRelation(v.include)) return true;
+  }
+  return false;
+}
+
+/** The page size when a findMany has to be read in pages, or null to run it as it is. */
+export function planPages(operation: string, args: unknown): number | null {
+  if (operation !== 'findMany' || !isObj(args)) return null;
+  if (!readsOrderedRelation(args.select) && !readsOrderedRelation(args.include)) return null;
+  // A short list fits; `distinct` is applied after reading, so pages would change its answer.
+  if (args.distinct !== undefined || (typeof args.take === 'number' && (args.take < 0 || args.take <= PAGE))) return null;
+  return PAGE;
+}
+
+/** Reads a findMany page by page (`run` is the query); stops at `take` or when a page comes back short. */
+export async function readInPages(args: Obj, size: number, run: (a: Obj) => Promise<unknown[]>): Promise<unknown[]> {
+  const take = typeof args.take === 'number' ? args.take : Infinity, skip = typeof args.skip === 'number' ? args.skip : 0;
+  const rows: unknown[] = [];
+  while (rows.length < take) {
+    const n = Math.min(size, take - rows.length);
+    const page = await run({ ...args, skip: skip + rows.length, take: n });
+    rows.push(...page);
+    if (page.length < n) break;
+  }
+  return rows;
+}

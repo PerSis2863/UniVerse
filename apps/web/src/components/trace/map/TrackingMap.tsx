@@ -153,9 +153,11 @@ export function TrackingMap() {
       if (mp && stops.length) {
         const trail = s.trail.slice(0, -1).map((p) => sx(p.lng, p.lat));
         ctx.save();
-        if (f.dark) { ctx.shadowColor = PINK; ctx.shadowBlur = 10; }
-        ctx.strokeStyle = PINK; ctx.lineWidth = s.id === selected ? 3.4 : 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.beginPath(); ctx.moveTo(...stops[stops.length - 1]); for (const p of trail) ctx.lineTo(...p); ctx.lineTo(...mp); ctx.stroke();
+        // A faint wide line under a crisp one (M65: a blurred shadow here was redrawn every frame).
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(...stops[stops.length - 1]); for (const p of trail) ctx.lineTo(...p); ctx.lineTo(...mp);
+        if (f.dark) { ctx.strokeStyle = 'rgba(254,129,209,0.18)'; ctx.lineWidth = s.id === selected ? 8 : 6; ctx.stroke(); }
+        ctx.strokeStyle = PINK; ctx.lineWidth = s.id === selected ? 3 : 2.2; ctx.stroke();
         ctx.restore();
         // Older trail points fade out.
         trail.forEach(([x, y], i) => { ctx.globalAlpha = (focus ? 1 : 0.28) * (0.15 + (i / trail.length) * 0.6); ctx.fillStyle = PINK_SOFT; ctx.beginPath(); ctx.arc(x, y, 1.6, 0, Math.PI * 2); ctx.fill(); });
@@ -269,7 +271,6 @@ export function TrackingMap() {
 
   return (
     <div className="space-y-4">
-      {ships.length > 0 && <FleetInMotion ships={ships} />}
       <div className="flex flex-wrap items-center gap-2">
         <div role="radiogroup" aria-label="Show" className="flex rounded-full bg-zinc-100 dark:bg-white/[0.06] p-1">
           {([['all', `All · ${ships.length}`], ['moving', `On the move · ${moving}`], ['done', 'Delivered']] as const).map(([id, label]) => (
@@ -350,6 +351,8 @@ export function TrackingMap() {
         </div>
       </div>
       {ships.length > 0 && <JourneysToday ships={ships} />}
+      {/* The city at the bottom (M66, the owner: "put this at bottom section of the tracking"). */}
+      {ships.length > 0 && <FleetInMotion ships={ships} />}
     </div>
   );
 }
@@ -362,7 +365,7 @@ function FleetInMotion({ ships }: { ships: Ship[] }) {
     <LiveCard title="Fleet in motion" sub="Every batch from its factory, through the warehouse, to its shop"
       stats={[{ label: 'On the move', value: String(moving.length) }, { label: 'Delivered', value: String(ships.filter((s) => s.status === 'DELIVERED').length) }, { label: 'Next arrival', value: etas.length ? duration(Math.min(...etas)) : '—' }]}
       ticker={ships.slice(0, 8).map((s) => `${s.label} · ${s.product} · ${STATUS[s.status]?.label ?? s.status}${s.etaMinutes !== null && s.status === 'IN_TRANSIT' ? ` · ${duration(s.etaMinutes)} to go` : ''}`)}>
-      <CityView className="h-[340px] sm:h-[460px]" label="Your shipments on their way, as vans in a city"
+      <CityView className="h-[420px] sm:h-[560px]" label="Your shipments on their way, as vans in a city"
         vans={ships.map((s) => ({ id: s.id, label: s.label, progress: progress(s), state: s.status === 'DELIVERED' ? 'done' : s.status === 'IN_TRANSIT' ? 'moving' : 'parked',
           note: s.status === 'DELIVERED' ? 'delivered' : s.status === 'IN_TRANSIT' && s.etaMinutes !== null ? duration(s.etaMinutes) : undefined }))} />
     </LiveCard>

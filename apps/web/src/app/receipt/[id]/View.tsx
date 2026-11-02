@@ -77,7 +77,6 @@ function ReceiptView({ id }: { id: string }) {
             <div>
               <div className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Billed To</div>
               <div className="text-lg font-bold text-zinc-900 dark:text-white">{transaction.user?.name || 'Student'}</div>
-              <div className="text-zinc-600 dark:text-zinc-400">{transaction.user?.email}</div>
             </div>
             <div className="mt-6 sm:mt-0 text-start sm:text-end">
               <div className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Date</div>

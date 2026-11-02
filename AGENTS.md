@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M55 is the latest).
+  builds on it). The newest notes are at the end (M76 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -122,12 +122,28 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   **M58**: less AI-looking website; People list fixed. **M58a**: teacher-home duplicate-key fix.
   **M59**: a Live globe in Trace (the brand's shipments on the 3D globe).
   **M60**: the Green Pass (collectable card) and "how did it go?" after logging in Green; a live-aircraft demo kept off the site for the owner to judge.
+  **M61**: more of Candour in Green (a private "what made it hard?", a share nudge, an Honest badge, a streak reminder, "How Green feels" in the console).
+  **M62**: security review; fake Stripe events, LMS account takeover, emails on receipts and other schools' documents fixed (open items in its handoff note).
+  **M64**: the owner gets every PRO feature (the router now marks the owner's user).
+  **M63**: the landing's scroll story removed (it repeated the hero); each section below arrives its own way (`Motion kind`, `landing/bits.tsx`).
+  **M65**: maps sharp (no additive glow) and smoother (land picture reused while moving, no per-frame blur).
+  **M66**: Tracking's city at the bottom, zoomed in with a camera (drag, pinch, buttons) and real cars.
+  **M67**: Trace's Live globe usable (turn, zoom, pick; list and detail card; `Planet interactive`).
+  **M70**: the explainer board twice as wide without collisions; Excalidraw patched to zoom out to 2% (redo the patch when upgrading it).
+  **M69**: live air traffic on Trace's Live globe (`/trace/aircraft`, OpenSky, cached 15 min; owner switch).
+  **M68**: Collaborate in five tabs (Home, Create, Files, Code, Tasks) with 16 new in-browser tools under Create.
+  **M71**: 29 more tools under Create (51 in all, in six groups; `MoreTools.tsx`, `ImageTools.tsx`).
+  **M72**: Create smoother (search, stars, recent, load on hover, glides, Esc, scroll kept) and 30 bigger tools (81 in all, eight groups; `PlanTools`, `StudyTools`, `DataTools`, `MakerTools`, logic `src/lib/big-tools.ts`).
+  **M73**: "too many SQL variables" fixed in the database layer for every list (pages of 90 when a related list has its own orderBy/take).
+  **M74**: every Create tool upgraded (focus, previous/next, copy link, drop a file, text kept) and 56 more tools (137 in all; `WordTools`, `OrganiseTools`, `ClassTools`, `MoneyTools`, `MediaTools`, `DevTools`; logic `src/lib/more-tools.ts`, `elements.ts`).
+  **M75**: tools save to the account and share by link (migration 0189 `tool_saves`, `Saves.tsx`, `KeptScope`); 55 more tools (192 in all; `PenTools`, `LifeTools`, `ScienceTools`, `CalcTools`, `StageTools`, `ArtTools`, `WebTools`; logic `src/lib/tools-5.ts`).
+  **M76**: view links open without sign-in (`/s/<token>`) and edit links edit live together (migration 0190; `useLive`, `KeptSyncProvider`, `registry.tsx`).
   **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
   done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts
   on a first visit, is in M47's handoff note).
-- **Next database update number: `0188`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0191`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
   challenges (done, M25); organisation accounts for Relief (NGOs, supplies, volunteer shifts; SMS/WhatsApp requests behind a

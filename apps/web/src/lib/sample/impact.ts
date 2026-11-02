@@ -1,3 +1,4 @@
+import { ahead, type AirTraffic, type Plane } from '@/lib/aircraft';
 import { CITIES } from '@/components/trace/map/cities';
 import { BADGES, FEELINGS, GREEN_FACTORS, GREEN_KINDS, co2For, easiestKind, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
 import { newest, weekly, type WalletEvent } from '@/lib/impact-wallet';
@@ -433,3 +434,21 @@ export function samplePlayBoard(me: { id: string; name: string }, gameRaw: unkno
   return { game, range, maxScore: max, rows, mine };
 }
 
+
+// ---------- Air traffic (M69) ----------
+
+const HUBS: [number, number][] = [[51.47, -0.45], [49.01, 2.55], [50.03, 8.57], [52.31, 4.76], [40.47, -3.56], [41.26, 28.74], [25.25, 55.36], [25.27, 51.61], [28.56, 77.1], [19.09, 72.87], [1.36, 103.99], [13.69, 100.75], [22.31, 113.92], [31.14, 121.81], [40.08, 116.6], [37.46, 126.44], [35.55, 139.78], [-33.95, 151.18], [40.64, -73.78], [41.98, -87.9], [33.64, -84.43], [32.9, -97.04], [33.94, -118.41], [37.62, -122.38], [43.68, -79.63], [19.44, -99.07], [-23.43, -46.47], [4.7, -74.15], [-26.14, 28.25], [30.12, 31.41], [-1.32, 36.93], [6.58, 3.32]];
+/** GET /trace/aircraft: made-up flights between 32 real airports, as "now". */
+export function sampleAircraft(): AirTraffic {
+  const r = rng(77), planes: Plane[] = [];
+  const brg = (a: [number, number], b: [number, number]) => { const p1 = a[0] * Math.PI / 180, p2 = b[0] * Math.PI / 180, dl = (b[1] - a[1]) * Math.PI / 180; return (Math.atan2(Math.sin(dl) * Math.cos(p2), Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl)) * 180 / Math.PI + 360) % 360; };
+  while (planes.length < 1600) {
+    const a = HUBS[Math.floor(r() * HUBS.length)], b = HUBS[Math.floor(r() * HUBS.length)];
+    if (a === b) continue;
+    const d = 6_371_000 * Math.acos(Math.min(1, Math.sin(a[0] * Math.PI / 180) * Math.sin(b[0] * Math.PI / 180) + Math.cos(a[0] * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180) * Math.cos((b[1] - a[1]) * Math.PI / 180)));
+    if (d < 400_000) continue;
+    const f = 0.05 + r() * 0.9, [lat, lon] = ahead(a[0], a[1], brg(a, b), d * f);
+    planes.push([Math.round(lat * 100) / 100, Math.round(lon * 100) / 100, Math.round(brg([lat, lon], b)), Math.round(210 + r() * 50), Math.round(9000 + r() * 3000)]);
+  }
+  return { at: new Date().toISOString(), planes, source: 'sample flights' };
+}

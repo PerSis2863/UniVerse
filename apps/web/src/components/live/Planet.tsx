@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Minus, Plus } from 'lucide-react';
+import { ahead, type Plane } from '@/lib/aircraft';
 import { cn } from '@/lib/utils';
 import { TONES, easeOut, glow, hash, seeded, useLiveCanvas, type Frame, type Tone } from './canvas';
 
@@ -141,8 +143,17 @@ function bodySprite(r: number) {
   return { c, size };
 }
 
-export function Planet({ places, arcs, label, className, pings = true }: {
+export function Planet({ places, arcs, label, className, pings = true, interactive = false, focus = null, selected, onPick, swarm }: {
   places: Place[];
+  /** M69: many small moving dots (planes), moved along their track at their speed from `at`. */
+  swarm?: { planes: Plane[]; at: number } | null;
+  /** M67 (Trace's Live globe): a globe to use, not only look at. Drag to turn it, pinch / ctrl + scroll
+   *  / buttons to zoom; it turns to `focus` (smoothly, the short way); no net or sparks over the land;
+   *  only `selected` places (and the one pointed at) carry a name; `onPick` hears a click on a place. */
+  interactive?: boolean;
+  focus?: { lat: number; lon: number } | null;
+  selected?: number[];
+  onPick?: (i: number) => void;
   /** Pairs of indexes into places joined by an arc (default: each place to the next, in a ring). */
   arcs?: [number, number][];
   label: string;
@@ -158,7 +169,10 @@ export function Planet({ places, arcs, label, className, pings = true }: {
   }, []);
   const pts = useMemo(() => places.map((p, i) => ({ ...p, v: toV(p.lat, p.lon), tone: p.tone ?? 'pink' as Tone, seed: hash(p.label) + i })), [places]);
   const links = useMemo(() => arcs ?? (places.length > 1 ? places.map((_, i) => [i, (i + 1) % places.length] as [number, number]).slice(0, places.length === 2 ? 1 : undefined) : []), [arcs, places]);
-  const st = useRef<{ model: Model | null; land: unknown; landAt: number; body: ReturnType<typeof bodySprite> | null; r: number; yaw: number; pitch: number; widths: Map<string, number> }>({ model: null, land: null, landAt: 0, body: null, r: 0, yaw: 0, pitch: 0, widths: new Map() });
+  const st = useRef<{ model: Model | null; land: unknown; landAt: number; body: ReturnType<typeof bodySprite> | null; r: number; yaw: number; pitch: number; widths: Map<string, number>;
+    cy: number; cp: number; drag: boolean; idleAt: number; lastT: number; zoom: number; tz: number; xy: Float32Array; focusKey: string; sw: Float32Array; swAt: number; swOf: unknown }>({
+    model: null, land: null, landAt: 0, body: null, r: 0, yaw: 0, pitch: 0, widths: new Map(), cy: -0.6, cp: 0.38, drag: false, idleAt: 0, lastT: 0, zoom: 1, tz: 1, xy: new Float32Array(0), focusKey: '', sw: new Float32Array(0), swAt: -1, swOf: null });
+  const [wake, setWake] = useState(0);
 
   const ref = useLiveCanvas(({ ctx, w, h, t, pointer, still }: Frame) => {
     const s = st.current;
@@ -171,13 +185,27 @@ export function Planet({ places, arcs, label, className, pings = true }: {
     const model = s.model;
     const cx = w / 2, cy = h / 2;
     const grow = still ? 1 : easeOut(t / 1.4);
-    const r = R * (0.9 + 0.1 * grow);
+    // Interactive: the camera eases (zoom, and the turn toward the focus, the short way round).
+    const dt = s.lastT ? Math.min(0.05, Math.max(0, t - s.lastT)) : 0.016;
+    s.lastT = t;
+    const ease = still ? 1 : 1 - Math.exp(-dt / 0.12);
+    if (interactive) {
+      s.zoom += (s.tz - s.zoom) * ease;
+      const fk = focus ? `${focus.lat},${focus.lon}` : '';
+      if (fk !== s.focusKey) { s.focusKey = fk; s.drag = false; }
+      if (focus && !s.drag) {
+        const ty = focus.lon * RAD, tp = Math.max(-1.2, Math.min(1.2, focus.lat * RAD));
+        const d = ((((ty - s.cy) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI)) - Math.PI;
+        s.cy += d * ease; s.cp += (tp - s.cp) * ease;
+      } else if (!s.drag && !still && t > s.idleAt) s.cy += dt * 0.05;
+    }
+    const r = R * (0.9 + 0.1 * grow) * (interactive ? s.zoom : 1);
     const landIn = still ? 1 : easeOut((t - s.landAt) / 0.9);
 
     // The pointer leans the planet a little; it settles back when the pointer leaves.
-    const tyaw = pointer ? (pointer.x / w - 0.5) * 0.9 : 0, tpitch = pointer ? (pointer.y / h - 0.5) * 0.35 : 0;
+    const tyaw = pointer && !interactive ? (pointer.x / w - 0.5) * 0.9 : 0, tpitch = pointer && !interactive ? (pointer.y / h - 0.5) * 0.35 : 0;
     s.yaw += (tyaw - s.yaw) * 0.06; s.pitch += (tpitch - s.pitch) * 0.06;
-    const yaw = -0.6 + t * 0.07 + s.yaw, pitch = 0.38 + s.pitch;
+    const yaw = interactive ? s.cy : -0.6 + t * 0.07 + s.yaw, pitch = interactive ? s.cp : 0.38 + s.pitch;
     const cY = Math.cos(yaw), sY = Math.sin(yaw), cP = Math.cos(pitch), sP = Math.sin(pitch);
     const rot = (v: V3): V3 => {
       const x1 = v[0] * cY - v[2] * sY, z1 = v[0] * sY + v[2] * cY;
@@ -221,7 +249,8 @@ export function Planet({ places, arcs, label, className, pings = true }: {
       const L = lit(q), depth = 0.4 + 0.6 * q[2];
       const tw = 0.82 + 0.18 * Math.sin(t * 2.1 + d.seed);
       const sz = (d.node ? 1.6 + 0.6 * L : d.land ? 1.05 + 0.5 * L : 0.9 + 0.3 * L) * (0.65 + 0.35 * q[2]) * scale * 2;
-      ctx.globalAlpha = Math.min(1, (d.node ? 0.85 + 0.3 * L : d.land ? 0.34 + 0.32 * L : 0.14 + 0.18 * L) * depth * tw * show);
+      if (interactive && d.node && !d.land) continue; // no net knots over the sea: the land reads clearly
+      ctx.globalAlpha = Math.min(1, (d.node ? 0.85 + 0.3 * L : d.land ? (interactive ? 0.6 + 0.35 * L : 0.34 + 0.32 * L) : 0.14 + 0.18 * L) * depth * tw * show);
       ctx.drawImage(d.node ? LAND[0] : d.land ? LAND[d.tone] : SEA[d.tone === 2 ? 1 : 0], proj[i * 3] - sz / 2, proj[i * 3 + 1] - sz / 2, sz, sz);
     }
     ctx.globalAlpha = 1;
@@ -238,12 +267,14 @@ export function Planet({ places, arcs, label, className, pings = true }: {
       ctx.strokeStyle = `rgba(170,255,244,${alpha * grow})`;
       ctx.stroke();
     };
-    net(-1.01, 0, 0.07, 0.5);
-    net(0, 0.45, 0.22, 0.6);
-    net(0.45, 1.01, 0.4, 0.75);
+    if (!interactive) {
+      net(-1.01, 0, 0.07, 0.5);
+      net(0, 0.45, 0.22, 0.6);
+      net(0.45, 1.01, 0.4, 0.75);
+    }
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < dots.length; i++) {
-      if (!dots[i].spark) continue;
+      if (interactive || !dots[i].spark) continue;
       const z = proj[i * 3 + 2];
       if (z < 0.05) continue;
       const pulse = 0.7 + 0.3 * Math.sin(t * 1.8 + dots[i].seed);
@@ -264,7 +295,7 @@ export function Planet({ places, arcs, label, className, pings = true }: {
     ctx.globalAlpha = 1;
 
     // Events landing: a ripple at a land dot every 0.9 s.
-    if (pings && !still) {
+    if (pings && !interactive && !still) {
       const step = Math.floor(t / 0.9);
       for (let k = step - 2; k <= step; k++) {
         if (k < 1) continue;
@@ -323,11 +354,47 @@ export function Planet({ places, arcs, label, className, pings = true }: {
     });
     ctx.globalCompositeOperation = 'source-over';
 
+    // Planes (M69): where each is now (moved along its track since the data's time, every half
+    // second), a dot with a short trail behind; only the near side.
+    if (swarm?.planes.length) {
+      if (s.swOf !== swarm || t - s.swAt > 0.5) {
+        s.swOf = swarm; s.swAt = t;
+        const n = swarm.planes.length, el = Number.isFinite(swarm.at) ? Math.max(0, (Date.now() - swarm.at) / 1000) : 0;
+        if (s.sw.length !== n * 6) s.sw = new Float32Array(n * 6);
+        for (let i = 0; i < n; i++) {
+          const [la, lo, trk, v] = swarm.planes[i];
+          const [a1, o1] = v > 30 ? ahead(la, lo, trk, v * Math.min(el, 3 * 3600)) : [la, lo];
+          const [a0, o0] = v > 30 ? ahead(a1, o1, (trk + 180) % 360, 90_000) : [a1, o1];
+          s.sw.set(toV(a1, o1), i * 6); s.sw.set(toV(a0, o0), i * 6 + 3);
+        }
+      }
+      const dotS = Math.max(1.4, r / 190), sw = s.sw, head = new Path2D(), tail = new Path2D();
+      for (let i = 0; i < sw.length; i += 6) {
+        const q = rot([sw[i], sw[i + 1], sw[i + 2]]);
+        if (q[2] < 0.05) continue;
+        const x = cx + q[0] * r, y = cy - q[1] * r, b = rot([sw[i + 3], sw[i + 4], sw[i + 5]]);
+        tail.moveTo(cx + b[0] * r, cy - b[1] * r); tail.lineTo(x, y);
+        head.rect(x - dotS / 2, y - dotS / 2, dotS, dotS);
+      }
+      ctx.lineWidth = Math.max(0.6, r / 520);
+      ctx.strokeStyle = `rgba(${TONES.pink},0.35)`; ctx.stroke(tail);
+      ctx.fillStyle = 'rgba(255,214,240,0.95)'; ctx.fill(head);
+    }
+
     // The places: a glowing node with a ripple, and a pill with the name.
     ctx.font = FONT;
     ctx.textBaseline = 'middle';
+    if (s.xy.length !== pts.length * 2) s.xy = new Float32Array(pts.length * 2);
+    // Interactive: the place pointed at (within 16 px) also gets its name.
+    let hover = -1;
+    if (interactive && pointer) {
+      let best = 16;
+      pts.forEach((_, i) => { const q = P[i]; if (q[2] < 0.05) return; const d = Math.hypot(cx + q[0] * r - pointer.x, cy - q[1] * r - pointer.y); if (d < best) { best = d; hover = i; } });
+    }
+    const pills: [number, number, number][] = [];
     pts.forEach((p, i) => {
       const q = P[i];
+      s.xy[i * 2] = q[2] < 0.05 ? -1e4 : cx + q[0] * r; s.xy[i * 2 + 1] = cy - q[1] * r;
       if (q[2] < 0.05) return;
       const x = cx + q[0] * r, y = cy - q[1] * r, z = Math.min(1, q[2] * 1.6), show = still ? 1 : easeOut((t - 1.2 - i * 0.12) / 0.6);
       if (show <= 0) return;
@@ -341,12 +408,17 @@ export function Planet({ places, arcs, label, className, pings = true }: {
       ctx.globalCompositeOperation = 'source-over';
       ctx.fillStyle = '#fff';
       ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.fill();
-      // The pill, to the side away from the middle.
+      // The pill, to the side away from the middle (interactive: only for the chosen and pointed-at).
+      if (interactive && !(selected?.includes(i) || i === hover)) { ctx.globalAlpha = 1; return; }
       const text = p.value ? `${p.label} · ${p.value}` : p.label;
       let tw = s.widths.get(text);
       if (tw === undefined) { tw = ctx.measureText(text).width; s.widths.set(text, tw); }
       const bw = tw + 24, bh = 20, left = x < cx;
-      const bx = Math.max(2, Math.min(w - bw - 2, left ? x - bw - 10 : x + 10)), by = Math.max(2, Math.min(h - bh - 2, y - bh - 4));
+      const bx = Math.max(2, Math.min(w - bw - 2, left ? x - bw - 10 : x + 10));
+      let by = Math.max(2, Math.min(h - bh - 2, y - bh - 4));
+      // Never on top of another name: step up until clear.
+      while (pills.some(([px, py, pw]) => bx < px + pw && bx + bw > px && by < py + bh + 3 && by + bh + 3 > py) && by > 2) by -= bh + 4;
+      pills.push([bx, by, bw]);
       ctx.fillStyle = 'rgba(255,255,255,0.94)';
       ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10); ctx.fill();
       ctx.fillStyle = `rgb(${TONES[p.tone]})`;
@@ -355,14 +427,50 @@ export function Planet({ places, arcs, label, className, pings = true }: {
       ctx.fillText(text, bx + 17, by + bh / 2 + 0.5);
       ctx.globalAlpha = 1;
     });
-  }, land);
+  }, `${String(!!land)}${wake}`);
+
+  // Turning it by hand, zooming, picking a place (interactive only).
+  const down = useRef<{ x: number; y: number; moved: number; id: number } | null>(null);
+  const zoomBy = (f: number) => { const s = st.current; s.tz = Math.max(1, Math.min(3.2, s.tz * f)); setWake((n) => n + 1); };
+  const handlers = interactive ? {
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => { if ((e.target as HTMLElement).closest('button')) return; down.current = { x: e.clientX, y: e.clientY, moved: 0, id: e.pointerId }; },
+    onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
+      const d = down.current, s = st.current;
+      if (!d || d.id !== e.pointerId) return;
+      const dx = e.clientX - d.x, dy = e.clientY - d.y;
+      d.moved += Math.abs(dx) + Math.abs(dy); d.x = e.clientX; d.y = e.clientY;
+      if (d.moved < 4) return;
+      if (!s.drag) e.currentTarget.setPointerCapture(e.pointerId);
+      // A finger turns it sideways only (the page still scrolls up and down); a mouse both ways.
+      const k = 1 / Math.max(80, s.r * s.zoom);
+      s.drag = true; s.cy -= dx * k;
+      if (e.pointerType === 'mouse') s.cp = Math.max(-1.2, Math.min(1.2, s.cp + dy * k));
+      s.idleAt = s.lastT + 5;
+    },
+    onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => {
+      const d = down.current, s = st.current;
+      down.current = null;
+      if (!d || d.moved >= 4 || !onPick) { setWake((n) => n + 1); return; }
+      const r = e.currentTarget.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      let best = 18, pick = -1;
+      for (let i = 0; i < s.xy.length / 2; i++) { const dd = Math.hypot(s.xy[i * 2] - x, s.xy[i * 2 + 1] - y); if (dd < best) { best = dd; pick = i; } }
+      if (pick >= 0) onPick(pick);
+    },
+    onWheel: (e: React.WheelEvent<HTMLDivElement>) => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); zoomBy(Math.exp(-e.deltaY * 0.01)); },
+  } : {};
 
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn('relative', interactive && 'cursor-grab active:cursor-grabbing select-none', className)} {...handlers}>
       <canvas ref={ref} role="img" aria-label={label} className="absolute inset-0 h-full w-full touch-pan-y" />
+      {interactive && (
+        <div className="absolute end-3 bottom-3 flex flex-col gap-1.5">
+          <button type="button" onClick={() => zoomBy(1.35)} className="w-9 h-9 grid place-items-center rounded-full bg-[#171f44]/85 text-white ring-1 ring-white/15 hover:bg-[#232d5c]" aria-label="Zoom in on the globe"><Plus className="w-4 h-4" aria-hidden /></button>
+          <button type="button" onClick={() => zoomBy(1 / 1.35)} className="w-9 h-9 grid place-items-center rounded-full bg-[#171f44]/85 text-white ring-1 ring-white/15 hover:bg-[#232d5c]" aria-label="Zoom out of the globe"><Minus className="w-4 h-4" aria-hidden /></button>
+        </div>
+      )}
       {places.length > 0 && (
         <ul className="sr-only">
-          {places.map((p) => <li key={p.label}>{p.value ? `${p.label}: ${p.value}` : p.label}</li>)}
+          {places.map((p, i) => <li key={`${p.label}-${i}`}>{p.value ? `${p.label}: ${p.value}` : p.label}</li>)}
         </ul>
       )}
     </div>

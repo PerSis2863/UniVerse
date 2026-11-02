@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { inSchools, schoolsOf } from './school-scope';
 import { courseAccess } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { r2KeyOf, r2PresignGet } from '@/lib/r2';
@@ -39,11 +40,13 @@ export async function privateLink(url: string, user: SessionUser): Promise<{ url
     if (!(await courseAccess(p.courseId, user))) throw new ForbiddenException('This recording is for the class’s students and teacher.');
   } else if (p.kind === 'call-recording') {
     await callAccess(p.callId, user).catch(() => { throw new ForbiddenException('This recording is for the people in that call.'); });
-  } else if (p.ownerId !== user.id && user.role !== 'ADMIN') {
+  } else if (p.ownerId !== user.id) {
     // Someone else's upload: only a student document is private (a chat photo is for its chat).
     const doc = await prisma.studentDocument.findFirst({ where: { fileUrl: url }, select: { id: true } });
-    if (doc) throw new ForbiddenException('Only its owner and the school’s admins can open this document.');
-    return { url, expiresAt: null };
+    if (!doc) return { url, expiresAt: null };
+    // Its owner, or an admin of the owner's school (not any school's admin: M62 security review).
+    const owner = user.role === 'ADMIN' ? await prisma.user.findUnique({ where: { id: p.ownerId }, select: { organizationId: true } }) : null;
+    if (!owner || !inSchools(await schoolsOf(user), owner.organizationId)) throw new ForbiddenException('Only its owner and the school’s admins can open this document.');
   }
   const signed = await r2PresignGet(key, LINK_SECONDS).catch(() => null);
   if (!signed) throw new NotFoundException('This file can’t be opened right now.');

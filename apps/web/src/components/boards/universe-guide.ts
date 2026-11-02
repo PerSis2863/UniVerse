@@ -7,8 +7,8 @@ import { CORE, DEPS, DESCRIBED, ENUM_LIST, ENUMS, FIELDS, HISTORY, LANGUAGES, ME
 // named frames: the ten whiteboard templates, every page by role, the jobs it runs by itself, how a
 // request travels, safety, limits, a glossary, and charts and long lists made from the code itself
 // (guide-data.gen.ts, written at build time: every route with its methods and purpose, page, table with
-// its fields, core endpoint, described code file, test file, library and plan item). As wide as a
-// screen at 10% zoom (about 17,000), with small even gaps. Like any template it's added on the first open of
+// its fields, core endpoint, described code file, test file, library and plan item). About 34,000 wide
+// and 23,000 tall (M70), the whole of it on screen at about 4% zoom, with small even gaps. Like any template it's added on the first open of
 // the new, empty board, as ordinary shapes the owner can edit; later openings add back any shape that
 // never reached the room (guide-fill.ts), so the ids must stay fixed.
 // Keep it true: when a big feature lands or goes, change the notes here (old boards keep theirs).
@@ -16,10 +16,12 @@ import { CORE, DEPS, DESCRIBED, ENUM_LIST, ENUMS, FIELDS, HISTORY, LANGUAGES, ME
 type El = ExcalidrawElementSkeleton & { id?: string; x?: number; y?: number; width?: number; height?: number };
 const C = { student: '#a5d8ff', teacher: '#b2f2bb', admin: '#ffec99', parent: '#ffc9c9', owner: '#d0bfff', tech: '#99e9f2', warm: '#ffd8a8', grey: '#f1f3f5', white: '#ffffff' };
 
-// Text in a box doesn't wrap by itself: break each line to the box's width (about 0.6 em a letter
-// in the hand-drawn font), keeping a bullet's indent.
+// Text in a box doesn't wrap by itself: break each line to the box's width, keeping a bullet's
+// indent. M70: about 0.68 em a letter (0.6 was too little for the hand-drawn font, so Excalidraw
+// wrapped again, the box grew taller and ran into the one below it).
+const EM = 0.68;
 function wrap(t: string, width: number, fontSize: number) {
-  const max = Math.max(8, Math.floor((width - 24) / (fontSize * 0.6)));
+  const max = Math.max(8, Math.floor((width - 24) / (fontSize * EM)));
   return t.split('\n').flatMap((line) => {
     const indent = /^(• |\s+)/.exec(line)?.[0].replace(/•/, ' ') ?? '';
     const out: string[] = [];
@@ -32,6 +34,12 @@ function wrap(t: string, width: number, fontSize: number) {
   }).join('\n');
 }
 const INK = '#1e1e1e';
+/** The biggest size (down to 12) at which the text fits its box's height, so no box has to grow. */
+function fit(t: string, width: number, height: number, fontSize: number) {
+  let f = fontSize;
+  while (f > 12 && wrap(t, width, f).split('\n').length * f * 1.25 + 20 > height) f -= 1;
+  return f;
+}
 
 /** One frame's worth of shapes, in its own coordinates (0, 0 at its top left). */
 function section(key: string, name: string) {
@@ -45,10 +53,12 @@ function section(key: string, name: string) {
       els.push({ type: 'text', id: id(), x, y, text: t, fontSize, ...extra } as El);
     },
     box(x: number, y: number, width: number, height: number, label: string, bg = 'transparent', extra: Partial<El> & { fontSize?: number } = {}) {
-      const { fontSize = 20, ...rest } = extra;
+      const { fontSize: want = 20, ...rest } = extra;
+      const fontSize = fit(label, width, height, want);
       els.push({ type: 'rectangle', id: id(), x, y, width, height, backgroundColor: bg, fillStyle: 'solid', roundness: { type: 3 }, label: { text: wrap(label, width, fontSize), fontSize, verticalAlign: 'top', textAlign: 'left', strokeColor: INK }, ...rest } as El);
     },
-    note(x: number, y: number, width: number, height: number, t: string, bg: string, fontSize = 16) {
+    note(x: number, y: number, width: number, height: number, t: string, bg: string, want = 16) {
+      const fontSize = fit(t, width, height, want);
       // White and grey notes keep a soft edge, so they still show on a dark board.
       const edge = bg === C.white || bg === C.grey ? '#ced4da' : 'transparent';
       els.push({ type: 'rectangle', id: id(), x, y, width, height, backgroundColor: bg, fillStyle: 'solid', strokeColor: edge, roundness: { type: 3 }, label: { text: wrap(t, width, fontSize), fontSize, textAlign: 'left', verticalAlign: 'top', strokeColor: INK } } as El);
@@ -904,16 +914,19 @@ function packed(frames: Section[], W = 17070, scale = 1.3): Section[][][] {
  * scaled as a whole to fit (text keeps its proportions). Gaps leave room for the frames' names.
  */
 export function guideElements(): ExcalidrawElementSkeleton[] {
+  // M70 (the owner: "make it like twice the size… I should be able to see it fully"): twice as wide
+  // (about 34,000), the hand-made bands side by side in pairs, so it is about half as tall and the
+  // whole board fits a screen at about 4% zoom (Excalidraw's limit is lowered to 2% by the patch in
+  // patches/@excalidraw__excalidraw@0.18.1.patch).
+  const banner = startHere();
+  const W = natural(banner).w * 2;
   const bands: Section[][][] = [
-    [[startHere()]],
-    [[everyFeature()], [jobs()], [travels(), howItWasBuilt()], [technical(), ownersWeek()]],
-    [[students()], [teachers()], [admins()], [parents()], [consoleMap()], [whereThingsStand()], [lookingBack()]],
-    [[swot()], [webAndApp()], [demoPlan()], [safety()], [limits()], [glossary()]],
-    [[codeNumbers()], [database()], [permissions(), notifications()], [signIn()], [assignmentLife(), checks()], [stack(), weights()]],
+    [[banner]],
+    [[everyFeature()], [jobs()], [travels(), howItWasBuilt()], [technical(), ownersWeek()], [students()], [teachers()], [admins()], [parents()], [consoleMap()], [whereThingsStand()], [lookingBack()]],
+    [[swot()], [webAndApp()], [demoPlan()], [safety()], [limits()], [glossary()], [codeNumbers()], [database()], [permissions(), notifications()], [signIn()], [assignmentLife(), checks()], [stack(), weights()]],
     [[messagesArea()], [collaborateArea()], [designArea()], [ownerHowTo(), waitingArea()], [schoolFaq()], [messageLife(), uploadLife()], [securityLayers(), glance()]],
-    ...packed([languages(), testsChart(), guards(), enumsFrame(), depsFrame(), ...historyFrames(), ...testFrames(), ...coreFrames(), ...routeFrames(), ...pageFrames(), ...tableFrames(), ...codeFrames(), ...migrationFrames()]),
+    ...packed([languages(), testsChart(), guards(), enumsFrame(), depsFrame(), ...historyFrames(), ...testFrames(), ...coreFrames(), ...routeFrames(), ...pageFrames(), ...tableFrames(), ...codeFrames(), ...migrationFrames()], W),
   ];
-  const W = natural(bands[0][0][0]).w;
   const out: El[] = [];
   let y = 0;
   for (const cols of bands) {

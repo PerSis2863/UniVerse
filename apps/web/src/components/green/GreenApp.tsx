@@ -69,7 +69,8 @@ export function GreenApp() {
   const [burst, setBurst] = useState(0);
   const [photo, setPhoto] = useState<File | null>(null);
   const [allRecent, setAllRecent] = useState(false);
-  const [ask, setAsk] = useState<string | null>(null);
+  const [ask, setAsk] = useState<{ id: string; step: 'feel' | 'why' | 'share' } | null>(null);
+  const [why, setWhy] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
   const f = GREEN_FACTORS[kind];
   const preview = co2For(kind, Number(amount) || 0);
@@ -83,7 +84,7 @@ export function GreenApp() {
       const photoUrl = photo ? await uploadProof(photo) : undefined;
       const made = await api.post<{ id?: string }>('/green/actions', { kind, amount: Number(amount), note, photoUrl, ...(pos ?? {}) });
       toast.success(`Logged: ${preview} kg of CO₂ saved${photoUrl ? '. A teammate can confirm it now.' : ''}`);
-      setNote(''); setPhoto(null); setBurst((b) => b + 1); setAsk(made.data?.id ?? null);
+      setNote(''); setPhoto(null); setBurst((b) => b + 1); setAsk(made.data?.id ? { id: made.data.id, step: 'feel' } : null);
       // A badge earned just now: a short celebration (src/lib/celebrate.ts).
       const won = (await mutate())?.badges.find((b) => b.earned && !had.has(b.id));
       if (won) { celebrate(at); toast.success(`New badge: ${won.label}`); }
@@ -93,11 +94,32 @@ export function GreenApp() {
     if (!file) return;
     try { await api.post(`/green/actions/${id}/proof`, { photoUrl: await uploadProof(file) }); toast.success('Photo added. A teammate can confirm it now.'); void mutate(); } catch (err) { toast.error(errorMessage(err, 'Could not add the photo.')); }
   };
-  // "How did it go?" right after logging (M60): one tap, or skip.
-  const feel = async (feeling: Feeling) => {
-    const id = ask; setAsk(null);
-    if (!id) return;
-    try { await api.post(`/green/actions/${id}/feeling`, { feeling }); toast.success('Thanks, noted.'); void mutate(); } catch (err) { toast.error(errorMessage(err, 'Could not save that.')); }
+  // "How did it go?" right after logging (M60), then like Candour (M61): "Hard" asks what made it
+  // hard (private, for the owner), "Easy" offers to share the Pass. Answers count toward a badge.
+  const feel = async (feeling: Feeling, note?: string) => {
+    if (!ask) return;
+    const { id } = ask, had = new Set(data?.badges.filter((b) => b.earned).map((b) => b.id));
+    const first = note === undefined;
+    setAsk(first && feeling === 'HARD' ? { id, step: 'why' } : first && feeling === 'EASY' ? { id, step: 'share' } : null);
+    if (!first && !note) return; // "What made it hard?" skipped: "Hard" is already saved
+    try {
+      await api.post(`/green/actions/${id}/feeling`, { feeling, note });
+      setWhy('');
+      if (!first) toast.success('Thanks. That helps us make it easier.');
+      else if (feeling === 'OK') toast.success('Thanks, noted.');
+      const won = first ? (await mutate())?.badges.find((b) => b.earned && !had.has(b.id)) : undefined;
+      if (won) toast.success(`New badge: ${won.label}`);
+    } catch (err) { toast.error(errorMessage(err, 'Could not save that.')); }
+  };
+  const sharePass = async () => {
+    setAsk(null);
+    const p = data ? greenPass(data.totals) : null;
+    const text = p ? `I'm a ${p.tier} on UniVerse Green: ${fmt(data!.totals.kg)} kg of CO₂ saved so far.` : 'I log my climate actions on UniVerse Green.';
+    const url = `${location.origin}/green`;
+    try {
+      if (navigator.share) await navigator.share({ title: 'My Green Pass', text, url });
+      else { await navigator.clipboard.writeText(`${text} ${url}`); toast.success('Copied. Paste it anywhere to share.'); }
+    } catch { /* closed the share sheet */ }
   };
   const tryAgain = (k: GreenKind) => { setKind(k); formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
   const remove = async (id: string) => {
@@ -157,10 +179,20 @@ export function GreenApp() {
           <button type="submit" disabled={saving} className="mt-4 w-full h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold inline-flex items-center justify-center gap-2 active:scale-[0.98] transition">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Leaf className="w-4 h-4" />}Log it</button>
           <AnimatePresence>
             {ask && (
-              <motion.div key={ask} role="group" aria-labelledby="felt-h" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-emerald-500/[0.08] px-3 py-2.5">
-                <span id="felt-h" className="me-auto text-sm font-semibold text-zinc-800 dark:text-zinc-100">How did it go?</span>
-                {(Object.keys(FELT) as Feeling[]).map((k) => <button key={k} type="button" onClick={() => void feel(k)} className="btn-secondary btn-sm">{FELT[k]}</button>)}
-                <button type="button" onClick={() => setAsk(null)} className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 underline-offset-2 hover:underline px-1">Skip</button>
+              <motion.div key={`${ask.id}-${ask.step}`} role="group" aria-labelledby="felt-h" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-emerald-500/[0.08] px-3 py-2.5">
+                {ask.step === 'feel' ? (<>
+                  <span id="felt-h" className="me-auto text-sm font-semibold text-zinc-800 dark:text-zinc-100">How did it go?</span>
+                  {(Object.keys(FELT) as Feeling[]).map((k) => <button key={k} type="button" onClick={() => void feel(k)} className="btn-secondary btn-sm">{FELT[k]}</button>)}
+                  <button type="button" onClick={() => setAsk(null)} className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 underline-offset-2 hover:underline px-1">Skip</button>
+                </>) : ask.step === 'why' ? (<>
+                  <label htmlFor="felt-why" id="felt-h" className="w-full text-sm font-semibold text-zinc-800 dark:text-zinc-100">What made it hard? <span className="font-normal text-zinc-600 dark:text-zinc-300">Only the UniVerse team reads this, without your name.</span></label>
+                  <input id="felt-why" maxLength={300} value={why} onChange={(e) => setWhy(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void feel('HARD', why.trim()); } }} className="input flex-1 min-w-0" placeholder="No bike lane on my way" />
+                  <button type="button" onClick={() => void feel('HARD', why.trim())} className="btn-secondary btn-sm">{why.trim() ? 'Send' : 'Skip'}</button>
+                </>) : (<>
+                  <span id="felt-h" className="me-auto text-sm font-semibold text-zinc-800 dark:text-zinc-100">Glad it was easy. Share your Green Pass?</span>
+                  <button type="button" onClick={() => void sharePass()} className="btn-secondary btn-sm">Share</button>
+                  <button type="button" onClick={() => setAsk(null)} className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 underline-offset-2 hover:underline px-1">Not now</button>
+                </>)}
               </motion.div>
             )}
           </AnimatePresence>

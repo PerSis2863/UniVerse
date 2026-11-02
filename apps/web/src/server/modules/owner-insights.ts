@@ -166,6 +166,21 @@ export default function ownerInsightsModule(router: Router) {
     };
   });
 
+  // How Green feels (M61, the Candour ideas): Easy / Okay / Hard per kind of action, and the latest
+  // "what made it hard" notes. No names, emails or places: only the kind, the note and the day.
+  r.get('green-feel', async ({ query }) => {
+    const days = oneOf(['7', '30', '90'] as const, query.days) ? Number(query.days) : 30;
+    const since = iso(Date.now() - days * DAY).replace('Z', '+00:00');
+    const [counts, logged, notes] = await Promise.all([
+      prisma.$queryRawUnsafe<{ kind: string; feeling: string; n: unknown }[]>(`SELECT kind, feeling, COUNT(*) AS n FROM green_actions WHERE feeling IS NOT NULL AND createdAt >= ? GROUP BY kind, feeling`, since),
+      prisma.$queryRawUnsafe<{ n: unknown }[]>(`SELECT COUNT(*) AS n FROM green_actions WHERE createdAt >= ?`, since),
+      prisma.$queryRawUnsafe<{ kind: string; feelingNote: string; createdAt: string }[]>(`SELECT kind, feelingNote, createdAt FROM green_actions WHERE feelingNote IS NOT NULL AND createdAt >= ? ORDER BY createdAt DESC LIMIT 30`, since),
+    ]);
+    const byKind: Record<string, { EASY: number; OK: number; HARD: number }> = {};
+    for (const c of counts) { const k = (byKind[c.kind] ??= { EASY: 0, OK: 0, HARD: 0 }); if (c.feeling === 'EASY' || c.feeling === 'OK' || c.feeling === 'HARD') k[c.feeling] += num(c.n); }
+    return { days, logged: num(logged[0]?.n), answered: counts.reduce((s, c) => s + num(c.n), 0), byKind, notes: notes.map((n) => ({ kind: n.kind, note: n.feelingNote, at: n.createdAt })) };
+  });
+
   r.get('money', async () => {
     const now = Date.now();
     const month = new Date(now);
