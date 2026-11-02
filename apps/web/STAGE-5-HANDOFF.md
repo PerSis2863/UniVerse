@@ -2210,3 +2210,18 @@ and to add it to this repo. It is an **original** game (no copied names, maps, p
   its sounds and `.ops-*` styles. Old `ops` scores stay in the database; the "last rounds" list skips
   games that no longer exist, the leaderboard falls back to Quiz Clash, XP skips them.
 
+- **Web build update (2 Nov 2026; the owner: "Update web build", "Full game, smaller textures"):**
+  the build is now the whole game from the owner's Unity repo (`PerSis2863/Universegames`; the
+  copy in `games/stormfall/` is the older island-only source): a lobby, the Kaldera Isle battle
+  royale and Outbreak (round-based undead survival) on Floodmere and Dust Range. It uses
+  third-party asset packs, so its textures get a WebGL-only 512 px cap at build time (desktop keeps
+  full size): 49 MB data + 8.5 MB code instead of 264 MB. `scripts/stormfall-web.mjs` now cuts a
+  data file over 25 MB into `stormfall.data.N.unityweb` parts of 24 MB and puts a small `fetch`
+  hook at the top of the loader that answers Unity's request for `stormfall.data.unityweb` by
+  streaming the parts in order (full Content-Length for the progress bar, an ETag so Unity's
+  download cache still works). The page and the CSP are unchanged; the Deploy button says 58 MB.
+  `next.config.ts` now keeps `games/**` out of the service worker's install list (a fresh build
+  had put the game's files in it, so every visitor, phones too, would have downloaded them).
+  Checked with `scripts/checks/stormfall-ui.mjs` on the built Worker (as `demo@student.com`; the
+  local database had no `alice`): the three parts load, the lobby renders, no CSP blocks or page
+  errors, phones download nothing.

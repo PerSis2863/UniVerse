@@ -8,7 +8,8 @@ import { fetcher } from '@/lib/fetcher';
 import { useRatingGate, type Rated } from './AgeGate';
 import type { PlayMe } from './GameShell';
 
-// STORMFALL (M41): a Unity battle royale (source in games/stormfall at the repo root), built for the
+// STORMFALL (M41): a Unity shooter (a battle royale plus Outbreak, undead survival on two more maps;
+// source in games/stormfall at the repo root, the current one in the owner's Unity repo), built for the
 // web into public/games/stormfall by scripts/stormfall-web.mjs (which also keeps the page inside
 // this site's Content-Security-Policy). It needs a keyboard and mouse, so it is offered only on
 // computers: no card on phones or tablets, and its page says so there. Scores stay in the game.
@@ -16,7 +17,7 @@ import type { PlayMe } from './GameShell';
 export const STORMFALL: Rated = { name: 'STORMFALL', age: 16, rated: 'realistic military shooting' };
 const BASE = '/games/stormfall/stormfall';
 /** The download, for the intro (the four build files together, compressed). */
-export const STORMFALL_MB = 12;
+export const STORMFALL_MB = 58;
 
 const DESKTOP = '(hover: hover) and (pointer: fine) and (min-width: 1024px)';
 const subscribe = (cb: () => void) => { const m = window.matchMedia(DESKTOP); m.addEventListener('change', cb); return () => m.removeEventListener('change', cb); };
@@ -39,10 +40,10 @@ export function StormfallCard() {
       </span>
       <span className="relative mt-4 block rounded-2xl bg-zinc-100/80 p-3 dark:bg-white/[0.04]">
         <span className="play-scene relative flex h-[76px] items-end gap-1.5 overflow-hidden rounded-xl p-2.5" style={{ background: 'radial-gradient(70% 90% at 70% 0%,#d9f99d55,transparent 60%),linear-gradient(160deg,#1f2a1c,#4b5a2c 50%,#c9a24a)' }} aria-hidden>
-          {['battle royale', 'parachute in', 'last one standing'].map((t) => <span key={t} className="rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white">{t}</span>)}
+          {['battle royale', 'undead survival', '3 maps'].map((t) => <span key={t} className="rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white">{t}</span>)}
         </span>
       </span>
-      <span className="relative mt-4 block text-sm text-zinc-600 dark:text-zinc-300">Drop onto Kaldera Isle, loot, buy, and outlast 24 soldiers as the Blight closes in.</span>
+      <span className="relative mt-4 block text-sm text-zinc-600 dark:text-zinc-300">Drop onto Kaldera Isle and outlast 24 soldiers, or hold out against the undead in Outbreak on two more maps.</span>
       <span className="relative mt-4 flex items-center gap-3 text-sm">
         <span className="inline-flex items-center gap-1.5 font-semibold text-zinc-900 dark:text-white">Play<ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5 rtl:-scale-x-100 rtl:group-hover:-translate-x-0.5" aria-hidden /></span>
         <span className="rounded-full bg-fuchsia-500/15 px-2 py-0.5 text-[11px] font-bold text-fuchsia-800 dark:text-fuchsia-300">New · 3D</span>
@@ -127,14 +128,14 @@ export function StormfallPlayer() {
             <div className="dark absolute inset-0 grid place-items-center p-6 text-center" style={{ background: 'radial-gradient(70% 90% at 70% 0%,#d9f99d33,transparent 60%),linear-gradient(160deg,#141a12,#2f3a1c 55%,#6b5524)' }}>
               <div className="max-w-md">
                 <h2 className="flex items-center justify-center gap-2 text-3xl font-black tracking-wide text-white">{STORMFALL.name}<Rating /></h2>
-                <p className="mt-2 text-sm text-zinc-200">Ride the cargo plane over Kaldera Isle, jump, loot weapons and armour, and be the last one standing as the Blight closes in.</p>
+                <p className="mt-2 text-sm text-zinc-200">Pick a mode in the lobby: ride the cargo plane over Kaldera Isle and be the last one standing, or survive round after round of undead on Floodmere and Dust Range.</p>
                 {phase === 'intro' && (
                   <button type="button" onClick={start} className="btn-primary btn-lg mt-6 justify-center">Deploy{STORMFALL_MB > 0 ? ` · ${STORMFALL_MB} MB download` : ''}</button>
                 )}
                 {phase === 'loading' && (
                   <div className="mx-auto mt-6 w-64" role="progressbar" aria-label="Downloading the game" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
                     <div className="h-1.5 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-amber-400 transition-[width] duration-200" style={{ width: `${Math.round(progress * 100)}%` }} /></div>
-                    <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-zinc-300"><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />{progress < 0.9 ? `Downloading ${Math.round(progress * 100)}%` : 'Building the island…'}</p>
+                    <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-zinc-300"><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />{progress < 0.9 ? `Downloading ${Math.round(progress * 100)}%` : 'Building the world…'}</p>
                   </div>
                 )}
                 {phase === 'error' && (
