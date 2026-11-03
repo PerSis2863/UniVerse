@@ -65,6 +65,14 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
 
 type Hero = { words: string[]; accent: string; text: string; note: string; card: React.ReactNode; extra?: React.ReactNode };
 // The quiet links under the two main buttons (Get the app, Scan a sample).
+// M81: what a first-time visitor is here for, and where that starts.
+const HERE_FOR: [string, string][] = [
+  ['Learn', '/register?app=campus&as=student'],
+  ['Teach', '/register?app=campus&as=teacher'],
+  ['Protect my brand', '/register?app=trace'],
+  ['Help people', '/register?app=relief'],
+  ['Look around', '/t/demo'],
+];
 const SMALL = 'inline-flex items-center gap-1.5 text-sm font-medium text-zinc-300 hover:text-white underline-offset-4 hover:underline';
 
 const HERO: Record<AppId, Hero> = {
@@ -183,6 +191,13 @@ export default function ShowcasePage() {
                       <Link href={`/register?app=${app}`} data-magnetic className={primary}>Get started <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
                       <Link href={`/login?app=${app}`} data-magnetic className={ghost}>Sign in</Link>
                     </div>
+                    {/* M81: first visit: say what you're here for, go straight to the right start. */}
+                    <nav aria-label="What are you here for?" className="mt-6 flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-zinc-400 me-1">Here to</span>
+                      {HERE_FOR.map(([label, href]) => (
+                        <Link key={label} href={href} className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-zinc-200 transition-[background-color,border-color] hover:border-aqua-300/50 hover:bg-white/[0.08] focus-visible:outline-2 focus-visible:outline-aqua-300">{label}</Link>
+                      ))}
+                    </nav>
                     <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
                       <button type="button" onClick={handleInstallClick} className={SMALL}><Smartphone className="w-4 h-4" aria-hidden /> {installed ? 'Open the app' : 'Get the app'}</button>
                       {hero.extra}

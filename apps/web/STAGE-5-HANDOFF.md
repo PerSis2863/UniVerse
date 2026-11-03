@@ -3391,3 +3391,15 @@ and "people must be signed in to open a shared link"): "please do both of this a
 - The live site on 3 Nov: 8 real accounts (2 this week, 1 today), 306 made-up ones left out.
 - **Tested:** `real-people.test.ts`; the query on the local and (read-only) the live database;
   `console-ui.mjs` now opens the card too (axe, no sideways scroll).
+
+## M81: first visit: "Here to…" on the landing (the council's first-visit path)
+
+- Under the hero's Get started / Sign in: **Here to** Learn · Teach · Protect my brand · Help people ·
+  Look around (`HERE_FOR` in `src/app/page.tsx`, a `nav` named "What are you here for?"). Learn and
+  Teach open UniVersity's sign-up with the role already picked (`?as=student|teacher`, read in
+  `register/page.tsx`; they still confirm with Continue); Protect my brand → Trace sign-up; Help
+  people → Relief sign-up; Look around → the sample product passport `/t/demo` (no account).
+- **Trap:** in `register/page.tsx` the `as` effect must come after `individual`'s `useState` (lint:
+  "accessed before it is declared").
+- **Tested:** `landing-here-ui.mjs` (390 and 1280: five choices, each lands where it should, the role
+  is picked, axe and no sideways scroll); `pnpm check`.
