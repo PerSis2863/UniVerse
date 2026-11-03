@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M82 is the latest).
+  builds on it). The newest notes are at the end (M83 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -83,72 +83,40 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 **A new app needs:** an `APPS` entry, its nav and tabs, a landing tab section, a card on `/hub`
 (`GET /hub`, `src/server/hub.ts`) and sample answers (`src/lib/sample/impact.ts`).
 
-## 4. Where things stand (31 October 2026)
+## 4. Where things stand (3 November 2026)
 
-- **`main` has everything through M33** (PR #95, 25 Oct): the impact apps (M21), Relief alerts and
-  sensors (M22), Google sign-in fixed (M23), the Impact Wallet (M24), proof for Green actions
-  (M25), sample errors not counted (M26a), launch board and invites (M26), simpler UniVersity menus
-  (M27), 500 people a month on the $5 plan (M28, migration 0184), pointer glides (M29), Ask
-  UniVerse (M30), UniVerse Play with eight games and rooms (M31, M32; migration 0185, `GameRoom`),
-  the folding side menu (M33). Every item has a note in the handoff file and a Progress row.
-- **Merged since:** M34 (the "Karma" look, see §8), M35a (maps wrap and pan) and the M35 game
-  arena with four rebuilt games (PR #96); the World Pin map fix, the landing's one-picture-per-app
-  (`HeroScenes.tsx`), **M36** 3D worlds (three.js, `src/components/play/world`, age ratings),
-  **M37** (game bug sweep, longer rounds, player levels and looks), **M38** (other players live in
-  3D rooms, a skill per world, the big-game layer) and **M39** (text chat and 13+ proximity voice in
-  3D rooms, realistic lit surfaces, a new feature in every game) (PR #97); **M40** (Ridgeline Ops
-  replaces Neon Strike: a first-person extraction shooter on a seeded island) (PR #98, 26 Oct). **M41**
-  (new Green and Play pictures, also on sign-in; a press ripple, magnetic buttons, tilt and a
-  cursor light), **M42** (link previews, icon count, install guide, Share to UniVerse, much less
-  text), **M42a** (no "Try the live demo" on sign-in), **M43** (more Relief, Green and Play
-  sections with "try it here" demos; photos shared in), **M44** (the landing's scroll story and
-  live totals, migration 0186), **M45** (glides, celebrations, optional sounds, swipes, bottom
-  sheets, one vibration), **M46** (today's classes, courses and chats readable offline, the
-  iPhone launch screen, bar colours per theme; its river check was removed in M56a) and
-  **M47** (the landing's demos run only on screen; light and sideways iPad launch screens),
-  **M48** (live cards after the owner's "Crew" video: 3D constellations and funnels of light on every
-  home, `src/components/live`), **M49** (heartbeat, radar and pulse-grid pictures, tabs that
-  cascade their cards in, the owner console's live cards), **M50** (Trace in motion after the
-  "Waypoint" video: a night city of vans, journey lines, level gauges, a timetable with now) and
-  **M51** (the night city much richer: traffic, neon, beams, depth) and **M52** (the "Globynk" colours
-  everywhere: navy, aqua, Baby Pink; the dotted planet on the landing and hub; 3D cards on the Impact
-  Wallet), **M53** (light mode in Marshmallow White, Galactic Violet and Bubblegum Pink), **M54** (more
-  Aqua Jade in dark mode) and **M55** (the "Globynk" picture everywhere in dark mode: navy-to-aqua
-  pages, glass cards, the network globe) (merged into `main`, 31 Oct).
-  **M56** (31 Oct, merged, PR #102): the river pink again and never stuck, a third cheaper; the scroll
-  story's pictures full size; the planet section fades into the page; sign-in fits one laptop screen.
-  **M56a**: nothing slows or stops the river by itself any more (only Reduce Motion stills it).
-  **M57** (on the branch): dark mode deep navy with Aqua Jade glows (no pale blue); no line under the hero. **M57a**: a step deeper again (page #0a0f2b).
-  **M58**: less AI-looking website; People list fixed. **M58a**: teacher-home duplicate-key fix.
-  **M59**: a Live globe in Trace (the brand's shipments on the 3D globe).
-  **M60**: the Green Pass (collectable card) and "how did it go?" after logging in Green; a live-aircraft demo kept off the site for the owner to judge.
-  **M61**: more of Candour in Green (a private "what made it hard?", a share nudge, an Honest badge, a streak reminder, "How Green feels" in the console).
-  **M62**: security review; fake Stripe events, LMS account takeover, emails on receipts and other schools' documents fixed (open items in its handoff note).
-  **M64**: the owner gets every PRO feature (the router now marks the owner's user).
-  **M63**: the landing's scroll story removed (it repeated the hero); each section below arrives its own way (`Motion kind`, `landing/bits.tsx`).
-  **M65**: maps sharp (no additive glow) and smoother (land picture reused while moving, no per-frame blur).
-  **M66**: Tracking's city at the bottom, zoomed in with a camera (drag, pinch, buttons) and real cars.
-  **M67**: Trace's Live globe usable (turn, zoom, pick; list and detail card; `Planet interactive`).
-  **M70**: the explainer board twice as wide without collisions; Excalidraw patched to zoom out to 2% (redo the patch when upgrading it).
-  **M69**: live air traffic on Trace's Live globe (`/trace/aircraft`, OpenSky, cached 15 min; owner switch).
-  **M68**: Collaborate in five tabs (Home, Create, Files, Code, Tasks) with 16 new in-browser tools under Create.
-  **M71**: 29 more tools under Create (51 in all, in six groups; `MoreTools.tsx`, `ImageTools.tsx`).
-  **M72**: Create smoother (search, stars, recent, load on hover, glides, Esc, scroll kept) and 30 bigger tools (81 in all, eight groups; `PlanTools`, `StudyTools`, `DataTools`, `MakerTools`, logic `src/lib/big-tools.ts`).
-  **M73**: "too many SQL variables" fixed in the database layer for every list (pages of 90 when a related list has its own orderBy/take).
-  **M74**: every Create tool upgraded (focus, previous/next, copy link, drop a file, text kept) and 56 more tools (137 in all; `WordTools`, `OrganiseTools`, `ClassTools`, `MoneyTools`, `MediaTools`, `DevTools`; logic `src/lib/more-tools.ts`, `elements.ts`).
-  **M75**: tools save to the account and share by link (migration 0189 `tool_saves`, `Saves.tsx`, `KeptScope`); 55 more tools (192 in all; `PenTools`, `LifeTools`, `ScienceTools`, `CalcTools`, `StageTools`, `ArtTools`, `WebTools`; logic `src/lib/tools-5.ts`).
-  **M76**: view links open without sign-in (`/s/<token>`) and edit links edit live together (migration 0190; `useLive`, `KeptSyncProvider`, `registry.tsx`).
-  **M77**: Next.js 16.4.4 with the Cloudflare adapter 1.20.15 (security update; always move the two together).
-  **M78**: security fixes: rate limits by account + address (`rate-key.ts`), admin code lockout in the database (migration 0191), organisation reps get their own organisation, no token in the certificate address.
-  **M79**: Real people on the console Overview (`real-people.ts`; sample and demo accounts left out).
-  **M80**: Share → Add to a course in Create (teachers): the view link as a module item (`ToCourse.tsx`).
-  **M81**: the landing's "Here to" row (Learn, Teach, Protect my brand, Help people, Look around; `HERE_FOR`).
-  **M82** (on the branch): STORMFALL on the site (`/play/stormfall`, computers, 16+), its 58 MB web build fetched at build time from a pinned commit (`scripts/fetch-stormfall.mjs`; keep the branch `claude/stormfall-unity`); Ridgeline Ops removed.
-  **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
-  **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
-- **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
-  done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts
-  on a first visit, is in M47's handoff note).
+This is only the map: each item has a note in `apps/web/STAGE-5-HANDOFF.md` (traps, rules for code
+that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
+
+- **On `main`** (merged through PR #105, 3 Nov): everything through **M81**.
+  - **Look and motion:** dark mode in the "Globynk" navy and Aqua Jade, light mode in Marshmallow
+    White, Galactic Violet and Bubblegum Pink (M52–M57a, see §8); a less AI-looking site (M58); the
+    pink river that nothing slows but Reduce Motion (M56, M56a); motion that answers the pointer (M41);
+    glides, celebrations, sounds, swipes, sheets (M45); live cards on every home (M48, M49).
+  - **The landing:** link previews and much less text (M42, M42a), "try it here" demos (M43), live
+    totals (M44, migration 0186), sections that each arrive their own way (M63), "Here to…" (M81).
+  - **UniVersity:** simpler menus (M27); today's classes, courses and chats offline (M46); Create
+    work added to a course (M80).
+  - **Trace:** the night city and Tracking's camera (M50, M51, M66), sharp maps (M65), the Live globe
+    (M59, M67), live air traffic (M69; opt-in since M83).
+  - **Relief and Green:** alerts and sensors (M22), proof for actions (M25), the Green Pass and
+    "how did it go?" (M60), Candour features (M61).
+  - **Play:** eleven games, rooms, chat and voice (M31–M39); three 3D worlds (M36–M39).
+  - **Collaborate:** five tabs, 192 Create tools, saving, view links, live editing (M68, M71–M76;
+    migrations 0189, 0190).
+  - **Owner console:** real people (M79); every PRO feature for the owner (M64).
+  - **Security and platform:** the security review and its fixes (M62, M78; migration 0191),
+    Next.js 16.4.4 with the Cloudflare adapter 1.20.15, always moved together (M77), "too many SQL
+    variables" fixed for every list (M73), 500 people a month on the $5 plan (M28).
+- **On the branch `claude/youthful-fermi-sbdtcp`, not merged:** **M82** STORMFALL on the site
+  (`/play/stormfall`, computers, 16+; its 58 MB web build fetched at build time by
+  `scripts/fetch-stormfall.mjs`) and Ridgeline Ops removed; **M83** zod 4, pdf.js 6, live air
+  traffic off until the owner turns it on, this list tidied.
+- **Work numbers:** the next item is **M84**. Never reuse a number: take the next one after the
+  newest note in the handoff file (another session may have used one on its branch; look there too).
+- **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
+  is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
+  ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
 - **Next database update number: `0192`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and

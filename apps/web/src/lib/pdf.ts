@@ -18,18 +18,35 @@ function pdfjs() {
 
 // PDFs come from other people (chats, uploads): nothing in one may run code here. Pages are drawn
 // with getDocument only (no viewer, so no PDF scripting; GHSA-hq66-cqwq-w95j needs the viewer's
-// enableScripting), fonts without eval, and no XFA forms.
-const SAFE = { isEvalSupported: false, enableXfa: false } as const;
+// enableScripting) and no XFA forms. pdf.js 6 draws fonts without eval at all.
+const SAFE = { enableXfa: false } as const;
+
+// pdf.js 6 frees a document through the task that opened it (the document has no destroy() any
+// more), so each open document remembers its task; closePdf() ends both.
+const tasks = new WeakMap<PDFDocumentProxy, { destroy: () => Promise<void> }>();
+async function open(task: { promise: Promise<PDFDocumentProxy>; destroy: () => Promise<void> }) {
+  const doc = await task.promise;
+  tasks.set(doc, task);
+  return doc;
+}
 
 export async function openPdf(url: string): Promise<PDFDocumentProxy> {
   const m = await pdfjs();
-  return m.getDocument({ url, disableAutoFetch: true, disableStream: true, rangeChunkSize: 65_536, withCredentials: false, ...SAFE }).promise;
+  return open(m.getDocument({ url, disableAutoFetch: true, disableStream: true, rangeChunkSize: 65_536, withCredentials: false, ...SAFE }));
 }
 
 /** A PDF from a file on this device (the file converter, Stage 5 · B9.14). */
 export async function openPdfData(data: ArrayBuffer): Promise<PDFDocumentProxy> {
   const m = await pdfjs();
-  return m.getDocument({ data: new Uint8Array(data), ...SAFE }).promise;
+  return open(m.getDocument({ data: new Uint8Array(data), ...SAFE }));
+}
+
+/** Closes a document: its worker side and any downloads still running. */
+export async function closePdf(doc: PDFDocumentProxy | null | undefined) {
+  if (!doc) return;
+  const task = tasks.get(doc);
+  tasks.delete(doc);
+  await task?.destroy().catch(() => undefined);
 }
 
 /** Draws a page into a canvas `width` CSS pixels wide (sharp on high-density screens). */
@@ -62,7 +79,7 @@ export async function firstPage(url: string, width: number): Promise<{ src: stri
     thumbs.set(url, out);
     return out;
   } finally {
-    void doc.destroy();
+    void closePdf(doc);
   }
 }
 

@@ -3,7 +3,7 @@
 import { Topbar } from '@/components/layout/Topbar';
 import { StormfallPlayer } from '@/components/play/Stormfall';
 
-// STORMFALL (M41): the Unity battle royale, on computers only (src/components/play/Stormfall.tsx).
+// STORMFALL (M82): the Unity battle royale, on computers only (src/components/play/Stormfall.tsx).
 export default function StormfallPage() {
   return (
     <>

@@ -167,9 +167,9 @@ function PdfPages({ url, ...rest }: { url: string; notes: Note[]; number: Map<st
     let close: (() => void) | null = null;
     void (async () => {
       try {
-        const { openPdf, drawPage } = await import('@/lib/pdf');
+        const { openPdf, drawPage, closePdf } = await import('@/lib/pdf');
         const doc = await openPdf(url);
-        close = () => void doc.destroy();
+        close = () => void closePdf(doc);
         if (!live) return;
         const n = Math.min(doc.numPages, MAX_PAGES);
         setPages(n);

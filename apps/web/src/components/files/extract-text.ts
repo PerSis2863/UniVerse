@@ -11,7 +11,7 @@ export async function extractText(file: File): Promise<string | null> {
     if (file.size > 40 * 1024 * 1024) return null;
     if (TEXT.test(name) || file.type.startsWith('text/')) return (await file.slice(0, LIMIT * 4).text()).slice(0, LIMIT);
     if (name.endsWith('.pdf') || file.type === 'application/pdf') {
-      const { openPdfData } = await import('@/lib/pdf');
+      const { closePdf, openPdfData } = await import('@/lib/pdf');
       const doc = await openPdfData(await file.arrayBuffer());
       let out = '';
       for (let i = 1; i <= Math.min(doc.numPages, 60) && out.length < LIMIT; i++) {
@@ -20,7 +20,7 @@ export async function extractText(file: File): Promise<string | null> {
         out += tc.items.map((it) => ('str' in it ? `${it.str}${it.hasEOL ? '\n' : ' '}` : '')).join('') + '\n';
         pg.cleanup();
       }
-      void doc.destroy();
+      void closePdf(doc);
       return out.trim().slice(0, LIMIT) || null;
     }
     if (name.endsWith('.docx')) {

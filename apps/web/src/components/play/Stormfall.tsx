@@ -9,7 +9,7 @@ import { STORMFALL } from '@/lib/play';
 import { useRatingGate } from './AgeGate';
 import type { PlayMe } from './GameShell';
 
-// STORMFALL (M41): a Unity shooter (a battle royale plus Outbreak, undead survival on two more maps;
+// STORMFALL (M82): a Unity shooter (a battle royale plus Outbreak, undead survival on two more maps;
 // source in games/stormfall at the repo root, the current one in the owner's Unity repo), built for the
 // web into public/games/stormfall by scripts/stormfall-web.mjs (which also keeps the page inside
 // this site's Content-Security-Policy). It needs a keyboard and mouse, so it is offered only on

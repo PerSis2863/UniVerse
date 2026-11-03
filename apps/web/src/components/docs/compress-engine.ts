@@ -1,7 +1,7 @@
 'use client';
 
 import { LEVELS, fitWithin, methodFor, relinkMedia, smallName, videoSize, withJpegType, type Level, type LevelSpec } from '@/lib/compress';
-import { openPdfData } from '@/lib/pdf';
+import { closePdf, openPdfData } from '@/lib/pdf';
 
 // File compression (Collaborate → Tools → Compress; rules in src/lib/compress.ts), all in the browser:
 //  - pictures: made no bigger than needed and saved again (JPEG, or WebP when they have see-through parts);
@@ -173,7 +173,7 @@ async function pdfAsPictures(lib: PdfLib, bytes: Uint8Array, spec: LevelSpec, on
     }
     pg.cleanup();
   }
-  await src.destroy();
+  await closePdf(src);
   return out.save({ useObjectStreams: true });
 }
 

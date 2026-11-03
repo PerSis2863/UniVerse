@@ -3436,3 +3436,28 @@ M42–M81, so it was brought over by hand onto today's code instead of merged.
   database and are skipped (`isGame`). Eleven games plus STORMFALL in all copy.
 - **Tested:** `pnpm check`; the fetch twice (6 files, 58 MB, then nothing); `local:build` +
   `local:serve` with `scripts/checks/stormfall-ui.mjs` (see the commit).
+
+## M83 · The council's leftovers: zod 4, pdf.js 6, live air traffic opt-in, the guide tidied (3 Nov 2026)
+
+The owner: "the other agent has done few works what the council said and you can do remaining one".
+- **zod 3 → 4.6** (`src/server/dto.ts`, its only user): `z.strictObject` (unknown properties still
+  answer "property x should not exist"), `z.enum` for Prisma enums, `z.url({ protocol: /^https?$/ })`
+  (a `javascript:` or `ftp:` link is refused), `z.ZodType`. New `dto.test.ts` (it had no tests).
+- **pdf.js 5 → 6.5** (`src/lib/pdf.ts`): a document no longer has `destroy()`; the task that opened it
+  does. `openPdf` / `openPdfData` remember each document's task and **`closePdf(doc)`** ends both;
+  the five callers use it, and the PDF editor now closes its documents when it closes (it never did).
+  `isEvalSupported` is gone (pdf.js 6 never evals). Its new renderer worker (`rendererSrc`, pages
+  drawn off the main thread) is left off: it changes how pixels reach our canvases (thumbnails use
+  `toDataURL`); try it as its own item. Checked in the browser: the editor draws a page and three
+  thumbnails, no errors.
+- **Live air traffic opt-in** (OpenSky's free feed is for non-commercial use): `optIn` on a
+  `FeatureSwitch` = off until the owner turns it on, stored as `"<id>:on"` (`parseSwitches` adds it
+  to the off list unless that is stored; `composeSwitches` writes it; the console's list is read with
+  `offFromList`, literally). **Bug fixed on the way:** the "Live air traffic" switch never did
+  anything (the Worker only refuses changes, and the planes feed is a read); `GET /trace/aircraft` now
+  checks `featureOff('aircraft')` itself and answers "Live air traffic is turned off." Opt-in
+  features stay out of the per-school switches, rollouts and the console's "N switched off" note.
+- **AGENTS.md "Where things stand"** rewritten as a short map by area (no duplicate lines), with the
+  rule: never reuse a work number (look at other branches' notes too). STORMFALL's comments say M82.
+- **Tested:** `pnpm check`; `dto.test.ts`, the opt-in tests in `school-switches.test.ts`; the PDF
+  editor with a 3-page PDF on the dev server (page and thumbnails drawn, no console errors).

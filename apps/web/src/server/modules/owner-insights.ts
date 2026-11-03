@@ -3,7 +3,7 @@ import prisma from '@/lib/db';
 import { BadRequestException } from '../http';
 import { forgetUser, isOwnerEmail } from '../auth';
 import { PLANS } from '@/lib/plans';
-import { parseSwitches, parseWatchWords } from '@/lib/feature-switches';
+import { isOptIn, parseSwitches, parseWatchWords } from '@/lib/feature-switches';
 import { selectColumns } from '../table-stats';
 import { watchedUsage } from '../plan-usage';
 import { oneOf } from '../body';
@@ -58,7 +58,7 @@ export default function ownerInsightsModule(router: Router) {
       : 0;
     const { meters } = watchedUsage(guard); // today's free allowances on Workers Free (src/server/plan-usage.ts)
     const high = meters.filter((m) => m.used != null && m.limit > 0 && m.used / m.limit >= 0.7).map((m) => ({ key: m.key, label: m.label ?? m.key, percent: Math.round(((m.used ?? 0) / m.limit) * 100) }));
-    const off = parseSwitches(ctl?.switches).filter((x) => x !== 'digest'); // the owner's own email isn't a feature people miss
+    const off = parseSwitches(ctl?.switches).filter((x) => x !== 'digest' && !isOptIn(x)); // the owner's own email isn't a feature people miss
     // What to look at, most urgent first. `tab` is the console tab, `href` a page elsewhere.
     const items = [
       guard?.paused && { id: 'paused', level: 'high', text: 'The spending guard has paused the site.', tab: 'server' },
