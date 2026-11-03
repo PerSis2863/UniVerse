@@ -3360,3 +3360,19 @@ and "people must be signed in to open a shared link"): "please do both of this a
 - **Still open:** `pdfjs-dist` 5 → 6 and `zod` 3 → 4 (major versions: own item with testing).
 - **Tested:** `pnpm check` (1,432 tests, incl. `rate-key.test.ts`, `two-step-tries.test.ts`, the
   no-school representative in `school-scope-people.test.ts`).
+
+## M80: put Create work on a course (the council's "Collaborate → course" link)
+
+- Share in a Create tool has a third choice for teachers and admins: **Add to a course**
+  (`src/components/studio/ToCourse.tsx`, loaded only when opened). A sheet lists the courses they teach
+  (`/api/core/courses/my`) and that course's modules; Add makes (or reuses) the save's view link and
+  adds it as a LINK item (`/api/courses/<id>/modules`, `add-item`); a course with no modules gets a
+  new published "Shared work" module. No new server code: the modules route's own rules decide who
+  may add (only the course's teacher; others see "Only the course's teacher can add to it").
+- Students open it like any course link: `/s/<token>`, read-only, always the latest version.
+- **Trap:** the course list is a core route (`/api/core/courses/my`), the modules a Next route
+  (`/api/courses/<id>/modules`).
+- `apps/web/AGENTS.md` is rewritten by `next dev` 16.4 (its own block markers); committed as it says.
+- **Tested:** `create-course-ui.mjs` (dev server): 1280 dark and 390 light, axe and no sideways
+  scrolling on the sheet, the student sees the item, the link opens signed out, not offered to a
+  student; `pnpm check`.

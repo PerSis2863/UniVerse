@@ -30,6 +30,7 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `cc-ui.mjs` | Common Cartridge import and export in the browser on the built Worker. |
 | `create-tools-ui.mjs` | M72 + M74: Collaborate → Create in the browser (dev server or built Worker): search (Enter opens), a star, Esc back, the list keeps its scroll spot; the tool bar (focus mode, Esc, `]` next tool, a dropped text file); the bigger tools opened by address and the main ones used. `--m75` (M75's 55), `--new` (M74's 56) or `--old` (the rest). Axe at 1280 dark and 390 light. |
 | `create-saves-ui.mjs` | M75 + M76: saved work in Create: save a mind map, the list, a view link opened signed out (`/s/<token>`), the copy link kept by another person, an edit link (401 signed out) with two people editing live, stop sharing (both links 404), delete; someone else's save is 404, only `uv-` keys, no email in the shared answer. Axe. |
+| `create-course-ui.mjs` | M80: a teacher (tara, CS101) uses Share → Add to a course in Create: the sheet lists their courses and modules, the work lands as a view link in a module, a student of the course sees it and it opens without sign-in; students aren't offered it. Axe at 390 light and 1280 dark. Removes what it made. |
 | `clean-calls.mjs` | (helper: tidies up or prepares test data) |
 | `copy-run.mjs` | (helper: tidies up or prepares test data) |
 | `disc-api.mjs` | (helper: tidies up or prepares test data) |

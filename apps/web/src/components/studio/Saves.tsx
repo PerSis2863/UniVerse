@@ -4,12 +4,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { Check, CloudUpload, Eye, FolderOpen, Link2, Link2Off, Loader2, Pencil, Trash2, Users } from 'lucide-react';
+import { BookOpen, Check, CloudUpload, Eye, FolderOpen, Link2, Link2Off, Loader2, Pencil, Trash2, Users } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useAuthStore } from '@/store/auth';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { keptNow, type KeptSync } from './kept';
+
+const ToCourse = dynamic(() => import('./ToCourse').then((x) => x.ToCourse), { ssr: false });
 
 // Saved work in Collaborate → Create (M75): a tool's work saved to the account (so it's on every
 // device), opened again, renamed, shared read-only by link, or deleted. Server: /api/collab/saves.
@@ -44,6 +48,13 @@ export async function loadSave(id: string): Promise<Current | null> {
   } catch (e) { toast.error((e as Error).message || 'That save couldn’t be opened.'); return null; }
 }
 
+/** Makes (or reuses) a save's link; its full address. */
+export async function linkOf(id: string, mode: 'view' | 'edit') {
+  const { token } = await authedJson<{ token: string }>(`/api/collab/saves/${id}/share`, json({ mode }));
+  void refresh();
+  return linkFor(token, mode);
+}
+
 export async function share(id: string, mode: 'view' | 'edit') {
   const { token } = await authedJson<{ token: string }>(`/api/collab/saves/${id}/share`, json({ mode }));
   const copied = await copyText(linkFor(token, mode));
@@ -53,7 +64,7 @@ export async function share(id: string, mode: 'view' | 'edit') {
 }
 
 /** Share: a small menu with the two kinds of link. */
-function ShareMenu({ onPick, disabled }: { onPick: (mode: 'view' | 'edit') => void; disabled?: boolean }) {
+function ShareMenu({ onPick, disabled, onCourse }: { onPick: (mode: 'view' | 'edit') => void; disabled?: boolean; onCourse?: () => void }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -71,6 +82,7 @@ function ShareMenu({ onPick, disabled }: { onPick: (mode: 'view' | 'edit') => vo
           className="absolute end-0 top-full z-30 mt-1.5 w-72 rounded-2xl bg-white dark:bg-indigo-900 p-1.5 shadow-xl ring-1 ring-black/10 dark:ring-white/10">
           <button type="button" role="menuitem" onClick={() => { setOpen(false); onPick('view'); }} className="flex w-full items-start gap-2 rounded-xl p-2.5 text-start hover:bg-zinc-100 dark:hover:bg-white/10"><Eye className="mt-0.5 w-4 h-4 shrink-0 text-indigo-600 dark:text-aqua-300" aria-hidden /><span><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Copy a view link</span><span className="block text-xs text-zinc-600 dark:text-zinc-300">Anyone can open it, no sign-in. Read-only, updates by itself.</span></span></button>
           <button type="button" role="menuitem" onClick={() => { setOpen(false); onPick('edit'); }} className="flex w-full items-start gap-2 rounded-xl p-2.5 text-start hover:bg-zinc-100 dark:hover:bg-white/10"><Users className="mt-0.5 w-4 h-4 shrink-0 text-pink-600 dark:text-pink-300" aria-hidden /><span><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Copy an edit link</span><span className="block text-xs text-zinc-600 dark:text-zinc-300">Signed-in people edit it with you, live.</span></span></button>
+          {onCourse && <button type="button" role="menuitem" onClick={() => { setOpen(false); onCourse(); }} className="flex w-full items-start gap-2 rounded-xl p-2.5 text-start hover:bg-zinc-100 dark:hover:bg-white/10"><BookOpen className="mt-0.5 w-4 h-4 shrink-0 text-indigo-600 dark:text-aqua-300" aria-hidden /><span><span className="block text-sm font-semibold text-zinc-900 dark:text-white">Add to a course</span><span className="block text-xs text-zinc-600 dark:text-zinc-300">A read-only link in one of your course’s modules.</span></span></button>}
         </motion.div>
       )}</AnimatePresence>
     </div>
@@ -80,6 +92,8 @@ function ShareMenu({ onPick, disabled }: { onPick: (mode: 'view' | 'edit') => vo
 /** Save and Share in a tool's bar: the first save asks for a name; later ones save over it. */
 export function SaveButtons({ tool, toolName, current, onSaved }: { tool: string; toolName: string; current: Current | null; onSaved: (c: Current) => void }) {
   const [busy, setBusy] = useState(false), [done, setDone] = useState(false);
+  const role = useAuthStore((s) => s.user?.role);
+  const [toCourse, setToCourse] = useState<Current | null>(null);
   useEffect(() => { if (!done) return; const t = setTimeout(() => setDone(false), 1500); return () => clearTimeout(t); }, [done]);
   const mine = current?.tool === tool ? current : null;
   const save = async (asNew = false) => {
@@ -105,7 +119,9 @@ export function SaveButtons({ tool, toolName, current, onSaved }: { tool: string
         {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden /> : done ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-300" aria-hidden /> : <CloudUpload className="w-3.5 h-3.5" aria-hidden />}
         <span aria-live="polite">{done ? 'Saved' : mine ? 'Save' : 'Save to account'}</span>
       </button>
-      <ShareMenu disabled={busy} onPick={async (mode) => { const c = mine ?? (await save()); if (c) await share(c.id, mode).catch((e) => toast.error((e as Error).message)); }} />
+      <ShareMenu disabled={busy} onPick={async (mode) => { const c = mine ?? (await save()); if (c) await share(c.id, mode).catch((e) => toast.error((e as Error).message)); }}
+        onCourse={role === 'TEACHER' || role === 'ADMIN' ? async () => { const c = mine ?? (await save()); if (c) setToCourse(c); } : undefined} />
+      {toCourse && <ToCourse title={toCourse.title} onClose={() => setToCourse(null)} viewLink={() => linkOf(toCourse.id, 'view').catch((e) => { toast.error((e as Error).message); return null; })} />}
     </>
   );
 }
