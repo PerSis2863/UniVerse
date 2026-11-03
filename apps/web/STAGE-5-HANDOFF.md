@@ -3376,3 +3376,18 @@ and "people must be signed in to open a shared link"): "please do both of this a
 - **Tested:** `create-course-ui.mjs` (dev server): 1280 dark and 390 light, axe and no sideways
   scrolling on the sheet, the student sees the item, the link opens signed out, not offered to a
   student; `pnpm check`.
+
+## M79: Real people in the owner console (the council's "know who really uses it")
+
+- Overview → **Real people** (`console/real-people.tsx`, first card): real accounts, used it today,
+  this week, came back this week (joined over a week ago), new in 7/30 days, never came back, and per
+  app the people who did something there in 7 and 30 days (UniVersity: active people in a course;
+  Trace scans, Relief posts, Green actions, Play scores). Shows how many sample and demo accounts are
+  left out.
+- Server: `GET /api/core/owner/real-people` (owner only, kept 5 minutes), one query of sub-selects
+  (`src/server/real-people.ts`, `realPeopleColumns`). Made-up accounts: `@sample.universe.test`,
+  ids `smp…`, the demo sign-in accounts and alice/bob from migration 0002. **Trap:** stored dates end
+  in `+00:00`; compare in the same form. No names or emails leave the server.
+- The live site on 3 Nov: 8 real accounts (2 this week, 1 today), 306 made-up ones left out.
+- **Tested:** `real-people.test.ts`; the query on the local and (read-only) the live database;
+  `console-ui.mjs` now opens the card too (axe, no sideways scroll).

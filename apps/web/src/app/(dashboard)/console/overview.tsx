@@ -13,6 +13,7 @@ import { type Tab, Ticker } from './deck';
 import { LaunchBoard } from './launch';
 import { LiveBoard } from './live';
 import { SampleWorldCard } from './sample-world';
+import { RealPeopleCard } from './real-people';
 
 // The console's first section (M13): what needs the owner, who really uses each app (launch.tsx), the
 // live instrument board (live.tsx), the rest as small tiles (amber when something waits), new accounts
@@ -104,6 +105,7 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
   const dot = 'absolute -start-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-400 shadow-[0_0_10px_rgba(254,129,209,0.55)]';
   return (
     <div className="space-y-6">
+      <RealPeopleCard />
       <SampleWorldCard />
       <LaunchBoard />
       <div className="grid gap-6 lg:grid-cols-2">

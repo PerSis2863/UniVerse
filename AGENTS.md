@@ -140,6 +140,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   **M76**: view links open without sign-in (`/s/<token>`) and edit links edit live together (migration 0190; `useLive`, `KeptSyncProvider`, `registry.tsx`).
   **M77**: Next.js 16.4.4 with the Cloudflare adapter 1.20.15 (security update; always move the two together).
   **M78**: security fixes: rate limits by account + address (`rate-key.ts`), admin code lockout in the database (migration 0191), organisation reps get their own organisation, no token in the certificate address.
+  **M79**: Real people on the console Overview (`real-people.ts`; sample and demo accounts left out).
   **M80**: Share → Add to a course in Create (teachers): the view link as a module item (`ToCourse.tsx`).
   **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).

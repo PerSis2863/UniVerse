@@ -117,6 +117,12 @@ try {
       const page = await ctx.newPage();
       page.on('pageerror', (e) => errors.push(`${new URL(page.url()).pathname}: ${e.message.slice(0, 120)}`));
 
+      // M79: the Overview's Real people card (sample and demo accounts left out).
+      await open(page, '/console', page.getByRole('heading', { name: 'Real people' }));
+      r.realPeople = await page.locator('section[aria-labelledby="real-h"]').innerText();
+      r.realPeopleAxe = await axe(page);
+      r.overviewWide = await wide(page);
+
       await open(page, '/console?tab=schools', page.getByRole('heading', { name: 'Schools', exact: true }));
       await page.getByRole('heading', { name: 'Who keeps coming back' }).waitFor({ timeout: 20_000 });
       r.schoolsAxe = await axe(page);
