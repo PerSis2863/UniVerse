@@ -137,7 +137,7 @@ try {
         await open(page, `/console?tab=people&person=${student.id}`, page.getByRole('button', { name: /View as .* \(read-only\)/ }));
         const [tab] = await Promise.all([ctx.waitForEvent('page'), page.getByRole('button', { name: /View as .* \(read-only\)/ }).click()]);
         tab.on('pageerror', (e) => errors.push(`view-as ${new URL(tab.url()).pathname}: ${e.message.slice(0, 120)}`));
-        await tab.waitForURL(/\/student/, { timeout: 30_000 });
+        await tab.waitForURL(/\/(student|hub)/, { timeout: 30_000 }); // M21: home is the hub without a chosen app
         await tab.getByText('Viewing as').waitFor({ timeout: 20_000 });
         r.viewAsHome = new URL(tab.url()).pathname;
         r.viewAsBannerAxe = await axe(tab);
