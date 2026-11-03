@@ -11,8 +11,8 @@ import { ScholarshipsService } from './services/scholarships.service';
 
 vi.mock('@/lib/db', () => ({
   default: {
-    organization: { findUnique: vi.fn() },
-    user: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+    organization: { findUnique: vi.fn(), upsert: vi.fn() },
+    user: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     roleApplication: { findFirst: vi.fn(), findMany: vi.fn(), groupBy: vi.fn(), update: vi.fn(), create: vi.fn() },
     invitation: { update: vi.fn() },
     studentProfile: { upsert: vi.fn() },
@@ -61,6 +61,7 @@ describe('applications', () => {
     db.roleApplication.findFirst.mockImplementation(async ({ where }: { where: { id: string; user?: Record<string, unknown> } }) =>
       where.id === appOfB.id && passes(where.user, appOfB.user.organizationId) ? appOfB : null);
     db.roleApplication.update.mockResolvedValue({ ...appOfB, status: 'APPROVED' });
+    db.user.findUnique.mockResolvedValue({ organizationId: 'orgB' });
   });
 
   it("another school's admin can't approve (or even see) the application: no role is granted", async () => {
@@ -81,6 +82,23 @@ describe('applications', () => {
   it('the platform owner still can', async () => {
     await route(applications, 'POST', 'applications/app1/approve')({ user: owner() as never });
     expect(db.user.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'u2' }, data: expect.objectContaining({ role: 'ADMIN' }) }));
+  });
+
+  it('a representative approved while in no school gets their own organisation, not the main school', async () => {
+    const noSchool = { ...appOfB, institution: ' Riverside NGO ', user: { ...appOfB.user, organizationId: null } };
+    db.roleApplication.findFirst.mockResolvedValue(noSchool);
+    db.user.findUnique.mockResolvedValue({ organizationId: null });
+    db.organization.upsert.mockResolvedValue({ id: 'orgNew' });
+    await route(applications, 'POST', 'applications/app1/approve')({ user: owner() as never });
+    expect(db.organization.upsert).toHaveBeenCalledWith({ where: { ownerId: 'u2' }, update: {}, create: { ownerId: 'u2', name: 'Riverside NGO' } });
+    expect(db.user.updateMany).toHaveBeenCalledWith({ where: { id: 'u2', organizationId: null }, data: { organizationId: 'orgNew' } });
+
+    // Already in a school: stays there.
+    vi.clearAllMocks();
+    db.roleApplication.findFirst.mockResolvedValue(appOfB);
+    db.user.findUnique.mockResolvedValue({ organizationId: 'orgB' });
+    await route(applications, 'POST', 'applications/app1/approve')({ user: owner() as never });
+    expect(db.organization.upsert).not.toHaveBeenCalled();
   });
 
   it('the list and its counts leave out other schools', async () => {

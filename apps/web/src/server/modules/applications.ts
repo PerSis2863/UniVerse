@@ -307,6 +307,13 @@ async function approveApplication(id: string, note: string, user: Actor, req: Re
   const app = await openForReview(id, user);
   const role = app.requestedRole as RequestableRole;
   await prisma.user.update({ where: { id: app.userId }, data: { role, status: 'ACTIVE', accountType: role === 'STUDENT' ? 'STUDENT' : role === 'TEACHER' ? 'STAFF' : 'ORGANIZATION' } });
+  // M78: an organisation's representative approved while in no school would be an admin of the main
+  // school (everyone without one). They get their own organisation, named from the application.
+  if (role === 'ADMIN' && !(await prisma.user.findUnique({ where: { id: app.userId }, select: { organizationId: true } }))?.organizationId) {
+    const name = (app.institution?.trim() || `${app.user.name}'s Organization`).slice(0, 150);
+    const org = await prisma.organization.upsert({ where: { ownerId: app.userId }, update: {}, create: { ownerId: app.userId, name } });
+    await prisma.user.updateMany({ where: { id: app.userId, organizationId: null }, data: { organizationId: org.id } });
+  }
   if (role === 'STUDENT') {
     await prisma.studentProfile.upsert({ where: { userId: app.userId }, update: { department: app.department ?? undefined }, create: { userId: app.userId, department: app.department ?? null } });
   }

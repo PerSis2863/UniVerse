@@ -412,6 +412,10 @@ model User {
   @@index([status])
   @@index([campusId])
   @@index([digestAt])
+  /// M78: admin sign-in code tries (src/server/modules/auth.ts two-step/verify), counted before checking.
+  twoStepTries   Int       @default(0)
+  twoStepTriedAt DateTime?
+
   @@index([cardsRemindAt])
   @@map("users")
 }

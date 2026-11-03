@@ -99,6 +99,11 @@ export default function RegisterPage() {
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
   const [individual, setIndividual] = useState<'STUDENT' | 'INDEPENDENT' | null>(() => (campus ? null : 'INDEPENDENT')); // for Individual sign-ups
   const [agreed, setAgreed] = useState(false); // Terms and Privacy Policy, required to create the account
+  // M81: the landing's "Here to: Learn / Teach" picks the role (they still confirm with Continue).
+  useEffect(() => {
+    const as = new URLSearchParams(window.location.search).get('as');
+    if (campus && (as === 'student' || as === 'teacher')) queueMicrotask(() => { setSelectedRole(as === 'student' ? 'STUDENT' : 'TEACHER'); if (as === 'student') setIndividual('STUDENT'); });
+  }, [campus]);
 
   const selectedRoleData = ROLES.find(r => r.id === selectedRole);
 

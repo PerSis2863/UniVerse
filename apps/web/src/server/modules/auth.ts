@@ -11,8 +11,8 @@ import { authTimeOf, codeFor, codeMatches, hasPass, needsTwoStep, passFor, twoSt
 import { oneOf, str } from '../body';
 import { passkeyOptions, passkeysEnabled, registerPasskey, usePasskey } from '../passkeys';
 import { issueSessionToken } from '../session-token';
+import { clearTries, takeTry } from '../two-step-tries';
 
-const codeFails = new Map<string, { n: number; until: number }>();
 const maskEmail = (e: string) => e.replace(/^(.{2})[^@]*(@.*)$/, '$1•••$2');
 
 const userSelect = {
@@ -53,14 +53,9 @@ export default function auth(router: Router) {
   r.post('two-step/verify', async ({ user, req, body }) => {
     const at = authTimeOf(extractBearer(req.headers.get('authorization')));
     if (at === null) throw new BadRequestException('Two-step sign-in is not needed for this account.');
-    const f = codeFails.get(user.id);
-    if (f && f.until > Date.now()) throw new BadRequestException('Too many wrong codes. Try again in 15 minutes.');
-    if (!codeMatches(user.id, at, body?.code)) {
-      const n = (f && f.until > Date.now() - 15 * 60_000 ? f.n : 0) + 1;
-      codeFails.set(user.id, { n, until: n >= 5 ? Date.now() + 15 * 60_000 : 0 });
-      throw new BadRequestException('That code is wrong or too old. Check the latest email, or send a new code.');
-    }
-    codeFails.delete(user.id);
+    if (!(await takeTry(user.id))) throw new BadRequestException('Too many wrong codes. Try again in 15 minutes.');
+    if (!codeMatches(user.id, at, body?.code)) throw new BadRequestException('That code is wrong or too old. Check the latest email, or send a new code.');
+    await clearTries(user.id);
     return { pass: passFor(user.id, at) };
   });
 

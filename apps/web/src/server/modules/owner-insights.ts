@@ -8,10 +8,12 @@ import { selectColumns } from '../table-stats';
 import { watchedUsage } from '../plan-usage';
 import { oneOf } from '../body';
 import { REAL_ERRORS_SQL } from '../errors';
+import { realPeople } from '../real-people';
 
 // Owner console extras that read across the app:
 //   attention  what needs the owner now (the Overview card and the counts on the console tabs)
 //   search     one box for people, chats, messages, errors and changes
+//   real-people  real accounts and which apps they use (M79)
 //   analytics  who uses UniVerse, when, and which pages and buttons
 //   money      payments, invoices and organization subscriptions
 // Every route stays well under D1's 50 queries per request.
@@ -22,6 +24,7 @@ const num = (v: unknown) => (v == null ? 0 : Number(v));
 
 /** Attention cache for the console, kept 45s per server instance */
 let cachedAttention: { at: number; data: unknown } | null = null;
+let cachedReal: { at: number; data: Awaited<ReturnType<typeof realPeople>> } | null = null;
 
 export default function ownerInsightsModule(router: Router) {
   const r = router.controller('owner', { owner: true });
@@ -118,6 +121,12 @@ export default function ownerInsightsModule(router: Router) {
     const pages = [...fold(byPage)].map(([page, m]) => ({ page, n: Math.max(0, ...Object.values(m).map((x) => x.n)), metrics: m }))
       .sort((a, b) => b.n - a.n).slice(0, 15);
     return { days, devices: Object.fromEntries(fold(byDevice)), pages };
+  });
+
+  // M79: real people (sample and demo accounts left out), kept 5 minutes.
+  r.get('real-people', async ({ query }) => {
+    if (!cachedReal || Date.now() - cachedReal.at > 5 * 60_000 || query.fresh === '1') cachedReal = { at: Date.now(), data: await realPeople() };
+    return cachedReal.data;
   });
 
   r.get('analytics', async ({ query }) => {

@@ -3323,3 +3323,83 @@ and "people must be signed in to open a shared link"): "please do both of this a
   twice in a row: a view link opens signed out (axe), the copy link, an edit link needs sign-in (401),
   two people edit one mind map and each sees the other's change, stop sharing 404s both links;
   `create-tools-ui.mjs --old` (the tools after the `useKept` change).
+
+## M77: Next.js 16.4.4 and the Cloudflare adapter 1.20.15 (security update, the council's first item)
+
+- `next` and `eslint-config-next` 16.4.4, `@opennextjs/cloudflare` ^1.20.15, together. **Trap:** Next.js
+  16.4.x with the older adapter built but answered 500 (`loadManifest` / preview props): always move
+  the two together.
+- The build also refreshed `guide-data.gen.ts` (the explainer board's route list now has M75/M76's
+  routes); that file is meant to be committed.
+- **Tested:** `pnpm check` (1,427 tests, lean 0); `pnpm local:build` + `local:serve`; the full crawl
+  196/204 clean (the 8 are the known ones: Trace's no-brand 403s for a student, the calendar link's
+  503 without `SESSION_SECRET`, `/parent`'s outside script unreachable from the sandbox);
+  `create-saves-ui.mjs` on the built Worker (save, view link signed out, live editing, stop, delete).
+
+## M78: security fixes from M62's open list (the council's second item)
+
+- **Rate limits** (`cloudflare/worker.ts` `rateLimited`, `src/lib/rate-key.ts`): keyed by the account
+  the token *names* (Firebase `user_id`/`sub`, a session token's `uid`, a demo token's email) together
+  with the address, no longer by the token's last 40 characters. A new token each hour keeps one
+  count; a made-up token gets the address's count, not a fresh one; a forged name only ever counts
+  at the forger's own address (no one can use up someone else's limit from elsewhere). Not a sign-in
+  check: routes still verify. **Trap:** an opaque token (an integration's API key) counts per address.
+- **Admin sign-in code lockout in the database** (migration **0191**, users `twoStepTries`,
+  `twoStepTriedAt`; `src/server/two-step-tries.ts`). The old in-memory count never added up (it reset
+  after every wrong try) and lived on one server. Now each try is counted *before* the code is
+  checked (an atomic increment), so tries sent all at once can't slip under the limit: five tries, then
+  15 minutes after the last one. The right code starts the count again.
+- **Organisation reps** (`applications.ts` `approveApplication`): someone approved as ADMIN while in no
+  school would have been an admin of the main school (everyone without one). They now get their own
+  organisation, named from the application's institution. Adding an admin to *your own* school: an
+  invitation, or Users.
+- **Certificate PDF** (`impact.ts` `certificates/:id/pdf`): no longer takes the sign-in token as
+  `?token=` (nothing in the app used it; addresses land in history and logs).
+- **Share links** (`/s/<token>`, `shared/`, `live/`): 24-character random tokens can't be guessed;
+  the address and per-person limits above cover them; nothing more added.
+- **Still open:** `pdfjs-dist` 5 → 6 and `zod` 3 → 4 (major versions: own item with testing).
+- **Tested:** `pnpm check` (1,432 tests, incl. `rate-key.test.ts`, `two-step-tries.test.ts`, the
+  no-school representative in `school-scope-people.test.ts`).
+
+## M80: put Create work on a course (the council's "Collaborate → course" link)
+
+- Share in a Create tool has a third choice for teachers and admins: **Add to a course**
+  (`src/components/studio/ToCourse.tsx`, loaded only when opened). A sheet lists the courses they teach
+  (`/api/core/courses/my`) and that course's modules; Add makes (or reuses) the save's view link and
+  adds it as a LINK item (`/api/courses/<id>/modules`, `add-item`); a course with no modules gets a
+  new published "Shared work" module. No new server code: the modules route's own rules decide who
+  may add (only the course's teacher; others see "Only the course's teacher can add to it").
+- Students open it like any course link: `/s/<token>`, read-only, always the latest version.
+- **Trap:** the course list is a core route (`/api/core/courses/my`), the modules a Next route
+  (`/api/courses/<id>/modules`).
+- `apps/web/AGENTS.md` is rewritten by `next dev` 16.4 (its own block markers); committed as it says.
+- **Tested:** `create-course-ui.mjs` (dev server): 1280 dark and 390 light, axe and no sideways
+  scrolling on the sheet, the student sees the item, the link opens signed out, not offered to a
+  student; `pnpm check`.
+
+## M79: Real people in the owner console (the council's "know who really uses it")
+
+- Overview → **Real people** (`console/real-people.tsx`, first card): real accounts, used it today,
+  this week, came back this week (joined over a week ago), new in 7/30 days, never came back, and per
+  app the people who did something there in 7 and 30 days (UniVersity: active people in a course;
+  Trace scans, Relief posts, Green actions, Play scores). Shows how many sample and demo accounts are
+  left out.
+- Server: `GET /api/core/owner/real-people` (owner only, kept 5 minutes), one query of sub-selects
+  (`src/server/real-people.ts`, `realPeopleColumns`). Made-up accounts: `@sample.universe.test`,
+  ids `smp…`, the demo sign-in accounts and alice/bob from migration 0002. **Trap:** stored dates end
+  in `+00:00`; compare in the same form. No names or emails leave the server.
+- The live site on 3 Nov: 8 real accounts (2 this week, 1 today), 306 made-up ones left out.
+- **Tested:** `real-people.test.ts`; the query on the local and (read-only) the live database;
+  `console-ui.mjs` now opens the card too (axe, no sideways scroll).
+
+## M81: first visit: "Here to…" on the landing (the council's first-visit path)
+
+- Under the hero's Get started / Sign in: **Here to** Learn · Teach · Protect my brand · Help people ·
+  Look around (`HERE_FOR` in `src/app/page.tsx`, a `nav` named "What are you here for?"). Learn and
+  Teach open UniVersity's sign-up with the role already picked (`?as=student|teacher`, read in
+  `register/page.tsx`; they still confirm with Continue); Protect my brand → Trace sign-up; Help
+  people → Relief sign-up; Look around → the sample product passport `/t/demo` (no account).
+- **Trap:** in `register/page.tsx` the `as` effect must come after `individual`'s `useState` (lint:
+  "accessed before it is declared").
+- **Tested:** `landing-here-ui.mjs` (390 and 1280: five choices, each lands where it should, the role
+  is picked, axe and no sideways scroll); `pnpm check`.
