@@ -33,10 +33,11 @@ export function useLiveCanvas(draw: (f: Frame) => void, wake?: unknown) {
     const still = reducedMotion();
     let w = 0, h = 0, raf = 0, seen = false, start = 0;
     let pointer: Frame['pointer'] = null;
-    const size = () => {
-      const r = cv.getBoundingClientRect();
+    // The layout size, not getBoundingClientRect: a page's entrance animation scales it for a moment,
+    // and a card measured then stayed squashed and blurry (M85).
+    const size = (cw: number, ch: number) => {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      w = r.width; h = r.height;
+      w = cw; h = ch;
       cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
@@ -50,7 +51,7 @@ export function useLiveCanvas(draw: (f: Frame) => void, wake?: unknown) {
     };
     const kick = () => { if (!raf) raf = requestAnimationFrame(frame); };
     kicker.current = kick;
-    const ro = new ResizeObserver(() => { size(); kick(); });
+    const ro = new ResizeObserver(([e]) => { size(e.contentRect.width, e.contentRect.height); kick(); });
     ro.observe(cv);
     const io = new IntersectionObserver(([e]) => { seen = e.isIntersecting; if (seen) kick(); });
     io.observe(cv);
@@ -71,32 +72,6 @@ export function useLiveCanvas(draw: (f: Frame) => void, wake?: unknown) {
   return ref;
 }
 
-/** The light (M52, the "Globynk" palette): Baby Pink, Aqua Jade, a periwinkle blue and a cool white. */
-export const TONES = { pink: '254,129,209', blue: '140,155,255', aqua: '116,255,237', white: '242,247,255' } as const;
-export type Tone = keyof typeof TONES;
-export const TONE_ORDER: Tone[] = ['pink', 'blue', 'aqua', 'white'];
-
-const sprites = new Map<string, HTMLCanvasElement>();
-/** A soft round glow in one colour, drawn once and stamped many times (cheap: no shadows, no blur). */
-export function glow(tone: Tone): HTMLCanvasElement {
-  let s = sprites.get(tone);
-  if (s) return s;
-  s = document.createElement('canvas');
-  s.width = s.height = 64;
-  const c = s.getContext('2d')!;
-  const g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
-  g.addColorStop(0, `rgba(${TONES[tone]},1)`);
-  g.addColorStop(0.18, `rgba(${TONES[tone]},0.55)`);
-  g.addColorStop(0.5, `rgba(${TONES[tone]},0.12)`);
-  g.addColorStop(1, `rgba(${TONES[tone]},0)`);
-  c.fillStyle = g;
-  c.fillRect(0, 0, 64, 64);
-  sprites.set(tone, s);
-  return s;
-}
-
-/** A repeatable random number in [0, 1) for a seed (the same picture every time for the same data). */
-export const seeded = (n: number) => { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
-export const hash = (s: string) => { let h = 7; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); };
-/** Ease out (fast start, soft landing), for arrivals. */
-export const easeOut = (x: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+// The colours, the glow sprite and the small maths live in ./paint (no React there, so a card's
+// drawing can also run on a background thread); the cards keep importing them from here.
+export { TONES, TONE_ORDER, easeOut, glow, hash, seeded, type Tone } from './paint';

@@ -3494,3 +3494,39 @@ The owner: "upgrade every single thing… most important one ultra smoothness".
   look and runs on the compositor, untouched.
 - **Tested:** `pnpm check`; `river.worker.test.ts`; screenshots in dev and on the built site, on the
   background thread and on the page (drawn, moving, following scroll and theme, no errors).
+
+## M85 · The planet on a background thread; live cards drawn at their real size (3 Nov 2026)
+
+The owner: "…most important one ultra smoothness". After M84 the biggest always-on cost was the
+planet (the hub's card, the landing's World section): thousands of dots stamped every frame on the
+page's main thread.
+- **The planets you only look at draw on a background thread** (`src/components/live/planet.worker.ts`),
+  like the river: `Planet` renders `WorkerPlanet` (makes its canvas in the effect, hands it over and
+  sends what changed: places, land, size, pointer, on screen, tab hidden) or `PagePlanet` (the globe
+  you turn, Trace's Live globe, and browsers without OffscreenCanvas or fonts on a thread; its
+  `unsupported` message or an error switches to it). The drawing moved unchanged to `planet-paint.ts`
+  (`drawPlanet`, `planetState`, `planetPoints`, `planetLinks`); the live cards' colours, glow sprite and
+  maths moved to `live/paint.ts` (no React; `canvas.ts` re-exports them, so the other cards are
+  unchanged; on a thread the sprites are OffscreenCanvases).
+- **Land:** the page draws the land picture once per visit (`landBits`: 512×512, one byte a pixel,
+  shared by every planet); the thread finds a place's pixel with `maskIndex`, the maps' Mercator
+  written out because d3 isn't loaded there. `planet-paint.test.ts`: exactly d3's pixel for 150,000+
+  places and the edges.
+- **Trap: fonts on a background thread.** A thread has its own fonts, so the planet's thread loads
+  Urbanist itself (by full address: a thread's own address may not be a web page's) and waits for it,
+  2 s at most, before its first frame: a canvas that drew text before the font was ready kept the
+  stand-in (bolder, wider names), even after it loaded, in about one run in three.
+- **Bug fixed on the way: live cards were squashed and soft.** `useLiveCanvas` measured its canvas
+  with `getBoundingClientRect`, which the page's entrance animation scales for a moment
+  (`scale(0.96, 0.9)`): the hub's planet was drawn 845×342 into an 880×380 box, so it was stretched
+  taller and blurred. It now takes the layout size from its ResizeObserver (`contentRect`), like
+  WorldCanvas; every card on /hub, /student, /relief, /green, /trace and /play now draws at its box's
+  size. **Rule:** size a canvas from layout (ResizeObserver, `clientWidth`), never from
+  `getBoundingClientRect`.
+- **Result (built site; this machine draws without a GPU, so read the numbers as relative):** the
+  page's main thread at rest on /hub 99.5% → 5% busy, on the landing 91.5% → 17% (river and planet
+  both on threads; M84 alone left /hub about 73% busy). The same pictures pixel for pixel (Reduce
+  Motion still frames against the old code: hub, landing at 1280 and 390, on the thread, on the page
+  and on the built site).
+- **Tested:** `pnpm check`; `planet-paint.test.ts`; planet screenshots (still and moving) in dev and on
+  the built site; the Live globe draws, turns and zooms; card sizes on six pages.
