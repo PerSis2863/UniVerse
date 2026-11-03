@@ -186,14 +186,14 @@ export default function BoardsPage() {
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {list.map((b) => (
-                <div key={b.id} className="group relative rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white dark:bg-[#141416]/80 overflow-hidden shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-indigo-400/50 hover:shadow-[0_24px_60px_-28px_rgba(42,41,39,0.55)]">
+                <div key={b.id} className="group relative rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white dark:bg-[#1d2650]/80 overflow-hidden shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-indigo-400/50 hover:shadow-[0_24px_60px_-28px_rgba(43,53,104,0.55)]">
                   <Link href={b.mine && b.title === GUIDE_TITLE ? guideHref(b.id) : `/boards/${b.id}`} className="block">
                     {/* The preview on a canvas of dots; in dark mode it's inverted like the board itself, so it isn't a white box. */}
-                    <div className="relative aspect-[16/10] overflow-hidden bg-zinc-50 dark:bg-[#141416] bg-[radial-gradient(circle_at_1px_1px,rgb(99_102_241/0.18)_1px,transparent_0)] [background-size:18px_18px]">
+                    <div className="relative aspect-[16/10] overflow-hidden bg-zinc-50 dark:bg-[#1d2650] bg-[radial-gradient(circle_at_1px_1px,rgb(99_102_241/0.18)_1px,transparent_0)] [background-size:18px_18px]">
                       {b.thumbnail
                         ? <img loading="lazy" decoding="async" src={b.thumbnail} alt="" className="w-full h-full object-contain p-3 transition-transform duration-500 ease-out group-hover:scale-[1.04] dark:invert dark:hue-rotate-180 dark:opacity-90" />
                         : <div className="w-full h-full grid place-items-center"><span className="w-14 h-14 rounded-2xl grid place-items-center bg-gradient-to-br from-indigo-500/15 to-fuchsia-500/15 text-indigo-500 dark:text-indigo-300"><PenTool className="w-7 h-7" /></span></div>}
-                      <span aria-hidden className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white dark:from-[#0b0b0c] to-transparent" />
+                      <span aria-hidden className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white dark:from-[#171f44] to-transparent" />
                     </div>
                     <div className="px-4 pb-4 pt-1">
                       <p className="font-semibold text-zinc-900 dark:text-white truncate">{b.title}</p>
@@ -203,7 +203,7 @@ export default function BoardsPage() {
                       <div className="mt-3 flex items-center gap-2">
                         <div className="flex -space-x-2">
                           {[b.owner, ...b.people].slice(0, 4).map((p) => (
-                            <div key={p.id} className="rounded-full ring-2 ring-white dark:ring-[#0b0b0c]"><Avatar name={p.name} src={p.avatar} size={24} /></div>
+                            <div key={p.id} className="rounded-full ring-2 ring-white dark:ring-[#171f44]"><Avatar name={p.name} src={p.avatar} size={24} /></div>
                           ))}
                         </div>
                         {b.memberCount > 0 && <span className="text-[11px] font-medium text-zinc-600 dark:text-zinc-300 inline-flex items-center gap-1 h-6 px-2 rounded-full border border-zinc-200 dark:border-white/10"><Users className="w-3.5 h-3.5" aria-hidden /> {b.memberCount + 1}</span>}

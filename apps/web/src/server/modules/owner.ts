@@ -572,11 +572,10 @@ export default function ownerModule(router: Router) {
     if (oneOf(['STUDENT', 'TEACHER', 'ADMIN', 'INDUSTRY_MENTOR', 'GUARDIAN'] as const, query.role)) where.role = query.role;
     if (oneOf(['PENDING', 'ACTIVE', 'SUSPENDED'] as const, query.status)) where.status = query.status;
     if (q) where.OR = [{ name: { contains: q } }, { email: { contains: q } }, { phone: { contains: q } }];
+    // The last sign-in is a related list with orderBy and take: src/lib/db.ts reads this 200-row page
+    // in pages of 90 so D1's 100 values are never passed (M58, M73: "too many SQL variables").
     const people = await prisma.user.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-      skip: Math.max(0, Number(query.skip) || 0),
+      where, orderBy: { createdAt: 'desc' }, take: 200, skip: Math.max(0, Number(query.skip) || 0),
       select: {
         id: true, name: true, email: true, phone: true, role: true, status: true, avatar: true, accountType: true, onboardedAt: true, createdAt: true, lastSeenAt: true,
         loginEvents: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true, device: true, country: true, city: true } },

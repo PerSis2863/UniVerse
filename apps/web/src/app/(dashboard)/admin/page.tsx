@@ -15,6 +15,7 @@ import { fetcher, api } from '@/lib/fetcher';
 import { HomeBoard } from '@/components/home/HomeBoard';
 import { LiveNumbersCard } from '@/components/home/RoleCards';
 import { useHome } from '@/components/home/use-home';
+import { AdminLive } from '@/components/live/HomeLive';
 
 const statusIcon = {
   completed: <CheckCircle2 className="w-4 h-4 text-green-400" />,
@@ -84,6 +85,7 @@ export default function AdminDashboard() {
               <KpiCard title={t('admin.revenue')} value={formatCurrency(data?.revenue || 0)} icon={DollarSign} color="green" />
             </div>
           ),
+          orbit: data ? <AdminLive departments={departments} students={data.totalStudents ?? 0} teachers={data.totalTeachers ?? 0} courses={data.totalCourses ?? 0} /> : null,
           departments: (
             <div className="card">
               <h2 className="font-bold text-zinc-900 dark:text-white mb-5">{t('admin.departments')}</h2>

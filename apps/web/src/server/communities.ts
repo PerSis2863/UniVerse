@@ -17,7 +17,7 @@ import { publish } from './realtime';
 
 export type Role = 'OWNER' | 'MOD' | 'MEMBER';
 const KINDS = new Set(['TEXT', 'ANNOUNCE', 'VOICE']);
-const COLORS = ['#2a2927', '#2a2927', '#db2777', '#e11d48', '#ea580c', '#059669', '#0891b2', '#2a2927'];
+const COLORS = ['#2b3568', '#2b3568', '#c13a92', '#e11d48', '#ea580c', '#059669', '#0891b2', '#2b3568'];
 const MAX_CHANNELS = 30;
 const MAX_MEMBERS = 1000;
 

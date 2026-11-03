@@ -117,6 +117,12 @@ try {
       const page = await ctx.newPage();
       page.on('pageerror', (e) => errors.push(`${new URL(page.url()).pathname}: ${e.message.slice(0, 120)}`));
 
+      // M79: the Overview's Real people card (sample and demo accounts left out).
+      await open(page, '/console', page.getByRole('heading', { name: 'Real people' }));
+      r.realPeople = await page.locator('section[aria-labelledby="real-h"]').innerText();
+      r.realPeopleAxe = await axe(page);
+      r.overviewWide = await wide(page);
+
       await open(page, '/console?tab=schools', page.getByRole('heading', { name: 'Schools', exact: true }));
       await page.getByRole('heading', { name: 'Who keeps coming back' }).waitFor({ timeout: 20_000 });
       r.schoolsAxe = await axe(page);
@@ -131,7 +137,7 @@ try {
         await open(page, `/console?tab=people&person=${student.id}`, page.getByRole('button', { name: /View as .* \(read-only\)/ }));
         const [tab] = await Promise.all([ctx.waitForEvent('page'), page.getByRole('button', { name: /View as .* \(read-only\)/ }).click()]);
         tab.on('pageerror', (e) => errors.push(`view-as ${new URL(tab.url()).pathname}: ${e.message.slice(0, 120)}`));
-        await tab.waitForURL(/\/student/, { timeout: 30_000 });
+        await tab.waitForURL(/\/(student|hub)/, { timeout: 30_000 }); // M21: home is the hub without a chosen app
         await tab.getByText('Viewing as').waitFor({ timeout: 20_000 });
         r.viewAsHome = new URL(tab.url()).pathname;
         r.viewAsBannerAxe = await axe(tab);

@@ -18,7 +18,7 @@ import type { PassportData } from './PassportView';
 
 type CvData = PassportData & { strengths: string | null; theme: PassportTheme; portfolioUrl: string | null };
 // Also the colour of the CV's small headings, so each is at least 4.5:1 on white.
-const ACCENT: Record<PassportTheme, string> = { indigo: '#2a2927', emerald: '#047857', slate: '#2a2927', rose: '#e11d48', amber: '#b45309' };
+const ACCENT: Record<PassportTheme, string> = { indigo: '#2b3568', emerald: '#047857', slate: '#2b3568', rose: '#e11d48', amber: '#b45309' };
 const PARTS = [
   { key: 'evidence', label: 'Skills shown in checked work' },
   { key: 'credentials', label: 'Verified experience' },

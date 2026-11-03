@@ -101,7 +101,7 @@ export function Arena({ game, onExit, side, children }: {
   if (!mounted) return null;
   return createPortal(
     <div ref={root} tabIndex={-1} role="dialog" aria-modal="true" aria-label={info.name}
-      className="arena dark fixed inset-0 z-[160] flex flex-col overflow-hidden bg-[#08080a] text-zinc-100 outline-none"
+      className="arena dark fixed inset-0 z-[160] flex flex-col overflow-hidden bg-[#0b1028] text-zinc-100 outline-none"
       style={{ '--arena': info.color } as React.CSSProperties}>
       <div className="arena-glow pointer-events-none absolute inset-0" aria-hidden />
       <header className="relative z-10 flex h-14 shrink-0 items-center gap-3 px-3 sm:px-5">
@@ -151,7 +151,7 @@ export function Arena({ game, onExit, side, children }: {
         {asking && (
           <motion.div className="absolute inset-0 z-30 grid place-items-center bg-black/60 px-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }}>
             <motion.div role="alertdialog" aria-label="Leave the game?" initial={{ scale: calm ? 1 : 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={spring.snappy}
-              className="w-full max-w-sm rounded-[1.75rem] border border-white/10 bg-[#151517] p-6 text-center shadow-2xl">
+              className="w-full max-w-sm rounded-[1.75rem] border border-white/10 bg-[#1d2650] p-6 text-center shadow-2xl">
               <p className="text-lg font-semibold text-white">Leave the game?</p>
               <p className="mt-1 text-sm text-zinc-400">A round you leave doesn’t count.</p>
               <div className="mt-5 flex justify-center gap-2">

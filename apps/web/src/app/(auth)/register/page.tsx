@@ -5,7 +5,7 @@ import { authErrorMessage } from '@/lib/auth-errors';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Loader2, User, ArrowRight, ArrowLeft, GraduationCap, Building2, Globe, Check, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
-import { Accent, Tag } from '@/components/landing/bits';
+import { Accent } from '@/components/landing/bits';
 import { useAuthStore } from '@/store/auth';
 import { auth, popupSignIn, warmUpPopupSignIn } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, updateProfile } from 'firebase/auth';
@@ -99,6 +99,11 @@ export default function RegisterPage() {
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
   const [individual, setIndividual] = useState<'STUDENT' | 'INDEPENDENT' | null>(() => (campus ? null : 'INDEPENDENT')); // for Individual sign-ups
   const [agreed, setAgreed] = useState(false); // Terms and Privacy Policy, required to create the account
+  // M81: the landing's "Here to: Learn / Teach" picks the role (they still confirm with Continue).
+  useEffect(() => {
+    const as = new URLSearchParams(window.location.search).get('as');
+    if (campus && (as === 'student' || as === 'teacher')) queueMicrotask(() => { setSelectedRole(as === 'student' ? 'STUDENT' : 'TEACHER'); if (as === 'student') setIndividual('STUDENT'); });
+  }, [campus]);
 
   const selectedRoleData = ROLES.find(r => r.id === selectedRole);
 
@@ -217,8 +222,7 @@ export default function RegisterPage() {
     <div className="w-full">
       {/* Header */}
       <div className="mb-8">
-        <Tag>join UniVerse Impact</Tag>
-        <h1 className="mt-5 text-4xl font-bold tracking-[-0.03em] text-white mb-2">Create an <Accent>account.</Accent></h1>
+        <h1 className="text-4xl font-bold tracking-[-0.03em] text-white mb-2">Create an <Accent>account.</Accent></h1>
         <p className="text-zinc-400 text-sm">{campus ? (finishing ? 'You’re signed in — choose how you’ll use UniVersity to finish creating your account.' : 'Join UniVersity as an individual, a parent, a staff member or an organization.') : `Join ${appById(app).name}. The same account opens every app.`}</p>
         <div className="mt-5"><AppTabs small value={app} onChange={(id) => { setChosenApp(id); if (id !== 'campus') { setSelectedRole('STUDENT'); setIndividual('INDEPENDENT'); setStep((s) => (s === 'role' ? 'credentials' : s)); } else setStep((s) => (s === 'credentials' && !finishing ? 'role' : s)); }} label="Join" layoutId="register-app" /></div>
       </div>
@@ -236,7 +240,7 @@ export default function RegisterPage() {
         </div>
       </div>}
 
-      <div className="rounded-3xl border border-white/[0.08] bg-[#111112]/75 backdrop-blur-md shadow-[0_40px_120px_-40px_rgba(42,41,39,0.55)] p-6 sm:p-8">
+      <div className="rounded-3xl border border-white/[0.08] bg-[#131a3d]/75 backdrop-blur-md shadow-[0_40px_120px_-40px_rgba(43,53,104,0.55)] p-6 sm:p-8">
         {error && !showPhoneFlow && (
           <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">{error}</div>
         )}

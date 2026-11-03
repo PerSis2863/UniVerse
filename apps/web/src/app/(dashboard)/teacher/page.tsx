@@ -27,6 +27,7 @@ import { useLanguageStore } from '@/store/language';
 import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
 import { courseColor } from '@/lib/course-color';
+import { TeacherLive } from '@/components/live/HomeLive';
 
 interface TeacherCourse { id?: string; name: string; code: string; color?: string | null; students: number; completion: number }
 interface RecentStudent { name: string; course: string; score: number; status: string }
@@ -117,6 +118,7 @@ export default function TeacherDashboard() {
             </div>
           ),
           brief: <DailyBrief />,
+          orbit: <TeacherLive courses={myCourses} recent={recentStudents} pending={pendingGrades} avg={avgClassScore} name={user?.name} />,
           attention: <AttentionCard attention={home.data?.attention} />,
           courses: (
             <div className="card">

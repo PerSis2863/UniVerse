@@ -5,6 +5,7 @@ import jsQR from 'jsqr';
 import { Sheet } from '@/components/ui/Sheet';
 import { FrameCollector } from '@/lib/qr-relay';
 import { cn } from '@/lib/utils';
+import { haptic } from '@/lib/haptics';
 
 // Stage 5 · D17: reads the teacher's moving codes with the camera, with no connection. Uses the
 // phone's own QR reader where there is one (BarcodeDetector: Android Chrome), else jsQR (iPhone,
@@ -74,7 +75,7 @@ export default function QrRelayCamera({ onDone, onClose }: { onDone: (bytes: Uin
             setProgress({ have: st.have, total: st.total, got: Array.from({ length: st.total }, (_, i) => !missing.has(i + 1)) });
             if (st.state === 'done') {
               stopped = true;
-              navigator.vibrate?.(40);
+              haptic('success');
               done.current(collector.bytes());
               return;
             }

@@ -23,6 +23,7 @@ export const FEATURE_SWITCHES: FeatureSwitch[] = [
   { id: 'groups', label: 'Groups and posts', hint: 'Nobody can create, join or post in groups.', paths: /^\/api\/(groups\/.*|core\/groups(\/.*)?)$/ },
   { id: 'boards', label: 'Whiteboards', hint: 'Whiteboards become view-only.', paths: /^\/api\/(boards(\/.*)?|courses\/[^/]+\/board)$/ },
   { id: 'signups', label: 'New sign-ups', hint: 'New people can’t finish creating an account. Existing accounts are fine.', paths: /^\/api\/core\/auth\/register$/ },
+  { id: 'aircraft', label: 'Live air traffic', hint: 'Trace’s Live globe stops showing planes (data from the OpenSky Network).', paths: /^\/api\/core\/trace\/aircraft$/ },
   { id: 'payments', label: 'Payments', hint: 'Nobody can start a new payment or subscription.', paths: /^\/api\/(billing\/checkout|create-checkout-session)$/ },
 ];
 

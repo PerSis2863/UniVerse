@@ -58,7 +58,7 @@ function Pulse() {
   const d = `M0 30 ${[90, 330, 520, 760, 1010].map((x) => `${beat(x)} `).join('')}L 1200 30`;
   return (
     <svg aria-hidden className="absolute inset-x-0 bottom-0 w-full h-12 opacity-80" viewBox="0 0 1200 60" preserveAspectRatio="xMidYMid slice">
-      <defs><linearGradient id="deck-pulse" x1="0" x2="1"><stop offset="0" stopColor="#5f5c57" /><stop offset="1" stopColor="#f472b6" /></linearGradient></defs>
+      <defs><linearGradient id="deck-pulse" x1="0" x2="1"><stop offset="0" stopColor="#58617f" /><stop offset="1" stopColor="#ff9fdc" /></linearGradient></defs>
       <path d={d} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
       <path d={d} pathLength={1000} fill="none" stroke="url(#deck-pulse)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="deck-pulse" />
     </svg>
@@ -68,12 +68,12 @@ function Pulse() {
 export function DeckHeader({ needs, search }: { needs: number | null; search: React.ReactNode }) {
   const now = useNow();
   return (
-    <section className="dark relative rounded-3xl border border-white/[0.08] bg-[#0b0b0c] text-white shadow-[0_30px_90px_-40px_rgba(42,41,39,0.6)]">
+    <section className="dark relative rounded-3xl border border-white/[0.08] bg-[#171f44] text-white shadow-[0_30px_90px_-40px_rgba(43,53,104,0.6)]">
       {/* The glow and grid stay inside the rounded box; the search's results may hang below it. */}
       <div aria-hidden className="absolute inset-0 rounded-[inherit] overflow-hidden pointer-events-none">
         <div className="deck-grid absolute inset-0" />
-        <div className="mkt-drift-a absolute -top-48 -start-40 w-[560px] h-[560px] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(42,41,39,0.32), transparent)' }} />
-        <div className="mkt-drift-b absolute -bottom-56 -end-24 w-[520px] h-[520px] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(236,72,153,0.22), transparent)' }} />
+        <div className="mkt-drift-a absolute -top-48 -start-40 w-[560px] h-[560px] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(43,53,104,0.32), transparent)' }} />
+        <div className="mkt-drift-b absolute -bottom-56 -end-24 w-[520px] h-[520px] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(254,129,209,0.22), transparent)' }} />
         <Pulse />
       </div>
       <div className="relative p-5 sm:p-7 pb-12 sm:pb-14 flex flex-col lg:flex-row lg:items-end gap-5 justify-between">

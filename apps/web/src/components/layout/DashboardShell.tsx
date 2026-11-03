@@ -19,6 +19,7 @@ import { useOptimisticPath } from '@/lib/nav-pending';
 import { usePageTitle, useScrollEdges } from '@/lib/chrome';
 import { haptic } from '@/lib/haptics';
 import { authedJson } from '@/lib/authed-fetch';
+import { refreshOfflineCopies } from '@/lib/offline-reads';
 import useSWR from 'swr';
 import { PendingPage } from './PendingPage';
 import { AppSkeleton } from './AppSkeleton';
@@ -144,7 +145,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
   // The main tabs download quietly once the app is idle, so a first tap on one opens at once and
   // its entrance glides straight away instead of waiting on the network (pages open without
   // prefetching otherwise, to keep requests low). One request each, from the cache; not in
-  // low-data mode or with the browser's data saver on.
+  // low-data mode or with the browser's data saver on. Then, once a day, the copies the offline page
+  // shows (today's classes, courses, chats: src/lib/offline-reads.ts).
   const role = user?.role;
   useEffect(() => {
     if (!role || tabsPrefetched) return;
@@ -153,6 +155,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
     const run = () => {
       tabsPrefetched = true;
       for (const t of tabsForRole(role, window.location.pathname).items) if (t.href !== window.location.pathname) router.prefetch(t.href);
+      void refreshOfflineCopies(role, (url) => authedJson(url)).catch(() => {});
     };
     const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
     if (w.requestIdleCallback) { const id = w.requestIdleCallback(run, { timeout: 4000 }); return () => w.cancelIdleCallback?.(id); }

@@ -88,7 +88,7 @@ function Card({ it, i, onChange }: { it: Item; i: number; onChange: () => void }
         {it.product?.imageUrl
           // eslint-disable-next-line @next/next/no-img-element -- the brand's own product photo
           ? <img src={it.product.imageUrl} alt="" className="w-14 h-14 rounded-2xl object-cover" />
-          : <span className="w-14 h-14 rounded-2xl grid place-items-center text-white" style={{ background: it.brand?.color ?? '#ec4899' }}><Package className="w-6 h-6" aria-hidden /></span>}
+          : <span className="w-14 h-14 rounded-2xl grid place-items-center text-white" style={{ background: it.brand?.color ?? '#fe81d1' }}><Package className="w-6 h-6" aria-hidden /></span>}
         <div className="min-w-0 flex-1">
           <p className="font-bold text-zinc-900 dark:text-white truncate">{it.product?.name ?? 'A product'}</p>
           <p className="text-xs text-zinc-500 truncate">{it.brand?.name}{it.product?.category ? ` · ${it.product.category}` : ''}</p>

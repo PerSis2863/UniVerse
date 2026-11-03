@@ -28,7 +28,7 @@ export function streak(days: string[], today: string) {
   return n;
 }
 
-export interface GreenTotals { actions: number; kg: number; byKind: Partial<Record<GreenKind, number>>; streak: number }
+export interface GreenTotals { actions: number; kg: number; byKind: Partial<Record<GreenKind, number>>; streak: number; feedback?: number }
 export const BADGES: { id: string; label: string; text: string; earned: (t: GreenTotals) => boolean }[] = [
   { id: 'first', label: 'First step', text: 'Logged a first action', earned: (t) => t.actions >= 1 },
   { id: 'ten', label: 'Habit', text: '10 actions', earned: (t) => t.actions >= 10 },
@@ -38,6 +38,8 @@ export const BADGES: { id: string; label: string; text: string; earned: (t: Gree
   { id: 'trees', label: 'Tree planter', text: '5 trees planted', earned: (t) => (t.byKind.TREE ?? 0) >= 5 },
   { id: 'cyclist', label: 'Cyclist', text: '100 km by bike', earned: (t) => (t.byKind.CYCLE ?? 0) >= 100 },
   { id: 'recycler', label: 'Recycler', text: '50 kg recycled', earned: (t) => (t.byKind.RECYCLE ?? 0) >= 50 },
+  // Like Candour's free stamp for feedback (M61): saying how actions went earns a badge.
+  { id: 'honest', label: 'Honest', text: 'Said how 5 actions went', earned: (t) => (t.feedback ?? 0) >= 5 },
 ];
 
 /** This week's challenge (changes every Monday, the same for everyone). */
@@ -55,4 +57,30 @@ export function weeklyChallenge(now: number) {
   const c = CHALLENGES[((week % CHALLENGES.length) + CHALLENGES.length) % CHALLENGES.length];
   const starts = monday + week * 7 * 86_400_000;
   return { ...c, unit: GREEN_FACTORS[c.kind].units, starts: new Date(starts).toISOString(), ends: new Date(starts + 7 * 86_400_000).toISOString() };
+}
+
+/** The Green Pass (M60): a collectable card. Its tier grows with the CO₂ saved; one stamp per kind
+ *  of action ever logged, eight to collect. */
+export const PASS_TIERS = [
+  { label: 'Seedling', from: 0 },
+  { label: 'Sprout', from: 25 },
+  { label: 'Sapling', from: 100 },
+  { label: 'Grove', from: 500 },
+  { label: 'Forest', from: 2000 },
+] as const;
+export function greenPass(t: Pick<GreenTotals, 'kg' | 'byKind'>) {
+  const i = PASS_TIERS.findLastIndex((x) => t.kg >= x.from), tier = PASS_TIERS[Math.max(0, i)], next = PASS_TIERS[i + 1] ?? null;
+  const progress = next ? Math.min(1, (t.kg - tier.from) / (next.from - tier.from)) : 1;
+  return { tier: tier.label, level: Math.max(0, i) + 1, next: next ? { label: next.label, kgToGo: Math.round((next.from - t.kg) * 10) / 10 } : null, progress, stamps: GREEN_KINDS.filter((k) => (t.byKind[k] ?? 0) > 0) };
+}
+
+/** "How did it go?" after logging (M60): one answer per action. */
+export const FEELINGS = ['EASY', 'OK', 'HARD'] as const;
+export type Feeling = (typeof FEELINGS)[number];
+/** The kind people found easy most often (at least two easy answers), to suggest doing again. */
+export function easiestKind(rows: { kind: string; feeling: string | null }[]): GreenKind | null {
+  const n: Partial<Record<GreenKind, number>> = {};
+  for (const r of rows) if (r.feeling === 'EASY' && (GREEN_KINDS as readonly string[]).includes(r.kind)) n[r.kind as GreenKind] = (n[r.kind as GreenKind] ?? 0) + 1;
+  const best = (Object.entries(n) as [GreenKind, number][]).sort((a, b) => b[1] - a[1])[0];
+  return best && best[1] >= 2 ? best[0] : null;
 }

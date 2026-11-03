@@ -31,7 +31,7 @@ export function MaintenanceGate({ children }: { children: React.ReactNode }) {
   return (
     <div className="w-full max-w-md mx-auto text-center">
       <div className="relative overflow-hidden rounded-3xl border border-white/10 p-8 sm:p-10"
-        style={{ background: 'radial-gradient(120% 70% at 0% 0%, rgba(42,41,39,0.32), transparent 70%), radial-gradient(120% 70% at 100% 100%, rgba(236,72,153,0.24), transparent 70%), #111112' }}>
+        style={{ background: 'radial-gradient(120% 70% at 0% 0%, rgba(43,53,104,0.32), transparent 70%), radial-gradient(120% 70% at 100% 100%, rgba(254,129,209,0.24), transparent 70%), #131a3d' }}>
         <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-xl shadow-indigo-500/30">
           <Wrench className="w-8 h-8 text-white" />
         </div>

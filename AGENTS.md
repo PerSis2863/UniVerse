@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M41c is the latest).
+  builds on it). The newest notes are at the end (M81 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -83,7 +83,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 **A new app needs:** an `APPS` entry, its nav and tabs, a landing tab section, a card on `/hub`
 (`GET /hub`, `src/server/hub.ts`) and sample answers (`src/lib/sample/impact.ts`).
 
-## 4. Where things stand (26 October 2026)
+## 4. Where things stand (31 October 2026)
 
 - **`main` has everything through M33** (PR #95, 25 Oct): the impact apps (M21), Relief alerts and
   sensors (M22), Google sign-in fixed (M23), the Impact Wallet (M24), proof for Green actions
@@ -97,9 +97,58 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   **M37** (game bug sweep, longer rounds, player levels and looks), **M38** (other players live in
   3D rooms, a skill per world, the big-game layer) and **M39** (text chat and 13+ proximity voice in
   3D rooms, realistic lit surfaces, a new feature in every game) (PR #97); **M40** (Ridgeline Ops
-  replaces Neon Strike: a first-person extraction shooter on a seeded island) (PR #98, 26 Oct).
+  replaces Neon Strike: a first-person extraction shooter on a seeded island) (PR #98, 26 Oct). **M41**
+  (new Green and Play pictures, also on sign-in; a press ripple, magnetic buttons, tilt and a
+  cursor light), **M42** (link previews, icon count, install guide, Share to UniVerse, much less
+  text), **M42a** (no "Try the live demo" on sign-in), **M43** (more Relief, Green and Play
+  sections with "try it here" demos; photos shared in), **M44** (the landing's scroll story and
+  live totals, migration 0186), **M45** (glides, celebrations, optional sounds, swipes, bottom
+  sheets, one vibration), **M46** (today's classes, courses and chats readable offline, the
+  iPhone launch screen, bar colours per theme; its river check was removed in M56a) and
+  **M47** (the landing's demos run only on screen; light and sideways iPad launch screens),
+  **M48** (live cards after the owner's "Crew" video: 3D constellations and funnels of light on every
+  home, `src/components/live`), **M49** (heartbeat, radar and pulse-grid pictures, tabs that
+  cascade their cards in, the owner console's live cards), **M50** (Trace in motion after the
+  "Waypoint" video: a night city of vans, journey lines, level gauges, a timetable with now) and
+  **M51** (the night city much richer: traffic, neon, beams, depth) and **M52** (the "Globynk" colours
+  everywhere: navy, aqua, Baby Pink; the dotted planet on the landing and hub; 3D cards on the Impact
+  Wallet), **M53** (light mode in Marshmallow White, Galactic Violet and Bubblegum Pink), **M54** (more
+  Aqua Jade in dark mode) and **M55** (the "Globynk" picture everywhere in dark mode: navy-to-aqua
+  pages, glass cards, the network globe) (merged into `main`, 31 Oct).
+  **M56** (31 Oct, merged, PR #102): the river pink again and never stuck, a third cheaper; the scroll
+  story's pictures full size; the planet section fades into the page; sign-in fits one laptop screen.
+  **M56a**: nothing slows or stops the river by itself any more (only Reduce Motion stills it).
+  **M57** (on the branch): dark mode deep navy with Aqua Jade glows (no pale blue); no line under the hero. **M57a**: a step deeper again (page #0a0f2b).
+  **M58**: less AI-looking website; People list fixed. **M58a**: teacher-home duplicate-key fix.
+  **M59**: a Live globe in Trace (the brand's shipments on the 3D globe).
+  **M60**: the Green Pass (collectable card) and "how did it go?" after logging in Green; a live-aircraft demo kept off the site for the owner to judge.
+  **M61**: more of Candour in Green (a private "what made it hard?", a share nudge, an Honest badge, a streak reminder, "How Green feels" in the console).
+  **M62**: security review; fake Stripe events, LMS account takeover, emails on receipts and other schools' documents fixed (open items in its handoff note).
+  **M64**: the owner gets every PRO feature (the router now marks the owner's user).
+  **M63**: the landing's scroll story removed (it repeated the hero); each section below arrives its own way (`Motion kind`, `landing/bits.tsx`).
+  **M65**: maps sharp (no additive glow) and smoother (land picture reused while moving, no per-frame blur).
+  **M66**: Tracking's city at the bottom, zoomed in with a camera (drag, pinch, buttons) and real cars.
+  **M67**: Trace's Live globe usable (turn, zoom, pick; list and detail card; `Planet interactive`).
+  **M70**: the explainer board twice as wide without collisions; Excalidraw patched to zoom out to 2% (redo the patch when upgrading it).
+  **M69**: live air traffic on Trace's Live globe (`/trace/aircraft`, OpenSky, cached 15 min; owner switch).
+  **M68**: Collaborate in five tabs (Home, Create, Files, Code, Tasks) with 16 new in-browser tools under Create.
+  **M71**: 29 more tools under Create (51 in all, in six groups; `MoreTools.tsx`, `ImageTools.tsx`).
+  **M72**: Create smoother (search, stars, recent, load on hover, glides, Esc, scroll kept) and 30 bigger tools (81 in all, eight groups; `PlanTools`, `StudyTools`, `DataTools`, `MakerTools`, logic `src/lib/big-tools.ts`).
+  **M73**: "too many SQL variables" fixed in the database layer for every list (pages of 90 when a related list has its own orderBy/take).
+  **M74**: every Create tool upgraded (focus, previous/next, copy link, drop a file, text kept) and 56 more tools (137 in all; `WordTools`, `OrganiseTools`, `ClassTools`, `MoneyTools`, `MediaTools`, `DevTools`; logic `src/lib/more-tools.ts`, `elements.ts`).
+  **M75**: tools save to the account and share by link (migration 0189 `tool_saves`, `Saves.tsx`, `KeptScope`); 55 more tools (192 in all; `PenTools`, `LifeTools`, `ScienceTools`, `CalcTools`, `StageTools`, `ArtTools`, `WebTools`; logic `src/lib/tools-5.ts`).
+  **M76**: view links open without sign-in (`/s/<token>`) and edit links edit live together (migration 0190; `useLive`, `KeptSyncProvider`, `registry.tsx`).
+  **M77**: Next.js 16.4.4 with the Cloudflare adapter 1.20.15 (security update; always move the two together).
+  **M78**: security fixes: rate limits by account + address (`rate-key.ts`), admin code lockout in the database (migration 0191), organisation reps get their own organisation, no token in the certificate address.
+  **M79**: Real people on the console Overview (`real-people.ts`; sample and demo accounts left out).
+  **M80**: Share → Add to a course in Create (teachers): the view link as a module item (`ToCourse.tsx`).
+  **M81**: the landing's "Here to" row (Learn, Teach, Protect my brand, Help people, Look around; `HERE_FOR`).
+  **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
-- **Next database update number: `0186`** (files in `apps/web/prisma/migrations/`).
+- **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
+  done, and M47 (M46's two leftovers). Next: ask the owner (the last speed idea, ~400 kB of scripts
+  on a first visit, is in M47's handoff note).
+- **Next database update number: `0192`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
   challenges (done, M25); organisation accounts for Relief (NGOs, supplies, volunteer shifts; SMS/WhatsApp requests behind a
@@ -195,8 +244,8 @@ page with a `[param]` is built once as `/x/open` and answered for every value). 
 - **Green** (`src/server/green.ts`): positions rounded to 0.1°; CO₂ factors only from `src/lib/green.ts`.
 - **Sample data, two kinds:** the owner's "Fill with sample data" on the console Overview writes a
   made-up world in steps (`src/server/sample-world.ts`), marked so "Remove" takes out exactly that
-  (emails `@sample.universe.test`, ids `smp…`, slugs `sample-`). A visitor's "Try the live demo"
-  and a signed-in "Explore with sample data" never touch the server: answers come from
+  (emails `@sample.universe.test`, ids `smp…`, slugs `sample-`). A signed-in "Explore with sample
+  data" never touches the server: answers come from
   `src/lib/sample/router.ts` and `impact.ts` in the browser. **Every new GET route needs a sample
   answer there**, or the demo shows it empty; writes call `notice()`.
 
@@ -242,21 +291,37 @@ file used only from config goes in its `BY_CONFIG` list).
 
 ## 8. Design and motion
 
-**The look: "Karma" (the owner, 25 Oct 2026, after Rondesignlab's CreditKarma; replaced the dark
-blue).** Light mode: a warm off-white page (#EBEAE6) lit by soft amber, gold and blue-grey glows with
-grain (`.ambient-bg`), crisp white squircle cards (`--radius-card`, `corner-shape: squircle` where the
-browser has it), black pill buttons and black selected pills. Dark mode (the default): near-black
-(#0B0B0C), graphite cards (#151517) with a hairline, white pill buttons and pills. The side menu is
-near-black in both themes, the chosen entry a white pill with a pink edge. Neutrals are warm
-graphite: `indigo-*` / `violet-*` / `purple-*` = the graphite scale (indigo-600 = #2A2927), `zinc-*` =
-warm greys. Headline cards wear the design's frosts (`--karma-dusk`, `--karma-olive`,
-`--karma-gold`; `kpi-row` uses the first two, `.karma-frost` for any card); thin-line icons sit in
-circles (`.karma-icon`), round ink arrow buttons (`.karma-go`). Type: Urbanist, served from
-`/fonts/urbanist` (no outside service). **Hot pink with a little purple stays the light**: the light
-river (`LightTrail`: dense, thin, sharp strands with glowing pulses), focus, live states and the
-icon's U. No other new hues; green, amber and red only for states. `.panel` / `.card` /
-`.btn-primary` / `.ios-segmented` carry the look, so new screens get it by using them. The river and
-the italic accent word are the brand, even where design guides call them "AI-looking".
+**Light mode (M53, the owner, 31 Oct 2026): Marshmallow White #F0F0F0, Galactic Violet #533FF6, Bubblegum
+Pink #EC74CE.** An off-white page with pink and violet light low down, white cards, ink #141320, black
+selected pills, violet accents and focus, the main button Bubblegum Pink with ink text; light mode
+re-points the Tailwind scales (`html:not(.dark)`: indigo / violet / purple = violet, pink = Bubblegum,
+zinc = neutral greys) and `.dark` parts get the navy ones back. Use `violet-*` where dark mode uses
+`aqua-*`. Everything below is dark mode, the default.
+
+**The look: "Globynk" (M52, the owner, 31 Oct 2026; replaced M34's warm graphite "Karma").** Three
+colours: **Midnight Abyss #171F44** (navy: the page in dark mode, the ink, the side menu), **Aqua Jade
+#74FFED** (the glow rising from the bottom of every page, focus in dark mode, the planet; M57: always
+a glow over deep navy #0a0f2b, never a pale blue fill) and **Baby
+Pink #FE81D1** (the light: the main button, the river, live states, arcs). Dark mode (the default): every
+page fades from Midnight Abyss at the top into deep Aqua Jade at the bottom (M55, `.ambient-bg`; its
+lightest point keeps white text at 4.5:1), cards are 80% navy glass (blurred on big screens), the side
+menu see-through navy glass, the planet a glowing network globe. **In dark mode
+pink is the action, Aqua Jade is everything chosen or highlighted (M54)**: selected pills, accent text
+and icons (`dark:text-indigo-300` is aqua there), outlines, chart lines, links.
+Light mode: an ice-white page (#e9eef8) with the same glows, white squircle cards (`--radius-card`,
+`corner-shape: squircle` where the browser has it), navy pills. **`.btn-primary` is a Baby Pink pill
+with navy text in both themes**; text on Baby Pink is always navy (white needs `pink-600` or deeper).
+The side menu is deep navy in both themes, the chosen entry a white pill with a pink edge. Tailwind
+names: `indigo-*` / `violet-*` / `purple-*` = the navy scale (indigo-600 = #2b3568, 900 = #171f44),
+`zinc-*` = cool greys, `pink-500` = Baby Pink, `fuchsia-*` an orchid beside it, `aqua-*` = Aqua Jade
+(300; only `aqua-700` as text on light backgrounds). Headline cards wear frosts (`--karma-dusk` navy
+into deep aqua, `--karma-gold` pale aqua, `--karma-olive` navy into orchid; names kept; `kpi-row` uses
+the first two, `.karma-frost` for any card); thin-line icons sit in circles (`.karma-icon`), round ink
+arrow buttons (`.karma-go`). Type: Urbanist, served from `/fonts/urbanist` (no outside service). No
+other new hues; green, amber and red only for states. `.panel` / `.card` / `.btn-primary` /
+`.ios-segmented` carry the look, so new screens get it by using them. The river and the italic accent
+word are the brand, even where design guides call them "AI-looking" (M58: the word is solid pink, no
+gradient; no eyebrow labels above headings; mono only for numbers and data).
 
 **The motion layer works on every page by itself**: pages assemble out of a blur
 (`src/lib/page-transition.ts`), titles sweep in, a light trail runs down the page (`LightTrail`),

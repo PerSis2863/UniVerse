@@ -98,13 +98,12 @@ export const PROGRESS_TABS: SectionTab[] = [
 ];
 
 /** Whiteboards and shared code editors: one "Collaborate" entry in every portal. */
+// M68 (the owner: "merge few sections because it is becoming too complex"): eight tabs became five.
+// Spaces live under Home; Docs, Whiteboards and the tools under Create.
 export const COLLAB_TABS: SectionTab[] = [
-  { href: '/collab', label: 'Home' },
-  { href: '/spaces', label: 'Spaces' },
-  { href: '/boards', label: 'Whiteboards' },
-  { href: '/docs', label: 'Docs' },
+  { href: '/collab', label: 'Home', also: ['/spaces'] },
+  { href: '/studio', label: 'Create', also: ['/docs', '/boards', '/sheets', '/slides'] },
   { href: '/files', label: 'Files' },
-  { href: '/studio', label: 'Tools' },
   { href: '/code', label: 'Code' },
   { href: '/tasks', label: 'Tasks' },
 ];

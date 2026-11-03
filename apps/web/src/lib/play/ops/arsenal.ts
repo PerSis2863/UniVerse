@@ -14,7 +14,7 @@ export const RARITY = [
   { name: 'Common', color: '#a1a1aa', hex: 0xa1a1aa },
   { name: 'Uncommon', color: '#4ade80', hex: 0x4ade80 },
   { name: 'Rare', color: '#60a5fa', hex: 0x60a5fa },
-  { name: 'Epic', color: '#c084fc', hex: 0xc084fc },
+  { name: 'Epic', color: '#a9b4ff', hex: 0xc084fc },
   { name: 'Legendary', color: '#f59e0b', hex: 0xf59e0b },
 ] as const;
 

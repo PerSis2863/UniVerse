@@ -16,7 +16,7 @@ import type { GameProps } from './game-props';
 // count double for four seconds, the car leaves flames. A speedometer shows your words a minute.
 
 const LAP = 600;
-const COLORS = ['#ec4899', '#38bdf8', '#f59e0b', '#a78bfa', '#34d399', '#f87171', '#e2e8f0', '#facc15'];
+const COLORS = ['#fe81d1', '#38bdf8', '#f59e0b', '#a78bfa', '#34d399', '#f87171', '#e2e8f0', '#facc15'];
 
 interface S { i: number; at: number; chars: number; misses: number; score: number; done: number; miss: number; missAt: number; streak: number; best: number; charge: number; nitroUntil: number; nitros: number; last: number; factMiss: number; perfects: number }
 type A = { t: 'key'; ch: string; text: string; now: number } | { t: 'next' };
@@ -86,13 +86,13 @@ export function TypeRace({ seed, startsAt, clock, onProgress, onStats, rivals }:
   return (
     <div className="mx-auto w-full max-w-5xl" onClick={() => input.current?.focus()}>
       {/* The track: asphalt lanes, moving lane lines, a chequered line at the end of each lap */}
-      <div className="relative overflow-hidden rounded-[1.75rem] bg-[#1a1a1d] p-2 ring-1 ring-white/10" aria-label="Race track">
+      <div className="relative overflow-hidden rounded-[1.75rem] bg-[#1b2349] p-2 ring-1 ring-white/10" aria-label="Race track">
         {racers.map((r, k) => {
           const pct = (r.chars % LAP) / LAP, rLap = Math.floor(r.chars / LAP);
           return (
             <div key={r.id} className={cn('relative h-16 overflow-hidden', k > 0 && 'border-t-2 border-dashed border-white/15')}>
               <div className={cn('absolute bottom-1 start-0 h-0.5 w-[200%] bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.22)_0_22px,transparent_22px_48px)]', (r.me ? typing : r.chars > 0) && !calm && 'play-stripes')} aria-hidden />
-              <div className="absolute inset-y-0 end-2 w-3 bg-[repeating-conic-gradient(#f8fafc_0_25%,#141416_0_50%)] bg-[length:6px_6px] opacity-90" aria-hidden />
+              <div className="absolute inset-y-0 end-2 w-3 bg-[repeating-conic-gradient(#f8fafc_0_25%,#1d2650_0_50%)] bg-[length:6px_6px] opacity-90" aria-hidden />
               <div key={rLap} className="absolute inset-y-0 start-2 end-24 transition-transform duration-500 ease-out" style={{ transform: `translateX(calc(${pct * 100}% * var(--play-dir, 1)))` }}>
                 <div className="absolute top-1/2 -translate-y-1/2">
                   <Car color={r.me ? COLORS[0] : COLORS[(k % (COLORS.length - 1)) + 1]} spin={(r.me ? typing : r.chars > 0) && !calm} flames={r.me && nitro} />
@@ -125,7 +125,7 @@ export function TypeRace({ seed, startsAt, clock, onProgress, onStats, rivals }:
       {/* The fact to type */}
       <AnimatePresence mode="wait" initial={false}>
         <motion.div key={s.i} initial={{ opacity: 0, y: calm ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: calm ? 0 : -8, transition: { duration: 0.14 } }} transition={spring.smooth}
-          className={cn('mt-4 rounded-[1.75rem] bg-[#18181b] p-5 ring-1 transition-shadow duration-300 sm:p-7', nitro ? 'ring-amber-300/60 shadow-[0_0_50px_-10px_rgba(251,191,36,0.6)]' : 'ring-white/10')}>
+          className={cn('mt-4 rounded-[1.75rem] bg-[#1a2147] p-5 ring-1 transition-shadow duration-300 sm:p-7', nitro ? 'ring-amber-300/60 shadow-[0_0_50px_-10px_rgba(251,191,36,0.6)]' : 'ring-white/10')}>
           <p key={s.miss} className={cn('font-mono text-xl leading-relaxed sm:text-2xl', s.missAt === s.at && 'play-shake')} aria-hidden>
             <span className="text-white">{text.slice(0, s.at)}</span>
             <span className={cn('rounded-[4px] px-[1px] transition-colors duration-150', s.missAt === s.at ? 'bg-red-500/30 text-red-200' : 'bg-pink-500/30 text-pink-100 underline decoration-2 underline-offset-4')}>{text[s.at] === ' ' ? ' ' : text[s.at]}</span>
@@ -169,7 +169,7 @@ function Speedo({ wpm: v }: { wpm: number }) {
       <svg viewBox="0 0 100 58" className="mx-auto h-14 w-24" aria-hidden>
         <path d="M10 52 A40 40 0 0 1 90 52" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="7" strokeLinecap="round" />
         <path d="M10 52 A40 40 0 0 1 90 52" fill="none" stroke="url(#spd)" strokeWidth="7" strokeLinecap="round" strokeDasharray="126" strokeDashoffset={126 - (Math.min(120, v) / 120) * 126} style={{ transition: 'stroke-dashoffset 300ms ease-out' }} />
-        <defs><linearGradient id="spd"><stop offset="0" stopColor="#a78bfa" /><stop offset="1" stopColor="#ec4899" /></linearGradient></defs>
+        <defs><linearGradient id="spd"><stop offset="0" stopColor="#a78bfa" /><stop offset="1" stopColor="#fe81d1" /></linearGradient></defs>
         <g style={{ transform: `rotate(${a}deg)`, transformOrigin: '50px 52px', transition: 'transform 300ms ease-out' }}><line x1="50" y1="52" x2="50" y2="18" stroke="#f8fafc" strokeWidth="2.5" strokeLinecap="round" /></g>
         <circle cx="50" cy="52" r="4" fill="#f8fafc" />
       </svg>

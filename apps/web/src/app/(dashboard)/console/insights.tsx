@@ -15,6 +15,7 @@ import { useActivePoll } from '@/lib/realtime-client';
 import { TabPill } from '@/components/ui/Glide';
 import { InstrumentBoard, type InstrumentCell } from '@/components/instruments/Board';
 import { Dial, Facts, Histo, Ring, Roll, Spark, Stack } from '@/components/instruments/parts';
+import { GREEN_FACTORS, type GreenKind } from '@/lib/green';
 
 // Owner console pieces that read across the app (server side: src/server/modules/owner-insights.ts):
 // the "Needs your attention" card, the console-wide search, Analytics and Money.
@@ -232,6 +233,55 @@ export function AnalyticsPanel({ onPerson }: { onPerson: (id: string) => void })
         <Ranked title="Most active people" empty="Nobody yet." onClick={onPerson} rows={data.busiest.map((b) => ({ key: b.id, label: b.name, sub: b.role.toLowerCase(), value: b.events }))} />
       </div>
       <SpeedPanel />
+      <GreenFeelPanel />
+    </div>
+  );
+}
+
+// ─── How Green feels (M61, the Candour ideas: honest feedback reaches the owner first) ───────────
+
+interface GreenFeel { days: number; logged: number; answered: number; byKind: Record<string, { EASY: number; OK: number; HARD: number }>; notes: { kind: string; note: string; at: string }[] }
+
+function GreenFeelPanel() {
+  const [days, setDays] = useState(30);
+  const { data } = useSWR<GreenFeel>(`/owner/green-feel?days=${days}`, fetcher, { keepPreviousData: true });
+  if (!data) return null;
+  // Hardest first: the actions most worth making easier.
+  const kinds = Object.entries(data.byKind).map(([k, v]) => ({ k, ...v, n: v.EASY + v.OK + v.HARD })).sort((a, b) => b.HARD / b.n - a.HARD / a.n);
+  const label = (k: string) => GREEN_FACTORS[k as GreenKind]?.label ?? k;
+  return (
+    <div className={cn(card, 'p-5')}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold text-zinc-900 dark:text-white">How Green feels</h2>
+        <div className="flex gap-1">{[7, 30, 90].map((d) => <button key={d} type="button" aria-pressed={days === d} onClick={() => setDays(d)} className={cn('rounded-full px-3 py-1 text-xs font-semibold transition-colors', days === d ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06]')}>{d} days</button>)}</div>
+      </div>
+      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">After logging an action people answer Easy, Okay or Hard. {data.answered} of {data.logged} actions answered ({pct(data.answered, data.logged)}).</p>
+      {kinds.length === 0 ? <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">No answers yet.</p> : (
+        <ul className="mt-4 grid gap-2.5">
+          {kinds.map((r) => (
+            <li key={r.k} className="grid grid-cols-[minmax(0,11rem)_1fr_auto] items-center gap-3 text-sm">
+              <span className="truncate text-zinc-800 dark:text-zinc-100">{label(r.k)}</span>
+              <span className="flex h-2.5 rounded-full overflow-hidden bg-zinc-100 dark:bg-white/[0.06]" aria-hidden>
+                <span className="bg-emerald-500" style={{ width: `${(r.EASY / r.n) * 100}%` }} />
+                <span className="bg-zinc-400" style={{ width: `${(r.OK / r.n) * 100}%` }} />
+                <span className="bg-rose-500" style={{ width: `${(r.HARD / r.n) * 100}%` }} />
+              </span>
+              <span className="font-mono text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{r.EASY} easy · {r.OK} okay · {r.HARD} hard</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <h3 className="mt-5 text-sm font-semibold text-zinc-900 dark:text-white">What made it hard</h3>
+      {data.notes.length === 0 ? <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Nothing written yet. Notes show here without names.</p> : (
+        <ul className="mt-2 divide-y divide-zinc-100 dark:divide-white/[0.06]">
+          {data.notes.map((n, i) => (
+            <li key={i} className="py-2 text-sm">
+              <span className="text-zinc-800 dark:text-zinc-100" translate="no">“{n.note}”</span>
+              <span className="block text-xs text-zinc-500 dark:text-zinc-400">{label(n.kind)} · {formatDistanceToNow(new Date(n.at), { addSuffix: true })}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

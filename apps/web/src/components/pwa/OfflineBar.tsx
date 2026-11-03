@@ -69,7 +69,7 @@ export function OfflineBar() {
       ) : (
         <>
           <WifiOff className="w-3.5 h-3.5" />
-          You&apos;re offline — pages you&apos;ve opened still work{waiting ? ` · ${waiting} waiting to send` : ''}
+          You&apos;re offline · showing what&apos;s saved on this device{waiting ? ` · ${waiting} waiting to send` : ''}
         </>
       )}
     </div>

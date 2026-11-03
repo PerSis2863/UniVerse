@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Car, Check, Crosshair, Droplets, Globe2, HandHeart, Home, Loader2, LocateFixed, MapPin, MessageSquare, Minus, Package, Plus, Shirt, Stethoscope, Undo2, Users, Utensils, X } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
+import { celebrate } from '@/lib/celebrate';
 import { authedJson } from '@/lib/authed-fetch';
 import { inboxFor } from '@/lib/apps';
 import { fetcher } from '@/lib/fetcher';
@@ -20,6 +21,10 @@ import { InviteButton } from '@/components/apps/InviteButton';
 import { cn } from '@/lib/utils';
 import { glow, toBase } from '@/components/trace/map/engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
+import { LiveCard } from '@/components/live/LiveCard';
+import { Funnel } from '@/components/live/Funnel';
+import { Radar } from '@/components/live/Radar';
+import { Journey } from '@/components/live/Journey';
 
 // UniVerse Relief (src/lib/apps.ts): every open need and offer of help on one live map (the same map
 // engine as Trace), the most urgent and nearest needs first, "I can help", messages, and delivered.
@@ -44,9 +49,9 @@ export function PostActions({ p, onChange, small }: { p: ReliefPost; onChange: (
   const router = useRouter();
   const role = useAuthStore((s) => s.user?.role);
   const [busy, setBusy] = useState<string | null>(null);
-  const act = async (action: string, msg: string) => {
+  const act = async (action: string, msg: string, at?: Element) => {
     setBusy(action);
-    try { await api.post(`/relief/posts/${p.id}/${action}`); toast.success(msg); onChange(); }
+    try { await api.post(`/relief/posts/${p.id}/${action}`); toast.success(msg); if (action === 'done') celebrate(at); onChange(); }
     catch (e) { toast.error(errorMessage(e, 'Could not do that.')); } finally { setBusy(null); }
   };
   const message = async () => {
@@ -62,7 +67,7 @@ export function PostActions({ p, onChange, small }: { p: ReliefPost; onChange: (
     <div className="flex flex-wrap gap-2">
       {!done && p.type === 'NEED' && !p.mine && p.status === 'OPEN' && <button type="button" disabled={!!busy} onClick={() => void act('take', 'Thank you! They can see you’re on the way.')} className={cn('btn-primary', btn)}>{busy === 'take' ? <Loader2 className="w-4 h-4 animate-spin" /> : <HandHeart className="w-4 h-4" />}I can help</button>}
       {!p.mine && p.by && <button type="button" onClick={() => void message()} className={cn('btn-secondary', btn)}><MessageSquare className="w-4 h-4" />Message</button>}
-      {!done && (p.mine || p.helping) && p.status === 'TAKEN' && <button type="button" disabled={!!busy} onClick={() => void act('done', 'Marked as delivered.')} className={cn('btn-primary', btn)}><Check className="w-4 h-4" />Delivered</button>}
+      {!done && (p.mine || p.helping) && p.status === 'TAKEN' && <button type="button" disabled={!!busy} onClick={(e) => void act('done', 'Marked as delivered.', e.currentTarget)} className={cn('btn-primary', btn)}><Check className="w-4 h-4" />Delivered</button>}
       {!done && p.helping && p.status === 'TAKEN' && <button type="button" disabled={!!busy} onClick={() => void act('release', 'Given back: someone else can take it.')} className={cn('btn-secondary', btn)}><Undo2 className="w-4 h-4" />I can’t after all</button>}
       {!done && p.mine && <button type="button" disabled={!!busy} onClick={() => void act('close', 'Closed.')} className={cn('btn-secondary', btn)}><X className="w-4 h-4" />Close</button>}
     </div>
@@ -127,11 +132,11 @@ export function ReliefApp() {
       if (p.type === 'OFFER') { ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.fillRect(-r, -r, r * 2, r * 2); ctx.strokeRect(-r, -r, r * 2, r * 2); ctx.restore(); }
       else { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
       if (p.status === 'TAKEN') { ctx.strokeStyle = DONE; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, r + 3.5, 0, Math.PI * 2); ctx.stroke(); }
-      if (p.id === selected) { ctx.strokeStyle = f.dark ? '#fff' : '#0b0b0c'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r + 7 + (calm ? 0 : Math.sin(t / 260) * 1.5), 0, Math.PI * 2); ctx.stroke(); }
+      if (p.id === selected) { ctx.strokeStyle = f.dark ? '#fff' : '#171f44'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r + 7 + (calm ? 0 : Math.sin(t / 260) * 1.5), 0, Math.PI * 2); ctx.stroke(); }
       if (f.zoom > 30 || p.id === selected) {
         ctx.font = '600 11px ui-sans-serif, system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
         ctx.lineWidth = 3; ctx.strokeStyle = f.dark ? 'rgba(10,23,33,0.9)' : 'rgba(255,255,255,0.95)'; ctx.strokeText(p.title, x + r + 6, y);
-        ctx.fillStyle = f.dark ? '#f3f2ef' : '#0b0b0c'; ctx.fillText(p.title, x + r + 6, y);
+        ctx.fillStyle = f.dark ? '#eef2fb' : '#171f44'; ctx.fillText(p.title, x + r + 6, y);
       }
     }
     if (here) { const [hx, hy] = toBase(here.lng, here.lat); const x = sx(hx), y = sy(hy); ctx.fillStyle = '#3b82f6'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
@@ -170,6 +175,20 @@ export function ReliefApp() {
         ))}
       </dl>
 
+      {s && (
+        // M48: how requests move from asked to helped, as a stream of light.
+        <LiveCard title="Help, moving" sub="Needs on the map, people on the way, and help given in 30 days"
+          ticker={(data?.recent ?? []).slice(0, 6).map((p) => `${p.type === 'OFFER' ? 'Offer' : 'Need'}: ${p.title}`)}>
+          <div className="grid items-center gap-4 lg:grid-cols-[1fr_240px]">
+            <Funnel className="h-[200px]" label="Needs open, being helped, and helped in the last 30 days"
+              stages={[{ label: 'Open needs', value: s.openNeeds }, { label: 'Being helped', value: s.inProgress }, { label: 'Helped', value: s.helped }]} />
+            {/* M49: open needs on a radar, the most urgent in the middle. */}
+            <Radar className="mx-auto h-[200px] w-full max-w-[240px]" label="Open needs by how urgent they are"
+              blips={(data?.posts ?? []).filter((p) => p.type === 'NEED' && p.status === 'OPEN').map((p) => ({ id: p.id, label: RELIEF_KIND_LABEL[p.kind] ?? p.kind, ring: p.urgency === 'CRITICAL' ? 0 : p.urgency === 'HIGH' ? 1 : 2, tone: p.urgency === 'CRITICAL' || p.urgency === 'HIGH' ? 'pink' : 'blue' }))} />
+          </div>
+        </LiveCard>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <div role="radiogroup" aria-label="Show" className="flex rounded-full bg-zinc-100 dark:bg-white/[0.06] p-1">
           {([['ALL', 'Everything'], ['NEED', 'Needs'], ['OFFER', 'Offers']] as const).map(([id, label]) => (
@@ -199,10 +218,10 @@ export function ReliefApp() {
             {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-orange-500" aria-label="Loading" /></div>}
             <div className="absolute right-3 top-3 flex flex-col gap-1.5">
               {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See everything']] as const).map(([id, Icon, label]) => (
-                <button key={id} type="button" aria-label={label} title={label} onClick={() => (id === 'home' ? map.current?.home() : map.current?.zoomBy(id === 'in' ? 1.8 : 1 / 1.8))} className="w-9 h-9 grid place-items-center rounded-xl bg-white/90 dark:bg-[#0b0b0c]/85 backdrop-blur text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-200/70 dark:border-white/10 active:scale-95 transition"><Icon className="w-4 h-4" aria-hidden /></button>
+                <button key={id} type="button" aria-label={label} title={label} onClick={() => (id === 'home' ? map.current?.home() : map.current?.zoomBy(id === 'in' ? 1.8 : 1 / 1.8))} className="w-9 h-9 grid place-items-center rounded-xl bg-white/90 dark:bg-[#171f44]/85 backdrop-blur text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-200/70 dark:border-white/10 active:scale-95 transition"><Icon className="w-4 h-4" aria-hidden /></button>
               ))}
             </div>
-            <div className="absolute left-3 top-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#0b0b0c]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
+            <div className="absolute left-3 top-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#171f44]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
               {URGENCIES.slice().reverse().map((u) => <span key={u} className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ background: URGENCY_COLOR[u] }} />{URGENCY_LABEL[u]} need</span>)}
               <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rotate-45" style={{ background: OFFER }} />Offer</span>
               <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full border-2" style={{ borderColor: DONE }} />Someone’s helping</span>
@@ -216,7 +235,7 @@ export function ReliefApp() {
               )}
               {sel && !picking && (
                 <motion.div key={sel.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                  className="absolute left-3 right-3 bottom-3 sm:right-auto sm:w-[440px] rounded-2xl bg-white/95 dark:bg-[#0b0b0c]/92 backdrop-blur p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
+                  className="absolute left-3 right-3 bottom-3 sm:right-auto sm:w-[440px] rounded-2xl bg-white/95 dark:bg-[#171f44]/92 backdrop-blur p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
                   <PostCard p={sel} now={now} here={here} onChange={() => void mutate()} />
                 </motion.div>
               )}
@@ -270,6 +289,14 @@ export function PostCard({ p, now, here, onChange }: { p: ReliefPost; now: numbe
         {p.status === 'TAKEN' && <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{p.helping ? 'You’re helping' : `${p.helper?.name ?? 'Someone'} is helping`}</span>}
         {p.status === 'DONE' && <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Delivered</span>}
       </p>
+      {p.type === 'NEED' && (
+        // M50: where this request is, as a journey.
+        <Journey className="mt-3" label="Where this request is" steps={[
+          { label: 'Asked', at: new Date(p.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), done: true },
+          { label: 'Someone’s on it', at: p.takenAt ? new Date(p.takenAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : null, done: p.status === 'TAKEN' || p.status === 'DONE' },
+          { label: 'Helped', at: p.doneAt ? new Date(p.doneAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : null, done: p.status === 'DONE' },
+        ]} />
+      )}
       <div className="mt-3"><PostActions p={p} onChange={onChange} small /></div>
     </div>
   );
@@ -293,7 +320,7 @@ function PostForm({ at, onPick, onClose, onDone }: { at: { lat: number; lng: num
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] grid place-items-end sm:place-items-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
       <motion.form initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={{ type: 'spring', stiffness: 360, damping: 32 }} onClick={(e) => e.stopPropagation()} onSubmit={(e) => void save(e)}
-        className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#111112] p-5 sm:p-6 shadow-2xl border border-zinc-200 dark:border-white/10" aria-label="Ask or offer help">
+        className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#131a3d] p-5 sm:p-6 shadow-2xl border border-zinc-200 dark:border-white/10" aria-label="Ask or offer help">
         <div className="flex items-center justify-between"><h2 className="text-lg font-bold text-zinc-900 dark:text-white">Ask or offer help</h2><button type="button" onClick={onClose} aria-label="Close" className="w-8 h-8 grid place-items-center rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button></div>
         <div className="mt-4 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Need or offer">
           {([['NEED', 'I need help'], ['OFFER', 'I can offer']] as const).map(([id, label]) => (

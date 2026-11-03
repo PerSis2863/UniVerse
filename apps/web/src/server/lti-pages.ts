@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 const shell = (title: string, body: string, script = '') => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(title)} · UniVerse</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0b0c;color:#fff;font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px}main{max-width:28rem;text-align:center}.b{width:40px;height:40px;border-radius:12px;background:#2a2927;display:grid;place-items:center;font-weight:900;margin:0 auto 16px}p{color:#a8a59f}a{color:#a8a59f}</style></head><body><main><div class="b">U</div>${body}</main>${script}</body></html>`;
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#171f44;color:#fff;font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px}main{max-width:28rem;text-align:center}.b{width:40px;height:40px;border-radius:12px;background:#2b3568;display:grid;place-items:center;font-weight:900;margin:0 auto 16px}p{color:#a0a9cc}a{color:#a0a9cc}</style></head><body><main><div class="b">U</div>${body}</main>${script}</body></html>`;
 
 export function ltiErrorPage(message: string) {
   return new NextResponse(shell('Couldn’t open UniVerse', `<h1 style="font-size:20px">Couldn’t open UniVerse</h1><p>${esc(message)}</p><p><a href="/login" target="_blank" rel="noopener">Sign in to UniVerse directly</a></p>`), { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });

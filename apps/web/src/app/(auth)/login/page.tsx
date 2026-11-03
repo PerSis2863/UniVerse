@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Loader2, Eye, EyeOff, Building2, Fingerprint, Phone, Play } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff, Building2, Fingerprint, Phone } from 'lucide-react';
 import Link from '@/components/ui/Link';
-import { Accent, Tag } from '@/components/landing/bits';
+import { Accent } from '@/components/landing/bits';
 import { useAuthStore } from '@/store/auth';
 import { auth, popupSignIn, warmUpPopupSignIn } from '@/lib/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
@@ -18,9 +18,8 @@ import { TwoStepPanel } from '@/components/auth/TwoStepPanel';
 import dynamic from 'next/dynamic';
 import { chosenApp, homeFor } from '@/lib/role-home';
 import { AppTabs } from '@/components/landing/AppTabs';
-import { startVisitorDemo } from '@/components/SampleMode';
 import { endDemoForSignIn } from '@/lib/sample-mode';
-import { appById, appHome } from '@/lib/apps';
+import { appById } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { PHONE_SIGN_IN } from '@/lib/sign-in-options';
 
@@ -250,14 +249,13 @@ export default function LoginPage() {
     <>
       <div className="w-full">
         {/* Header */}
-        <div className="mb-8">
-          <Tag>welcome back</Tag>
-          <h1 className="mt-5 text-4xl font-bold tracking-[-0.03em] text-white mb-2">Welcome <Accent>back.</Accent></h1>
+        <div className="mb-8 short:mb-5">
+          <h1 className="text-4xl font-bold tracking-[-0.03em] text-white mb-2">Welcome <Accent>back.</Accent></h1>
           <p className="text-zinc-300 text-sm">Sign in to {appById(app).name}. One account opens every app.</p>
-          <div className="mt-5"><AppTabs small value={app} onChange={setChosenApp} label="Sign in to" layoutId="login-app" /></div>
+          <div className="mt-5 short:mt-4"><AppTabs small value={app} onChange={setChosenApp} label="Sign in to" layoutId="login-app" /></div>
         </div>
 
-        <div className="rounded-3xl border border-white/[0.08] bg-[#111112]/75 backdrop-blur-md shadow-[0_40px_120px_-40px_rgba(42,41,39,0.55)] p-6 sm:p-8">
+        <div className="rounded-3xl border border-white/[0.08] bg-[#0d1233]/75 backdrop-blur-md shadow-[0_40px_120px_-40px_rgba(43,53,104,0.55)] p-6 sm:p-8 short:sm:p-6">
           {twoStep ? (
             <TwoStepPanel
               onDone={() => { const t = twoStep; setTwoStep(null); void handleLoginSuccess(t.token, t.method); }}
@@ -267,7 +265,7 @@ export default function LoginPage() {
             <EmailVerifyPanel email={verifyEmail} sendOnMount onVerified={(token) => { setVerifyEmail(null); return handleLoginSuccess(token, 'password'); }} onCancel={async () => { await auth.signOut().catch(() => {}); setVerifyEmail(null); }} />
           ) : (
           <>
-          <h2 className="text-xl font-bold text-white mb-6">Sign In</h2>
+          <h2 className="text-xl font-bold text-white mb-6 short:mb-4">Sign In</h2>
 
           {error && !showPhoneFlow && (
             <div role="alert" className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
@@ -311,7 +309,7 @@ export default function LoginPage() {
               )}
 
               {/* Google, Microsoft, Apple, and a passkey (or phone) when the site has them on */}
-              <div className={`grid grid-cols-1 ${['sm:grid-cols-3', 'sm:grid-cols-4', 'sm:grid-cols-5'][Number(canPasskey) + Number(PHONE_SIGN_IN)]} gap-2.5 mb-6`}>
+              <div className={`grid grid-cols-1 ${['sm:grid-cols-3', 'sm:grid-cols-4', 'sm:grid-cols-5'][Number(canPasskey) + Number(PHONE_SIGN_IN)]} gap-2.5 mb-6 short:mb-4`}>
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
@@ -380,7 +378,7 @@ export default function LoginPage() {
 
 
 
-              <div className="flex items-center gap-4 mb-6">
+              <div className="flex items-center gap-4 mb-6 short:mb-4">
                 <div className="flex-1 h-px bg-zinc-800"></div>
                 <div className="text-zinc-500 text-xs font-medium uppercase">Or continue with</div>
                 <div className="flex-1 h-px bg-zinc-800"></div>
@@ -431,22 +429,19 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="btn-primary w-full mt-6"
+                  className="btn-primary w-full mt-6 short:mt-5"
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign In'}
                 </button>
               </form>
 
-              <div className="mt-6 pt-6 border-t border-zinc-800 text-center">
+              <div className="mt-6 pt-6 short:mt-4 short:pt-4 border-t border-zinc-800 text-center">
                 <p className="text-zinc-400 text-sm">
                   Don&apos;t have an account?{' '}
                   <Link href="/register" className="text-indigo-400 hover:text-indigo-300 font-medium">
                     Sign up
                   </Link>
                 </p>
-                <button type="button" onClick={() => startVisitorDemo(appHome(app, 'STUDENT'))} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-zinc-700 px-4 py-1.5 text-sm text-zinc-300 transition-[transform,background-color] duration-150 hover:bg-zinc-800 active:scale-[0.97]">
-                  <Play className="w-3.5 h-3.5" /> Just looking? Try the live demo
-                </button>
               </div>
             </>
           )}
@@ -461,7 +456,7 @@ export default function LoginPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => handleLoginSuccess('mock-token-demo@student.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#141416] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#1d2650] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Student</div>
               <div className="text-zinc-500 text-xs mt-1">Full access to student dashboard</div>
@@ -469,7 +464,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => handleLoginSuccess('mock-token-demo@teacher.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#141416] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#1d2650] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Teacher</div>
               <div className="text-zinc-500 text-xs mt-1">Manage classes &amp; grades</div>
@@ -477,7 +472,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => handleLoginSuccess('mock-token-demo@admin.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#141416] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#1d2650] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">Demo Admin</div>
               <div className="text-zinc-500 text-xs mt-1">System configuration</div>
@@ -485,7 +480,7 @@ export default function LoginPage() {
 
             <button
               onClick={() => handleLoginSuccess('mock-token-it-support@universe.com')}
-              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#141416] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
+              className="flex flex-col items-start p-4 rounded-xl border border-zinc-800 bg-[#1d2650] hover:bg-zinc-800 hover:border-zinc-700 transition-all text-start group"
             >
               <div className="font-semibold text-zinc-300 text-sm group-hover:text-white transition-colors">IT Support</div>
               <div className="text-zinc-500 text-xs mt-1">Helpdesk access</div>

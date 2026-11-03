@@ -34,7 +34,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
     <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Colour">
       {ROLE_COLORS.map((c) => (
         <button key={c} type="button" role="radio" aria-checked={value === c} aria-label={`Colour ${c}`} onClick={() => onChange(c)}
-          className={cn('w-7 h-7 rounded-full grid place-items-center ring-offset-2 ring-offset-white dark:ring-offset-[#141416]', value === c && 'ring-2 ring-zinc-900 dark:ring-white')} style={{ background: c }}>
+          className={cn('w-7 h-7 rounded-full grid place-items-center ring-offset-2 ring-offset-white dark:ring-offset-[#1d2650]', value === c && 'ring-2 ring-zinc-900 dark:ring-white')} style={{ background: c }}>
           {value === c && <Check className="w-3.5 h-3.5 text-white" aria-hidden />}
         </button>
       ))}
@@ -104,7 +104,7 @@ export function MemberRolesButton({ communityId, userId, name, roles, held, onCh
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
-          <div role="group" aria-label={`Roles for ${name}`} className="absolute end-0 top-full mt-1 z-20 w-52 rounded-xl bg-white dark:bg-[#141416] border border-zinc-200 dark:border-white/10 shadow-xl p-1">
+          <div role="group" aria-label={`Roles for ${name}`} className="absolute end-0 top-full mt-1 z-20 w-52 rounded-xl bg-white dark:bg-[#1d2650] border border-zinc-200 dark:border-white/10 shadow-xl p-1">
             {roles.map((r) => (
               <button key={r.id} type="button" role="checkbox" aria-checked={held.includes(r.id)} disabled={busy} onClick={() => void toggle(r.id)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-start hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
                 <span className={cn('w-4 h-4 rounded border grid place-items-center', held.includes(r.id) ? 'border-transparent' : 'border-zinc-300 dark:border-white/20')} style={held.includes(r.id) ? { background: r.color } : undefined}>{held.includes(r.id) && <Check className="w-3 h-3 text-white" aria-hidden />}</span>

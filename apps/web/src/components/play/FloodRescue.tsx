@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { burst, calmMotion, drawEffects, steerBody, useGameCanvas, useSteer, type Float, type Particle } from './canvas';
 import type { GameProps } from './game-props';
+import { haptic } from '@/lib/haptics';
 
 // Flood Rescue (src/lib/play/rescue.ts): a storm, a town going under, people (some with pets)
 // waving from rooftops. Fly low and slow over a roof to winch them up, four at a time, then set
@@ -96,10 +97,10 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
       if (s.winch >= WINCH_S) {
         const p = here[0];
         s.gone.add(p.id); s.aboard.push({ ...p, pickedAt: t }); s.winch = 0;
-        burst(s.parts, hl.x, hl.y + 20, '#f9a8d4', s.calm ? 3 : 8, 90);
+        burst(s.parts, hl.x, hl.y + 20, '#ffc0e6', s.calm ? 3 : 8, 90);
         arena.sfx('pick', s.aboard.length * 2);
         if (s.aboard.length === CAPACITY) arena.announce('Full! Fly to the hospital', 'gold');
-        navigator.vibrate?.(10);
+        haptic('tap', false);
       }
     } else s.winch = Math.max(0, s.winch - dt * 2);
 
@@ -137,7 +138,7 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
         burst(s.parts, hl.x, pad.top, '#86efac', s.calm ? 4 : 12);
         arena.sfx('right', s.saved % 10);
         if (s.saved % 10 === 0) arena.announce(`${s.saved} people rescued!`, 'good');
-        navigator.vibrate?.(14);
+        haptic('tap', false);
       }
     } else s.unload = 0;
     if (s.score !== s.reported) {
@@ -148,20 +149,20 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
 
     // Sky, two layers of skyline that drift with the helicopter.
     const sky = ctx.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, '#0b1620'); sky.addColorStop(0.6, '#1b1b1e'); sky.addColorStop(1, '#2a2927');
+    sky.addColorStop(0, '#0b1620'); sky.addColorStop(0.6, '#222c5a'); sky.addColorStop(1, '#2b3568');
     ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
     if (s.flash > 0) { s.flash = Math.max(0, s.flash - dt * 2.5); ctx.fillStyle = `rgba(226,232,240,${s.flash * 0.45})`; ctx.fillRect(0, 0, w, h); }
     const par = (hl.x / w - 0.5);
-    ctx.fillStyle = 'rgba(95,92,87,0.22)';
+    ctx.fillStyle = 'rgba(88,97,127,0.22)';
     for (let k = 0; k < 18; k++) { const bw = w / 16; const bh = 30 + ((k * 71) % 90); ctx.fillRect(k * bw - par * 20 - bw, h * 0.56 - bh, bw - 3, bh + h); }
-    ctx.fillStyle = 'rgba(95,92,87,0.38)';
-    for (let k = 0; k < 15; k++) { const bw = w / 13; const bh = 40 + ((k * 53) % 70); ctx.fillRect(k * bw - par * 44 - bw, h * 0.63 - bh, bw - 4, bh + h); if (k % 3 === 0) { ctx.fillStyle = 'rgba(253,224,71,0.25)'; ctx.fillRect(k * bw - par * 44 - bw + 8, h * 0.63 - bh + 10, 5, 6); ctx.fillStyle = 'rgba(95,92,87,0.38)'; } }
+    ctx.fillStyle = 'rgba(88,97,127,0.38)';
+    for (let k = 0; k < 15; k++) { const bw = w / 13; const bh = 40 + ((k * 53) % 70); ctx.fillRect(k * bw - par * 44 - bw, h * 0.63 - bh, bw - 4, bh + h); if (k % 3 === 0) { ctx.fillStyle = 'rgba(253,224,71,0.25)'; ctx.fillRect(k * bw - par * 44 - bw + 8, h * 0.63 - bh + 10, 5, 6); ctx.fillStyle = 'rgba(88,97,127,0.38)'; } }
 
     // Houses, the people (and pets) waiting on them, the lightning warning.
     roofs.forEach((r, k) => {
       const p = roofPx[k], mid = (p.x0 + p.x1) / 2;
-      ctx.fillStyle = k % 2 ? '#5F5C57' : '#3b4d5a'; ctx.fillRect(p.x0, p.top, p.x1 - p.x0, h - p.top);
-      ctx.fillStyle = '#A8A59F'; ctx.beginPath(); ctx.moveTo(p.x0 - 6, p.top + 2); ctx.lineTo(mid, p.top - 16); ctx.lineTo(p.x1 + 6, p.top + 2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = k % 2 ? '#58617F' : '#3b4d5a'; ctx.fillRect(p.x0, p.top, p.x1 - p.x0, h - p.top);
+      ctx.fillStyle = '#A0A9CC'; ctx.beginPath(); ctx.moveTo(p.x0 - 6, p.top + 2); ctx.lineTo(mid, p.top - 16); ctx.lineTo(p.x1 + 6, p.top + 2); ctx.closePath(); ctx.fill();
       ctx.fillStyle = 'rgba(253,224,71,0.5)';
       for (let wy = p.top + 14; wy < water - 10; wy += 26) { ctx.fillRect(p.x0 + 8, wy, 9, 11); ctx.fillRect(p.x1 - 17, wy, 9, 11); }
       const on = waiting.filter((x) => x.roof === k && !s.gone.has(x.id));
@@ -221,7 +222,7 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
     if (winching && over >= 0) {
       const r = roofPx[over];
       const len = (r.top - 14 - hl.y) * Math.min(1, s.winch / WINCH_S + 0.2);
-      ctx.strokeStyle = '#f9a8d4'; ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = '#ffc0e6'; ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
       ctx.beginPath(); ctx.moveTo(hl.x, hl.y + 10); ctx.lineTo(hl.x, hl.y + 10 + len); ctx.stroke(); ctx.setLineDash([]);
     }
     const cone = ctx.createLinearGradient(0, hl.y, 0, hl.y + 180);
@@ -233,7 +234,7 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
     ctx.save();
     ctx.translate(hl.x, hl.y + (s.fuel <= 0 && !s.calm ? Math.sin(time * 9) * 3 : 0));
     ctx.rotate(Math.max(-0.3, Math.min(0.3, hl.vx / 1300)));
-    ctx.fillStyle = '#ec4899'; ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.fillStyle = '#fe81d1'; ctx.strokeStyle = '#fe81d1'; ctx.lineWidth = 4; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(-14, -2); ctx.lineTo(-44, -6); ctx.stroke();
     ctx.beginPath(); ctx.ellipse(0, 0, 20, 12, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#cffafe'; ctx.beginPath(); ctx.ellipse(8, -2, 8, 6, 0, 0, Math.PI * 2); ctx.fill();
@@ -266,9 +267,9 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
     }
     ctx.stroke();
     drawEffects(ctx, s.parts, s.floats, dt);
-    ctx.fillStyle = 'rgba(20,20,22,0.75)'; ctx.beginPath(); ctx.roundRect(12, 12, 250, 32, 10); ctx.fill();
+    ctx.fillStyle = 'rgba(29,38,80,0.75)'; ctx.beginPath(); ctx.roundRect(12, 12, 250, 32, 10); ctx.fill();
     ctx.font = '600 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#f9a8d4'; ctx.fillText(`Aboard ${s.aboard.length}/${CAPACITY}`, 22, 28);
+    ctx.fillStyle = '#ffc0e6'; ctx.fillText(`Aboard ${s.aboard.length}/${CAPACITY}`, 22, 28);
     ctx.fillStyle = '#86efac'; ctx.fillText(`Saved ${s.saved}`, 112, 28);
     ctx.fillStyle = '#fca5a5'; ctx.fillText(`Lost ${s.lost}`, 172, 28);
     ctx.fillStyle = '#fde68a'; ctx.fillText(`🐕 ${s.pets}`, 222, 28);

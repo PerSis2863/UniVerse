@@ -2174,38 +2174,1232 @@ assets, nothing taken apart). Neon Strike is gone; the game id is `ops` (the liv
   `onBeforeCompile` and set the cache key). Test against the dev server in one command
   (start, test, stop) rather than leaving it running.
 
-## M41a, M41b · Ridgeline Ops weapon rig, hands, HUD (26 Oct 2026, another session, on the branch)
+## M41 · New hero pictures and motion that answers the pointer everywhere (31 Oct 2026)
 
-Written up afterwards from the commit messages (that session lost access before its notes).
-- **M41a:** the first-person gun is built from moving parts (receiver, barrel, magazine, bolt or
-  slide, charging handle, optic); two jointed arms reach it with two-bone IK; an animator with eased
-  keyframes plays tactical and empty reloads, pump shells, inspect (I), swaps, plates, meds and
-  grenades; damped springs (`spring.ts`, tested) drive recoil, sway and a camera bump; the bob is a
-  figure 8 timed to footsteps; aiming narrows the view to 55° (40° on a 3x, 25° behind a scope);
-  muzzle flash with a 35 ms light, casings, ricochets, blood mist, dust. Keys: I inspect, 5 support,
-  8 bandage.
-- **M41b:** HUD cleanup (controls on F1; an operator panel with plates and health; a weapon card with
-  outline, rarity, ammo, fire modes, grenades, killstreak slot); a detailed carbine and padded arms;
-  V throws a flashbang or smoke; on a phone or tablet the game says it needs a computer.
+The owner: "make much better design and animation… when I go in sign in page it still shows the old
+one… don't just put the box design… add more animation and motion… for whole project not just main
+page".
 
-## M41c · Ridgeline Ops scenery: real trees, mossy rocks, curved grass, sun rays and flare (30 Oct 2026, on the branch)
+- **Hero pictures** (`src/components/landing/HeroScenes.tsx`, one per app, used by the landing and
+  by sign-in through `AuthShowcase.tsx`): UniVersity is "the school day running itself" (jobs
+  orbiting a counter, a feed under it); Green is a living planet (rotating dot band, actions riding
+  an orbit with CSS `offset-path`, a ticker pill); Play is a neon race track (SMIL `animateMotion`
+  comets, a leaderboard that re-orders with `layout`). Green and Play have no box round them: they
+  float in the page. `PassportCard.tsx` was deleted (nothing used it).
+- **Motion that answers the pointer** (`src/lib/light-motion.ts`, started for every page with the
+  scroll motion): a ripple of light spreads from the finger in every button and tab
+  (`.btn-*`, `[role="tab"]`, `.mkt-cta`, `[data-ripple]`); `[data-magnetic]` and the landing's
+  buttons lean toward the pointer; `[data-tilt]` tilts a picture in 3D (the landing's hero);
+  `[data-cursor-light]` puts a soft pink light under the pointer (landing and sign-in). CSS in
+  `globals.css` "M41": clickable cards (`a.card`, `a.panel`, `button.card`, `.card-hover`) lift
+  with a pink shadow on hover, fields glow when focused, buttons rise 1 px on hover. The landing's
+  hero picture also drifts up as the page scrolls (parallax, a spring on `scrollY`).
+- **Rules for code that builds on it:** follow, tilt and cursor light only on a fine pointer with
+  hover (touch screens get the ripple); none of it runs with Reduce Motion. `data-no-motion` opts
+  out of the scroll reveals and the sparks, *not* the ripple; `data-no-motion-follow` opts out of
+  the ripple, magnetic and tilt. Each effect writes only `transform` or two CSS variables, frames
+  only while something moves.
+- **Tested:** browser check on the dev server (magnetic offset, ripple element, tilt angles, cursor
+  light variables, no page errors); unit tests, typecheck, lint, lean.
 
-The owner asked to carry on the other session's work where it stopped (its screenshot: "replacing
-the stacked cones with branched, textured pines… sun rays and lens flare").
-- `ops/trees.ts`: one atlas painted on a canvas (bark, a pine branch, a leaf cluster, two far-tree
-  pictures) shared by every tree kind, so each kind is still one mesh and one material per tile.
-  Pines: a tapering barked trunk with eight whorls of drooping branches (crossed needle cards bent in
-  two); broadleaf trees: a forked trunk with leaf clusters; bushes: leaf clusters; far trees: two
-  crossed pictures; rocks: smooth lumpy balls (`mergeVertices`, then noise), stone texture laid on by
-  facing side, moss where they face up (they now turn only round the upright); grass: twelve thin
-  curved blades a clump, some dry. Leaves keep their crown's normal on both sides (`keepNormals`).
-  Materials use `alphaTest` (not alpha-to-coverage: the screen has no smoothing once `tune` drops
-  the effects chain, and the cards would draw as solid squares).
-- `render.ts` `RAYS` pass (medium and high, before the hands): 36 steps toward the sun over the
-  bright sky, so trees and hills cut the light into shafts; a halo, ghosts and a streak only while
-  the sun is in sight, fading as it's covered; off at night, in rain, with night vision or the 8×
-  scope. `sky.ts` sets `r.sky` (direction, strength, colour). `tune` drops it right after GTAO.
-- The holographic sight's hood is matte and shorter (`mt.optic`): shiny metal there mirrored the sky
-  white and the ground black, so it read as a solid black box.
-- Nothing was taken apart from another game: REA/Ghidra are for software the owner owns or may
-  examine, and wasn't connected in this session anyway.
+## M42 · Link previews, icon count, install guide, Share to UniVerse, and much less text (31 Oct 2026)
+
+The owner: "do all of them" (the plan's steps 1–5; store apps left out, no funds), then, seeing the
+phone landing: "it like to much information for the first time user to read… everywhere there is
+text that is not good".
+
+- **Link previews:** `public/og.jpg` (the whole site: "One account. Many apps. Real impact.") and
+  `public/og/<app>.jpg`, 1200 × 630, made from the landing's own hero (a scratch Playwright script,
+  device scale 1200/1440, nav links and buttons hidden). `src/lib/share-meta.ts` (`shareMeta(app,
+  description)`, `SITE_SHARE`; bump `V` when a picture changes) is used by new server layouts in
+  `(dashboard)/trace|relief|green|play`, `join`, and by `t/` and `b/` (Trace). Play room invites
+  (`/play/game?room=`) now show the Play picture. A server layout under the client `(dashboard)`
+  layout is fine: the router composes them.
+- **Icon count:** `Topbar` sets `navigator.setAppBadge(unread)` from the bell's count; the service
+  worker (`src/worker/index.ts`, `iconCount`) sets it to the notifications waiting in the tray after a
+  push and after a tap. Works on iPhone home-screen apps, Windows and Mac; Android shows its own dot.
+- **Install:** `src/components/pwa/InstallGuide.tsx` (a `Sheet`): perks, then the taps for iPhone /
+  iPad (no install button there), Android or a computer; the browser's own install when it offers
+  one. Used by the landing's "Get the app" (replaces the old toast) and the in-app banner's "Show me
+  how" on iPhone. `manifest.json` has seven screenshots (`public/screenshots/`, 5 phone, 2 wide) so
+  Android's install sheet shows a gallery.
+- **Share to UniVerse** (Android only; iPhone has no share target for web apps): manifest
+  `share_target` → `/app?title=&text=&url=`; `/app` keeps it (`src/lib/share-in.ts`,
+  sessionStorage, 2000 characters) and opens Messages; the chat list shows "Pick a chat to send it
+  to"; the chat picked gets it as its draft (`keepDraft`), nothing is sent by itself. Files are not
+  accepted (that needs a POST share handled in the service worker).
+- **Less text:** every hero is a headline plus one short line, two buttons, and quiet links ("Get
+  the app", "Scan a sample") with the note; the mono eyebrow shows from `sm` up. Every section's
+  paragraph, card, FAQ answer, CTA and the sign-in side were cut to one short line; `APPS[].impact`
+  too (the hub shows it). Footer: Play added, new line.
+- **Phone fixes found on the way:** the hero grid had no `grid-cols-1`, so the app tab row (wider
+  than a phone) stretched the column and the text and buttons ran off the right edge; the nav's
+  "Get started" broke onto two lines and the bar overflowed at 320–360 px (now nowrap, "Impact" from
+  400 px, the wordmark from 360 px, the link has an `aria-label`). Trace's four steps: the reveal
+  wrapper is now the list item (`Reveal role="listitem"`), so axe's list rules pass.
+- **Tested:** browser run on the dev server (install guide opens; icon count set to the demo
+  student's 30 unread; shared text reaches Messages, the banner shows, the picked chat's box holds
+  it); share tags read from the HTML of `/`, `/play/game?room=…`, `/t/demo`, `/green`, `/join`;
+  axe clean at 390/1280 (landing, guide, sign-in, the share banner light and dark); no element wider
+  than the screen at 320/360/390; unit tests (a new one for `sharedText`), typecheck, lint, lean.
+- **Traps:** the local database must have every migration (`npx wrangler d1 migrations apply
+  universe-db --local`), or demo sign-in fails with "no such column". In tests, the first
+  `role="listitem"` in Messages is the status bubble, not a chat.
+
+## M42a · "Try the live demo" taken off the sign-in page (31 Oct 2026)
+
+The owner: "remove try the demo option from the project I don't like it", then picked only the
+sign-in page's "Just looking? Try the live demo" (signed-in "Explore with sample data" and M43's
+"try it here" demos stay). M23 had already taken it off the landing.
+
+- Gone with it, all the code only the visitor demo used: `startVisitorDemo` (SampleMode.tsx), the
+  visitor flag (`isSampleVisitor`, `setVisitor`, `clearVisitorStorage` in `sample-mode.ts`), the
+  "Live demo" banner and its "Create a free account", the auth store keeping a made-up person in
+  sessionStorage (`store/auth.ts`), and the sample router's visitor answers (`/users/me`, the 401 for
+  pages without an example).
+- `endDemoForSignIn` stays (sign-in and sign-up): it now only ends sample mode before a real sign-in.
+- **Rule:** there is no way into the app without an account; sample mode is for signed-in people.
+
+## M43 · More of Relief, Green and Play on the landing, "try it here" demos, and photos shared in (31 Oct 2026)
+
+The owner's pick (M43 in AGENTS.md §4), plus "Sharing photos into UniVerse… please do this also"
+(left out of M42).
+
+- **Landing** (`src/components/landing/ImpactMore.tsx`, after each tab's first section in
+  `src/app/page.tsx`): three short sections per tab, a headline and a picture each. Relief: try the
+  help map, Ask → Matched → Delivered, "your area, never your door" (500 m, 30 days, never a
+  helper's location). Green: log one, streak / this week's challenge (`weeklyChallenge`) / badges
+  (`BADGES`), photo proof confirmed by a teammate. Play: a five-question round, rooms (a code, 8
+  seats), the four 3D worlds with their age ratings (`GAMES`).
+- **"Try it here"** (`src/components/landing/TryIt.tsx`, loaded with `dynamic()` only when its tab is
+  open): `QuizTry` (Quiz Clash's own `quizQuestion` and `quizPoints`), `GreenTry` (`co2For` and
+  `GREEN_FACTORS`' "how" line, nothing else invented), `ReliefTry` (the Relief map engine,
+  `WorldCanvas` with `interactive={false}` so it doesn't take the page's scroll; the list beside it is
+  how you pick, so it works by keyboard and screen reader). All in the browser; nothing is sent.
+- **Photos shared in** (Android): the manifest's `share_target` is now `POST /api/share-in`,
+  multipart, with `photos` (`image/*`). The service worker (`src/worker/index.ts`, `takeShare`)
+  answers it on the device: up to 10 photos (40 MB each) go into the cache `universe-share` as
+  `/__share/<i>` (name in `x-name`), and it redirects to `/app?title=&text=&url=&photos=<n>`. Without a
+  service worker yet, `src/app/api/share-in/route.ts` passes the text on (photos can't wait there).
+  `share-in.ts`: `pendingShare`, `givePhotos(chat)` when a chat is picked, `photosFor(chat)`,
+  `clearPhotos`. In the chat, `SharedPhotos.tsx` shows them above the box with Send (several go as
+  one album) and Not now; private and official chats say they can't take photos. Nothing is sent by
+  itself.
+- **Fixed on the way:** with Reduce Motion on, the landing's hero pictures drew differently on the
+  server and in the browser (React's hydration error). `useCalm()` (`landing/bits.tsx`) reads Reduce
+  Motion as off until the page has woken, then the real setting; `HeroScenes` uses it.
+- **Tested:** `scripts/checks/landing-try-ui.mjs` (each tab's demo, the share route's fallback, two
+  photos in the cache reaching a chat's box and "Not now" emptying it; axe and no sideways scroll at
+  390/1280, the chat light and dark); unit tests for the shared photos, typecheck, lint, lean.
+- **Traps:** the service worker's catch only works once it controls the installed app (a first share
+  right after installing may lose photos, the text still arrives). The landing tabs' sections only
+  exist while their tab is open: a test has to pick the tab (and the first tap can land before the
+  page is ready).
+
+## M44 · The landing's scroll story and live totals (31 Oct 2026)
+
+The owner's pick (M44 in AGENTS.md §4): "a scroll story at the top of the landing (the five pictures
+turning into each other) and a strip of live totals (rounded, counted once a day, no person
+findable)".
+
+- **Scroll story** (`src/components/landing/ScrollStory.tsx`, under the hero): one screen of scrolling
+  per app; the picture stays put (sticky) while the five `HeroScenes` pictures fade, shrink and slide
+  into each other (`useScroll` → `at` 0…4, transform and opacity only). Only the picture on screen and
+  its neighbours are mounted, and only while the story is near the screen (`useInView`). The dots jump
+  to an app; "Open <app>" picks that tab and goes back to the top. Reduce Motion (`useCalm`): fades
+  only.
+- **Live totals** (`LiveTotals.tsx`, between the hero and the story): `GET /api/impact/totals`
+  (public, cached an hour) → `siteTotals()` (`src/server/site-totals.ts`). Counted once a day by the
+  daily jobs' new `site-totals` step (one query for the five numbers, one upsert) into the new table
+  `site_totals` (migration **0186**), already rounded down (`roundDown` in `src/lib/site-totals.ts`:
+  two figures, tens at least); anything under 10 isn't sent, and with nothing to show the strip is
+  hidden. The owner's sample world never counts (emails `@sample.universe.test`, ids and brands
+  `smp…`). If the table is empty (before the first daily run) the first visit counts once.
+- **Rules for code that builds on it:** new totals go in `TOTAL_KEYS`, the query in
+  `countSiteTotals` (keep it one query) and a label in `LiveTotals`. Only whole-site sums, never
+  per place or per school. The landing asks with plain `fetch`, so sample mode doesn't need an answer
+  for it.
+- **Tested:** `scripts/checks/landing-story-ui.mjs` (the route's numbers are rounded and 10 or more;
+  the strip shows them; each dot brings its app's headline and picture; axe and no sideways scroll at
+  390/1280); unit tests for the rounding; typecheck, lint, lean.
+- **Traps:** after adding a table, a running dev server keeps the old Prisma client (`siteTotal` is
+  undefined) until it's restarted.
+
+## M45 · How the app feels: glides, celebrations, sounds, swipes, sheets, one vibration (31 Oct 2026)
+
+The owner's pick (M45 in AGENTS.md §4): "screens that glide into each other, short celebrations at
+milestones, optional sounds (off by default), swipe and long-press on rows, bottom sheets, the same
+vibration everywhere, empty screens with one next step".
+
+- **Glides:** pages already glide (push, back, tab, shared title: `src/lib/page-transition.ts`, built
+  without View Transitions on purpose, see its header). What was missing was swaps inside a page:
+  `glide(el, 'push' | 'pop')` there; Messages on phones now glides the list back in from a chat
+  (opening one already has the portal, `.chat-glide`). Settings already slid on phones.
+- **Celebrations** (`src/lib/celebrate.ts`, `celebrate(fromElement)`): a burst of sparks from the
+  button, under a second, plus the success vibration; transform and opacity only; nothing with Reduce
+  Motion; fewer sparks on low-end phones. Used when a Green badge is earned by the action just logged,
+  a Relief request is marked Delivered, and a first, on-time hand-in of an assignment. Play's new best
+  keeps its own confetti (`ScreenEffect`).
+- **Sounds** (`src/lib/sounds.ts`): off until Settings → Appearance → Sounds (`uv-sounds`). A soft
+  two-note chime for success, a low note for warning, made with Web Audio. They play from `haptic()`,
+  so the sound always matches the vibration; taps are silent; games pass `haptic(kind, false)`
+  (they have their own sounds and switch).
+- **One vibration:** `haptic('tap' | 'success' | 'warning')` everywhere (it follows Settings →
+  Vibration and gives iPhones their system tap). The scanners and the games used raw
+  `navigator.vibrate` (ignoring the switch); now they don't. Only the ringtones keep their own
+  patterns (an incoming call, the ringtone preview in Settings).
+- **Swipe and long press** (`src/components/ui/SwipeRow.tsx`): a finger drags the row; past 90 px
+  toward the end runs `start`, toward the start runs `end` (mirrored right-to-left), with the success
+  vibration. Mouse and keyboard keep the row's buttons. Notifications use it (snooze / read, as
+  before); Messages rows now swipe too (toward the end: read / unread; toward the start: archive). A
+  long press on a chat (or Android's held finger) opens its options.
+- **Bottom sheets on phones:** a chat's options and every `Menu` (the shared small menu, e.g.
+  Notifications' snooze) open as a `Sheet` from the bottom under 768 px (`useMedia`,
+  `src/lib/use-media.ts`), with taller rows; computers keep the small menus. `Popover` (toolbars,
+  colour grids) stays as it is.
+- **Empty screens:** most already had their next step beside them; added one where there was none:
+  the student directory and mentors search ("Clear search and filters", "Show everyone") and the
+  admin meals day ("Add menus").
+- **Also:** Settings → Appearance's choice buttons are now the house style (a black pill in light, a
+  white one in dark), not the old indigo-to-pink gradient (too faint behind white text).
+- **Tested:** `scripts/checks/feel-ui.mjs` as a phone with a finger (swipe flips read / unread and
+  back; a long press and the snooze menu open sheets; Sounds off by default, on and off; axe on the
+  sheets and Settings, light and dark) and at 1280 (the small menu stays); unit tests for sounds;
+  typecheck, lint, lean.
+- **Traps:** with a sheet open, run axe on the sheet only (the page behind is dimmed on purpose, so its
+  colours fail). In Settings on a phone, axe content scrolled under the see-through top bar also
+  "fails". CDP touch long-presses also send a tap (real Android doesn't): test long press with a
+  `contextmenu` event.
+
+## M46 · Offline reading, an iPhone launch screen, bar colours per theme, a low-end phone speed check (31 Oct 2026)
+
+The owner's pick (M46 in AGENTS.md §4): "today's timetable, courses and recent messages readable
+offline, an iPhone launch screen, bar colours per theme, and a speed check on a low-end phone".
+
+- **Offline reading** (`src/lib/offline-reads.ts`): API answers are never in the service worker's
+  cache (per person), so the last answer of a few reads is kept in the offline database
+  (`src/lib/outbox.ts`, new `reads` store, database version 4, wiped at sign-out with the rest):
+  `/api/core/timetable/my`, `/api/core/courses/my`, `/api/chat/conversations`, the student home's
+  overview (one per weekday, its key holds the day), the teacher dashboard, and the home cards
+  (`/api/home`, only on the day saved: it holds today's classes at their times). `api.get` and
+  `authedJson` save them on success and, when the request fails for want of a connection
+  (`isOfflineError`), answer with the copy instead: only the same signed-in person's, at most 14 days
+  old; never in sample mode or "view as". Once a day, when the app is idle (with the tab prefetch, not
+  in low-data mode), students and teachers refresh the three copies the offline page needs (at most
+  three small reads a day). Chats themselves were already kept (last 50 messages of 20 chats).
+- **The offline page** (`public/offline.html`, plain HTML, precached as the fallback): shown for any
+  page not saved on the device; now in the Karma look, following the app's theme, with **Today**
+  (classes for today's weekday from the saved timetable), **Messages** (latest 6 chats, unread dot,
+  private chats say only "Private chat") and **Courses**, each with "saved … ago"; everything written
+  with `textContent`. The offline bar says "You're offline · showing what's saved on this device".
+- **Bar colours per theme:** the browser bar (`theme-color`) followed the *device's* light/dark, not
+  the app's (dark by default), so a light phone showed a light bar over the dark app. Now one
+  `<meta name="theme-color">` in the root layout's `<head>`, set before paint by the theme script
+  (`BARS_SCRIPT` in `src/lib/theme.ts`) and on every change (`applyTheme`). On iPhone home-screen apps
+  the status bar style follows too: `black-translucent` (white text over the page) in dark, `default`
+  (black text) in light, where white text was unreadable over the light header. iOS may read this only
+  when the app starts: untested on a real iPhone.
+- **iPhone launch screen:** `scripts/gen-launch-screens.mjs` draws the icon on the dark page colour
+  for 13 iPhone sizes (SE to 17 Pro Max) and 9 iPad sizes, portrait, into `public/splash/` (~0.5 MB,
+  excluded from the service worker's install: iOS fetches them once, when the app is added) and writes
+  the links to `src/lib/launch-screens.gen.ts` (root layout). Dark only (the app's default).
+- **Speed check** (`scripts/speed.mjs`: 390 × 844 touch, CPU 4× slower, "Slow 4G", built site):
+  first paint 1.1–1.5 s on a first visit and 0.3–0.6 s on a return visit (good); the main content
+  (LCP) 3.9–5.8 s on a first visit to an app page (mostly ~400 kB of scripts at 1.6 Mb/s, then
+  starting React) and 1.7–2.1 s on a return visit. **Found and fixed:** the light river kept a budget
+  phone's processor 100% busy after every page had loaded (hiding it: 81% free). Its "go lighter"
+  step changed nothing on phones (already 30 frames a second) and its test for a struggling device
+  (frames over 52 ms apart) never fired: a saturated phone still managed one every ~42 ms. Now it
+  judges the average time between frames every 60 frames: over 24 ms lighter, over 34 ms (or 28 ms
+  once lighter) it holds still at that moment, redrawn only on scroll, like Reduce Motion; and in the
+  app it starts moving once the page has loaded (the landing's opening still pours in at once).
+  After: app pages leave the processor 74–78% free 8 s after opening (was 0%); fast devices keep the
+  moving river. **Not fixed (next ideas):** the landing page stays busy (15–20% free even with its
+  river still and CSS animations paused): its looping demos run in code while off screen (pause them
+  outside the viewport); first visits download ~400 kB of scripts before an app page can start.
+- **Rules for code that builds on it:** another read kept offline = one line in `KEPT`; if the offline
+  page should show it, add it to the page's list and to `refreshOfflineCopies` (keep that list small:
+  each is a request a day per person). Never keep a read that holds other people's private data
+  beyond what the person already sees. A new theme colour = `BAR` in `theme.ts`. New iPhone sizes: add
+  to `SCREENS` and run the script.
+- **Tested:** `scripts/checks/offline-ui.mjs` on the built site (copies kept after a visit; offline,
+  the home shows its saved data and a page never opened shows today, chats and courses; axe at
+  390/1280, light and dark; one bar colour per theme, changed by the theme button; launch screens
+  linked and served); unit tests for when a copy may be shown; typecheck, lint, lean.
+- **Traps:** the offline page and service worker exist only in a build (`pnpm local:build`), not in
+  `local:dev`. A page is saved for offline use only once the service worker controls it (the second
+  load after install). A test browser's "offline" (`setOffline`, `route`) doesn't reach the service
+  worker's own requests unless `PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1` (set in the check):
+  without it an "offline" test quietly passes online. A `<meta>` written in React and changed by a
+  script before the page wakes up is added a second time by React: tags a script changes are made
+  by the script.
+
+## M47 · The landing's demos pause off screen; light and sideways launch screens (31 Oct 2026)
+
+The owner, on M46's two leftovers: "do both of these"; then "don't build for the slow phone", so the
+part that held the whole landing still on a struggling phone was taken out again before committing
+(M46's own river rule stays).
+
+- **Off screen, still** (`Live` in `src/components/landing/bits.tsx`): wraps a landing part whose
+  demos loop (the hero picture, the scroll story, Bento's languages, the typing statement, the Trace
+  map section, Relief's "try it" map). An IntersectionObserver (200 px ahead) gives the part an
+  "away" context; `useCalm()` = Reduce Motion **or** away, so every loop that already honoured Reduce
+  Motion now also stops off screen; the scroll story's layers that aren't shown are away too. CSS
+  loops inside pause (`[data-away] *` in globals.css). Starts "on screen" so the server's HTML and the
+  first render agree.
+- **Trap (framer-motion):** taking a running `repeat: Infinity` animation's `animate` away does
+  **not** stop it (the hero ring kept spinning off screen). `still()` in `HeroScenes.tsx` gives each
+  scene a new `key` when it turns calm, so a fresh still copy replaces it. Use the same trick for any
+  new looping framer animation that must stop.
+- Removed on the way: `ReliefCard`, `GreenCard`, `PlayCard` (ImpactApps.tsx), unused since M43;
+  LiveMapShowcase and TryIt now use `useCalm` instead of framer's `useReducedMotion`.
+- **Launch screens:** `scripts/gen-launch-screens.mjs` now draws both themes (dark #0b0b0c, light
+  #ebeae6) and the iPads sideways too: 62 pictures (`public/splash/<theme>-<w>x<h>.png`, 1.4 MB, not
+  precached). `src/lib/launch-screens.gen.ts` holds only the size list; the head script (`BARS_SCRIPT`
+  in `theme.ts`) adds the 31 links in the chosen theme (no longer React-rendered: they change with the
+  theme, and React would disagree with its copy of the head), and `syncBars` swaps them when the theme
+  changes (`setAttribute`, so the hrefs stay short). iOS reads them when the app is added: someone who
+  changes theme later sees the old one until they add the app again. Untested on a real iPhone/iPad.
+- **Tested:** `scripts/checks/landing-pause-ui.mjs` (built site: the hero moves at the top, holds
+  still lower down with nothing off screen animating, moves again back at the top),
+  `scripts/checks/offline-ui.mjs` (launch links follow the theme and the theme button; three served),
+  typecheck, lint, unit tests, lean.
+- **Measured, not acted on (the owner said not to build for slow phones):** with the CPU 4× slower
+  the landing still keeps the processor busy at the top (the visible hero) and the page's always-on
+  CSS glows keep frames coming in the test browser (no graphics chip there; real phones move them on
+  the GPU). The other speed idea from M46 stays open: ~400 kB of scripts on a first visit.
+
+## M48 · Live cards: constellations and funnels of light on every home (31 Oct 2026)
+
+The owner sent a video of "Crew" (a staff dashboard by buildindex.dev): "add those animations and
+design in the system in all the places… professional and ultra smooth". Asked: keep UniVerse's own
+colours (Karma: pink, a little purple, white, warm gold) and add the video's moving pieces.
+
+- **The kit** (`src/components/live/`): `canvas.ts` (`useLiveCanvas`: one canvas in device pixels,
+  frames only while on screen and the tab is open, one settled frame with Reduce Motion, time starts
+  when first seen; `glow()` sprites drawn once and stamped, so no shadows or blur per frame;
+  `TONES`), `Constellation.tsx` (groups of glowing points in 3D around you, two orbits for depth, a
+  haze per group, lines with light pulses running out, labels in small pills, points fly out on
+  arrival, the pointer tilts the view and lights the nearest group), `Funnel.tsx` (a stream of 220
+  points through stages as wide as their counts, those that don't go on drift out and fade, a warm
+  light at the end; an even calm stream when every count is 0), `LiveCard.tsx` (the deep card,
+  near-black in both themes with the river's glows: live dot, title, picture, small numbers, a
+  `Ticker` line that changes every 3.8 s; `Countdown` with rolling digits), `HomeLive.tsx`.
+- **Where:** student home "Your constellation" (courses, work due; countdown to the next class),
+  teacher "Your classes, live" (students per class), admin "School constellation" (departments) as a
+  new home card `orbit` (`src/lib/home-layout.ts`; it can be hidden or moved like the others); the hub's
+  hero (every app around you); Relief "Help, moving" (open → being helped → helped); Trace "From label
+  to owner" (printed → scanned → claimed); Green and Play constellations (shown once the person has
+  actions or rounds). Everything is fed with data the page already loads: no new requests, so sample
+  mode needs nothing new.
+- **Rules for code that builds on it:** a new moving picture = a `draw(frame)` for `useLiveCanvas`;
+  stamp `glow(tone)` with `globalCompositeOperation = 'lighter'` rather than shadows; keep text in the
+  DOM where it matters (numbers, screen-reader lists) and only labels on the canvas. Colours only from
+  `TONES`.
+- **Tested:** `scripts/checks/live-ui.mjs` (each card draws, no sideways scroll, axe at 390/1280,
+  light and dark; student, teacher, admin, hub, Relief), typecheck, lint, unit tests, lean. Looked at
+  in the browser on a phone and a desktop.
+
+## M49 · More kinds of live pictures, a cascade between tabs, and the owner console gets them (31 Oct 2026)
+
+The owner: "add more of these animations and transitions like different kind in the system and did
+you apply all these in the owners portal" (they weren't: M48 covered the homes only).
+
+- **Three new pictures** (`src/components/live/`, same loop and glow sprites as M48):
+  `Heartbeat.tsx` (a live line that draws itself in, glides to new values over 700 ms when a refresh
+  brings them, a pulse of light runs along it every 3.5 s, a breathing light on the latest value, red
+  sparks for failures via `marks`); `Radar.tsx` (a beam sweeps every 4.2 s, blips light up as it
+  passes and fade, names show while bright; `ring` 0–2 from the middle); `PulseGrid.tsx` (rows of
+  small squares lit by value, popping in from the left, a band of light passing over; after the
+  video's "engagement pulse").
+- **Cascade between tabs** (`TabPanel` / `useCascade` in `src/components/ui/Glide.tsx`): a new tab's
+  cards rise in one after another (280 ms each, 45 ms apart, transform and opacity only, nothing with
+  Reduce Motion); cards that arrive in the next 1.5 s (data replacing a skeleton) join in. Every
+  `TabPanel` gets it: the owner console's sections, Calls, admin courses, analytics, early warning,
+  leaderboard, events. `useCascade(ref, key)` for any other section that swaps content.
+- **Owner console** (`console/live-cards.tsx`): Overview opens with "Who's here now" (the people
+  online on a radar, admins in the middle, teachers next; recent sign-ins in the ticker) and
+  "Everyone" (accounts by role as a constellation); the live board starts with "The app's heartbeat"
+  (requests per second with server failures as red sparks, and a pulse grid of views, messages and
+  sign-ins), following the board's 1 h / 1 day / 7 days choice.
+- **Elsewhere:** Trace's live card adds scans per day as a heartbeat (likely copies as red sparks),
+  Green's adds CO₂ per day, Relief's adds open needs on a radar (critical in the middle).
+- **Tested:** `scripts/checks/console-deck-ui.mjs` on the built site (now also: every live card on
+  Overview draws, and saves a picture of each), axe-clean with no sideways scroll on desktop and phone,
+  light and dark; the cascade seen on Calls (cards rising after a tab click); typecheck, lint, unit
+  tests, lean.
+
+## M50 · Trace in motion: a night city, journey lines, level gauges and a timetable (31 Oct 2026)
+
+The owner sent a second video ("Waypoint", a fleet and warehouse dashboard by buildindex.dev):
+"add these animations in the system… specially in the trace section you can add with more features…
+ultra smooth", and "add all these where ever you think can fit".
+
+- **New pieces** (`src/components/live/`): `CityView.tsx` (a night city seen from above at an angle:
+  blocks with lit windows drawn once per size, the warehouse hub glowing with rings, every batch a van
+  going from a factory at the edge through the hub to its shop; the way done glows pink, light streams
+  ahead to where it's going; names on vans on the move, any van's name when pointed at; pills step
+  aside instead of covering each other), `Journey.tsx` (a wave through the steps that draws itself in;
+  each step ticks over as the line reaches it, the current one pulses, a light runs along what's done;
+  step names and times in an ordered list; follows the theme or `dark`), `Tank.tsx` (a half bowl
+  whose liquid rises to the level with a sliding wavy top; plain boxes and a transform: an SVG clip
+  version didn't draw reliably), `Schedule.tsx` (bars from start to end growing in one after another,
+  hours or days along the top, at most about seven marks, a pink line for now). `STAGE_SHORT` in
+  `src/lib/trace.ts`: one word per stage for narrow places.
+- **Trace:** Tracking opens with "Fleet in motion" (the city, on the move / delivered / next arrival,
+  a ticker) and ends with "Journeys" (the timetable); an opened shipment shows its journey stage by
+  stage and how far along it is as a gauge. The product passport (`/t/<code>`) draws its journey
+  ending with "You". Radar gets "On the radar" (recalls and copies in the middle, grey market and warm
+  shipments next, blocks outside). The wallet gets "Your points, live" (brands as a constellation, the
+  total over time as a heartbeat). Each campaign shows its budget left as a gauge.
+- **Elsewhere:** a student's assignment shows Set → Handed in → Marked as a journey; Relief requests
+  show Asked → Someone's on it → Helped; Green's weekly challenge has a gauge; the student home's
+  "Today's classes" gets the timetable with now (only on days with classes).
+- All from data the pages already load: no new requests or database changes.
+- **Tested:** `scripts/checks/live-ui.mjs` (now also Trace tracking, radar and wallet in sample mode;
+  each card draws, axe at 390/1280, light and dark, no sideways scroll); looked at in the browser
+  (the city, the journey and gauge on a shipment, the timetable, the passport, Green); typecheck,
+  lint, unit tests, lean. Not run through a full build this time (no server changes).
+
+## M51 · A richer night city (31 Oct 2026)
+
+The owner, on M50's "Fleet in motion": "needs to be more detailed and graphics and animated and
+ultra smooth".
+
+- `src/components/live/CityView.tsx` rebuilt: two pictures drawn once per size (the ground: a
+  darker edge, streets with dashed lanes, a lamp at every crossing; the buildings: towers taller
+  toward the middle, clusters of four, pairs and low squares, shaded faces, a bright roof edge,
+  windows per floor in warm gold and a few cool, antennas, pink neon strips), and between and over
+  them each frame: cars' head and tail lights along every street (hidden behind buildings in front),
+  each van as a small lit box facing its way with headlights and tail lights, a glowing trail behind
+  and dashes running ahead, then the buildings, then a faint see-through line and light for every
+  van (so none is lost behind a tower), windows breathing, rooftop lights blinking, neon pulsing, the
+  hub's hexagon, turning ring, rings going out and beam, beams over the shops (violet on the way, gold
+  delivered, with a gold tick), and name pills with a leader line for vans on the move. The city
+  lights up outward from the hub when first seen. 10 blocks a side (8 on phones); on narrow screens
+  the far corners run off the sides so the city fills the card.
+- **Tested:** `scripts/checks/live-ui.mjs` on Trace tracking (draws, axe, no sideways scroll, 390 and
+  1280, light and dark); looked at on a phone and a desktop; typecheck, lint, unit tests, lean.
+
+## M52 · The "Globynk" colours everywhere, a dotted planet and 3D wallet cards (31 Oct 2026)
+
+The owner sent two videos ("Orbit": a dotted planet, cohort cubes, a light funnel; "Ledgerline": a
+3D bank card that sways and tilts) and the "Globynk" picture (Aqua Jade #74FFED, Midnight Abyss
+#171F44, Baby Pink #FE81D1): "put the animation where you think will be suited… ultra realistic and
+make website colour like this… for whole app and website".
+
+- **Colours** (replaces M34's warm graphite; the squircle cards and pills stay): a one-off script
+  mapped every hard-coded Karma colour in `src` (hex and rgb, ~1,500 places) to its navy / pink /
+  aqua twin; then by hand in `globals.css`: indigo / violet / purple are a navy scale (600 = #2b3568,
+  900 = #171f44), zinc cool greys, pink is Baby Pink at 500 (600 #c13a92 and deeper hold white text),
+  fuchsia an orchid, and a new `aqua-*` scale (300 = Aqua Jade, 700 reads on white). Tokens in the
+  "M34 → M52" part: dark page #171f44 with Aqua Jade rising from the bottom (`.ambient-bg`, kept low
+  enough for grey text to read at 4.5:1), cards #1d2650; light page #e9eef8 with the same glows; the
+  side menu deep navy with pink at the top and aqua at the bottom; **`.btn-primary` is a Baby Pink
+  pill with navy text in both themes** (7:1); the landing's `primary` and the top bar's "Get started"
+  too. Focus rings are aqua in dark mode. The frosted headline cards: dusk is navy sinking into deep
+  aqua, gold (name kept) a pale aqua. The live cards, the hub / Trace hero, the river of light (pink
+  with a few aqua strands), the app icon (navy, Baby Pink U), the launch screens (re-made with
+  `scripts/gen-launch-screens.mjs`), the bar colours, `manifest.json`, `offline.html` and the logo.
+- **Picture tones renamed** (`src/components/live/canvas.ts`): `TONES` is now pink, blue (periwinkle),
+  aqua, white; old `violet` → `blue`, old `gold` → `aqua` (Tank's `gold` too).
+- **The planet** (`src/components/live/Planet.tsx`, canvas, `useLiveCanvas`): a jittered Fibonacci
+  lattice of 5,000–14,000 points, all land points kept and every third sea point, land read from the
+  Trace maps' Natural Earth outlines (`engine.ts`, loaded lazily, drawn once into a 512 px Mercator
+  mask); lit from the top left, the far side faintly through, an aqua atmosphere and body drawn once
+  per size, a random net, a glint, ripples landing every 0.9 s, Baby Pink arcs (great circles lifted
+  by distance, hidden behind the globe, a light running along) between labelled places (pills on
+  the canvas, a list for screen readers). The pointer leans it. **Where:** the landing's new
+  "One account. One planet." section after the hero (`src/components/landing/WorldSection.tsx`:
+  navy into aqua like the picture, a pink "Start free", two frosted notes) and the hub's hero (the
+  five apps with their totals; replaced the M48 constellation there).
+- **The wallet cards** (`src/components/hub/WalletCards.tsx`, at the top of the Impact Wallet on
+  /hub): four cards (Impact with the four apps' numbers as embossed groups, Trace points, CO₂ saved,
+  people helped) in navy, pink, aqua and periwinkle finishes with a metal chip, a hologram that turns
+  colour as the card turns, a light that slides over it and a shadow that moves the other way; the
+  stack sways slowly (the video's `-10 + sin(t/2300)·9`, `8 + cos(t/3100)·4`) and leans to the pointer
+  or a finger; thumbnails bring a card to the front; the panel beside it says the same in text. Time
+  runs only while on screen; Reduce Motion holds it at an angle. Styles: `.wcard*` in `globals.css`.
+- `useLiveCanvas(draw, wake)`: a changed `wake` draws one more frame even when still (the planet's
+  land arriving with Reduce Motion on).
+- **Rules for code that builds on it:** no new hard-coded graphite or hot pink: navy from the
+  indigo / zinc classes or `#171f44`, pink from `pink-*` (text on Baby Pink is navy, never white;
+  white text needs pink-600 or deeper), aqua from `aqua-*` (as text on light backgrounds only
+  `aqua-700`). Picture colours only from `TONES`.
+- Left out on purpose: the cohort cubes and the funnel's glass bars from the "Orbit" video (the M48
+  funnel already streams light through stages); the link-preview pictures (`public/og*`) keep their
+  old colours (they're photos of the screens).
+- **Tested:** `pnpm check` (types, lint, 1,362 unit tests, lean); `scripts/checks/live-ui.mjs` (now
+  also the wallet cards; every live card draws, axe-clean, no sideways scroll, 390 / 1280, light and
+  dark); the new `scripts/checks/world-ui.mjs` (the landing's planet draws; the landing and sign-in
+  pages axe-clean as whole pages at 390 / 1280). Looked at in the browser: the landing, the hub's
+  planet and cards (phone and desktop, light and dark), student home, Trace's city. Not run through a
+  full build (no server changes).
+
+## M53 · Light mode in the owner's second palette (31 Oct 2026)
+
+The owner sent a second palette picture ("Visualize your mind in motion": Marshmallow White, Galactic
+Violet, Bubblegum Pink): "for the light mode use this colours". Dark mode keeps M52 (navy, aqua, Baby
+Pink). The video's labels didn't match its swatches (#105BFF is a blue, #FE8500 an orange); the
+colours actually shown were measured and used: **violet #533FF6, pink #EC74CE**, white #F0F0F0.
+
+- **How:** `html:not(.dark)` in `globals.css` re-points the Tailwind scales for light mode only:
+  indigo / violet / purple → a Galactic Violet scale (600 = #533ff6, 700 = #3f2bd6 for text), pink →
+  Bubblegum (500 = #ec74ce; 600 #c23d98 and deeper hold white text), fuchsia → an orchid between them,
+  zinc / slate / gray → neutral greys. `.dark, .on-dark` puts the navy scales back for dark parts of a
+  light page (the side menu, live cards, the landing). The light tokens (`:root` in the "M34 → M52"
+  part): page #f0f0f0 with pink low on the left and violet low on the right (`.ambient-bg`), white
+  cards with a violet-tinted shadow, ink #141320, black selected pills (like the picture's "Let's
+  Connect"), violet focus ring and tint. **`.btn-primary` in light mode is Bubblegum Pink with ink
+  text** (white text on that pink would be 2.6:1). Frosts: dusk is the picture's pink-into-violet
+  band (deep enough for white text), gold a lavender frost. The side menu, the hub / Trace hero and
+  the live cards are violet-black with pink and violet glowing up from below in light mode. The light
+  river is pink and violet. Bar colour, launch screens, offline page and recovery screen use #f0f0f0.
+- **Rules for code that builds on it:** a light-only colour goes in `html:not(.dark)` (or a plain
+  class with a `dark:` partner); `aqua-*` is dark mode's colour: in light mode use `violet-*` (e.g.
+  `to-violet-500 dark:to-aqua-400`). Text on Bubblegum or Baby Pink is ink or navy, never white.
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); `scripts/checks/live-ui.mjs`
+  (every live card and the wallet cards, 390 / 1280, light and dark: all pass); whole-page axe in light
+  mode on the student, teacher and admin homes, hub, Green, Relief, Play and Trace at 1280 and four of
+  them at 390: no serious problems. Looked at the student home and hub in light and dark.
+
+## M54 · More Aqua Jade in dark mode (31 Oct 2026)
+
+The owner, on M52: "there is way less aqua jade colour in there". Pink had been every accent; aqua was
+only the faint glow.
+
+- **Now (dark mode only; light mode keeps M53's violet and pink):** pink is the action (the main
+  button, live dots, arcs); **Aqua Jade is everything chosen, pointed at or highlighted.** Selected pills
+  and the round arrow buttons are Aqua Jade with navy text (`--pill-on-bg`); `indigo / violet / purple`
+  200 and 300 are aqua in `html.dark` (so the ~350 `dark:text-indigo-300` accents and the side menu's
+  icons read aqua); accent text with no dark colour of its own and the `bg-indigo-500/10…` icon tints
+  are aqua; outlined buttons have an aqua edge; the side menu's chosen entry an aqua edge and glow; the
+  tab thumb glows aqua; chart lines and bars are aqua (`.ins-cell`), pink stays for what matters;
+  hovered cards get an aqua edge and every card a faint aqua top line; links (`--tint-text`) and
+  badges are aqua; the river is half aqua; more aqua rises in the page's bottom corners; the landing's
+  section labels have aqua dots. All in the "M54" part at the end of `globals.css` (scoped to
+  `html.dark`, so dark parts of a light page keep navy).
+- **Rules for code that builds on it:** in dark mode, an accent is aqua (`dark:text-indigo-300` or
+  `aqua-*`), an action is pink (`.btn-primary`). Don't put white text on `indigo-500` in dark mode
+  expecting aqua: 500 and deeper stay navy so white text keeps reading.
+- Also fixed: Play's "UniVerse Play" label in dark mode was 4.4:1 (`dark:text-fuchsia-200` now).
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); whole-page axe in dark mode
+  on the student, teacher and admin homes, hub, Green, Relief, Play and Trace at 1280, and four of them
+  at 390: no serious problems. Looked at the student home and hub.
+
+## M55 · The "Globynk" picture everywhere in dark mode (31 Oct 2026)
+
+The owner sent the "Globynk" hero again: "make it like this exactly all over the project", then
+"push and merge once done".
+
+- **The page** (`.dark .ambient-bg`): fixed behind every page, Midnight Abyss at the top sinking
+  through ocean blue into deep Aqua Jade at the bottom (`#171d41 → #1b2449 → #213a5f → #26566e →
+  #2f7680`, an aqua bloom below the middle). The picture's own bottom is lighter, but text over it
+  couldn't be read: the lightest point here keeps white text at 4.5:1. Dark grey text is a step lighter
+  (`zinc-400/500/600` #c2c9e3 / #b0b8d8 / #a1aacd) so it holds lower down the fade.
+- **Glass:** dark cards are 80% navy (`--card-bg`) so the fade shows through; on big screens they also
+  blur what's behind them (`backdrop-filter`, only `(min-width: 1024px) and (hover: hover)`, plain on
+  phones for speed). The side menu is see-through navy glass over the same fade.
+- **The planet** (`Planet.tsx`) is now the picture's network globe: about one lattice point in nine is
+  a knot of a net, each joined to its four nearest (deduplicated), drawn faint through the far side and
+  brighter toward you, with pink sparks at a few knots, a glowing teal inside and a stronger
+  atmosphere; the land is a soft texture underneath.
+- **Website:** the "One account. One planet." section uses the picture's exact colours down to a
+  bright aqua horizon, then fades back to navy; its notes are navy glass (`.world-glass`) dark enough
+  for white text on the brightest part. The first screen and the sign-in pages have an aqua horizon at
+  the foot (`.horizon`). The landing's scene tiles and a few game and chat darks that were still warm
+  graphite are navy now.
+- Light mode is unchanged (M53, the owner's choice).
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); `scripts/checks/world-ui.mjs`
+  (the landing's planet draws; landing and sign-in axe-clean at 390 / 1280); whole-page axe in dark mode
+  on the student, teacher and admin homes, hub, Green, Relief, Play and Trace at 1280 and four of them at
+  390, and light mode on two: no serious problems. Looked at the hub's globe, the landing section, the
+  student home and the sign-in page.
+
+## M56 · A smoother landing, a pink river, a seamless planet, sign-in on one screen (31 Oct 2026)
+
+The owner: the site lags on scroll and "the background line stop the animation and get stuck"; make
+the line pink; the planet section's background ends in a line ("make it look seamless"); the scroll
+story's Relief step "is not looking good"; and sign-in needs scrolling on their laptop.
+
+- **The river froze for good** (`LightTrail.tsx` `loop`): M46's check held it still once frames came
+  more than 28–34 ms apart, and never let go. A busy scroll, or a browser held at 30 frames a second
+  to save battery (Chrome's Energy Saver, Safari's Low Power Mode), tripped it. Now: lighter (half the
+  strands, 30 a second) when frames are late or the river's own drawing (`cost`, timed round `draw`)
+  is over 6 ms, back to full after 15 s with room again; held still only for the river's own cost
+  (over 10 ms when lighter, M46's budget phone) and only for 10 s, then 20, 40…
+- **A third cheaper a frame** (measured alone, drawing and painting: 31 → 21 ms in the cloud's
+  software browser): 84 strands, not 120 (a little brighter each); square ends and corners on the thin
+  strands; the river's middle and width worked out once a frame for all strands (`ys`/`cs`/`ss`);
+  pulses drawn as short dashes in one path instead of dashing every whole strand twice; sparks in three
+  fills. Batching strands into fewer strokes didn't help (it's the painted area), so don't.
+- **Pink:** `DARK` is all Baby Pink, blush to orchid, with pink sparks and pink-white bends (M54's
+  aqua half is gone from the river only; aqua stays everywhere else). Light mode unchanged.
+- **Scroll story** (`ScrollStory.tsx`): each picture's `Live` box is full width; bare, it shrank to
+  its widest label inside the flex layer, so Relief's radar (sized in %) vanished and its chip wrapped
+  word by word. The words sit in a `.text-pool` (a navy pool behind them, `isolation: isolate`). The
+  Relief radar is navy, not near-black; its count rolls inside its own line; the chip doesn't wrap.
+- **Planet section** (`.world::before` in `globals.css`, `WorldSection.tsx`): the background moved to
+  a pseudo-element (so a mask can soften it without fading the planet), the aqua fades to transparent
+  over the last quarter and toward the sides, with more room below the notes (`pb-28 md:pb-40`). The
+  river shows below it instead of starting at a hard line.
+- **Sign in on one screen** (`(auth)/layout.tsx`, `AuthShowcase.tsx`, `login/page.tsx`): the left side
+  is sticky at screen height and never sets the page's height; its picture shrinks with the screen
+  (`.auth-scene`: 0.8 under 960 px tall, 0.65 under 860, 0.55 under 760, hidden under 700); the new
+  `short:` variant (`@custom-variant`, max-height 860 px) tightens the spacing and hides the "welcome
+  back" tag. Fits at 1280×720, 1440×745 and up (the local-only demo buttons aside). Sign up is
+  longer and still scrolls on short screens.
+- **Rules for code that builds on it:** don't bring back a permanent freeze in a canvas loop; judge by
+  the drawing's own cost. A scene in a flex parent needs a full-width box.
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); `world-ui`,
+  `landing-story-ui` and `landing-pause-ui` (axe-clean at 390 and 1280, nothing sideways); timed the old
+  and new river alone; looked at the story's Relief step, the planet section and sign-in at four sizes.
+
+## M56a · Nothing slows or stops the river by itself (31 Oct 2026)
+
+The owner, after M56: "remove whatever you made here to slow down the lines or website or
+smoothness… just now it happened to me for no reason".
+
+- `LightTrail.tsx`: the busy check is gone (no `lite`, `calm`, `avg`, `cost`, timers: M46's "lighter,
+  then still" and M56's softer version), and so is the low-memory check (`lowEndDevice()`) for the
+  river. It always draws every strand: 60 frames a second on computers, 30 on phones (a fixed rate,
+  kept), nothing while the tab is hidden, still only for Reduce Motion. M56's cheaper drawing stays.
+- **Rule:** don't add any automatic slow-down, thinning or freeze to the river again without the
+  owner's yes. If a budget phone struggles, make the drawing cheaper instead.
+- **Tested:** `pnpm check` (types, lint 0 errors, 1,362 unit tests, lean); the river alone in a
+  browser with every frame faked as very slow keeps moving.
+
+## M57 · Darker navy with Aqua Jade glows; no line under the landing's hero (31 Oct 2026)
+
+The owner sent the landing between the hero and "One account. One planet.": a hard line there, and
+"the blue colour is really light… use more dark blue colour with aqua jade colour for the project".
+
+- **The line:** `.horizon` (the hero's foot and the sign-in pages) centred its aqua glow below the
+  section's bottom, so the section cut it off at full strength. Its glows now end inside it
+  (`transparent 100%` at the ellipse's edge, above the bottom). Rule: a glow on a section that
+  scrolls must fade to nothing before the section's edge.
+- **Darker, dark mode only** (`globals.css`): the page (`.dark .ambient-bg`) is deep navy top to
+  bottom (#0f1536 → #0f2f47) with Aqua Jade glows at the foot, replacing M55's pale ocean blue;
+  `--background` #11173a; cards `rgba(22,30,66,0.82)`; `--karma-dusk` / `--karma-gold` and
+  `.trace-hero` (the hub's and Trace's big cards) deep navy with an aqua glow; the landing's
+  `.world::before` deep navy into dark teal with the aqua as a horizon glow; the landing and sign-in
+  base `#0f1536` (`page.tsx`, `(auth)/layout.tsx`), `.text-pool` to match. Midnight Abyss #171F44
+  stays for cards, menus and text on pink.
+- **Tested:** `pnpm check` (1,362 unit tests, lean); `world-ui` (landing and sign-in axe-clean at 390
+  and 1280); axe on the hub, student home, Green and Trace in dark mode at 1280 and 390: no serious
+  problems. Looked at the hero-to-planet join, the planet section and the hub.
+
+## M57a · A deeper navy (31 Oct 2026)
+
+The owner: "need more dark blue". Every dark-mode navy from M57 a step deeper (`globals.css`): the
+page #0a0f2b → #0b2438 at the foot, `--background` #0b1030, cards `rgba(16,22,54,0.84)`, side menu
+#0a0f2b and its glass, top bar and `--material`, the frosts, `.trace-hero`, the landing's planet
+section and `.text-pool`; the landing and sign-in base #0a0f2b; the website's menu bar and the sign-in
+card #0d1233. Aqua Jade glows and the pink river unchanged. **Tested:** `pnpm check`; `world-ui` and
+axe on the hub, student home, Green and Trace at 1280 and 390: no serious problems.
+
+## M58 · Less AI-looking website; People list fixed (31 Oct 2026)
+
+The owner: "make this website… look much less ai but don't change any animations or transitions
+and also see if any errors or bugs are there".
+
+- **Live errors** (production `error_reports`): one real one, `GET /api/core/owner/people` "too many
+  SQL variables" (the console's People tab, after the sample world added many people). Prisma's D1
+  adapter batches relation lookups at 98 ids, and a lookup with its own filters (the last sign-in:
+  `orderBy` + `take: 1`) adds bound values on top: over D1's 100. Fix (`modules/owner.ts`): the page's
+  200 ids first, then their details 90 at a time, put back in order. Same shape in `calls.ts`' call
+  history (`participants: { where, take: 1 }` per conversation): `take` 100 → 90. **Rule:** a
+  `findMany` of more than ~90 rows that selects a relation with its own `where`/`take`/`orderBy`
+  must chunk its ids by 90. The other open rows (ids `smp…`) are the sample world's made-up errors.
+- **Less AI-looking** (impeccable's craft floor: no eyebrows, no gradient text, mono only for data):
+  every `Tag` eyebrow above a heading removed (landing sections, scroll story, sign-in, sign-up,
+  `AuthShowcase`; the helper is deleted from `bits.tsx`), the hero's sparkle line and Statement's
+  "| what UniVerse is" gone; word labels and notes in Urbanist instead of mono (numbers, wpm, scores
+  stay mono); `Accent` is solid `text-pink-200` italic serif (still the brand's italic word, no
+  gradient); the `primary` button lost its pink glow (inset highlight kept). No motion touched.
+- **Tested:** `pnpm check` (1,362 unit tests, lean); looked at the landing hero, story and FAQ.
+
+## M58a · Teacher home duplicate-key warning (31 Oct 2026)
+
+A crawl of every page (student, teacher, admin) found one real bug: `/teacher` logged React's
+"two children with the same key" when two live-ticker lines were identical (e.g. two recent
+submissions both "Alice Johnson · Introduction to Computer Science · 60%"). The `Ticker`'s hidden
+screen-reader list keyed each `<li>` by its own text (`LiveCard.tsx`). Keyed by position instead.
+The rest of the crawl was clean (the Trace insights/tracking 403s are the no-brand message by design;
+the other "did not load" lines were the local dev server running low on memory, not app faults).
+**Tested:** the warning is gone; `pnpm check` (1,362 tests, lean); `landing-story-ui` green.
+
+## M59 · Trace Live globe (31 Oct 2026)
+
+The owner asked to bring in the open-source "God's Eye View" 3D globe. That app is a heavy
+surveillance-style globe (Cesium/Google keys, metered; tracks planes, ships, number-plate cameras)
+that doesn't fit Trace (product passports) or a platform with children, so we took the *idea* only
+and built a Trace-native version from parts already here — no new dependency, no keys, no cost.
+
+- **New tab `/trace/globe`** (`GlobeView.tsx`, page, `TraceTabs` entry): the brand's shipments on the
+  existing `Planet` (`src/components/live/Planet.tsx`), reusing `GET /trace/map/tracking` (so the
+  sample answer already exists — no new sample route). Polled with `useActivePoll` while active.
+- **Mapping** is a pure function, `globeFromShipments` (`src/lib/trace-globe.ts`, one unit test):
+  each shipment's current position → a point (pink on the move, aqua at rest), its destination → an
+  aqua point, an arc between them; a cold-chain shipment over its limit is flagged in its label.
+- **Rule:** reuse `Planet` for any "points on a 3D globe" need; feed it `Place[]` + index-pair arcs.
+- **Not done here (owner asked to see it first):** a separate off-site demo of live aircraft dots
+  from a free no-key source. And the Candour-style "Green Pass" in UniVerse Green.
+- **Tested:** `pnpm check` (1,364 tests, lean); `/trace/globe` axe-clean at 1280, no console errors;
+  looked at it in sample mode (shipments plotted and labelled on the globe).
+
+
+## M60 · Green Pass and "how did it go?"; the live-aircraft demo (31 Oct 2026)
+
+The owner's remaining two picks from the batch ("please do this").
+
+- **Green Pass** (`PassSection` in `src/components/green/GreenApp.tsx`, under the hero on `/green`): a
+  collectable card. Tier from the CO₂ saved (`PASS_TIERS`: Seedling 0, Sprout 25, Sapling 100, Grove
+  500, Forest 2,000 kg), a stamp per kind of action ever logged (8 to collect), a member number
+  hashed from the account id (never the id itself). Pure logic `greenPass()` in `src/lib/green.ts`
+  (unit test). Leans toward the mouse (transform only; not on touch, not with Reduce Motion). No new
+  route: it reads `GET /green/me`.
+- **"How did it go?"**: after logging, Easy / Okay / Hard / Skip under the Log button. Migration
+  **0187** `green_actions.feeling`; `POST /green/actions/:id/feeling` (only on your own action,
+  `oneOf(FEELINGS)`). `GET /green/me` adds `easiest` (`easiestKind()`: the kind with the most "easy",
+  at least two), shown on the Pass with "Log it again" (picks that kind in the form). Each action in
+  "What you did" shows "felt easy" etc. Sample mode: `sampleGreenMe` has feelings and `easiest`; the
+  POST falls through to the sample write catch-all.
+- **Live-aircraft demo (not in the app):** a private page, https://claude.ai/artifact/GTsMpvx63QWjGrLNi2i4Ac
+  (also sent to the owner as `live-sky-globe.html`). Planes as pink dots with 10-minute streaks on a
+  dotted globe in the Globynk look; land from a 0.5° bit mask made from `public/geo/world-110m.json`.
+  Data: OpenSky Network `GET /api/states/all` (no key; anonymous ~400 credits a day, 4 per call, so
+  every 2 minutes, planes moved along their course in between). Where outside data is blocked (the
+  Claude viewer, this cloud container) it shows clearly labelled made-up flights between 40 real
+  airports. **Before it could ship:** OpenSky allows non-commercial use only; the fit is Trace (air
+  freight) near the brand's own shipments, via a server route with caching, never the browser
+  hitting OpenSky per visitor.
+- **Tested:** `pnpm check`; the feeling route by hand (own action ok, bad value 400, someone else's
+  404); `/green` in the browser at 390 and 1280, light and dark: log → prompt → Easy → saved, axe
+  clean, no sideways scroll, no page errors. Test rows removed.
+
+## M61 · More of Candour in Green: honest feedback, a share nudge, a streak reminder (31 Oct 2026)
+
+The owner: "add more features of candour, I really want those". Candour (candour.app) is a café tool:
+loyalty stamps, private feedback that reaches the owner before a bad review, happy customers nudged
+to share, a reward for leaving feedback, reminders to come back, insights for the owner. Adapted:
+
+- **"What made it hard?"**: answering "Hard" saves at once, then asks for a short private note
+  (migration **0188** `green_actions.feelingNote`, ≤300 characters, only with HARD; same route
+  `POST /green/actions/:id/feeling { feeling, note }`). Nobody sees it except the owner console.
+- **Share nudge**: "Easy" offers "Share your Green Pass?" (Web Share, else copy text + `/green` link;
+  no public page, so no names leave the app).
+- **Feedback earns a badge** (Candour's free stamp): `honest` in `BADGES`, 5 answers
+  (`GreenTotals.feedback`, counted in `greenMe`).
+- **Streak reminder** (Candour's "come back"): daily job `green-streaks` (`greenStreakNudges`): people
+  who logged yesterday but not yet today get one in-app notification (`email: false`, at most 450, ~11
+  queries). No push yet (would be a query per person).
+- **Owner console → Analytics → "How Green feels"** (`GET /owner/green-feel?days=`, owner only): Easy /
+  Okay / Hard per kind (hardest first), answer rate, the latest 30 notes. No names, emails or places.
+- **Not done (needs accounts/money, [owner]):** Apple / Google Wallet passes (Candour's lock-screen card).
+- **Tested:** `pnpm check` (1,367 tests; new server test for the note rules); `/green` at 1280 dark and
+  390 light: Hard → note → saved; Easy → share step → copied; axe clean, no sideways scroll. The
+  console panel's SQL was run on the local database; the panel itself was not opened in a browser
+  (owner sign-in needs the full build).
+
+## M62 · Security review and the first fixes (31 Oct 2026)
+
+The owner: "check if the security of the system is good or not or if anyone can hack my website".
+A read-only review (the `universe-security` checklist) found the basics solid (sign-in checks, demo
+tokens off in production, central access rules, `?` placeholders everywhere, upload and CSP
+hardening, no committed keys) and these holes. Fixed here:
+
+- **Stripe webhook** (`src/app/api/webhooks/stripe/route.ts`): Stripe's library accepts an event
+  signed with an *empty* secret, so with `STRIPE_WEBHOOK_SECRET` unset anyone could fake a payment or
+  a subscription. Now 503 without a secret (like Razorpay). The old `transactionId` branch (student
+  accounting) now completes a payment only if the session is `paid` with the same amount and
+  currency.
+- **LMS (LTI) linking by email** could let any admin (or approved NGO rep) register a fake LMS and
+  sign in as any non-admin account. Turning `trustEmails` on is now owner-only (POST and PATCH in
+  `src/app/api/lti/platforms`).
+- **Public receipt** (`/api/receipts/[id]`) no longer returns the payer's email (page updated).
+- **Student documents** (`privateLink`, `src/server/private-files.ts`): only their owner or an admin
+  of *that person's school* (`schoolsOf` / `inSchools`), not any school's admin.
+
+**Still open (next):** the Next.js update (critical advisories, needs a full build test);
+`pdfjs-dist` 5 → 6 and `zod` 3 → 4 (major versions: own item with testing); rate limits keyed on any
+made-up `Authorization` header (`cloudflare/worker.ts` `rateLimited`); approved organisation reps
+become admins with no school (`applications.ts`), so they cover everyone without a school; the
+admin sign-in code's 5-tries lockout lives in one server's memory; the certificate PDF takes the
+token in the address. **[owner]:** check `STRIPE_WEBHOOK_SECRET` is set in Cloudflare; add the
+"Private files" rule (DEPLOY-CLOUDFLARE.md); keep `SESSION_SECRET` until the LMS fix is live (done
+now); turn on Bot Fight Mode.
+
+## M64 · Every PRO feature free for the owner (31 Oct 2026)
+
+The owner: "in owner console every pro feature should be free". The code already meant it
+(`isPro = plan === 'PRO' || u.owner`, billing's `user.owner ? 'ENTERPRISE'`, school admin tools'
+`user.owner`), but router handlers get the resolved `User`, which never had `owner` set (only
+`getSessionUser` sets it), so the owner saw "FREE · YOUR PLAN" and "Talk to us about PRO".
+`src/server/router.ts` now sets `owner = true` on the owner's own user object (only when
+`isOwner(user)`: a verified Google sign-in with the owner's email). **Rule:** handlers may trust
+`user.owner`; never set it anywhere else.
+
+## M63 · The landing: no repeated scroll story; each section arrives its own way (31 Oct 2026)
+
+The owner (screenshot of the scroll story showing Relief's words beside UniVersity's picture): "remove
+this part… in the start it is same, and below this all the details need ultra smooth animations which
+are unique". The scroll story (M44, `ScrollStory.tsx`) repeated the hero's five pictures and
+headlines, and mid-scroll could pair one app's words with another's picture: **removed** (file deleted).
+
+Every section below used the same fade-up (`Reveal`). Now `bits.tsx` has `Motion kind="…"` around a
+section and every `Reveal` inside follows it: `tilt` (tips up like a card set on a table), `sweep`
+(glides in from the reading side; mirrored in RTL), `fan` (alternate sides with a slight turn), `depth`
+(settles forward), `mask` (rises out of a clipped line), `scrub` (tied to the scroll through a spring),
+`up` (default). Transform and opacity only; Reduce Motion keeps the fades (MotionConfig "user", and
+`scrub` reads Reduce Motion itself). Assignments are in `src/app/page.tsx`, one kind per section and
+no two neighbours alike. **Rule:** a new landing section picks a kind its neighbours don't use.
+Tested: scrolled the whole page at 1440 and 390: nothing left invisible, no sideways scroll, no errors.
+
+## M65 · Maps: sharp, not glowing, and smoother to move (1 Nov 2026)
+
+The owner (Market map screenshot): "the light here is too much, make it professional and sharp…
+the maps are not smooth, make it ultra smooth in all the maps".
+
+- **Glow:** scan halos were drawn with additive blending (`lighter`), so close places burned into one
+  white blob. Now plain blending, about half the size and a third of the strength (`MarketMap.tsx`).
+- **Smoothness (`WorldCanvas.tsx`, every map: Trace market and tracking, Relief, Green):** each frame of
+  a drag, pinch, wheel or glide used to redraw every country *with a blurred shadow*. Now the land
+  picture is drawn once and, while the map moves, only slid and scaled (`paint(t, busy)`); a quick
+  draft with a 35% margin is drawn when it no longer covers the screen, and the sharp one when the map
+  rests (`busyUntil`, `touch()` on every hand movement). The blurred shadow is replaced by a 1.6 px
+  offset fill (crisp edge, no blur). Tracking lines: a wide faint stroke under a crisp one instead of
+  `shadowBlur` every frame.
+- **Rule:** never `shadowBlur` or `filter` in a map's per-frame drawing; draw a second stroke instead.
+- **Tested:** `pnpm check`; the market map in sample mode looks right (halos subtle, labels readable).
+  Frame timing could not be judged here: this container's browser has no graphics card, so every
+  full-screen canvas is slow regardless (old and new measured the same).
+
+## M66 · Fleet in motion: zoomed in, a camera, real cars, at the bottom of Tracking (1 Nov 2026)
+
+The owner (screenshot): "needs to be zoom in, can't see anything… more realistic and functional…
+animations of car… put this at bottom section of the tracking".
+
+- **Moved** to the end of `TrackingMap.tsx` (after "Journeys today"), taller (420 / 560 px).
+- **Camera** in `CityView.tsx`: opens zoomed in on the hub (1.7×; 1.35× on phones), fewer blocks (9 /
+  7) so buildings are bigger; drag to move (a finger only sideways so the page still scrolls), pinch,
+  ctrl/⌘ + scroll, double-click, and + / − / fit buttons. The camera eases to its goal each frame
+  (`cam`, `zoomAt`, `clampGoal`); the ground and building pictures are redrawn sharper for the zoom
+  (`res` = dpr × zoom step, capped at 3) only once the zoom rests. Labels are drawn after the camera,
+  on screen, so they stay the same size.
+- **Cars:** 56 small lit boxes (body colour, glass roof, a dark side) driving their lanes with head
+  lights ahead and pink tail lights; drawn before the buildings, so towers in front hide them.
+- **Tested:** `pnpm check`; `/trace/tracking` in sample mode at 1440 and 390: city last on the page,
+  zoom in and drag work, axe clean, no sideways scroll, no errors.
+
+## M67 · Trace's Live globe made useful (1 Nov 2026)
+
+The owner (screenshot of overlapping labels on a net-covered globe): "this globe doesn't feel useful at
+all… make it functional… more detailing… ultra smooth".
+
+- **`Planet` has an `interactive` mode** (other uses unchanged): drag to turn (a finger sideways only,
+  so the page scrolls), pinch / ctrl or ⌘ + scroll / + − buttons to zoom (1–3.2×, eased), `focus` turns
+  it the short way round to a place (eased, stops the idle spin), no net, sparks or pings, land dots
+  brighter (continents read clearly), names only on `selected` places and the one pointed at,
+  `onPick` on a click. Rotation is now stateful (`cy`/`cp`), not time-based, in that mode.
+- **`GlobeView`**: the globe beside the shipments list (click one, or its point on the globe) and the
+  chosen one's card: product, batch and units, from → to, time left, distance left, speed,
+  temperature against its limit (red when over), "Open in Tracking". Opens on the first shipment on
+  the move. `globeFromShipments` also returns `at` (each shipment's point) and ETAs read "3 h 26 min"
+  (`minutesText`, tested).
+- Fixed: duplicate React keys in `Planet`'s screen-reader list when two places share a name.
+- **Tested:** `pnpm check` (1,368 tests); `/trace/globe` in sample mode at 1440 dark and 390 light:
+  picking a shipment turns the globe and fills the card; axe clean, no sideways scroll, no console
+  errors.
+
+## M70 · "UniVerse explained": twice as wide, nothing colliding, zoom out to see it all (1 Nov 2026)
+
+The owner: "the whiteboard of universe explain has glitched… some tables are colliding… make it
+like twice the size… add more zoom out… I should be able to see it fully".
+
+- **Zoom out to 2%**: Excalidraw stops at 10% (`MIN_ZOOM`). A pnpm patch
+  (`patches/@excalidraw__excalidraw@0.18.1.patch`, `patchedDependencies` in the root `package.json`)
+  sets it to 0.02 in both its dev and prod builds. **Upgrading Excalidraw: redo the patch** (`pnpm
+  patch @excalidraw/excalidraw@<v>`, change `MIN_ZOOM`, `pnpm patch-commit`), or the board can't be
+  seen whole again.
+- **Twice as wide** (`guideElements`): W = 2 × the banner (34,140); the hand-made bands sit side by
+  side in pairs and `packed(…, W)` makes half as many code bands, so the board is 34,140 × 22,901
+  (was 17,070 × 37,845) and fits a screen at about 3.5%.
+- **No colliding boxes**: wrapping assumed 0.6 em a letter, too little for the hand-drawn font, so
+  Excalidraw wrapped again and grew boxes into the ones below. Now 0.68 em (`EM`), and `fit()` lowers a
+  box's text size (down to 12) until it fits the box's height. Measured with a throwaway script: no
+  frame overlaps, no box whose text needs more height than it has (only arrow labels and the Venn's
+  intended overlap remain).
+- **To see it:** owner console → Explain UniVerse → **Make a fresh one** (an existing board keeps its
+  old positions; ids are unchanged so top-ups still work).
+- **Not checked in a browser here** (the board needs the owner's sign-in and the board server).
+  Excalidraw draws every shape each frame, so with ~1,300 shapes very low zoom is as smooth as
+  Excalidraw allows; nothing else was changed for speed.
+
+## M69 · Live air traffic on Trace's Live globe (1 Nov 2026)
+
+The owner: "also add aircraft globe in the app" (after the off-site demo, M60).
+
+- **`GET /trace/aircraft`** (`src/server/aircraft.ts`, signed in): OpenSky Network's `states/all`, no
+  key, kept 15 minutes in memory and in Cloudflare's cache (`caches.default`), so the whole site asks
+  at most ~96 times a day (anonymous allowance ~100). Trimmed to airborne planes with a position,
+  rounded to 0.01°, at most 4,000 (`planesFrom`, `src/lib/aircraft.ts`, tested): `[lat, lon, track,
+  speed m/s, altitude m]`, no call signs. On failure: the last planes (or none) and a note, retried
+  after 2 minutes. Sample mode: `sampleAircraft()` (1,600 made-up flights between 32 airports).
+- **Owner switch "Live air traffic"** (`aircraft` in `FEATURE_SWITCHES`) turns the route off.
+- **UI:** an "Air traffic" toggle on `/trace/globe`; `Planet`'s new `swarm` draws each plane as a dot
+  with a 90 km trail, moved along its track (`ahead`) every half second since the data's time.
+  Name pills on the globe no longer overlap (stacked).
+- **[owner]:** OpenSky's terms allow non-commercial use only; for a paid product ask them or move to a
+  paid feed. This container can't reach OpenSky, so the live feed was only seen failing gracefully
+  ("did not answer"); sample mode shows the planes.
+- **Tested:** `pnpm check` (1,370 tests); `/trace/globe` at 1440 and 390: toggle on, 1,600 planes
+  drawn, axe clean, no sideways scroll, no errors.
+
+## M68 · Collaborate simpler (8 tabs → 5) with 16 new tools (1 Nov 2026)
+
+The owner: "add more features in the collaborate section and merge few sections because it is becoming
+too complex… at least 15 more features… apple notes, word, pdf, sheets, presentation, canva, editing
+and coding apps like vs code… and some more small features".
+
+- **Tabs** (`COLLAB_TABS`): Home (also `/spaces`, linked from Home's intro), **Create** (`/studio`, also
+  `/docs`, `/boards`, `/sheets`, `/slides`), Files, Code, Tasks. Create opens with "Make something
+  new" (documents/sheets/slides, whiteboards, code), then the tools in groups.
+- **16 new tools**, all in the browser (nothing sent anywhere), opened as `/studio?tool=<id>`:
+  Write: Quick notes (`QuickNotes.tsx`, Apple Notes-like: pin, colour, search, `[ ]` tick boxes, kept
+  on the device, "Make it a document"), Word count (reading/speaking time, most-used words), Clean up
+  text (case, spaces, sort, de-duplicate), Compare texts (line diff), Markdown preview (sandboxed
+  iframe, copy HTML). PDF: Join PDFs, Take pages out (`1-3, 5, 8-`), Pictures to PDF (`PdfTools.tsx`,
+  pdf-lib loaded on use). Sheets: Table tools (paste from a spreadsheet or CSV → column totals and
+  CSV / JSON / Markdown). Design: Colour palettes (4 harmonies or from a photo), Gradients (CSS and a
+  1920×1080 slide background), QR codes (`encodeQr`), Record the screen (`getDisplayMedia` → .webm).
+  Code: JSON formatter, Regex tester, Encode/decode (Base64, URL). UI in `QuickTools.tsx`; logic in
+  `src/lib/quick-tools.ts` (tested).
+- **Not done:** notes syncing between devices (they live in the browser, by design; "Make it a document"
+  is the way to keep one), and a real-time co-edited notes app (Docs does that already).
+- **Tested:** `pnpm check` (1,375 tests); `/studio` at 1440 dark and 390 light: five tabs, Quick notes,
+  Word count, Compare, Table tools, Colours, QR, Regex and Join PDFs opened and used; axe clean on the
+  tools (the only flags left were page chrome under the moving background, varying run to run).
+
+**Next.js update tried and undone (1 Nov 2026):** `next` 16.4.2 builds, but the built Worker answers
+500 on every page ("Unexpected loadManifest(/.next/server/preview-props.json)"): the Cloudflare
+adapter `@opennextjs/cloudflare` must be updated with it (latest 1.20.15). Reverted on the branch, so
+`main` stays on 16.3.8 until both are updated together and checked with `local:build` + `local:serve`.
+
+## M71 · 29 more tools in Collaborate → Create (1 Nov 2026)
+
+The owner: "just add more features in the collaborate section… at least 25 more". Create now has 51
+tools in six groups (Write, PDF and files, Sheets and data, Present, Design and media, Code), all in
+the browser; nothing is sent anywhere (except Dictation, which uses the browser's own speech service).
+
+- **Write:** Find and replace (case, whole words), How easy to read (Flesch ease, grade), References
+  (APA 7 / MLA 9), Read aloud (`speechSynthesis`, voice and speed), Dictation (`SpeechRecognition`
+  where the browser has it), Symbols to copy.
+- **Sheets and data:** Calculator (own parser, no `eval`, history), Chart maker (bar/line → PNG), Unit
+  converter (8 kinds), Percentages, Date calculator (days, weekdays, days on), Random picker and
+  groups (crypto-random shuffle).
+- **Present:** Quick presenter (Markdown slides split by `---`, full screen, arrow keys; slides in a
+  sandboxed iframe), Countdown, Quote cards.
+- **Design and media** (`ImageTools.tsx`, one canvas each, Save PNG): Resize for social (7 sizes, fill or
+  fit), Collage (2–6), Profile picture (round, ring), Screenshot frame, Watermark; Contrast checker
+  (WCAG AA/AAA), Colour codes (HEX/RGB/HSL).
+- **Code:** Code picture, Fingerprints (SHA-1/256/512 of text or a file), Unique IDs, Password maker
+  (crypto), Timestamps, Web address parts, Token reader (JWT, decoded locally only, with a warning).
+- **Files:** `src/components/studio/MoreTools.tsx`, `ImageTools.tsx`, logic `src/lib/quick-tools-2.ts`
+  (10 tests). `QuickTools.tsx` now exports its small parts (`Btn`, `Field`, `Out`, `area`, `copy`,
+  `save`). Panels: `/studio?tool=<id>` (`img-<id>` for the picture tools).
+- **Tested:** `pnpm check` (1,385 tests); all 29 opened by address at 1440 dark and 390 light: axe clean
+  inside the page, no sideways scroll, the calculator answers. The one page error seen
+  ("localStorage… sandboxed") comes from the test helper's init script running inside the sandboxed
+  previews, not from the app.
+
+## M72 · Collaborate → Create smoother, with 30 big tools (1 Nov 2026)
+
+The owner: "upgrade the existing tools and features of the collaborate section with ultra smoothness and
+also add more 30 features in there like big features". Create now has 81 tools in eight groups.
+
+- **Smoother list (every tool benefits):** a search box (`/` focuses it, Enter opens the first match,
+  Esc clears); group chips that glide to their group; **Starred** and **Used lately** shelves (kept on
+  the device, `uv-create-stars` / `uv-create-recent`, read with `useSyncExternalStore` so the first
+  paint matches the server); a tool's code starts downloading when the pointer rests on its card
+  (`LOAD` / `preload` in `studio/page.tsx`), so it opens at once; the tool glides in and the list
+  glides back (AnimatePresence, `spring.smooth`, exits faster; Reduce Motion: fades only); Esc goes
+  back (not while typing or in a full-screen view); going back restores the list's scroll spot; cards
+  lift a little on hover and press in on tap; "New" badges on the 30.
+- **30 tools** (`/studio?tool=<id>`, all in the browser, their work kept on the device with `useKept`
+  in `studio/kept.ts`):
+  - Plan and organise (`PlanTools.tsx`): mind map (keyboard: Tab / Enter / arrows / Delete / F2; save
+    PNG; copy as a list), outliner (Tab in/out, Alt+arrows move a branch, fold, tick), sticky-note wall
+    (drag by the top strip, colours, votes, line up by votes), timeline/Gantt (today line, done %, PNG),
+    flowchart from `A -> B: label` text (loops curve back; left-right or top-down; PNG), timetable
+    (colour per subject, print), habit tracker (21 days, streaks), decision helper (weighted 1–5
+    scores, ranking).
+  - Study and teach (`StudyTools.tsx`): flashcards (decks, 3D flip, five Leitner boxes, paste many),
+    grades (weighted average, "what I need on the rest", 4.0 GPA), revision planner (exam dates and
+    hours → a day plan, warns when short, `.ics` for a calendar, print), rubric maker (click cells to
+    mark: total), word search (print or play: tap first and last letter), certificate (PNG / print),
+    spin the wheel (crypto-random pick, eases to a stop, optional "take the winner off"), noise meter
+    (microphone level on the `Dial`, a limit, seconds too loud; nothing recorded).
+  - Data (`DataTools.tsx`): graph plotter (up to six `y =` formulas, drag/scroll zoom, values under
+    the pointer; own compiler with implicit times, no eval), statistics (+ histogram), data explorer
+    (open a CSV, sort, filter, totals by group, save what's shown), budget (in/out by kind, Ring,
+    CSV), invoice (tax, discount, print or PDF), world clock with the hours that suit everyone.
+  - Make (`MakerTools.tsx`): CV builder (modern / classic, print to PDF), word cloud (spiral layout,
+    PNG), teleprompter (full screen, mirror, keys), code playground (HTML/CSS/JS in a
+    `sandbox="allow-scripts allow-modals"` iframe without same-origin, console shown via
+    `postMessage`; inline `onclick=` attributes are blocked by the site's `script-src-attr 'none'`,
+    which it says), Code 128 barcodes (SVG/PNG), hide parts of a picture (pixels / blur / black box,
+    saved as a new file), slideshow video (canvas + MediaRecorder: mp4 where the browser can, else
+    webm; the tab must stay open), signature pad (smooth, speed-weighted strokes; trimmed see-through PNG).
+- **Logic** in `src/lib/big-tools.ts` (11 tests): `compile`, `stats`, `histogram`, `flow`, `treeLayout`,
+  `wordSearch` + `seeded`, `code128` (the table is checked: 107 unique patterns, each 11 wide),
+  `studyPlan`, `weighted` / `needed`, `nextBox` / `isDue`, `decide`, `wordFreq`, `spiral`, `invoice`,
+  `streaks`.
+- **Trap:** an `sr-only` element inside a sideways-scrolling table escapes the scroll box unless the
+  box is `relative` (it made the whole page scroll sideways at 390). Paper-like sheets (white in both
+  themes) use `text-[#4b5068]` for grey text, not `zinc-600`, which dark mode re-points.
+- **Not done:** sharing or real-time co-editing of these tools' work (they're personal, on the device;
+  Docs, Whiteboards and Code are the shared ones). The other tabs (Home, Files, Code, Tasks) were
+  not changed.
+- **Tested:** `pnpm check` (1,396 tests); `scripts/checks/create-tools-ui.mjs` on the dev server: the
+  list (search, star, Esc, scroll kept) and all 30 tools at 1280 dark and 390 light: axe clean inside
+  the page, no sideways scrolling, no page errors.
+
+## M73 · "Too many SQL variables" fixed for every list, not just People (1 Nov 2026)
+
+The owner forwarded the "1 problem(s) need a look" email: `GET /api/core/owner/people`, "D1_ERROR: too
+many SQL variables" (production `error_reports`, 1×, 31 Oct 19:10 UTC: before M58's fix went live
+that night; the email came on 1 Nov because the diagnosis ran at 08:15 UTC).
+
+- **The real cause (checked on local D1 with 150 people):** Prisma reads a related list for all the
+  rows it found in one query (`WHERE userId IN (…every id…)`). It cuts that list at 98 ids, **except**
+  when the related list has its own `orderBy`, `take`, `skip`, `cursor` or `distinct`: then every id
+  goes into one query, and past ~98 rows D1 refuses. A plain or `where`-only related list is cut
+  correctly. M58 fixed only People; the same shape is in chat conversations, chat search, boards,
+  collaborations, groups, internships, scholarships and more, waiting for a big enough school.
+- **Fix, once for every query** (`src/lib/d1-split.ts` `readsOrderedRelation` / `planPages` /
+  `readInPages`, run by `withListSplit` in `src/lib/db.ts`): a `findMany` with no `take` or a `take`
+  over 90 that reads such a related list (at any depth) runs in pages of 90 rows, one after another,
+  and the pages are joined: the same rows in the same order (skip respected, stops at a short page).
+  Also inside the long-`in`-list split. M58's hand-made chunking in the People route is removed.
+- **Tested:** 3 new unit tests (`d1-split.test.ts`); on local D1 with 150 people: take 140 ordered,
+  no take, skip 20 + take 100, a long `in` list with a related `take`, all correct (each failed
+  before with "too many SQL variables").
+- **Owner:** mark the report resolved in the owner console (Errors).
+
+## M74 · Every Create tool upgraded, and 56 more (1 Nov 2026)
+
+The owner: "upgrade all the existing tools and add more than 50 new features and tools in the
+collaborate section". Create now has **137 tools** in eight groups.
+
+- **Upgrades for every tool** (`studio/page.tsx`): **Focus** fills the window with the tool (Esc
+  leaves it first, then goes back to the list); **‹ ›** and the `[` `]` keys go to the previous or next
+  tool in the same group (with "3/19"); **Copy link** (with a tick); **More in <group>** shows three
+  more cards under the tool; **drop a text file** (.txt, .md, .csv, .json, code…) on any tool and it
+  fills the tool's first text box (set through the native value setter plus an `input` event, so
+  React hears it as typing; 2 MB cap; pictures and PDFs keep their own buttons). Copy buttons
+  answer on themselves (`CopyBtn` in `QuickTools.tsx`: a tick and "Copied"), so every tool using `Out`
+  got it. **Text is kept** when you leave and come back for the older text tools (word count, clean
+  up, compare, table, JSON, Markdown, find and replace, readability, references, read aloud, picker,
+  chart, presenter) and the calculator's history (`useKept`, keys `uv-draft-<tool>`). The "New" badge
+  moved to the 56.
+- **56 tools** (`/studio?tool=<id>`, all on the device; work kept with `useKept`):
+  - Write (`WordTools.tsx`): journal (private, a mood a day, month view, search, download), letter
+    writer (6 templates; blanks found from `[…]`), fancy letters (Unicode styles), line tools, numbers
+    in words (with rupees/dollars/pounds/euros "… only"), Roman numerals, Morse (played as beeps),
+    placeholder text, word play.
+  - Plan and organise (`OrganiseTools.tsx`): priority matrix (drag between the four boxes), week
+    planner (drag between days), goals with steps and rings, checklists (5 templates), countdowns,
+    meeting notes (actions with who/when; Markdown), SWOT, pros and cons (weighted), reading list.
+    Present: stopwatch (digits drawn straight to the page per frame, no re-render; laps best/worst),
+    room poll (full screen), agenda timer (runs through the parts, overrun in red).
+  - Study and teach (`ClassTools.tsx`): periodic table (all 118 from `src/lib/elements.ts`, places
+    worked out from the atomic number; families, search, facts card), quiz maker (take it, score,
+    print with an answer key), maths drill (60 s, best kept), equation solver (working shown),
+    fractions, shapes (8, with formulas), number facts (HCF/LCM), seating plan (tap two to swap),
+    dice and coins (crypto-random), traffic light and scoreboard (both full screen).
+  - Sheets and data (`MoneyTools.tsx`): loan/EMI with a yearly schedule, savings growth (chart),
+    split the bill (fewest payments), price with discount and tax (in or on top), age, BMI (with a
+    "rough guide, ask a doctor" note).
+  - Design and media (`MediaTools.tsx`): photo booth (camera, 8 filters, 3-2-1), pixel art (fill,
+    mirror, pick, undo; 1024 px PNG), meme maker, app icon maker (5 sizes), clean a photo (finds
+    EXIF and GPS in a JPEG, `jpegDetails`; re-draws a clean copy), colour-blind view (Machado
+    matrices in linear light), metronome (Web Audio look-ahead scheduling, tap tempo), tuner
+    (autocorrelation pitch, cents needle), focus sounds (white/pink/brown noise, timer).
+  - Code (`DevTools.tsx`): number bases (BigInt; text as bytes), name styles, shadow maker, cron
+    reader (words and the next 5 runs, UTC), HTML escape, hidden characters (zero-width, no-break…),
+    status codes, key tester, sample data (example.com emails).
+- **Logic** in `src/lib/more-tools.ts` (14 tests): Morse, `numberToWords`, Roman, `fancy`, anagram /
+  palindrome, `lorem`, primes / factors / HCF / LCM, fractions, `solveQuadratic`, `loan`, `growth`,
+  `age`, `settle`, `convertBase`, `nameStyles`, `cron`, HTML (un)escape, `mockRows`, `noteOf` /
+  `detectPitch`, `COLOUR_BLIND` / `simulateColourBlind`, `jpegDetails`. Shared bits in
+  `studio/bits.tsx` (`useFull` + `FullBtn` for full screen, `Segments`, `Stat`, `rnd`).
+- **Traps:** a hook that returns an object holding a ref makes the React lint treat every field as a
+  ref: destructure it (`const { ref: fullRef, full: isFull, … } = useFull()`). An `aria-label` must
+  start with the button's visible text (axe): use `sr-only` text after it instead. Text on a pink
+  badge is `#171f44`, not `indigo-900` (light mode re-points indigo to violet).
+- **Not done:** sharing these tools' work between people (they're personal; Docs, Whiteboards and Code
+  are the shared ones); the photo booth and tuner need camera / microphone permission each visit.
+- **Tested:** `pnpm check` (1,413 tests); `scripts/checks/create-tools-ui.mjs --new` (the 56) and
+  `--old` (M72's 30 plus 13 upgraded older tools) on the dev server at 1280 dark and 390 light: axe
+  clean inside the page, no sideways scrolling, no page errors; focus mode, Esc, `]`, a dropped file
+  and text kept after a reload all checked.
+
+## M75 · Saved work on the account, sharing by link, and 55 more tools (1 Nov 2026)
+
+The owner: "Add more than 50 plus more features in collaborate section and make bigger features and
+changes in the system". The bigger change: Create's tools stop being device-only.
+
+- **Saved work** (migration **0189** `tool_saves`, model `ToolSave`; routes `GET/POST
+  /api/collab/saves`, `GET/PUT/DELETE /api/collab/saves/[id]`, `POST/DELETE
+  /api/collab/saves/[id]/share`, public `GET /api/collab/shared/[token]`; checks in
+  `src/lib/tool-saves.ts`, tested). Every tool that keeps work (`useKept`, ~150 of them) gets **Save
+  to account** and **Share** in its bar with no change to the tool: `useKept` now lists itself while
+  mounted (`keptNow()` in `studio/kept.ts`), so Save collects the open tool's latest state (`uv-…`
+  keys only, 200 KB, 300 saves a person). Save again saves over the open save. Create's list shows
+  **Saved to your account** (open, rename, share / stop sharing, delete; `Saves.tsx`). Opening a save
+  writes it to the device and reopens the tool (a `gen` key). So work now follows the person to every
+  device.
+- **Sharing:** a 24-character unguessable token (`shareToken`); `/studio?shared=<token>` opens the tool
+  with the shared work in its **own scope** (`KeptScope`, keys `shared:<token>:uv-…`), so a viewer's own
+  work is never touched; a banner says who shared it (first name only) and **Keep it as mine** copies
+  it over. Stop sharing makes the link 404 at once. Only the owner can read, change, share or delete
+  a save (404 for anyone else). The shared answer has no email or id. Viewers need to be signed in
+  (Create is behind sign-in). Sample mode: the list is empty and saving says so.
+- **55 tools** (192 in all): Write (`PenTools.tsx`): essay planner, writing prompts with a timer, poem
+  helper (syllables, haiku, rhymes), acrostic, typing practice, glossary (→ Flashcards), Cornell
+  notes, interview practice. Plan (`LifeTools.tsx`): Kanban (drag, WIP limit), event planner, trip
+  planner, routines (guided timer), day planner, RACI (checks one A), sleep log, OKRs, birthdays.
+  Study (`ScienceTools.tsx`): times tables, spelling test (read aloud), telling the time, number line,
+  Venn, history timeline, probability simulator, trigonometry, triangle solver, matrices, molar mass
+  (from `elements.ts`), physics formulas. Data (`CalcTools.tsx`): line of best fit, survey size, fuel,
+  pay, recipe scaler, timesheet, best value. Present (`StageTools.tsx`): bingo (cards + caller), quiz
+  game board, name tags, speaking queue. Design (`ArtTools.tsx`): event poster, business cards, colour
+  mixer, type scale, blob shapes, ASCII art, drum machine, piano (keyboard keys, record), photo grid.
+  Code (`WebTools.tsx`): CSV to SQL (quoted safely), JSON to TypeScript, link preview tags, file
+  permissions, flexbox playground, subnet calculator. Logic in `src/lib/tools-5.ts` (10 tests).
+- **Traps:** a local named `X` shadows lucide's `X` icon (rename locals). Some mid colours can't reach
+  4.5:1 with navy or white text: put the label on a small white chip (`inkOn` in `bits.tsx` picks
+  navy or white otherwise).
+- **Not done:** live co-editing of one save by several people at once (a shared link is a copy; Docs,
+  Whiteboards and Code are the live ones); shares open only for signed-in people.
+- **Tested:** `pnpm check` (1,425 tests); `scripts/checks/create-saves-ui.mjs` (save, list, share,
+  another person opens and keeps it, stop sharing, delete; someone else gets 404; only `uv-` keys; no
+  email in the shared answer; axe) and `create-tools-ui.mjs --m75` and `--old` at 1280 dark and 390
+  light: axe clean, no sideways scrolling, no page errors.
+
+## M76 · Live editing together, and view links without signing in (2 Nov 2026)
+
+The owner, on M75's two "left out" points ("a shared link gives a copy, not live editing together"
+and "people must be signed in to open a shared link"): "please do both of this and then merge".
+
+- **Two kinds of link** (Share in a tool's bar is now a small menu; the Saved list has a view-link
+  and an edit-link button each): **view link** `/s/<token>` (the `shareToken`) opens for anyone, no
+  sign-in (`src/app/s/[token]/View.tsx`, built once as `/s/open`, kept out of search, no referrer):
+  the work in its own scope (`view:<token>:`), read-only (changes aren't saved), re-checked every 20 s
+  while in use (`useActivePoll`) so it updates by itself; "Sign in to keep a copy" (or "Keep a copy"
+  when signed in) goes to the M75 copy flow. **Edit link** `/studio?edit=<token>` (new `editToken`,
+  migration **0190**, with `version` and `editors`) opens the work **live** for signed-in people.
+- **Live editing** (`GET/PUT /api/collab/live/[token]`, `useLive` in `Saves.tsx`, `KeptSyncProvider`
+  in `kept.ts`): every tool's `useKept` part sends its own changes (`push`, after the 250 ms pause)
+  and takes in others' (`sub`); nothing in the 190 tools changed. The server writes one part on top of
+  the version it just read (a conditional `updateMany` on `version`, retried 4 times), so two people
+  editing different parts never wipe each other; the same part: the last change wins. Everyone with
+  it open (seen in the last 10 minutes) and the owner get a realtime refresh of the live address
+  (every 3 s without live updates, 60 s with them, only while the tab is in use). A part changed here
+  in the last 2 s isn't overwritten by an older copy coming back. A banner shows "editing live" and
+  who else is there (first names, seen in the last 2 minutes; `touchEditors` writes at most once a
+  minute). The owner's own Open on a save with an edit link opens it live too; Save over it bumps the
+  version so everyone picks it up. Stop sharing ends both links (404 at once).
+- **Registry** (`src/components/studio/registry.tsx`): the tool sets, `PANELS`, `setOf`, `preload` and
+  `ToolBody` moved out of the Create page, so `/s/<token>` shows the same tools.
+- **Trap:** `useKept` must never send the value it opened with (React's dev double effect did, and on
+  a late join that overwrote a newer change): it keeps `synced` (the value everyone last saw) and
+  sends only when the value differs from it. In a one-browser test, only the page in front counts as
+  "in use" (no polling behind): bring the watching page to the front.
+- **Not done:** letters merged inside one text box (two people typing in the same box: the last one
+  wins, within a second); edit links need sign-in (anyone could change it otherwise).
+- **Tested:** `pnpm check` (1,427 tests, incl. `mergePart`, `touchEditors`); `create-saves-ui.mjs`
+  twice in a row: a view link opens signed out (axe), the copy link, an edit link needs sign-in (401),
+  two people edit one mind map and each sees the other's change, stop sharing 404s both links;
+  `create-tools-ui.mjs --old` (the tools after the `useKept` change).
+
+## M77: Next.js 16.4.4 and the Cloudflare adapter 1.20.15 (security update, the council's first item)
+
+- `next` and `eslint-config-next` 16.4.4, `@opennextjs/cloudflare` ^1.20.15, together. **Trap:** Next.js
+  16.4.x with the older adapter built but answered 500 (`loadManifest` / preview props): always move
+  the two together.
+- The build also refreshed `guide-data.gen.ts` (the explainer board's route list now has M75/M76's
+  routes); that file is meant to be committed.
+- **Tested:** `pnpm check` (1,427 tests, lean 0); `pnpm local:build` + `local:serve`; the full crawl
+  196/204 clean (the 8 are the known ones: Trace's no-brand 403s for a student, the calendar link's
+  503 without `SESSION_SECRET`, `/parent`'s outside script unreachable from the sandbox);
+  `create-saves-ui.mjs` on the built Worker (save, view link signed out, live editing, stop, delete).
+
+## M78: security fixes from M62's open list (the council's second item)
+
+- **Rate limits** (`cloudflare/worker.ts` `rateLimited`, `src/lib/rate-key.ts`): keyed by the account
+  the token *names* (Firebase `user_id`/`sub`, a session token's `uid`, a demo token's email) together
+  with the address, no longer by the token's last 40 characters. A new token each hour keeps one
+  count; a made-up token gets the address's count, not a fresh one; a forged name only ever counts
+  at the forger's own address (no one can use up someone else's limit from elsewhere). Not a sign-in
+  check: routes still verify. **Trap:** an opaque token (an integration's API key) counts per address.
+- **Admin sign-in code lockout in the database** (migration **0191**, users `twoStepTries`,
+  `twoStepTriedAt`; `src/server/two-step-tries.ts`). The old in-memory count never added up (it reset
+  after every wrong try) and lived on one server. Now each try is counted *before* the code is
+  checked (an atomic increment), so tries sent all at once can't slip under the limit: five tries, then
+  15 minutes after the last one. The right code starts the count again.
+- **Organisation reps** (`applications.ts` `approveApplication`): someone approved as ADMIN while in no
+  school would have been an admin of the main school (everyone without one). They now get their own
+  organisation, named from the application's institution. Adding an admin to *your own* school: an
+  invitation, or Users.
+- **Certificate PDF** (`impact.ts` `certificates/:id/pdf`): no longer takes the sign-in token as
+  `?token=` (nothing in the app used it; addresses land in history and logs).
+- **Share links** (`/s/<token>`, `shared/`, `live/`): 24-character random tokens can't be guessed;
+  the address and per-person limits above cover them; nothing more added.
+- **Still open:** `pdfjs-dist` 5 → 6 and `zod` 3 → 4 (major versions: own item with testing).
+- **Tested:** `pnpm check` (1,432 tests, incl. `rate-key.test.ts`, `two-step-tries.test.ts`, the
+  no-school representative in `school-scope-people.test.ts`).
+
+## M80: put Create work on a course (the council's "Collaborate → course" link)
+
+- Share in a Create tool has a third choice for teachers and admins: **Add to a course**
+  (`src/components/studio/ToCourse.tsx`, loaded only when opened). A sheet lists the courses they teach
+  (`/api/core/courses/my`) and that course's modules; Add makes (or reuses) the save's view link and
+  adds it as a LINK item (`/api/courses/<id>/modules`, `add-item`); a course with no modules gets a
+  new published "Shared work" module. No new server code: the modules route's own rules decide who
+  may add (only the course's teacher; others see "Only the course's teacher can add to it").
+- Students open it like any course link: `/s/<token>`, read-only, always the latest version.
+- **Trap:** the course list is a core route (`/api/core/courses/my`), the modules a Next route
+  (`/api/courses/<id>/modules`).
+- `apps/web/AGENTS.md` is rewritten by `next dev` 16.4 (its own block markers); committed as it says.
+- **Tested:** `create-course-ui.mjs` (dev server): 1280 dark and 390 light, axe and no sideways
+  scrolling on the sheet, the student sees the item, the link opens signed out, not offered to a
+  student; `pnpm check`.
+
+## M79: Real people in the owner console (the council's "know who really uses it")
+
+- Overview → **Real people** (`console/real-people.tsx`, first card): real accounts, used it today,
+  this week, came back this week (joined over a week ago), new in 7/30 days, never came back, and per
+  app the people who did something there in 7 and 30 days (UniVersity: active people in a course;
+  Trace scans, Relief posts, Green actions, Play scores). Shows how many sample and demo accounts are
+  left out.
+- Server: `GET /api/core/owner/real-people` (owner only, kept 5 minutes), one query of sub-selects
+  (`src/server/real-people.ts`, `realPeopleColumns`). Made-up accounts: `@sample.universe.test`,
+  ids `smp…`, the demo sign-in accounts and alice/bob from migration 0002. **Trap:** stored dates end
+  in `+00:00`; compare in the same form. No names or emails leave the server.
+- The live site on 3 Nov: 8 real accounts (2 this week, 1 today), 306 made-up ones left out.
+- **Tested:** `real-people.test.ts`; the query on the local and (read-only) the live database;
+  `console-ui.mjs` now opens the card too (axe, no sideways scroll).
+
+## M81: first visit: "Here to…" on the landing (the council's first-visit path)
+
+- Under the hero's Get started / Sign in: **Here to** Learn · Teach · Protect my brand · Help people ·
+  Look around (`HERE_FOR` in `src/app/page.tsx`, a `nav` named "What are you here for?"). Learn and
+  Teach open UniVersity's sign-up with the role already picked (`?as=student|teacher`, read in
+  `register/page.tsx`; they still confirm with Continue); Protect my brand → Trace sign-up; Help
+  people → Relief sign-up; Look around → the sample product passport `/t/demo` (no account).
+- **Trap:** in `register/page.tsx` the `as` effect must come after `individual`'s `useState` (lint:
+  "accessed before it is declared").
+- **Tested:** `landing-here-ui.mjs` (390 and 1280: five choices, each lands where it should, the role
+  is picked, axe and no sideways scroll); `pnpm check`.

@@ -14,15 +14,19 @@ import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
 import { useNow } from '@/lib/use-now';
 import { useAuthStore } from '@/store/auth';
+import { Planet, type Place } from '@/components/live/Planet';
 
 // The hub of UniVerse Impact (src/lib/apps.ts): every app with what it has changed so far, from
 // GET /hub (src/server/hub.ts), and the tools they share. Where people land after signing in when
 // they didn't pick an app on the website. The Impact Wallet (src/components/hub/ImpactWallet.tsx) sits
-// under the apps.
+// under the apps; the hero ends with every app on one planet (src/components/live/Planet.tsx).
 
 interface HubStats { apps: Record<AppId, { value: number; label: string; mine?: { value: number; label: string } | null }>; total: { people: number } }
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+// Where each app sits on the hub's planet (M52): spread around the globe so two or three face you as it
+// turns. Only a picture: the apps work everywhere.
+const SPOT: Record<AppId, [number, number]> = { campus: [50, 4], trace: [30, 118], relief: [-3, 36], green: [-12, -56], play: [38, -98] };
 
 export default function HubPage() {
   const user = useAuthStore((s) => s.user);
@@ -58,6 +62,9 @@ export default function HubPage() {
                   </motion.div>
                 ))}
               </dl>
+              {/* Every app on one planet, joined by arcs of light (M52, after the owner's "Orbit" video). */}
+              <Planet className="mt-4 h-[300px] sm:h-[380px]" label="Every app on one planet"
+                places={APPS.map((a): Place => ({ label: a.name.replace('UniVerse ', ''), lat: SPOT[a.id][0], lon: SPOT[a.id][1], value: data ? fmt(data.apps[a.id]?.value ?? 0) : undefined, tone: a.id === 'green' || a.id === 'relief' ? 'aqua' : 'pink' }))} />
             </div>
           </section>
 

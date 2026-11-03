@@ -1,6 +1,6 @@
 // The owner console's deck (M13) on the built Worker (pnpm local:serve --test-secret --owner-test):
 // Overview, Feature flows and a few other sections open from their links (?tab=), in dark and light,
-// on desktop and phone; axe-clean; no sideways scrolling; no page errors. Screenshots go to the
+// on desktop and phone; axe-clean; no sideways scrolling; no page errors; the live cards draw (M49). Screenshots go to the
 // folder given as the first argument. Puts everything back afterwards.
 import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
@@ -64,7 +64,22 @@ try {
           const axe = await page.evaluate(async () => (await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } }))
             .violations.map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ')}`));
           const wide = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
-          console.log(JSON.stringify({ device, theme, tab, opened, axe, wide }));
+          // M49: the live cards' pictures draw (lit pixels in each canvas).
+          const live = tab !== 'overview' ? undefined : await page.evaluate(async () => {
+            const lit = [];
+            for (const card of document.querySelectorAll('.live-card')) {
+              card.scrollIntoView({ block: 'center' });
+              await new Promise((r) => setTimeout(r, 1200));
+              const c = card.querySelector('canvas');
+              if (!c) { lit.push(-1); continue; }
+              const x = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+              let n = 0; for (let i = 3; i < x.length; i += 16) if (x[i] > 40) n++;
+              lit.push(n);
+            }
+            return lit;
+          });
+          if (live) for (const [i, card] of (await page.locator('.live-card').all()).entries()) await card.screenshot({ path: `${out}/deck-live${i}-${theme}-${device}.png` }).catch(() => {});
+          console.log(JSON.stringify({ device, theme, tab, opened, axe, wide, live }));
         }
         if (errors.length) console.log(JSON.stringify({ device, theme, errors: errors.slice(0, 5) }));
         await ctx.close();

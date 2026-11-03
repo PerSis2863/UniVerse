@@ -5,8 +5,9 @@ import { authedFetch } from '@/lib/authed-fetch';
 // IndexedDB "outbox" and is sent by the page (which has the sign-in token) when the connection
 // comes back, when the app starts, and after each success. Each item carries a client id the
 // server dedupes on, so a retry after a dropped answer never saves twice. The same database
-// keeps recent chats (read offline), assignment drafts, copies of documents (Stage 5 · B9.7) and
-// this device's private chat key (B7.6), and it's all wiped at sign-out.
+// keeps recent chats (read offline), assignment drafts, copies of documents (Stage 5 · B9.7),
+// this device's private chat key (B7.6) and the last answers of a few reads (M46,
+// src/lib/offline-reads.ts), and it's all wiped at sign-out.
 
 export type OutboxKind = 'quiz' | 'assignment' | 'message';
 export interface OutboxItem {
@@ -31,7 +32,7 @@ let dbp: Promise<IDBDatabase> | null = null;
 function db(): Promise<IDBDatabase> {
   if (dbp) return dbp;
   dbp = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 3);
+    const req = indexedDB.open(DB, 4);
     req.onupgradeneeded = () => {
       const d = req.result;
       if (!d.objectStoreNames.contains('outbox')) d.createObjectStore('outbox', { keyPath: 'id' });
@@ -39,6 +40,7 @@ function db(): Promise<IDBDatabase> {
       if (!d.objectStoreNames.contains('drafts')) d.createObjectStore('drafts', { keyPath: 'key' });
       if (!d.objectStoreNames.contains('docs')) d.createObjectStore('docs', { keyPath: 'docId' }).createIndex('savedAt', 'savedAt');
       if (!d.objectStoreNames.contains('keys')) d.createObjectStore('keys', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('reads')) d.createObjectStore('reads', { keyPath: 'key' });
     };
     req.onsuccess = () => {
       // A newer version of the app in another tab can upgrade the database: let it.
@@ -212,6 +214,21 @@ export async function readDeviceKey(): Promise<DeviceKeyRecord | null> {
 export async function saveDeviceKey(rec: DeviceKeyRecord) {
   if (!outboxSupported()) return;
   await tx('keys', 'readwrite', (s) => s.put(rec));
+}
+
+// ── Last answers of a few reads (M46: timetable, courses, chats), shown when offline ─────────
+
+/** `uid`: whose answer it is (never shown to anyone else signed in on this device). */
+export interface KeptRead { key: string; uid: string; savedAt: number; data: unknown }
+
+export async function keepRead(key: string, uid: string, data: unknown) {
+  if (!outboxSupported()) return;
+  await tx('reads', 'readwrite', (s) => s.put({ key, uid, savedAt: Date.now(), data } satisfies KeptRead));
+}
+
+export async function keptRead(key: string): Promise<KeptRead | null> {
+  if (!outboxSupported()) return null;
+  return ((await tx<KeptRead>('reads', 'readonly', (s) => s.get(key))) ?? null);
 }
 
 // ── Drafts (assignment answers written on this device) ───────────────────────────────────────

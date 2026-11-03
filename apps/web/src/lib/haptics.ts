@@ -1,7 +1,10 @@
 // Haptic feedback, like an app. Android: the vibration API. iPhone: Safari has no vibration API,
 // but iOS 18's switch control gives the real system tap when it's toggled, so a hidden one is
 // flipped. Both need a tap from the person first (always the case here: called from tap handlers).
-// Not tied to "Reduce motion" (iOS keeps haptics with it on). Never throws.
+// Not tied to "Reduce motion" (iOS keeps haptics with it on). Never throws. The one vibration for
+// the whole app (M45): tap, success, warning; success and warning also chime when sounds are on.
+import { chime } from './sounds';
+
 const PATTERNS = { tap: 8, success: [10, 40, 12], warning: [18, 60, 18] } as const;
 
 let iosSwitch: HTMLLabelElement | null = null;
@@ -23,9 +26,11 @@ function iosTap() {
   iosSwitch.click();
 }
 
-export function haptic(kind: keyof typeof PATTERNS = 'tap') {
+/** `sound` false where the screen has its own sounds (UniVerse Play's games). */
+export function haptic(kind: keyof typeof PATTERNS = 'tap', sound = true) {
   try {
     if (typeof navigator === 'undefined') return;
+    if (kind !== 'tap' && sound) chime(kind);
     // Turned off in Settings → Appearance.
     try { if (localStorage.getItem('uv-haptics') === 'off') return; } catch { /* private mode */ }
     // Browsers refuse (and log an error) before the person has tapped the page at least once.

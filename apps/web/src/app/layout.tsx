@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { SITE_SHARE } from '@/lib/share-meta';
 import { LANGUAGE_SCRIPT } from '@/lib/language-script';
 import UiTranslatorGate from '@/components/i18n/UiTranslatorGate';
 import './globals.css';
@@ -15,40 +16,39 @@ import { NavProgress } from '@/components/layout/NavProgress';
 import { recoveryScript } from '@/lib/recovery-script';
 import { bootstrapPrefetchScript } from '@/lib/bootstrap';
 import { DISPLAY_PREFS_SCRIPT } from '@/lib/display-prefs';
+import { BARS_SCRIPT } from '@/lib/theme';
 
 // Fonts: the device's own system font (San Francisco on Apple devices), set in globals.css, so no
 // web font is downloaded and text matches the rest of the phone.
 
 export const metadata: Metadata = {
   title: {
-    default: 'UniVerse Impact — Global Education & Social Impact Platform',
+    default: 'UniVerse Impact: one account, many apps, real impact',
     template: '%s | UniVerse Impact',
   },
-  description: 'Connecting students, universities, and NGOs to collaborate on real-world social impact projects.',
+  description: 'School, product passports, help nearby, climate action and games, with one sign-in.',
   keywords: ['university', 'education', 'NGO', 'social impact', 'volunteering', 'students'],
   manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'UniVerse',
-  },
+  // Home-screen app tags (iPhone status bar, title) are in <head> below: the status bar follows the
+  // theme (M46), and Next's appleWebApp would add a second, fixed one.
   formatDetection: {
     telephone: false,
   },
-  // Links shared in chats and social apps show the picture (public/og.jpg, 1200 × 630).
+  // Links shared in chats and social apps show the picture (public/og.jpg, 1200 × 630; each app's
+  // pages have their own, src/lib/share-meta.ts).
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://universeimpact.com'),
   openGraph: {
     type: 'website',
-    title: 'UniVerse Impact',
-    description: 'The all-in-one university management platform.',
+    title: 'UniVerse Impact: one account, many apps, real impact',
+    description: 'School, product passports, help nearby, climate action and games, with one sign-in.',
     siteName: 'UniVerse Impact',
-    images: [{ url: '/og.jpg', width: 1200, height: 630, alt: 'UniVerse: one place for your whole campus' }],
+    images: [{ url: SITE_SHARE, width: 1200, height: 630, alt: 'UniVerse Impact: one account, many apps, real impact' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'UniVerse Impact',
-    description: 'The all-in-one university management platform.',
-    images: ['/og.jpg'],
+    title: 'UniVerse Impact: one account, many apps, real impact',
+    description: 'School, product passports, help nearby, climate action and games, with one sign-in.',
+    images: [SITE_SHARE],
   },
 };
 
@@ -57,23 +57,27 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Lets the app draw under the iPhone notch / home indicator; the shell pads with safe-area insets.
   viewportFit: 'cover',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ebeae6' },
-    { media: '(prefers-color-scheme: dark)', color: '#0b0b0c' },
-  ],
+  // No themeColor here: the bar colour follows the app's own theme, not the device's (<head> below).
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* The phone's bars follow the app's theme (M46; dark by default): the browser bar's colour, and
+            on iPhone home-screen apps the status bar's text (white over dark, black over light). The
+            script below adds both tags before paint (written by React, they'd be added a second time
+            once the script changed them), src/lib/theme.ts updates them when the theme changes. */}
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="UniVerse" />
         {/* Blocking script: applies .dark class before paint to prevent theme flash */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');if(localStorage.getItem('uv-sidebar')==='folded')document.documentElement.dataset.sidebar='folded';}catch(e){}})();` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');${BARS_SCRIPT}if(localStorage.getItem('uv-sidebar')==='folded')document.documentElement.dataset.sidebar='folded';}catch(e){}})();` }} />
         {/* The page colour before the stylesheet arrives: a refresh in dark mode never flashes white */}
         <script dangerouslySetInnerHTML={{ __html: DISPLAY_PREFS_SCRIPT }} />
         {/* The saved language's direction (Arabic and Urdu read right to left) before paint */}
         <script dangerouslySetInnerHTML={{ __html: LANGUAGE_SCRIPT }} />
-        <style dangerouslySetInnerHTML={{ __html: 'html{background:#ebeae6}html.dark{background:#0b0b0c;color-scheme:dark}' }} />
+        <style dangerouslySetInnerHTML={{ __html: 'html{background:#f0f0f0}html.dark{background:#171f44;color-scheme:dark}' }} />
         {/* An old tab after a deploy can ask for page files that no longer exist: load the new
             version (once), or show a Reload screen, never a blank or unstyled page. */}
         <script dangerouslySetInnerHTML={{ __html: recoveryScript }} />

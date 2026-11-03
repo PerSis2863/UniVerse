@@ -1,12 +1,12 @@
+import { ahead, type AirTraffic, type Plane } from '@/lib/aircraft';
 import { CITIES } from '@/components/trace/map/cities';
-import { BADGES, GREEN_FACTORS, GREEN_KINDS, co2For, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
+import { BADGES, FEELINGS, GREEN_FACTORS, GREEN_KINDS, co2For, easiestKind, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
 import { newest, weekly, type WalletEvent } from '@/lib/impact-wallet';
 import { URGENCIES, snap, type ReliefKind } from '@/lib/relief';
 import { GAMES, GAME_IDS, isGame, type GameId } from '@/lib/play';
 
 // Sample answers for the impact apps (the hub, Trace, Relief and Green) while sample mode is on, so a
-// visitor's "Try the live demo" and a signed-in person's "Explore with sample data" both open full
-// pages. Made up on the device from a fixed seed (the same world each time), with times relative to
+// signed-in person's "Explore with sample data" opens full pages. Made up on the device from a fixed seed (the same world each time), with times relative to
 // now so it always looks live. Answers have the same shape as the real routes (src/server/hub.ts,
 // trace*.ts, relief.ts, green.ts).
 
@@ -120,7 +120,7 @@ function myActions(me: { id: string }) {
     const at = i < 6 ? now - i * DAY - 3_600_000 * (1 + r() * 6) : now - (6 + r() * 54) * DAY;
     // Most older actions were confirmed by a teammate; a few recent ones wait with their photo.
     const photoUrl = i % 5 === 1 ? '/og.jpg' : null, verifiedAt = i > 3 && i % 4 !== 0 ? iso(at + 3_600_000) : null;
-    return { id: `sample-green-${i}`, userId: me.id, kind, amount, co2Kg: co2For(kind, amount), note: r() < 0.2 ? 'With the team' : null, lat: Math.round(home[1] * 10) / 10, lng: Math.round(home[2] * 10) / 10, place: home[0], photoUrl: photoUrl ?? (verifiedAt ? '/og.jpg' : null), verifiedAt, createdAt: iso(at) };
+    return { id: `sample-green-${i}`, userId: me.id, kind, amount, co2Kg: co2For(kind, amount), note: r() < 0.2 ? 'With the team' : null, lat: Math.round(home[1] * 10) / 10, lng: Math.round(home[2] * 10) / 10, place: home[0], photoUrl: photoUrl ?? (verifiedAt ? '/og.jpg' : null), verifiedAt, feeling: i % 3 ? (kind === 'CYCLE' || kind === 'WALK' ? 'EASY' : FEELINGS[i % 3]) : null, createdAt: iso(at) };
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -144,7 +144,7 @@ export function sampleGreenMe(me: { id: string }) {
       const d = iso(now - (29 - i) * DAY).slice(0, 10);
       return { day: d, kg: Math.round(actions.filter((a) => a.createdAt.startsWith(d)).reduce((s, a) => s + a.co2Kg, 0) * 10) / 10 };
     }),
-    recent: actions.slice(0, 30), teams: 2,
+    recent: actions.slice(0, 30), teams: 2, easiest: easiestKind(actions),
     community: { kg: 182_450, actions: 41_236, people: 2_904 },
   };
 }
@@ -188,7 +188,7 @@ export function sampleGreenMap() {
 
 // ---------- Trace ----------
 
-const BRAND = { id: 'sample-brand', name: 'Aurora Foods', slug: 'aurora-foods', category: 'food', color: '#ec4899', logoUrl: null, plan: 'PRO', pointValue: 0.01, currency: 'EUR', minCashout: 500 };
+const BRAND = { id: 'sample-brand', name: 'Aurora Foods', slug: 'aurora-foods', category: 'food', color: '#fe81d1', logoUrl: null, plan: 'PRO', pointValue: 0.01, currency: 'EUR', minCashout: 500 };
 const PRODUCTS = [
   { id: 'sample-p1', name: 'Aurora Olive Oil, 1 L', category: 'food', origin: BIG.find((c) => c[0] === 'Madrid') ?? BIG[0] },
   { id: 'sample-p2', name: 'Aurora Saffron, 2 g', category: 'food', origin: BIG.find((c) => c[0] === 'Mumbai') ?? BIG[1] },
@@ -345,7 +345,7 @@ export function sampleTraceCashouts() {
 export function sampleTraceWallet() {
   const now = Date.now(), r = rng(14);
   const brands = [
-    { id: 'sample-brand', name: 'Aurora Foods', color: '#ec4899', logoUrl: null, pointValue: 0.01, currency: 'EUR', minCashout: 500 },
+    { id: 'sample-brand', name: 'Aurora Foods', color: '#fe81d1', logoUrl: null, pointValue: 0.01, currency: 'EUR', minCashout: 500 },
     { id: 'sample-brand-2', name: 'TerraBrew Coffee', color: '#a16207', logoUrl: null, pointValue: 0.01, currency: 'EUR', minCashout: 500 },
     { id: 'sample-brand-3', name: 'Kaveri Spices', color: '#f59e0b', logoUrl: null, pointValue: 0.008, currency: 'EUR', minCashout: 400 },
   ];
@@ -355,7 +355,7 @@ export function sampleTraceWallet() {
     history: Array.from({ length: 24 }, (_, i) => { const b = pick(r, brands); return { id: `sample-pt-${i}`, brandId: b.id, kind: i % 9 === 4 ? 'BONUS' : 'SCAN', points: 25 + Math.floor(r() * 40), note: i % 9 === 4 ? 'Campaign bonus' : 'Sold and scanned', createdAt: iso(now - i * 0.7 * DAY), brand: b.name }; }),
     cashouts: [{ id: 'sample-wc1', points: 600, amount: 6, currency: 'EUR', status: 'PAID', note: null, createdAt: iso(now - 12 * DAY), brand: 'Aurora Foods' }],
     offers: [
-      { id: 'sample-o1', title: 'Paris launch: +40 points per sale', bonusPoints: 40, left: 20_160, area: 'Paris (30 km)', endsAt: iso(now + 12 * DAY), brand: 'Aurora Foods', color: '#ec4899', product: 'Aurora Olive Oil, 1 L' },
+      { id: 'sample-o1', title: 'Paris launch: +40 points per sale', bonusPoints: 40, left: 20_160, area: 'Paris (30 km)', endsAt: iso(now + 12 * DAY), brand: 'Aurora Foods', color: '#fe81d1', product: 'Aurora Olive Oil, 1 L' },
       { id: 'sample-o2', title: 'Double points on cold brew', bonusPoints: 30, left: 4_500, area: 'Everywhere', endsAt: null, brand: 'TerraBrew Coffee', color: '#a16207', product: null },
     ],
   };
@@ -407,7 +407,7 @@ export function sampleTraceInsights() {
 export function sampleTraceVault() {
   const now = Date.now();
   return [
-    { id: 'sample-v1', code: 'AURORA00042K7QX', since: iso(now - 40 * DAY), owners: 1, product: { id: 'sample-p1', name: 'Aurora Olive Oil, 1 L', imageUrl: null, category: 'food' }, brand: { id: 'sample-brand', name: 'Aurora Foods', color: '#ec4899', slug: 'aurora-foods' }, warrantyEnds: null, transfer: null },
+    { id: 'sample-v1', code: 'AURORA00042K7QX', since: iso(now - 40 * DAY), owners: 1, product: { id: 'sample-p1', name: 'Aurora Olive Oil, 1 L', imageUrl: null, category: 'food' }, brand: { id: 'sample-brand', name: 'Aurora Foods', color: '#fe81d1', slug: 'aurora-foods' }, warrantyEnds: null, transfer: null },
     { id: 'sample-v2', code: 'ZENITH0911PQ4M', since: iso(now - 120 * DAY), owners: 2, product: { id: 'sample-w', name: 'Zenith Diver 300', imageUrl: null, category: 'watches' }, brand: { id: 'sample-zenith', name: 'Zenith Watches', color: '#94a3b8', slug: 'zenith-watches' }, warrantyEnds: iso(now + 600 * DAY), transfer: { code: 'K7Q2XM4P', until: iso(now + 5 * DAY) } },
   ];
 }
@@ -434,3 +434,21 @@ export function samplePlayBoard(me: { id: string; name: string }, gameRaw: unkno
   return { game, range, maxScore: max, rows, mine };
 }
 
+
+// ---------- Air traffic (M69) ----------
+
+const HUBS: [number, number][] = [[51.47, -0.45], [49.01, 2.55], [50.03, 8.57], [52.31, 4.76], [40.47, -3.56], [41.26, 28.74], [25.25, 55.36], [25.27, 51.61], [28.56, 77.1], [19.09, 72.87], [1.36, 103.99], [13.69, 100.75], [22.31, 113.92], [31.14, 121.81], [40.08, 116.6], [37.46, 126.44], [35.55, 139.78], [-33.95, 151.18], [40.64, -73.78], [41.98, -87.9], [33.64, -84.43], [32.9, -97.04], [33.94, -118.41], [37.62, -122.38], [43.68, -79.63], [19.44, -99.07], [-23.43, -46.47], [4.7, -74.15], [-26.14, 28.25], [30.12, 31.41], [-1.32, 36.93], [6.58, 3.32]];
+/** GET /trace/aircraft: made-up flights between 32 real airports, as "now". */
+export function sampleAircraft(): AirTraffic {
+  const r = rng(77), planes: Plane[] = [];
+  const brg = (a: [number, number], b: [number, number]) => { const p1 = a[0] * Math.PI / 180, p2 = b[0] * Math.PI / 180, dl = (b[1] - a[1]) * Math.PI / 180; return (Math.atan2(Math.sin(dl) * Math.cos(p2), Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl)) * 180 / Math.PI + 360) % 360; };
+  while (planes.length < 1600) {
+    const a = HUBS[Math.floor(r() * HUBS.length)], b = HUBS[Math.floor(r() * HUBS.length)];
+    if (a === b) continue;
+    const d = 6_371_000 * Math.acos(Math.min(1, Math.sin(a[0] * Math.PI / 180) * Math.sin(b[0] * Math.PI / 180) + Math.cos(a[0] * Math.PI / 180) * Math.cos(b[0] * Math.PI / 180) * Math.cos((b[1] - a[1]) * Math.PI / 180)));
+    if (d < 400_000) continue;
+    const f = 0.05 + r() * 0.9, [lat, lon] = ahead(a[0], a[1], brg(a, b), d * f);
+    planes.push([Math.round(lat * 100) / 100, Math.round(lon * 100) / 100, Math.round(brg([lat, lon], b)), Math.round(210 + r() * 50), Math.round(9000 + r() * 3000)]);
+  }
+  return { at: new Date().toISOString(), planes, source: 'sample flights' };
+}

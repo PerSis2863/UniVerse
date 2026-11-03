@@ -1,12 +1,12 @@
 import crypto from 'node:crypto';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { BADGES, GREEN_FACTORS, GREEN_KINDS, co2For, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
+import { BADGES, FEELINGS, GREEN_FACTORS, GREEN_KINDS, co2For, easiestKind, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
 import { toBase32 } from '@/lib/trace';
 import { isAppFileUrl } from '@/lib/storage';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { oneOf, str, type Body } from './body';
-import { notify } from './email';
+import { notify, notifyMany } from './email';
 import { pushService } from './services/push.service';
 import { num, short } from './trace';
 
@@ -26,7 +26,7 @@ const N = (v: unknown) => Number(v ?? 0) || 0;
 export async function greenMe(u: SessionUser) {
   const now = Date.now(), challenge = weeklyChallenge(now);
   const [actions, recent, teams, community] = await Promise.all([
-    prisma.greenAction.findMany({ where: { userId: u.id }, select: { kind: true, amount: true, co2Kg: true, createdAt: true, verifiedAt: true }, orderBy: { createdAt: 'desc' }, take: 5000 }),
+    prisma.greenAction.findMany({ where: { userId: u.id }, select: { kind: true, amount: true, co2Kg: true, createdAt: true, verifiedAt: true, feeling: true }, orderBy: { createdAt: 'desc' }, take: 5000 }),
     prisma.greenAction.findMany({ where: { userId: u.id }, orderBy: { createdAt: 'desc' }, take: 30 }),
     prisma.greenMember.findMany({ where: { userId: u.id }, select: { teamId: true } }),
     prisma.$queryRawUnsafe<Row[]>(`SELECT COALESCE(SUM(co2Kg), 0) AS kg, COUNT(*) AS n, COUNT(DISTINCT userId) AS people FROM green_actions`).catch(() => [] as Row[]),
@@ -35,7 +35,7 @@ export async function greenMe(u: SessionUser) {
   for (const a of actions) { const k = a.kind as GreenKind; byKind[k] = (byKind[k] ?? 0) + a.amount; kgByKind[k] = (kgByKind[k] ?? 0) + a.co2Kg; }
   const kg = actions.reduce((s, a) => s + a.co2Kg, 0);
   const days = actions.map((a) => a.createdAt.toISOString().slice(0, 10));
-  const totals = { actions: actions.length, kg, byKind, streak: streak(days, new Date(now).toISOString().slice(0, 10)) };
+  const totals = { actions: actions.length, kg, byKind, streak: streak(days, new Date(now).toISOString().slice(0, 10)), feedback: actions.filter((a) => a.feeling).length };
   const weekStart = Date.parse(challenge.starts);
   const thisWeek = actions.filter((a) => a.kind === challenge.kind && a.createdAt.getTime() >= weekStart);
   const mineWeek = thisWeek.filter((a) => a.verifiedAt).reduce((s, a) => s + a.amount, 0);
@@ -54,7 +54,7 @@ export async function greenMe(u: SessionUser) {
     badges: BADGES.map((b) => ({ id: b.id, label: b.label, text: b.text, earned: b.earned(totals) })),
     challenge: { ...challenge, mine: Math.round(mineWeek * 10) / 10, waiting: Math.round(waitingWeek * 10) / 10, team: teamIds.length ? Math.round(N(teamWeek[0]?.n) * 10) / 10 : null },
     verified: { actions: actions.filter((a) => a.verifiedAt).length, kg: Math.round(actions.filter((a) => a.verifiedAt).reduce((s, a) => s + a.co2Kg, 0) * 10) / 10 },
-    perDay, recent, teams: teamIds.length,
+    perDay, recent, teams: teamIds.length, easiest: easiestKind(actions),
     community: { kg: Math.round(N(community[0]?.kg)), actions: N(community[0]?.n), people: N(community[0]?.people) },
   };
 }
@@ -144,6 +144,28 @@ export async function addGreenProof(u: SessionUser, id: string, b: Body) {
   const done = await prisma.greenAction.updateMany({ where: { id, userId: u.id, verifiedAt: null }, data: { photoUrl: b.photoUrl } });
   if (!done.count) throw new NotFoundException('Action not found, or it’s already confirmed.');
   return { ok: true };
+}
+
+/** POST /green/actions/:id/feeling { feeling, note? }: "how did it go?" on my own action; after
+ *  "Hard", an optional private note on what made it hard (read only in the owner console). */
+export async function setGreenFeeling(u: SessionUser, id: string, b: Body) {
+  if (!oneOf(FEELINGS, b.feeling)) throw new BadRequestException('Pick easy, okay or hard.');
+  const note = b.feeling === 'HARD' ? short(b.note, 300) : null;
+  const done = await prisma.greenAction.updateMany({ where: { id, userId: u.id }, data: { feeling: b.feeling, ...(note ? { feelingNote: note } : {}) } });
+  if (!done.count) throw new NotFoundException('Action not found');
+  return { ok: true };
+}
+
+/** Daily job (M61, like Candour's "visit again" reminder): people who logged an action yesterday
+ *  but not yet today get one in-app nudge to keep their streak. Never email. 11 queries at most. */
+export async function greenStreakNudges(now = Date.now()) {
+  const today = Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate());
+  const rows = await prisma.$queryRawUnsafe<Row[]>(
+    `SELECT userId FROM green_actions WHERE createdAt >= ? GROUP BY userId HAVING MAX(createdAt) < ? LIMIT 450`,
+    iso(today - DAY), iso(today),
+  );
+  const ids = rows.map((r) => String(r.userId));
+  return ids.length ? notifyMany(ids, { type: 'reminder', title: 'Keep your Green streak going', body: 'You logged a climate action yesterday. One today keeps your streak alive.', link: '/green', email: false }) : 0;
 }
 
 /** The teams a person is in. */

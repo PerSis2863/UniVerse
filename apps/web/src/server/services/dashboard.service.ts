@@ -69,7 +69,7 @@ export class DashboardService {
         course: s.course.name,
         location: s.room?.name || 'TBA',
         type: s.type,
-        color: '#2a2927',
+        color: '#2b3568',
       })),
     };
   }
@@ -117,7 +117,7 @@ export class DashboardService {
     const pct = (g: { score: number; maxScore: number }) => (g.maxScore > 0 ? (g.score / g.maxScore) * 100 : 0);
     const avgClassScore = grades.length ? Math.round(grades.reduce((sum, g) => sum + pct(g), 0) / grades.length) : 0;
 
-    const palette = ['#2a2927', '#06b6d4', '#10b981', '#f59e0b', '#db2777'];
+    const palette = ['#2b3568', '#06b6d4', '#10b981', '#f59e0b', '#c13a92'];
     // "completion" = share of enrolled students who have at least one grade in the course.
     const myCourses = myCoursesRaw.map((c, i) => {
       const graded = new Set(grades.filter((g) => g.courseId === c.id).map((g) => g.studentId));
@@ -215,7 +215,7 @@ export class DashboardService {
 
     // Departments
 
-    const colors = ['#2a2927', '#06b6d4', '#10b981', '#f59e0b', '#db2777', '#5f5c57'];
+    const colors = ['#2b3568', '#06b6d4', '#10b981', '#f59e0b', '#c13a92', '#58617f'];
     const departmentsMap = new Map();
     studentsByDept.forEach((s) => {
       if (s.department) departmentsMap.set(s.department, { name: s.department, students: s._count.userId, teachers: 0 });
@@ -235,7 +235,7 @@ export class DashboardService {
     }));
 
     if (departments.length === 0) {
-      departments.push({ name: 'General', students: totalStudents, teachers: totalTeachers, color: '#2a2927' });
+      departments.push({ name: 'General', students: totalStudents, teachers: totalTeachers, color: '#2b3568' });
     }
 
     // Recent Payments

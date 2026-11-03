@@ -10,7 +10,7 @@ import { formatValue, type MetricResult, type MetricRow } from '@/lib/school-met
 // a line for rates and counts over time, columns for amounts per month. Loaded only when a chart
 // is on screen (recharts is large). One value per chart, so no legend: the title names it.
 
-const INK = '#2a2927';
+const INK = '#2b3568';
 const short = (s: string, n = 24) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 function Tip({ active, payload, result }: { active?: boolean; payload?: { payload: MetricRow }[]; result: MetricResult }) {

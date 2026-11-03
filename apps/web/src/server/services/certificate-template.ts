@@ -34,7 +34,7 @@ export const getCertificateHtml = (data: {
             position: relative;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             overflow: hidden;
-            border: 10px solid #141416;
+            border: 10px solid #1d2650;
             padding: 20px;
             box-sizing: border-box;
         }
@@ -61,7 +61,7 @@ export const getCertificateHtml = (data: {
             transform: translate(-50%, -50%) rotate(-45deg);
             font-family: 'Cinzel', serif;
             font-size: 120px;
-            color: rgba(20, 20, 22, 0.03);
+            color: rgba(29, 38, 80, 0.03);
             white-space: nowrap;
             z-index: 1;
             pointer-events: none;
@@ -78,19 +78,19 @@ export const getCertificateHtml = (data: {
             font-family: 'Cinzel', serif;
             font-size: 36px;
             font-weight: 700;
-            color: #141416;
+            color: #1d2650;
             margin-bottom: 40px;
             letter-spacing: 2px;
         }
         
         .logo span {
-            color: #2a2927;
+            color: #2b3568;
         }
 
         .title {
             font-family: 'Cinzel', serif;
             font-size: 48px;
-            color: #141416;
+            color: #1d2650;
             margin: 0 0 20px 0;
             text-transform: uppercase;
             letter-spacing: 4px;
@@ -98,7 +98,7 @@ export const getCertificateHtml = (data: {
 
         .subtitle {
             font-size: 16px;
-            color: #66635d;
+            color: #5d6585;
             text-transform: uppercase;
             letter-spacing: 2px;
             margin-bottom: 40px;
@@ -115,7 +115,7 @@ export const getCertificateHtml = (data: {
         .student-name {
             font-family: 'Cinzel', serif;
             font-size: 56px;
-            color: #141416;
+            color: #1d2650;
             margin: 0 0 40px 0;
             font-weight: 700;
             border-bottom: 2px solid #e5e7eb;
@@ -146,20 +146,20 @@ export const getCertificateHtml = (data: {
 
         .signature-line {
             width: 200px;
-            border-bottom: 1px solid #141416;
+            border-bottom: 1px solid #1d2650;
             margin-bottom: 10px;
         }
         
         .signature-text {
             font-family: 'Cinzel', serif;
             font-size: 24px;
-            color: #141416;
+            color: #1d2650;
             margin-bottom: -5px;
         }
 
         .signature-title {
             font-size: 12px;
-            color: #66635d;
+            color: #5d6585;
             text-transform: uppercase;
             letter-spacing: 1px;
         }

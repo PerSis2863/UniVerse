@@ -167,7 +167,7 @@ function Forecast({ f }: { f: Insights['forecast'] }) {
       <line x1={x(s0)} x2={x(s0)} y1={P} y2={H - P} className="stroke-zinc-300 dark:stroke-white/15" strokeDasharray="3 4" />
       <path d={band} className="fill-pink-500/15" />
       <motion.path d={past} fill="none" className="stroke-zinc-500 dark:stroke-zinc-300" strokeWidth={1.6} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.9, ease: [0.23, 1, 0.32, 1] }} />
-      <motion.path d={fut} fill="none" stroke="#ec4899" strokeWidth={2.2} strokeDasharray="5 4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7, duration: 0.4 }} />
+      <motion.path d={fut} fill="none" stroke="#fe81d1" strokeWidth={2.2} strokeDasharray="5 4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7, duration: 0.4 }} />
       <text x={x(s0) + 6} y={P + 10} className="fill-pink-500 font-mono" fontSize={10}>forecast</text>
     </svg>
   );
@@ -183,7 +183,7 @@ function Heat({ grid }: { grid: number[][] }) {
           <div key={wd} className="flex items-center gap-1 mb-1">
             <span className="w-9 text-[10px] font-mono text-zinc-500">{WD[wd]}</span>
             {grid[wd].map((n, h) => (
-              <span key={h} title={`${WD[wd]} ${String(h).padStart(2, '0')}:00 · ${n} checks`} className="flex-1 h-5 rounded-[4px]" style={{ background: n ? `rgb(236 72 153 / ${0.12 + (n / max) * 0.88})` : 'rgb(127 127 127 / 0.08)' }} />
+              <span key={h} title={`${WD[wd]} ${String(h).padStart(2, '0')}:00 · ${n} checks`} className="flex-1 h-5 rounded-[4px]" style={{ background: n ? `rgb(254 129 209 / ${0.12 + (n / max) * 0.88})` : 'rgb(127 127 127 / 0.08)' }} />
             ))}
           </div>
         ))}

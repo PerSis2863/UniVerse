@@ -60,7 +60,7 @@ export async function brandOf(u: SessionUser): Promise<Brand> {
 export const isPro = (b: Brand, u: SessionUser) => b.plan === 'PRO' || !!u.owner;
 
 const slugify = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/[\s_-]+/g, '-').slice(0, 40) || 'brand';
-const COLORS = ['#ec4899', '#d946ef', '#f472b6', '#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa'];
+const COLORS = ['#fe81d1', '#e46bdb', '#ff9fdc', '#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa'];
 
 export async function brandInfo(u: SessionUser) {
   const b = await myBrand(u);

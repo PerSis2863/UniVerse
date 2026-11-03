@@ -13,7 +13,7 @@ import { publish } from './realtime';
 
 const DAY = 86_400_000;
 const MAX_ACTIVE = 30;
-export const STATUS_BACKGROUNDS = ['#2a2927', '#2a2927', '#db2777', '#e11d48', '#ea580c', '#059669', '#0891b2', '#141416'];
+export const STATUS_BACKGROUNDS = ['#2b3568', '#2b3568', '#c13a92', '#e11d48', '#ea580c', '#059669', '#0891b2', '#1d2650'];
 const dbNow = () => new Date().toISOString().replace('Z', '+00:00');
 export const STATUS_REACTIONS = ['❤️', '😂', '😮', '😢', '👏', '🔥'];
 const MAX_CLOSE = 150;

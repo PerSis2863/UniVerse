@@ -131,6 +131,11 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
     await authedFetch('/api/notifications', { method: 'PATCH', body: JSON.stringify({ ids: ids ?? [] }) }).catch(() => null);
   };
   const unreadCount = notifications.filter(n => n.unread).length;
+  // The same count on the app's home-screen icon (M42; iPhone home-screen apps, Windows, Mac).
+  useEffect(() => {
+    if (!('setAppBadge' in navigator)) return;
+    (unreadCount > 0 ? navigator.setAppBadge(unreadCount) : navigator.clearAppBadge()).catch(() => {});
+  }, [unreadCount]);
 
   const filteredNotifications = notifications.filter(n => {
     if (activeNotifTab === 'Unread') return n.unread;

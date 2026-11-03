@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Accessibility, Bell, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, ImagePlus, Link2, Loader2, LogOut, Moon, Palette, Plus, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, X, Bold, Contrast, Type, Underline, Captions, VideoOff, FlipHorizontal2, type LucideIcon, TextSelect } from 'lucide-react';
+import { Accessibility, Bell, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, ImagePlus, Link2, Loader2, LogOut, Moon, Palette, Plus, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, Volume2, X, Bold, Contrast, Type, Underline, Captions, VideoOff, FlipHorizontal2, type LucideIcon, TextSelect } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { Switch } from '@/components/ui/Switch';
@@ -20,6 +20,7 @@ import { LANGUAGES, type Language } from '@/lib/i18n';
 import { useLanguageStore } from '@/store/language';
 import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
+import { chime, setSounds, soundsOn } from '@/lib/sounds';
 import { ACCENTS, accent as savedAccent, setAccent, type Accent, appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, mirrorSelf, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setMirrorSelf, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, setWeekStartsOn, textSize, weekStartsOn, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -412,8 +413,8 @@ function Choice<T extends string>({ value, options, onPick, id }: { value: T; op
 return (
   <div className="grid gap-1 p-1 rounded-2xl bg-[var(--fill)]" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
     {options.map(([v, label, Icon]) => (
-      <button key={v} type="button" onClick={(e) => onPick(v, e)} aria-pressed={value === v} className={cn('relative isolate py-2.5 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors', value === v ? 'text-white' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white')}>
-        {value === v && <motion.span layoutId={`appearance-${id}`} transition={spring.snappy} className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500" />}
+      <button key={v} type="button" onClick={(e) => onPick(v, e)} aria-pressed={value === v} className={cn('relative isolate py-2.5 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition-colors', value === v ? 'text-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white')}>
+        {value === v && <motion.span layoutId={`appearance-${id}`} transition={spring.snappy} className="absolute inset-0 -z-10 rounded-xl bg-zinc-900 dark:bg-white" />}
         {Icon && <Icon className="w-4 h-4" />}{label}
       </button>
     ))}
@@ -434,6 +435,7 @@ function Appearance() {
   const [size, setSize] = useState<TextSize>(() => (typeof window === 'undefined' ? 'default' : textSize()));
   const [reduce, setReduce] = useState(() => typeof window !== 'undefined' && appReduceMotion());
   const [haptics, setHap] = useState(() => typeof window === 'undefined' || hapticsOn());
+  const [sounds, setSnd] = useState(() => typeof window !== 'undefined' && soundsOn());
   const [aids, setAids] = useState<Record<ReadingAid, boolean>>(() => ({ bold: readingAid('bold'), contrast: readingAid('contrast'), dyslexic: readingAid('dyslexic'), underline: readingAid('underline') }));
   const [cc, setCc] = useState(captionsByDefault);
   const [camOff, setCamOff] = useState(() => typeof window !== 'undefined' && cameraOffByDefault());
@@ -474,6 +476,9 @@ function Appearance() {
       </Row>
       <Row setting="vibration" icon={Vibrate} title="Vibration" desc="A light tap when you press buttons and switch tabs (phones).">
         <Switch checked={haptics} label="Vibration" onChange={(on) => { setHap(on); setHaptics(on); }} />
+      </Row>
+      <Row setting="sounds" icon={Volume2} title="Sounds" desc="A soft chime when something is done, a low note when it isn’t. Off unless you turn it on.">
+        <Switch checked={sounds} label="Sounds" onChange={(on) => { setSnd(on); setSounds(on); if (on) chime('success'); }} />
       </Row>
       {AIDS.map(([aid, Icon, title, desc]) => (
         <Row key={aid} setting={aid} icon={Icon} title={title} desc={desc}>

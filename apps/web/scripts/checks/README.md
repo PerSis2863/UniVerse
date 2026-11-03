@@ -28,12 +28,16 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `cal-ui.mjs` | Q12 in a browser on the built Worker (time zone Asia/Kolkata): a student taps empty time for a new event, drags it an hour later (Undo puts it back), drags its bottom edge, drags it to the next day, opens it, sees it… |
 | `cc-api.mjs` | Common Cartridge export data and import batches on the local Worker. |
 | `cc-ui.mjs` | Common Cartridge import and export in the browser on the built Worker. |
+| `create-tools-ui.mjs` | M72 + M74: Collaborate → Create in the browser (dev server or built Worker): search (Enter opens), a star, Esc back, the list keeps its scroll spot; the tool bar (focus mode, Esc, `]` next tool, a dropped text file); the bigger tools opened by address and the main ones used. `--m75` (M75's 55), `--new` (M74's 56) or `--old` (the rest). Axe at 1280 dark and 390 light. |
+| `create-saves-ui.mjs` | M75 + M76: saved work in Create: save a mind map, the list, a view link opened signed out (`/s/<token>`), the copy link kept by another person, an edit link (401 signed out) with two people editing live, stop sharing (both links 404), delete; someone else's save is 404, only `uv-` keys, no email in the shared answer. Axe. |
+| `create-course-ui.mjs` | M80: a teacher (tara, CS101) uses Share → Add to a course in Create: the sheet lists their courses and modules, the work lands as a view link in a module, a student of the course sees it and it opens without sign-in; students aren't offered it. Axe at 390 light and 1280 dark. Removes what it made. |
 | `clean-calls.mjs` | (helper: tidies up or prepares test data) |
 | `copy-run.mjs` | (helper: tidies up or prepares test data) |
 | `disc-api.mjs` | (helper: tidies up or prepares test data) |
 | `enrol-api.mjs` | (helper: tidies up or prepares test data) |
 | `exam-api.mjs` | One-way exams and the hard stop, through the API. |
 | `exam-ui.mjs` | One-way exams in the browser: answer, reload (goes on from the next question), hand in; the teacher's switches. Axe at 390/1280, light/dark. |
+| `feel-ui.mjs` | M45 as a phone with a finger: swipes on chats, long press and menus as bottom sheets, the Sounds switch; the small menu stays at 1280. Axe, light and dark. |
 | `game-api.mjs` | The live quiz game through the API. |
 | `game-ui.mjs` | The live quiz game in two browsers at once: the teacher's class screen and a student's phone. Run twice: light (teacher 1280, phone 390) and dark (teacher 390, phone 1280). Axe at each step. |
 | `gradebook-ui.mjs` | Post grades, grade history and the grading scale page in the browser. |
@@ -43,11 +47,18 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `home-ui.mjs` | Q8 home pages: Up next changing as the time passes (a class call 12 min away → Join at 10 min → "Now"), Edit home (hide, move, remembered after a reload), the daily goal, the teacher's needs attention and create… |
 | `kind-api.mjs` | File and link hand-ins on the local Worker. |
 | `kind-group-ui.mjs` | File and link hand-ins and group work in the browser on the built Worker. |
+| `landing-story-ui.mjs` | M44 in the browser: the landing's live totals (rounded, none under 10) and the scroll story. 390 and 1280 px, axe. |
+| `landing-pause-ui.mjs` | M47: the landing's looping demos run only on screen (the hero moves at the top; scrolled down it holds still and nothing off screen animates). |
+| `landing-try-ui.mjs` | M43 in the browser: the landing's Relief, Green and Play demos, and photos shared into a chat. 390 and 1280 px, axe. |
+| `landing-here-ui.mjs` | M81: the landing's "Here to" row: five choices; Learn and Teach open sign-up with the role picked, Protect my brand → Trace sign-up, Help people → Relief, Look around → `/t/demo`. Axe and no sideways scroll at 390 and 1280. |
+| `live-ui.mjs` | M48–M52: the live cards (constellations, funnels, radars, the fleet city, the hub's planet and wallet cards) on the student, teacher, admin, hub, Relief and Trace pages draw, no sideways scroll, axe at 390 and 1280, light and dark. Runs against `local:dev` too. |
+| `world-ui.mjs` | M52: the landing's planet draws; the landing and sign-in pages have no sideways scroll and are axe-clean (whole page) at 390 and 1280. Runs against `local:dev` too. |
 | `lesson-ui.mjs` | Rich lesson pages on the built Worker: read (callout, quick check, flashcards), edit, add blocks, save, preview; a new page opens the editor; students read without editing. 390 and 1280 px, light and dark, axe. |
 | `make-cc.mjs` | A small Canvas-style cartridge for the browser test. |
 | `notes-api.mjs` | Notes on hand-ins on the local Worker. |
 | `notes-ui.mjs` | Notes on hand-ins in the browser: words in a typed answer, a box on a PDF page, the student's view. |
 | `notify-ui.mjs` | Q9: notification settings (per kind, a muted course, the summary), the course on notifications, snooze hiding from the bell and the centre, mark read / all read, remove, the daily summary sent by the cron; the centre… |
+| `offline-ui.mjs` | M46 on the built site as a student's phone: copies of the timetable, courses and chats kept after a visit; offline (the service worker's requests too) the home shows its saved data and a page never opened shows the offline page with today, chats and courses; one bar colour per theme, changed by the theme button; launch screens linked and served. Axe at 390/1280, light/dark. |
 | `page-api.mjs` | Rich lesson pages on the local Worker: save, list, load, access, bad input. |
 | `passport-ui.mjs` | Q14 skills passport on the built Worker: the portfolio address (taken, too short, reserved refused) and colour, making it public, the wallet credential (signed, no internal id), Add to LinkedIn, Make my CV (look, contact, parts, AI without a key, Save as PDF), the public portfolio and passport link signed out, and /verify (a wallet file genuine, an edited one and random text not valid, a certificate code). Axe at 390/1280, light/dark. |
 | `careers-ui.mjs` | Q15 careers on the built Worker: the application tracker (add with a link and a document, Coming up, stage, the next-step reminder from the 15-minute cron, edit, remove), interview practice (questions without AI, filler / STAR / length checks, history), booking a mentor's time from the page (call in the chat, both calendars, the mentor told) and cancelling it, two people booking one time at once, Be a mentor as an alumni student, the teacher's mentor page, the job alerts switch and an alert for a matching new opening (once), and the three tabs in sample mode. Axe at 390/1280, light/dark. Cleans up after itself. |

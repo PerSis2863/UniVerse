@@ -64,7 +64,7 @@ function Brands() {
           <ul className="mt-4 divide-y divide-zinc-100 dark:divide-white/[0.06]">
             {rows.map((b, i) => (
               <motion.li key={b.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * 0.02 }} className="py-3 flex flex-wrap items-center gap-3 text-sm">
-                <span className="w-9 h-9 rounded-xl grid place-items-center text-white font-black shrink-0" style={{ background: b.color ?? '#ec4899' }} aria-hidden>{b.name.slice(0, 1)}</span>
+                <span className="w-9 h-9 rounded-xl grid place-items-center text-white font-black shrink-0" style={{ background: b.color ?? '#fe81d1' }} aria-hidden>{b.name.slice(0, 1)}</span>
                 <span className="min-w-0 flex-1"><span className="block font-semibold text-zinc-900 dark:text-white truncate">{b.name}</span><span className="block text-[11px] text-zinc-500">{[b.category, `started ${formatDistanceToNow(new Date(b.createdAt), { addSuffix: true })}`].filter(Boolean).join(' · ')}</span></span>
                 <span className="font-mono text-xs text-zinc-500 w-28 text-right">{fmt(b.units)} passports</span>
                 <span className="font-mono text-xs text-zinc-500 w-20 text-right">{fmt(b.scans)} scans</span>

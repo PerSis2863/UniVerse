@@ -10,7 +10,7 @@ export async function GET(req: Request) {
 
   const name = branding.appTitle || (branding.isSchool ? `${branding.name} UniVerse` : "UniVerse Impact");
   const shortName = branding.slug ? branding.slug.toUpperCase() : (branding.isSchool ? branding.name.slice(0, 12) : "UniVerse");
-  const themeColor = branding.brandColor || "#2a2927";
+  const themeColor = branding.brandColor || "#2b3568";
 
   const manifest = {
     name,
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     description: branding.tagline || "The Campus Operating System",
     start_url: "/",
     display: "standalone",
-    background_color: "#09090b",
+    background_color: "#0b1028",
     theme_color: themeColor,
     icons: [
       {

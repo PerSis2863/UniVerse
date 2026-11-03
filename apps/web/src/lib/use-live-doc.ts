@@ -20,7 +20,7 @@ const frame = (type: number, body: Uint8Array) => { const out = new Uint8Array(b
 
 export type DocStatus = 'connecting' | 'live' | 'offline' | 'unavailable';
 // Dark enough for white names on them (4.5 : 1).
-export const PEOPLE_COLORS = ['#2a2927', '#be185d', '#0369a1', '#047857', '#b45309', '#b91c1c', '#2a2927', '#0f766e'];
+export const PEOPLE_COLORS = ['#2b3568', '#a32c7b', '#0369a1', '#047857', '#b45309', '#b91c1c', '#2b3568', '#0f766e'];
 /** Someone's colour for their cursor or selection. */
 export const colorFor = (id: string) => PEOPLE_COLORS[[...id].reduce((t, c) => t + c.charCodeAt(0), 0) % PEOPLE_COLORS.length];
 
@@ -54,7 +54,7 @@ export function useLiveDoc({ docId, ydoc, awareness, mayEdit, onStatus, onPeers,
     const peers = () => {
       const others = [...awareness.getStates().entries()].filter(([id]) => id !== ydoc.clientID).map(([, s]) => (s as { user?: { name?: string; color?: string } }).user ?? {});
       callbacks.current.onPeers?.(others.map((u) => u.name ?? 'Someone'));
-      callbacks.current.onPresence?.(others.map((u) => ({ name: u.name ?? 'Someone', color: u.color ?? '#2a2927' })));
+      callbacks.current.onPresence?.(others.map((u) => ({ name: u.name ?? 'Someone', color: u.color ?? '#2b3568' })));
     };
     const onDoc = (update: Uint8Array, origin: unknown) => { if (origin !== 'remote' && origin !== 'cache') send(frame(DOC, update)); keep(); };
     const onAware = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {

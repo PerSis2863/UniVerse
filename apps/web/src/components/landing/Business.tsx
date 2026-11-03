@@ -1,7 +1,7 @@
 import { Banknote, Check, Crown, Globe2, Megaphone, Printer, Radio, Rocket, ScanLine, ShieldCheck, Truck, Wallet } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { LiveMapShowcase } from './LiveMapShowcase';
-import { Accent, Reveal, Tag, ghost, glass, primary } from './bits';
+import { Accent, Reveal, ghost, glass, primary } from './bits';
 
 // The landing page's business sections (UniVerse Trace, business mode): the live maps, how it works,
 // pay-per-verified-sale campaigns with the shops' wallet, and the two plans. Only what the product
@@ -11,9 +11,8 @@ export function MapsSection() {
   return (
     <section id="product" className="relative px-6 py-24 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
-        <Reveal><Tag>live maps</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Watch your products <Accent>move.</Accent></h2></Reveal>
-        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Every scan lights up its city the moment it happens. Every shipment glides along its road while the driver shares a link. What market-research firms sell as last quarter’s sampled report, you see live.</p></Reveal>
+        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Every scan and every shipment, live on the map.</p></Reveal>
         <Reveal delay={0.15}>
           <div className={`${glass} mt-10 overflow-hidden p-0`}>
             <LiveMapShowcase className="w-full h-[min(62vh,520px)]" />
@@ -21,9 +20,9 @@ export function MapsSection() {
         </Reveal>
         <div className="mt-6 grid md:grid-cols-3 gap-4">
           {[
-            [Globe2, 'Market map', 'Where it sells, down to an 11 km area, with a replay of the month and the likely copies in amber.'],
-            [Truck, 'Tracking map', 'Each batch’s road, where it is now, its speed, the distance left and when it arrives.'],
-            [Crown, 'Your whole category (PRO)', 'Every brand’s scans in your category, anonymised: your share in each city and where you’re missing.'],
+            [Globe2, 'Market map', 'Where it sells, and where copies appear.'],
+            [Truck, 'Tracking map', 'Where each batch is, and when it arrives.'],
+            [Crown, 'Your whole category (PRO)', 'Your share in every city, anonymised.'],
           ].map(([Icon, t, d], i) => {
             const I = Icon as typeof Globe2;
             return (
@@ -43,28 +42,27 @@ export function MapsSection() {
 }
 
 const STEPS = [
-  { icon: Rocket, t: 'Start free', d: 'Name your brand. Add a product: its story, the points a shop earns for selling it.' },
-  { icon: Printer, t: 'Print the codes', d: 'One signed code per unit, as labels or a file for your label printer. Nobody can guess or forge one.' },
-  { icon: ScanLine, t: 'Everyone scans', d: 'Buyers see it’s genuine. Shops earn your points. Drivers share where the batch is.' },
-  { icon: Radio, t: 'You see and act', d: 'Live maps, copies caught, campaigns where sales are slow, cash-outs in one tap.' },
+  { icon: Rocket, t: 'Start free', d: 'Name your brand, add a product.' },
+  { icon: Printer, t: 'Print the codes', d: 'One code per unit. Impossible to guess.' },
+  { icon: ScanLine, t: 'Everyone scans', d: 'Buyers check, shops earn, drivers share.' },
+  { icon: Radio, t: 'You see and act', d: 'Live maps, copies caught, campaigns.' },
 ];
 
 export function HowSection() {
   return (
     <section id="how" className="relative px-6 py-24 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
-        <Reveal><Tag>how it works</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Four steps. <Accent>No hardware.</Accent></h2></Reveal>
         <ol className="mt-12 grid md:grid-cols-4 gap-4">
           {STEPS.map((s, i) => (
-            <Reveal key={s.t} delay={0.08 + i * 0.07}>
-              <li className="relative h-full rounded-3xl p-6 bg-white/[0.04] ring-1 ring-white/[0.08]">
+            <Reveal key={s.t} role="listitem" delay={0.08 + i * 0.07}>
+              <div className="relative h-full rounded-3xl p-6 bg-white/[0.04] ring-1 ring-white/[0.08]">
                 <span className="font-mono text-xs text-pink-300">0{i + 1}</span>
                 <s.icon className="mt-3 w-6 h-6 text-white" aria-hidden />
                 <h3 className="mt-4 text-lg font-bold text-white">{s.t}</h3>
                 <p className="mt-2 text-sm text-zinc-300 leading-relaxed">{s.d}</p>
-                {i < STEPS.length - 1 && <span aria-hidden className="hidden md:block absolute top-1/2 -right-3 w-6 h-px bg-gradient-to-r from-pink-400/60 to-transparent" />}
-              </li>
+                {i < STEPS.length - 1 && <span aria-hidden className="hidden md:block absolute top-1/2 -end-3 w-6 h-px bg-gradient-to-r rtl:bg-gradient-to-l from-pink-400/60 to-transparent" />}
+              </div>
             </Reveal>
           ))}
         </ol>
@@ -78,9 +76,8 @@ export function CampaignsSection() {
     <section id="campaigns" className="relative px-6 py-24 scroll-mt-24">
       <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 items-center">
         <div>
-          <Reveal><Tag>campaigns + wallet</Tag></Reveal>
           <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-5xl font-bold tracking-tight text-white">Pay only for <Accent>proven</Accent> sales.</h2></Reveal>
-          <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300">Pick a city on the map and offer shops a bonus for every genuine unit they sell there. A sale counts only when a signed-in shop scans a real code inside the area, so you never pay for a click, a view or a guess.</p></Reveal>
+          <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300">Pay shops only for real sales, in the city you pick.</p></Reveal>
           <Reveal delay={0.15}>
             <ul className="mt-6 space-y-2.5 text-zinc-200">
               {[[Megaphone, 'A budget that stops paying by itself'], [Wallet, 'One wallet for every shop, with points from every brand'], [Banknote, 'Cash-outs the brand marks paid, or refuses and refunds'], [ShieldCheck, 'Every point in a hash-chained ledger nobody can quietly change']].map(([Icon, t]) => {
@@ -98,7 +95,7 @@ export function CampaignsSection() {
             </div>
             <p className="mt-1 text-sm text-zinc-400">+50 points per genuine bottle · within 30 km of Paris</p>
             <div className="mt-6 h-2 rounded-full bg-white/[0.08] overflow-hidden"><div className="h-full w-[38%] rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500 bar-glint" /></div>
-            <div className="mt-2 flex justify-between font-mono text-xs text-zinc-400"><span>budget used</span><span>38%</span></div>
+            <div className="mt-2 flex justify-between text-xs text-zinc-400"><span>budget used</span><span>38%</span></div>
             <ul className="mt-6 space-y-2">
               {['Épicerie Oberkampf', 'Marché Bastille', 'Cave du 11e'].map((s) => (
                 <li key={s} className="flex items-center gap-3 rounded-2xl bg-white/[0.04] px-4 py-3 text-sm">
@@ -119,12 +116,11 @@ export function PricingSection() {
   return (
     <section id="pricing" className="relative px-6 py-24 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
-        <Reveal><Tag>pricing</Tag></Reveal>
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white">Free to start. <Accent>Pay as it sells.</Accent></h2></Reveal>
         <div className="mt-12 grid md:grid-cols-2 gap-4">
           <Reveal delay={0.1}>
             <div className="h-full rounded-3xl p-8 bg-white/[0.04] ring-1 ring-white/[0.08]">
-              <p className="font-mono text-xs text-zinc-400">FREE</p>
+              <p className="text-xs text-zinc-400">FREE</p>
               <p className="mt-3 text-5xl font-bold text-white">0 €</p>
               <ul className="mt-6 space-y-2.5 text-zinc-300">
                 {['10,000 product passports', 'Your live market map and tracking', 'Shop rewards and the wallet', 'Campaigns at 5 cents per verified sale'].map((t) => <li key={t} className="flex gap-3"><Check className="w-5 h-5 text-pink-300 shrink-0" aria-hidden />{t}</li>)}
@@ -133,12 +129,12 @@ export function PricingSection() {
             </div>
           </Reveal>
           <Reveal delay={0.16}>
-            <div className="h-full rounded-3xl p-8 ring-1 ring-fuchsia-400/30 bg-gradient-to-br from-[#1b1b1e] to-[#111112] relative overflow-hidden">
+            <div className="h-full rounded-3xl p-8 ring-1 ring-fuchsia-400/30 bg-gradient-to-br from-[#222c5a] to-[#131a3d] relative overflow-hidden">
               <span aria-hidden className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-fuchsia-500/20 blur-3xl" />
-              <p className="relative font-mono text-xs text-fuchsia-200">PRO</p>
+              <p className="relative text-xs text-fuchsia-200">PRO</p>
               <p className="relative mt-3 text-5xl font-bold text-white">Market intelligence</p>
               <ul className="relative mt-6 space-y-2.5 text-zinc-200">
-                {['1,000,000 product passports', 'Your whole category on the map, city by city, live and anonymised', 'Your share in every city, and where you’re missing', 'Everything in Free'].map((t) => <li key={t} className="flex gap-3"><Crown className="w-5 h-5 text-fuchsia-300 shrink-0" aria-hidden />{t}</li>)}
+                {['1,000,000 product passports', 'Your whole category on the map', 'Your share in every city, and where you’re missing', 'Everything in Free'].map((t) => <li key={t} className="flex gap-3"><Crown className="w-5 h-5 text-fuchsia-300 shrink-0" aria-hidden />{t}</li>)}
               </ul>
               <Link href="/contact" className={`${ghost} relative mt-8`}>Talk to us</Link>
             </div>

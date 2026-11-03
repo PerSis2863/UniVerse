@@ -56,7 +56,7 @@ export function JoinRoom({ compact }: { compact?: boolean }) {
   };
   return (
     <form onSubmit={(e) => void join(e)} className={cn('flex flex-col gap-3', compact && 'sm:flex-row sm:items-start')}>
-      {!compact && <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#2a2927] text-white"><LogIn className="w-5 h-5 rtl:-scale-x-100" aria-hidden /></span>}
+      {!compact && <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#2b3568] text-white"><LogIn className="w-5 h-5 rtl:-scale-x-100" aria-hidden /></span>}
       <label htmlFor={compact ? 'room-code-top' : 'room-code'} className={compact ? 'sr-only' : 'text-lg font-semibold text-zinc-900 dark:text-white'}>Join a room</label>
       <div className="min-w-0 flex-1">
         <input id={compact ? 'room-code-top' : 'room-code'} value={code} onChange={(e) => { setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)); setError(''); }}
@@ -111,14 +111,14 @@ function GameMenu({ game }: { game: GameId }) {
       <div className="grid gap-4 md:grid-cols-3">
         <motion.button type="button" onClick={() => gate.guard(() => setMode('solo'))} initial={{ opacity: 0, y: calm ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth}
           className="sheen panel group flex flex-col items-start gap-3 p-5 text-start transition-transform duration-150 active:scale-[0.99]">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-pink-500 text-white shadow-[0_6px_20px_rgba(236,72,153,0.4)]"><User className="w-5 h-5" aria-hidden /></span>
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-pink-500 text-white shadow-[0_6px_20px_rgba(254,129,209,0.4)]"><User className="w-5 h-5" aria-hidden /></span>
           <span className="text-lg font-semibold text-zinc-900 dark:text-white">Play solo</span>
           <span className="text-sm text-zinc-600 dark:text-zinc-300">{info.seconds} seconds against your best score.</span>
           <span className="mt-auto inline-flex items-center gap-1.5 text-sm font-semibold text-pink-600 dark:text-pink-300"><Play className="w-4 h-4" aria-hidden />Start</span>
         </motion.button>
         <motion.button type="button" disabled={busy} onClick={() => gate.guard(() => void createRoom())} initial={{ opacity: 0, y: calm ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.smooth, delay: 0.05 }}
           className="sheen panel group flex flex-col items-start gap-3 p-5 text-start transition-transform duration-150 active:scale-[0.99] disabled:opacity-60">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#2a2927] text-white">{busy ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden /> : <Users className="w-5 h-5" aria-hidden />}</span>
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#2b3568] text-white">{busy ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden /> : <Users className="w-5 h-5" aria-hidden />}</span>
           <span className="text-lg font-semibold text-zinc-900 dark:text-white">Play with friends</span>
           <span className="text-sm text-zinc-600 dark:text-zinc-300">Open a room, share its code or QR, and race up to 7 others live.</span>
           <span className="mt-auto inline-flex items-center gap-1.5 text-sm font-semibold text-zinc-800 dark:text-zinc-100">Open a room</span>
@@ -205,7 +205,7 @@ function SoloResult({ game, result, onAgain, onExit, onChallenge }: { game: Game
         <AnimatePresence>
           {result.newBest && result.score > 0 && (
             <motion.p initial={{ opacity: 0, scale: calm ? 1 : 0.9, y: calm ? 0 : 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ ...spring.bouncy, delay: calm ? 0 : 0.9 }}
-              className="mx-auto mt-3 inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-3 py-1 text-sm font-bold text-white shadow-[0_0_30px_rgba(236,72,153,0.5)]">
+              className="mx-auto mt-3 inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-3 py-1 text-sm font-bold text-white shadow-[0_0_30px_rgba(254,129,209,0.5)]">
               <Trophy className="w-4 h-4" aria-hidden />New best!
             </motion.p>
           )}

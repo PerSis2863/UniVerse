@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BADGES, co2For, streak, weeklyChallenge } from './green';
+import { BADGES, co2For, easiestKind, greenPass, streak, weeklyChallenge } from './green';
 import { needScore, snap } from './relief';
 
 describe('green', () => {
@@ -11,6 +11,16 @@ describe('green', () => {
     expect(streak(['2026-10-22', '2026-10-23', '2026-10-24'], '2026-10-24')).toBe(3);
     expect(streak(['2026-10-22', '2026-10-23'], '2026-10-24')).toBe(2);
     expect(streak(['2026-10-20'], '2026-10-24')).toBe(0);
+  });
+  it('gives the Green Pass a tier, the next one and its stamps', () => {
+    expect(greenPass({ kg: 0, byKind: {} })).toMatchObject({ tier: 'Seedling', level: 1, next: { label: 'Sprout', kgToGo: 25 }, progress: 0, stamps: [] });
+    expect(greenPass({ kg: 300, byKind: { CYCLE: 4, TREE: 0, SOLAR: 2 } })).toMatchObject({ tier: 'Sapling', level: 3, next: { label: 'Grove', kgToGo: 200 }, progress: 0.5, stamps: ['CYCLE', 'SOLAR'] });
+    expect(greenPass({ kg: 2500, byKind: {} })).toMatchObject({ tier: 'Forest', level: 5, next: null, progress: 1 });
+  });
+  it('finds what someone finds easy', () => {
+    const rows = [{ kind: 'CYCLE', feeling: 'EASY' }, { kind: 'TREE', feeling: 'EASY' }, { kind: 'CYCLE', feeling: 'EASY' }, { kind: 'WALK', feeling: 'HARD' }];
+    expect(easiestKind(rows)).toBe('CYCLE');
+    expect(easiestKind(rows.slice(0, 2))).toBeNull();
   });
   it('awards badges', () => {
     const earned = BADGES.filter((b) => b.earned({ actions: 12, kg: 150, byKind: { TREE: 5 }, streak: 2 })).map((b) => b.id);

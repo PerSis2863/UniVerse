@@ -39,14 +39,14 @@ const KINDS: { value: EventKind; label: string; teacher?: boolean }[] = [
   { value: 'DEADLINE', label: 'Deadline' },
 ];
 const COLOURS: { value: string; name: string }[] = [
-  { value: '#2a2927', name: 'Indigo' },
+  { value: '#2b3568', name: 'Indigo' },
   { value: '#0f766e', name: 'Teal' },
   { value: '#be123c', name: 'Red' },
   { value: '#b45309', name: 'Amber' },
   { value: '#0369a1', name: 'Blue' },
-  { value: '#2a2927', name: 'Violet' },
+  { value: '#2b3568', name: 'Violet' },
   { value: '#27325a', name: 'Navy' },
-  { value: '#5f5c57', name: 'Grey' },
+  { value: '#58617f', name: 'Grey' },
 ];
 
 const pad = (n: number) => String(n).padStart(2, '0');

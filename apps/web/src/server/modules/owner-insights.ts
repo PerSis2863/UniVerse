@@ -8,10 +8,12 @@ import { selectColumns } from '../table-stats';
 import { watchedUsage } from '../plan-usage';
 import { oneOf } from '../body';
 import { REAL_ERRORS_SQL } from '../errors';
+import { realPeople } from '../real-people';
 
 // Owner console extras that read across the app:
 //   attention  what needs the owner now (the Overview card and the counts on the console tabs)
 //   search     one box for people, chats, messages, errors and changes
+//   real-people  real accounts and which apps they use (M79)
 //   analytics  who uses UniVerse, when, and which pages and buttons
 //   money      payments, invoices and organization subscriptions
 // Every route stays well under D1's 50 queries per request.
@@ -22,6 +24,7 @@ const num = (v: unknown) => (v == null ? 0 : Number(v));
 
 /** Attention cache for the console, kept 45s per server instance */
 let cachedAttention: { at: number; data: unknown } | null = null;
+let cachedReal: { at: number; data: Awaited<ReturnType<typeof realPeople>> } | null = null;
 
 export default function ownerInsightsModule(router: Router) {
   const r = router.controller('owner', { owner: true });
@@ -120,6 +123,12 @@ export default function ownerInsightsModule(router: Router) {
     return { days, devices: Object.fromEntries(fold(byDevice)), pages };
   });
 
+  // M79: real people (sample and demo accounts left out), kept 5 minutes.
+  r.get('real-people', async ({ query }) => {
+    if (!cachedReal || Date.now() - cachedReal.at > 5 * 60_000 || query.fresh === '1') cachedReal = { at: Date.now(), data: await realPeople() };
+    return cachedReal.data;
+  });
+
   r.get('analytics', async ({ query }) => {
     const days = [7, 30, 90].includes(Number(query.days)) ? Number(query.days) : 30;
     const now = Date.now();
@@ -164,6 +173,21 @@ export default function ownerInsightsModule(router: Router) {
       hours: Array.from({ length: 24 }, (_, h) => num(hours.find((x) => Number(x.h) === h)?.n)),
       busiest: busiest.map((b) => ({ id: b.id, name: b.name, role: b.role, events: num(b.n) })),
     };
+  });
+
+  // How Green feels (M61, the Candour ideas): Easy / Okay / Hard per kind of action, and the latest
+  // "what made it hard" notes. No names, emails or places: only the kind, the note and the day.
+  r.get('green-feel', async ({ query }) => {
+    const days = oneOf(['7', '30', '90'] as const, query.days) ? Number(query.days) : 30;
+    const since = iso(Date.now() - days * DAY).replace('Z', '+00:00');
+    const [counts, logged, notes] = await Promise.all([
+      prisma.$queryRawUnsafe<{ kind: string; feeling: string; n: unknown }[]>(`SELECT kind, feeling, COUNT(*) AS n FROM green_actions WHERE feeling IS NOT NULL AND createdAt >= ? GROUP BY kind, feeling`, since),
+      prisma.$queryRawUnsafe<{ n: unknown }[]>(`SELECT COUNT(*) AS n FROM green_actions WHERE createdAt >= ?`, since),
+      prisma.$queryRawUnsafe<{ kind: string; feelingNote: string; createdAt: string }[]>(`SELECT kind, feelingNote, createdAt FROM green_actions WHERE feelingNote IS NOT NULL AND createdAt >= ? ORDER BY createdAt DESC LIMIT 30`, since),
+    ]);
+    const byKind: Record<string, { EASY: number; OK: number; HARD: number }> = {};
+    for (const c of counts) { const k = (byKind[c.kind] ??= { EASY: 0, OK: 0, HARD: 0 }); if (c.feeling === 'EASY' || c.feeling === 'OK' || c.feeling === 'HARD') k[c.feeling] += num(c.n); }
+    return { days, logged: num(logged[0]?.n), answered: counts.reduce((s, c) => s + num(c.n), 0), byKind, notes: notes.map((n) => ({ kind: n.kind, note: n.feelingNote, at: n.createdAt })) };
   });
 
   r.get('money', async () => {
