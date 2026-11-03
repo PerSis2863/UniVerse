@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M86 is the latest).
+  builds on it). The newest notes are at the end (M87 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -114,8 +114,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   traffic off until the owner turns it on, this list tidied; **M84** the pink river drawn on a
   background thread (much less work for the page on every screen); **M85** the planet too (hub and
   landing), and live cards drawn at their real size; **M86** maps open and zoom without freezing the
-  page (outlines worked out on a background thread), a pinch zooms the map, not the page.
-- **Work numbers:** the next item is **M87**. Never reuse a number: take the next one after the
+  page (outlines worked out on a background thread), a pinch zooms the map, not the page; **M87**
+  safer libraries (32 known issues → 12, none critical), wrangler 4.151.3, checks on every push.
+- **Work numbers:** the next item is **M88**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
@@ -160,7 +161,9 @@ build skips it; give it `NODE_OPTIONS=--max-old-space-size=8192`), eslint **0 er
 whole repo under 50 warnings with **no disable comments** (fix the cause), the unit tests, and
 `pnpm lean` at zero. For screens: a Playwright + axe check like those in `scripts/checks/`. Never
 commit changes a build makes to `public/sw.js`, `public/fallback-*.js`, `public/workbox-*.js` or
-`cloudflare/next-public.gen.ts` (`git checkout -- apps/web/public/sw.js` after a build).
+`cloudflare/next-public.gen.ts` (`git checkout -- apps/web/public/sw.js` after a build). GitHub runs
+the same `pnpm check` on every push (`.github/workflows/check.yml`, M87): don't merge a branch whose
+"Checks" run is red. Library updates: pin overrides to releases at least two weeks old.
 
 **Publishing:** merging into `main` publishes the site. Cloudflare builds it, applies new database
 updates, then puts it live (about 15 minutes; Workers & Pages → universe-web → Deployments;

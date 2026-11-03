@@ -3562,3 +3562,27 @@ site (click a link, watch 1.5 s).
 - **Tested:** `pnpm check`; `world-shapes.test.ts`; map and planet screenshots before and after;
   the pinch on the city view and the Live globe (page zoom stopped, map zoomed, no warning); page
   switches on the built site.
+
+## M87 · Safer libraries, the deploy tool the adapter asks for, checks on every push (3 Nov 2026)
+
+The owner: "…security, development, testing…".
+- **Dependency audit** (`pnpm audit --prod`): 32 known issues (1 critical, 10 high), almost all in
+  build tools that never reach a visitor. Fixed with pnpm overrides in the root `package.json`, each
+  pinned to a release at least two weeks old (a guard against freshly published bad versions):
+  **dompurify 3.4.17** (critical and high: the HTML cleaner inside Excalidraw's Mermaid diagrams, it
+  runs in the browser), **re2js 2.8.8** (high: the regex engine in Firebase's Firestore), undici
+  7.30.1, fast-uri 3.1.9, qs 6.16.1, source-map-js 1.2.2, glob 10.5.0 and sharp 0.35.5 (build and
+  local tools). Left: 12, none critical: body-parser (high) and serialize-javascript in build tools,
+  whose fixes are 11 days old (take them in a later pass); katex inside mermaid (low: mermaid needs
+  0.16, the site's own KaTeX is 0.18.9); webpack, deepmerge, minimatch and glob 9+ in build tools
+  (fixes need new major versions or don't exist).
+- **wrangler 4.142 → 4.151.3:** OpenNext 1.20.15 asks for ^4.148 (it warned on every install);
+  4.151.3 was the newest release older than two weeks. It brings a newer local Workers runtime
+  (miniflare) for `local:serve`. **Rule:** move wrangler up when the adapter's peer range moves.
+- **Checks on every push** (`.github/workflows/check.yml`): GitHub runs `pnpm check` (types, lint of
+  the changed files, unit tests, lean) on every branch push, so a branch and its pull request show a
+  tick or a cross before anyone merges. Free on a public repository, no secrets, deploys nothing.
+  **Rule:** don't merge a branch whose Checks run is red.
+- **Tested:** `pnpm install`, `pnpm audit`, `pnpm check`; `local:build` + `local:serve` on the new
+  runtime: sign-in, the hub, Trace's tracking map, the Live globe and a whiteboard open and draw with
+  no errors.
