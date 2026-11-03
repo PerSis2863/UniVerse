@@ -3335,3 +3335,28 @@ and "people must be signed in to open a shared link"): "please do both of this a
   196/204 clean (the 8 are the known ones: Trace's no-brand 403s for a student, the calendar link's
   503 without `SESSION_SECRET`, `/parent`'s outside script unreachable from the sandbox);
   `create-saves-ui.mjs` on the built Worker (save, view link signed out, live editing, stop, delete).
+
+## M78: security fixes from M62's open list (the council's second item)
+
+- **Rate limits** (`cloudflare/worker.ts` `rateLimited`, `src/lib/rate-key.ts`): keyed by the account
+  the token *names* (Firebase `user_id`/`sub`, a session token's `uid`, a demo token's email) together
+  with the address, no longer by the token's last 40 characters. A new token each hour keeps one
+  count; a made-up token gets the address's count, not a fresh one; a forged name only ever counts
+  at the forger's own address (no one can use up someone else's limit from elsewhere). Not a sign-in
+  check: routes still verify. **Trap:** an opaque token (an integration's API key) counts per address.
+- **Admin sign-in code lockout in the database** (migration **0191**, users `twoStepTries`,
+  `twoStepTriedAt`; `src/server/two-step-tries.ts`). The old in-memory count never added up (it reset
+  after every wrong try) and lived on one server. Now each try is counted *before* the code is
+  checked (an atomic increment), so tries sent all at once can't slip under the limit: five tries, then
+  15 minutes after the last one. The right code starts the count again.
+- **Organisation reps** (`applications.ts` `approveApplication`): someone approved as ADMIN while in no
+  school would have been an admin of the main school (everyone without one). They now get their own
+  organisation, named from the application's institution. Adding an admin to *your own* school: an
+  invitation, or Users.
+- **Certificate PDF** (`impact.ts` `certificates/:id/pdf`): no longer takes the sign-in token as
+  `?token=` (nothing in the app used it; addresses land in history and logs).
+- **Share links** (`/s/<token>`, `shared/`, `live/`): 24-character random tokens can't be guessed;
+  the address and per-person limits above cover them; nothing more added.
+- **Still open:** `pdfjs-dist` 5 → 6 and `zod` 3 → 4 (major versions: own item with testing).
+- **Tested:** `pnpm check` (1,432 tests, incl. `rate-key.test.ts`, `two-step-tries.test.ts`, the
+  no-school representative in `school-scope-people.test.ts`).

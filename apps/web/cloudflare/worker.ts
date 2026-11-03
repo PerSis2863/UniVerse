@@ -19,6 +19,7 @@ import { GameRoom } from './game-room';
 
 export { GameRoom };
 import { routeOf } from '../src/lib/route-label';
+import { rateKey } from '../src/lib/rate-key';
 import { callsDue, dailyPending } from './due-check';
 import { dbDate } from './fast-db';
 import { buildBudget, checkUsage, pageNotice, schoolGate, schoolSwitchCandidates, serverGate, withNotice } from './usage-guard';
@@ -54,17 +55,18 @@ const tooMany = () =>
   Response.json({ error: 'Too many requests. Please wait a minute and try again.' }, { status: 429, headers: { 'Retry-After': '60' } });
 
 /**
- * Rate limits for the API and live updates. Keyed by the signed-in user (the end of their token)
+ * Rate limits for the API and live updates. Keyed by the signed-in user (the account their token names)
  * so a whole campus behind one Wi-Fi address isn't treated as one person, plus a generous
  * per-address cap against floods. Limiter checks are free and don't count as requests.
  */
 async function rateLimited(request: Request, url: URL, env: Env): Promise<boolean> {
   const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
-  const token = request.headers.get('authorization')?.slice(-40);
   // Live connections can't send headers: they carry the user (and a one-time ticket) in the
   // address, so count them per user too, not per shared campus address.
   const live = url.pathname === '/realtime' ? url.searchParams.get('user') : url.pathname === '/board-live' || url.pathname === '/code-live' || url.pathname === '/call-live' || url.pathname === '/play-live' ? url.searchParams.get('ticket') : null;
-  const who = token ? `u:${token}` : live ? `live:${live.slice(0, 80)}` : `ip:${ip}`;
+  // M78: the account the token names, at this address (src/lib/rate-key.ts): a new token each hour
+  // keeps one count, and a made-up token gets no fresh count of its own.
+  const who = live && !request.headers.get('authorization') ? `live:${live.slice(0, 80)}` : rateKey(request.headers.get('authorization'), ip);
   const checks: Promise<{ success: boolean }>[] = [];
   if (env.IP_RATE_LIMITER) checks.push(env.IP_RATE_LIMITER.limit({ key: ip }));
   if (env.API_RATE_LIMITER) checks.push(env.API_RATE_LIMITER.limit({ key: who }));

@@ -153,9 +153,9 @@ export default function impactModule(router: Router) {
     return { ok: true };
   });
 
-  // Opened in a new tab (window.open), so the token may come as ?token= instead of a header.
-  r.get<{ id: string }>('certificates/:id/pdf', { public: true }, async ({ params, req, query }) => {
-    const viewer = await resolveUser(extractBearer(req.headers.get('authorization')) ?? (typeof query.token === 'string' ? query.token : null));
+  // M78: the sign-in token only in the header, never in the address (addresses end up in history and logs).
+  r.get<{ id: string }>('certificates/:id/pdf', { public: true }, async ({ params, req }) => {
+    const viewer = await resolveUser(extractBearer(req.headers.get('authorization')));
     try {
       const html = await impact.generateCertificateHtml(params.id, viewer);
       // Only the page's own print script may run (plus its fonts and styles).
