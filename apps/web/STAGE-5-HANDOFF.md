@@ -3461,3 +3461,36 @@ The owner: "the other agent has done few works what the council said and you can
   rule: never reuse a work number (look at other branches' notes too). STORMFALL's comments say M82.
 - **Tested:** `pnpm check`; `dto.test.ts`, the opt-in tests in `school-switches.test.ts`; the PDF
   editor with a 3-page PDF on the dev server (page and thumbnails drawn, no console errors).
+
+## M84 · The pink river on a background thread (3 Nov 2026)
+
+The owner: "upgrade every single thing… most important one ultra smoothness".
+- **Measured first** (`local:build` + `local:serve`, headless Chromium, scripts kept out of the repo):
+  the river (`LightTrail`) drew on the page's main thread on every page, about 60 frames a second;
+  at rest the main thread was 92% busy on `/login` and 68% on `/student`. This machine draws without
+  a GPU, so the numbers are inflated; the change between them is what counts. The next biggest
+  always-on cost: the planet card on the hub and the landing (`Planet`, thousands of dots a frame).
+- **The river now draws on a background thread** where the browser can (Chrome, Edge, Firefox,
+  Safari 16.4+): `LightTrail` makes its canvas, hands it to `src/components/river.worker.ts` with
+  `transferControlToOffscreen`, and only tells it what changed (size, scroll, theme, pointer,
+  hidden, "move"). The drawing moved unchanged to `src/lib/river-paint.ts` (`makeRiver`), used by
+  the worker and by the page when there's no OffscreenCanvas or the worker can't draw (it posts
+  `unsupported`). At rest: `/login` 92% → 15% busy, `/student` 68% → 6%, `/hub` 162 → 241 frames in
+  4 s. The same picture pixel for pixel (Reduce Motion still frames against the old code: no pixel
+  differs on `/hub` dark and light and the landing; sign-in ≤1/255 on some pixels).
+- **Rules for code that builds on it:** the canvas is made inside the effect (a canvas can be handed
+  over once and StrictMode runs effects twice), so don't put it in JSX. The worker can't see the
+  page: whatever the river depends on goes in a message (the scroll comes from scroll events, and
+  once after each page change through `resync`). The worker stamps the pointer with its own clock.
+  Judge it by the main thread's busy time: in headless Chromium without a GPU, `/login`'s frame
+  count fell (232 → 193) because the worker's frames share the same CPU for compositing; real
+  devices composite on the GPU.
+- **Bug fixed on the way:** whether the river keeps moving is decided when a frame runs (`tick`),
+  so a "move" that arrives before the first frame (the page went idle while the thread was still
+  starting) no longer leaves it still until the next scroll. `river.worker.test.ts` covers it.
+- `pnpm lean` counts `new URL('./x.worker.ts', import.meta.url)` as a use.
+- Sign-in's layout shift (0.083 in the first measurement) measured 0 in three runs; not reproduced.
+- **Left for later:** the planet card (next item); the page transitions' blur is the owner's chosen
+  look and runs on the compositor, untouched.
+- **Tested:** `pnpm check`; `river.worker.test.ts`; screenshots in dev and on the built site, on the
+  background thread and on the page (drawn, moving, following scroll and theme, no errors).

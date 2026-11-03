@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M83 is the latest).
+  builds on it). The newest notes are at the end (M84 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -111,8 +111,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 - **On the branch `claude/youthful-fermi-sbdtcp`, not merged:** **M82** STORMFALL on the site
   (`/play/stormfall`, computers, 16+; its 58 MB web build fetched at build time by
   `scripts/fetch-stormfall.mjs`) and Ridgeline Ops removed; **M83** zod 4, pdf.js 6, live air
-  traffic off until the owner turns it on, this list tidied.
-- **Work numbers:** the next item is **M84**. Never reuse a number: take the next one after the
+  traffic off until the owner turns it on, this list tidied; **M84** the pink river drawn on a
+  background thread (much less work for the page on every screen).
+- **Work numbers:** the next item is **M85**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
