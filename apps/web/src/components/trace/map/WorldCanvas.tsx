@@ -41,6 +41,14 @@ const K_MAX = 180; // about street-block level (0.1° ≈ 50 px)
 let cityPts: { name: string; bx: number; by: number; rank: number }[] | null = null;
 const cities = () => (cityPts ??= CITIES.map(([name, lat, lng, rank]) => { const [bx, by] = toBase(lng, lat); return { name, bx, by, rank }; }));
 const CITY_ZOOM = [0, 2.2, 4.5, 9];
+/** Name widths by font, letter spacing and text (M86): a sharp redraw measured every name again. */
+const widths = new Map<string, number>();
+const measure = (g: CanvasRenderingContext2D, text: string) => {
+  const key = `${g.font}|${g.letterSpacing}|${text}`;
+  let w = widths.get(key);
+  if (w === undefined) { if (widths.size > 4000) widths.clear(); w = g.measureText(text).width; widths.set(key, w); }
+  return w;
+};
 
 interface Props {
   label: string;
@@ -201,7 +209,7 @@ class MapEngine {
         if (px < 2200 || !c.name) continue;
         const size = Math.min(13, 8 + Math.log10(px) * 0.9);
         g.font = `600 ${size}px ui-sans-serif, system-ui, sans-serif`;
-        const text = c.name.toUpperCase(), tw = g.measureText(text).width;
+        const text = c.name.toUpperCase(), tw = measure(g, text);
         const lx = vx + c.label[0] * view2.k, ly = view2.y + c.label[1] * view2.k;
         const r: [number, number, number, number] = [lx - tw / 2 - 4, ly - size, lx + tw / 2 + 4, ly + size];
         if (taken.some((o) => r[0] < o[2] && r[2] > o[0] && r[1] < o[3] && r[3] > o[1])) continue;
@@ -216,7 +224,7 @@ class MapEngine {
         if (zoom < CITY_ZOOM[c.rank] || skip?.has(c.name)) continue;
         const x = vx + c.bx * view2.k, y = view2.y + c.by * view2.k;
         if (x < -40 || x > w + 40 || y < -10 || y > h + 10) continue;
-        const tw = g.measureText(c.name).width;
+        const tw = measure(g, c.name);
         const r: [number, number, number, number] = [x - 3, y - 7, x + 6 + tw, y + 7];
         if (taken.some((o) => r[0] < o[2] && r[2] > o[0] && r[1] < o[3] && r[3] > o[1])) continue;
         taken.push(r);

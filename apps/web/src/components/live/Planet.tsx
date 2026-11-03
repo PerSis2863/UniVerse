@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import type { Plane } from '@/lib/aircraft';
 import { reducedMotion } from '@/lib/page-transition';
+import { usePinchWheel } from '@/lib/use-pinch-wheel';
 import { cn } from '@/lib/utils';
 import { useLiveCanvas, type Frame } from './canvas';
 import { MASK, drawPlanet, landLookup, planetLinks, planetPoints, planetState, type Place } from './planet-paint';
@@ -188,11 +189,12 @@ function PagePlanet({ places, arcs, label, className, pings = true, interactive 
       for (let i = 0; i < s.xy.length / 2; i++) { const dd = Math.hypot(s.xy[i * 2] - x, s.xy[i * 2 + 1] - y); if (dd < best) { best = dd; pick = i; } }
       if (pick >= 0) onPick(pick);
     },
-    onWheel: (e: React.WheelEvent<HTMLDivElement>) => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); zoomBy(Math.exp(-e.deltaY * 0.01)); },
   } : {};
+  const box = useRef<HTMLDivElement>(null);
+  usePinchWheel(box, (e) => zoomBy(Math.exp(-e.deltaY * 0.01)), interactive);
 
   return (
-    <div className={cn('relative', interactive && 'cursor-grab active:cursor-grabbing select-none', className)} {...handlers}>
+    <div ref={box} className={cn('relative', interactive && 'cursor-grab active:cursor-grabbing select-none', className)} {...handlers}>
       <canvas ref={ref} role="img" aria-label={label} className="absolute inset-0 h-full w-full touch-pan-y" />
       {interactive && (
         <div className="absolute end-3 bottom-3 flex flex-col gap-1.5">

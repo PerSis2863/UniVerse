@@ -3530,3 +3530,35 @@ page's main thread.
   and on the built site).
 - **Tested:** `pnpm check`; `planet-paint.test.ts`; planet screenshots (still and moving) in dev and on
   the built site; the Live globe draws, turns and zooms; card sizes on six pages.
+
+## M86 · Maps open and zoom without freezing the page; a pinch zooms the map, not the page (3 Nov 2026)
+
+The owner: "…most important one ultra smoothness". Measured page switches in the app on the built
+site (click a link, watch 1.5 s).
+- **The stall:** opening Trace (it lands on Tracking) froze the page for about 0.7 s on this machine:
+  `loadWorld` projected every country outline with d3 (resampling, clipping, areas) on the page's
+  main thread, each time a page with a map opened; zooming in loaded the sharper 1:50m outlines the
+  same way (seven times bigger); the hub's planet (M85) did it too, for its land.
+- **Now on a background thread** (`src/components/trace/map/world.worker.ts`): `loadWorld` asks it for
+  a map file; it fetches it, projects it (`world-shapes.ts` `projectWorld`, no DOM) and sends back
+  plain numbers (drawing steps, points, boxes, label points, areas; transferred, not copied). The page
+  replays them into one Path2D per country (`toCountries` in `engine.ts`: the same moveTo / lineTo /
+  closePath calls d3 makes). Without workers `projectWorld` runs on the page. A failed download can now
+  be tried again (it stayed failed until a reload). `world-shapes.test.ts`: the replayed calls equal
+  d3's own drawing, country by country, to the last digit. The projection now lives in
+  `world-shapes.ts` (engine.ts re-exports `BASE`).
+- **Names measured once:** WorldCanvas keeps country and city name widths (`measure`); a sharp redraw
+  measured every name again.
+- **Bug fixed: a pinch (Ctrl/⌘ + scroll) over the city view (Trace → Tracking) or the Live globe zoomed
+  the whole page**, not the map: React's `onWheel` listens passively, so its `preventDefault` did
+  nothing ("Unable to preventDefault inside passive event listener"). New `usePinchWheel`
+  (`src/lib/use-pinch-wheel.ts`) listens on the element itself; WorldCanvas already did. **Rule:**
+  never call `preventDefault` in React's `onWheel` or `onTouchMove`; use a native listener with
+  `{ passive: false }`.
+- **Result (built site, hub → Trace, three runs):** the longest main-thread task while switching went
+  from 729 ms to 50–66 ms, the worst frame gap from 117–733 ms to 83 ms.
+- **Pictures unchanged:** the Relief map (no live dots) pixel for pixel, as are the planets; Trace's
+  maps have moving dots, so two runs of the same code differ there anyway.
+- **Tested:** `pnpm check`; `world-shapes.test.ts`; map and planet screenshots before and after;
+  the pinch on the city view and the Live globe (page zoom stopped, map zoomed, no warning); page
+  switches on the built site.
