@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M87 is the latest).
+  builds on it). The newest notes are at the end (M88 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -115,8 +115,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   background thread (much less work for the page on every screen); **M85** the planet too (hub and
   landing), and live cards drawn at their real size; **M86** maps open and zoom without freezing the
   page (outlines worked out on a background thread), a pinch zooms the map, not the page; **M87**
-  safer libraries (32 known issues → 12, none critical), wrangler 4.151.3, checks on every push.
-- **Work numbers:** the next item is **M88**. Never reuse a number: take the next one after the
+  safer libraries (32 known issues → 12, none critical), wrangler 4.151.3, checks on every push;
+  **M88** an API request uses about a quarter of the CPU it did (Prisma's query compiler shared).
+- **Work numbers:** the next item is **M89**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
@@ -248,6 +249,8 @@ page with a `[param]` is built once as `/x/open` and answered for every value). 
 - Firebase pop-up sign-in only through `popupSignIn` (`src/lib/firebase.ts`); the phone sign-in's
   reCAPTCHA box stays outside the steps (`PhoneAuthFlow.tsx`).
 - The offline service worker is registered by `UpdateNotifier` (the PWA plugin's `register` is off).
+- Prisma is patched (`patches/@prisma__client@6.19.3.patch`, M88: one query compiler per Worker copy);
+  keep one client per request, and carry the patch over when upgrading Prisma.
 - KaTeX: import `katex/dist/katex.mjs`. Attendance rows are stored at midnight UTC of the class day.
 - `pkill -f <pattern>` can match its own shell: kill by port (`lsof -ti tcp:3000`) instead.
 

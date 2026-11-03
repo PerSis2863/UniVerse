@@ -24,6 +24,9 @@ patchedDependencies:
   '@excalidraw/excalidraw@0.18.1':
     hash: c7772145af8058847d6e5c6fe107279a787d2da82be437a204dff3fbaf8049ef
     path: patches/@excalidraw__excalidraw@0.18.1.patch
+  '@prisma/client@6.19.3':
+    hash: 90ac569286bbb5b1a685fad2781978ea036febbd34f5901ffaf3d267fc5a58a7
+    path: patches/@prisma__client@6.19.3.patch
 
 importers:
 
@@ -88,7 +91,7 @@ importers:
         version: 6.19.3
       '@prisma/client':
         specifier: ^6.19.3
-        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+        version: 6.19.3(patch_hash=90ac569286bbb5b1a685fad2781978ea036febbd34f5901ffaf3d267fc5a58a7)(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
       '@sapphi-red/web-noise-suppressor':
         specifier: 0.4.1
         version: 0.4.1
@@ -9967,7 +9970,7 @@ snapshots:
       '@prisma/driver-adapter-utils': 6.19.3
       ky: 1.7.5
 
-  '@prisma/client@6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)':
+  '@prisma/client@6.19.3(patch_hash=90ac569286bbb5b1a685fad2781978ea036febbd34f5901ffaf3d267fc5a58a7)(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)':
     optionalDependencies:
       prisma: 6.19.3(typescript@5.9.3)
       typescript: 5.9.3

@@ -38,7 +38,8 @@
       "sharp@<0.35.5": "0.35.5"
     },
     "patchedDependencies": {
-      "@excalidraw/excalidraw@0.18.1": "patches/@excalidraw__excalidraw@0.18.1.patch"
+      "@excalidraw/excalidraw@0.18.1": "patches/@excalidraw__excalidraw@0.18.1.patch",
+      "@prisma/client@6.19.3": "patches/@prisma__client@6.19.3.patch"
     }
   },
   "packageManager": "pnpm@10.33.0"

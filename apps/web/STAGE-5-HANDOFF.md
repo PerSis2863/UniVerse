@@ -3586,3 +3586,38 @@ The owner: "…security, development, testing…".
 - **Tested:** `pnpm install`, `pnpm audit`, `pnpm check`; `local:build` + `local:serve` on the new
   runtime: sign-in, the hub, Trace's tracking map, the Live globe and a whiteboard open and draw with
   no errors.
+
+## M88 · Less CPU per request: one Prisma query compiler per Worker copy (3 Nov 2026)
+
+The owner: "the cpu time usage is alot can you see why is it happening" (Cloudflare, since 28 Oct:
+3.62k requests, 465k CPU ms, about 128 ms a request; a typical Worker uses ~2 ms, one that renders
+pages 10–20 ms). Only 1.5% of what the $5 plan includes, but far too much per request.
+- **Measured** on `local:build` + `local:serve` (CPU per request from the kernel's thread times of
+  workerd; CPU profiles through wrangler's inspector on :9229, which wants the header
+  `Origin: https://devtools.devprod.cloudflare.dev`): a page as a browser asks for it comes from the
+  edge cache, ~10 ms; the 15-minute cron ~17 ms; **an API request through Next.js and Prisma ~90 ms,
+  half of it Prisma building its query compiler again** (`new QueryCompiler({ datamodel })`: the
+  whole 323-model schema parsed in WASM), because every request makes its own client (`src/lib/db.ts`,
+  on purpose: a shared client made requests wait on each other's promises). The first request in a
+  fresh copy of the Worker ~450 ms (Next.js code loading, Prisma's WASM, the compiler); few visitors
+  means many fresh copies.
+- **Fix:** `patches/@prisma__client@6.19.3.patch` (pnpm patch, `patchedDependencies` in the root
+  `package.json`): the client engine keeps one compiler per Worker copy (`globalThis.__prismaQC`, by
+  compiler class, provider, connection info and datamodel). Safe to share: compiling is synchronous
+  and does no I/O, so no request waits on another's promise; each client still has its own D1
+  executor. One client's disconnect never frees it (`free` is a no-op on it); a Prisma panic drops it.
+  Result on this machine: an API request ~90 → ~20–25 ms of CPU; 60 requests at once from three
+  accounts answer exactly as one at a time; reads and writes checked.
+- **Rules:** keep one Prisma client per request (db.ts). Upgrading Prisma means carrying the patch
+  over (pnpm stops on a patch for a version that's gone; `src/lib/prisma-patch.test.ts` fails if the
+  runtime lacks it), or checking whether Prisma now shares the compiler itself.
+- **Also:** GitHub's first Checks run failed: install scripts are off in this repository (`.npmrc`
+  `ignore-scripts=true`), so the Prisma client was never generated there; the workflow now runs
+  `prisma generate` itself (an M87 fix commit), and the run is green.
+- **Not changed:** a fresh copy's first request still loads Next.js (~90 ms here) and builds the
+  compiler once (~70 ms); avoiding that would mean changing how OpenNext starts. Pages were already
+  edge-cached.
+- **To see where CPU goes on the live site:** Cloudflare → Workers & Pages → universe-web →
+  Observability → events sorted by CPU time.
+- **Tested:** `pnpm check`; `prisma-patch.test.ts`; CPU before and after on the built Worker; 60
+  requests at once; a board and a Green action created and deleted.
