@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M88 is the latest).
+  builds on it). The newest notes are at the end (M89 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -88,7 +88,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 This is only the map: each item has a note in `apps/web/STAGE-5-HANDOFF.md` (traps, rules for code
 that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 
-- **On `main`** (merged through PR #105, 3 Nov): everything through **M81**.
+- **On `main`** (merged through PR #107, 3 Nov): everything through **M88** (M82–M88 are listed below).
   - **Look and motion:** dark mode in the "Globynk" navy and Aqua Jade, light mode in Marshmallow
     White, Galactic Violet and Bubblegum Pink (M52–M57a, see §8); a less AI-looking site (M58); the
     pink river that nothing slows but Reduce Motion (M56, M56a); motion that answers the pointer (M41);
@@ -108,7 +108,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   - **Security and platform:** the security review and its fixes (M62, M78; migration 0191),
     Next.js 16.4.4 with the Cloudflare adapter 1.20.15, always moved together (M77), "too many SQL
     variables" fixed for every list (M73), 500 people a month on the $5 plan (M28).
-- **On the branch `claude/youthful-fermi-sbdtcp`, not merged:** **M82** STORMFALL on the site
+- **Merged in PR #106 (deploy fixed in #107: no source map upload, wrangler 4.150+ uploads them by
+  default and ours are over Cloudflare's 60 MiB):** **M82** STORMFALL on the site
   (`/play/stormfall`, computers, 16+; its 58 MB web build fetched at build time by
   `scripts/fetch-stormfall.mjs`) and Ridgeline Ops removed; **M83** zod 4, pdf.js 6, live air
   traffic off until the owner turns it on, this list tidied; **M84** the pink river drawn on a
@@ -117,7 +118,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   page (outlines worked out on a background thread), a pinch zooms the map, not the page; **M87**
   safer libraries (32 known issues → 12, none critical), wrangler 4.151.3, checks on every push;
   **M88** an API request uses about a quarter of the CPU it did (Prisma's query compiler shared).
-- **Work numbers:** the next item is **M89**. Never reuse a number: take the next one after the
+- **On the branch `claude/youthful-fermi-sbdtcp`, not merged:** **M89** busy buttons keep their size,
+  loading placeholders stay smooth while a page loads.
+- **Work numbers:** the next item is **M90**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,

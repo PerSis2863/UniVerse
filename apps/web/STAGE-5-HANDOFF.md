@@ -3621,3 +3621,41 @@ pages 10–20 ms). Only 1.5% of what the $5 plan includes, but far too much per 
   Observability → events sorted by CPU time.
 - **Tested:** `pnpm check`; `prisma-patch.test.ts`; CPU before and after on the built Worker; 60
   requests at once; a board and a Green action created and deleted.
+
+## M89 · Buttons and loading: busy buttons keep their size, placeholders stay smooth under load (3 Nov 2026)
+
+The owner: "please work on buttons also, i want my site to be ultra smooth in every aspect even in
+loading of something or screen".
+- **Measured first.** On the built site I clicked 31 tabs, menus and pop-up openers on nine pages
+  and read their Event Timing. Click handlers take 1–4 ms. With the river and planet paused (on this
+  machine they share the CPU, as it has no GPU), every control shows its result in under 100 ms
+  (slowest 96 ms). Already fine:
+  - iPhones show pressed states (a page-wide touch listener in `SheetGestures`);
+  - the font is preloaded;
+  - a page change shows its skeleton only after 180 ms.
+- **Busy buttons keep their size** (`globals.css`, `[aria-busy="true"]`). The spinner now sits over
+  the label instead of beside it. The label stays hidden but is still read out; icons are hidden.
+  A button that starts saving no longer grows and pushes its neighbours (checked: same widths and
+  positions before and while busy, light and dark). The rules are in the base layer, so a button's
+  own position utility (e.g. `absolute`) still wins.
+- **Placeholders shimmer on the compositor.** `.skeleton` used to sweep its background
+  (`background-position`), so the page's own thread repainted every placeholder on every frame. While
+  a page was busy loading (thread blocked 250 ms of every 300), the shimmer fell to ~20 frames a
+  second. It is now a `::after` layer that only moves (`transform`), with the same band and timing;
+  under the same load it stays at ~60 frames a second. All ~230 placeholders get it (skeleton
+  screens, page-change skeletons, lists). The app's own Reduce Motion setting now stills them too.
+- **Rules:** a placeholder is `.skeleton` and has no `::after` of its own. Its shimmer layer needs
+  the placeholder positioned (`:where(.skeleton) { position: relative }` in the base layer, so
+  `absolute` still wins) and clipped (`overflow: hidden`).
+- **Deploy fix (PR #107):** #106's deploy was refused: "encoded sourcemaps must not exceed 60 MiB
+  (received 97543 KiB)". wrangler uploads source maps by default from 4.150 (M87 moved it to
+  4.151.3). `upload_source_maps: false` in `wrangler.jsonc` restores the earlier deploys' behaviour;
+  a dry run uploads 49 MB (11 MB gzipped) and no maps.
+- **Left as is:**
+  - the menu fold animates real widths (by design, M33; used now and then);
+  - the river's and planet's frames (the owner's rule, M56a).
+- **Tested:**
+  - `pnpm check`;
+  - busy-button sizes and screenshots in both themes;
+  - the shimmer under load (frames that moved in 3 s: 56–62 before, 188–193 after);
+  - 31 controls clicked on the built site.

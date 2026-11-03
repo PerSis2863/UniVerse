@@ -966,17 +966,25 @@ html, body { overflow-x: clip; max-width: 100%; }
     opacity: 0.55;
   }
   :where(button, [role="button"])[aria-busy="true"] { cursor: progress; }
-  /* While a button is busy (aria-busy), show a spinner unless it already draws its own. */
+  /* While a button is busy (aria-busy), a spinner takes the label's place unless it draws its own.
+     M89: it sits over the label (hidden, still read out) instead of beside it, so the button keeps
+     its size and nothing next to it jumps. Here in the base layer, a button's own position wins. */
+  :where(button, [role="button"])[aria-busy="true"]:not(:has(.animate-spin)) { position: relative; -webkit-text-fill-color: transparent; }
+  :where(button, [role="button"])[aria-busy="true"]:not(:has(.animate-spin)) > * { opacity: 0; }
   :where(button, [role="button"])[aria-busy="true"]:not(:has(.animate-spin))::before {
     content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
     width: 1em;
     height: 1em;
-    flex-shrink: 0;
     border-radius: 9999px;
     border: 2px solid currentColor;
     border-right-color: transparent;
     animation: btn-spin 0.7s linear infinite;
   }
+  /* Placeholders hold their shimmer layer (a placeholder's own position, e.g. absolute, wins). */
+  :where(.skeleton) { position: relative; }
   :where(button, [role="button"]) svg { flex-shrink: 0; }
 
   /* Visible focus ring for keyboard users only */
@@ -1007,17 +1015,28 @@ html, body { overflow-x: clip; max-width: 100%; }
   }
 }
 
-/* Skeleton shimmer: a soft light sweep, like iOS placeholders */
+/* Skeleton shimmer: a soft light sweep, like iOS placeholders. M89: the sweep is a layer that only
+   moves (transform), so the compositor keeps it smooth while the page is busy loading; sweeping the
+   background repainted every placeholder each frame and stuttered to ~20 fps under load. */
 .skeleton {
   background-color: rgb(148 163 184 / 0.16);
+  overflow: hidden;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 200%;
+  pointer-events: none;
   background-image: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.45) 50%, transparent 80%);
-  background-size: 200% 100%;
-  background-repeat: no-repeat;
+  transform: translateX(-75%);
   animation: skeleton-sweep 1.4s ease-in-out infinite;
 }
-.dark .skeleton { background-color: rgb(255 255 255 / 0.05); background-image: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.06) 50%, transparent 80%); }
-@keyframes skeleton-sweep { from { background-position: 150% 0; } to { background-position: -50% 0; } }
-@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; background-image: none; } }
+.dark .skeleton { background-color: rgb(255 255 255 / 0.05); }
+.dark .skeleton::after { background-image: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.06) 50%, transparent 80%); }
+@keyframes skeleton-sweep { from { transform: translateX(-75%); } to { transform: translateX(25%); } }
+@media (prefers-reduced-motion: reduce) { .skeleton::after { display: none; } }
+html.reduce-motion .skeleton::after { display: none; }
 /* A loading placeholder fades in instead of popping (a quick 140 ms, so it never feels slower). */
 /* Placeholders come in from half visible: from nothing, the first frames looked like a blank page. */
 @keyframes skeleton-in { from { opacity: 0.5; } }
@@ -1823,9 +1842,9 @@ html.reduce-motion .flow-comet { display: none; }
 .spark-burst span { position: absolute; left: 0; top: 0; width: 5px; height: 5px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
 .spark-burst i { position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid rgb(255 192 230 / 0.8); box-shadow: 0 0 14px rgb(255 159 220 / 0.5); }
 /* Loading placeholders shimmer in the two tones. */
-.skeleton { background-image: linear-gradient(100deg, transparent 20%, rgb(177 168 167 / 0.38) 45%, rgb(255 192 230 / 0.3) 55%, transparent 80%); }
-.dark .skeleton { background-image: linear-gradient(100deg, transparent 20%, rgb(116 110 122 / 0.1) 45%, rgb(255 159 220 / 0.08) 55%, transparent 80%); }
-@media (prefers-reduced-motion: reduce) { .beam::after, .beam-once::after, .bar-glint::after { animation: none; } .beam-once::after { opacity: 0; } .skeleton { background-image: none; } }
+.skeleton::after { background-image: linear-gradient(100deg, transparent 20%, rgb(177 168 167 / 0.38) 45%, rgb(255 192 230 / 0.3) 55%, transparent 80%); }
+.dark .skeleton::after { background-image: linear-gradient(100deg, transparent 20%, rgb(116 110 122 / 0.1) 45%, rgb(255 159 220 / 0.08) 55%, transparent 80%); }
+@media (prefers-reduced-motion: reduce) { .beam::after, .beam-once::after, .bar-glint::after { animation: none; } .beam-once::after { opacity: 0; } }
 html.reduce-motion :is(.beam, .beam-once, .bar-glint)::after { animation: none; }
 html.reduce-motion .beam-once::after { opacity: 0; }
 
