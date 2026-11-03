@@ -36,6 +36,11 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # Install scripts are off (.npmrc ignore-scripts), so the Prisma client is generated here, as
+      # the build does.
+      - name: Prisma client
+        run: PRISMA_GENERATE_SKIP_AUTOINSTALL=1 pnpm exec prisma generate
+
       - name: pnpm check
         env:
           NODE_OPTIONS: --max-old-space-size=8192
