@@ -3323,3 +3323,15 @@ and "people must be signed in to open a shared link"): "please do both of this a
   twice in a row: a view link opens signed out (axe), the copy link, an edit link needs sign-in (401),
   two people edit one mind map and each sees the other's change, stop sharing 404s both links;
   `create-tools-ui.mjs --old` (the tools after the `useKept` change).
+
+## M77: Next.js 16.4.4 and the Cloudflare adapter 1.20.15 (security update, the council's first item)
+
+- `next` and `eslint-config-next` 16.4.4, `@opennextjs/cloudflare` ^1.20.15, together. **Trap:** Next.js
+  16.4.x with the older adapter built but answered 500 (`loadManifest` / preview props): always move
+  the two together.
+- The build also refreshed `guide-data.gen.ts` (the explainer board's route list now has M75/M76's
+  routes); that file is meant to be committed.
+- **Tested:** `pnpm check` (1,427 tests, lean 0); `pnpm local:build` + `local:serve`; the full crawl
+  196/204 clean (the 8 are the known ones: Trace's no-brand 403s for a student, the calendar link's
+  503 without `SESSION_SECRET`, `/parent`'s outside script unreachable from the sandbox);
+  `create-saves-ui.mjs` on the built Worker (save, view link signed out, live editing, stop, delete).

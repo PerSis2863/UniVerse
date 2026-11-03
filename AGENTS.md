@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M76 is the latest).
+  builds on it). The newest notes are at the end (M77 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -138,6 +138,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   **M74**: every Create tool upgraded (focus, previous/next, copy link, drop a file, text kept) and 56 more tools (137 in all; `WordTools`, `OrganiseTools`, `ClassTools`, `MoneyTools`, `MediaTools`, `DevTools`; logic `src/lib/more-tools.ts`, `elements.ts`).
   **M75**: tools save to the account and share by link (migration 0189 `tool_saves`, `Saves.tsx`, `KeptScope`); 55 more tools (192 in all; `PenTools`, `LifeTools`, `ScienceTools`, `CalcTools`, `StageTools`, `ArtTools`, `WebTools`; logic `src/lib/tools-5.ts`).
   **M76**: view links open without sign-in (`/s/<token>`) and edit links edit live together (migration 0190; `useLive`, `KeptSyncProvider`, `registry.tsx`).
+  **M77**: Next.js 16.4.4 with the Cloudflare adapter 1.20.15 (security update; always move the two together).
   **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all
