@@ -2,10 +2,10 @@
 
 import dynamic from 'next/dynamic';
 import { m as motion } from 'framer-motion';
-import { BadgeCheck, Camera, Flame, HandHeart, Handshake, Lock, Truck } from 'lucide-react';
+import { BadgeCheck, Camera, Crosshair, Flame, HandHeart, Handshake, Lock, Truck } from 'lucide-react';
 import { GameIcon } from '@/components/play/GameIcon';
 import { BADGES, weeklyChallenge } from '@/lib/green';
-import { GAMES, type GameId } from '@/lib/play';
+import { GAMES, STORMFALL, type GameId } from '@/lib/play';
 import { useNow } from '@/lib/use-now';
 import { Accent, EASE, Reveal, glass } from './bits';
 
@@ -155,7 +155,7 @@ export function GreenMore() {
 
 const CODE = 'K7Q2MX';
 const SEATS = ['#6366f1', '#fe81d1', '#f97316', '#10b981', '#eab308', '#22d3ee', '#8c9bff', '#f43f5e'];
-const WORLDS: GameId[] = ['obby', 'orbit', 'ops', 'night'];
+const WORLDS: GameId[] = ['obby', 'orbit', 'night'];
 
 export function PlayMore() {
   return (
@@ -200,6 +200,18 @@ export function PlayMore() {
               </Reveal>
             );
           })}
+          {/* The fourth world: STORMFALL, the Unity battle royale on computers (src/components/play/Stormfall.tsx). */}
+          <Reveal delay={0.1 + WORLDS.length * 0.06} className="h-full">
+            <div className="relative h-full overflow-hidden rounded-3xl p-6 bg-white/[0.04] ring-1 ring-white/[0.08]">
+              <span aria-hidden className="absolute -end-12 -top-12 w-40 h-40 rounded-full blur-3xl opacity-25 bg-amber-500" />
+              <div className="relative flex items-start justify-between gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-500 text-white"><Crosshair className="h-5 w-5" aria-hidden /></span>
+                <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-xs text-white">{STORMFALL.age}+</span>
+              </div>
+              <h3 className="relative mt-5 text-lg font-bold text-white">{STORMFALL.name}</h3>
+              <p className="relative mt-1.5 text-zinc-300">Battle royale and undead survival, on computers.</p>
+            </div>
+          </Reveal>
         </div>
         <Reveal delay={0.3}><p className="mt-6 flex items-center gap-2 text-sm text-zinc-400"><Lock className="w-4 h-4" aria-hidden />Rated worlds check your age.</p></Reveal>
       </Section>

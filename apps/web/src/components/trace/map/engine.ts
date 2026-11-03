@@ -1,14 +1,14 @@
-import { geoGraticule10, geoMercator, geoPath } from 'd3-geo';
-import { feature } from 'topojson-client';
-import type { GeometryCollection, Topology } from 'topojson-specification';
+import { geoGraticule10, geoPath } from 'd3-geo';
+import type { Topology } from 'topojson-specification';
+import { BASE, projection, projectWorld, type WorldShapes } from './world-shapes';
 
 // The Trace maps' drawing engine (no map service, no tiles): Natural Earth country outlines
 // (world-atlas, ISC; public/geo) projected once with Web Mercator into a 1024 × 1024 "base" square
 // and kept as Path2D objects. The view is a scale and an offset over that square, so panning and
 // zooming never re-project anything: the canvas just draws the same paths under a new transform.
+// M86: the projecting happens on a background thread (world.worker.ts); the page only replays it.
 
-export const BASE = 1024;
-const projection = geoMercator().scale(BASE / (2 * Math.PI)).translate([BASE / 2, BASE / 2]).precision(0.2);
+export { BASE } from './world-shapes';
 
 /** Longitude/latitude to base coordinates. */
 export const toBase = (lng: number, lat: number): [number, number] => projection([lng, Math.max(-84, Math.min(84, lat))]) as [number, number];
@@ -18,23 +18,39 @@ export const fromBase = (x: number, y: number): [number, number] => projection.i
 export interface Country { name: string; path: Path2D; box: [number, number, number, number]; label: [number, number]; area: number }
 export interface View { x: number; y: number; k: number }
 
+/** The outlines worked out on a background thread (or here, where there is none). */
+function shapes(url: string): Promise<WorldShapes> {
+  const here = () => fetch(url).then((r) => r.json()).then((topo: Topology) => projectWorld(topo));
+  if (typeof Worker === 'undefined') return here();
+  return new Promise<WorldShapes>((resolve, reject) => {
+    const w = new Worker(new URL('./world.worker.ts', import.meta.url));
+    w.onmessage = (e: MessageEvent<WorldShapes | { error: string }>) => { w.terminate(); if ('error' in e.data) reject(new Error(e.data.error)); else resolve(e.data); };
+    w.onerror = (e) => { w.terminate(); reject(new Error(e.message)); };
+    w.postMessage({ url });
+  }).catch(here);
+}
+
+/** The drawing steps back into one Path2D per country (the same calls d3 makes when it draws). */
+function toCountries(s: WorldShapes): Country[] {
+  let step = 0, pt = 0;
+  return s.names.map((name, i) => {
+    const path = new Path2D();
+    for (; step < s.ends[i]; step++) {
+      const k = s.steps[step];
+      if (k === 2) path.closePath();
+      else { if (k === 0) path.moveTo(s.points[pt], s.points[pt + 1]); else path.lineTo(s.points[pt], s.points[pt + 1]); pt += 2; }
+    }
+    return { name, path, box: [s.boxes[i * 4], s.boxes[i * 4 + 1], s.boxes[i * 4 + 2], s.boxes[i * 4 + 3]], label: [s.labels[i * 2], s.labels[i * 2 + 1]], area: s.areas[i] };
+  });
+}
+
 const cache = new Map<string, Promise<Country[]>>();
 /** The countries at 1:110m (fast, for the world) or 1:50m (sharper, loaded when zoomed in). */
 export function loadWorld(detail: '110m' | '50m'): Promise<Country[]> {
   if (!cache.has(detail)) {
-    cache.set(detail, fetch(`/geo/world-${detail}.json`).then((r) => r.json()).then((topo: Topology) => {
-      const fc = feature(topo, topo.objects.countries as GeometryCollection<{ name?: string }>);
-      const bounds = geoPath(projection);
-      return fc.features.filter((f) => f.id !== '010').map((f) => {
-        const path = new Path2D();
-        geoPath(projection, path as unknown as CanvasRenderingContext2D)(f);
-        const [[x0, y0], [x1, y1]] = bounds.bounds(f);
-        // The label sits on the country's biggest piece (France's name in France, not off Guiana).
-        const parts = f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates.map((coordinates) => ({ type: 'Polygon' as const, coordinates })) : [f.geometry];
-        const main = parts.reduce((a, b) => (bounds.area(b) > bounds.area(a) ? b : a));
-        return { name: f.properties?.name ?? '', path, box: [x0, y0, x1, y1] as [number, number, number, number], label: bounds.centroid(main) as [number, number], area: bounds.area(main) };
-      });
-    }));
+    const got = shapes(new URL(`/geo/world-${detail}.json`, location.href).href).then(toCountries);
+    got.catch(() => cache.delete(detail)); // a failed download can be tried again
+    cache.set(detail, got);
   }
   return cache.get(detail)!;
 }

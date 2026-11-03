@@ -6,7 +6,7 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ArrowDown, ArrowUp, ClipboardList, Download, Eraser, FilePlus2, Highlighter, Loader2, PenLine, RotateCw, Scissors, Signature, Square, Trash2, Type, Undo2, X } from 'lucide-react';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { haptic } from '@/lib/haptics';
-import { openPdfData } from '@/lib/pdf';
+import { closePdf, openPdfData } from '@/lib/pdf';
 import { markAt, movePage, parseRanges, simplify, toFraction, turn, type Mark, type PageRef } from '@/lib/pdf-edit';
 import { cn } from '@/lib/utils';
 import { cleanValues, fillForm, readForm, type FormField, type FormValues } from '@/lib/pdf-form';
@@ -130,6 +130,9 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const addRef = useRef<HTMLInputElement>(null);
   const sourceCount = useRef(0);
+  // Open PDFs, closed when the editor closes (pdf.js keeps a worker side for each).
+  const opened = useRef<PDFDocumentProxy[]>([]);
+  useEffect(() => () => { for (const d of opened.current) void closePdf(d); }, []);
   const page = pages[current];
   const allMarks = pages.flatMap((p) => p.marks);
   const images = useImages(allMarks);
@@ -139,6 +142,7 @@ export function PdfEditor({ file, onClose }: { file: File; onClose: () => void }
     const bytes = await f.arrayBuffer();
     if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) {
       const doc = await openPdfData(bytes.slice(0));
+      opened.current.push(doc);
       const idx = sourceCount.current++;
       setSources((s) => [...s, { kind: 'pdf', bytes, doc }]);
       setPages((p) => [...p, ...Array.from({ length: Math.min(doc.numPages, 300) }, (_, i) => ({ id: nid(), source: idx, index: i, rotation: 0 as const, marks: [] }))]);

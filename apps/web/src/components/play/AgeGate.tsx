@@ -14,18 +14,23 @@ import { spring } from '@/lib/motion';
 const KEY = (age: number) => `uv-age-ok-${age}`;
 const confirmed = (age: number) => { try { return localStorage.getItem(KEY(age)) === '1'; } catch { return false; } };
 
+/** What a rating needs: the game's name, its age and what earns it (a UniVerse Play game or STORMFALL). */
+export interface Rated { name: string; age?: number; rated?: string }
+
 /** Runs an action once the player may play the game: at once, after confirming, or never. */
-export function useAgeGate(game: GameId, age: number | null | undefined) {
+export const useAgeGate = (game: GameId, age: number | null | undefined) => useRatingGate(GAMES[game], age, tooYoung(game, age ?? null));
+
+/** The same gate for any rated game. */
+export function useRatingGate(info: Rated, age: number | null | undefined, blocked = !!info.age && age != null && age < info.age) {
   const [ask, setAsk] = useState<null | (() => void)>(null);
-  const rating = GAMES[game].age;
-  const blocked = tooYoung(game, age ?? null);
+  const rating = info.age;
   const guard = (action: () => void) => {
     if (!rating || (!blocked && (age != null || confirmed(rating)))) action();
     else setAsk(() => action);
   };
   const dialog = typeof document === 'undefined' ? null : createPortal(
     <AnimatePresence>
-      {ask && rating && <AgeDialog game={game} blocked={blocked} onYes={() => { try { localStorage.setItem(KEY(rating), '1'); } catch { /* private mode */ } const a = ask; setAsk(null); a(); }} onNo={() => setAsk(null)} />}
+      {ask && rating && <AgeDialog info={info} blocked={blocked} onYes={() => { try { localStorage.setItem(KEY(rating), '1'); } catch { /* private mode */ } const a = ask; setAsk(null); a(); }} onNo={() => setAsk(null)} />}
     </AnimatePresence>,
     document.body,
   );
@@ -41,8 +46,7 @@ export function AgeBadge({ game, className = '' }: { game: GameId; className?: s
   return <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-black tabular-nums ring-1 ${r >= 18 ? 'bg-red-600 text-white ring-red-700' : r >= 16 ? 'bg-orange-700 text-white ring-orange-800' : 'bg-zinc-800 text-white ring-zinc-900'} ${className}`} title={`Rated ${r}+: ${GAMES[game].rated}`}>{r}+</span>;
 }
 
-function AgeDialog({ game, blocked, onYes, onNo }: { game: GameId; blocked: boolean; onYes: () => void; onNo: () => void }) {
-  const info = GAMES[game];
+function AgeDialog({ info, blocked, onYes, onNo }: { info: Rated; blocked: boolean; onYes: () => void; onNo: () => void }) {
   return (
     <motion.div className="fixed inset-0 z-[170] grid place-items-center bg-black/70 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onNo}>
       <motion.div role="alertdialog" aria-modal="true" aria-labelledby="age-title" aria-describedby="age-text" initial={{ opacity: 0, scale: 0.94, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }} transition={spring.snappy}

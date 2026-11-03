@@ -9,4 +9,5 @@ run('npx', ['wrangler', 'd1', 'migrations', 'apply', 'universe-db', '--local']);
 run('node', ['scripts/local/test-accounts.mjs']);
 run('node', ['scripts/gen-owner-schema.mjs']);
 run('node', ['scripts/gen-api-routes.mjs']);
+run('node', ['scripts/fetch-stormfall.mjs']); // STORMFALL's web build (58 MB, once)
 console.log('\n✔ Ready. Next: pnpm local:build, then pnpm local:serve (see AGENTS.md).');

@@ -12,6 +12,8 @@ export interface FeatureSwitch {
   paths?: RegExp;
   /** Methods that still work while it's off (e.g. deleting your own message). */
   allow?: string[];
+  /** Off until the owner turns it on (stored as "<id>:on"); everything else is on until turned off. */
+  optIn?: boolean;
 }
 
 export const FEATURE_SWITCHES: FeatureSwitch[] = [
@@ -23,11 +25,15 @@ export const FEATURE_SWITCHES: FeatureSwitch[] = [
   { id: 'groups', label: 'Groups and posts', hint: 'Nobody can create, join or post in groups.', paths: /^\/api\/(groups\/.*|core\/groups(\/.*)?)$/ },
   { id: 'boards', label: 'Whiteboards', hint: 'Whiteboards become view-only.', paths: /^\/api\/(boards(\/.*)?|courses\/[^/]+\/board)$/ },
   { id: 'signups', label: 'New sign-ups', hint: 'New people can’t finish creating an account. Existing accounts are fine.', paths: /^\/api\/core\/auth\/register$/ },
-  { id: 'aircraft', label: 'Live air traffic', hint: 'Trace’s Live globe stops showing planes (data from the OpenSky Network).', paths: /^\/api\/core\/trace\/aircraft$/ },
+  // Off until turned on (M83): OpenSky's free feed is for non-commercial use, and Trace sells plans.
+  { id: 'aircraft', label: 'Live air traffic', hint: 'Planes on Trace’s Live globe, from the OpenSky Network. Off until you turn it on: their free feed is for non-commercial use, so ask OpenSky first.', paths: /^\/api\/core\/trace\/aircraft$/, optIn: true },
   { id: 'payments', label: 'Payments', hint: 'Nobody can start a new payment or subscription.', paths: /^\/api\/(billing\/checkout|create-checkout-session)$/ },
 ];
 
 const IDS = new Set(FEATURE_SWITCHES.map((f) => f.id));
+const OPT_IN = FEATURE_SWITCHES.filter((f) => f.optIn).map((f) => f.id);
+/** Whether a feature is off until turned on (it isn't news that it's off; no per-school switch). */
+export const isOptIn = (id: string) => OPT_IN.includes(id);
 
 // ─── Your emails: how often each owner email comes ─────────────────────────────────────────────
 // Stored in the same server_control.switches list as "email:<id>=<every>" (no database change).
@@ -76,12 +82,17 @@ export function emailDue(every: EmailEvery, now = new Date()): { due: boolean; d
 
 /** The switched-off feature ids stored in server_control.switches (a JSON list). */
 export function parseSwitches(raw: string | null | undefined): string[] {
-  try {
-    const list: unknown = raw ? JSON.parse(raw) : [];
-    return Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string' && IDS.has(x)) : [];
-  } catch {
-    return [];
-  }
+  let list: unknown = [];
+  try { list = raw ? JSON.parse(raw) : []; } catch { /* nothing stored */ }
+  const items = Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string') : [];
+  // Opt-in features are off unless "<id>:on" is stored.
+  return [...items.filter((x) => IDS.has(x) && !OPT_IN.includes(x)), ...OPT_IN.filter((id) => !items.includes(`${id}:on`))];
+}
+
+/** The features the console shows as off, as it sends them: taken literally (an opt-in feature left
+ *  out of the list is one the owner turned on). */
+export function offFromList(list: unknown): string[] {
+  return Array.isArray(list) ? [...new Set(list.filter((x): x is string => typeof x === 'string' && IDS.has(x)))] : [];
 }
 
 // ─── Per school: a feature off for one organisation only ───────────────────────────────────────
@@ -150,7 +161,8 @@ export function schoolOff(orgs: Record<string, string[]>, rollouts: Record<strin
 /** The whole stored list from its parts (null when empty). */
 export function composeSwitches(off: string[], emails: string[], orgs: Record<string, string[]>, rollouts: Record<string, number>): string | null {
   const roll = Object.entries(rollouts).filter(([id, pct]) => IDS.has(id) && Number.isInteger(pct) && pct >= 0 && pct < 100).map(([id, pct]) => `rollout:${id}=${pct}`);
-  const list = [...off, ...emails, ...orgSwitchEntries(orgs), ...roll];
+  const plain = off.filter((id) => !OPT_IN.includes(id)), optOn = OPT_IN.filter((id) => !off.includes(id)).map((id) => `${id}:on`);
+  const list = [...plain, ...optOn, ...emails, ...orgSwitchEntries(orgs), ...roll];
   return list.length ? JSON.stringify(list) : null;
 }
 

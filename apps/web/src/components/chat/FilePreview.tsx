@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { m as motion } from 'framer-motion';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { Download, Eye, FileCode2, FileText, Loader2, Minus, Plus, X } from 'lucide-react';
-import { drawPage, firstPage, openPdf, previewKind } from '@/lib/pdf';
+import { closePdf, drawPage, firstPage, openPdf, previewKind } from '@/lib/pdf';
 import { useLowData } from '@/store/low-data';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -84,8 +84,8 @@ export function PdfViewer({ url, name, onClose }: { url: string; name: string; o
   useEffect(() => {
     let gone = false;
     let opened: PDFDocumentProxy | null = null;
-    openPdf(url).then((d) => { if (gone) { void d.destroy(); return; } opened = d; setDoc(d); }).catch(() => { if (!gone) setFailed(true); });
-    return () => { gone = true; void opened?.destroy(); };
+    openPdf(url).then((d) => { if (gone) { void closePdf(d); return; } opened = d; setDoc(d); }).catch(() => { if (!gone) setFailed(true); });
+    return () => { gone = true; void closePdf(opened); };
   }, [url]);
   useEffect(() => {
     const el = scroller.current;

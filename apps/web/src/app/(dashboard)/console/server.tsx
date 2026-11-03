@@ -783,7 +783,7 @@ function SchoolSwitchesCard({ switches, orgs, onSaved }: { switches: string | nu
         </select>
       </label>
       <ul className="grid sm:grid-cols-2 gap-2">
-        {FEATURE_SWITCHES.filter((f) => f.id !== 'signups').map((f) => {
+        {FEATURE_SWITCHES.filter((f) => f.id !== 'signups' && !f.optIn).map((f) => {
           const on = !offHere.includes(f.id);
           return (
             <li key={f.id}>
@@ -808,7 +808,7 @@ function SchoolSwitchesCard({ switches, orgs, onSaved }: { switches: string | nu
  * see "turned off for your school". People without a school always keep it.
  */
 function RolloutCard({ switches, onSaved }: { switches: string | null; onSaved: () => void }) {
-  const features = FEATURE_SWITCHES.filter((f) => f.id !== 'signups');
+  const features = FEATURE_SWITCHES.filter((f) => f.id !== 'signups' && !f.optIn);
   const [rollouts, setRollouts] = useState(() => parseRollouts(switches));
   const [feature, setFeature] = useState(() => Object.keys(parseRollouts(switches))[0] ?? features[0]?.id ?? '');
   const [percent, setPercent] = useState(() => parseRollouts(switches)[feature] ?? 100);

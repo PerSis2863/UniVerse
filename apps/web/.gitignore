@@ -59,3 +59,5 @@ next-env.d.ts
 /public/worker-*.js
 # Written by the build (scripts/bundle-report.mjs --summary) for the owner console
 /public/build-size.json
+# STORMFALL's web build: fetched at build time (scripts/fetch-stormfall.mjs), not committed
+/public/games/stormfall

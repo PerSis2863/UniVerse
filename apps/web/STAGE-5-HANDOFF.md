@@ -3403,3 +3403,221 @@ and "people must be signed in to open a shared link"): "please do both of this a
   "accessed before it is declared").
 - **Tested:** `landing-here-ui.mjs` (390 and 1280: five choices, each lands where it should, the role
   is picked, axe and no sideways scroll); `pnpm check`.
+
+## M82 · STORMFALL on the site, its game files kept out of the code history; Ridgeline Ops removed (3 Nov 2026)
+
+The owner chose STORMFALL over Ridgeline Ops ("only one should stay": STORMFALL). The branch
+`claude/stormfall-unity` (its own note "M41", a number already taken on main) was started before
+M42–M81, so it was brought over by hand onto today's code instead of merged.
+- **The game:** an original Unity 6.6 URP tactical shooter (a lobby, the Kaldera Isle battle royale,
+  Outbreak on Floodmere and Dust Range). Source: `games/stormfall/` (its `README.md`,
+  `Docs/TECHNICAL_SPEC.md`, `Docs/GUNPLAY_MATH.md`; the newest is in the owner's `Universegames` repo).
+  Not part of the pnpm workspace or the Cloudflare build. Traps from its session: Unity fills a
+  public `[Serializable]` class array with empty objects (runtime fields `[System.NonSerialized]`);
+  one MonoBehaviour per file named after the class; keep the `.meta` files.
+- **On the site:** `/play/stormfall` (`src/components/play/Stormfall.tsx`), computers only
+  (`useDesktop`: hover, fine pointer, 1024 px), 16+ through `useRatingGate`, scores stay inside the
+  game. The card shows on /play (3D worlds, computers) and the landing's worlds row. `STORMFALL`
+  (name, age, rating) lives in `src/lib/play.ts` with no imports so the landing doesn't load the
+  game page's code. The loader patch and the 24 MB data parts with a fetch hook are
+  `scripts/stormfall-web.mjs` (unchanged, see its header): the CSP stays as it is.
+- **Game files out of the history (the council's item):** `public/games/stormfall/` (58 MB: loader,
+  main script, code, data in three parts) is gitignored and filled during every build by
+  `scripts/fetch-stormfall.mjs` (in `package.json` `build`, and in `local:setup`): it downloads each
+  file from one pinned commit of this public repo (`scripts/stormfall-files.json`: `f3e79386…`, the
+  head of `claude/stormfall-unity`), checks size and SHA-256, retries 3 times, keeps files already
+  right (a second build downloads nothing), deletes anything not listed. If GitHub can't be reached
+  the site still builds and the game's page says it couldn't be downloaded (`--strict` fails
+  instead). **Keep the branch `claude/stormfall-unity`**: it holds those files. New build: copy it
+  with `stormfall-web.mjs`, push the folder on a branch, put that commit and the checksums from
+  `node scripts/fetch-stormfall.mjs --hash` in the JSON.
+- **Ridgeline Ops removed:** `src/lib/play/ops/`, `src/components/play/ops/` (M40 and its later rig
+  and scenery work on branches), its `GAMES` entry and `.ops-*` styles. Old `ops` scores stay in the
+  database and are skipped (`isGame`). Eleven games plus STORMFALL in all copy.
+- **Tested:** `pnpm check`; the fetch twice (6 files, 58 MB, then nothing); `local:build` +
+  `local:serve` with `scripts/checks/stormfall-ui.mjs` (see the commit).
+
+## M83 · The council's leftovers: zod 4, pdf.js 6, live air traffic opt-in, the guide tidied (3 Nov 2026)
+
+The owner: "the other agent has done few works what the council said and you can do remaining one".
+- **zod 3 → 4.6** (`src/server/dto.ts`, its only user): `z.strictObject` (unknown properties still
+  answer "property x should not exist"), `z.enum` for Prisma enums, `z.url({ protocol: /^https?$/ })`
+  (a `javascript:` or `ftp:` link is refused), `z.ZodType`. New `dto.test.ts` (it had no tests).
+- **pdf.js 5 → 6.5** (`src/lib/pdf.ts`): a document no longer has `destroy()`; the task that opened it
+  does. `openPdf` / `openPdfData` remember each document's task and **`closePdf(doc)`** ends both;
+  the five callers use it, and the PDF editor now closes its documents when it closes (it never did).
+  `isEvalSupported` is gone (pdf.js 6 never evals). Its new renderer worker (`rendererSrc`, pages
+  drawn off the main thread) is left off: it changes how pixels reach our canvases (thumbnails use
+  `toDataURL`); try it as its own item. Checked in the browser: the editor draws a page and three
+  thumbnails, no errors.
+- **Live air traffic opt-in** (OpenSky's free feed is for non-commercial use): `optIn` on a
+  `FeatureSwitch` = off until the owner turns it on, stored as `"<id>:on"` (`parseSwitches` adds it
+  to the off list unless that is stored; `composeSwitches` writes it; the console's list is read with
+  `offFromList`, literally). **Bug fixed on the way:** the "Live air traffic" switch never did
+  anything (the Worker only refuses changes, and the planes feed is a read); `GET /trace/aircraft` now
+  checks `featureOff('aircraft')` itself and answers "Live air traffic is turned off." Opt-in
+  features stay out of the per-school switches, rollouts and the console's "N switched off" note.
+- **AGENTS.md "Where things stand"** rewritten as a short map by area (no duplicate lines), with the
+  rule: never reuse a work number (look at other branches' notes too). STORMFALL's comments say M82.
+- **Tested:** `pnpm check`; `dto.test.ts`, the opt-in tests in `school-switches.test.ts`; the PDF
+  editor with a 3-page PDF on the dev server (page and thumbnails drawn, no console errors).
+
+## M84 · The pink river on a background thread (3 Nov 2026)
+
+The owner: "upgrade every single thing… most important one ultra smoothness".
+- **Measured first** (`local:build` + `local:serve`, headless Chromium, scripts kept out of the repo):
+  the river (`LightTrail`) drew on the page's main thread on every page, about 60 frames a second;
+  at rest the main thread was 92% busy on `/login` and 68% on `/student`. This machine draws without
+  a GPU, so the numbers are inflated; the change between them is what counts. The next biggest
+  always-on cost: the planet card on the hub and the landing (`Planet`, thousands of dots a frame).
+- **The river now draws on a background thread** where the browser can (Chrome, Edge, Firefox,
+  Safari 16.4+): `LightTrail` makes its canvas, hands it to `src/components/river.worker.ts` with
+  `transferControlToOffscreen`, and only tells it what changed (size, scroll, theme, pointer,
+  hidden, "move"). The drawing moved unchanged to `src/lib/river-paint.ts` (`makeRiver`), used by
+  the worker and by the page when there's no OffscreenCanvas or the worker can't draw (it posts
+  `unsupported`). At rest: `/login` 92% → 15% busy, `/student` 68% → 6%, `/hub` 162 → 241 frames in
+  4 s. The same picture pixel for pixel (Reduce Motion still frames against the old code: no pixel
+  differs on `/hub` dark and light and the landing; sign-in ≤1/255 on some pixels).
+- **Rules for code that builds on it:** the canvas is made inside the effect (a canvas can be handed
+  over once and StrictMode runs effects twice), so don't put it in JSX. The worker can't see the
+  page: whatever the river depends on goes in a message (the scroll comes from scroll events, and
+  once after each page change through `resync`). The worker stamps the pointer with its own clock.
+  Judge it by the main thread's busy time: in headless Chromium without a GPU, `/login`'s frame
+  count fell (232 → 193) because the worker's frames share the same CPU for compositing; real
+  devices composite on the GPU.
+- **Bug fixed on the way:** whether the river keeps moving is decided when a frame runs (`tick`),
+  so a "move" that arrives before the first frame (the page went idle while the thread was still
+  starting) no longer leaves it still until the next scroll. `river.worker.test.ts` covers it.
+- `pnpm lean` counts `new URL('./x.worker.ts', import.meta.url)` as a use.
+- Sign-in's layout shift (0.083 in the first measurement) measured 0 in three runs; not reproduced.
+- **Left for later:** the planet card (next item); the page transitions' blur is the owner's chosen
+  look and runs on the compositor, untouched.
+- **Tested:** `pnpm check`; `river.worker.test.ts`; screenshots in dev and on the built site, on the
+  background thread and on the page (drawn, moving, following scroll and theme, no errors).
+
+## M85 · The planet on a background thread; live cards drawn at their real size (3 Nov 2026)
+
+The owner: "…most important one ultra smoothness". After M84 the biggest always-on cost was the
+planet (the hub's card, the landing's World section): thousands of dots stamped every frame on the
+page's main thread.
+- **The planets you only look at draw on a background thread** (`src/components/live/planet.worker.ts`),
+  like the river: `Planet` renders `WorkerPlanet` (makes its canvas in the effect, hands it over and
+  sends what changed: places, land, size, pointer, on screen, tab hidden) or `PagePlanet` (the globe
+  you turn, Trace's Live globe, and browsers without OffscreenCanvas or fonts on a thread; its
+  `unsupported` message or an error switches to it). The drawing moved unchanged to `planet-paint.ts`
+  (`drawPlanet`, `planetState`, `planetPoints`, `planetLinks`); the live cards' colours, glow sprite and
+  maths moved to `live/paint.ts` (no React; `canvas.ts` re-exports them, so the other cards are
+  unchanged; on a thread the sprites are OffscreenCanvases).
+- **Land:** the page draws the land picture once per visit (`landBits`: 512×512, one byte a pixel,
+  shared by every planet); the thread finds a place's pixel with `maskIndex`, the maps' Mercator
+  written out because d3 isn't loaded there. `planet-paint.test.ts`: exactly d3's pixel for 150,000+
+  places and the edges.
+- **Trap: fonts on a background thread.** A thread has its own fonts, so the planet's thread loads
+  Urbanist itself (by full address: a thread's own address may not be a web page's) and waits for it,
+  2 s at most, before its first frame: a canvas that drew text before the font was ready kept the
+  stand-in (bolder, wider names), even after it loaded, in about one run in three.
+- **Bug fixed on the way: live cards were squashed and soft.** `useLiveCanvas` measured its canvas
+  with `getBoundingClientRect`, which the page's entrance animation scales for a moment
+  (`scale(0.96, 0.9)`): the hub's planet was drawn 845×342 into an 880×380 box, so it was stretched
+  taller and blurred. It now takes the layout size from its ResizeObserver (`contentRect`), like
+  WorldCanvas; every card on /hub, /student, /relief, /green, /trace and /play now draws at its box's
+  size. **Rule:** size a canvas from layout (ResizeObserver, `clientWidth`), never from
+  `getBoundingClientRect`.
+- **Result (built site; this machine draws without a GPU, so read the numbers as relative):** the
+  page's main thread at rest on /hub 99.5% → 5% busy, on the landing 91.5% → 17% (river and planet
+  both on threads; M84 alone left /hub about 73% busy). The same pictures pixel for pixel (Reduce
+  Motion still frames against the old code: hub, landing at 1280 and 390, on the thread, on the page
+  and on the built site).
+- **Tested:** `pnpm check`; `planet-paint.test.ts`; planet screenshots (still and moving) in dev and on
+  the built site; the Live globe draws, turns and zooms; card sizes on six pages.
+
+## M86 · Maps open and zoom without freezing the page; a pinch zooms the map, not the page (3 Nov 2026)
+
+The owner: "…most important one ultra smoothness". Measured page switches in the app on the built
+site (click a link, watch 1.5 s).
+- **The stall:** opening Trace (it lands on Tracking) froze the page for about 0.7 s on this machine:
+  `loadWorld` projected every country outline with d3 (resampling, clipping, areas) on the page's
+  main thread, each time a page with a map opened; zooming in loaded the sharper 1:50m outlines the
+  same way (seven times bigger); the hub's planet (M85) did it too, for its land.
+- **Now on a background thread** (`src/components/trace/map/world.worker.ts`): `loadWorld` asks it for
+  a map file; it fetches it, projects it (`world-shapes.ts` `projectWorld`, no DOM) and sends back
+  plain numbers (drawing steps, points, boxes, label points, areas; transferred, not copied). The page
+  replays them into one Path2D per country (`toCountries` in `engine.ts`: the same moveTo / lineTo /
+  closePath calls d3 makes). Without workers `projectWorld` runs on the page. A failed download can now
+  be tried again (it stayed failed until a reload). `world-shapes.test.ts`: the replayed calls equal
+  d3's own drawing, country by country, to the last digit. The projection now lives in
+  `world-shapes.ts` (engine.ts re-exports `BASE`).
+- **Names measured once:** WorldCanvas keeps country and city name widths (`measure`); a sharp redraw
+  measured every name again.
+- **Bug fixed: a pinch (Ctrl/⌘ + scroll) over the city view (Trace → Tracking) or the Live globe zoomed
+  the whole page**, not the map: React's `onWheel` listens passively, so its `preventDefault` did
+  nothing ("Unable to preventDefault inside passive event listener"). New `usePinchWheel`
+  (`src/lib/use-pinch-wheel.ts`) listens on the element itself; WorldCanvas already did. **Rule:**
+  never call `preventDefault` in React's `onWheel` or `onTouchMove`; use a native listener with
+  `{ passive: false }`.
+- **Result (built site, hub → Trace, three runs):** the longest main-thread task while switching went
+  from 729 ms to 50–66 ms, the worst frame gap from 117–733 ms to 83 ms.
+- **Pictures unchanged:** the Relief map (no live dots) pixel for pixel, as are the planets; Trace's
+  maps have moving dots, so two runs of the same code differ there anyway.
+- **Tested:** `pnpm check`; `world-shapes.test.ts`; map and planet screenshots before and after;
+  the pinch on the city view and the Live globe (page zoom stopped, map zoomed, no warning); page
+  switches on the built site.
+
+## M87 · Safer libraries, the deploy tool the adapter asks for, checks on every push (3 Nov 2026)
+
+The owner: "…security, development, testing…".
+- **Dependency audit** (`pnpm audit --prod`): 32 known issues (1 critical, 10 high), almost all in
+  build tools that never reach a visitor. Fixed with pnpm overrides in the root `package.json`, each
+  pinned to a release at least two weeks old (a guard against freshly published bad versions):
+  **dompurify 3.4.17** (critical and high: the HTML cleaner inside Excalidraw's Mermaid diagrams, it
+  runs in the browser), **re2js 2.8.8** (high: the regex engine in Firebase's Firestore), undici
+  7.30.1, fast-uri 3.1.9, qs 6.16.1, source-map-js 1.2.2, glob 10.5.0 and sharp 0.35.5 (build and
+  local tools). Left: 12, none critical: body-parser (high) and serialize-javascript in build tools,
+  whose fixes are 11 days old (take them in a later pass); katex inside mermaid (low: mermaid needs
+  0.16, the site's own KaTeX is 0.18.9); webpack, deepmerge, minimatch and glob 9+ in build tools
+  (fixes need new major versions or don't exist).
+- **wrangler 4.142 → 4.151.3:** OpenNext 1.20.15 asks for ^4.148 (it warned on every install);
+  4.151.3 was the newest release older than two weeks. It brings a newer local Workers runtime
+  (miniflare) for `local:serve`. **Rule:** move wrangler up when the adapter's peer range moves.
+- **Checks on every push** (`.github/workflows/check.yml`): GitHub runs `pnpm check` (types, lint of
+  the changed files, unit tests, lean) on every branch push, so a branch and its pull request show a
+  tick or a cross before anyone merges. Free on a public repository, no secrets, deploys nothing.
+  **Rule:** don't merge a branch whose Checks run is red.
+- **Tested:** `pnpm install`, `pnpm audit`, `pnpm check`; `local:build` + `local:serve` on the new
+  runtime: sign-in, the hub, Trace's tracking map, the Live globe and a whiteboard open and draw with
+  no errors.
+
+## M88 · Less CPU per request: one Prisma query compiler per Worker copy (3 Nov 2026)
+
+The owner: "the cpu time usage is alot can you see why is it happening" (Cloudflare, since 28 Oct:
+3.62k requests, 465k CPU ms, about 128 ms a request; a typical Worker uses ~2 ms, one that renders
+pages 10–20 ms). Only 1.5% of what the $5 plan includes, but far too much per request.
+- **Measured** on `local:build` + `local:serve` (CPU per request from the kernel's thread times of
+  workerd; CPU profiles through wrangler's inspector on :9229, which wants the header
+  `Origin: https://devtools.devprod.cloudflare.dev`): a page as a browser asks for it comes from the
+  edge cache, ~10 ms; the 15-minute cron ~17 ms; **an API request through Next.js and Prisma ~90 ms,
+  half of it Prisma building its query compiler again** (`new QueryCompiler({ datamodel })`: the
+  whole 323-model schema parsed in WASM), because every request makes its own client (`src/lib/db.ts`,
+  on purpose: a shared client made requests wait on each other's promises). The first request in a
+  fresh copy of the Worker ~450 ms (Next.js code loading, Prisma's WASM, the compiler); few visitors
+  means many fresh copies.
+- **Fix:** `patches/@prisma__client@6.19.3.patch` (pnpm patch, `patchedDependencies` in the root
+  `package.json`): the client engine keeps one compiler per Worker copy (`globalThis.__prismaQC`, by
+  compiler class, provider, connection info and datamodel). Safe to share: compiling is synchronous
+  and does no I/O, so no request waits on another's promise; each client still has its own D1
+  executor. One client's disconnect never frees it (`free` is a no-op on it); a Prisma panic drops it.
+  Result on this machine: an API request ~90 → ~20–25 ms of CPU; 60 requests at once from three
+  accounts answer exactly as one at a time; reads and writes checked.
+- **Rules:** keep one Prisma client per request (db.ts). Upgrading Prisma means carrying the patch
+  over (pnpm stops on a patch for a version that's gone; `src/lib/prisma-patch.test.ts` fails if the
+  runtime lacks it), or checking whether Prisma now shares the compiler itself.
+- **Also:** GitHub's first Checks run failed: install scripts are off in this repository (`.npmrc`
+  `ignore-scripts=true`), so the Prisma client was never generated there; the workflow now runs
+  `prisma generate` itself (an M87 fix commit), and the run is green.
+- **Not changed:** a fresh copy's first request still loads Next.js (~90 ms here) and builds the
+  compiler once (~70 ms); avoiding that would mean changing how OpenNext starts. Pages were already
+  edge-cached.
+- **To see where CPU goes on the live site:** Cloudflare → Workers & Pages → universe-web →
+  Observability → events sorted by CPU time.
+- **Tested:** `pnpm check`; `prisma-patch.test.ts`; CPU before and after on the built Worker; 60
+  requests at once; a board and a Green action created and deleted.

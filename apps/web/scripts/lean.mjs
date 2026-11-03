@@ -21,7 +21,8 @@ const exists = (p) => { try { return statSync(p).isFile(); } catch { return fals
 const resolveSpec = (base) => ['', '.ts', '.tsx', '.js', '.mjs', '/index.ts', '/index.tsx'].map((e) => base + e).find(exists);
 const used = new Set();
 for (const f of [...src, ...others]) {
-  for (const m of readFileSync(f, 'utf8').matchAll(/(?:from\s+|import\s*\(\s*|require\s*\(\s*|import\s+)['"]([^'"]+)['"]/g)) {
+  // A background thread counts as used where it's started: new Worker(new URL('./x.worker.ts', import.meta.url)).
+  for (const m of readFileSync(f, 'utf8').matchAll(/(?:from\s+|import\s*\(\s*|require\s*\(\s*|import\s+|new\s+URL\(\s*)['"]([^'"]+)['"]/g)) {
     const s = m[1];
     const base = s.startsWith('@/') ? join(root, 'src', s.slice(2)) : s.startsWith('.') ? resolve(dirname(f), s) : null;
     const hit = base && resolveSpec(base);

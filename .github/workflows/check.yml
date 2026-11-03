@@ -1,0 +1,47 @@
+# The checks before every commit (apps/web/AGENTS.md "pnpm check": types, lint of changed files, the
+# unit tests, the lean check) on every push, so a branch shows a green tick or a red cross before
+# anyone merges it. Free for a public repository; uses no secrets and deploys nothing.
+name: Checks
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the lint step compares with origin/main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: pnpm (the version in package.json)
+        run: corepack enable
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Install scripts are off (.npmrc ignore-scripts), so the Prisma client is generated here, as
+      # the build does.
+      - name: Prisma client
+        run: PRISMA_GENERATE_SKIP_AUTOINSTALL=1 pnpm exec prisma generate
+
+      - name: pnpm check
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: pnpm check

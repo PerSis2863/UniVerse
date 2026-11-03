@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { Maximize2, Minus, Plus } from 'lucide-react';
+import { usePinchWheel } from '@/lib/use-pinch-wheel';
 import { cn } from '@/lib/utils';
 import { easeOut, glow, hash, seeded, useLiveCanvas, type Frame } from './canvas';
 
@@ -299,11 +300,14 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
   };
   const up = (e: React.PointerEvent<HTMLDivElement>) => { pts.current.delete(e.pointerId); setWake((n) => n + 1); };
 
+  const box = useRef<HTMLDivElement>(null);
+  usePinchWheel(box, (e) => { const p = local(e); zoomAt(Math.exp(-e.deltaY * 0.01), p.x, p.y); });
+
   return (
-    <div className={cn('relative overflow-hidden select-none cursor-grab active:cursor-grabbing touch-pan-y', className)}
+    <div ref={box} className={cn('relative overflow-hidden select-none cursor-grab active:cursor-grabbing touch-pan-y', className)}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
       onDoubleClick={(e) => { const p = local(e); zoomAt(1.6, p.x, p.y); }}
-      onWheel={(e) => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); const p = local(e); zoomAt(Math.exp(-e.deltaY * 0.01), p.x, p.y); }}>
+>
       <canvas ref={ref} role="img" aria-label={label} className="absolute inset-0 h-full w-full" />
       <div className="absolute end-3 top-3 flex flex-col gap-1.5">
         <button type="button" onClick={() => zoomAt(1.4, cam.current.w / 2, cam.current.h / 2)} className="karma-go w-9 h-9 grid place-items-center rounded-full bg-[#171f44]/85 text-white ring-1 ring-white/15 hover:bg-[#232d5c]" aria-label="Zoom in on the city"><Plus className="w-4 h-4" aria-hidden /></button>

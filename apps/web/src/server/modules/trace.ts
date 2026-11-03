@@ -9,6 +9,7 @@ import { carrierLink, carryArrive, carryInfo, carryPing, carryReading, liveScans
 import { demo } from '../trace-demo';
 import { ownerTrace } from '../trace-owner';
 import { aircraft } from '../aircraft';
+import { featureOff } from '../moderation';
 import { endRecall, insights, ownUnit, protectBatch, publicBrand, radar, recallBatch, receiveTransfer, redeemWin, registerWarranty, reviewUnit, startTransfer, vault } from '../trace-plus';
 
 // UniVerse Trace (src/server/trace*.ts): every product gets a passport. Anyone can check a code or
@@ -81,7 +82,8 @@ export default function traceModule(router: Router) {
   r.get('map/live', ({ user, query }) => liveScans(user, first(query.since)));
   r.get('map/tracking', ({ user }) => tracking(user));
   // Live air traffic for the Live globe (M69): the same for everyone, cached 15 minutes.
-  r.get('aircraft', () => aircraft());
+  // Live air traffic is off until the owner turns it on (feature switch "aircraft", opt-in; a read, so the Worker's switch check doesn't cover it).
+  r.get('aircraft', async () => ((await featureOff('aircraft')) ? { at: null, planes: [], source: 'OpenSky Network', note: 'Live air traffic is turned off.' } : aircraft()));
 
   // The platform owner: every brand and its plan
   r.get('owner', { owner: true }, () => ownerTrace());

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { composeSwitches, emailScheduleEntries, orgCandidates, parseEmailSchedule, parseOrgSwitches, parseRollouts, parseSwitches, rolloutBucket, schoolOff } from './feature-switches';
+import { composeSwitches, emailScheduleEntries, isOptIn, offFromList, orgCandidates, parseEmailSchedule, parseOrgSwitches, parseRollouts, parseSwitches, rolloutBucket, schoolOff } from './feature-switches';
 
 // A feature off for one school (Stage 5 · A9): stored next to the global switches and the owner's
 // email schedule in one list, without either losing the others.
@@ -7,7 +7,7 @@ describe('per-school feature switches', () => {
   const raw = JSON.stringify(['ai', 'email:digest=weekly', 'org:school1=chat', 'org:school1=uploads', 'org:school2=ai', 'org:bad id=chat', 'org:school3=nope', 'rollout:boards=30', 'rollout:nope=5', 'rollout:groups=100']);
 
   it('reads all three kinds from the one list', () => {
-    expect(parseSwitches(raw)).toEqual(['ai']);
+    expect(parseSwitches(raw)).toEqual(['ai', 'aircraft']); // live air traffic is opt-in (off until turned on)
     expect(parseEmailSchedule(raw).digest).toBe('weekly');
     expect(parseOrgSwitches(raw)).toEqual({ school1: ['chat', 'uploads'], school2: ['ai'] });
   });
@@ -15,11 +15,11 @@ describe('per-school feature switches', () => {
   it('writes them back together, nothing lost', () => {
     const orgs = { ...parseOrgSwitches(raw), school3: ['boards'] };
     const out = composeSwitches(parseSwitches(raw), emailScheduleEntries(parseEmailSchedule(raw)), orgs, parseRollouts(raw));
-    expect(parseSwitches(out)).toEqual(['ai']);
+    expect(parseSwitches(out)).toEqual(['ai', 'aircraft']);
     expect(parseEmailSchedule(out).digest).toBe('weekly');
     expect(parseOrgSwitches(out)).toEqual({ school1: ['chat', 'uploads'], school2: ['ai'], school3: ['boards'] });
     expect(parseRollouts(out)).toEqual({ boards: 30 });
-    expect(composeSwitches([], [], {}, {})).toBeNull();
+    expect(composeSwitches(['aircraft'], [], {}, {})).toBeNull(); // nothing off but the opt-in feature: nothing to store
   });
 
   it('only changes covered by a school switch need the person’s school', () => {
@@ -44,5 +44,24 @@ describe('per-school feature switches', () => {
     expect(schoolOff({ s1: ['chat'] }, { boards: 0 }, 's1').sort()).toEqual(['boards', 'chat']);
     // The Worker checks a rolled-out feature's changes too
     expect(orgCandidates({}, 'POST', '/api/boards/b1', { boards: 30 }).map((f) => f.id)).toEqual(['boards']);
+  });
+});
+
+describe('opt-in switches (M83: live air traffic)', () => {
+  it('an opt-in feature is off until "<id>:on" is stored', () => {
+    expect(parseSwitches(null)).toContain('aircraft');
+    expect(parseSwitches(JSON.stringify(['chat']))).toEqual(expect.arrayContaining(['chat', 'aircraft']));
+    expect(parseSwitches(JSON.stringify(['aircraft:on']))).not.toContain('aircraft');
+  });
+  it('the console list is taken literally, and saving writes "<id>:on" for an opt-in feature turned on', () => {
+    expect(offFromList(['chat', 'nope', 7])).toEqual(['chat']);
+    const on = composeSwitches(offFromList(['chat']), [], {}, {});
+    expect(JSON.parse(on!)).toEqual(['chat', 'aircraft:on']);
+    expect(parseSwitches(on)).toEqual(['chat']);
+    const off = composeSwitches(offFromList(['chat', 'aircraft']), [], {}, {});
+    expect(JSON.parse(off!)).toEqual(['chat']);
+    expect(parseSwitches(off)).toEqual(['chat', 'aircraft']);
+    expect(isOptIn('aircraft')).toBe(true);
+    expect(isOptIn('chat')).toBe(false);
   });
 });

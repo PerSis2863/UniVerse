@@ -56,7 +56,7 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
   ],
   play: [
     { q: 'Do I need friends online to play?', a: 'No. Every game works solo. For friends, share a room code.' },
-    { q: 'Is it free?', a: 'Yes, all twelve games are free.' },
+    { q: 'Is it free?', a: 'Yes, every game, STORMFALL included, is free.' },
   ],
   green: [
     { q: 'How is the CO₂ saved worked out?', a: 'From published averages: a young tree takes up about 22 kg a year.' },

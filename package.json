@@ -26,12 +26,20 @@
       "nanoid@>=4.0.0 <5.1.16": "^5.1.16",
       "lodash-es@<4.18.0": "^4.18.0",
       "serialize-javascript@<7.0.5": "^7.0.5",
-      "undici@>=7.28.0 <7.29.1": "^7.29.1",
       "deepmerge-ts@<8.0.0": "^8.0.0",
-      "@grpc/grpc-js@<1.13.6": "^1.13.6"
+      "@grpc/grpc-js@<1.13.6": "^1.13.6",
+      "undici@>=7.0.0 <7.30.1": "7.30.1",
+      "dompurify@<3.4.17": "3.4.17",
+      "re2js@>=2.2.0 <2.8.7": "2.8.8",
+      "fast-uri@>=3.0.0 <3.1.9": "3.1.9",
+      "qs@>=6.7.0 <6.16.1": "6.16.1",
+      "source-map-js@>=1.0.0 <1.2.2": "1.2.2",
+      "glob@>=10.2.0 <10.5.0": "10.5.0",
+      "sharp@<0.35.5": "0.35.5"
     },
     "patchedDependencies": {
-      "@excalidraw/excalidraw@0.18.1": "patches/@excalidraw__excalidraw@0.18.1.patch"
+      "@excalidraw/excalidraw@0.18.1": "patches/@excalidraw__excalidraw@0.18.1.patch",
+      "@prisma/client@6.19.3": "patches/@prisma__client@6.19.3.patch"
     }
   },
   "packageManager": "pnpm@10.33.0"

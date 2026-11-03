@@ -7,7 +7,7 @@ import { forgetUser, isOwnerEmail } from '../auth';
 import { dbSchema as schema } from '../db-schema';
 import { decideDeletion, eraseAccount } from '../account-deletion';
 import { publishChat } from '../realtime';
-import { composeSwitches, emailScheduleEntries, FEATURE_SWITCHES, OWNER_EMAILS, parseEmailSchedule, parseOrgSwitches, parseRollouts, parseSwitches } from '@/lib/feature-switches';
+import { composeSwitches, emailScheduleEntries, FEATURE_SWITCHES, OWNER_EMAILS, parseEmailSchedule, parseOrgSwitches, offFromList, parseRollouts, parseSwitches } from '@/lib/feature-switches';
 import { forgetRules } from '../moderation';
 import { countTables, selectColumns } from '../table-stats';
 import { serverSettings } from '../server-settings';
@@ -354,7 +354,7 @@ export default function ownerModule(router: Router) {
     let switched = '';
     if (body?.switches !== undefined) {
       if (!Array.isArray(body.switches)) throw new BadRequestException('switches must be a list');
-      const off = parseSwitches(JSON.stringify(body.switches));
+      const off = offFromList(body.switches);
       const was = parseSwitches(ctl.switches);
       // The email schedule and the per-school switches live in the same list.
       data.switches = composeSwitches(off, emailScheduleEntries(parseEmailSchedule(ctl.switches)), parseOrgSwitches(ctl.switches), parseRollouts(ctl.switches));
