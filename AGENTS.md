@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M81 is the latest).
+  builds on it). The newest notes are at the end (M82 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -68,9 +68,9 @@ software or website in the main website… where they create a impact"). Each ap
   alerts for helpers.
 - **Green** (`/green`): climate actions with the CO₂ they save, streaks, badges, a weekly challenge,
   teams and a map.
-- **Play** (`/play`): twelve games: two per app (quick: Quiz Clash, Spot the Fake, Supply Run,
-  Recycle Rush; big: Type Race, World Pin, Flood Rescue, Ocean Cleanup) and four 3D worlds
-  (three.js: Skyline Obby, Ridgeline Ops 16+ (open-world extraction shooter: rules `src/lib/play/ops/`, game `src/components/play/ops/`), Night Shift 18+, Orbit Breach 12+; rated games check
+- **Play** (`/play`): eleven games: two per app (quick: Quiz Clash, Spot the Fake, Supply Run,
+  Recycle Rush; big: Type Race, World Pin, Flood Rescue, Ocean Cleanup) and three 3D worlds
+  (three.js: Skyline Obby, Night Shift 18+, Orbit Breach 12+), plus **STORMFALL** 16+ on computers (a Unity battle royale: source `games/stormfall/`, page `/play/stormfall`, its web build fetched at build time by `scripts/fetch-stormfall.mjs`); rated games check
   the birth date or ask), solo or up to 8 friends in a room with a code (the `GameRoom` Durable
   Object), leaderboards.
 
@@ -143,6 +143,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
   **M79**: Real people on the console Overview (`real-people.ts`; sample and demo accounts left out).
   **M80**: Share → Add to a course in Create (teachers): the view link as a module item (`ToCourse.tsx`).
   **M81**: the landing's "Here to" row (Learn, Teach, Protect my brand, Help people, Look around; `HERE_FOR`).
+  **M82** (on the branch): STORMFALL on the site (`/play/stormfall`, computers, 16+), its 58 MB web build fetched at build time from a pinned commit (`scripts/fetch-stormfall.mjs`; keep the branch `claude/stormfall-unity`); Ridgeline Ops removed.
   **M58**: the website looks less AI-made (no eyebrows, no gradient text, mono only for numbers); the console's People list fixed.
   **[owner]** turn on Bot Fight Mode (Cloudflare → Security → Bots).
 - **The owner's pick of 31 Oct ("do all of them", store apps left out, no funds)**: M43 to M46 all

@@ -25,7 +25,8 @@ const withPWA = withPWAInit({
   // iOS fetches the launch screens (splash/) itself, once, when the app is added to the home screen.
   // `_headers` is Cloudflare's config file and is never served: listing it made every install fail
   // (a 404), so from 29 Sep no device got a working service worker. Lookup data loads when needed.
-  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!mediapipe/**/*', '!pdfjs/**/*', '!pyodide/**/*', '!legal/**/*', '!google*.html', '!robots.txt', '!voice-worklet.js', '!sitemap.xml', '!offline.html', '!.well-known/**/*', '!_headers', '!data/**/*', '!assets/**/*', '!fonts/**/*', '!geo/**/*', '!splash/**/*'],
+  // STORMFALL's web build (games/, 58 MB, computers only) downloads when someone presses Deploy.
+  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!mediapipe/**/*', '!pdfjs/**/*', '!pyodide/**/*', '!legal/**/*', '!google*.html', '!robots.txt', '!voice-worklet.js', '!sitemap.xml', '!offline.html', '!.well-known/**/*', '!_headers', '!data/**/*', '!assets/**/*', '!fonts/**/*', '!geo/**/*', '!splash/**/*', '!games/**/*'],
   // Shown for pages not saved on the device when offline: a plain static page (public/offline.html,
   // served at /offline by Cloudflare's free static files, not the Worker).
   fallbacks: {

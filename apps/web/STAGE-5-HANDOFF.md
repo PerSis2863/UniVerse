@@ -3403,3 +3403,36 @@ and "people must be signed in to open a shared link"): "please do both of this a
   "accessed before it is declared").
 - **Tested:** `landing-here-ui.mjs` (390 and 1280: five choices, each lands where it should, the role
   is picked, axe and no sideways scroll); `pnpm check`.
+
+## M82 · STORMFALL on the site, its game files kept out of the code history; Ridgeline Ops removed (3 Nov 2026)
+
+The owner chose STORMFALL over Ridgeline Ops ("only one should stay": STORMFALL). The branch
+`claude/stormfall-unity` (its own note "M41", a number already taken on main) was started before
+M42–M81, so it was brought over by hand onto today's code instead of merged.
+- **The game:** an original Unity 6.6 URP tactical shooter (a lobby, the Kaldera Isle battle royale,
+  Outbreak on Floodmere and Dust Range). Source: `games/stormfall/` (its `README.md`,
+  `Docs/TECHNICAL_SPEC.md`, `Docs/GUNPLAY_MATH.md`; the newest is in the owner's `Universegames` repo).
+  Not part of the pnpm workspace or the Cloudflare build. Traps from its session: Unity fills a
+  public `[Serializable]` class array with empty objects (runtime fields `[System.NonSerialized]`);
+  one MonoBehaviour per file named after the class; keep the `.meta` files.
+- **On the site:** `/play/stormfall` (`src/components/play/Stormfall.tsx`), computers only
+  (`useDesktop`: hover, fine pointer, 1024 px), 16+ through `useRatingGate`, scores stay inside the
+  game. The card shows on /play (3D worlds, computers) and the landing's worlds row. `STORMFALL`
+  (name, age, rating) lives in `src/lib/play.ts` with no imports so the landing doesn't load the
+  game page's code. The loader patch and the 24 MB data parts with a fetch hook are
+  `scripts/stormfall-web.mjs` (unchanged, see its header): the CSP stays as it is.
+- **Game files out of the history (the council's item):** `public/games/stormfall/` (58 MB: loader,
+  main script, code, data in three parts) is gitignored and filled during every build by
+  `scripts/fetch-stormfall.mjs` (in `package.json` `build`, and in `local:setup`): it downloads each
+  file from one pinned commit of this public repo (`scripts/stormfall-files.json`: `f3e79386…`, the
+  head of `claude/stormfall-unity`), checks size and SHA-256, retries 3 times, keeps files already
+  right (a second build downloads nothing), deletes anything not listed. If GitHub can't be reached
+  the site still builds and the game's page says it couldn't be downloaded (`--strict` fails
+  instead). **Keep the branch `claude/stormfall-unity`**: it holds those files. New build: copy it
+  with `stormfall-web.mjs`, push the folder on a branch, put that commit and the checksums from
+  `node scripts/fetch-stormfall.mjs --hash` in the JSON.
+- **Ridgeline Ops removed:** `src/lib/play/ops/`, `src/components/play/ops/` (M40 and its later rig
+  and scenery work on branches), its `GAMES` entry and `.ops-*` styles. Old `ops` scores stay in the
+  database and are skipped (`isGame`). Eleven games plus STORMFALL in all copy.
+- **Tested:** `pnpm check`; the fetch twice (6 files, 58 MB, then nothing); `local:build` +
+  `local:serve` with `scripts/checks/stormfall-ui.mjs` (see the commit).

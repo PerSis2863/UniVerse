@@ -85,7 +85,7 @@ const SURFACES = {
     const crack = Math.abs(Math.sin((x * 0.11 + n * 9) * 1.3)) < 0.04 ? 0.35 : 0;
     return { rgb: dim(mix([150, 146, 140], [230, 226, 218], n), 1 - crack), h: n - crack, r: 0.72 + n * 0.2 };
   }, 3.5),
-  /** Soil and grass grain, near white so the terrain's own colours show through (Ridgeline Ops). */
+  /** Soil and grass grain, near white so a terrain's own colours show through. */
   ground: () => make('ground', 256, 91, (x, y, n) => {
     const blade = Math.sin(x * 2.1 + n * 20) * Math.sin(y * 1.7 - n * 14) * 0.08;
     return { rgb: mix([196, 196, 190], [255, 255, 250], n + blade), h: n + blade * 2, r: 0.8 + n * 0.2 };
@@ -112,7 +112,7 @@ const SURFACES = {
     const paint = dim(mix([62, 84, 76], [86, 108, 96], n), gap ? 0.3 : vent ? 0.4 : 1);
     return { rgb: handle ? [180, 185, 190] : [paint[0] + chip, paint[1] + chip, paint[2] + chip], h: gap ? -0.6 : vent ? -0.3 : handle ? 0.4 : n * 0.08, r: handle ? 0.2 : 0.45 + n * 0.3 };
   }, 3),
-  /* Ridgeline Ops' ground and building surfaces (the terrain blends the first five). */
+  /* Outdoor ground and building surfaces (a terrain can blend the first five). */
   /** Wet meadow grass: blades in two greens over dark soil. */
   grass: () => make('grass', 256, 101, (x, y, n) => {
     const blade = Math.abs(Math.sin(x * 1.9 + n * 25) * Math.cos(y * 2.3 - n * 17));

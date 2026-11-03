@@ -1,0 +1,14 @@
+{
+  "about": "STORMFALL's web build, fetched into public/games/stormfall during the build (scripts/fetch-stormfall.mjs). The files live in this commit of the public repo (branch claude/stormfall-unity), not in main's history. To ship a new build: copy it with scripts/stormfall-web.mjs, push the folder to a branch, then put that commit and the new checksums (node scripts/fetch-stormfall.mjs --hash) here.",
+  "repo": "PerSis2863/UniVerse",
+  "commit": "f3e79386ac368d42d690b29b584840f883cbb64a",
+  "path": "apps/web/public/games/stormfall",
+  "files": {
+    "stormfall.loader.js": { "bytes": 119947, "sha256": "cf22acef3c228e2297ff5ba6f39b5791dfd7c0e2e9195bd34a52e6d19c7e3cf3" },
+    "stormfall.framework.js": { "bytes": 355111, "sha256": "ca14947f054743a3b699ae35aeebb02e83b341792b4f8ab8cfdbe0ca89016fe5" },
+    "stormfall.wasm.unityweb": { "bytes": 8869018, "sha256": "0aaa1829a64ae5624d691073c7c22070ff51f2f20d306f390e26dbc4e3ec1150" },
+    "stormfall.data.1.unityweb": { "bytes": 25165824, "sha256": "a1b6242907f335a369ceb83cf316cd9e8e9a4bb0c01d7c223cb89b142732a8fb" },
+    "stormfall.data.2.unityweb": { "bytes": 25165824, "sha256": "0327813dd6be9083aaa8f4f9f3139aa2de1ee3fecd28675671aeb9fdde66ce7e" },
+    "stormfall.data.3.unityweb": { "bytes": 1230921, "sha256": "71d8effb2254dbcdf2fa9b500c2980a760c42e5b73743719994b5473fa978640" }
+  }
+}

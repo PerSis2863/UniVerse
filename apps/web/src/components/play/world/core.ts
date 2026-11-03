@@ -34,8 +34,8 @@ const GradeShader = {
 };
 
 const PHONE = () => matchMedia('(pointer: coarse)').matches;
-/** The buttons a game reads: jump, fire, act (E/F), and its special skill (Q/R); Ridgeline Ops also
- *  aims (right mouse), swaps guns, heals and throws (its own keys, and phone buttons). */
+/** The buttons a game reads: jump, fire, act (E/F), and its special skill (Q/R); a shooter can also
+ *  aim (right mouse), swap guns, heal and throw (its own keys, and phone buttons). */
 export type Button = 'jump' | 'fire' | 'act' | 'skill' | 'aim' | 'swap' | 'heal' | 'throw' | 'crouch' | 'plate' | 'inv' | 'nvg';
 
 /** The renderer, scene and camera, sized to the canvas's box; `loop` runs once per frame. */

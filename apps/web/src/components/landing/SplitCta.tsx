@@ -13,7 +13,7 @@ const COPY: Record<AppId, { parts: typeof ScanLine[]; left: string; right: strin
   campus: { parts: [GraduationCap, CalendarDays, MessagesSquare, BookOpen, Wallet, Bell], left: 'The work between classes, done.', right: 'Pick the task you hate most.', sub: 'Free. No card.', placeholder: 'you@school.edu' },
   trace: { parts: [ScanLine, Globe2, Truck, Megaphone, Wallet, Gift], left: 'One code on every product.', right: 'Give your products passports.', sub: 'Free for 10,000. No card.', placeholder: 'you@yourbrand.com' },
   relief: { parts: [HandHeart, MapPin, Truck, Users, MessagesSquare, Bell], left: 'Every need and every offer on one live map.', right: 'Be the help that arrives.', sub: 'Volunteer, NGO or neighbour. Free.', placeholder: 'you@example.org' },
-  play: { parts: [Gamepad2, Brain, ScanLine, Truck, Recycle, Trophy], left: 'Twelve games, any device.', right: 'Open a room, share the code.', sub: 'Free. Solo or up to 8 friends.', placeholder: 'you@example.com' },
+  play: { parts: [Gamepad2, Brain, ScanLine, Truck, Recycle, Trophy], left: 'Eleven games, any device.', right: 'Open a room, share the code.', sub: 'Free. Solo or up to 8 friends.', placeholder: 'you@example.com' },
   green: { parts: [Leaf, TreePine, Recycle, Trophy, Users, Globe2], left: 'Small actions, counted honestly, add up.', right: 'Start your team’s challenge.', sub: 'Free for every team.', placeholder: 'you@example.com' },
 };
 
