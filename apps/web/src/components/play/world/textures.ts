@@ -98,18 +98,23 @@ const SURFACES = {
     const brush = Math.sin(y * 0.9 + n * 6) * 0.04;
     return { rgb: dim(mix([170, 176, 188], [225, 230, 238], n * 0.6 + brush + 0.2), seam ? 0.5 : 1), h: (seam ? -0.6 : 0) + (rivet ? 0.5 : 0) + n * 0.1, r: 0.3 + n * 0.25 + (seam ? 0.3 : 0) };
   }, 4),
-  /** Old school-hall floor tiles: checkered, scuffed, with grout lines. */
+  /** Old school-hall floor tiles: checkered, scuffed, with grout lines, and (M102) puddles where
+   *  the roof leaks: darker, mirror-smooth patches that catch the torch. */
   tiles: () => make('tiles', 256, 45, (x, y, n) => {
     const grout = x % 64 < 2 || y % 64 < 2, dark = (Math.floor(x / 64) + Math.floor(y / 64)) % 2;
+    const wet = Math.sin(x * 0.043 + n * 2.6) * Math.sin(y * 0.037 - n * 3.2) > 0.42;
     const base: RGB = dark ? [52, 50, 46] : [190, 182, 160];
-    return { rgb: grout ? [34, 32, 29] : mix(base, dim(base, 0.72), n), h: grout ? -0.5 : n * 0.15, r: grout ? 0.95 : 0.22 + n * 0.4 };
+    const rgb = grout ? [34, 32, 29] as RGB : mix(base, dim(base, 0.72), n);
+    return { rgb: wet ? dim(rgb, 0.78) : rgb, h: wet ? 0 : grout ? -0.5 : n * 0.15, r: wet ? 0.04 : grout ? 0.95 : 0.22 + n * 0.4 };
   }, 3),
   /** Painted metal lockers: doors, vents, handles, chipped paint. */
   lockers: () => make('lockers', 256, 57, (x, y, n) => {
     const door = x % 64, row = y % 128, gap = door < 3;
     const vent = door > 14 && door < 50 && row > 12 && row < 40 && y % 6 < 2, handle = door > 52 && door < 56 && row > 60 && row < 76;
     const chip = n > 0.72 ? 15 : 0;
-    const paint = dim(mix([62, 84, 76], [86, 108, 96], n), gap ? 0.3 : vent ? 0.4 : 1);
+    // Grime where mops and shoes reach (the bottom of the wall), rust run-off from the vents.
+    const grime = 1 - 0.5 * Math.max(0, Math.min(1, (y - 212) / 44)), run = row > 40 && row < 90 && door > 18 && door < 46 && Math.sin(x * 1.3 + n * 4) > 0.6 ? 0.82 : 1;
+    const paint = dim(mix([62, 84, 76], [86, 108, 96], n), (gap ? 0.3 : vent ? 0.4 : 1) * grime * run);
     return { rgb: handle ? [180, 185, 190] : [paint[0] + chip, paint[1] + chip, paint[2] + chip], h: gap ? -0.6 : vent ? -0.3 : handle ? 0.4 : n * 0.08, r: handle ? 0.2 : 0.45 + n * 0.3 };
   }, 3),
   /* Outdoor ground and building surfaces (a terrain can blend the first five). */
@@ -141,10 +146,11 @@ const SURFACES = {
     const grit = ((x * 73 + y * 151) % 7) / 7, crack = Math.abs(Math.sin(x * 0.05 + n * 9) + Math.cos(y * 0.04 - n * 7)) < 0.04;
     return { rgb: dim(mix([44, 44, 46], [78, 78, 80], n * 0.5 + grit * 0.5), crack ? 0.6 : 1), h: grit * 0.4 + n * 0.2 - (crack ? 0.5 : 0), r: 0.72 + grit * 0.2 };
   }, 2),
-  /** Weathered wooden planks. */
+  /** Weathered wooden planks, darker and scuffed toward the floor. */
   wood: () => make('wood', 256, 163, (x, y, n) => {
     const plank = Math.floor(y / 32), seam = y % 32 < 2, grain = Math.sin(x * 0.12 + Math.sin(y * 0.3 + plank) * 2 + n * 6) * 0.5 + 0.5;
-    return { rgb: dim(mix([88, 64, 42], [140, 106, 72], grain * 0.6 + n * 0.4), seam ? 0.45 : 1 - (plank % 3) * 0.06), h: seam ? -0.6 : grain * 0.3, r: 0.85 };
+    const grime = 1 - 0.4 * Math.max(0, Math.min(1, (y - 216) / 40));
+    return { rgb: dim(mix([88, 64, 42], [140, 106, 72], grain * 0.6 + n * 0.4), (seam ? 0.45 : 1 - (plank % 3) * 0.06) * grime), h: seam ? -0.6 : grain * 0.3, r: 0.85 };
   }, 2.6),
   /** Corrugated sheet metal with rust streaks. */
   corrugated: () => make('corrugated', 256, 175, (x, y, n) => {
@@ -193,39 +199,27 @@ export function surface(kind: Surface, { color = 0xffffff, metal = 0, rough = 1,
   return new THREE.MeshStandardMaterial({ color, map: t.map, normalMap: t.normal, normalScale: new THREE.Vector2(bump, bump), roughnessMap: t.rough, roughness: rough, metalness: metal, emissive, emissiveIntensity: glow, emissiveMap });
 }
 
-/** Molten rock: dark crust with bright cracks (scroll its offset to make it flow). */
-export function lava() {
-  return make('lava', 256, 81, (_x, _y, n) => {
-    const hot = Math.max(0, 1 - Math.abs(n - 0.5) * 9);
-    return { rgb: mix([40, 8, 4], [255, 170, 60], Math.min(1, hot * 1.4 + n * 0.25)), h: -hot, r: 0.9 };
-  }, 2).map;
+/** Glowing veins for cooling lava rock (M102): black crust, bright orange-white cracks along the
+ *  noise's ridges. Use it as an emissive map, so only the cracks glow. */
+export function glowCracks() {
+  return make('cracks', 256, 61, (_x, _y, n) => {
+    const v = Math.max(0, 1 - Math.abs(n - 0.5) * 22), hot = Math.min(1, v * 1.6);
+    return { rgb: mix([0, 0, 0], [255, 190, 110], hot), h: -v, r: 1 };
+  }, 1).map;
 }
 
-/** A planet's surface: oceans, land and ice caps from the same noise (wraps around the sphere). */
-export function planet(key: string, sea: RGB, land: RGB, seed: number) {
-  return make(`planet-${key}`, 512, seed, (_x, y, n) => {
-    const lat = Math.abs(y / 256 - 1), ice = lat > 0.86 - n * 0.1;
-    const rgb = ice ? mix([220, 230, 240], [255, 255, 255], n) : n > 0.54 ? mix(land, dim(land, 0.6), (n - 0.54) * 4) : mix(dim(sea, 0.7), sea, n * 1.6);
-    return { rgb, h: n > 0.54 ? n : 0.54, r: n > 0.54 ? 0.85 : 0.35 };
-  }, 3).map;
-}
-
-let cloudTex: THREE.CanvasTexture | null = null;
-/** A soft, lumpy cloud made of overlapping puffs (a sprite, so it always faces the camera). */
-export function cloud(size: number, opacity = 0.9) {
-  if (!cloudTex) {
-    const c = document.createElement('canvas');
-    c.width = 256; c.height = 128;
-    const g = c.getContext('2d')!;
-    for (const [x, y, r] of [[70, 80, 42], [120, 62, 54], [178, 78, 44], [100, 92, 40], [150, 94, 40], [210, 92, 30], [44, 96, 28]]) {
-      const grad = g.createRadialGradient(x, y, 0, x, y, r);
-      grad.addColorStop(0, 'rgba(255,255,255,0.95)'); grad.addColorStop(0.6, 'rgba(250,250,255,0.6)'); grad.addColorStop(1, 'rgba(240,240,250,0)');
-      g.fillStyle = grad; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
-    }
-    cloudTex = new THREE.CanvasTexture(c);
-    cloudTex.colorSpace = THREE.SRGBColorSpace;
-  }
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, transparent: true, opacity, depthWrite: false }));
-  s.scale.set(size, size / 2, 1);
-  return s;
+let edgeTex: THREE.CanvasTexture | null = null;
+/** A thin bright line round each face's edge (an emissive map for neon-edged blocks). */
+export function neonEdge() {
+  if (edgeTex) return edgeTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#000'; g.fillRect(0, 0, 128, 128);
+  g.strokeStyle = '#fff'; g.lineWidth = 5; g.strokeRect(4, 4, 120, 120);
+  g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 12; g.strokeRect(4, 4, 120, 120);
+  edgeTex = new THREE.CanvasTexture(c);
+  edgeTex.colorSpace = THREE.SRGBColorSpace;
+  edgeTex.anisotropy = 4;
+  return edgeTex;
 }

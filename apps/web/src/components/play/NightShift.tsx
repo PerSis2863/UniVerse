@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import type { GameProps } from './game-props';
 import { Body, Controls, LightPool, THREE, World, approach, eyes, glowSprite, walk, type LightSource } from './world/core';
+import { lightBeam } from './world/nature';
 import { lookHex, readLook } from './PlayerCard';
 import { Crowd } from './world/crowd';
 import { surface } from './world/textures';
@@ -55,7 +56,7 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
   useEffect(() => {
     const el = canvas.current;
     if (!el) return;
-    const w = new World(el, { fov: 75, bg: 0x000000, fog: [0x000000, 1.5, 22], glow: { strength: 0.7, radius: 0.6, threshold: 0.6 }, env: 0.06 });
+    const w = new World(el, { fov: 75, bg: 0x000000, fog: [0x000000, 1.5, 22], glow: { strength: 0.7, radius: 0.6, threshold: 0.6 }, env: 0.06, ao: 0.55 });
     const crowd = new Crowd(w, () => out.current.net), look = readLook(), notesText = nightNotes(nightCode(seed));
     w.look({ vignette: 0.55, grain: 0.065, saturation: 0.8, contrast: 1.12 });
     let echoLines: THREE.LineSegments | null = null;
@@ -69,7 +70,7 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
     const ceilMat = surface('concrete', { color: 0x3a3832, rough: 1 }), doorMat = surface('wood', { color: 0x5b4030, rough: 0.7 });
     const keyMat = new THREE.MeshStandardMaterial({ color: 0xd4a017, metalness: 0.9, roughness: 0.3, emissive: 0x3a2a00 });
     const paperMat = new THREE.MeshStandardMaterial({ color: 0xe9e0c9, emissive: 0x2a2618, roughness: 0.9, side: THREE.DoubleSide });
-    const V = { me: new THREE.Vector3(), toT: new THREE.Vector3(), fwd: new THREE.Vector3(), toG: new THREE.Vector3(), q: new THREE.Vector3(), ray: new THREE.Ray(), flat: new THREE.Vector3(), hit: new THREE.Vector3() };
+    const V = { aim: new THREE.Vector3(), z: new THREE.Vector3(0, 0, 1), me: new THREE.Vector3(), toT: new THREE.Vector3(), fwd: new THREE.Vector3(), toG: new THREE.Vector3(), q: new THREE.Vector3(), ray: new THREE.Ray(), flat: new THREE.Vector3(), hit: new THREE.Vector3() };
 
     // The Quiet: very tall and thin, hunched, arms bent at the elbow that hang past its knees with
     // long fingers, a small tilted head with empty eyes and an open mouth, a ragged robe.
@@ -113,6 +114,10 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
       torch.shadow.camera.near = 0.3; torch.shadow.camera.far = 26; torch.map = lensPattern();
     }
     w.camera.add(torch, torch.target);
+    // The beam itself (M102): dusty air glowing where the light passes, cut off where it lands.
+    const beam = lightBeam(9, Math.PI / 9, 0xfff1d0);
+    beam.mesh.position.copy(torch.position);
+    w.camera.add(beam.mesh);
     const DUST = 220, dustPos = new Float32Array(DUST * 3), dustCol = new Float32Array(DUST * 3), dustVel = new Float32Array(DUST * 3);
     for (let i = 0; i < DUST; i++) { dustPos.set([(Math.random() - 0.5) * 4, (Math.random() - 0.5) * 3, -0.6 - Math.random() * 6], i * 3); dustVel.set([(Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.06], i * 3); }
     const dustGeo = new THREE.BufferGeometry();
@@ -318,6 +323,8 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
       if (inSafe && battery < 60) battery = Math.min(60, battery + dt * 4);
       const torchOn = hidden ? 0 : battery <= 0 ? 4 : battery < 15 ? (Math.sin(t * 40) > 0.2 ? 32 : 6) : 42;
       torch.intensity = torchOn;
+      beam.mesh.quaternion.setFromUnitVectors(V.z, V.aim.copy(torch.target.position).sub(torch.position).normalize());
+      beam.mat.uniforms.power.value = (torchOn / 42) * 0.18; beam.mat.uniforms.time.value = t;
       // Lamps flicker (the broken ones badly); flares sputter and burn out.
       for (const l of lamps) {
         const flick = Math.sin(t * 7 + l.seedV) + Math.sin(t * 23 + l.seedV * 2);

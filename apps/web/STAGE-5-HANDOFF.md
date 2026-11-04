@@ -4105,3 +4105,49 @@ is older). So this item does what the page controls:
   boxes (Night Shift's keys and lives, Supply Run's trucks: now `role="img"`) and a too-faint "Your best"
   on Ocean Cleanup's menu (now zinc-300 in dark). The camera fly-in in Obby and Orbit counts from the
   first frame drawn, so waiting for shaders no longer cuts it short.
+
+## M102: the 3D worlds look real: sky, light, rock, lava, planets (4 Nov 2026)
+
+The owner: "upgrade all the games even more like realistic graphics to all of them and add some unique
+games also". This item is the shared 3D engine and the three worlds; the other games follow (M103 on).
+
+- **Engine** (`world/core.ts`):
+  - `World.sky(look, relight)`: three's physical daylight sky (`Sky`, with a `gain` uniform added because
+    it's made for a darker exposure than ours), kept round the camera, and the same sky made into the
+    world's light from all around (`envFrom`: a PMREM of a copy of it), so metal and glass reflect it. Call
+    `lights()` first: the sun light moves to where the sky's sun is. `relight` false only moves the dome
+    (a change in steps; relight once at the end, it takes a few milliseconds).
+  - `World.envFrom(scene)`: the light from all around taken from any scene (Orbit: the planet and the sun).
+  - Options: `ao` (ambient occlusion, computers: three's GTAO at half size; glows, sprites, points, lines and
+    see-through things are hidden from its view or they'd cast dark halos), `haze` (fog that thickens like
+    air, `FogExp2`), `tone` ('aces', 'agx', 'neutral') and `exposure`. The quality ladder drops the
+    occlusion first (after a sharp screen comes down to 1×).
+  - `box`/`boxes` take a list of six materials (+x, −x, top, bottom, +z, −z): grass on top, rock round
+    the sides. Only for single boxes: merged boxes lose their face groups.
+- **Nature** (`world/nature.ts`, new; all worked out on the graphics chip, nothing to download):
+  `cloudSea` (an endless lit cloud layer, keep it under the camera with `follow`), `lavaSea` (cracking
+  crust over flowing, glowing lava), `islandRock` / `rocks` (craggy rock under a floating island, many
+  merged into one mesh), `starfield` (stars of real colours and brightnesses, sized on screen),
+  `milkyWay` (computers only: it's fine detail over the whole sky), `planetMaterial` ('earth': oceans with
+  shallows and sun glint, forests, grassland and deserts by rainfall and latitude, ice caps, drifting
+  clouds, city lights on the night side; 'desert'; 'giant' with bands and a storm), `ringMaterial`,
+  `lightBeam` (a torch's dusty beam; points along +z). The noise octaves drop from 5 to 3 on phones.
+- **Textures** (`world/textures.ts`): `glowCracks()` (an emissive map: only the cracks glow),
+  `neonEdge()`; floor tiles have puddles (mirror-smooth, darker), lockers and wood panels are grimier near
+  the floor. `cloud()`, `lava()` and `planet()` were replaced and removed.
+- **Skyline Obby:** a clear-morning sky with the sun behind the player, two layers of cloud far below,
+  big floating islands with pines in the distance. Pads are grassy islands on craggy rock (Sky Islands),
+  cooling basalt with glowing cracks (Lava Peaks) or black glass with neon edges (Neon Void); the special
+  pads keep their colour as a material (pink jelly to bounce on, crumbling sandstone, glowing crystal,
+  clear ice, a stone plaza with a flag, gold at the end). Lava Peaks has a smoky dusk and a lava sea;
+  Neon Void a night with stars and the Milky Way. The sky changes over two seconds between worlds, then
+  its light is made again. Rock under a pad that moves, crumbles or blinks is its child (it goes with it);
+  the rest is one mesh per world.
+- **Orbit Breach:** the planets are drawn on the graphics chip (earth, desert, ringed giant), real-coloured
+  stars and the Milky Way, a sun with a halo; the decks are painted panels (light, not bare metal: space
+  reflects nothing, so metal looked black) and the station reflects its planet (`relight` per station).
+- **Night Shift:** the torch's beam shows in the air (`lightBeam` on the camera, aimed with the torch's
+  sway, brightness with the battery), puddles on the floor catch the torch, ambient occlusion in corners.
+- **Checked:** screenshots of all three worlds (and Obby's later worlds through a temporary start
+  switch, removed); `pnpm check` clean. The cloud box draws 3D in software (1–2 frames a second), so
+  frame rates must be checked on a real device (the gauge in the game's bar).
