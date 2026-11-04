@@ -116,7 +116,7 @@ function Body({ d }: { d: Brand }) {
           <ul className="mt-3 grid sm:grid-cols-2 gap-3">
             {d.reviews.map((x, i) => (
               <li key={i} className="passport-card p-4">
-                <span className="text-amber-300" aria-label={`${x.stars} of 5 stars`}>{'★'.repeat(x.stars)}<span className="text-zinc-600">{'★'.repeat(5 - x.stars)}</span></span>
+                <span role="img" className="text-amber-300" aria-label={`${x.stars} of 5 stars`}>{'★'.repeat(x.stars)}<span className="text-zinc-600">{'★'.repeat(5 - x.stars)}</span></span>
                 <p className="mt-1 text-sm text-zinc-200">{x.text}</p>
                 <p className="mt-1 font-mono text-[10px] text-zinc-500">{[x.place, day(x.createdAt)].filter(Boolean).join(' · ')}</p>
               </li>

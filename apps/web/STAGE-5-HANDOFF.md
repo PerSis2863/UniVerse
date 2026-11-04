@@ -3967,3 +3967,52 @@ smoothly than the hub).
 - **Tested:**
   - `pnpm check`;
   - the built site: axe clean at 390 (light and dark, scrolled through) and 1280; no page errors.
+
+## M98: Trace's live board smooth; a site-wide sweep before merging (4 Nov 2026)
+
+The owner: "Trace's live instrument board still causes some jerky frames… do this one and see what
+else… make sure everything is good and after that push and merge it, don't leave anything behind".
+
+- **The board's numbers set off a storm of blur animations.**
+  - `Roll` (instruments) and the console's `Ticker` count by rewriting their text on every frame.
+  - `scroll-motion.ts`'s `rollChanged` took each rewrite for a new value and started a blur roll:
+    168 rolls in 6 s of scrolling on Trace.
+  - Fixes:
+    - a figure that changes twice within 250 ms is treated as animating itself and left alone
+      (`selfMoving`);
+    - the roll is opacity and a small rise only (no blur);
+    - `Roll`, `Ticker` and `Rolling` carry `data-no-motion`, so the page-wide count-up doesn't count
+      them a second time.
+- **A trap found and fixed:**
+  - M98's first pause list ended a `html[data-scrolling]` selector in `.play-scene > *`. Each time
+    scrolling started or stopped, the browser restyled the whole page: 19 s of style work in a 6 s
+    scroll on Trace.
+  - Now `.play-scene` is paused and its children `inherit`.
+  - **Rule:** never end a selector keyed on a `<html>` attribute that toggles often in `*` or
+    `> *`.
+- **The count-up waits for React.** It could rewrite a figure before React hydrated that part of the
+  page (React error #418, seen now and then on Green and Play). `countUp` now waits until the
+  element carries React's `__reactFiber$` marker (retries for 2 s), with a `shortcut:` comment.
+- **Also:**
+  - Green's tank wave, Play's little scenes and ripples, and Collaborate's aurora pause while
+    scrolling;
+  - star ratings on the passport (`/t/…`) and brand pages (`/b/…`) are `role="img"`, which axe
+    asked for.
+- **A site-wide sweep (`sweep.mjs`, scratch):** 116 page visits, covering signed-out, student,
+  teacher and admin pages at 390 and 1280 in dark and light (page errors, 5xx API calls, axe,
+  sideways scroll).
+  - Only the stars failed (fixed).
+  - The console check passes (as an owner, desktop and phone).
+- **Scrolling on the final build** (a phone-speed CPU, 6 s; 360 frames = 60 a second; slow frames
+  are those over 50 ms):
+  - Trace: 243 → 332 frames, slow frames 77 → 16;
+  - UniVersity: 232 → 315, slow frames 82 → 28;
+  - hub: 403;
+  - Play: 319.
+- **Count-ups wait for React** (`countUp` in `scroll-motion.ts`): a figure counts up only once React
+  has hydrated it (its `__reactFiber$` key, a `shortcut:`), else React's error #418 on /green and /play.
+  Rebuilt and checked three times: clean.
+- **Known, rare, local only:** /t/demo once in about 30 loads reported #418 ("HTML") when opened right
+  after the landing in the same tab. Nothing outside React changed the page before it (a
+  MutationObserver log), and the live site's `error_reports` has never had a hydration error. Look
+  again only if it shows up there.

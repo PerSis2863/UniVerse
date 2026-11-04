@@ -49,7 +49,7 @@ export function Ticker({ value, className }: { value: number; className?: string
     const c = animate(shown.current, value, { duration: shown.current ? 0.7 : 1.3, ease: EASE, onUpdate: write });
     return () => c.stop();
   }, [value]);
-  return <span ref={ref} className={cn('tabular-nums', className)}>0</span>;
+  return <span ref={ref} data-no-motion className={cn('tabular-nums', className)}>0</span>;
 }
 
 export function DeckHeader({ needs, search }: { needs: number | null; search: React.ReactNode }) {

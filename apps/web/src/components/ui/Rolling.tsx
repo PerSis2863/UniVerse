@@ -16,5 +16,5 @@ export function Rolling({ value, digits = 0, duration = 1.1 }: { value: number; 
     const c = animate(shown.current, value, { duration, ease: [0.22, 1, 0.36, 1], onUpdate: show });
     return () => c.stop();
   }, [value, digits, duration, calm]);
-  return <span ref={ref} className="tabular-nums">0</span>;
+  return <span ref={ref} data-no-motion className="tabular-nums">0</span>;
 }

@@ -2630,5 +2630,9 @@ html.dark :is(a, button):has(> .comms-head) { color: #111113; }
 /* M96 · Decorative loops rest while the page scrolls (scroll-motion.ts sets <html data-scrolling>) and
    pick up again 180 ms after; measured, they were most of what was left of the cost of scrolling. The
    live dots keep pulsing (they show that something is live). */
-html[data-scrolling] :is(.passport-glow, .mkt-drift-a, .mkt-drift-b, .ins-ping, .ins-live, .ins-grain, .wcard-sway, .universe-node-pulse, .universe-u-beam, .universe-n-beam),
-html[data-scrolling] .bar-glint::after { animation-play-state: paused; }
+html[data-scrolling] :is(.passport-glow, .mkt-drift-a, .mkt-drift-b, .ins-ping, .ins-live, .ins-grain, .wcard-sway, .universe-node-pulse, .universe-u-beam, .universe-n-beam, .tank-wave, .play-ripple, .play-scene),
+html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::before { animation-play-state: paused; }
+/* Play's little scenes animate their children: they take the scene's state. Never end a
+   html[data-scrolling] selector in "*" or "> *": the browser then restyles the whole page each time
+   scrolling starts or stops (M98: 19 s of style work in a 6 s scroll on Trace). */
+.play-scene > * { animation-play-state: inherit; }

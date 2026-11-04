@@ -56,7 +56,12 @@ export function formatFigure(f: NonNullable<ReturnType<typeof parseFigure>>, v: 
   return `${f.prefix}${v < 0 ? '-' : ''}${grouped}${frac ? decimal + frac : ''}${f.suffix}`;
 }
 
-function countUp(el: Element) {
+// M98: React must have taken over a figure before it's rewritten, or the page's hydration finds
+// different text (React error #418, seen on Green and Play when the count started first).
+// shortcut: React's own marker on a hydrated node (`__reactFiber$…`); no public way to ask.
+const hydrated = (el: Element) => Object.keys(el).some((k) => k.startsWith('__reactFiber$'));
+function countUp(el: Element, tries = 0) {
+  if (!hydrated(el)) { if (tries < 8) setTimeout(() => countUp(el, tries + 1), 250); return; }
   const node = el.firstChild;
   if (!node || node.nodeType !== Node.TEXT_NODE || el.childNodes.length !== 1) return;
   const text = node.nodeValue ?? '';
@@ -217,19 +222,30 @@ let stopSheen: (() => void) | null = null;
 let stopScrolling: (() => void) | null = null;
 
 /**
- * A figure whose value changes on screen (live numbers, a filter applied) rolls into its new value
- * out of a short blur, like a ticker. Not the first value (that counts up) and not plain text.
+ * A figure whose value changes on screen (live numbers, a filter applied) rolls into its new value,
+ * like a ticker. Not the first value (that counts up) and not plain text.
  */
+// M98: a figure that changes twice within 250 ms is animating itself (a counter writing every frame, a
+// stopwatch): it's left alone from then on. Before, each frame of the Trace board's and the console's
+// counters started its own roll (about 28 a second), most of the Trace board's jerky frames.
+const lastChange = new WeakMap<Element, number>();
+const selfMoving = new WeakSet<Element>();
 function rollChanged(records: MutationRecord[]) {
   const done = new Set<Element>();
+  const now = performance.now();
   for (const rec of records) {
     const node = rec.type === 'characterData' ? rec.target : rec.addedNodes[0];
     if (!node || node.nodeType !== Node.TEXT_NODE || writing.has(node)) continue;
     const el = node.parentElement;
-    if (!el || done.has(el) || !el.matches(FIGURE) || !seen.has(el) || el.closest(SKIP) || !parseFigure(node.nodeValue ?? '')) continue;
+    if (!el || done.has(el) || selfMoving.has(el) || !el.matches(FIGURE)) continue;
+    const prev = lastChange.get(el);
+    lastChange.set(el, now);
+    if (prev !== undefined && now - prev < 250) { selfMoving.add(el); continue; }
+    if (!seen.has(el) || el.closest(SKIP) || !parseFigure(node.nodeValue ?? '')) continue;
     done.add(el);
     const inline = getComputedStyle(el).display === 'inline';
-    el.animate(inline ? [{ opacity: 0.25, filter: 'blur(3px)' }, { opacity: 1, filter: 'blur(0)' }] : [{ opacity: 0.25, filter: 'blur(3px)', transform: 'translate3d(0, 0.35em, 0)' }, { opacity: 1, filter: 'blur(0)', transform: 'none' }], { duration: 420, easing: EASE_GLIDE });
+    // Opacity and a small rise only (no blur: a blur repaints the figure every frame).
+    el.animate(inline ? [{ opacity: 0.25 }, { opacity: 1 }] : [{ opacity: 0.25, transform: 'translate3d(0, 0.35em, 0)' }, { opacity: 1, transform: 'none' }], { duration: 420, easing: EASE_GLIDE });
   }
 }
 
