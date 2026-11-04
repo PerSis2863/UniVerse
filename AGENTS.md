@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M95 is the latest).
+  builds on it). The newest notes are at the end (M96 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -127,9 +127,10 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   ink/white tab pills everywhere), live dots that no longer repaint every frame; **M93** the landing like the
   photos' website (two-tone headings, no navy left); **M94** the last navy and aqua moved over (maps, live
   cards, Messages, games, editors; documents on paper and people's own colour choices left as they are);
-  **M95** a check of what to improve: the console loads each tab when opened, sounds close safely; next up:
-  first-load size (no page within target) and the body-parser override from 5 Nov.
-- **Work numbers:** the next item is **M96**. Never reuse a number: take the next one after the
+  **M95** a check of what to improve: the console loads each tab when opened, sounds close safely;
+  **M96** every app page ~46 KB lighter to download (the sign-in layout's file no longer rides along, rare
+  parts load when used). Scheduled: the body-parser override on 5 Nov (12:00 UTC, a reminder to this session).
+- **Work numbers:** the next item is **M97**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,

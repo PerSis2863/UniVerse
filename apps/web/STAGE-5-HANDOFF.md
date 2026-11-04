@@ -3897,3 +3897,40 @@ The owner: "please check what else you can improve in this system".
   - `pnpm check`;
   - the console as a test owner: overview, flows, errors, server and people tabs open, axe clean,
     light and dark, desktop and phone.
+
+## M96: Lighter first load on every page (4 Nov 2026)
+
+The owner: "please do all the still to do" (M95 found that no page meets the first-load targets).
+
+- **Measured:** first-load script (gzipped, `node scripts/bundle-report.mjs` on a local build).
+  - Every app page went down about 46 KB, about 11–12%: /student 410 → 364 KB, /hub ~372 → 333,
+    /green 379 → 346, /play 378 → 344, the editors (docs, sheets, slides) about 46 KB each.
+  - /console went 481 → 377 KB (with M95's lazy tabs).
+  - About 39 KB of each figure is the old-browser polyfills, which current browsers skip.
+- **The big one: the sign-in layout's file was loaded by every page.**
+  - `(auth)/layout.tsx` referenced its client parts itself (`Link`, `LightTrail`, `UniverseLogo`,
+    `ApiWarmup`, `MaintenanceGate`, `AuthShowcase`).
+  - Webpack kept some of those, which other entries also reference, inside the sign-in layout's
+    chunk. Every page's client manifest then pointed at that chunk, bringing along the sign-in
+    picture and the landing's flow card.
+  - The fix: the whole frame is one client component, `src/components/auth/AuthFrame.tsx`, and
+    the layout only renders it.
+  - **Rule:** a server layout or page that uses several client parts the root layout also uses
+    should wrap them in one client component, rather than referencing each one itself.
+- **Loaded when used, not with the page:**
+  - the install guide (`InstallBanner` → `InstallGuide`, dynamic);
+  - the email switch in the notifications panel (`Topbar`);
+  - the incoming-call screen and the mini player (`DashboardShell`, dynamic, `ssr: false`; they
+    load just after the page).
+  - `PendingPage` stays static, because it wraps every page's content.
+- **How to find what a page loads:**
+  - `node scripts/bundle-report.mjs`;
+  - a page's scripts are the `<script src>` tags in `.next/server/app/<page>.html`;
+  - its client manifest is `.next/server/app/(group)/<page>/page_client-reference-manifest.js`
+    (eval it with `globalThis.__RSC_MANIFEST = {}`).
+  - `productionBrowserSourceMaps` produced no maps with this config, so readable strings in a chunk
+    were enough to identify it.
+- **Tested:**
+  - `pnpm check`;
+  - the built site: sign-in shows its frame, form and picture; the hub's notifications panel opens
+    with the email switch; axe clean; no page errors.

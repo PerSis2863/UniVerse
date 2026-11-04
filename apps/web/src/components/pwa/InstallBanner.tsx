@@ -4,7 +4,10 @@ import { useState, useEffect } from 'react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { Download, Share, X, Smartphone } from 'lucide-react';
 import { LogoMark } from '@/components/ui/LogoMark';
-import { InstallGuide } from './InstallGuide';
+import dynamic from 'next/dynamic';
+
+// The step-by-step guide loads only when it's opened (M96: it was in every app page's first load).
+const InstallGuide = dynamic(() => import('./InstallGuide').then((m) => m.InstallGuide), { ssr: false });
 
 export function InstallBanner() {
   const { canInstall, isInstalled, isIOS, install } = usePWAInstall();

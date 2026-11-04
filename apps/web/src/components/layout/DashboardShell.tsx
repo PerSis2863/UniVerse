@@ -1,5 +1,4 @@
 'use client';
-import { MiniPlayer } from '@/components/chat/MiniPlayer';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SampleModeBar } from '@/components/SampleMode';
 import { useSampleMode } from '@/lib/sample-mode';
@@ -14,7 +13,6 @@ import Link from '@/components/ui/Link';
 import { cn } from '@/lib/utils';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { OfflineBar } from '@/components/pwa/OfflineBar';
-import { IncomingCall } from '@/components/chat/IncomingCall';
 import { useOptimisticPath } from '@/lib/nav-pending';
 import { usePageTitle, useScrollEdges } from '@/lib/chrome';
 import { haptic } from '@/lib/haptics';
@@ -38,6 +36,9 @@ import dynamic from 'next/dynamic';
 let tabsPrefetched = false;
 
 const QuickCreate = dynamic(() => import('./QuickCreate').then((m) => m.QuickCreate), { ssr: false });
+// They wait for a call or a voice note, so they load just after the page (M96: not in its first load).
+const MiniPlayer = dynamic(() => import('@/components/chat/MiniPlayer').then((m) => m.MiniPlayer), { ssr: false });
+const IncomingCall = dynamic(() => import('@/components/chat/IncomingCall').then((m) => m.IncomingCall), { ssr: false });
 
 interface DashboardShellProps {
   children: React.ReactNode;
