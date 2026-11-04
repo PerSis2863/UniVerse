@@ -167,6 +167,8 @@ const SURFACES = {
     const fissure = Math.abs(Math.sin(x * 0.18 + Math.sin(y * 0.03) * 2 + n * 3));
     return { rgb: dim(mix([54, 40, 30], [96, 74, 56], n), 0.55 + fissure * 0.45), h: fissure, r: 0.95 };
   }, 3.4),
+  /** Rippled water (M103): only its bumps matter, as the normal map of reflective water. */
+  water: () => make('water', 256, 251, (_x, _y, n) => ({ rgb: [128, 128, 128], h: n, r: 0.1 }), 4),
   /** Anodised gunmetal, brushed along its length (fine streaks, a few worn edges); light, tinted by the material. */
   gunmetal: () => make('gunmetal', 512, 211, (x, y, n) => {
     const row = Math.sin(y * 91.7 + Math.floor(x / 96) * 13.1) * 43758.5453, streak = row - Math.floor(row), wear = n > 0.7 ? (n - 0.7) * 2.2 : 0;
@@ -196,7 +198,7 @@ export const surfaceMaps = (kind: Surface) => SURFACES[kind]();
 /** A physically lit material wearing one of the surfaces, tinted by `color`. */
 export function surface(kind: Surface, { color = 0xffffff, metal = 0, rough = 1, bump = 1, emissive = 0x000000, glow = 0, emissiveMap }: { color?: number; metal?: number; rough?: number; bump?: number; emissive?: number; glow?: number; emissiveMap?: THREE.Texture } = {}) {
   const t = SURFACES[kind]();
-  return new THREE.MeshStandardMaterial({ color, map: t.map, normalMap: t.normal, normalScale: new THREE.Vector2(bump, bump), roughnessMap: t.rough, roughness: rough, metalness: metal, emissive, emissiveIntensity: glow, emissiveMap });
+  return new THREE.MeshStandardMaterial({ color, map: t.map, normalMap: t.normal, normalScale: new THREE.Vector2(bump, bump), roughnessMap: t.rough, roughness: rough, metalness: metal, emissive, emissiveIntensity: glow, ...(emissiveMap ? { emissiveMap } : {}) });
 }
 
 /** Glowing veins for cooling lava rock (M102): black crust, bright orange-white cracks along the

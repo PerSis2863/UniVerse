@@ -4151,3 +4151,41 @@ games also". This item is the shared 3D engine and the three worlds; the other g
 - **Checked:** screenshots of all three worlds (and Obby's later worlds through a temporary start
   switch, removed); `pnpm check` clean. The cloud box draws 3D in software (1–2 frames a second), so
   frame rates must be checked on a real device (the gauge in the game's bar).
+
+## M103: Flood Rescue and Ocean Cleanup in real 3D (4 Nov 2026)
+
+The owner's "realistic graphics to all of them", for the two flat action games. Their rules didn't change:
+they still run in the game box's pixels (steering, hit circles, the water line), exactly as before.
+
+- **`world/board.ts` (new): a flat game drawn in 3D.** `Board(world, 'side' | 'top', span, tilt)` fits the
+  camera to the box each frame (`fit()` is true when the size changed: lay the scenery out again then) and
+  `at(px, py)` gives the point on the plane under a pixel (a ray from the camera, so it is exact even with
+  the camera tipped); `scale(px, py)` is world units per pixel there. Side views use the plane z = 0
+  (tipped 9° so roofs and pads show their tops); top views use the sea (y = 0). Also: `rainField` (rain
+  moved entirely on the graphics chip, slanting with `wind`), `stormSky` (rolling clouds lit by
+  lightning), `ocean` + `swell` (a sea whose swell is the same sum of waves on the chip and in `swell()`,
+  so floating things bob and tip with it; two layers of ripples; foam on crests by `foam`), `label`
+  (a number or emoji as a sprite, its picture made once), `timerRing` (a ring that empties),
+  `waterNormals` (the new `water` surface in textures.ts).
+- **Flood Rescue:** a night town of lit windows (one facade picture, tiled in world units) in two far rows
+  fading into rain, the play houses with flat roofs, parapets and tanks, the hill and a white hospital
+  with a red cross, the H pad with lights that pulse green while it helps. The flood is three's `Water`
+  (a mirror, smaller on phones) made murkier (its shader's reflection term is dimmed); timer rings, counts
+  and the lightning warning are hidden from its mirror. Real lightning (a jagged tube, the clouds and the
+  town flash). A modelled helicopter: pink paint, white belly, canopy, skids, tail rotor, main rotor and its
+  blur, a green light and a strobe, a searchlight (a spot light with shadows on computers and a beam), and
+  the winch line; the person being winched rises up it. People are instanced (one mesh per body part), wave,
+  and have pets. The counters moved off the canvas into chips (one pill on phones).
+- **Ocean Cleanup:** the open sea under the physical sky (sun glitter, a swell, foam in the storm), the
+  weather and sea changing with the stage (calm → choppy → storm, with rain and lightning). Every floating
+  thing is a model (one mesh each, vertex colours): bottles, cups, bags, cans, ghost nets with floats,
+  turtles, fish, octopuses, power-up buoys; oil is a black slick with a thin film's rainbow. Rings on the
+  water keep the flat game's language (red: sea life, gold: power-ups, pink: nets). A white cleanup boat
+  with a pink rail, a cabin and the scoop; a foam wake (instanced, additive: black is see-through); the
+  shield is a dome, the magnet's reach and the sweep are rings on the water. Combo and the cleared count
+  moved to the HUD.
+- **Removed:** the flat drawing helpers (`useGameCanvas`, `burst`, `drawEffects`, `glyph`, `halo`): nothing
+  draws them now. What's left (steering, `calmMotion`) is `play/steer.ts`.
+- **Checked:** screenshots at 1280 and 390 (and with the flood high and items placed mid-screen through a
+  temporary switch, removed); axe clean at 390 light and 1280 dark while playing; `pnpm check` clean.
+  Phones skip the effects chain, so they draw faster than computers in this box.
