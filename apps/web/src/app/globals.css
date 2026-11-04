@@ -2423,3 +2423,168 @@ html.dark .glass-sidebar { -webkit-backdrop-filter: blur(22px) saturate(150%); b
    the light dims there and the words stay crisp. */
 .text-pool { position: relative; isolation: isolate; }
 .text-pool::before { content: ''; position: absolute; inset: -20% -18%; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgb(10 15 43 / 0.86), rgb(10 15 43 / 0.6) 55%, transparent); }
+
+/* ═══ M91 · The owner's CreditKarma photos (4 Nov 2026: "use this photos and make website like this";
+   pink kept as the one accent). Black and white with soft warm light (gold, steel blue, olive) behind
+   the page; solid cards with a hairline (white in light mode, near-black in dark); the main button and
+   every chosen tab a white pill in dark mode and an ink pill in light mode; headline cards in the
+   photos' frosts (dusk: steel blue into warm brown; gold; olive). Pink only for the river, live dots
+   and the number that matters (--ins-hot). Surfaces are solid: no see-through cards and no glass behind
+   bars or the side menu (frosted layers were the biggest drawing cost while scrolling on a phone).
+   Unlayered and last, so it wins over the M52–M57 tokens above. ═══ */
+html:not(.dark) {
+  /* indigo / violet / purple: the ink scale (accents are black in light mode) */
+  --color-indigo-50: #f4f4f5; --color-indigo-100: #e8e8eb; --color-indigo-200: #d4d4d8; --color-indigo-300: #a8a8b0; --color-indigo-400: #71717a; --color-indigo-500: #52525b; --color-indigo-600: #27272a; --color-indigo-700: #1d1d20; --color-indigo-800: #161618; --color-indigo-900: #111113; --color-indigo-950: #09090b;
+  --color-violet-50: #f4f4f5; --color-violet-100: #e8e8eb; --color-violet-200: #d4d4d8; --color-violet-300: #a8a8b0; --color-violet-400: #71717a; --color-violet-500: #52525b; --color-violet-600: #27272a; --color-violet-700: #1d1d20; --color-violet-800: #161618; --color-violet-900: #111113; --color-violet-950: #09090b;
+  --color-purple-50: #f4f4f5; --color-purple-100: #e8e8eb; --color-purple-200: #d4d4d8; --color-purple-300: #a8a8b0; --color-purple-400: #71717a; --color-purple-500: #52525b; --color-purple-600: #27272a; --color-purple-700: #1d1d20; --color-purple-800: #161618; --color-purple-900: #111113; --color-purple-950: #09090b;
+  --color-aqua-50: #f4f4f5; --color-aqua-100: #e8e8eb; --color-aqua-200: #d4d4d8; --color-aqua-300: #a8a8b0; --color-aqua-400: #71717a; --color-aqua-500: #52525b; --color-aqua-600: #3f3f46; --color-aqua-700: #27272a; --color-aqua-800: #1d1d20; --color-aqua-900: #111113; --color-aqua-950: #09090b;
+  /* neutral greys (400–600 read at 4.5:1 on the page and on white) */
+  --color-zinc-50: #f7f7f8; --color-zinc-100: #f0f0f1; --color-zinc-200: #e4e4e7; --color-zinc-300: #d4d4d8; --color-zinc-400: #5f5f69; --color-zinc-500: #55555e; --color-zinc-600: #3f3f46; --color-zinc-700: #303036; --color-zinc-800: #232326; --color-zinc-900: #18181b; --color-zinc-950: #0d0d0f;
+  --color-slate-400: #5f5f69; --color-slate-500: #55555e; --color-slate-600: #3f3f46;
+  --color-gray-400: #5f5f69; --color-gray-500: #55555e; --color-gray-600: #3f3f46;
+}
+.dark, .on-dark {
+  /* indigo / violet / purple: graphite (light shades for text on black, deep ones for fills) */
+  --color-indigo-50: #fafafa; --color-indigo-100: #f4f4f5; --color-indigo-200: #e4e4e7; --color-indigo-300: #d4d4d8; --color-indigo-400: #a1a1aa; --color-indigo-500: #3f3f46; --color-indigo-600: #34343a; --color-indigo-700: #27272a; --color-indigo-800: #1f1f22; --color-indigo-900: #18181b; --color-indigo-950: #0f0f11;
+  --color-violet-50: #fafafa; --color-violet-100: #f4f4f5; --color-violet-200: #e4e4e7; --color-violet-300: #d4d4d8; --color-violet-400: #a1a1aa; --color-violet-500: #3f3f46; --color-violet-600: #34343a; --color-violet-700: #27272a; --color-violet-800: #1f1f22; --color-violet-900: #18181b; --color-violet-950: #0f0f11;
+  --color-purple-50: #fafafa; --color-purple-100: #f4f4f5; --color-purple-200: #e4e4e7; --color-purple-300: #d4d4d8; --color-purple-400: #a1a1aa; --color-purple-500: #3f3f46; --color-purple-600: #34343a; --color-purple-700: #27272a; --color-purple-800: #1f1f22; --color-purple-900: #18181b; --color-purple-950: #0f0f11;
+  /* aqua: what was Aqua Jade (chosen, highlighted) is white now */
+  --color-aqua-50: #ffffff; --color-aqua-100: #fafafa; --color-aqua-200: #f4f4f5; --color-aqua-300: #ededef; --color-aqua-400: #d4d4d8; --color-aqua-500: #a1a1aa; --color-aqua-600: #71717a; --color-aqua-700: #3f3f46; --color-aqua-800: #27272a; --color-aqua-900: #18181b; --color-aqua-950: #0b0b0c;
+  --color-zinc-50: #fafafa; --color-zinc-100: #f4f4f5; --color-zinc-200: #e4e4e7; --color-zinc-300: #d4d4d8; --color-zinc-400: #b4b4bc; --color-zinc-500: #a1a1aa; --color-zinc-600: #8f8f98; --color-zinc-700: #3f3f46; --color-zinc-800: #27272a; --color-zinc-900: #18181b; --color-zinc-950: #0f0f11;
+  --color-slate-400: #b4b4bc; --color-slate-500: #a1a1aa; --color-slate-600: #8f8f98;
+  --color-gray-400: #b4b4bc; --color-gray-500: #a1a1aa; --color-gray-600: #8f8f98;
+}
+/* Coloured text written for light backgrounds, in the new scales (was violet and navy-grey). */
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-500, .text-indigo-600, .text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600) { color: #27272a; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-400, .text-violet-400, .text-purple-400) { color: #55555e; }
+.dark .text-indigo-500:not([class*="dark:text-"]) { color: #d4d4d8; }
+.dark :is(.text-indigo-600, .text-violet-600, .text-purple-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #e4e4e7; }
+
+:root {
+  --ink: #111113; --ink-contrast: #ffffff; --ink-soft: #27272a;
+  --tint: #111113; --tint-rgb: 17 17 19; --tint-text: #111113;
+  --background: #ececec;
+  --surface: #ffffff; --surface-2: #f6f6f7;
+  --fill: rgba(0, 0, 0, 0.05); --fill-strong: rgba(0, 0, 0, 0.09);
+  --separator: rgba(0, 0, 0, 0.08); --hairline: rgba(0, 0, 0, 0.16);
+  --material: rgba(255, 255, 255, 0.96); --material-thick: rgba(255, 255, 255, 0.98); --material-highlight: rgba(255, 255, 255, 0.9);
+  --card-bg: #ffffff; --card-border: rgba(0, 0, 0, 0.06); --card-hover-bg: #ffffff; --card-hover-border: rgba(0, 0, 0, 0.14);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 18px 40px -28px rgba(0, 0, 0, 0.28);
+  --sidebar-bg: #0e0e10; --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-item-color: #c9c9cf; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.07); --sidebar-item-hover-color: #ffffff;
+  --sidebar-item-active-bg: #f4f4f5; --sidebar-item-active-color: #111113;
+  --topbar-bg: rgba(236, 236, 236, 0.96); --topbar-border: rgba(0, 0, 0, 0.07);
+  --toast-bg: rgba(255, 255, 255, 0.98);
+  --input-bg: #ffffff; --input-border: rgba(0, 0, 0, 0.13); --input-placeholder: #6e6e78;
+  --text-primary: #111113; --text-secondary: #3f3f46; --text-muted: #55555e;
+  --pill-on-bg: #111113; --pill-on-color: #ffffff;
+  --btn-ghost-hover-bg: rgba(0, 0, 0, 0.06);
+  /* The photos' frosts. Dusk (white text): steel blue into warm brown. Gold (dark text): pale honey.
+     Olive (white text): moss green. Deep enough that white text reads at 4.5:1 on every part. */
+  --karma-dusk: radial-gradient(70% 90% at 12% 92%, #7b5236 0%, transparent 62%), radial-gradient(80% 90% at 92% 18%, #3f6a8c 0%, transparent 62%), linear-gradient(135deg, #5a4a40, #3d566c);
+  --karma-gold: radial-gradient(90% 110% at 0% 0%, #fffaf0 0%, transparent 60%), linear-gradient(135deg, #f2e2b6, #e3c98e);
+  --karma-olive: radial-gradient(80% 100% at 85% 15%, #7c8436 0%, transparent 62%), linear-gradient(135deg, #3a4020, #565e2c 60%, #646b30);
+}
+.dark {
+  --ink: #f4f4f5; --ink-contrast: #111113; --ink-soft: #27272a;
+  --tint: #34343a; --tint-rgb: 244 244 245; --tint-text: #f4f4f5;
+  --background: #0b0b0c;
+  --surface: #151517; --surface-2: #1d1d20;
+  --fill: rgba(255, 255, 255, 0.06); --fill-strong: rgba(255, 255, 255, 0.11);
+  --separator: rgba(255, 255, 255, 0.08); --hairline: rgba(255, 255, 255, 0.16);
+  --material: rgba(21, 21, 23, 0.96); --material-thick: rgba(24, 24, 27, 0.98); --material-highlight: rgba(255, 255, 255, 0.06);
+  --card-bg: #151517; --card-border: rgba(255, 255, 255, 0.07); --card-hover-bg: #19191c; --card-hover-border: rgba(255, 255, 255, 0.16);
+  --card-shadow: 0 24px 48px -30px rgba(0, 0, 0, 0.85);
+  --sidebar-bg: #0e0e10; --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-item-color: #c9c9cf; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.07); --sidebar-item-hover-color: #ffffff;
+  --sidebar-item-active-bg: #f4f4f5; --sidebar-item-active-color: #111113;
+  --topbar-bg: rgba(11, 11, 12, 0.96); --topbar-border: rgba(255, 255, 255, 0.07);
+  --toast-bg: rgba(28, 28, 31, 0.98);
+  --input-bg: rgba(255, 255, 255, 0.05); --input-border: rgba(255, 255, 255, 0.12); --input-placeholder: #8e8e96;
+  --text-primary: #f4f4f5; --text-secondary: #c4c4cb; --text-muted: #a1a1aa;
+  --pill-on-bg: #f4f4f5; --pill-on-color: #111113;
+  --badge-blue-bg: rgba(255, 255, 255, 0.1); --badge-blue-color: #e4e4e7;
+  --karma-dusk: radial-gradient(70% 90% at 10% 92%, #5c3d2a 0%, transparent 62%), radial-gradient(80% 90% at 92% 15%, #34536e 0%, transparent 62%), linear-gradient(135deg, #2a2420, #1f2c38);
+  --karma-gold: radial-gradient(90% 110% at 0% 0%, rgba(226, 184, 104, 0.34) 0%, transparent 60%), linear-gradient(135deg, #26200f, #352b16);
+  --karma-olive: radial-gradient(80% 100% at 85% 15%, #626a2b 0%, transparent 62%), linear-gradient(135deg, #1d2111, #303719 60%, #434a20);
+}
+:root:not([data-accent]) .dark, :root.dark:not([data-accent]) { --btn-secondary-color: #f4f4f5; --btn-ghost-color: #e4e4e7; }
+:root:not([data-accent]) { --btn-secondary-color: #111113; --btn-ghost-color: #27272a; --btn-ghost-hover-bg: rgba(0, 0, 0, 0.06); }
+
+/* The page: warm light in the corners, like the photos' blurred backgrounds. Still, one layer. */
+.ambient-bg {
+  background:
+    radial-gradient(60vmax 42vmax at -6% -8%, rgba(236, 196, 112, 0.42), transparent 70%),
+    radial-gradient(50vmax 40vmax at 108% 26%, rgba(126, 162, 198, 0.3), transparent 70%),
+    radial-gradient(60vmax 34vmax at 40% 112%, rgba(214, 150, 78, 0.24), transparent 70%),
+    #ececec;
+}
+.dark .ambient-bg {
+  background:
+    radial-gradient(56vmax 40vmax at -8% -10%, rgba(214, 160, 84, 0.16), transparent 70%),
+    radial-gradient(50vmax 36vmax at 108% 30%, rgba(98, 136, 176, 0.11), transparent 70%),
+    radial-gradient(64vmax 30vmax at 50% 114%, rgba(146, 154, 76, 0.1), transparent 70%),
+    #0b0b0c;
+}
+.text-pool::before { background: radial-gradient(closest-side, rgb(11 11 12 / 0.86), rgb(11 11 12 / 0.6) 55%, transparent); }
+
+/* Buttons: the main one a white pill (dark) or an ink pill (light); no glow. */
+:root:not([data-accent]) .btn-primary { color: #111113; background: #f4f4f5; box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 10px 24px -16px rgba(0, 0, 0, 0.7); }
+:root:not([data-accent]) .btn-primary:not(:disabled):hover { background: #ffffff; box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 14px 30px -16px rgba(0, 0, 0, 0.8); }
+:root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *) { color: #ffffff; background: #111113; box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.55); }
+:root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *):not(:disabled):hover { background: #27272a; box-shadow: 0 14px 30px -16px rgba(0, 0, 0, 0.6); }
+
+/* Solid surfaces: cards, the side menu, bars, the tab bar and toasts have no glass behind them. */
+.panel, .dark .panel, html.dark .panel, .card, .card-hover, .glass, .kpi-card { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.glass { background-color: var(--surface); }
+html.dark .glass-sidebar, html:not(.dark) .glass-sidebar { -webkit-backdrop-filter: none; backdrop-filter: none; background: radial-gradient(120% 28% at 0% 0%, rgba(214, 170, 92, 0.1), transparent 70%), #0e0e10; }
+.sidebar-pill, .dark .sidebar-pill, html.dark .sidebar-pill { background: #f4f4f5; box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.7); }
+[dir="rtl"] .sidebar-pill, html.dark[dir="rtl"] .sidebar-pill { box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.7); }
+.glass-bar { background: rgba(236, 236, 236, 0.97); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.dark .glass-bar { background: rgba(11, 11, 12, 0.97); }
+.ios-glass { background: var(--material-thick); -webkit-backdrop-filter: none; backdrop-filter: none; }
+html[data-scrolled] .nav-edge { background: var(--topbar-bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+[data-sonner-toaster] [data-sonner-toast] { -webkit-backdrop-filter: none; backdrop-filter: none; }
+html.dark .ios-segment-thumb { box-shadow: 0 8px 22px -14px rgba(0, 0, 0, 0.8); }
+.dark .ios-segment-thumb { box-shadow: 0 8px 22px -14px rgba(0, 0, 0, 0.8); }
+
+/* Chart lines and bars in white on black (pink stays for what matters, --ins-hot). */
+html.dark .ins-cell :is(svg, .ins-pop) { color: #e4e4e7; }
+.ptr-ring { background: conic-gradient(from 0deg, #f4f4f5, #fe81d1, #fe81d1, transparent 85%); }
+
+/* Lights that followed the pointer and focus glows were pink: neutral now. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visible, textarea:focus-visible, select:focus-visible { box-shadow: 0 0 0 3px rgb(var(--tint-rgb) / 0.14); }
+@media (hover: hover) {
+  a.card:hover, a.panel:hover, button.card:hover, button.panel:hover, .card-hover:hover { box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.4); }
+}
+[data-cursor-light]::before { background: radial-gradient(520px circle at var(--mx, -999px) var(--my, -999px), rgb(255 255 255 / 0.06), transparent 60%); }
+.dark .sheen { background-image: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), rgb(255 255 255 / 0.06), transparent 62%); }
+
+/* Wallet cards (hub): the idle sway on touch screens as a CSS animation (compositor only), and the
+   finishes in the photos' colours (black, honey gold, steel; pink stays). */
+@keyframes wcard-sway {
+  0%, 100% { transform: perspective(1100px) rotateY(-10deg) rotateX(9deg); }
+  25% { transform: perspective(1100px) rotateY(-3deg) rotateX(11deg); }
+  50% { transform: perspective(1100px) rotateY(-9deg) rotateX(12deg); }
+  75% { transform: perspective(1100px) rotateY(-17deg) rotateX(7deg); }
+}
+.wcard-sway { animation: wcard-sway 16s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .wcard-sway { animation: none; transform: perspective(1100px) rotateY(-10deg) rotateX(9deg); } }
+html.reduce-motion .wcard-sway { animation: none; transform: perspective(1100px) rotateY(-10deg) rotateX(9deg); }
+.wcard-abyss { background: radial-gradient(90% 80% at 88% 10%, rgb(254 129 209 / 0.26), transparent 60%), radial-gradient(90% 90% at 8% 112%, rgb(214 170 92 / 0.3), transparent 58%), linear-gradient(135deg, #2c2c30, #151517 48%, #0b0b0c); }
+.wcard-aqua { background: radial-gradient(90% 90% at 10% 0%, rgb(255 255 255 / 0.5), transparent 55%), linear-gradient(135deg, #f6e7c1, #e3c98e 50%, #cfae66); }
+.wcard-blue { background: radial-gradient(90% 90% at 10% 0%, rgb(255 255 255 / 0.45), transparent 55%), linear-gradient(135deg, #dde6ee, #a4bacd 50%, #839db5); }
+.wcard-thumb.is-on { box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ink); }
+
+/* Hero cards (hub, Trace): near-black with the photos' warm light low down and steel blue at the top
+   (dark in both themes, like the photos' black band under a light page). */
+.trace-hero, html:not(.dark) .trace-hero { background: radial-gradient(70% 45% at 50% 120%, rgb(214 170 92 / 0.24), transparent 70%), radial-gradient(80% 60% at 0% 0%, rgb(98 136 176 / 0.16), transparent 70%), radial-gradient(60% 50% at 100% 8%, rgb(146 120 90 / 0.14), transparent 70%), linear-gradient(180deg, #171719 0%, #111113 55%, #151412 100%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 30px 60px -38px rgb(0 0 0 / 0.7); }
+.passport-glow-a { background: radial-gradient(closest-side, rgb(214 170 92 / 0.26), transparent); }
+.passport-glow-b { background: radial-gradient(closest-side, rgb(98 136 176 / 0.2), rgb(20 20 22 / 0.4) 50%, transparent); }
+.passport-pill { background: rgb(255 255 255 / 0.08); color: #e4e4e7; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.16); }
+/* Grey text inside a hero card reads on its dark ground in both themes. */
+.trace-hero { --color-zinc-300: #d4d4d8; --color-zinc-400: #b4b4bc; --color-zinc-500: #a1a1aa; --color-zinc-600: #8f8f98; }
+/* Hand-made cards (a rounded, bordered box with a see-through fill in dark mode) are solid too unless
+   they sit inside another card: the river no longer shows through, and the compositor needn't blend
+   them over the moving river on every frame. */
+.dark :is([class*="rounded-2xl"], [class*="rounded-3xl"], [class*="rounded-[2"])[class*="border"]:is([class*="dark:bg-white/"], [class*="dark:bg-zinc-900/"], [class*="dark:bg-black/"], [class*="dark:bg-indigo-"]):not(:is(.panel, .card, [class*="rounded-2xl"][class*="border"], [class*="rounded-3xl"][class*="border"]) *) { background-color: var(--card-bg); }

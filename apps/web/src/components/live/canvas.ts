@@ -41,10 +41,16 @@ export function useLiveCanvas(draw: (f: Frame) => void, wake?: unknown) {
       cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
+    // Touch screens draw every other frame (30 a second): the same motion, half the work while the
+    // page scrolls (M91).
+    const gap = window.matchMedia?.('(hover: none)').matches ? 30 : 0;
+    let drawn = 0;
     const frame = (ms: number) => {
       raf = 0;
       if (!w || !h) return;
       if (!start) start = ms;
+      if (gap && !still && drawn && ms - drawn < gap) { if (seen && !document.hidden) raf = requestAnimationFrame(frame); return; }
+      drawn = ms;
       ctx.clearRect(0, 0, w, h);
       latest.current({ ctx, w, h, t: still ? 30 : (ms - start) / 1000, pointer, still });
       if (!still && seen && !document.hidden) raf = requestAnimationFrame(frame);

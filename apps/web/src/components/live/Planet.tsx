@@ -104,7 +104,7 @@ function WorkerPlanet({ places, arcs, label, className, pings = true, onFail }: 
       wk = new Worker(new URL('./planet.worker.ts', import.meta.url));
       const off = cv.transferControlToOffscreen();
       const [ps, pa] = latest.current;
-      wk.postMessage({ t: 'init', canvas: off, still: reducedMotion(), pings, places: ps, arcs: pa ?? undefined, bits: land.current, font: new URL(URBANIST, location.href).href }, [off]);
+      wk.postMessage({ t: 'init', canvas: off, still: reducedMotion(), gap: window.matchMedia?.('(hover: none)').matches ? 30 : 0, pings, places: ps, arcs: pa ?? undefined, bits: land.current, font: new URL(URBANIST, location.href).href }, [off]);
     } catch {
       cv.remove();
       queueMicrotask(() => onFail(true));

@@ -120,8 +120,10 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **M88** an API request uses about a quarter of the CPU it did (Prisma's query compiler shared).
 - **On the branch `claude/youthful-fermi-sbdtcp`, not merged:** **M89** busy buttons keep their size,
   loading placeholders stay smooth while a page loads; **M90** Quick notes like Apple Notes (folders,
-  Recently deleted, tick-box lines), the search icon no longer on the text in search boxes.
-- **Work numbers:** the next item is **M91**. Never reuse a number: take the next one after the
+  Recently deleted, tick-box lines), the search icon no longer on the text in search boxes; **M91** the
+  CreditKarma photos' look everywhere (pink kept as the one accent), no glass, and the home page's
+  per-frame work cut (wallet sway in CSS on phones, live cards and the planet at 30 a second on phones).
+- **Work numbers:** the next item is **M92**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
@@ -272,6 +274,22 @@ code, remove the old code in the same change. A known shortcut gets a `shortcut:
 file used only from config goes in its `BY_CONFIG` list).
 
 ## 8. Design and motion
+
+**The look now (M91, the owner, 4 Nov 2026: "use this photos and make website like this", the
+CreditKarma photos; "keep pink" as the one accent).** Black and white with soft warm light (gold, steel
+blue, olive) in the page's corners; solid cards with a hairline (white in light mode, #151517 in dark);
+the main button and every chosen tab a white pill in dark mode and an ink pill in light mode; the side
+menu near-black in both themes with a white pill for the chosen entry; headline cards in the photos'
+frosts (`--karma-dusk` steel blue into warm brown, `--karma-gold` honey, `--karma-olive` moss) with a
+thin-line icon in a circle (`.karma-icon`) and a round arrow button (`.karma-go`); big numbers in
+Urbanist with a small unit. **Pink only for the river, live dots and the number that matters**
+(`--ins-hot`); amber, green and red only for states. **No glass:** no `backdrop-filter` on cards, bars,
+the tab bar, the side menu or toasts, and no see-through card fills (they cost the most while
+scrolling on phones). The Tailwind scales are re-pointed in the M91 block at the end of `globals.css`:
+`indigo/violet/purple` are ink (light) or graphite (dark), `aqua` is white in dark mode, `zinc` neutral.
+Older notes below (M52–M57) describe the navy look this replaced; where they clash, this paragraph wins.
+Components with their own navy or aqua colours (maps, the night city, some editors: about 200 files)
+are being moved over one by one.
 
 **Light mode (M53, the owner, 31 Oct 2026): Marshmallow White #F0F0F0, Galactic Violet #533FF6, Bubblegum
 Pink #EC74CE.** An off-white page with pink and violet light low down, white cards, ink #141320, black

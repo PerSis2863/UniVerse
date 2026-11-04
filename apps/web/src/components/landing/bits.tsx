@@ -110,7 +110,7 @@ export function CountUp({ to, prefix = '', suffix = '', className }: { to: numbe
 }
 
 /** The two-tone button (indigo into fuchsia), the page's one bright action. */
-export const primary = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-bold text-[#171f44] bg-pink-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] hover:bg-pink-400 active:scale-[0.98] transition';
+export const primary = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-bold text-[#111113] bg-white shadow-[0_8px_24px_-14px_rgba(0,0,0,0.7)] hover:bg-zinc-100 active:scale-[0.98] transition';
 export const ghost = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-semibold text-white border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] active:scale-[0.98] transition';
 /** A dark glass card. */
 export const glass = 'rounded-3xl border border-white/[0.08] bg-[#131a3d]/70 backdrop-blur-md';

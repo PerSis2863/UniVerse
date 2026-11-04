@@ -3708,3 +3708,50 @@ screenshot showed the search icon sitting on the text).
   - a browser run: wrote a checklist, ticked it, searched, deleted to Recently deleted;
   - axe clean at 390 / 1280, light / dark;
   - no sideways scroll.
+
+## M91: The CreditKarma photos' look everywhere, and the lag (4 Nov 2026)
+
+The owner sent ten slides of a CreditKarma design ("use this photos and make website like this"),
+chose "the photos' look, keep pink" when asked, and said "the website and app looks laggy a lot".
+
+- **The look** (one unlayered block at the end of `src/app/globals.css`, so it wins over M52–M57):
+  - Light mode: an #ececec page with gold, steel blue and amber light in the corners; white cards;
+    ink #111113 pills and main button.
+  - Dark mode: #0b0b0c with dimmer warm light; solid #151517 cards; white pills and main button.
+  - In both themes, a near-black side menu with a white pill for the chosen entry.
+  - The headline frosts are the photos' (dusk steel blue into brown, honey gold, moss olive).
+  - The hero cards (`.trace-hero`: hub, Trace) are near-black with warm light in both themes.
+  - The planet, live cards and wallet cards drop aqua for warm gold and steel (`TONES` in
+    `live/paint.ts` keeps its key names: a `shortcut:` comment says so).
+  - The landing's buttons are white pills and its page is black.
+- **Scales:** `indigo/violet/purple` are ink in light mode and graphite in dark mode; `aqua` is white
+  in dark mode (what was "chosen" in Aqua Jade is white now); `zinc` is neutral. The light-mode
+  coloured-text overrides (`.text-indigo-600` was violet) follow.
+- **The lag, measured** (the built site, signed in, a phone screen with a 4× slower CPU):
+  - Signed in, the home, UniVersity and Trace pages scrolled at about 30 frames a second, with stalls
+    up to 400 ms. The public pages were fine (60).
+  - Hardly any of that time was script. It was drawing:
+    - the frosted bars and the side menu's glass: about 25% of the compositor's time;
+    - the canvases: about 22%;
+    - the home page's wallet cards: their idle sway recomputed a 3D tilt, a glare gradient and a
+      holo gradient 60 times a second (repaints on every frame);
+    - see-through hand-made cards over the moving river, blended again on every frame.
+  - The site-wide scroll reveals cost nothing measurable, so they stay.
+- **Fixes:**
+  - no glass anywhere (cards, bars, tab bar, side menu, toasts);
+  - solid cards, including hand-made rounded bordered boxes with a see-through dark fill (one CSS
+    rule, not inside another card);
+  - on touch screens, the wallet sway is a CSS animation (`.wcard-sway`, compositor only; nothing
+    per frame);
+  - live cards (`useLiveCanvas`) and the planet worker draw every other frame on touch screens (30 a
+    second, the same speed of motion).
+  - The river is untouched (the owner's rule, M56a; it already caps its pixels).
+- **Rules for what builds on this:**
+  - new screens use `.panel` / `.card` / `.btn-primary` and the tokens, and never a translucent card
+    fill or `backdrop-filter`;
+  - pink only for the river, live dots and `--ins-hot`;
+  - a dark card inside a light page re-points its text greys (see `.trace-hero`'s `--color-zinc-*`).
+- **Left for later:**
+  - about 200 files still have their own navy or aqua colours (the maps, the night city, some
+    editors and canvases): moved over one by one;
+  - the landing's italic pink accent word becomes the photos' two-tone heading in M93.

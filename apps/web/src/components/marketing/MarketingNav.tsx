@@ -61,7 +61,7 @@ export function MarketingNav() {
           </Link>
           <Link
             href={`/register?app=${app}`}
-            className="group shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-[#171f44] text-sm font-bold bg-pink-500 hover:bg-pink-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_6px_24px_-8px_rgba(254,129,209,0.85)] hover:brightness-110 transition"
+            className="group shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-[#111113] text-sm font-bold bg-white hover:bg-zinc-100 shadow-[0_6px_24px_-12px_rgba(0,0,0,0.6)] transition"
           >
             Get started <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>

@@ -6,7 +6,7 @@
 import { drawPlanet, landLookup, planetLinks, planetPoints, planetState, type Place, type PlanetProps } from './planet-paint';
 
 type Msg =
-  | { t: 'init'; canvas: OffscreenCanvas; still: boolean; pings: boolean; places: Place[]; arcs?: [number, number][]; bits: Uint8Array | null; font: string }
+  | { t: 'init'; canvas: OffscreenCanvas; still: boolean; gap: number; pings: boolean; places: Place[]; arcs?: [number, number][]; bits: Uint8Array | null; font: string }
   | { t: 'size'; w: number; h: number; dpr: number }
   | { t: 'places'; places: Place[]; arcs?: [number, number][] }
   | { t: 'land'; bits: Uint8Array }
@@ -24,7 +24,7 @@ const nextFrame: (cb: (ms: number) => void) => number = typeof scope.requestAnim
 let cv: OffscreenCanvas | null = null, ctx: OffscreenCanvasRenderingContext2D | null = null;
 const s = planetState();
 const props: PlanetProps = { pts: [], links: [], land: null, interactive: false, focus: null, pings: true };
-let w = 0, h = 0, dpr = 1, still = false, seen = false, hidden = false, raf = 0, start = 0;
+let w = 0, h = 0, dpr = 1, still = false, seen = false, hidden = false, raf = 0, start = 0, gap = 0, drawn = 0;
 let pointer: { x: number; y: number } | null = null;
 
 // As on the page (useLiveCanvas): frames only while on screen and the tab is open; one with Reduce Motion.
@@ -32,6 +32,9 @@ const frame = (ms: number) => {
   raf = 0;
   if (!ctx || !w || !h) return;
   if (!start) start = ms;
+  // Touch screens: every other frame (30 a second), the same motion for half the work (M91).
+  if (gap && !still && drawn && ms - drawn < gap) { if (seen && !hidden) raf = nextFrame(frame); return; }
+  drawn = ms;
   ctx.clearRect(0, 0, w, h);
   drawPlanet(s, { ctx, w, h, t: still ? 30 : (ms - start) / 1000, pointer, still }, props, dpr);
   if (!still && seen && !hidden) raf = nextFrame(frame);
@@ -50,7 +53,7 @@ scope.onmessage = (e: MessageEvent<Msg>) => {
   switch (m.t) {
     case 'init': {
       if (!scope.fonts || typeof FontFace === 'undefined') { scope.postMessage({ t: 'unsupported' }); return; }
-      cv = m.canvas; still = m.still; props.pings = m.pings;
+      cv = m.canvas; still = m.still; gap = m.gap; props.pings = m.pings;
       show(m.places, m.arcs);
       if (m.bits) props.land = landLookup(m.bits);
       // The names are in Urbanist, and a background thread has its own fonts: load the page's file
