@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M93 is the latest).
+  builds on it). The newest notes are at the end (M94 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -125,8 +125,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   per-frame work cut (wallet sway in CSS on phones, live cards and the planet at 30 a second on phones);
   **M92** the owner console made professional (six headline cards, `FactorCard`; plain header; solid
   ink/white tab pills everywhere), live dots that no longer repaint every frame; **M93** the landing like the
-  photos' website (two-tone headings, no navy left).
-- **Work numbers:** the next item is **M94**. Never reuse a number: take the next one after the
+  photos' website (two-tone headings, no navy left); **M94** the last navy and aqua moved over (maps, live
+  cards, Messages, games, editors; documents on paper and people's own colour choices left as they are).
+- **Work numbers:** the next item is **M95**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
@@ -291,8 +292,8 @@ the tab bar, the side menu or toasts, and no see-through card fills (they cost t
 scrolling on phones). The Tailwind scales are re-pointed in the M91 block at the end of `globals.css`:
 `indigo/violet/purple` are ink (light) or graphite (dark), `aqua` is white in dark mode, `zinc` neutral.
 Older notes below (M52–M57) describe the navy look this replaced; where they clash, this paragraph wins.
-Components with their own navy or aqua colours (maps, the night city, some editors: about 200 files)
-are being moved over one by one.
+Since M94 no component keeps the old navy or aqua, except documents printed on white (`src/server/`,
+certificates, CVs, report cards) and colours people choose (slide themes, course colours, accents).
 
 **Light mode (M53, the owner, 31 Oct 2026): Marshmallow White #F0F0F0, Galactic Violet #533FF6, Bubblegum
 Pink #EC74CE.** An off-white page with pink and violet light low down, white cards, ink #141320, black

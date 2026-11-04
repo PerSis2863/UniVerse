@@ -31,7 +31,7 @@ type Route = ReturnType<typeof plan>[number];
 
 interface Cam { z: number; tz: number; x: number; y: number; tx: number; ty: number; last: number; init: boolean; w: number; h: number }
 const Z_MIN = 1, Z_MAX = 3.4;
-const CARS = ['#e9edf7', '#9aa3bd', '#3c4670', '#2a3156', '#74ffed', '#fe81d1', '#f4d36b', '#c8ccd8'];
+const CARS = ['#e9edf7', '#9aa3bd', '#3f3f46', '#232326', '#f0cc8a', '#fe81d1', '#f4d36b', '#c8ccd8'];
 
 export function CityView({ vans, label, className }: { vans: Van[]; label: string; className?: string }) {
   const layer = useRef<Layer | null>(null);
@@ -203,18 +203,18 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
     // 5 · The hub: a hexagon of light on the ground, a ring turning, rings going out, a beam.
     ctx.beginPath();
     for (let k = 0; k <= 6; k++) { const a = (k / 6) * Math.PI * 2 + Math.PI / 6; const [x, y] = iso(H + Math.cos(a) * 0.42, H + Math.sin(a) * 0.42, 0.02); if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
-    ctx.fillStyle = `rgba(116,255,237,${0.18 * reveal})`; ctx.fill();
-    ctx.strokeStyle = `rgba(116,255,237,${0.85 * reveal})`; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = `rgba(240,204,138,${0.18 * reveal})`; ctx.fill();
+    ctx.strokeStyle = `rgba(240,204,138,${0.85 * reveal})`; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.setLineDash([3, 5]); ctx.lineDashOffset = t * 10;
-    ctx.strokeStyle = `rgba(116,255,237,${0.5 * reveal})`; ctx.lineWidth = 1;
+    ctx.strokeStyle = `rgba(240,204,138,${0.5 * reveal})`; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.ellipse(hx, hy, s * 0.75, s * 0.375, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
     for (let r = 0; r < 3; r++) {
       const f = (t * 0.45 + r / 3) % 1;
-      ctx.strokeStyle = `rgba(116,255,237,${0.45 * (1 - f) * reveal})`;
+      ctx.strokeStyle = `rgba(240,204,138,${0.45 * (1 - f) * reveal})`;
       ctx.beginPath(); ctx.ellipse(hx, hy, s * (0.4 + f * 1.4), s * (0.4 + f * 1.4) * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
     }
-    beam(ctx, hx, hy, s * 2.6, '116,255,237', 0.55 * reveal, 5);
+    beam(ctx, hx, hy, s * 2.6, '240,204,138', 0.55 * reveal, 5);
     const hs = s * 1.4 + Math.sin(t * 2) * 3;
     ctx.globalAlpha = 0.9 * reveal;
     ctx.drawImage(glow('aqua'), hx - hs / 2, hy - hs / 2, hs, hs);
@@ -225,7 +225,7 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
       const k = grow(i);
       if (k <= 0) return;
       const e = r.pts[r.pts.length - 1], [x, y] = iso(e[0], e[1]), done = r.v.state === 'done';
-      beam(ctx, x, y, s * (done ? 1.2 : 1.6), done ? '116,255,237' : '140,155,255', (done ? 0.5 : 0.35 + 0.15 * Math.sin(t * 2 + i)) * k, 3);
+      beam(ctx, x, y, s * (done ? 1.2 : 1.6), done ? '240,204,138' : '140,155,255', (done ? 0.5 : 0.35 + 0.15 * Math.sin(t * 2 + i)) * k, 3);
     });
     ctx.globalCompositeOperation = 'source-over';
 
@@ -242,7 +242,7 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
       if (r.v.state === 'done' && !lit) {
         const e = r.pts[r.pts.length - 1], [x, by] = toScreen(iso(e[0], e[1], 1.25));
         ctx.globalAlpha = k;
-        ctx.fillStyle = '#74ffed'; ctx.beginPath(); ctx.arc(x, by, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#f0cc8a'; ctx.beginPath(); ctx.arc(x, by, 6, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#141210'; ctx.lineWidth = 1.6;
         ctx.beginPath(); ctx.moveTo(x - 2.6, by); ctx.lineTo(x - 0.6, by + 2); ctx.lineTo(x + 2.8, by - 2); ctx.stroke();
         ctx.globalAlpha = 1;
@@ -262,8 +262,8 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
       ctx.beginPath(); ctx.moveTo(vx, vy - 4); ctx.lineTo(vx, y + bh); ctx.stroke();
       ctx.fillStyle = 'rgba(12,12,14,0.9)';
       ctx.beginPath(); ctx.roundRect(x, y, bw, bh, 10); ctx.fill();
-      ctx.strokeStyle = r.v.state === 'done' ? 'rgba(116,255,237,0.6)' : 'rgba(254,129,209,0.6)'; ctx.stroke();
-      ctx.fillStyle = r.v.state === 'done' ? '#74ffed' : '#fe81d1';
+      ctx.strokeStyle = r.v.state === 'done' ? 'rgba(240,204,138,0.6)' : 'rgba(254,129,209,0.6)'; ctx.stroke();
+      ctx.fillStyle = r.v.state === 'done' ? '#f0cc8a' : '#fe81d1';
       ctx.beginPath(); ctx.arc(x + 9, y + bh / 2, 2.6, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff';
       ctx.fillText(text, x + 15, y + bh / 2 + 0.5);
@@ -310,9 +310,9 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
 >
       <canvas ref={ref} role="img" aria-label={label} className="absolute inset-0 h-full w-full" />
       <div className="absolute end-3 top-3 flex flex-col gap-1.5">
-        <button type="button" onClick={() => zoomAt(1.4, cam.current.w / 2, cam.current.h / 2)} className="karma-go w-9 h-9 grid place-items-center rounded-full bg-[#171f44]/85 text-white ring-1 ring-white/15 hover:bg-[#232d5c]" aria-label="Zoom in on the city"><Plus className="w-4 h-4" aria-hidden /></button>
-        <button type="button" onClick={() => zoomAt(1 / 1.4, cam.current.w / 2, cam.current.h / 2)} className="karma-go w-9 h-9 grid place-items-center rounded-full bg-[#171f44]/85 text-white ring-1 ring-white/15 hover:bg-[#232d5c]" aria-label="Zoom out of the city"><Minus className="w-4 h-4" aria-hidden /></button>
-        <button type="button" onClick={fit} className="karma-go w-9 h-9 grid place-items-center rounded-full bg-[#171f44]/85 text-white ring-1 ring-white/15 hover:bg-[#232d5c]" aria-label="See the whole city"><Maximize2 className="w-4 h-4" aria-hidden /></button>
+        <button type="button" onClick={() => zoomAt(1.4, cam.current.w / 2, cam.current.h / 2)} className="karma-go w-9 h-9 grid place-items-center rounded-full bg-[#111113]/85 text-white ring-1 ring-white/15 hover:bg-[#1d1d20]" aria-label="Zoom in on the city"><Plus className="w-4 h-4" aria-hidden /></button>
+        <button type="button" onClick={() => zoomAt(1 / 1.4, cam.current.w / 2, cam.current.h / 2)} className="karma-go w-9 h-9 grid place-items-center rounded-full bg-[#111113]/85 text-white ring-1 ring-white/15 hover:bg-[#1d1d20]" aria-label="Zoom out of the city"><Minus className="w-4 h-4" aria-hidden /></button>
+        <button type="button" onClick={fit} className="karma-go w-9 h-9 grid place-items-center rounded-full bg-[#111113]/85 text-white ring-1 ring-white/15 hover:bg-[#1d1d20]" aria-label="See the whole city"><Maximize2 className="w-4 h-4" aria-hidden /></button>
       </div>
       <ul className="sr-only">{vans.map((v) => <li key={v.id} translate="no">{v.label}: {v.state === 'done' ? 'delivered' : v.state === 'parked' ? 'not shipped yet' : `${Math.round(v.progress * 100)}% of the way${v.note ? `, ${v.note}` : ''}`}</li>)}</ul>
     </div>
@@ -386,11 +386,11 @@ function build(key: string, w: number, h: number, dpr: number, G: number, s: num
   const [ground, gg] = make();
   const [hx, hy] = iso(H, H);
   const base = gg.createRadialGradient(hx, hy, 0, hx, hy, s * G * 0.9);
-  base.addColorStop(0, '#151b3d'); base.addColorStop(1, '#0b1028');
+  base.addColorStop(0, '#151b3d'); base.addColorStop(1, '#0b0b0c');
   quad(gg, [iso(-0.2, -0.2), iso(G + 0.2, -0.2), iso(G + 0.2, G + 0.2), iso(-0.2, G + 0.2)], base);
   for (let i = 0; i <= G; i++) {
-    quad(gg, [iso(i - 0.14, -0.2), iso(i + 0.14, -0.2), iso(i + 0.14, G + 0.2), iso(i - 0.14, G + 0.2)], '#121838');
-    quad(gg, [iso(-0.2, i - 0.14), iso(G + 0.2, i - 0.14), iso(G + 0.2, i + 0.14), iso(-0.2, i + 0.14)], '#121838');
+    quad(gg, [iso(i - 0.14, -0.2), iso(i + 0.14, -0.2), iso(i + 0.14, G + 0.2), iso(i - 0.14, G + 0.2)], '#0e0e10');
+    quad(gg, [iso(-0.2, i - 0.14), iso(G + 0.2, i - 0.14), iso(G + 0.2, i + 0.14), iso(-0.2, i + 0.14)], '#0e0e10');
   }
   gg.setLineDash([3, 5]); gg.strokeStyle = 'rgba(255,255,255,0.07)'; gg.lineWidth = 1;
   for (let i = 0; i <= G; i++) {
@@ -441,7 +441,7 @@ function build(key: string, w: number, h: number, dpr: number, G: number, s: num
     const shade = (light: number) => { const g = cg.createLinearGradient(0, bottom, 0, top); g.addColorStop(0, `rgb(${10 + light},${10 + light},${13 + light})`); g.addColorStop(1, `rgb(${22 + light},${21 + light},${26 + light})`); return g; };
     quad(cg, [iso(x0, y1), iso(x1, y1), iso(x1, y1, z), iso(x0, y1, z)], shade(4));
     quad(cg, [iso(x1, y0), iso(x1, y1), iso(x1, y1, z), iso(x1, y0, z)], shade(-2));
-    quad(cg, [iso(x0, y0, z), iso(x1, y0, z), iso(x1, y1, z), iso(x0, y1, z)], '#222a4f');
+    quad(cg, [iso(x0, y0, z), iso(x1, y0, z), iso(x1, y1, z), iso(x0, y1, z)], '#1a1a1d');
     // A thin bright edge on the roof, catching the light.
     cg.strokeStyle = 'rgba(255,255,255,0.07)'; cg.lineWidth = 1;
     cg.beginPath(); cg.moveTo(...iso(x0, y1, z)); cg.lineTo(...iso(x1, y1, z)); cg.lineTo(...iso(x1, y0, z)); cg.stroke();
@@ -455,7 +455,7 @@ function build(key: string, w: number, h: number, dpr: number, G: number, s: num
         for (let c = 0; c < cols; c++) {
           const on = seeded(x0 * 97 + y0 * 31 + f * 7 + c * 3 + face) < lit;
           const u0 = (c + 0.2) / cols, u1 = (c + 0.75) / cols, z0 = ((f + 0.25) / floors) * z * 0.96, z1 = ((f + 0.7) / floors) * z * 0.96;
-          const tone = seeded(f * 13 + c + x0) < 0.2 ? '255,236,245' : '116,255,237';
+          const tone = seeded(f * 13 + c + x0) < 0.2 ? '255,236,245' : '240,204,138';
           quad(cg, [pt(u0, z0), pt(u1, z0), pt(u1, z1), pt(u0, z1)], on ? `rgba(${tone},${0.45 + seeded(c + f) * 0.5})` : 'rgba(255,255,255,0.03)');
           if (on && twinkle.length < 700 && seeded(f + c * 7 + y1) < 0.5) twinkle.push(pt((u0 + u1) / 2, (z0 + z1) / 2));
         }

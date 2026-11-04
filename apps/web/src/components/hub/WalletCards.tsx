@@ -66,24 +66,24 @@ function Face({ card, holder, front, holo }: { card: WalletCard; holder: string;
       <div className="relative flex h-full flex-col justify-between p-[7%]">
         <div className="flex items-center gap-2">
           <UniverseLogo size={22} animated={false} withGlow={false} />
-          <span className={cn('text-[13px] font-bold tracking-tight', light ? 'text-white' : 'text-[#171f44]')}>{card.name}</span>
-          <Nfc className={cn('ms-auto h-5 w-5', light ? 'text-white/80' : 'text-[#171f44]/70')} />
+          <span className={cn('text-[13px] font-bold tracking-tight', light ? 'text-white' : 'text-[#111113]')}>{card.name}</span>
+          <Nfc className={cn('ms-auto h-5 w-5', light ? 'text-white/80' : 'text-[#111113]/70')} />
         </div>
         <div className="flex items-center justify-between">
           <span className="wcard-chip" />
           {front && <motion.span className="wcard-holo" style={{ backgroundImage: holo }} />}
         </div>
         <div>
-          <p className={cn('wcard-emboss font-mono text-[clamp(15px,5.2cqi,22px)] font-semibold tabular-nums tracking-[0.12em]', light ? 'text-white' : 'text-[#171f44]')} translate="no">{card.line}</p>
+          <p className={cn('wcard-emboss font-mono text-[clamp(15px,5.2cqi,22px)] font-semibold tabular-nums tracking-[0.12em]', light ? 'text-white' : 'text-[#111113]')} translate="no">{card.line}</p>
           {card.under && (
-            <p className={cn('mt-0.5 flex justify-between pe-[8%] font-mono text-[11px] uppercase tracking-wider', light ? 'text-white/70' : 'text-[#171f44]/75')}>
+            <p className={cn('mt-0.5 flex justify-between pe-[8%] font-mono text-[11px] uppercase tracking-wider', light ? 'text-white/70' : 'text-[#111113]/75')}>
               {card.under.map((u) => <span key={u}>{u}</span>)}
             </p>
           )}
         </div>
         <div className="flex items-end justify-between">
-          <span className={cn('truncate font-mono text-[12px] uppercase tracking-[0.14em]', light ? 'text-white/85' : 'text-[#171f44]/85')} translate="no">{holder}</span>
-          <span className={cn('shrink-0 text-[11px] font-bold uppercase tracking-[0.18em]', light ? 'text-aqua-300' : 'text-[#171f44]')}>Impact</span>
+          <span className={cn('truncate font-mono text-[12px] uppercase tracking-[0.14em]', light ? 'text-white/85' : 'text-[#111113]/85')} translate="no">{holder}</span>
+          <span className={cn('shrink-0 text-[11px] font-bold uppercase tracking-[0.18em]', light ? 'text-aqua-300' : 'text-[#111113]')}>Impact</span>
         </div>
       </div>
     </div>

@@ -91,7 +91,7 @@ function LevelRing({ progress }: { progress: number }) {
     <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
       <defs>
         <linearGradient id="lvl" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#2b3568" />
+          <stop offset="0%" stopColor="#27272a" />
           <stop offset="100%" stopColor="#c13a92" />
         </linearGradient>
       </defs>

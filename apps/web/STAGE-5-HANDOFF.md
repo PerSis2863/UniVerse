@@ -3825,3 +3825,37 @@ The owner's slide 7 (the CreditKarma website: "Where Credit Meets **Confidence**
 - **Tested:**
   - `pnpm check`;
   - the whole landing scrolled through at 1280 in dark mode (every section revealed): no page errors.
+
+## M94: The last navy and aqua moved over (4 Nov 2026)
+
+The owner: "please do the left on purpose part" (M93 left ~200 files with their own navy and aqua).
+
+- **One mapping, applied by script to 188 app files and the older half of globals.css** (226 lines,
+  above the M91 block), so every leftover shade lands on the same new colour:
+  - navy shades → near-blacks and graphites (#0a0f2b → #0b0b0c, #171f44 → #111113 ink, #1d2650 →
+    #151517 card, #222c5a → #1d1d20, #2b3568 → #27272a, plus ~20 nearby navies);
+  - Aqua Jade → the photos' warm gold (#74ffed → #f0cc8a), except UI text in aqua → white;
+  - the same for `rgb()` triplets.
+- **Left alone on purpose:**
+  - documents and emails on white paper (`src/server/`, certificates, CVs, report cards);
+  - colours people choose (slide themes, sheet render, course colours, accent choices, collaborator
+    colours, hall tints);
+  - sample data;
+  - the river (the owner's rule).
+- **By hand:**
+  - the maps' palette is neutral (`WorldCanvas` `PAL`: near-black sea, graphite land, grey labels;
+    light mode neutral greys);
+  - live cards are near-black with warm light and a pink glow in both themes;
+  - Messages' tab deck uses the solid pill, and its unread count reads on the white pill;
+  - `fuchsia` leans pink in both themes, so the leftover indigo → fuchsia gradients (avatars, badges)
+    read graphite into pink, not purple;
+  - Play's heading is two-tone;
+  - the browser bar, the start-up background, the installed app's colours (`manifest.json`) and the
+    offline page are #0b0b0c / #ececec;
+  - `textOn()` (`src/lib/contrast.ts`) puts ink #111113 on light fills (test updated).
+- **Tested:**
+  - `pnpm check`;
+  - axe clean with no page errors on the hub, UniVersity home, Messages, Trace's market map, Play,
+    Collaborate and the landing, at 390 and 1280, light and dark (28 runs).
+- **Note for later:** Messages lives at `/student/inbox` (and `/teacher/inbox`, `/admin/inbox`); there
+  is no `/messages` page.

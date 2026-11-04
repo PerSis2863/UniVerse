@@ -226,7 +226,7 @@ export function ReliefTry() {
         ctx.globalAlpha = (1 - ph) * 0.7; ctx.strokeStyle = color; ctx.lineWidth = 1.6;
         ctx.beginPath(); ctx.arc(x, y, 7 + ph * 22, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
       }
-      ctx.fillStyle = color; ctx.strokeStyle = '#0a1721'; ctx.lineWidth = 2;
+      ctx.fillStyle = color; ctx.strokeStyle = '#0c0c0e'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       if (p.id === selected) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 13 + (calm ? 0 : Math.sin(t / 260) * 1.5), 0, Math.PI * 2); ctx.stroke(); }
     }

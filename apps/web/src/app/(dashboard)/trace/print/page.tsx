@@ -69,7 +69,7 @@ function Sheet() {
         {!data ? <div className="h-96 rounded-3xl skeleton" /> : (
           <div className="print-sheet grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
             {data.codes.map((c) => (
-              <div key={c.code} className="trace-label rounded-xl border border-[#e1e6f2] bg-white p-3 flex flex-col items-center text-center text-[#171f44]">
+              <div key={c.code} className="trace-label rounded-xl border border-[#e1e6f2] bg-white p-3 flex flex-col items-center text-center text-[#111113]">
                 <QrCode value={`${origin}/t/${c.code}`} size={112} title={`Passport of unit ${c.serial}`} />
                 <p className="mt-1.5 font-mono text-[10px] leading-tight">{formatCode(c.code)}</p>
                 <p className="text-[9px] text-[#58617f] truncate max-w-full">{data.batch.product} · #{c.serial}</p>

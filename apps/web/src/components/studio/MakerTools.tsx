@@ -76,10 +76,10 @@ function Cv() {
         <article id="cv-sheet" className={cn('min-w-[560px] bg-white text-zinc-900 rounded-2xl ring-1 ring-black/10 shadow-sm aspect-[1/1.414] overflow-hidden', modern ? 'grid grid-cols-[34%_1fr]' : 'p-10 font-serif')} translate="no">
           {modern ? (
             <>
-              <aside className="bg-[#171f44] text-white p-6 space-y-5">
+              <aside className="bg-[#111113] text-white p-6 space-y-5">
                 <div><h2 className="text-2xl font-bold leading-tight">{c.name}</h2><p className="mt-1 text-sm text-pink-200">{c.title}</p></div>
                 <p className="text-xs leading-relaxed break-words text-zinc-100">{c.contact}</p>
-                {skills.length > 0 && <div><h3 className="text-xs font-bold uppercase tracking-wider text-[#74ffed]">Skills</h3><ul className="mt-2 flex flex-wrap gap-1">{skills.map((s) => <li key={s} className="rounded-full bg-white/15 px-2 py-0.5 text-xs">{s}</li>)}</ul></div>}
+                {skills.length > 0 && <div><h3 className="text-xs font-bold uppercase tracking-wider text-[#ededef]">Skills</h3><ul className="mt-2 flex flex-wrap gap-1">{skills.map((s) => <li key={s} className="rounded-full bg-white/15 px-2 py-0.5 text-xs">{s}</li>)}</ul></div>}
               </aside>
               <div className="p-6 space-y-4">
                 {c.summary && <p className="text-sm leading-relaxed text-zinc-700">{c.summary}</p>}
@@ -102,7 +102,7 @@ function Cv() {
   );
 }
 
-const CLOUD_LOOKS = [{ name: 'Night', bg: '#171f44', ink: ['#fe81d1', '#74ffed', '#ffffff', '#c4b5fd', '#fbcfe8'] }, { name: 'Paper', bg: '#ffffff', ink: BRANCH }, { name: 'Pink', bg: '#fdf2f8', ink: ['#831843', '#be185d', '#533ff6', '#171f44'] }];
+const CLOUD_LOOKS = [{ name: 'Night', bg: '#111113', ink: ['#fe81d1', '#f0cc8a', '#ffffff', '#c4b5fd', '#fbcfe8'] }, { name: 'Paper', bg: '#ffffff', ink: BRANCH }, { name: 'Pink', bg: '#fdf2f8', ink: ['#831843', '#be185d', '#533ff6', '#111113'] }];
 /** Word cloud: the most used words, bigger the more they appear. */
 function Cloud() {
   const [t, setT] = useKept('uv-cloud', 'Collaborate with classmates, share ideas, plan projects, write documents, present slides, and learn together. Ideas grow when people share them. Learn, share, plan, create.');
@@ -196,7 +196,7 @@ function Prompter() {
 }
 
 const STARTERS: Record<string, { html: string; css: string; js: string }> = {
-  'Bouncing ball': { html: '<canvas id="c" width="400" height="260"></canvas>\n<p>Click to change colour</p>', css: 'body { font-family: system-ui; display: grid; place-items: center; background: #171f44; color: #fff; }\ncanvas { background: #0a0f2b; border-radius: 16px; }', js: "const c = document.getElementById('c'), g = c.getContext('2d');\nlet x = 60, y = 60, dx = 3, dy = 2, col = '#fe81d1';\nconsole.log('Running: click the box to change colour');\nc.addEventListener('click', () => { col = col === '#fe81d1' ? '#74ffed' : '#fe81d1'; console.log('colour', col); });\n(function loop() {\n  g.clearRect(0, 0, 400, 260);\n  g.fillStyle = col; g.beginPath(); g.arc(x, y, 18, 0, Math.PI * 2); g.fill();\n  if (x < 18 || x > 382) dx = -dx;\n  if (y < 18 || y > 242) dy = -dy;\n  x += dx; y += dy;\n  requestAnimationFrame(loop);\n})();" },
+  'Bouncing ball': { html: '<canvas id="c" width="400" height="260"></canvas>\n<p>Click to change colour</p>', css: 'body { font-family: system-ui; display: grid; place-items: center; background: #111113; color: #fff; }\ncanvas { background: #0b0b0c; border-radius: 16px; }', js: "const c = document.getElementById('c'), g = c.getContext('2d');\nlet x = 60, y = 60, dx = 3, dy = 2, col = '#fe81d1';\nconsole.log('Running: click the box to change colour');\nc.addEventListener('click', () => { col = col === '#fe81d1' ? '#f0cc8a' : '#fe81d1'; console.log('colour', col); });\n(function loop() {\n  g.clearRect(0, 0, 400, 260);\n  g.fillStyle = col; g.beginPath(); g.arc(x, y, 18, 0, Math.PI * 2); g.fill();\n  if (x < 18 || x > 382) dx = -dx;\n  if (y < 18 || y > 242) dy = -dy;\n  x += dx; y += dy;\n  requestAnimationFrame(loop);\n})();" },
   'To-do list': { html: '<h1>My list</h1>\n<form id="f"><input id="t" placeholder="Something to do"><button>Add</button></form>\n<ul id="l"></ul>', css: 'body { font-family: system-ui; max-width: 420px; margin: 24px auto; }\nli { padding: 6px 0; cursor: pointer; }\nli.done { text-decoration: line-through; color: #888; }', js: "const f = document.getElementById('f'), t = document.getElementById('t'), l = document.getElementById('l');\nf.addEventListener('submit', (e) => {\n  e.preventDefault();\n  if (!t.value.trim()) return;\n  const li = document.createElement('li');\n  li.textContent = t.value;\n  li.addEventListener('click', () => li.classList.toggle('done'));\n  l.append(li); t.value = '';\n  console.log('added', li.textContent);\n});" },
   Blank: { html: '<h1>Hello!</h1>', css: 'body { font-family: system-ui; }', js: "console.log('Ready');" },
 };
@@ -341,7 +341,7 @@ function Slideshow() {
     g.fillStyle = '#000'; g.fillRect(0, 0, 1280, 720);
     if (k > 0 && local < fade) draw(g, imgs[k - 1].img, 1, 1.06);
     draw(g, imgs[k].img, k > 0 && local < fade ? local / fade : 1, 1 + 0.06 * (local / secs));
-    if (title && t < secs) { g.globalAlpha = Math.min(1, (secs - t) / 0.5); g.fillStyle = 'rgba(10,15,43,0.55)'; g.fillRect(0, 560, 1280, 120); g.fillStyle = '#fff'; g.font = '700 54px Urbanist, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(title, 640, 638); g.textAlign = 'start'; g.globalAlpha = 1; }
+    if (title && t < secs) { g.globalAlpha = Math.min(1, (secs - t) / 0.5); g.fillStyle = 'rgba(11,11,12,0.55)'; g.fillRect(0, 560, 1280, 120); g.fillStyle = '#fff'; g.font = '700 54px Urbanist, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(title, 640, 638); g.textAlign = 'start'; g.globalAlpha = 1; }
   }, [imgs, secs, title, fit]);
   // The first picture as a preview (not while a video is being made: that draws its own frames).
   useEffect(() => { if (!busy) frame(0); }, [frame, busy]);
@@ -396,7 +396,7 @@ function Slideshow() {
 }
 
 type Pt = { x: number; y: number; w: number };
-const INKS = [['Black', '#111111'], ['Navy', '#171f44'], ['Blue', '#1d4ed8']] as const;
+const INKS = [['Black', '#111111'], ['Navy', '#111113'], ['Blue', '#1d4ed8']] as const;
 /** Signature pad: sign with a finger, pen or mouse; save it as a see-through PNG. */
 function Signature() {
   const ref = useRef<HTMLCanvasElement>(null), strokes = useRef<Pt[][]>([]), cur = useRef<Pt[] | null>(null), last = useRef({ t: 0, x: 0, y: 0 });

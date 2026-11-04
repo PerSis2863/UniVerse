@@ -198,8 +198,8 @@ function PagePlanet({ places, arcs, label, className, pings = true, interactive 
       <canvas ref={ref} role="img" aria-label={label} className="absolute inset-0 h-full w-full touch-pan-y" />
       {interactive && (
         <div className="absolute end-3 bottom-3 flex flex-col gap-1.5">
-          <button type="button" onClick={() => zoomBy(1.35)} className="w-9 h-9 grid place-items-center rounded-full bg-[#171f44]/85 text-white ring-1 ring-white/15 hover:bg-[#232d5c]" aria-label="Zoom in on the globe"><Plus className="w-4 h-4" aria-hidden /></button>
-          <button type="button" onClick={() => zoomBy(1 / 1.35)} className="w-9 h-9 grid place-items-center rounded-full bg-[#171f44]/85 text-white ring-1 ring-white/15 hover:bg-[#232d5c]" aria-label="Zoom out of the globe"><Minus className="w-4 h-4" aria-hidden /></button>
+          <button type="button" onClick={() => zoomBy(1.35)} className="w-9 h-9 grid place-items-center rounded-full bg-[#111113]/85 text-white ring-1 ring-white/15 hover:bg-[#1d1d20]" aria-label="Zoom in on the globe"><Plus className="w-4 h-4" aria-hidden /></button>
+          <button type="button" onClick={() => zoomBy(1 / 1.35)} className="w-9 h-9 grid place-items-center rounded-full bg-[#111113]/85 text-white ring-1 ring-white/15 hover:bg-[#1d1d20]" aria-label="Zoom out of the globe"><Minus className="w-4 h-4" aria-hidden /></button>
         </div>
       )}
       {places.length > 0 && (

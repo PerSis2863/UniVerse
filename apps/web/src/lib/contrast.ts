@@ -33,4 +33,4 @@ export function readable(fg: string, bg: string, min = 4.5): string {
   return hex(toward);
 }
 /** Black or white text, whichever reads better on a fill. */
-export const textOn = (bg: string) => (contrast('#1d2650', bg) >= contrast('#ffffff', bg) ? '#1d2650' : '#ffffff');
+export const textOn = (bg: string) => (contrast('#111113', bg) >= contrast('#ffffff', bg) ? '#111113' : '#ffffff');

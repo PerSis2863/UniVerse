@@ -150,7 +150,7 @@ export function Constellation({ groups, center, label, className }: { groups: Gr
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = `rgba(255,248,235,${k0})`;
     ctx.beginPath(); ctx.arc(cx, cy, 13, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = `rgba(116,255,237,${0.9 * k0})`;
+    ctx.strokeStyle = `rgba(240,204,138,${0.9 * k0})`;
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(cx, cy, 17, 0, Math.PI * 2); ctx.stroke();
     if (center) {

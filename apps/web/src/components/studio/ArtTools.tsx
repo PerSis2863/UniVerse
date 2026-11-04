@@ -23,7 +23,7 @@ export function ArtTool({ id }: { id: ArtId }) {
 const savePng = (c: HTMLCanvasElement | null, name: string) => c?.toBlob((b) => b && save(name, b, 'image/png'));
 const loadImage = (f: File) => new Promise<HTMLImageElement>((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('This picture can’t be opened here.')); i.src = URL.createObjectURL(f); });
 
-const THEMES = [{ n: 'Night', a: '#171f44', b: '#533ff6', ink: '#ffffff', hi: '#fe81d1' }, { n: 'Sunrise', a: '#f97316', b: '#ec4899', ink: '#ffffff', hi: '#fef08a' }, { n: 'Mint', a: '#ecfdf5', b: '#99f6e4', ink: '#134e4a', hi: '#0d9488' }, { n: 'Paper', a: '#fffdf8', b: '#f3efe6', ink: '#171f44', hi: '#dc2626' }];
+const THEMES = [{ n: 'Night', a: '#111113', b: '#533ff6', ink: '#ffffff', hi: '#fe81d1' }, { n: 'Sunrise', a: '#f97316', b: '#ec4899', ink: '#ffffff', hi: '#fef08a' }, { n: 'Mint', a: '#ecfdf5', b: '#99f6e4', ink: '#134e4a', hi: '#0d9488' }, { n: 'Paper', a: '#fffdf8', b: '#f3efe6', ink: '#111113', hi: '#dc2626' }];
 /** Event poster: title, date, place and details on a theme; save it A4 as a picture or print it. */
 function Poster() {
   const [p, setP] = useKept('uv-poster', { title: 'Science Fair', tag: 'Ideas that change the world', date: 'Friday 14 November · 2–5 pm', place: 'School hall', more: 'Free entry · Everyone welcome · Prizes for the best projects', theme: 0 });
@@ -59,10 +59,10 @@ function BizCard() {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = ref.current; if (!c) return; const W = 1050, H = 600, g = c.getContext('2d')!; c.width = W; c.height = H;
-    g.fillStyle = v.dark ? '#171f44' : '#ffffff'; g.fillRect(0, 0, W, H); g.fillStyle = v.colour; g.fillRect(0, 0, 26, H); g.beginPath(); g.arc(W - 90, 90, 40, 0, Math.PI * 2); g.fill();
+    g.fillStyle = v.dark ? '#111113' : '#ffffff'; g.fillRect(0, 0, W, H); g.fillStyle = v.colour; g.fillRect(0, 0, 26, H); g.beginPath(); g.arc(W - 90, 90, 40, 0, Math.PI * 2); g.fill();
     const ink = v.dark ? '#ffffff' : '#141320', soft = v.dark ? '#c7cbe0' : '#4b5068';
     g.fillStyle = ink; g.font = '800 72px Urbanist, system-ui, sans-serif'; g.fillText(v.name, 90, 230);
-    g.fillStyle = v.colour === '#171f44' && v.dark ? '#fe81d1' : v.colour; g.font = '700 38px Urbanist, system-ui, sans-serif'; g.fillText(v.role, 90, 290);
+    g.fillStyle = v.colour === '#111113' && v.dark ? '#fe81d1' : v.colour; g.font = '700 38px Urbanist, system-ui, sans-serif'; g.fillText(v.role, 90, 290);
     g.fillStyle = soft; g.font = '500 34px Urbanist, system-ui, sans-serif'; g.fillText(v.org, 90, 340); g.fillText(v.line1, 90, 470); g.fillText(v.line2, 90, 520);
   }, [v]);
   return (

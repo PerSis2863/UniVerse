@@ -97,7 +97,7 @@ function MindMap() {
               const p = at(n.id), root = !n.parent, c = BRANCH[branch(n.id) % BRANCH.length], on = n.id === cur?.id;
               return (
                 <motion.g key={n.id} initial={{ opacity: 0, x: p.x - 12, y: p.y }} animate={{ opacity: 1, x: p.x, y: p.y }} transition={spring.smooth} onClick={() => setSel(n.id)} onDoubleClick={focusName} style={{ cursor: 'pointer' }}>
-                  <rect width={w(n.text)} height={36} rx={18} fill={root ? '#171f44' : `${c}1f`} stroke={on ? '#ec4899' : root ? '#171f44' : c} strokeWidth={on ? 3 : 1.5} />
+                  <rect width={w(n.text)} height={36} rx={18} fill={root ? '#111113' : `${c}1f`} stroke={on ? '#ec4899' : root ? '#111113' : c} strokeWidth={on ? 3 : 1.5} />
                   <text x={w(n.text) / 2} y={23} textAnchor="middle" fontSize={13} fontWeight={root ? 700 : 600} fill={root ? '#ffffff' : '#141320'}>{n.text.length > 26 ? `${n.text.slice(0, 25)}…` : n.text}</text>
                 </motion.g>
               );
@@ -438,7 +438,7 @@ function Flow() {
             })}
             {f.nodes.map((n, k) => { const p = at(n.id), first = k === 0, end = !f.edges.some((e) => e.from === n.id); return (
               <motion.g key={n.id} initial={false} animate={{ x: p.x, y: p.y }} transition={spring.smooth}>
-                <rect width={BW} height={BH} rx={first || end ? BH / 2 : 10} fill={first ? '#171f44' : end ? '#fbcfe8' : '#eef0ff'} stroke={first ? '#171f44' : end ? '#ec4899' : '#533ff6'} strokeWidth={1.5} />
+                <rect width={BW} height={BH} rx={first || end ? BH / 2 : 10} fill={first ? '#111113' : end ? '#fbcfe8' : '#eef0ff'} stroke={first ? '#111113' : end ? '#ec4899' : '#533ff6'} strokeWidth={1.5} />
                 <text x={BW / 2} y={BH / 2 + 4.5} textAnchor="middle" fontSize={13} fontWeight={600} fill={first ? '#ffffff' : '#141320'}>{n.id.length > 18 ? `${n.id.slice(0, 17)}…` : n.id}</text>
               </motion.g>
             ); })}

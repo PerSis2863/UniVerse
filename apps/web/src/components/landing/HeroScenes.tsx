@@ -107,7 +107,7 @@ function Campus() {
             return (
               <motion.li key={i} layout initial={{ opacity: 0, y: -18, scale: 0.96, filter: 'blur(6px)' }} animate={{ opacity: 1 - k * 0.28, y: 0, scale: 1 - k * 0.02, filter: 'blur(0px)' }} exit={{ opacity: 0, y: 14, transition: { duration: 0.25 } }}
                 transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-                className={cn('flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ring-1', k === 0 ? 'bg-[#1f2a58] ring-pink-400/30 shadow-[0_10px_40px_-18px_rgba(254,129,209,0.7)]' : 'bg-[#151517] ring-white/10')}>
+                className={cn('flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ring-1', k === 0 ? 'bg-[#18181b] ring-pink-400/30 shadow-[0_10px_40px_-18px_rgba(254,129,209,0.7)]' : 'bg-[#151517] ring-white/10')}>
                 <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-xl', k === 0 ? 'bg-pink-500/20' : 'bg-white/5')}><d.icon className="h-4 w-4 text-pink-200" aria-hidden /></span>
                 <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{d.title}</span><span className="block truncate text-xs text-zinc-300">{d.sub}</span></span>
                 <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-400 text-emerald-950"><Check className="h-3 w-3" strokeWidth={3} aria-hidden /></span>
@@ -154,7 +154,7 @@ function Trace() {
       </svg>
       {/* The label, tilting slowly, a beam passing over its code */}
       <motion.div className="absolute left-1/2 top-[150px] w-[260px] -translate-x-1/2 [transform-style:preserve-3d]" animate={calm ? undefined : { rotateY: [-14, 14, -14], rotateX: [8, -4, 8] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }} style={{ transformPerspective: 900 }}>
-        <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#1c2450,#0f0f11)] p-5 ring-1 ring-white/15 shadow-[0_30px_80px_-20px_rgba(254,129,209,0.55)]">
+        <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#151517,#0f0f11)] p-5 ring-1 ring-white/15 shadow-[0_30px_80px_-20px_rgba(254,129,209,0.55)]">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_30%,rgba(254,129,209,0.18)_45%,rgba(167,139,250,0.16)_52%,transparent_65%)] bg-[length:250%_100%] [animation:holo_5s_linear_infinite]" aria-hidden />
           <p className="text-[11px] text-zinc-400">Product passport</p>
           <p className="mt-1 text-xl font-bold text-white">Aurora olive oil</p>

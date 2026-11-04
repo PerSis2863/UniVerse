@@ -165,7 +165,7 @@ function Colours() {
 
 /** A gradient for slides and designs, with its CSS. */
 function Gradient() {
-  const [a, setA] = useState('#fe81d1'), [b, setB] = useState('#74ffed'), [deg, setDeg] = useState(135);
+  const [a, setA] = useState('#fe81d1'), [b, setB] = useState('#f0cc8a'), [deg, setDeg] = useState(135);
   const css = `linear-gradient(${deg}deg, ${a}, ${b})`;
   const png = () => { const c = document.createElement('canvas'); c.width = 1920; c.height = 1080; const g = c.getContext('2d')!; const r = (deg - 90) * Math.PI / 180, dx = Math.cos(r) * 960, dy = Math.sin(r) * 540; const gr = g.createLinearGradient(960 - dx, 540 - dy, 960 + dx, 540 + dy); gr.addColorStop(0, a); gr.addColorStop(1, b); g.fillStyle = gr; g.fillRect(0, 0, 1920, 1080); c.toBlob((bl) => bl && save('gradient.png', bl, 'image/png')); };
   return (

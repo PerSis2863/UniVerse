@@ -39,13 +39,13 @@ const KINDS: { value: EventKind; label: string; teacher?: boolean }[] = [
   { value: 'DEADLINE', label: 'Deadline' },
 ];
 const COLOURS: { value: string; name: string }[] = [
-  { value: '#2b3568', name: 'Indigo' },
+  { value: '#27272a', name: 'Indigo' },
   { value: '#0f766e', name: 'Teal' },
   { value: '#be123c', name: 'Red' },
   { value: '#b45309', name: 'Amber' },
   { value: '#0369a1', name: 'Blue' },
-  { value: '#2b3568', name: 'Violet' },
-  { value: '#27325a', name: 'Navy' },
+  { value: '#27272a', name: 'Violet' },
+  { value: '#202023', name: 'Navy' },
   { value: '#58617f', name: 'Grey' },
 ];
 

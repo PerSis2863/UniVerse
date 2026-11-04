@@ -69,7 +69,7 @@ function Deck({ chatOpen }: { chatOpen: boolean }) {
                 <t.icon className={cn('w-[18px] h-[18px] transition-transform duration-300', on && 'comms-icon-on')} aria-hidden />
                 <span>{t.label}</span>
                 {t.count > 0 && (
-                  <span key={t.count} aria-label={`${t.count} new`} className={cn('badge-bump min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center', on ? 'bg-white/25 text-white' : 'bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white shadow-[0_0_12px_-2px_rgb(217_70_239/0.8)]')}>
+                  <span key={t.count} aria-label={`${t.count} new`} className={cn('badge-bump min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center', on ? 'bg-white/25 text-white dark:bg-zinc-900/10 dark:text-zinc-900' : 'bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white shadow-[0_0_12px_-2px_rgb(217_70_239/0.8)]')}>
                     {t.count > 99 ? '99+' : t.count}
                   </span>
                 )}

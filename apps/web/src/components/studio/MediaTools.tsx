@@ -119,7 +119,7 @@ function Meme() {
     const c = ref.current; if (!c) return;
     const img = pic.img, W = img ? Math.min(1600, img.naturalWidth) : 1080, H = img ? Math.round((W / img.naturalWidth) * img.naturalHeight) : 1080;
     c.width = W; c.height = H; const g = c.getContext('2d')!;
-    if (img) g.drawImage(img, 0, 0, W, H); else { const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#171f44'); gr.addColorStop(1, '#533ff6'); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
+    if (img) g.drawImage(img, 0, 0, W, H); else { const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#111113'); gr.addColorStop(1, '#533ff6'); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
     const fs = (W * size) / 100; g.font = `900 ${fs}px Impact, 'Arial Black', system-ui, sans-serif`; g.textAlign = 'center'; g.lineJoin = 'round';
     g.lineWidth = fs / 7; g.strokeStyle = '#000'; g.fillStyle = '#fff';
     const wrap = (t: string) => { const words = t.toUpperCase().split(/\s+/), lines: string[] = []; let l = ''; for (const w of words) { const x = l ? `${l} ${w}` : w; if (g.measureText(x).width > W * 0.92 && l) { lines.push(l); l = w; } else l = x; } if (l) lines.push(l); return lines; };
@@ -172,7 +172,7 @@ function ColourBlind() {
   );
 }
 
-const PALETTE = ['#000000', '#ffffff', '#7f7f7f', '#c3c3c3', '#e11d48', '#f97316', '#facc15', '#22c55e', '#0ea5e9', '#533ff6', '#a855f7', '#ec74ce', '#92400e', '#065f46', '#1e3a8a', '#171f44'];
+const PALETTE = ['#000000', '#ffffff', '#7f7f7f', '#c3c3c3', '#e11d48', '#f97316', '#facc15', '#22c55e', '#0ea5e9', '#533ff6', '#a855f7', '#ec74ce', '#92400e', '#065f46', '#1e3a8a', '#111113'];
 /** Pixel art: draw on a grid with a palette, fill, pick and undo; save it sharp and big. */
 function Pixel() {
   const [p, setP] = useKept('uv-pixel-art', () => ({ n: 16, px: Array<string>(256).fill('') }));

@@ -57,7 +57,7 @@ function Resize() {
   );
 }
 
-const LOOKS: [string, string, string, string][] = [['Night', '#171f44', '#2b3568', '#ffffff'], ['Pink', '#fe81d1', '#c13a92', '#141320'], ['Aqua', '#74ffed', '#2bb3a3', '#141320'], ['Paper', '#f7f3ea', '#e9e0cc', '#141320'], ['Violet', '#533ff6', '#2a1d8f', '#ffffff']];
+const LOOKS: [string, string, string, string][] = [['Night', '#111113', '#27272a', '#ffffff'], ['Pink', '#fe81d1', '#c13a92', '#141320'], ['Aqua', '#f0cc8a', '#2bb3a3', '#141320'], ['Paper', '#f7f3ea', '#e9e0cc', '#141320'], ['Violet', '#533ff6', '#2a1d8f', '#ffffff']];
 /** A quote or announcement card for posts and slides. */
 function Quote() {
   const [t, setT] = useState('Education is the most powerful weapon which you can use to change the world.'), [by, setBy] = useState('Nelson Mandela'), [look, setLook] = useState(0), [story, setStory] = useState(false);
@@ -163,7 +163,7 @@ function CodeImage() {
             if (!p) continue;
             if (/^["'`]/.test(p)) { g.fillStyle = '#fe81d1'; g.fillText(p, x, y); x += g.measureText(p).width; continue; }
             if (/^(\/\/|#)/.test(p)) { g.fillStyle = '#7d849c'; g.fillText(p, x, y); x += g.measureText(p).width; continue; }
-            for (const w of p.split(/(\b)/)) { g.fillStyle = KW.test(w) ? '#74ffed' : '#eef3ff'; KW.lastIndex = 0; g.fillText(w, x, y); x += g.measureText(w).width; }
+            for (const w of p.split(/(\b)/)) { g.fillStyle = KW.test(w) ? '#f0cc8a' : '#eef3ff'; KW.lastIndex = 0; g.fillText(w, x, y); x += g.measureText(w).width; }
           }
         });
       }} />

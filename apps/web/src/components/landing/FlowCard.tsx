@@ -51,7 +51,7 @@ export function FlowCard({ flow: which = 'late', compact = false, className }: {
   // The lines: each comet leaves in the step before the box it points to, and arrives as it lights.
   const lines: [string, number][] = [['M30 50 L 40 50', 0], ['M60 50 C 65 50, 64 24, 69 24', 1], ['M60 50 C 65 50, 64 76, 69 76', 2]];
   return (
-    <div className={cn(glass, 'dark bg-[#0f0f11]/95 relative w-full max-w-[520px] p-5 text-start shadow-[0_40px_120px_-40px_rgba(43,53,104,0.55)]', className)}>
+    <div className={cn(glass, 'dark bg-[#0f0f11]/95 relative w-full max-w-[520px] p-5 text-start shadow-[0_40px_120px_-40px_rgba(39,39,42,0.55)]', className)}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <span className="shrink-0 w-9 h-9 rounded-xl grid place-items-center bg-gradient-to-br from-indigo-500/25 to-fuchsia-500/25 border border-white/10">

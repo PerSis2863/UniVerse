@@ -207,7 +207,7 @@ export function drawPlanet(s: PlanetState, { ctx, w, h, t, pointer, still }: Pai
   // The dots: the far side faint (land only, showing through), the near side lit; land brighter
   // than sea, round and soft.
   const proj = model.proj;
-  const LAND = [dotSprite('214,255,250'), dotSprite('116,255,237'), dotSprite(TONES.pink)], SEA = [dotSprite('140,165,255'), dotSprite('186,160,255')];
+  const LAND = [dotSprite('214,255,250'), dotSprite('240,204,138'), dotSprite(TONES.pink)], SEA = [dotSprite('140,165,255'), dotSprite('186,160,255')];
   const scale = Math.max(0.85, r / 170);
   ctx.fillStyle = 'rgb(150,180,208)';
   for (let i = 0; i < dots.length; i++) {

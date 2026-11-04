@@ -391,7 +391,7 @@ function Tools() {
           <AnimatePresence mode="wait" initial={false}>
             {panel ? (
               <motion.div key={panel} initial={enter} animate={{ opacity: 1, y: 0, scale: 1, transition: spring.smooth }} exit={leave}
-                className={cn('mx-auto space-y-4', focus ? 'fixed inset-0 z-[70] max-w-none overflow-y-auto bg-[#f0f0f0] dark:bg-[#0a0f2b] p-4 md:p-8' : WIDE.has(panel) ? 'max-w-6xl' : 'max-w-4xl')}>
+                className={cn('mx-auto space-y-4', focus ? 'fixed inset-0 z-[70] max-w-none overflow-y-auto bg-[#f0f0f0] dark:bg-[#0b0b0c] p-4 md:p-8' : WIDE.has(panel) ? 'max-w-6xl' : 'max-w-4xl')}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   {focus ? <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Focus mode · Esc to leave</span>
                     : <button type="button" onClick={() => open(null)} className="group inline-flex items-center gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white min-h-11"><ArrowLeft className="w-4 h-4 rtl:rotate-180 transition-transform duration-200 group-hover:-translate-x-0.5 rtl:group-hover:translate-x-0.5" aria-hidden />Everything in Create</button>}
@@ -484,7 +484,7 @@ function ToolCard({ t, starred, onPick, onStar }: { t: Tool; starred: boolean; o
       <button type="button" onClick={() => onPick(t.id)} onPointerEnter={() => preload(t.id)} onFocus={() => preload(t.id)}
         className="w-full h-full text-start rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-4 sm:p-5 transition-[transform,border-color,box-shadow] duration-200 ease-[var(--ease-out-soft)] hover:-translate-y-0.5 hover:border-indigo-400/60 hover:shadow-lg hover:shadow-indigo-900/10 active:scale-[0.98] active:duration-100 motion-reduce:transform-none">
         <span className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${t.tint} text-white grid place-items-center transition-transform duration-300 ease-[var(--ease-out-soft)] group-hover:scale-[1.06] group-hover:-rotate-3 motion-reduce:transform-none`}><t.icon className="w-5 h-5" aria-hidden /></span>
-        <span className="mt-3 flex items-center gap-1.5 pe-8 font-bold text-zinc-900 dark:text-white">{t.name}{t.fresh && <span className="rounded-full bg-pink-500 px-1.5 py-px text-[11px] font-bold text-[#171f44]">New</span>}</span>
+        <span className="mt-3 flex items-center gap-1.5 pe-8 font-bold text-zinc-900 dark:text-white">{t.name}{t.fresh && <span className="rounded-full bg-pink-500 px-1.5 py-px text-[11px] font-bold text-[#111113]">New</span>}</span>
         <span className="block mt-0.5 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">{t.what}</span>
       </button>
       <span className={cn('absolute top-2.5 end-2.5 transition-opacity duration-200 [@media(hover:none)]:opacity-100', starred ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100')}>

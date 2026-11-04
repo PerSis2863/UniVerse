@@ -59,7 +59,7 @@ function Names() {
 
 /** Shadow maker: a CSS box shadow and rounded corners, seen live. */
 function Shadow() {
-  const [s, setS] = useKept('uv-shadow', { x: 0, y: 12, blur: 32, spread: -8, colour: '#171f44', alpha: 35, radius: 24, inset: false, soft: true, bg: '#ffffff' });
+  const [s, setS] = useKept('uv-shadow', { x: 0, y: 12, blur: 32, spread: -8, colour: '#111113', alpha: 35, radius: 24, inset: false, soft: true, bg: '#ffffff' });
   const rgba = (h: string, a: number) => { const n = parseInt(h.slice(1), 16); return `rgb(${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255} / ${a / 100})`; };
   const main = `${s.inset ? 'inset ' : ''}${s.x}px ${s.y}px ${s.blur}px ${s.spread}px ${rgba(s.colour, s.alpha)}`;
   const css = `box-shadow: ${s.soft && !s.inset ? `0 1px 2px ${rgba(s.colour, Math.round(s.alpha / 3))}, ` : ''}${main};\nborder-radius: ${s.radius}px;`;

@@ -140,7 +140,7 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
     if (s.shake > 0) { s.shake -= dt; ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10); }
     const sky = ctx.createLinearGradient(0, 0, 0, h);
     const tops = ['#0f4c66', '#0c3a52', '#0a1f2e'], mids = ['#0a2f42', '#0a2534', '#071520'];
-    sky.addColorStop(0, tops[phase]); sky.addColorStop(0.55, mids[phase]); sky.addColorStop(1, '#171F44');
+    sky.addColorStop(0, tops[phase]); sky.addColorStop(0.55, mids[phase]); sky.addColorStop(1, '#111113');
     ctx.fillStyle = sky; ctx.fillRect(-10, -10, w + 20, h + 20);
     // Light shafts in calm water.
     if (phase < 2) {
@@ -237,7 +237,7 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
     ctx.beginPath(); ctx.moveTo(0, -28); ctx.quadraticCurveTo(18, -8, 16, 20); ctx.lineTo(-16, 20); ctx.quadraticCurveTo(-18, -8, 0, -28); ctx.fill();
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#fe81d1'; ctx.fillRect(-16, 11, 32, 9);
-    ctx.fillStyle = '#1d2650'; ctx.beginPath(); ctx.roundRect(-8, -9, 16, 15, 4); ctx.fill();
+    ctx.fillStyle = '#151517'; ctx.beginPath(); ctx.roundRect(-8, -9, 16, 15, 4); ctx.fill();
     ctx.fillStyle = '#7dd3fc'; ctx.fillRect(-5, -6, 10, 4);
     ctx.strokeStyle = 'rgba(255,159,220,0.9)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(0, -28, 13, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
@@ -258,7 +258,7 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
     // Combo meter.
     const left = Math.max(0, 1 - (t - s.lastPick) / OCEAN_COMBO_MS);
     if (s.combo > 0 && left > 0) {
-      ctx.fillStyle = 'rgba(29,38,80,0.75)'; ctx.beginPath(); ctx.roundRect(12, 12, 132, 34, 10); ctx.fill();
+      ctx.fillStyle = 'rgba(21,21,23,0.75)'; ctx.beginPath(); ctx.roundRect(12, 12, 132, 34, 10); ctx.fill();
       ctx.fillStyle = '#ffc0e6'; ctx.font = '700 14px Inter, system-ui, sans-serif'; ctx.textAlign = 'left';
       ctx.fillText(`Combo ×${oceanMultiplier(s.combo).toFixed(1)}`, 22, 26);
       ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(22, 36, 112, 4);

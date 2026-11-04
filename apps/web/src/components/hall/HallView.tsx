@@ -39,7 +39,7 @@ function Avatar({ p, me, heard }: { p: Spot & { name: string }; me?: boolean; he
       {!!heard && heard > 0 && <circle r={26} fill="none" stroke="#a0a9cc" strokeOpacity={0.25 + heard * 0.6} strokeWidth={3} />}
       <circle r={20} fill="url(#hall-avatar)" stroke={me ? '#fff' : 'rgba(255,255,255,0.25)'} strokeWidth={me ? 3 : 1.5} />
       <text textAnchor="middle" dy={5} fontSize={13} fontWeight={700} fill="#fff">{initials(p.name)}</text>
-      <text textAnchor="middle" y={38} fontSize={12} fill="#e1e6f2" style={{ paintOrder: 'stroke', stroke: '#171f44', strokeWidth: 4 }}>{me ? 'You' : p.name.split(' ')[0]}</text>
+      <text textAnchor="middle" y={38} fontSize={12} fill="#e1e6f2" style={{ paintOrder: 'stroke', stroke: '#111113', strokeWidth: 4 }}>{me ? 'You' : p.name.split(' ')[0]}</text>
     </g>
   );
 }
@@ -417,7 +417,7 @@ export function HallView({ hallId }: { hallId: string }) {
   const count = Object.keys(people).length + 1;
 
   return (
-    <div ref={boxRef} className="relative flex-1 min-h-0 flex flex-col bg-[#171f44] text-white overflow-hidden">
+    <div ref={boxRef} className="relative flex-1 min-h-0 flex flex-col bg-[#111113] text-white overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-4 py-2.5 border-b border-white/10">
         <p className="font-semibold truncate min-w-0 flex-1">{title}</p>
         <span className="inline-flex items-center gap-1 text-xs text-zinc-400"><Users className="w-3.5 h-3.5" />{count}</span>
@@ -431,7 +431,7 @@ export function HallView({ hallId }: { hallId: string }) {
             <button type="button" onClick={() => setTimerMenu((v) => !v)} aria-expanded={timerMenu} className="inline-flex items-center gap-1.5 rounded-full px-3 h-9 text-xs font-semibold bg-white/10 hover:bg-white/15"><Timer className="w-3.5 h-3.5" />Focus timer</button>
           )}
           {timerMenu && !tv && (
-            <div className="absolute end-0 top-full mt-2 z-30 w-52 rounded-2xl bg-[#1d2650] border border-white/10 shadow-2xl p-1.5">
+            <div className="absolute end-0 top-full mt-2 z-30 w-52 rounded-2xl bg-[#151517] border border-white/10 shadow-2xl p-1.5">
               {[[25, 5], [50, 10]].map(([f, b]) => (
                 <button key={f} type="button" onClick={() => { setTimerMenu(false); send({ type: 'hall-timer', on: true, focus: f, brk: b }); }} className="w-full text-start rounded-xl px-3 py-2 text-sm hover:bg-white/10">{f} min focus · {b} min break</button>
               ))}
@@ -459,9 +459,9 @@ export function HallView({ hallId }: { hallId: string }) {
           <svg ref={svgRef} viewBox={`${vx} ${vy} ${view.w} ${view.h}`} preserveAspectRatio="xMidYMid meet" className="w-full h-full touch-none select-none cursor-pointer" onPointerDown={walkTo}
             role="application" aria-label="Study Hall map. Tap or click to walk there, tap a table to sit at it, or use the arrow keys.">
             <defs>
-              <linearGradient id="hall-avatar" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#2b3568" /><stop offset="1" stopColor="#c13a92" /></linearGradient>
+              <linearGradient id="hall-avatar" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#27272a" /><stop offset="1" stopColor="#c13a92" /></linearGradient>
             </defs>
-            <rect width={HALL_W} height={HALL_H} fill="#171f44" />
+            <rect width={HALL_W} height={HALL_H} fill="#111113" />
             {ZONES.map((z) => (
               <g key={z.id}>
                 <rect x={z.x} y={z.y} width={z.w} height={z.h} rx={28} fill={z.tint} fillOpacity={0.07} stroke={z.tint} strokeOpacity={0.35} strokeWidth={2} />
@@ -470,8 +470,8 @@ export function HallView({ hallId }: { hallId: string }) {
             ))}
             {TABLES.map((t) => (
               <g key={t.n}>
-                {[0, 1, 2, 3].map((i) => <circle key={i} cx={t.x + Math.cos((i * Math.PI) / 2) * 46} cy={t.y + Math.sin((i * Math.PI) / 2) * 46} r={8} fill="#252c4d" />)}
-                <circle cx={t.x} cy={t.y} r={32} fill="#1b2140" stroke="rgba(255,255,255,0.14)" strokeWidth={2} />
+                {[0, 1, 2, 3].map((i) => <circle key={i} cx={t.x + Math.cos((i * Math.PI) / 2) * 46} cy={t.y + Math.sin((i * Math.PI) / 2) * 46} r={8} fill="#1d1d20" />)}
+                <circle cx={t.x} cy={t.y} r={32} fill="#111113" stroke="rgba(255,255,255,0.14)" strokeWidth={2} />
                 <text x={t.x} y={t.y + 5} textAnchor="middle" fontSize={14} fill="#a0a9cc">{t.n}</text>
               </g>
             ))}

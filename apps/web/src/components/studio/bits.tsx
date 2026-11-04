@@ -15,7 +15,7 @@ export const rnd = (n: number) => crypto.getRandomValues(new Uint32Array(1))[0] 
 export function inkOn(hex: string) {
   const n = parseInt(hex.slice(1), 16), lin = (v: number) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
   const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-  return (L + 0.05) / (0.0109 + 0.05) > 1.05 / (L + 0.05) ? '#171f44' : '#ffffff';
+  return (L + 0.05) / (0.0109 + 0.05) > 1.05 / (L + 0.05) ? '#111113' : '#ffffff';
 }
 export const MONEY = ['₹', '$', '€', '£', '¥', '₦', 'R', 'KSh '];
 
@@ -33,7 +33,7 @@ export function useFull<T extends HTMLElement>() {
     setFull(true);
     await ref.current?.requestFullscreen?.().catch(() => {});
   };
-  return { ref, full, toggle, boxClass: full ? 'fixed inset-0 z-[80] overflow-auto bg-white dark:bg-[#0a0f2b] p-6 sm:p-10' : '' };
+  return { ref, full, toggle, boxClass: full ? 'fixed inset-0 z-[80] overflow-auto bg-white dark:bg-[#0b0b0c] p-6 sm:p-10' : '' };
 }
 
 export const FullBtn = ({ full, onClick, className }: { full: boolean; onClick: () => void; className?: string }) => (

@@ -71,7 +71,7 @@ function GlobeBody({ ships }: { ships: GlobeShipment[] }) {
           <p className="text-sm text-zinc-500 dark:text-zinc-400">{onMove} on the move · {ships.filter((s) => s.position).length} on the globe{hot ? ` · ${hot} too warm` : ''}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 px-5 pt-2">
-          <button type="button" aria-pressed={air} onClick={() => setAir((v) => !v)} className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 transition-colors', air ? 'bg-pink-500 text-[#171f44] ring-pink-500' : 'ring-zinc-300 dark:ring-white/15 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-900/[0.04] dark:hover:bg-white/[0.06]')}>
+          <button type="button" aria-pressed={air} onClick={() => setAir((v) => !v)} className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 transition-colors', air ? 'bg-pink-500 text-[#111113] ring-pink-500' : 'ring-zinc-300 dark:ring-white/15 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-900/[0.04] dark:hover:bg-white/[0.06]')}>
             <PlaneIcon className="w-3.5 h-3.5" aria-hidden />Air traffic
           </button>
           {air && <span className="text-xs text-zinc-500 dark:text-zinc-400" role="status">{!traffic ? 'Loading planes…' : traffic.note ?? `${traffic.planes.length.toLocaleString()} planes in the air · ${traffic.source}${traffic.at ? ` · ${new Date(traffic.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`}</span>}

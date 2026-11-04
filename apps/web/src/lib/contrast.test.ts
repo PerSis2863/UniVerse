@@ -8,13 +8,13 @@ describe('readable colours', () => {
   });
   it('keeps colours that read, and nudges those that don’t', () => {
     expect(readable('#2b3568', '#ffffff')).toBe('#2b3568');
-    const onDark = readable('#b91c1c', '#131a3d');
-    expect(contrast(onDark, '#131a3d')).toBeGreaterThanOrEqual(4.5);
+    const onDark = readable('#b91c1c', '#0f0f11');
+    expect(contrast(onDark, '#0f0f11')).toBeGreaterThanOrEqual(4.5);
     const onLight = readable('#fde68a', '#ffffff');
     expect(contrast(onLight, '#ffffff')).toBeGreaterThanOrEqual(4.5);
   });
   it('picks black or white on a fill', () => {
-    expect(textOn('#ffeb84')).toBe('#1d2650');
+    expect(textOn('#ffeb84')).toBe('#111113');
     expect(textOn('#1e3a8a')).toBe('#ffffff');
   });
 });

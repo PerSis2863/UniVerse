@@ -133,7 +133,7 @@ export function GreenApp() {
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white" style={{ background: 'radial-gradient(120% 90% at 0% 0%, #0f3b2e 0%, #0b2620 55%, #171f44 100%)' }}>
+      <section className="relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white" style={{ background: 'radial-gradient(120% 90% at 0% 0%, #0f3b2e 0%, #0b2620 55%, #111113 100%)' }}>
         <span aria-hidden className="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-emerald-400/20 blur-3xl" />
         <div className="relative grid lg:grid-cols-[1fr_auto] gap-6 items-end">
           <div>
@@ -351,7 +351,7 @@ function PassSection({ totals, easiest, onTry }: { totals: GreenMe['totals']; ea
       <div style={{ perspective: 900 }}>
         <div
           onPointerMove={lean} onPointerLeave={() => setTilt({ x: 0, y: 0 })}
-          style={{ transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`, background: 'radial-gradient(90% 120% at 100% 0%, rgba(116,255,237,0.28), transparent 55%), linear-gradient(135deg, #171f44 0%, #0d3a33 70%, #0f5a45 100%)' }}
+          style={{ transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`, background: 'radial-gradient(90% 120% at 100% 0%, rgba(240,204,138,0.28), transparent 55%), linear-gradient(135deg, #111113 0%, #0d3a33 70%, #0f5a45 100%)' }}
           className="relative h-[212px] rounded-[22px] p-5 text-white shadow-[0_24px_50px_-24px_rgba(16,185,129,0.6)] ring-1 ring-white/10 overflow-hidden transition-transform duration-200 ease-out"
         >
           <span aria-hidden className="absolute -end-10 -bottom-16 w-48 h-48 rounded-full border border-white/10" />
@@ -433,7 +433,7 @@ export function GreenMap() {
       </div>
       <WorldCanvas label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={!calm && cells.length > 0} draw={draw} className="w-full h-[46vh] min-h-[320px]">
         {data && cells.length === 0 && (
-          <div className="absolute inset-x-3 bottom-3 sm:inset-x-auto sm:start-3 sm:w-[420px] rounded-2xl bg-white dark:bg-[#171f44] p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
+          <div className="absolute inset-x-3 bottom-3 sm:inset-x-auto sm:start-3 sm:w-[420px] rounded-2xl bg-white dark:bg-[#111113] p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
             <p className="text-sm text-zinc-700 dark:text-zinc-200">No actions on the map yet. Log one with “Put it on the shared map” and yours is the first light. It glows brighter as friends join.</p>
             <InviteButton app="green" text="I’m logging my climate actions on UniVerse Green and seeing the CO₂ I save. Join me:" label="Invite friends" className="mt-3 flex-wrap" />
           </div>
