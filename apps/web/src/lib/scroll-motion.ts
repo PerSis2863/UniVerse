@@ -83,8 +83,6 @@ function play(el: Element, kind: Kind) {
   const h = el as HTMLElement;
   if (kind === 'block') {
     h.dataset.sr = 'in';
-    // A plain card (no picture or gradient of its own) gets a beam of light round its edge as it lands (M11).
-    if (cardOf(h) === h && getComputedStyle(h).backgroundImage === 'none' && beamOn(h, 'beam-once')) setTimeout(() => beamOff(h, 'beam-once'), 1500);
     const done = () => { delete h.dataset.sr; };
     h.addEventListener('transitionend', done, { once: true });
     setTimeout(done, 1200);
@@ -183,33 +181,13 @@ function cardOf(el: Element | null): HTMLElement | null {
   return null;
 }
 /**
- * The edge beam (M11) draws on the card's ::after, inside it: only on a card not using ::after for
- * something else. A card that isn't positioned is made `relative` while the beam shows, if nothing
- * inside it is absolutely positioned (so nothing can move). Returns whether the beam is on.
- */
-function beamOn(el: HTMLElement, cls: 'beam' | 'beam-once'): boolean {
-  if (getComputedStyle(el, '::after').content !== 'none' && !el.classList.contains('beam') && !el.classList.contains('beam-once')) return false;
-  if (getComputedStyle(el).position === 'static') {
-    if (el.querySelector('[class*="absolute"]')) return false;
-    el.style.position = 'relative';
-    el.dataset.beamPos = '1';
-  }
-  el.classList.add(cls);
-  return true;
-}
-function beamOff(el: HTMLElement, cls: 'beam' | 'beam-once') {
-  el.classList.remove(cls);
-  if (el.dataset.beamPos && !el.classList.contains('beam') && !el.classList.contains('beam-once')) { el.style.position = ''; delete el.dataset.beamPos; }
-}
-
-/**
  * The light under the pointer (computers with a mouse or trackpad): one listener for the page,
  * at most once a frame; only cards without a background picture of their own take it.
  */
 function startSheen(): () => void {
   if (!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) return () => {};
   let lit: HTMLElement | null = null, x = 0, y = 0, frame = 0;
-  const off = () => { if (lit) { lit.classList.remove('sheen'); beamOff(lit, 'beam'); } lit = null; };
+  const off = () => { if (lit) lit.classList.remove('sheen'); lit = null; };
   const paint = () => {
     frame = 0;
     if (!lit) return;
@@ -225,8 +203,6 @@ function startSheen(): () => void {
       off();
       if (card && !card.closest(SKIP) && (card.classList.contains('sheen') || getComputedStyle(card).backgroundImage === 'none')) {
         lit = card;
-        // The edge beam first (its check reads ::after before .sheen changes anything), then the spotlight.
-        beamOn(card, 'beam');
         card.classList.add('sheen');
       }
     }
@@ -238,6 +214,7 @@ function startSheen(): () => void {
 }
 
 let stopSheen: (() => void) | null = null;
+let stopScrolling: (() => void) | null = null;
 
 /**
  * A figure whose value changes on screen (live numbers, a filter applied) rolls into its new value
@@ -272,5 +249,13 @@ export function startScrollMotion(): () => void {
   });
   mo.observe(document.body, { childList: true, subtree: true, characterData: true });
   scan(document);
-  return () => { mo?.disconnect(); mo = null; io?.disconnect(); io = null; stopSheen?.(); stopSheen = null; };
+  // M96: <html data-scrolling> while anything scrolls (and 180 ms after), so decorative loops (drifting
+  // glows, bar glints, pings) rest meanwhile and the phone only moves the page (globals.css).
+  const root = document.documentElement;
+  let idle: ReturnType<typeof setTimeout> | null = null;
+  const settle = () => { idle = null; delete root.dataset.scrolling; };
+  const onScroll = () => { if (idle) clearTimeout(idle); else root.dataset.scrolling = ''; idle = setTimeout(settle, 180); };
+  document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+  stopScrolling = () => { document.removeEventListener('scroll', onScroll, { capture: true }); if (idle) clearTimeout(idle); settle(); };
+  return () => { mo?.disconnect(); mo = null; io?.disconnect(); io = null; stopSheen?.(); stopSheen = null; stopScrolling?.(); stopScrolling = null; };
 }

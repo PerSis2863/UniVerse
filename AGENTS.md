@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M96 is the latest).
+  builds on it). The newest notes are at the end (M97 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -129,8 +129,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   cards, Messages, games, editors; documents on paper and people's own colour choices left as they are);
   **M95** a check of what to improve: the console loads each tab when opened, sounds close safely;
   **M96** every app page ~46 KB lighter to download (the sign-in layout's file no longer rides along, rare
-  parts load when used). Scheduled: the body-parser override on 5 Nov (12:00 UTC, a reminder to this session).
-- **Work numbers:** the next item is **M97**. Never reuse a number: take the next one after the
+  parts load when used); **M97** UniVersity and Trace scroll smoothly too (no edge beam, no blur on reveal,
+  decorative loops pause while scrolling). Scheduled: the body-parser override on 5 Nov (12:00 UTC).
+- **Work numbers:** the next item is **M98**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
@@ -334,7 +335,9 @@ numbers and data).
 **The motion layer works on every page by itself**: pages assemble out of a blur
 (`src/lib/page-transition.ts`), titles sweep in, a light trail runs down the page (`LightTrail`),
 figures count up, bars fill, charts draw (`src/lib/scroll-motion.ts`), cards glow under the mouse
-(`.sheen`); opt a part out with `data-no-motion`. Rules: motion has a job (arriving, changing,
+(`.sheen`); opt a part out with `data-no-motion`. Decorative loops pause while the page scrolls
+(`html[data-scrolling]`, M97): add new ones to that list; never animate a custom property, `filter` or
+`background` (they repaint every frame). Rules: motion has a job (arriving, changing,
 answering a tap) and never makes anyone wait; nothing animated on things used many times a day;
 ease-out for arrivals with the project's curves (`--ease-glide`, `--ease-ios`, `--ease-out-soft`,
 `spring`); UI motion under 300 ms, exits faster than entrances; nothing grows from scale 0 (start

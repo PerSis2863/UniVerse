@@ -1500,8 +1500,8 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
    Blocks below the fold wait a little lower and see-through, and rise into place as they scroll
    into view, like the "Relay" site. Set only by the script (never for Reduce Motion), and never
    when printing. */
-[data-sr="wait"] { opacity: 0; transform: translate3d(0, 36px, 0) scale(0.985); filter: blur(8px); }
-[data-sr="in"] { opacity: 1; transform: none; filter: blur(0); transition: opacity 720ms var(--ease-glide), transform 900ms var(--ease-glide), filter 700ms var(--ease-glide); }
+[data-sr="wait"] { opacity: 0; transform: translate3d(0, 36px, 0) scale(0.985); }
+[data-sr="in"] { opacity: 1; transform: none; transition: opacity 720ms var(--ease-glide), transform 900ms var(--ease-glide); }
 @media print { [data-sr] { opacity: 1 !important; transform: none !important; } }
 
 /* A slow drifting glow behind the public pages (landing, legal, sign-in): two soft blobs move on
@@ -1816,21 +1816,8 @@ html.reduce-motion .flow-comet { display: none; }
 }
 
 /* ═══ M11 · Light that answers people (src/lib/light-motion.ts, scroll-motion.ts) ═══════════════
-   All light, all cheap: one pseudo-element or a few spans at a time, transforms and opacity, the
-   beam's angle as a registered property (browsers without it show a still beam). */
-@property --beam { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-/* The edge beam: a comet of light running round a card under the pointer (.beam), or once round a
-   card as it rises into view (.beam-once). A 1px ring cut out with a mask, on top of the card. */
-.beam::after, .beam-once::after {
-  content: ''; position: absolute; inset: 0; z-index: 1; border-radius: inherit; padding: 1px; pointer-events: none;
-  background: conic-gradient(from var(--beam), transparent 0deg 210deg, #52525b 260deg, #ff9fdc 300deg, #fe81d1 318deg, transparent 350deg);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  animation: beam-spin 2.6s linear infinite;
-}
-.beam-once::after { animation: beam-spin 1.4s cubic-bezier(0.4, 0, 0.2, 1) 1 forwards, beam-fade 1.4s ease-out forwards; }
-@keyframes beam-spin { to { --beam: 360deg; } }
-@keyframes beam-fade { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
+   All light, all cheap: one pseudo-element or a few spans at a time, transforms and opacity (the edge
+   beam that ran round cards went in M96: it repainted whole cards while scrolling). */
 /* Filled bars catch a glint of light now and then. */
 .bar-glint { position: relative; overflow: hidden; }
 .bar-glint::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.55) 50%, transparent 70%); transform: translateX(-120%); animation: bar-glint 3.8s ease-in-out 0.5s infinite; pointer-events: none; }
@@ -1844,9 +1831,8 @@ html.reduce-motion .flow-comet { display: none; }
 /* Loading placeholders shimmer in the two tones. */
 .skeleton::after { background-image: linear-gradient(100deg, transparent 20%, rgb(177 168 167 / 0.38) 45%, rgb(255 192 230 / 0.3) 55%, transparent 80%); }
 .dark .skeleton::after { background-image: linear-gradient(100deg, transparent 20%, rgb(116 110 122 / 0.1) 45%, rgb(255 159 220 / 0.08) 55%, transparent 80%); }
-@media (prefers-reduced-motion: reduce) { .beam::after, .beam-once::after, .bar-glint::after { animation: none; } .beam-once::after { opacity: 0; } }
-html.reduce-motion :is(.beam, .beam-once, .bar-glint)::after { animation: none; }
-html.reduce-motion .beam-once::after { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .bar-glint::after { animation: none; } }
+html.reduce-motion .bar-glint::after { animation: none; }
 
 /* ═══ M13 · The owner console's deck (console/deck.tsx, overview.tsx) ═══════════════════════════
    The header's grid and pulse line, the slow ring round icon tiles, the line chart wiping in, the
@@ -1854,9 +1840,6 @@ html.reduce-motion .beam-once::after { opacity: 0; }
 .deck-grid { background-image: linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px); background-size: 34px 34px; mask-image: radial-gradient(110% 90% at 25% 0%, #000 25%, transparent 75%); }
 .deck-pulse { stroke-dasharray: 90 1000; stroke-dashoffset: 90; filter: drop-shadow(0 0 4px #fe81d1); animation: deck-pulse 7s linear infinite; }
 @keyframes deck-pulse { to { stroke-dashoffset: -1000; } }
-.deck-orbit { position: relative; isolation: isolate; }
-.deck-orbit::before { content: ''; position: absolute; inset: -1.5px; z-index: -1; border-radius: inherit; padding: 1.5px; background: conic-gradient(from var(--beam), #52525b, #fe81d1 25%, transparent 45%, transparent 70%, #52525b); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: deck-orbit 6s linear infinite; }
-@keyframes deck-orbit { to { --beam: 360deg; } }
 .deck-ping { animation: deck-ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite; }
 @keyframes deck-ping { 0% { box-shadow: 0 0 0 0 rgb(255 159 220 / 0.55); } 80%, 100% { box-shadow: 0 0 0 7px rgb(255 159 220 / 0); } }
 .deck-glow { background: radial-gradient(closest-side, rgb(82 82 91 / 0.22), transparent); animation: mkt-drift-a 18s ease-in-out infinite; }
@@ -1869,10 +1852,9 @@ html.reduce-motion .beam-once::after { opacity: 0; }
   .console-deck tbody tr { transition: background-color 0.15s; }
   .console-deck tbody tr:hover { background-color: rgb(39 39 42 / 0.05); }
 }
-@media (prefers-reduced-motion: reduce) { .deck-pulse, .deck-orbit::before, .deck-ping, .deck-glow, .deck-draw { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .deck-pulse, .deck-ping, .deck-glow, .deck-draw { animation: none; } }
 html.reduce-motion :is(.deck-pulse, .deck-ping, .deck-glow, .deck-draw) { animation: none; }
-html.reduce-motion .deck-orbit::before { animation: none; }
-
+html.reduce-motion 
 /* ═══ M17 · Messages: glass panels, unread rings, gliding messages (components/chat) ═══════════
    Everything moves with transform and opacity only. The chat list is used many times a day, so it
    barely moves: rows only fade their highlight; arrivals (a new message, a chat opening, a new
@@ -2593,7 +2575,7 @@ html.reduce-motion .wcard-sway { animation: none; transform: perspective(1100px)
    was made by AI"; the CreditKarma photos): plain solid cards, no gradient hairlines, beams, glows or
    grid; table headings in sentence case, not mono capitals. ═══ */
 .deck-card, .dark .deck-card { background-image: none; }
-.deck-orbit::before, .deck-glow { display: none; }
+.deck-glow { display: none; }
 .deck-grid { background-image: none; }
 .deck-pulse { filter: none; }
 .console-deck table th { font-family: var(--font-sans); font-size: 0.75rem; letter-spacing: 0; text-transform: none; }
@@ -2644,3 +2626,9 @@ html:not(.dark), .dark, .on-dark {
 .comms-tail { background: rgb(var(--tint-rgb) / 0.1); }
 html.dark :is(a, button):has(> .comms-head) { color: #111113; }
 .comms-deck { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--card-bg); }
+
+/* M96 · Decorative loops rest while the page scrolls (scroll-motion.ts sets <html data-scrolling>) and
+   pick up again 180 ms after; measured, they were most of what was left of the cost of scrolling. The
+   live dots keep pulsing (they show that something is live). */
+html[data-scrolling] :is(.passport-glow, .mkt-drift-a, .mkt-drift-b, .ins-ping, .ins-live, .ins-grain, .wcard-sway, .universe-node-pulse, .universe-u-beam, .universe-n-beam),
+html[data-scrolling] .bar-glint::after { animation-play-state: paused; }

@@ -3934,3 +3934,36 @@ The owner: "please do all the still to do" (M95 found that no page meets the fir
   - `pnpm check`;
   - the built site: sign-in shows its frame, form and picture; the hub's notifications panel opens
     with the email switch; axe clean; no page errors.
+
+## M97: UniVersity and Trace scroll smoothly too (4 Nov 2026)
+
+The owner: "please do all the still to do" (after M91–M92, UniVersity and Trace still scrolled less
+smoothly than the hub).
+
+- **Measured on the same machine and build** (a phone-sized screen, a 4× slower CPU, 6 s of
+  scrolling):
+  - Switching every animation off took Trace to 354 frames, whereas hiding the canvases changed
+    nothing.
+  - A sampler of `document.getAnimations()` during the scroll (`scrollanims.mjs`-style) showed what
+    runs:
+    - the edge beam (`beam-once` / `beam`): a conic gradient whose angle is a registered custom
+      property, so the whole card repaints every frame; up to 8 cards at once on UniVersity;
+    - the reveal's `filter: blur()` transition;
+    - decorative loops: the passport glow drift, bar glints, instrument pings.
+- **Fixes:**
+  - the edge beam is gone: `beamOn` / `beamOff` and their CSS, and the console's unused
+    `deck-orbit`, which shared `--beam`. That also drops a `getComputedStyle` per revealed card;
+  - the reveal (`[data-sr]`) is transform and opacity only, with no blur;
+  - `scroll-motion.ts` sets `<html data-scrolling>` while anything scrolls (and for 180 ms after), and
+    the decorative loops pause meanwhile (`animation-play-state: paused` on `.passport-glow`,
+    `.mkt-drift-a/b`, `.ins-ping`, `.ins-live`, `.ins-grain`, `.wcard-sway`, the logo's beams, and
+    `.bar-glint::after`). Live dots keep pulsing.
+- **Result (frames in 6 s, 360 = 60 a second; frames over 50 ms):**
+  - hub: 294 → 378 (4 slow);
+  - UniVersity: 232 → 290 (82 → 24 slow);
+  - Trace: 243 → 297, median frame 17 ms (77 → 47 slow).
+- **Rule:** a new looping decoration goes in the `html[data-scrolling]` pause list, and never
+  animates a custom property, `filter` or `background` (those repaint every frame).
+- **Tested:**
+  - `pnpm check`;
+  - the built site: axe clean at 390 (light and dark, scrolled through) and 1280; no page errors.
