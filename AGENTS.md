@@ -88,7 +88,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 This is only the map: each item has a note in `apps/web/STAGE-5-HANDOFF.md` (traps, rules for code
 that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 
-- **On `main`** (merged through PR #107, 3 Nov): everything through **M88** (M82–M88 are listed below).
+- **On `main`** (merged through PR #108, 4 Nov): everything through **M98** (M82–M98 are listed below).
   - **Look and motion:** dark mode in the "Globynk" navy and Aqua Jade, light mode in Marshmallow
     White, Galactic Violet and Bubblegum Pink (M52–M57a, see §8); a less AI-looking site (M58); the
     pink river that nothing slows but Reduce Motion (M56, M56a); motion that answers the pointer (M41);
@@ -118,7 +118,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   page (outlines worked out on a background thread), a pinch zooms the map, not the page; **M87**
   safer libraries (32 known issues → 12, none critical), wrangler 4.151.3, checks on every push;
   **M88** an API request uses about a quarter of the CPU it did (Prisma's query compiler shared).
-- **On the branch `claude/youthful-fermi-sbdtcp`, not merged:** **M89** busy buttons keep their size,
+- **Merged in PR #108 (4 Nov, live and checked):** **M89** busy buttons keep their size,
   loading placeholders stay smooth while a page loads; **M90** Quick notes like Apple Notes (folders,
   Recently deleted, tick-box lines), the search icon no longer on the text in search boxes; **M91** the
   CreditKarma photos' look everywhere (pink kept as the one accent), no glass, and the home page's
@@ -133,7 +133,12 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   decorative loops pause while scrolling); **M98** Trace's live board smooth (counters no longer set off
   animations), count-ups wait for React, a 116-page sweep clean. Scheduled: the body-parser override on 5 Nov
   (12:00 UTC).
-- **Work numbers:** the next item is **M99**. Never reuse a number: take the next one after the
+- **On the branch `claude/youthful-fermi-sbdtcp`, not merged:** **M99** Night Shift's own survival-horror
+  story (Ashgrove Academy, the Quiet; `src/lib/play/night-story.ts`): named keys, six notes, a keypad code,
+  safe rooms with first aid, flares (G), Shades that drink the torch, two endings; the torch casts real
+  shadows, dust in its beam, a four-light lamp pool (`LightPool` in `world/core.ts`), and every 3D world
+  builds its shaders before the first frame.
+- **Work numbers:** the next item is **M100**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,

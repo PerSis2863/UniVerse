@@ -4016,3 +4016,46 @@ else… make sure everything is good and after that push and merge it, don't lea
   after the landing in the same tab. Nothing outside React changed the page before it (a
   MutationObserver log), and the live site's `error_reports` has never had a hydration error. Look
   again only if it shows up there.
+
+## M99: Night Shift, a survival-horror story of its own (4 Nov 2026)
+
+The owner asked for "realistic graphics specially the night shift one with a proper story like resident
+evil gameplay". Genre mechanics only: the story, names and look are ours (never a recreation of a real
+game).
+
+- **The story** (`src/lib/play/night-story.ts`, pure, seeded, tested in `night-story.test.ts`):
+  - Ashgrove Academy shut for winter; the boiler room sealed after a fire in 1974 was opened again; the
+    Quiet came up the pipes (blind, hunts by sound, can't stand light). You are the new night caretaker.
+  - Floors: the classrooms, the library and labs, the boiler room. Each key has a room's name
+    (`NIGHT_KEY_NAMES`). Two notes per floor (`nightNotes`); the bursar's memo on floor 2 holds the
+    stairwell code (`nightCode(seed)`, four digits), so floor 2's stairs need the keys **and** the code.
+  - `nightLayout(seed, floor, maze)` puts notes, the safe room, flares and Shades on cells of their own
+    (never the start, the stairs or a key). Everyone in a room gets the same night.
+  - Endings (`nightEnding`): every note read gives "The whole truth" (+1,000), else "Out into the snow".
+  - Points: note 250, Shade 100, code 500, truth 1,000; `maxScore` 36,000 → 40,000 (the cap test adds
+    `NIGHT_STORY_MAX`).
+- **Play** (`NightShift.tsx`): E reads a note (it shows on paper; the game keeps going), hides, or puts
+  the note down; G (or the Flare button) throws a flare (18 s; the Quiet won't come within 4.5 m and
+  Shades near it burn). The safe room keeps both out, charges the torch to 60% and has one first-aid
+  kit (+1 life, only when hurt). Running is noise: the Quiet speeds up by 25% and Shades notice from
+  further. Shades are on floors 2 and 3: the beam burns them in 0.7 s (it costs battery); one that
+  reaches you takes 22% of the torch. The keypad takes number keys or taps and shakes on a wrong code.
+- **Look:** only the torch casts shadows (computers; `PCFShadowMap` at 512 px: soft filtering cost the
+  most), with a lens pattern (`lensPattern`); 220 dust motes lit only inside the beam; strip lights
+  that flicker (some badly) on a `LightPool` of four point lights (`world/core.ts`: the light count
+  never changes, so no shader rebuilds, and each pixel adds up four lights, not every lamp). Each
+  floor has its own walls, floor, air and lamp colour; doors line the halls. The Quiet is tall and
+  hunched, with bent arms, long fingers, a mouth and a twitching head. The film finish has a dread fringe
+  (`World.look({ aberr })`, 0 skips its reads) that tears when it catches you.
+- **Animations:** a picked-up key flies to the key ring, notes slide up like paper, the torch lags behind
+  your view and shakes near the Quiet, breathing heaves the view and the torch panel when you're out of
+  breath, the intro and the ending cards fade.
+- **All 3D worlds:** `World.start` builds the shaders before the first frame (`renderer.compile`, then
+  waits up to 1.5 s for the parallel build; not `compileAsync`, whose check throws from a timer if the
+  world closes first). Night Shift adds hidden meshes for the lower floors' materials so going
+  downstairs builds nothing. Lamps own a material each: switching one off changes a colour, not a
+  shader. The quality ladder now lowers a sharp screen to 1× before turning the glow off, and turns
+  off every light's shadows (not only the sun's). G throws in any world (`Controls`).
+- **Measured** (software graphics in the cloud box, so only the CPU side carries over): the game's own
+  work per frame 95% under 6.4–7.2 ms, the same as before; frame times no worse than before even with
+  the torch shadows.
