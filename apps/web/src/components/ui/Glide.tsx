@@ -21,11 +21,13 @@ export function TabPill({ id, variant = 'pill', className }: { id: string; varia
       aria-hidden
       className={cn(
         'absolute -z-10 pointer-events-none',
+        // M92 (the owner's photos): a solid pill, ink in light mode and white in dark mode (its label
+        // turns ink there: `.tab-pill` in globals.css), a plain line, a soft grey fill. No gradients.
         variant === 'line'
-          ? 'inset-x-2 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500'
+          ? 'inset-x-2 -bottom-px h-0.5 rounded-full bg-[var(--ink)]'
           : variant === 'soft'
-            ? 'inset-0 rounded-[inherit] bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/10 ring-1 ring-indigo-400/20 dark:from-indigo-500/30 dark:to-fuchsia-500/20'
-            : 'inset-0 rounded-[inherit] bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 shadow-[0_6px_18px_-8px_rgba(88,97,127,0.8)]',
+            ? 'inset-0 rounded-[inherit] bg-zinc-900/[0.06] ring-1 ring-zinc-900/10 dark:bg-white/[0.1] dark:ring-white/15'
+            : 'tab-pill inset-0 rounded-[inherit] bg-[var(--pill-on-bg)] shadow-[0_6px_18px_-10px_rgba(0,0,0,0.6)]',
         className,
       )}
     />

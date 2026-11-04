@@ -21,7 +21,7 @@ export const errorMessage = (e: unknown) => {
   return Array.isArray(m) ? m.join(', ') : m || (e as Error)?.message || 'Something went wrong';
 };
 /** The console's card (M13): a two-tone hairline along the top edge (globals.css .deck-card), a soft glow. */
-export const card = 'deck-card rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white dark:bg-[#1d2650]/80 shadow-[0_18px_50px_-34px_rgba(43,53,104,0.5)]';
+export const card = 'deck-card rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] shadow-[var(--card-shadow)]';
 /** For the heavier console calls: no refetch on focus, two retries at most (each costs server CPU). */
 export const heavy = { revalidateOnFocus: false, dedupingInterval: 30_000, errorRetryCount: 2 };
 export const field =

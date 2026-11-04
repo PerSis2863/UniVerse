@@ -9,7 +9,8 @@
 // from blush to orchid, with pink sparks and pink-white bends.
 const DARK = { strands: ['#fe81d1', '#ff9fdc', '#ffc4ea', '#f468c6', '#e68ae6', '#ffb0de'], bands: ['#4a1d5e', '#8e2a72', '#a32c7b', '#5c2470', '#c23d8f'], pulse: '#ffffff', spark: '#ffd0ec' };
 // M53: light mode in Bubblegum Pink and Galactic Violet.
-const LIGHT = { strands: ['#c23d98', '#8f45d9', '#ec74ce', '#533ff6', '#a52d80', '#8270fb'], bands: ['#f7b3e6', '#e6e2ff', '#e8cdfc', '#cdc6ff', '#fde6f6'], pulse: '#3f2bd6', spark: '#8f45d9' };
+// Light mode: pinks only since M91 (the owner kept pink as the one accent; the violets went with M53's palette).
+const LIGHT = { strands: ['#c23d98', '#d24fa6', '#ec74ce', '#b2347f', '#a52d80', '#f28fd9'], bands: ['#f7b3e6', '#fbd2ef', '#fde6f6', '#f9c4e9', '#fdeaf6'], pulse: '#a52d80', spark: '#c23d98' };
 
 type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 type Surface = HTMLCanvasElement | OffscreenCanvas;
@@ -148,7 +149,7 @@ export function makeRiver(cv: Surface, ctx: Ctx2D, soft: Surface, sctx: Ctx2D, o
         const bx = centre(yb), by = yb - sy, r = Math.min(W, H) * 0.3;
         const g = sctx.createRadialGradient(bx, by, 0, bx, by, r);
         g.addColorStop(0, dark ? 'rgba(255,240,250,0.5)' : 'rgba(236,116,206,0.18)');
-        g.addColorStop(0.25, dark ? 'rgba(254,129,209,0.24)' : 'rgba(83,63,246,0.1)');
+        g.addColorStop(0.25, dark ? 'rgba(254,129,209,0.24)' : 'rgba(194,61,152,0.1)');
         g.addColorStop(1, 'rgba(43,53,104,0)');
         sctx.globalAlpha = k;
         sctx.fillStyle = g;

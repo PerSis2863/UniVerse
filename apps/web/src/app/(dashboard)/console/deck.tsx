@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { reducedMotion } from '@/lib/page-transition';
 import { useNow } from '@/lib/use-now';
 import { TabPill } from '@/components/ui/Glide';
-import { Accent, EASE } from '@/components/landing/bits';
+import { EASE } from '@/components/landing/bits';
 
 // The owner console's deck (M13, "make the whole dashboard modern and futuristic… something
 // unique"): the dark header with its grid, glow and the platform's pulse line, the sections in six
@@ -52,45 +52,23 @@ export function Ticker({ value, className }: { value: number; className?: string
   return <span ref={ref} className={cn('tabular-nums', className)}>0</span>;
 }
 
-/** The heartbeat that runs along the bottom of the header: one light, round and round. */
-function Pulse() {
-  const beat = (x: number) => `L ${x} 30 L ${x + 8} 30 L ${x + 14} 12 L ${x + 22} 48 L ${x + 28} 22 L ${x + 34} 30`;
-  const d = `M0 30 ${[90, 330, 520, 760, 1010].map((x) => `${beat(x)} `).join('')}L 1200 30`;
-  return (
-    <svg aria-hidden className="absolute inset-x-0 bottom-0 w-full h-12 opacity-80" viewBox="0 0 1200 60" preserveAspectRatio="xMidYMid slice">
-      <defs><linearGradient id="deck-pulse" x1="0" x2="1"><stop offset="0" stopColor="#58617f" /><stop offset="1" stopColor="#ff9fdc" /></linearGradient></defs>
-      <path d={d} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
-      <path d={d} pathLength={1000} fill="none" stroke="url(#deck-pulse)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="deck-pulse" />
-    </svg>
-  );
-}
-
 export function DeckHeader({ needs, search }: { needs: number | null; search: React.ReactNode }) {
   const now = useNow();
   return (
-    <section className="dark relative rounded-3xl border border-white/[0.08] bg-[#171f44] text-white shadow-[0_30px_90px_-40px_rgba(43,53,104,0.6)]">
-      {/* The glow and grid stay inside the rounded box; the search's results may hang below it. */}
-      <div aria-hidden className="absolute inset-0 rounded-[inherit] overflow-hidden pointer-events-none">
-        <div className="deck-grid absolute inset-0" />
-        <div className="mkt-drift-a absolute -top-48 -start-40 w-[560px] h-[560px] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(43,53,104,0.32), transparent)' }} />
-        <div className="mkt-drift-b absolute -bottom-56 -end-24 w-[520px] h-[520px] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(254,129,209,0.22), transparent)' }} />
-        <Pulse />
-      </div>
-      <div className="relative p-5 sm:p-7 pb-12 sm:pb-14 flex flex-col lg:flex-row lg:items-end gap-5 justify-between">
+    // M92: plain and solid, after the owner's photos (no grid, drifting glows, heartbeat line or beam).
+    <section className="dark trace-hero relative rounded-3xl text-white">
+      <div className="relative p-5 sm:p-7 flex flex-col lg:flex-row lg:items-end gap-5 justify-between">
         <div className="min-w-0">
-          <p className="font-mono text-[11px] text-zinc-300 flex items-center gap-2">
-            <span className="relative flex w-2 h-2"><span className="absolute inset-0 rounded-full bg-fuchsia-400 deck-ping" /><span className="relative w-2 h-2 rounded-full bg-fuchsia-400" /></span>
-            owner console{now ? ` / ${new Date(now).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}
-          </p>
-          <h1 className="mt-3 flex items-center gap-3 text-3xl sm:text-4xl font-bold tracking-[-0.03em]">
-            <span className="deck-orbit shrink-0 w-11 h-11 rounded-2xl grid place-items-center bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/25"><Crown className="w-5 h-5 text-amber-300" aria-hidden /></span>
-            <span>Owner <Accent>console.</Accent></span>
+          <p className="text-[13px] text-zinc-400">{now ? new Date(now).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : ' '}</p>
+          <h1 className="mt-3 flex items-center gap-3 text-3xl sm:text-4xl font-semibold tracking-[-0.03em]">
+            <span className="karma-icon"><Crown className="w-5 h-5" strokeWidth={1.5} aria-hidden /></span>
+            <span><span className="font-normal text-zinc-400">Owner</span> console</span>
           </h1>
           <p className="mt-2 text-sm text-zinc-300 max-w-xl">Everything on UniVerse. Only you can open this page. Every change here can be undone.</p>
         </div>
         <div className="flex flex-col items-stretch lg:items-end gap-3 w-full lg:w-auto lg:min-w-[22rem]">
           {needs !== null && (
-            <span className={cn('self-start lg:self-end inline-flex items-center gap-2 h-7 px-3 rounded-full font-mono text-xs border', needs ? 'border-amber-300/30 bg-amber-400/10 text-amber-200' : 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200')}>
+            <span className={cn('self-start lg:self-end inline-flex items-center gap-2 h-7 px-3 rounded-full text-xs font-medium border', needs ? 'border-amber-300/30 bg-amber-400/10 text-amber-200' : 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200')}>
               {needs ? <TriangleAlert className="w-3.5 h-3.5" aria-hidden /> : <CheckCircle2 className="w-3.5 h-3.5" aria-hidden />}
               {needs ? `${needs} need${needs === 1 ? 's' : ''} you` : 'all clear'}
             </span>

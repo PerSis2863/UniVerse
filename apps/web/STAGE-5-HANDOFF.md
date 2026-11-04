@@ -3755,3 +3755,49 @@ chose "the photos' look, keep pink" when asked, and said "the website and app lo
   - about 200 files still have their own navy or aqua colours (the maps, the night city, some
     editors and canvases): moved over one by one;
   - the landing's italic pink accent word becomes the photos' two-tone heading in M93.
+
+## M92: The owner console, professional; UniVersity scrolls smoother (4 Nov 2026)
+
+The owner: "the owner console dashboard doesn't look professional, it looks like it was made by AI",
+with the CreditKarma photos as the model.
+
+- **Overview (`console/overview.tsx`):**
+  - The top is six headline cards in the photos' "credit factors" style: People with an account
+    (dusk frost), New this week (gold), Waiting for approval, Open errors, Deletion requests,
+    Suspended.
+  - Each card has a thin-line icon in a circle, a round arrow button, the label, one big number and a
+    tiny chart beside it. An amber dot shows when something waits. A tap opens the right tab.
+  - The Students, Teachers and Admins tiles went: the Everyone card already shows them.
+  - The sample-data tool moved to the bottom.
+  - The trend line is ink or white with today's point in pink. Bars are solid, avatars plain grey,
+    and the timeline dots small grey (no gradients, no glows).
+- **`src/components/ui/FactorCard.tsx`** (reusable: any page's headline numbers):
+  - `FactorCard` with `tone` plain, dusk, gold or olive;
+  - five tiny charts, all drawn in currentColor so they work on a frost or in either theme: `Dots`
+    (where a value sits on a scale), `Ticks` (thin bars), `Wave` (a soft line with its two peaks),
+    `Rings` (a small count), `Matrix` (a dot grid).
+- **The header (`deck.tsx`):**
+  - near-black with warm light (`.trace-hero`), a date line, a thin crown icon and a two-tone title;
+  - no grid, drifting glows, heartbeat line, rotating beam, mono eyebrow or italic accent;
+  - console cards are solid (`card` in `shared.tsx` uses the tokens), and table headings are in
+    sentence case, not mono capitals.
+- **Every tab bar (122 places, `TabPill` in `Glide.tsx`):**
+  - the chosen pill is solid: ink in light mode, white in dark mode;
+  - a tab whose chosen pill is white shows its label in ink (`html.dark … :has(> .tab-pill)` in
+    globals.css, so no caller changed);
+  - the line and soft variants are plain too.
+- **The river in light mode** is pinks only (its violets went with M53's palette).
+- **UniVersity's home scrolled at ~45 frames a second on a phone-speed CPU after M91.** Measured:
+  - hiding its canvases cut the compositor's work by 41% and the per-frame hand-over by 63%;
+  - stilling its live dots cut the page's own work by 17%.
+  Fixes:
+  - live cards draw at 1.5× on touch screens (not 2×);
+  - `.live-dot` and `.deck-ping` pulse with a ring that only scales and fades (`::after`,
+    compositor), not an animated box-shadow that repainted every frame.
+- **Measured after M91** (the built site, 4× slower CPU, 6 s of scrolling): the hub went from 302
+  frames, median 33 ms and worst 417 ms to 359 frames, median 17 ms and worst 83 ms (smooth).
+  UniVersity went from 258 to 282 frames, Trace from 251 to 263, before this item's fixes.
+- **Tested:**
+  - `pnpm check`;
+  - the console as a test owner (`--owner-test`-style sign-in on the dev server): axe clean at 390 and
+    1440, light and dark; no sideways scroll; live cards draw.

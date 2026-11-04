@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M89 is the latest).
+  builds on it). The newest notes are at the end (M92 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -122,8 +122,10 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   loading placeholders stay smooth while a page loads; **M90** Quick notes like Apple Notes (folders,
   Recently deleted, tick-box lines), the search icon no longer on the text in search boxes; **M91** the
   CreditKarma photos' look everywhere (pink kept as the one accent), no glass, and the home page's
-  per-frame work cut (wallet sway in CSS on phones, live cards and the planet at 30 a second on phones).
-- **Work numbers:** the next item is **M92**. Never reuse a number: take the next one after the
+  per-frame work cut (wallet sway in CSS on phones, live cards and the planet at 30 a second on phones);
+  **M92** the owner console made professional (six headline cards, `FactorCard`; plain header; solid
+  ink/white tab pills everywhere), live dots that no longer repaint every frame.
+- **Work numbers:** the next item is **M93**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,

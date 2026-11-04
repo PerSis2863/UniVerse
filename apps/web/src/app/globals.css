@@ -2588,3 +2588,24 @@ html.reduce-motion .wcard-sway { animation: none; transform: perspective(1100px)
    they sit inside another card: the river no longer shows through, and the compositor needn't blend
    them over the moving river on every frame. */
 .dark :is([class*="rounded-2xl"], [class*="rounded-3xl"], [class*="rounded-[2"])[class*="border"]:is([class*="dark:bg-white/"], [class*="dark:bg-zinc-900/"], [class*="dark:bg-black/"], [class*="dark:bg-indigo-"]):not(:is(.panel, .card, [class*="rounded-2xl"][class*="border"], [class*="rounded-3xl"][class*="border"]) *) { background-color: var(--card-bg); }
+
+/* ═══ M92 · The owner console, professional (the owner: "doesn't look professional, it looks like it
+   was made by AI"; the CreditKarma photos): plain solid cards, no gradient hairlines, beams, glows or
+   grid; table headings in sentence case, not mono capitals. ═══ */
+.deck-card, .dark .deck-card { background-image: none; }
+.deck-orbit::before, .deck-glow { display: none; }
+.deck-grid { background-image: none; }
+.deck-pulse { filter: none; }
+.console-deck table th { font-family: var(--font-sans); font-size: 0.75rem; letter-spacing: 0; text-transform: none; }
+.console-deck tbody tr:hover { background-color: var(--fill); }
+/* Live dots ping with a ring that only scales and fades (compositor), not an animated box-shadow,
+   which repainted the page on every frame (M92: measured on UniVersity's home). */
+@layer base { :where(.live-dot, .deck-ping) { position: relative; } }
+.live-dot, .deck-ping { animation: none; box-shadow: none; }
+.live-dot::after, .deck-ping::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: inherit; animation: dot-ring 2.2s var(--ease-out-soft, ease-out) infinite; }
+@keyframes dot-ring { from { transform: scale(1); opacity: 0.5; } 70%, to { transform: scale(2.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .live-dot::after, .deck-ping::after { animation: none; opacity: 0; } }
+html.reduce-motion :is(.live-dot, .deck-ping)::after { animation: none; opacity: 0; }
+/* A tab whose chosen pill is white (dark mode) shows its label in ink: the tabs set text-white for the
+   chosen one, which suited the old navy pill (M92, Glide.tsx TabPill). */
+html.dark :is(button, a, [role="tab"]):has(> .tab-pill) { color: #111113; }
