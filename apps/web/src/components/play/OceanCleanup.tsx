@@ -8,7 +8,8 @@ import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { calmMotion, steerBody, useSteer } from './steer';
 import type { GameProps } from './game-props';
-import { THREE, World, glowSprite, mergeGeometries, type SkyLook } from './world/core';
+import { THREE, World, glowSprite, type SkyLook } from './world/core';
+import { bag, bottle, can, cup, part, whole } from './world/props';
 import { Board, ocean, rainField, swell } from './world/board';
 import { haptic } from '@/lib/haptics';
 
@@ -31,17 +32,6 @@ const SKIES: SkyLook[] = [
 ];
 const SEA_COLOR = [0x0d4c66, 0x0b3a50, 0x082634], SUN = [2.6, 1.6, 0.7];
 
-/** A part of a model: a shape placed, turned and painted (vertex colours, so a whole model is one draw). */
-function part(geo: THREE.BufferGeometry, color: number, at: [number, number, number] = [0, 0, 0], rot: [number, number, number] = [0, 0, 0], scale: [number, number, number] = [1, 1, 1]) {
-  const g = geo;
-  g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...at), new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)), new THREE.Vector3(...scale)));
-  const c = new THREE.Color(color), n = g.attributes.position.count, col = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) col.set([c.r, c.g, c.b], i * 3);
-  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  return g;
-}
-const whole = (parts: THREE.BufferGeometry[]) => { const g = mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p))); parts.forEach((p) => p.dispose()); return g; };
-
 /** The floating things, each about one unit across (scaled to the flat game's 30 px). */
 function models(): Record<Exclude<SeaKind, 'oil'>, THREE.BufferGeometry> {
   const flipper = (x: number, z: number, r: number) => part(new THREE.BoxGeometry(0.34, 0.04, 0.14), 0x7a8f62, [x, 0.02, z], [0, r, x > 0 ? -0.2 : 0.2]);
@@ -51,10 +41,10 @@ function models(): Record<Exclude<SeaKind, 'oil'>, THREE.BufferGeometry> {
   const ext = (sh: THREE.Shape) => new THREE.ExtrudeGeometry(sh, { depth: 0.08, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2 });
   const rope = (a: [number, number], b: [number, number], c: number) => { const dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz); return part(new THREE.CylinderGeometry(0.025, 0.025, len, 5), c, [(a[0] + b[0]) / 2, 0.03 + Math.sin(a[0] * 9) * 0.03, (a[1] + b[1]) / 2], [Math.PI / 2, Math.atan2(dx, dz), 0]); };
   return {
-    bottle: whole([part(new THREE.CylinderGeometry(0.15, 0.15, 0.56, 14), 0xb9e2ec, [0, 0.12, 0], [0, 0, Math.PI / 2]), part(new THREE.CylinderGeometry(0.065, 0.15, 0.16, 14), 0xb9e2ec, [0.36, 0.12, 0], [0, 0, -Math.PI / 2]), part(new THREE.CylinderGeometry(0.07, 0.07, 0.08, 10), 0x1d4ed8, [0.48, 0.12, 0], [0, 0, Math.PI / 2]), part(new THREE.CylinderGeometry(0.152, 0.152, 0.2, 14), 0x22c55e, [-0.04, 0.12, 0], [0, 0, Math.PI / 2])]),
-    cup: whole([part(new THREE.CylinderGeometry(0.17, 0.12, 0.5, 14, 1, true), 0xf8fafc, [0, 0.13, 0], [0, 0, Math.PI / 2]), part(new THREE.CylinderGeometry(0.172, 0.165, 0.1, 14, 1, true), 0xdc2626, [-0.12, 0.13, 0], [0, 0, Math.PI / 2]), part(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 6), 0xf472b6, [0.25, 0.2, 0.05], [0.3, 0, Math.PI / 2.4])]),
-    bag: whole([(() => { const g = new THREE.CircleGeometry(0.42, 18, 0, Math.PI * 2).rotateX(-Math.PI / 2); const p = g.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), a = Math.atan2(z, x), r = 1 + Math.sin(a * 5) * 0.12 + Math.sin(a * 3 + 1) * 0.08; p.setXYZ(i, x * r * 1.15, Math.abs(Math.sin(x * 11 + z * 8)) * 0.08 + 0.03, z * r * 0.9); } g.computeVertexNormals(); return part(g, 0xdde7ee); })(), part(new THREE.TorusGeometry(0.12, 0.025, 6, 12, Math.PI), 0xe7edf2, [-0.2, 0.05, -0.35], [Math.PI / 2, 0, 0]), part(new THREE.TorusGeometry(0.12, 0.025, 6, 12, Math.PI), 0xe7edf2, [0.2, 0.05, -0.35], [Math.PI / 2, 0, 0])]),
-    can: whole([part(new THREE.CylinderGeometry(0.14, 0.14, 0.4, 16), 0xdc2626, [0, 0.11, 0], [0, 0, Math.PI / 2]), part(new THREE.CylinderGeometry(0.13, 0.14, 0.03, 16), 0xd4d4d8, [0.215, 0.11, 0], [0, 0, Math.PI / 2]), part(new THREE.CylinderGeometry(0.14, 0.13, 0.03, 16), 0xd4d4d8, [-0.215, 0.11, 0], [0, 0, Math.PI / 2]), part(new THREE.CylinderGeometry(0.141, 0.141, 0.08, 16), 0xf8fafc, [0, 0.11, 0], [0, 0, Math.PI / 2])]),
+    bottle: bottle(),
+    cup: cup(),
+    bag: bag(),
+    can: can(),
     net: whole([
       ...[-0.45, -0.22, 0, 0.22, 0.45].flatMap((v, i) => [rope([-0.6, v + Math.sin(i) * 0.06], [0.6, v - 0.05], i % 2 ? 0x4d7c57 : 0x3f6b4d), rope([v, -0.55], [v + 0.08, 0.55], i % 2 ? 0x3f6b4d : 0x5b8a63)]),
       part(new THREE.SphereGeometry(0.1, 10, 8), 0xf97316, [0.5, 0.06, 0.4]), part(new THREE.SphereGeometry(0.1, 10, 8), 0xf97316, [-0.45, 0.06, -0.38]), part(new THREE.SphereGeometry(0.08, 10, 8), 0xfacc15, [0.1, 0.06, -0.5]),

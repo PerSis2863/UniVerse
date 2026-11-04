@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { Atom, Calculator, Check, Clock3, Cpu, Divide, Flame, Globe2, Leaf, Palette, Sparkles, X, Zap, type LucideIcon } from 'lucide-react';
 import { QUIZ_BOSS_MULT, QUIZ_LIGHTNING_MS, QUIZ_SECONDS_PER_QUESTION, quizBoss, quizHalf, quizPoints, quizQuestion, type QuizPower } from '@/lib/play/quiz';
@@ -10,6 +11,9 @@ import { useArena } from './arena';
 import { Burst } from './fx';
 import type { GameProps } from './game-props';
 import { haptic } from '@/lib/haptics';
+import type { StudioFeed } from './StudioView';
+
+const StudioView = dynamic(() => import('./StudioView').then((m) => m.StudioView), { ssr: false });
 
 // Quiz Clash (src/lib/play/quiz.ts): ten seconds a question, four answers (tap, or keys 1–4 / A–D).
 // Three power-ups once a round (Q 50:50, W +5 seconds, E double points), the last 15 seconds are the
@@ -104,6 +108,9 @@ export function QuizClash({ seed, startsAt, endsAt, clock, onProgress, onStats }
   }, [answered, s.gained, s.streak, sfx, announce, shake]);
 
   const pick = (choice: number) => dispatch({ t: 'pick', choice, answer: q.answer, at: clock(), lightning: lightningRef.current });
+  // What the studio shows (StudioView.tsx): the topic's colour, a beat per answer, right or wrong.
+  const studio = useRef<StudioFeed>({ tint: topic.tint, beat: 0, ok: null, boss, lightning });
+  useEffect(() => { studio.current = { tint: topic.tint, beat: s.i + (answered ? 1 : 0), ok: answered ? s.gained > 0 : null, boss, lightning }; }, [topic.tint, s.i, answered, s.gained, boss, lightning]);
   const power = (id: QuizPower) => {
     if (answered || s.used.includes(id)) return;
     dispatch({ t: 'power', id, hidden: id === 'half' ? quizHalf(seed, s.i, q) : [], at: clock() });
@@ -126,9 +133,12 @@ export function QuizClash({ seed, startsAt, endsAt, clock, onProgress, onStats }
   const Icon = topic.icon;
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <span className="font-medium text-zinc-400">Question <span className="tabular-nums text-white">{s.i + 1}</span> · {s.right} right</span>
+    <div className="relative mx-auto w-full max-w-4xl overflow-hidden rounded-[2rem] bg-[#07060c] p-3 ring-1 ring-white/10 sm:p-6">
+      {/* The studio (M104): a 3D quiz set behind the questions; it loads after them. */}
+      <StudioView feed={studio} />
+      <div className="relative mx-auto max-w-3xl">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-black/60 px-3 py-2 text-sm ring-1 ring-white/10">
+        <span className="font-medium text-zinc-300">Question <span className="tabular-nums text-white">{s.i + 1}</span> · {s.right} right</span>
         <AnimatePresence>
           {s.streak >= 2 && (
             <motion.span key="streak" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={spring.snappy}
@@ -184,7 +194,7 @@ export function QuizClash({ seed, startsAt, endsAt, clock, onProgress, onStats }
                   className={cn('relative flex min-h-[4.5rem] items-center gap-3 rounded-2xl px-4 py-3 text-start text-base font-medium ring-1 transition-[background-color,box-shadow] duration-150 sm:text-lg',
                     isAnswer ? 'bg-emerald-500/20 text-emerald-50 ring-emerald-400 shadow-[0_0_40px_rgba(52,211,153,0.25)]'
                       : wrongPick ? 'play-shake bg-red-500/15 text-red-100 ring-red-400'
-                        : 'bg-white/[0.05] text-zinc-100 ring-white/10 hover:bg-white/[0.1] hover:ring-white/25')}>
+                        : 'bg-[#121214]/90 text-zinc-100 ring-white/10 hover:bg-[#1b1b1f]/95 hover:ring-white/25')}>
                   <span className={cn('grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-bold', isAnswer ? 'bg-emerald-400 text-emerald-950' : wrongPick ? 'bg-red-400 text-red-950' : 'bg-white/10 text-zinc-200')} aria-hidden>
                     {isAnswer ? <Check className="w-5 h-5" /> : wrongPick ? <X className="w-5 h-5" /> : k + 1}
                   </span>
@@ -202,7 +212,8 @@ export function QuizClash({ seed, startsAt, endsAt, clock, onProgress, onStats }
         </motion.div>
       </AnimatePresence>
       <p className="sr-only" aria-live="polite">{said}</p>
-      <p className="mt-4 hidden text-center text-xs text-zinc-400 sm:block">Keys 1–4 answer · Q W E power-ups</p>
+      <p className="mx-auto mt-4 hidden w-fit rounded-full bg-black/60 px-3 py-1 text-center text-xs text-zinc-300 sm:block">Keys 1–4 answer · Q W E power-ups</p>
+      </div>
     </div>
   );
 }

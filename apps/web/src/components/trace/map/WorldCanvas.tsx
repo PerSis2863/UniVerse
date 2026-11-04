@@ -42,6 +42,56 @@ const K_MAX = 180; // about street-block level (0.1° ≈ 50 px)
 let cityPts: { name: string; bx: number; by: number; rank: number }[] | null = null;
 const cities = () => (cityPts ??= CITIES.map(([name, lat, lng, rank]) => { const [bx, by] = toBase(lng, lat); return { name, bx, by, rank }; }));
 const CITY_ZOOM = [0, 2.2, 4.5, 9];
+/** The satellite look's land colours by latitude (M104): ice, tundra, forest, farmland, dry
+ *  grass, desert, savanna and rainforest, the way the climate bands fall (a fair likeness, not a
+ *  survey: World Pin is about where places are). */
+const CLIMATE: [number, string][] = [[84, '#eef2f5'], [70, '#dfe5e3'], [64, '#8d917a'], [58, '#4f5f3f'], [50, '#3e5631'], [44, '#5d7438'], [38, '#8d8a55'], [32, '#b79d6c'], [24, '#c9a877'], [17, '#a69a5d'], [9, '#5a7a36'], [0, '#2f5a26'], [-8, '#3a6129'], [-16, '#8c8a52'], [-24, '#c09e70'], [-32, '#9a8f5c'], [-42, '#5b7a45'], [-52, '#7b8a6a'], [-60, '#e6ebee']];
+let grainTile: HTMLCanvasElement | null = null;
+/** Terrain grain: soft mottling at a few sizes (made once, laid over the land like a photo's texture). */
+function grain() {
+  if (grainTile) return grainTile;
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, 256, 256);
+  let s = 11;
+  const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  for (const [n, size, alpha] of [[90, 26, 0.07], [500, 8, 0.08], [2600, 2.2, 0.1]] as const) for (let i = 0; i < n; i++) {
+    const x = r() * 256, y = r() * 256, rad = size * (0.4 + r());
+    const v = Math.round(120 + r() * 80);
+    g.fillStyle = `rgba(${v - 20},${v},${v - 40},${alpha})`;
+    for (const [dx, dy] of [[0, 0], [256, 0], [-256, 0], [0, 256], [0, -256]]) { g.beginPath(); g.arc(x + dx, y + dy, rad, 0, Math.PI * 2); g.fill(); }
+  }
+  return (grainTile = c);
+}
+/** Draws the land the satellite way, in base coordinates (the map's transform is set). */
+function satellite(g: CanvasRenderingContext2D, shown: Country[], k: number, res: number) {
+  // Shallow water along the coasts: a soft teal band under the land.
+  g.save();
+  g.filter = `blur(${Math.round(4 * res)}px)`;
+  g.strokeStyle = 'rgba(56,160,182,0.42)'; g.lineWidth = 8 / k; g.lineJoin = 'round';
+  for (const c of shown) g.stroke(c.path);
+  g.restore();
+  // The land by climate band, then the grain over it (clipped to the land).
+  const y = (lat: number) => toBase(0, lat)[1], top = y(84), bottom = y(-60);
+  const band = g.createLinearGradient(0, top, 0, bottom);
+  for (const [lat, col] of CLIMATE) band.addColorStop(Math.min(1, Math.max(0, (y(lat) - top) / (bottom - top))), col);
+  g.fillStyle = band;
+  const all = new Path2D();
+  for (const c of shown) { g.fill(c.path); all.addPath(c.path); }
+  g.save();
+  g.clip(all);
+  const pat = g.createPattern(grain(), 'repeat');
+  if (pat) {
+    pat.setTransform(new DOMMatrix().scale(0.12));
+    g.globalCompositeOperation = 'multiply';
+    g.fillStyle = pat; g.fillRect(0, 0, BASE, BASE);
+  }
+  g.restore();
+  g.strokeStyle = 'rgba(255,255,255,0.4)'; g.lineWidth = 0.6 / k; g.lineJoin = 'round';
+  for (const c of shown) g.stroke(c.path);
+}
+
 /** Name widths by font, letter spacing and text (M86): a sharp redraw measured every name again. */
 const widths = new Map<string, number>();
 const measure = (g: CanvasRenderingContext2D, text: string) => {
@@ -61,13 +111,16 @@ interface Props {
   onPoint?: (p: { x: number; y: number } | null, kind: 'hover' | 'click') => void;
   /** City names the page labels itself (the base map leaves them out). */
   skipCities?: Set<string>;
+  /** 'satellite' (M104, World Pin): deep sea with lighter shallows, land coloured by climate with
+   *  terrain grain, thin white borders. The Trace maps keep the default flat look. */
+  look?: 'flat' | 'satellite';
   /** false: a picture that moves by itself (no dragging or wheel zoom, e.g. on the landing page). */
   interactive?: boolean;
   className?: string;
   children?: ReactNode;
 }
 
-interface Live { draw: Props['draw']; onPoint: Props['onPoint']; live: boolean; dark: boolean; homeBox: Box; skipCities?: Set<string> }
+interface Live { draw: Props['draw']; onPoint: Props['onPoint']; live: boolean; dark: boolean; homeBox: Box; skipCities?: Set<string>; look?: Props['look'] }
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** The map's state and its frame loop, outside React (React only hands it the latest props). */
@@ -166,8 +219,8 @@ class MapEngine {
   private paintLand(m = 0, res = this.dpr) {
     const { view } = this, dark = this.p.current.dark, pal = dark ? PAL.dark : PAL.light;
     const w = this.w + 2 * m, h = this.h + 2 * m;
-    const skip = this.p.current.skipCities;
-    const key = `${w}x${h}@${res}|${view.x.toFixed(2)},${view.y.toFixed(2)},${view.k.toFixed(5)}|${dark}|${this.world.length}|${skip?.size ?? 0}`;
+    const skip = this.p.current.skipCities, sat = this.p.current.look === 'satellite';
+    const key = `${w}x${h}@${res}|${view.x.toFixed(2)},${view.y.toFixed(2)},${view.k.toFixed(5)}|${dark}|${this.world.length}|${skip?.size ?? 0}|${sat}`;
     if (key === this.landKey && this.land) return this.land;
     const land = this.land ?? document.createElement('canvas');
     land.width = Math.round(w * res); land.height = Math.round(h * res);
@@ -175,7 +228,7 @@ class MapEngine {
     g.setTransform(res, 0, 0, res, 0, 0);
     // The sea's gradient sits on the screen, not the margin.
     const sea = g.createRadialGradient(m + this.w / 2, m + this.h * 0.45, 0, m + this.w / 2, m + this.h * 0.45, Math.max(this.w, this.h) * 0.75);
-    sea.addColorStop(0, pal.sea); sea.addColorStop(1, pal.deep);
+    sea.addColorStop(0, sat ? '#0d3557' : pal.sea); sea.addColorStop(1, sat ? '#061a30' : pal.deep);
     g.fillStyle = sea; g.fillRect(0, 0, w, h);
     // Everything below is drawn for a view shifted by the margin.
     const v0 = view;
@@ -187,23 +240,27 @@ class MapEngine {
     for (const n of offsets) {
       const vx = view2.x + n * size;
       g.setTransform(res * view2.k, 0, 0, res * view2.k, res * vx, res * view2.y);
-      g.strokeStyle = pal.grat; g.lineWidth = 1 / view2.k;
+      g.strokeStyle = sat ? 'rgba(255,255,255,0.05)' : pal.grat; g.lineWidth = 1 / view2.k;
       g.stroke(graticule());
       // Only the countries on screen.
       const x0 = -vx / view2.k, y0 = -view2.y / view2.k, x1 = (w - vx) / view2.k, y1 = (h - view2.y) / view2.k;
       const shown = this.world.filter((c) => c.box[2] >= x0 && c.box[0] <= x1 && c.box[3] >= y0 && c.box[1] <= y1);
-      // A crisp drop edge under the land (a blurred shadow per country cost most of every frame).
-      g.translate(0, 1.6 / view2.k);
-      g.fillStyle = dark ? 'rgba(0,0,0,0.45)' : 'rgba(39,39,42,0.12)';
-      for (const c of shown) g.fill(c.path);
-      g.translate(0, -1.6 / view2.k);
-      g.fillStyle = pal.land;
-      for (const c of shown) g.fill(c.path);
-      g.strokeStyle = pal.edge; g.lineWidth = 0.7 / view2.k; g.lineJoin = 'round';
-      for (const c of shown) g.stroke(c.path);
+      if (sat) satellite(g, shown, view2.k, res);
+      else {
+        // A crisp drop edge under the land (a blurred shadow per country cost most of every frame).
+        g.translate(0, 1.6 / view2.k);
+        g.fillStyle = dark ? 'rgba(0,0,0,0.45)' : 'rgba(39,39,42,0.12)';
+        for (const c of shown) g.fill(c.path);
+        g.translate(0, -1.6 / view2.k);
+        g.fillStyle = pal.land;
+        for (const c of shown) g.fill(c.path);
+        g.strokeStyle = pal.edge; g.lineWidth = 0.7 / view2.k; g.lineJoin = 'round';
+        for (const c of shown) g.stroke(c.path);
+      }
       // Country names once there's room for them, biggest first, never overlapping.
       g.setTransform(res, 0, 0, res, 0, 0);
-      g.fillStyle = pal.name; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = sat ? 'rgba(255,255,255,0.82)' : pal.name; g.textAlign = 'center'; g.textBaseline = 'middle';
+      if (sat) { g.shadowColor = 'rgba(0,0,0,0.75)'; g.shadowBlur = 3; }
       g.letterSpacing = '1.2px';
       for (const c of [...shown].sort((a, b) => b.area - a.area)) {
         const px = c.area * view2.k * view2.k;
@@ -218,6 +275,7 @@ class MapEngine {
         g.fillText(text, lx, ly);
       }
       g.letterSpacing = '0px';
+      g.shadowBlur = 0;
       // Cities for orientation, the biggest first as you zoom in.
       g.textAlign = 'left';
       g.font = '500 10px ui-sans-serif, system-ui, sans-serif';
@@ -438,12 +496,12 @@ class MapEngine {
   }
 }
 
-export const WorldCanvas = forwardRef<MapHandle, Props>(function WorldCanvas({ label, homeBox, dark, live, draw, onPoint, skipCities, interactive = true, className, children }, ref) {
+export const WorldCanvas = forwardRef<MapHandle, Props>(function WorldCanvas({ label, homeBox, dark, live, draw, onPoint, skipCities, look, interactive = true, className, children }, ref) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const engine = useRef<MapEngine | null>(null);
-  const latest = useRef<Live>({ draw, onPoint, live, dark, homeBox, skipCities });
-  useEffect(() => { latest.current = { draw, onPoint, live, dark, homeBox, skipCities }; engine.current?.kick(); });
+  const latest = useRef<Live>({ draw, onPoint, live, dark, homeBox, skipCities, look });
+  useEffect(() => { latest.current = { draw, onPoint, live, dark, homeBox, skipCities, look }; engine.current?.kick(); });
   useEffect(() => {
     const e = new MapEngine(wrap.current!, canvas.current!, latest, interactive);
     engine.current = e;

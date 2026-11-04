@@ -4189,3 +4189,43 @@ they still run in the game box's pixels (steering, hit circles, the water line),
 - **Checked:** screenshots at 1280 and 390 (and with the flood high and items placed mid-screen through a
   temporary switch, removed); axe clean at 390 light and 1280 dark while playing; `pnpm check` clean.
   Phones skip the effects chain, so they draw faster than computers in this box.
+
+## M104: the other six games look real (4 Nov 2026)
+
+The owner's "realistic graphics to all of them", for the games still drawn flat. Rules and inputs didn't
+change; each keeps its buttons and keys (accessible), and the 3D part loads with the game.
+
+- **Type Race** (`RaceView.tsx`): the lane strip became a 3D circuit in a park: asphalt with painted lanes
+  (`roadTexture`), red-and-white kerbs, a chequered start line and gantry, a grandstand full of colour,
+  trees; every racer a clear-coated race car in their own lane with a name over it, the camera chasing
+  yours, nitro flames at the exhaust. A lap is still 600 letters round the whole circuit; cars ease to
+  their letters (`approach`). The SVG car and its `play-flame` style are gone.
+- **Recycle Rush** (`SortView.tsx`, `world/props.ts`): a rubber conveyor belt (it scrolls) in a recycling
+  plant, all thirty things modelled (`sortables()`: one vertex-coloured geometry each, about a unit,
+  shared), four wheelie bins with their symbol stickers. The bin buttons are laid exactly over the 3D bins
+  (the box's four columns, `Board.at`; mirrored in right-to-left). A sorted thing flies into its bin and
+  the lid pops; a wrong one bounces off the rim; e-waste in the wrong bin burns; a missed one drops off the
+  end; the next one glows pink, golden ones are gold metal. `OnBelt`/`BinArt` and their CSS motion are gone.
+- **World Pin**: Trace's map has a `look="satellite"` (`WorldCanvas`): deep sea, lighter shallows along the
+  coasts (a blurred stroke, drawn only when the land picture is redrawn), land coloured by climate band
+  (`CLIMATE`: ice, tundra, forest, farmland, dry grass, desert, savanna, rainforest: a likeness, not a
+  survey) with terrain grain (`grain()`, multiplied, clipped to land), thin white borders, white names.
+  World Pin uses it; the Trace maps keep the flat look. The map is dark in both themes, so World Pin's marks
+  use the light colours.
+- **Supply Run** (`TownView.tsx`): an aerial 3D town in the flat map's own 600 × 400 plan: the river with
+  muddy banks, streets that bridge it (each street is the plan's quad mapped to the ground, so the markers
+  line up), houses with tiled roofs, parks of trees, the depot; trucks in their supply's colour drive the
+  streets (along the middle street, a cross street, into the block) and back on the trip's times; the
+  airdrop flies straight over. Rain dims the sun and falls in 3D. The need markers stay DOM on top.
+- **Spot the Fake** (`world/shots.ts`): each product is modelled and photographed once in a little studio
+  (one renderer, then released; the emoji shows until the picture is ready); the passports have a real QR
+  layout (21 × 21, finders and timing), a barcode, a holographic seal sticker (`.play-holo`: only its sheen
+  turns, by transform; paused while scrolling and with Reduce Motion), UV fibres under the lamp
+  (`.play-fibres`) and a rubber-stamp COPY.
+- **Quiz Clash** (`StudioView.tsx`, loaded after the questions): a TV quiz set behind them: a glossy floor, a
+  round stage with a lit rim, podiums, an LED wall running a wave in the topic's colour, moving heads on a
+  truss whose beams cut the haze (three on phones), the crowd in the dark. A right answer turns it green and
+  the crowd jumps, a wrong one flashes red, a boss question goes gold, the lightning round strobes. The
+  header and answers sit on dark panels so they read over it.
+- **Checked:** screenshots of all six at 1280 and three at 390; axe clean (390 light, 1280 dark) while
+  playing, no sideways scrolling; `pnpm check` clean.

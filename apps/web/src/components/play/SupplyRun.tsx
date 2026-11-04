@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { m as motion, useReducedMotion } from 'framer-motion';
-import { CloudRain, Droplets, HeartPulse, Package, Plane, Tent, Truck, Users, Wheat } from 'lucide-react';
+import { CloudRain, Droplets, HeartPulse, Plane, Tent, Truck, Users, Wheat } from 'lucide-react';
 import {
   AIRDROP_EVERY_MS, AIRDROP_FIRST_MS, AIRDROP_MS, DISTRICTS, DONATION, GRID, STOCK_MAX, STOCK_REFILL_MS, STOCK_START, SUPPLY_KINDS, SUPPLY_LABEL, SUPPLY_MISSED, SUPPLY_WRONG, TRUCKS,
   supplyEvents, supplyPoints, supplySchedule, travelMs, type Need, type SupplyKind,
@@ -12,10 +12,12 @@ import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import { Burst } from './fx';
+import { TownView, type TownFeed } from './TownView';
 import type { GameProps } from './game-props';
 import { haptic } from '@/lib/haptics';
 
-// Supply Run (src/lib/play/supply.ts): a town drawn as a little map (river, roads, houses, parks),
+// Supply Run (src/lib/play/supply.ts): a town seen from the air, in 3D since M104 (TownView: river,
+// streets, houses, parks, the depot, trucks driving the streets),
 // needs popping up with a ring that runs out, red ones critical. Pick a supply (tap, or keys 1–4),
 // tap a need: one of three trucks drives from the depot (further takes longer), delivers and comes
 // back. Each supply has a stock that refills slowly; donations top it up, rain slows the trucks.
@@ -76,36 +78,6 @@ function reducer(start: number, needs: Need[]) {
 /** Where a district's middle is, as a share of the map (0–1). */
 const spot = (n: { x: number; y: number }) => ({ x: (n.x + 0.5) / GRID.cols, y: (n.y + 0.5) / GRID.rows });
 
-/** The town, drawn once: land, a river with bridges, roads, houses and parks (the same every round). */
-function Town() {
-  const houses: React.ReactNode[] = [];
-  for (let k = 0; k < GRID.cols * GRID.rows; k++) {
-    const cx = (k % GRID.cols) * 100, cy = Math.floor(k / GRID.cols) * 100;
-    if ((k * 7) % 5 === 0) {
-      for (let j = 0; j < 4; j++) houses.push(<circle key={`t${k}-${j}`} cx={cx + 26 + ((j * 23 + k * 11) % 52)} cy={cy + 28 + ((j * 31 + k * 7) % 46)} r={9 + ((j + k) % 3) * 2} fill={j % 2 ? '#1e3a2b' : '#24472f'} />);
-      continue;
-    }
-    for (let j = 0; j < 3; j++) {
-      const x = cx + 18 + ((j * 29 + k * 13) % 50), y = cy + 22 + ((j * 23 + k * 17) % 44), w = 16 + ((j + k) % 3) * 4;
-      houses.push(<g key={`h${k}-${j}`}><rect x={x} y={y} width={w} height={w * 0.8} rx={2} fill={['#2c3036', '#33373e', '#3a3f46'][(j + k) % 3]} /><path d={`M${x - 2} ${y}l${w / 2 + 2} -${w * 0.45} ${w / 2 + 2} ${w * 0.45}z`} fill="#4a4f57" /><rect x={x + w * 0.35} y={y + w * 0.35} width={w * 0.3} height={w * 0.45} fill="#facc15" opacity={0.35} /></g>);
-    }
-  }
-  return (
-    <svg viewBox="0 0 600 400" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden>
-      <rect width="600" height="400" fill="#16191c" />
-      <path d="M-20 70 C 120 60, 180 170, 300 160 S 470 300, 620 330" fill="none" stroke="#173b52" strokeWidth="34" />
-      <path d="M-20 70 C 120 60, 180 170, 300 160 S 470 300, 620 330" fill="none" stroke="#1f5675" strokeWidth="22" />
-      <path d="M-20 70 C 120 60, 180 170, 300 160 S 470 300, 620 330" fill="none" stroke="#7dd3fc" strokeWidth="1" strokeDasharray="6 14" opacity="0.35" />
-      {[100, 200, 300].map((y) => <line key={`r${y}`} x1="0" y1={y} x2="600" y2={y} stroke="#25292e" strokeWidth="7" />)}
-      {[100, 200, 300, 400, 500].map((x) => <line key={`c${x}`} x1={x} y1="0" x2={x} y2="400" stroke="#25292e" strokeWidth="7" />)}
-      {[100, 200, 300].map((y) => <line key={`d${y}`} x1="0" y1={y} x2="600" y2={y} stroke="#4b5058" strokeWidth="1" strokeDasharray="8 10" />)}
-      {[100, 200, 300, 400, 500].map((x) => <line key={`e${x}`} x1={x} y1="0" x2={x} y2="400" stroke="#4b5058" strokeWidth="1" strokeDasharray="8 10" />)}
-      {houses}
-      <rect x="262" y="176" width="76" height="48" rx="8" fill="#111113" stroke="#fe81d1" strokeOpacity="0.6" />
-    </svg>
-  );
-}
-
 export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GameProps) {
   const needs = useMemo(() => supplySchedule(seed, GAMES.supply.seconds), [seed]);
   const events = useMemo(() => supplyEvents(seed, GAMES.supply.seconds), [seed]);
@@ -114,6 +86,9 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
   const [armed, setArmed] = useState(false);
   const [kind, setKind] = useState<SupplyKind>('food');
   const [rain, setRain] = useState(false);
+  // What the 3D town draws, read every frame (TownView.tsx).
+  const town = useRef<TownFeed>({ trips: [], rain: false, clock, colors: KIND_COLOR });
+  useEffect(() => { town.current = { trips: s.trips.map((x) => ({ id: x.id, x: x.need.x, y: x.need.y, kind: x.kind, depart: x.depart, arrive: x.arrive, back: x.back, air: x.air })), rain, clock, colors: KIND_COLOR }; }, [s.trips, rain, clock]);
   const { announce, shake, sfx } = useArena();
   const calm = useReducedMotion();
 
@@ -211,16 +186,10 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
       </div>
 
       <div className="relative mt-3 aspect-[3/2] w-full overflow-hidden rounded-[1.75rem] ring-1 ring-white/10">
-        <Town />
-        {rain && <div className="play-rain pointer-events-none absolute -inset-[20%] opacity-60" aria-hidden />}
+        <TownView feed={town} />
         <div className="pointer-events-none absolute inset-0 hidden grid-cols-6 grid-rows-4 sm:grid" aria-hidden>
-          {DISTRICTS.map((d) => <span key={d} className="p-1.5 text-[11px] font-medium text-zinc-500">{d}</span>)}
+          {DISTRICTS.map((d) => <span key={d} className="p-1.5 text-[11px] font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">{d}</span>)}
         </div>
-        {/* The depot */}
-        <div className="pointer-events-none absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center" aria-hidden>
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-pink-600 text-white shadow-[0_0_30px_rgba(254,129,209,0.5)]"><Package className="w-6 h-6" /></span>
-        </div>
-
         {shown.map((n) => {
           const p = spot(n), Icon = KIND_ICON[n.kind], state = s.done[n.id];
           return (
@@ -230,29 +199,6 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
           );
         })}
 
-        {/* Trucks: a full-size layer slid by a share of the map, so each truck crosses town on the GPU and comes back. */}
-        {s.trips.map((t) => {
-          const p = spot(t.need), total = t.back - t.depart, outShare = (t.arrive - t.depart) / total;
-          if (t.air) return (
-            // The helicopter flies straight over the rooftops, drops, and is gone.
-            <motion.div key={t.id} className="pointer-events-none absolute inset-0" initial={{ x: '0%', y: '0%', opacity: 1 }}
-              animate={{ x: `${(p.x - 0.5) * 100}%`, y: `${(p.y - 0.5) * 100}%`, opacity: [1, 1, 0] }}
-              transition={calm ? { duration: 0 } : { duration: total / 1000, times: [0, outShare, 1], ease: 'easeOut' }} aria-hidden>
-              <span className="absolute left-1/2 top-1/2 grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-amber-300 text-amber-950 shadow-[0_0_24px_rgba(252,211,77,0.6)] ring-2 ring-[#111113]">
-                <Plane className="w-5 h-5" />
-              </span>
-            </motion.div>
-          );
-          return (
-            <motion.div key={t.id} className="pointer-events-none absolute inset-0" initial={{ x: '0%', y: '0%' }}
-              animate={{ x: ['0%', `${(p.x - 0.5) * 100}%`, `${(p.x - 0.5) * 100}%`, '0%'], y: ['0%', `${(p.y - 0.5) * 100}%`, `${(p.y - 0.5) * 100}%`, '0%'] }}
-              transition={calm ? { duration: 0 } : { duration: total / 1000, times: [0, outShare, Math.min(0.99, outShare + 200 / total), 1], ease: 'easeInOut' }} aria-hidden>
-              <span className="absolute left-1/2 top-1/2 grid h-9 w-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-white shadow-lg ring-2 ring-[#111113]" style={{ background: KIND_COLOR[t.kind] }}>
-                <Truck className="w-4 h-4" />
-              </span>
-            </motion.div>
-          );
-        })}
       </div>
 
       <div className="mt-4 grid grid-cols-4 gap-2" role="radiogroup" aria-label="Supply to send">

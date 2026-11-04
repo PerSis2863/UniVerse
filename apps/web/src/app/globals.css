@@ -2235,9 +2235,6 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
 @keyframes play-breath { 50% { transform: scale(1.035); } }
 .play-breath { animation: play-breath 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .play-breath { animation: none; } }
-@keyframes play-flame { 0%, 100% { transform: scaleX(1); opacity: 1; } 50% { transform: scaleX(1.45); opacity: 0.75; } }
-.play-flame { animation: play-flame 120ms linear infinite; }
-@media (prefers-reduced-motion: reduce) { .play-flame { animation: none; } }
 /* M38 · Rewind: a cool tint with drifting scanlines while time runs backwards. */
 .play-rewind { background: repeating-linear-gradient(0deg, rgba(103, 232, 249, 0.07) 0 2px, transparent 2px 5px), radial-gradient(ellipse at center, transparent 45%, rgba(8, 145, 178, 0.35)); animation: play-rewind 0.4s linear infinite; mix-blend-mode: screen; }
 @keyframes play-rewind { to { background-position: 0 5px, 0 0; } }
@@ -2635,8 +2632,16 @@ html.dark :is(a, button):has(> .comms-head) { color: #111113; }
    pick up again 180 ms after; measured, they were most of what was left of the cost of scrolling. The
    live dots keep pulsing (they show that something is live). */
 html[data-scrolling] :is(.passport-glow, .mkt-drift-a, .mkt-drift-b, .ins-ping, .ins-live, .ins-grain, .wcard-sway, .universe-node-pulse, .universe-u-beam, .universe-n-beam, .tank-wave, .play-ripple, .play-scene),
-html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::before { animation-play-state: paused; }
+html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::before, html[data-scrolling] .play-holo::after { animation-play-state: paused; }
 /* Play's little scenes animate their children: they take the scene's state. Never end a
    html[data-scrolling] selector in "*" or "> *": the browser then restyles the whole page each time
    scrolling starts or stops (M98: 19 s of style work in a 6 s scroll on Trace). */
 .play-scene > * { animation-play-state: inherit; }
+
+/* M104 · Spot the Fake's passports: a holographic foil seal (a rainbow foil with a sheen that turns:
+   only the sheen moves, by transform) and the fluorescent fibres a UV lamp shows in genuine paper. */
+.play-holo { position: relative; overflow: hidden; border-radius: 9999px; background: conic-gradient(from 20deg, #f0abfc, #93c5fd, #86efac, #fde68a, #fca5a5, #c4b5fd, #f0abfc); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.55), 0 1px 4px rgba(0,0,0,0.4); }
+.play-holo::after { content: ""; position: absolute; inset: -40%; background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,0.85) 50%, transparent 62%); animation: play-holo 3.6s linear infinite; }
+@keyframes play-holo { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.play-fibres { background-image: radial-gradient(1px 5px at 12% 22%, #67e8f9 50%, transparent 52%), radial-gradient(1px 6px at 37% 64%, #a3e635 50%, transparent 52%), radial-gradient(1px 4px at 58% 18%, #f0abfc 50%, transparent 52%), radial-gradient(1px 6px at 81% 47%, #67e8f9 50%, transparent 52%), radial-gradient(1px 5px at 26% 83%, #f0abfc 50%, transparent 52%), radial-gradient(1px 4px at 69% 86%, #a3e635 50%, transparent 52%), radial-gradient(1px 5px at 90% 12%, #a3e635 50%, transparent 52%), radial-gradient(1px 6px at 48% 40%, #67e8f9 50%, transparent 52%); }
+@media (prefers-reduced-motion: reduce) { .play-holo::after { animation: none; } }
