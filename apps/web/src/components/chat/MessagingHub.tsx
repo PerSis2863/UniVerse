@@ -518,7 +518,7 @@ export function MessagingHub() {
                 <MessageSquarePlus className="w-9 h-9 text-white" />
               </div>
             </div>
-            <h3 className="text-2xl font-black text-zinc-900 dark:text-white">UniVerse <span className="font-serif italic font-normal bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-pink-500 dark:from-indigo-200 dark:via-fuchsia-200 dark:to-pink-200 bg-clip-text text-transparent pe-1">Messages</span></h3>
+            <h3 className="text-2xl font-black text-zinc-900 dark:text-white">UniVerse <span className="accent-word pe-1">Messages</span></h3>
             <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-2 max-w-sm">Chat one-to-one or in groups, share photos, files and voice messages, and start voice or video calls with anyone on your campus.</p>
             <div className="stagger grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-6 w-full max-w-lg">
               {([

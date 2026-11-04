@@ -3801,3 +3801,27 @@ with the CreditKarma photos as the model.
   - `pnpm check`;
   - the console as a test owner (`--owner-test`-style sign-in on the dev server): axe clean at 390 and
     1440, light and dark; no sideways scroll; live cards draw.
+
+## M93: The landing like the photos' website: two-tone headings, no navy (4 Nov 2026)
+
+The owner's slide 7 (the CreditKarma website: "Where Credit Meets **Confidence**").
+
+- **Two-tone headings:**
+  - `Accent` (`landing/bits.tsx`) renders `.accent-word`, and the 20 headings that use it turn into
+    the photos' style: the heading in a quiet grey, weight 500, and its key word bright (white in dark
+    mode, ink in light).
+  - CSS only: `:is(h1, h2, h3):has(.accent-word)` in globals.css.
+  - The italic pink serif word (M58) is gone, and so are the gradient words in Collaborate's and
+    Messages' headings.
+- **No navy left on the landing:**
+  - the hard-coded navy in its cards, the flow card, the call-to-action, the cookie notice and the
+    business section is near-black now (#1d2650 → #151517, #131a3d → #0f0f11, #222c5a → #1d1d20, in
+    9 files);
+  - the planet section's band is dark with the photos' warm light under the planet (it was navy into
+    Aqua Jade), and its notes are solid;
+  - the "One app for the whole school" band runs honey into pink (it was periwinkle).
+- **Rule:** a heading's key word goes in `<Accent>` (or a span with `accent-word`). Never colour a
+  heading's words by hand.
+- **Tested:**
+  - `pnpm check`;
+  - the whole landing scrolled through at 1280 in dark mode (every section revealed): no page errors.

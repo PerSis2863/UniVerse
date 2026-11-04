@@ -38,9 +38,9 @@ export function Live({ children, away = false, className }: { children: React.Re
   return <div ref={ref} className={className} data-away={off || undefined}><Away.Provider value={off}>{children}</Away.Provider></div>;
 }
 
-/** The italic word in a headline (“themselves.”, “not”). */
+/** The bright word in a two-tone headline (M93, the owner's photos: "Where Credit Meets Confidence"). */
 export const Accent = ({ children }: { children: React.ReactNode }) => (
-  <em className="font-serif italic font-normal tracking-normal text-pink-200 pe-1">{children}</em>
+  <em className="accent-word pe-1">{children}</em>
 );
 
 /** How a section's parts arrive (M63: each section below the hero has its own entrance, not the
@@ -113,4 +113,4 @@ export function CountUp({ to, prefix = '', suffix = '', className }: { to: numbe
 export const primary = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-bold text-[#111113] bg-white shadow-[0_8px_24px_-14px_rgba(0,0,0,0.7)] hover:bg-zinc-100 active:scale-[0.98] transition';
 export const ghost = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-semibold text-white border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] active:scale-[0.98] transition';
 /** A dark glass card. */
-export const glass = 'rounded-3xl border border-white/[0.08] bg-[#131a3d]/70 backdrop-blur-md';
+export const glass = 'rounded-3xl border border-white/[0.08] bg-[#0f0f11]/70 backdrop-blur-md';

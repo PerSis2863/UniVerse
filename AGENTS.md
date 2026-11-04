@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M92 is the latest).
+  builds on it). The newest notes are at the end (M93 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -124,8 +124,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   CreditKarma photos' look everywhere (pink kept as the one accent), no glass, and the home page's
   per-frame work cut (wallet sway in CSS on phones, live cards and the planet at 30 a second on phones);
   **M92** the owner console made professional (six headline cards, `FactorCard`; plain header; solid
-  ink/white tab pills everywhere), live dots that no longer repaint every frame.
-- **Work numbers:** the next item is **M93**. Never reuse a number: take the next one after the
+  ink/white tab pills everywhere), live dots that no longer repaint every frame; **M93** the landing like the
+  photos' website (two-tone headings, no navy left).
+- **Work numbers:** the next item is **M94**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
@@ -321,9 +322,10 @@ into deep aqua, `--karma-gold` pale aqua, `--karma-olive` navy into orchid; name
 the first two, `.karma-frost` for any card); thin-line icons sit in circles (`.karma-icon`), round ink
 arrow buttons (`.karma-go`). Type: Urbanist, served from `/fonts/urbanist` (no outside service). No
 other new hues; green, amber and red only for states. `.panel` / `.card` / `.btn-primary` /
-`.ios-segmented` carry the look, so new screens get it by using them. The river and the italic accent
-word are the brand, even where design guides call them "AI-looking" (M58: the word is solid pink, no
-gradient; no eyebrow labels above headings; mono only for numbers and data).
+`.ios-segmented` carry the look, so new screens get it by using them. The river is the brand, even where
+design guides call it "AI-looking"; since M93 a heading's key word is the photos' two-tone (`<Accent>`:
+grey heading, bright word), not M58's italic pink word (no eyebrow labels above headings; mono only for
+numbers and data).
 
 **The motion layer works on every page by itself**: pages assemble out of a blur
 (`src/lib/page-transition.ts`), titles sweep in, a light trail runs down the page (`LightTrail`),
