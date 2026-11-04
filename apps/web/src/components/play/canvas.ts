@@ -129,3 +129,40 @@ export function drawEffects(ctx: CanvasRenderingContext2D, parts: Particle[], fl
 }
 
 export const calmMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+const EMOJI = 'system-ui, "Apple Color Emoji", "Segoe UI Emoji"', GLYPH_PX = 64;
+const glyphs = new Map<string, HTMLCanvasElement>();
+/** Draws an emoji from a bitmap made once (M100): colour emoji are among the slowest things a 2D
+ *  canvas draws, and the games drew dozens every frame. Placed like fillText (the context's current
+ *  textAlign and textBaseline), `size` CSS px tall, under the current transform. */
+export function glyph(ctx: CanvasRenderingContext2D, text: string, size: number, x: number, y: number) {
+  if (size <= 0) return;
+  const key = `${text}|${ctx.textAlign}|${ctx.textBaseline}`;
+  let c = glyphs.get(key);
+  if (!c) {
+    c = document.createElement('canvas');
+    c.width = c.height = GLYPH_PX * 3;
+    const g = c.getContext('2d')!;
+    g.font = `${GLYPH_PX}px ${EMOJI}`; g.textAlign = ctx.textAlign; g.textBaseline = ctx.textBaseline;
+    g.fillText(text, GLYPH_PX * 1.5, GLYPH_PX * 1.5);
+    glyphs.set(key, c);
+  }
+  const k = size / GLYPH_PX;
+  ctx.drawImage(c, x - GLYPH_PX * 1.5 * k, y - GLYPH_PX * 1.5 * k, GLYPH_PX * 3 * k, GLYPH_PX * 3 * k);
+}
+
+const halos = new Map<string, HTMLCanvasElement>();
+/** A soft round glow in a colour, made once: drawn under a shape instead of shadowBlur, which blurs
+ *  the shape again on every frame. */
+export function halo(color: string): HTMLCanvasElement {
+  let c = halos.get(color);
+  if (!c) {
+    c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d')!, grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, color); grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+    halos.set(color, c);
+  }
+  return c;
+}

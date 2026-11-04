@@ -4059,3 +4059,27 @@ game).
 - **Measured** (software graphics in the cloud box, so only the CPU side carries over): the game's own
   work per frame 95% under 6.4–7.2 ms, the same as before; frame times no worse than before even with
   the torch shadows.
+
+## M100: every game toward 60 frames a second (4 Nov 2026)
+
+The owner: "make every game ultra smooth with no lag and atleast 60 fps for each game".
+
+- **Measured** with a frame-rate check of all 11 games (`fps.mjs` in the session's scratch: start a
+  solo round, play for 8–30 s, time every frame and the time inside the game's own frame code). The 2D
+  games' own code is light (under 4 ms a frame, 95% of frames). Their slow frames came from drawing:
+  - colour emoji drawn as text every frame (Flood Rescue's people, pets and lightning; Ocean Cleanup's
+    every piece of rubbish);
+  - a blurred shadow redrawn around Ocean Cleanup's boat on every frame.
+- **Fixes** (`canvas.ts`):
+  - `glyph(ctx, emoji, size, x, y)` draws an emoji from a bitmap made once, placed exactly like
+    `fillText` with the current align and baseline, under the current transform;
+  - `halo(color)` is a soft glow made once, drawn under a shape instead of `shadowBlur`.
+- **3D worlds:** see M99. Shaders are built before the first frame. The quality ladder steps the
+  resolution down first, and turns off every light's shadows. Night Shift's lights come from a fixed
+  pool. Skyline Obby and Orbit Breach already had squash on landing, landing dust and bursts (M38–M41).
+- **The frame rate on screen** (`FpsMeter.tsx`): a gauge button in every game's top bar shows frames a
+  second (green from 55, amber from 40, red below), remembered on the device (`uv-play-fps`). It lets
+  the owner check 60 on their own phone and computer. The cloud box draws 3D in software, so only the
+  CPU side can be measured here.
+- **Known:** the games' frame rate in this box is capped near 50 by its software compositor, even for
+  still pages; real devices draw with their graphics chip.

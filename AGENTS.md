@@ -137,8 +137,10 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   story (Ashgrove Academy, the Quiet; `src/lib/play/night-story.ts`): named keys, six notes, a keypad code,
   safe rooms with first aid, flares (G), Shades that drink the torch, two endings; the torch casts real
   shadows, dust in its beam, a four-light lamp pool (`LightPool` in `world/core.ts`), and every 3D world
-  builds its shaders before the first frame.
-- **Work numbers:** the next item is **M100**. Never reuse a number: take the next one after the
+  builds its shaders before the first frame; **M100** every game measured: emoji and glows drawn from
+  bitmaps made once (`glyph`, `halo` in `play/canvas.ts`), a frame-rate gauge in every game's bar
+  (`FpsMeter`).
+- **Work numbers:** the next item is **M101**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
