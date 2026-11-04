@@ -3,12 +3,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { Maximize2, Minimize2, Volume2, VolumeX, X } from 'lucide-react';
+import { Gauge, Maximize2, Minimize2, Volume2, VolumeX, X } from 'lucide-react';
 import { GAMES, type GameId } from '@/lib/play';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { GameIcon } from './GameIcon';
 import { setSoundOn, sfx, soundOn, unlockAudio, type Sfx } from './sound';
+import { FpsMeter, fpsShown, showFps } from './FpsMeter';
 
 // The arena (M35): a round of UniVerse Play takes the whole screen, like a console game: a dark
 // stage lit in the game's colour, a slim bar (leave, sound, full screen), big announcements in the
@@ -96,6 +97,8 @@ export function Arena({ game, onExit, side, children }: {
   }, [calm]);
   const api = useMemo<ArenaApi>(() => ({ announce, shake, sfx }), [announce, shake]);
   const toggleSound = () => { const on = !sound; setSound(on); setSoundOn(on); if (on) { unlockAudio(); sfx('pick'); } };
+  const [fps, setFps] = useState(fpsShown);
+  const toggleFps = () => { setFps(!fps); showFps(!fps); };
   const toggleFull = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await root.current?.requestFullscreen(); } catch { /* not allowed */ } };
 
   if (!mounted) return null;
@@ -111,6 +114,11 @@ export function Arena({ game, onExit, side, children }: {
         <GameIcon game={game} size="sm" />
         <span className="truncate text-sm font-semibold text-white">{info.name}</span>
         <div className="ms-auto flex items-center gap-1.5">
+          {fps && <FpsMeter />}
+          <button type="button" onClick={toggleFps} aria-pressed={fps} aria-label="Frame rate" title={fps ? 'Hide the frame rate' : 'Show the frame rate'}
+            className="grid h-10 w-10 place-items-center rounded-full text-zinc-300 ring-1 ring-white/10 transition-[background-color,color] hover:bg-white/10 hover:text-white">
+            <Gauge className="w-5 h-5" aria-hidden />
+          </button>
           <button type="button" onClick={toggleSound} aria-pressed={sound} aria-label="Sound" title={sound ? 'Sound on' : 'Sound off'}
             className="grid h-10 w-10 place-items-center rounded-full text-zinc-300 ring-1 ring-white/10 transition-[background-color,color] hover:bg-white/10 hover:text-white">
             {sound ? <Volume2 className="w-5 h-5" aria-hidden /> : <VolumeX className="w-5 h-5" aria-hidden />}

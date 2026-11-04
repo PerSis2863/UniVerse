@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import useSWR from 'swr';
-import { ArrowRight, Crosshair, Expand, Keyboard, Loader2, Monitor, MousePointer2 } from 'lucide-react';
+import { ArrowRight, Crosshair, Expand, Gauge, Keyboard, Loader2, Monitor, MousePointer2 } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
 import { STORMFALL } from '@/lib/play';
 import { useRatingGate } from './AgeGate';
 import type { PlayMe } from './GameShell';
+import { FpsMeter, fpsShown, showFps } from './FpsMeter';
+import { cn } from '@/lib/utils';
 
 // STORMFALL (M82): a Unity shooter (a battle royale plus Outbreak, undead survival on two more maps;
 // source in games/stormfall at the repo root, the current one in the owner's Unity repo), built for the
@@ -56,6 +58,18 @@ export function StormfallCard() {
 const Rating = () => <span className="inline-flex items-center rounded-md bg-orange-700 px-1.5 py-0.5 text-[11px] font-black tabular-nums text-white ring-1 ring-orange-800" title={`Rated ${STORMFALL.age}+: ${STORMFALL.rated}`}>{STORMFALL.age}+</span>;
 
 interface UnityInstance { Quit: () => Promise<void>; SetFullscreen: (on: 0 | 1) => void }
+
+// Graphics (M101): how many pixels the game draws for each screen pixel. The game itself is built in
+// Unity (its look and play change only with a new Unity build); the page decides its sharpness, the
+// biggest lever on the frame rate on sharp screens. Remembered on this computer.
+const QUALITY = {
+  smooth: { label: 'Smooth', ratio: () => 1, about: 'The most frames a second. A little softer on sharp screens.' },
+  balanced: { label: 'Balanced', ratio: () => Math.min(window.devicePixelRatio || 1, 1.5), about: 'Sharp and smooth on most computers.' },
+  sharp: { label: 'Sharp', ratio: () => Math.min(window.devicePixelRatio || 1, 2), about: 'Every pixel on a sharp screen. Needs a strong graphics card.' },
+} as const;
+type Quality = keyof typeof QUALITY;
+const QKEY = 'uv-stormfall-quality';
+const readQuality = (): Quality => { try { const q = localStorage.getItem(QKEY); return q === 'smooth' || q === 'sharp' ? q : 'balanced'; } catch { return 'balanced'; } };
 type CreateUnity = (canvas: HTMLCanvasElement, config: Record<string, unknown>, progress: (p: number) => void) => Promise<UnityInstance>;
 
 let loader: Promise<CreateUnity> | null = null;
@@ -82,6 +96,9 @@ export function StormfallPlayer() {
   const [error, setError] = useState('');
   const canvas = useRef<HTMLCanvasElement>(null);
   const instance = useRef<UnityInstance | null>(null);
+  const [quality, setQuality] = useState<Quality>(readQuality);
+  const [fps, setFps] = useState(fpsShown);
+  const pick = (q: Quality) => { setQuality(q); try { localStorage.setItem(QKEY, q); } catch { /* private mode */ } };
 
   useEffect(() => () => { void instance.current?.Quit().catch(() => undefined); instance.current = null; }, []);
 
@@ -98,6 +115,8 @@ export function StormfallPlayer() {
         companyName: 'UniVerse',
         productName: 'STORMFALL',
         productVersion: '1.0',
+        devicePixelRatio: QUALITY[quality].ratio(),
+        webglContextAttributes: { powerPreference: 'high-performance' },
       }, (p) => setProgress(p));
       setPhase('playing');
       canvas.current.focus();
@@ -130,7 +149,18 @@ export function StormfallPlayer() {
                 <h2 className="flex items-center justify-center gap-2 text-3xl font-black tracking-wide text-white">{STORMFALL.name}<Rating /></h2>
                 <p className="mt-2 text-sm text-zinc-200">Pick a mode in the lobby: ride the cargo plane over Kaldera Isle and be the last one standing, or survive round after round of undead on Floodmere and Dust Range.</p>
                 {phase === 'intro' && (
-                  <button type="button" onClick={start} className="btn-primary btn-lg mt-6 justify-center">Deploy{STORMFALL_MB > 0 ? ` · ${STORMFALL_MB} MB download` : ''}</button>
+                  <>
+                    <div className="mt-5" role="radiogroup" aria-label="Graphics">
+                      <div className="inline-flex rounded-full bg-black/40 p-1 ring-1 ring-white/15">
+                        {(Object.keys(QUALITY) as Quality[]).map((q) => (
+                          <button key={q} type="button" role="radio" aria-checked={quality === q} onClick={() => pick(q)}
+                            className={cn('rounded-full px-3.5 py-1.5 text-xs font-semibold transition-[background-color,color] duration-150', quality === q ? 'bg-white text-zinc-900' : 'text-zinc-200 hover:bg-white/10')}>{QUALITY[q].label}</button>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-xs text-zinc-300">{QUALITY[quality].about}</p>
+                    </div>
+                    <button type="button" onClick={start} className="btn-primary btn-lg mt-5 justify-center">Deploy{STORMFALL_MB > 0 ? ` · ${STORMFALL_MB} MB download` : ''}</button>
+                  </>
                 )}
                 {phase === 'loading' && (
                   <div className="mx-auto mt-6 w-64" role="progressbar" aria-label="Downloading the game" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
@@ -151,7 +181,13 @@ export function StormfallPlayer() {
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-zinc-200 px-4 py-3 text-xs text-zinc-600 dark:border-white/10 dark:text-zinc-300">
           <span className="inline-flex items-center gap-1.5"><MousePointer2 className="h-4 w-4" aria-hidden />Click the game to aim with the mouse · Esc frees the cursor</span>
           <span className="inline-flex items-center gap-1.5"><Keyboard className="h-4 w-4" aria-hidden />WASD move · Shift sprint · C crouch/slide · Space jump · R reload · G armour · F use · M map</span>
-          {phase === 'playing' && <button type="button" onClick={() => instance.current?.SetFullscreen(1)} className="btn-secondary ms-auto"><Expand className="h-4 w-4" aria-hidden />Full screen</button>}
+          {phase === 'playing' && (
+            <span className="ms-auto flex items-center gap-2">
+              {fps && <FpsMeter />}
+              <button type="button" onClick={() => { setFps(!fps); showFps(!fps); }} aria-pressed={fps} className="btn-secondary"><Gauge className="h-4 w-4" aria-hidden />Frame rate</button>
+              <button type="button" onClick={() => instance.current?.SetFullscreen(1)} className="btn-secondary"><Expand className="h-4 w-4" aria-hidden />Full screen</button>
+            </span>
+          )}
         </div>
       </section>
     </div>

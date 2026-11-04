@@ -15,14 +15,17 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 
 export { THREE, RoundedBoxGeometry };
 
-/** The film finish (M39): a soft vignette, a touch of contrast and saturation, fine grain. */
+/** The film finish (M39): a soft vignette, a touch of contrast and saturation, fine grain, and (M99)
+ *  a colour fringe a game can raise (`World.look`). */
 const GradeShader = {
-  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, vignette: { value: 0.35 }, grain: { value: 0.035 }, saturation: { value: 1.08 }, contrast: { value: 1.06 } },
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, vignette: { value: 0.35 }, grain: { value: 0.035 }, saturation: { value: 1.08 }, contrast: { value: 1.06 }, aberr: { value: 0 } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float time, vignette, grain, saturation, contrast; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float time, vignette, grain, saturation, contrast, aberr; varying vec2 vUv;
     float rand(vec2 c){ return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }
     void main(){
       vec4 c = texture2D(tDiffuse, vUv);
+      // Dread (M99): the colours split toward the edges, more as something gets close.
+      if (aberr > 0.0) { vec2 o = (vUv - 0.5) * aberr; c.r = texture2D(tDiffuse, vUv + o).r; c.b = texture2D(tDiffuse, vUv - o).b; }
       float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
       c.rgb = mix(vec3(l), c.rgb, saturation);
       c.rgb = (c.rgb - 0.5) * contrast + 0.5;
@@ -157,7 +160,24 @@ export class World {
     this.camera.updateProjectionMatrix();
   }
 
-  start(loop: (dt: number, t: number) => void) { this.loop = loop; this.resume(); }
+  start(loop: (dt: number, t: number) => void) {
+    this.loop = loop;
+    // The shaders are built before the first frame (in parallel where the browser can), not in the
+    // first seconds of play, which stuttered (M100). Through the effects chain they're built for its
+    // picture, the version that chain draws with.
+    // (Not compileAsync: its readiness check throws from a timer if the world closes first.)
+    const r = this.renderer, was = r.getRenderTarget();
+    if (this.composer) r.setRenderTarget(this.composer.readBuffer);
+    const mats = [...r.compile(this.scene, this.camera)];
+    r.setRenderTarget(was);
+    const t0 = performance.now();
+    const wait = () => {
+      if (!this.loop) return; // closed meanwhile
+      const ready = mats.every((m) => (r.properties.get(m) as { currentProgram?: { isReady(): boolean } }).currentProgram?.isReady() ?? true);
+      if (ready || performance.now() - t0 > 1500) this.resume(); else setTimeout(wait, 16);
+    };
+    wait();
+  }
   pause() { cancelAnimationFrame(this.raf); this.raf = 0; this.last = 0; }
   resume() { if (!this.raf && this.loop) this.raf = requestAnimationFrame(this.frame); }
   private frame = (t: number) => {
@@ -178,6 +198,7 @@ export class World {
     }
     // The fly-in: from high above down to where the game put the camera.
     if (this.intro) {
+      if (this.intro.start < 0) this.intro.start = t / 1000; // counted from the first frame drawn
       const k = Math.min(1, (t / 1000 - this.intro.start) / this.intro.dur), e = 1 - Math.pow(1 - k, 3);
       this.camera.position.lerpVectors(this.intro.from, this.camera.position, e);
       this.camera.lookAt(this.focus.x, this.focus.y + 1.4, this.focus.z);
@@ -205,13 +226,24 @@ export class World {
       this.ratio = r; this.renderer.setPixelRatio(r);
       this.resize(); this.slow = this.fast = 0;
     };
-    // The glow goes first (it costs the most); then the resolution steps down; then the sun's
-    // shadows; last the smoothed edges and film finish (the picture is drawn straight to the screen).
-    if (this.slow > 0.5 && this.bloom?.enabled) { this.bloom.enabled = false; this.slow = 0; }
+    // Keep the look as long as possible (M100): a sharp screen first comes down to 1× (hard to see),
+    // then the glow goes, then the resolution goes on down, then every light's shadows; last the
+    // smoothed edges and film finish (the picture is drawn straight to the screen).
+    if (this.slow > 0.5 && this.ratio > 1) set(Math.max(1, this.ratio - 0.25));
+    else if (this.slow > 0.5 && this.bloom?.enabled) { this.bloom.enabled = false; this.slow = 0; }
     else if (this.slow > 0.5 && this.ratio > 0.6) set(Math.max(0.6, this.ratio - 0.25));
-    else if (this.slow > 1 && this.sun?.castShadow) { this.sun.castShadow = false; this.slow = 0; }
+    else if (this.slow > 1 && this.shadowed()) { this.scene.traverse((o) => { if ((o as THREE.Light).isLight) (o as THREE.Light).castShadow = false; }); this.slow = 0; }
     else if (this.slow > 1 && this.composer) { this.composer.dispose(); this.composer = null; this.grade = null; this.bloom = null; this.slow = 0; }
     else if (this.fast > 2 && this.ratio < this.maxRatio) set(Math.min(this.maxRatio, this.ratio + 0.25));
+  }
+
+  /** True while any light still casts shadows. */
+  private shadowed() { let on = false; this.scene.traverse((o) => { if ((o as THREE.Light).isLight && (o as THREE.Light).castShadow) on = true; }); return on; }
+
+  /** The film finish's settings: vignette, grain, saturation, contrast and the dread fringe (0–0.02).
+   *  Phones draw without the finish, so this changes nothing there. */
+  look(o: Partial<Record<'vignette' | 'grain' | 'saturation' | 'contrast' | 'aberr', number>>) {
+    if (this.grade) for (const [k, v] of Object.entries(o)) this.grade.uniforms[k].value = v;
   }
 
   /** Shakes the camera (0–1; it adds up and calms down by itself). */
@@ -221,7 +253,7 @@ export class World {
   /** Widens or narrows the view by some degrees from the start (eased). */
   fovBy(deg: number) { this.fovWant = this.fovBase + deg; }
   /** The camera flies in from a point over `dur` seconds, looking at `focus`. */
-  flyIn(from: THREE.Vector3, dur = 1.6) { if (!matchMedia('(prefers-reduced-motion: reduce)').matches) this.intro = { from: from.clone(), start: performance.now() / 1000, dur }; }
+  flyIn(from: THREE.Vector3, dur = 1.6) { if (!matchMedia('(prefers-reduced-motion: reduce)').matches) this.intro = { from: from.clone(), start: -1, dur }; }
   /** Sparks or dust from a point. */
   burst(at: THREE.Vector3, color: number, n = 16, speed = 6, gravity = 12) { this.sparks.emit(at, color, n, speed, gravity); }
   /** A number or word that rises and fades where something happened ("+100"). */
@@ -395,6 +427,7 @@ export class Controls {
         if (k === ' ') this.pressed.add('jump');
         if (k === 'e' || k === 'f') { this.pressed.add('act'); this.held.add('act'); }
         if (k === 'q' || k === 'r') { this.pressed.add('skill'); this.held.add('skill'); }
+        if (k === 'g') this.pressed.add('throw');
       }
       this.keys.add(k);
     });
@@ -625,4 +658,40 @@ export function glowSprite(color: number, size = 2) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
   s.scale.set(size, size, 1);
   return s;
+}
+
+/** A light that can be handed one of a pool's lights (a lamp, a sign, a flare). */
+export interface LightSource { at: THREE.Vector3; color: number; power: number; reach: number; weight?: number }
+
+/** A fixed set of point lights handed each frame to the sources that matter most near a point (M99).
+ *  The number of lights never changes, so no shader is rebuilt mid-game (adding a light does that),
+ *  and every pixel adds up a few lights instead of every lamp on the floor: dark, lamp-lit scenes
+ *  stay cheap enough for 60 frames a second. */
+export class LightPool {
+  readonly lights: THREE.PointLight[] = [];
+  private pick: (LightSource | null)[];
+  private score: number[];
+  constructor(parent: THREE.Object3D, size = 4, decay = 1.6) {
+    for (let i = 0; i < size; i++) { const l = new THREE.PointLight(0xffffff, 0, 8, decay); parent.add(l); this.lights.push(l); }
+    this.pick = Array(size).fill(null);
+    this.score = Array(size).fill(-1);
+  }
+  /** Gives the lights to the strongest sources near `near` (power and weight over distance²). */
+  update(near: THREE.Vector3, sources: readonly LightSource[]) {
+    const n = this.lights.length;
+    this.pick.fill(null); this.score.fill(-1);
+    for (const s of sources) {
+      if (s.power <= 0) continue;
+      const sc = ((s.weight ?? 1) * s.power) / (1 + s.at.distanceToSquared(near));
+      let i = n - 1;
+      if (sc <= this.score[i]) continue;
+      while (i > 0 && this.score[i - 1] < sc) { this.score[i] = this.score[i - 1]; this.pick[i] = this.pick[i - 1]; i--; }
+      this.score[i] = sc; this.pick[i] = s;
+    }
+    for (let i = 0; i < n; i++) {
+      const l = this.lights[i], s = this.pick[i];
+      if (!s) { l.intensity = 0; continue; }
+      l.position.copy(s.at); l.color.setHex(s.color); l.intensity = s.power; l.distance = s.reach;
+    }
+  }
 }

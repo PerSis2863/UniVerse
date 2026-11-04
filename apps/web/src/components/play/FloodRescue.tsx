@@ -6,7 +6,7 @@ import { GAMES } from '@/lib/play';
 import { CAPACITY, CRATE_MS, CRATE_PTS, CRATES, FUEL_SECONDS, HELIPAD, RESCUE_LOST, STRIKE_TAKES, STRIKE_WARN_MS, rescuePoints, rescueSchedule, rescueStorm, rescueTown, waterLevel, type Stranded } from '@/lib/play/rescue';
 import { cn } from '@/lib/utils';
 import { useArena } from './arena';
-import { burst, calmMotion, drawEffects, steerBody, useGameCanvas, useSteer, type Float, type Particle } from './canvas';
+import { burst, calmMotion, drawEffects, glyph, steerBody, useGameCanvas, useSteer, type Float, type Particle } from './canvas';
 import type { GameProps } from './game-props';
 import { haptic } from '@/lib/haptics';
 
@@ -166,11 +166,11 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
       ctx.fillStyle = 'rgba(253,224,71,0.5)';
       for (let wy = p.top + 14; wy < water - 10; wy += 26) { ctx.fillRect(p.x0 + 8, wy, 9, 11); ctx.fillRect(p.x1 - 17, wy, 9, 11); }
       const on = waiting.filter((x) => x.roof === k && !s.gone.has(x.id));
-      ctx.font = '22px system-ui, "Apple Color Emoji", "Segoe UI Emoji"'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       on.slice(0, 3).forEach((x, n) => {
         const bob = s.calm ? 0 : Math.sin(time * 6 + x.id) * 2, px = mid + (n - (Math.min(3, on.length) - 1) / 2) * 16;
-        ctx.fillText(n === 0 ? '🙋' : '🧍', px, p.top - 14 + bob);
-        if (x.pet) { ctx.font = '15px system-ui, "Apple Color Emoji", "Segoe UI Emoji"'; ctx.fillText('🐕', px + 11, p.top - 14); ctx.font = '22px system-ui, "Apple Color Emoji", "Segoe UI Emoji"'; }
+        glyph(ctx, n === 0 ? '🙋' : '🧍', 22, px, p.top - 14 + bob);
+        if (x.pet) glyph(ctx, '🐕', 15, px + 11, p.top - 14);
       });
       if (on.length) {
         const left = Math.max(0, (deadline(on[0]) - t) / on[0].ttl);
@@ -178,7 +178,7 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
         ctx.beginPath(); ctx.arc(mid, p.top - 52, 9, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left); ctx.stroke();
         if (on.length > 1) { ctx.fillStyle = '#f8fafc'; ctx.font = '700 11px Inter, system-ui'; ctx.textBaseline = 'middle'; ctx.fillText(String(on.length), mid, p.top - 52); }
       }
-      if (k === warnRoof && Math.floor(time * 6) % 2 === 0) { ctx.font = '26px system-ui, "Apple Color Emoji", "Segoe UI Emoji"'; ctx.textBaseline = 'middle'; ctx.fillText('⚡', mid, p.top - 82); }
+      if (k === warnRoof && Math.floor(time * 6) % 2 === 0) { ctx.textBaseline = 'middle'; glyph(ctx, '⚡', 26, mid, p.top - 82); }
     });
 
     // The hill and the hospital pad.

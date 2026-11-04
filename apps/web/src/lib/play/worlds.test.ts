@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GAMES, LOOK_COLORS, LOOK_HATS, ageOn, cleanPos, levelOf, tooYoung, xpFor } from '../play';
+import { NIGHT_STORY_MAX } from './night-story';
 import {
   NIGHT_ESCAPE, NIGHT_FLOOR, NIGHT_FLOORS, NIGHT_KEY, NIGHT_KEYS, NIGHT_PER_SECOND, NIGHT_STUN, NIGHT_STUN_COOLDOWN_S, NIGHT_STUN_S, OBBY_CHECK, OBBY_FINISH, OBBY_GEM, OBBY_PER_SECOND, OBBY_STAGES,
   ORBIT_ESCAPE, ORBIT_PER_SECOND, ORBIT_REACTOR, ORBIT_SECTOR, ORBIT_SECTORS, ORBIT_TANK, ORBIT_TANK_EVERY_S,
@@ -33,7 +34,7 @@ describe('3D worlds (M36)', () => {
     expect(mazeNext(m, m.exit)).toContain(step);
     const stuns = GAMES.night.seconds / (NIGHT_STUN_S + NIGHT_STUN_COOLDOWN_S);
     const keys = Array.from({ length: NIGHT_FLOORS }, (_, f) => nightKeys(f)).reduce((a, b) => a + b, 0);
-    expect(keys * NIGHT_KEY + (NIGHT_FLOORS - 1) * NIGHT_FLOOR + NIGHT_ESCAPE + GAMES.night.seconds * NIGHT_PER_SECOND + stuns * NIGHT_STUN).toBeLessThanOrEqual(GAMES.night.maxScore);
+    expect(keys * NIGHT_KEY + (NIGHT_FLOORS - 1) * NIGHT_FLOOR + NIGHT_ESCAPE + GAMES.night.seconds * NIGHT_PER_SECOND + stuns * NIGHT_STUN + NIGHT_STORY_MAX).toBeLessThanOrEqual(GAMES.night.maxScore);
     for (let f = 0; f < NIGHT_FLOORS; f++) { const fl = nightMaze(11, f); expect(fl.n).toBe(nightSize(f)); expect(new Set(fl.keys).size).toBe(nightKeys(f)); expect(fl.keys).not.toContain(fl.exit); }
   });
 

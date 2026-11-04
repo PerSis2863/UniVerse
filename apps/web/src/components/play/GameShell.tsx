@@ -101,8 +101,8 @@ function GameMenu({ game }: { game: GameId }) {
             <p className="mt-1 text-zinc-600 dark:text-zinc-300">{info.tagline}</p>
           </div>
           <div className="sm:ms-auto flex gap-6 text-sm">
-            <div><p className="text-zinc-500 dark:text-zinc-400">Your best</p><p className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={me?.games[game]?.best ?? 0} /></p></div>
-            <div><p className="text-zinc-500 dark:text-zinc-400">Rounds</p><p className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={(me?.games[game]?.solo ?? 0) + (me?.games[game]?.multi ?? 0)} /></p></div>
+            <div><p className="text-zinc-600 dark:text-zinc-300">Your best</p><p className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={me?.games[game]?.best ?? 0} /></p></div>
+            <div><p className="text-zinc-600 dark:text-zinc-300">Rounds</p><p className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={(me?.games[game]?.solo ?? 0) + (me?.games[game]?.multi ?? 0)} /></p></div>
           </div>
         </div>
         <p className="relative mt-5 max-w-2xl text-sm text-zinc-600 dark:text-zinc-300"><span className="font-semibold text-zinc-900 dark:text-white">How to play: </span>{info.how}</p>

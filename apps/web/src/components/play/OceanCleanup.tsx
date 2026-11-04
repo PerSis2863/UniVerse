@@ -6,7 +6,7 @@ import { GAMES } from '@/lib/play';
 import { BOOST_SPEED, MAGNET_PX, OCEAN_COMBO_MS, OCEAN_HIT, OCEAN_PHASES, OIL_SLOW, POWER_MS, SEA, SWEEP_CHARGE, SWEEP_PX, isLife, isPower, isTrash, kgOf, oceanMultiplier, oceanPhase, oceanSchedule, type Drift } from '@/lib/play/ocean';
 import { cn } from '@/lib/utils';
 import { useArena } from './arena';
-import { burst, calmMotion, drawEffects, steerBody, useGameCanvas, useSteer, type Float, type Particle } from './canvas';
+import { burst, calmMotion, drawEffects, glyph, halo, steerBody, useGameCanvas, useSteer, type Float, type Particle } from './canvas';
 import type { GameProps } from './game-props';
 import { haptic } from '@/lib/haptics';
 
@@ -199,9 +199,8 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
         ctx.strokeStyle = 'rgba(253,230,138,0.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(o.x, o.y, 22 * pulse, 0, Math.PI * 2); ctx.stroke();
       }
       if (life && !o.state) { ctx.strokeStyle = 'rgba(248,113,113,0.35)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(o.x, o.y, 22, 0, Math.PI * 2); ctx.stroke(); }
-      ctx.font = `${o.state === 'got' ? 34 - o.t * 40 : 30}px system-ui, "Apple Color Emoji", "Segoe UI Emoji"`;
       ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(Math.sin(time * 2 + o.d.wobble) * 0.18);
-      ctx.fillText(SEA[k].emoji, 0, 0);
+      glyph(ctx, SEA[k].emoji, o.state === 'got' ? 34 - o.t * 40 : 30, 0, 0);
       ctx.restore();
     }
     ctx.globalAlpha = 1;
@@ -232,10 +231,9 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
     ctx.translate(b.x, b.y);
     ctx.rotate(Math.max(-0.35, Math.min(0.35, b.vx / 1400)) + (stunned && !s.calm ? Math.sin(t / 40) * 0.4 : 0) + (phase === 2 && !s.calm ? Math.sin(time * 3) * 0.05 : 0));
     ctx.globalAlpha = stunned && Math.floor(t / 90) % 2 ? 0.5 : 1;
-    ctx.shadowColor = boosted ? 'rgba(253,230,138,0.7)' : 'rgba(254,129,209,0.55)'; ctx.shadowBlur = 18;
+    ctx.drawImage(halo(boosted ? 'rgba(253,230,138,0.7)' : 'rgba(254,129,209,0.55)'), -36, -44, 72, 80);
     ctx.fillStyle = oily ? '#9ca3af' : '#f8fafc';
     ctx.beginPath(); ctx.moveTo(0, -28); ctx.quadraticCurveTo(18, -8, 16, 20); ctx.lineTo(-16, 20); ctx.quadraticCurveTo(-18, -8, 0, -28); ctx.fill();
-    ctx.shadowBlur = 0;
     ctx.fillStyle = '#fe81d1'; ctx.fillRect(-16, 11, 32, 9);
     ctx.fillStyle = '#151517'; ctx.beginPath(); ctx.roundRect(-8, -9, 16, 15, 4); ctx.fill();
     ctx.fillStyle = '#7dd3fc'; ctx.fillRect(-5, -6, 10, 4);
