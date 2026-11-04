@@ -65,13 +65,14 @@ function grain() {
   return (grainTile = c);
 }
 /** Draws the land the satellite way, in base coordinates (the map's transform is set). */
-function satellite(g: CanvasRenderingContext2D, shown: Country[], k: number, res: number) {
-  // Shallow water along the coasts: a soft teal band under the land.
-  g.save();
-  g.filter = `blur(${Math.round(4 * res)}px)`;
-  g.strokeStyle = 'rgba(56,160,182,0.42)'; g.lineWidth = 8 / k; g.lineJoin = 'round';
-  for (const c of shown) g.stroke(c.path);
-  g.restore();
+function satellite(g: CanvasRenderingContext2D, shown: Country[], k: number) {
+  // Shallow water along the coasts: a soft teal band under the land (three widening strokes, fainter
+  // outward: a canvas blur isn't drawn in Safari).
+  g.lineJoin = 'round';
+  for (const [wd, a] of [[11, 0.12], [7, 0.16], [3.5, 0.22]] as const) {
+    g.strokeStyle = `rgba(56,160,182,${a})`; g.lineWidth = wd / k;
+    for (const c of shown) g.stroke(c.path);
+  }
   // The land by climate band, then the grain over it (clipped to the land).
   const y = (lat: number) => toBase(0, lat)[1], top = y(84), bottom = y(-60);
   const band = g.createLinearGradient(0, top, 0, bottom);
@@ -245,7 +246,7 @@ class MapEngine {
       // Only the countries on screen.
       const x0 = -vx / view2.k, y0 = -view2.y / view2.k, x1 = (w - vx) / view2.k, y1 = (h - view2.y) / view2.k;
       const shown = this.world.filter((c) => c.box[2] >= x0 && c.box[0] <= x1 && c.box[3] >= y0 && c.box[1] <= y1);
-      if (sat) satellite(g, shown, view2.k, res);
+      if (sat) satellite(g, shown, view2.k);
       else {
         // A crisp drop edge under the land (a blurred shadow per country cost most of every frame).
         g.translate(0, 1.6 / view2.k);

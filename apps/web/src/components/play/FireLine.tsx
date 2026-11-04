@@ -287,15 +287,15 @@ export function FireLine({ seed, startsAt, endsAt, clock, onProgress, onStats }:
       const [wx, wy] = DIRS[wind];
       for (let i = 0; i < N && f < MAXF; i++) {
         if (!burn[i]) continue;
-        cellAt(i, P);
+        cellAt(i, P2);
         const life = burn[i] / BURN_TICKS;
         for (let k = 0; k < 2 && f < MAXF; k++) {
           const flick = calm ? 1 : 0.75 + Math.sin(now * 14 + i * 3.1 + k * 2) * 0.25;
-          P.x += (k - 0.5) * cellW * 0.45;
+          P.copy(P2); P.x += (k - 0.5) * cellW * 0.45;
           M.compose(P, w.camera.quaternion, S.set(cellW * (0.9 + life * 0.6) * flick, cellW * (1 + life) * flick, 1));
           flames.setMatrixAt(f++, M);
         }
-        if (!calm && Math.random() < dt * 1.6) { const p = puffs[nextPuff = (nextPuff + 1) % MAXS]; Object.assign(p, { x: P.x, y: cellW * 1.4, z: P.z, age: 0, life: 3.5 + Math.random() * 2, size: cellW * (1.2 + Math.random()), steam: false }); }
+        if (!calm && Math.random() < dt * 1.6) { const p = puffs[nextPuff = (nextPuff + 1) % MAXS]; Object.assign(p, { x: P2.x, y: cellW * 1.4, z: P2.z, age: 0, life: 3.5 + Math.random() * 2, size: cellW * (1.2 + Math.random()), steam: false }); }
       }
       flames.count = f; flames.instanceMatrix.needsUpdate = true;
       puffs.forEach((p, k) => {

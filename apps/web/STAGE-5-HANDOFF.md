@@ -4267,3 +4267,7 @@ each in an app that had only two, both realistic from the start on the M102–M1
 - **Checked:** screenshots at 1280 and 390, the Play home; axe clean (390 light, 1280 dark) while playing
   after making the "burning" chip orange-700; the fire was slowed after the first try (a village burned in
   14 s); `pnpm check` clean.
+- **After the production build** (`pnpm local:build` passed): each 3D game now frees its effects
+  passes when it closes (`World.dispose`: three's `EffectComposer.dispose` doesn't); the satellite map's
+  shallows are three widening strokes instead of a canvas blur (Safari doesn't draw `filter`); Fire Line's
+  two flames per cell sit either side of the cell's middle.

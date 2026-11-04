@@ -425,6 +425,8 @@ export class World {
 
   dispose() {
     this.pause();
+    // The effects chain doesn't free its own passes (glow, occlusion, finish): free them here.
+    this.composer?.passes.forEach((p) => p.dispose());
     this.composer?.dispose();
     this.envTex?.dispose();
     this.words.forEach((t) => t.dispose());
