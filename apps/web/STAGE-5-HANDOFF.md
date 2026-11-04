@@ -4083,3 +4083,20 @@ The owner: "make every game ultra smooth with no lag and atleast 60 fps for each
   CPU side can be measured here.
 - **Known:** the games' frame rate in this box is capped near 50 by its software compositor, even for
   still pages; real devices draw with their graphics chip.
+
+## M101: STORMFALL's page, a graphics choice and the frame rate (4 Nov 2026)
+
+The owner asked to "upgrade the stromfall game also" (realistic look, 60 frames a second). STORMFALL is a
+Unity game: its graphics and play live in the Unity project and change only with a new Unity web build,
+made in the Unity editor. That editor can't run in this cloud box, and the source for the current build
+(lobby, Outbreak) is in the owner's own Unity project, not in this repository (`games/stormfall` here
+is older). So this item does what the page controls:
+
+- **Graphics: Smooth, Balanced (default), Sharp** on the Deploy screen (`Stormfall.tsx` `QUALITY`):
+  how many pixels Unity draws per screen pixel (`devicePixelRatio` 1, ≤1.5, ≤2), the biggest lever on a
+  sharp screen's frame rate. Remembered on the computer (`uv-stormfall-quality`). WebGL asks for the
+  fast graphics chip (`powerPreference: 'high-performance'`).
+- **Frame rate** button while playing: the same `FpsMeter` as the other games.
+- **[owner]** For in-game changes (lighting, effects, animations), open the Unity project, make them,
+  then "Tools → Build Stormfall for Web" and copy the build in (`scripts/stormfall-web.mjs`, then the
+  new checksums in `scripts/stormfall-files.json`).
