@@ -507,10 +507,10 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
         <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-start gap-2">
           <SkillRing label="Echo" keyName="Q" charge={skill.charge} active={skill.active} />
           <div className="rounded-2xl bg-black/60 px-3 py-2 ring-1 ring-white/10"><p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-300">Floor {hud.floor + 1}/{NIGHT_FLOORS}</p><p className="text-sm font-bold leading-tight text-white">{NIGHT_FLOOR_NAMES[hud.floor]}</p></div>
-          <div className="flex items-center gap-1 rounded-2xl bg-black/60 px-3 py-2 ring-1 ring-white/10" aria-label={`${hud.keys} of ${hud.need} keys`}>
+          <div role="img" className="flex items-center gap-1 rounded-2xl bg-black/60 px-3 py-2 ring-1 ring-white/10" aria-label={`${hud.keys} of ${hud.need} keys`}>
             {Array.from({ length: hud.need }, (_, i) => <KeyRound key={i} className={cn('h-5 w-5 transition-colors duration-300', i < hud.keys ? 'text-amber-300' : 'text-zinc-600')} aria-hidden />)}
           </div>
-          <div className="flex items-center gap-1 rounded-2xl bg-black/60 px-3 py-2 ring-1 ring-white/10" aria-label={`${hud.lives} lives`}>
+          <div role="img" className="flex items-center gap-1 rounded-2xl bg-black/60 px-3 py-2 ring-1 ring-white/10" aria-label={`${hud.lives} lives`}>
             {Array.from({ length: NIGHT_LIVES }, (_, i) => <Heart key={i} className={cn('h-5 w-5', i < hud.lives ? 'fill-red-500 text-red-500' : 'text-zinc-600')} aria-hidden />)}
           </div>
           <div className={cn('w-36 rounded-2xl bg-black/60 px-3 py-2 ring-1 ring-white/10', hud.stamina < 35 && 'play-breath')}>
@@ -519,8 +519,8 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
             <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10"><div className="h-full w-full origin-left rounded-full bg-sky-300 rtl:origin-right" style={{ transform: `scaleX(${hud.stamina / 100})` }} /></div>
           </div>
           <div className="flex items-center gap-3 rounded-2xl bg-black/60 px-3 py-2 text-sm font-bold text-white ring-1 ring-white/10 tabular-nums">
-            <span className="inline-flex items-center gap-1" aria-label={`${hud.flares} flares`}><Flame className="h-4 w-4 text-orange-400" aria-hidden />{hud.flares}</span>
-            <span className="inline-flex items-center gap-1" aria-label={`${hud.notes} of ${NIGHT_FLOORS * 2} notes`}><FileText className="h-4 w-4 text-amber-100" aria-hidden />{hud.notes}/{NIGHT_FLOORS * 2}</span>
+            <span role="img" className="inline-flex items-center gap-1" aria-label={`${hud.flares} flares`}><Flame className="h-4 w-4 text-orange-400" aria-hidden />{hud.flares}</span>
+            <span role="img" className="inline-flex items-center gap-1" aria-label={`${hud.notes} of ${NIGHT_FLOORS * 2} notes`}><FileText className="h-4 w-4 text-amber-100" aria-hidden />{hud.notes}/{NIGHT_FLOORS * 2}</span>
           </div>
           {hud.open && <span className="self-center rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase tracking-wider text-white">{hud.floor === NIGHT_FLOORS - 1 ? 'Tunnel open' : 'Stairs open'}</span>}
         </div>

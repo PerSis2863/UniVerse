@@ -204,7 +204,7 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
             armed ? 'bg-amber-300 text-amber-950 ring-amber-200' : 'bg-white/[0.06] text-zinc-100 ring-white/15 hover:bg-white/[0.12]')}>
           <Plane className="w-3.5 h-3.5" aria-hidden />{armed ? 'Tap a need' : airReady ? 'Airdrop' : 'Airdrop soon'}<kbd className="hidden rounded bg-black/30 px-1 text-[11px] font-medium sm:inline">H</kbd>
         </button>
-        <p className="flex items-center gap-1.5 text-zinc-400" aria-label={`${TRUCKS - trucksOut(s.trips)} of ${TRUCKS} trucks free`}>
+        <p role="img" className="flex items-center gap-1.5 text-zinc-400" aria-label={`${TRUCKS - trucksOut(s.trips)} of ${TRUCKS} trucks free`}>
           {Array.from({ length: TRUCKS }, (_, i) => <Truck key={i} className={cn('w-5 h-5 transition-colors', i < TRUCKS - trucksOut(s.trips) ? 'text-white' : 'text-zinc-600')} aria-hidden />)}
         </p>
         {rain && <p className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2.5 py-1 text-sky-200 ring-1 ring-sky-400/30"><CloudRain className="w-4 h-4" aria-hidden />Rain</p>}

@@ -198,6 +198,7 @@ export class World {
     }
     // The fly-in: from high above down to where the game put the camera.
     if (this.intro) {
+      if (this.intro.start < 0) this.intro.start = t / 1000; // counted from the first frame drawn
       const k = Math.min(1, (t / 1000 - this.intro.start) / this.intro.dur), e = 1 - Math.pow(1 - k, 3);
       this.camera.position.lerpVectors(this.intro.from, this.camera.position, e);
       this.camera.lookAt(this.focus.x, this.focus.y + 1.4, this.focus.z);
@@ -252,7 +253,7 @@ export class World {
   /** Widens or narrows the view by some degrees from the start (eased). */
   fovBy(deg: number) { this.fovWant = this.fovBase + deg; }
   /** The camera flies in from a point over `dur` seconds, looking at `focus`. */
-  flyIn(from: THREE.Vector3, dur = 1.6) { if (!matchMedia('(prefers-reduced-motion: reduce)').matches) this.intro = { from: from.clone(), start: performance.now() / 1000, dur }; }
+  flyIn(from: THREE.Vector3, dur = 1.6) { if (!matchMedia('(prefers-reduced-motion: reduce)').matches) this.intro = { from: from.clone(), start: -1, dur }; }
   /** Sparks or dust from a point. */
   burst(at: THREE.Vector3, color: number, n = 16, speed = 6, gravity = 12) { this.sparks.emit(at, color, n, speed, gravity); }
   /** A number or word that rises and fades where something happened ("+100"). */

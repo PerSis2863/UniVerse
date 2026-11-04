@@ -4100,3 +4100,8 @@ is older). So this item does what the page controls:
 - **[owner]** For in-game changes (lighting, effects, animations), open the Unity project, make them,
   then "Tools → Build Stormfall for Web" and copy the build in (`scripts/stormfall-web.mjs`, then the
   new checksums in `scripts/stormfall-files.json`).
+- **Checked before merging** (production build, phone and computer): every 2D game holds 60 frames a
+  second at phone size (Type Race 54) with the gauge on; inside a running game, axe found labels on plain
+  boxes (Night Shift's keys and lives, Supply Run's trucks: now `role="img"`) and a too-faint "Your best"
+  on Ocean Cleanup's menu (now zinc-300 in dark). The camera fly-in in Obby and Orbit counts from the
+  first frame drawn, so waiting for shaders no longer cuts it short.
