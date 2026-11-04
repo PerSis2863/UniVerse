@@ -88,7 +88,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 This is only the map: each item has a note in `apps/web/STAGE-5-HANDOFF.md` (traps, rules for code
 that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 
-- **On `main`** (merged through PR #108, 4 Nov): everything through **M98** (M82–M98 are listed below).
+- **On `main`** (merged through PR #109, 4 Nov): everything through **M101** (M82–M101 are listed below).
   - **Look and motion:** dark mode in the "Globynk" navy and Aqua Jade, light mode in Marshmallow
     White, Galactic Violet and Bubblegum Pink (M52–M57a, see §8); a less AI-looking site (M58); the
     pink river that nothing slows but Reduce Motion (M56, M56a); motion that answers the pointer (M41);
@@ -133,7 +133,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   decorative loops pause while scrolling); **M98** Trace's live board smooth (counters no longer set off
   animations), count-ups wait for React, a 116-page sweep clean. Scheduled: the body-parser override on 5 Nov
   (12:00 UTC).
-- **On the branch `claude/youthful-fermi-sbdtcp`, not merged:** **M99** Night Shift's own survival-horror
+- **Merged in PR #109 (4 Nov, live and checked):** **M99** Night Shift's own survival-horror
   story (Ashgrove Academy, the Quiet; `src/lib/play/night-story.ts`): named keys, six notes, a keypad code,
   safe rooms with first aid, flares (G), Shades that drink the torch, two endings; the torch casts real
   shadows, dust in its beam, a four-light lamp pool (`LightPool` in `world/core.ts`), and every 3D world
