@@ -119,8 +119,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   safer libraries (32 known issues → 12, none critical), wrangler 4.151.3, checks on every push;
   **M88** an API request uses about a quarter of the CPU it did (Prisma's query compiler shared).
 - **On the branch `claude/youthful-fermi-sbdtcp`, not merged:** **M89** busy buttons keep their size,
-  loading placeholders stay smooth while a page loads.
-- **Work numbers:** the next item is **M90**. Never reuse a number: take the next one after the
+  loading placeholders stay smooth while a page loads; **M90** Quick notes like Apple Notes (folders,
+  Recently deleted, tick-box lines), the search icon no longer on the text in search boxes.
+- **Work numbers:** the next item is **M91**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,

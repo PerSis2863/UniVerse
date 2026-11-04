@@ -30,17 +30,28 @@ export function useKept<T>(key: string, init: T | (() => T)) {
   // `synced`: the value as last known to everyone (what we opened with, or the last change in or out),
   // so only a real change is sent: never the opening copy again, never an echo of someone else's.
   const first = useRef(true), latest = useRef(v), synced = useRef<string | null>(null);
+  const waiting = useRef<(() => void) | null>(null);
   useEffect(() => {
     latest.current = v;
     if (first.current) { first.current = false; synced.current = JSON.stringify(v); return; }
     // A short pause, so typing doesn't write (or send) on every key.
-    const t = setTimeout(() => {
+    const write = () => {
+      waiting.current = null;
       const json = JSON.stringify(v);
       try { localStorage.setItem(full, json); } catch { /* full or blocked */ }
       if (sync && json !== synced.current) { synced.current = json; sync.push(key, json); }
-    }, 250);
+    };
+    waiting.current = write;
+    const t = setTimeout(write, 250);
     return () => clearTimeout(t);
   }, [full, key, v, sync]);
+  // M90: what's still waiting is written when the tab closes or the tool closes (a page change), so
+  // the last words typed are never lost.
+  useEffect(() => {
+    const flush = () => waiting.current?.();
+    addEventListener('pagehide', flush);
+    return () => { removeEventListener('pagehide', flush); flush(); };
+  }, []);
   useEffect(() => sync?.sub(key, (json) => {
     synced.current = json;
     if (json === JSON.stringify(latest.current)) return;

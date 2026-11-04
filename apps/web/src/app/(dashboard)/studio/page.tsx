@@ -169,7 +169,7 @@ const TOOLS: Tool[] = [
   { group: 'Study and teach', id: 'wheel', name: 'Spin the wheel', what: 'Pick a name with a spin the whole class can watch', icon: Disc3, tint: 'from-pink-500 to-violet-500' },
   { group: 'Study and teach', id: 'noise', name: 'Noise meter', what: 'How loud is the room? A dial with a limit you set', icon: AudioLines, tint: 'from-rose-500 to-orange-500' },
 
-  { group: 'Write', id: 'notes', name: 'Quick notes', what: 'Jot it down: pin, colour, tick boxes, search', icon: NotebookPen, tint: 'from-amber-400 to-orange-500' },
+  { group: 'Write', id: 'notes', name: 'Quick notes', what: 'Folders, tick-box lists, pins and Recently deleted', icon: NotebookPen, tint: 'from-amber-400 to-orange-500' },
   { group: 'Write', id: 'words', name: 'Word count', what: 'Words, sentences, reading and speaking time', icon: Hash, tint: 'from-indigo-500 to-sky-500' },
   { group: 'Write', id: 'clean', name: 'Clean up text', what: 'Change case, tidy spaces, sort, remove repeats', icon: CaseSensitive, tint: 'from-sky-500 to-cyan-500' },
   { group: 'Write', id: 'compare', name: 'Compare texts', what: 'See exactly what changed between two versions', icon: GitCompare, tint: 'from-emerald-500 to-teal-500' },

@@ -3659,3 +3659,52 @@ loading of something or screen".
   - busy-button sizes and screenshots in both themes;
   - the shimmer under load (frames that moved in 3 s: 56–62 before, 188–193 after);
   - 31 controls clicked on the built site.
+
+## M90: Quick notes like Apple Notes (4 Nov 2026)
+
+The owner: "this quick note needs a lot of work i like apple note app… made it like that" (a
+screenshot showed the search icon sitting on the text).
+
+- **What it is now** (`src/components/studio/QuickNotes.tsx`, Collaborate → Create → Quick notes):
+  - three columns on a computer: folders (All notes, your folders, Recently deleted), the list,
+    the note;
+  - on phones, folder chips over the list, and the note opens over it with "‹ Notes";
+  - the list: search, Pinned first, then Today / Yesterday / Previous 7 days / Previous 30 days /
+    month / year; each row shows the title, time, first line and "2/5" for a checklist; swipe to
+    pin or delete;
+  - the note: date, a big title, and lines with round tick boxes:
+    - Enter adds the next item; Enter on an empty item ends the list;
+    - Backspace at the start un-ticks or joins lines;
+    - arrows move between lines;
+    - pasted lines split;
+    - Ctrl/⌘+Shift+L makes a checklist;
+  - one toolbar row: Checklist, Pin, More (colour, folder, "Move ticked items down", "Make it a
+    document"), Delete;
+  - Recently deleted keeps notes 30 days, with Recover, Delete now and Undo;
+  - an empty note goes away when you leave it.
+- **Data:**
+  - still plain text in `uv-quick-notes` (same shape plus optional `folder` and `deletedAt`), so old
+    notes open unchanged;
+  - folders in `uv-quick-folders`;
+  - now through `useKept`, so Save, view links and live editing carry the notes (they didn't
+    before);
+  - text rules live in `src/lib/quick-notes.ts` (tested): the title is the first line, a line
+    `[ ] ` / `[x] ` is a checklist item.
+- **"Make it a document"** now fills the Doc: title as a heading, a real checklist, "- " lines as
+  a list (`noteToHtml`, through `doc-import:`). Before, it only copied the text.
+- **Fixed for every tool:** `useKept` writes what's still waiting (its 250 ms pause) when the tab or
+  the tool closes, so the last words typed aren't lost.
+- **Fixed site-wide:** the search icon over the text in 8 search boxes. `.input`'s side padding is
+  now `:where(.input)`, so a `ps-9` beside it wins. The `.input.pl-10` patch is removed.
+- **Rules:**
+  - lines are `<textarea>`s that grow (`field-sizing: content`, measured where missing), 16 px so
+    phones don't zoom;
+  - no focus box on the note's own fields (`focus-visible:shadow-none!`): the caret shows where you
+    are, as in Apple Notes;
+  - the React lint doesn't allow a parent's ref to be changed in a child, so the "put the caret in
+    the title" signal is a prop (`titleCue`).
+- **Tested:**
+  - `pnpm check`;
+  - a browser run: wrote a checklist, ticked it, searched, deleted to Recently deleted;
+  - axe clean at 390 / 1280, light / dark;
+  - no sideways scroll.

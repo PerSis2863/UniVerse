@@ -506,13 +506,13 @@ html:not(.dark) {
     border: 1px solid var(--input-border);
     color: var(--input-color);
     padding-block: 0.6875rem;
-    padding-inline: 0.875rem;
     border-radius: 0.75rem;
     font-size: 0.9375rem;
     transition: background-color 200ms var(--ease-ios), border-color 200ms var(--ease-ios), box-shadow 200ms var(--ease-ios);
     outline: none;
   }
-  .input.pl-10 { padding-inline-start: 2.5rem; }
+  /* Side padding that a ps-9 / pe-9 beside it wins over (room for a search icon: M90, the icon sat on the text). */
+  :where(.input) { padding-inline: 0.875rem; }
   .input::placeholder { color: var(--input-placeholder); }
   .input:focus {
     background-color: var(--surface);
