@@ -40,7 +40,7 @@ export class RoomVoice {
     for (const id of [...this.links.keys()]) this.drop(id);
     this.stream.getTracks().forEach((t) => t.stop());
     this.stream = null;
-    void this.ctx?.close();
+    void this.ctx?.close().catch(() => {});
     this.ctx = null; this.myLevel = null;
   }
 

@@ -417,7 +417,7 @@ function Noise() {
         raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
-      stop.current = () => { cancelAnimationFrame(raf); stream.getTracks().forEach((t) => t.stop()); void ctx.close(); setOn(false); setLevel(0); };
+      stop.current = () => { cancelAnimationFrame(raf); stream.getTracks().forEach((t) => t.stop()); void ctx.close().catch(() => {}); setOn(false); setLevel(0); };
       setOn(true);
     } catch { toast.error('The microphone isn’t available. Allow it in the browser’s settings.'); }
   };

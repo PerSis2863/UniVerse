@@ -130,7 +130,7 @@ async function sound(file: File): Promise<Blob> {
     const buf = await ctx.decodeAudioData(await file.arrayBuffer());
     return new Blob([encodeWav(Array.from({ length: buf.numberOfChannels }, (_, i) => buf.getChannelData(i)), buf.sampleRate)], { type: 'audio/wav' });
   } catch { throw new Error('This browser can’t read the sound in that file.'); }
-  finally { void ctx.close(); }
+  finally { void ctx.close().catch(() => {}); }
 }
 
 /** MP3 (the sound) or MP4 (H.264 video, AAC sound) with mediabunny: the browser's own encoders, LAME for MP3 where it has none. */

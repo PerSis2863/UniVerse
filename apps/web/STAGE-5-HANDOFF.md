@@ -3859,3 +3859,41 @@ The owner: "please do the left on purpose part" (M93 left ~200 files with their 
     Collaborate and the landing, at 390 and 1280, light and dark (28 runs).
 - **Note for later:** Messages lives at `/student/inbox` (and `/teacher/inbox`, `/admin/inbox`); there
   is no `/messages` page.
+
+## M95: A check of what else to improve, and the quick fixes (4 Nov 2026)
+
+The owner: "please check what else you can improve in this system".
+
+- **What was checked:**
+  - the live site's `error_reports` (read-only);
+  - first-load script per page (`node scripts/bundle-report.mjs` on the last local build);
+  - `pnpm audit --prod`;
+  - GitHub Checks;
+  - axe and page errors on the main pages (done in M94).
+- **Errors on the live site:**
+  - Nearly every frequent report is made-up sample data (ids `smpe…`, from "Fill with sample
+    data"), not real.
+  - The real ones are rare (1–3 hits each) and old. The owner console People list's "too many SQL
+    variables" (31 Oct) stopped after M73 (1 Nov), so it can be marked resolved.
+  - The rest are browser bots or Google's sign-in and reCAPTCHA code.
+- **Fixed:**
+  - Every `AudioContext.close()` now has `.catch(() => {})`, so closing twice no longer throws "Cannot
+    close a closed AudioContext" (Play's voice, the docs converter and five Create tools).
+  - The owner console loads each tab's panel when it is first opened (17 panels, `next/dynamic`,
+    `ssr: false`, the console skeleton while loading). Its first load was 481 KB of script, the
+    biggest page apart from the editors.
+- **Found, not done (the next items):**
+  - **First-load size** is the biggest lever. No page meets the A4 targets (0/244): a typical app
+    page loads ~370 KB gzipped before it works, about 140 KB of it the framework, and ~230 KB of
+    dashboard-wide pieces in ~45 chunks. Next step: find what every dashboard page imports up
+    front (assistant, command palette, tour, sheets, sounds…) and load each when first used,
+    measuring per page.
+  - **body-parser 2.4.0** (the one high library issue; it comes in through `@opennextjs/aws`'s
+    express, which the Worker doesn't run): add the override from 5 Nov, when the release is two
+    weeks old.
+  - The other 11 audit items are low or moderate and build-time only (webpack, glob, minimatch,
+    serialize-javascript), plus KaTeX's low one.
+- **Tested:**
+  - `pnpm check`;
+  - the console as a test owner: overview, flows, errors, server and people tabs open, axe clean,
+    light and dark, desktop and phone.

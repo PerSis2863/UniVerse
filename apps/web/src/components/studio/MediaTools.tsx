@@ -282,7 +282,7 @@ function Metronome() {
     let raf = 0;
     const draw = () => { while (marks.length && marks[0][0] <= ctx.currentTime) setBeat(marks.shift()![1]); raf = requestAnimationFrame(draw); };
     raf = requestAnimationFrame(draw);
-    return () => { clearInterval(timer); cancelAnimationFrame(raf); void ctx.close(); setBeat(-1); };
+    return () => { clearInterval(timer); cancelAnimationFrame(raf); void ctx.close().catch(() => {}); setBeat(-1); };
   }, [on]);
   const tap = () => { const t = performance.now(); taps.current = [...taps.current.filter((x) => t - x < 3000), t]; if (taps.current.length >= 2) { const d = (taps.current[taps.current.length - 1] - taps.current[0]) / (taps.current.length - 1); setBpm(Math.max(30, Math.min(240, Math.round(60000 / d)))); } };
   return (
@@ -311,11 +311,11 @@ function Tuner() {
       const buf = new Float32Array(an.fftSize); let raf = 0, last = 0;
       const tick = (t: number) => { if (t - last > 90) { last = t; an.getFloatTimeDomainData(buf); setHz(detectPitch(buf, ctx.sampleRate)); } raf = requestAnimationFrame(tick); };
       raf = requestAnimationFrame(tick);
-      stop.current = () => { cancelAnimationFrame(raf); s.getTracks().forEach((x) => x.stop()); void ctx.close(); setOn(false); setHz(null); };
+      stop.current = () => { cancelAnimationFrame(raf); s.getTracks().forEach((x) => x.stop()); void ctx.close().catch(() => {}); setOn(false); setHz(null); };
       setOn(true);
     } catch { toast.error('The microphone isn’t available. Allow it in the browser’s settings.'); }
   };
-  const tone = () => { const ctx = new AudioContext(), o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 440; g.gain.value = 0.15; o.connect(g).connect(ctx.destination); o.start(); g.gain.setTargetAtTime(0, ctx.currentTime + 1.2, 0.1); o.stop(ctx.currentTime + 1.6); o.onended = () => void ctx.close(); };
+  const tone = () => { const ctx = new AudioContext(), o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 440; g.gain.value = 0.15; o.connect(g).connect(ctx.destination); o.start(); g.gain.setTargetAtTime(0, ctx.currentTime + 1.2, 0.1); o.stop(ctx.currentTime + 1.6); o.onended = () => void ctx.close().catch(() => {}); };
   const n = hz ? noteOf(hz) : null, good = n && Math.abs(n.cents) <= 5;
   return (
     <div className="space-y-4 text-center">
@@ -356,7 +356,7 @@ function Focus() {
     const src = ctx.createBufferSource(), gain = ctx.createGain(); src.buffer = buf; src.loop = true; gain.gain.value = 0;
     src.connect(gain).connect(ctx.destination); src.start(); gain.gain.setTargetAtTime((volRef.current / 100) * 0.5, ctx.currentTime, 0.4);
     nodes.current = { ctx, gain };
-    return () => { gain.gain.setTargetAtTime(0, ctx.currentTime, 0.2); setTimeout(() => void ctx.close(), 800); nodes.current = null; };
+    return () => { gain.gain.setTargetAtTime(0, ctx.currentTime, 0.2); setTimeout(() => void ctx.close().catch(() => {}), 800); nodes.current = null; };
   }, [on, kind]);
   return (
     <div className="space-y-4">

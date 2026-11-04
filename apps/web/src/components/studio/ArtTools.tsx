@@ -167,7 +167,7 @@ function Drums() {
     const ctx = new AudioContext(); let next = ctx.currentTime + 0.05, n = 0; const marks: [number, number][] = [];
     const timer = setInterval(() => { while (next < ctx.currentTime + 0.12) { const k = n % 16; live.current.grid.forEach((row, r) => { if (row[k]) hit(ctx, DRUMS[r], next); }); marks.push([next, k]); n++; next += 60 / live.current.bpm / 4; } }, 25);
     let raf = 0; const draw = () => { while (marks.length && marks[0][0] <= ctx.currentTime) setStep(marks.shift()![1]); raf = requestAnimationFrame(draw); }; raf = requestAnimationFrame(draw);
-    return () => { clearInterval(timer); cancelAnimationFrame(raf); void ctx.close(); setStep(-1); };
+    return () => { clearInterval(timer); cancelAnimationFrame(raf); void ctx.close().catch(() => {}); setStep(-1); };
   }, [on]);
   return (
     <div className="space-y-3">
