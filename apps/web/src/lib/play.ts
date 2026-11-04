@@ -8,7 +8,7 @@
  *  imports, so the landing can show it without loading the game's page code. */
 export const STORMFALL = { name: 'STORMFALL', age: 16, rated: 'realistic military shooting' } as const;
 
-export const GAME_IDS = ['quiz', 'fakes', 'supply', 'sort', 'type', 'pin', 'rescue', 'ocean', 'obby', 'night', 'orbit'] as const;
+export const GAME_IDS = ['quiz', 'fakes', 'supply', 'sort', 'type', 'pin', 'rescue', 'ocean', 'fire', 'obby', 'night', 'orbit', 'reef'] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
 export interface GameInfo {
@@ -46,6 +46,8 @@ export const GAMES: Record<GameId, GameInfo> = {
   obby: { id: 'obby', app: 'play', name: 'Skyline Obby', tagline: 'Jump the sky course to the golden finish', how: 'Thirty stages in three worlds (Sky Islands, Lava Peaks, Neon Void): moving, crumbling, blinking, bounce, slippery ice and conveyor pads, spinning lasers. Checkpoints save you; gems and finishing early score more.', seconds: 480, maxScore: 36_000, color: '#38bdf8', big: true, world: true },
   night: { id: 'night', app: 'play', name: 'Night Shift', tagline: 'Ashgrove Academy after dark. Something came up the pipes with the heat.', how: 'Your first night as caretaker. Find the named keys on each floor (3, then 4, then 5), read the notes the others left (one holds the stairwell code), and get down to the service tunnel. Your torch drives the Quiet back and burns the Shades, but the battery is also your light. Throw a flare (G) when it gets close, hide in a locker (E), rest in the safe room.', seconds: 480, maxScore: 40_000, color: '#64748b', big: true, world: true, age: 18, rated: 'horror, jump scares' },
   orbit: { id: 'orbit', app: 'play', name: 'Orbit Breach', tagline: 'Fix the station before the meteors win', how: 'Three stations: jump between decks in low gravity (jump again in the air to boost), repair the reactors (3, then 4, then 5), grab oxygen, dodge meteors, shelter under a shield from solar flares, and take the pod to the next.', seconds: 420, maxScore: 34_000, color: '#22d3ee', big: true, world: true, age: 12, rated: 'sci-fi peril' },
+  fire: { id: 'fire', app: 'relief', name: 'Fire Line', tagline: 'Fly the water bomber, hold the fire back', how: 'Lightning starts fires in a dry forest valley and the wind drives them. Steer the water bomber over the lake to fill its tank (three drops), then drop the water (Space) on the flames before they reach the villages. Every flame put out scores; the villages still standing and the green forest score most at the end.', seconds: 150, maxScore: 40_000, par: 20_000, color: '#ea580c', big: true },
+  reef: { id: 'reef', app: 'green', name: 'Reef Rescue', tagline: 'Dive in and bring the reef back to life', how: 'Swim the coral reef: take coral from the nursery to the white, bleached patches and plant it (E), cut the turtles free from ghost nets (hold E) and collect the plastic. Space swims up, C down; your air runs low, so come up to breathe. Keep clear of the jellyfish.', seconds: 240, maxScore: 18_000, color: '#14b8a6', big: true, world: true },
   ocean: { id: 'ocean', app: 'green', name: 'Ocean Cleanup', tagline: 'Clear the plastic, spare the sea life', how: 'Scoop up plastic for combos and grab the power-ups (magnet, boost, shield). Every 15 pieces charge a sweep (Space) that collects all plastic nearby. Bumping into sea life costs points; oil slows you down.', seconds: 150, maxScore: 48_000, color: '#22d3ee', big: true },
 };
 

@@ -45,6 +45,12 @@ export function bag(color = 0xdde7ee) {
   return whole([part(g, color), part(new THREE.TorusGeometry(0.12, 0.025, 6, 12, Math.PI), color, [-0.2, 0.05, -0.35], [Math.PI / 2, 0, 0]), part(new THREE.TorusGeometry(0.12, 0.025, 6, 12, Math.PI), color, [0.2, 0.05, -0.35], [Math.PI / 2, 0, 0])]);
 }
 
+/** A sea turtle (shell, belly, head, four flippers), head toward −z. */
+export function turtle() {
+  const flipper = (x: number, z: number, r: number) => part(new THREE.BoxGeometry(0.34, 0.04, 0.14), 0x7a8f62, [x, 0.02, z], [0, r, x > 0 ? -0.2 : 0.2]);
+  return whole([part(new THREE.SphereGeometry(0.5, 18, 12), 0x5b6b3a, [0, 0.1, 0], [0, 0, 0], [0.62, 0.24, 0.78]), part(new THREE.SphereGeometry(0.5, 16, 10), 0x7f8f55, [0, 0.13, 0], [0, 0, 0], [0.42, 0.22, 0.56]), part(new THREE.SphereGeometry(0.12, 12, 10), 0x8a9a70, [0, 0.12, -0.5]), flipper(0.36, -0.22, -0.5), flipper(-0.36, -0.22, 0.5), flipper(0.3, 0.3, 0.6), flipper(-0.3, 0.3, -0.6)]);
+}
+
 /** Recycle Rush's thirty things, in the order of its ITEMS list (src/lib/play/sort.ts). */
 export function sortables(): THREE.BufferGeometry[] {
   const leaf = (x: number, z: number, r: number, c: number) => { const g = ball(0.16, 10, 6); return part(g, c, [x, 0.03, z], [0, r, 0.1], [1.4, 0.15, 0.7]); };

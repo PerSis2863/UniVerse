@@ -27,6 +27,8 @@ const VIEWS: Record<GameId, React.ComponentType<GameProps>> = {
   pin: dynamic(() => import('./WorldPin').then((m) => m.WorldPin), { ssr: false, loading }),
   rescue: dynamic(() => import('./FloodRescue').then((m) => m.FloodRescue), { ssr: false, loading }),
   ocean: dynamic(() => import('./OceanCleanup').then((m) => m.OceanCleanup), { ssr: false, loading }),
+  fire: dynamic(() => import('./FireLine').then((m) => m.FireLine), { ssr: false, loading }),
+  reef: dynamic(() => import('./ReefRescue').then((m) => m.ReefRescue), { ssr: false, loading }),
   obby: dynamic(() => import('./SkylineObby').then((m) => m.SkylineObby), { ssr: false, loading }),
   night: dynamic(() => import('./NightShift').then((m) => m.NightShift), { ssr: false, loading }),
   orbit: dynamic(() => import('./OrbitBreach').then((m) => m.OrbitBreach), { ssr: false, loading }),
@@ -36,7 +38,7 @@ const VIEWS: Record<GameId, React.ComponentType<GameProps>> = {
 export function preloadGame(game: GameId) {
   const mod = {
     quiz: () => import('./QuizClash'), fakes: () => import('./SpotTheFake'), supply: () => import('./SupplyRun'), sort: () => import('./RecycleRush'),
-    type: () => import('./TypeRace'), pin: () => import('./WorldPin'), rescue: () => import('./FloodRescue'), ocean: () => import('./OceanCleanup'),
+    type: () => import('./TypeRace'), pin: () => import('./WorldPin'), rescue: () => import('./FloodRescue'), ocean: () => import('./OceanCleanup'), fire: () => import('./FireLine'), reef: () => import('./ReefRescue'),
     obby: () => import('./SkylineObby'), night: () => import('./NightShift'), orbit: () => import('./OrbitBreach'),
   }[game];
   void mod();
@@ -52,6 +54,8 @@ const CONTROLS: Record<GameId, { icon: typeof Keyboard; text: string }[]> = {
   pin: [{ icon: MousePointer2, text: 'Click or tap the map · drag and pinch to look' }, { icon: Keyboard, text: 'Arrows move · Enter pins the cross' }],
   rescue: [{ icon: MousePointer2, text: 'Steer with the mouse or a finger' }, { icon: Keyboard, text: 'Arrow keys or WASD' }],
   ocean: [{ icon: MousePointer2, text: 'Steer with the mouse or a finger' }, { icon: Keyboard, text: 'Arrow keys or WASD' }],
+  fire: [{ icon: MousePointer2, text: 'Steer with the mouse or a finger' }, { icon: Keyboard, text: 'Arrows or WASD · Space drops water' }],
+  reef: [{ icon: Keyboard, text: 'WASD swim · Space up · C down · E use' }, { icon: MousePointer2, text: 'Click, then the mouse turns' }, { icon: Pointer, text: 'Phone: joystick, Up, Down, Use' }],
   obby: [{ icon: Keyboard, text: 'WASD move · Space jump · Shift run' }, { icon: MousePointer2, text: 'Click, then the mouse turns' }, { icon: Pointer, text: 'Phone: joystick and Jump' }],
   night: [{ icon: Keyboard, text: 'WASD walk · Shift run' }, { icon: MousePointer2, text: 'Click, then look with the mouse' }, { icon: Pointer, text: 'Phone: joystick, drag to look' }],
   orbit: [{ icon: Keyboard, text: 'WASD move · Space jump (again to boost)' }, { icon: MousePointer2, text: 'Click, then the mouse turns' }, { icon: Pointer, text: 'Phone: joystick, Jump' }],

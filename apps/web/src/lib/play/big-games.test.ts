@@ -5,12 +5,55 @@ import { CAPACITY, rescuePoints, rescueSchedule, rescueStorm, rescueTown, waterL
 import { PIN_TARGETS, kmBetween, pinPoints, pinRegion, pinStreakBonus, pinTarget } from './pin';
 import { QUIZ_BOSS_MULT, quizBoss, quizPoints } from './quiz';
 import { NITRO_STREAK, PASSAGES, TYPE_CHAR, TYPE_DONE, typingPassage, wpm } from './typing';
+import { FIRE_COLS, FIRE_OUT, FIRE_ROWS, FOREST, MEADOW, ROCK, VILLAGE, WATER, dropCells, fireFinal, fireMap, fireTick, igniteChance } from './wildfire';
+import { REEF_HALF, REEF_LITTER, REEF_NETS, REEF_SPOTS, jellyAt, reefBest, reefLayout } from './reef';
 
 describe('UniVerse Play, the bigger games', () => {
-  it('lists eleven games: two per app and three 3D worlds', () => {
-    expect(GAME_IDS.length).toBe(11);
-    for (const app of ['campus', 'trace', 'relief', 'green']) expect(GAME_IDS.filter((g) => GAMES[g].app === app).length).toBe(2);
-    expect(GAME_IDS.filter((g) => GAMES[g].world).length).toBe(3);
+  it('lists thirteen games: two or three per app and four 3D worlds (M105)', () => {
+    expect(GAME_IDS.length).toBe(13);
+    for (const app of ['campus', 'trace']) expect(GAME_IDS.filter((g) => GAMES[g].app === app).length).toBe(2);
+    for (const app of ['relief', 'green']) expect(GAME_IDS.filter((g) => GAMES[g].app === app).length).toBe(3);
+    expect(GAME_IDS.filter((g) => GAMES[g].world).length).toBe(4);
+  });
+  it('gives everyone the same valley, spreads fire downwind, and keeps a perfect Fire Line under the cap', () => {
+    const m = fireMap(5, GAMES.fire.seconds);
+    expect(m).toEqual(fireMap(5, GAMES.fire.seconds));
+    expect(m.cells).toHaveLength(FIRE_COLS * FIRE_ROWS);
+    expect(m.villages).toHaveLength(3);
+    expect(m.strikes.length).toBeGreaterThan(5);
+    expect(m.strikes.every((s) => m.cells[s.cell] === FOREST)).toBe(true);
+    expect(m.winds[0].at).toBe(0);
+    // Downwind catches far more often than upwind; rock and water never.
+    expect(igniteChance(FOREST, 1, 0, 0)).toBeGreaterThan(igniteChance(FOREST, -1, 0, 0) * 3);
+    expect(igniteChance(ROCK, 1, 0, 0)).toBe(0);
+    expect(igniteChance(WATER, 1, 0, 0)).toBe(0);
+    // A tick lights neighbours, and a burning cell burns out to ash.
+    const n = FIRE_COLS * FIRE_ROWS, burn = new Uint8Array(n), wet = new Uint8Array(n), ash = new Uint8Array(n), cells = new Uint8Array(n).fill(FOREST);
+    burn[5 * FIRE_COLS + 5] = 1;
+    const lit = fireTick(cells, burn, wet, ash, 0, () => 0);
+    expect(lit.length).toBeGreaterThan(0);
+    expect(ash[5 * FIRE_COLS + 5]).toBe(1);
+    expect(dropCells(10, 10).length).toBeGreaterThan(12);
+    // Every flame put out once, all villages standing, all the forest green: under the cap.
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const f = fireMap(seed, GAMES.fire.seconds);
+      const burnable = Array.from(f.cells).filter((k) => k === FOREST || k === MEADOW || k === VILLAGE).length;
+      expect(burnable * FIRE_OUT + fireFinal(3, 1, 1)).toBeLessThanOrEqual(GAMES.fire.maxScore);
+    }
+  });
+  it('builds the same reef for everyone, and a perfect dive stays under the cap', () => {
+    const r = reefLayout(9);
+    expect(r).toEqual(reefLayout(9));
+    expect(r.spots).toHaveLength(REEF_SPOTS);
+    expect(r.nets).toHaveLength(REEF_NETS);
+    expect(r.litter).toHaveLength(REEF_LITTER);
+    for (const p of [...r.spots, ...r.nets, ...r.litter]) expect(Math.abs(p.x) <= REEF_HALF && Math.abs(p.z) <= REEF_HALF).toBe(true);
+    // Objectives never sit on top of each other.
+    const marks = [...r.spots, ...r.nets];
+    for (let i = 0; i < marks.length; i++) for (let j = i + 1; j < marks.length; j++) expect(Math.hypot(marks[i].x - marks[j].x, marks[i].z - marks[j].z)).toBeGreaterThan(4);
+    const j = jellyAt(r.jellies[0], 10);
+    expect(j.y).toBeGreaterThan(0);
+    expect(reefBest(GAMES.reef.seconds)).toBeLessThanOrEqual(GAMES.reef.maxScore);
   });
   it('drifts the same sea for everyone, and a perfect cleanup stays under the cap', () => {
     const s = oceanSchedule(3, GAMES.ocean.seconds);

@@ -9,7 +9,7 @@ import { useArena } from './arena';
 import { calmMotion, steerBody, useSteer } from './steer';
 import type { GameProps } from './game-props';
 import { THREE, World, glowSprite, type SkyLook } from './world/core';
-import { bag, bottle, can, cup, part, whole } from './world/props';
+import { bag, bottle, can, cup, part, turtle, whole } from './world/props';
 import { Board, ocean, rainField, swell } from './world/board';
 import { haptic } from '@/lib/haptics';
 
@@ -34,7 +34,6 @@ const SEA_COLOR = [0x0d4c66, 0x0b3a50, 0x082634], SUN = [2.6, 1.6, 0.7];
 
 /** The floating things, each about one unit across (scaled to the flat game's 30 px). */
 function models(): Record<Exclude<SeaKind, 'oil'>, THREE.BufferGeometry> {
-  const flipper = (x: number, z: number, r: number) => part(new THREE.BoxGeometry(0.34, 0.04, 0.14), 0x7a8f62, [x, 0.02, z], [0, r, x > 0 ? -0.2 : 0.2]);
   const buoy = () => [part(new THREE.TorusGeometry(0.42, 0.09, 8, 24), 0xf97316, [0, 0, 0], [Math.PI / 2, 0, 0]), ...[0, 1, 2, 3].map((i) => part(new THREE.TorusGeometry(0.42, 0.095, 8, 4, Math.PI / 4), 0xffffff, [0, 0, 0], [Math.PI / 2, 0, (i * Math.PI) / 2]))];
   const bolt = new THREE.Shape(); bolt.moveTo(0.06, 0.32); bolt.lineTo(-0.16, -0.02); bolt.lineTo(0.0, -0.02); bolt.lineTo(-0.08, -0.32); bolt.lineTo(0.16, 0.04); bolt.lineTo(0.0, 0.04); bolt.closePath();
   const crest = new THREE.Shape(); crest.moveTo(0, 0.3); crest.quadraticCurveTo(0.24, 0.26, 0.24, 0.16); crest.quadraticCurveTo(0.22, -0.16, 0, -0.3); crest.quadraticCurveTo(-0.22, -0.16, -0.24, 0.16); crest.quadraticCurveTo(-0.24, 0.26, 0, 0.3);
@@ -49,7 +48,7 @@ function models(): Record<Exclude<SeaKind, 'oil'>, THREE.BufferGeometry> {
       ...[-0.45, -0.22, 0, 0.22, 0.45].flatMap((v, i) => [rope([-0.6, v + Math.sin(i) * 0.06], [0.6, v - 0.05], i % 2 ? 0x4d7c57 : 0x3f6b4d), rope([v, -0.55], [v + 0.08, 0.55], i % 2 ? 0x3f6b4d : 0x5b8a63)]),
       part(new THREE.SphereGeometry(0.1, 10, 8), 0xf97316, [0.5, 0.06, 0.4]), part(new THREE.SphereGeometry(0.1, 10, 8), 0xf97316, [-0.45, 0.06, -0.38]), part(new THREE.SphereGeometry(0.08, 10, 8), 0xfacc15, [0.1, 0.06, -0.5]),
     ]),
-    turtle: whole([part(new THREE.SphereGeometry(0.5, 18, 12), 0x5b6b3a, [0, 0.1, 0], [0, 0, 0], [0.62, 0.24, 0.78]), part(new THREE.SphereGeometry(0.5, 16, 10), 0x7f8f55, [0, 0.13, 0], [0, 0, 0], [0.42, 0.22, 0.56]), part(new THREE.SphereGeometry(0.12, 12, 10), 0x8a9a70, [0, 0.12, -0.5]), flipper(0.36, -0.22, -0.5), flipper(-0.36, -0.22, 0.5), flipper(0.3, 0.3, 0.6), flipper(-0.3, 0.3, -0.6)]),
+    turtle: turtle(),
     fish: whole([part(new THREE.SphereGeometry(0.5, 16, 10), 0xf97316, [0, 0.08, 0], [0, 0, 0], [0.24, 0.26, 0.6]), part(new THREE.CylinderGeometry(0.13, 0.13, 0.05, 12), 0xffffff, [0, 0.08, -0.08], [Math.PI / 2, 0, 0], [1, 1, 1.7]), part(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 12), 0xffffff, [0, 0.08, 0.14], [Math.PI / 2, 0, 0], [1, 1, 1.9]), part(new THREE.ConeGeometry(0.16, 0.24, 4), 0xea580c, [0, 0.08, 0.38], [-Math.PI / 2, 0, 0], [1, 1, 0.3]), part(new THREE.SphereGeometry(0.03, 6, 6), 0x111111, [0.08, 0.13, -0.22]), part(new THREE.SphereGeometry(0.03, 6, 6), 0x111111, [-0.08, 0.13, -0.22])]),
     octopus: whole([part(new THREE.SphereGeometry(0.28, 16, 12), 0xb4436c, [0, 0.16, 0.05], [0, 0, 0], [1, 0.85, 1.2]), ...Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2; return part(new THREE.CylinderGeometry(0.02, 0.06, 0.62, 6), i % 2 ? 0xc0587e : 0xa83d63, [Math.cos(a) * 0.32, 0.04, Math.sin(a) * 0.32 - 0.02], [Math.PI / 2, -a + Math.PI / 2, 0.15]); }), part(new THREE.SphereGeometry(0.04, 6, 6), 0xfef3c7, [0.1, 0.22, -0.2]), part(new THREE.SphereGeometry(0.04, 6, 6), 0xfef3c7, [-0.1, 0.22, -0.2])]),
     magnet: whole([...buoy(), part(new THREE.TorusGeometry(0.17, 0.065, 8, 16, Math.PI), 0xdc2626, [0, 0.28, 0], [0, 0, 0]), part(new THREE.CylinderGeometry(0.065, 0.065, 0.12, 8), 0xe5e7eb, [0.17, 0.22, 0]), part(new THREE.CylinderGeometry(0.065, 0.065, 0.12, 8), 0xe5e7eb, [-0.17, 0.22, 0])]),

@@ -43,7 +43,7 @@ export const APPS: ImpactApp[] = [
   },
   {
     id: 'play', name: 'UniVerse Play', tagline: 'Games that teach something', color: '#e46bdb',
-    impact: 'Eleven games, solo or with friends, and STORMFALL on computers.',
+    impact: 'Thirteen games, solo or with friends, and STORMFALL on computers.',
     paths: ['/play'],
   },
 ];

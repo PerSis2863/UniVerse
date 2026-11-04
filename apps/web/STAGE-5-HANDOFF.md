@@ -4229,3 +4229,41 @@ change; each keeps its buttons and keys (accessible), and the 3D part loads with
   header and answers sit on dark panels so they read over it.
 - **Checked:** screenshots of all six at 1280 and three at 390; axe clean (390 light, 1280 dark) while
   playing, no sideways scrolling; `pnpm check` clean.
+
+## M105: two new games, Fire Line and Reef Rescue (4 Nov 2026)
+
+The owner: "add some unique games also". Two original games (our own designs, no copy of any game),
+each in an app that had only two, both realistic from the start on the M102–M104 parts.
+
+- **Fire Line** (Relief, big, 150 s; rules in `src/lib/play/wildfire.ts`, tested; view `FireLine.tsx`): a
+  dry forest valley from the air (a 40 × 24 grid: forest, meadow, rock, a lake, three 2 × 2 villages).
+  Lightning starts fires on a seeded schedule (never within 9 cells of a village), the wind turns every
+  20–30 s, and a fire tick every 650 ms lets each burning cell light its neighbours (`igniteChance`: forest
+  more than meadow, downwind far more than upwind, never rock, water or wet ground). The tick's random
+  numbers come from the seed and the tick number, so a room's valleys only differ by how each pilot fights.
+  Steer the water bomber (`steer.ts`, like Flood Rescue) over the lake to fill its tank (3 drops), drop
+  with Space: every burning cell in reach goes out (30 points, once per cell) and the ground stays wet.
+  A village caught costs 400; 1.5 s before the end the villages still standing (2,000 each) and the
+  forest still green (up to 3,000) are added and announced. Cap 40,000 (tested), par 20,000.
+  Drawn on `world/board.ts` ('top', tilted 34°): the ground's vertices on the box's own grid coloured by
+  cell (ash, wet, burning), ~1,700 instanced trees that turn orange then black, instanced flame and smoke
+  quads facing the camera, a ring on the ground where the water lands, steam puffs, the bomber's shadow.
+- **Reef Rescue** (Green, 3D world, 240 s; rules in `src/lib/play/reef.ts`, tested; view `ReefRescue.tsx`):
+  swim a reef (forward goes where you look, up and down too; Space/Q up, C down, Shift fast; phones: the
+  joystick and Use / Up / Down). Take coral from the nursery to the eight bleached patches and plant it (E:
+  600, it grows), hold E 1.6 s by a ghost net to free its turtle (1,000, it swims off), collect 22 pieces
+  of plastic (80), keep off the jellyfish (−150, a stun). Air lasts 80 s under water and fills at the
+  surface; out of air, you're carried up. Everything done ends the round early with 2,000 and 10 a second
+  left. Cap 18,000 (`reefBest` under it, tested). The look: caustics rippling on the sand (added to the
+  sand's light in its shader), the surface from below (bright straight up), shafts of light, swaying sea
+  grass (moved in the shader), corals, rocks, three schools of fish, marine snow, jellyfish that pulse, a
+  diver whose fins kick. In a room the others are drawn too (`Crowd`).
+- **Registered:** `GAME_IDS` / `GAMES` (`src/lib/play.ts`), `GameStage` (views, preload, controls),
+  `GameIcon` (Flame, Fish), the arcade's cards (a Fire Line scene; Reef in the 3D worlds), the counts on the
+  landing and in apps.ts ("Thirteen games"), the screen-text catalog, `big-games.test.ts` (13 games, four
+  worlds; Relief and Green have three each). No database change: scores keep the game's id as text, the
+  room and leaderboards take any id in `GAME_IDS`. The turtle model moved to `world/props.ts` (shared with
+  Ocean Cleanup).
+- **Checked:** screenshots at 1280 and 390, the Play home; axe clean (390 light, 1280 dark) while playing
+  after making the "burning" chip orange-700; the fire was slowed after the first try (a village burned in
+  14 s); `pnpm check` clean.

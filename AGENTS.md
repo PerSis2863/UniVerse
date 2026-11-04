@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M104 is the latest).
+  builds on it). The newest notes are at the end (M105 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -68,9 +68,10 @@ software or website in the main website… where they create a impact"). Each ap
   alerts for helpers.
 - **Green** (`/green`): climate actions with the CO₂ they save, streaks, badges, a weekly challenge,
   teams and a map.
-- **Play** (`/play`): eleven games: two per app (quick: Quiz Clash, Spot the Fake, Supply Run,
-  Recycle Rush; big: Type Race, World Pin, Flood Rescue, Ocean Cleanup) and three 3D worlds
-  (three.js: Skyline Obby, Night Shift 18+, Orbit Breach 12+), plus **STORMFALL** 16+ on computers (a Unity battle royale: source `games/stormfall/`, page `/play/stormfall`, its web build fetched at build time by `scripts/fetch-stormfall.mjs`); rated games check
+- **Play** (`/play`): thirteen games (quick: Quiz Clash, Spot the Fake, Supply Run, Recycle Rush; big:
+  Type Race, World Pin, Flood Rescue, Ocean Cleanup, Fire Line) and four 3D worlds (three.js: Skyline
+  Obby, Night Shift 18+, Orbit Breach 12+, Reef Rescue), all drawn realistically since M102–M105 (every
+  game but Quiz Clash's questions and Spot the Fake's cards is a 3D scene), plus **STORMFALL** 16+ on computers (a Unity battle royale: source `games/stormfall/`, page `/play/stormfall`, its web build fetched at build time by `scripts/fetch-stormfall.mjs`); rated games check
   the birth date or ask), solo or up to 8 friends in a room with a code (the `GameRoom` Durable
   Object), leaderboards.
 
@@ -145,8 +146,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   physical sky that lights the world, soft corner shadows on computers, clouds, rock islands, a lava sea,
   stars, planets drawn on the graphics chip, the torch's beam (`world/nature.ts`, `World.sky`, `envFrom`);
   **M103** Flood Rescue and Ocean Cleanup drawn in 3D with the same rules (`world/board.ts`); **M104** the
-  other six realistic (3D race, sorting line, satellite map, aerial town, product photos, quiz studio).
-- **Work numbers:** the next item is **M105**. Never reuse a number: take the next one after the
+  other six realistic (3D race, sorting line, satellite map, aerial town, product photos, quiz studio);
+  **M105** two new games: Fire Line (Relief) and Reef Rescue (Green, 3D).
+- **Work numbers:** the next item is **M106**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
