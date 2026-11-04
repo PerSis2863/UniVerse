@@ -26,7 +26,7 @@ export function Roll({ value, digits, className }: { value: number; digits?: num
     const c = animate(from, value, { duration: from ? 0.7 : 1.1, ease: [0.22, 1, 0.36, 1], onUpdate: write });
     return () => c.stop();
   }, [value, digits]);
-  return <span ref={ref} className={cn('tabular-nums', className)}>{fmt(value, digits)}</span>;
+  return <span ref={ref} data-no-motion className={cn('tabular-nums', className)}>{fmt(value, digits)}</span>;
 }
 
 /** A line over a soft fill, drawn left to right, with a glowing dot at the latest value. */

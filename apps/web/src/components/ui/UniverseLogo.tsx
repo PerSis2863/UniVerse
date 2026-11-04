@@ -47,7 +47,7 @@ export function UniverseLogo({
               animated && "animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_4]"
             )}
             style={{
-              background: 'radial-gradient(circle, rgba(43,53,104,0.45) 0%, rgba(6,182,212,0.3) 50%, rgba(249,115,22,0.15) 100%)',
+              background: 'radial-gradient(circle, rgba(39,39,42,0.45) 0%, rgba(6,182,212,0.3) 50%, rgba(249,115,22,0.15) 100%)',
               transform: 'scale(1.35)'
             }}
           />
@@ -56,7 +56,7 @@ export function UniverseLogo({
         <svg
           viewBox="0 0 100 100"
           className={cn(
-            "relative z-10 w-full h-full drop-shadow-[0_2px_10px_rgba(43,53,104,0.5)] transition-transform duration-300 group-hover:scale-105",
+            "relative z-10 w-full h-full drop-shadow-[0_2px_10px_rgba(39,39,42,0.5)] transition-transform duration-300 group-hover:scale-105",
             animated && "universe-logo-svg"
           )}
           fill="none"

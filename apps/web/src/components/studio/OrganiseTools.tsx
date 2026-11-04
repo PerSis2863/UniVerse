@@ -92,7 +92,7 @@ function Countdowns() {
       </form>
       <ul className="grid gap-3 sm:grid-cols-2">
         {sorted.map((c, i) => { const l = left(Date.parse(c.at), now); return (
-          <motion.li key={c.id} layout transition={spring.smooth} className="relative rounded-2xl p-4 text-white" style={{ background: `linear-gradient(135deg, ${BRANCH[i % BRANCH.length]}, #171f44)` }}>
+          <motion.li key={c.id} layout transition={spring.smooth} className="relative rounded-2xl p-4 text-white" style={{ background: `linear-gradient(135deg, ${BRANCH[i % BRANCH.length]}, #111113)` }}>
             <p className="font-semibold pe-8" translate="no">{c.name}</p>
             <p className="text-xs opacity-90">{new Date(c.at).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
             {l.past ? <p className="mt-2 text-lg font-bold">{l.d} days ago</p> : (

@@ -119,7 +119,7 @@ function Meme() {
     const c = ref.current; if (!c) return;
     const img = pic.img, W = img ? Math.min(1600, img.naturalWidth) : 1080, H = img ? Math.round((W / img.naturalWidth) * img.naturalHeight) : 1080;
     c.width = W; c.height = H; const g = c.getContext('2d')!;
-    if (img) g.drawImage(img, 0, 0, W, H); else { const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#171f44'); gr.addColorStop(1, '#533ff6'); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
+    if (img) g.drawImage(img, 0, 0, W, H); else { const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#111113'); gr.addColorStop(1, '#533ff6'); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
     const fs = (W * size) / 100; g.font = `900 ${fs}px Impact, 'Arial Black', system-ui, sans-serif`; g.textAlign = 'center'; g.lineJoin = 'round';
     g.lineWidth = fs / 7; g.strokeStyle = '#000'; g.fillStyle = '#fff';
     const wrap = (t: string) => { const words = t.toUpperCase().split(/\s+/), lines: string[] = []; let l = ''; for (const w of words) { const x = l ? `${l} ${w}` : w; if (g.measureText(x).width > W * 0.92 && l) { lines.push(l); l = w; } else l = x; } if (l) lines.push(l); return lines; };
@@ -172,7 +172,7 @@ function ColourBlind() {
   );
 }
 
-const PALETTE = ['#000000', '#ffffff', '#7f7f7f', '#c3c3c3', '#e11d48', '#f97316', '#facc15', '#22c55e', '#0ea5e9', '#533ff6', '#a855f7', '#ec74ce', '#92400e', '#065f46', '#1e3a8a', '#171f44'];
+const PALETTE = ['#000000', '#ffffff', '#7f7f7f', '#c3c3c3', '#e11d48', '#f97316', '#facc15', '#22c55e', '#0ea5e9', '#533ff6', '#a855f7', '#ec74ce', '#92400e', '#065f46', '#1e3a8a', '#111113'];
 /** Pixel art: draw on a grid with a palette, fill, pick and undo; save it sharp and big. */
 function Pixel() {
   const [p, setP] = useKept('uv-pixel-art', () => ({ n: 16, px: Array<string>(256).fill('') }));
@@ -282,7 +282,7 @@ function Metronome() {
     let raf = 0;
     const draw = () => { while (marks.length && marks[0][0] <= ctx.currentTime) setBeat(marks.shift()![1]); raf = requestAnimationFrame(draw); };
     raf = requestAnimationFrame(draw);
-    return () => { clearInterval(timer); cancelAnimationFrame(raf); void ctx.close(); setBeat(-1); };
+    return () => { clearInterval(timer); cancelAnimationFrame(raf); void ctx.close().catch(() => {}); setBeat(-1); };
   }, [on]);
   const tap = () => { const t = performance.now(); taps.current = [...taps.current.filter((x) => t - x < 3000), t]; if (taps.current.length >= 2) { const d = (taps.current[taps.current.length - 1] - taps.current[0]) / (taps.current.length - 1); setBpm(Math.max(30, Math.min(240, Math.round(60000 / d)))); } };
   return (
@@ -311,11 +311,11 @@ function Tuner() {
       const buf = new Float32Array(an.fftSize); let raf = 0, last = 0;
       const tick = (t: number) => { if (t - last > 90) { last = t; an.getFloatTimeDomainData(buf); setHz(detectPitch(buf, ctx.sampleRate)); } raf = requestAnimationFrame(tick); };
       raf = requestAnimationFrame(tick);
-      stop.current = () => { cancelAnimationFrame(raf); s.getTracks().forEach((x) => x.stop()); void ctx.close(); setOn(false); setHz(null); };
+      stop.current = () => { cancelAnimationFrame(raf); s.getTracks().forEach((x) => x.stop()); void ctx.close().catch(() => {}); setOn(false); setHz(null); };
       setOn(true);
     } catch { toast.error('The microphone isn’t available. Allow it in the browser’s settings.'); }
   };
-  const tone = () => { const ctx = new AudioContext(), o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 440; g.gain.value = 0.15; o.connect(g).connect(ctx.destination); o.start(); g.gain.setTargetAtTime(0, ctx.currentTime + 1.2, 0.1); o.stop(ctx.currentTime + 1.6); o.onended = () => void ctx.close(); };
+  const tone = () => { const ctx = new AudioContext(), o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 440; g.gain.value = 0.15; o.connect(g).connect(ctx.destination); o.start(); g.gain.setTargetAtTime(0, ctx.currentTime + 1.2, 0.1); o.stop(ctx.currentTime + 1.6); o.onended = () => void ctx.close().catch(() => {}); };
   const n = hz ? noteOf(hz) : null, good = n && Math.abs(n.cents) <= 5;
   return (
     <div className="space-y-4 text-center">
@@ -356,7 +356,7 @@ function Focus() {
     const src = ctx.createBufferSource(), gain = ctx.createGain(); src.buffer = buf; src.loop = true; gain.gain.value = 0;
     src.connect(gain).connect(ctx.destination); src.start(); gain.gain.setTargetAtTime((volRef.current / 100) * 0.5, ctx.currentTime, 0.4);
     nodes.current = { ctx, gain };
-    return () => { gain.gain.setTargetAtTime(0, ctx.currentTime, 0.2); setTimeout(() => void ctx.close(), 800); nodes.current = null; };
+    return () => { gain.gain.setTargetAtTime(0, ctx.currentTime, 0.2); setTimeout(() => void ctx.close().catch(() => {}), 800); nodes.current = null; };
   }, [on, kind]);
   return (
     <div className="space-y-4">

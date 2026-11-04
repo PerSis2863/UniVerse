@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M88 is the latest).
+  builds on it). The newest notes are at the end (M98 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -88,7 +88,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 This is only the map: each item has a note in `apps/web/STAGE-5-HANDOFF.md` (traps, rules for code
 that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 
-- **On `main`** (merged through PR #105, 3 Nov): everything through **M81**.
+- **On `main`** (merged through PR #107, 3 Nov): everything through **M88** (M82–M88 are listed below).
   - **Look and motion:** dark mode in the "Globynk" navy and Aqua Jade, light mode in Marshmallow
     White, Galactic Violet and Bubblegum Pink (M52–M57a, see §8); a less AI-looking site (M58); the
     pink river that nothing slows but Reduce Motion (M56, M56a); motion that answers the pointer (M41);
@@ -108,7 +108,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   - **Security and platform:** the security review and its fixes (M62, M78; migration 0191),
     Next.js 16.4.4 with the Cloudflare adapter 1.20.15, always moved together (M77), "too many SQL
     variables" fixed for every list (M73), 500 people a month on the $5 plan (M28).
-- **On the branch `claude/youthful-fermi-sbdtcp`, not merged:** **M82** STORMFALL on the site
+- **Merged in PR #106 (deploy fixed in #107: no source map upload, wrangler 4.150+ uploads them by
+  default and ours are over Cloudflare's 60 MiB):** **M82** STORMFALL on the site
   (`/play/stormfall`, computers, 16+; its 58 MB web build fetched at build time by
   `scripts/fetch-stormfall.mjs`) and Ridgeline Ops removed; **M83** zod 4, pdf.js 6, live air
   traffic off until the owner turns it on, this list tidied; **M84** the pink river drawn on a
@@ -117,7 +118,22 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   page (outlines worked out on a background thread), a pinch zooms the map, not the page; **M87**
   safer libraries (32 known issues → 12, none critical), wrangler 4.151.3, checks on every push;
   **M88** an API request uses about a quarter of the CPU it did (Prisma's query compiler shared).
-- **Work numbers:** the next item is **M89**. Never reuse a number: take the next one after the
+- **On the branch `claude/youthful-fermi-sbdtcp`, not merged:** **M89** busy buttons keep their size,
+  loading placeholders stay smooth while a page loads; **M90** Quick notes like Apple Notes (folders,
+  Recently deleted, tick-box lines), the search icon no longer on the text in search boxes; **M91** the
+  CreditKarma photos' look everywhere (pink kept as the one accent), no glass, and the home page's
+  per-frame work cut (wallet sway in CSS on phones, live cards and the planet at 30 a second on phones);
+  **M92** the owner console made professional (six headline cards, `FactorCard`; plain header; solid
+  ink/white tab pills everywhere), live dots that no longer repaint every frame; **M93** the landing like the
+  photos' website (two-tone headings, no navy left); **M94** the last navy and aqua moved over (maps, live
+  cards, Messages, games, editors; documents on paper and people's own colour choices left as they are);
+  **M95** a check of what to improve: the console loads each tab when opened, sounds close safely;
+  **M96** every app page ~46 KB lighter to download (the sign-in layout's file no longer rides along, rare
+  parts load when used); **M97** UniVersity and Trace scroll smoothly too (no edge beam, no blur on reveal,
+  decorative loops pause while scrolling); **M98** Trace's live board smooth (counters no longer set off
+  animations), count-ups wait for React, a 116-page sweep clean. Scheduled: the body-parser override on 5 Nov
+  (12:00 UTC).
+- **Work numbers:** the next item is **M99**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
@@ -269,6 +285,22 @@ file used only from config goes in its `BY_CONFIG` list).
 
 ## 8. Design and motion
 
+**The look now (M91, the owner, 4 Nov 2026: "use this photos and make website like this", the
+CreditKarma photos; "keep pink" as the one accent).** Black and white with soft warm light (gold, steel
+blue, olive) in the page's corners; solid cards with a hairline (white in light mode, #151517 in dark);
+the main button and every chosen tab a white pill in dark mode and an ink pill in light mode; the side
+menu near-black in both themes with a white pill for the chosen entry; headline cards in the photos'
+frosts (`--karma-dusk` steel blue into warm brown, `--karma-gold` honey, `--karma-olive` moss) with a
+thin-line icon in a circle (`.karma-icon`) and a round arrow button (`.karma-go`); big numbers in
+Urbanist with a small unit. **Pink only for the river, live dots and the number that matters**
+(`--ins-hot`); amber, green and red only for states. **No glass:** no `backdrop-filter` on cards, bars,
+the tab bar, the side menu or toasts, and no see-through card fills (they cost the most while
+scrolling on phones). The Tailwind scales are re-pointed in the M91 block at the end of `globals.css`:
+`indigo/violet/purple` are ink (light) or graphite (dark), `aqua` is white in dark mode, `zinc` neutral.
+Older notes below (M52–M57) describe the navy look this replaced; where they clash, this paragraph wins.
+Since M94 no component keeps the old navy or aqua, except documents printed on white (`src/server/`,
+certificates, CVs, report cards) and colours people choose (slide themes, course colours, accents).
+
 **Light mode (M53, the owner, 31 Oct 2026): Marshmallow White #F0F0F0, Galactic Violet #533FF6, Bubblegum
 Pink #EC74CE.** An off-white page with pink and violet light low down, white cards, ink #141320, black
 selected pills, violet accents and focus, the main button Bubblegum Pink with ink text; light mode
@@ -297,14 +329,18 @@ into deep aqua, `--karma-gold` pale aqua, `--karma-olive` navy into orchid; name
 the first two, `.karma-frost` for any card); thin-line icons sit in circles (`.karma-icon`), round ink
 arrow buttons (`.karma-go`). Type: Urbanist, served from `/fonts/urbanist` (no outside service). No
 other new hues; green, amber and red only for states. `.panel` / `.card` / `.btn-primary` /
-`.ios-segmented` carry the look, so new screens get it by using them. The river and the italic accent
-word are the brand, even where design guides call them "AI-looking" (M58: the word is solid pink, no
-gradient; no eyebrow labels above headings; mono only for numbers and data).
+`.ios-segmented` carry the look, so new screens get it by using them. The river is the brand, even where
+design guides call it "AI-looking"; since M93 a heading's key word is the photos' two-tone (`<Accent>`:
+grey heading, bright word), not M58's italic pink word (no eyebrow labels above headings; mono only for
+numbers and data).
 
 **The motion layer works on every page by itself**: pages assemble out of a blur
 (`src/lib/page-transition.ts`), titles sweep in, a light trail runs down the page (`LightTrail`),
 figures count up, bars fill, charts draw (`src/lib/scroll-motion.ts`), cards glow under the mouse
-(`.sheen`); opt a part out with `data-no-motion`. Rules: motion has a job (arriving, changing,
+(`.sheen`); opt a part out with `data-no-motion`. Decorative loops pause while the page scrolls
+(`html[data-scrolling]`, M97): add new ones to that list, never ending the selector in `*` or `> *` (that
+restyles the whole page, M98); never animate a custom property, `filter` or `background` (they repaint
+every frame). Rules: motion has a job (arriving, changing,
 answering a tap) and never makes anyone wait; nothing animated on things used many times a day;
 ease-out for arrivals with the project's curves (`--ease-glide`, `--ease-ios`, `--ease-out-soft`,
 `spring`); UI motion under 300 ms, exits faster than entrances; nothing grows from scale 0 (start

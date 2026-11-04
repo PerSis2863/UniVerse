@@ -7,9 +7,9 @@ import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 
 export function LegalShell({ eyebrow = 'Legal', title, intro, updated, children }: { eyebrow?: string; title: string; intro?: React.ReactNode; updated?: string; children: React.ReactNode }) {
   return (
-    <div className="dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#171f44', color: '#ffffff' }}>
+    <div className="dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#111113', color: '#ffffff' }}>
       <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
-        <div className="aurora-a absolute top-[-20%] start-[-35%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(43,53,104,0.22), transparent)' }} />
+        <div className="aurora-a absolute top-[-20%] start-[-35%] w-[max(80vw,760px)] h-[max(80vw,760px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(39,39,42,0.22), transparent)' }} />
         <div className="aurora-b absolute bottom-[-25%] end-[-40%] w-[max(75vw,720px)] h-[max(75vw,720px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(254,129,209,0.14), transparent)' }} />
       </div>
       <MarketingNav />

@@ -46,7 +46,7 @@ export interface GridEntry<T = unknown> {
 export type GridView = 'day' | 'days' | 'week' | 'month' | 'agenda';
 
 /** Events without a colour of their own: deep navy, like meetings in a calendar app. */
-export const EVENT_COLOR = '#27325a';
+export const EVENT_COLOR = '#202023';
 
 const VIEWS: Segment<GridView>[] = [
   { value: 'day', label: 'Day' },

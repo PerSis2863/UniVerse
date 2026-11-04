@@ -274,7 +274,7 @@ export function MarketMap() {
       for (const fl of model.flows) {
         const cx = sx(fl.c.bx), c = arcPoints([f.near(fl.o.bx, cx), sy(fl.o.by)], [cx, sy(fl.c.by)], 0.22);
         const grad = ctx.createLinearGradient(c[0], c[1], c[4], c[5]);
-        grad.addColorStop(0, f.dark ? 'rgba(203,210,230,0.10)' : 'rgba(43,53,104,0.10)');
+        grad.addColorStop(0, f.dark ? 'rgba(228,228,231,0.10)' : 'rgba(39,39,42,0.10)');
         grad.addColorStop(1, f.dark ? 'rgba(254,129,209,0.38)' : 'rgba(193,58,146,0.34)');
         ctx.strokeStyle = grad; ctx.lineWidth = 0.8 + fl.w * 1.6;
         ctx.beginPath(); ctx.moveTo(c[0], c[1]); ctx.quadraticCurveTo(c[2], c[3], c[4], c[5]); ctx.stroke();
@@ -297,9 +297,9 @@ export function MarketMap() {
     for (const o of model.origins) {
       const x = sx(o.bx), y = sy(o.by), s = 5 + Math.min(3, zf);
       ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4);
-      ctx.fillStyle = f.dark ? '#cbd2e6' : '#2b3568'; ctx.strokeStyle = f.dark ? '#0a1721' : '#ffffff'; ctx.lineWidth = 2;
+      ctx.fillStyle = f.dark ? '#e4e4e7' : '#27272a'; ctx.strokeStyle = f.dark ? '#0c0c0e' : '#ffffff'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.rect(-s / 2, -s / 2, s, s); ctx.fill(); ctx.stroke(); ctx.restore();
-      if (zoom > 3 && o.place) { ctx.font = '600 10px ui-sans-serif, system-ui'; ctx.fillStyle = f.dark ? '#cbd2e6' : '#2b3568'; ctx.textAlign = 'left'; ctx.fillText(`Made in ${city(o.place)}`, x + 9, y + 3); }
+      if (zoom > 3 && o.place) { ctx.font = '600 10px ui-sans-serif, system-ui'; ctx.fillStyle = f.dark ? '#e4e4e7' : '#27272a'; ctx.textAlign = 'left'; ctx.fillText(`Made in ${city(o.place)}`, x + 9, y + 3); }
     }
 
     // Your scans: a glow per place, a dot sized by scans, an amber arc for the likely copies. Close
@@ -354,7 +354,7 @@ export function MarketMap() {
         }
         if (on) {
           const pulse = still ? 0 : (Math.sin(t / 260) + 1) / 2;
-          ctx.strokeStyle = f.dark ? '#ffffff' : '#2b3568'; ctx.lineWidth = 1.5;
+          ctx.strokeStyle = f.dark ? '#ffffff' : '#27272a'; ctx.lineWidth = 1.5;
           ctx.beginPath(); ctx.arc(x, y, r + 6 + pulse * 2, 0, Math.PI * 2); ctx.stroke();
         }
       });
@@ -383,7 +383,7 @@ export function MarketMap() {
           taken.push(box);
           ctx.font = '600 11px ui-sans-serif, system-ui, sans-serif';
           ctx.lineWidth = 3; ctx.strokeStyle = f.dark ? 'rgba(10,23,33,0.85)' : 'rgba(255,255,255,0.9)';
-          ctx.strokeText(name, box[0], y); ctx.fillStyle = f.dark ? '#eef2fb' : '#171f44'; ctx.fillText(name, box[0], y);
+          ctx.strokeText(name, box[0], y); ctx.fillStyle = f.dark ? '#eef2fb' : '#111113'; ctx.fillText(name, box[0], y);
           ctx.font = '500 10px ui-monospace, SFMono-Regular, monospace';
           ctx.strokeText(fmt(n), box[0] + tw + 5, y); ctx.fillStyle = f.dark ? PINK_SOFT : '#a32c7b'; ctx.fillText(fmt(n), box[0] + tw + 5, y);
         }
@@ -410,10 +410,10 @@ export function MarketMap() {
           ctx.globalAlpha = e < 0.15 ? e / 0.15 : Math.pow(1 - (e - 0.15) / 0.85, 1.4);
           ctx.font = '600 11px ui-sans-serif, system-ui'; ctx.textAlign = 'center';
           const tw = ctx.measureText(rp.text).width + 14, ty = y - 22 - e * 16;
-          ctx.fillStyle = f.dark ? 'rgba(23,31,68,0.88)' : 'rgba(255,255,255,0.95)';
+          ctx.fillStyle = f.dark ? 'rgba(17,17,19,0.88)' : 'rgba(255,255,255,0.95)';
           ctx.beginPath(); ctx.roundRect(x - tw / 2, ty - 10, tw, 20, 10); ctx.fill();
           ctx.strokeStyle = rp.color; ctx.lineWidth = 1; ctx.stroke();
-          ctx.fillStyle = f.dark ? '#eef2fb' : '#171f44'; ctx.fillText(rp.text, x, ty + 0.5);
+          ctx.fillStyle = f.dark ? '#eef2fb' : '#111113'; ctx.fillText(rp.text, x, ty + 0.5);
         }
       }
       ctx.restore();
@@ -553,11 +553,11 @@ export function MarketMap() {
             className={cn('w-full rounded-t-[inherit]', full ? 'flex-1' : 'h-[58vh] min-h-[380px] max-h-[680px]')}
           >
             {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-pink-500" aria-label="Loading the map" /></div>}
-            {data?.sample && <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 dark:bg-[#171f44]/85 backdrop-blur px-3 py-1 text-[11px] font-semibold text-zinc-700 dark:text-zinc-200 shadow-sm"><Sparkles className="w-3 h-3 text-pink-500" aria-hidden />Sample data</span>}
+            {data?.sample && <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 dark:bg-[#111113]/85 backdrop-blur px-3 py-1 text-[11px] font-semibold text-zinc-700 dark:text-zinc-200 shadow-sm"><Sparkles className="w-3 h-3 text-pink-500" aria-hidden />Sample data</span>}
             {/* Controls */}
             <div className="absolute right-3 top-3 flex flex-col gap-1.5">
               {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See everything'], ['full', full ? Minimize2 : Maximize2, full ? 'Leave full screen' : 'Full screen']] as const).map(([id, Icon, label]) => (
-                <button key={id} type="button" onClick={() => control(id)} aria-label={label} title={label} className="w-9 h-9 grid place-items-center rounded-xl bg-white/90 dark:bg-[#171f44]/85 backdrop-blur text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-200/70 dark:border-white/10 hover:text-pink-600 dark:hover:text-pink-300 active:scale-95 transition">
+                <button key={id} type="button" onClick={() => control(id)} aria-label={label} title={label} className="w-9 h-9 grid place-items-center rounded-xl bg-white/90 dark:bg-[#111113]/85 backdrop-blur text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-200/70 dark:border-white/10 hover:text-pink-600 dark:hover:text-pink-300 active:scale-95 transition">
                   <Icon className="w-4 h-4" aria-hidden />
                 </button>
               ))}
@@ -567,7 +567,7 @@ export function MarketMap() {
               <AnimatePresence initial={false}>
                 {feed.slice(0, 3).map((s) => (
                   <motion.li key={s.id} layout initial={{ opacity: 0, x: 24, scale: 0.96 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.18 } }} transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                    className="flex items-center gap-2 rounded-xl bg-white/92 dark:bg-[#171f44]/88 backdrop-blur px-3 py-2 text-xs shadow-sm border border-zinc-200/70 dark:border-white/10">
+                    className="flex items-center gap-2 rounded-xl bg-white/92 dark:bg-[#111113]/88 backdrop-blur px-3 py-2 text-xs shadow-sm border border-zinc-200/70 dark:border-white/10">
                     <Radio className={cn('w-3.5 h-3.5 shrink-0', s.verdict === 'SUSPECT' ? 'text-amber-500' : 'text-pink-500')} aria-hidden />
                     <span className="min-w-0 flex-1 truncate font-semibold text-zinc-800 dark:text-zinc-100">{city(s.place)}</span>
                     <span className="shrink-0 text-zinc-500">{s.sample ? 'sample · ' : ''}{s.verdict === 'SUSPECT' ? 'likely copy' : 'genuine'}</span>
@@ -576,7 +576,7 @@ export function MarketMap() {
               </AnimatePresence>
             </ul>
             {/* Legend */}
-            <div className="absolute left-3 bottom-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#171f44]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
+            <div className="absolute left-3 bottom-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#111113]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
               <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_#fe81d1]" />Scans (bigger = more)</span>
               <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full border-2 border-amber-500" />Likely copies</span>
               {model?.origins.length ? <span className="flex items-center gap-2"><span className="w-2 h-2 rotate-45 bg-zinc-700 dark:bg-zinc-300" />Where it’s made</span> : null}
@@ -587,7 +587,7 @@ export function MarketMap() {
               <AnimatePresence>
                 {hovered && (
                   <motion.div key={`${hover?.kind}-${hover?.i}`} initial={{ opacity: 0, scale: 0.94, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-                    className="min-w-44 max-w-64 rounded-xl bg-white dark:bg-[#171f44] px-3 py-2.5 text-xs shadow-xl border border-zinc-200 dark:border-white/10">
+                    className="min-w-44 max-w-64 rounded-xl bg-white dark:bg-[#111113] px-3 py-2.5 text-xs shadow-xl border border-zinc-200 dark:border-white/10">
                     {'scans' in hovered ? (
                       <>
                         <p className="font-bold text-zinc-900 dark:text-white">{flag(ccOf(hovered.place, hovered.country))} {hovered.place ?? 'Unknown place'}</p>
@@ -609,7 +609,7 @@ export function MarketMap() {
             {/* Empty */}
             {data && !model?.cells.length && (
               <div className="absolute inset-0 grid place-items-center p-6 pointer-events-none">
-                <div className="pointer-events-auto max-w-sm text-center rounded-2xl bg-white/92 dark:bg-[#171f44]/90 backdrop-blur p-6 shadow-xl border border-zinc-200/70 dark:border-white/10">
+                <div className="pointer-events-auto max-w-sm text-center rounded-2xl bg-white/92 dark:bg-[#111113]/90 backdrop-blur p-6 shadow-xl border border-zinc-200/70 dark:border-white/10">
                   <p className="font-bold text-zinc-900 dark:text-white">No scans in this period yet.</p>
                   <p className="mt-1 text-sm text-zinc-500">Each scan of one of your codes lights up its city here, live.</p>
                   {!data.sample && <button type="button" onClick={() => void tryDemo()} disabled={busy} className="btn-primary mt-4">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}Try it with a sample product</button>}
@@ -619,7 +619,7 @@ export function MarketMap() {
             {/* PRO teaser */}
             <AnimatePresence>
               {locked && market?.locked && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 grid place-items-center p-4 bg-[#171f44]/40 backdrop-blur-[2px]">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 grid place-items-center p-4 bg-[#111113]/40 backdrop-blur-[2px]">
                   <motion.div initial={{ y: 16, scale: 0.97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 8, scale: 0.98 }} transition={{ type: 'spring', stiffness: 360, damping: 30 }} className="relative max-w-md rounded-3xl trace-hero text-white p-7 shadow-2xl">
                     <button type="button" onClick={() => setLocked(false)} aria-label="Close" className="absolute right-3 top-3 w-8 h-8 grid place-items-center rounded-full hover:bg-white/10"><X className="w-4 h-4" /></button>
                     <span className="passport-pill">PRO</span>

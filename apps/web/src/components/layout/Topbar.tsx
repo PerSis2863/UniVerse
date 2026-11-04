@@ -14,12 +14,15 @@ import useSWR from 'swr';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
-import { EmailNotificationsSwitch } from '@/components/notifications/EmailNotificationsSwitch';
 import { Segmented } from '@/components/ui/Segmented';
 import { setPageTitle } from '@/lib/chrome';
 import { spring } from '@/lib/motion';
 import { crumbsFor } from '@/lib/breadcrumbs';
 import { navByRole } from './Sidebar';
+import dynamic from 'next/dynamic';
+
+// Loads when the notifications panel opens (M96: it was in every app page's first load).
+const EmailNotificationsSwitch = dynamic(() => import('@/components/notifications/EmailNotificationsSwitch').then((m) => m.EmailNotificationsSwitch), { ssr: false });
 
 type ApiNotification = { id: string; title: string; body: string; type: string; read: boolean; link: string | null; createdAt: string };
 const NOTIF_ICON: Record<string, string> = { info: '🔔', success: '✅', warning: '⚠️', error: '⛔', message: '💬', grade: '🎓', event: '📅', announcement: '📣', chat: '💬', call: '📞' };

@@ -302,7 +302,7 @@ function WarrantyCard({ code, warranty, suspect }: { code: string; warranty: Non
 }
 
 function Stars({ n, size = 'w-4 h-4' }: { n: number; size?: string }) {
-  return <span className="inline-flex" aria-label={`${n} of 5 stars`}>{[1, 2, 3, 4, 5].map((i) => <Star key={i} className={cn(size, i <= Math.round(n) ? 'fill-amber-300 text-amber-300' : 'text-zinc-600')} aria-hidden />)}</span>;
+  return <span role="img" className="inline-flex" aria-label={`${n} of 5 stars`}>{[1, 2, 3, 4, 5].map((i) => <Star key={i} className={cn(size, i <= Math.round(n) ? 'fill-amber-300 text-amber-300' : 'text-zinc-600')} aria-hidden />)}</span>;
 }
 
 function ReviewsCard({ code, data }: { code: string; data: Passport }) {

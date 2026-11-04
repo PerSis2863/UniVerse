@@ -60,7 +60,7 @@ export function ScreenEffect({ effect, onDone }: { effect: MessageEffect; onDone
       const fade = t > DURATION - 600 ? Math.max(0, (DURATION - t) / 600) : 1;
       if (effect === 'lasers') {
         // Beams sweeping from the bottom corners over a dimmed chat.
-        ctx.fillStyle = `rgba(23, 31, 68, ${0.45 * fade})`;
+        ctx.fillStyle = `rgba(17, 17, 19, ${0.45 * fade})`;
         ctx.fillRect(0, 0, w, h);
         ctx.globalCompositeOperation = 'lighter';
         for (let i = 0; i < 6; i++) {

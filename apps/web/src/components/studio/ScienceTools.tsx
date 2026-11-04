@@ -88,10 +88,10 @@ function ClockQuiz() {
   return (
     <div className="grid gap-4 sm:grid-cols-[220px_1fr] items-start">
       <svg viewBox="0 0 200 200" className="w-full max-w-[220px]" role="img" aria-label={`A clock showing ${clockWords(t.h, t.m)}`}>
-        <circle cx="100" cy="100" r="94" fill="#ffffff" stroke="#171f44" strokeWidth="5" />
-        {Array.from({ length: 60 }, (_, i) => { const a = (i * 6 * Math.PI) / 180, r1 = i % 5 ? 84 : 78; return <line key={i} x1={100 + r1 * Math.sin(a)} y1={100 - r1 * Math.cos(a)} x2={100 + 89 * Math.sin(a)} y2={100 - 89 * Math.cos(a)} stroke="#171f44" strokeWidth={i % 5 ? 1 : 2.5} />; })}
-        {Array.from({ length: 12 }, (_, i) => { const a = ((i + 1) * 30 * Math.PI) / 180; return <text key={i} x={100 + 64 * Math.sin(a)} y={106 - 64 * Math.cos(a)} textAnchor="middle" fontSize="16" fontWeight="700" fill="#171f44" fontFamily="system-ui">{i + 1}</text>; })}
-        {hand(ha, 46, 7, '#171f44')}{hand(ma, 70, 4, '#ec4899')}<circle cx="100" cy="100" r="6" fill="#171f44" />
+        <circle cx="100" cy="100" r="94" fill="#ffffff" stroke="#111113" strokeWidth="5" />
+        {Array.from({ length: 60 }, (_, i) => { const a = (i * 6 * Math.PI) / 180, r1 = i % 5 ? 84 : 78; return <line key={i} x1={100 + r1 * Math.sin(a)} y1={100 - r1 * Math.cos(a)} x2={100 + 89 * Math.sin(a)} y2={100 - 89 * Math.cos(a)} stroke="#111113" strokeWidth={i % 5 ? 1 : 2.5} />; })}
+        {Array.from({ length: 12 }, (_, i) => { const a = ((i + 1) * 30 * Math.PI) / 180; return <text key={i} x={100 + 64 * Math.sin(a)} y={106 - 64 * Math.cos(a)} textAnchor="middle" fontSize="16" fontWeight="700" fill="#111113" fontFamily="system-ui">{i + 1}</text>; })}
+        {hand(ha, 46, 7, '#111113')}{hand(ma, 70, 4, '#ec4899')}<circle cx="100" cy="100" r="6" fill="#111113" />
       </svg>
       <div className="space-y-3">
         <div className="flex flex-wrap gap-2 items-end"><Field label="Hour"><input type="number" min={1} max={12} className="input w-20" value={t.h} onChange={(e) => setT({ ...t, h: Math.max(1, Math.min(12, +e.target.value || 12)) })} /></Field><Field label="Minutes"><input type="number" min={0} max={59} className="input w-20" value={t.m} onChange={(e) => setT({ ...t, m: Math.max(0, Math.min(59, +e.target.value || 0)) })} /></Field></div>
@@ -117,8 +117,8 @@ function NumberLine() {
     <div className="space-y-3">
       <Field label="Numbers (fractions like 3/4 are fine)"><input className="input font-mono" value={t} onChange={(e) => setT(e.target.value)} /></Field>
       <svg viewBox={`0 0 ${W} 120`} className="w-full rounded-xl bg-white ring-1 ring-black/10" role="img" aria-label={`Number line: ${sorted.map((x) => x.s).join(' < ')}`}>
-        <line x1={20} x2={W - 20} y1={70} y2={70} stroke="#171f44" strokeWidth={2} />
-        {Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).map((n) => <g key={n}><line x1={X(n)} x2={X(n)} y1={62} y2={78} stroke="#171f44" strokeWidth={n === 0 ? 3 : 1.5} /><text x={X(n)} y={98} textAnchor="middle" fontSize={14} fill="#171f44" fontFamily="ui-monospace,monospace">{n}</text></g>)}
+        <line x1={20} x2={W - 20} y1={70} y2={70} stroke="#111113" strokeWidth={2} />
+        {Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).map((n) => <g key={n}><line x1={X(n)} x2={X(n)} y1={62} y2={78} stroke="#111113" strokeWidth={n === 0 ? 3 : 1.5} /><text x={X(n)} y={98} textAnchor="middle" fontSize={14} fill="#111113" fontFamily="ui-monospace,monospace">{n}</text></g>)}
         {sorted.map((x, i) => <motion.g key={x.s + i} initial={false} animate={{ x: X(x.v) }} transition={spring.smooth}><circle cx={0} cy={70} r={7} fill={BRANCH[i % BRANCH.length]} /><text x={0} y={i % 2 ? 46 : 32} textAnchor="middle" fontSize={13} fontWeight={700} fill={BRANCH[i % BRANCH.length]} fontFamily="ui-monospace,monospace">{x.s}</text></motion.g>)}
       </svg>
       <p className="font-mono text-sm text-zinc-900 dark:text-white" role="status">{sorted.map((x) => x.s).join('  <  ')}</p>
@@ -164,7 +164,7 @@ function History() {
       <form onSubmit={(e) => { e.preventDefault(); const yr = parseInt(y, 10); if (Number.isFinite(yr) && w.trim()) { setEvs([...evs, { id: uid(), year: yr, what: w.trim() }]); setY(''); setW(''); } }} className="flex flex-wrap items-end gap-2"><Field label="Year (BC as minus)"><input className="input w-28 font-mono" inputMode="numeric" value={y} onChange={(e) => setY(e.target.value)} /></Field><Field label="What happened"><input className="input" value={w} onChange={(e) => setW(e.target.value)} /></Field><button type="submit" className="btn-primary btn-sm"><Plus className="w-4 h-4" aria-hidden />Add</button><Btn onClick={() => printOnly('history-sheet')}><Printer className="w-3.5 h-3.5" aria-hidden />Print</Btn></form>
       <div tabIndex={0} role="region" aria-label="Timeline" className="relative overflow-x-auto rounded-xl bg-white ring-1 ring-black/10 focus-visible:outline-2 focus-visible:outline-pink-500">
         <svg id="history-sheet" viewBox={`0 0 ${W} 240`} width={W} height={240} fontFamily="system-ui" role="img" aria-label={s.map((e) => `${e.year}: ${e.what}`).join('; ')}>
-          <line x1={30} x2={W - 30} y1={120} y2={120} stroke="#171f44" strokeWidth={3} strokeLinecap="round" />
+          <line x1={30} x2={W - 30} y1={120} y2={120} stroke="#111113" strokeWidth={3} strokeLinecap="round" />
           {s.map((e, i) => { const up = i % 2 === 0, x = xAt(e.year); return <g key={e.id}><line x1={x} x2={x} y1={120} y2={up ? 70 : 170} stroke={BRANCH[i % BRANCH.length]} strokeWidth={2} /><circle cx={x} cy={120} r={6} fill={BRANCH[i % BRANCH.length]} /><text x={x} y={up ? 52 : 196} textAnchor="middle" fontSize={15} fontWeight={800} fill="#141320">{e.year < 0 ? `${-e.year} BC` : e.year}</text><text x={x} y={up ? 68 : 212} textAnchor="middle" fontSize={12} fill="#3f4459">{e.what.slice(0, 26)}</text></g>; })}
         </svg>
       </div>
@@ -210,8 +210,8 @@ function Trig() {
       <svg viewBox="0 0 220 220" className="w-full max-w-[240px] rounded-xl bg-white ring-1 ring-black/10 touch-none" role="img" aria-label={`Unit circle at ${a} degrees`}
         onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)} onPointerMove={(e) => { if (!e.buttons) return; const b = e.currentTarget.getBoundingClientRect(), x = ((e.clientX - b.left) / b.width) * 220 - 110, y = 110 - ((e.clientY - b.top) / b.height) * 220; setA(Math.round(((Math.atan2(y, x) * 180) / Math.PI + 360) % 360)); }}>
         <line x1="10" x2="210" y1="110" y2="110" stroke="#c7cad6" /><line y1="10" y2="210" x1="110" x2="110" stroke="#c7cad6" />
-        <circle cx="110" cy="110" r="90" fill="none" stroke="#171f44" strokeWidth="2" />
-        <line x1="110" y1="110" x2={P[0]} y2={P[1]} stroke="#171f44" strokeWidth="2.5" />
+        <circle cx="110" cy="110" r="90" fill="none" stroke="#111113" strokeWidth="2" />
+        <line x1="110" y1="110" x2={P[0]} y2={P[1]} stroke="#111113" strokeWidth="2.5" />
         <line x1={P[0]} y1="110" x2={P[0]} y2={P[1]} stroke="#ec4899" strokeWidth="3" /><line x1="110" y1="110" x2={P[0]} y2="110" stroke="#533ff6" strokeWidth="3" />
         <circle cx={P[0]} cy={P[1]} r="7" fill="#ec4899" />
       </svg>
@@ -238,7 +238,7 @@ function Triangle() {
         <Btn onClick={() => setV({ a: '', b: '', c: '', A: '', B: '', C: '' })}>Clear</Btn>
         {err ? <p role="status" className="text-sm text-zinc-600 dark:text-zinc-300">{err}</p> : r && <dl className="grid grid-cols-3 gap-2 text-sm">{[['a', r.a], ['b', r.b], ['c', r.c], ['A', r.A], ['B', r.B], ['C', r.C], ['Area', r.area], ['Perimeter', r.perimeter]].map(([k, x]) => <Stat key={k as string} k={k as string} v={`${nf(x as number, 3)}${/^[ABC]$/.test(k as string) ? '°' : ''}`} />)}</dl>}
       </div>
-      {pts && <svg viewBox="0 0 240 210" className="w-full rounded-xl bg-white ring-1 ring-black/10" role="img" aria-label="The triangle"><polygon points={pts.map((p) => p.join(',')).join(' ')} fill="#ec74ce33" stroke="#ec4899" strokeWidth={2.5} />{(['A', 'B', 'C'] as const).map((k, i) => <text key={k} x={pts[i][0] + (i === 1 ? 6 : i === 0 ? -14 : 0)} y={pts[i][1] + (i === 2 ? -8 : 16)} fontSize={14} fontWeight={700} fill="#171f44" fontFamily="system-ui">{k}</text>)}</svg>}
+      {pts && <svg viewBox="0 0 240 210" className="w-full rounded-xl bg-white ring-1 ring-black/10" role="img" aria-label="The triangle"><polygon points={pts.map((p) => p.join(',')).join(' ')} fill="#ec74ce33" stroke="#ec4899" strokeWidth={2.5} />{(['A', 'B', 'C'] as const).map((k, i) => <text key={k} x={pts[i][0] + (i === 1 ? 6 : i === 0 ? -14 : 0)} y={pts[i][1] + (i === 2 ? -8 : 16)} fontSize={14} fontWeight={700} fill="#111113" fontFamily="system-ui">{k}</text>)}</svg>}
     </div>
   );
 }

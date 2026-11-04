@@ -149,7 +149,7 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
 
     // Sky, two layers of skyline that drift with the helicopter.
     const sky = ctx.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, '#0b1620'); sky.addColorStop(0.6, '#222c5a'); sky.addColorStop(1, '#2b3568');
+    sky.addColorStop(0, '#0b1620'); sky.addColorStop(0.6, '#1d1d20'); sky.addColorStop(1, '#27272a');
     ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
     if (s.flash > 0) { s.flash = Math.max(0, s.flash - dt * 2.5); ctx.fillStyle = `rgba(226,232,240,${s.flash * 0.45})`; ctx.fillRect(0, 0, w, h); }
     const par = (hl.x / w - 0.5);
@@ -267,7 +267,7 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
     }
     ctx.stroke();
     drawEffects(ctx, s.parts, s.floats, dt);
-    ctx.fillStyle = 'rgba(29,38,80,0.75)'; ctx.beginPath(); ctx.roundRect(12, 12, 250, 32, 10); ctx.fill();
+    ctx.fillStyle = 'rgba(21,21,23,0.75)'; ctx.beginPath(); ctx.roundRect(12, 12, 250, 32, 10); ctx.fill();
     ctx.font = '600 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffc0e6'; ctx.fillText(`Aboard ${s.aboard.length}/${CAPACITY}`, 22, 28);
     ctx.fillStyle = '#86efac'; ctx.fillText(`Saved ${s.saved}`, 112, 28);

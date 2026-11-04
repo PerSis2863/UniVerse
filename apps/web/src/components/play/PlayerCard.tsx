@@ -49,7 +49,7 @@ export function PlayerCard({ xp }: { xp: number }) {
               const locked = c.level > level, on = look.color === c.id;
               return (
                 <button key={c.id} type="button" role="radio" aria-checked={on} disabled={locked} onClick={() => pick({ ...look, color: c.id })} title={locked ? `Unlocks at level ${c.level}` : c.id}
-                  className={cn('relative grid h-9 w-9 place-items-center rounded-full ring-2 transition-transform duration-150 active:scale-95', on ? 'ring-pink-500 ring-offset-2 ring-offset-white dark:ring-offset-[#1d2650]' : 'ring-black/10 dark:ring-white/15', locked && 'opacity-45')}
+                  className={cn('relative grid h-9 w-9 place-items-center rounded-full ring-2 transition-transform duration-150 active:scale-95', on ? 'ring-pink-500 ring-offset-2 ring-offset-white dark:ring-offset-[#151517]' : 'ring-black/10 dark:ring-white/15', locked && 'opacity-45')}
                   style={{ background: c.hex }}>
                   <span className="sr-only">{c.id}{locked ? `, unlocks at level ${c.level}` : ''}</span>
                   {locked && <Lock className="h-3.5 w-3.5 text-white drop-shadow" aria-hidden />}

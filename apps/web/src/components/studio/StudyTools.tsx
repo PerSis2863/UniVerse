@@ -297,7 +297,7 @@ function WordSearch() {
   );
 }
 
-const THEMES = [{ name: 'Navy', ink: '#171f44', accent: '#ec74ce', paper: '#fffdf8' }, { name: 'Violet', ink: '#2e1f8f', accent: '#533ff6', paper: '#ffffff' }, { name: 'Gold', ink: '#3b2a10', accent: '#b8860b', paper: '#fffaf0' }];
+const THEMES = [{ name: 'Navy', ink: '#111113', accent: '#ec74ce', paper: '#fffdf8' }, { name: 'Violet', ink: '#2e1f8f', accent: '#533ff6', paper: '#ffffff' }, { name: 'Gold', ink: '#3b2a10', accent: '#b8860b', paper: '#fffaf0' }];
 /** Certificate maker: a name, what for, a date and a signature line, as a picture. */
 function Certificate() {
   const [f, setF] = useKept('uv-certificate', () => ({ title: 'Certificate of Achievement', name: 'Alex Morgan', why: 'for outstanding work in the Science Fair', by: 'Ms Rivera, Head of Science', date: today(), theme: 0 }));
@@ -417,7 +417,7 @@ function Noise() {
         raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
-      stop.current = () => { cancelAnimationFrame(raf); stream.getTracks().forEach((t) => t.stop()); void ctx.close(); setOn(false); setLevel(0); };
+      stop.current = () => { cancelAnimationFrame(raf); stream.getTracks().forEach((t) => t.stop()); void ctx.close().catch(() => {}); setOn(false); setLevel(0); };
       setOn(true);
     } catch { toast.error('The microphone isn’t available. Allow it in the browser’s settings.'); }
   };

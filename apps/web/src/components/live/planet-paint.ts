@@ -100,26 +100,26 @@ function bodySprite(r: number, dpr: number) {
   const m = size / 2;
   // The atmosphere: Aqua Jade just outside the rim, fading out.
   const atm = g.createRadialGradient(m, m, r * 0.9, m, m, r * 1.45);
-  atm.addColorStop(0, 'rgba(116,255,237,0)');
-  atm.addColorStop(0.14, 'rgba(116,255,237,0.4)');
-  atm.addColorStop(0.34, 'rgba(60,200,220,0.16)');
-  atm.addColorStop(1, 'rgba(60,200,220,0)');
+  atm.addColorStop(0, 'rgba(240,214,160,0)');
+  atm.addColorStop(0.14, 'rgba(240,214,160,0.32)');
+  atm.addColorStop(0.34, 'rgba(200,170,120,0.12)');
+  atm.addColorStop(1, 'rgba(200,170,120,0)');
   g.fillStyle = atm;
   g.fillRect(0, 0, size, size);
   // The body: glassy, a teal light glowing inside it (the "Globynk" globe), lit from the top left,
   // darker at the far rim.
   const body = g.createRadialGradient(m - r * 0.3, m - r * 0.35, r * 0.05, m, m + r * 0.1, r);
-  body.addColorStop(0, 'rgba(160,255,242,0.4)');
-  body.addColorStop(0.35, 'rgba(70,200,205,0.32)');
-  body.addColorStop(0.75, 'rgba(24,70,110,0.4)');
-  body.addColorStop(1, 'rgba(12,22,56,0.6)');
+  body.addColorStop(0, 'rgba(250,244,232,0.3)');
+  body.addColorStop(0.35, 'rgba(176,164,146,0.22)');
+  body.addColorStop(0.75, 'rgba(58,56,54,0.4)');
+  body.addColorStop(1, 'rgba(18,18,20,0.62)');
   g.fillStyle = body;
   g.beginPath(); g.arc(m, m, r, 0, Math.PI * 2); g.fill();
   // A thin bright rim on the lit side.
   const rim = g.createLinearGradient(m - r, m - r, m + r, m + r);
-  rim.addColorStop(0, 'rgba(166,255,243,0.75)');
-  rim.addColorStop(0.5, 'rgba(116,255,237,0.12)');
-  rim.addColorStop(1, 'rgba(116,255,237,0.02)');
+  rim.addColorStop(0, 'rgba(255,244,222,0.7)');
+  rim.addColorStop(0.5, 'rgba(240,214,160,0.12)');
+  rim.addColorStop(1, 'rgba(240,214,160,0.02)');
   g.strokeStyle = rim; g.lineWidth = 1.2;
   g.beginPath(); g.arc(m, m, r - 0.6, 0, Math.PI * 2); g.stroke();
   return { c, size };
@@ -192,7 +192,7 @@ export function drawPlanet(s: PlanetState, { ctx, w, h, t, pointer, still }: Pai
 
   // Faint stars behind, twinkling.
   for (let i = 0; i < 60; i++) {
-    ctx.fillStyle = `rgba(220,240,255,${(0.1 + 0.18 * (0.5 + 0.5 * Math.sin(t * 0.9 + i * 1.7))) * grow})`;
+    ctx.fillStyle = `rgba(240,236,228,${(0.1 + 0.18 * (0.5 + 0.5 * Math.sin(t * 0.9 + i * 1.7))) * grow})`;
     ctx.fillRect(seeded(i + 40) * w, seeded(i + 140) * h, 1, 1);
   }
 
@@ -207,9 +207,9 @@ export function drawPlanet(s: PlanetState, { ctx, w, h, t, pointer, still }: Pai
   // The dots: the far side faint (land only, showing through), the near side lit; land brighter
   // than sea, round and soft.
   const proj = model.proj;
-  const LAND = [dotSprite('214,255,250'), dotSprite('116,255,237'), dotSprite(TONES.pink)], SEA = [dotSprite('140,165,255'), dotSprite('186,160,255')];
+  const LAND = [dotSprite('214,255,250'), dotSprite('240,204,138'), dotSprite(TONES.pink)], SEA = [dotSprite('140,165,255'), dotSprite('186,160,255')];
   const scale = Math.max(0.85, r / 170);
-  ctx.fillStyle = 'rgb(140,155,255)';
+  ctx.fillStyle = 'rgb(150,180,208)';
   for (let i = 0; i < dots.length; i++) {
     const d = dots[i], q = rot(d.v);
     proj[i * 3] = cx + q[0] * r; proj[i * 3 + 1] = cy - q[1] * r; proj[i * 3 + 2] = q[2];
@@ -241,7 +241,7 @@ export function drawPlanet(s: PlanetState, { ctx, w, h, t, pointer, still }: Pai
       if (z < lo || z >= hi) continue;
       ctx.moveTo(proj[a * 3], proj[a * 3 + 1]); ctx.lineTo(proj[b * 3], proj[b * 3 + 1]);
     }
-    ctx.strokeStyle = `rgba(170,255,244,${alpha * grow})`;
+    ctx.strokeStyle = `rgba(236,230,218,${alpha * grow})`;
     ctx.stroke();
   };
   if (!interactive) {
@@ -400,7 +400,7 @@ export function drawPlanet(s: PlanetState, { ctx, w, h, t, pointer, still }: Pai
     ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10); ctx.fill();
     ctx.fillStyle = `rgb(${TONES[p.tone]})`;
     ctx.beginPath(); ctx.arc(bx + 10, by + bh / 2, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#171f44';
+    ctx.fillStyle = '#111113';
     ctx.fillText(text, bx + 17, by + bh / 2 + 0.5);
     ctx.globalAlpha = 1;
   });

@@ -44,7 +44,7 @@ export function Schedule({ slots, from, to, className }: { slots: Slot[]; from: 
         {now >= from && now <= to && (
           <li aria-hidden className="pointer-events-none absolute inset-y-0 start-28 end-0">
             <span className="absolute inset-y-[-4px] w-px bg-pink-500 shadow-[0_0_10px_rgba(254,129,209,0.9)]" style={{ insetInlineStart: pos(now) }}>
-              <span className="absolute -bottom-5 -translate-x-1/2 rounded-full bg-pink-500 px-1.5 text-[11px] font-semibold text-[#171f44] tabular-nums">now</span>
+              <span className="absolute -bottom-5 -translate-x-1/2 rounded-full bg-pink-500 px-1.5 text-[11px] font-semibold text-[#111113] tabular-nums">now</span>
             </span>
           </li>
         )}

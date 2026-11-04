@@ -37,14 +37,14 @@ export function Statement() {
   return (
     <section className="px-3 sm:px-6 py-16">
       <div ref={ref} className="relative max-w-7xl mx-auto overflow-hidden rounded-[2rem] px-6 py-20 sm:py-28 text-center"
-        style={{ background: 'linear-gradient(120deg, #a0a9cc 0%, #cbd2e6 35%, #ffd6f0 65%, #ffd6f0 100%)' }}>
+        style={{ background: 'linear-gradient(120deg, #e3c98e 0%, #f2e2b6 35%, #ffd6f0 70%, #ffd6f0 100%)' }}>
         <div aria-hidden className="absolute inset-0 opacity-50" style={{ backgroundImage: 'radial-gradient(rgba(24,26,33,0.25) 1px, transparent 1.2px)', backgroundSize: '22px 22px' }} />
         <div className="relative">
-          <p className="relative min-h-[1.2em] text-4xl sm:text-6xl font-bold tracking-tight text-[#1d2650]">
+          <p className="relative min-h-[1.2em] text-4xl sm:text-6xl font-bold tracking-tight text-[#151517]">
             <span className="sr-only">{LINES.join(' ')}</span>
             <span aria-hidden>{text}</span><span aria-hidden className="inline-block w-[3px] h-[0.9em] -mb-[0.1em] ms-1 bg-[#24262e] animate-pulse" />
           </p>
-          <div className="mt-12 inline-flex w-20 h-20 rounded-3xl bg-[#131a3d] items-center justify-center shadow-[0_20px_50px_-15px_rgba(36,38,46,0.7)]">
+          <div className="mt-12 inline-flex w-20 h-20 rounded-3xl bg-[#0f0f11] items-center justify-center shadow-[0_20px_50px_-15px_rgba(36,38,46,0.7)]">
             <UniverseLogo size="sm" animated />
           </div>
         </div>

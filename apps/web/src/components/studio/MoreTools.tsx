@@ -284,7 +284,7 @@ function Present() {
       <Field label="Slides (Markdown, --- between slides)"><textarea className={cn(area, 'min-h-[200px]')} value={t} onChange={(e) => setT(e.target.value)} /></Field>
       <div ref={box} className={cn('relative grid place-items-center bg-white text-[#141320] rounded-2xl ring-1 ring-black/10 overflow-hidden', full ? 'fixed inset-0 z-50 rounded-none' : 'aspect-video')}>
         <iframe title={`Slide ${at + 1}`} sandbox="" className="w-full h-full pointer-events-none" srcDoc={`<style>body{margin:0;height:100vh;display:grid;place-content:center;font:4vw/1.3 system-ui,sans-serif;color:#141320;padding:0 8vw}h1{font-size:8vw;margin:0}h2{font-size:6vw;margin:0 0 2vw}li{margin:.5vw 0}</style>${markdownToHtml(slides[at] ?? '')}`} />
-        <div className="absolute bottom-3 end-3 flex items-center gap-1 rounded-full bg-[#171f44]/85 text-white px-2 py-1">
+        <div className="absolute bottom-3 end-3 flex items-center gap-1 rounded-full bg-[#111113]/85 text-white px-2 py-1">
           <button type="button" aria-label="Previous slide" onClick={() => setI(Math.max(0, at - 1))} className="p-1"><ChevronLeft className="w-4 h-4 rtl:rotate-180" /></button>
           <span className="font-mono text-xs">{at + 1}/{slides.length}</span>
           <button type="button" aria-label="Next slide" onClick={() => setI(Math.min(slides.length - 1, at + 1))} className="p-1"><ChevronRight className="w-4 h-4 rtl:rotate-180" /></button>
@@ -340,13 +340,13 @@ function Contrast() {
 
 /** A colour as HEX, RGB and HSL. */
 function ColourConvert() {
-  const [v, setV] = useState('#74ffed');
+  const [v, setV] = useState('#f0cc8a');
   const rgb = hexRgb(v), hsl = rgb ? rgbHsl(rgb) : null;
   const rows: [string, string][] = rgb && hsl ? [['HEX', v.startsWith('#') ? v : `#${v}`], ['RGB', `rgb(${rgb.join(', ')})`], ['HSL', `hsl(${hsl[0]}, ${hsl[1]}%, ${hsl[2]}%)`]] : [];
   return (
     <div className="space-y-3">
       <div className="flex items-end gap-2"><input type="color" value={rgb ? (v.startsWith('#') ? v : `#${v}`) : '#000000'} onChange={(e) => setV(e.target.value)} className="h-10 w-12" aria-label="Pick a colour" /><Field label="HEX"><input className="input w-32 font-mono" value={v} onChange={(e) => setV(e.target.value)} /></Field></div>
-      {rows.length ? <ul className="space-y-1.5">{rows.map(([k, x]) => <li key={k} className="flex items-center gap-2"><span className="w-12 text-xs font-semibold">{k}</span><code className="flex-1 rounded-lg bg-zinc-100 dark:bg-white/[0.06] px-2 py-1">{x}</code><button type="button" aria-label={`Copy ${k}`} onClick={() => void copy(x)} className="p-1"><Copy className="w-4 h-4" /></button></li>)}</ul> : <p className="text-sm text-rose-600 dark:text-rose-300">Type a colour like #74ffed.</p>}
+      {rows.length ? <ul className="space-y-1.5">{rows.map(([k, x]) => <li key={k} className="flex items-center gap-2"><span className="w-12 text-xs font-semibold">{k}</span><code className="flex-1 rounded-lg bg-zinc-100 dark:bg-white/[0.06] px-2 py-1">{x}</code><button type="button" aria-label={`Copy ${k}`} onClick={() => void copy(x)} className="p-1"><Copy className="w-4 h-4" /></button></li>)}</ul> : <p className="text-sm text-rose-600 dark:text-rose-300">Type a colour like #f0cc8a.</p>}
     </div>
   );
 }

@@ -12,27 +12,35 @@ import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { TabPanel, TabPill } from '@/components/ui/Glide';
 import { ConsoleSkeleton, heavy, type Rec, type Schema, RecordEditor, SearchBox, card, downloadCsv, errorMessage, fetcher, field, formatValue, matches, refreshConsole, summarize, toastWithUndo, undoChange, useDebounced } from './shared';
-import { PersonPanel } from './person';
-import { ErrorsPanel } from './errors';
-import { DeletionsPanel } from './deletions';
-import { GuidePanel } from './guide';
-import { FlowsPanel } from './flows';
 import { DeckHeader, DeckNav, TABS, type Tab } from './deck';
 import { Overview } from './overview';
 import { ServerPanel } from './server';
-import { AnnouncePanel, ChatsPanel, ComposeDialog } from './chats';
-import { DatabasePanel } from './database';
-import { HealthPanel } from './health';
-import { HealthNumbersPanel } from './health-numbers';
-import { ModerationPanel, SchoolsPanel } from './schools';
-import { BusinessPanel } from './business';
-import { LanguagesPanel } from './languages';
-import { BlogPanel } from './blog';
-import { CallsPanel } from './calls';
 import { AnalyticsPanel, ConsoleSearch, type Go, MoneyPanel, useAttention } from './insights';
 import { useActivePoll } from '@/lib/realtime-client';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { LoadError } from '@/components/ui/LoadError';
+import dynamic from 'next/dynamic';
+
+// M95: each tab's panel loads when its tab is first opened (the console's first load was 481 KB of
+// script, the biggest of any page besides the editors); Overview and the header load with the page.
+const Wait = () => <ConsoleSkeleton />;
+const PersonPanel = dynamic(() => import('./person').then((m) => m.PersonPanel), { ssr: false, loading: Wait });
+const ErrorsPanel = dynamic(() => import('./errors').then((m) => m.ErrorsPanel), { ssr: false, loading: Wait });
+const DeletionsPanel = dynamic(() => import('./deletions').then((m) => m.DeletionsPanel), { ssr: false, loading: Wait });
+const GuidePanel = dynamic(() => import('./guide').then((m) => m.GuidePanel), { ssr: false, loading: Wait });
+const FlowsPanel = dynamic(() => import('./flows').then((m) => m.FlowsPanel), { ssr: false, loading: Wait });
+const AnnouncePanel = dynamic(() => import('./chats').then((m) => m.AnnouncePanel), { ssr: false, loading: Wait });
+const ChatsPanel = dynamic(() => import('./chats').then((m) => m.ChatsPanel), { ssr: false, loading: Wait });
+const ComposeDialog = dynamic(() => import('./chats').then((m) => m.ComposeDialog), { ssr: false, loading: Wait });
+const DatabasePanel = dynamic(() => import('./database').then((m) => m.DatabasePanel), { ssr: false, loading: Wait });
+const HealthPanel = dynamic(() => import('./health').then((m) => m.HealthPanel), { ssr: false, loading: Wait });
+const HealthNumbersPanel = dynamic(() => import('./health-numbers').then((m) => m.HealthNumbersPanel), { ssr: false, loading: Wait });
+const ModerationPanel = dynamic(() => import('./schools').then((m) => m.ModerationPanel), { ssr: false, loading: Wait });
+const SchoolsPanel = dynamic(() => import('./schools').then((m) => m.SchoolsPanel), { ssr: false, loading: Wait });
+const BusinessPanel = dynamic(() => import('./business').then((m) => m.BusinessPanel), { ssr: false, loading: Wait });
+const LanguagesPanel = dynamic(() => import('./languages').then((m) => m.LanguagesPanel), { ssr: false, loading: Wait });
+const BlogPanel = dynamic(() => import('./blog').then((m) => m.BlogPanel), { ssr: false, loading: Wait });
+const CallsPanel = dynamic(() => import('./calls').then((m) => m.CallsPanel), { ssr: false, loading: Wait });
 
 // The owner console: only for the platform owner. The server answers "not found" to anyone else,
 // and this page shows the same "not found" screen, so it doesn't reveal itself.

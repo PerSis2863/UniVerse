@@ -21,12 +21,12 @@ const FRONT = 'M0,0.11 Q0,0 0.055,0 L0.36,0 C0.43,0 0.44,0.15 0.52,0.15 L0.945,0
 // Streaks of colour for the back panel, in the owner's colours (dark blue and pink, 24 Oct
 // 2026), mixed six ways. A list gives each folder the next set, so folders side by side differ.
 const PALETTES = [
-  ['#1d2650', '#c13a92', '#ffd6f0', '#2b3568'],
+  ['#151517', '#c13a92', '#ffd6f0', '#27272a'],
   ['#6b1f50', '#fe81d1', '#eef2fb', '#c13a92'],
-  ['#171f44', '#58617f', '#cbd2e6', '#c13a92'],
-  ['#2b3568', '#ff9fdc', '#eef2fb', '#6b1f50'],
+  ['#111113', '#58617f', '#e4e4e7', '#c13a92'],
+  ['#27272a', '#ff9fdc', '#eef2fb', '#6b1f50'],
   ['#420a2f', '#c13a92', '#ffd6f0', '#a0a9cc'],
-  ['#1d2650', '#fe81d1', '#ffe6f6', '#2b3568'],
+  ['#151517', '#fe81d1', '#ffe6f6', '#27272a'],
 ];
 const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 const palette = (seed: string, index?: number) => PALETTES[(index ?? hash(seed)) % PALETTES.length];

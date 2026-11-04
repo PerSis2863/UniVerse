@@ -35,16 +35,24 @@ export function useLiveCanvas(draw: (f: Frame) => void, wake?: unknown) {
     let pointer: Frame['pointer'] = null;
     // The layout size, not getBoundingClientRect: a page's entrance animation scales it for a moment,
     // and a card measured then stayed squashed and blurry (M85).
+    // Touch screens: drawn at 1.5× (not 2×), about half the pixels to draw and hand over each frame (M92).
+    const touch = !!window.matchMedia?.('(hover: none)').matches;
     const size = (cw: number, ch: number) => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const dpr = Math.min(touch ? 1.5 : 2, window.devicePixelRatio || 1);
       w = cw; h = ch;
       cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
+    // Touch screens draw every other frame (30 a second): the same motion, half the work while the
+    // page scrolls (M91).
+    const gap = touch ? 30 : 0;
+    let drawn = 0;
     const frame = (ms: number) => {
       raf = 0;
       if (!w || !h) return;
       if (!start) start = ms;
+      if (gap && !still && drawn && ms - drawn < gap) { if (seen && !document.hidden) raf = requestAnimationFrame(frame); return; }
+      drawn = ms;
       ctx.clearRect(0, 0, w, h);
       latest.current({ ctx, w, h, t: still ? 30 : (ms - start) / 1000, pointer, still });
       if (!still && seen && !document.hidden) raf = requestAnimationFrame(frame);

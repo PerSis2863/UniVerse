@@ -35,14 +35,14 @@ function Bingo() {
         <AnimatePresence mode="popLayout"><motion.p key={last ?? 0} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={spring.bouncy} className="font-bold text-zinc-900 dark:text-white" style={{ fontSize: isFull ? 'min(24vw, 260px)' : 96 }} role="status">{last ? `${LETTERS[Math.floor((last - 1) / 15)]} ${last}` : '—'}</motion.p></AnimatePresence>
         <div className="flex flex-wrap justify-center gap-2"><button type="button" onClick={call} disabled={called.length >= 75} className="btn-primary"><Play className="w-4 h-4" aria-hidden />Call a number</button><Btn onClick={() => { if (window.confirm('Start a new game?')) setCalled([]); }}><RotateCcw className="w-3.5 h-3.5" aria-hidden />New game</Btn><FullBtn full={isFull} onClick={() => void toggle()} /></div>
         <div className="mx-auto grid max-w-3xl gap-1" style={{ gridTemplateColumns: 'auto repeat(15, minmax(0, 1fr))' }} aria-label={`${called.length} numbers called`}>
-          {Array.from({ length: 5 }, (_, r) => [<span key={`l${r}`} className="pe-1 font-bold text-pink-600 dark:text-pink-300">{LETTERS[r]}</span>, ...Array.from({ length: 15 }, (_, c) => { const n = r * 15 + c + 1, on = called.includes(n); return <span key={n} className={cn('rounded-md py-0.5 text-xs font-mono tabular-nums transition-colors duration-300', n === last ? 'bg-pink-500 text-[#171f44] font-bold' : on ? 'bg-indigo-600 text-white dark:bg-aqua-300 dark:text-[#171f44]' : 'bg-zinc-100 text-zinc-500 dark:bg-white/5 dark:text-zinc-400')}>{n}</span>; })])}
+          {Array.from({ length: 5 }, (_, r) => [<span key={`l${r}`} className="pe-1 font-bold text-pink-600 dark:text-pink-300">{LETTERS[r]}</span>, ...Array.from({ length: 15 }, (_, c) => { const n = r * 15 + c + 1, on = called.includes(n); return <span key={n} className={cn('rounded-md py-0.5 text-xs font-mono tabular-nums transition-colors duration-300', n === last ? 'bg-pink-500 text-[#111113] font-bold' : on ? 'bg-indigo-600 text-white dark:bg-aqua-300 dark:text-[#111113]' : 'bg-zinc-100 text-zinc-500 dark:bg-white/5 dark:text-zinc-400')}>{n}</span>; })])}
         </div>
       </div>
       <div className="flex flex-wrap items-end gap-2"><Field label="Cards to print"><input type="number" min={1} max={40} className="input w-24" value={cards} onChange={(e) => setCards(Math.max(1, Math.min(40, +e.target.value || 1)))} /></Field><Btn onClick={() => setSeed(seed + 1)}><Shuffle className="w-3.5 h-3.5" aria-hidden />New cards</Btn><Btn onClick={() => printOnly('bingo-sheet')}><Printer className="w-3.5 h-3.5" aria-hidden />Print the cards</Btn></div>
       <div id="bingo-sheet" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {sheet.map((card, k) => (
           <table key={k} className="w-full bg-white text-zinc-900 text-center border-collapse ring-1 ring-black/20 break-inside-avoid">
-            <thead><tr>{[...LETTERS].map((l) => <th key={l} className="bg-[#171f44] text-white py-1 font-bold">{l}</th>)}</tr></thead>
+            <thead><tr>{[...LETTERS].map((l) => <th key={l} className="bg-[#111113] text-white py-1 font-bold">{l}</th>)}</tr></thead>
             <tbody>{card.map((row, r) => <tr key={r}>{row.map((v, c) => <td key={c} className={cn('border border-zinc-300 h-9 font-mono font-bold', v === null && 'bg-pink-200 text-xs font-sans')}>{v ?? 'FREE'}</td>)}</tr>)}</tbody>
           </table>
         ))}
@@ -75,7 +75,7 @@ function GameBoard() {
       ) : (
         <div ref={fullRef} className={cn('space-y-3', boxClass)}>
           <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${b.cats.length}, minmax(0, 1fr))` }}>
-            {b.cats.map((c, ci) => <div key={ci} className="rounded-xl bg-[#171f44] p-2 text-center text-sm font-bold text-white">{c}</div>)}
+            {b.cats.map((c, ci) => <div key={ci} className="rounded-xl bg-[#111113] p-2 text-center text-sm font-bold text-white">{c}</div>)}
             {[0, 1, 2, 3].map((r) => b.cats.map((_, c) => { const x = b.clues[c][r]; return <button key={`${c}-${r}`} type="button" disabled={x.used || !x.q} onClick={() => { setOpen([c, r]); setShow(false); }} className={cn('rounded-xl py-4 font-mono text-2xl font-bold transition-[transform,opacity] active:scale-95', x.used ? 'bg-zinc-200 text-zinc-400 dark:bg-white/5 dark:text-zinc-600' : x.q ? 'bg-indigo-600 text-amber-300 hover:scale-[1.03]' : 'bg-zinc-100 text-zinc-400 dark:bg-white/5')}>{x.used ? '' : pts(r)}</button>; }))}
           </div>
           <AnimatePresence>{cur && open && (

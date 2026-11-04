@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
-import { ArrowRight, MessageSquare, PenTool, Phone, Settings, Sparkles } from 'lucide-react';
+import { ArrowUpRight, MessageSquare, PenTool, Phone, Settings, Sparkles } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
@@ -58,7 +58,7 @@ export default function HubPage() {
                 {APPS.map((a, i) => (
                   <motion.div key={a.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.06, duration: 0.6, ease: EASE }} className="rounded-2xl bg-white/[0.06] ring-1 ring-white/10 px-4 py-3">
                     <dt className="text-[11px] uppercase tracking-wider text-zinc-400">{data?.apps[a.id]?.label ?? a.tagline}</dt>
-                    <dd className="mt-1 font-mono text-2xl tabular-nums" style={{ color: a.color }}>{data ? fmt(data.apps[a.id]?.value ?? 0) : '…'}</dd>
+                    <dd className="mt-1 text-[28px] leading-none font-semibold tabular-nums text-white">{data ? fmt(data.apps[a.id]?.value ?? 0) : '…'}</dd>
                   </motion.div>
                 ))}
               </dl>
@@ -78,14 +78,13 @@ export default function HubPage() {
                 return (
                   <motion.div key={a.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.07, duration: 0.6, ease: EASE }} whileHover={{ y: -3 }}>
                     <Link href={appHome(a.id, role)} className="group panel relative block h-full overflow-hidden p-6">
-                      <span aria-hidden className="absolute -right-16 -top-16 w-48 h-48 rounded-full blur-3xl opacity-20 group-hover:opacity-35 transition-opacity duration-500" style={{ background: a.color }} />
                       <div className="relative flex items-start gap-4">
                         <AppIcon id={a.id} size={52} />
                         <div className="min-w-0 flex-1">
                           <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{a.name}</h3>
                           <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300">{a.tagline}</p>
                         </div>
-                        <ArrowRight className="w-5 h-5 text-zinc-400 group-hover:translate-x-1 transition-transform" aria-hidden />
+                        <span className="karma-go" aria-hidden><ArrowUpRight className="w-4 h-4" /></span>
                       </div>
                       <p className="relative mt-4 text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">{a.impact}</p>
                       {mine && <p className="relative mt-4 inline-flex items-center gap-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] px-3 py-1 text-xs font-semibold text-zinc-700 dark:text-zinc-200"><Sparkles className="w-3.5 h-3.5" style={{ color: a.color }} aria-hidden />You: {fmt(mine.value)} {mine.label}</p>}

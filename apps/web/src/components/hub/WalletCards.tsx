@@ -5,6 +5,7 @@ import { m as motion, useMotionTemplate, useMotionValue, useSpring, useTransform
 import { Nfc } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { reducedMotion } from '@/lib/page-transition';
+import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
 
 // The Impact Wallet's cards (M52, after the owner's "Ledgerline" video): a stack of cards, one per
@@ -31,11 +32,11 @@ export interface WalletCard {
 }
 
 /** Time that runs only while the stack is on screen and the tab is open (not with Reduce Motion). */
-function useScreenTime(ref: React.RefObject<HTMLElement | null>) {
+function useScreenTime(ref: React.RefObject<HTMLElement | null>, on: boolean) {
   const time = useMotionValue(0);
   useEffect(() => {
     const el = ref.current;
-    if (!el || reducedMotion()) return;
+    if (!el || !on || reducedMotion()) return;
     let raf = 0, seen = false, last = 0;
     const tick = (ms: number) => {
       time.set(time.get() + Math.min(64, ms - last));
@@ -47,7 +48,7 @@ function useScreenTime(ref: React.RefObject<HTMLElement | null>) {
     io.observe(el);
     document.addEventListener('visibilitychange', go);
     return () => { cancelAnimationFrame(raf); io.disconnect(); document.removeEventListener('visibilitychange', go); };
-  }, [ref, time]);
+  }, [ref, time, on]);
   return time;
 }
 
@@ -65,24 +66,24 @@ function Face({ card, holder, front, holo }: { card: WalletCard; holder: string;
       <div className="relative flex h-full flex-col justify-between p-[7%]">
         <div className="flex items-center gap-2">
           <UniverseLogo size={22} animated={false} withGlow={false} />
-          <span className={cn('text-[13px] font-bold tracking-tight', light ? 'text-white' : 'text-[#171f44]')}>{card.name}</span>
-          <Nfc className={cn('ms-auto h-5 w-5', light ? 'text-white/80' : 'text-[#171f44]/70')} />
+          <span className={cn('text-[13px] font-bold tracking-tight', light ? 'text-white' : 'text-[#111113]')}>{card.name}</span>
+          <Nfc className={cn('ms-auto h-5 w-5', light ? 'text-white/80' : 'text-[#111113]/70')} />
         </div>
         <div className="flex items-center justify-between">
           <span className="wcard-chip" />
           {front && <motion.span className="wcard-holo" style={{ backgroundImage: holo }} />}
         </div>
         <div>
-          <p className={cn('wcard-emboss font-mono text-[clamp(15px,5.2cqi,22px)] font-semibold tabular-nums tracking-[0.12em]', light ? 'text-white' : 'text-[#171f44]')} translate="no">{card.line}</p>
+          <p className={cn('wcard-emboss font-mono text-[clamp(15px,5.2cqi,22px)] font-semibold tabular-nums tracking-[0.12em]', light ? 'text-white' : 'text-[#111113]')} translate="no">{card.line}</p>
           {card.under && (
-            <p className={cn('mt-0.5 flex justify-between pe-[8%] font-mono text-[11px] uppercase tracking-wider', light ? 'text-white/70' : 'text-[#171f44]/75')}>
+            <p className={cn('mt-0.5 flex justify-between pe-[8%] font-mono text-[11px] uppercase tracking-wider', light ? 'text-white/70' : 'text-[#111113]/75')}>
               {card.under.map((u) => <span key={u}>{u}</span>)}
             </p>
           )}
         </div>
         <div className="flex items-end justify-between">
-          <span className={cn('truncate font-mono text-[12px] uppercase tracking-[0.14em]', light ? 'text-white/85' : 'text-[#171f44]/85')} translate="no">{holder}</span>
-          <span className={cn('shrink-0 text-[11px] font-bold uppercase tracking-[0.18em]', light ? 'text-aqua-300' : 'text-[#171f44]')}>Impact</span>
+          <span className={cn('truncate font-mono text-[12px] uppercase tracking-[0.14em]', light ? 'text-white/85' : 'text-[#111113]/85')} translate="no">{holder}</span>
+          <span className={cn('shrink-0 text-[11px] font-bold uppercase tracking-[0.18em]', light ? 'text-aqua-300' : 'text-[#111113]')}>Impact</span>
         </div>
       </div>
     </div>
@@ -92,7 +93,11 @@ function Face({ card, holder, front, holo }: { card: WalletCard; holder: string;
 export function WalletCards({ cards, holder }: { cards: WalletCard[]; holder: string }) {
   const [front, setFront] = useState(cards[0]?.id ?? '');
   const stage = useRef<HTMLDivElement>(null);
-  const time = useScreenTime(stage);
+  // Touch screens (nothing to follow): the idle sway is a CSS animation of the stack (.wcard-sway),
+  // so nothing is worked out or repainted each frame; the glare and holo stay still (M91: the sway,
+  // glare and holo redrawn 60 times a second were the home page's biggest cost while scrolling).
+  const touch = useMedia('(hover: none)');
+  const time = useScreenTime(stage, !touch);
   // The pointer over the stack (0–1) and how much it leads (0 idle, 1 following the pointer).
   const px = useMotionValue(0.5), py = useMotionValue(0.5);
   const hover = useSpring(0, { stiffness: 120, damping: 20 });
@@ -105,7 +110,7 @@ export function WalletCards({ cards, holder }: { cards: WalletCard[]; holder: st
   const gx = useTransform(rotateY, (r) => 50 + r * 2.6), gy = useTransform(rotateX, (r) => 35 - r * 3);
   const glare = useMotionTemplate`radial-gradient(70% 90% at ${gx}% ${gy}%, rgba(255,255,255,0.34), rgba(255,255,255,0.06) 40%, transparent 65%)`;
   const holoDeg = useTransform(rotateY, (r) => r * 9);
-  const holo = useMotionTemplate`conic-gradient(from ${holoDeg}deg, #fe81d1, #74ffed, #a9b4ff, #ffc0e6, #fe81d1)`;
+  const holo = useMotionTemplate`conic-gradient(from ${holoDeg}deg, #fe81d1, #f2d48c, #a9c2d8, #ffc0e6, #fe81d1)`;
   const shadowX = useTransform(rotateY, (r) => -r * 1.4), shadowS = useTransform(rotateX, (r) => 1 - r * 0.012);
 
   const order = [front, ...cards.map((c) => c.id).filter((id) => id !== front)];
@@ -125,7 +130,7 @@ export function WalletCards({ cards, holder }: { cards: WalletCard[]; holder: st
         <div ref={stage} className="wcard-stage relative mx-auto w-full max-w-[400px] touch-pan-y pe-[72px] pt-[56px] pb-6"
           onPointerMove={move} onPointerLeave={leave} onPointerUp={leave} onPointerCancel={leave}>
           <motion.span aria-hidden className="wcard-shadow" style={{ x: shadowX, scaleX: shadowS }} />
-          <motion.div className="relative" style={{ rotateX, rotateY, transformStyle: 'preserve-3d', transformPerspective: 1100 }}>
+          <motion.div key={touch ? 'sway' : 'follow'} className={cn('relative', touch && 'wcard-sway')} style={touch ? { transformStyle: 'preserve-3d' } : { rotateX, rotateY, transformStyle: 'preserve-3d', transformPerspective: 1100 }}>
             {/* The cards behind first; each knows its place in the stack. */}
             {[...order].reverse().map((id) => {
               const card = cards.find((c) => c.id === id)!;

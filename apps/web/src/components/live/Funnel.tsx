@@ -49,7 +49,7 @@ export function Funnel({ stages, label, className }: { stages: Stage[]; label: s
     const fill = ctx.createLinearGradient(x0, 0, x1, 0);
     fill.addColorStop(0, 'rgba(254,129,209,0.10)');
     fill.addColorStop(0.6, 'rgba(140,155,255,0.08)');
-    fill.addColorStop(1, 'rgba(116,255,237,0.10)');
+    fill.addColorStop(1, 'rgba(240,204,138,0.10)');
     ctx.fillStyle = fill;
     ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,0.14)';

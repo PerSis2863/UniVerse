@@ -172,7 +172,7 @@ export default function View() {
             <div className="mt-6">
               {sharing
                 ? <button type="button" onClick={stop} className="w-full h-14 rounded-2xl bg-white/10 hover:bg-white/15 font-bold inline-flex items-center justify-center gap-2 active:scale-[0.98] transition"><Square className="w-4 h-4" />Stop sharing</button>
-                : <button type="button" onClick={() => void start()} className="w-full h-14 rounded-2xl bg-pink-500 hover:bg-pink-400 font-bold text-[#171f44] inline-flex items-center justify-center gap-2 shadow-[0_16px_40px_-14px_rgba(254,129,209,0.9)] active:scale-[0.98] transition"><Navigation className="w-5 h-5" />Start sharing</button>}
+                : <button type="button" onClick={() => void start()} className="w-full h-14 rounded-2xl bg-pink-500 hover:bg-pink-400 font-bold text-[#111113] inline-flex items-center justify-center gap-2 shadow-[0_16px_40px_-14px_rgba(254,129,209,0.9)] active:scale-[0.98] transition"><Navigation className="w-5 h-5" />Start sharing</button>}
             </div>
 
             {info.maxTempC !== null && key && (

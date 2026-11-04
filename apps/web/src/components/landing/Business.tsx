@@ -129,7 +129,7 @@ export function PricingSection() {
             </div>
           </Reveal>
           <Reveal delay={0.16}>
-            <div className="h-full rounded-3xl p-8 ring-1 ring-fuchsia-400/30 bg-gradient-to-br from-[#222c5a] to-[#131a3d] relative overflow-hidden">
+            <div className="h-full rounded-3xl p-8 ring-1 ring-fuchsia-400/30 bg-gradient-to-br from-[#1d1d20] to-[#0f0f11] relative overflow-hidden">
               <span aria-hidden className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-fuchsia-500/20 blur-3xl" />
               <p className="relative text-xs text-fuchsia-200">PRO</p>
               <p className="relative mt-3 text-5xl font-bold text-white">Market intelligence</p>

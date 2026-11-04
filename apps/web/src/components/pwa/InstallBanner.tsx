@@ -4,7 +4,10 @@ import { useState, useEffect } from 'react';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { Download, Share, X, Smartphone } from 'lucide-react';
 import { LogoMark } from '@/components/ui/LogoMark';
-import { InstallGuide } from './InstallGuide';
+import dynamic from 'next/dynamic';
+
+// The step-by-step guide loads only when it's opened (M96: it was in every app page's first load).
+const InstallGuide = dynamic(() => import('./InstallGuide').then((m) => m.InstallGuide), { ssr: false });
 
 export function InstallBanner() {
   const { canInstall, isInstalled, isIOS, install } = usePWAInstall();
@@ -58,7 +61,7 @@ export function InstallBanner() {
       role="dialog"
       aria-label="Install UniVerse app"
     >
-      <div className="relative bg-[#1d2650] border border-indigo-500/30 rounded-2xl p-4 shadow-2xl shadow-indigo-500/10 overflow-hidden">
+      <div className="relative bg-[#151517] border border-indigo-500/30 rounded-2xl p-4 shadow-2xl shadow-indigo-500/10 overflow-hidden">
         {/* Gradient accent */}
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 pointer-events-none" />
         

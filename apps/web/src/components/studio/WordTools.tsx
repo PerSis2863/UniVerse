@@ -55,7 +55,7 @@ function Morse() {
       else if (ch === ' ') at += dot * 2; else if (ch === '/') at += dot * 2;
     }
     osc.start(); osc.stop(at + 0.1);
-    stop.current = () => { try { osc.stop(); } catch { /* already stopped */ } void ctx.close(); setPlaying(false); };
+    stop.current = () => { try { osc.stop(); } catch { /* already stopped */ } void ctx.close().catch(() => {}); setPlaying(false); };
     osc.onended = () => stop.current();
     setPlaying(true);
   };

@@ -132,7 +132,7 @@ export function TrackingMap() {
     const { ctx, view, t, zoom } = f, k = view.k, still = reduced();
     const sx = (lng: number, lat: number): [number, number] => f.at(lng, lat);
     const bs = (b: [number, number]): [number, number] => [view.x + b[0] * k, view.y + b[1] * k];
-    const ink = f.dark ? '#cbd2e6' : '#2b3568', paper = f.dark ? '#0a1721' : '#ffffff';
+    const ink = f.dark ? '#e4e4e7' : '#27272a', paper = f.dark ? '#0c0c0e' : '#ffffff';
     const order = [...shown].sort((a, b) => (a.id === selected ? 1 : 0) - (b.id === selected ? 1 : 0));
 
     for (const s of order) {
@@ -308,7 +308,7 @@ export function TrackingMap() {
             {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-pink-500" aria-label="Loading the map" /></div>}
             <div className="absolute right-3 top-3 flex flex-col gap-1.5">
               {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See every shipment'], ['full', full ? Minimize2 : Maximize2, full ? 'Leave full screen' : 'Full screen']] as const).map(([id, Icon, label]) => (
-                <button key={id} type="button" onClick={() => control(id)} aria-label={label} title={label} className="w-9 h-9 grid place-items-center rounded-xl bg-white/90 dark:bg-[#171f44]/85 backdrop-blur text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-200/70 dark:border-white/10 hover:text-pink-600 dark:hover:text-pink-300 active:scale-95 transition">
+                <button key={id} type="button" onClick={() => control(id)} aria-label={label} title={label} className="w-9 h-9 grid place-items-center rounded-xl bg-white/90 dark:bg-[#111113]/85 backdrop-blur text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-200/70 dark:border-white/10 hover:text-pink-600 dark:hover:text-pink-300 active:scale-95 transition">
                   <Icon className="w-4 h-4" aria-hidden />
                 </button>
               ))}
@@ -324,7 +324,7 @@ export function TrackingMap() {
             <AnimatePresence>
               {dest && (
                 <motion.form onSubmit={(e) => void saveDest(e)} initial={{ opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }} transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                  className="absolute left-1/2 -translate-x-1/2 top-3 w-[min(92%,360px)] rounded-2xl bg-white dark:bg-[#171f44] p-3 shadow-xl border border-zinc-200 dark:border-white/10">
+                  className="absolute left-1/2 -translate-x-1/2 top-3 w-[min(92%,360px)] rounded-2xl bg-white dark:bg-[#111113] p-3 shadow-xl border border-zinc-200 dark:border-white/10">
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-200">What is this place called?
                     <input autoFocus value={dest.place} maxLength={160} onChange={(e) => setDest({ ...dest, place: e.target.value })} className="input mt-1" placeholder="Milan distribution centre" />
                   </label>
@@ -337,12 +337,12 @@ export function TrackingMap() {
             <AnimatePresence>
               {sel && sel.status === 'IN_TRANSIT' && (
                 <motion.div key={sel.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                  className="absolute left-3 bottom-3 right-3 sm:right-auto sm:w-[420px] rounded-2xl bg-white/94 dark:bg-[#171f44]/90 backdrop-blur px-4 py-3 shadow-xl border border-zinc-200/70 dark:border-white/10">
+                  className="absolute left-3 bottom-3 right-3 sm:right-auto sm:w-[420px] rounded-2xl bg-white/94 dark:bg-[#111113]/90 backdrop-blur px-4 py-3 shadow-xl border border-zinc-200/70 dark:border-white/10">
                   <LiveStrip s={sel} />
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="absolute left-3 top-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#171f44]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
+            <div className="absolute left-3 top-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#111113]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
               <span className="flex items-center gap-2"><span className="w-4 h-0.5 bg-zinc-600 dark:bg-zinc-300 rounded" />Done</span>
               <span className="flex items-center gap-2"><span className="w-4 h-0.5 bg-pink-500 rounded shadow-[0_0_6px_#fe81d1]" />Live trail</span>
               <span className="flex items-center gap-2"><span className="w-4 border-t-2 border-dashed border-pink-500" />Still to go</span>
@@ -403,10 +403,10 @@ function label(ctx: CanvasRenderingContext2D, f: Frame, x: number, y: number, te
   const w = ctx.measureText(text).width + 14;
   x = Math.max(8 + w / 2, Math.min(f.w - 56 - w / 2, x)); // clear of the edges and the zoom buttons
   ctx.globalAlpha = Math.min(1, ctx.globalAlpha + 0.1);
-  ctx.fillStyle = f.dark ? 'rgba(23,31,68,0.9)' : 'rgba(255,255,255,0.95)';
+  ctx.fillStyle = f.dark ? 'rgba(17,17,19,0.9)' : 'rgba(255,255,255,0.95)';
   ctx.beginPath(); ctx.roundRect(x - w / 2, y - 10, w, 20, 10); ctx.fill();
   if (strong) { ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke(); }
-  ctx.fillStyle = f.dark ? '#eef2fb' : '#171f44';
+  ctx.fillStyle = f.dark ? '#eef2fb' : '#111113';
   ctx.fillText(text, x, y + 0.5);
   ctx.restore();
 }
@@ -514,7 +514,7 @@ function ShipCard({ s, index, open, onOpen, onFind, onPick, onChange, onHover }:
               <ol className="relative ml-1.5 border-l-2 border-zinc-200 dark:border-white/10 space-y-3">
                 {s.stops.map((p, i) => (
                   <li key={i} className="pl-4 relative">
-                    <span aria-hidden className={cn('absolute -left-[7px] top-1 w-3 h-3 rounded-full border-2', i === s.stops.length - 1 && s.status === 'DELIVERED' ? 'bg-emerald-500 border-emerald-500' : 'bg-white dark:bg-[#0a1721] border-zinc-500 dark:border-zinc-300')} />
+                    <span aria-hidden className={cn('absolute -left-[7px] top-1 w-3 h-3 rounded-full border-2', i === s.stops.length - 1 && s.status === 'DELIVERED' ? 'bg-emerald-500 border-emerald-500' : 'bg-white dark:bg-[#0c0c0e] border-zinc-500 dark:border-zinc-300')} />
                     <p className="text-xs font-semibold text-zinc-900 dark:text-white">{STAGE_LABEL[p.stage as Stage] ?? p.stage}</p>
                     <p className="text-[11px] text-zinc-500">{p.place ?? 'Unknown place'} · {new Date(p.at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                   </li>
@@ -528,7 +528,7 @@ function ShipCard({ s, index, open, onOpen, onFind, onPick, onChange, onHover }:
                 )}
                 {s.dest && s.status !== 'DELIVERED' && (
                   <li className="pl-4 relative">
-                    <span aria-hidden className="absolute -left-[7px] top-1 w-3 h-3 rounded-full border-2 border-dashed border-pink-500 bg-white dark:bg-[#0a1721]" />
+                    <span aria-hidden className="absolute -left-[7px] top-1 w-3 h-3 rounded-full border-2 border-dashed border-pink-500 bg-white dark:bg-[#0c0c0e]" />
                     <p className="text-xs font-semibold text-zinc-900 dark:text-white inline-flex items-center gap-1"><Flag className="w-3 h-3 text-pink-500" aria-hidden />{s.dest.place ?? 'Destination'}</p>
                     <p className="text-[11px] text-zinc-500">{s.etaMinutes !== null && now > 0 ? `expected ${new Date(now + s.etaMinutes * 60_000).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}` : 'arrival time once it moves'}</p>
                   </li>

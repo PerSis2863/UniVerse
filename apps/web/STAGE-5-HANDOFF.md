@@ -3621,3 +3621,398 @@ pages 10–20 ms). Only 1.5% of what the $5 plan includes, but far too much per 
   Observability → events sorted by CPU time.
 - **Tested:** `pnpm check`; `prisma-patch.test.ts`; CPU before and after on the built Worker; 60
   requests at once; a board and a Green action created and deleted.
+
+## M89 · Buttons and loading: busy buttons keep their size, placeholders stay smooth under load (3 Nov 2026)
+
+The owner: "please work on buttons also, i want my site to be ultra smooth in every aspect even in
+loading of something or screen".
+- **Measured first.** On the built site I clicked 31 tabs, menus and pop-up openers on nine pages
+  and read their Event Timing. Click handlers take 1–4 ms. With the river and planet paused (on this
+  machine they share the CPU, as it has no GPU), every control shows its result in under 100 ms
+  (slowest 96 ms). Already fine:
+  - iPhones show pressed states (a page-wide touch listener in `SheetGestures`);
+  - the font is preloaded;
+  - a page change shows its skeleton only after 180 ms.
+- **Busy buttons keep their size** (`globals.css`, `[aria-busy="true"]`). The spinner now sits over
+  the label instead of beside it. The label stays hidden but is still read out; icons are hidden.
+  A button that starts saving no longer grows and pushes its neighbours (checked: same widths and
+  positions before and while busy, light and dark). The rules are in the base layer, so a button's
+  own position utility (e.g. `absolute`) still wins.
+- **Placeholders shimmer on the compositor.** `.skeleton` used to sweep its background
+  (`background-position`), so the page's own thread repainted every placeholder on every frame. While
+  a page was busy loading (thread blocked 250 ms of every 300), the shimmer fell to ~20 frames a
+  second. It is now a `::after` layer that only moves (`transform`), with the same band and timing;
+  under the same load it stays at ~60 frames a second. All ~230 placeholders get it (skeleton
+  screens, page-change skeletons, lists). The app's own Reduce Motion setting now stills them too.
+- **Rules:** a placeholder is `.skeleton` and has no `::after` of its own. Its shimmer layer needs
+  the placeholder positioned (`:where(.skeleton) { position: relative }` in the base layer, so
+  `absolute` still wins) and clipped (`overflow: hidden`).
+- **Deploy fix (PR #107):** #106's deploy was refused: "encoded sourcemaps must not exceed 60 MiB
+  (received 97543 KiB)". wrangler uploads source maps by default from 4.150 (M87 moved it to
+  4.151.3). `upload_source_maps: false` in `wrangler.jsonc` restores the earlier deploys' behaviour;
+  a dry run uploads 49 MB (11 MB gzipped) and no maps.
+- **Left as is:**
+  - the menu fold animates real widths (by design, M33; used now and then);
+  - the river's and planet's frames (the owner's rule, M56a).
+- **Tested:**
+  - `pnpm check`;
+  - busy-button sizes and screenshots in both themes;
+  - the shimmer under load (frames that moved in 3 s: 56–62 before, 188–193 after);
+  - 31 controls clicked on the built site.
+
+## M90: Quick notes like Apple Notes (4 Nov 2026)
+
+The owner: "this quick note needs a lot of work i like apple note app… made it like that" (a
+screenshot showed the search icon sitting on the text).
+
+- **What it is now** (`src/components/studio/QuickNotes.tsx`, Collaborate → Create → Quick notes):
+  - three columns on a computer: folders (All notes, your folders, Recently deleted), the list,
+    the note;
+  - on phones, folder chips over the list, and the note opens over it with "‹ Notes";
+  - the list: search, Pinned first, then Today / Yesterday / Previous 7 days / Previous 30 days /
+    month / year; each row shows the title, time, first line and "2/5" for a checklist; swipe to
+    pin or delete;
+  - the note: date, a big title, and lines with round tick boxes:
+    - Enter adds the next item; Enter on an empty item ends the list;
+    - Backspace at the start un-ticks or joins lines;
+    - arrows move between lines;
+    - pasted lines split;
+    - Ctrl/⌘+Shift+L makes a checklist;
+  - one toolbar row: Checklist, Pin, More (colour, folder, "Move ticked items down", "Make it a
+    document"), Delete;
+  - Recently deleted keeps notes 30 days, with Recover, Delete now and Undo;
+  - an empty note goes away when you leave it.
+- **Data:**
+  - still plain text in `uv-quick-notes` (same shape plus optional `folder` and `deletedAt`), so old
+    notes open unchanged;
+  - folders in `uv-quick-folders`;
+  - now through `useKept`, so Save, view links and live editing carry the notes (they didn't
+    before);
+  - text rules live in `src/lib/quick-notes.ts` (tested): the title is the first line, a line
+    `[ ] ` / `[x] ` is a checklist item.
+- **"Make it a document"** now fills the Doc: title as a heading, a real checklist, "- " lines as
+  a list (`noteToHtml`, through `doc-import:`). Before, it only copied the text.
+- **Fixed for every tool:** `useKept` writes what's still waiting (its 250 ms pause) when the tab or
+  the tool closes, so the last words typed aren't lost.
+- **Fixed site-wide:** the search icon over the text in 8 search boxes. `.input`'s side padding is
+  now `:where(.input)`, so a `ps-9` beside it wins. The `.input.pl-10` patch is removed.
+- **Rules:**
+  - lines are `<textarea>`s that grow (`field-sizing: content`, measured where missing), 16 px so
+    phones don't zoom;
+  - no focus box on the note's own fields (`focus-visible:shadow-none!`): the caret shows where you
+    are, as in Apple Notes;
+  - the React lint doesn't allow a parent's ref to be changed in a child, so the "put the caret in
+    the title" signal is a prop (`titleCue`).
+- **Tested:**
+  - `pnpm check`;
+  - a browser run: wrote a checklist, ticked it, searched, deleted to Recently deleted;
+  - axe clean at 390 / 1280, light / dark;
+  - no sideways scroll.
+
+## M91: The CreditKarma photos' look everywhere, and the lag (4 Nov 2026)
+
+The owner sent ten slides of a CreditKarma design ("use this photos and make website like this"),
+chose "the photos' look, keep pink" when asked, and said "the website and app looks laggy a lot".
+
+- **The look** (one unlayered block at the end of `src/app/globals.css`, so it wins over M52–M57):
+  - Light mode: an #ececec page with gold, steel blue and amber light in the corners; white cards;
+    ink #111113 pills and main button.
+  - Dark mode: #0b0b0c with dimmer warm light; solid #151517 cards; white pills and main button.
+  - In both themes, a near-black side menu with a white pill for the chosen entry.
+  - The headline frosts are the photos' (dusk steel blue into brown, honey gold, moss olive).
+  - The hero cards (`.trace-hero`: hub, Trace) are near-black with warm light in both themes.
+  - The planet, live cards and wallet cards drop aqua for warm gold and steel (`TONES` in
+    `live/paint.ts` keeps its key names: a `shortcut:` comment says so).
+  - The landing's buttons are white pills and its page is black.
+- **Scales:** `indigo/violet/purple` are ink in light mode and graphite in dark mode; `aqua` is white
+  in dark mode (what was "chosen" in Aqua Jade is white now); `zinc` is neutral. The light-mode
+  coloured-text overrides (`.text-indigo-600` was violet) follow.
+- **The lag, measured** (the built site, signed in, a phone screen with a 4× slower CPU):
+  - Signed in, the home, UniVersity and Trace pages scrolled at about 30 frames a second, with stalls
+    up to 400 ms. The public pages were fine (60).
+  - Hardly any of that time was script. It was drawing:
+    - the frosted bars and the side menu's glass: about 25% of the compositor's time;
+    - the canvases: about 22%;
+    - the home page's wallet cards: their idle sway recomputed a 3D tilt, a glare gradient and a
+      holo gradient 60 times a second (repaints on every frame);
+    - see-through hand-made cards over the moving river, blended again on every frame.
+  - The site-wide scroll reveals cost nothing measurable, so they stay.
+- **Fixes:**
+  - no glass anywhere (cards, bars, tab bar, side menu, toasts);
+  - solid cards, including hand-made rounded bordered boxes with a see-through dark fill (one CSS
+    rule, not inside another card);
+  - on touch screens, the wallet sway is a CSS animation (`.wcard-sway`, compositor only; nothing
+    per frame);
+  - live cards (`useLiveCanvas`) and the planet worker draw every other frame on touch screens (30 a
+    second, the same speed of motion).
+  - The river is untouched (the owner's rule, M56a; it already caps its pixels).
+- **Rules for what builds on this:**
+  - new screens use `.panel` / `.card` / `.btn-primary` and the tokens, and never a translucent card
+    fill or `backdrop-filter`;
+  - pink only for the river, live dots and `--ins-hot`;
+  - a dark card inside a light page re-points its text greys (see `.trace-hero`'s `--color-zinc-*`).
+- **Left for later:**
+  - about 200 files still have their own navy or aqua colours (the maps, the night city, some
+    editors and canvases): moved over one by one;
+  - the landing's italic pink accent word becomes the photos' two-tone heading in M93.
+
+## M92: The owner console, professional; UniVersity scrolls smoother (4 Nov 2026)
+
+The owner: "the owner console dashboard doesn't look professional, it looks like it was made by AI",
+with the CreditKarma photos as the model.
+
+- **Overview (`console/overview.tsx`):**
+  - The top is six headline cards in the photos' "credit factors" style: People with an account
+    (dusk frost), New this week (gold), Waiting for approval, Open errors, Deletion requests,
+    Suspended.
+  - Each card has a thin-line icon in a circle, a round arrow button, the label, one big number and a
+    tiny chart beside it. An amber dot shows when something waits. A tap opens the right tab.
+  - The Students, Teachers and Admins tiles went: the Everyone card already shows them.
+  - The sample-data tool moved to the bottom.
+  - The trend line is ink or white with today's point in pink. Bars are solid, avatars plain grey,
+    and the timeline dots small grey (no gradients, no glows).
+- **`src/components/ui/FactorCard.tsx`** (reusable: any page's headline numbers):
+  - `FactorCard` with `tone` plain, dusk, gold or olive;
+  - five tiny charts, all drawn in currentColor so they work on a frost or in either theme: `Dots`
+    (where a value sits on a scale), `Ticks` (thin bars), `Wave` (a soft line with its two peaks),
+    `Rings` (a small count), `Matrix` (a dot grid).
+- **The header (`deck.tsx`):**
+  - near-black with warm light (`.trace-hero`), a date line, a thin crown icon and a two-tone title;
+  - no grid, drifting glows, heartbeat line, rotating beam, mono eyebrow or italic accent;
+  - console cards are solid (`card` in `shared.tsx` uses the tokens), and table headings are in
+    sentence case, not mono capitals.
+- **Every tab bar (122 places, `TabPill` in `Glide.tsx`):**
+  - the chosen pill is solid: ink in light mode, white in dark mode;
+  - a tab whose chosen pill is white shows its label in ink (`html.dark … :has(> .tab-pill)` in
+    globals.css, so no caller changed);
+  - the line and soft variants are plain too.
+- **The river in light mode** is pinks only (its violets went with M53's palette).
+- **UniVersity's home scrolled at ~45 frames a second on a phone-speed CPU after M91.** Measured:
+  - hiding its canvases cut the compositor's work by 41% and the per-frame hand-over by 63%;
+  - stilling its live dots cut the page's own work by 17%.
+  Fixes:
+  - live cards draw at 1.5× on touch screens (not 2×);
+  - `.live-dot` and `.deck-ping` pulse with a ring that only scales and fades (`::after`,
+    compositor), not an animated box-shadow that repainted every frame.
+- **Measured after M91** (the built site, 4× slower CPU, 6 s of scrolling): the hub went from 302
+  frames, median 33 ms and worst 417 ms to 359 frames, median 17 ms and worst 83 ms (smooth).
+  UniVersity went from 258 to 282 frames, Trace from 251 to 263, before this item's fixes.
+- **Tested:**
+  - `pnpm check`;
+  - the console as a test owner (`--owner-test`-style sign-in on the dev server): axe clean at 390 and
+    1440, light and dark; no sideways scroll; live cards draw.
+
+## M93: The landing like the photos' website: two-tone headings, no navy (4 Nov 2026)
+
+The owner's slide 7 (the CreditKarma website: "Where Credit Meets **Confidence**").
+
+- **Two-tone headings:**
+  - `Accent` (`landing/bits.tsx`) renders `.accent-word`, and the 20 headings that use it turn into
+    the photos' style: the heading in a quiet grey, weight 500, and its key word bright (white in dark
+    mode, ink in light).
+  - CSS only: `:is(h1, h2, h3):has(.accent-word)` in globals.css.
+  - The italic pink serif word (M58) is gone, and so are the gradient words in Collaborate's and
+    Messages' headings.
+- **No navy left on the landing:**
+  - the hard-coded navy in its cards, the flow card, the call-to-action, the cookie notice and the
+    business section is near-black now (#1d2650 → #151517, #131a3d → #0f0f11, #222c5a → #1d1d20, in
+    9 files);
+  - the planet section's band is dark with the photos' warm light under the planet (it was navy into
+    Aqua Jade), and its notes are solid;
+  - the "One app for the whole school" band runs honey into pink (it was periwinkle).
+- **Rule:** a heading's key word goes in `<Accent>` (or a span with `accent-word`). Never colour a
+  heading's words by hand.
+- **Tested:**
+  - `pnpm check`;
+  - the whole landing scrolled through at 1280 in dark mode (every section revealed): no page errors.
+
+## M94: The last navy and aqua moved over (4 Nov 2026)
+
+The owner: "please do the left on purpose part" (M93 left ~200 files with their own navy and aqua).
+
+- **One mapping, applied by script to 188 app files and the older half of globals.css** (226 lines,
+  above the M91 block), so every leftover shade lands on the same new colour:
+  - navy shades → near-blacks and graphites (#0a0f2b → #0b0b0c, #171f44 → #111113 ink, #1d2650 →
+    #151517 card, #222c5a → #1d1d20, #2b3568 → #27272a, plus ~20 nearby navies);
+  - Aqua Jade → the photos' warm gold (#74ffed → #f0cc8a), except UI text in aqua → white;
+  - the same for `rgb()` triplets.
+- **Left alone on purpose:**
+  - documents and emails on white paper (`src/server/`, certificates, CVs, report cards);
+  - colours people choose (slide themes, sheet render, course colours, accent choices, collaborator
+    colours, hall tints);
+  - sample data;
+  - the river (the owner's rule).
+- **By hand:**
+  - the maps' palette is neutral (`WorldCanvas` `PAL`: near-black sea, graphite land, grey labels;
+    light mode neutral greys);
+  - live cards are near-black with warm light and a pink glow in both themes;
+  - Messages' tab deck uses the solid pill, and its unread count reads on the white pill;
+  - `fuchsia` leans pink in both themes, so the leftover indigo → fuchsia gradients (avatars, badges)
+    read graphite into pink, not purple;
+  - Play's heading is two-tone;
+  - the browser bar, the start-up background, the installed app's colours (`manifest.json`) and the
+    offline page are #0b0b0c / #ececec;
+  - `textOn()` (`src/lib/contrast.ts`) puts ink #111113 on light fills (test updated).
+- **Tested:**
+  - `pnpm check`;
+  - axe clean with no page errors on the hub, UniVersity home, Messages, Trace's market map, Play,
+    Collaborate and the landing, at 390 and 1280, light and dark (28 runs).
+- **Note for later:** Messages lives at `/student/inbox` (and `/teacher/inbox`, `/admin/inbox`); there
+  is no `/messages` page.
+
+## M95: A check of what else to improve, and the quick fixes (4 Nov 2026)
+
+The owner: "please check what else you can improve in this system".
+
+- **What was checked:**
+  - the live site's `error_reports` (read-only);
+  - first-load script per page (`node scripts/bundle-report.mjs` on the last local build);
+  - `pnpm audit --prod`;
+  - GitHub Checks;
+  - axe and page errors on the main pages (done in M94).
+- **Errors on the live site:**
+  - Nearly every frequent report is made-up sample data (ids `smpe…`, from "Fill with sample
+    data"), not real.
+  - The real ones are rare (1–3 hits each) and old. The owner console People list's "too many SQL
+    variables" (31 Oct) stopped after M73 (1 Nov), so it can be marked resolved.
+  - The rest are browser bots or Google's sign-in and reCAPTCHA code.
+- **Fixed:**
+  - Every `AudioContext.close()` now has `.catch(() => {})`, so closing twice no longer throws "Cannot
+    close a closed AudioContext" (Play's voice, the docs converter and five Create tools).
+  - The owner console loads each tab's panel when it is first opened (17 panels, `next/dynamic`,
+    `ssr: false`, the console skeleton while loading). Its first load was 481 KB of script, the
+    biggest page apart from the editors.
+- **Found, not done (the next items):**
+  - **First-load size** is the biggest lever. No page meets the A4 targets (0/244): a typical app
+    page loads ~370 KB gzipped before it works, about 140 KB of it the framework, and ~230 KB of
+    dashboard-wide pieces in ~45 chunks. Next step: find what every dashboard page imports up
+    front (assistant, command palette, tour, sheets, sounds…) and load each when first used,
+    measuring per page.
+  - **body-parser 2.4.0** (the one high library issue; it comes in through `@opennextjs/aws`'s
+    express, which the Worker doesn't run): add the override from 5 Nov, when the release is two
+    weeks old.
+  - The other 11 audit items are low or moderate and build-time only (webpack, glob, minimatch,
+    serialize-javascript), plus KaTeX's low one.
+- **Tested:**
+  - `pnpm check`;
+  - the console as a test owner: overview, flows, errors, server and people tabs open, axe clean,
+    light and dark, desktop and phone.
+
+## M96: Lighter first load on every page (4 Nov 2026)
+
+The owner: "please do all the still to do" (M95 found that no page meets the first-load targets).
+
+- **Measured:** first-load script (gzipped, `node scripts/bundle-report.mjs` on a local build).
+  - Every app page went down about 46 KB, about 11–12%: /student 410 → 364 KB, /hub ~372 → 333,
+    /green 379 → 346, /play 378 → 344, the editors (docs, sheets, slides) about 46 KB each.
+  - /console went 481 → 377 KB (with M95's lazy tabs).
+  - About 39 KB of each figure is the old-browser polyfills, which current browsers skip.
+- **The big one: the sign-in layout's file was loaded by every page.**
+  - `(auth)/layout.tsx` referenced its client parts itself (`Link`, `LightTrail`, `UniverseLogo`,
+    `ApiWarmup`, `MaintenanceGate`, `AuthShowcase`).
+  - Webpack kept some of those, which other entries also reference, inside the sign-in layout's
+    chunk. Every page's client manifest then pointed at that chunk, bringing along the sign-in
+    picture and the landing's flow card.
+  - The fix: the whole frame is one client component, `src/components/auth/AuthFrame.tsx`, and
+    the layout only renders it.
+  - **Rule:** a server layout or page that uses several client parts the root layout also uses
+    should wrap them in one client component, rather than referencing each one itself.
+- **Loaded when used, not with the page:**
+  - the install guide (`InstallBanner` → `InstallGuide`, dynamic);
+  - the email switch in the notifications panel (`Topbar`);
+  - the incoming-call screen and the mini player (`DashboardShell`, dynamic, `ssr: false`; they
+    load just after the page).
+  - `PendingPage` stays static, because it wraps every page's content.
+- **How to find what a page loads:**
+  - `node scripts/bundle-report.mjs`;
+  - a page's scripts are the `<script src>` tags in `.next/server/app/<page>.html`;
+  - its client manifest is `.next/server/app/(group)/<page>/page_client-reference-manifest.js`
+    (eval it with `globalThis.__RSC_MANIFEST = {}`).
+  - `productionBrowserSourceMaps` produced no maps with this config, so readable strings in a chunk
+    were enough to identify it.
+- **Tested:**
+  - `pnpm check`;
+  - the built site: sign-in shows its frame, form and picture; the hub's notifications panel opens
+    with the email switch; axe clean; no page errors.
+
+## M97: UniVersity and Trace scroll smoothly too (4 Nov 2026)
+
+The owner: "please do all the still to do" (after M91–M92, UniVersity and Trace still scrolled less
+smoothly than the hub).
+
+- **Measured on the same machine and build** (a phone-sized screen, a 4× slower CPU, 6 s of
+  scrolling):
+  - Switching every animation off took Trace to 354 frames, whereas hiding the canvases changed
+    nothing.
+  - A sampler of `document.getAnimations()` during the scroll (`scrollanims.mjs`-style) showed what
+    runs:
+    - the edge beam (`beam-once` / `beam`): a conic gradient whose angle is a registered custom
+      property, so the whole card repaints every frame; up to 8 cards at once on UniVersity;
+    - the reveal's `filter: blur()` transition;
+    - decorative loops: the passport glow drift, bar glints, instrument pings.
+- **Fixes:**
+  - the edge beam is gone: `beamOn` / `beamOff` and their CSS, and the console's unused
+    `deck-orbit`, which shared `--beam`. That also drops a `getComputedStyle` per revealed card;
+  - the reveal (`[data-sr]`) is transform and opacity only, with no blur;
+  - `scroll-motion.ts` sets `<html data-scrolling>` while anything scrolls (and for 180 ms after), and
+    the decorative loops pause meanwhile (`animation-play-state: paused` on `.passport-glow`,
+    `.mkt-drift-a/b`, `.ins-ping`, `.ins-live`, `.ins-grain`, `.wcard-sway`, the logo's beams, and
+    `.bar-glint::after`). Live dots keep pulsing.
+- **Result (frames in 6 s, 360 = 60 a second; frames over 50 ms):**
+  - hub: 294 → 378 (4 slow);
+  - UniVersity: 232 → 290 (82 → 24 slow);
+  - Trace: 243 → 297, median frame 17 ms (77 → 47 slow).
+- **Rule:** a new looping decoration goes in the `html[data-scrolling]` pause list, and never
+  animates a custom property, `filter` or `background` (those repaint every frame).
+- **Tested:**
+  - `pnpm check`;
+  - the built site: axe clean at 390 (light and dark, scrolled through) and 1280; no page errors.
+
+## M98: Trace's live board smooth; a site-wide sweep before merging (4 Nov 2026)
+
+The owner: "Trace's live instrument board still causes some jerky frames… do this one and see what
+else… make sure everything is good and after that push and merge it, don't leave anything behind".
+
+- **The board's numbers set off a storm of blur animations.**
+  - `Roll` (instruments) and the console's `Ticker` count by rewriting their text on every frame.
+  - `scroll-motion.ts`'s `rollChanged` took each rewrite for a new value and started a blur roll:
+    168 rolls in 6 s of scrolling on Trace.
+  - Fixes:
+    - a figure that changes twice within 250 ms is treated as animating itself and left alone
+      (`selfMoving`);
+    - the roll is opacity and a small rise only (no blur);
+    - `Roll`, `Ticker` and `Rolling` carry `data-no-motion`, so the page-wide count-up doesn't count
+      them a second time.
+- **A trap found and fixed:**
+  - M98's first pause list ended a `html[data-scrolling]` selector in `.play-scene > *`. Each time
+    scrolling started or stopped, the browser restyled the whole page: 19 s of style work in a 6 s
+    scroll on Trace.
+  - Now `.play-scene` is paused and its children `inherit`.
+  - **Rule:** never end a selector keyed on a `<html>` attribute that toggles often in `*` or
+    `> *`.
+- **The count-up waits for React.** It could rewrite a figure before React hydrated that part of the
+  page (React error #418, seen now and then on Green and Play). `countUp` now waits until the
+  element carries React's `__reactFiber$` marker (retries for 2 s), with a `shortcut:` comment.
+- **Also:**
+  - Green's tank wave, Play's little scenes and ripples, and Collaborate's aurora pause while
+    scrolling;
+  - star ratings on the passport (`/t/…`) and brand pages (`/b/…`) are `role="img"`, which axe
+    asked for.
+- **A site-wide sweep (`sweep.mjs`, scratch):** 116 page visits, covering signed-out, student,
+  teacher and admin pages at 390 and 1280 in dark and light (page errors, 5xx API calls, axe,
+  sideways scroll).
+  - Only the stars failed (fixed).
+  - The console check passes (as an owner, desktop and phone).
+- **Scrolling on the final build** (a phone-speed CPU, 6 s; 360 frames = 60 a second; slow frames
+  are those over 50 ms):
+  - Trace: 243 → 332 frames, slow frames 77 → 16;
+  - UniVersity: 232 → 315, slow frames 82 → 28;
+  - hub: 403;
+  - Play: 319.
+- **Count-ups wait for React** (`countUp` in `scroll-motion.ts`): a figure counts up only once React
+  has hydrated it (its `__reactFiber$` key, a `shortcut:`), else React's error #418 on /green and /play.
+  Rebuilt and checked three times: clean.
+- **Known, rare, local only:** /t/demo once in about 30 loads reported #418 ("HTML") when opened right
+  after the landing in the same tab. Nothing outside React changed the page before it (a
+  MutationObserver log), and the live site's `error_reports` has never had a hydration error. Look
+  again only if it shows up there.

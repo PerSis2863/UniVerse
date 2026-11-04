@@ -89,7 +89,7 @@ function Campus() {
                 <motion.div className="-ms-6 -mt-6" animate={calm ? undefined : { rotate: -360 }} transition={turn}>
                   <motion.span animate={{ scale: on ? 1.18 : 1, y: on ? -3 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 22 }}
                     className={cn('relative grid h-12 w-12 place-items-center rounded-2xl ring-1 transition-[background-color,box-shadow] duration-500',
-                      on ? 'bg-pink-500 ring-pink-300 shadow-[0_0_34px_rgba(254,129,209,0.8)]' : done ? 'bg-[#163a52] ring-aqua-300/40' : 'bg-[#1d2650] ring-white/10')}>
+                      on ? 'bg-pink-500 ring-pink-300 shadow-[0_0_34px_rgba(254,129,209,0.8)]' : done ? 'bg-[#163a52] ring-aqua-300/40' : 'bg-[#151517] ring-white/10')}>
                     {on && !calm && <motion.span key={n} aria-hidden className="absolute inset-0 rounded-2xl ring-2 ring-pink-300" initial={{ scale: 1, opacity: 0.8 }} animate={{ scale: 1.6, opacity: 0 }} transition={{ duration: 1, ease: EASE }} />}
                     <d.icon className={cn('h-5 w-5', on ? 'text-white' : 'text-pink-200/80')} aria-hidden />
                   </motion.span>
@@ -107,7 +107,7 @@ function Campus() {
             return (
               <motion.li key={i} layout initial={{ opacity: 0, y: -18, scale: 0.96, filter: 'blur(6px)' }} animate={{ opacity: 1 - k * 0.28, y: 0, scale: 1 - k * 0.02, filter: 'blur(0px)' }} exit={{ opacity: 0, y: 14, transition: { duration: 0.25 } }}
                 transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-                className={cn('flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ring-1', k === 0 ? 'bg-[#1f2a58] ring-pink-400/30 shadow-[0_10px_40px_-18px_rgba(254,129,209,0.7)]' : 'bg-[#1d2650] ring-white/10')}>
+                className={cn('flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ring-1', k === 0 ? 'bg-[#18181b] ring-pink-400/30 shadow-[0_10px_40px_-18px_rgba(254,129,209,0.7)]' : 'bg-[#151517] ring-white/10')}>
                 <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-xl', k === 0 ? 'bg-pink-500/20' : 'bg-white/5')}><d.icon className="h-4 w-4 text-pink-200" aria-hidden /></span>
                 <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{d.title}</span><span className="block truncate text-xs text-zinc-300">{d.sub}</span></span>
                 <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-400 text-emerald-950"><Check className="h-3 w-3" strokeWidth={3} aria-hidden /></span>
@@ -154,7 +154,7 @@ function Trace() {
       </svg>
       {/* The label, tilting slowly, a beam passing over its code */}
       <motion.div className="absolute left-1/2 top-[150px] w-[260px] -translate-x-1/2 [transform-style:preserve-3d]" animate={calm ? undefined : { rotateY: [-14, 14, -14], rotateX: [8, -4, 8] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }} style={{ transformPerspective: 900 }}>
-        <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#1c2450,#131a3d)] p-5 ring-1 ring-white/15 shadow-[0_30px_80px_-20px_rgba(254,129,209,0.55)]">
+        <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#151517,#0f0f11)] p-5 ring-1 ring-white/15 shadow-[0_30px_80px_-20px_rgba(254,129,209,0.55)]">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_30%,rgba(254,129,209,0.18)_45%,rgba(167,139,250,0.16)_52%,transparent_65%)] bg-[length:250%_100%] [animation:holo_5s_linear_infinite]" aria-hidden />
           <p className="text-[11px] text-zinc-400">Product passport</p>
           <p className="mt-1 text-xl font-bold text-white">Aurora olive oil</p>
@@ -168,8 +168,8 @@ function Trace() {
       </motion.div>
       <AnimatePresence>
         {scanned && <motion.div key="g" {...pop} className="absolute end-2 top-[150px] flex items-center gap-2 rounded-2xl bg-emerald-400 px-3.5 py-2 text-sm font-bold text-emerald-950 shadow-[0_10px_40px_-8px_rgba(52,211,153,0.7)]"><ShieldCheck className="h-4 w-4" aria-hidden />Genuine</motion.div>}
-        {s >= 5 && <motion.div key="p" {...pop} className="absolute bottom-10 start-2 flex items-center gap-2 rounded-2xl bg-[#222c5a] px-3.5 py-2 text-sm text-white ring-1 ring-pink-400/40"><Sparkles className="h-4 w-4 text-pink-300" aria-hidden />The shop earned <b>25 points</b></motion.div>}
-        {s >= 7 && <motion.div key="r" {...pop} className="absolute bottom-24 end-0 rounded-2xl bg-[#222c5a] px-3.5 py-2 text-xs text-zinc-200 ring-1 ring-white/10">Made → shipped → shop · <b className="text-white">4 stops</b></motion.div>}
+        {s >= 5 && <motion.div key="p" {...pop} className="absolute bottom-10 start-2 flex items-center gap-2 rounded-2xl bg-[#1d1d20] px-3.5 py-2 text-sm text-white ring-1 ring-pink-400/40"><Sparkles className="h-4 w-4 text-pink-300" aria-hidden />The shop earned <b>25 points</b></motion.div>}
+        {s >= 7 && <motion.div key="r" {...pop} className="absolute bottom-24 end-0 rounded-2xl bg-[#1d1d20] px-3.5 py-2 text-xs text-zinc-200 ring-1 ring-white/10">Made → shipped → shop · <b className="text-white">4 stops</b></motion.div>}
       </AnimatePresence>
     </div>
   );
@@ -211,7 +211,7 @@ function Relief() {
           );
         })}
       </div>
-      <div className="absolute bottom-0 start-0 rounded-2xl bg-[#1d2650]/95 px-4 py-3 ring-1 ring-white/10">
+      <div className="absolute bottom-0 start-0 rounded-2xl bg-[#151517]/95 px-4 py-3 ring-1 ring-white/10">
         <p className="text-xs text-zinc-400">people helped today</p>
         {/* The count rolls like a meter inside its own line (the old number never shows under the new). */}
         <div className="overflow-hidden"><AnimatePresence mode="popLayout" initial={false}><motion.p key={helped} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="font-mono text-3xl font-bold tabular-nums text-white">{128 + helped * 5}</motion.p></AnimatePresence></div>

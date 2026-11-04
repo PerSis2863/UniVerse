@@ -4,7 +4,8 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { Everyone, PeopleNow } from './live-cards';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, Ban, Bug, Clock, LogIn, ShieldCheck, Trash2, UserPlus, Users, GraduationCap, School, UserCog, Loader2 } from 'lucide-react';
+import { Activity, Ban, Bug, Clock, LogIn, ShieldCheck, Trash2, UserPlus, Users, Loader2 } from 'lucide-react';
+import { Dots, FactorCard, Matrix, Rings, Ticks, Wave } from '@/components/ui/FactorCard';
 import { cn } from '@/lib/utils';
 import { useActivePoll } from '@/lib/realtime-client';
 import { ConsoleSkeleton, SearchBox, card, fetcher, heavy, matches, useDebounced } from './shared';
@@ -15,10 +16,10 @@ import { LiveBoard } from './live';
 import { SampleWorldCard } from './sample-world';
 import { RealPeopleCard } from './real-people';
 
-// The console's first section (M13): what needs the owner, who really uses each app (launch.tsx), the
-// live instrument board (live.tsx), the rest as small tiles (amber when something waits), new accounts
-// drawn as a line, where and on what people sign in, who is online, and the latest sign-ins and
-// actions on a lit timeline.
+// The console's first section (M13; M92 after the owner's CreditKarma photos): six headline cards
+// (an amber dot when something waits for the owner), who really uses each app (launch.tsx), the live
+// instrument board (live.tsx), new accounts drawn as a line, where and on what people sign in, who is
+// online, and the latest sign-ins and actions. Plain and solid: no gradients, glows or beams.
 
 interface OverviewData {
   roles: Record<string, number>; statuses: Record<string, number>; online: { id: string; name: string; role: string; lastSeenAt: string }[];
@@ -33,24 +34,21 @@ type Found = { total: number; people: { id: string; name: string; email: string;
 const h2 = 'text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-2';
 const initials = (name: string) => name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
-/** New accounts per day as a line over a soft two-tone fill, revealed left to right (.deck-draw). */
+/** New accounts per day as a line over a soft fill, revealed left to right (.deck-draw); today's point in pink. */
 function Trend({ days }: { days: { day: string; count: number }[] }) {
   const n = Math.max(1, days.length - 1);
   const peak = Math.max(1, ...days.map((d) => d.count));
   const pts = days.map((d, i) => [(i / n) * 100, 92 - (d.count / peak) * 80] as const);
   const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)}`).join(' ');
   return (
-    <div className="relative h-32">
+    <div className="relative h-32 text-zinc-900 dark:text-white">
       <svg aria-hidden className="deck-draw absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="trend-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#58617f" stopOpacity="0.35" /><stop offset="1" stopColor="#58617f" stopOpacity="0" /></linearGradient>
-          <linearGradient id="trend-line" x1="0" x2="1"><stop offset="0" stopColor="#2b3568" /><stop offset="1" stopColor="#c13a92" /></linearGradient>
-        </defs>
         {pts.length > 1 && <>
-          <path d={`${line} L100 100 L0 100 Z`} fill="url(#trend-fill)" />
-          <path d={line} fill="none" stroke="url(#trend-line)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+          <path d={`${line} L100 100 L0 100 Z`} fill="currentColor" fillOpacity="0.06" />
+          <path d={line} fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         </>}
       </svg>
+      {pts.length > 1 && <span aria-hidden className="absolute w-2.5 h-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--ins-hot,#fe81d1)]" style={{ left: `${pts[pts.length - 1][0]}%`, top: `${pts[pts.length - 1][1]}%` }} />}
       {/* One column a day: hover (or focus with a screen reader) for the day's number. */}
       <div className="absolute inset-0 flex" role="list" aria-label="New accounts per day">
         {days.map((d) => (
@@ -76,7 +74,7 @@ function TopList({ title, rows, icon: Icon }: { title: string; rows: { name: str
               <span className="text-zinc-500 tabular-nums">{r.count}</span>
             </div>
             <div className="mt-1.5 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden">
-              <div className="bar-grow h-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500" style={{ width: `${(r.count / max) * 100}%`, animationDelay: `${i * 60}ms` }} />
+              <div className="bar-grow h-full rounded-full bg-zinc-900 dark:bg-zinc-100" style={{ width: `${(r.count / max) * 100}%`, animationDelay: `${i * 60}ms` }} />
             </div>
           </li>
         ))}</ol>
@@ -93,42 +91,30 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
   if (!data) return <ConsoleSkeleton />;
   const signUps = data.signUps ?? [];
   const go = (to: string) => { const [t, status] = to.split(':'); onTab(t as Tab, status); };
-  const small: [string, number, string, typeof Users, boolean][] = [
-    ['Students', data.roles.STUDENT ?? 0, 'people', GraduationCap, false], ['Teachers', data.roles.TEACHER ?? 0, 'people', School, false],
-    ['Admins', data.roles.ADMIN ?? 0, 'people', UserCog, false], ['New this week', data.newUsers, 'people', UserPlus, false],
-    ['Waiting for approval', data.statuses.PENDING ?? 0, 'people:PENDING', Clock, true], ['Suspended', data.statuses.SUSPENDED ?? 0, 'people:SUSPENDED', Ban, true],
-    ['Open errors', data.openErrors ?? 0, 'errors', Bug, true], ['Deletion requests', data.pendingDeletions ?? 0, 'deletions', Trash2, true],
-  ];
+  const people = Object.values(data.roles).reduce((a, n) => a + n, 0);
+  const pending = data.statuses.PENDING ?? 0, suspended = data.statuses.SUSPENDED ?? 0, errors = data.openErrors ?? 0, deletions = data.pendingDeletions ?? 0;
+  const counts = signUps.map((d) => d.count);
   const online = data.online.filter((u) => matches(q, u.name, u.role));
   const signIns = data.recentSignIns.filter((x) => matches(q, x.user.name, x.user.email, x.user.role, x.device, x.city, x.country, x.ip, x.method));
   const actions = data.recentActions.filter((a) => matches(q, a.actorName, a.summary));
-  const dot = 'absolute -start-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-400 shadow-[0_0_10px_rgba(254,129,209,0.55)]';
+  const dot = 'absolute -start-[4.5px] top-1.5 w-2 h-2 rounded-full bg-zinc-400 dark:bg-zinc-500';
   return (
     <div className="space-y-6">
+      <section aria-label="At a glance" className="grid grid-cols-1 min-[440px]:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <FactorCard tone="dusk" icon={Users} label="People with an account" value={<Ticker value={people} />} viz={<Wave values={counts} />} onClick={() => go('people')} />
+        <FactorCard tone="gold" icon={UserPlus} label="New this week" value={<Ticker value={data.newUsers} />} viz={<Ticks values={counts.slice(-7)} />} onClick={() => go('people')} />
+        <FactorCard icon={Clock} label="Waiting for approval" value={<Ticker value={pending} />} warn={pending > 0} viz={<Dots value={pending} max={Math.max(4, pending)} />} onClick={() => go('people:PENDING')} />
+        <FactorCard icon={Bug} label="Open errors" value={<Ticker value={errors} />} warn={errors > 0} viz={<Matrix value={errors} />} onClick={() => go('errors')} />
+        <FactorCard icon={Trash2} label="Deletion requests" value={<Ticker value={deletions} />} warn={deletions > 0} viz={<Rings filled={Math.min(5, deletions)} />} onClick={() => go('deletions')} />
+        <FactorCard icon={Ban} label="Suspended" value={<Ticker value={suspended} />} viz={<Dots value={suspended} max={Math.max(4, suspended)} />} onClick={() => go('people:SUSPENDED')} />
+      </section>
       <RealPeopleCard />
-      <SampleWorldCard />
       <LaunchBoard />
       <div className="grid gap-6 lg:grid-cols-2">
         <PeopleNow online={data.online} signIns={data.signInsToday} newUsers={data.newUsers} recent={data.recentSignIns} />
         <Everyone roles={data.roles} />
       </div>
       <LiveBoard />
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {small.map(([label, n, to, Icon, warn]) => {
-          const waiting = warn && n > 0;
-          return (
-            <button key={label} type="button" onClick={() => go(to)}
-              className={cn(card, 'flex items-center gap-3 px-3.5 py-3 text-start transition-colors', waiting ? 'border-amber-300/70 dark:border-amber-400/25 bg-amber-50/70 dark:bg-amber-400/[0.06]' : 'hover:border-indigo-400/40')}>
-              <Icon className={cn('w-4 h-4 shrink-0', waiting ? 'text-amber-600 dark:text-amber-300' : 'text-zinc-400')} aria-hidden />
-              <span className="min-w-0">
-                <span className="block text-lg font-bold leading-tight text-zinc-900 dark:text-white"><Ticker value={n} /></span>
-                <span className="block text-xs text-zinc-500 truncate">{label}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
 
       <PlanUsageCard usage={data.usage ?? null} />
 
@@ -169,8 +155,8 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
             <ul className="grid sm:grid-cols-2 gap-2">{online.map((u) => (
               <li key={u.id}>
                 <button type="button" onClick={() => onPerson(u.id)} className="w-full flex items-center gap-3 rounded-xl px-2 py-1.5 text-start hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
-                  <span className="relative shrink-0 w-9 h-9 rounded-full grid place-items-center text-xs font-bold text-white bg-gradient-to-br from-indigo-500 to-fuchsia-600">
-                    {initials(u.name)}<span className="absolute -bottom-0.5 -end-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#171f44]" />
+                  <span className="relative shrink-0 w-9 h-9 rounded-full grid place-items-center text-xs font-bold text-zinc-800 bg-zinc-200 dark:text-white dark:bg-white/10">
+                    {initials(u.name)}<span className="absolute -bottom-0.5 -end-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[var(--card-bg)]" />
                   </span>
                   <span className="min-w-0">
                     <span className="block text-sm font-medium text-zinc-900 dark:text-white truncate">{u.name}</span>
@@ -206,6 +192,7 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
           ))}</ol>
         </div>
       </div>
+      <SampleWorldCard />
     </div>
   );
 }
