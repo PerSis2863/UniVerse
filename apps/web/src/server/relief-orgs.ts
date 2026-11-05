@@ -1,13 +1,14 @@
 import crypto from 'node:crypto';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { RELIEF_KINDS, RELIEF_ORG_KINDS, RELIEF_ORG_ROLES, mayChangeRole, nextQuantity, runsOrg, snap, supplyLow, type ReliefOrgRole } from '@/lib/relief';
+import { RELIEF_KINDS, RELIEF_ORG_KINDS, RELIEF_ORG_ROLES, mayChangeRole, nextQuantity, runsOrg, snap, supplyLow, textNumber, type ReliefOrgRole } from '@/lib/relief';
 import { toBase32 } from '@/lib/trace';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { oneOf, str, type Body } from './body';
 import { notifyMany } from './email';
 import { pushService } from './services/push.service';
 import { publish } from './realtime';
+import { featureOff } from './moderation';
 import { num, short } from './trace';
 
 // UniVerse Relief for organisations (M106, migration 0192): an NGO, a food bank, a shelter or a
@@ -44,15 +45,20 @@ export async function tellRelief(userIds: string[], n: { title: string; body: st
 }
 
 /** Every member's open page of this organisation updates (src/lib/realtime-client.ts). */
-async function refresh(orgId: string) {
+export async function refreshOrg(orgId: string) {
   const ids = (await prisma.reliefOrgMember.findMany({ where: { orgId }, select: { userId: true }, take: MAX_MEMBERS })).map((m) => m.userId);
   publish(ids, { type: 'refresh', keys: [`/relief/orgs/${orgId}`, '/relief/orgs'] });
 }
 
-const coordinators = async (orgId: string) =>
+export const coordinatorsOf = async (orgId: string) =>
   (await prisma.reliefOrgMember.findMany({ where: { orgId, role: { in: ['OWNER', 'COORDINATOR'] } }, select: { userId: true }, take: 50 })).map((m) => m.userId);
 
 const newCode = () => toBase32(crypto.randomBytes(5), 6);
+
+/** Whether text requests (M107, src/server/relief-texts.ts) can work: the owner's switch and the Twilio token. */
+export async function textsOn() {
+  return !!(process.env.TWILIO_AUTH_TOKEN ?? '').trim() && !(await featureOff('relief-sms'));
+}
 
 const base = (b: Body) => {
   const lat = num(b.lat, -90, 90), lng = num(b.lng, -180, 180);
@@ -125,8 +131,8 @@ export async function joinReliefOrg(u: SessionUser, b: Body) {
   if (await orgRole(u.id, org.id)) return { id: org.id, name: org.name };
   if ((await prisma.reliefOrgMember.count({ where: { orgId: org.id } })) >= MAX_MEMBERS) throw new BadRequestException('This organisation is full.');
   await prisma.reliefOrgMember.create({ data: { orgId: org.id, userId: u.id, role: 'VOLUNTEER' } });
-  await tellRelief(await coordinators(org.id), { title: `${u.name} joined ${org.name}`, body: `${u.name} joined as a volunteer. You can change their role under Members.`, link: `/relief/orgs?org=${org.id}&tab=members`, tag: `relief-org-${org.id}` });
-  await refresh(org.id);
+  await tellRelief(await coordinatorsOf(org.id), { title: `${u.name} joined ${org.name}`, body: `${u.name} joined as a volunteer. You can change their role under Members.`, link: `/relief/orgs?org=${org.id}&tab=members`, tag: `relief-org-${org.id}` });
+  await refreshOrg(org.id);
   return { id: org.id, name: org.name };
 }
 
@@ -150,10 +156,15 @@ export async function reliefOrg(u: SessionUser, orgId: string) {
     near ? prisma.reliefPost.findMany({ where: { type: 'NEED', status: 'OPEN', createdAt: { gt: since }, lat: { gte: near.lat - near.dLat, lte: near.lat + near.dLat }, lng: { gte: near.lng - near.dLng, lte: near.lng + near.dLng } }, orderBy: { createdAt: 'desc' }, take: 60 }) : Promise.resolve([]),
   ]);
   const posts = [...handling, ...open];
+  const run = runsOrg(role);
+  // Text requests (M107): only coordinators see them, since they hold the sender's phone number.
+  const [on, texts] = run ? await Promise.all([
+    textsOn(),
+    prisma.reliefText.findMany({ where: { orgId, OR: [{ status: 'NEW' }, { createdAt: { gt: new Date(now - 14 * DAY) } }] }, orderBy: { createdAt: 'desc' }, take: 60 }),
+  ]) : [false, []];
   const ids = [...new Set([...members.map((m) => m.userId), ...moves.map((m) => m.userId), ...signups.map((s) => s.userId), ...posts.flatMap((p) => [p.userId, p.helperId])].filter((x): x is string => !!x))];
   const people = new Map((ids.length ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }) : []).map((p) => [p.id, p]));
   const who = (id: string | null) => (id ? people.get(id) ?? null : null);
-  const run = runsOrg(role);
   const post = (p: (typeof posts)[number]) => ({
     id: p.id, type: p.type, kind: p.kind, title: p.title, details: p.details, people: p.people, urgency: p.urgency, lat: p.lat, lng: p.lng, place: p.place,
     status: p.status, createdAt: p.createdAt, takenAt: p.takenAt, doneAt: p.doneAt, by: who(p.userId), helper: who(p.helperId),
@@ -161,8 +172,10 @@ export async function reliefOrg(u: SessionUser, orgId: string) {
     org: null, helperOrg: p.helperOrgId === orgId ? { id: org.id, name: org.name } : null,
   });
   return {
-    org: { id: org.id, name: org.name, kind: org.kind, about: org.about, place: org.place, lat: org.lat, lng: org.lng, createdAt: org.createdAt, code: run ? org.code : null },
+    org: { id: org.id, name: org.name, kind: org.kind, about: org.about, place: org.place, lat: org.lat, lng: org.lng, createdAt: org.createdAt, code: run ? org.code : null, textNumber: run ? org.textNumber : null },
     role,
+    textsOn: on,
+    texts: run ? texts.map((t) => ({ id: t.id, channel: t.channel, from: t.fromNumber, body: t.body, status: t.status, postId: t.postId, createdAt: t.createdAt })) : null,
     members: members.map((m) => ({ id: m.userId, name: who(m.userId)?.name ?? 'Someone', role: m.role, since: m.createdAt, me: m.userId === u.id })),
     supplies: supplies.map((s) => ({ id: s.id, name: s.name, kind: s.kind, unit: s.unit, quantity: s.quantity, lowAt: s.lowAt, low: supplyLow(s), updatedAt: s.updatedAt })),
     moves: moves.map((m) => ({ id: m.id, supplyId: m.supplyId, change: m.change, note: m.note, at: m.createdAt, by: who(m.userId)?.name ?? null })),
@@ -175,15 +188,21 @@ export async function reliefOrg(u: SessionUser, orgId: string) {
 /** PATCH /relief/orgs/:id { name?, kind?, about?, place?, lat?, lng? } (coordinators). */
 export async function updateReliefOrg(u: SessionUser, orgId: string, b: Body) {
   await member(u, orgId, true);
-  const data: { name?: string; kind?: string; about?: string | null; place?: string | null; lat?: number; lng?: number } = {};
+  const data: { name?: string; kind?: string; about?: string | null; place?: string | null; lat?: number; lng?: number; textNumber?: string | null } = {};
   if (b.name !== undefined) { const name = short(b.name, 80); if (!name) throw new BadRequestException('Name the organisation.'); data.name = name; }
   if (oneOf(RELIEF_ORG_KINDS, b.kind)) data.kind = b.kind;
   if (b.about !== undefined) data.about = short(b.about, 600);
   if (b.place !== undefined) data.place = short(b.place, 120);
   const where = base(b);
   if (where) Object.assign(data, where);
+  // Its Twilio number for text requests (M107): E.164, one organisation per number; '' removes it.
+  if (b.textNumber !== undefined) {
+    data.textNumber = b.textNumber === '' || b.textNumber === null ? null : textNumber(b.textNumber);
+    if (data.textNumber === null && b.textNumber) throw new BadRequestException('Write the number with its country code, like +44 7700 900123.');
+    if (data.textNumber && (await prisma.reliefOrg.findFirst({ where: { textNumber: data.textNumber, id: { not: orgId } }, select: { id: true } }))) throw new BadRequestException('Another organisation uses that number.');
+  }
   await prisma.reliefOrg.update({ where: { id: orgId }, data });
-  await refresh(orgId);
+  await refreshOrg(orgId);
   return { ok: true };
 }
 
@@ -204,7 +223,7 @@ export async function leaveReliefOrg(u: SessionUser, orgId: string) {
   }
   if (role === 'OWNER' && owners <= 1) throw new BadRequestException('Make someone else an owner before you leave.');
   await prisma.reliefOrgMember.delete({ where: { orgId_userId: { orgId, userId: u.id } } });
-  await refresh(orgId);
+  await refreshOrg(orgId);
   return { ok: true, closed: false };
 }
 
@@ -225,7 +244,7 @@ export async function setReliefOrgMember(u: SessionUser, orgId: string, userId: 
   } else {
     await prisma.reliefOrgMember.delete({ where: { orgId_userId: { orgId, userId } } });
   }
-  await refresh(orgId);
+  await refreshOrg(orgId);
   return { ok: true };
 }
 
@@ -242,7 +261,7 @@ export async function addReliefSupply(u: SessionUser, orgId: string, b: Body) {
     data: { orgId, name, kind: oneOf(RELIEF_KINDS, b.kind) ? b.kind : 'OTHER', unit: short(b.unit, 24) ?? 'items', quantity, lowAt: Math.round(num(b.lowAt, 0, 1_000_000) ?? 0) },
   });
   if (quantity) await prisma.reliefSupplyMove.create({ data: { orgId, supplyId: s.id, userId: u.id, change: quantity, note: 'Starting stock' } });
-  await refresh(orgId);
+  await refreshOrg(orgId);
   return { id: s.id };
 }
 
@@ -272,7 +291,7 @@ export async function updateReliefSupply(u: SessionUser, orgId: string, supplyId
     await prisma.reliefSupplyMove.create({ data: { orgId, supplyId, userId: u.id, change, note: short(b.note, 140) } });
     quantity = nextQuantity(s.quantity, change);
   }
-  await refresh(orgId);
+  await refreshOrg(orgId);
   return { ok: true, quantity };
 }
 
@@ -280,7 +299,7 @@ export async function updateReliefSupply(u: SessionUser, orgId: string, supplyId
 export async function deleteReliefSupply(u: SessionUser, orgId: string, supplyId: string) {
   await member(u, orgId, true);
   await prisma.reliefSupply.deleteMany({ where: { id: supplyId, orgId } });
-  await refresh(orgId);
+  await refreshOrg(orgId);
   return { ok: true };
 }
 
@@ -302,7 +321,7 @@ export async function createReliefShift(u: SessionUser, orgId: string, b: Body) 
   const s = await prisma.reliefShift.create({
     data: { orgId, title, details: short(b.details, 600), place: short(b.place, 120), startsAt: start, endsAt: new Date(start.getTime() + hours * 3_600_000), slots, membersOnly: b.membersOnly === true, createdById: u.id },
   });
-  await refresh(orgId);
+  await refreshOrg(orgId);
   return { id: s.id };
 }
 
@@ -317,7 +336,7 @@ export async function cancelReliefShift(u: SessionUser, orgId: string, shiftId: 
     const org = await prisma.reliefOrg.findUnique({ where: { id: orgId }, select: { name: true } });
     await tellRelief(people, { title: `Shift cancelled: ${s.title}`, body: `${org?.name ?? 'The organisation'} cancelled this shift. Thank you for signing up.`, link: '/relief/orgs', tag: `relief-shift-${shiftId}` });
   }
-  await refresh(orgId);
+  await refreshOrg(orgId);
   return { ok: true };
 }
 
@@ -341,7 +360,7 @@ export async function signUpReliefShift(u: SessionUser, shiftId: string) {
   if (s.createdById && s.createdById !== u.id) {
     await tellRelief([s.createdById], { title: `${u.name} signed up: ${s.title}`, body: `${s.filled + 1} of ${s.slots} places taken.`, link: `/relief/orgs?org=${s.orgId}&tab=shifts`, tag: `relief-shift-${shiftId}` });
   }
-  await refresh(s.orgId);
+  await refreshOrg(s.orgId);
   return { ok: true };
 }
 
@@ -351,7 +370,7 @@ export async function leaveReliefShift(u: SessionUser, shiftId: string) {
   if (gone.count) {
     await prisma.$executeRawUnsafe(`UPDATE "relief_shifts" SET "filled" = MAX(0, "filled" - 1) WHERE "id" = ?`, shiftId);
     const s = await prisma.reliefShift.findUnique({ where: { id: shiftId }, select: { orgId: true } });
-    if (s) await refresh(s.orgId);
+    if (s) await refreshOrg(s.orgId);
   }
   return { ok: true };
 }

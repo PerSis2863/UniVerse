@@ -7,6 +7,7 @@ import { pushService } from './services/push.service';
 import { oneOf, type Body } from './body';
 import { num, short } from './trace';
 import { orgRole } from './relief-orgs';
+import { textPosted, textToPost } from './relief-texts';
 
 // UniVerse Relief (migration 0180): needs and offers of help on one live map. Anyone signed in can
 // ask for help or offer it; a helper takes a need ("I can help"), and the person who asked or the
@@ -80,9 +81,12 @@ export async function createReliefPost(u: SessionUser, b: Body) {
   // In an organisation's name (M106): its coordinators only.
   const orgId = typeof b.orgId === 'string' && b.orgId ? b.orgId : null;
   if (orgId && !runsOrg(await orgRole(u.id, orgId))) throw new ForbiddenException('Only the organisation’s coordinators can post in its name.');
+  // From a text request (M107): checked first, marked as put on the map after.
+  const text = typeof b.textId === 'string' && b.textId ? await textToPost(u, b.textId, orgId) : null;
   const post = await prisma.reliefPost.create({
     data: { userId: u.id, orgId, type: b.type, kind: b.kind, title, details: short(b.details, 1000), people: Math.round(num(b.people, 1, 10_000) ?? 1), urgency: b.type === 'OFFER' ? 'LOW' : urgency, lat: snap(lat), lng: snap(lng), place: short(b.place, 120) },
   });
+  if (text) await textPosted(u, text, post.id);
   if (post.type === 'NEED') await alertWatchers(post).catch((e) => console.error('relief alerts failed:', e));
   return post;
 }

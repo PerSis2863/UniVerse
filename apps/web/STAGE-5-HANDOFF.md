@@ -4318,3 +4318,42 @@ seven ideas (25 Oct, "work on all 7 of them"): organisation accounts for Relief.
   a full shift refuses a third person, take for the organisation, volunteer can't deliver, coordinator
   can; every tab at 390 and 1280, light and dark, axe clean, no sideways scrolling, no page errors);
   `src/server/relief-orgs.test.ts` (rules, guarded shift place, stock log, owner rules); `pnpm check`.
+
+## M107: Relief text requests (SMS / WhatsApp) into an organisation's inbox, behind a switch (5 Nov 2026)
+
+The rest of the owner's Relief idea: "SMS/WhatsApp requests behind a switch". Migration **0193**.
+**[owner]**: off until the owner turns on "Relief text requests" (console → Server → Feature
+switches, opt-in like live air traffic) and sets `TWILIO_AUTH_TOKEN` in Cloudflare; Twilio charges
+for each message in and each thank-you reply.
+
+- **How it works**: someone without the app texts an organisation's Twilio number (SMS, or WhatsApp
+  through Twilio). Twilio posts to `POST /api/core/relief/texts/inbound` (public; the Worker refuses the
+  path while the switch is off). `src/server/relief-texts.ts` checks `X-Twilio-Signature`
+  (`twilioSignature`: base64 HMAC-SHA1 with the Auth Token over the URL plus the sorted form fields;
+  compared without early exit), finds the organisation by `relief_orgs.textNumber` (E.164,
+  `textNumber()` in `src/lib/relief.ts` also reads `whatsapp:+…`), files a `relief_texts` row (body ≤
+  1,000), tells its coordinators (bell and push, no email) and answers TwiML with one thank-you
+  message. Unknown numbers and more than 10 messages an hour from one phone get an empty answer (no
+  paid reply, nothing filed). The signature covers `req.url`: the webhook in Twilio must be exactly
+  `https://universeimpact.com/api/core/relief/texts/inbound`.
+- **Coordinators only** see texts (they hold the sender's number): `GET /relief/orgs/:id` adds
+  `textsOn`, `texts` (new ones and the last 14 days) and `org.textNumber` for them, `null` for
+  volunteers. Needs tab → "Text requests": the message, the number as a `tel:` link, "Put on the map",
+  "Text back" (`sms:`, from their own phone: we send nothing ourselves) and "Handled"
+  (`POST /relief/texts/:id/close`). The number is set in Overview → Edit (only shown while text requests
+  are on; one organisation per number).
+- **Put on the map**: `/relief?text=<id>&org=<id>` opens the map's form filled from the message
+  (`guessNeed` in `src/lib/relief.ts`: kind by words, people from "family of 5" / "3 children",
+  urgency from "urgent" / "emergency", a title of ≤ 80 characters) in the organisation's name, with a
+  warning to take out names, addresses and phone numbers. `createReliefPost` with `textId` checks the
+  text first (`textToPost`: a coordinator of the same organisation, not posted yet) and marks it POSTED
+  after (`textPosted`).
+- **Fixed on the way**: the map's form forgot everything typed when "Tap the map" was pressed (it was
+  unmounted and remounted). Its draft now lives in `ReliefApp` (`Draft`, `EMPTY`).
+- **Not built**: replies sent by UniVerse (would need Twilio's REST API and the account SID: more paid
+  messages); a shared number for the whole site (each organisation brings its own).
+- **Checked**: `src/server/relief-texts.test.ts` (the signature against Node's own HMAC, off/unset,
+  wrong token, a body changed on the way, filing and the reply, unknown number and flood, numbers and
+  guesses); `scripts/checks/relief-orgs-ui.mjs` now also: the webhook refused while off, texts for
+  coordinators only, closing, a text posted only in its organisation's name, and the text put on the
+  map from the form (kept while the place is tapped); `pnpm check`.

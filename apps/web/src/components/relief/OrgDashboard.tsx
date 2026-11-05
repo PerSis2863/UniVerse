@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Building2, CalendarClock, Check, Copy, HandHeart, History, Loader2, LogOut, Minus, Pencil, Plus, RefreshCw, Trash2, TriangleAlert, Users } from 'lucide-react';
+import { ArrowLeft, Building2, CalendarClock, Check, Copy, HandHeart, History, Loader2, LogOut, MapPin, MessageSquareText, Minus, Pencil, Plus, RefreshCw, Trash2, TriangleAlert, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { FactorCard } from '@/components/ui/FactorCard';
@@ -26,9 +26,13 @@ import { OrgFields, Sheet, ShiftCard, type ShiftView } from './ReliefOrgs';
 
 interface Supply { id: string; name: string; kind: ReliefKind; unit: string; quantity: number; lowAt: number; low: boolean; updatedAt: string }
 interface Member { id: string; name: string; role: ReliefOrgRole; since: string; me: boolean }
+interface Text { id: string; channel: 'SMS' | 'WHATSAPP'; from: string; body: string; status: 'NEW' | 'POSTED' | 'CLOSED'; postId: string | null; createdAt: string }
 interface OrgData {
-  org: { id: string; name: string; kind: ReliefOrgKind; about: string | null; place: string | null; lat: number | null; lng: number | null; createdAt: string; code: string | null };
+  org: { id: string; name: string; kind: ReliefOrgKind; about: string | null; place: string | null; lat: number | null; lng: number | null; createdAt: string; code: string | null; textNumber: string | null };
   role: ReliefOrgRole;
+  /** M107: text requests are switched on (the owner) and set up (Twilio); coordinators only see `texts`. */
+  textsOn: boolean;
+  texts: Text[] | null;
   members: Member[];
   supplies: Supply[];
   moves: { id: string; supplyId: string; change: number; note: string | null; at: string; by: string | null }[];
@@ -148,16 +152,23 @@ function LeaveButton({ org }: { org: OrgData['org'] }) {
 
 function EditSheet({ d, onClose, onDone }: { d: OrgData; onClose: () => void; onDone: () => void }) {
   const [f, setF] = useState({ name: d.org.name, kind: d.org.kind, about: d.org.about ?? '', place: d.org.place ?? '', at: d.org.lat !== null && d.org.lng !== null ? { lat: d.org.lat, lng: d.org.lng } : null });
+  const [number, setNumber] = useState(d.org.textNumber ?? '');
   const [saving, setSaving] = useState(false);
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    try { await api.patch(`/relief/orgs/${d.org.id}`, { name: f.name, kind: f.kind, about: f.about, place: f.place, ...(f.at ?? {}) }); toast.success('Saved'); onDone(); }
+    try { await api.patch(`/relief/orgs/${d.org.id}`, { name: f.name, kind: f.kind, about: f.about, place: f.place, ...(f.at ?? {}), ...(d.textsOn ? { textNumber: number.trim() } : {}) }); toast.success('Saved'); onDone(); }
     catch (err) { toast.error(errorMessage(err, 'Could not save.')); setSaving(false); }
   };
   return (
     <Sheet title="Edit the organisation" onClose={onClose} onSubmit={(e) => void save(e)}>
       <OrgFields f={f} set={setF} />
+      {d.textsOn && (
+        <label className="mt-4 block"><span className={label}>Number for text requests (optional)</span>
+          <input value={number} onChange={(e) => setNumber(e.target.value)} inputMode="tel" maxLength={24} className="input mt-1" placeholder="+44 7700 900123" />
+          <span className="mt-1 block text-xs text-zinc-500">The Twilio number people text (SMS or WhatsApp). Messages land under Needs, for coordinators only.</span>
+        </label>
+      )}
       <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={onClose} className="btn-secondary">Cancel</button><button type="submit" disabled={saving || !f.name.trim()} className="btn-primary">{saving && <Loader2 className="w-4 h-4 animate-spin" />}Save</button></div>
     </Sheet>
   );
@@ -179,6 +190,7 @@ function Needs({ d, run, onChange }: { d: OrgData; run: boolean; onChange: () =>
     : <div className="grid md:grid-cols-2 gap-3">{rows.map((p) => <div key={p.id} className="panel p-4"><PostCard p={p} now={now} here={here} onChange={onChange} extra={extra?.(p)} /></div>)}</div>;
   return (
     <div className="space-y-8">
+      {run && (d.textsOn || !!d.texts?.length) && <Texts d={d} onChange={onChange} />}
       <section aria-labelledby="handling-h">
         <h2 id="handling-h" className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><HandHeart className="w-5 h-5 text-orange-500" aria-hidden />Needs you’re handling</h2>
         <p className="mt-1 text-sm text-zinc-500">Taken on for {d.org.name} in the last 30 days. {run ? 'Any coordinator can mark them delivered or give them back.' : 'Your coordinators mark them delivered.'}</p>
@@ -195,6 +207,47 @@ function Needs({ d, run, onChange }: { d: OrgData; run: boolean; onChange: () =>
         </div>
       </section>
     </div>
+  );
+}
+
+/** Text requests (M107): coordinators only, since each one shows the sender's number. */
+function Texts({ d, onChange }: { d: OrgData; onChange: () => void }) {
+  const now = useNow();
+  const [busy, setBusy] = useState<string | null>(null);
+  const texts = d.texts ?? [];
+  const waiting = texts.filter((t) => t.status === 'NEW').length;
+  const close = async (t: Text) => {
+    setBusy(t.id);
+    try { await api.post(`/relief/texts/${t.id}/close`); toast.success('Marked as handled'); onChange(); }
+    catch (e) { toast.error(errorMessage(e, 'Could not do that.')); } finally { setBusy(null); }
+  };
+  return (
+    <section aria-labelledby="texts-h">
+      <h2 id="texts-h" className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><MessageSquareText className="w-5 h-5 text-orange-500" aria-hidden />Text requests{waiting > 0 && <span className="rounded-full bg-orange-700 px-2 py-0.5 text-xs font-bold text-white">{waiting} new</span>}</h2>
+      <p className="mt-1 text-sm text-zinc-500 max-w-[70ch]">{d.org.textNumber ? `People without the app text ${d.org.textNumber} (SMS or WhatsApp). Only coordinators see these. Put a request on the map, or call or text back from your phone.` : 'Text requests are on. Set your Twilio number under Overview → Edit, and point its messaging webhook to https://universeimpact.com/api/core/relief/texts/inbound.'}</p>
+      {texts.length > 0 && (
+        <ul className="mt-3 grid md:grid-cols-2 gap-3">
+          {texts.map((t) => (
+            <li key={t.id} className={cn('panel p-4', t.status === 'NEW' && 'ring-1 ring-orange-500/40')}>
+              <p className="flex flex-wrap items-center gap-x-2 text-xs text-zinc-500">
+                <span className="font-semibold text-zinc-700 dark:text-zinc-200">{t.channel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'}</span>
+                <a href={`tel:${t.from}`} className="font-mono underline-offset-2 hover:underline" translate="no">{t.from}</a>
+                <span>{now ? formatDistanceToNow(new Date(t.createdAt), { addSuffix: true }) : ''}</span>
+                <span className="ms-auto font-semibold">{t.status === 'NEW' ? 'New' : t.status === 'POSTED' ? 'On the map' : 'Handled'}</span>
+              </p>
+              <p className="mt-2 text-sm text-zinc-800 dark:text-zinc-100 whitespace-pre-wrap" translate="no">{t.body}</p>
+              {t.status === 'NEW' && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link href={`/relief?text=${t.id}&org=${d.org.id}`} className="btn-primary btn-sm"><MapPin className="w-4 h-4" aria-hidden />Put on the map</Link>
+                  <a href={`sms:${t.from}`} className="btn-secondary btn-sm">Text back</a>
+                  <button type="button" disabled={busy === t.id} onClick={() => void close(t)} className="btn-secondary btn-sm">{busy === t.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" aria-hidden />}Handled</button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

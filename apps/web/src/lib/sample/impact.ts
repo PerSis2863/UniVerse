@@ -164,8 +164,15 @@ export function sampleReliefOrg(me: { id: string; name: string }, id: string) {
   const handling = posts.filter((p) => p.status !== 'OPEN').slice(0, 5).map((p) => ({ ...p, helperOrg: { id: o.id, name: o.name }, helping: o.role !== 'VOLUNTEER' || p.helping }));
   const near = posts.filter((p) => p.status === 'OPEN').slice(0, 8).map((p) => ({ ...p, lat: snap(c[1] + (r() - 0.5) * 0.3), lng: snap(c[2] + (r() - 0.5) * 0.3), place: placeOf(c) }));
   return {
-    org: { id: o.id, name: o.name, kind: o.kind, about: o.about, place: placeOf(c), lat: snap(c[1]), lng: snap(c[2]), createdAt: iso(now - 140 * DAY), code: o.role === 'OWNER' ? 'RVR7QK' : null },
-    role: o.role, members, supplies, moves, shifts: sampleShifts(me, o.id, o.role === 'OWNER' ? 7 : 5, o.role === 'OWNER' ? 11 : 12), handling, near,
+    org: { id: o.id, name: o.name, kind: o.kind, about: o.about, place: placeOf(c), lat: snap(c[1]), lng: snap(c[2]), createdAt: iso(now - 140 * DAY), code: o.role === 'OWNER' ? 'RVR7QK' : null, textNumber: o.role === 'OWNER' ? '+447700900123' : null },
+    role: o.role, members,
+    // M107: text requests, for coordinators (numbers from the UK range kept for films and TV: nobody's).
+    textsOn: o.role === 'OWNER',
+    texts: o.role === 'OWNER' ? [
+      { id: 'sample-text-0', channel: 'SMS', from: '+447700900481', body: 'Hello, we are a family of 5 near the station, no food since yesterday. Can someone help please', status: 'NEW', postId: null, createdAt: iso(now - 0.6 * 3_600_000) },
+      { id: 'sample-text-1', channel: 'WHATSAPP', from: '+447700900662', body: 'My mother needs insulin urgently, the pharmacy is closed. We are on Mill Lane.', status: 'NEW', postId: null, createdAt: iso(now - 2.2 * 3_600_000) },
+      { id: 'sample-text-2', channel: 'SMS', from: '+447700900137', body: 'Need blankets for 3 children tonight', status: 'POSTED', postId: 'sample-relief-4', createdAt: iso(now - 9 * 3_600_000) },
+    ] : null, supplies, moves, shifts: sampleShifts(me, o.id, o.role === 'OWNER' ? 7 : 5, o.role === 'OWNER' ? 11 : 12), handling, near,
   };
 }
 

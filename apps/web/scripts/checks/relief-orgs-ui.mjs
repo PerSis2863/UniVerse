@@ -3,7 +3,8 @@
 // two-place shift; Bob joins with the code, counts stock (allowed) but can't rename an item (refused),
 // signs up for the shift; a third person can't take a place on a full shift; Alice takes a need near
 // the base for the organisation and Bob (a volunteer) can't deliver it, then makes Bob a coordinator.
-// The pages: Organisations, and each tab of the organisation, at 390 and 1280 px, light and dark,
+// M107: the text webhook refuses while off; texts for coordinators only; one put on the map from the
+// form (kept while the place is tapped). The pages: Organisations, and each tab of the organisation, at 390 and 1280 px, light and dark,
 // axe (serious/critical), no sideways scrolling, no page errors. Removes everything it made.
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
@@ -27,6 +28,7 @@ const check = (ok, what) => { if (!ok) { failures++; console.log(`FAIL ${what}`)
 const NAME = 'Relief UI Test Kitchen';
 function cleanup() {
   sql(`DELETE FROM relief_posts WHERE title LIKE 'Relief UI need%'`);
+  sql(`DELETE FROM relief_texts WHERE id LIKE 'relief-ui-text-%'`);
   sql(`DELETE FROM relief_orgs WHERE name = '${NAME}'`);
   sql(`DELETE FROM notifications WHERE title LIKE '%Relief UI%' OR body LIKE '%Relief UI%'`);
 }
@@ -66,6 +68,16 @@ check(near.near.some((p) => p.id === need.b.id), 'the need shows near the base')
 check((await call(B, `/relief/posts/${need.b.id}/take`, { orgId: org })).s === 403, 'a volunteer cannot take needs for the organisation');
 check((await call(A, `/relief/posts/${need.b.id}/take`, { orgId: org })).s === 200, 'the owner takes it for the organisation');
 check((await call(B, `/relief/posts/${need.b.id}/done`, {})).s === 403, 'a volunteer cannot deliver it');
+// M107 text requests: the webhook refuses without the owner's switch and Twilio token; a text (put in
+// with SQL, as Twilio would) is seen by coordinators only, and can be marked handled.
+const hook = await fetch(`${base}/api/core/relief/texts/inbound`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'From=%2B447700900481&To=%2B447700900123&Body=hi' });
+check(hook.status === 503 || hook.status === 403, `the text webhook refuses while off (${hook.status})`);
+sql(`INSERT INTO relief_texts (id, orgId, channel, fromNumber, body) VALUES ('relief-ui-text-1', '${org}', 'SMS', '+447700900481', 'Relief UI need: family of 4 with no food since yesterday, urgent'), ('relief-ui-text-2', '${org}', 'WHATSAPP', '+447700900662', 'Relief UI spam')`);
+check((await call(B, `/relief/orgs/${org}`)).b.texts === null, 'a volunteer does not see text requests');
+check((await call(A, `/relief/orgs/${org}`)).b.texts?.length === 2, 'a coordinator sees them');
+check((await call(B, '/relief/texts/relief-ui-text-2/close', {})).s === 403, 'a volunteer cannot handle them');
+check((await call(A, '/relief/texts/relief-ui-text-2/close', {})).s === 200, 'a coordinator marks one handled');
+check((await call(A, '/relief/posts', { type: 'NEED', kind: 'FOOD', title: 'Relief UI need: x', lat: 51.5, lng: -0.12, textId: 'relief-ui-text-1' })).s === 400, 'a text is posted only in its organisation’s name');
 check((await call(A, `/relief/orgs/${org}/members/${bobView.members.find((m) => m.me).id}`, { role: 'COORDINATOR' }, 'PATCH')).s === 200, 'make Bob a coordinator');
 check((await call(B, `/relief/posts/${need.b.id}/done`, {})).s === 200, 'a coordinator delivers what the organisation took');
 const { b: map } = await call(C, '/relief/map');
@@ -73,6 +85,38 @@ check(JSON.stringify(map).indexOf('@') < 0, 'the map holds no email addresses');
 
 // ── The pages ───────────────────────────────────────────────────────────────────────────────
 const browser = await launch();
+
+// A text put on the map: the form opens with a first guess, keeps it while the place is tapped on the
+// map (it used to forget what was typed), posts in the organisation's name and files the text.
+{
+  const ctx = await signedIn(browser, base, A, { width: 1280, height: 900 });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(`${base}/relief?text=relief-ui-text-1&org=${org}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+  const title = page.getByRole('textbox', { name: 'In a few words' });
+  await title.waitFor({ timeout: 60_000 });
+  check((await title.inputValue()).includes('family of 4'), 'the form opens with the text');
+  check(await page.getByRole('combobox', { name: 'How urgent' }).inputValue() === 'HIGH', 'it guesses how urgent');
+  await page.getByRole('button', { name: 'Tap the map' }).click();
+  await page.getByRole('textbox', { name: 'In a few words' }).waitFor({ state: 'detached', timeout: 10_000 });
+  // A point where the map itself is on top (live cards sit over parts of it).
+  const spot = await page.evaluate(() => {
+    const m = document.querySelector('[role="application"][aria-label^="Map of needs"]'), r = m.getBoundingClientRect();
+    for (let y = r.top + r.height * 0.3; y < r.bottom - 10; y += 25) for (let x = r.left + r.width * 0.15; x < r.right - 60; x += 25) { const at = document.elementFromPoint(x, y); if (at === m || (at?.tagName === 'CANVAS' && m.contains(at))) return { x, y }; }
+    return null;
+  });
+  check(!!spot, 'a free spot on the map');
+  if (spot) await page.mouse.click(spot.x, spot.y);
+  await title.waitFor({ timeout: 10_000 });
+  check((await title.inputValue()).includes('family of 4'), 'the text is still there after tapping the map');
+  await page.getByRole('button', { name: 'Post it' }).click();
+  await page.getByText('Posted.', { exact: false }).first().waitFor({ timeout: 20_000 }).catch(() => check(false, 'posting the text'));
+  const texts = (await call(A, `/relief/orgs/${org}`)).b.texts ?? [];
+  check(texts.find((t) => t.id === 'relief-ui-text-1')?.status === 'POSTED', 'the text is marked as on the map');
+  check(errors.length === 0, `text to map: page errors ${errors.join(' | ')}`);
+  await ctx.close();
+}
 for (const [w, h] of [[390, 844], [1280, 900]]) {
   for (const scheme of ['light', 'dark']) {
     const ctx = await signedIn(browser, base, A, { width: w, height: h }, { colorScheme: scheme });

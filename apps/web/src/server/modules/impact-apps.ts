@@ -5,6 +5,7 @@ import { askUniverse } from '../ask';
 import { createRoom, playLeaderboard, playMe, roomInfo, roomTicket, saveSoloScore } from '../play';
 import { clearReliefWatch, createReliefPost, reliefAction, reliefMap, reliefMine, reliefWatch, setReliefWatch } from '../relief';
 import { addReliefSupply, cancelReliefShift, createReliefOrg, createReliefShift, deleteReliefSupply, joinReliefOrg, leaveReliefOrg, leaveReliefShift, newReliefOrgCode, reliefOrg, reliefOrgs, setReliefOrgMember, signUpReliefShift, updateReliefOrg, updateReliefSupply } from '../relief-orgs';
+import { closeReliefText, inboundText } from '../relief-texts';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*),
@@ -43,6 +44,10 @@ export default function impactAppsModule(router: Router) {
   relief.delete<{ id: string; sid: string }>('orgs/:id/shifts/:sid', ({ user, params }) => cancelReliefShift(user, params.id, params.sid));
   relief.post<{ sid: string }>('shifts/:sid/signup', { status: 200 }, ({ user, params }) => signUpReliefShift(user, params.sid));
   relief.delete<{ sid: string }>('shifts/:sid/signup', ({ user, params }) => leaveReliefShift(user, params.sid));
+  // Text requests (M107, src/server/relief-texts.ts): Twilio's webhook (signed, behind the owner's
+  // "Relief text requests" switch) and closing a message.
+  relief.post('texts/inbound', { public: true, status: 200 }, ({ req, body }) => inboundText(req, body ?? {}));
+  relief.post<{ id: string }>('texts/:id/close', { status: 200 }, ({ user, params }) => closeReliefText(user, params.id));
 
   // UniVerse Play (M31): rooms, seats, scores and leaderboards (src/server/play.ts).
   const play = router.controller('play');

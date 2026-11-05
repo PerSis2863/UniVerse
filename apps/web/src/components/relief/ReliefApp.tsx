@@ -13,7 +13,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { inboxFor } from '@/lib/apps';
 import { fetcher } from '@/lib/fetcher';
 import { distanceM } from '@/lib/attendance-rules';
-import { RELIEF_KINDS, RELIEF_KIND_LABEL, URGENCIES, URGENCY_COLOR, URGENCY_LABEL, needScore, runsOrg, type ReliefKind, type Urgency } from '@/lib/relief';
+import { RELIEF_KINDS, RELIEF_KIND_LABEL, URGENCIES, URGENCY_COLOR, URGENCY_LABEL, guessNeed, needScore, runsOrg, type ReliefKind, type Urgency } from '@/lib/relief';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { useAuthStore } from '@/store/auth';
@@ -44,6 +44,10 @@ interface ReliefMap {
 
 export const KIND_ICON: Record<ReliefKind, typeof Utensils> = { FOOD: Utensils, WATER: Droplets, SHELTER: Home, MEDICAL: Stethoscope, TRANSPORT: Car, CLOTHES: Shirt, OTHER: Package };
 const OFFER = '#14b8a6', DONE = '#22c55e';
+
+/** The "Ask or offer help" form, kept here so tapping the map for the place doesn't lose what was typed. */
+interface Draft { type: 'NEED' | 'OFFER'; kind: ReliefKind; title: string; details: string; people: string; urgency: Urgency; place: string; orgId: string; textId: string }
+const EMPTY: Draft = { type: 'NEED', kind: 'FOOD', title: '', details: '', people: '1', urgency: 'MEDIUM', place: '', orgId: '', textId: '' };
 const WORLD: Box = [-170, -56, 180, 76];
 
 /** The actions a person can take on a post. */
@@ -87,7 +91,24 @@ export function ReliefApp() {
   // An alert's link (/relief?post=<id>) opens with that post chosen.
   const [selected, setSelected] = useState<string | null>(() => (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('post')));
   const [posting, setPosting] = useState(false);
+  const [draft, setDraft] = useState<Draft>(EMPTY);
   const [picking, setPicking] = useState(false);
+  // A coordinator putting a text request on the map (M107): /relief?text=<id>&org=<id> opens the form
+  // with a first guess from the message (guessNeed), in the organisation's name.
+  const [fromText] = useState(() => { if (typeof window === 'undefined') return null; const q = new URLSearchParams(window.location.search); const t = q.get('text'), o = q.get('org'); return t && o ? { t, o } : null; });
+  const prefilled = useRef(false);
+  useSWR<{ texts: { id: string; channel: string; body: string; status: string }[] | null }>(fromText ? `/relief/orgs/${fromText.o}` : null, fetcher, {
+    onSuccess: (d) => {
+      if (prefilled.current || !fromText) return;
+      prefilled.current = true;
+      const msg = d.texts?.find((x) => x.id === fromText.t);
+      if (!msg) { toast.error('That message is gone, or it isn’t yours to post.'); return; }
+      if (msg.status === 'POSTED') { toast('This message is on the map already.'); return; }
+      const g = guessNeed(msg.body);
+      setDraft({ ...EMPTY, kind: g.kind, title: g.title.slice(0, 120), details: msg.body.slice(0, 1000), people: String(g.people), urgency: g.urgency, orgId: fromText.o, textId: msg.id });
+      setPosting(true);
+    },
+  });
   const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(null);
   const map = useRef<MapHandle>(null);
   const frameRef = useRef<Frame | null>(null);
@@ -266,7 +287,7 @@ export function ReliefApp() {
       </div>
 
       <AnimatePresence>
-        {posting && <PostForm at={picked} onPick={() => { setPosting(false); setPicking(true); }} onClose={() => { setPosting(false); setPicked(null); }} onDone={(p) => { setPosting(false); setPicked(null); void mutate(); if (p) setTimeout(() => focus(p), 400); }} />}
+        {posting && <PostForm f={draft} setF={setDraft} at={picked} onPick={() => { setPosting(false); setPicking(true); }} onClose={() => { setPosting(false); setPicked(null); setDraft(EMPTY); }} onDone={(p) => { setPosting(false); setPicked(null); setDraft(EMPTY); void mutate(); if (p) setTimeout(() => focus(p), 400); }} />}
       </AnimatePresence>
     </div>
   );
@@ -304,8 +325,7 @@ export function PostCard({ p, now, here, onChange, extra }: { p: ReliefPost; now
   );
 }
 
-function PostForm({ at, onPick, onClose, onDone }: { at: { lat: number; lng: number } | null; onPick: () => void; onClose: () => void; onDone: (p: ReliefPost | null) => void }) {
-  const [f, setF] = useState({ type: 'NEED' as 'NEED' | 'OFFER', kind: 'FOOD' as ReliefKind, title: '', details: '', people: '1', urgency: 'MEDIUM' as Urgency, place: '', orgId: '' });
+function PostForm({ f, setF, at, onPick, onClose, onDone }: { f: Draft; setF: (f: Draft) => void; at: { lat: number; lng: number } | null; onPick: () => void; onClose: () => void; onDone: (p: ReliefPost | null) => void }) {
   const [where, setWhere] = useState(at);
   // Coordinators can post in their organisation's name (M106).
   const { data: orgs } = useSWR<{ orgs: { id: string; name: string; role: string }[] }>('/relief/orgs', fetcher);
@@ -339,6 +359,7 @@ function PostForm({ at, onPick, onClose, onDone }: { at: { lat: number; lng: num
             </button>
           ); })}
         </div>
+        {f.textId && <p className="mt-4 rounded-2xl bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">From a text message. Everyone can see the map: take out names, addresses and phone numbers, then set where it is.</p>}
         <label className="mt-4 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">In a few words</span><input required maxLength={120} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} className="input mt-1" placeholder={f.type === 'NEED' ? 'Food for a family of 5' : 'I can drive supplies on weekends'} /></label>
         <label className="mt-3 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Details (optional)</span><textarea rows={3} maxLength={1000} value={f.details} onChange={(e) => setF({ ...f, details: e.target.value })} className="input mt-1 resize-y" placeholder="What exactly, when, anything a helper should know. Don’t write your address: say it in a message." /></label>
         <div className="mt-3 grid grid-cols-2 gap-3">
@@ -347,7 +368,7 @@ function PostForm({ at, onPick, onClose, onDone }: { at: { lat: number; lng: num
         </div>
         {runs.length > 0 && (
           <label className="mt-3 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Post as</span>
-            <select value={f.orgId} onChange={(e) => setF({ ...f, orgId: e.target.value })} className="input mt-1"><option value="">Myself</option>{runs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select>
+            <select value={f.orgId} disabled={!!f.textId} onChange={(e) => setF({ ...f, orgId: e.target.value })} className="input mt-1"><option value="">Myself</option>{runs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select>
           </label>
         )}
         <label className="mt-3 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Area name (optional)</span><input maxLength={120} value={f.place} onChange={(e) => setF({ ...f, place: e.target.value })} className="input mt-1" placeholder="Riverside, Ward 12…" /></label>

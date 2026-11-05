@@ -6999,10 +6999,31 @@ model ReliefOrg {
   lng         Float?
   /// Join code (6 letters and digits), shared by the organisation's coordinators.
   code        String   @unique
+  /// M107: its Twilio number (E.164) for text requests, SMS or WhatsApp.
+  textNumber  String?  @unique
   createdById String?
   createdAt   DateTime @default(now())
 
   @@map("relief_orgs")
+}
+
+/// M107: a text (SMS or WhatsApp) sent to an organisation's number. Coordinators only: it holds the
+/// sender's phone number. NEW, POSTED (put on the map as postId) or CLOSED.
+model ReliefText {
+  id          String    @id @default(cuid())
+  orgId       String
+  channel     String    @default("SMS")
+  fromNumber  String
+  body        String
+  status      String    @default("NEW")
+  postId      String?
+  handledById String?
+  handledAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([orgId, createdAt])
+  @@index([fromNumber, createdAt])
+  @@map("relief_texts")
 }
 
 model ReliefOrgMember {
