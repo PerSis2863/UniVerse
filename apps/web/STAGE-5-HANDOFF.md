@@ -4561,3 +4561,14 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
   two-week rule today. body-parser 2.4.0 (the high one, inside the build tool) turns two weeks old at
   11:39 UTC and the scheduled task applies it at 12:00; serialize-javascript's fix tonight; glob and
   minimatch only have new majors under two weeks old; deepmerge has no fix.
+
+## M115: body-parser 2.4.0, the last high library issue (scheduled, 5 Nov 2026)
+
+- The scheduled task from the owner's "please do all the still to do" (4 Nov), run once body-parser
+  2.4.0 (published 22 Oct, 11:39 UTC) was two weeks old. Root `package.json` override
+  `"body-parser@>=2.0.0 <2.4.0": "2.4.0"`: scoped and pinned like the newer overrides (the task said
+  `"body-parser": "^2.4.0"`; the lockfile only ever had 2.3.0, inside the build tool's local server, so
+  the scoped pin does the same today and can't pull a release under two weeks old later).
+- `pnpm audit --prod`: 7 → 6, no high or critical left. Still open: glob and minimatch (moderate, only
+  new majors as fixes), serialize-javascript (low, its fix two weeks old tonight), deepmerge (low, no fix).
+- **Checked:** `pnpm install` (lockfile: body-parser 2.4.0 only), `pnpm check`.
