@@ -4,6 +4,7 @@ import { impactWallet } from '../impact-wallet';
 import { askUniverse } from '../ask';
 import { createRoom, playLeaderboard, playMe, roomInfo, roomTicket, saveSoloScore } from '../play';
 import { clearReliefWatch, createReliefPost, reliefAction, reliefMap, reliefMine, reliefWatch, setReliefWatch } from '../relief';
+import { addReliefSupply, cancelReliefShift, createReliefOrg, createReliefShift, deleteReliefSupply, joinReliefOrg, leaveReliefOrg, leaveReliefShift, newReliefOrgCode, reliefOrg, reliefOrgs, setReliefOrgMember, signUpReliefShift, updateReliefOrg, updateReliefSupply } from '../relief-orgs';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*),
@@ -24,7 +25,24 @@ export default function impactAppsModule(router: Router) {
   relief.put('watch', ({ user, body }) => setReliefWatch(user, body ?? {}));
   relief.delete('watch', ({ user }) => clearReliefWatch(user));
   relief.post('posts', ({ user, body }) => createReliefPost(user, body ?? {}));
-  relief.post<{ id: string; action: string }>('posts/:id/:action', { status: 200 }, ({ user, params }) => reliefAction(user, params.id, params.action));
+  relief.post<{ id: string; action: string }>('posts/:id/:action', { status: 200 }, ({ user, params, body }) => reliefAction(user, params.id, params.action, body ?? {}));
+  // Organisations (M106, src/server/relief-orgs.ts): members only, coordinators run them.
+  relief.get('orgs', ({ user }) => reliefOrgs(user));
+  relief.post('orgs', ({ user, body }) => createReliefOrg(user, body ?? {}));
+  relief.post('orgs/join', { status: 200 }, ({ user, body }) => joinReliefOrg(user, body ?? {}));
+  relief.get<{ id: string }>('orgs/:id', ({ user, params }) => reliefOrg(user, params.id));
+  relief.patch<{ id: string }>('orgs/:id', ({ user, params, body }) => updateReliefOrg(user, params.id, body ?? {}));
+  relief.post<{ id: string }>('orgs/:id/code', { status: 200 }, ({ user, params }) => newReliefOrgCode(user, params.id));
+  relief.post<{ id: string }>('orgs/:id/leave', { status: 200 }, ({ user, params }) => leaveReliefOrg(user, params.id));
+  relief.patch<{ id: string; userId: string }>('orgs/:id/members/:userId', ({ user, params, body }) => setReliefOrgMember(user, params.id, params.userId, body ?? {}));
+  relief.delete<{ id: string; userId: string }>('orgs/:id/members/:userId', ({ user, params }) => setReliefOrgMember(user, params.id, params.userId, null));
+  relief.post<{ id: string }>('orgs/:id/supplies', ({ user, params, body }) => addReliefSupply(user, params.id, body ?? {}));
+  relief.patch<{ id: string; sid: string }>('orgs/:id/supplies/:sid', ({ user, params, body }) => updateReliefSupply(user, params.id, params.sid, body ?? {}));
+  relief.delete<{ id: string; sid: string }>('orgs/:id/supplies/:sid', ({ user, params }) => deleteReliefSupply(user, params.id, params.sid));
+  relief.post<{ id: string }>('orgs/:id/shifts', ({ user, params, body }) => createReliefShift(user, params.id, body ?? {}));
+  relief.delete<{ id: string; sid: string }>('orgs/:id/shifts/:sid', ({ user, params }) => cancelReliefShift(user, params.id, params.sid));
+  relief.post<{ sid: string }>('shifts/:sid/signup', { status: 200 }, ({ user, params }) => signUpReliefShift(user, params.sid));
+  relief.delete<{ sid: string }>('shifts/:sid/signup', ({ user, params }) => leaveReliefShift(user, params.sid));
 
   // UniVerse Play (M31): rooms, seats, scores and leaderboards (src/server/play.ts).
   const play = router.controller('play');

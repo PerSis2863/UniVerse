@@ -14,6 +14,7 @@ import { dueReportExports } from './report-schedules';
 import { sealOldSecrets } from './secret-box';
 import { countSiteTotals } from './site-totals';
 import { greenStreakNudges } from './green';
+import { shiftReminders } from './relief-orgs';
 
 // The daily jobs, in steps (Stage 5 · bug review). D1 answers at most 50 queries in one run on
 // Workers Free (a cron run is one run), and the daily jobs need far more once a school is real:
@@ -149,6 +150,8 @@ export const STEPS: Step[] = [
   // Scheduled report exports (Phase E): a CSV in each admin's My files when it's due.
   { job: 'report-exports', run: () => dueReportExports(left) },
   // UniVerse Green: a nudge for people whose streak ends today unless they log something (M61).
+  // UniVerse Relief: a reminder for everyone signed up for a shift in the next 24 hours (M106).
+  { job: 'relief-shifts', run: () => shiftReminders(left) },
   { job: 'green-streaks', run: async () => (left() < 14 ? { done: false } : { done: true, info: await greenStreakNudges() }) },
   { job: 'wellbeing', run: () => inSlices(14, async (n) => { const r = await wellbeingNudges(n); return { more: r.checked === n, count: r.sent }; }) },
   // AI explains the day's new problems (a few a run), then the owner's problems email when it's due.

@@ -1,29 +1,45 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { RELIEF_KINDS, RELIEF_KIND_LABEL, URGENCIES, snap } from '@/lib/relief';
+import { RELIEF_KINDS, RELIEF_KIND_LABEL, URGENCIES, runsOrg, snap } from '@/lib/relief';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { notifyMany } from './email';
 import { pushService } from './services/push.service';
 import { oneOf, type Body } from './body';
 import { num, short } from './trace';
+import { orgRole } from './relief-orgs';
 
 // UniVerse Relief (migration 0180): needs and offers of help on one live map. Anyone signed in can
 // ask for help or offer it; a helper takes a need ("I can help"), and the person who asked or the
 // helper marks it delivered. Positions are rounded to about 500 m when saved (snap), so a post never
 // shows a door. Nothing older than 30 days is shown on the map. The person who asked hears when
 // someone takes, gives back or delivers their request, and helpers who opted in (relief_watches,
-// migration 0181) hear about new needs near the place they chose.
+// migration 0181) hear about new needs near the place they chose. An organisation (M106,
+// src/server/relief-orgs.ts) can post in its name and take needs on; its coordinators can then
+// deliver or give back what it took.
 
 const DAY = 86_400_000;
-const PUBLIC = { id: true, type: true, kind: true, title: true, details: true, people: true, urgency: true, lat: true, lng: true, place: true, status: true, createdAt: true, takenAt: true, doneAt: true, userId: true, helperId: true } as const;
-type Row = { id: string; userId: string; helperId: string | null; [k: string]: unknown };
+const PUBLIC = { id: true, type: true, kind: true, title: true, details: true, people: true, urgency: true, lat: true, lng: true, place: true, status: true, createdAt: true, takenAt: true, doneAt: true, userId: true, helperId: true, orgId: true, helperOrgId: true } as const;
+type Row = { id: string; userId: string; helperId: string | null; orgId: string | null; helperOrgId: string | null; [k: string]: unknown };
 
-/** A post as the viewer may see it: who posted (to message them) and whether it's theirs. */
+/**
+ * A post as the viewer may see it: who posted (to message them), the organisation behind it, and
+ * whether it's theirs to deliver (they took it, or they run the organisation that did).
+ */
 async function shape(rows: Row[], u: SessionUser) {
   const ids = [...new Set(rows.flatMap((r) => [r.userId, r.helperId]).filter((x): x is string => !!x))];
-  const people = ids.length ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }) : [];
+  const orgIds = [...new Set(rows.flatMap((r) => [r.orgId, r.helperOrgId]).filter((x): x is string => !!x))];
+  const [people, orgs, runs] = await Promise.all([
+    ids.length ? prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }) : [],
+    orgIds.length ? prisma.reliefOrg.findMany({ where: { id: { in: orgIds } }, select: { id: true, name: true } }) : [],
+    orgIds.length ? prisma.reliefOrgMember.findMany({ where: { userId: u.id, orgId: { in: orgIds }, role: { in: ['OWNER', 'COORDINATOR'] } }, select: { orgId: true } }) : [],
+  ]);
   const who = (id: string | null) => (id ? people.find((p) => p.id === id) ?? null : null);
-  return rows.map(({ userId, helperId, ...r }) => ({ ...r, by: who(userId), helper: who(helperId), mine: userId === u.id, helping: helperId === u.id }));
+  const org = (id: string | null) => (id ? orgs.find((o) => o.id === id) ?? null : null);
+  const mine = new Set(runs.map((r) => r.orgId));
+  return rows.map(({ userId, helperId, orgId, helperOrgId, ...r }) => ({
+    ...r, by: who(userId), helper: who(helperId), org: org(orgId), helperOrg: org(helperOrgId),
+    mine: userId === u.id, helping: helperId === u.id || (!!helperOrgId && mine.has(helperOrgId)),
+  }));
 }
 
 /** GET /relief/map: open needs and offers of the last 30 days, and how the community is doing. */
@@ -61,8 +77,11 @@ export async function createReliefPost(u: SessionUser, b: Body) {
   const urgency = oneOf(URGENCIES, b.urgency) ? b.urgency : 'MEDIUM';
   const open = await prisma.reliefPost.count({ where: { userId: u.id, status: 'OPEN' } });
   if (open >= 20) throw new BadRequestException('You have 20 open posts. Close some that are done first.');
+  // In an organisation's name (M106): its coordinators only.
+  const orgId = typeof b.orgId === 'string' && b.orgId ? b.orgId : null;
+  if (orgId && !runsOrg(await orgRole(u.id, orgId))) throw new ForbiddenException('Only the organisation’s coordinators can post in its name.');
   const post = await prisma.reliefPost.create({
-    data: { userId: u.id, type: b.type, kind: b.kind, title, details: short(b.details, 1000), people: Math.round(num(b.people, 1, 10_000) ?? 1), urgency: b.type === 'OFFER' ? 'LOW' : urgency, lat: snap(lat), lng: snap(lng), place: short(b.place, 120) },
+    data: { userId: u.id, orgId, type: b.type, kind: b.kind, title, details: short(b.details, 1000), people: Math.round(num(b.people, 1, 10_000) ?? 1), urgency: b.type === 'OFFER' ? 'LOW' : urgency, lat: snap(lat), lng: snap(lng), place: short(b.place, 120) },
   });
   if (post.type === 'NEED') await alertWatchers(post).catch((e) => console.error('relief alerts failed:', e));
   return post;
@@ -124,21 +143,30 @@ async function post(id: string) {
   return p;
 }
 
-/** POST /relief/posts/:id/:action: take a need, give it back, mark it delivered, or close your post. */
-export async function reliefAction(u: SessionUser, id: string, action: string) {
+/**
+ * POST /relief/posts/:id/:action { orgId? }: take a need (for yourself, or for an organisation you
+ * coordinate), give it back, mark it delivered, or close your post.
+ */
+export async function reliefAction(u: SessionUser, id: string, action: string, b: Body = {}) {
   const p = await post(id);
+  // A need an organisation took on: its coordinators can deliver it or give it back too.
+  const forOrg = p.helperOrgId ? runsOrg(await orgRole(u.id, p.helperOrgId)) : false;
   if (action === 'take') {
     if (p.type !== 'NEED') throw new BadRequestException('Offers aren’t taken: message the person instead.');
     if (p.userId === u.id) throw new BadRequestException('This is your own request.');
-    const took = await prisma.reliefPost.updateMany({ where: { id, status: 'OPEN' }, data: { status: 'TAKEN', helperId: u.id, takenAt: new Date() } });
+    const orgId = typeof b.orgId === 'string' && b.orgId ? b.orgId : null;
+    if (orgId && !runsOrg(await orgRole(u.id, orgId))) throw new ForbiddenException('Only the organisation’s coordinators can take needs for it.');
+    const org = orgId ? await prisma.reliefOrg.findUnique({ where: { id: orgId }, select: { name: true } }) : null;
+    const took = await prisma.reliefPost.updateMany({ where: { id, status: 'OPEN' }, data: { status: 'TAKEN', helperId: u.id, helperOrgId: orgId, takenAt: new Date() } });
     if (!took.count) throw new BadRequestException('Someone is already helping with this one.');
-    await tell([p.userId], { title: `${u.name} is coming to help`, body: `${u.name} took your request “${p.title}”. You can message them from My requests.`, link: '/relief/mine', tag: `relief-${id}` });
+    const name = org ? `${org.name} (${u.name})` : u.name;
+    await tell([p.userId], { title: `${org?.name ?? u.name} is coming to help`, body: `${name} took your request “${p.title}”. You can message them from My requests.`, link: '/relief/mine', tag: `relief-${id}` });
   } else if (action === 'release') {
-    if (p.helperId !== u.id) throw new ForbiddenException('You aren’t helping with this one.');
-    await prisma.reliefPost.update({ where: { id }, data: { status: 'OPEN', helperId: null, takenAt: null } });
+    if (p.helperId !== u.id && !forOrg) throw new ForbiddenException('You aren’t helping with this one.');
+    await prisma.reliefPost.update({ where: { id }, data: { status: 'OPEN', helperId: null, helperOrgId: null, takenAt: null } });
     await tell([p.userId], { title: 'Your request is open again', body: `${u.name} can’t help with “${p.title}” after all. It’s back on the map for others.`, link: '/relief/mine', tag: `relief-${id}` });
   } else if (action === 'done') {
-    if (p.userId !== u.id && p.helperId !== u.id) throw new ForbiddenException('Only the person who asked or the helper can mark it done.');
+    if (p.userId !== u.id && p.helperId !== u.id && !forOrg) throw new ForbiddenException('Only the person who asked or the helper can mark it done.');
     await prisma.reliefPost.update({ where: { id }, data: { status: 'DONE', doneAt: new Date() } });
     // The other side hears it: the person who asked, or the helper.
     const other = u.id === p.userId ? p.helperId : p.userId;

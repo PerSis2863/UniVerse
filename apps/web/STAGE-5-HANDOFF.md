@@ -4271,3 +4271,50 @@ each in an app that had only two, both realistic from the start on the M102–M1
   passes when it closes (`World.dispose`: three's `EffectComposer.dispose` doesn't); the satellite map's
   shallows are three widening strokes instead of a canvas blur (Safari doesn't draw `filter`); Fire Line's
   two flames per cell sit either side of the cell's middle.
+
+## M106: Relief for organisations: NGOs, supplies, volunteer shifts (4 Nov 2026)
+
+The owner: "can you improve the whole system do anything what you can do". The next of the owner's
+seven ideas (25 Oct, "work on all 7 of them"): organisation accounts for Relief. Migration **0192**.
+
+- **What people get** (Relief → Organisations, `/relief/orgs`; phone tab "Orgs"): start an organisation
+  (NGO, food bank, shelter, clinic, faith or community group, school) or join one with a 6-character code
+  (`?join=<code>` opens it filled in). Its page (`?org=<id>`, no `[id]` route) has five tabs: Overview
+  (four `FactorCard`s, About, the invite code for coordinators, Leave), Needs (what it handles; open needs
+  within ~25 km of its base, most urgent first, "Take for <org>"), Supplies (+/−, set a count or "+20" /
+  "−5", running-low level, the last 40 changes with who), Shifts (create, sign up, cancel; names of who's
+  coming), Members (roles, remove). The Organisations home lists my organisations, my shifts and every
+  open shift that still needs people (next 30 days). On the map, a coordinator can post "as" the
+  organisation, and cards say "Offered by <org>" / "<org> is helping".
+- **Server** `src/server/relief-orgs.ts` (rules in `src/lib/relief.ts`: `RELIEF_ORG_ROLES`, `runsOrg`,
+  `mayChangeRole`, `supplyLow`, `nextQuantity`, `shiftState`). Non-members get 404 for an organisation.
+  OWNER does everything but leave it ownerless; COORDINATOR runs it but only moves volunteers;
+  VOLUNTEER sees it and changes stock counts (not the item). A count changes in one SQL statement
+  (`MIN(1000000, MAX(0, quantity + ?))`) and is logged in `relief_supply_moves`. A shift place is taken
+  by a guarded update (`filled < slots`) before the sign-up row, given back if the row already existed.
+  The last member leaving deletes the organisation (cascade). Caps: 5 started per person, 500 members,
+  200 items, 100 shifts ahead. Every change `publish`es a `refresh` of `/relief/orgs/<id>` and
+  `/relief/orgs` to the members (no polling).
+- **Relief changes** (`src/server/relief.ts`): `relief_posts.orgId` (posted in its name, coordinators
+  only) and `helperOrgId` (taken for it); its coordinators can deliver or give back what it took
+  (`reliefAction` takes the body now). `shape` adds `org`, `helperOrg`, and `helping` for them.
+- **Notifications** (bell and push, `email: false`): a join (to coordinators), a role change, a sign-up
+  (to the shift's creator), a cancelled shift (to everyone signed up), and a daily-job step
+  `relief-shifts` (`shiftReminders`): "starts in about N hours" for shifts in the next 24 h, once each
+  (checked by the notification's link), so no time zone is shown wrong.
+- **Not merged with the school's NGO marketplace on purpose**: `ngos` / `ngo_projects` /
+  `volunteer_shifts` are school-admin records (80G receipts, QR check-in for students); Relief
+  organisations are self-serve communities with members. A later item could let a school's NGO link
+  to a Relief organisation.
+- **Sample mode**: `sampleReliefOrgs` / `sampleReliefOrg` (`src/lib/sample/impact.ts`: a food bank I own
+  and a shelter I volunteer at), and `/relief/watch` now answers `null` in sample mode (it reached the
+  real server before).
+- **Trap found**: `.input` is declared in `@layer utilities` after Tailwind's own utilities, so
+  `w-20`, `py-1.5` and the like on an `.input` do nothing (sitewide, older code too). Size a wrapper
+  instead (the stock count field). Fixing the layer would change many inputs at once: left for a sweep.
+- **Not done (later)**: SMS / WhatsApp requests into an organisation's inbox (needs a Twilio or WhatsApp
+  Business account: **[owner]**, M107 builds it behind a switch, off); a public organisation page.
+- **Checked**: `scripts/checks/relief-orgs-ui.mjs` (start, join, counts, a volunteer refused a rename,
+  a full shift refuses a third person, take for the organisation, volunteer can't deliver, coordinator
+  can; every tab at 390 and 1280, light and dark, axe clean, no sideways scrolling, no page errors);
+  `src/server/relief-orgs.test.ts` (rules, guarded shift place, stock log, owner rules); `pnpm check`.

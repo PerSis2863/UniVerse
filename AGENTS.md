@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M105 is the latest).
+  builds on it). The newest notes are at the end (M106 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -65,7 +65,7 @@ software or website in the main website… where they create a impact"). Each ap
   campaigns, recalls, prizes, warranties, reviews, an ownership vault, the Radar and Insights,
   public brand pages `/b/<slug>`, cold chain with real sensors.
 - **Relief** (`/relief`): needs and offers of help on a live map, with notifications and nearby
-  alerts for helpers.
+  alerts for helpers, and organisations (`/relief/orgs`: NGOs with members, supplies and volunteer shifts).
 - **Green** (`/green`): climate actions with the CO₂ they save, streaks, badges, a weekly challenge,
   teams and a map.
 - **Play** (`/play`): thirteen games (quick: Quiz Clash, Spot the Fake, Supply Run, Recycle Rush; big:
@@ -147,17 +147,19 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   stars, planets drawn on the graphics chip, the torch's beam (`world/nature.ts`, `World.sky`, `envFrom`);
   **M103** Flood Rescue and Ocean Cleanup drawn in 3D with the same rules (`world/board.ts`); **M104** the
   other six realistic (3D race, sorting line, satellite map, aerial town, product photos, quiz studio);
-  **M105** two new games: Fire Line (Relief) and Reef Rescue (Green, 3D).
-- **Work numbers:** the next item is **M106**. Never reuse a number: take the next one after the
+  **M105** two new games: Fire Line (Relief) and Reef Rescue (Green, 3D); **M106** Relief for organisations
+  (NGOs, food banks, shelters: members with roles, supplies with a change log, volunteer shifts, needs near
+  the base taken "for" the organisation; `src/server/relief-orgs.ts`, `/relief/orgs`, migration 0192).
+- **Work numbers:** the next item is **M107**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0192`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0193`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
-  challenges (done, M25); organisation accounts for Relief (NGOs, supplies, volunteer shifts; SMS/WhatsApp requests behind a
-  switch); an "Ask UniVerse" assistant that acts in every app (small version done, M30); the EU Digital Product Passport for
+  challenges (done, M25); organisation accounts for Relief (NGOs, supplies, volunteer shifts: done, M106;
+  SMS/WhatsApp requests behind a switch: next); an "Ask UniVerse" assistant that acts in every app (small version done, M30); the EU Digital Product Passport for
   Trace (GS1 codes, supplier portal); self-serve payments for Trace PRO, campaigns and schools (off
   until the owner's Stripe keys); store apps for Android and iPhone (the owner's store accounts).
 - **Waiting on the owner** (only they can provide it): Google / Microsoft calendar sync apps; Google
