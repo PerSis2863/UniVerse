@@ -12,7 +12,7 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  BadgeCheck, Clock, Copy, Eye, Layers, Loader2, MessagesSquare, Pin, UserPlus, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
+  BadgeCheck, Clock, Copy, Eye, Layers, Link2, Loader2, MessagesSquare, Pin, UserPlus, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { uploadChatFile } from '@/components/chat/chat-client';
@@ -32,6 +32,8 @@ import { QuizReview } from '@/components/quizzes/QuizReview';
 import { TranslatableAnnouncement } from '@/components/shared/Translatable';
 import { CourseCalendar, courseCalendarKey } from '@/components/dashboard/CourseCalendar';
 import { FileDrop } from '@/components/ui/FileDrop';
+import { Sheet } from '@/components/ui/Sheet';
+import { CourseInviteLink } from '@/components/dashboard/CourseInvite';
 
 const MATERIAL_TYPES = '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.zip,.png,.jpg,.jpeg,.webp,.gif,.mp4,.mov';
 
@@ -68,7 +70,7 @@ const Whiteboard = dynamic(() => import('@/components/dashboard/CollaborationWhi
 type Role = 'student' | 'teacher';
 interface Course { id: string; name: string; code: string; color: string | null; teacher?: { id: string; name: string } | null }
 interface Board {
-  course: Course & { _count: { enrollments: number }; skills?: string | null };
+  course: Course & { _count: { enrollments: number }; skills?: string | null; status?: string };
   canManage: boolean;
   /** The teaching team (teaching assistants too): roster and grading (Stage 5 · B2). */
   canGrade?: boolean;
@@ -130,6 +132,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
   const [sessionId, setSessionId] = useState<string | null>(() => link.get('session'));
   const [copying, setCopying] = useState(false);
   const [team, setTeam] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(() => link.get('thread'));
   // The picked course, or the first one when it isn't among yours (once your courses have loaded).
   const courseId = !courses.length || courses.some((c) => c.id === pickedId) ? pickedId : courses[0].id;
@@ -179,6 +182,11 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
     <>
       <Topbar title={title} subtitle={subtitle} />{tabs}
       {team && course && <CourseTeam courseId={course.id} onClose={() => setTeam(false)} />}
+      {inviting && board && (
+        <Sheet title={`Invite students to ${board.course.code}`} onClose={() => setInviting(false)}>
+          <CourseInviteLink course={board.course} onPublished={() => void mutate()} />
+        </Sheet>
+      )}
       {copying && course && (
         <CourseCopy course={course} onClose={() => setCopying(false)}
           onDone={(id) => { setCopying(false); void refreshKey('/courses/my').then(() => { setCourseId(id); setTab('board'); }); }} />
@@ -215,6 +223,8 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
               </>
             ) : (
               <>
+                {/* M113: the class link, the first-class path's start. */}
+                {canManage && board && <button type="button" onClick={() => setInviting(true)} className="btn-secondary text-xs py-2 flex items-center gap-1.5"><Link2 className="w-3.5 h-3.5" aria-hidden /> Invite students</button>}
                 {canGrade && course && <button type="button" onClick={() => setTeam(true)} className="btn-secondary text-xs py-2 flex items-center gap-1.5"><UserPlus className="w-3.5 h-3.5" /> Teaching team</button>}
                 {board?.owns && course && <button type="button" onClick={() => setCopying(true)} className="btn-secondary text-xs py-2 flex items-center gap-1.5"><Copy className="w-3.5 h-3.5" /> Copy to a new term</button>}
                 <Link href="/teacher/grades" className="btn-secondary text-xs py-2 flex items-center gap-1.5"><Star className="w-3.5 h-3.5" /> Gradebook</Link>
@@ -241,6 +251,12 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
             : isLoading || !board ? <div className="max-w-3xl mx-auto space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-2xl skeleton" />)}</div>
             : (
               <div key={`${courseId}-${tab}`} className={cn('fade-up mx-auto', tab === 'whiteboard' ? 'max-w-6xl' : 'max-w-3xl')}>
+                {tab === 'board' && canManage && board.course._count.enrollments === 0 && (
+                  <section aria-labelledby="no-students-h" className="panel mb-6 p-5">
+                    <h3 id="no-students-h" className="font-bold text-zinc-900 dark:text-white">No students yet</h3>
+                    <div className="mt-2"><CourseInviteLink course={board.course} onPublished={() => void mutate()} /></div>
+                  </section>
+                )}
                 {tab === 'board' && <CourseSkills board={board} canManage={canManage} refresh={() => void mutate()} />}
                 {tab === 'board' && <LatestPack board={board} onOpen={(id) => { setSessionId(id); setTab('sessions'); }} />}
                 {tab === 'board' && <Announcements board={board} canManage={canManage} refresh={mutate} />}

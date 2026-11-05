@@ -4495,3 +4495,49 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
 - **Checked:** `scripts/checks/launch-focus-ui.mjs` (M113's commit; the landing's four tags, UniVersity
   chosen, the Lab question, Play's worlds without the rated ones, the hub's tags; axe at 390 and 1280,
   light and dark), `landing-here-ui.mjs` again; `pnpm check`.
+
+## M113: a teacher brings a class into UniVersity (the council's first ten, 5 Nov 2026)
+
+- **Found by walking the path** (none of it had been tried end to end):
+  1. A student had no way to join a teacher's course themselves: no link or code ("your teacher or
+     admin enrolls you"), although `POST /courses/:id/enroll` existed (the campus network uses it).
+  2. The landing's "Learn" leads to "I'm a student", whose account stays shut (`awaitingApproval`: only
+     the application page) until an admin checks a student card, "a day or two": a class of 30 meant 30
+     approvals before anyone saw anything.
+  3. A new teacher waits for an admin (by design: staff see students' work). The owner gets an in-app
+     notice and approves at Admin → Approvals. Left as it is.
+- **The class link `/join?course=<id>`** (`src/app/join/page.tsx` sends `?course=` to `CourseJoin`;
+  `?code=` is still a school's emailed invitation). `src/lib/course-invite.ts` keeps the class on the
+  device for a day (`uv-join-course`, course-id-shaped values only), so sign-up and sign-in (Google's
+  window, a new tab after checking an email) come back: `homeFor` sends a STUDENT with a waiting invite
+  to the link. The card reads `GET /api/core/courses/:id` (the catalogue view; people already in it get
+  the full view with `enrollments`) and joins with `POST /courses/:id/enroll` (a place, or the
+  waitlist). It covers signed out (Create my account → `/register?app=campus&as=student`; Sign in →
+  `/login?…&next=`), join, already in, not published yet, full, the teacher's own link and a staff or
+  parent account; the invite is forgotten once nothing is left to come back to, and on "Not now".
+  **Trap:** the platform API is `/api/core/...`; `/api/courses/:id` has no route of its own.
+- **Signing up from a class link:** a Student with `accountType: INDEPENDENT` (the existing no-wait path:
+  an independent learner's account opens straight away), the "Which describes you?" question hidden, one
+  line saying so, "Continue as a student". Nothing new is allowed: any independent learner could always
+  sign up and join a published course through the API.
+- **The teacher's side:** "Invite students" in the course header (for the teaching team who manage it)
+  opens a sheet with the link, Share (the phone's share sheet, else WhatsApp) and Copy (`InviteButton`
+  takes `href` now); an empty course says "No students yet" with the same link on its Announcements tab.
+  A draft course offers "Publish <code>" instead (only published courses can be joined; `courseAccess`
+  selects `status` now so the board knows).
+- **Not done (the pause):** a class code to type in, a QR code, a notice to the teacher per join (the
+  class list shows them), verifying a student card later for someone who came from a link.
+- **For the owner:** when your teacher signs up, approve them at Admin → Approvals (you get a notice).
+  They make or open a course, tap Invite students (Publish first if it's a draft) and send the link to
+  the class; each student signs up from it and is in the course a minute later.
+- **Checked:** `src/lib/course-invite.test.ts` (a day, course ids only, cleared; homeFor sends only a
+  student back); `scripts/checks/launch-focus-ui.mjs` on the built Worker: a draft course made for the
+  check, "No students yet", Publish, the link, the Invite students sheet; a student joins in one tap and
+  lands on the course (enrolled on the server), the link again says "You're in"; a student with a
+  waiting invite is sent to it, "Not now" goes home and forgets it; signed out: the invite, then sign-up
+  with the account-opens-now line, no student-card question, "Continue as a student"; the teacher's own
+  link; the course deleted afterwards. Axe clean at 390 and 1280, light and dark. It also covers M110's
+  Relief line (shown for needs, not offers) and M112. `landing-here-ui.mjs` and `relief-orgs-ui.mjs`
+  pass again; `pnpm check`; the production build (the M110 alarm said 49.0 of 64 MB, 7.9 minutes).
+- **Trap:** `/app` (the installed app's start) decides in an inline script before React, so it doesn't
+  look at a waiting invite; sign-up and sign-in use `homeFor`, which does.

@@ -25,7 +25,7 @@ export async function courseAccess(courseId: string, user: SessionUser) {
   const found = await prisma.course.findUnique({
     where: { id: courseId },
     select: {
-      id: true, name: true, code: true, color: true, teacherId: true, skills: true,
+      id: true, name: true, code: true, color: true, teacherId: true, skills: true, status: true,
       teacher: { select: { id: true, name: true, organizationId: true } },
       _count: { select: { enrollments: true } },
       staff: { where: { userId: user.id }, select: { role: true }, take: 1 },

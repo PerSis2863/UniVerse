@@ -17,6 +17,7 @@ import { TERMS_VERSION } from '@/lib/terms-version';
 import { TabPill } from '@/components/ui/Glide';
 import dynamic from 'next/dynamic';
 import { chosenApp, homeFor } from '@/lib/role-home';
+import { pendingInvite } from '@/lib/course-invite';
 import { AppTabs } from '@/components/landing/AppTabs';
 import { appById } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
@@ -99,10 +100,14 @@ export default function RegisterPage() {
   const [showPhoneFlow, setShowPhoneFlow] = useState(false);
   const [individual, setIndividual] = useState<'STUDENT' | 'INDEPENDENT' | null>(() => (campus ? null : 'INDEPENDENT')); // for Individual sign-ups
   const [agreed, setAgreed] = useState(false); // Terms and Privacy Policy, required to create the account
+  // M113: from a teacher's class link, a student account that opens straight away (an independent
+  // learner's: no student card for an admin to check first), so the class can start the same day.
+  const [classInvite, setClassInvite] = useState(false);
   // M81: the landing's "Here to: Learn / Teach" picks the role (they still confirm with Continue).
   useEffect(() => {
     const as = new URLSearchParams(window.location.search).get('as');
-    if (campus && (as === 'student' || as === 'teacher')) queueMicrotask(() => { setSelectedRole(as === 'student' ? 'STUDENT' : 'TEACHER'); if (as === 'student') setIndividual('STUDENT'); });
+    if (campus && pendingInvite()) queueMicrotask(() => { setSelectedRole('STUDENT'); setIndividual('INDEPENDENT'); setClassInvite(true); });
+    else if (campus && (as === 'student' || as === 'teacher')) queueMicrotask(() => { setSelectedRole(as === 'student' ? 'STUDENT' : 'TEACHER'); if (as === 'student') setIndividual('STUDENT'); });
   }, [campus]);
 
   const selectedRoleData = ROLES.find(r => r.id === selectedRole);
@@ -282,7 +287,10 @@ export default function RegisterPage() {
                 );
               })}
             </div>
-            {selectedRole === 'STUDENT' && (
+            {selectedRole === 'STUDENT' && classInvite && (
+              <p className="mb-6 -mt-2 rounded-xl border border-zinc-800 bg-zinc-900/40 p-3.5 text-sm text-zinc-300">You’re joining a class from your teacher’s link: your account opens straight away.</p>
+            )}
+            {selectedRole === 'STUDENT' && !classInvite && (
               <fieldset className="mb-6 -mt-2">
                 <legend className="text-zinc-400 text-sm mb-3 font-medium">Which describes you?</legend>
                 <div className="grid sm:grid-cols-2 gap-3">
@@ -305,7 +313,7 @@ export default function RegisterPage() {
               onClick={() => setStep('credentials')}
               className="btn-primary btn-lg w-full"
             >
-              Continue as {selectedRole === 'STUDENT' && individual ? (individual === 'STUDENT' ? 'a student' : 'an independent') : selectedRoleData?.label || '...'}
+              Continue as {selectedRole === 'STUDENT' && individual ? (individual === 'STUDENT' || classInvite ? 'a student' : 'an independent') : selectedRoleData?.label || '...'}
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
