@@ -11,13 +11,14 @@ import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { downloadCsv } from '@/lib/csv-download';
 import { formatCode } from '@/lib/trace';
+import { gs1Link } from '@/lib/dpp';
 
 // UniVerse Trace · print sheet: a batch's codes as labels (QR code + the code in readable groups),
 // 60 to a page so the browser stays smooth, or every code as a CSV for a label printer. Each QR code
 // opens that unit's passport (/t/<code>).
 
 const PER_PAGE = 60;
-interface Codes { batch: { id: string; label: string; quantity: number; product: string }; codes: { serial: number; code: string }[] }
+interface Codes { batch: { id: string; label: string; quantity: number; product: string; gtin?: string | null }; codes: { serial: number; code: string }[] }
 
 export default function PrintPage() {
   return <Suspense><Sheet /></Suspense>;
@@ -30,6 +31,8 @@ function Sheet() {
   const [exporting, setExporting] = useState(false);
   const origin = useMemo(() => (typeof window === 'undefined' ? '' : window.location.origin), []);
   const pages = data ? Math.ceil(data.batch.quantity / PER_PAGE) : 1;
+  // M108: with the product's GTIN, a GS1 Digital Link address (shop tills read the product from it).
+  const address = (gtin: string | null | undefined, code: string) => (gtin ? gs1Link(origin, gtin, code) : `${origin}/t/${code}`);
 
   const exportAll = async () => {
     if (!data) return;
@@ -39,7 +42,7 @@ function Sheet() {
       const total = Math.min(data.batch.quantity, 50_000);
       for (let from = 0; from < total; from += 1000) {
         const res = await api.get<Codes>(`/trace/batches/${batchId}/codes?from=${from}&count=1000`);
-        for (const c of res.data.codes) rows.push([String(c.serial), formatCode(c.code), `${origin}/t/${c.code}`]);
+        for (const c of res.data.codes) rows.push([String(c.serial), formatCode(c.code), address(res.data.batch.gtin, c.code)]);
       }
       downloadCsv(`codes-${data.batch.label.replace(/[^\w-]+/g, '-')}`, ['Unit', 'Code', 'Address in the QR code'], rows);
       if (data.batch.quantity > total) toast.message(`The file has the first ${total.toLocaleString()} codes; ask us for the rest.`);
@@ -70,7 +73,7 @@ function Sheet() {
           <div className="print-sheet grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
             {data.codes.map((c) => (
               <div key={c.code} className="trace-label rounded-xl border border-[#e1e6f2] bg-white p-3 flex flex-col items-center text-center text-[#111113]">
-                <QrCode value={`${origin}/t/${c.code}`} size={112} title={`Passport of unit ${c.serial}`} />
+                <QrCode value={address(data.batch.gtin, c.code)} size={112} title={`Passport of unit ${c.serial}`} />
                 <p className="mt-1.5 font-mono text-[10px] leading-tight">{formatCode(c.code)}</p>
                 <p className="text-[9px] text-[#58617f] truncate max-w-full">{data.batch.product} · #{c.serial}</p>
               </div>

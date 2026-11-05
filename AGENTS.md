@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M107 is the latest).
+  builds on it). The newest notes are at the end (M108 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -63,7 +63,8 @@ software or website in the main website… where they create a impact"). Each ap
 - **Trace** (`/trace`): every product gets a passport. Brands print signed codes; anyone scans at
   `/t/<code>` (`/t/demo` is a sample); live market and tracking maps, shop points and a wallet,
   campaigns, recalls, prizes, warranties, reviews, an ownership vault, the Radar and Insights,
-  public brand pages `/b/<slug>`, cold chain with real sensors.
+  public brand pages `/b/<slug>`, cold chain with real sensors, EU Digital Product Passports (GS1 links,
+  suppliers fill in their materials).
 - **Relief** (`/relief`): needs and offers of help on a live map, with notifications and nearby
   alerts for helpers, and organisations (`/relief/orgs`: NGOs with members, supplies and volunteer shifts).
 - **Green** (`/green`): climate actions with the CO₂ they save, streaks, badges, a weekly challenge,
@@ -151,19 +152,21 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   (NGOs, food banks, shelters: members with roles, supplies with a change log, volunteer shifts, needs near
   the base taken "for" the organisation; `src/server/relief-orgs.ts`, `/relief/orgs`, migration 0192);
   **M107** text requests (SMS/WhatsApp through Twilio) into an organisation's inbox, off until the owner's
-  switch (`src/server/relief-texts.ts`, migration 0193).
-- **Work numbers:** the next item is **M108**. Never reuse a number: take the next one after the
+  switch (`src/server/relief-texts.ts`, migration 0193); **M108** the EU Digital Product Passport for Trace
+  (GTINs, GS1 Digital Link QR codes `/01/<GTIN>/21/<code>`, `/dpp?g=`, a supplier portal `/supply?k=`;
+  `src/lib/dpp.ts`, `src/server/trace-dpp.ts`, migration 0194).
+- **Work numbers:** the next item is **M109**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** to take Relief text requests, open a Twilio account (paid per message), set
   `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0194`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0195`** (files in `apps/web/prisma/migrations/`).
 - **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
   in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
   challenges (done, M25); organisation accounts for Relief (NGOs, supplies, volunteer shifts: done, M106;
   SMS/WhatsApp requests behind a switch: done, M107); an "Ask UniVerse" assistant that acts in every app (small version done, M30); the EU Digital Product Passport for
-  Trace (GS1 codes, supplier portal); self-serve payments for Trace PRO, campaigns and schools (off
+  Trace (GS1 codes, supplier portal: done, M108); self-serve payments for Trace PRO, campaigns and schools (off
   until the owner's Stripe keys); store apps for Android and iPhone (the owner's store accounts).
 - **Waiting on the owner** (only they can provide it): Google / Microsoft calendar sync apps; Google
   Classroom import; a real LMS for grade passback; Razorpay (UPI) and anything that costs money;

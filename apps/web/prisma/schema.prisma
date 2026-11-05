@@ -6618,8 +6618,35 @@ model TraceProduct {
   winPrize  String?
   maxTempC  Float?
   weightKg  Float   @default(1)
+  /// M108: GTIN-14 (check digit checked) for GS1 Digital Link addresses; one product per GTIN.
+  gtin         String?   @unique
+  /// M108: the EU Digital Product Passport, JSON cleaned by src/lib/dpp.ts parseDpp.
+  dpp          String?
+  dppUpdatedAt DateTime?
   @@index([organizationId])
   @@map("trace_products")
+}
+
+/// M108: a brand asks a supplier to fill in one material of a product's passport, by a link whose
+/// secret is kept only as a hash. OPEN, ANSWERED, USED (added to the passport) or CLOSED.
+model TraceSupplyRequest {
+  id          String    @id @default(cuid())
+  brandId     String
+  productId   String
+  supplier    String
+  asks        String
+  tokenHash   String    @unique
+  status      String    @default("OPEN")
+  /// The supplier's answer (src/lib/dpp.ts SupplyAnswer), JSON.
+  answer      String?
+  answeredAt  DateTime?
+  usedAt      DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+
+  @@index([productId, createdAt])
+  @@map("trace_supply_requests")
 }
 
 model TraceBatch {

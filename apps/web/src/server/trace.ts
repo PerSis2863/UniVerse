@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { KEY_LEN, MAX_BATCH, PLAN_UNITS, SIG_LEN, STAGES, encodeSerial, formatCode, splitCode, toBase32, verdictFor, type Verdict } from '@/lib/trace';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
+import { parseDpp, unitDpp } from '@/lib/dpp';
 import { oneOf, str, type Body } from './body';
 import { requestCf } from './request-cf';
 import { award, brandBalance } from './trace-wallet';
@@ -122,7 +123,7 @@ async function ownProduct(b: Brand, id: string) {
   return p;
 }
 export async function ownBatch(b: Brand, id: string) {
-  const x = await prisma.traceBatch.findUnique({ where: { id }, include: { product: { select: { id: true, name: true, rewardPoints: true } } } });
+  const x = await prisma.traceBatch.findUnique({ where: { id }, include: { product: { select: { id: true, name: true, rewardPoints: true, gtin: true } } } });
   if (!x || x.brandId !== b.id) throw new NotFoundException('Batch not found');
   return x;
 }
@@ -225,7 +226,8 @@ export async function batchDetail(u: SessionUser, id: string) {
 export async function batchCodes(u: SessionUser, id: string, from: number, count: number) {
   const b = await ownBatch(await brandOf(u), id);
   const start = Math.max(0, Math.floor(from)), n = Math.max(0, Math.min(1000, Math.floor(count), b.quantity - start));
-  return { batch: { id: b.id, label: b.label, quantity: b.quantity, product: b.product.name }, codes: Array.from({ length: n }, (_, i) => ({ serial: start + i + 1, code: codeFor(b, start + i) })) };
+  // With a GTIN, the sheet prints GS1 Digital Link addresses (M108): tills read the product, phones the passport.
+  return { batch: { id: b.id, label: b.label, quantity: b.quantity, product: b.product.name, gtin: b.product.gtin }, codes: Array.from({ length: n }, (_, i) => ({ serial: start + i + 1, code: codeFor(b, start + i) })) };
 }
 
 export async function addEvent(u: SessionUser, batchId: string, body: Body) {
@@ -340,8 +342,25 @@ export async function scan(raw: string, b: Body, user: SessionUser | null, req: 
     claimed: !!code.claimedById, claimedByYou: !!user && code.claimedById === user.id,
     canClaim: !!user && !code.claimedById && verdict !== 'SUSPECT' && !extras.blocked && p.rewardPoints > 0,
     ...extras,
+    // M108: the EU Digital Product Passport, when the brand has filled it in (src/server/trace-dpp.ts).
+    ...unitDpp(p),
   };
 }
+
+/** The sample passport's EU Digital Product Passport (M108), as a brand would fill it in. */
+const DEMO_DPP = parseDpp({
+  madeIn: 'Spain', manufacturer: { name: 'Aurora Olive Oils S.L. (sample)', address: 'Camino de las Lomas 12, 23001 Jaén, Spain', website: 'https://universeimpact.com/t/demo' },
+  materials: [
+    { name: 'Picual olives', percent: 100, recycled: 0, origin: 'Jaén, Spain', supplier: 'Ortega family groves' },
+    { name: 'Glass bottle 500 ml', percent: null, recycled: 62, origin: 'Seville, Spain', supplier: 'Vidrios del Sur' },
+    { name: 'Aluminium cap', percent: null, recycled: 40, origin: 'Valencia, Spain', supplier: null },
+  ],
+  substances: [], carbonKg: 1.42, carbonMethod: 'ISO 14067, cradle to gate', recycledContent: 55, recyclable: 96, durabilityYears: 2,
+  care: 'Keep away from light and heat, between 12 and 20 °C. Best within 3 months of opening.',
+  endOfLife: 'Bottle and cap go in the glass recycling bin; rinse first. Used oil goes to a collection point, never down the drain.',
+  certifications: ['EU organic', 'PDO Jaén', 'No substances of concern (REACH)'],
+  documents: [{ title: 'Declaration of conformity (sample)', url: 'https://universeimpact.com/t/demo' }],
+});
 
 /** /t/demo: a sample passport for the landing page and for pitching (nothing is stored). */
 function demoPassport() {
@@ -357,6 +376,7 @@ function demoPassport() {
     journey: [{ stage: 'MADE', place: 'Jaén, Spain', createdAt: ago(20) }, { stage: 'SHIPPED', place: 'Port of Valencia', createdAt: ago(9) }, { stage: 'WAREHOUSE', place: 'Lyon', createdAt: ago(6) }, { stage: 'DISTRIBUTOR', place: 'Paris, Rungis', createdAt: ago(3) }, { stage: 'SHOP', place: 'Paris 11e', createdAt: ago(1) }],
     scans: 1, firstScanAt: new Date().toISOString(), firstPlace: null, claimed: false, claimedByYou: false, canClaim: false,
     recall: null, blocked: false, win: null, warranty: null, owner: null,
+    gtin: '09520123456788', dpp: DEMO_DPP, // GS1 keeps prefix 952 for examples: nobody's real product
     reviews: { avg: 4.8, count: 312, mine: null, recent: [
       { stars: 5, text: 'You can taste the difference. Good to know it’s the real one.', place: 'Lyon, FR', createdAt: ago(2) },
       { stars: 5, text: 'Bought it as a gift, the story on the passport was a nice touch.', place: 'Paris, FR', createdAt: ago(5) },

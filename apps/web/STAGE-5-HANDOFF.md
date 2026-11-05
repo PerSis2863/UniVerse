@@ -4357,3 +4357,45 @@ for each message in and each thank-you reply.
   guesses); `scripts/checks/relief-orgs-ui.mjs` now also: the webhook refused while off, texts for
   coordinators only, closing, a text posted only in its organisation's name, and the text put on the
   map from the form (kept while the place is tapped); `pnpm check`.
+
+## M108: the EU Digital Product Passport for Trace: GTINs, GS1 Digital Link, a supplier portal (5 Nov 2026)
+
+The owner's seven ideas: "the EU Digital Product Passport for Trace (GS1 codes, supplier portal)".
+Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
+
+- **What a brand gets** (Trace console → each product → "Digital Product Passport", loaded on open with
+  `next/dynamic`): the product's GTIN (8/12/13/14 digits, check digit checked, stored as GTIN-14, one
+  product per GTIN) and the passport after the Ecodesign regulation (2024/1781): maker (legal name,
+  address, website), made in, materials (share, recycled share, origin, supplier), substances of
+  concern (CAS numbers checked) or "It has none", carbon footprint and method, recycled content and
+  recyclability, years it lasts, repair score, spare-part years, care, repair, end of life,
+  certifications, documents (https only). A checklist (`DPP_PARTS`, `dppScore`) shows the 10 parts
+  and what's missing; the button shows "n of 10".
+- **Public**: every unit's page (`/t/<code>`, `scan()` adds `gtin` and `dpp`) shows a "Digital Product
+  Passport" card (`src/components/trace/DppCard.tsx`, longer texts in `<details>`); the product's page
+  `/dpp?g=<GTIN>`; the JSON `GET /api/core/trace/dpp/<GTIN>` for customs, shops and recyclers (sample
+  products never answer). `/t/demo` has a full sample passport (GTIN `09520123456788`: GS1 keeps prefix
+  952 for examples, so it's nobody's real product).
+- **GS1 Digital Link**: with a GTIN, the print sheet's QR codes (and the CSV) hold
+  `https://universeimpact.com/01/<GTIN>/21/<code>` instead of `/t/<code>`: shop tills that read GS1 QR
+  codes (GS1's "Sunrise 2027") get the GTIN, phones get the passport. The Worker answers `/01/…` before
+  Next.js (`cloudflare/page-match.ts` REDIRECTS, `gs1Target`): with a serial (AI 21: our signed code)
+  to `/t/<code>`, without to `/dpp?g=<GTIN>` (AI 10 lot kept as `&lot=`); anything else to `/dpp`,
+  which says there's no passport (so a made-up address never starts Next.js: `page-routes.test.ts`). `src/app/01/[...gs1]/page.tsx` does the same for `next dev`. `pageFor` no longer adds
+  a bare "?" to a redirect without a query.
+- **Supplier portal**: "Ask your suppliers" makes a link per material (`/supply?k=<32 characters>`,
+  shown once with Copy; only its SHA-256 is stored; 60 days; "New link" replaces it). The supplier
+  needs no account: they fill in the material, origin, maker, shares, footprint, certifications and
+  document links (`parseSupplyAnswer`), can correct it until it's used, and the brand's members hear
+  (bell, no email). "Add to the passport" merges it (`mergeSupply`: replaces a material of the same
+  name, keeps documents once). Nothing a supplier sends is public until the brand adds it.
+- **Trap**: a brand could enter a GTIN it doesn't own (first come, first served). Checking ownership
+  would need GS1's "Verified by GS1" API (paid, an account: **[owner]** if wanted). The page says the
+  brand declares it.
+- **Not done**: the battery passport's extra fields (2027), access levels for authorities only, JSON-LD
+  in the GS1 web vocabulary, a supplier answering for several products at once.
+- **Checked**: `src/lib/dpp.test.ts` (GTINs, GS1 routing, cleaning, score, merging) and
+  `src/server/trace-dpp.test.ts` (wrong check digit, another brand, public view, sample products, the
+  link's hash, expiry, answering, adding); `scripts/checks/trace-dpp-ui.mjs` (all of it through the API
+  and the pages /dpp, /t/<code>, /supply and the editor at 390 and 1280, light and dark: axe clean, no
+  sideways scrolling, no page errors); `pnpm check`.

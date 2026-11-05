@@ -11,6 +11,8 @@ import { STAGE_LABEL, STAGE_SHORT, type Stage, type Verdict } from '@/lib/trace'
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { Journey } from '@/components/live/Journey';
+import { DppCard } from '@/components/trace/DppCard';
+import type { Dpp } from '@/lib/dpp';
 
 // The product passport (UniVerse Trace): what anyone sees after scanning the code on a product. A
 // big seal says whether it's genuine, then the product's story, where it has been, and (for shops
@@ -32,6 +34,8 @@ interface Passport {
   win: { prize: string; claimCode: string | null; redeemed: boolean } | null;
   warranty: { months: number; registered: boolean; endsAt: string | null } | null;
   reviews: { avg: number | null; count: number; mine: { stars: number; text: string | null } | null; recent: { stars: number; text: string | null; place: string | null; createdAt: string }[] };
+  /** M108: the EU Digital Product Passport, when the brand filled it in. */
+  gtin?: string | null; dpp?: Dpp | null;
   owner: { owners: number; since: string; you: boolean } | null;
 }
 type Answer = Passport | { result: 'UNKNOWN' };
@@ -175,6 +179,8 @@ export default function View() {
                 </li>
               </ol>
             </section>
+
+            {data.dpp && <DppCard dpp={data.dpp} gtin={data.gtin ?? null} />}
 
             {data.product.rewardPoints > 0 && data.result !== 'SUSPECT' && (
               <section className="passport-card passport-reward mt-4 p-5 pp-rise" style={{ animationDelay: '320ms' }}>

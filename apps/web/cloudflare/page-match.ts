@@ -5,6 +5,7 @@
 // address in the browser, so the Worker answers /docs/<id> with the built page. Two pages that only
 // redirect are answered here directly.
 import { PAGE_ROUTES } from './page-routes.gen';
+import { gs1Target } from '../src/lib/dpp';
 
 type Route = { route: string; fixed: string; re: RegExp | null; pattern: string | null; built: string | null };
 let routes: Route[] | null = null;
@@ -13,6 +14,9 @@ let routes: Route[] | null = null;
 const REDIRECTS: Record<string, (value: string) => [path: string, param: string]> = {
   '/join/[inviteCode]': (code) => ['/join', `code=${encodeURIComponent(code)}`],
   '/student/courses/[id]': (id) => ['/student/blackboard', `course=${encodeURIComponent(id)}`],
+  // GS1 Digital Link (M108): a unit's passport, or the product's (src/lib/dpp.ts); anything else lands
+  // on /dpp, which says there's no passport (so Next.js never starts for a made-up address).
+  '/01/[...gs1]': (rest) => gs1Target(rest) ?? ['/dpp', ''],
 };
 
 let builtPages: Set<string> | null = null;
@@ -55,8 +59,8 @@ export function pageFor(pathname: string, search: string): { rewrite: string } |
       return null; // bad %-encoding: Next.js answers 400
     }
     const [path, param] = go(value);
-    const rest = search.replace(/^\?/, '');
-    return { redirect: `${path}?${param}${rest ? `&${rest}` : ''}` };
+    const query = [param, search.replace(/^\?/, '')].filter(Boolean).join('&');
+    return { redirect: query ? `${path}?${query}` : path };
   }
   if (!r.built || pathname === r.built) return null;
   return { rewrite: r.built };

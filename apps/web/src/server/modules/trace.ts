@@ -9,6 +9,7 @@ import { carrierLink, carryArrive, carryInfo, carryPing, carryReading, liveScans
 import { demo } from '../trace-demo';
 import { ownerTrace } from '../trace-owner';
 import { aircraft } from '../aircraft';
+import { askSupplier, closeSupplyRequest, newSupplyLink, publicDpp, saveDpp, supplierAnswer, supplierView, supplyRequests, useSupplyAnswer } from '../trace-dpp';
 import { featureOff } from '../moderation';
 import { endRecall, insights, ownUnit, protectBatch, publicBrand, radar, recallBatch, receiveTransfer, redeemWin, registerWarranty, reviewUnit, startTransfer, vault } from '../trace-plus';
 
@@ -32,6 +33,11 @@ export default function traceModule(router: Router) {
   r.post<{ code: string }>('scan/:code/warranty', { public: true, status: 200 }, async ({ params, body, req }) => registerWarranty(params.code, body ?? {}, await getSessionUser(req).catch(() => null), req));
   r.post<{ code: string }>('scan/:code/review', { public: true, status: 200 }, async ({ params, body, req }) => reviewUnit(params.code, body ?? {}, await getSessionUser(req).catch(() => null), req));
   r.get<{ slug: string }>('public/:slug', { public: true }, ({ params }) => publicBrand(params.slug));
+  // The EU Digital Product Passport (M108, src/server/trace-dpp.ts): anyone reads it (also as JSON);
+  // a supplier answers from the brand's link without an account.
+  r.get<{ gtin: string }>('dpp/:gtin', { public: true }, ({ params }) => publicDpp(params.gtin));
+  r.get('supplier', { public: true }, ({ query }) => supplierView(first(query.k)));
+  r.post('supplier', { public: true, status: 200 }, ({ body }) => supplierAnswer(body ?? {}));
 
   // Signed in: the wallet
   r.post<{ code: string }>('scan/:code/claim', { status: 200 }, ({ params, user, body, req }) => claim(params.code, user, body ?? {}, req));
@@ -57,6 +63,13 @@ export default function traceModule(router: Router) {
   r.patch<{ id: string }>('products/:id', ({ user, params, body }) => updateProduct(user, params.id, body ?? {}));
   r.delete<{ id: string }>('products/:id', ({ user, params }) => deleteProduct(user, params.id));
   r.post<{ id: string }>('products/:id/batches', ({ user, params, body }) => createBatch(user, params.id, body ?? {}));
+  // The product's passport and its supplier requests (M108).
+  r.put<{ id: string }>('products/:id/dpp', ({ user, params, body }) => saveDpp(user, params.id, body ?? {}));
+  r.get<{ id: string }>('products/:id/supply', ({ user, params }) => supplyRequests(user, params.id));
+  r.post<{ id: string }>('products/:id/supply', ({ user, params, body }) => askSupplier(user, params.id, body ?? {}));
+  r.post<{ rid: string }>('supply/:rid/link', { status: 200 }, ({ user, params }) => newSupplyLink(user, params.rid));
+  r.post<{ rid: string }>('supply/:rid/use', { status: 200 }, ({ user, params }) => useSupplyAnswer(user, params.rid));
+  r.post<{ rid: string }>('supply/:rid/close', { status: 200 }, ({ user, params }) => closeSupplyRequest(user, params.rid));
   r.get<{ id: string }>('batches/:id', ({ user, params }) => batchDetail(user, params.id));
   r.get<{ id: string }>('batches/:id/codes', ({ user, params, query }) => batchCodes(user, params.id, Number(first(query.from)) || 0, Number(first(query.count)) || 200));
   r.patch<{ id: string }>('batches/:id', ({ user, params, body }) => protectBatch(user, params.id, body ?? {}));

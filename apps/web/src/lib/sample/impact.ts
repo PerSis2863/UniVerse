@@ -290,7 +290,26 @@ export const sampleTraceBrand = () => ({ brand: BRAND, pro: true, units: 30_000,
 export const sampleTraceProducts = () => PRODUCTS.map((p, i) => ({
   id: p.id, name: p.name, sku: `AUR-${100 + i}`, category: p.category, description: `Made by Aurora Foods near ${p.origin[0]}.`, story: 'Picked by hand and packed the same day.',
   rewardPoints: 25, warrantyMonths: 0, sample: true, batches: batches(i).map(({ dest, ...b }) => { void dest; return b; }), _count: { codes: 6_800 + i * 1_300 },
+  // M108: the olive oil has its Digital Product Passport filled in (GS1 keeps prefix 952 for examples).
+  ...(i === 0 && { gtin: '09520123456788', dpp: JSON.stringify(SAMPLE_DPP) }),
 }));
+
+const SAMPLE_DPP = {
+  madeIn: 'Spain', manufacturer: { name: 'Aurora Foods S.L. (sample)', address: 'Camino de las Lomas 12, 23001 Jaén, Spain', website: null },
+  materials: [
+    { name: 'Picual olives', percent: 100, recycled: 0, origin: 'Jaén, Spain', supplier: 'Ortega family groves' },
+    { name: 'Glass bottle 1 L', percent: null, recycled: 62, origin: 'Seville, Spain', supplier: 'Vidrios del Sur' },
+  ],
+  substances: [], carbonKg: 2.6, carbonMethod: 'ISO 14067', recycledContent: 55, recyclable: 96, durabilityYears: 2, repairScore: null, spareYears: null,
+  care: 'Keep away from light and heat. Best within 3 months of opening.', repair: null, endOfLife: 'Bottle and cap in the glass bin; used oil to a collection point.',
+  certifications: ['EU organic', 'No substances of concern (REACH)'], documents: [],
+};
+
+/** GET /trace/products/:id/supply (M108): supplier requests, one answered. */
+export const sampleTraceSupply = () => [
+  { id: 'sample-sup-1', supplier: 'Tapones Levante', asks: 'Aluminium cap', status: 'ANSWERED', answer: { material: { name: 'Aluminium cap', percent: null, recycled: 40, origin: 'Valencia, Spain', supplier: 'Tapones Levante' }, carbonKg: 0.04, certifications: ['ASI Performance'], documents: [], note: null }, answeredAt: iso(Date.now() - 2 * DAY), expiresAt: iso(Date.now() + 50 * DAY) },
+  { id: 'sample-sup-2', supplier: 'Etiquetas Jaén', asks: 'Paper label', status: 'OPEN', answer: null, answeredAt: null, expiresAt: iso(Date.now() + 58 * DAY) },
+];
 
 /** GET /trace/overview?days= */
 export function sampleTraceOverview(days: number) {
