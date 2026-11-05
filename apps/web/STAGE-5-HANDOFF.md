@@ -4458,3 +4458,22 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
 - **Checked:** `src/lib/worker-size.test.ts` (levels, thresholds, minutes), `relief-texts.test.ts` (the
   reply); a real `wrangler deploy --dry-run` runs the alarm first ("[custom build] Server code: 49.0 of 64
   MB") and a failing alarm stops it before any upload; `pnpm check`.
+
+## M111: the launch focus in the guide, and the guide trimmed (the council, 5 Nov 2026)
+
+- **The pause is a rule now** (AGENTS.md §4, first bullet): until 5 December 2026 no new apps, games,
+  looks or graphics; fixes for what real people hit, safety, library updates and what the first real
+  class needs; the goal is 10 real people who come back on another day (Console → Overview → Real
+  people). An agent asked for something new says once that it's paused and why, then does what the
+  owner decides (the owner can always override). On 5 December: each app's numbers with the owner,
+  then keep / Lab / remove.
+- **§4 "Where things stand"** lists what's live by area with the M numbers to look up, instead of four
+  pull requests' worth of items (8,500 → 4,500 characters). The [owner] list, the next numbers and the
+  waiting-on-the-owner list are unchanged.
+- **§8 "Design and motion"** keeps the live look (M91), the rules that carry over (the classes that
+  carry the look, Urbanist, `--radius-card`, `<Accent>`, no eyebrow labels, the river), the motion layer
+  and the reading rules. The M52 navy and M53 violet paragraphs are gone: M91–M94 replaced them, and
+  `.btn-primary` is a white pill in dark mode and an ink pill in light mode (`globals.css`, the M91
+  block), not the Baby Pink they described.
+- **Left as it is:** the handoff file (each session reads only the notes it needs) and the plan's old
+  queue text (history).
