@@ -6,6 +6,7 @@ import { ArrowUpRight, MessageSquare, PenTool, Phone, Settings, Sparkles } from 
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
+import { LabTag } from '@/components/apps/LabTag';
 import { ImpactWallet } from '@/components/hub/ImpactWallet';
 import { AskUniverse } from '@/components/hub/AskUniverse';
 import { InviteButton } from '@/components/apps/InviteButton';
@@ -81,7 +82,7 @@ export default function HubPage() {
                       <div className="relative flex items-start gap-4">
                         <AppIcon id={a.id} size={52} />
                         <div className="min-w-0 flex-1">
-                          <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{a.name}</h3>
+                          <h3 className="flex flex-wrap items-center gap-2 text-xl font-bold text-zinc-900 dark:text-white">{a.name}{a.lab && <LabTag className="border-zinc-300 text-zinc-600 dark:border-white/15 dark:text-zinc-300" />}</h3>
                           <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300">{a.tagline}</p>
                         </div>
                         <span className="karma-go" aria-hidden><ArrowUpRight className="w-4 h-4" /></span>

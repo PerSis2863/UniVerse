@@ -4477,3 +4477,21 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
   block), not the Baby Pink they described.
 - **Left as it is:** the handoff file (each session reads only the notes it needs) and the plan's old
   queue text (history).
+
+## M112: lead with UniVersity; the other four apps marked Lab (the council, 5 Nov 2026)
+
+- **`lab` on an app** (`src/lib/apps.ts`): Trace, Relief, Green and Play carry it; `<LabTag>`
+  (`src/components/apps/LabTag.tsx`, real text, 11 px) shows "Lab" after the name on the landing's app
+  tabs (not the small sign-in tabs: no room), the landing's apps grid ("The ones marked Lab are new."),
+  the hub's app cards and the side menu's app switcher. On 5 Dec the owner decides per app from the
+  Real people numbers; removing `lab` is a one-word change.
+- **One line for what UniVerse is:** UniVersity stays the default tab; the FAQ's "What is UniVerse
+  Impact?" leads with UniVersity and "What does Lab mean?" is new; the page description (search results,
+  link previews) now starts "A calm place for a school's classes, grades and messages".
+- **Rated games off the public page:** Play's "Worlds to explore" shows Skyline Obby, Orbit Breach (12+)
+  and Reef Rescue, not Night Shift (18+) or STORMFALL (16+); the Play text and FAQ no longer name
+  STORMFALL, and Play's one-liner is "Thirteen games that teach, solo or with friends." Both games stay
+  on /play behind the age check: nothing was removed from Play.
+- **Checked:** `scripts/checks/launch-focus-ui.mjs` (M113's commit; the landing's four tags, UniVersity
+  chosen, the Lab question, Play's worlds without the rated ones, the hub's tags; axe at 390 and 1280,
+  light and dark), `landing-here-ui.mjs` again; `pnpm check`.

@@ -39,7 +39,8 @@ import { homeFor } from '@/lib/role-home';
 
 const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
   all: [
-    { q: 'What is UniVerse Impact?', a: 'One account for five apps: school, products, help, climate and games. Messages and the assistant work in all of them.' },
+    { q: 'What is UniVerse Impact?', a: 'UniVersity, a calm place for a school’s classes, grades and messages, plus four newer apps for products, help, climate and games. One account opens them all.' },
+    { q: 'What does Lab mean?', a: 'A new app that is still finding its first people. It works; expect it to change.' },
     { q: 'Does it work on phones and in other languages?', a: 'Yes. It installs on any phone or computer and speaks 13 languages.' },
   ],
   campus: [
@@ -56,7 +57,7 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
   ],
   play: [
     { q: 'Do I need friends online to play?', a: 'No. Every game works solo. For friends, share a room code.' },
-    { q: 'Is it free?', a: 'Yes, every game, STORMFALL included, is free.' },
+    { q: 'Is it free?', a: 'Yes, every game is free.' },
   ],
   green: [
     { q: 'How is the CO₂ saved worked out?', a: 'From published averages: a young tree takes up about 22 kg a year.' },

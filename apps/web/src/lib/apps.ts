@@ -18,6 +18,10 @@ export interface ImpactApp {
   color: string;
   /** Addresses that belong to the app. */
   paths: string[];
+  /** Still finding its first people: a small "Lab" tag wherever the app is named (M112, the council's
+   *  launch focus; on 5 Dec 2026 the owner decides, from each app's real-people numbers, to keep it,
+   *  leave it in the lab or remove it). */
+  lab?: boolean;
 }
 
 export const APPS: ImpactApp[] = [
@@ -29,22 +33,22 @@ export const APPS: ImpactApp[] = [
   {
     id: 'trace', name: 'UniVerse Trace', tagline: 'Every product gets a passport', color: '#fe81d1',
     impact: 'Real or fake, in one scan.',
-    paths: ['/trace', '/carry', '/t', '/b', '/dpp', '/supply'],
+    paths: ['/trace', '/carry', '/t', '/b', '/dpp', '/supply'], lab: true,
   },
   {
     id: 'relief', name: 'UniVerse Relief', tagline: 'Help that reaches people fast', color: '#f97316',
     impact: 'Needs and offers, matched on a live map.',
-    paths: ['/relief'],
+    paths: ['/relief'], lab: true,
   },
   {
     id: 'green', name: 'UniVerse Green', tagline: 'Climate action you can prove', color: '#10b981',
     impact: 'Log an action, see the CO₂ saved.',
-    paths: ['/green'],
+    paths: ['/green'], lab: true,
   },
   {
     id: 'play', name: 'UniVerse Play', tagline: 'Games that teach something', color: '#e46bdb',
-    impact: 'Thirteen games, solo or with friends, and STORMFALL on computers.',
-    paths: ['/play'],
+    impact: 'Thirteen games that teach, solo or with friends.',
+    paths: ['/play'], lab: true,
   },
 ];
 
