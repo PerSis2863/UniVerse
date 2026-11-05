@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M113 is the latest).
+  builds on it). The newest notes are at the end (M114 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -49,7 +49,8 @@ The app is all in `apps/web`. It is **Next.js 16**, which differs from older ver
   `str`, `text`, `strings`, `first`; `num` and `short` in `src/server/trace.ts`) and give Prisma only
   `pick<Prisma.XInput>(body, keys)` (`src/server/pick.ts`). Raw SQL always with `?` placeholders.
   Every route that serves people's data checks who is asking; a public route never returns emails
-  or phone numbers.
+  or phone numbers (`src/lib/route-gates.test.ts` fails a new route that neither signs people in nor is
+  listed as open with its reason, M114).
 - Never send a Trace batch's `secret` to a browser; a shipment's carrier key is a password (sensors
   use it), never shown to buyers.
 
@@ -122,8 +123,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 - **On the branch `claude/youthful-fermi-sbdtcp`, not merged yet:** M110 (a size alarm before every
   deploy; Relief's emergency line), M111 (the launch focus; this guide trimmed), M112 (UniVersity first, the
   other four apps marked Lab, rated games off the public page), M113 (a course's "Invite students" link: a
-  student signs up from it and joins in one tap).
-- **Work numbers:** the next item is **M114**. Never reuse a number: take the next one after the
+  student signs up from it and joins in one tap), M114 (a test that every API route checks who is asking, or
+  is on a written list of open ones).
+- **Work numbers:** the next item is **M115**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** to take Relief text requests, open a Twilio account (paid per message), set
   `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`

@@ -4541,3 +4541,23 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
   pass again; `pnpm check`; the production build (the M110 alarm said 49.0 of 64 MB, 7.9 minutes).
 - **Trap:** `/app` (the installed app's start) decides in an inline script before React, so it doesn't
   look at a waiting invite; sign-up and sign-in use `homeFor`, which does.
+
+## M114: who may call each API route, checked by a test (the council, 5 Nov 2026)
+
+- `src/lib/route-gates.test.ts`: every `src/app/api/**/route.ts` calls one of the shared gates
+  (`getSessionUser`, `route(req, …)` from `server/assignments`, `requireAdmin`, `requireFeature`,
+  `authorize`, or `publicRoute`, which says it's public), or is on `OPEN` with the reason it answers
+  without a sign-in. An entry that guards itself another way names the check its file must contain:
+  the cron jobs' secret header, the payment webhooks' signature checks, a school's API key (OneRoster,
+  the REST API), the token in a private link, the platform router. 55 of 546 routes are open; none of
+  them asks for emails or phone numbers itself (the API-key ones serve a school its own people). A stale
+  entry (gone, or now signing people in) fails too.
+- The platform API's own routes (`src/server/modules`, behind `api/core`) sign people in unless declared
+  `public: true`: all 21 declarations are listed with why (keep each on one line so the test can read it).
+- **Checked:** the test fails on a probe route with no gate (made and deleted for the check).
+- **Adding a route:** use a gate. If it truly must answer without a sign-in, add it to `OPEN` with the
+  reason and the check it does instead; never return emails or phone numbers from it.
+- **Libraries** (`pnpm audit --prod`: 7, as M109 left them): nothing more could be pinned under the
+  two-week rule today. body-parser 2.4.0 (the high one, inside the build tool) turns two weeks old at
+  11:39 UTC and the scheduled task applies it at 12:00; serialize-javascript's fix tonight; glob and
+  minimatch only have new majors under two weeks old; deepmerge has no fix.
