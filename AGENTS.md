@@ -90,7 +90,7 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 This is only the map: each item has a note in `apps/web/STAGE-5-HANDOFF.md` (traps, rules for code
 that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 
-- **On `main`** (merged through PR #109, 4 Nov): everything through **M101** (M82–M101 are listed below).
+- **On `main`** (merged through PR #110, 5 Nov): everything through **M109** (M82–M109 are listed below).
   - **Look and motion:** dark mode in the "Globynk" navy and Aqua Jade, light mode in Marshmallow
     White, Galactic Violet and Bubblegum Pink (M52–M57a, see §8); a less AI-looking site (M58); the
     pink river that nothing slows but Reduce Motion (M56, M56a); motion that answers the pointer (M41);
@@ -143,7 +143,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   bitmaps made once (`glyph`, `halo` in `play/canvas.ts`), a frame-rate gauge in every game's bar
   (`FpsMeter`); **M101** STORMFALL's page: Smooth / Balanced / Sharp graphics and the frame-rate gauge (its
   own graphics need a new Unity build on the owner's computer).
-- **On the branch `claude/youthful-fermi-sbdtcp` (not merged yet):** **M102** the 3D worlds look real: a
+- **Merged in PR #110 (5 Nov, live and checked: migrations 0192–0194 applied, the passport on /t/demo, GS1
+  addresses answered by the Worker, text requests refused while off):** **M102** the 3D worlds look real: a
   physical sky that lights the world, soft corner shadows on computers, clouds, rock islands, a lava sea,
   stars, planets drawn on the graphics chip, the torch's beam (`world/nature.ts`, `World.sky`, `envFrom`);
   **M103** Flood Rescue and Ocean Cleanup drawn in 3D with the same rules (`world/board.ts`); **M104** the
