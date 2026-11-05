@@ -157,7 +157,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   (GTINs, GS1 Digital Link QR codes `/01/<GTIN>/21/<code>`, `/dpp?g=`, a supplier portal `/supply?k=`;
   `src/lib/dpp.ts`, `src/server/trace-dpp.ts`, migration 0194); **M109** a health check: text fields take
   the sizes screens ask for (`:where(.input)`), KaTeX and webpack updated, the production build passes.
-- **Work numbers:** the next item is **M110**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M111**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** to take Relief text requests, open a Twilio account (paid per message), set
   `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`

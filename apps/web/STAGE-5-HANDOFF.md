@@ -4420,3 +4420,41 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
   warning (a duplicate `case` in a third-party PDF chunk) isn't ours. On the built Worker:
   `relief-orgs-ui.mjs` and `trace-dpp-ui.mjs` pass (GS1 addresses answered by the Worker with a 302),
   the pages with compact fields render without errors.
+
+## M110: the size alarm and Relief's emergency line (the council, 5 Nov 2026)
+
+- **The council** (5 Nov; read-only counts on the live site): 8 real accounts, 2 used it this week, no
+  new sign-up in 30 days, no real use of UniVersity, Trace or Relief in 30 days; the server code at 48.3
+  of Cloudflare's 64 MiB (43 in October) and builds at 15–20 of their 20 minutes, with nothing warning
+  before either wall. Its call: a 30-day pause on new apps, games, looks and graphics; one real class on
+  UniVersity; this alarm and Relief's line (M111–M114 do the rest). The owner: "do whatever the council
+  said".
+- **Size alarm** (`scripts/worker-size.mjs`): measures what the next deploy uploads in about a second.
+  esbuild bundles `cloudflare/worker.ts` as wrangler does (minify, keepNames, production, workerd
+  conditions) with Next's server handler left out, then adds the handler file's size and each
+  WebAssembly module once. 5 Nov: 49.0 MiB against wrangler's exact 48.3 (wrangler re-minifies the
+  handler a little), so it errs ~0.7 MiB high. A warning past 55 MiB, a stop past 60 MiB; build minutes
+  from `node_modules/.cache/universe-build-start.json` (written by `build-budget.mjs`, the build's first
+  step, so the install isn't counted), a warning past 16.
+  - Runs before every `wrangler deploy` and `wrangler dev` (`wrangler.jsonc` `build.command`, watching
+    only `.open-next/server-functions`, so editing files never re-runs it) and at the end of
+    `pnpm local:build` (`--strict`). It stops only on Cloudflare (`WORKERS_CI`) or with `--strict`; the
+    build variable `SIZE_ALARM_OFF=1` lets one deploy through; it never stops a deploy because it
+    couldn't measure. A full `wrangler deploy --dry-run` (the exact number) takes over a minute, which is
+    why the deploy doesn't run one.
+  - Adds `server` and `minutes` to `.open-next/assets/build-size.json`: Console → Health numbers → App
+    size shows "Server code" and "Build time", red past the warnings, and the App size tile warns.
+  - **Trap:** the deploy command runs `d1 migrations apply` before the deploy, so a stopped deploy has
+    still applied its migrations (as with any failed deploy: keep migrations additive).
+  - **When it warns, make it smaller**, biggest first (measured 5 Nov with the alarm's own esbuild
+    pass): Next's server handler is 41.7 MiB; our direct API path (`cloudflare/worker.ts` →
+    `api-direct.ts`, `fast-*.ts`) bundles a second copy of the server code it calls (~2 MiB of
+    `src/server` minified, plus @google/genai, zod, ethers, stripe). Rarely used heavy libraries behind a
+    dynamic `import()`, or one app in its own Worker (service bindings), are Cloudflare's own advice.
+- **Relief:** the "I need help" form says "UniVerse isn't an emergency service. If anyone is in danger,
+  call your local emergency number first (112 in Europe and India, 911 in North America)." The reply to a
+  texted request (M107) ends "In danger? Call your emergency number now." (plain ASCII and short: one
+  160-character text for organisation names up to ~60 characters).
+- **Checked:** `src/lib/worker-size.test.ts` (levels, thresholds, minutes), `relief-texts.test.ts` (the
+  reply); a real `wrangler deploy --dry-run` runs the alarm first ("[custom build] Server code: 49.0 of 64
+  MB") and a failing alarm stops it before any upload; `pnpm check`.

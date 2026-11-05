@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Car, Check, Crosshair, Droplets, Globe2, HandHeart, Home, Loader2, LocateFixed, MapPin, MessageSquare, Minus, Package, Plus, Shirt, Stethoscope, Undo2, Users, Utensils, X } from 'lucide-react';
+import { Car, Check, Crosshair, Droplets, Globe2, HandHeart, Home, Loader2, LocateFixed, MapPin, MessageSquare, Minus, Package, Plus, Shirt, Siren, Stethoscope, Undo2, Users, Utensils, X } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { celebrate } from '@/lib/celebrate';
 import { authedJson } from '@/lib/authed-fetch';
@@ -352,6 +352,13 @@ function PostForm({ f, setF, at, onPick, onClose, onDone }: { f: Draft; setF: (f
             <button key={id} type="button" role="radio" aria-checked={f.type === id} onClick={() => setF({ ...f, type: id })} className={cn('rounded-2xl border-2 py-3 text-sm font-semibold transition-colors', f.type === id ? (id === 'NEED' ? 'border-orange-500 bg-orange-500/10 text-orange-700 dark:text-orange-200' : 'border-teal-500 bg-teal-500/10 text-teal-700 dark:text-teal-200') : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>{label}</button>
           ))}
         </div>
+        {/* M110 (the council): helpers may not be nearby, so emergencies go to the real services first. */}
+        {f.type === 'NEED' && (
+          <p className="mt-3 flex items-start gap-2 rounded-2xl bg-rose-500/10 p-3 text-xs text-rose-800 dark:text-rose-200">
+            <Siren className="mt-px h-4 w-4 shrink-0" aria-hidden />
+            <span><strong className="font-semibold">UniVerse isn’t an emergency service.</strong> If anyone is in danger, call your local emergency number first (112 in Europe and India, 911 in North America).</span>
+          </p>
+        )}
         <div className="mt-4 grid grid-cols-4 gap-2" role="radiogroup" aria-label="Kind of help">
           {RELIEF_KINDS.map((k) => { const I = KIND_ICON[k]; return (
             <button key={k} type="button" role="radio" aria-checked={f.kind === k} onClick={() => setF({ ...f, kind: k })} className={cn('flex flex-col items-center gap-1 rounded-2xl border py-2.5 text-[11px] font-semibold transition-colors', f.kind === k ? 'border-orange-500/60 bg-orange-500/10 text-orange-700 dark:text-orange-200' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
