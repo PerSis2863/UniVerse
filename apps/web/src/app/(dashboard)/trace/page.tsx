@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { ArrowRight, Ban, Crown, ExternalLink, Globe2, Loader2, MapPin, Megaphone, Package, Plus, Printer, Rocket, ScanLine, Settings2, ShieldAlert, ShieldCheck, Sparkles, Trash2, Truck, Wallet, Wand2 } from 'lucide-react';
+import { ArrowRight, Ban, Crown, ExternalLink, FileCheck2, Globe2, Loader2, MapPin, Megaphone, Package, Plus, Printer, Rocket, ScanLine, Settings2, ShieldAlert, ShieldCheck, Sparkles, Trash2, Truck, Wallet, Wand2 } from 'lucide-react';
+import { DPP_PARTS, dppScore, readDpp } from '@/lib/dpp';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { InstrumentBoard, type InstrumentCell } from '@/components/instruments/Board';
@@ -22,6 +24,9 @@ import { LiveCard } from '@/components/live/LiveCard';
 import { Funnel } from '@/components/live/Funnel';
 import { Heartbeat } from '@/components/live/Heartbeat';
 
+// The passport editor (M108) loads when a brand opens it.
+const DppEditor = dynamic(() => import('@/components/trace/DppEditor').then((m) => m.DppEditor), { ssr: false, loading: () => <div className="mt-4 h-40 rounded-2xl skeleton" /> });
+
 // UniVerse Trace, the brand's console (the owner, 24 Oct 2026: "something unique and different and
 // bold"; then "do all 4 of them"). Anyone signed in can start a brand for free: every product gets a
 // passport, batches get printable signed codes, every scan shows up live with likely copies caught,
@@ -31,7 +36,7 @@ import { Heartbeat } from '@/components/live/Heartbeat';
 interface Brand { id: string; name: string; slug: string; category: string | null; color: string | null; logoUrl: string | null; plan: string; pointValue: number; currency: string; minCashout: number }
 interface BrandInfo { brand: Brand | null; pro?: boolean; units?: number; unitLimit?: number }
 interface Batch { id: string; label: string; quantity: number; origin: string | null; madeAt: string | null; createdAt: string; status: string; destPlace: string | null; carrierKey: string | null; allowedCountries?: string | null; blockedAt?: string | null; recall?: { id: string; reason: string; severity: string } | null }
-interface Product { id: string; name: string; sku: string | null; category: string | null; description: string | null; story: string | null; rewardPoints: number; warrantyMonths: number; sample: boolean; batches: Batch[]; _count: { codes: number }; winOdds?: number | null; winPrize?: string | null; maxTempC?: number | null; weightKg?: number }
+interface Product { id: string; name: string; sku: string | null; category: string | null; description: string | null; story: string | null; rewardPoints: number; warrantyMonths: number; sample: boolean; batches: Batch[]; _count: { codes: number }; winOdds?: number | null; winPrize?: string | null; maxTempC?: number | null; weightKg?: number; gtin?: string | null; dpp?: string | null }
 interface Overview {
   days: number; products: number; batches: number; units: number; scanned: number; claimed: number; points: number;
   scans: number[]; suspect: number[]; first: number; seen: number; suspects: number;
@@ -380,6 +385,7 @@ function ProductForm({ onDone }: { onDone: () => void }) {
 function ProductCard({ p, onChange }: { p: Product; onChange: () => void }) {
   const [batchOpen, setBatchOpen] = useState(false);
   const [extrasOpen, setExtrasOpen] = useState(false);
+  const [dppOpen, setDppOpen] = useState(false);
   const [b, setB] = useState({ quantity: '100', label: '', origin: '' });
   const [saving, setSaving] = useState(false);
   const make = async (e: React.FormEvent) => {
@@ -409,6 +415,9 @@ function ProductCard({ p, onChange }: { p: Product; onChange: () => void }) {
         <button type="button" onClick={() => void remove()} aria-label={`Delete ${p.name}`} title="Delete" className="shrink-0 w-8 h-8 grid place-items-center rounded-full text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors"><Trash2 className="w-4 h-4" /></button>
       </div>
       {extrasOpen && <ProductExtras p={p} onDone={() => { setExtrasOpen(false); onChange(); }} />}
+      {dppOpen
+        ? <DppEditor product={p} onDone={() => { setDppOpen(false); onChange(); }} />
+        : <button type="button" onClick={() => setDppOpen(true)} className="mt-3 btn-secondary btn-sm"><FileCheck2 className="w-4 h-4" aria-hidden />Digital Product Passport{p.dpp ? ` · ${dppScore(readDpp(p.dpp), p.gtin ?? null).done} of ${DPP_PARTS.length}` : ''}</button>}
       <ul className="mt-4 space-y-2">
         {p.batches.map((x) => <BatchRow key={x.id} batch={x} onChange={onChange} />)}
         {p.batches.length === 0 && <li className="text-sm text-zinc-500">No batches yet. Make one to get printable codes.</li>}

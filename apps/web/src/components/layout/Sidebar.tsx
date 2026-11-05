@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { BarChart3, Briefcase, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
+import { BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
 import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { userCan } from '@/lib/permissions';
@@ -134,6 +134,7 @@ const APP_SEARCH: SearchPage[] = [
   { href: '/trace/wallet', label: 'Trace wallet', keywords: 'points cash out scan and earn shop' },
   { href: '/trace/vault', label: 'My vault', keywords: 'own ownership transfer warranty proof second hand' },
   { href: '/relief', label: 'Relief map', keywords: 'help need food water shelter medical volunteer aid disaster' },
+  { href: '/relief/orgs', label: 'Relief organisations', keywords: 'ngo charity food bank shelter supplies stock inventory volunteer shifts rota join code' },
   { href: '/green', label: 'Log a climate action', keywords: 'green climate co2 tree recycle cycle carbon' },
   { href: '/play', label: 'Play a game', keywords: 'play games arcade quiz fun friends multiplayer room code' },
   { href: '/play/leaderboard', label: 'Game leaderboards', keywords: 'games scores best rank leaderboard' },
@@ -270,6 +271,7 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
   relief: [
     { href: '/relief', label: 'Live map', icon: Map },
     { href: '/relief/mine', label: 'My requests & tasks', icon: HandHeart },
+    { href: '/relief/orgs', label: 'Organisations', icon: Building2 },
   ],
   green: [
     { href: '/green', label: 'My impact', icon: Leaf },

@@ -5,15 +5,17 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { Sky } from 'three/examples/jsm/objects/Sky.js';
 
 // The 3D worlds of UniVerse Play (M36, the owner: "Roblox games… shooting, horror, science fiction…
 // big games"): one renderer, scene and camera per round, a frame loop that pauses in a hidden tab,
 // solid boxes to stand on and bump into, the player's controls (keys and mouse, or a joystick and
 // a look pad on a phone), and a blocky character. three.js loads only with these games.
 
-export { THREE, RoundedBoxGeometry };
+export { THREE, RoundedBoxGeometry, mergeGeometries };
 
 /** The film finish (M39): a soft vignette, a touch of contrast and saturation, fine grain, and (M99)
  *  a colour fringe a game can raise (`World.look`). */
@@ -61,6 +63,41 @@ export function worldUv(geo: THREE.BufferGeometry, tile: number, at: readonly nu
   }
   uv.needsUpdate = true;
   return geo;
+}
+
+/** The physical sky's settings (M102): where the sun is (degrees above the horizon and round from
+ *  north), how hazy the air is, and how bright the dome is drawn. */
+export interface SkyLook { elevation?: number; azimuth?: number; turbidity?: number; rayleigh?: number; mie?: number; mieG?: number; gain?: number; env?: number }
+
+/** three's physical sky (Preetham's daylight model) with a brightness the worlds can set: it's made
+ *  for a darker exposure than ours. Drawn at the far plane, so it never hides anything. */
+function skyDome() {
+  const s = new Sky();
+  const m = s.material as THREE.ShaderMaterial;
+  m.uniforms.gain = { value: 0.55 };
+  m.fragmentShader = `uniform float gain;\n${m.fragmentShader.replace('gl_FragColor = vec4( retColor, 1.0 );', 'gl_FragColor = vec4( retColor * gain, 1.0 );')}`;
+  return s;
+}
+
+/** Ambient occlusion (M102): corners, the ground under a figure and gaps between blocks darken the
+ *  way real light does. Worked out at half size (it's soft anyway). Glows, sparks, clouds and other
+ *  see-through things are left out of its view of the scene, or they'd cast dark halos. */
+function occlusion(scene: THREE.Scene, camera: THREE.Camera, strength: number) {
+  const pass = new GTAOPass(scene, camera, 1, 1);
+  pass.blendIntensity = strength;
+  pass.updateGtaoMaterial({ radius: 0.7, distanceExponent: 1.4, thickness: 1.2, scale: 1, samples: 12 });
+  pass.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 5, rings: 2, samples: 12 });
+  const size = pass.setSize.bind(pass);
+  pass.setSize = (w: number, h: number) => size(Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(h / 2)));
+  const hidden = (pass as unknown as { _visibilityCache: THREE.Object3D[] })._visibilityCache;
+  (pass as unknown as { _overrideVisibility: () => void })._overrideVisibility = () => {
+    scene.traverseVisible((o) => {
+      const mat = (o as THREE.Mesh).material as THREE.Material | undefined;
+      if ((o as THREE.Points).isPoints || (o as THREE.Line).isLine || (o as THREE.Sprite).isSprite || (mat && !Array.isArray(mat) && (mat.transparent || !mat.depthWrite))) hidden.push(o);
+    });
+    for (const o of hidden) o.visible = false;
+  };
+  return pass;
 }
 
 /** A glowing shell around a planet: bright where it meets the planet's edge, fading out into space. */
@@ -111,8 +148,22 @@ export class World {
   private words = new Map<string, THREE.CanvasTexture>();
 
   private grade: ShaderPass | null = null;
+  /** Soft shadow in corners and under things (M102, computers): ambient occlusion, worked out at half size. */
+  private ao: GTAOPass | null = null;
+  /** The physical sky (M102), kept round the camera; its light is the world's environment. */
+  private dome: Sky | null = null;
+  private envTex: THREE.Texture | null = null;
 
-  constructor(public canvas: HTMLCanvasElement, { fov = 70, bg = 0x0b0b10, fog, glow, env = 0.6 }: { fov?: number; bg?: number; fog?: [number, number, number]; glow?: { strength: number; radius: number; threshold: number }; env?: number } = {}) {
+  constructor(public canvas: HTMLCanvasElement, { fov = 70, bg = 0x0b0b10, fog, haze, glow, env = 0.6, ao = 0, tone = 'aces', exposure = 1.05 }: {
+    fov?: number; bg?: number; fog?: [number, number, number];
+    /** Fog that thickens with distance like real air (colour, density), instead of `fog`'s straight fade. */
+    haze?: [number, number];
+    glow?: { strength: number; radius: number; threshold: number }; env?: number;
+    /** How dark corners and contact shadows get (0 none … 1), computers only. */
+    ao?: number;
+    /** The film curve: ACES (punchy), AgX (natural, real-camera highlights) or neutral. */
+    tone?: 'aces' | 'agx' | 'neutral'; exposure?: number;
+  } = {}) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !this.phone, powerPreference: 'high-performance' });
     // Phones draw fewer pixels and no shadows, so the frame rate holds.
     this.maxRatio = this.ratio = Math.min(window.devicePixelRatio || 1, this.phone ? 1.5 : 2);
@@ -120,24 +171,28 @@ export class World {
     this.renderer.shadowMap.enabled = !this.phone;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMapping = tone === 'agx' ? THREE.AgXToneMapping : tone === 'neutral' ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = exposure;
     this.scene.background = new THREE.Color(bg);
-    if (fog) this.scene.fog = new THREE.Fog(fog[0], fog[1], fog[2]);
+    if (haze) this.scene.fog = new THREE.FogExp2(haze[0], haze[1]);
+    else if (fog) this.scene.fog = new THREE.Fog(fog[0], fog[1], fog[2]);
     this.camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 400);
     this.fovBase = this.fovWant = fov;
     // Light from all around (image-based): what makes metal, plastic and polished floors look real.
     if (env > 0) {
       const pmrem = new THREE.PMREMGenerator(this.renderer);
-      this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      this.envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      this.scene.environment = this.envTex;
       this.scene.environmentIntensity = env;
       pmrem.dispose();
     }
-    // Computers draw through the effects chain: smoothed edges (4× samples), the glow, the film finish.
+    // Computers draw through the effects chain: smoothed edges (4× samples), ambient occlusion, the
+    // glow, the film finish.
     if (!this.phone) {
       const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
       this.composer = new EffectComposer(this.renderer, target);
       this.composer.addPass(new RenderPass(this.scene, this.camera));
+      if (ao > 0) this.composer.addPass(this.ao = occlusion(this.scene, this.camera, ao));
       if (glow) { this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), glow.strength, glow.radius, glow.threshold); this.composer.addPass(this.bloom); }
       this.composer.addPass(new OutputPass());
       this.grade = new ShaderPass(GradeShader);
@@ -211,6 +266,7 @@ export class World {
     const ox = shake ? (Math.sin(t * 0.091) + Math.sin(t * 0.037)) * 0.18 * shake : 0, oy = shake ? (Math.sin(t * 0.083 + 1) + Math.sin(t * 0.029)) * 0.18 * shake : 0, rz = shake ? Math.sin(t * 0.071) * 0.03 * shake : 0;
     if (shake) { this.camera.position.x += ox; this.camera.position.y += oy; this.camera.rotation.z += rz; }
     if (this.grade) this.grade.uniforms.time.value = (t / 1000) % 100;
+    this.dome?.position.copy(this.camera.position);
     if (this.composer) this.composer.render(); else this.renderer.render(this.scene, this.camera);
     if (shake) { this.camera.position.x -= ox; this.camera.position.y -= oy; this.camera.rotation.z -= rz; }
     this.trauma = Math.max(0, this.trauma - dt * 1.4);
@@ -230,10 +286,11 @@ export class World {
     // then the glow goes, then the resolution goes on down, then every light's shadows; last the
     // smoothed edges and film finish (the picture is drawn straight to the screen).
     if (this.slow > 0.5 && this.ratio > 1) set(Math.max(1, this.ratio - 0.25));
+    else if (this.slow > 0.5 && this.ao?.enabled) { this.ao.enabled = false; this.slow = 0; }
     else if (this.slow > 0.5 && this.bloom?.enabled) { this.bloom.enabled = false; this.slow = 0; }
     else if (this.slow > 0.5 && this.ratio > 0.6) set(Math.max(0.6, this.ratio - 0.25));
     else if (this.slow > 1 && this.shadowed()) { this.scene.traverse((o) => { if ((o as THREE.Light).isLight) (o as THREE.Light).castShadow = false; }); this.slow = 0; }
-    else if (this.slow > 1 && this.composer) { this.composer.dispose(); this.composer = null; this.grade = null; this.bloom = null; this.slow = 0; }
+    else if (this.slow > 1 && this.composer) { this.composer.dispose(); this.composer = null; this.grade = null; this.bloom = null; this.ao = null; this.slow = 0; }
     else if (this.fast > 2 && this.ratio < this.maxRatio) set(Math.min(this.maxRatio, this.ratio + 0.25));
   }
 
@@ -277,6 +334,44 @@ export class World {
     this.texts.push({ s, life: 0.9, v: 2.6 });
   }
 
+  /** A real sky (M102): the physical daylight model, kept round the camera, and the same sky as the
+   *  world's light from all around, so metal, glass and water reflect it and shade with its colour.
+   *  The sun from lights() moves to shine from where the sky's sun is (call lights() first). Call
+   *  again to change it (a new world, sunset): the light is made again then (a few milliseconds);
+   *  `relight` false only moves the dome, for a change in steps (relight once at the end). */
+  sky({ elevation = 32, azimuth = 150, turbidity = 3.5, rayleigh = 1.4, mie = 0.004, mieG = 0.82, gain = 0.55, env }: SkyLook = {}, relight = true) {
+    if (!this.dome) { this.dome = skyDome(); this.dome.scale.setScalar(120); this.dome.frustumCulled = false; this.scene.add(this.dome); }
+    const dir = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - elevation), THREE.MathUtils.degToRad(azimuth));
+    const set = (m: THREE.ShaderMaterial) => {
+      const u = m.uniforms;
+      u.turbidity.value = turbidity; u.rayleigh.value = rayleigh; u.mieCoefficient.value = mie; u.mieDirectionalG.value = mieG; u.gain.value = gain;
+      u.sunPosition.value.copy(dir);
+    };
+    set(this.dome.material as THREE.ShaderMaterial);
+    this.sunAt.copy(dir).multiplyScalar(80);
+    if (this.sun) this.sun.position.copy(this.sun.target.position).add(this.sunAt);
+    if (!relight) return dir;
+    const copy = skyDome();
+    copy.scale.setScalar(50);
+    set(copy.material as THREE.ShaderMaterial);
+    const room = new THREE.Scene();
+    room.add(copy);
+    this.envFrom(room, env);
+    copy.geometry.dispose(); (copy.material as THREE.Material).dispose();
+    return dir;
+  }
+
+  /** The world's light from all around, taken from a scene (a sky, a starfield, a nebula). */
+  envFrom(room: THREE.Scene, intensity = this.scene.environmentIntensity) {
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    const tex = pmrem.fromScene(room, 0, 0.1, 200).texture;
+    pmrem.dispose();
+    this.envTex?.dispose();
+    this.envTex = tex;
+    this.scene.environment = tex;
+    this.scene.environmentIntensity = intensity;
+  }
+
   /** Keeps the sun (and its shadow box) over a point. */
   sunOver(at: THREE.Vector3) {
     if (!this.sun) return;
@@ -286,7 +381,7 @@ export class World {
 
   /** Many static boxes with one material as a single mesh (one draw call); their boxes stay solid.
    *  `tile` gives textures a fixed size in world units; `round` bevels the edges (they catch light). */
-  boxes(list: { at: [number, number, number]; size: [number, number, number] }[], material: THREE.Material, solid = true, parent: THREE.Object3D = this.scene, { tile = 0, round = 0 } = {}) {
+  boxes(list: { at: [number, number, number]; size: [number, number, number] }[], material: THREE.Material | THREE.Material[], solid = true, parent: THREE.Object3D = this.scene, { tile = 0, round = 0 } = {}) {
     if (!list.length) return null;
     const geos = list.map(({ at, size }) => {
       const g = shape(size, round).translate(...at);
@@ -300,8 +395,9 @@ export class World {
     return mesh;
   }
 
-  /** A box in the world; solid ones also block the player. */
-  box(at: [number, number, number], size: [number, number, number], material: THREE.Material, solid = true, { tile = 0, round = 0 } = {}) {
+  /** A box in the world; solid ones also block the player. A list of six materials dresses each
+   *  side apart (+x, −x, top, bottom, +z, −z): grass on top, rock round the sides. */
+  box(at: [number, number, number], size: [number, number, number], material: THREE.Material | THREE.Material[], solid = true, { tile = 0, round = 0 } = {}) {
     const geo = shape(size, round);
     const mesh = new THREE.Mesh(tile ? worldUv(geo, tile, at) : geo, material);
     mesh.position.set(...at);
@@ -329,7 +425,10 @@ export class World {
 
   dispose() {
     this.pause();
+    // The effects chain doesn't free its own passes (glow, occlusion, finish): free them here.
+    this.composer?.passes.forEach((p) => p.dispose());
     this.composer?.dispose();
+    this.envTex?.dispose();
     this.words.forEach((t) => t.dispose());
     this.loop = null;
     this.ro.disconnect();

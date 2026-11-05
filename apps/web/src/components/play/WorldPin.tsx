@@ -6,14 +6,14 @@ import { Lightbulb, MapPin, Package } from 'lucide-react';
 import { CITIES } from '@/components/trace/map/cities';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
 import { PIN_HINTS, PIN_SECONDS_PER, PIN_TARGETS, kmBetween, pinPoints, pinRegion, pinStreakBonus, pinTarget, pinVerdict } from '@/lib/play/pin';
-import { useDarkMode } from '@/lib/use-dark';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { GameProps } from './game-props';
 import { haptic } from '@/lib/haptics';
 
 // World Pin (src/lib/play/pin.ts): a parcel is heading to a city; tap where it is on the world map
-// (Trace's own map: drag and zoom work, city names are hidden). Your pin drops, the real one rises,
+// (Trace's own map in its satellite look since M104: drag and zoom work, city names are hidden; the
+// map is dark in both themes, so the marks on it use light colours). Your pin drops, the real one rises,
 // a line draws between them and the map glides to show both, then back out for the next city.
 // Keyboard: move the map with the arrows and press Enter to pin the middle (the cross).
 
@@ -40,7 +40,6 @@ function reducer(s: S, a: A): S {
 export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProps) {
   const [s, dispatch] = useReducer(reducer, startsAt, (at): S => ({ i: 0, shownAt: at, pick: null, timedOut: false, revealAt: 0, score: 0, best: 0, streak: 0, hints: PIN_HINTS, hinted: false }));
   const target = useMemo(() => pinTarget(seed, s.i), [seed, s.i]);
-  const dark = useDarkMode();
   const calm = useReducedMotion();
   const map = useRef<MapHandle>(null);
   const seen = useRef<{ lngLat: Frame['lngLat']; w: number; h: number } | null>(null);
@@ -93,7 +92,7 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
     seen.current = { lngLat: f.lngLat, w: f.w, h: f.h };
     const { ctx } = f;
     if (!answered) {
-      ctx.strokeStyle = dark ? 'rgba(255,192,230,0.55)' : 'rgba(193,58,146,0.5)'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(255,192,230,0.7)'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(f.w / 2 - 8, f.h / 2); ctx.lineTo(f.w / 2 + 8, f.h / 2); ctx.moveTo(f.w / 2, f.h / 2 - 8); ctx.lineTo(f.w / 2, f.h / 2 + 8); ctx.stroke();
       return;
     }
@@ -109,8 +108,8 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
         const label = `${Math.round(s.pick.km).toLocaleString()} km`;
         ctx.font = '700 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
         const mx = (px + tx) / 2, my = (py + ty) / 2 - 10, tw = ctx.measureText(label).width + 16;
-        ctx.fillStyle = dark ? 'rgba(21,21,23,0.9)' : 'rgba(255,255,255,0.95)'; ctx.beginPath(); ctx.roundRect(mx - tw / 2, my - 13, tw, 22, 11); ctx.fill();
-        ctx.fillStyle = dark ? '#ffc0e6' : '#a32c7b'; ctx.fillText(label, mx, my + 2);
+        ctx.fillStyle = 'rgba(21,21,23,0.9)'; ctx.beginPath(); ctx.roundRect(mx - tw / 2, my - 13, tw, 22, 11); ctx.fill();
+        ctx.fillStyle = '#ffc0e6'; ctx.fillText(label, mx, my + 2);
       }
     }
     // The real place: a pulse and a green pin.
@@ -119,14 +118,14 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
     ctx.beginPath(); ctx.arc(tx, ty, 6 + pulse * 22, 0, Math.PI * 2); ctx.stroke();
     pin(ctx, tx, ty - (1 - ease) * 18, '#22c55e');
     ctx.font = '700 13px Inter, system-ui, sans-serif'; ctx.textAlign = 'left';
-    ctx.fillStyle = dark ? '#f8fafc' : '#0f172a'; ctx.fillText(target.name, tx + 12, ty - 14);
-  }, [answered, dark, clock, s.revealAt, s.pick, target]);
+    ctx.fillStyle = '#f8fafc'; ctx.fillText(target.name, tx + 12, ty - 14);
+  }, [answered, clock, s.revealAt, s.pick, target]);
 
   const verdict = s.pick ? pinVerdict(s.pick.km) : 'Time’s up';
   return (
     <div className="mx-auto w-full">
       <div className="relative">
-        <WorldCanvas ref={map} label="World map: tap where the city is" homeBox={WORLD} dark={dark} live={answered && !calm} draw={draw}
+        <WorldCanvas ref={map} label="World map: tap where the city is" homeBox={WORLD} dark look="satellite" live={answered && !calm} draw={draw}
           onPoint={(p, kind) => { if (p && kind === 'click') pinAt(p.x, p.y); }} skipCities={HIDE}
           className="h-[min(62vh,540px)] min-h-80 w-full overflow-hidden rounded-3xl ring-1 ring-black/10 dark:ring-white/10" />
         <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-3">

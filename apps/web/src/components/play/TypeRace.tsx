@@ -9,10 +9,11 @@ import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { useArena } from './arena';
 import type { GameProps } from './game-props';
+import { RaceView } from './RaceView';
 
 // Type Race (src/lib/play/typing.ts): type each true fact exactly; only the right letter moves you
 // on. Cars race laps of a 600-letter track: you, your friends in a room (their letters come with
-// the live scores), or a pace car alone. Twenty right letters in a row light the nitro: letters
+// the live scores), or a pace car alone, on a 3D circuit (RaceView, M104). Twenty right letters in a row light the nitro: letters
 // count double for four seconds, the car leaves flames. A speedometer shows your words a minute.
 
 const LAP = 600;
@@ -81,30 +82,11 @@ export function TypeRace({ seed, startsAt, clock, onProgress, onStats, rivals }:
     { id: 'me', name: 'You', chars: s.chars, me: true },
     ...(rivals?.length ? rivals.map((r) => ({ id: r.id, name: r.name, chars: r.step, me: false })) : [{ id: 'pace', name: `Pace ${paceWpm}`, chars: Math.round((paceWpm * 5 * elapsed) / 60_000), me: false }]),
   ];
-  const typing = now - s.last < 900;
 
   return (
     <div className="mx-auto w-full max-w-5xl" onClick={() => input.current?.focus()}>
-      {/* The track: asphalt lanes, moving lane lines, a chequered line at the end of each lap */}
-      <div className="relative overflow-hidden rounded-[1.75rem] bg-[#131315] p-2 ring-1 ring-white/10" aria-label="Race track">
-        {racers.map((r, k) => {
-          const pct = (r.chars % LAP) / LAP, rLap = Math.floor(r.chars / LAP);
-          return (
-            <div key={r.id} className={cn('relative h-16 overflow-hidden', k > 0 && 'border-t-2 border-dashed border-white/15')}>
-              <div className={cn('absolute bottom-1 start-0 h-0.5 w-[200%] bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.22)_0_22px,transparent_22px_48px)]', (r.me ? typing : r.chars > 0) && !calm && 'play-stripes')} aria-hidden />
-              <div className="absolute inset-y-0 end-2 w-3 bg-[repeating-conic-gradient(#f8fafc_0_25%,#1d2650_0_50%)] bg-[length:6px_6px] opacity-90" aria-hidden />
-              <div key={rLap} className="absolute inset-y-0 start-2 end-24 transition-transform duration-500 ease-out" style={{ transform: `translateX(calc(${pct * 100}% * var(--play-dir, 1)))` }}>
-                <div className="absolute top-1/2 -translate-y-1/2">
-                  <Car color={r.me ? COLORS[0] : COLORS[(k % (COLORS.length - 1)) + 1]} spin={(r.me ? typing : r.chars > 0) && !calm} flames={r.me && nitro} />
-                  <span className={cn('absolute -top-1 start-16 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold', r.me ? 'bg-pink-600 text-white' : 'bg-black/60 text-zinc-100')} translate="no">
-                    {r.name}{rLap > 0 && ` · lap ${rLap + 1}`}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {/* The race (M104): a 3D circuit, every racer a car in their lane */}
+      <RaceView racers={racers.map((r, k) => ({ ...r, color: r.me ? COLORS[0] : COLORS[(k % (COLORS.length - 1)) + 1] }))} nitro={nitro} lap={LAP} />
 
       {/* Speedometer, accuracy, nitro charge, facts */}
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -141,23 +123,6 @@ export function TypeRace({ seed, startsAt, clock, onProgress, onStats, rivals }:
       <input id="type-race-input" ref={input} value="" onChange={(e) => type(e.target.value)} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} className="sr-only" />
       <p className="mt-3 text-center text-xs text-zinc-400">Just start typing. Only the right letter moves you on; capitals and punctuation count. {GAMES.type.seconds} seconds, laps of {LAP} letters.</p>
     </div>
-  );
-}
-
-/** A side-on race car; wheels spin while it moves, flames with the nitro. */
-function Car({ color, spin, flames }: { color: string; spin: boolean; flames: boolean }) {
-  return (
-    <svg viewBox="0 0 64 28" className="h-8 w-[72px] rtl:-scale-x-100" aria-hidden>
-      {flames && <path className="play-flame" d="M2 17 L-10 14 L-4 17 L-12 20 L2 20 Z" fill="#fbbf24" style={{ transformOrigin: '2px 18px' }} />}
-      <path d="M4 18 L8 11 L22 9 L32 3 L46 3 L54 10 L60 12 L61 19 L4 20 Z" fill={color} />
-      <path d="M33 5 L45 5 L51 10 L29 10 Z" fill="#0f172a" opacity="0.75" />
-      <rect x="54" y="13" width="6" height="2.5" rx="1" fill="#fde68a" />
-      {[14, 48].map((x) => (
-        <g key={x} className={spin ? 'play-spin' : ''} style={{ transformOrigin: `${x}px 20px`, transformBox: 'view-box' }}>
-          <circle cx={x} cy="20" r="6" fill="#111827" /><circle cx={x} cy="20" r="2.6" fill="#9ca3af" /><rect x={x - 0.6} y="14.5" width="1.2" height="11" fill="#4b5563" />
-        </g>
-      ))}
-    </svg>
   );
 }
 

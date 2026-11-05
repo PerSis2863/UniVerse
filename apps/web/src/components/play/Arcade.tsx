@@ -19,7 +19,7 @@ import { JoinRoom, type PlayMe } from './GameShell';
 import { LiveCard } from '@/components/live/LiveCard';
 import { Constellation } from '@/components/live/Constellation';
 
-// UniVerse Play's home (/play): eleven games, two for each app (four quick, four big) and three 3D worlds, plus STORMFALL on
+// UniVerse Play's home (/play): thirteen games for the apps (four quick, five big) and four 3D worlds, plus STORMFALL on
 // computers (M41), each card
 // with a small live scene of how it plays; join a room by code; my numbers and last rounds. Scenes are CSS only and stop
 // with Reduce Motion.
@@ -28,6 +28,7 @@ const WORLD_ART: Partial<Record<GameId, { bg: string; tags: string[] }>> = {
   obby: { bg: 'linear-gradient(160deg,#2b59ff,#9b8cff 55%,#ffb3d9)', tags: ['10 stages', 'bounce pads', 'lasers'] },
   night: { bg: 'radial-gradient(60% 60% at 50% 55%,#e5e7eb 0%,#3f3f46 18%,#0b0b0c 60%)', tags: ['torch', '5 keys', 'don’t get caught'] },
   orbit: { bg: 'radial-gradient(80% 80% at 20% 110%,#1d4ed8,#02030a 60%)', tags: ['low gravity', 'reactors', 'meteors'] },
+  reef: { bg: 'linear-gradient(180deg,#5eead4,#0e7490 45%,#083344)', tags: ['swim', 'plant coral', 'free turtles'] },
 };
 
 function Scene({ game }: { game: GameId }) {
@@ -106,6 +107,15 @@ function Scene({ game }: { game: GameId }) {
       </div>
     );
   }
+  if (game === 'fire') {
+    return (
+      <div className="relative h-24 overflow-hidden rounded-xl bg-gradient-to-b from-[#d6b98c] to-[#44522f]" aria-hidden>
+        <div className="absolute inset-x-3 bottom-2 flex justify-between text-xl"><span>🌲</span><span>🌲</span><span className="play-scene">🔥</span><span>🌲</span><span className="play-scene">🔥</span><span>🏡</span></div>
+        <span className="play-scene-heli absolute top-2 text-2xl" style={{ left: '40%' }}>🛩️</span>
+        <span className="absolute start-3 top-3 h-5 w-10 rounded-full bg-sky-500/70" />
+      </div>
+    );
+  }
   if (game === 'ocean') {
     return (
       <div className="relative h-24 overflow-hidden rounded-xl bg-gradient-to-b from-[#0e3a4f] to-[#111113]" aria-hidden>
@@ -139,7 +149,7 @@ export function Arcade() {
           <div>
             <p className="inline-flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-2.5 py-1 text-xs font-semibold text-fuchsia-800 dark:text-fuchsia-200"><Gamepad2 className="w-3.5 h-3.5" aria-hidden />UniVerse Play</p>
             <h1 className="mt-3 text-3xl font-semibold text-zinc-900 dark:text-white sm:text-4xl">Games that <em className="accent-word">teach</em> something.</h1>
-            <p className="mt-2 max-w-xl text-zinc-600 dark:text-zinc-300">3D worlds to run, jump and survive in, plus two games for each app. Every round earns XP: level up to unlock new looks. Play alone or race friends live in a room.</p>
+            <p className="mt-2 max-w-xl text-zinc-600 dark:text-zinc-300">3D worlds to run, jump, dive and survive in, plus games for each app. Every round earns XP: level up to unlock new looks. Play alone or race friends live in a room.</p>
             <dl className="mt-6 grid max-w-md grid-cols-3 gap-4">
               <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">Rounds played</dt><dd className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={me?.played ?? 0} /></dd></div>
               <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">With friends</dt><dd className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={withFriends} /></dd></div>
@@ -169,7 +179,7 @@ export function Arcade() {
         <section key={kind} aria-labelledby={`games-${kind}`}>
           <div className="mb-3 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
             <h2 id={`games-${kind}`} className="text-lg font-semibold text-zinc-900 dark:text-white">{kind === 'worlds' ? '3D worlds' : kind === 'big' ? 'Big games' : 'Quick games'}</h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{kind === 'worlds' ? 'Run, jump, explore and survive in 3D: an obby, horror, space and, on computers, a battle royale.' : kind === 'big' ? 'Full-screen, longer rounds: fly, steer, type and explore.' : 'A minute each, perfect between classes.'}</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{kind === 'worlds' ? 'Run, jump, explore and survive in 3D: an obby, horror, space, a coral reef and, on computers, a battle royale.' : kind === 'big' ? 'Full-screen, longer rounds: fly, steer, type and explore.' : 'A minute each, perfect between classes.'}</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {GAME_IDS.filter((g) => (kind === 'worlds' ? !!GAMES[g].world : !GAMES[g].world && !!GAMES[g].big === (kind === 'big'))).map((g, i) => {

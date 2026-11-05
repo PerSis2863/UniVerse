@@ -4105,3 +4105,318 @@ is older). So this item does what the page controls:
   boxes (Night Shift's keys and lives, Supply Run's trucks: now `role="img"`) and a too-faint "Your best"
   on Ocean Cleanup's menu (now zinc-300 in dark). The camera fly-in in Obby and Orbit counts from the
   first frame drawn, so waiting for shaders no longer cuts it short.
+
+## M102: the 3D worlds look real: sky, light, rock, lava, planets (4 Nov 2026)
+
+The owner: "upgrade all the games even more like realistic graphics to all of them and add some unique
+games also". This item is the shared 3D engine and the three worlds; the other games follow (M103 on).
+
+- **Engine** (`world/core.ts`):
+  - `World.sky(look, relight)`: three's physical daylight sky (`Sky`, with a `gain` uniform added because
+    it's made for a darker exposure than ours), kept round the camera, and the same sky made into the
+    world's light from all around (`envFrom`: a PMREM of a copy of it), so metal and glass reflect it. Call
+    `lights()` first: the sun light moves to where the sky's sun is. `relight` false only moves the dome
+    (a change in steps; relight once at the end, it takes a few milliseconds).
+  - `World.envFrom(scene)`: the light from all around taken from any scene (Orbit: the planet and the sun).
+  - Options: `ao` (ambient occlusion, computers: three's GTAO at half size; glows, sprites, points, lines and
+    see-through things are hidden from its view or they'd cast dark halos), `haze` (fog that thickens like
+    air, `FogExp2`), `tone` ('aces', 'agx', 'neutral') and `exposure`. The quality ladder drops the
+    occlusion first (after a sharp screen comes down to 1×).
+  - `box`/`boxes` take a list of six materials (+x, −x, top, bottom, +z, −z): grass on top, rock round
+    the sides. Only for single boxes: merged boxes lose their face groups.
+- **Nature** (`world/nature.ts`, new; all worked out on the graphics chip, nothing to download):
+  `cloudSea` (an endless lit cloud layer, keep it under the camera with `follow`), `lavaSea` (cracking
+  crust over flowing, glowing lava), `islandRock` / `rocks` (craggy rock under a floating island, many
+  merged into one mesh), `starfield` (stars of real colours and brightnesses, sized on screen),
+  `milkyWay` (computers only: it's fine detail over the whole sky), `planetMaterial` ('earth': oceans with
+  shallows and sun glint, forests, grassland and deserts by rainfall and latitude, ice caps, drifting
+  clouds, city lights on the night side; 'desert'; 'giant' with bands and a storm), `ringMaterial`,
+  `lightBeam` (a torch's dusty beam; points along +z). The noise octaves drop from 5 to 3 on phones.
+- **Textures** (`world/textures.ts`): `glowCracks()` (an emissive map: only the cracks glow),
+  `neonEdge()`; floor tiles have puddles (mirror-smooth, darker), lockers and wood panels are grimier near
+  the floor. `cloud()`, `lava()` and `planet()` were replaced and removed.
+- **Skyline Obby:** a clear-morning sky with the sun behind the player, two layers of cloud far below,
+  big floating islands with pines in the distance. Pads are grassy islands on craggy rock (Sky Islands),
+  cooling basalt with glowing cracks (Lava Peaks) or black glass with neon edges (Neon Void); the special
+  pads keep their colour as a material (pink jelly to bounce on, crumbling sandstone, glowing crystal,
+  clear ice, a stone plaza with a flag, gold at the end). Lava Peaks has a smoky dusk and a lava sea;
+  Neon Void a night with stars and the Milky Way. The sky changes over two seconds between worlds, then
+  its light is made again. Rock under a pad that moves, crumbles or blinks is its child (it goes with it);
+  the rest is one mesh per world.
+- **Orbit Breach:** the planets are drawn on the graphics chip (earth, desert, ringed giant), real-coloured
+  stars and the Milky Way, a sun with a halo; the decks are painted panels (light, not bare metal: space
+  reflects nothing, so metal looked black) and the station reflects its planet (`relight` per station).
+- **Night Shift:** the torch's beam shows in the air (`lightBeam` on the camera, aimed with the torch's
+  sway, brightness with the battery), puddles on the floor catch the torch, ambient occlusion in corners.
+- **Checked:** screenshots of all three worlds (and Obby's later worlds through a temporary start
+  switch, removed); `pnpm check` clean. The cloud box draws 3D in software (1–2 frames a second), so
+  frame rates must be checked on a real device (the gauge in the game's bar).
+
+## M103: Flood Rescue and Ocean Cleanup in real 3D (4 Nov 2026)
+
+The owner's "realistic graphics to all of them", for the two flat action games. Their rules didn't change:
+they still run in the game box's pixels (steering, hit circles, the water line), exactly as before.
+
+- **`world/board.ts` (new): a flat game drawn in 3D.** `Board(world, 'side' | 'top', span, tilt)` fits the
+  camera to the box each frame (`fit()` is true when the size changed: lay the scenery out again then) and
+  `at(px, py)` gives the point on the plane under a pixel (a ray from the camera, so it is exact even with
+  the camera tipped); `scale(px, py)` is world units per pixel there. Side views use the plane z = 0
+  (tipped 9° so roofs and pads show their tops); top views use the sea (y = 0). Also: `rainField` (rain
+  moved entirely on the graphics chip, slanting with `wind`), `stormSky` (rolling clouds lit by
+  lightning), `ocean` + `swell` (a sea whose swell is the same sum of waves on the chip and in `swell()`,
+  so floating things bob and tip with it; two layers of ripples; foam on crests by `foam`), `label`
+  (a number or emoji as a sprite, its picture made once), `timerRing` (a ring that empties),
+  `waterNormals` (the new `water` surface in textures.ts).
+- **Flood Rescue:** a night town of lit windows (one facade picture, tiled in world units) in two far rows
+  fading into rain, the play houses with flat roofs, parapets and tanks, the hill and a white hospital
+  with a red cross, the H pad with lights that pulse green while it helps. The flood is three's `Water`
+  (a mirror, smaller on phones) made murkier (its shader's reflection term is dimmed); timer rings, counts
+  and the lightning warning are hidden from its mirror. Real lightning (a jagged tube, the clouds and the
+  town flash). A modelled helicopter: pink paint, white belly, canopy, skids, tail rotor, main rotor and its
+  blur, a green light and a strobe, a searchlight (a spot light with shadows on computers and a beam), and
+  the winch line; the person being winched rises up it. People are instanced (one mesh per body part), wave,
+  and have pets. The counters moved off the canvas into chips (one pill on phones).
+- **Ocean Cleanup:** the open sea under the physical sky (sun glitter, a swell, foam in the storm), the
+  weather and sea changing with the stage (calm → choppy → storm, with rain and lightning). Every floating
+  thing is a model (one mesh each, vertex colours): bottles, cups, bags, cans, ghost nets with floats,
+  turtles, fish, octopuses, power-up buoys; oil is a black slick with a thin film's rainbow. Rings on the
+  water keep the flat game's language (red: sea life, gold: power-ups, pink: nets). A white cleanup boat
+  with a pink rail, a cabin and the scoop; a foam wake (instanced, additive: black is see-through); the
+  shield is a dome, the magnet's reach and the sweep are rings on the water. Combo and the cleared count
+  moved to the HUD.
+- **Removed:** the flat drawing helpers (`useGameCanvas`, `burst`, `drawEffects`, `glyph`, `halo`): nothing
+  draws them now. What's left (steering, `calmMotion`) is `play/steer.ts`.
+- **Checked:** screenshots at 1280 and 390 (and with the flood high and items placed mid-screen through a
+  temporary switch, removed); axe clean at 390 light and 1280 dark while playing; `pnpm check` clean.
+  Phones skip the effects chain, so they draw faster than computers in this box.
+
+## M104: the other six games look real (4 Nov 2026)
+
+The owner's "realistic graphics to all of them", for the games still drawn flat. Rules and inputs didn't
+change; each keeps its buttons and keys (accessible), and the 3D part loads with the game.
+
+- **Type Race** (`RaceView.tsx`): the lane strip became a 3D circuit in a park: asphalt with painted lanes
+  (`roadTexture`), red-and-white kerbs, a chequered start line and gantry, a grandstand full of colour,
+  trees; every racer a clear-coated race car in their own lane with a name over it, the camera chasing
+  yours, nitro flames at the exhaust. A lap is still 600 letters round the whole circuit; cars ease to
+  their letters (`approach`). The SVG car and its `play-flame` style are gone.
+- **Recycle Rush** (`SortView.tsx`, `world/props.ts`): a rubber conveyor belt (it scrolls) in a recycling
+  plant, all thirty things modelled (`sortables()`: one vertex-coloured geometry each, about a unit,
+  shared), four wheelie bins with their symbol stickers. The bin buttons are laid exactly over the 3D bins
+  (the box's four columns, `Board.at`; mirrored in right-to-left). A sorted thing flies into its bin and
+  the lid pops; a wrong one bounces off the rim; e-waste in the wrong bin burns; a missed one drops off the
+  end; the next one glows pink, golden ones are gold metal. `OnBelt`/`BinArt` and their CSS motion are gone.
+- **World Pin**: Trace's map has a `look="satellite"` (`WorldCanvas`): deep sea, lighter shallows along the
+  coasts (a blurred stroke, drawn only when the land picture is redrawn), land coloured by climate band
+  (`CLIMATE`: ice, tundra, forest, farmland, dry grass, desert, savanna, rainforest: a likeness, not a
+  survey) with terrain grain (`grain()`, multiplied, clipped to land), thin white borders, white names.
+  World Pin uses it; the Trace maps keep the flat look. The map is dark in both themes, so World Pin's marks
+  use the light colours.
+- **Supply Run** (`TownView.tsx`): an aerial 3D town in the flat map's own 600 × 400 plan: the river with
+  muddy banks, streets that bridge it (each street is the plan's quad mapped to the ground, so the markers
+  line up), houses with tiled roofs, parks of trees, the depot; trucks in their supply's colour drive the
+  streets (along the middle street, a cross street, into the block) and back on the trip's times; the
+  airdrop flies straight over. Rain dims the sun and falls in 3D. The need markers stay DOM on top.
+- **Spot the Fake** (`world/shots.ts`): each product is modelled and photographed once in a little studio
+  (one renderer, then released; the emoji shows until the picture is ready); the passports have a real QR
+  layout (21 × 21, finders and timing), a barcode, a holographic seal sticker (`.play-holo`: only its sheen
+  turns, by transform; paused while scrolling and with Reduce Motion), UV fibres under the lamp
+  (`.play-fibres`) and a rubber-stamp COPY.
+- **Quiz Clash** (`StudioView.tsx`, loaded after the questions): a TV quiz set behind them: a glossy floor, a
+  round stage with a lit rim, podiums, an LED wall running a wave in the topic's colour, moving heads on a
+  truss whose beams cut the haze (three on phones), the crowd in the dark. A right answer turns it green and
+  the crowd jumps, a wrong one flashes red, a boss question goes gold, the lightning round strobes. The
+  header and answers sit on dark panels so they read over it.
+- **Checked:** screenshots of all six at 1280 and three at 390; axe clean (390 light, 1280 dark) while
+  playing, no sideways scrolling; `pnpm check` clean.
+
+## M105: two new games, Fire Line and Reef Rescue (4 Nov 2026)
+
+The owner: "add some unique games also". Two original games (our own designs, no copy of any game),
+each in an app that had only two, both realistic from the start on the M102–M104 parts.
+
+- **Fire Line** (Relief, big, 150 s; rules in `src/lib/play/wildfire.ts`, tested; view `FireLine.tsx`): a
+  dry forest valley from the air (a 40 × 24 grid: forest, meadow, rock, a lake, three 2 × 2 villages).
+  Lightning starts fires on a seeded schedule (never within 9 cells of a village), the wind turns every
+  20–30 s, and a fire tick every 650 ms lets each burning cell light its neighbours (`igniteChance`: forest
+  more than meadow, downwind far more than upwind, never rock, water or wet ground). The tick's random
+  numbers come from the seed and the tick number, so a room's valleys only differ by how each pilot fights.
+  Steer the water bomber (`steer.ts`, like Flood Rescue) over the lake to fill its tank (3 drops), drop
+  with Space: every burning cell in reach goes out (30 points, once per cell) and the ground stays wet.
+  A village caught costs 400; 1.5 s before the end the villages still standing (2,000 each) and the
+  forest still green (up to 3,000) are added and announced. Cap 40,000 (tested), par 20,000.
+  Drawn on `world/board.ts` ('top', tilted 34°): the ground's vertices on the box's own grid coloured by
+  cell (ash, wet, burning), ~1,700 instanced trees that turn orange then black, instanced flame and smoke
+  quads facing the camera, a ring on the ground where the water lands, steam puffs, the bomber's shadow.
+- **Reef Rescue** (Green, 3D world, 240 s; rules in `src/lib/play/reef.ts`, tested; view `ReefRescue.tsx`):
+  swim a reef (forward goes where you look, up and down too; Space/Q up, C down, Shift fast; phones: the
+  joystick and Use / Up / Down). Take coral from the nursery to the eight bleached patches and plant it (E:
+  600, it grows), hold E 1.6 s by a ghost net to free its turtle (1,000, it swims off), collect 22 pieces
+  of plastic (80), keep off the jellyfish (−150, a stun). Air lasts 80 s under water and fills at the
+  surface; out of air, you're carried up. Everything done ends the round early with 2,000 and 10 a second
+  left. Cap 18,000 (`reefBest` under it, tested). The look: caustics rippling on the sand (added to the
+  sand's light in its shader), the surface from below (bright straight up), shafts of light, swaying sea
+  grass (moved in the shader), corals, rocks, three schools of fish, marine snow, jellyfish that pulse, a
+  diver whose fins kick. In a room the others are drawn too (`Crowd`).
+- **Registered:** `GAME_IDS` / `GAMES` (`src/lib/play.ts`), `GameStage` (views, preload, controls),
+  `GameIcon` (Flame, Fish), the arcade's cards (a Fire Line scene; Reef in the 3D worlds), the counts on the
+  landing and in apps.ts ("Thirteen games"), the screen-text catalog, `big-games.test.ts` (13 games, four
+  worlds; Relief and Green have three each). No database change: scores keep the game's id as text, the
+  room and leaderboards take any id in `GAME_IDS`. The turtle model moved to `world/props.ts` (shared with
+  Ocean Cleanup).
+- **Checked:** screenshots at 1280 and 390, the Play home; axe clean (390 light, 1280 dark) while playing
+  after making the "burning" chip orange-700; the fire was slowed after the first try (a village burned in
+  14 s); `pnpm check` clean.
+- **After the production build** (`pnpm local:build` passed): each 3D game now frees its effects
+  passes when it closes (`World.dispose`: three's `EffectComposer.dispose` doesn't); the satellite map's
+  shallows are three widening strokes instead of a canvas blur (Safari doesn't draw `filter`); Fire Line's
+  two flames per cell sit either side of the cell's middle.
+
+## M106: Relief for organisations: NGOs, supplies, volunteer shifts (4 Nov 2026)
+
+The owner: "can you improve the whole system do anything what you can do". The next of the owner's
+seven ideas (25 Oct, "work on all 7 of them"): organisation accounts for Relief. Migration **0192**.
+
+- **What people get** (Relief → Organisations, `/relief/orgs`; phone tab "Orgs"): start an organisation
+  (NGO, food bank, shelter, clinic, faith or community group, school) or join one with a 6-character code
+  (`?join=<code>` opens it filled in). Its page (`?org=<id>`, no `[id]` route) has five tabs: Overview
+  (four `FactorCard`s, About, the invite code for coordinators, Leave), Needs (what it handles; open needs
+  within ~25 km of its base, most urgent first, "Take for <org>"), Supplies (+/−, set a count or "+20" /
+  "−5", running-low level, the last 40 changes with who), Shifts (create, sign up, cancel; names of who's
+  coming), Members (roles, remove). The Organisations home lists my organisations, my shifts and every
+  open shift that still needs people (next 30 days). On the map, a coordinator can post "as" the
+  organisation, and cards say "Offered by <org>" / "<org> is helping".
+- **Server** `src/server/relief-orgs.ts` (rules in `src/lib/relief.ts`: `RELIEF_ORG_ROLES`, `runsOrg`,
+  `mayChangeRole`, `supplyLow`, `nextQuantity`, `shiftState`). Non-members get 404 for an organisation.
+  OWNER does everything but leave it ownerless; COORDINATOR runs it but only moves volunteers;
+  VOLUNTEER sees it and changes stock counts (not the item). A count changes in one SQL statement
+  (`MIN(1000000, MAX(0, quantity + ?))`) and is logged in `relief_supply_moves`. A shift place is taken
+  by a guarded update (`filled < slots`) before the sign-up row, given back if the row already existed.
+  The last member leaving deletes the organisation (cascade). Caps: 5 started per person, 500 members,
+  200 items, 100 shifts ahead. Every change `publish`es a `refresh` of `/relief/orgs/<id>` and
+  `/relief/orgs` to the members (no polling).
+- **Relief changes** (`src/server/relief.ts`): `relief_posts.orgId` (posted in its name, coordinators
+  only) and `helperOrgId` (taken for it); its coordinators can deliver or give back what it took
+  (`reliefAction` takes the body now). `shape` adds `org`, `helperOrg`, and `helping` for them.
+- **Notifications** (bell and push, `email: false`): a join (to coordinators), a role change, a sign-up
+  (to the shift's creator), a cancelled shift (to everyone signed up), and a daily-job step
+  `relief-shifts` (`shiftReminders`): "starts in about N hours" for shifts in the next 24 h, once each
+  (checked by the notification's link), so no time zone is shown wrong.
+- **Not merged with the school's NGO marketplace on purpose**: `ngos` / `ngo_projects` /
+  `volunteer_shifts` are school-admin records (80G receipts, QR check-in for students); Relief
+  organisations are self-serve communities with members. A later item could let a school's NGO link
+  to a Relief organisation.
+- **Sample mode**: `sampleReliefOrgs` / `sampleReliefOrg` (`src/lib/sample/impact.ts`: a food bank I own
+  and a shelter I volunteer at), and `/relief/watch` now answers `null` in sample mode (it reached the
+  real server before).
+- **Trap found**: `.input` is declared in `@layer utilities` after Tailwind's own utilities, so
+  `w-20`, `py-1.5` and the like on an `.input` do nothing (sitewide, older code too). Size a wrapper
+  instead (the stock count field). Fixing the layer would change many inputs at once: left for a sweep.
+- **Not done (later)**: SMS / WhatsApp requests into an organisation's inbox (needs a Twilio or WhatsApp
+  Business account: **[owner]**, M107 builds it behind a switch, off); a public organisation page.
+- **Checked**: `scripts/checks/relief-orgs-ui.mjs` (start, join, counts, a volunteer refused a rename,
+  a full shift refuses a third person, take for the organisation, volunteer can't deliver, coordinator
+  can; every tab at 390 and 1280, light and dark, axe clean, no sideways scrolling, no page errors);
+  `src/server/relief-orgs.test.ts` (rules, guarded shift place, stock log, owner rules); `pnpm check`.
+
+## M107: Relief text requests (SMS / WhatsApp) into an organisation's inbox, behind a switch (5 Nov 2026)
+
+The rest of the owner's Relief idea: "SMS/WhatsApp requests behind a switch". Migration **0193**.
+**[owner]**: off until the owner turns on "Relief text requests" (console → Server → Feature
+switches, opt-in like live air traffic) and sets `TWILIO_AUTH_TOKEN` in Cloudflare; Twilio charges
+for each message in and each thank-you reply.
+
+- **How it works**: someone without the app texts an organisation's Twilio number (SMS, or WhatsApp
+  through Twilio). Twilio posts to `POST /api/core/relief/texts/inbound` (public; the Worker refuses the
+  path while the switch is off). `src/server/relief-texts.ts` checks `X-Twilio-Signature`
+  (`twilioSignature`: base64 HMAC-SHA1 with the Auth Token over the URL plus the sorted form fields;
+  compared without early exit), finds the organisation by `relief_orgs.textNumber` (E.164,
+  `textNumber()` in `src/lib/relief.ts` also reads `whatsapp:+…`), files a `relief_texts` row (body ≤
+  1,000), tells its coordinators (bell and push, no email) and answers TwiML with one thank-you
+  message. Unknown numbers and more than 10 messages an hour from one phone get an empty answer (no
+  paid reply, nothing filed). The signature covers `req.url`: the webhook in Twilio must be exactly
+  `https://universeimpact.com/api/core/relief/texts/inbound`.
+- **Coordinators only** see texts (they hold the sender's number): `GET /relief/orgs/:id` adds
+  `textsOn`, `texts` (new ones and the last 14 days) and `org.textNumber` for them, `null` for
+  volunteers. Needs tab → "Text requests": the message, the number as a `tel:` link, "Put on the map",
+  "Text back" (`sms:`, from their own phone: we send nothing ourselves) and "Handled"
+  (`POST /relief/texts/:id/close`). The number is set in Overview → Edit (only shown while text requests
+  are on; one organisation per number).
+- **Put on the map**: `/relief?text=<id>&org=<id>` opens the map's form filled from the message
+  (`guessNeed` in `src/lib/relief.ts`: kind by words, people from "family of 5" / "3 children",
+  urgency from "urgent" / "emergency", a title of ≤ 80 characters) in the organisation's name, with a
+  warning to take out names, addresses and phone numbers. `createReliefPost` with `textId` checks the
+  text first (`textToPost`: a coordinator of the same organisation, not posted yet) and marks it POSTED
+  after (`textPosted`).
+- **Fixed on the way**: the map's form forgot everything typed when "Tap the map" was pressed (it was
+  unmounted and remounted). Its draft now lives in `ReliefApp` (`Draft`, `EMPTY`).
+- **Not built**: replies sent by UniVerse (would need Twilio's REST API and the account SID: more paid
+  messages); a shared number for the whole site (each organisation brings its own).
+- **Checked**: `src/server/relief-texts.test.ts` (the signature against Node's own HMAC, off/unset,
+  wrong token, a body changed on the way, filing and the reply, unknown number and flood, numbers and
+  guesses); `scripts/checks/relief-orgs-ui.mjs` now also: the webhook refused while off, texts for
+  coordinators only, closing, a text posted only in its organisation's name, and the text put on the
+  map from the form (kept while the place is tapped); `pnpm check`.
+
+## M108: the EU Digital Product Passport for Trace: GTINs, GS1 Digital Link, a supplier portal (5 Nov 2026)
+
+The owner's seven ideas: "the EU Digital Product Passport for Trace (GS1 codes, supplier portal)".
+Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
+
+- **What a brand gets** (Trace console → each product → "Digital Product Passport", loaded on open with
+  `next/dynamic`): the product's GTIN (8/12/13/14 digits, check digit checked, stored as GTIN-14, one
+  product per GTIN) and the passport after the Ecodesign regulation (2024/1781): maker (legal name,
+  address, website), made in, materials (share, recycled share, origin, supplier), substances of
+  concern (CAS numbers checked) or "It has none", carbon footprint and method, recycled content and
+  recyclability, years it lasts, repair score, spare-part years, care, repair, end of life,
+  certifications, documents (https only). A checklist (`DPP_PARTS`, `dppScore`) shows the 10 parts
+  and what's missing; the button shows "n of 10".
+- **Public**: every unit's page (`/t/<code>`, `scan()` adds `gtin` and `dpp`) shows a "Digital Product
+  Passport" card (`src/components/trace/DppCard.tsx`, longer texts in `<details>`); the product's page
+  `/dpp?g=<GTIN>`; the JSON `GET /api/core/trace/dpp/<GTIN>` for customs, shops and recyclers (sample
+  products never answer). `/t/demo` has a full sample passport (GTIN `09520123456788`: GS1 keeps prefix
+  952 for examples, so it's nobody's real product).
+- **GS1 Digital Link**: with a GTIN, the print sheet's QR codes (and the CSV) hold
+  `https://universeimpact.com/01/<GTIN>/21/<code>` instead of `/t/<code>`: shop tills that read GS1 QR
+  codes (GS1's "Sunrise 2027") get the GTIN, phones get the passport. The Worker answers `/01/…` before
+  Next.js (`cloudflare/page-match.ts` REDIRECTS, `gs1Target`): with a serial (AI 21: our signed code)
+  to `/t/<code>`, without to `/dpp?g=<GTIN>` (AI 10 lot kept as `&lot=`); anything else to `/dpp`,
+  which says there's no passport (so a made-up address never starts Next.js: `page-routes.test.ts`). `src/app/01/[...gs1]/page.tsx` does the same for `next dev`. `pageFor` no longer adds
+  a bare "?" to a redirect without a query.
+- **Supplier portal**: "Ask your suppliers" makes a link per material (`/supply?k=<32 characters>`,
+  shown once with Copy; only its SHA-256 is stored; 60 days; "New link" replaces it). The supplier
+  needs no account: they fill in the material, origin, maker, shares, footprint, certifications and
+  document links (`parseSupplyAnswer`), can correct it until it's used, and the brand's members hear
+  (bell, no email). "Add to the passport" merges it (`mergeSupply`: replaces a material of the same
+  name, keeps documents once). Nothing a supplier sends is public until the brand adds it.
+- **Trap**: a brand could enter a GTIN it doesn't own (first come, first served). Checking ownership
+  would need GS1's "Verified by GS1" API (paid, an account: **[owner]** if wanted). The page says the
+  brand declares it.
+- **Not done**: the battery passport's extra fields (2027), access levels for authorities only, JSON-LD
+  in the GS1 web vocabulary, a supplier answering for several products at once.
+- **Checked**: `src/lib/dpp.test.ts` (GTINs, GS1 routing, cleaning, score, merging) and
+  `src/server/trace-dpp.test.ts` (wrong check digit, another brand, public view, sample products, the
+  link's hash, expiry, answering, adding); `scripts/checks/trace-dpp-ui.mjs` (all of it through the API
+  and the pages /dpp, /t/<code>, /supply and the editor at 390 and 1280, light and dark: axe clean, no
+  sideways scrolling, no page errors); `pnpm check`.
+
+## M109: a health check of the whole system before merging (5 Nov 2026)
+
+- **Live errors** (production `error_reports`, read-only): nothing new from real people since M95; the
+  only reports of the last ten days are our own test browsers (HeadlessChrome, after the 4 Nov deploys,
+  filed as ignored) and the sample world's made-up rows. Nothing to fix.
+- **Text fields ignored the sizes screens asked for** (found in M106): `.input` sat in the utilities layer
+  after Tailwind's own utilities, so `w-*`, `py-*`, `text-*` and `rounded-*` on a field did nothing (106
+  files: compact selects in rows, small count fields, the Relief alerts' "Within" select stretched to
+  full width). Its width, padding, corners and text size now sit in `:where(.input)` (no specificity,
+  like M90's side padding), so a utility wins and a bare `.input` looks as before. Phones still get 16 px
+  text (the touch rule's `!important`), so fields never zoom the page.
+- **Libraries**: overrides for KaTeX inside mermaid (0.16 → 0.18.9, the version we use directly: one copy,
+  and an advisory fixed) and webpack for the offline-app builder (5.97 → 5.104.1). `pnpm audit --prod`:
+  10 → 7. Left: body-parser (high, inside the build tool's local server; its fix turns two weeks old
+  today, a scheduled task applies it), serialize-javascript (low, two weeks old tonight), deepmerge (low,
+  no fix yet), glob/minimatch (moderate, only new majors under two weeks old).
+- **Production build** (`pnpm local:build`) passes with everything on the branch (M102–M109); its one
+  warning (a duplicate `case` in a third-party PDF chunk) isn't ours. On the built Worker:
+  `relief-orgs-ui.mjs` and `trace-dpp-ui.mjs` pass (GS1 addresses answered by the Worker with a 302),
+  the pages with compact fields render without errors.

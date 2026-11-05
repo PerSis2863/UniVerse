@@ -7,7 +7,7 @@ describe('per-school feature switches', () => {
   const raw = JSON.stringify(['ai', 'email:digest=weekly', 'org:school1=chat', 'org:school1=uploads', 'org:school2=ai', 'org:bad id=chat', 'org:school3=nope', 'rollout:boards=30', 'rollout:nope=5', 'rollout:groups=100']);
 
   it('reads all three kinds from the one list', () => {
-    expect(parseSwitches(raw)).toEqual(['ai', 'aircraft']); // live air traffic is opt-in (off until turned on)
+    expect(parseSwitches(raw)).toEqual(['ai', 'aircraft', 'relief-sms']); // live air traffic and Relief texts are opt-in (off until turned on)
     expect(parseEmailSchedule(raw).digest).toBe('weekly');
     expect(parseOrgSwitches(raw)).toEqual({ school1: ['chat', 'uploads'], school2: ['ai'] });
   });
@@ -15,11 +15,11 @@ describe('per-school feature switches', () => {
   it('writes them back together, nothing lost', () => {
     const orgs = { ...parseOrgSwitches(raw), school3: ['boards'] };
     const out = composeSwitches(parseSwitches(raw), emailScheduleEntries(parseEmailSchedule(raw)), orgs, parseRollouts(raw));
-    expect(parseSwitches(out)).toEqual(['ai', 'aircraft']);
+    expect(parseSwitches(out)).toEqual(['ai', 'aircraft', 'relief-sms']);
     expect(parseEmailSchedule(out).digest).toBe('weekly');
     expect(parseOrgSwitches(out)).toEqual({ school1: ['chat', 'uploads'], school2: ['ai'], school3: ['boards'] });
     expect(parseRollouts(out)).toEqual({ boards: 30 });
-    expect(composeSwitches(['aircraft'], [], {}, {})).toBeNull(); // nothing off but the opt-in feature: nothing to store
+    expect(composeSwitches(['aircraft', 'relief-sms'], [], {}, {})).toBeNull(); // nothing off but the opt-in features: nothing to store
   });
 
   it('only changes covered by a school switch need the person’s school', () => {
@@ -56,10 +56,10 @@ describe('opt-in switches (M83: live air traffic)', () => {
   it('the console list is taken literally, and saving writes "<id>:on" for an opt-in feature turned on', () => {
     expect(offFromList(['chat', 'nope', 7])).toEqual(['chat']);
     const on = composeSwitches(offFromList(['chat']), [], {}, {});
-    expect(JSON.parse(on!)).toEqual(['chat', 'aircraft:on']);
+    expect(JSON.parse(on!)).toEqual(['chat', 'aircraft:on', 'relief-sms:on']);
     expect(parseSwitches(on)).toEqual(['chat']);
     const off = composeSwitches(offFromList(['chat', 'aircraft']), [], {}, {});
-    expect(JSON.parse(off!)).toEqual(['chat']);
+    expect(JSON.parse(off!)).toEqual(['chat', 'relief-sms:on']);
     expect(parseSwitches(off)).toEqual(['chat', 'aircraft']);
     expect(isOptIn('aircraft')).toBe(true);
     expect(isOptIn('chat')).toBe(false);

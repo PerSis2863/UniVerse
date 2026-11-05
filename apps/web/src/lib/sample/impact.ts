@@ -108,6 +108,74 @@ export function sampleReliefMine(me: { id: string; name: string }) {
   return { mine: all.filter((p) => p.mine), helping, helped: helping.filter((p) => p.status === 'DONE').reduce((a, p) => a + p.people, 0) };
 }
 
+// ---------- Relief organisations (M106) ----------
+
+const SAMPLE_ORGS = [
+  { id: 'sample-org-food', name: 'Riverside Food Bank', kind: 'FOOD_BANK', role: 'OWNER', city: 0, about: 'Food parcels, hot meals on weekdays and a pantry for families. Run by 40 volunteers.' },
+  { id: 'sample-org-shelter', name: 'Northside Shelter Network', kind: 'SHELTER', role: 'VOLUNTEER', city: 3, about: 'Beds for the night, warm clothes and a clinic on Saturdays.' },
+] as const;
+const SUPPLIES: [string, ReliefKind, string, number, number][] = [
+  ['Bottled water 1.5 L', 'WATER', 'bottles', 340, 100], ['Food parcels', 'FOOD', 'parcels', 46, 60], ['Baby formula', 'FOOD', 'tins', 12, 20],
+  ['Rice 5 kg', 'FOOD', 'bags', 88, 30], ['Blankets', 'SHELTER', 'blankets', 120, 40], ['First aid kits', 'MEDICAL', 'kits', 9, 10],
+  ['Winter coats', 'CLOTHES', 'coats', 64, 25], ['Hygiene packs', 'OTHER', 'packs', 150, 50],
+];
+const SHIFT_TITLES = ['Sorting donations', 'Kitchen: hot meals', 'Deliveries by van', 'Front desk', 'Night shift at the shelter', 'Warehouse stock count', 'Saturday clinic helpers'];
+
+function sampleShifts(me: { id: string; name: string }, orgId: string, n: number, seed: number) {
+  const r = rng(seed), now = Date.now();
+  return Array.from({ length: n }, (_, i) => {
+    const start = now + (i * 1.3 + 0.2) * DAY + Math.floor(r() * 8) * 3_600_000, hours = pick(r, [2, 3, 4, 6]);
+    const slots = pick(r, [2, 4, 6, 8, 12]), filled = Math.min(slots, Math.floor(r() * (slots + 2)));
+    const people = Array.from({ length: filled }, () => person(r));
+    const signedUp = i === 1 || i === 4;
+    return {
+      id: `sample-shift-${orgId}-${i}`, orgId, title: pick(r, SHIFT_TITLES), details: r() < 0.4 ? 'Bring closed shoes. Ask for Sam at the side door.' : null, place: r() < 0.5 ? 'Dock Road warehouse' : null,
+      startsAt: iso(start), endsAt: iso(start + hours * 3_600_000), slots, filled: signedUp ? Math.min(slots, filled + 1) : filled, membersOnly: i % 5 === 3, signedUp,
+      people: signedUp ? [...people.slice(0, slots - 1), { id: me.id, name: me.name }] : people,
+    };
+  });
+}
+
+/** GET /relief/orgs */
+export function sampleReliefOrgs(me: { id: string; name: string }) {
+  const orgs = SAMPLE_ORGS.map((o) => ({ id: o.id, name: o.name, kind: o.kind, place: placeOf(BIG[o.city]), lat: snap(BIG[o.city][1]), lng: snap(BIG[o.city][2]) }));
+  const all = [...sampleShifts(me, orgs[0].id, 7, 11), ...sampleShifts(me, orgs[1].id, 5, 12), ...sampleShifts(me, 'sample-org-other', 6, 13)]
+    .map(({ people, ...s }) => { void people; return { ...s, org: orgs.find((o) => o.id === s.orgId) ?? { id: 'sample-org-other', name: 'Harbour Mutual Aid', kind: 'COMMUNITY', place: placeOf(BIG[5]), lat: snap(BIG[5][1]), lng: snap(BIG[5][2]) } }; })
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  return {
+    orgs: SAMPLE_ORGS.map((o, i) => ({ id: o.id, name: o.name, kind: o.kind, place: orgs[i].place, role: o.role, members: i ? 18 : 41, low: i ? 0 : 3, shifts: i ? 5 : 7 })),
+    mine: all.filter((s) => s.signedUp),
+    shifts: all.filter((s) => !s.signedUp && s.filled < s.slots && (!s.membersOnly || s.orgId !== 'sample-org-other')),
+  };
+}
+
+/** GET /relief/orgs/:id */
+export function sampleReliefOrg(me: { id: string; name: string }, id: string) {
+  const o = SAMPLE_ORGS.find((x) => x.id === id);
+  if (!o) return null;
+  const r = rng(o.id.length * 31), now = Date.now(), c = BIG[o.city];
+  const members = [{ id: me.id, name: me.name, role: o.role, since: iso(now - 120 * DAY), me: true }, ...NAMES.slice(0, o.role === 'OWNER' ? 12 : 9).map((name, i) => ({ id: `sample-m-${i}`, name, role: i === 0 ? (o.role === 'OWNER' ? 'COORDINATOR' : 'OWNER') : i < 3 ? 'COORDINATOR' : 'VOLUNTEER', since: iso(now - (100 - i * 7) * DAY), me: false }))];
+  const supplies = SUPPLIES.map(([name, kind, unit, quantity, lowAt], i) => ({ id: `sample-sup-${o.id}-${i}`, name, kind, unit, quantity: o.role === 'OWNER' ? quantity : Math.round(quantity * 0.7), lowAt, low: (o.role === 'OWNER' ? quantity : Math.round(quantity * 0.7)) <= lowAt, updatedAt: iso(now - r() * 3 * DAY) }));
+  const moves = Array.from({ length: 14 }, (_, i) => {
+    const s = pick(r, supplies), change = r() < 0.55 ? -Math.ceil(r() * 20) : Math.ceil(r() * 60);
+    return { id: `sample-move-${i}`, supplyId: s.id, change, note: change > 0 ? pick(r, ['Donation from St Mary’s school', 'Supermarket surplus', null]) : pick(r, ['Handed out at the hall', 'Van run to Ward 12', null]), at: iso(now - i * 5 * 3_600_000 - r() * 3_600_000), by: pick(r, members).name };
+  });
+  const posts = reliefPosts(me).filter((p) => p.type === 'NEED');
+  const handling = posts.filter((p) => p.status !== 'OPEN').slice(0, 5).map((p) => ({ ...p, helperOrg: { id: o.id, name: o.name }, helping: o.role !== 'VOLUNTEER' || p.helping }));
+  const near = posts.filter((p) => p.status === 'OPEN').slice(0, 8).map((p) => ({ ...p, lat: snap(c[1] + (r() - 0.5) * 0.3), lng: snap(c[2] + (r() - 0.5) * 0.3), place: placeOf(c) }));
+  return {
+    org: { id: o.id, name: o.name, kind: o.kind, about: o.about, place: placeOf(c), lat: snap(c[1]), lng: snap(c[2]), createdAt: iso(now - 140 * DAY), code: o.role === 'OWNER' ? 'RVR7QK' : null, textNumber: o.role === 'OWNER' ? '+447700900123' : null },
+    role: o.role, members,
+    // M107: text requests, for coordinators (numbers from the UK range kept for films and TV: nobody's).
+    textsOn: o.role === 'OWNER',
+    texts: o.role === 'OWNER' ? [
+      { id: 'sample-text-0', channel: 'SMS', from: '+447700900481', body: 'Hello, we are a family of 5 near the station, no food since yesterday. Can someone help please', status: 'NEW', postId: null, createdAt: iso(now - 0.6 * 3_600_000) },
+      { id: 'sample-text-1', channel: 'WHATSAPP', from: '+447700900662', body: 'My mother needs insulin urgently, the pharmacy is closed. We are on Mill Lane.', status: 'NEW', postId: null, createdAt: iso(now - 2.2 * 3_600_000) },
+      { id: 'sample-text-2', channel: 'SMS', from: '+447700900137', body: 'Need blankets for 3 children tonight', status: 'POSTED', postId: 'sample-relief-4', createdAt: iso(now - 9 * 3_600_000) },
+    ] : null, supplies, moves, shifts: sampleShifts(me, o.id, o.role === 'OWNER' ? 7 : 5, o.role === 'OWNER' ? 11 : 12), handling, near,
+  };
+}
+
 // ---------- Green ----------
 
 const AMT: Record<GreenKind, [number, number]> = { TREE: [1, 4], CYCLE: [3, 25], TRANSIT: [5, 40], WALK: [1, 6], RECYCLE: [1, 8], SOLAR: [5, 30], MEATFREE: [1, 3], CLEANUP: [1, 6] };
@@ -222,7 +290,26 @@ export const sampleTraceBrand = () => ({ brand: BRAND, pro: true, units: 30_000,
 export const sampleTraceProducts = () => PRODUCTS.map((p, i) => ({
   id: p.id, name: p.name, sku: `AUR-${100 + i}`, category: p.category, description: `Made by Aurora Foods near ${p.origin[0]}.`, story: 'Picked by hand and packed the same day.',
   rewardPoints: 25, warrantyMonths: 0, sample: true, batches: batches(i).map(({ dest, ...b }) => { void dest; return b; }), _count: { codes: 6_800 + i * 1_300 },
+  // M108: the olive oil has its Digital Product Passport filled in (GS1 keeps prefix 952 for examples).
+  ...(i === 0 && { gtin: '09520123456788', dpp: JSON.stringify(SAMPLE_DPP) }),
 }));
+
+const SAMPLE_DPP = {
+  madeIn: 'Spain', manufacturer: { name: 'Aurora Foods S.L. (sample)', address: 'Camino de las Lomas 12, 23001 Jaén, Spain', website: null },
+  materials: [
+    { name: 'Picual olives', percent: 100, recycled: 0, origin: 'Jaén, Spain', supplier: 'Ortega family groves' },
+    { name: 'Glass bottle 1 L', percent: null, recycled: 62, origin: 'Seville, Spain', supplier: 'Vidrios del Sur' },
+  ],
+  substances: [], carbonKg: 2.6, carbonMethod: 'ISO 14067', recycledContent: 55, recyclable: 96, durabilityYears: 2, repairScore: null, spareYears: null,
+  care: 'Keep away from light and heat. Best within 3 months of opening.', repair: null, endOfLife: 'Bottle and cap in the glass bin; used oil to a collection point.',
+  certifications: ['EU organic', 'No substances of concern (REACH)'], documents: [],
+};
+
+/** GET /trace/products/:id/supply (M108): supplier requests, one answered. */
+export const sampleTraceSupply = () => [
+  { id: 'sample-sup-1', supplier: 'Tapones Levante', asks: 'Aluminium cap', status: 'ANSWERED', answer: { material: { name: 'Aluminium cap', percent: null, recycled: 40, origin: 'Valencia, Spain', supplier: 'Tapones Levante' }, carbonKg: 0.04, certifications: ['ASI Performance'], documents: [], note: null }, answeredAt: iso(Date.now() - 2 * DAY), expiresAt: iso(Date.now() + 50 * DAY) },
+  { id: 'sample-sup-2', supplier: 'Etiquetas Jaén', asks: 'Paper label', status: 'OPEN', answer: null, answeredAt: null, expiresAt: iso(Date.now() + 58 * DAY) },
+];
 
 /** GET /trace/overview?days= */
 export function sampleTraceOverview(days: number) {

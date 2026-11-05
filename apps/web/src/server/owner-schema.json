@@ -46031,6 +46031,189 @@
      "unique": false,
      "hasDefault": true,
      "updatedAt": false
+    },
+    {
+     "name": "gtin",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": true,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "dpp",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "dppUpdatedAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "TraceSupplyRequest",
+   "delegate": "traceSupplyRequest",
+   "table": "trace_supply_requests",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "brandId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "productId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "supplier",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "asks",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "tokenHash",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": true,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "status",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "answer",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "answeredAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "usedAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdById",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "expiresAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
     }
    ]
   },
@@ -48676,6 +48859,693 @@
      "kind": "scalar",
      "list": false,
      "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "orgId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "helperOrgId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "ReliefOrg",
+   "delegate": "reliefOrg",
+   "table": "relief_orgs",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "name",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "kind",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "about",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "place",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "lat",
+     "type": "Float",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "lng",
+     "type": "Float",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "code",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": true,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "textNumber",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": true,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdById",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "ReliefText",
+   "delegate": "reliefText",
+   "table": "relief_texts",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "orgId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "channel",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "fromNumber",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "body",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "status",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "postId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "handledById",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "handledAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "ReliefOrgMember",
+   "delegate": "reliefOrgMember",
+   "table": "relief_org_members",
+   "fields": [
+    {
+     "name": "orgId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "userId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "role",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "ReliefSupply",
+   "delegate": "reliefSupply",
+   "table": "relief_supplies",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "orgId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "name",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "kind",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "unit",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "quantity",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "lowAt",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "updatedAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "ReliefSupplyMove",
+   "delegate": "reliefSupplyMove",
+   "table": "relief_supply_moves",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "orgId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "supplyId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "userId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "change",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "note",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "ReliefShift",
+   "delegate": "reliefShift",
+   "table": "relief_shifts",
+   "fields": [
+    {
+     "name": "id",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": true,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "orgId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "title",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "details",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "place",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "startsAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "endsAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "slots",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "filled",
+     "type": "Int",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "membersOnly",
+     "type": "Boolean",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "createdById",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
+   "name": "ReliefShiftSignup",
+   "delegate": "reliefShiftSignup",
+   "table": "relief_shift_signups",
+   "fields": [
+    {
+     "name": "shiftId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "userId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
      "id": false,
      "unique": false,
      "hasDefault": false,

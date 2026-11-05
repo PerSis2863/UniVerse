@@ -27,6 +27,7 @@ const SETTINGS: { name: string; what: string; needed?: boolean }[] = [
   { name: 'NEXT_PUBLIC_FILES_URL', what: 'File storage address (https://files.universeimpact.com)' },
   { name: 'CREDENTIAL_SIGNING_PRIVATE_KEY', what: 'Signed credentials and badges, and moving QR codes phones can check' },
   { name: 'SESSION_SECRET', what: 'Calendar links, parent links and sign-in from an LMS' },
+  { name: 'TWILIO_AUTH_TOKEN', what: 'Relief text requests: your Twilio account’s Auth Token, to check messages really come from Twilio (optional; also turn on the switch)' },
   { name: 'VAPID_PUBLIC_KEY', what: 'Push notifications' },
   { name: 'VAPID_PRIVATE_KEY', what: 'Push notifications' },
   { name: 'VAPID_EMAIL', what: 'Push notifications contact' },

@@ -6,9 +6,10 @@ import { BLINK_ON, BLINK_OFF, OBBY_BELT, OBBY_CHECK, OBBY_ICE_GRIP, OBBY_FALL, O
 import { useArena } from './arena';
 import { lookHex, readLook } from './PlayerCard';
 import type { GameProps } from './game-props';
-import { Avatar, Body, Controls, THREE, World, follow, glowSprite, walk } from './world/core';
+import { Avatar, Body, Controls, THREE, World, follow, glowSprite, mergeGeometries, walk, worldUv, type SkyLook } from './world/core';
 import { Crowd } from './world/crowd';
-import { cloud, lava, surface } from './world/textures';
+import { cloudSea, islandRock, lavaSea, milkyWay, rocks, starfield } from './world/nature';
+import { glowCracks, neonEdge, surface } from './world/textures';
 import { HudChip, SkillRing, WorldFrame } from './world/Stage';
 
 // Skyline Obby (src/lib/play/worlds.ts): a Roblox-style obstacle course in the sky. Run and jump
@@ -18,12 +19,15 @@ import { HudChip, SkillRing, WorldFrame } from './world/Stage';
 // undo a bad jump; the charge refills while you play. In a room, the others run beside you.
 
 const HUES = [[0x38bdf8, 0xa78bfa, 0xf472b6, 0xfbbf24, 0x34d399], [0xf97316, 0xef4444, 0xfbbf24, 0xa16207, 0xf43f5e], [0xd946ef, 0x22d3ee, 0xa855f7, 0x818cf8, 0xf0abfc]];
-/** Each world's sky (top, middle, low), fog and light. */
-const SKIES = [
-  { top: 0x2b59ff, mid: 0x9b8cff, low: 0xffb3d9, fog: 0xc9b6ff, sky: 0xdfe8ff, ground: 0x6b4f8f },
-  { top: 0x2a0a0a, mid: 0xb4381f, low: 0xff8a3d, fog: 0x8a2c18, sky: 0xffc9a3, ground: 0x5a1a0a },
-  { top: 0x05010f, mid: 0x2a0b4a, low: 0x7c1d8f, fog: 0x1b0933, sky: 0xc4b5fd, ground: 0x2a0b4a },
+/** Each world's sky (M102): the sun's height and the air (a clear morning, a smoky volcanic dusk, a
+ *  night), the haze and the light from above and below. */
+const SKY_LOOKS: SkyLook[] = [
+  { elevation: 22, azimuth: 55, turbidity: 1.4, rayleigh: 3.2, mie: 0.0025, mieG: 0.86, gain: 0.5, env: 0.8 },
+  { elevation: 2.5, azimuth: 160, turbidity: 14, rayleigh: 3.4, mie: 0.025, mieG: 0.93, gain: 0.45, env: 0.6 },
+  { elevation: -6, azimuth: 160, turbidity: 2, rayleigh: 0.5, mie: 0.002, mieG: 0.7, gain: 0.1, env: 0.35 },
 ];
+const SKY_AIR = [{ fog: 0x9fb9e2, sky: 0xd6e4ff, ground: 0x55603f }, { fog: 0x5a2416, sky: 0xffb08a, ground: 0x5a1a0a }, { fog: 0x0b0918, sky: 0x8b7cff, ground: 0x1a0b33 }];
+const mixLook = (a: SkyLook, b: SkyLook, k: number): SkyLook => Object.fromEntries((Object.keys(b) as (keyof SkyLook)[]).map((key) => [key, (a[key] ?? 0) + ((b[key] ?? 0) - (a[key] ?? 0)) * k]));
 
 interface Live { pad: Pad; mesh: THREE.Mesh; box: THREE.Box3; base: THREE.Vector3; touched: number; drop: number; on?: boolean; bar?: THREE.Mesh; flag?: THREE.Mesh }
 
@@ -56,61 +60,92 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
   useEffect(() => {
     const el = canvas.current;
     if (!el) return;
-    const w = new World(el, { fov: 68, bg: 0x6aa8ff, fog: [0xc9b6ff, 60, 190], glow: { strength: 0.35, radius: 0.4, threshold: 0.9 }, env: 0.9 });
+    const w = new World(el, { fov: 68, bg: 0x9db8e6, haze: [0x9fb9e2, 0.0032], glow: { strength: 0.4, radius: 0.5, threshold: 0.92 }, env: 0.75, ao: 0.7 });
+    w.look({ saturation: 1.16, contrast: 1.08 });
     const crowd = new Crowd(w, () => out.current.net);
     const c = new Controls(el);
     controls.current = c;
     const { pads, gems } = obbyCourse(seed);
 
-    // The sky: a gradient dome, a sun, drifting clouds and far islands below.
-    const sky = new THREE.Mesh(new THREE.SphereGeometry(300, 24, 16), new THREE.ShaderMaterial({
-      side: THREE.BackSide, depthWrite: false, fog: false,
-      uniforms: { top: { value: new THREE.Color(0x2b59ff) }, mid: { value: new THREE.Color(0x9b8cff) }, low: { value: new THREE.Color(0xffb3d9) } },
-      vertexShader: 'varying vec3 p; void main(){ p = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: 'uniform vec3 top; uniform vec3 mid; uniform vec3 low; varying vec3 p; void main(){ float h = normalize(p).y; vec3 c = h > 0.0 ? mix(mid, top, smoothstep(0.0, 0.6, h)) : mix(mid, low, smoothstep(0.0, -0.4, h)); gl_FragColor = vec4(c, 1.0); }',
-    }));
-    w.scene.add(sky);
-    w.lights({ sky: 0xdfe8ff, ground: 0x6b4f8f, power: 2.4, at: [40, 70, 30], ambient: 1.1 });
+    // The sky (M102): the physical daylight sky, which also lights the world (its colour in every
+    // reflection). Each world has its own: a clear morning, a smoky volcanic dusk, a night.
+    w.lights({ sky: 0xd6e4ff, ground: 0x55603f, power: 2.6, at: [40, 70, 30], ambient: 0.55 });
     const hemi = w.scene.children.find((o) => o instanceof THREE.HemisphereLight) as THREE.HemisphereLight;
-    const skyU = (sky.material as THREE.ShaderMaterial).uniforms;
+    let skyNow = 0, skyFrom = SKY_LOOKS[0], skyK = 1;
+    const sunDir = w.sky(SKY_LOOKS[0]);
     // Where each world starts and ends along the course (its first and last checkpoints).
     const zOf = (stage: number) => pads.find((p) => p.stage === stage && (p.kind === 'check' || p.kind === 'finish'))!.z;
     const worldZ = [0, 1, 2].map((k) => [k === 0 ? 30 : zOf(k * OBBY_PER_WORLD), zOf(Math.min(OBBY_STAGES, (k + 1) * OBBY_PER_WORLD))]);
     const worldY = [0, 1, 2].map((k) => Math.min(...pads.filter((p) => obbyWorld(Math.max(1, p.stage)) === k).map((p) => p.y)));
-    // Lava Peaks: a glowing sea far below and embers rising. Neon Void: stars and a grid.
-    const lavaMap = lava().clone(); lavaMap.repeat.set(10, 10); lavaMap.needsUpdate = true;
-    const lavaSea = new THREE.Mesh(new THREE.PlaneGeometry(260, Math.abs(worldZ[1][1] - worldZ[1][0]) + 120), new THREE.MeshBasicMaterial({ map: lavaMap, color: 0xffffff, fog: false }));
-    lavaSea.rotation.x = -Math.PI / 2; lavaSea.position.set(0, worldY[1] - 26, (worldZ[1][0] + worldZ[1][1]) / 2); w.scene.add(lavaSea);
+    // Sky Islands: two layers of cloud far below, lit by the sun, and big islands in the distance.
+    const clouds = [cloudSea({ y: worldY[0] - 15, cover: 0.58, scale: 0.024, sun: sunDir, opacity: 0.85, horizon: 0x9fb9e2, shade: 0x8496c0 }), cloudSea({ y: worldY[0] - 34, cover: 0.4, sun: sunDir, shade: 0x6d80ad, horizon: 0x9fb9e2 })];
+    clouds.forEach((cl) => w.scene.add(cl.mesh));
+    const rand = (k: number) => { const x = Math.sin(seed * 0.001 + k * 12.9898) * 43758.5453; return x - Math.floor(x); };
+    const grass = surface('grass', { color: 0xc9dcae }), soil = surface('rock', { color: 0xa89884 });
+    const far = Array.from({ length: 9 }, (_, i) => {
+      const side = i % 2 ? 1 : -1, size = 18 + rand(i * 5) * 26;
+      return { w: size, d: size * (0.7 + rand(i * 3) * 0.5), depth: size * (1 + rand(i * 7)), at: [side * (55 + rand(i) * 70), worldY[0] - 8 + rand(i * 2) * 30, 10 - rand(i * 4) * (Math.abs(worldZ[0][1]) + 60)] as [number, number, number], seed: i + seed % 50 };
+    });
+    const farRock = rocks(far, soil);
+    if (farRock) w.scene.add(farRock);
+    const lawns = mergeGeometries(far.map((f) => new THREE.CylinderGeometry(0.5, 0.5, 1.2, 14).scale(f.w * 0.94, 1, f.d * 0.94).translate(f.at[0], f.at[1] + 0.6, f.at[2])));
+    w.scene.add(new THREE.Mesh(worldUv(lawns, 6), grass));
+    const pines = mergeGeometries(far.flatMap((f, i) => Array.from({ length: 5 }, (_, k) => new THREE.ConeGeometry(1.2 + rand(i * 9 + k) * 0.8, 4 + rand(i * 11 + k) * 3, 7).translate(f.at[0] + (rand(i * 13 + k) - 0.5) * f.w * 0.7, f.at[1] + 3.2, f.at[2] + (rand(i * 17 + k) - 0.5) * f.d * 0.7))));
+    w.scene.add(new THREE.Mesh(pines, new THREE.MeshStandardMaterial({ color: 0x2f4a2a, roughness: 0.9 })));
+    // Lava Peaks: a glowing sea far below and embers rising. Neon Void: stars, the galaxy and a grid.
+    const magma = lavaSea({ y: worldY[1] - 26, haze: 0x5a2416 });
+    magma.mesh.visible = false;
+    w.scene.add(magma.mesh);
     const embers: THREE.Sprite[] = [];
     for (let i = 0; i < 30; i++) { const e = glowSprite(i % 2 ? 0xff7a1a : 0xfbbf24, 1.2); e.position.set((Math.sin(i * 7.1) * 0.5) * 70, worldY[1] - 20 + (i * 1.7) % 30, worldZ[1][0] - ((i * 37) % 100) / 100 * Math.abs(worldZ[1][1] - worldZ[1][0])); w.scene.add(e); embers.push(e); }
-    const starPos = new Float32Array(900 * 3);
-    for (let i = 0; i < 900; i++) starPos.set([(Math.sin(i * 12.9) * 0.5) * 300, worldY[2] - 40 + ((i * 7.31) % 1) * 160 + Math.cos(i) * 60, worldZ[2][0] - ((i * 0.618) % 1) * (Math.abs(worldZ[2][1] - worldZ[2][0]) + 80)], i * 3);
-    w.scene.add(new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(starPos, 3)), new THREE.PointsMaterial({ color: 0xffffff, size: 0.6, fog: false })));
+    const stars = starfield(2400, 300, seed), galaxy = milkyWay(330, 0.5, 0xa78bfa);
+    stars.visible = galaxy.visible = false;
+    w.scene.add(stars);
+    if (!w.phone) w.scene.add(galaxy);
     const grid = new THREE.GridHelper(400, 80, 0xd946ef, 0x6d28d9);
     grid.position.set(0, worldY[2] - 30, (worldZ[2][0] + worldZ[2][1]) / 2); w.scene.add(grid);
-    const want = { top: new THREE.Color(), mid: new THREE.Color(), low: new THREE.Color(), fog: new THREE.Color(), sky: new THREE.Color(), ground: new THREE.Color() };
-    const sun = glowSprite(0xfff1b8, 70); sun.position.set(80, 90, -220); w.scene.add(sun);
-    const clouds: THREE.Sprite[] = [];
-    const rand = (k: number) => { const x = Math.sin(seed * 0.001 + k * 12.9898) * 43758.5453; return x - Math.floor(x); };
-    for (let i = 0; i < 34; i++) {
-      const g = cloud(14 + rand(i * 9) * 22, 0.55 + rand(i * 7) * 0.4);
-      g.position.set((rand(i) - 0.5) * 170, -10 - rand(i * 2) * 34, 20 - rand(i * 4) * (Math.abs(worldZ[0][1]) + 40));
-      w.scene.add(g); clouds.push(g);
-    }
+    const want = { fog: new THREE.Color(), sky: new THREE.Color(), ground: new THREE.Color() };
+    const sun = glowSprite(0xfff1c8, 46);
+    (sun.material as THREE.SpriteMaterial).opacity = 0.55;
+    w.scene.add(sun);
 
-    // The pads.
-    const iceMat = new THREE.MeshStandardMaterial({ color: 0xcdefff, roughness: 0.04, metalness: 0.1, emissive: 0x7dd3fc, emissiveIntensity: 0.18, transparent: true, opacity: 0.9 });
+    // The pads: grassy floating islands on craggy rock (Sky Islands), cooling basalt with glowing
+    // cracks (Lava Peaks), black glass with neon edges (Neon Void). The special pads keep their
+    // colour as a material: pink jelly to bounce on, crumbling sandstone, glowing crystal that
+    // blinks, clear ice, rubber belts, a stone plaza with a flag at each checkpoint, gold at the end.
+    const iceMat = new THREE.MeshPhysicalMaterial({ color: 0xcdefff, roughness: 0.05, metalness: 0, clearcoat: 1, emissive: 0x7dd3fc, emissiveIntensity: 0.12, transparent: true, opacity: 0.88 });
+    const jelly = new THREE.MeshPhysicalMaterial({ color: 0xff6fb5, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.08, sheen: 1, sheenColor: new THREE.Color(0xffc6e4), emissive: 0xff4fa0, emissiveIntensity: 0.22 });
+    const crystal = new THREE.MeshPhysicalMaterial({ color: 0x8ef2ff, roughness: 0.06, clearcoat: 1, iridescence: 0.7, emissive: 0x22d3ee, emissiveIntensity: 0.55, transparent: true, opacity: 0.84 });
+    const gold = surface('stone', { color: 0xffd36b, metal: 0.85, rough: 0.4, emissive: 0xffb020, glow: 0.3 });
+    const plaza = [surface('stone', { color: 0xece6da }), surface('stone', { color: 0x5c534d }), new THREE.MeshStandardMaterial({ color: 0x07070c, roughness: 0.16, metalness: 0.7, emissive: 0x22c55e, emissiveMap: neonEdge(), emissiveIntensity: 1.8 })];
+    const crumble = [surface('rock', { color: 0xdc8f50 }), surface('rock', { color: 0x6b3a22, emissive: 0xff7a1a, emissiveMap: glowCracks(), glow: 2.2 }), new THREE.MeshStandardMaterial({ color: 0x07070c, roughness: 0.16, metalness: 0.7, emissive: 0xfb923c, emissiveMap: neonEdge(), emissiveIntensity: 1.8 })];
+    const basalt = surface('rock', { color: 0x463d38, emissive: 0xff5a1a, emissiveMap: glowCracks(), glow: 1.6 });
+    const neon = new Map<number, THREE.Material>();
+    const glass = (hue: number) => { let m = neon.get(hue); if (!m) { m = new THREE.MeshStandardMaterial({ color: 0x07070c, roughness: 0.16, metalness: 0.7, emissive: hue, emissiveMap: neonEdge(), emissiveIntensity: 1.6 }); neon.set(hue, m); } return m; };
+    const islandTop = [soil, soil, grass, soil, soil, soil];
     const beltR = belt(1), beltL = belt(-1);
-    const live: Live[] = pads.map((p) => {
-      const hue = p.kind === 'check' ? 0x22c55e : p.kind === 'finish' ? 0xfbbf24 : p.kind === 'bounce' ? 0xf472b6 : p.kind === 'fall' ? 0xfb923c : p.kind === 'blink' ? 0x22d3ee : HUES[obbyWorld(Math.max(1, p.stage))][p.stage % 5];
-      // Weathered stone tinted in the pad's colour, with rounded edges that catch the sun; clear
-      // glossy ice; belts of dark rubber with arrows that run the way they carry you.
-      const mat = p.kind === 'ice' ? iceMat : p.kind === 'belt' ? (beltDir(p) > 0 ? beltR.mat : beltL.mat) : surface('stone', { color: hue, emissive: hue, glow: p.kind === 'finish' ? 0.45 : p.kind === 'blink' || p.kind === 'bounce' ? 0.3 : 0.08 });
+    const rockStatic: Parameters<typeof rocks>[0][] = [[], []];
+    const live: Live[] = pads.map((p, i) => {
+      const wk = obbyWorld(Math.max(1, p.stage)), hue = HUES[wk][p.stage % 5];
+      const mat: THREE.Material | THREE.Material[] = p.kind === 'ice' ? iceMat : p.kind === 'belt' ? (beltDir(p) > 0 ? beltR.mat : beltL.mat)
+        : p.kind === 'bounce' ? jelly : p.kind === 'blink' ? crystal : p.kind === 'finish' ? gold : p.kind === 'check' ? plaza[wk] : p.kind === 'fall' ? crumble[wk]
+        : wk === 0 ? islandTop : wk === 1 ? basalt : glass(hue);
       const h = p.kind === 'bounce' ? 0.6 : 0.9;
-      const mesh = w.box([p.x, p.y - h / 2, p.z], [p.w, h, p.d], mat, false, { tile: p.kind === 'belt' ? 2 : 3, round: p.kind === 'belt' ? 0.05 : 0.18 });
+      // Neon blocks keep each face's own corners (their edges glow); the rest wear grain in world units.
+      const neonish = wk === 2 && (p.kind === 'pad' || p.kind === 'move' || p.kind === 'spin' || p.kind === 'check' || p.kind === 'fall');
+      const mesh = w.box([p.x, p.y - h / 2, p.z], [p.w, h, p.d], mat, false, { tile: neonish ? 0 : p.kind === 'belt' ? 2 : 3, round: p.kind === 'belt' ? 0.05 : 0.18 });
       const box = new THREE.Box3().setFromObject(mesh);
       w.solids.push(box);
       const l: Live = { pad: p, mesh, box, base: mesh.position.clone(), touched: 0, drop: 0 };
+      // Rock under the islands (not in the void): one mesh for all the still ones, its own for the
+      // ones that move, crumble or blink (it goes with them).
+      if (wk < 2) {
+        const depth = Math.min(7, 1.6 + Math.max(p.w, p.d) * (0.6 + rand(i) * 0.5));
+        if (p.kind === 'move' || p.kind === 'fall' || p.kind === 'blink') {
+          const r = new THREE.Mesh(islandRock(p.w, p.d, depth, i), wk === 0 ? soil : basalt);
+          r.position.y = -h / 2 + 0.05; mesh.add(r);
+        } else rockStatic[wk].push({ w: p.w, d: p.d, depth, at: [p.x, p.y - h + 0.05, p.z], seed: i });
+      }
       if (p.kind === 'spin') {
         const bar = new THREE.Mesh(new THREE.BoxGeometry(p.w * 0.95, 0.32, 0.32), new THREE.MeshBasicMaterial({ color: 0xff2d55 }));
         bar.position.set(p.x, p.y + 0.75, p.z);
@@ -125,6 +160,7 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
       }
       return l;
     });
+    rockStatic.forEach((list, k) => { const m = rocks(list, k === 0 ? soil : basalt); if (m) w.scene.add(m); });
     const finish = live[live.length - 1];
     const confetti: THREE.Sprite[] = [];
     for (let i = 0; i < 6; i++) { const s = glowSprite([0xfbbf24, 0xf472b6, 0x38bdf8][i % 3], 5); s.position.set(finish.pad.x + Math.cos(i) * 4, finish.pad.y + 3 + (i % 3), finish.pad.z + Math.sin(i) * 4); w.scene.add(s); confetti.push(s); }
@@ -239,15 +275,25 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
         }
       }
       if ((body.pos.y < lowest || body.pos.y < spawn.y - 30) && !done) respawn('Oof! Back to the checkpoint');
-      // The sky turns as you cross into the next world.
-      const sk = SKIES[obbyWorld(Math.min(OBBY_STAGES, stage + 1))], k = 1 - Math.exp(-1.6 * dt);
-      want.top.set(sk.top); want.mid.set(sk.mid); want.low.set(sk.low); want.fog.set(sk.fog); want.sky.set(sk.sky); want.ground.set(sk.ground);
-      skyU.top.value.lerp(want.top, k); skyU.mid.value.lerp(want.mid, k); skyU.low.value.lerp(want.low, k);
-      (w.scene.fog as THREE.Fog).color.lerp(want.fog, k); hemi.color.lerp(want.sky, k); hemi.groundColor.lerp(want.ground, k);
+      // The sky turns as you cross into the next world: over two seconds, then its light is made again.
+      const wk = obbyWorld(Math.min(OBBY_STAGES, stage + 1)), k = 1 - Math.exp(-1.6 * dt);
+      if (wk !== skyNow) { skyFrom = mixLook(skyFrom, SKY_LOOKS[skyNow], skyK); skyNow = wk; skyK = 0; stars.visible = galaxy.visible = wk === 2; }
+      if (skyK < 1) {
+        skyK = Math.min(1, skyK + dt / 2);
+        const dir = w.sky(mixLook(skyFrom, SKY_LOOKS[wk], skyK), skyK >= 1);
+        clouds.forEach((cl) => { cl.mat.uniforms.sunDir.value.set(dir.x, dir.z).normalize(); });
+        sunDir.copy(dir);
+      }
+      const air = SKY_AIR[wk];
+      want.fog.set(air.fog); want.sky.set(air.sky); want.ground.set(air.ground);
+      (w.scene.fog as THREE.FogExp2).color.lerp(want.fog, k); hemi.color.lerp(want.sky, k); hemi.groundColor.lerp(want.ground, k);
+      for (const cl of clouds) { const u = cl.mat.uniforms.amount; u.value += ((wk === 0 ? 1 : 0) - u.value) * k; cl.mesh.visible = u.value > 0.01; cl.follow(w.camera.position, t); }
       for (const e of embers) { e.position.y += dt * 2.5; if (e.position.y > worldY[1] + 6) e.position.y = worldY[1] - 22; }
       w.sunOver(body.pos);
-      sky.position.copy(w.camera.position);
-      sun.position.set(w.camera.position.x + 80, w.camera.position.y + 90, w.camera.position.z - 220);
+      sun.position.copy(w.camera.position).addScaledVector(sunDir, 260);
+      sun.visible = sunDir.y > -0.02;
+      stars.position.copy(w.camera.position); galaxy.position.copy(w.camera.position);
+      (stars.material as THREE.ShaderMaterial).uniforms.time.value = t;
       // Gems.
       chest.set(body.pos.x, body.pos.y + 1, body.pos.z);
       for (const g of gemLive) {
@@ -259,9 +305,8 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
           out.current.arena.sfx('coin', gemsGot % 8); report();
         }
       }
-      for (const cl of clouds) { cl.position.x += dt * 0.8; if (cl.position.x > 90) cl.position.x = -90; }
       beltR.tex.offset.x -= dt * OBBY_BELT / 2; beltL.tex.offset.x += dt * OBBY_BELT / 2;
-      lavaMap.offset.y += dt * 0.012; lavaMap.offset.x = Math.sin(t * 0.1) * 0.05;
+      magma.mesh.visible = wk === 1 || (wk === 2 && skyK < 1); if (magma.mesh.visible) magma.follow(w.camera.position, t);
       confetti.forEach((s, i) => { s.position.y = finish.pad.y + 3 + Math.sin(t * 2 + i) * 0.8; });
       // The character and the camera.
       me.group.position.copy(body.pos);

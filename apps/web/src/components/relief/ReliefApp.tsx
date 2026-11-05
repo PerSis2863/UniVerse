@@ -13,7 +13,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { inboxFor } from '@/lib/apps';
 import { fetcher } from '@/lib/fetcher';
 import { distanceM } from '@/lib/attendance-rules';
-import { RELIEF_KINDS, RELIEF_KIND_LABEL, URGENCIES, URGENCY_COLOR, URGENCY_LABEL, needScore, type ReliefKind, type Urgency } from '@/lib/relief';
+import { RELIEF_KINDS, RELIEF_KIND_LABEL, URGENCIES, URGENCY_COLOR, URGENCY_LABEL, guessNeed, needScore, runsOrg, type ReliefKind, type Urgency } from '@/lib/relief';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { useAuthStore } from '@/store/auth';
@@ -34,6 +34,8 @@ export interface ReliefPost {
   id: string; type: 'NEED' | 'OFFER'; kind: ReliefKind; title: string; details: string | null; people: number; urgency: Urgency;
   lat: number; lng: number; place: string | null; status: string; createdAt: string; takenAt: string | null; doneAt: string | null;
   by: { id: string; name: string } | null; helper: { id: string; name: string } | null; mine: boolean; helping: boolean;
+  /** M106: posted in an organisation's name / taken on by an organisation. */
+  org?: { id: string; name: string } | null; helperOrg?: { id: string; name: string } | null;
 }
 interface ReliefMap {
   posts: ReliefPost[]; recent: ReliefPost[]; done: { lat: number; lng: number; people: number; kind: string }[];
@@ -42,6 +44,10 @@ interface ReliefMap {
 
 export const KIND_ICON: Record<ReliefKind, typeof Utensils> = { FOOD: Utensils, WATER: Droplets, SHELTER: Home, MEDICAL: Stethoscope, TRANSPORT: Car, CLOTHES: Shirt, OTHER: Package };
 const OFFER = '#14b8a6', DONE = '#22c55e';
+
+/** The "Ask or offer help" form, kept here so tapping the map for the place doesn't lose what was typed. */
+interface Draft { type: 'NEED' | 'OFFER'; kind: ReliefKind; title: string; details: string; people: string; urgency: Urgency; place: string; orgId: string; textId: string }
+const EMPTY: Draft = { type: 'NEED', kind: 'FOOD', title: '', details: '', people: '1', urgency: 'MEDIUM', place: '', orgId: '', textId: '' };
 const WORLD: Box = [-170, -56, 180, 76];
 
 /** The actions a person can take on a post. */
@@ -85,7 +91,24 @@ export function ReliefApp() {
   // An alert's link (/relief?post=<id>) opens with that post chosen.
   const [selected, setSelected] = useState<string | null>(() => (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('post')));
   const [posting, setPosting] = useState(false);
+  const [draft, setDraft] = useState<Draft>(EMPTY);
   const [picking, setPicking] = useState(false);
+  // A coordinator putting a text request on the map (M107): /relief?text=<id>&org=<id> opens the form
+  // with a first guess from the message (guessNeed), in the organisation's name.
+  const [fromText] = useState(() => { if (typeof window === 'undefined') return null; const q = new URLSearchParams(window.location.search); const t = q.get('text'), o = q.get('org'); return t && o ? { t, o } : null; });
+  const prefilled = useRef(false);
+  useSWR<{ texts: { id: string; channel: string; body: string; status: string }[] | null }>(fromText ? `/relief/orgs/${fromText.o}` : null, fetcher, {
+    onSuccess: (d) => {
+      if (prefilled.current || !fromText) return;
+      prefilled.current = true;
+      const msg = d.texts?.find((x) => x.id === fromText.t);
+      if (!msg) { toast.error('That message is gone, or it isn’t yours to post.'); return; }
+      if (msg.status === 'POSTED') { toast('This message is on the map already.'); return; }
+      const g = guessNeed(msg.body);
+      setDraft({ ...EMPTY, kind: g.kind, title: g.title.slice(0, 120), details: msg.body.slice(0, 1000), people: String(g.people), urgency: g.urgency, orgId: fromText.o, textId: msg.id });
+      setPosting(true);
+    },
+  });
   const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(null);
   const map = useRef<MapHandle>(null);
   const frameRef = useRef<Frame | null>(null);
@@ -264,13 +287,13 @@ export function ReliefApp() {
       </div>
 
       <AnimatePresence>
-        {posting && <PostForm at={picked} onPick={() => { setPosting(false); setPicking(true); }} onClose={() => { setPosting(false); setPicked(null); }} onDone={(p) => { setPosting(false); setPicked(null); void mutate(); if (p) setTimeout(() => focus(p), 400); }} />}
+        {posting && <PostForm f={draft} setF={setDraft} at={picked} onPick={() => { setPosting(false); setPicking(true); }} onClose={() => { setPosting(false); setPicked(null); setDraft(EMPTY); }} onDone={(p) => { setPosting(false); setPicked(null); setDraft(EMPTY); void mutate(); if (p) setTimeout(() => focus(p), 400); }} />}
       </AnimatePresence>
     </div>
   );
 }
 
-export function PostCard({ p, now, here, onChange }: { p: ReliefPost; now: number; here: { lat: number; lng: number } | null; onChange: () => void }) {
+export function PostCard({ p, now, here, onChange, extra }: { p: ReliefPost; now: number; here: { lat: number; lng: number } | null; onChange: () => void; extra?: React.ReactNode }) {
   const I = KIND_ICON[p.kind];
   return (
     <div>
@@ -278,7 +301,7 @@ export function PostCard({ p, now, here, onChange }: { p: ReliefPost; now: numbe
         <span className="w-10 h-10 shrink-0 rounded-2xl grid place-items-center text-white" style={{ background: p.type === 'OFFER' ? OFFER : URGENCY_COLOR[p.urgency] }}><I className="w-5 h-5" aria-hidden /></span>
         <div className="min-w-0 flex-1">
           <p className="font-bold text-zinc-900 dark:text-white">{p.title}</p>
-          <p className="text-xs text-zinc-500">{p.type === 'OFFER' ? `Offered by ${p.by?.name ?? 'someone'}` : `${URGENCY_LABEL[p.urgency]} need · asked by ${p.mine ? 'you' : p.by?.name ?? 'someone'}`}</p>
+          <p className="text-xs text-zinc-500">{p.type === 'OFFER' ? `Offered by ${p.org?.name ?? p.by?.name ?? 'someone'}` : `${URGENCY_LABEL[p.urgency]} need · asked by ${p.mine ? 'you' : p.org?.name ?? p.by?.name ?? 'someone'}`}</p>
         </div>
       </div>
       {p.details && <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap">{p.details}</p>}
@@ -286,7 +309,7 @@ export function PostCard({ p, now, here, onChange }: { p: ReliefPost; now: numbe
         <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" aria-hidden />{p.people} {p.people === 1 ? 'person' : 'people'}</span>
         <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" aria-hidden />{p.place ?? 'Area shown on the map'}{here ? ` · ${(distanceM(here, p) / 1000).toFixed(1)} km away` : ''}</span>
         <span>{now ? formatDistanceToNow(new Date(p.createdAt), { addSuffix: true }) : ''}</span>
-        {p.status === 'TAKEN' && <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{p.helping ? 'You’re helping' : `${p.helper?.name ?? 'Someone'} is helping`}</span>}
+        {p.status === 'TAKEN' && <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{p.helperOrg ? `${p.helperOrg.name} is helping` : p.helping ? 'You’re helping' : `${p.helper?.name ?? 'Someone'} is helping`}</span>}
         {p.status === 'DONE' && <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Delivered</span>}
       </p>
       {p.type === 'NEED' && (
@@ -297,14 +320,16 @@ export function PostCard({ p, now, here, onChange }: { p: ReliefPost; now: numbe
           { label: 'Helped', at: p.doneAt ? new Date(p.doneAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : null, done: p.status === 'DONE' },
         ]} />
       )}
-      <div className="mt-3"><PostActions p={p} onChange={onChange} small /></div>
+      <div className="mt-3 flex flex-wrap gap-2">{extra}<PostActions p={p} onChange={onChange} small /></div>
     </div>
   );
 }
 
-function PostForm({ at, onPick, onClose, onDone }: { at: { lat: number; lng: number } | null; onPick: () => void; onClose: () => void; onDone: (p: ReliefPost | null) => void }) {
-  const [f, setF] = useState({ type: 'NEED' as 'NEED' | 'OFFER', kind: 'FOOD' as ReliefKind, title: '', details: '', people: '1', urgency: 'MEDIUM' as Urgency, place: '' });
+function PostForm({ f, setF, at, onPick, onClose, onDone }: { f: Draft; setF: (f: Draft) => void; at: { lat: number; lng: number } | null; onPick: () => void; onClose: () => void; onDone: (p: ReliefPost | null) => void }) {
   const [where, setWhere] = useState(at);
+  // Coordinators can post in their organisation's name (M106).
+  const { data: orgs } = useSWR<{ orgs: { id: string; name: string; role: string }[] }>('/relief/orgs', fetcher);
+  const runs = (orgs?.orgs ?? []).filter((o) => runsOrg(o.role));
   const [saving, setSaving] = useState(false);
   const locate = () => navigator.geolocation?.getCurrentPosition((g) => setWhere({ lat: g.coords.latitude, lng: g.coords.longitude }), () => toast.error('Your position isn’t shared: tap the map instead.'), { timeout: 8000 });
   const save = async (e: React.FormEvent) => {
@@ -314,7 +339,7 @@ function PostForm({ at, onPick, onClose, onDone }: { at: { lat: number; lng: num
     try {
       const res = await api.post<ReliefPost>('/relief/posts', { ...f, people: Number(f.people), lat: where.lat, lng: where.lng });
       toast.success(f.type === 'NEED' ? 'Posted. Helpers nearby can see it now.' : 'Thank you! Your offer is on the map.');
-      onDone({ ...res.data, by: null, helper: null, mine: true, helping: false });
+      onDone({ ...res.data, by: null, helper: null, mine: true, helping: false, org: runs.find((o) => o.id === f.orgId) ?? null });
     } catch (err) { toast.error(errorMessage(err, 'Could not post it.')); } finally { setSaving(false); }
   };
   return (
@@ -334,12 +359,18 @@ function PostForm({ at, onPick, onClose, onDone }: { at: { lat: number; lng: num
             </button>
           ); })}
         </div>
+        {f.textId && <p className="mt-4 rounded-2xl bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">From a text message. Everyone can see the map: take out names, addresses and phone numbers, then set where it is.</p>}
         <label className="mt-4 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">In a few words</span><input required maxLength={120} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} className="input mt-1" placeholder={f.type === 'NEED' ? 'Food for a family of 5' : 'I can drive supplies on weekends'} /></label>
         <label className="mt-3 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Details (optional)</span><textarea rows={3} maxLength={1000} value={f.details} onChange={(e) => setF({ ...f, details: e.target.value })} className="input mt-1 resize-y" placeholder="What exactly, when, anything a helper should know. Don’t write your address: say it in a message." /></label>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">{f.type === 'NEED' ? 'How many people' : 'How many people it can help'}</span><input type="number" min={1} max={10000} value={f.people} onChange={(e) => setF({ ...f, people: e.target.value })} className="input mt-1" /></label>
           {f.type === 'NEED' && <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">How urgent</span><select value={f.urgency} onChange={(e) => setF({ ...f, urgency: e.target.value as Urgency })} className="input mt-1">{URGENCIES.map((u) => <option key={u} value={u}>{URGENCY_LABEL[u]}</option>)}</select></label>}
         </div>
+        {runs.length > 0 && (
+          <label className="mt-3 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Post as</span>
+            <select value={f.orgId} disabled={!!f.textId} onChange={(e) => setF({ ...f, orgId: e.target.value })} className="input mt-1"><option value="">Myself</option>{runs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select>
+          </label>
+        )}
         <label className="mt-3 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Area name (optional)</span><input maxLength={120} value={f.place} onChange={(e) => setF({ ...f, place: e.target.value })} className="input mt-1" placeholder="Riverside, Ward 12…" /></label>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button type="button" onClick={locate} className="btn-secondary btn-sm"><LocateFixed className="w-4 h-4" />Use my location</button>

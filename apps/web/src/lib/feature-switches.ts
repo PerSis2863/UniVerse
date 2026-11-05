@@ -27,6 +27,8 @@ export const FEATURE_SWITCHES: FeatureSwitch[] = [
   { id: 'signups', label: 'New sign-ups', hint: 'New people can’t finish creating an account. Existing accounts are fine.', paths: /^\/api\/core\/auth\/register$/ },
   // Off until turned on (M83): OpenSky's free feed is for non-commercial use, and Trace sells plans.
   { id: 'aircraft', label: 'Live air traffic', hint: 'Planes on Trace’s Live globe, from the OpenSky Network. Off until you turn it on: their free feed is for non-commercial use, so ask OpenSky first.', paths: /^\/api\/core\/trace\/aircraft$/, optIn: true },
+  // Off until turned on (M107): each text in and each thank-you reply is a paid Twilio message.
+  { id: 'relief-sms', label: 'Relief text requests', hint: 'People without the app text an organisation’s number (SMS or WhatsApp, through your Twilio account) and the message lands in its inbox. Off until you turn it on: Twilio charges per message, and TWILIO_AUTH_TOKEN must be set.', paths: /^\/api\/core\/relief\/texts\/inbound$/, optIn: true },
   { id: 'payments', label: 'Payments', hint: 'Nobody can start a new payment or subscription.', paths: /^\/api\/(billing\/checkout|create-checkout-session)$/ },
 ];
 

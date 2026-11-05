@@ -9,8 +9,9 @@ import { useArena } from './arena';
 import { lookHex, readLook } from './PlayerCard';
 import type { GameProps } from './game-props';
 import { Avatar, Body, Controls, THREE, World, approach, atmosphere, follow, glowSprite, walk, worldUv } from './world/core';
+import { milkyWay, planetMaterial, ringMaterial, starfield, type PlanetKind } from './world/nature';
 import { Crowd } from './world/crowd';
-import { planet, surface } from './world/textures';
+import { surface } from './world/textures';
 import { HudChip, SkillRing, WorldFrame } from './world/Stage';
 
 // Orbit Breach (12+, src/lib/play/worlds.ts): three broken space stations, each above its own
@@ -34,35 +35,45 @@ export function OrbitBreach({ seed, endsAt, clock, onProgress, onDone, onStats, 
   useEffect(() => {
     const el = canvas.current;
     if (!el) return;
-    const w = new World(el, { fov: 70, bg: 0x02030a, glow: { strength: 0.8, radius: 0.6, threshold: 0.6 }, env: 0.7 });
+    const w = new World(el, { fov: 70, bg: 0x010208, glow: { strength: 0.75, radius: 0.6, threshold: 0.7 }, env: 0.7, ao: 0.65 });
     const crowd = new Crowd(w, () => out.current.net);
     const c = new Controls(el);
     controls.current = c;
     const say = out.current.arena.announce;
 
-    // Space: stars, a planet with its glow, a nebula.
-    const starPos = new Float32Array(1800 * 3);
-    for (let i = 0; i < 1800; i++) { const v = new THREE.Vector3().randomDirection().multiplyScalar(180 + Math.random() * 60); starPos.set([v.x, v.y, v.z], i * 3); }
-    const stars = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(starPos, 3)), new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, sizeAttenuation: true }));
+    // Space (M102): thousands of stars of real colours, the Milky Way across the sky, the sun, and
+    // each station's planet drawn on the graphics chip (oceans that catch the sun, deserts, ice,
+    // drifting clouds, city lights on the night side). Metal reflects the planet's glow.
+    const sunLight = w.lights({ sky: 0x9fc5ff, ground: 0x141b33, sun: 0xfff6e8, power: 2.8, at: [-40, 60, 30], ambient: 0.65 });
+    const sunDir = new THREE.Vector3(-40, 60, 30).normalize();
+    const stars = starfield(3200, 300, seed), galaxy = milkyWay(330, 0.6);
+    // The galaxy's dust is fine detail across the whole sky: computers only.
     w.scene.add(stars);
-    const world = new THREE.Mesh(new THREE.SphereGeometry(70, 64, 48), new THREE.MeshStandardMaterial({ roughness: 0.8, emissive: 0x0b1a4a, emissiveIntensity: 0.4 }));
-    world.position.set(-50, -55, -150); w.scene.add(world);
+    if (!w.phone) w.scene.add(galaxy);
+    const sunCore = glowSprite(0xfffbea, 22), sunHalo = glowSprite(0xffd9a0, 90);
+    (sunHalo.material as THREE.SpriteMaterial).opacity = 0.32;
+    w.scene.add(sunCore, sunHalo);
+    const KINDS: PlanetKind[] = ['earth', 'desert', 'giant'], GLOWS = [0x60a5fa, 0xf59e6b, 0xc4b5fd];
+    const planets = KINDS.map((kind, i) => planetMaterial(kind, seed + i * 31, sunDir));
+    const world = new THREE.Mesh(new THREE.SphereGeometry(70, 96, 64), planets[0]);
+    world.position.set(-50, -55, -150); world.rotation.z = 0.4; w.scene.add(world);
     const atmo = atmosphere(70, 0x60a5fa, 1.4); atmo.position.copy(world.position); w.scene.add(atmo);
-    const rings = new THREE.Mesh(new THREE.RingGeometry(90, 125, 64), new THREE.MeshBasicMaterial({ color: 0xc4b5fd, side: THREE.DoubleSide, transparent: true, opacity: 0.35 }));
+    const rings = new THREE.Mesh(new THREE.RingGeometry(90, 125, 96), ringMaterial());
     rings.position.copy(world.position); rings.rotation.set(Math.PI / 2.4, 0.3, 0); rings.visible = false; w.scene.add(rings);
-    // Each station's planet: blue, a red moon, a ringed giant.
-    const PLANETS = [
-      { map: planet('blue', [24, 74, 190], [70, 120, 64], 3), e: 0x0b1a4a, glow: 0x60a5fa },
-      { map: planet('red', [110, 40, 18], [190, 96, 44], 5), e: 0x451a03, glow: 0xf97316 },
-      { map: planet('giant', [96, 60, 190], [176, 146, 232], 9), e: 0x2e1065, glow: 0xc4b5fd },
-    ];
-    for (const [x, y, z, col, s] of [[90, 40, -160, 0xa855f7, 120], [-120, 70, -120, 0x22d3ee, 90]] as const) { const neb = glowSprite(col, s); neb.position.set(x, y, z); (neb.material as THREE.SpriteMaterial).opacity = 0.35; w.scene.add(neb); }
-    const sunLight = w.lights({ sky: 0x9fc5ff, ground: 0x141b33, sun: 0xffffff, power: 2.6, at: [-40, 60, 30], ambient: 0.8 });
+    /** The light from all around: the planet (and the sun) seen from the station, made again for each. */
+    const relight = (k: number) => {
+      const room = new THREE.Scene();
+      const p = new THREE.Mesh(world.geometry, planets[k]); p.position.copy(world.position); p.rotation.copy(world.rotation);
+      const s2 = glowSprite(0xfff4e0, 40); s2.position.copy(sunDir).multiplyScalar(150);
+      room.add(p, s2);
+      w.envFrom(room, 1.1);
+    };
 
     // The decks (metal plates with lit trim), bridges to some of them.
-    const plate = surface('panels', { color: 0x8c95a8, metal: 0.75, rough: 0.85 });
+    // Painted panels (M102): light, like a real station's skin, so the sun shows their shape.
+    const plate = surface('panels', { color: 0xc3cad6, metal: 0.3, rough: 0.75 });
     const trim = new THREE.LineBasicMaterial({ color: 0x22d3ee });
-    const bridgeMat = surface('panels', { color: 0x7d8aa0, metal: 0.8, rough: 0.7, emissive: 0x0e7490, glow: 0.2 });
+    const bridgeMat = surface('panels', { color: 0xa8b2c2, metal: 0.4, rough: 0.6, emissive: 0x0e7490, glow: 0.2 });
     const rock = new THREE.DodecahedronGeometry(0.9, 0), rockMat = new THREE.MeshStandardMaterial({ color: 0x5a1f0c, emissive: 0xf97316, emissiveIntensity: 0.55, roughness: 0.95, flatShading: true });
     const allMeteors = orbitMeteors(seed, GAMES.orbit.seconds);
     type Fix = { g: THREE.Group; core: THREE.Mesh; ring: THREE.Mesh; zone: THREE.Mesh; glow: THREE.Sprite; dome: THREE.Mesh; p: number; done: boolean };
@@ -125,9 +136,9 @@ export function OrbitBreach({ seed, endsAt, clock, onProgress, onDone, onStats, 
       door.position.set(0, 1.9, 1.02);
       podGlow = glowSprite(0x22d3ee, 6); podGlow.position.y = 2; podGlow.visible = false;
       podG.add(capsule, door, podGlow); podG.position.set(podDeck.x, podDeck.y, podDeck.z); group.add(podG);
-      const pl = PLANETS[k];
-      (world.material as THREE.MeshStandardMaterial).map = pl.map; (world.material as THREE.MeshStandardMaterial).emissive.setHex(pl.e); (world.material as THREE.MeshStandardMaterial).needsUpdate = true;
-      (atmo.material as THREE.ShaderMaterial).uniforms.glow.value.setHex(pl.glow); rings.visible = k === 2;
+      world.material = planets[k];
+      (atmo.material as THREE.ShaderMaterial).uniforms.glow.value.setHex(GLOWS[k]); rings.visible = k === 2;
+      relight(k);
       body.pos.set(0, 0.05, 2); body.vel.set(0, 0, 0);
     };
 
@@ -199,7 +210,11 @@ export function OrbitBreach({ seed, endsAt, clock, onProgress, onDone, onStats, 
       me.group.position.copy(body.pos);
       me.update(dt, body.vel, body.ground);
       follow(w.camera, body.pos, c, dt, { dist: 9, height: 2.6 });
-      stars.rotation.y += dt * 0.004; world.rotation.y += dt * 0.02;
+      world.rotation.y += dt * 0.01;
+      (world.material as THREE.ShaderMaterial).uniforms.time.value = T;
+      (stars.material as THREE.ShaderMaterial).uniforms.time.value = T;
+      stars.position.copy(w.camera.position); galaxy.position.copy(w.camera.position);
+      sunCore.position.copy(w.camera.position).addScaledVector(sunDir, 240); sunHalo.position.copy(sunCore.position);
       // Air runs out slowly.
       // Solar flares: warned, then air drains fast outside a shield; the sunlight flares orange.
       const flare = orbitFlare(T);

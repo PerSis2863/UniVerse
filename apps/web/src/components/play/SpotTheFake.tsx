@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight, BadgeCheck, CalendarClock, Flame, Heart, Lightbulb, MapPin, ScanLine, ShieldAlert, ShieldCheck, Tag, Type } from 'lucide-react';
 import { FAKE_LIVES, fakePoints, fakeRound, monthName, rankFor, type FakeReason, type Passport } from '@/lib/play/fakes';
@@ -40,20 +40,43 @@ function reducer(s: S, a: A): S {
   return { ...s, picked: a.choice, lives: ok ? s.lives : s.lives - 1, streak, best: Math.max(s.best, streak), score: s.score + gained, gained, caught: s.caught + (ok ? 1 : 0), picks: s.picks + 1, uv: ok && (s.caught + 1) % UV_EVERY === 0 ? Math.min(UV_MAX, s.uv + 1) : s.uv };
 }
 
-/** A small code drawn from the serial (looks like a real passport's QR; same for the same serial). */
-function MiniCode({ serial }: { serial: string }) {
-  const bits = hash(serial);
+/** The passport's QR cells (M104: the real layout, 21 × 21: three finder squares, the timing lines,
+ *  data from the serial), the same for the same serial. */
+function qrCells(serial: string) {
+  let x = hash(serial) >>> 0 || 1;
   const cells: [number, number][] = [];
-  for (let y = 0; y < 7; y++) for (let x = 0; x < 7; x++) {
-    const finder = (x < 2 && y < 2) || (x > 4 && y < 2) || (x < 2 && y > 4);
-    const on = ((bits >>> ((x * 7 + y) % 31)) & 1) === 1 && (x + y) % 3 !== 0;
-    if (!finder && on) cells.push([x, y]);
+  for (let cy = 0; cy < 21; cy++) for (let cx = 0; cx < 21; cx++) {
+    if ((cx < 8 && cy < 8) || (cx > 12 && cy < 8) || (cx < 8 && cy > 12)) continue;
+    if (cy === 6 || cx === 6) { if ((cx + cy) % 2 === 0) cells.push([cx, cy]); continue; }
+    x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0;
+    if (x / 4294967296 < 0.48) cells.push([cx, cy]);
   }
+  return cells;
+}
+function MiniCode({ serial }: { serial: string }) {
+  const cells = useMemo(() => qrCells(serial), [serial]);
   return (
-    <svg viewBox="0 0 7 7" className="h-9 w-9 shrink-0 rounded-[3px] bg-white p-[2px]" aria-hidden>
-      {[[0, 0], [5, 0], [0, 5]].map(([x, y]) => <rect key={`${x}${y}`} x={x} y={y} width="2" height="2" fill="#111113" />)}
-      {cells.map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="#111113" />)}
+    <svg viewBox="-1 -1 23 23" className="h-11 w-11 shrink-0 rounded-[4px] bg-white" shapeRendering="crispEdges" aria-hidden>
+      {[[0, 0], [14, 0], [0, 14]].map(([fx, fy]) => <g key={`${fx}${fy}`}><rect x={fx} y={fy} width="7" height="7" fill="#111113" /><rect x={fx + 1} y={fy + 1} width="5" height="5" fill="#fff" /><rect x={fx + 2} y={fy + 2} width="3" height="3" fill="#111113" /></g>)}
+      {cells.map(([cx, cy]) => <rect key={`${cx}-${cy}`} x={cx} y={cy} width="1" height="1" fill="#111113" />)}
     </svg>
+  );
+}
+
+/** A barcode under the passport (bars from the serial, like an EAN). */
+function barsFor(serial: string) {
+  let x = hash(`${serial}:bars`) >>> 0 || 7, at = 0;
+  const bars: [number, number][] = [];
+  for (let i = 0; i < 34 && at < 96; i++) { x = (x * 1103515245 + 12345) >>> 0; const w = 1 + ((x >>> 16) % 3); if (i % 2 === 0) bars.push([at, w]); at += w; }
+  return bars;
+}
+function Barcode({ serial }: { serial: string }) {
+  const bars = useMemo(() => barsFor(serial), [serial]);
+  return (
+    <span className="mt-2 flex items-end gap-2" aria-hidden>
+      <svg viewBox="0 0 96 18" preserveAspectRatio="none" className="h-5 w-24" shapeRendering="crispEdges">{bars.map(([bx, bw]) => <rect key={bx} x={bx} y="0" width={bw} height="18" fill="#e4e4e7" />)}</svg>
+      <span className="font-mono text-[11px] tracking-widest text-zinc-400">{serial.replace(/\D/g, '').padEnd(6, '0').slice(0, 6)}</span>
+    </span>
   );
 }
 
@@ -66,12 +89,16 @@ function Row({ icon: Icon, children, warn }: { icon: typeof Tag; children: React
   );
 }
 
-function Front({ c, k, answered }: { c: Passport; k: number; answered: boolean }) {
+function Front({ c, k, answered, shot }: { c: Passport; k: number; answered: boolean; shot?: string }) {
   const fast = c.km > 0 && c.km / c.hours > 500;
   return (
     <span className="flex h-full flex-col">
       <span className="flex items-start gap-3">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/[0.07] text-2xl ring-1 ring-white/10" aria-hidden>{c.emoji}</span>
+        {/* The product photo (rendered in 3D once, M104), in a little studio light box */}
+        <span className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_50%_35%,#ffffff,#d4d4d8)] ring-1 ring-white/20" aria-hidden>
+          {shot ? <span className="h-full w-full bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${shot})` }} /> : <span className="text-2xl">{c.emoji}</span>}
+          <span className="play-holo absolute bottom-1 end-1 h-4 w-4" />
+        </span>
         <span className="min-w-0 flex-1">
           <span className="sr-only">Passport {k + 1}: </span>
           <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Product passport</span>
@@ -87,6 +114,9 @@ function Front({ c, k, answered }: { c: Passport; k: number; answered: boolean }
         <Row icon={CalendarClock}>Made {monthName(c.made)} · best before {monthName(c.bestBefore)}</Row>
         <Row icon={Tag}><span className="tabular-nums">${c.price}</span></Row>
       </span>
+      <span className="mt-auto block">
+        <Barcode serial={c.serial} />
+      </span>
       <span className="absolute end-3 top-3 hidden h-6 w-6 place-items-center rounded-md bg-white/10 text-[11px] font-bold text-zinc-300 sm:grid" aria-hidden>{k + 1}</span>
     </span>
   );
@@ -95,6 +125,14 @@ function Front({ c, k, answered }: { c: Passport; k: number; answered: boolean }
 export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats }: GameProps) {
   const [s, dispatch] = useReducer(reducer, startsAt, (at): S => ({ i: 0, shownAt: at, picked: null, timedOut: false, lives: FAKE_LIVES, score: 0, streak: 0, best: 0, gained: 0, caught: 0, picks: 0, uv: 1, cleared: [] }));
   const round = useMemo(() => fakeRound(seed, s.i), [seed, s.i]);
+  // The round's product, photographed in 3D (M104; the emoji shows until the picture is ready).
+  const [shots, setShots] = useState<Map<string, string> | null>(null);
+  const product = round.cards[0].product;
+  useEffect(() => {
+    let on = true;
+    void import('./world/shots').then((m) => m.productShots([product])).then((map) => { if (on) setShots(new Map(map)); }).catch(() => {});
+    return () => { on = false; };
+  }, [product]);
   const { announce, shake, sfx } = useArena();
   const calm = useReducedMotion();
   const answered = s.picked !== null || s.timedOut;
@@ -196,13 +234,13 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
             <motion.button key={`${s.i}-${k}`} type="button" disabled={answered || cleared} onClick={() => pick(k)}
               initial={{ opacity: 0, y: calm ? 0 : 30, rotate: calm ? 0 : (k % 2 ? 3 : -3), scale: calm ? 1 : 0.94 }} animate={{ opacity: cleared && !answered ? 0.45 : answered && !isFake && !wrongPick ? 0.75 : 1, y: 0, rotate: 0, scale: 1 }}
               transition={{ ...spring.smooth, delay: answered ? 0 : 0.06 * k }}
-              className={cn('group relative min-h-[15.5rem] rounded-[1.5rem] text-start outline-offset-4 transition-shadow duration-150', !answered && 'hover:shadow-[0_18px_40px_-18px_rgba(254,129,209,0.55)]')}>
+              className={cn('group relative min-h-[17.5rem] rounded-[1.5rem] text-start outline-offset-4 transition-shadow duration-150', !answered && 'hover:shadow-[0_18px_40px_-18px_rgba(254,129,209,0.55)]')}>
               <motion.span className="absolute inset-0 block" style={{ transformStyle: 'preserve-3d' }} animate={{ rotateY: isFake && !calm ? 180 : 0 }} transition={{ type: 'spring', visualDuration: 0.6, bounce: 0.18 }}>
                 <span className={cn('absolute inset-0 block overflow-hidden rounded-[1.5rem] bg-[#151517] p-4 ring-1 [backface-visibility:hidden]',
                   wrongPick ? 'play-shake ring-amber-400' : answered ? 'ring-emerald-400/40' : 'ring-white/10 group-hover:ring-pink-400/60')}>
                   <span className="play-scanline pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-pink-400/15 to-transparent" aria-hidden />
-                  <Front c={c} k={k} answered={answered} />
-                  {cleared && !answered && <span className="play-uv pointer-events-none absolute inset-0 grid place-items-center rounded-[1.5rem]"><span className="inline-flex items-center gap-1 rounded-full bg-violet-600 px-2.5 py-1 text-xs font-bold text-white"><Lightbulb className="w-3.5 h-3.5" aria-hidden />Genuine (UV)</span></span>}
+                  <Front c={c} k={k} answered={answered} shot={shots?.get(c.product)} />
+                  {cleared && !answered && <span className="play-uv play-fibres pointer-events-none absolute inset-0 grid place-items-center rounded-[1.5rem] bg-violet-950/40"><span className="inline-flex items-center gap-1 rounded-full bg-violet-600 px-2.5 py-1 text-xs font-bold text-white"><Lightbulb className="w-3.5 h-3.5" aria-hidden />Genuine (UV)</span></span>}
                   <AnimatePresence>
                     {answered && !isFake && (
                       <motion.span initial={{ opacity: 0, scale: calm ? 1 : 0.6 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...spring.bouncy, delay: 0.15 }}
@@ -216,9 +254,9 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
                 {/* The back: what gave the copy away. */}
                 <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-red-950 to-[#161033] p-5 text-center ring-2 ring-red-500 [backface-visibility:hidden] [transform:rotateY(180deg)]" aria-hidden>
                   {isFake && <Burst color="#f87171" />}
-                  <span className="-rotate-12 rounded-lg border-[3px] border-red-400 px-3 py-1 text-2xl font-black tracking-[0.25em] text-red-300 shadow-[0_0_30px_rgba(248,113,113,0.35)]">COPY</span>
+                  <span className="-rotate-12 rounded-lg border-[3px] border-double border-red-400 px-3 py-1 font-mono text-2xl font-black tracking-[0.25em] text-red-300 opacity-90 [mask-image:radial-gradient(circle_at_30%_40%,#000_55%,rgba(0,0,0,0.75)_70%,#000_85%)]">COPY</span>
                   <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-100"><reason.icon className="w-4 h-4" />{reason.label}</span>
-                  <span className="text-3xl" aria-hidden>{c.emoji}</span>
+                  {shots?.get(c.product) ? <span className="h-16 w-16 bg-contain bg-center bg-no-repeat opacity-80 grayscale" style={{ backgroundImage: `url(${shots.get(c.product)})` }} /> : <span className="text-3xl" aria-hidden>{c.emoji}</span>}
                 </span>
               </motion.span>
               {s.picked === k && s.gained > 0 && <span className="play-float pointer-events-none absolute left-1/2 top-2 z-10 rounded-full bg-emerald-700 px-2.5 py-0.5 text-sm font-bold text-white" aria-hidden>+{s.gained}</span>}

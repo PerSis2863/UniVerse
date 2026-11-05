@@ -29,7 +29,7 @@ export const APPS: ImpactApp[] = [
   {
     id: 'trace', name: 'UniVerse Trace', tagline: 'Every product gets a passport', color: '#fe81d1',
     impact: 'Real or fake, in one scan.',
-    paths: ['/trace', '/carry', '/t', '/b'],
+    paths: ['/trace', '/carry', '/t', '/b', '/dpp', '/supply'],
   },
   {
     id: 'relief', name: 'UniVerse Relief', tagline: 'Help that reaches people fast', color: '#f97316',
@@ -43,7 +43,7 @@ export const APPS: ImpactApp[] = [
   },
   {
     id: 'play', name: 'UniVerse Play', tagline: 'Games that teach something', color: '#e46bdb',
-    impact: 'Eleven games, solo or with friends, and STORMFALL on computers.',
+    impact: 'Thirteen games, solo or with friends, and STORMFALL on computers.',
     paths: ['/play'],
   },
 ];

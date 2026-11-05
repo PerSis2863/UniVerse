@@ -63,7 +63,7 @@ export function PlaySection() {
     <section id="play" className="px-6 py-24 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Games that teach <Accent>something.</Accent></h2></Reveal>
-        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Eleven games and three 3D worlds, solo or with friends, plus STORMFALL on computers.</p></Reveal>
+        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Thirteen games and four 3D worlds, solo or with friends, plus STORMFALL on computers.</p></Reveal>
         <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {([
             [Brain, 'Quiz Clash', 'Fast questions, faster streaks.', '#a5b4fc'],

@@ -6618,8 +6618,35 @@ model TraceProduct {
   winPrize  String?
   maxTempC  Float?
   weightKg  Float   @default(1)
+  /// M108: GTIN-14 (check digit checked) for GS1 Digital Link addresses; one product per GTIN.
+  gtin         String?   @unique
+  /// M108: the EU Digital Product Passport, JSON cleaned by src/lib/dpp.ts parseDpp.
+  dpp          String?
+  dppUpdatedAt DateTime?
   @@index([organizationId])
   @@map("trace_products")
+}
+
+/// M108: a brand asks a supplier to fill in one material of a product's passport, by a link whose
+/// secret is kept only as a hash. OPEN, ANSWERED, USED (added to the passport) or CLOSED.
+model TraceSupplyRequest {
+  id          String    @id @default(cuid())
+  brandId     String
+  productId   String
+  supplier    String
+  asks        String
+  tokenHash   String    @unique
+  status      String    @default("OPEN")
+  /// The supplier's answer (src/lib/dpp.ts SupplyAnswer), JSON.
+  answer      String?
+  answeredAt  DateTime?
+  usedAt      DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+
+  @@index([productId, createdAt])
+  @@map("trace_supply_requests")
 }
 
 model TraceBatch {
@@ -6976,11 +7003,125 @@ model ReliefPost {
   takenAt   DateTime?
   doneAt    DateTime?
   createdAt DateTime  @default(now())
+  /// Posted in this organisation's name (M106).
+  orgId       String?
+  /// The organisation that took this need on (M106).
+  helperOrgId String?
 
   @@index([status, createdAt])
   @@index([userId])
   @@index([helperId])
+  @@index([helperOrgId])
   @@map("relief_posts")
+}
+
+/// M106: an organisation in Relief (NGO, food bank, shelter, community group). Base rounded like posts.
+model ReliefOrg {
+  id          String   @id @default(cuid())
+  name        String
+  kind        String   @default("NGO")
+  about       String?
+  place       String?
+  lat         Float?
+  lng         Float?
+  /// Join code (6 letters and digits), shared by the organisation's coordinators.
+  code        String   @unique
+  /// M107: its Twilio number (E.164) for text requests, SMS or WhatsApp.
+  textNumber  String?  @unique
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@map("relief_orgs")
+}
+
+/// M107: a text (SMS or WhatsApp) sent to an organisation's number. Coordinators only: it holds the
+/// sender's phone number. NEW, POSTED (put on the map as postId) or CLOSED.
+model ReliefText {
+  id          String    @id @default(cuid())
+  orgId       String
+  channel     String    @default("SMS")
+  fromNumber  String
+  body        String
+  status      String    @default("NEW")
+  postId      String?
+  handledById String?
+  handledAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([orgId, createdAt])
+  @@index([fromNumber, createdAt])
+  @@map("relief_texts")
+}
+
+model ReliefOrgMember {
+  orgId     String
+  userId    String
+  /// OWNER, COORDINATOR or VOLUNTEER (RELIEF_ORG_ROLES).
+  role      String   @default("VOLUNTEER")
+  createdAt DateTime @default(now())
+
+  @@id([orgId, userId])
+  @@index([userId])
+  @@map("relief_org_members")
+}
+
+model ReliefSupply {
+  id        String   @id @default(cuid())
+  orgId     String
+  name      String
+  kind      String   @default("OTHER")
+  unit      String   @default("items")
+  quantity  Int      @default(0)
+  /// Shown as running low at or below this.
+  lowAt     Int      @default(0)
+  updatedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([orgId])
+  @@map("relief_supplies")
+}
+
+model ReliefSupplyMove {
+  id        String   @id @default(cuid())
+  orgId     String
+  supplyId  String
+  userId    String?
+  change    Int
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([orgId, createdAt])
+  @@map("relief_supply_moves")
+}
+
+model ReliefShift {
+  id          String   @id @default(cuid())
+  orgId       String
+  title       String
+  details     String?
+  place       String?
+  startsAt    DateTime
+  endsAt      DateTime
+  slots       Int      @default(1)
+  /// Places taken, kept by a guarded update so a shift never takes more than its slots.
+  filled      Int      @default(0)
+  membersOnly Boolean  @default(false)
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([orgId, startsAt])
+  @@index([startsAt])
+  @@map("relief_shifts")
+}
+
+model ReliefShiftSignup {
+  shiftId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@id([shiftId, userId])
+  @@index([userId])
+  @@map("relief_shift_signups")
 }
 
 model GreenTeam {
