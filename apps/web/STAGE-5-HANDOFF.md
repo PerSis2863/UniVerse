@@ -4399,3 +4399,24 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
   link's hash, expiry, answering, adding); `scripts/checks/trace-dpp-ui.mjs` (all of it through the API
   and the pages /dpp, /t/<code>, /supply and the editor at 390 and 1280, light and dark: axe clean, no
   sideways scrolling, no page errors); `pnpm check`.
+
+## M109: a health check of the whole system before merging (5 Nov 2026)
+
+- **Live errors** (production `error_reports`, read-only): nothing new from real people since M95; the
+  only reports of the last ten days are our own test browsers (HeadlessChrome, after the 4 Nov deploys,
+  filed as ignored) and the sample world's made-up rows. Nothing to fix.
+- **Text fields ignored the sizes screens asked for** (found in M106): `.input` sat in the utilities layer
+  after Tailwind's own utilities, so `w-*`, `py-*`, `text-*` and `rounded-*` on a field did nothing (106
+  files: compact selects in rows, small count fields, the Relief alerts' "Within" select stretched to
+  full width). Its width, padding, corners and text size now sit in `:where(.input)` (no specificity,
+  like M90's side padding), so a utility wins and a bare `.input` looks as before. Phones still get 16 px
+  text (the touch rule's `!important`), so fields never zoom the page.
+- **Libraries**: overrides for KaTeX inside mermaid (0.16 → 0.18.9, the version we use directly: one copy,
+  and an advisory fixed) and webpack for the offline-app builder (5.97 → 5.104.1). `pnpm audit --prod`:
+  10 → 7. Left: body-parser (high, inside the build tool's local server; its fix turns two weeks old
+  today, a scheduled task applies it), serialize-javascript (low, two weeks old tonight), deepmerge (low,
+  no fix yet), glob/minimatch (moderate, only new majors under two weeks old).
+- **Production build** (`pnpm local:build`) passes with everything on the branch (M102–M109); its one
+  warning (a duplicate `case` in a third-party PDF chunk) isn't ours. On the built Worker:
+  `relief-orgs-ui.mjs` and `trace-dpp-ui.mjs` pass (GS1 addresses answered by the Worker with a 302),
+  the pages with compact fields render without errors.

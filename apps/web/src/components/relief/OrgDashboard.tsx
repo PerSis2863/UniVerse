@@ -322,7 +322,7 @@ function SupplyRow({ s, orgId, run, onChange }: { s: Supply; orgId: string; run:
       </div>
       <form className="flex items-center gap-1.5" onSubmit={(e) => { e.preventDefault(); const n = Number(count); if (count.trim() && Number.isFinite(n)) void send(/^[+-]/.test(count.trim()) ? { change: Math.round(n) } : { quantity: Math.max(0, Math.round(n)) }, 'Count saved'); }}>
         <label className="sr-only" htmlFor={`count-${s.id}`}>New count for {s.name}, or +20 / −5 to add or take away</label>
-        <span className="block w-20"><input id={`count-${s.id}`} value={count} onChange={(e) => setCount(e.target.value)} inputMode="numeric" placeholder="+20" className="input" /></span>
+        <input id={`count-${s.id}`} value={count} onChange={(e) => setCount(e.target.value)} inputMode="numeric" placeholder="+20" className="input w-20 py-1.5" />
         <button type="submit" disabled={busy || !count.trim()} className="btn-secondary btn-sm">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Set'}</button>
       </form>
       {run && (

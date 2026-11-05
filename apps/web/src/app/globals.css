@@ -501,18 +501,16 @@ html:not(.dark) {
 
   /* Text fields: a grey fill, no border (iOS); the field lifts and gets a soft tint ring on focus. */
   .input {
-    width: 100%;
     background-color: var(--input-bg);
     border: 1px solid var(--input-border);
     color: var(--input-color);
-    padding-block: 0.6875rem;
-    border-radius: 0.75rem;
-    font-size: 0.9375rem;
     transition: background-color 200ms var(--ease-ios), border-color 200ms var(--ease-ios), box-shadow 200ms var(--ease-ios);
     outline: none;
   }
-  /* Side padding that a ps-9 / pe-9 beside it wins over (room for a search icon: M90, the icon sat on the text). */
-  :where(.input) { padding-inline: 0.875rem; }
+  /* Sizes that a utility beside it wins over: side padding for a search icon (ps-9, M90), and (M109) the
+     width, height, corners and text size a field asks for (w-20, py-1.5, text-sm): this file comes after
+     Tailwind's utilities, so in a plain rule they were ignored on 106 screens. */
+  :where(.input) { width: 100%; padding-inline: 0.875rem; padding-block: 0.6875rem; border-radius: 0.75rem; font-size: 0.9375rem; }
   .input::placeholder { color: var(--input-placeholder); }
   .input:focus {
     background-color: var(--surface);
