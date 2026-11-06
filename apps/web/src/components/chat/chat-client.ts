@@ -329,3 +329,21 @@ export function setWallpaper(id: string) {
 // Only the brand's two tones and the shades between them.
 const AURAS = ['#58617f', '#58617f', '#58617f', '#fe81d1', '#fe81d1', '#27272a', '#c13a92', '#58617f'];
 export const auraOf = (id: string) => AURAS[[...id].reduce((t, c) => (t * 31 + c.charCodeAt(0)) >>> 0, 7) % AURAS.length];
+
+/** The chat to open with Alt+↑/↓ (M121): the one above or below the open chat in the list (the
+ *  first or last when none is open), or with `unread` the next one, going round, that has unread
+ *  messages. Null when there's nowhere to go. */
+export function nextChat(order: { id: string; unread: boolean }[], current: string | null, step: 1 | -1, unread = false): string | null {
+  if (!order.length) return null;
+  const at = current ? order.findIndex((c) => c.id === current) : -1;
+  if (unread) {
+    for (let k = 1; k <= order.length; k++) {
+      const c = order[(((at < 0 ? (step > 0 ? -1 : 0) : at) + step * k) % order.length + order.length) % order.length];
+      if (c.unread && c.id !== current) return c.id;
+    }
+    return null;
+  }
+  if (at < 0) return order[step > 0 ? 0 : order.length - 1].id;
+  const to = at + step;
+  return to >= 0 && to < order.length ? order[to].id : null;
+}

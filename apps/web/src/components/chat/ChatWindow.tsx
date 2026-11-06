@@ -21,7 +21,7 @@ import { Composer, type ComposerExtra, type SendPayload } from './Composer';
 import { ContactPicker, ForwardDialog, MessageInfo, PollDialog, RemindSheet } from './ChatDialogs';
 import { ChatExport } from './ChatExport';
 import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
-import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS, previewText, auraOf } from './chat-client';
+import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS, previewText } from './chat-client';
 import { useLiveInterval, useLiveTyping, useRealtimeConnected } from '@/lib/realtime-client';
 import { useLanguageStore } from '@/store/language';
 import { cachedChat, cacheChat, enqueue, isOfflineError, listOutbox, newClientId, onOutbox, type OutboxItem } from '@/lib/outbox';
@@ -699,9 +699,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       <div className="relative flex-1 flex flex-col min-w-0 min-h-0">
         {fx && <ScreenEffect key={fx.key} effect={fx.effect} onDone={() => { setPlaying(null); setPlayed((p) => new Set(p).add(fx.key)); }} />}
         {/* Header */}
-        <div className="relative isolate z-20 flex items-center gap-3 px-3 md:px-5 h-[68px] shrink-0 bg-white/60 dark:bg-white/[0.025] backdrop-blur-xl after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-indigo-400/40 after:to-transparent dark:after:via-fuchsia-400/30">
-          {/* The other person's glow (M17), spilling softly from behind their picture. */}
-          <span aria-hidden className="chat-aura" style={{ ['--aura' as string]: auraOf(other?.id ?? conversationId) }} />
+        <div className="relative isolate z-20 flex items-center gap-1 sm:gap-3 px-3 md:px-5 h-[68px] shrink-0 bg-[var(--card-bg)] border-b border-[var(--separator)]">
           <button onClick={onBack} aria-label="Back" className="md:hidden p-2 -ms-1 rounded-full text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button>
           <button onClick={() => setInfoOpen((v) => !v)} className="flex items-center gap-3 min-w-0 flex-1 text-start">
             {channel
@@ -724,7 +722,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
             huddlePeers?.count ? (
               <button onClick={() => void startHuddle()} aria-label={`Join the huddle (${huddlePeers.count} in it)`} title={huddlePeers.names.join(', ')} className="px-3 h-9 rounded-full bg-emerald-500 text-white text-xs font-bold inline-flex items-center gap-1.5 animate-pulse"><Headphones className="w-4 h-4" />Huddle · {huddlePeers.count}</button>
             ) : (
-              <button onClick={() => void startHuddle()} aria-label="Start a huddle" title="Huddle: a drop-in voice room in this chat, nobody is rung" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Headphones className="w-5 h-5" /></button>
+              <button onClick={() => void startHuddle()} aria-label="Start a huddle" title="Huddle: a drop-in voice room in this chat, nobody is rung" className="max-sm:hidden p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Headphones className="w-5 h-5" /></button>
             )
           )}
           {!convo.isOfficial && !channel && (
@@ -742,7 +740,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               <LanguagePicker title="Auto-translate messages into" offLabel="Off — show originals" value={convo.translateTo ?? null} suggested={[appLanguage]} onPick={setAutoTranslate} onClose={() => setTranslateOpen(false)} />
             )}
           </div>
-          <button onClick={() => { setSearchOpen((v) => !v); setResults(null); setSearchQ(''); }} aria-label="Search in chat" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', searchOpen ? 'text-indigo-500' : 'text-zinc-600 dark:text-zinc-300')}><Search className="w-5 h-5" /></button>
+          <button onClick={() => { setSearchOpen((v) => !v); setResults(null); setSearchQ(''); }} aria-label="Search in chat" className={cn('max-sm:hidden p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', searchOpen ? 'text-indigo-500' : 'text-zinc-600 dark:text-zinc-300')}><Search className="w-5 h-5" /></button>
           <button onClick={() => setInfoOpen((v) => !v)} aria-label="Chat info" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', infoOpen ? 'text-indigo-500' : 'text-zinc-600 dark:text-zinc-300')}><Info className="w-5 h-5" /></button>
         </div>
         {offlineCopy && (
@@ -858,7 +856,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           {byDay(messages).map((day) => (
             <section key={day[0].m.id}>
               <div className="flex justify-center py-2 sticky top-0 z-10">
-                <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white/90 dark:bg-[#151517]/90 backdrop-blur border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 shadow-sm">{dayLabel(day[0].m.createdAt)}</span>
+                <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 shadow-sm">{dayLabel(day[0].m.createdAt)}</span>
               </div>
               {day.map(({ m, i }, n) => {
                 const prev = messages[i - 1];
@@ -1003,6 +1001,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
             onChanged={() => { mutate(); onChanged(); }}
             onLeft={() => { onChanged(); onBack(); }}
             onAutoTranslate={setAutoTranslate}
+            onSearch={() => { setInfoOpen(false); setSearchOpen(true); setResults(null); setSearchQ(''); }}
+            onHuddle={!channel && !convo.isOfficial ? () => { setInfoOpen(false); void startHuddle(); } : undefined}
           />
         )}
       </AnimatePresence>
@@ -1028,9 +1028,11 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   );
 }
 
-function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onChanged, onLeft, onAutoTranslate }: {
+function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onChanged, onLeft, onAutoTranslate, onSearch, onHuddle }: {
   data: ThreadResponse; me: string; onOpenChat: (id: string) => void; messages: ChatMessage[]; onClose: () => void; onOpenImage: (u: string) => void; onChanged: () => void; onLeft: () => void;
   onAutoTranslate: (lang: string | null) => void;
+  /** Phones (M121): the header keeps room for the name, so search and a huddle start here. */
+  onSearch: () => void; onHuddle?: () => void;
 }) {
   const convo = data.conversation;
   const [adding, setAdding] = useState(false);
@@ -1073,7 +1075,7 @@ function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onCha
   return (
     <motion.aside
       initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 40, opacity: 0 }}
-      className="absolute md:relative inset-0 md:inset-auto z-30 md:z-auto w-full md:w-80 shrink-0 flex flex-col border-s border-zinc-200/80 dark:border-white/[0.06] bg-white dark:bg-[#151517] md:bg-white/60 md:dark:bg-white/[0.02] backdrop-blur-xl overflow-y-auto"
+      className="absolute md:relative inset-0 md:inset-auto z-30 md:z-auto w-full md:w-80 shrink-0 flex flex-col border-s border-[var(--separator)] bg-[var(--card-bg)] overflow-y-auto"
     >
       <div className="flex items-center justify-between px-5 h-16 shrink-0 border-b border-zinc-200/80 dark:border-white/[0.06]">
         <h3 className="font-bold text-zinc-900 dark:text-white">{convo.isGroup ? 'Group info' : 'Contact info'}</h3>
@@ -1086,6 +1088,10 @@ function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onCha
         {isAdmin && (
           <button onClick={rename} className="mt-3 text-xs font-semibold text-indigo-500 inline-flex items-center gap-1"><Pencil className="w-3.5 h-3.5" /> Rename group</button>
         )}
+        <div className="sm:hidden mt-4 flex gap-2">
+          <button type="button" onClick={onSearch} className="btn-secondary btn-sm"><Search className="w-4 h-4" aria-hidden />Search</button>
+          {onHuddle && <button type="button" onClick={onHuddle} className="btn-secondary btn-sm"><Headphones className="w-4 h-4" aria-hidden />Huddle</button>}
+        </div>
       </div>
 
       {!convo.isOfficial && (

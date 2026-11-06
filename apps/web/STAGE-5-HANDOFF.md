@@ -4788,3 +4788,42 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
   answer depends on goes into `RSC_VARIES`.
 - **Checked:** the page-change and timer numbers above, in-app navigation in a browser (fresh and from
   the cache, no errors), `pnpm check`.
+
+## M121: Messages, professional: one solid workspace, phone fixes, mark all as read, keys (the owner, 6 Nov 2026)
+
+- **The ask:** "can you improve the message section make it look like more professional and add more
+  features there" (a screenshot of Messages), then "work on message section … forget about the council
+  part just do whatever I said" (the owner's call over the launch pause).
+- **What was wrong** (looked at 1440 and 390, dark and light):
+  - on phones the message box was crushed to a thin column (letters stacked) by eight buttons, the chat's
+    name was cut to "J…" by five header icons, and the Chats / Calls / Notifications tabs ran off the
+    right edge;
+  - on computers three see-through floating cards (rail, list, chat) let the pink river streak behind
+    every message; glowing rings round unread avatars, coloured halos behind rows and the chat header, a
+    glowing pink edge on unread rows, floating pinned avatars, gradient-and-glow bubbles, and a glowing
+    orbit and four tiles as the empty side;
+  - "Mark as read" (swipe or menu) only cleared the manual mark on the server (`markedUnread`), so a
+    chat's real unread messages came back on the next refresh.
+- **Look** (`MessagingHub`, `ChatWindow`, `Composer`, `CommsDeck`; the M121 block at the end of
+  `globals.css`):
+  - one workspace on computers: `.msg-ws` frames the rail, the list and the chat with hairline dividers;
+    every surface solid (`--card-bg`, `--msg-chat`, `--msg-rail`): nothing of the page shows through;
+  - bubbles solid: mine `#b5307d` (white 5.7:1) or the person's accent, theirs `--msg-theirs` with a
+    hairline; unread counts the same pink; the send button the site's main pill (`--pill-on-bg`);
+  - the rings, halos, edge, float, orbit and glows deleted (markup and CSS), not hidden;
+  - the empty side: "Your messages", New chat / New group / Saved, the keys, the privacy line.
+- **Phones:** the composer keeps emoji, "+", the box and send/voice; stickers, formatting, translate,
+  suggest, rewrite and effects moved into "+" (their pickers still open: their wrappers are
+  `max-sm:contents`); a one-word placeholder; the header keeps voice, video and info (and a live huddle's
+  pill), with Search and Huddle in the info panel; the deck's tabs share the width, words only.
+- **Features:** **Mark all as read** (✓✓ above the list when anything is unread; `POST
+  /api/chat/conversations/read-all`, one update); "Mark as read" now sets `lastReadAt` too; **keys**:
+  Alt+↑/↓ the chat above or below, Alt+Shift+↓ the next unread one (going round), Esc closes the open
+  chat (not while typing or with a dialog or menu open); `nextChat` in `chat-client.ts`, tested.
+- **Rules:** Messages' surfaces stay solid (`.msg-ws` tokens); new composer buttons go into "+" on phones
+  (`max-sm:hidden`, a `sm:hidden` item in the menu); a header button on phones goes into the info panel.
+- **Not done:** mark-all doesn't tell the senders' screens live (they see the ticks on their next look);
+  the sample-data order of John Doe's three messages is the seed's.
+- **Checked:** `messages-pro-ui.mjs` (solid panes, mark all as read surviving a reload, the keys, the
+  phone box 166 px wide and the full name, axe at 1280 and 390, light and dark, no sideways scroll),
+  `chat-keys.test.ts`, `pnpm check`, the production build.
