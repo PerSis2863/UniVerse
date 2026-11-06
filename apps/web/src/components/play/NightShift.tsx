@@ -11,7 +11,7 @@ import { useArena } from './arena';
 import type { GameProps } from './game-props';
 import { Body, Controls, LightPool, THREE, World, approach, eyes, glowSprite, walk, type LightSource } from './world/core';
 import { lightBeam } from './world/nature';
-import { lookHex, readLook } from './PlayerCard';
+import { lookHex, readLook } from './look';
 import { Crowd } from './world/crowd';
 import { surface } from './world/textures';
 import { SkillRing, WorldFrame } from './world/Stage';

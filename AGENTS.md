@@ -129,8 +129,10 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   landing's headline at first paint, its hero picture's loops in CSS, the Lab apps loaded on demand; the
   student-home picture never over the hero, the owner's screenshot); M118 (the games without lag: about
   a quarter of the drawing per frame, a Graphics choice in each 3D game's bar, 60-a-second pacing that
-  never rebuilds shaders mid-game, memory given back after each round, the river resting behind a game).
-- **Work numbers:** the next item is **M119**. Never reuse a number: take the next one after the
+  never rebuilds shaders mid-game, memory given back after each round, the river resting behind a game);
+  M119 (Play's page without the constellation and the player card; what replaces them is the owner's
+  call).
+- **Work numbers:** the next item is **M120**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** to take Relief text requests, open a Twilio account (paid per message), set
   `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`

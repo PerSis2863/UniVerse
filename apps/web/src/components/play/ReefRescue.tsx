@@ -9,7 +9,7 @@ import {
 } from '@/lib/play/reef';
 import { cn } from '@/lib/utils';
 import { useArena } from './arena';
-import { lookHex, readLook } from './PlayerCard';
+import { lookHex, readLook } from './look';
 import type { GameProps } from './game-props';
 import { Controls, THREE, World, approach, follow, glowSprite, mergeGeometries } from './world/core';
 import { Crowd } from './world/crowd';

@@ -4738,3 +4738,17 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
   the context given back, axe clean at 1280 light and 390 dark touch, no sideways scroll), the counter
   on all 11 3D games (no page errors), pictures of Obby (all three choices), Fire Line and Night Shift,
   `gfx.test.ts`, `pnpm check`, the production build.
+
+## M119: Play's page without the constellation and the player card (the owner, 6 Nov 2026)
+
+- **The ask** (two screenshots of `/play`): "remove your game constellation from here and in 2nd pic it
+  doesn't feel good to me so remove it and add this kind off something else".
+- **Removed from `Arcade.tsx`:** the "Your game constellation" live card (`Constellation` and `LiveCard`
+  stay: Green, the homes, Trace's wallet and the console use them) and the "Your player" card (level,
+  XP bar, colours and hats). `PlayerCard.tsx` is gone; the 3D worlds' look helpers (`readLook`,
+  `lookHex`) moved to `look.ts`, so a look chosen before still shows in the worlds. The hero no longer
+  promises "level up to unlock new looks". XP still counts (the results screen shows "+XP").
+- **Waiting on the owner:** what goes in the player card's place ("add this kind of something else");
+  the launch focus pauses new looks until 5 December, so nothing was added yet.
+- **Checked:** `/play` at 1280 and 390, light and dark: neither card, no sideways scroll, axe clean, no
+  page errors; `pnpm check`.

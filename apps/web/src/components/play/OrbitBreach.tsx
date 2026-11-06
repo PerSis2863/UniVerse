@@ -6,7 +6,7 @@ import { GAMES } from '@/lib/play';
 import { ORBIT_ESCAPE, ORBIT_HIT, ORBIT_NAMES, ORBIT_PER_SECOND, ORBIT_REACTOR, ORBIT_REPAIR_S, ORBIT_SECTOR, ORBIT_SECTORS, ORBIT_FLARE_DRAIN, ORBIT_SHIELD_R, ORBIT_TANK, ORBIT_TANK_EVERY_S, orbitFlare, orbitMeteors, orbitReactors, orbitStation, type Deck } from '@/lib/play/worlds';
 import { cn } from '@/lib/utils';
 import { useArena } from './arena';
-import { lookHex, readLook } from './PlayerCard';
+import { lookHex, readLook } from './look';
 import type { GameProps } from './game-props';
 import { Avatar, Body, Controls, THREE, World, approach, atmosphere, follow, glowSprite, walk, worldUv } from './world/core';
 import { milkyWay, planetMaterial, ringMaterial, starfield, type PlanetKind } from './world/nature';

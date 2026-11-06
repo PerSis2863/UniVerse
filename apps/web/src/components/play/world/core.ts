@@ -750,7 +750,7 @@ export class Avatar {
       part([0.42, 0.85, 0.42], [-0.23, 0.85, 0], mat(legs, 0.9), true), part([0.42, 0.85, 0.42], [0.23, 0.85, 0], mat(legs, 0.9), true),
     ];
   }
-  /** A hat on the head (the looks unlocked by level, PlayerCard.tsx). */
+  /** A hat on the head (the looks unlocked by level, look.ts). */
   private hat(kind: string, top: number) {
     const add = (g: THREE.BufferGeometry, color: number, at: [number, number, number], glow = false) => {
       const m = new THREE.Mesh(g, glow ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.1 }));

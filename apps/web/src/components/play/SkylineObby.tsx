@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { GAMES } from '@/lib/play';
 import { BLINK_ON, BLINK_OFF, OBBY_BELT, OBBY_CHECK, OBBY_ICE_GRIP, OBBY_FALL, OBBY_FINISH, OBBY_GEM, OBBY_PER_SECOND, OBBY_PER_WORLD, OBBY_STAGES, OBBY_WORLDS, beltDir, blinkOn, obbyCourse, obbyWorld, type Pad } from '@/lib/play/worlds';
 import { useArena } from './arena';
-import { lookHex, readLook } from './PlayerCard';
+import { lookHex, readLook } from './look';
 import type { GameProps } from './game-props';
 import { Avatar, Body, Controls, THREE, World, follow, glowSprite, mergeGeometries, walk, worldUv, type SkyLook } from './world/core';
 import { Crowd } from './world/crowd';
