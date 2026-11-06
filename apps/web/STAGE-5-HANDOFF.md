@@ -4752,3 +4752,39 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
   the launch focus pauses new looks until 5 December, so nothing was added yet.
 - **Checked:** `/play` at 1280 and 390, light and dark: neither card, no sideways scroll, axe clean, no
   page errors; `pnpm check`.
+
+## M120: CPU time: page changes from the cache, the spending check hourly (the owner, 6 Nov 2026)
+
+- **The ask** (the dashboard: 5.87k requests and 752.84k CPU ms for 28 Oct – 6 Nov): "why the cpu time
+  usage is till so high … only I am using this website … if 500 people login … I will hit the 30m
+  usage within few days please fix this". That is ~128 ms per request (the guard's 31 days: 2.14 M ms
+  over 25,320 requests, ~84 ms); Cloudflare's docs put an ordinary Worker at 2–20 ms.
+- **Where it went.** Starting a Worker isn't billed, but running code for the first time in a fresh
+  instance is: on the first request V8 compiles everything that request runs. Measured locally (the
+  local runtime's CPU, `cpu.mjs` in the session's scratch: restart, one request, then three warm):
+  - an in-app page change (an RSC request, always through Next.js): **1,440–1,800 ms** fresh, 54–146 ms
+    warm; a profile puts ~785 ms of it in the bundle's lazy module start-up (compiling Next.js and the
+    app's modules), the rest in rendering;
+  - the 15-minute timer 103 ms fresh / 15 warm; a light-path API call 41 / 10; the landing (cached) 38 / 10.
+  With one person using the site, most page changes found a fresh instance (idle instances are let go,
+  and each deploy starts new ones), so they cost about a second each: most of the bill.
+- **Fixes** (`cloudflare/worker.ts`):
+  1. `edgeCachedPage` keeps prerendered pages' **in-app navigation data** in Cloudflare's cache too
+     (an RSC request whose only query is `?_rsc=…`): kept per build and per hash of the router's
+     headers (`RSC_VARIES`: rsc, state tree, prefetch, segment prefetch, next-url; Next.js answers
+     differently for each), only when Next.js marks the answer `x-nextjs-prerender: 1` (the same for
+     everyone), `text/x-component`, no cookie. The same page change on a fresh instance: 1,766 → 31 ms;
+     warm 54–146 → ~8 ms. In-app navigation checked in a browser from both Next.js and the cache.
+  2. The spending guard reads Cloudflare's numbers once an hour (the first quarter of each hour); the
+     15-minute timer stays for scheduled-call reminders and the day's remaining steps.
+- **For 500 people:** a busy site keeps its instances warm, so a request costs what the warm numbers
+  say, not the fresh ones; one person's month doesn't multiply by 500. CPU past the 30 M included
+  costs $0.02 per extra million ms (30 M more = $0.60). **The real risk is the guard:** it pauses the
+  whole site at 90% of the included CPU (27 M ms). Whether to keep that pause for CPU, or allow some
+  overage, is the owner's call ([owner]).
+- **Not done:** the first change to each page after a deploy, per Cloudflare location, still starts
+  Next.js (~1 s); making that cold path smaller (the 49 MB server bundle) is a bigger job.
+- **Rules:** only answers Next.js marks `x-nextjs-prerender: 1` may be cached; a new header the router's
+  answer depends on goes into `RSC_VARIES`.
+- **Checked:** the page-change and timer numbers above, in-app navigation in a browser (fresh and from
+  the cache, no errors), `pnpm check`.

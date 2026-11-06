@@ -107,7 +107,8 @@
   ],
   "triggers": {
     // Daily at 08:00 UTC (13:30 in India): reminders for quizzes due in the next 24 hours.
-    // Every 15 minutes: the spending guard (cloudflare/usage-guard.ts).
+    // Every 15 minutes: scheduled-call reminders and the rest of the day's steps; once an hour the
+    // spending guard (cloudflare/usage-guard.ts).
     "crons": ["0 8 * * *", "*/15 * * * *", "30 7 * * *"]
   },
   // Workers Logs: every request (it was a quarter on the free plan's 200k a day; about 90k a day
