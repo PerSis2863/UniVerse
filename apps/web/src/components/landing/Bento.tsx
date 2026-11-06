@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { Bell, Check, KeyRound, Lock, School, ShieldCheck } from 'lucide-react';
-import { Accent, EASE, Reveal, glass, useCalm } from './bits';
+import { Accent, EASE, Reveal, tile, useCalm } from './bits';
 
 // "Boring in the ways that matter": four cards on how UniVerse is built (one place for every role,
 // every language both ways, approvals on the phone, safe by default), each with a small live part.
@@ -43,7 +43,7 @@ function Languages() {
     <div className="mt-6">
       <div className="h-20 flex items-center" aria-live="off">
         <AnimatePresence mode="wait">
-          <motion.p key={word} dir={dir} initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -14, filter: 'blur(6px)' }} transition={{ duration: 0.45, ease: EASE }}
+          <motion.p key={word} dir={dir} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} transition={{ duration: 0.45, ease: EASE }}
             className="text-5xl font-bold text-white" lang="und" translate="no">{word}</motion.p>
         </AnimatePresence>
       </div>
@@ -71,8 +71,8 @@ function Approval() {
           </motion.p>
         ) : (
           <motion.div key="ask" exit={{ opacity: 0, y: -6 }} className="mt-3 flex gap-2">
-            <button type="button" onClick={() => setDone('excused')} className="h-9 px-4 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:brightness-110 active:scale-[0.97] transition">Excuse</button>
-            <button type="button" onClick={() => setDone('asked')} className="h-9 px-4 rounded-xl text-sm font-semibold text-zinc-200 border border-white/10 hover:bg-white/[0.06] active:scale-[0.97] transition">Ask why</button>
+            <button type="button" onClick={() => setDone('excused')} className="h-9 px-4 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:opacity-90 active:scale-[0.97] transition-[transform,opacity] duration-150">Excuse</button>
+            <button type="button" onClick={() => setDone('asked')} className="h-9 px-4 rounded-xl text-sm font-semibold text-zinc-200 border border-white/10 hover:bg-white/[0.06] active:scale-[0.97] transition-[transform,background-color] duration-150">Ask why</button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -88,7 +88,7 @@ const SAFE = [
 ];
 
 export function Bento() {
-  const card = `${glass} p-6 sm:p-7 hover:border-white/[0.14] transition-colors`;
+  const card = `${tile} p-6 sm:p-7 hover:border-white/[0.14] transition-colors`;
   return (
     <section id="product" data-no-motion className="relative px-6 py-28 scroll-mt-24">
       <div className="max-w-6xl mx-auto">

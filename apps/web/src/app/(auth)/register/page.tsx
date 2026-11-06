@@ -234,18 +234,18 @@ export default function RegisterPage() {
 
       {/* Step indicator */}
       {campus && <div className="flex items-center gap-3 mb-6">
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${step === 'role' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${step === 'role' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
           {step !== 'role' ? <Check className="w-3 h-3" /> : <span>1</span>}
           Choose Role
         </div>
         <div className="flex-1 h-px bg-zinc-800" />
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${step !== 'role' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${step !== 'role' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
           <span>2</span>
           {finishing ? 'Your details' : 'Create Account'}
         </div>
       </div>}
 
-      <div className="rounded-3xl border border-white/[0.08] bg-[#0f0f11]/75 backdrop-blur-md shadow-[0_40px_120px_-40px_rgba(39,39,42,0.55)] p-6 sm:p-8">
+      <div className="rounded-3xl border border-white/[0.08] bg-[#111113] shadow-[0_40px_120px_-40px_rgba(39,39,42,0.55)] p-6 sm:p-8">
         {error && !showPhoneFlow && (
           <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">{error}</div>
         )}
@@ -263,13 +263,13 @@ export default function RegisterPage() {
                     key={role.id}
                     type="button"
                     onClick={() => setSelectedRole(role.id)}
-                    className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-start group ${
+                    className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-[background-color,border-color,box-shadow] text-start group ${
                       isSelected
                         ? `${role.border} bg-gradient-to-r ${role.gradient} shadow-lg ${role.glow}`
                         : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-600 hover:bg-zinc-900/60'
                     }`}
                   >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
                       isSelected ? 'bg-white/10' : 'bg-zinc-800 group-hover:bg-zinc-700'
                     }`}>
                       <Icon className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-zinc-400'}`} />
@@ -278,7 +278,7 @@ export default function RegisterPage() {
                       <div className={`font-semibold text-sm ${isSelected ? 'text-white' : 'text-zinc-300'}`}>{role.label}</div>
                       <div className={`text-xs mt-0.5 ${isSelected ? 'text-white/70' : 'text-zinc-500'}`}>{role.description}</div>
                     </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                       isSelected ? 'border-white bg-white/20' : 'border-zinc-700'
                     }`}>
                       {isSelected && <Check className="w-3 h-3 text-white" />}
@@ -299,7 +299,7 @@ export default function RegisterPage() {
                     ['INDEPENDENT', 'I’m independent', 'Freelancer, professional or lifelong learner, not enrolled anywhere. No documents needed: start straight away.'],
                   ] as const).map(([id, title, text]) => (
                     <button key={id} type="button" onClick={() => setIndividual(id)} aria-pressed={individual === id}
-                      className={`relative isolate text-start p-3.5 rounded-xl border-2 transition-all ${individual === id ? 'border-indigo-500' : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-600'}`}>{individual === id && <TabPill id="app-auth-register-page-0" variant="soft" />}
+                      className={`relative isolate text-start p-3.5 rounded-xl border-2 transition-[background-color,border-color] ${individual === id ? 'border-indigo-500' : 'border-zinc-800 bg-zinc-900/30 hover:border-zinc-600'}`}>{individual === id && <TabPill id="app-auth-register-page-0" variant="soft" />}
                       <span className="flex items-center gap-2 font-semibold text-sm text-white">{individual === id && <Check className="w-4 h-4 text-indigo-400" />}{title}</span>
                       <span className="block text-xs text-zinc-400 mt-1 leading-relaxed">{text}</span>
                     </button>

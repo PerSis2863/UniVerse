@@ -1,7 +1,7 @@
 import { Banknote, Check, Crown, Globe2, Megaphone, Printer, Radio, Rocket, ScanLine, ShieldCheck, Truck, Wallet } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { LiveMapShowcase } from './LiveMapShowcase';
-import { Accent, Reveal, ghost, glass, primary } from './bits';
+import { Accent, Reveal, ghost, tile, primary } from './bits';
 
 // The landing page's business sections (UniVerse Trace, business mode): the live maps, how it works,
 // pay-per-verified-sale campaigns with the shops' wallet, and the two plans. Only what the product
@@ -14,7 +14,7 @@ export function MapsSection() {
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Watch your products <Accent>move.</Accent></h2></Reveal>
         <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Every scan and every shipment, live on the map.</p></Reveal>
         <Reveal delay={0.15}>
-          <div className={`${glass} mt-10 overflow-hidden p-0`}>
+          <div className={`${tile} mt-10 overflow-hidden p-0`}>
             <LiveMapShowcase className="w-full h-[min(62vh,520px)]" />
           </div>
         </Reveal>
@@ -88,7 +88,7 @@ export function CampaignsSection() {
           </Reveal>
         </div>
         <Reveal delay={0.1}>
-          <div className={`${glass} p-6 sm:p-8`}>
+          <div className={`${tile} p-6 sm:p-8`}>
             <div className="flex items-center justify-between">
               <p className="font-bold text-white">Paris launch</p>
               <span className="rounded-full bg-pink-500/15 px-2.5 py-1 text-[11px] font-semibold text-pink-200">Running</span>

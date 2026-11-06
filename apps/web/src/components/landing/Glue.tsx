@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { m as motion, useInView } from 'framer-motion';
-import { Accent, EASE, Reveal, glass } from './bits';
+import { Accent, EASE, Reveal, tile } from './bits';
 
 // "Most of a school day is glue": what UniVerse connects to, and one job laid out step by step
 // with its timings (an example run, so people see what "the steps in between" means).
@@ -26,7 +26,7 @@ function Waterfall() {
   const ref = useRef<HTMLDivElement>(null);
   const seen = useInView(ref, { once: true, margin: '-80px' });
   return (
-    <div ref={ref} className={`${glass} p-5 sm:p-6`}>
+    <div ref={ref} className={`${tile} p-5 sm:p-6`}>
       <div className="flex items-center justify-between font-mono text-xs text-zinc-400 mb-4">
         <span>example run · absence follow-up</span><span>{END} ms</span>
       </div>

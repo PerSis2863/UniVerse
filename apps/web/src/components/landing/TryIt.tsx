@@ -11,7 +11,7 @@ import { quizPoints, quizQuestion, QUIZ_SECONDS_PER_QUESTION } from '@/lib/play/
 import { URGENCY_COLOR, URGENCY_LABEL, type Urgency } from '@/lib/relief';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
-import { glass, ghost, primary, useCalm } from './bits';
+import { tile, ghost, primary, useCalm } from './bits';
 
 // "Try it here" on the landing's Relief, Green and Play tabs (M43): a quiz round, logging a green
 // action and the help map, played in the browser on made-up data. Nothing is sent or saved.
@@ -54,7 +54,7 @@ export function QuizTry() {
   const again = () => { setSeed((s) => s + 1); setI(0); setScore(0); setRight(0); setStreak(0); };
 
   return (
-    <div className={`${glass} p-5 sm:p-7`}>
+    <div className={`${tile} p-5 sm:p-7`}>
       <div className="flex items-center justify-between gap-3">
         <ol className="flex gap-1.5" aria-label={`Question ${Math.min(i + 1, ROUND)} of ${ROUND}`}>
           {Array.from({ length: ROUND }, (_, k) => <li key={k} className={cn('h-1.5 w-8 rounded-full transition-colors duration-300', k < i ? 'bg-fuchsia-400' : k === i ? 'bg-white/60' : 'bg-white/10')} />)}
@@ -126,7 +126,7 @@ export function GreenTry() {
   };
 
   return (
-    <div className={`${glass} p-5 sm:p-7 grid lg:grid-cols-[1.2fr_1fr] gap-6 lg:gap-8`}>
+    <div className={`${tile} p-5 sm:p-7 grid lg:grid-cols-[1.2fr_1fr] gap-6 lg:gap-8`}>
       <div>
         <div role="group" aria-label="Action" className="flex flex-wrap gap-2">
           {GREEN_KINDS.map((g) => {
@@ -236,7 +236,7 @@ export function ReliefTry() {
   };
 
   return (
-    <div className={`${glass} overflow-hidden grid lg:grid-cols-[1.4fr_1fr]`}>
+    <div className={`${tile} overflow-hidden grid lg:grid-cols-[1.4fr_1fr]`}>
       <div className="relative">
         <WorldCanvas label="A sample map of needs around you" homeBox={HOME} dark live={!calm} draw={draw} interactive={false} className="w-full h-[300px] sm:h-[380px] lg:h-full lg:min-h-[440px]" />
         <span className="absolute top-3 start-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] text-zinc-200">sample</span>

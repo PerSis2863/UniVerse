@@ -7,12 +7,12 @@ import { GameIcon } from '@/components/play/GameIcon';
 import { BADGES, weeklyChallenge } from '@/lib/green';
 import { GAMES, type GameId } from '@/lib/play';
 import { useNow } from '@/lib/use-now';
-import { Accent, EASE, Reveal, glass } from './bits';
+import { Accent, EASE, Reveal, tile } from './bits';
 
 // More of the Relief, Green and Play tabs on the landing (M43): a "try it here" demo each
 // (./TryIt, loaded only when its tab is open) and two short picture sections. Illustrations only.
 
-const box = (h: string) => function Box() { return <div className={`${glass} ${h}`} />; };
+const box = (h: string) => function Box() { return <div className={`${tile} ${h}`} />; };
 const QuizTry = dynamic(() => import('./TryIt').then((x) => x.QuizTry), { loading: box('h-[420px]') });
 const GreenTry = dynamic(() => import('./TryIt').then((x) => x.GreenTry), { loading: box('h-[520px] lg:h-[420px]') });
 const ReliefTry = dynamic(() => import('./TryIt').then((x) => x.ReliefTry), { loading: box('h-[640px] lg:h-[440px]') });
@@ -56,7 +56,7 @@ function Figures({ items, color }: { items: readonly (readonly [string, string])
   return (
     <dl className="mt-12 grid sm:grid-cols-3 gap-4">
       {items.map(([n, t], i) => (
-        <Reveal key={t} delay={0.1 + i * 0.08} className={`${glass} p-6`}>
+        <Reveal key={t} delay={0.1 + i * 0.08} className={`${tile} p-6`}>
           <dt className="sr-only">{t}</dt>
           <dd><span className="block font-mono text-5xl font-light tracking-tight" style={{ color }}>{n}</span><span className="mt-3 block text-zinc-300">{t}</span></dd>
         </Reveal>
@@ -108,7 +108,7 @@ export function GreenMore() {
       <Section id="green-habit">
         <Head title="Streaks, badges," accent="a weekly goal." />
         <div className="mt-12 grid lg:grid-cols-3 gap-4">
-          <Reveal delay={0.1} className={`${glass} p-6`}>
+          <Reveal delay={0.1} className={`${tile} p-6`}>
             <p className="flex items-center gap-2 text-sm text-zinc-400"><Flame className="w-4 h-4 text-orange-300" aria-hidden />Streak</p>
             <ol className="mt-5 flex justify-between gap-1.5" aria-label="7 days in a row">
               {WEEK.map((d, i) => (
@@ -121,7 +121,7 @@ export function GreenMore() {
               ))}
             </ol>
           </Reveal>
-          <Reveal delay={0.16} className={`${glass} p-6`}>
+          <Reveal delay={0.16} className={`${tile} p-6`}>
             <p className="text-sm text-zinc-400">This week</p>
             <p className="mt-2 text-2xl font-bold text-white min-h-8">{challenge?.title ?? ' '}</p>
             <div className="mt-5 h-2 rounded-full bg-white/[0.08] overflow-hidden">
@@ -129,7 +129,7 @@ export function GreenMore() {
             </div>
             <p className="mt-2 text-xs text-zinc-400">Everyone gets the same one. New every Monday.</p>
           </Reveal>
-          <Reveal delay={0.22} className={`${glass} p-6`}>
+          <Reveal delay={0.22} className={`${tile} p-6`}>
             <p className="text-sm text-zinc-400">Badges</p>
             <ul className="mt-4 flex flex-wrap gap-2">
               {BADGES.map((b, i) => (
@@ -167,7 +167,7 @@ export function PlayMore() {
       </TrySection>
       <Section id="play-rooms">
         <Head title="Up to 8 friends." accent="One code." />
-        <Reveal delay={0.1} className={`${glass} mt-12 p-6 sm:p-10 text-center`}>
+        <Reveal delay={0.1} className={`${tile} mt-12 p-6 sm:p-10 text-center`}>
           <div role="img" className="flex justify-center gap-1.5 sm:gap-2.5" aria-label={`Room code ${CODE.split('').join(' ')}`}>
             {CODE.split('').map((c, i) => (
               <motion.span key={i} aria-hidden className="w-10 h-14 sm:w-14 sm:h-20 grid place-items-center rounded-2xl bg-white/[0.06] ring-1 ring-white/10 font-mono text-2xl sm:text-4xl font-bold text-white"

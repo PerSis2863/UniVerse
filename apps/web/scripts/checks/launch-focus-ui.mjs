@@ -62,6 +62,8 @@ try {
     const apps = page.locator('section[aria-labelledby="apps-h"]');
     await apps.getByRole('heading', { name: /UniVersity/ }).waitFor({ timeout: 60_000 });
     check(await apps.getByText('Lab', { exact: true }).count() === 4, `${width} ${scheme}: four Lab tags on the hub`);
+    // Let the page's entrance finish first: mid-fade, the title's grey measures ~1.7:1 (M116).
+    await page.waitForTimeout(2500);
     await axe(page, `${width} ${scheme} hub`);
     // ── M110: Relief's emergency line ──
     await page.goto(base + '/relief', { waitUntil: 'domcontentloaded', timeout: 120_000 });

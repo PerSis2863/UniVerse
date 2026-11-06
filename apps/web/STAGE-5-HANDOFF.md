@@ -4572,3 +4572,49 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
 - `pnpm audit --prod`: 7 → 6, no high or critical left. Still open: glob and minimatch (moderate, only
   new majors as fixes), serialize-javascript (low, its fix two weeks old tonight), deepmerge (low, no fix).
 - **Checked:** `pnpm install` (lockfile: body-parser 2.4.0 only), `pnpm check`.
+
+## M116: the first impression, bigger and more striking (the owner, 6 Nov 2026)
+
+- **The ask and the pause:** "Please upgrade the project into something really big and attractive". The
+  launch focus (AGENTS.md §4) pauses new looks and graphics, so the owner was asked once; they chose
+  **"Polish the first impression"**: the landing page and UniVersity's first screens (sign-up, sign-in)
+  more striking, in the current look; everything else stays paused.
+- **The student home under the hero** (`src/components/landing/ProductWindow.tsx`, UniVersity's tab only):
+  a big picture of `/student` as it really looks in the M91 look (the near-black menu with the white
+  pill, the frosted headline cards with `.karma-icon`, big numbers with a small unit, pink only for the
+  live class, the unread count and the newest mark). Drawn in HTML (no image files), so it stays sharp
+  and follows the look; a window from 768 px, a phone below. It lies back (rotateX 24°, scale 0.88) and
+  tilts up flat as it scrolls in (a spring on the scroll, transform only), pulled up under the hero on
+  wide screens (`lg:-mt-40`) so its top shows on the first screen. One `role="img"` with a label; nothing
+  in it is a control. Reduce Motion: flat and still. A made-up student (Maya) on the real screens; no
+  usage numbers. **If the student home changes a lot, change the picture too.**
+- **Bigger hero:** headline `text-[3.25rem]` → `xl:text-8xl` (96 px from 1280), buttons a size up
+  (`HERO_BTN`), the line under it `sm:text-xl`; on phones a dark text shadow where the river runs straight
+  behind the words (the river itself is untouched). **The headline's words had no spaces** (inline-block
+  spans with a margin): screen readers, search and copy-paste read "Theschooldayrunsitself.". Now each
+  word is followed by a real space (`Fragment` + `' '`).
+- **Bugs fixed on the way:**
+  1. **Sign-in and sign-up on phones were wider than the screen:** the form's column (`AuthFrame`, a flex
+     item) took the app tabs' full width, and the page's `overflow-x-clip` hid it, so the form's right
+     edge ("Forgot pass…", the role buttons) was cut off and "no sideways scrolling" checks passed.
+     `min-w-0` on the column. **Trap:** a flex or grid item holding a scroller needs `min-w-0`; check
+     "nothing past the right edge", not only `scrollWidth` (the new check does).
+  2. **Glass (§8):** the sign-in and sign-up cards (`/75` + `backdrop-blur-md`: the river showed
+     through), the scrolled top bar and its phone menu, the app tabs, the landing's cards (`glass` in
+     `bits.tsx`, renamed `tile`, now solid `#111113`) and the cookie notice are solid now.
+  3. **Motion (§8):** no blur filters animated on the landing (hero words, the app switch, the hero
+     scenes' feeds, the language word); the FAQ answer fades in under 300 ms instead of animating its
+     height; the top bar no longer animates its width (`max-w-7xl` ↔ `max-w-5xl`, 500 ms): one width (the
+     hero's, `max-w-6xl`), only its fill fades; buttons name their transitions; `hover:brightness` gone.
+  4. The sign-in logo said "Universe IMPACT / Global Universities & NGO Network" (`UniverseLogo`
+     `showText`, only used there): now "UniVerse Impact" like the website's top bar.
+  5. The cookie notice is shorter (one line less on a phone) and sits in the safe area.
+- **Checked:** `scripts/checks/first-impression-ui.mjs` (the headline's size and words, the picture as a
+  phone or a window and flat when reached, gone on Trace's tab; sign-in and sign-up fit a 390 px screen;
+  no glass on the cards, top bar and tabs; the logo; axe at 390 and 1280, light and dark);
+  `landing-here-ui.mjs` and `launch-focus-ui.mjs` again (its hub scan now waits 2.5 s: right after the hub
+  opens, its title is still fading in and axe measured the half-faded grey at ~1.7:1; 4 s later it's
+  clean, so a timing fault of the check, not the hub); `pnpm check`; the production build (server code
+  48.9 of 64 MB, 49.0 before).
+- **Left out on purpose (the pause):** the in-app screens after sign-up (the student home itself), the
+  other apps' tabs (only the shared fixes reach them), the rest of the landing's sections' layout.
