@@ -4,11 +4,11 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
+import { GFX_CAP, GFX_EVENT, Pace, fitFor, gfxNow, saveFit, setGfx, type Gfx } from './gfx';
 
 // The 3D worlds of UniVerse Play (M36, the owner: "Roblox games… shooting, horror, science fiction…
 // big games"): one renderer, scene and camera per round, a frame loop that pauses in a hidden tab,
@@ -17,26 +17,58 @@ import { Sky } from 'three/examples/jsm/objects/Sky.js';
 
 export { THREE, RoundedBoxGeometry, mergeGeometries };
 
-/** The film finish (M39): a soft vignette, a touch of contrast and saturation, fine grain, and (M99)
- *  a colour fringe a game can raise (`World.look`). */
-const GradeShader = {
-  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, vignette: { value: 0.35 }, grain: { value: 0.035 }, saturation: { value: 1.08 }, contrast: { value: 1.06 }, aberr: { value: 0 } },
-  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float time, vignette, grain, saturation, contrast, aberr; varying vec2 vUv;
-    float rand(vec2 c){ return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }
-    void main(){
-      vec4 c = texture2D(tDiffuse, vUv);
-      // Dread (M99): the colours split toward the edges, more as something gets close.
-      if (aberr > 0.0) { vec2 o = (vUv - 0.5) * aberr; c.r = texture2D(tDiffuse, vUv + o).r; c.b = texture2D(tDiffuse, vUv - o).b; }
-      float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
-      c.rgb = mix(vec3(l), c.rgb, saturation);
-      c.rgb = (c.rgb - 0.5) * contrast + 0.5;
-      float d = distance(vUv, vec2(0.5));
-      c.rgb *= 1.0 - vignette * smoothstep(0.35, 0.85, d);
-      c.rgb += (rand(vUv * 731.0 + time) - 0.5) * grain;
-      gl_FragColor = c;
-    }`,
-};
+/** The last step of the effects chain, one full-screen pass instead of three (M118): the glow added
+ *  in (the bloom pass's own additive step is skipped), the film curve and colour space (three's
+ *  OutputPass keeps setting their defines), then the film finish (M39): a soft vignette, a touch of
+ *  contrast and saturation, fine grain, and (M99) a colour fringe a game can raise (`World.look`). */
+const FINISH = /* glsl */`precision highp float;
+  uniform sampler2D tDiffuse, tBloom; uniform float glow, time, vignette, grain, saturation, contrast, aberr;
+  #include <tonemapping_pars_fragment>
+  #include <colorspace_pars_fragment>
+  varying vec2 vUv;
+  float rand(vec2 c){ return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }
+  void main(){
+    vec4 c = texture2D(tDiffuse, vUv);
+    // Dread (M99): the colours split toward the edges, more as something gets close.
+    if (aberr > 0.0) { vec2 o = (vUv - 0.5) * aberr; c.r = texture2D(tDiffuse, vUv + o).r; c.b = texture2D(tDiffuse, vUv - o).b; }
+    vec4 b = texture2D(tBloom, vUv);
+    c.rgb += glow * b.rgb * b.a;
+    #if defined( ACES_FILMIC_TONE_MAPPING )
+      c.rgb = ACESFilmicToneMapping(c.rgb);
+    #elif defined( AGX_TONE_MAPPING )
+      c.rgb = AgXToneMapping(c.rgb);
+    #elif defined( NEUTRAL_TONE_MAPPING )
+      c.rgb = NeutralToneMapping(c.rgb);
+    #endif
+    #ifdef SRGB_TRANSFER
+      c = sRGBTransferOETF(c);
+    #endif
+    float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+    c.rgb = mix(vec3(l), c.rgb, saturation);
+    c.rgb = (c.rgb - 0.5) * contrast + 0.5;
+    float d = distance(vUv, vec2(0.5));
+    c.rgb *= 1.0 - vignette * smoothstep(0.35, 0.85, d);
+    c.rgb += (rand(vUv * 731.0 + time) - 0.5) * grain;
+    gl_FragColor = c;
+  }`;
+
+function finishPass(bloom: UnrealBloomPass | null) {
+  const pass = new OutputPass();
+  const u = pass.uniforms as Record<string, THREE.IUniform>;
+  Object.assign(u, {
+    tBloom: { value: bloom?.renderTargetsHorizontal[0].texture ?? null }, glow: { value: bloom ? 1 : 0 },
+    time: { value: 0 }, vignette: { value: 0.35 }, grain: { value: 0.035 }, saturation: { value: 1.08 }, contrast: { value: 1.06 }, aberr: { value: 0 },
+  });
+  pass.material.fragmentShader = FINISH;
+  if (bloom) {
+    // The bloom pass ends by adding itself onto the picture (a full-screen pass into the 4× buffer):
+    // this pass adds it instead. (three r180's internals: its quad and blend material.)
+    const quad = (bloom as unknown as { _fsQuad: { material: THREE.Material; render: (r: THREE.WebGLRenderer) => void } })._fsQuad;
+    const draw = quad.render.bind(quad);
+    quad.render = (r) => { if (quad.material !== bloom.blendMaterial) draw(r); };
+  }
+  return { pass, u };
+}
 
 const PHONE = () => matchMedia('(pointer: coarse)').matches;
 /** The buttons a game reads: jump, fire, act (E/F), and its special skill (Q/R); a shooter can also
@@ -89,6 +121,10 @@ function occlusion(scene: THREE.Scene, camera: THREE.Camera, strength: number) {
   pass.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 5, rings: 2, samples: 12 });
   const size = pass.setSize.bind(pass);
   pass.setSize = (w: number, h: number) => size(Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(h / 2)));
+  // Its view of the scene is a second render, which would draw the sun's shadows again (M118: a
+  // whole shadow map a frame for nothing): they're already drawn this frame.
+  const render = pass.render.bind(pass);
+  pass.render = (r, ...rest) => { const auto = r.shadowMap.autoUpdate; r.shadowMap.autoUpdate = false; render(r, ...rest); r.shadowMap.autoUpdate = auto; };
   const hidden = (pass as unknown as { _visibilityCache: THREE.Object3D[] })._visibilityCache;
   (pass as unknown as { _overrideVisibility: () => void })._overrideVisibility = () => {
     scene.traverseVisible((o) => {
@@ -122,14 +158,19 @@ export class World {
   private sunAt = new THREE.Vector3(30, 50, 20);
   private raf = 0;
   private last = 0;
-  // Automatic quality: the pixel ratio steps down when frames come late, back up when there's room.
+  /** The graphics choice this world was made with (gfx.ts). */
+  private gfx = gfxNow();
+  // Automatic sharpness (M118): the pixel ratio steps down when frames come late, back up when
+  // there's room; the one that holds is kept for the next round.
   private maxRatio = 1;
   private ratio = 1;
-  private slow = 0;
-  private fast = 0;
+  private pace = new Pace();
+  /** Seconds the lightest picture still came late (from 1.5 the next round starts a choice lower). */
+  private late = 0;
   private ro: ResizeObserver;
   private loop: ((dt: number, t: number) => void) | null = null;
   private vis = () => { if (document.hidden) this.pause(); else this.resume(); };
+  private onGfx = (e: Event) => this.choose((e as CustomEvent<Gfx>).detail);
 
   // The big-game layer (M38): glow (bloom) on computers, camera shake ("trauma"), a field of view
   // that eases (wider at speed), hit-stop, sparks, floating numbers and a fly-in at the start.
@@ -147,8 +188,11 @@ export class World {
   /** Floating words' pictures, made once per word and colour. */
   private words = new Map<string, THREE.CanvasTexture>();
 
-  private grade: ShaderPass | null = null;
-  /** Soft shadow in corners and under things (M102, computers): ambient occlusion, worked out at half size. */
+  /** The last pass's settings: film curve, glow and film finish (FINISH). */
+  private finish: Record<string, THREE.IUniform> | null = null;
+  /** Where the scene is drawn, with 4 samples a pixel (the passes after it need only one). */
+  private sceneBuffer: THREE.WebGLRenderTarget | null = null;
+  /** Soft shadow in corners and under things (M102, computers, Sharp): ambient occlusion, at half size. */
   private ao: GTAOPass | null = null;
   /** The physical sky (M102), kept round the camera; its light is the world's environment. */
   private dome: Sky | null = null;
@@ -164,11 +208,18 @@ export class World {
     /** The film curve: ACES (punchy), AgX (natural, real-camera highlights) or neutral. */
     tone?: 'aces' | 'agx' | 'neutral'; exposure?: number;
   } = {}) {
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !this.phone, powerPreference: 'high-performance' });
-    // Phones draw fewer pixels and no shadows, so the frame rate holds.
-    this.maxRatio = this.ratio = Math.min(window.devicePixelRatio || 1, this.phone ? 1.5 : 2);
+    // The graphics choice (M118, gfx.ts). Computers draw through the effects chain unless Smooth, which
+    // (like phones) draws straight to the screen, smoothing edges there instead. Phones never draw
+    // shadows, so the frame rate holds.
+    const chain = !this.phone && this.gfx !== 'smooth';
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !this.phone && !chain, powerPreference: 'high-performance' });
+    // Sharpness starts where the last round with this choice held the frame rate, a step higher (it
+    // finds the room again when there is some), at most the choice's cap.
+    this.maxRatio = Math.min(window.devicePixelRatio || 1, GFX_CAP[this.gfx]);
+    const fit = fitFor(this.gfx);
+    this.ratio = fit ? Math.min(this.maxRatio, fit + 0.25) : this.maxRatio;
     this.renderer.setPixelRatio(this.ratio);
-    this.renderer.shadowMap.enabled = !this.phone;
+    this.renderer.shadowMap.enabled = chain;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = tone === 'agx' ? THREE.AgXToneMapping : tone === 'neutral' ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
@@ -186,33 +237,60 @@ export class World {
       this.scene.environmentIntensity = env;
       pmrem.dispose();
     }
-    // Computers draw through the effects chain: smoothed edges (4× samples), ambient occlusion, the
-    // glow, the film finish.
-    if (!this.phone) {
-      const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
-      this.composer = new EffectComposer(this.renderer, target);
+    // The effects chain: the scene with smoothed edges (4× samples, only where it's drawn: the passes
+    // after it read one sample a pixel), ambient occlusion (made when the game asks, on in Sharp), the
+    // glow (works at half size: it's soft anyway, and costs a quarter), then one pass for the film
+    // curve, the glow and the film finish.
+    if (chain) {
+      this.composer = new EffectComposer(this.renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false }));
+      this.sceneBuffer = this.composer.readBuffer;
+      this.sceneBuffer.samples = 4;
+      this.sceneBuffer.depthBuffer = true;
       this.composer.addPass(new RenderPass(this.scene, this.camera));
-      if (ao > 0) this.composer.addPass(this.ao = occlusion(this.scene, this.camera, ao));
+      if (ao > 0) { this.ao = occlusion(this.scene, this.camera, ao); this.ao.enabled = this.gfx === 'sharp'; this.composer.addPass(this.ao); }
       if (glow) { this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), glow.strength, glow.radius, glow.threshold); this.composer.addPass(this.bloom); }
-      this.composer.addPass(new OutputPass());
-      this.grade = new ShaderPass(GradeShader);
-      this.composer.addPass(this.grade);
+      const last = finishPass(this.bloom);
+      this.composer.addPass(last.pass);
+      this.finish = last.u;
     }
     this.sparks = new Sparks(this.scene);
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(canvas);
     this.resize();
     document.addEventListener('visibilitychange', this.vis);
+    window.addEventListener(GFX_EVENT, this.onGfx);
   }
 
   resize() {
     const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
     if (!w || !h) return;
     this.renderer.setSize(w, h, false);
-    // The glow works at half size: it's soft anyway, and costs a quarter.
-    if (this.composer) { this.composer.setPixelRatio(this.ratio); this.composer.setSize(w, h); this.bloom?.resolution.set(w / 2, h / 2); }
+    if (this.composer) { this.composer.setPixelRatio(this.ratio); this.composer.setSize(w, h); }
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+  }
+
+  /** A new graphics choice mid-round: the sharpness and the effects change now; shadows and how edges
+   *  are smoothed from the next round (changing them now would rebuild every shader mid-play). */
+  private choose(g: Gfx) {
+    this.gfx = g;
+    this.maxRatio = Math.min(window.devicePixelRatio || 1, GFX_CAP[g]);
+    this.setRatio(this.maxRatio);
+    if (this.ao) this.ao.enabled = g === 'sharp';
+    this.glow(g !== 'smooth');
+    this.late = 0;
+  }
+
+  private setRatio(r: number) {
+    this.ratio = r; this.renderer.setPixelRatio(r);
+    this.resize(); this.pace.reset();
+  }
+
+  /** The glow on or off (the finish pass adds it in). */
+  private glow(on: boolean) {
+    if (!this.bloom || !this.finish) return;
+    this.bloom.enabled = on;
+    this.finish.glow.value = on ? 1 : 0;
   }
 
   start(loop: (dt: number, t: number) => void) {
@@ -265,42 +343,38 @@ export class World {
     const shake = this.trauma * this.trauma;
     const ox = shake ? (Math.sin(t * 0.091) + Math.sin(t * 0.037)) * 0.18 * shake : 0, oy = shake ? (Math.sin(t * 0.083 + 1) + Math.sin(t * 0.029)) * 0.18 * shake : 0, rz = shake ? Math.sin(t * 0.071) * 0.03 * shake : 0;
     if (shake) { this.camera.position.x += ox; this.camera.position.y += oy; this.camera.rotation.z += rz; }
-    if (this.grade) this.grade.uniforms.time.value = (t / 1000) % 100;
+    if (this.finish) this.finish.time.value = (t / 1000) % 100;
     this.dome?.position.copy(this.camera.position);
-    if (this.composer) this.composer.render(); else this.renderer.render(this.scene, this.camera);
+    if (this.composer) {
+      this.composer.render();
+      // The chain swaps its two buffers as it goes: the scene is always drawn into the 4× one.
+      if (this.composer.readBuffer !== this.sceneBuffer) this.composer.swapBuffers();
+    } else this.renderer.render(this.scene, this.camera);
     if (shake) { this.camera.position.x -= ox; this.camera.position.y -= oy; this.camera.rotation.z -= rz; }
     this.trauma = Math.max(0, this.trauma - dt * 1.4);
     this.raf = requestAnimationFrame(this.frame);
   };
 
-  /** Half a second of late frames (under ~45 fps) lowers the resolution a step; two seconds of quick
-   *  ones (over ~80 fps) raise it back. Never below 0.6× or above the starting ratio. */
+  /** Holding 60 frames a second (M118; M100's ladder waited for under 45, so 45–59 juddered on, and it
+   *  rebuilt every shader mid-play to drop shadows or the effects chain). When frames come late
+   *  (`Pace`, gfx.ts) the sharpness steps down a quarter (to 0.6× at least: the step that holds is
+   *  kept for the next round); at 0.6× the soft corner shadows go, then the glow; if even that is
+   *  late, the next round starts a choice lower. A quick screen with room raises the sharpness back.
+   *  Nothing here rebuilds a shader. */
   private tune(raw: number) {
-    if (raw > 1) return; // a hidden tab or a long stall, not a slow device
-    if (raw > 1 / 45) { this.slow += raw; this.fast = 0; } else if (raw < 1 / 80) { this.fast += raw; this.slow = 0; } else { this.slow = Math.max(0, this.slow - raw); }
-    const set = (r: number) => {
-      this.ratio = r; this.renderer.setPixelRatio(r);
-      this.resize(); this.slow = this.fast = 0;
-    };
-    // Keep the look as long as possible (M100): a sharp screen first comes down to 1× (hard to see),
-    // then the glow goes, then the resolution goes on down, then every light's shadows; last the
-    // smoothed edges and film finish (the picture is drawn straight to the screen).
-    if (this.slow > 0.5 && this.ratio > 1) set(Math.max(1, this.ratio - 0.25));
-    else if (this.slow > 0.5 && this.ao?.enabled) { this.ao.enabled = false; this.slow = 0; }
-    else if (this.slow > 0.5 && this.bloom?.enabled) { this.bloom.enabled = false; this.slow = 0; }
-    else if (this.slow > 0.5 && this.ratio > 0.6) set(Math.max(0.6, this.ratio - 0.25));
-    else if (this.slow > 1 && this.shadowed()) { this.scene.traverse((o) => { if ((o as THREE.Light).isLight) (o as THREE.Light).castShadow = false; }); this.slow = 0; }
-    else if (this.slow > 1 && this.composer) { this.composer.dispose(); this.composer = null; this.grade = null; this.bloom = null; this.ao = null; this.slow = 0; }
-    else if (this.fast > 2 && this.ratio < this.maxRatio) set(Math.min(this.maxRatio, this.ratio + 0.25));
+    const go = this.pace.feed(raw);
+    if (go === 'down') {
+      if (this.ratio > 0.6) { this.setRatio(Math.max(0.6, this.ratio - 0.25)); saveFit(this.gfx, this.ratio); }
+      else if (this.ao?.enabled) this.ao.enabled = false;
+      else if (this.bloom?.enabled) this.glow(false);
+      else this.late += 0.5;
+    } else if (go === 'up' && this.ratio < this.maxRatio) { this.setRatio(Math.min(this.maxRatio, this.ratio + 0.25)); saveFit(this.gfx, this.ratio); }
   }
 
-  /** True while any light still casts shadows. */
-  private shadowed() { let on = false; this.scene.traverse((o) => { if ((o as THREE.Light).isLight && (o as THREE.Light).castShadow) on = true; }); return on; }
-
   /** The film finish's settings: vignette, grain, saturation, contrast and the dread fringe (0–0.02).
-   *  Phones draw without the finish, so this changes nothing there. */
+   *  Phones and Smooth draw without the finish, so this changes nothing there. */
   look(o: Partial<Record<'vignette' | 'grain' | 'saturation' | 'contrast' | 'aberr', number>>) {
-    if (this.grade) for (const [k, v] of Object.entries(o)) this.grade.uniforms[k].value = v;
+    if (this.finish) for (const [k, v] of Object.entries(o)) this.finish[k].value = v;
   }
 
   /** Shakes the camera (0–1; it adds up and calms down by itself). */
@@ -425,6 +499,11 @@ export class World {
 
   dispose() {
     this.pause();
+    window.removeEventListener(GFX_EVENT, this.onGfx);
+    // What this round learned (M118): the sharpness that held (once it had a fair go), or, when even
+    // the lightest picture came late, a lighter choice for the next round.
+    if (this.pace.age > 5) saveFit(this.gfx, this.ratio);
+    if (this.late >= 1.5 && this.gfx !== 'smooth') setGfx(this.gfx === 'sharp' ? 'balanced' : 'smooth', true);
     // The effects chain doesn't free its own passes (glow, occlusion, finish): free them here.
     this.composer?.passes.forEach((p) => p.dispose());
     this.composer?.dispose();
@@ -433,13 +512,25 @@ export class World {
     this.loop = null;
     this.ro.disconnect();
     document.removeEventListener('visibilitychange', this.vis);
+    // Every texture (not only the colour map: surfaces have normal, roughness and glow maps, shaders
+    // their own), every light's shadow map: a round left them behind in graphics memory (M118).
+    const tex = (v: unknown) => { if (v instanceof THREE.Texture) v.dispose(); };
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose();
       const mats = Array.isArray(m.material) ? m.material : m.material ? [m.material] : [];
-      for (const x of mats) { const map = (x as THREE.MeshStandardMaterial).map; if (map && ![...glows.values()].includes(map as THREE.CanvasTexture)) map.dispose(); x.dispose(); }
+      for (const x of mats) {
+        Object.values(x).forEach(tex);
+        for (const u of Object.values((x as THREE.ShaderMaterial).uniforms ?? {})) tex(u.value);
+        x.dispose();
+      }
+      if ((o as THREE.Light).isLight) (o as THREE.Light).dispose();
     });
     this.renderer.dispose();
+    // The canvas has left the page (the round is over): give its graphics memory back now, not
+    // whenever the browser collects it. A canvas still on the page (React's second run of an effect
+    // in development) keeps its context for the next world.
+    if (!this.canvas.isConnected) this.renderer.forceContextLoss();
   }
 }
 

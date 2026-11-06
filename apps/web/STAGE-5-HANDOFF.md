@@ -4668,3 +4668,73 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
 - **Checked:** `first-impression-ui.mjs` (with the overlap and spill at six sizes, and Trace's picture
   loading on its tab), `landing-here-ui.mjs`, sign-in's Relief picture loading on its tab, `pnpm check`,
   the production build (server code 48.9 of 64 MB).
+
+## M118: the games without lag: lighter 3D drawing, a Graphics choice, memory given back (the owner, 6 Nov 2026)
+
+- **The ask:** "when I was playing games it was alot of lag in the system please improve that and also
+  see if any other problems are there". Live `error_reports`: nothing from Play. M102–M105 (4 Nov) made
+  every game but two a 3D scene with the full effects chain, and their frame rate was never checked on
+  a real device (this box draws WebGL in software).
+- **Measured** with a counter of the WebGL calls each frame (draw calls; pixels written as "screens":
+  each pass's size × its samples over the canvas's pixels), since this box can't time a real graphics
+  chip. Skyline Obby on a computer, before → after (Balanced):
+  - draw calls 705–747 → 421; pixels written 25.9 → 6.2 screens; shadow pixels 8.4 M → 4.2 M; passes
+    23 → 15. Sharp (everything on): 723 draws, 7.9 screens, 4.2 M. Smooth: 359 draws, one pass.
+  - shaders rebuilt mid-game: ~40 → none in 20 s of play (8 small effect shaders still build when a
+    round starts).
+  - WebGL contexts: 4 rounds made 4, gave back 0 until the browser got round to it → 4 of 4 at once.
+  - the river behind a game: graphics thread 77% busy (the game's menu) → under 1% with a game open.
+- **What cost so much** (all in `world/core.ts`):
+  1. Ambient occlusion (GTAO) drew the whole scene a second time, and that second `render()` drew the
+     sun's 2048² shadow map again. Now only in **Sharp**, and its scene view skips the shadow map
+     (`shadowMap.autoUpdate` off around it).
+  2. Every pass of the chain wrote 4 samples a pixel (both of the composer's buffers had `samples: 4`,
+     and the canvas itself was `antialias: true` under the chain). Now only the scene's buffer is 4×
+     (`sceneBuffer`, kept as the composer's read buffer after each frame: the chain swaps them).
+  3. Output, film finish and the glow's own additive step were three full-screen passes: one now
+     (`FINISH` on three's `OutputPass`, which keeps setting the tone-mapping defines; the bloom pass's
+     blend draw is skipped through its private `_fsQuad`, three r180).
+  4. The quality ladder waited for under 45 frames a second (45–59 juddered on), restarted at full
+     quality every round, and its last steps rebuilt every shader mid-play (shadows off, then the
+     effects chain off: the ~40 rebuilds above).
+  5. `dispose()` freed only colour maps: normal, roughness and glow maps, shader textures and shadow
+     maps stayed, and the context waited for garbage collection (a laptop's shared memory filled as
+     rounds were played).
+  6. The river (LightTrail) kept drawing full-screen at 60 frames a second under the game.
+- **Fixes:**
+  - **Graphics: Smooth / Balanced / Sharp** (`world/gfx.ts`, kept as `uv-play-gfx`), a button in every 3D
+    game's bar (not Spot the Fake or World Pin): Smooth draws straight to the screen at 1× (edges
+    smoothed there), no shadows or effects; **Balanced** (default) the sun's shadows, glow and film
+    finish at up to 1.5×; Sharp adds the corner shadows at up to 2×. A change mid-round applies the
+    sharpness and effects at once; shadows and edge smoothing from the next round. Phones keep their
+    pipeline (no shadows, no chain); the choice only sets their sharpness (1, 1.5, 2).
+  - **Frame pacing** (`Pace` in gfx.ts, tested): a frame is late past 1/55 s, or past the screen's own
+    frame time and a tenth (measured once from 40 frames on the game's menu), so a 50 Hz screen or a
+    battery saver's 30 isn't taken for a slow device. While the average is late, late frames add up
+    (a frame counts at most 0.25 s, so a device at 3 frames a second still steps down); half a second
+    lowers the sharpness a quarter step, to 0.6×; there the corner shadows go, then the glow; if even
+    that is late (1.5 s), the next round starts a choice lower. Nothing in it rebuilds a shader. The
+    sharpness that held is kept per choice (`uv-play-fit`) and the next round starts one step above it.
+  - **Memory:** `dispose()` frees every texture on every material and shader, every light's shadow map,
+    and loses the context when the canvas has left the page (`isConnected`: React's second effect run in
+    development keeps it).
+  - **The river rests** while the arena is open: `<html data-arena>` (arena.tsx) counts as hidden in
+    LightTrail.tsx, like a hidden tab; it carries on when the game closes (it never stops while seen, so
+    M56a's rule holds). The arena's grain lost its `mix-blend-mode` (it made the browser redraw the
+    whole arena into a layer of its own every frame; on the dark stage it looks the same).
+  - The frame-rate pill no longer wraps on phones next to the new button.
+- **Rules for what builds on it:** never change shadows, `shadowMap.enabled` or the effects chain while
+  a world runs (every shader is rebuilt); decide them in the constructor from `gfx`. A game doesn't
+  set `renderer.shadowMap.enabled` itself (Night Shift did; World decides). A pass that renders the
+  scene again turns `shadowMap.autoUpdate` off around it. New effects go into `FINISH` where they can.
+- **Not done:** real frame rates need a real device (the owner: the gauge and Graphics in a game's
+  bar); Ocean Cleanup's sea (clearcoat and shadows over the whole view) is the heaviest surface, left
+  as it is; ~8 small effect shaders still build at a round's first frame; the big announcements keep
+  their drop-shadow filter.
+- **Also checked:** the live errors: the only real recent one (owner People, "too many SQL variables",
+  31 Oct) was fixed by M73 on 1 Nov (to mark resolved); the rest are bots or the sample world's rows.
+  GitHub's checks are green on the branch.
+- **Checked:** `play-gfx-ui.mjs` (Graphics cycles and is kept, no button on flat games, the river flag,
+  the context given back, axe clean at 1280 light and 390 dark touch, no sideways scroll), the counter
+  on all 11 3D games (no page errors), pictures of Obby (all three choices), Fire Line and Night Shift,
+  `gfx.test.ts`, `pnpm check`, the production build.

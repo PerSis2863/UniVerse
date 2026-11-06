@@ -60,8 +60,8 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
     const crowd = new Crowd(w, () => out.current.net), look = readLook(), notesText = nightNotes(nightCode(seed));
     w.look({ vignette: 0.55, grain: 0.065, saturation: 0.8, contrast: 1.12 });
     let echoLines: THREE.LineSegments | null = null;
-    // Only the torch casts shadows (computers): the Quiet's shape stretches down the hall in its beam.
-    w.renderer.shadowMap.enabled = !w.phone;
+    // Only the torch casts shadows (computers, not Smooth: World decides): the Quiet's shape stretches
+    // down the hall in its beam.
     const c = new Controls(el, { sensitivity: 0.0022 });
     controls.current = c;
     w.scene.add(new THREE.HemisphereLight(0x223344, 0x000000, 0.1));

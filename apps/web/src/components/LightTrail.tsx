@@ -24,6 +24,12 @@ import { cn } from '@/lib/utils';
 // M84: where the browser can, every frame is drawn on a background thread (river.worker.ts, the page
 // hands its canvas over), so the river never takes time from taps, typing or scrolling; elsewhere
 // the same drawing (src/lib/river-paint.ts) runs on the page as before.
+// M118: it also rests while a game covers the whole screen (<html data-arena>, Play's arena), as in a
+// hidden tab: nobody can see it then, and the game needs the graphics chip. It carries on when the
+// game closes (this isn't M56a's "slow or stop by itself": it never stops while it can be seen).
+
+/** Nobody can see the river: a hidden tab, or a game over the whole screen. */
+const unseen = () => document.hidden || document.documentElement.hasAttribute('data-arena');
 
 const OWN_RIVER = new Set(['/', '/login', '/register']);
 
@@ -91,7 +97,7 @@ function River({ tone, hero, strength, className, path }: { tone: 'auto' | 'dark
         pointer: (x, y) => worker.postMessage({ t: 'pointer', x, y }),
         leave: () => worker.postMessage({ t: 'leave' }),
         theme: () => worker.postMessage({ t: 'dark', dark: dark() }),
-        visible: () => worker.postMessage({ t: 'hidden', hidden: document.hidden }),
+        visible: () => worker.postMessage({ t: 'hidden', hidden: unseen() }),
         move: () => worker.postMessage({ t: 'move' }),
         stop: () => worker.terminate(),
       };
@@ -109,7 +115,7 @@ function River({ tone, hero, strength, className, path }: { tone: 'auto' | 'dark
       // As on the background thread: whether it keeps moving is decided when the frame runs.
       const tick = (ms: number) => {
         frame = 0;
-        if (document.hidden) return;
+        if (unseen()) return;
         if (still || !moving) { draw(ms); return; }
         if (ms - last >= riverGap(phone)) { last = ms; draw(ms); }
         frame = requestAnimationFrame(tick);
@@ -121,7 +127,7 @@ function River({ tone, hero, strength, className, path }: { tone: 'auto' | 'dark
         pointer: (x, y) => { state.px = x; state.py = y; state.pAt = performance.now(); },
         leave: () => { state.pAt = -1e9; },
         theme: kick,
-        visible: () => { if (!document.hidden) kick(); },
+        visible: () => { if (!unseen()) kick(); },
         move: () => { moving = !still; kick(); },
         stop: () => cancelAnimationFrame(frame),
       };
@@ -140,7 +146,7 @@ function River({ tone, hero, strength, className, path }: { tone: 'auto' | 'dark
     };
     // After a page change: the river follows the new page's scroll (once it's on screen).
     resync.current = () => { requestAnimationFrame(() => drive.scroll()); };
-    const onPointer = (e: PointerEvent) => drive.pointer(e.clientX, e.clientY);
+    const onPointer = (e: PointerEvent) => { if (!unseen()) drive.pointer(e.clientX, e.clientY); };
     const onLeave = () => drive.leave();
     if (!still) {
       window.addEventListener('pointermove', onPointer, { passive: true });
@@ -156,9 +162,10 @@ function River({ tone, hero, strength, className, path }: { tone: 'auto' | 'dark
     document.addEventListener('scroll', onScroll, { capture: true, passive: true });
     window.addEventListener('resize', onResize, { passive: true });
     document.addEventListener('visibilitychange', onVisible);
-    // The theme can change (Settings → Appearance): redraw then too.
-    const themeWatch = new MutationObserver(() => drive.theme());
-    themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    // The theme can change (Settings → Appearance): redraw then too. A game opening or closing over
+    // the page (data-arena) rests or wakes it.
+    const themeWatch = new MutationObserver(() => { drive.theme(); drive.visible(); });
+    themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-arena'] });
     return () => {
       drive.stop();
       resync.current = () => {};

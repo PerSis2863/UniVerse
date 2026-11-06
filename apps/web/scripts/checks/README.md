@@ -73,6 +73,7 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `phone-panels.mjs` | The phone's slide-in panels on the built Worker (390 × 844, touch, CPU 4× slower, with a trace): the home logo's ping stops; the side menu's first open restyles only a few elements and its backdrop takes no finger scrolling; the Notifications panel fills the phone, its rows cascade in and still scale when tapped, Escape closes it; in Arabic it slides in and out on the left. Prints the style, layout and paint time of each opening. |
 | `peer-api.mjs` | Peer review on the local Worker. |
 | `peer-ui.mjs` | Peer review in the browser: the teacher's settings and "Hand out reviews", a student's review form, the reviews beside grading. 390 and 1280 px, light and dark, axe. |
+| `play-gfx-ui.mjs` | M118 on the built Worker: a 3D game's Graphics button (Balanced → Sharp → Smooth, kept on the device, its name saying the choice), none on the flat games, the river resting while a game covers the page (`data-arena`) and waking after, each round's WebGL context given back. Axe at 1280 light and 390 dark (touch). |
 | `policy-api.mjs` | Late penalties, hand-in limits, extensions, reopening and accommodations on the local Worker. |
 | `policy-ui.mjs` | Assignment rules in the browser: the teacher's Rules and extensions panel, the late notice and waiver in grading, "Let them hand in again", the student's view, extra time in the Class list. |
 | `pools-api.mjs` | Pools and numbers that change per student, through the API. |

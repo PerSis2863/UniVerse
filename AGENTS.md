@@ -127,8 +127,10 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     hero, sign-in fixed on phones, no glass (M116, the owner's one exception to the pause).
 - **On the branch `claude/youthful-fermi-sbdtcp`, not merged yet:** M117 (a smoother first visit: the
   landing's headline at first paint, its hero picture's loops in CSS, the Lab apps loaded on demand; the
-  student-home picture never over the hero, the owner's screenshot).
-- **Work numbers:** the next item is **M118**. Never reuse a number: take the next one after the
+  student-home picture never over the hero, the owner's screenshot); M118 (the games without lag: about
+  a quarter of the drawing per frame, a Graphics choice in each 3D game's bar, 60-a-second pacing that
+  never rebuilds shaders mid-game, memory given back after each round, the river resting behind a game).
+- **Work numbers:** the next item is **M119**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** to take Relief text requests, open a Twilio account (paid per message), set
   `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
@@ -229,6 +231,10 @@ page with a `[param]` is built once as `/x/open` and answered for every value). 
   than 30 days on the map; nearby alerts (`relief_watches`) never email and never show where a
   watcher is.
 - **Green** (`src/server/green.ts`): positions rounded to 0.1°; CO₂ factors only from `src/lib/green.ts`.
+- **Play's 3D worlds** (`src/components/play/world/core.ts`): the graphics choice and frame pacing are in
+  `world/gfx.ts` (M118); never change shadows or the effects chain while a world runs (every shader is
+  rebuilt: a stutter), decide them when it's made; `World.dispose` frees every texture and shadow map
+  and gives the WebGL context back.
 - **Sample data, two kinds:** the owner's "Fill with sample data" on the console Overview writes a
   made-up world in steps (`src/server/sample-world.ts`), marked so "Remove" takes out exactly that
   (emails `@sample.universe.test`, ids `smp…`, slugs `sample-`). A signed-in "Explore with sample

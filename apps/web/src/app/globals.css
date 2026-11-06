@@ -2191,8 +2191,10 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
     radial-gradient(55% 45% at 102% 104%, rgba(254, 129, 209, 0.14), transparent 70%),
     radial-gradient(45% 45% at -2% 104%, rgba(240, 204, 138, 0.12), transparent 70%);
 }
+/* The grain without a blend mode (M118): blending made the browser redraw the whole arena into a
+   layer of its own on every frame of a game; over this dark stage it looks the same. */
 .arena-glow::after {
-  content: ''; position: absolute; inset: 0; opacity: 0.09; mix-blend-mode: screen;
+  content: ''; position: absolute; inset: 0; opacity: 0.09;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 @keyframes arena-in { from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.985); } }
