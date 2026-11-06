@@ -4618,3 +4618,53 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
   48.9 of 64 MB, 49.0 before).
 - **Left out on purpose (the pause):** the in-app screens after sign-up (the student home itself), the
   other apps' tabs (only the shared fixes reach them), the rest of the landing's sections' layout.
+
+## M117: a smoother first visit, and the picture never over the hero (the owner, 6 Nov 2026)
+
+- **The ask:** "push and merge after that can you improve more like this and make everything ultra
+  smooth"; then, with a screenshot of the live site: "the dashboard is not aligned properly here please
+  fix that". PR #111 (M110–M116) was merged first and is live (no new real errors after it).
+- **Measured** on the built site (a budget phone: 390 × 844, CPU 4×; page opens on Lighthouse's slow 4G;
+  `smoothness.mjs`, `speed.mjs`, `bundle-report.mjs`, plus scratch scroll and idle-CPU profilers):
+  - taps, menus and scrolling in the app were already smooth (1.0% slow frames); the landing scrolled at
+    ~300–320 of 360 frames with 0–5 slow ones (runs differ by ±10 frames);
+  - **the landing's headline appeared at 4.1 s** on a first visit: framer's `initial` sent the whole hero,
+    and the website's top bar, at opacity 0 until all the page's script had run;
+  - **the landing kept a phone's main thread 66% busy while it sat still**; with the hero picture hidden,
+    20% (the river is ~13 points of it, the drifting corner lights ~6);
+  - the landing loaded 318 KB of script (gzipped), the four Lab apps' sections and pictures included.
+- **Fixes:**
+  1. **The owner's screenshot:** `ProductWindow` was pulled up with `lg:-mt-40`, which covered "Get the
+     app" and the hero picture's cards wherever the hero filled the screen (1280 × 720: 45 px). It sits in
+     the flow now; the hero is `lg:min-h-[calc(100svh-9rem)]`, so the picture's top still shows on tall
+     screens. The hero picture's third card spilled 17 px out of its 480 px box: 500 px now (and the
+     sign-in picture box `.auth-scene` with its smaller steps). `first-impression-ui.mjs` checks both at
+     six laptop and desktop sizes.
+  2. **The hero shows at first paint:** `.hero-in` (made for this: it starts at opacity 0.001, so it counts
+     as painted) in steps (`rise(ms)` in `page.tsx`) for the tabs, each word, the line, the buttons and the
+     picture; the top bar drops in with `.nav-in`. `AnimatePresence initial={false}` keeps the tab-switch
+     glides (only the first render skips framer).
+  3. **The UniVersity picture's endless motion is CSS** (`.campus-turn`, `.campus-turn-back`,
+     `.campus-breathe`, `.campus-wave` in `globals.css`): off the main thread, paused while scrolling (the
+     `html[data-scrolling]` list) and off screen (`[data-away]`). The turn and counter-turn start and pause
+     together, so the tiles stay upright.
+  4. **The four Lab apps load on demand:** their hero pictures are in `HeroScenesLab.tsx` (split from
+     `HeroScenes.tsx`, which keeps UniVersity's and the shared `still` / `useStep` / `pop`), and they and
+     the Lab sections (`TraceSection`, `Business`'s four, `ImpactMore`'s three) are `next/dynamic` in
+     `page.tsx`; a picture keeps its 480 px place while it loads. Sign-in's `AuthShowcase` too.
+- **Results** (same machine, same settings):
+  - landing, first visit: headline (LCP) 4096 → 1584 ms; script 318 → 284 KB; blocking 338 → 313 ms;
+  - landing, return visit: LCP 1452 → 540 ms; the processor free 8 s later 36% → 68%;
+  - landing at rest: main thread 66% → 44% busy; sign-in at rest 9%;
+  - scrolling: unchanged (296–316 frames with the picture, 307–321 with it hidden: noise);
+  - sign-in about the same (LCP 1.2 s; blocking 170–275 ms between runs; +2 KB of lazy-loading helper).
+- **Rule:** what shows at first paint never uses framer's `initial` (the server sends it at opacity 0);
+  give it `className="hero-in"` and a `rise()` step. An endless decorative loop is CSS, not a framer
+  `repeat: Infinity`, and goes in the `html[data-scrolling]` pause list.
+- **Not done (next):** the dashboard's first load (the hub is busy ~1 s and the student home ~0.7 s at 4×
+  CPU: the shared app code starting up, no single component; M109's "what every dashboard page imports up
+  front"); the four Lab pictures still loop in script (only on their tabs); the river stays as it is (the
+  owner, M56a).
+- **Checked:** `first-impression-ui.mjs` (with the overlap and spill at six sizes, and Trace's picture
+  loading on its tab), `landing-here-ui.mjs`, sign-in's Relief picture loading on its tab, `pnpm check`,
+  the production build (server code 48.9 of 64 MB).

@@ -11,9 +11,8 @@ import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
 import { LightTrail } from '@/components/LightTrail';
-import { CampusScene, GreenScene, PlayScene, ReliefScene, TraceScene } from '@/components/landing/HeroScenes';
-import { TraceSection } from '@/components/landing/TraceSection';
-import { CampaignsSection, HowSection, MapsSection, PricingSection } from '@/components/landing/Business';
+import dynamic from 'next/dynamic';
+import { CampusScene } from '@/components/landing/HeroScenes';
 import { Proof } from '@/components/landing/Proof';
 import { Glue } from '@/components/landing/Glue';
 import { Bento } from '@/components/landing/Bento';
@@ -21,7 +20,6 @@ import { Statement } from '@/components/landing/Statement';
 import { AppTabs } from '@/components/landing/AppTabs';
 import { AppsGrid, GreenSection, ReliefSection, PlaySection } from '@/components/landing/ImpactApps';
 import { SplitCta } from '@/components/landing/SplitCta';
-import { GreenMore, PlayMore, ReliefMore } from '@/components/landing/ImpactMore';
 import { LiveTotals } from '@/components/landing/LiveTotals';
 import { WorldSection } from '@/components/landing/WorldSection';
 import { ProductWindow } from '@/components/landing/ProductWindow';
@@ -30,6 +28,22 @@ import type { AppId } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { homeFor } from '@/lib/role-home';
 import { cn } from '@/lib/utils';
+
+// M117: the four Lab apps' hero pictures and sections load when their tab is first opened, not with
+// the page (most visitors stay on UniVersity's tab). A picture keeps its place while it loads.
+const scene = () => <div className="h-[480px] w-full max-w-[520px]" />;
+const TraceScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.TraceScene), { loading: scene });
+const ReliefScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.ReliefScene), { loading: scene });
+const GreenScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.GreenScene), { loading: scene });
+const PlayScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.PlayScene), { loading: scene });
+const TraceSection = dynamic(() => import('@/components/landing/TraceSection').then((m) => m.TraceSection));
+const MapsSection = dynamic(() => import('@/components/landing/Business').then((m) => m.MapsSection));
+const HowSection = dynamic(() => import('@/components/landing/Business').then((m) => m.HowSection));
+const CampaignsSection = dynamic(() => import('@/components/landing/Business').then((m) => m.CampaignsSection));
+const PricingSection = dynamic(() => import('@/components/landing/Business').then((m) => m.PricingSection));
+const GreenMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.GreenMore));
+const PlayMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.PlayMore));
+const ReliefMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.ReliefMore));
 
 // The public landing page, in the style of the owner's Relay video (a dark page, one river of light
 // from top to bottom, a live flow card, numbers that draw themselves as you scroll) and in
@@ -79,6 +93,8 @@ const HERE_FOR: [string, string][] = [
 ];
 // The hero's two buttons, a size up to sit under the bigger headline (M116).
 const HERO_BTN = 'h-12 px-6 text-[15px]';
+/** The hero's CSS entrance (`.hero-in`), a step later for each part (M117). */
+const rise = (delay: number, duration = 600): React.CSSProperties => ({ animationDelay: `${delay}ms`, animationDuration: `${duration}ms` });
 const SMALL = 'inline-flex items-center gap-1.5 text-sm font-medium text-zinc-300 hover:text-white underline-offset-4 hover:underline';
 
 const HERO: Record<AppId, Hero> = {
@@ -178,13 +194,17 @@ export default function ShowcasePage() {
             sections, and the typing and ticking parts would keep waking them). */}
         <main data-no-motion className="relative z-10">
           {/* ── Hero: the light pours through behind the words and the flow card ── */}
-          <section data-no-motion className="horizon relative min-h-[100svh] px-6 pt-32 md:pt-36 pb-6 lg:pb-20 overflow-hidden">
+          <section data-no-motion className="horizon relative min-h-[100svh] lg:min-h-[calc(100svh-9rem)] px-6 pt-32 md:pt-36 pb-6 lg:pb-20 overflow-hidden">
             <div className="relative max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 items-center">
               <div>
-                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.08, ease: EASE }}>
+                {/* M117: the hero arrives with CSS (`.hero-in`), so it shows as soon as the page does. With
+                    framer's `initial` the server sent it at opacity 0 and it waited for all the page's
+                    script: about 4 s on a budget phone over slow mobile data. Tab switches still glide
+                    with framer (AnimatePresence `initial={false}` only skips the first render). */}
+                <div className="hero-in" style={rise(40)}>
                   <AppTabs value={app} onChange={pick} label="Choose an app" />
-                </motion.div>
-                <AnimatePresence mode="wait">
+                </div>
+                <AnimatePresence mode="wait" initial={false}>
                   {/* Transform and opacity only (§8: a blur filter repaints every frame). */}
                   <motion.div key={app} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }} transition={{ duration: 0.45, ease: EASE }}>
                     {/* M116: bigger (the owner: "really big"); the text shadow keeps it readable where
@@ -193,12 +213,12 @@ export default function ShowcasePage() {
                       {/* A real space after each word (not a margin): screen readers, search engines and
                           copy-paste read "The school day…", not "Theschoolday…". */}
                       {hero.words.map((w, i) => (
-                        <Fragment key={w + i}><motion.span className="inline-block" initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.04 + i * 0.05, ease: EASE }}>{w}</motion.span>{' '}</Fragment>
+                        <Fragment key={w + i}><span className="hero-in inline-block" style={rise(60 + i * 50)}>{w}</span>{' '}</Fragment>
                       ))}
-                      <motion.span className="inline-block" initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.26, ease: EASE }}><Accent>{hero.accent}</Accent></motion.span>
+                      <span className="hero-in inline-block" style={rise(60 + hero.words.length * 50)}><Accent>{hero.accent}</Accent></span>
                     </h1>
-                    <p className="mt-6 text-lg sm:text-xl text-zinc-300 max-w-md leading-relaxed max-lg:[text-shadow:0_1px_14px_rgba(11,11,12,0.9)]">{hero.text}</p>
-                    <div className="mt-9 flex flex-wrap items-center gap-3">
+                    <p className="hero-in mt-6 text-lg sm:text-xl text-zinc-300 max-w-md leading-relaxed max-lg:[text-shadow:0_1px_14px_rgba(11,11,12,0.9)]" style={rise(320)}>{hero.text}</p>
+                    <div className="hero-in mt-9 flex flex-wrap items-center gap-3" style={rise(380)}>
                       <Link href={`/register?app=${app}`} data-magnetic className={cn(primary, HERO_BTN)}>Get started <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
                       <Link href={`/login?app=${app}`} data-magnetic className={cn(ghost, HERO_BTN)}>Sign in</Link>
                     </div>
@@ -217,17 +237,20 @@ export default function ShowcasePage() {
                   </motion.div>
                 </AnimatePresence>
               </div>
-              <Live><motion.div style={{ y: sceneY }}>
-              <AnimatePresence mode="wait">
+              <div className="hero-in" style={rise(200, 800)}><Live><motion.div style={{ y: sceneY }}>
+              <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={app} initial={{ opacity: 0, y: 40, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }} transition={{ duration: 0.9, ease: EASE }} style={{ transformPerspective: 1200 }} className="flex justify-center lg:justify-end">
                   <div data-tilt className="w-full flex justify-center lg:justify-end">{hero.card}</div>
                 </motion.div>
               </AnimatePresence>
-              </motion.div></Live>
+              </motion.div></Live></div>
             </div>
           </section>
 
-          {/* M116: UniVersity's home as it really looks, big, right under the hero. */}
+          {/* M116: UniVersity's home as it really looks, big, right under the hero. Its top shows on a
+              tall first screen because the hero is 9rem shorter than the screen on wide screens (M117);
+              it was pulled up with a negative margin, which covered the hero's last row and its
+              picture's cards wherever the hero filled the screen (the owner's screenshot, 6 Nov). */}
           {app === 'campus' && <ProductWindow />}
           <WorldSection app={app} />
           <LiveTotals />

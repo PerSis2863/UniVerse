@@ -1,13 +1,20 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { CampusScene, GreenScene, PlayScene, ReliefScene, TraceScene } from './HeroScenes';
+import { CampusScene } from './HeroScenes';
 import { Accent } from './bits';
 import { useChosenApp } from '@/lib/chosen-app';
 import type { AppId } from '@/lib/apps';
 
 // The left side of sign in and sign up: the app chosen on the tabs (src/lib/chosen-app.ts), its
 // headline and its live picture (the same scenes as the landing page), changing as the tabs change.
+// The four Lab apps' pictures load when their tab is chosen (M117), keeping their place meanwhile.
+const scene = () => <div className="h-[480px] w-full max-w-[520px]" />;
+const TraceScene = dynamic(() => import('./HeroScenesLab').then((m) => m.TraceScene), { loading: scene });
+const ReliefScene = dynamic(() => import('./HeroScenesLab').then((m) => m.ReliefScene), { loading: scene });
+const GreenScene = dynamic(() => import('./HeroScenesLab').then((m) => m.GreenScene), { loading: scene });
+const PlayScene = dynamic(() => import('./HeroScenesLab').then((m) => m.PlayScene), { loading: scene });
 
 const SIDE: Record<AppId, { head: string; accent: string; text: string; card: React.ReactNode; foot: string }> = {
   campus: { head: 'The school day runs', accent: 'itself.', text: 'Classes, grades and messages in one calm place.', card: <CampusScene />, foot: '13 languages / 8 question types / $0 for students' },

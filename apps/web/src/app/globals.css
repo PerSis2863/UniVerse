@@ -1075,7 +1075,7 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 @keyframes rm-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .stagger > *, .rise-in, .fade-up, .page-enter, .page-push, .page-pop, .shell-in, .sheet-in, .alert-in, .hero-in { animation-name: rm-fade !important; animation-duration: 200ms !important; }
+  .stagger > *, .rise-in, .fade-up, .page-enter, .page-push, .page-pop, .shell-in, .sheet-in, .alert-in, .hero-in, .nav-in { animation-name: rm-fade !important; animation-duration: 200ms !important; }
   .lift:hover, .lift:active, .card-hover:hover, .kpi-card:hover { transform: none !important; }
   .animate-bounce, .animate-heartbeat { animation: none !important; }
 }
@@ -1187,6 +1187,9 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 /* Landing hero: fade up with CSS so it shows as soon as the page arrives (not after the JavaScript loads). */
 @keyframes hero-in { from { opacity: 0.001; transform: translateY(28px); } to { opacity: 1; transform: none; } }
 .hero-in { animation: hero-in 0.9s var(--ease-glide) both; }
+/* M117 · The website's top bar drops in the same way (it waited for the script too). */
+@keyframes nav-in { from { opacity: 0.001; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
+.nav-in { animation: nav-in 0.5s var(--ease-glide) both; }
 @media (prefers-reduced-motion: reduce) { .hero-in { animation: none; } }
 
 /* Navigation progress bar */
@@ -2390,14 +2393,14 @@ html.dark .ins-cell :is(svg, .ins-pop) { color: #f0cc8a; }
 html.dark .glass-sidebar { -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%);
   background: radial-gradient(130% 30% at 0% 0%, rgba(254, 129, 209, 0.1), transparent 70%), radial-gradient(140% 36% at 50% 106%, rgba(240, 204, 138, 0.22), transparent 70%), linear-gradient(180deg, rgba(11, 11, 12, 0.92), rgba(11, 20, 50, 0.86) 60%, rgba(11, 34, 56, 0.82)); }
 
-/* Sign in and sign up's picture (AuthShowcase): the 480 px scenes shrink on shorter screens so the
-   page fits without scrolling, and go on the shortest. */
-.auth-scene { height: 480px; }
+/* Sign in and sign up's picture (AuthShowcase): the scenes (up to 500 px: UniVersity's, M117, so its
+   third card fits) shrink on shorter screens so the page fits without scrolling, and go on the shortest. */
+.auth-scene { height: 500px; }
 .auth-scene > * { transform-origin: top left; }
 [dir="rtl"] .auth-scene > * { transform-origin: top right; }
-@media (max-height: 960px) { .auth-scene { height: 384px; } .auth-scene > * { scale: 0.8; } }
-@media (max-height: 860px) { .auth-scene { height: 312px; } .auth-scene > * { scale: 0.65; } }
-@media (max-height: 760px) { .auth-scene { height: 264px; } .auth-scene > * { scale: 0.55; } }
+@media (max-height: 960px) { .auth-scene { height: 400px; } .auth-scene > * { scale: 0.8; } }
+@media (max-height: 860px) { .auth-scene { height: 325px; } .auth-scene > * { scale: 0.65; } }
+@media (max-height: 760px) { .auth-scene { height: 275px; } .auth-scene > * { scale: 0.55; } }
 @media (max-height: 700px) { .auth-scene { display: none; } }
 
 /* M56 · A pool of the page's navy behind words the river passes under (the landing's scroll story):
@@ -2629,8 +2632,22 @@ html.dark :is(a, button):has(> .comms-head) { color: #111113; }
 /* M96 · Decorative loops rest while the page scrolls (scroll-motion.ts sets <html data-scrolling>) and
    pick up again 180 ms after; measured, they were most of what was left of the cost of scrolling. The
    live dots keep pulsing (they show that something is live). */
-html[data-scrolling] :is(.passport-glow, .mkt-drift-a, .mkt-drift-b, .ins-ping, .ins-live, .ins-grain, .wcard-sway, .universe-node-pulse, .universe-u-beam, .universe-n-beam, .tank-wave, .play-ripple, .play-scene),
+html[data-scrolling] :is(.passport-glow, .mkt-drift-a, .mkt-drift-b, .ins-ping, .ins-live, .ins-grain, .wcard-sway, .universe-node-pulse, .universe-u-beam, .universe-n-beam, .tank-wave, .play-ripple, .play-scene, .campus-turn, .campus-turn-back, .campus-breathe, .campus-wave),
 html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::before, html[data-scrolling] .play-holo::after { animation-play-state: paused; }
+/* M117 · UniVersity's hero picture (HeroScenes `Campus`, the landing and sign-in): its endless motion in
+   CSS, which the browser runs off the main thread. As script (framer-motion repeats) the orbit, the
+   tiles' counter-turn, the core's breath and its waves kept a phone's main thread ~66% busy while the
+   page sat still (20% without them). The turn and counter-turn start together and pause together
+   (off screen, `[data-away]`; while scrolling, above), so the tiles stay upright. */
+@keyframes campus-turn { to { transform: rotate(360deg); } }
+@keyframes campus-breathe { 50% { transform: scale(1.04); } }
+@keyframes campus-wave { from { transform: scale(0.9); opacity: 0.55; } to { transform: scale(2.6); opacity: 0; } }
+.campus-turn { animation: campus-turn 60s linear infinite; }
+.campus-turn-back { animation: campus-turn 60s linear infinite reverse; }
+.campus-breathe { animation: campus-breathe 3.6s ease-in-out infinite; }
+.campus-wave { opacity: 0; animation: campus-wave 3.6s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .campus-turn, .campus-turn-back, .campus-breathe, .campus-wave { animation: none; } }
+
 /* Play's little scenes animate their children: they take the scene's state. Never end a
    html[data-scrolling] selector in "*" or "> *": the browser then restyles the whole page each time
    scrolling starts or stops (M98: 19 s of style work in a 6 s scroll on Trace). */

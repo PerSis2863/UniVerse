@@ -30,11 +30,10 @@ export function MarketingNav() {
 
   return (
     <header className="fixed top-0 inset-x-0 z-50 pt-[env(safe-area-inset-top)]">
-      <motion.nav
-        initial={{ y: -24, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className={cn(
+      {/* M117: drops in with CSS (`.nav-in`) from the first paint; with framer's `initial` the server
+          sent it at opacity 0 until the page's script had loaded (seconds on a slow phone). */}
+      <nav
+        className={cn('nav-in',
           // One width (the hero's) in both states: only the fill, hairline and shadow fade in, so
           // nothing is laid out again while it changes (§8: transform and opacity, named properties).
           'mx-auto mt-3 max-w-6xl flex items-center justify-between gap-4 rounded-full px-4 sm:px-5 h-14 border transition-[background-color,border-color,box-shadow] duration-300',
@@ -71,7 +70,7 @@ export function MarketingNav() {
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
-      </motion.nav>
+      </nav>
 
       <AnimatePresence>
         {open && (
