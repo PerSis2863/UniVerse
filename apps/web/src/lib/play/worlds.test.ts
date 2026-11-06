@@ -3,9 +3,7 @@ import { GAMES, LOOK_COLORS, LOOK_HATS, ageOn, cleanPos, levelOf, tooYoung, xpFo
 import { NIGHT_STORY_MAX } from './night-story';
 import {
   NIGHT_ESCAPE, NIGHT_FLOOR, NIGHT_FLOORS, NIGHT_KEY, NIGHT_KEYS, NIGHT_PER_SECOND, NIGHT_STUN, NIGHT_STUN_COOLDOWN_S, NIGHT_STUN_S, OBBY_CHECK, OBBY_FINISH, OBBY_GEM, OBBY_PER_SECOND, OBBY_STAGES,
-  ORBIT_ESCAPE, ORBIT_PER_SECOND, ORBIT_REACTOR, ORBIT_SECTOR, ORBIT_SECTORS, ORBIT_TANK, ORBIT_TANK_EVERY_S,
-  ORBIT_FLARE_EVERY_S, ORBIT_FLARE_S, ORBIT_FLARE_WARN_S, beltDir, orbitFlare,
-  mazeNext, mazeStep, nightKeys, nightMaze, nightSize, obbyCourse, orbitMeteors, orbitReactors, orbitStation,
+  beltDir, mazeNext, mazeStep, nightKeys, nightMaze, nightSize, obbyCourse,
 } from './worlds';
 
 describe('3D worlds (M36)', () => {
@@ -38,13 +36,6 @@ describe('3D worlds (M36)', () => {
     for (let f = 0; f < NIGHT_FLOORS; f++) { const fl = nightMaze(11, f); expect(fl.n).toBe(nightSize(f)); expect(new Set(fl.keys).size).toBe(nightKeys(f)); expect(fl.keys).not.toContain(fl.exit); }
   });
 
-  it('places five reactors and a pod on different decks, meteors in time order, under the cap', () => {
-    for (let k = 0; k < ORBIT_SECTORS; k++) { const st = orbitStation(5, k); expect(new Set([...st.reactors, st.pod]).size).toBe(orbitReactors(k) + 1); expect(st.reactors).not.toContain(0); }
-    const ms = orbitMeteors(5, GAMES.orbit.seconds);
-    expect(ms.every((x, i) => i === 0 || x.at > ms[i - 1].at)).toBe(true);
-    const reactors = Array.from({ length: ORBIT_SECTORS }, (_, k) => orbitReactors(k)).reduce((a, b) => a + b, 0);
-    expect(reactors * ORBIT_REACTOR + (GAMES.orbit.seconds / ORBIT_TANK_EVERY_S + 1) * ORBIT_TANK + (ORBIT_SECTORS - 1) * ORBIT_SECTOR + ORBIT_ESCAPE + GAMES.orbit.seconds * ORBIT_PER_SECOND).toBeLessThanOrEqual(GAMES.orbit.maxScore);
-  });
 
   it('works out ages and refuses rated games only for a known younger age', () => {
     const now = new Date('2026-10-25T12:00:00Z');
@@ -86,13 +77,5 @@ describe('M39 world features', () => {
     expect(kinds.has('belt')).toBe(true);
     expect(pads.filter((p) => p.kind === 'ice' || p.kind === 'belt').every((p) => p.stage > 3)).toBe(true);
     expect(new Set(pads.filter((p) => p.kind === 'belt').map(beltDir))).toEqual(new Set([1, -1]));
-  });
-  it('solar flares warn, burn, then calm, on the round clock', () => {
-    expect(orbitFlare(10).phase).toBe('calm');
-    expect(orbitFlare(52).phase).toBe('warn');
-    expect(orbitFlare(50 + ORBIT_FLARE_WARN_S + 1).phase).toBe('flare');
-    expect(orbitFlare(50 + ORBIT_FLARE_WARN_S + ORBIT_FLARE_S + 1).phase).toBe('calm');
-    expect(orbitFlare(50 + ORBIT_FLARE_EVERY_S + 1).phase).toBe('warn');
-    expect(orbitFlare(52).left).toBeCloseTo(ORBIT_FLARE_WARN_S - 2);
   });
 });

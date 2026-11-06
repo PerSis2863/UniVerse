@@ -31,7 +31,7 @@ const VIEWS: Record<GameId, React.ComponentType<GameProps>> = {
   reef: dynamic(() => import('./ReefRescue').then((m) => m.ReefRescue), { ssr: false, loading }),
   obby: dynamic(() => import('./SkylineObby').then((m) => m.SkylineObby), { ssr: false, loading }),
   night: dynamic(() => import('./NightShift').then((m) => m.NightShift), { ssr: false, loading }),
-  orbit: dynamic(() => import('./OrbitBreach').then((m) => m.OrbitBreach), { ssr: false, loading }),
+  voyager: dynamic(() => import('./SolarVoyager').then((m) => m.SolarVoyager), { ssr: false, loading }),
 };
 
 /** Warm a game's code while the lobby or countdown shows. */
@@ -39,7 +39,7 @@ export function preloadGame(game: GameId) {
   const mod = {
     quiz: () => import('./QuizClash'), fakes: () => import('./SpotTheFake'), supply: () => import('./SupplyRun'), sort: () => import('./RecycleRush'),
     type: () => import('./TypeRace'), pin: () => import('./WorldPin'), rescue: () => import('./FloodRescue'), ocean: () => import('./OceanCleanup'), fire: () => import('./FireLine'), reef: () => import('./ReefRescue'),
-    obby: () => import('./SkylineObby'), night: () => import('./NightShift'), orbit: () => import('./OrbitBreach'),
+    obby: () => import('./SkylineObby'), night: () => import('./NightShift'), voyager: () => import('./SolarVoyager'),
   }[game];
   void mod();
 }
@@ -58,7 +58,7 @@ const CONTROLS: Record<GameId, { icon: typeof Keyboard; text: string }[]> = {
   reef: [{ icon: Keyboard, text: 'WASD swim · Space up · C down · E use' }, { icon: MousePointer2, text: 'Click, then the mouse turns' }, { icon: Pointer, text: 'Phone: joystick, Up, Down, Use' }],
   obby: [{ icon: Keyboard, text: 'WASD move · Space jump · Shift run' }, { icon: MousePointer2, text: 'Click, then the mouse turns' }, { icon: Pointer, text: 'Phone: joystick and Jump' }],
   night: [{ icon: Keyboard, text: 'WASD walk · Shift run' }, { icon: MousePointer2, text: 'Click, then look with the mouse' }, { icon: Pointer, text: 'Phone: joystick, drag to look' }],
-  orbit: [{ icon: Keyboard, text: 'WASD move · Space jump (again to boost)' }, { icon: MousePointer2, text: 'Click, then the mouse turns' }, { icon: Pointer, text: 'Phone: joystick, Jump' }],
+  voyager: [{ icon: Keyboard, text: 'WASD fly · Space up · C down · Shift boost' }, { icon: MousePointer2, text: 'Click, then the mouse steers' }, { icon: Pointer, text: 'Phone: joystick, drag to steer, Boost' }],
 };
 
 export function GameStage({ game, seed, startsAt, endsAt, clock, onProgress, onFinish, strip, rivals, net }: {

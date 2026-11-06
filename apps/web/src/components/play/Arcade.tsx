@@ -24,7 +24,7 @@ import { JoinRoom, type PlayMe } from './GameShell';
 const WORLD_ART: Partial<Record<GameId, { bg: string; tags: string[] }>> = {
   obby: { bg: 'linear-gradient(160deg,#2b59ff,#9b8cff 55%,#ffb3d9)', tags: ['10 stages', 'bounce pads', 'lasers'] },
   night: { bg: 'radial-gradient(60% 60% at 50% 55%,#e5e7eb 0%,#3f3f46 18%,#0b0b0c 60%)', tags: ['torch', '5 keys', 'don’t get caught'] },
-  orbit: { bg: 'radial-gradient(80% 80% at 20% 110%,#1d4ed8,#02030a 60%)', tags: ['low gravity', 'reactors', 'meteors'] },
+  voyager: { bg: 'radial-gradient(55% 55% at 12% 50%,#fff7d6 0%,#fbbf24 9%,#b45309 18%,transparent 34%),radial-gradient(14% 22% at 72% 42%,#c9a27e,transparent 70%),radial-gradient(120% 90% at 50% 50%,#0b1026,#02030a 70%)', tags: ['8 planets', 'real facts', 'asteroid belt'] },
   reef: { bg: 'linear-gradient(180deg,#5eead4,#0e7490 45%,#083344)', tags: ['swim', 'plant coral', 'free turtles'] },
 };
 

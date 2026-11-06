@@ -72,7 +72,7 @@ software or website in the main website… where they create a impact"). Each ap
   teams and a map.
 - **Play** (`/play`): thirteen games (quick: Quiz Clash, Spot the Fake, Supply Run, Recycle Rush; big:
   Type Race, World Pin, Flood Rescue, Ocean Cleanup, Fire Line) and four 3D worlds (three.js: Skyline
-  Obby, Night Shift 18+, Orbit Breach 12+, Reef Rescue), all drawn realistically since M102–M105 (every
+  Obby, Night Shift 18+, Solar Voyager, Reef Rescue), all drawn realistically since M102–M105 (every
   game but Quiz Clash's questions and Spot the Fake's cards is a 3D scene), plus **STORMFALL** 16+ on computers (a Unity battle royale: source `games/stormfall/`, page `/play/stormfall`, its web build fetched at build time by `scripts/fetch-stormfall.mjs`); rated games check
   the birth date or ask), solo or up to 8 friends in a room with a code (the `GameRoom` Durable
   Object), leaderboards.
@@ -99,7 +99,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (merged through PR #111 on 6 Nov, live): everything through **M116**.
+- **On `main`** (merged 6 Nov, live): everything through **M123**.
   - **Look and motion:** the CreditKarma look (M91–M94, §8); smooth scrolling, maps and loading
     (M86, M89, M96–M98); the pink river and the planet drawn on a background thread (M84, M85); glides,
     sheets and motion that answers the pointer (M29, M41, M45, M63).
@@ -125,17 +125,15 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     "Invite students" link (M113), a test that every API route checks who is asking (M114), body-parser
     2.4.0 (M115), the first impression: the student home pictured under the landing's headline, a bigger
     hero, sign-in fixed on phones, no glass (M116, the owner's one exception to the pause).
-- **On the branch `claude/youthful-fermi-sbdtcp`, not merged yet:** M117 (a smoother first visit: the
-  landing's headline at first paint, its hero picture's loops in CSS, the Lab apps loaded on demand; the
-  student-home picture never over the hero, the owner's screenshot); M118 (the games without lag: about
-  a quarter of the drawing per frame, a Graphics choice in each 3D game's bar, 60-a-second pacing that
-  never rebuilds shaders mid-game, memory given back after each round, the river resting behind a game);
-  M119 (Play's page without the constellation and the player card; what replaces them is the owner's
-  call); M120 (CPU: in-app page changes of prerendered pages answered from Cloudflare's cache, 1.8 s →
-  0.03 s on a fresh instance; the spending check hourly); M121 (Messages, professional: one solid
-  workspace, the phone composer and header fixed, mark all as read, keys between chats); M122 (every
-  game almost full screen: one shared play height, `--play-h`).
-- **Work numbers:** the next item is **M123**. Never reuse a number: take the next one after the
+  - **After the launch work (M117–M123, 6 Nov):** a smoother first visit (M117); the games without lag
+    (M118: a Graphics choice in each 3D game's bar, 60-a-second pacing, memory given back); Play's page
+    without the constellation and the player card (M119); CPU: in-app page changes answered from
+    Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
+    `--play-h`); Solar Voyager in place of Orbit Breach (M123).
+- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): a
+  modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
+  (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
+- **Work numbers:** the next item is **M124**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide whether the spending guard should still pause the whole site at 90% of the
   included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set

@@ -4844,3 +4844,74 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
 - **Measured** at 1440 × 900 (dev server): Skyline Obby, Fire Line and Quiz Clash 1,392 × 716–740 (77–79%
   of the screen), World Pin 72%, Recycle Rush 67%, Supply Run 64%; none of them scrolls any more.
 - **Rule:** a game's play area takes `--play-h` (less its own rows above or below); no fixed heights.
+
+## M123: Solar Voyager replaces Orbit Breach (the owner, 6 Nov 2026)
+
+- **The ask** (a screenshot of Orbit Breach): "please remove this game because I don't like it just add
+  something else related to space and technologies and shows beautiful planets and stars and system
+  around that with realistic graphics".
+- **Now:** Orbit Breach is gone (`OrbitBreach.tsx`, its rules in `worlds.ts` and their tests). In its
+  place **Solar Voyager** (`voyager`, app `play`, 300 s, cap 15,000): fly a survey probe through the Solar
+  System and stay near each of the eight planets to survey it (1,000 each, then a card with a real fact
+  and two numbers); stardust on the way (25 each), a comet that passes the Sun halfway through the round
+  (250 for flying close by), the asteroid belt between Mars and Jupiter (a bump costs 150, as do the
+  planets, moons and the Sun), 15 a second left once all eight are done. Boost with Shift (phones: Boost)
+  drains in 5 s and fills in 10. A marker names the planet to survey next ("Mars · 15 s away", or an
+  arrow at the screen's edge); a map in the corner shows the orbits, the belt, the comet and you.
+- **Files:** rules `src/lib/play/voyager.ts` (pure and seeded: planets, moons, dust, belt, comet path,
+  start; tested in `voyager.test.ts`), the scene `src/components/play/SolarVoyager.tsx`, the shaders in
+  `world/nature.ts`: `planetMaterial` (five kinds: `earth`, `desert`, `giant`, `rock`, `venus`, with
+  bands, storm, air, tint and the rings' shadow on the globe), `ringMaterial` (the planet's shadow on the
+  rings, the lit and unlit faces), `planetAir` (the glow at the edge, day side only), `sunMaterial`,
+  `corona`. The room server now turns a saved room whose game no longer exists into Quiz Clash
+  (`cloudflare/game-room.ts`), so an old Orbit (or later Reef) room can't crash the page.
+- **Traps:** the comet is drawn from the seed **before** the belt (the belt's size differs between phones
+  and computers; a room must share the comet). The camera's far plane is 4,000 (set after `new World`).
+  Relief worked out from one pixel to the next (`dFdx` bump) showed square blocks close up: removed;
+  craters are in the colour. The marker is placed with this frame's camera (`updateMatrixWorld` after
+  `follow`) and hidden during the fly-in. M122's rule holds: no how-to line under the frame.
+- **Checked:** `play-voyager-ui.mjs` (drawn, the marker, Earth surveyed by flying forward and its card,
+  the phone's Boost / Up / Down, axe at 1280 dark and 390 light, no sideways scroll, no errors),
+  `voyager.test.ts`, `pnpm check`; screenshots on the dev server.
+
+## For the next agent: what the owner asked for that isn't done yet (6 Nov 2026)
+
+Read `AGENTS.md` first (the owner is not a developer: plain words, merge only when they say "merge").
+The next work number is **M124**. The owner asked for these in this conversation; do them in this order,
+one commit and one note each, then ask the owner before merging.
+
+1. **Replace Reef Rescue with a modern ocean game** (the owner: "remove reef rescue game and add
+   something really modern and related ocean and it should be interesting for the people"). Remove it
+   the way M123 removed Orbit Breach: `ReefRescue.tsx`, `src/lib/play/reef.ts` and its test, `reef` in
+   `GAME_IDS` / `GAMES` (`src/lib/play.ts`; keep the per-app counts in `big-games.test.ts`: reef is app
+   `green`), `GameStage.tsx` (the dynamic import, `preloadGame`, `CONTROLS`), `GameIcon.tsx`, `Arcade.tsx`
+   (`WORLD_ART`), `ImpactMore.tsx` (`WORLDS`), `scripts/checks/launch-focus-ui.mjs`, AGENTS.md section 3,
+   then `node scripts/gen-guide-data.mjs`. Ideas that fit "modern": an ocean-tech mission in a realistic
+   3D sea (an underwater drone or a research submarine mapping a deep-sea vent and kelp forest, tagging
+   whales and sharks for science, cleaning a garbage patch with a robot skimmer, in day-to-dusk light);
+   reuse `world/core.ts` (World, Controls, follow, Crowd), Reef's swim loop and `lightBeam`, and the
+   M118 rules (`world/gfx.ts`: never change shadows or effects mid-round; `World.dispose` frees all).
+   Real facts like Solar Voyager's cards. Write the rules pure and seeded with a test, a cap test
+   (`max <= GAMES.x.maxScore`), and a browser check like `play-voyager-ui.mjs`.
+2. **Skyline Obby: a richer, more realistic world round the course** (the owner: "make the surrounding
+   environment more realistic and add more contents and scenes in there as well as in background and
+   surrounding that should look beautiful"; then "please add background exactly like this in the
+   surrounding" with two pictures). **What the pictures show** (you can't see them): (a) a valley of huge
+   floating rock mountains, tall and narrow, their tops covered in jungle, waterfalls pouring off their
+   edges into white mist far below, layers of cloud and haze between them, the farther ones pale and
+   blue, soft sunlight through the haze, birds; (b) curved natural stone arches and layered cliffs, green
+   ledges floating at different heights, a turquoise lagoon below, the same misty depth. Build an
+   original scene in that style (no film's names, creatures, vehicles or exact shapes): floating rock
+   towers (`islandRock`, `rocks` in `world/nature.ts`) with jungle tops, waterfalls (a scrolling
+   see-through strip plus mist sprites at the foot), the cloud sea (`cloudSea`) far below, distance haze,
+   arches, a lagoon, birds. Keep the course itself and its rules unchanged (`obbyCourse` in
+   `worlds.ts`). Background parts must be cheap: merged geometry, instancing, no new lights, decided when
+   the world is made (M118).
+3. **A sweep of the whole site for other problems** (the owner: "also see what else we can change in the
+   system"). Main pages at 390 and 1280 px, light and dark: sideways scrolling, axe (serious and
+   critical), see-through cards (the M91 look forbids glass), page errors; read the live `error_reports`
+   first (AGENTS.md section 1). Fix what's found; list what's left for the owner.
+
+**Waiting on the owner** (ask, don't decide): whether the spending guard should still pause the whole
+site at 90% of the included CPU (M120); what, if anything, goes where Play's player card was (M119);
+mark the 31 Oct error report resolved in the console.
