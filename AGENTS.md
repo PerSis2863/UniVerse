@@ -132,7 +132,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): a
   modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
-  (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
+  (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems;
+  an original zombie-survival shooter in the style of the link the owner sent (not a copy of it).
 - **Work numbers:** the next item is **M124**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide whether the spending guard should still pause the whole site at 90% of the

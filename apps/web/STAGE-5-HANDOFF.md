@@ -4912,6 +4912,52 @@ one commit and one note each, then ask the owner before merging.
    critical), see-through cards (the M91 look forbids glass), page errors; read the live `error_reports`
    first (AGENTS.md section 1). Fix what's found; list what's left for the owner.
 
+4. **A zombie-survival shooter like the link the owner sent** (6 Nov: "https://vel.gg/bsz can you make same
+   game as this website has?", then "just add in the notes so other agent can work on it"). **What the link
+   is:** a browser copy of Call of Duty: Black Ops' Zombies mode (its menu shows that game's cover art and a
+   map file named after one of its maps; "Game setup": your name, single player or multiplayer, classic or
+   Counter-Strike guns, high or low graphics, choose a map). **Don't copy it** (its name, maps, art, music,
+   weapon names and characters belong to its maker): build our own game in the same genre and tell the owner
+   so once. Also tell them STORMFALL (`/play/stormfall`, computers only) already has "Outbreak", undead
+   survival on two maps. A design worked out before the owner asked for notes (nothing of it is committed):
+   - **Holdout**, 16+ (`age: 16`), app `play`, `world: true`, about 1,200 s a round (the round ends early when
+     you go down). First person in three.js on the World engine. Keep it off the landing (rated games, M112).
+   - **The map, Signal Yard** (original): an old railway station at night in fog. The waiting hall (start,
+     four boarded windows, a 600 wall gun), a door (750) to the platform (a train standing at it, two
+     windows, the undead climbing up from the tracks at both ends, a 1,000 wall gun, the crate), a gate
+     (1,000) to the warehouse (three windows, the power lever, perk machines, a 1,200 wall gun).
+   - **Rounds:** `count = round(6 + 3r + 0.18r²)`, health `150 + 100(r − 1)` up to round 9, then ×1.1 a
+     round; runners from round 4 (a fifth more each round); at most 24 on the map; one comes every
+     `max(0.6, 2.2 − 0.12r)` s. The undead tear a plank off a window every ~1.6 s (six planks), climb in,
+     then chase along a flow field (BFS over a 0.5 m grid of the map, closed doors solid, recomputed four
+     times a second from the player's cell) with a push apart from each other; a swipe does 45.
+   - **Points:** 500 to start, +10 a hit, +60 a kill, +100 a headshot kill, +130 a knife kill, +10 a plank
+     rebuilt (hold E at a window). Wall guns (E to buy, half price for ammo), the crate (950: a random gun,
+     the rare one is an arc gun whose bolt jumps to three more), perks once the power is on (more health,
+     faster reload, faster fire, faster run: original names), drops from kills (ammo, double points, a
+     blast that clears the map, one-hit kills for 30 s). Health 100 (250 with the health perk), it comes
+     back after 3 s without a hit. Grenades (G), the knife (V), reload (R), aim (right mouse).
+   - **Leaderboard score** (not the points you spend): `kills × 100 + headshots × 50 + rounds × 500`; its cap
+     for the server: kills ≤ seconds ÷ 0.6 + 24, rounds ≤ kills ÷ 9 (about 416,000 for 1,200 s).
+   - **Reuse from the history** (deleted with Ridgeline Ops in M82, read with
+     `git show 7adb5460^:apps/web/src/components/play/ops/<file>`): `operator.ts` (a figure skinned to 19
+     bones, one draw each, with walk, run, flinch and fall poses and hit spheres for head, body and limbs:
+     restyle it as the undead, arms forward, torn clothes, glowing eyes as a small separate mesh),
+     `guns.ts` (detailed first-person gun models; it needs parts of `src/lib/play/ops/arsenal.ts` from the
+     same commit, or a smaller builder), `fx.ts` (pooled sparks, flashes, holes, casings), `audio.ts`
+     (gunshots made in the browser, with echo).
+   - **The engine:** add `World.overlay(scene, camera)` in `world/core.ts` to draw the hands and gun over
+     the world with their own depth (a `RenderPass` with `clear = false`, `clearDepth = true` inserted after
+     the first pass; on phones and Smooth, a second `render` after `clearDepth()`); make that world with
+     `ao: 0`. Keep the light count fixed (a muzzle-flash light whose power goes to 0, `LightPool` for lamps):
+     adding a light rebuilds every shader (M118).
+   - **Plumbing** (as M123 did for Solar Voyager): `GAME_IDS` and `GAMES` in `src/lib/play.ts`, `GameStage`
+     (the dynamic import, `preloadGame`, `CONTROLS`), `GameIcon`, `Arcade` (`WORLD_ART`), the counts in
+     `big-games.test.ts` (14 games, 5 worlds), AGENTS.md section 3, `node scripts/gen-guide-data.mjs`;
+     rules pure with a test and a cap test; a browser check like `play-voyager-ui.mjs`. In a room, everyone
+     first fights their own undead (others are drawn as they move); sharing the undead needs the room
+     server to relay them (later).
+
 **Waiting on the owner** (ask, don't decide): whether the spending guard should still pause the whole
 site at 90% of the included CPU (M120); what, if anything, goes where Play's player card was (M119);
 mark the 31 Oct error report resolved in the console.
