@@ -2,7 +2,7 @@
 
 import Link from '@/components/ui/Link';
 import { InstallGuide } from '@/components/pwa/InstallGuide';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, MotionConfig, m as motion, useScroll, useSpring, useTransform } from 'framer-motion';
 import { ArrowRight, ChevronDown, Smartphone } from 'lucide-react';
@@ -24,14 +24,17 @@ import { SplitCta } from '@/components/landing/SplitCta';
 import { GreenMore, PlayMore, ReliefMore } from '@/components/landing/ImpactMore';
 import { LiveTotals } from '@/components/landing/LiveTotals';
 import { WorldSection } from '@/components/landing/WorldSection';
+import { ProductWindow } from '@/components/landing/ProductWindow';
 import { Accent, EASE, Live, Motion, Reveal, ghost, primary } from '@/components/landing/bits';
 import type { AppId } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
 import { homeFor } from '@/lib/role-home';
+import { cn } from '@/lib/utils';
 
 // The public landing page, in the style of the owner's Relay video (a dark page, one river of light
 // from top to bottom, a live flow card, numbers that draw themselves as you scroll) and in
-// UniVerse's colours (M52): Midnight Abyss, Aqua Jade and Baby Pink; the planet section after the hero. Every claim on it is about what the product does; no
+// the M91 look (black and white, pink as the one accent); UniVersity's home pictured under its hero
+// (M116), then the planet section. Every claim on it is about what the product does; no
 // invented usage numbers or quotes. UniVerse Impact is a home for several apps (src/lib/apps.ts): the
 // tabs at the top pick one (the owner: "put the uni-versity and universe trace tab where user can
 // switch to where they want to login"); the hero, the sections below and the sign-in buttons follow
@@ -39,7 +42,8 @@ import { homeFor } from '@/lib/role-home';
 
 const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
   all: [
-    { q: 'What is UniVerse Impact?', a: 'One account for five apps: school, products, help, climate and games. Messages and the assistant work in all of them.' },
+    { q: 'What is UniVerse Impact?', a: 'UniVersity, a calm place for a school’s classes, grades and messages, plus four newer apps for products, help, climate and games. One account opens them all.' },
+    { q: 'What does Lab mean?', a: 'A new app that is still finding its first people. It works; expect it to change.' },
     { q: 'Does it work on phones and in other languages?', a: 'Yes. It installs on any phone or computer and speaks 13 languages.' },
   ],
   campus: [
@@ -56,7 +60,7 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
   ],
   play: [
     { q: 'Do I need friends online to play?', a: 'No. Every game works solo. For friends, share a room code.' },
-    { q: 'Is it free?', a: 'Yes, every game, STORMFALL included, is free.' },
+    { q: 'Is it free?', a: 'Yes, every game is free.' },
   ],
   green: [
     { q: 'How is the CO₂ saved worked out?', a: 'From published averages: a young tree takes up about 22 kg a year.' },
@@ -73,6 +77,8 @@ const HERE_FOR: [string, string][] = [
   ['Help people', '/register?app=relief'],
   ['Look around', '/t/demo'],
 ];
+// The hero's two buttons, a size up to sit under the bigger headline (M116).
+const HERO_BTN = 'h-12 px-6 text-[15px]';
 const SMALL = 'inline-flex items-center gap-1.5 text-sm font-medium text-zinc-300 hover:text-white underline-offset-4 hover:underline';
 
 const HERO: Record<AppId, Hero> = {
@@ -90,17 +96,17 @@ function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
       <div className="border-b border-white/[0.07]">
         <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="w-full flex items-center justify-between gap-6 py-6 text-start">
           <span className="font-semibold text-lg text-white">{q}</span>
-          <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }} className="shrink-0 w-8 h-8 rounded-full border border-white/10 flex items-center justify-center">
+          <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2, ease: EASE }} className="shrink-0 w-8 h-8 rounded-full border border-white/10 flex items-center justify-center">
             <ChevronDown className="w-4 h-4 text-zinc-400" />
           </motion.span>
         </button>
-        <AnimatePresence initial={false}>
-          {open && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }} className="overflow-hidden">
-              <p className="pb-6 text-zinc-400 leading-relaxed max-w-3xl">{a}</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* The answer fades in (transform and opacity, under 300 ms) and closes at once; animating
+            its height would lay the page out again on every frame (§8). */}
+        {open && (
+          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: EASE }}>
+            <p className="pb-6 text-zinc-400 leading-relaxed max-w-3xl">{a}</p>
+          </motion.div>
+        )}
       </div>
     </Reveal>
   );
@@ -172,24 +178,29 @@ export default function ShowcasePage() {
             sections, and the typing and ticking parts would keep waking them). */}
         <main data-no-motion className="relative z-10">
           {/* ── Hero: the light pours through behind the words and the flow card ── */}
-          <section data-no-motion className="horizon relative min-h-[100svh] px-6 pt-32 md:pt-36 pb-20 overflow-hidden">
+          <section data-no-motion className="horizon relative min-h-[100svh] px-6 pt-32 md:pt-36 pb-6 lg:pb-20 overflow-hidden">
             <div className="relative max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 items-center">
               <div>
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.08, ease: EASE }}>
                   <AppTabs value={app} onChange={pick} label="Choose an app" />
                 </motion.div>
                 <AnimatePresence mode="wait">
-                  <motion.div key={app} initial={{ opacity: 0, y: 16, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -10, filter: 'blur(6px)', transition: { duration: 0.2 } }} transition={{ duration: 0.55, ease: EASE }}>
-                    <h1 className="mt-8 text-5xl sm:text-6xl lg:text-7xl font-bold tracking-[-0.035em] leading-[1.02] text-white">
+                  {/* Transform and opacity only (§8: a blur filter repaints every frame). */}
+                  <motion.div key={app} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }} transition={{ duration: 0.45, ease: EASE }}>
+                    {/* M116: bigger (the owner: "really big"); the text shadow keeps it readable where
+                        the river runs straight behind it on a phone (one column, no gap to bend into). */}
+                    <h1 className="mt-8 text-[3.25rem] sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-[-0.04em] leading-[0.98] text-white max-lg:[text-shadow:0_2px_22px_rgba(11,11,12,0.85)]">
+                      {/* A real space after each word (not a margin): screen readers, search engines and
+                          copy-paste read "The school day…", not "Theschoolday…". */}
                       {hero.words.map((w, i) => (
-                        <motion.span key={w + i} className="inline-block me-[0.25em]" initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, delay: 0.05 + i * 0.06, ease: EASE }}>{w}</motion.span>
+                        <Fragment key={w + i}><motion.span className="inline-block" initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.04 + i * 0.05, ease: EASE }}>{w}</motion.span>{' '}</Fragment>
                       ))}
-                      <motion.span className="inline-block" initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.8, delay: 0.32, ease: EASE }}><Accent>{hero.accent}</Accent></motion.span>
+                      <motion.span className="inline-block" initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.26, ease: EASE }}><Accent>{hero.accent}</Accent></motion.span>
                     </h1>
-                    <p className="mt-6 text-lg text-zinc-300 max-w-md leading-relaxed">{hero.text}</p>
+                    <p className="mt-6 text-lg sm:text-xl text-zinc-300 max-w-md leading-relaxed max-lg:[text-shadow:0_1px_14px_rgba(11,11,12,0.9)]">{hero.text}</p>
                     <div className="mt-9 flex flex-wrap items-center gap-3">
-                      <Link href={`/register?app=${app}`} data-magnetic className={primary}>Get started <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
-                      <Link href={`/login?app=${app}`} data-magnetic className={ghost}>Sign in</Link>
+                      <Link href={`/register?app=${app}`} data-magnetic className={cn(primary, HERO_BTN)}>Get started <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
+                      <Link href={`/login?app=${app}`} data-magnetic className={cn(ghost, HERO_BTN)}>Sign in</Link>
                     </div>
                     {/* M81: first visit: say what you're here for, go straight to the right start. */}
                     <nav aria-label="What are you here for?" className="mt-6 flex flex-wrap items-center gap-2">
@@ -216,6 +227,8 @@ export default function ShowcasePage() {
             </div>
           </section>
 
+          {/* M116: UniVersity's home as it really looks, big, right under the hero. */}
+          {app === 'campus' && <ProductWindow />}
           <WorldSection app={app} />
           <LiveTotals />
 

@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M109 is the latest).
+  builds on it). The newest notes are at the end (M116 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -49,7 +49,8 @@ The app is all in `apps/web`. It is **Next.js 16**, which differs from older ver
   `str`, `text`, `strings`, `first`; `num` and `short` in `src/server/trace.ts`) and give Prisma only
   `pick<Prisma.XInput>(body, keys)` (`src/server/pick.ts`). Raw SQL always with `?` placeholders.
   Every route that serves people's data checks who is asking; a public route never returns emails
-  or phone numbers.
+  or phone numbers (`src/lib/route-gates.test.ts` fails a new route that neither signs people in nor is
+  listed as open with its reason, M114).
 - Never send a Trace batch's `secret` to a browser; a shipment's carrier key is a password (sensors
   use it), never shown to buyers.
 
@@ -85,90 +86,59 @@ person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 **A new app needs:** an `APPS` entry, its nav and tabs, a landing tab section, a card on `/hub`
 (`GET /hub`, `src/server/hub.ts`) and sample answers (`src/lib/sample/impact.ts`).
 
-## 4. Where things stand (3 November 2026)
+## 4. Where things stand (5 November 2026)
 
 This is only the map: each item has a note in `apps/web/STAGE-5-HANDOFF.md` (traps, rules for code
 that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 
-- **On `main`** (merged through PR #109, 4 Nov): everything through **M101** (M82–M101 are listed below).
-  - **Look and motion:** dark mode in the "Globynk" navy and Aqua Jade, light mode in Marshmallow
-    White, Galactic Violet and Bubblegum Pink (M52–M57a, see §8); a less AI-looking site (M58); the
-    pink river that nothing slows but Reduce Motion (M56, M56a); motion that answers the pointer (M41);
-    glides, celebrations, sounds, swipes, sheets (M45); live cards on every home (M48, M49).
-  - **The landing:** link previews and much less text (M42, M42a), "try it here" demos (M43), live
-    totals (M44, migration 0186), sections that each arrive their own way (M63), "Here to…" (M81).
-  - **UniVersity:** simpler menus (M27); today's classes, courses and chats offline (M46); Create
-    work added to a course (M80).
-  - **Trace:** the night city and Tracking's camera (M50, M51, M66), sharp maps (M65), the Live globe
-    (M59, M67), live air traffic (M69; opt-in since M83).
-  - **Relief and Green:** alerts and sensors (M22), proof for actions (M25), the Green Pass and
-    "how did it go?" (M60), Candour features (M61).
-  - **Play:** eleven games, rooms, chat and voice (M31–M39); three 3D worlds (M36–M39).
-  - **Collaborate:** five tabs, 192 Create tools, saving, view links, live editing (M68, M71–M76;
-    migrations 0189, 0190).
-  - **Owner console:** real people (M79); every PRO feature for the owner (M64).
-  - **Security and platform:** the security review and its fixes (M62, M78; migration 0191),
-    Next.js 16.4.4 with the Cloudflare adapter 1.20.15, always moved together (M77), "too many SQL
-    variables" fixed for every list (M73), 500 people a month on the $5 plan (M28).
-- **Merged in PR #106 (deploy fixed in #107: no source map upload, wrangler 4.150+ uploads them by
-  default and ours are over Cloudflare's 60 MiB):** **M82** STORMFALL on the site
-  (`/play/stormfall`, computers, 16+; its 58 MB web build fetched at build time by
-  `scripts/fetch-stormfall.mjs`) and Ridgeline Ops removed; **M83** zod 4, pdf.js 6, live air
-  traffic off until the owner turns it on, this list tidied; **M84** the pink river drawn on a
-  background thread (much less work for the page on every screen); **M85** the planet too (hub and
-  landing), and live cards drawn at their real size; **M86** maps open and zoom without freezing the
-  page (outlines worked out on a background thread), a pinch zooms the map, not the page; **M87**
-  safer libraries (32 known issues → 12, none critical), wrangler 4.151.3, checks on every push;
-  **M88** an API request uses about a quarter of the CPU it did (Prisma's query compiler shared).
-- **Merged in PR #108 (4 Nov, live and checked):** **M89** busy buttons keep their size,
-  loading placeholders stay smooth while a page loads; **M90** Quick notes like Apple Notes (folders,
-  Recently deleted, tick-box lines), the search icon no longer on the text in search boxes; **M91** the
-  CreditKarma photos' look everywhere (pink kept as the one accent), no glass, and the home page's
-  per-frame work cut (wallet sway in CSS on phones, live cards and the planet at 30 a second on phones);
-  **M92** the owner console made professional (six headline cards, `FactorCard`; plain header; solid
-  ink/white tab pills everywhere), live dots that no longer repaint every frame; **M93** the landing like the
-  photos' website (two-tone headings, no navy left); **M94** the last navy and aqua moved over (maps, live
-  cards, Messages, games, editors; documents on paper and people's own colour choices left as they are);
-  **M95** a check of what to improve: the console loads each tab when opened, sounds close safely;
-  **M96** every app page ~46 KB lighter to download (the sign-in layout's file no longer rides along, rare
-  parts load when used); **M97** UniVersity and Trace scroll smoothly too (no edge beam, no blur on reveal,
-  decorative loops pause while scrolling); **M98** Trace's live board smooth (counters no longer set off
-  animations), count-ups wait for React, a 116-page sweep clean. Scheduled: the body-parser override on 5 Nov
-  (12:00 UTC).
-- **Merged in PR #109 (4 Nov, live and checked):** **M99** Night Shift's own survival-horror
-  story (Ashgrove Academy, the Quiet; `src/lib/play/night-story.ts`): named keys, six notes, a keypad code,
-  safe rooms with first aid, flares (G), Shades that drink the torch, two endings; the torch casts real
-  shadows, dust in its beam, a four-light lamp pool (`LightPool` in `world/core.ts`), and every 3D world
-  builds its shaders before the first frame; **M100** every game measured: emoji and glows drawn from
-  bitmaps made once (`glyph`, `halo` in `play/canvas.ts`), a frame-rate gauge in every game's bar
-  (`FpsMeter`); **M101** STORMFALL's page: Smooth / Balanced / Sharp graphics and the frame-rate gauge (its
-  own graphics need a new Unity build on the owner's computer).
-- **On the branch `claude/youthful-fermi-sbdtcp` (not merged yet):** **M102** the 3D worlds look real: a
-  physical sky that lights the world, soft corner shadows on computers, clouds, rock islands, a lava sea,
-  stars, planets drawn on the graphics chip, the torch's beam (`world/nature.ts`, `World.sky`, `envFrom`);
-  **M103** Flood Rescue and Ocean Cleanup drawn in 3D with the same rules (`world/board.ts`); **M104** the
-  other six realistic (3D race, sorting line, satellite map, aerial town, product photos, quiz studio);
-  **M105** two new games: Fire Line (Relief) and Reef Rescue (Green, 3D); **M106** Relief for organisations
-  (NGOs, food banks, shelters: members with roles, supplies with a change log, volunteer shifts, needs near
-  the base taken "for" the organisation; `src/server/relief-orgs.ts`, `/relief/orgs`, migration 0192);
-  **M107** text requests (SMS/WhatsApp through Twilio) into an organisation's inbox, off until the owner's
-  switch (`src/server/relief-texts.ts`, migration 0193); **M108** the EU Digital Product Passport for Trace
-  (GTINs, GS1 Digital Link QR codes `/01/<GTIN>/21/<code>`, `/dpp?g=`, a supplier portal `/supply?k=`;
-  `src/lib/dpp.ts`, `src/server/trace-dpp.ts`, migration 0194); **M109** a health check: text fields take
-  the sizes screens ask for (`:where(.input)`), KaTeX and webpack updated, the production build passes.
-- **Work numbers:** the next item is **M110**. Never reuse a number: take the next one after the
+- **Launch focus until 5 December 2026** (the council, 5 Nov; the owner: "do whatever the council
+  said"). The live site had 8 real accounts, 2 using it in a week and no new sign-up in 30 days, while
+  about 80 items had shipped since the goal below was set (26 Oct). So until then: **no new apps,
+  games, looks or graphics.** Work on fixes for what real people hit (the live `error_reports`, the
+  owner's messages), safety and library updates, and what the first real class needs. The goal:
+  **10 real people who come back on another day** (Console → Overview → Real people). If the owner
+  asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
+  go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
+- **On `main`** (merged through PR #110 on 5 Nov, live): everything through **M109**.
+  - **Look and motion:** the CreditKarma look (M91–M94, §8); smooth scrolling, maps and loading
+    (M86, M89, M96–M98); the pink river and the planet drawn on a background thread (M84, M85); glides,
+    sheets and motion that answers the pointer (M29, M41, M45, M63).
+  - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
+    previews (M42).
+  - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
+    calendar, tutor, search…), simpler menus (M27), offline (M46), Create work on a course (M80), Quick
+    notes (M90).
+  - **Trace:** signed codes and passports, maps and the Live globe (M50, M51, M59, M65–M67), live air
+    traffic (M69, off until the owner turns it on), the EU Digital Product Passport (M108).
+  - **Relief:** the live help map and alerts (M22), organisations (M106), text requests (M107, off until
+    the owner's switch). **Green:** proof for actions (M25), the Green Pass (M60).
+  - **Play:** 13 games and 4 3D worlds with rooms, chat and voice (M31–M39, M99–M105), STORMFALL (M82,
+    M101).
+  - **Shared:** the hub and the Impact Wallet (M24), Collaborate (M68, M71–M76), the owner console (M64,
+    M79, M92).
+  - **Platform:** the security review and its fixes (M62, M78, M87), Next.js 16.4.4 with the Cloudflare
+    adapter 1.20.15, always moved together (M77), Prisma's query compiler shared (M88), "too many SQL
+    variables" fixed for every list (M73), 500 people a month on the $5 plan (M28), checks on every push
+    (M87).
+- **On the branch `claude/youthful-fermi-sbdtcp`, not merged yet:** M110 (a size alarm before every
+  deploy; Relief's emergency line), M111 (the launch focus; this guide trimmed), M112 (UniVersity first, the
+  other four apps marked Lab, rated games off the public page), M113 (a course's "Invite students" link: a
+  student signs up from it and joins in one tap), M114 (a test that every API route checks who is asking, or
+  is on a written list of open ones), M115 (body-parser 2.4.0: no high library issue left), M116 (the owner's one
+  exception to the pause, 6 Nov: the first impression, a big picture of the student home under the landing's
+  headline, a bigger hero, sign-in and sign-up fixed on phones, no glass).
+- **Work numbers:** the next item is **M117**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** to take Relief text requests, open a Twilio account (paid per message), set
   `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
 - **Next database update number: `0195`** (files in `apps/web/prisma/migrations/`).
-- **Being built, the owner's pick of all seven ideas** (25 Oct: "work on all 7 of them"), one item each
-  in this order: one Impact Wallet across all apps (done, M24); proof for Green actions and
-  challenges (done, M25); organisation accounts for Relief (NGOs, supplies, volunteer shifts: done, M106;
-  SMS/WhatsApp requests behind a switch: done, M107); an "Ask UniVerse" assistant that acts in every app (small version done, M30); the EU Digital Product Passport for
-  Trace (GS1 codes, supplier portal: done, M108); self-serve payments for Trace PRO, campaigns and schools (off
-  until the owner's Stripe keys); store apps for Android and iPhone (the owner's store accounts).
+- **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
+  apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
+  requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product
+  Passport (M108). Left, waiting on the owner: self-serve payments for Trace PRO, campaigns and schools
+  (Stripe keys); store apps for Android and iPhone (store accounts).
 - **Waiting on the owner** (only they can provide it): Google / Microsoft calendar sync apps; Google
   Classroom import; a real LMS for grade passback; Razorpay (UPI) and anything that costs money;
   Stripe webhook events for donations (`checkout.session.completed` and
@@ -309,7 +279,7 @@ file used only from config goes in its `BY_CONFIG` list).
 
 ## 8. Design and motion
 
-**The look now (M91, the owner, 4 Nov 2026: "use this photos and make website like this", the
+**The look (M91, the owner, 4 Nov 2026: "use this photos and make website like this", the
 CreditKarma photos; "keep pink" as the one accent).** Black and white with soft warm light (gold, steel
 blue, olive) in the page's corners; solid cards with a hairline (white in light mode, #151517 in dark);
 the main button and every chosen tab a white pill in dark mode and an ink pill in light mode; the side
@@ -321,42 +291,16 @@ Urbanist with a small unit. **Pink only for the river, live dots and the number 
 the tab bar, the side menu or toasts, and no see-through card fills (they cost the most while
 scrolling on phones). The Tailwind scales are re-pointed in the M91 block at the end of `globals.css`:
 `indigo/violet/purple` are ink (light) or graphite (dark), `aqua` is white in dark mode, `zinc` neutral.
-Older notes below (M52–M57) describe the navy look this replaced; where they clash, this paragraph wins.
 Since M94 no component keeps the old navy or aqua, except documents printed on white (`src/server/`,
 certificates, CVs, report cards) and colours people choose (slide themes, course colours, accents).
 
-**Light mode (M53, the owner, 31 Oct 2026): Marshmallow White #F0F0F0, Galactic Violet #533FF6, Bubblegum
-Pink #EC74CE.** An off-white page with pink and violet light low down, white cards, ink #141320, black
-selected pills, violet accents and focus, the main button Bubblegum Pink with ink text; light mode
-re-points the Tailwind scales (`html:not(.dark)`: indigo / violet / purple = violet, pink = Bubblegum,
-zinc = neutral greys) and `.dark` parts get the navy ones back. Use `violet-*` where dark mode uses
-`aqua-*`. Everything below is dark mode, the default.
-
-**The look: "Globynk" (M52, the owner, 31 Oct 2026; replaced M34's warm graphite "Karma").** Three
-colours: **Midnight Abyss #171F44** (navy: the page in dark mode, the ink, the side menu), **Aqua Jade
-#74FFED** (the glow rising from the bottom of every page, focus in dark mode, the planet; M57: always
-a glow over deep navy #0a0f2b, never a pale blue fill) and **Baby
-Pink #FE81D1** (the light: the main button, the river, live states, arcs). Dark mode (the default): every
-page fades from Midnight Abyss at the top into deep Aqua Jade at the bottom (M55, `.ambient-bg`; its
-lightest point keeps white text at 4.5:1), cards are 80% navy glass (blurred on big screens), the side
-menu see-through navy glass, the planet a glowing network globe. **In dark mode
-pink is the action, Aqua Jade is everything chosen or highlighted (M54)**: selected pills, accent text
-and icons (`dark:text-indigo-300` is aqua there), outlines, chart lines, links.
-Light mode: an ice-white page (#e9eef8) with the same glows, white squircle cards (`--radius-card`,
-`corner-shape: squircle` where the browser has it), navy pills. **`.btn-primary` is a Baby Pink pill
-with navy text in both themes**; text on Baby Pink is always navy (white needs `pink-600` or deeper).
-The side menu is deep navy in both themes, the chosen entry a white pill with a pink edge. Tailwind
-names: `indigo-*` / `violet-*` / `purple-*` = the navy scale (indigo-600 = #2b3568, 900 = #171f44),
-`zinc-*` = cool greys, `pink-500` = Baby Pink, `fuchsia-*` an orchid beside it, `aqua-*` = Aqua Jade
-(300; only `aqua-700` as text on light backgrounds). Headline cards wear frosts (`--karma-dusk` navy
-into deep aqua, `--karma-gold` pale aqua, `--karma-olive` navy into orchid; names kept; `kpi-row` uses
-the first two, `.karma-frost` for any card); thin-line icons sit in circles (`.karma-icon`), round ink
-arrow buttons (`.karma-go`). Type: Urbanist, served from `/fonts/urbanist` (no outside service). No
-other new hues; green, amber and red only for states. `.panel` / `.card` / `.btn-primary` /
-`.ios-segmented` carry the look, so new screens get it by using them. The river is the brand, even where
-design guides call it "AI-looking"; since M93 a heading's key word is the photos' two-tone (`<Accent>`:
-grey heading, bright word), not M58's italic pink word (no eyebrow labels above headings; mono only for
-numbers and data).
+**Rules that carry over from the earlier looks:** `.panel`, `.card`, `.btn-primary` and
+`.ios-segmented` carry the look, so new screens get it by using them (`.btn-primary` takes a person's own
+accent when they chose one: `:root[data-accent]`). Type is Urbanist, served from `/fonts/urbanist` (no
+outside service); cards round with `--radius-card` (`corner-shape: squircle` where the browser has it). A
+heading's key word is two-tone (`<Accent>`: grey heading, bright word, M93); no eyebrow labels above
+headings; mono only for numbers and data. The river is the brand, even where design guides call it
+"AI-looking". Older notes (M34, M52–M57) describe looks this one replaced: ignore their colours.
 
 **The motion layer works on every page by itself**: pages assemble out of a blur
 (`src/lib/page-transition.ts`), titles sweep in, a light trail runs down the page (`LightTrail`),

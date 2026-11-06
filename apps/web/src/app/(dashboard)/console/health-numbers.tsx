@@ -15,11 +15,15 @@ import { Dial, Facts, Histo, Meter, Ring, Stack } from '@/components/instruments
 // Reads only (src/server/health-numbers.ts).
 
 type Route = HealthNumbers['slowest'][number];
-interface BuildSize { at: string; shared: number; heaviest: { path: string; total: number }[]; over: number; pages: number }
+// M110: `server` and `minutes` are added at deploy by the size alarm (scripts/worker-size.mjs).
+interface BuildSize { at: string; shared: number; heaviest: { path: string; total: number }[]; over: number; pages: number; server?: { bytes: number; limit: number; warn: number }; minutes?: number }
 
 const pct = (x: number | null | undefined) => (x === null || x === undefined ? '–' : `${Math.round(x * 1000) / 10}%`);
 const ms = (x: number | null | undefined) => (x === null || x === undefined ? '–' : x >= 1000 ? `${(x / 1000).toFixed(1)} s` : `${x} ms`);
 const kb = (b: number) => `${Math.round(b / 102.4) / 10} KB`;
+const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
+/** Cloudflare stops a build at 20 minutes; the size alarm warns past 16. */
+const BUILD_WARN_MIN = 16;
 const routeName = (r: Pick<Route, 'method' | 'route'>) => `${r.method} ${r.route.replace(/^\/api/, '')}`;
 // A UTC day ("2026-10-15") as its weekday: noon local time, so it's the same day in every time zone.
 const weekday = (day: string) => format(new Date(`${day}T12:00:00`), 'EEE');
@@ -62,6 +66,7 @@ export function HealthNumbersPanel() {
   const aiPeak = Math.max(1, ...data.ai.perDay.map((d) => d.calls));
   const failedWeek = data.failing.reduce((a, r) => a + r.failed, 0);
   const slow = data.slowest.slice(0, 12);
+  const serverBad = !!size?.server && size.server.bytes >= size.server.warn;
   const cells: InstrumentCell[] = [
     { id: 'failed', label: 'Server errors · 7 days', value: failedWeek, unit: 'failed', warn: data.failedYesterday.length > 0, note: `${data.failedYesterday.reduce((a, r) => a + r.failedYesterday, 0)} yesterday`,
       body: <Facts rows={(data.failing.length ? data.failing : []).slice(0, 4).map((r) => [routeName(r), `${r.failed}×`] as [string, string])} /> },
@@ -74,8 +79,8 @@ export function HealthNumbersPanel() {
       body: <span className="flex justify-center"><Ring pct={sent ? Math.round((push.ok / sent) * 1000) / 10 : 100} label="delivered" size={104} /></span> },
     { id: 'calls', label: 'Call packet loss', value: Math.round((data.calls?.avgLoss ?? 0) * 1000) / 10, unit: '%', note: data.calls ? `${data.calls.calls} calls · worst ${pct(data.calls.worstLoss)}` : 'No calls this week',
       warn: (data.calls?.avgLoss ?? 0) > 0.05, body: <Dial value={(data.calls?.avgLoss ?? 0) * 100} max={10} danger={0.5} /> },
-    { id: 'size', label: 'App size', value: size ? Math.round(size.shared / 1024) : 0, unit: 'KB shared', note: size ? `${size.over} of ${size.pages} pages over target` : 'Written by each build',
-      warn: !!size && size.over > 0, body: <Meter pct={size ? (size.shared / (200 * 1024)) * 100 : 0} /> },
+    { id: 'size', label: 'App size', value: size ? Math.round(size.shared / 1024) : 0, unit: 'KB shared', note: serverBad ? 'Server code close to Cloudflare’s limit' : size ? `${size.over} of ${size.pages} pages over target` : 'Written by each build',
+      warn: !!size && (size.over > 0 || serverBad), body: <Meter pct={size ? (size.shared / (200 * 1024)) * 100 : 0} /> },
   ];
   return (
     <div className="space-y-4">
@@ -144,6 +149,9 @@ export function HealthNumbersPanel() {
               { key: 'shared', label: 'Shared by every page', value: kb(size.shared) },
               ...size.heaviest.slice(0, 3).map((p) => ({ key: p.path, label: `Heaviest: ${p.path}`, value: kb(p.total) })),
               { key: 'over', label: 'Pages over their target', value: `${size.over} of ${size.pages}`, bad: size.over > 0, note: `Built ${formatDistanceToNow(new Date(size.at), { addSuffix: true })}` },
+              ...(size.server ? [{ key: 'server', label: 'Server code (Cloudflare allows 64 MB)', value: mb(size.server.bytes), bad: serverBad,
+                note: serverBad ? 'Make it smaller soon: a deploy stops at 60 MB' : undefined }] : []),
+              ...(size.minutes !== undefined ? [{ key: 'minutes', label: 'Build time (Cloudflare allows 20 minutes)', value: `${size.minutes} min`, bad: size.minutes >= BUILD_WARN_MIN }] : []),
             ]} />
           ) : <p className="text-sm text-zinc-600 dark:text-zinc-400">Written by each build (not in local development).</p>}
         </Section>

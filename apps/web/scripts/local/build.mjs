@@ -7,4 +7,6 @@ import { run } from './run.mjs';
 const ok = run('npx', ['opennextjs-cloudflare', 'build'], { env: { NEXT_PUBLIC_DEMO_LOGIN: 'true' }, ok: true });
 run('git', ['checkout', '--', 'public/sw.js', 'public/fallback-*.js', 'public/workbox-*.js', 'cloudflare/next-public.gen.ts'], { ok: true });
 if (!ok) { console.error('\n✖ The build failed: the error is above.'); process.exit(1); }
+// M110: how close the server code is to Cloudflare's 64 MB, and the build's minutes; stops past 60 MB.
+if (!run('node', ['scripts/worker-size.mjs', '--strict'], { ok: true })) { console.error('\n✖ Built, but too big to deploy: see above.'); process.exit(1); }
 console.log('\n✔ Built. Next: pnpm local:serve');

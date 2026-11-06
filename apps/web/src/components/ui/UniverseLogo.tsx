@@ -216,19 +216,13 @@ export function UniverseLogo({
         </svg>
       </div>
 
+      {/* The same name as the website's top bar (MarketingNav): "UniVerse Impact". */}
       {showText && (
         <div className="flex flex-col">
-          <div className="flex items-center gap-1.5">
-            <span className="font-black tracking-tight text-zinc-900 dark:text-white text-lg">
-              Universe
-            </span>
-            <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-500/30 mt-0.5">
-              IMPACT
-            </span>
-          </div>
-          <span className="text-[11px] text-zinc-600 dark:text-zinc-400 tracking-wider">
-            {subtitle || 'Global Universities & NGO Network'}
+          <span className="font-black tracking-tight text-zinc-900 dark:text-white text-lg">
+            UniVerse<span className="font-medium text-zinc-500 dark:text-zinc-400"> Impact</span>
           </span>
+          {subtitle && <span className="text-xs text-zinc-600 dark:text-zinc-400">{subtitle}</span>}
         </div>
       )}
     </div>

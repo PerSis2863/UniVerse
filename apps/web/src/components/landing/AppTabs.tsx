@@ -2,6 +2,7 @@
 
 import { m as motion } from 'framer-motion';
 import { AppIcon } from '@/components/apps/AppIcon';
+import { LabTag } from '@/components/apps/LabTag';
 import { APPS, type AppId } from '@/lib/apps';
 import { cn } from '@/lib/utils';
 
@@ -11,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 export function AppTabs({ value, onChange, label = 'Choose an app', small, layoutId = 'app-tab' }: { value: AppId; onChange: (id: AppId) => void; label?: string; small?: boolean; layoutId?: string }) {
   return (
-    <div role="tablist" aria-label={label} className={cn('inline-flex max-w-full overflow-x-auto scrollbar-none rounded-full border border-white/10 bg-black/30 backdrop-blur p-1 gap-1', small && 'w-full')}>
+    <div role="tablist" aria-label={label} className={cn('inline-flex max-w-full overflow-x-auto scrollbar-none rounded-full border border-white/10 bg-[#121214] p-1 gap-1', small && 'w-full')}>
       {APPS.map((a) => {
         const on = a.id === value;
         return (
@@ -20,6 +21,7 @@ export function AppTabs({ value, onChange, label = 'Choose an app', small, layou
             {on && <motion.span layoutId={layoutId} className="absolute inset-0 rounded-full" style={{ background: `linear-gradient(135deg, ${a.color}cc, ${a.color}66)`, boxShadow: `0 6px 24px -8px ${a.color}` }} transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
             <span className="relative"><AppIcon id={a.id} size={small ? 18 : 22} /></span>
             <span className="relative whitespace-nowrap">{a.name.replace('UniVerse ', '')}</span>
+            {a.lab && !small && <LabTag className={cn('relative', on ? 'border-white/40 text-white' : 'border-white/20 text-zinc-400')} />}
           </button>
         );
       })}

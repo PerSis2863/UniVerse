@@ -39,7 +39,7 @@ export function SplitCta({ app = 'campus' }: { app?: AppId }) {
             <label htmlFor="cta-email" className="sr-only">Your work email</label>
             <input id="cta-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={c.placeholder}
               className="flex-1 h-12 px-4 rounded-full bg-white/80 border border-[#24262e]/20 text-[#151517] placeholder:text-[#24262e]/70 focus:outline-none focus:ring-2 focus:ring-[#24262e]" />
-            <button type="submit" className="group h-12 px-6 rounded-full bg-[#0f0f11] text-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-black active:scale-[0.98] transition">
+            <button type="submit" className="group h-12 px-6 rounded-full bg-[#0f0f11] text-white text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-black active:scale-[0.98] transition-[transform,background-color] duration-150">
               Start free <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </form>

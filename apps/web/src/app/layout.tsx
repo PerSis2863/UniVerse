@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     default: 'UniVerse Impact: one account, many apps, real impact',
     template: '%s | UniVerse Impact',
   },
-  description: 'School, product passports, help nearby, climate action and games, with one sign-in.',
+  description: 'A calm place for a school’s classes, grades and messages, plus newer apps for product passports, help nearby, climate action and games.',
   keywords: ['university', 'education', 'NGO', 'social impact', 'volunteering', 'students'],
   manifest: '/manifest.json',
   // Home-screen app tags (iPhone status bar, title) are in <head> below: the status bar follows the
@@ -40,14 +40,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     title: 'UniVerse Impact: one account, many apps, real impact',
-    description: 'School, product passports, help nearby, climate action and games, with one sign-in.',
+    description: 'A calm place for a school’s classes, grades and messages, plus newer apps for product passports, help nearby, climate action and games.',
     siteName: 'UniVerse Impact',
     images: [{ url: SITE_SHARE, width: 1200, height: 630, alt: 'UniVerse Impact: one account, many apps, real impact' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'UniVerse Impact: one account, many apps, real impact',
-    description: 'School, product passports, help nearby, climate action and games, with one sign-in.',
+    description: 'A calm place for a school’s classes, grades and messages, plus newer apps for product passports, help nearby, climate action and games.',
     images: [SITE_SHARE],
   },
 };

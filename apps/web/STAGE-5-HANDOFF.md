@@ -4420,3 +4420,201 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
   warning (a duplicate `case` in a third-party PDF chunk) isn't ours. On the built Worker:
   `relief-orgs-ui.mjs` and `trace-dpp-ui.mjs` pass (GS1 addresses answered by the Worker with a 302),
   the pages with compact fields render without errors.
+
+## M110: the size alarm and Relief's emergency line (the council, 5 Nov 2026)
+
+- **The council** (5 Nov; read-only counts on the live site): 8 real accounts, 2 used it this week, no
+  new sign-up in 30 days, no real use of UniVersity, Trace or Relief in 30 days; the server code at 48.3
+  of Cloudflare's 64 MiB (43 in October) and builds at 15–20 of their 20 minutes, with nothing warning
+  before either wall. Its call: a 30-day pause on new apps, games, looks and graphics; one real class on
+  UniVersity; this alarm and Relief's line (M111–M114 do the rest). The owner: "do whatever the council
+  said".
+- **Size alarm** (`scripts/worker-size.mjs`): measures what the next deploy uploads in about a second.
+  esbuild bundles `cloudflare/worker.ts` as wrangler does (minify, keepNames, production, workerd
+  conditions) with Next's server handler left out, then adds the handler file's size and each
+  WebAssembly module once. 5 Nov: 49.0 MiB against wrangler's exact 48.3 (wrangler re-minifies the
+  handler a little), so it errs ~0.7 MiB high. A warning past 55 MiB, a stop past 60 MiB; build minutes
+  from `node_modules/.cache/universe-build-start.json` (written by `build-budget.mjs`, the build's first
+  step, so the install isn't counted), a warning past 16.
+  - Runs before every `wrangler deploy` and `wrangler dev` (`wrangler.jsonc` `build.command`, watching
+    only `.open-next/server-functions`, so editing files never re-runs it) and at the end of
+    `pnpm local:build` (`--strict`). It stops only on Cloudflare (`WORKERS_CI`) or with `--strict`; the
+    build variable `SIZE_ALARM_OFF=1` lets one deploy through; it never stops a deploy because it
+    couldn't measure. A full `wrangler deploy --dry-run` (the exact number) takes over a minute, which is
+    why the deploy doesn't run one.
+  - Adds `server` and `minutes` to `.open-next/assets/build-size.json`: Console → Health numbers → App
+    size shows "Server code" and "Build time", red past the warnings, and the App size tile warns.
+  - **Trap:** the deploy command runs `d1 migrations apply` before the deploy, so a stopped deploy has
+    still applied its migrations (as with any failed deploy: keep migrations additive).
+  - **When it warns, make it smaller**, biggest first (measured 5 Nov with the alarm's own esbuild
+    pass): Next's server handler is 41.7 MiB; our direct API path (`cloudflare/worker.ts` →
+    `api-direct.ts`, `fast-*.ts`) bundles a second copy of the server code it calls (~2 MiB of
+    `src/server` minified, plus @google/genai, zod, ethers, stripe). Rarely used heavy libraries behind a
+    dynamic `import()`, or one app in its own Worker (service bindings), are Cloudflare's own advice.
+- **Relief:** the "I need help" form says "UniVerse isn't an emergency service. If anyone is in danger,
+  call your local emergency number first (112 in Europe and India, 911 in North America)." The reply to a
+  texted request (M107) ends "In danger? Call your emergency number now." (plain ASCII and short: one
+  160-character text for organisation names up to ~60 characters).
+- **Checked:** `src/lib/worker-size.test.ts` (levels, thresholds, minutes), `relief-texts.test.ts` (the
+  reply); a real `wrangler deploy --dry-run` runs the alarm first ("[custom build] Server code: 49.0 of 64
+  MB") and a failing alarm stops it before any upload; `pnpm check`.
+
+## M111: the launch focus in the guide, and the guide trimmed (the council, 5 Nov 2026)
+
+- **The pause is a rule now** (AGENTS.md §4, first bullet): until 5 December 2026 no new apps, games,
+  looks or graphics; fixes for what real people hit, safety, library updates and what the first real
+  class needs; the goal is 10 real people who come back on another day (Console → Overview → Real
+  people). An agent asked for something new says once that it's paused and why, then does what the
+  owner decides (the owner can always override). On 5 December: each app's numbers with the owner,
+  then keep / Lab / remove.
+- **§4 "Where things stand"** lists what's live by area with the M numbers to look up, instead of four
+  pull requests' worth of items (8,500 → 4,500 characters). The [owner] list, the next numbers and the
+  waiting-on-the-owner list are unchanged.
+- **§8 "Design and motion"** keeps the live look (M91), the rules that carry over (the classes that
+  carry the look, Urbanist, `--radius-card`, `<Accent>`, no eyebrow labels, the river), the motion layer
+  and the reading rules. The M52 navy and M53 violet paragraphs are gone: M91–M94 replaced them, and
+  `.btn-primary` is a white pill in dark mode and an ink pill in light mode (`globals.css`, the M91
+  block), not the Baby Pink they described.
+- **Left as it is:** the handoff file (each session reads only the notes it needs) and the plan's old
+  queue text (history).
+
+## M112: lead with UniVersity; the other four apps marked Lab (the council, 5 Nov 2026)
+
+- **`lab` on an app** (`src/lib/apps.ts`): Trace, Relief, Green and Play carry it; `<LabTag>`
+  (`src/components/apps/LabTag.tsx`, real text, 11 px) shows "Lab" after the name on the landing's app
+  tabs (not the small sign-in tabs: no room), the landing's apps grid ("The ones marked Lab are new."),
+  the hub's app cards and the side menu's app switcher. On 5 Dec the owner decides per app from the
+  Real people numbers; removing `lab` is a one-word change.
+- **One line for what UniVerse is:** UniVersity stays the default tab; the FAQ's "What is UniVerse
+  Impact?" leads with UniVersity and "What does Lab mean?" is new; the page description (search results,
+  link previews) now starts "A calm place for a school's classes, grades and messages".
+- **Rated games off the public page:** Play's "Worlds to explore" shows Skyline Obby, Orbit Breach (12+)
+  and Reef Rescue, not Night Shift (18+) or STORMFALL (16+); the Play text and FAQ no longer name
+  STORMFALL, and Play's one-liner is "Thirteen games that teach, solo or with friends." Both games stay
+  on /play behind the age check: nothing was removed from Play.
+- **Checked:** `scripts/checks/launch-focus-ui.mjs` (M113's commit; the landing's four tags, UniVersity
+  chosen, the Lab question, Play's worlds without the rated ones, the hub's tags; axe at 390 and 1280,
+  light and dark), `landing-here-ui.mjs` again; `pnpm check`.
+
+## M113: a teacher brings a class into UniVersity (the council's first ten, 5 Nov 2026)
+
+- **Found by walking the path** (none of it had been tried end to end):
+  1. A student had no way to join a teacher's course themselves: no link or code ("your teacher or
+     admin enrolls you"), although `POST /courses/:id/enroll` existed (the campus network uses it).
+  2. The landing's "Learn" leads to "I'm a student", whose account stays shut (`awaitingApproval`: only
+     the application page) until an admin checks a student card, "a day or two": a class of 30 meant 30
+     approvals before anyone saw anything.
+  3. A new teacher waits for an admin (by design: staff see students' work). The owner gets an in-app
+     notice and approves at Admin → Approvals. Left as it is.
+- **The class link `/join?course=<id>`** (`src/app/join/page.tsx` sends `?course=` to `CourseJoin`;
+  `?code=` is still a school's emailed invitation). `src/lib/course-invite.ts` keeps the class on the
+  device for a day (`uv-join-course`, course-id-shaped values only), so sign-up and sign-in (Google's
+  window, a new tab after checking an email) come back: `homeFor` sends a STUDENT with a waiting invite
+  to the link. The card reads `GET /api/core/courses/:id` (the catalogue view; people already in it get
+  the full view with `enrollments`) and joins with `POST /courses/:id/enroll` (a place, or the
+  waitlist). It covers signed out (Create my account → `/register?app=campus&as=student`; Sign in →
+  `/login?…&next=`), join, already in, not published yet, full, the teacher's own link and a staff or
+  parent account; the invite is forgotten once nothing is left to come back to, and on "Not now".
+  **Trap:** the platform API is `/api/core/...`; `/api/courses/:id` has no route of its own.
+- **Signing up from a class link:** a Student with `accountType: INDEPENDENT` (the existing no-wait path:
+  an independent learner's account opens straight away), the "Which describes you?" question hidden, one
+  line saying so, "Continue as a student". Nothing new is allowed: any independent learner could always
+  sign up and join a published course through the API.
+- **The teacher's side:** "Invite students" in the course header (for the teaching team who manage it)
+  opens a sheet with the link, Share (the phone's share sheet, else WhatsApp) and Copy (`InviteButton`
+  takes `href` now); an empty course says "No students yet" with the same link on its Announcements tab.
+  A draft course offers "Publish <code>" instead (only published courses can be joined; `courseAccess`
+  selects `status` now so the board knows).
+- **Not done (the pause):** a class code to type in, a QR code, a notice to the teacher per join (the
+  class list shows them), verifying a student card later for someone who came from a link.
+- **For the owner:** when your teacher signs up, approve them at Admin → Approvals (you get a notice).
+  They make or open a course, tap Invite students (Publish first if it's a draft) and send the link to
+  the class; each student signs up from it and is in the course a minute later.
+- **Checked:** `src/lib/course-invite.test.ts` (a day, course ids only, cleared; homeFor sends only a
+  student back); `scripts/checks/launch-focus-ui.mjs` on the built Worker: a draft course made for the
+  check, "No students yet", Publish, the link, the Invite students sheet; a student joins in one tap and
+  lands on the course (enrolled on the server), the link again says "You're in"; a student with a
+  waiting invite is sent to it, "Not now" goes home and forgets it; signed out: the invite, then sign-up
+  with the account-opens-now line, no student-card question, "Continue as a student"; the teacher's own
+  link; the course deleted afterwards. Axe clean at 390 and 1280, light and dark. It also covers M110's
+  Relief line (shown for needs, not offers) and M112. `landing-here-ui.mjs` and `relief-orgs-ui.mjs`
+  pass again; `pnpm check`; the production build (the M110 alarm said 49.0 of 64 MB, 7.9 minutes).
+- **Trap:** `/app` (the installed app's start) decides in an inline script before React, so it doesn't
+  look at a waiting invite; sign-up and sign-in use `homeFor`, which does.
+
+## M114: who may call each API route, checked by a test (the council, 5 Nov 2026)
+
+- `src/lib/route-gates.test.ts`: every `src/app/api/**/route.ts` calls one of the shared gates
+  (`getSessionUser`, `route(req, …)` from `server/assignments`, `requireAdmin`, `requireFeature`,
+  `authorize`, or `publicRoute`, which says it's public), or is on `OPEN` with the reason it answers
+  without a sign-in. An entry that guards itself another way names the check its file must contain:
+  the cron jobs' secret header, the payment webhooks' signature checks, a school's API key (OneRoster,
+  the REST API), the token in a private link, the platform router. 55 of 546 routes are open; none of
+  them asks for emails or phone numbers itself (the API-key ones serve a school its own people). A stale
+  entry (gone, or now signing people in) fails too.
+- The platform API's own routes (`src/server/modules`, behind `api/core`) sign people in unless declared
+  `public: true`: all 21 declarations are listed with why (keep each on one line so the test can read it).
+- **Checked:** the test fails on a probe route with no gate (made and deleted for the check).
+- **Adding a route:** use a gate. If it truly must answer without a sign-in, add it to `OPEN` with the
+  reason and the check it does instead; never return emails or phone numbers from it.
+- **Libraries** (`pnpm audit --prod`: 7, as M109 left them): nothing more could be pinned under the
+  two-week rule today. body-parser 2.4.0 (the high one, inside the build tool) turns two weeks old at
+  11:39 UTC and the scheduled task applies it at 12:00; serialize-javascript's fix tonight; glob and
+  minimatch only have new majors under two weeks old; deepmerge has no fix.
+
+## M115: body-parser 2.4.0, the last high library issue (scheduled, 5 Nov 2026)
+
+- The scheduled task from the owner's "please do all the still to do" (4 Nov), run once body-parser
+  2.4.0 (published 22 Oct, 11:39 UTC) was two weeks old. Root `package.json` override
+  `"body-parser@>=2.0.0 <2.4.0": "2.4.0"`: scoped and pinned like the newer overrides (the task said
+  `"body-parser": "^2.4.0"`; the lockfile only ever had 2.3.0, inside the build tool's local server, so
+  the scoped pin does the same today and can't pull a release under two weeks old later).
+- `pnpm audit --prod`: 7 → 6, no high or critical left. Still open: glob and minimatch (moderate, only
+  new majors as fixes), serialize-javascript (low, its fix two weeks old tonight), deepmerge (low, no fix).
+- **Checked:** `pnpm install` (lockfile: body-parser 2.4.0 only), `pnpm check`.
+
+## M116: the first impression, bigger and more striking (the owner, 6 Nov 2026)
+
+- **The ask and the pause:** "Please upgrade the project into something really big and attractive". The
+  launch focus (AGENTS.md §4) pauses new looks and graphics, so the owner was asked once; they chose
+  **"Polish the first impression"**: the landing page and UniVersity's first screens (sign-up, sign-in)
+  more striking, in the current look; everything else stays paused.
+- **The student home under the hero** (`src/components/landing/ProductWindow.tsx`, UniVersity's tab only):
+  a big picture of `/student` as it really looks in the M91 look (the near-black menu with the white
+  pill, the frosted headline cards with `.karma-icon`, big numbers with a small unit, pink only for the
+  live class, the unread count and the newest mark). Drawn in HTML (no image files), so it stays sharp
+  and follows the look; a window from 768 px, a phone below. It lies back (rotateX 24°, scale 0.88) and
+  tilts up flat as it scrolls in (a spring on the scroll, transform only), pulled up under the hero on
+  wide screens (`lg:-mt-40`) so its top shows on the first screen. One `role="img"` with a label; nothing
+  in it is a control. Reduce Motion: flat and still. A made-up student (Maya) on the real screens; no
+  usage numbers. **If the student home changes a lot, change the picture too.**
+- **Bigger hero:** headline `text-[3.25rem]` → `xl:text-8xl` (96 px from 1280), buttons a size up
+  (`HERO_BTN`), the line under it `sm:text-xl`; on phones a dark text shadow where the river runs straight
+  behind the words (the river itself is untouched). **The headline's words had no spaces** (inline-block
+  spans with a margin): screen readers, search and copy-paste read "Theschooldayrunsitself.". Now each
+  word is followed by a real space (`Fragment` + `' '`).
+- **Bugs fixed on the way:**
+  1. **Sign-in and sign-up on phones were wider than the screen:** the form's column (`AuthFrame`, a flex
+     item) took the app tabs' full width, and the page's `overflow-x-clip` hid it, so the form's right
+     edge ("Forgot pass…", the role buttons) was cut off and "no sideways scrolling" checks passed.
+     `min-w-0` on the column. **Trap:** a flex or grid item holding a scroller needs `min-w-0`; check
+     "nothing past the right edge", not only `scrollWidth` (the new check does).
+  2. **Glass (§8):** the sign-in and sign-up cards (`/75` + `backdrop-blur-md`: the river showed
+     through), the scrolled top bar and its phone menu, the app tabs, the landing's cards (`glass` in
+     `bits.tsx`, renamed `tile`, now solid `#111113`) and the cookie notice are solid now.
+  3. **Motion (§8):** no blur filters animated on the landing (hero words, the app switch, the hero
+     scenes' feeds, the language word); the FAQ answer fades in under 300 ms instead of animating its
+     height; the top bar no longer animates its width (`max-w-7xl` ↔ `max-w-5xl`, 500 ms): one width (the
+     hero's, `max-w-6xl`), only its fill fades; buttons name their transitions; `hover:brightness` gone.
+  4. The sign-in logo said "Universe IMPACT / Global Universities & NGO Network" (`UniverseLogo`
+     `showText`, only used there): now "UniVerse Impact" like the website's top bar.
+  5. The cookie notice is shorter (one line less on a phone) and sits in the safe area.
+- **Checked:** `scripts/checks/first-impression-ui.mjs` (the headline's size and words, the picture as a
+  phone or a window and flat when reached, gone on Trace's tab; sign-in and sign-up fit a 390 px screen;
+  no glass on the cards, top bar and tabs; the logo; axe at 390 and 1280, light and dark);
+  `landing-here-ui.mjs` and `launch-focus-ui.mjs` again (its hub scan now waits 2.5 s: right after the hub
+  opens, its title is still fading in and axe measured the half-faded grey at ~1.7:1; 4 s later it's
+  clean, so a timing fault of the check, not the hub); `pnpm check`; the production build (server code
+  48.9 of 64 MB, 49.0 before).
+- **Left out on purpose (the pause):** the in-app screens after sign-up (the student home itself), the
+  other apps' tabs (only the shared fixes reach them), the rest of the landing's sections' layout.

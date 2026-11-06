@@ -40,8 +40,9 @@ export function AuthFrame({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* ── Right: the form ── */}
-      <div className="relative z-10 flex-1 flex flex-col p-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:p-12 short:lg:py-8">
+      {/* ── Right: the form ── (min-w-0: without it the app tabs' full width set this column's
+          width, and on phones the form ran off the screen's edge, cut off by overflow-x-clip) */}
+      <div className="relative z-10 flex-1 min-w-0 flex flex-col p-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:p-12 short:lg:py-8">
         <div className="flex lg:hidden pt-2 pb-8">
           <UniverseLogo size="md" showText={true} animated={false} withGlow={false} />
         </div>

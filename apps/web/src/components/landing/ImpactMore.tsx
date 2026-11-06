@@ -2,17 +2,17 @@
 
 import dynamic from 'next/dynamic';
 import { m as motion } from 'framer-motion';
-import { BadgeCheck, Camera, Crosshair, Flame, HandHeart, Handshake, Lock, Truck } from 'lucide-react';
+import { BadgeCheck, Camera, Flame, HandHeart, Handshake, Lock, Truck } from 'lucide-react';
 import { GameIcon } from '@/components/play/GameIcon';
 import { BADGES, weeklyChallenge } from '@/lib/green';
-import { GAMES, STORMFALL, type GameId } from '@/lib/play';
+import { GAMES, type GameId } from '@/lib/play';
 import { useNow } from '@/lib/use-now';
-import { Accent, EASE, Reveal, glass } from './bits';
+import { Accent, EASE, Reveal, tile } from './bits';
 
 // More of the Relief, Green and Play tabs on the landing (M43): a "try it here" demo each
 // (./TryIt, loaded only when its tab is open) and two short picture sections. Illustrations only.
 
-const box = (h: string) => function Box() { return <div className={`${glass} ${h}`} />; };
+const box = (h: string) => function Box() { return <div className={`${tile} ${h}`} />; };
 const QuizTry = dynamic(() => import('./TryIt').then((x) => x.QuizTry), { loading: box('h-[420px]') });
 const GreenTry = dynamic(() => import('./TryIt').then((x) => x.GreenTry), { loading: box('h-[520px] lg:h-[420px]') });
 const ReliefTry = dynamic(() => import('./TryIt').then((x) => x.ReliefTry), { loading: box('h-[640px] lg:h-[440px]') });
@@ -56,7 +56,7 @@ function Figures({ items, color }: { items: readonly (readonly [string, string])
   return (
     <dl className="mt-12 grid sm:grid-cols-3 gap-4">
       {items.map(([n, t], i) => (
-        <Reveal key={t} delay={0.1 + i * 0.08} className={`${glass} p-6`}>
+        <Reveal key={t} delay={0.1 + i * 0.08} className={`${tile} p-6`}>
           <dt className="sr-only">{t}</dt>
           <dd><span className="block font-mono text-5xl font-light tracking-tight" style={{ color }}>{n}</span><span className="mt-3 block text-zinc-300">{t}</span></dd>
         </Reveal>
@@ -108,7 +108,7 @@ export function GreenMore() {
       <Section id="green-habit">
         <Head title="Streaks, badges," accent="a weekly goal." />
         <div className="mt-12 grid lg:grid-cols-3 gap-4">
-          <Reveal delay={0.1} className={`${glass} p-6`}>
+          <Reveal delay={0.1} className={`${tile} p-6`}>
             <p className="flex items-center gap-2 text-sm text-zinc-400"><Flame className="w-4 h-4 text-orange-300" aria-hidden />Streak</p>
             <ol className="mt-5 flex justify-between gap-1.5" aria-label="7 days in a row">
               {WEEK.map((d, i) => (
@@ -121,7 +121,7 @@ export function GreenMore() {
               ))}
             </ol>
           </Reveal>
-          <Reveal delay={0.16} className={`${glass} p-6`}>
+          <Reveal delay={0.16} className={`${tile} p-6`}>
             <p className="text-sm text-zinc-400">This week</p>
             <p className="mt-2 text-2xl font-bold text-white min-h-8">{challenge?.title ?? ' '}</p>
             <div className="mt-5 h-2 rounded-full bg-white/[0.08] overflow-hidden">
@@ -129,7 +129,7 @@ export function GreenMore() {
             </div>
             <p className="mt-2 text-xs text-zinc-400">Everyone gets the same one. New every Monday.</p>
           </Reveal>
-          <Reveal delay={0.22} className={`${glass} p-6`}>
+          <Reveal delay={0.22} className={`${tile} p-6`}>
             <p className="text-sm text-zinc-400">Badges</p>
             <ul className="mt-4 flex flex-wrap gap-2">
               {BADGES.map((b, i) => (
@@ -155,7 +155,9 @@ export function GreenMore() {
 
 const CODE = 'K7Q2MX';
 const SEATS = ['#6366f1', '#fe81d1', '#f97316', '#10b981', '#eab308', '#22d3ee', '#8c9bff', '#f43f5e'];
-const WORLDS: GameId[] = ['obby', 'orbit', 'night'];
+// M112 (the council): the public page shows the worlds for everyone; Night Shift (18+) and STORMFALL
+// (16+) are on /play behind the age check, not on the page a head teacher sees first.
+const WORLDS: GameId[] = ['obby', 'orbit', 'reef'];
 
 export function PlayMore() {
   return (
@@ -165,7 +167,7 @@ export function PlayMore() {
       </TrySection>
       <Section id="play-rooms">
         <Head title="Up to 8 friends." accent="One code." />
-        <Reveal delay={0.1} className={`${glass} mt-12 p-6 sm:p-10 text-center`}>
+        <Reveal delay={0.1} className={`${tile} mt-12 p-6 sm:p-10 text-center`}>
           <div role="img" className="flex justify-center gap-1.5 sm:gap-2.5" aria-label={`Room code ${CODE.split('').join(' ')}`}>
             {CODE.split('').map((c, i) => (
               <motion.span key={i} aria-hidden className="w-10 h-14 sm:w-14 sm:h-20 grid place-items-center rounded-2xl bg-white/[0.06] ring-1 ring-white/10 font-mono text-2xl sm:text-4xl font-bold text-white"
@@ -182,8 +184,8 @@ export function PlayMore() {
         </Reveal>
       </Section>
       <Section id="play-worlds">
-        <Head title="Four worlds" accent="to explore." />
-        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Head title="Worlds" accent="to explore." />
+        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {WORLDS.map((id, i) => {
             const g = GAMES[id];
             return (
@@ -200,18 +202,6 @@ export function PlayMore() {
               </Reveal>
             );
           })}
-          {/* The fourth world: STORMFALL, the Unity battle royale on computers (src/components/play/Stormfall.tsx). */}
-          <Reveal delay={0.1 + WORLDS.length * 0.06} className="h-full">
-            <div className="relative h-full overflow-hidden rounded-3xl p-6 bg-white/[0.04] ring-1 ring-white/[0.08]">
-              <span aria-hidden className="absolute -end-12 -top-12 w-40 h-40 rounded-full blur-3xl opacity-25 bg-amber-500" />
-              <div className="relative flex items-start justify-between gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-500 text-white"><Crosshair className="h-5 w-5" aria-hidden /></span>
-                <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-xs text-white">{STORMFALL.age}+</span>
-              </div>
-              <h3 className="relative mt-5 text-lg font-bold text-white">{STORMFALL.name}</h3>
-              <p className="relative mt-1.5 text-zinc-300">Battle royale and undead survival, on computers.</p>
-            </div>
-          </Reveal>
         </div>
         <Reveal delay={0.3}><p className="mt-6 flex items-center gap-2 text-sm text-zinc-400"><Lock className="w-4 h-4" aria-hidden />Rated worlds check your age.</p></Reveal>
       </Section>

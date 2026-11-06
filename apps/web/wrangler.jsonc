@@ -4,8 +4,12 @@
   // Wraps the Next.js app (.open-next/worker.js) and adds live updates and the daily cron job.
   "main": "cloudflare/worker.ts",
   // Keeps the upload small (Cloudflare checks 64 MiB uncompressed since Sept 2026; it was about
-  // 43 MiB in Oct 2026: `npx wrangler deploy --dry-run` prints it).
+  // 43 MiB in Oct 2026, 48.3 MiB on 5 Nov: `npx wrangler deploy --dry-run` prints it).
   "minify": true,
+  // M110: the size alarm runs before every deploy (and `wrangler dev`): it says how close the
+  // server code is to 64 MiB and stops a deploy past 60 MiB (scripts/worker-size.mjs). It watches
+  // only the build output, so editing files never re-runs it.
+  "build": { "command": "node scripts/worker-size.mjs", "watch_dir": ".open-next/server-functions" },
   // No source maps: wrangler 4.150+ uploads them by default, and ours (~97 MB) are over the 60 MiB
   // Cloudflare accepts, so the deploy of 3 Nov 2026 was refused (code 10021). Stack traces in the
   // app's own error reports never used them.

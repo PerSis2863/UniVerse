@@ -105,7 +105,7 @@ function Campus() {
           {feed.map((i, k) => {
             const d = DAY[i % DAY.length];
             return (
-              <motion.li key={i} layout initial={{ opacity: 0, y: -18, scale: 0.96, filter: 'blur(6px)' }} animate={{ opacity: 1 - k * 0.28, y: 0, scale: 1 - k * 0.02, filter: 'blur(0px)' }} exit={{ opacity: 0, y: 14, transition: { duration: 0.25 } }}
+              <motion.li key={i} layout initial={{ opacity: 0, y: -18, scale: 0.96 }} animate={{ opacity: 1 - k * 0.28, y: 0, scale: 1 - k * 0.02 }} exit={{ opacity: 0, y: 14, transition: { duration: 0.2 } }}
                 transition={{ type: 'spring', stiffness: 260, damping: 28 }}
                 className={cn('flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ring-1', k === 0 ? 'bg-[#18181b] ring-pink-400/30 shadow-[0_10px_40px_-18px_rgba(254,129,209,0.7)]' : 'bg-[#151517] ring-white/10')}>
                 <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-xl', k === 0 ? 'bg-pink-500/20' : 'bg-white/5')}><d.icon className="h-4 w-4 text-pink-200" aria-hidden /></span>
@@ -258,7 +258,7 @@ function Green() {
         <p className="text-xs text-emerald-200/80">CO₂ saved by Class 9B</p>
         <div className="relative mx-auto mt-1 h-14 overflow-hidden">
           <AnimatePresence mode="popLayout" initial={false}>
-            <motion.p key={kg} className="font-mono text-5xl font-bold tabular-nums text-white" initial={{ y: 40, opacity: 0, filter: 'blur(6px)' }} animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }} exit={{ y: -40, opacity: 0 }} transition={{ duration: 0.5, ease: EASE }}>
+            <motion.p key={kg} className="font-mono text-5xl font-bold tabular-nums text-white" initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -40, opacity: 0 }} transition={{ duration: 0.5, ease: EASE }}>
               {kg}<span className="ms-2 text-lg font-medium text-emerald-200">kg</span>
             </motion.p>
           </AnimatePresence>
@@ -289,7 +289,7 @@ function Green() {
       <div className="absolute inset-x-6 bottom-5 h-14">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div key={n} className="absolute inset-0 flex items-center gap-3 rounded-full bg-black/30 px-4 ring-1 ring-emerald-300/25 shadow-[0_0_30px_-8px_rgba(52,211,153,0.6)]"
-            initial={{ opacity: 0, y: 24, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -24, filter: 'blur(6px)' }} transition={{ duration: 0.5, ease: EASE }}>
+            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -24 }} transition={{ duration: 0.5, ease: EASE }}>
             <span className="grid h-9 w-9 place-items-center rounded-full bg-emerald-400/20 text-emerald-200"><act.icon className="h-5 w-5" aria-hidden /></span>
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{act.who}</span>
             <span className="font-mono text-sm font-bold text-emerald-300">−{act.kg} kg</span>

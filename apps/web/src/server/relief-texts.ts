@@ -59,7 +59,8 @@ export async function inboundText(req: Request, b: Body) {
   await prisma.reliefText.create({ data: { orgId: org.id, channel, fromNumber: from, body } });
   await tellRelief(await coordinatorsOf(org.id), { title: `New ${channel === 'WHATSAPP' ? 'WhatsApp' : 'text'} request for ${org.name}`, body: body.slice(0, 140), link: `/relief/orgs?org=${org.id}&tab=needs`, tag: `relief-texts-${org.id}` });
   await refreshOrg(org.id);
-  return twiml(`Thank you. ${org.name} got your message and a volunteer will get back to you.`);
+  // M110: plain ASCII and short, so the reply stays one paid text (160 characters) for most names.
+  return twiml(`Thank you. ${org.name} got your message; a volunteer will reply. In danger? Call your emergency number now.`);
 }
 
 /** A text of this organisation, for one of its coordinators. */

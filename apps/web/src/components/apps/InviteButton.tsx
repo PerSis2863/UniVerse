@@ -9,9 +9,10 @@ import { cn } from '@/lib/utils';
 // WhatsApp's free share link (no paid messaging), and a copy button. The link opens sign-up on the
 // app's tab (?app=), so a friend lands where the invite was about.
 
-export function InviteButton({ app, text, label = 'Invite someone', className }: { app?: AppId; text: string; label?: string; className?: string }) {
+/** `href`: another address on this site to share instead of sign-up (M113: a class's invite link). */
+export function InviteButton({ app, text, label = 'Invite someone', className, href }: { app?: AppId; text: string; label?: string; className?: string; href?: string }) {
   const [copied, setCopied] = useState(false);
-  const url = () => `${window.location.origin}/register${app ? `?app=${app}` : ''}`;
+  const url = () => `${window.location.origin}${href ?? `/register${app ? `?app=${app}` : ''}`}`;
   const share = async () => {
     if (typeof navigator.share === 'function') {
       try { await navigator.share({ title: app ? appById(app).name : 'UniVerse Impact', text, url: url() }); } catch { /* closed the share sheet */ }

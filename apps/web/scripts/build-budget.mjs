@@ -4,6 +4,14 @@
 // so nothing extra is charged; the change goes live after the next billing month starts, or when the
 // owner adds the CF_GUARD_OFF secret. Anywhere else (your computer, tests) it does nothing, and if
 // the site can't be reached the build goes on (a build is never blocked by a network hiccup).
+import { mkdirSync, writeFileSync } from 'node:fs';
+
+// M110: when this build began, for the size alarm's build minutes (scripts/worker-size.mjs).
+try {
+  mkdirSync('node_modules/.cache', { recursive: true });
+  writeFileSync('node_modules/.cache/universe-build-start.json', JSON.stringify({ at: Date.now() }));
+} catch { /* the alarm just won't show minutes */ }
+
 if (process.env.WORKERS_CI) {
   // Only main goes live, so only main is built: a work branch's build would spend 15-20 of the
   // month's minutes on a version nobody opens. (Set the build variable BUILD_ALL_BRANCHES=1 to

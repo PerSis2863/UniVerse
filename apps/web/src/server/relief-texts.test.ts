@@ -47,7 +47,9 @@ describe('text requests', () => {
     vi.mocked(prisma.reliefOrg.findUnique).mockResolvedValue({ id: 'o1', name: 'Riverside Food Bank' } as never);
     const res = await inboundText(request(theirs(TOKEN, form)), form);
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain('<Message>Thank you. Riverside Food Bank got your message');
+    const reply = await res.text();
+    expect(reply).toContain('<Message>Thank you. Riverside Food Bank got your message');
+    expect(reply).toContain('In danger? Call your emergency number now.');
     expect(prisma.reliefOrg.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { textNumber: '+447700900123' } }));
     expect(prisma.reliefText.create).toHaveBeenCalledWith({ data: { orgId: 'o1', channel: 'WHATSAPP', fromNumber: '+447700900481', body: form.Body } });
     expect(vi.mocked(notifyMany).mock.calls[0][0]).toEqual(['coord']);

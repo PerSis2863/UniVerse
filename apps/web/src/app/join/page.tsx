@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { GraduationCap, Building2, Globe, Loader2, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
 import Link from '@/components/ui/Link';
+import { CourseJoin } from '@/components/dashboard/CourseJoin';
 
 const ROLE_DETAILS: Record<string, {
   label: string;
@@ -37,7 +38,12 @@ const ROLE_DETAILS: Record<string, {
 
 function JoinContent() {
   const searchParams = useSearchParams();
-  const code = searchParams.get('code');
+  // M113: a teacher's class link (/join?course=<id>); ?code= is a school's invitation (below).
+  const course = searchParams.get('course');
+  return course ? <CourseJoin courseId={course} /> : <InviteContent code={searchParams.get('code')} />;
+}
+
+function InviteContent({ code }: { code: string | null }) {
 
   const [status, setStatus] = useState<'loading' | 'valid' | 'invalid'>(code ? 'loading' : 'invalid');
   const [role, setRole] = useState<string>('');
