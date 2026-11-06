@@ -2155,6 +2155,9 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
 
 /* M35 · The arena: a round takes the whole screen, lit in the game's colour (--arena), with grain. */
 .arena { animation: arena-fade 220ms var(--ease-out-soft) both; }
+/* M122 (the owner: "every game should be in almost full screen mode"): the height a game's play area
+   takes, the screen less the arena's bar, the timer and score row and a margin. */
+.arena { --play-h: max(22rem, calc(100dvh - 10rem)); }
 @keyframes arena-fade { from { opacity: 0; } }
 .arena-glow {
   background:

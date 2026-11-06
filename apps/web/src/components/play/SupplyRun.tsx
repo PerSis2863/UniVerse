@@ -170,7 +170,7 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
   const serving = new Set(s.trips.filter((x) => !x.done).map((x) => x.need.id));
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
+    <div className="mx-auto w-full">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
         <p className="font-medium text-zinc-300"><Users className="inline w-4 h-4 me-1 -mt-0.5 text-pink-300" aria-hidden /><span className="tabular-nums text-white">{s.helped}</span> people helped</p>
         <p className="text-zinc-400"><span className="tabular-nums text-white">{open.length}</span> waiting</p>
@@ -185,7 +185,7 @@ export function SupplyRun({ seed, startsAt, clock, onProgress, onStats }: GamePr
         {rain && <p className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2.5 py-1 text-sky-200 ring-1 ring-sky-400/30"><CloudRain className="w-4 h-4" aria-hidden />Rain</p>}
       </div>
 
-      <div className="relative mt-3 aspect-[3/2] w-full overflow-hidden rounded-[1.75rem] ring-1 ring-white/10">
+      <div className="relative mt-3 h-[calc(var(--play-h)-9rem)] min-h-80 w-full overflow-hidden rounded-[1.75rem] ring-1 ring-white/10">
         <TownView feed={town} />
         <div className="pointer-events-none absolute inset-0 hidden grid-cols-6 grid-rows-4 sm:grid" aria-hidden>
           {DISTRICTS.map((d) => <span key={d} className="p-1.5 text-[11px] font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]">{d}</span>)}

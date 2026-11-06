@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { Battery, FileText, Flame, Heart, KeyRound } from 'lucide-react';
-import { GAMES } from '@/lib/play';
 import { NIGHT_CAUGHT, NIGHT_ESCAPE, NIGHT_FLOOR, NIGHT_FLOORS, NIGHT_KEY, NIGHT_HIDE_COOLDOWN_S, NIGHT_HIDE_S, NIGHT_LIVES, NIGHT_PER_SECOND, NIGHT_SEEN_M, NIGHT_STUN, NIGHT_STUN_COOLDOWN_S, NIGHT_STUN_S, mazeNext, mazeStep, nightKeys, nightMaze } from '@/lib/play/worlds';
 import { NIGHT_CODE, NIGHT_CODE_FLOOR, NIGHT_FLARE_M, NIGHT_FLARE_S, NIGHT_FLOOR_NAMES, NIGHT_NOTE, NIGHT_SHADE, NIGHT_START_FLARES, NIGHT_TRUTH, nightCode, nightEnding, nightKeyName, nightLayout, nightNotes, type NightNote } from '@/lib/play/night-story';
 import { cn } from '@/lib/utils';
@@ -487,7 +486,7 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
 
   const unlock = () => { events.current.push('unlock'); setKeypad(false); };
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="mx-auto w-full">
       <WorldFrame net={net} canvas={canvas} controls={controls} buttons={[{ id: 'skill', label: 'Echo' }, { id: 'act', label: 'Use' }, { id: 'throw', label: 'Flare' }]} keys="WASD walk · Shift run (it hears you) · E read, hide · G flare · Q echo" label="Night Shift: Ashgrove Academy after dark, in 3D" curtain={curtain} others={skill.others}>
         {skill.pulse > 0 && <span key={skill.pulse} className="play-echo pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full" aria-hidden />}
         {/* Dread: the edges darken and the picture crawls with static as it nears */}
@@ -578,7 +577,6 @@ export function NightShift({ seed, endsAt, clock, onProgress, onDone, onStats, n
           )}
         </AnimatePresence>
       </WorldFrame>
-      <p className="mt-2 text-center text-xs text-zinc-400">{GAMES.night.how}</p>
     </div>
   );
 }

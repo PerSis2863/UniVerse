@@ -152,7 +152,7 @@ export function Arena({ game, onExit, side, children }: {
 
       <div className="relative z-0 flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6 sm:px-6">
-          <div ref={body} className="arena-in mx-auto w-full max-w-6xl">
+          <div ref={body} className="arena-in mx-auto w-full">
             <ArenaCtx.Provider value={api}>{children}</ArenaCtx.Provider>
           </div>
         </div>

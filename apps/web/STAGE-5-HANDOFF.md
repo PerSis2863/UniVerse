@@ -4827,3 +4827,20 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
 - **Checked:** `messages-pro-ui.mjs` (solid panes, mark all as read surviving a reload, the keys, the
   phone box 166 px wide and the full name, axe at 1280 and 390, light and dark, no sideways scroll),
   `chat-keys.test.ts`, `pnpm check`, the production build.
+
+## M122: every game almost full screen (the owner, 6 Nov 2026)
+
+- **The ask** (a screenshot of Orbit Breach with margins round the game): "every game should be in almost
+  full screen mode".
+- **Why it wasn't:** the arena's content was capped at 1,152 px wide (`max-w-6xl`), each game again at
+  `max-w-4xl`–`6xl`, and the play areas at fixed heights (`h-[min(76vh,760px)]` for the 3D worlds,
+  `min(72vh,700px)` for the big games, 62vh for the map and the sorting line, an aspect box for Supply Run).
+- **Now:** `.arena { --play-h: max(22rem, calc(100dvh - 10rem)) }` (the screen less the arena's bar, the
+  timer and score row and a margin) and every play area sizes from it: `WorldFrame`'s default, Fire Line,
+  Flood Rescue, Ocean Cleanup, World Pin (−4.5rem for its prompt), Recycle Rush (−6rem), Supply Run
+  (−9rem for its rows), Type Race's race (−18.5rem for the typing), Quiz Clash's studio (`min-h`), Spot the
+  Fake up to 1,280 px wide. The width caps are gone. The how-to line under the 3D worlds' frames went (the
+  intro shows it before the countdown).
+- **Measured** at 1440 × 900 (dev server): Skyline Obby, Fire Line and Quiz Clash 1,392 × 716–740 (77–79%
+  of the screen), World Pin 72%, Recycle Rush 67%, Supply Run 64%; none of them scrolls any more.
+- **Rule:** a game's play area takes `--play-h` (less its own rows above or below); no fixed heights.

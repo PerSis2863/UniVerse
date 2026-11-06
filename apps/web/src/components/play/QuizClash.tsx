@@ -133,7 +133,7 @@ export function QuizClash({ seed, startsAt, endsAt, clock, onProgress, onStats }
   const Icon = topic.icon;
 
   return (
-    <div className="relative mx-auto w-full max-w-4xl overflow-hidden rounded-[2rem] bg-[#07060c] p-3 ring-1 ring-white/10 sm:p-6">
+    <div className="relative mx-auto flex min-h-[var(--play-h)] w-full flex-col justify-center overflow-hidden rounded-[2rem] bg-[#07060c] p-3 ring-1 ring-white/10 sm:p-6">
       {/* The studio (M104): a 3D quiz set behind the questions; it loads after them. */}
       <StudioView feed={studio} />
       <div className="relative mx-auto max-w-3xl">

@@ -11,7 +11,7 @@ import { TouchPad } from './TouchPad';
 // The frame every 3D world plays in: the canvas, the game's own overlays (its HUD), the phone
 // controls, and on a computer a hint to click (the mouse then turns the camera; Esc frees it).
 
-export function WorldFrame({ canvas, controls, buttons, keys, children, label, curtain, others = 0, net, className = 'h-[min(76vh,760px)]' }: {
+export function WorldFrame({ canvas, controls, buttons, keys, children, label, curtain, others = 0, net, className = 'h-[var(--play-h)]' }: {
   canvas: React.RefObject<HTMLCanvasElement | null>; controls: React.RefObject<Controls | null>;
   buttons: { id: Button; label: string }[];
   /** The keys hint along the bottom (empty: the game shows its own controls). */

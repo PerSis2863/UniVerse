@@ -133,8 +133,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   M119 (Play's page without the constellation and the player card; what replaces them is the owner's
   call); M120 (CPU: in-app page changes of prerendered pages answered from Cloudflare's cache, 1.8 s →
   0.03 s on a fresh instance; the spending check hourly); M121 (Messages, professional: one solid
-  workspace, the phone composer and header fixed, mark all as read, keys between chats).
-- **Work numbers:** the next item is **M122**. Never reuse a number: take the next one after the
+  workspace, the phone composer and header fixed, mark all as read, keys between chats); M122 (every
+  game almost full screen: one shared play height, `--play-h`).
+- **Work numbers:** the next item is **M123**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide whether the spending guard should still pause the whole site at 90% of the
   included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set

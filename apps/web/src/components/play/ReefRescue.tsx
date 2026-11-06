@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Fish, Recycle, Sprout, Wind } from 'lucide-react';
-import { GAMES } from '@/lib/play';
 import {
   REEF_AIR_S, REEF_ALL, REEF_CUT_S, REEF_GRAB, REEF_HALF, REEF_LITTER, REEF_NETS, REEF_PER_SECOND, REEF_PIECE, REEF_PLANT, REEF_REACH, REEF_SPOTS, REEF_STING, REEF_STING_R, REEF_SURFACE, REEF_TURTLE,
   jellyAt, reefFloor, reefLayout,
@@ -341,7 +340,7 @@ export function ReefRescue({ seed, endsAt, clock, onProgress, onDone, onStats, n
   }, [seed, reef]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="mx-auto w-full">
       <WorldFrame net={net} canvas={canvas} controls={controls} buttons={[{ id: 'act', label: 'Use' }, { id: 'skill', label: 'Up' }, { id: 'crouch', label: 'Down' }]} keys="WASD swim · Space up · C down · E use (hold to cut) · Shift fast" label="Reef Rescue: a 3D coral reef under water" others={hud.others}>
         {hud.stung && <div className="pointer-events-none absolute inset-0 bg-pink-500/15" aria-hidden />}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap gap-2">
@@ -362,7 +361,6 @@ export function ReefRescue({ seed, endsAt, clock, onProgress, onDone, onStats, n
           </div>
         )}
       </WorldFrame>
-      <p className="mt-2 text-center text-xs text-zinc-400">{GAMES.reef.how}</p>
     </div>
   );
 }

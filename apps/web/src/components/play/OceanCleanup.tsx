@@ -397,8 +397,8 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
   }, [seed, sea, steer]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      <div ref={box} className="relative h-[min(72vh,700px)] min-h-80 w-full touch-none select-none overflow-hidden rounded-[1.75rem] bg-[#0b2a3a] ring-1 ring-white/10">
+    <div className="mx-auto w-full">
+      <div ref={box} className="relative h-[var(--play-h)] min-h-80 w-full touch-none select-none overflow-hidden rounded-[1.75rem] bg-[#0b2a3a] ring-1 ring-white/10">
         <canvas ref={canvas} className="absolute inset-0 h-full w-full" role="img" aria-label="Ocean Cleanup: a boat on the open sea. Steer with the mouse, a finger or the arrow keys to scoop up plastic and avoid sea life." />
         <div className="pointer-events-none absolute inset-x-3 top-3 flex items-start justify-between gap-2">
           {hud.combo > 0 ? (

@@ -128,7 +128,7 @@ export function RecycleRush({ seed, startsAt, clock, onProgress, onStats }: Game
   }, [auto, frontId, frontBin, clock]);
 
   return (
-    <div ref={box} className="mx-auto w-full max-w-5xl">
+    <div ref={box} className="mx-auto w-full">
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <p className="font-medium text-zinc-300"><Leaf className="inline w-4 h-4 me-1 -mt-0.5 text-emerald-400" aria-hidden /><span className="tabular-nums text-white">{s.co2.toFixed(2)}</span> kg CO₂ saved</p>
         <span className="text-zinc-500">·</span>
@@ -157,7 +157,7 @@ export function RecycleRush({ seed, startsAt, clock, onProgress, onStats }: Game
 
 
       {/* The line in 3D (M104): the belt and the four bins; the bin buttons sit over the bins. */}
-      <div className="relative mt-2 h-[min(62vh,420px)] min-h-[300px] overflow-hidden rounded-[1.75rem] bg-[#17181c] ring-1 ring-white/10">
+      <div className="relative mt-2 h-[calc(var(--play-h)-6rem)] min-h-[300px] overflow-hidden rounded-[1.75rem] bg-[#17181c] ring-1 ring-white/10">
         <SortView feed={feed} label="Recycle Rush: a conveyor belt carrying things toward four bins: recycling, compost, general waste and e-waste." />
         <div className="absolute inset-x-0 bottom-0 grid h-[50%] grid-cols-4">
           {BINS.map((bin, i) => (

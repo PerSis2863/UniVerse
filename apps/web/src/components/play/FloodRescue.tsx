@@ -528,8 +528,8 @@ export function FloodRescue({ seed, startsAt, clock, onProgress, onStats }: Game
   }, [seed, roofs, people, storm, steer]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      <div ref={box} className="relative h-[min(72vh,700px)] min-h-80 w-full touch-none select-none overflow-hidden rounded-[1.75rem] bg-black ring-1 ring-white/10">
+    <div className="mx-auto w-full">
+      <div ref={box} className="relative h-[var(--play-h)] min-h-80 w-full touch-none select-none overflow-hidden rounded-[1.75rem] bg-black ring-1 ring-white/10">
         <canvas ref={canvas} className="absolute inset-0 h-full w-full" role="img" aria-label="Flood Rescue: a flooded town at night with people on rooftops and a hospital on a hill. Steer the helicopter with the mouse, a finger or the arrow keys." />
         <div className="pointer-events-none absolute start-3 top-3 hidden flex-wrap gap-2 md:flex">
           <HudChip label="Aboard" value={`${hud.aboard}/${CAPACITY}`} tone={hud.aboard === CAPACITY ? 'gold' : 'white'} />
