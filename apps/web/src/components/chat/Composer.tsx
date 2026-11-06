@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { BarChart3, CircleDot, Sticker, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, MessageSquareText, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X, Wand2, PartyPopper, BellOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMedia } from '@/lib/use-media';
 import { type ChatMessage, chatJson } from './chat-client';
 import { LanguagePicker } from './LanguagePicker';
 import { EmojiPicker, type CustomEmoji } from './EmojiPicker';
@@ -113,6 +114,8 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
     const local = draftKey ? localDraft(draftKey) : null;
     return { text: draftKey ? pickDraft(local, serverDraft ?? {}) : '', at: Math.max(local?.at ?? 0, serverDraft?.at ? Date.parse(serverDraft.at) : 0) };
   });
+  // A phone's box is narrow: a one-word hint, so it doesn't wrap onto two lines (M121).
+  const narrow = useMedia('(max-width: 639px)');
   const [text, setText] = useState(shown.text);
   const [wrote, setWrote] = useState(false);
   // A newer draft from another device came in (this chat was shown from memory first): show it,
@@ -416,7 +419,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
   ];
 
   return (
-    <div className="border-t border-zinc-200/80 dark:border-white/[0.06] bg-white/60 dark:bg-white/[0.02] backdrop-blur-xl px-3 md:px-4 py-3">
+    <div className="border-t border-[var(--separator)] bg-[var(--card-bg)] px-3 md:px-4 py-3">
       {(replyTo || editing) && (
         <div className="flex items-center gap-3 mb-2 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border-s-4 border-indigo-500">
           {editing ? <Pencil className="w-4 h-4 text-indigo-500 shrink-0" /> : null}
@@ -459,7 +462,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             <span className="text-xs text-zinc-500">Recording voice message…</span>
           </div>
           <button onClick={() => setOnce(!once)} aria-pressed={once} aria-label="View once" title="View once: they can play it one time" className={cn('w-9 h-9 rounded-full flex items-center justify-center border-2 border-dashed transition-colors', once ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-zinc-300 dark:border-zinc-600 text-zinc-500')}><Flame className="w-4 h-4" /></button>
-          <button onClick={() => stopRecording(false)} aria-label="Send voice message" className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg">
+          <button onClick={() => stopRecording(false)} aria-label="Send voice message" className="w-11 h-11 rounded-full bg-[var(--pill-on-bg)] text-[var(--pill-on-color)] flex items-center justify-center">
             <Send className="w-4 h-4" />
           </button>
         </div>
@@ -481,23 +484,23 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               </div>
             )}
           </div>
-          <div className="relative">
-            <button type="button" onClick={() => { setStickers((v) => !v); setEmoji(false); setAttach(false); }} aria-expanded={stickers} aria-label="Stickers" title="Stickers" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06]', stickers ? 'text-indigo-500' : 'text-zinc-500 hover:text-indigo-500')}>
+          <div className="relative max-sm:contents">
+            <button type="button" onClick={() => { setStickers((v) => !v); setEmoji(false); setAttach(false); }} aria-expanded={stickers} aria-label="Stickers" title="Stickers" className={cn('max-sm:hidden p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06]', stickers ? 'text-indigo-500' : 'text-zinc-500 hover:text-indigo-500')}>
               <Sticker className="w-5 h-5" />
             </button>
             {stickers && (
               // Above its button; on a phone, moved left so it stays on the screen.
-              <div className="absolute bottom-full mb-2 start-0 max-sm:-start-12 z-30">
+              <div className="absolute bottom-full mb-2 start-0 z-30">
                 <StickerPicker onClose={() => setStickers(false)} onPick={(s) => { setStickers(false); haptic('tap'); void onSend({ sticker: s }).catch(() => {}); }} />
               </div>
             )}
           </div>
-          <button type="button" onClick={() => { setFormatting((v) => !v); setEmoji(false); setAttach(false); }} aria-pressed={formatting} aria-label="Formatting" title="Formatting: bold, code, lists…" className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06]', formatting ? 'text-indigo-500' : 'text-zinc-500 hover:text-indigo-500')}>
+          <button type="button" onClick={() => { setFormatting((v) => !v); setEmoji(false); setAttach(false); }} aria-pressed={formatting} aria-label="Formatting" title="Formatting: bold, code, lists…" className={cn('max-sm:hidden p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06]', formatting ? 'text-indigo-500' : 'text-zinc-500 hover:text-indigo-500')}>
             <Type className="w-5 h-5" />
           </button>
           {text.trim().length > 1 && (
-            <div className="relative">
-              <button onClick={() => { setTranslateOpen((v) => !v); setEmoji(false); setAttach(false); }} disabled={translating} aria-label="Translate before sending" title="Translate before sending" aria-expanded={translateOpen} className={cn('p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-60', translateOpen ? 'text-indigo-500' : 'text-zinc-500 hover:text-indigo-500')}>
+            <div className="relative max-sm:contents">
+              <button onClick={() => { setTranslateOpen((v) => !v); setEmoji(false); setAttach(false); }} disabled={translating} aria-label="Translate before sending" title="Translate before sending" aria-expanded={translateOpen} className={cn('max-sm:hidden p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-60', translateOpen ? 'text-indigo-500' : 'text-zinc-500 hover:text-indigo-500')}>
                 {translating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Languages className="w-5 h-5" />}
               </button>
               {translateOpen && (
@@ -511,7 +514,34 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                 <Paperclip className="w-5 h-5" />
               </button>
               {attach && (
-                <div className="absolute bottom-full mb-2 start-0 z-30 w-52 p-1.5 rounded-2xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
+                <div className="absolute bottom-full mb-2 start-0 z-30 w-52 max-h-[min(70vh,34rem)] overflow-y-auto p-1.5 rounded-2xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm">
+                  {/* Phones (M121): the row keeps its room for the text, so these live here. */}
+                    <button onClick={() => { setAttach(false); setStickers(true); }} className="sm:hidden w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                      <span className="w-8 h-8 rounded-full bg-pink-500/15 text-pink-500 flex items-center justify-center"><Sticker className="w-4 h-4" /></span> Stickers
+                    </button>
+                    <button onClick={() => { setAttach(false); setFormatting((v) => !v); }} className="sm:hidden w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                      <span className="w-8 h-8 rounded-full bg-zinc-500/15 text-zinc-500 flex items-center justify-center"><Type className="w-4 h-4" /></span> Formatting
+                    </button>
+                  {text.trim().length > 1 && (
+                    <button onClick={() => { setAttach(false); setTranslateOpen(true); }} className="sm:hidden w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                      <span className="w-8 h-8 rounded-full bg-sky-500/15 text-sky-500 flex items-center justify-center"><Languages className="w-4 h-4" /></span> Translate
+                    </button>
+                  )}
+                  {onSuggest && !text.trim() && (
+                    <button onClick={() => { setAttach(false); void suggest(); }} className="sm:hidden w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                      <span className="w-8 h-8 rounded-full bg-fuchsia-500/15 text-fuchsia-500 flex items-center justify-center"><Sparkles className="w-4 h-4" /></span> Suggest replies
+                    </button>
+                  )}
+                  {onRewrite && text.trim().length >= 3 && (
+                    <button onClick={() => { setAttach(false); setRewriteOpen(true); }} className="sm:hidden w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                      <span className="w-8 h-8 rounded-full bg-fuchsia-500/15 text-fuchsia-500 flex items-center justify-center"><Wand2 className="w-4 h-4" /></span> Rewrite
+                    </button>
+                  )}
+                  {text.trim() && (
+                    <button onClick={() => { setAttach(false); setSendMenu(true); }} className="sm:hidden w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                      <span className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-500 flex items-center justify-center"><PartyPopper className="w-4 h-4" /></span> Send with an effect
+                    </button>
+                  )}
                   <button onClick={() => mediaRef.current?.click()} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-sky-500/15 text-sky-500 flex items-center justify-center"><ImageIcon className="w-4 h-4" /></span> Photos & videos
                   </button>
@@ -618,7 +648,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               if (e.key === 'Enter' && !e.shiftKey && !inCodeBlock(text.slice(0, e.currentTarget.selectionStart ?? text.length))) { e.preventDefault(); submit(); }
               if (e.key === 'Escape' && editing) { onCancelEdit(); setText(beforeEdit()); }
             }}
-            placeholder={editing ? 'Edit your message' : onCommand ? 'Type a message, or / for commands' : 'Type a message'}
+            placeholder={editing ? 'Edit your message' : onCommand && !narrow ? 'Type a message, or / for commands' : 'Message'}
             className="msg-search flex-1 min-w-0 resize-none max-h-40 px-4 py-2.5 rounded-3xl bg-zinc-100 dark:bg-white/[0.06] border border-transparent focus:border-indigo-500/40 focus:outline-none transition-shadow duration-200 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500"
           />
           </div>
@@ -626,11 +656,11 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
           {text.trim() || editing ? (
             <div className="relative flex items-center gap-1 shrink-0">
             {onRewrite && !editing && text.trim().length >= 3 && (
-              <button type="button" onClick={() => { setRewriteOpen((o) => !o); setSendMenu(false); }} aria-expanded={rewriteOpen} aria-label="Rewrite with AI" title="Rewrite: friendlier, formal, shorter… (AI)" className="p-2.5 rounded-full text-zinc-500 hover:text-fuchsia-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><Wand2 className="w-5 h-5" /></button>
+              <button type="button" onClick={() => { setRewriteOpen((o) => !o); setSendMenu(false); }} aria-expanded={rewriteOpen} aria-label="Rewrite with AI" title="Rewrite: friendlier, formal, shorter… (AI)" className="max-sm:hidden p-2.5 rounded-full text-zinc-500 hover:text-fuchsia-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><Wand2 className="w-5 h-5" /></button>
             )}
             {!editing && (
               <button type="button" onClick={() => { setSendMenu((o) => !o); setRewriteOpen(false); }} aria-expanded={sendMenu} aria-label="Send with an effect, silently or later" title="Send with an effect, silently or later"
-                className={cn('relative p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06]', choice.effect || choice.silent ? 'text-fuchsia-500' : 'text-zinc-500 hover:text-indigo-500')}>
+                className={cn('relative p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/[0.06]', choice.effect || choice.silent ? 'text-fuchsia-500' : 'max-sm:hidden text-zinc-500 hover:text-indigo-500')}>
                 {choice.effect ? <span className="block w-5 h-5 text-lg leading-5" aria-hidden>{EFFECTS.find((e) => e.id === choice.effect)?.emoji}</span> : <PartyPopper className="w-5 h-5" />}
                 {choice.silent && <BellOff className="absolute -top-0.5 -end-0.5 w-3.5 h-3.5 p-0.5 rounded-full bg-indigo-600 text-white" aria-hidden />}
               </button>
@@ -642,14 +672,14 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
               onPointerUp={() => clearTimeout(holdTimer.current)} onPointerLeave={() => clearTimeout(holdTimer.current)} onPointerCancel={() => clearTimeout(holdTimer.current)}
               onContextMenu={(e) => { if (canSchedule) { e.preventDefault(); openSchedule(); } }}
               title={canSchedule ? 'Send · hold or right-click to schedule' : undefined}
-              disabled={busy || !text.trim()} aria-label={editing ? 'Save' : 'Send'} className="send-in w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg shadow-fuchsia-500/30 disabled:opacity-50 active:scale-95 transition-transform">
+              disabled={busy || !text.trim()} aria-label={editing ? 'Save' : 'Send'} className="send-in w-11 h-11 shrink-0 rounded-full bg-[var(--pill-on-bg)] text-[var(--pill-on-color)] flex items-center justify-center disabled:opacity-50 active:scale-95 transition-transform">
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
             </div>
           ) : (
             <>
             {onSuggest && !editing && (
-              <button type="button" onClick={() => void suggest()} disabled={suggesting} aria-label="Suggest replies" title="Suggest replies (AI)" className="p-2.5 shrink-0 rounded-full text-zinc-500 hover:text-fuchsia-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-60">
+              <button type="button" onClick={() => void suggest()} disabled={suggesting} aria-label="Suggest replies" title="Suggest replies (AI)" className="max-sm:hidden p-2.5 shrink-0 rounded-full text-zinc-500 hover:text-fuchsia-500 hover:bg-zinc-100 dark:hover:bg-white/[0.06] disabled:opacity-60">
                 {suggesting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
               </button>
             )}

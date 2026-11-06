@@ -4618,3 +4618,300 @@ Migration **0194**. Rules in `src/lib/dpp.ts`, server `src/server/trace-dpp.ts`.
   48.9 of 64 MB, 49.0 before).
 - **Left out on purpose (the pause):** the in-app screens after sign-up (the student home itself), the
   other apps' tabs (only the shared fixes reach them), the rest of the landing's sections' layout.
+
+## M117: a smoother first visit, and the picture never over the hero (the owner, 6 Nov 2026)
+
+- **The ask:** "push and merge after that can you improve more like this and make everything ultra
+  smooth"; then, with a screenshot of the live site: "the dashboard is not aligned properly here please
+  fix that". PR #111 (M110–M116) was merged first and is live (no new real errors after it).
+- **Measured** on the built site (a budget phone: 390 × 844, CPU 4×; page opens on Lighthouse's slow 4G;
+  `smoothness.mjs`, `speed.mjs`, `bundle-report.mjs`, plus scratch scroll and idle-CPU profilers):
+  - taps, menus and scrolling in the app were already smooth (1.0% slow frames); the landing scrolled at
+    ~300–320 of 360 frames with 0–5 slow ones (runs differ by ±10 frames);
+  - **the landing's headline appeared at 4.1 s** on a first visit: framer's `initial` sent the whole hero,
+    and the website's top bar, at opacity 0 until all the page's script had run;
+  - **the landing kept a phone's main thread 66% busy while it sat still**; with the hero picture hidden,
+    20% (the river is ~13 points of it, the drifting corner lights ~6);
+  - the landing loaded 318 KB of script (gzipped), the four Lab apps' sections and pictures included.
+- **Fixes:**
+  1. **The owner's screenshot:** `ProductWindow` was pulled up with `lg:-mt-40`, which covered "Get the
+     app" and the hero picture's cards wherever the hero filled the screen (1280 × 720: 45 px). It sits in
+     the flow now; the hero is `lg:min-h-[calc(100svh-9rem)]`, so the picture's top still shows on tall
+     screens. The hero picture's third card spilled 17 px out of its 480 px box: 500 px now (and the
+     sign-in picture box `.auth-scene` with its smaller steps). `first-impression-ui.mjs` checks both at
+     six laptop and desktop sizes.
+  2. **The hero shows at first paint:** `.hero-in` (made for this: it starts at opacity 0.001, so it counts
+     as painted) in steps (`rise(ms)` in `page.tsx`) for the tabs, each word, the line, the buttons and the
+     picture; the top bar drops in with `.nav-in`. `AnimatePresence initial={false}` keeps the tab-switch
+     glides (only the first render skips framer).
+  3. **The UniVersity picture's endless motion is CSS** (`.campus-turn`, `.campus-turn-back`,
+     `.campus-breathe`, `.campus-wave` in `globals.css`): off the main thread, paused while scrolling (the
+     `html[data-scrolling]` list) and off screen (`[data-away]`). The turn and counter-turn start and pause
+     together, so the tiles stay upright.
+  4. **The four Lab apps load on demand:** their hero pictures are in `HeroScenesLab.tsx` (split from
+     `HeroScenes.tsx`, which keeps UniVersity's and the shared `still` / `useStep` / `pop`), and they and
+     the Lab sections (`TraceSection`, `Business`'s four, `ImpactMore`'s three) are `next/dynamic` in
+     `page.tsx`; a picture keeps its 480 px place while it loads. Sign-in's `AuthShowcase` too.
+- **Results** (same machine, same settings):
+  - landing, first visit: headline (LCP) 4096 → 1584 ms; script 318 → 284 KB; blocking 338 → 313 ms;
+  - landing, return visit: LCP 1452 → 540 ms; the processor free 8 s later 36% → 68%;
+  - landing at rest: main thread 66% → 44% busy; sign-in at rest 9%;
+  - scrolling: unchanged (296–316 frames with the picture, 307–321 with it hidden: noise);
+  - sign-in about the same (LCP 1.2 s; blocking 170–275 ms between runs; +2 KB of lazy-loading helper).
+- **Rule:** what shows at first paint never uses framer's `initial` (the server sends it at opacity 0);
+  give it `className="hero-in"` and a `rise()` step. An endless decorative loop is CSS, not a framer
+  `repeat: Infinity`, and goes in the `html[data-scrolling]` pause list.
+- **Not done (next):** the dashboard's first load (the hub is busy ~1 s and the student home ~0.7 s at 4×
+  CPU: the shared app code starting up, no single component; M109's "what every dashboard page imports up
+  front"); the four Lab pictures still loop in script (only on their tabs); the river stays as it is (the
+  owner, M56a).
+- **Checked:** `first-impression-ui.mjs` (with the overlap and spill at six sizes, and Trace's picture
+  loading on its tab), `landing-here-ui.mjs`, sign-in's Relief picture loading on its tab, `pnpm check`,
+  the production build (server code 48.9 of 64 MB).
+
+## M118: the games without lag: lighter 3D drawing, a Graphics choice, memory given back (the owner, 6 Nov 2026)
+
+- **The ask:** "when I was playing games it was alot of lag in the system please improve that and also
+  see if any other problems are there". Live `error_reports`: nothing from Play. M102–M105 (4 Nov) made
+  every game but two a 3D scene with the full effects chain, and their frame rate was never checked on
+  a real device (this box draws WebGL in software).
+- **Measured** with a counter of the WebGL calls each frame (draw calls; pixels written as "screens":
+  each pass's size × its samples over the canvas's pixels), since this box can't time a real graphics
+  chip. Skyline Obby on a computer, before → after (Balanced):
+  - draw calls 705–747 → 421; pixels written 25.9 → 6.2 screens; shadow pixels 8.4 M → 4.2 M; passes
+    23 → 15. Sharp (everything on): 723 draws, 7.9 screens, 4.2 M. Smooth: 359 draws, one pass.
+  - shaders rebuilt mid-game: ~40 → none in 20 s of play (8 small effect shaders still build when a
+    round starts).
+  - WebGL contexts: 4 rounds made 4, gave back 0 until the browser got round to it → 4 of 4 at once.
+  - the river behind a game: graphics thread 77% busy (the game's menu) → under 1% with a game open.
+- **What cost so much** (all in `world/core.ts`):
+  1. Ambient occlusion (GTAO) drew the whole scene a second time, and that second `render()` drew the
+     sun's 2048² shadow map again. Now only in **Sharp**, and its scene view skips the shadow map
+     (`shadowMap.autoUpdate` off around it).
+  2. Every pass of the chain wrote 4 samples a pixel (both of the composer's buffers had `samples: 4`,
+     and the canvas itself was `antialias: true` under the chain). Now only the scene's buffer is 4×
+     (`sceneBuffer`, kept as the composer's read buffer after each frame: the chain swaps them).
+  3. Output, film finish and the glow's own additive step were three full-screen passes: one now
+     (`FINISH` on three's `OutputPass`, which keeps setting the tone-mapping defines; the bloom pass's
+     blend draw is skipped through its private `_fsQuad`, three r180).
+  4. The quality ladder waited for under 45 frames a second (45–59 juddered on), restarted at full
+     quality every round, and its last steps rebuilt every shader mid-play (shadows off, then the
+     effects chain off: the ~40 rebuilds above).
+  5. `dispose()` freed only colour maps: normal, roughness and glow maps, shader textures and shadow
+     maps stayed, and the context waited for garbage collection (a laptop's shared memory filled as
+     rounds were played).
+  6. The river (LightTrail) kept drawing full-screen at 60 frames a second under the game.
+- **Fixes:**
+  - **Graphics: Smooth / Balanced / Sharp** (`world/gfx.ts`, kept as `uv-play-gfx`), a button in every 3D
+    game's bar (not Spot the Fake or World Pin): Smooth draws straight to the screen at 1× (edges
+    smoothed there), no shadows or effects; **Balanced** (default) the sun's shadows, glow and film
+    finish at up to 1.5×; Sharp adds the corner shadows at up to 2×. A change mid-round applies the
+    sharpness and effects at once; shadows and edge smoothing from the next round. Phones keep their
+    pipeline (no shadows, no chain); the choice only sets their sharpness (1, 1.5, 2).
+  - **Frame pacing** (`Pace` in gfx.ts, tested): a frame is late past 1/55 s, or past the screen's own
+    frame time and a tenth (measured once from 40 frames on the game's menu), so a 50 Hz screen or a
+    battery saver's 30 isn't taken for a slow device. While the average is late, late frames add up
+    (a frame counts at most 0.25 s, so a device at 3 frames a second still steps down); half a second
+    lowers the sharpness a quarter step, to 0.6×; there the corner shadows go, then the glow; if even
+    that is late (1.5 s), the next round starts a choice lower. Nothing in it rebuilds a shader. The
+    sharpness that held is kept per choice (`uv-play-fit`) and the next round starts one step above it.
+  - **Memory:** `dispose()` frees every texture on every material and shader, every light's shadow map,
+    and loses the context when the canvas has left the page (`isConnected`: React's second effect run in
+    development keeps it).
+  - **The river rests** while the arena is open: `<html data-arena>` (arena.tsx) counts as hidden in
+    LightTrail.tsx, like a hidden tab; it carries on when the game closes (it never stops while seen, so
+    M56a's rule holds). The arena's grain lost its `mix-blend-mode` (it made the browser redraw the
+    whole arena into a layer of its own every frame; on the dark stage it looks the same).
+  - The frame-rate pill no longer wraps on phones next to the new button.
+- **Rules for what builds on it:** never change shadows, `shadowMap.enabled` or the effects chain while
+  a world runs (every shader is rebuilt); decide them in the constructor from `gfx`. A game doesn't
+  set `renderer.shadowMap.enabled` itself (Night Shift did; World decides). A pass that renders the
+  scene again turns `shadowMap.autoUpdate` off around it. New effects go into `FINISH` where they can.
+- **Not done:** real frame rates need a real device (the owner: the gauge and Graphics in a game's
+  bar); Ocean Cleanup's sea (clearcoat and shadows over the whole view) is the heaviest surface, left
+  as it is; ~8 small effect shaders still build at a round's first frame; the big announcements keep
+  their drop-shadow filter.
+- **Also checked:** the live errors: the only real recent one (owner People, "too many SQL variables",
+  31 Oct) was fixed by M73 on 1 Nov (to mark resolved); the rest are bots or the sample world's rows.
+  GitHub's checks are green on the branch.
+- **Checked:** `play-gfx-ui.mjs` (Graphics cycles and is kept, no button on flat games, the river flag,
+  the context given back, axe clean at 1280 light and 390 dark touch, no sideways scroll), the counter
+  on all 11 3D games (no page errors), pictures of Obby (all three choices), Fire Line and Night Shift,
+  `gfx.test.ts`, `pnpm check`, the production build.
+
+## M119: Play's page without the constellation and the player card (the owner, 6 Nov 2026)
+
+- **The ask** (two screenshots of `/play`): "remove your game constellation from here and in 2nd pic it
+  doesn't feel good to me so remove it and add this kind off something else".
+- **Removed from `Arcade.tsx`:** the "Your game constellation" live card (`Constellation` and `LiveCard`
+  stay: Green, the homes, Trace's wallet and the console use them) and the "Your player" card (level,
+  XP bar, colours and hats). `PlayerCard.tsx` is gone; the 3D worlds' look helpers (`readLook`,
+  `lookHex`) moved to `look.ts`, so a look chosen before still shows in the worlds. The hero no longer
+  promises "level up to unlock new looks". XP still counts (the results screen shows "+XP").
+- **Waiting on the owner:** what goes in the player card's place ("add this kind of something else");
+  the launch focus pauses new looks until 5 December, so nothing was added yet.
+- **Checked:** `/play` at 1280 and 390, light and dark: neither card, no sideways scroll, axe clean, no
+  page errors; `pnpm check`.
+
+## M120: CPU time: page changes from the cache, the spending check hourly (the owner, 6 Nov 2026)
+
+- **The ask** (the dashboard: 5.87k requests and 752.84k CPU ms for 28 Oct – 6 Nov): "why the cpu time
+  usage is till so high … only I am using this website … if 500 people login … I will hit the 30m
+  usage within few days please fix this". That is ~128 ms per request (the guard's 31 days: 2.14 M ms
+  over 25,320 requests, ~84 ms); Cloudflare's docs put an ordinary Worker at 2–20 ms.
+- **Where it went.** Starting a Worker isn't billed, but running code for the first time in a fresh
+  instance is: on the first request V8 compiles everything that request runs. Measured locally (the
+  local runtime's CPU, `cpu.mjs` in the session's scratch: restart, one request, then three warm):
+  - an in-app page change (an RSC request, always through Next.js): **1,440–1,800 ms** fresh, 54–146 ms
+    warm; a profile puts ~785 ms of it in the bundle's lazy module start-up (compiling Next.js and the
+    app's modules), the rest in rendering;
+  - the 15-minute timer 103 ms fresh / 15 warm; a light-path API call 41 / 10; the landing (cached) 38 / 10.
+  With one person using the site, most page changes found a fresh instance (idle instances are let go,
+  and each deploy starts new ones), so they cost about a second each: most of the bill.
+- **Fixes** (`cloudflare/worker.ts`):
+  1. `edgeCachedPage` keeps prerendered pages' **in-app navigation data** in Cloudflare's cache too
+     (an RSC request whose only query is `?_rsc=…`): kept per build and per hash of the router's
+     headers (`RSC_VARIES`: rsc, state tree, prefetch, segment prefetch, next-url; Next.js answers
+     differently for each), only when Next.js marks the answer `x-nextjs-prerender: 1` (the same for
+     everyone), `text/x-component`, no cookie. The same page change on a fresh instance: 1,766 → 31 ms;
+     warm 54–146 → ~8 ms. In-app navigation checked in a browser from both Next.js and the cache.
+  2. The spending guard reads Cloudflare's numbers once an hour (the first quarter of each hour); the
+     15-minute timer stays for scheduled-call reminders and the day's remaining steps.
+- **For 500 people:** a busy site keeps its instances warm, so a request costs what the warm numbers
+  say, not the fresh ones; one person's month doesn't multiply by 500. CPU past the 30 M included
+  costs $0.02 per extra million ms (30 M more = $0.60). **The real risk is the guard:** it pauses the
+  whole site at 90% of the included CPU (27 M ms). Whether to keep that pause for CPU, or allow some
+  overage, is the owner's call ([owner]).
+- **Not done:** the first change to each page after a deploy, per Cloudflare location, still starts
+  Next.js (~1 s); making that cold path smaller (the 49 MB server bundle) is a bigger job.
+- **Rules:** only answers Next.js marks `x-nextjs-prerender: 1` may be cached; a new header the router's
+  answer depends on goes into `RSC_VARIES`.
+- **Checked:** the page-change and timer numbers above, in-app navigation in a browser (fresh and from
+  the cache, no errors), `pnpm check`.
+
+## M121: Messages, professional: one solid workspace, phone fixes, mark all as read, keys (the owner, 6 Nov 2026)
+
+- **The ask:** "can you improve the message section make it look like more professional and add more
+  features there" (a screenshot of Messages), then "work on message section … forget about the council
+  part just do whatever I said" (the owner's call over the launch pause).
+- **What was wrong** (looked at 1440 and 390, dark and light):
+  - on phones the message box was crushed to a thin column (letters stacked) by eight buttons, the chat's
+    name was cut to "J…" by five header icons, and the Chats / Calls / Notifications tabs ran off the
+    right edge;
+  - on computers three see-through floating cards (rail, list, chat) let the pink river streak behind
+    every message; glowing rings round unread avatars, coloured halos behind rows and the chat header, a
+    glowing pink edge on unread rows, floating pinned avatars, gradient-and-glow bubbles, and a glowing
+    orbit and four tiles as the empty side;
+  - "Mark as read" (swipe or menu) only cleared the manual mark on the server (`markedUnread`), so a
+    chat's real unread messages came back on the next refresh.
+- **Look** (`MessagingHub`, `ChatWindow`, `Composer`, `CommsDeck`; the M121 block at the end of
+  `globals.css`):
+  - one workspace on computers: `.msg-ws` frames the rail, the list and the chat with hairline dividers;
+    every surface solid (`--card-bg`, `--msg-chat`, `--msg-rail`): nothing of the page shows through;
+  - bubbles solid: mine `#b5307d` (white 5.7:1) or the person's accent, theirs `--msg-theirs` with a
+    hairline; unread counts the same pink; the send button the site's main pill (`--pill-on-bg`);
+  - the rings, halos, edge, float, orbit and glows deleted (markup and CSS), not hidden;
+  - the empty side: "Your messages", New chat / New group / Saved, the keys, the privacy line.
+- **Phones:** the composer keeps emoji, "+", the box and send/voice; stickers, formatting, translate,
+  suggest, rewrite and effects moved into "+" (their pickers still open: their wrappers are
+  `max-sm:contents`); a one-word placeholder; the header keeps voice, video and info (and a live huddle's
+  pill), with Search and Huddle in the info panel; the deck's tabs share the width, words only.
+- **Features:** **Mark all as read** (✓✓ above the list when anything is unread; `POST
+  /api/chat/conversations/read-all`, one update); "Mark as read" now sets `lastReadAt` too; **keys**:
+  Alt+↑/↓ the chat above or below, Alt+Shift+↓ the next unread one (going round), Esc closes the open
+  chat (not while typing or with a dialog or menu open); `nextChat` in `chat-client.ts`, tested.
+- **Rules:** Messages' surfaces stay solid (`.msg-ws` tokens); new composer buttons go into "+" on phones
+  (`max-sm:hidden`, a `sm:hidden` item in the menu); a header button on phones goes into the info panel.
+- **Not done:** mark-all doesn't tell the senders' screens live (they see the ticks on their next look);
+  the sample-data order of John Doe's three messages is the seed's.
+- **Checked:** `messages-pro-ui.mjs` (solid panes, mark all as read surviving a reload, the keys, the
+  phone box 166 px wide and the full name, axe at 1280 and 390, light and dark, no sideways scroll),
+  `chat-keys.test.ts`, `pnpm check`, the production build.
+
+## M122: every game almost full screen (the owner, 6 Nov 2026)
+
+- **The ask** (a screenshot of Orbit Breach with margins round the game): "every game should be in almost
+  full screen mode".
+- **Why it wasn't:** the arena's content was capped at 1,152 px wide (`max-w-6xl`), each game again at
+  `max-w-4xl`–`6xl`, and the play areas at fixed heights (`h-[min(76vh,760px)]` for the 3D worlds,
+  `min(72vh,700px)` for the big games, 62vh for the map and the sorting line, an aspect box for Supply Run).
+- **Now:** `.arena { --play-h: max(22rem, calc(100dvh - 10rem)) }` (the screen less the arena's bar, the
+  timer and score row and a margin) and every play area sizes from it: `WorldFrame`'s default, Fire Line,
+  Flood Rescue, Ocean Cleanup, World Pin (−4.5rem for its prompt), Recycle Rush (−6rem), Supply Run
+  (−9rem for its rows), Type Race's race (−18.5rem for the typing), Quiz Clash's studio (`min-h`), Spot the
+  Fake up to 1,280 px wide. The width caps are gone. The how-to line under the 3D worlds' frames went (the
+  intro shows it before the countdown).
+- **Measured** at 1440 × 900 (dev server): Skyline Obby, Fire Line and Quiz Clash 1,392 × 716–740 (77–79%
+  of the screen), World Pin 72%, Recycle Rush 67%, Supply Run 64%; none of them scrolls any more.
+- **Rule:** a game's play area takes `--play-h` (less its own rows above or below); no fixed heights.
+
+## M123: Solar Voyager replaces Orbit Breach (the owner, 6 Nov 2026)
+
+- **The ask** (a screenshot of Orbit Breach): "please remove this game because I don't like it just add
+  something else related to space and technologies and shows beautiful planets and stars and system
+  around that with realistic graphics".
+- **Now:** Orbit Breach is gone (`OrbitBreach.tsx`, its rules in `worlds.ts` and their tests). In its
+  place **Solar Voyager** (`voyager`, app `play`, 300 s, cap 15,000): fly a survey probe through the Solar
+  System and stay near each of the eight planets to survey it (1,000 each, then a card with a real fact
+  and two numbers); stardust on the way (25 each), a comet that passes the Sun halfway through the round
+  (250 for flying close by), the asteroid belt between Mars and Jupiter (a bump costs 150, as do the
+  planets, moons and the Sun), 15 a second left once all eight are done. Boost with Shift (phones: Boost)
+  drains in 5 s and fills in 10. A marker names the planet to survey next ("Mars · 15 s away", or an
+  arrow at the screen's edge); a map in the corner shows the orbits, the belt, the comet and you.
+- **Files:** rules `src/lib/play/voyager.ts` (pure and seeded: planets, moons, dust, belt, comet path,
+  start; tested in `voyager.test.ts`), the scene `src/components/play/SolarVoyager.tsx`, the shaders in
+  `world/nature.ts`: `planetMaterial` (five kinds: `earth`, `desert`, `giant`, `rock`, `venus`, with
+  bands, storm, air, tint and the rings' shadow on the globe), `ringMaterial` (the planet's shadow on the
+  rings, the lit and unlit faces), `planetAir` (the glow at the edge, day side only), `sunMaterial`,
+  `corona`. The room server now turns a saved room whose game no longer exists into Quiz Clash
+  (`cloudflare/game-room.ts`), so an old Orbit (or later Reef) room can't crash the page.
+- **Traps:** the comet is drawn from the seed **before** the belt (the belt's size differs between phones
+  and computers; a room must share the comet). The camera's far plane is 4,000 (set after `new World`).
+  Relief worked out from one pixel to the next (`dFdx` bump) showed square blocks close up: removed;
+  craters are in the colour. The marker is placed with this frame's camera (`updateMatrixWorld` after
+  `follow`) and hidden during the fly-in. M122's rule holds: no how-to line under the frame.
+- **Checked:** `play-voyager-ui.mjs` (drawn, the marker, Earth surveyed by flying forward and its card,
+  the phone's Boost / Up / Down, axe at 1280 dark and 390 light, no sideways scroll, no errors),
+  `voyager.test.ts`, `pnpm check`; screenshots on the dev server.
+
+## For the next agent: what the owner asked for that isn't done yet (6 Nov 2026)
+
+Read `AGENTS.md` first (the owner is not a developer: plain words, merge only when they say "merge").
+The next work number is **M124**. The owner asked for these in this conversation; do them in this order,
+one commit and one note each, then ask the owner before merging.
+
+1. **Replace Reef Rescue with a modern ocean game** (the owner: "remove reef rescue game and add
+   something really modern and related ocean and it should be interesting for the people"). Remove it
+   the way M123 removed Orbit Breach: `ReefRescue.tsx`, `src/lib/play/reef.ts` and its test, `reef` in
+   `GAME_IDS` / `GAMES` (`src/lib/play.ts`; keep the per-app counts in `big-games.test.ts`: reef is app
+   `green`), `GameStage.tsx` (the dynamic import, `preloadGame`, `CONTROLS`), `GameIcon.tsx`, `Arcade.tsx`
+   (`WORLD_ART`), `ImpactMore.tsx` (`WORLDS`), `scripts/checks/launch-focus-ui.mjs`, AGENTS.md section 3,
+   then `node scripts/gen-guide-data.mjs`. Ideas that fit "modern": an ocean-tech mission in a realistic
+   3D sea (an underwater drone or a research submarine mapping a deep-sea vent and kelp forest, tagging
+   whales and sharks for science, cleaning a garbage patch with a robot skimmer, in day-to-dusk light);
+   reuse `world/core.ts` (World, Controls, follow, Crowd), Reef's swim loop and `lightBeam`, and the
+   M118 rules (`world/gfx.ts`: never change shadows or effects mid-round; `World.dispose` frees all).
+   Real facts like Solar Voyager's cards. Write the rules pure and seeded with a test, a cap test
+   (`max <= GAMES.x.maxScore`), and a browser check like `play-voyager-ui.mjs`.
+2. **Skyline Obby: a richer, more realistic world round the course** (the owner: "make the surrounding
+   environment more realistic and add more contents and scenes in there as well as in background and
+   surrounding that should look beautiful"; then "please add background exactly like this in the
+   surrounding" with two pictures). **What the pictures show** (you can't see them): (a) a valley of huge
+   floating rock mountains, tall and narrow, their tops covered in jungle, waterfalls pouring off their
+   edges into white mist far below, layers of cloud and haze between them, the farther ones pale and
+   blue, soft sunlight through the haze, birds; (b) curved natural stone arches and layered cliffs, green
+   ledges floating at different heights, a turquoise lagoon below, the same misty depth. Build an
+   original scene in that style (no film's names, creatures, vehicles or exact shapes): floating rock
+   towers (`islandRock`, `rocks` in `world/nature.ts`) with jungle tops, waterfalls (a scrolling
+   see-through strip plus mist sprites at the foot), the cloud sea (`cloudSea`) far below, distance haze,
+   arches, a lagoon, birds. Keep the course itself and its rules unchanged (`obbyCourse` in
+   `worlds.ts`). Background parts must be cheap: merged geometry, instancing, no new lights, decided when
+   the world is made (M118).
+3. **A sweep of the whole site for other problems** (the owner: "also see what else we can change in the
+   system"). Main pages at 390 and 1280 px, light and dark: sideways scrolling, axe (serious and
+   critical), see-through cards (the M91 look forbids glass), page errors; read the live `error_reports`
+   first (AGENTS.md section 1). Fix what's found; list what's left for the owner.
+
+**Waiting on the owner** (ask, don't decide): whether the spending guard should still pause the whole
+site at 90% of the included CPU (M120); what, if anything, goes where Play's player card was (M119);
+mark the 31 Oct error report resolved in the console.

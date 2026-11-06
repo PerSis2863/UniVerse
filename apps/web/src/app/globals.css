@@ -1075,7 +1075,7 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 @keyframes rm-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .stagger > *, .rise-in, .fade-up, .page-enter, .page-push, .page-pop, .shell-in, .sheet-in, .alert-in, .hero-in { animation-name: rm-fade !important; animation-duration: 200ms !important; }
+  .stagger > *, .rise-in, .fade-up, .page-enter, .page-push, .page-pop, .shell-in, .sheet-in, .alert-in, .hero-in, .nav-in { animation-name: rm-fade !important; animation-duration: 200ms !important; }
   .lift:hover, .lift:active, .card-hover:hover, .kpi-card:hover { transform: none !important; }
   .animate-bounce, .animate-heartbeat { animation: none !important; }
 }
@@ -1187,6 +1187,9 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 /* Landing hero: fade up with CSS so it shows as soon as the page arrives (not after the JavaScript loads). */
 @keyframes hero-in { from { opacity: 0.001; transform: translateY(28px); } to { opacity: 1; transform: none; } }
 .hero-in { animation: hero-in 0.9s var(--ease-glide) both; }
+/* M117 · The website's top bar drops in the same way (it waited for the script too). */
+@keyframes nav-in { from { opacity: 0.001; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
+.nav-in { animation: nav-in 0.5s var(--ease-glide) both; }
 @media (prefers-reduced-motion: reduce) { .hero-in { animation: none; } }
 
 /* Navigation progress bar */
@@ -1853,23 +1856,11 @@ html.reduce-motion .bar-glint::after { animation: none; }
 @media (prefers-reduced-motion: reduce) { .deck-pulse, .deck-ping, .deck-glow, .deck-draw { animation: none; } }
 html.reduce-motion :is(.deck-pulse, .deck-ping, .deck-glow, .deck-draw) { animation: none; }
 html.reduce-motion 
-/* ═══ M17 · Messages: glass panels, unread rings, gliding messages (components/chat) ═══════════
+/* ═══ M17 · Messages: gliding messages (components/chat; M121 made the panels solid) ═══════════
    Everything moves with transform and opacity only. The chat list is used many times a day, so it
    barely moves: rows only fade their highlight; arrivals (a new message, a chat opening, a new
    unread count) get a short glide. Reduce Motion stops all of it. */
 .msg-panel { position: relative; isolation: isolate; }
-@media (min-width: 768px) { /* phones show the panels edge to edge, without a frame */
-  .msg-panel::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1px; pointer-events: none;
-    background: linear-gradient(160deg, rgb(82 82 91 / 0.45), rgb(255 255 255 / 0.04) 35%, rgb(255 255 255 / 0.03) 65%, rgb(255 159 220 / 0.4));
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
-  :where(html:not(.dark)) .msg-panel::before { background: linear-gradient(160deg, rgb(39 39 42 / 0.35), rgb(0 0 0 / 0.03) 35%, rgb(0 0 0 / 0.03) 65%, rgb(254 129 209 / 0.3)); }
-}
-/* An unread chat's picture sits in a two-tone ring; a fresh unread spins it in once. */
-.msg-ring { border-radius: 9999px; padding: 2.5px; background: conic-gradient(from 210deg, #27272a, #fe81d1, #e46bdb, #ffc0e6, #27272a); box-shadow: 0 0 14px -3px rgb(254 129 209 / 0.7); }
-.msg-ring > * { border-radius: 9999px; box-shadow: 0 0 0 2px var(--surface, #111113); }
-:where(html:not(.dark)) .msg-ring > * { box-shadow: 0 0 0 2px #fff; }
-.msg-ring-new { animation: msg-ring-in 900ms var(--ease-glide) both; }
-@keyframes msg-ring-in { from { transform: rotate(-200deg) scale(0.9); opacity: 0.4; } }
 /* Someone typing: three dots that rise in turn. */
 .typing-dots { display: inline-flex; gap: 3px; align-items: flex-end; height: 0.7em; }
 .typing-dots i { width: 4px; height: 4px; border-radius: 9999px; background: currentColor; animation: typing-dot 1.1s var(--ease-out-soft) infinite; }
@@ -1880,7 +1871,6 @@ html.reduce-motion
 .badge-bump { animation: badge-bump 420ms var(--ease-glide); }
 @keyframes badge-bump { 0% { transform: scale(0.6); } 45% { transform: scale(1.18); } }
 /* Unread rows: a thin two-tone edge at the start. */
-.msg-unread-edge::before { content: ''; position: absolute; inset-block: 14px; inset-inline-start: 0; width: 3px; border-radius: 9999px; background: linear-gradient(#52525b, #fe81d1); box-shadow: 0 0 10px rgb(254 129 209 / 0.6); }
 /* A menu grows from the button that opened it. */
 .menu-pop { transform-origin: top right; animation: menu-pop 180ms var(--ease-out-soft); }
 [dir='rtl'] .menu-pop { transform-origin: top left; }
@@ -1912,18 +1902,9 @@ html.reduce-motion
 /* The send button turns in when there's something to send (it takes the microphone's place). */
 .send-in { animation: send-in 260ms var(--ease-glide); }
 @keyframes send-in { from { opacity: 0; transform: scale(0.8) rotate(-25deg); } }
-/* The empty chat side: a slow orbit of light round the Messages mark. */
-.msg-orbit { position: absolute; border-radius: 9999px; border: 1px solid rgb(82 82 91 / 0.22); animation: msg-orbit 38s linear infinite; }
-.msg-orbit-2 { border-color: rgb(255 159 220 / 0.18); animation-duration: 56s; animation-direction: reverse; }
-.msg-orbit > i { position: absolute; top: -5px; left: calc(50% - 5px); width: 10px; height: 10px; border-radius: 9999px; background: radial-gradient(circle, #fff, #52525b 45%, transparent 70%); box-shadow: 0 0 14px 3px rgb(130 117 127 / 0.6); }
-.msg-orbit-2 > i { top: auto; bottom: -5px; background: radial-gradient(circle, #fff, #ff9fdc 45%, transparent 70%); box-shadow: 0 0 14px 3px rgb(255 192 230 / 0.55); }
-@keyframes msg-orbit { to { transform: rotate(360deg); } }
-.msg-halo { background: radial-gradient(closest-side, rgb(82 82 91 / 0.32), rgb(254 129 209 / 0.12) 55%, transparent); animation: msg-halo 6s ease-in-out infinite; }
-@keyframes msg-halo { 50% { transform: scale(1.08); opacity: 0.75; } }
 @media (prefers-reduced-motion: reduce) {
-  .msg-ring-new, .typing-dots i, .badge-bump, .menu-pop, .chat-glide, .msg-arrive-mine, .msg-arrive-theirs, .msg-orbit, .msg-halo, .send-in { animation: none; }
 }
-html.reduce-motion :is(.msg-ring-new, .typing-dots i, .badge-bump, .menu-pop, .chat-glide, .msg-arrive-mine, .msg-arrive-theirs, .msg-orbit, .msg-halo, .send-in) { animation: none; }
+html.reduce-motion :is(.typing-dots i, .badge-bump, .menu-pop, .chat-glide, .msg-arrive-mine, .msg-arrive-theirs, .send-in) { animation: none; }
 
 /* ═══ M17 · Collaborate → Home (components/collab) ═════════════════════════════════════════════
    The hero's slow two-tone aurora (one blurred layer drifting, transform only) and the activity
@@ -1977,23 +1958,16 @@ html.reduce-motion :is(.msg-fx-slam, .msg-fx-loud, .msg-fx-gentle, .ink-specks, 
 .rail-pill { background: linear-gradient(140deg, #151517, #27272a 55%, #52525b); box-shadow: 0 6px 18px -6px rgb(254 129 209 / 0.75); }
 .rail-edge { background: linear-gradient(#a1a1aa, #ff9fdc); box-shadow: 0 0 10px rgb(255 159 220 / 0.8); }
 /* Pinned chats float gently, each a little out of step (iMessage's pinned bubbles). */
-.pin-float { animation: pin-float 5.5s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -0.7s); }
-@keyframes pin-float { 50% { transform: translate3d(0, -4px, 0); } }
 .pin-typing { animation: pin-typing 1.4s ease-in-out infinite; }
 @keyframes pin-typing { 50% { transform: translate3d(0, -2px, 0) scale(1.06); } }
 /* A soft glow in the person's colour behind their picture: on for unread chats, and on hover. */
-.row-aura { position: relative; isolation: isolate; }
-.row-aura::before { content: ''; position: absolute; inset: -9px; z-index: -1; border-radius: 9999px; background: radial-gradient(closest-side, var(--aura, #c13a92), transparent); opacity: 0; transition: opacity 300ms var(--ease-out-soft); }
-.row-aura.on::before { opacity: 0.5; }
-@media (hover: hover) { .group:hover .row-aura::before { opacity: 0.6; } }
 /* The chat's header glows in the other person's colour. */
-.chat-aura { position: absolute; inset-inline-start: -30px; top: -70px; width: 260px; height: 200px; z-index: -1; pointer-events: none; border-radius: 9999px; background: radial-gradient(closest-side, var(--aura, #c13a92), transparent); opacity: 0.4; animation: msg-halo 7s ease-in-out infinite; }
 .streak { display: inline-flex; align-items: center; gap: 1px; font-size: 11px; font-weight: 800; color: #ea580c; }
 .dark .streak { color: #fdba74; }
 .streak > i { font-style: normal; display: inline-block; animation: streak-flicker 2.4s ease-in-out infinite; }
 @keyframes streak-flicker { 50% { transform: scale(1.15) rotate(-6deg); } }
-@media (prefers-reduced-motion: reduce) { .comms-icon-on, .pin-float, .pin-typing, .chat-aura, .streak > i { animation: none; } }
-html.reduce-motion :is(.comms-icon-on, .pin-float, .pin-typing, .chat-aura, .streak > i) { animation: none; }
+@media (prefers-reduced-motion: reduce) { .comms-icon-on, .pin-typing, .streak > i { animation: none; } }
+html.reduce-motion :is(.comms-icon-on, .pin-typing, .streak > i) { animation: none; }
 
 /* ═══ M17 · Calls: contact posters, the timeline and this week's bars ═════════════════════════ */
 .poster { box-shadow: 0 14px 30px -18px var(--aura, #c13a92); transition: transform 350ms var(--ease-glide), box-shadow 350ms var(--ease-glide); animation: poster-in 560ms var(--ease-glide) backwards; animation-delay: calc(var(--i, 0) * 60ms); }
@@ -2181,6 +2155,9 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
 
 /* M35 · The arena: a round takes the whole screen, lit in the game's colour (--arena), with grain. */
 .arena { animation: arena-fade 220ms var(--ease-out-soft) both; }
+/* M122 (the owner: "every game should be in almost full screen mode"): the height a game's play area
+   takes, the screen less the arena's bar, the timer and score row and a margin. */
+.arena { --play-h: max(22rem, calc(100dvh - 10rem)); }
 @keyframes arena-fade { from { opacity: 0; } }
 .arena-glow {
   background:
@@ -2188,8 +2165,10 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
     radial-gradient(55% 45% at 102% 104%, rgba(254, 129, 209, 0.14), transparent 70%),
     radial-gradient(45% 45% at -2% 104%, rgba(240, 204, 138, 0.12), transparent 70%);
 }
+/* The grain without a blend mode (M118): blending made the browser redraw the whole arena into a
+   layer of its own on every frame of a game; over this dark stage it looks the same. */
 .arena-glow::after {
-  content: ''; position: absolute; inset: 0; opacity: 0.09; mix-blend-mode: screen;
+  content: ''; position: absolute; inset: 0; opacity: 0.09;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 @keyframes arena-in { from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.985); } }
@@ -2390,14 +2369,14 @@ html.dark .ins-cell :is(svg, .ins-pop) { color: #f0cc8a; }
 html.dark .glass-sidebar { -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%);
   background: radial-gradient(130% 30% at 0% 0%, rgba(254, 129, 209, 0.1), transparent 70%), radial-gradient(140% 36% at 50% 106%, rgba(240, 204, 138, 0.22), transparent 70%), linear-gradient(180deg, rgba(11, 11, 12, 0.92), rgba(11, 20, 50, 0.86) 60%, rgba(11, 34, 56, 0.82)); }
 
-/* Sign in and sign up's picture (AuthShowcase): the 480 px scenes shrink on shorter screens so the
-   page fits without scrolling, and go on the shortest. */
-.auth-scene { height: 480px; }
+/* Sign in and sign up's picture (AuthShowcase): the scenes (up to 500 px: UniVersity's, M117, so its
+   third card fits) shrink on shorter screens so the page fits without scrolling, and go on the shortest. */
+.auth-scene { height: 500px; }
 .auth-scene > * { transform-origin: top left; }
 [dir="rtl"] .auth-scene > * { transform-origin: top right; }
-@media (max-height: 960px) { .auth-scene { height: 384px; } .auth-scene > * { scale: 0.8; } }
-@media (max-height: 860px) { .auth-scene { height: 312px; } .auth-scene > * { scale: 0.65; } }
-@media (max-height: 760px) { .auth-scene { height: 264px; } .auth-scene > * { scale: 0.55; } }
+@media (max-height: 960px) { .auth-scene { height: 400px; } .auth-scene > * { scale: 0.8; } }
+@media (max-height: 860px) { .auth-scene { height: 325px; } .auth-scene > * { scale: 0.65; } }
+@media (max-height: 760px) { .auth-scene { height: 275px; } .auth-scene > * { scale: 0.55; } }
 @media (max-height: 700px) { .auth-scene { display: none; } }
 
 /* M56 · A pool of the page's navy behind words the river passes under (the landing's scroll story):
@@ -2629,8 +2608,22 @@ html.dark :is(a, button):has(> .comms-head) { color: #111113; }
 /* M96 · Decorative loops rest while the page scrolls (scroll-motion.ts sets <html data-scrolling>) and
    pick up again 180 ms after; measured, they were most of what was left of the cost of scrolling. The
    live dots keep pulsing (they show that something is live). */
-html[data-scrolling] :is(.passport-glow, .mkt-drift-a, .mkt-drift-b, .ins-ping, .ins-live, .ins-grain, .wcard-sway, .universe-node-pulse, .universe-u-beam, .universe-n-beam, .tank-wave, .play-ripple, .play-scene),
+html[data-scrolling] :is(.passport-glow, .mkt-drift-a, .mkt-drift-b, .ins-ping, .ins-live, .ins-grain, .wcard-sway, .universe-node-pulse, .universe-u-beam, .universe-n-beam, .tank-wave, .play-ripple, .play-scene, .campus-turn, .campus-turn-back, .campus-breathe, .campus-wave),
 html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::before, html[data-scrolling] .play-holo::after { animation-play-state: paused; }
+/* M117 · UniVersity's hero picture (HeroScenes `Campus`, the landing and sign-in): its endless motion in
+   CSS, which the browser runs off the main thread. As script (framer-motion repeats) the orbit, the
+   tiles' counter-turn, the core's breath and its waves kept a phone's main thread ~66% busy while the
+   page sat still (20% without them). The turn and counter-turn start together and pause together
+   (off screen, `[data-away]`; while scrolling, above), so the tiles stay upright. */
+@keyframes campus-turn { to { transform: rotate(360deg); } }
+@keyframes campus-breathe { 50% { transform: scale(1.04); } }
+@keyframes campus-wave { from { transform: scale(0.9); opacity: 0.55; } to { transform: scale(2.6); opacity: 0; } }
+.campus-turn { animation: campus-turn 60s linear infinite; }
+.campus-turn-back { animation: campus-turn 60s linear infinite reverse; }
+.campus-breathe { animation: campus-breathe 3.6s ease-in-out infinite; }
+.campus-wave { opacity: 0; animation: campus-wave 3.6s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .campus-turn, .campus-turn-back, .campus-breathe, .campus-wave { animation: none; } }
+
 /* Play's little scenes animate their children: they take the scene's state. Never end a
    html[data-scrolling] selector in "*" or "> *": the browser then restyles the whole page each time
    scrolling starts or stops (M98: 19 s of style work in a 6 s scroll on Trace). */
@@ -2643,3 +2636,16 @@ html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::befor
 @keyframes play-holo { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .play-fibres { background-image: radial-gradient(1px 5px at 12% 22%, #67e8f9 50%, transparent 52%), radial-gradient(1px 6px at 37% 64%, #a3e635 50%, transparent 52%), radial-gradient(1px 4px at 58% 18%, #f0abfc 50%, transparent 52%), radial-gradient(1px 6px at 81% 47%, #67e8f9 50%, transparent 52%), radial-gradient(1px 5px at 26% 83%, #f0abfc 50%, transparent 52%), radial-gradient(1px 4px at 69% 86%, #a3e635 50%, transparent 52%), radial-gradient(1px 5px at 90% 12%, #a3e635 50%, transparent 52%), radial-gradient(1px 6px at 48% 40%, #67e8f9 50%, transparent 52%); }
 @media (prefers-reduced-motion: reduce) { .play-holo::after { animation: none; } }
+
+/* M121 · Messages, professional (the owner, 6 Nov 2026: "make it look like more professional"). One
+   solid workspace: the rail, the list and the open chat share one frame with hairline dividers
+   (MessagingHub `.msg-ws`), nothing shows through them (the river stays behind the page, not
+   behind the words); solid bubbles: mine in the brand's deep pink (white text 5.7:1) or the
+   person's own accent, theirs plain on a quiet chat background. The glowing rings, halos, edges and
+   floating avatars round people and rows are gone. */
+.msg-ws { --msg-chat: #f4f4f6; --msg-rail: #f6f6f7; --msg-theirs: #ffffff; --msg-theirs-line: rgba(0, 0, 0, 0.07); }
+.dark .msg-ws { --msg-chat: #0f0f11; --msg-rail: #111113; --msg-theirs: #1f1f23; --msg-theirs-line: rgba(255, 255, 255, 0.06); }
+.bubble-mine, :root:not([data-accent]) .bubble-mine { background-image: none; box-shadow: none; }
+:root:not([data-accent]) .bubble-mine { background-color: #b5307d; }
+.bubble-theirs, .dark .bubble-theirs { background-color: var(--msg-theirs, #ffffff); box-shadow: inset 0 0 0 1px var(--msg-theirs-line, rgba(0, 0, 0, 0.07)); }
+.msg-keys kbd { display: inline-block; min-width: 1.5rem; padding: 0.1rem 0.4rem; border-radius: 0.4rem; border: 1px solid var(--hairline); font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; color: var(--text-secondary); }

@@ -13,7 +13,8 @@ import { cn } from '@/lib/utils';
 
 // The Messages deck (M17): the four parts of Messages (Chats, Calls, Notifications and, for admins,
 // Announcements) as one capsule with live counts. The highlight moves like liquid: a quick head and
-// a slower tail chase each other to the new tab. On phones it steps aside while a chat is open.
+// a slower tail chase each other to the new tab. On phones it steps aside while a chat is open, and
+// (M121) its tabs share the width, words only, so none runs off the screen.
 
 const CALLS_SEEN = 'uv-calls-seen';
 interface Tab { href: string; label: string; icon: LucideIcon; count: number }
@@ -56,17 +57,17 @@ function Deck({ chatOpen }: { chatOpen: boolean }) {
   return (
     <div className={cn(chatOpen && 'hidden md:block')}>
       <nav aria-label="Messages" data-steady className="px-4 sm:px-8 pt-4">
-        <div className="comms-deck relative inline-flex max-w-full overflow-x-auto [scrollbar-width:none] items-center gap-1 p-1.5 rounded-[22px]">
+        <div className="comms-deck relative inline-flex max-sm:flex max-sm:w-full max-w-full overflow-x-auto [scrollbar-width:none] items-center gap-1 p-1.5 rounded-[22px]">
           {tabs.map((t) => {
             const on = pathname === t.href;
             return (
               <Link key={t.href} href={t.href} data-vt="tab" aria-current={on ? 'page' : undefined}
-                className={cn('relative isolate shrink-0 inline-flex items-center gap-2 h-11 ps-3.5 pe-4 rounded-2xl text-sm font-semibold transition-colors duration-200', on ? 'text-white' : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white')}>
+                className={cn('relative isolate shrink-0 inline-flex items-center gap-2 h-11 ps-3.5 pe-4 max-sm:flex-1 max-sm:justify-center max-sm:gap-1.5 max-sm:px-2 rounded-2xl text-sm font-semibold transition-colors duration-200', on ? 'text-white' : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white')}>
                 {on && <>
                   <motion.span layoutId="comms-tail" transition={{ type: 'spring', stiffness: 170, damping: 24 }} className="comms-tail absolute inset-0 -z-20 rounded-2xl" aria-hidden />
                   <motion.span layoutId="comms-head" transition={{ type: 'spring', stiffness: 560, damping: 40 }} className="comms-head absolute inset-0 -z-10 rounded-2xl" aria-hidden />
                 </>}
-                <t.icon className={cn('w-[18px] h-[18px] transition-transform duration-300', on && 'comms-icon-on')} aria-hidden />
+                <t.icon className={cn('max-sm:hidden w-[18px] h-[18px] transition-transform duration-300', on && 'comms-icon-on')} aria-hidden />
                 <span>{t.label}</span>
                 {t.count > 0 && (
                   <span key={t.count} aria-label={`${t.count} new`} className={cn('badge-bump min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center', on ? 'bg-white/25 text-white dark:bg-zinc-900/10 dark:text-zinc-900' : 'bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white shadow-[0_0_12px_-2px_rgb(217_70_239/0.8)]')}>

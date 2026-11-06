@@ -890,7 +890,7 @@ export function PlanUsageCard({ usage }: { usage: PlanUsage | null }) {
         {usage?.checkedAt && <span className="text-xs text-zinc-500">checked {formatDistanceToNow(new Date(usage.checkedAt), { addSuffix: true })}</span>}
       </div>
       {!usage ? (
-        <p className="text-sm text-zinc-500">The spending guard hasn&apos;t run yet. It checks every 15 minutes once the CF_ACCOUNT_ID and CF_USAGE_TOKEN secrets are set.</p>
+        <p className="text-sm text-zinc-500">The spending guard hasn&apos;t run yet. It checks every hour once the CF_ACCOUNT_ID and CF_USAGE_TOKEN secrets are set.</p>
       ) : (
         <>
           <p className={cn('text-sm mb-3', usage.paused || todayTop >= 0.9 ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-zinc-600 dark:text-zinc-400')}>

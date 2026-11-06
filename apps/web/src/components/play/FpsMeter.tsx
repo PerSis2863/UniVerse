@@ -23,7 +23,7 @@ export function FpsMeter({ className }: { className?: string }) {
     return () => cancelAnimationFrame(raf);
   }, []);
   return (
-    <span className={cn('rounded-full bg-black/60 px-2.5 py-1 font-mono text-xs font-bold tabular-nums ring-1', fps >= 55 ? 'text-emerald-300 ring-emerald-400/30' : fps >= 40 ? 'text-amber-300 ring-amber-400/30' : 'text-red-300 ring-red-400/30', className)}>
+    <span className={cn('shrink-0 whitespace-nowrap rounded-full bg-black/60 px-2.5 py-1 font-mono text-xs font-bold tabular-nums ring-1', fps >= 55 ? 'text-emerald-300 ring-emerald-400/30' : fps >= 40 ? 'text-amber-300 ring-amber-400/30' : 'text-red-300 ring-red-400/30', className)}>
       {fps || '…'} fps
     </span>
   );

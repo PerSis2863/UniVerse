@@ -341,8 +341,8 @@ export function FireLine({ seed, startsAt, endsAt, clock, onProgress, onStats }:
 
   const windDir = DIRS[hud.wind];
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      <div ref={box} className="relative h-[min(72vh,700px)] min-h-80 w-full touch-none select-none overflow-hidden rounded-[1.75rem] bg-[#7d7360] ring-1 ring-white/10">
+    <div className="mx-auto w-full">
+      <div ref={box} className="relative h-[calc(var(--play-h)-1.5rem)] min-h-80 w-full touch-none select-none overflow-hidden rounded-[1.75rem] bg-[#7d7360] ring-1 ring-white/10">
         <canvas ref={canvas} className="absolute inset-0 h-full w-full" role="img" aria-label="Fire Line: a forest valley from the air, with a lake and three villages. Steer the water bomber with the mouse, a finger or the arrow keys; Space drops water." />
         <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-start gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-black/65 px-3 py-1.5 text-xs font-bold text-white ring-1 ring-white/15" role="img" aria-label={`Tank: ${hud.tank} of ${FIRE_TANK} drops`}>

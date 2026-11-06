@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M116 is the latest).
+  builds on it). The newest notes are at the end (M117 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -72,7 +72,7 @@ software or website in the main website… where they create a impact"). Each ap
   teams and a map.
 - **Play** (`/play`): thirteen games (quick: Quiz Clash, Spot the Fake, Supply Run, Recycle Rush; big:
   Type Race, World Pin, Flood Rescue, Ocean Cleanup, Fire Line) and four 3D worlds (three.js: Skyline
-  Obby, Night Shift 18+, Orbit Breach 12+, Reef Rescue), all drawn realistically since M102–M105 (every
+  Obby, Night Shift 18+, Solar Voyager, Reef Rescue), all drawn realistically since M102–M105 (every
   game but Quiz Clash's questions and Spot the Fake's cards is a 3D scene), plus **STORMFALL** 16+ on computers (a Unity battle royale: source `games/stormfall/`, page `/play/stormfall`, its web build fetched at build time by `scripts/fetch-stormfall.mjs`); rated games check
   the birth date or ask), solo or up to 8 friends in a room with a code (the `GameRoom` Durable
   Object), leaderboards.
@@ -99,7 +99,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (merged through PR #110 on 5 Nov, live): everything through **M109**.
+- **On `main`** (merged 6 Nov, live): everything through **M123**.
   - **Look and motion:** the CreditKarma look (M91–M94, §8); smooth scrolling, maps and loading
     (M86, M89, M96–M98); the pink river and the planet drawn on a background thread (M84, M85); glides,
     sheets and motion that answers the pointer (M29, M41, M45, M63).
@@ -120,16 +120,23 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     adapter 1.20.15, always moved together (M77), Prisma's query compiler shared (M88), "too many SQL
     variables" fixed for every list (M73), 500 people a month on the $5 plan (M28), checks on every push
     (M87).
-- **On the branch `claude/youthful-fermi-sbdtcp`, not merged yet:** M110 (a size alarm before every
-  deploy; Relief's emergency line), M111 (the launch focus; this guide trimmed), M112 (UniVersity first, the
-  other four apps marked Lab, rated games off the public page), M113 (a course's "Invite students" link: a
-  student signs up from it and joins in one tap), M114 (a test that every API route checks who is asking, or
-  is on a written list of open ones), M115 (body-parser 2.4.0: no high library issue left), M116 (the owner's one
-  exception to the pause, 6 Nov: the first impression, a big picture of the student home under the landing's
-  headline, a bigger hero, sign-in and sign-up fixed on phones, no glass).
-- **Work numbers:** the next item is **M117**. Never reuse a number: take the next one after the
+  - **The launch focus (M110–M116):** a size alarm before every deploy and Relief's emergency line (M110),
+    this guide's focus rule (M111), UniVersity first with the other apps marked Lab (M112), a course's
+    "Invite students" link (M113), a test that every API route checks who is asking (M114), body-parser
+    2.4.0 (M115), the first impression: the student home pictured under the landing's headline, a bigger
+    hero, sign-in fixed on phones, no glass (M116, the owner's one exception to the pause).
+  - **After the launch work (M117–M123, 6 Nov):** a smoother first visit (M117); the games without lag
+    (M118: a Graphics choice in each 3D game's bar, 60-a-second pacing, memory given back); Play's page
+    without the constellation and the player card (M119); CPU: in-app page changes answered from
+    Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
+    `--play-h`); Solar Voyager in place of Orbit Breach (M123).
+- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): a
+  modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
+  (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
+- **Work numbers:** the next item is **M124**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
-- **[owner]:** to take Relief text requests, open a Twilio account (paid per message), set
+- **[owner]:** decide whether the spending guard should still pause the whole site at 90% of the
+  included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set
   `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
@@ -228,6 +235,10 @@ page with a `[param]` is built once as `/x/open` and answered for every value). 
   than 30 days on the map; nearby alerts (`relief_watches`) never email and never show where a
   watcher is.
 - **Green** (`src/server/green.ts`): positions rounded to 0.1°; CO₂ factors only from `src/lib/green.ts`.
+- **Play's 3D worlds** (`src/components/play/world/core.ts`): the graphics choice and frame pacing are in
+  `world/gfx.ts` (M118); never change shadows or the effects chain while a world runs (every shader is
+  rebuilt: a stutter), decide them when it's made; `World.dispose` frees every texture and shadow map
+  and gives the WebGL context back.
 - **Sample data, two kinds:** the owner's "Fill with sample data" on the console Overview writes a
   made-up world in steps (`src/server/sample-world.ts`), marked so "Remove" takes out exactly that
   (emails `@sample.universe.test`, ids `smp…`, slugs `sample-`). A signed-in "Explore with sample

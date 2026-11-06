@@ -50,7 +50,7 @@ try {
     await page.goto(base + '/?app=play', { waitUntil: 'domcontentloaded', timeout: 120_000 });
     await page.getByRole('heading', { name: /Worlds/ }).first().waitFor({ timeout: 60_000 }).catch(() => {});
     const text = await page.locator('main').innerText();
-    check(/Skyline Obby/.test(text) && /Orbit Breach/.test(text) && /Reef Rescue/.test(text), `${width}: Play's worlds for everyone`);
+    check(/Skyline Obby/.test(text) && /Solar Voyager/.test(text) && /Reef Rescue/.test(text), `${width}: Play's worlds for everyone`);
     check(!/Night Shift|STORMFALL/.test(text), `${width}: no rated world on the public page`);
     check(!errors.length, `${width}: landing page errors ${errors.join(' | ')}`);
     await ctx.close();

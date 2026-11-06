@@ -3,13 +3,17 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { Gauge, Maximize2, Minimize2, Volume2, VolumeX, X } from 'lucide-react';
+import { Gauge, Maximize2, Minimize2, MonitorCog, Volume2, VolumeX, X } from 'lucide-react';
 import { GAMES, type GameId } from '@/lib/play';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { GameIcon } from './GameIcon';
 import { setSoundOn, sfx, soundOn, unlockAudio, type Sfx } from './sound';
 import { FpsMeter, fpsShown, showFps } from './FpsMeter';
+import { GFX, GFX_NAME, gfxNow, onGfx, setGfx } from './world/gfx';
+
+/** The games drawn without the 3D engine: no graphics choice for them. */
+const FLAT = new Set<GameId>(['fakes', 'pin']);
 
 // The arena (M35): a round of UniVerse Play takes the whole screen, like a console game: a dark
 // stage lit in the game's colour, a slim bar (leave, sound, full screen), big announcements in the
@@ -53,16 +57,20 @@ export function Arena({ game, onExit, side, children }: {
   const seq = useRef(0);
   const info = GAMES[game];
 
-  // Open: lock the page behind, take focus; close: give both back.
+  // Open: lock the page behind, take focus; close: give both back. While the arena covers the page,
+  // <html data-arena> rests what moves behind it (the river, LightTrail.tsx), so the game has the
+  // graphics chip to itself (M118).
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null, html = document.documentElement, overflow = html.style.overflow;
     html.style.overflow = 'hidden';
+    html.dataset.arena = '';
     root.current?.focus();
     unlockAudio();
     const change = () => setFull(document.fullscreenElement === root.current);
     document.addEventListener('fullscreenchange', change);
     return () => {
       html.style.overflow = overflow;
+      delete html.dataset.arena;
       document.removeEventListener('fullscreenchange', change);
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
       before?.focus?.();
@@ -99,6 +107,10 @@ export function Arena({ game, onExit, side, children }: {
   const toggleSound = () => { const on = !sound; setSound(on); setSoundOn(on); if (on) { unlockAudio(); sfx('pick'); } };
   const [fps, setFps] = useState(fpsShown);
   const toggleFps = () => { setFps(!fps); showFps(!fps); };
+  // Graphics (M118): Smooth, Balanced, Sharp in turn; a running 3D world changes with it (and may
+  // lower it by itself after a round that couldn't keep up).
+  const gfx = useSyncExternalStore(onGfx, gfxNow, () => 'balanced' as const);
+  const nextGfx = () => { const g = GFX[(GFX.indexOf(gfx) + 1) % GFX.length]; setGfx(g); announce(`${GFX_NAME[g]} graphics`); };
   const toggleFull = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await root.current?.requestFullscreen(); } catch { /* not allowed */ } };
 
   if (!mounted) return null;
@@ -119,6 +131,12 @@ export function Arena({ game, onExit, side, children }: {
             className="grid h-10 w-10 place-items-center rounded-full text-zinc-300 ring-1 ring-white/10 transition-[background-color,color] hover:bg-white/10 hover:text-white">
             <Gauge className="w-5 h-5" aria-hidden />
           </button>
+          {!FLAT.has(game) && (
+            <button type="button" onClick={nextGfx} title="Graphics: Smooth for the most frames a second, Sharp for the most detail"
+              className="flex h-10 items-center gap-1.5 rounded-full px-2.5 text-sm font-semibold text-zinc-300 ring-1 ring-white/10 transition-[background-color,color] hover:bg-white/10 hover:text-white sm:px-3">
+              <MonitorCog className="w-5 h-5" aria-hidden /><span className="sr-only">Graphics: </span><span className="sr-only sm:not-sr-only">{GFX_NAME[gfx]}</span>
+            </button>
+          )}
           <button type="button" onClick={toggleSound} aria-pressed={sound} aria-label="Sound" title={sound ? 'Sound on' : 'Sound off'}
             className="grid h-10 w-10 place-items-center rounded-full text-zinc-300 ring-1 ring-white/10 transition-[background-color,color] hover:bg-white/10 hover:text-white">
             {sound ? <Volume2 className="w-5 h-5" aria-hidden /> : <VolumeX className="w-5 h-5" aria-hidden />}
@@ -134,7 +152,7 @@ export function Arena({ game, onExit, side, children }: {
 
       <div className="relative z-0 flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6 sm:px-6">
-          <div ref={body} className="arena-in mx-auto w-full max-w-6xl">
+          <div ref={body} className="arena-in mx-auto w-full">
             <ArenaCtx.Provider value={api}>{children}</ArenaCtx.Provider>
           </div>
         </div>

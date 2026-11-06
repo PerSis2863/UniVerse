@@ -1,5 +1,6 @@
 // M116 in the browser (`pnpm local:serve` or the dev server): the first impression.
 //  - Landing, UniVersity tab: the bigger headline (96 px from 1280, read with its spaces), the picture of the student home
+//    (never over the hero, at six laptop and desktop sizes),
 //    under it (a phone below 768 px, the window above; flat once scrolled to), gone on another app's tab.
 //  - Sign in and sign up on a phone: nothing runs past the screen's edge (the form was cut off: its
 //    column took the app tabs' full width, hidden by overflow-x-clip, so "no sideways scrolling" missed it).
@@ -46,6 +47,27 @@ const look = (page, sel) => page.evaluate((s) => {
 
 const browser = await launch();
 try {
+  // M117: the picture never covers the hero (the owner's screenshot: pulled up by a fixed margin, it
+  // covered "Get the app" and the hero picture's cards wherever the hero filled the screen).
+  for (const [w, h] of [[1280, 720], [1366, 768], [1440, 900], [1536, 864], [1920, 1080], [1024, 768]]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+    await ctx.addInitScript(() => { try { localStorage.setItem('uv-cookies', 'essential'); } catch { /* storage off */ } });
+    const page = await ctx.newPage();
+    await page.goto(base + '/', { waitUntil: 'domcontentloaded', timeout: 180_000 });
+    await page.locator('[role="img"][aria-label*="student home"]').waitFor({ state: 'attached', timeout: 90_000 });
+    await page.waitForTimeout(6500); // the hero picture's feed fills up to three cards
+    const { gap, spill } = await page.evaluate(() => {
+      const hero = document.querySelector('main > section > div');
+      const scene = hero.querySelector('[role="img"]');
+      const cards = [...hero.querySelectorAll('ol li')].filter((li) => parseFloat(getComputedStyle(li).opacity) > 0.4);
+      const bottom = Math.max(hero.getBoundingClientRect().bottom, ...cards.map((li) => li.getBoundingClientRect().bottom));
+      const pic = document.querySelector('[role="img"][aria-label*="student home"]');
+      return { gap: Math.round(pic.getBoundingClientRect().top - bottom), spill: Math.round(Math.max(0, ...cards.map((li) => li.getBoundingClientRect().bottom)) - scene.getBoundingClientRect().bottom) };
+    });
+    check(gap >= 0, `${w}×${h}: the student home picture covers the hero by ${-gap}px`);
+    check(spill <= 0, `${w}×${h}: the hero picture's cards spill ${spill}px out of it`);
+    await ctx.close();
+  }
   for (const scheme of ['dark', 'light']) for (const width of [390, 1280]) {
     const tag = `${scheme} ${width}`;
     const ctx = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: scheme });
@@ -82,6 +104,9 @@ try {
     await page.getByRole('tab', { name: /Trace/ }).click();
     await page.waitForTimeout(900);
     check(await pic.count() === 0, `${tag}: the student home still shows on Trace's tab`);
+    // M117: the Lab apps' pictures load when their tab is first opened.
+    const traceScene = await page.locator('[role="img"][aria-label^="A product label scanned"]').waitFor({ timeout: 20_000 }).then(() => true, () => false);
+    check(traceScene, `${tag}: Trace's hero picture didn't load on its tab`);
     await page.getByRole('tab', { name: /UniVersity/ }).click();
 
     // ── Sign in and sign up ──

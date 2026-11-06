@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { GAMES } from '@/lib/play';
 import { BLINK_ON, BLINK_OFF, OBBY_BELT, OBBY_CHECK, OBBY_ICE_GRIP, OBBY_FALL, OBBY_FINISH, OBBY_GEM, OBBY_PER_SECOND, OBBY_PER_WORLD, OBBY_STAGES, OBBY_WORLDS, beltDir, blinkOn, obbyCourse, obbyWorld, type Pad } from '@/lib/play/worlds';
 import { useArena } from './arena';
-import { lookHex, readLook } from './PlayerCard';
+import { lookHex, readLook } from './look';
 import type { GameProps } from './game-props';
 import { Avatar, Body, Controls, THREE, World, follow, glowSprite, mergeGeometries, walk, worldUv, type SkyLook } from './world/core';
 import { Crowd } from './world/crowd';
@@ -321,7 +320,7 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
   }, [seed]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="mx-auto w-full">
       <WorldFrame net={net} canvas={canvas} controls={controls} buttons={[{ id: 'skill', label: 'Rewind' }, { id: 'jump', label: 'Jump' }]} keys="WASD move · Space jump · Shift run · hold R to rewind" label="Skyline Obby: a 3D obstacle course in the sky" curtain={curtain} others={skill.others}>
         {skill.active && <div className="play-rewind pointer-events-none absolute inset-0" aria-hidden />}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap gap-2">
@@ -331,7 +330,6 @@ export function SkylineObby({ seed, startsAt, endsAt, clock, onProgress, onDone,
           <HudChip label="Falls" value={hud.falls} tone={hud.falls ? 'bad' : 'white'} />
         </div>
       </WorldFrame>
-      <p className="mt-2 text-center text-xs text-zinc-400">{GAMES.obby.how}</p>
     </div>
   );
 }

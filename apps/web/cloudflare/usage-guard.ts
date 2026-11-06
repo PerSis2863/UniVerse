@@ -1,6 +1,6 @@
 // The spending guard, and the gate every request passes (see "The gate" below: the guard's pause
 // and the owner's server switch). Cloudflare has no setting that caps the bill: on the Workers Paid plan,
-// anything past what the $5 includes is charged. So every 15 minutes (wrangler.jsonc "triggers")
+// anything past what the $5 includes is charged. So every hour (wrangler.jsonc "triggers", M120)
 // this reads the account's usage for the billing month from Cloudflare's analytics, emails the
 // owner when any allowance passes 70%, and at 90% pauses the app: every page and API call gets a
 // small "taking a break" answer (no database, no rendering) until the next billing month. The
@@ -286,7 +286,7 @@ async function emailOwner(env: GuardEnv, subject: string, text: string) {
   if (!res?.ok) console.error('Spending guard email failed:', res?.status);
 }
 
-/** The scheduled check (every 15 minutes). `alert`: a daily warning the app should send the owner now. */
+/** The scheduled check (hourly, M120). `alert`: a daily warning the app should send the owner now. */
 export async function checkUsage(env: GuardEnv, now = new Date()): Promise<{ summary: string; alert: { title: string; body: string } | null }> {
   const db = env.DB;
   if (!db) return { summary: 'no database', alert: null };

@@ -12,12 +12,9 @@ import { GAMES, GAME_IDS, isGame, type GameId } from '@/lib/play';
 import { ITEMS } from '@/lib/play/sort';
 import { spring } from '@/lib/motion';
 import { AgeBadge } from './AgeGate';
-import { PlayerCard } from './PlayerCard';
 import { StormfallCard } from './Stormfall';
 import { GameIcon } from './GameIcon';
 import { JoinRoom, type PlayMe } from './GameShell';
-import { LiveCard } from '@/components/live/LiveCard';
-import { Constellation } from '@/components/live/Constellation';
 
 // UniVerse Play's home (/play): thirteen games for the apps (four quick, five big) and four 3D worlds, plus STORMFALL on
 // computers (M41), each card
@@ -27,7 +24,7 @@ import { Constellation } from '@/components/live/Constellation';
 const WORLD_ART: Partial<Record<GameId, { bg: string; tags: string[] }>> = {
   obby: { bg: 'linear-gradient(160deg,#2b59ff,#9b8cff 55%,#ffb3d9)', tags: ['10 stages', 'bounce pads', 'lasers'] },
   night: { bg: 'radial-gradient(60% 60% at 50% 55%,#e5e7eb 0%,#3f3f46 18%,#0b0b0c 60%)', tags: ['torch', '5 keys', 'don’t get caught'] },
-  orbit: { bg: 'radial-gradient(80% 80% at 20% 110%,#1d4ed8,#02030a 60%)', tags: ['low gravity', 'reactors', 'meteors'] },
+  voyager: { bg: 'radial-gradient(55% 55% at 12% 50%,#fff7d6 0%,#fbbf24 9%,#b45309 18%,transparent 34%),radial-gradient(14% 22% at 72% 42%,#c9a27e,transparent 70%),radial-gradient(120% 90% at 50% 50%,#0b1026,#02030a 70%)', tags: ['8 planets', 'real facts', 'asteroid belt'] },
   reef: { bg: 'linear-gradient(180deg,#5eead4,#0e7490 45%,#083344)', tags: ['swim', 'plant coral', 'free turtles'] },
 };
 
@@ -149,7 +146,7 @@ export function Arcade() {
           <div>
             <p className="inline-flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-2.5 py-1 text-xs font-semibold text-fuchsia-800 dark:text-fuchsia-200"><Gamepad2 className="w-3.5 h-3.5" aria-hidden />UniVerse Play</p>
             <h1 className="mt-3 text-3xl font-semibold text-zinc-900 dark:text-white sm:text-4xl">Games that <em className="accent-word">teach</em> something.</h1>
-            <p className="mt-2 max-w-xl text-zinc-600 dark:text-zinc-300">3D worlds to run, jump, dive and survive in, plus games for each app. Every round earns XP: level up to unlock new looks. Play alone or race friends live in a room.</p>
+            <p className="mt-2 max-w-xl text-zinc-600 dark:text-zinc-300">3D worlds to run, jump, dive and survive in, plus games for each app. Play alone or race friends live in a room.</p>
             <dl className="mt-6 grid max-w-md grid-cols-3 gap-4">
               <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">Rounds played</dt><dd className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={me?.played ?? 0} /></dd></div>
               <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">With friends</dt><dd className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white"><Rolling value={withFriends} /></dd></div>
@@ -162,18 +159,6 @@ export function Arcade() {
           </div>
         </div>
       </section>
-
-      {me && <PlayerCard xp={me.xp ?? 0} />}
-
-      {me && me.played > 0 && (
-        // M48: the games you play, around you; each point a round.
-        <LiveCard title="Your game constellation" sub="Each point is a round you played"
-          stats={[{ label: 'Rounds', value: me.played.toLocaleString() }, { label: 'With friends', value: withFriends.toLocaleString() }]}
-          ticker={me.recent.slice(0, 6).map((r) => `${GAMES[r.game]?.name ?? r.game}: ${r.score.toLocaleString()} points${r.mode === 'multi' ? ' with friends' : ''}`)}>
-          <Constellation className="h-[260px] md:h-[300px]" label="The games you play"
-            groups={GAME_IDS.filter((g) => (me.games[g]?.solo ?? 0) + (me.games[g]?.multi ?? 0) > 0).map((g) => ({ label: GAMES[g].name, n: (me.games[g]?.solo ?? 0) + (me.games[g]?.multi ?? 0), value: `best ${(me.games[g]?.best ?? 0).toLocaleString()}` }))} />
-        </LiveCard>
-      )}
 
       {(['worlds', 'big', 'quick'] as const).map((kind) => (
         <section key={kind} aria-labelledby={`games-${kind}`}>

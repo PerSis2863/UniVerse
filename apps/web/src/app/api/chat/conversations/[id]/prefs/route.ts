@@ -19,7 +19,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!me) return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
 
   const b = await req.json().catch(() => ({}));
-  const data: { pinnedAt?: Date | null; mutedUntil?: Date | null; archivedAt?: Date | null; markedUnread?: boolean; translateTo?: string | null; draft?: string | null; draftAt?: Date } = {};
+  const data: { pinnedAt?: Date | null; mutedUntil?: Date | null; archivedAt?: Date | null; markedUnread?: boolean; lastReadAt?: Date; translateTo?: string | null; draft?: string | null; draftAt?: Date } = {};
   if (typeof b.pinned === 'boolean') {
     if (b.pinned) {
       const pinnedCount = await prisma.conversationParticipant.count({ where: { userId: user.id, pinnedAt: { not: null }, NOT: { id: me.id } } });
@@ -39,7 +39,9 @@ export async function PATCH(req: Request, { params }: Ctx) {
     data.mutedUntil = until;
   }
   if (typeof b.archived === 'boolean') { data.archivedAt = b.archived ? new Date() : null; if (b.archived) data.pinnedAt = null; }
-  if (typeof b.unread === 'boolean') data.markedUnread = b.unread;
+  // "Mark as read" (M121): read up to now, not only the manual mark cleared (the chat's own unread
+  // messages came back on the next refresh).
+  if (typeof b.unread === 'boolean') { data.markedUnread = b.unread; if (!b.unread) data.lastReadAt = new Date(); }
   if (b.translateTo === null || isLanguage(b.translateTo)) data.translateTo = b.translateTo;
   else if (b.translateTo !== undefined) return NextResponse.json({ error: 'Unknown language.' }, { status: 400 });
   if (b.draft === null || typeof b.draft === 'string') {

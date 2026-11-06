@@ -4,7 +4,7 @@
 //   - /board-live: live whiteboards, one BoardRoom Durable Object per board
 //   - a light path for the busiest small API calls (./fast-api.ts)
 //   - scheduled(): the daily cron job (quiz reminders), see src/app/api/cron/daily/route.ts, and
-//     the spending guard every 15 minutes (./usage-guard.ts)
+//     the spending guard hourly (./usage-guard.ts)
 import { DurableObject } from 'cloudflare:workers';
 import * as Y from 'yjs';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- the file only exists after a build
@@ -110,20 +110,33 @@ async function currentBuild(origin: string, env: Env): Promise<string | null> {
   }
 }
 
+/** Next.js's router sends these with in-app navigation data (RSC); its answer depends on them. */
+const RSC_VARIES = ['rsc', 'next-router-state-tree', 'next-router-prefetch', 'next-router-segment-prefetch', 'next-url'];
+async function rscVariant(request: Request): Promise<string> {
+  const text = RSC_VARIES.map((h) => request.headers.get(h) ?? '').join('\n');
+  const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
+  return Array.from(hash.subarray(0, 16), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 /**
  * Pages that are the same for everyone (Next.js built them ahead of time: the home page, sign-in,
  * the dashboards' shells, legal pages) are kept in Cloudflare's cache near the visitor. A repeat
  * visit is then answered without starting the Next.js app at all: a faster first screen, and no
- * CPU time for the free plan's limit. In-app navigation data (RSC requests) still goes to Next.js.
+ * CPU time. M120: so is their in-app navigation data (an RSC request: the address with only
+ * `?_rsc=…`), one copy per combination of the router's headers it depends on. Starting Next.js
+ * on a fresh instance for a page change cost about a second of CPU, most of what one person's use
+ * of the site cost; a repeat now costs a cache read.
  */
 async function edgeCachedPage(request: Request, url: URL, env: Env, ctx: ExecutionContext, render: () => Promise<Response>): Promise<Response> {
-  // An address with ?… (the page recovery's one-off retry, links with tracking tags) always gets a
-  // fresh copy from Next.js.
-  const plain = request.method === 'GET' && !url.search && !request.headers.has('rsc') && !request.headers.has('next-router-prefetch') && !request.headers.has('authorization') && !request.headers.has('range');
-  const build = plain ? await currentBuild(url.origin, env) : null;
+  // An address with other ?… (the page recovery's one-off retry, links with tracking tags) always
+  // gets a fresh copy from Next.js.
+  const get = request.method === 'GET' && !request.headers.has('authorization') && !request.headers.has('range');
+  const rsc = get && request.headers.get('rsc') === '1' && url.searchParams.size === 1 && url.searchParams.has('_rsc');
+  const plain = get && !url.search && !request.headers.has('rsc') && !request.headers.has('next-router-prefetch');
+  const build = plain || rsc ? await currentBuild(url.origin, env) : null;
   if (!build) return revalidatePages(request, await render());
   const cache = (caches as unknown as { default: Cache }).default;
-  const key = new Request(`${url.origin}${url.pathname}?__build=${encodeURIComponent(build)}`);
+  const key = new Request(`${url.origin}${url.pathname}?__build=${encodeURIComponent(build)}${rsc ? `&__rsc=${await rscVariant(request)}` : ''}`);
   const hit = await cache.match(key).catch(() => undefined);
   if (hit) {
     const etag = hit.headers.get('etag');
@@ -133,7 +146,8 @@ async function edgeCachedPage(request: Request, url: URL, env: Env, ctx: Executi
     return out;
   }
   const res = await render();
-  const sameForEveryone = res.status === 200 && res.headers.get('x-nextjs-prerender') === '1' && /^text\/html/.test(res.headers.get('content-type') ?? '') && /s-maxage/.test(res.headers.get('cache-control') ?? '') && !res.headers.has('set-cookie');
+  const kind = rsc ? /^text\/x-component/ : /^text\/html/;
+  const sameForEveryone = res.status === 200 && res.headers.get('x-nextjs-prerender') === '1' && kind.test(res.headers.get('content-type') ?? '') && /s-maxage/.test(res.headers.get('cache-control') ?? '') && !res.headers.has('set-cookie');
   if (sameForEveryone) {
     const copy = new Response(res.clone().body, res);
     copy.headers.set('Cache-Control', 'public, max-age=86400');
@@ -295,10 +309,14 @@ export default {
       ]).catch(() => {}));
     }
     if (controller.cron === DAILY_CRON || controller.cron === DIGEST_CRON) return runJob(controller.cron === DIGEST_CRON ? 'digest' : 'daily');
-    const guard = await checkUsage(env);
-    console.log(`spending guard: ${guard.summary}`);
-    // Workers Free's daily allowances: the owner hears at 70% and 90% (in the app and by push).
-    if (guard.alert) await runJob('usage-alert', guard.alert).catch((e) => console.error('usage alert failed:', e));
+    // The spending guard reads Cloudflare's numbers once an hour (the first quarter of each hour,
+    // M120): every run of this timer starts a fresh instance, and reminders need the 15 minutes.
+    if (new Date(controller.scheduledTime).getUTCMinutes() < 15) {
+      const guard = await checkUsage(env);
+      console.log(`spending guard: ${guard.summary}`);
+      // Workers Free's daily allowances: the owner hears at 70% and 90% (in the app and by push).
+      if (guard.alert) await runJob('usage-alert', guard.alert).catch((e) => console.error('usage alert failed:', e));
+    }
     // Scheduled-call reminders: one cheap query; the app only starts when a call is due.
     if (await callsDue(env)) await runJob('reminders');
     // The rest of today's daily steps, while some are left (src/server/daily-jobs.ts; they share

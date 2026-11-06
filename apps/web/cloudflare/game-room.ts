@@ -50,7 +50,8 @@ export class GameRoom extends DurableObject<Env> {
     return out;
   }
 
-  private room = () => this.ctx.storage.get<Room>('room').then((r) => r ?? null);
+  // A room saved before its game was taken out of Play (Orbit Breach, M123) plays Quiz Clash instead.
+  private room = () => this.ctx.storage.get<Room>('room').then((r) => (r && !isGame(r.game) ? { ...r, game: 'quiz' as const } : r ?? null));
   private async save(r: Room) {
     r.touched = Date.now();
     await this.ctx.storage.put('room', r);

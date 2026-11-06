@@ -84,7 +84,7 @@ export function TypeRace({ seed, startsAt, clock, onProgress, onStats, rivals }:
   ];
 
   return (
-    <div className="mx-auto w-full max-w-5xl" onClick={() => input.current?.focus()}>
+    <div className="mx-auto w-full" onClick={() => input.current?.focus()}>
       {/* The race (M104): a 3D circuit, every racer a car in their lane */}
       <RaceView racers={racers.map((r, k) => ({ ...r, color: r.me ? COLORS[0] : COLORS[(k % (COLORS.length - 1)) + 1] }))} nitro={nitro} lap={LAP} />
 

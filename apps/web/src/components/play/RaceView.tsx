@@ -207,7 +207,7 @@ export function RaceView({ racers, nitro, lap }: { racers: Racer[]; nitro: boole
 
   const me = racers.find((r) => r.me);
   return (
-    <div className="relative h-56 overflow-hidden rounded-[1.75rem] bg-[#9ec3ea] ring-1 ring-white/10 sm:h-64">
+    <div className="relative h-[max(14rem,calc(var(--play-h)-18.5rem))] overflow-hidden rounded-[1.75rem] bg-[#9ec3ea] ring-1 ring-white/10">
       <canvas ref={canvas} className="absolute inset-0 h-full w-full" role="img" aria-label={`Race track: ${racers.map((r) => `${r.name} lap ${Math.floor(r.chars / lap) + 1}`).join(', ')}`} />
       {me && <span className="pointer-events-none absolute end-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white ring-1 ring-white/15">Lap {Math.floor(me.chars / lap) + 1} · {Math.round(((me.chars % lap) / lap) * 100)}%</span>}
     </div>

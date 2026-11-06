@@ -14,6 +14,7 @@ import { CountUp, EASE, Live, useCalm } from './bits';
 // numbers with a small unit, pink only for what is live and the number that matters). Drawn in HTML:
 // sharp at any size, almost no weight, and it follows the look. It lies back and tilts up flat as it
 // scrolls into view (the product arriving: transform only, through a spring so wheel steps glide).
+// It sits in the page's flow after the hero (never pulled up over it: that covered the hero's last row).
 // Phones get the same home inside a phone. A made-up student on the real screens; no usage numbers.
 // Reduce Motion: flat and still. Nothing in it is a control (one picture to screen readers).
 
@@ -49,7 +50,7 @@ export function ProductWindow() {
   const scale = useTransform(p, [0, 1], [calm ? 1 : 0.88, 1]);
   const y = useTransform(p, [0, 1], [calm ? 0 : 48, 0]);
   return (
-    <section className="relative px-4 sm:px-6 pb-10 sm:pb-16 lg:-mt-40">
+    <section className="relative px-4 sm:px-6 pb-10 sm:pb-16">
       <div ref={ref} className="relative mx-auto max-w-6xl [perspective:1800px]">
         {/* The warm light the window stands in (the page's corner light, still). */}
         <div aria-hidden className="absolute -inset-x-16 top-[8%] -bottom-[12%] bg-[radial-gradient(closest-side,rgba(214,170,92,0.16),transparent)]" />

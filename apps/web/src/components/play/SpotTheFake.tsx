@@ -202,7 +202,7 @@ export function SpotTheFake({ seed, startsAt, clock, onProgress, onDone, onStats
   const reason = REASON[round.reason];
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
+    <div className="mx-auto w-full max-w-7xl">
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <p className="font-medium text-zinc-400">Round <span className="tabular-nums text-white">{s.i + 1}</span> · <span className="text-white">{round.cards[0].product}</span> · <span className="text-pink-200">{rankFor(s.caught)}</span></p>
         <div className="flex items-center gap-3">
