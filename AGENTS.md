@@ -307,8 +307,8 @@ black and reverses their greys); opt out with `.flip-keep`, `.dark`, `.on-dark`.
 (M125, `river-gl.ts`, WebGL 2, after the Relay recording; `river-paint.ts` only where WebGL 2 is
 missing): 30 soft glowing fibres (the recording's count) with gaps between them round a full, round C-shaped bend (measured on
 the recording's frames), packed at the bend and spreading into an even fan, each bowed and moving its own way, light
-running along it; belonging to the page like the pink river, every bend the first one's pattern
-(mirrored at odd ones); light dashes travelling down the lines all the time, faster while scrolling
+running along it; belonging to the page like the pink river, every bend a smooth round C with the first one's pattern,
+the later ones out at the screen's edges, drawn in on arrival as in the recording; light dashes travelling down the lines all the time, faster while scrolling
 (`u_flow`); the scroll gliding; glitter and bokeh; sharp at the top of a page and out of focus a screen further down. Compare with the
 recording's frames before changing it. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
 navy or aqua, except documents printed on white (`src/server/`, certificates, CVs, report cards) and

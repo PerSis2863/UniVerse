@@ -5089,6 +5089,21 @@ little shrink" (the M124 bend was a narrow point; the recording's is a full, rou
   drives every fibre's sway, a soft swell running down each fibre, and, as in the pink river, short
   bright dashes (brightest at the head, with the soft layer's glow) travelling down every other fibre,
   and the glitter's drift. The scroll still glides (70 ms).
+- **Smooth bends, the river flowing bend to bend, drawn in like the recording** (M125d, the owner: "the
+  bend is not proper, it should be a smooth bend"; "check the video again and make the lines' animations
+  like that"; "the river below needs to bend from the end side of right and left, not from the middle
+  like at the start"):
+  - every arm uses q = 2 at the tip (a lower power made inner fibres pointed there); the tip is wider
+    (about 70 px round, as in the recording: lower arm length 0.32 − 0.1·w, the first bend's rising arm
+    0.2 − 0.05·w) and the band at the bend thicker (`dx` up to 0.05 S);
+  - after the first bend the river is a chain: below every bend `bendArm`, above every later bend the
+    same arm mirrored (`topArm` with its swing only above the first), so one bend's fan meets the next
+    one's; the later bends sit at the screen's edges (0.1 and 0.9 of the width, 0.08 / 0.92 on phones)
+    and are drawn at S2 = (their distance) / 1.28, so the two fans meet exactly (reaches 0.34–0.94 each);
+    the first bend stays beside the hero's words at the recording's size;
+  - on arrival the lines draw themselves in along the river as in the recording (top right, the bend,
+    then the fan) in 0.9 s, eased in and out; each fibre's tip a little ahead or behind (up to 0.12 of a
+    screen) with a glowing tip; the bends' glow lights as the lines reach them (`front`, `lit`).
 - **Where it runs:** first choice everywhere, on the background thread (`river.worker.ts`) or the page
   (`LightTrail.tsx`). Where WebGL 2 is missing the 2D painter (`river-paint.ts`, unchanged) draws; if
   WebGL took the canvas and then failed, the worker reports `unsupported` and the page draws in 2D on
