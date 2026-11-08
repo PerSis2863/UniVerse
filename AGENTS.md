@@ -102,7 +102,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 - **On `main`** (merged 6 Nov, live): everything through **M123**.
   - **Look and motion:** the Ballast look in light mode and the Relay look in dark mode, the river
     remade (M124, §8; the owner's exception to the pause, 8 Nov), then redrawn on the graphics chip to
-    match the recording (M125, branch `claude/great-hamilton-8g8xdm`, not merged yet); before it the CreditKarma look (M91–M94); smooth scrolling, maps and loading
+    match the recording (M125, merged 8 Nov, PR #114); before it the CreditKarma look (M91–M94); smooth scrolling, maps and loading
     (M86, M89, M96–M98); the pink river and the planet drawn on a background thread (M84, M85); glides,
     sheets and motion that answers the pointer (M29, M41, M45, M63).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
