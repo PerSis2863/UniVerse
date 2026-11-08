@@ -5062,6 +5062,48 @@ little shrink" (the M124 bend was a narrow point; the recording's is a full, rou
   fibres show; a soft fibre is kept narrower than the curve's radius (a soft minimum, not a hard
   clamp, or its width jumps) or its strip folds over itself round a tight bend; the distance to the
   nearer bend is a soft minimum (a plain `min` put a kink in every fibre halfway between bends).
+- **Every bend the same pattern** (M125b, the owner after the merge: "whenever the lines take left or
+  right, follow that pattern again"; then "everything exact … ultra smooth"): the river is a chain of
+  bends, each the first one's shape (`upperArm`: the fast spread and the swing; `lowerArm`: the round C
+  into an even fan), mirrored at odd bends. Consecutive bends turn opposite ways, so a fibre's rank is
+  `w` at even bends and `1 − w` at odd ones (`rankAt`): the inside of one turn is the outside of the
+  next and fibres never cross over between bends. Odd bends sit 1.55 S to the side (river pixels; the
+  arms then meet in the middle, blended between 30% and 70% of the gap); the camera pans across
+  (`pan`: 0 at even bends, 1 at odd ones; the caller turns it into a shift that puts odd bends at the
+  mirrored hero spot). `riverCamera` now follows the river: at each bend exactly the view at the top
+  of the page (tested), in between nearer, turned a little and soft. The STAGES list is gone. The 3D
+  turn is limited (±0.45 rad) so the fan never pinches into a waist. The per-fibre numbers in `f0` are
+  now four numbers of its own (small reach differences, depth); the shapes come from the rank.
+- **Ultra smooth scrolling:** the scroll the river is drawn at glides to the page's (a 70 ms ease, so
+  wheel and trackpad jumps don't jerk it), lands exactly, and jumps straight there when frames aren't
+  running or with Reduce Motion. `draw` returns true while gliding, and the worker and the page draw
+  another frame then even when the river isn't moving on its own.
+- **Back to a river that belongs to the page, with lines that keep travelling** (M125c, the owner after
+  seeing the camera version: "this is totally different … the lines travel like when you made the pink
+  background lines earlier … should continue travelling even when I don't scroll, and when I scroll it
+  should travel a little fast"): the flying camera is gone (no zoom, turn, pan or stage list); the river
+  scrolls with the page again, bends alternating on the page as the pink river did, each the first
+  one's pattern (`upperArm` / `lowerArm`, ranks flipping per bend), a little softer further down
+  (`riverFocus`, never below 0.6 so the travelling lines stay clear). A flow clock (`u_flow`) runs all
+  the time and up to twice as fast while the page scrolls (the scroll speed, eased over 0.3 s): it
+  drives every fibre's sway, a soft swell running down each fibre, and, as in the pink river, short
+  bright dashes (brightest at the head, with the soft layer's glow) travelling down every other fibre,
+  and the glitter's drift. The scroll still glides (70 ms).
+- **Smooth bends, the river flowing bend to bend, drawn in like the recording** (M125d, the owner: "the
+  bend is not proper, it should be a smooth bend"; "check the video again and make the lines' animations
+  like that"; "the river below needs to bend from the end side of right and left, not from the middle
+  like at the start"):
+  - every arm uses q = 2 at the tip (a lower power made inner fibres pointed there); the tip is wider
+    (about 70 px round, as in the recording: lower arm length 0.32 − 0.1·w, the first bend's rising arm
+    0.2 − 0.05·w) and the band at the bend thicker (`dx` up to 0.05 S);
+  - after the first bend the river is a chain: below every bend `bendArm`, above every later bend the
+    same arm mirrored (`topArm` with its swing only above the first), so one bend's fan meets the next
+    one's; the later bends sit at the screen's edges (0.1 and 0.9 of the width, 0.08 / 0.92 on phones)
+    and are drawn at S2 = (their distance) / 1.28, so the two fans meet exactly (reaches 0.34–0.94 each);
+    the first bend stays beside the hero's words at the recording's size;
+  - on arrival the lines draw themselves in along the river as in the recording (top right, the bend,
+    then the fan) in 0.9 s, eased in and out; each fibre's tip a little ahead or behind (up to 0.12 of a
+    screen) with a glowing tip; the bends' glow lights as the lines reach them (`front`, `lit`).
 - **Where it runs:** first choice everywhere, on the background thread (`river.worker.ts`) or the page
   (`LightTrail.tsx`). Where WebGL 2 is missing the 2D painter (`river-paint.ts`, unchanged) draws; if
   WebGL took the canvas and then failed, the worker reports `unsupported` and the page draws in 2D on

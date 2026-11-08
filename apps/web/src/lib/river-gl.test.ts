@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { riverCamera, riverFibres } from './river-gl';
+import { riverFibres, riverFocus } from './river-gl';
 
 describe('riverFibres', () => {
   it('gives every fibre finite numbers the shader can use, the same each time', () => {
@@ -26,25 +26,12 @@ describe('riverFibres', () => {
   });
 });
 
-describe('riverCamera', () => {
-  it('shows exactly the drawn river at the top of the page', () => {
-    expect(riverCamera(0, 1280, 800, false)).toEqual({ vs: 0, zoom: 1, rot: 0, ox: 0, oy: 0, focus: 1 });
-  });
-  it('moves with the page and softens, nothing more, with Reduce Motion', () => {
-    const c = riverCamera(400, 1280, 800, true);
-    expect(c).toMatchObject({ vs: 400, zoom: 1, rot: 0 });
-    expect(c.focus).toBeCloseTo(0.375);
-  });
-  it('changes smoothly as the page scrolls, even when the stages go round again', () => {
-    let prev = riverCamera(0, 1280, 800, false);
-    for (let sy = 4; sy < 800 * 20; sy += 4) {
-      const c = riverCamera(sy, 1280, 800, false);
-      expect(Math.abs(c.vs - prev.vs)).toBeLessThan(5);
-      expect(Math.abs(c.zoom - prev.zoom)).toBeLessThan(0.02);
-      expect(Math.abs(c.rot - prev.rot)).toBeLessThan(0.03);
-      expect(Math.abs(c.focus - prev.focus)).toBeLessThan(0.03);
-      expect(Math.abs(c.ox - prev.ox) + Math.abs(c.oy - prev.oy)).toBeLessThan(6);
-      prev = c;
+describe('riverFocus', () => {
+  it('is sharp at the top of the page and only a little softer further down', () => {
+    expect(riverFocus(0, 800)).toBe(1);
+    for (let sy = 0; sy < 800 * 10; sy += 50) {
+      expect(riverFocus(sy, 800)).toBeGreaterThanOrEqual(0.6);
+      expect(riverFocus(sy + 50, 800)).toBeLessThanOrEqual(riverFocus(sy, 800));
     }
   });
 });
