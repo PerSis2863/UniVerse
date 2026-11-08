@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M124 is the latest).
+  builds on it). The newest notes are at the end (M125 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -101,7 +101,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
 - **On `main`** (merged 6 Nov, live): everything through **M123**.
   - **Look and motion:** the Ballast look in light mode and the Relay look in dark mode, the river
-    remade (M124, §8; the owner's exception to the pause, 8 Nov); before it the CreditKarma look (M91–M94); smooth scrolling, maps and loading
+    remade (M124, §8; the owner's exception to the pause, 8 Nov), then redrawn on the graphics chip to
+    match the recording (M125, branch `claude/great-hamilton-8g8xdm`, not merged yet); before it the CreditKarma look (M91–M94); smooth scrolling, maps and loading
     (M86, M89, M96–M98); the pink river and the planet drawn on a background thread (M84, M85); glides,
     sheets and motion that answers the pointer (M29, M41, M45, M63).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
@@ -303,9 +304,11 @@ block** in `globals.css`; white text on a solid accent fill turns ink in dark mo
 **Inter** (`/fonts/inter`), the headline's key word (`<Accent>`) in **Instrument Serif italic**. The
 website and other parts drawn for a dark page carry `.flip-light` (light mode swaps their white and
 black and reverses their greys); opt out with `.flip-keep`, `.dark`, `.on-dark`. **The river**
-(`river-paint.ts`, after the Relay recording): fine fibres round a glowing hairpin bend, spraying in an
-orderly fan that never crosses, moving together; sharp at the top of a page and out of focus a screen
-further down. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
+(M125, `river-gl.ts`, WebGL 2, after the Relay recording; `river-paint.ts` only where WebGL 2 is
+missing): 36 soft glowing fibres with gaps between them round a full, round C-shaped bend (measured on
+the recording's frames), each bowed from the bend and moving its own way, light running along it;
+glitter and bokeh; sharp at the top of a page and out of focus a screen further down. Compare with the
+recording's frames before changing it. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
 navy or aqua, except documents printed on white (`src/server/`, certificates, CVs, report cards) and
 colours people choose (slide themes, course colours, accents).
 

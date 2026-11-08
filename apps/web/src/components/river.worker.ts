@@ -2,8 +2,10 @@
 // The river of light on a background thread (M84, the owner: "ultra smoothness"): the page hands its
 // canvas over (transferControlToOffscreen) and tells this worker the size, the scroll, the theme and
 // the pointer; every frame is drawn here, so the river never takes time from the page's taps,
-// typing or scrolling. The drawing is the same code as on the page (src/lib/river-paint.ts).
+// typing or scrolling. The drawing is the same code as on the page: WebGL 2 (src/lib/river-gl.ts,
+// M125), or the 2D painter (src/lib/river-paint.ts) where the chip can't.
 import { makeRiver, riverGap, type RiverOpts, type RiverState } from '@/lib/river-paint';
+import { makeRiverGL } from '@/lib/river-gl';
 
 type Msg =
   | { t: 'init'; canvas: OffscreenCanvas; opts: RiverOpts; w: number; h: number; dpr: number; sy: number; dark: boolean; move: boolean }
@@ -21,7 +23,7 @@ const nextFrame: (cb: (ms: number) => void) => number = typeof scope.requestAnim
   ? (cb) => scope.requestAnimationFrame(cb)
   : (cb) => setTimeout(() => cb(performance.now()), 16) as unknown as number;
 
-let river: ReturnType<typeof makeRiver> | null = null;
+let river: { resize: (w: number, h: number, dpr: number) => void; draw: (ms: number, s: RiverState) => void } | null = null;
 let opts: RiverOpts | null = null;
 const state: RiverState = { sy: 0, dark: true, px: -9999, py: -9999, pAt: -1e9 };
 let frame = 0, last = 0, hidden = false, moving = false;
@@ -41,12 +43,16 @@ scope.onmessage = (e: MessageEvent<Msg>) => {
   const m = e.data;
   switch (m.t) {
     case 'init': {
-      const ctx = m.canvas.getContext('2d');
-      const soft = new OffscreenCanvas(1, 1);
-      const sctx = soft.getContext('2d');
-      if (!ctx || !sctx) { scope.postMessage({ t: 'unsupported' }); return; }
+      river = makeRiverGL(m.canvas, m.opts, performance.now());
+      if (!river) {
+        // No WebGL 2 here (or it failed after taking the canvas: then 2D fails too and the page draws).
+        const ctx = m.canvas.getContext('2d');
+        const soft = new OffscreenCanvas(1, 1);
+        const sctx = soft.getContext('2d');
+        if (!ctx || !sctx) { scope.postMessage({ t: 'unsupported' }); return; }
+        river = makeRiver(m.canvas, ctx, soft, sctx, m.opts, performance.now());
+      }
       opts = m.opts;
-      river = makeRiver(m.canvas, ctx, soft, sctx, m.opts, performance.now());
       river.resize(m.w, m.h, m.dpr);
       state.sy = m.sy; state.dark = m.dark;
       moving = m.move;

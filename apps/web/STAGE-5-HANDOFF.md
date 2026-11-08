@@ -4975,3 +4975,47 @@ exception to the launch-focus pause, asked and answered).
   frame with the recording; the production build.
 - **Left:** the iPhone launch screens (`public/splash`) still use the previous page colours (a shade
   off); the live cards' moving pictures keep their own dark look.
+
+## M125: the river redrawn on the graphics chip, to match the Relay recording (the owner, 8 Nov 2026)
+
+The owner sent the Relay screen recording again with a screenshot of the landing: the M124 river "is so
+bad and it doesn't look same at all … keep the green colour brightness light", then "do whatever you
+want or install whatever you can but I need the same result". Follow-ups while it was built: "each line
+in the river flows in its own direction … there are some spaces between lines and every line is bended a
+little bit from start", "those river have animations from start", "there are few lines and in your
+river there are a lot of lines, match the exact amount", and "the bending does not match … it is a
+little shrink" (the M124 bend was a narrow point; the recording's is a full, round C).
+
+- **What the 2D canvas couldn't do:** hard 1-pixel strokes, light clipping into a hard white knot where
+  fibres pack, no real soft focus. `src/lib/river-gl.ts` draws the river with **WebGL 2**: each fibre
+  is a strip whose cross-section is a bell curve (width and blur per fibre, so out-of-focus fibres are
+  wide soft bands); light adds up in a half-float buffer and is tone-mapped (`1 − e^(−x)`) at the end;
+  a quarter-size glow layer (a halo round every fibre, the olive glow round each bend, the top-right
+  haze, the pointer's light); glitter and bokeh as points; a fine grain in the last pass so gradients
+  never band. Light mode: the same river in the light look's blues, as ink density.
+- **The shape is computed on the chip** from 16 fixed numbers per fibre (`riverFibres`: spread at the
+  bend, each arm's reach, length and lean, sway, bow, colour, width, blur, brightness): nothing but a
+  few uniforms goes up per frame. `fibreX` in the shader is the river's path; the bends alternate down
+  the page as before (`u_bend`), each arm keeps its own shape for the first 45% of the way to the next
+  bend, then blends over.
+- **Measured, not guessed:** the arms were fitted by counting strand positions along rows of the
+  recording's frames and by overlaying renders on the frames (video green, river pink). Both arms are
+  `m·u^q / (1 + u^q)` (round from the bend, levelling off): below, outer fibres reach 0.5 of the screen
+  height and inner ones 0.8, the inner ones leaving almost sideways; above, the outer fibres rise nearly
+  upright (reach 0.12) and the inner ones fan out (0.6), and the upper arm leans on towards the top
+  right a third of a screen up (`k·d³ / (d² + e²)`). **Trap:** a reading off a scaled screenshot was
+  wrong by 3×; measure on the frame's own pixels.
+- **The owner's line rules:** 36 fibres (30 on phones), spread evenly so neighbours keep a gap; each
+  bowed a little from the bend on (`f3.z`, `f3.w`), swaying with its own size, wavelength, speed and
+  direction, and light running along it up or down; about 20–25 across the river at any height, the
+  same as the recording.
+- **Where it runs:** first choice everywhere, on the background thread (`river.worker.ts`) or the page
+  (`LightTrail.tsx`). Where WebGL 2 is missing the 2D painter (`river-paint.ts`, unchanged) draws; if
+  WebGL took the canvas and then failed, the worker reports `unsupported` and the page draws in 2D on
+  a fresh canvas. Lost WebGL context: it simply stops drawing (rare; not restored).
+- **Tested:** `pnpm check`; `river-gl.test.ts`; renders compared frame by frame with the recording at
+  1766 × 1222 (scroll 0 and 320); the real landing page at 2000 × 1044, 1280 and 390 px, light and dark;
+  the app's river down a long page. The local database wasn't set up in this session, so pages that
+  read it returned errors unrelated to the river.
+- **Left:** a WebGL context restore; the 2D fallback keeps the M124 shape.
+
