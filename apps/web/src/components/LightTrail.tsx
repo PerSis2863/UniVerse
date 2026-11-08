@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { reducedMotion } from '@/lib/page-transition';
 import { makeRiver, riverGap, type RiverOpts, type RiverState } from '@/lib/river-paint';
+import { makeRiverGL } from '@/lib/river-gl';
 import { cn } from '@/lib/utils';
 
 // The river of light behind every page, website and app (M9/M10, the owner's Relay video in
@@ -23,7 +24,9 @@ import { cn } from '@/lib/utils';
 // still" when frames came late, and the low-memory check, froze it on a fast laptop), so don't add one.
 // M84: where the browser can, every frame is drawn on a background thread (river.worker.ts, the page
 // hands its canvas over), so the river never takes time from taps, typing or scrolling; elsewhere
-// the same drawing (src/lib/river-paint.ts) runs on the page as before.
+// the same drawing runs on the page as before.
+// M125: drawn with WebGL 2 (src/lib/river-gl.ts: soft glowing fibres, depth of field, glitter, after
+// the owner's Relay recording); the 2D painter (src/lib/river-paint.ts) only where WebGL 2 isn't there.
 // M118: it also rests while a game covers the whole screen (<html data-arena>, Play's arena), as in a
 // hidden tab: nobody can see it then, and the game needs the graphics chip. It carries on when the
 // game closes (this isn't M56a's "slow or stop by itself": it never stops while it can be seen).
@@ -60,7 +63,7 @@ function River({ tone, hero, strength, className, path }: { tone: 'auto' | 'dark
     const box = host.current;
     if (!box) return;
     // A fresh canvas each time: one handed to a background thread can't be handed over again.
-    const cv = document.createElement('canvas');
+    let cv = document.createElement('canvas');
     cv.className = cn('light-river', className);
     cv.setAttribute('aria-hidden', 'true');
     cv.setAttribute('data-no-motion', '');
@@ -104,11 +107,16 @@ function River({ tone, hero, strength, className, path }: { tone: 'auto' | 'dark
       };
     } else {
       // On the page (no background drawing in this browser): the same river, drawn here.
-      const ctx = cv.getContext('2d');
-      const soft = document.createElement('canvas');
-      const sctx = soft.getContext('2d');
-      if (!ctx || !sctx) { cv.remove(); return; }
-      const river = makeRiver(cv, ctx, soft, sctx, opts, performance.now());
+      let river = makeRiverGL(cv, opts, performance.now());
+      if (!river) {
+        // WebGL 2 may have taken the canvas before failing: draw in 2D on a fresh one.
+        let ctx = cv.getContext('2d');
+        if (!ctx) { const fresh = cv.cloneNode() as HTMLCanvasElement; cv.replaceWith(fresh); cv = fresh; ctx = cv.getContext('2d'); }
+        const soft = document.createElement('canvas');
+        const sctx = soft.getContext('2d');
+        if (!ctx || !sctx) { cv.remove(); return; }
+        river = makeRiver(cv, ctx, soft, sctx, opts, performance.now());
+      }
       river.resize(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);
       const state: RiverState = { sy: 0, dark: dark(), px: -9999, py: -9999, pAt: -1e9 };
       let frame = 0, last = 0, moving = false;

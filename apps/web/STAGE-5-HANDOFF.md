@@ -4975,3 +4975,100 @@ exception to the launch-focus pause, asked and answered).
   frame with the recording; the production build.
 - **Left:** the iPhone launch screens (`public/splash`) still use the previous page colours (a shade
   off); the live cards' moving pictures keep their own dark look.
+
+## M125: the river redrawn on the graphics chip, to match the Relay recording (the owner, 8 Nov 2026)
+
+The owner sent the Relay screen recording again with a screenshot of the landing: the M124 river "is so
+bad and it doesn't look same at all … keep the green colour brightness light", then "do whatever you
+want or install whatever you can but I need the same result". Follow-ups while it was built: "each line
+in the river flows in its own direction … there are some spaces between lines and every line is bended a
+little bit from start", "those river have animations from start", "there are few lines and in your
+river there are a lot of lines, match the exact amount", and "the bending does not match … it is a
+little shrink" (the M124 bend was a narrow point; the recording's is a full, round C).
+
+- **What the 2D canvas couldn't do:** hard 1-pixel strokes, light clipping into a hard white knot where
+  fibres pack, no real soft focus. `src/lib/river-gl.ts` draws the river with **WebGL 2**: each fibre
+  is a strip whose cross-section is a bell curve (width and blur per fibre, so out-of-focus fibres are
+  wide soft bands); light adds up in a half-float buffer and is tone-mapped (`1 − e^(−x)`) at the end;
+  a quarter-size glow layer (a halo round every fibre, the olive glow round each bend, the top-right
+  haze, the pointer's light); glitter and bokeh as points; a fine grain in the last pass so gradients
+  never band. Light mode: the same river in the light look's blues, as ink density.
+- **The shape is computed on the chip** from 16 fixed numbers per fibre (`riverFibres`: spread at the
+  bend, each arm's reach, length and lean, sway, bow, colour, width, blur, brightness): nothing but a
+  few uniforms goes up per frame. `fibreX` in the shader is the river's path; the bends alternate down
+  the page as before (`u_bend`), each arm keeps its own shape for the first 45% of the way to the next
+  bend, then blends over.
+- **Measured, not guessed:** the arms were fitted by counting strand positions along rows of the
+  recording's frames and by overlaying renders on the frames (video green, river pink). Both arms are
+  `m·u^q / (1 + u^q)` (round from the bend, levelling off): below, outer fibres reach 0.5 of the screen
+  height and inner ones 0.8, the inner ones leaving almost sideways; above, the outer fibres rise nearly
+  upright (reach 0.12) and the inner ones fan out (0.6), and the upper arm leans on towards the top
+  right a third of a screen up (`k·d³ / (d² + e²)`). **Trap:** a reading off a scaled screenshot was
+  wrong by 3×; measure on the frame's own pixels.
+- **The owner's line rules:** 36 fibres (30 on phones), spread evenly so neighbours keep a gap; each
+  bowed a little from the bend on (`f3.z`, `f3.w`), swaying with its own size, wavelength, speed and
+  direction, and light running along it up or down; about 20–25 across the river at any height, the
+  same as the recording.
+- **Packed at the bend, scattered at the end** (the owner's next round, comparing the lower arm with the
+  recording: "when it bends all the lines are stuck together and become bright … at the bottom the lines
+  are scattered … each line moves different from the start, after the middle, and scattered again in the
+  end"): most fibres sit in the middle of the bundle (`riverFibres`: `w` bunched round 0.5, a few fainter
+  ones either side), so they leave the bend in one bright band; everything that's a fibre's own grows
+  with the distance from the bend (`spread` in `fibreX`): its sway, its bow (`1 − cos`, so the fibres
+  start parallel) and its reach, which turns from the orderly fan into one of its own (from the timing
+  `f1.w`) so the fibres cross and fan out downwards by the end. The final pass keeps the hue as light
+  piles up (only the hottest spot at the bend goes towards white), so the band stays yellow-lime; a
+  green haze follows the lower arm; denser glitter and bokeh spread wider further from the bend.
+- **An even fan at the end, not a tangle** (the owner: "your lines are not scattered properly … and it
+  glows more"): far from the bend each fibre's reach comes from its even rank across the bundle (`t`,
+  the inverse of the bunched `w`), so the fibres spread out evenly like a comb, as in the recording,
+  instead of crossing at random; their sway and bow are smaller; the glow round the fibres and the
+  haze along the lower arm are stronger. **Trap:** no backticks inside the shader text (it's a
+  template string); a comment with one broke the build of the test page.
+- **In 3D, changing with the scroll** (the owner: "please work on this also", about the recording's
+  river changing shape as the page scrolls): the river is a ribbon that turns as the page scrolls
+  (`u_twist`, off with Reduce Motion): an angle that grows with the scroll and further along the river
+  turns each fibre's spread from the middle of the fan against a depth of its own across the ribbon,
+  so the fan narrows and widens and fibres pass in front of and behind each other (behind: softer and
+  dimmer; in front: brighter). At the top of the page the angle is 0, the drawn shape exactly.
+- **The top of the page** (the owner: "see how the upper line starts and how it bends before all the
+  lines merge at the middle point"): measured row by row on the recording's first frame, the fibres
+  leave the bend spreading fast (inner ones almost sideways, `f3.y` 0.05–0.4) and halfway up the screen
+  the whole bundle swings over to the top-right corner (a smooth step 0.45–0.95 of the screen height
+  across, at 0.45 of a screen above the bend). Only above the first bend; as the page scrolls the swing
+  eases and rises out of view. The band at the bend is narrower (`f0.x` up to 0.025).
+- **The same number of lines as the recording** (the owner: "I need exactly the same amount of lines
+  that video has"): counted by finding the strands along rows of clean parts of the frames (no text or
+  card) at four brightness levels; 30 fibres (26 on phones) give the recording's counts within a line or
+  two (about 25 faint, 20 clear, 10–15 bright across the river at most heights). Near the bend the
+  recording's fibres overlap into one glowing band (fewer separate lines): the rising fibres are packed
+  tighter there (`f3.y` 0.06 + 0.5·w⁴), a little softer within a tenth of a screen of a bend, the
+  innermost quarter leave almost sideways (`sideways`) leaving a dark gap, and the bend's glow is
+  stronger.
+- **The scroll, like the recording** (the owner: "the animation when someone will scroll is totally
+  different"): the recording's river never scrolls away: it stays on screen behind every section and
+  changes as if a camera flew past it. `riverCamera(sy, W, H, still)` gives, for a scroll position, which
+  stretch of the river is at the top of the screen (`vs`: with the page for the first screen, then
+  drifting at 0.4 of the page's speed, eased by a softplus), how near it is (`zoom`), how it's turned
+  (`rot`), a shift and the focus. It eases between `STAGES` taken from the recording's sections: the
+  drawn river at the top (exactly, the test checks); a screen down the S on the right, softening; two
+  screens down a wide, very soft ribbon from bottom left to top right; soft arcs; around seven screens
+  down sharp again across the bottom; then round again from the soft ribbon (no jump: tested). The
+  shader draws the river in its own coordinates and `toScreen` applies the camera; the glows are placed
+  through the same camera in JS (`toScr`) and the pointer is taken back into the river's coordinates
+  (`toRiver`). Out of focus the fibres move into the quarter-size glow layer (wide blurred bands) and
+  fade from the sharp one. Reduce Motion: it just moves with the page and softens, as before.
+  **Traps fixed on the way:** the drawn stretch needs a wide margin (260 px) or the cut ends of soft
+  fibres show; a soft fibre is kept narrower than the curve's radius (a soft minimum, not a hard
+  clamp, or its width jumps) or its strip folds over itself round a tight bend; the distance to the
+  nearer bend is a soft minimum (a plain `min` put a kink in every fibre halfway between bends).
+- **Where it runs:** first choice everywhere, on the background thread (`river.worker.ts`) or the page
+  (`LightTrail.tsx`). Where WebGL 2 is missing the 2D painter (`river-paint.ts`, unchanged) draws; if
+  WebGL took the canvas and then failed, the worker reports `unsupported` and the page draws in 2D on
+  a fresh canvas. Lost WebGL context: it simply stops drawing (rare; not restored).
+- **Tested:** `pnpm check`; `river-gl.test.ts`; renders compared frame by frame with the recording at
+  1766 × 1222 (scroll 0 and 320); the real landing page at 2000 × 1044, 1280 and 390 px, light and dark;
+  the app's river down a long page. The local database wasn't set up in this session, so pages that
+  read it returned errors unrelated to the river.
+- **Left:** a WebGL context restore; the 2D fallback keeps the M124 shape.
+
