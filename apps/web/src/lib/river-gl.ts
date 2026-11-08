@@ -7,10 +7,11 @@
 //   · light adds up in a high-range buffer and is tone-mapped at the end, so where the fibres pack
 //     together at the bend they glow white-lime instead of clipping into a hard white knot;
 //   · a quarter-size glow layer (a halo round every fibre, the olive glow round each bend) for bloom;
-//   · as many fibres as the recording (30: counted row by row on its frames) with gaps
-//     between them; each bowed a little from the bend on and moving its own way, with light running
-//     along it up or down (the owner's follow-ups); lime with pale blue ones on the inner side;
-//     glitter drifting along them and soft bokeh discs round the river.
+//   · as many clear fibres as the recording (30: counted row by row on its frames) with gaps
+//     between them, and among them about a hundred fine, faint threads, so the band glows with the
+//     recording's detail (M127, compared pixel by pixel); each a smooth arc from the bend, moving its
+//     own way, with light running along it; lime, a few turning blue as the fan spreads; soft
+//     glitter dust inside the band and bokeh discs round the river.
 // The shape is measured on the recording's frames and laid over them (see `fibreX`): a full, round
 // C at the bend, then an S down the page, not a trumpet. Everything is computed on the chip from
 // fixed per-fibre numbers: nothing is uploaded per frame but a few uniforms.
@@ -25,9 +26,9 @@ const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.s
 // Fibre colours 0–5 lime and yellow-green (5 the white-lime of the brightest), 6–8 the sky blues (M126:
 // as saturated as the recording's, where they read as blue lines among the lime, not grey-green).
 const DARK = {
-  fibres: ['#c4ec3e', '#b2e030', '#d0f055', '#a4d62e', '#d9f36a', '#ebfaae', '#5cb2ea', '#4a9fe0', '#7ec6f2'].map(hex),
-  glow: [[0.9, 1, 0.62, 0.8], [0.72, 0.9, 0.3, 0.46], [0.36, 0.5, 0.1, 0.2]] as const,
-  haze: [0.42, 0.56, 0.14, 0.1] as const, speck: hex('#f4ffd0'), bokeh: [hex('#d8f27c'), hex('#6fbbee')],
+  fibres: ['#c8ec62', '#b6e058', '#d2f075', '#a8d654', '#dcf488', '#eefbc0', '#5cb2ea', '#4a9fe0', '#7ec6f2'].map(hex),
+  glow: [[0.9, 1, 0.62, 0.8], [0.62, 0.78, 0.46, 0.2], [0.36, 0.45, 0.24, 0.24]] as const,
+  haze: [0.4, 0.52, 0.3, 0.22] as const, speck: hex('#f4ffd0'), bokeh: [hex('#d8f27c'), hex('#6fbbee')],
 };
 const LIGHT = {
   fibres: ['#2563eb', '#3b7ef0', '#1d4fd7', '#5b8def', '#4f46e5', '#3a6fe6', '#0891b2', '#0e7490', '#38bdf8'].map(hex),
@@ -61,26 +62,31 @@ float rankAt(float b, float w) { return mod(b, 2.0) < 0.5 ? w : 1.0 - w; }
 float evenRank(float wr) { float c = 2.0 * wr - 1.0; return 0.5 + 0.5 * sign(c) * pow(abs(c), 1.0 / 1.7); }
 // The arm above the first bend (the top of the page), d up from its tip, measured on the recording:
 // the fibres leave the bend in a wide, round C (a tip about 70 px round, as in the recording), rise, the inner ones run
-// out almost sideways (leaving a dark gap), and at d0 the bundle swings over to the top right (a smooth
-// step, each fibre reaching its own way across). As the page scrolls the swing eases and rises out of
-// view, as in the recording.
+// out almost sideways (leaving a dark gap), and at d0 the bundle swings over towards the top right (a
+// smooth step, each fibre reaching its own way across), then runs on as long, straight diagonals into
+// the top right corner (M127: the recording's lines there lie at about 30 degrees, never upright; the
+// step and the slope fitted to its left edge row by row, within 8 px). As the page scrolls the swing
+// eases and rises out of view, as in the recording.
 float topArm(float d, float wr, vec4 j, float ct, float st) {
   float H = u_view.y, t = evenRank(wr), spread = smoothstep(0.1 * H, 0.6 * H, d);
   float m = mix(0.12 + 0.4 * wr * wr + (j.z - 0.5) * 0.015, 0.04 + 0.32 * t + (j.x - 0.5) * 0.03, spread);
   m = 0.2 + (m - 0.2) * ct + (j.w - 0.5) * 0.32 * st;
   float dx = 0.025 + (0.05 * wr - 0.025) * ct + (j.w - 0.5) * 0.04 * st;
-  float d0 = 0.45 * H + 0.3 * u_sy * u_twist;
-  float swing = (0.45 + 0.5 * t) * u_S * (1.0 - 0.5 * u_twist * smoothstep(0.0, 0.35 * H, u_sy)) / (1.0 + exp(-(d - d0) / (0.06 * H)));
-  float sw = 2.6 * smoothstep(0.6, 0.95, wr) * d * d / (d + 0.05 * H);
-  return dx * u_S + arm(d, m, 0.2 - 0.05 * wr, 2.0, u_S) + swing + sw;
+  float lift = 0.3 * u_sy * u_twist, ease = 1.0 - 0.5 * u_twist * smoothstep(0.0, 0.35 * H, u_sy);
+  float swing = (0.35 + 0.5 * t) * u_S * ease / (1.0 + exp(-(d - 0.4 * H - lift) / (0.04 * H)));
+  float run = 1.6 * 0.05 * u_S * ease * log(1.0 + exp((d - 0.5 * H - lift) / (0.05 * H)));
+  // The innermost quarter turn sideways once they have risen about 80 px (the recording's C is hollow
+  // there, its inner edge running almost flat to the right).
+  float sw = 2.6 * smoothstep(0.6, 0.95, wr) * 0.03 * H * (log(1.0 + exp((d - 0.08 * H) / (0.03 * H))) - log(1.0 + exp(-8.0 / 3.0)));
+  return dx * u_S + arm(d, m, 0.2 - 0.05 * wr, 2.0, u_S) + swing + run + sw;
 }
 // An arm of a bend, d from its tip, at size sc: a round C sweeping out into an even fan. Below every
 // bend, and above every bend after the first (the river between two bends is one bend's arm meeting
 // the next one's, mirrored, so it flows smoothly from one into the other).
 float bendArm(float d, float wr, vec4 j, float ct, float st, float sc, out float z) {
   float H = u_view.y, t = evenRank(wr), spread = smoothstep(0.1 * H, 0.6 * H, d);
-  float m = mix(0.5 + 0.3 * wr + (j.y - 0.5) * 0.03, 0.34 + 0.6 * t + (j.x - 0.5) * 0.05, spread);
-  float l = (0.32 - 0.1 * wr) * mix(1.0, 1.1 - 0.3 * t, spread);
+  float m = mix(0.25 + 0.67 * wr * wr + (j.y - 0.5) * 0.03, 0.34 + 0.6 * t + (j.x - 0.5) * 0.05, spread);
+  float l = (0.23 - 0.08 * wr) * mix(1.0, 1.1 - 0.3 * t, spread);
   float dD = m - 0.64;
   m = 0.64 + dD * ct + (j.w - 0.5) * 0.6 * st;
   float dx = 0.025 + (0.05 * wr - 0.025) * ct + (j.w - 0.5) * 0.04 * st;
@@ -154,7 +160,9 @@ void main() {
   float w = a_f2.y, blur = a_f2.z + max(0.0, -z) * 1.6 + 1.1 * exp(-nearBend / (u_view.y * 0.1)) + u_blur;
   float s0 = sqrt(0.25 * w * w + blur * blur + 0.16), r4 = max(0.6, radius * 0.3);
   float s = s0 * r4 / (s0 + r4) + 0.4 * min(s0, 0.6);
-  float hw = 3.0 * max(s, u_halo > 0.0 ? min(3.2, r4) : 0.0) + 1.5;
+  // The faint threads (brightness under 0.2) carry no halo, so their strips stay a few pixels wide.
+  float halo = a_f2.w > 0.2 ? u_halo : 0.0;
+  float hw = 3.0 * max(s, halo > 0.0 ? min(3.2, r4) : 0.0) + 1.5;
   gl_Position = clip(p1 + vec2(tg.y, -tg.x) * a_v.y * hw);
   // Brightest by the bends, fading along the arms; drawn in from the top on arrival.
   float near = nearBend;
@@ -162,7 +170,8 @@ void main() {
   // come), a soft glowing tip, nothing beyond it.
   float ahead = u_y1 - fract(a_f1.w * 2.3) * 0.12 * u_view.y - y;
   float drawn = clamp(ahead / 50.0, 0.0, 1.0) * (1.0 + (u_y1 < 1e8 ? 2.2 * exp(-pow((ahead - 30.0) / 45.0, 2.0)) : 0.0));
-  float lit = a_f2.w * (0.62 + 0.3 * exp(-near / (u_view.y * 0.42)) + 1.4 * exp(-near / (u_view.y * 0.05))) * drawn * u_alpha;
+  // (The recording's river is brighter below its first bend than above it.)
+  float lit = a_f2.w * (0.62 + (bb < 0.0 ? 0.3 : 0.55) * exp(-near / (u_view.y * 0.45)) + 1.4 * exp(-near / (u_view.y * 0.05))) * drawn * u_alpha;
   // Light running along it, each fibre its own way and pace, from the bend on.
   // Light running down it all the time (faster while the page scrolls: u_flow), as in the pink river
   // the owner liked: a soft swell on every fibre, and on every other one short bright dashes, brightest
@@ -172,8 +181,12 @@ void main() {
   float sd = fract((y - u_flow * vpx) / per + a_f1.w);
   float dash = step(0.5, fract(a_f1.w * 0.77)) * smoothstep(0.0, 0.11, sd) * (1.0 - smoothstep(0.11, 0.13, sd));
   lit *= run * (1.0 + 2.6 * dash) * clamp(1.0 + 0.3 * z, 0.6, 1.4);
-  v_d = a_v.y * hw; v_s = s; v_c = u_pal[int(a_f3.x)];
-  v_a = lit * w / (s * 2.5066); v_h = lit * u_halo;
+  // The blue fibres are lime where the bundle packs at a bend and turn blue as they spread out (the
+  // recording's blue lines are along the fan below the bend and up in the top right corner, never in
+  // the bright band).
+  int ci = int(a_f3.x);
+  v_d = a_v.y * hw; v_s = s; v_c = ci >= 6 ? mix(u_pal[2], u_pal[ci], bb < 0.0 ? smoothstep(0.35, 0.55, near / u_view.y) : smoothstep(0.03, 0.2, near / u_view.y)) : u_pal[ci];
+  v_a = lit * w / (s * 2.5066); v_h = lit * halo;
 }`;
 const STRAND_FS = `#version 300 es
 precision highp float;
@@ -207,7 +220,8 @@ void main() {
   gl_PointSize = a_p.z * u_dpr;
   float tw = a_q.y < 0.5 ? 0.55 + 0.45 * sin(u_t * 2.2 + a_p.w * 40.0) : 1.0;
   v_a = a_q.z * tw * sin(3.14159 * ph) * u_alpha * clamp((u_y1 - y) / 140.0, 0.0, 1.0);
-  v_k = a_q.y; v_c = u_dot[int(a_q.y + 0.5) == 0 ? 0 : (a_p.w > 0.5 ? 2 : 1)];
+  // Kind: a sharp spark (0), soft dust (0.5: the larger glitter, as the recording's), bokeh (1).
+  v_k = a_q.y > 0.5 ? 1.0 : a_p.z > 3.4 ? 0.5 : 0.0; v_c = u_dot[int(a_q.y + 0.5) == 0 ? 0 : (a_p.w > 0.5 ? 2 : 1)];
 }`;
 const DOT_FS = `#version 300 es
 precision highp float;
@@ -215,7 +229,7 @@ in vec3 v_c; in float v_a; in float v_k;
 out vec4 o;
 void main() {
   float r = length(gl_PointCoord * 2.0 - 1.0);
-  float i = v_k < 0.5 ? exp(-r * r * 3.0) : smoothstep(1.0, 0.82, r) * (0.65 + 0.35 * smoothstep(0.55, 0.92, r));
+  float i = v_k < 0.25 ? exp(-r * r * 3.5) : v_k < 0.75 ? exp(-r * r * 2.2) * (1.0 - r * r) : smoothstep(1.0, 0.6, r) * (0.75 + 0.25 * smoothstep(0.45, 0.9, r));
   o = vec4(v_c * i * v_a, i * v_a);
 }`;
 
@@ -272,34 +286,41 @@ void main() {
 
 const hash = (i: number, k: number) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
 
-/** The fibres, fixed for a river's life (16 numbers each, as the shader reads them). */
-export function riverFibres(n: number): Float32Array {
-  const out = new Float32Array(n * 16);
-  // Most fibres in the middle of the bundle (they leave the bend packed in one bright band), a few
-  // fainter ones on either side; still in order, with a little jitter, so neighbours never pile up.
-  for (let i = 0; i < n; i++) {
-    const c = Math.min(1, Math.max(-1, (2 * (i + 0.5 + (hash(i, 2) - 0.5) * 0.6)) / n - 1));
-    const w = 0.5 + 0.5 * Math.sign(c) * Math.pow(Math.abs(c), 1.7), edge = 1 - 0.45 * c * c;
+/**
+ * The fibres, fixed for a river's life (16 numbers each, as the shader reads them): `n` lines, then
+ * `hairs` fine, faint threads among them (M127: the recording's river, looked at pixel by pixel, is a
+ * bundle of many fine threads under its clear lines, so the band glows with texture between them).
+ */
+export function riverFibres(n: number, hairs = 0): Float32Array {
+  const out = new Float32Array((n + hairs) * 16);
+  // In order across the bundle with a little jitter, so neighbours never pile up: the lines a little
+  // denser in the middle (they leave the bend packed in one bright band), the threads almost even.
+  for (let i = 0; i < n + hairs; i++) {
+    const hair = i >= n, k = hair ? i - n : i, of = hair ? hairs : n;
+    const c = Math.min(1, Math.max(-1, (2 * (k + 0.5 + (hash(i, 2) - 0.5) * 0.7)) / of - 1));
+    const w = 0.5 + 0.5 * Math.sign(c) * Math.pow(Math.abs(c), hair ? 1.1 : 1.3), edge = 1 - 0.3 * c * c;
     const r = hash(i, 3);
-    const bright = r > 0.86, far = !bright && r < 0.18;
-    const blue = !bright && hash(i, 4) < 0.2 + 0.25 * w;
+    const bright = !hair && r > 0.74, far = !hair && !bright && r < 0.16;
+    const blue = !bright && hash(i, 4) < (hair ? 0.1 : 0.16 + 0.2 * w);
     const level = hash(i, 5);
     const o = i * 16;
     // Four numbers of its own (small differences in reach; its depth across the ribbon). The bends'
     // shapes come from its rank (below), the same at every bend (the shader: topArm and bendArm).
     out.set([hash(i, 6), hash(i, 7), hash(i, 19), hash(i, 20)], o);
-    // Its own sway: size, wavelength, speed (running up or down the fibre) and timing.
-    out.set([6 + hash(i, 8) * 18, 130 + hash(i, 9) * 320, (0.35 + hash(i, 10) * 0.8) * (hash(i, 11) < 0.5 ? -1 : 1), hash(i, 12) * 6.283], o + 4);
+    // Its own sway: size, wavelength, speed (running up or down the fibre) and timing. Long and
+    // gentle: the recording's fibres are smooth arcs, each drifting its own way, never wavy.
+    out.set([3 + hash(i, 8) * 6, 520 + hash(i, 9) * 560, (0.35 + hash(i, 10) * 0.8) * (hash(i, 11) < 0.5 ? -1 : 1), hash(i, 12) * 6.283], o + 4);
     // Its rank across the first bend; width, blur (the out-of-focus ones) and brightness.
     out.set([
       w,
-      bright ? 1.2 + hash(i, 14) * 0.4 : far ? 2 + hash(i, 14) * 2 : 0.6 + hash(i, 14) * 0.5,
+      hair ? 0.45 + hash(i, 14) * 0.3 : bright ? 1 + hash(i, 14) * 0.3 : far ? 2 + hash(i, 14) * 2 : 0.5 + hash(i, 14) * 0.4,
       far ? 2.5 + hash(i, 15) * 4.5 : 0,
-      (bright ? 1 : far ? 0.35 + level * 0.3 : (0.22 + 0.6 * level * level) * (1 - 0.2 * w) + (blue ? 0.3 : 0)) * edge,
+      hair ? (0.07 + 0.12 * level) * edge : (bright ? 1 : far ? 0.35 + level * 0.3 : 0.25 + 0.6 * level * level + (blue ? 0.25 : 0)) * edge,
     ], o + 8);
     out[o + 12] = bright ? 5 : blue ? 6 + (i % 3) : [0, 1, 2, 3, 4][i % 5];
-    out[o + 14] = (0.004 + hash(i, 16) * 0.009) * (hash(i, 17) < 0.5 ? -1 : 1);
-    out[o + 15] = 0.1 + hash(i, 18) * 0.12;
+    // Its bow from the bend on, one smooth arc across the arm (not a wave along it).
+    out[o + 14] = (0.004 + hash(i, 16) * 0.008) * (hash(i, 17) < 0.5 ? -1 : 1);
+    out[o + 15] = 0.3 + hash(i, 18) * 0.25;
   }
   return out;
 }
@@ -339,17 +360,20 @@ export function makeRiverGL(cv: Surface, opts: RiverOpts, born: number) {
   const hdr = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
   const gain = hdr ? 1 : 4;
 
-  const N = still ? 28 : phone ? 26 : 30;
-  const fibres = riverFibres(N);
+  // The clear lines and, among them, the fine faint threads (M127).
+  const N0 = still ? 28 : phone ? 26 : 30, N = N0 + (still ? 60 : phone ? 44 : 110);
+  const fibres = riverFibres(N0, N - N0);
   // Glitter along the arms near each bend, and soft bokeh round the river: 24 numbers each (the
   // fibre it rides on (16), then where, how far off, size, timing; up or down, kind, brightness, drift).
-  const nSpeck = phone ? 320 : 950, nBokeh = phone ? 14 : 36;
+  // As in the recording the glitter is soft dust inside the band, densest just after the bend, with
+  // a few sharp sparks among it.
+  const nSpeck = phone ? 420 : 1300, nBokeh = phone ? 14 : 36;
   const dots = new Float32Array((nSpeck + nBokeh) * 24);
   for (let i = 0; i < nSpeck + nBokeh; i++) {
-    const bk = i >= nSpeck, f = Math.floor(hash(i, 20) * N), o = i * 24;
+    const bk = i >= nSpeck, spark = !bk && hash(i, 28) < 0.14, f = Math.floor(hash(i, 20) * N0), o = i * 24;
     dots.set(fibres.subarray(f * 16, f * 16 + 16), o);
-    dots.set([0.01 + Math.pow(hash(i, 21), bk ? 1 : 1.6) * (bk ? 0.55 : 0.6), (hash(i, 22) - 0.5) * (bk ? 90 : 50), bk ? 6 + hash(i, 23) * 14 : 2.2 + hash(i, 23) * 3, hash(i, 24)], o + 16);
-    dots.set([hash(i, 25) < 0.5 ? 1 : 0, bk ? 1 : 0, bk ? 0.12 + hash(i, 26) * 0.2 : 0.7 + hash(i, 26) * 1.1, still ? 0 : bk ? 0.004 : 0.012 + hash(i, 27) * 0.02], o + 20);
+    dots.set([0.005 + Math.pow(hash(i, 21), bk ? 1 : 2) * (bk ? 0.55 : 0.6), (hash(i, 22) - 0.5) * (bk ? 90 : 18), bk ? 6 + hash(i, 23) * 14 : spark ? 2.2 + hash(i, 23) * 2 : 3.5 + hash(i, 23) * 4, hash(i, 24)], o + 16);
+    dots.set([hash(i, 25) < 0.5 ? 1 : 0, bk ? 1 : 0, bk ? 0.1 + hash(i, 26) * 0.16 : spark ? 0.9 + hash(i, 26) * 1.1 : 0.4 + hash(i, 26) * 0.6, still ? 0 : bk ? 0.004 : 0.012 + hash(i, 27) * 0.02], o + 20);
   }
 
   const fibreBuf = gl.createBuffer(), stripBuf = gl.createBuffer(), dotBuf = gl.createBuffer();
@@ -486,17 +510,18 @@ export function makeRiverGL(cv: Surface, opts: RiverOpts, born: number) {
     gl.uniform2f(U.blob('u_view'), W, H);
     const m = Math.min(W, H);
     for (const b of bends) {
-      const gx = bendX(b) + dir(b) * 22, gy = bendY(b), on = fade * scale * lit(gy);
-      blobAt(gx, gy, m * 0.8, pal.glow[2], on);
-      blobAt(gx, gy, m * 0.32, pal.glow[1], on);
-      blobAt(gx, gy, m * 0.1, pal.glow[0], on);
+      // The glow sits inside the C (the recording's is lit there and darker outside the bend).
+      const gx = bendX(b) + dir(b) * 22, gy = bendY(b), on = fade * scale * lit(gy), cx = gx + dir(b) * (b === 0 ? S : S2) * 0.06;
+      blobAt(cx, gy, m * 0.8, pal.glow[2], on);
+      blobAt(cx, gy, m * 0.24, pal.glow[1], on);
+      blobAt(gx, gy, m * 0.07, pal.glow[0], on);
       // …and along the arms, along the middle of the fibres (the recording's green haze there): up
       // the first bend's rising arm, and the round arms (below every bend, above the later ones).
-      if (b === 0) blobAt(bendX(b) + dir(b) * S * 0.25, bendY(b) - H * 0.34, m * 0.5, pal.glow[2], fade * scale * 0.8 * lit(bendY(b) - H * 0.34));
+      if (b === 0) blobAt(bendX(b) + dir(b) * S * 0.36, bendY(b) - H * 0.34, m * 0.5, pal.glow[2], fade * scale * 0.8 * lit(bendY(b) - H * 0.34));
       for (const [dd, r, a] of [[0.14, 0.28, 0.9], [0.34, 0.38, 0.85], [0.58, 0.46, 0.8]] as const) {
         for (const [sc, sgn] of b === 0 ? [[S, 1]] : [[S2, 1], [S2, -1]]) {
-          const u = Math.pow(dd * H / (0.22 * sc), 1.8), y = bendY(b) + sgn * dd * H;
-          blobAt(bendX(b) + dir(b) * 0.62 * sc * u / (1 + u), y, m * r, pal.glow[2], fade * scale * a * lit(y));
+          const u = Math.pow(dd * H / (0.2 * sc), 2), y = bendY(b) + sgn * dd * H;
+          blobAt(bendX(b) + dir(b) * (dd < 0.5 ? 0.45 : 0.62) * sc * u / (1 + u), y, m * r, pal.glow[2], fade * scale * a * lit(y));
         }
       }
     }

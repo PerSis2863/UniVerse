@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M126 is the latest).
+  builds on it). The newest notes are at the end (M127 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -102,7 +102,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 - **On `main`** (merged 6 Nov, live): everything through **M123**.
   - **Look and motion:** the Ballast look in light mode and the Relay look in dark mode, the river
     remade (M124, §8; the owner's exception to the pause, 8 Nov), then redrawn on the graphics chip to
-    match the recording (M125, merged 8 Nov, PR #114); before it the CreditKarma look (M91–M94); smooth scrolling, maps and loading
+    match the recording (M125, merged 8 Nov, PR #114), then its detail and shape fitted pixel by pixel (M126–M127, branch
+    `claude/funny-galileo-y4mz9r`); before it the CreditKarma look (M91–M94); smooth scrolling, maps and loading
     (M86, M89, M96–M98); the pink river and the planet drawn on a background thread (M84, M85); glides,
     sheets and motion that answers the pointer (M29, M41, M45, M63).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
@@ -135,7 +136,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): a
   modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
-- **Work numbers:** the next item is **M127**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M128**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide whether the spending guard should still pause the whole site at 90% of the
   included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set
@@ -305,8 +306,9 @@ block** in `globals.css`; white text on a solid accent fill turns ink in dark mo
 website and other parts drawn for a dark page carry `.flip-light` (light mode swaps their white and
 black and reverses their greys); opt out with `.flip-keep`, `.dark`, `.on-dark`. **The river**
 (M125, `river-gl.ts`, WebGL 2, after the Relay recording; `river-paint.ts` only where WebGL 2 is
-missing): 30 soft glowing fibres (the recording's count) with gaps between them round a full, round C-shaped bend (measured on
-the recording's frames), packed at the bend and spreading into an even fan, each bowed and moving its own way, light
+missing): 30 soft glowing fibres (the recording's count) with gaps between them and about a hundred fine faint threads among
+them (M127: the recording's detail) round a full, round, hollow C-shaped bend (measured on the recording's frames), the top
+arm running on as straight diagonals into the top right corner, packed at the bend and spreading into an even fan, each bowed and moving its own way, light
 running along it; belonging to the page like the pink river, every bend a smooth round C with the first one's pattern,
 the later ones out at the screen's edges, drawn in on arrival as in the recording; light dashes travelling down the lines all the time, faster while scrolling
 (`u_flow`); the scroll gliding; glitter and bokeh; sharp at the top of a page and out of focus a screen further down. Compare with the

@@ -24,6 +24,26 @@ describe('riverFibres', () => {
     // Neighbours keep apart: no two of them pile on the same spot.
     expect(spread.slice(1).filter((x, i) => x - spread[i] < 1e-4)).toHaveLength(0);
   });
+  it('adds the fine threads after the lines: faint (no halo), thin, and spread across the whole bundle', () => {
+    const f = riverFibres(30, 110);
+    expect(f).toHaveLength(140 * 16);
+    expect(f.every(Number.isFinite)).toBe(true);
+    const ranks: number[] = [];
+    for (let i = 30; i < 140; i++) {
+      const o = i * 16;
+      expect(f[o + 11]).toBeLessThan(0.2); // the shader draws these without a halo
+      expect(f[o + 9]).toBeLessThan(0.8);
+      expect(f[o + 10]).toBe(0);
+      ranks.push(f[o + 8]);
+    }
+    ranks.sort((a, b) => a - b);
+    expect(ranks[0]).toBeLessThan(0.03);
+    expect(ranks[109]).toBeGreaterThan(0.97);
+    // No tenth of the bundle is left empty.
+    for (let k = 0; k < 10; k++) expect(ranks.some((r) => r >= k / 10 && r < (k + 1) / 10)).toBe(true);
+    // The lines keep the halo threshold above them, so they still glow.
+    expect(Array.from({ length: 30 }, (_, i) => f[i * 16 + 11]).filter((v) => v > 0.2).length).toBeGreaterThan(20);
+  });
 });
 
 describe('riverFocus', () => {

@@ -5124,3 +5124,43 @@ blue specks) among the lime, mostly towards the top right, where ours showed pal
 `river-gl.ts`: the blue fibres (colours 6–8) are now a saturated sky blue (#5cb2ea, #4a9fe0, #7ec6f2),
 a little more common (20–45% by rank instead of 12–42%) and brighter (+0.3), and the blue bokeh matches.
 **Tested:** `river-gl.test.ts`, eslint, `tsc`; the landing compared with the recording's frame.
+
+
+## M127: the river's detail and exact shape, fitted to the recording pixel by pixel (the owner, 8 Nov 2026)
+
+The owner after M126: "the river lines still doesn't match properly with the video so match it exactly the
+way it looks and it needs to be detailing". Rendered `river-gl.ts` at the recording's own size (1766 × 1222,
+headless Chromium with SwiftShader) and compared with its frames (the hero at 3.1 s) by brightness profiles
+across the band, a line-direction field, the band's edges row by row and the colours at each brightness.
+
+- **Detail:** across the lower arm the recording has about 22 clear strands on a glowing base (many fine
+  threads too faint to separate); ours had 12 and no base. `riverFibres(n, hairs)` now adds fine, faint
+  threads after the clear lines (110 on computers, 44 on phones, 60 with Reduce Motion): width 0.45–0.75,
+  brightness 0.07–0.19, ranks almost even across the bundle. The clear lines are less bunched (power 1.3),
+  thinner (0.5–0.9), a few more bright ones, and dimmed less at the bundle's edges. **Rule:** a fibre with
+  brightness under 0.2 gets no halo in the sharp pass (its strip stays a few pixels wide), which keeps the
+  extra threads cheap; keep the threads under that line.
+- **Smooth arcs:** the recording's lines never wave. Sway is 3–9 px over 520–1080 px (was 6–24 over
+  130–450), and each fibre's bow is one arc across the arm (`f3.w` 0.3–0.55 of S, so `1 − cos` stays below
+  π), not a wave along it.
+- **The top arm runs on as diagonals:** above the swing the recording's lines lie at about 30° into the top
+  right corner; ours went upright again. `topArm`: a smaller step ((0.35 + 0.5 t) S at 0.4 H, width 0.04 H)
+  plus `run`, a soft ramp of slope 1.6 (scaled by S, so phones don't lose the arm off the right edge) from
+  0.5 H, both easing with the scroll as before. Fitted to the recording's left edge row by row (mean error
+  8 px). The innermost quarter now rise about 80 px before turning sideways (`sw` is a softplus that is 0 at
+  the bend: a non-zero value there put a notch in the tip), so the C is hollow and round as in the recording.
+- **The lower fan is wider:** near the bend `bendArm` reaches 0.25 + 0.67 w² over 0.23 − 0.08 w (inner lines
+  leave almost flat, outer ones drop steeply), fitted by drawing the model's curves over the frame; the far
+  values (0.34 + 0.6 t) are unchanged, so the chain to the next bends is as before (checked on a
+  three-screen plot). **Trap:** a narrower band at the tip (0.03 S) looked closer in a zoom but made the bend
+  pointed at full size; the M125d width (0.05 S) stays.
+- **Light and colour:** the lime is paler (blue raised about 35 in each lime), the river brighter below its
+  first bend than above it, blue fibres lime inside the bright band and turning blue as the fan spreads (above
+  the first bend only in the top right), the bend's glow centred a little inside the C and less saturated,
+  more haze top right. Glitter: 1300 specks (420 on phones), most of them soft dust (3.5–7.5 px, a flatter
+  profile, kind 0.5 in the dot shader) close to the bends inside the band, 14% sharp sparks; bokeh softer.
+- **Tested:** `pnpm check` (all passed); `river-gl.test.ts` (a new test for the threads); renders compared
+  with the recording at 1766 × 1222 (bend, both arms, top right, colours, brightness levels), 1280 × 800,
+  390 × 844, light mode, scrolled 1300 and 2600 px, and the arrival in frames.
+- **Left:** the river further down the page (the chain of bends) keeps the M125d shape; the recording only
+  shows its first bend that way.
