@@ -41,7 +41,7 @@ interface LiveScan { id: string; lat: number; lng: number; verdict: string; prod
 
 const RANGES = [{ days: 1, label: '24 h' }, { days: 7, label: '7 days' }, { days: 30, label: '30 days' }, { days: 90, label: '90 days' }];
 const WORLD: Box = [-170, -56, 180, 76];
-const PINK = '#fe81d1', PINK_SOFT = '#ff9fdc', AMBER = '#f59e0b';
+const PINK = '#4f8ef7', PINK_SOFT = '#7aaefa', AMBER = '#f59e0b';
 const REPLAY_SECONDS = 14;
 
 /** A place's dot radius: bigger with more scans, a little bigger closer in, never wider than its area. */
@@ -256,7 +256,7 @@ export function MarketMap() {
         const share = c.total ? c.yours / c.total : 0;
         if (share > 0) {
           const s = Math.sqrt(share), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, hw = ((x1 - x0) / 2) * s, hh = ((y1 - y0) / 2) * s;
-          ctx.fillStyle = f.dark ? 'rgba(255,159,220,0.75)' : 'rgba(193,58,146,0.7)';
+          ctx.fillStyle = f.dark ? 'rgba(122,174,250,0.75)' : 'rgba(193,58,146,0.7)';
           ctx.beginPath(); ctx.roundRect(cx - hw, cy - hh, hw * 2, hh * 2, r * s); ctx.fill();
         }
         if (model.opp.has(`${c.lat},${c.lng}`)) {
@@ -275,7 +275,7 @@ export function MarketMap() {
         const cx = sx(fl.c.bx), c = arcPoints([f.near(fl.o.bx, cx), sy(fl.o.by)], [cx, sy(fl.c.by)], 0.22);
         const grad = ctx.createLinearGradient(c[0], c[1], c[4], c[5]);
         grad.addColorStop(0, f.dark ? 'rgba(228,228,231,0.10)' : 'rgba(39,39,42,0.10)');
-        grad.addColorStop(1, f.dark ? 'rgba(254,129,209,0.38)' : 'rgba(193,58,146,0.34)');
+        grad.addColorStop(1, f.dark ? 'rgba(79,142,247,0.38)' : 'rgba(193,58,146,0.34)');
         ctx.strokeStyle = grad; ctx.lineWidth = 0.8 + fl.w * 1.6;
         ctx.beginPath(); ctx.moveTo(c[0], c[1]); ctx.quadraticCurveTo(c[2], c[3], c[4], c[5]); ctx.stroke();
         if (!still) {
@@ -314,10 +314,10 @@ export function MarketMap() {
           const x = sx(c.bx), y = sy(c.by), half = tile * 0.46;
           if (x < -half || x > f.w + half || y < -half || y > f.h + half) return;
           const norm = Math.sqrt(n / model.max);
-          ctx.fillStyle = f.dark ? `rgba(254,129,209,${0.14 + norm * 0.5})` : `rgba(193,58,146,${0.1 + norm * 0.42})`;
+          ctx.fillStyle = f.dark ? `rgba(79,142,247,${0.14 + norm * 0.5})` : `rgba(193,58,146,${0.1 + norm * 0.42})`;
           ctx.beginPath(); ctx.roundRect(x - half, y - half, half * 2, half * 2, Math.min(10, tile * 0.12)); ctx.fill();
           const sus = counts ? counts.s[i] : c.suspect;
-          ctx.strokeStyle = layers.copies && sus ? AMBER : f.dark ? 'rgba(255,159,220,0.45)' : 'rgba(193,58,146,0.35)';
+          ctx.strokeStyle = layers.copies && sus ? AMBER : f.dark ? 'rgba(122,174,250,0.45)' : 'rgba(193,58,146,0.35)';
           ctx.lineWidth = layers.copies && sus ? 2 : 1; ctx.stroke();
         });
       }
@@ -577,7 +577,7 @@ export function MarketMap() {
             </ul>
             {/* Legend */}
             <div className="absolute left-3 bottom-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#111113]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
-              <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_#fe81d1]" />Scans (bigger = more)</span>
+              <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_#4f8ef7]" />Scans (bigger = more)</span>
               <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full border-2 border-amber-500" />Likely copies</span>
               {model?.origins.length ? <span className="flex items-center gap-2"><span className="w-2 h-2 rotate-45 bg-zinc-700 dark:bg-zinc-300" />Where it’s made</span> : null}
               {layers.market && !market?.locked && <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-purple-600 to-fuchsia-500" />Category market · <span className="w-2 h-2 rounded-sm bg-pink-600" />yours</span>}
@@ -635,7 +635,7 @@ export function MarketMap() {
           {/* Timeline */}
           {data && (
             <div className="border-t border-zinc-100 dark:border-white/[0.06] px-3 sm:px-4 py-3 flex items-center gap-3">
-              <button type="button" onClick={() => (playing ? setPlaying(false) : startReplay())} aria-label={playing ? 'Pause the replay' : 'Replay the period'} className="w-10 h-10 shrink-0 grid place-items-center rounded-full bg-indigo-600 text-white shadow-[0_6px_20px_-6px_rgba(254,129,209,0.7)] active:scale-95 transition">
+              <button type="button" onClick={() => (playing ? setPlaying(false) : startReplay())} aria-label={playing ? 'Pause the replay' : 'Replay the period'} className="w-10 h-10 shrink-0 grid place-items-center rounded-full bg-indigo-600 text-white shadow-[0_6px_20px_-6px_rgba(79,142,247,0.7)] active:scale-95 transition">
                 {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 translate-x-[1px]" />}
               </button>
               <div className="relative flex-1 h-12">

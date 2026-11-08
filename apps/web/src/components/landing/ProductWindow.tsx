@@ -38,8 +38,8 @@ const DAY = [
 const MARKS = [62, 74, 70, 81, 78, 91]; // %, the last one newest
 const barHeight = (m: number) => `${Math.round(((m - 40) / 60) * 100)}%`; // marks 40–100 span the bar area, so the climb shows
 
-const card = 'rounded-[22px] border border-white/[0.07] bg-[#151517]';
-const pill = (on: boolean) => cn('rounded-full font-semibold', on ? 'bg-[#f4f4f5] text-[#111113]' : 'border border-white/[0.1] text-zinc-300');
+const card = 'rounded-[22px] border border-white/[0.07] bg-[var(--surface)]';
+const pill = (on: boolean) => cn('rounded-full font-semibold', on ? 'bg-white text-black' : 'border border-white/[0.1] text-zinc-300');
 
 export function ProductWindow() {
   const ref = useRef<HTMLDivElement>(null);
@@ -69,8 +69,8 @@ export function ProductWindow() {
 
 function Desktop() {
   return (
-    <div className="overflow-hidden rounded-[28px] border border-white/[0.1] bg-[#0b0b0c] shadow-[0_70px_160px_-50px_rgba(0,0,0,0.95)]">
-      <div className="flex items-center gap-3 border-b border-white/[0.06] bg-[#0e0e10] px-4 py-3">
+    <div className="overflow-hidden rounded-[28px] border border-white/[0.1] bg-[var(--background)] shadow-[0_70px_160px_-50px_rgba(0,0,0,0.95)]">
+      <div className="flex items-center gap-3 border-b border-white/[0.06] bg-[var(--surface)] px-4 py-3">
         <span className="flex w-14 gap-1.5">{[0, 1, 2].map((i) => <span key={i} className="h-3 w-3 rounded-full bg-white/[0.14]" />)}</span>
         <span className="mx-auto rounded-full bg-white/[0.05] px-4 py-1 font-mono text-xs text-zinc-400">universeimpact.com/student</span>
         <span className="w-14" />
@@ -85,20 +85,20 @@ function Desktop() {
 
 function Menu() {
   return (
-    <div className="flex flex-col gap-0.5 border-e border-white/[0.06] bg-[#0e0e10] p-3">
+    <div className="flex flex-col gap-0.5 border-e border-white/[0.06] bg-[var(--surface)] p-3">
       <div className="flex items-center gap-2 px-1.5 py-1.5">
         <UniverseLogo size="sm" animated={false} withGlow={false} />
         <span className="truncate text-sm font-black tracking-tight text-white">UniVerse<span className="font-medium text-zinc-400"> Impact</span></span>
       </div>
-      <div className="mb-2 mt-2 flex items-center gap-2.5 rounded-2xl border border-white/[0.07] bg-[#151517] p-2.5">
+      <div className="mb-2 mt-2 flex items-center gap-2.5 rounded-2xl border border-white/[0.07] bg-[var(--surface)] p-2.5">
         <AppIcon id="campus" size={30} />
         <span className="min-w-0"><span className="block text-[13px] font-semibold text-white">UniVersity</span><span className="block truncate text-[11px] text-zinc-400">Schools and universities</span></span>
       </div>
       {MENU.map(([Icon, label, count], i) => (
-        <span key={label} className={cn('flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium', i === 0 ? 'bg-[#f4f4f5] text-[#111113]' : 'text-zinc-300')}>
+        <span key={label} className={cn('flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium', i === 0 ? 'bg-white text-black' : 'text-zinc-300')}>
           <Icon className="h-4 w-4 shrink-0" aria-hidden />
           <span className="truncate">{label}</span>
-          {count && <span className="ms-auto grid h-5 min-w-5 place-items-center rounded-full bg-[var(--ins-hot)] px-1.5 text-[11px] font-bold text-[#111113]">{count}</span>}
+          {count && <span className="ms-auto grid h-5 min-w-5 place-items-center rounded-full bg-[var(--ins-hot)] px-1.5 text-[11px] font-bold text-black">{count}</span>}
         </span>
       ))}
       <div className="mt-auto flex items-center gap-2.5 border-t border-white/[0.06] px-1.5 pt-3">
@@ -121,7 +121,7 @@ function Home() {
           <span className="hidden lg:flex h-9 w-44 items-center gap-2 rounded-full bg-white/[0.05] px-3 text-xs text-zinc-400"><Search className="h-3.5 w-3.5" aria-hidden />Search<span className="ms-auto font-mono text-[11px]">⌘K</span></span>
           <span className="relative grid h-9 w-9 place-items-center rounded-full bg-white/[0.05]">
             <Bell className="h-4 w-4 text-zinc-300" aria-hidden />
-            <span className="absolute -end-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--ins-hot)] px-1 text-[11px] font-bold leading-none text-[#111113]">2</span>
+            <span className="absolute -end-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--ins-hot)] px-1 text-[11px] font-bold leading-none text-black">2</span>
           </span>
         </div>
       </div>
@@ -141,7 +141,7 @@ function Home() {
 
 function KpiCard({ k, small }: { k: Kpi; small?: boolean }) {
   return (
-    <div className={cn(k.frost ? 'rounded-[22px] border border-transparent' : card, small ? 'p-3.5' : 'p-4')} style={k.frost ? { background: `var(--karma-${k.frost})` } : undefined}>
+    <div className={cn(k.frost ? 'rounded-[22px] border border-transparent' : card, k.frost && k.frost !== 'gold' && 'on-dark', small ? 'p-3.5' : 'p-4')} style={k.frost ? { background: `var(--karma-${k.frost})` } : undefined}>
       <span className="karma-icon !h-9 !w-9 text-white"><k.icon className="h-4 w-4" aria-hidden /></span>
       <p className={cn('font-bold leading-none tracking-tight text-white', small ? 'mt-3 text-[28px]' : 'mt-4 text-[34px]')}>
         <CountUp to={k.to} /><span className="ms-0.5 text-base font-semibold text-zinc-300">{k.unit}</span>
@@ -221,10 +221,10 @@ function Day({ rows, marks = true }: { rows: number; marks?: boolean }) {
 
 function Phone() {
   return (
-    <div className="mx-auto w-full max-w-[322px] rounded-[2.75rem] border border-white/[0.12] bg-[#0e0e10] p-2.5 shadow-[0_50px_120px_-40px_rgba(0,0,0,0.95)]">
-      <div className="overflow-hidden rounded-[2.2rem] bg-[#0b0b0c] [background:radial-gradient(70%_40%_at_100%_0%,rgba(98,136,176,0.14),transparent),#0b0b0c]">
+    <div className="mx-auto w-full max-w-[322px] rounded-[2.75rem] border border-white/[0.12] bg-[var(--surface)] p-2.5 shadow-[0_50px_120px_-40px_rgba(0,0,0,0.95)]">
+      <div className="overflow-hidden rounded-[2.2rem] bg-[var(--background)] [background:radial-gradient(70%_40%_at_100%_0%,rgba(59,126,240,0.14),transparent),var(--background)]">
         <div className="flex items-center justify-between px-6 pt-3 text-xs font-semibold text-white">
-          <span>9:41</span><span className="h-5 w-20 rounded-full bg-black" /><span className="flex items-end gap-0.5">{[5, 7, 9, 11].map((h) => <span key={h} className="w-[3px] rounded-sm bg-white" style={{ height: h }} />)}</span>
+          <span>9:41</span><span className="h-5 w-20 rounded-full bg-[#000]" /><span className="flex items-end gap-0.5">{[5, 7, 9, 11].map((h) => <span key={h} className="w-[3px] rounded-sm bg-white" style={{ height: h }} />)}</span>
         </div>
         <div className="space-y-3 px-4 pb-4 pt-4">
           <div><p className="text-xl font-bold tracking-tight text-white">Dashboard</p><p className="text-xs text-zinc-400">Good morning, Maya</p></div>
@@ -232,9 +232,9 @@ function Phone() {
           <div className="grid grid-cols-2 gap-2.5">{KPIS.slice(0, 2).map((k) => <KpiCard key={k.label} k={k} small />)}</div>
           <Day rows={3} marks={false} />
         </div>
-        <div className="flex justify-around border-t border-white/[0.06] bg-[#0e0e10] px-3 py-2.5">
+        <div className="flex justify-around border-t border-white/[0.06] bg-[var(--surface)] px-3 py-2.5">
           {MENU.slice(0, 4).map(([Icon, label], i) => (
-            <span key={label} className={cn('grid h-9 w-12 place-items-center rounded-full', i === 0 ? 'bg-[#f4f4f5] text-[#111113]' : 'text-zinc-400')}><Icon className="h-[18px] w-[18px]" aria-hidden /></span>
+            <span key={label} className={cn('grid h-9 w-12 place-items-center rounded-full', i === 0 ? 'bg-white text-black' : 'text-zinc-400')}><Icon className="h-[18px] w-[18px]" aria-hidden /></span>
           ))}
         </div>
       </div>

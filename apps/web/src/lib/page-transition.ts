@@ -56,9 +56,8 @@ export const EASE_GLIDE = 'cubic-bezier(0.16, 1, 0.3, 1)';
 export function leaveFrames(m: PageMotion): Keyframe[] {
   if (m === 'shared') return [{ opacity: 1 }, { opacity: 0.4 }];
   const to = m === 'push' ? 'translate3d(-18px, 0, 0)' : m === 'pop' ? 'translate3d(18px, 0, 0)' : m === 'tab' ? 'translate3d(0, 4px, 0)' : 'translate3d(0, 6px, 0) scale(0.996)';
-  // M3: switching sections, the old page also goes soft (out of focus), as in the "Cadra" reel.
-  if (m === 'fade' || m === 'tab') return [{ opacity: 1, transform: 'none', filter: 'blur(0)' }, { opacity: m === 'tab' ? 0.35 : 0.4, transform: to, filter: 'blur(6px)' }];
-  return [{ opacity: 1, transform: 'none' }, { opacity: 0.4, transform: to }];
+  // M124: no blur (a blur filter repaints the whole page every frame); the fade and drift stay.
+  return [{ opacity: 1, transform: 'none' }, { opacity: m === 'tab' ? 0.35 : 0.4, transform: to }];
 }
 
 /** The new page coming in. */
@@ -66,8 +65,6 @@ export function enterFrames(m: PageMotion): Keyframe[] {
   // Never from fully transparent: the first frames would show an empty screen.
   if (m === 'shared') return [{ opacity: 0.3 }, { opacity: 1 }];
   const from = m === 'push' ? 'translate3d(56px, 0, 0)' : m === 'pop' ? 'translate3d(-56px, 0, 0)' : m === 'tab' ? 'translate3d(0, 16px, 0)' : 'translate3d(0, 20px, 0) scale(0.99)';
-  // Between tabs the content hands over through a short blur (one surface changing what it shows).
-  if (m === 'tab') return [{ opacity: 0.3, transform: from, filter: 'blur(8px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }];
   return [{ opacity: 0.3, transform: from }, { opacity: 1, transform: 'none' }];
 }
 
@@ -96,13 +93,14 @@ export function revealParts(page: Element | null, m: PageMotion): Element[] {
  * as tall as a third of the screen opens out from its top edge (AgentGPT's window).
  */
 export function revealFrames(i: number, tall = false): Keyframe[] {
-  // M1: each part also comes into focus (from a soft blur), far enough and slow enough to see.
-  if (i > 0 && tall) return [{ opacity: 0, transform: 'translate3d(0, 40px, 0) scale(0.96, 0.9)', transformOrigin: '50% 0', filter: 'blur(10px)' }, { opacity: 1, transform: 'none', transformOrigin: '50% 0', filter: 'blur(0)' }];
-  if (i === 0) return [{ opacity: 0.35, transform: 'translate3d(0, -14px, 0)', filter: 'blur(6px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }];
-  return [{ opacity: 0, transform: 'translate3d(0, 48px, 0) scale(0.97)', filter: 'blur(10px)' }, { opacity: 1, transform: 'none', filter: 'blur(0)' }];
+  // M124: the parts cascade in as in the owner's reels (the frame first, then what's in it): a rise
+  // and a slight scale, no blur (a blur filter repaints every frame, and stuttered on phones).
+  if (i > 0 && tall) return [{ opacity: 0, transform: 'translate3d(0, 28px, 0) scale(0.97, 0.94)', transformOrigin: '50% 0' }, { opacity: 1, transform: 'none', transformOrigin: '50% 0' }];
+  if (i === 0) return [{ opacity: 0.35, transform: 'translate3d(0, -10px, 0)' }, { opacity: 1, transform: 'none' }];
+  return [{ opacity: 0, transform: 'translate3d(0, 32px, 0) scale(0.98)' }, { opacity: 1, transform: 'none' }];
 }
-export const REVEAL_MS = 880;
-export const REVEAL_GAP_MS = 95;
+export const REVEAL_MS = 700;
+export const REVEAL_GAP_MS = 70;
 
 /** One part of a page swapping in place on phones (M45: the chat list ↔ a chat, the settings list ↔ a
  *  section): deeper slides in from the end, back from the start, as pages do. */
@@ -113,10 +111,10 @@ export function glide(el: Element | null | undefined, m: 'push' | 'pop') {
   el.animate(reducedMotion() ? calmFrames(frames) : frames, { duration: enterMs(m), easing: EASE_GLIDE });
 }
 
-/** A page's title sweeping into view along its reading direction, out of a blur (M1). */
+/** A page's title sweeping into view along its reading direction (M1; no blur since M124). */
 export function titleFrames(rtl: boolean): Keyframe[] {
   const hidden = rtl ? 'inset(-20% 0 -30% 100%)' : 'inset(-20% 100% -30% 0)';
-  return [{ clipPath: hidden, filter: 'blur(8px)', transform: 'translate3d(0, 10px, 0)' }, { clipPath: 'inset(-20% 0 -30% 0)', filter: 'blur(0)', transform: 'none' }];
+  return [{ clipPath: hidden, transform: 'translate3d(0, 10px, 0)' }, { clipPath: 'inset(-20% 0 -30% 0)', transform: 'none' }];
 }
 export const TITLE_MS = 900;
 

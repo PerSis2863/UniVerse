@@ -36,11 +36,11 @@ export function Statement() {
 
   return (
     <section className="px-3 sm:px-6 py-16">
-      <div ref={ref} className="relative max-w-7xl mx-auto overflow-hidden rounded-[2rem] px-6 py-20 sm:py-28 text-center"
-        style={{ background: 'linear-gradient(120deg, #e3c98e 0%, #f2e2b6 35%, #ffd6f0 70%, #ffd6f0 100%)' }}>
+      <div ref={ref} className="flip-keep relative max-w-7xl mx-auto overflow-hidden rounded-[2rem] px-6 py-20 sm:py-28 text-center"
+        style={{ background: 'linear-gradient(120deg, #dce8fe 0%, #eef4ff 40%, #e4ecfb 75%, #d6e4fd 100%)' }}>
         <div aria-hidden className="absolute inset-0 opacity-50" style={{ backgroundImage: 'radial-gradient(rgba(24,26,33,0.25) 1px, transparent 1.2px)', backgroundSize: '22px 22px' }} />
         <div className="relative">
-          <p className="relative min-h-[1.2em] text-4xl sm:text-6xl font-bold tracking-tight text-[#151517]">
+          <p className="relative min-h-[1.2em] text-4xl sm:text-6xl font-bold tracking-tight text-black">
             <span className="sr-only">{LINES.join(' ')}</span>
             <span aria-hidden>{text}</span><span aria-hidden className="inline-block w-[3px] h-[0.9em] -mb-[0.1em] ms-1 bg-[#24262e] animate-pulse" />
           </p>

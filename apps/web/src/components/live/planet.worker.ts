@@ -56,9 +56,9 @@ scope.onmessage = (e: MessageEvent<Msg>) => {
       cv = m.canvas; still = m.still; gap = m.gap; props.pings = m.pings;
       show(m.places, m.arcs);
       if (m.bits) props.land = landLookup(m.bits);
-      // The names are in Urbanist, and a background thread has its own fonts: load the page's file
+      // The names are in Inter, and a background thread has its own fonts: load the page's file
       // before the first frame (a canvas that drew with a stand-in font could keep it), 2 s at most.
-      const face = new FontFace('Urbanist', `url(${m.font})`, { weight: '300 800' });
+      const face = new FontFace('Inter', `url(${m.font})`, { weight: '100 900' });
       const fonts = scope.fonts;
       fonts.add(face);
       Promise.race([face.load().then(() => fonts.ready), new Promise((r) => setTimeout(r, 2000))]).catch(() => undefined).then(() => setTimeout(() => {

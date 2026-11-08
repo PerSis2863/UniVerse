@@ -3,7 +3,7 @@ import { LAUNCH } from './launch-screens.gen';
 export type Theme = 'dark' | 'light' | 'system';
 
 /** The phone's bar colours per theme (M46): the Karma page colours. */
-export const BAR = { dark: '#0b0b0c', light: '#ececec' } as const;
+export const BAR = { dark: '#0c0d10', light: '#f1f2f4' } as const;
 const IOS_BAR = { dark: 'black-translucent', light: 'default' } as const;
 /** For the head script (before paint), with `d` = dark: adds the browser bar's colour, the iPhone
  *  home-screen app's status bar (white text drawn over the page in dark, black text in light) and the

@@ -110,7 +110,7 @@ export function WalletCards({ cards, holder }: { cards: WalletCard[]; holder: st
   const gx = useTransform(rotateY, (r) => 50 + r * 2.6), gy = useTransform(rotateX, (r) => 35 - r * 3);
   const glare = useMotionTemplate`radial-gradient(70% 90% at ${gx}% ${gy}%, rgba(255,255,255,0.34), rgba(255,255,255,0.06) 40%, transparent 65%)`;
   const holoDeg = useTransform(rotateY, (r) => r * 9);
-  const holo = useMotionTemplate`conic-gradient(from ${holoDeg}deg, #fe81d1, #f2d48c, #a9c2d8, #ffc0e6, #fe81d1)`;
+  const holo = useMotionTemplate`conic-gradient(from ${holoDeg}deg, #4f8ef7, #f2d48c, #a9c2d8, #9cc3fb, #4f8ef7)`;
   const shadowX = useTransform(rotateY, (r) => -r * 1.4), shadowS = useTransform(rotateX, (r) => 1 - r * 0.012);
 
   const order = [front, ...cards.map((c) => c.id).filter((id) => id !== front)];

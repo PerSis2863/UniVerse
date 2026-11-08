@@ -34,13 +34,14 @@ const unseen = () => document.hidden || document.documentElement.hasAttribute('d
 const OWN_RIVER = new Set(['/', '/login', '/register']);
 
 /**
- * `tone="dark"`: always the dark look (the landing page). `hero`: the landing page's opening (the
- * first bend between the hero's words and card, drawn in on arrival). `strength`: 0–1.
+ * `tone="dark"`: always the dark look (sign-in). `hero`: the landing page's opening (the first bend
+ * between the hero's words and card, drawn in on arrival). `own`: the river a page draws for itself
+ * (the landing page, sign-in). `strength`: 0–1.
  */
-export function LightTrail({ tone = 'auto', hero = false, strength = 1, className }: { tone?: 'auto' | 'dark'; hero?: boolean; strength?: number; className?: string }) {
+export function LightTrail({ tone = 'auto', hero = false, own = false, strength = 1, className }: { tone?: 'auto' | 'dark'; hero?: boolean; own?: boolean; strength?: number; className?: string }) {
   const pathname = usePathname();
-  // The landing page and sign-in draw their own (dark) river: the root one would sit hidden under it.
-  if (tone === 'auto' && OWN_RIVER.has(pathname)) return null;
+  // The landing page and sign-in draw their own river: the root one would sit hidden under it.
+  if (!own && OWN_RIVER.has(pathname)) return null;
   return <River tone={tone} hero={hero} strength={strength} className={className} path={pathname} />;
 }
 

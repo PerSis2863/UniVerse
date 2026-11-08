@@ -25,7 +25,7 @@ export type { Place } from './planet-paint';
 
 /** The labels' font file (globals.css @font-face): a background thread loads its own copy (by its
  *  full address: a thread's own address may not be a web page's). */
-const URBANIST = '/fonts/urbanist/urbanist-latin.woff2';
+const FONT_FILE = '/fonts/inter/inter-latin.woff2';
 
 let landOnce: Promise<Uint8Array> | null = null;
 /** Where the land is (once per visit): the Trace maps' country outlines drawn into a small picture,
@@ -104,7 +104,7 @@ function WorkerPlanet({ places, arcs, label, className, pings = true, onFail }: 
       wk = new Worker(new URL('./planet.worker.ts', import.meta.url));
       const off = cv.transferControlToOffscreen();
       const [ps, pa] = latest.current;
-      wk.postMessage({ t: 'init', canvas: off, still: reducedMotion(), gap: window.matchMedia?.('(hover: none)').matches ? 30 : 0, pings, places: ps, arcs: pa ?? undefined, bits: land.current, font: new URL(URBANIST, location.href).href }, [off]);
+      wk.postMessage({ t: 'init', canvas: off, still: reducedMotion(), gap: window.matchMedia?.('(hover: none)').matches ? 30 : 0, pings, places: ps, arcs: pa ?? undefined, bits: land.current, font: new URL(FONT_FILE, location.href).href }, [off]);
     } catch {
       cv.remove();
       queueMicrotask(() => onFail(true));

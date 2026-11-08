@@ -65,7 +65,7 @@
     "ethers": "6.17.0",
     "fflate": "0.8.3",
     "firebase": "^12.19.0",
-    "framer-motion": "^13.4.0",
+    "framer-motion": "^14.10.1",
     "html2canvas-pro": "2.4.5",
     "jose": "^6.2.12",
     "jsqr": "1.4.0",

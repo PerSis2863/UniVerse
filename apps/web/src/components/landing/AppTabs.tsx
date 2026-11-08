@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 export function AppTabs({ value, onChange, label = 'Choose an app', small, layoutId = 'app-tab' }: { value: AppId; onChange: (id: AppId) => void; label?: string; small?: boolean; layoutId?: string }) {
   return (
-    <div role="tablist" aria-label={label} className={cn('inline-flex max-w-full overflow-x-auto scrollbar-none rounded-full border border-white/10 bg-[#121214] p-1 gap-1', small && 'w-full')}>
+    <div role="tablist" aria-label={label} className={cn('inline-flex max-w-full overflow-x-auto scrollbar-none rounded-full border border-white/10 bg-[var(--surface)] p-1 gap-1', small && 'w-full')}>
       {APPS.map((a) => {
         const on = a.id === value;
         return (

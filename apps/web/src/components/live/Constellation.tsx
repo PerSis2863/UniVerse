@@ -155,13 +155,13 @@ export function Constellation({ groups, center, label, className }: { groups: Gr
     ctx.beginPath(); ctx.arc(cx, cy, 17, 0, Math.PI * 2); ctx.stroke();
     if (center) {
       ctx.fillStyle = `rgba(20,18,16,${k0})`;
-      ctx.font = '700 10px Urbanist, system-ui, sans-serif';
+      ctx.font = '700 10px Inter, system-ui, sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(center.slice(0, 2).toUpperCase(), cx, cy + 0.5);
     }
 
     // The groups' names, in small dark pills above them.
-    ctx.font = '600 11px Urbanist, system-ui, sans-serif';
+    ctx.font = '600 11px Inter, system-ui, sans-serif';
     ctx.textBaseline = 'middle';
     model.forEach((g, i) => {
       const k = arrive(0.6 + i * 0.08), p = heads[i];

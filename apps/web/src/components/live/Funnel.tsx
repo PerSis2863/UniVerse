@@ -47,7 +47,7 @@ export function Funnel({ stages, label, className }: { stages: Stage[]; label: s
     for (let x = reachX; x >= x0; x -= 4) ctx.lineTo(x, cy + at(x));
     ctx.closePath();
     const fill = ctx.createLinearGradient(x0, 0, x1, 0);
-    fill.addColorStop(0, 'rgba(254,129,209,0.10)');
+    fill.addColorStop(0, 'rgba(79,142,247,0.10)');
     fill.addColorStop(0.6, 'rgba(140,155,255,0.08)');
     fill.addColorStop(1, 'rgba(240,204,138,0.10)');
     ctx.fillStyle = fill;

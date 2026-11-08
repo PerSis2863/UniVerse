@@ -33,7 +33,7 @@ function Poster() {
     const W = 1240, H = 1754, g = c.getContext('2d')!, t = THEMES[p.theme] ?? THEMES[0]; c.width = W; c.height = H;
     const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, t.a); gr.addColorStop(1, t.b); g.fillStyle = gr; g.fillRect(0, 0, W, H);
     g.globalAlpha = 0.18; g.fillStyle = t.hi; for (const [x, y, r] of [[1050, 260, 300], [180, 1500, 380], [1100, 1300, 160]]) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); } g.globalAlpha = 1;
-    const wrap = (text: string, size: number, y: number, weight = 800, colour = t.ink, lh = 1.1) => { g.font = `${weight} ${size}px Urbanist, system-ui, sans-serif`; g.fillStyle = colour; const words = text.split(' '); let line = '', yy = y; for (const w of words) { const test = line ? `${line} ${w}` : w; if (g.measureText(test).width > W - 200 && line) { g.fillText(line, 100, yy); line = w; yy += size * lh; } else line = test; } if (line) g.fillText(line, 100, yy); return yy + size * lh; };
+    const wrap = (text: string, size: number, y: number, weight = 800, colour = t.ink, lh = 1.1) => { g.font = `${weight} ${size}px Inter, system-ui, sans-serif`; g.fillStyle = colour; const words = text.split(' '); let line = '', yy = y; for (const w of words) { const test = line ? `${line} ${w}` : w; if (g.measureText(test).width > W - 200 && line) { g.fillText(line, 100, yy); line = w; yy += size * lh; } else line = test; } if (line) g.fillText(line, 100, yy); return yy + size * lh; };
     let y = wrap(p.tag.toUpperCase(), 40, 260, 700, t.hi);
     y = wrap(p.title, 170, y + 120, 900);
     g.fillStyle = t.hi; g.fillRect(100, y + 10, 220, 14);
@@ -61,9 +61,9 @@ function BizCard() {
     const c = ref.current; if (!c) return; const W = 1050, H = 600, g = c.getContext('2d')!; c.width = W; c.height = H;
     g.fillStyle = v.dark ? '#111113' : '#ffffff'; g.fillRect(0, 0, W, H); g.fillStyle = v.colour; g.fillRect(0, 0, 26, H); g.beginPath(); g.arc(W - 90, 90, 40, 0, Math.PI * 2); g.fill();
     const ink = v.dark ? '#ffffff' : '#141320', soft = v.dark ? '#c7cbe0' : '#4b5068';
-    g.fillStyle = ink; g.font = '800 72px Urbanist, system-ui, sans-serif'; g.fillText(v.name, 90, 230);
-    g.fillStyle = v.colour === '#111113' && v.dark ? '#fe81d1' : v.colour; g.font = '700 38px Urbanist, system-ui, sans-serif'; g.fillText(v.role, 90, 290);
-    g.fillStyle = soft; g.font = '500 34px Urbanist, system-ui, sans-serif'; g.fillText(v.org, 90, 340); g.fillText(v.line1, 90, 470); g.fillText(v.line2, 90, 520);
+    g.fillStyle = ink; g.font = '800 72px Inter, system-ui, sans-serif'; g.fillText(v.name, 90, 230);
+    g.fillStyle = v.colour === '#111113' && v.dark ? '#fe81d1' : v.colour; g.font = '700 38px Inter, system-ui, sans-serif'; g.fillText(v.role, 90, 290);
+    g.fillStyle = soft; g.font = '500 34px Inter, system-ui, sans-serif'; g.fillText(v.org, 90, 340); g.fillText(v.line1, 90, 470); g.fillText(v.line2, 90, 520);
   }, [v]);
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_420px]">

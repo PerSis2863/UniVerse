@@ -11,7 +11,7 @@ type V3 = [number, number, number];
 const RAD = Math.PI / 180;
 const toV = (lat: number, lon: number): V3 => [Math.cos(lat * RAD) * Math.sin(lon * RAD), Math.sin(lat * RAD), Math.cos(lat * RAD) * Math.cos(lon * RAD)];
 const LIGHT: V3 = (() => { const v: V3 = [-0.55, 0.6, 0.62]; const n = Math.hypot(...v); return [v[0] / n, v[1] / n, v[2] / n]; })();
-export const PLANET_FONT = '600 11px Urbanist, system-ui, sans-serif';
+export const PLANET_FONT = '600 11px Inter, system-ui, sans-serif';
 
 const dotSprites = new Map<string, Surface>();
 /** A small round dot with a soft edge, drawn once per colour. */

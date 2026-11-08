@@ -24,7 +24,7 @@ export function CookieNotice() {
   const choose = (c: CookieChoice) => { setCookieChoice(c); setShow(false); };
   return (
     // Solid (§8: no glass on toasts) and short: on a phone it used to cover a fifth of the first screen.
-    <div role="region" aria-label="Cookies" className="fixed z-[70] bottom-[max(0.75rem,env(safe-area-inset-bottom))] inset-x-3 sm:inset-x-auto sm:start-6 sm:max-w-sm rounded-2xl border border-white/10 bg-[#111113] p-3.5 sm:p-4 shadow-2xl shadow-black/50 text-sm text-zinc-200 rise-in">
+    <div role="region" aria-label="Cookies" className="fixed z-[70] bottom-[max(0.75rem,env(safe-area-inset-bottom))] inset-x-3 sm:inset-x-auto sm:start-6 sm:max-w-sm rounded-2xl border border-white/10 bg-[var(--surface)] p-3.5 sm:p-4 shadow-2xl shadow-black/50 text-sm text-zinc-200 rise-in">
       <p className="flex gap-2.5"><Cookie className="w-4 h-4 mt-0.5 shrink-0 text-fuchsia-300" aria-hidden />
         <span>We use the cookies UniVerse needs, like keeping you signed in. Optional ones too? <Link href="/privacy-choices" className="underline underline-offset-2 text-white">Details</Link></span></p>
       <div className="mt-2.5 sm:mt-3 flex flex-wrap items-center justify-end gap-2">

@@ -116,10 +116,10 @@ function Cloud() {
     if (!words.length) return;
     const top = words[0][1], low = words[words.length - 1][1];
     const size = (n: number) => 22 + (top === low ? 40 : ((n - low) / (top - low)) * 90);
-    const boxes = words.map(([w, n]) => { g.font = `800 ${size(n)}px Urbanist, system-ui, sans-serif`; return { w: g.measureText(w).width + 8, h: size(n) * 0.95 }; });
+    const boxes = words.map(([w, n]) => { g.font = `800 ${size(n)}px Inter, system-ui, sans-serif`; return { w: g.measureText(w).width + 8, h: size(n) * 0.95 }; });
     const at = spiral(boxes, W, H);
     g.textBaseline = 'top';
-    words.forEach(([w, n], k) => { const p = at[k]; if (!p) return; g.font = `800 ${size(n)}px Urbanist, system-ui, sans-serif`; g.fillStyle = L.ink[k % L.ink.length]; g.fillText(w, p.x + 4, p.y + size(n) * 0.04); });
+    words.forEach(([w, n], k) => { const p = at[k]; if (!p) return; g.font = `800 ${size(n)}px Inter, system-ui, sans-serif`; g.fillStyle = L.ink[k % L.ink.length]; g.fillText(w, p.x + 4, p.y + size(n) * 0.04); });
   }, [words, look]);
   return (
     <div className="space-y-3">
@@ -341,7 +341,7 @@ function Slideshow() {
     g.fillStyle = '#000'; g.fillRect(0, 0, 1280, 720);
     if (k > 0 && local < fade) draw(g, imgs[k - 1].img, 1, 1.06);
     draw(g, imgs[k].img, k > 0 && local < fade ? local / fade : 1, 1 + 0.06 * (local / secs));
-    if (title && t < secs) { g.globalAlpha = Math.min(1, (secs - t) / 0.5); g.fillStyle = 'rgba(11,11,12,0.55)'; g.fillRect(0, 560, 1280, 120); g.fillStyle = '#fff'; g.font = '700 54px Urbanist, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(title, 640, 638); g.textAlign = 'start'; g.globalAlpha = 1; }
+    if (title && t < secs) { g.globalAlpha = Math.min(1, (secs - t) / 0.5); g.fillStyle = 'rgba(11,11,12,0.55)'; g.fillRect(0, 560, 1280, 120); g.fillStyle = '#fff'; g.font = '700 54px Inter, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(title, 640, 638); g.textAlign = 'start'; g.globalAlpha = 1; }
   }, [imgs, secs, title, fit]);
   // The first picture as a preview (not while a video is being made: that draws its own frames).
   useEffect(() => { if (!busy) frame(0); }, [frame, busy]);
